@@ -145,6 +145,24 @@ The 4 near-16:9 sizes were visually and statistically indistinguishable; only th
 - Captures: `.claude/captures/item8_water_*` (before matrix), `item8_AFTER_*` (post-fix re-run), `item8_aniso_*` (Aniso probe), `item8_diag_*` (WATER_ASPECT_DIAG), `item8_reflcheck_native` / `item8_reflcheck_legacy` (native-vs-legacy A/B).
 - Build+deploy: `337c2c1e` on lane `releases/mc2-win64-deferred-test`, fingerprint matches, no -dirty. tier1 5/5 PASS, +0 destroys (`2026-07-16T20-17-14`).
 
+## Item 9 — First-launch black terrain (intermittent) — NOT REPRODUCED this session
+
+Board entry: "First-launch black terrain (intermittent)" (`.claude/DEFERRED-BOARD-2026-07-16.md` §A backlog, [MAIN], repro via `tier1 --fail-fast`).
+
+**Protocol:** own-PID-discipline cold-launch loop (never `--kill-existing`, never taskkill by image name — only manage PIDs launched by the hunt script itself), fresh `mc2.exe` process per attempt, mission `mc2_01` (tier1's first mission, matching the board's framing), real (non-fixed-timestep) clock so a genuine timing race isn't masked by the deterministic clock path, `MC2_LOAD_RACE_TRACE=1` set throughout per the task's own pointer to the 3d13c2de/3b70425b diagnostics.
+
+**Pass 1 (15 attempts):** `scripts/run_visual_capture.py` single-frame eyeball capture (glReadPixels FBO readback, trigger frame 200, `MC2_VISUAL_CAPTURE_FRAME`/`_DIR`, no bookmark file so the free-capture path fires). All 15/15 present, all normal terrain: mean RGB [103.1-104.1, 99.7-100.8, 85.6-87.0], near-black fraction 0.04-0.05% — remarkably stable, no outlier. Captures: `.claude/captures/item9_coldlaunch/attempt{01..15}/`.
+
+**Pass 2 (8 attempts):** the CANONICAL purpose-built oracle discovered in `GameOS/gameos/gameosmain.cpp` — `MC2_SCREENSHOT_AT_FRAME=200` + `MC2_SCREENSHOT_PATH=<tga>` (dumps the offscreen sceneFBO, works minimized, near-zero overhead) + `MC2_LOAD_RACE_TRACE=1`'s one-shot `LOADRACE verdict:` line (`docs/tier1_env_vars.md` documents `terrain_resident=Y/N` + `terrain_first_resident_frame` fields — exactly what this hunt needs). All 8/8 screenshots ground-truth-verified normal (same stable stats as pass 1). Captures: `.claude/captures/item9_loadrace/attempt{01..08}/`.
+
+**Real finding (not the target bug, but confirmed and worth recording): `MC2_LOAD_RACE_TRACE`'s `terrain_resident`/`degraded` verdict fields are a FALSE NEGATIVE under the default renderer.** All 8 pass-2 runs printed `terrain_resident=N terrain_first_resident_frame=-1 degraded=YES` — looked like a hit at first — but:
+- The ground-truth screenshot for every run showed completely normal terrain (verified via numpy/PIL pixel stats, matching pass 1's stable baseline).
+- The SAME logs also carry the modern GPU-indirect/chunk path's own readiness signals — `[LOADRACE] atlas first-resident frame=0 gltex=135 scenarioTime=0.00` and `[LOADRACE] gpu terrain first-arm frame=0 scenarioTime=0.00 atlasTex=135 nodeIds=65` — firing at frame=0 on every single one of the 8 runs, zero variance.
+- `mech_degrade_real=0`, `mech_ok_real=6`, `appr_null=0` on every run too (all 6 real mechs loaded fine; the 6 "mech degrade" events per run are benign preview-only, per the verdict's own `mech_degrade` vs `mech_degrade_real` split).
+- Root cause: the `terrain_resident` probe (`mclib/txmmgr.cpp` ~3096-3130, inside `Render.TerrainSolid`) only iterates `masterVertexNodes[]` (the LEGACY per-quad path); under the default chunk-path renderer (`MC2_TERRAIN_LOD_CHUNK` default-ON since `a7b090be`) that array apparently never populates with terrain nodes, so `terrTotal` stays 0 and `fully = (terrTotal>0) && ...` is permanently false — a stale diagnostic, not evidence of a real race. Flagged as a follow-up (spawn_task `task_4bc93a0a`); NOT fixed this session (out of scope, and fixing a diagnostic doesn't touch the actual bug hunt).
+
+**Verdict: NOT REPRODUCED, closing as such this session.** 23 total cold launches, two independent ground-truth-verified detection methods, zero black-terrain occurrences, zero anomalies in either the modern terrain-readiness signals or the mech-appearance-load signals. It's documented as intermittent — this session's sample came up clean, which doesn't rule out the bug, just this session's luck/environment. **Right ambush for next time:** `MC2_LOAD_RACE_TRACE=1` + `MC2_SCREENSHOT_AT_FRAME=<N>` + `MC2_SCREENSHOT_PATH` (native, cheap, minimized-safe) — watch the raw `atlas first-resident`/`gpu terrain first-arm` frame numbers and the screenshot itself, NOT the stale `terrain_resident` field until `task_4bc93a0a` lands. Consider more attempts, a genuinely cold machine/disk state (this session's launches were back-to-back on an already-warm machine), or cycling across more of tier1's 5 missions rather than just mc2_01.
+
 ## Remaining
 
 - [x] Item 3 complete (commit 2c3a9109, captures banked, verdict PASS)
@@ -152,6 +170,6 @@ The 4 near-16:9 sizes were visually and statistically indistinguishable; only th
 - [x] Item 6 complete (commits fddba31c + 259eda79, runtime A/B + deterministic capture banked)
 - [x] Item 7 complete — shadow stutter already fixed pre-session (`e9b9aea7`); docs de-staled + regression fixture added this session, no code change, tier1 re-verified below
 - [x] Item 8 complete — water aspect-correction bug root-caused + fixed (commit `337c2c1e`), tier1 5/5 re-verified after fix
-- [ ] Item 9 — first-launch black terrain: in progress (cold-launch hunt)
+- [x] Item 9 complete — first-launch black terrain NOT REPRODUCED after 23 cold launches / 2 detection methods; documented + closed, no code change (found + flagged an unrelated stale-diagnostic bug in passing)
 - [x] tier1 smoke PASS 5/5 (`2026-07-16T12-24-31`, re-verified `2026-07-16T20-17-14` post item-8 fix)
 - [x] release lane registry entry already present for DEFERRED-SWEEP-1
