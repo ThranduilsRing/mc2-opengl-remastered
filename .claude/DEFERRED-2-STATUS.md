@@ -270,3 +270,31 @@ touched the static-prop registry.
 - [x] Canonical tier1 smoke PASS 5/5 (`--exe .../mc2-win64-deferred2-test/mc2.exe`,
       `MC2_SMOKE_REQUIRE_FINGERPRINT=0`): mc2_01/03/10/17/24 all PASS, +0
       destroys each (4214/4209/4211/4114/4181 frames). Item complete.
+
+## Item 6 — docs/render-perf-snapshot.md refresh (DONE, docs-only)
+
+Board task 3: refresh the stale bucket map for this session's shipped perf
+work. Found the 4 items across their respective worktrees/branches
+(`mc2-vk-interop-bridge` branch `claude/vk-interop-bridge-1`,
+`mc2-haze-ubo-cleanup` branch `claude/haze-ubo-cleanup`):
+
+- [x] **VK-PRESENT-SINGLESUBMIT-1** `e01ac03f` — composite drain deleted,
+      present submits 2→1; measured 76.9→0.7 µs/frame (`ce72d915`).
+- [x] **VK-PROP-LIGHTFEED-NATIVE-1** `90b36018` — prop island light feed
+      goes native CPU, retires a ~1.3-1.5 ms/frame GL readback stall
+      (temporary audit gate `MC2_VK_PROP_FEED_AUDIT` still present, flagged
+      for deletion per the board).
+- [x] Island fence-deferral across all 4 islands: water `61031785` (pilot) →
+      prop `338fd468` → terrain `f9f75448` → mech `72f9c410` (close
+      `2e5e7f35`). Water pilot measured: fence_wait 118-127→1.5-1.7 µs,
+      island_total 152-161→33-34 µs/frame (`ce72d915`).
+- [x] Terrain haze UBO cleanup `f268db51` — dead SSBO field removed,
+      housekeeping (not a measured perf win).
+- [x] Added a new "VK present-path and island perf" section to
+      `docs/render-perf-snapshot.md` (kept separate from the existing
+      CPU/GL wolfman-zoom bucket map — different measurement methodology)
+      + updated "Last refreshed" + added stale-flags noting the CPU/GL
+      bucket map itself is now 6+ weeks stale and needs its own
+      re-measurement pass (out of scope for this docs-only item).
+- [x] Docs-only diff (`docs/render-perf-snapshot.md` only) — no build/deploy/
+      tier1 needed for this item.
