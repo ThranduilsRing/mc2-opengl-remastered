@@ -3287,6 +3287,24 @@ void gosRenderer::renderWaterFastPath(
         setMVec2      ("u_waterScreenSize",
                        ppRefl ? (float)ppRefl->getWidth()  : 1.0f,
                        ppRefl ? (float)ppRefl->getHeight() : 1.0f);
+        // WATER-ASPECT-CORRECT-2: the FS's dFdx(nz) aspect compensation
+        // (WATER-ASPECT-CORRECT-1) was written assuming the perspective
+        // frustum is ALWAYS 4:3-locked while the viewport is native-res —
+        // true before UI-ASPECT-ANCHOR-1, but that fix (mclib/camera.cpp,
+        // default ON) now builds the frustum at the REAL drawable aspect,
+        // so there is usually no stretch left to compensate for. Pass the
+        // actual frustum aspect the FS should un-stretch against: native
+        // aspect (== viewport aspect, so the FS's _ac correction becomes a
+        // no-op) by default, or the legacy 4.0/3.0 only when the frustum
+        // really is still 4:3-locked (MC2_CAMERA_ASPECT_NATIVE=0). Fixes
+        // "water HDR clipped at odd resolutions" (docs/known_issues.md) —
+        // the FS was over-correcting a stretch that no longer exists,
+        // growing worse the further the window aspect departs from 4:3.
+        extern bool g_cameraProjAspectNative;
+        const float waterVpAspect = ppRefl && ppRefl->getHeight() > 0
+            ? (float)ppRefl->getWidth() / (float)ppRefl->getHeight() : (4.0f / 3.0f);
+        setMF         ("u_waterProjAspect",
+                       g_cameraProjAspectNative ? waterVpAspect : (4.0f / 3.0f));
 
         // WATER-HDRI-REFL-1: bind HDRI equirect on unit 3 for direct specular
         // sampling (sun disk + sky color, LOD-filtered via mipmaps added in gos_hdri.cpp).

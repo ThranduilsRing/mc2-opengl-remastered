@@ -126,6 +126,15 @@ extern long tileCacheHits;
 extern long tileCacheMiss;
 
 bool drawCameraCircle = FALSE;
+// WATER-ASPECT-CORRECT-2: true when the most recent perspective-projection
+// build (below, in Camera::setOrthogonal's frustum block, despite the name
+// it builds the perspective frustum too) used the REAL drawable aspect
+// (UI-ASPECT-ANCHOR-1, default) rather than the legacy 4:3-locked frustum
+// (MC2_CAMERA_ASPECT_NATIVE=0, or a mech-preview FBO pass). Consumed by
+// gameos_graphics.cpp to keep the water MDI shader's dFdx(nz) aspect
+// compensation in sync with whichever frustum this frame actually used,
+// instead of assuming the frustum is always 4:3-locked.
+bool g_cameraProjAspectNative = true;
 extern bool gamePaused;
 extern bool gameAsked;
 MemoryPtr pauseShape = NULL;
@@ -2724,9 +2733,17 @@ void Camera::setOrthogonal(void)
 			// Panel previews (SimpleCamera -> fixed 800x600 FBO) must keep the
 			// clamped ratio: their render target IS 4:3, not the window.
 			extern int g_mechPreviewRenderDepth;
-			if (s_nativeAspect && g_mechPreviewRenderDepth == 0
-				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
+			const bool usingNative = s_nativeAspect && g_mechPreviewRenderDepth == 0
+				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0;
+			if (usingNative)
 				height2width = (float)Environment.drawableHeight / (float)Environment.drawableWidth;
+			// WATER-ASPECT-CORRECT-2: mirror this frame's choice so downstream
+			// consumers (the water MDI shader's dFdx(nz) aspect compensation,
+			// gameos_graphics.cpp) can tell whether the projection this frame
+			// actually matches the native drawable aspect (true, the default) or
+			// is still the legacy 4:3-locked frustum (MC2_CAMERA_ASPECT_NATIVE=0
+			// or a mech-preview FBO pass). See g_cameraProjAspectNative below.
+			g_cameraProjAspectNative = usingNative;
 		}
 
 		//

@@ -43,6 +43,13 @@ uniform sampler2D u_waterReflRT;      // WATER-REFLECTION-SAMPLE-1: 1/4-res terr
                                       //   dead terrain-colormap atlas sampler.
 uniform float u_waterRtStrength;      //   0 = no RT blend -> fall back to SH sky.
 uniform vec2  u_waterScreenSize;      //   full-res FBO dims for the screen-space RT UV.
+// WATER-ASPECT-CORRECT-2: the frustum aspect the C++ side actually built this
+// frame (mclib/camera.cpp) -- native/viewport aspect by default (UI-ASPECT-
+// ANCHOR-1), or the legacy 4/3 only when that fix is disabled
+// (MC2_CAMERA_ASPECT_NATIVE=0). Replaces the old hardcoded 3.0/4.0 assumption
+// below, which over-corrected dFdx(nz) once the frustum stopped being 4:3-
+// locked by default (root cause of "water HDR clipped at odd resolutions").
+uniform float u_waterProjAspect;
 uniform PREC vec4 fog_color;
 uniform PREC float time;          // seconds — used for water animation
 uniform PREC vec4 cameraPos;      // water-v1: MC2 world-space camera (Fresnel)
@@ -228,9 +235,16 @@ void main(void)
         if (u_waterReflStrength > 0.0 || u_waterRtStrength > 0.0 ||
             u_waterDebugMode == 7 || u_waterDebugMode == 8 || u_waterDebugMode == 9) {
             // Wave normal from the in-scope fBm gradient (reused S3 scaffold).
-            // WATER-ASPECT-CORRECT-1: 4:3-locked projection into a wider viewport
-            // compresses dFdx vs dFdy by (vpAspect/projAspect). Scale X back up.
-            float _ac = (u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0)) * (3.0 / 4.0);
+            // WATER-ASPECT-CORRECT-1/2: a projection frustum locked to a
+            // DIFFERENT aspect than the viewport compresses dFdx vs dFdy by
+            // (vpAspect/projAspect); scale X back up. u_waterProjAspect is the
+            // frustum aspect C++ actually built this frame -- by default
+            // (UI-ASPECT-ANCHOR-1) that equals vpAspect, so _ac is a 1.0
+            // no-op; it only deviates under the legacy 4:3-locked frustum
+            // (MC2_CAMERA_ASPECT_NATIVE=0), which is when this correction is
+            // actually needed.
+            float vpAspect = u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0);
+            float _ac = vpAspect / max(u_waterProjAspect, 0.0001);
             PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0);
             PREC vec3  waveNormal = normalize(vec3(nzGrad * REFL_WAVE_SLOPE, 1.0));
             PREC vec3  vdir       = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
