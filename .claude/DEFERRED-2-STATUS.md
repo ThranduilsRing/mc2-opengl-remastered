@@ -298,3 +298,104 @@ work. Found the 4 items across their respective worktrees/branches
       re-measurement pass (out of scope for this docs-only item).
 - [x] Docs-only diff (`docs/render-perf-snapshot.md` only) — no build/deploy/
       tier1 needed for this item.
+
+## Item 7 — GlStateGuard Site 5: gos_static_prop_batcher.cpp (DONE — sha df009c63)
+
+Board follow-up: `docs/testing/glstate-guard-epilogue-recon-1.md` Site 5 was
+explicitly deferred out of Item 4's ADOPTION-3 conversion ("LAST, own slice,
+after the guard-vocabulary expansion... Do NOT touch"). VOCAB-1 (shipped in
+Item 4, `5c47029e`) added `GlScopedProgram`/`GlScopedVertexArray`/
+`GlScopedBufferBinding`/`GlScopedTextureUnit`/`GlScopedSampler`/
+`GlScopedCullFaceMode`/`GlScopedColorMask`/`GlScopedDrawBuffers` — this slice
+revisits Site 5 now that the vocabulary exists.
+
+- [x] Inventory (grep `glGetIntegeri_v|glGetIntegerv|glGetBooleanv`): 6
+      lexically-scoped save/restore blocks, matching the recon's "10 SSBO +
+      21 state-save sites" count exactly (10 SSBO = ssbo0×4 functions + ssbo1
+      + ssbo2 + ssbo3 + ssbo4 + ssbo5 + ssbo16). Unlike mech `flush()` (Site
+      1) or the particle epilogues (Sites 2-4), this file **never** saves
+      depth/blend/cull state — only program/VAO/array-buf/elem-buf/
+      tex-unit0/SSBO/color-mask, i.e. every state type here already had a
+      guard class. Full conversion (not a partial SSBO-only slice) was
+      therefore safe.
+- [x] `flushDepthPrepassV6`: `GLboolean prevColorMask[4]` → `GlScopedColorMask`
+      (plain function-scope guard; no `gos_InvalidateRenderStateCache()` in
+      this function, single exit, no early return between save/restore).
+- [x] `flush()` main epilogue: program/VAO/array-buf/elem-buf/tex-unit0/
+      SSBO{0,1,2,3,5} → `std::optional<mc2gl::GlScoped*>`, `.reset()`
+      explicitly at the ORIGINAL manual-restore point — same pattern
+      `GpuMechBatcher::flush()` established for SSBO 0/1/2
+      (`gos_mech_batcher.cpp` ~2167/2212), needed here because
+      `gos_InvalidateRenderStateCache()` fires ~30 lines after the restore
+      point (parity tick / sample-pick / bucket-clear bookkeeping in
+      between). Verified (awk range scan) zero early-return paths between
+      capture and restore, so the std::optional pattern is safe with no
+      early-exit edge case.
+- [x] Nested Step-11.7 coalesce-draw block: SSBO slot 4 + unit-0
+      `GL_TEXTURE_2D_ARRAY` → `std::optional` guards, same reset-at-original-
+      point pattern. Verified every `glActiveTexture` excursion in the
+      ~1000-line nested block (kColormapTexUnit, kOrmTexUnit binds) returns
+      to `GL_TEXTURE0` before the restore point, matching
+      `GlScopedTextureUnit`'s own `GL_TEXTURE0` assumption — confirmed
+      behavior-identical, not just plausible.
+- [x] `flushShadow()` / `drawStaticBuildingShadows()` /
+      `drawDynamicPropShadows()`: program/VAO/elem-buf/SSBO0 → plain
+      function-scope guards (no invalidate call in any of the three;
+      declaration order = reverse of the old restore order so scope-exit
+      destruction matches — preserves the documented "VAO before
+      element-buffer" requirement, VAO-resident state).
+- [x] Left manual: `batcher_bindBaseInstanceByCmdSsboForPatch` /
+      `batcher_unbindBaseInstanceByCmdSsboForPatch` (SSBO 16) — a
+      cross-function bind/unbind pair keyed on a file-static `s_savedSsbo16`,
+      not a single lexical scope; doesn't fit the guard shape (same class of
+      exclusion as Item 4's particle SSBO-14 bind-then-zero sites).
+- [x] Build: `cmake --build build64 --config RelWithDebInfo --target mc2`
+      exit 0, zero warnings/errors on `gos_static_prop_batcher.cpp` (only
+      pre-existing unrelated `mechcmd2.cpp` C4267 warnings).
+- [x] `glstate_guard_harness`: 18/18 PASS, unchanged — Site 5 used only
+      guard classes VOCAB-1 already shipped; no harness extension needed.
+- [x] Commit sha: `df009c63` (COMMIT FIRST, then rebuilt for a clean
+      `build_fingerprint.h` — first build was from the dirty pre-commit tree
+      and correctly flagged `MC2_BUILD_GIT_DIRTY=1`/deploy WARNED; rebuilt
+      post-commit → `sha=df009c63bba3 dirty=0`).
+- [x] Deploy: `scripts/deploy_payload.py A:/Games/mc2-opengl/releases/mc2-win64-deferred2-test
+      --source-root . --build-dir build64/RelWithDebInfo --exe-name mc2.exe --allow-new-target`.
+      manifest src_commit `df009c63bba3`, 736 files, clean (no dirty-tree
+      warning, no fingerprint mismatch). Pre-existing unrelated hygiene WARN
+      (3 offline-cook diagnostic files under `gaea_peaks_01.beauty/`) — not
+      from this change.
+- [x] tier1 smoke PASS 5/5 (`--exe .../mc2-win64-deferred2-test/mc2.exe`):
+      mc2_01/03/10/17/24 all PASS, +0 destroys each. Ran twice (once right
+      after deploy, once again after the visual-capture exe-swap cleanup
+      below) — both PASS 5/5, +0 destroys, `DEPLOY_FINGERPRINT` OK both times.
+- [x] Visual sanity (prop-heavy, buildings): captured all 12 `mc2_01`
+      bookmarks (`scripts/run_visual_capture.py --mission mc2_01`,
+      fixed-clock, deterministic) TWICE — once with the pre-conversion
+      source temporarily swapped back in (`git show <parent>:...` → rebuild →
+      swap exe into the lane), once with the committed post-conversion
+      build. **Every one of the 12 bookmark hashes is byte-identical
+      before vs. after** (e.g. `highangle_wide` tagged `static_prop_pbr`:
+      `366cb8ac84d3b2e6` both runs; `runway_overview` — vehicles/trees/crates
+      — `1a3d395d8d2ad52d` both runs). EYEBALLED (Read)
+      `mc2_01_runway_overview.png` and `mc2_01_highangle_wide.png`: static
+      props (truck, hedge crates, tree canopy w/ correct alpha+shadow) render
+      cleanly, no black/corrupt/wrong-blend artifacts. Captures at
+      `tests/visual/captures/mc2_01_site5_{BEFORE,AFTER}/` (gitignored,
+      evidence-only). Deploy lane exe was swapped back to the committed
+      build and redeployed cleanly (fresh manifest, `df009c63bba3`) before
+      the final tier1 re-run above.
+- [x] Apply-state parity counters (`debug_state/latest_render_state.json` in
+      the deploy lane, end of tier1's `mc2_24` run): `renderSnapshot.ok=true`,
+      `staticPropValidationFail=0`, `staticPropPacketRangesFail=0`,
+      `staticPropPacketInvalid=0`, `spBuildFallback=0`,
+      `spBuildCountMismatch=0`, `spBuildPacketMismatch=0`,
+      `spBuildMetaMismatch=0` — zero mismatches/failures across the whole
+      run. (`executor_apply_state_by_pass.StaticPropOpaque=0` is expected:
+      `MC2_FRAMEGRAPH_EXECUTOR` is not in the tier1 env set, so the
+      executor-owned top-level-pass path this slice's code guards is
+      inactive; the legacy body path — the code actually converted — is
+      what ran.)
+- No traps found at this site (unlike Site 4's cull double-assert) — every
+  state type this file touches already had a VOCAB-1 guard, and every SSBO
+  here is restore-previous (confirmed by reading each capture/restore pair),
+  not bind-then-zero. Item complete.
