@@ -111,11 +111,47 @@ Board entry: "Shadow stutter on >500-unit jumps (static world-fixed map, design 
 
 **Not investigated further (no evidence found, out of scope for this slice):** whether some *other*, differently-shaped camera-jump artifact exists (e.g. terrain chunk-LOD pop-in, unrelated to shadows — `docs/superpowers/strategy/visual-regression-lab-architecture.md` §2.3 documents a known 1-frame chunk-LOD MVP latency, comfortably inside the default 30-frame settle window and not shadow-specific). If a *visual* (non-shadow) jump artifact is ever reported, it is a separate investigation.
 
+## Item 8 — Water "HDR clipped" at odd resolutions — ROOT-CAUSED + FIXED (commit `337c2c1e`)
+
+Board entry: "Water HDR clipped at odd resolutions" (`.claude/DEFERRED-BOARD-2026-07-16.md` §A backlog, [MAIN], suspect 480×270 reflection FBO).
+
+**Repro matrix (mc2_01 shoreline, `tests/visual/bookmarks/mc2_01_water.json` water_overview_high + water_oblique_low, via `scripts/run_visual_capture.py`, lane exe):**
+
+| Window size | Aspect | Framing anomaly vs 16:9 baseline | Pixel stats (near-white/near-black) |
+|---|---|---|---|
+| 1920x1080 | 1.778 | baseline | 0% white, 0% black (overview); 0% white, 12.5% black (oblique — terrain silhouette in-frame) |
+| 1366x768  | 1.779 | none (matches baseline) | same as baseline |
+| 1360x765  | 1.778 | none | same as baseline |
+| 1707x960  | 1.778 | none | same as baseline |
+| 3072x1500 | 2.048 | **YES** — oblique_low's content window shrinks from 85% to 70% of height and the terrain/sky silhouette drops out of frame entirely (same crop as the pure-water overview pose) | no near-white/near-black anomaly at this resolution specifically (the "very dark/blown/noisy" wording wasn't visually reproduced in THIS deploy — see HDRI caveat below) |
+
+The 4 near-16:9 sizes were visually and statistically indistinguishable; only the one resolution far from 4:3/16:9 (3072x1500, the exact aspect from the original bug report) showed a framing difference — the honest signal that this is aspect-dependent, not a generic odd-resolution flake.
+
+**Root cause:** `shaders/gos_terrain_water_mdi.frag`'s `dFdx(nz)` aspect-compensation term (`WATER-ASPECT-CORRECT-1`, `_ac = vpAspect * 0.75`) assumed the perspective frustum is unconditionally 4:3-locked while the viewport is native-res. That was true historically, but `UI-ASPECT-ANCHOR-1` (`mclib/camera.cpp`, already shipped) now builds the frustum at the REAL drawable aspect by default (`MC2_CAMERA_ASPECT_NATIVE` defaults ON). The shader's hardcoded `* 0.75` kept "correcting" a stretch that no longer exists, injecting an aspect-proportional distortion into the wave-reflection normal (nzGrad.x) that grows the further the window aspect departs from 4:3 (`_ac`=1.333 at 1920x1080, `_ac`=1.536 at 3072x1500 — both should be 1.0 under the now-default native-aspect frustum).
+
+**Verified via the shader's own diagnostics** (confirms the geometry itself is NOT stretched, i.e. nothing for `_ac` to correct by default):
+- `MC2_WATER_DEBUG_MODE=10` (built-in Aniso probe, `dFdx(WorldPos)`/`dFdy(WorldPos)` ratio): water_overview_high reads mid-gray ~103.6/255 at 1920x1080 and ~103.7/255 at 3072x1500 — statistically identical, resolution-independent.
+- `MC2_WATER_ASPECT_DIAG=1` (pre-existing diagnostic, `mclib/camera.cpp`): reports `stretchX` != 1.0 at both sizes, but this diagnostic compares `Environment.screenWidth/Height` (still hardcoded 800x600 for the legacy 2D HUD canvas) against drawable size — it was never updated after UI-ASPECT-ANCHOR-1 changed the ACTUAL frustum build to use drawable aspect directly, so it's now measuring the wrong two values and is itself stale (not touched this session; flagging in case a future session wants to fix or retire it).
+
+**Fix (3 files, commit `337c2c1e`):**
+- `mclib/camera.cpp`: new global `g_cameraProjAspectNative`, set each frame in `Camera::setOrthogonal`'s perspective branch to whether THIS frame's frustum build actually used native aspect.
+- `GameOS/gameos/gameos_graphics.cpp`: new uniform `u_waterProjAspect` uploaded in the water MDI bind block — native vpAspect (making `_ac`=1.0) when `g_cameraProjAspectNative`, else legacy 4/3.
+- `shaders/gos_terrain_water_mdi.frag`: `_ac = vpAspect / u_waterProjAspect` (was hardcoded `* 0.75`) — general formula, correct in both the native (default) and legacy (`MC2_CAMERA_ASPECT_NATIVE=0`) cases.
+
+**Before/after verification:**
+- Default-path (SH-sky-only, no HDRI, `MC2_WATER_REFLECTION_RT` off — this deploy's actual default rendering config) at 1920x1080 and 3072x1500: byte-identical PNGs before/after the fix (`item8_water_*` vs `item8_AFTER_*` captures). Expected — see HDRI caveat.
+- Native-vs-legacy A/B on the SAME (post-fix) exe, `MC2_WATER_DEBUG_MODE=9` + `MC2_WATER_REFLECTION_RT=1` (forces the high-frequency terrain-reflection-RT sampling path, which IS sensitive to `nzGrad`) at 3072x1500: different sha256 + visibly different reflected content between `MC2_CAMERA_ASPECT_NATIVE` unset (fixed/native, default) vs `=0` (legacy, recreates the pre-fix `_ac` formula exactly). Confirms the fix changes real rendered output in the predicted direction.
+- **HDRI caveat (pre-existing, unrelated, NOT fixed this session):** this deploy's overcast-sky HDRI fails to load — `[HDRI_SKY v1] bc6h: sun_scan skipped reason=exr_load_failed ... mud_road_puresky_16k.exr` — because it's a large (16K) external-pack asset not installed locally (`docs/testing/ibl_hdri_external_pack.txt`, by design, not tracked in git). Water reflection therefore falls back to the smooth low-frequency SH-L2 sky term in every capture this session, which is comparatively insensitive to the `nzGrad` distortion the bug injects — explaining the byte-identical default-path result above. The bug (and this fix) should have materially more visible impact wherever the HDRI IS installed (the sun-disk reflection is high-frequency, much more sensitive to a distorted sampling direction) — closer to the original "very dark/blown/noisy" report. Not chased further; out of scope (asset install, not a code bug).
+- Captures: `.claude/captures/item8_water_*` (before matrix), `item8_AFTER_*` (post-fix re-run), `item8_aniso_*` (Aniso probe), `item8_diag_*` (WATER_ASPECT_DIAG), `item8_reflcheck_native` / `item8_reflcheck_legacy` (native-vs-legacy A/B).
+- Build+deploy: `337c2c1e` on lane `releases/mc2-win64-deferred-test`, fingerprint matches, no -dirty. tier1 5/5 PASS, +0 destroys (`2026-07-16T20-17-14`).
+
 ## Remaining
 
 - [x] Item 3 complete (commit 2c3a9109, captures banked, verdict PASS)
 - [x] Item 5 complete (commit 76f095cd, gate-off identity + dirt A/B banked)
 - [x] Item 6 complete (commits fddba31c + 259eda79, runtime A/B + deterministic capture banked)
 - [x] Item 7 complete — shadow stutter already fixed pre-session (`e9b9aea7`); docs de-staled + regression fixture added this session, no code change, tier1 re-verified below
-- [x] tier1 smoke PASS 5/5 (`2026-07-16T12-24-31`)
+- [x] Item 8 complete — water aspect-correction bug root-caused + fixed (commit `337c2c1e`), tier1 5/5 re-verified after fix
+- [ ] Item 9 — first-launch black terrain: in progress (cold-launch hunt)
+- [x] tier1 smoke PASS 5/5 (`2026-07-16T12-24-31`, re-verified `2026-07-16T20-17-14` post item-8 fix)
 - [x] release lane registry entry already present for DEFERRED-SWEEP-1
