@@ -1,5 +1,86 @@
 # VK-ARC-STATE — current state block (update every session)
 
+## 2026-07-16 (NIGHT) — ★VK-VFX-COALESCE-1 SHIPPED, DEFAULT ON. Implements the measure-first slice plan (previous entry): consecutive same-render-state HUD tri-batch draws now merge into ONE hudBatch_ entry instead of one per triangle. Both 0.4c lanes deployed.
+
+**★ COMMIT:** `<see git log — committed immediately after this entry>` feat(vk): VK-VFX-COALESCE-1 — merge consecutive same-state HUD tri-batch draws.
+
+**★ WHERE:** `gosRenderer::drawTris()` IsHUD branch, `GameOS/gameos/gameos_graphics.cpp`
+(new helper `mc2VfxCoalesceEnabled()` immediately above `drawTris`). Before pushing a new
+`HudDrawCall`, checks whether `hudBatch_.back()` is a compatible `kHudTriBatch` (same
+`stateSnapshot`/`projection`/`scaleExempt`, `memcmp`-exact) and appends the incoming 3
+vertices instead of pushing a new record. `MLRSortByOrder` already emits triangles in
+depth-sorted order one at a time (`mclib/mlr/mlrsortbyorder.cpp:589-609`) so this only glues
+ADJACENT same-state records together — never reorders; a real state change (`SetDifferences`)
+still forces a new record exactly as before.
+
+**★ HUD-SHRINK HAZARD FOUND + FIXED DURING IMPLEMENTATION (not in the measure-first plan):**
+`flushHUDBatch`'s bottom-band shrink transform (`s_hud_scale`/`s_hud_scale_active`, ACTIVE by
+default in every mission — `s_hud_scale=0.85`) makes ONE shrink/no-shrink decision per
+`hudBatch_` entry from that entry's own vertex centroid. Two same-state triangles adjacent in
+the GLOBAL depth sort can belong to different effects at different screen positions (e.g. two
+mechs' lasers sharing one texture/blend state) and independently straddle the 60%-height band.
+A blind append would recompute ONE aggregate centroid for the merged batch, changing the
+shrink decision for triangles that would have decided the other way alone — a real pixel shift,
+not just a draw-count change. FIX: only merge when the incoming triangle's own centroid falls
+on the SAME side of the band as the side established by the batch's FIRST triangle
+(`back().vertices[0..3)`, append-only so that snapshot never changes) — mean-of-same-side-
+values-stays-same-side invariant keeps the merged decision bit-identical to the unmerged
+per-triangle decisions. No-op guard when the shrink test can't apply (out of mission, scale==1,
+or scaleExempt draws).
+
+**★ KILLSWITCH:** `MC2_VK_VFX_COALESCE` — registered `RenderCore/RendererFeatureRegistry.h`
+(`kAuxEnvVars`, `defaultOn=true`), documented `docs/tier1_env_vars.md` (VFX gates section),
+smoke-allowlisted `scripts/run_smoke.py`. `check-env-registry.sh` confirmed clean for this var
+specifically (pre-existing 395-var registration backlog in this worktree is untouched —
+out of scope, unrelated to this slice). `=0` restores the legacy one-record-per-triangle path.
+Independent of the `MC2_VK_VFX` umbrella — pure CPU-side `hudBatch_` merge that benefits both
+the VK native HUD tail (fewer `VkHudDraw` records) and the GL replay path (fewer `drawTris()`
+re-entries) identically.
+
+**★ MEASURED (mc2_01, field env, `MC2_FX_FORCE_SPAWN=loop`, ~15 mechs, `build64_island`
+VK-enabled build — NOTE: root `build64/` in this worktree has `MC2_VULKAN=OFF`, VK work must
+build `build64_island`):**
+- Draw-count A/B (two independent 90s runs, `hud_vk_draws_last` from `[VK_PRESENT]` health
+  lines): quiet floor 14 -> 13 (near-unaffected, HUD chrome is mostly quad/line batches);
+  sustained plateau ~95-100 -> ~88-93; **peak 349 -> 109** (3.2x collapse at the fire spike).
+- Vertex-count parity (`MC2_UI_PASS_MEASURE=1`, `[VK_HUD_AUDIT v1]` lines, two independent 60s
+  runs): at matching sampled states `vertices=` totals were **bit-identical** (e.g. two
+  independent 1106-vertex states baseline vs coalesced; also 1126, 1118 pairs matched exactly)
+  while `tris=` halved and `calls=`/`textured=` dropped by exactly the `tris=` delta;
+  `quads=`/`lines=`/`text=` untouched (confirms the merge never touches non-tri-batch kinds).
+  Zero `VK_HUD_SKIP_DECLINE`, zero non-empty `fallback_reason`, zero `validation_errors` across
+  every run.
+- Fire-event capture (`MC2_VK_PRESENT_DUMP_ON_FIRE`+`MC2_VK_PRESENT_DUMP_PPM`, coalesce=1,
+  fixture-armed frame=622 pin=652 — same fixture pin as the banked VFX-9 reference): eyeballed
+  side-by-side against `.claude/vfx-fire/mc2_01/vk_onfire_pair3_flipped.png` — same pose, same
+  mechs/health-bar states, same white-blue laser beams + red beam, same HUD bracket placement.
+  Visually indistinguishable from the pre-slice reference.
+- Default-ON sanity check: unset `MC2_VK_VFX_COALESCE` entirely (not even `=1`) — confirmed
+  `tris=7` (coalesced count), matching the explicit `=1` runs; default takes effect correctly.
+
+**★ SMOKE:** VK-umbrella tier1 (local runner, `--exe` 0.4c lane, `MC2_RENDER_BACKEND=vulkan
+MC2_VK_SHARED_GBUFFER=1`, `MC2_VK_VFX_COALESCE` unset -> default ON): **5/5 PASS +0 destroys**.
+GL-state canonical (mc2-main's `run_smoke.py`, cross-worktree `--exe` at the same 0.4c lane,
+`MC2_SMOKE_REQUIRE_FINGERPRINT=0` per the documented external-exe case): **5/5 PASS +0
+destroys** (expected `DEPLOY_FINGERPRINT MISMATCH` advisory only, not a hard fail — this
+worktree's HEAD differs from mc2-main's, same as every prior cross-worktree run in this arc).
+
+**★ DEPLOY:** committed first (COMMIT-FIRST-THEN-BUILD-THEN-DEPLOY), clean rebuild via
+`build64_island` (the VK-enabled config; root `build64/` here is `MC2_VULKAN=OFF` and must
+NOT be used for VK verification), both 0.4c lanes (`mc2-win64-0.4c` + `mc2-win64-v0.4c`)
+redeployed. Own-PID discipline: a foreign `mc2.exe` (`releases/mc2-win64-deferred2-test`,
+PID varied across the session, confirmed via `Get-CimInstance Win32_Process` path lookup
+each time) was seen mid-session — unrelated lane (a different concurrent agent's deploy
+target), never touched; both 0.4c lanes stayed idle throughout and were free to deploy.
+
+**★ CAVEAT:** the shrink-band same-side guard was derived analytically (not present in the
+measure-first plan's risk list) after tracing `flushHUDBatch`'s bottom-band transform; the
+draw-count/vertex/fire-capture proof above exercises it under real in-mission conditions
+(`s_hud_scale_active=true` is Mission::start's default) but the specific "two different mechs
+sharing one texture straddle the band" edge case was not independently isolated — the vertex-
+parity proof (identical totals at matching states) is the strongest available evidence it
+holds, short of a dedicated synthetic repro.
+
 ## 2026-07-16 (EVE) — two backlog items worked, docs-only (no code shipped). #10 terrain-handle-LUT stability RECON closed VERIFIED-SAFE (corrects both the board's old "dead-path" claim and the same-day residual audit's OPEN status). VK-VFX-COALESCE-1 measured live: peak 251 / steady 95-114 HUD-tail draws under forced multi-mech fire vs a 14-draw quiet floor -> ACT, slice plan written (not implemented). HEAD `e2237117`, 0.4c lane unchanged (still `72f9c410`, code-identical to this HEAD).
 
 **★ #10 TERRAIN HANDLE LUT / `tex_resolve(nodeId)` HANDLE-STABILITY — CLOSED, VERIFIED SAFE.**

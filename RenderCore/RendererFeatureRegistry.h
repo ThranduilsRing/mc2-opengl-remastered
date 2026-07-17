@@ -1082,6 +1082,26 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "remainder. Gate resolves OFF when the umbrella is off -> GL particle draw byte-identical."
     },
     {
+        "MC2_FEATURE_VK_VFX_COALESCE",
+        "MC2_VK_VFX_COALESCE",
+        EnvVarKind::Feature,
+        true,
+        "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::"
+        "drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_ entry instead of one entry PER "
+        "TRIANGLE. MLRSortByOrder emits gosFX weapon-VFX geometry (tracers/flashes/impacts) one triangle "
+        "at a time (mclib/mlr/mlrsortbyorder.cpp:589-609); under a dense multi-mech volley this measured "
+        "a peak of 251-349 hudBatch_ entries/frame vs a ~14-entry quiet floor. Paint order is preserved "
+        "exactly (triangles already arrive depth-sorted; a real state change via SetDifferences still "
+        "forces a new entry); a same-side-of-the-HUD-shrink-band guard prevents the merge from changing "
+        "the bottom-band s_hud_scale shrink decision for any individual triangle. Independent of the "
+        "MC2_VK_VFX umbrella -- this is a CPU-side hudBatch_ data-structure merge that benefits both the "
+        "VK native HUD tail (fewer VkHudDraw records) and the GL replay path (fewer drawTris() re-entries) "
+        "identically. DEFAULT ON: draw-count A/B (mc2_01, forced fire) showed peak collapse 349->109 with "
+        "[VK_HUD_AUDIT v1] vertices= totals bit-identical to the legacy path at every matching sample; "
+        "zero declines/fallbacks/validation errors; fire-capture matches the banked VFX-9 reference. "
+        "MC2_VK_VFX_COALESCE=0 restores the legacy one-record-per-triangle path."
+    },
+    {
         "MC2_FEATURE_VK_MECH_DIRECT_CHAIN",
         "MC2_VK_MECH_DIRECT_CHAIN",
         EnvVarKind::Feature,

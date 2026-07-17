@@ -1609,6 +1609,10 @@ def main():
                             # allowlisted so an explicit MC2_VK_VFX=0 override reaches
                             # the child (else Popen drops it).
                             "MC2_VK_VFX",
+                            # VK-VFX-COALESCE-1: HUD tri-batch merge killswitch
+                            # (default OFF pending parity verification). Must be
+                            # allowlisted so an explicit override reaches the child.
+                            "MC2_VK_VFX_COALESCE",
                             # MC2_VK_WATER_PERF: fine-grained per-sub-step us breakdown
                             # of the VK water interop path ([VK_WATER_PERF] lines).
                             # Additive diagnostic; must be allowlisted or Popen drops it

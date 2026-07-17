@@ -323,6 +323,16 @@ call from inside a draw-bind path.
 - `MC2_VFX_GPU_SIM_CARDCLOUD=1` — CardCloud GPU sim SSBO substrate. Default **OFF**.
 - `MC2_VFX_SOFT_PARTICLES=1` — depth-fade soft particles. Default **OFF**.
 - `MC2_VFX_LIT_PARTICLES=1` — ambient+sun*0.5 fill on particles. Default **OFF**.
+- `MC2_VK_VFX_COALESCE=0` — VK-VFX-COALESCE-1: merges consecutive same-render-state HUD
+  tri-batch draws (`gosRenderer::drawTris` IsHUD branch) into one `hudBatch_` entry instead
+  of one per triangle (gosFX weapon VFX emit one `gos_DrawTriangles` call per triangle via
+  `MLRSortByOrder`, `mclib/mlr/mlrsortbyorder.cpp:589-609`; measured peak 251-349 entries/frame
+  under forced multi-mech fire vs a ~14-entry quiet floor). Order-preserving (merges only
+  ADJACENT same-state records); guards the bottom-band HUD-shrink decision per triangle.
+  Independent of `MC2_VK_VFX` — benefits both the VK native HUD tail and GL replay. **DEFAULT
+  ON** (verified: draw-count peak 349->109, `[VK_HUD_AUDIT v1]` vertices= bit-identical at
+  matching samples, zero declines/fallbacks, fire-capture matches banked VFX-9 reference);
+  `=0` restores the legacy per-triangle path.
 
 ## Terrain LOD chunk
 

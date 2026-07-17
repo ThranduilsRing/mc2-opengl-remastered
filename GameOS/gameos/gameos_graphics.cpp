@@ -6440,6 +6440,39 @@ void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
     afterDrawCall();
 }
 
+// VK-VFX-COALESCE-1: killswitch for the consecutive-same-state HUD tri-batch
+// merge in drawTris() below. MLRSortByOrder emits gosFX geometry (weapon
+// tracers, muzzle flashes, impacts) one triangle at a time via
+// gos_DrawTriangles (mclib/mlr/mlrsortbyorder.cpp:589-609) -- under a weapon
+// volley this pushed one HudDrawCall PER TRIANGLE (measured peak 251
+// hudBatch_ entries/frame vs a 14-entry quiet floor, forced multi-mech fire,
+// VK-ARC-STATE.md 2026-07-16). Default OFF pending this slice's own parity
+// verification pass (arc convention: new perf paths default OFF until proven
+// clean, then flip via this one function -- see VK-ARC-STATE.md for the
+// verdict that decided the value below). Explicit "1"/"0" always override.
+// Registered RenderCore/RendererFeatureRegistry.h, documented
+// docs/tier1_env_vars.md, smoke-allowlisted scripts/run_smoke.py.
+static bool mc2VfxCoalesceEnabled() {
+    static int state = -1;
+    if (state == -1) {
+        const char* v = std::getenv("MC2_VK_VFX_COALESCE");
+        if (v && v[0] == '0' && v[1] == '\0') state = 0;   // explicit opt-out
+        else state = 1;   // unset (or explicit "1") -> ON
+        // DEFAULT-ON as of this slice's own verification pass: draw-count A/B
+        // (mc2_01, forced multi-mech fire, field env) showed peak hudBatch_
+        // entries collapse 349 -> 109 with quiet-floor unaffected (13 vs 14);
+        // [VK_HUD_AUDIT v1] vertices= totals were BIT-IDENTICAL to the legacy
+        // path at every matching sample (e.g. two independent 1106-vertex
+        // states, tris count halved, calls dropped by exactly the tris delta,
+        // quads/lines/text untouched); zero VK_HUD_SKIP_DECLINE, zero
+        // fallback_reason, zero validation_errors across all runs; fire-event
+        // PPM capture visually matches the banked VFX-9 reference
+        // (.claude/vfx-fire/mc2_01/vk_onfire_pair3_flipped.png) at the same
+        // fixture pin. See VK-ARC-STATE.md for the full write-up.
+    }
+    return state == 1;
+}
+
 void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawTris");
     gosASSERT(vertices);
@@ -6451,6 +6484,58 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
             SPEW(("GRAPHICS", "[HUD] Late drawTris discarded (after flushHUDBatch)\n"));
             return;
         }
+
+        // VK-VFX-COALESCE-1: glue this triangle onto hudBatch_.back() instead of
+        // pushing a new HudDrawCall when the back() entry is a compatible
+        // kHudTriBatch (same render state / projection / scale-exemption).
+        // Paint order is preserved EXACTLY: MLRSortByOrder already emits
+        // triangles in depth-sorted order one at a time (SetDifferences forces
+        // a state change -> a new hudBatch_ entry, same as before), so this
+        // only glues ADJACENT same-state records together -- it never reorders.
+        // flushHUDBatch/recordPendingHudColorProof already replay a variable-
+        // length triangle-list per entry, so the merge is transparent downstream.
+        //
+        // HUD-SHRINK HAZARD: flushHUDBatch's bottom-band shrink transform
+        // (s_hud_scale/s_hud_scale_active, ACTIVE by default in every mission --
+        // s_hud_scale=0.85) makes ONE shrink/no-shrink decision per hudBatch_
+        // entry from that entry's own vertex centroid. Two same-state triangles
+        // adjacent in the GLOBAL depth sort can belong to different effects at
+        // different screen positions (e.g. two mechs' lasers sharing one
+        // texture/blend state) and independently straddle the 60%-height band.
+        // A blind append would recompute ONE aggregate centroid for the merged
+        // batch, which can flip the shrink decision for triangles that would
+        // have decided the other way alone -- a real pixel shift, not just a
+        // draw-count change. Guard: only merge when the incoming triangle's own
+        // centroid falls on the SAME side of the band as the side already
+        // established by the batch's FIRST triangle (back().vertices[0..3),
+        // append-only so that snapshot never changes) -- mean of same-side
+        // values stays same-side, so the merged decision stays bit-identical to
+        // what every constituent triangle would have gotten on its own. When
+        // the shrink test can't apply to this draw (out of mission, scale==1,
+        // or scaleExempt) there is no per-vertex hazard and same-state adjacent
+        // triangles may always merge.
+        if (mc2VfxCoalesceEnabled() && count == 3 && !hudBatch_.empty()) {
+            HudDrawCall& back = hudBatch_.back();
+            if (back.kind == kHudTriBatch &&
+                !back.vertices.empty() &&
+                back.scaleExempt == s_hud_scale_exempt &&
+                memcmp(back.stateSnapshot, renderStates_, sizeof(back.stateSnapshot)) == 0 &&
+                memcmp(&back.projection, &projection_, sizeof(back.projection)) == 0)
+            {
+                bool sameSideOk = true;
+                if (s_hud_scale_active && s_hud_scale < 0.999f && !s_hud_scale_exempt) {
+                    const float bottomBand = (float)height_ * 0.60f;
+                    const float cyBack = (back.vertices[0].y + back.vertices[1].y + back.vertices[2].y) / 3.0f;
+                    const float cyNew  = (vertices[0].y + vertices[1].y + vertices[2].y) / 3.0f;
+                    sameSideOk = (cyBack >= bottomBand) == (cyNew >= bottomBand);
+                }
+                if (sameSideOk) {
+                    back.vertices.insert(back.vertices.end(), vertices, vertices + count);
+                    return;
+                }
+            }
+        }
+
         HudDrawCall call;
         call.kind = kHudTriBatch;
         call.vertices.assign(vertices, vertices + count);
