@@ -3273,9 +3273,18 @@ void gosRenderer::renderWaterFastPath(
         // getMapHalfExtent), the SAME value the legacy terrain edge-haze + post-fx
         // edge_fog use against WorldPos.xy (raw MC2 world units). Origin-centered.
         {
+            // WATER-EDGE-FEATHER-DEFAULT-ON (2026-07-18, Sym4 recon): flip
+            // default ON — the hard navy map-edge water band at grazing camera
+            // angles is a stock-visible artifact; the feather dissolves it into
+            // the horizon haze. Killswitch MC2_WATER_EDGE_FEATHER=0 reverts.
+            // NOTE split: only the MDI frag (gos_terrain_water_mdi.frag)
+            // declares the feather uniforms; the non-MDI fallback water path
+            // draws with gos_tex_vertex.frag (shared by other passes) and
+            // stays un-feathered — acceptable because the non-MDI path is a
+            // fail-soft fallback (mdiValid false), not the shipped default.
             static const int s_waterEdgeFeather = []() {
                 const char* e = getenv("MC2_WATER_EDGE_FEATHER");
-                return (e && e[0] && e[0] != '0') ? 1 : 0;
+                return (e && e[0] == '0') ? 0 : 1;
             }();
             static const float s_waterEdgeFeatherStr = []() {
                 const char* s = getenv("MC2_WATER_EDGE_FEATHER_STRENGTH");
