@@ -724,6 +724,38 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Default unset -> byte-identical."
     },
     {
+        "MC2_DIAG_DEBUG_VIEW",
+        "MC2_DEBUG_VIEW",
+        EnvVarKind::Trace,
+        false,
+        "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug "
+        "render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo "
+        "4=overdraw-proxy 5=world-normals 6=chunk/LOD-tint. Fans out through "
+        "gos_SetGlobalDebugView() to every lane's existing debug channel: the "
+        "unified 40/50-series lighting channel (terrain gos_terrain.frag, "
+        "static_prop.frag; runtime override slot on mc2LightingDebugMode()), "
+        "mech.frag u_debugMode (batcher_setMechDebugMode), the VFX billboard "
+        "mode (gos_vfx_setDebugMode), and the static-prop material mode "
+        "(batcher_setDebugMaterialMode). Runtime switch: UI command-channel "
+        "verb 'debugview N' (MC2_UI_COMMAND_FILE). Uncovered lanes (water, "
+        "sky, grass cards, decals, legacy gos_vertex* draws, HUD) render "
+        "normally in every view. Diagnostic-only; default unset -> mode 0, "
+        "byte-identical."
+    },
+    {
+        "MC2_DIAG_CAMERA_PARK",
+        "MC2_CAMERA_PARK",
+        EnvVarKind::Trace,
+        false,
+        "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt"
+        "[@frame]' hard-sets the live camera pose once at frame >= @frame "
+        "(default 300) and pins it against scripted writers "
+        "(freezeScriptedCameraForCapture) WITHOUT freezing the sim — "
+        "deterministic worst-case views for perf captures and debug-view "
+        "sweeps while gameplay keeps running. Malformed value -> off. "
+        "Default unset -> one static pointer check, byte-identical."
+    },
+    {
         "MC2_TRACE_UI_IMGUI_TIMER",
         "MC2_UI_IMGUI_TIMER",
         EnvVarKind::Trace,

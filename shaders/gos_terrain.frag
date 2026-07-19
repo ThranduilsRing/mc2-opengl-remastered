@@ -511,6 +511,34 @@ void main(void)
         return;
     }
 
+    // DEBUG-VIEW-SWEEP-1: shared 50-series full-scene debug views (same integer
+    // space as the 40-series lighting channels; driven by MC2_DEBUG_VIEW /
+    // `debugview N` through the mc2LightingDebugMode() runtime override).
+    //   50 = normalized depth grayscale — gl_FragCoord.z remapped over the
+    //        0.85..1.0 band the scene occupies (same band debug mode 1 uses)
+    //   51 = overdraw proxy — flat dark gray (each opaque lane contributes one
+    //        flat layer; the VFX lane accumulates additively on top, mode 4)
+    //   52 = chunk tint — hashed palette of the thin-record index (real
+    //        GPU-indirect draw chunking; per-quad-record boundaries)
+    if (surfaceDebugMode >= 50 && surfaceDebugMode <= 52) {
+        PREC vec3 dv;
+        if (surfaceDebugMode == 50) {
+            dv = vec3(clamp((gl_FragCoord.z - 0.85) / 0.15, 0.0, 1.0));
+        } else if (surfaceDebugMode == 51) {
+            dv = vec3(0.12);
+        } else {
+            uint k = RecordIdx;
+            k ^= k >> 16u; k *= 0x7feb352du; k ^= k >> 15u; k *= 0x846ca68bu; k ^= k >> 16u;
+            dv = vec3(float(k & 0xFFu), float((k >> 8u) & 0xFFu), float((k >> 16u) & 0xFFu)) / 255.0;
+        }
+        gl_FragDepth = gl_FragCoord.z;
+        FragColor = vec4(dv, 1.0);
+#ifdef MRT_ENABLED
+        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
+#endif
+        return;
+    }
+
     // Smooth colormap classification — tiered by distance
     // Near: 9-tap disc, Mid: 5-tap cross, Far: 1-tap (no blur)
     const PREC float blurRadius = 0.18;

@@ -824,6 +824,10 @@ namespace {
 	}
 }
 
+// DEBUG-VIEW-SWEEP-1: global full-scene debug-view fan-out (gameos_graphics.cpp).
+extern "C" void gos_SetGlobalDebugView(int view);
+extern "C" int  gos_GetGlobalDebugView();
+
 //--------------------------------------------------------------------------
 // UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE=<path> (default unset -> this
 // function is one cached-getenv check per frame, zero behavior change).
@@ -838,6 +842,11 @@ namespace {
 //   press dialog.YES|NO   - pause abort/exit confirm dialog, same
 //                           LogisticsOKDialog::handleMessage the ImGui
 //                           renderImGuiConfirm() buttons send
+//   debugview <n>         - DEBUG-VIEW-SWEEP-1: set the global full-scene
+//                           debug render view (0=off 1=shadow 2=depth
+//                           3=albedo 4=overdraw 5=normals 6=chunk). Fans out
+//                           to every lane's debug channel via
+//                           gos_SetGlobalDebugView(); runtime, no restart.
 //   screenshot <name> [backbuffer] - end-of-frame TGA via the DEV-SHELL
 //                           capture point (gos_dev_shell::scheduleScreenshot,
 //                           writes dev_shell_out/<name>.tga). Requires
@@ -951,6 +960,23 @@ void MissionInterfaceManager::processUiCommandChannel()
 				result = "ok";
 			}
 		}
+		else if (line.compare(0, 10, "debugview ") == 0) {
+			// DEBUG-VIEW-SWEEP-1: runtime global debug-view switch.
+			static const char* kViewNames[7] = {
+				"off", "shadow-factor", "normalized-depth", "unlit-albedo",
+				"overdraw-proxy", "world-normals", "chunk-tint"
+			};
+			const std::string arg = line.substr(10);
+			char* end = nullptr;
+			const long v = strtol(arg.c_str(), &end, 10);
+			if (arg.empty() || !end || *end != '\0' || v < 0 || v > 6) {
+				note = "debugview N, N in 0..6";
+			} else {
+				gos_SetGlobalDebugView((int)v);
+				result = "ok";
+				note = kViewNames[v];
+			}
+		}
 		else if (line.compare(0, 11, "screenshot ") == 0) {
 			std::string name = line.substr(11);
 			bool backbuffer = false;
@@ -1018,6 +1044,24 @@ void MissionInterfaceManager::update (void)
 				eye && !eye->inMovieMode) {
 				s_done = true;
 				togglePause();
+			}
+		}
+	}
+
+	// DEBUG-VIEW-SWEEP-1: MC2_DEBUG_VIEW=N boot fixture (default unset ->
+	// one cached getenv, zero behavior change). Applies the global debug
+	// render view once at the first update frame; the command-channel verb
+	// `debugview N` switches it at runtime thereafter. Registered (Trace).
+	{
+		static const long s_bootView = [] {
+			const char* v = getenv("MC2_DEBUG_VIEW");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if (s_bootView > 0) {
+			static bool s_dvDone = false;
+			if (!s_dvDone) {
+				s_dvDone = true;
+				gos_SetGlobalDebugView((int)s_bootView);
 			}
 		}
 	}
