@@ -35,6 +35,7 @@ extern long g_mvpDiagFrame;
 extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content epoch
 extern long g_mvpEarlyPublishSeq;
 
+#include <map>
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
@@ -4612,6 +4613,60 @@ void BuildDecalStaticVBO() {
     std::vector<DecalVert> verts;
     verts.reserve(64 * 6);
 
+    // MISSING-RUNWAY-1 tile census (MC2_TERRAIN_TILE_CENSUS=1, silent by
+    // default): one summary line per distinct (terrainType, texTileIdx,
+    // cement, alpha, overlayId) combo with count + world bbox. Answers "what
+    // IS the runway in this map's data" without knowing its coords up front.
+    {
+        static const bool s_tileCensus = []() {
+            const char* v = getenv("MC2_TERRAIN_TILE_CENSUS");
+            return v && v[0] && v[0] != '0';
+        }();
+        if (s_tileCensus) {
+            struct Agg { long n; float minX, maxX, minY, maxY; };
+            std::map<unsigned long long, Agg> agg;
+            for (long tR = 0; tR < cacheW; ++tR) {
+                for (long tC = 0; tC < cacheW; ++tC) {
+                    const MapData::WorldQuadTerrainCacheEntry* ce =
+                        Terrain::mapData->getTerrainFaceCacheEntry(tR, tC);
+                    const long terrType = Terrain::mapData->getTerrain(tR, tC);
+                    const long idx = tC + tR * mapSide;
+                    const DWORD texData = blocks[idx].textureData;
+                    Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+                    Terrain::mapData->getOverlay(tR, tC, ovT, ovO);
+                    const int cem = (ce && ce->isCement()) ? 1 : 0;
+                    const int alp = (ce && ce->isAlpha())  ? 1 : 0;
+                    unsigned long long key =
+                        ((unsigned long long)(unsigned)terrType << 40) |
+                        ((unsigned long long)(texData & 0xffffu) << 8) |
+                        ((unsigned long long)((int)ovT + 1) << 2) |
+                        ((unsigned)cem << 1) | (unsigned)alp;
+                    const float wx = float(tC - half) * wupv;
+                    const float wy = float(half - tR) * wupv;
+                    auto it = agg.find(key);
+                    if (it == agg.end())
+                        agg[key] = { 1, wx, wx, wy, wy };
+                    else {
+                        Agg& a = it->second; ++a.n;
+                        if (wx < a.minX) a.minX = wx; if (wx > a.maxX) a.maxX = wx;
+                        if (wy < a.minY) a.minY = wy; if (wy > a.maxY) a.maxY = wy;
+                    }
+                }
+            }
+            for (auto& kv : agg) {
+                const unsigned long long k = kv.first;
+                printf("[TILE_CENSUS v1] terr=%ld tex=%lu ov=%d cement=%llu alpha=%llu "
+                       "n=%ld bbox=(%.0f,%.0f)-(%.0f,%.0f)\n",
+                       (long)(k >> 40), (unsigned long)((k >> 8) & 0xffffu),
+                       (int)((k >> 2) & 0x3f) - 1,
+                       (k >> 1) & 1ull, k & 1ull,
+                       kv.second.n, kv.second.minX, kv.second.minY,
+                       kv.second.maxX, kv.second.maxY);
+            }
+            fflush(stdout);
+        }
+    }
+
     // First collect (texId -> tri verts) so draws can be grouped per texId
     // (mirror OverlayBatch_'s verts + draws split / pushToOverlayBatch_).
     // overlay tile count is empirically tiny — a flat scan + run-grouping is
@@ -4631,6 +4686,26 @@ void BuildDecalStaticVBO() {
             // non-cement leave it 0xffffffff. Use the handle directly so this
             // matches the live M2d predicate byte-for-byte.
             const DWORD overlayHandle = e->overlayHandle;
+            // MISSING-RUNWAY-1 census probe (MC2_TERRAIN_INDIRECT_TRACE, silent
+            // by default): dump EVERY tile that carries an &Overlays id with its
+            // face-cache classification, so tiles the bake DROPS (overlayHandle
+            // 0xffffffff: opaque runway/road centers = isCement&&!isAlpha case 3,
+            // or non-cement colormap case 1) are visible with world coords.
+            if (IsTraceEnabled()) {
+                Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+                Terrain::mapData->getOverlay(tileR, tileC, ovT, ovO);
+                if (ovT != INVALID_OVERLAY) {
+                    printf("[TERRAIN_OVERLAY v1] event=overlay_census tile=(%ld,%ld) "
+                           "world=(%.0f,%.0f) type=%d off=%lu cement=%d alpha=%d "
+                           "ovHandle=0x%08lx terrHandle=0x%08lx\n",
+                           tileR, tileC,
+                           (double)((tileC - half) * wupv), (double)((half - tileR) * wupv),
+                           (int)ovT, (unsigned long)ovO,
+                           e->isCement() ? 1 : 0, e->isAlpha() ? 1 : 0,
+                           (unsigned long)overlayHandle, (unsigned long)e->terrainHandle);
+                    fflush(stdout);
+                }
+            }
             if (overlayHandle == 0xffffffffu) continue;
 
             // CEMENT-HARD-EDGE-1 (Slice 2, default-on; re-apply of reverted 322ef8b4):
@@ -4652,7 +4727,46 @@ void BuildDecalStaticVBO() {
             Overlays decalOverlayType = INVALID_OVERLAY;
             DWORD    decalOverlayOffset = 0;
             Terrain::mapData->getOverlay(tileR, tileC, decalOverlayType, decalOverlayOffset);
-            if (e->isCement() && e->isAlpha() && decalOverlayType == INVALID_OVERLAY) continue;
+            if (e->isCement() && e->isAlpha() && decalOverlayType == INVALID_OVERLAY) {
+                // MISSING-RUNWAY-1 (mc2_10 field report 2026-07-18): the blanket
+                // skip here assumed every isCement&&isAlpha&&no-&Overlays tile is
+                // a true CONCRETE transition the frag cement-word edge system
+                // redraws. WRONG on mc2_10: its roads + the airbase runway are
+                // authored as cement-ALPHA transition tile art over SNOW terrain
+                // (type 68) with NO &Overlays id — no corner vertex has a cement
+                // terrain type, so PopulateRecipeCementWords bakes NO word
+                // (maskId needs >=1 cement corner) and the frag draws nothing;
+                // skipping the legacy decal too left the runway/roads INVISIBLE
+                // (tile census: e.g. tex=771 n=93, tex=774 n=80, all ov=-1).
+                // Skip ONLY when the cement-word system actually owns the tile —
+                // same corner predicate PopulateRecipeCementWords uses (>=1
+                // corner terrainType mapping to a cement catalog layer AND a
+                // valid mask). Otherwise fall through and bake the decal (the
+                // tile texture IS the road/runway art). If the cement layer map
+                // is not ready yet, keep the old skip (conservative; the words
+                // bake before the first decal build in the mission-load order).
+                // Killswitch MC2_MISSING_RUNWAY_FIX=0 -> old blanket skip.
+                static const bool s_runwayFix = []() {
+                    const char* v = getenv("MC2_MISSING_RUNWAY_FIX");
+                    return !(v && v[0] == '0');   // default ON
+                }();
+                bool fragOwnsTile = true;
+                if (s_runwayFix && g_cementLayerMapReady && blocks) {
+                    auto cemCorner = [&](long r, long c2) -> bool {
+                        const size_t vi = (size_t)r * (size_t)mapSide + (size_t)c2;
+                        const DWORD  vt = blocks[vi].terrainType;
+                        return vt < (DWORD)MC_MAX_TERRAIN_TXMS
+                               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
+                    };
+                    const bool c0 = cemCorner(tileR,     tileC);
+                    const bool c1 = cemCorner(tileR,     tileC + 1);
+                    const bool c2 = cemCorner(tileR + 1, tileC + 1);
+                    const bool c3 = cemCorner(tileR + 1, tileC);
+                    fragOwnsTile = (c0 || c1 || c2 || c3)
+                                   && deriveMaskIdFromCorners(c0, c1, c2, c3) >= 0;
+                }
+                if (fragOwnsTile) continue;
+            }
 
             const DWORD overlayTexId = tex_resolve(overlayHandle);
             if (overlayTexId == 0) continue;
