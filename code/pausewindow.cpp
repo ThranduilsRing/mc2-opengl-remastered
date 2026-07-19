@@ -327,19 +327,25 @@ bool PauseWindow::renderImGui()
 	// data/art/gui/mc2_pause_frame.png; FULL 800x600 authored canvas). This fn
 	// only runs under MC2_UI_IMGUI_PAUSE, so the gate-OFF legacy path never
 	// touches the texture manager here.
-	static unsigned s_frameGlTex = 0;
+	// OBJ-IMGUI-SLICE-1 lesson (field-confirmed 2026-07-18: font-atlas garbage
+	// in the frame rect after other UI churned the texture cache): pin
+	// (nFlush=0x1) — an unpinned texture that never draws through the legacy
+	// quad path gets cached out mid-mission and its GL name recycled — and
+	// re-resolve the GL name every frame.
+	static DWORD s_frameMcH = 0;
 	static bool s_frameTried = false;
 	if ( !s_frameTried )
 	{
 		s_frameTried = true;
-		DWORD mcH = mcTextureManager->loadTexture(
-			"data\\art\\gui\\mc2_pause_frame.png", gos_Texture_Alpha, 0, 0, 0 );
-		if ( mcH )
-		{
-			DWORD gosID = mcTextureManager->get_gosTextureHandle( mcH );
-			if ( gosID && gosID != 0xffffffff )
-				s_frameGlTex = gos_GetGLTextureName( gosID );
-		}
+		s_frameMcH = mcTextureManager->loadTexture(
+			"data\\art\\gui\\mc2_pause_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
+	}
+	unsigned s_frameGlTex = 0;
+	if ( s_frameMcH )
+	{
+		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_frameMcH );
+		if ( gosID && gosID != 0xffffffff )
+			s_frameGlTex = gos_GetGLTextureName( gosID );
 	}
 
 	// POLISH-IMGUI-SLICE-1 note: a PRESSED-state bake was evaluated (fit
