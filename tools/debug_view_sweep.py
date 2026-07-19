@@ -30,10 +30,21 @@ import sys
 import time
 
 
-def any_mc2_running():
-    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq mc2.exe"],
-                         capture_output=True, text=True).stdout
-    return "mc2.exe" in out
+def mc2_running_from(install_dir):
+    """Paths of running mc2.exe processes launched FROM install_dir (the user
+    may legitimately be playing from a DIFFERENT install lane; only a busy
+    target install blocks the sweep)."""
+    out = subprocess.run(
+        ["powershell", "-NoProfile", "-Command",
+         "(Get-Process mc2 -ErrorAction SilentlyContinue).Path"],
+        capture_output=True, text=True).stdout
+    norm = os.path.normcase(os.path.abspath(install_dir))
+    hits = []
+    for line in out.splitlines():
+        p = line.strip()
+        if p and os.path.normcase(os.path.abspath(os.path.dirname(p))) == norm:
+            hits.append(p)
+    return hits
 
 
 class AckReader:
@@ -150,9 +161,11 @@ def main():
         print("no mc2.exe in %s" % install)
         return 2
 
-    if any_mc2_running():
-        print("ABORT: an mc2.exe is already running (user may be playing). "
-              "Not launching; nothing was touched.")
+    busy = mc2_running_from(install)
+    if busy:
+        print("ABORT: mc2.exe already running from the target install "
+              "(user may be playing): %s. Not launching; nothing was touched."
+              % ", ".join(busy))
         return 3
 
     os.makedirs(args.out, exist_ok=True)
