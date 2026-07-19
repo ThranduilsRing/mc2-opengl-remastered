@@ -2371,6 +2371,7 @@ float mc2ShadowObjNormalBias();  // object shadow-receive normal-offset (texels)
 // missed the live chunk path).
 bool  mc2ShadowStaticBandFixEnabled();    // MC2_SHADOW_STATIC_BANDFIX (v1: PCF tap floor)
 bool  mc2ShadowStaticBandFixV2Enabled();  // MC2_SHADOW_STATIC_BANDFIX_V2 (v2: slope-normal bias + normal-offset receiver)
+int   mc2WaterBiasLegacy();               // MC2_WATER_BIAS_LEGACY (WATER-BIAS-LINEARIZE-1: 1 = legacy constant FAST water bias)
 // MC2_SHADER_PATH_TINT: debug-only. 1 = each candidate ground shader outputs a
 // unique solid color so the render path of a given surface can be identified
 // visually. Default 0 => byte-identical normal rendering. See gos_postprocess.cpp.

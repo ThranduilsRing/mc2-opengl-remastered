@@ -237,6 +237,21 @@ bool mc2ShadowStaticBandFixV2Enabled() {
     return enabled;
 }
 
+// WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
+// Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error
+// ~ linear in distance, kills the far-field water-over-ridge z-fight).
+// MC2_WATER_BIAS_LEGACY=1 -> 1 = legacy constant NDC offset
+// (clip.z += FUDGE*clip.w). Consumed by both fast water VS variants and the
+// gpu_driven_water.comp pzOk admission gate (all three MUST agree; see
+// mclib/terrain_depth_bias.h). Exported via gameos.hpp for the water-stream TU.
+int mc2WaterBiasLegacy() {
+    static const int mode = []() {
+        const char* v = std::getenv("MC2_WATER_BIAS_LEGACY");
+        return (v && v[0] && v[0] != '0') ? 1 : 0;
+    }();
+    return mode;
+}
+
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
 // roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
 static bool terrainMaterialLibEnabled() {
@@ -3022,6 +3037,9 @@ void gosRenderer::renderWaterFastPath(
     setF   ("frameCosAlpha",   frameCosAlpha);
     setF   ("maxMinUV",        maxMinUV);
     setI   ("tex1",            0);
+    // WATER-BIAS-LINEARIZE-1: bias mode for the FAST VS (0 = proportional
+    // default, 1 = legacy constant). MC2_WATER_BIAS_LEGACY=1 reverts.
+    setI   ("u_waterBiasLegacy", mc2WaterBiasLegacy());
 
     // Fragment-shader-side fog_color + time uniforms (gos_tex_vertex.frag).
     // 2026-04-30: fog_color was hardcoded to zeros, which disables the FS
@@ -3296,6 +3314,8 @@ void gosRenderer::renderWaterFastPath(
         setMVec4      ("terrainLightDir", (const float*)&terrain_light_dir_);
         setMF         ("u_waterSpecIntensity", gos_GetWaterSpecIntensity());
         setMI         ("tex1",  0);
+        // WATER-BIAS-LINEARIZE-1: same mode as the non-MDI branch above.
+        setMI         ("u_waterBiasLegacy", mc2WaterBiasLegacy());
         setMI         ("tex2",  1);
 
         // WATER-REFLECTION-SAMPLE-1: bind the terrain reflection RT (filled by

@@ -64,6 +64,7 @@ out vec3  WorldPos;         // water-v1: wave-displaced surface position (Fresne
 
 // Uniforms — set by Terrain::renderWaterFastPath C++ code.
 uniform mat4  u_worldToClipGL;   // world -> GL clip (kAxisSwapMC2toGL * worldToClip)
+uniform int   u_waterBiasLegacy; // WATER-BIAS-LINEARIZE-1: 1 = legacy constant NDC bias (MC2_WATER_BIAS_LEGACY=1); default 0 = proportional
 uniform float waterElevation;    // Terrain::waterElevation
 uniform float alphaDepth;        // MapData::alphaDepth
 uniform vec2  mapTopLeft;        // Terrain::mapTopLeft3d.xy (note: y is positive-up)
@@ -281,8 +282,15 @@ void main() {
     }
 
     // F1 Stage A: direct GL clip emit with water depth bias (pre-divide).
+    // WATER-BIAS-LINEARIZE-1: default = distance-proportional bias (world
+    // error ~ linear in distance; kills the far-field water-over-ridge
+    // z-fight). u_waterBiasLegacy=1 (MC2_WATER_BIAS_LEGACY=1) = legacy
+    // constant NDC offset. MUST match gpu_driven_water.comp pzOk gate.
     vec4 clip = u_worldToClipGL * vec4(worldPos, 1.0);
-    clip.z   += WATER_DEPTH_FUDGE_FAST * clip.w;
+    if (u_waterBiasLegacy != 0)
+        clip.z += WATER_DEPTH_FUDGE_FAST * clip.w;
+    else
+        clip.z += WATER_DEPTH_FUDGE_FAST_REL * clip.z;
     gl_Position = clip;
 
 }

@@ -26,6 +26,10 @@
 #include <algorithm>                     // std::sort -- surfaced by MC2_ASAN build (Tracy-disabled config drops the transitive include)
 #include <cassert>
 
+// WATER-BIAS-LINEARIZE-1 (gameos.hpp): FAST-water bias mode (0 = proportional
+// default, 1 = MC2_WATER_BIAS_LEGACY). The pzOk cull gate must match the VS.
+extern int mc2WaterBiasLegacy();
+
 #include <vector>
 #include <unordered_map>
 #include <cstdio>
@@ -1512,6 +1516,9 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     // WATER-FULL-RECIPE-GPU-TIMER-SPIKE-0 uniforms (optional — absent on un-patched shader).
     const GLint locFullMode    = glGetUniformLocation(g_waterComputeProgram, "u_fullRecipeMode");
     const GLint locShoreExt    = glGetUniformLocation(g_waterComputeProgram, "u_shoreExt");
+    // WATER-BIAS-LINEARIZE-1: pzOk admission gate must agree with the thin VS
+    // bias mode. Uniform int defaults to 0 (proportional) if absent.
+    const GLint locBiasLegacy  = glGetUniformLocation(g_waterComputeProgram, "u_waterBiasLegacy");
     const float spikeShoreExt  = (MapData::alphaDepth * 0.5f > 0.0f)
                                  ? MapData::alphaDepth * 0.5f : 15.0f;
 
@@ -1549,6 +1556,9 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     // missing — shader defaults to 0, degrading to the old approximation rather
     // than producing a wrong cull pass.
     if (locFrameCos >= 0) glUniform1f(locFrameCos, frameCos);
+
+    // WATER-BIAS-LINEARIZE-1: mirror the VS bias mode into the cull gate.
+    if (locBiasLegacy >= 0) glUniform1i(locBiasLegacy, mc2WaterBiasLegacy());
 
     if (locMapSide < 0) {
         fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_mapSide_not_found\n");
