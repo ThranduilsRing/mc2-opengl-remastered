@@ -710,6 +710,11 @@ ALLOWLIST=(
     MC2_WATER_ASPECT_DIAG             # trace
     MC2_WATER_EDGE_FEATHER            # feature -- water edge-feather gate
     MC2_WATER_EDGE_FEATHER_STRENGTH   # override -- water edge-feather strength tuning
+    MC2_WATER_BIAS_LEGACY             # killswitch -- WATER-BIAS-LINEARIZE-1: =1 restores constant NDC water bias (37557c8b)
+    MC2_CEMENT_MISSION_LIGHT          # killswitch -- CEMENT-NIGHT-LIGHT-1: =0 restores unlit cement (67d5ce40)
+    MC2_MISSING_RUNWAY_FIX            # killswitch -- MISSING-RUNWAY-1: =0 restores blanket decal skip (ef0f96d5)
+    MC2_TERRAIN_TILE_CENSUS           # diagnostic -- per-tile overlay/cement census probe (ef0f96d5)
+    MC2_DPI_UNAWARE                   # killswitch -- DPI-AWARE-1: =1 restores DPI-virtualized window (4da86076 cherry-pick)
     MC2_WATER_FULL_RECIPE_SPIKE       # trace
     MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE  # feature -- water GPU full-recipe authoritative gate (documented in debug_state_dump, default true)
     MC2_WATER_GPU_FULL_RECIPE_CULL    # feature -- water GPU full-recipe cull gate
