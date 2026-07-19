@@ -523,7 +523,10 @@ void main(void)
     if (surfaceDebugMode >= 50 && surfaceDebugMode <= 52) {
         PREC vec3 dv;
         if (surfaceDebugMode == 50) {
-            dv = vec3(clamp((gl_FragCoord.z - 0.85) / 0.15, 0.0, 1.0));
+            // Eye distance / 6000 wu — projection-constant-free smooth gradient
+            // (gl_FragCoord.z band remaps proved camera-dependent).
+            PREC float dvVert = cameraPos.y - WorldPos.z;
+            dv = vec3(clamp(sqrt(hDist * hDist + dvVert * dvVert) / 6000.0, 0.0, 1.0));
         } else if (surfaceDebugMode == 51) {
             dv = vec3(0.12);
         } else {

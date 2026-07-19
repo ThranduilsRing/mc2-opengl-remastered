@@ -1468,8 +1468,10 @@ void main() {
             else                  dbg = vec3(luma);
         }
         // DEBUG-VIEW-SWEEP-1: shared 50-series full-scene views (see gos_terrain.frag).
-        else if (u_lightingDebugView == 50)                                             // normalized depth grayscale
-            dbg = vec3(clamp((gl_FragCoord.z - 0.85) / 0.15, 0.0, 1.0));
+        else if (u_lightingDebugView == 50) {                                           // depth: eye distance / 6000 wu
+            vec3 dvCamW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+            dbg = vec3(clamp(distance(v_worldPos, dvCamW) / 6000.0, 0.0, 1.0));
+        }
         else if (u_lightingDebugView == 51) dbg = vec3(0.12);                           // overdraw proxy (one flat layer)
         else if (u_lightingDebugView == 52) {                                           // chunk/LOD tint
             // LOD-band base color (u_lodStep, geomorph u_diag==41 palette) modulated
