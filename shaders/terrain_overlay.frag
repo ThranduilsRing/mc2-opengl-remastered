@@ -20,8 +20,6 @@
 // Default-OFF (all 3 terrain env gates unset) → uniforms force-zeroed by
 // CPU helper → all branches short-circuit → byte-identical legacy output.
 #include <include/terrain_height_normal.hglsl>
-// ROAD-PBR-ASPHALT-1: material layer indices (MAT_LAYER_ASPHALT = 7).
-#include <include/terrain_mat_layers.hglsl>
 
 // [RENDER_CONTRACT]
 //   Pass:           TerrainOverlay
@@ -36,8 +34,6 @@ in PREC vec3  WorldPos;
 in PREC vec2  Texcoord;
 in PREC float FogValue;   // 1=clear, 0=fully fogged
 in PREC vec4  Color;      // RGBA [0,1]
-// ROAD-PBR-ASPHALT-1: per-tile material id (1 = paved road / runway asphalt).
-flat in uint  v_matId;
 
 layout(location=0) out PREC vec4 FragColor;
 #ifdef MRT_ENABLED
@@ -52,15 +48,6 @@ uniform vec4 terrainLightDir;
 uniform int surfaceDebugMode;
 uniform PREC float mapHalfExtent;  // half side length of playable map (0 = disabled)
 uniform int u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (debug); 0 = normal
-
-// ROAD-PBR-ASPHALT-1: high-res tiling asphalt material for PAVED_ROAD/RUNWAY
-// tiles (v_matId == 1). u_asphaltAlbedo is a seamless asphalt diffuse; the
-// relief normal comes from matNormalArray layer MAT_LAYER_ASPHALT. u_asphaltScale
-// is the world-units->UV factor (repeat ~= 1/u_asphaltScale world units).
-uniform sampler2D      u_asphaltAlbedo;
-uniform sampler2D      u_gravelAlbedo;   // dirt-road material (v_matId == 2)
-uniform sampler2DArray matNormalArray;
-uniform PREC float     u_asphaltScale;
 
 void main()
 {
@@ -81,40 +68,6 @@ void main()
     PREC vec4 c;
     c.rgb = tex_color.rgb * vec3(0.82, 0.80, 0.76);
     c.a   = tex_color.a;
-
-    // ROAD-PBR-ASPHALT-1: for paved-road / runway tiles, replace the low-res
-    // stock tile RGB with a high-res tiling asphalt material sampled per-fragment
-    // in world space, while KEEPING the tile's painted markings (the bright
-    // centerlines / runway stripes) and — critically — KEEPING the tile alpha as
-    // the road footprint mask (so the discard + shape are unchanged). The relief
-    // normal (matNormalArray layer 7) is decoded here and folded into the
-    // hemisphere normal further down via asphaltN.
-    PREC vec3 asphaltN = vec3(0.0, 0.0, 1.0);
-    if (v_matId == 1u) {
-        // ROAD-MATERIAL-ASPHALT-1: plain high-res asphalt, sampled in WORLD space so
-        // it is resolution-independent and seamless across tiles (no per-tile
-        // orientation). Markings were dropped on purpose — oriented per-tile lane
-        // paint can't survive intersections, so clean uniform asphalt reads better.
-        // Masked by the tile alpha (road/runway shape). Covers PAVED_ROAD + RUNWAY.
-        PREC vec2 auv  = WorldPos.xy * u_asphaltScale;
-        PREC vec3 road = texture(u_asphaltAlbedo, auv).rgb;
-        // ROAD-ASPHALT-TINT-1: darker + warmer so the asphalt reads as dark tarmac
-        // (not light blue-grey) and sits closer to the concrete tone. TUNE HERE:
-        // lower = darker; raise R vs B = warmer.
-        c.rgb = road * vec3(0.58, 0.53, 0.44);
-        c.a   = tex_color.a;   // shape mask + discard unchanged
-        asphaltN = normalize(
-            texture(matNormalArray, vec3(auv, float(MAT_LAYER_ASPHALT))).rgb * 2.0 - 1.0);
-    } else if (v_matId == 2u) {
-        // ROAD-MATERIAL-GRAVEL-1: dirt roads get a high-res gravel material, same
-        // world-space sampling, no markings. Masked by the tile alpha.
-        PREC vec2 guv  = WorldPos.xy * u_asphaltScale;
-        PREC vec3 road = texture(u_gravelAlbedo, guv).rgb;
-        c.rgb = road * vec3(0.98, 0.97, 0.95);
-        c.a   = tex_color.a;
-        asphaltN = normalize(
-            texture(matNormalArray, vec3(guv, float(MAT_LAYER_ASPHALT))).rgb * 2.0 - 1.0);
-    }
 
     // Discard transparent pixels — cement transitions are binary-alpha tiles.
     // This keeps depth writes and GBuffer1 writes on the cement-visible region only,
@@ -151,12 +104,6 @@ void main()
     float staticShadow  = calcShadow(WorldPos, shadowN, lightDir3, 8);
     float dynamicShadow = calcDynamicShadow(WorldPos, shadowN, lightDir3, 4);
     float shadow        = staticShadow * dynamicShadow;
-    // ROAD-MATERIAL-FLATLIGHT-1: road/runway/dirt (v_matId != 0) are flat man-made
-    // surfaces. The terrain STATIC self-shadow varies with whatever is underneath
-    // (flat over concrete, bumpy/shadowed over grass), which made the road change
-    // shade as it crossed terrain types. Drop the static self-shadow on road tiles
-    // but KEEP the dynamic building shadow so structures still cast onto roads.
-    if (v_matId != 0u) shadow = dynamicShadow;
     // DEBUG-VIZ: 30 = dynamic-cast shadow only (isolates building dynamic shadow
     // on cement vs grass), 31 = combined. Grayscale, early-return.
     if (surfaceDebugMode == 30) {
@@ -200,14 +147,6 @@ void main()
             N.xy += (hN.xy / max(hN.z, 0.05)) * terrainNormalsFromHeightStrength;
             N.xy = clamp(N.xy, -0.75, 0.75);
             N = normalize(N);
-        }
-        // ROAD-PBR-ASPHALT-1: fold in the asphalt relief normal (subtle) so the
-        // surface picks up some directional shading instead of reading flat.
-        // Same additive form; small strength to avoid double-lighting.
-        if (v_matId == 1u) {
-            N.xy += (asphaltN.xy / max(asphaltN.z, 0.20)) * 0.35;
-            N.xy  = clamp(N.xy, -0.75, 0.75);
-            N      = normalize(N);
         }
         const PREC vec3 hemiSkyTint    = vec3(0.55, 0.62, 0.75);
         const PREC vec3 hemiGroundTint = vec3(0.32, 0.28, 0.22);

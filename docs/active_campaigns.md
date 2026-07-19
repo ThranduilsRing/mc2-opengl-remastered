@@ -2,6 +2,12 @@
 
 > Pointer doc. Detail in memory/ handoffs and docs/. Add new campaigns at top.
 
+## 2026-07-18 — ROAD-PBR-ABANDON-1 (PBR road path permanently retired)
+
+| Slice | Commit(s) | Status | Notes |
+|---|---|---|---|
+| ROAD-PBR-ABANDON-1 | `bd7e64f8` + dead-code follow-up | SHIPPED | USER RULING 2026-07-18: stock road overlays unconditional; MC2_ROAD_PBR retired (no effect), asphalt/gravel shader branches + host plumbing + TGA loaders deleted. Supersedes ROAD-PBR-OPTIN-1/FAILSOFT-1 below. |
+
 ## 2026-07-07 — SHIPPED-LEDGER BACKFILL (handoff audit) — arcs in git but previously missing here
 
 | Slice | Commit(s) | Status | Notes |

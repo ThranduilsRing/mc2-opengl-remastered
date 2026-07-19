@@ -15,10 +15,6 @@ out vec3  WorldPos;
 out vec2  Texcoord;
 out float FogValue;
 out vec4  Color;
-// ROAD-PBR-ASPHALT-1: per-tile material id carried in the (normalized) alpha
-// byte of the argb attrib. asphalt tiles bake alpha byte 1 (~0.0039), all
-// others bake 0xff (1.0). Threshold here and forward a flat id to the frag.
-flat out uint v_matId;
 
 void main()
 {
@@ -28,12 +24,6 @@ void main()
     // The VBO attrib is GL_UNSIGNED_BYTE BGRA (byte0=B, byte1=G, byte2=R, byte3=A).
     // Swizzle here so fragment shaders receive proper RGBA.
     Color     = colorIn.bgra;
-    // ROAD-PBR-ASPHALT-1 / GRAVEL-1: material id baked in the alpha byte —
-    // 1 = asphalt (paved road + runway), 2 = gravel (dirt road), 0xff = none.
-    // Recover the integer byte and forward a flat id. decal.frag (the other
-    // consumer of this vert) ignores v_matId entirely.
-    uint matByte = uint(Color.a * 255.0 + 0.5);
-    v_matId   = (matByte < 250u) ? matByte : 0u;
 
     // F1 Stage A: direct GL clip emit. OVERLAY_DEPTH_BIAS applied pre-divide
     // so decals/overlays win LEQUAL ties to terrain (replaces removed glPolygonOffset(-1,-1)).
