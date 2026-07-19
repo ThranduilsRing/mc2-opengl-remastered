@@ -66,6 +66,10 @@ def wait_ack(ack, prefix, timeout, proc=None):
             if ln.startswith(prefix):
                 return ln
         if proc is not None and proc.poll() is not None:
+            # Final drain: acks may have been flushed right before exit.
+            for ln in ack.poll():
+                if ln.startswith(prefix):
+                    return ln
             raise RuntimeError("mc2.exe exited (code %s) while waiting for ack %r"
                                % (proc.returncode, prefix))
         time.sleep(0.25)
@@ -126,6 +130,18 @@ def main():
     p.add_argument("--settle", type=float, default=0.6,
                    help="seconds to settle after each debugview switch (~10-20 frames)")
     p.add_argument("--boot-timeout", type=float, default=240.0)
+    p.add_argument("--source", choices=["scene", "backbuffer"], default="scene",
+                   help="(channel driver only) scene = offscreen scene FBO "
+                        "(pre-HUD/post; most deterministic); backbuffer = final "
+                        "frame incl. HUD/post")
+    p.add_argument("--driver", choices=["frames", "channel"], default="frames",
+                   help="frames (default): engine-side MC2_DEBUG_VIEW_SWEEP "
+                        "frame-scheduled sequencer — captures land on identical "
+                        "sim frames run-to-run (byte-comparable). channel: "
+                        "wall-clock debugview/screenshot verbs over "
+                        "MC2_UI_COMMAND_FILE (frame alignment NOT guaranteed).")
+    p.add_argument("--schedule", default="600,30",
+                   help="frames driver: '<startFrame>,<settleFrames>'")
     args = p.parse_args()
 
     install = os.path.abspath(args.install)
@@ -164,20 +180,43 @@ def main():
         "MC2_NO_LAUNCHER": "1",
         "MC2_DEV_SHELL": "1",
         "MC2_UI_COMMAND_FILE": os.path.abspath(cmd_file),
+        "MC2_LOG": "1",  # without this the engine NUL-redirects stdout/stderr
     })
     if args.park:
         env["MC2_CAMERA_PARK"] = args.park
+    if args.driver == "frames":
+        env["MC2_DEBUG_VIEW_SWEEP"] = args.schedule
 
     log_path = os.path.join(args.out, "mc2_sweep.log")
     log = open(log_path, "w")
     print("launching %s --profile stock --mission %s" % (exe, args.mission))
-    proc = subprocess.Popen([exe, "--profile", "stock", "--mission", args.mission],
+    # --duration is SIM seconds (fixed timestep runs sim fast headless); give
+    # generous headroom — the sweep kills its own PID right after the last
+    # capture, so wall runtime stays short regardless.
+    proc = subprocess.Popen([exe, "--profile", "stock", "--mission", args.mission,
+                             "--duration", "600"],
                             cwd=install, env=env, stdout=log, stderr=subprocess.STDOUT)
     print("spawned pid=%d (only this PID will be killed)" % proc.pid)
 
     rc = 0
     ack = AckReader(ack_file)
     try:
+      if args.driver == "frames":
+        # Engine-side frame-scheduled sequencer: just wait for the TGAs to land
+        # (in order), then kill. Frame-keyed -> byte-comparable across runs.
+        deadline = time.time() + args.boot_timeout
+        for v in views:
+            tga = os.path.join(shot_dir, "view_%d.tga" % v)
+            while time.time() < deadline and not os.path.isfile(tga):
+                if proc.poll() is not None:
+                    raise RuntimeError("mc2.exe exited (code %s) before %s; see %s"
+                                       % (proc.returncode, tga, log_path))
+                time.sleep(0.25)
+            if not os.path.isfile(tga):
+                raise RuntimeError("timed out waiting for %s; see %s" % (tga, log_path))
+            print("  captured view_%d" % v)
+        time.sleep(0.5)  # let the last TGA write finish
+      else:
         # Mission-live probe: the command channel is only polled by
         # MissionInterfaceManager::update, so the first ack == mission gui live.
         send(cmd_file, "debugview 0")
@@ -208,8 +247,9 @@ def main():
             if ln is None or "-> ok" not in ln:
                 raise RuntimeError("debugview %d not acked ok" % v)
             time.sleep(args.settle)
-            send(cmd_file, "screenshot view_%d backbuffer" % v)
-            ln = wait_ack(ack, "screenshot view_%d ->" % v, 30, proc)
+            suffix = " backbuffer" if args.source == "backbuffer" else ""
+            send(cmd_file, "screenshot view_%d%s" % (v, suffix))
+            ln = wait_ack(ack, "screenshot view_%d " % v, 30, proc)
             print("  %s" % ln)
             if ln is None or "-> ok" not in ln:
                 raise RuntimeError("screenshot view_%d not acked ok" % v)

@@ -1104,6 +1104,61 @@ void MissionInterfaceManager::update (void)
 		}
 	}
 
+	// DEBUG-VIEW-SWEEP-1: MC2_DEBUG_VIEW_SWEEP="<startFrame>,<settleFrames>"
+	// frame-scheduled auto-sweep (default unset -> one cached getenv, zero
+	// behavior change). Wall-clock command scheduling lands captures on
+	// DIFFERENT sim frames run-to-run (animated sim/overlays -> diffs), so this
+	// sequencer keys everything to absolute frame numbers instead: for each
+	// view v in 1..6, at frame start+(v-1)*(settle+2) set the view, settle
+	// frames later schedule dev_shell_out/view_<v>.tga (scene-FBO source;
+	// needs MC2_DEV_SHELL=1), then restore view 0. With MC2_SMOKE_MODE=1 +
+	// MC2_SMOKE_FIXED_TIMESTEP=1 + MC2_CAMERA_PARK, two runs capture
+	// byte-comparable frames. Driven by tools/debug_view_sweep.py. Registered
+	// (Trace).
+	{
+		static const char* s_sw = getenv("MC2_DEBUG_VIEW_SWEEP");
+		if (s_sw && s_sw[0]) {
+			extern uint32_t g_mc2FrameCounter;
+			static long s_start = 600, s_settle = 30;
+			static int  s_stage = -1;   // monotonic: 2*v = view set, 2*v+1 = shot, 12 = done
+			static bool s_init = false;
+			if (!s_init) {
+				s_init = true;
+				long a = 0, b = 0;
+				if (sscanf(s_sw, "%ld,%ld", &a, &b) >= 1 && a > 0) s_start = a;
+				if (b >= 5) s_settle = b;
+			}
+			const long f = (long)g_mc2FrameCounter;
+			if (s_stage < 12 && f >= s_start) {
+				const long per = s_settle + 2;
+				const long rel = f - s_start;
+				const int  idx = (int)(rel / per);        // 0..5 = view idx
+				if (idx > 5) {
+					s_stage = 12;
+					gos_SetGlobalDebugView(0);
+				} else {
+					const long inner = rel % per;
+					if (inner >= s_settle && s_stage < idx * 2 + 1) {
+						// set-stage must already have run this period
+						if (s_stage < idx * 2) {
+							s_stage = idx * 2;
+							gos_SetGlobalDebugView(idx + 1);
+						} else {
+							s_stage = idx * 2 + 1;
+							_mkdir("dev_shell_out");
+							char nm[32];
+							sprintf(nm, "view_%d", idx + 1);
+							gos_dev_shell::scheduleScreenshot(nm, false);
+						}
+					} else if (s_stage < idx * 2) {
+						s_stage = idx * 2;
+						gos_SetGlobalDebugView(idx + 1);
+					}
+				}
+			}
+		}
+	}
+
 	// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE=<path> runtime command channel
 	// (default unset -> one cached getenv check, byte-identical). See
 	// processUiCommandChannel() below for the command set. Placed before the

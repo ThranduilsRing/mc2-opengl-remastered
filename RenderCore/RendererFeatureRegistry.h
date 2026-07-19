@@ -743,6 +743,22 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "byte-identical."
     },
     {
+        "MC2_DIAG_DEBUG_VIEW_SWEEP",
+        "MC2_DEBUG_VIEW_SWEEP",
+        EnvVarKind::Trace,
+        false,
+        "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled "
+        "auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update). "
+        "For each view v in 1..6: at frame start+(v-1)*(settle+2) sets the "
+        "view, settle frames later schedules dev_shell_out/view_<v>.tga "
+        "(scene-FBO source; capture hook needs MC2_DEV_SHELL=1), then restores "
+        "view 0. Frame-keyed so two fixed-timestep runs (MC2_SMOKE_MODE=1 + "
+        "MC2_SMOKE_FIXED_TIMESTEP=1 + MC2_CAMERA_PARK) capture byte-comparable "
+        "sim states — wall-clock command scheduling cannot. Driven by "
+        "tools/debug_view_sweep.py. Diagnostic-only; default unset -> one "
+        "cached getenv, byte-identical."
+    },
+    {
         "MC2_DIAG_CAMERA_PARK",
         "MC2_CAMERA_PARK",
         EnvVarKind::Trace,
