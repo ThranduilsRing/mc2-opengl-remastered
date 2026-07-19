@@ -302,6 +302,7 @@ ALLOWLIST=(
     MC2_VK_PROP_FENCE_DEFER     # feature -- promote-to-registry; VK-PROP-FENCE-DEFER-1 killswitch (=0 restores inline wait)
     MC2_VK_PROP_PERF            # trace -- [VK_PROPS_PERF] per-frame us breakdown (water-style)
     MC2_VK_MECH_FENCE_DEFER     # feature -- promote-to-registry; VK-MECH-FENCE-DEFER-1 killswitch (=0 restores inline wait)
+    MC2_VK_LIGHTFEED_DEDUP      # feature -- promote-to-registry; VK-LIGHTFEED-DEDUP-1 killswitch (=0 restores twin per-island LightsData copies)
     MC2_VK_MECH_PERF            # trace -- [VK_MECH_PERF] per-frame us breakdown (water-style)
     MC2_VK_TERRAIN_FENCE_DEFER  # feature -- promote-to-registry; VK-TERRAIN-FENCE-DEFER-1 killswitch (=0 restores inline wait)
     MC2_VK_TERRAIN_PERF         # trace -- [VK_TERRAIN_PERF] per-frame us breakdown (water-style)

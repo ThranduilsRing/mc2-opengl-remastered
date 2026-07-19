@@ -198,6 +198,12 @@ if(MC2_VULKAN)
         # VK-RUNG8-ITEM2 deleted vk_image_resource's exportable half -- both caller-free
         # after item 6 retired the static-shadow substrate. #ifdef MC2_VULKAN_ISLAND.
         list(APPEND SOURCES vk_image_resource.cpp)
+        # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
+        # host-visible ring on the shared engine device) consumed by the mech +
+        # color-prop islands instead of twin per-island ~3.5 MB copies of the
+        # same CPU array every frame. Killswitch MC2_VK_LIGHTFEED_DEDUP=0
+        # restores the twin-copy paths. #ifdef MC2_VULKAN_ISLAND.
+        list(APPEND SOURCES vk_shared_light_feed.cpp)
         # VK-TIER1 SHARED SCENE DEPTH (step 2): back sceneDepthTex_ with a VK-built
         # exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8, at the
         # single gos_postprocess scene-FBO depth alloc+attach site. GL-only slice

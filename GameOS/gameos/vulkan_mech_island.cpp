@@ -46,6 +46,7 @@
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // shared scene color/normal images
@@ -272,6 +273,13 @@ struct MechIsland {
     VkBuffer lightBuf[2] = {}; VmaAllocation lightAlloc[2] = {}; VkDeviceSize lightCap[2] = {};
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
     bool     lightingReady = false;   // LightsData copied this frame (>=1 ObjectLights)
+    // VK-LIGHTFEED-DEDUP-1: what every scheme set's binding-4 [par] descriptor
+    // currently points at -- the shared ring slot (changes every frame) or the
+    // island's own lightBuf[par] (killswitch / fail-soft). Drives the no-op
+    // rebind check in bind_light_buffer_all. NOTE: write_buffer_bindings keeps
+    // writing lightBuf[par] (a valid handle at scheme-set creation / grow);
+    // bind_light_buffer_all re-points binding 4 after acquire each frame.
+    VkBuffer boundLightBuf[2] = {};
 
     // Descriptors: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS), 4=LightsData(VS).
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
@@ -364,6 +372,37 @@ void write_buffer_bindings_all(MechIsland* s) {
     for (auto& e : s->schemes)
         for (uint32_t par = 0; par < 2; ++par)
             write_buffer_bindings(s, e.set[par], par);
+    // VK-LIGHTFEED-DEDUP-1: the loop above re-pointed binding 4 at the island's
+    // own lightBuf -- reset the rebind tracker so bind_light_buffer_all's no-op
+    // check doesn't skip the shared re-point this frame.
+    s->boundLightBuf[0] = s->lightBuf[0];
+    s->boundLightBuf[1] = s->lightBuf[1];
+}
+
+// VK-LIGHTFEED-DEDUP-1: point binding-4 of EVERY cached scheme set's [par]
+// slot at `buf` -- the shared per-frame LightsData ring slot (handle changes
+// every frame), or the island's own lightBuf[par] on the killswitch /
+// fail-soft path. Safe post-beginFrame: the parity fence retired all [par]
+// consumers; [1-par] sets (possibly in flight) are untouched and get their
+// own rebind next frame before recording. No-op when already bound. Newly
+// created scheme sets this frame were written with lightBuf[par] by
+// write_buffer_bindings (always a valid handle); since the shared ring handle
+// differs from the tracker every shared frame, the rewrite below covers them.
+void bind_light_buffer_all(MechIsland* s, uint32_t par, VkBuffer buf) {
+    if (buf == VK_NULL_HANDLE || s->boundLightBuf[par] == buf) return;
+    VkDescriptorBufferInfo lightInfo{ buf, 0, VK_WHOLE_SIZE };
+    std::vector<VkWriteDescriptorSet> w;
+    w.reserve(s->schemes.size());
+    for (auto& e : s->schemes) {
+        if (e.set[par] == VK_NULL_HANDLE) continue;
+        VkWriteDescriptorSet ws{};
+        ws.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        ws.dstSet = e.set[par]; ws.dstBinding = 4; ws.descriptorCount = 1;
+        ws.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; ws.pBufferInfo = &lightInfo;
+        w.push_back(ws);
+    }
+    if (!w.empty()) vkUpdateDescriptorSets(s->device, (uint32_t)w.size(), w.data(), 0, nullptr);
+    s->boundLightBuf[par] = buf;
 }
 
 // Point a scheme set's binding-3 at its own albedo image + the shared sampler.
@@ -1035,13 +1074,30 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // is simply not marked ready (the shader falls back to flat-lit via u.lightingReady=0)
     // -- no GL readback rescue.
     if (s->wantLighting && nativeLight) {
-        ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy
-        const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
-        {
+        // VK-LIGHTFEED-DEDUP-1: try the shared once-per-frame LightsData ring
+        // first (ONE copy total across the mech + prop islands instead of twin
+        // ~3.5 MB copies; the copy is zoned VKIsl.Shared.LightFeed inside
+        // acquire). On the shared path only the binding-4 descriptors move
+        // (all cached scheme sets' [par] slot; fence-retired by the beginFrame
+        // above). Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire fail-soft
+        // (mid-frame light-count growth, ring alloc failure) runs the
+        // pre-slice per-island copy below (zone VKIsl.Mech.LightFeed).
+        VkBuffer sharedLight = VK_NULL_HANDLE;
+        if (mc2vkSharedLightFeedAcquire(s->allocator, s->device,
+                                        feed.lightDataCpu,
+                                        feed.lightDataCpuBytes, &sharedLight)) {
+            bind_light_buffer_all(s, par, sharedLight);
+            s->lightingReady = true;
+            ++g_feedNative.nativeLightFrames;
+        } else {
+            ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (twin-copy path)
+            const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
             void* p = nullptr;
             if (vmaMapMemory(s->allocator, s->lightAlloc[par], &p) == VK_SUCCESS) {
                 std::memcpy(p, feed.lightDataCpu, (size_t)lbytes);
                 vmaUnmapMemory(s->allocator, s->lightAlloc[par]);
+                // Restore the own-buffer bindings after any shared frames.
+                bind_light_buffer_all(s, par, s->lightBuf[par]);
                 s->lightingReady = true;
                 ++g_feedNative.nativeLightFrames;
             }

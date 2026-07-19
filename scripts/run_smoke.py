@@ -1635,6 +1635,10 @@ def main():
                             # VK-MECH-FENCE-DEFER-1: same template on the mech island.
                             "MC2_VK_MECH_FENCE_DEFER",
                             "MC2_VK_MECH_PERF",
+                            # VK-LIGHTFEED-DEDUP-1: killswitch (=0 restores the twin
+                            # per-island LightsData copies; default = ONE shared
+                            # per-frame SSBO ring consumed by mech + prop islands).
+                            "MC2_VK_LIGHTFEED_DEDUP",
                             "MC2_NO_LAUNCHER",
                             # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
                             # depth map, GL samples it. Requires the shared engine

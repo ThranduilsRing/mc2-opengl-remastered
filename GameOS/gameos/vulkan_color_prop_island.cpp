@@ -31,6 +31,7 @@
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // TIER-1: fetch shared scene color/normal images
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
@@ -319,6 +320,10 @@ struct ColorPropIsland {
     VkBuffer      lightBuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1)
     VmaAllocation lightAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkDeviceSize  lightCap[2] = {0, 0};
+    // VK-LIGHTFEED-DEDUP-1: what set[i]'s binding-4 descriptor currently points
+    // at -- the shared ring slot (changes every frame) or the island's own
+    // lightBuf[i] (killswitch / fail-soft). Drives the no-op rebind check.
+    VkBuffer      boundLightBuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once albedo 2D_ARRAY import + per-type layer
     // table + terrain sun. All optional (Tier-1 + MC2_VK_PROP_MATERIAL); fail-soft to
@@ -400,6 +405,7 @@ void write_descriptors(ColorPropIsland* s) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 4; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lightInfo; ++n;
+        s->boundLightBuf[i] = s->lightBuf[i];   // VK-LIGHTFEED-DEDUP-1 rebind tracker
     }
     // VK-P11 STATIC-PROP MATERIAL: binding2 layer SSBO (VS) + binding3 albedo array (FS).
     // Only written when the layout declared them (wantMaterial) AND the objects exist
@@ -456,6 +462,99 @@ bool ensure_light_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes)
     s->lightCap[par] = cap;
     write_descriptors(s);
     return true;
+}
+
+// VK-LIGHTFEED-DEDUP-1: point set[par]'s binding-4 LightsData descriptor at
+// `buf` -- the shared ring slot (handle changes every frame) or the island's
+// own lightBuf[par] on the killswitch / fail-soft path. Safe here: called
+// after beginFrame's parity-fence wait, so no in-flight command buffer can be
+// consuming set[par]. No-op when already bound.
+void bind_light_buffer(ColorPropIsland* s, uint32_t par, VkBuffer buf) {
+    if (buf == VK_NULL_HANDLE || s->set[par] == VK_NULL_HANDLE ||
+        s->boundLightBuf[par] == buf)
+        return;
+    VkDescriptorBufferInfo lightInfo{ buf, 0, VK_WHOLE_SIZE };
+    VkWriteDescriptorSet w{};
+    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    w.dstSet = s->set[par]; w.dstBinding = 4; w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w.pBufferInfo = &lightInfo;
+    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+    s->boundLightBuf[par] = buf;
+}
+
+// ADJUDICATION-1 WASHOUT-RECON (extracted as a helper for VK-LIGHTFEED-DEDUP-1
+// so it probes whichever bytes the VK vert shader will actually read this
+// frame -- the shared ring copy's CPU source, or the island's own just-copied
+// buffer): one-shot CPU-side replica of the vert shader's ambientTerm/sunColor
+// scan. If this ever disagrees with a live GL-side dump of the SAME
+// ObjectLights[idx] taken at GL's own draw time, the copy is stale/racing GL's
+// write. Probes entries 0..7 plus the real per-instance lightDataIndex values
+// actually used this frame.
+void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
+                             const Mc2ColorPropFeed& feed) {
+    if (!std::getenv("MC2_VK_PROP_LIGHT_VERTEX_PROBE")) return;
+    static bool s_vtx_dumped = false;
+    if (s_vtx_dumped) return;
+    s_vtx_dumped = true;
+    struct ObjLightsMirror {
+        float light_to_world[32][16];
+        float light_dir[32][4];
+        float light_color[32][4];
+        float light_falloff[32][4];
+        int32_t numLights[4];
+    };
+    const size_t stride = sizeof(ObjLightsMirror);
+    const size_t maxEntries = (size_t)lbytes / stride;
+    auto scanEntry = [&](size_t idx) {
+        if (idx >= maxEntries) return;
+        const ObjLightsMirror* ld = (const ObjLightsMirror*)(base + idx * stride);
+        float ambient[3] = {0, 0, 0};
+        float sunColor[3] = {0, 0, 0};
+        bool sunFound = false;
+        int n = ld->numLights[0];
+        if (n > 32) n = 32;
+        if (n < 0) n = 0;
+        for (int i = 0; i < n; ++i) {
+            int lt = (int)ld->light_dir[i][3];
+            if (lt == 0) { // TG_LIGHT_AMBIENT
+                ambient[0] += ld->light_color[i][0];
+                ambient[1] += ld->light_color[i][1];
+                ambient[2] += ld->light_color[i][2];
+            } else if (!sunFound && (lt == 1 || lt == 2)) {
+                sunColor[0] = ld->light_color[i][0];
+                sunColor[1] = ld->light_color[i][1];
+                sunColor[2] = ld->light_color[i][2];
+                sunFound = true;
+            }
+        }
+        std::fprintf(stderr,
+            "[PROP_LIGHT_VERTEX_PROBE v1] idx=%zu numLights=%d "
+            "ambient=(%.4f,%.4f,%.4f) sunColor=(%.4f,%.4f,%.4f) sunFound=%d\n",
+            idx, n, ambient[0], ambient[1], ambient[2],
+            sunColor[0], sunColor[1], sunColor[2], sunFound ? 1 : 0);
+    };
+    // Real per-instance lightDataIndex values actually used this
+    // frame (first few real props), instead of a blind 0..7 scan.
+    {
+        const GpuStaticPropInstanceMirror* insts =
+            reinterpret_cast<const GpuStaticPropInstanceMirror*>(feed.instances112);
+        std::fprintf(stderr, "[PROP_LIGHT_VERTEX_PROBE v1] real inst.lightDataIndex sample: ");
+        for (uint32_t ii = 0; ii < feed.count && ii < 12; ++ii) {
+            std::fprintf(stderr, "[%u]=%u typeID=%u ", ii, insts[ii].lightDataIndex, insts[ii].typeID);
+        }
+        std::fprintf(stderr, "\n");
+        std::fflush(stderr);
+        // Scan the ACTUAL indices these instances use (dedup small set).
+        uint32_t seen[12]; int seenCount = 0;
+        for (uint32_t ii = 0; ii < feed.count && ii < 200; ++ii) {
+            uint32_t li = insts[ii].lightDataIndex;
+            bool dup = false;
+            for (int k = 0; k < seenCount; ++k) if (seen[k] == li) { dup = true; break; }
+            if (!dup && seenCount < 12) { seen[seenCount++] = li; scanEntry((size_t)li); }
+        }
+    }
+    for (size_t idx = 0; idx < maxEntries && idx < 8; ++idx) scanEntry(idx);
+    std::fflush(stderr);
 }
 
 bool ensure_inst_capacity(ColorPropIsland* s, uint32_t par, VkDeviceSize bytes) {
@@ -1395,87 +1494,37 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const bool nativeLight = haveLightFeed && lightFeed.lightDataCpu &&
                              lightFeed.lightDataCpuBytes >= 3600ull;
     if (s->tier1 && s->wantLighting && nativeLight) {
-        ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy
+        // VK-LIGHTFEED-DEDUP-1: try the shared once-per-frame LightsData ring
+        // first (ONE copy total across the mech + prop islands instead of twin
+        // ~3.5 MB copies; the copy itself is zoned VKIsl.Shared.LightFeed
+        // inside acquire). On the shared path only the binding-4 descriptor
+        // moves -- set[par] is fence-retired by the beginFrame above, so the
+        // rebind is safe. Killswitch MC2_VK_LIGHTFEED_DEDUP=0 or any acquire
+        // fail-soft (mid-frame light-count growth, ring alloc failure) runs
+        // the pre-slice per-island copy below (zone VKIsl.Props.LightFeed)
+        // unchanged.
         const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataCpuBytes;
-        if (ensure_light_capacity(s, par, lbytes)) {
-            void* p = nullptr;
-            if (vmaMapMemory(s->allocator, s->lightAlloc[par], &p) == VK_SUCCESS) {
-                std::memcpy(p, lightFeed.lightDataCpu, (size_t)lbytes);
-                // ADJUDICATION-1 WASHOUT-RECON: one-shot CPU-side replica of the vert
-                // shader's ambientTerm/sunColor scan against the JUST-COPIED bytes (the
-                // exact bytes the VK vert shader will read this frame). If this ever
-                // disagrees with a live GL-side dump of the SAME ObjectLights[idx] taken
-                // at GL's own draw time, the copy is stale/racing GL's write. Probes
-                // entries 0..7 (first few ObjectLights rows) to catch whichever is
-                // actually populated for on-screen buildings this frame.
-                if (std::getenv("MC2_VK_PROP_LIGHT_VERTEX_PROBE")) {
-                    static bool s_vtx_dumped = false;
-                    if (!s_vtx_dumped) {
-                        s_vtx_dumped = true;
-                        struct ObjLightsMirror {
-                            float light_to_world[32][16];
-                            float light_dir[32][4];
-                            float light_color[32][4];
-                            float light_falloff[32][4];
-                            int32_t numLights[4];
-                        };
-                        const size_t stride = sizeof(ObjLightsMirror);
-                        const size_t maxEntries = (size_t)lbytes / stride;
-                        const uint8_t* base = (const uint8_t*)p;
-                        auto scanEntry = [&](size_t idx) {
-                            if (idx >= maxEntries) return;
-                            const ObjLightsMirror* ld = (const ObjLightsMirror*)(base + idx * stride);
-                            float ambient[3] = {0, 0, 0};
-                            float sunColor[3] = {0, 0, 0};
-                            bool sunFound = false;
-                            int n = ld->numLights[0];
-                            if (n > 32) n = 32;
-                            if (n < 0) n = 0;
-                            for (int i = 0; i < n; ++i) {
-                                int lt = (int)ld->light_dir[i][3];
-                                if (lt == 0) { // TG_LIGHT_AMBIENT
-                                    ambient[0] += ld->light_color[i][0];
-                                    ambient[1] += ld->light_color[i][1];
-                                    ambient[2] += ld->light_color[i][2];
-                                } else if (!sunFound && (lt == 1 || lt == 2)) {
-                                    sunColor[0] = ld->light_color[i][0];
-                                    sunColor[1] = ld->light_color[i][1];
-                                    sunColor[2] = ld->light_color[i][2];
-                                    sunFound = true;
-                                }
-                            }
-                            std::fprintf(stderr,
-                                "[PROP_LIGHT_VERTEX_PROBE v1] idx=%zu numLights=%d "
-                                "ambient=(%.4f,%.4f,%.4f) sunColor=(%.4f,%.4f,%.4f) sunFound=%d\n",
-                                idx, n, ambient[0], ambient[1], ambient[2],
-                                sunColor[0], sunColor[1], sunColor[2], sunFound ? 1 : 0);
-                        };
-                        // Real per-instance lightDataIndex values actually used this
-                        // frame (first few real props), instead of a blind 0..7 scan.
-                        {
-                            const GpuStaticPropInstanceMirror* insts =
-                                reinterpret_cast<const GpuStaticPropInstanceMirror*>(feed.instances112);
-                            std::fprintf(stderr, "[PROP_LIGHT_VERTEX_PROBE v1] real inst.lightDataIndex sample: ");
-                            for (uint32_t ii = 0; ii < feed.count && ii < 12; ++ii) {
-                                std::fprintf(stderr, "[%u]=%u typeID=%u ", ii, insts[ii].lightDataIndex, insts[ii].typeID);
-                            }
-                            std::fprintf(stderr, "\n");
-                            std::fflush(stderr);
-                            // Scan the ACTUAL indices these instances use (dedup small set).
-                            uint32_t seen[12]; int seenCount = 0;
-                            for (uint32_t ii = 0; ii < feed.count && ii < 200; ++ii) {
-                                uint32_t li = insts[ii].lightDataIndex;
-                                bool dup = false;
-                                for (int k = 0; k < seenCount; ++k) if (seen[k] == li) { dup = true; break; }
-                                if (!dup && seenCount < 12) { seen[seenCount++] = li; scanEntry((size_t)li); }
-                            }
-                        }
-                        for (size_t idx = 0; idx < maxEntries && idx < 8; ++idx) scanEntry(idx);
-                        std::fflush(stderr);
-                    }
+        VkBuffer sharedLight = VK_NULL_HANDLE;
+        if (mc2vkSharedLightFeedAcquire(s->allocator, s->device,
+                                        lightFeed.lightDataCpu,
+                                        lightFeed.lightDataCpuBytes, &sharedLight)) {
+            bind_light_buffer(s, par, sharedLight);
+            // Probe reads the CPU source -- byte-identical to the ring copy
+            // (single-threaded copy of the same array this same frame).
+            prop_light_vertex_probe((const uint8_t*)lightFeed.lightDataCpu, lbytes, feed);
+            s->lightingReady = true;
+        } else {
+            ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy (twin-copy path)
+            if (ensure_light_capacity(s, par, lbytes)) {
+                void* p = nullptr;
+                if (vmaMapMemory(s->allocator, s->lightAlloc[par], &p) == VK_SUCCESS) {
+                    std::memcpy(p, lightFeed.lightDataCpu, (size_t)lbytes);
+                    prop_light_vertex_probe((const uint8_t*)p, lbytes, feed);
+                    vmaUnmapMemory(s->allocator, s->lightAlloc[par]);
+                    // Restore the own-buffer binding after any shared frames.
+                    bind_light_buffer(s, par, s->lightBuf[par]);
+                    s->lightingReady = true;
                 }
-                vmaUnmapMemory(s->allocator, s->lightAlloc[par]);
-                s->lightingReady = true;
             }
         }
     }
