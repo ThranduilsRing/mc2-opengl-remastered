@@ -662,4 +662,36 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     }
 }
 
+// CAMERA-PARK-1 (ported from vk branch 4b69ef78): see header. One-shot camera
+// pose pin at frame >= @frame (default 300); sim keeps running.
+void cameraParkTick(unsigned int frame)
+{
+    static const char* s_park = getenv("MC2_CAMERA_PARK");
+    if (!s_park || !eye)
+        return;
+    static bool s_parked = false;
+    static long s_parkFrame = 300;
+    static float pv[5] = {0, 0, 0, 0, 0};
+    static bool s_parsed = false;
+    if (!s_parsed) {
+        s_parsed = true;
+        char buf[160];
+        strncpy(buf, s_park, sizeof(buf) - 1);
+        buf[sizeof(buf) - 1] = 0;
+        if (char* at = strchr(buf, '@')) { s_parkFrame = atol(at + 1); *at = 0; }
+        int n = sscanf(buf, "%f,%f,%f,%f,%f", &pv[0], &pv[1], &pv[2], &pv[3], &pv[4]);
+        if (n < 5) s_park = nullptr;  // malformed -> off
+    }
+    if (s_park && !s_parked && (long)frame >= s_parkFrame) {
+        s_parked = true;
+        Stuff::Vector3D p; p.x = pv[0]; p.y = pv[1]; p.z = 0.0f;
+        eye->setPosition(p, false);
+        Stuff::Vector3D rot; rot.x = pv[3]; rot.y = pv[2]; rot.z = pv[4];
+        eye->setRotation(rot);
+        eye->freezeScriptedCameraForCapture();
+        fprintf(stderr, "[CAMERA_PARK v1] frame=%u pos=%.0f,%.0f rot=%.0f proj=%.0f alt=%.0f\n",
+                frame, pv[0], pv[1], pv[2], pv[3], pv[4]);
+    }
+}
+
 }}  // namespace gos::visual_capture

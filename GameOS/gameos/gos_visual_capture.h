@@ -44,4 +44,11 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH);
 // avoid resolving the scene FBO at all on the unset hot path.
 bool active();
 
+// CAMERA-PARK-1 (ported from vk branch 4b69ef78): MC2_CAMERA_PARK=
+// "x,y,rot,proj,alt[@frame]" hard-sets the live camera pose once at
+// frame >= @frame (default 300) and pins it against scripted writers
+// (freezeScriptedCameraForCapture) WITHOUT freezing the sim. Called once per
+// frame from gameosmain.cpp. Default OFF = one static pointer check.
+void cameraParkTick(unsigned int frame);
+
 }}  // namespace gos::visual_capture
