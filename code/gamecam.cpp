@@ -443,6 +443,24 @@ void GameCamera::render (void)
 			// which matches raw MC2 coords (Z = elevation).
 			gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
 
+			// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour. This is the
+			// legacy per-vertex light value flat cement pads received
+			// (getLight*(flatIntensity) with flatIntensity = the flat-up
+			// N.L = lightDirection.z) — the same value burnInShadows bakes
+			// into the colormap. Cement-atlas/overlay shaders multiply it
+			// into their RAW (unburned) texels so pads go night-dark like
+			// the surrounding terrain. Day missions: ~(1,1,1) = no-op.
+			// Killswitch MC2_CEMENT_MISSION_LIGHT=0 (handled in the setter).
+			{
+				float flatIntensity = lightDirection.z;
+				if (flatIntensity < 0.0f) flatIntensity = 0.0f;
+				if (flatIntensity > 1.0f) flatIntensity = 1.0f;
+				gos_SetTerrainMissionFlatLight(
+					getLightRed(flatIntensity)   / 255.0f,
+					getLightGreen(flatIntensity) / 255.0f,
+					getLightBlue(flatIntensity)  / 255.0f);
+			}
+
 			// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).
 			mc2SceneLightingTrace();
 

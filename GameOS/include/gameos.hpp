@@ -2422,6 +2422,12 @@ void __stdcall gos_DrawDecals();
 
 // Terrain splatting API (material textures, lighting)
 void gos_SetTerrainLightDir(float x, float y, float z);
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour (0..1), the legacy
+// per-vertex value burnInShadows bakes into the colormap; cement/overlay
+// shaders multiply it into their RAW (unburned) texels. Killswitch
+// MC2_CEMENT_MISSION_LIGHT=0 forces (1,1,1) inside the setter.
+void gos_SetTerrainMissionFlatLight(float r, float g, float b);
+void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 void gos_SetTerrainDetailParams(float tiling, float strength);
 void gos_SetTerrainMaterialNormal(int index, unsigned int glTexId);
 void gos_SetTerrainWorldScale(float scale);

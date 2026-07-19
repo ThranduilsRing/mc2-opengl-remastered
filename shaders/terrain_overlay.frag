@@ -61,6 +61,13 @@ uniform sampler2D      u_asphaltAlbedo;
 uniform sampler2D      u_gravelAlbedo;   // dirt-road material (v_matId == 2)
 uniform sampler2DArray matNormalArray;
 uniform PREC float     u_asphaltScale;
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour. This shader's fixed
+// tints are light-blind (main terrain darkness is burned into its colormap
+// CPU-side), so runway/road decals + cement transition rings stayed bright on
+// night missions. Multiply into the composed albedo. Day ~= (1,1,1) -> near
+// byte-identical. Killswitch MC2_CEMENT_MISSION_LIGHT=0 force-uploads (1,1,1).
+// Uploaded by uploadOverlayUniforms_ (all binders of this frag route there).
+uniform PREC vec3      u_missionFlatLight;
 
 void main()
 {
@@ -115,6 +122,10 @@ void main()
         asphaltN = normalize(
             texture(matNormalArray, vec3(guv, float(MAT_LAYER_ASPHALT))).rgb * 2.0 - 1.0);
     }
+
+    // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
+    // albedo (cement transition tint, asphalt, gravel — all raw/unburned art).
+    c.rgb *= u_missionFlatLight;
 
     // Discard transparent pixels — cement transitions are binary-alpha tiles.
     // This keeps depth writes and GBuffer1 writes on the cement-visible region only,

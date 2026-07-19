@@ -1689,6 +1689,10 @@ class gosRenderer {
         // Terrain splatting setters
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
         const vec4& getTerrainLightDir() const { return terrain_light_dir_; }
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (killswitch handled at
+        // the gos_ setter — values arriving here are already gated).
+        void setTerrainMissionFlatLight(float r, float g, float b) { terrain_mission_flat_light_ = vec4(r, g, b, 0.0f); }
+        const vec4& getTerrainMissionFlatLight() const { return terrain_mission_flat_light_; }
         void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
         void setTerrainMaterialNormal(int idx, GLuint texId) {
             if (idx >= 0 && idx < 9) {
@@ -2099,6 +2103,13 @@ class gosRenderer {
 
         // Terrain splatting textures (from main source, needed for material normal maps)
         vec4 terrain_light_dir_;
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour (eye->getLightRed/
+        // Green/Blue(flatIntensity)/255, flatIntensity = clamp(lightDir.z,0,1)) —
+        // the legacy per-vertex value burned into the colormap by burnInShadows
+        // (terrtxm2.cpp). Cement-atlas / overlay texels are RAW (unburned), so
+        // the shaders multiply this in. Default (1,1,1) = day-neutral so paths
+        // that never call the setter (menus, editor) are unchanged.
+        vec4 terrain_mission_flat_light_ = vec4(1.0f, 1.0f, 1.0f, 0.0f);
         float terrain_detail_tiling_ = 1.0f;
         float terrain_detail_strength_ = 1.0f;  // global detail-normal multiplier; was 4.0 (too loud, carpet at distance)
         GLuint terrain_mat_normal_[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -2542,6 +2553,9 @@ class gosRenderer {
             // ROAD-MATERIAL-GRAVEL-1: gravel albedo sampler (terrain_overlay.frag
             // v_matId==2). Only declared on overlayProg_; decalProg_ leaves it -1.
             GLint gravelAlbedo                       = -1;  // sampler2D
+            // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
+            // decal.frag does not declare it -> stays -1 -> skipped).
+            GLint missionFlatLight                   = -1;  // vec3
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5165,6 +5179,8 @@ void gosRenderer::init() {
         locs.asphaltScale    = glGetUniformLocation(shp, "u_asphaltScale");
         // ROAD-MATERIAL-GRAVEL-1: gravel albedo sampler (overlayProg_ only).
         locs.gravelAlbedo    = glGetUniformLocation(shp, "u_gravelAlbedo");
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only).
+        locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -9379,6 +9395,27 @@ void gos_GetTerrainLightDir(float* x, float* y, float* z) {
 void gos_SetTerrainLightDir(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainLightDir(x, y, z);
 }
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour feed (gamecam.cpp, per
+// frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the
+// old bright-pads-at-night behaviour); default ON.
+void gos_SetTerrainMissionFlatLight(float r, float g, float b) {
+    static const bool s_enabled = []() {
+        const char* e = getenv("MC2_CEMENT_MISSION_LIGHT");
+        return !(e && e[0] == '0');
+    }();
+    if (!s_enabled) { r = 1.0f; g = 1.0f; b = 1.0f; }
+    if (g_gos_renderer) g_gos_renderer->setTerrainMissionFlatLight(r, g, b);
+}
+void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b) {
+    float rr = 1.0f, gg = 1.0f, bb = 1.0f;
+    if (g_gos_renderer) {
+        const vec4& fl = g_gos_renderer->getTerrainMissionFlatLight();
+        rr = fl.x; gg = fl.y; bb = fl.z;
+    }
+    if (r) *r = rr;
+    if (g) *g = gg;
+    if (b) *b = bb;
+}
 void gos_SetTerrainDetailParams(float tiling, float strength) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDetailParams(tiling, strength);
 }
@@ -9780,6 +9817,13 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         gosPostProcess* pp = getGosPostProcess();
         float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
         glUniform1f(L.mapHalfExtent, halfExt);
+    }
+    // CEMENT-NIGHT-LIGHT-1: mission flat-pad light. CRITICAL: every binder of
+    // terrain_overlay.frag MUST upload this (an unset uniform reads 0 -> black
+    // cement). All three overlay/decal bind sites route through this helper.
+    if (L.missionFlatLight >= 0) {
+        const vec4& fl = terrain_mission_flat_light_;
+        glUniform3f(L.missionFlatLight, fl.x, fl.y, fl.z);
     }
 
     setupOverlayShadowsForShp(shp);

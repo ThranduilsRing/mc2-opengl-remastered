@@ -22,6 +22,15 @@ uniform int   u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (
 // of the colormap. Same UV math as gos_terrain.frag.
 uniform sampler2D  u_cementAtlas;
 uniform int        u_useCement;
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour (eye->getLight*(flat
+// N.L)/255). Night darkness is burned into the colormap texels CPU-side
+// (terrtxm2.cpp burnInShadows), but the cement atlas is built from RAW
+// (unburned) tile art, so night missions showed bright pads. Multiply this
+// into every cement-atlas / overlay-sidecar texel. Day missions upload
+// ~(1,1,1) -> near byte-identical. Killswitch MC2_CEMENT_MISSION_LIGHT=0
+// force-uploads (1,1,1). EVERY host binder of this frag MUST upload it
+// (unset uniform reads 0 -> black pads).
+uniform vec3       u_missionFlatLight;
 uniform int        u_cementGridSide;
 uniform float      u_cementWUPT;   // world units per cement tile (= 128)
 // CEMENT-DIAG-CONNECT-1 (gate MC2_TERRAIN_CEMENT_DIAG_CONNECT): 0 = off (byte-identical).
@@ -756,7 +765,10 @@ void main() {
         int  cRow = int(cLayerIdx) / cGridSide;
         vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
         vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
-        vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb;
+        // CEMENT-NIGHT-LIGHT-1: atlas texels are RAW (unburned) -> apply the
+        // mission flat-pad light here (covers both the solid and transition
+        // branches below).
+        vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * u_missionFlatLight;
         if (isTransition) {
             // CEMENT-HARD-EDGE-1 (default-on; self-disables if u_useTransitionMask==0):
             // Render the SAME solid cement atlas tile as the interior, cut by a HARD
@@ -876,7 +888,8 @@ void main() {
                 int  dRow = int(dLayerIdx) / dGridSide;
                 // Use this tile's own sub-tile UV so the fill aligns with the grid.
                 vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
-                base = texture(u_cementAtlas, dAtlasUV).rgb;
+                // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light.
+                base = texture(u_cementAtlas, dAtlasUV).rgb * u_missionFlatLight;
                 cementHit = true;
             }
         }
@@ -902,7 +915,9 @@ void main() {
         ovUV.y = (u_overlayBounds.y - v_worldPos.y) / max(u_overlayBounds.w, 1e-5);
         if (ovUV.x >= 0.0 && ovUV.x <= 1.0 && ovUV.y >= 0.0 && ovUV.y <= 1.0) {
             vec4 ov = texture(u_overlaySidecar, ovUV);
-            base = mix(base, ov.rgb, ov.a);
+            // CEMENT-NIGHT-LIGHT-1: sidecar is authored unburned art -> apply
+            // the mission flat-pad light like the cement atlas above.
+            base = mix(base, ov.rgb * u_missionFlatLight, ov.a);
             overlayCoverage = ov.a;
             if (ov.a > 0.5) cementHit = true;
         }

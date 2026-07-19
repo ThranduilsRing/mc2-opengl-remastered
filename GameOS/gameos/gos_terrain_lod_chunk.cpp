@@ -633,6 +633,7 @@ static GLint    s_locAtlasTLX       = -1;  // Phase 10: atlas top-left X (world)
 static GLint    s_locAtlasTLY       = -1;  // Phase 10: atlas top-left Y (world)
 static GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsMapSide
 static GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
+static GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -823,6 +824,8 @@ extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
 // Phase 10 Step 1b: terrain sun direction (gameos.hpp), same value the legacy
 // terrain frag's terrainLightDir uniform receives.
 extern void   gos_GetTerrainLightDir(float* x, float* y, float* z);
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light (gameos.hpp).
+extern void   gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 
 // ---------------------------------------------------------------------------
 // Patch geometry cache (Phase 4).
@@ -1118,6 +1121,7 @@ void gos_TerrainLodChunk_Init()
             s_locAtlasTLY     = glGetUniformLocation(s_terrainProgram, "u_atlasTopLeftY");
             s_locAtlasOOW     = glGetUniformLocation(s_terrainProgram, "u_atlasOneOverWorldUnits");
             s_locLightDir     = glGetUniformLocation(s_terrainProgram, "terrainLightDir");
+            s_locMissionFlatLight = glGetUniformLocation(s_terrainProgram, "u_missionFlatLight");  // CEMENT-NIGHT-LIGHT-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -1798,6 +1802,16 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             float lx = 0.f, ly = 0.f, lz = 1.f;
             gos_GetTerrainLightDir(&lx, &ly, &lz);
             glUniform4f(s_locLightDir, lx, ly, lz, 0.0f);
+        }
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light for the RAW cement-atlas
+        // texels (night darkness is burned into the colormap CPU-side; the
+        // cement atlas is built from unburned tile art). MUST be uploaded by
+        // every binder of terrain_lod_chunk.frag or draws read 0 -> black pads.
+        // (The tess variant program auto-mirrors this via mirrorTerrainUniforms.)
+        if (s_locMissionFlatLight >= 0) {
+            float fr = 1.f, fg = 1.f, fb = 1.f;
+            gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
+            glUniform3f(s_locMissionFlatLight, fr, fg, fb);
         }
     }
 
