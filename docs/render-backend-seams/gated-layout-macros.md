@@ -6,7 +6,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:390`
+- Header: `GameOS/gameos/gos_postprocess.h:407`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VulkanEdgeFogIsland* vkFogIsland_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -14,7 +14,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:405`
+- Header: `GameOS/gameos/gos_postprocess.h:422`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VulkanOobFogIsland* vkOobFogIsland_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -22,7 +22,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:433`
+- Header: `GameOS/gameos/gos_postprocess.h:457`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
