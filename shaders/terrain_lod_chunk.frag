@@ -177,6 +177,29 @@ layout(binding = 23, std430) readonly buffer TerrainHeightBufFrag {
 layout(binding = 25, std430) readonly buffer TerrainCementBufFrag {
     uint cementWordsF[];
 };
+// NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, default ON): per-frame
+// terrain LIGHT POOL — the SAME GpuTerrainLight SSBO (48B std430, lockstep with
+// gos_terrain_lighting.h / include/terrain_lighting_shared.hglsl) the legacy
+// vertex-lighting compute (gos_terrain_lighting.comp) consumes. Lights [2..N-1]
+// only (sun + ambient are already in the sun/shadow terms above). The chunk
+// terrain previously DROPPED these pools entirely — night missions lost all
+// building-spotlight / light-prop / mech-weapon up-lighting on the ground.
+// u_numPoolLights==0 (gate off, producer disabled, or no lights registered)
+// -> the loop in main() is never entered -> byte-identical output.
+struct PoolLight {
+    vec3  position;        // MC2 world (same frame as v_worldPos)
+    uint  lightType;       // 1=point 2=spot 3=terrain, 0=skip
+    vec3  color;           // R/G/B normalized 0..1
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;
+    float _plPad2;
+};
+layout(binding = 28, std430) readonly buffer TerrainLightPoolFrag {
+    PoolLight poolLights[];
+};
+uniform int u_numPoolLights;   // driver force-uploads 0 when the gate is off
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 GBuffer1;   // shadow-handled flat-up (terrain MRT composite)
@@ -1512,6 +1535,38 @@ void main() {
     }
 
     vec3 lit = baseColor * normalLight * shadow;
+
+    // NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop. ADDITIVE and
+    // AFTER the shadow multiply — a lamp must light shadowed ground (the legacy
+    // path adds these as D3D specular AFTER the texture*lightRGB modulate, i.e.
+    // also un-shadowed). Falloff math mirrors gos_terrain_lighting.comp:234-254
+    // / TG_Light::GetFalloff (tgl.h) / quad.cpp:1325-1370 exactly:
+    //   len <= close            -> falloff 1
+    //   close < len < far       -> (far - len) * oneOverDistance
+    //   len >= far              -> 0 (skip)
+    // Legacy clamps the summed spec to 255/channel -> min(pool, 1.0) here.
+    // Applies to the cement path too by construction (cement flows through
+    // `lit`: normalLight is flattened and static shadow dropped above, and the
+    // u_missionFlatLight night-darken multiplied into `base` stays intact —
+    // this ADDS lamp pooling on top, matching CEMENT-NIGHT-LIGHT-1 intent).
+    // Cost: uniform-bounded loop (u_numPoolLights, driver-capped 256; night
+    // missions typically pack a few dozen), 3 dot/sqrt per light, zero texture
+    // taps. u_numPoolLights==0 -> block skipped -> byte-identical.
+    if (u_numPoolLights > 0) {
+        vec3 pool = vec3(0.0);
+        for (int i = 0; i < u_numPoolLights; ++i) {
+            if (poolLights[i].lightType == 0u) continue;
+            vec3  vtl = v_worldPos - poolLights[i].position;
+            float len = sqrt(dot(vtl, vtl));   // GetApproximateLength (non-ASM = sqrt)
+            if (len >= poolLights[i].farDistance) continue;
+            float falloff = (len <= poolLights[i].closeDistance)
+                          ? 1.0
+                          : (poolLights[i].farDistance - len) * poolLights[i].oneOverDistance;
+            pool += poolLights[i].color * falloff;
+        }
+        lit += min(pool, vec3(1.0));
+    }
+
     // Hemisphere ambient fill (TERRAIN-LIGHTING-1/2) — added AFTER shadow so sky/
     // ground bounce still lights shadowed terrain. Env-gated OFF by default
     // (terrainLightingV1Strength=0 -> skipped, byte-safe). Matches gos_terrain.frag.

@@ -3973,52 +3973,84 @@ float Camera::getCameraRotation (void)
 }
 
 #define OBSCURED_FACTOR	0.5f;
+
+// NIGHT-LIGHT-POOLS-1 optional knob MC2_NIGHT_AMBIENT_FLOOR=<0..64>: minimum
+// per-channel output of the getLightRed/Green/Blue family. These getters feed
+// the colormap night burn-in (terrtxm2.cpp burnInShadows) plus every flat-lit
+// terrain/cement consumer, so a floor here lifts the darkest night terrain off
+// pitch-black without touching authored day lighting (values already above the
+// floor pass through untouched). Default UNSET = 0 = stock data-faithful
+// (max(x,0) is the identity on unsigned channels). Boot-cached (Debug
+// Instrumentation Rule); clamped to [0,64] so it can only be a subtle floor,
+// never a wash-out.
+static long mc2NightAmbientFloor (void)
+{
+	static const long s_floor = [] {
+		const char* v = getenv("MC2_NIGHT_AMBIENT_FLOOR");
+		if (!v || !v[0]) return 0L;
+		long f = atol(v);
+		if (f < 0)  f = 0;
+		if (f > 64) f = 64;
+		return f;
+	}();
+	return s_floor;
+}
+
 //---------------------------------------------------------------------------
 unsigned char Camera::getLightRed (float intensity)
 {
+	const long floorV = mc2NightAmbientFloor();
 	//ASM and Inline
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightRed * intensity + ambientRed);
+		if (fResult < floorV)
+			fResult = floorV;
 		if (fResult < 0xff)
 			return fResult;
 		else
 			return 0xff;
 	}
-	
-	return ambientRed;
+
+	return (ambientRed < floorV) ? (unsigned char)floorV : ambientRed;
 }
 
 //---------------------------------------------------------------------------
 unsigned char Camera::getLightGreen (float intensity)
 {
+	const long floorV = mc2NightAmbientFloor();
 	//ASM and Inline
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightGreen * intensity + ambientGreen);
+		if (fResult < floorV)
+			fResult = floorV;
 		if (fResult < 0xff)
 			return fResult;
 		else
 			return 0xff;
 	}
 
-	return ambientGreen;
+	return (ambientGreen < floorV) ? (unsigned char)floorV : ambientGreen;
 }
 
 //---------------------------------------------------------------------------
 unsigned char Camera::getLightBlue (float intensity)
 {
+	const long floorV = mc2NightAmbientFloor();
 	//ASM and Inline
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightBlue * intensity + ambientBlue);
+		if (fResult < floorV)
+			fResult = floorV;
 		if (fResult < 0xff)
 			return fResult;
 		else
 			return 0xff;
 	}
 
-	return ambientBlue;
+	return (ambientBlue < floorV) ? (unsigned char)floorV : ambientBlue;
 }
 
 bool Camera::save( FitIniFile* file )

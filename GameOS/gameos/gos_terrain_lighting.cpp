@@ -198,6 +198,11 @@ static size_t   s_outputSlotBytes = 0;
 
 static uint64_t s_frameIndex = 0;
 
+// NIGHT-LIGHT-POOLS-1: light count packed by the LAST PackAndDispatch — read by
+// gos_terrain_lighting::GetLightPoolLightCount() so the LOD-chunk terrain draw
+// knows how many pool lights the (already-uploaded) light SSBO holds this frame.
+static uint32_t s_lastNumLights = 0;
+
 // Stage 3: tryConsume fallback telemetry counters (mirrors readback_fallback_n2 /
 // readback_fallback_conservative pattern from gpu_cull_readback.cpp)
 static uint64_t s_lightingFallbackN1          = 0;  // consumed N-1 (production path)
@@ -364,6 +369,16 @@ namespace gos_terrain_lighting {
 
 GLuint GetOutputSsbo() {
     return static_cast<GLuint>(s_computeOutputSsbo.glName);
+}
+
+// NIGHT-LIGHT-POOLS-1: forward-consumer accessors for the per-frame light pool.
+GLuint GetLightPoolSsbo() {
+    if (!s_initialized) return 0;
+    return static_cast<GLuint>(s_lightInputSsbo.glName);
+}
+
+uint32_t GetLightPoolLightCount() {
+    return s_lastNumLights;
 }
 
 // ---------------------------------------------------------------------------
@@ -632,6 +647,7 @@ void mission_shutdown() {
     s_currentSlot     = 0;
     s_frameIndex      = 0;
     s_initialized     = false;
+    s_lastNumLights   = 0;  // NIGHT-LIGHT-POOLS-1: no pool lights across mission boundary
     s_dramShadow.clear();
 
     printf("[TERRAIN_LIGHTING_GPU v1] event=mission_shutdown\n");
@@ -819,6 +835,9 @@ void PackAndDispatch() {
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         }
     }
+    // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
+    // consumer (LOD-chunk terrain per-fragment light loop).
+    s_lastNumLights = numLights;
 
     // --- Dispatch compute ---
     glUseProgram(s_program);

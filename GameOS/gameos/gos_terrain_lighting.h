@@ -114,4 +114,16 @@ const GpuTerrainLightingOutput* GetMappedOutputForParity();
 // glBindBufferBase with buffer 0 unbinds the slot (well-defined per GL spec).
 GLuint GetOutputSsbo();
 
+// NIGHT-LIGHT-POOLS-1: expose the per-frame packed terrain LIGHT POOL SSBO
+// (GpuTerrainLight[48B], lights [2..N-1] — sun/ambient excluded, uploaded every
+// frame by PackAndDispatch) so a forward consumer (terrain_lod_chunk.frag) can
+// re-run the stock per-light falloff per-fragment and restore night up-lighting
+// (building spotlights / light props / mech-vehicle-weapon lights pooling onto
+// terrain + cement). Returns 0 when Phase 1 is disabled or not initialized.
+GLuint GetLightPoolSsbo();
+
+// Number of lights packed into the pool SSBO by the LAST PackAndDispatch
+// (0 when disabled / no eye / no registered pool lights this frame).
+uint32_t GetLightPoolLightCount();
+
 } // namespace gos_terrain_lighting

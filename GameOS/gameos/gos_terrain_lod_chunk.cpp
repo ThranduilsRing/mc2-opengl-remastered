@@ -13,6 +13,7 @@
 #include "../../RenderCore/GpuBufferOwner.h"  // TERRAIN-LODCHUNK-SSBO-OWNER-1: type/cement owner records
 #include "../../RenderCore/KtxLoader.h"  // TERRAIN-MATERIAL-TEXTURES-1: BC7 KTX2 albedo layer load
 #include "gos_profiler.h"  // CLIFF-TESS-PERF: Tracy ZoneScopedN for the near-field tess mirror+draw
+#include "gos_terrain_lighting.h"  // NIGHT-LIGHT-POOLS-1: per-frame light-pool SSBO accessors
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -634,6 +635,7 @@ static GLint    s_locAtlasTLY       = -1;  // Phase 10: atlas top-left Y (world)
 static GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsMapSide
 static GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
 static GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
+static GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLights (0 = pool loop off)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -1122,6 +1124,7 @@ void gos_TerrainLodChunk_Init()
             s_locAtlasOOW     = glGetUniformLocation(s_terrainProgram, "u_atlasOneOverWorldUnits");
             s_locLightDir     = glGetUniformLocation(s_terrainProgram, "terrainLightDir");
             s_locMissionFlatLight = glGetUniformLocation(s_terrainProgram, "u_missionFlatLight");  // CEMENT-NIGHT-LIGHT-1
+            s_locNumPoolLights = glGetUniformLocation(s_terrainProgram, "u_numPoolLights");  // NIGHT-LIGHT-POOLS-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -1812,6 +1815,32 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             float fr = 1.f, fg = 1.f, fb = 1.f;
             gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
             glUniform3f(s_locMissionFlatLight, fr, fg, fb);
+        }
+        // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
+        // the per-frame terrain light pool SSBO (packed+uploaded every frame by
+        // gos_terrain_lighting::PackAndDispatch — the SAME buffer the legacy
+        // vertex-lighting compute reads) at binding 28 and tell the frag how
+        // many lights it holds. Gate=0, producer disabled
+        // (MC2_TERRAIN_LIGHTING_GPU=0), or zero registered lights this frame
+        // -> u_numPoolLights force-uploads 0 -> the frag loop is never entered
+        // -> byte-identical output (the killswitch contract).
+        {
+            static const bool s_lightPoolsGate = [] {
+                const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
+                return !(v && v[0] == '0');   // default ON; =0 reverts byte-identical
+            }();
+            int poolCount = 0;
+            if (s_lightPoolsGate) {
+                const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
+                const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
+                if (poolSsbo != 0 && n > 0) {
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                     TERRAIN_LIGHT_POOL_SSBO_BINDING, poolSsbo);
+                    poolCount = static_cast<int>(n > 256u ? 256u : n);
+                }
+            }
+            if (s_locNumPoolLights >= 0)
+                glUniform1i(s_locNumPoolLights, poolCount);
         }
     }
 

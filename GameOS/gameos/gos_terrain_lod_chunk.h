@@ -18,6 +18,7 @@ constexpr uint32_t TERRAIN_TYPE_SSBO_BINDING   = 24u;  // Step 5b: per-vertex te
 constexpr uint32_t TERRAIN_CEMENT_SSBO_BINDING = 25u;  // Step 5c: per-vertex cement word (valid|layerIdx)
 constexpr uint32_t TERRAIN_VISUAL_HEIGHT_SSBO_BINDING = 26u; // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x VISUAL heightfield (render-only)
 constexpr uint32_t TERRAIN_VISUAL_DAMP_SSBO_BINDING   = 27u; // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp
+constexpr uint32_t TERRAIN_LIGHT_POOL_SSBO_BINDING    = 28u; // NIGHT-LIGHT-POOLS-1: per-frame terrain light pool (GpuTerrainLight[48B], producer gos_terrain_lighting.cpp PackAndDispatch)
 
 // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA control-map texture unit (not an
 // SSBO — sampled with GL_LINEAR like the colormap). Gate MC2_TERRAIN_CONTROLMAP,
