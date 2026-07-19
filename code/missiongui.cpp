@@ -527,6 +527,12 @@ void MissionInterfaceManager::setTutorialText(const char *text)
 #include <cstring>   // GPU-GROUND-PICK-PARITY-1: strcmp for lookupFailReason classify
 #include "../GameOS/gameos/diagnostic_trace.h"  // CURSOR_TARGET trace (offscreen-pick recon)
 #include "pausewindow.h"   // PAUSE-IMGUI-SLICE-1: PauseWindow::imguiPauseEnabled()
+#include "logisticsdialog.h"  // UI-COMMAND-CHANNEL-1: LogisticsOKDialog (press dialog.YES/NO)
+#include "../GameOS/gameos/gos_dev_shell.h"  // UI-COMMAND-CHANNEL-1: scheduleScreenshot reuse
+#include <sys/stat.h>  // UI-COMMAND-CHANNEL-1: cheap per-frame size probe (_stat64)
+#include <direct.h>    // UI-COMMAND-CHANNEL-1: _mkdir (dev_shell_out for screenshots)
+#include <string>      // UI-COMMAND-CHANNEL-1: command line parsing
+#include <vector>      // UI-COMMAND-CHANNEL-1: command line list
 // CGui sub-phase per-frame ns accumulators -- DEFINED in controlgui.cpp.
 // Index order MUST match the MF_CG_* tail of MifPhase below (fold loop in
 // mfFrameEnd is the single mapping point).
@@ -818,6 +824,168 @@ namespace {
 	}
 }
 
+//--------------------------------------------------------------------------
+// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE=<path> (default unset -> this
+// function is one cached-getenv check per frame, zero behavior change).
+// When set, the file is size-probed once per frame (_stat64, cheap); when
+// non-empty, all its lines are consumed (read-then-truncate) and executed,
+// one command per line:
+//   toggle_pause          - MissionInterfaceManager::togglePause() (same as
+//                           the MC2_BOOT_PAUSED fixture / ESC key)
+//   press pause.<BTN>     - PauseWindow::handleClick(BTN), BTN one of
+//                           OBJECTIVES|SAVE|LOAD|OPTIONS|RESTART|EXIT|RETURN
+//                           (same path the ImGui InvisibleButtons take)
+//   press dialog.YES|NO   - pause abort/exit confirm dialog, same
+//                           LogisticsOKDialog::handleMessage the ImGui
+//                           renderImGuiConfirm() buttons send
+//   screenshot <name> [backbuffer] - end-of-frame TGA via the DEV-SHELL
+//                           capture point (gos_dev_shell::scheduleScreenshot,
+//                           writes dev_shell_out/<name>.tga). Requires
+//                           MC2_DEV_SHELL=1 (the capture hook is gated on the
+//                           shell); acked blocked otherwise.
+// Every consumed line is acknowledged by appending "<line> -> ok|unknown|
+// blocked (reason)" to <path>.ack, so a driving agent can confirm the engine
+// actually saw each command. Lets agents press ANY pause-menu UI button in a
+// running instance headlessly (fix-verification driver). Same fixture family
+// as MC2_BOOT_PAUSED above. Registered (Trace).
+void MissionInterfaceManager::processUiCommandChannel()
+{
+	static const char* s_path = getenv("MC2_UI_COMMAND_FILE");
+	if (!s_path || !s_path[0])
+		return;
+
+	struct _stat64 st;
+	if (_stat64(s_path, &st) != 0 || st.st_size <= 0)
+		return;
+
+	// Consume: read everything, then truncate so the driver appends fresh
+	// commands and an empty file means "all consumed".
+	std::vector<std::string> lines;
+	{
+		FILE* f = fopen(s_path, "rb");
+		if (!f)
+			return;
+		std::string all;
+		char buf[512];
+		size_t n;
+		while ((n = fread(buf, 1, sizeof(buf), f)) > 0)
+			all.append(buf, n);
+		fclose(f);
+		f = fopen(s_path, "wb");
+		if (f)
+			fclose(f);
+		size_t pos = 0;
+		while (pos < all.size()) {
+			size_t nl = all.find('\n', pos);
+			if (nl == std::string::npos)
+				nl = all.size();
+			std::string line = all.substr(pos, nl - pos);
+			pos = nl + 1;
+			while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t'))
+				line.pop_back();
+			if (!line.empty())
+				lines.push_back(line);
+		}
+	}
+	if (lines.empty())
+		return;
+
+	const std::string ackPath = std::string(s_path) + ".ack";
+	FILE* ack = fopen(ackPath.c_str(), "ab");
+
+	for (size_t i = 0; i < lines.size(); ++i) {
+		const std::string& line = lines[i];
+		const char* result = "unknown";
+		std::string note;
+
+		if (line == "toggle_pause") {
+			if (eye && eye->inMovieMode) {
+				result = "blocked";
+				note = "movie mode";
+			} else {
+				togglePause();
+				result = "ok";
+			}
+		}
+		else if (line.compare(0, 12, "press pause.") == 0) {
+			static const struct { const char* name; int id; } kBtns[] = {
+				{ "OBJECTIVES", PauseWindow::OBJECTIVES },
+				{ "SAVE",       PauseWindow::SAVE },
+				{ "LOAD",       PauseWindow::LOAD },
+				{ "OPTIONS",    PauseWindow::OPTIONS },
+				{ "RESTART",    PauseWindow::RESTART },
+				{ "EXIT",       PauseWindow::EXIT },
+				{ "RETURN",     PauseWindow::RETURN },
+			};
+			const std::string btn = line.substr(12);
+			int id = -1;
+			for (size_t b = 0; b < sizeof(kBtns) / sizeof(kBtns[0]); ++b) {
+				if (btn == kBtns[b].name) {
+					id = kBtns[b].id;
+					break;
+				}
+			}
+			PauseWindow* pw = controlGui.getPauseWnd();
+			if (id < 0) {
+				note = "no such pause button";
+			} else if (!pw || !isPaused() || isPausedWithoutMenu()) {
+				result = "blocked";
+				note = "pause menu not up";
+			} else if (pw->confirmDialogUp()) {
+				result = "blocked";
+				note = "confirm dialog up (use press dialog.YES/NO)";
+			} else {
+				pw->handleClick(id);
+				result = "ok";
+			}
+		}
+		else if (line == "press dialog.YES" || line == "press dialog.NO") {
+			PauseWindow* pw = controlGui.getPauseWnd();
+			if (!pw || !pw->confirmDialogUp()) {
+				result = "blocked";
+				note = "no confirm dialog up";
+			} else {
+				LogisticsOKDialog::instance()->handleMessage(aMSG_LEFTMOUSEDOWN,
+					line == "press dialog.YES" ? (unsigned long)LogisticsScreen::YES
+											   : (unsigned long)LogisticsScreen::NO);
+				result = "ok";
+			}
+		}
+		else if (line.compare(0, 11, "screenshot ") == 0) {
+			std::string name = line.substr(11);
+			bool backbuffer = false;
+			const size_t sp = name.find(' ');
+			if (sp != std::string::npos) {
+				backbuffer = (name.substr(sp + 1) == "backbuffer");
+				name = name.substr(0, sp);
+			}
+			const char* ds = getenv("MC2_DEV_SHELL");
+			if (!ds || ds[0] != '1') {
+				result = "blocked";
+				note = "needs MC2_DEV_SHELL=1 (capture hook is shell-gated)";
+			} else if (name.empty()) {
+				note = "missing name";
+			} else {
+				_mkdir("dev_shell_out");  // capture hook does not create it
+				gos_dev_shell::scheduleScreenshot(name.c_str(), backbuffer);
+				result = "ok";
+				note = "dev_shell_out/" + name + ".tga at end of frame";
+			}
+		}
+
+		if (ack) {
+			if (note.empty())
+				fprintf(ack, "%s -> %s\n", line.c_str(), result);
+			else
+				fprintf(ack, "%s -> %s (%s)\n", line.c_str(), result, note.c_str());
+		}
+	}
+	if (ack) {
+		fflush(ack);
+		fclose(ack);
+	}
+}
+
 void MissionInterfaceManager::update (void)
 {
 	// IMGUI-PAUSE-INPUT-FIX-1: tell the input layer when the pause menu is up so its
@@ -891,6 +1059,13 @@ void MissionInterfaceManager::update (void)
 			}
 		}
 	}
+
+	// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE=<path> runtime command channel
+	// (default unset -> one cached getenv check, byte-identical). See
+	// processUiCommandChannel() below for the command set. Placed before the
+	// movie-mode early return so commands are still consumed (and acked
+	// blocked) during the intro swoop instead of piling up.
+	processUiCommandChannel();
 
 	const std::chrono::steady_clock::time_point _mifT0 =
 		s_mfOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};

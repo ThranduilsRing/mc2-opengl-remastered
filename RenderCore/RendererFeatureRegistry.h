@@ -709,6 +709,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "capture fixture for the confirm dialogs. Default unset -> byte-identical."
     },
     {
+        "MC2_TRACE_UI_COMMAND_FILE",
+        "MC2_UI_COMMAND_FILE",
+        EnvVarKind::Trace,
+        false,
+        "UI-COMMAND-CHANNEL-1: =<path> polls that file once per frame "
+        "(MissionInterfaceManager::update) and executes its lines as UI "
+        "commands: toggle_pause, press pause.<BTN> (PauseWindow::handleClick), "
+        "press dialog.YES|NO (pause confirm LogisticsOKDialog), and "
+        "screenshot <name> [backbuffer] (DEV-SHELL capture point, needs "
+        "MC2_DEV_SHELL=1). Consumed lines are truncated and acked to "
+        "<path>.ack as '<cmd> -> ok|unknown|blocked (reason)'. Lets agents "
+        "press any pause-menu button in a running instance headlessly. "
+        "Default unset -> byte-identical."
+    },
+    {
         "MC2_TRACE_UI_IMGUI_TIMER",
         "MC2_UI_IMGUI_TIMER",
         EnvVarKind::Trace,

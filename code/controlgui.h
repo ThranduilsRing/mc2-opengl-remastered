@@ -444,6 +444,11 @@ class ControlGui
 
 		public:
 
+		// UI-COMMAND-CHANNEL-1: pause-window access for the file command
+		// channel (missiongui.cpp) — routes `press pause.*` through the same
+		// PauseWindow::handleClick the ImGui/legacy buttons use.
+		PauseWindow* getPauseWnd() { return pauseWnd; }
+
 		RectInfo *getRect (long id)
 		{
 			if ((id >= 0) && (id < rectCount))

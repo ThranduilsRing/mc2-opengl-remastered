@@ -56,6 +56,11 @@ class PauseWindow
 		// renderImGui() while bPromptToQuit/bPromptToAbort is up.
 		void renderImGuiConfirm();
 
+		// UI-COMMAND-CHANNEL-1: lets the file command channel (missiongui.cpp)
+		// gate `press dialog.YES/NO` on a confirm dialog actually being up, so
+		// a stray command can't poke a LogisticsOKDialog nobody is polling.
+		bool confirmDialogUp() const { return bPromptToQuit || bPromptToAbort; }
+
 		bool inRect( int mouseX, int mouseY );
 
 		void begin(){ currentTime = 0.f; }
