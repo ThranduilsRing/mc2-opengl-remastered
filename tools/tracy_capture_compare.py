@@ -58,10 +58,18 @@ DEFAULT_ZONES = [
 ]
 MIN_TRACE_BYTES = 64 * 1024  # a real 20s+ trace is multi-MB; below this = broken capture
 
+# VK-ISLAND-TRACY-1 (2026-07-18): the old arm (backend + MC2_VK_WATER_INTEROP/
+# MC2_VK_SHADOW_INTEROP) measured a PHANTOM config: MC2_VK_WATER_INTEROP is a dead
+# name (no consumer), the umbrella was never armed (zero islands ran; present
+# declined not-VK-owned and force-fell back to GL), and MC2_VK_SHADOW_INTEROP is an
+# opt-in island the user's TEST-C-vk.bat does not set — when it DOES engage it adds
+# a ~3.5 ms/frame ALWAYS-inline fence wait that swamps every other number. The vk
+# arm now = the user's real config: backend + umbrella, shadow interop explicitly
+# OFF. Override per-capture with --env (e.g. --env MC2_VK_SHADOW_INTEROP=1).
 VK_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
-    "MC2_VK_WATER_INTEROP": "1",
-    "MC2_VK_SHADOW_INTEROP": "1",
+    "MC2_VK_SHARED_GBUFFER": "1",
+    "MC2_VK_SHADOW_INTEROP": "0",
 }
 
 

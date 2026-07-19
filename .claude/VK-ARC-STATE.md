@@ -3676,3 +3676,81 @@ deferred ones: 2-frames-in-flight and Cluster-A per-island deep fence deferral
 (DEFERRED-BOARD-2026-07-16), plus adding VK-island Tracy zones for attribution
 before any deeper slicing. No code was changed and no captures were burned by
 the 2026-07-18 re-task session.
+
+## 2026-07-18 — ★VK-ISLAND-TRACY-1: island zone attribution SHIPPED + residual-gap verdict
+
+Commits: `8833cdc5` (VKIsl.* zones), `3c1ceb32` (latent build break fix),
+harness vk-arm redefinition (this docs commit). Deployed 0.4c at `3c1ceb32`
+(clean fingerprint). Traces: `.claude/tracy-harness/vk_mc210_zoned{,_umb,_noshadow}.tracy`
+(15 s runs, mc2_10 corner park, uncapped, fixed-timestep off).
+
+### Zones added (all CPU, TRACY_ENABLE builds, ~50 ns each when disconnected)
+- Water/Terrain/Mech/Props: `VKIsl.<Isl>.{FenceWait,Feed|UboFill|LightFeed,Record,Submit,InlineFenceWait}`
+  (terrain/mech/props keep the older coarse `VK-*-island` zones).
+- Shadow (dyn + CSM fullmap/array): `VKIsl.Shadow.*` incl. the ALWAYS-inline
+  waits (`InlineFenceWait`, `CsmFullMapWait`, `CsmArrayPreWait/Wait`) — this
+  island was never fence-deferred.
+- Present: `VKIsl.Present.{Frame,CompositeWait,CompositeRecord,Acquire,TailRecord,Submit,QueuePresent}`.
+- GL light upload: `LightUpload.{Orphan,SubData}` inside `RenderLists.LightDataUpload`.
+
+### FINDING 1 — the "129.5 vs 143.9" baseline pair measured a PHANTOM VK config
+`tracy-csvexport` on the banked `vk_mc210_free.tracy` shows ZERO island zones
+and ZERO `RenderLists.VkShadowInterop` calls: the old harness vk arm never set
+`MC2_VK_SHARED_GBUFFER` (islands all OFF), `MC2_VK_WATER_INTEROP` is a dead
+name, and VK present declined not-VK-owned → forceGL within frames. The
+"VK 129.5 FPS" arm = GL scene + GL present + an idle VK device. Its entire
++0.9 ms deficit sat in ONE zone: `RenderLists.LightDataUpload` 1.06→2.08 ms/f.
+The zoned re-run of the same phantom config (`vk_mc210_zoned_noshadow`, 4348
+frames-equiv) did NOT reproduce the doubling (LightDataUpload 1.13 ms,
+`LightUpload.SubData` 1.12 ms ≈ GL's 1.06): the doubling is run-conditional
+(GL driver sync in glBufferSubData, sensitive to present-init/teardown timing),
+NOT a stable cost. The -10% number should not drive any lever choice.
+Harness vk arm is REDEFINED to the user's real config (backend + umbrella,
+shadow interop off); old vk_edge/vk_mc210* traces are phantom-arm artifacts.
+
+### FINDING 2 — umbrella-armed attribution (vk_mc210_zoned_umb, 638 steady frames)
+Steady-state per-frame CPU (mean; init-skew removed via min/max inspection):
+
+| zone | ms/frame | note |
+|---|---|---|
+| VKIsl.Shadow.InlineFenceWait | **3.46** (min 2.58) | dyn-shadow island, ALWAYS-inline retire; **harness had armed MC2_VK_SHADOW_INTEROP=1 — NOT in the user's config** |
+| RenderLists.DynShadowDraw (GL) | 0.14 | GL caster draw still runs when VK shadow owns the map (double work) |
+| VKIsl.Props.LightFeed | **0.52** (min 0.39) | per-frame LightsData CPU→VK memcpy |
+| VKIsl.Mech.LightFeed | **0.45** (min 0.38) | SAME LightsData array copied AGAIN into a second SSBO |
+| LightUpload.SubData (GL side) | 1.00 (min 0.86) | backend-independent (GL arm 1.06) — standing GL cost, not a VK delta |
+| VKIsl.Present.* total | ~0.19 | Acquire 48 µs + QueuePresent 77 µs + TailRecord ~90 µs + Submit 16 µs; **CompositeWait 1.2 µs** |
+| record+submit (water/terrain/mech/props) | 12–19 µs each | |
+| deferred FenceWaits (all islands) | 1.9–3.0 µs each | fence-defer + single-submit fully confirmed by zones |
+| VKIsl.Terrain.UboFill / interop-copies steady | 2 µs / ~25 µs | copies mean 518 µs was one-time init skew (315 ms first frame) |
+| VKIsl.Shadow.SortRestage / Feed | 30 µs / 7 µs | |
+
+Zone overhead: ≤ ~35 zones/frame ≈ <2 µs/frame — unmeasurable next to ±0.2 ms
+run-to-run variance (zoned DrawScreen means came out FASTER than the unzoned
+baseline because the LightDataUpload stall didn't recur).
+
+### VERDICT — next levers, by the data
+1. **LIGHTFEED-DEDUP (new slice, user config, ~-0.9 ms/frame CPU):** mech +
+   props islands each memcpy the same ~3.5 MB LightsData array every frame
+   (0.45 + 0.52 ms). One shared per-frame light SSBO (or one staging copy,
+   two descriptor bindings) halves-to-eliminates it. Small, parity-checkable.
+2. **SHADOW-ISLAND CLUSTER-A (only if MC2_VK_SHADOW_INTEROP is ever armed):**
+   its 3.46 ms ALWAYS-inline fence wait is the single biggest island cost in
+   any config that arms it (same-frame direct-consume contract forces the
+   wait). Until deferred, the gate staying OFF is correct — and the harness
+   no longer arms it.
+3. **2-frames-in-flight: NOT justified at the uncapped pose.** The present
+   path's CPU waits are µs-level (CompositeWait 1.2 µs, single-submit).
+   Matches the VK-QWI-TO-FENCE-1 honest verdict. Re-evaluate only for the
+   capped/vsync present-tax case.
+4. `LightUpload.SubData` ~1.0 ms/frame is a BACKEND-INDEPENDENT standing cost
+   with an existing dormant gate (`MC2_GPUBUF_LIGHT_GROWONCE`) — candidate for
+   its own GL-side measurement, unrelated to the VK gap.
+
+PENDING: one more capture (umbrella + shadow-off vs GL, the true user-config
+pair) blocked twice by live user play sessions — queue on a free window.
+
+### Latent build break fixed (dirty-deploy hazard receipt, again)
+Clean `4b69ef78` DOES NOT COMPILE: the CAMERA-PARK-1 fixture references `eye`
+without including `mclib/camera.h` (C2065 ×4 in gameosmain.cpp). The deployed
+0.4c exe stamped src_commit=4b69ef78 was necessarily linked from a tree with
+an uncommitted declaration. Fixed in `3c1ceb32`.
