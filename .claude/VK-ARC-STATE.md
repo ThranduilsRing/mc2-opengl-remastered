@@ -3574,3 +3574,48 @@ Mech final proof: mc2_24 inline vs deferred reduced average fence wait
 PASS with 0 hazards/errors. Final full VK-umbrella tier1 PASS 5/5 +0 at
 `tests/smoke/artifacts/2026-07-16T12-44-48/`. See
 `.claude/VK-PERF-3-PROGRESS.md` for all receipts and earlier island results.
+
+## 2026-07-18 — user live Tracy session (post-VK-PERF-3 field data)
+
+User ran lane-C click-through (0.4c install) with live Tracy 0.13.1 attached
+(~2,301 frames banked in-session, ~10-12 ms frames, ~99.9 FPS steady, GPU 88%).
+Visuals: PASS ("appears to be fine"). Perf field notes to drive the next slice
+selection:
+- `DrawScreen` still reads larger than the pre-VK baseline in the frame view.
+- `renderWaterFastPath` and the per-island VK zones still land "too big" to the
+  user's eye despite the fence-deferral rollout (receipts above are µs-level
+  wins; the remaining bulk is elsewhere in the islands).
+Next levers on file: 2-frames-in-flight (deferred by design,
+DEFERRED-BOARD-2026-07-16), per-island Cluster-A deep deferral follow-ups.
+ACTION: user has a pre-PERF-3 trace; ask them to Save Trace this session and
+bank the pair for a before/after compare (VK-PERF plan step).
+
+## 2026-07-18 — tools/tracy_capture_compare.py (agent-runnable Tracy harness)
+
+Capture-and-compare loop for perf verification, no GUI profiler needed:
+
+```
+# record a headless smoke-run trace (GL or VK arm)
+py -3 tools/tracy_capture_compare.py capture \
+    --install A:/Games/mc2-opengl/mc2-win64-0.4c --arm gl \
+    --mission mc2_01 --seconds 30 -o gl_before.tracy
+
+# per-zone before/after delta table (mean_ns / total / count)
+py -3 tools/tracy_capture_compare.py compare gl_before.tracy gl_after.tracy \
+    [--zones DrawScreen,SwapWindow.SDL,...]
+```
+
+- Uses tracy-capture.exe + tracy-csvexport.exe (default
+  C:/Users/Joe/Downloads/TracyProfiler, override env TRACY_TOOLS_DIR).
+  Recorder starts BEFORE the game (TRACY_ON_DEMAND).
+- Default zone allowlist: DrawScreen, renderWaterFastPath, SwapWindow.SDL,
+  Camera.UpdateRenderers, Terrain::IndirectDraw. Missing zones -> WARN, not error.
+- VK arm sets MC2_RENDER_BACKEND=vulkan + water/shadow interop +
+  MC2_VK_PRESENT_VERIFY=1; window must stay visible or VK fail-softs to GL.
+- SAFETY: aborts if any mc2.exe is already running (user may be playing);
+  kills only its own spawned PIDs.
+- VK island timings have NO Tracy zones — use [VK_*_PERF] receipts via
+  .claude/fence-defer/measure.py for those.
+- Smoke-tested 2026-07-18: live 20 s GL capture on mc2_01 (9.3 MB trace) +
+  compare vs Tracy/startup4-17-26.tracy. Note: old saved traces predate the
+  SwapWindow.SDL rename (zone was "SwapWindow").
