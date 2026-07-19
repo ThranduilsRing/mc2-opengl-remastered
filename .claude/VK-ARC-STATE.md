@@ -3754,3 +3754,56 @@ Clean `4b69ef78` DOES NOT COMPILE: the CAMERA-PARK-1 fixture references `eye`
 without including `mclib/camera.h` (C2065 ×4 in gameosmain.cpp). The deployed
 0.4c exe stamped src_commit=4b69ef78 was necessarily linked from a tree with
 an uncommitted declaration. Fixed in `3c1ceb32`.
+
+## 2026-07-18 — ★VK-LIGHTFEED-DEDUP-1 SHIPPED: one shared per-frame LightsData SSBO (−0.42 ms/f CPU, +7% frames)
+
+Commit `2e6f44db` (impl), deployed 0.4c clean-fingerprint `2e6f44db7abe`.
+Killswitch **MC2_VK_LIGHTFEED_DEDUP=0** (default ON) restores the twin
+per-island copies; registered in run_smoke passthrough + check-env-registry.
+
+### Design (new `GameOS/gameos/vk_shared_light_feed.{h,cpp}`)
+- 3-slot host-visible STORAGE ring on the shared engine device, keyed on
+  `g_mc2FrameCounter`: FIRST island to acquire each frame does the single
+  copy (zone **VKIsl.Shared.LightFeed**), the second gets the same VkBuffer
+  free. Consumers re-point binding-4 each frame (props: `bind_light_buffer`
+  on set[par]; mech: `bind_light_buffer_all` across every cached scheme
+  set's [par] slot) — post-beginFrame, so the parity fence retired all [par]
+  consumers first.
+- Ring safety: a slot is reused only ≥3 copy-frames later, beyond the
+  2-frames-in-flight bound each island's own parity fences enforce on the
+  single shared graphics queue; growth vkDeviceWaitIdles (ensure_*_capacity
+  convention). Fail-soft (mid-frame light-count growth between the two
+  flushes, ring alloc failure) → the island runs its pre-slice copy path
+  (zones VKIsl.Props/Mech.LightFeed kept for exactly that path) and
+  re-points binding 4 back at its own lightBuf.
+- Prop washout probe extracted to `prop_light_vertex_probe()` — runs on
+  whichever bytes the shader actually reads. Shadow island (its own
+  lightDataCpu feed, gate OFF in user config) NOT adopted — future consumer.
+
+### Receipts (mc2_10 corner park, user config vk arm, 15 s captures)
+| arm | Props.LightFeed | Mech.LightFeed | Shared.LightFeed | LightFeed total | frames | DrawScreen mean |
+|---|---|---|---|---|---|---|
+| before `3c1ceb32` (vk_mc210_zoned_usercfg) | 0.451 | 0.399 | — | **0.850 ms/f** | 1094 | 5.01 ms |
+| dedup exe, killswitch=0 (vk_mc210_dedup_off, C:-scratch) | 0.450 | 0.394 | — | **0.845 ms/f** | 1101 | 4.82 ms |
+| dedup ON `2e6f44db` (vk_mc210_dedup_on2) | — | — | 0.429 | **0.429 ms/f** | 1179 | 4.78 ms |
+
+- LightFeed CPU **0.845 → 0.429 ms/frame (−0.42 ms, −50%)**; shared path hit
+  1178/1179 rendered frames, ZERO fallbacks; killswitch=0 reverts exactly to
+  the pre-slice twin-zone profile.
+- Frame count in the identical capture window **+7.1%** (1101 → 1179;
+  ~137→147 FPS-equivalent at the pose). RenderLists.LightDataUpload (GL-side,
+  backend-independent) unchanged (+0.3%), as expected.
+- First dedup-ON capture (vk_mc210_dedup.tracy) was contaminated by a user
+  play-session launching mid-window — superseded by _on2; numbers above are
+  from clean windows only.
+
+### Visual sanity (killswitch A/B, PPM oracle frame 700, fixed timestep)
+ON vs OFF: 2008/6220800 bytes differ (0.032%); ON vs ON-repeat noise floor:
+2097 bytes (0.034%), same max-delta 154 — the A/B diff is INDISTINGUISHABLE
+from run-to-run noise. Lighting identical. (PPMs + off-arm trace live in the
+session C: scratchpad — disk A: was at ~99 MB free; numbers preserved here.)
+
+### Skipped
+- tier1 umbrella smoke: skipped under the disk-A pressure + the change being
+  VK-island-gated (GL default path never calls acquire); flag for the next
+  routine smoke pass.
