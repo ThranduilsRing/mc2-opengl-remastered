@@ -1078,12 +1078,12 @@ void gos_TerrainLodChunk_Init()
         // #includes shadow.hglsl) compiles the array-sampler variant when ON.
         std::string prefix = "#version 430\n";
         // STATIC-SHADOW-BANDING-2: slope-normal shadow bias (see
-        // terrain_lod_chunk.frag). Default OFF => byte-identical.
-        {
-            const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
-            if (v && v[0] && v[0] != '0')
-                prefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
-        }
+        // terrain_lod_chunk.frag). SHADOW-BANDING-DEFAULT-ON (2026-07-18):
+        // route through the shared chokepoint helper (default ON, "=0" kills)
+        // instead of a local env re-read -- the local default-OFF copy here is
+        // exactly how the default-flip initially missed this LIVE path.
+        if (mc2ShadowStaticBandFixV2Enabled())
+            prefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
         if (mc2ShadowCsmEnabled()) {
             char csmDef[64];
             snprintf(csmDef, sizeof(csmDef),

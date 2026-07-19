@@ -2364,6 +2364,13 @@ float mc2ShadowCsmSoftness();
 bool  mc2ShadowFullMapSeparate();  // MC2_SHADOW_FULLMAP_SEPARATE, default ON
 int   mc2ShadowFullMapSize();      // MC2_SHADOW_FULLMAP_SIZE, default 4096, clamp {2048,4096,8192}
 float mc2ShadowObjNormalBias();  // object shadow-receive normal-offset (texels); 0 disables
+// STATIC-SHADOW-BANDING gates (single chokepoint, gameos_graphics.cpp). Both
+// DEFAULT ON since 2026-07-18 (field banding bug); "=0" kills (byte-identical
+// legacy). Every shader-prefix injection site MUST use these helpers -- do not
+// re-read the env vars locally (that is how the 2026-07-18 default-flip almost
+// missed the live chunk path).
+bool  mc2ShadowStaticBandFixEnabled();    // MC2_SHADOW_STATIC_BANDFIX (v1: PCF tap floor)
+bool  mc2ShadowStaticBandFixV2Enabled();  // MC2_SHADOW_STATIC_BANDFIX_V2 (v2: slope-normal bias + normal-offset receiver)
 // MC2_SHADER_PATH_TINT: debug-only. 1 = each candidate ground shader outputs a
 // unique solid color so the render path of a given surface can be identified
 // visually. Default 0 => byte-identical normal rendering. See gos_postprocess.cpp.

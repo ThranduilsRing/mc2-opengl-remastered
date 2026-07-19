@@ -198,7 +198,7 @@ static bool terrainNormalArrayEnabled() {
 // the textbook Poisson-disk banding/ring artifact, most visible on smoothly
 // varying receivers (rolling grass), NOT a shadow-map resolution or depth
 // issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
-static bool mc2ShadowStaticBandFixEnabled() {
+bool mc2ShadowStaticBandFixEnabled() {
     static const bool enabled = []() {
         // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
         // banding persists in the shipped default config ("this was never
@@ -223,7 +223,7 @@ static bool mc2ShadowStaticBandFixEnabled() {
 // for shadow bias ONLY (lighting normal N is untouched). Independent gate,
 // typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
 // byte-identical legacy (shadowN stays flat vec3(0,0,1)).
-static bool mc2ShadowStaticBandFixV2Enabled() {
+bool mc2ShadowStaticBandFixV2Enabled() {
     static const bool enabled = []() {
         // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
         // and around mech shadows on terrain) verified A/B in-engine: default
