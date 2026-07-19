@@ -1618,6 +1618,36 @@ class Camera
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}
 		
+		// VK-FIRST-BOOKMARK-POSE-1 (ported for CAMERA-PARK-1): neutralize every
+		// scripted camera-override source so a hard-set pose survives the NEXT
+		// Camera::update() byte-unchanged. Camera::update() re-asserts the
+		// intro-swoop goal (updateGoalPosition/updateGoalRotation) and the
+		// object-tracking snap every frame — which would drag the parked pose
+		// off its applied value while the mission-intro swoop goal drains.
+		// Called right after setPosition/setRotation. Virtual so GameCamera can
+		// also drop its object-tracking target.
+		virtual void freezeScriptedCameraForCapture (void)
+		{
+			lookTargetObject = -1;
+			goalPosition   = position;
+			goalPosTime    = 0.0f;
+			goalPositionZ  = position.z;
+			goalRotation.x = projectionAngle;
+			goalRotation.y = cameraRotation;
+			goalRotation.z = cameraAltitude;
+			goalRotTime    = 0.0f;
+			goalFOVTime    = 0.0f;
+			velocity.Zero();
+			goalVelocity.Zero();
+			goalVelTime    = 0.0f;
+			// Pin the altitude EASE target too: update() lerps cameraAltitude
+			// toward cameraAltitudeDesired each frame, so leaving Desired stale
+			// would drift altitude off the applied pose. (The engine still
+			// legitimately clamps cameraAltitude to the per-projection-angle max,
+			// which is expected and deterministic.)
+			cameraAltitudeDesired = cameraAltitude;
+		}
+
 		void setGoalRotation (Stuff::Vector3D goalRot)
 		{
 			goalRotation = goalRot;

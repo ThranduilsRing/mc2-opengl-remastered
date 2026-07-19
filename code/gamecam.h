@@ -103,7 +103,18 @@ class GameCamera : public Camera
 		{
 			return targetObject;
 		}
-		
+
+		// VK-FIRST-BOOKMARK-POSE-1 (ported for CAMERA-PARK-1): also drop the
+		// object-tracking target so GameCamera::update()'s per-frame snap
+		// (setPosition(targetObject->getPosition())) cannot re-capture the
+		// camera after a parked pose. Base clears lookTargetObject + all
+		// goals/velocity.
+		virtual void freezeScriptedCameraForCapture (void) override
+		{
+			Camera::freezeScriptedCameraForCapture();
+			targetObject = NULL;
+		}
+
 		virtual void allTight (void)
 		{
 			long i=0;
