@@ -53,6 +53,19 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
                          ? 2.0 / (invR * float(textureSize(shadowMap, 0).x))
                          : 0.0;
         worldPos += normal * texelWorld;
+        // SHADOW-BLOB-REGRESSION-FIX (2026-07-18, mc2_10 field report): after
+        // using the caller's macro slope normal for the receiver offset above,
+        // RESET to flat-up for the back-face guard + slope bias below. The v2
+        // default-ON flip surfaced giant faceted black blotches at long
+        // distance / low sun (mc2_10 corner view): on light-facing slopes the
+        // macro normal drives NdotL -> ~1, collapsing the slope bias from up
+        // to 0.005 to its 0.002 floor, so the coarse static-map caster mesh
+        // self-shadows entire triangles (A/B diag: static map carried the
+        // blobs, dynamic clean). The normal-offset receiver above is the part
+        // that actually cures the banding (mc2_01 f1800 stripe amplitude
+        // patch-C 3.67 -> 1.26 with offset-only, vs 1.45 full-v2), so keep it
+        // and return bias/guard to the legacy flat-up semantics.
+        normal = vec3(0.0, 0.0, 1.0);
     }
 #endif
     vec4 lsPos = lightSpaceMatrix * vec4(worldPos, 1.0);
