@@ -189,7 +189,7 @@ static bool terrainNormalArrayEnabled() {
     return enabled;
 }
 
-// STATIC-SHADOW-BANDING-1: default OFF. Raises the LOD-based static-shadow PCF
+// STATIC-SHADOW-BANDING-1: default ON (2026-07-18, was OFF). Raises the LOD-based static-shadow PCF
 // tap floor (gos_terrain.frag's `shadowTaps` ladder 16/8/4) to 16/12/8 so the
 // wide adaptive-radius PCF used on flat terrain (see shadow.hglsl's
 // gradient-adaptive `adaptiveScale`) doesn't undersample the Poisson disk at
@@ -197,16 +197,20 @@ static bool terrainNormalArrayEnabled() {
 // tap count drops to 8 (mid) or 4 (far) for perf — wide-radius + few-taps is
 // the textbook Poisson-disk banding/ring artifact, most visible on smoothly
 // varying receivers (rolling grass), NOT a shadow-map resolution or depth
-// issue. Default OFF => byte-identical to legacy (shadowTaps stays 16/8/4).
+// issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
 static bool mc2ShadowStaticBandFixEnabled() {
     static const bool enabled = []() {
+        // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
+        // banding persists in the shipped default config ("this was never
+        // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
+        // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
         const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX");
-        return v && v[0] && v[0] != '0';
+        return !(v && v[0] == '0' && v[1] == '\0');
     }();
     return enabled;
 }
 
-// STATIC-SHADOW-BANDING-2: default OFF. Round 1 (BANDFIX v1) was refuted by
+// STATIC-SHADOW-BANDING-2: default ON (2026-07-18, was OFF). Round 1 (BANDFIX v1) was refuted by
 // field check as insufficient -- taps=16 still banded on TERRAIN (grass/dirt
 // slopes; v1 verified mostly on concrete, the wrong receiver). Measurement:
 // static map world-per-texel (~4.6 world units on mc2_01, 4096^2 ortho over
@@ -217,12 +221,18 @@ static bool mc2ShadowStaticBandFixEnabled() {
 // FAKE flat-up shadowN (gos_terrain.frag), so slope-scaled bias never
 // adapted to real terrain tilt. v2 swaps in the height-derived slope normal
 // for shadow bias ONLY (lighting normal N is untouched). Independent gate,
-// typically paired with v1 (taps) but not required to be. Default OFF =>
-// byte-identical (shadowN stays flat vec3(0,0,1)).
+// typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
+// byte-identical legacy (shadowN stays flat vec3(0,0,1)).
 static bool mc2ShadowStaticBandFixV2Enabled() {
     static const bool enabled = []() {
+        // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
+        // and around mech shadows on terrain) verified A/B in-engine: default
+        // config shows diagonal contour striping across terrain
+        // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
+        // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
+        // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
         const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
-        return v && v[0] && v[0] != '0';
+        return !(v && v[0] == '0' && v[1] == '\0');
     }();
     return enabled;
 }
