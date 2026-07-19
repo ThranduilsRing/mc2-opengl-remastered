@@ -739,7 +739,6 @@ ALLOWLIST=(
     MC2_R2B_STATIC_NATURAL_TRACE      # trace -- documented tier1
     MC2_R2B_TOUCH_PRESERVE            # feature -- R2b tree cachedFrame_ liveness stamp killswitch (default ON; =0 reproduces tree drop, documented tier1)
     MC2_REGFLUSH_GUARD2               # trace -- static-registry persistent-vanish streak discriminator (default OFF, per-range map cost)
-    MC2_ROAD_PBR                      # feature -- PBR asphalt/gravel road materials opt-in (=1; USER RULING 2026-07-05 legacy tgl tiles are default)
     MC2_SCREENSHOT_SOURCE             # infra -- screenshot capture source select (=backbuffer for logistics/menu screens)
     MC2_SHADOW_CSM_R0                 # override -- CSM near cascade radius WU (default 512, min 64)
     MC2_SHADOW_CSM_R1                 # override -- CSM mid cascade radius WU (default 4096, min 128)

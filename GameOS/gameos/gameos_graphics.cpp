@@ -7751,20 +7751,13 @@ void gos_RendererRebindVAO() {
 int gosRendererLogicalWidth()  { return g_gos_renderer ? g_gos_renderer->getWidth()  : 0; }
 int gosRendererLogicalHeight() { return g_gos_renderer ? g_gos_renderer->getHeight() : 0; }
 
-// ROAD-PBR-FAILSOFT-1 / ROAD-PBR-OPTIN-1: is the high-res road material for
-// this overlay material id enabled AND loaded? USER RULING 2026-07-05: the
-// PBR asphalt look is rejected — legacy tgl road tiles are the DEFAULT
-// everywhere. MC2_ROAD_PBR=1 opts back in (and still requires the
-// asphalt/gravel TGAs to actually be present).
-bool gos_TerrainRoadMaterialReady(int matId)
+// ROAD-PBR-ABANDON-1: the PBR/normal-layer road path is permanently retired.
+// USER RULING 2026-07-18: "revert back to stock, base road overlay always
+// drawn, abandon the detail/normal layer." The MC2_ROAD_PBR opt-in
+// (ROAD-PBR-OPTIN-1, 63bb0832) is removed; this always answers "not ready",
+// so decal emission always bakes the legacy tgl road-tile material id.
+bool gos_TerrainRoadMaterialReady(int /*matId*/)
 {
-    static const bool s_pbrOn = []() {
-        const char* v = getenv("MC2_ROAD_PBR");
-        return v && v[0] == '1';
-    }();
-    if (!s_pbrOn || !g_gos_renderer) return false;
-    if (matId == 1) return g_gos_renderer->getTerrainAsphaltAlbedoTexture() != 0;
-    if (matId == 2) return g_gos_renderer->getTerrainGravelAlbedoTexture()  != 0;
     return false;
 }
 

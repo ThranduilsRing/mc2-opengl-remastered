@@ -4312,10 +4312,11 @@ flags:
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_ROAD_PBR
-    default: unknown
+    default: off
+    kind: Retired
     declared_in: null
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7762
+    doc: "[RETIRED] ROAD-PBR-ABANDON-1 (USER RULING 2026-07-18): PBR/normal-layer road path abandoned; env read removed, setting this var has no effect. Stock road overlays are unconditional."
+    referenced_at: []
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes

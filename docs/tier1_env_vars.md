@@ -303,16 +303,16 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
   aspect (true proportions at any window shape); panel previews keep their
   fixed 4:3 FBO ratio via the preview-scope guard.
 
-## Road PBR fail-soft (ROAD-PBR-FAILSOFT-1)
+## Road PBR (ROAD-PBR-ABANDON-1 — RETIRED)
 
-- `MC2_ROAD_PBR=1` — opt IN to the high-res PBR asphalt/gravel road
-  materials (also requires `data/textures/asphalt_albedo.tga` /
-  `gravel_albedo.tga` to be present; the bake checks
-  `gos_TerrainRoadMaterialReady(matId)` per material). Default **OFF**
-  (USER RULING 2026-07-05: PBR asphalt look rejected) — every install
-  renders the original legacy 64Overlays road tiles. History: the PBR
-  slice originally baked the matId unconditionally, so installs without
-  the hand-placed TGAs sampled texture 0 -> black/invisible roads.
+- `MC2_ROAD_PBR` — **[RETIRED 2026-07-18]** setting this var has no effect.
+  USER RULING 2026-07-18: the PBR/normal-layer road path is abandoned —
+  the stock legacy 64Overlays road tiles are unconditional
+  (`gos_TerrainRoadMaterialReady` always returns false; the opt-in env
+  read was removed). History: introduced by ROAD-PBR-ASPHALT-1/GRAVEL-1
+  (`d7c0ff2d`), demoted to opt-in by ROAD-PBR-OPTIN-1 (`63bb0832`,
+  USER RULING 2026-07-05: PBR asphalt look rejected), retired for good
+  by ROAD-PBR-ABANDON-1.
 
 ## ENV-DROP registration sweep (2026-07-07)
 
