@@ -3619,3 +3619,60 @@ py -3 tools/tracy_capture_compare.py compare gl_before.tracy gl_after.tracy \
 - Smoke-tested 2026-07-18: live 20 s GL capture on mc2_01 (9.3 MB trace) +
   compare vs Tracy/startup4-17-26.tracy. Note: old saved traces predate the
   SwapWindow.SDL rename (zone was "SwapWindow").
+
+## 2026-07-18 — Tracy harness map-edge GL-vs-VK baseline (agent-captured)
+
+tools/tracy_capture_compare.py (541502d0 + verify-flag fix), MC2_CAMERA_PARK
+"0,-6000,0,30,3000@600" (south edge mc2_01 looking north), 30s arms:
+- GL: 3321 frames (~110 FPS). VK clean: 2926 (~97.5 FPS) => VK -12% at the
+  worst-case view.
+- Per-frame means GL vs VK: DrawScreen 1.27→1.32 ms (+4%), Camera.Update-
+  Renderers 1.14→1.18 ms (+4%), renderWaterFastPath 26.8→33.9 µs,
+  SwapWindow.SDL 0.157→3.40 ms (+2069%).
+- READING: scene-render zones are at parity; the ENTIRE VK deficit is the
+  present-path block (interop copy + fence wait) inside SwapWindow.SDL.
+  The deferred 2-frames-in-flight change is the single lever left and should
+  take VK past GL.
+- CAUTION: MC2_VK_PRESENT_VERIFY=1 (the tracy-vk-capture.bat env) costs ~25%
+  FPS — never leave it on for perf measurement (harness no longer sets it).
+- Traces: .claude/tracy-harness/{gl_edge,vk_edge,vk_edge2}.tracy.
+- VK islands still have ZERO Tracy zones — island-internal attribution needs
+  zones added before any deeper slicing.
+
+## 2026-07-18 addendum — UNCAPPED mc2_10 user-pose numbers (the honest baseline)
+
+MC2_FPS_CAP=0 + MC2_SMOKE_FIXED_TIMESTEP=0 (fixed-timestep smoke inflates
+per-frame sim — earlier same-pose numbers of ~92 FPS were artifacts; never
+quote fixed-timestep FPS): GL 143.9 FPS vs VK 129.5 (-10%) at the user's
+banked mc2_10 corner bookmark (MC2_CAMERA_PARK "-6656,-6656,150.625,10.9094,
+6045.2358@600"). Uncapped, present tax ~vanishes (SwapWindow 0.13 vs 0.15 ms);
+the VK deficit is +0.9 ms/frame CPU in Camera.UpdateRenderers/DrawScreen —
+i.e. the VK-PERF-SLICE-PLAN small slices (gate-hoist, HUD mirror-copy, prop
+lightfeed native, QWI->fence) are the right next levers, then 2-frames-in-
+flight for the light-scene present gap. Traces: gl_mc210_free / vk_mc210_free.
+Harness rule: agent game runs target ~15s (user rule 2026-07-18).
+
+## 2026-07-18 CORRECTION — VK-PERF slices 1-4 were ALREADY SHIPPED 2026-07-16; do not re-task them
+
+A session was dispatched 2026-07-18 to "implement VK-PERF small slices 1-4"
+per the addendum above. Preflight found ALL of them (and slice 5) already
+committed on this branch on 2026-07-16 and receipted in the "VK-PERF-1" block
+near the top of this file (docs commit 1d6beb25):
+- 2309e88c VK-HUD-GATE-HOIST-1 (parity bit-identical; no env killswitch — pure hoist)
+- eb40282e VK-HUD-MIRRORCOPY-1 (shared_ptr mirror; parity bit-identical; no env killswitch)
+- 90b36018 VK-PROP-LIGHTFEED-NATIVE-1 (-1.1 ms block region; temp MC2_VK_PROP_FEED_AUDIT
+  gate retired in 97ca133f after 3000-frame byte-identical audit)
+- 99d9e199 + 42dd81e1 VK-QWI-TO-FENCE-1 (fail-softs to QWI on fence-create failure;
+  honest verdict: no wait-win in IMMEDIATE env, structural prereq only)
+- e01ac03f VK-PRESENT-SINGLESUBMIT-1 (slice 5) also landed later that day.
+
+The 0.4c install (.deployed_manifest.csv src_commit=4b69ef78, 2026-07-18 20:42)
+that produced the vk_mc210_free.tracy 129.5 FPS baseline ALREADY CONTAINS every
+one of these slices — so the addendum's "right next levers" line above is STALE
+and is hereby retracted. The remaining -10% (129.5 vs 143.9 GL) at the mc2_10
+pose is the residual AFTER slices 1-5: +0.9 ms/frame CPU spread across
+Camera.UpdateRenderers/DrawScreen. Remaining levers on file are the deliberately
+deferred ones: 2-frames-in-flight and Cluster-A per-island deep fence deferral
+(DEFERRED-BOARD-2026-07-16), plus adding VK-island Tracy zones for attribution
+before any deeper slicing. No code was changed and no captures were burned by
+the 2026-07-18 re-task session.
