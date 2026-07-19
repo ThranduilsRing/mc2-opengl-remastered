@@ -131,7 +131,33 @@ RenderWindow* create_window(const char* pwinname, int width, int height)
 {
 	int i, j, m, n;
 	SDL_DisplayMode fullscreen_mode;
-    SDL_Window* window = NULL; 
+    SDL_Window* window = NULL;
+
+#ifdef PLATFORM_WINDOWS
+    // DPI-AWARE-1 (field-caught 2026-07-18): declare per-monitor-v2 DPI
+    // awareness BEFORE any SDL video init / window creation. Without it, on a
+    // scaled desktop (4K panel at 225% => 1920x1080 logical) Windows
+    // virtualizes coordinates: the options.cfg 3840x2160 window comes out 2x
+    // the logical desktop, so the user sees a center crop ("zoomed in" menus,
+    // top rows cut off) while the 3840x2160 backbuffer renders correctly
+    // (windowRect measured -968,-571..2888,1628 on the repro box). Per-monitor
+    // awareness makes logical == physical pixels, so the window fits the panel
+    // exactly. Dynamic lookup keeps older Windows working (falls back to
+    // system-level SetProcessDPIAware). MC2_DPI_UNAWARE=1 restores the legacy
+    // virtualized behavior as the bisection escape hatch.
+    {
+        const char* dv = getenv("MC2_DPI_UNAWARE");
+        if (!(dv && dv[0] == '1')) {
+            typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
+            HMODULE u32 = GetModuleHandleA("user32.dll");
+            SetDpiCtxFn setCtx = u32
+                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : NULL;
+            // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
+            if (!setCtx || !setCtx((void*)-4))
+                SetProcessDPIAware();
+        }
+    }
+#endif
 
     if (VERBOSE_VIDEO) {
         n = SDL_GetNumVideoDrivers();
