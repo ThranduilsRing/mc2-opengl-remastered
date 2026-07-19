@@ -1007,7 +1007,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // staging that the slot's prior submit may still read.
     VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Mech.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
+      fsC = vkImageResourceBeginFrame(colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
 
@@ -1033,6 +1035,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // is simply not marked ready (the shader falls back to flat-lit via u.lightingReady=0)
     // -- no GL readback rescue.
     if (s->wantLighting && nativeLight) {
+        ZoneScopedN("VKIsl.Mech.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy
         const VkDeviceSize lbytes = (VkDeviceSize)feed.lightDataCpuBytes;
         {
             void* p = nullptr;
@@ -1157,9 +1160,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+    { ZoneScopedN("VKIsl.Mech.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
     if (!mechFenceDeferEnabled()) {
+        ZoneScopedN("VKIsl.Mech.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
         const clk::time_point tInline0 = clk::now();
         if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
             setFallback("fence_timeout"); s->disabled = true; return 0;

@@ -45,6 +45,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>   // VK-QWI-TO-FENCE-1: composite wait telemetry
+#include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: present-path CPU attribution zones
 #include <unordered_map>
 #include <vector>
 
@@ -1964,6 +1965,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // this wait. Timer kept from VK-QWI-TO-FENCE-1 (same [QWI-WAIT] receipt tag):
     // it now measures the previous-frame retire wait instead of an inline drain.
     {
+        ZoneScopedN("VKIsl.Present.CompositeWait");   // VK-ISLAND-TRACY-1: retire prev frame's single submit (the ONLY present-path CPU wait)
         using clk = std::chrono::steady_clock;
         const clk::time_point tWait0 = clk::now();
         if (vkWaitForFences(s.dev, 1, &s.inFlight, VK_TRUE,
@@ -1982,6 +1984,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Record into the composite's OWN cbuf; the submit happens in presentGLFrame as
     // half of the single {compositeCbuf, cbuf} submission.
+    ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.compositeCbuf;
     s.compositePending = false;
     vkResetCommandBuffer(cc, 0);
@@ -2170,6 +2173,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
         health_.fallback_reason = "present path not initialized";
         return false;
     }
+    ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentGLFrame total (CPU)
     Impl& s = *impl_;
 
     // P13b: do NOT drain SDL events here. We present onto the SAME visible GL
@@ -2262,7 +2266,9 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     // OUT_OF_DATE, decline) leaves it signaled, so the next composite's wait can
     // never hang and the pending composite is simply re-recorded next frame.
     uint32_t imageIndex = 0;
-    VkResult r = vkAcquireNextImageKHR(s.dev, s.swapchain, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &imageIndex);
+    VkResult r;
+    { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
+      r = vkAcquireNextImageKHR(s.dev, s.swapchain, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &imageIndex); }
     if (r == VK_ERROR_OUT_OF_DATE_KHR) {
         // OS-driven resize/alt-tab invalidated the swapchain. Rebuild to the GL
         // game window's current drawable. If it's zero (minimized), skip the
@@ -2286,6 +2292,7 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
 
     const bool tailHook = presentTailHookEnabled();
     VkImage scImg = s.scImages[imageIndex];
+    ZoneNamedN(zTailRec, "VKIsl.Present.TailRecord", true);   // VK-ISLAND-TRACY-1: overlay/HUD/ImGui + blit record (to fn return)
     vkResetCommandBuffer(s.cbuf, 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -2429,7 +2436,8 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     si.pSignalSemaphores    = &imgRenderSem;
     vkResetFences(s.dev, 1, &s.inFlight);
     s.compositePending = false;   // consumed by this submit (success or fail-soft)
-    r = vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight);  // drives acquire/present cadence
+    { ZoneScopedN("VKIsl.Present.Submit");   // VK-ISLAND-TRACY-1: THE single present-path vkQueueSubmit
+      r = vkQueueSubmit(s.gfxQ, 1, &si, s.inFlight); }  // drives acquire/present cadence
     if (r != VK_SUCCESS) {
         // The fence is now unsignaled with no submit to signal it; returning false
         // triggers the DISARM-2 present-failure path (vkpres.destroy() + deferred
@@ -2445,7 +2453,8 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     pi.swapchainCount     = 1;
     pi.pSwapchains        = &s.swapchain;
     pi.pImageIndices      = &imageIndex;
-    r = vkQueuePresentKHR(s.presentQ, &pi);
+    { ZoneScopedN("VKIsl.Present.QueuePresent");   // VK-ISLAND-TRACY-1: vkQueuePresentKHR (vsync/WSI block lands here)
+      r = vkQueuePresentKHR(s.presentQ, &pi); }
     if (r == VK_SUCCESS) {
         ++health_.present_frames;
     } else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {

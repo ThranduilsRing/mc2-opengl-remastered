@@ -50,6 +50,8 @@
 #include "vulkan_shadow_island_live.h"
 #include "vk_shared_gbuffer_gate.h"
 
+#include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -881,6 +883,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
     if (!shadowInteropGateRequested()) return 0;
     if (size <= 0 || !lightSpace16 || !instances || instanceCount == 0) return 0;
+    ZoneScopedN("VKIsl.Shadow.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
 
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
@@ -936,6 +939,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
     if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
     {
+        ZoneScopedN("VKIsl.Shadow.Feed");   // VK-ISLAND-TRACY-1: caster instance staging
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, instances, (size_t)instBytes);
@@ -973,7 +977,9 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // GL->VK direction (glToVkSem / fs.signal) is therefore left unused: the VK submit
     // below does NOT wait it, and the per-slot WAW hazard is covered by the frame fence
     // (vkImageResourceBeginFrame waits frameFence[parity] before reusing the slot).
-    VkFrameSync fs = vkImageResourceBeginFrame(&s->depthResource);
+    VkFrameSync fs{};
+    { ZoneScopedN("VKIsl.Shadow.FenceWait");   // VK-ISLAND-TRACY-1: parity-slot fence wait (beginFrame)
+      fs = vkImageResourceBeginFrame(&s->depthResource); }
     VkCommandBuffer cb = s->cbuf[fs.parity & 1u];
 
     // ---- 4) Sort caster instances by typeID into contiguous runs on the CPU side.
@@ -986,6 +992,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     const GpuStaticPropInstanceMirror* insts =
         reinterpret_cast<const GpuStaticPropInstanceMirror*>(instances);
     std::vector<uint32_t> order(instanceCount);
+    {
+    ZoneScopedN("VKIsl.Shadow.SortRestage");   // VK-ISLAND-TRACY-1: typeID sort + sorted re-stage
     for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
     std::sort(order.begin(), order.end(),
         [insts](uint32_t a, uint32_t b){ return insts[a].typeID < insts[b].typeID; });
@@ -999,9 +1007,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
             vmaUnmapMemory(s->allocator, s->instAlloc);
         }
     }
+    }   // VK-ISLAND-TRACY-1: close VKIsl.Shadow.SortRestage
 
     // ---- 5) Record: depth-only render pass, per-type instanced caster draws. ----
     const clk::time_point tRender0 = clk::now();
+    ZoneNamedN(zShadowRec, "VKIsl.Shadow.RecordSubmit", true);   // VK-ISLAND-TRACY-1: record+submit+inline wait (to fn return)
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1070,13 +1080,18 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+    { ZoneScopedN("VKIsl.Shadow.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+      if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
     // WAW FIX (sync-val): fully retire THIS frame's VK submit before the next frame
     // records/submits, so the two parity command buffers never have overlapping
     // in-flight writes to the shared depth image on the queue (water's pattern).
-    if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-        setFallback("fence_timeout"); s->disabled = true; return 0;
-    }
+    // VK-ISLAND-TRACY-1: NOTE — this wait is ALWAYS inline (the dyn-shadow island was
+    // never fence-deferred; direct consumers sample the view same-frame). Zone it so
+    // the CPU block is attributable.
+    { ZoneScopedN("VKIsl.Shadow.InlineFenceWait");
+      if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+          setFallback("fence_timeout"); s->disabled = true; return 0;
+      } }
     g_health.drawUs = usSince(tRender0);
 
     // ---- HARD assert: no DEPTH-side readback/copy fired on the interop path. ----
@@ -1116,6 +1131,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     if (!g_island || g_island->disabled || !g_island->inited
         || !(g_island->useInterop || g_island->directChain)) return 0;
     ShadowIsland* s = g_island;
+    ZoneScopedN("VKIsl.Shadow.CsmFullMap");   // VK-ISLAND-TRACY-1 per-frame total (CPU; incl. inline fence wait)
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
     if (!ensure_csm_fullmap_target(s, size)) return 0;
 
@@ -1207,9 +1223,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
     if (vkQueueSubmit(s->queue, 1, &si, fs.fence) != VK_SUCCESS) { setFallback("csm_fullmap_submit_failed"); s->disabled = true; return 0; }
-    if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-        setFallback("csm_fullmap_fence_timeout"); s->disabled = true; return 0;
-    }
+    { ZoneScopedN("VKIsl.Shadow.CsmFullMapWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire (never fence-deferred)
+      if (vkWaitForFences(s->device, 1, &fs.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+          setFallback("csm_fullmap_fence_timeout"); s->disabled = true; return 0;
+      } }
 
     g_health.instRecords = instanceCount;
     g_health.typeRuns = typeRuns;
@@ -1238,6 +1255,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     if (!g_island || g_island->disabled || !g_island->inited
         || !(g_island->useInterop || g_island->directChain)) return 0;
     ShadowIsland* s = g_island;
+    ZoneScopedN("VKIsl.Shadow.CsmArrayLayer");   // VK-ISLAND-TRACY-1 per-layer total (CPU; incl. 2 inline fence waits)
     const uint32_t layerCount = (uint32_t)layers;
     const uint32_t layer = (uint32_t)layerIndex;
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
@@ -1270,9 +1288,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         }
     }
 
-    if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-        setFallback("csm_array_fence_wait_failed"); s->disabled = true; return 0;
-    }
+    { ZoneScopedN("VKIsl.Shadow.CsmArrayPreWait");   // VK-ISLAND-TRACY-1: retire prior layer's submit (ALWAYS inline)
+      if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+          setFallback("csm_array_fence_wait_failed"); s->disabled = true; return 0;
+      } }
     vkResetFences(s->device, 1, &s->csmArrayFence);
     VkCommandBuffer cb = s->cbuf[layer & 1u];
     vkResetCommandBuffer(cb, 0);
@@ -1334,9 +1353,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     if (vkQueueSubmit(s->queue, 1, &si, s->csmArrayFence) != VK_SUCCESS) {
         setFallback("csm_array_submit_failed"); s->disabled = true; return 0;
     }
-    if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-        setFallback("csm_array_fence_timeout"); s->disabled = true; return 0;
-    }
+    { ZoneScopedN("VKIsl.Shadow.CsmArrayWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire of this layer's submit
+      if (vkWaitForFences(s->device, 1, &s->csmArrayFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+          setFallback("csm_array_fence_timeout"); s->disabled = true; return 0;
+      } }
 
     s->csmArrayRenderedMask |= (1u << layer);
     const uint32_t readyMask = (1u << layerCount) - 1u;

@@ -127,6 +127,12 @@ def cmd_capture(args: argparse.Namespace) -> int:
         env.update(VK_ENV)
         print("NOTE: VK arm -- keep the game window visible/non-minimized or VK "
               "fail-softs to GL and you profile the wrong present path.")
+    for kv in getattr(args, "env", []):
+        k, sep, v = kv.partition("=")
+        if not sep:
+            sys.exit(f"ERROR: --env expects KEY=VAL, got '{kv}'")
+        env[k] = v
+        print(f"[capture] extra env {k}={v}")
 
     duration = args.seconds + 5  # game outlives the recorder window
     game_cmd = [str(game), "--profile", "stock", "--mission", args.mission,
@@ -255,6 +261,10 @@ def main() -> int:
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=30, help="Tracy recording window")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")
+    c.add_argument("--env", action="append", default=[], metavar="KEY=VAL",
+                   help="extra env var(s) for the game, applied AFTER the arm's "
+                        "defaults + the MC2_VK* scrub (e.g. --env MC2_VK_SHARED_GBUFFER=1 "
+                        "to arm the island umbrella on the vk arm). Repeatable.")
     c.set_defaults(fn=cmd_capture)
 
     d = sub.add_parser("compare", help="per-zone before/after delta table")

@@ -1371,7 +1371,9 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // self-synced by their one-shot inline fence waits — safe before OR after this.)
     VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->t1_colorRes);
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC = vkImageResourceBeginFrame(colorRes);
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Props.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
+      fsC = vkImageResourceBeginFrame(colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
 
@@ -1393,6 +1395,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const bool nativeLight = haveLightFeed && lightFeed.lightDataCpu &&
                              lightFeed.lightDataCpuBytes >= 3600ull;
     if (s->tier1 && s->wantLighting && nativeLight) {
+        ZoneScopedN("VKIsl.Props.LightFeed");   // VK-ISLAND-TRACY-1: per-frame LightsData CPU->VK copy
         const VkDeviceSize lbytes = (VkDeviceSize)lightFeed.lightDataCpuBytes;
         if (ensure_light_capacity(s, par, lbytes)) {
             void* p = nullptr;
@@ -1677,7 +1680,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
         si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
-        if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+        { ZoneScopedN("VKIsl.Props.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+          if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
         // VK-PROP-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
         // (the shared parity-slot fence) is waited at the slot's next
@@ -1689,6 +1693,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // (same-queue submission order + their command buffers' entry barriers).
         // Killswitch MC2_VK_PROP_FENCE_DEFER=0 restores the inline wait.
         if (!propFenceDeferEnabled()) {
+            ZoneScopedN("VKIsl.Props.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
             if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;

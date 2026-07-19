@@ -37,6 +37,8 @@
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
 
+#include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -445,6 +447,7 @@ extern "C" int mc2_vk_vfx_island_run(
     if (!vfxGateOn()) return 0;
     if (particleCount == 0 || drawCount == 0 || particles == nullptr || draws == nullptr) return 0;
     if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return 0;
+    ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU; incl. ALWAYS-inline fence wait)
 
     if (g_island && (g_island->w != w || g_island->h != h)) {
         destroy_island(g_island); delete g_island; g_island = nullptr;
@@ -464,6 +467,7 @@ extern "C" int mc2_vk_vfx_island_run(
     const VkDeviceSize needBytes = (VkDeviceSize)particleCount * 64u;
     if (!ensure_ssbo(s, needBytes)) { s->disabled = true; return 0; }
     {
+        ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle SSBO staging
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->ssboAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, particles, (size_t)needBytes);
@@ -518,10 +522,12 @@ extern "C" int mc2_vk_vfx_island_run(
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &s->cbuf;
-    if (vkQueueSubmit(s->queue, 1, &si, s->fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
-    if (vkWaitForFences(s->device, 1, &s->fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
-        setFallback("fence_timeout"); s->disabled = true; return 0;
-    }
+    { ZoneScopedN("VKIsl.Vfx.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+      if (vkQueueSubmit(s->queue, 1, &si, s->fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    { ZoneScopedN("VKIsl.Vfx.InlineFenceWait");   // VK-ISLAND-TRACY-1: ALWAYS-inline retire (never fence-deferred)
+      if (vkWaitForFences(s->device, 1, &s->fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+          setFallback("fence_timeout"); s->disabled = true; return 0;
+      } }
 
     g_health.vkDraws = groupsDrawn;
     g_health.particles = particleCount;

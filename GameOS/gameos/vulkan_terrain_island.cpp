@@ -2543,7 +2543,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // command buffer. The inline post-submit wait this replaces is kept only under
     // the MC2_VK_TERRAIN_FENCE_DEFER=0 killswitch.
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->colorRes);
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Terrain.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
+      fsC = vkImageResourceBeginFrame(s->colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
     const clk::time_point tUboFill0 = clk::now();
@@ -2554,6 +2556,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     const VkDeviceSize needUbo = (VkDeviceSize)patchCount * sizeof(TerrainFrameUBO);
     if (!ensure_ubo_capacity(s, par, needUbo)) { s->disabled = true; return 0; }
     {
+        ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc[par], &p) == VK_SUCCESS) {
             TerrainFrameUBO* slots = reinterpret_cast<TerrainFrameUBO*>(p);
@@ -2751,7 +2754,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+    { ZoneScopedN("VKIsl.Terrain.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
     // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
     // (the shared parity-slot fence) is waited at the slot's next
@@ -2763,6 +2767,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // order + their command buffers' entry barriers).
     // Killswitch MC2_VK_TERRAIN_FENCE_DEFER=0 restores the inline wait.
     if (!terrainFenceDeferEnabled()) {
+        ZoneScopedN("VKIsl.Terrain.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
         const clk::time_point tInline0 = clk::now();
         if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
             setFallback("fence_timeout"); s->disabled = true; return 0;

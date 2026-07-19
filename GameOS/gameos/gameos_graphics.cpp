@@ -9749,6 +9749,7 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
 	const GLsizeiptr skipStart = (prefixDirty || !prefixResident) ? (GLsizeiptr)0
 	                                                               : (GLsizeiptr)prefixBytes;
 	if (skipStart < want) {
+		ZoneScopedN("LightUpload.SubData");   // VK-ISLAND-TRACY-1: driver sync stall lands here if the store is in-flight
 		MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, skipStart, want - skipStart,
 		                     base + skipStart);
 	}
@@ -9815,8 +9816,10 @@ void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes)
 		// CPU a fresh store with no sync stall. GL_STREAM_DRAW is the correct hint
 		// for write-once-per-frame data (vs GL_DYNAMIC_DRAW which NVIDIA can place
 		// in VRAM, making the subsequent write go through PCI-E with sync).
-		MC2_GL_BufferData_Owner(GL_SHADER_STORAGE_BUFFER, s_lightDataSsboBytes, nullptr, GL_STREAM_DRAW, LightSsbo);
-		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)bytes, data);
+		{ ZoneScopedN("LightUpload.Orphan");   // VK-ISLAND-TRACY-1: glBufferData(nullptr) orphan
+		  MC2_GL_BufferData_Owner(GL_SHADER_STORAGE_BUFFER, s_lightDataSsboBytes, nullptr, GL_STREAM_DRAW, LightSsbo); }
+		{ ZoneScopedN("LightUpload.SubData");   // VK-ISLAND-TRACY-1: fresh-store fill
+		  glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)bytes, data); }
 	}
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, LIGHT_DATA_SSBO_BINDING, s_lightDataSsbo);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -9867,13 +9870,16 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 	// old data store is gone, so we must re-upload the prefix unconditionally —
 	// the prefixDirty skip is disabled. On AMD the orphan is equally fast (~1us)
 	// and eliminates the latent stall if the GPU falls behind the CPU.
-	MC2_GL_BufferData_Owner(GL_SHADER_STORAGE_BUFFER, s_lightDataSsboBytes, nullptr, GL_STREAM_DRAW, LightSsbo);
+	{ ZoneScopedN("LightUpload.Orphan");   // VK-ISLAND-TRACY-1: glBufferData(nullptr) orphan (split path)
+	  MC2_GL_BufferData_Owner(GL_SHADER_STORAGE_BUFFER, s_lightDataSsboBytes, nullptr, GL_STREAM_DRAW, LightSsbo); }
+	{ ZoneScopedN("LightUpload.SubData");   // VK-ISLAND-TRACY-1: fresh-store fill (prefix + suffix)
 	if (prefixBytes > 0) {
 		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)prefixBytes, base);
 	}
 	if (totalBytes > prefixBytes) {
 		glBufferSubData(GL_SHADER_STORAGE_BUFFER, (GLintptr)prefixBytes,
 		                (GLsizeiptr)(totalBytes - prefixBytes), base + prefixBytes);
+	}
 	}
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, LIGHT_DATA_SSBO_BINDING, s_lightDataSsbo);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);

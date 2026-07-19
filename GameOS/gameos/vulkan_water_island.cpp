@@ -43,6 +43,8 @@
 #include "vulkan_context.h"
 #include "gos_terrain_water_stream.h"
 
+#include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
+
 // RUNG 6 (VK-WATER-TIER1): in-place shared scene GBuffer co-write — the water
 // draw renders directly into the SAME scene color0(MRT0)+normal(MRT1)+depth
 // images GL authored (no offscreen water target, no GL composite pass, no
@@ -999,6 +1001,7 @@ extern "C" int mc2_vk_water_island_run(
     unsigned int hdriGlTex) {
     if (!waterTier1Requested()) return 0;
     if (thinCount == 0 || recipeCount == 0 || w <= 0 || h <= 0) return 0;
+    ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
     (void)sceneColorTex;
     (void)sceneDepthTex;
 
@@ -1062,11 +1065,15 @@ extern "C" int mc2_vk_water_island_run(
     // staging buffers, descriptor set, command buffer. The inline post-submit wait
     // this replaces is kept only under the MC2_VK_WATER_FENCE_DEFER=0 killswitch.
     const clk::time_point tFence0 = clk::now();
-    VkFrameSync fsC = vkImageResourceBeginFrame(s->sColorRes);
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
+      fsC = vkImageResourceBeginFrame(s->sColorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
 
     const clk::time_point tStage0 = clk::now();
+    {
+    ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
     // ---- 1) Upload recipe SSBO once (mission-static). ----
     if (!s->recipeUploaded) {
         const VkDeviceSize need = (VkDeviceSize)recipeCount * 64;
@@ -1113,6 +1120,7 @@ extern "C" int mc2_vk_water_island_run(
             vmaUnmapMemory(s->allocator, s->fsUboAlloc[par]);
         }
     }
+    }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
 
     // ============================ RUNG 6 TIER-1 PATH ============================
     // In-place co-write into the SHARED scene GBuffer. No color/depth import, no
@@ -1126,6 +1134,8 @@ extern "C" int mc2_vk_water_island_run(
         VkCommandBuffer cb = s->cbuf[par];
 
         const clk::time_point tRender0 = clk::now();
+        {
+        ZoneScopedN("VKIsl.Water.Record");   // VK-ISLAND-TRACY-1: command-buffer record
         vkResetCommandBuffer(cb, 0);
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1145,6 +1155,7 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
         vkCmdEndRenderPass(cb);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+        }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Record
         us_record = usSince(tRender0);
 
         // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
@@ -1155,7 +1166,8 @@ extern "C" int mc2_vk_water_island_run(
         si.commandBufferCount = 1; si.pCommandBuffers = &cb;
         si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
         const clk::time_point tSubmit0 = clk::now();
-        if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; }
+        { ZoneScopedN("VKIsl.Water.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+          if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
         us_submit = usSince(tSubmit0);
 
         us_sem_wait = 0.0;
@@ -1170,6 +1182,7 @@ extern "C" int mc2_vk_water_island_run(
         // buffers' entry barriers cover earlier submission-order work).
         // Killswitch MC2_VK_WATER_FENCE_DEFER=0 restores the inline wait.
         if (!waterFenceDeferEnabled()) {
+            ZoneScopedN("VKIsl.Water.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
             const clk::time_point tInline0 = clk::now();
             if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
                 setFallback("fence_timeout"); s->disabled = true; return 0;
