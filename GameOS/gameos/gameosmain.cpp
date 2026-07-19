@@ -193,6 +193,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_static_prop_registry.h"  // Stage 3.C: isEnabled() for [INSTR v1]
 #include "../../RenderWorld/RenderWorld.h"  // M1 Task 14
 #include "../../mclib/render_contract.h"   // Phase 2 assert init
+#include "../../mclib/camera.h"   // CAMERA-PARK-1: extern CameraPtr eye (pose pin fixture)
 #include "asset_scale.h"
 #include "gos_crashbundle.h"
 #include "gos_smoke.h"
