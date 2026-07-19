@@ -24,7 +24,8 @@ Facts baked in (recon 2026-07-18):
       name,src_file,src_line,total_ns,total_perc,counts,mean_ns,min_ns,max_ns,std_ns
     (note: "counts", not "count"; mean/min/max are integers, std is float).
   * VK arm: MC2_RENDER_BACKEND=vulkan + MC2_VK_WATER_INTEROP=1 + MC2_VK_SHADOW_INTEROP=1
-    + MC2_VK_PRESENT_VERIFY=1 (mirrors tracy-vk-capture.bat). The game window MUST stay
+    (PRESENT_VERIFY deliberately NOT set: it is a diagnostic readback that taxes the
+    present path and skews perf numbers). The game window MUST stay
     visible and non-minimized during a VK capture -- a minimized window gives the VK
     present path a zero surface extent and it FAIL-SOFTS to GL (you would profile the
     GL present path instead).
@@ -61,7 +62,6 @@ VK_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_VK_WATER_INTEROP": "1",
     "MC2_VK_SHADOW_INTEROP": "1",
-    "MC2_VK_PRESENT_VERIFY": "1",
 }
 
 
