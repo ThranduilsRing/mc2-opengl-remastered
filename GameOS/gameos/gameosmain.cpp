@@ -830,6 +830,27 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 #ifndef DISABLE_GAMEOS_MAIN
 int main(int argc, char** argv)
 {
+#ifdef PLATFORM_WINDOWS
+    // DPI-AWARE-1: FIRST statement of the process — the per-process DPI
+    // context is locked by the first window ANY subsystem creates (the VK
+    // swapchain probe's hidden SDL window boots video before
+    // graphics::create_window), so this must precede everything. See the
+    // gos_render.cpp create_window comment for the field evidence (4K/225%
+    // desktop => 2x-desktop window, "zoomed" menus). MC2_DPI_UNAWARE=1 =
+    // legacy virtualized behavior.
+    {
+        const char* dv = getenv("MC2_DPI_UNAWARE");
+        if (!(dv && dv[0] == '1')) {
+            typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
+            HMODULE u32 = LoadLibraryA("user32.dll");
+            SetDpiCtxFn setCtx = u32
+                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : NULL;
+            // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
+            if (!setCtx || !setCtx((void*)-4))
+                SetProcessDPIAware();
+        }
+    }
+#endif
     // [LAUNCHER-BOOTSTRAP v1] If mc2.exe was started directly (double-click /
     // shortcut) and NOT by mc2-launcher.exe, hand off to the launcher so the
     // player gets the options front-end first. The launcher sets MC2_LAUNCHED=1
