@@ -854,6 +854,44 @@ void MissionInterfaceManager::update (void)
 		}
 	}
 
+	// QUICKSAVE-FIXTURE-1: MC2_BOOT_QUICKSAVE_AT=N / MC2_BOOT_QUICKLOAD_AT=M
+	// (default unset). One-shot at the first non-movie frame >= N/M, setting the
+	// SAME saveInMissionSave/loadInMissionSave flags the pause-menu QUICK
+	// SAVE/LOAD buttons set (pausewindow.cpp handleMessage SAVE/LOAD; consumed
+	// mission.cpp / mechcmd2.cpp -> savePath/testgame.ims). Lets agents drive a
+	// deterministic quicksave->quickload cycle headlessly (field bug 2026-07-18:
+	// airport cement overlay vanishes after quickload). Set M > N for a
+	// save-then-load in one run. Same fixture pattern as MC2_BOOT_PAUSED above.
+	{
+		extern bool saveInMissionSave;
+		extern bool loadInMissionSave;
+		extern uint32_t g_mc2FrameCounter;
+		static const long s_qsAt = [] {
+			const char* v = getenv("MC2_BOOT_QUICKSAVE_AT");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		static const long s_qlAt = [] {
+			const char* v = getenv("MC2_BOOT_QUICKLOAD_AT");
+			return (v && v[0]) ? atol(v) : 0L;
+		}();
+		if (s_qsAt > 0) {
+			static bool s_qsDone = false;
+			if (!s_qsDone && (long)g_mc2FrameCounter >= s_qsAt &&
+				eye && !eye->inMovieMode) {
+				s_qsDone = true;
+				saveInMissionSave = true;
+			}
+		}
+		if (s_qlAt > 0) {
+			static bool s_qlDone = false;
+			if (!s_qlDone && (long)g_mc2FrameCounter >= s_qlAt &&
+				eye && !eye->inMovieMode) {
+				s_qlDone = true;
+				loadInMissionSave = true;
+			}
+		}
+	}
+
 	const std::chrono::steady_clock::time_point _mifT0 =
 		s_mfOn ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	if ( Environment.screenWidth != resolution )
