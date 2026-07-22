@@ -537,6 +537,33 @@ static bool JsonGetString(const char* json, const char* key, char* out, int outS
     return true;
 }
 
+// LAUNCHER-ENCODING-1: mod.json (and importer stdout JSON) is UTF-8 on disk,
+// but this launcher is compiled ANSI (#define UNICODE 0, all -A APIs) — copying
+// UTF-8 bytes straight into an ANSI control renders an em-dash as "â€"".
+// Convert UTF-8 -> system ANSI codepage IN PLACE before display. Strictly
+// validating: if the bytes are NOT valid UTF-8 (e.g. a hand-edited CP1252
+// manifest) the string is left untouched — it is already ANSI. Characters the
+// ACP cannot represent degrade to '?' (WideCharToMultiByte default), never to
+// multi-glyph garbage. Pure-ASCII strings take the early-out (the enforced
+// contract — scripts/check-launcher-ascii.py — keeps shipped manifests ASCII;
+// this conversion is the fail-soft for third-party mods that ignore it).
+static void Utf8ToAnsiInPlace(char* s, int cap) {
+    if (!s || cap <= 0) return;
+    bool hasHigh = false;
+    for (const unsigned char* p = (const unsigned char*)s; *p; ++p)
+        if (*p >= 0x80) { hasHigh = true; break; }
+    if (!hasHigh) return;   // pure ASCII — nothing to convert
+    wchar_t wide[2048];
+    int wn = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1,
+                                 wide, (int)(sizeof(wide)/sizeof(wide[0])));
+    if (wn <= 0) return;    // not valid UTF-8 -> assume already ANSI, leave as-is
+    char out[4096];
+    int an = WideCharToMultiByte(CP_ACP, 0, wide, -1, out, sizeof(out), NULL, NULL);
+    if (an <= 0) return;
+    _snprintf(s, cap, "%s", out);
+    s[cap - 1] = '\0';
+}
+
 // Parse a flat mod.json "env": { "KEY": "VALUE", ... } object into parallel
 // key/value arrays. Only string values are supported (matches every other
 // mod.json field); a malformed or absent "env" block yields count 0 — a mod
@@ -1454,6 +1481,9 @@ static void ScanMods(const char* modsPath) {
             JsonGetString(buf, "type", type, sizeof(type));
             JsonGetString(buf, "radioGroup", radioGroup, sizeof(radioGroup));
             JsonGetString(buf, "description", desc, sizeof(desc));
+            // LAUNCHER-ENCODING-1: mod.json is UTF-8; the UI is ANSI.
+            Utf8ToAnsiInPlace(name, sizeof(name));
+            Utf8ToAnsiInPlace(desc, sizeof(desc));
             envCount = JsonGetEnvBlock(buf, envKeys, envVals, 8);
         }
         if (!name[0]) _snprintf(name, sizeof(name), "%s", fd.cFileName);
@@ -2340,6 +2370,8 @@ static void OnImportButton(HWND hwnd) {
     JsonGetString(json, "kind", kind, sizeof(kind));
     JsonGetString(json, "action", action, sizeof(action));
     JsonGetString(json, "reject_reason", reject, sizeof(reject));
+    // LAUNCHER-ENCODING-1: importer emits UTF-8; MessageBoxA is ANSI.
+    Utf8ToAnsiInPlace(reject, sizeof(reject));
 
     bool rejected = (_stricmp(kind, "UNKNOWN") == 0) || (_stricmp(kind, "STOCK") == 0) ||
                     (_stricmp(action, "reject") == 0) || !kind[0];
@@ -2736,7 +2768,7 @@ static void PrintListing() {
         fprintf(f, "  %s\n", s_bases[i].folderName);
     fprintf(f, "add-ons (%d) [checkbox, stackable]:\n", s_addonCount);
     for (int i = 0; i < s_addonCount; i++)
-        fprintf(f, "  %s\n", s_addons[i].folderName);
+        fprintf(f, "  %-24s  name=\"%s\"\n", s_addons[i].folderName, s_addons[i].name);
     fprintf(f, "texture-quality (%d) [radio, mutually exclusive]:\n", s_texQualCount);
     for (int i = 0; i < s_texQualCount; i++)
         fprintf(f, "  %s\n", s_texQual[i].folderName);

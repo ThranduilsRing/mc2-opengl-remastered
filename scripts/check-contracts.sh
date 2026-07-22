@@ -155,6 +155,12 @@ run_check "path_norm_selftest"     "sh scripts/check-path-normalization.sh --sel
 # fix sites survive (RULE C anchors). Runtime sibling: MC2_RES_ASSERT.
 run_check "res_aspect_contract"    "py -3 scripts/check-res-aspect-contract.py --quiet"
 run_check "res_aspect_selftest"    "py -3 scripts/check-res-aspect-contract.py --self-test 2>/dev/null"
+# LAUNCHER-ENCODING-1: launcher-facing manifest strings (mods/ + examples/mods/
+# mod.json) are ASCII-only — the launcher UI is Win32 ANSI, so UTF-8 typography
+# (em-dash, curly quotes) renders as mojibake. Self-test proves a synthetic
+# em-dash manifest still fails.
+run_check "launcher_ascii"         "py -3 scripts/check-launcher-ascii.py --quiet"
+run_check "launcher_ascii_selftest" "py -3 scripts/check-launcher-ascii.py --self-test"
 # META-FIX-BATCH-2 (design F): silent-order chokepoint — every fireWeapon
 # pre-delivery early-return is traced (fireGateTrace) or declared
 # (KNOWN_UNCOVERED); comment-stripped scan (four commented return(4)s in
