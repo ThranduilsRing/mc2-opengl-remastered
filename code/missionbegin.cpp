@@ -1514,6 +1514,12 @@ const char* MissionBegin::update()
 					// single-screen capture harnesses hold any target screen.
 					int stopX = 2, stopY = 1;
 					mc2BootScreenXY( stopX, stopY );
+					// MC2_BOOT_TO_MECHLAB auto-clicks Modify Mech from the bay,
+					// landing on mech_lab_loadout [2][2] -- park THERE.
+					if ( std::getenv("MC2_BOOT_TO_MECHLAB") )
+					{
+						stopX = 2; stopY = 2;
+					}
 					if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
 					{
 						s_soakLastAdvX = curScreenX;
