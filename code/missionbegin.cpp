@@ -1508,12 +1508,19 @@ const char* MissionBegin::update()
 					// SOAK-STOP-AT-BAY-1: park here instead of advancing. Still latch
 					// s_soakLastAdvX/Y so this doesn't re-fire/spam every frame, and
 					// skip the soakForceNext assignment (leave it false).
-					if ( s_soakStopAtBay && curScreenX == 2 && curScreenY == 1 )
+					// SOAK-STOP-AT-BAY-1 (+ boot-target extension): with
+					// MC2_BOOT_TO_SCREEN set, park at THAT cell (e.g. purchase
+					// [2][0], briefing [1][1]) instead of only the bay, so
+					// single-screen capture harnesses hold any target screen.
+					int stopX = 2, stopY = 1;
+					mc2BootScreenXY( stopX, stopY );
+					if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
 					{
 						s_soakLastAdvX = curScreenX;
 						s_soakLastAdvY = curScreenY;
 						s_soakSettleTimer = 0.0f;
-						printf("[SOAK] parked screen=bay (MC2_SOAK_STOP_AT_BAY)\n");
+						printf("[SOAK] parked screen=%d,%d (MC2_SOAK_STOP_AT_BAY)\n",
+							(int)curScreenX, (int)curScreenY);
 						fflush(stdout);
 					}
 					else
