@@ -37,6 +37,15 @@ uniform float      u_cementWUPT;   // world units per cement tile (= 128)
 // When non-zero, a non-cement tile fills its corner quadrant toward any diagonally
 // adjacent SOLID cement tile (hard quadrant cut, no feather).
 uniform int        u_cementDiagConnect;
+// CEMENT-ATLAS-SEAM-1 (default ON; killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0):
+// the cement catalog atlas packs cells with NO gutters and samples GL_LINEAR
+// (see BuildCementAtlas header note), so a tile UV of exactly 0 or 1 bilinear-
+// blends with the NEIGHBORING ATLAS CELL (a different texture) -> a faint
+// grid of seam lines at every 128-wu tile edge across continuous pads.
+// Fix: clamp the intra-cell UV a half texel inside the cell before atlas
+// addressing. Neighboring world tiles share tileable edge art, so the clamped
+// edge texel stays visually continuous.
+uniform int        u_cementAtlasSeamFix;
 // Stage B: transition mask array (14 layers R8, unit 11).
 uniform sampler2DArray u_transitionMaskArray;
 uniform int            u_useTransitionMask;
@@ -787,7 +796,16 @@ void main() {
         int  cCol = int(cLayerIdx) % cGridSide;
         int  cRow = int(cLayerIdx) / cGridSide;
         vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
-        vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
+        // CEMENT-ATLAS-SEAM-1: half-texel inset for SAMPLING only (cTileUV
+        // itself stays unclamped -- the transition mask math below needs the
+        // true intra-tile position).
+        vec2 cSampleUV = cTileUV;
+        if (u_cementAtlasSeamFix != 0) {
+            float cCellPx = float(textureSize(u_cementAtlas, 0).x) / float(cGridSide);
+            float cInset  = 0.5 / max(cCellPx, 1.0);
+            cSampleUV = clamp(cTileUV, vec2(cInset), vec2(1.0 - cInset));
+        }
+        vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
         // CEMENT-NIGHT-LIGHT-1: atlas texels are RAW (unburned) -> apply the
         // mission flat-pad light here (covers both the solid and transition
         // branches below).
@@ -910,7 +928,15 @@ void main() {
                 int  dCol = int(dLayerIdx) % dGridSide;
                 int  dRow = int(dLayerIdx) / dGridSide;
                 // Use this tile's own sub-tile UV so the fill aligns with the grid.
-                vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
+                // CEMENT-ATLAS-SEAM-1: same half-texel sampling inset as the
+                // main cement branch (gutter-less atlas bleed).
+                vec2 dSampleUV = dTileUV;
+                if (u_cementAtlasSeamFix != 0) {
+                    float dCellPx = float(textureSize(u_cementAtlas, 0).x) / float(dGridSide);
+                    float dInset  = 0.5 / max(dCellPx, 1.0);
+                    dSampleUV = clamp(dTileUV, vec2(dInset), vec2(1.0 - dInset));
+                }
+                vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
                 // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light.
                 base = texture(u_cementAtlas, dAtlasUV).rgb * u_missionFlatLight;
                 cementHit = true;

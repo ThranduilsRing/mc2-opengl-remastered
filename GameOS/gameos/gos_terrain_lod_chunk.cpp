@@ -61,6 +61,11 @@ inline float tglc_envStrength(const char* name, float def) {
 const bool  kTglcForceColor        = []() { return std::getenv("MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR") != nullptr; }();
 const int   kTglcDiag              = []() { const char* v = std::getenv("MC2_TERRAIN_LOD_CHUNK_DIAG"); return v ? std::atoi(v) : 0; }();
 const bool  kTglcCementDiagConnect = []() { return tglc_envOn("MC2_TERRAIN_CEMENT_DIAG_CONNECT"); }();
+// CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
+const bool  kTglcCementAtlasSeamFix = []() {
+    const char* e = std::getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
+    return !(e && e[0] == '0');
+}();
 const bool  kTglcSlopeBias         = []() { return tglc_envOn("MC2_TERRAIN_SLOPE_BIAS"); }();
 const float kTglcSlopeBiasStr      = []() { return tglc_envStrength("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", 1.0f); }();
 const bool  kTglcCliffTriplanar    = []() { return tglc_envOn("MC2_TERRAIN_CLIFF_TRIPLANAR"); }();
@@ -778,6 +783,7 @@ static GLint    s_locUseCement      = -1;
 static GLint    s_locCementGridSide = -1;
 static GLint    s_locCementWUPT     = -1;
 static GLint    s_locCementDiagConnect = -1;  // CEMENT-DIAG-CONNECT-1 gate uniform
+static GLint    s_locCementAtlasSeamFix = -1; // CEMENT-ATLAS-SEAM-1 gate uniform
 static constexpr GLint kChunkTexUnitCement = 3;  // matches legacy tex3
 // Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
 extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
@@ -1196,6 +1202,7 @@ void gos_TerrainLodChunk_Init()
             s_locCementGridSide = glGetUniformLocation(s_terrainProgram, "u_cementGridSide");
             s_locCementWUPT     = glGetUniformLocation(s_terrainProgram, "u_cementWUPT");
             s_locCementDiagConnect = glGetUniformLocation(s_terrainProgram, "u_cementDiagConnect");
+            s_locCementAtlasSeamFix = glGetUniformLocation(s_terrainProgram, "u_cementAtlasSeamFix");
             s_locTransitionMaskArray = glGetUniformLocation(s_terrainProgram, "u_transitionMaskArray");
             s_locUseTransitionMask   = glGetUniformLocation(s_terrainProgram, "u_useTransitionMask");
             s_locControlMap    = glGetUniformLocation(s_terrainProgram, "u_controlMap");    // TERRAIN-CONTROLMAP-SAMPLE-1
@@ -1932,6 +1939,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // REDUNDANT-PASS-HUNT-1: env resolved once (kTglcCementDiagConnect).
         if (s_locCementDiagConnect >= 0)
             glUniform1i(s_locCementDiagConnect, kTglcCementDiagConnect ? 1 : 0);
+        // CEMENT-ATLAS-SEAM-1: half-texel sampling inset for the gutter-less
+        // cement atlas (faint tile-grid seam lines across continuous pads).
+        // Default ON; killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0 reverts.
+        if (s_locCementAtlasSeamFix >= 0)
+            glUniform1i(s_locCementAtlasSeamFix, kTglcCementAtlasSeamFix ? 1 : 0);
         if (cementReady) {
             if (s_locCementGridSide >= 0)
                 glUniform1i(s_locCementGridSide, gos_terrain_indirect_getCementAtlasGridSide());
