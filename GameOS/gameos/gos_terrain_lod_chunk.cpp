@@ -66,6 +66,18 @@ const bool  kTglcCementAtlasSeamFix = []() {
     const char* e = std::getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
     return !(e && e[0] == '0');
 }();
+// NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
+// GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
+const bool  kTglcLightPoolSoft = []() {
+    const char* e = std::getenv("MC2_LIGHT_POOL_SOFT");
+    return !(e && e[0] == '0');
+}();
+const float kTglcLightPoolMoverDim = []() {
+    const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
+    if (!s || !s[0]) return 0.5f;
+    float v = (float)std::atof(s);
+    return (v >= 0.0f && v <= 1.0f) ? v : 0.5f;
+}();
 const bool  kTglcSlopeBias         = []() { return tglc_envOn("MC2_TERRAIN_SLOPE_BIAS"); }();
 const float kTglcSlopeBiasStr      = []() { return tglc_envStrength("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", 1.0f); }();
 const bool  kTglcCliffTriplanar    = []() { return tglc_envOn("MC2_TERRAIN_CLIFF_TRIPLANAR"); }();
@@ -641,6 +653,8 @@ static GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsM
 static GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
 static GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
 static GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLights (0 = pool loop off)
+static GLint    s_locLightPoolSoft     = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolSoft
+static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolMoverDim
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -1131,6 +1145,8 @@ void gos_TerrainLodChunk_Init()
             s_locLightDir     = glGetUniformLocation(s_terrainProgram, "terrainLightDir");
             s_locMissionFlatLight = glGetUniformLocation(s_terrainProgram, "u_missionFlatLight");  // CEMENT-NIGHT-LIGHT-1
             s_locNumPoolLights = glGetUniformLocation(s_terrainProgram, "u_numPoolLights");  // NIGHT-LIGHT-POOLS-1
+            s_locLightPoolSoft     = glGetUniformLocation(s_terrainProgram, "u_lightPoolSoft");      // NIGHT-LIGHT-POOLS-2
+            s_locLightPoolMoverDim = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverDim");  // NIGHT-LIGHT-POOLS-2
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -1848,6 +1864,15 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             }
             if (s_locNumPoolLights >= 0)
                 glUniform1i(s_locNumPoolLights, poolCount);
+            // NIGHT-LIGHT-POOLS-2 tuning (user feedback 2026-07-21): soften the
+            // stamped-disc falloff edge (smoothstep tail; MC2_LIGHT_POOL_SOFT=0
+            // -> exact legacy TG_Light::GetFalloff linear ramp) and dim
+            // mover-attached lights (MC2_LIGHT_POOL_MOVER_DIM, default 0.5;
+            // producer flags mover lights in the SSBO pad).
+            if (s_locLightPoolSoft >= 0)
+                glUniform1i(s_locLightPoolSoft, kTglcLightPoolSoft ? 1 : 0);
+            if (s_locLightPoolMoverDim >= 0)
+                glUniform1f(s_locLightPoolMoverDim, kTglcLightPoolMoverDim);
         }
     }
 

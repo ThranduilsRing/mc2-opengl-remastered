@@ -73,6 +73,7 @@ namespace gosFX { void DiagFrameTick(); }
 #endif
 #include "gos_terrain_bridge.h"
 #include "gos_terrain_lod_chunk.h"
+#include "gos_terrain_lighting.h"                // NIGHT-LIGHT-POOLS-2b: pool SSBO accessors
 #include "gos_terrain_patch_stream.h"
 #include "gos_terrain_indirect.h"
 #include "gos_terrain_surface.h"                 // [TERRAIN_SURFACE] PR-2 producer
@@ -2586,8 +2587,13 @@ class gosRenderer {
             // decal.frag does not declare it -> stays -1 -> skipped).
             GLint missionFlatLight                   = -1;  // vec3
             // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (terrain_overlay.vert,
-            // declared on BOTH overlayProg_ and decalProg_ -- shared VS).
+            // declared on BOTH overlayProg_ and decalProg_ — shared VS).
             GLint overlayBiasLegacy                  = -1;  // int
+            // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (terrain_overlay.frag
+            // only; decal.frag leaves these -1 -> skipped).
+            GLint numPoolLights                      = -1;  // int
+            GLint lightPoolSoft                      = -1;  // int
+            GLint lightPoolMoverDim                  = -1;  // float
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5229,6 +5235,10 @@ void gosRenderer::init() {
         locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
         // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (shared VS, both programs).
         locs.overlayBiasLegacy = glGetUniformLocation(shp, "u_overlayBiasLegacy");
+        // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (overlayProg_ only).
+        locs.numPoolLights     = glGetUniformLocation(shp, "u_numPoolLights");
+        locs.lightPoolSoft     = glGetUniformLocation(shp, "u_lightPoolSoft");
+        locs.lightPoolMoverDim = glGetUniformLocation(shp, "u_lightPoolMoverDim");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -9876,6 +9886,41 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
     if (L.overlayBiasLegacy >= 0)
         glUniform1i(L.overlayBiasLegacy, mc2OverlayBiasLegacy());
+
+    // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as
+    // the chunk terrain (gate MC2_TERRAIN_LIGHT_POOLS, shared). Bind the pool
+    // SSBO ourselves — the chunk terrain draw also binds slot 28 but may be
+    // disabled (legacy terrain path), and context binding state is not
+    // guaranteed here. poolCount 0 -> frag loop skipped -> byte-identical.
+    if (L.numPoolLights >= 0) {
+        static const bool s_lightPoolsGate = [] {
+            const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
+            return !(v && v[0] == '0');
+        }();
+        static const bool s_poolSoft = [] {
+            const char* v = getenv("MC2_LIGHT_POOL_SOFT");
+            return !(v && v[0] == '0');
+        }();
+        static const float s_poolMoverDim = [] {
+            const char* s = getenv("MC2_LIGHT_POOL_MOVER_DIM");
+            if (!s || !s[0]) return 0.5f;
+            float f = (float)atof(s);
+            return (f >= 0.0f && f <= 1.0f) ? f : 0.5f;
+        }();
+        int poolCount = 0;
+        if (s_lightPoolsGate) {
+            const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
+            const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
+            if (poolSsbo != 0 && n > 0) {
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                 TERRAIN_LIGHT_POOL_SSBO_BINDING, poolSsbo);
+                poolCount = static_cast<int>(n > 256u ? 256u : n);
+            }
+        }
+        glUniform1i(L.numPoolLights, poolCount);
+        if (L.lightPoolSoft >= 0)     glUniform1i(L.lightPoolSoft, s_poolSoft ? 1 : 0);
+        if (L.lightPoolMoverDim >= 0) glUniform1f(L.lightPoolMoverDim, s_poolMoverDim);
+    }
 
     setupOverlayShadowsForShp(shp);
 

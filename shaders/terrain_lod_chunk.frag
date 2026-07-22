@@ -209,6 +209,16 @@ layout(binding = 28, std430) readonly buffer TerrainLightPoolFrag {
     PoolLight poolLights[];
 };
 uniform int u_numPoolLights;   // driver force-uploads 0 when the gate is off
+// NIGHT-LIGHT-POOLS-2 (user feedback 2026-07-21): the legacy linear GetFalloff
+// ramp reads as a stamped DISC (hard edge, uniform interior) when applied
+// per-fragment at pool scale. u_lightPoolSoft=1 (default, MC2_LIGHT_POOL_SOFT)
+// replaces the linear ramp with smoothstep(t) — zero slope at BOTH the outer
+// edge (feathers into darkness) and the inner plateau. =0 -> exact legacy
+// TG_Light::GetFalloff math. u_lightPoolMoverDim scales mover-attached lights
+// (SSBO pad flag _plPad1=1, packed by the producer) — default 0.5 halves the
+// mech/vehicle circle vs building lights (MC2_LIGHT_POOL_MOVER_DIM).
+uniform int   u_lightPoolSoft;
+uniform float u_lightPoolMoverDim;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 GBuffer1;   // shadow-handled flat-up (terrain MRT composite)
@@ -1588,7 +1598,16 @@ void main() {
             float falloff = (len <= poolLights[i].closeDistance)
                           ? 1.0
                           : (poolLights[i].farDistance - len) * poolLights[i].oneOverDistance;
-            pool += poolLights[i].color * falloff;
+            // NIGHT-LIGHT-POOLS-2: soft tail (smoothstep) kills the stamped-
+            // disc edge; gate-off = exact legacy linear ramp above.
+            if (u_lightPoolSoft != 0) {
+                float t = clamp(falloff, 0.0, 1.0);
+                falloff = t * t * (3.0 - 2.0 * t);
+            }
+            vec3 plCol = poolLights[i].color;
+            // Mover-attached light (producer pad flag): dim vs building lights.
+            if (poolLights[i]._plPad1 > 0.5) plCol *= u_lightPoolMoverDim;
+            pool += plCol * falloff;
         }
         lit += min(pool, vec3(1.0));
     }

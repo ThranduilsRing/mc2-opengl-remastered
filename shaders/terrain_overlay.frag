@@ -69,6 +69,51 @@ uniform PREC float     u_asphaltScale;
 // Uploaded by uploadOverlayUniforms_ (all binders of this frag route there).
 uniform PREC vec3      u_missionFlatLight;
 
+// NIGHT-LIGHT-POOLS-2b (gate MC2_TERRAIN_LIGHT_POOLS, shared with the chunk
+// terrain): road/runway/cement decals take the same additive light-pool term
+// as the terrain around them — without it a decal crossing a lit pool stayed
+// a dark band. Same GpuTerrainLight SSBO (binding 28, bound by the host at
+// upload time) + same falloff/soft/dim math as terrain_lod_chunk.frag.
+// u_numPoolLights==0 (gate off / producer off / no lights) -> loop skipped ->
+// byte-identical.
+struct PoolLight {
+    vec3  position;
+    uint  lightType;
+    vec3  color;
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;   // 1.0 = mover-attached (producer-packed)
+    float _plPad2;
+};
+layout(binding = 28, std430) readonly buffer TerrainLightPoolOverlay {
+    PoolLight poolLights[];
+};
+uniform int   u_numPoolLights;
+uniform int   u_lightPoolSoft;
+uniform float u_lightPoolMoverDim;
+
+PREC vec3 overlayPoolLight(PREC vec3 wp) {
+    PREC vec3 pool = vec3(0.0);
+    for (int i = 0; i < u_numPoolLights; ++i) {
+        if (poolLights[i].lightType == 0u) continue;
+        PREC vec3  vtl = wp - poolLights[i].position;
+        PREC float len = sqrt(dot(vtl, vtl));
+        if (len >= poolLights[i].farDistance) continue;
+        PREC float falloff = (len <= poolLights[i].closeDistance)
+                      ? 1.0
+                      : (poolLights[i].farDistance - len) * poolLights[i].oneOverDistance;
+        if (u_lightPoolSoft != 0) {
+            PREC float t = clamp(falloff, 0.0, 1.0);
+            falloff = t * t * (3.0 - 2.0 * t);
+        }
+        PREC vec3 plCol = poolLights[i].color;
+        if (poolLights[i]._plPad1 > 0.5) plCol *= u_lightPoolMoverDim;
+        pool += plCol * falloff;
+    }
+    return min(pool, vec3(1.0));
+}
+
 void main()
 {
     // MC2_SHADER_PATH_TINT: solid BLUE so this shader's surfaces are unmistakable.
@@ -244,6 +289,13 @@ void main()
     }
     PREC vec3 fogCol = vec3(0.58, 0.65, 0.75);
     c.rgb = mix(c.rgb, fogCol, fogAmount);
+
+    // NIGHT-LIGHT-POOLS-2b: additive light pool AFTER the distance-fog mix —
+    // the chunk terrain applies NO distance fog to its pool term, so adding
+    // pre-fog here would leave the decal darker than the glowing terrain
+    // around it (the reported "dark band crossing glowing grass").
+    if (u_numPoolLights > 0)
+        c.rgb += overlayPoolLight(WorldPos);
 
     // Map-edge haze: same ramp as gos_terrain.frag. Alpha cement overlay tiles
     // are emitted well past the playable boundary on some missions and sample

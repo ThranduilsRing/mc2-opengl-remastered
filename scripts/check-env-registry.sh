@@ -715,6 +715,13 @@ ALLOWLIST=(
     MC2_MISSING_RUNWAY_FIX            # killswitch -- MISSING-RUNWAY-1: =0 restores blanket decal skip (ef0f96d5)
     MC2_TERRAIN_TILE_CENSUS           # diagnostic -- per-tile overlay/cement census probe (ef0f96d5)
     MC2_DPI_UNAWARE                   # killswitch -- DPI-AWARE-1: =1 restores DPI-virtualized window (4da86076 cherry-pick)
+    MC2_PAD_EDGE_ROAD_FIX             # killswitch -- PAD-EDGE-ROAD-1: =0 restores analytic pad edge (road notch)
+    MC2_OVERLAY_BIAS_LEGACY           # killswitch -- OVERLAY-BIAS-LINEARIZE-1: =1 restores constant NDC overlay bias
+    MC2_CEMENT_ATLAS_SEAM_FIX         # killswitch -- CEMENT-ATLAS-SEAM-1: =0 restores gutter-less atlas sampling (tile seam grid)
+    MC2_LIGHT_POOL_SOFT               # killswitch -- NIGHT-LIGHT-POOLS-2: =0 restores exact linear GetFalloff pool edge
+    MC2_LIGHT_POOL_MOVER_DIM          # override -- NIGHT-LIGHT-POOLS-2: mover-light pool dim factor (default 0.5)
+    MC2_LIGHT_POOL_VIS_GATE           # killswitch -- LIGHT-POOL-VIS-GATE-1: =0 restores packing inactive lights (FoW leak)
+    MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)
     MC2_WATER_FULL_RECIPE_SPIKE       # trace
     MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE  # feature -- water GPU full-recipe authoritative gate (documented in debug_state_dump, default true)
     MC2_WATER_GPU_FULL_RECIPE_CULL    # feature -- water GPU full-recipe cull gate
