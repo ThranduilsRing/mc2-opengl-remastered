@@ -16,7 +16,7 @@ Usage:
   py -3 scripts/mechbay_preview_harness.py loadout
   py -3 scripts/mechbay_preview_harness.py bay --campaign "campaign" --frame 200 --deploy <dir>
 
-Screen names match mc2BootScreenXY in code/missionbegin.cpp: purchase|bay|loadout|launch.
+Screen names match mc2BootScreenXY in code/missionbegin.cpp: purchase|bay|loadout|launch|briefing.
 """
 import argparse
 import os
@@ -30,7 +30,7 @@ DEFAULT_DEPLOY = "A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("screen", choices=["purchase", "bay", "loadout", "launch"])
+    ap.add_argument("screen", choices=["purchase", "bay", "loadout", "launch", "briefing"])
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)

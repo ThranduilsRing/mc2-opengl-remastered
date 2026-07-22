@@ -240,6 +240,7 @@ static bool mc2BootScreenXY( int& x, int& y )
 		else if ( !S_stricmp(scr, "bay") )      { x = 2; y = 1; }
 		else if ( !S_stricmp(scr, "loadout") )  { x = 2; y = 2; }
 		else if ( !S_stricmp(scr, "launch") )   { x = 3; y = 1; }
+		else if ( !S_stricmp(scr, "briefing") ) { x = 1; y = 1; }
 	}
 	return true;
 }
