@@ -2594,6 +2594,7 @@ class gosRenderer {
             GLint numPoolLights                      = -1;  // int
             GLint lightPoolSoft                      = -1;  // int
             GLint lightPoolMoverDim                  = -1;  // float
+            GLint lightPoolCompress                  = -1;  // int (NIGHT-LIGHT-POOLS-3)
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5239,6 +5240,7 @@ void gosRenderer::init() {
         locs.numPoolLights     = glGetUniformLocation(shp, "u_numPoolLights");
         locs.lightPoolSoft     = glGetUniformLocation(shp, "u_lightPoolSoft");
         locs.lightPoolMoverDim = glGetUniformLocation(shp, "u_lightPoolMoverDim");
+        locs.lightPoolCompress = glGetUniformLocation(shp, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -9920,6 +9922,12 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         glUniform1i(L.numPoolLights, poolCount);
         if (L.lightPoolSoft >= 0)     glUniform1i(L.lightPoolSoft, s_poolSoft ? 1 : 0);
         if (L.lightPoolMoverDim >= 0) glUniform1f(L.lightPoolMoverDim, s_poolMoverDim);
+        // NIGHT-LIGHT-POOLS-3: summed-pool tone compression (default ON).
+        static const bool s_poolCompress = [] {
+            const char* v = getenv("MC2_LIGHT_POOL_COMPRESS");
+            return !(v && v[0] == '0');
+        }();
+        if (L.lightPoolCompress >= 0)  glUniform1i(L.lightPoolCompress, s_poolCompress ? 1 : 0);
     }
 
     setupOverlayShadowsForShp(shp);

@@ -1326,6 +1326,11 @@ def main():
                             # does nothing.
                             "MC2_TERRAIN_SHORELINE",
                             "MC2_TERRAIN_SHORELINE_FILE",
+                            # NIGHT-LIGHT-POOLS-2/3 -- pool falloff/dim/compress
+                            # killswitches (defaults ON/0.5/ON).
+                            "MC2_LIGHT_POOL_SOFT",
+                            "MC2_LIGHT_POOL_MOVER_DIM",
+                            "MC2_LIGHT_POOL_COMPRESS",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs

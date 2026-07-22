@@ -219,6 +219,16 @@ uniform int u_numPoolLights;   // driver force-uploads 0 when the gate is off
 // mech/vehicle circle vs building lights (MC2_LIGHT_POOL_MOVER_DIM).
 uniform int   u_lightPoolSoft;
 uniform float u_lightPoolMoverDim;
+// NIGHT-LIGHT-POOLS-3 (user feedback 2026-07-21b): overlapping pools (5-mech
+// group, base light clusters) SUM additively far past 1.0 before the clamp,
+// producing a blinding flat saturated blob over the whole union area.
+// u_lightPoolCompress=1 (default, MC2_LIGHT_POOL_COMPRESS) tone-compresses the
+// summed term: 1 - exp(-1.6 * sum). Single full-strength light plateaus at
+// ~0.80 (slightly softer than the legacy 1.0 clamp), stacked lights approach
+// 1.0 asymptotically instead of flat-topping, and the larger channel
+// compresses harder so stacked yellow desaturates slightly instead of going
+// pure. =0 restores the exact min(pool, 1) clamp.
+uniform int   u_lightPoolCompress;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 GBuffer1;   // shadow-handled flat-up (terrain MRT composite)
@@ -1609,7 +1619,12 @@ void main() {
             if (poolLights[i]._plPad1 > 0.5) plCol *= u_lightPoolMoverDim;
             pool += plCol * falloff;
         }
-        lit += min(pool, vec3(1.0));
+        // NIGHT-LIGHT-POOLS-3: soft-compress the accumulated sum (see uniform
+        // block comment). Gate-off = legacy hard clamp.
+        if (u_lightPoolCompress != 0)
+            lit += vec3(1.0) - exp(-1.6 * pool);
+        else
+            lit += min(pool, vec3(1.0));
     }
 
     // Hemisphere ambient fill (TERRAIN-LIGHTING-1/2) — added AFTER shadow so sky/

@@ -92,6 +92,9 @@ layout(binding = 28, std430) readonly buffer TerrainLightPoolOverlay {
 uniform int   u_numPoolLights;
 uniform int   u_lightPoolSoft;
 uniform float u_lightPoolMoverDim;
+// NIGHT-LIGHT-POOLS-3: tone-compress the summed pool (same semantics as the
+// chunk frag; keeps decal pooling in lockstep with the terrain under it).
+uniform int   u_lightPoolCompress;
 
 PREC vec3 overlayPoolLight(PREC vec3 wp) {
     PREC vec3 pool = vec3(0.0);
@@ -111,6 +114,8 @@ PREC vec3 overlayPoolLight(PREC vec3 wp) {
         if (poolLights[i]._plPad1 > 0.5) plCol *= u_lightPoolMoverDim;
         pool += plCol * falloff;
     }
+    if (u_lightPoolCompress != 0)
+        return vec3(1.0) - exp(-1.6 * pool);
     return min(pool, vec3(1.0));
 }
 
