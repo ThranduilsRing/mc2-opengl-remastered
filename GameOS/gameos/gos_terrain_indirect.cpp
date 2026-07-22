@@ -839,13 +839,22 @@ static int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
 // such tile has exactly ONE owner. Killswitch MC2_PAD_EDGE_ROAD_FIX=0 ->
 // tonight's behavior (analytic edge, road notch).
 // ---------------------------------------------------------------------------
-static bool PadEdgeRoadFixEnabled() {
-    static const bool s = []() {
+// PAD-EDGE-ROAD-2: mode selector. 0 = fix OFF (analytic edge only — road
+// notch returns); 1 = DEFAULT both-draw (analytic cement word kept for outline
+// continuity + legacy road decal baked on top); 2 = PAD-EDGE-ROAD-1 legacy
+// decal-only revert (no cement word on road-adjacent tiles — the outline-seam
+// regression form, kept for A/B).
+static int PadEdgeRoadFixMode() {
+    static const int s = []() {
         const char* v = getenv("MC2_PAD_EDGE_ROAD_FIX");
-        return !(v && v[0] == '0');   // default ON
+        if (!v || !v[0]) return 1;
+        if (v[0] == '0') return 0;
+        if (v[0] == '2') return 2;
+        return 1;
     }();
     return s;
 }
+static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 
 // True when tile (r,c) carries road/runway art: an &Overlays id, OR a
 // cement-ALPHA transition art tile with NO cement-terrain corner (the
@@ -1002,14 +1011,22 @@ static void PopulateRecipeCementWords() {
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     // Cement atlas layer from first cement corner.
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    // PAD-EDGE-ROAD-1: a road-adjacent pad-edge transition tile
-                    // reverts to the stock decal pipeline — bake NO cement word
-                    // (BuildDecalStaticVBO bakes the legacy decal instead; the
-                    // two predicates are complementary, see helper header).
+                    // PAD-EDGE-ROAD-2 (regression fix on PAD-EDGE-ROAD-1, user
+                    // field report 2026-07-21b): the -1 form baked NO cement
+                    // word on road-adjacent tiles, so the pad OUTLINE switched
+                    // styles mid-perimeter (legacy decal edge on the 8-adjacent
+                    // revert tiles vs analytic cement edge on their neighbors —
+                    // angular mismatched seams). -2 keeps the analytic cement
+                    // word on those tiles (outline stays continuous) and lets
+                    // BuildDecalStaticVBO ALSO bake the road-transition decal on
+                    // top (road art renders over the analytic wedge — stock
+                    // layering, decal depth-biased). MC2_PAD_EDGE_ROAD_FIX=2
+                    // restores the -1 decal-only revert for A/B; =0 restores the
+                    // pre-fix analytic-only (road notch) behavior.
                     if (maskId >= 0 && cementLayerIdx != 0xFFFFu
-                        && PadEdgeRoadFixEnabled()
+                        && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
-                        // leave cementWord = 0
+                        // leave cementWord = 0 (legacy -1 behavior)
                     } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
