@@ -252,6 +252,20 @@ int mc2WaterBiasLegacy() {
     return mode;
 }
 
+// OVERLAY-BIAS-LINEARIZE-1: bias-mode selector for the overlay/decal VS
+// (terrain_overlay.vert, shared by TerrainOverlayBatch + DecalBatch +
+// decal-static). Default 0 = distance-proportional bias (world error ~
+// linear -> no far-zoom overlay float). MC2_OVERLAY_BIAS_LEGACY=1 -> legacy
+// constant NDC offset. Single consumer is the VS (no compute admission gate
+// mirrors the overlay bias). See mclib/terrain_depth_bias.h.
+static int mc2OverlayBiasLegacy() {
+    static const int mode = []() {
+        const char* v = std::getenv("MC2_OVERLAY_BIAS_LEGACY");
+        return (v && v[0] && v[0] != '0') ? 1 : 0;
+    }();
+    return mode;
+}
+
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
 // roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
 static bool terrainMaterialLibEnabled() {
@@ -2571,6 +2585,9 @@ class gosRenderer {
             // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
             // decal.frag does not declare it -> stays -1 -> skipped).
             GLint missionFlatLight                   = -1;  // vec3
+            // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (terrain_overlay.vert,
+            // declared on BOTH overlayProg_ and decalProg_ -- shared VS).
+            GLint overlayBiasLegacy                  = -1;  // int
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5210,6 +5227,8 @@ void gosRenderer::init() {
         locs.gravelAlbedo    = glGetUniformLocation(shp, "u_gravelAlbedo");
         // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only).
         locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
+        // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (shared VS, both programs).
+        locs.overlayBiasLegacy = glGetUniformLocation(shp, "u_overlayBiasLegacy");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -9854,6 +9873,9 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         const vec4& fl = terrain_mission_flat_light_;
         glUniform3f(L.missionFlatLight, fl.x, fl.y, fl.z);
     }
+    // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
+    if (L.overlayBiasLegacy >= 0)
+        glUniform1i(L.overlayBiasLegacy, mc2OverlayBiasLegacy());
 
     setupOverlayShadowsForShp(shp);
 

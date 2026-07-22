@@ -62,4 +62,9 @@ const float WATER_DEPTH_FUDGE_FAST   = 0.00025;   // FAST regime LEGACY constant
 // WATER-BIAS-LINEARIZE-1: distance-proportional FAST default. LOCKSTEP with
 // mclib/terrain_depth_bias.h (derivation there): 0.00025 / z_ndc(1000wu).
 const float WATER_DEPTH_FUDGE_FAST_REL = 0.000631;
+// OVERLAY-BIAS-LINEARIZE-1: distance-proportional overlay/decal bias default.
+// LOCKSTEP with mclib/terrain_depth_bias.h (derivation there):
+// 0.00005 / z_ndc(1000wu). Selected by uniform int u_overlayBiasLegacy in
+// terrain_overlay.vert (host killswitch MC2_OVERLAY_BIAS_LEGACY=1).
+const float OVERLAY_DEPTH_BIAS_REL   = 0.000126;
 #endif

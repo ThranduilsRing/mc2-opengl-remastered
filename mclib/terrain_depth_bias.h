@@ -99,6 +99,21 @@ constexpr float WATER_DEPTH_FUDGE_RASTER =  0.00025f; // RASTER regime: same sur
 // gpu_driven_water.comp pzOk admission gate, and the .hglsl sibling all
 // switch on the same mode and constants in the same commit.
 constexpr float WATER_DEPTH_FUDGE_FAST_REL = 0.000631f; // FAST regime default: distance-proportional bias factor
+// OVERLAY-BIAS-LINEARIZE-1 (2026-07-21): same class-F2 cure for the road/
+// cement overlay decals. OVERLAY_DEPTH_BIAS is a constant NDC offset
+// (terrain_overlay.vert clip.z += BIAS*clip.w) whose reverse-Z world error
+// grows ~ d^2/B: ~12.4 wu at d=10000, ~50 wu at d=20000 — at far zoom the
+// road decal beat terrain undulations BEHIND its true position, so overlays
+// visibly float / parallax-slide off the terrain. Same derivation as
+// WATER_DEPTH_FUDGE_FAST_REL, matched at the known-good d=1000 separation:
+//   OVERLAY_REL = OVERLAY_DEPTH_BIAS / z_ndc(1000) = 0.00005 / 0.396075
+//               = 1.2624e-4 → 0.000126
+// World error becomes ~ linear (0.126 wu at 1000, ~2 wu at 20000) and near-
+// field separation (<1000 wu) is >= the legacy constant, so decals still win
+// the GEQUAL tie over terrain up close. No admission/cull mirror exists for
+// overlays (CPU-emitted, no compute gate) — the VS is the single consumer.
+// Host killswitch MC2_OVERLAY_BIAS_LEGACY=1 -> legacy constant form.
+constexpr float OVERLAY_DEPTH_BIAS_REL   = 0.000126f;
 // Back-compat alias: the legacy CPU raster consumer name (quad.cpp wz + WATER_DEPTH_FUDGE).
 constexpr float WATER_DEPTH_FUDGE        = WATER_DEPTH_FUDGE_RASTER;                       // 0.00025f
 

@@ -10,6 +10,12 @@ layout(location=2) in float fogIn;      // [0,1], 1=clear
 layout(location=3) in vec4  colorIn;    // RGBA [0,1], unpacked from BGRA uint on CPU
 
 uniform mat4 u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToClip)
+// OVERLAY-BIAS-LINEARIZE-1: 0 (default) = distance-proportional bias
+// (clip.z += OVERLAY_DEPTH_BIAS_REL * clip.z; world error ~ linear in
+// distance, kills the far-zoom overlay float/parallax-slide). 1 = legacy
+// constant NDC offset (clip.z += OVERLAY_DEPTH_BIAS * clip.w), host
+// killswitch MC2_OVERLAY_BIAS_LEGACY=1. See mclib/terrain_depth_bias.h.
+uniform int  u_overlayBiasLegacy;
 
 out vec3  WorldPos;
 out vec2  Texcoord;
@@ -38,7 +44,16 @@ void main()
     // F1 Stage A: direct GL clip emit. OVERLAY_DEPTH_BIAS applied pre-divide
     // so decals/overlays win LEQUAL ties to terrain (replaces removed glPolygonOffset(-1,-1)).
     vec4 clip4 = u_worldToClipGL * vec4(worldPos, 1.0);
-    clip4.z   += OVERLAY_DEPTH_BIAS * clip4.w;
+    // OVERLAY-BIAS-LINEARIZE-1: default distance-proportional form (world
+    // error ~ linear in distance); legacy constant NDC offset behind
+    // u_overlayBiasLegacy (reverse-Z world error grows ~ d^2 -> far-zoom
+    // overlay float). Reverse-Z: clip.z >= 0 in-frustum, so the
+    // proportional term keeps the bias strictly non-negative (decals still
+    // win the GEQUAL tie, shrinking toward the far plane).
+    if (u_overlayBiasLegacy != 0)
+        clip4.z += OVERLAY_DEPTH_BIAS * clip4.w;
+    else
+        clip4.z += OVERLAY_DEPTH_BIAS_REL * clip4.z;
     gl_Position = clip4;
 
     // Behind/at-camera (and past-far-plane) reject — raster-sheet guard.
