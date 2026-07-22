@@ -1,10 +1,10 @@
 {
   "schema": "mc2-mod/1",
   "id": "sample_new_variant",
-  "name": "Sample New Variant — Atlas AS7-X Sampler",
+  "name": "Sample New Variant - Atlas AS7-X Sampler",
   "version": "1.0.0",
   "author": "MC2 remaster examples",
   "type": "assets",
   "dependencies": [],
-  "description": "Worked example of the LEGACY zero-code variant-ADD path (S4 of the ADD-path ladder): whole-file-shadows data/objects/atlas.csv with a FOURTH variant block appended at row 314 (23+97*3) — 'Atlas AS7-X Sampler', a distinct loadout swapping two ER Lasers for an ER PPC + ER Large Laser. No engine change, no gate: LogisticsData::initVariants enumerates blocks open-endedly, so the new variant appears in the mech bay and drops in-mission with the mod active. Validated by mc2_modlint --mod (VARC_ chassis-CSV rules) — the 23+97n layout is fragile; run modlint before shipping."
+  "description": "Worked example of the LEGACY zero-code variant-ADD path (S4 of the ADD-path ladder): whole-file-shadows data/objects/atlas.csv with a FOURTH variant block appended at row 314 (23+97*3) - 'Atlas AS7-X Sampler', a distinct loadout swapping two ER Lasers for an ER PPC + ER Large Laser. No engine change, no gate: LogisticsData::initVariants enumerates blocks open-endedly, so the new variant appears in the mech bay and drops in-mission with the mod active. Validated by mc2_modlint --mod (VARC_ chassis-CSV rules) - the 23+97n layout is fragile; run modlint before shipping."
 }
