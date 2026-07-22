@@ -95,25 +95,45 @@ uniform float u_lightPoolMoverDim;
 // NIGHT-LIGHT-POOLS-3: tone-compress the summed pool (same semantics as the
 // chunk frag; keeps decal pooling in lockstep with the terrain under it).
 uniform int   u_lightPoolCompress;
+// NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend (lockstep with the chunk
+// frag — see terrain_lod_chunk.frag block comment for the model rationale).
+uniform float u_lightPoolMoverScale;
+uniform int   u_lightPoolMoverMax;
 
 PREC vec3 overlayPoolLight(PREC vec3 wp) {
-    PREC vec3 pool = vec3(0.0);
+    PREC vec3 pool      = vec3(0.0);
+    PREC vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined movers
     for (int i = 0; i < u_numPoolLights; ++i) {
         if (poolLights[i].lightType == 0u) continue;
         PREC vec3  vtl = wp - poolLights[i].position;
         PREC float len = sqrt(dot(vtl, vtl));
-        if (len >= poolLights[i].farDistance) continue;
-        PREC float falloff = (len <= poolLights[i].closeDistance)
+        bool  mover = poolLights[i]._plPad1 > 0.5;
+        PREC float farD  = poolLights[i].farDistance;
+        PREC float nearD = poolLights[i].closeDistance;
+        PREC float ooD   = poolLights[i].oneOverDistance;
+        if (mover && u_lightPoolMoverScale < 0.999) {
+            PREC float s = max(u_lightPoolMoverScale, 0.05);
+            farD *= s; nearD *= s; ooD /= s;
+        }
+        if (len >= farD) continue;
+        PREC float falloff = (len <= nearD)
                       ? 1.0
-                      : (poolLights[i].farDistance - len) * poolLights[i].oneOverDistance;
+                      : (farD - len) * ooD;
         if (u_lightPoolSoft != 0) {
             PREC float t = clamp(falloff, 0.0, 1.0);
             falloff = t * t * (3.0 - 2.0 * t);
         }
         PREC vec3 plCol = poolLights[i].color;
-        if (poolLights[i]._plPad1 > 0.5) plCol *= u_lightPoolMoverDim;
+        if (mover) {
+            plCol *= u_lightPoolMoverDim;
+            if (u_lightPoolMoverMax != 0) {
+                poolMover = max(poolMover, plCol * falloff);
+                continue;
+            }
+        }
         pool += plCol * falloff;
     }
+    pool += poolMover;
     if (u_lightPoolCompress != 0)
         return vec3(1.0) - exp(-1.6 * pool);
     return min(pool, vec3(1.0));

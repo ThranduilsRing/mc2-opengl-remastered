@@ -229,6 +229,21 @@ uniform float u_lightPoolMoverDim;
 // compresses harder so stacked yellow desaturates slightly instead of going
 // pure. =0 restores the exact min(pool, 1) clamp.
 uniform int   u_lightPoolCompress;
+// NIGHT-LIGHT-POOLS-4 (user verdict 2026-07-21c): compression alone did NOT fix
+// the 5-mech group — five overlapping near-full discs saturate the union area
+// regardless of the tone curve, so the lance still read as ONE egg-shaped blob.
+// Fix the MODEL for mover lights (buildings keep legacy additive behavior):
+//   u_lightPoolMoverScale — scales the mover light's close/far radii (default
+//     0.6, MC2_LIGHT_POOL_MOVER_RADIUS; 1 = legacy radii). Smaller pools stop
+//     the five discs from covering each other completely.
+//   u_lightPoolMoverMax   — 1 (default, MC2_LIGHT_POOL_MOVER_MAXBLEND) makes
+//     mover pools combine by per-channel MAX instead of summing: where discs
+//     overlap the strongest single glow wins, so overlaps no longer stack
+//     toward saturation and each mech reads as its own soft glow. =0 restores
+//     the additive sum. The max-combined mover term joins the additive
+//     building sum BEFORE compression, keeping POOLS-3 semantics.
+uniform float u_lightPoolMoverScale;
+uniform int   u_lightPoolMoverMax;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 GBuffer1;   // shadow-handled flat-up (terrain MRT composite)
@@ -1599,15 +1614,25 @@ void main() {
     // missions typically pack a few dozen), 3 dot/sqrt per light, zero texture
     // taps. u_numPoolLights==0 -> block skipped -> byte-identical.
     if (u_numPoolLights > 0) {
-        vec3 pool = vec3(0.0);
+        vec3 pool      = vec3(0.0);
+        vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined mover glows
         for (int i = 0; i < u_numPoolLights; ++i) {
             if (poolLights[i].lightType == 0u) continue;
             vec3  vtl = v_worldPos - poolLights[i].position;
             float len = sqrt(dot(vtl, vtl));   // GetApproximateLength (non-ASM = sqrt)
-            if (len >= poolLights[i].farDistance) continue;
-            float falloff = (len <= poolLights[i].closeDistance)
+            bool  mover = poolLights[i]._plPad1 > 0.5;
+            float farD  = poolLights[i].farDistance;
+            float nearD = poolLights[i].closeDistance;
+            float ooD   = poolLights[i].oneOverDistance;
+            // NIGHT-LIGHT-POOLS-4: shrink mover pool radii (scale=1 -> legacy).
+            if (mover && u_lightPoolMoverScale < 0.999) {
+                float s = max(u_lightPoolMoverScale, 0.05);
+                farD *= s; nearD *= s; ooD /= s;
+            }
+            if (len >= farD) continue;
+            float falloff = (len <= nearD)
                           ? 1.0
-                          : (poolLights[i].farDistance - len) * poolLights[i].oneOverDistance;
+                          : (farD - len) * ooD;
             // NIGHT-LIGHT-POOLS-2: soft tail (smoothstep) kills the stamped-
             // disc edge; gate-off = exact legacy linear ramp above.
             if (u_lightPoolSoft != 0) {
@@ -1615,10 +1640,19 @@ void main() {
                 falloff = t * t * (3.0 - 2.0 * t);
             }
             vec3 plCol = poolLights[i].color;
-            // Mover-attached light (producer pad flag): dim vs building lights.
-            if (poolLights[i]._plPad1 > 0.5) plCol *= u_lightPoolMoverDim;
+            if (mover) {
+                // Mover-attached light (producer pad flag): dim vs buildings.
+                plCol *= u_lightPoolMoverDim;
+                // NIGHT-LIGHT-POOLS-4: overlapping mover pools take the MAX
+                // instead of stacking (5-mech union stays a set of glows).
+                if (u_lightPoolMoverMax != 0) {
+                    poolMover = max(poolMover, plCol * falloff);
+                    continue;
+                }
+            }
             pool += plCol * falloff;
         }
+        pool += poolMover;
         // NIGHT-LIGHT-POOLS-3: soft-compress the accumulated sum (see uniform
         // block comment). Gate-off = legacy hard clamp.
         if (u_lightPoolCompress != 0)

@@ -2595,6 +2595,8 @@ class gosRenderer {
             GLint lightPoolSoft                      = -1;  // int
             GLint lightPoolMoverDim                  = -1;  // float
             GLint lightPoolCompress                  = -1;  // int (NIGHT-LIGHT-POOLS-3)
+            GLint lightPoolMoverScale                = -1;  // float (NIGHT-LIGHT-POOLS-4)
+            GLint lightPoolMoverMax                  = -1;  // int (NIGHT-LIGHT-POOLS-4)
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5241,6 +5243,8 @@ void gosRenderer::init() {
         locs.lightPoolSoft     = glGetUniformLocation(shp, "u_lightPoolSoft");
         locs.lightPoolMoverDim = glGetUniformLocation(shp, "u_lightPoolMoverDim");
         locs.lightPoolCompress = glGetUniformLocation(shp, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
+        locs.lightPoolMoverScale = glGetUniformLocation(shp, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
+        locs.lightPoolMoverMax   = glGetUniformLocation(shp, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -9903,11 +9907,23 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
             const char* v = getenv("MC2_LIGHT_POOL_SOFT");
             return !(v && v[0] == '0');
         }();
+        // NIGHT-LIGHT-POOLS-4: default 0.5 -> 0.25 (lockstep with the chunk
+        // terrain consts in gos_terrain_lod_chunk.cpp).
         static const float s_poolMoverDim = [] {
             const char* s = getenv("MC2_LIGHT_POOL_MOVER_DIM");
-            if (!s || !s[0]) return 0.5f;
+            if (!s || !s[0]) return 0.25f;
             float f = (float)atof(s);
-            return (f >= 0.0f && f <= 1.0f) ? f : 0.5f;
+            return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
+        }();
+        static const float s_poolMoverRadius = [] {
+            const char* s = getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
+            if (!s || !s[0]) return 0.6f;
+            float f = (float)atof(s);
+            return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
+        }();
+        static const bool s_poolMoverMax = [] {
+            const char* v = getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
+            return !(v && v[0] == '0');
         }();
         int poolCount = 0;
         if (s_lightPoolsGate) {
@@ -9928,6 +9944,9 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
             return !(v && v[0] == '0');
         }();
         if (L.lightPoolCompress >= 0)  glUniform1i(L.lightPoolCompress, s_poolCompress ? 1 : 0);
+        // NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend.
+        if (L.lightPoolMoverScale >= 0) glUniform1f(L.lightPoolMoverScale, s_poolMoverRadius);
+        if (L.lightPoolMoverMax >= 0)   glUniform1i(L.lightPoolMoverMax, s_poolMoverMax ? 1 : 0);
     }
 
     setupOverlayShadowsForShp(shp);

@@ -719,7 +719,9 @@ ALLOWLIST=(
     MC2_OVERLAY_BIAS_LEGACY           # killswitch -- OVERLAY-BIAS-LINEARIZE-1: =1 restores constant NDC overlay bias
     MC2_CEMENT_ATLAS_SEAM_FIX         # killswitch -- CEMENT-ATLAS-SEAM-1: =0 restores gutter-less atlas sampling (tile seam grid)
     MC2_LIGHT_POOL_SOFT               # killswitch -- NIGHT-LIGHT-POOLS-2: =0 restores exact linear GetFalloff pool edge
-    MC2_LIGHT_POOL_MOVER_DIM          # override -- NIGHT-LIGHT-POOLS-2: mover-light pool dim factor (default 0.5)
+    MC2_LIGHT_POOL_MOVER_DIM          # override -- NIGHT-LIGHT-POOLS-2/4: mover-light pool dim factor (default 0.25 since POOLS-4)
+    MC2_LIGHT_POOL_MOVER_RADIUS       # override -- NIGHT-LIGHT-POOLS-4: mover pool radius scale (default 0.6, 1 = legacy radii)
+    MC2_LIGHT_POOL_MOVER_MAXBLEND     # killswitch -- NIGHT-LIGHT-POOLS-4: =0 restores additive mover-pool stacking
     MC2_LIGHT_POOL_VIS_GATE           # killswitch -- LIGHT-POOL-VIS-GATE-1: =0 restores packing inactive lights (FoW leak)
     MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)
     MC2_WATER_FULL_RECIPE_SPIKE       # trace

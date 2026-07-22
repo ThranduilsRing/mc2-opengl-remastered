@@ -72,11 +72,27 @@ const bool  kTglcLightPoolSoft = []() {
     const char* e = std::getenv("MC2_LIGHT_POOL_SOFT");
     return !(e && e[0] == '0');
 }();
+// NIGHT-LIGHT-POOLS-4: default dropped 0.5 -> 0.25 (5-mech group still read as
+// one saturated egg at 0.5; compression can't help five overlapping full discs).
 const float kTglcLightPoolMoverDim = []() {
     const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
-    if (!s || !s[0]) return 0.5f;
+    if (!s || !s[0]) return 0.25f;
     float v = (float)std::atof(s);
-    return (v >= 0.0f && v <= 1.0f) ? v : 0.5f;
+    return (v >= 0.0f && v <= 1.0f) ? v : 0.25f;
+}();
+// NIGHT-LIGHT-POOLS-4: mover pool radius scale (shrinks close/far distances of
+// mover-attached lights only; 1.0 = legacy radii = killswitch).
+const float kTglcLightPoolMoverRadius = []() {
+    const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
+    if (!s || !s[0]) return 0.6f;
+    float v = (float)std::atof(s);
+    return (v > 0.0f && v <= 1.0f) ? v : 0.6f;
+}();
+// NIGHT-LIGHT-POOLS-4: mover pools combine by per-channel MAX (no additive
+// stacking across an overlapping lance); =0 restores the additive sum.
+const bool kTglcLightPoolMoverMax = []() {
+    const char* e = std::getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
+    return !(e && e[0] == '0');
 }();
 // NIGHT-LIGHT-POOLS-3: tone-compress the summed pool term (default ON;
 // =0 restores the legacy min(pool,1) hard clamp -> stacked-pool blowout).
@@ -672,6 +688,8 @@ static GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLigh
 static GLint    s_locLightPoolSoft     = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolSoft
 static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolMoverDim
 static GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
+static GLint    s_locLightPoolMoverScale = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverScale
+static GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverMax
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -1165,6 +1183,8 @@ void gos_TerrainLodChunk_Init()
             s_locLightPoolSoft     = glGetUniformLocation(s_terrainProgram, "u_lightPoolSoft");      // NIGHT-LIGHT-POOLS-2
             s_locLightPoolMoverDim = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverDim");  // NIGHT-LIGHT-POOLS-2
             s_locLightPoolCompress = glGetUniformLocation(s_terrainProgram, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
+            s_locLightPoolMoverScale = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
+            s_locLightPoolMoverMax   = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -1894,6 +1914,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // NIGHT-LIGHT-POOLS-3: summed-pool tone compression toggle.
             if (s_locLightPoolCompress >= 0)
                 glUniform1i(s_locLightPoolCompress, kTglcLightPoolCompress ? 1 : 0);
+            // NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend.
+            if (s_locLightPoolMoverScale >= 0)
+                glUniform1f(s_locLightPoolMoverScale, kTglcLightPoolMoverRadius);
+            if (s_locLightPoolMoverMax >= 0)
+                glUniform1i(s_locLightPoolMoverMax, kTglcLightPoolMoverMax ? 1 : 0);
         }
     }
 
