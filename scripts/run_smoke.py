@@ -1266,6 +1266,8 @@ def main():
                             # =0 killswitch). Must be allowlisted or a gate-OFF
                             # A/B smoke silently runs the default.
                             "MC2_SHADOW_DIST_FADE",
+                            # SHADOW-DONUT-FIX-1: fade opacity cap (default 0.65).
+                            "MC2_SHADOW_DIST_FADE_MAX",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.

@@ -455,10 +455,11 @@ class gosMaterialVariationHelper {
             // fade (shadow.hglsl). =0 (killswitch) -> no define -> block
             // folds away, current behavior.
             if (mc2ShadowDistFadeWu() > 0.0f) {
-                char fadeDef[64];
+                char fadeDef[96];
                 snprintf(fadeDef, sizeof(fadeDef),
-                         "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
-                         mc2ShadowDistFadeWu());
+                         "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                         "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n",
+                         mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax());
                 defines_str.append(fadeDef);
             }
             defines_str.append("\n");
@@ -5204,10 +5205,11 @@ void gosRenderer::init() {
         // SHADOW-DIST-FADE-1: same define the terrain/material sites inject
         // (overlay + decal receive dynamic shadows too -- keep in lockstep).
         if (mc2ShadowDistFadeWu() > 0.0f) {
-            char fadeDef[64];
+            char fadeDef[96];
             snprintf(fadeDef, sizeof(fadeDef),
-                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
-                     mc2ShadowDistFadeWu());
+                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n",
+                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax());
             overlayPrefix.append(fadeDef);
         }
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",

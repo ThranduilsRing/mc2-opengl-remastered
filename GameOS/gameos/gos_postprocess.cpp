@@ -179,6 +179,21 @@ float mc2ShadowDistFadeWu()
     return s_f;
 }
 
+// SHADOW-DONUT-FIX-1: max opacity the distance fade may remove.
+// MC2_SHADOW_DIST_FADE_MAX in [0,1], default 0.65. 1.0 = old full erase at the
+// fade distance; lower keeps a soft shadow floor on far-caster interiors.
+float mc2ShadowDistFadeMax()
+{
+    static const float s_m = []() {
+        const char* v = getenv("MC2_SHADOW_DIST_FADE_MAX");
+        float m = (v && v[0]) ? (float)atof(v) : 0.65f;
+        if (m < 0.0f) m = 0.0f;
+        if (m > 1.0f) m = 1.0f;
+        return m;
+    }();
+    return s_m;
+}
+
 // Object shadow-receive normal-offset bias (in cascade texels). Default 2.0,
 // clamped [0,16]. 0 disables the normal-offset (A/B). Slope-scale term in the
 // shader is always-on (tiny); this only gates the world-space normal-offset.
@@ -605,10 +620,11 @@ void gosPostProcess::init(int w, int h)
     // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
     // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
     if (mc2ShadowDistFadeWu() > 0.0f) {
-        char fadeDef[64];
+        char fadeDef[96];
         snprintf(fadeDef, sizeof(fadeDef),
-                 "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
-                 mc2ShadowDistFadeWu());
+                 "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                 "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n",
+                 mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax());
         screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",

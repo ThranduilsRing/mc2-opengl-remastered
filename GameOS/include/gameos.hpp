@@ -2365,6 +2365,7 @@ bool  mc2ShadowFullMapSeparate();  // MC2_SHADOW_FULLMAP_SEPARATE, default ON
 int   mc2ShadowFullMapSize();      // MC2_SHADOW_FULLMAP_SIZE, default 4096, clamp {2048,4096,8192}
 float mc2ShadowObjNormalBias();  // object shadow-receive normal-offset (texels); 0 disables
 float mc2ShadowDistFadeWu();     // SHADOW-DIST-FADE-1: dynamic-shadow dissolve distance (wu); 0 = off
+float mc2ShadowDistFadeMax();    // SHADOW-DONUT-FIX-1: max fade opacity [0,1], default 0.65 (1 = old full erase)
 // STATIC-SHADOW-BANDING gates (single chokepoint, gameos_graphics.cpp). Both
 // DEFAULT ON since 2026-07-18 (field banding bug); "=0" kills (byte-identical
 // legacy). Every shader-prefix injection site MUST use these helpers -- do not
