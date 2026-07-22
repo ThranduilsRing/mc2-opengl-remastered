@@ -1343,6 +1343,9 @@ def main():
                             "MC2_LIGHT_POOL_MOVER_MAXBLEND",
                             # MOVER-LIGHT-HALOGEN-1: mover light color RRGGBB hex.
                             "MC2_LIGHT_POOL_MOVER_COLOR",
+                            # PAD-AREA-GLOW-1: night pad-area lift (strength + spill wu).
+                            "MC2_PAD_AREA_GLOW",
+                            "MC2_PAD_AREA_GLOW_SPILL",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs

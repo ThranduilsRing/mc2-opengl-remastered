@@ -2608,6 +2608,12 @@ class gosRenderer {
             GLint lightPoolCompress                  = -1;  // int (NIGHT-LIGHT-POOLS-3)
             GLint lightPoolMoverScale                = -1;  // float (NIGHT-LIGHT-POOLS-4)
             GLint lightPoolMoverMax                  = -1;  // int (NIGHT-LIGHT-POOLS-4)
+            // PAD-AREA-GLOW-1: pad-area night lift (terrain_overlay.frag only;
+            // decal.frag leaves these -1 -> skipped).
+            GLint padGlow                            = -1;  // vec3 (premultiplied)
+            GLint padGlowSpill                       = -1;  // float (wu)
+            GLint padGlowMapSide                     = -1;  // int (0 = grid absent)
+            GLint padGlowHalfMap                     = -1;  // float (wu)
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5266,6 +5272,11 @@ void gosRenderer::init() {
         locs.lightPoolCompress = glGetUniformLocation(shp, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
         locs.lightPoolMoverScale = glGetUniformLocation(shp, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
         locs.lightPoolMoverMax   = glGetUniformLocation(shp, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
+        // PAD-AREA-GLOW-1: pad-area night lift (overlayProg_ only).
+        locs.padGlow        = glGetUniformLocation(shp, "u_padGlow");
+        locs.padGlowSpill   = glGetUniformLocation(shp, "u_padGlowSpill");
+        locs.padGlowMapSide = glGetUniformLocation(shp, "u_padGlowMapSide");
+        locs.padGlowHalfMap = glGetUniformLocation(shp, "u_padGlowHalfMap");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -9913,6 +9924,31 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
     if (L.overlayBiasLegacy >= 0)
         glUniform1i(L.overlayBiasLegacy, mc2OverlayBiasLegacy());
+
+    // PAD-AREA-GLOW-1: pad-area night lift, lockstep with the chunk terrain
+    // (same strength/spill env values, same nightFactor derived from the
+    // mission flat light). mapSide force-uploads 0 when the chunk cement grid
+    // is not resident so the frag never reads the binding-25 SSBO.
+    if (L.padGlow >= 0) {
+        int   pgSide = 0;
+        float pgHalf = 0.0f;
+        gos_GetTerrainChunkGridInfo(&pgSide, &pgHalf);
+        const vec4& fl = terrain_mission_flat_light_;
+        float flMax = fl.x;                   // (std::max unusable: windows.h max macro)
+        if (fl.y > flMax) flMax = fl.y;
+        if (fl.z > flMax) flMax = fl.z;
+        float nf = 1.0f - flMax;
+        if (nf < 0.0f) nf = 0.0f;
+        if (nf > 1.0f) nf = 1.0f;
+        const float s = gos_TerrainPadGlowStrength() * nf;
+        glUniform3f(L.padGlow, s * 1.00f, s * 0.88f, s * 0.70f);
+        if (L.padGlowSpill >= 0)
+            glUniform1f(L.padGlowSpill, gos_TerrainPadGlowSpillWu());
+        if (L.padGlowMapSide >= 0)
+            glUniform1i(L.padGlowMapSide, pgSide);
+        if (L.padGlowHalfMap >= 0)
+            glUniform1f(L.padGlowHalfMap, pgHalf);
+    }
 
     // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as
     // the chunk terrain (gate MC2_TERRAIN_LIGHT_POOLS, shared). Bind the pool

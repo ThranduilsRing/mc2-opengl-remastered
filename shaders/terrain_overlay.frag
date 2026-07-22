@@ -100,6 +100,42 @@ uniform int   u_lightPoolCompress;
 uniform float u_lightPoolMoverScale;
 uniform int   u_lightPoolMoverMax;
 
+// PAD-AREA-GLOW-1: same cement-word SSBO the chunk terrain binds at binding 25
+// (persistent context-global binding, same pattern as the pool SSBO above).
+// Road/runway/cement decals crossing a glowing pad must take the same lift or
+// they read as dark bands. u_padGlowMapSide force-uploads 0 when the chunk
+// terrain grid is absent (legacy terrain path) -> loop never entered -> the
+// SSBO is never read -> safe + byte-identical.
+layout(binding = 25, std430) readonly buffer TerrainCementBufOverlay {
+    uint cementWordsPG[];
+};
+uniform PREC vec3  u_padGlow;        // premultiplied strength*color*nightFactor
+uniform PREC float u_padGlowSpill;   // feather distance (wu), < 128
+uniform int        u_padGlowMapSide; // chunk cement grid side (0 = unavailable)
+uniform PREC float u_padGlowHalfMap; // mapSide * 128 / 2 (wu)
+
+// Lockstep with terrain_lod_chunk.frag padGlowMask() — see the writeup there.
+PREC float padGlowMaskOv(PREC vec2 wp) {
+    PREC vec2 g = vec2((wp.x + u_padGlowHalfMap) / 128.0,
+                       (u_padGlowHalfMap - wp.y) / 128.0);
+    int cx = clamp(int(floor(g.x)), 0, u_padGlowMapSide - 1);
+    int cy = clamp(int(floor(g.y)), 0, u_padGlowMapSide - 1);
+    PREC float m = 0.0;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            int nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= u_padGlowMapSide || ny >= u_padGlowMapSide) continue;
+            if ((cementWordsPG[nx + ny * u_padGlowMapSide] & 0x80000000u) == 0u) continue;
+            PREC vec2 rMin = vec2(float(nx), float(ny));
+            PREC vec2 dv = max(max(rMin - g, g - (rMin + 1.0)), vec2(0.0));
+            PREC float distWu = length(dv) * 128.0;
+            m = max(m, 1.0 - smoothstep(0.0, max(u_padGlowSpill, 1.0), distWu));
+            if (m >= 1.0) return 1.0;
+        }
+    }
+    return m;
+}
+
 PREC vec3 overlayPoolLight(PREC vec3 wp) {
     PREC vec3 pool      = vec3(0.0);
     PREC vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined movers
@@ -321,6 +357,13 @@ void main()
     // around it (the reported "dark band crossing glowing grass").
     if (u_numPoolLights > 0)
         c.rgb += overlayPoolLight(WorldPos);
+
+    // PAD-AREA-GLOW-1: same additive pad-area night lift as the chunk terrain
+    // (post-fog like the pool term, for the same dark-band reason). Guarded by
+    // u_padGlowMapSide so the cement SSBO is never read when the chunk grid is
+    // absent. Day / gate-off uploads u_padGlow = 0 -> byte-identical.
+    if (u_padGlowMapSide > 0 && dot(u_padGlow, u_padGlow) > 0.0)
+        c.rgb += u_padGlow * padGlowMaskOv(WorldPos.xy);
 
     // Map-edge haze: same ramp as gos_terrain.frag. Alpha cement overlay tiles
     // are emitted well past the playable boundary on some missions and sample

@@ -198,3 +198,12 @@ void gos_TerrainLodChunk_Init();
 
 // Free the height SSBO. Call at shutdown (from gosRenderer::destroy).
 void gos_TerrainLodChunk_Destroy();
+
+// PAD-AREA-GLOW-1: pad-area night lift shared values (chunk terrain + overlay
+// uploader lockstep). Strength = MC2_PAD_AREA_GLOW (default 0.12; 0 = kill),
+// spill = MC2_PAD_AREA_GLOW_SPILL wu (default 48, clamp [4,127]).
+float gos_TerrainPadGlowStrength();
+float gos_TerrainPadGlowSpillWu();
+// Chunk cement-grid geometry (mapSide 0 = grid not resident -> overlay must
+// not read the binding-25 cement SSBO).
+void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);

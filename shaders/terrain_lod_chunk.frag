@@ -245,6 +245,43 @@ uniform int   u_lightPoolCompress;
 uniform float u_lightPoolMoverScale;
 uniform int   u_lightPoolMoverMax;
 
+// PAD-AREA-GLOW-1 (gate MC2_PAD_AREA_GLOW, default ON =0.12; =0 kill): night
+// pad-area lift. Buildings register bright warm SpotLight_ pools but the pad
+// AROUND them stayed pitch dark, so lit buildings read as pasted-bright
+// cutouts. Any fragment ON a cement-word tile (VALID bit31, solid or
+// transition) gets a mild uniform additive lift, feathering outward
+// u_padGlowSpill wu past the pad edge onto the surrounding terrain — pads +
+// buildings read as one coherent lit zone. u_padGlow is PREMULTIPLIED
+// CPU-side: strength * warm color * nightFactor(1 - max flat-light channel).
+// Day missions upload exactly (0,0,0) -> `lit += 0` -> byte-identical.
+uniform vec3  u_padGlow;
+uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 128
+
+// Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
+// u_padGlowSpill wu of world distance to the nearest cement tile rect (3x3
+// tile neighborhood — spill is clamped < 128 wu = one tile, so ring-1 is
+// sufficient). Grid convention matches the cement branch in main():
+// gx grows +worldX, gy grows -worldY, 128 wu tiles.
+float padGlowMask(vec2 wp) {
+    vec2 g = vec2((wp.x + u_halfMap) / 128.0, (u_halfMap - wp.y) / 128.0);
+    int cx = clamp(int(floor(g.x)), 0, u_mapSide - 1);
+    int cy = clamp(int(floor(g.y)), 0, u_mapSide - 1);
+    float m = 0.0;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            int nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= u_mapSide || ny >= u_mapSide) continue;
+            if ((cementWordsF[nx + ny * u_mapSide] & 0x80000000u) == 0u) continue;
+            vec2 rMin = vec2(float(nx), float(ny));
+            vec2 dv = max(max(rMin - g, g - (rMin + 1.0)), vec2(0.0));
+            float distWu = length(dv) * 128.0;
+            m = max(m, 1.0 - smoothstep(0.0, max(u_padGlowSpill, 1.0), distWu));
+            if (m >= 1.0) return 1.0;
+        }
+    }
+    return m;
+}
+
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 GBuffer1;   // shadow-handled flat-up (terrain MRT composite)
 
@@ -1660,6 +1697,14 @@ void main() {
         else
             lit += min(pool, vec3(1.0));
     }
+
+    // PAD-AREA-GLOW-1: mild uniform night lift on cement pads + a feathered
+    // spill margin onto surrounding terrain (see uniform block comment).
+    // ADDITIVE after the shadow multiply, like the light pools — the glow is
+    // area lighting and must reach shadowed ground. u_padGlow == 0 (day, gate
+    // off, or no chunk grid) -> adds exact 0 -> byte-identical.
+    if (dot(u_padGlow, u_padGlow) > 0.0)
+        lit += u_padGlow * padGlowMask(v_worldPos.xy);
 
     // Hemisphere ambient fill (TERRAIN-LIGHTING-1/2) — added AFTER shadow so sky/
     // ground bounce still lights shadowed terrain. Env-gated OFF by default

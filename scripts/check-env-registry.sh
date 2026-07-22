@@ -727,6 +727,8 @@ ALLOWLIST=(
     MC2_SHADOW_DIST_FADE              # override -- SHADOW-DIST-FADE-1: dynamic-shadow dissolve ray distance wu (default 80, 0 = killswitch)
     MC2_SHADOW_DIST_FADE_MAX          # override -- SHADOW-DONUT-FIX-1: max fade opacity [0,1] (default 0.65; 1 = old full erase)
     MC2_LIGHT_POOL_MOVER_COLOR        # override -- MOVER-LIGHT-HALOGEN-1: mover light RRGGBB hex (default FFEED1 halogen; FFFF00 = legacy yellow)
+    MC2_PAD_AREA_GLOW                 # override -- PAD-AREA-GLOW-1: night pad-area lift strength (default 0.12, 0 = killswitch)
+    MC2_PAD_AREA_GLOW_SPILL           # override -- PAD-AREA-GLOW-1: spill feather distance wu past pad edge (default 48, clamp [4,127])
     MC2_WATER_FULL_RECIPE_SPIKE       # trace
     MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE  # feature -- water GPU full-recipe authoritative gate (documented in debug_state_dump, default true)
     MC2_WATER_GPU_FULL_RECIPE_CULL    # feature -- water GPU full-recipe cull gate

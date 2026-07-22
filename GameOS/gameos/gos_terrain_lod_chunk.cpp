@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+
 #include <optional>
 #include <vector>
 #include <map>
@@ -690,6 +691,8 @@ static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoo
 static GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
 static GLint    s_locLightPoolMoverScale = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverScale
 static GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverMax
+static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
+static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -1195,6 +1198,8 @@ void gos_TerrainLodChunk_Init()
             s_locLightPoolCompress = glGetUniformLocation(s_terrainProgram, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
             s_locLightPoolMoverScale = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
             s_locLightPoolMoverMax   = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
+            s_locPadGlow      = glGetUniformLocation(s_terrainProgram, "u_padGlow");       // PAD-AREA-GLOW-1
+            s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -1886,6 +1891,25 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             float fr = 1.f, fg = 1.f, fb = 1.f;
             gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
             glUniform3f(s_locMissionFlatLight, fr, fg, fb);
+        }
+        // PAD-AREA-GLOW-1: premultiplied night pad-area lift. nightFactor is
+        // derived from the SAME mission flat light CEMENT-NIGHT-LIGHT-1 uses
+        // (1 - brightest channel): day missions upload ~(1,1,1) -> factor 0 ->
+        // u_padGlow = exact (0,0,0) -> byte-identical. Warm color matches the
+        // building SpotLight_ register tint direction (0xffe8c870-ish).
+        if (s_locPadGlow >= 0) {
+            float fr = 1.f, fg = 1.f, fb = 1.f;
+            gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
+            float flMax = fr;                     // (std::max unusable: windows.h max macro)
+            if (fg > flMax) flMax = fg;
+            if (fb > flMax) flMax = fb;
+            float nf = 1.0f - flMax;
+            if (nf < 0.0f) nf = 0.0f;
+            if (nf > 1.0f) nf = 1.0f;
+            const float s = gos_TerrainPadGlowStrength() * nf;
+            glUniform3f(s_locPadGlow, s * 1.00f, s * 0.88f, s * 0.70f);
+            if (s_locPadGlowSpill >= 0)
+                glUniform1f(s_locPadGlowSpill, gos_TerrainPadGlowSpillWu());
         }
         // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
         // the per-frame terrain light pool SSBO (packed+uploaded every frame by
@@ -3162,4 +3186,47 @@ void gos_TerrainLodChunk_UploadHeightPatch(
     }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+// PAD-AREA-GLOW-1: chunk cement-grid geometry for the overlay/decal uploader
+// (gameos_graphics.cpp uploadOverlayUniforms_). mapSide==0 means the chunk
+// terrain grid is not resident (legacy terrain path / pre-upload) — the
+// overlay shader then force-uploads u_padGlowMapSide=0 and never reads the
+// binding-25 cement SSBO.
+void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap)
+{
+    if (mapSide) *mapSide = s_mapSide;
+    if (halfMap) *halfMap = s_halfMap;
+}
+
+// PAD-AREA-GLOW-1: uniform night lift on cement pads + a feathered spill
+// margin (MC2_PAD_AREA_GLOW_SPILL wu) onto surrounding terrain, so buildings
+// with bright pool lights no longer read as pasted-bright cutouts on black
+// ground. Value = additive lift strength (pre nightFactor/color). Default ON
+// (0.12); =0 kill. GLOBAL scope (not the anon namespace) — the overlay/decal
+// uploader in gameos_graphics.cpp reuses both values for lockstep.
+float gos_TerrainPadGlowStrength()
+{
+    static const float s_v = []() {
+        const char* s = std::getenv("MC2_PAD_AREA_GLOW");
+        if (!s || !s[0]) return 0.12f;
+        float v = (float)std::atof(s);
+        if (v < 0.0f) v = 0.0f;
+        if (v > 4.0f) v = 4.0f;
+        return v;
+    }();
+    return s_v;
+}
+
+float gos_TerrainPadGlowSpillWu()
+{
+    static const float s_v = []() {
+        const char* s = std::getenv("MC2_PAD_AREA_GLOW_SPILL");
+        if (!s || !s[0]) return 48.0f;
+        float v = (float)std::atof(s);
+        if (v < 4.0f)   v = 4.0f;
+        if (v > 127.0f) v = 127.0f;   // mask probes ring-1 only (128 wu tiles)
+        return v;
+    }();
+    return s_v;
 }
