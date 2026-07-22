@@ -1261,6 +1261,11 @@ def main():
                             # smoke silently runs gate-ON.
                             "MC2_SHADOW_PROP_ALPHA",
                             "MC2_SHADOW_PROP_ALPHA_ATLAS",
+                            # SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow
+                            # penumbra + fade dissolve distance (wu, default 80,
+                            # =0 killswitch). Must be allowlisted or a gate-OFF
+                            # A/B smoke silently runs the default.
+                            "MC2_SHADOW_DIST_FADE",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.

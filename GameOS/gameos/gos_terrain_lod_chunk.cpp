@@ -1151,6 +1151,15 @@ void gos_TerrainLodChunk_Init()
                      mc2ShadowCsmCount());
             prefix += csmDef;
         }
+        // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra + fade
+        // (shadow.hglsl). Lockstep with the gameos_graphics.cpp inject sites.
+        if (mc2ShadowDistFadeWu() > 0.0f) {
+            char fadeDef[64];
+            snprintf(fadeDef, sizeof(fadeDef),
+                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
+                     mc2ShadowDistFadeWu());
+            prefix += fadeDef;
+        }
         glsl_program* prog = glsl_program::makeProgram(
             "terrain_lod_chunk",
             "shaders/terrain_lod_chunk.vert",

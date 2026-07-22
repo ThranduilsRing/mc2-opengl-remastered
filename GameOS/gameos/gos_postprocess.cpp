@@ -162,6 +162,23 @@ float mc2ShadowCsmSoftness()
     return s_s;
 }
 
+// SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow softness + fade.
+// MC2_SHADOW_DIST_FADE = occluder->receiver ray distance (world units) at which
+// a dynamic shadow has fully dissolved (blur ramps in from ~0, opacity fade
+// starts ~45% of the way). Default 80. =0 killswitch -> the define is not
+// injected -> shadow.hglsl folds the whole block away (current behavior).
+float mc2ShadowDistFadeWu()
+{
+    static const float s_f = []() {
+        const char* v = getenv("MC2_SHADOW_DIST_FADE");
+        float f = (v && v[0]) ? (float)atof(v) : 80.0f;
+        if (f < 0.0f) f = 0.0f;
+        if (f > 100000.0f) f = 100000.0f;
+        return f;
+    }();
+    return s_f;
+}
+
 // Object shadow-receive normal-offset bias (in cascade texels). Default 2.0,
 // clamped [0,16]. 0 disables the normal-offset (A/B). Slope-scale term in the
 // shader is always-on (tiny); this only gates the world-space normal-offset.
@@ -584,6 +601,15 @@ void gosPostProcess::init(int w, int h)
                  "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
                  mc2ShadowCsmCount());
         screenShadowPrefix += csmDef;
+    }
+    // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
+    // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
+    if (mc2ShadowDistFadeWu() > 0.0f) {
+        char fadeDef[64];
+        snprintf(fadeDef, sizeof(fadeDef),
+                 "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
+                 mc2ShadowDistFadeWu());
+        screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",
         "shaders/postprocess.vert", "shaders/shadow_screen.frag", screenShadowPrefix.c_str());

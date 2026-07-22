@@ -451,6 +451,16 @@ class gosMaterialVariationHelper {
                          mc2ShadowCsmCount());
                 defines_str.append(csmDef);
             }
+            // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra +
+            // fade (shadow.hglsl). =0 (killswitch) -> no define -> block
+            // folds away, current behavior.
+            if (mc2ShadowDistFadeWu() > 0.0f) {
+                char fadeDef[64];
+                snprintf(fadeDef, sizeof(fadeDef),
+                         "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
+                         mc2ShadowDistFadeWu());
+                defines_str.append(fadeDef);
+            }
             defines_str.append("\n");
 
             if(variation.defines_)
@@ -5190,6 +5200,15 @@ void gosRenderer::init() {
                      "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
                      mc2ShadowCsmCount());
             overlayPrefix.append(csmDef);
+        }
+        // SHADOW-DIST-FADE-1: same define the terrain/material sites inject
+        // (overlay + decal receive dynamic shadows too -- keep in lockstep).
+        if (mc2ShadowDistFadeWu() > 0.0f) {
+            char fadeDef[64];
+            snprintf(fadeDef, sizeof(fadeDef),
+                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n",
+                     mc2ShadowDistFadeWu());
+            overlayPrefix.append(fadeDef);
         }
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",
             "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag",
