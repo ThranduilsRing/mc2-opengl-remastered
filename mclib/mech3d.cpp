@@ -3886,6 +3886,11 @@ void Mech3DAppearance::updateGeometry (void)
 				pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
 				pointLight->init(TG_LIGHT_SPOT);
 				lightId = eye->addWorldLight(pointLight);
+				// NIGHT-LIGHT-POOLS-2a: tag the anubis light as mover-owned so
+				// the light-pool producer can classify it (tags are recorded
+				// unconditionally; MC2_SPOT_DIAG gates only the printing).
+				if (lightId >= 0)
+					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech);
 
 				pointLight->SetaRGB(0xffffff00);
 				pointLight->SetIntensity(0.15f);
@@ -3893,9 +3898,14 @@ void Mech3DAppearance::updateGeometry (void)
 			}
 		}
 		
-		if (pointLight)	
+		if (pointLight)
 		{
-			if (visible && (sensorLevel > 4) && !InEditor)
+			// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown mechs emit
+			// nothing (user report: wrecks kept glowing).
+			if (visible && (sensorLevel > 4) && !InEditor
+				&& (status != OBJECT_STATUS_DESTROYED)
+				&& (status != OBJECT_STATUS_DISABLED)
+				&& (status != OBJECT_STATUS_SHUTDOWN))
 			{
 				if (lightCircleNodeIndex == -1)
 					lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
@@ -4034,8 +4044,20 @@ void Mech3DAppearance::updateGeometry (void)
 				// any enemy mech at sensorLevel<5 is stuck active=false. The
 				// generalized path should illuminate for any visible mech at
 				// night regardless of sensor state.
+				// LIGHT-POOL-VIS-GATE-1 note (2026-07-21): `visible` IS the
+				// mesh-drawn fog-of-war predicate (the appearance renders the
+				// full mesh only under `if (visible)`; sensor blips draw via a
+				// separate sensorLevel 1..4 path) — this active flag is
+				// CORRECT. The observed "pools at unseen enemy blips" leak was
+				// the light-pool pack loop ignoring TG_Light::active entirely
+				// (fixed in gos_terrain_lighting.cpp PackAndDispatch).
+				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown movers
+				// emit nothing (user report: wrecks kept glowing).
 				spotlightLights_[k]->active =
-					(eye->isNight && visible && !InEditor);
+					(eye->isNight && visible && !InEditor
+					 && (status != OBJECT_STATUS_DESTROYED)
+					 && (status != OBJECT_STATUS_DISABLED)
+					 && (status != OBJECT_STATUS_SHUTDOWN));
 			}
 		}
 

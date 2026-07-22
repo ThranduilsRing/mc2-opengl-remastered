@@ -2693,8 +2693,12 @@ void GVAppearance::updateGeometry (void)
 				// (sensorLevel > 4) is never true and all 39 GV spotlight
 				// registrations were stuck active=false. Generalized SpotLight_
 				// illumination should fire for any visible GV at night.
+				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled movers emit nothing
+				// (user report: wrecks kept glowing).
 				spotlightLights_[k]->active =
-					(eye->isNight && visible && !InEditor);
+					(eye->isNight && visible && !InEditor
+					 && (status != OBJECT_STATUS_DESTROYED)
+					 && (status != OBJECT_STATUS_DISABLED));
 			}
 		}
 	//}

@@ -35,6 +35,7 @@
 #include "../../mclib/vertex.h"     // Vertex, PostcompVertex
 #include "../../mclib/camera.h"     // CameraPtr eye, getTerrainLight(), lightDirection, fogStart/fogFull
 #include "../../mclib/tgl.h"        // TG_Light, TG_LIGHT_* constants
+#include "../../mclib/spotlight_diag.h"  // NIGHT-LIGHT-POOLS-2a: mover-light slot tags
 #include "../../mclib/quad.h"       // TerrainQuad, TerrainQuad::rainLightLevel, ::lighteningLevel
 #include "gameos.hpp"  // gosEnvironment Environment (Environment.Renderer)
 
@@ -800,10 +801,45 @@ void PackAndDispatch() {
     // The shader receives only lights [2..N-1]; u_numLights = count of those.
     uint32_t numLights = 0;
     if (eye) {
+        // LIGHT-POOL-VIS-GATE-1 (2026-07-21, fog-of-war leak): the legacy CPU
+        // consumer honors TG_Light::active (tgl.cpp:2123) but this pack loop
+        // did not — INACTIVE lights (mover appearances set active=false for
+        // enemy movers without visual contact; camera sets it false for
+        // off-screen point/spot lights) were packed anyway, so night light
+        // pools rendered at red sensor-blip positions of UNSEEN enemies
+        // (positional intel leak) and off-screen lights burned pool budget.
+        // Skip !active — legacy parity. Killswitch MC2_LIGHT_POOL_VIS_GATE=0.
+        static const bool s_visGate = []() {
+            const char* v = std::getenv("MC2_LIGHT_POOL_VIS_GATE");
+            return !(v && v[0] == '0');   // default ON
+        }();
+        // NIGHT-LIGHT-POOLS-2a: mover-light classification for the pool
+        // consumer (frag dims mover pools; the compute vertex-lighting
+        // consumer ignores the pad field — no legacy deviation). Slot tags
+        // are recorded unconditionally at the mover registration sites
+        // (mc2_spotlight_diag::tag_slot).
+        static std::vector<TG_LightPtr> s_moverLightPtrs;
+        s_moverLightPtrs.clear();
+        if (TG_LightPtr* wl = eye->getWorldLights()) {
+            for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s) {
+                if (!wl[s]) continue;
+                mc2_spotlight_diag::SourceClass src;
+                if (mc2_spotlight_diag::is_e_slot(s, &src)
+                    && (src == mc2_spotlight_diag::Mech
+                        || src == mc2_spotlight_diag::Gv))
+                    s_moverLightPtrs.push_back(wl[s]);
+            }
+        }
+        auto lightIsMover = [&](TG_LightPtr lp) -> bool {
+            for (TG_LightPtr p : s_moverLightPtrs)
+                if (p == lp) return true;
+            return false;
+        };
         const long nLights = eye->getNumTerrainLights();
         for (long i = 2; i < nLights && numLights < s_maxLights; ++i) {
             TG_LightPtr tl = eye->getTerrainLight(i);
             if (!tl) continue;
+            if (s_visGate && !tl->active) continue;   // LIGHT-POOL-VIS-GATE-1
             GpuTerrainLight& gl = s_lightBuf[numLights];
             gl.position[0]   = tl->position.x;
             gl.position[1]   = tl->position.y;
@@ -823,7 +859,9 @@ void PackAndDispatch() {
             gl.closeDistance   = tl->closeDistance;
             gl.farDistance     = tl->farDistance;
             gl.oneOverDistance = tl->oneOverDistance;
-            gl._pad1           = 0.0f;
+            // NIGHT-LIGHT-POOLS-2a: mover flag in the pad (pool frag dims
+            // mover-attached lights; compute consumer never reads pads).
+            gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;
             gl._pad2           = 0.0f;
             ++numLights;
         }
