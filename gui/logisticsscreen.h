@@ -108,6 +108,10 @@ class LogisticsScreen : public aObject
 	// Forward list data into the defsUiPage for screens that embed a GuiList
 	// inside their main FIT.  No-ops when hasDefsUiPage() is false.
 	bool setDefsListItems(const std::string& key, const std::vector<std::string>& items);
+	// BRIEFING-WRAP-1: wrap text exactly as one row of the defs GuiList would at
+	// the current display scale (see UiDefs::GameOSPage::wrapListItemText).
+	bool wrapDefsListText(const std::string& key, const std::string& text,
+		std::vector<std::string>& outLines);
 	// Optional per-item text colors (ARGB), parallel to the items pushed above.
 	bool setDefsListItemColors(const std::string& key, const std::vector<unsigned int>& colors);
 	// Screen-rect of a defs element + an ImGui-layer rect draw, for overlaying dynamic

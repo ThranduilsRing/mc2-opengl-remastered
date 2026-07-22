@@ -246,6 +246,12 @@ void MechPurchaseScreen::render( int xOffset, int yOffset )
 	// its info text into the mcl_mechinfo defs page and its loadout into a defs GuiList
 	// (matching Mech Bay), so it must NOT be bridged -- otherwise the legacy loadout
 	// list would TTF-draw on top of the GuiList and double up.
+	// DEFS-LIST-ICONS-1: full GUI bridge (not just text) so the MechListBoxItem
+	// quads — mech silhouette icons, cost icons, row outlines, scrollbars — reach
+	// the ImGui layer instead of being buried under the defs page (text-only
+	// rows). aListBox::render also clips bridged edge rows to the box instead of
+	// letting them spill below it (DEFS-LIST-CLIP-1).
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 	aObject::beginTextBridge( tbSx, tbSy, 1.0f, tbOx, tbOy );
 	inventoryListBox.move( xOffset, yOffset);
 	inventoryListBox.render();
@@ -255,6 +261,7 @@ void MechPurchaseScreen::render( int xOffset, int yOffset )
 	variantListBox.render();
 	variantListBox.move(-xOffset, -yOffset);
 	aObject::endTextBridge();
+	aObject::endGuiBridge();
 
 	mechDisplay.render( xOffset, yOffset );
 

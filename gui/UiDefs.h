@@ -105,6 +105,14 @@ public:
     // time they change. elementKey is the GuiList element's "key" field
     // (e.g. "game.mcl_mp_loadmap_list0.list.map").
     bool setListItems(const std::string& elementKey, const std::vector<std::string>& items);
+    // BRIEFING-WRAP-1: split text into the exact lines a row of this GuiList
+    // wraps to at the CURRENT display scale (same font, size, and pixel width
+    // the row renderer uses), so pre-wrapped items pushed via setListItems
+    // never re-wrap inside their fixed-height row and overlap the next one.
+    // '\n' = hard break; empty text yields one empty line. Returns false when
+    // the element/fonts are unavailable (caller falls back to its own wrap).
+    bool wrapListItemText(const std::string& elementKey, const std::string& text,
+                          std::vector<std::string>& outLines);
     // Optional per-item text colors (ARGB), parallel to the items. Shorter than
     // the item list => trailing rows fall back to the element's text color.
     bool setListItemColors(const std::string& elementKey, const std::vector<unsigned int>& colors);

@@ -35,6 +35,24 @@ void aObject::beginGuiBridge(float scaleX, float scaleY)
 	beginGuiBridge(scaleX, scaleY, 0.0f, 0.0f);
 }
 
+// DEFS-METER-BRIDGE-1: drawRect/drawEmptyRect (mclib/utilities.cpp) are raw gos
+// quads used by aRect outlines and the attribute/weight meters; buried under an
+// ImGui defs page. While the GUI bridge is active, reroute them to the ImGui
+// layer at the bridge transform. Installed as a hook so mclib stays unlinked
+// from gui/GuiRuntime (see utilities.h).
+static bool uiBridgeRectDraw( const GUI_RECT& r, unsigned long color, bool filled )
+{
+	if ( !s_guiBridgeActive )
+		return false;
+	GuiRuntime::DrawUiRect(
+		r.left * s_guiBridgeSx + s_guiBridgeOx,
+		r.top  * s_guiBridgeSy + s_guiBridgeOy,
+		( r.right - r.left ) * s_guiBridgeSx,
+		( r.bottom - r.top ) * s_guiBridgeSy,
+		color, filled );
+	return true;
+}
+
 void aObject::beginGuiBridge(float scaleX, float scaleY, float offX, float offY)
 {
 	s_guiBridgeActive = true;
@@ -42,6 +60,7 @@ void aObject::beginGuiBridge(float scaleX, float scaleY, float offX, float offY)
 	s_guiBridgeSy = scaleY > 0.0f ? scaleY : 1.0f;
 	s_guiBridgeOx = offX;
 	s_guiBridgeOy = offY;
+	g_uiBridgeRectHook = uiBridgeRectDraw;
 }
 
 // UI-LAYER-CONTRACT-2: canvas-aware bridge begin. Display size + the 16:9
@@ -76,6 +95,15 @@ void aObject::beginGuiBridgeCanvas()
 	float sx, sy, ox, oy;
 	getCanvasTransform( sx, sy, ox, oy );
 	beginGuiBridge( sx, sy, ox, oy );
+}
+
+bool aObject::getGuiBridgeTransform(float& sx, float& sy, float& ox, float& oy)
+{
+	sx = s_guiBridgeSx;
+	sy = s_guiBridgeSy;
+	ox = s_guiBridgeOx;
+	oy = s_guiBridgeOy;
+	return s_guiBridgeActive;
 }
 
 void aObject::endGuiBridge()

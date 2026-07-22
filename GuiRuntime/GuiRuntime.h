@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace GuiRuntime {
     // Editor-mode opt-in. gui_runtime is ONE static lib linked into both the game
@@ -56,6 +58,17 @@ namespace GuiRuntime {
 
     bool IsReadyForUiText();
 
+    // BRIEFING-WRAP-1: split text into the EXACT wrapped lines DrawUiText would
+    // produce at this pixel wrap width / font / size (same CalcWordWrapPositionA
+    // walk ImGui uses when rendering with a wrap_width). '\n' is honored as a
+    // hard break; an empty input yields one empty line. Returns false when the
+    // ImGui text path is unavailable (caller should fall back to its own wrap).
+    bool CalcUiTextWrapLines(const char* text,
+                             float wrapWidth,
+                             int fontSize,
+                             const char* fontFamily,
+                             std::vector<std::string>& outLines);
+
     // Draw UI Editor FIT rectangles/images through ImGui's draw lists.  The
     // new data/defs UI layer is a HUD layer; GameOS owns the frame/3D
     // renderer, but ImGui owns visible 2D UI composition and text.
@@ -72,6 +85,18 @@ namespace GuiRuntime {
 
     // Filled or outlined circle centered at (cx,cy). Radio ("circle check") glyphs.
     bool DrawUiCircle(float cx, float cy, float radius, std::uint32_t argb, bool filled);
+
+    // Filled triangle with explicit display-space vertices (legacy gos_DrawTriangles
+    // shapes routed through the GUI bridge, e.g. the Mech Bay radial weight gauge).
+    bool DrawUiTriangleVerts(float x0, float y0, float x1, float y1,
+                             float x2, float y2, std::uint32_t argb);
+
+    // Push/pop a display-space clip rect (intersected with the current one) on the
+    // UI draw layer. All DrawUi* primitives AND DrawUiText honor it. Used by bridged
+    // legacy list boxes so partially-scrolled rows clip at the box edge instead of
+    // painting the legacy black cover rects over the defs page art.
+    bool PushUiClipRect(float x, float y, float w, float h);
+    void PopUiClipRect();
 
     bool DrawUiImage(unsigned int glTextureName,
                      float x,

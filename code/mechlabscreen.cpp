@@ -860,17 +860,27 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	float tbSx = 1.f, tbSy = 1.f, tbOx = 0.f, tbOy = 0.f;
 	aObject::getCanvasTransform( tbSx, tbSy, tbOx, tbOy );
 
+	// DEFS-LIST-ICONS-1: full GUI bridge (not just text) so each component row's
+	// icon quad reaches the ImGui layer instead of being buried under the defs
+	// page (text-only AVAILABLE COMPONENTS rows with icon-sized gaps). Bridged
+	// edge rows also clip to the list box (DEFS-LIST-CLIP-1).
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	componentListBox.move( xOffset, yOffset );
 	componentListBox.render();
 	componentListBox.move( -xOffset, -yOffset );
 	aObject::endTextBridge();
+	aObject::endGuiBridge();
 
 
 
 
+	// DEFS-METER-BRIDGE-1: stat bars on the ImGui layer (raw gos draws are
+	// buried under the defs page).
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 	for ( int i = 0; i < MECH_LAB_ATTRIBUTE_METER_COUNT; i++ )
 		attributeMeters[i].render(xOffset, yOffset);
+	aObject::endGuiBridge();
 
 	if ( !xOffset && !yOffset )
 	{
