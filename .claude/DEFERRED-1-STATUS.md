@@ -192,3 +192,41 @@ The `task_4bc93a0a` follow-up flagged above is done. Fix in `mclib/txmmgr.cpp` ~
 - [x] Item 9 follow-up complete — LOADRACE terrain-residency false negative FIXED (commit `235b88f3`); 8/8 cold launches now `terrain_resident=Y degraded=no`; legacy-path control found pre-existing (non-regressed) vestigial-renderer condition, documented
 - [x] tier1 smoke PASS 5/5 (`2026-07-16T12-24-31`, re-verified `2026-07-16T20-17-14` post item-8 fix, re-verified `2026-07-16T22-15-25` post item-9-followup fix)
 - [x] release lane registry entry already present for DEFERRED-SWEEP-1
+
+## Batch 5 — three user-directed visual refinements (2026-07-22)
+
+Deployed to lane @ src_commit f45167f7 (clean, no -dirty). Evidence: `.claude/captures/batch5/`.
+
+### Item 1 — shadow donut — DONE (commit `38d5d8d9`, SHADOW-DONUT-FIX-1)
+- **Root cause:** SHADOW-DIST-FADE-1's occluder-distance probe AVERAGED all 16 taps (4 Poisson x 4
+  staircase depths). At silhouette EDGES half the ring samples sky -> estimate collapses -> no fade ->
+  dark ring; interior gets full estimate -> full fade -> washed center = OUTLINE "donut".
+- **Fix:** per-probe occlusion, dNorm = MAX over the 4 spatial probes (edges inherit the interior's
+  estimate -> uniform blur+fade across the silhouette) + fade capped at new env
+  `MC2_SHADOW_DIST_FADE_MAX` (default 0.65; 1.0 = old full erase) for the softer interior.
+  All 3 shader variants lockstep; injected at all 4 compile sites.
+- **Evidence:** `i1_defaults/` (crop_i1_defaults_shadowzone.png: filled soft silhouettes, no ring)
+  vs `i1_max100/` (old-style full erase, far tips dissolve) vs `i1_max005/` (fade ~off). All three
+  hash-distinct on all 3 mc2_10 poses.
+
+### Item 2 — pad area light — DONE (commit `f45167f7`, PAD-AREA-GLOW-1)
+- Cement-word tiles (binding-25 SSBO, VALID bit) + feathered spill (`MC2_PAD_AREA_GLOW_SPILL`,
+  default 48wu, 3x3 tile distance-to-rect mask) get a mild uniform additive warm lift at night;
+  nightFactor = 1 - max(missionFlatLight) premultiplied CPU-side -> day = exact (0,0,0) add =
+  byte-identical. Chunk frag + overlay frag lockstep. Gate `MC2_PAD_AREA_GLOW` (strength) default
+  ON 0.12; =0 kill.
+- **Evidence** (mc2_05 pad clusters found by pak terrainType decode, `bm_mc2_05_pads.json`):
+  `i2_max/` glow=3 absurd extreme (pads blown white, feathered corners visible);
+  `i2_default/` vs `i2_off/` mean lift +[20,17,14] RGB on pad_big, 78% px changed; spill extremes
+  `i2_spill4/` vs `i2_spill127/` differ in a 5.3% px edge band (feather knob works).
+
+### Item 3 — mover light color — DONE (commit `033cb516`, MOVER-LIGHT-HALOGEN-1)
+- Egg-yolk source: all three MOVER SpotLight_ registration sites hardcoded aRGB 0xffffff00 (pure
+  yellow) — mech3d.cpp anubis pointLight + generalized path, gvactor.cpp. Buildings were already
+  warm 0xffe8c870 (bdactor.cpp) — untouched.
+- Now `mc2_spotlight_diag::mover_light_argb()`: default halogen 0xFFEED1, env
+  `MC2_LIGHT_POOL_MOVER_COLOR=RRGGBB` (FFFF00 = legacy).
+- **Evidence:** `i3_default/` vs `i3_legacy/` vs `i3_green/` (absurd 00FF00) all hash-distinct on
+  mc2_05 lance pose; crop_i3_maxdelta_{default,green}.png shows an active mover spotlight glare
+  flipping with the env (player-lance lights inactive at the early capture frame — user click-through
+  still owed for the in-gameplay look).

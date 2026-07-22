@@ -1,0 +1,21 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_05",
+  "_note": "Batch5 item2 pad-area-glow: big cement pad clusters (pak terrainType decode)",
+  "bookmarks": [
+    {
+      "name": "pad_big",
+      "pos": [3456.0, -2176.0, 200.0],
+      "rot": -136.25,
+      "proj": 40.0,
+      "alt": 2600.0
+    },
+    {
+      "name": "pad_near_lance",
+      "pos": [3968.0, -3968.0, 200.0],
+      "rot": -136.25,
+      "proj": 40.0,
+      "alt": 2600.0
+    }
+  ]
+}
