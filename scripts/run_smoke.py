@@ -1341,6 +1341,8 @@ def main():
                             "MC2_LIGHT_POOL_COMPRESS",
                             "MC2_LIGHT_POOL_MOVER_RADIUS",
                             "MC2_LIGHT_POOL_MOVER_MAXBLEND",
+                            # MOVER-LIGHT-HALOGEN-1: mover light color RRGGBB hex.
+                            "MC2_LIGHT_POOL_MOVER_COLOR",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs

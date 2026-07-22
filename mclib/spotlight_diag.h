@@ -34,4 +34,11 @@ void reset();
 // Whether MC2_SPOT_DIAG env is set. Cached at startup.
 bool is_enabled();
 
+// MOVER-LIGHT-HALOGEN-1: aRGB color for MOVER-attached SpotLight_ registrations
+// (mech3d.cpp / gvactor.cpp). Legacy hardcoded 0xffffff00 (pure yellow = "egg
+// yolk" pools). Default is a desaturated warm halogen 0xFFEED1; override with
+// MC2_LIGHT_POOL_MOVER_COLOR=RRGGBB hex (e.g. FFFF00 restores legacy yellow).
+// Buildings (bdactor.cpp, authored warm 0xffe8c870) are NOT routed through this.
+unsigned long mover_light_argb();
+
 } // namespace mc2_spotlight_diag

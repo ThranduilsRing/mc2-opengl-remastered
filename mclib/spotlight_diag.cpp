@@ -53,4 +53,21 @@ bool is_enabled()
     return s_enabled_cached;
 }
 
+// MOVER-LIGHT-HALOGEN-1: see header. Parsed once; malformed hex -> default.
+unsigned long mover_light_argb()
+{
+    static const unsigned long s_argb = []() -> unsigned long {
+        unsigned long rgb = 0xFFEED1ul;   // warm halogen default
+        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_COLOR");
+        if (v && v[0]) {
+            char* end = nullptr;
+            unsigned long parsed = std::strtoul(v, &end, 16);
+            if (end && end != v && *end == '\0' && parsed <= 0xFFFFFFul)
+                rgb = parsed;
+        }
+        return 0xFF000000ul | rgb;
+    }();
+    return s_argb;
+}
+
 } // namespace mc2_spotlight_diag

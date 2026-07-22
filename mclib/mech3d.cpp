@@ -3892,7 +3892,9 @@ void Mech3DAppearance::updateGeometry (void)
 				if (lightId >= 0)
 					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech);
 
-				pointLight->SetaRGB(0xffffff00);
+				// MOVER-LIGHT-HALOGEN-1: warm halogen instead of legacy pure
+				// yellow (MC2_LIGHT_POOL_MOVER_COLOR override).
+				pointLight->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 				pointLight->SetIntensity(0.15f);
 				pointLight->SetFalloffDistances(50.0f, 250.0f);
 			}
@@ -3974,7 +3976,8 @@ void Mech3DAppearance::updateGeometry (void)
 
 					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-					light->SetaRGB(0xffffff00);                // anubis-equiv default
+					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
+					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 					light->SetIntensity(0.15f);                // anubis default
 					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
 

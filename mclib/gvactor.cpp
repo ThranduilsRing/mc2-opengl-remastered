@@ -2615,7 +2615,8 @@ void GVAppearance::updateGeometry (void)
 
 					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-					light->SetaRGB(0xffffff00);                // anubis-equiv default
+					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
+					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 					light->SetIntensity(0.15f);                // anubis default
 					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
 
