@@ -91,10 +91,15 @@ void LogisticsMechDisplay::render(int xOffset, int yOffset)
 			mechCamera.drawPreviewToPanel( px, py, pw, ph );
 	}
 
+	// DEFS-METER-BRIDGE-1: armor/speed/jump stat bars on the ImGui layer — the
+	// raw gos draws were buried under the defs page (legend icons + numbers
+	// rendered but the bar fills didn't).
+	aObject::beginGuiBridgeCanvas();
 	for ( int i = 0; i < 3; i++ )
 	{
 		attributeMeters[i].render( xOffset, yOffset );
 	}
+	aObject::endGuiBridge();
 	
 	LogisticsScreen::render( xOffset, yOffset );
 

@@ -63,6 +63,14 @@ void drawEmptyRect( const GUI_RECT& rect, unsigned long leftBorderColor = 0xffff
 
 void drawRect( const GUI_RECT& rect, DWORD color );
 
+// DEFS-METER-BRIDGE-1: optional redirect for drawRect/drawEmptyRect installed by
+// the gui layer (aObject GUI bridge). When set and it returns true, the legacy
+// gos quad draw is skipped (the rect was drawn on the ImGui HUD layer instead).
+// filled=true => drawRect; filled=false => drawEmptyRect (border color passed).
+// Kept as a function pointer so mclib does not link against gui/GuiRuntime
+// (tools that use mclib without the game's UI stack are unaffected).
+extern bool (*g_uiBridgeRectHook)( const GUI_RECT& rect, unsigned long color, bool filled );
+
 void drawShadowText( long colorTop, long colorShadow, HGOSFONT3D font, 
 					long left, long top, bool proportional, const char* text, bool bBold, float scale );
 

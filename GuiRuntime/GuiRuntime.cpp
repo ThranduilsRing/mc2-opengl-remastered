@@ -1050,6 +1050,44 @@ bool GuiRuntime::DrawUiCircle(float cx, float cy, float radius, std::uint32_t ar
     return true;
 }
 
+bool GuiRuntime::DrawUiTriangleVerts(float x0, float y0, float x1, float y1,
+                                     float x2, float y2, std::uint32_t argb)
+{
+    if (!IsReadyForUiText())
+        return false;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    if (!drawList)
+        return false;
+
+    drawList->AddTriangleFilled(ImVec2(x0, y0), ImVec2(x1, y1), ImVec2(x2, y2),
+                                argbToImU32(argb));
+    return true;
+}
+
+bool GuiRuntime::PushUiClipRect(float x, float y, float w, float h)
+{
+    if (!IsReadyForUiText() || w <= 0.0f || h <= 0.0f)
+        return false;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    if (!drawList)
+        return false;
+
+    drawList->PushClipRect(ImVec2(x, y), ImVec2(x + w, y + h), true /*intersect*/);
+    return true;
+}
+
+void GuiRuntime::PopUiClipRect()
+{
+    if (!IsReadyForUiText())
+        return;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    if (drawList)
+        drawList->PopClipRect();
+}
+
 bool GuiRuntime::DrawUiImage(unsigned int glTextureName,
                              float x,
                              float y,
@@ -1130,6 +1168,53 @@ bool GuiRuntime::DrawUiText(float x,
 
     const ImVec4 clip(x, y, x + std::max(w, 0.0f), y + std::max(h, size));
     drawList->AddText(font, size, pos, argbToImU32(argb), text, nullptr, wrapWidth, &clip);
+    return true;
+}
+
+bool GuiRuntime::CalcUiTextWrapLines(const char* text,
+                                     float wrapWidth,
+                                     int fontSize,
+                                     const char* fontFamily,
+                                     std::vector<std::string>& outLines)
+{
+    outLines.clear();
+    if (!text || wrapWidth <= 0.0f || !IsReadyForUiText())
+        return false;
+
+    ImFont* font = findUiFont(fontFamily, fontSize);
+    if (!font)
+        return false;
+
+    // Mirror DrawUiText: it renders at normalizeSize(fontSize); wrap positions are
+    // computed with the same scale ImGui uses internally (size / font->FontSize).
+    const float size  = static_cast<float>(normalizeSize(fontSize));
+    const float scale = (font->FontSize > 0.0f) ? size / font->FontSize : 1.0f;
+
+    const char* s   = text;
+    const char* end = text + std::strlen(text);
+    while (s <= end) {
+        const char* nl     = static_cast<const char*>(memchr(s, '\n', end - s));
+        const char* segEnd = nl ? nl : end;
+        if (s == segEnd) {
+            outLines.push_back(std::string());
+        } else {
+            const char* p = s;
+            while (p < segEnd) {
+                const char* wrap = font->CalcWordWrapPositionA(scale, p, segEnd, wrapWidth);
+                if (wrap <= p)
+                    wrap = p + 1;  // guarantee forward progress (ultra-narrow width)
+                outLines.push_back(std::string(p, wrap));
+                p = wrap;
+                // ImGui's renderer skips inter-word blanks at the start of the
+                // next wrapped line (CalcWordWrapNextLineStartA) -- match it.
+                while (p < segEnd && (*p == ' ' || *p == '\t'))
+                    ++p;
+            }
+        }
+        if (!nl)
+            break;
+        s = nl + 1;
+    }
     return true;
 }
 

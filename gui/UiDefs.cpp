@@ -2581,6 +2581,38 @@ bool UiDefs::GameOSPage::setListItems(const std::string& elementKey, const std::
     return false;
 }
 
+// BRIEFING-WRAP-1: pre-wrap helper for screens that push paragraph text into a
+// fixed-row-height GuiList. drawUiListElement draws each row via DrawUiText with
+// wrapWidth = the row rect width in DISPLAY pixels and fontSize scaled by sy; a
+// char-count pre-wrap (e.g. the old 88-char briefing wrap) disagrees with that
+// pixel wrap, so an overlong row re-wraps INSIDE its one-line-high row and the
+// spill paints under the next row (the mission-briefing overlapping-paragraphs
+// bug). This computes the wrap with the SAME width/font/size math the renderer
+// uses, so rows and visual lines are 1:1.
+bool UiDefs::GameOSPage::wrapListItemText(const std::string& elementKey,
+                                          const std::string& text,
+                                          std::vector<std::string>& outLines)
+{
+    outLines.clear();
+    if (!isLoaded())
+        return false;
+    for (UiElement& e : impl->elements) {
+        if ((e.kind != UiElement::List && e.kind != UiElement::Combo) || e.key != elementKey)
+            continue;
+        const PageScale s = currentPageScale(impl->localWidth, impl->localHeight);
+        // Mirror drawUiListElement's itemRect width. The scrollbar is only
+        // reserved when content overflows; assume it IS present (paragraph
+        // producers overflow by definition) -- a conservatively narrower wrap
+        // can only wrap earlier, never overlap.
+        const int itemW = std::max(0, e.rect.w - 2 * e.itemOffsetX - kScrollbarLocalW);
+        const float wrapWidth = static_cast<float>(itemW) * s.sx;
+        return GuiRuntime::CalcUiTextWrapLines(text.c_str(), wrapWidth,
+                                               scaledFontSize(e.fontSize, s),
+                                               e.fontPath.c_str(), outLines);
+    }
+    return false;
+}
+
 // Per-item text colors for a GuiList, parallel to its items (ARGB). A shorter
 // vector than the item list leaves the remaining rows on the element textColor.
 // Pushed separately from setListItems so the unchanged-items fast-path there

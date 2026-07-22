@@ -1074,6 +1074,13 @@ bool LogisticsScreen::setDefsListItems(const std::string& key, const std::vector
 	return defsUiPage->setListItems(key, items);
 }
 
+bool LogisticsScreen::wrapDefsListText(const std::string& key, const std::string& text,
+	std::vector<std::string>& outLines)
+{
+	if (!defsUiPage || !defsUiPage->isLoaded()) return false;
+	return defsUiPage->wrapListItemText(key, text, outLines);
+}
+
 bool LogisticsScreen::setDefsListItemColors(const std::string& key, const std::vector<unsigned int>& colors)
 {
 	if (!defsUiPage || !defsUiPage->isLoaded()) return false;
