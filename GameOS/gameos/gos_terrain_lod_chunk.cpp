@@ -113,7 +113,17 @@ const float kTglcMacroVariation    = []() {
     if (!tglc_envOn("MC2_TERRAIN_MACRO_VARIATION")) return 0.0f;
     return tglc_envStrength("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", 1.0f);
 }();
-const bool  kTglcEdgeFeather       = []() { return tglc_envOn("MC2_TERRAIN_EDGE_FEATHER"); }();
+// WATER-FAR-BAND-ATTRIB-1 (batch3 item C): default flipped ON to match
+// WATER-EDGE-FEATHER (54a70e2d). With water feathered ON and terrain feather
+// OFF, the water dissolves at the map edge but EXPOSES the un-feathered dark
+// submerged-terrain rim -> the residual hard navy far-band line at grazing
+// angles (mc2_01 saved_205644; MC2_WATER_DEBUG_MODE=2 shows water alpha
+// already 0 across the band -> the navy pixels are terrain, not water).
+// Killswitch: MC2_TERRAIN_EDGE_FEATHER=0.
+const bool  kTglcEdgeFeather       = []() {
+    const char* e = std::getenv("MC2_TERRAIN_EDGE_FEATHER");
+    return !(e && e[0] == '0');
+}();
 const float kTglcEdgeFeatherStr    = []() { return tglc_envStrength("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", 1.0f); }();
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
 // u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
