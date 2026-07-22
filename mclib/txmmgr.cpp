@@ -1743,6 +1743,17 @@ void mc2EraseBakedStaticLight(int32_t recipeIndex)
     s_bakedStaticLight.erase(recipeIndex);
 }
 
+// LIGHTBAKE-REBAKE-ON-READY-1: SOFT invalidation -- drop only the cache map so
+// every recipe lazily re-gathers with the now-final mission lighting. The
+// permanent slot indices (s_staticLightHighWater) are preserved: re-bakes write
+// the SAME recipeIndex slots via mc2WriteStaticLightSlot, so staticReg
+// lightDataIndex values held by instances stay valid throughout.
+void mc2InvalidateBakedStaticLightCache()
+{
+    s_bakedStaticLight.clear();
+    mc2MarkStaticLightPrefixDirty();   // re-upload prefix once re-bakes land
+}
+
 // Mission unload: recipeIndex restarts per mission -> a stale entry
 // would alias a different actor. Drop the whole mission-scoped map.
 void mc2ClearAllBakedStaticLight()

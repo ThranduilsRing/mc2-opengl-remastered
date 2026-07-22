@@ -3044,6 +3044,36 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 		shape->CacheGpuLightData();                  // unchanged D2/legacy path
 		return;
 	}
+	// LIGHTBAKE-REBAKE-ON-READY-1 (batch3 item D): per-recipe bakes are frozen
+	// at FIRST-render time and never invalidated (mc2StaticLightEnvironmentGeneration
+	// is a constant 0). Buildings whose recipe baked during boot/load -- before
+	// the mission's night lighting fully applied -- keep a too-bright day-ish
+	// row forever: stable per-building, zoom-invariant (user report, mc2_10
+	// night; proven by MC2_LIGHTBAKE=0 vs default pixel diff at saved_212019).
+	// Fix: ONE soft invalidation of the bake CACHE (recipe slots + high-water
+	// preserved -- entries lazily re-gather into the same permanent slots) a
+	// few frames after mission-ready, when mission lighting is final.
+	// Killswitch: MC2_LIGHTBAKE_REBAKE_ON_READY=0.
+	{
+		static const bool s_rebakeOnReady = []() {
+			const char* v = getenv("MC2_LIGHTBAKE_REBAKE_ON_READY");
+			return !(v && v[0] == '0');
+		}();
+		static bool     s_rebakeDone  = false;
+		static uint32_t s_readyFrame  = 0;
+		if (s_rebakeOnReady && !s_rebakeDone && SmokeMode::missionHasStarted()) {
+			if (s_readyFrame == 0) {
+				s_readyFrame = g_mc2FrameCounter ? g_mc2FrameCounter : 1;
+			} else if (g_mc2FrameCounter >= s_readyFrame + 8) {
+				extern void mc2InvalidateBakedStaticLightCache();
+				mc2InvalidateBakedStaticLightCache();
+				s_rebakeDone = true;
+				printf("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
+				       (unsigned)g_mc2FrameCounter);
+				fflush(stdout);
+			}
+		}
+	}
 	TG_HWLightsData baked;
 	if (mc2GetBakedStaticLight(recipeIndex, baked)) {
 		shape->EmitBakedGpuLightData(recipeIndex, baked);    // HIT: recompute retired
