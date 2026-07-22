@@ -2089,8 +2089,13 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // own gate).
     {
         static const bool s_shorelineGateOn = []() {
+            // SHORELINE-SMOOTHING-REVISIT-1: default flipped ON. The elevation-
+            // placed V3 band (fbm edge jitter, optional mask modulator) replaces
+            // the legacy screen-space runShoreline() glow, which traced the raw
+            // tile-quantized water-mesh edge and amplified the staircase at
+            // night. Killswitch: MC2_TERRAIN_SHORELINE=0 (restores legacy glow).
             const char* v = std::getenv("MC2_TERRAIN_SHORELINE");
-            return (v && v[0] && v[0] != '0');
+            return !(v && v[0] == '0');
         }();
         const bool shorelineMaskReady = (s_shorelineMaskTex != 0);
         if (s_locUseShorelineMask >= 0)
