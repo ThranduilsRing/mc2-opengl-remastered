@@ -1482,6 +1482,8 @@ def main():
                             "MC2_SP_ALPHASCAN_GATE",
                             # BUILDING-GLASS-1: dither-glass translucency killswitch.
                             "MC2_SP_GLASS_DITHER",
+                            # LIGHTBAKE-REBAKE-ON-READY-1 killswitch.
+                            "MC2_LIGHTBAKE_REBAKE_ON_READY",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE",
                             "MC2_STATIC_PROP_COLORS_FILL",

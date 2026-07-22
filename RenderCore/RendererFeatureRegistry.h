@@ -722,6 +722,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass). Default-ON; =0 killswitch restores the binary a<0.5 discard (glass fully invisible, hollow buildings)."
     },
+    // LIGHTBAKE-REBAKE-ON-READY-1: one-shot static-light re-bake after mission ready.
+    {
+        "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY",
+        "MC2_LIGHTBAKE_REBAKE_ON_READY",
+        EnvVarKind::Feature,
+        true,
+        "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot freeze a wrong (day-bright) light row for the whole mission. Slot indices/high-water preserved; entries lazily re-gather into the same permanent slots. DEFAULT ON; =0 restores frozen-first-bake behavior."
+    },
     // SP-BATCHER-ALPHASCAN-GATE-1 (framebudget-2 perf).
     {
         "MC2_SP_ALPHASCAN_GATE",
