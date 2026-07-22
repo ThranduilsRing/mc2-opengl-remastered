@@ -138,6 +138,12 @@ run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet
 run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
+# LAUNCHER-ENCODING-1: launcher-facing manifest strings (mods/ + examples/mods/
+# mod.json) are ASCII-only — the launcher UI is Win32 ANSI, so UTF-8 typography
+# (em-dash, curly quotes) renders as mojibake. Self-test proves a synthetic
+# em-dash manifest still fails.
+run_check "launcher_ascii"         "py -3 scripts/check-launcher-ascii.py --quiet"
+run_check "launcher_ascii_selftest" "py -3 scripts/check-launcher-ascii.py --self-test"
 
 # ---------------------------------------------------------------------------
 # Summary table
