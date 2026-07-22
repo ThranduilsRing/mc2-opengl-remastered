@@ -824,6 +824,63 @@ static int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
     return (int)(bn - 1u);
 }
 
+// ---------------------------------------------------------------------------
+// PAD-EDGE-ROAD-1 (2026-07-21, field residual of MISSING-RUNWAY-1): pad-edge
+// transition tiles whose corners DO touch cement terrain stayed frag-owned
+// (CEMENT-HARD-EDGE-1 analytic cut) — but where a ROAD runs INTO the pad the
+// authored tile art carries the road-transition graphics, which the analytic
+// cement/terrain edge cannot reproduce: the road stopped dead with a bare
+// notch at the pad edge (mc2_01 runway-15W closeup). Fix: a cement-corner
+// transition tile that is 8-adjacent to ROAD ART reverts fully to the stock
+// pipeline — legacy decal baked (BuildDecalStaticVBO) AND no cement word
+// (PopulateRecipeCementWords), so the frag draws plain base terrain under the
+// authored art (no analytic wedge peeking through the art's alpha). The two
+// predicates are complementary by construction (shared helpers below): every
+// such tile has exactly ONE owner. Killswitch MC2_PAD_EDGE_ROAD_FIX=0 ->
+// tonight's behavior (analytic edge, road notch).
+// ---------------------------------------------------------------------------
+static bool PadEdgeRoadFixEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_PAD_EDGE_ROAD_FIX");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    return s;
+}
+
+// True when tile (r,c) carries road/runway art: an &Overlays id, OR a
+// cement-ALPHA transition art tile with NO cement-terrain corner (the
+// MISSING-RUNWAY-1 decal-baked road/runway class). Requires
+// g_cementLayerMapReady (callers guard).
+static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks) {
+    if (r < 0 || c < 0 || r >= mapSide - 1 || c >= mapSide - 1) return false;
+    Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+    Terrain::mapData->getOverlay(r, c, ovT, ovO);
+    if (ovT != INVALID_OVERLAY) return true;
+    auto* tt = Terrain::terrainTextures;
+    if (!tt || !blocks) return false;
+    const DWORD slot = Terrain::mapData->getTexture(r, c) & 0xFFFFu;
+    if (slot >= (DWORD)MC_MAX_TERRAIN_TXMS) return false;
+    if (g_cementLayerIndexBySlot[slot] != 0xFFFFu) return false;  // solid cement, not road
+    if (!(tt->isCement(slot) && tt->isAlpha(slot))) return false;
+    auto cemCorner = [&](long rr, long cc) -> bool {
+        const DWORD vt = blocks[(size_t)rr * (size_t)mapSide + (size_t)cc].terrainType;
+        return vt < (DWORD)MC_MAX_TERRAIN_TXMS
+               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
+    };
+    return !(cemCorner(r, c) || cemCorner(r, c + 1)
+             || cemCorner(r + 1, c + 1) || cemCorner(r + 1, c));
+}
+
+// True when any of the 8 neighbors of tile (r,c) is road art.
+static bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
+    for (long dr = -1; dr <= 1; ++dr)
+        for (long dc = -1; dc <= 1; ++dc) {
+            if (dr == 0 && dc == 0) continue;
+            if (TileIsRoadArt(r + dr, c + dc, mapSide, blocks)) return true;
+        }
+    return false;
+}
+
 // Build 14-layer R8 GL_TEXTURE_2D_ARRAY procedurally (bilinear weights + smoothstep).
 // Called once at end of BuildCementCatalogAtlas().
 static void BuildTransitionMaskArray() {
@@ -945,7 +1002,15 @@ static void PopulateRecipeCementWords() {
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     // Cement atlas layer from first cement corner.
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
+                    // PAD-EDGE-ROAD-1: a road-adjacent pad-edge transition tile
+                    // reverts to the stock decal pipeline — bake NO cement word
+                    // (BuildDecalStaticVBO bakes the legacy decal instead; the
+                    // two predicates are complementary, see helper header).
+                    if (maskId >= 0 && cementLayerIdx != 0xFFFFu
+                        && PadEdgeRoadFixEnabled()
+                        && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
+                        // leave cementWord = 0
+                    } else if (maskId >= 0 && cementLayerIdx != 0xFFFFu) {
                         cementWord = kCementLayerValidBit
                                    | kCementTransitionBit
                                    | ((uint32_t)(maskId & (int)kCementMaskIdMask) << kCementMaskIdShift)
@@ -4764,6 +4829,12 @@ void BuildDecalStaticVBO() {
                     const bool c3 = cemCorner(tileR + 1, tileC);
                     fragOwnsTile = (c0 || c1 || c2 || c3)
                                    && deriveMaskIdFromCorners(c0, c1, c2, c3) >= 0;
+                    // PAD-EDGE-ROAD-1: road-adjacent pad-edge transition tiles
+                    // revert to the stock decal (PopulateRecipeCementWords
+                    // bakes NO cement word for them — complementary predicate).
+                    if (fragOwnsTile && PadEdgeRoadFixEnabled()
+                        && TileRoadAdjacent8(tileR, tileC, mapSide, blocks))
+                        fragOwnsTile = false;
                 }
                 if (fragOwnsTile) continue;
             }
