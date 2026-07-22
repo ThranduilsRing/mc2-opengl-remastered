@@ -714,6 +714,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "Route all randomness (incl. paths that bypass gos_rand) through a single seeded deterministic RNG stream for reproducible runs / capture parity. Default-OFF: stock RNG behavior."
     },
+    // BUILDING-GLASS-1: dither-glass translucency for static-prop ALPHA_TEST packets.
+    {
+        "MC2_SP_GLASS_DITHER",
+        "MC2_SP_GLASS_DITHER",
+        EnvVarKind::Feature,
+        true,
+        "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass). Default-ON; =0 killswitch restores the binary a<0.5 discard (glass fully invisible, hollow buildings)."
+    },
     // SP-BATCHER-ALPHASCAN-GATE-1 (framebudget-2 perf).
     {
         "MC2_SP_ALPHASCAN_GATE",

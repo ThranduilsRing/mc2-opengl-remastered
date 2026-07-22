@@ -1475,6 +1475,8 @@ def main():
                             # per-packet alpha-test re-resolve scan when no
                             # destruction/damage-alpha event occurred since last flush.
                             "MC2_SP_ALPHASCAN_GATE",
+                            # BUILDING-GLASS-1: dither-glass translucency killswitch.
+                            "MC2_SP_GLASS_DITHER",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE",
                             "MC2_STATIC_PROP_COLORS_FILL",

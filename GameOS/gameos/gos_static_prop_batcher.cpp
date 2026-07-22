@@ -1060,7 +1060,16 @@ struct ProgramLocs {
     GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
     GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
     GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
+    GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
 };
+
+// BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass)
+// texels on ALPHA_TEST packets. Default ON; MC2_SP_GLASS_DITHER=0 kills it
+// (shader falls back to the legacy binary a<0.5 discard, byte-identical).
+static const bool s_glassDitherEnabled = []() {
+    const char* v = getenv("MC2_SP_GLASS_DITHER");
+    return !(v && v[0] == '0');
+}();
 
 // STATICPROP-MATERIAL-ORM-1 — texture unit reserved for the per-bucket ORM
 // sibling array. Unit 0 stays the albedo array (u_texArr); unit 1 is ORM.
@@ -1384,6 +1393,8 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasTLY");
     s_locsLegacy.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasOOW");
     s_locsLegacy.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalColorBlend");
+    // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
+    s_locsLegacy.glassDither            = glGetUniformLocation(s_staticPropProgram, "u_glassDither");
     // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
     s_locsLegacy.iblSh             = glGetUniformLocation(s_staticPropProgram, "u_iblSh");
     s_locsLegacy.iblShStrength     = glGetUniformLocation(s_staticPropProgram, "u_iblShStrength");
@@ -1437,6 +1448,8 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasTLY");
             s_locsCoalesce.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasOOW");
             s_locsCoalesce.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalColorBlend");
+            // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
+            s_locsCoalesce.glassDither            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_glassDither");
             // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
             s_locsCoalesce.iblSh             = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblSh");
             s_locsCoalesce.iblShStrength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblShStrength");
@@ -6176,6 +6189,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // prop stays byte-identical.
         if (s_locsCoalesce.terrainDecalColorBlend >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend);
+        // BUILDING-GLASS-1: dither-glass translucency toggle (default ON,
+        // MC2_SP_GLASS_DITHER=0 -> 0.0 -> legacy binary discard in frag).
+        if (s_locsCoalesce.glassDither >= 0)
+            glUniform1f       (s_locsCoalesce.glassDither,
+                               s_glassDitherEnabled ? 1.0f : 0.0f);
         if (g_terrainDecalColorBlend > 0.0f) {
             extern GLuint gos_terrain_indirect_getAtlasGLTex();
             extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
@@ -7349,6 +7367,10 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // (legacy program). Same flag-gated no-op contract as coalesce.
             if (s_locsLegacy.terrainDecalColorBlend >= 0)
                 glUniform1f(s_locsLegacy.terrainDecalColorBlend, g_terrainDecalColorBlend);
+            // BUILDING-GLASS-1: dither-glass translucency toggle (legacy program).
+            if (s_locsLegacy.glassDither >= 0)
+                glUniform1f(s_locsLegacy.glassDither,
+                            s_glassDitherEnabled ? 1.0f : 0.0f);
             if (g_terrainDecalColorBlend > 0.0f) {
                 extern GLuint gos_terrain_indirect_getAtlasGLTex();
                 extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
