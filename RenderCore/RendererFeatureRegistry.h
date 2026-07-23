@@ -1079,6 +1079,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1). Single light plateaus ~0.80, stacked lights approach 1.0 asymptotically (no blinding saturated union blob over mech groups / base light clusters). DEFAULT ON; =0 restores the exact legacy hard clamp."
     },
     {
+        "MC2_FEATURE_BACKDROP_NIGHT_LIGHT",
+        "MC2_BACKDROP_NIGHT_LIGHT",
+        EnvVarKind::Feature,
+        true,
+        "FAR-BACKDROP-NIGHT-LIGHTING-1: per-channel black floor (default rgb 0.10,0.11,0.14) uploaded to the untextured gos_vertex world path (far horizon terrain + far tree impostors, submitters MC_TextureManager::renderLists + MLRSortByOrder::RenderNow). Their per-vertex legacy light collapses to ~0 at night -> a hard pure-black horizon band; this max()-floors those pixels off pitch-black. Applied only on untextured depth-tested world draws (day/lit colours exceed the floor -> no-op; HUD/overlays untouched). DEFAULT ON; \"0\" disables (byte-identical); \"r,g,b\" overrides the floor colour."
+    },
+    {
         "MC2_TUNE_NIGHT_AMBIENT_FLOOR",
         "MC2_NIGHT_AMBIENT_FLOOR",
         EnvVarKind::Trace,

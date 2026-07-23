@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "1.0.0"
-registry_entry_count: 172
-registry_env_flag_count: 170
-sweep_flag_count: 873
-flag_count: 898
+registry_entry_count: 173
+registry_env_flag_count: 171
+sweep_flag_count: 874
+flag_count: 900
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -205,6 +205,16 @@ flags:
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
+  - name: MC2_BACKDROP_NIGHT_LIGHT
+    default: on
+    kind: Feature
+    feature_id: MC2_FEATURE_BACKDROP_NIGHT_LIGHT
+    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
+    doc: "FAR-BACKDROP-NIGHT-LIGHTING-1: per-channel black floor (default rgb 0.10,0.11,0.14) uploaded to the untextured gos_vertex world path (far horizon terrain + far tree impostors, submitters MC_Texture..."
+    referenced_at: []
+    registered: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_BATCHER_FLUSH_TIMING
     default: unknown
     declared_in: null
@@ -225,7 +235,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:4222
+      - mclib/bdactor.cpp:4256
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -879,6 +889,14 @@ flags:
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
+  - name: MC2_CONE_LEAF_DUMP
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - mclib/bdactor.cpp:4147
+    registered: no
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_CPU_PROJ_COST_SPLIT
     default: unknown
     declared_in: null
@@ -1500,7 +1518,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD. Overrides distance selection. Default-unset ..."
     referenced_at:
-      - mclib/bdactor.cpp:6722
+      - mclib/bdactor.cpp:6756
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1997,8 +2015,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_registry.cpp:1633
-      - mclib/bdactor.cpp:4286
-      - mclib/bdactor.cpp:7195
+      - mclib/bdactor.cpp:4320
+      - mclib/bdactor.cpp:7229
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2529,7 +2547,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:6727
+      - mclib/bdactor.cpp:6761
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5394,8 +5412,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:2316
-      - mclib/bdactor.cpp:4149
-      - mclib/bdactor.cpp:7025
+      - mclib/bdactor.cpp:4183
+      - mclib/bdactor.cpp:7059
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7053,7 +7071,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:7079
+      - mclib/bdactor.cpp:7113
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
