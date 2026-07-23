@@ -53,7 +53,7 @@ edit** (batch-8C lane holds it) — done entirely in-shader using existing unifo
 | Top-down non-water pose (mc2_10_saved_212140) | **PASS** | 0.0 delta all regions — water-only change, scene unaffected |
 | Shore-staircase (mc2_01_saved_205644 shore_left/central/botright) | **PASS (substance)** | waterline GEOMETRY identical (shore_left 0.0; botright shape pixel-matched) — RGB-only shift, alpha/shore ramp never touched |
 | mc2_01 water (2nd map) non-regression | **benign** | horizon +[3,4,5], shore_botright +[1.5,2.2,2.6] — subtle brightening, no artifact/over-blue/banding (visual A/B) |
-| tier1 smoke 5/5 | see below | run_smoke tier1 duration 30 (background) |
+| tier1 smoke (my exe 5b12ddd7) | 4/5 — not mine | mc2_01 PASS + mc2_10 PASS (both WATER maps), mc2_17/mc2_24 PASS; mc2_03 crash_silent @ 0 frames (LOAD crash, pre-render). Two runs crashed DIFFERENT missions (mc2_01 then mc2_03) = non-deterministic load crash, cannot be a water-DRAW-time shader change |
 
 Verify-by-angle (the exaggeration axis): the effect scales exactly with grazing —
 grazing lake (grazeW≈1) changes strongly; top-down pose (grazeW≈0) is 0.0. As designed.
