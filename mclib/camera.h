@@ -325,6 +325,23 @@ class Camera
 		Stuff::Vector3D			zoomAnchorWorld;
 		Stuff::Vector3D			zoomAnchorPivot;
 
+		// [CAMERA-SMOOTHING-1] gameplay camera smoothing (MC2_CAMERA_SMOOTH ms,
+		// default ~100, 0 = legacy verbatim). Edge/keyboard scroll and rotation
+		// input accumulate a GOAL pose (clamped like setPosition); update() moves
+		// the actual pose toward it with a frame-rate-independent exponential
+		// step. Hard-set paths (bookmark apply, scripted swoop, capture
+		// fixtures) never arm this state, and any externally-caused pose change
+		// drops the goal, so captures stay deterministic.
+		bool					scrollSmoothActive = false;
+		float					scrollSmoothGoalX = 0.0f;
+		float					scrollSmoothGoalY = 0.0f;
+		float					scrollSmoothLastX = 0.0f;
+		float					scrollSmoothLastY = 0.0f;
+		bool					rotSmoothActive = false;
+		float					rotSmoothGoalCam = 0.0f;
+		float					rotSmoothGoalWorld = 0.0f;
+		float					rotSmoothLastCam = 0.0f;
+
 		static float			globalScaleFactor;		//Global Rescale Factor.
 
 		static float			MaxClipDistance;
@@ -1465,7 +1482,13 @@ class Camera
 		
 		void rotateLeft(float amount);
 		void rotateRight(float amount);
-		
+
+		// [CAMERA-SMOOTHING-1] input accumulators (see camera.cpp).
+		void applyScrollDelta(float dx, float dy);
+		void queueRotationDelta(float amount);
+		void updateInputSmoothing(Stuff::Vector3D &newPosition);
+		static bool inputSmoothingEnabled(void);	// MC2_CAMERA_SMOOTH > 0
+
 		void rotateNormal (void);
 
 		void rotateLightLeft(float amount);
@@ -1595,17 +1618,14 @@ class Camera
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / testMax);
 		}
 		
-		// VK-FIRST-BOOKMARK-POSE-1: neutralize every scripted camera-override
-		// source so a hard-set bookmark pose survives the NEXT Camera::update()
-		// byte-unchanged. The deterministic bookmark sweep freezes the sim, but
-		// eye->update() still runs each frame (code/mission.cpp GameLogic.Mission.
-		// Camera is OUTSIDE the pause guard). Camera::update() re-asserts the
+		// VK-FIRST-BOOKMARK-POSE-1 (ported for CAMERA-PARK-1): neutralize every
+		// scripted camera-override source so a hard-set pose survives the NEXT
+		// Camera::update() byte-unchanged. Camera::update() re-asserts the
 		// intro-swoop goal (updateGoalPosition/updateGoalRotation) and the
-		// object-tracking snap every frame -- which drags the FIRST bookmark off
-		// its applied pose while the mission-intro swoop goal is still draining
-		// (later bookmarks land after it drains, so only bookmark #1 was stomped).
-		// Called from the capture replay right after setPosition/setRotation.
-		// Virtual so GameCamera can also drop its object-tracking target.
+		// object-tracking snap every frame — which would drag the parked pose
+		// off its applied value while the mission-intro swoop goal drains.
+		// Called right after setPosition/setRotation. Virtual so GameCamera can
+		// also drop its object-tracking target.
 		virtual void freezeScriptedCameraForCapture (void)
 		{
 			lookTargetObject = -1;
@@ -1622,10 +1642,16 @@ class Camera
 			goalVelTime    = 0.0f;
 			// Pin the altitude EASE target too: update() lerps cameraAltitude
 			// toward cameraAltitudeDesired each frame, so leaving Desired stale
-			// would drift altitude off the applied bookmark. (The engine still
+			// would drift altitude off the applied pose. (The engine still
 			// legitimately clamps cameraAltitude to the per-projection-angle max,
 			// which is expected and deterministic.)
 			cameraAltitudeDesired = cameraAltitude;
+			// CAMERA-SMOOTHING-1 interop (2026-07-22): kill any in-flight
+			// smoothing glide too — the rebase hook composes external deltas
+			// into these goals, which would otherwise keep sliding the camera
+			// off the parked pose after the hard set.
+			scrollSmoothActive = false;
+			rotSmoothActive = false;
 		}
 
 		void setGoalRotation (Stuff::Vector3D goalRot)

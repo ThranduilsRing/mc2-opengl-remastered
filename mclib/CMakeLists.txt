@@ -67,6 +67,7 @@ set(SOURCES ${SOURCES}
     camera.cpp
     xform_conventions.cpp
     spotlight_diag.cpp
+    cone_glow.cpp
     object_admission_predicate.cpp
     projectz_trace.cpp
     projectz_overlay.cpp

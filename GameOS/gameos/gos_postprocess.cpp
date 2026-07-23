@@ -329,6 +329,51 @@ float mc2ShadowCsmSoftness()
     return s_s;
 }
 
+// SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow softness + fade.
+// MC2_SHADOW_DIST_FADE = occluder->receiver ray distance (world units) at which
+// a dynamic shadow has fully dissolved (blur ramps in from ~0, opacity fade
+// starts ~45% of the way). Default 80. =0 killswitch -> the define is not
+// injected -> shadow.hglsl folds the whole block away (current behavior).
+float mc2ShadowDistFadeWu()
+{
+    static const float s_f = []() {
+        const char* v = getenv("MC2_SHADOW_DIST_FADE");
+        float f = (v && v[0]) ? (float)atof(v) : 80.0f;
+        if (f < 0.0f) f = 0.0f;
+        if (f > 100000.0f) f = 100000.0f;
+        return f;
+    }();
+    return s_f;
+}
+
+// SHADOW-DONUT-FIX-1: max opacity the distance fade may remove.
+// MC2_SHADOW_DIST_FADE_MAX in [0,1], default 0.65. 1.0 = old full erase at the
+// fade distance; lower keeps a soft shadow floor on far-caster interiors.
+float mc2ShadowDistFadeMax()
+{
+    static const float s_m = []() {
+        const char* v = getenv("MC2_SHADOW_DIST_FADE_MAX");
+        float m = (v && v[0]) ? (float)atof(v) : 0.65f;
+        if (m < 0.0f) m = 0.0f;
+        if (m > 1.0f) m = 1.0f;
+        return m;
+    }();
+    return s_m;
+}
+
+// SHADOW-FADE-CONTINUOUS-1: continuous occluder-distance estimate (8 midpoint
+// refs + per-pixel ladder jitter) for the distance fade. Default ON; =0
+// restores the original 4-step staircase ladder (visible fade/penumbra step
+// boundaries, the batch-6 mech-shadow report).
+bool mc2ShadowFadeCont()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_SHADOW_FADE_CONT");
+        return !(v && v[0] == '0');
+    }();
+    return s_on;
+}
+
 // Object shadow-receive normal-offset bias (in cascade texels). Default 2.0,
 // clamped [0,16]. 0 disables the normal-offset (A/B). Slope-scale term in the
 // shader is always-on (tiny); this only gates the world-space normal-offset.
@@ -769,6 +814,18 @@ void gosPostProcess::init(int w, int h)
                  "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
                  mc2ShadowCsmCount());
         screenShadowPrefix += csmDef;
+    }
+    // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
+    // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
+    if (mc2ShadowDistFadeWu() > 0.0f) {
+        char fadeDef[144];
+        snprintf(fadeDef, sizeof(fadeDef),
+                 "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                 "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
+                 "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                 mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
+                     mc2ShadowFadeCont() ? 1 : 0);
+        screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",
         "shaders/postprocess.vert", "shaders/shadow_screen.frag", screenShadowPrefix.c_str());
@@ -5652,6 +5709,42 @@ void gos_ResetStaticShadowPriming()
 // >= sqrt(2/3) ~ 0.816. Default-ON is thus byte-identical to legacy except at
 // the singularity; =0 disables the guard entirely (pure legacy, can go
 // singular).
+// SHADOW-SUN-ALT-CLAMP-1 (2026-07-21, mc2_10 night streak-shadows): missions
+// that author the sun AT (or below) the horizon (mc2_10 LightDirPitch=180 ->
+// lightDirection.z = sin(180 deg) = 0) feed a near-HORIZONTAL light direction
+// into the shadow projection matrices. Every caster (tree, fence, tower,
+// terrain ridge) then smears an absurdly elongated silhouette across up-facing
+// slopes — the user-reported "black streak fans"/giant tree silhouettes.
+// Clamp the EFFECTIVE sun altitude used by the shadow matrices to a minimum
+// (default 15 deg), preserving azimuth. Day suns above the clamp are
+// untouched (byte-identical). Applies to BOTH the static full-map matrix and
+// the dynamic cascade matrices (trees are static casters, movers dynamic —
+// both degenerate identically at grazing altitude). Shading light dir
+// (shadow_screen lightDir, terrain N-dot-L) is NOT touched.
+// Tunable/killswitch: MC2_SHADOW_MIN_SUN_ALT=<degrees>, 0 disables.
+// f = normalized light->scene direction: fz < 0 = descending (day sun).
+static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz)
+{
+    static const float s_minAltDeg = []() {
+        const char* v = getenv("MC2_SHADOW_MIN_SUN_ALT");
+        if (!v || !v[0]) return 15.0f;   // default 15 degrees
+        return (float)atof(v);           // 0 (or negative) disables
+    }();
+    if (s_minAltDeg <= 0.0f) return;
+    const float minDown = sinf(s_minAltDeg * 0.01745329252f);
+    const float down = -fz;              // >0 when pointing downward
+    if (down >= minDown) return;         // healthy day sun: untouched
+    const float horiz = sqrtf(fx * fx + fy * fy);
+    const float ch = sqrtf(1.0f - minDown * minDown);
+    if (horiz > 1e-6f) {
+        fx = fx / horiz * ch;
+        fy = fy / horiz * ch;
+    } else {
+        fx = ch; fy = 0.0f;              // degenerate straight-up/down input
+    }
+    fz = -minDown;
+}
+
 static void mc2ComputeLightBasis(float fx, float fy, float fz,
                                  float& rx, float& ry, float& rz,
                                  float& ux, float& uy, float& uz)
@@ -5703,6 +5796,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
     float len = sqrtf(sunDirX*sunDirX + sunDirY*sunDirY + sunDirZ*sunDirZ);
     if (len < 0.001f) return;
     float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
+    mc2ClampShadowSunAltitude(fx, fy, fz);   // SHADOW-SUN-ALT-CLAMP-1
 
     // Map center is origin (0,0,0) in MC2 world space
     float r = mapHalfExtent * sqrtf(2.0f) * 1.05f;  // covers full map diagonal at any sun angle
@@ -6126,6 +6220,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     float len = sqrtf(sunDirX*sunDirX + sunDirY*sunDirY + sunDirZ*sunDirZ);
     if (len < 0.001f) return;
     float fx = sunDirX/len, fy = sunDirY/len, fz = sunDirZ/len;
+    mc2ClampShadowSunAltitude(fx, fy, fz);   // SHADOW-SUN-ALT-CLAMP-1
 
     // SHADOW-UNIFIED-PROJECTION-1: fit shadow ortho in LIGHT SPACE.
     //

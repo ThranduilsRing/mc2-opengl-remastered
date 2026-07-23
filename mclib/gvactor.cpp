@@ -13,6 +13,7 @@
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "tgl_load_guard.h"       // META-FIX design B PART 1: required base-shape load guard
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #endif
 
 #ifndef CAMERA_H
@@ -2638,7 +2639,8 @@ void GVAppearance::updateGeometry (void)
 
 					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-					light->SetaRGB(0xffffff00);                // anubis-equiv default
+					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
+					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 					light->SetIntensity(0.15f);                // anubis default
 					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
 
@@ -2696,6 +2698,46 @@ void GVAppearance::updateGeometry (void)
 			{
 				Stuff::Vector3D childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
+				// LIGHT-CONE-MODELS-1 (A/C): place the pool at the authored
+				// cone's FAR END — aim comes from the node's live transform
+				// composed with the cone type geometry's own axis, then the
+				// spill anchor is grounded on terrain (headlights light the
+				// road where the beam actually lands). Falls back to the
+				// MOVER-LIGHT-FORWARD-1 facing heuristic when the model has
+				// no usable cone. MC2_LIGHT_CONE_NODES=0 restores heuristic.
+				bool coneAimed = false;
+				if (mc2_cone_glow::nodes_enabled())
+				{
+					Stuff::Vector3D aimW;
+					float coneLen = 0.0f;
+					if (mc2_cone_glow::GetNodeAim(gvShape, spotlightNodeIds_[k], aimW, coneLen))
+					{
+						float spill = coneLen * mc2_cone_glow::spill_scale();
+						if (spill > 200.0f) spill = 200.0f;
+						childPos.x += aimW.x * spill;
+						childPos.y += aimW.y * spill;
+						childPos.z += aimW.z * spill;
+						if (land)
+							childPos.z = land->getTerrainElevation(childPos);
+						coneAimed = true;
+					}
+				}
+				// MOVER-LIGHT-FORWARD-1: bias the pool center AHEAD of the
+				// vehicle along its facing (headlight semantics; see
+				// mech3d.cpp counterpart). MC2_LIGHT_POOL_MOVER_FWD=0
+				// restores centered pools.
+				if (!coneAimed)
+				{
+					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+					if (fwdWu > 0.0f)
+					{
+						Stuff::Vector3D fwdv;
+						fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+						Rotate(fwdv, -rotation);
+						childPos.x += fwdv.x * fwdWu;
+						childPos.y += fwdv.y * fwdWu;
+					}
+				}
 				spotlightLights_[k]->SetPosition(&childPos);
 				// lightToWorld is consumed at msl.cpp:1659; without it the
 				// precomputed s_lightToShape collapses to worldToShape
@@ -2716,8 +2758,24 @@ void GVAppearance::updateGeometry (void)
 				// (sensorLevel > 4) is never true and all 39 GV spotlight
 				// registrations were stuck active=false. Generalized SpotLight_
 				// illumination should fire for any visible GV at night.
+				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled movers emit nothing
+				// (user report: wrecks kept glowing).
 				spotlightLights_[k]->active =
-					(eye->isNight && visible && !InEditor);
+					(eye->isNight && visible && !InEditor
+					 && (status != OBJECT_STATUS_DESTROYED)
+					 && (status != OBJECT_STATUS_DISABLED)
+					 // LIGHT-CULL-RADIUS-1 ext(a): powered-down vehicles
+					 // emit nothing (parity with the mech predicate).
+					 && (status != OBJECT_STATUS_SHUTDOWN));
+				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
+				spotlightLights_[k]->ownerEnabled =
+					spotlightLights_[k]->active ? 1 : 0;
+				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
+				// to the SAME owner predicate — shutdown/dead/FoW-hidden
+				// vehicles show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
+				if (spotlightLights_[k]->active)
+					mc2_cone_glow::QueueConeGlow(gvShape, spotlightNodeIds_[k],
+						spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 			}
 		}
 	//}
@@ -2988,6 +3046,48 @@ long GVAppearance::update (bool animate)
 		}
 		
 		gvShape->SetFrameNum(currentFrame);
+	}
+
+	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): light owner
+	// intent + coarse position refreshed EVERY frame even when
+	// updateGeometry is frustum-culled below (see mech3d.cpp counterpart
+	// for the ghost-light/shutdown-staleness mechanism writeup).
+	if (!spotlightLights_.empty())
+	{
+		const bool ownerOn =
+			(eye && eye->isNight && visible && !InEditor
+			 && (status != OBJECT_STATUS_DESTROYED)
+			 && (status != OBJECT_STATUS_DISABLED)
+			 && (status != OBJECT_STATUS_SHUTDOWN));
+		if (ownerOn)
+		{
+			Stuff::Vector3D lpos = position;
+			const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+			if (fwdWu > 0.0f)
+			{
+				Stuff::Vector3D fwdv;
+				fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+				Rotate(fwdv, -rotation);
+				lpos.x += fwdv.x * fwdWu;
+				lpos.y += fwdv.y * fwdWu;
+			}
+			Stuff::LinearMatrix4D l2w;
+			Stuff::Point3D lposP;
+			lposP.x = lpos.x; lposP.y = lpos.y; lposP.z = lpos.z;
+			l2w.BuildTranslation(lposP);
+			l2w.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+			{
+				spotlightLights_[k]->ownerEnabled = 1;
+				spotlightLights_[k]->SetPosition(&lpos);
+				spotlightLights_[k]->SetLightToWorld(&l2w);
+			}
+		}
+		else
+		{
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+				spotlightLights_[k]->ownerEnabled = 0;
+		}
 	}
 
 	// Mirror the mech fix: under the GPU static-prop killswitch always

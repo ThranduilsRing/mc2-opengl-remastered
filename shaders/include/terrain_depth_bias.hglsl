@@ -8,36 +8,32 @@
 // tie-break invariants are preserved. Lockstep with the C++ header (signs
 // and magnitudes byte-equal).
 //
-// Post-matrix-share design (Fix B): water and overlays/decals project through
-// the bit-identical baked terrain MVP (symmetric mirror). They are co-planar
-// in world space; depth ordering is maintained by two small, oppositely-signed
-// epsilons off the shared terrain reference -- NOT by divergent projection
-// compensation.
+// CURRENT CONTRACT (TERRAIN-DEPTH-BIAS-OWNERSHIP-1; the older negative-sign
+// Fix-B narrative that used to live here described TERRAIN_DEPTH_FUDGE=-0.002
+// with water LOSING the tie -- SUPERSEDED, see the C++ header's OWNERSHIP-1
+// note): terrain opaque writes TRUE depth (TERRAIN_DEPTH_FUDGE = 0). All
+// layers are SMALL POSITIVE reverse-Z/GEQUAL epsilons off true terrain
+// (larger NDC z = nearer = wins):
 //
-//   OVERLAY_DEPTH_BIAS > 0 > WATER_DEPTH_BIAS   (reverse-Z / GEQUAL)
-//   TERRAIN + WATER_DEPTH_BIAS < TERRAIN < TERRAIN + OVERLAY_DEPTH_BIAS
-//   (all three negative; TERRAIN_DEPTH_FUDGE = -0.002)
+//   terrain 0 < VEG < OVERLAY < OBJECT < WATER(surface)
 //
-//   WATER_DEPTH_BIAS   < 0: water strictly LOSES the shoreline GL_GEQUAL tie
-//                           (preserves v0.3 staircase-scar invariant).
-//   OVERLAY_DEPTH_BIAS > 0: decals/overlays strictly WIN the GEQUAL tie over
-//                           terrain (replaces the removed host
-//                           glPolygonOffset(-1,-1)).
+//   WATER_DEPTH_BIAS > 0: the water SURFACE wins over its (deeper)
+//                         lake-bottom terrain (old net +0.00025).
+//   OVERLAY_DEPTH_BIAS > 0: decals/overlays win the GEQUAL tie over terrain
+//                         (replaces the removed host glPolygonOffset(-1,-1)).
 //
-// RASTER regime (WATER_DEPTH_FUDGE_RASTER) ALSO flips for reverse-Z; the
-// legacy CPU-raster water + inverseProjectZ path is reconciled at the
-// coordinate-transform fence seam, NOT by keeping a constant un-flipped.
-// The Fix-B-era "do NOT touch RASTER" instruction is SUPERSEDED by
-// reverse-Z (design Section 9).
+// RASTER regime (WATER_DEPTH_FUDGE_RASTER): legacy CPU-raster water
+// (mclib/quad.cpp) + mask-water VS -- unchanged by the FAST-regime
+// linearization below.
 //
-// Note: FAST and RASTER currently resolve to the same absolute value
-// (-0.0025) by coincidence -- the co-planar epsilon (WATER_DEPTH_BIAS
-// -0.0005) happens to equal the RASTER delta. They remain SEPARATE named
-// constants because their future change trajectories differ.
-//
-// Hard bound: |water absolute| (|TERRAIN + WATER_DEPTH_BIAS| = 0.0025) <
-// 0.004 (2*|TERRAIN|). Proven lake-bottom punch-through threshold; see C++
-// header.
+// WATER-BIAS-LINEARIZE-1 (2026-07-18): the FAST regime's DEFAULT bias is now
+// distance-proportional, clip.z += WATER_DEPTH_FUDGE_FAST_REL * clip.z,
+// replacing the legacy constant NDC offset clip.z += FUDGE * clip.w whose
+// reverse-Z world error grows ~ d^2 (~250 wu at 20k wu -> far water beat
+// terrain ridges). F_REL derivation + full math: mclib/terrain_depth_bias.h.
+// Host killswitch MC2_WATER_BIAS_LEGACY=1 selects the legacy constant form
+// (uniform int u_waterBiasLegacy in both fast VS variants AND the
+// gpu_driven_water.comp pzOk admission gate -- all three switch together).
 #ifndef TERRAIN_DEPTH_BIAS_HGLSL
 #define TERRAIN_DEPTH_BIAS_HGLSL
 // TERRAIN-DEPTH-BIAS-OWNERSHIP-1: terrain opaque now writes TRUE depth (0). The
@@ -62,5 +58,13 @@ const float OVERLAY_DEPTH_BIAS       = 0.00005;   // > 0 decals/cement win over 
 const float OBJECT_DEPTH_BIAS        = 0.0001;    // > OVERLAY: props/buildings/mechs sit on top of cement; tiny -> no distance show-through
 const float WATER_DEPTH_BIAS         = 0.00025;   // > 0 water surface wins over (deeper) lake-bottom terrain (old net was +0.00025)
 const float WATER_DEPTH_FUDGE_RASTER = 0.00025;   // RASTER regime: same surface bias (intro water visible)
-const float WATER_DEPTH_FUDGE_FAST   = 0.00025;   // FAST regime: water surface ahead of true terrain
+const float WATER_DEPTH_FUDGE_FAST   = 0.00025;   // FAST regime LEGACY constant (u_waterBiasLegacy=1)
+// WATER-BIAS-LINEARIZE-1: distance-proportional FAST default. LOCKSTEP with
+// mclib/terrain_depth_bias.h (derivation there): 0.00025 / z_ndc(1000wu).
+const float WATER_DEPTH_FUDGE_FAST_REL = 0.000631;
+// OVERLAY-BIAS-LINEARIZE-1: distance-proportional overlay/decal bias default.
+// LOCKSTEP with mclib/terrain_depth_bias.h (derivation there):
+// 0.00005 / z_ndc(1000wu). Selected by uniform int u_overlayBiasLegacy in
+// terrain_overlay.vert (host killswitch MC2_OVERLAY_BIAS_LEGACY=1).
+const float OVERLAY_DEPTH_BIAS_REL   = 0.000126;
 #endif

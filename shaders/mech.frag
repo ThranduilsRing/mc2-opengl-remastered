@@ -17,6 +17,10 @@
 #include <include/view_uniforms.hglsl>
 #endif
 #include <include/pbr_common.hglsl>
+// POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for movers
+// (a truck's own headlight pool lights the truck; building pools light mechs
+// walking through). u_numPoolLights=0 when gated off -> byte-identical.
+#include <include/light_pools.hglsl>
 
 // [RENDER_CONTRACT]
 //   Pass:           Mech
@@ -388,6 +392,13 @@ void main() {
         }  // UB2-02 inner guard: if (v_mechSunFound != 0)
     }
 #endif  // MC2_USE_VIEW_UNIFORMS
+
+#if defined(MC2_USE_VIEW_UNIFORMS)
+    // POOL-CONSUMERS-1: additive night light-pool light on movers (albedo-
+    // modulated; before fog so pools haze out with the surface).
+    if (u_numPoolLights > 0)
+        c.rgb += tex_color.rgb * calcLightPools(v_worldPos);
+#endif
 
     // Slice B2: per-actor haze. v_fogRGB.a=0 → clear, =1 → fully fogged.
     c.rgb  = mix(c.rgb, v_fogRGB.rgb, v_fogRGB.a);

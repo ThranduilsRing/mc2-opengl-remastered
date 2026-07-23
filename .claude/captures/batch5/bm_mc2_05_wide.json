@@ -1,0 +1,21 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_05",
+  "_note": "Batch5 item2 pad-area-glow: wide overview at the lance-area base + higher oblique",
+  "bookmarks": [
+    {
+      "name": "base_wide",
+      "pos": [6347.1382, -5545.9233, 244.3694],
+      "rot": -136.2500,
+      "proj": 45.0,
+      "alt": 4500.0
+    },
+    {
+      "name": "base_high",
+      "pos": [6347.1382, -5545.9233, 244.3694],
+      "rot": -136.2500,
+      "proj": 70.0,
+      "alt": 6500.0
+    }
+  ]
+}

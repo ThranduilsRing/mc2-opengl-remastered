@@ -6,6 +6,47 @@ uniform mat4 lightSpaceMatrix;
 uniform int enableShadows;
 uniform float shadowSoftness;  // penumbra radius in texels, default 2.5
 
+// SHADOW-DIST-FADE-1 (env MC2_SHADOW_DIST_FADE, killswitch =0): classic
+// penumbra model on the DYNAMIC shadow term only. The occluder->receiver
+// distance ALONG THE LIGHT RAY is estimated from the shadow-map depth delta
+// (probed with the comparison sampler at 4 offsets x 4 reference depths --
+// no raw depth fetch needed), and drives BOTH:
+//   - the PCF radius: near-caster contact shadows stay crisp (a mech's feet),
+//     far-caster shadow regions blur (its head, and especially the km-long
+//     low-sun silhouettes stretched by projection), and
+//   - an opacity fade that reaches fully-lit at MC2_SHADOW_DIST_FADE world
+//     units of ray distance -- "a pixel-perfect shadow halfway across the
+//     map" dissolves to nothing instead.
+// The macro is injected by every compile site that injects MC2_SHADOW_CSM
+// (terrain chunk, generic material variations incl. gos_terrain.frag, the
+// overlay/decal programs, and shadow_screen.frag) so all dynamic receivers
+// stay in lockstep. Value 0.0 (killswitch or non-injecting site) folds the
+// whole block away -> current behavior.
+#ifndef MC2_SHADOW_DIST_FADE_WU
+#define MC2_SHADOW_DIST_FADE_WU 0.0
+#endif
+const float kShadowDistFadeWu = float(MC2_SHADOW_DIST_FADE_WU);
+// SHADOW-DONUT-FIX-1: max opacity the distance fade may remove (env
+// MC2_SHADOW_DIST_FADE_MAX, default 0.65). 1.0 = old behavior (full erase at
+// the fade distance); lower = far-caster shadow interiors keep a soft floor
+// ("softer fade on the interior" user note). Injected alongside the _WU macro
+// at every compile site; non-injecting sites use this default.
+#ifndef MC2_SHADOW_DIST_FADE_MAX_F
+#define MC2_SHADOW_DIST_FADE_MAX_F 0.65
+#endif
+const float kShadowDistFadeMax = float(MC2_SHADOW_DIST_FADE_MAX_F);
+// SHADOW-FADE-CONTINUOUS-1 (env MC2_SHADOW_FADE_CONT, killswitch =0): the
+// original occluder-distance ladder probed only 4 discrete reference depths,
+// quantizing dNorm to 5 levels -> spatially-coherent STEP boundaries in both
+// the fade opacity and the penumbra radius (user-visible: stepped fade change
+// along long shadows, blotchy dithered mech shadows). Continuous variant: 8
+// midpoint references with a per-pixel half-step jitter on the whole ladder
+// (reuses the existing rotation hash) -- halves the depth step and converts
+// the residual staircase into fine unbiased noise instead of coherent bands.
+#ifndef MC2_SHADOW_FADE_CONT_F
+#define MC2_SHADOW_FADE_CONT_F 1
+#endif
+
 // 16-sample Poisson disk (well-distributed points in unit circle)
 const vec2 poissonDisk[16] = vec2[](
     vec2(-0.94201624, -0.39906216),
@@ -53,6 +94,19 @@ float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
                          ? 2.0 / (invR * float(textureSize(shadowMap, 0).x))
                          : 0.0;
         worldPos += normal * texelWorld;
+        // SHADOW-BLOB-REGRESSION-FIX (2026-07-18, mc2_10 field report): after
+        // using the caller's macro slope normal for the receiver offset above,
+        // RESET to flat-up for the back-face guard + slope bias below. The v2
+        // default-ON flip surfaced giant faceted black blotches at long
+        // distance / low sun (mc2_10 corner view): on light-facing slopes the
+        // macro normal drives NdotL -> ~1, collapsing the slope bias from up
+        // to 0.005 to its 0.002 floor, so the coarse static-map caster mesh
+        // self-shadows entire triangles (A/B diag: static map carried the
+        // blobs, dynamic clean). The normal-offset receiver above is the part
+        // that actually cures the banding (mc2_01 f1800 stripe amplitude
+        // patch-C 3.67 -> 1.26 with offset-only, vs 1.45 full-v2), so keep it
+        // and return bias/guard to the legacy flat-up semantics.
+        normal = vec3(0.0, 0.0, 1.0);
     }
 #endif
     vec4 lsPos = lightSpaceMatrix * vec4(worldPos, 1.0);
@@ -157,6 +211,53 @@ float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int
 
     vec2 texelSize = 1.0 / vec2(textureSize(dynamicShadowArray, 0).xy);
     float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+
+    // SHADOW-DIST-FADE-1: occluder-distance estimate -> penumbra + fade.
+    // SHADOW-DONUT-FIX-1: take the MAX per-probe staircase occlusion instead of
+    // AVERAGING all 16 taps. Averaging made the estimate collapse at silhouette
+    // EDGES (half the probe ring lands outside the caster -> mixed occluder/sky
+    // -> small delta -> no fade/blur) while the interior got the full delta ->
+    // full fade -- rendering every tree shadow as a dark OUTLINE ring around a
+    // washed interior (the "donut"). MAX means any edge pixel whose probe ring
+    // reaches the interior sees the same occluder distance the interior sees,
+    // so blur + fade are uniform across the whole silhouette. Fade is also
+    // capped at kShadowDistFadeMax (softer interior; see macro above).
+    float distFade = 0.0;
+    if (kShadowDistFadeWu > 0.0) {
+        float fadeNdc = kShadowDistFadeWu / max(csmDepthSpan, 1.0);
+        float occP = 0.0;
+        vec2 searchR = radius * 3.0 * texelSize;
+#if MC2_SHADOW_FADE_CONT_F != 0
+        // SHADOW-FADE-CONTINUOUS-1: 8 midpoint refs + per-pixel ladder jitter
+        // (see macro block above for the staircase mechanism writeup).
+        float ladderJit = fract(angle * 0.15915494) - 0.5;   // [-0.5,0.5)
+        for (int p = 0; p < 4; ++p) {
+            vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+            float o = 0.0;
+            for (int q = 0; q < 8; ++q) {
+                float stepN = clamp((float(q) + 0.5 + ladderJit) * 0.125, 0.0, 1.0);
+                o += 1.0 - texture(dynamicShadowArray,
+                        vec4(uv, float(layer), currentDepth - fadeNdc * stepN));
+            }
+            occP = max(occP, o * 0.125);
+        }
+        float dNorm = occP;                 // ~ occluder ray-distance / fade distance
+#else
+        for (int p = 0; p < 4; ++p) {
+            vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+            float o = 0.0;
+            for (int q = 1; q <= 4; ++q) {
+                o += 1.0 - texture(dynamicShadowArray,
+                        vec4(uv, float(layer), currentDepth - fadeNdc * 0.25 * float(q)));
+            }
+            occP = max(occP, o);
+        }
+        float dNorm = occP * 0.25;          // ~ occluder ray-distance / fade distance
+#endif
+        radius *= 1.0 + 4.0 * dNorm;        // penumbra grows with occluder distance
+        distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
+    }
+
     float shadow = 0.0;
     int taps = clamp(numTaps, 1, 16);
     for (int i = 0; i < taps; i++) {
@@ -165,7 +266,7 @@ float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int
         shadow += texture(dynamicShadowArray, vec4(projCoords.xy + offset, float(layer), currentDepth));
     }
     shadow /= float(taps);
-    return shadow;
+    return mix(shadow, 1.0, distFade);
 }
 
 // Per-cascade shadow resolution: sample the LAST cascade from the separate
@@ -188,6 +289,47 @@ float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps)
 
     vec2 texelSize = 1.0 / vec2(textureSize(dynamicFullMapShadow, 0).xy);
     float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+
+    // SHADOW-DIST-FADE-1: occluder-distance estimate -> penumbra + fade
+    // (lockstep with csmSampleLayer; this is the cascade that carries the
+    // giant far-field silhouettes, so the fade matters most here).
+    // SHADOW-DONUT-FIX-1: MAX per-probe estimate + capped fade (see
+    // csmSampleLayer for the donut mechanism writeup).
+    float distFade = 0.0;
+    if (kShadowDistFadeWu > 0.0) {
+        float fadeNdc = kShadowDistFadeWu / max(csmDepthSpan, 1.0);
+        float occP = 0.0;
+        vec2 searchR = radius * 3.0 * texelSize;
+#if MC2_SHADOW_FADE_CONT_F != 0
+        // SHADOW-FADE-CONTINUOUS-1: 8 midpoint refs + per-pixel ladder jitter.
+        float ladderJit = fract(angle * 0.15915494) - 0.5;   // [-0.5,0.5)
+        for (int p = 0; p < 4; ++p) {
+            vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+            float o = 0.0;
+            for (int q = 0; q < 8; ++q) {
+                float stepN = clamp((float(q) + 0.5 + ladderJit) * 0.125, 0.0, 1.0);
+                o += 1.0 - texture(dynamicFullMapShadow,
+                        vec3(uv, currentDepth - fadeNdc * stepN));
+            }
+            occP = max(occP, o * 0.125);
+        }
+        float dNorm = occP;
+#else
+        for (int p = 0; p < 4; ++p) {
+            vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+            float o = 0.0;
+            for (int q = 1; q <= 4; ++q) {
+                o += 1.0 - texture(dynamicFullMapShadow,
+                        vec3(uv, currentDepth - fadeNdc * 0.25 * float(q)));
+            }
+            occP = max(occP, o);
+        }
+        float dNorm = occP * 0.25;
+#endif
+        radius *= 1.0 + 4.0 * dNorm;
+        distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
+    }
+
     float shadow = 0.0;
     int taps = clamp(numTaps, 1, 16);
     for (int i = 0; i < taps; i++) {
@@ -195,7 +337,7 @@ float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps)
         shadow += texture(dynamicFullMapShadow, vec3(projCoords.xy + offset, currentDepth));
     }
     shadow /= float(taps);
-    return shadow;
+    return mix(shadow, 1.0, distFade);
 }
 
 // Project worldPos into cascade `layer`; out-of-range -> inside=false.
@@ -295,6 +437,53 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 
     vec2 texelSize = 1.0 / vec2(textureSize(dynamicShadowMap, 0));
     float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+
+    // SHADOW-DIST-FADE-1 (legacy single-map variant): same occluder-distance
+    // penumbra + fade. The legacy path has no csmDepthSpan uniform, so the
+    // world-per-NDC-depth scale is recovered from the ortho light matrix z-row
+    // (|row2| = 1/depthSpan for the ZERO_TO_ONE ortho).
+    float distFade = 0.0;
+    if (kShadowDistFadeWu > 0.0) {
+        float invSpan = length(vec3(dynamicLightSpaceMatrix[0][2],
+                                    dynamicLightSpaceMatrix[1][2],
+                                    dynamicLightSpaceMatrix[2][2]));
+        if (invSpan > 1e-8) {
+            // SHADOW-DONUT-FIX-1: MAX per-probe estimate + capped fade (see
+            // csmSampleLayer for the donut mechanism writeup).
+            float fadeNdc = kShadowDistFadeWu * invSpan;
+            float occP = 0.0;
+            vec2 searchR = radius * 3.0 * texelSize;
+#if MC2_SHADOW_FADE_CONT_F != 0
+            // SHADOW-FADE-CONTINUOUS-1: 8 midpoint refs + per-pixel ladder jitter.
+            float ladderJit = fract(angle * 0.15915494) - 0.5;   // [-0.5,0.5)
+            for (int p = 0; p < 4; ++p) {
+                vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+                float o = 0.0;
+                for (int q = 0; q < 8; ++q) {
+                    float stepN = clamp((float(q) + 0.5 + ladderJit) * 0.125, 0.0, 1.0);
+                    o += 1.0 - texture(dynamicShadowMap,
+                            vec3(uv, currentDepth - fadeNdc * stepN));
+                }
+                occP = max(occP, o * 0.125);
+            }
+            float dNorm = occP;
+#else
+            for (int p = 0; p < 4; ++p) {
+                vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+                float o = 0.0;
+                for (int q = 1; q <= 4; ++q) {
+                    o += 1.0 - texture(dynamicShadowMap,
+                            vec3(uv, currentDepth - fadeNdc * 0.25 * float(q)));
+                }
+                occP = max(occP, o);
+            }
+            float dNorm = occP * 0.25;
+#endif
+            radius *= 1.0 + 4.0 * dNorm;
+            distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
+        }
+    }
+
     float shadow = 0.0;
     int taps = clamp(numTaps, 1, 16);
     for (int i = 0; i < taps; i++) {
@@ -302,6 +491,7 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
         shadow += texture(dynamicShadowMap, vec3(projCoords.xy + offset, currentDepth));
     }
     shadow /= float(taps);
+    shadow = mix(shadow, 1.0, distFade);
 
     return mix(0.4, 1.0, shadow);
 }

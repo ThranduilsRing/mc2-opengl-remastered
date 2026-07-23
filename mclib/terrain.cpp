@@ -1114,8 +1114,10 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// (precedent: MC2_TERRAIN_OVERLAY_V2_FILE above).
 			{
 				static const bool s_shorelineGate = []() {
+					// SHORELINE-SMOOTHING-REVISIT-1: default ON (matches the
+					// two reads in gos_terrain_lod_chunk.cpp; =0 killswitch).
 					const char* v = getenv("MC2_TERRAIN_SHORELINE");
-					return (v && v[0] && v[0] != '0');
+					return !(v && v[0] == '0');
 				}();
 				if (s_shorelineGate)
 				{

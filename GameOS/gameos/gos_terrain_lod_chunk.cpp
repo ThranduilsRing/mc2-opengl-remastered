@@ -13,10 +13,12 @@
 #include "../../RenderCore/GpuBufferOwner.h"  // TERRAIN-LODCHUNK-SSBO-OWNER-1: type/cement owner records
 #include "../../RenderCore/KtxLoader.h"  // TERRAIN-MATERIAL-TEXTURES-1: BC7 KTX2 albedo layer load
 #include "gos_profiler.h"  // CLIFF-TESS-PERF: Tracy ZoneScopedN for the near-field tess mirror+draw
+#include "gos_terrain_lighting.h"  // NIGHT-LIGHT-POOLS-1: per-frame light-pool SSBO accessors
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+
 #include <optional>
 #include <vector>
 #include <map>
@@ -66,6 +68,45 @@ inline float tglc_envStrength(const char* name, float def) {
 const bool  kTglcForceColor        = []() { return std::getenv("MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR") != nullptr; }();
 const int   kTglcDiag              = []() { const char* v = std::getenv("MC2_TERRAIN_LOD_CHUNK_DIAG"); return v ? std::atoi(v) : 0; }();
 const bool  kTglcCementDiagConnect = []() { return tglc_envOn("MC2_TERRAIN_CEMENT_DIAG_CONNECT"); }();
+// CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
+const bool  kTglcCementAtlasSeamFix = []() {
+    const char* e = std::getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
+    return !(e && e[0] == '0');
+}();
+// NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
+// GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
+const bool  kTglcLightPoolSoft = []() {
+    const char* e = std::getenv("MC2_LIGHT_POOL_SOFT");
+    return !(e && e[0] == '0');
+}();
+// NIGHT-LIGHT-POOLS-4: default dropped 0.5 -> 0.25 (5-mech group still read as
+// one saturated egg at 0.5; compression can't help five overlapping full discs).
+const float kTglcLightPoolMoverDim = []() {
+    const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
+    if (!s || !s[0]) return 0.25f;
+    float v = (float)std::atof(s);
+    return (v >= 0.0f && v <= 1.0f) ? v : 0.25f;
+}();
+// NIGHT-LIGHT-POOLS-4: mover pool radius scale (shrinks close/far distances of
+// mover-attached lights only; 1.0 = legacy radii = killswitch).
+const float kTglcLightPoolMoverRadius = []() {
+    const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
+    if (!s || !s[0]) return 0.6f;
+    float v = (float)std::atof(s);
+    return (v > 0.0f && v <= 1.0f) ? v : 0.6f;
+}();
+// NIGHT-LIGHT-POOLS-4: mover pools combine by per-channel MAX (no additive
+// stacking across an overlapping lance); =0 restores the additive sum.
+const bool kTglcLightPoolMoverMax = []() {
+    const char* e = std::getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
+    return !(e && e[0] == '0');
+}();
+// NIGHT-LIGHT-POOLS-3: tone-compress the summed pool term (default ON;
+// =0 restores the legacy min(pool,1) hard clamp -> stacked-pool blowout).
+const bool  kTglcLightPoolCompress = []() {
+    const char* e = std::getenv("MC2_LIGHT_POOL_COMPRESS");
+    return !(e && e[0] == '0');
+}();
 const bool  kTglcSlopeBias         = []() { return tglc_envOn("MC2_TERRAIN_SLOPE_BIAS"); }();
 const float kTglcSlopeBiasStr      = []() { return tglc_envStrength("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", 1.0f); }();
 const bool  kTglcCliffTriplanar    = []() { return tglc_envOn("MC2_TERRAIN_CLIFF_TRIPLANAR"); }();
@@ -95,7 +136,17 @@ const float kTglcMacroVariation    = []() {
     if (!tglc_envOn("MC2_TERRAIN_MACRO_VARIATION")) return 0.0f;
     return tglc_envStrength("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", 1.0f);
 }();
-const bool  kTglcEdgeFeather       = []() { return tglc_envOn("MC2_TERRAIN_EDGE_FEATHER"); }();
+// WATER-FAR-BAND-ATTRIB-1 (batch3 item C): default flipped ON to match
+// WATER-EDGE-FEATHER (54a70e2d). With water feathered ON and terrain feather
+// OFF, the water dissolves at the map edge but EXPOSES the un-feathered dark
+// submerged-terrain rim -> the residual hard navy far-band line at grazing
+// angles (mc2_01 saved_205644; MC2_WATER_DEBUG_MODE=2 shows water alpha
+// already 0 across the band -> the navy pixels are terrain, not water).
+// Killswitch: MC2_TERRAIN_EDGE_FEATHER=0.
+const bool  kTglcEdgeFeather       = []() {
+    const char* e = std::getenv("MC2_TERRAIN_EDGE_FEATHER");
+    return !(e && e[0] == '0');
+}();
 const float kTglcEdgeFeatherStr    = []() { return tglc_envStrength("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", 1.0f); }();
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
 // u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
@@ -446,6 +497,10 @@ const float* gos_TerrainLodChunk_OverlayBounds()        { return s_overlayBounds
 static GLuint s_shorelineMaskTex   = 0;
 static float  s_shorelineBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topLeftY(=maxY),sizeX,sizeY
 
+// WATER-SHORE-MASK-1: water-shader accessors (see header).
+unsigned int gos_TerrainLodChunk_ShorelineMaskTex()     { return s_shorelineMaskTex; }
+const float* gos_TerrainLodChunk_ShorelineMaskBounds()  { return s_shorelineBounds; }
+
 // ---------------------------------------------------------------------------
 // TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB albedo GL_TEXTURE_2D_ARRAY
 // (rock/grass/dirt/concrete/snow/cliff, layer order = MAT_LAYER_* 0..5) loaded
@@ -665,6 +720,15 @@ static GLint    s_locAtlasTLX       = -1;  // Phase 10: atlas top-left X (world)
 static GLint    s_locAtlasTLY       = -1;  // Phase 10: atlas top-left Y (world)
 static GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsMapSide
 static GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
+static GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
+static GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLights (0 = pool loop off)
+static GLint    s_locLightPoolSoft     = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolSoft
+static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolMoverDim
+static GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
+static GLint    s_locLightPoolMoverScale = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverScale
+static GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverMax
+static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
+static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -729,11 +793,13 @@ extern void  gos_GetTerrainTintConcrete(float*, float*, float*);
 extern void  gos_GetTerrainTintSnow(float*, float*, float*);
 extern void  gos_GetTerrainMatRoughness(float*, float*, float*, float*);
 extern void  gos_GetTerrainMatAO(float*, float*, float*, float*);
+extern void  gos_GetTerrainMatHeight(float*, float*, float*, float*);  // POM-PERLAYER-HEIGHT-1
 extern bool  gos_TerrainMaterialLibEnabled();
 static GLint    s_locTintConcrete   = -1;
 static GLint    s_locTintSnow       = -1;
 static GLint    s_locMatRoughness   = -1;
 static GLint    s_locMatAO          = -1;
+static GLint    s_locMatHeight      = -1;  // POM-PERLAYER-HEIGHT-1
 static GLint    s_locUseMaterialLib = -1;
 // Remaining legacy tunables (env gates replicated in the upload so default==legacy).
 extern float gos_GetTerrainLightingV1Strength();
@@ -805,6 +871,7 @@ static GLint    s_locUseCement      = -1;
 static GLint    s_locCementGridSide = -1;
 static GLint    s_locCementWUPT     = -1;
 static GLint    s_locCementDiagConnect = -1;  // CEMENT-DIAG-CONNECT-1 gate uniform
+static GLint    s_locCementAtlasSeamFix = -1; // CEMENT-ATLAS-SEAM-1 gate uniform
 static constexpr GLint kChunkTexUnitCement = 3;  // matches legacy tex3
 // Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
 extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
@@ -853,6 +920,8 @@ extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
 // Phase 10 Step 1b: terrain sun direction (gameos.hpp), same value the legacy
 // terrain frag's terrainLightDir uniform receives.
 extern void   gos_GetTerrainLightDir(float* x, float* y, float* z);
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light (gameos.hpp).
+extern void   gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 
 // ---------------------------------------------------------------------------
 // Patch geometry cache (Phase 4).
@@ -1108,18 +1177,30 @@ void gos_TerrainLodChunk_Init()
         // #includes shadow.hglsl) compiles the array-sampler variant when ON.
         std::string prefix = "#version 430\n";
         // STATIC-SHADOW-BANDING-2: slope-normal shadow bias (see
-        // terrain_lod_chunk.frag). Default OFF => byte-identical.
-        {
-            const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
-            if (v && v[0] && v[0] != '0')
-                prefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
-        }
+        // terrain_lod_chunk.frag). SHADOW-BANDING-DEFAULT-ON (2026-07-18):
+        // route through the shared chokepoint helper (default ON, "=0" kills)
+        // instead of a local env re-read -- the local default-OFF copy here is
+        // exactly how the default-flip initially missed this LIVE path.
+        if (mc2ShadowStaticBandFixV2Enabled())
+            prefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
         if (mc2ShadowCsmEnabled()) {
             char csmDef[64];
             snprintf(csmDef, sizeof(csmDef),
                      "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
                      mc2ShadowCsmCount());
             prefix += csmDef;
+        }
+        // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra + fade
+        // (shadow.hglsl). Lockstep with the gameos_graphics.cpp inject sites.
+        if (mc2ShadowDistFadeWu() > 0.0f) {
+            char fadeDef[144];
+            snprintf(fadeDef, sizeof(fadeDef),
+                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
+                     "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
+                     mc2ShadowFadeCont() ? 1 : 0);
+            prefix += fadeDef;
         }
         glsl_program* prog = glsl_program::makeProgram(
             "terrain_lod_chunk",
@@ -1148,6 +1229,15 @@ void gos_TerrainLodChunk_Init()
             s_locAtlasTLY     = glGetUniformLocation(s_terrainProgram, "u_atlasTopLeftY");
             s_locAtlasOOW     = glGetUniformLocation(s_terrainProgram, "u_atlasOneOverWorldUnits");
             s_locLightDir     = glGetUniformLocation(s_terrainProgram, "terrainLightDir");
+            s_locMissionFlatLight = glGetUniformLocation(s_terrainProgram, "u_missionFlatLight");  // CEMENT-NIGHT-LIGHT-1
+            s_locNumPoolLights = glGetUniformLocation(s_terrainProgram, "u_numPoolLights");  // NIGHT-LIGHT-POOLS-1
+            s_locLightPoolSoft     = glGetUniformLocation(s_terrainProgram, "u_lightPoolSoft");      // NIGHT-LIGHT-POOLS-2
+            s_locLightPoolMoverDim = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverDim");  // NIGHT-LIGHT-POOLS-2
+            s_locLightPoolCompress = glGetUniformLocation(s_terrainProgram, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
+            s_locLightPoolMoverScale = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
+            s_locLightPoolMoverMax   = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
+            s_locPadGlow      = glGetUniformLocation(s_terrainProgram, "u_padGlow");       // PAD-AREA-GLOW-1
+            s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -1188,6 +1278,7 @@ void gos_TerrainLodChunk_Init()
             s_locTintSnow       = glGetUniformLocation(s_terrainProgram, "tintSnow");
             s_locMatRoughness   = glGetUniformLocation(s_terrainProgram, "matRoughness");
             s_locMatAO          = glGetUniformLocation(s_terrainProgram, "matAO");
+            s_locMatHeight      = glGetUniformLocation(s_terrainProgram, "matHeight");  // POM-PERLAYER-HEIGHT-1
             s_locUseMaterialLib = glGetUniformLocation(s_terrainProgram, "u_useMaterialLib");
             s_locLightingV1  = glGetUniformLocation(s_terrainProgram, "terrainLightingV1Strength");
             s_locLightingV2  = glGetUniformLocation(s_terrainProgram, "terrainLightingV2ShadowFillFloor");
@@ -1218,6 +1309,7 @@ void gos_TerrainLodChunk_Init()
             s_locCementGridSide = glGetUniformLocation(s_terrainProgram, "u_cementGridSide");
             s_locCementWUPT     = glGetUniformLocation(s_terrainProgram, "u_cementWUPT");
             s_locCementDiagConnect = glGetUniformLocation(s_terrainProgram, "u_cementDiagConnect");
+            s_locCementAtlasSeamFix = glGetUniformLocation(s_terrainProgram, "u_cementAtlasSeamFix");
             s_locTransitionMaskArray = glGetUniformLocation(s_terrainProgram, "u_transitionMaskArray");
             s_locUseTransitionMask   = glGetUniformLocation(s_terrainProgram, "u_useTransitionMask");
             s_locControlMap    = glGetUniformLocation(s_terrainProgram, "u_controlMap");    // TERRAIN-CONTROLMAP-SAMPLE-1
@@ -2180,6 +2272,78 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             gos_GetTerrainLightDir(&lx, &ly, &lz);
             glUniform4f(s_locLightDir, lx, ly, lz, 0.0f);
         }
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light for the RAW cement-atlas
+        // texels (night darkness is burned into the colormap CPU-side; the
+        // cement atlas is built from unburned tile art). MUST be uploaded by
+        // every binder of terrain_lod_chunk.frag or draws read 0 -> black pads.
+        // (The tess variant program auto-mirrors this via mirrorTerrainUniforms.)
+        if (s_locMissionFlatLight >= 0) {
+            float fr = 1.f, fg = 1.f, fb = 1.f;
+            gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
+            glUniform3f(s_locMissionFlatLight, fr, fg, fb);
+        }
+        // PAD-AREA-GLOW-1: premultiplied night pad-area lift. nightFactor is
+        // derived from the SAME mission flat light CEMENT-NIGHT-LIGHT-1 uses
+        // (1 - brightest channel): day missions upload ~(1,1,1) -> factor 0 ->
+        // u_padGlow = exact (0,0,0) -> byte-identical. Warm color matches the
+        // building SpotLight_ register tint direction (0xffe8c870-ish).
+        if (s_locPadGlow >= 0) {
+            float fr = 1.f, fg = 1.f, fb = 1.f;
+            gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
+            float flMax = fr;                     // (std::max unusable: windows.h max macro)
+            if (fg > flMax) flMax = fg;
+            if (fb > flMax) flMax = fb;
+            float nf = 1.0f - flMax;
+            if (nf < 0.0f) nf = 0.0f;
+            if (nf > 1.0f) nf = 1.0f;
+            const float s = gos_TerrainPadGlowStrength() * nf;
+            glUniform3f(s_locPadGlow, s * 1.00f, s * 0.88f, s * 0.70f);
+            if (s_locPadGlowSpill >= 0)
+                glUniform1f(s_locPadGlowSpill, gos_TerrainPadGlowSpillWu());
+        }
+        // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
+        // the per-frame terrain light pool SSBO (packed+uploaded every frame by
+        // gos_terrain_lighting::PackAndDispatch — the SAME buffer the legacy
+        // vertex-lighting compute reads) at binding 28 and tell the frag how
+        // many lights it holds. Gate=0, producer disabled
+        // (MC2_TERRAIN_LIGHTING_GPU=0), or zero registered lights this frame
+        // -> u_numPoolLights force-uploads 0 -> the frag loop is never entered
+        // -> byte-identical output (the killswitch contract).
+        {
+            static const bool s_lightPoolsGate = [] {
+                const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
+                return !(v && v[0] == '0');   // default ON; =0 reverts byte-identical
+            }();
+            int poolCount = 0;
+            if (s_lightPoolsGate) {
+                const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
+                const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
+                if (poolSsbo != 0 && n > 0) {
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                     TERRAIN_LIGHT_POOL_SSBO_BINDING, poolSsbo);
+                    poolCount = static_cast<int>(n > 256u ? 256u : n);
+                }
+            }
+            if (s_locNumPoolLights >= 0)
+                glUniform1i(s_locNumPoolLights, poolCount);
+            // NIGHT-LIGHT-POOLS-2 tuning (user feedback 2026-07-21): soften the
+            // stamped-disc falloff edge (smoothstep tail; MC2_LIGHT_POOL_SOFT=0
+            // -> exact legacy TG_Light::GetFalloff linear ramp) and dim
+            // mover-attached lights (MC2_LIGHT_POOL_MOVER_DIM, default 0.5;
+            // producer flags mover lights in the SSBO pad).
+            if (s_locLightPoolSoft >= 0)
+                glUniform1i(s_locLightPoolSoft, kTglcLightPoolSoft ? 1 : 0);
+            if (s_locLightPoolMoverDim >= 0)
+                glUniform1f(s_locLightPoolMoverDim, kTglcLightPoolMoverDim);
+            // NIGHT-LIGHT-POOLS-3: summed-pool tone compression toggle.
+            if (s_locLightPoolCompress >= 0)
+                glUniform1i(s_locLightPoolCompress, kTglcLightPoolCompress ? 1 : 0);
+            // NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend.
+            if (s_locLightPoolMoverScale >= 0)
+                glUniform1f(s_locLightPoolMoverScale, kTglcLightPoolMoverRadius);
+            if (s_locLightPoolMoverMax >= 0)
+                glUniform1i(s_locLightPoolMoverMax, kTglcLightPoolMoverMax ? 1 : 0);
+        }
     }
 
     // Phase 10 Step 1c: bind the shadow maps + light matrices that
@@ -2270,6 +2434,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // REDUNDANT-PASS-HUNT-1: env resolved once (kTglcCementDiagConnect).
         if (s_locCementDiagConnect >= 0)
             glUniform1i(s_locCementDiagConnect, kTglcCementDiagConnect ? 1 : 0);
+        // CEMENT-ATLAS-SEAM-1: half-texel sampling inset for the gutter-less
+        // cement atlas (faint tile-grid seam lines across continuous pads).
+        // Default ON; killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0 reverts.
+        if (s_locCementAtlasSeamFix >= 0)
+            glUniform1i(s_locCementAtlasSeamFix, kTglcCementAtlasSeamFix ? 1 : 0);
         if (cementReady) {
             if (s_locCementGridSide >= 0)
                 glUniform1i(s_locCementGridSide, gos_terrain_indirect_getCementAtlasGridSide());
@@ -2390,8 +2559,13 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // own gate).
     {
         static const bool s_shorelineGateOn = []() {
+            // SHORELINE-SMOOTHING-REVISIT-1: default flipped ON. The elevation-
+            // placed V3 band (fbm edge jitter, optional mask modulator) replaces
+            // the legacy screen-space runShoreline() glow, which traced the raw
+            // tile-quantized water-mesh edge and amplified the staircase at
+            // night. Killswitch: MC2_TERRAIN_SHORELINE=0 (restores legacy glow).
             const char* v = std::getenv("MC2_TERRAIN_SHORELINE");
-            return (v && v[0] && v[0] != '0');
+            return !(v && v[0] == '0');
         }();
         const bool shorelineMaskReady = (s_shorelineMaskTex != 0);
         if (s_locUseShorelineMask >= 0)
@@ -2536,10 +2710,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             float tsn[3]={0.75f,0.78f,0.84f}; gos_GetTerrainTintSnow(&tsn[0],&tsn[1],&tsn[2]);
             float mr[4]={1,1,1,1}; gos_GetTerrainMatRoughness(&mr[0],&mr[1],&mr[2],&mr[3]);
             float ma[4]={1,1,1,1}; gos_GetTerrainMatAO(&ma[0],&ma[1],&ma[2],&ma[3]);
+            float mh[4]={1,1,1,1}; gos_GetTerrainMatHeight(&mh[0],&mh[1],&mh[2],&mh[3]);  // POM-PERLAYER-HEIGHT-1
             if (s_locTintConcrete >= 0) glUniform3f(s_locTintConcrete, tc[0], tc[1], tc[2]);
             if (s_locTintSnow     >= 0) glUniform3f(s_locTintSnow,     tsn[0], tsn[1], tsn[2]);
             if (s_locMatRoughness >= 0) glUniform4f(s_locMatRoughness, mr[0], mr[1], mr[2], mr[3]);
             if (s_locMatAO        >= 0) glUniform4f(s_locMatAO,        ma[0], ma[1], ma[2], ma[3]);
+            if (s_locMatHeight    >= 0) glUniform4f(s_locMatHeight,    mh[0], mh[1], mh[2], mh[3]);  // POM-PERLAYER-HEIGHT-1
             const bool matLibOn = gos_TerrainMaterialLibEnabled();
             if (s_locUseMaterialLib >= 0) glUniform1i(s_locUseMaterialLib, matLibOn ? 1 : 0);
             static const bool s_matLibTrace = (getenv("MC2_MATERIALLIB_TRACE") != nullptr);
@@ -3628,4 +3804,47 @@ void gos_TerrainLodChunk_UploadHeightPatch(
     }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+// PAD-AREA-GLOW-1: chunk cement-grid geometry for the overlay/decal uploader
+// (gameos_graphics.cpp uploadOverlayUniforms_). mapSide==0 means the chunk
+// terrain grid is not resident (legacy terrain path / pre-upload) — the
+// overlay shader then force-uploads u_padGlowMapSide=0 and never reads the
+// binding-25 cement SSBO.
+void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap)
+{
+    if (mapSide) *mapSide = s_mapSide;
+    if (halfMap) *halfMap = s_halfMap;
+}
+
+// PAD-AREA-GLOW-1: uniform night lift on cement pads + a feathered spill
+// margin (MC2_PAD_AREA_GLOW_SPILL wu) onto surrounding terrain, so buildings
+// with bright pool lights no longer read as pasted-bright cutouts on black
+// ground. Value = additive lift strength (pre nightFactor/color). Default ON
+// (0.12); =0 kill. GLOBAL scope (not the anon namespace) — the overlay/decal
+// uploader in gameos_graphics.cpp reuses both values for lockstep.
+float gos_TerrainPadGlowStrength()
+{
+    static const float s_v = []() {
+        const char* s = std::getenv("MC2_PAD_AREA_GLOW");
+        if (!s || !s[0]) return 0.12f;
+        float v = (float)std::atof(s);
+        if (v < 0.0f) v = 0.0f;
+        if (v > 4.0f) v = 4.0f;
+        return v;
+    }();
+    return s_v;
+}
+
+float gos_TerrainPadGlowSpillWu()
+{
+    static const float s_v = []() {
+        const char* s = std::getenv("MC2_PAD_AREA_GLOW_SPILL");
+        if (!s || !s[0]) return 48.0f;
+        float v = (float)std::atof(s);
+        if (v < 4.0f)   v = 4.0f;
+        if (v > 127.0f) v = 127.0f;   // mask probes ring-1 only (128 wu tiles)
+        return v;
+    }();
+    return s_v;
 }

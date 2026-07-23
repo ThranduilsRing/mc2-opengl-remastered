@@ -140,7 +140,7 @@ GPU compute cull path: `gpu_cull::compute_dispatch` (gpu_cull_compute.cpp:786). 
 - **Two-pass model.** Pass 1: render shadow depth into shadow FBO (`gos_postprocess.cpp:1099` framebuffer attachment). Pass 2: main pass samples shadow tex via `calcShadow` in `shaders/include/shadow.hglsl`.
 - **Eligibility gate** — `!firstTextureAlpha` exclusion in shape shadow path; suppresses fences/gates without affecting trees. Per `memory/shadow_caster_eligibility_gate.md`. tgl.cpp:3051 NOTE comment.
 - **FBO management** — `shadowFBO_`, `shadowDepthTex_`, `shadowDepthProg_` all in `gos_postprocess.cpp` (constructor :55, init :1081, bind :607, cleanup :1186). `shadowsEnabled_` (`:59`) is the master switch.
-- **Cascade structure** — single-cascade currently; static world-fixed shadow map design ready (per worktree CLAUDE.md Known Issues).
+- **Cascade structure** — dynamic CSM (`MC2_SHADOW_CSM`, default-ON since 2026-06-18) is now the multi-cascade dynamic system; the *static* world-fixed terrain shadow map was SHIPPED `e9b9aea7` (2026-05-16, predates this doc's original "design ready" note — never reconciled until 2026-07-17 DEFERRED-SWEEP-1 de-stale). Built once per mission from the full map, camera-move-independent — see `docs/architecture.md` Shadow Pipeline section.
 
 ### State cache (applyRenderStates equality-cache)
 

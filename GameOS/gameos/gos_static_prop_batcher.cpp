@@ -17,6 +17,7 @@
 #include "mdi_submit.h"                          // MDI-SUBMISSION-SCAFFOLD-1
 #include "static_prop_dispatch_meta.h"
 #include "gos_postprocess.h"             // getGosPostProcess, getDynamicLightSpaceMatrix
+#include "gos_terrain_lighting.h"        // POOL-CONSUMERS-1: UploadObjectLightPoolUniforms
 #include "gos_static_prop_killswitch.h"  // gos_GetGLTextureId
 #include "gos_mech_killswitch.h"          // g_mechPreviewRenderDepth (mech-bay preview gate)
 #include "gos_profiler.h"
@@ -831,6 +832,8 @@ static std::vector<int32_t> s_packetTexArrayLayer;
 // gos_static_prop_batcher.h uvScaleX/Y) so the VK color-prop island can sample
 // the same texture sub-region GL does instead of assuming 1.0 (ADJUDICATION-1
 // FOLLOW-UP fence residual: narrow/gapped panels vs GL's continuous ribbon).
+// Also consumed by SHADOW-PROP-ALPHA-ATLAS-1 (atlas-variant prop shadow bind:
+// shadow alpha-test samples the same array sub-region as the color pass).
 static std::vector<float> s_packetUvScaleX;
 static std::vector<float> s_packetUvScaleY;
 // VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer + alpha-class,
@@ -1090,7 +1093,16 @@ struct ProgramLocs {
     GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
     GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
     GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
+    GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
 };
+
+// BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass)
+// texels on ALPHA_TEST packets. Default ON; MC2_SP_GLASS_DITHER=0 kills it
+// (shader falls back to the legacy binary a<0.5 discard, byte-identical).
+static const bool s_glassDitherEnabled = []() {
+    const char* v = getenv("MC2_SP_GLASS_DITHER");
+    return !(v && v[0] == '0');
+}();
 
 // STATICPROP-MATERIAL-ORM-1 — texture unit reserved for the per-bucket ORM
 // sibling array. Unit 0 stays the albedo array (u_texArr); unit 1 is ORM.
@@ -1414,6 +1426,8 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasTLY");
     s_locsLegacy.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasOOW");
     s_locsLegacy.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalColorBlend");
+    // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
+    s_locsLegacy.glassDither            = glGetUniformLocation(s_staticPropProgram, "u_glassDither");
     // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
     s_locsLegacy.iblSh             = glGetUniformLocation(s_staticPropProgram, "u_iblSh");
     s_locsLegacy.iblShStrength     = glGetUniformLocation(s_staticPropProgram, "u_iblShStrength");
@@ -1467,6 +1481,8 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasTLY");
             s_locsCoalesce.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasOOW");
             s_locsCoalesce.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalColorBlend");
+            // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
+            s_locsCoalesce.glassDither            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_glassDither");
             // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
             s_locsCoalesce.iblSh             = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblSh");
             s_locsCoalesce.iblShStrength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblShStrength");
@@ -2533,6 +2549,8 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
     s_packetTexArrayLayer.clear();  // v2: will be repopulated from layerForPacket below
+    s_packetUvScaleX.clear();       // SHADOW-PROP-ALPHA-ATLAS-1: repopulated below
+    s_packetUvScaleY.clear();
 
     // Compile shader programs NOW, at map-load time, while we're on the
     // same code path that compiles every other engine shader. Doing it
@@ -6269,6 +6287,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // prop stays byte-identical.
         if (s_locsCoalesce.terrainDecalColorBlend >= 0)
             glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend);
+        // BUILDING-GLASS-1: dither-glass translucency toggle (default ON,
+        // MC2_SP_GLASS_DITHER=0 -> 0.0 -> legacy binary discard in frag).
+        if (s_locsCoalesce.glassDither >= 0)
+            glUniform1f       (s_locsCoalesce.glassDither,
+                               s_glassDitherEnabled ? 1.0f : 0.0f);
         if (g_terrainDecalColorBlend > 0.0f) {
             extern GLuint gos_terrain_indirect_getAtlasGLTex();
             extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
@@ -6311,6 +6334,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
             glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz);
         }
+        // POOL-CONSUMERS-1 (batch-6 item 6): bind + upload the night light-pool
+        // SSBO/uniforms (u_numPoolLights=0 when gated -> byte-identical).
+        gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgramCoalesce);
         // V-IBL-STATIC-1: SH-L2 image-based ambient. Strength gate is the env
         // var (s_iblShEnabled); when OFF -> upload 0.0 -> shader short-circuits
         // before evalShL2 (byte-identical to pre-slice output). When ON, the
@@ -7442,6 +7468,10 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // (legacy program). Same flag-gated no-op contract as coalesce.
             if (s_locsLegacy.terrainDecalColorBlend >= 0)
                 glUniform1f(s_locsLegacy.terrainDecalColorBlend, g_terrainDecalColorBlend);
+            // BUILDING-GLASS-1: dither-glass translucency toggle (legacy program).
+            if (s_locsLegacy.glassDither >= 0)
+                glUniform1f(s_locsLegacy.glassDither,
+                            s_glassDitherEnabled ? 1.0f : 0.0f);
             if (g_terrainDecalColorBlend > 0.0f) {
                 extern GLuint gos_terrain_indirect_getAtlasGLTex();
                 extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
@@ -7482,6 +7512,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
                 glUniform3f(s_locsLegacy.terrainSunMC2, tsx, tsy, tsz);
             }
+            // POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption
+            // (legacy program path; same gating as the coalesce site).
+            gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgram);
             // V-IBL-STATIC-1: SH-L2 image-based ambient (legacy program). Same
             // semantics as coalesce site: strength 0.0 default -> byte-identical OFF.
             // V-IBL-STATIC-2: same per-mission source as coalesce site.
@@ -7887,13 +7920,43 @@ static bool shadowPropAlphaEnabled() {
     return s_on;
 }
 
+// SHADOW-PROP-ALPHA-ATLAS-1: kill switch for routing the alpha-tested prop
+// shadow through the coalesce/BC7-atlas sampling path (default ON). =0 reverts
+// to the legacy per-texture binds (pre-slice behavior: atlas trees cast solid
+// square shadows when their legacy gos texture is dead/stale).
+static bool shadowPropAlphaAtlasEnabled() {
+    static const bool s_on = []{
+        const char* v = getenv("MC2_SHADOW_PROP_ALPHA_ATLAS");
+        return !(v && v[0] == '0');           // default ON
+    }();
+    return s_on;
+}
+
 // Resolve the prop shadow caster program. Returns the program handle and sets
-// outIsAlpha=true iff we landed on the alpha-test program (so the caller knows
-// to do the per-packet texture/material binds). Falls back to the empty-frag
-// program if the alpha program failed to link this session.
-static GLuint resolvePropShadowProgram(bool& outIsAlpha) {
+// outIsAlpha=true iff we landed on an alpha-test program (so the caller knows
+// to do the per-packet texture/material binds) and outIsAtlas=true iff it is
+// the SHADOW-PROP-ALPHA-ATLAS-1 array-sampling variant (per-packet layer/
+// uvScale binds instead of the legacy texture handle). Falls back one rung at
+// a time: atlas -> legacy-texture alpha -> empty-frag.
+static GLuint resolvePropShadowProgram(bool& outIsAlpha, bool& outIsAtlas) {
     outIsAlpha = false;
+    outIsAtlas = false;
     if (shadowPropAlphaEnabled()) {
+        // Atlas variant only when the color pass actually draws from the
+        // coalesce arrays this session (IsCoalesceEnabled) AND the per-packet
+        // sidecars were persisted by finalizeGeometry (size lockstep with
+        // s_packets) -- otherwise the legacy binds are the color-parity path.
+        if (shadowPropAlphaAtlasEnabled() && IsCoalesceEnabled() &&
+            s_packetTexArrayLayer.size() == s_packets.size() &&
+            s_packetUvScaleX.size()     == s_packets.size() &&
+            s_packetUvScaleY.size()     == s_packets.size()) {
+            auto at = glsl_program::s_programs.find("shadow_static_prop_alpha_atlas");
+            if (at != glsl_program::s_programs.end() && at->second && at->second->shp_) {
+                outIsAlpha = true;
+                outIsAtlas = true;
+                return at->second->shp_;
+            }
+        }
         auto a = glsl_program::s_programs.find("shadow_static_prop_alpha");
         if (a != glsl_program::s_programs.end() && a->second && a->second->shp_) {
             outIsAlpha = true;
@@ -7912,6 +7975,11 @@ static GLuint resolvePropShadowProgram(bool& outIsAlpha) {
 static void setupPropShadowAlphaUniforms(GLuint prog, int debugAddrMode) {
     const GLint locTex = glGetUniformLocation(prog, "u_tex");
     if (locTex >= 0) glUniform1i(locTex, 0);
+    // SHADOW-PROP-ALPHA-ATLAS-1: the atlas variant declares u_texArr instead
+    // of u_tex; same texture unit 0. -1 lookups no-op, so this helper serves
+    // both programs.
+    const GLint locTexArr = glGetUniformLocation(prog, "u_texArr");
+    if (locTexArr >= 0) glUniform1i(locTexArr, 0);
     const GLint locDbg = glGetUniformLocation(prog, "u_debugAddrMode");
     if (locDbg >= 0) glUniform1i(locDbg, debugAddrMode);
 }
@@ -7934,6 +8002,52 @@ static void bindPropShadowAlphaPacket(GLuint prog, uint32_t glTexId,
     // alpha) — match the color path's explicit REPEAT.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    const GLint locFlags = glGetUniformLocation(prog, "u_materialFlags");
+    if (locFlags >= 0) glUniform1i(locFlags, (int)effFlags);
+}
+
+// SHADOW-PROP-ALPHA-ATLAS-1: per-packet bind for the atlas-variant prop shadow
+// program. Resolves the SAME array + layer the coalesce color pass samples for
+// this packet (BC7 bucket array when the BC7 gate built buckets for it, else
+// the alpha-group array selected by the type's alphaClass) and uploads the
+// per-packet layer + uv sub-region scale. If the packet's array/layer cannot
+// be resolved (layer -1 sentinel, missing array), the alpha bit is CLEARED so
+// the packet depth-writes opaquely -- i.e. exactly today's square-shadow
+// behavior for that packet, never a wrong-texture cutout. Array sampler state
+// is deliberately NOT touched (shared with the color pass; group/bucket arrays
+// are CLAMP_TO_EDGE + the shader's fract(v_uv)*uvScale handles tiling).
+static void bindPropShadowAtlasPacket(GLuint prog,
+                                      const GpuStaticPropType& type,
+                                      uint32_t globalPktIdx,
+                                      uint32_t effFlags) {
+    GLuint  arr   = 0;
+    int32_t layer = (globalPktIdx < s_packetTexArrayLayer.size())
+                        ? s_packetTexArrayLayer[globalPktIdx] : -1;
+    if (layer >= 0) {
+        if (s_staticPropBc7Enabled &&
+            globalPktIdx < s_packetBucketIndex.size() &&
+            s_packetBucketIndex[globalPktIdx] >= 0 &&
+            static_cast<size_t>(s_packetBucketIndex[globalPktIdx]) < s_bucketArrays.size()) {
+            arr = s_bucketArrays[static_cast<size_t>(s_packetBucketIndex[globalPktIdx])];
+        } else {
+            arr = (type.alphaClass != 0u) ? s_texArrayOn : s_texArrayOff;
+        }
+    }
+    if (arr == 0 || layer < 0) {
+        // Unresolvable: opaque depth write (today's behavior), no sample.
+        effFlags &= ~static_cast<uint32_t>(STATIC_PROP_FLAG_ALPHA_TEST);
+        const GLint locFlags = glGetUniformLocation(prog, "u_materialFlags");
+        if (locFlags >= 0) glUniform1i(locFlags, (int)effFlags);
+        return;
+    }
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
+    const GLint locLayer = glGetUniformLocation(prog, "u_texLayer");
+    if (locLayer >= 0) glUniform1i(locLayer, (int)layer);
+    const GLint locScale = glGetUniformLocation(prog, "u_uvScale");
+    if (locScale >= 0) glUniform2f(locScale,
+                                   s_packetUvScaleX[globalPktIdx],
+                                   s_packetUvScaleY[globalPktIdx]);
     const GLint locFlags = glGetUniformLocation(prog, "u_materialFlags");
     if (locFlags >= 0) glUniform1i(locFlags, (int)effFlags);
 }
@@ -7975,9 +8089,24 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
     // to the empty-frag program when MC2_SHADOW_PROP_ALPHA=0 or the alpha
     // program failed to link. flushShadow is the camera-visible static-prop sun
     // shadow caster (it routes tree types), so it is the primary fix site.
+    // SHADOW-PROP-ALPHA-ATLAS-1: when coalesce is armed the atlas variant is
+    // preferred so the shadow alpha-test samples the same group/bucket array
+    // as the color pass (usingAtlasProg -> per-packet layer/uvScale binds).
     bool usingAlphaProg = false;
-    const GLuint shadowProg = resolvePropShadowProgram(usingAlphaProg);
+    bool usingAtlasProg = false;
+    const GLuint shadowProg = resolvePropShadowProgram(usingAlphaProg, usingAtlasProg);
     if (shadowProg == 0) return;
+    // One-shot arming trace (proof hook for SHADOW-PROP-ALPHA-ATLAS-1 A/B).
+    {
+        static bool s_atlasTraceOnce = false;
+        if (usingAtlasProg && !s_atlasTraceOnce) {
+            s_atlasTraceOnce = true;
+            std::fprintf(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=flushShadow "
+                                 "packets=%zu buckets=%zu bc7=%d\n",
+                         s_packets.size(), s_bucketArrays.size(),
+                         s_staticPropBc7Enabled ? 1 : 0);
+        }
+    }
 
     if (s_typeRanges.empty()) return;
 
@@ -8074,15 +8203,21 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
             // is inline here (member = TG_TypeShape friend) so the protected
             // listOfTextures/numTextures stay accessible.
             if (usingAlphaProg) {
-                uint32_t shGosHandle = 0;
                 const TG_TypeShape* shSrc = type.source;
-                if (shSrc && shSrc->listOfTextures && pkt.textureSlot < shSrc->numTextures)
-                    shGosHandle = shSrc->listOfTextures[pkt.textureSlot].gosTextureHandle;
                 uint32_t shEffFlags = pkt.materialFlags;
                 if (shSrc && shSrc->listOfTextures && pkt.textureSlot < shSrc->numTextures &&
                     shSrc->listOfTextures[pkt.textureSlot].textureAlpha)
                     shEffFlags |= STATIC_PROP_FLAG_ALPHA_TEST;
-                bindPropShadowAlphaPacket(shadowProg, gos_GetGLTextureId(shGosHandle), shEffFlags);
+                if (usingAtlasProg) {
+                    // SHADOW-PROP-ALPHA-ATLAS-1: sample the coalesce array the
+                    // color pass draws from (per-packet layer/uvScale).
+                    bindPropShadowAtlasPacket(shadowProg, type, pktIdx, shEffFlags);
+                } else {
+                    uint32_t shGosHandle = 0;
+                    if (shSrc && shSrc->listOfTextures && pkt.textureSlot < shSrc->numTextures)
+                        shGosHandle = shSrc->listOfTextures[pkt.textureSlot].gosTextureHandle;
+                    bindPropShadowAlphaPacket(shadowProg, gos_GetGLTextureId(shGosHandle), shEffFlags);
+                }
             }
             if (s_shDiag) {
                 fprintf(stderr,
@@ -8302,9 +8437,27 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
 
     // SHADOW-PROP-ALPHA-1: alpha-tested prop shadow program (foliage silhouette)
     // with empty-frag fallback. Full-registry dynamic prop caster.
+    // SHADOW-PROP-ALPHA-ATLAS-1: atlas variant preferred when coalesce is armed
+    // (same resolution ladder as flushShadow).
     bool usingAlphaProg = false;
-    const GLuint shadowProg = resolvePropShadowProgram(usingAlphaProg);
+    bool usingAtlasProg = false;
+    const GLuint shadowProg = resolvePropShadowProgram(usingAlphaProg, usingAtlasProg);
     if (shadowProg == 0) return;
+
+    // flushShadow can run before coalesce reaches READY, while this full-registry
+    // replay runs after the color dispatch has armed it. Keep a proof hook here
+    // too so the default atlas path is observable even when the earlier pass
+    // correctly used the legacy-texture fallback.
+    {
+        static bool s_atlasTraceOnce = false;
+        if (usingAtlasProg && !s_atlasTraceOnce) {
+            s_atlasTraceOnce = true;
+            std::fprintf(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=dynamicProp "
+                                 "packets=%zu buckets=%zu bc7=%d\n",
+                         s_packets.size(), s_bucketArrays.size(),
+                         s_staticPropBc7Enabled ? 1 : 0);
+        }
+    }
 
     gosPostProcess* pp = getGosPostProcess();
     if (!pp) return;
@@ -8403,15 +8556,21 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
                     // the alpha-test frag cuts the leaf silhouette. Inline
                     // resolution (member = TG_TypeShape friend).
                     if (usingAlphaProg) {
-                        uint32_t shGosHandle = 0;
                         const TG_TypeShape* shSrc = type.source;
-                        if (shSrc && shSrc->listOfTextures && pkt.textureSlot < shSrc->numTextures)
-                            shGosHandle = shSrc->listOfTextures[pkt.textureSlot].gosTextureHandle;
                         uint32_t shEffFlags = pkt.materialFlags;
                         if (shSrc && shSrc->listOfTextures && pkt.textureSlot < shSrc->numTextures &&
                             shSrc->listOfTextures[pkt.textureSlot].textureAlpha)
                             shEffFlags |= STATIC_PROP_FLAG_ALPHA_TEST;
-                        bindPropShadowAlphaPacket(shadowProg, gos_GetGLTextureId(shGosHandle), shEffFlags);
+                        if (usingAtlasProg) {
+                            // SHADOW-PROP-ALPHA-ATLAS-1: same array/layer the
+                            // coalesce color pass samples for this packet.
+                            bindPropShadowAtlasPacket(shadowProg, type, pk, shEffFlags);
+                        } else {
+                            uint32_t shGosHandle = 0;
+                            if (shSrc && shSrc->listOfTextures && pkt.textureSlot < shSrc->numTextures)
+                                shGosHandle = shSrc->listOfTextures[pkt.textureSlot].gosTextureHandle;
+                            bindPropShadowAlphaPacket(shadowProg, gos_GetGLTextureId(shGosHandle), shEffFlags);
+                        }
                     }
                     glDrawElementsInstancedBaseVertex(
                         GL_TRIANGLES, static_cast<GLsizei>(pkt.indexCount), GL_UNSIGNED_INT,
@@ -9782,4 +9941,3 @@ void batcher_prepareBaseInstanceTable() {
     s_onGroupBytesThisFrame   = (totalCount - offGroupCount) * sizeof(GpuStaticPropInstance);
     s_totalUsedBytesThisFrame = totalCount * sizeof(GpuStaticPropInstance);
 }
-

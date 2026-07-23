@@ -502,6 +502,9 @@ ALLOWLIST=(
     MC2_LOWCAM_SOLID_NEAR             # override -- low-camera solid-near tuning
     MC2_LOWCAM_TERRAIN_NEAR           # feature -- low-camera terrain-near gate
     MC2_LOWCAM_ZOOM_ANCHOR            # override -- low-camera zoom anchor override
+    MC2_CAMERA_SMOOTH                 # override -- gameplay camera smoothing time-constant ms (0=legacy)
+    MC2_CAMERA_SMOOTH_TRACE           # trace
+    MC2_CAM_SMOOTH_TEST               # trace -- synthetic scroll driver for smoothing evidence
     MC2_MATERIALLIB_TRACE             # trace
     MC2_MDI_SUBMIT_TRACE              # trace
     MC2_MECH_ANIM_ROTATION_ONLY       # feature -- mech anim rotation-only gate
@@ -586,6 +589,7 @@ ALLOWLIST=(
     MC2_SCENE_LIGHTING_ASSERT         # infra -- fatal-assert opt-in for scene lighting
     MC2_SCENE_LIGHTING_TRACE          # trace
     MC2_SCREENSHOT_AT_FRAME           # infra -- screenshot capture tool
+    MC2_CAMERA_PARK                   # infra -- CAMERA-PARK-1 fixture: live camera pose pin "x,y,rot,proj,alt[@frame]"
     MC2_SCREENSHOT_PATH               # infra -- screenshot capture tool
     MC2_SENSOR_SCAN_FACTS             # trace
     MC2_SHADER_PATH_TINT              # trace
@@ -601,6 +605,7 @@ ALLOWLIST=(
     MC2_SHADOW_MECH_SOFT              # feature -- mech soft-shadow gate
     MC2_SHADOW_OBJ_NORMAL_BIAS        # override -- shadow object normal-bias tuning
     MC2_SHADOW_PROP_ALPHA             # override -- shadow prop alpha tuning
+    MC2_SHADOW_PROP_ALPHA_ATLAS       # override -- SHADOW-PROP-ALPHA-ATLAS-1 coalesce/BC7-atlas shadow alpha kill switch (default ON)
     MC2_SHADOW_ROBUST_BASIS           # feature -- shadow robust-basis gate
     MC2_SHADOW_STATE_TRACE            # trace
     MC2_SHADOW_TIER_STATS             # trace
@@ -714,6 +719,35 @@ ALLOWLIST=(
     MC2_WATER_ASPECT_DIAG             # trace
     MC2_WATER_EDGE_FEATHER            # feature -- water edge-feather gate
     MC2_WATER_EDGE_FEATHER_STRENGTH   # override -- water edge-feather strength tuning
+    MC2_WATER_BIAS_LEGACY             # killswitch -- WATER-BIAS-LINEARIZE-1: =1 restores constant NDC water bias (37557c8b)
+    MC2_CEMENT_MISSION_LIGHT          # killswitch -- CEMENT-NIGHT-LIGHT-1: =0 restores unlit cement (67d5ce40)
+    MC2_MISSING_RUNWAY_FIX            # killswitch -- MISSING-RUNWAY-1: =0 restores blanket decal skip (ef0f96d5)
+    MC2_TERRAIN_TILE_CENSUS           # diagnostic -- per-tile overlay/cement census probe (ef0f96d5)
+    MC2_DPI_UNAWARE                   # killswitch -- DPI-AWARE-1: =1 restores DPI-virtualized window (4da86076 cherry-pick)
+    MC2_PAD_EDGE_ROAD_FIX             # killswitch -- PAD-EDGE-ROAD-1: =0 restores analytic pad edge (road notch)
+    MC2_OVERLAY_BIAS_LEGACY           # killswitch -- OVERLAY-BIAS-LINEARIZE-1: =1 restores constant NDC overlay bias
+    MC2_CEMENT_ATLAS_SEAM_FIX         # killswitch -- CEMENT-ATLAS-SEAM-1: =0 restores gutter-less atlas sampling (tile seam grid)
+    MC2_LIGHT_POOL_SOFT               # killswitch -- NIGHT-LIGHT-POOLS-2: =0 restores exact linear GetFalloff pool edge
+    MC2_LIGHT_POOL_MOVER_DIM          # override -- NIGHT-LIGHT-POOLS-2/4: mover-light pool dim factor (default 0.25 since POOLS-4)
+    MC2_LIGHT_POOL_MOVER_RADIUS       # override -- NIGHT-LIGHT-POOLS-4: mover pool radius scale (default 0.6, 1 = legacy radii)
+    MC2_LIGHT_POOL_MOVER_MAXBLEND     # killswitch -- NIGHT-LIGHT-POOLS-4: =0 restores additive mover-pool stacking
+    MC2_LIGHT_POOL_VIS_GATE           # killswitch -- LIGHT-POOL-VIS-GATE-1: =0 restores packing inactive lights (FoW leak)
+    MC2_LIGHT_CULL_RADIUS             # killswitch -- LIGHT-CULL-RADIUS-1: =0 restores position-only light screen test (pool popping)
+    MC2_LIGHT_POOL_MOVER_FWD          # override -- MOVER-LIGHT-FORWARD-1: mover pool forward bias wu (default 24, clamp [0,120]; 0 = centered)
+    MC2_LIGHT_POOL_OBJECTS            # killswitch -- POOL-CONSUMERS-1: =0 drops pool light from prop/mover shaders (terrain-only pools)
+    MC2_LIGHT_CONE_NODES              # killswitch -- LIGHT-CONE-MODELS-1: =0 restores heuristic pool centers (no authored-cone aim/spill)
+    MC2_LIGHT_CONE_GLOW               # killswitch -- LIGHT-CONE-MODELS-1: =0 hides the additive authored light-cone beams at night
+    MC2_LIGHT_CONE_GLOW_ALPHA         # override -- LIGHT-CONE-MODELS-1: peak cone-glow vertex alpha 0..255 (default 40; 255 = exaggeration probe)
+    MC2_LIGHT_CONE_SPILL              # override -- LIGHT-CONE-MODELS-1: spill anchor scale on authored cone length (default 1.0, clamp [0,3])
+    MC2_LIGHT_POOL_OBJ_SCALE          # override -- POOL-CONSUMERS-1: object-side pool intensity scale (default 0.7, clamp [0,2])
+    MC2_WATER_SHORE_MASK              # killswitch -- WATER-SHORE-MASK-1: =0 restores tile-staircase water shore band (no mask feather)
+    MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)
+    MC2_SHADOW_DIST_FADE              # override -- SHADOW-DIST-FADE-1: dynamic-shadow dissolve ray distance wu (default 80, 0 = killswitch)
+    MC2_SHADOW_DIST_FADE_MAX          # override -- SHADOW-DONUT-FIX-1: max fade opacity [0,1] (default 0.65; 1 = old full erase)
+    MC2_SHADOW_FADE_CONT              # killswitch -- SHADOW-FADE-CONTINUOUS-1: =0 restores 4-step occluder-distance ladder (stepped fade)
+    MC2_LIGHT_POOL_MOVER_COLOR        # override -- MOVER-LIGHT-HALOGEN-1: mover light RRGGBB hex (default FFEED1 halogen; FFFF00 = legacy yellow)
+    MC2_PAD_AREA_GLOW                 # override -- PAD-AREA-GLOW-1: night pad-area lift strength (default 0.12, 0 = killswitch)
+    MC2_PAD_AREA_GLOW_SPILL           # override -- PAD-AREA-GLOW-1: spill feather distance wu past pad edge (default 48, clamp [4,127])
     MC2_WATER_FULL_RECIPE_SPIKE       # trace
     MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE  # feature -- water GPU full-recipe authoritative gate (documented in debug_state_dump, default true)
     MC2_WATER_GPU_FULL_RECIPE_CULL    # feature -- water GPU full-recipe cull gate
@@ -747,8 +781,8 @@ ALLOWLIST=(
     MC2_SCREENSHOT_SOURCE             # infra -- screenshot capture source select (=backbuffer for logistics/menu screens)
     MC2_SHADOW_CSM_R0                 # override -- CSM near cascade radius WU (default 512, min 64)
     MC2_SHADOW_CSM_R1                 # override -- CSM mid cascade radius WU (default 4096, min 128)
-    MC2_SHADOW_STATIC_BANDFIX         # feature -- static-shadow Poisson-tap banding fix v1 (default OFF = byte-identical)
-    MC2_SHADOW_STATIC_BANDFIX_V2      # feature -- slope-normal shadow-bias banding fix v2 (default OFF = byte-identical)
+    MC2_SHADOW_STATIC_BANDFIX         # feature -- static-shadow Poisson-tap banding fix v1 (default ON 2026-07-18; =0 kills)
+    MC2_SHADOW_STATIC_BANDFIX_V2      # feature -- slope-normal shadow-bias banding fix v2 (default ON 2026-07-18; =0 kills)
     MC2_SHOT_RESULTS                  # infra -- RESULTS-CAPTURE-1 deterministic AAR screenshots (pairs with MC2_DEV_SHELL)
     MC2_SOAK_STOP_AT_BAY              # infra -- soak harness park at mech bay (requires MC2_SOAK_AUTOWIN)
     MC2_STANDARD_LIT_V1               # feature -- mech StandardLit GGX gate (opt-in =1; temporary default-OFF)

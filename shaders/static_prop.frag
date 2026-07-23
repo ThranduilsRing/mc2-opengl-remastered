@@ -8,6 +8,14 @@
 
 #include <include/render_contract.hglsl>
 
+// POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for props
+// (binding 28, u_numPoolLights=0 when gated off -> byte-identical). MUST stay
+// OUTSIDE the #ifdef MC2_COALESCE region below -- the legacy (non-coalesce)
+// variant compiles this file too, and the pool block in main() is
+// unconditional (2026-07-22 regression: include placed inside the coalesce
+// guard broke the legacy program -> ALL props CPU-fallback/no meshes).
+#include <include/light_pools.hglsl>
+
 #if defined(MC2_USE_VIEW_UNIFORMS)
 // V-MATERIAL-PBR-3: per-fragment PBR specular consumes u_cameraWorldPos to
 // build the view vector. Same compile-guard contract as static_prop.vert —
@@ -174,6 +182,19 @@ uniform float     u_decalAtlasTLY;      // = Terrain::mapTopLeft3d.y
 uniform float     u_decalAtlasOOW;      // = Terrain::oneOverWorldUnitsMapSide
 uniform float     u_terrainDecalColorBlend;  // 0 = off (byte-identical)
 
+// BUILDING-GLASS-1: ordered-dither (screen-door) transparency for partial-alpha
+// texels on ALPHA_TEST materials. The CPU/legacy draw path routed textureAlpha
+// materials through MC2_DRAWALPHA (true SRC_ALPHA blending — translucent tinted
+// glass); the GPU batcher approximates with a binary a<0.5 discard, which is
+// correct for fence/gate lattices (alpha 0 or 1) but deletes translucent glass
+// outright (window panes with 0<a<1 → fully invisible, buildings look hollow).
+// Per-packet blend passes are impossible under the coalesce/MDI path, so we use
+// a 4x4 Bayer threshold instead of the fixed 0.5: binary-alpha texels behave
+// exactly as before (a<=1/32 always discards, a>=31/32 never), partial-alpha
+// texels become depth-correct stippled translucency.
+// 0.0 (default / MC2_SP_GLASS_DITHER=0 killswitch) = legacy a<0.5 discard.
+uniform float u_glassDither;
+
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 GBuffer1;
 #ifdef MC2_OBJECT_ID_BUFFER
@@ -262,8 +283,24 @@ void main() {
     // the user verify that *no* fragment is being emitted, vs. "drawn but
     // transparent"). All other debug modes (1..7) retain the discard so
     // existing tree-card / alpha-test diagnostics are unchanged.
-    if (u_debugAddrMode != 8 && (materialFlags & ALPHA_TEST_BIT) != 0 && tex_color.a < 0.5) {
-        discard;
+    if (u_debugAddrMode != 8 && (materialFlags & ALPHA_TEST_BIT) != 0) {
+        if (u_glassDither > 0.5) {
+            // BUILDING-GLASS-1: Bayer 4x4 ordered-dither threshold. Values are
+            // (index+0.5)/16 so thresholds span (0,1) exclusive — a==0 always
+            // discards, a==1 never does (binary fence textures unchanged).
+            const float kBayer4[16] = float[16](
+                 0.5/16.0,  8.5/16.0,  2.5/16.0, 10.5/16.0,
+                12.5/16.0,  4.5/16.0, 14.5/16.0,  6.5/16.0,
+                 3.5/16.0, 11.5/16.0,  1.5/16.0,  9.5/16.0,
+                15.5/16.0,  7.5/16.0, 13.5/16.0,  5.5/16.0);
+            int bx = int(gl_FragCoord.x) & 3;
+            int by = int(gl_FragCoord.y) & 3;
+            if (tex_color.a < kBayer4[by * 4 + bx]) {
+                discard;
+            }
+        } else if (tex_color.a < 0.5) {
+            discard;
+        }
     }
 
     // V-MATERIAL-DEBUG-1: per-fragment material debug view.
@@ -407,6 +444,14 @@ void main() {
         c.rgb += u_terrainDecalFill * tex_color.rgb * shadowW;
     }
     c.rgb += v_highlight.rgb * v_highlight.a;
+
+#if defined(MC2_USE_VIEW_UNIFORMS)
+    // POOL-CONSUMERS-1: additive night light-pool light on props (albedo-
+    // modulated, matching the terrain consumer's lit-accumulator semantics).
+    // u_numPoolLights==0 (gate off / day / no lights) -> exact +0.
+    if (u_numPoolLights > 0)
+        c.rgb += tex_color.rgb * calcLightPools(v_worldPos);
+#endif
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
     // V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular.

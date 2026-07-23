@@ -943,6 +943,22 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "Route all randomness (incl. paths that bypass gos_rand) through a single seeded deterministic RNG stream for reproducible runs / capture parity. Default-OFF: stock RNG behavior."
     },
+    // BUILDING-GLASS-1: dither-glass translucency for static-prop ALPHA_TEST packets.
+    {
+        "MC2_SP_GLASS_DITHER",
+        "MC2_SP_GLASS_DITHER",
+        EnvVarKind::Feature,
+        true,
+        "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass). Default-ON; =0 killswitch restores the binary a<0.5 discard (glass fully invisible, hollow buildings)."
+    },
+    // LIGHTBAKE-REBAKE-ON-READY-1: one-shot static-light re-bake after mission ready.
+    {
+        "MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY",
+        "MC2_LIGHTBAKE_REBAKE_ON_READY",
+        EnvVarKind::Feature,
+        true,
+        "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot freeze a wrong (day-bright) light row for the whole mission. Slot indices/high-water preserved; entries lazily re-gather into the same permanent slots. DEFAULT ON; =0 restores frozen-first-bake behavior."
+    },
     // SP-BATCHER-ALPHASCAN-GATE-1 (framebudget-2 perf).
     {
         "MC2_SP_ALPHASCAN_GATE",
@@ -1850,6 +1866,32 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500). Beyond FAR the march is skipped entirely (strength 0 early-out). Clamped to > NEAR (NEAR+1 floor). NaN/non-positive -> default. Only consumed when MC2_TERRAIN_POM=1."
+    },
+    // NIGHT-LIGHT-POOLS-1: the LOD-chunk terrain consumes the per-frame terrain
+    // light pool (gos_terrain_lighting PackAndDispatch light SSBO) per-fragment,
+    // restoring stock-style night up-lighting on ground + cement pads.
+    {
+        "MC2_FEATURE_TERRAIN_LIGHT_POOLS",
+        "MC2_TERRAIN_LIGHT_POOLS",
+        EnvVarKind::Feature,
+        true,
+        "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consumes (lights [2..N-1] -- building SpotLight_ nodes, light props, mech/vehicle/turret/weapon lights from Camera::terrainLights) at binding 28 and adds color*falloff (TG_Light::GetFalloff math) ADDITIVELY AFTER the shadow multiply, so lamps light shadowed ground and cement pads (rides on top of CEMENT-NIGHT-LIGHT-1's u_missionFlatLight darken). DEFAULT ON; =0 force-uploads u_numPoolLights=0 -> loop never entered -> byte-identical. Also inert whenever MC2_TERRAIN_LIGHTING_GPU=0 (no producer). Driver caps the loop at 256 lights."
+    },
+    // NIGHT-LIGHT-POOLS-3: overlapping pool sums are tone-compressed instead of
+    // hard-clamped (5-mech group pools no longer flat-top a saturated blob).
+    {
+        "MC2_FEATURE_LIGHT_POOL_COMPRESS",
+        "MC2_LIGHT_POOL_COMPRESS",
+        EnvVarKind::Feature,
+        true,
+        "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1). Single light plateaus ~0.80, stacked lights approach 1.0 asymptotically (no blinding saturated union blob over mech groups / base light clusters). DEFAULT ON; =0 restores the exact legacy hard clamp."
+    },
+    {
+        "MC2_TUNE_NIGHT_AMBIENT_FLOOR",
+        "MC2_NIGHT_AMBIENT_FLOOR",
+        EnvVarKind::Trace,
+        false,
+        "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in (terrtxm2.cpp burnInShadows) and all flat-lit terrain/cement consumers. Lifts pitch-black night terrain to a subtle floor without touching values already above it. Default UNSET = 0 = stock data-faithful (identity). Read once per process (boot-cached static)."
     },
     {
         "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE",

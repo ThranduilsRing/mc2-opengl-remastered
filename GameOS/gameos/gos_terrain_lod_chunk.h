@@ -18,6 +18,7 @@ constexpr uint32_t TERRAIN_TYPE_SSBO_BINDING   = 24u;  // Step 5b: per-vertex te
 constexpr uint32_t TERRAIN_CEMENT_SSBO_BINDING = 25u;  // Step 5c: per-vertex cement word (valid|layerIdx)
 constexpr uint32_t TERRAIN_VISUAL_HEIGHT_SSBO_BINDING = 26u; // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x VISUAL heightfield (render-only)
 constexpr uint32_t TERRAIN_VISUAL_DAMP_SSBO_BINDING   = 27u; // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp
+constexpr uint32_t TERRAIN_LIGHT_POOL_SSBO_BINDING    = 28u; // NIGHT-LIGHT-POOLS-1: per-frame terrain light pool (GpuTerrainLight[48B], producer gos_terrain_lighting.cpp PackAndDispatch)
 
 // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA control-map texture unit (not an
 // SSBO — sampled with GL_LINEAR like the colormap). Gate MC2_TERRAIN_CONTROLMAP,
@@ -172,6 +173,15 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
                                               float boundsTopLeftX, float boundsTopLeftY,
                                               float boundsSizeX, float boundsSizeY);
 
+// WATER-SHORE-MASK-1 (batch-6 item 3): expose the loaded shoreline mask so the
+// WATER shader can feather its shore band along the smoothed contour distance
+// field instead of the tile-quantized WaterThickness staircase (the teal
+// zigzag ring the user reported — unaffected by MC2_TERRAIN_SHORELINE because
+// the water program never consulted the mask). Returns 0 / zeroed bounds when
+// no sidecar is loaded.
+unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
+const float* gos_TerrainLodChunk_ShorelineMaskBounds();
+
 // TERRAIN-SHORELINE-V3: true whenever the elevation-based shoreline band is
 // active (MC2_TERRAIN_SHORELINE gate ON) -- a mask sidecar is NO LONGER
 // required (V3 places the band by v_worldPos.z vs u_waterElevation; a loaded
@@ -197,3 +207,12 @@ void gos_TerrainLodChunk_Init();
 
 // Free the height SSBO. Call at shutdown (from gosRenderer::destroy).
 void gos_TerrainLodChunk_Destroy();
+
+// PAD-AREA-GLOW-1: pad-area night lift shared values (chunk terrain + overlay
+// uploader lockstep). Strength = MC2_PAD_AREA_GLOW (default 0.12; 0 = kill),
+// spill = MC2_PAD_AREA_GLOW_SPILL wu (default 48, clamp [4,127]).
+float gos_TerrainPadGlowStrength();
+float gos_TerrainPadGlowSpillWu();
+// Chunk cement-grid geometry (mapSide 0 = grid not resident -> overlay must
+// not read the binding-25 cement SSBO).
+void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);

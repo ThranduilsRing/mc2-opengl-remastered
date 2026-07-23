@@ -94,6 +94,45 @@ char WindowTitle[1024];		// Global window title (GetWindowText is VERY slow)
 // Bumped by ZoomIn/ZoomOut each call, decayed every frame by Camera::update().
 static float s_scrollMomentum = 0.0f;
 
+// [CAMERA-SMOOTHING-1] frame-rate-independent gameplay-camera smoothing.
+// MC2_CAMERA_SMOOTH=<ms> — time constant of the exponential approach toward
+// the input-accumulated goal pose. 0 = off (legacy verbatim: hard per-frame
+// position steps, 11.25-degree rotation snaps, 20/s zoom lerp). Default 100ms:
+// tight, not floaty. Clamped to [0, 2000].
+static float camSmoothTau (void)
+{
+	static float s_tau = -1.0f;
+	if (s_tau < 0.0f)
+	{
+		float ms = 100.0f;
+		const char* v = getenv("MC2_CAMERA_SMOOTH");
+		if (v && v[0])
+			ms = (float)atof(v);
+		if (ms < 0.0f)    ms = 0.0f;
+		if (ms > 2000.0f) ms = 2000.0f;
+		s_tau = ms * 0.001f;
+	}
+	return s_tau;
+}
+
+// Exponential-approach blend factor for a step of dt seconds: identical
+// convergence fraction per unit time regardless of frame rate.
+static inline float camSmoothAlpha (float dt)
+{
+	float tau = camSmoothTau();
+	if (tau <= 0.0f)
+		return 1.0f;
+	float a = 1.0f - expf(-dt / tau);
+	return (a > 1.0f) ? 1.0f : a;
+}
+
+static inline float camWrap180 (float a)
+{
+	while (a > 180.0f)  a -= 360.0f;
+	while (a < -180.0f) a += 360.0f;
+	return a;
+}
+
 long topCtrlUpd = 0;
 
 extern long scenarioEndTurn;
@@ -127,6 +166,15 @@ extern long tileCacheHits;
 extern long tileCacheMiss;
 
 bool drawCameraCircle = FALSE;
+// WATER-ASPECT-CORRECT-2: true when the most recent perspective-projection
+// build (below, in Camera::setOrthogonal's frustum block, despite the name
+// it builds the perspective frustum too) used the REAL drawable aspect
+// (UI-ASPECT-ANCHOR-1, default) rather than the legacy 4:3-locked frustum
+// (MC2_CAMERA_ASPECT_NATIVE=0, or a mech-preview FBO pass). Consumed by
+// gameos_graphics.cpp to keep the water MDI shader's dFdx(nz) aspect
+// compensation in sync with whichever frustum this frame actually used,
+// instead of assuming the frustum is always 4:3-locked.
+bool g_cameraProjAspectNative = true;
 extern bool gamePaused;
 extern bool gameAsked;
 MemoryPtr pauseShape = NULL;
@@ -2216,7 +2264,11 @@ long Camera::update (void)
 	
 	setPosition(newPosition);		//THIS ALWAYS sets z position for us now!!!!!
 
-	//----------------------------------------------	
+	// [CAMERA-SMOOTHING-1] ease actual pose toward input-accumulated goals
+	// (edge/keyboard scroll, rotation). No-op when inactive or knob=0.
+	updateInputSmoothing(newPosition);
+
+	//----------------------------------------------
 	//Update fades and letterbox transitions here.
 	updateLetterboxAndFade();
 	
@@ -2262,8 +2314,13 @@ long Camera::update (void)
 		if (s_scrollMomentum < 0.0f) s_scrollMomentum = 0.0f;
 
 		float diff = cameraAltitudeDesired - cameraAltitude;
+		// [CAMERA-SMOOTHING-1] knob>0: frame-rate-independent exponential
+		// approach (1-exp(-dt/tau)); knob=0: legacy 20/s linear-rate lerp.
+		float zoomStep = (camSmoothTau() > 0.0f)
+			? camSmoothAlpha(frameLength)
+			: (frameLength * 20.0f < 1.0f ? frameLength * 20.0f : 1.0f);
 		if (fabsf(diff) > 0.1f)
-			cameraAltitude += diff * (frameLength * 20.0f < 1.0f ? frameLength * 20.0f : 1.0f);
+			cameraAltitude += diff * zoomStep;
 		else
 			cameraAltitude = cameraAltitudeDesired;
 		if (cameraAltitude < AltitudeMinimum)
@@ -2367,6 +2424,57 @@ long Camera::update (void)
 
 			s_prevRotation = cameraRotation;
 			s_prevPosition = position;
+
+			// [CAMERA-SMOOTHING-1] evidence tooling (both default OFF):
+			//   MC2_CAM_SMOOTH_TEST=1  — synthetic scroll driver: frames
+			//     120..240 feed moveRight at 2000 wu/s + one rotateLeft
+			//     11.25-deg snap at frame 150 (mimics the keyboard/edge
+			//     scroll + rotation input path), then input stops. Proves
+			//     ramp-in/tail-out in the delta log without a human.
+			//   MC2_CAMERA_SMOOTH_TRACE=1 — appends per-frame pose deltas to
+			//     cam_smooth_trace.csv in the working dir while motion > 0.
+			{
+				static int s_camTest = -1;
+				static int s_camTrace = -1;
+				static unsigned s_camTestFrame = 0;
+				static FILE* s_camTraceFile = NULL;
+				if (s_camTest < 0) {
+					const char* t = getenv("MC2_CAM_SMOOTH_TEST");
+					s_camTest = (t && t[0] == '1') ? 1 : 0;
+					const char* tr = getenv("MC2_CAMERA_SMOOTH_TRACE");
+					s_camTrace = (tr && tr[0] == '1') ? 1 : 0;
+				}
+				if (s_camTest) {
+					s_camTestFrame++;
+					if (s_camTestFrame >= 120 && s_camTestFrame <= 240)
+						moveRight(2000.0f * frameLength);
+					if (s_camTestFrame == 150)
+						rotateLeft(11.25f);
+					// Held-rotate burst at the LEGACY quantizer cadence
+					// (11.25-deg snap every 3rd frame ~= the missiongui
+					// accumulator firing at 60-80fps). knob=0 -> raw snaps
+					// in the trace; knob>0 -> exponential shaping.
+					if (s_camTestFrame >= 300 && s_camTestFrame <= 420 &&
+						(s_camTestFrame % 3) == 0)
+						rotateLeft(11.25f);
+				}
+				if (s_camTrace && (dPos > 0.0001f || dRot > 0.0001f || s_camTest)) {
+					if (!s_camTraceFile)
+					{
+						s_camTraceFile = fopen("cam_smooth_trace.csv", "w");
+						if (s_camTraceFile)
+							fprintf(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot\n");
+					}
+					if (s_camTraceFile)
+					{
+						fprintf(s_camTraceFile, "%u,%.3f,%.2f,%.2f,%.3f,%.2f,%.4f,%.4f\n",
+							s_motionFrames, frameLength * 1000.0f,
+							position.x, position.y, cameraRotation, cameraAltitude,
+							dPos, dRot);
+						fflush(s_camTraceFile);
+					}
+				}
+			}
 
 			if ((s_motionFrames % SUMMARY_PERIOD) == 0u) {
 				printf("[CAMERA_MOTION v1] event=summary frames=%u stationary=%u moving=%u "
@@ -2509,7 +2617,58 @@ void Camera::updateLights()
 				Stuff::Vector4D dummy;
 				// [PROJECTZ:LightingShadow id=light_spot_point_active_test]
 				PROJECTZ_SITE("light_spot_point_active_test", "LightingShadow");
-				light->active = projectForLightingShadow(light->position,dummy);
+				// LIGHT-CULL-RADIUS-1 (batch-6 item 5/9): the legacy test was
+				// position-only ("simple position check. Make complicated
+				// later!") AND unconditionally overwrote the owner's intent.
+				// Two field bugs fell out of that: (1) a mover leaving the
+				// frame kills its pool instantly even though the light VOLUME
+				// still reaches on-screen terrain (headlight popping); (2) at
+				// oblique angles whole building clusters go dark when the
+				// source props' light positions project off-screen while their
+				// pools are plainly in view (mc2_10 airbase 204753 vs 204907).
+				// Fix: admit when ANY extreme of the light volume (position
+				// +/- farDistance on the ground axes) projects on-screen, and
+				// compose with the owner's FoW/status intent (ownerEnabled,
+				// written by mech3d/gvactor/bdactor) instead of racing it.
+				// Killswitch MC2_LIGHT_CULL_RADIUS=0 -> legacy position-only
+				// overwrite.
+				static const bool s_cullRadius = []() {
+					const char* v = getenv("MC2_LIGHT_CULL_RADIUS");
+					return !(v && v[0] == '0');   // default ON
+				}();
+				bool lightOnScreen = projectForLightingShadow(light->position,dummy);
+				if (s_cullRadius)
+				{
+					const float lightR = light->farDistance;
+					if (!lightOnScreen && lightR > 0.0f)
+					{
+						for (int lo = 0; lo < 4 && !lightOnScreen; ++lo)
+						{
+							Stuff::Vector3D probe = light->position;
+							if      (lo == 0) probe.x += lightR;
+							else if (lo == 1) probe.x -= lightR;
+							else if (lo == 2) probe.y += lightR;
+							else              probe.y -= lightR;
+							lightOnScreen = projectForLightingShadow(probe,dummy);
+						}
+					}
+					bool ownerOk = (light->ownerEnabled != 0);
+					// Building-owned slots are night-only by authored
+					// semantic (bdactor writer pred includes isNight) but
+					// their visibility-gated update may not run at a
+					// day/night transition while off-screen — compose the
+					// night gate here so a stale ownerEnabled can't leak a
+					// daytime pool.
+					if (ownerOk && !isNight) {
+						mc2_spotlight_diag::SourceClass lsrc;
+						if (mc2_spotlight_diag::is_e_slot(i, &lsrc)
+							&& lsrc == mc2_spotlight_diag::Bldg)
+							ownerOk = false;
+					}
+					light->active = ownerOk && lightOnScreen;
+				}
+				else
+					light->active = lightOnScreen;
 				// T1.16 [SPOT_DIAG v1] per-slot transition probe — emit ONLY for
 				// (E)-owned slots, state-change-on-transition. Per-summary
 				// snapshot below at end of updateLights() every 600 frames.
@@ -2725,9 +2884,17 @@ void Camera::setOrthogonal(void)
 			// Panel previews (SimpleCamera -> fixed 800x600 FBO) must keep the
 			// clamped ratio: their render target IS 4:3, not the window.
 			extern int g_mechPreviewRenderDepth;
-			if (s_nativeAspect && g_mechPreviewRenderDepth == 0
-				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
+			const bool usingNative = s_nativeAspect && g_mechPreviewRenderDepth == 0
+				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0;
+			if (usingNative)
 				height2width = (float)Environment.drawableHeight / (float)Environment.drawableWidth;
+			// WATER-ASPECT-CORRECT-2: mirror this frame's choice so downstream
+			// consumers (the water MDI shader's dFdx(nz) aspect compensation,
+			// gameos_graphics.cpp) can tell whether the projection this frame
+			// actually matches the native drawable aspect (true, the default) or
+			// is still the legacy 4:3-locked frustum (MC2_CAMERA_ASPECT_NATIVE=0
+			// or a mech-preview FBO pass). See g_cameraProjAspectNative below.
+			g_cameraProjAspectNative = usingNative;
 		}
 
 		// META-FIX design D (MC2_RES_ASSERT) chokepoint (i): the perspective
@@ -3784,11 +3951,7 @@ void Camera::moveLeft(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
-
-	setPosition(newPosition);
+	applyScrollDelta(direction.x, direction.y);
 }
 
 //---------------------------------------------------------------------------
@@ -3812,11 +3975,7 @@ void Camera::moveRight(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
-
-	setPosition(newPosition);
+	applyScrollDelta(direction.x, direction.y);
 }
 
 //---------------------------------------------------------------------------
@@ -3840,11 +3999,7 @@ void Camera::moveUp(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
-	
-	setPosition(newPosition);
+	applyScrollDelta(direction.x, direction.y);
 }
 
 //---------------------------------------------------------------------------
@@ -3868,11 +4023,161 @@ void Camera::moveDown(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
+	applyScrollDelta(direction.x, direction.y);
+}
 
-	setPosition(newPosition);
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Shared tail of moveLeft/Right/Up/Down. Legacy (knob=0):
+// instant setPosition step, byte-identical to the old inline code. Smoothing
+// on: accumulate the delta into a goal the update() step eases toward. The
+// GOAL is clamped with setPosition's own map-bound rule so smoothing never
+// chases an out-of-bounds target (no rubber-banding at the map edge).
+void Camera::applyScrollDelta(float dx, float dy)
+{
+	if (camSmoothTau() <= 0.0f)
+	{
+		Stuff::Vector3D newPosition = position;
+		newPosition.x += dx;
+		newPosition.y += dy;
+		setPosition(newPosition);
+		return;
+	}
+
+	if (!scrollSmoothActive)
+	{
+		scrollSmoothGoalX = scrollSmoothLastX = position.x;
+		scrollSmoothGoalY = scrollSmoothLastY = position.y;
+		scrollSmoothActive = true;
+	}
+	scrollSmoothGoalX += dx;
+	scrollSmoothGoalY += dy;
+
+	if (land)
+	{
+		float maxVisual = (Terrain::worldUnitsMapSide / 2) - (Terrain::worldUnitsPerVertex * 2.0f);
+		if (!drawTerrainGrid)
+			maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
+		if (scrollSmoothGoalX >  maxVisual) scrollSmoothGoalX =  maxVisual;
+		if (scrollSmoothGoalX < -maxVisual) scrollSmoothGoalX = -maxVisual;
+		if (scrollSmoothGoalY >  maxVisual) scrollSmoothGoalY =  maxVisual;
+		if (scrollSmoothGoalY < -maxVisual) scrollSmoothGoalY = -maxVisual;
+	}
+}
+
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Rotation-input accumulator (rotateLeft/rotateRight).
+// Keeps the quantized 11.25-degree snap TARGETS from MissionInterfaceManager
+// but eases the actual rotation toward them, turning visible snaps into a
+// short animated turn.
+void Camera::queueRotationDelta(float amount)
+{
+	if (!rotSmoothActive)
+	{
+		rotSmoothGoalCam   = rotSmoothLastCam = cameraRotation;
+		rotSmoothGoalWorld = worldCameraRotation;
+		rotSmoothActive = true;
+	}
+	rotSmoothGoalCam   = camWrap180(rotSmoothGoalCam + amount);
+	rotSmoothGoalWorld = camWrap180(rotSmoothGoalWorld + amount);
+
+	cameraShiftZ = position.z;	// legacy rotateLeft/rotateRight side-effect
+}
+
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Exposed so input-layer callers (missiongui rotation
+// quantizer) can switch to continuous dt-scaled feed when smoothing is on.
+bool Camera::inputSmoothingEnabled (void)
+{
+	return camSmoothTau() > 0.0f;
+}
+
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Per-frame exponential approach toward the accumulated
+// input goals. Runs from Camera::update() right after the scripted-position
+// pipeline so scripted/goal-seek motion wins: if anything OTHER than this
+// smoother moved the pose since our last step (bookmark apply, scripted
+// swoop, drag-jump, findObject), the goal is dropped immediately — hard-set
+// paths stay hard-set and captures stay deterministic.
+void Camera::updateInputSmoothing (Stuff::Vector3D &newPosition)
+{
+	if (scrollSmoothActive)
+	{
+		// External motion since our last step (scripted pan, target tracking,
+		// findObject, bookmark jump): REBASE the goal by the external delta so
+		// pending input is neither lost nor replayed against the new pose. The
+		// residual eased offset stays small (bounded by ~tau worth of input)
+		// and decays in a few hundred ms, so hard-set jumps still land where
+		// they aimed.
+		{
+			float ex = position.x - scrollSmoothLastX;
+			float ey = position.y - scrollSmoothLastY;
+			if ((fabsf(ex) > 0.01f) || (fabsf(ey) > 0.01f))
+			{
+				scrollSmoothGoalX += ex;
+				scrollSmoothGoalY += ey;
+				if (land)
+				{
+					float maxVisual = (Terrain::worldUnitsMapSide / 2) - (Terrain::worldUnitsPerVertex * 2.0f);
+					if (!drawTerrainGrid)
+						maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
+					if (scrollSmoothGoalX >  maxVisual) scrollSmoothGoalX =  maxVisual;
+					if (scrollSmoothGoalX < -maxVisual) scrollSmoothGoalX = -maxVisual;
+					if (scrollSmoothGoalY >  maxVisual) scrollSmoothGoalY =  maxVisual;
+					if (scrollSmoothGoalY < -maxVisual) scrollSmoothGoalY = -maxVisual;
+				}
+			}
+		}
+		{
+			float a  = camSmoothAlpha(frameLength);
+			float dx = scrollSmoothGoalX - position.x;
+			float dy = scrollSmoothGoalY - position.y;
+			Stuff::Vector3D p = position;
+			if ((fabsf(dx) < 0.05f) && (fabsf(dy) < 0.05f))
+			{
+				p.x = scrollSmoothGoalX;
+				p.y = scrollSmoothGoalY;
+				scrollSmoothActive = false;	// settled
+			}
+			else
+			{
+				p.x += dx * a;
+				p.y += dy * a;
+			}
+			setPosition(p);
+			scrollSmoothLastX = position.x;
+			scrollSmoothLastY = position.y;
+			newPosition = position;			// downstream matrix setup sees the smoothed pose
+		}
+	}
+
+	if (rotSmoothActive)
+	{
+		// External rotation since our last step: rebase goals by the external
+		// delta (same reasoning as the scroll rebase above).
+		{
+			float er = camWrap180(cameraRotation - rotSmoothLastCam);
+			if (fabsf(er) > 0.01f)
+			{
+				rotSmoothGoalCam   = camWrap180(rotSmoothGoalCam + er);
+				rotSmoothGoalWorld = camWrap180(rotSmoothGoalWorld + er);
+			}
+		}
+		{
+			float a  = camSmoothAlpha(frameLength);
+			float dc = camWrap180(rotSmoothGoalCam - cameraRotation);
+			float dw = camWrap180(rotSmoothGoalWorld - worldCameraRotation);
+			if ((fabsf(dc) < 0.02f) && (fabsf(dw) < 0.02f))
+			{
+				setCameraRotation(rotSmoothGoalCam, rotSmoothGoalWorld);
+				rotSmoothActive = false;	// settled
+			}
+			else
+			{
+				setCameraRotation(cameraRotation + dc * a, worldCameraRotation + dw * a);
+			}
+			rotSmoothLastCam = cameraRotation;
+		}
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -3941,20 +4246,34 @@ void Camera::rotateLightDown(float amount)
 //---------------------------------------------------------------------------
 void Camera::rotateLeft(float amount)
 {
+	// [CAMERA-SMOOTHING-1] smoothing on: accumulate goal, ease in update().
+	if (camSmoothTau() > 0.0f)
+	{
+		queueRotationDelta(amount);
+		return;
+	}
+
 	float newCamAngle = cameraRotation+amount;
 	float newCamWorld = worldCameraRotation+amount;
 	setCameraRotation(newCamAngle,newCamWorld);
-	
+
 	cameraShiftZ = position.z;
 }
 
 //---------------------------------------------------------------------------
 void Camera::rotateRight(float amount)
 {
+	// [CAMERA-SMOOTHING-1] smoothing on: accumulate goal, ease in update().
+	if (camSmoothTau() > 0.0f)
+	{
+		queueRotationDelta(-amount);
+		return;
+	}
+
 	float newCamAngle = cameraRotation-amount;
 	float newCamWorld = worldCameraRotation-amount;
 	setCameraRotation(newCamAngle,newCamWorld);
-	
+
 	cameraShiftZ = position.z;
 }
 
@@ -3987,52 +4306,84 @@ float Camera::getCameraRotation (void)
 }
 
 #define OBSCURED_FACTOR	0.5f;
+
+// NIGHT-LIGHT-POOLS-1 optional knob MC2_NIGHT_AMBIENT_FLOOR=<0..64>: minimum
+// per-channel output of the getLightRed/Green/Blue family. These getters feed
+// the colormap night burn-in (terrtxm2.cpp burnInShadows) plus every flat-lit
+// terrain/cement consumer, so a floor here lifts the darkest night terrain off
+// pitch-black without touching authored day lighting (values already above the
+// floor pass through untouched). Default UNSET = 0 = stock data-faithful
+// (max(x,0) is the identity on unsigned channels). Boot-cached (Debug
+// Instrumentation Rule); clamped to [0,64] so it can only be a subtle floor,
+// never a wash-out.
+static long mc2NightAmbientFloor (void)
+{
+	static const long s_floor = [] {
+		const char* v = getenv("MC2_NIGHT_AMBIENT_FLOOR");
+		if (!v || !v[0]) return 0L;
+		long f = atol(v);
+		if (f < 0)  f = 0;
+		if (f > 64) f = 64;
+		return f;
+	}();
+	return s_floor;
+}
+
 //---------------------------------------------------------------------------
 unsigned char Camera::getLightRed (float intensity)
 {
+	const long floorV = mc2NightAmbientFloor();
 	//ASM and Inline
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightRed * intensity + ambientRed);
+		if (fResult < floorV)
+			fResult = floorV;
 		if (fResult < 0xff)
 			return fResult;
 		else
 			return 0xff;
 	}
-	
-	return ambientRed;
+
+	return (ambientRed < floorV) ? (unsigned char)floorV : ambientRed;
 }
 
 //---------------------------------------------------------------------------
 unsigned char Camera::getLightGreen (float intensity)
 {
+	const long floorV = mc2NightAmbientFloor();
 	//ASM and Inline
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightGreen * intensity + ambientGreen);
+		if (fResult < floorV)
+			fResult = floorV;
 		if (fResult < 0xff)
 			return fResult;
 		else
 			return 0xff;
 	}
 
-	return ambientGreen;
+	return (ambientGreen < floorV) ? (unsigned char)floorV : ambientGreen;
 }
 
 //---------------------------------------------------------------------------
 unsigned char Camera::getLightBlue (float intensity)
 {
+	const long floorV = mc2NightAmbientFloor();
 	//ASM and Inline
 	if (intensity > 0.0)
 	{
 		long fResult = float2long(lightBlue * intensity + ambientBlue);
+		if (fResult < floorV)
+			fResult = floorV;
 		if (fResult < 0xff)
 			return fResult;
 		else
 			return 0xff;
 	}
 
-	return ambientBlue;
+	return (ambientBlue < floorV) ? (unsigned char)floorV : ambientBlue;
 }
 
 bool Camera::save( FitIniFile* file )

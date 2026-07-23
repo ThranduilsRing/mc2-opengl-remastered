@@ -142,6 +142,7 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
 #include "cpu_proj_cost_split.h"      // F3 CPU projection cost-baseline (RAII scope)
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown
 
 static bool staticRegIsNaturalBuildingName(const char* name)
@@ -3065,6 +3066,36 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 		shape->CacheGpuLightData();                  // unchanged D2/legacy path
 		return;
 	}
+	// LIGHTBAKE-REBAKE-ON-READY-1 (batch3 item D): per-recipe bakes are frozen
+	// at FIRST-render time and never invalidated (mc2StaticLightEnvironmentGeneration
+	// is a constant 0). Buildings whose recipe baked during boot/load -- before
+	// the mission's night lighting fully applied -- keep a too-bright day-ish
+	// row forever: stable per-building, zoom-invariant (user report, mc2_10
+	// night; proven by MC2_LIGHTBAKE=0 vs default pixel diff at saved_212019).
+	// Fix: ONE soft invalidation of the bake CACHE (recipe slots + high-water
+	// preserved -- entries lazily re-gather into the same permanent slots) a
+	// few frames after mission-ready, when mission lighting is final.
+	// Killswitch: MC2_LIGHTBAKE_REBAKE_ON_READY=0.
+	{
+		static const bool s_rebakeOnReady = []() {
+			const char* v = getenv("MC2_LIGHTBAKE_REBAKE_ON_READY");
+			return !(v && v[0] == '0');
+		}();
+		static bool     s_rebakeDone  = false;
+		static uint32_t s_readyFrame  = 0;
+		if (s_rebakeOnReady && !s_rebakeDone && SmokeMode::missionHasStarted()) {
+			if (s_readyFrame == 0) {
+				s_readyFrame = g_mc2FrameCounter ? g_mc2FrameCounter : 1;
+			} else if (g_mc2FrameCounter >= s_readyFrame + 8) {
+				extern void mc2InvalidateBakedStaticLightCache();
+				mc2InvalidateBakedStaticLightCache();
+				s_rebakeDone = true;
+				printf("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
+				       (unsigned)g_mc2FrameCounter);
+				fflush(stdout);
+			}
+		}
+	}
 	TG_HWLightsData baked;
 	if (mc2GetBakedStaticLight(recipeIndex, baked)) {
 		shape->EmitBakedGpuLightData(recipeIndex, baked);    // HIT: recompute retired
@@ -3262,6 +3293,26 @@ long BldgAppearance::update (bool animate)
 		{
 			Stuff::Vector3D childPos =
 				getNodeIdPosition(spotlightNodeIds_[k]);
+			// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR END
+			// (node transform × cone geometry axis), grounded on terrain —
+			// tower searchlights illuminate the compound they're aimed INTO,
+			// not the tower base. No-cone nodes keep the node-origin pool.
+			// MC2_LIGHT_CONE_NODES=0 restores node-origin pools.
+			if (mc2_cone_glow::nodes_enabled())
+			{
+				Stuff::Vector3D aimW;
+				float coneLen = 0.0f;
+				if (mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen))
+				{
+					float spill = coneLen * mc2_cone_glow::spill_scale();
+					if (spill > 200.0f) spill = 200.0f;
+					childPos.x += aimW.x * spill;
+					childPos.y += aimW.y * spill;
+					childPos.z += aimW.z * spill;
+					if (land)
+						childPos.z = land->getTerrainElevation(childPos);
+				}
+			}
 			spotlightLights_[k]->SetPosition(&childPos);
 			// Rule-2 correctness fix: lightToWorld is consumed at
 			// msl.cpp:1659 (s_lightToShape = lightToWorld * worldToShape).
@@ -3282,6 +3333,20 @@ long BldgAppearance::update (bool animate)
 			// matches the existing per-building pointLight gate at :1933.
 			spotlightLights_[k]->active =
 				(eye && eye->isNight && visible && !forceLightsOut);
+			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
+			// Building light positions are static, so persistence while the
+			// prop's visibility-gated update is culled is CORRECT — the
+			// camera-side volume test alone decides screen relevance (fixes
+			// the mc2_10 airbase all-pools-dark angle, 204907).
+			spotlightLights_[k]->ownerEnabled =
+				spotlightLights_[k]->active ? 1 : 0;
+			// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied to
+			// the SAME owner predicate — lights-out/destroyed buildings show
+			// no cone. Screen-clip rejection lives in QueueConeGlow.
+			// MC2_LIGHT_CONE_GLOW=0 kills it.
+			if (spotlightLights_[k]->active)
+				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
+					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
 	}
 

@@ -31,6 +31,7 @@ extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVAN
 extern "C" int mc2CaptureGaitFreezeActive();
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include <cstdint>  // M2.5 (Q6 amendment 2): uint64_t for MLR mech draw counter
 #include <unordered_map>  // ANIM-CADENCE-GUARD-1: per-appearance last-advance frame stamp
 #include <vector>  // PRESENTATION-SOCKET-PROFILE-1: DeclaredSocketCheck list
@@ -4069,16 +4070,28 @@ void Mech3DAppearance::updateGeometry (void)
 				pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
 				pointLight->init(TG_LIGHT_SPOT);
 				lightId = eye->addWorldLight(pointLight);
+				// NIGHT-LIGHT-POOLS-2a: tag the anubis light as mover-owned so
+				// the light-pool producer can classify it (tags are recorded
+				// unconditionally; MC2_SPOT_DIAG gates only the printing).
+				if (lightId >= 0)
+					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech);
 
-				pointLight->SetaRGB(0xffffff00);
+				// MOVER-LIGHT-HALOGEN-1: warm halogen instead of legacy pure
+				// yellow (MC2_LIGHT_POOL_MOVER_COLOR override).
+				pointLight->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 				pointLight->SetIntensity(0.15f);
 				pointLight->SetFalloffDistances(50.0f, 250.0f);
 			}
 		}
 		
-		if (pointLight)	
+		if (pointLight)
 		{
-			if (visible && (sensorLevel > 4) && !InEditor)
+			// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown mechs emit
+			// nothing (user report: wrecks kept glowing).
+			if (visible && (sensorLevel > 4) && !InEditor
+				&& (status != OBJECT_STATUS_DESTROYED)
+				&& (status != OBJECT_STATUS_DISABLED)
+				&& (status != OBJECT_STATUS_SHUTDOWN))
 			{
 				if (lightCircleNodeIndex == -1)
 					lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
@@ -4104,10 +4117,12 @@ void Mech3DAppearance::updateGeometry (void)
 				pointLight->SetLightToWorld(&lightToWorldMatrix);
 				pointLight->SetPosition(&lightPos);
 				pointLight->active = true;
+				pointLight->ownerEnabled = 1;	//LIGHT-CULL-RADIUS-1
 			}
 			else
 			{
 				pointLight->active = false;
+				pointLight->ownerEnabled = 0;	//LIGHT-CULL-RADIUS-1
 			}
 		}
 
@@ -4147,7 +4162,8 @@ void Mech3DAppearance::updateGeometry (void)
 
 					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-					light->SetaRGB(0xffffff00);                // anubis-equiv default
+					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
+					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 					light->SetIntensity(0.15f);                // anubis default
 					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
 
@@ -4196,6 +4212,45 @@ void Mech3DAppearance::updateGeometry (void)
 			{
 				Stuff::Vector3D childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
+				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
+				// END (node transform × cone geometry axis), grounded on
+				// terrain — the beam lights where it actually lands. Falls
+				// back to the facing heuristic below when the model has no
+				// usable cone. MC2_LIGHT_CONE_NODES=0 restores heuristic.
+				bool coneAimed = false;
+				if (mc2_cone_glow::nodes_enabled())
+				{
+					Stuff::Vector3D aimW;
+					float coneLen = 0.0f;
+					if (mc2_cone_glow::GetNodeAim(mechShape, spotlightNodeIds_[k], aimW, coneLen))
+					{
+						float spill = coneLen * mc2_cone_glow::spill_scale();
+						if (spill > 200.0f) spill = 200.0f;
+						childPos.x += aimW.x * spill;
+						childPos.y += aimW.y * spill;
+						childPos.z += aimW.z * spill;
+						if (land)
+							childPos.z = land->getTerrainElevation(childPos);
+						coneAimed = true;
+					}
+				}
+				// MOVER-LIGHT-FORWARD-1: bias the pool center AHEAD of the
+				// mech along its facing (headlights light the road ahead,
+				// not an omni puddle centered underfoot). Facing convention
+				// matches Mover::getRotationVector ((0,-1,0) rotated by
+				// -rotation). MC2_LIGHT_POOL_MOVER_FWD=0 restores centered.
+				if (!coneAimed)
+				{
+					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+					if (fwdWu > 0.0f)
+					{
+						Stuff::Vector3D fwdv;
+						fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+						Rotate(fwdv, -rotation);
+						childPos.x += fwdv.x * fwdWu;
+						childPos.y += fwdv.y * fwdWu;
+					}
+				}
 				spotlightLights_[k]->SetPosition(&childPos);
 				// Rule-2 correctness fix: lightToWorld is consumed at
 				// msl.cpp:1659. Without it, the precomputed s_lightToShape
@@ -4217,8 +4272,29 @@ void Mech3DAppearance::updateGeometry (void)
 				// any enemy mech at sensorLevel<5 is stuck active=false. The
 				// generalized path should illuminate for any visible mech at
 				// night regardless of sensor state.
+				// LIGHT-POOL-VIS-GATE-1 note (2026-07-21): `visible` IS the
+				// mesh-drawn fog-of-war predicate (the appearance renders the
+				// full mesh only under `if (visible)`; sensor blips draw via a
+				// separate sensorLevel 1..4 path) — this active flag is
+				// CORRECT. The observed "pools at unseen enemy blips" leak was
+				// the light-pool pack loop ignoring TG_Light::active entirely
+				// (fixed in gos_terrain_lighting.cpp PackAndDispatch).
+				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown movers
+				// emit nothing (user report: wrecks kept glowing).
 				spotlightLights_[k]->active =
-					(eye->isNight && visible && !InEditor);
+					(eye->isNight && visible && !InEditor
+					 && (status != OBJECT_STATUS_DESTROYED)
+					 && (status != OBJECT_STATUS_DISABLED)
+					 && (status != OBJECT_STATUS_SHUTDOWN));
+				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
+				spotlightLights_[k]->ownerEnabled =
+					spotlightLights_[k]->active ? 1 : 0;
+				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
+				// to the SAME owner predicate — shutdown/dead/FoW-hidden
+				// mechs show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
+				if (spotlightLights_[k]->active)
+					mc2_cone_glow::QueueConeGlow(mechShape, spotlightNodeIds_[k],
+						spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 			}
 		}
 
@@ -5440,6 +5516,61 @@ long Mech3DAppearance::update (bool animate)
 		logFile->writeLine(msg);
 	}
 #endif
+
+	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): the light
+	// owner-intent writers live in updateGeometry, which is frustum-culled
+	// below — an OFF-SCREEN mech never refreshed its light state, so (a) a
+	// mech shutting down off-screen kept emitting, and (c) FoW/status flips
+	// while culled left ghost pools with no renderable unit. Recompute the
+	// enable predicate + a coarse light position EVERY frame here (cheap:
+	// a few flag writes; updateGeometry overwrites with node-accurate
+	// positions whenever it runs right after).
+	if (pointLight || !spotlightLights_.empty())
+	{
+		const bool ownerOn =
+			(eye && eye->isNight && visible && !InEditor
+			 && (status != OBJECT_STATUS_DESTROYED)
+			 && (status != OBJECT_STATUS_DISABLED)
+			 && (status != OBJECT_STATUS_SHUTDOWN));
+		if (pointLight)
+			pointLight->ownerEnabled =
+				(visible && (sensorLevel > 4) && !InEditor
+				 && (status != OBJECT_STATUS_DESTROYED)
+				 && (status != OBJECT_STATUS_DISABLED)
+				 && (status != OBJECT_STATUS_SHUTDOWN)) ? 1 : 0;
+		if (ownerOn && !spotlightLights_.empty())
+		{
+			// Coarse per-frame position: mover position + forward bias, so
+			// an off-screen truck's pool keeps moving with it instead of
+			// freezing at the last on-screen node position.
+			Stuff::Vector3D lpos = position;
+			const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+			if (fwdWu > 0.0f)
+			{
+				Stuff::Vector3D fwdv;
+				fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+				Rotate(fwdv, -rotation);
+				lpos.x += fwdv.x * fwdWu;
+				lpos.y += fwdv.y * fwdWu;
+			}
+			Stuff::LinearMatrix4D l2w;
+			Stuff::Point3D lposP;
+			lposP.x = lpos.x; lposP.y = lpos.y; lposP.z = lpos.z;
+			l2w.BuildTranslation(lposP);
+			l2w.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+			{
+				spotlightLights_[k]->ownerEnabled = 1;
+				spotlightLights_[k]->SetPosition(&lpos);
+				spotlightLights_[k]->SetLightToWorld(&l2w);
+			}
+		}
+		else
+		{
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+				spotlightLights_[k]->ownerEnabled = 0;
+		}
+	}
 
 	// Under the GPU static-prop killswitch always run updateGeometry so
 	// mechShape->TransformMultiShape runs every frame, even when the

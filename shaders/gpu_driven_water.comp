@@ -141,6 +141,7 @@ uniform mat4  u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToC
 // (mirror terrain.cpp narrow-walk fast path) since the full recipe set is unfiltered.
 // u_shoreExt = MapData::alphaDepth*0.5 (or 15.0 fallback). Default 0 = legacy window mode.
 uniform int   u_fullRecipeMode;
+uniform int   u_waterBiasLegacy;   // WATER-BIAS-LINEARIZE-1: must match thin VS mode
 uniform float u_shoreExt;
 
 // ---------------------------------------------------------------------------
@@ -186,7 +187,11 @@ vec4 projectWaterClip(float wx, float wy, uint vWaterBits) {
 // ---------------------------------------------------------------------------
 bool pzOk(vec4 clip) {
     if (clip.w <= 1e-4) return false;
-    float biasedZ = clip.z + WATER_DEPTH_FUDGE_FAST * clip.w;
+    // WATER-BIAS-LINEARIZE-1: admission gate must agree with the thin VS bias
+    // mode (u_waterBiasLegacy=1 -> legacy constant; default 0 -> proportional).
+    float biasedZ = (u_waterBiasLegacy != 0)
+                  ? clip.z + WATER_DEPTH_FUDGE_FAST * clip.w
+                  : clip.z + WATER_DEPTH_FUDGE_FAST_REL * clip.z;
     return biasedZ >= 0.0 && biasedZ < clip.w;
 }
 

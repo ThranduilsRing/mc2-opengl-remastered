@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_24",
+  "_note": "SHADOW-STUTTER-1 camera-jump fixture: two proven-good mc2_24 poses (from mc2_24.json) placed back-to-back to model an instant >500-unit camera teleport onto a shadow_cascade-covering view. 'landing' is highangle_wide's exact pose (settle-warms first); 'jump_target' is ridge_lowangle's exact pose, reached by a single hard cut of sqrt(700^2+700^2)=989.9 world units -- comfortably over the known_issues.md ~500-unit stutter threshold. Compare jump_target's captured PNG across two runs at different MC2_VISUAL_SETTLE values (e.g. 1 vs 60): if the bytes are identical the shadow content is already converged on frame 1 post-jump (no multi-frame pop); if they differ, a settle-dependent shadow artifact remains.",
+  "bookmarks": [
+    {
+      "name": "landing",
+      "pos": [300.0, 300.0, 0.0],
+      "rot": 0.0,
+      "proj": 42.0,
+      "alt": 1800.0,
+      "covers": ["terrain_splat", "static_prop_pbr"]
+    },
+    {
+      "name": "jump_target",
+      "pos": [-400.0, -400.0, 0.0],
+      "rot": 135.0,
+      "proj": 18.0,
+      "alt": 900.0,
+      "covers": ["terrain_lod_chunk_skirts", "shadow_cascade"]
+    }
+  ]
+}

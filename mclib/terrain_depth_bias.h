@@ -74,8 +74,46 @@ constexpr float VEG_DEPTH_BIAS           =  0.00003f; // > 0 veg wins over groun
 constexpr float OVERLAY_DEPTH_BIAS       =  0.00005f; // > 0 decals/cement win over terrain & veg
 constexpr float OBJECT_DEPTH_BIAS        =  0.0001f;  // > OVERLAY: props/buildings/mechs on top of cement; tiny -> no show-through
 constexpr float WATER_DEPTH_BIAS         =  0.00025f; // > 0 water surface wins over deeper lake-bottom terrain (old net +0.00025)
-constexpr float WATER_DEPTH_FUDGE_FAST   =  0.00025f; // FAST regime: water surface ahead of true terrain
+constexpr float WATER_DEPTH_FUDGE_FAST   =  0.00025f; // FAST regime LEGACY constant: water surface ahead of true terrain
 constexpr float WATER_DEPTH_FUDGE_RASTER =  0.00025f; // RASTER regime: same surface bias
+// WATER-BIAS-LINEARIZE-1 (2026-07-18): the FAST regime's default bias is now
+// DISTANCE-PROPORTIONAL: clip.z += F_REL * clip.z (vs the legacy constant
+// clip.z += FUDGE * clip.w, i.e. a constant NDC offset). Under reverse-Z a
+// constant NDC offset maps to a world error growing ~ d^2
+// (Δd = ε·d²/B, B = n·f/(f−n) ≈ 402.6 wu with n=400, f=61555), reaching
+// ~250 wu at d=20000 — far water beat terrain ridges (the map-edge z-fight
+// at low proj). The proportional form's world error grows only ~ linearly
+// (Δd = F_REL·(d + A·d²/B) ≈ F_REL·d·(1 − d/f)) and its NDC epsilon shrinks
+// toward the far plane where reverse-Z float precision is best, so the
+// shoreline separation invariant (water wins the GEQUAL tie over deeper
+// terrain at all normal view distances) is preserved.
+// Derivation of F_REL: match the legacy constant's separation at d = 1000 wu
+// (a distance where the constant bias is known-good):
+//   z_ndc(d) = A + B/d,  A = −n/(f−n) = −0.0065408,  B = n·f/(f−n) = 402.616
+//   z_ndc(1000) = 0.396075
+//   F_REL = WATER_DEPTH_FUDGE_FAST / z_ndc(1000) = 0.00025 / 0.396075
+//         = 6.3119e-4  →  0.000631
+// Host killswitch MC2_WATER_BIAS_LEGACY=1 uploads mode=1 → shaders use the
+// legacy constant form. RASTER regime (quad.cpp CPU raster + mask-water VS)
+// is untouched. LOCKSTEP: gos_terrain_water_fast{,_mdi}.vert bias site,
+// gpu_driven_water.comp pzOk admission gate, and the .hglsl sibling all
+// switch on the same mode and constants in the same commit.
+constexpr float WATER_DEPTH_FUDGE_FAST_REL = 0.000631f; // FAST regime default: distance-proportional bias factor
+// OVERLAY-BIAS-LINEARIZE-1 (2026-07-21): same class-F2 cure for the road/
+// cement overlay decals. OVERLAY_DEPTH_BIAS is a constant NDC offset
+// (terrain_overlay.vert clip.z += BIAS*clip.w) whose reverse-Z world error
+// grows ~ d^2/B: ~12.4 wu at d=10000, ~50 wu at d=20000 — at far zoom the
+// road decal beat terrain undulations BEHIND its true position, so overlays
+// visibly float / parallax-slide off the terrain. Same derivation as
+// WATER_DEPTH_FUDGE_FAST_REL, matched at the known-good d=1000 separation:
+//   OVERLAY_REL = OVERLAY_DEPTH_BIAS / z_ndc(1000) = 0.00005 / 0.396075
+//               = 1.2624e-4 → 0.000126
+// World error becomes ~ linear (0.126 wu at 1000, ~2 wu at 20000) and near-
+// field separation (<1000 wu) is >= the legacy constant, so decals still win
+// the GEQUAL tie over terrain up close. No admission/cull mirror exists for
+// overlays (CPU-emitted, no compute gate) — the VS is the single consumer.
+// Host killswitch MC2_OVERLAY_BIAS_LEGACY=1 -> legacy constant form.
+constexpr float OVERLAY_DEPTH_BIAS_REL   = 0.000126f;
 // Back-compat alias: the legacy CPU raster consumer name (quad.cpp wz + WATER_DEPTH_FUDGE).
 constexpr float WATER_DEPTH_FUDGE        = WATER_DEPTH_FUDGE_RASTER;                       // 0.00025f
 

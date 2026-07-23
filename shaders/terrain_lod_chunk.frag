@@ -22,12 +22,30 @@ uniform int   u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (
 // of the colormap. Same UV math as gos_terrain.frag.
 uniform sampler2D  u_cementAtlas;
 uniform int        u_useCement;
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour (eye->getLight*(flat
+// N.L)/255). Night darkness is burned into the colormap texels CPU-side
+// (terrtxm2.cpp burnInShadows), but the cement atlas is built from RAW
+// (unburned) tile art, so night missions showed bright pads. Multiply this
+// into every cement-atlas / overlay-sidecar texel. Day missions upload
+// ~(1,1,1) -> near byte-identical. Killswitch MC2_CEMENT_MISSION_LIGHT=0
+// force-uploads (1,1,1). EVERY host binder of this frag MUST upload it
+// (unset uniform reads 0 -> black pads).
+uniform vec3       u_missionFlatLight;
 uniform int        u_cementGridSide;
 uniform float      u_cementWUPT;   // world units per cement tile (= 128)
 // CEMENT-DIAG-CONNECT-1 (gate MC2_TERRAIN_CEMENT_DIAG_CONNECT): 0 = off (byte-identical).
 // When non-zero, a non-cement tile fills its corner quadrant toward any diagonally
 // adjacent SOLID cement tile (hard quadrant cut, no feather).
 uniform int        u_cementDiagConnect;
+// CEMENT-ATLAS-SEAM-1 (default ON; killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0):
+// the cement catalog atlas packs cells with NO gutters and samples GL_LINEAR
+// (see BuildCementAtlas header note), so a tile UV of exactly 0 or 1 bilinear-
+// blends with the NEIGHBORING ATLAS CELL (a different texture) -> a faint
+// grid of seam lines at every 128-wu tile edge across continuous pads.
+// Fix: clamp the intra-cell UV a half texel inside the cell before atlas
+// addressing. Neighboring world tiles share tileable edge art, so the clamped
+// edge texel stays visually continuous.
+uniform int        u_cementAtlasSeamFix;
 // Stage B: transition mask array (14 layers R8, unit 11).
 uniform sampler2DArray u_transitionMaskArray;
 uniform int            u_useTransitionMask;
@@ -168,6 +186,101 @@ layout(binding = 23, std430) readonly buffer TerrainHeightBufFrag {
 layout(binding = 25, std430) readonly buffer TerrainCementBufFrag {
     uint cementWordsF[];
 };
+// NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, default ON): per-frame
+// terrain LIGHT POOL — the SAME GpuTerrainLight SSBO (48B std430, lockstep with
+// gos_terrain_lighting.h / include/terrain_lighting_shared.hglsl) the legacy
+// vertex-lighting compute (gos_terrain_lighting.comp) consumes. Lights [2..N-1]
+// only (sun + ambient are already in the sun/shadow terms above). The chunk
+// terrain previously DROPPED these pools entirely — night missions lost all
+// building-spotlight / light-prop / mech-weapon up-lighting on the ground.
+// u_numPoolLights==0 (gate off, producer disabled, or no lights registered)
+// -> the loop in main() is never entered -> byte-identical output.
+struct PoolLight {
+    vec3  position;        // MC2 world (same frame as v_worldPos)
+    uint  lightType;       // 1=point 2=spot 3=terrain, 0=skip
+    vec3  color;           // R/G/B normalized 0..1
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;
+    float _plPad2;
+};
+layout(binding = 28, std430) readonly buffer TerrainLightPoolFrag {
+    PoolLight poolLights[];
+};
+uniform int u_numPoolLights;   // driver force-uploads 0 when the gate is off
+// NIGHT-LIGHT-POOLS-2 (user feedback 2026-07-21): the legacy linear GetFalloff
+// ramp reads as a stamped DISC (hard edge, uniform interior) when applied
+// per-fragment at pool scale. u_lightPoolSoft=1 (default, MC2_LIGHT_POOL_SOFT)
+// replaces the linear ramp with smoothstep(t) — zero slope at BOTH the outer
+// edge (feathers into darkness) and the inner plateau. =0 -> exact legacy
+// TG_Light::GetFalloff math. u_lightPoolMoverDim scales mover-attached lights
+// (SSBO pad flag _plPad1=1, packed by the producer) — default 0.5 halves the
+// mech/vehicle circle vs building lights (MC2_LIGHT_POOL_MOVER_DIM).
+uniform int   u_lightPoolSoft;
+uniform float u_lightPoolMoverDim;
+// NIGHT-LIGHT-POOLS-3 (user feedback 2026-07-21b): overlapping pools (5-mech
+// group, base light clusters) SUM additively far past 1.0 before the clamp,
+// producing a blinding flat saturated blob over the whole union area.
+// u_lightPoolCompress=1 (default, MC2_LIGHT_POOL_COMPRESS) tone-compresses the
+// summed term: 1 - exp(-1.6 * sum). Single full-strength light plateaus at
+// ~0.80 (slightly softer than the legacy 1.0 clamp), stacked lights approach
+// 1.0 asymptotically instead of flat-topping, and the larger channel
+// compresses harder so stacked yellow desaturates slightly instead of going
+// pure. =0 restores the exact min(pool, 1) clamp.
+uniform int   u_lightPoolCompress;
+// NIGHT-LIGHT-POOLS-4 (user verdict 2026-07-21c): compression alone did NOT fix
+// the 5-mech group — five overlapping near-full discs saturate the union area
+// regardless of the tone curve, so the lance still read as ONE egg-shaped blob.
+// Fix the MODEL for mover lights (buildings keep legacy additive behavior):
+//   u_lightPoolMoverScale — scales the mover light's close/far radii (default
+//     0.6, MC2_LIGHT_POOL_MOVER_RADIUS; 1 = legacy radii). Smaller pools stop
+//     the five discs from covering each other completely.
+//   u_lightPoolMoverMax   — 1 (default, MC2_LIGHT_POOL_MOVER_MAXBLEND) makes
+//     mover pools combine by per-channel MAX instead of summing: where discs
+//     overlap the strongest single glow wins, so overlaps no longer stack
+//     toward saturation and each mech reads as its own soft glow. =0 restores
+//     the additive sum. The max-combined mover term joins the additive
+//     building sum BEFORE compression, keeping POOLS-3 semantics.
+uniform float u_lightPoolMoverScale;
+uniform int   u_lightPoolMoverMax;
+
+// PAD-AREA-GLOW-1 (gate MC2_PAD_AREA_GLOW, default ON =0.12; =0 kill): night
+// pad-area lift. Buildings register bright warm SpotLight_ pools but the pad
+// AROUND them stayed pitch dark, so lit buildings read as pasted-bright
+// cutouts. Any fragment ON a cement-word tile (VALID bit31, solid or
+// transition) gets a mild uniform additive lift, feathering outward
+// u_padGlowSpill wu past the pad edge onto the surrounding terrain — pads +
+// buildings read as one coherent lit zone. u_padGlow is PREMULTIPLIED
+// CPU-side: strength * warm color * nightFactor(1 - max flat-light channel).
+// Day missions upload exactly (0,0,0) -> `lit += 0` -> byte-identical.
+uniform vec3  u_padGlow;
+uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 128
+
+// Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
+// u_padGlowSpill wu of world distance to the nearest cement tile rect (3x3
+// tile neighborhood — spill is clamped < 128 wu = one tile, so ring-1 is
+// sufficient). Grid convention matches the cement branch in main():
+// gx grows +worldX, gy grows -worldY, 128 wu tiles.
+float padGlowMask(vec2 wp) {
+    vec2 g = vec2((wp.x + u_halfMap) / 128.0, (u_halfMap - wp.y) / 128.0);
+    int cx = clamp(int(floor(g.x)), 0, u_mapSide - 1);
+    int cy = clamp(int(floor(g.y)), 0, u_mapSide - 1);
+    float m = 0.0;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            int nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= u_mapSide || ny >= u_mapSide) continue;
+            if ((cementWordsF[nx + ny * u_mapSide] & 0x80000000u) == 0u) continue;
+            vec2 rMin = vec2(float(nx), float(ny));
+            vec2 dv = max(max(rMin - g, g - (rMin + 1.0)), vec2(0.0));
+            float distWu = length(dv) * 128.0;
+            m = max(m, 1.0 - smoothstep(0.0, max(u_padGlowSpill, 1.0), distWu));
+            if (m >= 1.0) return 1.0;
+        }
+    }
+    return m;
+}
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 GBuffer1;   // shadow-handled flat-up (terrain MRT composite)
@@ -252,6 +365,12 @@ uniform float snowBrightnessDampen; // <1 darkens detected snow (snowWeight-gate
 // OFF -> driver uploads u_useMaterialLib=0 -> branch never taken -> byte-identical.
 uniform vec4  matRoughness;
 uniform vec4  matAO;
+// POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
+// (rock,grass,dirt,concrete). Neutral (1,1,1,1) default. Consumed by
+// chunkSampleDisplacement ONLY when u_useMaterialLib != 0 AND the real-view
+// POM gate is on (u_pomView.x > 0.5) -- gate OFF on EITHER reproduces the
+// legacy 3-layer sum verbatim (byte-identical).
+uniform vec4  matHeight;
 uniform int   u_useMaterialLib;
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array (BC7 sRGB KTX2s from
 // data/terrain_layers/<channel>_albedo.ktx2; layer order = MAT_LAYER_* 0..4 +
@@ -386,6 +505,21 @@ float chunkSampleDisplacement(vec2 uv, vec4 w) {
     // with per-fragment weight branches → implicit LOD is undefined here. Use
     // textureLod(...,0.0): the displacement heightfield is read at base level
     // (standard for POM), valid in any control flow.
+    //
+    // POM-PERLAYER-HEIGHT-1 (gate-ON-BOTH only): per-layer height multipliers
+    // from the material lib (matHeight, JSON rock/grass/dirt/concrete_height)
+    // + the DIRT layer newly wired into the sum (was never summed -> dirt/sand
+    // dominant missions got ZERO displacement contribution). Uniform-flow
+    // branch: both operands are uniforms, so this stays UB2-01-safe. Gate OFF
+    // on EITHER (material lib or real-view POM) takes the legacy 3-layer sum
+    // VERBATIM -- byte-identical by construction.
+    if (u_useMaterialLib != 0 && u_pomView.x > 0.5) {
+        if (w.x > 0.01) d += w.x * matHeight.x * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
+        if (w.y > 0.01) d += w.y * matHeight.y * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
+        if (w.z > 0.01) d += w.z * matHeight.z * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_DIRT)),     0.0).a;
+        if (w.w > 0.01) d += w.w * matHeight.w * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
+        return 1.0 - d;
+    }
     if (w.x > 0.01) d += w.x * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
     if (w.y > 0.01) d += w.y * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
     if (w.w > 0.01) d += w.w * textureLod(matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
@@ -734,8 +868,20 @@ void main() {
         int  cCol = int(cLayerIdx) % cGridSide;
         int  cRow = int(cLayerIdx) / cGridSide;
         vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
-        vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
-        vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb;
+        // CEMENT-ATLAS-SEAM-1: half-texel inset for SAMPLING only (cTileUV
+        // itself stays unclamped -- the transition mask math below needs the
+        // true intra-tile position).
+        vec2 cSampleUV = cTileUV;
+        if (u_cementAtlasSeamFix != 0) {
+            float cCellPx = float(textureSize(u_cementAtlas, 0).x) / float(cGridSide);
+            float cInset  = 0.5 / max(cCellPx, 1.0);
+            cSampleUV = clamp(cTileUV, vec2(cInset), vec2(1.0 - cInset));
+        }
+        vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
+        // CEMENT-NIGHT-LIGHT-1: atlas texels are RAW (unburned) -> apply the
+        // mission flat-pad light here (covers both the solid and transition
+        // branches below).
+        vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * u_missionFlatLight;
         if (isTransition) {
             // CEMENT-HARD-EDGE-1 (default-on; self-disables if u_useTransitionMask==0):
             // Render the SAME solid cement atlas tile as the interior, cut by a HARD
@@ -854,8 +1000,17 @@ void main() {
                 int  dCol = int(dLayerIdx) % dGridSide;
                 int  dRow = int(dLayerIdx) / dGridSide;
                 // Use this tile's own sub-tile UV so the fill aligns with the grid.
-                vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
-                base = texture(u_cementAtlas, dAtlasUV).rgb;
+                // CEMENT-ATLAS-SEAM-1: same half-texel sampling inset as the
+                // main cement branch (gutter-less atlas bleed).
+                vec2 dSampleUV = dTileUV;
+                if (u_cementAtlasSeamFix != 0) {
+                    float dCellPx = float(textureSize(u_cementAtlas, 0).x) / float(dGridSide);
+                    float dInset  = 0.5 / max(dCellPx, 1.0);
+                    dSampleUV = clamp(dTileUV, vec2(dInset), vec2(1.0 - dInset));
+                }
+                vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
+                // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light.
+                base = texture(u_cementAtlas, dAtlasUV).rgb * u_missionFlatLight;
                 cementHit = true;
             }
         }
@@ -881,7 +1036,9 @@ void main() {
         ovUV.y = (u_overlayBounds.y - v_worldPos.y) / max(u_overlayBounds.w, 1e-5);
         if (ovUV.x >= 0.0 && ovUV.x <= 1.0 && ovUV.y >= 0.0 && ovUV.y <= 1.0) {
             vec4 ov = texture(u_overlaySidecar, ovUV);
-            base = mix(base, ov.rgb, ov.a);
+            // CEMENT-NIGHT-LIGHT-1: sidecar is authored unburned art -> apply
+            // the mission flat-pad light like the cement atlas above.
+            base = mix(base, ov.rgb * u_missionFlatLight, ov.a);
             overlayCoverage = ov.a;
             if (ov.a > 0.5) cementHit = true;
         }
@@ -1476,6 +1633,79 @@ void main() {
     }
 
     vec3 lit = baseColor * normalLight * shadow;
+
+    // NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop. ADDITIVE and
+    // AFTER the shadow multiply — a lamp must light shadowed ground (the legacy
+    // path adds these as D3D specular AFTER the texture*lightRGB modulate, i.e.
+    // also un-shadowed). Falloff math mirrors gos_terrain_lighting.comp:234-254
+    // / TG_Light::GetFalloff (tgl.h) / quad.cpp:1325-1370 exactly:
+    //   len <= close            -> falloff 1
+    //   close < len < far       -> (far - len) * oneOverDistance
+    //   len >= far              -> 0 (skip)
+    // Legacy clamps the summed spec to 255/channel -> min(pool, 1.0) here.
+    // Applies to the cement path too by construction (cement flows through
+    // `lit`: normalLight is flattened and static shadow dropped above, and the
+    // u_missionFlatLight night-darken multiplied into `base` stays intact —
+    // this ADDS lamp pooling on top, matching CEMENT-NIGHT-LIGHT-1 intent).
+    // Cost: uniform-bounded loop (u_numPoolLights, driver-capped 256; night
+    // missions typically pack a few dozen), 3 dot/sqrt per light, zero texture
+    // taps. u_numPoolLights==0 -> block skipped -> byte-identical.
+    if (u_numPoolLights > 0) {
+        vec3 pool      = vec3(0.0);
+        vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined mover glows
+        for (int i = 0; i < u_numPoolLights; ++i) {
+            if (poolLights[i].lightType == 0u) continue;
+            vec3  vtl = v_worldPos - poolLights[i].position;
+            float len = sqrt(dot(vtl, vtl));   // GetApproximateLength (non-ASM = sqrt)
+            bool  mover = poolLights[i]._plPad1 > 0.5;
+            float farD  = poolLights[i].farDistance;
+            float nearD = poolLights[i].closeDistance;
+            float ooD   = poolLights[i].oneOverDistance;
+            // NIGHT-LIGHT-POOLS-4: shrink mover pool radii (scale=1 -> legacy).
+            if (mover && u_lightPoolMoverScale < 0.999) {
+                float s = max(u_lightPoolMoverScale, 0.05);
+                farD *= s; nearD *= s; ooD /= s;
+            }
+            if (len >= farD) continue;
+            float falloff = (len <= nearD)
+                          ? 1.0
+                          : (farD - len) * ooD;
+            // NIGHT-LIGHT-POOLS-2: soft tail (smoothstep) kills the stamped-
+            // disc edge; gate-off = exact legacy linear ramp above.
+            if (u_lightPoolSoft != 0) {
+                float t = clamp(falloff, 0.0, 1.0);
+                falloff = t * t * (3.0 - 2.0 * t);
+            }
+            vec3 plCol = poolLights[i].color;
+            if (mover) {
+                // Mover-attached light (producer pad flag): dim vs buildings.
+                plCol *= u_lightPoolMoverDim;
+                // NIGHT-LIGHT-POOLS-4: overlapping mover pools take the MAX
+                // instead of stacking (5-mech union stays a set of glows).
+                if (u_lightPoolMoverMax != 0) {
+                    poolMover = max(poolMover, plCol * falloff);
+                    continue;
+                }
+            }
+            pool += plCol * falloff;
+        }
+        pool += poolMover;
+        // NIGHT-LIGHT-POOLS-3: soft-compress the accumulated sum (see uniform
+        // block comment). Gate-off = legacy hard clamp.
+        if (u_lightPoolCompress != 0)
+            lit += vec3(1.0) - exp(-1.6 * pool);
+        else
+            lit += min(pool, vec3(1.0));
+    }
+
+    // PAD-AREA-GLOW-1: mild uniform night lift on cement pads + a feathered
+    // spill margin onto surrounding terrain (see uniform block comment).
+    // ADDITIVE after the shadow multiply, like the light pools — the glow is
+    // area lighting and must reach shadowed ground. u_padGlow == 0 (day, gate
+    // off, or no chunk grid) -> adds exact 0 -> byte-identical.
+    if (dot(u_padGlow, u_padGlow) > 0.0)
+        lit += u_padGlow * padGlowMask(v_worldPos.xy);
+
     // Hemisphere ambient fill (TERRAIN-LIGHTING-1/2) — added AFTER shadow so sky/
     // ground bounce still lights shadowed terrain. Env-gated OFF by default
     // (terrainLightingV1Strength=0 -> skipped, byte-safe). Matches gos_terrain.frag.

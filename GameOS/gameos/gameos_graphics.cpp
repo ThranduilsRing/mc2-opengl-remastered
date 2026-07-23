@@ -77,6 +77,7 @@ namespace gosFX { void DiagFrameTick(); }
 #endif
 #include "gos_terrain_bridge.h"
 #include "gos_terrain_lod_chunk.h"
+#include "gos_terrain_lighting.h"                // NIGHT-LIGHT-POOLS-2b: pool SSBO accessors
 #include "gos_terrain_patch_stream.h"
 #include "gos_terrain_indirect.h"
 #include "gos_terrain_surface.h"                 // [TERRAIN_SURFACE] PR-2 producer
@@ -212,7 +213,7 @@ static bool terrainNormalArrayEnabled() {
     return enabled;
 }
 
-// STATIC-SHADOW-BANDING-1: default OFF. Raises the LOD-based static-shadow PCF
+// STATIC-SHADOW-BANDING-1: default ON (2026-07-18, was OFF). Raises the LOD-based static-shadow PCF
 // tap floor (gos_terrain.frag's `shadowTaps` ladder 16/8/4) to 16/12/8 so the
 // wide adaptive-radius PCF used on flat terrain (see shadow.hglsl's
 // gradient-adaptive `adaptiveScale`) doesn't undersample the Poisson disk at
@@ -220,16 +221,20 @@ static bool terrainNormalArrayEnabled() {
 // tap count drops to 8 (mid) or 4 (far) for perf — wide-radius + few-taps is
 // the textbook Poisson-disk banding/ring artifact, most visible on smoothly
 // varying receivers (rolling grass), NOT a shadow-map resolution or depth
-// issue. Default OFF => byte-identical to legacy (shadowTaps stays 16/8/4).
-static bool mc2ShadowStaticBandFixEnabled() {
+// issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
+bool mc2ShadowStaticBandFixEnabled() {
     static const bool enabled = []() {
+        // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
+        // banding persists in the shipped default config ("this was never
+        // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
+        // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
         const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX");
-        return v && v[0] && v[0] != '0';
+        return !(v && v[0] == '0' && v[1] == '\0');
     }();
     return enabled;
 }
 
-// STATIC-SHADOW-BANDING-2: default OFF. Round 1 (BANDFIX v1) was refuted by
+// STATIC-SHADOW-BANDING-2: default ON (2026-07-18, was OFF). Round 1 (BANDFIX v1) was refuted by
 // field check as insufficient -- taps=16 still banded on TERRAIN (grass/dirt
 // slopes; v1 verified mostly on concrete, the wrong receiver). Measurement:
 // static map world-per-texel (~4.6 world units on mc2_01, 4096^2 ortho over
@@ -240,14 +245,49 @@ static bool mc2ShadowStaticBandFixEnabled() {
 // FAKE flat-up shadowN (gos_terrain.frag), so slope-scaled bias never
 // adapted to real terrain tilt. v2 swaps in the height-derived slope normal
 // for shadow bias ONLY (lighting normal N is untouched). Independent gate,
-// typically paired with v1 (taps) but not required to be. Default OFF =>
-// byte-identical (shadowN stays flat vec3(0,0,1)).
-static bool mc2ShadowStaticBandFixV2Enabled() {
+// typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
+// byte-identical legacy (shadowN stays flat vec3(0,0,1)).
+bool mc2ShadowStaticBandFixV2Enabled() {
     static const bool enabled = []() {
+        // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
+        // and around mech shadows on terrain) verified A/B in-engine: default
+        // config shows diagonal contour striping across terrain
+        // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
+        // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
+        // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
         const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
-        return v && v[0] && v[0] != '0';
+        return !(v && v[0] == '0' && v[1] == '\0');
     }();
     return enabled;
+}
+
+// WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
+// Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error
+// ~ linear in distance, kills the far-field water-over-ridge z-fight).
+// MC2_WATER_BIAS_LEGACY=1 -> 1 = legacy constant NDC offset
+// (clip.z += FUDGE*clip.w). Consumed by both fast water VS variants and the
+// gpu_driven_water.comp pzOk admission gate (all three MUST agree; see
+// mclib/terrain_depth_bias.h). Exported via gameos.hpp for the water-stream TU.
+int mc2WaterBiasLegacy() {
+    static const int mode = []() {
+        const char* v = std::getenv("MC2_WATER_BIAS_LEGACY");
+        return (v && v[0] && v[0] != '0') ? 1 : 0;
+    }();
+    return mode;
+}
+
+// OVERLAY-BIAS-LINEARIZE-1: bias-mode selector for the overlay/decal VS
+// (terrain_overlay.vert, shared by TerrainOverlayBatch + DecalBatch +
+// decal-static). Default 0 = distance-proportional bias (world error ~
+// linear -> no far-zoom overlay float). MC2_OVERLAY_BIAS_LEGACY=1 -> legacy
+// constant NDC offset. Single consumer is the VS (no compute admission gate
+// mirrors the overlay bias). See mclib/terrain_depth_bias.h.
+static int mc2OverlayBiasLegacy() {
+    static const int mode = []() {
+        const char* v = std::getenv("MC2_OVERLAY_BIAS_LEGACY");
+        return (v && v[0] && v[0] != '0') ? 1 : 0;
+    }();
+    return mode;
 }
 
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
@@ -433,6 +473,19 @@ class gosMaterialVariationHelper {
                          "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
                          mc2ShadowCsmCount());
                 defines_str.append(csmDef);
+            }
+            // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra +
+            // fade (shadow.hglsl). =0 (killswitch) -> no define -> block
+            // folds away, current behavior.
+            if (mc2ShadowDistFadeWu() > 0.0f) {
+                char fadeDef[144];
+                snprintf(fadeDef, sizeof(fadeDef),
+                         "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                         "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
+                         "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                         mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
+                     mc2ShadowFadeCont() ? 1 : 0);
+                defines_str.append(fadeDef);
             }
             defines_str.append("\n");
 
@@ -1645,6 +1698,18 @@ class gosRenderer {
             *rock=terrain_mat_roughness_[0]; *grass=terrain_mat_roughness_[1];
             *dirt=terrain_mat_roughness_[2]; *concrete=terrain_mat_roughness_[3];
         }
+        // POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers
+        // (rock/grass/dirt/concrete). Neutral 1.0 defaults; consumed by the
+        // LOD-chunk frag only when BOTH MC2_TERRAIN_MATERIAL_LIB and
+        // MC2_TERRAIN_POM are on (chunkSampleDisplacement branch).
+        void setTerrainMatHeight(float rock, float grass, float dirt, float concrete) {
+            terrain_mat_height_[0]=rock; terrain_mat_height_[1]=grass;
+            terrain_mat_height_[2]=dirt; terrain_mat_height_[3]=concrete;
+        }
+        void getTerrainMatHeight(float* rock, float* grass, float* dirt, float* concrete) const {
+            *rock=terrain_mat_height_[0]; *grass=terrain_mat_height_[1];
+            *dirt=terrain_mat_height_[2]; *concrete=terrain_mat_height_[3];
+        }
         void setTerrainMatAO(float rock, float grass, float dirt, float concrete) {
             terrain_mat_ao_[0]=rock; terrain_mat_ao_[1]=grass;
             terrain_mat_ao_[2]=dirt; terrain_mat_ao_[3]=concrete;
@@ -1690,6 +1755,10 @@ class gosRenderer {
         // Terrain splatting setters
         void setTerrainLightDir(float x, float y, float z) { terrain_light_dir_ = vec4(x, y, z, 0.0f); }
         const vec4& getTerrainLightDir() const { return terrain_light_dir_; }
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (killswitch handled at
+        // the gos_ setter — values arriving here are already gated).
+        void setTerrainMissionFlatLight(float r, float g, float b) { terrain_mission_flat_light_ = vec4(r, g, b, 0.0f); }
+        const vec4& getTerrainMissionFlatLight() const { return terrain_mission_flat_light_; }
         void setTerrainDetailParams(float tiling, float strength) { terrain_detail_tiling_ = tiling; terrain_detail_strength_ = strength; }
         void setTerrainMaterialNormal(int idx, GLuint texId) {
             if (idx >= 0 && idx < 9) {
@@ -2094,6 +2163,13 @@ class gosRenderer {
 
         // Terrain splatting textures (from main source, needed for material normal maps)
         vec4 terrain_light_dir_;
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour (eye->getLightRed/
+        // Green/Blue(flatIntensity)/255, flatIntensity = clamp(lightDir.z,0,1)) —
+        // the legacy per-vertex value burned into the colormap by burnInShadows
+        // (terrtxm2.cpp). Cement-atlas / overlay texels are RAW (unburned), so
+        // the shaders multiply this in. Default (1,1,1) = day-neutral so paths
+        // that never call the setter (menus, editor) are unchanged.
+        vec4 terrain_mission_flat_light_ = vec4(1.0f, 1.0f, 1.0f, 0.0f);
         float terrain_detail_tiling_ = 1.0f;
         float terrain_detail_strength_ = 1.0f;  // global detail-normal multiplier; was 4.0 (too loud, carpet at distance)
         GLuint terrain_mat_normal_[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -2141,6 +2217,8 @@ class gosRenderer {
         // lighting exactly (dot(weights, 1.0) == 1.0).
         float terrain_mat_roughness_[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
         float terrain_mat_ao_[4]        = { 1.0f, 1.0f, 1.0f, 1.0f };
+        // POM-PERLAYER-HEIGHT-1 (rock/grass/dirt/concrete; neutral = 1.0).
+        float terrain_mat_height_[4]    = { 1.0f, 1.0f, 1.0f, 1.0f };
         // TERRAIN-TUNING-UI-1: per-frame multiplier on the additive height-
         // derived normal term in gos_terrain.frag. 1.0 = full slope tilt
         // (current behavior; byte-equivalent to pre-slice). 0.0 = no slope
@@ -2509,6 +2587,26 @@ class gosRenderer {
             GLint terrainLightingV2ShadowFillFloor   = -1;
             // CLIFF SHADOW FLOOR
             GLint terrainCliffShadowFloor            = -1;
+            // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
+            // decal.frag does not declare it -> stays -1 -> skipped).
+            GLint missionFlatLight                   = -1;  // vec3
+            // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (terrain_overlay.vert,
+            // declared on BOTH overlayProg_ and decalProg_ — shared VS).
+            GLint overlayBiasLegacy                  = -1;  // int
+            // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (terrain_overlay.frag
+            // only; decal.frag leaves these -1 -> skipped).
+            GLint numPoolLights                      = -1;  // int
+            GLint lightPoolSoft                      = -1;  // int
+            GLint lightPoolMoverDim                  = -1;  // float
+            GLint lightPoolCompress                  = -1;  // int (NIGHT-LIGHT-POOLS-3)
+            GLint lightPoolMoverScale                = -1;  // float (NIGHT-LIGHT-POOLS-4)
+            GLint lightPoolMoverMax                  = -1;  // int (NIGHT-LIGHT-POOLS-4)
+            // PAD-AREA-GLOW-1: pad-area night lift (terrain_overlay.frag only;
+            // decal.frag leaves these -1 -> skipped).
+            GLint padGlow                            = -1;  // vec3 (premultiplied)
+            GLint padGlowSpill                       = -1;  // float (wu)
+            GLint padGlowMapSide                     = -1;  // int (0 = grid absent)
+            GLint padGlowHalfMap                     = -1;  // float (wu)
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -3009,6 +3107,9 @@ void gosRenderer::renderWaterFastPath(
     setF   ("frameCosAlpha",   frameCosAlpha);
     setF   ("maxMinUV",        maxMinUV);
     setI   ("tex1",            0);
+    // WATER-BIAS-LINEARIZE-1: bias mode for the FAST VS (0 = proportional
+    // default, 1 = legacy constant). MC2_WATER_BIAS_LEGACY=1 reverts.
+    setI   ("u_waterBiasLegacy", mc2WaterBiasLegacy());
 
     // Fragment-shader-side fog_color + time uniforms (gos_tex_vertex.frag).
     // 2026-04-30: fog_color was hardcoded to zeros, which disables the FS
@@ -3225,6 +3326,29 @@ void gosRenderer::renderWaterFastPath(
         setMVec3      ("u_waterSkyTintColor",    g_waterSkyTintColor);
         // WATER-SKY-REFLECTION-1: gated SH-L2 sky reflection (strength 0 = no-op).
         setMF         ("u_waterReflStrength",    gos_GetWaterReflStrength());
+        // WATER-SHORE-MASK-1 (batch-6 item 3): feather the water shore band
+        // along the cooked smoothed-contour distance field. Texture unit 4
+        // (0/1 base/detail, 2 refl RT, 3 HDRI). Killswitch
+        // MC2_WATER_SHORE_MASK=0 or no sidecar -> u_hasShoreMask=0 ->
+        // byte-identical.
+        {
+            static const bool s_shoreMaskGate = []() {
+                const char* v = getenv("MC2_WATER_SHORE_MASK");
+                return !(v && v[0] == '0');   // default ON
+            }();
+            extern unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
+            extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
+            const GLuint slTex = s_shoreMaskGate
+                ? (GLuint)gos_TerrainLodChunk_ShorelineMaskTex() : 0u;
+            setMI("u_hasShoreMask", slTex != 0 ? 1 : 0);
+            if (slTex != 0) {
+                setMVec4("u_shoreMaskBounds", gos_TerrainLodChunk_ShorelineMaskBounds());
+                setMI("u_shoreMask", 4);
+                glActiveTexture(GL_TEXTURE0 + 4);
+                glBindTexture(GL_TEXTURE_2D, slTex);
+                glActiveTexture(GL_TEXTURE0);
+            }
+        }
         setMF         ("waterElevation",  waterElevation);
         setMF         ("alphaDepth",      alphaDepth);
         setMI         ("alphaEdgeByte",   (int)alphaEdgeByte);
@@ -3242,9 +3366,18 @@ void gosRenderer::renderWaterFastPath(
         // getMapHalfExtent), the SAME value the legacy terrain edge-haze + post-fx
         // edge_fog use against WorldPos.xy (raw MC2 world units). Origin-centered.
         {
+            // WATER-EDGE-FEATHER-DEFAULT-ON (2026-07-18, Sym4 recon): flip
+            // default ON — the hard navy map-edge water band at grazing camera
+            // angles is a stock-visible artifact; the feather dissolves it into
+            // the horizon haze. Killswitch MC2_WATER_EDGE_FEATHER=0 reverts.
+            // NOTE split: only the MDI frag (gos_terrain_water_mdi.frag)
+            // declares the feather uniforms; the non-MDI fallback water path
+            // draws with gos_tex_vertex.frag (shared by other passes) and
+            // stays un-feathered — acceptable because the non-MDI path is a
+            // fail-soft fallback (mdiValid false), not the shipped default.
             static const int s_waterEdgeFeather = []() {
                 const char* e = getenv("MC2_WATER_EDGE_FEATHER");
-                return (e && e[0] && e[0] != '0') ? 1 : 0;
+                return (e && e[0] == '0') ? 0 : 1;
             }();
             static const float s_waterEdgeFeatherStr = []() {
                 const char* s = getenv("MC2_WATER_EDGE_FEATHER_STRENGTH");
@@ -3283,6 +3416,8 @@ void gosRenderer::renderWaterFastPath(
         setMVec4      ("terrainLightDir", (const float*)&terrain_light_dir_);
         setMF         ("u_waterSpecIntensity", gos_GetWaterSpecIntensity());
         setMI         ("tex1",  0);
+        // WATER-BIAS-LINEARIZE-1: same mode as the non-MDI branch above.
+        setMI         ("u_waterBiasLegacy", mc2WaterBiasLegacy());
         setMI         ("tex2",  1);
 
         // WATER-REFLECTION-SAMPLE-1: bind the terrain reflection RT (filled by
@@ -3298,6 +3433,24 @@ void gosRenderer::renderWaterFastPath(
         setMVec2      ("u_waterScreenSize",
                        ppRefl ? (float)ppRefl->getWidth()  : 1.0f,
                        ppRefl ? (float)ppRefl->getHeight() : 1.0f);
+        // WATER-ASPECT-CORRECT-2: the FS's dFdx(nz) aspect compensation
+        // (WATER-ASPECT-CORRECT-1) was written assuming the perspective
+        // frustum is ALWAYS 4:3-locked while the viewport is native-res —
+        // true before UI-ASPECT-ANCHOR-1, but that fix (mclib/camera.cpp,
+        // default ON) now builds the frustum at the REAL drawable aspect,
+        // so there is usually no stretch left to compensate for. Pass the
+        // actual frustum aspect the FS should un-stretch against: native
+        // aspect (== viewport aspect, so the FS's _ac correction becomes a
+        // no-op) by default, or the legacy 4.0/3.0 only when the frustum
+        // really is still 4:3-locked (MC2_CAMERA_ASPECT_NATIVE=0). Fixes
+        // "water HDR clipped at odd resolutions" (docs/known_issues.md) —
+        // the FS was over-correcting a stretch that no longer exists,
+        // growing worse the further the window aspect departs from 4:3.
+        extern bool g_cameraProjAspectNative;
+        const float waterVpAspect = ppRefl && ppRefl->getHeight() > 0
+            ? (float)ppRefl->getWidth() / (float)ppRefl->getHeight() : (4.0f / 3.0f);
+        setMF         ("u_waterProjAspect",
+                       g_cameraProjAspectNative ? waterVpAspect : (4.0f / 3.0f));
 
         // WATER-HDRI-REFL-1: bind HDRI equirect on unit 3 for direct specular
         // sampling (sun disk + sky color, LOD-filtered via mipmaps added in gos_hdri.cpp).
@@ -5065,6 +5218,34 @@ void gosRenderer::init() {
                    (unsigned)p->shp_);
         fflush(stdout);
     }
+    {
+        // SHADOW-PROP-ALPHA-ATLAS-1: coalesce/BC7-atlas variant of the
+        // alpha-tested prop shadow program. Same vert+frag sources; the
+        // MC2_SHADOW_PROP_ATLAS define (makeProgram prefix -- GLSL #ifdefs do
+        // NOT inherit C++ build flags) switches the frag to sampler2DArray
+        // u_texArr + per-packet u_texLayer/u_uvScale so the shadow pass
+        // alpha-tests against the SAME array the coalesce color pass samples.
+        // Used by flushShadow/drawDynamicPropShadows when coalesce is armed and
+        // MC2_SHADOW_PROP_ALPHA_ATLAS != 0 (default ON); link failure falls
+        // back to the legacy-texture alpha program above.
+        ZoneScopedN("gosRenderer::init shadowStaticPropAlphaAtlasProg");
+        static const char* kShadowPropAlphaAtlasPrefix =
+            "#version 430\n#define MC2_SHADOW_PROP_ATLAS 1\n";
+        glsl_program* p = glsl_program::makeProgram(
+            "shadow_static_prop_alpha_atlas",
+            "shaders/shadow_static_prop.vert",
+            "shaders/shadow_static_prop.frag",
+            kShadowPropAlphaAtlasPrefix);
+        if (!p || !p->shp_)
+            fprintf(stderr, "[SHADOW_STATIC_PROP] WARNING: failed to compile "
+                            "shadow_static_prop_alpha_atlas shader -- coalesce/atlas "
+                            "foliage shadow casters fall back to the legacy-texture "
+                            "alpha program\n");
+        else
+            printf("[SHADOW_STATIC_PROP] Shadow static-prop ALPHA-ATLAS shader loaded: prog=%u\n",
+                   (unsigned)p->shp_);
+        fflush(stdout);
+    }
 
     // Load thin-record terrain program (gos_terrain_thin.vert + gos_terrain.frag, no tess).
     // Used by PatchStream M1g to draw thin records via GL_TRIANGLES, avoiding tessellation overhead.
@@ -5233,6 +5414,18 @@ void gosRenderer::init() {
                      mc2ShadowCsmCount());
             overlayPrefix.append(csmDef);
         }
+        // SHADOW-DIST-FADE-1: same define the terrain/material sites inject
+        // (overlay + decal receive dynamic shadows too -- keep in lockstep).
+        if (mc2ShadowDistFadeWu() > 0.0f) {
+            char fadeDef[144];
+            snprintf(fadeDef, sizeof(fadeDef),
+                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
+                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
+                         "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
+                     mc2ShadowFadeCont() ? 1 : 0);
+            overlayPrefix.append(fadeDef);
+        }
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",
             "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag",
             overlayPrefix.c_str());
@@ -5270,6 +5463,22 @@ void gosRenderer::init() {
         locs.terrainLightingV1Strength        = glGetUniformLocation(shp, "terrainLightingV1Strength");
         locs.terrainLightingV2ShadowFillFloor = glGetUniformLocation(shp, "terrainLightingV2ShadowFillFloor");
         locs.terrainCliffShadowFloor = glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
+        // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only).
+        locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
+        // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (shared VS, both programs).
+        locs.overlayBiasLegacy = glGetUniformLocation(shp, "u_overlayBiasLegacy");
+        // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (overlayProg_ only).
+        locs.numPoolLights     = glGetUniformLocation(shp, "u_numPoolLights");
+        locs.lightPoolSoft     = glGetUniformLocation(shp, "u_lightPoolSoft");
+        locs.lightPoolMoverDim = glGetUniformLocation(shp, "u_lightPoolMoverDim");
+        locs.lightPoolCompress = glGetUniformLocation(shp, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
+        locs.lightPoolMoverScale = glGetUniformLocation(shp, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
+        locs.lightPoolMoverMax   = glGetUniformLocation(shp, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
+        // PAD-AREA-GLOW-1: pad-area night lift (overlayProg_ only).
+        locs.padGlow        = glGetUniformLocation(shp, "u_padGlow");
+        locs.padGlowSpill   = glGetUniformLocation(shp, "u_padGlowSpill");
+        locs.padGlowMapSide = glGetUniformLocation(shp, "u_padGlowMapSide");
+        locs.padGlowHalfMap = glGetUniformLocation(shp, "u_padGlowHalfMap");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -10058,6 +10267,28 @@ void gos_SetTerrainLightDir(float x, float y, float z) {
 // VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
 // (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
 // no new accessor needed.
+
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour feed (gamecam.cpp, per
+// frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the
+// old bright-pads-at-night behaviour); default ON.
+void gos_SetTerrainMissionFlatLight(float r, float g, float b) {
+    static const bool s_enabled = []() {
+        const char* e = getenv("MC2_CEMENT_MISSION_LIGHT");
+        return !(e && e[0] == '0');
+    }();
+    if (!s_enabled) { r = 1.0f; g = 1.0f; b = 1.0f; }
+    if (g_gos_renderer) g_gos_renderer->setTerrainMissionFlatLight(r, g, b);
+}
+void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b) {
+    float rr = 1.0f, gg = 1.0f, bb = 1.0f;
+    if (g_gos_renderer) {
+        const vec4& fl = g_gos_renderer->getTerrainMissionFlatLight();
+        rr = fl.x; gg = fl.y; bb = fl.z;
+    }
+    if (r) *r = rr;
+    if (g) *g = gg;
+    if (b) *b = bb;
+}
 void gos_SetTerrainDetailParams(float tiling, float strength) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDetailParams(tiling, strength);
 }
@@ -10210,6 +10441,14 @@ void gos_SetTerrainMatAO(float rock, float grass, float dirt, float concrete) {
 }
 void gos_GetTerrainMatAO(float* rock, float* grass, float* dirt, float* concrete) {
     if (g_gos_renderer) g_gos_renderer->getTerrainMatAO(rock, grass, dirt, concrete);
+    else { *rock = 1.0f; *grass = 1.0f; *dirt = 1.0f; *concrete = 1.0f; }
+}
+// POM-PERLAYER-HEIGHT-1: per-layer POM displacement-height multipliers.
+void gos_SetTerrainMatHeight(float rock, float grass, float dirt, float concrete) {
+    if (g_gos_renderer) g_gos_renderer->setTerrainMatHeight(rock, grass, dirt, concrete);
+}
+void gos_GetTerrainMatHeight(float* rock, float* grass, float* dirt, float* concrete) {
+    if (g_gos_renderer) g_gos_renderer->getTerrainMatHeight(rock, grass, dirt, concrete);
     else { *rock = 1.0f; *grass = 1.0f; *dirt = 1.0f; *concrete = 1.0f; }
 }
 // TERRAIN-MATERIAL-LIB-1: public wrapper -- terrainMaterialLibEnabled() above is
@@ -10401,6 +10640,97 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         gosPostProcess* pp = getGosPostProcess();
         float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
         glUniform1f(L.mapHalfExtent, halfExt);
+    }
+    // CEMENT-NIGHT-LIGHT-1: mission flat-pad light. CRITICAL: every binder of
+    // terrain_overlay.frag MUST upload this (an unset uniform reads 0 -> black
+    // cement). All three overlay/decal bind sites route through this helper.
+    if (L.missionFlatLight >= 0) {
+        const vec4& fl = terrain_mission_flat_light_;
+        glUniform3f(L.missionFlatLight, fl.x, fl.y, fl.z);
+    }
+    // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
+    if (L.overlayBiasLegacy >= 0)
+        glUniform1i(L.overlayBiasLegacy, mc2OverlayBiasLegacy());
+
+    // PAD-AREA-GLOW-1: pad-area night lift, lockstep with the chunk terrain
+    // (same strength/spill env values, same nightFactor derived from the
+    // mission flat light). mapSide force-uploads 0 when the chunk cement grid
+    // is not resident so the frag never reads the binding-25 SSBO.
+    if (L.padGlow >= 0) {
+        int   pgSide = 0;
+        float pgHalf = 0.0f;
+        gos_GetTerrainChunkGridInfo(&pgSide, &pgHalf);
+        const vec4& fl = terrain_mission_flat_light_;
+        float flMax = fl.x;                   // (std::max unusable: windows.h max macro)
+        if (fl.y > flMax) flMax = fl.y;
+        if (fl.z > flMax) flMax = fl.z;
+        float nf = 1.0f - flMax;
+        if (nf < 0.0f) nf = 0.0f;
+        if (nf > 1.0f) nf = 1.0f;
+        const float s = gos_TerrainPadGlowStrength() * nf;
+        glUniform3f(L.padGlow, s * 1.00f, s * 0.88f, s * 0.70f);
+        if (L.padGlowSpill >= 0)
+            glUniform1f(L.padGlowSpill, gos_TerrainPadGlowSpillWu());
+        if (L.padGlowMapSide >= 0)
+            glUniform1i(L.padGlowMapSide, pgSide);
+        if (L.padGlowHalfMap >= 0)
+            glUniform1f(L.padGlowHalfMap, pgHalf);
+    }
+
+    // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as
+    // the chunk terrain (gate MC2_TERRAIN_LIGHT_POOLS, shared). Bind the pool
+    // SSBO ourselves — the chunk terrain draw also binds slot 28 but may be
+    // disabled (legacy terrain path), and context binding state is not
+    // guaranteed here. poolCount 0 -> frag loop skipped -> byte-identical.
+    if (L.numPoolLights >= 0) {
+        static const bool s_lightPoolsGate = [] {
+            const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
+            return !(v && v[0] == '0');
+        }();
+        static const bool s_poolSoft = [] {
+            const char* v = getenv("MC2_LIGHT_POOL_SOFT");
+            return !(v && v[0] == '0');
+        }();
+        // NIGHT-LIGHT-POOLS-4: default 0.5 -> 0.25 (lockstep with the chunk
+        // terrain consts in gos_terrain_lod_chunk.cpp).
+        static const float s_poolMoverDim = [] {
+            const char* s = getenv("MC2_LIGHT_POOL_MOVER_DIM");
+            if (!s || !s[0]) return 0.25f;
+            float f = (float)atof(s);
+            return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
+        }();
+        static const float s_poolMoverRadius = [] {
+            const char* s = getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
+            if (!s || !s[0]) return 0.6f;
+            float f = (float)atof(s);
+            return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
+        }();
+        static const bool s_poolMoverMax = [] {
+            const char* v = getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
+            return !(v && v[0] == '0');
+        }();
+        int poolCount = 0;
+        if (s_lightPoolsGate) {
+            const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
+            const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
+            if (poolSsbo != 0 && n > 0) {
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                 TERRAIN_LIGHT_POOL_SSBO_BINDING, poolSsbo);
+                poolCount = static_cast<int>(n > 256u ? 256u : n);
+            }
+        }
+        glUniform1i(L.numPoolLights, poolCount);
+        if (L.lightPoolSoft >= 0)     glUniform1i(L.lightPoolSoft, s_poolSoft ? 1 : 0);
+        if (L.lightPoolMoverDim >= 0) glUniform1f(L.lightPoolMoverDim, s_poolMoverDim);
+        // NIGHT-LIGHT-POOLS-3: summed-pool tone compression (default ON).
+        static const bool s_poolCompress = [] {
+            const char* v = getenv("MC2_LIGHT_POOL_COMPRESS");
+            return !(v && v[0] == '0');
+        }();
+        if (L.lightPoolCompress >= 0)  glUniform1i(L.lightPoolCompress, s_poolCompress ? 1 : 0);
+        // NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend.
+        if (L.lightPoolMoverScale >= 0) glUniform1f(L.lightPoolMoverScale, s_poolMoverRadius);
+        if (L.lightPoolMoverMax >= 0)   glUniform1i(L.lightPoolMoverMax, s_poolMoverMax ? 1 : 0);
     }
 
     setupOverlayShadowsForShp(shp);

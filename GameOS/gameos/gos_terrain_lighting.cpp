@@ -35,6 +35,7 @@
 #include "../../mclib/vertex.h"     // Vertex, PostcompVertex
 #include "../../mclib/camera.h"     // CameraPtr eye, getTerrainLight(), lightDirection, fogStart/fogFull
 #include "../../mclib/tgl.h"        // TG_Light, TG_LIGHT_* constants
+#include "../../mclib/spotlight_diag.h"  // NIGHT-LIGHT-POOLS-2a: mover-light slot tags
 #include "../../mclib/quad.h"       // TerrainQuad, TerrainQuad::rainLightLevel, ::lighteningLevel
 #include "gameos.hpp"  // gosEnvironment Environment (Environment.Renderer)
 
@@ -197,6 +198,11 @@ static uint32_t s_currentSlot               = 0;
 static size_t   s_outputSlotBytes = 0;
 
 static uint64_t s_frameIndex = 0;
+
+// NIGHT-LIGHT-POOLS-1: light count packed by the LAST PackAndDispatch — read by
+// gos_terrain_lighting::GetLightPoolLightCount() so the LOD-chunk terrain draw
+// knows how many pool lights the (already-uploaded) light SSBO holds this frame.
+static uint32_t s_lastNumLights = 0;
 
 // Stage 3: tryConsume fallback telemetry counters (mirrors readback_fallback_n2 /
 // readback_fallback_conservative pattern from gpu_cull_readback.cpp)
@@ -364,6 +370,92 @@ namespace gos_terrain_lighting {
 
 GLuint GetOutputSsbo() {
     return static_cast<GLuint>(s_computeOutputSsbo.backendHandle);
+}
+
+// NIGHT-LIGHT-POOLS-1: forward-consumer accessors for the per-frame light pool.
+GLuint GetLightPoolSsbo() {
+    if (!s_initialized) return 0;
+    return static_cast<GLuint>(s_lightInputSsbo.glName);
+}
+
+uint32_t GetLightPoolLightCount() {
+    return s_lastNumLights;
+}
+
+// POOL-CONSUMERS-1 (batch-6 item 6): shared object-consumer upload. See header.
+void UploadObjectLightPoolUniforms(unsigned int program) {
+    static const bool s_umbrella = []() {
+        const char* v = std::getenv("MC2_TERRAIN_LIGHT_POOLS");
+        return !(v && v[0] == '0');
+    }();
+    static const bool s_objects = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_OBJECTS");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    // Knob values lockstep with the terrain-chunk consumer defaults
+    // (gos_terrain_lod_chunk.cpp / gameos_graphics.cpp overlay path).
+    static const bool s_poolSoft = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_SOFT");
+        return !(v && v[0] == '0');
+    }();
+    static const float s_poolMoverDim = []() {
+        const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
+        if (!s || !s[0]) return 0.25f;
+        float f = (float)std::atof(s);
+        return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
+    }();
+    static const float s_poolMoverRadius = []() {
+        const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
+        if (!s || !s[0]) return 0.6f;
+        float f = (float)std::atof(s);
+        return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
+    }();
+    static const bool s_poolMoverMax = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
+        return !(v && v[0] == '0');
+    }();
+    static const bool s_poolCompress = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_COMPRESS");
+        return !(v && v[0] == '0');
+    }();
+    // POOL-CONSUMERS-1: object-side intensity scale (objects hold baked light
+    // rows already; keep the additive pool below the terrain level so the
+    // composite stays atmospheric, not floodlit). MC2_LIGHT_POOL_OBJ_SCALE
+    // override (default 0.7, clamp [0,2]; 0 behaves like the sub-gate off).
+    static const float s_objScale = []() {
+        const char* s = std::getenv("MC2_LIGHT_POOL_OBJ_SCALE");
+        float f = (s && s[0]) ? (float)std::atof(s) : 0.7f;
+        if (f < 0.0f) f = 0.0f;
+        if (f > 2.0f) f = 2.0f;
+        return f;
+    }();
+
+    const GLint locN = glGetUniformLocation(program, "u_numPoolLights");
+    if (locN < 0) return;   // program has no pool block compiled in
+
+    int poolCount = 0;
+    if (s_umbrella && s_objects && s_objScale > 0.0f) {
+        const GLuint   ssbo = GetLightPoolSsbo();
+        const uint32_t n    = GetLightPoolLightCount();
+        if (ssbo != 0 && n > 0) {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 28u, ssbo);
+            poolCount = static_cast<int>(n > 256u ? 256u : n);
+        }
+    }
+    glUniform1i(locN, poolCount);
+    if (poolCount == 0) return;
+    const GLint locSoft     = glGetUniformLocation(program, "u_lightPoolSoft");
+    const GLint locDim      = glGetUniformLocation(program, "u_lightPoolMoverDim");
+    const GLint locScale    = glGetUniformLocation(program, "u_lightPoolMoverScale");
+    const GLint locMax      = glGetUniformLocation(program, "u_lightPoolMoverMax");
+    const GLint locCompress = glGetUniformLocation(program, "u_lightPoolCompress");
+    const GLint locObjScale = glGetUniformLocation(program, "u_lightPoolObjScale");
+    if (locSoft >= 0)     glUniform1i(locSoft, s_poolSoft ? 1 : 0);
+    if (locDim >= 0)      glUniform1f(locDim, s_poolMoverDim);
+    if (locScale >= 0)    glUniform1f(locScale, s_poolMoverRadius);
+    if (locMax >= 0)      glUniform1i(locMax, s_poolMoverMax ? 1 : 0);
+    if (locCompress >= 0) glUniform1i(locCompress, s_poolCompress ? 1 : 0);
+    if (locObjScale >= 0) glUniform1f(locObjScale, s_objScale);
 }
 
 // ---------------------------------------------------------------------------
@@ -632,6 +724,7 @@ void mission_shutdown() {
     s_currentSlot     = 0;
     s_frameIndex      = 0;
     s_initialized     = false;
+    s_lastNumLights   = 0;  // NIGHT-LIGHT-POOLS-1: no pool lights across mission boundary
     s_dramShadow.clear();
 
     printf("[TERRAIN_LIGHTING_GPU v1] event=mission_shutdown\n");
@@ -784,10 +877,45 @@ void PackAndDispatch() {
     // The shader receives only lights [2..N-1]; u_numLights = count of those.
     uint32_t numLights = 0;
     if (eye) {
+        // LIGHT-POOL-VIS-GATE-1 (2026-07-21, fog-of-war leak): the legacy CPU
+        // consumer honors TG_Light::active (tgl.cpp:2123) but this pack loop
+        // did not — INACTIVE lights (mover appearances set active=false for
+        // enemy movers without visual contact; camera sets it false for
+        // off-screen point/spot lights) were packed anyway, so night light
+        // pools rendered at red sensor-blip positions of UNSEEN enemies
+        // (positional intel leak) and off-screen lights burned pool budget.
+        // Skip !active — legacy parity. Killswitch MC2_LIGHT_POOL_VIS_GATE=0.
+        static const bool s_visGate = []() {
+            const char* v = std::getenv("MC2_LIGHT_POOL_VIS_GATE");
+            return !(v && v[0] == '0');   // default ON
+        }();
+        // NIGHT-LIGHT-POOLS-2a: mover-light classification for the pool
+        // consumer (frag dims mover pools; the compute vertex-lighting
+        // consumer ignores the pad field — no legacy deviation). Slot tags
+        // are recorded unconditionally at the mover registration sites
+        // (mc2_spotlight_diag::tag_slot).
+        static std::vector<TG_LightPtr> s_moverLightPtrs;
+        s_moverLightPtrs.clear();
+        if (TG_LightPtr* wl = eye->getWorldLights()) {
+            for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s) {
+                if (!wl[s]) continue;
+                mc2_spotlight_diag::SourceClass src;
+                if (mc2_spotlight_diag::is_e_slot(s, &src)
+                    && (src == mc2_spotlight_diag::Mech
+                        || src == mc2_spotlight_diag::Gv))
+                    s_moverLightPtrs.push_back(wl[s]);
+            }
+        }
+        auto lightIsMover = [&](TG_LightPtr lp) -> bool {
+            for (TG_LightPtr p : s_moverLightPtrs)
+                if (p == lp) return true;
+            return false;
+        };
         const long nLights = eye->getNumTerrainLights();
         for (long i = 2; i < nLights && numLights < s_maxLights; ++i) {
             TG_LightPtr tl = eye->getTerrainLight(i);
             if (!tl) continue;
+            if (s_visGate && !tl->active) continue;   // LIGHT-POOL-VIS-GATE-1
             GpuTerrainLight& gl = s_lightBuf[numLights];
             gl.position[0]   = tl->position.x;
             gl.position[1]   = tl->position.y;
@@ -807,7 +935,9 @@ void PackAndDispatch() {
             gl.closeDistance   = tl->closeDistance;
             gl.farDistance     = tl->farDistance;
             gl.oneOverDistance = tl->oneOverDistance;
-            gl._pad1           = 0.0f;
+            // NIGHT-LIGHT-POOLS-2a: mover flag in the pad (pool frag dims
+            // mover-attached lights; compute consumer never reads pads).
+            gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;
             gl._pad2           = 0.0f;
             ++numLights;
         }
@@ -819,6 +949,9 @@ void PackAndDispatch() {
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         }
     }
+    // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
+    // consumer (LOD-chunk terrain per-fragment light loop).
+    s_lastNumLights = numLights;
 
     // --- Dispatch compute ---
     glUseProgram(s_program);

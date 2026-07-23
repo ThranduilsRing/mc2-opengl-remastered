@@ -43,10 +43,27 @@ uniform sampler2D u_waterReflRT;      // WATER-REFLECTION-SAMPLE-1: 1/4-res terr
                                       //   dead terrain-colormap atlas sampler.
 uniform float u_waterRtStrength;      //   0 = no RT blend -> fall back to SH sky.
 uniform vec2  u_waterScreenSize;      //   full-res FBO dims for the screen-space RT UV.
+// WATER-ASPECT-CORRECT-2: the frustum aspect the C++ side actually built this
+// frame (mclib/camera.cpp) -- native/viewport aspect by default (UI-ASPECT-
+// ANCHOR-1), or the legacy 4/3 only when that fix is disabled
+// (MC2_CAMERA_ASPECT_NATIVE=0). Replaces the old hardcoded 3.0/4.0 assumption
+// below, which over-corrected dFdx(nz) once the frustum stopped being 4:3-
+// locked by default (root cause of "water HDR clipped at odd resolutions").
+uniform float u_waterProjAspect;
 uniform PREC vec4 fog_color;
 uniform PREC float time;          // seconds — used for water animation
 uniform PREC vec4 cameraPos;      // water-v1: MC2 world-space camera (Fresnel)
 uniform PREC float alphaDepth;    // MapData::alphaDepth (world-units); shore smoothstep range
+// WATER-SHORE-MASK-1 (batch-6 item 3): OPTIONAL smoothed-contour distance
+// field (the cooked shoreline_mask sidecar, R = signed distance to waterline,
+// 0.5 = edge, +landward, BAND_NORM_WU=128 -> wu = (R-0.5)*256). When present,
+// the shore alpha term is additionally feathered along this SMOOTH contour,
+// dissolving the tile-quantized teal staircase ring at water edges (the
+// WaterThickness-driven band follows raw tile geometry). u_hasShoreMask==0
+// (no sidecar / killswitch MC2_WATER_SHORE_MASK=0) -> byte-identical.
+uniform sampler2D  u_shoreMask;
+uniform int        u_hasShoreMask;
+uniform PREC vec4  u_shoreMaskBounds;   // topLeftX, topLeftY(=maxY), sizeX, sizeY (wu)
 uniform int u_waterDebugMode;     // WATER-DEBUG-VIEWS-1: fragment/material-space debug.
                                   // 0=Final 1=Tint 2=Alpha 3=Normal 4=Depth 5=Shore 6=Lighting
                                   // 7=SHReflect 8=RTsample 9=ReflectBlend 10=Aniso(aspect probe).
@@ -195,6 +212,23 @@ void main(void)
         // the original CPU alpha-band behavior (alphaEdge on above-water verts).
         PREC float shoreBlend = max(alphaDepth, 1.0);
         PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
+        // WATER-SHORE-MASK-1: feather the shore band along the smoothed
+        // contour distance (see uniform block comment). min() with the
+        // depth-driven term: deep water keeps full alpha, and the mask can
+        // only SOFTEN the edge, never extend water onto dry land beyond it.
+        if (u_hasShoreMask != 0) {
+            PREC vec2 slUV;
+            slUV.x = (WorldPos.x - u_shoreMaskBounds.x) / max(u_shoreMaskBounds.z, 1e-5);
+            slUV.y = (u_shoreMaskBounds.y - WorldPos.y) / max(u_shoreMaskBounds.w, 1e-5);
+            if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+                PREC vec4 sl = texture(u_shoreMask, slUV);
+                if (sl.a > 0.5) {
+                    PREC float maskDistWu = (sl.r - 0.5) * 256.0;   // +land / -water
+                    PREC float shoreM = 1.0 - smoothstep(-12.0, 6.0, maskDistWu);
+                    shore = min(shore, shoreM);
+                }
+            }
+        }
         if (shore <= 0.0) discard;            // kill tiles too far above waterline
 
         PREC vec3  vertexLightRGB = Color.bgra.rgb;  // VS packs .bgra; un-swizzle (camera-indep)
@@ -236,10 +270,17 @@ void main(void)
         if (u_waterReflStrength > 0.0 || u_waterRtStrength > 0.0 ||
             u_waterDebugMode == 7 || u_waterDebugMode == 8 || u_waterDebugMode == 9) {
             // Wave normal from the in-scope fBm gradient (reused S3 scaffold).
-            // WATER-ASPECT-CORRECT-1: 4:3-locked projection into a wider viewport
-            // compresses dFdx vs dFdy by (vpAspect/projAspect). Scale X back up.
             //PORT-BEGIN:waterReflSetup
-            float _ac = (u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0)) * (3.0 / 4.0);
+            // WATER-ASPECT-CORRECT-1/2: a projection frustum locked to a
+            // DIFFERENT aspect than the viewport compresses dFdx vs dFdy by
+            // (vpAspect/projAspect); scale X back up. u_waterProjAspect is the
+            // frustum aspect C++ actually built this frame -- by default
+            // (UI-ASPECT-ANCHOR-1) that equals vpAspect, so _ac is a 1.0
+            // no-op; it only deviates under the legacy 4:3-locked frustum
+            // (MC2_CAMERA_ASPECT_NATIVE=0), which is when this correction is
+            // actually needed.
+            float vpAspect = u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0);
+            float _ac = vpAspect / max(u_waterProjAspect, 0.0001);
             PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0);
             PREC vec3  waveNormal = normalize(vec3(nzGrad * REFL_WAVE_SLOPE, 1.0));
             PREC vec3  vdir       = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up

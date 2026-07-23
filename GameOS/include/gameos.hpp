@@ -2413,6 +2413,17 @@ float mc2ShadowCsmSoftness();
 bool  mc2ShadowFullMapSeparate();  // MC2_SHADOW_FULLMAP_SEPARATE, default ON
 int   mc2ShadowFullMapSize();      // MC2_SHADOW_FULLMAP_SIZE, default 4096, clamp {2048,4096,8192}
 float mc2ShadowObjNormalBias();  // object shadow-receive normal-offset (texels); 0 disables
+float mc2ShadowDistFadeWu();     // SHADOW-DIST-FADE-1: dynamic-shadow dissolve distance (wu); 0 = off
+float mc2ShadowDistFadeMax();    // SHADOW-DONUT-FIX-1: max fade opacity [0,1], default 0.65 (1 = old full erase)
+bool  mc2ShadowFadeCont();       // SHADOW-FADE-CONTINUOUS-1: MC2_SHADOW_FADE_CONT, default ON; =0 restores 4-step ladder
+// STATIC-SHADOW-BANDING gates (single chokepoint, gameos_graphics.cpp). Both
+// DEFAULT ON since 2026-07-18 (field banding bug); "=0" kills (byte-identical
+// legacy). Every shader-prefix injection site MUST use these helpers -- do not
+// re-read the env vars locally (that is how the 2026-07-18 default-flip almost
+// missed the live chunk path).
+bool  mc2ShadowStaticBandFixEnabled();    // MC2_SHADOW_STATIC_BANDFIX (v1: PCF tap floor)
+bool  mc2ShadowStaticBandFixV2Enabled();  // MC2_SHADOW_STATIC_BANDFIX_V2 (v2: slope-normal bias + normal-offset receiver)
+int   mc2WaterBiasLegacy();               // MC2_WATER_BIAS_LEGACY (WATER-BIAS-LINEARIZE-1: 1 = legacy constant FAST water bias)
 // MC2_SHADER_PATH_TINT: debug-only. 1 = each candidate ground shader outputs a
 // unique solid color so the render path of a given surface can be identified
 // visually. Default 0 => byte-identical normal rendering. See gos_postprocess.cpp.
@@ -2464,6 +2475,12 @@ void __stdcall gos_DrawDecals();
 
 // Terrain splatting API (material textures, lighting)
 void gos_SetTerrainLightDir(float x, float y, float z);
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour (0..1), the legacy
+// per-vertex value burnInShadows bakes into the colormap; cement/overlay
+// shaders multiply it into their RAW (unburned) texels. Killswitch
+// MC2_CEMENT_MISSION_LIGHT=0 forces (1,1,1) inside the setter.
+void gos_SetTerrainMissionFlatLight(float r, float g, float b);
+void gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 void gos_SetTerrainDetailParams(float tiling, float strength);
 void gos_SetTerrainMaterialNormal(int index, unsigned int glTexId);
 void gos_SetTerrainWorldScale(float scale);

@@ -26,6 +26,11 @@
   "dirt_ao": 1.0,
   "concrete_ao": 1.0,
 
+  "rock_height": 1.0,
+  "grass_height": 1.0,
+  "dirt_height": 1.0,
+  "concrete_height": 1.0,
+
   "detail_tiling": 1.0,
   "detail_strength": 1.0,
 

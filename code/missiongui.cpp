@@ -4430,6 +4430,17 @@ int MissionInterfaceManager::zoomChoiceIn()
 int MissionInterfaceManager::rotateLeft()
 {
 	float frameFactor = frameLength / baseFrameLength;
+	// [CAMERA-SMOOTHING-1] Legacy held-rotate is QUANTIZED: the accumulator
+	// fires an instant 11.25-deg (RotationIncrement) snap every time it
+	// crosses the threshold (~every 2-3 frames at 60-80fps) — the visible
+	// rotation jerk. With smoothing on, feed the same average rate
+	// (degPerSecRot per baseFrameLength) continuously; Camera's exponential
+	// smoothing shapes onset/release. Knob=0 keeps the legacy snaps verbatim.
+	if (Camera::inputSmoothingEnabled())
+	{
+		eye->rotateLeft(degPerSecRot * frameFactor);
+		return 1;
+	}
 	realRotation += degPerSecRot * frameFactor;
 	if (realRotation >= rotationInc)
 	{
@@ -4442,6 +4453,12 @@ int MissionInterfaceManager::rotateLeft()
 int MissionInterfaceManager::rotateRight()
 {
 	float frameFactor = frameLength / baseFrameLength;
+	// [CAMERA-SMOOTHING-1] see rotateLeft.
+	if (Camera::inputSmoothingEnabled())
+	{
+		eye->rotateRight(degPerSecRot * frameFactor);
+		return 1;
+	}
 	realRotation -= degPerSecRot * frameFactor;
 	if (realRotation <= -rotationInc)
 	{

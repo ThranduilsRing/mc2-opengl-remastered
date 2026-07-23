@@ -1373,6 +1373,38 @@ def main():
                             # Shadow-lane gated features (smoke coverage for the
                             # dynamic sun-shadow caster path + static building map).
                             "MC2_SHADOW_ENABLE",
+                            # SHADOW-PROP-ALPHA-1 / SHADOW-PROP-ALPHA-ATLAS-1:
+                            # prop-shadow alpha-test gates (default ON). Must be
+                            # allowlisted or Popen drops them and a gate-OFF A/B
+                            # smoke silently runs gate-ON.
+                            "MC2_SHADOW_PROP_ALPHA",
+                            "MC2_SHADOW_PROP_ALPHA_ATLAS",
+                            # SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow
+                            # penumbra + fade dissolve distance (wu, default 80,
+                            # =0 killswitch). Must be allowlisted or a gate-OFF
+                            # A/B smoke silently runs the default.
+                            "MC2_SHADOW_DIST_FADE",
+                            # SHADOW-DONUT-FIX-1: fade opacity cap (default 0.65).
+                            "MC2_SHADOW_DIST_FADE_MAX",
+                            # SHADOW-FADE-CONTINUOUS-1: continuous occluder-distance
+                            # estimate (default ON; =0 restores 4-step ladder).
+                            "MC2_SHADOW_FADE_CONT",
+                            # LIGHT-CULL-RADIUS-1: light-volume frustum test +
+                            # owner-intent composition (default ON).
+                            "MC2_LIGHT_CULL_RADIUS",
+                            # MOVER-LIGHT-FORWARD-1: mover pool forward bias wu.
+                            "MC2_LIGHT_POOL_MOVER_FWD",
+                            # POOL-CONSUMERS-1: object-shader pool consumption.
+                            "MC2_LIGHT_POOL_OBJECTS",
+                            "MC2_LIGHT_POOL_OBJ_SCALE",
+                            # LIGHT-CONE-MODELS-1: authored-cone aim/spill +
+                            # additive cone glow (defaults ON) + knobs.
+                            "MC2_LIGHT_CONE_NODES",
+                            "MC2_LIGHT_CONE_GLOW",
+                            "MC2_LIGHT_CONE_GLOW_ALPHA",
+                            "MC2_LIGHT_CONE_SPILL",
+                            # WATER-SHORE-MASK-1: smoothed-contour water shore feather.
+                            "MC2_WATER_SHORE_MASK",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.
@@ -1438,6 +1470,19 @@ def main():
                             # does nothing.
                             "MC2_TERRAIN_SHORELINE",
                             "MC2_TERRAIN_SHORELINE_FILE",
+                            # NIGHT-LIGHT-POOLS-2/3/4 -- pool falloff/dim/compress
+                            # killswitches + mover radius/max-blend (defaults
+                            # ON/0.25/ON/0.6/ON).
+                            "MC2_LIGHT_POOL_SOFT",
+                            "MC2_LIGHT_POOL_MOVER_DIM",
+                            "MC2_LIGHT_POOL_COMPRESS",
+                            "MC2_LIGHT_POOL_MOVER_RADIUS",
+                            "MC2_LIGHT_POOL_MOVER_MAXBLEND",
+                            # MOVER-LIGHT-HALOGEN-1: mover light color RRGGBB hex.
+                            "MC2_LIGHT_POOL_MOVER_COLOR",
+                            # PAD-AREA-GLOW-1: night pad-area lift (strength + spill wu).
+                            "MC2_PAD_AREA_GLOW",
+                            "MC2_PAD_AREA_GLOW_SPILL",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs
@@ -1629,6 +1674,10 @@ def main():
                             # per-packet alpha-test re-resolve scan when no
                             # destruction/damage-alpha event occurred since last flush.
                             "MC2_SP_ALPHASCAN_GATE",
+                            # BUILDING-GLASS-1: dither-glass translucency killswitch.
+                            "MC2_SP_GLASS_DITHER",
+                            # LIGHTBAKE-REBAKE-ON-READY-1 killswitch.
+                            "MC2_LIGHTBAKE_REBAKE_ON_READY",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE",
                             "MC2_STATIC_PROP_COLORS_FILL",
@@ -1663,6 +1712,11 @@ def main():
                             "MC2_GPU_CULL",
                             "MC2_GPU_CULL_COMPUTE_TRACE",
                             "MC2_CAMERA_MOVE_DIAG",
+                            # CAMERA-SMOOTHING-1: gameplay camera smoothing knob
+                            # + evidence tooling (trace CSV, synthetic scroll driver)
+                            "MC2_CAMERA_SMOOTH",
+                            "MC2_CAMERA_SMOOTH_TRACE",
+                            "MC2_CAM_SMOOTH_TEST",
                             "MC2_STATIC_FORCE_ADMIT",
                             "MC2_WATER_GATE_DIAG",
                             "MC2_MISSION_INTRO_LEGACY_RENDER",

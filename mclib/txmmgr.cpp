@@ -19,6 +19,7 @@
 #include "render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include"tex_resolve_table.h"
 #include "diagnostic_trace.h"
+#include "cone_glow.h"   // LIGHT-CONE-MODELS-1: FlushFrame at renderLists top
 
 #ifndef TGAINFO_H
 #include"tgainfo.h"
@@ -1756,6 +1757,17 @@ void mc2EraseBakedStaticLight(int32_t recipeIndex)
     s_bakedStaticLight.erase(recipeIndex);
 }
 
+// LIGHTBAKE-REBAKE-ON-READY-1: SOFT invalidation -- drop only the cache map so
+// every recipe lazily re-gathers with the now-final mission lighting. The
+// permanent slot indices (s_staticLightHighWater) are preserved: re-bakes write
+// the SAME recipeIndex slots via mc2WriteStaticLightSlot, so staticReg
+// lightDataIndex values held by instances stay valid throughout.
+void mc2InvalidateBakedStaticLightCache()
+{
+    s_bakedStaticLight.clear();
+    mc2MarkStaticLightPrefixDirty();   // re-upload prefix once re-bakes land
+}
+
 // Mission unload: recipeIndex restarts per mission -> a stale entry
 // would alias a different actor. Drop the whole mission-scoped map.
 void mc2ClearAllBakedStaticLight()
@@ -2495,6 +2507,12 @@ void MC_TextureManager::renderLists (void)
 	// (accumulate + 60-frame emit) runs after every phase span has closed.
 	rlcost::TotalSpan _rlTotal(nextAvailableVertexNode,
 	                           static_cast<long>(nextAvailableHardwareVertexNode));
+
+	// LIGHT-CONE-MODELS-1 (B): fill the deferred cone-glow vertices into the
+	// MC2_ISSPOTLGT batch. Must run before the ISSPOTLGT consumer loop below
+	// and AFTER every legacy addVertices for the frame (all of which happen in
+	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
+	mc2_cone_glow::FlushFrame();
 	static bool bSkip = true; // used across preamble and Render.3DObjects
 	{
 	ZoneScopedN("RenderLists.Preamble");
@@ -3204,36 +3222,67 @@ void MC_TextureManager::renderLists (void)
 
 		// MC2_LOAD_RACE_TRACE: terrain GPU-residency probe. The degraded
 		// mission-load state renders terrain flat/untextured; this latches the
-		// first frame on which EVERY terrain-solid node's texture is resident
-		// (non-mutating isTextureNodeResident, so it never forces an upload).
+		// first frame on which terrain is fully GPU-resident. Two independent
+		// readiness sources, selected by which renderer is actually active
+		// (mc2TerrainLodChunkEnabled(), cached static bool -- cheap read, no walk):
+		//   - Default chunk/GPU-indirect path: masterVertexNodes[] is NEVER
+		//     populated with terrain nodes here (the legacy per-quad walk below
+		//     is suppressed on this path), so the old terrTotal>0 walk always
+		//     false-negatived (terrain_resident=N on every run, even healthy
+		//     ones). Reuse the SAME cached latches gos_terrain_indirect.cpp
+		//     already sets for its own "[LOADRACE] atlas first-resident" /
+		//     "[LOADRACE] gpu terrain first-arm" one-shot lines -- two long
+		//     compares, no new walk.
+		//   - Legacy per-quad path (MC2_TERRAIN_LOD_CHUNK=0): unchanged
+		//     masterVertexNodes walk (non-mutating isTextureNodeResident, so it
+		//     never forces an upload).
 		// Also refreshes g_loadRaceTerrainResidentNow each frame for the verdict.
 		{
 			extern bool     g_loadRaceTrace;
 			extern long     g_loadRaceTerrainFirstResidentFrame;
 			extern bool     g_loadRaceTerrainResidentNow;
 			extern uint32_t g_mc2FrameCounter;
+			extern long     g_loadRaceAtlasFirstFrame;   // gos_terrain_indirect.cpp latch
+			extern long     g_loadRaceArmFirstFrame;     // gos_terrain_indirect.cpp latch
 			if (g_loadRaceTrace)
 			{
-				long terrTotal = 0, terrResident = 0;
-				for (long ti = 0; ti < nextAvailableVertexNode; ++ti)
+				bool fully;
+				long terrTotal = 0;
+				const bool chunkPath = mc2TerrainLodChunkEnabled();
+				if (chunkPath)
 				{
-					const DWORD tf = masterVertexNodes[ti].flags;
-					if ((tf & MC2_DRAWSOLID) && (tf & MC2_ISTERRAIN) &&
-						masterVertexNodes[ti].vertices)
-					{
-						++terrTotal;
-						if (isTextureNodeResident(masterVertexNodes[ti].textureIndex))
-							++terrResident;
-					}
+					fully = (g_loadRaceAtlasFirstFrame >= 0) &&
+						(g_loadRaceArmFirstFrame >= 0);
 				}
-				const bool fully = (terrTotal > 0) && (terrResident == terrTotal);
+				else
+				{
+					long terrResident = 0;
+					for (long ti = 0; ti < nextAvailableVertexNode; ++ti)
+					{
+						const DWORD tf = masterVertexNodes[ti].flags;
+						if ((tf & MC2_DRAWSOLID) && (tf & MC2_ISTERRAIN) &&
+							masterVertexNodes[ti].vertices)
+						{
+							++terrTotal;
+							if (isTextureNodeResident(masterVertexNodes[ti].textureIndex))
+								++terrResident;
+						}
+					}
+					fully = (terrTotal > 0) && (terrResident == terrTotal);
+				}
 				g_loadRaceTerrainResidentNow = fully;
 				if (fully && g_loadRaceTerrainFirstResidentFrame < 0)
 				{
 					g_loadRaceTerrainFirstResidentFrame = (long)g_mc2FrameCounter;
-					std::printf("[LOADRACE] terrain first fully-resident frame=%ld "
-						"(terrainNodes=%ld)\n",
-						g_loadRaceTerrainFirstResidentFrame, terrTotal);
+					if (chunkPath)
+						std::printf("[LOADRACE] terrain first fully-resident frame=%ld "
+							"(chunk path: atlas_frame=%ld arm_frame=%ld)\n",
+							g_loadRaceTerrainFirstResidentFrame,
+							g_loadRaceAtlasFirstFrame, g_loadRaceArmFirstFrame);
+					else
+						std::printf("[LOADRACE] terrain first fully-resident frame=%ld "
+							"(terrainNodes=%ld)\n",
+							g_loadRaceTerrainFirstResidentFrame, terrTotal);
 					std::fflush(stdout);
 				}
 			}
