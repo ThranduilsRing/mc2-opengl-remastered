@@ -6488,12 +6488,28 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	//Aimed shots go here.
 	// Aimed or called shots are percentage of the actual attack chance
 	// Therefore, must go here after all modifiers...
-	if ((aimLocation > -1) && (mech)) 
+	if ((aimLocation > -1) && (mech))
 	{
-		switch (aimLocation) 
+		// ISSUE-9 S1 (MC2_CALLED_SHOT_FIX, default OFF = stock): the stock
+		// gamesys.fit modifiers (Head=0.08/Arm=0.15/Leg=0.20) put an aimed head
+		// shot at the 5% clamp floor for most engagements, so per-shot the
+		// called shot is statistically invisible (issue #9). Under the gate the
+		// aimed modifiers are FLOORED at 0.30/0.45/0.50 (data value wins if a
+		// mod raised it higher); Sharpshooter +20 and the 5-95 clamp unchanged.
+		static const bool s_calledShotFix =
+			(std::getenv("MC2_CALLED_SHOT_FIX") != nullptr && std::getenv("MC2_CALLED_SHOT_FIX")[0] != '0');
+		float headMod = HeadShotModifier;
+		float armMod  = ArmShotModifier;
+		float legMod  = LegShotModifier;
+		if (s_calledShotFix) {
+			if (headMod < 0.30f) headMod = 0.30f;
+			if (armMod  < 0.45f) armMod  = 0.45f;
+			if (legMod  < 0.50f) legMod  = 0.50f;
+		}
+		switch (aimLocation)
 		{
 			case MECH_BODY_LOCATION_HEAD:
-				attackChance *= HeadShotModifier;
+				attackChance *= headMod;
 				break;
 			case MECH_BODY_LOCATION_CTORSO:
 			case MECH_BODY_LOCATION_LTORSO:
@@ -6501,15 +6517,15 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 				break;
 			case MECH_BODY_LOCATION_LARM:
 			case MECH_BODY_LOCATION_RARM:
-				attackChance *= ArmShotModifier;
+				attackChance *= armMod;
 				break;
-			
+
 			case MECH_BODY_LOCATION_LLEG:
 			case MECH_BODY_LOCATION_RLEG:
-				attackChance *= LegShotModifier;
+				attackChance *= legMod;
 				break;
 		}
-		
+
 		if (pilot && pilot->isSharpShooter())
 			attackChance += 20.0f;
 	}

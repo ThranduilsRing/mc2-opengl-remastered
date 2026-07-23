@@ -139,6 +139,48 @@ run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-conte
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
 run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
+# META-FIX-BATCH-1 (design C): split rendering-path contracts — color
+# convention table (#24 class), depth-fudge single-source/form, tess predicate
+# chokepoint (#34 class), GL/VK pair stamps. Self-test proves each rule still
+# fails on a synthetic violation (vulkan_bindings_selftest precedent).
+run_check "split_path_contracts"   "py -3 scripts/check-split-path-contracts.py --quiet"
+run_check "split_path_selftest"    "py -3 scripts/check-split-path-contracts.py --self-test 2>/dev/null"
+# META-FIX-BATCH-1 (design E): canonical-key chokepoint confinement
+# (FastFileFind/elfHash callers) + raw read-open count ratchet.
+run_check "path_normalization"     "sh scripts/check-path-normalization.sh"
+run_check "path_norm_selftest"     "sh scripts/check-path-normalization.sh --self-test"
+# META-FIX-BATCH-2 (design D): resolution/aspect two-space contract — modern
+# dirs never read Environment.screenWidth/Height (RULE A), legacy-layer reads
+# only shrink (RULE B generated ratchet), and the four #45/#49/HUD-RES-CLAMP
+# fix sites survive (RULE C anchors). Runtime sibling: MC2_RES_ASSERT.
+run_check "res_aspect_contract"    "py -3 scripts/check-res-aspect-contract.py --quiet"
+run_check "res_aspect_selftest"    "py -3 scripts/check-res-aspect-contract.py --self-test 2>/dev/null"
+# LAUNCHER-ENCODING-1: launcher-facing manifest strings (mods/ + examples/mods/
+# mod.json) are ASCII-only — the launcher UI is Win32 ANSI, so UTF-8 typography
+# (em-dash, curly quotes) renders as mojibake. Self-test proves a synthetic
+# em-dash manifest still fails.
+run_check "launcher_ascii"         "py -3 scripts/check-launcher-ascii.py --quiet"
+run_check "launcher_ascii_selftest" "py -3 scripts/check-launcher-ascii.py --self-test"
+# META-FIX-BATCH-2 (design F): silent-order chokepoint — every fireWeapon
+# pre-delivery early-return is traced (fireGateTrace) or declared
+# (KNOWN_UNCOVERED); comment-stripped scan (four commented return(4)s in
+# mech.cpp are the trap); nofire emitter presence; both-ways-live ledger.
+run_check "order_gate_coverage"    "py -3 scripts/check-order-gate-coverage.py --quiet"
+run_check "order_gate_selftest"    "py -3 scripts/check-order-gate-coverage.py --self-test 2>/dev/null"
+# META-FIX-BATCH-3 (design A): mover-registry coherence — setOnGUI/isOnGui
+# write allowlists (S1), write-pairing windows (S2), trimmed read-gate pins
+# (S3, hard=3), #42b hover-guard shape (S4 — SOLE defense, never demote),
+# link-up gate shape (S5), off-map-staging carve-out: runtime audit region
+# stays position-free (S6, INVIS-VEHICLES-FIX-1). Runtime sibling:
+# MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
+run_check "mover_registry_coherence" "sh scripts/check-mover-registry-coherence.sh"
+run_check "mover_registry_selftest"  "sh scripts/check-mover-registry-coherence.sh --self-test"
+# META-FIX-BATCH-3 (design B): fail-loud asset-load policy — raw loader-call
+# confinement (P1, TGL-LOAD-EXEMPT/VERIFIED tags), PART 0-4 presence pins
+# (P2), and the APPEAR-AUDIT off-map-staging carve-out (P3: scan region
+# stays position/visibility-free — INVIS-VEHICLES-FIX-1).
+run_check "tgl_load_callers"   "sh scripts/check-tgl-load-callers.sh"
+run_check "tgl_load_selftest"  "sh scripts/check-tgl-load-callers.sh --self-test"
 
 # ---------------------------------------------------------------------------
 # Summary table

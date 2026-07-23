@@ -32,8 +32,16 @@ unsigned long elfHash(const char* name);
 
 // Write a slash-normalized copy of src into dst (null-terminated).
 // Every '\\' byte becomes '/'; all other bytes pass through.
-// dst must have room for strlen(src)+1 bytes.
+// dst must have room for strlen(src)+1 bytes. dst == src is allowed
+// (strict forward byte-by-byte pass — in-place use is safe).
 void fst_normalize_key(char* dst, const char* src);
+
+// META-FIX design E: in-place CASE+SLASH canonical-key fold — the char*
+// sibling of fst_normalize_loose_key() below (lowercase + '\\'->'/', one
+// pass). This is THE chokepoint the ladder callers funnel through
+// (File::open, fileExists, FastFileFind) so every spelling of a logical
+// path hashes/compares as one canonical key (issue #8 family).
+void fst_normalize_loose_key_inplace(char* s);
 
 #ifdef __cplusplus
 }

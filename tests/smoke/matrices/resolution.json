@@ -1,0 +1,75 @@
+{
+  "matrix_id": "resolution",
+  "description": "META-FIX design D resolution/aspect matrix (issues #45/#49/HUD-RES-CLAMP class). Every entry runs with MC2_RES_ASSERT=fatal so any projection-aspect, HUD-clamp, drawable-staleness, canvas-roundtrip, or #49 windowed-size violation aborts the exe (nonzero exit = red entry) — the machine oracle is the fatal assert; MC2_SCREENSHOT_AT_FRAME shots are human evidence only. Aspect entries boot windowed (MC2_WINDOWED=1) so the drawable genuinely takes the requested shape (fullscreen-desktop would pin it to the desktop resolution); on desktops smaller than a request SDL clamps and the #49 oracle self-downgrades to a [RES_ASSERT v1] event=note line (documented residual: such entries stop exercising that aspect). res_force43 pairs MC2_FORCE_43 with MC2_CAMERA_ASPECT_NATIVE=0 — the historically-correct pairing; FORCE_43 with native aspect is a known-open separate defect (composite squeezes a drawable-aspect scene into the 4:3 box) and MUST NOT ship as a red-by-design entry. Nightly-only: not part of tier1.",
+  "default_missions": ["mc2_01", "mc2_24"],
+  "default_duration": 30,
+  "entries": [
+    {
+      "id": "res_4x3",
+      "description": "4:3 windowed 1024x768. Legacy-shaped drawable; camera_aspect + hud_clamp + canvas roundtrip chokepoints all armed fatal.",
+      "env": {
+        "MC2_RES_ASSERT": "fatal",
+        "MC2_RES_DIAG": "1",
+        "MC2_WINDOWED": "1",
+        "MC2_WIDTH": "1024",
+        "MC2_HEIGHT": "768",
+        "MC2_SCREENSHOT_AT_FRAME": "300",
+        "MC2_SCREENSHOT_PATH": "debug_state/res_4x3.png"
+      }
+    },
+    {
+      "id": "res_16x9",
+      "description": "16:9 windowed 1920x1080. The #45 replay aspect: pre-fix (clamped 4:3 frustum stretched to 16:9) trips camera_aspect fatally here.",
+      "env": {
+        "MC2_RES_ASSERT": "fatal",
+        "MC2_RES_DIAG": "1",
+        "MC2_WINDOWED": "1",
+        "MC2_WIDTH": "1920",
+        "MC2_HEIGHT": "1080",
+        "MC2_SCREENSHOT_AT_FRAME": "300",
+        "MC2_SCREENSHOT_PATH": "debug_state/res_16x9.png"
+      }
+    },
+    {
+      "id": "res_21x9",
+      "description": "21:9 windowed 2560x1080 (ultrawide). On a narrower desktop SDL clamps; the audit compares against the ACTUAL drawable so the entry stays green but stops exercising true 21:9 (event=note documents it).",
+      "env": {
+        "MC2_RES_ASSERT": "fatal",
+        "MC2_RES_DIAG": "1",
+        "MC2_WINDOWED": "1",
+        "MC2_WIDTH": "2560",
+        "MC2_HEIGHT": "1080",
+        "MC2_SCREENSHOT_AT_FRAME": "300",
+        "MC2_SCREENSHOT_PATH": "debug_state/res_21x9.png"
+      }
+    },
+    {
+      "id": "res_windowed",
+      "description": "Dedicated #49 machine oracle: MC2_WINDOWED=1 at 1600x900. A regressed #49 trap (window forced back to 800x600) is self-consistent on every other check — the windowed_size chokepoint compares the drawable against the REQUESTED size and aborts.",
+      "env": {
+        "MC2_RES_ASSERT": "fatal",
+        "MC2_RES_DIAG": "1",
+        "MC2_WINDOWED": "1",
+        "MC2_WIDTH": "1600",
+        "MC2_HEIGHT": "900",
+        "MC2_SCREENSHOT_AT_FRAME": "300",
+        "MC2_SCREENSHOT_PATH": "debug_state/res_windowed.png"
+      }
+    },
+    {
+      "id": "res_force43",
+      "description": "Forced 4:3 pillarbox composite with the legacy-stretch camera (MC2_FORCE_43=1 + MC2_CAMERA_ASPECT_NATIVE=0 — the historically-correct pairing). With native aspect the composite distorts (separate filed defect); never ship that pairing red-by-design. camera_aspect chokepoint self-disarms under NATIVE=0 by contract.",
+      "env": {
+        "MC2_RES_ASSERT": "fatal",
+        "MC2_RES_DIAG": "1",
+        "MC2_WINDOWED": "1",
+        "MC2_WIDTH": "1920",
+        "MC2_HEIGHT": "1080",
+        "MC2_FORCE_43": "1",
+        "MC2_CAMERA_ASPECT_NATIVE": "0",
+        "MC2_SCREENSHOT_AT_FRAME": "300",
+        "MC2_SCREENSHOT_PATH": "debug_state/res_force43.png"
+      }
+    }
+  ]
+}

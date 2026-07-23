@@ -50,8 +50,10 @@
 #include "../../mclib/cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline
 #include "../../mclib/camera_frustum_math.h"  // CAMERA-FRUSTUM-HARNESS-1 pure rect/frustum math
 #include "../../mclib/render_contract.h"      // [RENDER_PASS v1] noteRenderPass
+#include "../../mclib/mc2_audit.h"            // META-FIX INFRA-1 gated audit emitter
 #include "RenderCore/top_level_pass_executor.h" // APPLY-STATE-TERRAINDECAL-1: findTopLevelStateDesc
 #include "RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
+#include "RenderCore/ResolutionContract.h"     // META-FIX design D: MC2_RES_ASSERT audit
 #include "../../RenderCore/frame_executor.h"     // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "Stuff/Stuff.hpp"                     // Stuff::Matrix4D for gos_SetWorldToClipGL (full chain required; matrix.hpp alone creates circular include ordering)
 
@@ -1889,6 +1891,17 @@ class gosRenderer {
         bool drawDecalStaticBatch(unsigned int vboGL,
                                   const struct GosDecalStaticDraw* draws,
                                   int drawCount);
+
+        // META-FIX design D (MC2_RES_ASSERT): fresh SDL drawable probe for the
+        // per-frame audit (gameosmain.cpp mc2resFrameAudit) — the cached
+        // Environment.drawableWidth/Height only refreshes in handleEvents.
+        // Read-only; false when the window does not exist yet.
+        bool probeDrawableSize(int* w, int* h) {
+            if (!win_h_)
+                return false;
+            graphics::get_drawable_size(win_h_, w, h);
+            return true;
+        }
 
         // RENDER_STATES v1: external invalidation hook (public).
         //
@@ -4782,18 +4795,28 @@ void gosRenderer::init() {
     printf("[TESS] Extra VBO created: capacity=%d vb=%u\n", terrain_extra_capacity_, terrain_extra_vb_);
 
     // Load terrain tessellation material (TCS/TES shaders)
+    // ISSUE-34: MC2_TERRAIN_TESS=0 (default ON) skips the load — same engine
+    // state as a TCS/TES compile failure — so the no-tess config is testable
+    // headlessly. Shadow/GPU-transform behavior is keyed on
+    // gos_IsModernShadowPathActive(), not on this material.
     {
         ZoneScopedN("gosRenderer::init terrainMaterial");
-        printf("[TESS] About to load terrain shader...\n"); fflush(stdout);
-        gosMaterialVariationHelper terrainHelper;
-        gosMaterialVariation mvar;
-        terrainHelper.getMaterialVariation(mvar);
-        terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
-        if (terrain_material_) {
-            materialList_.push_back(terrain_material_);
-            printf("[TESS] Terrain material loaded successfully\n");
+        const char* tessEnv = getenv("MC2_TERRAIN_TESS");
+        if (tessEnv && tessEnv[0] == '0') {
+            terrain_material_ = nullptr;
+            printf("[TESS] MC2_TERRAIN_TESS=0 — terrain tessellation material load skipped (kill-switch)\n");
         } else {
-            printf("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
+            printf("[TESS] About to load terrain shader...\n"); fflush(stdout);
+            gosMaterialVariationHelper terrainHelper;
+            gosMaterialVariation mvar;
+            terrainHelper.getMaterialVariation(mvar);
+            terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
+            if (terrain_material_) {
+                materialList_.push_back(terrain_material_);
+                printf("[TESS] Terrain material loaded successfully\n");
+            } else {
+                printf("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
+            }
         }
         fflush(stdout);
     }
@@ -4807,6 +4830,27 @@ void gosRenderer::init() {
         shadow_terrain_material_ = gosRenderMaterial::load("shadow_terrain", mvar);
         if (shadow_terrain_material_) {
             materialList_.push_back(shadow_terrain_material_);
+        }
+    }
+
+    // META-FIX design C runtime tier: MC2_SPLIT_PATH_PARITY_TRACE=1 emits one
+    // machine-parseable [SPLIT_PATH_PARITY] event at material-load time. The
+    // #34 decouple invariant is that the modern shadow path stays ACTIVE
+    // regardless of the tess material (kill-switch OR TCS/TES compile
+    // failure) — match=0 here means the paths re-coupled/diverged, and the
+    // smoke marker-bucket row `split_path_parity` turns it into a red run
+    // (scripts/smoke_lib/logparse.py MARKER_BUCKETS). Default OFF, static
+    // getenv latch — gate-off is one bool test, byte-identical unset.
+    {
+        static bool splitPathParityTrace =
+            mc2AuditLatch("MC2_SPLIT_PATH_PARITY_TRACE");
+        if (splitPathParityTrace) {
+            const int tessOn   = (terrain_material_ != nullptr) ? 1 : 0;
+            const int shadowOn = (shadow_terrain_material_ != nullptr) ? 1 : 0;
+            mc2AuditLinef(
+                "[SPLIT_PATH_PARITY] site=terrain_material_load pair=tess_vs_modern_shadow "
+                "tess=%d shadow=%d match=%d",
+                tessOn, shadowOn, shadowOn /* invariant: shadow path always on */);
         }
     }
 
@@ -7574,6 +7618,76 @@ void gosRenderer::flushHUDBatch()
         }
     }
 
+    // META-FIX design D (MC2_RES_ASSERT) chokepoint (iii): HUD canvas
+    // consistency. (a) the canvas box lies inside the drawable; (b) the
+    // forward HUD remap — hud-scale bottom-band shrink THEN canvas, composed
+    // exactly as the two vertex blocks above apply it — followed by
+    // gos_HudInverseMousePoint is the identity within 0.5 px. Catches the
+    // two-file comment-synced drift class between this function and
+    // gos_HudInverseMousePoint (gameos_graphics_params.cpp). hudCanvas mode
+    // only: the menu canvas path uses the canvas-relative mouse normalize,
+    // not gos_HudInverseMousePoint. Default OFF = one static bool test.
+    if (mc2res::armed()) {
+        int rbx = 0, rby = 0, rbw = 0, rbh = 0;
+        const bool resHudCanvas = gos_ComputeHudCanvasBox(
+            Environment.drawableWidth, Environment.drawableHeight,
+            &rbx, &rby, &rbw, &rbh);
+        if (resHudCanvas) {
+            char resDetail[192];
+            if (rbw <= 0 || rbh <= 0 || rbx < 0 || rby < 0 ||
+                rbx + rbw > Environment.drawableWidth ||
+                rby + rbh > Environment.drawableHeight) {
+                snprintf(resDetail, sizeof(resDetail),
+                         "box=%d,%d %dx%d drawable=%dx%d",
+                         rbx, rby, rbw, rbh,
+                         Environment.drawableWidth, Environment.drawableHeight);
+                mc2res::violation("hud_canvas_bounds", resDetail);
+            } else {
+                const float rdw = (float)Environment.drawableWidth;
+                const float rdh = (float)Environment.drawableHeight;
+                const float rfx = (float)rbw / rdw;
+                const float rfy = (float)rbh / rdh;
+                const float rlx = (float)width_  * ((float)rbx / rdw);
+                const float rly = (float)height_ * ((float)rby / rdh);
+                // Probe pair: one above the hud-scale bottom band, one inside
+                // it (exercises the shrink∘canvas composition when the HUD
+                // shrink is active — a canvas-only probe false-passes there).
+                const float probePts[2][2] = {
+                    { (float)width_ * 0.5f, (float)height_ * 0.25f },
+                    { (float)width_ * 0.5f, (float)height_ * 0.95f },
+                };
+                for (int rp = 0; rp < 2; ++rp) {
+                    float px = probePts[rp][0];
+                    float py = probePts[rp][1];
+                    const float hudScale = gos_GetHudScale();
+                    if (gos_GetHudScaleActive() && hudScale <= 0.999f) {
+                        const float sw = (float)width_;
+                        const float sh = (float)height_;
+                        if (py >= sh * 0.60f) {   // bottom band, as above
+                            const float ax = sw * 0.5f;
+                            const float ay = sh;
+                            px = ax + (px - ax) * hudScale;
+                            py = ay + (py - ay) * hudScale;
+                        }
+                    }
+                    px = px * rfx + rlx;
+                    py = py * rfy + rly;
+                    gos_HudInverseMousePoint(px, py);
+                    if (fabsf(px - probePts[rp][0]) > 0.5f ||
+                        fabsf(py - probePts[rp][1]) > 0.5f) {
+                        snprintf(resDetail, sizeof(resDetail),
+                                 "probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) "
+                                 "box=%d,%d %dx%d scale=%.3f",
+                                 (double)probePts[rp][0], (double)probePts[rp][1],
+                                 (double)px, (double)py,
+                                 rbx, rby, rbw, rbh, (double)gos_GetHudScale());
+                        mc2res::violation("hud_roundtrip", resDetail);
+                    }
+                }
+            }
+        }
+    }
+
     // pp->endScene() binds FB 0 and sets the full-screen viewport for us,
     // but leaves VAO 0 bound — rebind our VAO so glVertexAttribPointer works.
     glBindVertexArray(gVAO);
@@ -7653,6 +7767,30 @@ void gosRenderer::flush()
 {
 }
 
+// META-FIX INFRA-1: diagnostic mirror sink for mc2AuditLine. mclib's audit
+// emitter must not link mc2_diag directly (tools that skip
+// diagnostic_trace.cpp still link mclib), so GameOS registers this sink once
+// the JSONL trace is up. Mirrored events land under tag "AUDIT" (add AUDIT to
+// MC2_DIAG_TAGS to capture them).
+static void mc2AuditDiagSink(const char* line) {
+    if (!mc2_diag::enabled()) return;
+    char esc[1024];
+    size_t o = 0;
+    for (const char* p = line; *p && o + 8 < sizeof(esc); ++p) {
+        unsigned char c = (unsigned char)*p;
+        if (c == '"' || c == '\\') { esc[o++] = '\\'; esc[o++] = (char)c; }
+        else if (c < 0x20) {
+            o += (size_t)snprintf(esc + o, sizeof(esc) - o, "\\u%04x", (unsigned)c);
+        } else {
+            esc[o++] = (char)c;
+        }
+    }
+    esc[o] = '\0';
+    char buf[1200];
+    snprintf(buf, sizeof(buf), "{\"line\":\"%s\"}", esc);
+    mc2_diag::writeEvent("AUDIT", 1, 0, buf);
+}
+
 void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h) {
     ZoneScopedN("gos_CreateRenderer");
 
@@ -7665,6 +7803,9 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
     // Initialize diagnostic JSONL trace. Session id shared with debug_state_dump
     // so MCP can correlate JSONL events with render-state snapshots by session_id.
     mc2_diag::init(mc2_debug_state::getSessionId(), _getpid());
+
+    // META-FIX INFRA-1: route gated audit marker lines into the JSONL trace.
+    mc2AuditSetSink(&mc2AuditDiagSink);
 
     // BUILD — one-shot build metadata; fires immediately after init().
     {
@@ -8063,6 +8204,22 @@ static bool g_hudResClampEnabled = true;
 void __stdcall gos_SetHudResClampEnabled( bool enabled )
 {
     g_hudResClampEnabled = enabled;
+}
+
+// META-FIX design D (MC2_RES_ASSERT): read side of the clamp gate — the
+// per-frame audit asserts "clamp enabled => Environment.screenWidth/Height
+// == 800x600" (the HUD-RES-CLAMP merge-drop class).
+bool __stdcall gos_GetHudResClampEnabled()
+{
+    return g_hudResClampEnabled;
+}
+
+// META-FIX design D: fresh drawable probe for the audit's staleness check.
+bool __stdcall gos_ProbeDrawableSize( int* w, int* h )
+{
+    if (!g_gos_renderer)
+        return false;
+    return g_gos_renderer->probeDrawableSize(w, h);
 }
 
 void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth/*=16*/, DWORD Device/*=0*/, bool disableZBuffer/*=0*/, bool AntiAlias/*=0*/, bool RenderToVram/*=0*/, bool GotoFullScreen/*=0*/, int DirtyRectangle/*=0*/, bool GotoWindowMode/*=0*/, bool EnableStencil/*=0*/, DWORD Renderer/*=0*/)
@@ -9049,6 +9206,15 @@ void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int co
 }
 bool __stdcall gos_IsTerrainTessellationActive() {
     return g_gos_renderer && g_gos_renderer->getTerrainMaterial() != nullptr;
+}
+// ISSUE-34: "modern shadow/render path active" — true when the shadow_terrain
+// material loaded. Shadow-pass builds (txmmgr.cpp) and the blob-shadow
+// suppression / GPU transform skips (mech3d.cpp, gvactor.cpp) key on THIS,
+// not on the tessellation material: when tess is off (TCS/TES compile failure
+// or MC2_TERRAIN_TESS=0) CSM/static shadows stay on and the legacy pz-gated
+// CPU blob shadows stay off, keeping near-plane clipping behavior uniform.
+bool __stdcall gos_IsModernShadowPathActive() {
+    return g_gos_renderer && g_gos_renderer->getShadowTerrainMaterial() != nullptr;
 }
 
 void gos_SetShadowMode(bool enable) {

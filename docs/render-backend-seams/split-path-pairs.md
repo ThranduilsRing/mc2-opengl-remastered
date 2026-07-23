@@ -1,0 +1,81 @@
+# Split-path pair ledger (META-FIX design C)
+
+Machine-checked by `scripts/check-split-path-contracts.py` (wired into
+`scripts/check-contracts.sh` as `split_path_contracts` + `split_path_selftest`).
+This ledger is the HUMAN side: what each pair is, why islands are islands, and
+where the parity evidence lives. The checker's in-file tables
+(`FS_CONVENTIONS`, `KNOWN_VS_WRITES`, `PAIRS`, `ISLANDS`,
+`scripts/split-path-stamps.json`) are the enforcement ground truth — edit them
+together with this file.
+
+Protected failure classes: issue **#24** (untextured gos quad FS lost its
+`.bgra` while the textured sibling kept it — R/B swap on one path only) and
+issue **#34** (tess and non-tess terrain configs silently diverging on
+shadow/near-plane behavior). Mirrors the static-prop family-ledger precedent.
+
+## Re-stamp protocol (RULE 4)
+
+A pair stamp records the sha1 of BOTH sides at last verified parity. Editing
+either side turns `check-contracts.sh` red until you:
+
+1. re-run the pair's parity evidence (below), and
+2. `py -3 scripts/check-split-path-contracts.py --stamp <pair>`.
+
+**Stamp fatigue warning (design residual risk):** running `--stamp`
+mechanically without re-running the evidence degrades RULE 4 to a speed bump.
+The stamp is a claim that parity was RE-VERIFIED.
+
+## Pairs
+
+| Pair | Members | Contract | Parity evidence |
+|---|---|---|---|
+| `edge_fog_frag` | `shaders/edge_fog.frag` ↔ `shaders/vulkan/edge_fog.frag` | same fog math on GL and VK paths | VK pixel-parity convention (RendererFeatureRegistry.h "pixel-parity-proven vs the GL path"); capture-baseline compare |
+| `fog_oob_frag` | `shaders/fog_oob.frag` ↔ `shaders/vulkan/fog_oob.frag` | same out-of-bounds fog on GL and VK paths | same as above |
+| `water_fast_vs` | `gos_terrain_water_fast.vert` ↔ `gos_terrain_water_fast_mdi.vert` | identical water surface math, MDI vs non-MDI submission | water A/B smoke + visual capture (INDEX-TERRAIN water-v2 slices) |
+| `shadow_terrain_paths` | `shadow_terrain.tesc` + `shadow_terrain.tese` ↔ `shadow_terrain.vert` | tess and non-tess shadow-terrain emit the same depth | nightly `MC2_TERRAIN_TESS=0/1` A/B leg (Probe-B recipe, ISSUE-FIXES-STATUS.md) with `MC2_SPLIT_PATH_PARITY_TRACE=1` |
+
+## Island-only entries (stated reasons)
+
+| File | Reason |
+|---|---|
+| `shaders/vulkan/fullscreen.vert` | VK swapchain fullscreen triangle; GL uses its own fullscreen path — no GL sibling |
+| `shaders/vulkan/fullscreen.frag` | VK swapchain blit FS — no GL sibling |
+| `shaders/vulkan/edge_fog.vert` | VK fullscreen-triangle VS; the GL edge_fog pass has no dedicated `.vert` |
+| `shaders/vulkan/fog_oob.vert` | VK fullscreen-triangle VS; the GL fog_oob pass has no dedicated `.vert` |
+
+Every NEW file under `shaders/vulkan/` must be added to one of the two tables
+or the checker fails (self-registration forcing function).
+
+## Color-convention table notes (RULE 1)
+
+Three legitimate conventions coexist (per-PROGRAM invariant: the packed-BGRA →
+FragColor chain nets exactly one `.bgra`):
+
+- **FS-swizzle** — FS reads `Color.bgra`; VS passes the packed attribute raw
+  (`gos_vertex/gos_tex_vertex/gos_vertex_lighted/gos_terrain/water_mdi` frags).
+- **VS-swizzle** — VS pre-swizzles (`terrain_overlay.vert: Color=colorIn.bgra`);
+  the paired FS reads raw (`decal.frag`, program pairing at
+  `gameos_graphics.cpp` `terrain_overlay.vert + decal.frag`).
+- **Double-swizzle** — VS decodes SSBO data to logical RGBA then pre-swizzles
+  `.bgra` so the shared FS-swizzle frag restores it (`gos_terrain_mask_water`,
+  `gos_terrain_water_fast`, `gos_terrain_water_fast_mdi` verts).
+
+**FROZEN-suspect entry (follow-up candidate, NOT certified for new code):**
+`gos_terrain_thin.vert` writes `Color = unpackARGB(lrgb)` (logical RGBA, no
+pre-swizzle) into `gos_terrain.frag`'s `.bgra` read — a latent net R/B swap on
+the indirect-terrain vertex-light path. Invisible today because terrain vertex
+light is near-greyscale and `terrainTextures2` forces `alphaOverride =
+0xffffffff` on the modern path. Recorded in the checker's `KNOWN_VS_WRITES`
+with a do-not-copy note; fixing it (pre-swizzle in the thin VS) would be a
+visible-risk shader change and is deliberately NOT part of the freeze slice.
+
+## Runtime tier
+
+`MC2_SPLIT_PATH_PARITY_TRACE=1` (kAuxEnvVars, default OFF) emits
+`[SPLIT_PATH_PARITY] site=... tess=<0|1> shadow=<0|1> match=<0|1>` at terrain
+material load. `match=0` = the #34 decouple invariant broke (modern shadow
+path inactive). The smoke marker-bucket row `split_path_parity`
+(`scripts/smoke_lib/logparse.py`) makes any `match=0` a red mission verdict.
+Nightly leg: `run_smoke --mission mc2_01 --mission mc2_24` with
+`MC2_TERRAIN_TESS=0` + `MC2_SPLIT_PATH_PARITY_TRACE=1` (Probe-B recipe) —
+THIS is the behavioral guard for the #34 class; RULE 3 only freezes tokens.

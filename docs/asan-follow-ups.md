@@ -92,7 +92,12 @@ empirical check if other evidence later points at Tracy.
 
 ## 2. `GlobalMap::clearPathExistsTable` uninit-pointer AV on Carver5O
 
-**Status:** bug confirmed, fix deferred.
+**Status:** FIXED — `89c99cfa` (2026-04-24) "fix(pathfinding): zero-init
+GlobalMap pathExistsTable in no-arg ctor path" (`mclib/move.h` inline
+`init(void)` now nulls `pathExistsTable`; null-guard in
+`clearPathExistsTable` itself landed in `69ee9782`). VERIFIED per
+`docs/asan-triage.md`: Carver5-feasibility mc2_01 under ASan `result=pass`,
+zero ASan reports. On nifty.
 **First caught:** 2026-04-24, `mc2-asan.exe --mission mc2_01` on the
 Carver5-feasibility install (mc2x-import content merged into nifty).
 ASan log: `A:/Games/Carver5-feasibility/asan-carver5-mc2_01.18080`.
@@ -177,7 +182,11 @@ Deploy rule for any ASan target install: copy the FFmpeg DLLs alongside
 
 ## 3. `getCodeToken` deref of corrupted `codeSegmentPtr` on Exodus
 
-**Status:** bug confirmed, fix deferred.
+**Status:** DEFAULT-PATH GUARD IMPLEMENTED; synthetic proof complete, original
+Exodus/Magic ASan reproducer still pending — fail-loud malformed-bytecode rejection in
+`A:/Games/mc2-deferred-2` commits `4b4fdc5d` and `55d17aa6` (2026-07-16).
+Negative and escape-path proofs, doctests, and Tier-1 5/5 are recorded in that
+lane's `.claude/DEFERRED-2-STATUS.md`.
 **First caught:** 2026-04-24, `mc2-asan.exe --mission mc2_01` on a fresh
 `A:/Games/MC2-Exodus/` install (base `mc2-win64-v0.1.1` clone +
 `mc2_patch` + `exodus_campaign_11`).
@@ -227,7 +236,19 @@ often happens to land in valid VA space and doesn't AV immediately;
 under ASan's shadow-mapped VA the garbage lands in unmapped space and
 crashes on first deref.
 
-### Proposed fix (deferred)
+### Resolution (2026-07-16)
+
+Deferred-2 commits `4b4fdc5d` and `55d17aa6` now reject malformed compiled
+bytecode before execution. This closes the garbage-`codeSegmentPtr` crash
+class on the default path in the synthetic negative proof. The exact original
+Exodus/Magic ASan reproducer has not been rerun and remains the acceptance gate.
+`MC2_ABL_COMPILE_FATAL=0` is an explicit legacy escape hatch that knowingly
+reopens partial-bytecode execution; do not describe that override as contained.
+Unsupported Exodus/Magic vocabulary remains a separate compatibility
+problem: those scripts may still fail compilation, but failure is explicit and
+cannot execute a partial/corrupt segment.
+
+The text below is the historical proposal retained for context.
 
 Preferred: `ABLModule::compile` return value must be checked by mission
 init; any compile error aborts mission load (hard fail). Matches the
@@ -269,7 +290,11 @@ This is a content-triggered bug, not install-specific.
 
 ## 4. `Turret::update` global-buffer-overflow on `turretsEnabled[-1]`
 
-**Status:** bug confirmed, fix straightforward.
+**Status:** FIXED — `933d716a` (2026-04-24) "fix(gameplay): guard neutral
+turret enable lookup" (`code/turret.cpp:588` — the exact `tid < 0` guard
+proposed below). Per `docs/asan-triage.md`: code correct; untested against
+a live neutral-turret scenario in base game (kept as defense-in-depth).
+On nifty.
 **First caught:** 2026-04-24, tier1 matrix run, mission `mc2_03` on
 `mc2-win64-v0.1.1` (base game). ASan log:
 `tests/smoke/artifacts/2026-04-24T14-14-43/mc2_03.log`.
@@ -330,7 +355,11 @@ Safer against further team-table changes than the raw index.
 
 ## 5. ABL `getCodeToken` heap-buffer-overflow (1 byte past code-segment end)
 
-**Status:** bug confirmed, fix straightforward.
+**Status:** FIXED — `e7d68c04` (2026-04-24) "fix(abl): add code-segment
+sentinel byte" (`mclib/ablexec.cpp createCodeSegment` allocates
+`codeSegmentSize + 1` and writes a `0` sentinel — the smallest fix proposed
+below). VERIFIED per `docs/asan-triage.md`: real P0 fix, the overread at
+`ablexec.cpp:361` is gone on all five tier1 missions under ASan. On nifty.
 **First caught:** 2026-04-24, tier1 run, mission `mc2_10` on
 `mc2-win64-v0.1.1` (base game). ASan log:
 `tests/smoke/artifacts/2026-04-24T14-14-43/mc2_10.log`.
@@ -437,7 +466,10 @@ immediately reproducible on stock tier1 content.
 
 ## 6. Duplicate of finding #5 on `mc2_24` (same root cause, different trigger path)
 
-**Status:** bug confirmed, same fix as finding #5.
+**Status:** FIXED — same commit as finding #5: `e7d68c04` (2026-04-24)
+"fix(abl): add code-segment sentinel byte". The single `+1` sentinel
+allocation at `createCodeSegment` covers both trigger paths; verified on
+all five tier1 missions under ASan (`docs/asan-triage.md`). On nifty.
 **First caught:** 2026-04-24, tier1 run, mission `mc2_24`. ASan log:
 `tests/smoke/artifacts/2026-04-24T14-14-43/mc2_24.log`.
 

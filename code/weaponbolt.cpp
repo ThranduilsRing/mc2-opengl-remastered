@@ -902,7 +902,7 @@ long WeaponBolt::update (void)
 							GameMap->setMine(cellRow, cellCol, 2);
 						}
 					}
-					
+
 					if (((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum &&
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
@@ -914,26 +914,33 @@ long WeaponBolt::update (void)
 							delete hitEffect;
 							hitEffect = NULL;
 						}
-						
+
 						if (missEffect)
 						{
 							missEffect->Kill();
 							delete missEffect;
 							missEffect = NULL;
 						}
-						
+
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
 							waterMissEffect = NULL;
 						}
-						
+
+						// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): successful aimed shot —
+						// deliver located damage to the aimed target and keep the
+						// explosion cosmetic (0 damage). Stock path otherwise.
+						float areaDmg = ((WeaponBoltTypePtr)getObjectType())->areaEffectDmg;
+						if (deliverAimedAreaHit())
+							areaDmg = 0.0f;
+
 						//Create the explosion here.  HIT or MISS, its the same one!!
 						// Damage is done by explosion NOT by hit!
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
 														NULL,*targetPosition,
-														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
+														areaDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
 				}
@@ -2820,6 +2827,36 @@ void WeaponBolt::Load (WeaponBoltData *data)
 }
 
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): deliver a successful AIMED area-effect
+// shot's located damage directly to the aimed target. Stock area-effect bolts
+// (LRM et al.) are converted to position bolts at connect() and deliver ALL
+// damage as a randomly-located explosion ("Hit or MISS, its the same!"), so a
+// called shot's location is never honored. aimedTargetWID is only ever set by
+// fireWeapon under the gate on a successful aimed roll; weaponShot.hitLocation
+// already carries the called location. Single-player only — in MP the flag is
+// never acted on (stock splash behavior preserved).
+bool WeaponBolt::deliverAimedAreaHit (void)
+{
+	if (!aimedTargetWID)
+		return false;
+
+	GameObjectWatchID tgtWID = aimedTargetWID;
+	aimedTargetWID = 0;		// consume — arrival paths can be re-entered
+
+	if (MPlayer)
+		return false;
+
+	GameObjectPtr aimedTarget = ObjectManager->getByWatchID(tgtWID);
+	if (!aimedTarget || aimedTarget->isDestroyed())
+		return false;
+
+	aimedTarget->handleWeaponHit(&weaponShot);
+	return true;
+}
+
+//---------------------------------------------------------------------------
+
 void WeaponBolt::finishNow (void)
 {
 	if (getExists())
@@ -2888,11 +2925,18 @@ void WeaponBolt::finishNow (void)
 			(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 			(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 		{
+			// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): same aimed-hit routing as the
+			// normal arrival path — located damage to the aimed target, explosion
+			// kept cosmetic. Stock path otherwise.
+			float areaDmg = ((WeaponBoltTypePtr)getObjectType())->areaEffectDmg;
+			if (deliverAimedAreaHit())
+				areaDmg = 0.0f;
+
 			//Create the explosion here.  HIT or MISS, its the same one!!
 			// Damage is done by explosion NOT by hit!
 			ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
 											NULL,*targetPosition,
-											((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
+											areaDmg,
 											((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 		}
 

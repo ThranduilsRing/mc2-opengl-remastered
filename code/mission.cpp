@@ -248,6 +248,7 @@ static void simClockTraceTick(float scenarioTimeNow)
 
 #include<gameos.hpp>
 #include "mc2_verify.h"  // MC2-VERIFY-LIVE-1: live data-contract guards
+#include "mc2_audit.h"   // META-FIX INFRA-1: gated audit emitter (design A/B markers)
 #include "../GameOS/gameos/gpu_cull_substrate.h"  // C0-3: GPU cull substrate init/shutdown
 #include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
@@ -664,6 +665,17 @@ namespace {
 	static bool s_soakSalvageDone = false;   // salvage commit fired once per mission
 	static bool s_soakInventoryChecked = false; // load-bay check fired once per mission
 
+	// --- MC2_SOAK_SALVAGE_TRADEMOVER (ISSUE-42a repro fixture) ----------------
+	// Requires MC2_SOAK_KILL_ENEMY + MC2_SOAK_AUTOWIN. Instead of the Phase-2
+	// addMechToInventory shortcut, exercise the REAL mid-mission salvage-craft
+	// flow (missiongui.cpp doMove salvage: recover -> setStatus(SHUTDOWN,force)
+	// -> tradeMover -> orderPowerUp) on ONE disabled enemy mech before autowin,
+	// so LogisticsData::setMissionCompleted's recovered-mech carry-over branch
+	// is what the Phase-3 load-bay check verifies. Default OFF = byte-identical.
+	static const bool s_soakSalvageTrademover =
+		(getenv("MC2_SOAK_SALVAGE_TRADEMOVER") != nullptr);
+	static bool s_soakTradeDone = false;     // armed once per mission
+
 	// --- MC2_SOAK_PILOT_PROMOTE ----------------------------------------------
 	// Grants a deployed pilot enough skill delta to cross the next rank
 	// threshold, then runs the same promotePilot() call the UI uses.
@@ -672,6 +684,207 @@ namespace {
 	static const bool s_soakPilotPromote =
 		(getenv("MC2_SOAK_PILOT_PROMOTE") != nullptr);
 	static bool s_soakPromoteFired = false;  // armed once per mission
+
+	// --- MC2_FIXTURE_ORDER_LIVENESS (META-FIX design F) -----------------------
+	// Behavioral order-liveness fixture: proves issued orders DO something
+	// (issues #17 reluctant fire / #10 scripted stalls class). Requires
+	// MC2_SOAK_AUTOWIN. Phases (fractions of the autowin timer, trademover
+	// block shape): 0.2 = COMMANDER-origin unaimed ATTACK_TO_DESTROY per armed
+	// home mech at the nearest live enemy (PLAYER origin never installs the
+	// tac order — warrior.cpp orderAttackObject/setGeneralTacOrder trap);
+	// 0.5 = COMMANDER-origin move order per home mech (300 m toward map
+	// center — the move order replaces the attack order, giving the move leg
+	// a clean 0.4*win displacement window; the REVIEWED order (move 0.2,
+	// attack 0.3) self-sabotaged the move bound: a mech whose target spawns
+	// in range stands and fires without ever covering 25 m — measured 1/11
+	// stalled on stock mc2_24); 0.9 = one self-asserting summary line
+	//   ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL
+	// (moved = net displacement >= 25 m; refused = classified refusal via
+	// LastMoveCalcErr; dead/disabled units exempt). [ORDER_FIXTURE] lines mark
+	// each issued order. run_smoke.py hard-fails a missing summary or
+	// verdict=FAIL ONLY when MC2_FIXTURE_ORDER_LIVENESS is set in the runner
+	// env (VEG-SMOKE-FLOOR activation pattern); consumed by
+	// scripts/check-order-liveness.py. Default OFF = byte-identical.
+	static const bool s_fixtureOrderLiveness =
+		(getenv("MC2_FIXTURE_ORDER_LIVENESS") != nullptr &&
+		 getenv("MC2_FIXTURE_ORDER_LIVENESS")[0] != '0');
+	struct OrderLivenessEntry {
+		unsigned long   wid;
+		Stuff::Vector3D startPos;
+	};
+	static const int kOrderLivenessCap = 32;   // bounded, s_firedWIDs precedent
+	static OrderLivenessEntry s_olEntries[kOrderLivenessCap];
+	static int  s_olIssuedMove   = 0;
+	static bool s_olMoveIssued   = false;
+	static bool s_olAttackIssued = false;
+	static bool s_olSummaryDone  = false;
+
+	// --- MC2_MOVER_COHERENCE_AUDIT (META-FIX design A) ------------------------
+	// ~1 Hz read-only audit that the five per-mover registries (render gate
+	// isOnGUI, force-bar roster, selection, tacmap blip, commandability) agree
+	// as a pure function of mover state, for HOME-COMMANDER movers in SP.
+	// Rules (contract: .claude/META-FIX-DESIGNS-2026-07-16.json CLASS A):
+	//   I1  onGUI && exists && !destroyed && !disabled => roster icon present
+	//   I1b ...unless the force bar is full (MAX_ICONS=16; addMech silently
+	//       drops the 17th in release) — ADVISORY, not a violation.
+	//   I2  !onGUI => no roster icon AND no PLAYER-origin tac order. A
+	//       SELF/COMMANDER-origin order on an off-GUI mover is ADVISORY (I2b):
+	//       auto-powerup (warrior.cpp handlePlayerOrder) and brain orders are
+	//       legitimate non-player writers. The #50 signature (invisible mover
+	//       drag-selected + player-ordered) violates this row.
+	//   I3  isDisabled && !isDestroyed && exists => getAppearance()!=NULL
+	//       (#42b-ADJACENT teardown-while-salvageable; the HISTORICAL #42b
+	//       guard-shape bug is static rule S4's job, invisible to runtime).
+	//   I4  every force-bar icon's unit is ObjectManager-registered (identity
+	//       scan; read-only — getWatchID(true) would ASSIGN an id, so the
+	//       registration round-trip is checked by pointer membership instead).
+	//   I5  getSelected() => onGUI (selection-gate drift; lets static rule S3
+	//       stay trimmed to three hard pins).
+	// Violations emit one deduped stdout line (mirrored to the diag sink by
+	// mc2AuditLine): "[MOVER_COHERENCE] VIOLATION rule=..." / "ADVISORY".
+	// Dedup is per (mover,rule) for the process lifetime (mc2AuditOnce, cap 64
+	// keys — one mission per process in smoke practice). A process-exit
+	// summary line reports {checked,violations,advisories,audits}.
+	//
+	// OFF-MAP STAGING CARVE-OUT (INVIS-VEHICLES-FIX-1, 2026-07-16): a mover
+	// AUTHORED at an off-map staging position with onGUI=1, brains alive,
+	// waiting for a mission flag (mc2_10's convoy, census-verified: 12 movers
+	// at x~-7500 exists=1 awake=1 onGUI=1 alpha=255, later driven on-map by
+	// the ABL trigger) is a LEGITIMATE mover state. Position outside map
+	// bounds is NOT a registry violation, so this audit deliberately keys on
+	// NO positional term — static rule S6 (check-mover-registry-coherence.sh)
+	// pins the audit region below position-free. The #50 LINKUP-PENDING row
+	// is keyed on isOnGUI==0, which staging does NOT use (staging spawns
+	// onGUI=1 like every non-destroyed part, mission.cpp part-spawn writes).
+	// mc2_10's convoy is additionally commander 2 (allied), outside this
+	// audit's home-commander scope — but the position-free contract holds
+	// even for a hypothetical home-commander staged mover.
+	//
+	// MOVER-COHERENCE-AUDIT-BEGIN (S6 scan region: position-free by contract —
+	// scripts/check-mover-registry-coherence.sh forbids positional terms in
+	// this whole block; off-map staging is a legitimate mover state.)
+	static const bool s_moverCoherenceAudit =
+		mc2AuditLatch("MC2_MOVER_COHERENCE_AUDIT");
+	static float s_cohNextAuditTime = 0.0f;
+	static long  s_cohChecked    = 0;   // mover-rule evaluations (cumulative)
+	static long  s_cohViolations = 0;
+	static long  s_cohAdvisories = 0;
+	static long  s_cohAudits     = 0;   // audit ticks
+	static bool  s_cohAtexit     = false;
+
+	static void cohEmitSummary() {
+		mc2AuditLinef("[MOVER_COHERENCE] summary checked=%ld violations=%ld "
+			"advisories=%ld audits=%ld",
+			s_cohChecked, s_cohViolations, s_cohAdvisories, s_cohAudits);
+	}
+
+	// rule ids for the dedup key (per mover partId).
+	enum CohRule { COH_I1 = 1, COH_I1B, COH_I2_ICON, COH_I2_ORDER,
+	               COH_I2B_ORDER, COH_I3, COH_I4, COH_I5 };
+
+	static void cohEmit(bool violation, const char* rule, long partId,
+	                    const char* name, CohRule ruleId, const char* detail) {
+		unsigned long long key =
+			(((unsigned long long)(unsigned long)partId) << 8) |
+			(unsigned long long)ruleId;
+		if (violation) s_cohViolations++; else s_cohAdvisories++;
+		if (!mc2AuditOnce("MOVER_COHERENCE", key))
+			return;
+		mc2AuditLinef("[MOVER_COHERENCE] %s rule=%s part=%ld name=%s %s",
+			violation ? "VIOLATION" : "ADVISORY", rule, partId,
+			(name && name[0]) ? name : "?", detail ? detail : "");
+	}
+
+	static void auditMoverCoherence(float scenarioTimeNow,
+	                                MissionInterfaceManagerPtr mi) {
+		if (!ObjectManager || !mi || MPlayer || !Commander::home)
+			return;   // SP home-commander scope only (MPlayer rosters unaudited)
+		if (scenarioTimeNow < s_cohNextAuditTime)
+			return;
+		s_cohNextAuditTime = scenarioTimeNow + 1.0f;   // ~1 Hz
+		s_cohAudits++;
+		if (!s_cohAtexit) { s_cohAtexit = true; std::atexit(cohEmitSummary); }
+
+		const long homeCmdr = Commander::home->getId();
+		const long numMovers = ObjectManager->getNumMovers();
+
+		for (long i = 0; i < numMovers; i++) {
+			MoverPtr mover = ObjectManager->getMover(i);
+			if (!mover || !mover->getExists())
+				continue;
+			if (mover->getCommanderId() != homeCmdr)
+				continue;
+			s_cohChecked++;
+
+			const long  partId    = mover->getPartId();
+			const char* name      = mover->getName();
+			const bool  onGui     = mover->isOnGUI();
+			const bool  destroyed = mover->isDestroyed();
+			const bool  disabled  = mover->isDisabled();
+			const bool  hasIcon   = mi->rosterHasMover(mover);
+
+			// I1 / I1b — live onGUI mover must hold a force-bar icon.
+			if (onGui && !destroyed && !disabled && !hasIcon) {
+				if (mi->rosterIconCount() >= MAX_ICONS)
+					cohEmit(false, "I1b", partId, name, COH_I1B,
+						"detail=bar_full");
+				else
+					cohEmit(true, "I1", partId, name, COH_I1,
+						"detail=icon_missing");
+			}
+
+			// I2 — off-GUI mover must be roster-absent and free of
+			// PLAYER-origin orders (LINKUP-PENDING row, #50 class).
+			if (!onGui) {
+				if (hasIcon)
+					cohEmit(true, "I2", partId, name, COH_I2_ICON,
+						"detail=icon_present");
+				MechWarriorPtr pilot = mover->getPilot();
+				if (pilot) {
+					TacticalOrderPtr order = pilot->getCurTacOrder();
+					if (order && order->code != TACTICAL_ORDER_NONE) {
+						char det[96];
+						sprintf(det, "detail=tac_order code=%d origin=%d",
+							(int)order->code, (int)order->origin);
+						if (order->origin == ORDER_ORIGIN_PLAYER)
+							cohEmit(true, "I2", partId, name,
+								COH_I2_ORDER, det);
+						else
+							cohEmit(false, "I2b", partId, name,
+								COH_I2B_ORDER, det);
+					}
+				}
+			}
+
+			// I3 — salvageable (disabled-not-destroyed) mover must keep its
+			// appearance (#42b-adjacent teardown class).
+			if (disabled && !destroyed && !mover->getAppearance())
+				cohEmit(true, "I3", partId, name, COH_I3,
+					"detail=appearance_null");
+
+			// I5 — selected implies onGUI (selection-gate drift, #50 class).
+			if (mover->getSelected() && !onGui)
+				cohEmit(true, "I5", partId, name, COH_I5,
+					"detail=selected_offgui");
+		}
+
+		// I4 — every force-bar icon's unit round-trips through ObjectManager
+		// registration (identity membership; destroyed movers legitimately
+		// keep icons through the death animation — registration only).
+		const int iconCount = mi->rosterIconCount();
+		for (int k = 0; k < iconCount; k++) {
+			Mover* unit = mi->rosterIconMover(k);
+			if (!unit) continue;
+			bool registered = false;
+			for (long i = 0; i < numMovers; i++) {
+				if (ObjectManager->getMover(i) == unit) { registered = true; break; }
+			}
+			if (!registered)
+				cohEmit(true, "I4", unit->getPartId(), unit->getName(),
+					COH_I4, "detail=icon_unit_unregistered");
+		}
+	}
+	// MOVER-COHERENCE-AUDIT-END
 } // namespace
 
 //----------------------------------------------------------------------------------
@@ -1073,6 +1286,12 @@ long Mission::update (void)
 		if (s_bridgeMoverState)
 			bridgeEmitMoverState(scenarioTime);
 
+		// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
+		// home-commander movers + force-bar icons; read-only). No-op unless
+		// MC2_MOVER_COHERENCE_AUDIT=1 (static latch; gate-off = one bool).
+		if (s_moverCoherenceAudit)
+			auditMoverCoherence(scenarioTime, missionInterface);
+
 		//----------------------------------------------------
 		// Check is all player forces dead/disabled.
 		if (!MPlayer && !terminationCounterStarted)
@@ -1300,6 +1519,7 @@ long Mission::update (void)
 			{
 				s_soakKillDone = false;
 				s_soakSalvageDone = false;
+				s_soakTradeDone = false;
 				if (s_soakInventoryChecked)
 				{
 					s_soakInventoryChecked = false;
@@ -1340,6 +1560,74 @@ long Mission::update (void)
 				s_soakKillDone = true;
 			}
 
+			// PHASE 1.5 (ISSUE-42a, MC2_SOAK_SALVAGE_TRADEMOVER): before autowin
+			// fires, run the REAL mid-mission salvage-craft flow on ONE disabled
+			// enemy mech — the exact sequence the salvage VTOL executes in
+			// missiongui.cpp (recover / setStatus(SHUTDOWN,force) / tradeMover /
+			// orderPowerUp). The mech becomes a home-commander mover, so mission
+			// completion routes it through LogisticsData::setMissionCompleted's
+			// recovered-mech carry-over branch (the path issue #42a suspects)
+			// instead of the Phase-2 addMechToInventory shortcut (Phase 2 skips
+			// it once it is home-team). Phase 3 then asserts the SAME variant
+			// reached the load bay. Pair with MC2_LOG_LOGISTICS_FLOW +
+			// MC2_DIAG_TAGS=LOGISTICS for per-unit cull/resolve/mech_lost JSONL.
+			const float tradeAt = soakWinAfterSec() * 0.8f;
+			if (s_soakSalvageTrademover && !s_soakTradeDone && s_soakKillDone &&
+				scenarioTime > tradeAt && !scenarioResult)
+			{
+				BattleMech* pTrade = nullptr;
+				for (int mi = 0; mi < ObjectManager->numMechs; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM) continue;
+					if (!pM->isDisabled() || pM->isDestroyed()) continue;
+					if (Team::home && pM->getTeamId() == Team::home->id) continue;
+					// Prefer the mech Phase 1 recorded so Phase 3's load-bay
+					// assert tracks the traded mech; else first candidate.
+					if (s_soakKilledVariant[0] &&
+						strcmp(pM->variantName, s_soakKilledVariant) == 0)
+					{
+						pTrade = pM;
+						break;
+					}
+					if (!pTrade)
+						pTrade = pM;
+				}
+				char* newPilotName = (pTrade && LogisticsData::instance)
+					? (char*)LogisticsData::instance->getBestPilot(pTrade->tonnage)
+					: nullptr;
+				if (pTrade && newPilotName && Team::home && Commander::home)
+				{
+					// Mirror missiongui.cpp salvage-craft recovery verbatim.
+					while (((MoverPtr)pTrade)->recover() == false)
+						;
+					if (pTrade->isDisabled())
+					{
+						pTrade->setStatus(OBJECT_STATUS_SHUTDOWN, true);
+						if (pTrade->getSensorSystem())
+							pTrade->getSensorSystem()->broken = false;
+						((MoverPtr)pTrade)->timeLeft = 1.0f;
+						((MoverPtr)pTrade)->exploding = false;
+					}
+					tradeMover(pTrade, Team::home->getId(),
+						Commander::home->getId(), newPilotName, "pbrain");
+					pTrade->getPilot()->orderPowerUp(true, ORDER_ORIGIN_SELF);
+					strncpy(s_soakKilledVariant, pTrade->variantName,
+						sizeof(s_soakKilledVariant) - 1);
+					s_soakKilledVariant[sizeof(s_soakKilledVariant) - 1] = '\0';
+					printf("[SOAK] salvage-trademover name=%s variant=%s pilot=%s\n",
+						pTrade->getName() ? pTrade->getName() : "(null)",
+						s_soakKilledVariant, newPilotName);
+					fflush(stdout);
+				}
+				else
+				{
+					printf("[SOAK] salvage-trademover no-candidate\n");
+					fflush(stdout);
+				}
+				s_soakTradeDone = true;
+			}
+
 			// PHASE 2: After autowin, salvage ALL disabled enemy mechs into the
 			// inventory (mirrors SalvageMechScreen -> addMechToInventory, done for
 			// every salvageable mech). This is where mech-bay capacity gets stressed.
@@ -1366,6 +1654,134 @@ long Mission::update (void)
 					salvCount, s_soakKilledVariant[0] ? s_soakKilledVariant : "(none)");
 				fflush(stdout);
 				s_soakSalvageDone = true;
+			}
+		}
+
+		// --- MC2_FIXTURE_ORDER_LIVENESS (META-FIX design F) -------------------
+		// See the namespace block above for the contract. Grammar of the
+		// summary/order lines is reviewed contract — do not normalize.
+		if (s_fixtureOrderLiveness && s_soakAutoWin && ObjectManager)
+		{
+			extern long LastMoveCalcErr;   // code/warrior.cpp:436 — same signal
+			                               // MC2_BRAIN_FREEZE_TRACE reads
+			const float olWin = soakWinAfterSec();
+
+			// Re-arm each new mission (scenarioTime resets to 0 on start()).
+			if (scenarioTime < olWin * 0.1f)
+			{
+				s_olMoveIssued = s_olAttackIssued = s_olSummaryDone = false;
+				s_olIssuedMove = 0;
+			}
+
+			// PHASE A (t = 20% win): COMMANDER-origin unaimed attack per armed
+			// home mech at the nearest live enemy mover. Unaimed (-1) — the #9
+			// aimed leg is MC2_AIMED_FIRE_FIXTURE's job. Runs FIRST so the
+			// attack leg (hits/nofire evidence) accrues while the move phase
+			// below later replaces the combat order for a clean displacement
+			// window.
+			if (!s_olAttackIssued && scenarioTime > olWin * 0.2f && !scenarioResult)
+			{
+				for (int mi = 0; mi < ObjectManager->numMechs; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM || pM->isDisabled() || pM->isDestroyed()) continue;
+					if (!Team::home || pM->getTeamId() != Team::home->id) continue;
+					MechWarriorPtr olPilot = pM->getPilot();
+					if (!olPilot || pM->numWeapons <= 0 || !pM->canFireWeapons())
+						continue;
+					MoverPtr olEnemy = nullptr;
+					float olBest = 1e30f;
+					for (long ei = 0; ei < ObjectManager->getNumMovers(); ++ei)
+					{
+						MoverPtr pE = ObjectManager->getMover(ei);
+						if (!pE || pE->isDisabled() || pE->isDestroyed()) continue;
+						if (pE->getTeamId() == Team::home->id) continue;
+						const float d = pM->distanceFrom(pE->getPosition());
+						if (d < olBest) { olBest = d; olEnemy = pE; }
+					}
+					if (!olEnemy) continue;
+					olPilot->orderAttackObject(false, ORDER_ORIGIN_COMMANDER,
+						olEnemy, ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED,
+						FIRERANGE_OPTIMAL, -1, -1, TACORDER_PARAM_PURSUE);
+					printf("[ORDER_FIXTURE] kind=attack wid=%lu tgt=%lu t=%.1f\n",
+						(unsigned long)pM->getWatchID(),
+						(unsigned long)olEnemy->getWatchID(),
+						(float)scenarioTime);
+				}
+				fflush(stdout);
+				s_olAttackIssued = true;
+			}
+
+			// PHASE M (t = 50% win): COMMANDER-origin move order per home mech,
+			// 300 m toward map center; record start position per watch-ID.
+			// Replaces the attack order — displacement is measured from HERE
+			// to the 0.9*win summary (a clean 0.4*win window).
+			if (!s_olMoveIssued && s_olAttackIssued &&
+				scenarioTime > olWin * 0.5f && !scenarioResult)
+			{
+				extern float metersPerWorldUnit;
+				const float stepWU = (metersPerWorldUnit > 0.0f)
+					? (300.0f / metersPerWorldUnit) : 300.0f;
+				for (int mi = 0; mi < ObjectManager->numMechs &&
+					 s_olIssuedMove < kOrderLivenessCap; ++mi)
+				{
+					BattleMech* pM = ObjectManager->getMech(mi);
+					if (!pM || pM->isDisabled() || pM->isDestroyed()) continue;
+					if (!Team::home || pM->getTeamId() != Team::home->id) continue;
+					MechWarriorPtr olPilot = pM->getPilot();
+					if (!olPilot) continue;
+					Stuff::Vector3D olPos = pM->getPosition();
+					Stuff::Vector3D olGoal = olPos;
+					const float olLen = sqrtf(olPos.x * olPos.x + olPos.y * olPos.y);
+					if (olLen > 1.0f)
+					{
+						olGoal.x = olPos.x - (olPos.x / olLen) * stepWU;
+						olGoal.y = olPos.y - (olPos.y / olLen) * stepWU;
+					}
+					else
+						olGoal.x = olPos.x + stepWU;
+					olPilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER,
+						olGoal, -1, TACORDER_PARAM_RUN);
+					s_olEntries[s_olIssuedMove].wid = pM->getWatchID();
+					s_olEntries[s_olIssuedMove].startPos = olPos;
+					++s_olIssuedMove;
+					printf("[ORDER_FIXTURE] kind=move wid=%lu tgt=0 t=%.1f\n",
+						(unsigned long)pM->getWatchID(), (float)scenarioTime);
+				}
+				fflush(stdout);
+				s_olMoveIssued = true;
+			}
+
+			// PHASE S (t = 90% win): self-asserting summary. moved = net
+			// displacement >= 25 m since the move order; dead/disabled units
+			// are exempt (destroyed-before-compliance is not a dead-end);
+			// non-movers with a classified path refusal count as refused
+			// (classified counts as signal, not silence).
+			if (!s_olSummaryDone && s_olMoveIssued && scenarioTime > olWin * 0.9f)
+			{
+				int olMoved = 0, olRefused = 0, olStalled = 0;
+				for (int i = 0; i < s_olIssuedMove; ++i)
+				{
+					GameObjectPtr obj =
+						ObjectManager->getByWatchID(s_olEntries[i].wid);
+					if (!obj || obj->isDestroyed() || obj->isDisabled())
+						continue;   // dead-unit exemption
+					const float distM =
+						obj->distanceFrom(s_olEntries[i].startPos);   // meters
+					if (distM >= 25.0f)
+						++olMoved;
+					else if (LastMoveCalcErr != 0)
+						++olRefused;
+					else
+						++olStalled;
+				}
+				const bool olPass = (s_olIssuedMove > 0) && (olStalled == 0);
+				printf("ORDER_LIVENESS_SUMMARY issued_move=%d moved=%d "
+					"refused=%d stalled=%d verdict=%s\n",
+					s_olIssuedMove, olMoved, olRefused, olStalled,
+					olPass ? "PASS" : "FAIL");
+				fflush(stdout);
+				s_olSummaryDone = true;
 			}
 		}
 
@@ -4730,6 +5146,56 @@ void Mission::start (void)
 	active = true;
 	mission_phase_mark("mission_ready");
 	mission_phase_report(); // LOAD-PHASE-FACTS-1: emit consolidated [LOAD_PHASES v1] line
+
+	// APPEAR-AUDIT-BEGIN (META-FIX design B PART 4 — MC2_APPEAR_AUDIT,
+	// default OFF, OBSERVATIONAL-FIRST: the appear_audit smoke bucket stays
+	// disarmed until a 24-map failed=0 baseline passes, because whether any
+	// object class legitimately reports NULL appearance at mission_ready is
+	// unverified. One O(N) pass at mission_ready: every existing registered
+	// object either has a non-NULL appearance whose base shape loaded, or
+	// emits one classified [APPEAR_AUDIT v1] event=missing line.
+	// POSITION-FREE by the same off-map-staging carve-out as design A
+	// (INVIS-VEHICLES-FIX-1): staged movers have valid appearances and sit
+	// off-map by authored design — this scan keys on NO positional or
+	// visibility term (no getPosition, no canBeSeen, no in-view test);
+	// check-tgl-load-callers.sh pins this region position-free.)
+	{
+		static const bool s_appearAudit = mc2AuditLatch("MC2_APPEAR_AUDIT");
+		if (s_appearAudit && ObjectManager)
+		{
+			long scanned = 0, missing = 0;
+			const long maxObjs = ObjectManager->getMaxObjects();
+			for (long h = 1; h <= maxObjs; h++)
+			{
+				GameObjectPtr obj = ObjectManager->get(h);
+				if (!obj || !obj->getExists())
+					continue;
+				scanned++;
+				AppearancePtr appear = obj->getAppearance();
+				const char* why = NULL;
+				if (!appear)
+					why = "appearance_null";
+				else
+				{
+					AppearanceTypePtr at = appear->getAppearanceType();
+					if (at && at->baseShapeLoadFailed)
+						why = "base_shape_failed";
+				}
+				if (why)
+				{
+					missing++;
+					if (missing <= 32)   // bounded output; summary carries totals
+						mc2AuditLinef("[APPEAR_AUDIT v1] event=missing reason=%s "
+							"handle=%ld class=%d part=%ld",
+							why, h, (int)obj->getObjectClass(),
+							(long)obj->getPartId());
+				}
+			}
+			mc2AuditLinef("[APPEAR_AUDIT v1] summary scanned=%ld missing=%ld",
+				scanned, missing);
+		}
+	}
+	// APPEAR-AUDIT-END
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: mission world is now fully live (objects loaded,
 	// active set). Re-enable hover picking that was suppressed since invalidateHoverTarget().
 	if (missionInterface)

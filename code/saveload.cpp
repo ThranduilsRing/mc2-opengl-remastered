@@ -220,7 +220,10 @@ extern GameLog* CombatLog;
 bool IsGateDisabled (int objectWID);
 bool IsGateOpen (int objectWID);
 
-DWORD elfHash (char *name);
+// META-FIX design E: dead, wrong-signature elfHash decl removed (was never
+// called from this TU; non-extern-"C" so it never even matched the real
+// symbol). The Tier-2 confinement grep (check-path-normalization.sh Rule 1)
+// starts from a clean baseline.
 
 extern char versionStamp[];
 //----------------------------------------------------------------------------------------------------

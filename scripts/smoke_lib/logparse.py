@@ -43,6 +43,70 @@ MISSION_LOAD_FAIL_PATTERNS = (
 )
 
 
+# ---------------------------------------------------------------------------
+# META-FIX INFRA-3: table-driven marker buckets.
+#
+# Generalizes the VEG-SMOKE-FLOOR / asset_oob clone-per-feature pattern ONCE:
+# each recurrence-proofing design registers ONE ROW here instead of re-cloning
+# a bespoke counter + gate + manifest key. A row is scanned per stdout line;
+# counts land in LogSummary.marker_counts[bucket]; gates.py turns red-severity
+# counts into verdict buckets (per-mission downgrade via the manifest override
+# key, mirroring allow_asset_oob); advisory-severity counts become details only.
+#
+# Later batches append one row each (design A: [MOVER_COHERENCE] VIOLATION;
+# design B: asset_load_fail; design F: ORDER_LIVENESS via the summary-parser
+# path) — see .claude/META-FIX-PLAN-2026-07-16.md INFRA-3.
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class MarkerBucket:
+    pattern: "re.Pattern[str]"          # searched against each stdout line
+    bucket: str                          # bucket name (red) / detail tag (advisory)
+    severity: str                        # "red" | "advisory"
+    manifest_override_key: Optional[str] = None  # manifest key that downgrades
+                                                 # red -> advisory per mission
+
+MARKER_BUCKETS: tuple = (
+    # Design C runtime tier (META-FIX-BATCH-1): any [SPLIT_PATH_PARITY] event
+    # with match=0 is a silent split-path divergence -> red. Emitter:
+    # gameos_graphics.cpp gosRenderer::init under MC2_SPLIT_PATH_PARITY_TRACE.
+    MarkerBucket(re.compile(r"\[SPLIT_PATH_PARITY\].*\bmatch=0\b"),
+                 "split_path_parity", "red", None),
+    # Design A runtime tier (META-FIX-BATCH-3): mover-registry coherence.
+    # Emitter: code/mission.cpp auditMoverCoherence under
+    # MC2_MOVER_COHERENCE_AUDIT (force-set by run_smoke for --tier runs).
+    # VIOLATION = registry divergence (#50 class) -> red; ADVISORY (I1b
+    # bar-full, I2b self/commander-origin order) surfaces in details only —
+    # this is what makes those carve-outs safe.
+    MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] VIOLATION\b"),
+                 "mover_coherence", "red", "allow_mover_coherence"),
+    MarkerBucket(re.compile(r"\[MOVER_COHERENCE\] ADVISORY\b"),
+                 "mover_coherence_advisory", "advisory", None),
+    # Design B (META-FIX-BATCH-3): fail-loud asset-load policy.
+    # asset_load_fail counts parse_fail + required_missing + appr_type_fail
+    # ONLY — deliberately NOT bare file_missing (missing optional slots are
+    # normal stock degradation; see MC2_ASSET_TRACE). These lines are
+    # always-on and load-time-only, so every tier1 run goes red the moment
+    # a stock base shape stops loading.
+    MarkerBucket(re.compile(
+        r"\[ASSET_LOAD v1\] event=(parse_fail|required_missing|appr_type_fail)\b"),
+        "asset_load_fail", "red", "allow_asset_load_fail"),
+    # icon_oob ARMED RED 2026-07-16: precondition met — the
+    # cellForIndexChecked/iconTileChecked row bound was validated against
+    # all three shipped atlas geometries (retail 256x256, MC2X 512,
+    # MCO 1024/40) by tools/icon_atlas_harness (16/16 PASS, batch-3).
+    MarkerBucket(re.compile(r"\[ASSET_LOAD v1\] event=icon_oob\b"),
+                 "icon_oob", "red", "allow_icon_oob"),
+    # appear_audit REGISTERED BUT DISARMED (advisory): whether any object
+    # class legitimately reports NULL appearance at mission_ready is
+    # unverified. Promote to red ONLY after a full 24-map MC2_APPEAR_AUDIT=1
+    # failed=0 baseline (tier1-missions baseline shipped with batch 3; the
+    # 24-map run is the documented follow-up).
+    MarkerBucket(re.compile(r"\[APPEAR_AUDIT v1\] event=missing\b"),
+                 "appear_audit", "advisory", None),
+)
+
+
 @dataclass
 class PerfRow:
     avg_fps: float = 0.0
@@ -87,6 +151,9 @@ class LogSummary:
     # SMOKE-MODMISSION-ENV-GUARDS-1: set True if the engine printed an
     # "Unable to open Mission File" / STOP line before play phase started.
     mission_load_fail_seen: bool = False
+    # META-FIX INFRA-3: per-bucket marker counts (bucket -> hit count) for
+    # every registered MARKER_BUCKETS row. Empty dict when no marker fired.
+    marker_counts: dict = field(default_factory=dict)
 
 
 def parse_log(text: str,
@@ -140,6 +207,11 @@ def parse_log(text: str,
         if "[TGL_POOL v1]" in line and "nulls=" in line: s.pool_nulls += 1
         if "[ASSET_SCALE v1] event=oob_blit" in line: s.asset_oob += 1
         if "[DESTROY v1]" in line and "event=destroy" in line: s.destroys += 1
+
+        # META-FIX INFRA-3: registered marker-bucket scan.
+        for mb in MARKER_BUCKETS:
+            if mb.pattern.search(line):
+                s.marker_counts[mb.bucket] = s.marker_counts.get(mb.bucket, 0) + 1
 
         for p in CRASH_PATTERNS:
             if p.search(line): s.crash_handler_hit = True; break

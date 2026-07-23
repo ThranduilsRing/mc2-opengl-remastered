@@ -11,6 +11,7 @@
 #ifndef GVACTOR_H
 #include"gvactor.h"
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
+#include "tgl_load_guard.h"       // META-FIX design B PART 1: required base-shape load guard
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #endif
 
@@ -226,11 +227,21 @@ void GVAppearanceType::init (const char * fileName)
 				gosASSERT(gvShape[i] != NULL);
 
 				if (i == 0 && importSourceBase[0]) {
-					gvShape[i]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
+					// META-FIX design B PART 1: REQUIRED slot — checked import.
+					long rc = gvShape[i]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
+					tglVerifyShapeLoaded(gvShape[i], rc, "gvactor.base_import",
+						importSourceBase, &baseShapeLoadFailed);
+				} else if (i == 0) {
+					FullPathFileName gvName;
+					gvName.init(tglPath,aseFileName,".ase");
+					// META-FIX design B PART 1: REQUIRED slot (LOD0) — checked load.
+					tglLoadShapeChecked(gvShape[i], gvName,
+						"gvactor.base", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName gvName;
 					gvName.init(tglPath,aseFileName,".ase");
-					gvShape[i]->LoadTGMultiShapeFromASE(gvName);
+					// Declared-but-absent higher LODs = stock degradation.
+					gvShape[i]->LoadTGMultiShapeFromASE(gvName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 			}
 			else if (!i)
@@ -247,11 +258,16 @@ void GVAppearanceType::init (const char * fileName)
 		gosASSERT(gvShape[0] != NULL);
 
 		if (importSourceBase[0]) {
-			gvShape[0]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
+			// META-FIX design B PART 1: REQUIRED slot — checked import.
+			long rc = gvShape[0]->LoadFromFile(importSourceBase); // ASSIMP-GV-IMPORT-1: opt-in GLB probe
+			tglVerifyShapeLoaded(gvShape[0], rc, "gvactor.base_import",
+				importSourceBase, &baseShapeLoadFailed);
 		} else {
 			FullPathFileName gvName;
 			gvName.init(tglPath,aseFileName,".ase");
-			gvShape[0]->LoadTGMultiShapeFromASE(gvName);
+			// META-FIX design B PART 1: REQUIRED slot — checked load.
+			tglLoadShapeChecked(gvShape[0], gvName,
+				"gvactor.base", &baseShapeLoadFailed);
 		}
 	}
 
@@ -266,7 +282,7 @@ void GVAppearanceType::init (const char * fileName)
 		FullPathFileName gvName;
 		gvName.init(tglPath,aseFileName,".ase");
 	
-		gvShadowShape->LoadTGMultiShapeFromASE(gvName);
+		gvShadowShape->LoadTGMultiShapeFromASE(gvName); // TGL-LOAD-EXEMPT(optional shadow; loader-side PART-0 logging)
 	}
 
 	result = iniFile.seekBlock("TGLDamage");
@@ -281,7 +297,7 @@ void GVAppearanceType::init (const char * fileName)
 	
 		gvDmgShape = new TG_TypeMultiShape;
 		gosASSERT(gvDmgShape != NULL);
-		gvDmgShape->LoadTGMultiShapeFromASE(dmgName);
+		gvDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!gvDmgShape->GetNumShapes())
 		{
@@ -432,8 +448,10 @@ void GVAppearanceType::init (const char * fileName)
 	
 		SensorCircleShape = new TG_TypeMultiShape;
 		gosASSERT(SensorCircleShape != NULL);
-	
-		SensorCircleShape->LoadTGMultiShapeFromASE(sensorName);
+
+		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
+		tglLoadShapeChecked(SensorCircleShape, sensorName,
+			"gvactor.sensor_circle", NULL);
 	}
 
 	if (SensorTriangleShape == NULL)
@@ -443,8 +461,9 @@ void GVAppearanceType::init (const char * fileName)
 	
 		SensorTriangleShape = new TG_TypeMultiShape;
 		gosASSERT(SensorCircleShape != NULL);
-	
-		SensorTriangleShape->LoadTGMultiShapeFromASE(sensorName);
+
+		tglLoadShapeChecked(SensorTriangleShape, sensorName,
+			"gvactor.sensor_triangle", NULL);
 	}
 }
 
@@ -2146,7 +2165,9 @@ Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
 long GVAppearance::renderShadows (void)
 {
 	// Skip legacy blob shadows when shadow maps are active
-	if (gos_IsTerrainTessellationActive())
+	// ISSUE-34: keyed on the modern shadow path, not tessellation (see
+	// mech3d.cpp renderShadows).
+	if (gos_IsModernShadowPathActive())
 		return NO_ERR;
 
 	gvShape->SetTextureHandle(0,localTextureHandle);
@@ -2571,7 +2592,9 @@ void GVAppearance::updateGeometry (void)
 			// downstream gvShadowShape->RenderShadows(true) (gvactor.cpp:2082) is
 			// unreachable so the transform's outputs go unused. See block comment
 			// at top of file for full consumer enumeration.
-			const bool skipShadowXform = g_useGpuGVShadowSkip && gos_IsTerrainTessellationActive();
+			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
+			// the renderShadows early-return above.
+			const bool skipShadowXform = g_useGpuGVShadowSkip && gos_IsModernShadowPathActive();
 			if (!skipShadowXform)
 				gvShadowShape->TransformMultiShape (&xlatPosition,&rot);
 		}

@@ -59,11 +59,20 @@ class AppearanceType
 		float				boundsLowerRightY;
 		
 		bool				designerTypeBounds;	//So I know not to change them if the designer typed them in.
-		
+
+		// META-FIX design B PART 1/2: set by tglVerifyShapeLoaded when a
+		// REQUIRED base-shape load for this type failed (placeholder may be
+		// standing in under MC2_ASSET_FAILLOUD). Read by the
+		// AppearanceTypeList::getAppearance backstop (one appr_type_fail
+		// line per type) and by Mech3DAppearance::resetPaintScheme (keeps
+		// the placeholder's texture handle from being clobbered by the
+		// name-based instance rebind). Stock types never set this.
+		bool				baseShapeLoadFailed;
+
 	//Member Functions
 	//-----------------
 	public:
-	
+
 		void* operator new (size_t memSize);
 		void operator delete (void* treePtr);
 
@@ -78,6 +87,7 @@ class AppearanceType
 			typeUpperLeft.Zero();
 			typeLowerRight.Zero();
 			designerTypeBounds = false;
+			baseShapeLoadFailed = false;
  		}
 
 		AppearanceType (void)

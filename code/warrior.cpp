@@ -115,6 +115,7 @@
 #include "brain_tactic_select.h"  // TACTIC-WEIGHTS-A: Wang-hash deterministic tactic selection
 #include"terrain_runtime.h"  // TERRAIN-RUNTIME-CONSUMER-GROUNDING-1
 #include "abl_trace.h"  // ABL-VM-FACTS-1: per-frame ABL VM statement/depth/us telemetry
+#include "../GameOS/gameos/diagnostic_trace.h"  // ISSUE-17: MC2_FIRE_DECISION_TRACE nofire JSONL events
 
 // ABL-VM-FACTS-1: TU-local definitions for the abl_trace externs.
 namespace mc2_abl_trace {
@@ -2685,6 +2686,20 @@ long MechWarrior::runBrain (void) {
 	//     PathManager / reservation state.
 	// NOTE: the recon's "initCalled" field does not exist on MechWarrior;
 	// brainState + moveState are the real available signals and substituted.
+	//
+	// ISSUE-10 extension (scripted units never engaging / permanent stalls):
+	// added fields classify every stuck warrior without a debugger —
+	//   orderState        ORDERSTATE_GENERAL(0)/PLAYER(1)/ALARM(2): pinned in
+	//                     ALARM = escape-tile alarm loop (general orders never
+	//                     consumed while the alarm slot is held).
+	//   mainGoal/goalWID  goal-plan divert target (turret/gate/wall capture-
+	//                     divert that never completes).
+	//   genOrder          tacOrder[ORDERSTATE_GENERAL].code: brain/FSM emitted
+	//                     an order vs no-order-from-brain (ABL stall).
+	//   pos               position delta over ticks = machine-checkable
+	//                     "path-but-not-moving" (reservation/collision) class.
+	//   lastMoveErr       LastMoveCalcErr: no-path (LR path fail / MOVE-data
+	//                     area-graph misread) class.
 	{
 		static const bool s_aiFreezeTrace = []() {
 			const char* v = std::getenv("MC2_BRAIN_FREEZE_TRACE");
@@ -2692,12 +2707,24 @@ long MechWarrior::runBrain (void) {
 		}();
 		if (s_aiFreezeTrace) {
 			MovePathPtr mp = getMovePath();
+			MoverPtr traceVehicle = getVehicle();
+			Stuff::Vector3D tracePos;
+			tracePos.Zero();
+			if (traceVehicle)
+				tracePos = traceVehicle->getPosition();
 			std::fprintf(stderr,
 				"[BRAIN_FREEZE_TRACE] wid=%d brainState=%d curTacOrder.code=%d "
-				"movePath.numSteps=%d moveState=%ld hasBrain=%d\n",
+				"movePath.numSteps=%d moveState=%ld hasBrain=%d "
+				"orderState=%d mainGoal=%d goalWID=%lu genOrder=%d "
+				"pos=(%.0f,%.0f) lastMoveErr=%ld\n",
 				(int)vehicleWID, (int)brainState, (int)curTacOrder.code,
 				mp ? (int)mp->numSteps : -1, (long)moveOrders.moveState,
-				brain ? 1 : 0);
+				brain ? 1 : 0,
+				(int)orderState, (int)mainGoalAction,
+				(unsigned long)mainGoalObjectWID,
+				(int)tacOrder[ORDERSTATE_GENERAL].code,
+				(double)tracePos.x, (double)tracePos.y,
+				(long)LastMoveCalcErr);
 			std::fflush(stderr);
 		}
 	}
@@ -4249,6 +4276,54 @@ long MechWarrior::combatDecisionTree (void) {
 		}
 	}
 
+	// ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): refusal-
+	// side instrumentation. The fire decision has six SILENT per-weapon gates in
+	// calcWeaponsStatus (recycle / ammo / range / LOS+fire-arc conflated into
+	// NOT_LOCKED / odds<1) and none of them is observable — the reason-tally
+	// debug block above is dead (WARRIOR_DEBUG_FLAG_COMBAT never set). When a
+	// combat order is active and NO weapon fired this combat update, emit one
+	// COMBAT JSONL event with the per-gate tallies, plus one direct lineOfSight
+	// probe to split LOS from fire-arc within NOT_LOCKED. Naturally throttled to
+	// the combat-update cadence (this function re-arms combatUpdate above).
+	{
+		static const bool s_fireDecisionTrace =
+			(getenv("MC2_FIRE_DECISION_TRACE") != NULL && getenv("MC2_FIRE_DECISION_TRACE")[0] != '0');
+		if (s_fireDecisionTrace && !firedWeapon && curTacOrder.isCombatOrder() &&
+			mc2_diag::tagEnabled("COMBAT")) {
+			long tally[6] = {0, 0, 0, 0, 0, 0};	// [0]=rd [1]=am [2]=rn [3]=lk [4]=ch [5]=hot
+			for (long tw = 0; tw < myVehicle->numWeapons; tw++) {
+				switch (weaponsStatus[tw]) {
+					case WEAPON_STATUS_NOT_READY:	tally[0]++; break;
+					case WEAPON_STATUS_OUT_OF_AMMO:	tally[1]++; break;
+					case WEAPON_STATUS_OUT_OF_RANGE:tally[2]++; break;
+					case WEAPON_STATUS_NOT_LOCKED:	tally[3]++; break;
+					case WEAPON_STATUS_NO_CHANCE:	tally[4]++; break;
+					case WEAPON_STATUS_TOO_HOT:		tally[5]++; break;
+				}
+			}
+			long losFlag = -1;
+			float dist = -1.0f;
+			if (target) {
+				losFlag = myVehicle->lineOfSight(target) ? 1 : 0;
+				dist = myVehicle->distanceFrom(target->getPosition());
+			}
+			else if (targetPoint) {
+				losFlag = myVehicle->lineOfSight(*targetPoint) ? 1 : 0;
+				dist = myVehicle->distanceFrom(*targetPoint);
+			}
+			char _nf[256];
+			snprintf(_nf, sizeof(_nf),
+				"{\"ev\":\"nofire\",\"wid\":%ld,\"tgt_wid\":%ld,\"ord\":%d,\"result\":%ld,"
+				"\"rd\":%ld,\"am\":%ld,\"rn\":%ld,\"lk\":%ld,\"ch\":%ld,\"hot\":%ld,"
+				"\"los\":%ld,\"dist\":%.0f}",
+				(long)vehicleWID, target ? (long)target->getWatchID() : 0L,
+				(int)curTacOrder.code, (long)weaponsStatusResult,
+				tally[0], tally[1], tally[2], tally[3], tally[4], tally[5],
+				losFlag, (double)dist);
+			mc2_diag::writeEvent("COMBAT", 1, 0, _nf);
+		}
+	}
+
 	if (curTacOrder.attackParams.tactic == TACTIC_STOP_AND_FIRE) {
 		if (firedWeapon)
 			clearMoveOrders();
@@ -5481,6 +5556,53 @@ void MechWarrior::updateActions (void) {
 						s_firedMechs, wid, firedCount, pos.x, pos.y, pos.z, scenarioTime);
 					fflush(stdout);
 				}
+			}
+		}
+	}
+
+	// MC2_AIMED_FIRE_FIXTURE (ISSUE-9 probe, default-OFF = byte-identical):
+	// headless called-shot driver. Every home-team mech without an active combat
+	// order is issued an aimed-HEAD attack (ATTACK_TO_DESTROY / RANGED /
+	// OPTIMAL, aim = MECH_BODY_LOCATION_HEAD, pursue) at the nearest live enemy
+	// mech. Origin MUST be ORDER_ORIGIN_COMMANDER: orderAttackObject only
+	// installs the tac order (setGeneralTacOrder -> curTacOrder) for COMMANDER
+	// origin — with PLAYER origin only lastTarget is set and fire is UNAIMED
+	// (aimLocation flows solely from curTacOrder.attackParams in
+	// combatDecisionTree). Re-issues when the order clears (target died), so a
+	// run with MC2_DIAG_TAGS=COMBAT yields a hit-location distribution ("loc"
+	// field) to A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle bounds order spam.
+	static const bool s_aimedFireFixture =
+		(getenv("MC2_AIMED_FIRE_FIXTURE") != NULL && getenv("MC2_AIMED_FIRE_FIXTURE")[0] != '0');
+	if (s_aimedFireFixture && myVehicle && myVehicle->isMech() &&
+		Team::home && (myVehicle->getTeam() == Team::home) &&
+		(scenarioTime > 5.0f) && !curTacOrder.isCombatOrder() &&
+		myVehicle->canFireWeapons()) {
+		static float s_nextAimedOrderTime = 0.0f;
+		if (scenarioTime >= s_nextAimedOrderTime) {
+			s_nextAimedOrderTime = scenarioTime + 2.0f;
+			MoverPtr enemy = NULL;
+			float bestDist = 1e30f;
+			// Mover iteration (not getMech): warrior.cpp only sees the BattleMech
+			// forward declaration (mech.h is USE_MECHS-gated here).
+			for (long mi = 0; mi < ObjectManager->getNumMovers(); mi++) {
+				MoverPtr pM = ObjectManager->getMover(mi);
+				if (!pM || !pM->isMech() || pM->isDisabled() || pM->isDestroyed())
+					continue;
+				if (pM->getTeamId() == Team::home->getId())
+					continue;
+				float d = myVehicle->distanceFrom(pM->getPosition());
+				if (d < bestDist) {
+					bestDist = d;
+					enemy = pM;
+				}
+			}
+			if (enemy) {
+				long res = orderAttackObject(false, ORDER_ORIGIN_COMMANDER, enemy,
+					ATTACK_TO_DESTROY, ATTACKMETHOD_RANGED, FIRERANGE_OPTIMAL,
+					MECH_BODY_LOCATION_HEAD, -1, TACORDER_PARAM_PURSUE);
+				printf("[AIMED_FIRE v1] event=order wid=%ld tgt_wid=%ld dist=%.0f res=%ld\n",
+					(long)vehicleWID, (long)enemy->getWatchID(), (double)bestDist, res);
+				fflush(stdout);
 			}
 		}
 	}

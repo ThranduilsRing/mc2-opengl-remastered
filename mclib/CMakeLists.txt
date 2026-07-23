@@ -32,6 +32,9 @@ set(SOURCES ${SOURCES}
     csvfile.cpp
     fastfile.cpp
     fst_hash.cpp
+    mc2_audit.cpp
+    tgl_load_guard.cpp
+
     ffile.cpp
     file.cpp
     gamelog.cpp

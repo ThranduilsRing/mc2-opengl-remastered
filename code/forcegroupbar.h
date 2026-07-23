@@ -62,6 +62,15 @@ class ForceGroupBar
 		void swapResolutions();
 		int  getIconCount(){ return iconCount; }
 
+		// META-FIX design A (MC2_MOVER_COHERENCE_AUDIT): read-only roster
+		// queries for the mover-registry coherence audit (code/mission.cpp
+		// auditMoverCoherence). hasMover answers "does this mover have a
+		// force-bar icon" (audit rules I1/I2); getIconMover enumerates icon
+		// units for the registration round-trip rule I4. Both are pure
+		// walks over icons[0..iconCount) — no state change.
+		bool   hasMover( const Mover* pMover ) const;
+		Mover* getIconMover( int index ) const;
+
 		bool setPilotVideo( const char* pVideo, MechWarrior* pPilot );
 		bool isPlayingVideo();
 

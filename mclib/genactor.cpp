@@ -10,6 +10,7 @@
 
 #ifndef GENACTOR_H
 #include"genactor.h"
+#include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 #endif
 
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
@@ -118,11 +119,16 @@ void GenericAppearanceType::init (const char * fileName)
 		Fatal(result,"Could not find ASE FileName in building appearance INI file");
 
 	if (importSourceBase[0]) {
-		genShape->LoadFromFile(importSourceBase); // ASSIMP-GEN-IMPORT-1: opt-in GLB probe
+		// META-FIX design B PART 1: REQUIRED slot — checked import.
+		long rc = genShape->LoadFromFile(importSourceBase); // ASSIMP-GEN-IMPORT-1: opt-in GLB probe
+		tglVerifyShapeLoaded(genShape, rc, "genactor.base_import",
+			importSourceBase, &baseShapeLoadFailed);
 	} else {
 		FullPathFileName genName;
 		genName.init(tglPath,aseFileName,".ase");
-		genShape->LoadTGMultiShapeFromASE(genName);
+		// META-FIX design B PART 1: REQUIRED slot — checked load.
+		tglLoadShapeChecked(genShape, genName,
+			"genactor.base", &baseShapeLoadFailed);
 	}
 
 	result = iniFile.readIdString("TextureName",textureName,49);
@@ -145,7 +151,7 @@ void GenericAppearanceType::init (const char * fileName)
 	
 		genDmgShape = new TG_TypeMultiShape;
 		gosASSERT(genDmgShape != NULL);
-		genDmgShape->LoadTGMultiShapeFromASE(dmgName);
+		genDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!genDmgShape->GetNumShapes())
 		{

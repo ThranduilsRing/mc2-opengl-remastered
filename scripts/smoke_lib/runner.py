@@ -8,7 +8,7 @@ import subprocess
 import sys
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
@@ -45,6 +45,8 @@ class RunConfig:
     grace_s: int                        # walltime cap = duration + grace
     env_extra: dict
     allow_asset_oob: bool = False
+    # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
+    marker_overrides: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -167,6 +169,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         heartbeat_timeout_play_s=cfg.heartbeat_timeout_play_s,
         duration_s=cfg.duration,
         allow_asset_oob=cfg.allow_asset_oob,
+        marker_overrides=cfg.marker_overrides,
     )
     verdict = evaluate(summary, gcfg, exit_code=proc.returncode,
                        walltime_s=walltime, killed_by_timeout=killed)

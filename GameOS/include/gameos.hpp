@@ -2297,6 +2297,10 @@ void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int co
 void __stdcall gos_SetTerrainDebugMode(float mode);
 float __stdcall gos_GetTerrainDebugMode();
 bool __stdcall gos_IsTerrainTessellationActive();
+// ISSUE-34: modern shadow/render path (shadow_terrain material loaded).
+// Shadow builds + blob-shadow suppression + GPU transform skips key on this,
+// NOT on tessellation — near-plane behavior stays uniform when tess is off.
+bool __stdcall gos_IsModernShadowPathActive();
 
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
 void gos_GetTerrainLightDir(float* x, float* y, float* z);
@@ -2956,6 +2960,18 @@ void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth=16, 
 // aligned with the MFC window/mouse space. Runtime (not #ifdef MC2_IS_EDITOR)
 // because gameos_graphics.cpp compiles into the gameos_editor lib without it.
 void __stdcall gos_SetHudResClampEnabled( bool enabled );
+
+// META-FIX design D (MC2_RES_ASSERT runtime audit — RenderCore/
+// ResolutionContract.h): trivial getter for the clamp gate above (only the
+// setter existed before; the per-frame audit in gameosmain.cpp draw_screen
+// needs to READ it to assert "clamp enabled => logical canvas is 800x600").
+bool __stdcall gos_GetHudResClampEnabled();
+
+// META-FIX design D: fresh SDL drawable probe (graphics::get_drawable_size on
+// the live window) for the per-frame audit's staleness check — the cached
+// Environment.drawableWidth/Height only refreshes in handleEvents. Returns
+// false when no renderer/window exists yet. Read-only.
+bool __stdcall gos_ProbeDrawableSize( int* w, int* h );
 
 // PREVIEW-FBO-FIXED-800x600-1: offscreen mech-preview render target, fixed at
 // 800x600 (the legacy 2D UI's native virtual canvas -- Environment.screenWidth

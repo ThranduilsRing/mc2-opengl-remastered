@@ -5964,14 +5964,45 @@ long BattleMech::update (void)
 		// If we are both, we probably are waiting to be linked up with.
 		// See if anything on our side is close enough to link up with us.
 		// If it is close enough, powerup and ourselves to the GUI!
-		if ((status == OBJECT_STATUS_SHUTDOWN) && !isOnGUI())
+		// ISSUE-50: gate on !isOnGUI() alone (was status==SHUTDOWN &&
+		// !isOnGUI()). If a hidden link-up mech ever got powered before the
+		// team walked into LOS (pre-fix selection hole in moverInRect let
+		// select-all grab it; any order auto-powers a SHUTDOWN mech), status
+		// left SHUTDOWN and this branch could never fire again — the mech
+		// was latched invisible for the rest of the mission. Keying on
+		// !isOnGUI() lets an already-powered link-up mech still self-heal
+		// (corePower(true) is idempotent). Scope unchanged in practice:
+		// enemies and normal deploys spawn onGUI (mission.cpp), only
+		// link-up reinforcements are ever off-GUI here.
+		if (!isOnGUI())
 		{
+			// ISSUE-50 diagnostics: MC2_LINKUP_TRACE=1 logs each off-GUI
+			// home mover's link-up state ~once/sec so the latch is
+			// observable in the field. Default OFF = no output.
+			static const bool s_linkupTrace =
+				(getenv("MC2_LINKUP_TRACE") != nullptr);
+			const bool linkupLos =
+				Team::home->teamLineOfSight(position, getAppearRadius());
+			if (s_linkupTrace && ((turn & 31) == 0))
+			{
+				printf("[LINKUP] part=%d name=%s status=%d onGUI=0 los=%d pos=(%.0f,%.0f)\n",
+					(int)getPartId(), getName() ? getName() : "(null)",
+					(int)status, linkupLos ? 1 : 0,
+					position.x, position.y);
+				fflush(stdout);
+			}
 			//Check if anyone on our side is within range.
 			// Until otherwise noted, if I have LOS to them, thats enough.
 			// Powerup, add ourselves to the GUI and select ourselves
 			// Maybe we should send a Radio Message saying "hi"?
-			if (Team::home->teamLineOfSight(position,getAppearRadius()))
+			if (linkupLos)
 			{
+				if (s_linkupTrace)
+				{
+					printf("[LINKUP] linkup-complete part=%d name=%s\n",
+						(int)getPartId(), getName() ? getName() : "(null)");
+					fflush(stdout);
+				}
 				mission->missionInterface->addMover(this);
 				setSelected(1);
 				pilot->corePower(true);
@@ -7621,10 +7652,13 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (mc2_diag::tagEnabled("COMBAT")) {
 		GameObjectPtr _cbAtk = ObjectManager->getByWatchID(shotInfo->attackerWID);
 		char _cbf[192];
+		// ISSUE-9 S3: "loc" = resolved hit location (mech body index; 0 = head)
+		// so called-shot location distribution is measurable headlessly.
 		snprintf(_cbf, sizeof(_cbf),
-			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f}",
+			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
 			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
-			getWatchID(false), getTeamId(), (double)shotInfo->damage);
+			getWatchID(false), getTeamId(), (double)shotInfo->damage,
+			(int)shotInfo->hitLocation);
 		mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 	}
 
@@ -8100,6 +8134,25 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 
 //---------------------------------------------------------------------------
 
+// ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): fireWeapon
+// has silent non-zero early returns — the combat decision tree said FIRE
+// (weaponsStatus > 0) but the weapon quietly skipped (body state, ready,
+// terrain, range re-check, shots, per-hotspot ripple-recycle). Emits one COMBAT
+// JSONL event per refusal so 'decision said fire but nothing came out' is
+// classifiable headlessly. Pairs with the 'nofire' event in combatDecisionTree.
+static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site)
+{
+	static const bool s_fireDecisionTrace =
+		(getenv("MC2_FIRE_DECISION_TRACE") != NULL && getenv("MC2_FIRE_DECISION_TRACE")[0] != '0');
+	if (!s_fireDecisionTrace || !mc2_diag::tagEnabled("COMBAT"))
+		return;
+	char _fg[128];
+	snprintf(_fg, sizeof(_fg),
+		"{\"ev\":\"firegate\",\"wid\":%lu,\"widx\":%ld,\"site\":\"%s\"}",
+		wid, weaponIndex, site);
+	mc2_diag::writeEvent("COMBAT", 1, 0, _fg);
+}
+
 long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {
 
 //	if (getTeam() != Team::home)
@@ -8109,24 +8162,39 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		(status == OBJECT_STATUS_SHUTTING_DOWN) ||
 		(status == OBJECT_STATUS_DISABLED) ||
 		(status == OBJECT_STATUS_DESTROYED))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "status");	// ISSUE-17
 		return(1);
+	}
 
 	if ((getBodyState() == MECH_STATUSCHUNK_BODYSTATE_PARKED) ||
 		(getBodyState() == MECH_STATUSCHUNK_BODYSTATE_FALLEN_FORWARD) ||
 		(getBodyState() == MECH_STATUSCHUNK_BODYSTATE_FALLEN_BACKWARD))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "body");	// ISSUE-17
 		return(1);
+	}
 
 	if (!isWeaponReady(weaponIndex))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "ready");	// ISSUE-17
 		return(3);
+	}
 
 	if (!Terrain::IsGameSelectTerrainPosition(getPosition()))
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "terrain");	// ISSUE-17
 		return (1);
-		
+	}
+
 	float distanceToTarget = 0.0;
-	if (target) 
+	if (target)
 	{
 		if (target->isDestroyed())
+		{
+			fireGateTrace(getWatchID(false), weaponIndex, "dead_target");	// ISSUE-17
 			return(4);
+		}
 			
 		//We did this in calcWeaponsStatus.  Do we really need to do it again??!
 		// I have decided NO as of now!
@@ -8165,23 +8233,35 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
  		distanceToTarget = distanceFrom(*targetPoint);
 	}
 	else
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "no_target");	// ISSUE-17
 		return(4);
-		
+	}
+
 	bool inRange = weaponInRange(weaponIndex, distanceToTarget, MapCellDiagonal);
 
 	//-----------------------------------------
 	// Let's make sure the target's in range...
-	if (MPlayer) 
+	if (MPlayer)
 	{
 		if (MPlayer->isServer() && !inRange)
+		{
+			fireGateTrace(getWatchID(false), weaponIndex, "range_mp");	// ISSUE-17 / META-FIX F: was the 10th, untraced silent gate
 			return(4);
+		}
 	}
 	else if (!inRange)
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "range");	// ISSUE-17
 		return(4);
+	}
 
 	long numShots = getWeaponShots(weaponIndex);
 	if (numShots == 0)
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "shots");	// ISSUE-17
 		return(4);
+	}
 
 	//------------------------------------------
 	// As of 4/9/97, missiles cannot be aimed...
@@ -8210,8 +8290,17 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 	float recycleTime = appearance->getWeaponNodeRecycle(sourceHotSpot);
 	if (recycleTime > 0.0f)
+	{
+		fireGateTrace(getWatchID(false), weaponIndex, "node_recycle");	// ISSUE-17
 		return (3);
-		
+	}
+
+	// FIREGATE-REGION-END (checked by check-order-gate-coverage.py) — every
+	// silent early-return ABOVE this sentinel must have a fireGateTrace()
+	// within the 4 preceding lines OR a KNOWN_UNCOVERED entry in the checker.
+	// Shot delivery begins below; do not move this line without updating the
+	// checker (META-FIX design F static chokepoint).
+
 	//Set the hotspot for the target
 	long targetHotSpot = 0;
 	if (target && target->getAppearance())
@@ -8385,8 +8474,18 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				}
 				}
 			else {
-				if (target) 
+				if (target)
+				{
 					weaponFX->connect(this, target, &curShotInfo, sourceHotSpot, targetHotSpot);
+					// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX, default OFF): successful AIMED
+					// missile shot — flag the bolt so an area-effect (LRM) arrival
+					// honors the called location (curShotInfo.hitLocation ==
+					// aimLocation here) instead of a randomly-located explosion.
+					static const bool s_calledShotFix =
+						(getenv("MC2_CALLED_SHOT_FIX") != NULL && getenv("MC2_CALLED_SHOT_FIX")[0] != '0');
+					if (s_calledShotFix && (aimLocation != -1))
+						weaponFX->setAimedTarget(target->getWatchID());
+				}
 				else {
 					weaponFX->connect(this, *targetPoint, &curShotInfo, sourceHotSpot);
 					//pilot->clearCurTacOrder();

@@ -21,6 +21,7 @@ import atexit
 import datetime as dt
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -124,6 +125,56 @@ def _check_veg_floor(stem: str, veg: dict | None) -> list[str]:
             f"instance_count={veg['instance_count']} draw_calls={veg['draw_calls']} "
             f"flush_reason={veg['flush_reason']} "
             f"(flush_reason must be 'submitted')")
+    return fails
+
+
+def _parse_order_liveness_summary(stdout_text: str) -> dict | None:
+    """Parse the ORDER_LIVENESS_SUMMARY line (META-FIX design F fixture,
+    code/mission.cpp under MC2_FIXTURE_ORDER_LIVENESS + MC2_SOAK_AUTOWIN).
+
+    Format (reviewed grammar — contract, do not normalize):
+      ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL
+
+    Returns dict(issued_move, moved, refused, stalled, verdict) or None.
+    """
+    import re as _re
+    _OL_RE = _re.compile(
+        r"ORDER_LIVENESS_SUMMARY\s+"
+        r"issued_move=(?P<im>\d+)\s+"
+        r"moved=(?P<mv>\d+)\s+"
+        r"refused=(?P<rf>\d+)\s+"
+        r"stalled=(?P<st>\d+)\s+"
+        r"verdict=(?P<v>\w+)"
+    )
+    for line in reversed(stdout_text.splitlines()):
+        m = _OL_RE.search(line)
+        if m:
+            return {
+                "issued_move": int(m.group("im")),
+                "moved":       int(m.group("mv")),
+                "refused":     int(m.group("rf")),
+                "stalled":     int(m.group("st")),
+                "verdict":     m.group("v"),
+            }
+    return None
+
+
+def _check_order_liveness_floor(stem: str, ol: dict | None) -> list[str]:
+    """META-FIX design F runner floor (VEG-SMOKE-FLOOR clone): only called
+    when MC2_FIXTURE_ORDER_LIVENESS is set in the runner env. Absence of the
+    summary IS a failure — it catches the fixture itself dying silently."""
+    if ol is None:
+        return [f"ORDER-LIVENESS FAIL {stem}: ORDER_LIVENESS_SUMMARY line "
+                f"absent from log (fixture never reached its summary phase — "
+                f"needs MC2_SOAK_AUTOWIN and a >=10s autowin window)"]
+    fails = []
+    if ol["verdict"] != "PASS":
+        fails.append(
+            f"ORDER-LIVENESS FAIL {stem}: verdict={ol['verdict']} "
+            f"issued_move={ol['issued_move']} moved={ol['moved']} "
+            f"refused={ol['refused']} stalled={ol['stalled']} "
+            f"(stalled>0 = an ordered unit neither moved >=25m nor produced "
+            f"a classified refusal — the CLASS-F silent dead-end)")
     return fails
 
 
@@ -1095,6 +1146,13 @@ def main():
     _veg_floor_active = os.environ.get("MC2_VEGETATION_CARDS") == "1"
     _veg_floor_failures: list[str] = []  # accumulated across all missions
 
+    # META-FIX design F (ORDER-LIVENESS floor): only active when the fixture
+    # gate is set in the runner env (VEG activation-flag pattern) — non-fixture
+    # runs are untouched. Absence of ORDER_LIVENESS_SUMMARY is a failure.
+    _order_liveness_active = (
+        os.environ.get("MC2_FIXTURE_ORDER_LIVENESS") not in (None, "", "0"))
+    _order_liveness_failures: list[str] = []
+
     rows: list[report.Row] = []
     # MC2_DIAGNOSTIC_TRACE_FILE: normalise to absolute once, outside the
     # per-mission loop.  The game launches with cwd=exe_dir (not the runner
@@ -1146,8 +1204,17 @@ def main():
             heartbeat_timeout_play_s=e.heartbeat_timeout_play or 3,
             grace_s=60,
             allow_asset_oob=e.allow_asset_oob,
+            # META-FIX INFRA-3: per-mission marker-bucket downgrades from the
+            # manifest (allow_asset_oob analog for registered marker rows).
+            marker_overrides=e.marker_overrides,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
+                # META-FIX design A: force the read-only mover-registry
+                # coherence audit ON for tier runs (same spirit as
+                # MC2_DEBUG_STATE_DUMP in the canonical command — shipping
+                # default stays OFF). Any [MOVER_COHERENCE] VIOLATION line
+                # red-flags the mission via the mover_coherence marker bucket.
+                **({"MC2_MOVER_COHERENCE_AUDIT": "1"} if args.tier else {}),
                 # SMOKE-MODMISSION-ENV-GUARDS-1: inject MC2_ACTIVE_MOD/MC2_MOD_DEPS
                 # from manifest (already validated by _modmission_env_guard above).
                 **_mod_env,
@@ -1217,6 +1284,40 @@ def main():
                             # WATER-THINRING-FENCE-1: per-slot GLsync fence trace
                             # on the water thin-record ring (diagnostics-only).
                             "MC2_WATER_THINRING_TRACE",
+                            # ISSUE-42a real-salvage-path soak fixture (default
+                            # OFF; pairs with MC2_SOAK_AUTOWIN/KILL_ENEMY).
+                            "MC2_SOAK_SALVAGE_TRADEMOVER",
+                            # ISSUE-50 link-up latch diagnostics (default OFF).
+                            "MC2_LINKUP_TRACE",
+                            # ISSUE-34 terrain tessellation kill-switch (default
+                            # ON; =0 exercises the no-tess config headlessly).
+                            "MC2_TERRAIN_TESS",
+                            # ISSUE-9 called-shot gate + headless aimed-fire probe
+                            # (both default OFF).
+                            "MC2_CALLED_SHOT_FIX",
+                            "MC2_AIMED_FIRE_FIXTURE",
+                            # ISSUE-17 fire-refusal instrumentation (default OFF;
+                            # nofire/firegate events on the COMBAT diag tag).
+                            "MC2_FIRE_DECISION_TRACE",
+                            # ISSUE-10 / SAVE-LOAD-AIFREEZE: per-tick runBrain
+                            # decision-state stderr trace (default OFF).
+                            "MC2_BRAIN_FREEZE_TRACE",
+                            # META-FIX-BATCH-2 design D: resolution/aspect
+                            # contract audit (off/log/fatal) + the window-shape
+                            # overrides the resolution matrix drives. Without
+                            # these in the allowlist Popen drops them and every
+                            # matrix entry silently runs at the default
+                            # resolution with the audit disarmed (ENV-DROP).
+                            "MC2_RES_ASSERT",
+                            "MC2_WIDTH",
+                            "MC2_HEIGHT",
+                            "MC2_WINDOWED",
+                            "MC2_FORCE_43",
+                            "MC2_CAMERA_ASPECT_NATIVE",
+                            # META-FIX-BATCH-2 design F: order-liveness fixture
+                            # (move+attack orders + ORDER_LIVENESS_SUMMARY).
+                            # Also the runner-floor activation flag.
+                            "MC2_FIXTURE_ORDER_LIVENESS",
                             # R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: default-ON
                             # killswitch + diagnostics for the static-natural
                             # (tree/pine-building) registry stale-drop fix. Without
@@ -1454,6 +1555,45 @@ def main():
                             # e.g. mco-compat / mc2x-compat. Required to replicate a launcher
                             # campaign launch in smoke (loads corebrain.abx + object2.pak).
                             "MC2_MOD_DEPS",
+                            # META-FIX design C: [SPLIT_PATH_PARITY] runtime
+                            # parity trace (gosRenderer::init). Must be
+                            # allowlisted or Popen drops it and the nightly
+                            # TESS=0/1 A/B leg silently runs gate-OFF.
+                            "MC2_SPLIT_PATH_PARITY_TRACE",
+                            # META-FIX design A: mover-registry coherence
+                            # audit (code/mission.cpp). Force-set for --tier
+                            # runs via env_extra above; allowlisted here so
+                            # operator-set gate-ON single-mission runs also
+                            # reach the child (Popen drops unlisted vars).
+                            "MC2_MOVER_COHERENCE_AUDIT",
+                            # META-FIX design B PART 0: opt-in file_missing
+                            # trace at the msl.cpp loader chokepoint
+                            # (parse_fail/required_missing are always-on and
+                            # need no gate). Without this row the gate-ON
+                            # diagnostic leg silently traces nothing.
+                            "MC2_ASSET_TRACE",
+                            # META-FIX design B PART 1: default-ON fail-loud
+                            # killswitch (=0 restores exact legacy fail-soft).
+                            # Allowlisted so the sabotage/probe legs can flip
+                            # it through the runner.
+                            "MC2_ASSET_FAILLOUD",
+                            # META-FIX design B PART 3: opt-in magenta tile
+                            # substitution at the icon blits (icon_oob line
+                            # itself is always-on). Allowlisted for probes.
+                            "MC2_ICON_FAILLOUD",
+                            # META-FIX design B PART 4: observational
+                            # mission_ready appearance scan (default OFF;
+                            # NOT force-set for tier runs until the 24-map
+                            # failed=0 baseline passes). Allowlisted so the
+                            # baseline legs reach the child.
+                            "MC2_APPEAR_AUDIT",
+                            # META-FIX design E tier 3: file-resolve ladder
+                            # diagnostics + JSONL MISS trace (mclib/file.cpp).
+                            # check-file-resolve-miss.py sets both through
+                            # this runner — without the allowlist rows the
+                            # nightly MISS audit silently traces nothing.
+                            "MC2_LOG_FILE_RESOLVE",
+                            "MC2_RESOLVE_TRACE_FILE",
                             "MC2_LIGHT_COST_SPLIT",
                             "MC2_TOBJ_COST_SPLIT",
                             "MC2_STATIC_PROP_FLUSH_COST_SPLIT",
@@ -2089,6 +2229,49 @@ def main():
                 print(f"[runner] [VEG-SMOKE-FLOOR] {e.stem}: VEG_SUMMARY absent",
                       file=sys.stderr)
 
+        # META-FIX design F: order-liveness floor (fixture-armed runs only).
+        if _order_liveness_active:
+            _ol = _parse_order_liveness_summary(result.stdout_text)
+            _ol_fails = _check_order_liveness_floor(e.stem, _ol)
+            for _of in _ol_fails:
+                print(f"[runner] {_of}", file=sys.stderr)
+                _order_liveness_failures.append(_of)
+            if _ol:
+                print(
+                    f"[runner] [ORDER-LIVENESS] {e.stem}: "
+                    f"issued_move={_ol['issued_move']} moved={_ol['moved']} "
+                    f"refused={_ol['refused']} stalled={_ol['stalled']} "
+                    f"verdict={_ol['verdict']} "
+                    f"{'PASS' if not _ol_fails else 'FAIL'}",
+                    file=sys.stderr)
+            else:
+                print(f"[runner] [ORDER-LIVENESS] {e.stem}: "
+                      f"ORDER_LIVENESS_SUMMARY absent", file=sys.stderr)
+
+        # META-FIX design A: advisory liveness scan — when the coherence audit
+        # was armed for this mission (tier force-set or operator env), the
+        # process-exit summary line must appear; its absence means the audit
+        # never ran (mission died pre-first-tick, or the gate was dropped).
+        # WARN only — never touches the verdict (the VIOLATION marker bucket
+        # is the red path).
+        _coh_armed = bool(args.tier) or (
+            os.environ.get("MC2_MOVER_COHERENCE_AUDIT") not in (None, "", "0"))
+        if _coh_armed:
+            if "[MOVER_COHERENCE] summary" in result.stdout_text:
+                _coh_m = re.search(
+                    r"\[MOVER_COHERENCE\] summary checked=(\d+) violations=(\d+) "
+                    r"advisories=(\d+) audits=(\d+)", result.stdout_text)
+                if _coh_m:
+                    print(f"[runner] [MOVER-COHERENCE] {e.stem}: "
+                          f"checked={_coh_m.group(1)} "
+                          f"violations={_coh_m.group(2)} "
+                          f"advisories={_coh_m.group(3)} "
+                          f"audits={_coh_m.group(4)}", file=sys.stderr)
+            else:
+                print(f"[runner] [MOVER-COHERENCE] WARN {e.stem}: audit armed "
+                      f"but no [MOVER_COHERENCE] summary line — audit never "
+                      f"ran (advisory)", file=sys.stderr)
+
         if args.fail_fast and not result.verdict.passed:
             print(f"[runner] --fail-fast: stopping at {e.stem}", file=sys.stderr)
             break
@@ -2119,6 +2302,16 @@ def main():
               f"vegetation floor check(s) failed", file=sys.stderr)
         for _vf in _veg_floor_failures:
             print(f"[runner]   {_vf}", file=sys.stderr)
+        passed = False
+
+    # META-FIX design F: promote order-liveness failures to hard fail when the
+    # fixture gate is set. Non-fixture runs are never affected.
+    if _order_liveness_active and _order_liveness_failures:
+        print(f"[runner] [ORDER-LIVENESS] HARD FAIL: "
+              f"{len(_order_liveness_failures)} order-liveness check(s) failed",
+              file=sys.stderr)
+        for _of in _order_liveness_failures:
+            print(f"[runner]   {_of}", file=sys.stderr)
         passed = False
 
     # MC2_SMOKE_REQUIRE_FINGERPRINT=1: promote fingerprint mismatch/absence to

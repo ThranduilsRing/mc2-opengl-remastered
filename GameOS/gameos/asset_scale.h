@@ -54,6 +54,17 @@ void shutdown();
 Vec2  factorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
                 const char* callerTag);
 
+// ISSUE-43: factor for fixed-cell atlas blits (icon strips: mcui_high7/8,
+// pilot atlas). A COLUMN-EXTENDED atlas (same height, width >= nominal —
+// MCO/MC2X append icon columns, e.g. mcui_high8.tga 1080x48 vs nominal
+// 1000x48) must be DIRECT-INDEXED (factor 1.0): treating it as upscaled
+// (actualW/nominalW) shifts every cell and cross-contaminates neighbours —
+// the issue-43 gray-block vehicle icons. Genuinely upscaled atlases (height
+// grown too) still scale via factorFor. Indices beyond the actual atlas are
+// handled by the callers' OOB guards (blank pixel).
+Vec2  blitFactorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
+                    const char* callerTag);
+
 int   nominalToActualAxis(const AssetKey& k, int n, Axis axis,
                           uint32_t actualW, uint32_t actualH,
                           const char* callerTag);

@@ -91,7 +91,7 @@ enum class RendererFeature : int {
     StaticPropIndirect  = 1,   // MC2_GPU_OBJECTS
     // Feature gates
     ObjectIdBuffer      = 2,   // MC2_OBJECT_ID_BUFFER
-    TerrainTessellation = 3,   // (no env var -- always-on TCS/TES)
+    TerrainTessellation = 3,   // MC2_TERRAIN_TESS (default-ON kill-switch, ISSUE-34)
     ReverseZ            = 4,   // (no env var -- glClipControl unconditional)
     ShadowMaps          = 5,   // MC2_SHADOW_ENABLE
     ImGui               = 6,   // MC2_IMGUI
@@ -243,10 +243,10 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     // TerrainTessellation
     {
         "MC2_FEATURE_TERRAIN_TESSELLATION",
-        nullptr,
+        "MC2_TERRAIN_TESS",
         EnvVarKind::Feature,
         true,
-        "TCS/TES terrain tessellation (gameos_graphics.cpp). Always-on; no kill-switch yet."
+        "TCS/TES terrain tessellation (gameos_graphics.cpp). Default-ON kill-switch (ISSUE-34): MC2_TERRAIN_TESS=0 skips the gos_terrain material load (same engine state as a TCS/TES compile failure) for headless A/B of the no-tess config. Shadow builds + blob-shadow suppression key on gos_IsModernShadowPathActive(), not tess."
     },
     // ReverseZ
     {
@@ -751,7 +751,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_BRAIN_FREEZE_TRACE",
         EnvVarKind::Trace,
         false,
-        "SAVE/LOAD-AIFREEZE-TRACE-1: one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps, moveState, hasBrain) to classify the save/load AI-freeze. Default-OFF -> byte-identical."
+        "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps, moveState, hasBrain, orderState, mainGoal/goalWID, tacOrder[GENERAL].code, position, LastMoveCalcErr) to classify the save/load AI-freeze AND scripted-unit permanent stalls (alarm-loop vs goal-divert vs no-path vs path-but-not-moving). Default-OFF -> byte-identical."
     },
     // TERRAIN-OVERLAY-V2-DECAL-SUPPRESS-1.
     {
@@ -1806,6 +1806,116 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see MC2_LOAD_RACE_TRACE). Unset -> falls back to the confirmed transient window default."
+    },
+    // GitHub-issue fix batch 2026-07-16 (issues #42a, #50, #34)
+    {
+        "MC2_TRACE_SOAK_SALVAGE_TRADEMOVER",
+        "MC2_SOAK_SALVAGE_TRADEMOVER",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-42a repro fixture (code/mission.cpp soak harness): with MC2_SOAK_AUTOWIN + MC2_SOAK_KILL_ENEMY, exercises the REAL mid-mission salvage-craft flow (recover/setStatus(SHUTDOWN)/tradeMover/orderPowerUp) on one disabled enemy mech before autowin, so the Phase-3 load-bay check verifies LogisticsData::setMissionCompleted's recovered-mech carry-over branch. Default OFF = byte-identical."
+    },
+    {
+        "MC2_TRACE_LINKUP",
+        "MC2_LINKUP_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires — makes the link-up latch (hidden reinforcement mech never appearing) observable in the field. Default OFF = no output, no behavior change."
+    },
+    // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)
+    {
+        "MC2_FEATURE_CALLED_SHOT_FIX",
+        "MC2_CALLED_SHOT_FIX",
+        EnvVarKind::Feature,
+        false,
+        "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit 0.08/0.15/0.20 leaves head calls at the 5% clamp); (S2) a successful AIMED area-effect (LRM) hit delivers its located damage to the called location (weaponbolt.cpp deliverAimedAreaHit, single-player only) with the splash explosion kept cosmetic, instead of stock's randomly-located explosion damage."
+    },
+    {
+        "MC2_TRACE_AIMED_FIRE_FIXTURE",
+        "MC2_AIMED_FIRE_FIXTURE",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (orderAttackObject, COMMANDER origin — the only origin that installs the tac order and thus the aim) at the nearest live enemy mech, re-issued as targets die (2 s global throttle). Pair with MC2_DIAG_TAGS=COMBAT to capture the hit-location distribution (\"loc\" field) for MC2_CALLED_SHOT_FIX A/B. Default OFF = byte-identical."
+    },
+    {
+        "MC2_TRACE_FIRE_DECISION",
+        "MC2_FIRE_DECISION_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT). (1) code/warrior.cpp combatDecisionTree: when a combat order is active and NO weapon fired this combat update, emits one 'nofire' JSONL event with per-gate tallies (rd/am/rn/lk/ch/hot from calcWeaponsStatus), a direct lineOfSight probe (splits LOS from fire-arc within NOT_LOCKED), order code, weaponsStatusResult and distance. (2) code/mech.cpp fireWeapon: emits a 'firegate' event (wid/widx/site) at each silent non-zero early return (status/body/ready/terrain/dead_target/no_target/range/shots/node_recycle) — catches 'decision said fire but weapon silently skipped'. NO behavior change."
+    },
+    // META-FIX-BATCH-1 (recurrence-proofing, designs C + E — 2026-07-16)
+    {
+        "MC2_TRACE_SPLIT_PATH_PARITY",
+        "MC2_SPLIT_PATH_PARITY_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at split-path parity checkpoints. First checkpoint: terrain material load — tess=<0|1> shadow=<0|1> match=<0|1>, where match asserts the ISSUE-34 decouple invariant (modern shadow path stays active whether tess is on, killswitched, or compile-failed). run_smoke's marker-bucket row `split_path_parity` (scripts/smoke_lib/logparse.py MARKER_BUCKETS) turns any match=0 into a red run; the nightly MC2_TERRAIN_TESS=0/1 A/B leg pairs with this gate. Default OFF = static-getenv latch, byte-identical."
+    },
+    {
+        "MC2_TRACE_LOG_FILE_RESOLVE",
+        "MC2_LOG_FILE_RESOLVE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics. =1: level-1 stdout tags ([mod]/[mod-miss]) plus a shutdown summary line '[file-resolve] opens=N misses=M'. =2: level 1 plus a JSONL resolve trace (one record per resolved open: layer in {mod:<id>, base-loose, base-strip, fastfile, cd, MISS}) written to MC2_RESOLVE_TRACE_FILE; fileExists() full-ladder misses also emit MISS records (probe API — the benign-probe baseline of scripts/check-file-resolve-miss.py absorbs them). Promoted from the check-env-registry allowlist in META-FIX-BATCH-1. Default OFF/0 = byte-identical."
+    },
+    {
+        "MC2_TRACE_RESOLVE_TRACE_FILE",
+        "MC2_RESOLVE_TRACE_FILE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative paths resolve against the game CWD = exe dir). Only consulted at level >= 2. Consumed by the nightly scripts/check-file-resolve-miss.py MISS audit. Promoted from the check-env-registry allowlist in META-FIX-BATCH-1."
+    },
+    // META-FIX-BATCH-2 (recurrence-proofing, designs D + F — 2026-07-16)
+    {
+        "MC2_TRACE_RES_ASSERT",
+        "MC2_RES_ASSERT",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): resolution/aspect contract audit. unset/0 = off (default; one static bool test, tier1 byte-identical); 1/log = one [RES_ASSERT v1] stdout marker line per violation site; fatal = abort() on violation (nonzero exit = red smoke matrix). Chokepoints: (i) Camera::setOrthogonal projection-aspect==drawable-aspect unless MC2_CAMERA_ASPECT_NATIVE=0 or mech-preview FBO (issue #45 class); (ii) per-frame HUD-clamp 800x600 invariant + drawable freshness (3-frame grace) + #49 windowed-size oracle (gameosmain.cpp draw_screen); (iii) flushHUDBatch HUD-canvas-box-in-drawable + forward-remap∘gos_HudInverseMousePoint identity within 0.5px. Static sibling: scripts/check-res-aspect-contract.py; smoke sibling: tests/smoke/matrices/resolution.json."
+    },
+    {
+        "MC2_TRACE_FIXTURE_ORDER_LIVENESS",
+        "MC2_FIXTURE_ORDER_LIVENESS",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a COMMANDER-origin unaimed ATTACK_TO_DESTROY on the nearest live enemy (PLAYER origin never installs the tac order — the trap that burned the first aimed-fire fixture run); at 50% every home mech is issued a COMMANDER-origin move order (300 m toward map center — replaces the attack order, giving a clean 0.4*win displacement window; attack-first ordering is deliberate: the reverse self-sabotages the move bound when targets spawn in range); at 90% one self-asserting 'ORDER_LIVENESS_SUMMARY issued_move=N moved=N refused=N stalled=N verdict=PASS|FAIL' line (moved = net displacement >= 25 m from move-issue; refused = classified LastMoveCalcErr; dead units exempt). [ORDER_FIXTURE] lines mark each issued order. run_smoke.py treats a missing summary or verdict=FAIL as a hard fail ONLY when this var is set in the runner env (VEG-SMOKE-FLOOR activation pattern). Consumed by scripts/check-order-liveness.py. Default OFF = byte-identical."
+    },
+    // META-FIX-BATCH-3 (recurrence-proofing, designs A + B — 2026-07-16)
+    {
+        "MC2_TRACE_MOVER_COHERENCE_AUDIT",
+        "MC2_MOVER_COHERENCE_AUDIT",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate, force-bar roster, selection, tacmap blip, commandability) agree for home-commander SP movers. Rules: I1 live onGUI mover holds a force-bar icon (I1b bar-full carve-out = ADVISORY — addMech silently drops the 17th in release); I2 off-GUI mover has no icon and no PLAYER-origin tac order (SELF/COMMANDER origin = ADVISORY I2b: auto-powerup + brain orders are legitimate); I3 disabled-not-destroyed keeps getAppearance()!=NULL (#42b-ADJACENT); I4 every icon unit is ObjectManager-registered (identity scan, read-only); I5 selected => onGUI (#50 class). Emits deduped '[MOVER_COHERENCE] VIOLATION|ADVISORY rule=...' stdout lines (mirrored to the diag sink) + a process-exit summary. POSITION-FREE by contract: off-map staged movers (onGUI=1, authored staging — mc2_10 convoy, INVIS-VEHICLES-FIX-1) are a legitimate state; static rule S6 pins the audit region free of positional terms. run_smoke.py force-sets =1 for --tier runs (read-only; shipping default stays OFF); any VIOLATION line is a red run via the mover_coherence marker bucket. Static sibling: scripts/check-mover-registry-coherence.sh."
+    },
+    {
+        "MC2_TRACE_ASSET_TRACE",
+        "MC2_ASSET_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the three shape-load entry points (LoadTGMultiShapeFromASE / LoadBinaryCopy / LoadFromFile). Default OFF because missing OPTIONAL files (arms/shadows/damage shapes/anims) are NORMAL stock degradation — an always-on file_missing line would red-bucket healthy tier1 runs. parse_fail (file present, content bad) and required_missing (tgl_load_guard required-slot check) log ALWAYS regardless of this gate; only those feed the asset_load_fail red bucket. Rate-limited per unique (event,path), cap 64 (mc2AuditOnce)."
+    },
+    {
+        "MC2_FEATURE_ASSET_FAILLOUD",
+        "MC2_ASSET_FAILLOUD",
+        EnvVarKind::Feature,
+        true,
+        "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape — unset=ON, =0 exact legacy fail-soft). When a REQUIRED base-shape load fails (rc!=0 or GetNumShapes()==0 at the ~17 required slots in mech3d/bdactor/gvactor/genactor), populates a VISIBLE magenta placeholder box with a REAL 4x4 texture registered through mcTextureManager (valid handles, NOT numTextures=0 — the GPU static-prop/mech batchers cull layerForPacket=-1 packets, so a textureless placeholder would itself be invisible). The '[ASSET_LOAD v1] event=required_missing' line + MC2_VERIFY fire + AppearanceType::baseShapeLoadFailed flag happen regardless of this gate. Stock byte-identical: no stock base shape fails, so the branch is cold. =0 restores 'leave the mech without an appearance' (msl.cpp fail-soft) exactly."
+    },
+    {
+        "MC2_FEATURE_ICON_FAILLOUD",
+        "MC2_ICON_FAILLOUD",
+        EnvVarKind::Feature,
+        false,
+        "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon index resolves outside the source atlas (last-pixel arithmetic identical to the per-pixel bounds guards — never flags an in-bounds tile). Default keeps the LEGACY wrap/blank semantics, which are load-bearing for MC2X high-index mod content (mechicon.cpp wrap comment) — that is why the substitution is opt-in while the '[ASSET_LOAD v1] event=icon_oob' line is always-on (rate-limited). UV-path sibling: icon_atlas_cell.h cellForIndexChecked (logisticsmechicon/mechlistbox) returns the legacy-computed cell UNCHANGED on OOB. Row bound harness-validated against retail 256x256 / MC2X 512 / MCO 1024-40 in tools/icon_atlas_harness before the icon_oob smoke bucket is armed red."
+    },
+    {
+        "MC2_TRACE_APPEAR_AUDIT",
+        "MC2_APPEAR_AUDIT",
+        EnvVarKind::Trace,
+        false,
+        "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST. One O(N) pass over registered existing objects at mission_ready: emits '[APPEAR_AUDIT v1] event=missing reason=appearance_null|base_shape_failed ...' (bounded 32 lines) + a 'summary scanned= missing=' line. POSITION-FREE by the off-map-staging carve-out (INVIS-VEHICLES-FIX-1): staged movers have valid appearances; the scan keys on no positional/visibility term. The appear_audit smoke bucket is registered ADVISORY-DISARMED and may only arm red (and the gate join the tier1 force-set) after a full 24-map failed=0 baseline — whether any class legitimately reports NULL appearance at mission_ready is unverified; the tier1-missions baseline ships with META-FIX-BATCH-3, the 24-map run is the documented follow-up."
     },
 };
 

@@ -26,6 +26,7 @@
 
 extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVANCE double-step probe
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 #include <cstdint>  // M2.5 (Q6 amendment 2): uint64_t for MLR mech draw counter
 #include <unordered_map>  // ANIM-CADENCE-GUARD-1: per-appearance last-advance frame stamp
 
@@ -430,13 +431,27 @@ void Mech3DAppearanceType::init (const char * fileName)
 				// ASSIMP-MECH-IMPORT-1 — strict opt-in: only LOD0 of a mech with
 				// an [Import] Source= override uses the modern importer; every
 				// other slot (incl. all stock mechs) takes the original path.
+				// META-FIX design B PART 1: REQUIRED slot — checked load
+				// (required_missing marker + fail-loud placeholder on failure;
+				// cold on stock, where the load always succeeds).
 				if (i == 0 && importSourceBase[0]) {
-					mechShape[i]->LoadFromFile(importSourceBase);   // opt-in: modern import
+					long rc = mechShape[i]->LoadFromFile(importSourceBase);   // opt-in: modern import
+					tglVerifyShapeLoaded(mechShape[i], rc, "mech3d.base_lod_import",
+						importSourceBase, &baseShapeLoadFailed);
+				} else if (i == 0) {
+					FullPathFileName mechName;
+					mechName.init(tglPath,aseFileName,".ase");
+
+					tglLoadShapeChecked(mechShape[i], mechName,               // stock ASE call, wrapped
+						"mech3d.base_lod", &baseShapeLoadFailed);
 				} else {
 					FullPathFileName mechName;
 					mechName.init(tglPath,aseFileName,".ase");
 
-					mechShape[i]->LoadTGMultiShapeFromASE(mechName); // stock: EXACT original call, unchanged
+					// Declared-but-absent higher LODs are NORMAL stock-data
+					// degradation (live tier1 evidence: 2storycivlivingl2) —
+					// only LOD0 is the required slot.
+					mechShape[i]->LoadTGMultiShapeFromASE(mechName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 			}
 			else if (!i)
@@ -453,13 +468,17 @@ void Mech3DAppearanceType::init (const char * fileName)
 		gosASSERT(mechShape[0] != NULL);
 
 		// ASSIMP-MECH-IMPORT-1 — strict opt-in single-LOD case.
+		// META-FIX design B PART 1: REQUIRED slot — checked load.
 		if (importSourceBase[0]) {
-			mechShape[0]->LoadFromFile(importSourceBase);   // opt-in: modern import
+			long rc = mechShape[0]->LoadFromFile(importSourceBase);   // opt-in: modern import
+			tglVerifyShapeLoaded(mechShape[0], rc, "mech3d.base_import",
+				importSourceBase, &baseShapeLoadFailed);
 		} else {
 			FullPathFileName mechName;
 			mechName.init(tglPath,aseFileName,".ase");
 
-			mechShape[0]->LoadTGMultiShapeFromASE(mechName); // stock: EXACT original call, unchanged
+			tglLoadShapeChecked(mechShape[0], mechName,               // stock ASE call, wrapped
+				"mech3d.base", &baseShapeLoadFailed);
 		}
 	}
 
@@ -482,7 +501,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		FullPathFileName gvName;
 		gvName.init(tglPath,aseFileName,".ase");
 	
-		mechShadowShape->LoadTGMultiShapeFromASE(gvName);
+		mechShadowShape->LoadTGMultiShapeFromASE(gvName); // TGL-LOAD-EXEMPT(optional shadow; loader-side PART-0 logging; GetNumShapes-checked delete-on-fail below)
 	}
 
 	//------------------------------------
@@ -502,7 +521,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	rightArm = new TG_TypeMultiShape;
 	gosASSERT(rightArm != NULL);
 	
-	result = rightArm->LoadTGMultiShapeFromASE(mechRightArmName);
+	result = rightArm->LoadTGMultiShapeFromASE(mechRightArmName); // TGL-LOAD-EXEMPT(optional arm; delete-on-fail is normal stock degradation)
 	if (result)
 	{
 		delete rightArm;
@@ -512,7 +531,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	leftArm = new TG_TypeMultiShape;
 	gosASSERT(leftArm != NULL);
 	
-	result = leftArm->LoadTGMultiShapeFromASE(mechLeftArmName);
+	result = leftArm->LoadTGMultiShapeFromASE(mechLeftArmName); // TGL-LOAD-EXEMPT(optional arm; delete-on-fail is normal stock degradation)
 	if (result)
 	{
 		delete leftArm;
@@ -536,7 +555,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 
 		mechForwardDmgShape = new TG_TypeMultiShape;
 		gosASSERT(mechForwardDmgShape != NULL);
-		mechForwardDmgShape->LoadTGMultiShapeFromASE(dmgName);
+		mechForwardDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional fall-damage shape; GetNumShapes-checked)
 
 		if (!mechForwardDmgShape->GetNumShapes())
 		{
@@ -551,7 +570,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 
 		mechBackwardDmgShape = new TG_TypeMultiShape;
 		gosASSERT(mechBackwardDmgShape != NULL);
-		mechBackwardDmgShape->LoadTGMultiShapeFromASE(dmgName);
+		mechBackwardDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional fall-damage shape; GetNumShapes-checked)
 
 		if (!mechBackwardDmgShape->GetNumShapes())
 		{
@@ -748,35 +767,39 @@ void Mech3DAppearanceType::init (const char * fileName)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"squarecontact",".ase");
-		
+
 		SensorSquareShape = new TG_TypeMultiShape;
 		gosASSERT(SensorSquareShape != NULL);
-		
-		SensorSquareShape->LoadTGMultiShapeFromASE(sensorName);
+
+		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
+		tglLoadShapeChecked(SensorSquareShape, sensorName,
+			"mech3d.sensor_square", NULL);
 	}
 
 	if (GVAppearanceType::SensorCircleShape == NULL && !numJumpNodes)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"circularcontact",".ase");
-	
+
 		GVAppearanceType::SensorCircleShape = new TG_TypeMultiShape;
 		gosASSERT(GVAppearanceType::SensorCircleShape != NULL);
-	
-		GVAppearanceType::SensorCircleShape->LoadTGMultiShapeFromASE(sensorName);
+
+		tglLoadShapeChecked(GVAppearanceType::SensorCircleShape, sensorName,
+			"mech3d.sensor_circle", NULL);
 	}
 
 	if (GVAppearanceType::SensorTriangleShape == NULL)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"trianglecontact",".ase");
-	
+
 		GVAppearanceType::SensorTriangleShape = new TG_TypeMultiShape;
 		gosASSERT(GVAppearanceType::SensorTriangleShape != NULL);
-	
-		GVAppearanceType::SensorTriangleShape->LoadTGMultiShapeFromASE(sensorName);
+
+		tglLoadShapeChecked(GVAppearanceType::SensorTriangleShape, sensorName,
+			"mech3d.sensor_triangle", NULL);
 	}
-	
+
 }
 
 //----------------------------------------------------------------------------
@@ -2131,6 +2154,35 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	// would deref NULL.
 	if (!mechShape)
 		return;
+
+	// META-FIX design B PART 1: the fail-loud placeholder registers a REAL
+	// in-memory magenta texture at the TYPE level ("mc2_load_placeholder" is
+	// never on disk). This name-based rebind would clobber the instance's
+	// handle back to 0xffffffff (its file-missing else branch) and leave the
+	// placeholder a black box — instead bind the type-level magenta handle
+	// to THIS instance (the mech render path samples the instance's slot-0
+	// handle) and skip the repaint. Cold on stock: no stock mech ever sets
+	// baseShapeLoadFailed. (First live probe rendered visible-but-BLACK
+	// boxes — the early-return alone left the instance handle unset.)
+	if (mechType && mechType->baseShapeLoadFailed)
+	{
+		DWORD ph = mechType->mechShape[currentLOD]
+			? mechType->mechShape[currentLOD]->GetTextureHandle(0)
+			: 0xffffffff;
+		if (ph != 0xffffffff)
+		{
+			// The GPU mech batcher binds SLOT 0 per-actor from
+			// localTextureHandle (submitActor desc.slot0TexHandle, an
+			// mcTextureManager node index — same space as GetTextureHandle).
+			localTextureHandle = ph;
+			if (mechShape->GetNumTextures() > 0)
+			{
+				mechShape->SetTextureHandle(0, ph);
+				mechShape->SetTextureAlpha(0, false);
+			}
+		}
+		return;
+	}
 
 	// AO-1: load the imported-mech AO map once (independent of paint scheme; AO is
 	// linear grayscale, not recolored). Loaded here (before resetPaintScheme's early
@@ -3570,7 +3622,10 @@ long Mech3DAppearance::render (long depthFixup)
 long Mech3DAppearance::renderShadows (void)
 {
 	// Skip legacy blob shadows when shadow maps are active
-	if (gos_IsTerrainTessellationActive())
+	// ISSUE-34: keyed on the modern shadow path, not tessellation — legacy
+	// pz-gated CPU blob shadows stay off when tess is disabled (their whole-
+	// triangle near-"clip" drops are the uneven-clipping symptom).
+	if (gos_IsModernShadowPathActive())
 		return NO_ERR;
 
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> no shadow.
@@ -3777,9 +3832,11 @@ void Mech3DAppearance::updateGeometry (void)
 	// any consumer reads it.
 	// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_STATE_STRIP
 	// (default-ON, strict no-op on tessellated GPU-mech path) retired to constant.
+	// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching the
+	// renderShadows early-return so the stripped state has no consumer.
 	const bool stripShadowState =
 		g_useGpuMechs &&
-		gos_IsTerrainTessellationActive();
+		gos_IsModernShadowPathActive();
 
 	if ((status == OBJECT_STATUS_DESTROYED) ||
 		(status == OBJECT_STATUS_DISABLED) || 
@@ -4102,7 +4159,9 @@ void Mech3DAppearance::updateGeometry (void)
 			// listOfShadowTVertices populated by MultiTransformShadows
 			// (which still dispatches at msl.cpp:1765 in that branch).
 			// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_SKIP retired.
-			if (g_useGpuMechs && gos_IsTerrainTessellationActive()) {
+			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
+			// the renderShadows early-return that makes the consumer unreachable.
+			if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
 				// Skip — modern engine has no consumer.
 			} else if (g_useGpuMechs && g_useGpuMechShadowFastTransform) {
 				mechShadowShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
@@ -4141,7 +4200,10 @@ void Mech3DAppearance::updateGeometry (void)
 		// flight. World/tactical mechs (depth == 0) keep the GPU fast paths.
 		if (g_mechPreviewRenderDepth > 0) {
 			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
-		} else if (g_useGpuMechs && g_useGpuMechLeafSkip && gos_IsTerrainTessellationActive()) {
+		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
+		// its unreachability proof (RenderShadows early-return, Slice A
+		// Render(true) bypass, rect-only selection) holds on that predicate.
+		} else if (g_useGpuMechs && g_useGpuMechLeafSkip && gos_IsModernShadowPathActive()) {
 			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
 		} else if (g_useGpuMechs && g_useGpuMechFastTransform) {
 			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);

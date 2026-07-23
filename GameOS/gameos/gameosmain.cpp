@@ -7,6 +7,7 @@
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
 #include "build_fingerprint.h"          // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
+#include "../../RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -514,6 +515,100 @@ static void process_events( void ) {
 
 extern bool g_disable_quads;
 
+// META-FIX design D (MC2_RES_ASSERT) chokepoint (ii): per-frame frame-level
+// resolution contract. Only called when the gate is armed (default OFF =
+// tier1 byte-identical; the call site is one static-latch bool test).
+//   (a) HUD clamp invariant — while gos_GetHudResClampEnabled() the logical
+//       canvas (Environment.screenWidth/Height) is exactly 800x600. Catches
+//       the HUD-RES-CLAMP merge-drop class at runtime (the handleEvents
+//       `Environment.screenWidth = width_` rewrite un-clamps on the first
+//       mode change if the gos_SetScreenMode clamp is lost).
+//   (b) drawable validity + freshness — the cached Environment.drawable* is
+//       positive and matches a fresh graphics::get_drawable_size probe.
+//       3-frame grace: the cache refreshes only in handleEvents, so a
+//       WM-initiated resize between events must not false-fatal.
+//   (c) #49 windowed oracle — an MC2_WINDOWED boot with MC2_WIDTH/MC2_HEIGHT
+//       must keep the requested physical drawable (the pre-fix #49 trap
+//       forced the window back to 800x600 and passed every self-consistent
+//       check). Downgraded to a non-fatal note when the desktop is smaller
+//       than the request (SDL clamps legitimately there).
+static void mc2resFrameAudit(int viewport_w, int viewport_h)
+{
+    char resDetail[192];
+
+    // (a) HUD clamp invariant.
+    if (gos_GetHudResClampEnabled() &&
+        (Environment.screenWidth != 800 || Environment.screenHeight != 600))
+    {
+        snprintf(resDetail, sizeof(resDetail),
+                 "screen=%dx%d expected=800x600 (clamp enabled)",
+                 Environment.screenWidth, Environment.screenHeight);
+        mc2res::violation("hud_clamp", resDetail);
+    }
+
+    // (b) drawable validity + freshness (3-frame grace).
+    if (viewport_w <= 0 || viewport_h <= 0)
+    {
+        snprintf(resDetail, sizeof(resDetail),
+                 "drawable=%dx%d (must be positive)", viewport_w, viewport_h);
+        mc2res::violation("drawable_nonpositive", resDetail);
+    }
+    else
+    {
+        int probeW = 0, probeH = 0;
+        static int s_staleFrames = 0;
+        if (gos_ProbeDrawableSize(&probeW, &probeH))
+        {
+            if (probeW != viewport_w || probeH != viewport_h)
+            {
+                if (++s_staleFrames > 3)
+                {
+                    snprintf(resDetail, sizeof(resDetail),
+                             "cached=%dx%d probe=%dx%d for %d frames",
+                             viewport_w, viewport_h, probeW, probeH,
+                             s_staleFrames);
+                    s_staleFrames = 0;
+                    mc2res::violation("drawable_stale", resDetail);
+                }
+            }
+            else
+                s_staleFrames = 0;
+        }
+    }
+
+    // (c) #49 windowed-resolution oracle.
+    static const int s_reqW =
+        []{ const char* e = getenv("MC2_WIDTH");  return e ? atoi(e) : 0; }();
+    static const int s_reqH =
+        []{ const char* e = getenv("MC2_HEIGHT"); return e ? atoi(e) : 0; }();
+    static const bool s_windowed =
+        []{ const char* e = getenv("MC2_WINDOWED"); return e && e[0] && e[0] != '0'; }();
+    if (s_windowed && s_reqW > 0 && s_reqH > 0)
+    {
+        static int s_oracleFrames = 0;
+        if (viewport_w != s_reqW || viewport_h != s_reqH)
+        {
+            if (++s_oracleFrames > 3)
+            {
+                s_oracleFrames = 0;
+                bool desktopSmaller = false;
+                SDL_DisplayMode dm;
+                if (SDL_GetDesktopDisplayMode(0, &dm) == 0)
+                    desktopSmaller = (dm.w < s_reqW || dm.h < s_reqH);
+                snprintf(resDetail, sizeof(resDetail),
+                         "drawable=%dx%d requested=%dx%d (MC2_WINDOWED)",
+                         viewport_w, viewport_h, s_reqW, s_reqH);
+                if (desktopSmaller)
+                    mc2res::note("windowed_size_desktop_clamp", resDetail);
+                else
+                    mc2res::violation("windowed_size", resDetail);
+            }
+        }
+        else
+            s_oracleFrames = 0;
+    }
+}
+
 static void draw_screen( void )
 {
     g_disable_quads = false;
@@ -530,6 +625,11 @@ static void draw_screen( void )
 
 	const int viewport_w = Environment.drawableWidth;
 	const int viewport_h = Environment.drawableHeight;
+
+	// META-FIX design D (MC2_RES_ASSERT): per-frame resolution contract audit.
+	// Default OFF = one static bool test, tier1 byte-identical.
+	if (mc2res::armed())
+		mc2resFrameAudit(viewport_w, viewport_h);
 
     if (pp) {
         pp->resize(viewport_w, viewport_h);
@@ -822,6 +922,27 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 #ifndef DISABLE_GAMEOS_MAIN
 int main(int argc, char** argv)
 {
+#ifdef PLATFORM_WINDOWS
+    // DPI-AWARE-1: FIRST statement of the process — the per-process DPI
+    // context is locked by the first window ANY subsystem creates (the VK
+    // swapchain probe's hidden SDL window boots video before
+    // graphics::create_window), so this must precede everything. See the
+    // gos_render.cpp create_window comment for the field evidence (4K/225%
+    // desktop => 2x-desktop window, "zoomed" menus). MC2_DPI_UNAWARE=1 =
+    // legacy virtualized behavior.
+    {
+        const char* dv = getenv("MC2_DPI_UNAWARE");
+        if (!(dv && dv[0] == '1')) {
+            typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
+            HMODULE u32 = LoadLibraryA("user32.dll");
+            SetDpiCtxFn setCtx = u32
+                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : NULL;
+            // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
+            if (!setCtx || !setCtx((void*)-4))
+                SetProcessDPIAware();
+        }
+    }
+#endif
     // [LAUNCHER-BOOTSTRAP v1] If mc2.exe was started directly (double-click /
     // shortcut) and NOT by mc2-launcher.exe, hand off to the launcher so the
     // player gets the options front-end first. The launcher sets MC2_LAUNCHED=1
@@ -1334,7 +1455,12 @@ int main(int argc, char** argv)
     int w = Environment.screenWidth;
     int h = Environment.screenHeight;
 
-    graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h);
+    // ISSUE-49: pass the windowed boot state (options.cfg FullScreen=FALSE or
+    // MC2_WINDOWED already folded into Environment.fullScreen above) so the
+    // SDL window gets a resizable border for ANY windowed boot, not only when
+    // the MC2_WINDOWED env var is set.
+    graphics::RenderWindowHandle win = graphics::create_window("mc2", w, h,
+        Environment.fullScreen == 0);
     if(!win)
         return 1;
 

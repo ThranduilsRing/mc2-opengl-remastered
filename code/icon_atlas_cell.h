@@ -57,6 +57,38 @@ inline Cell cellForIndex(long index, float cellW, float cellH, float atlasW) {
     return c;
 }
 
+// Row count from atlas height and cell height — same floor+epsilon as
+// columnsForAtlas, but NO fallback: <=0 inputs return 0 = "row bound
+// unknowable" (the checked variant then never flags).
+inline long rowsForAtlas(float atlasH, float cellH) {
+    return (cellH > 0.f && atlasH > 0.f) ? (long)(atlasH / cellH + 0.01f) : 0;
+}
+
+// META-FIX design B PART 3a — checked variant. IDENTICAL cell math: on OOB
+// it returns the LEGACY-COMPUTED cell UNCHANGED (legacy wrap is load-bearing
+// for MC2X high-index content — substituting cell 0 would swap legit mod
+// icons on any false positive) and sets *oob=true so the caller can emit
+// one "[ASSET_LOAD v1] event=icon_oob" line. OOB = negative index, or a row
+// at/beyond floor(atlasH/cellH) when both bounds are known. cellW/cellH come
+// from WIDGET size at the call sites, so the row bound is harness-validated
+// against retail 256x256, MC2X 512, and MCO 1024/40 geometries
+// (tools/icon_atlas_harness/) before any smoke bucket counts icon_oob red.
+inline Cell cellForIndexChecked(long index, float cellW, float cellH,
+                                float atlasW, float atlasH, bool* oob) {
+    Cell c = cellForIndex(index, cellW, cellH, atlasW);
+    if (oob) {
+        *oob = false;
+        if (index < 0) {
+            *oob = true;
+        } else {
+            const long rows = rowsForAtlas(atlasH, cellH);
+            if (rows > 0 && c.row >= rows)
+                *oob = true;
+        }
+    }
+    return c;
+}
+
 } // namespace icon_atlas
 
 #endif // MC2_ICON_ATLAS_CELL_H

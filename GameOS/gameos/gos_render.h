@@ -13,7 +13,11 @@ typedef RenderContext*   RenderContextHandle;
 
 void set_verbose(bool is_verbose);
 
-RenderWindowHandle  create_window           (const char* pwinname, int width, int height);
+// ISSUE-49: windowed_hint = the engine's windowed boot state
+// (Environment.fullScreen == 0, i.e. options.cfg FullScreen=FALSE or
+// MC2_WINDOWED). Makes the window resizable for options.cfg-windowed boots
+// too, not only when the MC2_WINDOWED env var is set. Editor ignores it.
+RenderWindowHandle  create_window           (const char* pwinname, int width, int height, bool windowed_hint);
 bool                resize_window           (RenderWindowHandle rw_handle, int width, int height);
 void                get_window_size         (RenderWindowHandle rw_handle, int* width, int* height);
 // may be different than window size (e.g. when switching to fullscreen)

@@ -218,6 +218,17 @@ extern "C" void mc2_hzb_dump_camera_view(void)
     // No-op: HZB camera-view capture is a game-only debug tool; absent in EditRel.
 }
 
+// Same pre-existing-gap pattern as mc2_hzb_dump_camera_view above: commit
+// 560dfc1d (BOOKMARK-SAVE-BUTTON-1) defined mc2_save_camera_bookmark in
+// code/gamecam.cpp (game TU, not linked into EditRel) and calls it from
+// GuiRuntime/EditorInspector.cpp (shared by the editor) — EditRel link broke.
+// Provide the no-op shim; report an empty path so the inspector shows nothing.
+extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
+{
+    if (outPath && outPathLen > 0)
+        outPath[0] = '\0';
+}
+
 // ---------------------------------------------------------------------------
 // InitGameOS
 // ---------------------------------------------------------------------------
@@ -298,7 +309,8 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
         }
 
         graphics::set_editor_parent_window((void*)hWindow);
-        g_editorRenderWindow = graphics::create_window("MC2 Editor (Remastered)", w, h);
+        // ISSUE-49: windowed_hint=false — editor child HWND, hint not applicable.
+        g_editorRenderWindow = graphics::create_window("MC2 Editor (Remastered)", w, h, false);
 
         EditorGameOSTrace("InitGameOS: after graphics::create_window renderWindow=%p", g_editorRenderWindow);
 

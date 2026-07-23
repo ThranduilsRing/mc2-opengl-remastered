@@ -8,7 +8,9 @@
 
 #include"heap.h"
 #include"fastfile.h"
+#include"fst_hash.h"   // fst_normalize_loose_key_inplace (canonical-key chokepoint)
 #include<ctype.h>
+#include<string.h>
 #include"platform_str.h"
 
 // NS3 boundary: the FastFile registry storage belongs to the FastFile
@@ -75,12 +77,27 @@ FastFile *FastFileFind (const char *fname, long &fastFileHandle)
 {
 	if (fastFiles)
 	{
-		DWORD thisHash = elfHash(fname);
+		// META-FIX design E: callee-side canonical-key chokepoint (issue #8
+		// family). FST keys are lowercase forward-slash (fst_hash.h; the
+		// engine historically lowercased in File::open BEFORE calling here,
+		// while fileExists forgot to — so the same logical path hashed to two
+		// different keys depending on the caller). Normalize ONCE here
+		// (case+slash) and use the SAME buffer for the elfHash and the
+		// openFast name compare, so every caller resolves identically.
+		// Uppercase-named FST entries were already unreachable via
+		// File::open's lowered path — this is strictly widening.
+		char normName[1024];
+		if (!fname) return NULL;
+		strncpy(normName, fname, sizeof(normName) - 1);
+		normName[sizeof(normName) - 1] = '\0';
+		fst_normalize_loose_key_inplace(normName);
+
+		DWORD thisHash = elfHash(normName);
 		long currentFastFile = 0;
 		long tempHandle = -1;
 		while (currentFastFile < numFastFiles)
 		{
-			tempHandle = fastFiles[currentFastFile]->openFast(thisHash,fname);
+			tempHandle = fastFiles[currentFastFile]->openFast(thisHash,normName);
 			if (tempHandle != -1)
 			{
 				fastFileHandle = tempHandle;
