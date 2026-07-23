@@ -2291,6 +2291,17 @@ int main(int argc, char** argv)
         }
 
         {
+            // CAMERA-PARK-1 (perf-capture fixture, 2026-07-18): MC2_CAMERA_PARK=
+            // "x,y,rot,proj,alt[@frame]" hard-sets the live camera pose once at
+            // frame >= @frame (default 300) and pins it against scripted writers
+            // (same freezeScriptedCameraForCapture pin the bookmark replay uses)
+            // WITHOUT freezing the sim — for Tracy captures that need a
+            // worst-case view (map edge, max altitude, looking across) while
+            // gameplay keeps running. Default OFF = one static pointer check.
+            // (Implementation lives in gos_visual_capture.cpp on this branch —
+            // the mclib Camera type is visible there, not in this TU.)
+            gos::visual_capture::cameraParkTick(g_mc2FrameCounter);
+
             // [VISUAL_CAPTURE v1] S9: deterministic PNG + capture-tuple sidecar,
             // and bookmark teleport/settle/capture replay. Reuses the same
             // offscreen scene FBO source as [SCREENSHOT v1] above (robust to a

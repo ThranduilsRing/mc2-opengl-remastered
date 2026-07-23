@@ -1012,6 +1012,40 @@ void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, const char *Me
 void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const char *Message, ... );
 
 //
+// FONT-IMGUI-SLICE-1: read-only bitmap-font atlas/glyph queries so the ImGui
+// HUD panels (pause/info/obj) can draw legacy gos bitmap-font text through
+// the ImGui draw list with the exact same glyph quads gosRenderer::drawText
+// emits (see code/hud_imgui_font.cpp). No renderer state is mutated except
+// gos_FontGetAtlasDesc pinning the atlas texture's sampling params to
+// NEAREST/CLAMP — the same params every legacy text draw applies
+// (gos_FilterNone + gos_TextureClamp), made explicit here because the
+// ImGui path samples the texture without going through applyRenderStates.
+//
+typedef struct gos_FontAtlasDesc
+{
+    uint32_t glTexId;      // GL texture name of the font atlas
+    int      texWidth;     // atlas dimensions in texels
+    int      texHeight;
+    int      lineSkip;     // line advance (gosFont::getMaxCharHeight)
+    int      ascent;       // font ascent  (gosFont::getFontAscent)
+    int      maxAdvance;   // fallback advance for out-of-range chars
+} gos_FontAtlasDesc;
+
+typedef struct gos_FontGlyphDesc
+{
+    int      offX;         // pen-relative quad offset  (gm.minx)
+    int      offY;         // pen-relative quad offset  (ascent - gm.maxy)
+    int      width;        // quad + atlas sample size  (gm.maxx - gm.minx)
+    int      height;       //                           (gm.maxy - gm.miny)
+    uint32_t u;            // atlas sample origin in texels
+    uint32_t v;
+    int      advance;      // pen advance after this glyph
+} gos_FontGlyphDesc;
+
+bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* Out );
+bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGlyphDesc* Out );
+
+//
 // Draws string using current attributes and position
 //
 //  Special Codes -

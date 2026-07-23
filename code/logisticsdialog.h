@@ -37,6 +37,16 @@ public:
 
 		bool				isDone() { return bDone; }
 
+		// PAUSE-IMGUI-SLICE-3: the ImGui confirm-dialog port drives the dialog
+		// state machine without the legacy rect hit-test. updateAnimsOnly()
+		// advances the enter/exit anims + the bDone latch only (the input half
+		// of update() is replaced by ImGui buttons / a keyboard mirror); the
+		// anim accessors let the port replay the legacy slide + fade exactly.
+		// Legacy callers keep using update()/render() — behavior unchanged.
+		void		updateAnimsOnly();
+		aAnimation&	getEnterAnim() { return enterAnim; }
+		aAnimation&	getExitAnim() { return exitAnim; }
+
 		void	setFont( int newFontResID );
 
 		LogisticsDialog();

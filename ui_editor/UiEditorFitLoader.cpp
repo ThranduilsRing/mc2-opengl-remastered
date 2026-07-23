@@ -253,6 +253,17 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 		return false;
 	}
 
+
+	bool ParseNamedRectField(const ParsedBlock& block, const char* fieldName, float& x, float& y, float& w, float& h)
+	{
+		const std::string explicitRect = GetValue(block, fieldName);
+		return !explicitRect.empty()
+			&& ParseFloatList4(explicitRect, x, y, w, h)
+			&& w > 0.0f
+			&& h > 0.0f;
+	}
+
+
 	std::string FormatBoolValue(bool value)
 	{
 		return value ? "true" : "false";
@@ -456,15 +467,20 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 
 	std::string GuessLayerForBlock(const ParsedBlock& block)
 	{
-		if (StartsWith(block.type, "GuiButton"))
+		if (StartsWith(block.type, "GuiButton") || block.type == "UiV2Button" ||
+		    block.type == "UiV2ComboBox" || block.type == "UiV2DropList" ||
+		    block.type == "UiV2Edit")
 			return "controls";
 
-		if (StartsWith(block.type, "GuiText") || StartsWith(block.type, "GuiList"))
+		if (StartsWith(block.type, "GuiText") || StartsWith(block.type, "GuiList") ||
+		    block.type == "UiV2Text")
 			return "content";
 
-		if (StartsWith(block.type, "GuiImage") || StartsWith(block.type, "GuiStatic"))
+		if (StartsWith(block.type, "GuiImage") || StartsWith(block.type, "GuiStatic") ||
+		    block.type == "UiV2Static" || block.type == "UiV2ButtonChild" ||
+		    block.type == "UiV2AnimObject")
 			return "art";
-		if (StartsWith(block.type, "GuiRect"))
+		if (StartsWith(block.type, "GuiRect") || block.type == "UiV2Rect")
 			return "layout";
 
 		return "content";
@@ -479,7 +495,7 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 
 	void ConsumeBlock(const ParsedBlock& block, UiEditorFitLayout& layout)
 	{
-		if (block.type == "GuiPage")
+		if (block.type == "GuiPage" || block.type == "UiV2Page")
 		{
 			const std::string key = GetValue(block, "key");
 			const std::string title = GetValue(block, "title");
@@ -493,10 +509,36 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 			layout.designWidth = ParseIntValue(GetValue(block, "localWidth"), layout.designWidth);
 			layout.designHeight = ParseIntValue(GetValue(block, "localHeight"), layout.designHeight);
 			ParseFloatList2(GetValue(block, "mountOffset"), layout.mountOffsetX, layout.mountOffsetY);
+
+			const std::string overlayValue = GetValue(block, "overlayGameOS");
+			if (!overlayValue.empty())
+				layout.overlaysGameOS = ParseBoolValue(overlayValue, layout.overlaysGameOS);
+
+			const std::string renderMode = GetValue(block, "renderMode");
+			if (!renderMode.empty())
+				layout.renderMode = renderMode;
+
+			const std::string backgroundPolicy = GetValue(block, "backgroundPolicy");
+			if (!backgroundPolicy.empty())
+				layout.backgroundPolicy = backgroundPolicy;
+
+			const std::string baseLayoutPath = GetValue(block, "baseLayout");
+			if (!baseLayoutPath.empty())
+				layout.baseLayoutPath = baseLayoutPath;
+
+			const std::string compositionMode = GetValue(block, "compositionMode");
+			if (!compositionMode.empty())
+				layout.compositionMode = compositionMode;
+
 			return;
 		}
 
-		if (!StartsWith(block.type, "Gui"))
+		if (!StartsWith(block.type, "Gui") && !StartsWith(block.type, "UiV2"))
+			return;
+
+		// V2 metadata blocks are not renderable cells.
+		if (block.type == "UiV2FamilyCount" || block.type == "UiV2Cursor" ||
+		    block.type == "UiV2SourceBlock" || block.type == "UiV2Animation")
 			return;
 
 		const std::string rect = GetValue(block, "rect");
@@ -536,6 +578,13 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 		cell.hasHighlightOverlayColor = ParseColorArgbValue(GetValue(block, "highlightOverlayColorArgb"), cell.highlightOverlayColor);
 		cell.hasDisabledOverlayColor = ParseColorArgbValue(GetValue(block, "disabledOverlayColorArgb"), cell.disabledOverlayColor);
 		cell.hasTextRect = ParseTextRectFields(block, cell);
+		cell.hasArtRect = ParseNamedRectField(block, "artRect", cell.artX, cell.artY, cell.artWidth, cell.artHeight);
+		cell.hasBorderRect = ParseNamedRectField(block, "borderRect", cell.borderX, cell.borderY, cell.borderWidthRect, cell.borderHeightRect);
+		cell.borderEnabled = ParseBoolValue(GetValue(block, "borderEnabled"), cell.borderEnabled);
+		cell.buttonTemplate = GetValue(block, "buttonTemplate");
+		cell.linkedImageKey = GetValue(block, "linkedImageKey");
+		cell.linkedButtonKey = GetValue(block, "linkedButtonKey");
+		cell.buttonTemplatePart = GetValue(block, "buttonTemplatePart");
 		cell.runtimeTextBinding = GetValue(block, "runtimeTextBinding");
 		cell.runtimeTextSource = GetValue(block, "runtimeTextSource");
 		cell.legacyTemplateTextKey = GetValue(block, "legacyTemplateTextKey");
@@ -586,6 +635,8 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 		cell.pulseEnabled = ParseBoolValue(GetValue(block, "pulseEnabled"), cell.pulseEnabled);
 		ParseFloatScalar(GetValue(block, "pulseSpeed"), cell.pulseSpeed);
 		ParseFloatScalar(GetValue(block, "borderWidth"), cell.borderWidth);
+		if (GetValue(block, "borderEnabled").empty())
+			cell.borderEnabled = cell.borderWidth > 0.0f;
 		ParseFloatScalar(GetValue(block, "opacity"), cell.opacity);
 		cell.rectRaw = displayRect;
 		cell.rectFieldName = !localRect.empty() ? "legacyLocalRect" : "rect";
@@ -598,11 +649,47 @@ std::string GetValue(const ParsedBlock& block, const char* key);
 		if (!ParseFloatList4(displayRect, cell.x, cell.y, cell.width, cell.height))
 			return;
 
+		if (!cell.hasArtRect)
+		{
+			cell.hasArtRect = true;
+			cell.artX = cell.x;
+			cell.artY = cell.y;
+			cell.artWidth = cell.width;
+			cell.artHeight = cell.height;
+		}
+
+		if (!cell.hasBorderRect)
+		{
+			cell.hasBorderRect = true;
+			cell.borderX = cell.x;
+			cell.borderY = cell.y;
+			cell.borderWidthRect = cell.width;
+			cell.borderHeightRect = cell.height;
+		}
+
+		if (cell.buttonTemplate.empty() &&
+		    (ToLowerCopy(cell.type).find("guibutton") != std::string::npos || cell.type == "UiV2Button"))
+			cell.buttonTemplate = "composite_hit_art_border_text_v1";
+
 		if (GetValue(block, "wrapText").empty()
-			&& (StartsWith(cell.type, "GuiText") || StartsWith(cell.type, "GuiList") || StartsWith(cell.type, "GuiEditBox"))
+			&& (StartsWith(cell.type, "GuiText") || StartsWith(cell.type, "GuiList") || StartsWith(cell.type, "GuiEditBox")
+			    || cell.type == "UiV2Text" || cell.type == "UiV2Edit")
 			&& cell.height > std::max(24.0f, cell.fontSize * 1.6f))
 		{
 			cell.wrapText = true;
+		}
+
+		if (cell.type == "GuiList")
+		{
+			cell.isListCell = true;
+			ParseFloatScalar(GetValue(block, "itemHeight"), cell.itemHeight);
+			ParseFloatScalar(GetValue(block, "itemOffsetX"), cell.itemOffsetX);
+			ParseFloatScalar(GetValue(block, "itemOffsetY"), cell.itemOffsetY);
+			if (!GetValue(block, "highlightColorArgb").empty())
+				ParseColorArgbValue(GetValue(block, "highlightColorArgb"), cell.highlightColor);
+			const std::string previewCount = GetValue(block, "listPreviewItemCount");
+			if (!previewCount.empty())
+				cell.listPreviewItemCount = ParseIntValue(previewCount, 3);
 		}
 
 		// Legacy conversion emits non-visual container/animation bookkeeping blocks
@@ -687,6 +774,17 @@ UiEditorFitCell::UiEditorFitCell()
 	, pulseEnabled(false)
 	, pulseSpeed(1.5f)
 	, borderWidth(0.0f)
+	, borderEnabled(false)
+	, hasBorderRect(false)
+	, borderX(0.0f)
+	, borderY(0.0f)
+	, borderWidthRect(0.0f)
+	, borderHeightRect(0.0f)
+	, hasArtRect(false)
+	, artX(0.0f)
+	, artY(0.0f)
+	, artWidth(0.0f)
+	, artHeight(0.0f)
 	, opacity(1.0f)
 	, rectFieldName("rect")
 	, x(0.0f)
@@ -707,6 +805,11 @@ UiEditorFitCell::UiEditorFitCell()
 	, hasDisabledUvPixels(false)
 	, uvDisabledX(0.0f)
 	, uvDisabledY(0.0f)
+	, isListCell(false)
+	, itemHeight(0.0f)
+	, itemOffsetX(2.0f)
+	, itemOffsetY(0.0f)
+	, listPreviewItemCount(3)
 {
 	textAlign = "left";
 	textAnchor = "top_left";
@@ -732,6 +835,10 @@ UiEditorFitCell::UiEditorFitCell()
 	borderColor[1] = 0.0f;
 	borderColor[2] = 0.0f;
 	borderColor[3] = 0.0f;
+	highlightColor[0] = 0.95f;
+	highlightColor[1] = 0.55f;
+	highlightColor[2] = 0.12f;
+	highlightColor[3] = 0.50f;
 }
 
 UiEditorFitLayout::UiEditorFitLayout()
@@ -740,7 +847,11 @@ UiEditorFitLayout::UiEditorFitLayout()
 	, designHeight(600)
 	, mountOffsetX(0.0f)
 	, mountOffsetY(0.0f)
+	, overlaysGameOS(true)
 {
+	renderMode = "gameos_overlay";
+	backgroundPolicy = "transparent_overlay";
+	compositionMode = "overlay";
 }
 
 bool UiEditorFitLoadLayout(const char* path, UiEditorFitLayout& outLayout)
@@ -912,12 +1023,18 @@ bool UiEditorFitSaveLayoutCopy(const UiEditorFitLayout& layout, const char* path
 		updates["disabledTextColorArgb"] = FormatColorArgbValue(cell.disabledTextColor);
 		updates["buttonOverlayEnabled"] = FormatBoolValue(cell.buttonOverlayEnabled);
 		updates["buttonOverlayAlpha"] = FormatFloat(cell.buttonOverlayAlpha);
+		updates["borderEnabled"] = FormatBoolValue(cell.borderEnabled);
+		updates["borderRect"] = FormatFitStringValue(FormatRect(cell.borderX, cell.borderY, cell.borderWidthRect, cell.borderHeightRect));
+		updates["artRect"] = FormatFitStringValue(FormatRect(cell.artX, cell.artY, cell.artWidth, cell.artHeight));
+		updates["buttonTemplate"] = FormatFitStringValue(cell.buttonTemplate);
+		updates["linkedImageKey"] = FormatFitStringValue(cell.linkedImageKey);
+		updates["linkedButtonKey"] = FormatFitStringValue(cell.linkedButtonKey);
+		updates["buttonTemplatePart"] = FormatFitStringValue(cell.buttonTemplatePart);
 		updates["normalOverlayColorArgb"] = FormatColorArgbValue(cell.normalOverlayColor);
 		updates["pressedOverlayColorArgb"] = FormatColorArgbValue(cell.pressedOverlayColor);
 		updates["highlightOverlayColorArgb"] = FormatColorArgbValue(cell.highlightOverlayColor);
 		updates["disabledOverlayColorArgb"] = FormatColorArgbValue(cell.disabledOverlayColor);
 		updates["textRect"] = FormatFitStringValue(FormatRect(cell.textX, cell.textY, cell.textWidth, cell.textHeight));
-		updates["textOffset"] = FormatFitStringValue(FormatFloat(cell.textX - cell.x) + "," + FormatFloat(cell.textY - cell.y));
 		updates["textX"] = FormatFloat(cell.textX);
 		updates["textY"] = FormatFloat(cell.textY);
 		updates["textWidth"] = FormatFloat(cell.textWidth);
@@ -925,6 +1042,19 @@ bool UiEditorFitSaveLayoutCopy(const UiEditorFitLayout& layout, const char* path
 		updates["pulseEnabled"] = FormatBoolValue(cell.pulseEnabled);
 		updates["pulseSpeed"] = FormatFloat(cell.pulseSpeed);
 		updates["texture"] = FormatFitStringValue(cell.texture);
+		if (cell.type == "GuiList" || cell.isListCell)
+		{
+			updates["itemHeight"] = FormatFloat(cell.itemHeight);
+			updates["itemOffsetX"] = FormatFloat(cell.itemOffsetX);
+			updates["itemOffsetY"] = FormatFloat(cell.itemOffsetY);
+			updates["highlightColorArgb"] = FormatColorArgbValue(cell.highlightColor);
+			if (cell.listPreviewItemCount != 3)
+			{
+				char countBuf[16];
+				std::snprintf(countBuf, sizeof(countBuf), "%d", cell.listPreviewItemCount);
+				updates["listPreviewItemCount"] = countBuf;
+			}
+		}
 	}
 
 	bool inBlock = false;

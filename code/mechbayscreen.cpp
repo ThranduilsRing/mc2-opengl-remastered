@@ -275,11 +275,20 @@ void MechBayScreen::render(int xOffset, int yOffset)
 	float tbSx = 1.f, tbSy = 1.f, tbOx = 0.f, tbOy = 0.f;
 	aObject::getCanvasTransform( tbSx, tbSy, tbOx, tbOy );
 
+	// DEFS-LIST-ICONS-1: full GUI bridge (not just text). With only the text
+	// bridge active the row TEXT reached the ImGui layer but every quad in the
+	// MechListBoxItem widget tree — the mech silhouette icons, cost icon, row
+	// outline/divider, scrollbar — went through raw gos_DrawQuads and was buried
+	// under the ImGui defs page (text-only 'MECH STORAGE rows). Same fix as
+	// MECH-ICON-BLANK-1 below for the deployment-slot icons. aListBox::render
+	// also clips bridged edge rows to the box (DEFS-LIST-CLIP-1).
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 	aObject::beginTextBridge( tbSx, tbSy, 1.0f, tbOx, tbOy );
 	mechListBox.move( xOffset, yOffset );
 	mechListBox.render();
 	mechListBox.move( -xOffset, -yOffset );
 	aObject::endTextBridge();
+	aObject::endGuiBridge();
 
 	loadoutListBox.move( xOffset, yOffset );
 	loadoutListBox.render();
@@ -307,6 +316,10 @@ void MechBayScreen::render(int xOffset, int yOffset)
 
 
 
+	// DEFS-METER-BRIDGE-1: bridge the stat bars + the TEAM WEIGHT LIMIT gauge
+	// onto the ImGui layer — their raw gos draws were buried under the defs page
+	// (empty weight-limit box / empty bars).
+	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 	for ( int i = 0; i < 3; i++ )
 	{
 		attributeMeters[i].render(xOffset, yOffset);
@@ -315,6 +328,7 @@ void MechBayScreen::render(int xOffset, int yOffset)
 
 
 	drawWeightMeter(xOffset, yOffset);
+	aObject::endGuiBridge();
 
 	LogisticsScreen::render(xOffset, yOffset);
 
@@ -394,6 +408,12 @@ void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
 		v[i].x = weightCenterX + xOffset;
 		v[i].y = weightCenterY + yOffset;
 	}
+
+	// DEFS-METER-BRIDGE-1: raw gos_DrawTriangles is buried under the ImGui defs
+	// page; when the caller has the GUI bridge active, draw the radial gauge
+	// wedges on the ImGui layer at display scale instead.
+	float bSx = 1.f, bSy = 1.f, bOx = 0.f, bOy = 0.f;
+	const bool bBridged = aObject::getGuiBridgeTransform( bSx, bSy, bOx, bOy );
 	 
 	float curArc = 180.f;
 	float curX = 50.f * cos( DEGREES_TO_RADS * curArc );
@@ -418,8 +438,15 @@ void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
 		else
 			v[0].argb = v[1].argb = v[2].argb = interpolateColor( weightStartColor, weightEndColor, i * .05 );
 
-		gos_DrawTriangles( v, 3 );
-		
+		if ( bBridged )
+			GuiRuntime::DrawUiTriangleVerts(
+				v[0].x * bSx + bOx, v[0].y * bSy + bOy,
+				v[1].x * bSx + bOx, v[1].y * bSy + bOy,
+				v[2].x * bSx + bOx, v[2].y * bSy + bOy,
+				v[0].argb );
+		else
+			gos_DrawTriangles( v, 3 );
+
 
 	}
 

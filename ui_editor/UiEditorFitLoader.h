@@ -105,6 +105,21 @@ struct UiEditorFitCell
 	float fillColor[4];
 	float borderColor[4];
 	float borderWidth;
+	bool borderEnabled;
+	bool hasBorderRect;
+	float borderX;
+	float borderY;
+	float borderWidthRect;
+	float borderHeightRect;
+	bool hasArtRect;
+	float artX;
+	float artY;
+	float artWidth;
+	float artHeight;
+	std::string buttonTemplate;
+	std::string linkedImageKey;
+	std::string linkedButtonKey;
+	std::string buttonTemplatePart;
 	float opacity;
 
 	std::string rectRaw;
@@ -130,6 +145,15 @@ struct UiEditorFitCell
 	float uvDisabledX;
 	float uvDisabledY;
 
+	// GuiList authoring fields. Item row contents are always runtime-pushed via
+	// setListItems(); only geometry and style are authored in the FIT.
+	bool isListCell;
+	float itemHeight;         // row height; 0 = auto (fontSize + 4)
+	float itemOffsetX;        // text indent from list left edge
+	float itemOffsetY;        // text nudge from row top
+	float highlightColor[4];  // RGBA selection-highlight tint
+	int listPreviewItemCount; // placeholder rows shown in the editor canvas
+
 	UiEditorFitCell();
 };
 
@@ -144,6 +168,11 @@ struct UiEditorFitLayout
 	int designHeight;
 	float mountOffsetX;
 	float mountOffsetY;
+	bool overlaysGameOS;
+	std::string renderMode;
+	std::string backgroundPolicy;
+	std::string baseLayoutPath;
+	std::string compositionMode;
 	std::vector<UiEditorFitCell> cells;
 
 	UiEditorFitLayout();

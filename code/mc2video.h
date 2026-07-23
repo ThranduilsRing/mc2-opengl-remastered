@@ -69,4 +69,12 @@ void          video_setRect(VideoSession* s, int x0, int y0, int w, int h);
 // (e.g. the ImGui/defs UI layer) instead of video_render's built-in gos quad.
 unsigned int  video_get_texture(VideoSession* s);
 
+// SMALLPANELS-IMGUI-SLICE-1: destination geometry of the built-in draw — the
+// aspect-fit video quad + the letterbox dest rect — in the same screen space
+// video_render uses, so an external compositor (the ImGui HUD video panel)
+// can reproduce that draw exactly. Returns false when s is null.
+bool video_get_layout(VideoSession* s,
+                      float* qx0, float* qy0, float* qx1, float* qy1,
+                      int* rx, int* ry, int* rw, int* rh);
+
 #endif // MC2VIDEO_H

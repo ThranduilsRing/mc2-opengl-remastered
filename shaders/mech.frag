@@ -402,6 +402,16 @@ void main() {
     else if (u_debugMode == 7) c = vec4(texture(u_tex, vec2(0.5, 0.5)).rgb, 1.0); // sample at hardcoded UV
     else if (u_debugMode == 8) c = vec4(textureLod(u_tex, v_uv, 0.0).rgb, 1.0);  // explicit LOD 0 sample
     else if (u_debugMode == 9) c = vec4(v_litColor.rgb / max(textureLod(u_tex, v_uv, 0.0).rgb, vec3(0.001)), 1.0); // lighting / texture (texture-inversion overlay)
+    // DEBUG-VIEW-SWEEP-1: shared 50-series full-scene views (see gos_terrain.frag).
+    else if (u_debugMode == 50) {                                                   // depth: eye distance / 6000 wu
+#ifdef MC2_USE_VIEW_UNIFORMS
+        c = vec4(vec3(clamp(distance(u_cameraWorldPos.xyz, v_worldPos) / 6000.0, 0.0, 1.0)), 1.0);
+#else
+        c = vec4(vec3(clamp((gl_FragCoord.z - 0.5) / 0.5, 0.0, 1.0)), 1.0);         // fallback: raw z stretch
+#endif
+    }
+    else if (u_debugMode == 51) c = vec4(vec3(0.12), 1.0);                          // overdraw proxy (one flat layer)
+    else if (u_debugMode == 52) c = vec4(0.0, 0.0, 0.0, 1.0);                       // chunk-tint view: mechs unsupported -> black
 
     FragColor = c;
     GBuffer1  = rc_gbuffer1_screenShadowEligible(N_gbuf);

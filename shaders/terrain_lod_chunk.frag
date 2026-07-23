@@ -1508,6 +1508,29 @@ void main() {
             else if (luma < 0.05) dbg = vec3(0.0, 0.0, 1.0);
             else                  dbg = vec3(luma);
         }
+        // DEBUG-VIEW-SWEEP-1: shared 50-series full-scene views (see gos_terrain.frag).
+        else if (u_lightingDebugView == 50) {                                           // depth: eye distance / 6000 wu
+            vec3 dvCamW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+            dbg = vec3(clamp(distance(v_worldPos, dvCamW) / 6000.0, 0.0, 1.0));
+        }
+        else if (u_lightingDebugView == 51) dbg = vec3(0.12);                           // overdraw proxy (one flat layer)
+        else if (u_lightingDebugView == 52) {                                           // chunk/LOD tint
+            // LOD-band base color (u_lodStep, geomorph u_diag==41 palette) modulated
+            // by a per-128wu-tile world hash so chunk/tile boundaries read clearly.
+            vec3 bc;
+            if      (u_lodStep == 1)  bc = vec3(0.0, 1.0, 0.0);
+            else if (u_lodStep == 2)  bc = vec3(0.0, 1.0, 1.0);
+            else if (u_lodStep == 4)  bc = vec3(0.0, 0.3, 1.0);
+            else if (u_lodStep == 5)  bc = vec3(1.0, 1.0, 0.0);
+            else if (u_lodStep == 10) bc = vec3(1.0, 0.55, 0.0);
+            else                      bc = vec3(1.0, 0.0, 0.0);
+            uint kx = uint(int(floor(v_worldPos.x / 128.0)) + 4096);
+            uint ky = uint(int(floor(v_worldPos.y / 128.0)) + 4096);
+            uint k = kx * 73856093u ^ ky * 19349663u;
+            k ^= k >> 16u; k *= 0x7feb352du; k ^= k >> 15u;
+            float m = 0.4 + 0.6 * float(k & 0xFFu) / 255.0;
+            dbg = bc * m;
+        }
         else handled = false;                                                           // 45/47/48/unknown -> fall through
         if (handled) {
             fragColor = vec4(dbg, 1.0);

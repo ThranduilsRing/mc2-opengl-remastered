@@ -262,8 +262,25 @@ void Part::Save (FitIniFilePtr file, long partNum)
 	file->writeIdULong("VariantNum",variantNum);
 }
 
+// QUICKSAVE-TRACE-1 (field bug 2026-07-18: quickload brought up a DIFFERENT
+// mission than the one quicksaved). Always-on, tiny (fires only on explicit
+// save/load): append path + current mission to <savePath>/saveload_trace.log
+// so a bad slot/ordering is diagnosable after the fact.
+static void saveloadTrace(const char* op, const char* file, const char* missionFile)
+{
+	extern char savePath[];
+	char tracePath[1024];
+	S_snprintf(tracePath, sizeof(tracePath), "%s" PATH_SEPARATOR "saveload_trace.log", savePath);
+	if (FILE* tf = fopen(tracePath, "a")) {
+		fprintf(tf, "[SAVELOAD] op=%s file=%s mission=%s\n",
+			op, file ? file : "(null)", missionFile ? missionFile : "(null)");
+		fclose(tf);
+	}
+}
+
 void Mission::save (const char *saveFileName)
 {
+	saveloadTrace("save", saveFileName, missionFileName);
 	//Check for sufficient hard Drive space on drive game is running from
 	char currentPath[1024];
 	gos_GetCurrentPath( currentPath, 1023 );
@@ -271,6 +288,7 @@ void Mission::save (const char *saveFileName)
 	if (driveSpace < (5 * 1024 * 1024))
 	{
 		soundSystem->playDigitalSample(INVALID_GUI);
+		saveloadTrace("save_ABORT_diskspace", saveFileName, missionFileName);
 		return;
 	}
 
@@ -642,6 +660,7 @@ void Part::Load (FitIniFilePtr file, long partNum)
 
 void Mission::load (const char *loadFileName)
 {
+	saveloadTrace("load_begin_currentMission", loadFileName, missionFileName);
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 2; // [GPUPROPS v1]
 	// F3 CPU projection cost-baseline: flush previous-mission samples and
 	// clear ring buffer. No-op when env OFF.
@@ -977,6 +996,7 @@ void Mission::load (const char *loadFileName)
 	result = missionFile.readIdString( "MissionName"					, missionFileName,79);
 	if (result != NO_ERR)
 		STOP(("Mission Name missing from IN-Mission Save"));
+	saveloadTrace("load_slotMission", loadFileName, missionFileName);
 
 	result = missionFile.readIdFloat( "TimeLimit"						, m_timeLimit );
 	if (result != NO_ERR)

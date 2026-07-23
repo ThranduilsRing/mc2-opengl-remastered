@@ -360,6 +360,9 @@ public:
 
 	private:
 
+		// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE polling (see missiongui.cpp)
+		void processUiCommandChannel();
+
 		void makeForceGroup( int forceGroup );
 		bool moveCameraAround( bool lineOfSight, bool passable, bool ctrl, bool bGui, long moverCount, long nonMoverCount );
 		bool canJump(); // selected units can jump

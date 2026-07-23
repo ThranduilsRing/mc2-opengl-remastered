@@ -82,6 +82,12 @@ class MC2Movie
 		// the built-in gos render().
 		unsigned int getTextureHandle (void);
 
+		// SMALLPANELS-IMGUI-SLICE-1: destination geometry of the built-in draw
+		// (aspect-fit quad + letterbox dest rect, screen space) so an external
+		// compositor can reproduce render() exactly. False when no session.
+		bool getLayout (float& qx0, float& qy0, float& qx1, float& qy1,
+						long& rx, long& ry, long& rw, long& rh);
+
 	protected:
 
 		RECT		MC2Rect;			//Physical Location on screen for MC2 movie.

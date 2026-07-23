@@ -49,6 +49,7 @@
  ***************************************************************/
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_sdl2.h"
 
@@ -68,6 +69,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -97,7 +99,8 @@ namespace
 		SmartToolText,
 		SmartToolButton,
 		SmartToolPanel,
-		SmartToolImage
+		SmartToolImage,
+		SmartToolList
 	};
 
 	enum UiEditorButtonVisualState
@@ -428,6 +431,14 @@ namespace
 		float dragStartTextY;
 		float dragStartTextWidth;
 		float dragStartTextHeight;
+		float dragStartArtX;
+		float dragStartArtY;
+		float dragStartArtWidth;
+		float dragStartArtHeight;
+		float dragStartBorderX;
+		float dragStartBorderY;
+		float dragStartBorderWidth;
+		float dragStartBorderHeight;
 		bool requestQuit;
 		bool showSaveResultPopup;
 		bool openSaveCopyDialog;
@@ -440,6 +451,8 @@ namespace
 		float rightPanelWidth;
 		float leftLayoutsHeight;
 		float rightHierarchyHeight;
+		bool useDockingLayout;
+		bool resetDockLayout;
 		int canvasClickTargetCell;
 		std::string pendingLoadPath;
 		std::string pendingSavePath;
@@ -514,6 +527,14 @@ namespace
 			, dragStartTextY(0.0f)
 			, dragStartTextWidth(0.0f)
 			, dragStartTextHeight(0.0f)
+			, dragStartArtX(0.0f)
+			, dragStartArtY(0.0f)
+			, dragStartArtWidth(0.0f)
+			, dragStartArtHeight(0.0f)
+			, dragStartBorderX(0.0f)
+			, dragStartBorderY(0.0f)
+			, dragStartBorderWidth(0.0f)
+			, dragStartBorderHeight(0.0f)
 			, requestQuit(false)
 			, showSaveResultPopup(false)
 			, openSaveCopyDialog(false)
@@ -543,6 +564,8 @@ namespace
 			, selectedCell(-1)
 			, activeCell(-1)
 			, activeTransform(TransformNone)
+			, useDockingLayout(true)
+			, resetDockLayout(false)
 			, hasBaseLayout(false)
 			, uiFitBrowserScanned(false)
 			, dragStartMouse(0.0f, 0.0f)
@@ -555,6 +578,21 @@ namespace
 		}
 	};
 
+	// MERGE-CONFLICT-UI-PHASE1: ours keeps the single "legacy_imgui" UI package path
+	// scheme (data/defs/ui/packages/legacy_imgui/...) used throughout this file's path
+	// literals, IsLegacyImguiGamePath(), IsCampaignMapPage()/IsCampaignMissionPage(),
+	// composition-base lookups, font catalog candidates, and hierarchy/browser default
+	// paths. Theirs (mc2r fork) reworked this into a renamed "default" package plus a
+	// full multi-package system: g_uiPackages/g_activeUiPackageIndex, ActiveUiPackageName(),
+	// RefreshUiPackageList()/SelectUiPackageIndex(), a package combo box in the UI FIT
+	// browser, IsDefaultUiPackageGamePath() replacing IsLegacyImguiGamePath(), merging
+	// IsCampaignMapPage()/IsCampaignMissionPage() into IsCampaignOverlayPage(), a
+	// declared-base (FitLayout::baseLayoutPath) composition override, and a
+	// NormalizeLegacyUiPackagePath()/ui_editor.cfg "uiPackage" migration path. These are
+	// not composable as a small patch (touches load/save default paths, browser root
+	// resolution, composition-base file lookups, and page-classification predicates
+	// throughout the file) so ours' single-package logic is kept unmodified here. If the
+	// multi-package rework is wanted, it should be done as its own reviewed slice.
 	UiEditorState g_state;
 	char g_loadPath[512] = "data/defs/ui/packages/legacy_imgui/mechlopedia/main.fit";
 	char g_savePath[512] = "data/defs/ui/packages/legacy_imgui/mechlopedia/main.ui_editor_copy.fit";
@@ -600,6 +638,42 @@ namespace
 	void ClampCellRect(UiEditorFitCell& cell);
 	void ClampTextRect(UiEditorFitCell& cell);
 	bool IsTextRectTransform(UiEditorTransformMode mode);
+	float SnapDesignX(float value);
+	float SnapDesignY(float value);
+	float SnapDesignValue(float value);
+	bool IsButtonLikeCell(const UiEditorFitCell& cell);
+
+	// Additive from theirs (mc2r fork): propagate a button parent's move/resize to its
+	// child text/art/border rects proportionally, so linked child geometry does not
+	// desync when the parent cell is dragged on the canvas.
+	void ApplyButtonChildRectsFromParentTransform(UiEditorFitCell& cell)
+	{
+		const float startW = std::max(1.0f, g_state.dragStartWidth);
+		const float startH = std::max(1.0f, g_state.dragStartHeight);
+		const float scaleX = cell.width / startW;
+		const float scaleY = cell.height / startH;
+
+		auto transformRect = [&](float startX, float startY, float startWidth, float startHeight, float& outX, float& outY, float& outWidth, float& outHeight)
+		{
+			const float relX = startX - g_state.dragStartX;
+			const float relY = startY - g_state.dragStartY;
+			outX = SnapDesignX(cell.x + relX * scaleX);
+			outY = SnapDesignY(cell.y + relY * scaleY);
+			outWidth = SnapDesignValue(std::max(1.0f, startWidth * scaleX));
+			outHeight = SnapDesignValue(std::max(1.0f, startHeight * scaleY));
+		};
+
+		if (cell.hasTextRect)
+			transformRect(g_state.dragStartTextX, g_state.dragStartTextY, g_state.dragStartTextWidth, g_state.dragStartTextHeight, cell.textX, cell.textY, cell.textWidth, cell.textHeight);
+
+		if (cell.hasArtRect)
+			transformRect(g_state.dragStartArtX, g_state.dragStartArtY, g_state.dragStartArtWidth, g_state.dragStartArtHeight, cell.artX, cell.artY, cell.artWidth, cell.artHeight);
+
+		if (cell.hasBorderRect)
+			transformRect(g_state.dragStartBorderX, g_state.dragStartBorderY, g_state.dragStartBorderWidth, g_state.dragStartBorderHeight, cell.borderX, cell.borderY, cell.borderWidthRect, cell.borderHeightRect);
+
+		ClampTextRect(cell);
+	}
 
 	void PushEditCommand(const UiEditorEditHistoryEntry& entry)
 	{
@@ -1326,6 +1400,12 @@ namespace
 		}
 
 		g_state.layout = loadedLayout;
+		if (g_state.layout.overlaysGameOS)
+		{
+			if (!g_state.layout.statusMessage.empty())
+				g_state.layout.statusMessage += " ";
+			g_state.layout.statusMessage += "[GameOS overlay]";
+		}
 		g_state.canvasWidth = loadedLayout.designWidth;
 		g_state.canvasHeight = loadedLayout.designHeight;
 		g_state.lastCanvasWidth = g_state.canvasWidth;
@@ -1592,6 +1672,87 @@ namespace
 		guides.erase(guides.begin() + index);
 	}
 
+	// Additive from theirs (mc2r fork): persist a handful of editor preferences
+	// (panel sizes, view toggles, docking mode, last load/save paths) across
+	// sessions in a plain-text ui_editor.cfg beside the executable.
+	const char* UiEditorConfigPath()
+	{
+		return "ui_editor.cfg";
+	}
+
+	void SaveEditorConfig()
+	{
+		std::ofstream output(UiEditorConfigPath(), std::ios::trunc);
+		if (!output.is_open())
+			return;
+
+		output << "loadPath=" << g_loadPath << "\n";
+		output << "savePath=" << g_savePath << "\n";
+		output << "showGrid=" << (g_state.showGrid ? 1 : 0) << "\n";
+		output << "snapToGrid=" << (g_state.snapToGrid ? 1 : 0) << "\n";
+		output << "showGuides=" << (g_state.showGuides ? 1 : 0) << "\n";
+		output << "snapToGuides=" << (g_state.snapToGuides ? 1 : 0) << "\n";
+		output << "showImages=" << (g_state.showImages ? 1 : 0) << "\n";
+		output << "showLabels=" << (g_state.showLabels ? 1 : 0) << "\n";
+		output << "showCanvasHud=" << (g_state.showCanvasHud ? 1 : 0) << "\n";
+		output << "useDockingLayout=" << (g_state.useDockingLayout ? 1 : 0) << "\n";
+		output << "leftPanelWidth=" << g_state.leftPanelWidth << "\n";
+		output << "rightPanelWidth=" << g_state.rightPanelWidth << "\n";
+		output << "leftLayoutsHeight=" << g_state.leftLayoutsHeight << "\n";
+		output << "rightHierarchyHeight=" << g_state.rightHierarchyHeight << "\n";
+		output << "zoom=" << g_state.zoom << "\n";
+	}
+
+	void LoadEditorConfig()
+	{
+		std::ifstream input(UiEditorConfigPath());
+		if (!input.is_open())
+			return;
+
+		std::string line;
+		while (std::getline(input, line))
+		{
+			const std::string::size_type equals = line.find('=');
+			if (equals == std::string::npos)
+				continue;
+
+			const std::string key = line.substr(0, equals);
+			const std::string value = line.substr(equals + 1);
+			const bool boolValue = value == "1" || value == "true" || value == "TRUE";
+
+			if (key == "loadPath")
+				std::snprintf(g_loadPath, sizeof(g_loadPath), "%s", value.c_str());
+			else if (key == "savePath")
+				std::snprintf(g_savePath, sizeof(g_savePath), "%s", value.c_str());
+			else if (key == "showGrid")
+				g_state.showGrid = boolValue;
+			else if (key == "snapToGrid")
+				g_state.snapToGrid = boolValue;
+			else if (key == "showGuides")
+				g_state.showGuides = boolValue;
+			else if (key == "snapToGuides")
+				g_state.snapToGuides = boolValue;
+			else if (key == "showImages")
+				g_state.showImages = boolValue;
+			else if (key == "showLabels")
+				g_state.showLabels = boolValue;
+			else if (key == "showCanvasHud")
+				g_state.showCanvasHud = boolValue;
+			else if (key == "useDockingLayout")
+				g_state.useDockingLayout = boolValue;
+			else if (key == "leftPanelWidth")
+				g_state.leftPanelWidth = std::max(180.0f, std::strtof(value.c_str(), nullptr));
+			else if (key == "rightPanelWidth")
+				g_state.rightPanelWidth = std::max(220.0f, std::strtof(value.c_str(), nullptr));
+			else if (key == "leftLayoutsHeight")
+				g_state.leftLayoutsHeight = std::max(120.0f, std::strtof(value.c_str(), nullptr));
+			else if (key == "rightHierarchyHeight")
+				g_state.rightHierarchyHeight = std::max(120.0f, std::strtof(value.c_str(), nullptr));
+			else if (key == "zoom")
+				g_state.zoom = std::max(0.1f, std::strtof(value.c_str(), nullptr));
+		}
+	}
+
 	void MarkDirty()
 	{
 		g_state.dirty = true;
@@ -1691,6 +1852,28 @@ namespace
 		}
 		if (tool == SmartToolImage)
 			cell.texture = "";
+		if (tool == SmartToolList)
+		{
+			cell.fillColor[0] = 0.10f; cell.fillColor[1] = 0.11f; cell.fillColor[2] = 0.13f; cell.fillColor[3] = 0.88f;
+			cell.borderColor[0] = 0.22f; cell.borderColor[1] = 0.32f; cell.borderColor[2] = 0.42f; cell.borderColor[3] = 1.0f;
+			cell.borderWidth = 1.0f;
+			cell.opacity = 1.0f;
+			cell.isListCell = true;
+			cell.itemHeight = 0.0f;
+			cell.itemOffsetX = 2.0f;
+			cell.itemOffsetY = 0.0f;
+			cell.highlightColor[0] = 0.95f;
+			cell.highlightColor[1] = 0.55f;
+			cell.highlightColor[2] = 0.12f;
+			cell.highlightColor[3] = 0.50f;
+			cell.listPreviewItemCount = 3;
+			cell.font = "Agency Regular";
+			cell.fontSize = 14.0f;
+			cell.textAlign = "left";
+			cell.textAnchor = "upper_left";
+			cell.role = "list";
+			cell.layer = "control";
+		}
 		return cell;
 	}
 
@@ -2010,6 +2193,18 @@ namespace
 		g_state.dragStartY = cell.y;
 		g_state.dragStartWidth = cell.width;
 		g_state.dragStartHeight = cell.height;
+		g_state.dragStartTextX = cell.textX;
+		g_state.dragStartTextY = cell.textY;
+		g_state.dragStartTextWidth = cell.textWidth;
+		g_state.dragStartTextHeight = cell.textHeight;
+		g_state.dragStartArtX = cell.artX;
+		g_state.dragStartArtY = cell.artY;
+		g_state.dragStartArtWidth = cell.artWidth;
+		g_state.dragStartArtHeight = cell.artHeight;
+		g_state.dragStartBorderX = cell.borderX;
+		g_state.dragStartBorderY = cell.borderY;
+		g_state.dragStartBorderWidth = cell.borderWidthRect;
+		g_state.dragStartBorderHeight = cell.borderHeightRect;
 	}
 
 	void BeginTextRectTransform(int cellIndex, UiEditorTransformMode mode)
@@ -2156,10 +2351,29 @@ namespace
 				if (!movedCell.visible || movedCell.locked)
 					continue;
 
-				movedCell.x = SnapDesignX(start.x + dx);
-				movedCell.y = SnapDesignY(start.y + dy);
+				const float newX = SnapDesignX(start.x + dx);
+				const float newY = SnapDesignY(start.y + dy);
+				const float childDx = newX - movedCell.x;
+				const float childDy = newY - movedCell.y;
+				movedCell.x = newX;
+				movedCell.y = newY;
 				movedCell.width = start.width;
 				movedCell.height = start.height;
+				if (movedCell.hasTextRect)
+				{
+					movedCell.textX = SnapDesignX(movedCell.textX + childDx);
+					movedCell.textY = SnapDesignY(movedCell.textY + childDy);
+				}
+				if (movedCell.hasArtRect)
+				{
+					movedCell.artX = SnapDesignX(movedCell.artX + childDx);
+					movedCell.artY = SnapDesignY(movedCell.artY + childDy);
+				}
+				if (movedCell.hasBorderRect)
+				{
+					movedCell.borderX = SnapDesignX(movedCell.borderX + childDx);
+					movedCell.borderY = SnapDesignY(movedCell.borderY + childDy);
+				}
 				ClampCellRect(movedCell);
 			}
 			MarkDirty();
@@ -2293,6 +2507,8 @@ namespace
 		cell.width = SnapDesignValue(std::max(w, 4.0f));
 		cell.height = SnapDesignValue(std::max(h, 4.0f));
 		ClampCellRect(cell);
+		if (IsButtonLikeCell(cell))
+			ApplyButtonChildRectsFromParentTransform(cell);
 		MarkDirty();
 	}
 
@@ -2872,7 +3088,121 @@ namespace
 		return std::string();
 	}
 
-	bool IsActualUiLayoutFit(const std::filesystem::path& filePath, const std::string& relativePath)
+	// Additive from theirs (mc2r fork): recognize GuiRedirect indirection (follow to the
+	// resolved target instead of unconditionally rejecting) and the newer UiV2* block
+	// vocabulary, so the layout browser also surfaces UiV2-authored FITs. Package-path
+	// literals below are left as ours' single "legacy_imgui" scheme (see the
+	// MERGE-CONFLICT-UI-PHASE1 note near g_loadPath).
+	bool TryReadGuiRedirectTargetForBrowser(const std::filesystem::path& filePath, std::string& outTarget)
+	{
+		outTarget.clear();
+
+		std::ifstream input(filePath);
+		if (!input.is_open())
+			return false;
+
+		bool inRedirect = false;
+		std::string line;
+		while (std::getline(input, line))
+		{
+			const std::string trimmed = TrimWhitespace(line);
+			if (trimmed.empty() || trimmed.rfind("//", 0) == 0)
+				continue;
+
+			if (!inRedirect)
+			{
+				const std::string::size_type brace = trimmed.find('{');
+				if (brace == std::string::npos)
+					continue;
+
+				inRedirect = TrimWhitespace(trimmed.substr(0, brace)) == "GuiRedirect";
+				continue;
+			}
+
+			if (trimmed == "}")
+				return !outTarget.empty();
+
+			std::string key;
+			std::string value;
+			if (ParseFitAssignmentLine(trimmed, key, value)
+				&& (key == "target" || key == "targetFile" || key == "targetPath"))
+			{
+				outTarget = value;
+			}
+		}
+
+		return !outTarget.empty();
+	}
+
+	bool IsDataStyleUiPath(const std::string& path)
+	{
+		const std::string lower = ToLowerCopy(NormalizePathForDisplay(path));
+		return lower.rfind("data/", 0) == 0
+			|| lower.rfind("../data/", 0) == 0
+			|| lower.rfind("../../data/", 0) == 0
+			|| lower.rfind("../../../data/", 0) == 0;
+	}
+
+	std::filesystem::path ResolveBrowserRedirectTargetPath(const std::filesystem::path& filePath, const std::string& target)
+	{
+		if (target.empty())
+			return std::filesystem::path();
+
+		std::filesystem::path targetPath(target);
+		if (targetPath.is_absolute())
+			return targetPath;
+
+		if (IsDataStyleUiPath(target))
+			return std::filesystem::path(target).lexically_normal();
+
+		return (filePath.parent_path() / targetPath).lexically_normal();
+	}
+
+	bool UiFileHasGuiPageAndDrawableBlocks(const std::filesystem::path& filePath)
+	{
+		std::ifstream input(filePath);
+		if (!input.is_open())
+			return false;
+
+		bool hasGuiPage = false;
+		bool hasDrawableBlock = false;
+		std::string line;
+		while (std::getline(input, line))
+		{
+			const std::string trimmed = TrimWhitespace(line);
+			if (trimmed.empty() || trimmed.rfind("//", 0) == 0)
+				continue;
+
+			if (trimmed.rfind("GuiRedirect", 0) == 0)
+				return false;
+
+			if (trimmed.rfind("GuiPage", 0) == 0 && trimmed.rfind("GuiPageRef", 0) != 0)
+				hasGuiPage = true;
+			if (trimmed.rfind("UiV2Page", 0) == 0)
+				hasGuiPage = true;
+
+			if (trimmed.rfind("GuiImage", 0) == 0
+				|| trimmed.rfind("GuiButton", 0) == 0
+				|| trimmed.rfind("GuiText", 0) == 0
+				|| trimmed.rfind("GuiRect", 0) == 0
+				|| trimmed.rfind("GuiPanel", 0) == 0
+				|| trimmed.rfind("GuiMount", 0) == 0
+				|| trimmed.rfind("GuiScrollbar", 0) == 0
+				|| trimmed.rfind("UiV2Static", 0) == 0
+				|| trimmed.rfind("UiV2Button", 0) == 0
+				|| trimmed.rfind("UiV2Text", 0) == 0
+				|| trimmed.rfind("UiV2Rect", 0) == 0
+				|| trimmed.rfind("UiV2AnimObject", 0) == 0
+				|| trimmed.rfind("UiV2Edit", 0) == 0)
+			{
+				hasDrawableBlock = true;
+			}
+		}
+
+		return hasGuiPage && hasDrawableBlock;
+	}
+
+	bool IsActualUiLayoutFitResolved(const std::filesystem::path& filePath, const std::string& relativePath, int redirectDepth)
 	{
 		std::string relative = ToLowerCopy(NormalizePathForDisplay(relativePath));
 		if (relative.rfind("legacy/", 0) == 0 || relative.find("/legacy/") != std::string::npos
@@ -2899,37 +3229,26 @@ namespace
 			return false;
 		}
 
-		std::ifstream input(filePath);
-		if (!input.is_open())
-			return false;
-
-		bool hasGuiPage = false;
-		bool hasDrawableBlock = false;
-		std::string line;
-		while (std::getline(input, line))
+		std::string redirectTarget;
+		if (TryReadGuiRedirectTargetForBrowser(filePath, redirectTarget))
 		{
-			const std::string trimmed = TrimWhitespace(line);
-			if (trimmed.empty() || trimmed.rfind("//", 0) == 0)
-				continue;
-
-			if (trimmed.rfind("GuiRedirect", 0) == 0)
+			if (redirectDepth >= 8)
 				return false;
 
-			if (trimmed.rfind("GuiPage", 0) == 0 && trimmed.rfind("GuiPageRef", 0) != 0)
-				hasGuiPage = true;
+			const std::filesystem::path resolvedTarget = ResolveBrowserRedirectTargetPath(filePath, redirectTarget);
+			std::error_code ec;
+			if (!std::filesystem::exists(resolvedTarget, ec) || !std::filesystem::is_regular_file(resolvedTarget, ec))
+				return false;
 
-			if (trimmed.rfind("GuiImage", 0) == 0
-				|| trimmed.rfind("GuiButton", 0) == 0
-				|| trimmed.rfind("GuiText", 0) == 0
-				|| trimmed.rfind("GuiRect", 0) == 0
-				|| trimmed.rfind("GuiPanel", 0) == 0
-				|| trimmed.rfind("GuiMount", 0) == 0)
-			{
-				hasDrawableBlock = true;
-			}
+			return IsActualUiLayoutFitResolved(resolvedTarget, std::string(), redirectDepth + 1);
 		}
 
-		return hasGuiPage && hasDrawableBlock;
+		return UiFileHasGuiPageAndDrawableBlocks(filePath);
+	}
+
+	bool IsActualUiLayoutFit(const std::filesystem::path& filePath, const std::string& relativePath)
+	{
+		return IsActualUiLayoutFitResolved(filePath, relativePath, 0);
 	}
 
 	void RefreshUiFitBrowser(bool force)
@@ -3650,6 +3969,7 @@ namespace
 		case SmartToolButton: return "Button";
 		case SmartToolPanel: return "Panel";
 		case SmartToolImage: return "Image";
+		case SmartToolList: return "List";
 		case SmartToolSelect:
 		default: return "Select";
 		}
@@ -3664,6 +3984,7 @@ namespace
 		case SmartToolButton: return "GuiButton";
 		case SmartToolPanel: return "GuiPanel";
 		case SmartToolImage: return "GuiImage";
+		case SmartToolList: return "GuiList";
 		case SmartToolSelect:
 		default: return "GuiCell";
 		}
@@ -3881,6 +4202,8 @@ bool ToolButton(const char* label, UiEditorSmartTool tool)
 		ToolButton("Panel", SmartToolPanel);
 		ImGui::SameLine();
 		ToolButton("Image", SmartToolImage);
+		ImGui::SameLine();
+		ToolButton("List", SmartToolList);
 
 		ImGui::Spacing();
 		ImGui::TextWrapped("Active: %s", SmartToolLabel(g_state.activeSmartTool));
@@ -4466,6 +4789,60 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 		return ContainsInsensitive(cell.type, "Text");
 	}
 
+	bool IsListCell(const UiEditorFitCell& cell)
+	{
+		return cell.type == "GuiList" || cell.isListCell;
+	}
+
+	void DrawListPreview(ImDrawList* drawList, const UiEditorFitCell& cell, const ImVec2& min, const ImVec2& max, bool selected)
+	{
+		const float height = max.y - min.y;
+		const float width  = max.x - min.x;
+
+		const ImU32 bg       = IM_COL32(26, 26, 26, 204);
+		const ImU32 border   = selected ? ColorU32(AccentCyan()) : IM_COL32(0, 110, 180, 200);
+		const float cR = std::max(0.0f, std::min(1.0f, cell.highlightColor[0]));
+		const float cG = std::max(0.0f, std::min(1.0f, cell.highlightColor[1]));
+		const float cB = std::max(0.0f, std::min(1.0f, cell.highlightColor[2]));
+		const float cA = std::max(0.0f, std::min(1.0f, cell.highlightColor[3]));
+		const ImU32 highlight = IM_COL32(
+			static_cast<int>(cR * 255),
+			static_cast<int>(cG * 255),
+			static_cast<int>(cB * 255),
+			static_cast<int>(cA * 255));
+		const ImU32 rowText = IM_COL32(190, 200, 210, 160);
+		const float borderW = selected ? 2.0f : 1.0f;
+
+		drawList->AddRectFilled(min, max, bg);
+		drawList->AddRect(min, max, border, 0.0f, 0, borderW);
+
+		const int rowCount = std::max(1, cell.listPreviewItemCount);
+		const float rowH = (height - 2.0f) / static_cast<float>(rowCount);
+		const float indent = 4.0f;
+
+		drawList->PushClipRect(min, max, true);
+
+		// Row 0 is drawn as "selected"
+		drawList->AddRectFilled(
+			ImVec2(min.x + 1.0f, min.y + 1.0f),
+			ImVec2(max.x - 1.0f, min.y + 1.0f + rowH),
+			highlight);
+
+		// Remaining rows: dashed text-stub lines
+		for (int r = 1; r < rowCount; ++r)
+		{
+			const float rowTop = min.y + 1.0f + r * rowH;
+			const float lineY  = rowTop + rowH * 0.45f;
+			if (lineY + 2.0f > max.y - 1.0f)
+				break;
+			const float lineLen = width - indent * 2.0f - (r & 1 ? 30.0f : 10.0f);
+			if (lineLen > 4.0f)
+				drawList->AddLine(ImVec2(min.x + indent, lineY), ImVec2(min.x + indent + lineLen, lineY), rowText, 1.0f);
+		}
+
+		drawList->PopClipRect();
+	}
+
 	bool IsScrollbarCell(const UiEditorFitCell& cell)
 	{
 		const bool scrollbarTyped = cell.type == "GuiScrollbar" || ContainsInsensitive(cell.role, "scrollbar");
@@ -4745,9 +5122,26 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 		return false;
 	}
 
+	UiEditorFitCell* FindMutableCellByKey(const std::string& key)
+	{
+		if (key.empty())
+			return nullptr;
+
+		for (std::size_t i = 0; i < g_state.layout.cells.size(); ++i)
+		{
+			if (g_state.layout.cells[i].key == key)
+				return &g_state.layout.cells[i];
+		}
+
+		return nullptr;
+	}
+
 	void DrawLoadedCell(ImDrawList* drawList, const ImVec2& artboard, float scale, const ImVec2& displayOffset, UiEditorFitCell& cell, int cellIndex, bool editable)
 	{
 		if (editable && !cell.visible)
+			return;
+
+		if (editable && !cell.linkedButtonKey.empty() && !cell.buttonTemplatePart.empty())
 			return;
 
 		const bool locked = editable && cell.locked;
@@ -4914,6 +5308,7 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 
 		const bool scrollbarCell = IsScrollbarCell(cell);
 		const bool view3DCell = Is3DViewCell(cell);
+		const bool listCell = IsListCell(cell);
 
 		if (scrollbarCell)
 		{
@@ -4923,13 +5318,47 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 		{
 			DrawLegacy3DViewPreview(drawList, min, max, selected);
 		}
+		else if (listCell)
+		{
+			DrawListPreview(drawList, cell, min, max, selected);
+		}
 		else
 		{
+			ImVec2 artMin = min;
+			ImVec2 artMax = max;
+			if (buttonLike && cell.hasArtRect)
+			{
+				artMin = ImVec2(artboard.x + (cell.artX + displayOffset.x) * scale, artboard.y + (cell.artY + displayOffset.y) * scale);
+				artMax = ImVec2(artMin.x + cell.artWidth * scale, artMin.y + cell.artHeight * scale);
+			}
+
 			drawList->AddRectFilled(min, max, fill);
-			DrawCellImage(drawList, cell, min, max, transformable, buttonState);
+			DrawCellImage(drawList, cell, artMin, artMax, transformable, buttonState);
 			if (buttonLike)
-				DrawButtonColorOverlay(drawList, cell, min, max, buttonState);
-			drawList->AddRect(min, max, border, 0.0f, 0, selected ? 2.0f : std::max(cell.borderWidth, 1.0f));
+				DrawButtonColorOverlay(drawList, cell, artMin, artMax, buttonState);
+
+			if (buttonLike && !cell.linkedImageKey.empty())
+			{
+				UiEditorFitCell* linkedImage = FindMutableCellByKey(cell.linkedImageKey);
+				if (linkedImage != nullptr)
+				{
+					const ImVec2 linkedMin(artboard.x + (linkedImage->x + displayOffset.x) * scale, artboard.y + (linkedImage->y + displayOffset.y) * scale);
+					const ImVec2 linkedMax(linkedMin.x + linkedImage->width * scale, linkedMin.y + linkedImage->height * scale);
+					DrawCellImage(drawList, *linkedImage, linkedMin, linkedMax, false, buttonState);
+				}
+			}
+
+			if (!buttonLike || cell.borderEnabled)
+			{
+				ImVec2 borderMin = min;
+				ImVec2 borderMax = max;
+				if (buttonLike && cell.hasBorderRect)
+				{
+					borderMin = ImVec2(artboard.x + (cell.borderX + displayOffset.x) * scale, artboard.y + (cell.borderY + displayOffset.y) * scale);
+					borderMax = ImVec2(borderMin.x + cell.borderWidthRect * scale, borderMin.y + cell.borderHeightRect * scale);
+				}
+				drawList->AddRect(borderMin, borderMax, border, 0.0f, 0, selected ? 2.0f : std::max(cell.borderWidth, 1.0f));
+			}
 		}
 
 		const std::string label = DisplayNameForCell(cell);
@@ -5024,6 +5453,85 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 				ImVec2(pos.x + 7.0f, pos.y + 5.0f + lineHeight * static_cast<float>(i)),
 				IM_COL32(220, 245, 255, 255),
 				lines[i]);
+		}
+	}
+
+	// Additive from theirs (mc2r fork): stable draw-order sort so background/map art,
+	// frames, controls, and text layer sensibly regardless of source-file cell order.
+	int CanvasLayerDrawRank(const UiEditorFitCell& cell)
+	{
+		const std::string combined = ToLowerCopy(
+			cell.type + " " + cell.role + " " + cell.layer + " " + cell.key + " "
+			+ cell.texture + " " + cell.sourceControlType + " " + cell.aliasOverride);
+
+		if (!cell.visible)
+			return -100;
+
+		if (combined.find("metadata") != std::string::npos)
+			return -90;
+
+		if (combined.find("background") != std::string::npos)
+			return 0;
+
+		// Campaign operation FITs carry the planet/map bitmap as a normal image, but
+		// the legacy runtime treats it as a map background.  Draw it before mission
+		// controls so play/pause/mission buttons are not buried under the planet art.
+		if (combined.find("mcl_cm_op") != std::string::npos
+			|| combined.find("planet") != std::string::npos
+			|| combined.find("map") != std::string::npos)
+			return 10;
+
+		if (combined.find("art") != std::string::npos || combined.find("guiimage") != std::string::npos)
+			return 20;
+
+		if (combined.find("frame") != std::string::npos || combined.find("guirect") != std::string::npos)
+			return 30;
+
+		if (combined.find("button") != std::string::npos
+			|| combined.find("control") != std::string::npos
+			|| combined.find("scroll") != std::string::npos)
+			return 60;
+
+		if (combined.find("text") != std::string::npos || IsTextRenderableCell(cell))
+			return 80;
+
+		return 50;
+	}
+
+	template <typename LayoutT>
+	void DrawLayoutCellsInCanvasOrder(
+		ImDrawList* drawList,
+		const ImVec2& artMin,
+		float scale,
+		const ImVec2& offset,
+		LayoutT& layout,
+		bool editable)
+	{
+		std::vector<int> drawOrder;
+		drawOrder.reserve(layout.cells.size());
+		for (int i = 0; i < static_cast<int>(layout.cells.size()); ++i)
+			drawOrder.push_back(i);
+
+		std::stable_sort(drawOrder.begin(), drawOrder.end(), [&](int a, int b)
+		{
+			const int rankA = CanvasLayerDrawRank(layout.cells[static_cast<std::size_t>(a)]);
+			const int rankB = CanvasLayerDrawRank(layout.cells[static_cast<std::size_t>(b)]);
+			if (rankA != rankB)
+				return rankA < rankB;
+			return a < b;
+		});
+
+		for (std::size_t orderIndex = 0; orderIndex < drawOrder.size(); ++orderIndex)
+		{
+			const int cellIndex = drawOrder[orderIndex];
+			DrawLoadedCell(
+				drawList,
+				artMin,
+				scale,
+				offset,
+				layout.cells[static_cast<std::size_t>(cellIndex)],
+				editable ? cellIndex : -1,
+				editable);
 		}
 	}
 
@@ -5324,16 +5832,14 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 			if (g_state.hasBaseLayout)
 			{
 				const ImVec2 baseOffset(0.0f, 0.0f);
-				for (int i = 0; i < static_cast<int>(g_state.baseLayout.cells.size()); ++i)
-					DrawLoadedCell(drawList, artMin, scale, baseOffset, g_state.baseLayout.cells[static_cast<std::size_t>(i)], -1, false);
+				DrawLayoutCellsInCanvasOrder(drawList, artMin, scale, baseOffset, g_state.baseLayout, false);
 			}
 
 			const ImVec2 activeOffset(
 				g_state.hasBaseLayout ? g_state.layout.mountOffsetX : 0.0f,
 				g_state.hasBaseLayout ? g_state.layout.mountOffsetY : 0.0f);
 
-			for (int i = 0; i < static_cast<int>(g_state.layout.cells.size()); ++i)
-				DrawLoadedCell(drawList, artMin, scale, activeOffset, g_state.layout.cells[static_cast<std::size_t>(i)], i, true);
+			DrawLayoutCellsInCanvasOrder(drawList, artMin, scale, activeOffset, g_state.layout, true);
 		}
 		else
 		{
@@ -5644,6 +6150,25 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 			}
 		}
 
+		if (cell->type == "GuiList" || cell->isListCell)
+		{
+			ImGui::SeparatorText("List Widget");
+			ImGui::TextDisabled("Row contents are pushed at runtime via setListItems(). Only geometry and style are authored here.");
+			bool listChanged = false;
+			listChanged |= DragFloatWithDoubleClickInput("item height", &cell->itemHeight, 1.0f, 0.0f, 200.0f, "%.1f px (0=auto)");
+			listChanged |= DragFloatWithDoubleClickInput("item offset X", &cell->itemOffsetX, 0.5f, 0.0f, 100.0f, "%.1f");
+			listChanged |= DragFloatWithDoubleClickInput("item offset Y", &cell->itemOffsetY, 0.5f, 0.0f, 100.0f, "%.1f");
+			listChanged |= ImGui::ColorEdit4("highlight color", cell->highlightColor);
+			int previewCount = cell->listPreviewItemCount;
+			if (ImGui::SliderInt("preview rows", &previewCount, 1, 10))
+			{
+				cell->listPreviewItemCount = previewCount;
+				listChanged = true;
+			}
+			if (listChanged)
+				MarkDirty();
+		}
+
 		const bool textEditable = IsTextRenderableCell(*cell) || cell->type == "GuiText" || cell->type == "GuiButton";
 		const bool imageEditable = ContainsInsensitive(cell->type, "GuiImage") || ContainsInsensitive(cell->type, "GuiAnimation") || !cell->texture.empty();
 
@@ -5858,12 +6383,47 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 				cell->texture = g_inspectorTextureBuffer;
 				MarkDirty();
 			}
+
+			char linkedButtonBuffer[192];
+			std::snprintf(linkedButtonBuffer, sizeof(linkedButtonBuffer), "%s", cell->linkedButtonKey.c_str());
+			if (ImGui::InputText("linked button key", linkedButtonBuffer, sizeof(linkedButtonBuffer)))
+			{
+				cell->linkedButtonKey = linkedButtonBuffer;
+				MarkDirty();
+			}
+
+			char templatePartBuffer[96];
+			std::snprintf(templatePartBuffer, sizeof(templatePartBuffer), "%s", cell->buttonTemplatePart.c_str());
+			if (ImGui::InputText("template part", templatePartBuffer, sizeof(templatePartBuffer)))
+			{
+				cell->buttonTemplatePart = templatePartBuffer;
+				MarkDirty();
+			}
 		}
 
 
 		if (IsButtonLikeCell(*cell))
 		{
 			ImGui::SeparatorText("Button Compatibility");
+			if (cell->buttonTemplate.empty())
+				cell->buttonTemplate = "composite_hit_art_border_text_v1";
+
+			char buttonTemplateBuffer[128];
+			std::snprintf(buttonTemplateBuffer, sizeof(buttonTemplateBuffer), "%s", cell->buttonTemplate.c_str());
+			if (ImGui::InputText("template", buttonTemplateBuffer, sizeof(buttonTemplateBuffer)))
+			{
+				cell->buttonTemplate = buttonTemplateBuffer;
+				MarkDirty();
+			}
+
+			char linkedImageBuffer[192];
+			std::snprintf(linkedImageBuffer, sizeof(linkedImageBuffer), "%s", cell->linkedImageKey.c_str());
+			if (ImGui::InputText("linked image key", linkedImageBuffer, sizeof(linkedImageBuffer)))
+			{
+				cell->linkedImageKey = linkedImageBuffer;
+				MarkDirty();
+			}
+
 			int actionIndex = LegacyActionPresetIndexFor(*cell);
 			ImGui::SetNextItemWidth(190.0f);
 			const int actionCount = static_cast<int>(sizeof(kLegacyActionPresets) / sizeof(kLegacyActionPresets[0]));
@@ -5969,6 +6529,58 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 				if (ImGui::ColorEdit4("disabled overlay", cell->disabledOverlayColor))
 				{
 					cell->hasDisabledOverlayColor = true;
+					MarkDirty();
+				}
+			}
+
+			ImGui::SeparatorText("Button Image Rect");
+			if (!cell->hasArtRect && ImGui::Button("Create image rect from button"))
+			{
+				cell->hasArtRect = true;
+				cell->artX = cell->x;
+				cell->artY = cell->y;
+				cell->artWidth = cell->width;
+				cell->artHeight = cell->height;
+				MarkDirty();
+			}
+			if (cell->hasArtRect)
+			{
+				bool artRectChanged = false;
+				artRectChanged |= DragFloatWithDoubleClickInput("image x", &cell->artX, 1.0f, -10000.0f, 10000.0f, "%.0f");
+				artRectChanged |= DragFloatWithDoubleClickInput("image y", &cell->artY, 1.0f, -10000.0f, 10000.0f, "%.0f");
+				artRectChanged |= DragFloatWithDoubleClickInput("image w", &cell->artWidth, 1.0f, 1.0f, 10000.0f, "%.0f");
+				artRectChanged |= DragFloatWithDoubleClickInput("image h", &cell->artHeight, 1.0f, 1.0f, 10000.0f, "%.0f");
+				if (artRectChanged)
+				{
+					cell->artWidth = std::max(1.0f, cell->artWidth);
+					cell->artHeight = std::max(1.0f, cell->artHeight);
+					MarkDirty();
+				}
+			}
+
+			ImGui::SeparatorText("Button Border Rect");
+			if (ImGui::Checkbox("border enabled", &cell->borderEnabled))
+				MarkDirty();
+			if (!cell->hasBorderRect && ImGui::Button("Create border rect from button"))
+			{
+				cell->hasBorderRect = true;
+				cell->borderX = cell->x;
+				cell->borderY = cell->y;
+				cell->borderWidthRect = cell->width;
+				cell->borderHeightRect = cell->height;
+				MarkDirty();
+			}
+			if (cell->hasBorderRect)
+			{
+				bool borderRectChanged = false;
+				borderRectChanged |= DragFloatWithDoubleClickInput("border x", &cell->borderX, 1.0f, -10000.0f, 10000.0f, "%.0f");
+				borderRectChanged |= DragFloatWithDoubleClickInput("border y", &cell->borderY, 1.0f, -10000.0f, 10000.0f, "%.0f");
+				borderRectChanged |= DragFloatWithDoubleClickInput("border w", &cell->borderWidthRect, 1.0f, 1.0f, 10000.0f, "%.0f");
+				borderRectChanged |= DragFloatWithDoubleClickInput("border h", &cell->borderHeightRect, 1.0f, 1.0f, 10000.0f, "%.0f");
+				if (borderRectChanged)
+				{
+					cell->borderWidthRect = std::max(1.0f, cell->borderWidthRect);
+					cell->borderHeightRect = std::max(1.0f, cell->borderHeightRect);
 					MarkDirty();
 				}
 			}
@@ -6394,6 +7006,56 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 		}
 	}
 
+	// Additive from theirs (mc2r fork): optional ImGui docking-based layout, toggled
+	// via View > Window > Floating Panels. Off by default behavior is unchanged
+	// (g_state.useDockingLayout defaults true here to match the fork's own default;
+	// the fixed-splitter layout below remains fully intact as the else-branch).
+	void ApplyDefaultDockingLayout(ImGuiID dockspaceId, const ImGuiViewport* viewport)
+	{
+		static bool s_checkedExistingDockLayout = false;
+
+		const bool missingDockNode = ImGui::DockBuilderGetNode(dockspaceId) == nullptr;
+		if (!g_state.resetDockLayout && s_checkedExistingDockLayout && !missingDockNode)
+			return;
+
+		if (!g_state.resetDockLayout && !missingDockNode)
+		{
+			s_checkedExistingDockLayout = true;
+			return;
+		}
+
+		ImGui::DockBuilderRemoveNode(dockspaceId);
+		ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodePos(dockspaceId, viewport->WorkPos);
+		ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
+
+		ImGuiID dockMain = dockspaceId;
+		ImGuiID dockLeft = 0;
+		ImGuiID dockRight = 0;
+
+		ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, 0.24f, &dockLeft, &dockMain);
+		ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.26f, &dockRight, &dockMain);
+
+		ImGuiID dockLeftTop = 0;
+		ImGuiID dockLeftBottom = 0;
+		ImGui::DockBuilderSplitNode(dockLeft, ImGuiDir_Down, 0.45f, &dockLeftBottom, &dockLeftTop);
+
+		ImGuiID dockRightTop = 0;
+		ImGuiID dockRightBottom = 0;
+		ImGui::DockBuilderSplitNode(dockRight, ImGuiDir_Down, 0.50f, &dockRightBottom, &dockRightTop);
+
+		ImGui::DockBuilderDockWindow("Project / Layouts", dockLeftTop);
+		ImGui::DockBuilderDockWindow("Smart Tools", dockLeftBottom);
+		ImGui::DockBuilderDockWindow("Canvas", dockMain);
+		ImGui::DockBuilderDockWindow("Hierarchy / Layers", dockRightTop);
+		ImGui::DockBuilderDockWindow("Inspector", dockRightBottom);
+
+		ImGui::DockBuilderFinish(dockspaceId);
+
+		g_state.resetDockLayout = false;
+		s_checkedExistingDockLayout = true;
+	}
+
 	void DrawMainUi()
 	{
 		const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -6428,8 +7090,14 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 
 				ImGui::Separator();
 
+				if (ImGui::MenuItem("Save Configuration"))
+					SaveEditorConfig();
+
 				if (ImGui::MenuItem("Quit"))
+				{
+					SaveEditorConfig();
 					g_state.requestQuit = true;
+				}
 
 				ImGui::EndMenu();
 			}
@@ -6484,7 +7152,17 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 
 			if (ImGui::BeginMenu("Window"))
 			{
-				ImGui::TextDisabled("Dock/workspace presets are planned.");
+				if (ImGui::MenuItem("Floating Panels", nullptr, g_state.useDockingLayout))
+				{
+					g_state.useDockingLayout = !g_state.useDockingLayout;
+					SaveEditorConfig();
+				}
+				if (ImGui::MenuItem("Reset Default Dock Layout"))
+					g_state.resetDockLayout = true;
+				if (ImGui::MenuItem("Save Configuration"))
+					SaveEditorConfig();
+				ImGui::TextDisabled("Default dock layout: Project top-left, Smart Tools bottom-left, Canvas center, Hierarchy top-right, Inspector bottom-right.");
+				ImGui::TextDisabled("Preferences save to ui_editor.cfg; window placement saves to ui_editor_imgui.ini.");
 				ImGui::EndMenu();
 			}
 
@@ -6514,50 +7192,79 @@ void ClampPanelWidth(float& width, float minWidth, float maxWidth)
 
 		DrawTopToolbar();
 
-		ImGui::BeginChild("main_dock_area", ImVec2(0.0f, -28.0f), false);
-
-		const float spacing = ImGui::GetStyle().ItemSpacing.x;
-		const float availableWidth = ImGui::GetContentRegionAvail().x;
-		const float minLeftWidth = 220.0f;
-		const float minCenterWidth = 280.0f;
-		const float minRightWidth = 260.0f;
-		const float splitterWidth = 7.0f;
-
-		float displayLeftPanelWidth = ClampedPanelWidthValue(g_state.leftPanelWidth, minLeftWidth, std::max(minLeftWidth, availableWidth - minCenterWidth - minRightWidth - splitterWidth * 2.0f - spacing * 4.0f));
-		float displayRightPanelWidth = ClampedPanelWidthValue(g_state.rightPanelWidth, minRightWidth, std::max(minRightWidth, availableWidth - minCenterWidth - displayLeftPanelWidth - splitterWidth * 2.0f - spacing * 4.0f));
-
-		float centerWidth = availableWidth
-			- displayLeftPanelWidth
-			- displayRightPanelWidth
-			- splitterWidth * 2.0f
-			- spacing * 4.0f;
-
-		if (centerWidth < minCenterWidth)
+		if (g_state.useDockingLayout)
 		{
-			const float deficit = minCenterWidth - centerWidth;
-			const float rightTake = std::min(deficit * 0.5f, std::max(0.0f, displayRightPanelWidth - minRightWidth));
-			displayRightPanelWidth -= rightTake;
-			const float leftTake = std::min(deficit - rightTake, std::max(0.0f, displayLeftPanelWidth - minLeftWidth));
-			displayLeftPanelWidth -= leftTake;
+			ImGuiID dockspaceId = ImGui::GetID("MC2R_UI_EDITOR_DOCKSPACE");
+			ApplyDefaultDockingLayout(dockspaceId, viewport);
+			ImGui::DockSpace(dockspaceId, ImVec2(0.0f, -28.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
-			centerWidth = availableWidth
+			ImGui::Begin("Project / Layouts");
+			DrawProjectTree();
+			ImGui::End();
+
+			ImGui::Begin("Smart Tools");
+			DrawSmartTools();
+			ImGui::End();
+
+			ImGui::Begin("Canvas");
+			DrawCanvas(ImGui::GetContentRegionAvail());
+			ImGui::End();
+
+			ImGui::Begin("Hierarchy / Layers");
+			DrawHierarchy();
+			ImGui::End();
+
+			ImGui::Begin("Inspector");
+			DrawInspector();
+			ImGui::End();
+		}
+		else
+		{
+			ImGui::BeginChild("main_dock_area", ImVec2(0.0f, -28.0f), false);
+
+			const float spacing = ImGui::GetStyle().ItemSpacing.x;
+			const float availableWidth = ImGui::GetContentRegionAvail().x;
+			const float minLeftWidth = 220.0f;
+			const float minCenterWidth = 280.0f;
+			const float minRightWidth = 260.0f;
+			const float splitterWidth = 7.0f;
+
+			float displayLeftPanelWidth = ClampedPanelWidthValue(g_state.leftPanelWidth, minLeftWidth, std::max(minLeftWidth, availableWidth - minCenterWidth - minRightWidth - splitterWidth * 2.0f - spacing * 4.0f));
+			float displayRightPanelWidth = ClampedPanelWidthValue(g_state.rightPanelWidth, minRightWidth, std::max(minRightWidth, availableWidth - minCenterWidth - displayLeftPanelWidth - splitterWidth * 2.0f - spacing * 4.0f));
+
+			float centerWidth = availableWidth
 				- displayLeftPanelWidth
 				- displayRightPanelWidth
 				- splitterWidth * 2.0f
 				- spacing * 4.0f;
+
+			if (centerWidth < minCenterWidth)
+			{
+				const float deficit = minCenterWidth - centerWidth;
+				const float rightTake = std::min(deficit * 0.5f, std::max(0.0f, displayRightPanelWidth - minRightWidth));
+				displayRightPanelWidth -= rightTake;
+				const float leftTake = std::min(deficit - rightTake, std::max(0.0f, displayLeftPanelWidth - minLeftWidth));
+				displayLeftPanelWidth -= leftTake;
+
+				centerWidth = availableWidth
+					- displayLeftPanelWidth
+					- displayRightPanelWidth
+					- splitterWidth * 2.0f
+					- spacing * 4.0f;
+			}
+
+			DrawLeftPanel(displayLeftPanelWidth);
+			ImGui::SameLine();
+			DrawVerticalSplitter("##left_right_sizing_splitter", g_state.leftPanelWidth, minLeftWidth, std::max(minLeftWidth, availableWidth - minCenterWidth - minRightWidth), false);
+			ImGui::SameLine();
+			DrawCanvas(ImVec2(centerWidth > minCenterWidth ? centerWidth : minCenterWidth, 0.0f));
+			ImGui::SameLine();
+			DrawVerticalSplitter("##right_left_sizing_splitter", g_state.rightPanelWidth, minRightWidth, std::max(minRightWidth, availableWidth - minCenterWidth - minLeftWidth), true);
+			ImGui::SameLine();
+			DrawRightPanel(displayRightPanelWidth);
+
+			ImGui::EndChild();
 		}
-
-		DrawLeftPanel(displayLeftPanelWidth);
-		ImGui::SameLine();
-		DrawVerticalSplitter("##left_right_sizing_splitter", g_state.leftPanelWidth, minLeftWidth, std::max(minLeftWidth, availableWidth - minCenterWidth - minRightWidth), false);
-		ImGui::SameLine();
-		DrawCanvas(ImVec2(centerWidth > minCenterWidth ? centerWidth : minCenterWidth, 0.0f));
-		ImGui::SameLine();
-		DrawVerticalSplitter("##right_left_sizing_splitter", g_state.rightPanelWidth, minRightWidth, std::max(minRightWidth, availableWidth - minCenterWidth - minLeftWidth), true);
-		ImGui::SameLine();
-		DrawRightPanel(displayRightPanelWidth);
-
-		ImGui::EndChild();
 
 		DrawStatusBar();
 
@@ -6615,10 +7322,13 @@ int main(int, char**)
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.IniFilename = "ui_editor_imgui.ini";
 
 	ApplyEditorStyle();
 	LoadFontCatalog();
 	UiEditorImageCache_Initialize();
+	LoadEditorConfig();
 	LoadDefaultLayout();
 
 	ImGui_ImplSDL2_InitForOpenGL(window, glContext);
@@ -6661,6 +7371,8 @@ int main(int, char**)
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
 	}
+
+	SaveEditorConfig();
 
 	UiEditorImageCache_Shutdown();
 

@@ -20,10 +20,16 @@ HSTRRES gosResourceHandle = 0;
 
 #pragma warning(disable:4514)
 
+// DEFS-METER-BRIDGE-1: see utilities.h. Installed by gui/asystem.cpp when the
+// aObject GUI bridge is in use; null in tools without the UI stack.
+bool (*g_uiBridgeRectHook)( const GUI_RECT& rect, unsigned long color, bool filled ) = 0;
+
 void drawRect( const GUI_RECT& area, DWORD color )
 {
 	if ( color & 0xff000000 )
 	{
+		if ( g_uiBridgeRectHook && g_uiBridgeRectHook( area, color, true ) )
+			return;
 		GUI_RECT clientArea = area;
 
 		if ( clientArea.left < 0 )
@@ -79,9 +85,12 @@ void drawRect( const GUI_RECT& area, DWORD color )
 }
 
 	
-void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor, 
+void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 							unsigned long rightBottomBorderColor )
 {
+	if ( g_uiBridgeRectHook && g_uiBridgeRectHook( area, leftTopBorderColor, false ) )
+		return;
+
 	gos_VERTEX v[4];
 
 	memset( v,0,sizeof(v) );

@@ -472,6 +472,7 @@ set(SOURCES
     "code/pausewindow.cpp"
     "code/hudimguipanel.cpp"
     "code/hudtabregistry.cpp"
+    "code/hud_imgui_font.cpp"
     "code/prefs.cpp"
     "code/simplecamera.cpp"
     "code/componentlistbox.cpp"

@@ -716,8 +716,28 @@ void MissionBriefingScreen::syncObjectivesToDefs( bool setItems )
 	{
 		aTextListItem* pItem = (aTextListItem*)missionListBox.GetItem( i );
 		if ( !pItem ) continue;
-		appendWrapped( objLines, objColors, cleanBriefingText( pItem->getText() ),
-			(unsigned int)pItem->getColor(), 88 );
+		const std::string  clean = cleanBriefingText( pItem->getText() );
+		const unsigned int color = (unsigned int)pItem->getColor();
+		// BRIEFING-WRAP-1: wrap with the defs GuiList's OWN pixel metrics (same
+		// font/size/row width the renderer uses) so each pushed line is exactly
+		// one visual line. The old fixed 88-char wrap produced lines wider than
+		// the row rect; DrawUiText then re-wrapped them INSIDE the one-line-high
+		// row and the spill painted under the next row (overlapping paragraphs).
+		std::vector<std::string> wrapped;
+		if ( wrapDefsListText( "game.mcl_mn.list.mission_objectives", clean, wrapped ) )
+		{
+			if ( wrapped.empty() )
+				wrapped.push_back( std::string() );
+			for ( const std::string& line : wrapped )
+			{
+				objLines.push_back( line );
+				objColors.push_back( color );
+			}
+		}
+		else
+		{
+			appendWrapped( objLines, objColors, clean, color, 88 );
+		}
 	}
 	if ( setItems )
 		setDefsListItems( "game.mcl_mn.list.mission_objectives", objLines );

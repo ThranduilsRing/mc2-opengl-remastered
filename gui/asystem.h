@@ -191,6 +191,10 @@ public:
 	// callers that composite manually (drawPreviewToPanel panel rects, text
 	// bridge). Falls back to full-stretch when no canvas is active.
 	static void			getCanvasTransform(float& sx, float& sy, float& ox, float& oy);
+	// True while a GUI bridge is active; outputs the bridge's env->display
+	// transform. Lets non-aObject legacy draws (drawRect meters, gos triangle
+	// gauges, list-box clip rects) route to the same ImGui layer/space.
+	static bool			getGuiBridgeTransform(float& sx, float& sy, float& ox, float& oy);
 	static void			endGuiBridge();
 
 	// Text-only bridge: while active, aText::render draws its label through the

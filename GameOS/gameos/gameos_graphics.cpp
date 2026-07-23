@@ -6615,6 +6615,11 @@ static void uploadDynamicShadowUniforms(const Locs& tl, gosPostProcess* pp, GLin
 // NON-static: also consumed by gos_static_prop_batcher.cpp (extern decl there).
 // Note: not every channel applies to every family — a family ignores ids it
 // does not implement (falls through to its normal render), which is safe.
+//
+// DEBUG-VIEW-SWEEP-1: runtime override slot. The env resolve stays once-only,
+// but gos_SetGlobalDebugView() can now retarget the shared channel at runtime
+// (command-channel `debugview N`). -1 = no override (env value, default off).
+static int g_mc2LightingDebugOverride = -1;
 int mc2LightingDebugMode()
 {
     // REDUNDANT-PASS-HUNT-1 (re-compute class): called per frame from 5 hot draw
@@ -6636,8 +6641,57 @@ int mc2LightingDebugMode()
         if (!strcmp(v, "lightindex")) return 48;   // baked-static-light-index palette (props/mech)
         return -1;                                 // unknown -> safe fallback (keep existing)
     }();
-    return s_mode;
+    // DEBUG-VIEW-SWEEP-1: runtime override wins over the env-resolved value.
+    return (g_mc2LightingDebugOverride >= 0) ? g_mc2LightingDebugOverride : s_mode;
 }
+
+// ---------------------------------------------------------------------------
+// DEBUG-VIEW-SWEEP-1: one global debug-view selector fanned out to every lane's
+// existing per-lane debug channel. Deterministic full-scene diagnostic views
+// for pixel-comparable agent sweeps (tools/debug_view_sweep.py).
+//   0 = off (all lanes restored to their default channel; env values resume)
+//   1 = shadow factor    terrain 44 (raw shadow term grayscale); props 44
+//                        (constant no-shadow marker — props don't self-shadow
+//                        in-shader); mechs 3 (vertex light-only)
+//   2 = normalized depth 50-series: gl_FragCoord.z remapped over the 0.85..1.0
+//                        band the scene occupies, grayscale, all main lanes
+//   3 = unlit albedo     terrain/props 40, mechs 2, vfx 1 (raw texture color)
+//   4 = overdraw proxy   opaque lanes flat 0.12 gray (mode 51); VFX mode 4
+//                        (real additive accumulation on top)
+//   5 = world normals    terrain/props 41, mechs 4 (N*0.5+0.5 as RGB)
+//   6 = chunk/LOD tint   terrain 52 (hashed thin-record palette = real
+//                        GPU-indirect chunking); props materialIdx palette
+//                        (debugMaterialMode 2); mechs 52 (black; unsupported);
+//                        vfx 3 (per-kind palette)
+// Lanes NOT covered (render their normal output in every view): water, sky,
+// grass/vegetation cards, decals/overlays, legacy gos_vertex* draws, HUD.
+// Registered MC2_DEBUG_VIEW (boot seed); runtime via `debugview N` verb.
+void batcher_setDebugMaterialMode(int shaderMode);      // gos_static_prop_batcher.h
+extern "C" void batcher_setMechDebugMode(int shaderMode);   // gos_mech_batcher.cpp
+extern "C" void gos_vfx_setDebugMode(int mode);             // gos_particle_bridge.h
+static int g_mc2GlobalDebugView = 0;
+extern "C" void gos_SetGlobalDebugView(int view)
+{
+    if (view < 0) view = 0;
+    if (view > 6) view = 6;
+    g_mc2GlobalDebugView = view;
+    static const struct { int lighting; int mech; int vfx; int propMat; } kMap[7] = {
+        { -1,  0, 0, 0 },   // 0 off
+        { 44,  3, 0, 0 },   // 1 shadow factor
+        { 50, 50, 0, 0 },   // 2 normalized depth
+        { 40,  2, 1, 0 },   // 3 unlit albedo
+        { 51, 51, 4, 0 },   // 4 overdraw proxy
+        { 41,  4, 0, 0 },   // 5 world normals
+        { 52, 52, 3, 2 },   // 6 chunk/LOD tint
+    };
+    g_mc2LightingDebugOverride = kMap[view].lighting;
+    batcher_setMechDebugMode(kMap[view].mech);
+    gos_vfx_setDebugMode(kMap[view].vfx);
+    batcher_setDebugMaterialMode(kMap[view].propMat);
+    fprintf(stderr, "[DEBUG_VIEW v1] view=%d lighting=%d mech=%d vfx=%d propMat=%d\n",
+            view, kMap[view].lighting, kMap[view].mech, kMap[view].vfx, kMap[view].propMat);
+}
+extern "C" int gos_GetGlobalDebugView() { return g_mc2GlobalDebugView; }
 
 // TERRAIN-DETAIL-ANTI-TILE-1: pack distance-fade + macro-noise knobs into the
 // unused .yzw of the detailNormalStrength uniform (the shader reads only .x today).
@@ -7984,6 +8038,73 @@ void __stdcall gos_DeleteFont( HGOSFONT3D FontHandle )
     gosASSERT(FontHandle);
     gosFont* font = FontHandle;
     getGosRenderer()->deleteFont(font);
+}
+
+// FONT-IMGUI-SLICE-1: read-only atlas/glyph queries for the ImGui HUD bitmap
+// text helper (code/hud_imgui_font.cpp). Contract documented in gameos.hpp.
+bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* Out )
+{
+    if(!FontHandle || !Out || !g_gos_renderer)
+        return false;
+
+    const gosFont* font = FontHandle;
+    const DWORD tex_id = font->getTextureId();
+    if(tex_id == INVALID_TEXTURE_ID)
+        return false;
+
+    gosTexture* tex = g_gos_renderer->getTexture(tex_id);
+    if(!tex)
+        return false;
+
+    gosTextureInfo ti;
+    tex->getTextureInfo(&ti);
+
+    Out->glTexId    = tex->getTextureId();
+    Out->texWidth   = ti.width_;
+    Out->texHeight  = ti.height_;
+    Out->lineSkip   = font->getMaxCharHeight();
+    Out->ascent     = font->getFontAscent();
+    Out->maxAdvance = font->getMaxCharWidth();
+
+    if(Out->glTexId == 0 || Out->texWidth <= 0 || Out->texHeight <= 0)
+        return false;
+
+    // Pin the atlas sampling params to what every legacy text draw sets
+    // (gos_FilterNone -> NEAREST, gos_TextureClamp -> CLAMP_TO_EDGE). The
+    // legacy path re-applies these per draw via applyRenderStates; the
+    // ImGui path binds the texture directly, so make them sticky here.
+    GLint prev_bound = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_bound);
+    glBindTexture(GL_TEXTURE_2D, Out->glTexId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prev_bound);
+
+    return true;
+}
+
+bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGlyphDesc* Out )
+{
+    if(!FontHandle || !Out)
+        return false;
+
+    const gosFont* font = FontHandle;
+    const gosGlyphInfo& gi = font->getGlyphInfo();
+    const int pos = Char - (int)gi.start_glyph_;
+    if(pos < 0 || pos >= (int)gi.num_glyphs_)
+        return false;
+
+    const gosGlyphMetrics& gm = gi.glyphs_[pos];
+    Out->offX    = gm.minx;
+    Out->offY    = (int)gi.font_ascent_ - gm.maxy;
+    Out->width   = gm.maxx - gm.minx;
+    Out->height  = gm.maxy - gm.miny;
+    Out->u       = gm.u;
+    Out->v       = gm.v;
+    Out->advance = gm.advance;
+    return true;
 }
 
 DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name, DWORD HeightWidth, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)

@@ -50,6 +50,19 @@ ControlGui.h			: Interface for the ControlGui component.  This thing holds the t
 class CObjective;
 class InfoWindow;
 class PauseWindow;
+
+// OBJ-IMGUI-SLICE-1: one display row of the objectives overlay, fully resolved
+// by the shared ControlGui::gatherObjectiveRows so the legacy and ImGui draw
+// paths enumerate/color objectives through the SAME logic and can never drift.
+struct ObjectiveUiRow
+{
+	CObjective*	obj;		// live objective (description read at draw time)
+	bool		primary;	// 1 == Priority()
+	long		color;		// ARGB status color (incl. activation flash)
+	bool		succeeded;	// Status == OS_SUCCESSFUL
+	bool		failed;		// Status == OS_FAILED
+	long		points;		// ResourcePoints()
+};
 //*************************************************************************************************
 
 
@@ -260,7 +273,16 @@ class ControlGui
 		void	initHudTabRegistry();            // (re)registers the stock 3 (+TEST)
 		void	setActiveHudTab( int index, const char* via );  // syncs button PRESSED bits
 		HudTabs::Registry	hudTabRegistry;
-		void	renderObjective( CObjective* pObjective, long xPos, long yPos, bool bDrawTotal );
+		void	renderObjective( const ObjectiveUiRow& row, long xPos, long yPos, bool bDrawTotal );
+		// OBJ-IMGUI-SLICE-1: shared objective-row gather (legacy + ImGui paths).
+		int		gatherObjectiveRows( ObjectiveUiRow* rows, int maxRows );
+		static bool	imguiObjEnabled();
+		void	renderObjectivesImGui();
+		// SMALLPANELS-IMGUI-SLICE-1: mission-timer + comm-video panels.
+		static bool	imguiTimerEnabled();
+		static bool	imguiVideoEnabled();
+		void	renderTimerImGui( const char* buffer, unsigned long color );
+		void	renderVideoImGui();
 		void	renderMissionStatus( bool bRender){ renderStatusInfo = bRender; }		
 		
 		int		getCurrentRange();
@@ -453,6 +475,11 @@ class ControlGui
 		bool					bServerWarningShown;
 
 		public:
+
+		// UI-COMMAND-CHANNEL-1: pause-window access for the file command
+		// channel (missiongui.cpp) — routes `press pause.*` through the same
+		// PauseWindow::handleClick the ImGui/legacy buttons use.
+		PauseWindow* getPauseWnd() { return pauseWnd; }
 
 		RectInfo *getRect (long id)
 		{

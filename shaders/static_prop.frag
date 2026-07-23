@@ -535,7 +535,16 @@ void main() {
             dbg = vec3(t, 1.0 - t, 0.0);
         }
         else if (u_lightingDebugView == 48) dbg = debug_palette(uint(v_dbgLightMeta.x)); // baked light index
-        else handled = false;                                                       // 45/unknown -> fall through
+        // DEBUG-VIEW-SWEEP-1: shared 50-series full-scene views (see gos_terrain.frag).
+        else if (u_lightingDebugView == 50) {                                       // depth: eye distance / 6000 wu
+#ifdef MC2_USE_VIEW_UNIFORMS
+            dbg = vec3(clamp(distance(u_cameraWorldPos.xyz, v_worldPos) / 6000.0, 0.0, 1.0));
+#else
+            dbg = vec3(clamp((gl_FragCoord.z - 0.5) / 0.5, 0.0, 1.0));             // fallback: raw z stretch
+#endif
+        }
+        else if (u_lightingDebugView == 51) dbg = vec3(0.12);                       // overdraw proxy (one flat layer)
+        else handled = false;                                                       // 45/52/unknown -> fall through
         if (handled) {
             FragColor = vec4(dbg, 1.0);
             GBuffer1  = rc_gbuffer1_legacyDebugSentinelScreenShadowEligible();

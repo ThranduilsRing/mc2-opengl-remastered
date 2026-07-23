@@ -597,6 +597,235 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    {
+        "MC2_TRACE_UI_IMGUI_PAUSE",
+        "MC2_UI_IMGUI_PAUSE",
+        EnvVarKind::Trace,
+        false,
+        "PAUSE-IMGUI-SLICE-1: =1 renders the in-mission pause menu as an ImGui "
+        "window (GAME PAUSED + objectives/save/load/options/abort/exit/return) "
+        "laid out inside gos_ComputeHudCanvasBox; buttons reuse "
+        "PauseWindow::handleClick side-effects. Default unset -> legacy sprite "
+        "panel, byte-identical. First slice of the in-mission HUD ImGui port."
+    },
+    {
+        "MC2_TRACE_UI_IMGUI_INFO",
+        "MC2_UI_IMGUI_INFO",
+        EnvVarKind::Trace,
+        false,
+        "INFO-IMGUI-SLICE-1: =1 renders the in-mission unit-Info panel as an ImGui "
+        "window (unit name + health bar + loadout list with scrollbar) laid out "
+        "inside gos_ComputeHudCanvasBox; loadout rows come from the shared "
+        "InfoWindow::gatherLoadoutRows helper so the legacy and ImGui paths cannot "
+        "drift. Default unset -> legacy procedural panel, byte-identical. Mech "
+        "paperdoll icon deferred to slice-2."
+    },
+    {
+        "MC2_TRACE_BOOT_INFO",
+        "MC2_BOOT_INFO",
+        EnvVarKind::Trace,
+        false,
+        "INFO-CAPTURE fixture: =N force-selects the first home mover into the "
+        "in-mission Info window and switches the command bar to the INFO tab "
+        "ONCE at frame >= N (ControlGui::update). Headless agents cannot click "
+        "the tab / select a unit, so this makes the info panel capturable for "
+        "the ImGui port (same pattern as MC2_BOOT_PAUSED). Default unset -> "
+        "byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_INFO_SCROLL",
+        "MC2_BOOT_INFO_SCROLL",
+        EnvVarKind::Trace,
+        false,
+        "INFO-IMGUI-SLICE-4 capture assist: =1 (with MC2_BOOT_INFO=N driving) "
+        "pins the info-panel loadout list scrolled to bottom from frame N+3000 "
+        "on BOTH paths — the ImGui child (SetScrollY max) and the legacy panel "
+        "(setScrollPos clamp) — so the pilot/skill section is pixel-capturable "
+        "headless gate-on AND as a legacy reference. Slices 2-3 pinned the "
+        "ImGui side on MC2_BOOT_INFO alone; the pin is now opt-in so the "
+        "standard fixture recipe captures the top-of-panel state matching the "
+        "banked baselines. Default unset -> byte-identical."
+    },
+    {
+        "MC2_TRACE_UI_IMGUI_OBJ",
+        "MC2_UI_IMGUI_OBJ",
+        EnvVarKind::Trace,
+        false,
+        "OBJ-IMGUI-SLICE-1: =1 renders the in-mission OBJECTIVES overlay as "
+        "ImGui (baked left-edge frame from tools/ui_art_reconstruct.py + "
+        "procedural header/objective rows/totals) laid out inside "
+        "gos_ComputeHudCanvasBox; rows come from the shared "
+        "ControlGui::gatherObjectiveRows so the legacy and ImGui paths cannot "
+        "drift. MPlayer player-status variant stays legacy. Default unset -> "
+        "legacy tile/font overlay, byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_OBJ",
+        "MC2_BOOT_OBJ",
+        EnvVarKind::Trace,
+        false,
+        "OBJ-CAPTURE fixture: =N calls ControlGui::startObjectives(1) ONCE at "
+        "frame >= N (ControlGui::update), showing the in-mission objectives "
+        "overlay. Headless agents cannot reach the pause-menu OBJECTIVES "
+        "button, so this makes the overlay capturable for the ImGui port "
+        "(same pattern as MC2_BOOT_INFO / MC2_BOOT_PAUSED). Default unset -> "
+        "byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_OBJ_COMPLETE",
+        "MC2_BOOT_OBJ_COMPLETE",
+        EnvVarKind::Trace,
+        false,
+        "OBJ-COMPLETE-CAPTURE fixture: =N force-resolves the first active "
+        "non-hidden objective to OS_SUCCESSFUL ONCE at frame >= N "
+        "(ControlGui::update) via the public CObjective::Status(newStatus) "
+        "setter (no action-list side effects; the mission does not end while "
+        "other primaries stay undetermined). Makes the completed-status "
+        "render states (green row + check tile) capturable headless — no "
+        "mc2_01 objective is completable in a 30 s scripted run. Combine "
+        "with MC2_BOOT_OBJ to show the overlay. Default unset -> "
+        "byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_PAUSED",
+        "MC2_BOOT_PAUSED",
+        EnvVarKind::Trace,
+        false,
+        "PAUSE-IMGUI-SLICE-0: =N auto-toggles the in-mission pause menu ONCE at "
+        "frame >= N (MissionInterfaceManager::update). Headless agents cannot "
+        "press ESC/P, so this is the boot-to-pause fixture for capturing and "
+        "iterating on the pause window (same fixture pattern as "
+        "MC2_FX_FORCE_SPAWN). Default unset -> byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_PAUSED_CONFIRM",
+        "MC2_BOOT_PAUSED_CONFIRM",
+        EnvVarKind::Trace,
+        false,
+        "PAUSE-IMGUI-SLICE-3: =abort|exit invokes the ABORT MISSION / EXIT GAME "
+        "confirm dialog ONCE after the MC2_BOOT_PAUSED pause menu has settled "
+        "(PauseWindow::update), through the same handleClick path a user click "
+        "takes. Headless agents cannot click the pause buttons, so this is the "
+        "capture fixture for the confirm dialogs. Default unset -> byte-identical."
+    },
+    {
+        "MC2_TRACE_UI_COMMAND_FILE",
+        "MC2_UI_COMMAND_FILE",
+        EnvVarKind::Trace,
+        false,
+        "UI-COMMAND-CHANNEL-1: =<path> polls that file once per frame "
+        "(MissionInterfaceManager::update) and executes its lines as UI "
+        "commands: toggle_pause, press pause.<BTN> (PauseWindow::handleClick), "
+        "press dialog.YES|NO (pause confirm LogisticsOKDialog), and "
+        "screenshot <name> [backbuffer] (DEV-SHELL capture point, needs "
+        "MC2_DEV_SHELL=1). Consumed lines are truncated and acked to "
+        "<path>.ack as '<cmd> -> ok|unknown|blocked (reason)'. Lets agents "
+        "press any pause-menu button in a running instance headlessly. "
+        "Default unset -> byte-identical."
+    },
+    {
+        "MC2_DIAG_DEBUG_VIEW",
+        "MC2_DEBUG_VIEW",
+        EnvVarKind::Trace,
+        false,
+        "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug "
+        "render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo "
+        "4=overdraw-proxy 5=world-normals 6=chunk/LOD-tint. Fans out through "
+        "gos_SetGlobalDebugView() to every lane's existing debug channel: the "
+        "unified 40/50-series lighting channel (terrain gos_terrain.frag, "
+        "static_prop.frag; runtime override slot on mc2LightingDebugMode()), "
+        "mech.frag u_debugMode (batcher_setMechDebugMode), the VFX billboard "
+        "mode (gos_vfx_setDebugMode), and the static-prop material mode "
+        "(batcher_setDebugMaterialMode). Runtime switch: UI command-channel "
+        "verb 'debugview N' (MC2_UI_COMMAND_FILE). Uncovered lanes (water, "
+        "sky, grass cards, decals, legacy gos_vertex* draws, HUD) render "
+        "normally in every view. Diagnostic-only; default unset -> mode 0, "
+        "byte-identical."
+    },
+    {
+        "MC2_DIAG_DEBUG_VIEW_SWEEP",
+        "MC2_DEBUG_VIEW_SWEEP",
+        EnvVarKind::Trace,
+        false,
+        "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled "
+        "auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update). "
+        "For each view v in 1..6: at frame start+(v-1)*(settle+2) sets the "
+        "view, settle frames later schedules dev_shell_out/view_<v>.tga "
+        "(scene-FBO source; capture hook needs MC2_DEV_SHELL=1), then restores "
+        "view 0. Frame-keyed so two fixed-timestep runs (MC2_SMOKE_MODE=1 + "
+        "MC2_SMOKE_FIXED_TIMESTEP=1 + MC2_CAMERA_PARK) capture byte-comparable "
+        "sim states — wall-clock command scheduling cannot. Driven by "
+        "tools/debug_view_sweep.py. Diagnostic-only; default unset -> one "
+        "cached getenv, byte-identical."
+    },
+    {
+        "MC2_DIAG_CAMERA_PARK",
+        "MC2_CAMERA_PARK",
+        EnvVarKind::Trace,
+        false,
+        "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt"
+        "[@frame]' hard-sets the live camera pose once at frame >= @frame "
+        "(default 300) and pins it against scripted writers "
+        "(freezeScriptedCameraForCapture) WITHOUT freezing the sim — "
+        "deterministic worst-case views for perf captures and debug-view "
+        "sweeps while gameplay keeps running. Malformed value -> off. "
+        "Default unset -> one static pointer check, byte-identical."
+    },
+    {
+        "MC2_TRACE_UI_IMGUI_TIMER",
+        "MC2_UI_IMGUI_TIMER",
+        EnvVarKind::Trace,
+        false,
+        "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission mission-timer "
+        "display as ImGui (right-aligned MM:SS via HudFont + the TimerStatic "
+        "atlas tile) laid out through the HUD-shrink + canvas-box transform "
+        "chain. Time/warning/blink logic stays shared with the legacy path. "
+        "Default unset -> legacy drawShadowText/StaticInfo draw, byte-identical."
+    },
+    {
+        "MC2_TRACE_UI_IMGUI_VIDEO",
+        "MC2_UI_IMGUI_VIDEO",
+        EnvVarKind::Trace,
+        false,
+        "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel "
+        "as ImGui — VideoStatic chrome tiles + the decoder's frame texture at "
+        "the same aspect-fit quad/letterbox video_render computes "
+        "(MC2Movie::getLayout), inside gos_ComputeHudCanvasBox. Default unset "
+        "-> legacy StaticInfo + gos quad draw, byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_TIMER",
+        "MC2_BOOT_TIMER",
+        EnvVarKind::Trace,
+        false,
+        "TIMER-CAPTURE fixture: =N force-arms the in-mission mission timer ONCE "
+        "at frame >= N by setting mission->m_timeLimit = scenarioTime + 754 s "
+        "(ControlGui::update). Tier1 missions ship with no TimeLimit, so the "
+        "timer panel is otherwise unreachable headless. Same pattern as "
+        "MC2_BOOT_INFO / MC2_BOOT_OBJ. Default unset -> byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_TIMER_SECS",
+        "MC2_BOOT_TIMER_SECS",
+        EnvVarKind::Trace,
+        false,
+        "TIMER-CAPTURE fixture parameter: =S overrides the remaining seconds "
+        "the MC2_BOOT_TIMER fixture arms (default 754). Lets the <5-minute red "
+        "warning (S=283) and <2-minute blink (S=110) states of the shared "
+        "legacy timer computation be captured headless — the warning logic "
+        "itself is unchanged and shared by the legacy and ImGui draws. Only "
+        "read when MC2_BOOT_TIMER is set. Default unset -> byte-identical."
+    },
+    {
+        "MC2_TRACE_BOOT_VIDEO",
+        "MC2_BOOT_VIDEO",
+        EnvVarKind::Trace,
+        false,
+        "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in "
+        "MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) "
+        "play under MC2_SMOKE_MODE and the video panel is capturable headless. "
+        "Default unset -> smoke-mode skip preserved, byte-identical."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when

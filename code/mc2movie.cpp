@@ -24,6 +24,7 @@
 
 #include"mc2video.h"
 #include "../GameOS/gameos/gos_smoke.h"
+#include <cstdlib>   // std::getenv (MC2_BOOT_VIDEO capture fixture)
 
 #include "../resource.h"
 #include"gameos.hpp"
@@ -78,10 +79,23 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
     }
 
     if (SmokeMode::state().enabled) {
-        printf("[VIDEO] init: smoke mode active, skipping movie '%s'\n", shortName);
-        stillPlaying  = false;
-        m_sessionDone = true;
-        return;
+        // VIDEO-CAPTURE fixture: MC2_BOOT_VIDEO=1 overrides the smoke-mode
+        // movie skip so the in-mission comm-video panel is reachable headless
+        // (mc2_01 ABL plays V1A.bik ~frame 1600 under MC2_SMOKE_MODE, but this
+        // early-out swallowed it). Registered Trace, default unset ->
+        // byte-identical (skip preserved).
+        static const bool s_bootVideo = [] {
+            const char* v = getenv("MC2_BOOT_VIDEO");
+            return v && v[0] && v[0] != '0';
+        }();
+        if (!s_bootVideo) {
+            printf("[VIDEO] init: smoke mode active, skipping movie '%s'\n", shortName);
+            stillPlaying  = false;
+            m_sessionDone = true;
+            return;
+        }
+        printf("[BOOT_VIDEO] smoke-mode movie skip overridden for '%s'\n", shortName);
+        fflush(stdout);
     }
 
     if (!g_ffmpegAvailable) {
@@ -202,4 +216,15 @@ void MC2Movie::render (void)
 unsigned int MC2Movie::getTextureHandle (void)
 {
     return m_session ? video_get_texture(m_session) : 0;
+}
+
+bool MC2Movie::getLayout (float& qx0, float& qy0, float& qx1, float& qy1,
+                          long& rx, long& ry, long& rw, long& rh)
+{
+    int irx = 0, iry = 0, irw = 0, irh = 0;
+    if (!video_get_layout(m_session, &qx0, &qy0, &qx1, &qy1,
+                          &irx, &iry, &irw, &irh))
+        return false;
+    rx = irx; ry = iry; rw = irw; rh = irh;
+    return true;
 }

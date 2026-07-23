@@ -19,6 +19,7 @@
 extern SoundSystem *sndSystem;
 
 #include"mclib.h"
+#include "../GuiRuntime/GuiRuntime.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // aListBox methods
@@ -290,6 +291,18 @@ void aListBox::render()
 		long topHeight = 0;
 		long bottomHeight = 0;
 
+		// DEFS-LIST-CLIP-1: when this list renders through the GUI bridge (ImGui
+		// layer over a defs page), partially-scrolled edge items must clip at the
+		// box bounds. The legacy technique below -- painting black cover rects
+		// OVER the spill -- would black out defs page art, so bridge mode uses a
+		// real clip rect instead and skips the covers.
+		float bSx = 1.f, bSy = 1.f, bOx = 0.f, bOy = 0.f;
+		const bool bBridged = aObject::getGuiBridgeTransform( bSx, bSy, bOx, bOy );
+		bool bClipPushed = false;
+		if ( bBridged )
+			bClipPushed = GuiRuntime::PushUiClipRect(
+				globalX() * bSx + bOx, globalY() * bSy + bOy,
+				width() * bSx, height() * bSy );
 
 		bool bItemOutOfRange = 0;
 		for ( int i = 0; i < itemCount; i++ )
@@ -320,8 +333,11 @@ void aListBox::render()
 			}
 		}
 
+		if ( bClipPushed )
+			GuiRuntime::PopUiClipRect();
+
 		// draw black box above this
-		if ( bTop || bBottom )
+		if ( !bBridged && ( bTop || bBottom ) )
 		{
 			GUI_RECT rect = { globalX(), globalY() - topHeight, (globalX() + (long)width()), globalY() };
 			if ( bTop )
