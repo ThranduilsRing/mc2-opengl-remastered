@@ -325,6 +325,23 @@ class Camera
 		Stuff::Vector3D			zoomAnchorWorld;
 		Stuff::Vector3D			zoomAnchorPivot;
 
+		// [CAMERA-SMOOTHING-1] gameplay camera smoothing (MC2_CAMERA_SMOOTH ms,
+		// default ~100, 0 = legacy verbatim). Edge/keyboard scroll and rotation
+		// input accumulate a GOAL pose (clamped like setPosition); update() moves
+		// the actual pose toward it with a frame-rate-independent exponential
+		// step. Hard-set paths (bookmark apply, scripted swoop, capture
+		// fixtures) never arm this state, and any externally-caused pose change
+		// drops the goal, so captures stay deterministic.
+		bool					scrollSmoothActive = false;
+		float					scrollSmoothGoalX = 0.0f;
+		float					scrollSmoothGoalY = 0.0f;
+		float					scrollSmoothLastX = 0.0f;
+		float					scrollSmoothLastY = 0.0f;
+		bool					rotSmoothActive = false;
+		float					rotSmoothGoalCam = 0.0f;
+		float					rotSmoothGoalWorld = 0.0f;
+		float					rotSmoothLastCam = 0.0f;
+
 		static float			globalScaleFactor;		//Global Rescale Factor.
 
 		static float			MaxClipDistance;
@@ -1465,7 +1482,12 @@ class Camera
 		
 		void rotateLeft(float amount);
 		void rotateRight(float amount);
-		
+
+		// [CAMERA-SMOOTHING-1] input accumulators (see camera.cpp).
+		void applyScrollDelta(float dx, float dy);
+		void queueRotationDelta(float amount);
+		void updateInputSmoothing(Stuff::Vector3D &newPosition);
+
 		void rotateNormal (void);
 
 		void rotateLightLeft(float amount);

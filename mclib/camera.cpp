@@ -93,6 +93,45 @@ char WindowTitle[1024];		// Global window title (GetWindowText is VERY slow)
 // Bumped by ZoomIn/ZoomOut each call, decayed every frame by Camera::update().
 static float s_scrollMomentum = 0.0f;
 
+// [CAMERA-SMOOTHING-1] frame-rate-independent gameplay-camera smoothing.
+// MC2_CAMERA_SMOOTH=<ms> — time constant of the exponential approach toward
+// the input-accumulated goal pose. 0 = off (legacy verbatim: hard per-frame
+// position steps, 11.25-degree rotation snaps, 20/s zoom lerp). Default 100ms:
+// tight, not floaty. Clamped to [0, 2000].
+static float camSmoothTau (void)
+{
+	static float s_tau = -1.0f;
+	if (s_tau < 0.0f)
+	{
+		float ms = 100.0f;
+		const char* v = getenv("MC2_CAMERA_SMOOTH");
+		if (v && v[0])
+			ms = (float)atof(v);
+		if (ms < 0.0f)    ms = 0.0f;
+		if (ms > 2000.0f) ms = 2000.0f;
+		s_tau = ms * 0.001f;
+	}
+	return s_tau;
+}
+
+// Exponential-approach blend factor for a step of dt seconds: identical
+// convergence fraction per unit time regardless of frame rate.
+static inline float camSmoothAlpha (float dt)
+{
+	float tau = camSmoothTau();
+	if (tau <= 0.0f)
+		return 1.0f;
+	float a = 1.0f - expf(-dt / tau);
+	return (a > 1.0f) ? 1.0f : a;
+}
+
+static inline float camWrap180 (float a)
+{
+	while (a > 180.0f)  a -= 360.0f;
+	while (a < -180.0f) a += 360.0f;
+	return a;
+}
+
 long topCtrlUpd = 0;
 
 extern long scenarioEndTurn;
@@ -2224,7 +2263,11 @@ long Camera::update (void)
 	
 	setPosition(newPosition);		//THIS ALWAYS sets z position for us now!!!!!
 
-	//----------------------------------------------	
+	// [CAMERA-SMOOTHING-1] ease actual pose toward input-accumulated goals
+	// (edge/keyboard scroll, rotation). No-op when inactive or knob=0.
+	updateInputSmoothing(newPosition);
+
+	//----------------------------------------------
 	//Update fades and letterbox transitions here.
 	updateLetterboxAndFade();
 	
@@ -2270,8 +2313,13 @@ long Camera::update (void)
 		if (s_scrollMomentum < 0.0f) s_scrollMomentum = 0.0f;
 
 		float diff = cameraAltitudeDesired - cameraAltitude;
+		// [CAMERA-SMOOTHING-1] knob>0: frame-rate-independent exponential
+		// approach (1-exp(-dt/tau)); knob=0: legacy 20/s linear-rate lerp.
+		float zoomStep = (camSmoothTau() > 0.0f)
+			? camSmoothAlpha(frameLength)
+			: (frameLength * 20.0f < 1.0f ? frameLength * 20.0f : 1.0f);
 		if (fabsf(diff) > 0.1f)
-			cameraAltitude += diff * (frameLength * 20.0f < 1.0f ? frameLength * 20.0f : 1.0f);
+			cameraAltitude += diff * zoomStep;
 		else
 			cameraAltitude = cameraAltitudeDesired;
 		if (cameraAltitude < AltitudeMinimum)
@@ -2375,6 +2423,50 @@ long Camera::update (void)
 
 			s_prevRotation = cameraRotation;
 			s_prevPosition = position;
+
+			// [CAMERA-SMOOTHING-1] evidence tooling (both default OFF):
+			//   MC2_CAM_SMOOTH_TEST=1  — synthetic scroll driver: frames
+			//     120..240 feed moveRight at 2000 wu/s + one rotateLeft
+			//     11.25-deg snap at frame 150 (mimics the keyboard/edge
+			//     scroll + rotation input path), then input stops. Proves
+			//     ramp-in/tail-out in the delta log without a human.
+			//   MC2_CAMERA_SMOOTH_TRACE=1 — appends per-frame pose deltas to
+			//     cam_smooth_trace.csv in the working dir while motion > 0.
+			{
+				static int s_camTest = -1;
+				static int s_camTrace = -1;
+				static unsigned s_camTestFrame = 0;
+				static FILE* s_camTraceFile = NULL;
+				if (s_camTest < 0) {
+					const char* t = getenv("MC2_CAM_SMOOTH_TEST");
+					s_camTest = (t && t[0] == '1') ? 1 : 0;
+					const char* tr = getenv("MC2_CAMERA_SMOOTH_TRACE");
+					s_camTrace = (tr && tr[0] == '1') ? 1 : 0;
+				}
+				if (s_camTest) {
+					s_camTestFrame++;
+					if (s_camTestFrame >= 120 && s_camTestFrame <= 240)
+						moveRight(2000.0f * frameLength);
+					if (s_camTestFrame == 150)
+						rotateLeft(11.25f);
+				}
+				if (s_camTrace && (dPos > 0.0001f || dRot > 0.0001f || s_camTest)) {
+					if (!s_camTraceFile)
+					{
+						s_camTraceFile = fopen("cam_smooth_trace.csv", "w");
+						if (s_camTraceFile)
+							fprintf(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot\n");
+					}
+					if (s_camTraceFile)
+					{
+						fprintf(s_camTraceFile, "%u,%.3f,%.2f,%.2f,%.3f,%.2f,%.4f,%.4f\n",
+							s_motionFrames, frameLength * 1000.0f,
+							position.x, position.y, cameraRotation, cameraAltitude,
+							dPos, dRot);
+						fflush(s_camTraceFile);
+					}
+				}
+			}
 
 			if ((s_motionFrames % SUMMARY_PERIOD) == 0u) {
 				printf("[CAMERA_MOTION v1] event=summary frames=%u stationary=%u moving=%u "
@@ -3770,11 +3862,7 @@ void Camera::moveLeft(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
-
-	setPosition(newPosition);
+	applyScrollDelta(direction.x, direction.y);
 }
 
 //---------------------------------------------------------------------------
@@ -3798,11 +3886,7 @@ void Camera::moveRight(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
-
-	setPosition(newPosition);
+	applyScrollDelta(direction.x, direction.y);
 }
 
 //---------------------------------------------------------------------------
@@ -3826,11 +3910,7 @@ void Camera::moveUp(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
-	
-	setPosition(newPosition);
+	applyScrollDelta(direction.x, direction.y);
 }
 
 //---------------------------------------------------------------------------
@@ -3854,11 +3934,129 @@ void Camera::moveDown(float amount)
 	OppRotate(direction,worldCameraRotation);
 	direction *= amount;
 
-	Stuff::Vector3D newPosition = position;
-	newPosition.x += direction.x;
-	newPosition.y += direction.y;
+	applyScrollDelta(direction.x, direction.y);
+}
 
-	setPosition(newPosition);
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Shared tail of moveLeft/Right/Up/Down. Legacy (knob=0):
+// instant setPosition step, byte-identical to the old inline code. Smoothing
+// on: accumulate the delta into a goal the update() step eases toward. The
+// GOAL is clamped with setPosition's own map-bound rule so smoothing never
+// chases an out-of-bounds target (no rubber-banding at the map edge).
+void Camera::applyScrollDelta(float dx, float dy)
+{
+	if (camSmoothTau() <= 0.0f)
+	{
+		Stuff::Vector3D newPosition = position;
+		newPosition.x += dx;
+		newPosition.y += dy;
+		setPosition(newPosition);
+		return;
+	}
+
+	if (!scrollSmoothActive)
+	{
+		scrollSmoothGoalX = scrollSmoothLastX = position.x;
+		scrollSmoothGoalY = scrollSmoothLastY = position.y;
+		scrollSmoothActive = true;
+	}
+	scrollSmoothGoalX += dx;
+	scrollSmoothGoalY += dy;
+
+	if (land)
+	{
+		float maxVisual = (Terrain::worldUnitsMapSide / 2) - (Terrain::worldUnitsPerVertex * 2.0f);
+		if (!drawTerrainGrid)
+			maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
+		if (scrollSmoothGoalX >  maxVisual) scrollSmoothGoalX =  maxVisual;
+		if (scrollSmoothGoalX < -maxVisual) scrollSmoothGoalX = -maxVisual;
+		if (scrollSmoothGoalY >  maxVisual) scrollSmoothGoalY =  maxVisual;
+		if (scrollSmoothGoalY < -maxVisual) scrollSmoothGoalY = -maxVisual;
+	}
+}
+
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Rotation-input accumulator (rotateLeft/rotateRight).
+// Keeps the quantized 11.25-degree snap TARGETS from MissionInterfaceManager
+// but eases the actual rotation toward them, turning visible snaps into a
+// short animated turn.
+void Camera::queueRotationDelta(float amount)
+{
+	if (!rotSmoothActive)
+	{
+		rotSmoothGoalCam   = rotSmoothLastCam = cameraRotation;
+		rotSmoothGoalWorld = worldCameraRotation;
+		rotSmoothActive = true;
+	}
+	rotSmoothGoalCam   = camWrap180(rotSmoothGoalCam + amount);
+	rotSmoothGoalWorld = camWrap180(rotSmoothGoalWorld + amount);
+
+	cameraShiftZ = position.z;	// legacy rotateLeft/rotateRight side-effect
+}
+
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Per-frame exponential approach toward the accumulated
+// input goals. Runs from Camera::update() right after the scripted-position
+// pipeline so scripted/goal-seek motion wins: if anything OTHER than this
+// smoother moved the pose since our last step (bookmark apply, scripted
+// swoop, drag-jump, findObject), the goal is dropped immediately — hard-set
+// paths stay hard-set and captures stay deterministic.
+void Camera::updateInputSmoothing (Stuff::Vector3D &newPosition)
+{
+	if (scrollSmoothActive)
+	{
+		if ((fabsf(position.x - scrollSmoothLastX) > 0.01f) ||
+			(fabsf(position.y - scrollSmoothLastY) > 0.01f))
+		{
+			scrollSmoothActive = false;		// external motion: drop the goal
+		}
+		else
+		{
+			float a  = camSmoothAlpha(frameLength);
+			float dx = scrollSmoothGoalX - position.x;
+			float dy = scrollSmoothGoalY - position.y;
+			Stuff::Vector3D p = position;
+			if ((fabsf(dx) < 0.05f) && (fabsf(dy) < 0.05f))
+			{
+				p.x = scrollSmoothGoalX;
+				p.y = scrollSmoothGoalY;
+				scrollSmoothActive = false;	// settled
+			}
+			else
+			{
+				p.x += dx * a;
+				p.y += dy * a;
+			}
+			setPosition(p);
+			scrollSmoothLastX = position.x;
+			scrollSmoothLastY = position.y;
+			newPosition = position;			// downstream matrix setup sees the smoothed pose
+		}
+	}
+
+	if (rotSmoothActive)
+	{
+		if (fabsf(camWrap180(cameraRotation - rotSmoothLastCam)) > 0.01f)
+		{
+			rotSmoothActive = false;		// external rotation: drop the goal
+		}
+		else
+		{
+			float a  = camSmoothAlpha(frameLength);
+			float dc = camWrap180(rotSmoothGoalCam - cameraRotation);
+			float dw = camWrap180(rotSmoothGoalWorld - worldCameraRotation);
+			if ((fabsf(dc) < 0.02f) && (fabsf(dw) < 0.02f))
+			{
+				setCameraRotation(rotSmoothGoalCam, rotSmoothGoalWorld);
+				rotSmoothActive = false;	// settled
+			}
+			else
+			{
+				setCameraRotation(cameraRotation + dc * a, worldCameraRotation + dw * a);
+			}
+			rotSmoothLastCam = cameraRotation;
+		}
+	}
 }
 
 //---------------------------------------------------------------------------
@@ -3927,20 +4125,34 @@ void Camera::rotateLightDown(float amount)
 //---------------------------------------------------------------------------
 void Camera::rotateLeft(float amount)
 {
+	// [CAMERA-SMOOTHING-1] smoothing on: accumulate goal, ease in update().
+	if (camSmoothTau() > 0.0f)
+	{
+		queueRotationDelta(amount);
+		return;
+	}
+
 	float newCamAngle = cameraRotation+amount;
 	float newCamWorld = worldCameraRotation+amount;
 	setCameraRotation(newCamAngle,newCamWorld);
-	
+
 	cameraShiftZ = position.z;
 }
 
 //---------------------------------------------------------------------------
 void Camera::rotateRight(float amount)
 {
+	// [CAMERA-SMOOTHING-1] smoothing on: accumulate goal, ease in update().
+	if (camSmoothTau() > 0.0f)
+	{
+		queueRotationDelta(-amount);
+		return;
+	}
+
 	float newCamAngle = cameraRotation-amount;
 	float newCamWorld = worldCameraRotation-amount;
 	setCameraRotation(newCamAngle,newCamWorld);
-	
+
 	cameraShiftZ = position.z;
 }
 
