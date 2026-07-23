@@ -305,6 +305,24 @@ Headless Vulkan probe / backend-skeleton exercise gates. All read via bare `gete
   aspect (true proportions at any window shape); panel previews keep their
   fixed 4:3 FBO ratio via the preview-scope guard.
 
+## Gameplay camera smoothing (CAMERA-SMOOTHING-1)
+
+- `MC2_CAMERA_SMOOTH=<ms>` — time constant of the frame-rate-independent
+  exponential approach the gameplay camera uses for keyboard/edge scroll,
+  rotation, and wheel zoom (`mclib/camera.cpp`). Default **100** (unset);
+  `0` = legacy verbatim (hard per-frame scroll steps, 11.25-degree rotation
+  snaps, fixed 20/s zoom lerp). Clamped [0, 2000]. Input accumulates a GOAL
+  pose (goal clamped with `setPosition`'s map-bound rule; altitude clamps
+  unchanged on the desired value); `Camera::update()` eases the actual pose
+  toward it with `1-exp(-dt/tau)`. Hard-set paths (bookmark apply, scripted
+  swoop/intro, target tracking) never arm smoothing, and any externally
+  caused pose change drops the goal — captures stay deterministic.
+- `MC2_CAMERA_SMOOTH_TRACE=1` — append per-frame pose deltas to
+  `cam_smooth_trace.csv` (working dir) whenever the camera moves.
+- `MC2_CAM_SMOOTH_TEST=1` — synthetic input driver: frames 120-240 feed
+  `moveRight` at 2000 wu/s plus one 11.25-degree `rotateLeft` snap at frame
+  150, then input stops. Pair with the trace to prove ramp-in/tail-out.
+
 ## Road PBR fail-soft (ROAD-PBR-FAILSOFT-1)
 
 - `MC2_ROAD_PBR=1` — opt IN to the high-res PBR asphalt/gravel road

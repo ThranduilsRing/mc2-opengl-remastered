@@ -1533,6 +1533,11 @@ def main():
                             "MC2_GPU_CULL",
                             "MC2_GPU_CULL_COMPUTE_TRACE",
                             "MC2_CAMERA_MOVE_DIAG",
+                            # CAMERA-SMOOTHING-1: gameplay camera smoothing knob
+                            # + evidence tooling (trace CSV, synthetic scroll driver)
+                            "MC2_CAMERA_SMOOTH",
+                            "MC2_CAMERA_SMOOTH_TRACE",
+                            "MC2_CAM_SMOOTH_TEST",
                             "MC2_STATIC_FORCE_ADMIT",
                             "MC2_WATER_GATE_DIAG",
                             "MC2_MISSION_INTRO_LEGACY_RENDER",

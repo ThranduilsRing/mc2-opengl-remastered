@@ -496,6 +496,9 @@ ALLOWLIST=(
     MC2_LOWCAM_SOLID_NEAR             # override -- low-camera solid-near tuning
     MC2_LOWCAM_TERRAIN_NEAR           # feature -- low-camera terrain-near gate
     MC2_LOWCAM_ZOOM_ANCHOR            # override -- low-camera zoom anchor override
+    MC2_CAMERA_SMOOTH                 # override -- gameplay camera smoothing time-constant ms (0=legacy)
+    MC2_CAMERA_SMOOTH_TRACE           # trace
+    MC2_CAM_SMOOTH_TEST               # trace -- synthetic scroll driver for smoothing evidence
     MC2_MATERIALLIB_TRACE             # trace
     MC2_MDI_SUBMIT_TRACE              # trace
     MC2_MECH_ANIM_ROTATION_ONLY       # feature -- mech anim rotation-only gate
