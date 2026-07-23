@@ -730,6 +730,10 @@ ALLOWLIST=(
     MC2_LIGHT_CULL_RADIUS             # killswitch -- LIGHT-CULL-RADIUS-1: =0 restores position-only light screen test (pool popping)
     MC2_LIGHT_POOL_MOVER_FWD          # override -- MOVER-LIGHT-FORWARD-1: mover pool forward bias wu (default 24, clamp [0,120]; 0 = centered)
     MC2_LIGHT_POOL_OBJECTS            # killswitch -- POOL-CONSUMERS-1: =0 drops pool light from prop/mover shaders (terrain-only pools)
+    MC2_LIGHT_CONE_NODES              # killswitch -- LIGHT-CONE-MODELS-1: =0 restores heuristic pool centers (no authored-cone aim/spill)
+    MC2_LIGHT_CONE_GLOW               # killswitch -- LIGHT-CONE-MODELS-1: =0 hides the additive authored light-cone beams at night
+    MC2_LIGHT_CONE_GLOW_ALPHA         # override -- LIGHT-CONE-MODELS-1: peak cone-glow vertex alpha 0..255 (default 40; 255 = exaggeration probe)
+    MC2_LIGHT_CONE_SPILL              # override -- LIGHT-CONE-MODELS-1: spill anchor scale on authored cone length (default 1.0, clamp [0,3])
     MC2_LIGHT_POOL_OBJ_SCALE          # override -- POOL-CONSUMERS-1: object-side pool intensity scale (default 0.7, clamp [0,2])
     MC2_WATER_SHORE_MASK              # killswitch -- WATER-SHORE-MASK-1: =0 restores tile-staircase water shore band (no mask feather)
     MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)

@@ -141,6 +141,7 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
 #include "cpu_proj_cost_split.h"      // F3 CPU projection cost-baseline (RAII scope)
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown
 
 static bool staticRegIsNaturalBuildingName(const char* name)
@@ -3271,6 +3272,26 @@ long BldgAppearance::update (bool animate)
 		{
 			Stuff::Vector3D childPos =
 				getNodeIdPosition(spotlightNodeIds_[k]);
+			// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR END
+			// (node transform × cone geometry axis), grounded on terrain —
+			// tower searchlights illuminate the compound they're aimed INTO,
+			// not the tower base. No-cone nodes keep the node-origin pool.
+			// MC2_LIGHT_CONE_NODES=0 restores node-origin pools.
+			if (mc2_cone_glow::nodes_enabled())
+			{
+				Stuff::Vector3D aimW;
+				float coneLen = 0.0f;
+				if (mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen))
+				{
+					float spill = coneLen * mc2_cone_glow::spill_scale();
+					if (spill > 200.0f) spill = 200.0f;
+					childPos.x += aimW.x * spill;
+					childPos.y += aimW.y * spill;
+					childPos.z += aimW.z * spill;
+					if (land)
+						childPos.z = land->getTerrainElevation(childPos);
+				}
+			}
 			spotlightLights_[k]->SetPosition(&childPos);
 			// Rule-2 correctness fix: lightToWorld is consumed at
 			// msl.cpp:1659 (s_lightToShape = lightToWorld * worldToShape).
@@ -3298,6 +3319,13 @@ long BldgAppearance::update (bool animate)
 			// the mc2_10 airbase all-pools-dark angle, 204907).
 			spotlightLights_[k]->ownerEnabled =
 				spotlightLights_[k]->active ? 1 : 0;
+			// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied to
+			// the SAME owner predicate — lights-out/destroyed buildings show
+			// no cone. Screen-clip rejection lives in QueueConeGlow.
+			// MC2_LIGHT_CONE_GLOW=0 kills it.
+			if (spotlightLights_[k]->active)
+				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
+					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
 	}
 

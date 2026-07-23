@@ -1279,6 +1279,12 @@ def main():
                             # POOL-CONSUMERS-1: object-shader pool consumption.
                             "MC2_LIGHT_POOL_OBJECTS",
                             "MC2_LIGHT_POOL_OBJ_SCALE",
+                            # LIGHT-CONE-MODELS-1: authored-cone aim/spill +
+                            # additive cone glow (defaults ON) + knobs.
+                            "MC2_LIGHT_CONE_NODES",
+                            "MC2_LIGHT_CONE_GLOW",
+                            "MC2_LIGHT_CONE_GLOW_ALPHA",
+                            "MC2_LIGHT_CONE_SPILL",
                             # WATER-SHORE-MASK-1: smoothed-contour water shore feather.
                             "MC2_WATER_SHORE_MASK",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.

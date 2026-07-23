@@ -12,6 +12,7 @@
 #include"gvactor.h"
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #endif
 
 #ifndef CAMERA_H
@@ -2674,10 +2675,35 @@ void GVAppearance::updateGeometry (void)
 			{
 				Stuff::Vector3D childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
+				// LIGHT-CONE-MODELS-1 (A/C): place the pool at the authored
+				// cone's FAR END — aim comes from the node's live transform
+				// composed with the cone type geometry's own axis, then the
+				// spill anchor is grounded on terrain (headlights light the
+				// road where the beam actually lands). Falls back to the
+				// MOVER-LIGHT-FORWARD-1 facing heuristic when the model has
+				// no usable cone. MC2_LIGHT_CONE_NODES=0 restores heuristic.
+				bool coneAimed = false;
+				if (mc2_cone_glow::nodes_enabled())
+				{
+					Stuff::Vector3D aimW;
+					float coneLen = 0.0f;
+					if (mc2_cone_glow::GetNodeAim(gvShape, spotlightNodeIds_[k], aimW, coneLen))
+					{
+						float spill = coneLen * mc2_cone_glow::spill_scale();
+						if (spill > 200.0f) spill = 200.0f;
+						childPos.x += aimW.x * spill;
+						childPos.y += aimW.y * spill;
+						childPos.z += aimW.z * spill;
+						if (land)
+							childPos.z = land->getTerrainElevation(childPos);
+						coneAimed = true;
+					}
+				}
 				// MOVER-LIGHT-FORWARD-1: bias the pool center AHEAD of the
 				// vehicle along its facing (headlight semantics; see
 				// mech3d.cpp counterpart). MC2_LIGHT_POOL_MOVER_FWD=0
 				// restores centered pools.
+				if (!coneAimed)
 				{
 					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
 					if (fwdWu > 0.0f)
@@ -2721,6 +2747,12 @@ void GVAppearance::updateGeometry (void)
 				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 				spotlightLights_[k]->ownerEnabled =
 					spotlightLights_[k]->active ? 1 : 0;
+				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
+				// to the SAME owner predicate — shutdown/dead/FoW-hidden
+				// vehicles show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
+				if (spotlightLights_[k]->active)
+					mc2_cone_glow::QueueConeGlow(gvShape, spotlightNodeIds_[k],
+						spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 			}
 		}
 	//}

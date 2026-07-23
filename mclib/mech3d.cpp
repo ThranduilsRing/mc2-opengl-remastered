@@ -26,6 +26,7 @@
 
 extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVANCE double-step probe
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include <cstdint>  // M2.5 (Q6 amendment 2): uint64_t for MLR mech draw counter
 #include <unordered_map>  // ANIM-CADENCE-GUARD-1: per-appearance last-advance frame stamp
 
@@ -4028,11 +4029,34 @@ void Mech3DAppearance::updateGeometry (void)
 			{
 				Stuff::Vector3D childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
+				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
+				// END (node transform × cone geometry axis), grounded on
+				// terrain — the beam lights where it actually lands. Falls
+				// back to the facing heuristic below when the model has no
+				// usable cone. MC2_LIGHT_CONE_NODES=0 restores heuristic.
+				bool coneAimed = false;
+				if (mc2_cone_glow::nodes_enabled())
+				{
+					Stuff::Vector3D aimW;
+					float coneLen = 0.0f;
+					if (mc2_cone_glow::GetNodeAim(mechShape, spotlightNodeIds_[k], aimW, coneLen))
+					{
+						float spill = coneLen * mc2_cone_glow::spill_scale();
+						if (spill > 200.0f) spill = 200.0f;
+						childPos.x += aimW.x * spill;
+						childPos.y += aimW.y * spill;
+						childPos.z += aimW.z * spill;
+						if (land)
+							childPos.z = land->getTerrainElevation(childPos);
+						coneAimed = true;
+					}
+				}
 				// MOVER-LIGHT-FORWARD-1: bias the pool center AHEAD of the
 				// mech along its facing (headlights light the road ahead,
 				// not an omni puddle centered underfoot). Facing convention
 				// matches Mover::getRotationVector ((0,-1,0) rotated by
 				// -rotation). MC2_LIGHT_POOL_MOVER_FWD=0 restores centered.
+				if (!coneAimed)
 				{
 					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
 					if (fwdWu > 0.0f)
@@ -4082,6 +4106,12 @@ void Mech3DAppearance::updateGeometry (void)
 				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 				spotlightLights_[k]->ownerEnabled =
 					spotlightLights_[k]->active ? 1 : 0;
+				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
+				// to the SAME owner predicate — shutdown/dead/FoW-hidden
+				// mechs show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
+				if (spotlightLights_[k]->active)
+					mc2_cone_glow::QueueConeGlow(mechShape, spotlightNodeIds_[k],
+						spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 			}
 		}
 

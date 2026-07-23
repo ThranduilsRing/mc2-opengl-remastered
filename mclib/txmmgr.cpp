@@ -19,6 +19,7 @@
 #include "render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include"tex_resolve_table.h"
 #include "diagnostic_trace.h"
+#include "cone_glow.h"   // LIGHT-CONE-MODELS-1: FlushFrame at renderLists top
 
 #ifndef TGAINFO_H
 #include"tgainfo.h"
@@ -2478,6 +2479,12 @@ void MC_TextureManager::renderLists (void)
 	// (accumulate + 60-frame emit) runs after every phase span has closed.
 	rlcost::TotalSpan _rlTotal(nextAvailableVertexNode,
 	                           static_cast<long>(nextAvailableHardwareVertexNode));
+
+	// LIGHT-CONE-MODELS-1 (B): fill the deferred cone-glow vertices into the
+	// MC2_ISSPOTLGT batch. Must run before the ISSPOTLGT consumer loop below
+	// and AFTER every legacy addVertices for the frame (all of which happen in
+	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
+	mc2_cone_glow::FlushFrame();
 	static bool bSkip = true; // used across preamble and Render.3DObjects
 	{
 	ZoneScopedN("RenderLists.Preamble");

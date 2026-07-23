@@ -1026,6 +1026,13 @@ class TG_Shape
 		bool  GetLightsOut()      const { return lightsOut; }
 		bool  GetIsWindow()       const { return isWindow; }
 		bool  GetIsSpotlight()    const { return isSpotlight; }
+		// LIGHT-CONE-MODELS-1: read-only type/scalar access for the cone-glow
+		// module (mclib/cone_glow.cpp) — needs the spotlight child's immutable
+		// type geometry (cone axis derivation + additive re-render) and the
+		// instance scale legacy MultiTransformShape applies (pos *= shapeScalar
+		// at tgl.cpp:1921). Non-friend caller, hence public accessors.
+		TG_TypeNodePtr GetMyType (void) const { return myType; }
+		float GetShapeScalarValue (void) const { return shapeScalar; }
 		// 2026-05-10: SHAPE_NODE filter accessor for non-friend callers
 		// (BldgAppearance/TreeAppearance::registerStatic). Mirrors the
 		// guard used by submitMultiShape at gos_static_prop_batcher.cpp:2047.
