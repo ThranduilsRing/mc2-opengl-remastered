@@ -17,3 +17,41 @@ repository.
 
 New contributions are MIT unless they modify a file from the first two
 buckets, in which case they inherit that file's license.
+
+## Maintainer guidance: public redistribution of the combined work
+
+> This is maintainer guidance summarizing the license texts in this repo. It
+> is **not legal advice**; when in doubt, read [EULA.txt](EULA.txt) and
+> [license.txt](license.txt) directly.
+
+What the Microsoft Shared Source Limited Permissive License (EULA.txt)
+grants and requires, stated conservatively:
+
+- **Code**: §2(A) grants a royalty-free license to reproduce the software,
+  prepare derivative works, and distribute the software or derivative works.
+  This is what permits this repo and its release builds to exist publicly.
+- **Art Assets**: §3(A) is the key restriction — there are **no rights to
+  commercially distribute any artwork from the game**; Art Assets may be
+  used, reproduced, and distributed on a **non-commercial basis only**. The
+  release gamedata/art/movies zips contain Art Assets, so all public releases
+  of this project must remain non-commercial (no selling, no paywalling).
+- **Trademarks**: §3(B) grants no rights to Microsoft's name, logo, or
+  trademarks — do not brand distributions in a way that implies Microsoft
+  endorsement.
+- **Notices**: §3(D) requires retaining all copyright, patent, trademark,
+  and attribution notices present in the software.
+- **Source vs. binary**: §3(E) — source-form distribution of the covered code
+  is permitted **only under this same license, with a complete copy of the
+  license included** (this is why EULA.txt is in the repo and in every
+  release zip); compiled/object-form distribution must be under a license
+  that complies with this license.
+- **Warranty**: §3(F) — as-is, no warranties.
+
+Interaction with the other buckets: the alariq/mc2 platform-layer files are
+GPLv3 (license.txt must accompany distributions containing them), and per the
+table above the effective terms of the combined work are governed by the most
+restrictive applicable component. Practical net for maintainers: public,
+free-of-charge distribution of source and release zips with EULA.txt +
+license.txt included and notices intact is what the license texts
+contemplate; any commercial distribution is off the table because of the Art
+Assets clause.
