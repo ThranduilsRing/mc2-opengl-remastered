@@ -17,6 +17,8 @@
 #include <cstring>
 
 #include <cstdint>
+#include <memory>   // VK-HUD-MIRRORCOPY-1: shared_ptr rgba mirror
+#include <vector>
 
 class gosRenderer;
 
