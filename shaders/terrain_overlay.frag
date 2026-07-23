@@ -163,7 +163,6 @@ PREC vec3 overlayPoolLight(PREC vec3 wp) {
     return min(pool, vec3(1.0));
 }
 
->>>>>>> claude/deferred-sweep-1
 void main()
 {
     // MC2_SHADER_PATH_TINT: solid BLUE so this shader's surfaces are unmistakable.
