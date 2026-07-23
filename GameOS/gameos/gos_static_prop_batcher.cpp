@@ -690,6 +690,46 @@ static const bool s_staticPropAmbientV1Enabled = []() {
     return v != nullptr && v[0] != '0' && v[0] != '\0';
 }();
 
+// FAR-BACKDROP-LIT: gate + tunables for the night-shade substitution applied to
+// far/impostor static-prop LODs (see static_prop.vert). Default-OFF; "=1" / any
+// non-"0", non-empty value enables. When OFF the per-frame upload pushes
+// u_farBackdropLit=0 so the shader's `if (u_farBackdropLit != 0)` branch is
+// skipped entirely -> seed==base_light -> byte-identical to the pre-change
+// render (stronger than a multiply-by-zero: the substitution code never runs).
+// Distance band defaults bracket the LOD impostor distance (MC2_IMPOSTOR_DIST,
+// default 800 world units; bdactor.cpp selectActiveLOD) so the fade completes as
+// the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
+static const bool s_farBackdropLitEnabled = []() {
+    const char* v = getenv("MC2_FAR_BACKDROP_LIT");
+    return v != nullptr && v[0] != '0' && v[0] != '\0';
+}();
+static const float s_farBackdropNear = []() {
+    const char* v = getenv("MC2_FAR_BACKDROP_LIT_NEAR");
+    return v ? (float)atof(v) : 700.0f;   // ~0.9 * default impostor dist
+}();
+static const float s_farBackdropFar = []() {
+    const char* v = getenv("MC2_FAR_BACKDROP_LIT_FAR");
+    return v ? (float)atof(v) : 960.0f;   // ~1.2 * default impostor dist
+}();
+static const float s_farBackdropStrength = []() {
+    const char* v = getenv("MC2_FAR_BACKDROP_LIT_STRENGTH");
+    return v ? (float)atof(v) : 1.0f;     // 1.0 = full substitution; >1 exaggerates
+}();
+// Optional debug/exaggeration additive tint, "r,g,b" in [0..N] (default 0,0,0).
+// Used for verify-by-exaggeration (e.g. "1,0,0" paints substituted far geometry
+// red to prove the path fires on the ridge / impostor pixels).
+static float s_farBackdropTint[3] = {0.0f, 0.0f, 0.0f};
+static const bool s_farBackdropTintParsed = []() {
+    const char* v = getenv("MC2_FAR_BACKDROP_LIT_TINT");
+    if (v && *v) {
+        float r = 0.0f, g = 0.0f, b = 0.0f;
+        if (sscanf(v, "%f,%f,%f", &r, &g, &b) >= 1) {
+            s_farBackdropTint[0] = r; s_farBackdropTint[1] = g; s_farBackdropTint[2] = b;
+        }
+    }
+    return true;
+}();
+
 // V-IBL-STATIC-1: SH-L2 image-based ambient lane.
 //   - env var MC2_STATIC_PROP_IBL_SH is the AUTHORITATIVE GATE
 //     (resolved once at process start; matches V-AMBIENT-STATIC-1 pattern).
@@ -1094,6 +1134,12 @@ struct ProgramLocs {
     GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
     GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
     GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
+    // FAR-BACKDROP-LIT: night-shade substitution for far/impostor LODs.
+    GLint farBackdropLit         = -1;  // u_farBackdropLit (int, 0=off)
+    GLint farBackdropNear        = -1;  // u_farBackdropNear (float)
+    GLint farBackdropFar         = -1;  // u_farBackdropFar (float)
+    GLint farBackdropStrength    = -1;  // u_farBackdropStrength (float)
+    GLint farBackdropTint        = -1;  // u_farBackdropTint (vec3)
 };
 
 // BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass)
@@ -1428,6 +1474,12 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalColorBlend");
     // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
     s_locsLegacy.glassDither            = glGetUniformLocation(s_staticPropProgram, "u_glassDither");
+    // FAR-BACKDROP-LIT uniform locations (legacy program).
+    s_locsLegacy.farBackdropLit         = glGetUniformLocation(s_staticPropProgram, "u_farBackdropLit");
+    s_locsLegacy.farBackdropNear        = glGetUniformLocation(s_staticPropProgram, "u_farBackdropNear");
+    s_locsLegacy.farBackdropFar         = glGetUniformLocation(s_staticPropProgram, "u_farBackdropFar");
+    s_locsLegacy.farBackdropStrength    = glGetUniformLocation(s_staticPropProgram, "u_farBackdropStrength");
+    s_locsLegacy.farBackdropTint        = glGetUniformLocation(s_staticPropProgram, "u_farBackdropTint");
     // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
     s_locsLegacy.iblSh             = glGetUniformLocation(s_staticPropProgram, "u_iblSh");
     s_locsLegacy.iblShStrength     = glGetUniformLocation(s_staticPropProgram, "u_iblShStrength");
@@ -1483,6 +1535,12 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalColorBlend");
             // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
             s_locsCoalesce.glassDither            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_glassDither");
+            // FAR-BACKDROP-LIT uniform locations (coalesce program).
+            s_locsCoalesce.farBackdropLit         = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropLit");
+            s_locsCoalesce.farBackdropNear        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropNear");
+            s_locsCoalesce.farBackdropFar         = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropFar");
+            s_locsCoalesce.farBackdropStrength    = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropStrength");
+            s_locsCoalesce.farBackdropTint        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropTint");
             // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
             s_locsCoalesce.iblSh             = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblSh");
             s_locsCoalesce.iblShStrength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblShStrength");
@@ -6334,6 +6392,21 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
             glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz);
         }
+        // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
+        // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->
+        // byte-identical. Static-band/strength/tint values are harmless when the
+        // gate is 0 (never read). Mirror in the legacy block below.
+        if (s_locsCoalesce.farBackdropLit >= 0)
+            glUniform1i(s_locsCoalesce.farBackdropLit, s_farBackdropLitEnabled ? 1 : 0);
+        if (s_locsCoalesce.farBackdropNear >= 0)
+            glUniform1f(s_locsCoalesce.farBackdropNear, s_farBackdropNear);
+        if (s_locsCoalesce.farBackdropFar >= 0)
+            glUniform1f(s_locsCoalesce.farBackdropFar, s_farBackdropFar);
+        if (s_locsCoalesce.farBackdropStrength >= 0)
+            glUniform1f(s_locsCoalesce.farBackdropStrength, s_farBackdropStrength);
+        if (s_locsCoalesce.farBackdropTint >= 0)
+            glUniform3f(s_locsCoalesce.farBackdropTint,
+                        s_farBackdropTint[0], s_farBackdropTint[1], s_farBackdropTint[2]);
         // POOL-CONSUMERS-1 (batch-6 item 6): bind + upload the night light-pool
         // SSBO/uniforms (u_numPoolLights=0 when gated -> byte-identical).
         gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgramCoalesce);
@@ -7512,6 +7585,20 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
                 glUniform3f(s_locsLegacy.terrainSunMC2, tsx, tsy, tsz);
             }
+            // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy).
+            // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 ->
+            // byte-identical.
+            if (s_locsLegacy.farBackdropLit >= 0)
+                glUniform1i(s_locsLegacy.farBackdropLit, s_farBackdropLitEnabled ? 1 : 0);
+            if (s_locsLegacy.farBackdropNear >= 0)
+                glUniform1f(s_locsLegacy.farBackdropNear, s_farBackdropNear);
+            if (s_locsLegacy.farBackdropFar >= 0)
+                glUniform1f(s_locsLegacy.farBackdropFar, s_farBackdropFar);
+            if (s_locsLegacy.farBackdropStrength >= 0)
+                glUniform1f(s_locsLegacy.farBackdropStrength, s_farBackdropStrength);
+            if (s_locsLegacy.farBackdropTint >= 0)
+                glUniform3f(s_locsLegacy.farBackdropTint,
+                            s_farBackdropTint[0], s_farBackdropTint[1], s_farBackdropTint[2]);
             // POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption
             // (legacy program path; same gating as the coalesce site).
             gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgram);

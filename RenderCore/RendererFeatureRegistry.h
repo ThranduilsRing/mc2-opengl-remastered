@@ -206,7 +206,13 @@ enum class RendererFeature : int {
     // facing=outward cliff normal, tangent=contour) + small outward offset,
     // instead of the yaw-only building recipe. Default-OFF -> byte-identical.
     TerrainDecal             = 45,  // MC2_TERRAIN_DECAL
-    COUNT                    = 46,
+    // FAR-BACKDROP-LIT: night-shade substitution for far/impostor static-prop
+    // LODs (static_prop.vert). Far LODs skip the per-vertex night bake so their
+    // base_light is a frozen day/black value -> fullbright/black at night; when
+    // ON the shader fades the stale seed toward the mission night object-light
+    // ambient across the LOD impostor distance. Default-OFF -> byte-identical.
+    FarBackdropLit           = 46,  // MC2_FAR_BACKDROP_LIT
+    COUNT                    = 47,
 };
 
 // ---------------------------------------------------------------------------
@@ -583,6 +589,14 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system. When ON, cliff-wall decoration types (e.g. \"MarbleCliff\") are submitted to the GPU static-prop batcher with an explicit CLIFF_WALL face-frame mat4 (up=world vertical, facing=outward cliff normal, tangent=contour) plus a small outward offset (bdactor.cpp registerStatic), instead of the yaw-only building recipe. Default-OFF -> byte-identical."
+    },
+    // FarBackdropLit (FAR-BACKDROP-LIT-IMPL-1)
+    {
+        "MC2_FAR_BACKDROP_LIT",
+        "MC2_FAR_BACKDROP_LIT",
+        EnvVarKind::Feature,
+        false,
+        "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert). Far/impostor LODs register via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_HierarchyOnly) and never get the per-vertex NIGHT light bake, so base_light (a_aRGBLight) stays a stale mission-load (day) value -> fullbright impostors at night (and pure-black for dark-baked far geometry). When ON, main() fades the stale per-vertex seed toward the mission night object-light ambient (mix over clip.w view-depth across the LOD impostor distance) so far geometry takes the night shade with no hard LOD-pop boundary. Default-OFF -> u_farBackdropLit=0 -> shader branch skipped -> byte-identical. Distance band + strength + debug tint tunable via MC2_FAR_BACKDROP_LIT_NEAR/FAR/STRENGTH/TINT."
     },
 };
 
@@ -1791,6 +1805,34 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "V-MATERIAL-PBR-3-DIAG: diagnostic visualizer for the forwarded sunFound state. When ON together with MC2_STATIC_PROP_PBR_V1=1, static_prop.frag replaces the PBR result with cyan (sunFound=true) or magenta (sunFound=false), bypassing Schlick math. Diagnostic-only; never affects default-OFF behavior. Unset/'0' -> off."
+    },
+    {
+        "MC2_TUNE_FAR_BACKDROP_LIT_NEAR",
+        "MC2_FAR_BACKDROP_LIT_NEAR",
+        EnvVarKind::Trace,
+        false,
+        "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade begins. Only meaningful when MC2_FAR_BACKDROP_LIT=1. Unset/empty -> default 700 (~0.9 * MC2_IMPOSTOR_DIST). Resolved once at process start."
+    },
+    {
+        "MC2_TUNE_FAR_BACKDROP_LIT_FAR",
+        "MC2_FAR_BACKDROP_LIT_FAR",
+        EnvVarKind::Trace,
+        false,
+        "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution). Only meaningful when MC2_FAR_BACKDROP_LIT=1. Unset/empty -> default 960 (~1.2 * MC2_IMPOSTOR_DIST). Resolved once at process start."
+    },
+    {
+        "MC2_TUNE_FAR_BACKDROP_LIT_STRENGTH",
+        "MC2_FAR_BACKDROP_LIT_STRENGTH",
+        EnvVarKind::Trace,
+        false,
+        "FAR-BACKDROP-LIT-IMPL-1: maximum substitution amount scaling the distance fade (1.0 = full replace of the stale seed with night ambient; >1 exaggerates for verify-by-exaggeration). Only meaningful when MC2_FAR_BACKDROP_LIT=1. Unset/empty -> default 1.0. Resolved once at process start."
+    },
+    {
+        "MC2_DIAG_FAR_BACKDROP_LIT_TINT",
+        "MC2_FAR_BACKDROP_LIT_TINT",
+        EnvVarKind::Trace,
+        false,
+        "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually obvious (e.g. '1,0,0' paints substituted far geometry red to prove the path fires on the ridge/impostor pixels). Only meaningful when MC2_FAR_BACKDROP_LIT=1. Unset/empty -> 0,0,0 (no tint). Resolved once at process start."
     },
     {
         "MC2_DIAG_DEBUG_STATE_DUMP",

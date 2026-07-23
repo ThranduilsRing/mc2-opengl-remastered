@@ -77,6 +77,21 @@ uniform mat4 u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToCl
 // shader uses. Used as the directional term for static-prop diffuse because
 // calc_light's frozen worldLights[0] sun was ~90deg off.
 uniform vec3 u_terrainSunMC2;
+// FAR-BACKDROP-LIT (gate MC2_FAR_BACKDROP_LIT, default OFF): night-shade
+// substitution for far/impostor static-prop LODs. Far/impostor LODs register
+// via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_
+// HierarchyOnly) and never get the per-vertex NIGHT light bake, so their
+// base_light (a_aRGBLight) is a stale MISSION-LOAD (day) value -> fullbright
+// impostors at night (and pure-black for dark-baked far geometry). When the
+// gate is on, main() fades the stale seed toward the mission's own night
+// object-light ambient across the LOD impostor distance (using clip.w as a
+// view-depth proxy). u_farBackdropLit==0 (default) -> fade factor 0 ->
+// seed==base_light -> byte-identical to the pre-change render.
+uniform int   u_farBackdropLit;      // 0=off (default), 1=on
+uniform float u_farBackdropNear;     // view-depth (clip.w) where the fade begins
+uniform float u_farBackdropFar;      // view-depth where the fade completes
+uniform float u_farBackdropStrength; // max substitution amount (default 1.0; >1 exaggerates)
+uniform vec3  u_farBackdropTint;     // debug/exaggeration additive tint (default 0)
 // Slice 2 (object-offload) — Stage 2.D.1: parity write gate.
 // 0 (default) = no write to parityOut_; nonzero = write per-vertex lit ARGB.
 // 'uniform uint' crashes this engine's shader compile (memory/uniform_uint_crash.md)
@@ -435,7 +450,29 @@ void main() {
         }
         // base_light = hot-color magic seed (same as calc_light's starting
         // `final = base_light`); ambientTerm + sunColor*NdotL = the lit term.
-        lit = base_light + ambientTerm + sunColor * ndl;
+        //
+        // FAR-BACKDROP-LIT: fade the stale per-vertex seed toward the mission's
+        // night object-light ambient (ambientTerm, which derives from the
+        // per-actor terrain light color set at bdactor.cpp:6403-6407 via the
+        // gathered ObjectLights row) as the fragment's view depth crosses the
+        // LOD impostor distance. Far/impostor LODs carry a frozen day/black
+        // base_light because they skip the per-vertex night bake; near LODs
+        // (small clip.w) keep their correct baked seed (fbT==0). u_farBackdropLit
+        // ==0 -> fbT==0 -> seed==base_light -> byte-identical pre-change output.
+        vec3 seed = base_light;
+        if (u_farBackdropLit != 0) {
+            float fbDepth = clip.w;  // perspective w == view-space distance proxy
+            float fbT = clamp((fbDepth - u_farBackdropNear)
+                              / max(u_farBackdropFar - u_farBackdropNear, 1.0),
+                              0.0, 1.0) * u_farBackdropStrength;
+            // Target night shade = object-light ambient (+ optional debug tint
+            // for verify-by-exaggeration). mix() lifts black-seeded far geometry
+            // UP to the night ambient and pulls white/day-seeded impostors DOWN
+            // to it — a single operation fixing both symptoms with no hard LOD-
+            // pop boundary (smooth distance fade).
+            seed = mix(base_light, ambientTerm + u_farBackdropTint, fbT);
+        }
+        lit = seed + ambientTerm + sunColor * ndl;
 
         // V-AMBIENT-STATIC-1: hemisphere fill. Strength=0.0 (default) is a
         // bitwise no-op (add vec3(0)). Skip for window branch to preserve
