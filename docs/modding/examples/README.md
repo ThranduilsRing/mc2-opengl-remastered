@@ -11,15 +11,15 @@ teaches, how hard it is, and what to read first.
 required. If you want to change the *engine itself* — add a new render
 feature, change game logic, touch `code/`/`mclib/`/shaders — that's a
 different, much larger undertaking; see
-[`../modding-guide.md`](../modding-guide.md) instead. Everything below assumes
+[`../../modding-guide.md`](../../modding-guide.md) instead. Everything below assumes
 you're staying on the data side of that line.
 
 **Start here, in order:**
 
-1. [`getting-started.md`](../getting-started.md) — mod folder anatomy,
+1. [`getting-started.md`](getting-started.md) — mod folder anatomy,
    `MC2_ACTIVE_MOD`, the launcher picker, `mc2mod.py` packaging, diagnostics.
    Every example below assumes you've read this.
-2. [`mechanism-map.md`](../mechanism-map.md) — the reference table of every
+2. [`mechanism-map.md`](mechanism-map.md) — the reference table of every
    moddable mechanism in the engine, with source citations. Use it to look up
    "can I mod X" before you start writing anything.
 

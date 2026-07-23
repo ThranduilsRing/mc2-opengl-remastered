@@ -70,6 +70,9 @@ ALLOWLIST_EXACT = {
 # Prefix-matched sanctioned trees (out-of-engine tools, offline harnesses).
 ALLOWLIST_PREFIX = (
     "tools/asset_viewer/",
+    # standalone GL/VK interop spike binaries (vk-interop-bridge-1 merge):
+    # out-of-engine experiments, not frame-loop code.
+    "tools/vk_gl_interop_spike/",
     "tests/",
 )
 

@@ -19,7 +19,7 @@ The five lockstep sites:
   1. shaders/include/lighting.hglsl   MAX_LIGHTS_IN_WORLD      (cap N)
   2. mclib/tgl.h                       MAX_HW_LIGHTS_IN_WORLD   (cap N)
   3. mclib/tgl.h                       static_assert sizeof(TG_HWLightsData) (stride)
-  4. GameOS/gameos/gameos_graphics.cpp kLightRecordStride      (stride)
+  4. GameOS/gameos/gameos_graphics_light_ssbo.cpp kLightRecordStride (stride; TU split by GAMEOS-GRAPHICS-SPLIT-1)
   5. shaders/lightgrid_build.comp      LIGHTGRID_MAX_LIGHTS     (cap N)
 
 Stride is derived from the cap: stride = N*112 + 16
@@ -82,9 +82,9 @@ def main():
     findings.append(("tgl.h static_assert sizeof(TG_HWLightsData)", "stride", v, e))
 
     # Site 4: hand-copied upload stride.
-    v, e = grab("GameOS/gameos/gameos_graphics.cpp",
+    v, e = grab("GameOS/gameos/gameos_graphics_light_ssbo.cpp",
                 r"kLightRecordStride\s*=\s*(\d+)", "stride_literal")
-    findings.append(("gameos_graphics.cpp kLightRecordStride", "stride", v, e))
+    findings.append(("gameos_graphics_light_ssbo.cpp kLightRecordStride", "stride", v, e))
 
     errors = [f for f in findings if f[3] is not None]
     caps = [f[2] for f in findings if f[1] == "cap" and f[2] is not None]

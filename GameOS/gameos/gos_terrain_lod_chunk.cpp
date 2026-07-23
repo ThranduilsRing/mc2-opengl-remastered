@@ -3593,6 +3593,7 @@ void gos_TerrainLodChunk_UploadControlMap(const unsigned char* rgba, int side)
         return;
 
     if (s_controlMapTex == 0)
+        // TEX-CLASS: asset-pool -- terrain control-map sidecar (mission-lifetime content)
         glGenTextures(1, &s_controlMapTex);
     if (s_controlMapTex == 0)
     {
@@ -3638,6 +3639,7 @@ void gos_TerrainLodChunk_UploadOverlaySidecar(const unsigned char* rgba, int w, 
         return;
 
     if (s_overlaySidecarTex == 0)
+        // TEX-CLASS: asset-pool -- terrain overlay sidecar (mission-lifetime content)
         glGenTextures(1, &s_overlaySidecarTex);
     if (s_overlaySidecarTex == 0)
     {
@@ -3689,6 +3691,7 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
         return;
 
     if (s_shorelineMaskTex == 0)
+        // TEX-CLASS: asset-pool -- shoreline mask sidecar (mission-lifetime content, SHORE-MASK deferred-sweep-1)
         glGenTextures(1, &s_shorelineMaskTex);
     if (s_shorelineMaskTex == 0)
     {

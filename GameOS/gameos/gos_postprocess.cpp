@@ -186,6 +186,7 @@ static GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
                                              GLint minMagFilter)
 {
     GLuint tex = 0;
+    // TEX-CLASS: render-target -- postprocess helper-allocated target texture
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, nullptr);
@@ -199,6 +200,7 @@ static GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
 static GLuint createSceneDepthPlaceholderTex(int w, int h)
 {
     GLuint tex = 0;
+    // TEX-CLASS: render-target -- scene-depth placeholder (depth24s8)
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
@@ -1351,6 +1353,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // without per-bind mode toggling on one shared object. Gated on
     // MC2_SKYBOX_FOG_EXCLUDE=1 -- skipped entirely when OFF (zero cost OFF).
     if (skyboxFogExcludeEnabled()) {
+        // TEX-CLASS: render-target -- stencil texture-view over sceneDepthTex_
         glGenTextures(1, &sceneStencilViewTex_);
         glTextureView(sceneStencilViewTex_, GL_TEXTURE_2D, sceneDepthTex_,
                       GL_DEPTH24_STENCIL8, 0, 1, 0, 1);

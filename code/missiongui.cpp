@@ -871,7 +871,7 @@ void MissionInterfaceManager::processUiCommandChannel()
 	// commands and an empty file means "all consumed".
 	std::vector<std::string> lines;
 	{
-		FILE* f = fopen(s_path, "rb");
+		FILE* f = fopen(s_path, "rb");  // path-audit: loose-only (MC2_UI_COMMAND_FILE fixture channel, env-supplied path, not game data)
 		if (!f)
 			return;
 		std::string all;

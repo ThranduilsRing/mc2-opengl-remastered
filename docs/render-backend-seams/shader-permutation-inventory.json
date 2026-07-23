@@ -1,60 +1,342 @@
 {
-  "slice": "SHADER-PERMUTATION-INVENTORY-1",
-  "summary": {
-    "verdict": "GO",
-    "can_mint_finite_shader_variant_id": true,
-    "headline": "The suspected DATA_DRIVEN_BLOCKER (gosMaterialVariation) is NOT data-driven: it is a fixed static combinations[] bitmask over 2 flags {ALPHA_TEST, IS_OVERLAY} x 6 base shaders (gameos_graphics.cpp:4849-4868). No define is sourced from material/config data. The variant space is finite and enumerable; proceed to PIPELINE-KEY-SCHEMA-1.",
-    "overturns": "pipeline-state-contract-recon-1.md assumed the gosMaterialVariation define loop was open-ended/non-enumerable. Re-examination (verified at gameos_graphics.cpp:399-411,4849-4868) shows it is a 2-flag static array. The earlier string-grep missed it because the macro name comes from the g_shader_flags[] array var, emitted as '#define <var> = 1'.",
-    "data_driven_blockers_found": 0,
-    "unique_feature_macros": 16,
-    "shader_files_with_conditionals": 31,
-    "busiest_shader": "shaders/gos_terrain.frag (~30 directive sites, mostly MRT_ENABLED)"
+ "slice": "SHADER-PERMUTATION-INVENTORY-1",
+ "summary": {
+  "verdict": "GO",
+  "can_mint_finite_shader_variant_id": true,
+  "headline": "The suspected DATA_DRIVEN_BLOCKER (gosMaterialVariation) is NOT data-driven: it is a fixed static combinations[] bitmask over 2 flags {ALPHA_TEST, IS_OVERLAY} x 6 base shaders (gameos_graphics.cpp:4849-4868). No define is sourced from material/config data. The variant space is finite and enumerable; proceed to PIPELINE-KEY-SCHEMA-1.",
+  "overturns": "pipeline-state-contract-recon-1.md assumed the gosMaterialVariation define loop was open-ended/non-enumerable. Re-examination (verified at gameos_graphics.cpp:399-411,4849-4868) shows it is a 2-flag static array. The earlier string-grep missed it because the macro name comes from the g_shader_flags[] array var, emitted as '#define <var> = 1'.",
+  "data_driven_blockers_found": 0,
+  "unique_feature_macros": 29,
+  "shader_files_with_conditionals": 31,
+  "busiest_shader": "shaders/gos_terrain.frag (~30 directive sites, mostly MRT_ENABLED)"
+ },
+ "injection_mechanism": {
+  "primary": "glsl_shader::makeShader (GameOS/gameos/utils/shader_builder.cpp:446) glues prefix as a separate glShaderSource string before file source; no #version in .vert/.frag files. makeProgram2 passes same prefix to all stages; prefix_ cached + reused verbatim on reload().",
+  "material_path": "gosMaterialVariationHelper::getMaterialVariation (gameos_graphics.cpp:346-396) builds prefix from a fixed defines vector + runtime-appended gates; also emits unique_name_suffix_ (an informal variant key already present).",
+  "compute_path": "parallel hand-rolled std::vector<const char*> srcStrs in gpu_cull_compute.cpp / gpu_driven_common.cpp / gos_cardcloud_sim.cpp / gos_particle_bridge.cpp (not makeShader)."
+ },
+ "classes": {
+  "OFFLINE_VARIANT": "must become part of the shader-variant key",
+  "SPECIALIZATION_CONSTANT": "numeric param; Vulkan spec-constant candidate",
+  "UNIFORM_OR_MATERIAL_FIELD": "should not be a compile variant long-term",
+  "DEAD_OR_STALE": "no live C++/shader consumer, or only a stale comment / always-false branch",
+  "DATA_DRIVEN_BLOCKER": "comes from arbitrary material data; not enumerable yet"
+ },
+ "macros": [
+  {
+   "name": "ALPHA_TEST",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:350-354 via g_shader_flags[] (:408) + combinations[] (:4851)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "array-driven inject (name from g_shader_flags), NOT a literal '#define ALPHA_TEST'; frag discard path. Also appears in legacy fixed-function .frag guards."
   },
-  "injection_mechanism": {
-    "primary": "glsl_shader::makeShader (GameOS/gameos/utils/shader_builder.cpp:446) glues prefix as a separate glShaderSource string before file source; no #version in .vert/.frag files. makeProgram2 passes same prefix to all stages; prefix_ cached + reused verbatim on reload().",
-    "material_path": "gosMaterialVariationHelper::getMaterialVariation (gameos_graphics.cpp:346-396) builds prefix from a fixed defines vector + runtime-appended gates; also emits unique_name_suffix_ (an informal variant key already present).",
-    "compute_path": "parallel hand-rolled std::vector<const char*> srcStrs in gpu_cull_compute.cpp / gpu_driven_common.cpp / gos_cardcloud_sim.cpp / gos_particle_bridge.cpp (not makeShader)."
+  {
+   "name": "IS_OVERLAY",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:350-354 via g_shader_flags[] (:410) + combinations[] (:4852)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "array-driven inject; overlay codepath."
   },
-  "classes": {
-    "OFFLINE_VARIANT": "must become part of the shader-variant key",
-    "SPECIALIZATION_CONSTANT": "numeric param; Vulkan spec-constant candidate",
-    "UNIFORM_OR_MATERIAL_FIELD": "should not be a compile variant long-term",
-    "DEAD_OR_STALE": "no live C++/shader consumer, or only a stale comment / always-false branch",
-    "DATA_DRIVEN_BLOCKER": "comes from arbitrary material data; not enumerable yet"
+  {
+   "name": "MRT_ENABLED",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:364",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": true,
+   "note": "gates GBuffer1 output decl = render-target layout; runtime: FBO has attachment 1. Most-tested macro (~30 sites)."
   },
-  "macros": [
-    {"name": "ALPHA_TEST", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gameos_graphics.cpp:350-354 via g_shader_flags[] (:408) + combinations[] (:4851)", "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "array-driven inject (name from g_shader_flags), NOT a literal '#define ALPHA_TEST'; frag discard path. Also appears in legacy fixed-function .frag guards."},
-    {"name": "IS_OVERLAY", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gameos_graphics.cpp:350-354 via g_shader_flags[] (:410) + combinations[] (:4852)", "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "array-driven inject; overlay codepath."},
-    {"name": "MRT_ENABLED", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gameos_graphics.cpp:364", "glsl_tested": true, "reflect_covered": false, "anchor_covered": true, "note": "gates GBuffer1 output decl = render-target layout; runtime: FBO has attachment 1. Most-tested macro (~30 sites)."},
-    {"name": "TERRAIN_NORMAL_ARRAY", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gameos_graphics.cpp:368,5028,5054,5095; gos_terrain_lod_chunk.cpp", "glsl_tested": true, "reflect_covered": false, "anchor_covered": true, "note": "toggles sampler/array decl; env gate."},
-    {"name": "MC2_SHADOW_CSM", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gameos_graphics.cpp:375,5173; gos_postprocess.cpp:516,528; gos_terrain_lod_chunk.cpp:356", "glsl_tested": true, "reflect_covered": false, "anchor_covered": true, "note": "switches calcDynamicShadow to sampler2DArrayShadow + mat4[N] variant."},
-    {"name": "MC2_SHADOW_CSM_MAX", "class": "SPECIALIZATION_CONSTANT", "injected": true, "injector": "gameos_graphics.cpp:375 (snprintf %d from mc2ShadowCsmCount())", "glsl_tested": true, "reflect_covered": false, "anchor_covered": true, "note": "pure numeric cascade-count / array bound; ideal Vk spec-const."},
-    {"name": "MC2_OBJECT_ID_BUFFER", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gos_static_prop_batcher.cpp:1141,1163; gos_mech_batcher.cpp:545", "glsl_tested": true, "reflect_covered": true, "anchor_covered": false, "note": "adds object-ID frag output (loc=2) = RT layout. In reflect.py KNOWN_VARIANT_MACROS."},
-    {"name": "MC2_USE_VIEW_UNIFORMS", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gos_static_prop_batcher.cpp:1155,1166; gos_mech_batcher.cpp:552", "glsl_tested": true, "reflect_covered": true, "anchor_covered": false, "note": "compiles in UBO block binding=3 (descriptor-layout-affecting). reflect.py covers mech.{vert,frag} only; static_prop combo NOT compiled."},
-    {"name": "MC2_COALESCE", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gos_static_prop_batcher.cpp:1161 (+ #extension GL_ARB_shader_draw_parameters)", "glsl_tested": true, "reflect_covered": true, "anchor_covered": false, "note": "selects multi-draw/draw-param codepath. In reflect.py KNOWN_VARIANT_MACROS."},
-    {"name": "MC2_STATICPROP_PBR_SLOTS", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gos_static_prop_batcher.cpp:1173,1174", "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "gates extra ORM sampler bindings. Covered by NEITHER reflect.py NOR matrix anchors — reflection gap."},
-    {"name": "GPU_CULL_C1B_INDIRECT", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gpu_cull_compute.cpp:381", "glsl_tested": true, "reflect_covered": true, "anchor_covered": false, "note": "distinct cull compute pipeline (indirect-draw path)."},
-    {"name": "GPU_CULL_C2_READBACK", "class": "OFFLINE_VARIANT", "injected": true, "injector": "gpu_cull_compute.cpp:362,383", "glsl_tested": true, "reflect_covered": true, "anchor_covered": false, "note": "adds readback-SSBO write path to cull compute."},
-    {"name": "READBACK_SSBO_BINDING", "class": "SPECIALIZATION_CONSTANT", "injected": true, "injector": "gpu_cull_compute.cpp:284 (std::to_string of C++ const)", "glsl_tested": false, "reflect_covered": true, "anchor_covered": false, "note": "numeric binding index; used as layout(binding=N) literal substitution, not a guard. In Vk = fixed descriptor-layout binding, not a true variant."},
-    {"name": "ENABLE_VERTEX_LIGHTING", "class": "DEAD_OR_STALE", "injected": false, "injector": null, "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "4 GLSL sites (#if value form); NO injector found -> always 0. Confirm/remove (do NOT remove in this slice)."},
-    {"name": "ENABLE_TEXTURE1", "class": "DEAD_OR_STALE", "injected": false, "injector": null, "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "4 GLSL sites in gos_vertex*.frag; NO injector; legacy fixed-function multitexture path."},
-    {"name": "MC2_STATIC_PROP_LIGHTING", "class": "DEAD_OR_STALE", "injected": false, "injector": null, "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "2 GLSL sites in lighting.hglsl; NO injector (only a comment mention in mech3d.cpp). Branch likely never compiled-in."},
-    {"name": "MC2_PI", "class": "SPECIALIZATION_CONSTANT", "injected": false, "injector": null, "glsl_tested": true, "reflect_covered": false, "anchor_covered": false, "note": "self-defined #ifndef fallback constant in pbr_common.hglsl; not a variant axis, not injected. Intentional."}
-  ],
-  "non_variant_tokens": {
-    "version_430": "#version 430 injected at every site; constant, carries no variant identity (Vulkan SPIR-V has no #version).",
-    "include_guards": ["GOS_TERRAIN_SURFACE_SCHEMA_HGLSL","RENDER_CONTRACT_HGLSL","__SHADOW_HGLSL__","__SCENE_HGLSL__","__NOISE_HGLSL__","INCLUDE_TERRAIN_HEIGHT_NORMAL_HGLSL","TERRAIN_LIGHTING_SHARED_HGLSL","TERRAIN_DEPTH_BIAS_HGLSL"]
+  {
+   "name": "TERRAIN_NORMAL_ARRAY",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:368,5028,5054,5095; gos_terrain_lod_chunk.cpp",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": true,
+   "note": "toggles sampler/array decl; env gate."
   },
-  "tooling_coverage": {
-    "reflect_py_SHADER_VARIANTS": "static_prop.{frag,vert} (default/coalesce/objectid/both), mech.{frag,vert} (default/objectid/viewuniforms), shadow_static_prop.vert (default/coalesce), gpu_cull.comp (default/c1b/c2_readback), cardcloud_sim.comp; KNOWN_VARIANT_MACROS={MC2_COALESCE,MC2_OBJECT_ID_BUFFER} only.",
-    "matrix_harness_ANCHORS": "MRT_ENABLED, TERRAIN_NORMAL_ARRAY, MC2_SHADOW_CSM, MC2_SHADOW_CSM_MAX (hard-fail if inject or guard disappears; all else WARN-only)."
+  {
+   "name": "MC2_SHADOW_CSM",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:375,5173; gos_postprocess.cpp:516,528; gos_terrain_lod_chunk.cpp:356",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": true,
+   "note": "switches calcDynamicShadow to sampler2DArrayShadow + mat4[N] variant."
   },
-  "gaps_no_fix": [
-    "3 dead/stale macros with no injector: ENABLE_VERTEX_LIGHTING, ENABLE_TEXTURE1, MC2_STATIC_PROP_LIGHTING (confirm + prune in a separate cleanup slice).",
-    "MC2_STATICPROP_PBR_SLOTS: injected + GLSL-tested but covered by neither reflect.py nor matrix anchors (reflection gap).",
-    "MC2_USE_VIEW_UNIFORMS: reflect.py compiles mech combo only; static_prop combo unreflected.",
-    "READBACK_SSBO_BINDING: injected but never a guard (literal substitution) — expected, not stale."
-  ],
-  "next": "PIPELINE-KEY-SCHEMA-1 (variant space is finite; define shaderVariantId over the OFFLINE_VARIANT set + SPECIALIZATION_CONSTANT params).",
-  "governance": "check-shader-injectors.py asserts every C++-injected shader define has an entry in this inventory (allowlist) so the surface cannot grow ungoverned."
+  {
+   "name": "MC2_SHADOW_CSM_MAX",
+   "class": "SPECIALIZATION_CONSTANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:375 (snprintf %d from mc2ShadowCsmCount())",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": true,
+   "note": "pure numeric cascade-count / array bound; ideal Vk spec-const."
+  },
+  {
+   "name": "MC2_OBJECT_ID_BUFFER",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_static_prop_batcher.cpp:1141,1163; gos_mech_batcher.cpp:545",
+   "glsl_tested": true,
+   "reflect_covered": true,
+   "anchor_covered": false,
+   "note": "adds object-ID frag output (loc=2) = RT layout. In reflect.py KNOWN_VARIANT_MACROS."
+  },
+  {
+   "name": "MC2_USE_VIEW_UNIFORMS",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_static_prop_batcher.cpp:1155,1166; gos_mech_batcher.cpp:552",
+   "glsl_tested": true,
+   "reflect_covered": true,
+   "anchor_covered": false,
+   "note": "compiles in UBO block binding=3 (descriptor-layout-affecting). reflect.py covers mech.{vert,frag} only; static_prop combo NOT compiled."
+  },
+  {
+   "name": "MC2_COALESCE",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_static_prop_batcher.cpp:1161 (+ #extension GL_ARB_shader_draw_parameters)",
+   "glsl_tested": true,
+   "reflect_covered": true,
+   "anchor_covered": false,
+   "note": "selects multi-draw/draw-param codepath. In reflect.py KNOWN_VARIANT_MACROS."
+  },
+  {
+   "name": "MC2_STATICPROP_PBR_SLOTS",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_static_prop_batcher.cpp:1173,1174",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "gates extra ORM sampler bindings. Covered by NEITHER reflect.py NOR matrix anchors \u2014 reflection gap."
+  },
+  {
+   "name": "GPU_CULL_C1B_INDIRECT",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gpu_cull_compute.cpp:381",
+   "glsl_tested": true,
+   "reflect_covered": true,
+   "anchor_covered": false,
+   "note": "distinct cull compute pipeline (indirect-draw path)."
+  },
+  {
+   "name": "GPU_CULL_C2_READBACK",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gpu_cull_compute.cpp:362,383",
+   "glsl_tested": true,
+   "reflect_covered": true,
+   "anchor_covered": false,
+   "note": "adds readback-SSBO write path to cull compute."
+  },
+  {
+   "name": "READBACK_SSBO_BINDING",
+   "class": "SPECIALIZATION_CONSTANT",
+   "injected": true,
+   "injector": "gpu_cull_compute.cpp:284 (std::to_string of C++ const)",
+   "glsl_tested": false,
+   "reflect_covered": true,
+   "anchor_covered": false,
+   "note": "numeric binding index; used as layout(binding=N) literal substitution, not a guard. In Vk = fixed descriptor-layout binding, not a true variant."
+  },
+  {
+   "name": "ENABLE_VERTEX_LIGHTING",
+   "class": "DEAD_OR_STALE",
+   "injected": false,
+   "injector": null,
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "4 GLSL sites (#if value form); NO injector found -> always 0. Confirm/remove (do NOT remove in this slice)."
+  },
+  {
+   "name": "ENABLE_TEXTURE1",
+   "class": "DEAD_OR_STALE",
+   "injected": false,
+   "injector": null,
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "4 GLSL sites in gos_vertex*.frag; NO injector; legacy fixed-function multitexture path."
+  },
+  {
+   "name": "MC2_STATIC_PROP_LIGHTING",
+   "class": "DEAD_OR_STALE",
+   "injected": false,
+   "injector": null,
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "2 GLSL sites in lighting.hglsl; NO injector (only a comment mention in mech3d.cpp). Branch likely never compiled-in."
+  },
+  {
+   "name": "MC2_PI",
+   "class": "SPECIALIZATION_CONSTANT",
+   "injected": false,
+   "injector": null,
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "self-defined #ifndef fallback constant in pbr_common.hglsl; not a variant axis, not injected. Intentional."
+  },
+  {
+   "name": "LIGHTGRID_MAX_LIGHTS",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gos_lightgrid_build.cpp:117 (compute prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "light-grid build compute: max lights per cluster, fixed at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "LIGHTGRID_STAGE",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_lightgrid_build.cpp:116 (compute prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "light-grid build compute: stage selector define (sphere-cull vs index-pack), enumerable. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "MC2_IMPORTED_MECH_MATERIAL",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_mech_batcher.cpp:702 (mech program prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "imported (Blender/BT2018) mech material path toggle on the mech program; boolean. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "MC2_SHADOW_DIST_FADE_MAX_F",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:484 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-DIST-FADE (deferred-sweep-1): max fade factor, env-seeded float literal at program build; not per-draw. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "MC2_SHADOW_DIST_FADE_WU",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:483 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-DIST-FADE (deferred-sweep-1): fade distance in world units, env-seeded literal at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "MC2_SHADOW_FADE_CONT_F",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:485 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-FADE-CONTINUOUS (deferred-sweep-1): continuous-fade factor, env-seeded literal at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "MC2_SHADOW_STATIC_BANDFIX",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:464 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-BANDFIX (deferred-sweep-1): macroN receiver-only band fix toggle; boolean. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "MC2_SHADOW_STATIC_BANDFIX_V2",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:466 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-BANDFIX v2 (deferred-sweep-1): revised band fix toggle; boolean. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "TERRAIN_TESS",
+   "class": "OFFLINE_VARIANT",
+   "injected": true,
+   "injector": "gos_terrain_lod_chunk.cpp:1346 (terrain chunk prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "terrain chunk tessellation-path toggle (MC2_TESS); boolean. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "TILE_SIZE",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gos_cluster_depth_pyramid.cpp:84 (compute prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "cluster depth-pyramid compute tile size, fixed at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "TILE_X",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gos_postprocess_blur.cpp:100 (compute prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "compute blur workgroup tile X, fixed at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  },
+  {
+   "name": "TILE_Y",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gos_postprocess_blur.cpp:101 (compute prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "compute blur workgroup tile Y, fixed at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
+  }
+ ],
+ "non_variant_tokens": {
+  "version_430": "#version 430 injected at every site; constant, carries no variant identity (Vulkan SPIR-V has no #version).",
+  "include_guards": [
+   "GOS_TERRAIN_SURFACE_SCHEMA_HGLSL",
+   "RENDER_CONTRACT_HGLSL",
+   "__SHADOW_HGLSL__",
+   "__SCENE_HGLSL__",
+   "__NOISE_HGLSL__",
+   "INCLUDE_TERRAIN_HEIGHT_NORMAL_HGLSL",
+   "TERRAIN_LIGHTING_SHARED_HGLSL",
+   "TERRAIN_DEPTH_BIAS_HGLSL"
+  ]
+ },
+ "tooling_coverage": {
+  "reflect_py_SHADER_VARIANTS": "static_prop.{frag,vert} (default/coalesce/objectid/both), mech.{frag,vert} (default/objectid/viewuniforms), shadow_static_prop.vert (default/coalesce), gpu_cull.comp (default/c1b/c2_readback), cardcloud_sim.comp; KNOWN_VARIANT_MACROS={MC2_COALESCE,MC2_OBJECT_ID_BUFFER} only.",
+  "matrix_harness_ANCHORS": "MRT_ENABLED, TERRAIN_NORMAL_ARRAY, MC2_SHADOW_CSM, MC2_SHADOW_CSM_MAX (hard-fail if inject or guard disappears; all else WARN-only)."
+ },
+ "gaps_no_fix": [
+  "3 dead/stale macros with no injector: ENABLE_VERTEX_LIGHTING, ENABLE_TEXTURE1, MC2_STATIC_PROP_LIGHTING (confirm + prune in a separate cleanup slice).",
+  "MC2_STATICPROP_PBR_SLOTS: injected + GLSL-tested but covered by neither reflect.py nor matrix anchors (reflection gap).",
+  "MC2_USE_VIEW_UNIFORMS: reflect.py compiles mech combo only; static_prop combo unreflected.",
+  "READBACK_SSBO_BINDING: injected but never a guard (literal substitution) \u2014 expected, not stale."
+ ],
+ "next": "PIPELINE-KEY-SCHEMA-1 (variant space is finite; define shaderVariantId over the OFFLINE_VARIANT set + SPECIALIZATION_CONSTANT params).",
+ "governance": "check-shader-injectors.py asserts every C++-injected shader define has an entry in this inventory (allowlist) so the surface cannot grow ungoverned."
 }

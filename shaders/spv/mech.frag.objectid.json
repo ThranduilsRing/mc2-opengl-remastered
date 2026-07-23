@@ -8,40 +8,46 @@
   "specializationParams": [],
   "artifact": "mech.frag.objectid.2a977866.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "269d546b2725ac60ed114749db0a969514f2f73762103c1db85e61d3ab99b24b",
-  "spirv_sha256": "4f02e868c3d868051934891240ba7a79013f1fe3981b8028b3b37ec2fc49026c",
+  "source_sha256": "8988c3939ec634f7f7ddae8a7790382e63fbd294e6f9478cdc1cc395f9693755",
+  "spirv_sha256": "6d71170ba2c27a9add99409da5b3e1b24e21ffe511784b309af8197e01fe2475",
   "bindings": {
     "ubos": [],
-    "ssbos": [],
+    "ssbos": [
+      {
+        "name": "ObjectLightPool",
+        "binding": 28,
+        "set": 0
+      }
+    ],
     "samplers": [
       {
         "name": "u_tex",
         "type": "sampler2D",
-        "location": 0,
+        "location": 7,
         "binding": 0
       },
       {
         "name": "u_pbrNormalTex",
         "type": "sampler2D",
-        "location": 1,
+        "location": 8,
         "binding": 0
       },
       {
         "name": "u_pbrOrmTex",
         "type": "sampler2D",
-        "location": 2,
+        "location": 9,
         "binding": 0
       },
       {
         "name": "u_pbrPaintNormalTex",
         "type": "sampler2D",
-        "location": 3,
+        "location": 10,
         "binding": 0
       },
       {
         "name": "u_pbrPaintOrmTex",
         "type": "sampler2D",
-        "location": 4,
+        "location": 11,
         "binding": 0
       }
     ]

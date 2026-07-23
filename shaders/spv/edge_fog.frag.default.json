@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "edge_fog.frag.default.07734eb0.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "b7a59eff1b767fdec5507c9b41abab0836f202855bd703d637b68e769470411e",
-  "spirv_sha256": "cf08c9acc1ac7176ed2eeb997459c58a1392b79cc11bfea411c3448062184e68",
+  "source_sha256": "0d7475f95702380735a5a335ac8b2bda2e05e089650c0aacaa9fb7e25ac857e9",
+  "spirv_sha256": "a0151ace62e38735d5c8941d49303710b6bae7ca05248d44f565fc0358ca3323",
   "bindings": {
     "ubos": [],
     "ssbos": [],
@@ -16,6 +16,12 @@
         "name": "depthTex",
         "type": "sampler2D",
         "location": 0,
+        "binding": 0
+      },
+      {
+        "name": "stencilTex",
+        "type": "usampler2D",
+        "location": 8,
         "binding": 0
       }
     ]

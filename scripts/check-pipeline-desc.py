@@ -52,6 +52,7 @@ PIPELINE_DESC_FIELDS = [
     "objectIdWriteEnabled",
     "frontFace",            # PIPELINEKEY-RASTERSTATE-FRONTFACE-AUTHORITY-1 (positional: before ssboBindingsMask)
     "polygonOffsetEnable",  # SHADOW-CASTER-PIPELINE-REGISTRATION-1 (positional: after frontFace)
+    "drawBuffers",          # DRAWBUFFER-OWNERSHIP-1 (positional: before ssboBindingsMask)
     "ssboBindingsMask",
 ]
 N_FIELDS = len(PIPELINE_DESC_FIELDS)

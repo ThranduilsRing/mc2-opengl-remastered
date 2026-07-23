@@ -6,7 +6,7 @@
   "specializationParams": [],
   "artifact": "shoreline.frag.default.3dac14be.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "5774a47a8bfaae69f81d6b91b0f5e9564a9ca6276d1be351854d746d17468588",
+  "source_sha256": "4ec3355b65f8362c7671897e7310c260db8b5b30007b95b0cf3fdca041c2f26e",
   "spirv_sha256": "1db3100be2948a946b874c645980d15669a758ef37ceadecca5316e53967b5c3",
   "bindings": {
     "ubos": [],

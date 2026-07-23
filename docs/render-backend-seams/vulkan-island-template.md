@@ -10,7 +10,7 @@ owns the swapchain). See `docs/render-backend-seams/vulkan-readiness-audit-1.md`
 `docs/render-backend-seams/nvidia-readiness-runbook.md`.
 
 **Reference implementation (read these before starting your own):**
-- `GameOS/gameos/vulkan_edge_fog_island.cpp` — the island (whole TU under `#ifdef MC2_VULKAN_ISLAND`)
+- `GameOS/gameos/vulkan_color_prop_island.cpp` — a live island TU (the original edge-fog island TU was deleted by the native-VK port, MERGE-WAVE-1 #3; fog is now a native VK consumer)
 - `shaders/vulkan/edge_fog.{vert,frag}` — the ported shaders
 - `GameOS/gameos/vulkan_backend_skeleton.cpp` — probe device/VMA/spv plumbing + the synthetic fixture (`mc2_vulkan_probe_edgefog_fixture`)
 - Commits: `744a483c` (2a: build+port+device+readback), `be223708` (2b: row_major + ODR + pixel parity), `b1dc09d5` (synthetic fixture), `8cfbf413` (health dump)

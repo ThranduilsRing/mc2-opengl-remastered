@@ -9856,6 +9856,7 @@ namespace {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewColorTex, 0);
 
+        // TEX-CLASS: render-target -- camera-preview FBO depth renderbuffer
         glGenRenderbuffers(1, &s_camPreviewDepthRbo);
         glBindRenderbuffer(GL_RENDERBUFFER, s_camPreviewDepthRbo);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, w, h);
