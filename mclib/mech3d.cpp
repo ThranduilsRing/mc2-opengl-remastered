@@ -25,6 +25,10 @@
 #include "../GameOS/gameos/diagnostic_trace.h"  // ANIM_ADVANCE trace (double-step recon)
 
 extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVANCE double-step probe
+// VK-MECH-CAPTURE-DETERMINISM-1: capture-mode-only gait-freeze predicate (defined
+// gos_visual_capture.cpp). Returns nonzero only while a visual-capture sweep has
+// the sim frozen; 0 whenever no MC2_VISUAL_* capture is active -> byte-safe live.
+extern "C" int mc2CaptureGaitFreezeActive();
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 #include <cstdint>  // M2.5 (Q6 amendment 2): uint64_t for MLR mech draw counter
@@ -3790,7 +3794,12 @@ void Mech3DAppearance::updateGeometry (void)
 			const char* v = std::getenv("MC2_ASSIMP_PAUSE_GATE");
 			return !(v && v[0] == '0');   // default-ON; only "0" disables
 		}();
-		const bool _advanceClock = s_assimpPauseGate ? !gamePaused : true;
+		// VK-MECH-CAPTURE-DETERMINISM-1: also freeze the imported clip clock during a
+		// frozen capture sweep (gamePaused is NOT set by the capture pause path — it
+		// drives bPaused only — so without this an imported mech kept striding through
+		// the render-path tick and jittered run-to-run). Capture-mode-only; byte-safe.
+		const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0);
+		const bool _advanceClock = (s_assimpPauseGate ? !gamePaused : true) && !_captureFroze;
 		mc2mechanim::TickImportedMechs(frameLength, (unsigned)g_mc2FrameCounter, _mm,
 		                               (const void*)mechShape, _typeKey, _advanceClock);
 		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and
@@ -4411,6 +4420,11 @@ void Mech3DAppearance::updateGeometry (void)
 		(sensorLevel == 0 || sensorLevel >= 5);
 	if (!skipSensors) {
 	Stuff::UnitQuaternion totalRotation;
+	// VK-MECH-CAPTURE-DETERMINISM-1: the sensor marker spins off the wall-clock
+	// frameLength every render frame; during a frozen capture sweep it drifted
+	// run-to-run (a rotating triangle/square near detected enemy mechs). Freeze
+	// its advance while the capture sim is frozen. Capture-mode-only, byte-safe.
+	if (mc2CaptureGaitFreezeActive() == 0)
 	sensorSpin += SPIN_RATE * frameLength;
 	if (sensorSpin > 180)
 		sensorSpin -= 360;
@@ -5166,7 +5180,15 @@ long Mech3DAppearance::update (bool animate)
 					}();
 					const bool _alreadyAdvanced = (s_animCadenceFix &&
 						lastAnimAdvanceFrame == (uint32_t)g_mc2FrameCounter);
-					if (!_alreadyAdvanced)
+					// VK-MECH-CAPTURE-DETERMINISM-1: during a frozen visual-capture
+					// sweep (sim paused) the render path still ticks this gait via the
+					// wall-clock frameLength, so a mech's pose drifted run-to-run and
+					// forced OBJ_BOX masking in the near-oracle. Freeze the gait advance
+					// while the capture sim is frozen. Capture-mode-only: the shim is 0
+					// whenever no MC2_VISUAL_* capture is active -> byte-identical live
+					// behavior. See gos_visual_capture.cpp mc2CaptureGaitFreezeActive().
+					const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0);
+					if (!_alreadyAdvanced && !_captureFroze)
 					{
 						if (inReverse)
 							currentFrame -= frameInc;

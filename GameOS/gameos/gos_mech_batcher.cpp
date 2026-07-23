@@ -1,5 +1,6 @@
 // GameOS/gameos/gos_mech_batcher.cpp — GPU mech batcher, Slice A.
 #include "gos_mech_batcher.h"
+#include "vk_feed_dump.h"        // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 #include "gos_materials.h"       // Slice C1: named material profile SSBO (binding 7)
 #include "ibl_sh_runtime.h"     // PBR-IBL-MECH-1: g_iblShStrength (shared with static props)
 #include "../../RenderCore/IblShCoeffs.h"  // PBR-IBL-MECH-1: SH-L2 coefficients
@@ -10,6 +11,7 @@
 #include "pipeline_binder.h"                     // MECH-PIPELINEDESC-1 applyPipeline
 #include "../../RenderCore/frame_executor.h"     // APPLY-STATE-MECHOPAQUE-1: ApplyPassId
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-MATERIAL-SSBO-1: MaterialGpuBuffer
+#include "../../RenderCore/GpuBufferOwner.h"  // VK-SHADOW-RING-OWNER-1: ring SSBO owner records
 // M2.5: IsObjectIdBufferEnabled() drives the GLSL prefix that gates the
 // mech.frag layout(location=2) write. Mirrors the include shipped by M1.5
 // at gos_static_prop_batcher.cpp:3. GameOS/ is outside the firewall
@@ -24,6 +26,10 @@
 #include "utils/shader_builder.h"
 #include "gos_postprocess.h"           // getGosPostProcess()->getDynamicLightSpaceMatrix()
 #include "../../mclib/txmmgr.h"       // mcTextureManager->get_gosTextureHandle (live resolve)
+#include "../../mclib/terrain_depth_bias.h"  // VK-P14 MECH: OBJECT_DEPTH_BIAS feed
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_mech_island.h"       // VK-P14 MECH: island feed contract (Vulkan-free POD)
+#endif
 #include <GL/glew.h>
 #include "gl_state_guard.h"            // GlStateGuard adoption: mc2gl::GlScopedSsboBinding
 #include <cstdio>
@@ -124,6 +130,53 @@ bool g_drawMechs = true;
 // Slice A: GPU mech batcher. Foundation for the entire stack.
 // Opt-out: MC2_GPU_MECHS=0
 bool g_useGpuMechs = envFlagDefaultOn("MC2_GPU_MECHS");
+
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+// VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
+// default-OFF): when armed, the flush() below still BUILDS the instance/bone SSBOs
+// and the feed snapshot, but SKIPS its own GL color draws; the caller (txmmgr) runs
+// mc2_vk_mech_island_run() to co-write the mechs IN-PLACE into the shared GBuffer.
+// Gate OFF -> s_vkMechGateOn stays false -> GL flush() byte-identical.
+static bool s_vkMechGateOn = [] {
+    // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+    // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+    const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
+    const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
+    return on && dep;   // require shared depth (the co-write depth-tests against it)
+}();
+
+// VK-P14 MECH feed snapshots (persisted host-visible copies the island memcpy's).
+// Populated at flush() end ONLY when s_vkMechGateOn; empty otherwise.
+static std::vector<GpuMechInstance> s_vkMechInstSnapshot;
+static std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
+static std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
+static float                        s_vkMechWorldToClipGL[16] = {0};
+static float                        s_vkMechObjectDepthBias   = 0.0f;
+static bool                         s_vkMechFrameReady        = false;
+
+// VK-MECH-FEED-NATIVE-1 (rung 7): envTriState OPT-IN, default OFF (same new-rung
+// pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1: unset -> OFF regardless
+// of the umbrella; explicit 0 forces OFF). When armed, the feed carries the CPU
+// byte sources (exact uploaded VBO work blob, s_stagingIbo, mcTextureManager
+// lightData_) so the island never reads GL buffer objects back.
+// VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE is now DEPRECATED / a no-op. The native
+// CPU feed is unconditional whenever the VK mech island is active (s_vkMechGateOn),
+// because the GL buffer-readback fallback in the island was deleted. The env name is
+// still parsed so old command lines don't hit unknown-var behavior; explicitly setting
+// it just prints a one-line deprecation note.
+[[maybe_unused]] static const bool s_vkMechFeedNativeDeprecated = [] {
+    if (mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") != -1)
+        std::fprintf(stderr, "[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated "
+                             "and now a no-op: native CPU feed is always used under "
+                             "the VK mech island (GL readback fallback deleted).\n");
+    return true;
+}();
+// Exact bytes uploaded to s_sharedVbo (the normals-recomputed `work` copy —
+// s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
+// Refreshed by uploadMechGeometryVbo(); cleared with the staging on map load.
+static std::vector<uint8_t>         s_vkVboNativeCopy;
+#endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).
 // See gos_mech_killswitch.h. Zero during tactical/world rendering.
@@ -455,6 +508,23 @@ static std::unordered_map<TypeLodKey, uint32_t, TypeLodKeyHash> s_typeLodIndex;
 // Per-frame ring SSBOs.
 static GLuint   s_instanceSsbo    = 0;
 static GLuint   s_boneSsbo        = 0;
+// VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two
+// per-frame ring SSBOs (logical id + lifetime + debug name + handle). The raw GLuint
+// globals above are UNCHANGED so every gen/bind/map/delete site keeps its exact GL
+// args/order; the owner record's backendHandle is written straight from the freshly
+// gen'd handle (pattern (b): `owner.backendHandle = s_xxxSsbo` right after glGenBuffers,
+// mirrors view_uniforms). Registered at create, invalidated on destroy (grow-realloc +
+// onMapUnload). Lifetime Persistent: persistent-mapped, realloc-on-grow, freed on unload.
+static RenderCore::GpuBufferOwner s_instanceSsboOwner{
+    RenderCore::RenderResourceId::MechInstanceRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "MechInstanceRingSsbo",
+    0u};
+static RenderCore::GpuBufferOwner s_boneSsboOwner{
+    RenderCore::RenderResourceId::MechBoneRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "MechBoneRingSsbo",
+    0u};
 static void*    s_instanceMap     = nullptr;
 static void*    s_boneMap         = nullptr;
 static size_t   s_instanceCapacity = 0;  // per ring slot (in GpuMechInstance units)
@@ -583,7 +653,7 @@ static std::vector<uint32_t>                       s_mechDrawMaterialIdx;
 // MECH-MATERIAL-SSBO-OWNER-1: per-actor MaterialGpu table SSBO (binding 2),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime +
 // debug name + GLuint value). GL calls happen at the same sites with the same
-// args/order/flags/slot; the raw handle is reached only via owner.glName.
+// args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
 // Lifetime Persistent: survives across frames, torn down on map load/unload.
 static RenderCore::GpuBufferOwner                  s_mechMaterialSsbo{
     RenderCore::RenderResourceId::MaterialGpuBuffer,
@@ -787,8 +857,19 @@ static void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
             s_fence[i] = 0;
         }
     }
-    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr; }
-    if (s_boneSsbo)     { glDeleteBuffers(1, &s_boneSsbo);     s_boneSsbo     = 0; s_boneMap     = nullptr; }
+    // VK-SHADOW-RING-OWNER-1: invalidate owner record + registry slot on destroy.
+    if (s_instanceSsbo) {
+        glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr;
+        s_instanceSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechInstanceRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
+    if (s_boneSsbo) {
+        glDeleteBuffers(1, &s_boneSsbo); s_boneSsbo = 0; s_boneMap = nullptr;
+        s_boneSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechBoneRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
 
     s_instanceCapacity = std::max(neededInstances,
         s_instanceCapacity ? s_instanceCapacity * 2 : kInitialInstancesPerFrame);
@@ -812,23 +893,51 @@ static void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
 
     const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — the old TIER2-EXCLUDED:ring
+    // tag is removed (a buffer is owned XOR excluded). Same GL args/order as before.
     glGenBuffers(1, &s_instanceSsbo);
+    s_instanceSsboOwner.backendHandle = s_instanceSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
         (GLsizeiptr)(MECH_RING_FRAMES * s_instanceCapacity * sizeof(GpuMechInstance)),
         nullptr, flags);
     s_instanceMap = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
         (GLsizeiptr)(MECH_RING_FRAMES * s_instanceCapacity * sizeof(GpuMechInstance)), flags);
+    {
+        // VK-SHADOW-RING-OWNER-1: register the slot (observe-only metadata; never read by the draw path).
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_instanceSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_instanceSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_instanceSsboOwner.debugName;
+        d.glName    = s_instanceSsbo;
+        d.sizeBytes = static_cast<uint64_t>(MECH_RING_FRAMES * s_instanceCapacity * sizeof(GpuMechInstance));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_boneSsbo);
+    s_boneSsboOwner.backendHandle = s_boneSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_boneSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
         (GLsizeiptr)(MECH_RING_FRAMES * s_boneCapacity * sizeof(GpuMechBone)),
         nullptr, flags);
     s_boneMap = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
         (GLsizeiptr)(MECH_RING_FRAMES * s_boneCapacity * sizeof(GpuMechBone)), flags);
+    {
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_boneSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_boneSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_boneSsboOwner.debugName;
+        d.glName    = s_boneSsbo;
+        d.sizeBytes = static_cast<uint64_t>(MECH_RING_FRAMES * s_boneCapacity * sizeof(GpuMechBone));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -856,6 +965,9 @@ void GpuMechBatcher::onMapLoad() {
     s_typeLodIndex.clear();
     s_stagingVbo.clear();
     s_stagingIbo.clear();
+#ifdef MC2_VULKAN_ISLAND
+    s_vkVboNativeCopy.clear();   // VK-MECH-FEED-NATIVE-1: geometry rebuilt per map
+#endif
     s_nodeVboRanges.clear();   // MECH-NORMALS-FIX-1: per-node ranges are per-mission
     s_geometryFinalized = false;
     // S2.12: DO NOT reset s_programLoadTried / s_programLoadFailed here.
@@ -878,10 +990,10 @@ void GpuMechBatcher::onMapLoad() {
     s_lastTotalInstances = 0;
     s_lastTotalBones     = 0;
     // Mech-1: reset MaterialGpu SSBO and tables on map load
-    if (s_mechMaterialSsbo.glName != 0) {
-        GLuint local = static_cast<GLuint>(s_mechMaterialSsbo.glName);
+    if (s_mechMaterialSsbo.backendHandle != 0) {
+        GLuint local = static_cast<GLuint>(s_mechMaterialSsbo.backendHandle);
         glDeleteBuffers(1, &local);
-        s_mechMaterialSsbo.glName = 0;
+        s_mechMaterialSsbo.backendHandle = 0;
 
         // REGISTRY-MATERIAL-SSBO-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
@@ -927,18 +1039,29 @@ void GpuMechBatcher::onMapUnload() {
     if (s_sharedVbo)    { glDeleteBuffers(1, &s_sharedVbo);         s_sharedVbo    = 0; }
     if (s_sharedIbo)    { glDeleteBuffers(1, &s_sharedIbo);         s_sharedIbo    = 0; }
     if (s_sampler)      { glDeleteSamplers(1, &s_sampler);          s_sampler      = 0; }
-    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo);      s_instanceSsbo = 0; s_instanceMap = nullptr; }
-    if (s_boneSsbo)     { glDeleteBuffers(1, &s_boneSsbo);          s_boneSsbo     = 0; s_boneMap     = nullptr; }
+    // VK-SHADOW-RING-OWNER-1: invalidate owner record + registry slot on destroy.
+    if (s_instanceSsbo) {
+        glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr;
+        s_instanceSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechInstanceRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
+    if (s_boneSsbo) {
+        glDeleteBuffers(1, &s_boneSsbo); s_boneSsbo = 0; s_boneMap = nullptr;
+        s_boneSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::MechBoneRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
     s_instanceCapacity  = 0;
     s_boneCapacity      = 0;
     s_geometryFinalized = false;
     s_pendingSubmits.clear();
     s_mechExtractPersist.clear();  // MECH-EXTRACTION-0
     // Mech-1: teardown MaterialGpu SSBO and tables
-    if (s_mechMaterialSsbo.glName != 0) {
-        GLuint local = static_cast<GLuint>(s_mechMaterialSsbo.glName);
+    if (s_mechMaterialSsbo.backendHandle != 0) {
+        GLuint local = static_cast<GLuint>(s_mechMaterialSsbo.backendHandle);
         glDeleteBuffers(1, &local);
-        s_mechMaterialSsbo.glName = 0;
+        s_mechMaterialSsbo.backendHandle = 0;
 
         // REGISTRY-MATERIAL-SSBO-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
@@ -1533,6 +1656,16 @@ static void uploadMechGeometryVbo() {
                     (GLsizeiptr)work.size(),
                     work.data(), 0);  // immutable, GPU-only
 
+#ifdef MC2_VULKAN_ISLAND
+    // VK-RUNG8 item-9 (native feed now MANDATORY): persist the EXACT uploaded bytes
+    // for the native geometry feed whenever the VK mech island is active. The old
+    // GL buffer-readback fallback in the island was deleted, so this copy is the
+    // island's only geometry source. Copy-once per map / normals rebuild; the copy
+    // exists only under the VK backend (s_vkMechGateOn), never in the pure-GL product.
+    if (s_vkMechGateOn)
+        s_vkVboNativeCopy = work;
+#endif
+
     // Vertex attribute setup — 48-byte GpuMechVertex, 7 attributes.
     // glVertexAttribPointer binds each attrib to the currently bound GL_ARRAY_BUFFER
     // (s_sharedVbo just bound above). The VAO's GL_ELEMENT_ARRAY_BUFFER binding
@@ -1996,14 +2129,14 @@ void GpuMechBatcher::flush() {
             s_mechDrawMaterialIdx.push_back(mIdx);
         }
         // Upload only when the table grew (or buffer not yet created).
-        if (s_mechMaterialSsbo.glName == 0 || tableDirty) {
+        if (s_mechMaterialSsbo.backendHandle == 0 || tableDirty) {
             const size_t byteSize = s_mechMaterialTable.size() * sizeof(RenderCore::MaterialGpu);
-            if (s_mechMaterialSsbo.glName == 0) {
+            if (s_mechMaterialSsbo.backendHandle == 0) {
                 GLuint local = 0;
                 glGenBuffers(1, &local);
-                s_mechMaterialSsbo.glName = static_cast<uint32_t>(local);
+                s_mechMaterialSsbo.backendHandle = static_cast<uint32_t>(local);
             }
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_mechMaterialSsbo.glName));
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_mechMaterialSsbo.backendHandle));
             glBufferData(GL_SHADER_STORAGE_BUFFER, static_cast<GLsizeiptr>(byteSize),
                          s_mechMaterialTable.data(), GL_DYNAMIC_DRAW);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -2019,7 +2152,7 @@ void GpuMechBatcher::flush() {
                 d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;  // persistent material table (not a pass output)
                 d.format    = RenderCore::RenderResourceFormat::BufferRaw;
                 d.debugName = "MaterialGpuBuffer";
-                d.glName    = s_mechMaterialSsbo.glName;
+                d.glName    = static_cast<GLuint>(s_mechMaterialSsbo.backendHandle);
                 d.sizeBytes = static_cast<uint64_t>(byteSize);
                 d.valid     = true;
                 RenderCore::registerOrUpdateRenderResource(d);
@@ -2164,8 +2297,8 @@ void GpuMechBatcher::flush() {
         (long long)(totalBones * sizeof(GpuMechBone)),
         "mech.bone.shadow");
     // Mech-1: bind MaterialGpu table SSBO at binding 2
-    if (s_mechMaterialGpuEnabled && s_mechMaterialSsbo.glName != 0) {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, static_cast<GLuint>(s_mechMaterialSsbo.glName));
+    if (s_mechMaterialGpuEnabled && s_mechMaterialSsbo.backendHandle != 0) {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, static_cast<GLuint>(s_mechMaterialSsbo.backendHandle));
     }
     // Slice C1: bind named material profile SSBO at binding 7.
     // No-op when MC2_MATERIAL_GPU=0, init() not called, or no textured profiles.
@@ -2469,6 +2602,11 @@ void GpuMechBatcher::flush() {
     // Step 7: Issue one draw call per bucket.
     uint32_t drawnCalls = 0;
     static int s_texDiagPrinted = 0;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P14 MECH TIER-1: when armed, capture each run (with its LIVE slot-0 paint
+    // texture resolved this frame) for the island and SKIP the GL draw below.
+    if (s_vkMechGateOn) s_vkMechRunSnapshot.clear();
+#endif
     for (const DrawCall& dc : drawCalls) {
         const GpuMechPacket& pkt = s_packets[dc.globalPacketIdx];
 
@@ -2485,6 +2623,19 @@ void GpuMechBatcher::flush() {
             ? mcTextureManager->get_gosTextureHandle(dc.texHandle)
             : 0u;
         const uint32_t glTexId = gos_GetGLTextureId((uint32_t)liveGosHandle);
+#ifdef MC2_VULKAN_ISLAND
+        if (s_vkMechGateOn) {
+            Mc2MechDrawRun run{};
+            run.firstIndex    = pkt.firstIndex;
+            run.indexCount    = pkt.indexCount;
+            run.baseVertex    = pkt.baseVertex;
+            run.instanceBase  = dc.instanceBase;
+            run.instanceCount = dc.instanceCount;
+            run.materialFlags = dc.materialFlags;
+            run.slot0GlTex    = glTexId;   // LIVE per-actor paint scheme this frame
+            s_vkMechRunSnapshot.push_back(run);
+        }
+#endif
         if (s_mechBatcherTrace && s_texDiagPrinted < 16) {
             ++s_texDiagPrinted;
             // Probe what the bound texture object actually contains.
@@ -2571,6 +2722,11 @@ void GpuMechBatcher::flush() {
         // specific filter/wrap onto a gosTexture handle that another renderer
         // may want to sample with auto-LOD or CLAMP later.
 
+#ifdef MC2_VULKAN_ISLAND
+        // VK-P14 MECH TIER-1: gate ON -> the island co-writes these mechs into the
+        // shared GBuffer instead; skip the GL color draw (SSBOs + feed still built).
+        if (!s_vkMechGateOn)
+#endif
         glDrawElementsInstancedBaseVertex(
             GL_TRIANGLES,
             (GLsizei)pkt.indexCount,
@@ -2640,11 +2796,12 @@ void GpuMechBatcher::flush() {
         };
         uint32_t fallbackTotal = 0;
         for (int i = 0; i < 5; ++i) fallbackTotal += s_fallbacksThisFrame[i];
+        extern uint32_t g_mc2FrameCounter;
         std::fprintf(stderr,
-            "[MECHBATCHER v1] event=summary eligible=%u submitted=%zu "
-            "buckets=%zu draw_calls=%u fallback_total=%u\n",
-            s_eligibleActorsThisFrame, s_pendingSubmits.size(),
-            buckets.size(), drawnCalls, fallbackTotal);
+            "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "
+            "buckets=%zu draw_calls=%u instances=%zu fallback_total=%u\n",
+            g_mc2FrameCounter, s_eligibleActorsThisFrame, s_pendingSubmits.size(),
+            buckets.size(), drawnCalls, totalInstances, fallbackTotal);
         for (int i = 0; i < 5; ++i) {
             if (s_fallbacksThisFrame[i] > 0) {
                 std::fprintf(stderr,
@@ -2667,6 +2824,25 @@ void GpuMechBatcher::flush() {
     }
     s_lastTotalInstances = totalInstances;
     s_lastTotalBones     = totalBones;
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P14 MECH TIER-1: snapshot this frame's instance + bone palette (host-visible
+    // copies out of the mapped ring slot) + the world->clip / depth-bias the GL VS
+    // uses, so the island can memcpy them into VK SSBOs without touching a fenced GL
+    // buffer. Runs only when the gate is armed (empty otherwise -> feed reports 0).
+    if (s_vkMechGateOn) {
+        s_vkMechInstSnapshot.assign(instDst, instDst + totalInstances);
+        s_vkMechBoneSnapshot.assign(boneDst, boneDst + totalBones);
+        // gos_GetMechFixBMVPMat4() is the row-major (GL_FALSE) kAxisSwap*worldToClip
+        // the GL mech VS uploads as u_worldToClipGL (see the s_loc_terrainMVP upload).
+        const float* mvp = gos_GetMechFixBMVPMat4();
+        if (mvp) std::memcpy(s_vkMechWorldToClipGL, mvp, sizeof(s_vkMechWorldToClipGL));
+        s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
+        s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
+    } else {
+        s_vkMechFrameReady = false;
+    }
+#endif
 
     // MECH-EXTRACTION-0: persist per-actor facts for batcher_getMechPendingCount/Entry.
     // Must run before s_pendingSubmits.clear() so ExtractRenderSnapshot can read this frame's data.
@@ -2728,6 +2904,119 @@ bool batcher_getMechPendingEntry(uint32_t idx, ExtractedMechPacket* out) {
 uint64_t batcher_getLastFlushSubmitCount() {
     return s_lastFlushSubmitCount;
 }
+
+#ifdef MC2_VULKAN_ISLAND
+// ---------------------------------------------------------------------------
+// VK-P14 MECH TIER-1: island feed accessors (Vulkan-free; the island never
+// includes this batcher). Geometry is copy-once; the per-frame feed points at
+// the persistent snapshots built at flush() end. Return 0 if not ready.
+// ---------------------------------------------------------------------------
+// VK-MECH-MATERIAL-LIGHTING-1: GL-owner accessors for the calc_light + fog feed.
+extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes);
+extern "C" void mc2GetSceneFogColorRGB(float out[3]);
+
+extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
+    if (!out) return 0;
+    if (!s_vkMechGateOn || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)
+        return 0;
+    // Byte sizes from the staged CPU geometry (uploaded verbatim to the GL buffers).
+    const uint64_t vboBytes = (uint64_t)s_stagingVbo.size();
+    const uint64_t iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
+    if (vboBytes == 0 || iboBytes == 0) return 0;
+    out->glVbo        = s_sharedVbo;
+    out->glIbo        = s_sharedIbo;
+    out->vboBytes     = vboBytes;
+    out->iboBytes     = iboBytes;
+    out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
+    // VK-RUNG8 item-9: CPU byte sources are now the ONLY mech geometry feed (the GL
+    // buffer-readback fallback was deleted from the island). Populate whenever the VK
+    // mech island is active (we are already past the s_vkMechGateOn guard above). A
+    // size mismatch means a normals rebuild raced this accessor -> leave vboCpu null;
+    // the island declines this frame and retries next frame (no GL readback rescue).
+    out->vboCpu = nullptr;
+    out->iboCpu = nullptr;
+    if ((uint64_t)s_vkVboNativeCopy.size() == vboBytes)
+        out->vboCpu = s_vkVboNativeCopy.data();
+    out->iboCpu = s_stagingIbo.data();   // uploaded verbatim to s_sharedIbo
+    return 1;
+}
+
+extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
+    if (!out) return 0;
+    if (!s_vkMechGateOn || !s_vkMechFrameReady) return 0;
+    if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty()) return 0;
+    out->instances64   = s_vkMechInstSnapshot.data();
+    out->instanceCount = (uint32_t)s_vkMechInstSnapshot.size();
+    out->bones64       = s_vkMechBoneSnapshot.data();
+    out->boneCount     = (uint32_t)s_vkMechBoneSnapshot.size();
+    out->runs          = s_vkMechRunSnapshot.data();
+    out->runCount      = (uint32_t)s_vkMechRunSnapshot.size();
+    // VK-FLIP-FIELD-BUG4-1: use the LIVE camera MVP, not the flush-time snapshot.
+    // s_vkMechWorldToClipGL is captured only inside GpuMechBatcher::flush() (batcher
+    // submit path). On frames where the batcher skips its flush (mech instance data
+    // unchanged — units idle), that snapshot is STALE, but a camera PAN still changes
+    // the view/proj. The island then draws mechs with last frame's MVP -> mechs FREEZE
+    // in screen space while the terrain (which re-projects live) pans beneath them.
+    // This accessor runs in the GL context (see gos_LightDataSsbo_GetInterop below), so
+    // gos_GetMechFixBMVPMat4() returns the current-frame MVP here. Instances may be one
+    // frame stale (imperceptible when idle); the PROJECTION is always current -> no
+    // screen-space stick. Falls back to the snapshot if the live accessor returns null.
+    if (const float* liveMvp = gos_GetMechFixBMVPMat4())
+        std::memcpy(out->worldToClipGL, liveMvp, sizeof(out->worldToClipGL));
+    else
+        std::memcpy(out->worldToClipGL, s_vkMechWorldToClipGL, sizeof(out->worldToClipGL));
+    out->objectDepthBias = s_vkMechObjectDepthBias;
+    // VK-MECH-MATERIAL-LIGHTING-1: LightsData SSBO name/size + fog color for the
+    // island's calc_light + fog port. Both from GL owners (this runs in GL context).
+    out->lightDataGlSsbo = 0; out->lightDataBytes = 0;
+    { unsigned int nm = 0; unsigned long long by = 0;
+      gos_LightDataSsbo_GetInterop(&nm, &by);
+      out->lightDataGlSsbo = nm; out->lightDataBytes = by; }
+    out->fogColorRGB[0] = out->fogColorRGB[1] = out->fogColorRGB[2] = 0.0f;
+    mc2GetSceneFogColorRGB(out->fogColorRGB);
+    // VK-RUNG8 item-9: the game's CPU LightsData array (the byte source of the GL
+    // SSBO upload, txmmgr renderLists) is now the ONLY per-frame lighting feed. The
+    // island's GL SSBO-readback fallback was deleted. lightDataGlSsbo/Bytes above are
+    // still exposed for the verification-only FEED-AUDIT byte-compare.
+    out->lightDataCpu = nullptr;
+    out->lightDataCpuBytes = 0;
+    if (mcTextureManager) {
+        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
+        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    }
+
+    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see
+    // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.
+    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("mech")) {
+        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            std::fprintf(f, "{\"island\":\"mech\",\"instanceCount\":%u,\"boneCount\":%u,"
+                "\"runCount\":%u,\"objectDepthBias\":%.6f,\"instances\":[",
+                out->instanceCount, out->boneCount, out->runCount, out->objectDepthBias);
+            const GpuMechInstance* insts =
+                reinterpret_cast<const GpuMechInstance*>(out->instances64);
+            const GpuMechBone* bones =
+                reinterpret_cast<const GpuMechBone*>(out->bones64);
+            for (uint32_t i = 0; i < out->instanceCount; ++i) {
+                const GpuMechInstance& mi = insts[i];
+                float rootX = 0.f, rootY = 0.f, rootZ = 0.f;
+                if (bones && mi.baseBoneOffset < out->boneCount) {
+                    const GpuMechBone& b0 = bones[mi.baseBoneOffset];
+                    rootX = b0.row0[3]; rootY = b0.row1[3]; rootZ = b0.row2[3];
+                }
+                std::fprintf(f, "%s{\"typeLodRecordIndex\":%u,\"baseBoneOffset\":%u,"
+                    "\"objectIdRaw\":%u,\"materialIdx\":%u,\"rootBoneX\":%.4f,"
+                    "\"rootBoneY\":%.4f,\"rootBoneZ\":%.4f}",
+                    i ? "," : "", mi.typeLodRecordIndex, mi.baseBoneOffset,
+                    mi.objectIdRaw, mi.materialIdx, rootX, rootY, rootZ);
+            }
+            std::fprintf(f, "]}\n");
+            std::fclose(f);
+        }
+        mc2vkfeeddump::latch("mech") = true;
+    }
+    return 1;
+}
+#endif // MC2_VULKAN_ISLAND
 
 void batcher_compareMechSnapshot(RenderSnapshot* snap) {
     if (!snap) return;

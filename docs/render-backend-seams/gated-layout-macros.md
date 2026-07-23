@@ -6,7 +6,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:407`
+- Header: `GameOS/gameos/gos_postprocess.h:437`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VulkanEdgeFogIsland* vkFogIsland_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -14,20 +14,324 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:422`
+- Header: `GameOS/gameos/gos_postprocess.h:452`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VulkanOobFogIsland* vkOobFogIsland_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
 - Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
-## PASS  (`MC2_VULKAN_ISLAND`)
+## PASS  (`MC2_VULKAN`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:457`
-- Class: `gosPostProcess`  (data-member)
-- Member: `VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
+- Header: `GameOS/gameos/vulkan_backend_skeleton.h:162`
+- Class: `Mc2VkShadowDepthPipeline`  (data-member)
+- Member: `VkPipeline            pipeline   = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_backend_skeleton.h:163`
+- Class: `Mc2VkShadowDepthPipeline`  (data-member)
+- Member: `VkPipelineLayout      layout     = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:47`
+- Class: `SwapchainResources`  (data-member)
+- Member: `bool                       have = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:48`
+- Class: `SwapchainResources`  (data-member)
+- Member: `std::vector<VkImage>       images;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:49`
+- Class: `SwapchainResources`  (data-member)
+- Member: `std::vector<VkImageView>   views;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:50`
+- Class: `SwapchainResources`  (data-member)
+- Member: `std::vector<VkFramebuffer> framebuffers;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:56`
+- Class: `PresentHealth`  (data-member)
+- Member: `bool             swapchain_available = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:57`
+- Class: `PresentHealth`  (data-member)
+- Member: `bool             surface_created     = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:58`
+- Class: `PresentHealth`  (data-member)
+- Member: `VkFormat         format              = VK_FORMAT_UNDEFINED;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:59`
+- Class: `PresentHealth`  (data-member)
+- Member: `VkPresentModeKHR present_mode        = VK_PRESENT_MODE_FIFO_KHR;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:60`
+- Class: `PresentHealth`  (data-member)
+- Member: `uint32_t         image_count         = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:61`
+- Class: `PresentHealth`  (data-member)
+- Member: `uint32_t         extent_w            = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:62`
+- Class: `PresentHealth`  (data-member)
+- Member: `uint32_t         extent_h            = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:63`
+- Class: `PresentHealth`  (data-member)
+- Member: `uint32_t         resize_count        = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:66`
+- Class: `PresentHealth`  (data-member)
+- Member: `uint32_t         validation_errors   = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:81`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VulkanPresentObject& operator=(const VulkanPresentObject&) = delete;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:112`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `SDL_Window*                window_             = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:113`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `bool                       sdlVideoInitedHere_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:114`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `bool                       sdlVulkanLoaded_    = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:116`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkInstance                 instance_           = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:117`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkDebugUtilsMessengerEXT   messenger_          = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:118`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `bool                       wantValidation_     = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:121`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkSurfaceKHR               surface_            = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:122`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkPhysicalDevice           phys_               = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:123`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkDevice                   device_             = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:124`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkQueue                    gfxQueue_           = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:125`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkQueue                    presentQueue_       = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:126`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `uint32_t                   gfxFamily_          = UINT32_MAX;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:127`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `uint32_t                   presentFamily_      = UINT32_MAX;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:130`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkRenderPass               rpass_              = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:131`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkPipelineLayout           playout_            = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:132`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkPipeline                 pipe_               = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:133`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkShaderModule             vert_               = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:134`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkShaderModule             frag_               = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:137`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkCommandPool              cpool_              = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:138`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkCommandBuffer            cbuf_               = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:140`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `VkFence                    inFlight_           = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:142`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `SwapchainResources         scr_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
+
+## PASS  (`MC2_VULKAN`)
+
+- Header: `GameOS/gameos/vulkan_present_object.h:143`
+- Class: `VulkanPresentObject`  (data-member)
+- Member: `PresentHealth              health_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PRIVATE)]
 
 ---
 
-Result: 3 guard(s) analyzed, 0 violation(s).
+Result: 44 guard(s) analyzed, 0 violation(s).

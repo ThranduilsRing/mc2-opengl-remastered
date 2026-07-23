@@ -71,6 +71,11 @@
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
 #include "../GameOS/gameos/gos_static_prop_batcher.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "../GameOS/gameos/vulkan_shadow_island_live.h"  // VK-P8a SHADOW-INTEROP: producer call
+#include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
+#include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
+#endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
 #include "../GameOS/gameos/gos_static_prop_registry.h"  // Stage 3.C: flush()
@@ -1700,6 +1705,14 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
     }
 }
 
+#ifdef MC2_VULKAN_ISLAND
+// VK-MECH-MATERIAL-LIGHTING-1: global fog-color snapshot (RGB, GL scene-UBO order),
+// set once per frame at the scene-UBO upload site. Read by the VK mech island feed.
+static float s_vkSceneFogRGB[3] = {0.0f, 0.0f, 0.0f};
+void mc2SetSceneFogColorRGB(float r, float g, float b) { s_vkSceneFogRGB[0]=r; s_vkSceneFogRGB[1]=g; s_vkSceneFogRGB[2]=b; }
+extern "C" void mc2GetSceneFogColorRGB(float out[3]) { out[0]=s_vkSceneFogRGB[0]; out[1]=s_vkSceneFogRGB[1]; out[2]=s_vkSceneFogRGB[2]; }
+#endif
+
 bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
 {
     if (recipeIndex < 0) return false;
@@ -2028,6 +2041,21 @@ bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
     if (idx >= lightDataStructuresCount || !lightData_) return false;
     out = lightData_[idx];
     return true;
+}
+
+// VK-MECH-FEED-NATIVE-1: expose the CPU-side LightsData array (the byte SOURCE of
+// the GL SSBO — gos_LightDataSsbo_Upload(lightData_, ...) in renderLists below) so
+// the VK mech island can consume the game's light data directly instead of
+// glGetBufferSubData'ing it back out of the GL SSBO. Read-only view; valid for the
+// remainder of the frame after renderLists.
+const void* MC_TextureManager::getLightDataPtr() const
+{
+    return lightData_;
+}
+
+uint64_t MC_TextureManager::getLightDataBytes() const
+{
+    return (uint64_t)lightDataStructuresCount * sizeof(TG_HWLightsData);
 }
 
 // [LIGHTBAKE-PROOF v1] Slot-write INTEGRITY check (NOT an independent A/B parity —
@@ -2578,6 +2606,14 @@ void MC_TextureManager::renderLists (void)
         sceneData_->fog_color[1] = fc.y;
         sceneData_->fog_color[2] = fc.x;
         sceneData_->fog_color[3] = fc.w;
+#ifdef MC2_VULKAN_ISLAND
+        // VK-MECH-MATERIAL-LIGHTING-1: cache the RGB fog color the mech VS reads as
+        // g_scene.fogColor.rgb so the VK mech island can feed the same value into its
+        // per-frame UBO (parity with mech.frag's fog mix). Snapshotted at the SAME site
+        // GL uploads the scene UBO — no phase drift. Accessor: mc2GetSceneFogColorRGB().
+        extern void mc2SetSceneFogColorRGB(float, float, float);
+        mc2SetSceneFogColorRGB(sceneData_->fog_color[0], sceneData_->fog_color[1], sceneData_->fog_color[2]);
+#endif
         sceneData_->baseVertexColor = uint32_to_vec4(BaseVertexColor).zyxw();
         gos_UpdateBuffer(sceneDataBuffer_, sceneData_, 0, sizeof(TG_HWSceneData));
     }
@@ -2853,6 +2889,17 @@ void MC_TextureManager::renderLists (void)
 			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,
 			                                          "renderLists_gos_BeginDynamicShadowPass");
 			gos_BeginDynamicShadowPass();             // no-op if shadowsEnabled_ false
+#ifdef MC2_VULKAN_ISLAND
+			// VK-P8a SHADOW-INTEROP: clear any stale VK-produced shadow tex at the top of
+			// the bracket so a frame where the island declines/isn't reached (e.g. the
+			// non-prop-caster flushShadow branch) never leaves a stale VK tex bound for the
+			// forward consumers. The producer below re-publishes it on success. No-op when
+			// the gate is OFF (the tex is already 0 and stays 0).
+			if (mc2_vk_shadow_island_enabled()) {
+				if (gosPostProcess* ppClr = getGosPostProcess())
+					ppClr->setDynamicShadowInteropTexture(0);
+			}
+#endif
 			// Item 1 P1: caster set used by the CSM cascade replay (set in the
 			// prop-caster path below; nullptr => CSM replay uses flushShadow).
 			const std::vector<GpuStaticPropInstance>* csmCasterSet = nullptr;
@@ -3041,6 +3088,38 @@ void MC_TextureManager::renderLists (void)
 				TracyGpuZone("GpuSP.DynShadowDraw");
 				GpuStaticPropBatcher::instance().drawDynamicPropShadows(*dynShadowSet);
 			}
+#ifdef MC2_VULKAN_ISLAND
+				// VK-P8a SHADOW-INTEROP (gate MC2_VK_SHADOW_INTEROP, default-OFF): the SECOND
+				// VK geometry region and the FIRST VK-PRODUCES-DEPTH region. VK re-renders the
+				// SAME dynShadowSet caster instances into an exportable D32 shadow map on the
+				// on-demand shared engine VulkanContext, signals vk2gl, and hands GL the imported
+				// GL-texture view of that D32. GL then binds it in place of getDynamicShadowTexture()
+				// so the four forward-shading consumers sample the VK-produced map via the UNCHANGED
+				// hardware sampler2DShadow calcShadow() path. Ordering: VK produce -> VK signal vk2gl
+				// -> GL wait (inside the island) -> here we publish the tex -> GL consumes at forward
+				// shading. The GL caster draw above still ran (it fills the engine-owned depth tex);
+				// its output is simply unused this frame when VK succeeds. NO GL->VK acquire is issued
+				// (VK never reads a GL-written depth) -- that direction poisons the AMD interop
+				// timeline (scene blackout). Gate OFF -> enabled()==0 -> interop tex stays 0 ->
+				// getDynamicShadowTexture() returns the GL tex -> byte-identical.
+				if (mc2_vk_shadow_island_enabled()) {
+					ZoneScopedN("RenderLists.VkShadowInterop");
+					gosPostProcess* ppVk = getGosPostProcess();
+					if (ppVk) {
+						const unsigned int vkTex = mc2_vk_shadow_island_run(
+							ppVk->getDynamicShadowMapSize(),
+							ppVk->getDynamicLightSpaceMatrix(),
+							dynShadowSet->data(),
+							(unsigned int)dynShadowSet->size(),
+							ppVk->getShadowBiasFactor(),
+							ppVk->getShadowBiasUnits());
+						// >0 => VK produced+signalled this frame; publish the shared D32's GL view so
+						// forward consumers sample it. 0 => island declined (fail-soft) -> leave the
+						// interop tex cleared so consumers use the GL-produced map (no regression).
+						ppVk->setDynamicShadowInteropTexture((GLuint)vkTex);
+					}
+				}
+#endif
 				csmCasterSet = dynShadowSet;   // Item 1 P1: remember for the cascade replay
 			} else {
 				GpuStaticPropBatcher::instance().flushShadow(s_skipBldgInDynamic);
@@ -3070,6 +3149,32 @@ void MC_TextureManager::renderLists (void)
 							GpuStaticPropBatcher::instance().flushShadow(s_skipBldgInDynamic);
 						GpuMechBatcher::instance().flushShadow();
 						ppCsm->endDynamicShadowCascadePass();
+#ifdef MC2_VULKAN_ISLAND
+						if (ci < csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
+							const float* mats = ppCsm->getDynamicCascadeMatrices();
+							const float* layerMat = mats ? (mats + (size_t)ci * 16u) : nullptr;
+							mc2_vk_shadow_island_run_csm_array_layer(
+								ppCsm->getDynamicShadowMapSize(),
+								csmN - 1,
+								ci,
+								layerMat,
+								csmCasterSet->data(),
+								(unsigned int)csmCasterSet->size(),
+								ppCsm->getShadowBiasFactor(),
+								ppCsm->getShadowBiasUnits());
+						}
+						if (ci == csmN - 1 && csmCasterSet && mc2_vk_shadow_island_enabled()) {
+							const float* mats = ppCsm->getDynamicCascadeMatrices();
+							const float* lastMat = mats ? (mats + (size_t)ci * 16u) : nullptr;
+							mc2_vk_shadow_island_run_csm_fullmap(
+								ppCsm->getDynamicFullMapSize(),
+								lastMat,
+								csmCasterSet->data(),
+								(unsigned int)csmCasterSet->size(),
+								ppCsm->getShadowBiasFactor(),
+								ppCsm->getShadowBiasUnits());
+						}
+#endif
 					}
 					// P5 headless log: layers + prop caster-set size fed to each
 					// cascade (per-cascade containment is decided GPU-side in the
@@ -3457,7 +3562,27 @@ void MC_TextureManager::renderLists (void)
 				ZoneScopedN("GpuSP.BatcherFlush");
 				TracyGpuZone("GpuSP.BatcherFlush");
 				rlcost::Span _rl(rlcost::kSpBatcherFlush);
+#ifdef MC2_VULKAN_ISLAND
+				// VK-P11 STATIC-PROP COLOR Tier-1 (gate MC2_VK_PROP_COLOR_TIER1):
+				// render visible static-prop color instances directly into the shared
+				// scene GBuffer in Vulkan instead of the GL flush() color draws. The
+				// island pulls its per-frame instance feed from the batcher
+				// (s_bucketsByType still populated here because we skip flush()). On
+				// success skip the GL flush; on any fail-soft (0) fall through to GL so
+				// props still draw. Gate OFF -> enabled()==0 -> GL flush() as before.
+				bool vkPropColorHandled = false;
+				if (mc2_vk_color_prop_island_enabled()) {
+					ZoneScopedN("GpuSP.VkColorPropInterop");
+					if (gosPostProcess* ppVkClr = getGosPostProcess()) {
+						vkPropColorHandled = (1 == mc2_vk_color_prop_island_run(
+							ppVkClr->getWidth(), ppVkClr->getHeight()));
+					}
+				}
+				if (!vkPropColorHandled)
+					GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
+#else
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
+#endif
 			}
 			// Pass_SpColor ends after the static-prop flush: GL_TIME_ELAPSED
 			// scopes cannot nest, so mechs get their own disjoint scope.
@@ -3490,7 +3615,21 @@ void MC_TextureManager::renderLists (void)
 			    RenderCore::framegraph::findTopLevelStateDesc(RenderCore::RenderPassId::MechOpaque) != nullptr) {
 				GpuMechBatcher::instance().executorApplyMechOpaqueState();
 			}
+			// VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
+			// default-OFF): flush() still BUILDS the instance/bone SSBOs + feed snapshot but
+			// SKIPS its GL color draws when the gate is on; the island then co-writes the
+			// skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0) = mechs
+			// dropped this frame (GL draws already skipped), no corruption. Gate OFF ->
+			// enabled()==0 -> flush() draws GL as before (byte-identical).
 			GpuMechBatcher::instance().flush();
+#ifdef MC2_VULKAN_ISLAND
+			if (mc2_vk_mech_island_enabled()) {
+				ZoneScopedN("Render.GpuMechs.VkTier1");
+				if (gosPostProcess* ppVkMech = getGosPostProcess()) {
+					(void)mc2_vk_mech_island_run(ppVkMech->getWidth(), ppVkMech->getHeight());
+				}
+			}
+#endif
 			gos_render_pass_timer::End(gos_render_pass_timer::Pass_Mechs);
 		};
 

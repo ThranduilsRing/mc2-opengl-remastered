@@ -47,6 +47,7 @@ class RunConfig:
     allow_asset_oob: bool = False
     # META-FIX INFRA-3: per-mission marker-bucket downgrades (bucket -> True).
     marker_overrides: dict = field(default_factory=dict)
+    show_window: bool = False
 
 
 @dataclass
@@ -100,16 +101,17 @@ def run_one(cfg: RunConfig) -> RunResult:
     # Start the game window minimized so smoke runs don't steal focus or
     # interrupt the user's desktop. The game detects SDL_WINDOW_MINIMIZED and
     # throttles to ~100 fps (10ms sleep) but game logic and stdout logging
-    # keep running, so heartbeat/ok gates are unaffected.
+    # keep running, so heartbeat/ok gates are unaffected. Perf runs can opt into
+    # a visible window to avoid that background throttle.
     startupinfo = None
     if sys.platform == "win32":
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         # Default SW_SHOWMINNOACTIVE(7): minimized, no focus steal -- but SDL
         # then throttles to ~100fps, so Avg FPS is NOT GPU throughput.
-        # MC2_SMOKE_VISIBLE=1 -> SW_SHOWNOACTIVATE(4): visible + non-throttled so
-        # a perf A/B measures real frame rate, still without stealing focus.
-        startupinfo.wShowWindow = 4 if os.environ.get("MC2_SMOKE_VISIBLE") else 7
+        # MC2_SMOKE_VISIBLE=1 -> SW_SHOWNOACTIVATE(4); cfg.show_window -> SW_SHOW(5).
+        startupinfo.wShowWindow = (5 if getattr(cfg, "show_window", False)
+                                   else (4 if os.environ.get("MC2_SMOKE_VISIBLE") else 7))
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()

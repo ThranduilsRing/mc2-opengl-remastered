@@ -1,6 +1,7 @@
 #ifndef GOS_POSTPROCESS_H
 #define GOS_POSTPROCESS_H
 
+#include <cstdint>
 #include "utils/gl_utils.h"
 
 #include "../../RenderCore/RenderRegionId.h"   // RENDER-BACKEND-REGION-IFACE-1 (relative: reachable from every TU that includes this header, incl. RenderWorld)
@@ -164,7 +165,12 @@ public:
     void buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                 float mapHalfExtent);
     bool staticLightMatrixBuilt() const { return staticLightMatrixBuilt_; }
-    void markStaticLightMatrixBuilt() { staticLightMatrixBuilt_ = true; }
+    // VK-SHADOW-COPY-ONCE-1: bump a generation counter each time the static
+    // shadow map is (re)built (mission load / Terrain::destroy re-arm). The VK
+    // interop copy path uses this to copy-once per generation instead of every
+    // frame -- the static map only changes on this event, never per-frame.
+    void markStaticLightMatrixBuilt() { staticLightMatrixBuilt_ = true; ++staticShadowGeneration_; }
+    uint64_t staticShadowGeneration() const { return staticShadowGeneration_; }
     // VPL-#shadow C-1: per-mission re-arm so the one-shot full-map static
     // shadow rebuilds on the next mission (against fresh blocks[]) instead
     // of freezing the previous mission's shadow. Called from Terrain::destroy.
@@ -187,7 +193,24 @@ public:
     void buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
                                  const float camFitCornersMC2[8][3],
                                  const float shadowCenterXYZ[3], bool shadowCenterValid);
-    GLuint getDynamicShadowTexture() const { return dynShadowDepthTex_; }
+    // VK-P8a SHADOW-INTEROP: consumer-facing getter. When the VK shadow island
+    // produced the map this frame (dynShadowInteropTex_ != 0), the four forward
+    // shading consumers sample the VK-produced D32 in place of the GL texture. The
+    // WRITE pass (beginDynamicShadowPass/endDynamicShadowPass compare-mode flips +
+    // FBO bind) must use getDynamicShadowTextureRaw() so it never toggles compare-
+    // mode on the VK-owned texture. Gate OFF -> dynShadowInteropTex_ stays 0 ->
+    // byte-identical to returning dynShadowDepthTex_.
+    GLuint getDynamicShadowTexture() const {
+#ifdef MC2_VULKAN_ISLAND
+        if (dynShadowInteropTex_) return dynShadowInteropTex_;
+#endif
+        return dynShadowDepthTex_;
+    }
+    // Always the engine-owned GL texture (write-pass compare-mode + FBO ops).
+    GLuint getDynamicShadowTextureRaw() const { return dynShadowDepthTex_; }
+#ifdef MC2_VULKAN_ISLAND
+    void setDynamicShadowInteropTexture(GLuint tex) { dynShadowInteropTex_ = tex; }
+#endif
     GLuint getDynamicShadowFBO() const { return dynShadowFBO_; }
     // When CSM is active during the caster pass, this returns the matrix for the
     // cascade currently being rendered (csmActiveCascade_), so the existing
@@ -200,6 +223,12 @@ public:
         return dynamicLightSpaceMatrix_;
     }
     int getDynamicShadowMapSize() const { return dynShadowMapSize_; }
+    // VK-P8a SHADOW-INTEROP: the dynamic prop caster draw enables polygon offset via
+    // glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_) (gos_static_prop_batcher.cpp
+    // drawDynamicPropShadows). The VK shadow island must reproduce this as VK depthBias
+    // EXACTLY (the parity STOP-watch), so it needs these values.
+    float getShadowBiasFactor() const { return shadowBiasFactor_; }
+    float getShadowBiasUnits() const { return shadowBiasUnits_; }
 
     // --- Item 1: Cascaded Shadow Maps (dynamic path) -----------------------
     // Gate (MC2_SHADOW_CSM, default ON since 2026-06-18 `8ff13a36`; "=0" opts
@@ -325,6 +354,60 @@ public:
     float aoPower_;         // contrast curve
     void runSSAO();
 
+    // VK-REGION-SSAO-1 (RENDER-BACKEND-REGION-IFACE-1, second region): the SSAO
+    // region (occlusion pass1 + multiplicative apply pass2) made SELECTABLE
+    // GL-vs-Vulkan through IRenderBackend, mirroring the PostprocessFog region
+    // precedent exactly. Gated by the SAME master gate
+    // (MC2_RENDER_BACKEND_REGION_IFACE) + the SAME sub-selector
+    // (MC2_POSTPROCESS_BACKEND=gl|vk); MC2_SSAO still gates whether the region
+    // runs AT ALL (unchanged — SSAO stays default-OFF either way).
+    //
+    // 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
+    // inline body (pure code-move). Returns 1 if SSAO actually ran this frame
+    // (its own early-return guards still apply), 0 if it early-returned.
+    int  runSSAORegionGL();
+
+    // 1B: the routed entry called from endScene() when the master gate is ON.
+    // Builds the neutral SSAO context, picks the backend by
+    // MC2_POSTPROCESS_BACKEND, calls runRegion(); on false (VK unavailable/
+    // failed) runs runSSAORegionGL(). Writes region_impl/fallback_reason to
+    // the SSAO region health snapshot.
+    void runSSAORegionThroughBackend();
+
+    // VK-REGION-HZB-1 (RENDER-BACKEND-REGION-IFACE-1, third region): the HZB
+    // reduce chain routed through IRenderBackend::runRegion. Same shape as the
+    // SSAO region: master gate MC2_RENDER_BACKEND_REGION_IFACE + selector
+    // MC2_POSTPROCESS_BACKEND=gl|vk; MC2_HZB_BUILD still gates whether the
+    // region runs AT ALL (unchanged -- HZB stays default-OFF either way).
+    //
+    // 1A: the extracted GL HZB region wrapper. Calls the UNCHANGED
+    // runHzbReduce() inline body (pure code-move). Returns 1 if HZB's own
+    // gates let it run this frame, 0 if it early-returned.
+    int  runHzbRegionGL();
+    // The routed entry (master gate ON). Builds the neutral HZB context,
+    // picks the backend by MC2_POSTPROCESS_BACKEND, calls runRegion; on
+    // decline/failure runs runHzbRegionGL(). Writes region_impl /
+    // fallback_reason to the HZB region health snapshot.
+    void runHzbRegionThroughBackend();
+    // GL handle resolver for the HZB region context (depth / pyramid-level-0).
+    unsigned int resolveHzbRegionResource(RenderCore::RenderResourceId id) const;
+
+    // L6.6-COMPOSITE-PRESENT-SCAFFOLD (fourth region through runRegion). Builds
+    // the neutral CompositePresent context and routes it; the Vulkan backend
+    // drives the PERSISTENT present object to present to its OWN separate Vulkan
+    // window (GL game window UNTOUCHED). Opt-in via MC2_VK_COMPOSITE_PRESENT (the
+    // scaffold spawns a window, so it must NOT run every frame). Default-OFF ->
+    // GL game window byte/behavior-identical. Full game-window Vulkan present is
+    // BLOCKED on L7 interop (ledgered).
+    void runCompositePresentRegionThroughBackend();
+    // GL handle resolver for the CompositePresent region context (MainColor).
+    unsigned int resolveCompositePresentRegionResource(RenderCore::RenderResourceId id) const;
+
+    // GL handle resolver for the SSAO region context (depth/normal/color/
+    // occlusion -> concrete GL texture names). Defined as a tiny adaptor in
+    // the .cpp, same shape as resolveRegionResource() for fog.
+    unsigned int resolveSSAORegionResource(RenderCore::RenderResourceId id) const;
+
     // BT2018-BOX-DECAL-1: screen-space AABB decal volume. Reconstructs scene world
     // pos from the depth COPY (reversed-Z), box-clips, normal-rejects, and composites
     // a procedural decal into COLOR0 only. Default-OFF (MC2_BOX_DECAL). v1 = single
@@ -388,73 +471,125 @@ public:
     unsigned int resolveRegionResource(RenderCore::RenderResourceId id) const;
 
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-EDGE-FOG-ISLAND-2a: the first REAL Vulkan render work in the frame
-    // loop. When MC2_VULKAN_EDGE_FOG_ISLAND=1 AND lazy Vulkan init succeeds, the
-    // edge-fog composite runs on a headless Vulkan device instead of the GL path
-    // (see the seam in beginPostProcess()/composite). All Vulkan state is held in
-    // an opaque struct so the Vulkan headers never leak into this header.
-    //
-    // vulkanEdgeFogIslandEnabled(): reads MC2_VULKAN_EDGE_FOG_ISLAND once, lazily
-    // initializes the device on first call, and returns true only if init
-    // succeeded. On failure it logs once, disables itself, and returns false so
-    // the caller falls back to runEdgeFog() (the GL path). Never throws/crashes.
-    // runEdgeFogVulkan(): per-frame GL->Vulkan->GL edge-fog composite.
-    // destroyVulkanEdgeFogIsland(): torn down from destroy().
-    bool  vulkanEdgeFogIslandEnabled();
-    void  runEdgeFogVulkan();
-    void  destroyVulkanEdgeFogIsland();
-    struct VulkanEdgeFogIsland;   // defined in vulkan_edge_fog_island.cpp
-    VulkanEdgeFogIsland* vkFogIsland_ = nullptr;
+    // VK-TIER1 SHARED SCENE DEPTH: when MC2_VK_SHARED_SCENE_DEPTH is ON and the
+    // shared VK image was built + imported at createFBOs, this owns the VK
+    // exportable D32S8 image + its GL import view; sceneDepthTex_ then points at
+    // the imported GL_DEPTH24_STENCIL8 texture instead of a plain GL alloc. Torn
+    // down + rebuilt with the FBOs on resize (destroyFBOs). nullptr => the plain
+    // GL depth alloc is live (gate OFF / interop fell back). Opaque pointer only
+    // (no Vulkan header leaks into this header). Defined in
+    // vulkan_shared_scene_depth.cpp.
+    struct Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
 
-    // VULKAN-OOB-FOG-ISLAND-1: the SECOND offscreen Vulkan island (proves the
-    // VULKAN-ISLAND-TEMPLATE-1 checklist repeats). When MC2_VULKAN_OOB_FOG_ISLAND=1
-    // AND lazy Vulkan init succeeds, the OOB-fog composite runs on a headless Vulkan
-    // device instead of the GL runFogOob() path. Opaque pointer only -- no Vulkan
-    // headers leak into this header.
-    // vulkanOobFogIslandEnabled(): reads MC2_VULKAN_OOB_FOG_ISLAND once, lazily
-    // initializes the device on first call; false on failure -> GL fallback.
-    // runFogOobVulkan(): per-frame GL->Vulkan->GL OOB-fog composite.
-    // destroyVulkanOobFogIsland(): torn down from destroy().
-    bool  vulkanOobFogIslandEnabled();
-    void  runFogOobVulkan();
-    void  destroyVulkanOobFogIsland();
-    struct VulkanOobFogIsland;   // defined in vulkan_oob_fog_island.cpp
-    VulkanOobFogIsland* vkOobFogIsland_ = nullptr;
-
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: the Layer-4 milestone -- fuse the EdgeFog +
-    // OOB-fog islands into ONE native Vulkan subgraph. A Vulkan-owned intermediate
-    // color image is copied in from GL sceneColor ONCE, blended by BOTH fog passes
-    // (edge then oob) in ONE render pass / ONE subpass / TWO draws (NO CPU readback
-    // between the two passes, 2 fewer copies than running both islands), then copied
-    // back to GL ONCE. Opaque pointer only -- no Vulkan headers leak into this header.
-    //
-    // vulkanPostprocessSubgraphEnabled(): reads MC2_VULKAN_POSTPROCESS_SUBGRAPH once,
-    // lazily inits the device on first call; false on failure -> GL fallback (BOTH GL
-    // fog passes run). runPostprocessSubgraph(): per-frame fused GL->Vulkan->GL edge+
-    // oob composite (does BOTH fog effects). destroyVulkanPostprocessSubgraph(): torn
-    // down from destroy().
-    bool  vulkanPostprocessSubgraphEnabled();
-    // POSTPROCESS-VULKAN-BACKEND-OPT-IN: the env-gate-FREE half of
-    // vulkanPostprocessSubgraphEnabled() -- lazy init + size-match + device-validity,
-    // with NO MC2_VULKAN_POSTPROCESS_SUBGRAPH check. Returns true iff the subgraph is
-    // ready to render THIS frame. Both the standalone gate path (after its env check)
-    // and the region-iface Vulkan backend (whose backend=vk selection IS the enable
-    // signal) route through this, so backend=vk runs Vulkan without the subgraph gate.
-    bool  postprocessSubgraphReadyForRegion();
-    void  runPostprocessSubgraph();
-    void  destroyVulkanPostprocessSubgraph();
+    // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL: when MC2_VK_PROP_COLOR_TIER1 is ON
+    // (and MC2_VK_SHARED_SCENE_DEPTH provides the shared depth), sceneColorTex_
+    // (MRT0) and sceneNormalTex_ (MRT1) are each backed by a VK-built exportable
+    // RGBA16F image imported into GL as GL_RGBA16F, so the VK prop island can
+    // co-write props into the SAME GBuffer attachments in-place. Torn down + rebuilt
+    // with the FBOs on resize. nullptr => the plain GL alloc is live for that slot
+    // (gate OFF / interop fell back). Opaque pointers; defined in
+    // vulkan_shared_scene_color.cpp.
+    struct Mc2SharedSceneColor* sharedSceneColor_  = nullptr;   // MRT0 sceneColorTex_
+    struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
+    struct Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr; // MRT2 sceneObjectIdTex_
 
     // RENDER-BACKEND-REGION-IFACE-1 (1C): Vulkan impl of runRegion for the
-    // PostprocessFog region. Returns false (fail-soft) if the subgraph is
+    // PostprocessFog region. Returns false (fail-soft) if native fog is
     // unavailable/failed this frame -> caller runs the GL wrapper (FallbackGL).
-    // On success runs runPostprocessSubgraph() and reports impl=VulkanSubgraph
-    // with vkDraws=2. Never crashes. Defined in gos_postprocess.cpp under the
+    // On success runs runVkPostFogNative() and reports two VK fog draws. Never
+    // crashes. Defined in gos_postprocess.cpp under the
     // same #ifdef; the neutral context values already match the subgraph's
     // EXACT uploads (both pull from the same members).
     bool  runFogRegionVulkanBackend(const RenderCore::PostprocessFogRegionContext& ctx,
                                      RenderCore::RegionOutput* out);
-    struct VulkanPostprocessSubgraph;   // defined in vulkan_postprocess_subgraph.cpp
-    VulkanPostprocessSubgraph* vkPostprocessSubgraph_ = nullptr;
+
+    // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
+    // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling
+    // the SHARED scene depth and blending into the SHARED scene color0 IN PLACE —
+    // zero copies, zero CPU readbacks, no private device (supersedes the subgraph
+    // when its gate is on; highest precedence at the fog site). Gate
+    // MC2_VK_POST_FOG_NATIVE (envTriState opt-in, default-OFF). runVkPostFogNative()
+    // returns true only when BOTH fogs rendered via VK (caller skips BOTH GL sites);
+    // any not-ready condition returns false -> unchanged subgraph/island/GL chain.
+    // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
+    // GBuffer it borrows is rebuilt) and destroy(). Defined in
+    // vulkan_post_fog_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    bool  vkPostFogNativeEnabled();
+    bool  runVkPostFogNative();
+    void  destroyVkPostFogNative();
+    struct VkPostFogNative;             // defined in vulkan_post_fog_native.cpp
+    VkPostFogNative* vkPostFogNative_ = nullptr;
+
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2, .claude/VK-RUNG8-LADDER-1.md): SSAO
+    // (gen + apply) rendered NATIVELY on the shared engine VulkanContext, sampling
+    // the SHARED scene depth + normal into a VK-OWNED half-res R16F occlusion image
+    // and MULTIPLYING into the SHARED scene color0 IN PLACE — zero copies, zero CPU
+    // readbacks, no private device (retires the old SSAO island's readback pattern
+    // when its gate is on; highest precedence at the SSAO site). Gate MC2_VK_POST_SSAO
+    // (envTriState opt-in, default-OFF; the rung-8 ladder's prescribed name).
+    // runVkPostSsaoNative() returns true only when both passes rendered via VK
+    // (caller skips the GL SSAO site); any not-ready condition (incl. ssaoDebug_!=0,
+    // an unported diagnostic mode) returns false -> unchanged region-iface/GL chain.
+    // destroyVkPostSsaoNative(): torn down from destroyFBOs() (resize; the shared
+    // GBuffer + GL half-res sizing it mirrors are rebuilt) and destroy(). Defined in
+    // vulkan_post_ssao_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    bool  vkPostSsaoNativeEnabled();
+    bool  runVkPostSsaoNative();
+    void  destroyVkPostSsaoNative();
+    struct VkPostSsaoNative;            // defined in vulkan_post_ssao_native.cpp
+    VkPostSsaoNative* vkPostSsaoNative_ = nullptr;
+
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3, .claude/VK-RUNG8-LADDER-1.md):
+    // cloud-shadow + shoreline-foam rendered NATIVELY on the shared engine
+    // VulkanContext (one render pass / one submit, adjacent GL passes), sampling
+    // the SHARED scene depth (cloud) + normal (shoreline) and MULTIPLYING into
+    // the SHARED scene color0 IN PLACE -- zero copies, zero CPU readbacks, no
+    // private device. Screen-shadow is NOT ported (its CSM cascade array has no
+    // zero-copy VK producer until ladder rung 2 -- see the TU header). Gate
+    // MC2_VK_POST_SCREENFX (envTriState opt-in, default-OFF) + per-pass bisect
+    // sub-gates MC2_VK_POST_SCREENFX_CLOUD / _SHORELINE (explicit 0 forces that
+    // pass to GL). runVkPostScreenFxNative() returns a bitmask (bit0=cloud,
+    // bit1=shoreline rendered via VK) -- the caller skips EXACTLY those GL pass
+    // bodies; 0 -> the unchanged GL chain runs (fail-soft).
+    // destroyVkPostScreenFxNative(): torn down from destroyFBOs() (resize; the
+    // shared GBuffer it borrows is rebuilt) and destroy(). Defined in
+    // vulkan_post_screenfx_native.cpp (same #ifdef MC2_VULKAN_ISLAND discipline).
+    bool      vkPostScreenFxNativeEnabled();
+    bool      runVkPostScreenShadowStaticNative();
+    unsigned  runVkPostScreenFxNative();
+    void      destroyVkPostScreenFxNative();
+    struct VkPostScreenFx;              // defined in vulkan_post_screenfx_native.cpp
+    VkPostScreenFx* vkPostScreenFx_ = nullptr;
+
+    // VK-POST-HZB-NATIVE-1 (rung 8.4, .claude/VK-RUNG8-LADDER-1.md): the HZB
+    // pyramid rendered NATIVELY on the shared engine VulkanContext, sampling the
+    // shared scene depth directly and writing one separate R32F image per ceil
+    // ladder level -- zero glGetTexImage depth ingress, zero readback/glTexSubImage2D
+    // egress on the normal path. Highest precedence at the HZB site: when the gate
+    // is on, it runs before the old region-iface path; if not ready, the caller
+    // falls back to the unchanged GL runHzbReduce() body. MC2_HZB_PROBE forces
+    // the native path to decline so the GL pyramid stays coherent for the probe.
+    bool  vkPostHzbNativeEnabled();
+    bool  runVkPostHzbNative();
+    void  destroyVkPostHzbNative();
+    struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
+    VkPostHzbNative* vkPostHzbNative_ = nullptr;
+
+    // Retained region-interface entry points. The old private-device SSAO/HZB
+    // islands were retired after native rung-8 ports took ownership; these
+    // methods now delegate to the shared-engine native implementations.
+    bool  runSSAORegionVulkanBackend(const RenderCore::PostprocessSSAORegionContext& ctx,
+                                      RenderCore::RegionOutput* out);
+    bool  runHzbRegionVulkanBackend(const RenderCore::PostprocessHzbRegionContext& ctx,
+                                     RenderCore::RegionOutput* out);
+
+    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: Vulkan impl of the CompositePresent region.
+    // Drives the persistent mc2vk::VulkanPresentObject (own separate window) --
+    // NEVER the GL game window. Fail-soft: returns false on init/acquire failure
+    // (no crash). out->presented reflects a successful acquire+present.
+    bool  runCompositePresentRegionVulkanBackend(
+              const RenderCore::CompositePresentRegionContext& ctx,
+              RenderCore::RegionOutput* out);
 #endif
 
     // OOB-FOG-1: fullscreen fog over out-of-bounds far-plane pixels.
@@ -542,6 +677,8 @@ private:
     GLuint sceneFBO_;
     GLuint sceneColorTex_;
     GLuint sceneDepthTex_;
+    GLuint sceneGlProducerQuery_ = 0;
+    bool sceneGlProducerQueryActive_ = false;
     // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage
     // (GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX baked in via glTextureView,
     // so it can be sampled in the same draw as the depth-mode sceneDepthTex_
@@ -620,6 +757,7 @@ private:
     int savedViewport_[4];
     float staticLightSpaceMatrix_[16]; // world-fixed ortho, built once at map load
     bool staticLightMatrixBuilt_;      // true after light matrix is built (first frame)
+    uint64_t staticShadowGeneration_ = 0; // VK-SHADOW-COPY-ONCE-1: bumped each (re)build
     float mapHalfExtent_;              // half the map size in world units
     float waterElevation_ = 0.0f;     // sea-level world Z (Terrain::waterElevation)
 
@@ -627,6 +765,16 @@ private:
     GLuint dynShadowFBO_;
     GLuint dynShadowDepthTex_;
     GLuint dynShadowDummyColorTex_;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P8a SHADOW-INTEROP: when MC2_VK_SHADOW_INTEROP is ON and the VK shadow
+    // island produced the dynamic shadow map this frame, this holds the GL-imported
+    // view of the VK-produced D32 (compare-mode already set). getDynamicShadowTexture()
+    // returns it in place of dynShadowDepthTex_ so the four forward-shading consumers
+    // (terrain ×2, LOD-chunk, static-prop helper) sample the VK map via the UNCHANGED
+    // hardware sampler2DShadow calcShadow() path. 0 -> legacy GL texture (gate OFF /
+    // island declined). Set per-frame by txmmgr after the shadow island run.
+    GLuint dynShadowInteropTex_ = 0;
+#endif
     int dynShadowMapSize_;
     float dynamicLightSpaceMatrix_[16];
     glsl_program* shadowDebugProg_;

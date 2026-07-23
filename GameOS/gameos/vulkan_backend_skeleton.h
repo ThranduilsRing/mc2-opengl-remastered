@@ -100,6 +100,108 @@ bool mc2_vulkan_probe_edgefog_fixture(const char* spvDir);
 // compiled fog_oob .spv (build output).
 bool mc2_vulkan_probe_oobfog_fixture(const char* spvDir);
 
+// VK-REGION-SSAO-FIXTURE-1: headless shader-MATH oracle for the SSAO occlusion
+// Vulkan port (closes the VK-REGION-SSAO-1 acceptance debt). Runs the shipped
+// ssao.{vert,frag}.spv on a KNOWN synthetic depth+normal pair + exact-inverse
+// sheared viewProj/invViewProj (transpose-bug detector) and checks a CLASS-BASED
+// oracle: sky/flat-floor/wall pixel classes are provably rotation-independent
+// (the sin-hash TBN rotation is not CPU<->GPU bit-portable) and must be exactly
+// 1.0; the wall-adjacent band is checked against a closed AO envelope + a
+// GPU-and-CPU occlusion-liveness signal. R==G==B and A==1 structurally, 1/1024
+// FP16 tolerance. Fail-soft: any VkResult error -> log + return false. spvDir =
+// dir with the compiled ssao .spv (build output).
+bool mc2_vulkan_probe_ssao_fixture(const char* spvDir);
+
+// VK-REGION-HZB-1: headless BIT-TIGHT oracle for the HZB reduce-chain Vulkan
+// port. Runs the shipped hzb_reduce.{vert,frag}.spv over a KNOWN 64x64
+// synthetic reverse-Z depth pattern, builds the full 7-level ceil ladder
+// (separate R32F image per level, per-level B13 external-dependency barrier,
+// dynamic viewport -- exactly the island's shape), reads back EVERY level and
+// compares against a CPU min-reduce reference with tolerance 0: min() of
+// floats is bit-portable across compilers and pow2 dims make every sampling
+// computation exact in binary fractions (no ssao/fog transcendental caveat).
+// Fail-soft: any VkResult error -> log + return false. spvDir = dir with the
+// compiled hzb_reduce .spv (build output).
+bool mc2_vulkan_probe_hzb_fixture(const char* spvDir);
+
+// VK-COMPARE-SAMPLER-FIXTURE-1: headless depth-COMPARE sampler oracle. Creates a
+// small VK_FORMAT_D32_SFLOAT depth image with a KNOWN pattern and a VkSampler
+// with compareEnable=TRUE / compareOp=VK_COMPARE_OP_LESS, runs the shipped
+// compare_shadow.{vert,frag}.spv (texture(sampler2DShadow, vec3(uv,ref))) at
+// texel-center taps, reads the result back and compares against a CPU reference
+// computing the SAME hardware compare (ref < stored ? 1 : 0). NEAREST + texel
+// centers -> deterministic 0/1, tolerance 0 (bit-tight). This is the Vulkan
+// analog of GL sampler2DShadow / GL_COMPARE_REF_TO_TEXTURE that L7.2 Shadow
+// needs. Fail-soft: any VkResult error -> log + return false. spvDir = dir with
+// the compiled compare_shadow .spv (build output).
+bool mc2_vulkan_probe_comparesampler_fixture(const char* spvDir);
+
+// VK-COMPARE-SAMPLER-FIXTURE-1: headless CSM 2D_ARRAY depth-compare oracle.
+// Creates an N-layer VK_FORMAT_D32_SFLOAT 2D_ARRAY depth image (distinct pattern
+// per layer) + a sampler2DArrayShadow compare sampler, runs the shipped
+// csm_array_shadow.{vert,frag}.spv (per-texel cascade select +
+// texture(sampler2DArrayShadow, vec4(uv,layer,ref))), reads the result back and
+// compares against a per-layer CPU reference (ref < stored ? 1 : 0). Bit-tight
+// at texel centers, tolerance 0. This is the Vulkan analog of GL
+// sampler2DArrayShadow (calcDynamicShadow CSM path) that L7.3 Terrain needs.
+// Fail-soft. spvDir = dir with the compiled csm_array_shadow .spv.
+bool mc2_vulkan_probe_csmarray_fixture(const char* spvDir);
+
+// VK-REGION-SHADOW-1 (sub-slice A): reusable DEPTH-ONLY INSTANCED shadow-caster
+// pipeline (the WRITE side of the shadow path; comparesampler/csmarray proved the
+// READ side). Defined in vulkan_shadow_island.cpp (compiled ONLY under MC2_VULKAN,
+// additive island code -- does NOT touch the GL shadow producer). The pipeline has
+// NO color attachment, depthTestEnable+depthWriteEnable=TRUE, D32_SFLOAT depth
+// target, compareOp=LESS. Descriptor layout: set0 = per-frame view/cascade UBO,
+// set1 = instance ring bound STORAGE_BUFFER_DYNAMIC (per-instance transforms).
+// Vertex input = a single vec3 position stream (a unit quad, instanced). The
+// caller owns the render pass (single D32 vs N-layer CSM D32 array), images, and
+// buffers; this builds only the pipeline + its two set layouts. Fail-soft: returns
+// false + leaves *out zeroed on any error.
+struct Mc2VkShadowDepthPipeline {
+    VkPipeline            pipeline   = VK_NULL_HANDLE;
+    VkPipelineLayout      layout     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout frameSetLayout    = VK_NULL_HANDLE; // set0: UBO
+    VkDescriptorSetLayout instanceSetLayout = VK_NULL_HANDLE; // set1: STORAGE_BUFFER_DYNAMIC
+};
+
+// Builds the depth-only instanced pipeline into *out against `renderPass`
+// (subpass 0, depth-only). `vert`/`frag` are the compiled shadow_depth modules.
+// Fail-soft: returns false + leaves *out zeroed on any error.
+bool mc2_vulkan_build_shadow_depth_pipeline(VkDevice device, VkRenderPass renderPass,
+                                            VkShaderModule vert, VkShaderModule frag,
+                                            Mc2VkShadowDepthPipeline* out);
+
+// Destroys everything in *out and zeroes it. No-op on VK_NULL_HANDLE fields.
+void mc2_vulkan_destroy_shadow_depth_pipeline(VkDevice device, Mc2VkShadowDepthPipeline* p);
+
+// VK-REGION-SHADOW-1 (sub-slice A): headless shadow-depth-render FIXTURE. Drives
+// the depth-only instanced pipeline with SYNTHETIC instanced geometry (a handful of
+// full-viewport quads at KNOWN world transforms fed via a synthetic instance-ring
+// SSBO bound STORAGE_BUFFER_DYNAMIC) into (a) a single D32_SFLOAT shadow map and
+// (b) a 3-layer CSM D32_SFLOAT array (a distinct light-space matrix per layer),
+// reads back the depth and validates BIT-TIGHT against a CPU reference that
+// computes the same projected depth per instance (depth-test LESS + clear 1.0 ->
+// per-texel min over instances). Geometry/transforms are chosen so every projected
+// depth is exactly representable in binary -> tolerance 0. Fail-soft: any VkResult
+// error -> log + return false. spvDir = dir with the compiled shadow_depth .spv.
+bool mc2_vulkan_probe_shadowdepth_fixture(const char* spvDir);
+
+// WATER-MVP-ORACLE-1: headless clip-space oracle for the MC2 water fast-path VS.
+// Runs water_mvp.{vert,frag} on a set of KNOWN worldPos points through a std140
+// UBO pack of an ASYMMETRIC/sheared water MVP + the reverse-Z depth fudge, reads
+// back (clip.z, clip.w, depth, depth+fudge) from an R32G32B32A32_SFLOAT target,
+// and compares BIT-TIGHT (tolerance 0) against a CPU reference computing the SAME
+// GL water math (`projZ`: clip[r] = sum_c m[c*4+r]*P[c], then z += fudge*w). It
+// ALSO runs the WRONG convention (row_major pack = transpose of the same raw
+// bytes) and asserts it DIVERGES on the asymmetric matrix -- proving the fixture
+// is transpose-sensitive (LM1), not tautological. The CORRECT convention for the
+// real water port: pack the SAME 16 raw floats GL uploads (glUniformMatrix4fv
+// GL_FALSE) into a column_major (std140 default) mat4 and compute M*worldPos.
+// Fail-soft: any VkResult error -> log + return false. spvDir = dir with the
+// compiled water_mvp .spv.
+bool mc2_vulkan_probe_watermvp_fixture(const char* spvDir);
+
 // VK-BOOTSTRAP-INTEGRATE-1: Vulkan swapchain PROBE (create + query + destroy).
 // Uses vk-bootstrap's vkb::SwapchainBuilder against a bespoke devs[0] device and
 // a hidden 256x256 SDL Vulkan window/surface. Creates a swapchain, queries its
@@ -123,6 +225,19 @@ bool mc2_vulkan_probe_swapchain();
 // vulkan_swapchain_present.cpp (compiled only under MC2_VULKAN). spvDir = dir
 // holding the compiled fullscreen.*.spv.
 bool mc2_vulkan_probe_swapchain_present(const char* spvDir);
+
+// L6.6-COMPOSITE-PRESENT-SCAFFOLD: the CompositePresent TEST region's driver.
+// Stands up the PERSISTENT mc2vk::VulkanPresentObject, presents `frames` frames
+// (0 -> default 16) to its OWN separate Vulkan window, exercising a resize at the
+// midpoint -- proving the region->acquire->present->resize path + the per-image
+// render-semaphore discipline WITHOUT touching the GL game window. Fail-soft (no
+// crash). Optional out-params receive present-frame / resize / validation-error
+// tallies. Full game-window Vulkan present is BLOCKED on L7 interop (ledgered).
+// Defined in vulkan_swapchain_present.cpp (compiled only under MC2_VULKAN).
+bool mc2_vulkan_composite_present_scaffold(const char* spvDir, unsigned int frames,
+                                           unsigned int* presentFramesOut,
+                                           unsigned int* resizeCountOut,
+                                           unsigned int* validationErrorsOut);
 
 // Returns true if a VkInstance was created, at least one physical device was
 // enumerated, and the capability dump completed. Fail-soft: logs + returns

@@ -123,13 +123,10 @@ if(MC2_VULKAN)
     message(STATUS "MC2_VULKAN=ON -- Vulkan found: ${Vulkan_LIBRARY} (include ${Vulkan_INCLUDE_DIR})")
 endif()
 
-# VULKAN-EDGE-FOG-ISLAND-2a: first REAL Vulkan render work in the frame loop.
-# Compiles GameOS/gameos/vulkan_edge_fog_island.cpp INTO gameos (the main mc2
-# target), gated behind #ifdef MC2_VULKAN_ISLAND. Default OFF -> byte-identical
-# to the non-island build. Requires MC2_VULKAN=ON (volk + VMA + headers). The
-# island is off at runtime too unless MC2_VULKAN_EDGE_FOG_ISLAND=1; on lazy-init
-# failure it fails soft to the GL edge-fog path.
-option(MC2_VULKAN_ISLAND "Compile the Vulkan edge-fog island into gameos (VULKAN-EDGE-FOG-ISLAND-2a)" OFF)
+# MC2_VULKAN_ISLAND: compile Vulkan-owned render-region implementations into
+# gameos. Default OFF -> byte-identical non-island build. Requires MC2_VULKAN=ON
+# (volk + VMA + headers); each runtime path remains separately gated/fail-soft.
+option(MC2_VULKAN_ISLAND "Compile Vulkan-owned render regions into gameos" OFF)
 if(MC2_VULKAN_ISLAND AND NOT MC2_VULKAN)
     message(FATAL_ERROR "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON (volk/VMA/Vulkan headers).")
 endif()
@@ -151,6 +148,11 @@ if(MC2_VULKAN)
         GameOS/gameos/vulkan_swapchain_probe.cpp
         # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path.
         GameOS/gameos/vulkan_swapchain_present.cpp
+        # L6.6-COMPOSITE-PRESENT-SCAFFOLD: persistent present object (extracted).
+        GameOS/gameos/vulkan_present_object.cpp
+        # VK-REGION-SHADOW-1: depth-only instanced shadow-caster pipeline (island;
+        # additive, probe-only -- does NOT touch the GL shadow producer).
+        GameOS/gameos/vulkan_shadow_island.cpp
         3rdparty/vk_bootstrap/VkBootstrap.cpp
         # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU.
         GameOS/gameos/vma_impl.cpp
@@ -575,6 +577,23 @@ if(MC2_VULKAN_ISLAND)
     target_compile_definitions(renderworld PRIVATE MC2_VULKAN_ISLAND)
     target_compile_definitions(gameadapters PRIVATE MC2_VULKAN_ISLAND)
     target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN_ISLAND)
+endif()
+
+# VK-P13-SELECTOR-1 / T2: gameosmain.cpp (in the gameos_main target) includes
+# vulkan_context.h under #ifdef MC2_VULKAN to birth the shared engine VK device
+# at engine init. gameos_main gets MC2_VULKAN + the volk/Vulkan-headers include
+# path so that #ifdef is active and <volk.h> resolves. Guarded on MC2_VULKAN so
+# the GL-only build (option OFF) is byte-identical (the block never runs -> the
+# =vulkan selector fail-softs to GL via the #else path in gameosmain.cpp).
+if(MC2_VULKAN)
+    target_compile_definitions(gameos_main PRIVATE MC2_VULKAN)
+    target_compile_definitions(gui_runtime PRIVATE MC2_VULKAN)
+    target_include_directories(gameos_main PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+        ${Vulkan_INCLUDE_DIR})
+    target_include_directories(gui_runtime PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
+        ${Vulkan_INCLUDE_DIR})
 endif()
 target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL renderworld gameadapters editorbridge imgui gui_runtime)
 

@@ -5,7 +5,7 @@
 
 // HZB camera-view dump: thin C helper defined in code/gamecam.cpp so we don't
 // have to pull the full camera.h -> terrain.h chain into GuiRuntime.
-extern "C" void mc2_hzb_dump_camera_view(void);
+extern "C" int mc2_hzb_dump_camera_view(void);
 // Bookmark-schema camera save (BOOKMARK-SAVE-BUTTON-1): same thin-C pattern.
 extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen);
 #include "../GameOS/gameos/debug_renderer.h"  // IMG-INSPECT-3
@@ -477,6 +477,7 @@ void EditorInspector::drawImGui() {
     {
         static bool s_hzbSaved = false;
         static char s_bookmarkPath[512] = {0};
+        static bool s_hzbFailed = false;
         ImGui::Spacing();
         // Primary: bookmark-schema JSON save (BOOKMARK-SAVE-BUTTON-1).
         // Directory = MC2_BOOKMARK_SAVE_DIR or ./saved_bookmarks; the file is
@@ -489,12 +490,20 @@ void EditorInspector::drawImGui() {
         }
         // Secondary: legacy HZB text dump (MC2_HZB_VIEW_FILE replay format).
         if (ImGui::Button("Save Camera View (HZB)")) {
-            mc2_hzb_dump_camera_view();
-            s_hzbSaved = true;
+            if (mc2_hzb_dump_camera_view() == 1) {
+                s_hzbSaved = true;
+                s_hzbFailed = false;
+            } else {
+                s_hzbSaved = false;
+                s_hzbFailed = true;
+            }
         }
         if (s_hzbSaved) {
             ImGui::SameLine();
             ImGui::TextDisabled("saved!");
+        } else if (s_hzbFailed) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "save FAILED (see stderr / path)");
         }
         ImGui::Spacing();
     }

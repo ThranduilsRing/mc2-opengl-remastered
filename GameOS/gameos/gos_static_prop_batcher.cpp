@@ -43,6 +43,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 
 // Global runtime toggle for the GPU static-prop renderer. Defined here
 // (in the gameos lib) so every consumer — mc2.exe, aseconv, other data
@@ -420,6 +421,12 @@ constexpr uint32_t BASE_INSTANCE_SSBO_BINDING     = 16u;
 // Immutable per-map geometry.
 GLuint s_sharedVbo = 0;
 GLuint s_sharedIbo = 0;
+// VK-P8a SHADOW-INTEROP: byte sizes of the shared immutable VBO/IBO, captured at
+// finalize BEFORE the CPU staging vectors are freed (line ~2532). The Vulkan shadow
+// island reads these + the GL handles to copy the caster geometry ONCE per map
+// (the CPU staging is gone by then). 0 until finalized / after unmap.
+uint64_t s_sharedVboBytes = 0;
+uint64_t s_sharedIboBytes = 0;
 GLuint s_sharedVao = 0;
 
 // Slice 2 (object-offload) — Stage 2.C.2: per-type hot-color SSBO.
@@ -442,8 +449,9 @@ static GLuint s_staticBldgShadowSsbo = 0;
 // CASTERS (DEFAULT ON) inside the always-on dynamic shadow pass, so it is created on the
 // stock run. Narrowed behind a GpuBufferOwner identity record; every gen/bind/bufferData/
 // bindbase/delete site reaches the raw handle ONLY via s_dynamicPropShadowSsbo (the
-// #define below aliases the bare name to owner.glName -> zero site churn). Same GL args/
-// slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
+// #define below aliases the bare name to a READ-ONLY GLuint view of owner.backendHandle
+// -> zero site churn; writes go through the owner field via a GLuint local, L6.1). Same
+// GL args/slot/flags/order. Mission lifetime: rebuilt per frame but freed on onMapUnload;
 // registered at create (bufferData), invalidated on destroy.
 // The sibling buffers in gap B#5 are DEFERRED to the exclusion ledger (created only under
 // default-OFF gates): s_staticBldgShadowSsbo (MC2_STATIC_PROP_BUILDING_SHADOW, default
@@ -455,7 +463,7 @@ static RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
     RenderCore::RenderResourceLifetime::Mission,
     "DynamicPropShadowSsbo",
     0u};
-#define s_dynamicPropShadowSsbo (s_dynamicPropShadowOwner.glName)
+#define s_dynamicPropShadowSsbo (static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle))
 // typeIDs drawn into the static building shadow map. When the static building
 // shadow is active, flushShadow(skipStaticBuildingTypes=true) skips these in the
 // DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
@@ -464,6 +472,21 @@ static std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 // Per-frame persistent-mapped rings.
 GLuint   s_instanceSsbo = 0;
 GLuint   s_colorSsbo    = 0;
+// VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two ring
+// SSBOs. The raw GLuint globals above are UNCHANGED so every gen/bind/map/delete site
+// keeps its exact GL args/order; the owner's backendHandle is written from the freshly
+// gen'd handle (pattern (b), mirrors view_uniforms). Registered at create, invalidated
+// on destroy (grow-realloc). Lifetime Persistent: persistent-mapped ring, realloc-on-grow.
+static RenderCore::GpuBufferOwner s_instanceSsboOwner{
+    RenderCore::RenderResourceId::StaticPropInstanceRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "StaticPropInstanceRingSsbo",
+    0u};
+static RenderCore::GpuBufferOwner s_colorSsboOwner{
+    RenderCore::RenderResourceId::StaticPropColorRingSsbo,
+    RenderCore::RenderResourceLifetime::Persistent,
+    "StaticPropColorRingSsbo",
+    0u};
 void*    s_instanceMap  = nullptr;
 void*    s_colorMap     = nullptr;
 GLsync   s_fence[RING_FRAMES] = {0};
@@ -802,6 +825,21 @@ static std::vector<StaticPropMaterialInventoryEntry> s_materialInventory;
 // Copied from layerForPacket[] in finalizeGeometry() before that local is discarded.
 // Valid until next finalizeGeometry() or onMapUnload(). -1 for unavailable packets.
 static std::vector<int32_t> s_packetTexArrayLayer;
+// FENCE-UVSCALE-1: per-packet uvScaleX/Y sidecar, same indexing/lifetime as
+// s_packetTexArrayLayer above. Copied from uvScaleXByPacket/uvScaleYByPacket
+// in finalizeGeometry() (already computed there for the GL PerDrawEntry path,
+// gos_static_prop_batcher.h uvScaleX/Y) so the VK color-prop island can sample
+// the same texture sub-region GL does instead of assuming 1.0 (ADJUDICATION-1
+// FOLLOW-UP fence residual: narrow/gapped panels vs GL's continuous ribbon).
+static std::vector<float> s_packetUvScaleX;
+static std::vector<float> s_packetUvScaleY;
+// VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer + alpha-class,
+// persisted for mc2_color_prop_island_get_material_feed (the VK island copy-once
+// imports s_texArrayOff and samples at typeAlbedoLayer[typeID]). Populated in
+// finalizeGeometry() from layerForType[] + s_types[t].alphaClass; cleared in
+// onMapUnload(). -1 = type has no alpha-OFF albedo texture.
+static std::vector<int32_t> s_typeAlbedoLayer;
+static std::vector<int32_t> s_typeAlphaClass;
 // v2.1: per-type instance count snapshot from the most recent flush().
 // Keyed by typeID. Cleared in onMapUnload().
 // Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
@@ -810,7 +848,7 @@ static std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 // STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (binding 5),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime + debug
 // name + GLuint value). GL calls happen at the same sites with the same
-// args/order/flags/slot; the raw handle is reached only via owner.glName.
+// args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
 // Lifetime Mission: created in finalizeGeometry(), torn down on onMapUnload();
 // rebuilt per map. Registered at create (upload), invalidated on destroy.
 static RenderCore::GpuBufferOwner           s_materialGpuSsbo{
@@ -1627,8 +1665,19 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
             s_fence[i] = 0;
         }
     }
-    if (s_instanceSsbo) { glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr; }
-    if (s_colorSsbo)    { glDeleteBuffers(1, &s_colorSsbo);    s_colorSsbo    = 0; s_colorMap    = nullptr; }
+    // VK-SHADOW-RING-OWNER-1: invalidate owner record + registry slot on destroy.
+    if (s_instanceSsbo) {
+        glDeleteBuffers(1, &s_instanceSsbo); s_instanceSsbo = 0; s_instanceMap = nullptr;
+        s_instanceSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::StaticPropInstanceRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
+    if (s_colorSsbo) {
+        glDeleteBuffers(1, &s_colorSsbo); s_colorSsbo = 0; s_colorMap = nullptr;
+        s_colorSsboOwner.backendHandle = 0;
+        RenderCore::RenderResourceDesc invalid; invalid.id = RenderCore::RenderResourceId::StaticPropColorRingSsbo;
+        RenderCore::registerOrUpdateRenderResource(invalid);
+    }
 
     s_instanceCapacity = std::max(neededInstances,
         s_instanceCapacity ? s_instanceCapacity * 2 : INITIAL_INSTANCES_PER_FRAME);
@@ -1654,8 +1703,9 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
     const GLbitfield mapFlags     = storageFlags;
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_instanceSsbo);
+    s_instanceSsboOwner.backendHandle = s_instanceSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance)),
@@ -1663,9 +1713,23 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     s_instanceMap = MC2_GL_MapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance)),
                     mapFlags);
+    {
+        // VK-SHADOW-RING-OWNER-1: register the slot (observe-only metadata; never read by the draw path).
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_instanceSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_instanceSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_instanceSsboOwner.debugName;
+        d.glName    = s_instanceSsbo;
+        d.sizeBytes = static_cast<uint64_t>(RING_FRAMES * s_instanceCapacity * sizeof(GpuStaticPropInstance));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
-    // TIER2-EXCLUDED: ring
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_colorSsbo);
+    s_colorSsboOwner.backendHandle = s_colorSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_colorSsbo);
     glBufferStorage(GL_SHADER_STORAGE_BUFFER,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t)),
@@ -1673,6 +1737,18 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     s_colorMap = MC2_GL_MapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
                     static_cast<GLsizeiptr>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t)),
                     mapFlags);
+    {
+        RenderCore::RenderResourceDesc d;
+        d.id        = s_colorSsboOwner.id;
+        d.kind      = RenderCore::RenderResourceKind::Buffer;
+        d.lifetime  = s_colorSsboOwner.lifetime;
+        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+        d.debugName = s_colorSsboOwner.debugName;
+        d.glName    = s_colorSsbo;
+        d.sizeBytes = static_cast<uint64_t>(RING_FRAMES * s_colorCapacity * sizeof(uint32_t));
+        d.valid     = true;
+        RenderCore::registerOrUpdateRenderResource(d);
+    }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -2038,6 +2114,10 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_typeDescTable.clear();
     s_stagingVbo.clear();
     s_stagingIbo.clear();
+    s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
+    s_sharedIboBytes = 0;
+    s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
+    s_typeAlphaClass.clear();
     s_failedTypes.clear();
     s_geometryFinalized = false;
     s_fatalRegistrationFailure = false;
@@ -2101,6 +2181,8 @@ const char* ibl_sh_runtime_currentSetName() {
 void GpuStaticPropBatcher::onMapUnload() {
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
     s_packetTexArrayLayer.clear();  // v2: sidecar is per-map; clear on unload
+    s_packetUvScaleX.clear();  // FENCE-UVSCALE-1: sidecar is per-map; clear on unload
+    s_packetUvScaleY.clear();
     s_typeInstanceCountPrevFrame.clear(); // v2.1: per-map; clear on unload
     s_typeDescTable.clear();        // v0: cross-seam mirror is per-map
     if (s_sharedVbo) { glDeleteBuffers(1, &s_sharedVbo); s_sharedVbo = 0; }
@@ -2112,8 +2194,8 @@ void GpuStaticPropBatcher::onMapUnload() {
     // SHADOW-STATIC-BUILDINGS-2: per-map one-shot building shadow SSBO.
     if (s_staticBldgShadowSsbo) { glDeleteBuffers(1, &s_staticBldgShadowSsbo); s_staticBldgShadowSsbo = 0; }
     if (s_dynamicPropShadowSsbo) {
-        GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.glName);
-        glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowSsbo = 0;
+        GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
+        glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowOwner.backendHandle = 0;
         // SCENE-SSBO-OWNER-SWEEP-1: mark the registry slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id    = RenderCore::RenderResourceId::DynamicPropShadowSsbo;
@@ -2206,7 +2288,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     if (s_cmdToBucketSsbo)  { glDeleteBuffers(1,  &s_cmdToBucketSsbo);  s_cmdToBucketSsbo  = 0; }
     // MaterialGpu-2 teardown: runs regardless of gate state (defensive).
     // When gate is OFF, s_materialGpuSsbo == 0 and the if-block is skipped entirely.
-    if (s_materialGpuSsbo.glName != 0) {
+    if (s_materialGpuSsbo.backendHandle != 0) {
         const size_t byteSize =
             s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
         char buf[96];
@@ -2214,9 +2296,9 @@ void GpuStaticPropBatcher::onMapUnload() {
                       "[MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\n",
                       s_materialGpuTable.size(), byteSize);
         std::fputs(buf, stderr);
-        GLuint local = static_cast<GLuint>(s_materialGpuSsbo.glName);
+        GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
         glDeleteBuffers(1, &local);
-        s_materialGpuSsbo.glName = 0;
+        s_materialGpuSsbo.backendHandle = 0;
 
         // STATICPROP-MATERIAL-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
@@ -2539,6 +2621,12 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                         0);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
+
+    // VK-P8a SHADOW-INTEROP: capture the shared VBO/IBO byte sizes BEFORE the CPU
+    // staging is freed, so the Vulkan shadow island can pull the geometry from the
+    // GL buffers (glGetBufferSubData) once per map.
+    s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
+    s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
 
     // Free CPU staging.
     s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
@@ -3320,7 +3408,12 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 auto it = glTexIdToLayer.find(glTexId);
                 if (it != glTexIdToLayer.end()) {
                     layerForPacket[globalPktIdx] = it->second;
-                    if (pIdx == 0) layerForType[typeID] = it->second;
+                    // VK-P11 MATERIAL FIX: FIRST-VALID-LAYER-WINS (was pIdx==0 only).
+                    // A multi-packet type whose packet 0 hit the no-dims skip left
+                    // layerForType==-1 (the "no_primary" teal bucket) even though a
+                    // later packet had a valid layer. Record the first VALID (>=0)
+                    // layer so the VK material feed textures the type.
+                    if (layerForType[typeID] < 0) layerForType[typeID] = it->second;
                     packetsInGroup.emplace_back(globalPktIdx, it->second);
                     continue;
                 }
@@ -3382,7 +3475,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 // layer exists yet in this group, fall through to the skip.
                 if (type.isOverride && !uniques.empty()) {
                     layerForPacket[globalPktIdx] = 0;
-                    if (pIdx == 0) layerForType[typeID] = 0;
+                    if (layerForType[typeID] < 0) layerForType[typeID] = 0; // VK-P11: first-valid wins
                     packetsInGroup.emplace_back(globalPktIdx, 0);
                     if (getenv("MC2_MODOVERRIDE_TRACE")) {
                         std::fprintf(stderr, "[SEAMPROBE] OVERRIDE_ROUTE type=%u pkt=%u "
@@ -3415,7 +3508,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             uniques.push_back({glTexId, W, H, nodeIdx});
             glTexIdToLayer[glTexId] = layer;
             layerForPacket[globalPktIdx] = layer;
-            if (pIdx == 0) layerForType[typeID] = layer;
+            if (layerForType[typeID] < 0) layerForType[typeID] = layer; // VK-P11: first-valid wins
             packetsInGroup.emplace_back(globalPktIdx, layer);
             } // end per-packet loop
         }
@@ -3842,6 +3935,22 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // layerForPacket is fully populated here; the PerDrawEntry loop below reads
     // but does not modify it. -1 entries = packets with unavailable textures.
     s_packetTexArrayLayer.assign(layerForPacket.begin(), layerForPacket.end());
+    // FENCE-UVSCALE-1: uvScaleXByPacket/uvScaleYByPacket are fully populated by
+    // the per-group loop above (same "packetsInGroup" pass that fills
+    // layerForPacket) -- persist alongside the layer sidecar for the VK feed.
+    s_packetUvScaleX.assign(uvScaleXByPacket.begin(), uvScaleXByPacket.end());
+    s_packetUvScaleY.assign(uvScaleYByPacket.begin(), uvScaleYByPacket.end());
+
+    // VK-P11 STATIC-PROP MATERIAL: persist per-type group-relative albedo layer +
+    // alpha-class for the VK color island's copy-once material feed. layerForType[]
+    // is fully populated above (group-relative layer into s_texArrayOff/On); the
+    // island only textures alpha-OFF (class 0) types from s_texArrayOff, so we keep
+    // the raw group-relative layer and the class side-by-side. Compiled always (cheap
+    // pair of vector copies); read only when MC2_VK_PROP_MATERIAL is armed.
+    s_typeAlbedoLayer.assign(layerForType.begin(), layerForType.end());
+    s_typeAlphaClass.assign(s_types.size(), 0);
+    for (size_t t = 0; t < s_types.size(); ++t)
+        s_typeAlphaClass[t] = static_cast<int32_t>(s_types[t].alphaClass);
 
     // 2026-05-11 per-packet rework: build s_sortedPacketOrder, s_alphaOff/OnCmdCount,
     // s_perDrawSsbo (one entry per packet in sorted order), and s_cmdToBucketSsbo
@@ -4043,18 +4152,18 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 // Idempotent: delete any buffer from a prior finalizeGeometry call.
                 // finalizeGeometry() should be once-per-map, but defensive cleanup
                 // prevents leaks if it is ever called again (partial reinit, hot-reload, etc.).
-                if (s_materialGpuSsbo.glName != 0) {
-                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.glName);
+                if (s_materialGpuSsbo.backendHandle != 0) {
+                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
                     glDeleteBuffers(1, &local);
-                    s_materialGpuSsbo.glName = 0;
+                    s_materialGpuSsbo.backendHandle = 0;
                 }
                 while (glGetError() != GL_NO_ERROR) {}  // drain stale BEFORE operation
                 {
                     GLuint local = 0;
                     glGenBuffers(1, &local);
-                    s_materialGpuSsbo.glName = static_cast<uint32_t>(local);
+                    s_materialGpuSsbo.backendHandle = static_cast<uint32_t>(local);
                 }
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_materialGpuSsbo.glName));
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
                 MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
                              static_cast<GLsizeiptr>(byteSize),
                              s_materialGpuTable.data(),
@@ -4068,11 +4177,11 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                                   uploadErr);
                     std::fputs(buf, stderr);
                     // Delete the corrupt/incomplete buffer so s_materialGpuSsbo returns to 0.
-                    // sampleOn checks s_materialGpuSsbo.glName != 0, so this guarantees sampling is
+                    // sampleOn checks s_materialGpuSsbo.backendHandle != 0, so this guarantees sampling is
                     // disabled without needing a separate s_materialGpuSidecarValid invalidation.
-                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.glName);
+                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
                     glDeleteBuffers(1, &local);
-                    s_materialGpuSsbo.glName = 0;
+                    s_materialGpuSsbo.backendHandle = 0;
 
                     // STATICPROP-MATERIAL-SSBO-OWNER-1: corrupt buffer dropped — keep slot unregistered.
                     RenderCore::RenderResourceDesc invalid;
@@ -4089,7 +4198,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                     d.lifetime  = s_materialGpuSsbo.lifetime;
                     d.format    = RenderCore::RenderResourceFormat::BufferRaw;
                     d.debugName = s_materialGpuSsbo.debugName;
-                    d.glName    = s_materialGpuSsbo.glName;
+                    d.glName    = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
                     d.sizeBytes = static_cast<uint64_t>(byteSize);
                     d.valid     = true;
                     RenderCore::registerOrUpdateRenderResource(d);
@@ -5426,11 +5535,11 @@ static bool flushDepthPrepassV6(
     // computation (flush() ~line 5598-5621) on THIS program so the alpha-test UV →
     // tex_color.a → discard decision is byte-identical. sampleOn replicates the
     // color pass's five-condition gate verbatim (incl. s_materialGpuSidecarValid).
-    if (s_materialGpuEnabled && s_materialGpuSsbo.glName != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.glName));
+    if (s_materialGpuEnabled && s_materialGpuSsbo.backendHandle != 0)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
     const bool depthSampleOn = s_materialGpuEnabled
                             && s_materialGpuSampleEnabled
-                            && s_materialGpuSsbo.glName != 0
+                            && s_materialGpuSsbo.backendHandle != 0
                             && s_materialGpuSidecarValid
                             && s_locsDepthCoalesce.materialGpuSample >= 0;
     if (s_locsDepthCoalesce.materialGpuSample >= 0)
@@ -6253,9 +6362,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // The terrain pass uses slot 5 for WaterRecipeBuf in a different GL program —
         // that is not a conflict (terrain re-binds WaterRecipeBuf before its own draw).
         // prevSsbo5 is saved at flush() entry and restored at flush() exit.
-        if (s_materialGpuEnabled && s_materialGpuSsbo.glName != 0) {
+        if (s_materialGpuEnabled && s_materialGpuSsbo.backendHandle != 0) {
             while (glGetError() != GL_NO_ERROR) {}  // drain stale before bind check
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.glName));
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
             const GLenum bindErr = glGetError();
             if (bindErr != GL_NO_ERROR) {
                 char buf[96];
@@ -6271,7 +6380,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // When sampleOn=0, static_prop.frag falls back to texArrayLayer (no pixel change).
         const bool sampleOn = s_materialGpuEnabled
                            && s_materialGpuSampleEnabled
-                           && s_materialGpuSsbo.glName != 0
+                           && s_materialGpuSsbo.backendHandle != 0
                            && s_materialGpuSidecarValid
                            && s_locsCoalesce.materialGpuSample >= 0;
 
@@ -6312,7 +6421,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             const char* reason = "ok";
             if (!s_materialGpuEnabled)                    reason = "upload_env_off";
             else if (!s_materialGpuSampleEnabled)          reason = "sample_env_off";
-            else if (s_materialGpuSsbo.glName == 0)        reason = "no_ssbo";
+            else if (s_materialGpuSsbo.backendHandle == 0)        reason = "no_ssbo";
             else if (!s_materialGpuSidecarValid)           reason = "sidecar_invalid";
             else if (s_locsCoalesce.materialGpuSample < 0) reason = "uniform_missing";
             // else: reason == "ok" -> sampleOn is true (all 5 conditions met)
@@ -8223,7 +8332,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     if (s_dynamicPropShadowSsbo == 0) {
         GLuint dynShadowGen = 0;
         glGenBuffers(1, &dynShadowGen);
-        s_dynamicPropShadowOwner.glName = dynShadowGen;
+        s_dynamicPropShadowOwner.backendHandle = dynShadowGen;
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_dynamicPropShadowSsbo);
     // GPU-UPDATE-BUFFER-COUNTER-1: per-frame transient shadow SSBO orphan-on-write.
@@ -8243,7 +8352,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
         d.lifetime  = s_dynamicPropShadowOwner.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_dynamicPropShadowOwner.debugName;
-        d.glName    = s_dynamicPropShadowOwner.glName;
+        d.glName    = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(dynShadowBytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -8349,6 +8458,250 @@ extern "C" uint32_t gos_getStaticPropShadowTypesDrawn() {
 extern "C" uint32_t gos_getStaticPropShadowInstDrawn() {
     return (uint32_t)s_shadowInstDrawn;
 }
+
+// VK-P8a SHADOW-INTEROP: caster-geometry feed for the Vulkan shadow island. Exposes
+// the finalized shared VBO/IBO staging bytes + per-type packet ranges so the island
+// can copy them ONCE per map into VK-owned buffers (STEP 0 feed decision, fallback
+// (B): VK owns a copy). Read-only; buffers persist until onMapUnload() clears the
+// staging vectors. Returns false if geometry is not yet finalized.
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_shadow_island_live.h"
+extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
+    if (!out) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
+    // CPU staging is freed at finalize; the geometry lives only in the immutable GL
+    // buffers now, so require those + the captured byte sizes instead.
+    if (s_sharedVbo == 0 || s_sharedIbo == 0 ||
+        s_sharedVboBytes == 0 || s_sharedIboBytes == 0 || s_packets.empty()) return 0;
+
+    // Per-packet ranges (subset of GpuStaticPropPacket) + per-type packet spans.
+    // Rebuilt when the packet/type count changes (finalize is once per map).
+    static std::vector<Mc2ShadowPacket> s_feedPackets;
+    static std::vector<uint32_t>        s_feedTypeFirstPacket;
+    static std::vector<uint32_t>        s_feedTypePacketCount;
+    static size_t s_feedPacketGen = SIZE_MAX;
+    static size_t s_feedTypeGen   = SIZE_MAX;
+    if (s_feedPacketGen != s_packets.size()) {
+        s_feedPackets.resize(s_packets.size());
+        for (size_t i = 0; i < s_packets.size(); ++i) {
+            s_feedPackets[i].firstIndex = s_packets[i].firstIndex;
+            s_feedPackets[i].indexCount = s_packets[i].indexCount;
+            s_feedPackets[i].baseVertex = (uint32_t)s_packets[i].baseVertex;
+        }
+        s_feedPacketGen = s_packets.size();
+    }
+    if (s_feedTypeGen != s_types.size()) {
+        s_feedTypeFirstPacket.resize(s_types.size());
+        s_feedTypePacketCount.resize(s_types.size());
+        for (size_t t = 0; t < s_types.size(); ++t) {
+            s_feedTypeFirstPacket[t] = s_types[t].firstPacket;
+            s_feedTypePacketCount[t] = s_types[t].packetCount;
+        }
+        s_feedTypeGen = s_types.size();
+    }
+
+    out->glVbo           = s_sharedVbo;
+    out->vboBytes        = s_sharedVboBytes;
+    out->glIbo           = s_sharedIbo;
+    out->iboBytes        = s_sharedIboBytes;
+    out->vertexStride    = (uint32_t)kVertexStride;
+    out->packets         = s_feedPackets.data();
+    out->packetCount     = (uint32_t)s_feedPackets.size();
+    out->typeFirstPacket = s_feedTypeFirstPacket.data();
+    out->typePacketCount = s_feedTypePacketCount.data();
+    out->typeCount       = (uint32_t)s_types.size();
+    return 1;
+}
+
+// VK-P11 STATIC-PROP COLOR — flatten the full static-prop instance set into a single
+// GpuStaticPropInstance array grouped by typeID, and hand out the world->clip matrix
+// + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
+// GL flush() is skipped in that case).
+//
+// VK-PROP-COVERAGE FIX (source correction): originally this read s_bucketsByType.
+// That map is a per-FRAME accumulator whose ONLY per-frame clear lives inside
+// GpuStaticPropBatcher::flush() (line ~7661) — which is SKIPPED when the island owns
+// the frame. So s_bucketsByType was simultaneously (a) unbounded-accumulating across
+// island frames (measured on mc2_01: feed_total 968 -> 1.17M over ~10 frames as
+// reinjectPersistentStatic() re-appended the whole store every frame with nothing
+// clearing it), overflowing the island's instance/buffer capacity so only low-offset
+// building runs survived -> "props are building-only"; and (b) on frames where the
+// registry's frame-currency optimisation left it near-empty, feeding only 1-2 props.
+// Either way the buckets are the WRONG source for a "draw one frame's full prop set"
+// island that runs in place of flush().
+//
+// The AUTHORITATIVE, stable, all-population set is the persistent-static store
+// (s_persistentStaticStore) — the registry recipes for every registered static prop:
+// Buildings AND Trees AND Generic (all use the registry markVisible path; measured:
+// 733 trees eligible, all via the store, dyn-submit=0). It is population-agnostic and
+// is exactly what reinjectPersistentStatic() copies into the GL buckets each frame, so
+// feeding it directly gives the island the SAME prop set GL flush() draws — trees,
+// tents, misc props included — without the accumulation hazard. Read-only: does NOT
+// mutate any batcher state. Output is a reused static scratch vector.
+extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
+    if (!out) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
+    if (s_persistentStaticStore.empty()) return 0;
+
+    static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
+    s_colorFeedFlat.clear();
+
+    // Grouped by typeID for correct per-type geometry addressing (the island issues
+    // one type-run per contiguous typeID block via firstInstance). Deterministic
+    // ordering (ascending typeID) so the flattening is stable frame-to-frame.
+    std::vector<uint32_t> typeIds;
+    typeIds.reserve(s_persistentStaticStore.size());
+    for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
+    std::sort(typeIds.begin(), typeIds.end());
+    for (uint32_t tid : typeIds) {
+        auto it = s_persistentStaticStore.find(tid);
+        if (it == s_persistentStaticStore.end()) continue;
+        const std::vector<GpuStaticPropInstance>& insts = it->second;
+        s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
+    }
+    if (s_colorFeedFlat.empty()) return 0;
+
+    out->instances112 = s_colorFeedFlat.data();
+    out->count        = (uint32_t)s_colorFeedFlat.size();
+    const float* mvp = gos_GetObjectFixBMVPMat4();
+    if (mvp) std::memcpy(out->worldToClipGL, mvp, sizeof(out->worldToClipGL));
+    else     std::memset(out->worldToClipGL, 0, sizeof(out->worldToClipGL));
+    // OBJECT_DEPTH_BIAS mirror (shaders/include/terrain_depth_bias.hglsl:62).
+    out->objectDepthBias = 0.0001f;
+
+    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see
+    // vk_feed_dump.h). No-op unless MC2_VK_FEED_DUMP is set.
+    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("prop")) {
+        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            std::fprintf(f, "{\"island\":\"prop\",\"count\":%u,\"objectDepthBias\":%.6f,"
+                "\"instances\":[", out->count, out->objectDepthBias);
+            const GpuStaticPropInstance* insts =
+                reinterpret_cast<const GpuStaticPropInstance*>(out->instances112);
+            for (uint32_t i = 0; i < out->count; ++i) {
+                const GpuStaticPropInstance& gi = insts[i];
+                // Translation lives in row 3 of a row-major 4x4 (col-major layout:
+                // indices 12,13,14 are the last column == translation for either
+                // convention used consistently across the island's mirror).
+                std::fprintf(f, "%s{\"typeID\":%u,\"posX\":%.4f,\"posY\":%.4f,"
+                    "\"posZ\":%.4f,\"flags\":%u}",
+                    i ? "," : "", gi.typeID,
+                    gi.modelMatrix[12], gi.modelMatrix[13], gi.modelMatrix[14],
+                    gi.flags);
+            }
+            std::fprintf(f, "]}\n");
+            std::fclose(f);
+        }
+        mc2vkfeeddump::latch("prop") = true;
+    }
+    return 1;
+}
+
+// VK-P11 STATIC-PROP MATERIAL — expose the alpha-OFF albedo 2D_ARRAY + per-type
+// layer table so the color island can copy-once import it and sample real textures.
+// Read-only; buffers persist until onMapUnload(). Returns 0 (fail soft -> island
+// keeps flat teal) when geometry is not finalized, the alpha-OFF array is unbuilt,
+// or the group was BC7-bucketed (bucket-relative layers invalidate the single-array
+// import — materials for BC7 are a follow-on).
+extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out) {
+    if (!out) return 0;
+    if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
+    if (s_texArrayOff == 0) return 0;                 // alpha-OFF array not built
+    if (s_typeAlbedoLayer.empty() ||
+        s_typeAlbedoLayer.size() != s_types.size()) return 0;
+
+    out->glTexArrayOff   = s_texArrayOff;
+    // VK-P11 STATIC-PROP MATERIAL alpha-ON: expose the alpha-ON group array (0 if not
+    // built). typeAlbedoLayer[] already carries the group-relative layer for class-1
+    // types, so the island routes them into this array with the same layer table.
+    out->glTexArrayOn    = s_texArrayOn;
+    // BC7-bucketed: per-bucket sibling arrays with bucket-relative layers. The
+    // single-array (group-relative) import + layer table below do not describe that
+    // layout, so signal the island to fail soft (keep teal) rather than mis-sample.
+    out->bucketed        = s_bucketArrays.empty() ? 0u : 1u;
+    out->typeAlbedoLayer = s_typeAlbedoLayer.data();
+    out->typeAlphaClass  = s_typeAlphaClass.data();
+    out->typeCount       = (uint32_t)s_typeAlbedoLayer.size();
+    // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-packet layer (see header comment).
+    // s_packetTexArrayLayer is populated in finalizeGeometry() from the SAME
+    // per-packet, group-relative layerForPacket[] GL's coalesce PerDrawEntry table
+    // uses — it is the correct source, unlike the per-type "first-valid-wins" table.
+    out->packetAlbedoLayer = s_packetTexArrayLayer.empty() ? nullptr : s_packetTexArrayLayer.data();
+    out->packetCount       = (uint32_t)s_packetTexArrayLayer.size();
+    // FENCE-UVSCALE-1: same per-packet indexing as packetAlbedoLayer, populated
+    // in finalizeGeometry() from uvScaleXByPacket/uvScaleYByPacket (the same
+    // source PerDrawEntry.uvScaleX/Y draws from on the GL side). nullptr if the
+    // sidecar size mismatches packetAlbedoLayer's -- island falls back to 1.0.
+    out->packetUvScaleX = (s_packetUvScaleX.size() == s_packetTexArrayLayer.size())
+                              ? s_packetUvScaleX.data() : nullptr;
+    out->packetUvScaleY = (s_packetUvScaleY.size() == s_packetTexArrayLayer.size())
+                              ? s_packetUvScaleY.data() : nullptr;
+
+    // Terrain sun (MC2 world, surface->sun) — same vector the GL prop VS uses for the
+    // directional term (STATIC-PROP-TERRAIN-SUN-DIFFUSE). Provides computePBR's L.
+    extern void gos_GetTerrainLightDir(float*, float*, float*);
+    float tsx = 0.0f, tsy = 0.0f, tsz = 1.0f;
+    gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
+    out->terrainSunMC2[0] = tsx;
+    out->terrainSunMC2[1] = tsy;
+    out->terrainSunMC2[2] = tsz;
+
+    // VK-P11 MATERIAL DEBUG (temporary): one-shot INSTANCE-WEIGHTED layer histogram so
+    // we can SEE whether the VISIBLE prop types (high instance count) actually get a
+    // real albedo layer or fall to teal. Type-count alone hid that the big buildings
+    // were the no_primary bucket. Env-gated + one-shot (no hot-loop spam). REMOVE once
+    // the teal bug is confirmed fixed in-engine.
+    if (std::getenv("MC2_VK_PROP_MATERIAL_DEBUG")) {
+        static bool s_histLogged = false;
+        if (!s_histLogged) {
+            s_histLogged = true;
+            uint64_t instTextured = 0, instAlphaOn = 0, instNoPrimary = 0, instTotal = 0;
+            uint32_t tyTextured = 0, tyAlphaOn = 0, tyNoPrimary = 0;
+            for (size_t t = 0; t < s_typeAlbedoLayer.size(); ++t) {
+                const auto icIt = s_typeInstanceCountPrevFrame.find((uint32_t)t);
+                const uint64_t ic = (icIt != s_typeInstanceCountPrevFrame.end()) ? icIt->second : 0u;
+                instTotal += ic;
+                if (s_typeAlphaClass[t] == 1) { ++tyAlphaOn; instAlphaOn += ic; }
+                else if (s_typeAlbedoLayer[t] < 0) { ++tyNoPrimary; instNoPrimary += ic; }
+                else { ++tyTextured; instTextured += ic; }
+            }
+            std::fprintf(stderr,
+                "[GPUPROPS_HIST v2] types: textured=%u alpha_on=%u no_primary=%u | "
+                "instances: textured=%llu alpha_on=%llu no_primary=%llu total=%llu\n",
+                tyTextured, tyAlphaOn, tyNoPrimary,
+                (unsigned long long)instTextured, (unsigned long long)instAlphaOn,
+                (unsigned long long)instNoPrimary, (unsigned long long)instTotal);
+            std::fflush(stderr);
+        }
+    }
+    return 1;
+}
+
+// VK-PROP-AMBIENT-IBL-1: real ObjectLights ambient + IBL-SH feed. GL-owner accessors
+// (this runs in GL context, mirrors mc2_mech_island_get_frame_feed's setup at
+// gos_mech_batcher.cpp:2910-2915).
+extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) {
+    if (!out) return 0;
+    // VK-PROP-LIGHTFEED-NATIVE-1: native CPU feed (mech item-9 pattern, mirrors
+    // mc2_mech_island_get_frame_feed's lightDataCpu export) — the byte source of
+    // the GL SSBO upload. VK-PERF-2 cleanup deleted the GL SSBO name/size export
+    // with the audit-gated readback it existed for (clean audit banked).
+    out->lightDataCpu = nullptr;
+    out->lightDataCpuBytes = 0;
+    if (mcTextureManager) {
+        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
+        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    }
+    // s_currentShSet: the live per-mission SH-L2 set (RenderCore::IblShRegistry),
+    // same table the GL static-prop VS uniform upload uses (u_iblSh[9]).
+    std::memcpy(out->iblSh, s_currentShSet ? &s_currentShSet->coeffs[0][0]
+                                            : &RenderCore::kIblShCoeffs[0][0],
+                sizeof(out->iblSh));
+    // s_iblShEnabled: MC2_STATIC_PROP_IBL_SH=0 kill-switch (default-ON). Mirrors the
+    // GL per-frame upload rule exactly: env unset/1 -> g_iblShStrength; env=0 -> 0.0.
+    out->iblShStrength = s_iblShEnabled ? g_iblShStrength : 0.0f;
+    return 1;
+}
+#endif // MC2_VULKAN_ISLAND
 
 // ---------------------------------------------------------------------------
 // Slice 2, Stage 2.A — new method and free-function definitions

@@ -21,6 +21,12 @@
 #include <vector>
 #include <map>
 
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
+#include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#include "vk_feed_dump.h"            // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
+#endif
+
 // GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
 // draw owns its depth/blend/cull/mask/func via RAII guards (mc2gl::GlScoped*).
 // MC2_GLSTATEGUARD_TERRAIN=0 reverts to the legacy hand-rolled save/restore
@@ -311,9 +317,9 @@ namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 // live LOD-chunk terrain renderer) is narrowed behind a GpuBufferOwner identity
 // record (logical id + lifetime + debug name + GLuint value), mirroring the
 // type/cement siblings. GL calls happen at the same sites with the same
-// args/order/flags/slots; the raw handle is reached only via owner.glName.
+// args/order/flags/slots; the raw handle is reached only via owner.backendHandle.
 // Lifetime Mission: (re-)uploaded per mission load via glBufferData.
-static RenderCore::GpuBufferOwner s_heightSsbo{  // GL handle; glName 0 = not yet allocated
+static RenderCore::GpuBufferOwner s_heightSsbo{  // backend handle; 0 = not yet allocated
     RenderCore::RenderResourceId::TerrainHeightSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainHeightSsbo",
@@ -322,7 +328,7 @@ static RenderCore::GpuBufferOwner s_heightSsbo{  // GL handle; glName 0 = not ye
 // is narrowed behind a GpuBufferOwner identity record (logical id + lifetime +
 // debug name + GLuint value), mirroring the height/type/cement siblings. GL calls
 // happen at the same sites with the same args/order/flags/slot; the raw handle is
-// reached only via owner.glName. Lifetime Mission: uploaded per mission load via
+// reached only via owner.backendHandle. Lifetime Mission: uploaded per mission load via
 // glBufferData. CREATE is gated upstream (mclib/terrain.cpp: MC2_TERRAIN_VISUAL_HEIGHT
 // / _DISPLACE + a visual_height_4x.r32 bake) — when the gate is off / no bake ships,
 // the upload entry is never called, glName stays 0, and nothing registers
@@ -366,11 +372,37 @@ static bool s_visualDampHadMovers = false;       // skip redundant re-uploads
 // and logged once per submit alongside [TerrainLOD v1] so acceptance has hard
 // per-band numbers. Index = LOD level (0..5), same mapping as [TerrainLOD v1].
 static int s_visualDisplacedCounts[6] = {0, 0, 0, 0, 0, 0};
+#ifdef MC2_VULKAN_ISLAND
+static bool terrainGlFallbackAuditEnabled()
+{
+    static const bool on = (mc2vkgate::envTriState("MC2_VK_TERRAIN_GL_FALLBACK_AUDIT") == 1);
+    return on;
+}
+
+struct TerrainGlFallbackAudit {
+    int total = 0;
+    int captured = 0;
+    int glFallback = 0;
+    int inactive = 0;
+    int band = 0;
+    int displace = 0;
+    int edgeStitch = 0;   // patches that FELL to GL because of edge-stitch (now 0 by
+                          // construction: VK-TERRAIN-EDGE-STITCH-1 / commit 0aae0337
+                          // removed the edgeStitch[i]==0 capture-predicate exclusion,
+                          // so stitched patches are VK-captured, not GL-fallback).
+    int capturedStitched = 0; // of `captured`, how many carried a nonzero edgeStitch mask
+                              // -- direct proof stitched patches are VK-owned (>0 expected
+                              // on any map with LOD-band boundaries; the edgeStitch counter
+                              // above is the excluded twin and must stay 0).
+    int other = 0;
+    int skirtEdges = 0;
+};
+#endif
 // TERRAIN-LODCHUNK-SSBO-OWNER-1: the LOD-chunk type/cement SSBOs are no longer
 // bare GLuints. Each is narrowed behind a GpuBufferOwner identity record (logical
 // id + lifetime + debug name + GLuint value). GL calls still happen at the same
 // sites with the same args/order/flags/slots; the raw handle is reached only via
-// owner.glName. Lifetime Mission: (re-)uploaded per mission load via glBufferData.
+// owner.backendHandle. Lifetime Mission: (re-)uploaded per mission load via glBufferData.
 static RenderCore::GpuBufferOwner s_typeSsbo{   // Step 5b: per-vertex terrainType SSBO (binding 24)
     RenderCore::RenderResourceId::TerrainTypeSsbo,
     RenderCore::RenderResourceLifetime::Mission,
@@ -1047,15 +1079,15 @@ static GLuint s_patchVao = 0;
 
 void gos_TerrainLodChunk_Init()
 {
-    if (s_heightSsbo.glName != 0)
+    if (s_heightSsbo.backendHandle != 0)
         return; // idempotent
 
     {
         GLuint heightBuf = 0;
         glGenBuffers(1, &heightBuf);
-        s_heightSsbo.glName = static_cast<uint32_t>(heightBuf);
+        s_heightSsbo.backendHandle = static_cast<uint32_t>(heightBuf);
     }
-    if (s_heightSsbo.glName == 0)
+    if (s_heightSsbo.backendHandle == 0)
     {
         fprintf(stderr, "[TerrainLodChunk] glGenBuffers failed for height SSBO\n");
         fflush(stderr);
@@ -1065,8 +1097,8 @@ void gos_TerrainLodChunk_Init()
         GLuint typeBuf = 0, cementBuf = 0;
         glGenBuffers(1, &typeBuf);   // Step 5b: terrainType SSBO (concrete)
         glGenBuffers(1, &cementBuf); // Step 5c: cement word SSBO
-        s_typeSsbo.glName   = static_cast<uint32_t>(typeBuf);
-        s_cementSsbo.glName = static_cast<uint32_t>(cementBuf);
+        s_typeSsbo.backendHandle   = static_cast<uint32_t>(typeBuf);
+        s_cementSsbo.backendHandle = static_cast<uint32_t>(cementBuf);
     }
 
     // Shader program (Phase 4) — load unconditionally; SubmitDrawCommands gates
@@ -1315,11 +1347,11 @@ void gos_TerrainLodChunk_Destroy()
         s_shorelineMaskTex = 0;
     }
 
-    if (s_visualHeightSsbo.glName != 0)
+    if (s_visualHeightSsbo.backendHandle != 0)
     {
-        GLuint visualBuf = static_cast<GLuint>(s_visualHeightSsbo.glName);
+        GLuint visualBuf = static_cast<GLuint>(s_visualHeightSsbo.backendHandle);
         glDeleteBuffers(1, &visualBuf);
-        s_visualHeightSsbo.glName = 0;
+        s_visualHeightSsbo.backendHandle = 0;
         s_visualMipFloats = 0;   // TERRAIN-LOD-GEOMORPH-1
 
         // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: mark the slot unavailable on teardown.
@@ -1328,11 +1360,11 @@ void gos_TerrainLodChunk_Destroy()
         RenderCore::registerOrUpdateRenderResource(invalid);
     }
     // TERRAIN-REAUTH-UNPIN-1 Half B: free the damp SSBO + CPU copies on teardown.
-    if (s_visualDampSsbo.glName != 0)
+    if (s_visualDampSsbo.backendHandle != 0)
     {
-        GLuint dampBuf = static_cast<GLuint>(s_visualDampSsbo.glName);
+        GLuint dampBuf = static_cast<GLuint>(s_visualDampSsbo.backendHandle);
         glDeleteBuffers(1, &dampBuf);
-        s_visualDampSsbo.glName = 0;
+        s_visualDampSsbo.backendHandle = 0;
 
         RenderCore::RenderResourceDesc invalid;
         invalid.id = RenderCore::RenderResourceId::TerrainVisualDampSsbo;
@@ -1342,11 +1374,11 @@ void gos_TerrainLodChunk_Destroy()
     s_visualDampStatic.clear();
     s_visualDampCombined.clear();
     s_visualDampHadMovers = false;
-    if (s_heightSsbo.glName != 0)
+    if (s_heightSsbo.backendHandle != 0)
     {
-        GLuint heightBuf = static_cast<GLuint>(s_heightSsbo.glName);
+        GLuint heightBuf = static_cast<GLuint>(s_heightSsbo.backendHandle);
         glDeleteBuffers(1, &heightBuf);
-        s_heightSsbo.glName = 0;
+        s_heightSsbo.backendHandle = 0;
         s_mapSide    = 0;
         s_halfMap    = 0.0f;
 
@@ -1355,22 +1387,22 @@ void gos_TerrainLodChunk_Destroy()
         invalid.id = RenderCore::RenderResourceId::TerrainHeightSsbo;
         RenderCore::registerOrUpdateRenderResource(invalid);
     }
-    if (s_typeSsbo.glName != 0)
+    if (s_typeSsbo.backendHandle != 0)
     {
-        GLuint typeBuf = static_cast<GLuint>(s_typeSsbo.glName);
+        GLuint typeBuf = static_cast<GLuint>(s_typeSsbo.backendHandle);
         glDeleteBuffers(1, &typeBuf);
-        s_typeSsbo.glName = 0;
+        s_typeSsbo.backendHandle = 0;
 
         // TERRAIN-LODCHUNK-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id = RenderCore::RenderResourceId::TerrainTypeSsbo;
         RenderCore::registerOrUpdateRenderResource(invalid);
     }
-    if (s_cementSsbo.glName != 0)
+    if (s_cementSsbo.backendHandle != 0)
     {
-        GLuint cementBuf = static_cast<GLuint>(s_cementSsbo.glName);
+        GLuint cementBuf = static_cast<GLuint>(s_cementSsbo.backendHandle);
         glDeleteBuffers(1, &cementBuf);
-        s_cementSsbo.glName = 0;
+        s_cementSsbo.backendHandle = 0;
 
         // TERRAIN-LODCHUNK-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
@@ -1530,6 +1562,350 @@ static void mirrorTerrainPatchUniforms(GLuint src, GLuint dst) {
         glProgramUniform1f(dst, dloc, v);
     }
 }
+#ifdef MC2_VULKAN_ISLAND
+// ---------------------------------------------------------------------------
+// VK-P10 TERRAIN TIER-1 feed. When MC2_VK_TERRAIN_TIER1 (+ shared depth) is armed,
+// SubmitDrawCommands captures the LOD0 (lodStep==1) patch list + shared params into
+// this scratch, SKIPS the GL LOD0 main+skirt draws, and the VK terrain island
+// co-writes those patches into the shared scene GBuffer instead. Default-OFF ->
+// none of this runs -> the GL path draws every band exactly as before.
+// ---------------------------------------------------------------------------
+static uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
+static uint64_t g_terrainCementVersion = 0;  // bumps on UploadCementWordsFull
+static uint64_t g_terrainVisualHeightVersion = 0;  // bumps on UploadVisualHeightFull (rung 5)
+
+// VK-TERRAIN-VISUALDISPLACE-FAR-1: file-scope reads of the SAME env knobs the draw
+// path caches locally (MC2_TERRAIN_VISUAL_DISPLACE / _FAR at gos_terrain_lod_chunk.cpp
+// draw site) so the feed getter can report them without touching the draw statics.
+static bool terrainVisualDisplaceGateOn()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s_on;
+}
+static float terrainVisualDisplaceFarParam()
+{
+    static const float s_far = []() {
+        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_FAR");
+        if (!v || !v[0]) return 1.0f;
+        float f = (float)atof(v);
+        if (f < 0.0f) f = 0.0f;
+        if (f > 1.0f) f = 1.0f;
+        return f;
+    }();
+    return s_far;
+}
+static std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
+static float    s_vkTerrainMvp[16] = {0};
+static bool     s_vkTerrainFeedValid = false;
+
+extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
+{
+    if (!out) return 0;
+    if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
+    if (s_heightSsbo.backendHandle == 0 || s_mapSide <= 0) return 0;
+    out->patches    = s_vkTerrainPatches.data();
+    out->patchCount = (uint32_t)s_vkTerrainPatches.size();
+    std::memcpy(out->worldToClipGL, s_vkTerrainMvp, sizeof(out->worldToClipGL));
+    out->mapSide       = s_mapSide;
+    out->halfMap       = s_halfMap;
+    out->glHeightSsbo  = static_cast<uint32_t>(s_heightSsbo.backendHandle);
+    out->heightBytes   = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(float);
+    out->heightVersion = g_terrainHeightVersion;
+    // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
+    // island so it can copy-once import the colormap and sample the REAL base color.
+    out->glColormapTex          = static_cast<uint32_t>(gos_terrain_indirect_getAtlasGLTex());
+    out->atlasTopLeftX          = gos_terrain_indirect_getAtlasMapTopLeftX();
+    out->atlasTopLeftY          = gos_terrain_indirect_getAtlasMapTopLeftY();
+    out->atlasOneOverWorldUnits = gos_terrain_indirect_getAtlasOneOverWorldUnits();
+
+    // CEMENT/ROAD atlas sub-slice: hand the GL cement atlas + per-vertex cement-word
+    // SSBO + the cement uniforms the GL LOD-chunk frag reads. useCement mirrors the GL
+    // gate (gos_terrain_lod_chunk.cpp:1122-1124): atlas ready AND cement SSBO live.
+    const bool cementReady = gos_terrain_indirect_isCementAtlasReady();
+    const bool cementLive  = cementReady && s_cementSsbo.backendHandle != 0;
+    out->glCementAtlasTex   = static_cast<uint32_t>(gos_terrain_indirect_getCementAtlasGLTex());
+    out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
+    out->cementWUPT         = 128.0f;  // Terrain::worldUnitsPerVertex (GL uploads 128.0)
+    out->useCement          = cementLive ? 1 : 0;
+    out->useTransitionMask  = gos_terrain_indirect_isTransitionMaskReady() ? 1 : 0;
+    {
+        int diagOn = 0;
+        if (const char* e = getenv("MC2_TERRAIN_CEMENT_DIAG_CONNECT")) diagOn = (e[0] && e[0] != '0') ? 1 : 0;
+        out->cementDiagConnect = diagOn;
+    }
+    out->glCementSsbo       = static_cast<uint32_t>(s_cementSsbo.backendHandle);
+    out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
+    out->cementVersion      = g_terrainCementVersion;
+
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): hand the 4x visual-height bake SSBO +
+    // mode-2 params to the island. Armed ONLY when the sub-gate is on AND the GL displace
+    // gate is on AND the bake is loaded -- else all-zero (island honors visualMode=0 only,
+    // and the capture predicate below never emits mode-2 patches in that case anyway).
+    out->glVisualHeightSsbo  = 0;
+    out->visualHeightBytes   = 0;
+    out->visualHeightVersion = 0;
+    out->visualSide          = 0;
+    out->visualDisplaceFar   = 0.0f;
+    if (mc2_vk_terrain_visualdisplace_far_enabled() && terrainVisualDisplaceGateOn()
+        && s_visualHeightSsbo.backendHandle != 0 && s_visualSide > 0) {
+        out->glVisualHeightSsbo  = static_cast<uint32_t>(s_visualHeightSsbo.backendHandle);
+        out->visualHeightBytes   = (uint64_t)s_visualSide * (uint64_t)s_visualSide * sizeof(float);
+        out->visualHeightVersion = g_terrainVisualHeightVersion;
+        out->visualSide          = s_visualSide;
+        out->visualDisplaceFar   = terrainVisualDisplaceFarParam();
+    }
+
+    // VK-TERRAIN-LIGHTING sub-slice: hand the sun dir + the STATIC sun shadow map + the
+    // static light-space matrix to the island so the VK terrain frag can reproduce the GL
+    // NdotL relief band + baked static PCF shadow (terrain_lod_chunk.frag:889-928). Gate
+    // MC2_VK_TERRAIN_LIGHTING (default-off -> lightingEnabled=0 -> VK stays flat, byte-safe).
+    {
+        // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
+        // MC2_VK_TERRAIN_LIGHTING=0/1 overrides.
+        int lightingOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LIGHTING") ? 1 : 0;
+        out->lightingEnabled = lightingOn;
+        float lx = 0.f, ly = 0.f, lz = 1.f;
+        gos_GetTerrainLightDir(&lx, &ly, &lz);
+        out->terrainLightDir[0] = lx; out->terrainLightDir[1] = ly; out->terrainLightDir[2] = lz;
+        // Default: no shadow (lit-only) until the GL static shadow map is live.
+        out->shadowsEnabled     = 0;
+        out->glStaticShadowTex  = 0;
+        out->staticShadowSize   = 0;
+        out->staticShadowGeneration = 0;
+        out->shadowSoftness     = 2.5f;   // shadow.hglsl default
+        std::memset(out->staticLightSpaceMatrix, 0, sizeof(out->staticLightSpaceMatrix));
+        gosPostProcess* pp = getGosPostProcess();
+        if (lightingOn && pp && pp->shadowsEnabled_) {
+            const GLuint sTex = pp->getShadowTexture();
+            if (sTex != 0) {
+                out->shadowsEnabled    = 1;
+                out->glStaticShadowTex = static_cast<uint32_t>(sTex);
+                out->staticShadowSize  = 4096;   // gos_postprocess.cpp:5113 shadowMapSize_
+                out->staticShadowGeneration = gos_GetStaticShadowGeneration();
+                std::memcpy(out->staticLightSpaceMatrix, pp->getLightSpaceMatrix(),
+                            sizeof(out->staticLightSpaceMatrix));
+            }
+        }
+
+        // VK-TERRAIN-DYNSHADOW: the DYNAMIC (building/mech) shadow map. Mirrors the GL
+        // LOD-chunk enable gate (gos_terrain_lod_chunk.cpp:1120,1131): shadowsEnabled_
+        // && getDynamicShadowFBO(). Non-CSM legacy single-map path only (CSM array path
+        // deferred — matches the mechanism-proven shadow-compare spike). Copy source is
+        // the RAW engine GL texture so we never toggle compare-mode on a VK interop tex.
+        out->dynShadowsEnabled = 0;
+        out->glDynamicShadowTex = 0;
+        out->dynamicShadowSize = 0;
+        std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
+        // Umbrella member; requires lighting (its own precondition) + subGate.
+        int dynShadowGate = 0;
+        if (out->lightingEnabled)
+            dynShadowGate = mc2vkgate::subGate("MC2_VK_TERRAIN_DYNSHADOW") ? 1 : 0;
+        if (dynShadowGate && pp && pp->shadowsEnabled_ && pp->getDynamicShadowFBO()
+            && !mc2ShadowCsmEnabled()) {
+            const GLuint dTex = pp->getDynamicShadowTextureRaw();
+            const int    dSize = pp->getDynamicShadowMapSize();
+            if (dTex != 0 && dSize > 0) {
+                out->dynShadowsEnabled = 1;
+                out->glDynamicShadowTex = static_cast<uint32_t>(dTex);
+                out->dynamicShadowSize = dSize;
+                std::memcpy(out->dynamicLightSpaceMatrix, pp->getDynamicLightSpaceMatrix(),
+                            sizeof(out->dynamicLightSpaceMatrix));
+            }
+        }
+        // VK-FLIP-FIELD-REPORT-1 CSM SUBSET: when CSM IS enabled (launcher default), the
+        // single-map dyn path above is skipped (!mc2ShadowCsmEnabled), so VK terrain got
+        // NO object shadow up close. GL LOD0 terrain samples calcDynamicShadow's CSM
+        // cascades (near array + full-map catch-all). Full near-cascade-array interop is a
+        // large lift (sampler2DArrayShadow import + N matrices) and is DEFERRED. The
+        // BIGGEST-SAFE-SUBSET: feed the CSM FULL-MAP cascade (the last cascade — a single
+        // GL_TEXTURE_2D DEPTH_COMPONENT texture, byte-shape-identical to the single dyn map
+        // this island already imports) through the SAME binding-7 slot + computeBakedShadow.
+        // Result: VK terrain gets whole-map object shadows (coarser than GL's near cascade
+        // near the camera, but present) — closes the "no shadows at all" gap with the
+        // proven single-map mechanism, zero new interop surface.
+        //
+        // VK-FLIP-FIELD-BUG1-1 (field oracle 2026-07-06, mc2_01 overview_center): the
+        // full-map subset is NET-NEGATIVE at normal play distance. GL LOD0 terrain samples
+        // the NEAR cascade up close; the full-map cascade projects tall building/mech
+        // occluders as huge soft blobs that swim with the camera = the user's
+        // "camera-dependent garbage shadow wash". CSM-OFF was PIXEL-CLEAN vs GL on the same
+        // bookmark; CSM-ON washed the whole airport. The matrix/texture ARE consistent
+        // (island renders full-map, UBO carries the full-map cascade matrix) — the wash is
+        // inherent to the coarse subset, NOT a binding mismatch. The real cure is near-
+        // cascade-array interop (sampler2DArrayShadow + N matrices), still DEFERRED.
+        //
+        // Therefore this subset is now DOUBLE-GATED: MC2_VK_TERRAIN_CSM=1 (presence) is no
+        // longer sufficient — it additionally requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1.
+        // The launcher/field bat sets MC2_VK_TERRAIN_CSM=1 as part of the umbrella family;
+        // that alone must NOT re-introduce the wash. Off by default -> VK terrain draws with
+        // NO dynamic object shadow under CSM (matches the clean CSM-OFF capture), which is
+        // strictly better than the wash until the near-cascade port lands.
+        auto csmSubsetOn = []() {
+            const char* v = std::getenv("MC2_VK_TERRAIN_CSM");
+            const char* x = std::getenv("MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL");
+            return v && v[0] == '1' && x && x[0] == '1';
+        };
+        if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
+            && mc2ShadowCsmEnabled()
+            && csmSubsetOn()) {
+            const GLuint fTex  = pp->getDynamicFullMapTexture();
+            const int    fSize = pp->getDynamicFullMapSize();
+            const int    ccount = pp->getDynamicShadowCascadeCount();
+            const float* mats  = pp->getDynamicCascadeMatrices();
+            if (fTex != 0 && fSize > 0 && ccount > 0 && mats) {
+                out->dynShadowsEnabled = 1;
+                out->glDynamicShadowTex = static_cast<uint32_t>(fTex);
+                out->dynamicShadowSize = fSize;
+                // Full-map cascade = the LAST cascade; its matrix is row (ccount-1).
+                std::memcpy(out->dynamicLightSpaceMatrix, mats + (ccount - 1) * 16,
+                            sizeof(out->dynamicLightSpaceMatrix));
+            }
+        }
+
+        // VK-TERRAIN-CSM-NEAR-1: the REAL cure. Feed the near-cascade array + separate
+        // full-map cascade so the VK frag can port GL's calcDynamicShadow cascade-select
+        // verbatim (near cascade up close, coarse full-map only past its range) instead
+        // of the FULLMAP_EXPERIMENTAL subset's "always coarse" wash. Independent of the
+        // two paths above: MC2_VK_TERRAIN_CSM alone (no FULLMAP_EXPERIMENTAL) now means
+        // THIS implementation. GL must actually have CSM active+built this frame.
+        //
+        // FAR-BAND-BLACK-1 FIX: this block was gated on dynShadowGate alone, NOT on
+        // mc2vkgate::subGate("MC2_VK_TERRAIN_CSM") as the comment above claims -- so
+        // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (MC2_SHADOW_CSM=1,
+        // default ON) fed CSM cascade data to the VK terrain frag even with
+        // MC2_VK_TERRAIN_CSM=0 (or unset with the umbrella off). The field launcher bat
+        // sets exactly this combination (DYNSHADOW+CSM both umbrella members, CSM only
+        // gets explicitly forced off in isolation tests) -- the resulting csmEnabled=1
+        // fragments made the VK terrain frag's CSM cascade-select path run in a
+        // configuration nobody exercises intentionally, collapsing shading to
+        // near-black over most of the screen (root cause of FAR-BAND-BLACK; isolated
+        // via bisecting MC2_VK_TERRAIN_LIGHTING/DETAIL/DYNSHADOW/CSM one at a time --
+        // DYNSHADOW alone reproduces, and disabling GL CSM instead of the VK gate also
+        // clears it, confirming the CSM feed itself is the trigger, not depth/format).
+        // Now requires the CSM sub-gate explicitly, matching the documented contract.
+        const bool csmNearGate = mc2vkgate::subGate("MC2_VK_TERRAIN_CSM");
+        out->csmEnabled = 0;
+        out->glCsmArrayTex = 0;
+        out->csmArraySize = 0;
+        out->csmCount = 0;
+        std::memset(out->csmCascadeMatrices, 0, sizeof(out->csmCascadeMatrices));
+        std::memset(out->csmCascadeTexelWorld, 0, sizeof(out->csmCascadeTexelWorld));
+        out->csmDepthSpan = 1.0f;
+        out->glCsmFullMapTex = 0;
+        out->csmFullMapSize = 0;
+        out->csmFullMapTexelWorld = 0.0f;
+        if (csmNearGate && dynShadowGate && pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
+            const GLuint arrTex  = pp->getDynamicShadowArrayTexture();
+            const GLuint fmTex   = pp->getDynamicFullMapTexture();
+            const int    ccount2 = pp->getDynamicShadowCascadeCount();
+            const float* mats2   = pp->getDynamicCascadeMatrices();
+            const float* texelW  = pp->getDynamicCascadeTexelWorld();
+            if (arrTex != 0 && fmTex != 0 && ccount2 > 0 && ccount2 <= 3 && mats2 && texelW) {
+                out->csmEnabled = 1;
+                out->glCsmArrayTex = static_cast<uint32_t>(arrTex);
+                out->csmArraySize  = pp->getDynamicShadowMapSize();
+                out->csmCount      = ccount2;
+                std::memcpy(out->csmCascadeMatrices, mats2, sizeof(float) * 16 * ccount2);
+                std::memcpy(out->csmCascadeTexelWorld, texelW, sizeof(float) * ccount2);
+                out->csmDepthSpan  = pp->getCsmDepthSpan();
+                out->glCsmFullMapTex = static_cast<uint32_t>(fmTex);
+                out->csmFullMapSize  = pp->getDynamicFullMapSize();
+                out->csmFullMapTexelWorld = pp->getDynamicFullMapTexelWorld();
+            }
+        }
+    }
+
+    // VK-TERRAIN-DETAIL sub-slice: hand the material detail-normal ARRAY tex + the GL
+    // detail tuning scalars to the island so the VK terrain frag can perturb the surface
+    // normal (macro slope from height + material detail normal) EXACTLY like GL
+    // (terrain_lod_chunk.frag:740-808) -> grass reads with NdotL relief instead of flat.
+    // Gate MC2_VK_TERRAIN_DETAIL (requires MC2_VK_TERRAIN_LIGHTING; default-off ->
+    // detailEnabled=0 -> VK N stays flat-up, byte-identical to the lighting-only frame).
+    {
+        // Umbrella member; requires lighting (its own precondition) + subGate.
+        int detailOn = 0;
+        if (out->lightingEnabled)
+            detailOn = mc2vkgate::subGate("MC2_VK_TERRAIN_DETAIL") ? 1 : 0;
+        out->detailEnabled       = detailOn;
+        out->glMatNormalArrayTex = detailOn ? (uint32_t)gos_GetTerrainNormalArrayTex() : 0u;
+        // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag
+        // bakes per-material tiling/boost/class thresholds as const, so only these three
+        // scalars flow through the UBO. See terrain_tier1.frag MATV_* consts.
+        out->nfhStrength    = 1.0f;   // terrainNormalsFromHeightStrength (terrain_nfh_strength_)
+        out->detailTiling   = 1.0f;   // detailNormalTiling.x (terrain_detail_tiling_)
+        out->detailStrength = 1.0f;   // detailNormalStrength.x (terrain_detail_strength_)
+    }
+
+    // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing
+    // the VK LOD0-vs-GL-band color seam (GL gos_terrain.frag lodNear, :322-328,616-736).
+    // Gate MC2_VK_TERRAIN_LODFADE requires detailEnabled (fading a feature that's already
+    // off is a no-op, so keep the precondition chain: LIGHTING -> DETAIL -> LODFADE).
+    {
+        int lodFadeOn = 0;
+        if (out->detailEnabled)
+            lodFadeOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LODFADE") ? 1 : 0;
+        out->lodFadeEnabled = lodFadeOn;
+        // VK-FLIP oracle-visible gate-state proof: one-shot diagnostic line so a smoke
+        // capture can confirm lodFadeEnabled's resolved value without a debugger attach.
+        // Gated on presence of MC2_VK_TERRAIN_COPY_STATS (same opt-in convention as the
+        // interop-copies stats line above) to stay silent by default.
+        {
+            static const bool s_diagOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
+            static bool s_logged = false;
+            if (s_diagOn && !s_logged) {
+                s_logged = true;
+                fprintf(stderr, "[VK_TERRAIN_LODFADE_DIAG] lodFadeEnabled=%d detailEnabled=%d "
+                        "lightingEnabled=%d\n", lodFadeOn, out->detailEnabled, out->lightingEnabled);
+                fflush(stderr);
+            }
+        }
+        extern void gos_GetTerrainCameraPos(float*, float*, float*);
+        float cx = 0.0f, cy = 0.0f, cz = 0.0f;
+        gos_GetTerrainCameraPos(&cx, &cy, &cz);
+        out->cameraPosMC2[0] = cx;
+        out->cameraPosMC2[1] = cy;
+        out->cameraPosMC2[2] = cz;
+    }
+
+    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (paired
+    // with the deterministic bookmark/sim-freeze capture so run-to-run this is
+    // the SAME frame). No-op unless MC2_VK_FEED_DUMP is set.
+    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("terrain")) {
+        mc2vkfeeddump::resetOnce();
+        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
+            unsigned displacedPatches = 0;
+            for (uint32_t i = 0; i < out->patchCount; ++i)
+                if (out->patches[i].visualMode == 2) ++displacedPatches;
+            std::fprintf(f, "{\"island\":\"terrain\",\"patchCount\":%u,\"mapSide\":%d,"
+                "\"halfMap\":%.6f,\"heightVersion\":%llu,\"cementVersion\":%llu,"
+                "\"useCement\":%d,\"lightingEnabled\":%d,\"shadowsEnabled\":%d,"
+                "\"dynShadowsEnabled\":%d,\"detailEnabled\":%d,\"lodFadeEnabled\":%d,"
+                "\"visualSide\":%d,\"visualDisplaceFar\":%.6f,\"displacedPatches\":%u,"
+                "\"patches\":[",
+                out->patchCount, out->mapSide, out->halfMap,
+                (unsigned long long)out->heightVersion, (unsigned long long)out->cementVersion,
+                out->useCement, out->lightingEnabled, out->shadowsEnabled,
+                out->dynShadowsEnabled, out->detailEnabled, out->lodFadeEnabled,
+                out->visualSide, out->visualDisplaceFar, displacedPatches);
+            for (uint32_t i = 0; i < out->patchCount; ++i) {
+                const Mc2TerrainTier1Patch& p = out->patches[i];
+                std::fprintf(f, "%s{\"qcX\":%d,\"qcY\":%d,\"blockOriginX\":%d,"
+                    "\"blockOriginY\":%d,\"lodStep\":%d,\"skirtDepth\":%.6f,"
+                    "\"skirtEdgeMask\":%u}",
+                    i ? "," : "", p.quadCountX, p.quadCountY, p.blockOriginX,
+                    p.blockOriginY, p.lodStep, p.skirtDepth, p.skirtEdgeMask);
+            }
+            std::fprintf(f, "]}\n");
+            std::fclose(f);
+        }
+        mc2vkfeeddump::latch("terrain") = true;
+    }
+    return 1;
+}
+#endif
 
 void gos_TerrainLodChunk_SubmitDrawCommands(
     const TerrainDrawCommand* cmds,
@@ -1541,7 +1917,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     int                       count)
 {
     if (count == 0) return;
-    if (s_terrainProgram == 0 || s_heightSsbo.glName == 0) return;
+    if (s_terrainProgram == 0 || s_heightSsbo.backendHandle == 0) return;
     if (s_patchVao == 0) return;
 
     // CLIFF-TESS-PERF: reset the once/frame full-mirror guard. This entrypoint is
@@ -1667,25 +2043,29 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // is inverted and the opaque heightfield is rendered double-sided.)
 
     // Bind height SSBO (stays bound for all patches this frame).
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_heightSsbo.glName));
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_heightSsbo.backendHandle));
     // Step 5b: terrainType SSBO (concrete). 0 if never uploaded -> vert reads 0.
-    if (s_typeSsbo.glName != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_TYPE_SSBO_BINDING, static_cast<GLuint>(s_typeSsbo.glName));
+    if (s_typeSsbo.backendHandle != 0)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_TYPE_SSBO_BINDING, static_cast<GLuint>(s_typeSsbo.backendHandle));
     // Step 5c: cement word SSBO.
-    if (s_cementSsbo.glName != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_CEMENT_SSBO_BINDING, static_cast<GLuint>(s_cementSsbo.glName));
+    if (s_cementSsbo.backendHandle != 0)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_CEMENT_SSBO_BINDING, static_cast<GLuint>(s_cementSsbo.backendHandle));
 
     // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: resolve geometry-displacement activation once
     // per frame. Active = MC2_TERRAIN_VISUAL_DISPLACE on AND the 4x bake loaded.
     // Bind binding 26 for the whole draw; the per-chunk u_visualDisplace gates the
     // near (LOD0) band only. Default OFF -> u_visualDisplace stays 0 -> byte-identical.
+#ifdef MC2_VULKAN_ISLAND
+    const bool s_visualDisplaceGate = terrainVisualDisplaceGateOn();  // rung 5: shared helper (same env read)
+#else
     static const bool s_visualDisplaceGate = []() {
         const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
         return v && v[0] && v[0] != '0';
     }();
-    const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.glName != 0 && s_visualSide > 0;
+#endif
+    const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.backendHandle != 0 && s_visualSide > 0;
     if (visualDisplaceActive)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_visualHeightSsbo.glName));
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_visualHeightSsbo.backendHandle));
     if (s_locVisualSide >= 0)
         glUniform1i(s_locVisualSide, s_visualSide);
     // TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement fade. Active only
@@ -1697,15 +2077,18 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         return !(v && v[0] == '0');   // default ON (unset/other => on)
     }();
     const bool visualDampActive = visualDisplaceActive && s_visualDampGate
-                                  && s_visualDampSsbo.glName != 0
+                                  && s_visualDampSsbo.backendHandle != 0
                                   && s_visualDampSide == s_mapSide;
     if (visualDampActive)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_DAMP_SSBO_BINDING, static_cast<GLuint>(s_visualDampSsbo.glName));
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_DAMP_SSBO_BINDING, static_cast<GLuint>(s_visualDampSsbo.backendHandle));
     if (s_locVisualDampOn >= 0)
         glUniform1i(s_locVisualDampOn, visualDampActive ? 1 : 0);
     // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: far-band displacement fade, 0..1, default 1
     // (full displacement). Only scales the coarser-band (u_visualDisplace==2) verts;
     // LOD0 (mode 1) is untouched by this knob.
+#ifdef MC2_VULKAN_ISLAND
+    const float s_visualDisplaceFar = terrainVisualDisplaceFarParam();  // rung 5: shared helper (same env read)
+#else
     static const float s_visualDisplaceFar = []() {
         const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_FAR");
         if (!v || !v[0]) return 1.0f;
@@ -1714,6 +2097,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (f > 1.0f) f = 1.0f;
         return f;
     }();
+#endif
     if (s_locVisualDisplaceFar >= 0)
         glUniform1f(s_locVisualDisplaceFar, s_visualDisplaceFar);
 
@@ -1880,7 +2264,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     {
         bool cementReady = gos_terrain_indirect_isCementAtlasReady();
         if (s_locUseCement >= 0)
-            glUniform1i(s_locUseCement, (cementReady && s_cementSsbo.glName != 0) ? 1 : 0);
+            glUniform1i(s_locUseCement, (cementReady && s_cementSsbo.backendHandle != 0) ? 1 : 0);
         // CEMENT-DIAG-CONNECT-1: env gate MC2_TERRAIN_CEMENT_DIAG_CONNECT, default OFF
         // -> uploads 0 -> frag diagonal-fill block skipped (byte-identical).
         // REDUNDANT-PASS-HUNT-1: env resolved once (kTglcCementDiagConnect).
@@ -2327,6 +2711,48 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // for this submit; populated per-command below, printed after the loop.
     for (int lvl = 0; lvl < 6; ++lvl) s_visualDisplacedCounts[lvl] = 0;
 
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 TERRAIN TIER-1: when armed, the VK terrain island co-writes the LOD0
+    // (lodStep==1) MAIN patches into the shared GBuffer. Capture them here and SKIP
+    // their GL main+skirt draws (so the A/B reference and the VK path both exclude
+    // LOD0 skirts — the probe compares LOD0 main-triangle pixels like-for-like).
+    // Default-OFF -> s_vkTerrainEnabled=false -> the loop below is byte-identical.
+    //
+    // FAIL-SOFT (DEFAULT-ON safety): the SKIP is gated on island-READY, not merely
+    // enabled. If the island can't co-write this frame (SPV/pipeline/init/device
+    // failure, or a latched transient — mc2_vk_terrain_island_ready()==0), GL keeps
+    // drawing LOD0 so there is NO terrain hole. run() is still called below whenever
+    // enabled (even when we did NOT skip) so the island can BIRTH/heal — the first
+    // successful run flips ready for the next frame (one-frame GL-draw then VK takeover,
+    // never a hole).
+    const bool s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0);
+    // PREPARE the island NOW (GL context current) so the skip decision below can gate on
+    // real readiness — this births the island independent of the feed, breaking the
+    // skip<->ready<->feed deadlock. On any failure prepare()==0 -> GL draws LOD0.
+    bool s_vkTerrainReady = false;
+    if (s_vkTerrainEnabled) {
+        if (gosPostProcess* ppPrep = getGosPostProcess()) {
+            s_vkTerrainReady =
+                (mc2_vk_terrain_island_prepare(ppPrep->getWidth(), ppPrep->getHeight()) != 0);
+        }
+    }
+    const bool s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;
+    static bool s_vkTerrainFailSoftLogged = false;
+    if (s_vkTerrainEnabled && !s_vkTerrainActive && !s_vkTerrainFailSoftLogged) {
+        fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: gate ON but island not ready this "
+                        "frame -> GL draws LOD0 (no hole). Will retry birth/heal via run().\n");
+        fflush(stderr);
+        s_vkTerrainFailSoftLogged = true;
+    }
+    s_vkTerrainPatches.clear();
+    s_vkTerrainFeedValid = false;
+    if (s_vkTerrainActive) {
+        std::memcpy(s_vkTerrainMvp, mvp, sizeof(s_vkTerrainMvp)); // same MVP the GL draw uses
+    }
+    TerrainGlFallbackAudit s_vkTerrainGlAudit;
+    const bool s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();
+#endif
+
     for (int i = 0; i < count; ++i)
     {
         const TerrainDrawCommand& cmd = cmds[i];
@@ -2334,6 +2760,100 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         int qcY = (cmd.quadCountsPacked >> 8) & 0xFF;
 
         if (qcX <= 0 || qcY <= 0) continue;
+
+#ifdef MC2_VULKAN_ISLAND
+        if (s_vkTerrainGlAuditOn) {
+            ++s_vkTerrainGlAudit.total;
+        }
+        // VK-P10 TERRAIN TIER-1 (+ rung-3 VK-TERRAIN-ALL-LODS): hand main patches to
+        // the VK island and skip their GL main+skirt draws. LOD0 (lodStep==1) is the
+        // original probe scope; MC2_VK_TERRAIN_ALL_LODS extends capture to coarse bands
+        // (lodStep>1) too -- BANDS ONLY, still excluding mode-1 visual-displace (LOD0
+        // 4x-finer topology, a separate L slice). Edge-stitch is NO LONGER excluded
+        // (VK-TERRAIN-EDGE-STITCH-1 / commit 0aae0337 removed the edgeStitch[i]==0
+        // predicate term; stitched patches are VK-captured, corner-pin math ported into
+        // the tier1 verts). Default-OFF (MC2_VK_TERRAIN_ALL_LODS unset)
+        // -> capture predicate is IDENTICAL to before (lodStep==1 only).
+        const bool s_vkAllLodsActive = s_vkTerrainActive &&
+            (mc2_vk_terrain_all_lods_enabled() != 0);
+        const bool s_vkCaptureThisBand = (cmd.lodStep == 1) || s_vkAllLodsActive;
+        // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): relax the visualDisplaceActive
+        // exclusion for mode-2 patches (lodStep>1, pure Z-swap, same vertex density)
+        // when the sub-gate is armed. Mode-1 patches (lodStep==1, 4x-finer topology +
+        // corner-pinned edges) stay GL-owned (separate L slice later). Stitched patches
+        // are VK-captured (edge-stitch exclusion removed, see above). Gate OFF ->
+        // predicate IDENTICAL to rung 4.
+        const bool s_vkVisDispFarActive = s_vkAllLodsActive &&
+            (mc2_vk_terrain_visualdisplace_far_enabled() != 0);
+        const bool s_vkOwnsDisplace = !visualDisplaceActive ||
+            (s_vkVisDispFarActive && cmd.lodStep != 1);
+        const bool s_vkNoEdgeStitch = (edgeStitch == nullptr || edgeStitch[i] == 0);
+        if (s_vkTerrainActive && s_vkCaptureThisBand &&
+            s_vkOwnsDisplace) {
+            const int maxOffX = (cmd.lodStep > 0) ? (qcX / cmd.lodStep) * cmd.lodStep : qcX;
+            const int maxOffY = (cmd.lodStep > 0) ? (qcY / cmd.lodStep) * cmd.lodStep : qcY;
+            Mc2TerrainTier1Patch p;
+            p.blockOriginX = cmd.blockOriginX;
+            p.blockOriginY = cmd.blockOriginY;
+            p.quadCountX   = maxOffX;
+            p.quadCountY   = maxOffY;
+            p.lodStep      = cmd.lodStep;
+            // VK-TERRAIN-SKIRT (rung 4): snapshot this block's skirt inputs into the
+            // SAME record so the VK island can draw the skirt in the same co-write pass
+            // as the main patch, with no extra GL state read on the VK side. Only
+            // populated when the skirt sub-gate is armed; else 0/0 (island draws no
+            // skirt for this patch, matching today's GL-owns-all-skirts fallback --
+            // the GL skip below is ALSO gated on the same predicate so GL keeps drawing
+            // the skirt whenever the VK island isn't going to).
+            const bool s_vkSkirtsActive = mc2_vk_terrain_skirts_enabled() != 0;
+            p.skirtDepth    = (s_vkSkirtsActive && skirtDepths)    ? skirtDepths[i]    : 0.0f;
+            p.skirtEdgeMask = (s_vkSkirtsActive && skirtEdgeMasks) ? skirtEdgeMasks[i] : 0u;
+            // VK-TERRAIN-VISUALDISPLACE-FAR-1: mirror the GL displaceFar decision below
+            // (visualDisplaceActive && lodStep != 1 -> mode 2). Mode-1 patches never get
+            // here (s_vkOwnsDisplace excluded them), so this is only ever 0 or 2.
+            p.visualMode    = (visualDisplaceActive && cmd.lodStep != 1) ? 2 : 0;
+            p.edgeStitch    = edgeStitch ? edgeStitch[i] : 0u;
+            s_vkTerrainPatches.push_back(p);
+            s_vkTerrainFeedValid = true;
+            if (s_vkTerrainGlAuditOn) {
+                ++s_vkTerrainGlAudit.captured;
+                if (!s_vkNoEdgeStitch) {
+                    ++s_vkTerrainGlAudit.capturedStitched;
+                }
+            }
+            continue;   // GL skips this patch's main + skirt draws unconditionally (this
+                        // was already true pre-rung-4: VK-owned patches never got a GL
+                        // skirt draw, since `continue` fires before the skirt-draw code
+                        // below runs). Pre-rung-4 that meant VK-owned patches had NO
+                        // skirt at all -- a latent crack risk masked only by rung-3's
+                        // narrow scope (bands still matched GL neighbor geometry closely
+                        // enough per the ladder doc). This rung closes that gap: when the
+                        // skirts sub-gate is armed, skirtDepth/skirtEdgeMask above are
+                        // populated and the VK island draws the skirt itself; when the
+                        // sub-gate is off, behavior is UNCHANGED from rung-3 (0/0 ->
+                        // island draws no skirt for this patch).
+        }
+        if (s_vkTerrainGlAuditOn) {
+            ++s_vkTerrainGlAudit.glFallback;
+            if (!s_vkTerrainActive) {
+                ++s_vkTerrainGlAudit.inactive;
+            } else if (!s_vkCaptureThisBand) {
+                ++s_vkTerrainGlAudit.band;
+            } else if (!s_vkOwnsDisplace) {
+                ++s_vkTerrainGlAudit.displace;
+            } else if (!s_vkNoEdgeStitch) {
+                ++s_vkTerrainGlAudit.edgeStitch;
+            } else {
+                ++s_vkTerrainGlAudit.other;
+            }
+            if (skirtDepths && skirtEdgeMasks && skirtDepths[i] > 0.0f) {
+                unsigned int mask = skirtEdgeMasks[i];
+                s_vkTerrainGlAudit.skirtEdges +=
+                    ((mask & 1u) ? 1 : 0) + ((mask & 2u) ? 1 : 0) +
+                    ((mask & 4u) ? 1 : 0) + ((mask & 8u) ? 1 : 0);
+            }
+        }
+#endif
 
         // TERRAIN-VISUAL-HEIGHT-SAMPLE-1 (LOD0) + TERRAIN-VISUAL-HEIGHT-S2-ALLLOD
         // (LOD1+): displace every band. LOD0 uses the 4x-finer builder (mode 1,
@@ -2495,6 +3015,31 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 
+#ifdef MC2_VULKAN_ISLAND
+    if (s_vkTerrainGlAuditOn) {
+        static unsigned long s_auditFrame = 0;
+        ++s_auditFrame;
+        if (s_auditFrame <= 60 || (s_auditFrame % 180) == 0) {
+            fprintf(stderr,
+                    "[VK_TERRAIN_GL_FALLBACK_AUDIT v1] frame=%lu total=%d captured=%d "
+                    "gl_fallback=%d inactive=%d band=%d displace=%d edge_stitch=%d "
+                    "captured_stitch=%d other=%d skirt_edges=%d\n",
+                    s_auditFrame,
+                    s_vkTerrainGlAudit.total,
+                    s_vkTerrainGlAudit.captured,
+                    s_vkTerrainGlAudit.glFallback,
+                    s_vkTerrainGlAudit.inactive,
+                    s_vkTerrainGlAudit.band,
+                    s_vkTerrainGlAudit.displace,
+                    s_vkTerrainGlAudit.edgeStitch,
+                    s_vkTerrainGlAudit.capturedStitched,
+                    s_vkTerrainGlAudit.other,
+                    s_vkTerrainGlAudit.skirtEdges);
+            fflush(stderr);
+        }
+    }
+#endif
+
     // Terrain pixels are now on screen. Mark terrain drawn so the terrain-gated
     // post-process passes (runScreenShadow / runCloudShadow / runShoreline /
     // runGodRays) actually run. The chunk path is the default-on production
@@ -2535,6 +3080,56 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // cull/mask/func when their optionals destruct at the closing brace below.
     glBindVertexArray((GLuint)prevVAO);
     glUseProgram((GLuint)prevProg);
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 TERRAIN TIER-1: after the GL terrain bands drew (and GL state is fully
+    // restored), the VK island co-writes the captured LOD0 patches into the SAME
+    // shared scene GBuffer (color MRT0 + normal MRT1 + shared depth), reverse-Z
+    // depth-tested against what GL just authored. Default-OFF -> feed empty -> no-op.
+    // markTerrainDrawn already fired above (GL owns it); the island also latches it
+    // for robustness if a frame is all-LOD0.
+    //
+    // FAIL-SOFT: run() is called whenever the gate is ENABLED (not only when we skipped)
+    // so the island can BIRTH/heal even on a frame where we did NOT skip (ready==0 this
+    // frame -> GL drew LOD0 -> feed empty -> run births the island + returns 0 harmlessly;
+    // next frame ready==1 -> skip + VK draws). On a frame where we DID skip (ready was 1),
+    // a mid-frame run()==0 (a fresh transient) latches s->disabled inside the island, so
+    // ready flips 0 next frame (GL resumes LOD0) — at worst a single self-healing frame,
+    // and the fail-soft log above fires. No persistent hole.
+    // VK-TERRAIN-ALL-LODS diagnostic (rung 3 oracle evidence): per-600-submit
+    // lodStep breakdown of what the VK island actually captured this submit,
+    // so a smoke log proves coarse bands (lodStep>1) are reaching the island
+    // (not just LOD0). Cheap (once per 600 submits), no gate needed.
+    if (s_submitCount % 600 == 0) {
+        int cnt1 = 0, cntCoarse = 0;
+        for (const auto& p : s_vkTerrainPatches) {
+            if (p.lodStep == 1) ++cnt1; else ++cntCoarse;
+        }
+        printf("[VK_TERRAIN_ALL_LODS] submit=%d feedValid=%d active=%d allLods=%d vkPatches=%zu lodStep1=%d coarse(lodStep>1)=%d\n",
+                s_submitCount, s_vkTerrainFeedValid ? 1 : 0, s_vkTerrainActive ? 1 : 0,
+                mc2_vk_terrain_all_lods_enabled(), s_vkTerrainPatches.size(), cnt1, cntCoarse);
+        fflush(stdout);
+    }
+
+    if (s_vkTerrainEnabled) {
+        if (gosPostProcess* ppVk = getGosPostProcess()) {
+            const int ran = mc2_vk_terrain_island_run(ppVk->getWidth(), ppVk->getHeight());
+            if (s_vkTerrainActive && s_vkTerrainFeedValid && ran == 0) {
+                // We SKIPPED LOD0 this frame but VK failed to co-write -> this frame has a
+                // 1-frame LOD0 gap. Loud one-shot; the island latched disabled so ready
+                // will be 0 next frame and GL resumes drawing LOD0 (self-heal).
+                static bool s_gapLogged = false;
+                if (!s_gapLogged) {
+                    fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: run()==0 AFTER LOD0-skip "
+                                    "-> 1-frame LOD0 gap this frame; island latched off, GL "
+                                    "resumes LOD0 next frame (self-heal).\n");
+                    fflush(stderr);
+                    s_gapLogged = true;
+                }
+            }
+        }
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -2544,7 +3139,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
 
 void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 {
-    if (s_heightSsbo.glName == 0)
+    if (s_heightSsbo.backendHandle == 0)
     {
         fprintf(stderr, "[TerrainLodChunk] UploadHeightFull called before Init\n");
         fflush(stderr);
@@ -2555,7 +3150,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
 
-    const GLuint heightBuf = static_cast<GLuint>(s_heightSsbo.glName);
+    const GLuint heightBuf = static_cast<GLuint>(s_heightSsbo.backendHandle);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, heightBuf);
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, elevations, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_HEIGHT_SSBO_BINDING, heightBuf);
@@ -2569,6 +3164,11 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     // fine bake and u_waterElevation. Cheap (one mapSide² copy at load).
     s_coarseHeightCpu.assign(elevations, elevations + (size_t)mapSide * (size_t)mapSide);
     s_shorelineProbeDone = false;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 TERRAIN TIER-1: the height field changed -> bump the snapshot key so the
+    // VK terrain island re-copies it (glGetBufferSubData map-load) on the next frame.
+    ++g_terrainHeightVersion;
+#endif
 
     // REGISTRY-TERRAIN-SSBO-1: register the live height SSBO (observe-only metadata;
     // never read by the draw path). Registered here (not at Init) because the byte
@@ -2580,7 +3180,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
         d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load (heightfield upload)
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_heightSsbo.debugName;
-        d.glName    = s_heightSsbo.glName;
+        d.backendHandle    = static_cast<GLuint>(s_heightSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -2590,7 +3190,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     // First-frame readback verify: confirm that the GPU round-trips the first
     // float correctly. glGetBufferSubData is available on all desktop GL >=3.1.
     float firstSample = 0.0f;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_heightSsbo.glName));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_heightSsbo.backendHandle));
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float), &firstSample);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     if (firstSample != elevations[0])
@@ -2611,12 +3211,12 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
 {
     if (!visualHeights || V <= 0)
         return;
-    if (s_visualHeightSsbo.glName == 0)
+    if (s_visualHeightSsbo.backendHandle == 0)
     {
         GLuint local = 0;
         glGenBuffers(1, &local);
-        s_visualHeightSsbo.glName = static_cast<uint32_t>(local);
-        if (s_visualHeightSsbo.glName == 0)
+        s_visualHeightSsbo.backendHandle = static_cast<uint32_t>(local);
+        if (s_visualHeightSsbo.backendHandle == 0)
         {
             fprintf(stderr, "[VISUAL_HEIGHT v1] glGenBuffers failed\n");
             fflush(stderr);
@@ -2630,7 +3230,7 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     GLsizeiptr fineBytes = (GLsizeiptr)V * (GLsizeiptr)V * (GLsizeiptr)sizeof(float);
     GLsizeiptr mipBytes  = (GLsizeiptr)mipFloats * (GLsizeiptr)sizeof(float);
     GLsizeiptr bytes     = fineBytes + mipBytes;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualHeightSsbo.glName));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualHeightSsbo.backendHandle));
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, nullptr, GL_STATIC_DRAW);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, fineBytes, visualHeights);
     if (mipBytes > 0)
@@ -2644,6 +3244,12 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     s_visualHeightCpu.assign(visualHeights, visualHeights + (size_t)V * (size_t)V);
     s_shorelineProbeDone = false;
 
+#ifdef MC2_VULKAN_ISLAND
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: the visual bake changed -> bump the snapshot key
+    // so the VK terrain island re-copies it (mission-load cadence, mirrors the height key).
+    ++g_terrainVisualHeightVersion;
+#endif
+
     // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: register the live visual-height SSBO
     // (observe-only metadata; never read by the draw path). Reached here only when
     // the upstream gate (MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + bake) called us.
@@ -2654,7 +3260,7 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
         d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_visualHeightSsbo.debugName;
-        d.glName    = s_visualHeightSsbo.glName;
+        d.backendHandle    = static_cast<GLuint>(s_visualHeightSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -2679,12 +3285,12 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
     s_visualDampCombined = s_visualDampStatic;
     s_visualDampSide = side;
     s_visualDampHadMovers = false;
-    if (s_visualDampSsbo.glName == 0)
+    if (s_visualDampSsbo.backendHandle == 0)
     {
         GLuint local = 0;
         glGenBuffers(1, &local);
-        s_visualDampSsbo.glName = static_cast<uint32_t>(local);
-        if (s_visualDampSsbo.glName == 0)
+        s_visualDampSsbo.backendHandle = static_cast<uint32_t>(local);
+        if (s_visualDampSsbo.backendHandle == 0)
         {
             fprintf(stderr, "[VISUAL_DAMP v1] glGenBuffers failed\n");
             fflush(stderr);
@@ -2692,7 +3298,7 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
         }
     }
     const GLsizeiptr bytes = (GLsizeiptr)(count * sizeof(float));
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualDampSsbo.glName));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualDampSsbo.backendHandle));
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, s_visualDampCombined.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     {
@@ -2702,7 +3308,7 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
         d.lifetime  = RenderCore::RenderResourceLifetime::Mission;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_visualDampSsbo.debugName;
-        d.glName    = s_visualDampSsbo.glName;
+        d.backendHandle    = s_visualDampSsbo.backendHandle;
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -2722,7 +3328,7 @@ bool gos_TerrainLodChunk_VisualDampWanted()
         const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE");
         return !(v && v[0] == '0');
     }();
-    return s_displaceGate && s_dampGate && s_visualDampSsbo.glName != 0
+    return s_displaceGate && s_dampGate && s_visualDampSsbo.backendHandle != 0
            && s_visualDampSide > 0 && !s_visualDampStatic.empty();
 }
 
@@ -2733,7 +3339,7 @@ bool gos_TerrainLodChunk_VisualDampWanted()
 void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
                                                 float radiusCells, float innerCells)
 {
-    if (s_visualDampSsbo.glName == 0 || s_visualDampSide <= 0 || s_visualDampStatic.empty())
+    if (s_visualDampSsbo.backendHandle == 0 || s_visualDampSide <= 0 || s_visualDampStatic.empty())
         return;
     if (count <= 0 && !s_visualDampHadMovers)
         return;   // steady state: static map already on the GPU
@@ -2763,7 +3369,7 @@ void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
             }
     }
     s_visualDampHadMovers = (count > 0);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualDampSsbo.glName));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualDampSsbo.backendHandle));
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
                     (GLsizeiptr)(s_visualDampCombined.size() * sizeof(float)),
                     s_visualDampCombined.data());
@@ -2774,10 +3380,10 @@ void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
 // the chunk frag's concrete material/colour selection (pureConcrete).
 void gos_TerrainLodChunk_UploadTerrainTypeFull(const float* types, int mapSide)
 {
-    if (s_typeSsbo.glName == 0 || !types || mapSide <= 0)
+    if (s_typeSsbo.backendHandle == 0 || !types || mapSide <= 0)
         return;
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
-    const GLuint typeBuf = static_cast<GLuint>(s_typeSsbo.glName);
+    const GLuint typeBuf = static_cast<GLuint>(s_typeSsbo.backendHandle);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, typeBuf);
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, types, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_TYPE_SSBO_BINDING, typeBuf);
@@ -2793,7 +3399,7 @@ void gos_TerrainLodChunk_UploadTerrainTypeFull(const float* types, int mapSide)
         d.lifetime  = s_typeSsbo.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_typeSsbo.debugName;
-        d.glName    = s_typeSsbo.glName;
+        d.backendHandle    = static_cast<GLuint>(s_typeSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -2963,14 +3569,20 @@ bool gos_TerrainLodChunk_IsShorelineMaskActive()
 // gos_terrain_indirect after the cement catalog atlas is ready (PopulateRecipeCementWords).
 void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int count, int mapSide)
 {
-    if (s_cementSsbo.glName == 0 || !words || count <= 0 || mapSide <= 0)
+    if (s_cementSsbo.backendHandle == 0 || !words || count <= 0 || mapSide <= 0)
         return;
     GLsizeiptr bytes = (GLsizeiptr)count * sizeof(unsigned int);
-    const GLuint cementBuf = static_cast<GLuint>(s_cementSsbo.glName);
+    const GLuint cementBuf = static_cast<GLuint>(s_cementSsbo.backendHandle);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, cementBuf);
     glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, words, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_CEMENT_SSBO_BINDING, cementBuf);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-P10 CEMENT/ROAD sub-slice: the cement-word field changed -> bump the snapshot
+    // key so the VK terrain island re-copies it (glGetBufferSubData map-load) next frame.
+    ++g_terrainCementVersion;
+#endif
 
     // TERRAIN-LODCHUNK-SSBO-OWNER-1: register the live cement SSBO. Conditional by
     // construction -- this upload only runs when cement words actually exist, so
@@ -2982,7 +3594,7 @@ void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int co
         d.lifetime  = s_cementSsbo.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_cementSsbo.debugName;
-        d.glName    = s_cementSsbo.glName;
+        d.backendHandle    = static_cast<GLuint>(s_cementSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -3001,10 +3613,10 @@ void gos_TerrainLodChunk_UploadHeightPatch(
     int quadCountX, int quadCountY,
     int mapSide)
 {
-    if (s_heightSsbo.glName == 0 || !rowData || mapSide <= 0)
+    if (s_heightSsbo.backendHandle == 0 || !rowData || mapSide <= 0)
         return;
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_heightSsbo.glName));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_heightSsbo.backendHandle));
 
     for (int row = 0; row <= quadCountY; ++row)
     {

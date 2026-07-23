@@ -117,6 +117,10 @@ bool gosTexture::createHardwareTexture() {
         format_ = convertIfNecessary(img, format_);
 
         tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
+        if(tex_.isValid()) {
+            setRgbaMirror(img.getWidth(), img.getHeight(), tf, img.getPixels());
+            markContentMutated();
+        }
         return tex_.isValid();
 
     } else if(pcompdata_ && size_ > 0) {
@@ -153,6 +157,10 @@ bool gosTexture::createHardwareTexture() {
         format_ = convertIfNecessary(img, format_);
 
         tex_ = create2DTexture(img.getWidth(), img.getHeight(), tf, img.getPixels(), wantMipmaps);
+        if(tex_.isValid()) {
+            setRgbaMirror(img.getWidth(), img.getHeight(), tf, img.getPixels());
+            markContentMutated();
+        }
         return tex_.isValid();
     } else {
         gosASSERT(tex_.w >0 && tex_.h > 0);
@@ -188,6 +196,10 @@ bool gosTexture::createHardwareTexture() {
             }
         }
         tex_ = create2DTexture(tex_.w, tex_.h, tf, (const uint8_t*)pdata, wantMipmaps);
+        if(tex_.isValid()) {
+            setRgbaMirror(tex_.w, tex_.h, tf, (const uint8_t*)pdata);
+            markContentMutated();
+        }
         delete[] pdata;
         return tex_.isValid();
     }

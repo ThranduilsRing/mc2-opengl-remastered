@@ -59,7 +59,7 @@ std::unordered_map<std::string, uint32_t> s_nameToIndex;
 // MECH-PROFILE-SSBO-OWNER-1: mech material-profile table SSBO (binding 7),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime +
 // debug name + GLuint value). GL calls happen at the same sites with the same
-// args/order/flags/slot; the raw handle is reached only via owner.glName.
+// args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
 // Lifetime Persistent: created once in uploadSsbo() (from init()), destroyed in
 // shutdown(); survives mission reload (not rebuilt per map). Registered at
 // create, invalidated on destroy. When MC2_MECH_SURFACE_MATERIAL is unset,
@@ -91,12 +91,12 @@ static void uploadSsbo() {
     const GLsizeiptr byteSize =
         static_cast<GLsizeiptr>(table.size() * sizeof(RenderCore::MaterialGpu));
 
-    if (s_ssbo.glName == 0) {
+    if (s_ssbo.backendHandle == 0) {
         GLuint local = 0;
         glGenBuffers(1, &local);
-        s_ssbo.glName = static_cast<uint32_t>(local);
+        s_ssbo.backendHandle = static_cast<uint32_t>(local);
     }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_ssbo.glName));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_ssbo.backendHandle));
     glBufferData(GL_SHADER_STORAGE_BUFFER,
                  byteSize,
                  table.data(),
@@ -112,14 +112,14 @@ static void uploadSsbo() {
     d.lifetime  = s_ssbo.lifetime;
     d.format    = RenderCore::RenderResourceFormat::BufferRaw;
     d.debugName = s_ssbo.debugName;
-    d.glName    = s_ssbo.glName;
+    d.glName    = static_cast<GLuint>(s_ssbo.backendHandle);
     d.sizeBytes = static_cast<uint64_t>(byteSize);
     d.valid     = true;
     RenderCore::registerOrUpdateRenderResource(d);
 
     std::fprintf(stderr,
         "[GOS_MATERIALS] uploaded profile table: %u entries, ssbo=%u\n",
-        static_cast<uint32_t>(table.size()), s_ssbo.glName);
+        static_cast<uint32_t>(table.size()), static_cast<uint32_t>(s_ssbo.backendHandle));
 }
 
 // ---------------------------------------------------------------------------
@@ -497,7 +497,7 @@ void init() {
 
     std::fprintf(stderr,
         "[GOS_MATERIALS] init complete: %u profiles, ssbo=%u\n",
-        static_cast<uint32_t>(s_profiles.size()), s_ssbo.glName);
+        static_cast<uint32_t>(s_profiles.size()), static_cast<uint32_t>(s_ssbo.backendHandle));
 }
 
 void shutdown() {
@@ -515,10 +515,10 @@ void shutdown() {
     s_profiles.clear();
     s_nameToIndex.clear();
 
-    if (s_ssbo.glName != 0) {
-        GLuint local = static_cast<GLuint>(s_ssbo.glName);
+    if (s_ssbo.backendHandle != 0) {
+        GLuint local = static_cast<GLuint>(s_ssbo.backendHandle);
         glDeleteBuffers(1, &local);
-        s_ssbo.glName = 0;
+        s_ssbo.backendHandle = 0;
 
         // MECH-PROFILE-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
@@ -544,8 +544,8 @@ uint32_t profileCount() {
 
 void bindMaterialTable() {
     if (!s_gpuEnabled) return;
-    if (s_ssbo.glName == 0) return;
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, kMechMaterialTableBinding, static_cast<GLuint>(s_ssbo.glName));
+    if (s_ssbo.backendHandle == 0) return;
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, kMechMaterialTableBinding, static_cast<GLuint>(s_ssbo.backendHandle));
 }
 
 uint32_t getProfileNormalTex(uint32_t index) {

@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_24",
+  "_note": "VK-FLIP-EVIDENCE-1 additional-map near poses (prop-dense base + water map). Mirrors mc2_01_terrain_near.json method: low-altitude ground-framing poses run with MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=0 on BOTH GL and VK so every drawn block is lodStep==1 -> VK terrain co-writes a large region AND the concrete base walls / trees exercise the prop islands. Sim-frozen bookmark sweep => byte-stable. mc2_24 has a fortified base (concrete walls, guard towers, trees) plus a dark water region (see mapscout/mc2_24). base_near frames concrete+props; water_near frames the water edge.",
+  "bookmarks": [
+    {
+      "name": "base_near",
+      "pos": [-400.0, 1200.0, 0.0],
+      "rot": 20.0,
+      "proj": 55.0,
+      "alt": 650.0,
+      "covers": ["terrain_lod0", "near_detail", "static_prop_pbr", "concrete"]
+    },
+    {
+      "name": "water_near",
+      "pos": [1400.0, -600.0, 0.0],
+      "rot": 30.0,
+      "proj": 45.0,
+      "alt": 360.0,
+      "covers": ["terrain_lod0", "near_detail", "water"]
+    }
+  ]
+}

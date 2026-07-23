@@ -94,7 +94,18 @@ def git_block(repo_root: str | os.PathLike | None) -> dict[str, Any]:
         return {"commit": None, "commit_short": None, "branch": None,
                 "dirty": None, "describe": None}
     commit = _git(repo_root, "rev-parse", "HEAD")
-    porcelain = _git(repo_root, "status", "--porcelain")
+    # FINGERPRINT-CONTRADICTION FIX (VK-NOINTEROP-STRICT-REVIEW, 2026-07-10):
+    # use `--porcelain -uno` (untracked-files=no) so `dirty` means TRACKED
+    # modifications only -- identical to the engine build stamp
+    # (cmake/GenerateBuildFingerprint.cmake:37 `git status --porcelain -uno`).
+    # Plain `--porcelain` counted the worktree's untracked scratch (.claude/, run/,
+    # test artifacts) as dirty, so the manifest reported dirty:true for the SAME
+    # commit the engine build stamp reported dirty:false -- the fingerprint
+    # contradiction the review flagged. Provenance = "was the built code from clean
+    # tracked source", which untracked files never affect. `describe --dirty` is
+    # already tracked-only, so all three (build stamp / manifest.dirty / describe)
+    # now agree.
+    porcelain = _git(repo_root, "status", "--porcelain", "-uno")
     return {
         "commit": commit,
         "commit_short": commit[:12] if commit else None,

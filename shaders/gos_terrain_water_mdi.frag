@@ -115,6 +115,7 @@ PREC float fbm3(PREC vec2 uv){
 // SOURCE OF TRUTH = IblShCoeffs.h; re-sync these if that file regenerates.
 // Order: [0]=L00 [1]=L1-1 [2]=L10 [3]=L11 [4]=L2-2 [5]=L2-1 [6]=L20 [7]=L21 [8]=L22.
 // Axis: Y-up (pole on .y), same basis as static_prop.vert::evalShL2.
+//PORT-BEGIN:waterSkyShCoeffs
 const vec3 kWaterSkySh[9] = vec3[9](
     vec3( 1.713250528,   1.773145394,   1.652499519  ),
     vec3( 0.5869951003,  0.5782034038,  0.5179309118 ),
@@ -126,12 +127,14 @@ const vec3 kWaterSkySh[9] = vec3[9](
     vec3( 0.05064675817, 0.04545421310, 0.03281146747),
     vec3( 1.962057200,   1.850144657,   1.499676879  )
 );
+//PORT-END:waterSkyShCoeffs
 
 // WATER-HDRI-REFL-1: equirect sample of the live HDRI texture using the same
 // Z-up (MC2 frame) azimuth/elevation formula as renderHdriSkyboxInvVP (frameFix==2).
 // rdir is in MC2 Z-up world space (east=x, north=y, up=z).
 // Apply the cached skyYaw rotation about +Z (up) so the reflected sun matches the
 // visible HDRI sun. LOD is caller-supplied (MC2_WATER_HDRI_LOD, default 2.5).
+//PORT-BEGIN:waterEvalHdri
 PREC vec3 waterEvalHdri(PREC vec3 rdir) {
     float s = sin(u_skyYaw), c = cos(u_skyYaw);
     PREC vec3 d = vec3(rdir.x * c - rdir.y * s,
@@ -145,10 +148,12 @@ PREC vec3 waterEvalHdri(PREC vec3 rdir) {
     // from collapsing to featureless white in the reflection mix.
     return raw / (raw + 1.0);
 }
+//PORT-END:waterEvalHdri
 
 // Mirror of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan 2001). Returns
 // diffuse sky IRRADIANCE by direction -> smooth, low-frequency, orbit-stable
 // broad sky color (the Phase-A reflection shape). Input n is Y-up.
+//PORT-BEGIN:waterEvalSkySh
 PREC vec3 waterEvalSkySh(PREC vec3 n){
     const float c1 = 0.429043, c2 = 0.511664, c3 = 0.743125, c4 = 0.886227, c5 = 0.247708;
     return (  c1 * kWaterSkySh[8] * (n.x*n.x - n.z*n.z)
@@ -162,6 +167,7 @@ PREC vec3 waterEvalSkySh(PREC vec3 n){
             + 2.0*c2 * kWaterSkySh[1] *  n.y
             + 2.0*c2 * kWaterSkySh[2] *  n.z );
 }
+//PORT-END:waterEvalSkySh
 
 void main(void)
 {
@@ -169,6 +175,7 @@ void main(void)
         // ---- water-v1 stylized base layer ----
         // viewVec used ONLY for distance (waveLOD anti-alias) - NOT angle.
         PREC vec3  viewVec = cameraPos.xyz - WorldPos;
+        //PORT-BEGIN:waterBaseColor
         PREC float waveLOD = 1.0 - smoothstep(WAVE_FADE_NEAR, WAVE_FADE_FAR, length(viewVec));
 
         // BAR-style: TWO fBm layers scrolling in OPPOSITE directions -> organic
@@ -206,6 +213,7 @@ void main(void)
         col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;            // brighten only
         PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz); // sharp crest sparkle
         col += glint * GLINT_GAIN * waveLOD * GLINT_TINT;      // camera-INDEPENDENT shimmer
+        //PORT-END:waterBaseColor
         // WATER-VISUAL-FIRST-SLICE: gated camera-INDEPENDENT sky/horizon tint.
         // f(uniform color, strength) only — no view angle, no reflection. At
         // strength 0 (default) the mix returns col unchanged -> byte-identical.
@@ -230,6 +238,7 @@ void main(void)
             // Wave normal from the in-scope fBm gradient (reused S3 scaffold).
             // WATER-ASPECT-CORRECT-1: 4:3-locked projection into a wider viewport
             // compresses dFdx vs dFdy by (vpAspect/projAspect). Scale X back up.
+            //PORT-BEGIN:waterReflSetup
             float _ac = (u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0)) * (3.0 / 4.0);
             PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0);
             PREC vec3  waveNormal = normalize(vec3(nzGrad * REFL_WAVE_SLOPE, 1.0));
@@ -254,6 +263,7 @@ void main(void)
                 skyReflCol = clamp(waterEvalSkySh(skyDir) * (1.0 / 3.14159265), 0.0, 2.0);
             }
             reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
+            //PORT-END:waterReflSetup
 
             // WATER-REFLECTION-SAMPLE-1: blend the terrain reflection RT (Phase C1)
             // OVER the SH sky where the RT has valid terrain (alpha>0). The RT was
@@ -269,10 +279,12 @@ void main(void)
                 reflectCol = mix(skyReflCol, rtSample.rgb,
                                  clamp(rtSample.a * u_waterRtStrength, 0.0, 1.0));
             }
+            //PORT-BEGIN:waterReflMix
             // Schlick Fresnel; flat +Z water normal -> N.V = vdir.z; grazing boosts.
             PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(vdir.z, 0.0), 5.0);
             reflMix = clamp(fres * u_waterReflStrength * waveLOD, 0.0, REFL_MAX);
             col = mix(col, reflectCol, reflMix);   // reflMix==0 at SH strength 0 -> no-op
+            //PORT-END:waterReflMix
         }
 
         if (fog_color.x > 0.0 || fog_color.y > 0.0 || fog_color.z > 0.0 || fog_color.w > 0.0)

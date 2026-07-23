@@ -495,6 +495,31 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         # relpath so an existing target copy gets hashed.
         items.append((launcher_src or LAUNCHER_NAME, LAUNCHER_NAME, "exe"))
 
+    # Baked Vulkan SPIR-V (VULKAN-SHADER-TOOLCHAIN-1): glslangValidator/glslc
+    # compiles shaders/vulkan/*.{vert,frag} to <build64-root>/shaders/vulkan/*.spv
+    # (CMAKE_BINARY_DIR, i.e. the build64 root, NOT the per-config build_dir --
+    # same non-standard location as mc2-launcher.exe above). The Vulkan island
+    # loaders (vulkan_*_island.cpp, vulkan_backend_skeleton.cpp) read
+    # MC2_VULKAN_SPV_DIR if set, else default to "shaders/vulkan" relative to
+    # the exe's CWD -- so deployed .spv must land at <target>/shaders/vulkan/.
+    # Without this, any deployed install hits "cannot open spv" ->
+    # vk_device_init_failed for every Vulkan region/island, even though the
+    # exe + GL shaders deployed fine (found by VK-REGION-SSAO-1 content pass).
+    # Soft: MC2_VULKAN is an opt-in CMake flag, so most builds never produce
+    # these; only enforce the lockstep hash-match discipline (kind="shader")
+    # for whichever ones ARE present in the build output.
+    vk_spv_dir = os.path.join(b64, "shaders", "vulkan") if b64 else ""
+    if vk_spv_dir and os.path.isdir(vk_spv_dir):
+        for fn in sorted(os.listdir(vk_spv_dir)):
+            if fn.endswith(".spv"):
+                p = os.path.join(vk_spv_dir, fn)
+                if os.path.isfile(p):
+                    items.append((p, f"shaders/vulkan/{fn}", "shader"))
+    elif require_build:
+        log(f"INFO: no baked Vulkan SPIR-V at {vk_spv_dir or '<no build64 root>'} "
+            "-- skipping (MC2_VULKAN not compiled in this build; Vulkan "
+            "islands will fail-soft to GL in the deployed install)")
+
     # Deploy the ENTIRE shaders/ tree recursively (every file, all extensions),
     # not an extension allowlist. Shaders #include each other across stages and
     # extensions (.comp pulls .glsl/.hglsl; .frag pulls include/*.hglsl); a
@@ -914,6 +939,9 @@ def main():
                          "is kept instead of overwritten (e.g. a hand-edited "
                          "run-with-log.bat). Only skips if the target copy "
                          "exists; fresh targets still get the source file.")
+    ap.add_argument("--require-clean", action="store_true",
+                    help="refuse to deploy a build whose build_fingerprint.h says "
+                         "MC2_BUILD_GIT_DIRTY=1 (built from an uncommitted tree)")
     args = ap.parse_args()
 
     preset = TARGET_PRESETS.get(args.target) if args.target else None
@@ -966,6 +994,34 @@ def main():
     check_locks(target, exe_name)
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
+
+    # DIRTY-BUILD GUARD: record what the exe was actually BUILT from, not just
+    # git HEAD at deploy time. A dirty-tree build is unattributable to any
+    # exact source state (2026-07-12 grey-regression P0 mis-diagnosis class).
+    src_commit = git_head(src_root)
+    fp = read_build_fingerprint(build_dir)
+    if fp:
+        if fp["sha"] and not src_commit.startswith(fp["sha"]):
+            log(f"WARNING: build fingerprint sha {fp['sha']} != git HEAD "
+                f"{src_commit[:12]} — the exe was built from a DIFFERENT commit "
+                f"than the tree you are deploying from. Manifest records the "
+                f"BUILD sha.")
+            src_commit = fp["sha"]
+        if fp["dirty"]:
+            msg = (f"build_fingerprint.h says MC2_BUILD_GIT_DIRTY=1 — this exe "
+                   f"was built from an UNCOMMITTED tree at {fp['sha']}. Its exact "
+                   f"source state cannot be reproduced. COMMIT FIRST, rebuild, "
+                   f"then deploy.")
+            if args.require_clean:
+                fail(msg)
+            log("=" * 72)
+            log(f"WARNING (dirty build): {msg}")
+            log("=" * 72)
+            src_commit = src_commit + "-dirty"
+    else:
+        log("note: no build_fingerprint.h found next to the build dir; "
+            "manifest src_commit falls back to git HEAD (dirty state unknown)")
+
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                               build64_root=args.build64_root)
     log(f"payload: {len(items)} files "

@@ -7,6 +7,7 @@
 #include "gos_profiler.h"
 #include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
+#include "vk_shared_gbuffer_gate.h"
 #include "gameos.hpp"      // gos_InvalidateRenderStateCache (RENDER_STATES v1)
 #include "../../RenderWorld/RenderWorld.h"  // M1.5: IsObjectIdBufferEnabled
 #include "../../RenderCore/RenderResourceRegistry.h"
@@ -23,6 +24,16 @@
 #include "gos_lightgrid_build.h"         // MC2-LIGHTGRID-BUILD-NATIVE-1 (gated, inert)
 #include "gos_postprocess_blur.h"        // POSTPROCESS-COMPUTE-BLUR-1 (gated substrate)
 #include "../../mclib/dynamic_decal_ring.h"  // DECAL-INTEGRATE-1: ring-fed projected decals
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
+#include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
+#include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
+#endif
+#include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
+#ifdef MC2_VULKAN
+#include "engine_present_vk.h"          // VK-P14b: MC2_VK_PRESENT_DIRECT_FBO present-FBO accessor
+#endif
 
 #include <cassert>
 #include <cstdio>
@@ -57,6 +68,162 @@ int mc2ShaderPathTint()
         return (v && v[0]) ? atoi(v) : 0;   // DEFAULT 0 (off, byte-identical)
     }();
     return s_v;
+}
+
+// VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, DEFAULT OFF. When ON (and the
+// island is compiled), the scene-depth texture (sceneDepthTex_) is backed by a
+// VK-built exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8 instead
+// of a plain GL texture. GL-only slice (no VK depth consumer yet). Fail-soft: if
+// the shared VK context/interop is unavailable at scene-FBO creation, the plain
+// GL alloc is used, so gate-ON with no interop degrades to the GL path. Gate OFF
+// (or island not compiled) = byte-identical to today.
+static bool mc2VkSharedSceneDepthEnabled()
+{
+    // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
+    // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
+    const bool s_on = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");   // per-call: VK-FAILSOFT-DISARM-1
+    return s_on;
+}
+
+// VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL: presence-gated =1, DEFAULT OFF. When ON
+// (island compiled) AND shared scene depth is ON, sceneColorTex_ (MRT0) and
+// sceneNormalTex_ (MRT1) are backed by VK-built exportable RGBA16F images imported
+// into GL as GL_RGBA16F, so the VK prop island can co-write props into the SAME
+// GBuffer attachments in-place (Tier-1). REQUIRES MC2_VK_SHARED_SCENE_DEPTH (Tier-1
+// depth-tests against the shared scene depth). Fail-soft: if the shared VK context /
+// interop is unavailable at scene-FBO creation, the plain GL alloc is used, so
+// gate-ON with no interop degrades to the GL path. Gate OFF (or the require missing,
+// or island not compiled) = byte-identical to today.
+static bool mc2VkPropColorTier1Enabled()
+{
+    static const bool s_on =
+        mc2vkgate::subGate("MC2_VK_PROP_COLOR_TIER1") && mc2VkSharedSceneDepthEnabled();
+    return s_on;
+}
+
+// VK-P10 TERRAIN TIER-1: presence-gated =1, DEFAULT OFF. When ON (island compiled)
+// AND shared scene depth is ON, the VK terrain island co-writes the LOD0 terrain
+// prefix into the SAME shared scene color(MRT0)+normal(MRT1)+depth GBuffer in-place.
+// It needs the SAME VK-backed exportable color/normal/depth substrate the prop Tier-1
+// gate builds, so the shared-scene conversion below must trigger for EITHER gate.
+// REQUIRES MC2_VK_SHARED_SCENE_DEPTH (Tier-1 depth-tests against the shared depth).
+// Gate OFF / require missing / island not compiled = byte-identical.
+static bool mc2VkTerrainTier1Enabled()
+{
+    static const bool s_on =
+        mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1") && mc2VkSharedSceneDepthEnabled();
+    return s_on;
+}
+
+// VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
+static bool mc2VkMechTier1Enabled()
+{
+    static const bool s_on =
+        mc2vkgate::subGate("MC2_VK_MECH_TIER1") && mc2VkSharedSceneDepthEnabled();
+    return s_on;
+}
+
+// The shared scene color(MRT0)+normal(MRT1) exportable substrate is needed when
+// the prop Tier-1 OR terrain Tier-1 OR mech Tier-1 in-place co-write gate is armed.
+static bool mc2VkSharedSceneColorNeeded()
+{
+    return mc2VkPropColorTier1Enabled() || mc2VkTerrainTier1Enabled()
+        || mc2VkMechTier1Enabled();
+}
+
+static bool mc2VkSharedSceneDirectResourceEnabled()
+{
+    // VK-RUNG8-ITEM10: the two present-tail conditions
+    // (MC2_VK_PRESENT_NO_GL_IMPORT==1 && MC2_VK_PRESENT_SKIP_GL_HANDOFF==1) were
+    // REMOVED. Item 8 deleted the present interop tail, so the present image is now
+    // UNCONDITIONALLY a VK-only allocation with no GL->VK handoff (those two gates are
+    // retired no-ops). Requiring them here was dead resolver code that would wrongly
+    // decline the whole shared scene to pure GL under the umbrella unless a user set two
+    // retired gates. The shared scene now arms on the post/composite direct-chain stack
+    // alone (default-ON under MC2_VK_SHARED_GBUFFER).
+    static const bool s_on =
+        mc2vkgate::postDirectChainUpstreamOn() &&
+        mc2vkgate::directChainGate("MC2_VK_POST_FOG_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_SSAO_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_HZB_DIRECT_CHAIN") &&
+        mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN");
+    return s_on;
+}
+
+static bool mc2VkSharedSceneStrictEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = std::getenv("MC2_VK_SHARED_SCENE_STRICT");
+        return v && v[0] == '1' && v[1] == '\0';
+    }();
+    return s_on;
+}
+
+// VK-RUNG8-ITEM5 boot-decline canary. With the GL-import half deleted, the shared
+// scene is VK-only and arms only under the full native-present stack. If create()
+// still fails (VK context can't be born / resource alloc fails), the ONLY safe
+// outcome is to decline the ENTIRE VK shared-GBuffer session to pure GL: GL renders
+// its own targets, the VK islands fail their resource-readiness and fall to GL, and
+// present composites the GL scene. That decline is normally silent (a valid pure-GL
+// session); MC2_VK_SHARED_SCENE_STRICT=1 makes it a hard abort so deletion-readiness
+// / Metal-gate proofs cannot pass through a hidden shared-scene decline.
+static void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
+{
+    if (!mc2VkSharedSceneStrictEnabled())
+        return;
+    std::fprintf(stderr,
+                 "[VK_SHARED_SCENE_STRICT] abort slot=%s reason=%s "
+                 "(VK shared-GBuffer declined to pure GL)\n",
+                 slot ? slot : "unknown",
+                 reason ? reason : "unknown");
+    std::fflush(stderr);
+    std::abort();
+}
+
+static GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
+                                             GLenum format, GLenum type,
+                                             GLint minMagFilter)
+{
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minMagFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, minMagFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    return tex;
+}
+
+static GLuint createSceneDepthPlaceholderTex(int w, int h)
+{
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    return tex;
+}
+
+// VK-RUNG8 item-6: MC2_VK_STATIC_SHADOW_MAP is RETIRED. The VK-backed static-shadow
+// import substrate (exportable D32_SFLOAT image imported into GL) is deleted; the static
+// shadow map is now always the plain-GL GL_DEPTH_COMPONENT24 allocation. Setting the env
+// prints a one-shot deprecation note (item-9 pattern) and changes nothing.
+static void mc2VkStaticShadowMapDeprecationNote()
+{
+    static const bool s_once = [] {
+        if (mc2vkgate::envTriState("MC2_VK_STATIC_SHADOW_MAP") != -1)
+            std::fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is "
+                                 "deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-"
+                                 "shadow import substrate was deleted; static shadow uses the "
+                                 "plain GL GL_DEPTH_COMPONENT24 path.\n");
+        return true;
+    }();
+    (void)s_once;
 }
 
 int mc2ShadowCsmCount()
@@ -291,6 +458,24 @@ static bool skyboxFogExcludeEnabled()
     static const bool s_on = []() {
         const char* v = ::getenv("MC2_SKYBOX_FOG_EXCLUDE");
         return !(v && v[0] == '0');   // default ON; explicit "0" disables.
+    }();
+    return s_on;
+}
+
+static bool sceneGlProducerQueryEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = ::getenv("MC2_VK_SCENE_GL_PRODUCER_QUERY");
+        return v && v[0] == '1';
+    }();
+    return s_on;
+}
+
+static bool screenShadowGlCanaryEnabled()
+{
+    static const bool s_on = []() {
+        const char* v = ::getenv("MC2_VK_SCREENSHADOW_GL_CANARY");
+        return v && v[0] == '1';
     }();
     return s_on;
 }
@@ -853,13 +1038,18 @@ void gosPostProcess::destroy()
     destroyBoxDecalCube();   // BT2018-BOX-DECAL-1
 
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-EDGE-FOG-ISLAND-2a: tear down the headless Vulkan device + all
-    // island resources (no-op if the island was never lazily initialized).
-    destroyVulkanEdgeFogIsland();
-    // VULKAN-OOB-FOG-ISLAND-1: same teardown for the OOB-fog island.
-    destroyVulkanOobFogIsland();
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: same teardown for the fused subgraph.
-    destroyVulkanPostprocessSubgraph();
+    // VK-POST-FOG-NATIVE-1 (rung 8.1): same teardown for the native fog pass.
+    // (destroyFBOs also tears it down on resize; this covers final shutdown —
+    // destroy() runs after destroyFBOs, so this is usually a no-op that also
+    // prints the health line.)
+    destroyVkPostFogNative();
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2): same teardown for the native SSAO pass.
+    destroyVkPostSsaoNative();
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): same teardown for the native
+    // cloud/shoreline pass pair.
+    destroyVkPostScreenFxNative();
+    // VK-POST-HZB-NATIVE-1 (rung 8.4): same teardown for the native HZB pyramid.
+    destroyVkPostHzbNative();
 #endif
 
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: release the gated pass's GL resources.
@@ -966,17 +1156,60 @@ void gosPostProcess::createFBOs(int w, int h)
     glGenFramebuffers(1, &sceneFBO_);
     RenderCore::framegraph::fboLedger().registerFbo(sceneFBO_, RenderCore::RenderResourceId::MainColor);  // FBO-LEDGER-1
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+#ifdef MC2_VULKAN_ISLAND
+    const bool vkDirectSceneResources = mc2VkSharedSceneDirectResourceEnabled();
+#endif
 
     // Color attachment: RGBA16F
     // TEX-CLASS: render-target -- scene HDR color (MRT0, FBO attach)
-    glGenTextures(1, &sceneColorTex_);
-    glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneColorTex_, 0);
+    //
+    // VK-P11 TIER-1 SHARED SCENE COLOR (gated): when MC2_VK_PROP_COLOR_TIER1 is ON
+    // (requires shared depth), back sceneColorTex_ with a VK-built exportable RGBA16F
+    // image imported into GL as GL_RGBA16F (byte-compatible with the plain GL scene
+    // color format), so the VK prop island can co-write props into this SAME
+    // attachment in-place. SINGLE color alloc+attach site. Fail-soft: any interop
+    // failure falls through to the plain GL alloc below. Rebuilt on resize
+    // (destroyFBOs tears down sharedSceneColor_ too).
+    bool sceneColorShared = false;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-RUNG8-ITEM5: the shared scene is VK-only (no GL import). It arms ONLY under
+    // the full native-present stack; otherwise the VK islands would co-write into a
+    // VK image that GL present can no longer read, so we decline the whole shared
+    // scene to pure GL here (islands then fail their resource-readiness => GL).
+    if (mc2VkSharedSceneColorNeeded() && vkDirectSceneResources) {
+        const char* reason = "unset";
+        sharedSceneColor_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_COLOR0, w, h,
+                                                      &reason);
+        if (sharedSceneColor_) {
+            // The VK islands co-write into the VK image; the GL FBO attachment is a
+            // plain-GL placeholder (never GL-rendered, only a valid attach target).
+            sceneColorTex_ = createSceneColorPlaceholderTex(w, h, GL_RGBA16F,
+                                                            GL_RGBA, GL_FLOAT,
+                                                            GL_LINEAR);
+            sceneColorShared = true;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_2D, sceneColorTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color active "
+                            "placeholder_tex=%u %dx%d (VK-only MRT0)\n",
+                    (unsigned)sceneColorTex_, w, h);
+        } else {
+            sharedSceneColor_ = nullptr;
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color declined reason=%s "
+                            "(pure GL RGBA16F)\n", reason ? reason : "unknown");
+            mc2VkSharedSceneStrictFallback("color", reason);
+        }
+    }
+#endif
+    if (!sceneColorShared) {
+        glGenTextures(1, &sceneColorTex_);
+        glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneColorTex_, 0);
+    }
 
     // LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe. Logging only,
     // no GL state change. Gate MC2_LIGHTING_LINEAR_AUDIT=1. Confirms at RUNTIME
@@ -1008,15 +1241,50 @@ void gosPostProcess::createFBOs(int w, int h)
 
     // Depth/stencil texture (sampleable for post-process depth reconstruction)
     // TEX-CLASS: render-target -- scene depth (sampleable, FBO attach)
-    glGenTextures(1, &sceneDepthTex_);
-    glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
-                           GL_TEXTURE_2D, sceneDepthTex_, 0);
+    //
+    // VK-TIER1 SHARED SCENE DEPTH (gated, GL-only slice): when the gate is ON and
+    // the island is compiled, back sceneDepthTex_ with a VK-built exportable
+    // D32S8 image imported into GL as GL_DEPTH24_STENCIL8 (the P5-T0 + depth-test
+    // spikes proved this is transparent to the 42 depth-sample consumers, the
+    // glCopyImageSubData snapshot, and the stencil glTextureView). This is the
+    // SINGLE scene-depth alloc+attach site. Fail-soft: if the shared VK context /
+    // interop is unavailable, we fall through to the plain GL alloc below so the
+    // engine never crashes (gate-ON with no interop == the GL path). Rebuilt on
+    // resize because destroyFBOs tears down sharedSceneDepth_ too.
+    bool sceneDepthShared = false;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-RUNG8-ITEM5: VK-only shared depth, armed only under the full native stack.
+    if (mc2VkSharedSceneDepthEnabled() && vkDirectSceneResources) {
+        const char* reason = "unset";
+        sharedSceneDepth_ = mc2SharedSceneDepthCreate(w, h, &reason);
+        if (sharedSceneDepth_) {
+            sceneDepthTex_ = createSceneDepthPlaceholderTex(w, h);
+            sceneDepthShared = true;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                                   GL_TEXTURE_2D, sceneDepthTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] active "
+                            "placeholder_tex=%u %dx%d (VK-only depth)\n",
+                    (unsigned)sceneDepthTex_, w, h);
+        } else {
+            sharedSceneDepth_ = nullptr;
+            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] declined reason=%s "
+                            "(pure GL GL_DEPTH24_STENCIL8)\n",
+                    reason ? reason : "unknown");
+            mc2VkSharedSceneStrictFallback("depth", reason);
+        }
+    }
+#endif
+    if (!sceneDepthShared) {
+        glGenTextures(1, &sceneDepthTex_);
+        glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, w, h);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                               GL_TEXTURE_2D, sceneDepthTex_, 0);
+    }
 
     // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage.
     // glTextureView requires immutable storage (glTexStorage2D above), which
@@ -1040,14 +1308,46 @@ void gosPostProcess::createFBOs(int w, int h)
 
     // Normal buffer: MRT attachment 1 (rgb=world normal encoded, a=shadow skip flag)
     // TEX-CLASS: render-target -- GBuffer normal (MRT1, FBO attach)
-    glGenTextures(1, &sceneNormalTex_);
-    glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, sceneNormalTex_, 0);
+    //
+    // VK-P11 TIER-1 SHARED SCENE NORMAL (gated): mirror of the color slot above.
+    // Backed by a VK-built exportable RGBA16F imported as GL_RGBA16F so the VK prop
+    // island co-writes the GBuffer1 normal (N*0.5+0.5, a=0.25) into this SAME
+    // attachment in-place. SINGLE normal alloc+attach site. Fail-soft to plain GL.
+    bool sceneNormalShared = false;
+#ifdef MC2_VULKAN_ISLAND
+    // VK-RUNG8-ITEM5: VK-only shared normal (MRT1), armed only under the full stack.
+    if (mc2VkSharedSceneColorNeeded() && vkDirectSceneResources) {
+        const char* reason = "unset";
+        sharedSceneNormal_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_NORMAL, w, h,
+                                                       &reason);
+        if (sharedSceneNormal_) {
+            sceneNormalTex_ = createSceneColorPlaceholderTex(w, h, GL_RGBA16F,
+                                                             GL_RGBA, GL_FLOAT,
+                                                             GL_NEAREST);
+            sceneNormalShared = true;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+                                   GL_TEXTURE_2D, sceneNormalTex_, 0);
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal active "
+                            "placeholder_tex=%u %dx%d (VK-only MRT1)\n",
+                    (unsigned)sceneNormalTex_, w, h);
+        } else {
+            sharedSceneNormal_ = nullptr;
+            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal declined reason=%s "
+                            "(pure GL RGBA16F)\n", reason ? reason : "unknown");
+            mc2VkSharedSceneStrictFallback("normal", reason);
+        }
+    }
+#endif
+    if (!sceneNormalShared) {
+        glGenTextures(1, &sceneNormalTex_);
+        glBindTexture(GL_TEXTURE_2D, sceneNormalTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, sceneNormalTex_, 0);
+    }
 
     // M1.5: object-ID attachment-2 (GL_R32UI). Gated on
     // MC2_OBJECT_ID_BUFFER; when env-OFF we skip the texture
@@ -1055,17 +1355,45 @@ void gosPostProcess::createFBOs(int w, int h)
     // the FBO side. glTexImage2D matches the sceneNormalTex_ pattern
     // above (decision m4); glTexStorage2D migration deferred.
     if (RenderWorld::IsObjectIdBufferEnabled()) {
-        // TEX-CLASS: render-target -- objectID GBuffer (MRT2, FBO attach)
-        glGenTextures(1, &sceneObjectIdTex_);
-        glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, w, h, 0,
-                     GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
-                               GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+        bool sceneObjectIdShared = false;
+#ifdef MC2_VULKAN_ISLAND
+        // VK-RUNG8-ITEM5: VK-only shared object-id (MRT2), armed only under the full stack.
+        if (mc2VkSharedSceneColorNeeded() && vkDirectSceneResources) {
+            const char* reason = "unset";
+            sharedSceneObjectId_ = mc2SharedSceneColorCreate(MC2_SHARED_SCENE_OBJECT_ID, w, h,
+                                                             &reason);
+            if (sharedSceneObjectId_) {
+                sceneObjectIdTex_ = createSceneColorPlaceholderTex(w, h, GL_R32UI,
+                                                                   GL_RED_INTEGER,
+                                                                   GL_UNSIGNED_INT,
+                                                                   GL_NEAREST);
+                sceneObjectIdShared = true;
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                       GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId active "
+                                "placeholder_tex=%u %dx%d (VK-only MRT2)\n",
+                        (unsigned)sceneObjectIdTex_, w, h);
+            } else {
+                sharedSceneObjectId_ = nullptr;
+                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId declined reason=%s "
+                                "(pure GL_R32UI)\n", reason ? reason : "unknown");
+                mc2VkSharedSceneStrictFallback("objectId", reason);
+            }
+        }
+#endif
+        if (!sceneObjectIdShared) {
+            // TEX-CLASS: render-target -- objectID GBuffer (MRT2, FBO attach)
+            glGenTextures(1, &sceneObjectIdTex_);
+            glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, w, h, 0,
+                         GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                   GL_TEXTURE_2D, sceneObjectIdTex_, 0);
+        }
     }
 
     // MRT: draw to color attachments via centralized policy. Helper
@@ -1409,13 +1737,38 @@ void gosPostProcess::copySceneColorForVfx()
 
 void gosPostProcess::destroyFBOs()
 {
+#ifdef MC2_VULKAN_ISLAND
+    // VK-POST-FOG-NATIVE-1: torn down FIRST — it borrows the shared scene
+    // color0/depth resources destroyed below (framebuffer/view over their
+    // VkImages must not outlive them). Rebuilt lazily at the next fog site.
+    destroyVkPostFogNative();
+    // VK-POST-SSAO-NATIVE-1: same discipline — it borrows shared color0/normal/
+    // depth AND mirrors the GL half-res AO sizing rebuilt below.
+    destroyVkPostSsaoNative();
+    // VK-POST-SCREENFX-NATIVE-1: same discipline — borrows shared color0/
+    // normal/depth (framebuffer/views over their VkImages must not outlive
+    // them). Rebuilt lazily at the next cloud/shoreline site.
+    destroyVkPostScreenFxNative();
+#endif
     if (sceneFBO_) {
         glDeleteFramebuffers(1, &sceneFBO_);
         sceneFBO_ = 0;
     }
     if (sceneColorTex_) {
-        glDeleteTextures(1, &sceneColorTex_);
-        sceneColorTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneColor_) {
+            // VK-RUNG8-ITEM5: sceneColorTex_ is a plain-GL placeholder owned here (no
+            // interop view); delete it, then free the VK-only shared image.
+            glDeleteTextures(1, &sceneColorTex_);
+            mc2SharedSceneColorDestroy(sharedSceneColor_);
+            sharedSceneColor_ = nullptr;
+            sceneColorTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneColorTex_);
+            sceneColorTex_ = 0;
+        }
         // REGISTRY-POSTPROCESS-FBO-1: mark MainColor unavailable on teardown
         // (resize destroys+recreates; createFBOs re-validates).
         RenderCore::RenderResourceDesc inv;
@@ -1423,8 +1776,20 @@ void gosPostProcess::destroyFBOs()
         RenderCore::registerOrUpdateRenderResource(inv);
     }
     if (sceneDepthTex_) {
-        glDeleteTextures(1, &sceneDepthTex_);
-        sceneDepthTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneDepth_) {
+            // VK-RUNG8-ITEM5: sceneDepthTex_ is a plain-GL placeholder owned here (no
+            // interop view); delete it, then free the VK-only shared depth image.
+            glDeleteTextures(1, &sceneDepthTex_);
+            mc2SharedSceneDepthDestroy(sharedSceneDepth_);
+            sharedSceneDepth_ = nullptr;
+            sceneDepthTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneDepthTex_);
+            sceneDepthTex_ = 0;
+        }
         // REGISTER-MAIN-DEPTH-RESOURCE: mark the slot unavailable on teardown
         // (resize destroys+recreates, so this re-validates in createFBOs).
         RenderCore::RenderResourceDesc inv;
@@ -1441,16 +1806,38 @@ void gosPostProcess::destroyFBOs()
         sceneStencilViewTex_ = 0;
     }
     if (sceneNormalTex_) {
-        glDeleteTextures(1, &sceneNormalTex_);
-        sceneNormalTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneNormal_) {
+            // VK-RUNG8-ITEM5: plain-GL placeholder owned here; delete it, free the VK image.
+            glDeleteTextures(1, &sceneNormalTex_);
+            mc2SharedSceneColorDestroy(sharedSceneNormal_);
+            sharedSceneNormal_ = nullptr;
+            sceneNormalTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneNormalTex_);
+            sceneNormalTex_ = 0;
+        }
         // REGISTRY-POSTPROCESS-FBO-1: mark MainNormal unavailable on teardown.
         RenderCore::RenderResourceDesc inv;
         inv.id = RenderCore::RenderResourceId::MainNormal; inv.valid = false;
         RenderCore::registerOrUpdateRenderResource(inv);
     }
     if (sceneObjectIdTex_) {
-        glDeleteTextures(1, &sceneObjectIdTex_);
-        sceneObjectIdTex_ = 0;
+#ifdef MC2_VULKAN_ISLAND
+        if (sharedSceneObjectId_) {
+            // VK-RUNG8-ITEM5: plain-GL placeholder owned here; delete it, free the VK image.
+            glDeleteTextures(1, &sceneObjectIdTex_);
+            mc2SharedSceneColorDestroy(sharedSceneObjectId_);
+            sharedSceneObjectId_ = nullptr;
+            sceneObjectIdTex_ = 0;
+        } else
+#endif
+        {
+            glDeleteTextures(1, &sceneObjectIdTex_);
+            sceneObjectIdTex_ = 0;
+        }
         // REGISTRY-POSTPROCESS-FBO-1: mark SceneObjectId unavailable on teardown.
         RenderCore::RenderResourceDesc inv;
         inv.id = RenderCore::RenderResourceId::SceneObjectId; inv.valid = false;
@@ -1487,6 +1874,9 @@ void gosPostProcess::destroyFBOs()
 
     // HZB-DEPTH-PYRAMID-MVP-1: free the per-level pyramid textures + FBO
     // (resize re-allocates if the gate is on).
+#ifdef MC2_VULKAN_ISLAND
+    destroyVkPostHzbNative();
+#endif
     bool hzbHadBase = (hzbLevelTex_[0] != 0);
     for (int i = 0; i < kHzbMaxLevels; ++i) {
         if (hzbLevelTex_[i]) { glDeleteTextures(1, &hzbLevelTex_[i]); hzbLevelTex_[i] = 0; }
@@ -1710,6 +2100,12 @@ void gosPostProcess::beginScene()
     sceneHasTerrain_ = false;  // reset each frame; set by markTerrainDrawn()
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    if (sceneGlProducerQueryEnabled() && sceneGlProducerQuery_ == 0)
+        glGenQueries(1, &sceneGlProducerQuery_);
+    if (sceneGlProducerQuery_ != 0 && !sceneGlProducerQueryActive_) {
+        glBeginQuery(GL_ANY_SAMPLES_PASSED, sceneGlProducerQuery_);
+        sceneGlProducerQueryActive_ = true;
+    }
 
     // COLORMASK-ROLLOUT-1 (keystone): assert the steady-state color mask (all
     // attachments writable) at frame begin, before the clear + the first MRT scene
@@ -2311,6 +2707,91 @@ void gosPostProcess::runSSAO()
     glActiveTexture(GL_TEXTURE0);
 }
 
+// ===========================================================================
+// VK-REGION-SSAO-1: PostprocessSSAO region (second region through runRegion).
+// ===========================================================================
+//
+// 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
+// inline body. No interface, no Vulkan: pure code-move. Under the master
+// gate OFF this wrapper is never entered (endScene() calls runSSAO() directly);
+// under gate ON, the GL backend calls this so its output == the old inline
+// path. Returns 1 if SSAO's own gates let it run this frame, 0 if it
+// early-returned (mirrors the fog wrapper's equivalence-count contract, but
+// SSAO is a single logical effect so the count is 0/1, not 0/2).
+int gosPostProcess::runSSAORegionGL()
+{
+    const bool willRun = ssaoEnabled_ && sceneHasTerrain_ &&
+                         ssaoProg_ && ssaoProg_->is_valid() &&
+                         ssaoApplyProg_ && ssaoApplyProg_->is_valid() &&
+                         ssaoFBO_ && ssaoColorTex_;
+    runSSAO();
+    return willRun ? 1 : 0;
+}
+
+// Resolver: gosPostProcess owns the scene + SSAO textures, so it maps the
+// neutral ids to the concrete GL handles. Keeps handles OUT of the region
+// context (same discipline as resolveRegionResource() for fog).
+unsigned int gosPostProcess::resolveSSAORegionResource(RenderCore::RenderResourceId id) const
+{
+    switch (id) {
+        case RenderCore::RenderResourceId::MainColor:     return (unsigned int)sceneColorTex_;
+        case RenderCore::RenderResourceId::MainDepth:     return (unsigned int)sceneDepthTex_;
+        case RenderCore::RenderResourceId::MainNormal:    return (unsigned int)sceneNormalTex_;
+        case RenderCore::RenderResourceId::SsaoOcclusion: return (unsigned int)ssaoColorTex_;
+        default: return 0u;
+    }
+}
+
+#ifdef MC2_VULKAN_ISLAND
+// 1C: Vulkan impl of the PostprocessSSAO region. Fail-soft: readiness returns
+// false ONLY on a genuine device/init failure (self-disables), so we return
+// false -> caller runs GL (FallbackGL = real failure, not "gate off"). The
+// neutral ctx values already equal the GL runSSAO() uploads exactly, so no
+// data is threaded through here beyond the resolver exercise (contract
+// symmetry with the fog region's 1C).
+bool gosPostProcess::runSSAORegionVulkanBackend(
+    const RenderCore::PostprocessSSAORegionContext& ctx,
+    RenderCore::RegionOutput* out)
+{
+    if (ctx.resolver) {
+        (void)ctx.resolver->resolve(ctx.depth);
+        (void)ctx.resolver->resolve(ctx.normal);
+        (void)ctx.resolver->resolve(ctx.color);
+        (void)ctx.resolver->resolve(ctx.occlusion);
+    }
+    // N0 BUG-1 (enable-guard parity): the GL runSSAO() self-guards on
+    // ssaoEnabled_ && sceneHasTerrain_ (+ program/FBO validity) and no-ops when
+    // any is false, so it NEVER runs against a frame whose terrain MVP / scene
+    // depth have not been produced (menus, load frames, no-terrain frames). The
+    // Vulkan island had NO such guard, so it ran EVERY routed frame -- including
+    // frames where inverseViewProj_/viewProj_ are still zero-initialized and
+    // sceneDepthTex_ is all-zero -- reconstructing garbage AO. Mirror GL's guard
+    // exactly here: decline (return false) so the caller runs the GL wrapper,
+    // whose own guard then no-ops. This keeps the Vulkan path bit-for-bit
+    // scoped to the SAME frames GL would actually shade.
+    const bool ssaoGatesLetItRun =
+        ssaoEnabled_ && sceneHasTerrain_ &&
+        ssaoProg_ && ssaoProg_->is_valid() &&
+        ssaoApplyProg_ && ssaoApplyProg_->is_valid() &&
+        ssaoFBO_ && ssaoColorTex_;
+    if (!ssaoGatesLetItRun) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "ssao_gate_off";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    if (!vkPostSsaoNativeEnabled() || !runVkPostSsaoNative()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_native_ssao_unavailable";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
+               out->fallbackReason = ""; out->glPassesRun = 0; out->vkDraws = 2; }
+    return true;
+}
+#endif
+
 void gosPostProcess::clearGBuffer1()
 {
     if (!sceneNormalTex_) return;
@@ -2335,6 +2816,11 @@ void gosPostProcess::runScreenShadow()
     if (!sceneHasTerrain_) return;
     if (!screenShadowProg_ || !screenShadowProg_->is_valid()) return;
     if (!shadowsEnabled_) return;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostScreenFxNativeEnabled() && runVkPostScreenShadowStaticNative())
+        return;
+#endif
 
     // APPLY-STATE-SCREENSHADOW-1: skip the 4 setup calls when the executor already
     // applied them (MC2_FRAMEGRAPH_EXECUTOR ON). Reset one-shot before draw.
@@ -2451,8 +2937,23 @@ void gosPostProcess::runScreenShadow()
 
     // Draw fullscreen quad — pass 1: normal (skip terrain)
     // Draw fullscreen quad - single pass for terrain, objects, and overlays.
+    GLuint screenShadowCanaryQuery = 0;
+    const bool screenShadowCanary = screenShadowGlCanaryEnabled();
+    if (screenShadowCanary) {
+        glGenQueries(1, &screenShadowCanaryQuery);
+        glBeginQuery(GL_ANY_SAMPLES_PASSED, screenShadowCanaryQuery);
+    }
     glBindVertexArray(quadVAO_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    if (screenShadowCanary) {
+        glEndQuery(GL_ANY_SAMPLES_PASSED);
+        GLuint anySamples = 0;
+        glGetQueryObjectuiv(screenShadowCanaryQuery, GL_QUERY_RESULT, &anySamples);
+        std::fprintf(stderr,
+            "[VK_SCREENSHADOW_GL_CANARY v1] any_samples=%u sceneFBO=%u csm=%d debug=%d\n",
+            (unsigned)anySamples, (unsigned)sceneFBO_, csmActive ? 1 : 0, screenShadowDebug_);
+        glDeleteQueries(1, &screenShadowCanaryQuery);
+    }
 
     glBindVertexArray(0);
 
@@ -2862,18 +3363,9 @@ unsigned int gosPostProcess::resolveRegionResource(RenderCore::RenderResourceId 
 }
 
 #ifdef MC2_VULKAN_ISLAND
-// 1C: Vulkan impl of the PostprocessFog region. Reuses the shipped, parity-proven
-// subgraph. POSTPROCESS-VULKAN-BACKEND-OPT-IN: the region-iface routing backend=vk
-// IS the enable signal for Vulkan -- so this DECOUPLES from the standalone subgraph
-// gate. It invokes postprocessSubgraphReadyForRegion() (lazy init + fail-soft, NO
-// MC2_VULKAN_POSTPROCESS_SUBGRAPH check), NOT vulkanPostprocessSubgraphEnabled().
-// Fail-soft: readiness returns false ONLY on a genuine device/init failure (and
-// self-disables), so we return false -> caller runs GL (FallbackGL = real failure,
-// not "gate off"). The standalone MC2_VULKAN_POSTPROCESS_SUBGRAPH path stays
-// independently runnable (that gate still routes through the same readiness half).
-// The neutral ctx values already equal the subgraph's EXACT member-sourced uploads,
-// so no data is threaded through here — the ctx is carried for contract symmetry
-// and resolver exercise.
+// 1C: Vulkan impl of the PostprocessFog region. The region iface's backend=vk
+// selector now routes to the rung-8.1 shared-GBuffer native fog path. Fail-soft:
+// any not-ready native condition returns false so the caller runs GL.
 bool gosPostProcess::runFogRegionVulkanBackend(
     const RenderCore::PostprocessFogRegionContext& ctx,
     RenderCore::RegionOutput* out)
@@ -2882,13 +3374,27 @@ bool gosPostProcess::runFogRegionVulkanBackend(
         (void)ctx.resolver->resolve(ctx.color);
         (void)ctx.resolver->resolve(ctx.depth);
     }
-    if (!postprocessSubgraphReadyForRegion()) {
+    // VK-FOG-SKYEXCLUDE-GUARD-1: the vk fog subgraph has NO stencil input — the
+    // ported shaders/vulkan/{edge_fog,fog_oob}.frag carry no stencilTex, so with
+    // MC2_SKYBOX_FOG_EXCLUDE=1 the Vulkan path would silently fog sky pixels the
+    // GL path excludes (SKYBOX-FOG-EXCLUDE-1's usampler2D STENCIL_INDEX view).
+    // Decline honestly -> caller runs GL and stamps FallbackGL. Eventual fix if
+    // sky-exclude-under-vk is ever needed: bridge the stencil plane like depth
+    // (glGetTexImage(GL_STENCIL_INDEX, GL_UNSIGNED_BYTE) -> staging ->
+    // VK_FORMAT_R8_UINT image, usampler2D in the ported frag) — see
+    // .claude/VULKAN-NEXT-SLICES.md LM4.
+    if (skyboxFogExcludeEnabled()) {
         if (out) { out->impl = RenderCore::RenderRegionImpl::None;
-                   out->fallbackReason = "vk_device_init_failed";
+                   out->fallbackReason = "sky_exclude_not_ported";
                    out->glPassesRun = 0; out->vkDraws = 0; }
         return false;
     }
-    runPostprocessSubgraph();   // does BOTH fog effects in ONE Vulkan render pass
+    if (!runVkPostFogNative()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_native_fog_not_ready";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
     if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
                out->fallbackReason = ""; out->glPassesRun = 0; out->vkDraws = 2; }
     return true;
@@ -2957,9 +3463,7 @@ struct GlFogRegionBackend final : RenderCore::IRenderBackend {
 
 } // namespace
 
-// C-linkage accessor for the debug-state dump (region-selection health). Mirrors
-// the mc2_vulkan_postprocess_subgraph_health pattern; always compiled (no #ifdef)
-// because the region iface exists on every build.
+// C-linkage accessor for the debug-state dump (region-selection health). Always`r`n// compiled because the region iface exists on every build.
 extern "C" void mc2_render_backend_region_health(
     int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
     const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
@@ -3057,6 +3561,577 @@ void gosPostProcess::runFogRegionThroughBackend()
         RenderCore::region_impl_to_string(out.impl));
 }
 
+// ---------------------------------------------------------------------------
+// VK-REGION-SSAO-1: SSAO region routing -- selector + GL backend impl + health
+// snapshot. Distinct health struct from g_region (fog) so both regions' state
+// is independently catchable in the debug-state dump.
+// ---------------------------------------------------------------------------
+namespace {
+
+struct SsaoRegionSelectHealth {
+    int         ifaceGateOn      = 0;    // MC2_RENDER_BACKEND_REGION_IFACE==1
+    char        requestedBackend[8] = "gl";  // MC2_POSTPROCESS_BACKEND (gl|vk)
+    int         lastImpl         = 0;    // RenderRegionImpl (None/GLInline/VulkanSubgraph/FallbackGL)
+    char        lastFallbackReason[64] = {0};
+    int         lastGlPassesRun  = 0;    // 0 or 1 (SSAO is a single logical effect)
+    int         lastVkDraws      = 0;    // 0 or 2 (occlusion + apply)
+    unsigned long routedFrames   = 0;    // frames routed through runRegion
+};
+SsaoRegionSelectHealth g_ssaoRegion;
+
+void ssao_region_set_fallback_reason(const char* r) {
+    std::strncpy(g_ssaoRegion.lastFallbackReason, r ? r : "",
+                 sizeof(g_ssaoRegion.lastFallbackReason) - 1);
+    g_ssaoRegion.lastFallbackReason[sizeof(g_ssaoRegion.lastFallbackReason) - 1] = '\0';
+}
+
+// Neutral-context resolver adaptor wrapping gosPostProcess::resolveSSAORegionResource.
+struct GosSsaoResourceResolver final : RenderCore::IResourceResolver {
+    const gosPostProcess* pp = nullptr;
+    unsigned int resolve(RenderCore::RenderResourceId id) const override {
+        return pp ? pp->resolveSSAORegionResource(id) : 0u;
+    }
+};
+
+// GL impl of runRegion for the PostprocessSSAO region: resolves depth/normal/
+// color/occlusion from the neutral context (proving the id->handle path is
+// exercised even though the GL SSAO body reads the members directly today)
+// and runs the extracted GL wrapper. Always succeeds -> out->impl = GLInline.
+struct GlSsaoRegionBackend final : RenderCore::IRenderBackend {
+    gosPostProcess* pp = nullptr;
+    void bindBackbuffer() override {}
+    void bindFramebuffer(unsigned int) override {}
+    void setViewport(int, int, int, int) override {}
+    void clear(unsigned int, float, float, float, float) override {}
+    bool runRegion(RenderCore::RenderRegionId id,
+                   const RenderCore::PostprocessSSAORegionContext& ctx,
+                   RenderCore::RegionOutput* out) override {
+        if (id != RenderCore::RenderRegionId::PostprocessSSAO || !pp) return false;
+        if (ctx.resolver) {
+            (void)ctx.resolver->resolve(ctx.depth);
+            (void)ctx.resolver->resolve(ctx.normal);
+            (void)ctx.resolver->resolve(ctx.color);
+            (void)ctx.resolver->resolve(ctx.occlusion);
+        }
+        int gl = pp->runSSAORegionGL();
+        if (out) { out->impl = RenderCore::RenderRegionImpl::GLInline;
+                   out->glPassesRun = gl; out->vkDraws = 0; out->fallbackReason = ""; }
+        return true;
+    }
+};
+
+} // namespace
+
+// C-linkage accessor for the debug-state dump (SSAO region-selection health).
+// Mirrors mc2_render_backend_region_health (fog); always compiled (no #ifdef).
+extern "C" void mc2_render_backend_ssao_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames) {
+    if (ifaceGateOn)         *ifaceGateOn         = g_ssaoRegion.ifaceGateOn;
+    if (requestedBackend)    *requestedBackend    = g_ssaoRegion.requestedBackend;
+    if (lastImpl)            *lastImpl            = g_ssaoRegion.lastImpl;
+    if (lastFallbackReason)  *lastFallbackReason  = g_ssaoRegion.lastFallbackReason;
+    if (lastGlPassesRun)     *lastGlPassesRun     = g_ssaoRegion.lastGlPassesRun;
+    if (lastVkDraws)         *lastVkDraws         = g_ssaoRegion.lastVkDraws;
+    if (routedFrames)        *routedFrames        = g_ssaoRegion.routedFrames;
+}
+
+// The routed entry (master gate ON). Builds the neutral SSAO context, selects
+// the backend, calls runRegion; falls back to GL on false. Never double-
+// applies: exactly ONE of {GL wrapper, Vulkan island} runs, and the direct
+// runSSAO() call in endScene() is skipped whenever this routed path is taken.
+void gosPostProcess::runSSAORegionThroughBackend()
+{
+    ++g_ssaoRegion.routedFrames;
+    g_ssaoRegion.ifaceGateOn = 1;
+
+    // Sub-selector: MC2_POSTPROCESS_BACKEND = gl | vk (default gl). SAME env var
+    // as the fog region -- one selector picks the backend for every region.
+    static const bool s_wantVk = []() {
+        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
+        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
+    }();
+    std::strncpy(g_ssaoRegion.requestedBackend, s_wantVk ? "vk" : "gl",
+                 sizeof(g_ssaoRegion.requestedBackend) - 1);
+
+    // Build the BACKEND-NEUTRAL context (RenderResourceId + params + dims; NO
+    // raw handles). Values pulled EXACTLY from the GL runSSAO() uploads.
+    GosSsaoResourceResolver resolver;
+    resolver.pp = this;
+    RenderCore::PostprocessSSAORegionContext ctx;
+    ctx.depth     = RenderCore::RenderResourceId::MainDepth;
+    ctx.normal    = RenderCore::RenderResourceId::MainNormal;
+    ctx.color     = RenderCore::RenderResourceId::MainColor;
+    ctx.occlusion = RenderCore::RenderResourceId::SsaoOcclusion;
+    ctx.width  = width_;
+    ctx.height = height_;
+    ctx.halfWidth  = ssaoW_;
+    ctx.halfHeight = ssaoH_;
+    ctx.resolver = &resolver;
+    std::memcpy(ctx.params.invViewProj, inverseViewProj_, 16 * sizeof(float));
+    std::memcpy(ctx.params.viewProj, viewProj_, 16 * sizeof(float));
+    ctx.params.screenWidth  = (float)width_;
+    ctx.params.screenHeight = (float)height_;
+    ctx.params.aoRadius   = aoRadius_;
+    ctx.params.aoBias     = aoBias_;
+    ctx.params.aoStrength = aoStrength_;
+    ctx.params.aoPower    = aoPower_;
+    ctx.params.debugMode  = ssaoDebug_;
+
+    RenderCore::RegionOutput out;
+    bool ran = false;
+    // N0 BUG-1: a decline whose reason is "ssao_gate_off" means SSAO's OWN gates
+    // (ssaoEnabled_/sceneHasTerrain_/program/FBO) skip the region THIS frame --
+    // exactly as GL's runSSAO() no-ops -- so neither backend does real work.
+    // That is NOT a Vulkan device FallbackGL (which the parity harness treats as
+    // INCONCLUSIVE, exit 5). Track it so we (a) do not relabel the no-op GL run
+    // as FallbackGL, and (b) do not overwrite the last REAL per-frame impl in the
+    // health snapshot -- otherwise a trailing menu/no-terrain frame would stamp
+    // the shutdown dump FallbackGL and void an otherwise-clean vk compare.
+    bool gateOffSkip = false;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_wantVk) {
+        // Route through the Vulkan SSAO island backend (1C). On false the
+        // caller (this function) runs GL below with impl=FallbackGL, UNLESS the
+        // decline was a gate-off skip (handled below).
+        ran = runSSAORegionVulkanBackend(ctx, &out);
+        if (!ran) {
+            const char* why = (out.fallbackReason && out.fallbackReason[0])
+                                  ? out.fallbackReason : "vk_declined";
+            gateOffSkip = (std::strcmp(why, "ssao_gate_off") == 0);
+            if (!gateOffSkip)
+                ssao_region_set_fallback_reason(why);
+        }
+    }
+#endif
+
+    if (!ran) {
+        GlSsaoRegionBackend gl;
+        gl.pp = this;
+        bool okGl = gl.runRegion(RenderCore::RenderRegionId::PostprocessSSAO, ctx, &out);
+        if (s_wantVk && !gateOffSkip) {
+            // requested vk but GL actually ran -> FallbackGL (not plain GLInline).
+            out.impl = RenderCore::RenderRegionImpl::FallbackGL;
+        }
+        (void)okGl;
+    }
+
+    // Gate-off skip: the region did no real work this frame; leave the health
+    // snapshot's last-real impl/reason untouched so shutdown reflects the last
+    // frame the region ACTUALLY ran (mirrors GL, where runSSAO() simply no-ops
+    // and leaves no region-health footprint).
+    if (!gateOffSkip) {
+        g_ssaoRegion.lastImpl        = (int)out.impl;
+        g_ssaoRegion.lastGlPassesRun = out.glPassesRun;
+        g_ssaoRegion.lastVkDraws     = out.vkDraws;
+        if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
+            ssao_region_set_fallback_reason("");
+    }
+
+    render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "PostprocessSSAORegion",
+        render_frame_plan::PathKind::ApplyPipeline, 1,
+        RenderCore::region_impl_to_string(out.impl));
+}
+
+// ---------------------------------------------------------------------------
+// VK-REGION-HZB-1: HZB region routing -- selector + GL backend impl + health
+// snapshot. Third region through runRegion (fog, ssao, hzb). Same shape as
+// the SSAO region block above; distinct health struct so all regions' state
+// is independently catchable in the debug-state dump.
+// ---------------------------------------------------------------------------
+
+// 1A: the extracted GL HZB region wrapper. Calls the UNCHANGED runHzbReduce()
+// inline body (pure code-move). Returns 1 if HZB's own gates let it run this
+// frame, 0 if it early-returned (single logical effect -> 0/1 count, like SSAO).
+int gosPostProcess::runHzbRegionGL()
+{
+    const bool willRun = hzbEnabled_ &&
+                         hzbReduceProg_ && hzbReduceProg_->is_valid() &&
+                         hzbLevelTex_[0] && hzbFBO_ && hzbMipCount_ >= 1 &&
+                         sceneDepthTex_ != 0;
+    runHzbReduce();
+    return willRun ? 1 : 0;
+}
+
+// Resolver: gosPostProcess owns the scene depth + pyramid textures, so it maps
+// the neutral ids to the concrete GL handles. HzbPyramid is a MULTI-LEVEL
+// resource (one texture per ceil-ladder level); the resolver returns the
+// level-0 representative handle -- the backend impl owns the per-level mapping
+// (member access, same discipline as the SSAO region).
+unsigned int gosPostProcess::resolveHzbRegionResource(RenderCore::RenderResourceId id) const
+{
+    switch (id) {
+        case RenderCore::RenderResourceId::MainDepth:  return (unsigned int)sceneDepthTex_;
+        case RenderCore::RenderResourceId::HzbPyramid: return (unsigned int)hzbLevelTex_[0];
+        default: return 0u;
+    }
+}
+
+namespace {
+
+struct HzbRegionSelectHealth {
+    int         ifaceGateOn      = 0;    // MC2_RENDER_BACKEND_REGION_IFACE==1
+    char        requestedBackend[8] = "gl";  // MC2_POSTPROCESS_BACKEND (gl|vk)
+    int         lastImpl         = 0;    // RenderRegionImpl (None/GLInline/VulkanSubgraph/FallbackGL)
+    char        lastFallbackReason[64] = {0};
+    int         lastGlPassesRun  = 0;    // 0 or 1 (HZB is a single logical effect)
+    int         lastVkDraws      = 0;    // 0 or hzbMipCount_ (one draw per level)
+    unsigned long routedFrames   = 0;    // frames routed through runRegion
+};
+HzbRegionSelectHealth g_hzbRegion;
+
+void hzb_region_set_fallback_reason(const char* r) {
+    std::strncpy(g_hzbRegion.lastFallbackReason, r ? r : "",
+                 sizeof(g_hzbRegion.lastFallbackReason) - 1);
+    g_hzbRegion.lastFallbackReason[sizeof(g_hzbRegion.lastFallbackReason) - 1] = '\0';
+}
+
+// Neutral-context resolver adaptor wrapping gosPostProcess::resolveHzbRegionResource.
+struct GosHzbResourceResolver final : RenderCore::IResourceResolver {
+    const gosPostProcess* pp = nullptr;
+    unsigned int resolve(RenderCore::RenderResourceId id) const override {
+        return pp ? pp->resolveHzbRegionResource(id) : 0u;
+    }
+};
+
+// GL impl of runRegion for the PostprocessHzb region: resolves depth/pyramid
+// from the neutral context (proving the id->handle path is exercised even
+// though the GL HZB body reads the members directly today) and runs the
+// extracted GL wrapper. Always succeeds -> out->impl = GLInline.
+struct GlHzbRegionBackend final : RenderCore::IRenderBackend {
+    gosPostProcess* pp = nullptr;
+    void bindBackbuffer() override {}
+    void bindFramebuffer(unsigned int) override {}
+    void setViewport(int, int, int, int) override {}
+    void clear(unsigned int, float, float, float, float) override {}
+    bool runRegion(RenderCore::RenderRegionId id,
+                   const RenderCore::PostprocessHzbRegionContext& ctx,
+                   RenderCore::RegionOutput* out) override {
+        if (id != RenderCore::RenderRegionId::PostprocessHzb || !pp) return false;
+        if (ctx.resolver) {
+            (void)ctx.resolver->resolve(ctx.depth);
+            (void)ctx.resolver->resolve(ctx.pyramid);
+        }
+        int gl = pp->runHzbRegionGL();
+        if (out) { out->impl = RenderCore::RenderRegionImpl::GLInline;
+                   out->glPassesRun = gl; out->vkDraws = 0; out->fallbackReason = ""; }
+        return true;
+    }
+};
+
+} // namespace
+
+// C-linkage accessor for the debug-state dump (HZB region-selection health).
+// Mirrors mc2_render_backend_ssao_region_health; always compiled (no #ifdef).
+extern "C" void mc2_render_backend_hzb_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames) {
+    if (ifaceGateOn)         *ifaceGateOn         = g_hzbRegion.ifaceGateOn;
+    if (requestedBackend)    *requestedBackend    = g_hzbRegion.requestedBackend;
+    if (lastImpl)            *lastImpl            = g_hzbRegion.lastImpl;
+    if (lastFallbackReason)  *lastFallbackReason  = g_hzbRegion.lastFallbackReason;
+    if (lastGlPassesRun)     *lastGlPassesRun     = g_hzbRegion.lastGlPassesRun;
+    if (lastVkDraws)         *lastVkDraws         = g_hzbRegion.lastVkDraws;
+    if (routedFrames)        *routedFrames        = g_hzbRegion.routedFrames;
+}
+
+#ifdef MC2_VULKAN_ISLAND
+// 1C: Vulkan impl of the PostprocessHzb region. Fail-soft; declines with
+// "hzb_gate_off" (a SKIP, not FallbackGL) when HZB's own gates would make the
+// GL path no-op -- the N0-BUG-1 enable-guard-parity lesson applied from birth:
+// the Vulkan path is bit-for-bit scoped to the SAME frames GL would shade.
+bool gosPostProcess::runHzbRegionVulkanBackend(
+    const RenderCore::PostprocessHzbRegionContext& ctx,
+    RenderCore::RegionOutput* out)
+{
+    if (ctx.resolver) {
+        (void)ctx.resolver->resolve(ctx.depth);
+        (void)ctx.resolver->resolve(ctx.pyramid);
+    }
+    const bool hzbGatesLetItRun =
+        hzbEnabled_ &&
+        hzbReduceProg_ && hzbReduceProg_->is_valid() &&
+        hzbLevelTex_[0] && hzbFBO_ && hzbMipCount_ >= 1 &&
+        sceneDepthTex_ != 0;
+    if (!hzbGatesLetItRun) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "hzb_gate_off";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    if (!vkPostHzbNativeEnabled() || !runVkPostHzbNative()) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_native_hzb_unavailable";
+                   out->glPassesRun = 0; out->vkDraws = 0; }
+        return false;
+    }
+    if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
+               out->fallbackReason = ""; out->glPassesRun = 0;
+               out->vkDraws = hzbMipCount_; }
+    return true;
+}
+#endif
+
+// The routed entry (master gate ON). Builds the neutral HZB context, selects
+// the backend, calls runRegion; falls back to GL on false. Never double-
+// applies: exactly ONE of {GL wrapper, Vulkan island} runs, and the direct
+// runHzbReduce() call in endScene() is skipped whenever this routed path is taken.
+void gosPostProcess::runHzbRegionThroughBackend()
+{
+    ++g_hzbRegion.routedFrames;
+    g_hzbRegion.ifaceGateOn = 1;
+
+    static const bool s_wantVk = []() {
+        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
+        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
+    }();
+    std::strncpy(g_hzbRegion.requestedBackend, s_wantVk ? "vk" : "gl",
+                 sizeof(g_hzbRegion.requestedBackend) - 1);
+
+    GosHzbResourceResolver resolver;
+    resolver.pp = this;
+    RenderCore::PostprocessHzbRegionContext ctx;
+    ctx.depth    = RenderCore::RenderResourceId::MainDepth;
+    ctx.pyramid  = RenderCore::RenderResourceId::HzbPyramid;
+    ctx.width    = hzbW_;
+    ctx.height   = hzbH_;
+    ctx.mipCount = hzbMipCount_;
+    ctx.resolver = &resolver;
+
+    RenderCore::RegionOutput out;
+    bool ran = false;
+    // Gate-off decline handling mirrors the SSAO region exactly (N0 BUG-1):
+    // "hzb_gate_off" means HZB's OWN gates skip the region this frame -- both
+    // backends no-op -- so it is a SKIP, never relabeled FallbackGL, and it
+    // must not overwrite the last REAL impl in the health snapshot.
+    bool gateOffSkip = false;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_wantVk) {
+        ran = runHzbRegionVulkanBackend(ctx, &out);
+        if (!ran) {
+            const char* why = (out.fallbackReason && out.fallbackReason[0])
+                                  ? out.fallbackReason : "vk_declined";
+            gateOffSkip = (std::strcmp(why, "hzb_gate_off") == 0);
+            if (!gateOffSkip)
+                hzb_region_set_fallback_reason(why);
+        }
+    }
+#endif
+
+    if (!ran) {
+        GlHzbRegionBackend gl;
+        gl.pp = this;
+        bool okGl = gl.runRegion(RenderCore::RenderRegionId::PostprocessHzb, ctx, &out);
+        if (s_wantVk && !gateOffSkip) {
+            // requested vk but GL actually ran -> FallbackGL (not plain GLInline).
+            out.impl = RenderCore::RenderRegionImpl::FallbackGL;
+        }
+        (void)okGl;
+    }
+
+    if (!gateOffSkip) {
+        g_hzbRegion.lastImpl        = (int)out.impl;
+        g_hzbRegion.lastGlPassesRun = out.glPassesRun;
+        g_hzbRegion.lastVkDraws     = out.vkDraws;
+        if (out.impl != RenderCore::RenderRegionImpl::FallbackGL)
+            hzb_region_set_fallback_reason("");
+    }
+
+    render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "PostprocessHzbRegion",
+        render_frame_plan::PathKind::ApplyPipeline, 1,
+        RenderCore::region_impl_to_string(out.impl));
+}
+
+// ---------------------------------------------------------------------------
+// L6.6-COMPOSITE-PRESENT-SCAFFOLD: the CompositePresent region (fourth region
+// through runRegion: fog, ssao, hzb, composite-present). Unlike the other three,
+// this region does NOT touch the game frame -- it presents a test pattern to a
+// SEPARATE Vulkan window via the persistent present object, proving the
+// region->acquire->present->resize path + per-image render semaphores WITHOUT
+// touching the GL game window / FBO-0 / GL swap. Opt-in (MC2_VK_COMPOSITE_PRESENT)
+// because the scaffold spawns a window -- it must NOT run every frame. Default-OFF
+// -> GL game window byte/behavior-identical. Full game-window Vulkan present is
+// BLOCKED on L7 shared-image interop / ownership migration (ledgered wall).
+// ---------------------------------------------------------------------------
+
+// Resolver: gosPostProcess owns the composited scene color, so it maps the
+// neutral MainColor id to the concrete GL handle. The scaffold does NOT sample
+// it (a test pattern stands in; bridging the real image is L7 interop) -- the
+// resolve() call proves the id->handle path is exercised, same discipline as
+// the other regions.
+unsigned int gosPostProcess::resolveCompositePresentRegionResource(
+    RenderCore::RenderResourceId id) const
+{
+    switch (id) {
+        case RenderCore::RenderResourceId::MainColor: return (unsigned int)sceneColorTex_;
+        default: return 0u;
+    }
+}
+
+namespace {
+
+struct CompositePresentRegionSelectHealth {
+    int         ifaceGateOn      = 0;    // MC2_RENDER_BACKEND_REGION_IFACE==1
+    char        requestedBackend[8] = "gl";  // MC2_POSTPROCESS_BACKEND (gl|vk)
+    int         lastImpl         = 0;    // RenderRegionImpl
+    char        lastFallbackReason[64] = {0};
+    int         lastPresented    = 0;    // out.presented
+    int         lastPresentFrames = 0;   // frames presented VK_SUCCESS
+    int         lastResizeCount  = 0;
+    int         lastValidationErrors = 0;
+    unsigned long routedFrames   = 0;    // frames routed through runRegion
+};
+CompositePresentRegionSelectHealth g_compositePresentRegion;
+
+void composite_present_region_set_fallback_reason(const char* r) {
+    std::strncpy(g_compositePresentRegion.lastFallbackReason, r ? r : "",
+                 sizeof(g_compositePresentRegion.lastFallbackReason) - 1);
+    g_compositePresentRegion.lastFallbackReason[
+        sizeof(g_compositePresentRegion.lastFallbackReason) - 1] = '\0';
+}
+
+// Neutral-context resolver adaptor.
+struct GosCompositePresentResourceResolver final : RenderCore::IResourceResolver {
+    const gosPostProcess* pp = nullptr;
+    unsigned int resolve(RenderCore::RenderResourceId id) const override {
+        return pp ? pp->resolveCompositePresentRegionResource(id) : 0u;
+    }
+};
+
+// GL impl: there is NO GL present-to-a-second-window path (the GL game window
+// stays untouched by ruling), so the GL backend DECLINES this region. When vk
+// is not requested the routed entry simply no-ops -- the scaffold is a Vulkan-
+// only proof rung.
+struct GlCompositePresentRegionBackend final : RenderCore::IRenderBackend {
+    gosPostProcess* pp = nullptr;
+    void bindBackbuffer() override {}
+    void bindFramebuffer(unsigned int) override {}
+    void setViewport(int, int, int, int) override {}
+    void clear(unsigned int, float, float, float, float) override {}
+    bool runRegion(RenderCore::RenderRegionId,
+                   const RenderCore::CompositePresentRegionContext&,
+                   RenderCore::RegionOutput* out) override {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "gl_no_second_window_present";
+                   out->presented = false; }
+        return false;   // GL declines -> the GL game window is never touched.
+    }
+};
+
+} // namespace
+
+// C-linkage accessor for the debug-state dump (composite-present region health).
+extern "C" void mc2_render_backend_composite_present_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastPresented, int* lastPresentFrames,
+    int* lastResizeCount, int* lastValidationErrors, unsigned long* routedFrames) {
+    if (ifaceGateOn)          *ifaceGateOn          = g_compositePresentRegion.ifaceGateOn;
+    if (requestedBackend)     *requestedBackend     = g_compositePresentRegion.requestedBackend;
+    if (lastImpl)             *lastImpl             = g_compositePresentRegion.lastImpl;
+    if (lastFallbackReason)   *lastFallbackReason   = g_compositePresentRegion.lastFallbackReason;
+    if (lastPresented)        *lastPresented        = g_compositePresentRegion.lastPresented;
+    if (lastPresentFrames)    *lastPresentFrames    = g_compositePresentRegion.lastPresentFrames;
+    if (lastResizeCount)      *lastResizeCount      = g_compositePresentRegion.lastResizeCount;
+    if (lastValidationErrors) *lastValidationErrors = g_compositePresentRegion.lastValidationErrors;
+    if (routedFrames)         *routedFrames         = g_compositePresentRegion.routedFrames;
+}
+
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_backend_skeleton.h"   // mc2_vulkan_composite_present_scaffold
+// Vulkan impl of the CompositePresent region. Drives the persistent present
+// object to present a test pattern to its OWN separate Vulkan window. Fail-soft:
+// returns false + sets a reason on any init/acquire failure. NEVER touches the
+// GL game window (the persistent object owns its own SDL Vulkan window).
+bool gosPostProcess::runCompositePresentRegionVulkanBackend(
+    const RenderCore::CompositePresentRegionContext& ctx,
+    RenderCore::RegionOutput* out)
+{
+    if (ctx.resolver) {
+        (void)ctx.resolver->resolve(ctx.color);   // exercise id->handle path
+    }
+    const char* spvDir = std::getenv("MC2_VULKAN_SPV_DIR");
+    unsigned int presentFrames = 0, resizeCount = 0, validationErrors = 0;
+    // 16 frames + a midpoint resize -> proves acquire/present/resize + per-image
+    // semaphores. The test pattern (fullscreen triangle) stands in for MainColor;
+    // bridging the real game image is L7 interop (ledgered).
+    bool ok = mc2_vulkan_composite_present_scaffold(
+        spvDir ? spvDir : "shaders/vulkan", /*frames=*/16u,
+        &presentFrames, &resizeCount, &validationErrors);
+
+    g_compositePresentRegion.lastPresentFrames    = (int)presentFrames;
+    g_compositePresentRegion.lastResizeCount      = (int)resizeCount;
+    g_compositePresentRegion.lastValidationErrors = (int)validationErrors;
+
+    if (!ok) {
+        if (out) { out->impl = RenderCore::RenderRegionImpl::None;
+                   out->fallbackReason = "vk_composite_present_failed";
+                   out->presented = (presentFrames > 0); }
+        return false;
+    }
+    if (out) { out->impl = RenderCore::RenderRegionImpl::VulkanSubgraph;
+               out->fallbackReason = ""; out->presented = true;
+               out->vkDraws = (int)presentFrames; }
+    return true;
+}
+#endif
+
+// The routed entry. Opt-in via MC2_VK_COMPOSITE_PRESENT (spawns a window, so it
+// must NOT run per-frame). Builds the neutral CompositePresent context, selects
+// the backend (only vk actually presents; GL declines by ruling), calls
+// runRegion. Never touches the GL game window / FBO-0 / GL swap.
+void gosPostProcess::runCompositePresentRegionThroughBackend()
+{
+    ++g_compositePresentRegion.routedFrames;
+    g_compositePresentRegion.ifaceGateOn = 1;
+
+    static const bool s_wantVk = []() {
+        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
+        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
+    }();
+    std::strncpy(g_compositePresentRegion.requestedBackend, s_wantVk ? "vk" : "gl",
+                 sizeof(g_compositePresentRegion.requestedBackend) - 1);
+
+    GosCompositePresentResourceResolver resolver;
+    resolver.pp = this;
+    RenderCore::CompositePresentRegionContext ctx;
+    ctx.color    = RenderCore::RenderResourceId::MainColor;
+    ctx.width    = width_;
+    ctx.height   = height_;
+    ctx.resolver = &resolver;
+
+    RenderCore::RegionOutput out;
+    bool ran = false;
+
+#ifdef MC2_VULKAN_ISLAND
+    if (s_wantVk) {
+        ran = runCompositePresentRegionVulkanBackend(ctx, &out);
+        if (!ran) {
+            const char* why = (out.fallbackReason && out.fallbackReason[0])
+                                  ? out.fallbackReason : "vk_declined";
+            composite_present_region_set_fallback_reason(why);
+        }
+    }
+#endif
+
+    if (!ran && !s_wantVk) {
+        // GL path declines (no second-window present by ruling); the scaffold is
+        // a Vulkan-only proof rung. Record the decline honestly.
+        GlCompositePresentRegionBackend gl;
+        gl.pp = this;
+        (void)gl.runRegion(RenderCore::RenderRegionId::CompositePresent, ctx, &out);
+        composite_present_region_set_fallback_reason(out.fallbackReason);
+    }
+
+    g_compositePresentRegion.lastImpl     = (int)out.impl;
+    g_compositePresentRegion.lastPresented = out.presented ? 1 : 0;
+    if (out.impl == RenderCore::RenderRegionImpl::VulkanSubgraph)
+        composite_present_region_set_fallback_reason("");
+}
+
 // Forward declarations for ISLAND-2 sub-stage wrappers (defined below the executor section).
 static void executorOwnBeginSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
 static void executorOwnEndSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
@@ -3069,6 +4144,40 @@ void gosPostProcess::endScene()
     if (!initialized_)
         return;
 
+    if (sceneGlProducerQueryActive_) {
+        glEndQuery(GL_ANY_SAMPLES_PASSED);
+        GLuint anySamples = 0;
+        glGetQueryObjectuiv(sceneGlProducerQuery_, GL_QUERY_RESULT, &anySamples);
+        std::fprintf(stderr,
+            "[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=%u frame_sceneFBO=%u\n",
+            (unsigned)anySamples, (unsigned)sceneFBO_);
+        sceneGlProducerQueryActive_ = false;
+    }
+
+    // L6.6-COMPOSITE-PRESENT-SCAFFOLD (opt-in, default-OFF). MC2_VK_COMPOSITE_PRESENT
+    // routes the CompositePresent region ONCE -> the persistent present object
+    // presents a test pattern (+ resize) to its OWN separate Vulkan window. Runs a
+    // single time (it spawns a window; must NOT run per-frame) and NEVER touches
+    // the GL game window / FBO-0 / GL swap below. Gate absent -> zero effect, GL
+    // game window byte/behavior-identical. Full game-window Vulkan present is
+    // BLOCKED on L7 interop (ledgered wall). ISLAND-only: the scaffold's only
+    // real backend is the Vulkan present object (GL declines by ruling), so the
+    // call site is #ifdef'd out of shipping build64 entirely -> build64 gets no
+    // new runtime path.
+#ifdef MC2_VULKAN_ISLAND
+    {
+        static const bool s_compositePresentGate =
+            std::getenv("MC2_VK_COMPOSITE_PRESENT") != nullptr;
+        if (s_compositePresentGate) {
+            static bool s_compositePresentRan = false;
+            if (!s_compositePresentRan) {
+                s_compositePresentRan = true;
+                runCompositePresentRegionThroughBackend();
+            }
+        }
+    }
+#endif
+
     // GLSTATE-VAO-RESTORE-1: save the caller's VAO so endScene() is self-contained.
     // NVIDIA Core profile rejects any draw with VAO=0 (GL_INVALID_OPERATION). endScene
     // uses its own quadVAO_ internally and leaves VAO=0 on exit; callers that draw
@@ -3080,7 +4189,23 @@ void gosPostProcess::endScene()
     // HZB-DEPTH-PYRAMID-MVP-1: build the reverse-Z Hi-Z pyramid from the
     // resolved scene depth before any post pass. Gated (MC2_HZB_BUILD), no
     // consumers, no draw suppression -> no-op + byte-identical when OFF.
-    runHzbReduce();
+    // VK-POST-HZB-NATIVE-1 (rung 8.4): highest precedence at the HZB site.
+    // When MC2_VK_POST_HZB=1, the shared-engine Vulkan path tries first; on any
+    // decline/failure it falls straight back to the unchanged GL runHzbReduce()
+    // body so the HZB probe stays coherent. Only when the native gate is OFF do
+    // we consider the older region-iface route (VK-REGION-HZB-1) or direct GL.
+    // Precedence: native > region-iface > GL.
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostHzbNativeEnabled()) {
+        if (!runVkPostHzbNative())
+            runHzbReduce();
+    } else
+#endif
+    if (regionIfaceEnabled()) {
+        runHzbRegionThroughBackend();
+    } else {
+        runHzbReduce();
+    }
     runHzbProbe();   // diagnostic-only; reads the pyramid, suppresses no draws
 
     // CLUSTER-DEPTH-PYRAMID-NATIVE-1: build a per-tile (min,max) depth image
@@ -3115,22 +4240,65 @@ void gosPostProcess::endScene()
     runScreenShadow();
     executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::ScreenShadow);
 
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): HIGHEST precedence at the cloud +
+    // shoreline sites. When MC2_VK_POST_SCREENFX=1 and the shared-GBuffer
+    // substrate is live, the armed subset of {cloud-shadow, shoreline} renders
+    // natively on the shared engine context (one submit, multiply into shared
+    // color0 in place) and EXACTLY those GL pass bodies are skipped (bitmask:
+    // bit0=cloud, bit1=shoreline). Any not-ready condition returns 0 -> the
+    // unchanged GL chain below runs (fail-soft). Screen-shadow above is NOT
+    // ported in this slice (no zero-copy CSM-array producer until rung 2).
+    unsigned vkScreenFxDone = 0;
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostScreenFxNativeEnabled())
+        vkScreenFxDone = runVkPostScreenFxNative();
+#endif
+
     // Procedural cloud shadows: single fullscreen multiplicative pass over all
     // non-sky pixels (replaces the four inline cloud blocks). After the screen
     // shadow so cloud darkens the already-shadowed scene color.
     // FRAME-GRAPH-EXECUTOR-ISLAND-3: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
-    runCloudShadow();
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
+    if (!(vkScreenFxDone & 1u)) {
+        executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
+        runCloudShadow();
+        executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::CloudShadow);
+    }
 
     // Shoreline foam pass (brightens water pixels adjacent to terrain)
     // FRAME-GRAPH-EXECUTOR-ISLAND-3: validate->call-unchanged->validate (default-OFF).
-    executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
-    runShoreline();
-    executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
+    if (!(vkScreenFxDone & 2u)) {
+        executorOwnBeginSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
+        runShoreline();
+        executorOwnEndSub(this, RenderCore::framegraph::ExecutorIslandId::Shoreline);
+    }
 
-    // SSAO grounding pass (multiplicative darkening into scene color). Default-OFF (gated).
-    runSSAO();
+    // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master gate read ONCE, shared by
+    // the SSAO region below and the fog region further down (hoisted here so both
+    // sites can gate on the same value without re-reading getenv per-site).
+    const bool regionRouted = regionIfaceEnabled();
+
+    // SSAO grounding pass (multiplicative darkening into scene color). Default-OFF
+    // (MC2_SSAO gates whether it runs at all, unchanged). VK-REGION-SSAO-1: when the
+    // SAME master gate as fog (MC2_RENDER_BACKEND_REGION_IFACE) is ON, route through
+    // IRenderBackend::runRegion (MC2_POSTPROCESS_BACKEND=gl|vk picks the impl, VK
+    // falls back to GL on failure) instead of calling runSSAO() directly. Gate OFF ->
+    // the original direct call runs verbatim (byte-identical).
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2): HIGHEST precedence at the SSAO site. When
+    // MC2_VK_POST_SSAO=1 and the shared-GBuffer substrate is live, SSAO gen+apply
+    // render natively on the shared engine context (zero copies, zero readbacks)
+    // and the GL SSAO site is skipped. runVkPostSsaoNative() returns false on ANY
+    // not-ready condition (incl. ssaoDebug_!=0) -> the unchanged region-iface/GL
+    // chain below runs (fail-soft). Precedence: native > region-iface > GL.
+#ifdef MC2_VULKAN_ISLAND
+    if (vkPostSsaoNativeEnabled() && runVkPostSsaoNative()) {
+        // native path did gen+apply; GL SSAO site skipped (no double-apply).
+    } else
+#endif
+    if (regionRouted) {
+        runSSAORegionThroughBackend();
+    } else {
+        runSSAO();
+    }
 
     // BT2018-BOX-DECAL-1: screen-space box decal composited into lit+shadowed+AO'd
     // scene color, before fog/tonemap. Default-OFF (MC2_BOX_DECAL); no-op when gate off.
@@ -3148,26 +4316,21 @@ void gosPostProcess::endScene()
     // (byte-identical). Precedence when ON: region-iface > (subgraph > island > GL
     // inside the GL/VK impls). The region-iface path is mutually exclusive with
     // the legacy in-site subgraph/island paths (which stay reachable gate-OFF).
-    const bool regionRouted = regionIfaceEnabled();
+    // (regionRouted computed once above, shared with the SSAO region site.)
     bool subgraphRanThisFrame = false;   // scope spans to the FogOob site below
     (void)subgraphRanThisFrame;          // read only under MC2_VULKAN_ISLAND
     if (regionRouted) {
         runFogRegionThroughBackend();   // does BOTH edge + oob (GL wrapper or VK subgraph)
     } else {
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: gate precedence (correctness-critical). When
-    // MC2_VULKAN_POSTPROCESS_SUBGRAPH=1 and lazy init succeeded, run the FUSED
-    // subgraph ONCE here (it does BOTH edge fog AND oob fog in one Vulkan render
-    // pass), and set subgraphRanThisFrame so the OOB-fog site below SKIPS entirely
-    // (no GL, no island) -- otherwise oob would double-apply. The subgraph, the
-    // EdgeFog island, and the OOB island must NEVER all fire; precedence is:
-    //   subgraph  >  per-pass island  >  GL.
-    // VULKAN-EDGE-FOG-ISLAND-2a: else route the edge-fog composite through the
-    // per-pass Vulkan island when MC2_VULKAN_EDGE_FOG_ISLAND=1. Otherwise GL.
-    if (vulkanPostprocessSubgraphEnabled()) {
-        runPostprocessSubgraph();       // does BOTH fog effects
+    // VK-POST-FOG-NATIVE-1 (rung 8.1): HIGHEST precedence at the fog site. When
+    // MC2_VK_POST_FOG_NATIVE=1 and the shared-GBuffer substrate is live, BOTH fog
+    // effects render natively on the shared engine context (zero copies, zero
+    // readbacks) and BOTH GL sites are skipped. runVkPostFogNative() returns false
+    // on ANY not-ready condition -> the unchanged GL chain below runs (fail-soft).
+    if (vkPostFogNativeEnabled() && runVkPostFogNative()) {
         subgraphRanThisFrame = true;    // -> OOB site is skipped below (no double-apply)
-    } else if (vulkanEdgeFogIslandEnabled()) { runEdgeFogVulkan(); } else
+    } else
 #endif
     { runEdgeFog(); }
     }
@@ -3184,16 +4347,11 @@ void gosPostProcess::endScene()
         // region iface did edge+oob; nothing to do here.
     } else {
 #ifdef MC2_VULKAN_ISLAND
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: if the fused subgraph already ran this frame it
-    // ALSO did the oob fog, so this site is skipped ENTIRELY (no GL, no island) --
-    // the explicit, unmissable no-double-apply guard.
+    // If native fog already ran this frame it ALSO did the oob fog, so this site
+    // is skipped entirely (no GL, no island).
     if (subgraphRanThisFrame) {
-        // subgraph did edge+oob; nothing to do here.
+        // native fog did edge+oob; nothing to do here.
     } else
-    // VULKAN-OOB-FOG-ISLAND-1: route the OOB-fog composite through the Vulkan
-    // island when MC2_VULKAN_OOB_FOG_ISLAND=1 and lazy init succeeded. Otherwise
-    // (gate off, or init fail-soft) fall through to the unchanged GL path.
-    if (vulkanOobFogIslandEnabled()) { runFogOobVulkan(); } else
 #endif
     { runFogOob(); }
     }
@@ -3209,11 +4367,36 @@ void gosPostProcess::endScene()
         const char* v = getenv("MC2_RENDER_BACKEND_IFACE");
         return v && v[0] == '1';
     }();
-    if (s_backendIface) {
+    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): when the Vulkan
+    // backend owns present AND the direct-composite gate is on, redirect this
+    // single backbuffer bind to the FBO wrapping the shared exportable present
+    // image, so the WHOLE composite + FORCE-43 pillarbox + HUD + ImGui render
+    // straight into the shared image (presentGLFrame then SKIPS copy-1 and does
+    // the Y-flip in copy-2). Everything downstream in endScene inherits this bind.
+    // presentDirectFbo() returns 0 (fail-soft to FBO-0 + copy-1) unless the gate
+    // is on AND the present path is valid AND the FBO exists; the ==0 case leaves
+    // the original GL path byte-identical. NON-default FBO target: the shared FBO
+    // is COLOR_ATTACHMENT0-complete (RGBA8, no default sRGB encoding) so the
+    // inherited glClear / glReadBuffer(GL_BACK is only used inside copy-1, which is
+    // now skipped) all target this attachment correctly (see FBO-0-assumption scan).
+    GLuint directFbo = 0;
+    bool directVkOnly = false;
+#ifdef MC2_VULKAN
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        mc2vk::EnginePresentVk& present = mc2vk::getOrCreateEnginePresentVk();
+        directFbo = (GLuint)present.presentDirectFbo();
+        if (directFbo == 0)
+            directVkOnly = present.presentDirectVkOnly();
+    }
+#endif
+    if (directFbo != 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, directFbo);
+    } else if (s_backendIface) {
         RenderCore::getGLBackend().bindBackbuffer();
     } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
+    int compositeVpX = 0, compositeVpY = 0, compositeVpW = width_, compositeVpH = height_;
     // [FORCE-43 v1] Pillarbox the final scene composite into a centered 4:3
     // rect with black bars. The scene FBO content (4:3 world stretched into the
     // 16:9 target) un-stretches when drawn into a 4:3 rect. Mouse is remapped
@@ -3261,6 +4444,7 @@ void gosPostProcess::endScene()
                 glClear(GL_COLOR_BUFFER_BIT);
                 glViewport(bx, by, bw, bh);
             }
+            compositeVpX = bx; compositeVpY = by; compositeVpW = bw; compositeVpH = bh;
         } else {
             // RENDER-BACKEND-IFACE-VIEWPORT-1: route the non-pillarbox composite viewport.
             if (s_backendIface) {
@@ -3268,6 +4452,7 @@ void gosPostProcess::endScene()
             } else {
                 glViewport(0, 0, width_, height_);
             }
+            compositeVpX = 0; compositeVpY = 0; compositeVpW = width_; compositeVpH = height_;
         }
     }
 
@@ -3289,8 +4474,25 @@ void gosPostProcess::endScene()
     render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "Composite",
         render_frame_plan::PathKind::ApplyPipeline, 1, "PostProcessComposite");
 
+    bool nativeCompositeDone = false;
+    int effectiveModeForComposite = gos_GetSelectedViewMode();
+    if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
+        effectiveModeForComposite = 0;
+#ifdef MC2_VULKAN
+    if ((directFbo != 0 || directVkOnly) && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+        (effectiveModeForComposite == 0 || effectiveModeForComposite == 1 ||
+         effectiveModeForComposite == 3 || effectiveModeForComposite == 5)) {
+        nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
+            exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
+            effectiveModeForComposite,
+            sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0,
+            lowLightGain_, lowLightTint_,
+            compositeVpX, compositeVpY, compositeVpW, compositeVpH);
+    }
+#endif
+
     // Draw fullscreen quad with composite shader
-    if (compositeProg_ && compositeProg_->is_valid()) {
+    if (!nativeCompositeDone && compositeProg_ && compositeProg_->is_valid()) {
         // Set uniforms BEFORE apply() — apply() binds program + flushes dirty uniforms
         compositeProg_->setInt("sceneTex", 0);
         // The unconditional sunset grade + exposure in postprocess.frag are the
@@ -3318,7 +4520,7 @@ void gosPostProcess::endScene()
         // Gate OFF -> forced 0 (Visual). ObjectIdDebug requires sceneObjectIdTex_;
         // if it is 0 (MC2_OBJECT_ID_BUFFER not set) we fall back to Visual and
         // warn once so the caller knows why the debug view is blank.
-        int effectiveMode = gos_GetSelectedViewMode();
+        int effectiveMode = effectiveModeForComposite;
         if (effectiveMode == 1 && sceneObjectIdTex_ == 0) {
             static bool s_warnedOidMissing = false;
             if (!s_warnedOidMissing) {
@@ -3430,6 +4632,19 @@ void gosPostProcess::drawShadowDebugOverlay()
     // (mode 1), the dynamic shadow is a GL_TEXTURE_2D_ARRAY -> sample a layer
     // (csmDebugLayer_) via the array sampler. Static map (mode 0) stays 2D.
     const bool csmDynamic = (mc2ShadowCsmEnabled() && dynShadowArrayTex_ != 0 && shadowDebugMode_ != 0);
+#if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+    if (csmDynamic && mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+        mc2_vk_shadow_island_csm_array_ready()) {
+        int layer = csmDebugLayer_;
+        if (layer < 0) layer = 0;
+        if (layer >= csmCount_) layer = csmCount_ - 1;
+        void* rawView = mc2_vk_shadow_island_get_csm_array_view();
+        if (rawView &&
+            mc2vk::getOrCreateEnginePresentVk().renderNativeCsmShadowDebugOverlay(rawView, layer)) {
+            return;
+        }
+    }
+#endif
     const GLenum texTarget = csmDynamic ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
     GLuint tex = csmDynamic ? dynShadowArrayTex_
                             : ((shadowDebugMode_ == 0) ? shadowDepthTex_ : dynShadowDepthTex_);
@@ -4264,10 +5479,19 @@ void gosPostProcess::initShadows()
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
 
     // TEX-CLASS: render-target -- STATIC shadow map depth (FBO attach)
-    glGenTextures(1, &shadowDepthTex_);
+    // VK-RUNG8 item-6: the VK static-shadow import substrate was RETIRED; the static
+    // shadow map is always the plain-GL GL_DEPTH_COMPONENT24 allocation now.
+#ifdef MC2_VULKAN_ISLAND
+    mc2VkStaticShadowMapDeprecationNote();
+#endif
+    if (!shadowDepthTex_) {
+        glGenTextures(1, &shadowDepthTex_);
+    }
     glBindTexture(GL_TEXTURE_2D, shadowDepthTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
-        shadowMapSize_, shadowMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
+            shadowMapSize_, shadowMapSize_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);

@@ -33,9 +33,9 @@ enum class RenderResourceId : uint16_t {
     LightgridGrid        = 22,  // REGISTRY-COMPUTE-IDS-1: lightgrid sphere SSBO (s_sphereSsbo, kSphereStride*kMaxLights bytes); produced by lightgrid_build (compute), default-OFF gated substrate.
     LightgridIndex       = 23,  // REGISTRY-COMPUTE-IDS-1: lightgrid per-tile index pool SSBO (s_indexPool, nTiles*kMaxLights uints); produced by lightgrid_build (compute), default-OFF gated substrate.
     PostprocessComputeBlur = 24,// REGISTRY-COMPUTE-IDS-1: compute-blur ping-pong output substrate (postprocess_blur s_pingA, RGBA16F half-res); produced by postprocess_blur::Run (compute), default-OFF gated substrate. No consumer (substrate only).
-    ViewUniformsUbo      = 25,  // GPU-BUFFER-OWNER-SKELETON-1: view-uniforms UBO (s_viewUniformsUbo, view_uniforms_gl.cpp); LIVE, raw-owned, UNregistered today. First owner target.
-    TerrainTypeSsbo      = 26,  // GPU-BUFFER-OWNER-SKELETON-1: LOD-chunk per-quad type SSBO (s_typeSsbo, gos_terrain_lod_chunk.cpp); LIVE, raw-owned, UNregistered today.
-    TerrainCementSsbo    = 27,  // GPU-BUFFER-OWNER-SKELETON-1: LOD-chunk cement-word SSBO (s_cementSsbo, gos_terrain_lod_chunk.cpp); LIVE, raw-owned, UNregistered today.
+    ViewUniformsUbo      = 25,  // view-uniforms UBO (s_viewUniformsUbo, view_uniforms_gl.cpp); LIVE, owned + REGISTERED (view_uniforms_gl.cpp:65).
+    TerrainTypeSsbo      = 26,  // LOD-chunk per-quad type SSBO (s_typeSsbo, gos_terrain_lod_chunk.cpp); LIVE, owned + REGISTERED (gos_terrain_lod_chunk.cpp:1676).
+    TerrainCementSsbo    = 27,  // LOD-chunk cement-word SSBO (s_cementSsbo, gos_terrain_lod_chunk.cpp); LIVE, owned + REGISTERED (gos_terrain_lod_chunk.cpp:1857).
     StaticPropMaterialGpuBuffer = 28,  // STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (s_materialGpuSsbo, binding 5, gos_static_prop_batcher.cpp); LIVE default-ON, Mission lifetime. Distinct from mech-material MaterialGpuBuffer(id5, binding 2).
     MechProfileMaterialGpuBuffer = 29,  // MECH-PROFILE-SSBO-OWNER-1: mech material-profile table SSBO (s_ssbo, binding 7, gos_materials.cpp); Persistent lifetime (init→shutdown). Only created when MC2_MECH_SURFACE_MATERIAL loads a profile; default run leaves glName==0. Distinct from binding-5 static-prop and binding-2 mech-material tables.
     TerrainVisualHeightSsbo = 30,  // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: LOD-chunk 4x visual heightfield SSBO (s_visualHeightSsbo, GL binding 26, gos_terrain_lod_chunk.cpp); Mission lifetime. CREATE gated upstream (mclib/terrain.cpp: MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + visual_height_4x.r32 bake); WIP, no stock bake → default run leaves glName==0 (never registers). GL binding 26 unrelated to id numbering.
@@ -48,6 +48,14 @@ enum class RenderResourceId : uint16_t {
     PostprocessSubgraphColor = 37, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate COLOR image (R16G16B16A16_SFLOAT). Copied-in from GL sceneColor, blended by BOTH fog passes (edge then oob) in ONE render pass, copied-out to GL. Layout chain UNDEFINED->TRANSFER_DST->COLOR_ATTACHMENT->TRANSFER_SRC. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
     PostprocessSubgraphDepth = 38, // POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph OWNED intermediate DEPTH image (D32_SFLOAT). Copied-in from GL sceneDepth, SAMPLED (read-only) by both fog passes. Layout chain UNDEFINED->TRANSFER_DST->SHADER_READ_ONLY. Runtime VkImage handle lives in the future subgraph .cpp, NOT here. Proof-only enum id.
     TerrainVisualDampSsbo = 39, // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp SSBO (s_visualDampSsbo, GL binding 27, gos_terrain_lod_chunk.cpp); Mission lifetime. CREATE gated upstream (MC2_TERRAIN_VISUAL_DISPLACE + objfade gate + visual_damp.r32 sidecar); static half uploaded at mission load, per-frame mover stamps via BufferSubData. GL binding 27 unrelated to id numbering.
+    MechInstanceRingSsbo = 40,  // VK-SHADOW-RING-OWNER-1: mech batcher per-frame instance ring SSBO (s_instanceSsbo, GL binding 0, gos_mech_batcher.cpp); persistent-mapped ring, realloc-on-grow, freed on onMapUnload. Read by the mech opaque + shadow draw. L7.2 Shadow prep. GL binding 0 unrelated to id numbering.
+    MechBoneRingSsbo     = 41,  // VK-SHADOW-RING-OWNER-1: mech batcher per-frame bone ring SSBO (s_boneSsbo, GL binding 1, gos_mech_batcher.cpp); persistent-mapped ring, realloc-on-grow, freed on onMapUnload. Feeds GPU skinning for the shadow-caster draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
+    StaticPropInstanceRingSsbo = 42,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame instance ring SSBO (s_instanceSsbo, GL binding 0, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Read by the static-prop opaque + shadow draw. L7.2 Shadow prep. GL binding 0 unrelated to id numbering.
+    StaticPropColorRingSsbo    = 43,  // VK-SHADOW-RING-OWNER-1: static-prop batcher per-frame color ring SSBO (s_colorSsbo, GL binding 1, gos_static_prop_batcher.cpp); persistent-mapped ring, realloc-on-grow. Per-instance color feed for the prop draw. L7.2 Shadow prep. GL binding 1 unrelated to id numbering.
+    WaterThinBuf         = 44,  // WATER-REGISTRY-0: live MDI water per-frame thin-record ring SSBO (g_thinBuffer, gos_terrain_water_stream.cpp); Mission lifetime, fenced ring-3 (WATER-THINRING-FENCE-1), realloc-on-grow. Read by the water compute cull + MDI draw. L7.4 Water prep. Bound via gpuBindSsboRange wrapper (kWaterThinSsboBinding), not glBindBufferBase.
+    WaterRecipeBuf       = 45,  // WATER-REGISTRY-0: live MDI water static recipe SSBO (g_recipeBuffer, gos_terrain_water_stream.cpp); Mission lifetime, uploaded once per mission. Bound binding 0 for water compute. L7.4 Water prep.
+    WaterHeaderBuf       = 46,  // WATER-REGISTRY-0: live MDI water bucket-header SSBO (g_waterBucketHeaderSsbo, gos_terrain_water_stream.cpp); Mission lifetime, 16 B GpuDrivenBucketHeader (visibleCount). Bound binding 6 (setup) / 0 (cmd patch). L7.4 Water prep.
+    WaterIndirectCmdBuf  = 47,  // WATER-REGISTRY-0: live MDI water indirect-command buffer (g_waterIndirectCmdBuffer, gos_terrain_water_stream.cpp); Mission lifetime, 2x DrawArraysIndirectCommand (32 B). Source of glMultiDrawArraysIndirect (gameos_graphics.cpp:3706). Bound binding 1 (cmd patch) + GL_DRAW_INDIRECT_BUFFER. L7.4 Water prep.
     Count
 };
 
@@ -68,16 +76,17 @@ static_assert(static_cast<int>(RenderResourceId::DynamicPropShadowSsbo)         
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphColor)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo)        < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf)            < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 
-// (b) The run is DENSE: Count == number-of-real-slots. TerrainVisualDampSsbo is the
-//     last real id (value 39) and Count follows it, so Count must be 40. If a new id
-//     is inserted, or an existing one renumbered leaving a hole, this breaks — forcing
-//     a review of the dense-index consumers.
-static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo) + 1
+// (b) The run is DENSE: Count == number-of-real-slots. WaterIndirectCmdBuf is the
+//     last real id (value 47 after MERGE-WAVE-1 renumber: nifty TerrainVisualDampSsbo
+//     kept 39, VK ring/water ids shifted +1) and Count follows it, so Count must be 48.
+static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf) + 1
                   == static_cast<int>(RenderResourceId::Count),
               "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
               "follow the last real id); dense-index consumers assume no holes above Count");
-static_assert(static_cast<int>(RenderResourceId::Count) == 40,
+static_assert(static_cast<int>(RenderResourceId::Count) == 48,
               "RenderResourceId::Count changed; update dense-index consumers "
               "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 

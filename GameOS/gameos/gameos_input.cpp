@@ -9,6 +9,19 @@
 #include<stdio.h>
 #include<cstdlib>
 
+// The one SDL window (owned by gos_render). Used to normalize the raw mouse by
+// the SAME coordinate space SDL delivers mouse-motion events in (window points),
+// which under HiDPI diverges from the physical drawable. See gos_GetMouseInfo.
+extern SDL_Window* g_sdl_window;
+
+// MC2_VK_PICK_PROBE test hook: inject a synthetic raw SDL mouse point (window-
+// points space) so the pick probe can drive the exact production normalize path.
+namespace input { void setMouseInfoRaw(float x, float y); }
+void gos_TestSetRawMouse(float winPtX, float winPtY)
+{
+    input::setMouseInfoRaw(winPtX, winPtY);
+}
+
 //
 // The mouse position and buttons are read once a frame.
 //
@@ -32,15 +45,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDelta, int* pYDelta, int* pWheelDelta, DWORD* pButtonsPressed )
 {
-    // MOUSE-GL-COORD: normalize raw mouse by the DRAWABLE (physical) size.
-    // Empirically (MC2_MOUSE_RECON) SDL delivers mouse-motion in PHYSICAL pixels
-    // on this fullscreen path: raw spans [0,1920]x[0,1080] = drawable, while the
-    // logical window is 800x600. So raw/drawable is the correct 0..1 normalize
-    // (norm_drawable hit ~0.999 at the edges); dividing by the logical size
-    // overshot to ~2.4. The mission cursor dead-zone is NOT here -- it is a
-    // downstream cursor-vs-pick divergence (see camera screenResolution / viewMul).
-    const float w = (float)Environment.drawableWidth;
-    const float h = (float)Environment.drawableHeight;
+    // MOUSE-DPI-COORD (BUG-A fix): normalize the raw mouse by the SDL WINDOW size
+    // (logical points), NOT the physical drawable. SDL guarantees mouse-motion
+    // event coords (event->motion.x, stored in mi->x_) are in the same coordinate
+    // space as SDL_GetWindowSize (window points). Under HiDPI (4K @225%: drawable
+    // 3840 vs window 1707) those diverge, and the previous drawable divisor
+    // compressed the mouse into the top-left 44% of the pick canvas -> the whole
+    // world/object pick chain (findObjectByMouse compares against object screen
+    // bboxes authored in the LOGICAL viewMulX==window space) resolved far from the
+    // cursor. Dividing by the window size makes getMouseX an identity on the SDL
+    // window point (norm*viewMulX == mi->x_ when window==viewMul canvas), so the
+    // pick is DPI/resolution independent. When window==drawable (scale 1.0, the
+    // old fullscreen/1920 config) this reduces to the previous behaviour exactly.
+    int winW = Environment.drawableWidth, winH = Environment.drawableHeight;
+    if (g_sdl_window) SDL_GetWindowSize(g_sdl_window, &winW, &winH);
+    if (winW <= 0) winW = Environment.drawableWidth;
+    if (winH <= 0) winH = Environment.drawableHeight;
+    const float w = (float)winW;
+    const float h = (float)winH;
 
     const input::MouseInfo* mi = input::getMouseInfo();
 
@@ -53,13 +75,13 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     // 16:9 canvas, so normalize mouse relative to that box (same convention as
     // the FORCE-43 branch below). Inactive in mission (never asserted) so the
     // world-pick viewMul transform is untouched.
-    if (gos_ComputeUiCanvasBox(Environment.drawableWidth, Environment.drawableHeight,
+    if (gos_ComputeUiCanvasBox(winW, winH,
                                &bx, &by, &bw, &bh)) {
         if(pXPosition)
             *pXPosition = (mi->x_ - (float)bx) / (float)bw;
         if(pYPosition)
             *pYPosition = (mi->y_ - (float)by) / (float)bh;
-    } else if (gos_Compute43Box(Environment.drawableWidth, Environment.drawableHeight,
+    } else if (gos_Compute43Box(winW, winH,
                          &bx, &by, &bw, &bh)) {
         if(pXPosition)
             *pXPosition = (mi->x_ - (float)bx) / (float)bw;
@@ -126,28 +148,32 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-extern SDL_Window* g_sdl_window;
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
 {
     if(g_sdl_window) {
         // XPosition/YPosition arrive as normalized 0..1 coordinates — the
         // write side of the contract established by gos_GetMouseInfo. Must use
-        // the SAME denominator as the read side: DRAWABLE (physical) pixels,
-        // because SDL mouse coords are physical on this path (confirmed via
-        // MC2_MOUSE_RECON: raw spans the drawable 1920x1080, not the logical
-        // 800x600). SDL_WarpMouseInWindow consumes the same physical space here.
-        const float w = (float)Environment.drawableWidth;
-        const float h = (float)Environment.drawableHeight;
+        // the SAME denominator as the read side: the SDL WINDOW (points) size,
+        // because SDL_WarpMouseInWindow consumes window-point coordinates, the
+        // same space mouse-motion events are delivered in (see BUG-A fix in
+        // gos_GetMouseInfo). Under HiDPI the drawable is larger than the window;
+        // using the drawable here would warp off-window by the DPI factor.
+        int winW = Environment.drawableWidth, winH = Environment.drawableHeight;
+        SDL_GetWindowSize(g_sdl_window, &winW, &winH);
+        if (winW <= 0) winW = Environment.drawableWidth;
+        if (winH <= 0) winH = Environment.drawableHeight;
+        const float w = (float)winW;
+        const float h = (float)winH;
         // [FORCE-43 v1] Inverse of the box-relative normalize in gos_GetMouseInfo:
-        // map the 0..1 box coordinate back into physical drawable pixels.
+        // map the 0..1 box coordinate back into window-point pixels.
         int bx, by, bw, bh;
         // UI-ASPECT-ANCHOR-1: inverse of the canvas-relative normalize above.
-        if (gos_ComputeUiCanvasBox(Environment.drawableWidth, Environment.drawableHeight,
+        if (gos_ComputeUiCanvasBox(winW, winH,
                                    &bx, &by, &bw, &bh)) {
             SDL_WarpMouseInWindow(g_sdl_window,
                                   (int)((float)bx + XPosition * (float)bw),
                                   (int)((float)by + YPosition * (float)bh));
-        } else if (gos_Compute43Box(Environment.drawableWidth, Environment.drawableHeight,
+        } else if (gos_Compute43Box(winW, winH,
                              &bx, &by, &bw, &bh)) {
             SDL_WarpMouseInWindow(g_sdl_window,
                                   (int)((float)bx + XPosition * (float)bw),

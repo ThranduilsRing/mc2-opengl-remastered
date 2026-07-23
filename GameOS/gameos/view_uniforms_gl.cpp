@@ -21,7 +21,7 @@
 // TERRAIN-VIEW-UBO-OWNER-1: the view-uniforms UBO is no longer a bare GLuint.
 // It is now narrowed behind a GpuBufferOwner identity record (logical id +
 // lifetime + debug name + the GLuint value). GL calls still happen at the same
-// sites with the same args; the raw handle is reached only via owner.glName.
+// sites with the same args; the raw handle is reached only via owner.backendHandle.
 static RenderCore::GpuBufferOwner s_viewUniformsUbo{
     RenderCore::RenderResourceId::ViewUniformsUbo,
     RenderCore::RenderResourceLifetime::Persistent,
@@ -39,7 +39,7 @@ static RenderCore::EngineView s_currentView{};
 void RenderCore::initViewUniformsUbo() {
     GLuint ubo = 0;
     glGenBuffers(1, &ubo);
-    s_viewUniformsUbo.glName = static_cast<uint32_t>(ubo);
+    s_viewUniformsUbo.backendHandle = static_cast<uint32_t>(ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, ubo);
     glBufferStorage(GL_UNIFORM_BUFFER, sizeof(RenderCore::ViewUniforms), nullptr,
                     GL_DYNAMIC_STORAGE_BIT);
@@ -59,7 +59,7 @@ void RenderCore::initViewUniformsUbo() {
         d.lifetime  = s_viewUniformsUbo.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_viewUniformsUbo.debugName;
-        d.glName    = s_viewUniformsUbo.glName;
+        d.glName    = static_cast<GLuint>(s_viewUniformsUbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(sizeof(RenderCore::ViewUniforms));
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -71,9 +71,9 @@ void RenderCore::initViewUniformsUbo() {
 }
 
 void RenderCore::uploadViewUniforms(const RenderCore::ViewUniforms& vu) {
-    if (s_viewUniformsUbo.glName == 0)
+    if (s_viewUniformsUbo.backendHandle == 0)
         initViewUniformsUbo();
-    const GLuint ubo = static_cast<GLuint>(s_viewUniformsUbo.glName);
+    const GLuint ubo = static_cast<GLuint>(s_viewUniformsUbo.backendHandle);
     glBindBufferBase(GL_UNIFORM_BUFFER, RenderCore::kViewUniformsBinding, ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(RenderCore::ViewUniforms), &vu);

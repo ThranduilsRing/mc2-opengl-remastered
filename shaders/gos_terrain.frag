@@ -320,11 +320,13 @@ void main(void)
     // cameraPos is in Stuff/MLR space: .x=left/right, .y=elevation, .z=forward
     // WorldPos is in raw MC2 space: .x=east, .y=north, .z=elevation
     // LOD center: camera ground position with altitude boost for zoom-out
+    //PORT-BEGIN:lodNear
     vec2 camGround = vec2(-cameraPos.x, cameraPos.z);
     float hDist = distance(WorldPos.xy, camGround);
     float altBoost = max(cameraPos.y - WorldPos.z, 0.0) * 0.7;
     float camDist = hDist + altBoost;
     float lodNear = 1.0 - smoothstep(LOD_NEAR, LOD_NEAR_FADE, camDist);
+    //PORT-END:lodNear
     float lodMid  = 1.0 - smoothstep(LOD_MID,  LOD_MID_FADE,  camDist);
 
     // Screen-space world-unit footprint of one pixel — fwidth-based.

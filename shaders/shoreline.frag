@@ -12,6 +12,7 @@ uniform sampler2D sceneNormalTex;
 uniform vec2 screenSize;
 uniform float time;
 
+//PORT-BEGIN:shorelineMain
 void main()
 {
     PREC vec4 normalData = texture(sceneNormalTex, TexCoord);
@@ -63,3 +64,4 @@ void main()
     float foamBrightness = shoreIntensity * foam * 0.4;
     FragColor = vec4(1.0 + foamBrightness, 1.0 + foamBrightness, 1.0 + foamBrightness * 0.9, 1.0);
 }
+//PORT-END:shorelineMain

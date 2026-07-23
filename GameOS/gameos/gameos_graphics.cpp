@@ -1,4 +1,5 @@
 #include <vector>
+#include <memory>   // VK-HUD-MIRRORCOPY-1: shared_ptr rgba mirror
 #include <map>
 #include <algorithm>
 #include <cstdint>
@@ -21,6 +22,7 @@
 
 #ifdef LINUX_BUILD
 #include <cstdarg>
+#include <chrono>                // MC2_VK_WATER_PERF thin-readback timing
 #endif
 
 #include "platform_stdlib.h"
@@ -85,6 +87,10 @@ namespace gosFX { void DiagFrameTick(); }
 #include "gpu_driven_common.h"
 #include "mc2_hitch_trace.h"  // GPU-UPDATE-BUFFER-COUNTER-1: MC2_GL_BufferData_Owner (include LAST, after all GL headers)
 #include "utils/gpu_ring_buffer.h"  // GPU-BUFFER-WRAPPER-TIER0-HUD-1: gated HUD/gosMesh persistent-coherent ring
+#ifdef MC2_VULKAN
+#include "engine_present_vk.h"
+#endif
+#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
 
 class gosRenderer;
 class gosFont;
@@ -118,6 +124,31 @@ static gosRenderer* g_gos_renderer = NULL;
 static bool debugEnvEnabled(const char* name) {
     const char* value = std::getenv(name);
     return value && value[0] != '\0' && std::strcmp(value, "0") != 0;
+}
+
+static bool vkScopedGlCanaryEnabled(const char* name) {
+    const char* value = std::getenv(name);
+    return value && value[0] == '1';
+}
+
+static GLuint vkScopedGlCanaryBegin(const char* name) {
+    if (!vkScopedGlCanaryEnabled(name))
+        return 0;
+    GLuint query = 0;
+    glGenQueries(1, &query);
+    glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
+    return query;
+}
+
+static void vkScopedGlCanaryEnd(GLuint query, const char* tag, int draws) {
+    if (!query)
+        return;
+    glEndQuery(GL_ANY_SAMPLES_PASSED);
+    GLuint anySamples = 0;
+    glGetQueryObjectuiv(query, GL_QUERY_RESULT, &anySamples);
+    std::fprintf(stderr, "[VK_SCENE_GL_DRAW_CANARY v1] tag=%s any_samples=%u draws=%d\n",
+                 tag, (unsigned)anySamples, draws);
+    glDeleteQueries(1, &query);
 }
 
 static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
@@ -2844,6 +2875,40 @@ void gos_terrain_bridge_renderWaterFast(
         maxMinUV);
 }
 
+#ifdef MC2_VULKAN_ISLAND
+// VK-P9a WATER-INTEROP: the water island entry points (defined in
+// GameOS/gameos/vulkan_water_island.cpp under the same #ifdef). File-scope
+// declarations so renderWaterFastPath can call them (extern "C" must be at
+// namespace scope, not inside a function body).
+extern "C" int mc2_vk_water_island_enabled();
+extern "C" int mc2_vk_water_island_run(
+    unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
+    const void* thinRecords, unsigned int thinCount,
+    const void* recipes, unsigned int recipeCount,
+    const void* vsParams, const void* fsParams,
+    unsigned int hdriGlTex);
+#endif
+
+// WATER-HDRI-REFL-PERF-1 LOD default, shared by the GL MDI bind block and the
+// VK water island fsParams pack (RUNG-6.5) so the two paths cannot drift.
+// MC2_WATER_HDRI_LOD (float) overrides; else MC2_WATER_HDRI_REFL_FULL=1 -> 1.0,
+// default 4.0 (256x128 mip of the 4K source — see the bind-block comment).
+static float mc2WaterHdriLodDefault()
+{
+    static float s_lod = -999.0f;
+    if (s_lod < -1.0f) {
+        const char* lv = getenv("MC2_WATER_HDRI_LOD");
+        if (lv && lv[0]) {
+            s_lod = (float)atof(lv);
+        } else {
+            const char* full = getenv("MC2_WATER_HDRI_REFL_FULL");
+            const bool fullRate = (full && full[0] && full[0] != '0');
+            s_lod = fullRate ? 1.0f : 4.0f;
+        }
+    }
+    return s_lod;
+}
+
 void gosRenderer::renderWaterFastPath(
     unsigned int recordCount,
     unsigned int waterGosHandle,
@@ -3303,31 +3368,12 @@ void gosRenderer::renderWaterFastPath(
         // recon's own "keep-cheap" recommendation). MC2_WATER_HDRI_REFL_FULL=1
         // restores the old full-rate LOD 1.0 for A/B or regression checks.
         {
-            static float s_waterHdriLod = -999.0f;
-            if (s_waterHdriLod < -1.0f) {
-                const char* lv = getenv("MC2_WATER_HDRI_LOD");
-                if (lv && lv[0]) {
-                    s_waterHdriLod = (float)atof(lv);
-                } else {
-                    const char* full = getenv("MC2_WATER_HDRI_REFL_FULL");
-                    const bool fullRate = (full && full[0] && full[0] != '0');
-                    // WATER-HDRI-REFL-SHARPEN-1: default bumped 4.0 -> 2.0. LOD 4.0
-                    // (256x128 mip) read as flat/dull; the user prefers the sharper,
-                    // "shinier" reflection. LOD 2.0 (1024x512 mip of the 4K source)
-                    // restores visible sky/sun structure at ~1/4 the texel bandwidth
-                    // of the full-rate LOD 1.0 path (~10ms/frame at LOD1 per
-                    // WATER-HDRI-REFL-PERF-1 451c9e49; LOD2 is 4x less texel traffic
-                    // than LOD1, still far cheaper than the original hot path).
-                    // MC2_WATER_HDRI_REFL_FULL=1 restores LOD 1.0; MC2_WATER_HDRI_LOD
-                    // (explicit float) overrides both. Per-mission override possible
-                    // later via a visual_tuning key if a mission wants it duller.
-                    s_waterHdriLod = fullRate ? 1.0f : 2.0f;
-                }
-            }
+            // LOD env resolve hoisted to mc2WaterHdriLodDefault() (file scope) so
+            // the RUNG-6.5 VK island fsParams pack shares the exact same value.
             const bool hdriAvail = (ppRefl && ppRefl->isHdriReady());
             setMI("u_hdri", 3);
             setMF("u_skyYaw", hdriAvail ? ppRefl->getSkyYaw() : 0.0f);
-            setMF("u_waterHdriLod", hdriAvail ? s_waterHdriLod : -1.0f);
+            setMF("u_waterHdriLod", hdriAvail ? mc2WaterHdriLodDefault() : -1.0f);
         }
 
         // Bind SSBOs.
@@ -3376,13 +3422,97 @@ void gosRenderer::renderWaterFastPath(
             glActiveTexture(GL_TEXTURE0);
         }
 
+        // VK-WATER-TIER1: when the shared-GBuffer water island is armed, render the
+        // BASE layer in Vulkan in-place and skip the GL MDI draw. Feed remains the
+        // CPU-visible thin-record/readback path used by the island. On any fail-soft
+        // (returns 0), fall through to the GL draw. Gate OFF -> GL MDI draw as before
+        // (byte-identical).
+        bool vkWaterHandled = false;
+#ifdef MC2_VULKAN_ISLAND
+        if (mc2_vk_water_island_enabled()) {
+            // Feed (STEP 0 revised): read back the thin records the armed GPU compute
+            // ACTUALLY packed this frame (ground truth) — the CPU pack yields 0 on the
+            // full-recipe-authoritative path (no CPU projection state). ReadbackGpuThinForVk
+            // reads the bucket-header count + the packed ring slot into a CPU copy after
+            // the compute's final barrier. No fenced GL buffer crosses into VK.
+            const void*    vkThinPtr   = nullptr;
+            // MC2_VK_WATER_PERF: time the GL thin-buffer readback (2x glGetBufferSubData
+            // = blocking sync on the GL water cull/pack compute). Reported alongside the
+            // island run()'s [VK_WATER_PERF] line so the full per-frame cost is visible.
+            static int s_vkWaterPerf = -1;
+            if (s_vkWaterPerf == -1) {
+                const char* e = std::getenv("MC2_VK_WATER_PERF");
+                s_vkWaterPerf = (e && e[0] == '1') ? 1 : 0;
+            }
+            const auto tThinRb0 = std::chrono::steady_clock::now();
+            const uint32_t vkThinCount = WaterStream::ReadbackGpuThinForVk(&vkThinPtr);
+            if (s_vkWaterPerf) {
+                const double us = std::chrono::duration<double, std::micro>(
+                    std::chrono::steady_clock::now() - tThinRb0).count();
+                std::fprintf(stderr, "[VK_WATER_PERF] thin_readback_us=%.1f thin=%u\n",
+                             us, vkThinCount);
+                std::fflush(stderr);
+            }
+            const void*    vkRecipes   = (const void*)WaterStream::GetRecipes();
+            const uint32_t vkRecipeN   = WaterStream::GetRecipeCount();
+            gosPostProcess* ppVk = getGosPostProcess();
+            if (vkThinCount > 0 && vkThinPtr && vkRecipes && vkRecipeN > 0 && ppVk) {
+                // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
+                struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
+                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4]; } fsP{};
+                memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
+                vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
+                vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;
+                // WATER_DEPTH_FUDGE_FAST — LOCKSTEP with mclib/terrain_depth_bias.h
+                // (mc2depth::WATER_DEPTH_FUDGE_FAST) + shaders/include/terrain_depth_bias.hglsl
+                // (WATER_DEPTH_FUDGE_FAST). The VS applies clip.z += this * clip.w.
+                vsP.p2[0]=cloudOffsetY; vsP.p2[1]=0.00025f;
+                vsP.p2[2]=(float)alphaEdgeByte; vsP.p2[3]=(float)alphaMiddleByte;
+                vsP.p3[0]=(float)alphaDeepByte;
+                {
+                    const vec4 waterFog = uint32_to_vec4(renderStates_[gos_State_Fog]);
+                    memcpy(fsP.fog, &waterFog, 4*sizeof(float));
+                }
+                fsP.f0[0]= SmokeMode::fixedTimestepEnabled()
+                             ? (float)SmokeMode::fixedClockSeconds()
+                             : (float)((double)(timing::get_wall_time_ms() - timeStart_) / 1000.0);
+                fsP.f0[1]=camMC2[0]; fsP.f0[2]=camMC2[1]; fsP.f0[3]=camMC2[2];
+                fsP.f1[0]=alphaDepth; fsP.f1[1]=g_waterAbsorptionDensity;
+                fsP.f1[2]=g_waterMaxAlpha; fsP.f1[3]=g_waterRippleGain;
+                fsP.f2[0]=g_waterGlintGain;
+                // RUNG-6.5 WATER-REFLECTION PORT: feed the reflection inputs with
+                // the EXACT values the GL MDI bind block uploads (gate parity:
+                // MC2_WATER_REFLECTION=0 -> strength 0.0 -> FS block skipped both
+                // sides; !isHdriReady -> lod -1 -> SH-L2 fallback both sides).
+                {
+                    const bool vkHdriAvail = ppVk->isHdriReady();
+                    fsP.f2[1] = gos_GetWaterReflStrength();                       // u_waterReflStrength
+                    fsP.f2[2] = vkHdriAvail ? ppVk->getSkyYaw() : 0.0f;           // u_skyYaw
+                    fsP.f2[3] = vkHdriAvail ? mc2WaterHdriLodDefault() : -1.0f;   // u_waterHdriLod
+                    fsP.f3[0] = (float)ppVk->getWidth();                          // u_waterScreenSize
+                    fsP.f3[1] = (float)ppVk->getHeight();
+                }
+                memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
+                memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));
+                vkWaterHandled = (1 == mc2_vk_water_island_run(
+                    (unsigned int)ppVk->getSceneColorTexture(),
+                    (unsigned int)ppVk->getSceneDepthTexture(),
+                    ppVk->getWidth(), ppVk->getHeight(),
+                    vkThinPtr, vkThinCount, vkRecipes, vkRecipeN, &vsP, &fsP,
+                    ppVk->isHdriReady() ? (unsigned int)ppVk->getHdriTex() : 0u));
+            }
+        }
+#endif
+
         // MDI: 2 draws (base + detail); 1 if detail not present.
         const GLsizei drawCount = (detailTex != 0) ? 2 : 1;
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, WaterStream::GetIndirectCmdBuffer());
-        glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, drawCount, 0);
-        mdi_submit::trace("WaterFastPath", "MultiDrawArraysIndirect", (int)drawCount,
-                          "GPU", "WaterStreamIndirect", false);
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        if (!vkWaterHandled) {
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, WaterStream::GetIndirectCmdBuffer());
+            glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, drawCount, 0);
+            mdi_submit::trace("WaterFastPath", "MultiDrawArraysIndirect", (int)drawCount,
+                              "GPU", "WaterStreamIndirect", false);
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+        }
 
         // Restore unit 2 — mirror unit-1 force-clear + sampler restore.
         if (bindRefl) {
@@ -4178,6 +4308,58 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// VK-OPT-4: class-D orphan-then-upload for the terrain-mask indirect command
+// buffers (s_indirectCmdBuf / s_waterIndirectCmdBuf). These are per-frame
+// CPU-written DrawArraysIndirect command buffers that were previously
+// glBufferSubData'd WITHOUT orphaning/fencing, so the GL driver implicit-sync
+// stalls (waits for the prior frame's glDrawArraysIndirect to finish reading
+// the buffer before overwriting). Orphaning renames the storage so the driver
+// hands back fresh memory instead of stalling — same bytes, byte-identical
+// output, only the driver serialization is removed. Mirrors the reusable
+// tubeOrphanUpload template from gos_particle_bridge.cpp (VK-OPT-1).
+//
+// The orphan reuses the buffer's fixed capacity (a single 16-byte command),
+// so it is a cheap rename, not a reallocation. On Vulkan this class of
+// implicit-sync buffer does not exist at all — this is also VK-migration prep.
+//
+// Optional, zero-cost-when-off instrumentation behind MC2_TERRAIN_MASK_UPLOAD_STATS
+// makes the orphaning measurable / regression-guardable (parallels
+// MC2_VFX_TUBE_UPLOAD_STATS / MC2_LIGHT_UPLOAD_STATS).
+namespace {
+struct MaskUploadStats {
+    unsigned long long uploadBytes = 0;  // command bytes pushed this frame
+    unsigned long long orphans     = 0;  // orphan-then-upload calls this frame
+};
+MaskUploadStats s_maskUploadStats;
+
+bool maskUploadStatsEnabled() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_TERRAIN_MASK_UPLOAD_STATS");
+        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+    }
+    return cached != 0;
+}
+
+// Orphan-then-upload the indirect command: rename storage (glBufferData NULL at
+// the buffer's existing size) before the glBufferSubData so the driver does not
+// implicit-sync-stall on the previous frame's indirect read. Buffer must be
+// bound to `target` by the caller (it already is at the draw site).
+void maskOrphanUploadCmd(GLenum target, GLsizeiptr bytes, const void* data) {
+    glBufferData(target, bytes, nullptr, GL_DYNAMIC_DRAW);  // orphan/rename
+    glBufferSubData(target, 0, bytes, data);
+    if (maskUploadStatsEnabled()) {
+        s_maskUploadStats.uploadBytes += (unsigned long long)bytes;
+        ++s_maskUploadStats.orphans;
+        std::fprintf(stderr,
+            "[TERRAIN_MASK_UPLOAD_STATS] orphan+upload bytes=%lld orphans=%llu totalBytes=%llu\n",
+            (long long)bytes, s_maskUploadStats.orphans, s_maskUploadStats.uploadBytes);
+        std::fflush(stderr);
+    }
+}
+}  // namespace
+
+// ──────────────────────────────────────────────────────────────────────────
 // B4 Slice Stage 1b — Mask-SOLID dual-run draw bridge.
 //
 // Called by gos_terrain_mask_dispatch::DrawMaskSolid() from
@@ -4334,7 +4516,9 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 17, (GLuint)solidMaskSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 19, (GLuint)recipeSSBO);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)lightingSSBO);
+        // VK-H2-BINDING-SPLIT-1: LightingBuf moved slot 2 -> 4 (lockstep with
+        // gos_terrain_mask_solid.vert). Slot 2 kept clear for ThinRecordBufFrag.
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)lightingSSBO);
 
     // ---- Build and issue one DrawArraysIndirect ----------------------------
     struct DrawArraysIndirectCommand {
@@ -4352,7 +4536,9 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     }
     DrawArraysIndirectCommand cmd = { uint32_t(quadCount * 6), 1u, 0u, 0u };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_indirectCmdBuf);
-    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
+    // VK-OPT-4 (class-D fix): orphan-then-upload so the driver renames storage
+    // instead of implicit-sync-stalling on the previous frame's indirect read.
+    maskOrphanUploadCmd(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd);
     glDrawArraysIndirect(GL_TRIANGLES, nullptr);
     mdi_submit::trace("TerrainMaskSolid", "DrawArraysIndirect", 1,
                       "CPU", "s_indirectCmdBuf", false);
@@ -4362,7 +4548,7 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 17, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 19, 0);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);  // VK-H2-BINDING-SPLIT-1: LightingBuf slot 2 -> 4
 
     // Reset useAtlasColormap on this program so re-entry doesn't inherit atlas mode.
     {
@@ -4496,7 +4682,9 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 18, (GLuint)waterMaskSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  5, (GLuint)recipeSSBO);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)lightingSSBO);
+        // VK-H2-BINDING-SPLIT-1: LightingBuf moved slot 2 -> 4 (lockstep with
+        // gos_terrain_mask_water.vert). Slot 2 kept clear for ThinRecordBufFrag.
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)lightingSSBO);
 
     // ---- Build and issue one DrawArraysIndirect ----------------------------
     struct DrawArraysIndirectCommand {
@@ -4514,7 +4702,9 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     }
     DrawArraysIndirectCommand cmd = { uint32_t(recipeCount * 6), 1u, 0u, 0u };
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_waterIndirectCmdBuf);
-    glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, sizeof(cmd), &cmd);
+    // VK-OPT-4 (class-D fix): orphan-then-upload so the driver renames storage
+    // instead of implicit-sync-stalling on the previous frame's indirect read.
+    maskOrphanUploadCmd(GL_DRAW_INDIRECT_BUFFER, sizeof(cmd), &cmd);
     glDrawArraysIndirect(GL_TRIANGLES, nullptr);
     mdi_submit::trace("TerrainMaskWater", "DrawArraysIndirect", 1,
                       "CPU", "s_waterIndirectCmdBuf", false);
@@ -4524,7 +4714,7 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 18, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  5, 0);
     if (lightingSSBO != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);  // VK-H2-BINDING-SPLIT-1: LightingBuf slot 2 -> 4
 
     glBindSampler(0, savedSampler);
     glActiveTexture(GL_TEXTURE0);
@@ -5860,6 +6050,39 @@ void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
     afterDrawCall();
 }
 
+// VK-VFX-COALESCE-1: killswitch for the consecutive-same-state HUD tri-batch
+// merge in drawTris() below. MLRSortByOrder emits gosFX geometry (weapon
+// tracers, muzzle flashes, impacts) one triangle at a time via
+// gos_DrawTriangles (mclib/mlr/mlrsortbyorder.cpp:589-609) -- under a weapon
+// volley this pushed one HudDrawCall PER TRIANGLE (measured peak 251
+// hudBatch_ entries/frame vs a 14-entry quiet floor, forced multi-mech fire,
+// VK-ARC-STATE.md 2026-07-16). Default OFF pending this slice's own parity
+// verification pass (arc convention: new perf paths default OFF until proven
+// clean, then flip via this one function -- see VK-ARC-STATE.md for the
+// verdict that decided the value below). Explicit "1"/"0" always override.
+// Registered RenderCore/RendererFeatureRegistry.h, documented
+// docs/tier1_env_vars.md, smoke-allowlisted scripts/run_smoke.py.
+static bool mc2VfxCoalesceEnabled() {
+    static int state = -1;
+    if (state == -1) {
+        const char* v = std::getenv("MC2_VK_VFX_COALESCE");
+        if (v && v[0] == '0' && v[1] == '\0') state = 0;   // explicit opt-out
+        else state = 1;   // unset (or explicit "1") -> ON
+        // DEFAULT-ON as of this slice's own verification pass: draw-count A/B
+        // (mc2_01, forced multi-mech fire, field env) showed peak hudBatch_
+        // entries collapse 349 -> 109 with quiet-floor unaffected (13 vs 14);
+        // [VK_HUD_AUDIT v1] vertices= totals were BIT-IDENTICAL to the legacy
+        // path at every matching sample (e.g. two independent 1106-vertex
+        // states, tris count halved, calls dropped by exactly the tris delta,
+        // quads/lines/text untouched); zero VK_HUD_SKIP_DECLINE, zero
+        // fallback_reason, zero validation_errors across all runs; fire-event
+        // PPM capture visually matches the banked VFX-9 reference
+        // (.claude/vfx-fire/mc2_01/vk_onfire_pair3_flipped.png) at the same
+        // fixture pin. See VK-ARC-STATE.md for the full write-up.
+    }
+    return state == 1;
+}
+
 void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawTris");
     gosASSERT(vertices);
@@ -5876,6 +6099,58 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
             SPEW(("GRAPHICS", "[HUD] Late drawTris discarded (after flushHUDBatch)\n"));
             return;
         }
+
+        // VK-VFX-COALESCE-1: glue this triangle onto hudBatch_.back() instead of
+        // pushing a new HudDrawCall when the back() entry is a compatible
+        // kHudTriBatch (same render state / projection / scale-exemption).
+        // Paint order is preserved EXACTLY: MLRSortByOrder already emits
+        // triangles in depth-sorted order one at a time (SetDifferences forces
+        // a state change -> a new hudBatch_ entry, same as before), so this
+        // only glues ADJACENT same-state records together -- it never reorders.
+        // flushHUDBatch/recordPendingHudColorProof already replay a variable-
+        // length triangle-list per entry, so the merge is transparent downstream.
+        //
+        // HUD-SHRINK HAZARD: flushHUDBatch's bottom-band shrink transform
+        // (s_hud_scale/s_hud_scale_active, ACTIVE by default in every mission --
+        // s_hud_scale=0.85) makes ONE shrink/no-shrink decision per hudBatch_
+        // entry from that entry's own vertex centroid. Two same-state triangles
+        // adjacent in the GLOBAL depth sort can belong to different effects at
+        // different screen positions (e.g. two mechs' lasers sharing one
+        // texture/blend state) and independently straddle the 60%-height band.
+        // A blind append would recompute ONE aggregate centroid for the merged
+        // batch, which can flip the shrink decision for triangles that would
+        // have decided the other way alone -- a real pixel shift, not just a
+        // draw-count change. Guard: only merge when the incoming triangle's own
+        // centroid falls on the SAME side of the band as the side already
+        // established by the batch's FIRST triangle (back().vertices[0..3),
+        // append-only so that snapshot never changes) -- mean of same-side
+        // values stays same-side, so the merged decision stays bit-identical to
+        // what every constituent triangle would have gotten on its own. When
+        // the shrink test can't apply to this draw (out of mission, scale==1,
+        // or scaleExempt) there is no per-vertex hazard and same-state adjacent
+        // triangles may always merge.
+        if (mc2VfxCoalesceEnabled() && count == 3 && !hudBatch_.empty()) {
+            HudDrawCall& back = hudBatch_.back();
+            if (back.kind == kHudTriBatch &&
+                !back.vertices.empty() &&
+                back.scaleExempt == s_hud_scale_exempt &&
+                memcmp(back.stateSnapshot, renderStates_, sizeof(back.stateSnapshot)) == 0 &&
+                memcmp(&back.projection, &projection_, sizeof(back.projection)) == 0)
+            {
+                bool sameSideOk = true;
+                if (s_hud_scale_active && s_hud_scale < 0.999f && !s_hud_scale_exempt) {
+                    const float bottomBand = (float)height_ * 0.60f;
+                    const float cyBack = (back.vertices[0].y + back.vertices[1].y + back.vertices[2].y) / 3.0f;
+                    const float cyNew  = (vertices[0].y + vertices[1].y + vertices[2].y) / 3.0f;
+                    sameSideOk = (cyBack >= bottomBand) == (cyNew >= bottomBand);
+                }
+                if (sameSideOk) {
+                    back.vertices.insert(back.vertices.end(), vertices, vertices + count);
+                    return;
+                }
+            }
+        }
+
         HudDrawCall call;
         call.kind = kHudTriBatch;
         call.vertices.assign(vertices, vertices + count);
@@ -6358,8 +6633,9 @@ void gosRenderer::beginDynamicShadowPass() {
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
 
-    // Disable comparison mode for writing
-    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+    // Disable comparison mode for writing (RAW: the engine-owned GL texture; never
+    // the VK-produced interop texture, whose compare-mode must stay REF_TO_TEXTURE).
+    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTextureRaw());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -6429,8 +6705,9 @@ void gosRenderer::endDynamicShadowPass() {
 
     gosPostProcess* pp = getGosPostProcess();
 
-    // Restore comparison mode on dynamic shadow texture
-    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTexture());
+    // Restore comparison mode on dynamic shadow texture (RAW: engine-owned GL
+    // texture; the VK interop texture keeps its own compare-mode set at island init).
+    glBindTexture(GL_TEXTURE_2D, pp->getDynamicShadowTextureRaw());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -7504,6 +7781,66 @@ extern "C" void mc2_ui_pass_sample_entry_ambient();
 extern "C" void mc2_ui_pass_note_draw(unsigned kind);
 extern "C" void mc2_ui_pass_check_ambient();
 
+static bool vkHudQueueEnabled()
+{
+    // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post-
+    // VK-RUNG8-ITEM8 the native VK composite is the sole present-image producer -- the GL 2D
+    // HUD draws into the DISCARDED GL backbuffer, so under the umbrella an unarmed VK HUD queue
+    // means the HUD VANISHES (the field bug; pre-b0b8ae2b the HUD survived only because present
+    // fell back to the GL backbuffer). So arm from the umbrella (subGate): MC2_VK_SHARED_GBUFFER=1
+    // queues the HUD into the VK present tail; explicit "1"/"0" still wins. The strict proof armed
+    // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
+    // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
+    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD");            // per-call: VK-FAILSOFT-DISARM-1
+    return enabled;
+}
+
+#ifdef MC2_VULKAN
+static bool vkHudSkipGlEnabled()
+{
+    // VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too. Skipping the GL HUD is only
+    // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
+    // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
+    // live whenever any HUD element is not VK-representable. Explicit "1"/"0" still wins.
+    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD_SKIP_GL");    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
+    return enabled;
+}
+
+static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
+{
+    // AlphaMode 1 (OneZero/opaque), 3 (AlphaInvAlpha) and 4 (OneInvAlpha, the
+    // effect-sprite blend) are all rasterizable by the tail. AlphaMode 4 now binds a
+    // dedicated OneInvAlpha textured pipe (ONE, 1-srcA) in engine_present_vk.cpp that
+    // matches GL's glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA) — the additive-glow
+    // effect blend — so beams/tracers/explosions composite at GL brightness.
+    // VK-FIELD-VFX-7: AlphaMode 2 (OneOne, pure additive — muzzle flashes / tracer
+    // sprites) now binds a dedicated (ONE,ONE) pipe in engine_present_vk.cpp.
+    if (draw.alphaMode != 1 && draw.alphaMode != 2 && draw.alphaMode != 3 && draw.alphaMode != 4)
+        return false;
+    const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
+    if (textured) {
+        if (draw.glTextureId == 0 || draw.textureWidth == 0 || draw.textureHeight == 0 ||
+            draw.textureSerial == 0 || !draw.textureRgba || draw.textureRgba->empty())
+            return false;
+        if (draw.kind == kHudQuadBatch)
+            return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
+        if (draw.kind == kHudTextQuadBatch)
+            return draw.vertices.size() >= 4 &&
+                   (((draw.vertices.size() % 4) == 0) || ((draw.vertices.size() % 3) == 0));
+        if (draw.kind == kHudTriBatch)
+            return !draw.vertices.empty() && (draw.vertices.size() % 3) == 0;
+        return false;
+    }
+    if (draw.kind == kHudQuadBatch)
+        return draw.vertices.size() >= 4 && (draw.vertices.size() % 4) == 0;
+    if (draw.kind == kHudLineBatch)
+        return !draw.vertices.empty() && (draw.vertices.size() % 2) == 0;
+    if (draw.kind == kHudTriBatch)
+        return !draw.vertices.empty() && (draw.vertices.size() % 3) == 0;
+    return false;
+}
+#endif
+
 void gosRenderer::flushHUDBatch()
 {
     if (hudBatch_.empty()) {
@@ -7758,12 +8095,182 @@ void gosRenderer::flushHUDBatch()
         mc2_ui_pass_sample_entry_ambient();
     }
 
+    if (s_uiPassMeasure) {
+        unsigned calls[4] = {};
+        unsigned textured = 0;
+        unsigned alphaModes[8] = {};
+        unsigned totalVertices = 0;
+        for (const HudDrawCall& call : hudBatch_) {
+            const unsigned kind = (unsigned)call.kind;
+            if (kind < 4) ++calls[kind];
+            if (call.stateSnapshot[gos_State_Texture] != 0 || call.kind == kHudTextQuadBatch)
+                ++textured;
+            const unsigned alpha = call.stateSnapshot[gos_State_AlphaMode];
+            if (alpha < 8) ++alphaModes[alpha];
+            totalVertices += (unsigned)call.vertices.size();
+        }
+
+        static unsigned s_hudMeasureFrames = 0;
+        ++s_hudMeasureFrames;
+        if (s_hudMeasureFrames <= 10 || (s_hudMeasureFrames % 120) == 0) {
+            std::fprintf(stderr,
+                "[VK_HUD_AUDIT v1] frame=%u calls=%u quads=%u lines=%u tris=%u text=%u "
+                "textured=%u vertices=%u alpha0=%u alpha1=%u alpha2=%u alpha3=%u\n",
+                s_hudMeasureFrames, (unsigned)hudBatch_.size(),
+                calls[0], calls[1], calls[2], calls[3],
+                textured, totalVertices,
+                alphaModes[0], alphaModes[1], alphaModes[2], alphaModes[3]);
+        }
+    }
+
+#ifdef MC2_VULKAN
+    bool nativeHudQueued = false;
+    bool nativeHudCanSkipGl = vkHudSkipGlEnabled();
+    if (vkHudQueueEnabled()) {
+        // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
+        // not per draw (3x subGate() + a raw getenv per draw was ~380-450 CRT env
+        // scans/frame at field HUD density, thousands during weapon fire).
+        // DISARM-1/2 semantics preserved: subGate() reads g_mc2VkSessionForcedGL
+        // through umbrellaOn() on THIS call, so a mid-session fail-soft still
+        // propagates at the next flush (frame-boundary granularity is the disarm
+        // intent). Do NOT make this local `static`, and do NOT re-fuse the
+        // per-draw reads below back into the loop.
+        const bool hudVfxGate = mc2vkgate::subGate("MC2_VK_VFX");
+        // Env-token-only memo (no disarm interaction): the env block is
+        // process-static, so one getenv per process is exact.
+        static const bool s_hudDrawDumpEnv =
+            (std::getenv("MC2_VK_HUD_DRAW_DUMP") != nullptr);
+        std::vector<mc2vk::VkHudDraw> nativeDraws;
+        nativeDraws.reserve(hudBatch_.size());
+        for (const HudDrawCall& call : hudBatch_) {
+            mc2vk::VkHudDraw draw;
+            draw.kind = (uint32_t)call.kind;
+            draw.textureHandle = (call.kind == kHudTextQuadBatch)
+                ? (uint32_t)call.fontTexId
+                : (uint32_t)call.stateSnapshot[gos_State_Texture];
+            if (draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID) {
+                if (gosTexture* tex = getTexture(draw.textureHandle)) {
+                    gosTextureInfo ti;
+                    tex->getTextureInfo(&ti);
+                    draw.glTextureId = tex->getTextureId();
+                    draw.textureWidth = (uint32_t)ti.width_;
+                    draw.textureHeight = (uint32_t)ti.height_;
+                    draw.textureFormat = (uint32_t)ti.format_;
+                    draw.textureSerial = tex->getContentSerial();
+                    // VK-FIELD-VFX-4: textures whose upload path never set a CPU
+                    // mirror (BC7 .ktx2 sidecar realize — effect sprites) get one
+                    // built lazily by GPU readback, once per content serial, so
+                    // textured beams/effects composite instead of self-declining.
+                    // Gated on the VFX umbrella sub-gate; GL byte-identical when off.
+                    // (hudVfxGate hoisted per-flush: VK-HUD-GATE-HOIST-1.)
+                    if (hudVfxGate && draw.textureWidth != 0 &&
+                        draw.textureHeight != 0 && !tex->hasRgbaMirror())
+                        tex->ensureRgbaMirrorFromGpu();
+                    if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
+                        draw.textureRgba = tex->getRgbaMirror();
+                }
+            }
+            draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
+            // VK-FIELD-VFX-4: an effect tri-batch (AlphaMode 4, the OneInvAlpha
+            // additive blend) whose texture STILL has no mirror after the GPU
+            // readback attempt falls back to UNTEXTURED vertex-coloured (the
+            // round-3 proven beam look) instead of self-declining — a weapon
+            // beam must never vanish outright over a missing texture mirror.
+            {
+                // hudVfxGate hoisted per-flush: VK-HUD-GATE-HOIST-1.
+                if (hudVfxGate && draw.kind == (uint32_t)kHudTriBatch &&
+                    (draw.alphaMode == 4 || draw.alphaMode == 2) &&
+                    draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
+                    (!draw.textureRgba || draw.textureRgba->empty()))
+                    draw.textureHandle = 0;
+            }
+            draw.textureAddress = call.stateSnapshot[gos_State_TextureAddress];
+            draw.filter = call.stateSnapshot[gos_State_Filter];
+            draw.foregroundColor = call.foregroundColor;
+            draw.vertices.reserve(call.vertices.size());
+            for (const gos_VERTEX& v : call.vertices) {
+                mc2vk::VkHudVertex out;
+                out.x = v.x; out.y = v.y; out.z = v.z; out.rhw = v.rhw;
+                out.argb = v.argb; out.frgb = v.frgb;
+                out.u = v.u; out.v = v.v;
+                draw.vertices.push_back(out);
+            }
+            // VK-FIELD-VFX-3: per-draw self-decline instead of the all-or-nothing veto.
+            // The VK tail renderer (recordPendingHudColorProof) ALREADY skips each draw
+            // it cannot represent (no texture mirror / unsupported kind) individually
+            // (`continue`), so one non-representable draw need NOT force the WHOLE HUD to
+            // the DISCARDED GL backbuffer. Under the VFX umbrella we always composite the
+            // native tail: the representable subset (brackets/bars/beams/HUD/text + mirror-
+            // backed effect sprites) survives, and the rest drops per-draw (it would be
+            // lost to the discarded GL HUD anyway). This removes the poisoning landmine
+            // where any live textured effect killed the entire HUD composite, and lets the
+            // effect classes (carnage/muzzle/artillery) route through IsHUD safely.
+            const bool s_hudPerDrawDecline = hudVfxGate;   // hoisted per-flush: VK-HUD-GATE-HOIST-1
+            const bool drawRepresentable = vkHudDrawRepresentable(draw);
+            if (!drawRepresentable) {
+                static unsigned s_nativeHudDeclineLogs = 0;
+                if (s_nativeHudDeclineLogs < 16) {
+                    std::fprintf(stderr,
+                        "[VK_HUD_SKIP_DECLINE v1] kind=%u tex=%u gl=%u wh=%ux%u serial=%u rgba=%zu alpha=%u verts=%zu perDrawDecline=%d\n",
+                        draw.kind, draw.textureHandle, draw.glTextureId,
+                        draw.textureWidth, draw.textureHeight, draw.textureSerial,
+                        draw.textureRgba ? draw.textureRgba->size() : (size_t)0,
+                        draw.alphaMode, draw.vertices.size(),
+                        (int)s_hudPerDrawDecline);
+                    ++s_nativeHudDeclineLogs;
+                }
+            }
+            if (!s_hudPerDrawDecline)
+                nativeHudCanSkipGl = nativeHudCanSkipGl && drawRepresentable;
+            // VK-HUD-GLYPH-CORRUPTION diagnostic: dump per-draw texture handle+serial
+            // for the first few frames so an intra-frame same-handle/different-serial
+            // collision (mirror keyed by handle -> last-upload-wins -> stale glyphs)
+            // is directly visible. Gated by MC2_VK_HUD_DRAW_DUMP (env token
+            // memoized once per process: VK-HUD-GATE-HOIST-1).
+            if (s_hudDrawDumpEnv) {
+                static unsigned s_hudDumpLines = 0;
+                if (s_hudDumpLines < 400 && draw.textureHandle != 0 &&
+                    draw.textureHandle != INVALID_TEXTURE_ID) {
+                    ++s_hudDumpLines;
+                    std::fprintf(stderr, "[VK_HUD_DRAW_DUMP] batchseq=%u kind=%u handle=%u "
+                        "serial=%u wh=%ux%u verts=%zu\n", s_hudDumpLines,
+                        draw.kind, draw.textureHandle, draw.textureSerial,
+                        draw.textureWidth, draw.textureHeight, draw.vertices.size());
+                }
+            }
+            nativeDraws.push_back(std::move(draw));
+        }
+        // HUD-CANVAS-EXTENT-FIX: pass the logical canvas the HUD vertices were authored
+        // in (width_/height_ == Environment.screenWidth/Height) so the VK tail maps them
+        // to NDC correctly even when the present image (physical drawable) differs.
+        nativeHudQueued = mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(
+            std::move(nativeDraws), (uint32_t)width_, (uint32_t)height_);
+    }
+#endif
+
     // UI-PASS-MODEL-1: UI is now MODELED (declared ambient row in kPassAmbient[]). Verify
     // the UI entry ambient against that row every frame — OBSERVE-ONLY (own counter,
     // non-fatal), read-only glGet, NO GL state change, so the HUD replay stays byte-identical.
     // This closes the last DO_NOT_MODEL hole: the ambient guard checks UI entry state instead
     // of skipping it. Default-ON (not gated) — the check is cheap glGet + compare.
     mc2_ui_pass_check_ambient();
+
+#ifdef MC2_VULKAN
+    if (nativeHudQueued && nativeHudCanSkipGl) {
+        static unsigned s_nativeHudSkipFrames = 0;
+        ++s_nativeHudSkipFrames;
+        if (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0) {
+            std::fprintf(stderr,
+                "[VK_HUD_SKIP v1] frame=%u draws=%u reason=\"native_full_coverage\"\n",
+                s_nativeHudSkipFrames, (unsigned)hudBatch_.size());
+        }
+        hudFlushed_ = true;
+        s_hud_scale_exempt = false;
+        render_contract::endPassScope(render_contract::PassIdentity::UI,
+                                      "gosRenderer_flushHUDBatch");
+        return;
+    }
+#endif
 
     // Save pre-flush render state and projection
     uint32_t priorState[gos_MaxState];
@@ -8890,6 +9397,17 @@ void __stdcall gos_SetRenderMaterialSamplerUnit(HGOSRENDERMATERIAL material, con
 // to gameos_graphics_light_ssbo.cpp. gos_BindLightDataStorageBlock stays
 // here (needs gosRenderMaterial internals).
 
+#ifdef MC2_VULKAN_ISLAND
+// VK-MECH-MATERIAL-LIGHTING-1: expose the live LightsData GL SSBO name + byte size so
+// the VK mech island can copy it (glGetBufferSubData) into a VK SSBO for its calc_light
+// port. Read-only view of the owner handle; matches gos_LightDataSsbo_Upload lifetime.
+extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes)
+{
+	if (glName) *glName = static_cast<unsigned int>(s_lightDataSsbo);
+	if (bytes)  *bytes  = static_cast<unsigned long long>(s_lightDataSsboBytes);
+}
+#endif
+
 // RF1: bind the LightsData SSBO block for a lit material's program.
 // Unconditional per-draw (idempotent, ~free, and immune to the CLAUDE.md
 // shader-hot-reload relink which resets program block bindings to 0 — a
@@ -9519,6 +10037,12 @@ void gos_MarkStaticLightMatrixBuilt() {
     gosPostProcess* pp = getGosPostProcess();
     if (pp) pp->markStaticLightMatrixBuilt();
 }
+// VK-SHADOW-COPY-ONCE-1: generation counter bumped each time the static
+// shadow map is (re)built (mission load / re-arm). 0 while never built.
+uint64_t gos_GetStaticShadowGeneration() {
+    gosPostProcess* pp = getGosPostProcess();
+    return pp ? pp->staticShadowGeneration() : 0;
+}
 bool gos_BeginShadowPrePass(bool clearDepth) {
     // Report whether the prepass actually binds the shadow FBO + sets state.
     // beginShadowPrePass early-returns when shadows are disabled at runtime
@@ -9596,6 +10120,9 @@ void gos_GetTerrainLightDir(float* x, float* y, float* z) {
 void gos_SetTerrainLightDir(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainLightDir(x, y, z);
 }
+// VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
+// (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
+// no new accessor needed.
 void gos_SetTerrainDetailParams(float tiling, float strength) {
     if (g_gos_renderer) g_gos_renderer->setTerrainDetailParams(tiling, strength);
 }
@@ -10130,6 +10657,8 @@ void gosRenderer::drawTerrainOverlays()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(terrainOverlayBatch_.vao);
+        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_OVERLAY_GL_CANARY");
+        int canaryDraws = 0;
         for (const auto& entry : terrainOverlayBatch_.draws) {
             if (overlayLocs_.tex1 >= 0)
                 glUniform1i(overlayLocs_.tex1, 0);
@@ -10137,7 +10666,9 @@ void gosRenderer::drawTerrainOverlays()
             gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "terrainOverlayBatch");
             bindBatchTextureOrFallback(t, entry.texHandle, "terrainOverlayBatch");  // OMT-1: no bind-0 on resolve-fail
             glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+            ++canaryDraws;
         }
+        vkScopedGlCanaryEnd(canary, "terrain_overlay_batch", canaryDraws);
         glBindVertexArray((GLuint)prevVao);
     }  // texGuard: restores unit-0 binding + active texture unit before invalidate
 
@@ -10281,6 +10812,8 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     {
         mc2gl::GlScopedTextureUnit texGuard(0);  // GLSTATE-TEXTURE-UNIT0-RESTORE-1
         glBindVertexArray(s_decalStaticVAO);
+        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_DECAL_STATIC_GL_CANARY");
+        int canaryDraws = 0;
         for (int i = 0; i < drawCount; ++i) {
             const struct GosDecalStaticDraw& entry = draws[i];
             if (overlayLocs_.tex1 >= 0)
@@ -10289,8 +10822,10 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
             gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "decalStaticBatch");
             bindBatchTextureOrFallback(t, entry.texHandle, "decalStaticBatch");  // OMT-1: no bind-0 on resolve-fail
             glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+            ++canaryDraws;
             if (i == 0) DECAL_GLPROBE("after_first_drawarrays");
         }
+        vkScopedGlCanaryEnd(canary, "decal_static_batch", canaryDraws);
         DECAL_GLPROBE("after_all_drawarrays");
         glBindVertexArray((GLuint)prevVao);
         DECAL_GLPROBE("after_vao_restore");
@@ -10385,6 +10920,8 @@ void gosRenderer::drawDecals()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(decalBatch_.vao);
+        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_DECAL_GL_CANARY");
+        int canaryDraws = 0;
         for (const auto& entry : decalBatch_.draws) {
             if (decalLocs_.tex1 >= 0)
                 glUniform1i(decalLocs_.tex1, 0);
@@ -10392,7 +10929,9 @@ void gosRenderer::drawDecals()
             gosTexture* t = lookupBatchTextureOrWarn(textureList_, entry.texHandle, "decalBatch");
             bindBatchTextureOrFallback(t, entry.texHandle, "decalBatch");  // OMT-1: no bind-0 on resolve-fail
             glDrawArrays(GL_TRIANGLES, (GLint)entry.firstVert, (GLsizei)entry.vertCount);
+            ++canaryDraws;
         }
+        vkScopedGlCanaryEnd(canary, "terrain_decal_batch", canaryDraws);
         glBindVertexArray((GLuint)prevVao);
     }  // texGuard: restores unit-0 binding + active texture unit before invalidate
 

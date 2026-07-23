@@ -46,6 +46,7 @@
 
 #include<gameos.hpp>
 #include "../mclib/particles/batcher.h"
+#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-2: umbrella-route immediate-draw for bolts
 
 //---------------------------------------------------------------------------
 extern bool hasGuardBand;
@@ -54,6 +55,30 @@ extern bool drawOldWay;
 extern float BaseHeadShotElevation;
 extern bool useNonWeaponEffects;
 extern bool MLRVertexLimitReached;
+
+// VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
+// (drawOldWay==false -> mcTextureManager->addVertices) DEFERS the bolt geometry into
+// the texture-manager render list, which renderLists() flushes into the (discarded)
+// GL scene backbuffer under VK-only present -> weapon fire VANISHES. The round-1
+// objmgr IsHUD wrap is INERT for this path because addVertices only memcpys verts
+// (no IsHUD capture) and the flush runs OUTSIDE the IsHUD scope. Fix: when the VK VFX
+// route is armed, take the IMMEDIATE gos_DrawTriangles path instead (the exact
+// mechanism the selection brackets / health bars use, PROVEN visible) so the bolt
+// verts are issued while objmgr has gos_State_IsHUD=1 -> composited into the VK HUD
+// tail. Umbrella OFF -> subGate false -> drawOldWay path unchanged -> byte-identical GL.
+static bool vkVfxImmediateDraw()
+{
+	const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
+	return s_on;
+}
+static bool vkVfxTraceOn()
+{
+	static const bool s_on = []{
+		const char* v = std::getenv("MC2_VK_VFX_TRACE");
+		return v && v[0] && v[0] != '0';
+	}();
+	return s_on;
+}
 
 #define BASE_EFFECT_SCALAR		1.0f
 #define EFFECT_LEFT_TIME		1.0f
@@ -1749,7 +1774,12 @@ void WeaponBolt::render (void)
 
 		drawInfo.m_state = mlrState;
 		drawInfo.m_clippingFlags = 0x0;
-			
+
+		// VK-FIELD-VFX-2: force the immediate gos_DrawTriangles path under the VK VFX
+		// umbrella route so the bolt lands in the composited HUD tail (see file-top note).
+		const bool useImmediate = drawOldWay || vkVfxImmediateDraw();
+		const bool vfxTrace = vkVfxTraceOn();
+
 		if (!gosEffect && !hitTarget && !((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
 			//---------------------------
@@ -1868,9 +1898,26 @@ void WeaponBolt::render (void)
 			lq4Vertices[1].u		= 0.0f;
 			lq4Vertices[1].v		= 0.0f;
 			lq4Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
-		
+
+			if (vfxTrace) {
+				const bool culled =
+					(lq1Vertices[0].x > eye->viewMulX) || (lq1Vertices[0].y > eye->viewMulY) ||
+					(lq1Vertices[0].x < eye->viewAddX) || (lq1Vertices[0].y < eye->viewAddY) ||
+					(lq1Vertices[1].x > eye->viewMulX) || (lq1Vertices[1].y > eye->viewMulY) ||
+					(lq1Vertices[1].x < eye->viewAddX) || (lq1Vertices[1].y < eye->viewAddY) ||
+					(lq1Vertices[2].x > eye->viewMulX) || (lq1Vertices[2].y > eye->viewMulY) ||
+					(lq1Vertices[2].x < eye->viewAddX) || (lq1Vertices[2].y < eye->viewAddY);
+				printf("[VK_VFX_TRACE] bolt(laser) path=%s culled=%d view=[%.0f..%.0f,%.0f..%.0f] "
+					"v0=(%.0f,%.0f) v1=(%.0f,%.0f) v2=(%.0f,%.0f) argb0=%08X\n",
+					useImmediate ? "IMMEDIATE" : "addVertices", (int)culled,
+					eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY,
+					lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y,
+					lq1Vertices[2].x, lq1Vertices[2].y, (unsigned)lq1Vertices[0].argb);
+				fflush(stdout);
+			}
+
 			if (((lq1Vertices[0].x > eye->viewMulX) ||
-				(lq1Vertices[0].y > eye->viewMulY) || 
+				(lq1Vertices[0].y > eye->viewMulY) ||
 				(lq1Vertices[0].x < eye->viewAddX) || 
 				(lq1Vertices[0].y < eye->viewAddY) || 
 				(lq1Vertices[1].x > eye->viewMulX) ||
@@ -1885,7 +1932,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					//------------------------
 					// Draw em!
@@ -1948,7 +1995,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					gos_DrawTriangles(lq2Vertices,3);
 				}
@@ -1974,7 +2021,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					gos_DrawTriangles(lq3Vertices,3);
 				}
@@ -2000,7 +2047,7 @@ void WeaponBolt::render (void)
 			}
 			else
 			{
-				if (drawOldWay)
+				if (useImmediate)
 				{
 					gos_DrawTriangles(lq4Vertices,3);
 				}
@@ -2159,8 +2206,19 @@ void WeaponBolt::render (void)
 			lq4Vertices[2].v		= 0.999999f;
 			lq4Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 
-	
-			if (drawOldWay)
+			if (vfxTrace) {
+				printf("[VK_VFX_TRACE] beam path=%s view=[%.0f..%.0f,%.0f..%.0f] "
+					"v0=(%.0f,%.0f,z%.3f) v1=(%.0f,%.0f,z%.3f) v2=(%.0f,%.0f,z%.3f) argb0=%08X tex=%u\n",
+					useImmediate ? "IMMEDIATE" : "addVertices",
+					eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY,
+					lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z,
+					lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z,
+					lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z,
+					(unsigned)lq1Vertices[0].argb, (unsigned)gosTextureHandle);
+				fflush(stdout);
+			}
+
+			if (useImmediate)
 			{
  				//------------------------
 				// Draw em!
@@ -2185,9 +2243,14 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 				//--------------------------------
-				//Set States for Hardware Renderer	
+				//Set States for Hardware Renderer
 				else
 				{
+					// VK-FIELD-VFX-3 (look-restore): the VK HUD tail now composites the
+					// native effect blend AlphaMode OneInvAlpha(4) as a textured tri-batch
+					// (vkHudDrawRepresentable accepts 4 + effect sprites carry an rgba mirror),
+					// so the beam renders with its real additive-style blend just like GL.
+					// Round-2's AlphaInvAlpha(3) remap is retired — it was the "weird laser".
 					gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneInvAlpha);
 					gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 					gos_SetRenderState( gos_State_MonoEnable, 0);
@@ -2203,6 +2266,15 @@ void WeaponBolt::render (void)
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
 			
+				// VK-FIELD-VFX-4: the beam renders TEXTURED under the VK route too.
+				// Round-3 forced it untextured because the beam sprite (realized via
+				// the BC7 .ktx2 sidecar path in txmmgr, so no CPU rgba mirror) was
+				// per-draw-declined by the tail. flushHUDBatch now builds the mirror
+				// lazily by GPU readback (gosTexture::ensureRgbaMirrorFromGpu), and
+				// if that ever fails the tail drops an AlphaMode-4 tri-batch to
+				// untextured vertex-coloured (round-3's proven look) instead of
+				// declining — the beam can no longer vanish. GL / umbrella-off
+				// behaviour unchanged (this is the stock textured state-set).
 				if (gosTextureHandle != 0xffffffff)
 					gos_SetRenderState( gos_State_Texture,gosTextureHandle);
 				else
@@ -2212,6 +2284,11 @@ void WeaponBolt::render (void)
 				gos_DrawTriangles(lq2Vertices,3);
 				gos_DrawTriangles(lq3Vertices,3);
 				gos_DrawTriangles(lq4Vertices,3);
+				// VK-FIELD-VFX-3 (look-restore): the round-2 beam-axis LINE fallback
+				// (3 opaque horizontal lines) is retired — it was a visibility hack that
+				// produced the flat "weird laser". The textured ribbon quads above are the
+				// real beam and match GL. (If a far-zoom sub-pixel ribbon coverage delta
+				// resurfaces it will be handled by the ribbon geometry, not a line proxy.)
 			}
 			else
 			{

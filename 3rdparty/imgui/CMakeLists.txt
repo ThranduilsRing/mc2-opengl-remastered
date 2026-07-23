@@ -15,6 +15,15 @@ target_include_directories(imgui PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/backends
 )
 
+if(MC2_VULKAN)
+    # Rung 8.6a: build the Vulkan renderer backend inertly. Runtime selection stays
+    # on OpenGL until the present/HUD handoff is split safely.
+    target_sources(imgui PRIVATE backends/imgui_impl_vulkan.cpp)
+    target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_USE_VOLK)
+    target_include_directories(imgui PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/volk")
+    target_link_libraries(imgui PUBLIC Vulkan::Headers)
+endif()
+
 # SDL2 headers needed by imgui_impl_sdl2.cpp.
 # That backend uses #include <SDL.h>, so the include path must point directly
 # at the directory containing SDL.h, commonly <prefix>/include/SDL2.

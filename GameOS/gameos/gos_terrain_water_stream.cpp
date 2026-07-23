@@ -42,6 +42,8 @@
 #include "../../mclib/mapdata.h"
 #include "mc2_hitch_trace.h"
 
+#include "../../RenderCore/GpuBufferOwner.h"  // WATER-REGISTRY-0: MDI water buffer owner records (L7.4 prep)
+
 // [WATER_DEPTHPROBE v1] cross-TU Probe-8 fingerprint accessors (terrain-solid
 // side). Paired per-frame against the water-upload MVP fingerprint to
 // discriminate a RUNTIME temporal MVP divergence (fps differ under camera
@@ -169,6 +171,66 @@ uint32_t g_quadWindowSsboCapacity = 0;   // CPU-side mirror of g_quadWindowSsbo 
 GLuint   g_waterBucketHeaderSsbo  = 0;   // GpuDrivenBucketHeader (16 B)
 GLuint   g_waterIndirectCmdBuffer = 0;   // 2 × DrawArraysIndirectCommand (32 B)
 bool     g_waterGpuDrivenArmed    = false;
+
+// VK-P9a WATER-INTEROP: track the thin-ring slot the GPU compute packed THIS frame
+// (byte offset into g_thinBuffer) so the VK island can read back exactly those
+// records. Set at the end of ComputeDispatchAndBindThinRecords; read by
+// ReadbackGpuThinForVk. maxThinRecords is the per-slot capacity in records.
+GLintptr g_vkLastThinSlotOffset = 0;
+uint32_t g_vkLastMaxThinRecords = 0;
+std::vector<WaterThinRecord> g_vkThinReadback;   // CPU copy for the VK feed
+
+// WATER-REGISTRY-0: parallel GpuBufferOwner identity records for the 4 live MDI
+// water buffers (thin ring / recipe / bucket-header / indirect-cmd). Pattern (b):
+// the raw GLuint globals above are UNCHANGED so every gen/bind/map/delete site
+// keeps its exact GL args/order; the owner's backendHandle is mirrored straight
+// from the freshly gen'd handle right after glGenBuffers (like view_uniforms /
+// mech-batcher rings). Registered at create, invalidated on destroy. Metadata
+// only — NEVER read by the compute chain or the MDI draw. Lifetime Mission:
+// these are rebuilt per mission load (ReleaseGlResources on unload). L7.4 prep.
+RenderCore::GpuBufferOwner g_thinBufferOwner{
+    RenderCore::RenderResourceId::WaterThinBuf,
+    RenderCore::RenderResourceLifetime::Mission,
+    "WaterThinBuf",
+    0u};
+RenderCore::GpuBufferOwner g_recipeBufferOwner{
+    RenderCore::RenderResourceId::WaterRecipeBuf,
+    RenderCore::RenderResourceLifetime::Mission,
+    "WaterRecipeBuf",
+    0u};
+RenderCore::GpuBufferOwner g_waterBucketHeaderSsboOwner{
+    RenderCore::RenderResourceId::WaterHeaderBuf,
+    RenderCore::RenderResourceLifetime::Mission,
+    "WaterHeaderBuf",
+    0u};
+RenderCore::GpuBufferOwner g_waterIndirectCmdBufferOwner{
+    RenderCore::RenderResourceId::WaterIndirectCmdBuf,
+    RenderCore::RenderResourceLifetime::Mission,
+    "WaterIndirectCmdBuf",
+    0u};
+
+// WATER-REGISTRY-0: tiny helpers so each gen/destroy site reduces to one call
+// (mirror the desc-build boilerplate the mech-batcher inlines per site). GL-free.
+inline void RegisterWaterBufferOwner(RenderCore::GpuBufferOwner& owner, GLuint glName,
+                                     uint64_t sizeBytes) {
+    owner.backendHandle = glName;  // mirror handle into owner (pattern (b))
+    RenderCore::RenderResourceDesc d;
+    d.id        = owner.id;
+    d.kind      = RenderCore::RenderResourceKind::Buffer;
+    d.lifetime  = owner.lifetime;
+    d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+    d.debugName = owner.debugName;
+    d.glName    = glName;
+    d.sizeBytes = sizeBytes;
+    d.valid     = true;
+    RenderCore::registerOrUpdateRenderResource(d);
+}
+inline void InvalidateWaterBufferOwner(RenderCore::GpuBufferOwner& owner) {
+    owner.backendHandle = 0;
+    RenderCore::RenderResourceDesc invalid;
+    invalid.id = owner.id;   // valid=false → slot marked unavailable
+    RenderCore::registerOrUpdateRenderResource(invalid);
+}
 
 // CPU staging array for BuildQuadWindowSSBO. Persists across frames to avoid
 // per-frame allocation. Capacity grows to the high-water-mark and stays there.
@@ -474,9 +536,12 @@ unsigned int EnsureRecipeBufferUploaded() {
 
     const GLsizeiptr bytes = (GLsizeiptr)(g_recipes.size() * sizeof(WaterRecipe));
 
-    if (g_recipeBuffer == 0)
-        // TIER2-EXCLUDED: dead-path
+    if (g_recipeBuffer == 0) {
         glGenBuffers(1, &g_recipeBuffer);
+        g_recipeBufferOwner.backendHandle = g_recipeBuffer;  // WATER-REGISTRY-0: mirror handle into owner (pattern b)
+        // WATER-REGISTRY-0: register owner (metadata only; not read by any draw).
+        RegisterWaterBufferOwner(g_recipeBufferOwner, g_recipeBuffer, (uint64_t)bytes);
+    }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_recipeBuffer);
     MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, bytes, g_recipes.data(), GL_STATIC_DRAW);
@@ -495,7 +560,7 @@ unsigned int EnsureRecipeBufferUploaded() {
     return g_recipeBuffer;
 }
 
-uint32_t UploadAndBindThinRecords() {
+uint32_t UploadAndBindThinRecords(bool forceFullWalk) {
     ZoneScopedN("WaterFast.UploadThin");
     if (!g_ready || g_recipes.empty())
         return 0;
@@ -510,7 +575,14 @@ uint32_t UploadAndBindThinRecords() {
     // per-frame setupTextures loop with the SAME corner-validity + waterHandle
     // gate this loop applies — so iterating it covers every quad the legacy
     // walk would have admitted, but typically with 100x fewer iterations.
-    const bool narrow = NarrowEnabledImpl();
+    //
+    // VK-P9a WATER-INTEROP: forceFullWalk overrides narrow. On the armed
+    // full-recipe-authoritative GPU path (default-on), the CPU narrow walk is
+    // SKIPPED (g_narrowQuadsThisFrame empty) -> narrow-enabled + empty-narrow =
+    // ZERO iterations -> g_thinStaging never populated. The VK water island needs
+    // a CPU-staged thin feed, so it calls this with forceFullWalk=true to walk the
+    // full quadList and populate g_thinStaging regardless of the narrow/auth gates.
+    const bool narrow = forceFullWalk ? false : NarrowEnabledImpl();
     const TerrainQuadPtr* narrowArr = narrow && !g_narrowQuadsThisFrame.empty()
         ? g_narrowQuadsThisFrame.data() : nullptr;
     const size_t narrowN = narrow ? g_narrowQuadsThisFrame.size() : 0;
@@ -698,6 +770,7 @@ uint32_t UploadAndBindThinRecords() {
         if (g_thinBuffer != 0) {
             glDeleteBuffers(1, &g_thinBuffer);
             g_thinBuffer = 0;
+            InvalidateWaterBufferOwner(g_thinBufferOwner);  // WATER-REGISTRY-0: realloc-on-grow
         }
         glGenBuffers(1, &g_thinBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinBuffer);
@@ -722,6 +795,9 @@ uint32_t UploadAndBindThinRecords() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         g_thinSlotCapacity = cap;
         g_thinSlot = 0;
+        // WATER-REGISTRY-0: register owner after final sizing (ring = 3 slots).
+        RegisterWaterBufferOwner(g_thinBufferOwner, g_thinBuffer,
+                                 (uint64_t)cap * kThinRingSlots);
     }
 
     g_thinSlot = (g_thinSlot + 1) % kThinRingSlots;
@@ -1369,15 +1445,17 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
         }
 
         // Bucket header: 16 B GpuDrivenBucketHeader (visibleCount + 3 pads).
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_waterBucketHeaderSsbo);
+        g_waterBucketHeaderSsboOwner.backendHandle = g_waterBucketHeaderSsbo;  // WATER-REGISTRY-0: mirror (pattern b)
+        RegisterWaterBufferOwner(g_waterBucketHeaderSsboOwner, g_waterBucketHeaderSsbo, 16u); // WATER-REGISTRY-0
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_waterBucketHeaderSsbo);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, 16, nullptr, GL_DYNAMIC_DRAW);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Indirect cmd buffer: 2 × DrawArraysIndirectCommand = 2 × 16 B = 32 B.
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_waterIndirectCmdBuffer);
+        g_waterIndirectCmdBufferOwner.backendHandle = g_waterIndirectCmdBuffer;  // WATER-REGISTRY-0: mirror (pattern b)
+        RegisterWaterBufferOwner(g_waterIndirectCmdBufferOwner, g_waterIndirectCmdBuffer, 32u); // WATER-REGISTRY-0
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_waterIndirectCmdBuffer);
         MC2_GL_BufferData(GL_DRAW_INDIRECT_BUFFER, 32, nullptr, GL_DYNAMIC_DRAW);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
@@ -1439,6 +1517,9 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         g_thinSlotCapacity = (uint32_t)thinSlotStride;
         g_thinSlot = 0;
+        // WATER-REGISTRY-0: register owner (armed-path lazy alloc of the thin ring).
+        RegisterWaterBufferOwner(g_thinBufferOwner, g_thinBuffer,
+                                 (uint64_t)thinSlotStride * (uint64_t)kThinRingSlots);
     }
     // Build and upload per-frame quad window SSBO.
     // WATER-GPU-FULL-RECIPE-CULL-1B: in authoritative full-recipe mode the CPU narrow
@@ -1959,6 +2040,10 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
 
     g_waterGpuDrivenArmed = true;
+    // VK-P9a: remember which thin-ring slot the GPU packed this frame + the per-slot
+    // record capacity, so ReadbackGpuThinForVk can map exactly those records.
+    g_vkLastThinSlotOffset = thinSlotOffset;
+    g_vkLastMaxThinRecords = maxThinRecords;
     if (g_mc2HitchEnabled) {
         // waterGlCalls = cumulative GL upload calls at this point in the frame.
         // Approximation: includes terrain/static calls made before water in the same frame.
@@ -2174,15 +2259,59 @@ void EndThinRingFrameFence() {
 }
 
 // ----------------------------------------------------------------------------
+// VK-P9a WATER-INTEROP: GPU thin-record READBACK feed for the Vulkan water island.
+//
+// STEP 0 REVISION (empirically forced): the CPU thin pack (UploadAndBindThinRecords)
+// returns 0 on the live armed path — the armed full-recipe-authoritative GPU path is
+// the sole culler and does NOT populate the per-vertex CPU projection state (wz /
+// waterHandle) the CPU pz-gate reads, so the CPU walk rejects every quad. So we read
+// back the GPU-packed thin records that the compute ACTUALLY drew (the ground truth,
+// count in the bucket header), and hand that CPU copy to VK. This is STEP 0's named
+// fallback ("VK-side re-pack ... a known workaround, not a blocker") — one small
+// per-frame GL readback of the compute-packed slot (hundreds–few-thousand × 48 B),
+// done AFTER the compute's SHADER_STORAGE barrier so the data is visible and stable.
+// No fenced GL buffer crosses into VK (we copy on the CPU) -> no GL->VK sync hazard.
+//
+// Returns the record count; *outPtr points at the internal CPU copy (48B each), valid
+// until the next call. Returns 0 (and *outPtr=nullptr) if the GPU path didn't run.
+uint32_t ReadbackGpuThinForVk(const void** outPtr) {
+    if (outPtr) *outPtr = nullptr;
+    if (!g_waterGpuDrivenArmed || g_thinBuffer == 0 || g_waterBucketHeaderSsbo == 0) return 0;
+    if (g_vkLastMaxThinRecords == 0) return 0;
+
+    // 1) Read the visible record count the compute wrote into the bucket header
+    //    (GpuDrivenBucketHeader.visibleCount at offset 0). The final barrier in
+    //    ComputeDispatchAndBindThinRecords already made these writes visible.
+    uint32_t visibleCount = 0;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_waterBucketHeaderSsbo);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(uint32_t), &visibleCount);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // Clamp to the per-slot capacity (defensive; the compute clamps too).
+    if (visibleCount > g_vkLastMaxThinRecords) visibleCount = g_vkLastMaxThinRecords;
+    if (visibleCount == 0) return 0;
+
+    // 2) Read back exactly those records from the thin ring slot the compute packed.
+    const GLsizeiptr bytes = (GLsizeiptr)visibleCount * (GLsizeiptr)sizeof(WaterThinRecord);
+    if (g_vkThinReadback.size() < visibleCount) g_vkThinReadback.resize(visibleCount);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinBuffer);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, g_vkLastThinSlotOffset, bytes,
+                       g_vkThinReadback.data());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    if (outPtr) *outPtr = g_vkThinReadback.data();
+    return visibleCount;
+}
 
 void ReleaseGlResources() {
     if (g_recipeBuffer != 0) {
         glDeleteBuffers(1, &g_recipeBuffer);
         g_recipeBuffer = 0;
+        InvalidateWaterBufferOwner(g_recipeBufferOwner);  // WATER-REGISTRY-0
     }
     if (g_thinBuffer != 0) {
         glDeleteBuffers(1, &g_thinBuffer);
         g_thinBuffer = 0;
+        InvalidateWaterBufferOwner(g_thinBufferOwner);  // WATER-REGISTRY-0
     }
     // WATER-THINRING-FENCE-1: drop any outstanding ring fences with the buffer.
     for (uint32_t i = 0; i < kThinRingSlots; ++i) {
@@ -2211,10 +2340,12 @@ void ReleaseGlResources() {
     if (g_waterBucketHeaderSsbo != 0) {
         glDeleteBuffers(1, &g_waterBucketHeaderSsbo);
         g_waterBucketHeaderSsbo = 0;
+        InvalidateWaterBufferOwner(g_waterBucketHeaderSsboOwner);  // WATER-REGISTRY-0
     }
     if (g_waterIndirectCmdBuffer != 0) {
         glDeleteBuffers(1, &g_waterIndirectCmdBuffer);
         g_waterIndirectCmdBuffer = 0;
+        InvalidateWaterBufferOwner(g_waterIndirectCmdBufferOwner);  // WATER-REGISTRY-0
     }
     g_waterGpuDrivenArmed = false;
     g_quadWindowStaging.clear();

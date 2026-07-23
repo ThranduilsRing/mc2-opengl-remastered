@@ -42,6 +42,9 @@ struct KeyboardInfo {
 const MouseInfo* getMouseInfo();
 const KeyboardInfo* getKeyboardInfo();
 
+// Test-only: inject a synthetic raw SDL mouse point (window-points space).
+void setMouseInfoRaw(float x, float y);
+
 void handleMouseMotion(const SDL_Event* event);
 void handleMouseButton(const SDL_Event* event);
 void handleMouseWheel(const SDL_Event* event);

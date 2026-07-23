@@ -50,7 +50,7 @@
       "proj": 14.75,
       "alt": 5639.5659,
       "covers": ["edge_fog", "oob_fog", "water", "sky", "invviewproj_transpose_repro"],
-      "_note": "TRANSPOSE-REVEALING pose (user-authored, saved_view.txt 2026-07-02). Oblique low-pitch across the SE map edge: water/terrain/OOB-fog boundary with NONZERO fog alpha. Top-down bookmarks gate edge_fog to vec4(0) and hide the invViewProj transpose; this one exercises the matrix."
+      "_note": "TRANSPOSE-REVEALING pose (user-authored, saved_view.txt 2026-07-02). Oblique low-pitch across the SE map edge: water/terrain/OOB-fog boundary with NONZERO fog alpha. Top-down bookmarks gate edge_fog to vec4(0) and hide the invViewProj transpose; this one exercises the matrix. Used to prove the vk fog island row_major regression and gate the L6.5 column_major fix."
     },
     {
       "name": "oblique_horizon",

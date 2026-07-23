@@ -1019,6 +1019,584 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp). Diagnostic only, default-OFF."
+    // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
+    {
+        "MC2_FEATURE_RENDER_BACKEND",
+        "MC2_RENDER_BACKEND",
+        EnvVarKind::Feature,
+        false,
+        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan "
+        "(default gl; unset/unrecognized -> gl, coercion logged). Read ONCE and "
+        "memoized by mc2::renderBackend() (GameOS/gameos/render_backend_select.*). "
+        "DISTINCT from MC2_RENDER_BACKEND_IFACE (a per-region postprocess interface "
+        "toggle). =vulkan births the standalone shared engine Vulkan device "
+        "(mc2vk::VulkanContext, GameOS/gameos/vulkan_context.*) at engine init for "
+        "P6/P8/P9/P14 to reuse; present is still GL swap in P13 (VK present intercept "
+        "is T3). Fail-soft: any VK bring-up failure forces the session back to GL. "
+        "The old private-device postprocess interop islands have been retired, "
+        "so the shared engine Vulkan device is the only postprocess VkDevice. "
+        "On =gl/unset the accessor adds only one memoized "
+        "getenv -> byte-identical GL behavior."
+    },
+    {
+        "MC2_FEATURE_VK_IMGUI",
+        "MC2_VK_IMGUI",
+        EnvVarKind::Feature,
+        false,
+        "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate. "
+        "Current implementation is observable-decline only: GuiRuntime::Render() "
+        "logs [VK_IMGUI] requested=1 used_vulkan=0 with fallback_reason="
+        "\"tail_handoff_not_split\" and then renders through the unchanged "
+        "SDL2/OpenGL3 backend. Native rendering stays blocked until the final-tail "
+        "present handoff is split."
+    },
+    {
+        "MC2_FEATURE_VK_PRESENT_TAIL_HOOK",
+        "MC2_VK_PRESENT_TAIL_HOOK",
+        EnvVarKind::Feature,
+        false,
+        "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for "
+        "native final-tail rendering. When enabled, EnginePresentVk records a "
+        "behavior-neutral dependency in presentGLFrame() after the GL->VK handoff "
+        "and before the swapchain blit; [VK_PRESENT] tail_hook_frames proves the "
+        "native HUD/ImGui insertion point executes."
+    },
+    {
+        "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT",
+        "MC2_VK_PRESENT_NO_GL_IMPORT",
+        EnvVarKind::Feature,
+        false,
+        "VK present-tail ownership gate. Default-OFF. With the strict native "
+        "present stack armed, EnginePresentVk allocates the shared present image "
+        "as a VK-only RGBA8 target instead of an exportable GL memory-object/FBO. "
+        "This proves native composite/HUD/ImGui can produce the present image "
+        "without the present-specific GL import."
+    },
+    {
+        "MC2_TRACE_VK_VFX_TRACE",
+        "MC2_VK_VFX_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace. Default-OFF. When set, "
+        "WeaponBolt::render (code/weaponbolt.cpp) prints [VK_VFX_TRACE] lines per bolt/beam "
+        "with the render path taken (IMMEDIATE gos_DrawTriangles vs deferred addVertices), "
+        "viewport bounds, projected screen coords, and packed argb; GameObjectManager::render "
+        "(code/objmgr.cpp other-block) prints the VK-VFX route state + live weapon/carnage/"
+        "artillery counts. Used to diagnose why field-VK weapon fire produced zero bolt pixels "
+        "(root cause: drawOldWay==false deferred bolts into the discarded GL scene flush)."
+    },
+    {
+        "MC2_TRACE_VK_PRESENT_DUMP_PPM",
+        "MC2_VK_PRESENT_DUMP_PPM",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-ORACLE-1: headless present-pixel oracle. Default-OFF. Path of a PPM "
+        "(P6) file; EnginePresentVk::verifyReadbackContent dumps the FULL composited "
+        "present image (sharedImg, the RGBA8 backbuffer VK blits to the swapchain) "
+        "there on each verify tick. Requires MC2_VK_PRESENT_VERIFY; verify ticks run "
+        "every 60th frame while frame<600 plus (if MC2_VK_PRESENT_DUMP_FRAME is set) "
+        "a 600-frame window at/after the pin. The OS/PrintWindow grab of a VK "
+        "swapchain returns only the clear colour and the GL scene-FBO capture is "
+        "empty under shared-GBuffer, so this is the only true-backbuffer capture."
+    },
+    {
+        "MC2_TRACE_VK_PRESENT_DUMP_FRAME",
+        "MC2_VK_PRESENT_DUMP_FRAME",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-3: frame pin for MC2_VK_PRESENT_DUMP_PPM. Default unset "
+        "(overwrite-latest each verify tick). =N captures once at the FIRST verify "
+        "tick with g_mc2FrameCounter >= N. gameosmain extends the verify-tick window "
+        "to [N, N+600) so a pin past the initial 600-frame verify stretch still "
+        "fires (an unpinnable pin silently reports 'PPM never wrote' on a HEALTHY "
+        "present path — the 2026-07-12 grey-regression false clue)."
+    },
+    {
+        "MC2_TRACE_VK_PRESENT_DUMP_ON_FIRE",
+        "MC2_VK_PRESENT_DUMP_ON_FIRE",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-5: dynamic fire-event pin for MC2_VK_PRESENT_DUMP_PPM. "
+        "Default unset. When set (with MC2_FX_FORCE_SPAWN=loop), the fixture's "
+        "FIRST volley arms the capture ~0.5s (30 frames) after itself "
+        "(g_mc2FxFireCaptureFrame), so the PPM always lands mid-volley — no "
+        "static pin roulette against a mission's intro/scenario clock. Ignored "
+        "when MC2_VK_PRESENT_DUMP_FRAME is set (static pin wins). Requires "
+        "MC2_VK_PRESENT_VERIFY; suppresses all PPM writes until armed."
+    },
+    {
+        "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE",
+        "MC2_VISUAL_CAPTURE_ON_FIRE",
+        EnvVarKind::Trace,
+        false,
+        "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE. With "
+        "MC2_FX_FORCE_SPAWN + MC2_VISUAL_CAPTURE_FRAME/_DIR (smoke mode), the "
+        "engine visual capture triggers at the fixture-armed fire frame "
+        "(g_mc2FxFireCaptureFrame, ~0.5s after the first volley) instead of the "
+        "static frame pin, so GL-vs-VK weapon-class pairs capture the same "
+        "fire-relative instant on both backends."
+    },
+    {
+        "MC2_TRACE_VK_PRESENT_NATIVE_STRICT",
+        "MC2_VK_PRESENT_NATIVE_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK present-tail deletion-readiness canary. Default-OFF. On nonzero-surface "
+        "frames, aborts if the present path would use copy-1, consume a non-VK-owned "
+        "present image, or signal the GL->VK handoff instead of the native "
+        "MC2_VK_PRESENT_SKIP_GL_HANDOFF path. Minimized zero-extent frames remain "
+        "non-proofs and do not trip this canary."
+    },
+    // VK-P13-SELECTOR-1 / T4: fail-soft proof knob for the engine VK context.
+    {
+        "MC2_FEATURE_VK_FORCE_FAIL",
+        "MC2_VK_FORCE_FAIL",
+        EnvVarKind::Trace,
+        false,
+        "VK-P13-SELECTOR-1: presence-gated =1, default OFF. Forces mc2vk::VulkanContext::init() "
+        "to fail deterministically BEFORE creating any Vulkan object, so the =vulkan fail-soft "
+        "path (log reason -> mc2::forceGLFallback -> GL for the session, no crash) can be "
+        "exercised on demand. Only consulted when MC2_RENDER_BACKEND=vulkan. Diagnostic/proof "
+        "only; no effect on the GL path or on a normal =vulkan run."
+    },
+    // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
+    {
+        "MC2_FEATURE_VK_SHADOW_INTEROP",
+        "MC2_VK_SHADOW_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF. Renders the DYNAMIC "
+        "static-prop shadow-caster depth in Vulkan (the SECOND VK geometry region and the "
+        "FIRST VK-PRODUCES-DEPTH region -- water was GL-produces/VK-consumes; shadow reverses "
+        "it) into an exportable D32 VkImageResource. GL binds that shared D32 in place of "
+        "gosPostProcess::getDynamicShadowTexture() and samples it via the UNCHANGED hardware "
+        "sampler2DShadow calcShadow() path (shadow.hglsl) -- lighting up the vk2gl back-channel "
+        "(glVkToGlSem / glInteropWaitFromVk) for the first time on a geometry region: VK submit "
+        "SIGNALS vk2gl, GL WAITS it, then samples. Feed (VK-P8a STEP 0): the CPU "
+        "GpuStaticPropInstance vector (dynShadowSet, 112B each) the GL path already builds each "
+        "frame is memcpy'd into a VK instance SSBO; the shared static-prop VBO/IBO are copied "
+        "ONCE per map into VK-owned buffers. Depth-only pipeline: LESS forward-Z (NOT reverse-Z; "
+        "matches the GL dynamic shadow map), cull NONE, depthBias set to glPolygonOffset("
+        "shadowBiasFactor_, shadowBiasUnits_) EXACTLY (the parity STOP-watch). Reproduces "
+        "shadow_static_prop.vert math bit-for-bit (pos*M row-vector -> Stuff->MC2 swizzle -> "
+        "lightSpaceMatrix*). BORROWS the shared engine VulkanContext "
+        "(ensureEngineVulkanContext), no second device, no volkLoadDevice. Depth "
+        "zero-copy; forbidden DEPTH-readback counters hard-asserted ==0. Surfaced in "
+        "[VK_SHADOW_INTEROP] health. Gate OFF -> GL shadow path byte-identical. P8a = opaque "
+        "static props, single map (foliage-alpha + terrain casters = P8b, mechs = P12)."
+    },
+    {
+        "MC2_TRACE_VK_SHADOW_DIRECT_CHAIN",
+        "MC2_VK_SHADOW_DIRECT_CHAIN",
+        EnvVarKind::Trace,
+        false,
+        "VK shadow deletion-readiness proof gate. Default-OFF. When the VK shadow "
+        "and CSM producers are armed with same-frame VK consumers, skips the "
+        "VK->GL semaphore signal/wait and keeps the produced shadow images VK-owned. "
+        "The dynamic single-map producer exposes only its direct VkImageView under "
+        "this gate; GL texture-handle fallback remains disabled so no stale GL "
+        "sampling can pass a no-interop proof. Normal shadow interop behavior is "
+        "unchanged when unset."
+    },
+    // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
+    {
+        "MC2_FEATURE_VK_SHARED_GBUFFER",
+        "MC2_VK_SHARED_GBUFFER",
+        EnvVarKind::Feature,
+        false,
+        "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that "
+        "arms the whole VK shared-GBuffer scene path at once — when ON, every member "
+        "sub-gate DEFAULTS to ON: MC2_VK_SHARED_SCENE_DEPTH, MC2_VK_PROP_COLOR_TIER1, "
+        "MC2_VK_PROP_MATERIAL, MC2_VK_TERRAIN_TIER1, MC2_VK_TERRAIN_LIGHTING, "
+        "MC2_VK_TERRAIN_DETAIL, MC2_VK_TERRAIN_LODFADE, MC2_VK_TERRAIN_DYNSHADOW, MC2_VK_MECH_TIER1, "
+        "MC2_VK_MECH_MATERIAL, MC2_VK_MECH_LIGHTING (resolved by mc2vkgate::subGate in "
+        "GameOS/gameos/vk_shared_gbuffer_gate.h). Explicit sub-gate env ALWAYS wins as a "
+        "debug OVERRIDE (=1 force-on, =0 force-off) over the umbrella default. The eventual "
+        "default FLIP toggles EXACTLY this one name. Requires MC2_RENDER_BACKEND=vulkan (the "
+        "shared engine VulkanContext); fail-soft to GL when absent. INDEPENDENT: the safety "
+        "gates (MC2_VK_TERRAIN_HEIGHT_AUDIT verification-only + structural island fail-soft) "
+        "and the debug/negative knobs (MC2_VK_PROP_MATERIAL_DEBUG, *_HEIGHT_AUDIT_CORRUPT) are "
+        "and the debug/negative knobs (MC2_VK_PROP_MATERIAL_DEBUG, *_HEIGHT_AUDIT_CORRUPT) are "
+        "NOT umbrella members. Umbrella unset/!=1 with no sub-gate forced = pure GL, "
+        "byte-identical to today (near_land_off self-diff 0.000)."
+    },
+    {
+        "MC2_TRACE_VK_SHARED_SCENE_STRICT",
+        "MC2_VK_SHARED_SCENE_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK shared-scene deletion-readiness canary. Default-OFF. When =1, any "
+        "fallback from a requested VK-backed shared scene color/depth/normal/objectId "
+        "slot to the plain GL allocation logs [VK_SHARED_SCENE_STRICT] and aborts, "
+        "so final-tail/Metal-gate proof runs cannot silently pass through a GL "
+        "substrate rescue. No effect unless a shared-scene slot was requested and "
+        "failed to become VK-backed."
+    },
+    {
+        "MC2_TRACE_VK_NO_GL_INTEROP_STRICT",
+        "MC2_VK_NO_GL_INTEROP_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK Metal-gate canary. Default-OFF. Historically aborted on any production "
+        "GL/VK interop boundary call (glInteropSignalToVk / glInteropWaitFromVk). Those "
+        "functions were DELETED (VK-RUNG8-ITEM1), so that class is now structurally "
+        "impossible. The name survives as a live guard on the terrain island's per-frame "
+        "GL depth-readback fallback (vulkan_terrain_island.cpp) -- the remaining GL-touch "
+        "class -- and as a checker trip-wire."
+    },
+    {
+        "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT",
+        "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
+        EnvVarKind::Trace,
+        false,
+        "VK Metal-gate resource canary. Default-OFF. Historically aborted on creation of "
+        "an exportable Win32 VkImageResource or a GL memory-object import (glInteropViewCreate). "
+        "Both the exportable vk_image_resource half (VK-RUNG8-ITEM2) and gl_interop_view "
+        "(VK-RUNG8-ITEM1) were DELETED, and the Win32 external-memory device extension family "
+        "was removed (VK-RUNG8-ITEM3), so no exportable resource can be created -- this canary "
+        "is now permanently satisfied BY CONSTRUCTION (no code reader remains). The strict "
+        "harness still sets it and the checker still requires it as a provenance receipt."
+    },
+    {
+        "MC2_FEATURE_VK_CSM_FULLMAP_INTEROP",
+        "MC2_VK_CSM_FULLMAP_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF. Companion to "
+        "MC2_VK_SHADOW_INTEROP that re-renders the CSM catch-all/full-map cascade into "
+        "a separate exportable D32 image on the shared Vulkan device, then lets VK terrain "
+        "bind that VkImageView directly at CSM binding 9. Deletes terrain's per-frame "
+        "glGetTexImage + vkCmdCopyBufferToImage full-map import when the producer succeeds; "
+        "the near cascade array remains on the existing copy path. Gate OFF or producer "
+        "decline -> existing GL full-map copy path unchanged."
+    },
+    {
+        "MC2_FEATURE_VK_CSM_ARRAY_INTEROP",
+        "MC2_VK_CSM_ARRAY_INTEROP",
+        EnvVarKind::Feature,
+        false,
+        "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF. Companion to "
+        "MC2_VK_SHADOW_INTEROP that re-renders the near CSM cascades into layers of "
+        "a VK-owned D32 2D array on the shared Vulkan device, then lets VK terrain "
+        "bind that array view directly at CSM binding 8. Deletes terrain's per-frame "
+        "GL_TEXTURE_2D_ARRAY scratch/cpu-readback/import path when all near layers "
+        "produce in the same frame; gate OFF or producer decline -> existing GL array "
+        "copy path unchanged."
+    },
+    // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
+    {
+        "MC2_FEATURE_VK_SHARED_SCENE_DEPTH",
+        "MC2_VK_SHARED_SCENE_DEPTH",
+        EnvVarKind::Feature,
+        false,
+        "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF. Backs the engine "
+        "scene-depth texture (sceneDepthTex_) with a VK-BUILT exportable D32_SFLOAT_S8_UINT "
+        "VkImageResource imported into GL as a GL_DEPTH24_STENCIL8 texture (depth+stencil "
+        "aspect usable for BOTH sampling AND FBO depth-stencil attachment), substituted at "
+        "the SINGLE scene-FBO depth alloc+attach site (gos_postprocess createFBOs). GL-ONLY "
+        "slice: GL still renders scene depth into it and the 42 depth-sample consumers "
+        "(SSAO/edge-fog/OOB-fog/HZB/DOF/god-rays/cluster/particle-copy/stencil-view) sample "
+        "it unchanged -- there is NO VK depth consumer yet (that is the P11 Tier-1 slice). "
+        "The P5-T0 + depth-test spikes proved the D32S8-backed image imported under "
+        "GL_DEPTH24_STENCIL8 samples the DEPTH aspect exactly (0 val errors), so the swap is "
+        "transparent. BORROWS the shared engine VulkanContext (ensureEngineVulkanContext), "
+        "no second device. FAIL-SOFT: if the shared VK context/interop is unavailable at "
+        "scene-FBO creation, falls back to the plain GL GL_DEPTH24_STENCIL8 alloc (logs the "
+        "reason) -> gate-ON with no interop degrades to the GL path, never crashes. Rebuilt on "
+        "resize (destroyFBOs tears down + createFBOs rebuilds). Surfaced in [VK_SHARED_SCENE_DEPTH] "
+        "log line. Gate OFF (or island not compiled) = byte-identical GL scene-depth path."
+    },
+    {
+        "MC2_FEATURE_VK_STATIC_SHADOW_MAP",
+        "MC2_VK_STATIC_SHADOW_MAP",
+        EnvVarKind::Feature,
+        false,
+        "DEPRECATED no-op (VK-RUNG8-ITEM6). The VK-backed static-shadow import substrate "
+        "(exportable D32_SFLOAT image imported into GL as GL_DEPTH_COMPONENT32F, plus the "
+        "whole vulkan_shared_static_shadow TU, the gl_interop_view TU, and the exportable-"
+        "image half of vk_image_resource) was DELETED. The static sun shadow map "
+        "(ShadowStaticMap / shadowDepthTex_) is now always the plain GL GL_DEPTH_COMPONENT24 "
+        "allocation; a non-CSM static-only screen-shadow config declines to the GL screen-"
+        "shadow pass (CSM screen-shadow is unaffected -- it samples the direct VK CSM views). "
+        "Retiring this closed the last Win32 external-memory MoltenVK/Metal-gate blocker. "
+        "Setting the env prints a one-shot deprecation note and changes nothing."
+    },
+    // VK-P11 TIER-1 PROP COLOR: in-place shared-GBuffer co-write (Tier-1, supersedes Tier-0).
+    {
+        "MC2_FEATURE_VK_PROP_COLOR_TIER1",
+        "MC2_VK_PROP_COLOR_TIER1",
+        EnvVarKind::Feature,
+        false,
+        "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES "
+        "MC2_VK_SHARED_SCENE_DEPTH. Umbrella family member (armed by MC2_VK_SHARED_GBUFFER=1; "
+        "explicit =0/1 overrides). Co-writes the VISIBLE static-prop color instances IN-PLACE "
+        "into the SHARED scene color(MRT0)+normal(MRT1)+depth GBuffer (GEQUAL reverse-Z, no "
+        "composite) instead of the Tier-0 side-image path (which it REPLACES/supersedes). "
+        "sceneColorTex_/sceneNormalTex_ become GL<->VK interop-shared exportable RGBA16F images "
+        "at their single scene-FBO alloc site (gos_postprocess createFBOs). BORROWS the shared "
+        "engine VulkanContext; FAIL-SOFT to the GL flush() prop path when the shared GBuffer/"
+        "context is unavailable. Gate OFF (or require missing) = byte-identical GL prop color path."
+    },
+    // VK-PROP-DIRECT-CHAIN: proof slice for keeping prop color on the Vulkan-owned shared GBuffer.
+    {
+        "MC2_FEATURE_VK_PROP_DIRECT_CHAIN",
+        "MC2_VK_PROP_DIRECT_CHAIN",
+        EnvVarKind::Feature,
+        false,
+        "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
+        "MC2_VK_PROP_COLOR_TIER1 plus MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR. When ON, the prop "
+        "color island treats the shared scene color0/normal/depth images as already Vulkan-owned "
+        "from the terrain prefix and skips its GL->VK/VK->GL interop semaphore handoff, while "
+        "still CPU-waiting its submit fence before the next island. Used with "
+        "MC2_VK_NO_GL_INTEROP_STRICT to advance the final Metal-gate canary beyond props."
+    },
+    // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
+    {
+        "MC2_FEATURE_VK_TERRAIN_TIER1",
+        "MC2_VK_TERRAIN_TIER1",
+        EnvVarKind::Feature,
+        false,
+        "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH). "
+        "The VK terrain island co-writes the LIVE LOD-chunk opaque MAIN-triangle draw for the "
+        "nearest (LOD0, lodStep==1) patches IN-PLACE into the SHARED scene color(MRT0)+normal(MRT1)+"
+        "depth GBuffer as the opaque PREFIX, then GL/props/mechs continue on top. Terrain analogue of "
+        "the prop Tier-1 island: REUSES its shared-GBuffer plumbing + LOAD-preserve co-write renderpass "
+        "+ reverse-Z GEQUAL double-sided pipeline verbatim. gbuffer1 = vec4(0.5,0.5,1.0,1.0), a=1.0 "
+        "(terrain shadow-class 'handles own shadow'; props use a=0.25). Consumes the GL height SSBO "
+        "(binding 23) via a per-change interop snapshot (glGetBufferSubData map-load, NOT a per-frame "
+        "handoff readback); CPU-side LOD0 chunk selection stays on GL/CPU. When ON the GL LOD-chunk "
+        "loop SKIPS the LOD0 main+skirt draws (both paths exclude LOD0 skirts for like-for-like A/B). "
+        "SCOPE = LOD0 main-triangle ONLY (skirts / coarser bands / edge-stitch / visual-displace "
+        "DEFERRED; non-LOD0 bands stay on GL). Extends the postprocess shared-scene color/normal "
+        "conversion to trigger for this gate too (mc2VkSharedSceneColorNeeded). Fires markTerrainDrawn "
+        "so terrain-gated post passes stay live. FAIL-SOFT: shared GBuffer not ready / interop "
+        "unavailable -> GL fallback. Surfaced in [VK_TERRAIN_TIER1] health/log. Gate OFF (or island "
+        "not compiled) = byte-identical GL LOD-chunk terrain path."
+    },
+    // VK-TERRAIN-NATIVE-PREFIX-CLEAR: RETIRED (VK-RUNG8-ITEM4-TERRAIN-DELETE-1).
+    {
+        "MC2_FEATURE_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
+        "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
+        EnvVarKind::Feature,
+        false,
+        "DEPRECATED no-op (VK-RUNG8-ITEM4-TERRAIN-DELETE-1). The terrain island's hybrid GL<->VK "
+        "semaphore-handoff arm (LOAD-preserve renderpass) was DELETED: the armed terrain Tier-1 island "
+        "is now unconditionally the native first owner of shared scene color0/normal/depth (CLEAR loadOp "
+        "matching the gameplay/menu clear color, clearGBuffer1 sentinel, and reverse-Z far; GL frame-entry "
+        "clears skipped via mc2vkgate::terrainNativeFirstOwnerOn()). Setting this env prints a one-line "
+        "deprecation note and changes nothing; the name stays parseable for old command lines."
+    },
+    // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
+    {
+        "MC2_FEATURE_VK_TERRAIN_LIGHTING",
+        "MC2_VK_TERRAIN_LIGHTING",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1). Makes the "
+        "VK terrain island's LOD0 co-write LIT instead of flat: reproduces the GL LOD-chunk NdotL relief "
+        "band (terrain_lod_chunk.frag:891-893, mix(0.35,1.20,clamp(NdotL,0.02,1.0))) + the baked STATIC "
+        "sun shadow (shaders/include/shadow.hglsl calcShadow, 16-tap Poisson PCF) via a REUSABLE VK GLSL "
+        "helper (shaders/vulkan/include/lighting_shadow_vk.glsl; props/mechs reuse computeNdotLBand later). "
+        "The static shadow map is copied PER FRAME (glGetTexImage of the GL DEPTH_COMPONENT24 shadow "
+        "texture -> VK D32 depth-COMPARE image, compareOp=LESS_OR_EQUAL, LINEAR HW PCF, CLAMP_TO_BORDER "
+        "white=1.0) at binding 5. Cement is flat-lit + static-shadow-dropped (mirrors GL pureConcrete). "
+        "DEFERRED vs GL: detail-normal/POM/macro relief, DYNAMIC (mech/building) shadow + CSM, hemisphere "
+        "ambient fill. FAIL-SOFT: shadow map not importable -> shadow=1.0 (lit, no shadow), never a hole. "
+        "Gate OFF = byte-identical to the pre-lighting VK colormap+cement frame."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_DETAIL",
+        "MC2_VK_TERRAIN_DETAIL",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING). Perturbs the "
+        "flat-up terrain normal before NdotL to close the flat-grass residual: (1) macro-slope normal from "
+        "the height SSBO bilinear central-difference (smoothTerrainNormal, terrain_lod_chunk.frag:165-173, "
+        "always on) + (2) per-material weighted detail-normal from matNormalArray (9-layer 2D_ARRAY, "
+        "copy-once import, GL_REPEAT) via the colormap classifier, composed exactly as GL (pert = "
+        "(baseN.xy/baseN.z*nfhStrength + dN.xy*detailStrength, 1)). Detail suppressed on pureConcrete; shadow "
+        "still sampled with flat-up N (parity). EXACT: macro-slope, classifier, pert, NdotL band. DEFERRED: "
+        "POM, anti-tile, per-layer fwidth fade, LOD-tier detail fade, painted-concrete/marble-cliff normal "
+        "(oblique/grazing-angle residual remains). FAIL-SOFT: detail array not ready -> macro-slope only "
+        "(still a win), no hole. Gate OFF = byte-identical to lighting-only VK frame."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_DYNSHADOW",
+        "MC2_VK_TERRAIN_DYNSHADOW",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING). Adds the GL "
+        "DYNAMIC (building/mech) sun shadow onto the VK terrain (legacy single-map path, non-CSM). Per-frame "
+        "copies pp->getDynamicShadowTexture()+getDynamicLightSpaceMatrix() into a 2nd VK D32 depth-compare "
+        "image (binding 7), then composes exactly as GL (terrain_lod_chunk.frag:896-907): shadow = "
+        "min(static, dyn); on pureConcrete shadow = dyn (static dropped, dynamic kept so structures still "
+        "cast onto roads/pads). Reuses computeBakedShadow (VERBATIM legacy calcDynamicShadow: adaptiveScale "
+        "2.4->0.8, mix(0.4,1.0,shadow), 8 taps). FAIL-SOFT: GL dynamic map not live / CSM active -> no "
+        "dynamic term (lit-only), no hole. Gate OFF = byte-identical to the pre-dynshadow VK frame."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_LODFADE",
+        "MC2_VK_TERRAIN_LODFADE",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL). Ports GL's "
+        "camera-distance lodNear fade (gos_terrain.frag:322-328,616-736: LOD_NEAR=4000/LOD_NEAR_FADE=4500 "
+        "smoothstep) so the VK terrain's detail-normal + POM fade to 0 across the same LOD0/band boundary GL "
+        "fades at, closing the VK-LOD0-vs-GL-band color seam. Feeds gos_GetTerrainCameraPos() (Stuff/MLR "
+        "space) into the UBO (existing pad tail, no slot growth) each frame; the frag recomputes camDist/"
+        "lodNear verbatim and multiplies the POM offset + the whole detail-normal contribution by it. FAIL-"
+        "SOFT: gate off -> lodNear==1.0 always (byte-identical to the pre-fade VK-TERRAIN-DETAIL frame)."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_CSM",
+        "MC2_VK_TERRAIN_CSM",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW "
+        "chain + CSM active). When MC2_SHADOW_CSM is ON (launcher default) the single-map dynshadow path is "
+        "skipped, so VK terrain had NO object shadow up close. This feeds the CSM FULL-MAP cascade (the last "
+        "cascade — a single GL_TEXTURE_2D DEPTH_COMPONENT tex, byte-shape-identical to the single dyn map) "
+        "through the existing binding-7 slot + computeBakedShadow, giving VK terrain whole-map object shadows. "
+        "The near-cascade ARRAY (sampler2DArrayShadow + N matrices) is DEFERRED. FAIL-SOFT: full-map tex not "
+        "live -> no dynamic term, no hole. Gate OFF = byte-identical (single-map dynshadow path unchanged)."
+    },
+    {
+        "MC2_FEATURE_VK_PROP_MATERIAL",
+        "MC2_VK_PROP_MATERIAL",
+        EnvVarKind::Feature,
+        false,
+        "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1). Replaces the "
+        "VK prop Tier-1 flat DEBUG teal with real textured VERTEX-BAKED-lit materials (NOT PBR — GL props are "
+        "vertex-baked by default, u_pbrV1Strength=0). Copy-once imports BOTH static-prop albedo 2D_ARRAYs "
+        "(s_texArrayOff binding 3 + s_texArrayOn binding 6; per-type group-relative layer tables bindings 2/5; "
+        "RGBA8->R8G8B8A8_UNORM or BC7->BC7_*_BLOCK per real internalformat, full mips, LINEAR_MIPMAP_LINEAR/"
+        "CLAMP). Alpha-ON (class-1, alpha-MIXED) types route to s_texArrayOn with the GL 0.5 alpha-test "
+        "discard (static_prop.frag:236). Frag = albedo * vArgb where vArgb = per-vertex base_light seed "
+        "(a_aRGBLight loc4) + stand-in ambient + sun*NdotL. GBuffer1 unchanged (a=0.25). FAIL-SOFT: array "
+        "not ready / layer<0 -> teal. DEFERRED vs GL parity: ObjectLights ambient + per-type magic hot-color "
+        "SSBO + per-actor sun/highlight/fog (stand-in constants; lighting is approximate model, not byte-"
+        "parity), MaterialGpu roughness/metallic, BC7-bucketed arrays. SEPARATE parked issue: Tree/Generic "
+        "POPULATION coverage (only Building population fed). Gate OFF = byte-identical VK prop path."
+    },
+    {
+        "MC2_FEATURE_VK_PROP_MATERIAL_DEBUG",
+        "MC2_VK_PROP_MATERIAL_DEBUG",
+        EnvVarKind::Feature,
+        false,
+        "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF. One-shot [GPUPROPS_HIST v2] instance-weighted "
+        "layer histogram (textured/alpha_on/no_primary/total) from the material feed — diagnostic only, no "
+        "render effect. Gate OFF = no log, byte-identical."
+    },
+    {
+        "MC2_FEATURE_VK_MECH_TIER1",
+        "MC2_VK_MECH_TIER1",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH). Renders mechs "
+        "IN-PLACE into the shared scene GBuffer (vulkan_mech_island.cpp): VK-skinned (VS linear-blend over "
+        "the CPU-filled bone-palette SSBO + MC2 axis swap, mirrors mech.vert; copy-once VBO/IBO, per-frame "
+        "memcpy instance+bone SSBOs), LOAD-preserve MRT0 color + MRT1 normal + shared D32S8 depth, GEQUAL "
+        "reverse-Z, gbuffer1 .a=0.0 (screen-shadow eligible, GL screen pass shadows). Gate-ON skips the GL "
+        "mech color flush for covered types; island co-writes. SKINNING PROVEN (13 mechs, correct biped "
+        "silhouette). DEFERRED: material (MC2_VK_MECH_MATERIAL, single copy-once albedo probe; per-actor "
+        "paint-scheme handle->descriptor cache = general case), lighting (VS calc_light Lambert + LightsData "
+        "UBO — NOT computePBR/vertex-baked). FAIL-SOFT: shared GBuffer/context unavailable -> GL flush. "
+        "Gate OFF = byte-identical GL mech path."
+    },
+    {
+        "MC2_FEATURE_VK_VFX",
+        "MC2_VK_VFX",
+        EnvVarKind::Feature,
+        false,
+        "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 "
+        "forces off, =1 forces on). Renders the GPU-particle billboard stream (gos_particle_bridge) "
+        "IN-PLACE into the shared scene color0 as translucent, depth-tested (GEQUAL reverse-Z, "
+        "NO depth write) colored soft billboards (vulkan_vfx_island.cpp), so weapon fire (tracers, "
+        "muzzle flashes, impact glows) survives the VK-only present umbrella instead of drawing into "
+        "the discarded GL backbuffer. UNTEXTURED slice (per-particle color + radial soft falloff); "
+        "textured sprite atlases, the tube-ribbon beams, and the gosFX MESH shapes are the deferred "
+        "remainder. Gate resolves OFF when the umbrella is off -> GL particle draw byte-identical."
+    },
+    {
+        "MC2_FEATURE_VK_VFX_COALESCE",
+        "MC2_VK_VFX_COALESCE",
+        EnvVarKind::Feature,
+        true,
+        "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::"
+        "drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_ entry instead of one entry PER "
+        "TRIANGLE. MLRSortByOrder emits gosFX weapon-VFX geometry (tracers/flashes/impacts) one triangle "
+        "at a time (mclib/mlr/mlrsortbyorder.cpp:589-609); under a dense multi-mech volley this measured "
+        "a peak of 251-349 hudBatch_ entries/frame vs a ~14-entry quiet floor. Paint order is preserved "
+        "exactly (triangles already arrive depth-sorted; a real state change via SetDifferences still "
+        "forces a new entry); a same-side-of-the-HUD-shrink-band guard prevents the merge from changing "
+        "the bottom-band s_hud_scale shrink decision for any individual triangle. Independent of the "
+        "MC2_VK_VFX umbrella -- this is a CPU-side hudBatch_ data-structure merge that benefits both the "
+        "VK native HUD tail (fewer VkHudDraw records) and the GL replay path (fewer drawTris() re-entries) "
+        "identically. DEFAULT ON: draw-count A/B (mc2_01, forced fire) showed peak collapse 349->109 with "
+        "[VK_HUD_AUDIT v1] vertices= totals bit-identical to the legacy path at every matching sample; "
+        "zero declines/fallbacks/validation errors; fire-capture matches the banked VFX-9 reference. "
+        "MC2_VK_VFX_COALESCE=0 restores the legacy one-record-per-triangle path."
+    },
+    {
+        "MC2_FEATURE_VK_MECH_DIRECT_CHAIN",
+        "MC2_VK_MECH_DIRECT_CHAIN",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
+        "MC2_VK_MECH_TIER1 plus MC2_VK_PROP_DIRECT_CHAIN. When ON, the mech island treats "
+        "the shared scene color0/normal/depth images as already Vulkan-owned by terrain+prop "
+        "and skips its GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting its "
+        "submit fence before the next island. Used with MC2_VK_NO_GL_INTEROP_STRICT to advance "
+        "the final Metal-gate canary beyond mechs."
+    },
+    {
+        "MC2_FEATURE_VK_WATER_DIRECT_CHAIN",
+        "MC2_VK_WATER_DIRECT_CHAIN",
+        EnvVarKind::Feature,
+        false,
+        "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
+        "MC2_VK_WATER_TIER1 plus MC2_VK_MECH_DIRECT_CHAIN. When ON, the water island treats "
+        "the shared scene color0/normal/depth images as already Vulkan-owned by terrain+prop+mech "
+        "and skips its GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting its submit "
+        "fence before the next island. Used with MC2_VK_NO_GL_INTEROP_STRICT to advance the final "
+        "Metal-gate canary beyond water."
+    },
+    {
+        "MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN",
+        "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
+        EnvVarKind::Feature,
+        false,
+        "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. "
+        "Requires MC2_VK_POST_COMPOSITE plus the full terrain->prop->mech->water direct-chain "
+        "gate stack. Samples shared scene color0 as already Vulkan-owned and skips the scene "
+        "color GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting the submit "
+        "fence before present consumes the VK-owned present image. ObjectId/thermal modes "
+        "still synchronize MRT2 separately until objectId ownership is ported."
+    },
+    {
+        "MC2_FEATURE_VK_MECH_MATERIAL",
+        "MC2_VK_MECH_MATERIAL",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1). Copy-once imports the "
+        "first mech run's live slot-0 paint texture (single 2D, un-lit) so the VK mech is textured instead of "
+        "flat. Per-frame per-actor paint-scheme handle->VK-descriptor cache DEFERRED (probe = one static "
+        "actor). Gate OFF = flat probe color."
+    },
+    {
+        "MC2_FEATURE_VK_MECH_LIGHTING",
+        "MC2_VK_MECH_LIGHTING",
+        EnvVarKind::Feature,
+        false,
+        "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 "
+        "(visible only with MC2_VK_MECH_MATERIAL=1). Umbrella family member (armed by "
+        "MC2_VK_SHARED_GBUFFER=1; explicit =0/1 overrides). Ports the GL DEFAULT mech shading into "
+        "the VK mech island: per-vertex calc_light Lambert (verbatim lighting.hglsl 4-param kernel) "
+        "+ albedo*v_litColor+highlight + per-actor haze. The live GL LightsData SSBO (binding 20) is "
+        "copied per-frame into a VK SSBO (glGetBufferSubData buffer-copy, forbidden_* stay 0). NOT the "
+        "PBR/StandardLit-GGX path (needs MC2_MECH_VIEWUNIFORMS+MC2_STANDARD_LIT_V1, both default-OFF) "
+        "-> matches the default deploy mech look. FAIL-SOFT: LightsData unavailable -> flat-white lit. "
+        "Gate OFF = un-lit albedo (or flat, per material gate)."
     },
     // GOSFX-TUBE-RIBBON-1: gosFX Tube swept-quad ribbon oracle.
     {
@@ -1574,6 +2152,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "([SMOKE v1] parsing), dev, and hitch-catcher.bat. stderr is never gated "
         "(crashes / [VISUAL_CAPTURE] stay visible). Set =1 by run_smoke.py + "
         "run_visual_capture.py; NOT set by the game launcher (so play stays fast)."
+    },
+    // BUG-A pick-probe fixture (mouse->pick DPI regression fence)
+    {
+        "MC2_VK_PICK_PROBE",
+        "MC2_VK_PICK_PROBE",
+        EnvVarKind::Trace,
+        false,
+        "BUG-A pick regression fence: default-OFF. When set, MissionInterfaceManager::update "
+        "(code/missiongui.cpp) runs ONCE post-settle a deterministic mouse->pick coordinate "
+        "proof: it simulates a 2x HiDPI drawable and asserts getMouseX round-trips an SDL "
+        "window-point (identity), then aims at a visible home mover's screen-bbox centre and "
+        "asserts findObjectByMouse resolves back to that mover. Emits [VK_PICK_PROBE] "
+        "identity/object/VERDICT lines. Backend-independent (gl or vk). Proves the "
+        "gos_GetMouseInfo window-vs-drawable normalize fix. Zero cost unset."
     },
     // FX-FORCE-SPAWN fixture (mech-fire tube)
     {
@@ -2145,6 +2737,87 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST. One O(N) pass over registered existing objects at mission_ready: emits '[APPEAR_AUDIT v1] event=missing reason=appearance_null|base_shape_failed ...' (bounded 32 lines) + a 'summary scanned= missing=' line. POSITION-FREE by the off-map-staging carve-out (INVIS-VEHICLES-FIX-1): staged movers have valid appearances; the scan keys on no positional/visibility term. The appear_audit smoke bucket is registered ADVISORY-DISARMED and may only arm red (and the gate join the tier1 force-set) after a full 24-map failed=0 baseline — whether any class legitimately reports NULL appearance at mission_ready is unverified; the tier1-missions baseline ships with META-FIX-BATCH-3, the 24-map run is the documented follow-up."
+    {
+        "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",
+        "MC2_VK_SCENE_GL_PRODUCER_QUERY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs "
+        "[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so resource-strict work can prove whether any GL scene "
+        "producer still rasterizes before attempting to delete shared scene GL interop resources. Default-OFF; "
+        "diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT",
+        "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT",
+        EnvVarKind::Trace,
+        false,
+        "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by "
+        "the Vulkan feed vs chunks that still fall through to GL, bucketed by inactive, uncaptured LOD band, "
+        "visual-displace mode, edge-stitch, and other. Logs [VK_TERRAIN_GL_FALLBACK_AUDIT v1]. Default-OFF; "
+        "diagnostic only, no render behavior change."
+    },
+    {
+        "MC2_TRACE_VK_SCREENSHADOW_GL_CANARY",
+        "MC2_VK_SCREENSHADOW_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1]. Used after terrain GL fallback "
+        "reaches zero to prove whether screen-shadow is the next real sceneFBO GL writer. Default-OFF; "
+        "diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY",
+        "MC2_VK_TERRAIN_OVERLAY_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_overlay_batch. "
+        "Default-OFF; diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_DECAL_STATIC_GL_CANARY",
+        "MC2_VK_DECAL_STATIC_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=decal_static_batch. "
+        "Default-OFF; diagnostic only."
+    },
+    {
+        "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY",
+        "MC2_VK_TERRAIN_DECAL_GL_CANARY",
+        EnvVarKind::Trace,
+        false,
+        "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in "
+        "GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch. "
+        "Default-OFF; diagnostic only."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT",
+        "MC2_VK_TERRAIN_HEIGHT_AUDIT",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1). Each frame "
+        "re-reads the GL height SSBO (binding 23) and FNV-1a-checksums it, comparing against the checksum "
+        "stored at the last version-gated snapshot_height() copy into the VK-owned height buffer. Detects "
+        "height-staleness: GL terrain heights mutated (crater/deform) WITHOUT a heightVersion bump "
+        "(g_terrainHeightVersion bumps only in UploadHeightFull) -> the VK snapshot silently diverges and "
+        "mv_smoothTerrainNormal's macro-slope goes stale. On mismatch logs a LOUD rate-limited "
+        "[HEIGHT_AUDIT] MISMATCH line (snapshot_fnv vs live_fnv); NEVER mutates render output. Gate OFF = "
+        "no readback, byte-identical. Negative control MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT=1 poisons the "
+        "stored checksum once so the audit MUST fire (proves it has teeth)."
+    },
+    {
+        "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+        "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+        EnvVarKind::Feature,
+        false,
+        "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires "
+        "MC2_VK_TERRAIN_HEIGHT_AUDIT). Deliberately XOR-corrupts the stored height snapshot checksum once "
+        "after the first snapshot so the per-frame audit compare is GUARANTEED to report a mismatch -> "
+        "proves the audit can actually detect divergence (has teeth). NEVER on in production."
     },
 };
 

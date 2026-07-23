@@ -1646,6 +1646,10 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
 //
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition );
 
+// MC2_VK_PICK_PROBE test hook: inject a synthetic raw SDL mouse point (window-
+// points space) so the pick probe drives the real production normalize path.
+void gos_TestSetRawMouse( float winPtX, float winPtY );
+
 
 
 
@@ -2339,6 +2343,10 @@ bool __stdcall gos_IsModernShadowPathActive();
 // Shadow coordinate API (raw MC2 coordinates for shadow matrix)
 void gos_GetTerrainLightDir(float* x, float* y, float* z);
 
+// VK-TERRAIN-LODFADE: camera position (Stuff/MLR space) for the terrain island's
+// camera-distance LOD fade port. Mirrors gos_GetTerrainLightDir's free-function shape.
+void gos_GetTerrainCameraPos(float* x, float* y, float* z);
+
 // SCENE-LIGHTING-STATE-1: read-only current sky number (-1 = none/unset).
 int gos_GetSkyNumber();
 
@@ -2348,6 +2356,9 @@ void gos_SetWaterElevation(float elevation);  // sea-level world Z for edge-fog 
 bool gos_StaticLightMatrixBuilt();
 void gos_BuildStaticLightMatrix();  // builds matrix once (idempotent)
 void gos_MarkStaticLightMatrixBuilt();
+// VK-SHADOW-COPY-ONCE-1: generation counter bumped on each (re)build; lets
+// consumers (VK terrain interop) copy-once per generation instead of per-frame.
+uint64_t gos_GetStaticShadowGeneration();
 // VPL-#shadow C-1: per-mission re-arm of the one-shot full-map static
 // shadow (Terrain::destroy -> rebuild next mission vs frozen prior one).
 void gos_ResetStaticLightMatrix();

@@ -424,6 +424,16 @@ class UserInput
 		long getMouseHudY (void) { float x = mouseXPosition * viewMulX, y = mouseYPosition * viewMulY; gos_HudInverseMousePoint(x, y); return float2long(y); }
 		float realMouseX (void)  { return mouseXPosition * viewMulX; }
 		float realMouseY (void)  { return mouseYPosition * viewMulY; }
+
+		// MC2_VK_PICK_PROBE test hook: set the cached normalized 0..1 mouse
+		// directly (as if a fresh gos_GetMouseInfo poll returned it), so the
+		// probe can read getMouseX()/getMouseY() through the real viewMul
+		// transform without a full userInput->update() side-effecting poll.
+		void pickProbeSetNormalized (float nx, float ny)
+		{
+			mouseXPosition = nx;
+			mouseYPosition = ny;
+		}
 		
 		void setMousePos (float x, float y)
 		{

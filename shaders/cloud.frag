@@ -16,6 +16,7 @@
 // shader include machinery uses a backslash path separator on Windows while
 // shader references use forward slashes, so pulling in an external fbm helper
 // resolves to nothing silently in the post-process program path.
+//PORT-BEGIN:cloudShadowNoise
 PREC vec3 mod289_3(PREC vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 PREC vec2 mod289_2(PREC vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 PREC vec3 permute(PREC vec3 x) { return mod289_3(((x * 34.0) + 1.0) * x); }
@@ -53,6 +54,7 @@ PREC float fbm(PREC vec2 p, int octaves) {
     }
     return value;
 }
+//PORT-END:cloudShadowNoise
 
 in vec2 TexCoord;
 layout(location = 0) out PREC vec4 FragColor;
@@ -69,6 +71,7 @@ uniform float u_cloudStrength;   // default 0.15 (max darkening; floor = 1-stren
 uniform vec2  u_cloudThreshold;  // default (0.3, 0.7) smoothstep band
 uniform int   u_cloudOctaves;    // default 4
 
+//PORT-BEGIN:cloudShadowMain
 vec3 reconstructWorldPos(vec2 uv, float depth)
 {
     vec2 ndc_xy = uv * 2.0 - 1.0;
@@ -103,3 +106,4 @@ void main()
 
     FragColor = vec4(vec3(factor), 1.0);
 }
+//PORT-END:cloudShadowMain

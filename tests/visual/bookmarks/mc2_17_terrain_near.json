@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_17",
+  "_note": "VK-FLIP-EVIDENCE-1 additional-map near poses (water-heavy map). Mirrors mc2_01_terrain_near.json method: low-altitude ground-framing poses run with MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=0 on BOTH GL and VK so every drawn block is lodStep==1 -> VK terrain island co-writes a large pixel region. Sim-frozen bookmark sweep => byte-stable. mc2_17 has a large water body + shoreline (see mapscout/mc2_17); water_near frames the shoreline, land_near frames the peninsula terrain.",
+  "bookmarks": [
+    {
+      "name": "water_near",
+      "pos": [-1200.0, 800.0, 0.0],
+      "rot": 30.0,
+      "proj": 45.0,
+      "alt": 320.0,
+      "covers": ["terrain_lod0", "near_detail", "water", "shoreline"]
+    },
+    {
+      "name": "land_near",
+      "pos": [600.0, -200.0, 0.0],
+      "rot": 30.0,
+      "proj": 45.0,
+      "alt": 320.0,
+      "covers": ["terrain_lod0", "near_detail"]
+    }
+  ]
+}

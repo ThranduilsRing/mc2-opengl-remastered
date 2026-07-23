@@ -70,33 +70,93 @@ extern "C" void mc2_render_backend_region_health(
     const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
     unsigned long* routedFrames);
 
+// VK-REGION-SSAO-1: PostprocessSSAO region-selection health (defined in
+// GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled, same shape as the fog
+// region's accessor above.
+extern "C" void mc2_render_backend_ssao_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames);
+
+// VK-REGION-HZB-1: PostprocessHzb region-selection health (defined in
+// GameOS/gameos/gos_postprocess.cpp). ALWAYS compiled, same shape.
+extern "C" void mc2_render_backend_hzb_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
+    unsigned long* routedFrames);
+
+// L6.6-COMPOSITE-PRESENT-SCAFFOLD: CompositePresent region-selection health.
+extern "C" void mc2_render_backend_composite_present_region_health(
+    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
+    const char** lastFallbackReason, int* lastPresented, int* lastPresentFrames,
+    int* lastResizeCount, int* lastValidationErrors, unsigned long* routedFrames);
+
 #ifdef MC2_VULKAN_ISLAND
-// VULKAN-ISLAND-HEALTH-DUMP-1: EdgeFog Vulkan island health snapshot (defined in
-// GameOS/gameos/vulkan_edge_fog_island.cpp, compiled only under MC2_VULKAN_ISLAND).
-extern "C" void mc2_vulkan_island_health(
-    int* vulkanAvailable, int* islandBuildEnabled, int* islandRuntimeGate,
-    const char** deviceName, unsigned long* validationErrors,
-    unsigned long* edgeFogAttempted, unsigned long* edgeFogUsedVulkan,
-    const char** fallbackReason,
-    double* readbackUs, double* copyDepthUs, double* renderUs);
-// VULKAN-OOB-FOG-ISLAND-1: OOB-fog Vulkan island health snapshot (defined in
-// GameOS/gameos/vulkan_oob_fog_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
-extern "C" void mc2_vulkan_oob_island_health(
-    int* vulkanAvailable, int* islandBuildEnabled, int* islandRuntimeGate,
-    const char** deviceName, unsigned long* validationErrors,
-    unsigned long* oobFogAttempted, unsigned long* oobFogUsedVulkan,
-    const char** fallbackReason,
-    double* readbackUs, double* copyDepthUs, double* renderUs);
-// VULKAN-POSTPROCESS-SUBGRAPH-1: fused Layer-4 subgraph health snapshot (defined in
-// GameOS/gameos/vulkan_postprocess_subgraph.cpp, same #ifdef MC2_VULKAN_ISLAND).
-extern "C" void mc2_vulkan_postprocess_subgraph_health(
-    int* vulkanAvailable, int* buildEnabled, int* runtimeGate,
-    const char** deviceName, unsigned long* validationErrors,
+// VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
+// GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_vk_post_fog_native_health(
+    int* runtimeGate, int* substrateLive,
+    unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
+    const char** fallbackReason, double* renderUs);
+// VK-POST-SSAO-NATIVE-1 (rung 8.2): native SSAO pair health snapshot (defined in
+// GameOS/gameos/vulkan_post_ssao_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_vk_post_ssao_native_health(
+    int* runtimeGate, int* substrateLive,
+    unsigned long* attempted, unsigned long* usedVulkan, unsigned long* glSkipped,
+    const char** fallbackReason, double* renderUs);
+
+// VK-POST-SCREENFX-NATIVE-1 (rung 8.3): native cloud-shadow + shoreline receipt.
+extern "C" void mc2_vk_post_screenfx_native_health(
+    int* runtimeGate, int* cloudGate, int* shoreGate, int* substrateLive,
     unsigned long* attempted, unsigned long* usedVulkan,
-    const char** fallbackReason,
-    unsigned long* expectedGlReplaced, unsigned long* vkDraws, unsigned long* glSkipped,
-    double* copyDepthUs, double* copyColorInUs, double* edgeFogDrawUs,
-    double* oobFogDrawUs, double* colorOutUs, double* totalUs);
+    unsigned long* cloudFrames, unsigned long* shoreFrames, unsigned long* glSkipped,
+    const char** fallbackReason, double* renderUs);
+// VK-POST-HZB-NATIVE-1 (rung 8.4): native HZB pyramid receipt.
+extern "C" void mc2_vk_post_hzb_native_health(
+    int* runtimeGate, int* substrateLive,
+    unsigned long* attempted, unsigned long* usedVulkan,
+    unsigned long* levels, unsigned long* vkDraws,
+    unsigned long* copyDepthOps, unsigned long* readbackOps,
+    const char** fallbackReason, double* renderUs);
+// VK-P9a WATER-INTEROP: water Vulkan island health snapshot (defined in
+// GameOS/gameos/vulkan_water_island.cpp, same #ifdef MC2_VULKAN_ISLAND).
+extern "C" void mc2_render_backend_water_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
+    const char** fallbackReason, unsigned long* vkDraws,
+    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
+    unsigned long* thinRecords, unsigned long* recipeCount,
+    unsigned long* forbiddenCopyBufToImg, unsigned long* forbiddenCopyImgToBuf,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenTexSubImage,
+    unsigned long* depthInGetTexImage, unsigned long* depthInCopyBufToImg,
+    double* copyColorInUs, double* copyDepthInUs, double* drawUs, double* colorOutUs, double* totalUs);
+// VK-FLIP-TIMING-DUMP-1: shared-gbuffer trio (terrain/props/mech) health snapshots,
+// defined in vulkan_terrain_island.cpp / vulkan_color_prop_island.cpp / vulkan_mech_island.cpp
+// (same #ifdef MC2_VULKAN_ISLAND). Additive dump wiring only — accessors already existed.
+extern "C" void mc2_render_backend_terrain_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
+    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* patchRecords, unsigned long* heightSnapshots,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
+    double* stageUs, double* drawUs, double* totalUs);
+extern "C" void mc2_render_backend_color_prop_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,
+    const char** fallbackReason, unsigned long* vkDraws,
+    int* interopActive, int* vk2glSemActive, unsigned long* usedInterop,
+    unsigned long* instRecords, unsigned long* typeRuns, unsigned long* geomVerts,
+    unsigned long* forbiddenCopyImgToBuf, unsigned long* forbiddenGetTexImage,
+    unsigned long* forbiddenReadPixels,
+    double* stageInstUs, double* drawUs, double* totalUs);
+extern "C" void mc2_render_backend_mech_region_health(
+    int* vulkanAvailable, int* buildEnabled, const char** deviceName,
+    unsigned long* attempted, unsigned long* usedVulkan, const char** fallbackReason,
+    unsigned long* vkDraws, int* interopActive, int* vk2glSemActive,
+    unsigned long* instRecords, unsigned long* boneRecords, unsigned long* runs,
+    unsigned long* geomVerts,
+    unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
+    double* stageUs, double* drawUs, double* totalUs);
 #endif
 
 #include <chrono>
@@ -680,94 +740,232 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     }
 #ifdef MC2_VULKAN_ISLAND
     // VULKAN-ISLAND-HEALTH-DUMP-1: additive "vulkan_island" section, present ONLY in
-    // the build64_island build (compiled under MC2_VULKAN_ISLAND). Default build64 is
-    // byte-identical (this whole block is #ifdef'd out). Fields are process-lifetime
-    // counters/timers; when the island is compiled but the runtime gate is OFF they
-    // report island_build_enabled=1, island_runtime_gate_enabled=0, and zeros.
+    // VK-POST-FOG-NATIVE-1 (rung 8.1): additive "vk_post_fog_native" section —
+    // the used_vulkan receipt for the native fog pair (zero-copy, shared engine
+    // context). Zeros when compiled but the gate is OFF.
     {
-        int va = 0, be = 0, rg = 0;
-        const char* dev = "";
+        int rg = 0, sub = 0;
+        unsigned long att = 0, used = 0, glSkip = 0;
         const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0;
-        double rbUs = 0.0, cdUs = 0.0, rUs = 0.0;
-        mc2_vulkan_island_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
-                                 &rbUs, &cdUs, &rUs);
+        double rUs = 0.0;
+        mc2_vk_post_fog_native_health(&rg, &sub, &att, &used, &glSkip, &fbr, &rUs);
         s << "  ,\n";
-        s << "  \"vulkan_island\": {\n";
-        s << "    \"vulkan_available\": " << va << ",\n";
-        s << "    \"island_build_enabled\": " << be << ",\n";
-        s << "    \"island_runtime_gate_enabled\": " << rg << ",\n";
-        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
-        s << "    \"validation_errors\": " << ve << ",\n";
-        s << "    \"edgefog_attempted\": " << att << ",\n";
-        s << "    \"edgefog_used_vulkan\": " << used << ",\n";
-        s << "    \"edgefog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"readback_us\": " << rbUs << ",\n";
-        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "  \"vk_post_fog_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"postfog_attempted\": " << att << ",\n";
+        s << "    \"postfog_used_vulkan\": " << used << ",\n";
+        s << "    \"gl_fog_sites_skipped\": " << glSkip << ",\n";
+        s << "    \"postfog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }
-    // VULKAN-OOB-FOG-ISLAND-1: additive "vulkan_oob_island" section (same
-    // build64_island-only discipline). Byte-identical when the whole block is
-    // #ifdef'd out; zeros when compiled but the runtime gate is OFF.
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2): additive "vk_post_ssao_native" section —
+    // the used_vulkan receipt for the native SSAO pair (zero-copy, shared engine
+    // context). Zeros when compiled but the gate is OFF.
     {
-        int va = 0, be = 0, rg = 0;
-        const char* dev = "";
+        int rg = 0, sub = 0;
+        unsigned long att = 0, used = 0, glSkip = 0;
         const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0;
-        double rbUs = 0.0, cdUs = 0.0, rUs = 0.0;
-        mc2_vulkan_oob_island_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
-                                     &rbUs, &cdUs, &rUs);
+        double rUs = 0.0;
+        mc2_vk_post_ssao_native_health(&rg, &sub, &att, &used, &glSkip, &fbr, &rUs);
         s << "  ,\n";
-        s << "  \"vulkan_oob_island\": {\n";
-        s << "    \"vulkan_available\": " << va << ",\n";
-        s << "    \"island_build_enabled\": " << be << ",\n";
-        s << "    \"island_runtime_gate_enabled\": " << rg << ",\n";
-        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
-        s << "    \"validation_errors\": " << ve << ",\n";
-        s << "    \"oobfog_attempted\": " << att << ",\n";
-        s << "    \"oobfog_used_vulkan\": " << used << ",\n";
-        s << "    \"oobfog_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"readback_us\": " << rbUs << ",\n";
-        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "  \"vk_post_ssao_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"postssao_attempted\": " << att << ",\n";
+        s << "    \"postssao_used_vulkan\": " << used << ",\n";
+        s << "    \"gl_ssao_sites_skipped\": " << glSkip << ",\n";
+        s << "    \"postssao_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
         s << "    \"render_us\": " << rUs << "\n";
         s << "  }\n";
     }
-    // VULKAN-POSTPROCESS-SUBGRAPH-1: additive "vulkan_postprocess_subgraph" section
-    // (same build64_island-only discipline). Byte-identical when the whole block is
-    // #ifdef'd out; zeros when compiled but the runtime gate is OFF. Includes the
-    // equivalence counters so a silent double-apply (vk_draws + a GL fog pass) is
-    // catchable, and the Layer-4 per-step timings.
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): additive "vk_post_screenfx_native"
+    // section — the used_vulkan receipt for the native cloud-shadow + shoreline
+    // pair (zero-copy, shared engine context). Zeros when compiled but the gate
+    // is OFF.
     {
-        int va = 0, be = 0, rg = 0;
-        const char* dev = "";
+        int rg = 0, cg = 0, sg = 0, sub = 0;
+        unsigned long att = 0, used = 0, cf = 0, sf = 0, glSkip = 0;
         const char* fbr = "";
-        unsigned long ve = 0, att = 0, used = 0;
-        unsigned long expRepl = 0, vkDraws = 0, glSkip = 0;
-        double cdUs = 0.0, cciUs = 0.0, efUs = 0.0, ofUs = 0.0, coUs = 0.0, totUs = 0.0;
-        mc2_vulkan_postprocess_subgraph_health(&va, &be, &rg, &dev, &ve, &att, &used, &fbr,
-                                               &expRepl, &vkDraws, &glSkip,
-                                               &cdUs, &cciUs, &efUs, &ofUs, &coUs, &totUs);
+        double rUs = 0.0;
+        mc2_vk_post_screenfx_native_health(&rg, &cg, &sg, &sub, &att, &used, &cf, &sf, &glSkip, &fbr, &rUs);
         s << "  ,\n";
-        s << "  \"vulkan_postprocess_subgraph\": {\n";
+        s << "  \"vk_post_screenfx_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"cloud_gate\": " << cg << ",\n";
+        s << "    \"shoreline_gate\": " << sg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"postscreenfx_attempted\": " << att << ",\n";
+        s << "    \"postscreenfx_used_vulkan\": " << used << ",\n";
+        s << "    \"cloud_frames\": " << cf << ",\n";
+        s << "    \"shoreline_frames\": " << sf << ",\n";
+        s << "    \"gl_screenfx_sites_skipped\": " << glSkip << ",\n";
+        s << "    \"postscreenfx_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"render_us\": " << rUs << "\n";
+        s << "  }\n";
+    }
+    // VK-POST-HZB-NATIVE-1 (rung 8.4): additive "vk_post_hzb_native" section —
+    // the used_vulkan receipt for the native HZB pyramid (shared engine context,
+    // zero depth ingress/readback egress on the normal path). Zeros when compiled
+    // but the gate is OFF.
+    {
+        int rg = 0, sub = 0;
+        unsigned long att = 0, used = 0, levels = 0, vkDraws = 0, copyDepth = 0, readback = 0;
+        const char* fbr = "";
+        double rUs = 0.0;
+        mc2_vk_post_hzb_native_health(&rg, &sub, &att, &used, &levels, &vkDraws,
+                                      &copyDepth, &readback, &fbr, &rUs);
+        s << "  ,\n";
+        s << "  \"vk_post_hzb_native\": {\n";
+        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
+        s << "    \"substrate_live\": " << sub << ",\n";
+        s << "    \"hzb_attempted\": " << att << ",\n";
+        s << "    \"hzb_used_vulkan\": " << used << ",\n";
+        s << "    \"levels\": " << levels << ",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"copy_depth_ops\": " << copyDepth << ",\n";
+        s << "    \"readback_ops\": " << readback << ",\n";
+        s << "    \"hzb_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"render_us\": " << rUs << "\n";
+        s << "  }\n";
+    }
+    // VK-P9a WATER-INTEROP: additive "vulkan_water_island" section (build64_island-only).
+    // Zeros when compiled but the water region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, usedInterop = 0, thinN = 0, recN = 0;
+        unsigned long fCbi = 0, fCib = 0, fGti = 0, fTsi = 0, diGti = 0, diCbi = 0;
+        double cciUs = 0.0, cdiUs = 0.0, drUs = 0.0, coUs = 0.0, totUs = 0.0;
+        mc2_render_backend_water_region_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
+                                               &ia, &v2g, &usedInterop, &thinN, &recN,
+                                               &fCbi, &fCib, &fGti, &fTsi, &diGti, &diCbi,
+                                               &cciUs, &cdiUs, &drUs, &coUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_water_island\": {\n";
         s << "    \"vulkan_available\": " << va << ",\n";
         s << "    \"build_enabled\": " << be << ",\n";
-        s << "    \"runtime_gate_enabled\": " << rg << ",\n";
         s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
         s << "    \"validation_errors\": " << ve << ",\n";
-        s << "    \"subgraph_attempted\": " << att << ",\n";
-        s << "    \"subgraph_used_vulkan\": " << used << ",\n";
-        s << "    \"subgraph_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
-        s << "    \"expected_gl_passes_replaced\": " << expRepl << ",\n";
-        s << "    \"actual_vk_draws\": " << vkDraws << ",\n";
-        s << "    \"actual_gl_fallback_passes_skipped\": " << glSkip << ",\n";
-        s << "    \"subgraph_draw_count\": " << vkDraws << ",\n";
-        s << "    \"copy_depth_us\": " << cdUs << ",\n";
+        s << "    \"water_attempted\": " << att << ",\n";
+        s << "    \"water_used_vulkan\": " << used << ",\n";
+        s << "    \"water_fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"water_used_interop\": " << usedInterop << ",\n";
+        s << "    \"thin_records\": " << thinN << ",\n";
+        s << "    \"recipe_count\": " << recN << ",\n";
+        s << "    \"forbidden_copy_buf_to_img\": " << fCbi << ",\n";
+        s << "    \"forbidden_copy_img_to_buf\": " << fCib << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_tex_sub_image\": " << fTsi << ",\n";
+        s << "    \"depthin_get_tex_image\": " << diGti << ",\n";
+        s << "    \"depthin_copy_buf_to_img\": " << diCbi << ",\n";
         s << "    \"copy_color_in_us\": " << cciUs << ",\n";
-        s << "    \"edgefog_draw_us\": " << efUs << ",\n";
-        s << "    \"oobfog_draw_us\": " << ofUs << ",\n";
+        s << "    \"copy_depth_in_us\": " << cdiUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
         s << "    \"color_out_us\": " << coUs << ",\n";
-        s << "    \"total_subgraph_us\": " << totUs << "\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-FLIP-TIMING-DUMP-1: additive "vulkan_terrain_island" section (build64_island-only).
+    // Zeros when compiled but the terrain region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long att = 0, used = 0, vkDraws = 0, patchN = 0, heightN = 0, fGti = 0, fRp = 0;
+        double stUs = 0.0, drUs = 0.0, totUs = 0.0;
+        mc2_render_backend_terrain_region_health(&va, &be, &dev, &att, &used, &fbr, &vkDraws,
+                                                  &ia, &v2g, &patchN, &heightN, &fGti, &fRp,
+                                                  &stUs, &drUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_terrain_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"attempted\": " << att << ",\n";
+        s << "    \"used_vulkan\": " << used << ",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"patch_records\": " << patchN << ",\n";
+        s << "    \"height_snapshots\": " << heightN << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
+        s << "    \"stage_us\": " << stUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-FLIP-TIMING-DUMP-1: additive "vulkan_color_prop_island" section (build64_island-only).
+    // Zeros when compiled but the prop region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long ve = 0, att = 0, used = 0, vkDraws = 0, usedInterop = 0;
+        unsigned long instN = 0, typeN = 0, geomN = 0, fCib = 0, fGti = 0, fRp = 0;
+        double stUs = 0.0, drUs = 0.0, totUs = 0.0;
+        mc2_render_backend_color_prop_region_health(&va, &be, &dev, &ve, &att, &used, &fbr, &vkDraws,
+                                                     &ia, &v2g, &usedInterop, &instN, &typeN, &geomN,
+                                                     &fCib, &fGti, &fRp, &stUs, &drUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_color_prop_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"validation_errors\": " << ve << ",\n";
+        s << "    \"attempted\": " << att << ",\n";
+        s << "    \"used_vulkan\": " << used << ",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"used_interop\": " << usedInterop << ",\n";
+        s << "    \"inst_records\": " << instN << ",\n";
+        s << "    \"type_runs\": " << typeN << ",\n";
+        s << "    \"geom_verts\": " << geomN << ",\n";
+        s << "    \"forbidden_copy_img_to_buf\": " << fCib << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
+        s << "    \"stage_inst_us\": " << stUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
+        s << "  }\n";
+    }
+    // VK-FLIP-TIMING-DUMP-1: additive "vulkan_mech_island" section (build64_island-only).
+    // Zeros when compiled but the mech region isn't routed to Vulkan (gate off / GL path).
+    {
+        int va = 0, be = 0, ia = 0, v2g = 0;
+        const char* dev = ""; const char* fbr = "";
+        unsigned long att = 0, used = 0, vkDraws = 0, instN = 0, boneN = 0, runsN = 0, geomN = 0;
+        unsigned long fGti = 0, fRp = 0;
+        double stUs = 0.0, drUs = 0.0, totUs = 0.0;
+        mc2_render_backend_mech_region_health(&va, &be, &dev, &att, &used, &fbr, &vkDraws,
+                                               &ia, &v2g, &instN, &boneN, &runsN, &geomN,
+                                               &fGti, &fRp, &stUs, &drUs, &totUs);
+        s << "  ,\n";
+        s << "  \"vulkan_mech_island\": {\n";
+        s << "    \"vulkan_available\": " << va << ",\n";
+        s << "    \"build_enabled\": " << be << ",\n";
+        s << "    \"device_name\": \"" << jsonEscape(dev) << "\",\n";
+        s << "    \"attempted\": " << att << ",\n";
+        s << "    \"used_vulkan\": " << used << ",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbr) << "\",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"interop_active\": " << ia << ",\n";
+        s << "    \"vk2gl_sem_active\": " << v2g << ",\n";
+        s << "    \"inst_records\": " << instN << ",\n";
+        s << "    \"bone_records\": " << boneN << ",\n";
+        s << "    \"runs\": " << runsN << ",\n";
+        s << "    \"geom_verts\": " << geomN << ",\n";
+        s << "    \"forbidden_get_tex_image\": " << fGti << ",\n";
+        s << "    \"forbidden_read_pixels\": " << fRp << ",\n";
+        s << "    \"stage_us\": " << stUs << ",\n";
+        s << "    \"draw_us\": " << drUs << ",\n";
+        s << "    \"total_us\": " << totUs << "\n";
         s << "  }\n";
     }
 #endif
@@ -800,6 +998,100 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"gl_passes_run\": " << glPasses << ",\n";
         s << "    \"vk_draws\": " << vkDraws << ",\n";
         s << "    \"routed_frames\": " << routed << "\n";
+        s << "  }\n";
+    }
+    // VK-REGION-SSAO-1: PostprocessSSAO region-selection health. ALWAYS emitted
+    // (region iface exists on every build), same shape as render_backend_region.
+    {
+        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
+        const char* reqBackend = "gl";
+        const char* fbReason = "";
+        unsigned long routed = 0;
+        mc2_render_backend_ssao_region_health(&gateOn, &reqBackend, &impl, &fbReason,
+                                              &glPasses, &vkDraws, &routed);
+        const char* implStr =
+            impl == 1 ? "GLInline" :
+            impl == 2 ? "VulkanSubgraph" :
+            impl == 3 ? "FallbackGL" : "None";
+        const char* selectedStr =
+            impl == 2 ? "vk" :
+            impl == 3 ? "fallback_gl" :
+            impl == 1 ? "gl" : "none";
+        s << "  ,\n";
+        s << "  \"render_backend_ssao_region\": {\n";
+        s << "    \"region_id\": \"PostprocessSSAO\",\n";
+        s << "    \"iface_gate_on\": " << gateOn << ",\n";
+        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
+        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
+        s << "    \"region_impl\": \"" << implStr << "\",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
+        s << "    \"gl_passes_run\": " << glPasses << ",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"routed_frames\": " << routed << "\n";
+        s << "  }\n";
+    }
+    // VK-REGION-HZB-1: PostprocessHzb region-selection health. ALWAYS emitted
+    // (region iface exists on every build), same shape as render_backend_region.
+    {
+        int gateOn = 0, impl = 0, glPasses = 0, vkDraws = 0;
+        const char* reqBackend = "gl";
+        const char* fbReason = "";
+        unsigned long routed = 0;
+        mc2_render_backend_hzb_region_health(&gateOn, &reqBackend, &impl, &fbReason,
+                                             &glPasses, &vkDraws, &routed);
+        const char* implStr =
+            impl == 1 ? "GLInline" :
+            impl == 2 ? "VulkanSubgraph" :
+            impl == 3 ? "FallbackGL" : "None";
+        const char* selectedStr =
+            impl == 2 ? "vk" :
+            impl == 3 ? "fallback_gl" :
+            impl == 1 ? "gl" : "none";
+        s << "  ,\n";
+        s << "  \"render_backend_hzb_region\": {\n";
+        s << "    \"region_id\": \"PostprocessHzb\",\n";
+        s << "    \"iface_gate_on\": " << gateOn << ",\n";
+        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
+        s << "    \"backend_region_selected\": \"" << selectedStr << "\",\n";
+        s << "    \"region_impl\": \"" << implStr << "\",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
+        s << "    \"gl_passes_run\": " << glPasses << ",\n";
+        s << "    \"vk_draws\": " << vkDraws << ",\n";
+        s << "    \"routed_frames\": " << routed << "\n";
+        s << "  }\n";
+    }
+    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: CompositePresent region-selection health.
+    // ALWAYS emitted (accessor exists on every build). region_impl==VulkanSubgraph
+    // means the persistent present object presented to its OWN separate Vulkan
+    // window -- NEVER the GL game window (ledgered wall: full game-window present
+    // is L7 interop). present_frames/resize_count/validation_errors record the
+    // scaffold's tally from the last routed run.
+    {
+        int gateOn = 0, impl = 0, presented = 0, presentFrames = 0;
+        int resizeCount = 0, validationErrors = 0;
+        const char* reqBackend = "gl";
+        const char* fbReason = "";
+        unsigned long routed = 0;
+        mc2_render_backend_composite_present_region_health(
+            &gateOn, &reqBackend, &impl, &fbReason, &presented, &presentFrames,
+            &resizeCount, &validationErrors, &routed);
+        const char* implStr =
+            impl == 1 ? "GLInline" :
+            impl == 2 ? "VulkanSubgraph" :
+            impl == 3 ? "FallbackGL" : "None";
+        s << "  ,\n";
+        s << "  \"render_backend_composite_present_region\": {\n";
+        s << "    \"region_id\": \"CompositePresent\",\n";
+        s << "    \"iface_gate_on\": " << gateOn << ",\n";
+        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
+        s << "    \"region_impl\": \"" << implStr << "\",\n";
+        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
+        s << "    \"presented\": " << presented << ",\n";
+        s << "    \"present_frames\": " << presentFrames << ",\n";
+        s << "    \"resize_count\": " << resizeCount << ",\n";
+        s << "    \"validation_errors\": " << validationErrors << ",\n";
+        s << "    \"routed_frames\": " << routed << ",\n";
+        s << "    \"note\": \"separate vk window; GL game window untouched; full game-window present BLOCKED on L7 interop\"\n";
         s << "  }\n";
     }
     s << "}\n";

@@ -12,18 +12,21 @@
       "roles": ["TerrainHeightBuf", "TerrainHeightBufFrag"],
       "evidence": "shaders/terrain_lod_chunk.vert:25 / terrain_lod_chunk.frag:65 — matched Height buffer, VS+FS mirror"
     },
-    "SSBO:2|terrain-mask-solid": {
-      "rationale": "ACKNOWLEDGED Vk-prep TODO (benign under GL today, real descriptor blocker under Vulkan). gos_terrain_mask_solid.vert declares LightingBuf@2 and its paired gos_terrain.frag declares ThinRecordBufFrag@2 — two DIFFERENT buffers on binding 2 in ONE program. The C++ mask-solid draw binds lightingSSBO at slot 2 (gameos_graphics.cpp:4542); the frag's unconditional thinRecsFrag[] reads are not exercised on the mask-solid path (mask-solid is the pre-tess lighting-prepass permutation, not the cement/thin-record fragment path). Legal under GL (one buffer bound per draw); MUST be split before terrain-mask-solid descriptor-set assignment (give the frag thin-record read its own binding, or drop the unused frag block from the mask permutation). Downgraded to OK so the aggregate gate does not wedge on this pre-existing case; the NEGATIVE self-test proves a NEW un-acknowledged same-pipeline dup still ERRORs.",
-      "roles": ["LightingBuf", "ThinRecordBufFrag"],
-      "evidence": "gameos_graphics.cpp:2358 (mask_solid = gos_terrain_mask_solid.vert + gos_terrain.frag); :4542 binds lightingSSBO@2; gos_terrain_mask_solid.vert:33 LightingBuf@2; gos_terrain.frag:114 ThinRecordBufFrag@2 (unconditional reads at :373/:397/:437, not reached on mask-solid prepass)"
-    },
     "SSBO:9|gpu-cull": {
       "rationale": "VisibleIds and DebugOut in gpu_cull.comp are declared on mutually-exclusive #if/#else branches (only one compiles per permutation — the debug readout permutation). Never two live resources in one compiled program.",
       "roles": ["VisibleIds", "DebugOut"],
       "evidence": "binding-slot-occupancy.json warns[0]: 'mode-alternate (intentional): gpu_cull.comp SSBO slot 9 = VisibleIds / DebugOut on exclusive #if branches'"
     }
   },
+  "_resolved_collisions": {
+    "SSBO:2|terrain-mask-solid": "RESOLVED by slice VK-H2-BINDING-SPLIT-1. gos_terrain_mask_solid.vert / gos_terrain_mask_water.vert LightingBuf moved binding 2 -> 4 (C++ bind sites gameos_graphics.cpp mask-solid/mask-water renumbered in lockstep). terrain-mask-solid now names only ThinRecordBufFrag on slot 2 (single role, no same-pipeline collision). The former benign_same_pipeline waiver for SSBO:2|terrain-mask-solid was DELETED — the collision no longer exists, so re-introducing LightingBuf@2 must ERROR again (regression guard). Proven GL-byte-identical: mc2_01 stable bookmarks terrain_solid_land_high + water_overview_high unchanged baseline vs post."
+  },
   "benign_disjoint_shares": {
+    "SSBO:4": {
+      "rationale": "LightingBuf (GpuTerrainLightingOutput per-vertex; terrain-mask-solid + terrain-mask-water pipelines, moved here from slot 2 by VK-H2-BINDING-SPLIT-1) vs PerDrawData (static-prop + static-prop-depth pipelines). DISJOINT pipelines — the terrain mask draws bind their own set {17/18, 19/5, 4} and never co-execute with the static-prop batcher's descriptor set. No single VkDescriptorSetLayout names both at binding 4. Each side binds-then-unbinds its slot-4 buffer within its own pass; no live cross-pipeline aliasing under GL.",
+      "roles": ["LightingBuf", "PerDrawData"],
+      "evidence": "gos_terrain_mask_solid.vert:LightingBuf@4 + gos_terrain_mask_water.vert:LightingBuf@4 (C++ gameos_graphics.cpp mask-solid/mask-water bind lightingSSBO@4); static_prop.frag:PerDrawData@4 + static_prop_depth.frag:PerDrawData@4 (gos_static_prop_batcher.cpp binds s_perDrawSsbo@4). Terrain mask pipeline binding set is disjoint from static-prop batcher."
+    },
     "SSBO:14": {
       "rationale": "GPU-cull readback ring (gpu-cull) vs particle billboard (particle-billboard) vs tube-ribbon position (tube-ribbon) — three DISJOINT pipelines, each names its own buffer at binding 14 in its own descriptor-set layout; all bind-then-unbind-to-0 symmetrically so no live cross-pipeline aliasing under GL.",
       "roles": ["ReadbackBuf", "Particles", "RibbonPos", "RibbonColor", "RibbonUv"],

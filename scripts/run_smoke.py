@@ -541,6 +541,8 @@ def main():
                          "path-aware)")
     ap.add_argument("--duration", type=int)
     ap.add_argument("--profile", default="stock")
+    ap.add_argument("--show-window", action="store_true",
+                    help="Start mission windows visible instead of minimized; use for FPS/perf runs.")
     ap.add_argument("--exe", default=None,
                     help="explicit path to mc2.exe; skips auto-selection but still "
                          "leases the folder (use --no-lease to bypass leasing)")
@@ -1207,6 +1209,7 @@ def main():
             # META-FIX INFRA-3: per-mission marker-bucket downgrades from the
             # manifest (allow_asset_oob analog for registered marker rows).
             marker_overrides=e.marker_overrides,
+            show_window=args.show_window,
             env_extra={
                 "MC2_SMOKE_SEED": "0xC0FFEE",
                 # META-FIX design A: force the read-only mover-registry
@@ -1528,6 +1531,9 @@ def main():
                             # Must be allowlisted or Popen drops it and the gate-ON
                             # smoke pass silently re-runs the gate-OFF path.
                             "MC2_FX_DEFS",
+                            # BUG-A pick regression fence: forward so the [VK_PICK_PROBE]
+                            # deterministic mouse->pick proof fires under smoke/probe runs.
+                            "MC2_VK_PICK_PROBE",
                             # ABL-BAD-NATIVE-ARG-REPRO-1 gates — must be allowlisted so
                             # the repro hook and guard fire when set by the caller.
                             "MC2_ABL_ARG_GUARD",
@@ -1710,7 +1716,39 @@ def main():
                             # in the allowlist subprocess.Popen drops them and the
                             # gate-ON smoke runs are inert.
                             "MC2_GL_DEBUG",
+                            # Perf A/B: let smoke runs explicitly disable the
+                            # frame cap and vsync. Defaults stay unchanged when
+                            # unset; minimized smoke FPS remains non-throughput.
+                            "MC2_FPS_CAP",
+                            "MC2_VSYNC",
                             "MC2_RENDER_BACKEND_IFACE",
+                            # VK-P13-SELECTOR-1 / T1: top-level GL-vs-Vulkan
+                            # backend selector (gl|vulkan). Must be allowlisted
+                            # or Popen drops it and the =vulkan smoke silently
+                            # runs on GL. (MC2_VULKAN_VALIDATION is already
+                            # allowlisted below for the device-birth proof.)
+                            "MC2_RENDER_BACKEND",
+                            # VK-P13-SELECTOR-1 / T4: fail-soft proof knob.
+                            "MC2_VK_FORCE_FAIL",
+                            # VK-P13-SELECTOR-1 / T3+T5: enable the VK present
+                            # shared-image readback content check (proves the
+                            # presented frame is the real, changing GL frame).
+                            "MC2_VK_PRESENT_VERIFY",
+                            # VK-P14b: copy-1 elimination. Redirect endScene's
+                            # backbuffer bind to the shared present FBO so the
+                            # composite renders straight into the shared image
+                            # (skips copy-1, Y-flip moves into copy-2). default
+                            # OFF; must be allowlisted or Popen drops it and the
+                            # gate-ON present-parity run silently runs copy-1.
+                            "MC2_VK_PRESENT_DIRECT_FBO",
+                            # VK-POST-COMPOSITE-NATIVE-1 prep: viewmode envs are
+                            # needed for ObjectIdDebug/Thermal/LowLight composite
+                            # parity coverage once MC2_VK_POST_COMPOSITE lands.
+                            "MC2_VIEWMODE_FRAMEWORK",
+                            "MC2_VIEW_MODE",
+                            "MC2_OBJECT_ID_BUFFER",
+                            "MC2_VIEWMODE_LOWLIGHT_GAIN",
+                            "MC2_VIEWMODE_LOWLIGHT_TINT",
                             "MC2_GPU_DEBUG_NAMES",
                             # Integrated gosFX-retirement / GPU-particles plan
                             # (2026-05-20-integrated-gosfx-retirement-*):
@@ -2012,35 +2050,213 @@ def main():
                             # making the RNG trace non-reproducible.
                             "MC2_DETERMINISTIC_RNG",
                             "MC2_RNG_SEED",
-                            # VULKAN-EDGE-FOG-ISLAND-2a: route the edge-fog
-                            # composite through the headless Vulkan island
-                            # (default-OFF; fail-soft to GL). MC2_VULKAN_SPV_DIR
-                            # optionally overrides the .spv search dir. Without
-                            # these in the allowlist Popen drops them and the
-                            # gate-ON island smoke silently runs the GL path.
-                            "MC2_VULKAN_EDGE_FOG_ISLAND",
                             "MC2_VULKAN_SPV_DIR",
-                            # VULKAN-ISLAND-FALLBACK-PROOF-1: debug hook that forces
-                            # ensure-init to fail with a chosen fallback_reason so the
-                            # GL fail-soft path can be exercised deterministically
-                            # without uninstalling the Vulkan runtime. Without this in
-                            # the allowlist Popen drops it and the forced-fallback smoke
-                            # runs the real Vulkan (or default GL) path instead.
-                            "MC2_VULKAN_ISLAND_FORCE_FALLBACK",
-                            # VULKAN-OOB-FOG-ISLAND-1: the second offscreen Vulkan
-                            # island (OOB fog). Same allowlist rationale as the
-                            # edge-fog gate above -- without these Popen drops them
-                            # and the gate-ON / forced-fallback smoke silently runs
-                            # the GL OOB-fog path instead.
-                            "MC2_VULKAN_OOB_FOG_ISLAND",
-                            "MC2_VULKAN_OOB_FOG_ISLAND_FORCE_FALLBACK",
-                            # VULKAN-POSTPROCESS-SUBGRAPH-1: the fused Layer-4
-                            # subgraph (EdgeFog + OOB fog in ONE Vulkan render pass).
-                            # Same allowlist rationale -- without these Popen drops
-                            # them and the gate-ON / forced-fallback smoke silently
-                            # runs the GL edge+oob fog path instead.
-                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH",
-                            "MC2_VULKAN_POSTPROCESS_SUBGRAPH_FORCE_FALLBACK",
+                            # VK-WATER-TIER1 (rung 6): in-place shared-GBuffer water
+                            # co-write (color0+normal+depth LOAD-preserve; premult-over
+                            # blend == GL straight-alpha result; no composite, no depth
+                            # readback). envTriState OPT-IN, default-OFF (same new-rung
+                            # pattern as MC2_VK_TERRAIN_SKIRTS / _VISUALDISPLACE_FAR).
+                            "MC2_VK_WATER_TIER1",
+                            # VK-FIELD-VFX-1: default-ON-under-umbrella particle
+                            # island gate (weapon fire into shared color0). Must be
+                            # allowlisted so an explicit MC2_VK_VFX=0 override reaches
+                            # the child (else Popen drops it).
+                            "MC2_VK_VFX",
+                            # VK-VFX-COALESCE-1: HUD tri-batch merge killswitch
+                            # (default OFF pending parity verification). Must be
+                            # allowlisted so an explicit override reaches the child.
+                            "MC2_VK_VFX_COALESCE",
+                            # MC2_VK_WATER_PERF: fine-grained per-sub-step us breakdown
+                            # of the VK water interop path ([VK_WATER_PERF] lines).
+                            # Additive diagnostic; must be allowlisted or Popen drops it
+                            # and the breakdown never emits.
+                            "MC2_VK_WATER_PERF",
+                            # VK-WATER-FENCE-DEFER-1 killswitch (=0 restores the inline
+                            # post-submit fence wait; default = deferred retire at the
+                            # parity slot's next beginFrame).
+                            "MC2_VK_WATER_FENCE_DEFER",
+                            # VK-TERRAIN-FENCE-DEFER-1: same template on the terrain
+                            # island (killswitch =0 restores the inline wait) + the
+                            # water-style [VK_TERRAIN_PERF] us-breakdown diagnostic.
+                            "MC2_VK_TERRAIN_FENCE_DEFER",
+                            "MC2_VK_TERRAIN_PERF",
+                            # VK-PROP-FENCE-DEFER-1: same template on the prop island
+                            # (killswitch =0 restores the inline wait) + the
+                            # [VK_PROPS_PERF] us-breakdown diagnostic.
+                            "MC2_VK_PROP_FENCE_DEFER",
+                            "MC2_VK_PROP_PERF",
+                            # VK-MECH-FENCE-DEFER-1: same template on the mech island.
+                            "MC2_VK_MECH_FENCE_DEFER",
+                            "MC2_VK_MECH_PERF",
+                            # VK-LIGHTFEED-DEDUP-1: killswitch (=0 restores the twin
+                            # per-island LightsData copies; default = ONE shared
+                            # per-frame SSBO ring consumed by mech + prop islands).
+                            "MC2_VK_LIGHTFEED_DEDUP",
+                            "MC2_NO_LAUNCHER",
+                            # VK-P8a SHADOW-INTEROP: VK produces the dynamic shadow
+                            # depth map, GL samples it. Requires the shared engine
+                            # VulkanContext (MC2_RENDER_BACKEND=vulkan). Without this
+                            # in the allowlist Popen drops it and the gate-ON smoke
+                            # silently runs the GL shadow path (gate inert).
+                            "MC2_VK_SHADOW_INTEROP",
+                            # VK-SHADOW-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps VK shadow/CSM products VK-owned and skips
+                            # the VK->GL semaphore handoff when native consumers are
+                            # armed.
+                            "MC2_VK_SHADOW_DIRECT_CHAIN",
+                            # VK-P14 GATE-CONSOLIDATION-1: THE UMBRELLA. =1 arms the
+                            # whole shared-GBuffer scene family at once (all sub-gates
+                            # below default ON; explicit sub-gate env still overrides).
+                            # The eventual default flip toggles EXACTLY this one name, so
+                            # the soak must pass it through to exercise the final gate.
+                            "MC2_VK_SHARED_GBUFFER",
+                            # VK shared-scene deletion-readiness canary. When =1,
+                            # any requested shared scene color/depth/normal/objectId
+                            # slot that falls back to plain GL aborts, preventing
+                            # false-positive final-tail/Metal-gate proofs.
+                            "MC2_VK_SHARED_SCENE_STRICT",
+                            # VK-TIER1 SHARED SCENE DEPTH: backs sceneDepthTex_ with a
+                            # VK-built exportable D32S8 image imported into GL as
+                            # GL_DEPTH24_STENCIL8 at the scene-FBO depth alloc+attach
+                            # site (GL-only slice; no VK depth consumer yet). Requires
+                            # the shared engine VulkanContext. Without this in the
+                            # allowlist Popen drops it and the gate-ON smoke silently
+                            # runs the plain GL depth alloc (gate inert / fail-soft).
+                            "MC2_VK_SHARED_SCENE_DEPTH",
+                            # VK-STATIC-SHADOW-MAP: backs ShadowStaticMap with a
+                            # VK-built exportable D32 image imported into GL. GL still
+                            # renders/samples it; native screen-shadow later can bind
+                            # the same VkImageResource. Must be allowlisted or the
+                            # substrate proof silently runs the plain GL allocation.
+                            "MC2_VK_STATIC_SHADOW_MAP",
+                            # VK-P11 TIER-1 PROP COLOR: co-writes props IN-PLACE into
+                            # the shared scene color(MRT0)+normal(MRT1)+depth GBuffer
+                            # (no side-image/composite). Requires the shared engine
+                            # VulkanContext AND MC2_VK_SHARED_SCENE_DEPTH. Without this
+                            # in the allowlist Popen drops it and the gate-ON smoke
+                            # silently runs the GL flush() prop path (gate inert).
+                            "MC2_VK_PROP_COLOR_TIER1",
+                            # VK-PROP-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps shared GBuffer ownership on Vulkan after the
+                            # native terrain prefix and skips prop interop semaphores.
+                            "MC2_VK_PROP_DIRECT_CHAIN",
+                            # VK-PROP-MATERIAL: real textured vertex-baked-lit prop
+                            # materials (both albedo arrays). Requires MC2_VK_PROP_COLOR_TIER1.
+                            "MC2_VK_PROP_MATERIAL",
+                            "MC2_VK_PROP_MATERIAL_DEBUG",
+                            # VK-P14 MECH TIER-1: the first VK-native SKINNED region —
+                            # co-writes the GL mech batcher's visible instances IN-PLACE
+                            # into the shared GBuffer, VK-skinned (LBS + MC2 axis swap).
+                            # Requires MC2_VK_SHARED_SCENE_DEPTH. Sub-slice 1 = skinning +
+                            # flat color; MC2_VK_MECH_MATERIAL adds the copy-once slot-0
+                            # paint-scheme albedo (single-material probe).
+                            "MC2_VK_MECH_TIER1",
+                            # VK-MECH-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps shared GBuffer ownership on Vulkan after
+                            # terrain+prop and skips mech interop semaphores.
+                            "MC2_VK_MECH_DIRECT_CHAIN",
+                            # VK-WATER-DIRECT-CHAIN: deletion-readiness proof gate
+                            # that keeps shared GBuffer ownership on Vulkan after
+                            # terrain+prop+mech and skips water interop semaphores.
+                            "MC2_VK_WATER_DIRECT_CHAIN",
+                            # VK-POST-COMPOSITE-DIRECT-CHAIN: deletion-readiness
+                            # proof gate that consumes VK-owned shared scene color0
+                            # without a composite-stage GL interop handoff.
+                            "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
+                            "MC2_VK_MECH_MATERIAL",
+                            # MC2_VK_MECH_LIGHTING: per-vertex calc_light Lambert +
+                            # per-actor fog, ported from the GL default mech path
+                            # (albedo * v_litColor + highlight, fogged). Requires
+                            # MC2_VK_MECH_MATERIAL for the visible albedo multiply.
+                            "MC2_VK_MECH_LIGHTING",
+                            # VK-MECH-FEED-NATIVE-1 (rung 7): mech island consumes the
+                            # game's CPU byte sources (exact uploaded VBO blob, staging
+                            # IBO, mcTextureManager lightData_) instead of reading the
+                            # GL buffer objects back (glGetBufferSubData). envTriState
+                            # OPT-IN, default-OFF (same new-rung pattern as
+                            # MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1).
+                            "MC2_VK_MECH_FEED_NATIVE",
+                            # VK-MECH-FEED-AUDIT-1: verification-only (safety-gate class
+                            # like MC2_VK_TERRAIN_HEIGHT_AUDIT) -- byte-compares the CPU
+                            # sources vs the GL buffers on every native copy.
+                            "MC2_VK_MECH_FEED_AUDIT",
+                            # VK terrain in-place shared-GBuffer region + lighting + detail.
+                            "MC2_VK_TERRAIN_TIER1",
+                            # VK-TERRAIN-NATIVE-PREFIX-CLEAR: diagnostic proof gate that
+                            # moves the terrain-prefix scene clear into the VK terrain pass
+                            # and skips terrain's GL interop semaphores. Default-OFF.
+                            "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
+                            # VK-TERRAIN-ALL-LODS (rung 3): coarse-band (lodStep>1) capture
+                            # extension, requires MC2_VK_TERRAIN_TIER1. Bands only, no
+                            # skirts/stitch this rung. Default-OFF.
+                            "MC2_VK_TERRAIN_ALL_LODS",
+                            # VK-TERRAIN-SKIRTS (rung 4): skirt/edge-stitch geometry
+                            # port, requires MC2_VK_TERRAIN_ALL_LODS. Independent
+                            # kill-switch from ALL_LODS so a bad skirt port can be
+                            # isolated without losing the rung-3 band win. Default-OFF.
+                            "MC2_VK_TERRAIN_SKIRTS",
+                            # VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2
+                            # visual-displace Z-swap port, requires MC2_VK_TERRAIN_ALL_LODS.
+                            # Independent kill-switch (same pattern as SKIRTS). Default-OFF.
+                            "MC2_VK_TERRAIN_VISUALDISPLACE_FAR",
+                            # GL-side far-band fade knob (MC2_TERRAIN_VISUAL_DISPLACE
+                            # itself is already allowlisted in the TERRAIN-VISUAL-HEIGHT
+                            # block below; the _FAR fade knob was not).
+                            "MC2_TERRAIN_VISUAL_DISPLACE_FAR",
+                            "MC2_VK_TERRAIN_LIGHTING",
+                            "MC2_VK_TERRAIN_DETAIL",
+                            "MC2_VK_TERRAIN_LODFADE",
+                            "MC2_VK_TERRAIN_DYNSHADOW",
+                            "MC2_SHADOW_CSM",
+                            "MC2_SHADOW_DEBUG_MODE",
+                            "MC2_VK_TERRAIN_CSM",
+                            "MC2_VK_CSM_FULLMAP_INTEROP",
+                            "MC2_VK_CSM_ARRAY_INTEROP",
+                            "MC2_VK_TERRAIN_HEIGHT_AUDIT",
+                            "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT",
+                            # VK-DRAW-PERF-1: verification-only GPU timestamp segment
+                            # timers on the terrain + mech island render passes (per-pass
+                            # setup/clear vs draw GPU cost via vkCmdWriteTimestamp).
+                            # Default-OFF; no-op + fail-soft when unset/unsupported.
+                            "MC2_VK_GPU_TIMESTAMPS",
+                            # VK-POST-FOG-NATIVE-1 (rung 8.1): edge+oob fog pair
+                            # rendered natively on the shared engine context (samples
+                            # shared scene depth, blends into shared scene color0 in
+                            # place; zero copies/readbacks). envTriState OPT-IN,
+                            # default-OFF (new-rung pattern as MC2_VK_TERRAIN_SKIRTS).
+                            "MC2_VK_POST_FOG_NATIVE",
+                            # VK-POST-SSAO-NATIVE-1 (rung 8.2): SSAO gen+apply
+                            # rendered natively on the shared engine context (samples
+                            # shared scene depth+normal into a VK-owned half-res R16F
+                            # occlusion image, multiplies into shared scene color0 in
+                            # place; zero copies/readbacks). envTriState OPT-IN,
+                            # default-OFF (new-rung pattern as MC2_VK_POST_FOG_NATIVE).
+                            "MC2_VK_POST_SSAO",
+                            # VK-POST-SCREENFX-NATIVE-1 (rung 8.3): cloud-shadow +
+                            # shoreline-foam rendered natively on the shared engine
+                            # context (samples shared scene depth+normal, multiplies
+                            # into shared scene color0 in place; zero copies/readbacks;
+                            # Static screen-shadow/cloud/shoreline post-screenfx native path.
+                            # envTriState OPT-IN, default-OFF + per-pass bisect subs.
+                            "MC2_VK_POST_SCREENFX",
+                            "MC2_VK_POST_SCREENFX_SHADOW",
+                            "MC2_VK_POST_SCREENFX_CLOUD",
+                            "MC2_VK_POST_SCREENFX_SHORELINE",
+                            "MC2_CLOUD_SHADOW",
+                            # VK-SHADOW-COPY-ONCE-1: diagnostic-only per-frame ms log for
+                            # the VK-terrain-interop-copies zone (stderr line, default OFF).
+                            "MC2_VK_TERRAIN_COPY_STATS",
+                            # VK-P9a WATER-INTEROP proof: the bookmark-capture sweep
+                            # env, so a smoke run (which reliably reaches steady render,
+                            # unlike the standalone capture harness on some setups) can
+                            # ALSO drive the camera to the water-visible bookmark poses
+                            # and dump per-pose PNGs for VK-vs-GL water parity. Without
+                            # these in the allowlist Popen drops them and the sweep never
+                            # arms (water never framed -> island never engages).
+                            "MC2_VISUAL_BOOKMARK_CAPTURE",
+                            "MC2_VISUAL_CAPTURE_DIR",
+                            "MC2_VISUAL_CAPTURE_FRAME",
+                            "MC2_VISUAL_SETTLE",
                             # RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): master
                             # gate + backend sub-selector for the SELECTABLE
                             # PostprocessFog region. Without these in the allowlist
@@ -2050,6 +2266,97 @@ def main():
                             # FallbackGL path is provable under smoke.
                             "MC2_RENDER_BACKEND_REGION_IFACE",
                             "MC2_POSTPROCESS_BACKEND",
+                            # SSAO-GTAO-LITE-MVP-1 / VK-REGION-SSAO-1: the SSAO master
+                            # gate + its debug (raw-AO) override. The PostprocessSSAO
+                            # backend-compare (run_golden_parity --region PostprocessSSAO)
+                            # forces MC2_SSAO=1 for BOTH states so the region actually
+                            # shades in-frame; without this in the allowlist Popen drops
+                            # it from golden_scene's structural capture and the compare's
+                            # structural half runs with SSAO silently OFF (the region
+                            # never fires, so a "pass" proves nothing). MC2_SSAO_DEBUG
+                            # lets the raw occlusion buffer be inspected under smoke.
+                            "MC2_SSAO",
+                            "MC2_SSAO_DEBUG",
+                            # HZB-DEPTH-PYRAMID-MVP-1 / VK-REGION-HZB-1: the HZB build
+                            # gate (+ its CPU cross-check probe). The PostprocessHzb
+                            # backend-compare (run_golden_parity --region PostprocessHzb)
+                            # forces MC2_HZB_BUILD=1 for BOTH states so the region
+                            # actually builds in-frame; without this in the allowlist
+                            # Popen drops it and the compare runs with HZB silently OFF
+                            # (region_impl=None -- the compare proves nothing; same trap
+                            # class as the MC2_SSAO gap fixed by 5cd3cc65).
+                            # VK-POST-HZB-NATIVE-1: the rung-8.4 native HZB gate.
+                            # Needs the build gate too; probe mode intentionally falls
+                            # back to GL so the GL pyramid stays coherent for reads.
+                            "MC2_VK_POST_HZB",
+                            # VK-POST-COMPOSITE-NATIVE-1 (rung 8.5b): native
+                            # composite/tonemap/FXAA/viewmode gate. Runtime hook
+                            # lands after shader asset prep; allowlisted now so
+                            # gate-on smoke cannot silently run the GL composite.
+                            "MC2_VK_POST_COMPOSITE",
+                            "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
+                            "MC2_VK_OBJECTID_DIRECT_CHAIN",
+                            "MC2_FXAA",
+                            "MC2_FXAA_SUBPIX",
+                            "MC2_FXAA_EDGE_THRESHOLD",
+                            "MC2_FXAA_EDGE_THRESHOLD_MIN",
+                            "MC2_FORCE_43",
+                            # VK-TAIL-HOOK-1: behavior-neutral final-tail command
+                            # buffer seam; proves native HUD/ImGui can execute
+                            # after GL->VK handoff and before the swapchain blit.
+                            "MC2_VK_PRESENT_TAIL_HOOK",
+                            # VK present no-import proof gate: allocates the
+                            # present target as VK-only when the native strict
+                            # stack owns composite/HUD/ImGui.
+                            "MC2_VK_PRESENT_NO_GL_IMPORT",
+                            # VK-PRESENT-SKIP-GL-HANDOFF-1: explicit proof that
+                            # copy-2 can consume a VK-owned present image without
+                            # a GL->VK semaphore signal when native composite ran.
+                            "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
+                            # VK present-tail deletion-readiness canary. On
+                            # nonzero-surface frames, aborts if copy-1 or the
+                            # GL->VK handoff would run instead of the VK-owned
+                            # native present path. Minimized smoke remains a
+                            # non-proof and does not trip this canary.
+                            "MC2_VK_PRESENT_NATIVE_STRICT",
+                            # VK final Metal-gate canary: hard-fails on any
+                            # glInteropSignalToVk/glInteropWaitFromVk boundary.
+                            # Expected to fail until full VK ownership deletes
+                            # the Win32 GL/VK interop substrate.
+                            "MC2_VK_NO_GL_INTEROP_STRICT",
+                            # Stronger Metal-gate resource canary: hard-fails
+                            # exportable Win32 VkImageResource creation / GL
+                            # memory-object import, not just handoff calls.
+                            "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
+                            # VK-HUD-NATIVE-QUEUE-1 (rung 8.6f): queues the
+                            # ordered GameOS HUD batch to the Vulkan present tail.
+                            "MC2_VK_HUD",
+                            # VK-HUD-TEXTURE-PROOF-1: native present-tail HUD
+                            # proof renderer for untextured + mirrored textured
+                            # records. Without this, smoke only proves queueing.
+                            "MC2_VK_HUD_COLOR_PROOF",
+                            # VK-HUD-SKIP-GL-1: skip legacy GL HUD replay only
+                            # after the queued batch is fully native-representable.
+                            "MC2_VK_HUD_SKIP_GL",
+                            # VK-IMGUI-NATIVE-1 (rung 8.6): ImGui Vulkan renderer
+                            # gate. Current slice is observable-decline only until
+                            # the final-tail present handoff is split; must be
+                            # allowlisted so smoke proves the gate reaches runtime.
+                            "MC2_VK_IMGUI",
+                            "MC2_HZB_BUILD",
+                            "MC2_HZB_PROBE",
+                            "MC2_VK_POST_HZB_DIRECT_CHAIN",
+                            "MC2_VK_POST_FOG_DIRECT_CHAIN",
+                            "MC2_VK_POST_SSAO_DIRECT_CHAIN",
+                            "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
+                            "MC2_VK_POST_SCREENFX_SHADOW",
+                            "MC2_SHADOW_ENABLE",
+                            "MC2_SHADOW_CSM",
+                            "MC2_VK_SHADOW_INTEROP",
+                            "MC2_VK_SHADOW_DIRECT_CHAIN",
+                            "MC2_VK_CSM_ARRAY_INTEROP",
+                            "MC2_VK_CSM_FULLMAP_INTEROP",
+                            "MC2_VK_STATIC_SHADOW_MAP",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
                             # the HDRI skybox draw so runEdgeFog/runFogOob hard-exclude
                             # them (default OFF -> byte-identical). Without this in the
@@ -2280,11 +2587,13 @@ def main():
         import time as _t; _t.sleep(2)
 
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
-                                 profile=args.profile, timestamp=timestamp)
+                                 profile=args.profile, timestamp=timestamp,
+                                 show_window=args.show_window)
     (artifact_dir / "report.md").write_text(md, encoding="utf-8")
     (artifact_dir / "report.json").write_text(
         json.dumps(report.render_json(rows, tier=args.tier or "adhoc",
-                                      profile=args.profile, timestamp=timestamp),
+                                      profile=args.profile, timestamp=timestamp,
+                                      show_window=args.show_window),
                    indent=2), encoding="utf-8")
 
     if args.baseline_update:

@@ -31,6 +31,14 @@ const MouseInfo* getMouseInfo() {
     return &g_mouse_info;
 }
 
+// MC2_VK_PICK_PROBE test hook: inject a synthetic raw SDL mouse point (window-
+// points space, i.e. the space event->motion.x lives in). Lets the pick probe
+// drive the exact production normalize path (gos_GetMouseInfo) deterministically.
+void setMouseInfoRaw(float x, float y) {
+    g_mouse_info.x_ = x;
+    g_mouse_info.y_ = y;
+}
+
 const KeyboardInfo* getKeyboardInfo() {
     return &g_keyboard_info;
 }

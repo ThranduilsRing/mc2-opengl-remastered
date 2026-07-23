@@ -72,6 +72,9 @@ set(SOURCES ${SOURCES}
     diagnostic_trace.cpp
     visual_tuning_profile.cpp
     terrain_material_lib.cpp
+    # VK-P13-SELECTOR-1 / T1: top-level MC2_RENDER_BACKEND selector (GL-safe; no
+    # Vulkan headers, always compiled -- inert on =gl/unset, byte-identical).
+    render_backend_select.cpp
 
     utils/stream.cpp
     utils/camera.cpp
@@ -94,33 +97,141 @@ set(SOURCES ${SOURCES}
 # When OFF the TU is not added -> no Vulkan headers/loader pulled in.
 if(MC2_VULKAN)
     list(APPEND SOURCES vulkan_backend_skeleton.cpp)
+    # VK-REGION-SHADOW-1: depth-only instanced shadow-caster pipeline builder.
+    # TU is #ifdef MC2_VULKAN (same gate as the skeleton, which calls its
+    # mc2_vulkan_build/destroy_shadow_depth_pipeline symbols from the
+    # shadowdepth fixture). Registration omitted in commit 95095a94 -> link
+    # break; restored here (T-minus-1 build unblock).
+    list(APPEND SOURCES vulkan_shadow_island.cpp)
     # VK-BOOTSTRAP-INTEGRATE-1: swapchain probe TU + vendored vk-bootstrap impl.
     list(APPEND SOURCES vulkan_swapchain_probe.cpp)
     # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path (own window +
     # swapchain, present 16 frames, resize, fail-soft). Same MC2_VULKAN gate.
     list(APPEND SOURCES vulkan_swapchain_present.cpp)
+    # L6.6-COMPOSITE-PRESENT-SCAFFOLD: the PERSISTENT present object extracted
+    # from the L5 probe (reusable acquire/present/resize + per-image semaphores).
+    # Same MC2_VULKAN gate (NOT _ISLAND -- the swapchain-present probe uses it).
+    list(APPEND SOURCES vulkan_present_object.cpp)
+    # VK-P13-SELECTOR-1 / T2: the standalone SHARED engine Vulkan context
+    # (instance/device/queue/VMA owned HERE, not in the present object). Same
+    # MC2_VULKAN gate as the present object; entirely #ifdef MC2_VULKAN.
+    list(APPEND SOURCES vulkan_context.cpp)
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap/VkBootstrap.cpp")
     # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU (header-only lib).
     list(APPEND SOURCES vma_impl.cpp)
     # VULKAN-VOLK-LOADER-1: volk meta-loader (dynamic Vulkan load; no hard link
     # to vulkan-1.dll). Only compiled when MC2_VULKAN=ON.
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/volk/volk.c")
-    # VULKAN-EDGE-FOG-ISLAND-2a: the real edge-fog Vulkan render island (compiled
-    # into gameos, but entirely inert unless MC2_VULKAN_ISLAND is also defined --
-    # the whole TU is #ifdef MC2_VULKAN_ISLAND). Only added when MC2_VULKAN_ISLAND=ON.
     if(MC2_VULKAN_ISLAND)
-        list(APPEND SOURCES vulkan_edge_fog_island.cpp)
-        # VULKAN-OOB-FOG-ISLAND-1: the second offscreen Vulkan island (OOB fog).
-        # Same #ifdef MC2_VULKAN_ISLAND discipline; the layout-affecting header
-        # members are added under the same macro, already propagated to all
-        # consumers by the ODR-harden block in the root CMakeLists.
-        list(APPEND SOURCES vulkan_oob_fog_island.cpp)
-        # VULKAN-POSTPROCESS-SUBGRAPH-1: the Layer-4 fused subgraph (EdgeFog + OOB
-        # fog in ONE native Vulkan render pass, Vulkan-owned intermediate color
-        # image, no CPU readback between the two passes). Same #ifdef MC2_VULKAN_ISLAND
-        # discipline; layout-affecting header members added under the same macro,
-        # already propagated to all consumers by the root ODR-harden block.
-        list(APPEND SOURCES vulkan_postprocess_subgraph.cpp)
+        # VK-WATER-TIER1: the water island renders the armed water base layer in
+        # place into the shared scene GBuffer. The old P9a side-image gate is
+        # retired; no public raw water interop gate remains.
+        # No layout-affecting header members (extern "C" entry points only).
+        # No layout-affecting header members (extern "C" entry points only).
+        list(APPEND SOURCES vulkan_water_island.cpp)
+        # VK-POST-FOG-NATIVE-1 (rung 8.1, VK-RUNG8-LADDER-1): the fog pair (edge+oob)
+        # rendered NATIVELY on the shared engine VulkanContext — samples the SHARED
+        # scene depth, blends into the SHARED scene color0 in place (zero copies,
+        # zero CPU readbacks, no private device; supersedes the subgraph path when
+        # gated on). Gate MC2_VK_POST_FOG_NATIVE default-OFF -> GL fog chain
+        # byte-identical. Layout-affecting header members under MC2_VULKAN_ISLAND
+        # (same ODR discipline as the subgraph's).
+        list(APPEND SOURCES vulkan_post_fog_native.cpp)
+        # VK-POST-SSAO-NATIVE-1 (rung 8.2): SSAO gen+apply natively on the shared
+        # engine context — samples the SHARED scene depth+normal into a VK-owned
+        # half-res R16F occlusion image, multiplies into the SHARED scene color0 in
+        # place (zero copies, zero CPU readbacks, no private device; retires the
+        # SSAO island's readback pattern when gated on). Gate MC2_VK_POST_SSAO
+        # default-OFF -> GL SSAO chain byte-identical.
+        list(APPEND SOURCES vulkan_post_ssao_native.cpp)
+        # VK-POST-SCREENFX-NATIVE-1 (rung 8.3): cloud-shadow + shoreline-foam
+        # natively on the shared engine context -- samples the SHARED scene
+        # depth (cloud) + normal (shoreline), multiplies into the SHARED scene
+        # color0 in place (zero copies, zero readbacks, no private device).
+        # Screen-shadow NOT ported (no zero-copy CSM-array producer until rung 2).
+        # Gate MC2_VK_POST_SCREENFX default-OFF -> GL passes byte-identical.
+        list(APPEND SOURCES vulkan_post_screenfx_native.cpp)
+        # VK-POST-HZB-NATIVE-1 (rung 8.4): native HZB pyramid on the shared
+        # engine context.
+        list(APPEND SOURCES vulkan_post_hzb_native.cpp)
+        # VK-P8a SHADOW-INTEROP: the shadow island — SECOND VK GEOMETRY region and
+        # FIRST VK-PRODUCES-DEPTH region (water was GL-produces/VK-consumes; shadow
+        # reverses it: VK renders the static-prop shadow-caster depth into an
+        # exportable D32, GL samples it via the unchanged hardware calcShadow path,
+        # lighting up the vk2gl back-channel). Borrows the shared engine
+        # VulkanContext (no second device). Gate MC2_VK_SHADOW_INTEROP default-OFF
+        # -> GL shadow path byte-identical. extern "C" entry points only.
+        list(APPEND SOURCES vulkan_shadow_island_live.cpp)
+        # VK-P11 STATIC-PROP COLOR: the color island — FIRST VK-native COLOR geometry
+        # region rendering REAL static-prop triangle geometry in-place into the shared
+        # scene GBuffer instead of the GL GpuStaticPropBatcher::flush() color draws. Borrows the shared
+        # engine VulkanContext (no second device) + reuses the shadow island's shared
+        # static-prop VBO/IBO feed. Gate MC2_VK_PROP_COLOR_TIER1 default-OFF -> GL prop
+        # color path byte-identical. extern "C" entry points only (no layout-affecting
+        # header members).
+        list(APPEND SOURCES vulkan_color_prop_island.cpp)
+        # VK-P10 TERRAIN TIER-1: the terrain island — co-writes the LIVE LOD0
+        # (lodStep==1) terrain opaque MAIN-triangle draw IN-PLACE into the SHARED
+        # scene GBuffer (color MRT0 + normal MRT1 a=1.0 + shared depth) as the opaque
+        # PREFIX, reusing the prop Tier-1 shared-GBuffer plumbing + LOAD-preserve
+        # renderpass + reverse-Z/double-sided pipeline. Consumes the GL height SSBO
+        # via a per-change interop snapshot. Gate MC2_VK_TERRAIN_TIER1 default-OFF
+        # (requires MC2_VK_SHARED_SCENE_DEPTH) -> GL terrain path byte-identical.
+        # extern "C" entry points only (no layout-affecting header members).
+        list(APPEND SOURCES vulkan_terrain_island.cpp)
+        # VK-P14 MECH TIER-1: the mech island — the FIRST VK-native SKINNED region.
+        # Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED
+        # scene GBuffer (color MRT0 + normal MRT1 a=0.0 + shared depth), VK-skinned
+        # (linear-blend over 4 bone weights + MC2 axis swap), reusing the prop Tier-1
+        # shared-GBuffer plumbing (LOAD-preserve renderpass + reverse-Z pipeline).
+        # Feed (instances + bone palette + shared VBO/IBO + per-run slot-0 paint tex)
+        # exported by gos_mech_batcher.cpp. Gate MC2_VK_MECH_TIER1 default-OFF (requires
+        # MC2_VK_SHARED_SCENE_DEPTH) -> GL mech color flush byte-identical. extern "C"
+        # entry points only (no layout-affecting header members).
+        list(APPEND SOURCES vulkan_mech_island.cpp)
+        # VK-FIELD-VFX-1: the VFX particle island — co-writes the GPU-particle
+        # billboard stream (gos_particle_bridge) IN-PLACE into the SHARED scene
+        # color0 as translucent, depth-tested (GEQUAL, no-write) colored soft
+        # billboards, so weapon fire survives the VK-only present umbrella. Gate
+        # MC2_VK_VFX default-ON under MC2_VK_SHARED_GBUFFER (vanishing content),
+        # explicit =0 forces off -> GL particle draw. UNTEXTURED slice (textured
+        # sprites + tube ribbons + gosFX mesh shapes are the deferred remainder).
+        # extern "C" entry points only (no layout-affecting header members).
+        list(APPEND SOURCES vulkan_vfx_island.cpp)
+        # VK-INTEROP-BRIDGE-1 / T1: the GL-free VK-owned image core. vk_image_resource =
+        # raw-allocated (dedicated) NON-exportable VkImage + double-buffered sync objects.
+        # VK-RUNG8-ITEM1 deleted gl_interop_view.cpp (the GL-boundary import adapter) and
+        # VK-RUNG8-ITEM2 deleted vk_image_resource's exportable half -- both caller-free
+        # after item 6 retired the static-shadow substrate. #ifdef MC2_VULKAN_ISLAND.
+        list(APPEND SOURCES vk_image_resource.cpp)
+        # VK-LIGHTFEED-DEDUP-1: ONE shared per-frame LightsData SSBO (3-slot
+        # host-visible ring on the shared engine device) consumed by the mech +
+        # color-prop islands instead of twin per-island ~3.5 MB copies of the
+        # same CPU array every frame. Killswitch MC2_VK_LIGHTFEED_DEDUP=0
+        # restores the twin-copy paths. #ifdef MC2_VULKAN_ISLAND.
+        list(APPEND SOURCES vk_shared_light_feed.cpp)
+        # VK-TIER1 SHARED SCENE DEPTH (step 2): back sceneDepthTex_ with a VK-built
+        # exportable D32S8 image imported into GL as GL_DEPTH24_STENCIL8, at the
+        # single gos_postprocess scene-FBO depth alloc+attach site. GL-only slice
+        # (no VK depth consumer yet) using the interop primitives above. Gate
+        # MC2_VK_SHARED_SCENE_DEPTH default-OFF -> plain GL depth alloc (byte-
+        # identical). Layout-affecting header member (sharedSceneDepth_) added
+        # under #ifdef MC2_VULKAN_ISLAND, propagated by the root ODR-harden block.
+        list(APPEND SOURCES vulkan_shared_scene_depth.cpp)
+        # VK-P11 TIER-1: shared scene COLOR/NORMAL substrate — sibling of the shared
+        # depth above. Backs sceneColorTex_ (MRT0) + sceneNormalTex_ (MRT1) with VK-
+        # built exportable RGBA16F images imported into GL, so the VK prop island co-
+        # writes props into the SAME GBuffer attachments in-place (Tier-1). Gate
+        # MC2_VK_PROP_COLOR_TIER1 default-OFF (requires MC2_VK_SHARED_SCENE_DEPTH) ->
+        # plain GL alloc (byte-identical). Layout-affecting header members
+        # (sharedSceneColor_/sharedSceneNormal_) under #ifdef MC2_VULKAN_ISLAND.
+        list(APPEND SOURCES vulkan_shared_scene_color.cpp)
+        # VK-P13-SELECTOR-1 / T3: the whole-frame GL->VK present intercept. Borrows
+        # the T2 shared VulkanContext device (no second device); owns the hidden
+        # present window + surface + swapchain + the exportable interop image. Uses
+        # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
+        # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
+        list(APPEND SOURCES engine_present_vk.cpp)
     endif()
 endif()
 
@@ -162,8 +273,12 @@ if(MC2_VULKAN)
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
     target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
-    # VULKAN-EDGE-FOG-ISLAND-2a: define the island gate on gameos so
-    # vulkan_edge_fog_island.cpp compiles + the gos_postprocess.cpp seam is active.
+    # VK-IMGUI-NATIVE-1: engine_present_vk.cpp owns the Vulkan renderer backend.
+    target_include_directories(gameos PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
+    # MC2_VULKAN_ISLAND: define the island/native-region gate on gameos so
+    # gos_postprocess.cpp's Vulkan-owned render paths are compiled.
     # MUST be PUBLIC: gos_postprocess.h adds a member (vkFogIsland_) + methods under
     # #ifdef MC2_VULKAN_ISLAND, so the gosPostProcess class LAYOUT depends on this
     # macro. Consumers of the header (e.g. gameosmain.cpp in the mc2 target) must
@@ -199,7 +314,38 @@ if(MC2_VULKAN)
     # These are only USED when MC2_VULKAN_ISLAND=ON, but baking them under plain
     # MC2_VULKAN is harmless (extra .spv outputs) and keeps the toolchain simple.
     # VULKAN-OOB-FOG-ISLAND-1: bake fog_oob.{vert,frag} alongside edge_fog.
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob)
+    # VK-REGION-SSAO-1: bake ssao.{vert,frag} + ssao_apply.{vert,frag} (two
+    # programs: occlusion pass1, multiplicative-apply pass2). Both verts are
+    # the same fullscreen-triangle construction (separate files only because
+    # the bake loop expects one vert per basename).
+    # VK-REGION-HZB-1: bake hzb_reduce.{vert,frag} (one program, N level draws).
+    # VK-COMPARE-SAMPLER-FIXTURE-1: bake compare_shadow.{vert,frag} (depth-COMPARE
+    # sampler oracle) + csm_array_shadow.{vert,frag} (2D_ARRAY compare oracle).
+    # VK-REGION-SHADOW-1: bake shadow_depth.{vert,frag} (depth-only INSTANCED
+    # shadow-caster WRITE pipeline -- vert reads the instance ring SSBO).
+    # WATER-MVP-ORACLE-1: bake water_mvp.{vert,frag} (clip-space oracle proving the
+    # water MVP UBO pack + reverse-Z depth fudge reproduces the GL water VS
+    # bit-tight; frag does M*worldPos + fudge, column_major std140 UBO).
+    # VK-P9a WATER-INTEROP: bake water_geom.{vert,frag} (procedural water mesh VS +
+    # base-layer FS for the first VK GEOMETRY region). SPIR-V loaded at runtime by
+    # vulkan_water_island.cpp via load_spv(spv_dir()+"water_geom.*.spv").
+    # VK-P11 STATIC-PROP COLOR: bake color_prop_tier1.{vert,frag} for the in-place
+    # shared-GBuffer prop path. The retired Tier-0 color_prop shaders are no longer
+    # baked or deployed.
+    # VK-P10 TERRAIN TIER-1: bake terrain_tier1.{vert,frag} (LOD0 terrain co-write VS
+    # reading the height SSBO snapshot + 2-output GBuffer FS with a=1.0). SPIR-V loaded
+    # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1.*.spv").
+    # VK-P14 MECH TIER-1: bake mech_tier1.{vert,frag} (skinned mech co-write VS reading
+    # the instance + bone-palette SSBOs + 2-output GBuffer FS with a=0.0). SPIR-V loaded
+    # at runtime by vulkan_mech_island.cpp via load_spv(spv_dir()+"mech_tier1.*.spv").
+    # VK-TERRAIN-SKIRT (rung 4): bake terrain_tier1_skirt.{vert,frag} (skirt-strip VS
+    # applying the u_skirtDepth pull-down + a byte-identical copy of terrain_tier1.frag,
+    # since GL uses the same frag program for skirts as the main patch). SPIR-V loaded
+    # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
+    # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
+    # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
+    # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth shadow_debug_overlay water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
@@ -260,4 +406,3 @@ if(MC2_VULKAN_ISLAND)
 endif()
 
 add_library(gameos_main ${MAIN_SRC})
-

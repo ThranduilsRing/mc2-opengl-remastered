@@ -172,13 +172,14 @@ def park_cursor_center() -> None:
 
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int,
-            deterministic_clock: bool) -> dict:
+            deterministic_clock: bool, show_window: bool = False) -> dict:
     """Launch one capture sweep; return a result dict (never raises on engine
     failure -- records it instead)."""
     # The engine runs with cwd = the deploy dir and resolves
     # MC2_VISUAL_CAPTURE_DIR relative to THAT, so a relative out_dir would write
     # under the deploy (and fopen-fail if absent). Always pass an absolute path.
     out_dir = Path(out_dir).resolve()
+    bookmarks_path = Path(bookmarks_path).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     file_mission, marks = _load_bookmarks(bookmarks_path)
     mission_token = file_mission or mission
@@ -227,7 +228,9 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     if os.name == "nt":
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7  # SW_SHOWMINNOACTIVE -- do not steal focus
+        startupinfo.wShowWindow = (
+            4 if show_window else 7
+        )  # SW_SHOWNOACTIVATE for present harnesses, else SW_SHOWMINNOACTIVE.
 
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
@@ -309,6 +312,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         "all_present": all_present,
         "engine_capture_fired": fired,
         "any_nondeterministic": any_nondet,
+        "show_window": show_window,
         "bookmarks": bm_results,
         "log": str(log_path),
     }
@@ -325,7 +329,10 @@ def write_manifest(result: dict, exe: Path) -> Path:
         deploy_target=str(exe.parent),
         env_keys=["MC2_SMOKE_MODE", "MC2_SMOKE_SEED", "MC2_SMOKE_FIXED_TIMESTEP",
                   "MC2_VISUAL_CAPTURE_FRAME", "MC2_VISUAL_SETTLE"],
-        extra={"bookmarks_path": result["bookmarks_path"]},
+        extra={
+            "bookmarks_path": result["bookmarks_path"],
+            "show_window": bool(result.get("show_window", False)),
+        },
     )
     rep = ms.report_summary(
         verdict=verdict,
@@ -471,6 +478,11 @@ def main() -> int:
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="DISABLE MC2_SMOKE_FIXED_TIMESTEP (captures will NOT be "
                          "byte-stable across runs; use only for eyeball checks)")
+    ap.add_argument("--show-window", action="store_true",
+                    help="launch the game window visible instead of minimized. "
+                         "Required for Vulkan present/swapchain harnesses that "
+                         "need a nonzero drawable extent; ordinary baseline "
+                         "captures should keep the default minimized mode.")
     ap.add_argument("--runs", type=int, default=1,
                     help="number of capture runs (default 1). With --warmup K, "
                          "the first K runs are discarded as cold-start warmup "
@@ -533,7 +545,8 @@ def main() -> int:
     # Single-run mode: capture once, no stability claim.
     if n_runs == 1:
         result = run_one(exe, args.mission, bookmarks_path, base_out,
-                         args.trigger_frame, args.settle, args.duration, det_clock)
+                         args.trigger_frame, args.settle, args.duration,
+                         det_clock, args.show_window)
         man = write_manifest(result, exe)
         _print_result(result, man)
         return 0 if (result["all_present"] and result["engine_capture_fired"]) else 1
@@ -547,7 +560,8 @@ def main() -> int:
         # clobbered each other. Now each owns `<out_dir>/rN`.
         out_i = base_out / f"r{i}"
         r = run_one(exe, args.mission, bookmarks_path, out_i,
-                    args.trigger_frame, args.settle, args.duration, det_clock)
+                    args.trigger_frame, args.settle, args.duration, det_clock,
+                    args.show_window)
         write_manifest(r, exe)
         runs.append(r)
         time.sleep(2)

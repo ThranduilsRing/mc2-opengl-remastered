@@ -25,6 +25,10 @@
 
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/gos_input.h"
+#ifdef MC2_VULKAN
+#include "../GameOS/gameos/engine_present_vk.h"
+#include "../GameOS/gameos/render_backend_select.h"
+#endif
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
@@ -76,12 +80,22 @@ namespace {
 bool s_frameActive = false;
 bool s_useSDL2Backend = false;   // false when initialised via InitEditorOpenGLOnly
 std::unordered_map<std::string, ImFont*> s_uiFonts;
+static bool s_openGlRendererInitialized = false;
 
 static bool isEnabled() {
     static int cached = -1;
     if (cached < 0) {
         const char* v = std::getenv("MC2_IMGUI");
         cached = (!v || v[0] != '0') ? 1 : 0;
+    }
+    return cached == 1;
+}
+
+static bool vkImguiRequested() {
+    static int cached = -1;
+    if (cached < 0) {
+        const char* v = std::getenv("MC2_VK_IMGUI");
+        cached = (v && v[0] == '1') ? 1 : 0;
     }
     return cached == 1;
 }
@@ -379,6 +393,7 @@ void GuiRuntime::InitEditorOpenGLOnly()
     // SDL_PushEvent in GameOSWinProc so ImGui still receives input events
     // through the normal ImGui_ImplOpenGL3_NewFrame + io.MousePos path.
     ImGui_ImplOpenGL3_Init("#version 430");
+    s_openGlRendererInitialized = true;   // MERGE-WAVE-1: keep GL shutdown/frame paths armed for the editor entry point
 
     g_imguiInitialized = true;
 }
@@ -437,8 +452,14 @@ void GuiRuntime::Init() {
     loadUiFonts(io);
     ImGui::StyleColorsDark();
 
-    ImGui_ImplSDL2_InitForOpenGL(graphics::getSDLWindow(), graphics::getSDLGLContext());
-    ImGui_ImplOpenGL3_Init("#version 430");
+    if (vkImguiRequested()) {
+        ImGui_ImplSDL2_InitForVulkan(graphics::getSDLWindow());
+        io.Fonts->Build();
+    } else {
+        ImGui_ImplSDL2_InitForOpenGL(graphics::getSDLWindow(), graphics::getSDLGLContext());
+        ImGui_ImplOpenGL3_Init("#version 430");
+        s_openGlRendererInitialized = true;
+    }
 
     g_imguiInitialized = true;
     s_useSDL2Backend = true;
@@ -446,6 +467,12 @@ void GuiRuntime::Init() {
 
 void GuiRuntime::Shutdown() {
     if (!g_imguiInitialized) return;
+#ifdef MC2_VULKAN
+    // VK-IMGUI: shut the Vulkan ImGui renderer down first when it owns the frame.
+    if (vkImguiRequested() && mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        mc2vk::getOrCreateEnginePresentVk().shutdownImguiVulkanRenderer();
+    }
+#endif
     g_imguiInitialized = false;
     s_frameActive = false;
     // Pin OUR context first: a second ImGui owner in the same process (the
@@ -468,7 +495,10 @@ void GuiRuntime::Shutdown() {
 #if defined(_WIN32)
     __try {
 #endif
-        ImGui_ImplOpenGL3_Shutdown();
+        if (s_openGlRendererInitialized) {
+            ImGui_ImplOpenGL3_Shutdown();
+            s_openGlRendererInitialized = false;
+        }
         if (s_useSDL2Backend)
             ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
@@ -633,9 +663,17 @@ static void BuildEditorDockspace() {
 
 void GuiRuntime::NewFrame() {
     if (!g_imguiInitialized) return;
-    ImGui_ImplOpenGL3_NewFrame();
+    if (s_openGlRendererInitialized) {
+        ImGui_ImplOpenGL3_NewFrame();
+    } else if (vkImguiRequested()) {
+#ifdef MC2_VULKAN
+        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan)
+            mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
+#endif
+    }
     if (s_useSDL2Backend)
         ImGui_ImplSDL2_NewFrame();
+
     // SDL_GL_GetDrawableSize returns 0 for SDL_CreateWindowFrom windows that
     // have no SDL GL context (editor uses WGL, not SDL_GL_CreateContext).
     // ImGui_ImplSDL2_NewFrame sets io.DisplayFramebufferScale = drawable/window,
@@ -815,6 +853,30 @@ static void DrawCliffDecalPanel() {
     ImGui::TextDisabled("as MC2_TERRAIN_DECAL_* env vars");
 
     ImGui::End();
+static void maybeTraceVkImguiDecline() {
+    if (!vkImguiRequested()) return;
+    static bool s_tracedInitial = false;
+    static bool s_tracedArmed = false;
+
+    int directPresentArmed = 0;
+#ifdef MC2_VULKAN
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk();
+        directPresentArmed = vkpres.directPresentFrameArmed() ? 1 : 0;
+    }
+#endif
+    if (directPresentArmed) {
+        if (s_tracedArmed) return;
+        s_tracedArmed = true;
+    } else {
+        if (s_tracedInitial) return;
+        s_tracedInitial = true;
+    }
+    std::fprintf(stderr,
+        "[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed=%d "
+        "fallback_reason=\"vulkan_renderer_not_ready\"\n",
+        directPresentArmed);
+    std::fflush(stderr);
 }
 
 void GuiRuntime::Render() {
@@ -869,7 +931,7 @@ void GuiRuntime::Render() {
 
     // One-shot diagnostic: dump ImDrawData stats and GL state to stderr.
     // editor-stderr.log captures this via run-editor.bat's 2> redirect.
-    {
+    if (s_openGlRendererInitialized) {
         static bool s_traced = false;
         if (!s_traced) {
             s_traced = true;
@@ -896,6 +958,24 @@ void GuiRuntime::Render() {
             }
             fflush(stderr);
         }
+    }
+
+    if (vkImguiRequested()) {
+#ifdef MC2_VULKAN
+        if (mc2::renderBackend() == mc2::RenderBackend::Vulkan &&
+            mc2vk::getOrCreateEnginePresentVk().renderImguiVulkanDrawData(ImGui::GetDrawData())) {
+            static bool s_tracedVkUsed = false;
+            if (!s_tracedVkUsed) {
+                s_tracedVkUsed = true;
+                std::fprintf(stderr,
+                    "[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=\"\"\n");
+                std::fflush(stderr);
+            }
+            return;
+        }
+#endif
+        maybeTraceVkImguiDecline();
+        return;
     }
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

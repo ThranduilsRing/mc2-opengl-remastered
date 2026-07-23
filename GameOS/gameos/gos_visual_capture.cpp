@@ -51,6 +51,7 @@
 
 #include <GL/glew.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -65,6 +66,10 @@
 // explicit mclib path: the GameOS-local "utils/camera.h" is a different GL
 // helper struct, and a bare "camera.h" would be ambiguous on the include path.
 #include "../../mclib/camera.h"
+
+// VK-FIELD-VFX-8: fixture-armed fire-event capture frame (defined mclib/tgl.cpp;
+// armed by the MC2_FX_FORCE_SPAWN fixture in code/warrior.cpp).
+extern uint32_t g_mc2FxFireCaptureFrame;
 
 // Mission sim-freeze hooks for deterministic capture. We do NOT include the
 // game's missiongui.h here -- it pulls in mclib.h / mover.h / controlgui.h via
@@ -82,6 +87,11 @@ extern "C" {
     // Restore the exact pre-sweep pause flag pair captured above.
     void mc2VisualCaptureRestorePauseState(int packed);
 }
+
+// Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
+// and calls gos_TerminateApplication(). Declared here so MC2_VISUAL_CAPTURE_EXIT_AFTER
+// can request a clean shutdown after the bookmark sweep.
+extern bool quitGame;
 
 namespace {
 
@@ -249,6 +259,14 @@ void collect_gate_env(std::vector<std::string>& names) {
     std::sort(names.begin(), names.end());
 }
 
+// VK-FIRST-BOOKMARK-POSE-1: the pose the just-rendered frame actually used,
+// stashed each settle frame BEFORE the per-settle re-apply and emitted into the
+// sidecar (see onPostRenderFrame). File-scope so write_sidecar can read it.
+Stuff::Vector3D g_renderedPos{0, 0, 0};
+float g_renderedProj = 0.0f;
+float g_renderedRot  = 0.0f;
+float g_renderedAlt  = 0.0f;
+
 void write_sidecar(const std::string& jsonPath, const std::string& mission,
                    const std::string& label, unsigned int frame,
                    int w, int h, long triggerFrame, bool deterministic) {
@@ -279,6 +297,19 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     json_escape(SmokeMode::state().profile, esc); buf += esc; buf += "\",\n";
     snprintf(num, sizeof(num), "  \"width\": %d,\n", w); buf += num;
     snprintf(num, sizeof(num), "  \"height\": %d,\n", h); buf += num;
+    // VK-FIRST-BOOKMARK-POSE-1: record the ACTUAL camera pose the JUST-RENDERED
+    // frame used (stashed at the rendered_pose_matches point, BEFORE the per-settle
+    // re-apply -- so it reflects what update()+render produced, not the value we
+    // then re-assert). This is the load-bearing signal the sidecar previously
+    // lacked (it only carried the bookmark LABEL, not where the camera really was):
+    // it machine-verifies bookmark #1 captured at its named pose rather than the
+    // scripted intro pose.
+    snprintf(num, sizeof(num),
+             "  \"cap_pos\": [%.3f, %.3f, %.3f],\n",
+             g_renderedPos.x, g_renderedPos.y, g_renderedPos.z); buf += num;
+    snprintf(num, sizeof(num), "  \"cap_proj\": %.3f,\n", g_renderedProj); buf += num;
+    snprintf(num, sizeof(num), "  \"cap_rot\": %.3f,\n", g_renderedRot); buf += num;
+    snprintf(num, sizeof(num), "  \"cap_alt\": %.3f,\n", g_renderedAlt); buf += num;
     buf += "  \"gate_env\": [";
     for (size_t i = 0; i < gateEnv.size(); ++i) {
         if (i) buf += ", ";
@@ -432,6 +463,7 @@ struct ReplayState {
     std::vector<Bookmark> marks;
     size_t idx = 0;
     int settleCount = 0;
+    int extendCount = 0;        // pose-verify bounded extra-settle budget used
     bool teleported = false;
     long triggerFrame = 120;        // sweep fires at this fixed frame
     bool triggered = false;         // sweep has begun (sim frozen)
@@ -492,6 +524,43 @@ void apply_bookmark(const Bookmark& b) {
     rot.y = b.rot;    // cameraRotation
     rot.z = b.alt;    // altitude (setRotation writes cameraAltitude = rot.z)
     eye->setRotation(rot);
+    // VK-FIRST-BOOKMARK-POSE-1: the hard setPosition/setRotation above does NOT
+    // clear the intro-swoop goal or the object-tracking target, so the NEXT
+    // eye->update() (which runs every frame during the frozen sweep) would drag
+    // the camera back toward the scripted intro pose -- deterministically
+    // stomping the FIRST bookmark while the intro goal is still draining. Pin
+    // every scripted override to the just-applied pose so update() is a no-op.
+    eye->freezeScriptedCameraForCapture();
+}
+
+// VK-FIRST-BOOKMARK-POSE-1: does the camera's CURRENTLY-RENDERED pose match the
+// bookmark within epsilon? Called at post-render BEFORE the per-settle re-apply,
+// so `eye` still reflects the pose this frame's update()+render actually used.
+// getPosition() is the ground-focus point (x,y load-bearing; z is terrain-driven
+// so it is not compared). Rotation compares projectionAngle/cameraRotation and
+// altitude. Generous epsilons: this is a "did a scripted writer yank us away"
+// guard, not a bit-exact check.
+bool rendered_pose_matches(const Bookmark& b) {
+    if (!eye) return true;
+    if (b.hasPos) {
+        Stuff::Vector3D p = eye->getPosition();
+        if (fabsf(p.x - b.pos[0]) > 2.0f) return false;
+        if (fabsf(p.y - b.pos[1]) > 2.0f) return false;
+    }
+    Stuff::Vector3D rot = eye->getRotation();   // x=proj, y=cameraRotation, z=0
+    if (fabsf(rot.x - b.proj) > 0.5f) return false;
+    // cameraRotation wraps at 360; compare on the circle.
+    float dr = fabsf(rot.y - b.rot);
+    if (dr > 180.0f) dr = 360.0f - dr;
+    if (dr > 0.5f) return false;
+    // NOTE: altitude is deliberately NOT hard-checked. The engine legitimately
+    // clamps cameraAltitude to a per-projection-angle max (gamecam.cpp), so a
+    // bookmark requesting an unreachable altitude captures at the clamped value
+    // -- that is correct, not a scripted-pose stomp. Position (x,y) + projection
+    // angle + cameraRotation uniquely identify the "yanked to the wrong pose"
+    // failure this guard exists to catch (the SW-corner intro pose differs in
+    // all of x, y, and proj). cap_alt is still recorded in the sidecar to eyeball.
+    return true;
 }
 
 // Restore the full pre-sweep camera pose. Camera::getRotation() leaves z=0
@@ -526,6 +595,34 @@ bool active() {
     return capActive || replayActive;
 }
 
+}}  // namespace gos::visual_capture (reopened below)
+
+// VK-MECH-CAPTURE-DETERMINISM-1: capture-mode-only gait-freeze predicate.
+// The bookmark sweep freezes the SIM (bPaused via mc2VisualCaptureSetPaused) so
+// scenarioTime + all unit updates stop -> byte-deterministic capture. But the
+// RENDER path still calls Mech3DAppearance::update(animate=true) once per render
+// frame (BattleMech::render, mech.cpp), which advances the stock gait by
+// mechFrameRate * frameLength (a WALL-CLOCK global, NOT scenarioTime). So a mech's
+// animation pose kept drifting run-to-run during the frozen sweep -> the center
+// "mech island" jitter that forced OBJ_BOX masking in the near-oracle.
+//
+// This shim returns 1 iff a capture is ACTIVE *and* the sim is currently frozen
+// for the sweep (bPaused bit of the packed pause state). mech3d.cpp gates the
+// gait advance on !this, so:
+//   * capture unset            -> shim is 0 -> ZERO behavior change (byte-safe);
+//   * capture active, pre-sweep-> bPaused=0 -> gait runs, mechs reach their pose;
+//   * capture active, in sweep -> bPaused=1 -> gait frozen -> deterministic.
+// Purely capture-mode-only: live game (no capture env) never sees this.
+extern "C" int mc2CaptureGaitFreezeActive() {
+    if (!gos::visual_capture::active()) return 0;
+    extern int mc2VisualCaptureGetPauseState();   // missiongui.cpp shim
+    const int packed = mc2VisualCaptureGetPauseState();
+    if (packed < 0) return 0;                      // no mission interface yet
+    return (packed & 0x2) ? 1 : 0;                 // bPaused bit
+}
+
+namespace gos { namespace visual_capture {
+
 void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     // FIX #1: when a bookmark file is configured the free-capture path is
     // ALWAYS inert -- before, during, AND after the sweep. The deterministic
@@ -552,7 +649,22 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     // capActive is already false whenever a bookmark file is configured (see
     // the guard above), so this path runs ONLY when no bookmark sweep exists.
     // It is the nondeterministic eyeball spot-check mode.
-    if (capActive && (long)frame >= g_cap.frame) {
+    // VK-FIELD-VFX-8: MC2_VISUAL_CAPTURE_ON_FIRE — GL twin of the present-PPM
+    // fire-event pin. When set (with MC2_FX_FORCE_SPAWN), the trigger frame is
+    // the fixture-armed g_mc2FxFireCaptureFrame (~0.5s after the first volley)
+    // instead of the static MC2_VISUAL_CAPTURE_FRAME, so GL-vs-VK weapon-class
+    // pairs capture the SAME fire-relative instant on both backends (a static
+    // frame pin is volley roulette). Unarmed (0) = wait.
+    long trigger = g_cap.frame;
+    {
+        static const bool s_onFire =
+            (getenv("MC2_VISUAL_CAPTURE_ON_FIRE") != nullptr);
+        if (s_onFire) {
+            trigger = (::g_mc2FxFireCaptureFrame == 0)
+                ? 0x7fffffffL : (long)::g_mc2FxFireCaptureFrame;
+        }
+    }
+    if (capActive && (long)frame >= trigger) {
         char base[256];
         snprintf(base, sizeof(base), "%s_frame%u", mission.c_str(), frame);
         capture_to(g_cap.dir, base, mission, "frame", frame, sceneW, sceneH,
@@ -605,6 +717,10 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                 g_replay.savePos = eye->getPosition();
                 g_replay.saveRot = eye->getRotation();
                 g_replay.saveAlt = eye->cameraAltitude;   // public member
+                fprintf(stderr, "[ADJUDICATION_POSE v1] pos=%.3f,%.3f,%.3f "
+                        "rot(proj=%.3f,rot=%.3f) alt=%.3f\n",
+                        g_replay.savePos.x, g_replay.savePos.y, g_replay.savePos.z,
+                        g_replay.saveRot.x, g_replay.saveRot.y, g_replay.saveAlt);
             }
             fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep triggered frame=%u "
                     "(triggerFrame=%ld) sim frozen, pauseState=%d\n",
@@ -620,22 +736,68 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             g_replay.finished = true;
             fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep complete, camera + "
                     "pause-state restored\n");
+            // VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the
+            // VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT]
+            // logHealth are emitted to the capture log. Without this the harness kills
+            // the still-running game on timeout and those shutdown-only lines never
+            // appear -- the exact reason the prior no-interop proof log lacked island
+            // counters. Sets the same quitGame flag a window-close would; the mission
+            // main loop polls it and calls gos_TerminateApplication() -> ordered VK
+            // teardown (gameosmain.cpp mc2_vk_*_island_destroy). Off by default.
+            if (::getenv("MC2_VISUAL_CAPTURE_EXIT_AFTER")) {
+                ::quitGame = true;
+                fprintf(stderr, "[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 "
+                        "-> requesting clean shutdown (quitGame=true)\n");
+            }
             return;
         }
         if (!g_replay.teleported) {
             apply_bookmark(g_replay.marks[g_replay.idx]);
             g_replay.teleported = true;
             g_replay.settleCount = 0;
+            g_replay.extendCount = 0;
             return;   // let the scene render at the new pose before capturing
         }
-        // Re-apply each settle frame so any residual swoop/goal logic cannot
-        // drift the pose. Sim is frozen, so settle only flushes render-side
-        // streaming / chunk-LOD admission / shadow warmup / bloom history.
+        // VK-FIRST-BOOKMARK-POSE-1: verify the pose THIS just-rendered frame used
+        // (eye still reflects update()+render output; we have NOT re-applied yet
+        // this frame) matches the bookmark. With freezeScriptedCameraForCapture()
+        // this holds from the first settle frame; the check is a bounded guard
+        // against any residual/future scripted writer that still yanks the camera.
+        const int kMaxPoseExtend = 30;
+        // Stash the pose THIS just-rendered frame used (eye pre-reapply) so the
+        // sidecar records the true rendered pose, not the value we re-assert below.
+        if (eye) {
+            g_renderedPos = eye->getPosition();
+            Stuff::Vector3D rr = eye->getRotation();
+            g_renderedProj = rr.x;
+            g_renderedRot  = rr.y;
+            g_renderedAlt  = eye->cameraAltitude;
+        }
+        const bool renderedOk = rendered_pose_matches(g_replay.marks[g_replay.idx]);
+        // Re-apply each settle frame (and re-freeze scripted overrides) so any
+        // residual swoop/goal logic cannot drift the pose. Sim is frozen, so
+        // settle only flushes render-side streaming / chunk-LOD admission /
+        // shadow warmup / bloom history.
         apply_bookmark(g_replay.marks[g_replay.idx]);
         if (g_replay.settleCount < g_replay.settleFrames) {
             ++g_replay.settleCount;
             return;
         }
+        // Frame-count settle elapsed. Additionally require the rendered pose to
+        // match the bookmark; if a scripted writer still drifted it, extend
+        // (bounded) so the re-applied+frozen pose gets a fresh render first.
+        if (!renderedOk && g_replay.extendCount < kMaxPoseExtend) {
+            if (g_replay.extendCount == 0)
+                fprintf(stderr, "[VISUAL_CAPTURE v1.5] bookmark '%s' rendered pose "
+                        "off-bookmark; extending settle (pose-verify guard)\n",
+                        g_replay.marks[g_replay.idx].name.c_str());
+            ++g_replay.extendCount;
+            return;
+        }
+        if (!renderedOk)
+            fprintf(stderr, "[VISUAL_CAPTURE v1.5] WARN bookmark '%s' still off-pose "
+                    "after %d extend frames -- capturing anyway\n",
+                    g_replay.marks[g_replay.idx].name.c_str(), kMaxPoseExtend);
         // Settled: capture this bookmark. The capture is byte-stable ONLY when
         // the deterministic clock (S9D sim + S9E shader, MC2_SMOKE_FIXED_TIMESTEP)
         // is engaged; without it the sweep freeze holds scenarioTime constant
