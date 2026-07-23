@@ -974,8 +974,35 @@ void main() {
                 if (alpha > 0.5) cementHit = true;
             }
         } else {
-            base = cementColor;
-            cementHit = true;
+            // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): SOLID cement tiles that abut
+            // BARE terrain (no cement neighbour, no authored transition art) are a
+            // hard full-tile square -> the stairstep pad/runway cliff. The CPU
+            // (PopulateRecipeCementWords, killswitch MC2_RUNWAY_EDGE_BLEND) packs a
+            // 4-neighbour "open border" mask into cementWord bits 19:16 for exactly
+            // those solid boundary tiles; we ramp cement -> base over the outer HALF
+            // tile (discrete SDF from the cement mask). Gate OFF => no bits => emask
+            // 0 => featherAlpha 1.0 => byte-identical full replacement. This does NOT
+            // touch the transition-tile marching-squares cut above (CEMENT-HARD-EDGE-1
+            // is a deliberate crisp diagonal). Bit map matches the CPU packing:
+            //   bit16 = E(+ctX open)  bit17 = W(-ctX)  bit18 = N(-ctY)  bit19 = S(+ctY)
+            // (cTileUV.x grows with +ctX, cTileUV.y grows with +ctY -- same convention
+            //  as the transition block).
+            uint reEmask = (cw >> 16) & 0xFu;
+            if (reEmask != 0u) {
+                float ru = cTileUV.x;   // 0 at -ctX (W), 1 at +ctX (E)
+                float rv = cTileUV.y;   // 0 at -ctY (N), 1 at +ctY (S)
+                float rd = 1.0;
+                if ((reEmask & 0x1u) != 0u) rd = min(rd, 1.0 - ru);  // E open
+                if ((reEmask & 0x2u) != 0u) rd = min(rd, ru);        // W open
+                if ((reEmask & 0x4u) != 0u) rd = min(rd, rv);        // N open
+                if ((reEmask & 0x8u) != 0u) rd = min(rd, 1.0 - rv);  // S open
+                float reAlpha = smoothstep(0.0, 0.5, rd);
+                base = mix(base, cementColor, reAlpha);
+                if (reAlpha > 0.5) cementHit = true;
+            } else {
+                base = cementColor;
+                cementHit = true;
+            }
         }
     }
 
