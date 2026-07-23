@@ -734,12 +734,17 @@ ALLOWLIST=(
     MC2_LIGHT_CONE_GLOW               # killswitch -- LIGHT-CONE-MODELS-1: =0 hides the additive authored light-cone beams at night
     MC2_LIGHT_CONE_GLOW_ALPHA         # override -- LIGHT-CONE-MODELS-1: peak cone-glow vertex alpha 0..255 (default 40; 255 = exaggeration probe)
     MC2_LIGHT_CONE_SPILL              # override -- LIGHT-CONE-MODELS-1: spill anchor scale on authored cone length (default 1.0, clamp [0,3])
+    MC2_LIGHT_CONE_DIAG               # trace -- CONE-AIM-DIAG-1: =1 dumps per-node apex/aim + cone-queue events (throttled)
+    MC2_LIGHT_CONE_AIM_FLIP           # probe -- CONE-AIM-FLIP-1: =1 negates the computed cone aim (wrong-side A/B probe, default OFF)
+    MC2_LIGHT_POOL_DUMP               # trace -- GHOST-LIGHT-DUMP-1: =1 dumps packed light-pool entries w/ slot+owner every 240 frames
     MC2_LIGHT_POOL_OBJ_SCALE          # override -- POOL-CONSUMERS-1: object-side pool intensity scale (default 0.7, clamp [0,2])
     MC2_WATER_SHORE_MASK              # killswitch -- WATER-SHORE-MASK-1: =0 restores tile-staircase water shore band (no mask feather)
     MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)
     MC2_SHADOW_DIST_FADE              # override -- SHADOW-DIST-FADE-1: dynamic-shadow dissolve ray distance wu (default 80, 0 = killswitch)
     MC2_SHADOW_DIST_FADE_MAX          # override -- SHADOW-DONUT-FIX-1: max fade opacity [0,1] (default 0.65; 1 = old full erase)
     MC2_SHADOW_FADE_CONT              # killswitch -- SHADOW-FADE-CONTINUOUS-1: =0 restores 4-step occluder-distance ladder (stepped fade)
+    MC2_SHADOW_FADE_RAMP0             # killswitch -- SHADOW-FADE-RAMP0-1: =0 restores 0.45-onset fade window (crisp/soft seam)
+    MC2_SHADOW_ALT_SCALE              # killswitch -- SHADOW-ALT-SCALE-1: =0 restores fixed low-sun fade gains at all sun altitudes
     MC2_LIGHT_POOL_MOVER_COLOR        # override -- MOVER-LIGHT-HALOGEN-1: mover light RRGGBB hex (default FFEED1 halogen; FFFF00 = legacy yellow)
     MC2_PAD_AREA_GLOW                 # override -- PAD-AREA-GLOW-1: night pad-area lift strength (default 0.12, 0 = killswitch)
     MC2_PAD_AREA_GLOW_SPILL           # override -- PAD-AREA-GLOW-1: spill feather distance wu past pad edge (default 48, clamp [4,127])

@@ -455,13 +455,17 @@ class gosMaterialVariationHelper {
             // fade (shadow.hglsl). =0 (killswitch) -> no define -> block
             // folds away, current behavior.
             if (mc2ShadowDistFadeWu() > 0.0f) {
-                char fadeDef[144];
+                char fadeDef[240];
                 snprintf(fadeDef, sizeof(fadeDef),
                          "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
                          "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                         "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                         "#define MC2_SHADOW_FADE_CONT_F %d\n"
+                         "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
+                         "#define MC2_SHADOW_ALT_SCALE_F %d\n",
                          mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0);
+                     mc2ShadowFadeCont() ? 1 : 0,
+                     mc2ShadowFadeRamp0() ? 1 : 0,
+                     mc2ShadowAltScale() ? 1 : 0);
                 defines_str.append(fadeDef);
             }
             defines_str.append("\n");
@@ -5236,13 +5240,17 @@ void gosRenderer::init() {
         // SHADOW-DIST-FADE-1: same define the terrain/material sites inject
         // (overlay + decal receive dynamic shadows too -- keep in lockstep).
         if (mc2ShadowDistFadeWu() > 0.0f) {
-            char fadeDef[144];
+            char fadeDef[240];
             snprintf(fadeDef, sizeof(fadeDef),
                      "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
                      "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                         "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                         "#define MC2_SHADOW_FADE_CONT_F %d\n"
+                     "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
+                     "#define MC2_SHADOW_ALT_SCALE_F %d\n",
                      mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0);
+                     mc2ShadowFadeCont() ? 1 : 0,
+                     mc2ShadowFadeRamp0() ? 1 : 0,
+                     mc2ShadowAltScale() ? 1 : 0);
             overlayPrefix.append(fadeDef);
         }
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",

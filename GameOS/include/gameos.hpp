@@ -2367,6 +2367,8 @@ float mc2ShadowObjNormalBias();  // object shadow-receive normal-offset (texels)
 float mc2ShadowDistFadeWu();     // SHADOW-DIST-FADE-1: dynamic-shadow dissolve distance (wu); 0 = off
 float mc2ShadowDistFadeMax();    // SHADOW-DONUT-FIX-1: max fade opacity [0,1], default 0.65 (1 = old full erase)
 bool  mc2ShadowFadeCont();       // SHADOW-FADE-CONTINUOUS-1: MC2_SHADOW_FADE_CONT, default ON; =0 restores 4-step ladder
+bool  mc2ShadowFadeRamp0();      // SHADOW-FADE-RAMP0-1: MC2_SHADOW_FADE_RAMP0, default ON; =0 restores 0.45-onset fade window (seam)
+bool  mc2ShadowAltScale();       // SHADOW-ALT-SCALE-1: MC2_SHADOW_ALT_SCALE, default ON; =0 restores fixed low-sun gains at all altitudes
 // STATIC-SHADOW-BANDING gates (single chokepoint, gameos_graphics.cpp). Both
 // DEFAULT ON since 2026-07-18 (field banding bug); "=0" kills (byte-identical
 // legacy). Every shader-prefix injection site MUST use these helpers -- do not

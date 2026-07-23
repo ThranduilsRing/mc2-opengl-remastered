@@ -1271,6 +1271,12 @@ def main():
                             # SHADOW-FADE-CONTINUOUS-1: continuous occluder-distance
                             # estimate (default ON; =0 restores 4-step ladder).
                             "MC2_SHADOW_FADE_CONT",
+                            # SHADOW-FADE-RAMP0-1: continuous-from-contact fade
+                            # (default ON; =0 restores 0.45-onset window/seam).
+                            "MC2_SHADOW_FADE_RAMP0",
+                            # SHADOW-ALT-SCALE-1: sun-altitude-scaled penumbra/
+                            # fade gains (default ON; =0 fixed low-sun gains).
+                            "MC2_SHADOW_ALT_SCALE",
                             # LIGHT-CULL-RADIUS-1: light-volume frustum test +
                             # owner-intent composition (default ON).
                             "MC2_LIGHT_CULL_RADIUS",
@@ -1285,6 +1291,11 @@ def main():
                             "MC2_LIGHT_CONE_GLOW",
                             "MC2_LIGHT_CONE_GLOW_ALPHA",
                             "MC2_LIGHT_CONE_SPILL",
+                            # CONE-AIM-DIAG-1 / CONE-AIM-FLIP-1 / GHOST-LIGHT-
+                            # DUMP-1 (batch-7 items 4+5 diagnostics).
+                            "MC2_LIGHT_CONE_DIAG",
+                            "MC2_LIGHT_CONE_AIM_FLIP",
+                            "MC2_LIGHT_POOL_DUMP",
                             # WATER-SHORE-MASK-1: smoothed-contour water shore feather.
                             "MC2_WATER_SHORE_MASK",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
