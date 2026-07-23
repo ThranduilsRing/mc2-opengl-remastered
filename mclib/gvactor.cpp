@@ -2627,7 +2627,7 @@ void GVAppearance::updateGeometry (void)
 					spotlightLights_.push_back(light);
 					spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
 					// T1.16 — tag this slot as (E)-owned, source=Gv.
-					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Gv);
+					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Gv, this);
 					++diagRegistered;
 
 					// First-hit trace (gv-side) — one stderr line per

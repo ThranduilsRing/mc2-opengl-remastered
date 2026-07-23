@@ -3891,7 +3891,7 @@ void Mech3DAppearance::updateGeometry (void)
 				// the light-pool producer can classify it (tags are recorded
 				// unconditionally; MC2_SPOT_DIAG gates only the printing).
 				if (lightId >= 0)
-					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech);
+					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech, this);
 
 				// MOVER-LIGHT-HALOGEN-1: warm halogen instead of legacy pure
 				// yellow (MC2_LIGHT_POOL_MOVER_COLOR override).
@@ -3990,7 +3990,7 @@ void Mech3DAppearance::updateGeometry (void)
 					spotlightLights_.push_back(light);
 					spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
 					// T1.16 — tag this slot as (E)-owned, source=Mech.
-					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Mech);
+					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Mech, this);
 					++diagRegistered;
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;

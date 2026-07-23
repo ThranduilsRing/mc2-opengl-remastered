@@ -3223,7 +3223,7 @@ long BldgAppearance::update (bool animate)
 				spotlightNodeIds_.push_back(static_cast<int>(nodeId));
 				// T1.16 — tag this slot as (E)-owned, source=Bldg, so the
 				// Camera::updateLights per-slot probe can recognize it.
-				mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Bldg);
+				mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Bldg, this);
 				++diagRegistered;
 			}
 			// Pool overflow detection: any spotlight found but not registered

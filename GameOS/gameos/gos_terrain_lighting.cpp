@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <unordered_map>   // GHOST-LIGHT-DUMP-1: light-ptr -> world slot
 
 #include "../../mclib/terrain.h"    // Terrain::realVerticesMapSide, vertexList, numberVertices
 #include "../../mclib/vertex.h"     // Vertex, PostcompVertex
@@ -911,10 +912,50 @@ void PackAndDispatch() {
                 if (p == lp) return true;
             return false;
         };
+        // GHOST-LIGHT-DUMP-1 (batch-7 item 5, env MC2_LIGHT_POOL_DUMP=1):
+        // periodic dump of every light the pool pack ACCEPTS this frame, with
+        // world-light slot + (E)-owner attribution (mc2_spotlight_diag), so a
+        // rendered pool with no visible caster can be traced to its owner.
+        // Default-off, zero cost when unset.
+        static const bool s_poolDump = []() {
+            const char* v = std::getenv("MC2_LIGHT_POOL_DUMP");
+            return (v && v[0] == '1');
+        }();
+        static unsigned long s_poolDumpFrame = 0;
+        const bool dumpThisFrame = s_poolDump && ((s_poolDumpFrame++ % 240) == 0);
+        std::unordered_map<const void*, long> ptrToSlot;
+        if (dumpThisFrame) {
+            if (TG_LightPtr* wl = eye->getWorldLights())
+                for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s)
+                    if (wl[s]) ptrToSlot[wl[s]] = s;
+            std::fprintf(stderr,
+                "[LIGHT_POOL_DUMP v1] frame_tick=%lu isNight=%d nTerrainLights=%ld\n",
+                s_poolDumpFrame, eye->isNight ? 1 : 0, eye->getNumTerrainLights());
+        }
         const long nLights = eye->getNumTerrainLights();
         for (long i = 2; i < nLights && numLights < s_maxLights; ++i) {
             TG_LightPtr tl = eye->getTerrainLight(i);
             if (!tl) continue;
+            if (dumpThisFrame) {
+                long slot = -1;
+                auto its = ptrToSlot.find(tl);
+                if (its != ptrToSlot.end()) slot = its->second;
+                mc2_spotlight_diag::SourceClass src;
+                const bool eOwned = mc2_spotlight_diag::is_e_slot(slot, &src);
+                std::fprintf(stderr,
+                    "[LIGHT_POOL_DUMP v1] idx=%ld slot=%ld type=%ld active=%d ownerEnabled=%d "
+                    "pos=(%.1f,%.1f,%.1f) argb=%08lx far=%.0f class=%s owner=%p packed=%d\n",
+                    i, slot, (long)tl->lightType, tl->active ? 1 : 0,
+                    (int)tl->ownerEnabled,
+                    tl->position.x, tl->position.y, tl->position.z,
+                    (unsigned long)tl->GetaRGB(), tl->farDistance,
+                    eOwned ? (src == mc2_spotlight_diag::Bldg ? "bldg"
+                              : src == mc2_spotlight_diag::Mech ? "mech" : "gv")
+                           : "other",
+                    mc2_spotlight_diag::slot_owner(slot),
+                    (!s_visGate || tl->active) ? 1 : 0);
+                std::fflush(stderr);
+            }
             if (s_visGate && !tl->active) continue;   // LIGHT-POOL-VIS-GATE-1
             GpuTerrainLight& gl = s_lightBuf[numLights];
             gl.position[0]   = tl->position.x;
