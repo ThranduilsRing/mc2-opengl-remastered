@@ -1157,11 +1157,13 @@ void gos_TerrainLodChunk_Init()
         // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra + fade
         // (shadow.hglsl). Lockstep with the gameos_graphics.cpp inject sites.
         if (mc2ShadowDistFadeWu() > 0.0f) {
-            char fadeDef[96];
+            char fadeDef[144];
             snprintf(fadeDef, sizeof(fadeDef),
                      "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n",
-                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax());
+                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
+                     "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
+                     mc2ShadowFadeCont() ? 1 : 0);
             prefix += fadeDef;
         }
         glsl_program* prog = glsl_program::makeProgram(

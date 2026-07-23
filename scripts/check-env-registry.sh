@@ -729,6 +729,7 @@ ALLOWLIST=(
     MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)
     MC2_SHADOW_DIST_FADE              # override -- SHADOW-DIST-FADE-1: dynamic-shadow dissolve ray distance wu (default 80, 0 = killswitch)
     MC2_SHADOW_DIST_FADE_MAX          # override -- SHADOW-DONUT-FIX-1: max fade opacity [0,1] (default 0.65; 1 = old full erase)
+    MC2_SHADOW_FADE_CONT              # killswitch -- SHADOW-FADE-CONTINUOUS-1: =0 restores 4-step occluder-distance ladder (stepped fade)
     MC2_LIGHT_POOL_MOVER_COLOR        # override -- MOVER-LIGHT-HALOGEN-1: mover light RRGGBB hex (default FFEED1 halogen; FFFF00 = legacy yellow)
     MC2_PAD_AREA_GLOW                 # override -- PAD-AREA-GLOW-1: night pad-area lift strength (default 0.12, 0 = killswitch)
     MC2_PAD_AREA_GLOW_SPILL           # override -- PAD-AREA-GLOW-1: spill feather distance wu past pad edge (default 48, clamp [4,127])

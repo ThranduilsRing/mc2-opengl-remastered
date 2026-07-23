@@ -35,6 +35,17 @@ const float kShadowDistFadeWu = float(MC2_SHADOW_DIST_FADE_WU);
 #define MC2_SHADOW_DIST_FADE_MAX_F 0.65
 #endif
 const float kShadowDistFadeMax = float(MC2_SHADOW_DIST_FADE_MAX_F);
+// SHADOW-FADE-CONTINUOUS-1 (env MC2_SHADOW_FADE_CONT, killswitch =0): the
+// original occluder-distance ladder probed only 4 discrete reference depths,
+// quantizing dNorm to 5 levels -> spatially-coherent STEP boundaries in both
+// the fade opacity and the penumbra radius (user-visible: stepped fade change
+// along long shadows, blotchy dithered mech shadows). Continuous variant: 8
+// midpoint references with a per-pixel half-step jitter on the whole ladder
+// (reuses the existing rotation hash) -- halves the depth step and converts
+// the residual staircase into fine unbiased noise instead of coherent bands.
+#ifndef MC2_SHADOW_FADE_CONT_F
+#define MC2_SHADOW_FADE_CONT_F 1
+#endif
 
 // 16-sample Poisson disk (well-distributed points in unit circle)
 const vec2 poissonDisk[16] = vec2[](
@@ -216,6 +227,22 @@ float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int
         float fadeNdc = kShadowDistFadeWu / max(csmDepthSpan, 1.0);
         float occP = 0.0;
         vec2 searchR = radius * 3.0 * texelSize;
+#if MC2_SHADOW_FADE_CONT_F != 0
+        // SHADOW-FADE-CONTINUOUS-1: 8 midpoint refs + per-pixel ladder jitter
+        // (see macro block above for the staircase mechanism writeup).
+        float ladderJit = fract(angle * 0.15915494) - 0.5;   // [-0.5,0.5)
+        for (int p = 0; p < 4; ++p) {
+            vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+            float o = 0.0;
+            for (int q = 0; q < 8; ++q) {
+                float stepN = clamp((float(q) + 0.5 + ladderJit) * 0.125, 0.0, 1.0);
+                o += 1.0 - texture(dynamicShadowArray,
+                        vec4(uv, float(layer), currentDepth - fadeNdc * stepN));
+            }
+            occP = max(occP, o * 0.125);
+        }
+        float dNorm = occP;                 // ~ occluder ray-distance / fade distance
+#else
         for (int p = 0; p < 4; ++p) {
             vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
             float o = 0.0;
@@ -226,6 +253,7 @@ float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int
             occP = max(occP, o);
         }
         float dNorm = occP * 0.25;          // ~ occluder ray-distance / fade distance
+#endif
         radius *= 1.0 + 4.0 * dNorm;        // penumbra grows with occluder distance
         distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
     }
@@ -272,6 +300,21 @@ float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps)
         float fadeNdc = kShadowDistFadeWu / max(csmDepthSpan, 1.0);
         float occP = 0.0;
         vec2 searchR = radius * 3.0 * texelSize;
+#if MC2_SHADOW_FADE_CONT_F != 0
+        // SHADOW-FADE-CONTINUOUS-1: 8 midpoint refs + per-pixel ladder jitter.
+        float ladderJit = fract(angle * 0.15915494) - 0.5;   // [-0.5,0.5)
+        for (int p = 0; p < 4; ++p) {
+            vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+            float o = 0.0;
+            for (int q = 0; q < 8; ++q) {
+                float stepN = clamp((float(q) + 0.5 + ladderJit) * 0.125, 0.0, 1.0);
+                o += 1.0 - texture(dynamicFullMapShadow,
+                        vec3(uv, currentDepth - fadeNdc * stepN));
+            }
+            occP = max(occP, o * 0.125);
+        }
+        float dNorm = occP;
+#else
         for (int p = 0; p < 4; ++p) {
             vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
             float o = 0.0;
@@ -282,6 +325,7 @@ float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps)
             occP = max(occP, o);
         }
         float dNorm = occP * 0.25;
+#endif
         radius *= 1.0 + 4.0 * dNorm;
         distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
     }
@@ -407,6 +451,21 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
             float fadeNdc = kShadowDistFadeWu * invSpan;
             float occP = 0.0;
             vec2 searchR = radius * 3.0 * texelSize;
+#if MC2_SHADOW_FADE_CONT_F != 0
+            // SHADOW-FADE-CONTINUOUS-1: 8 midpoint refs + per-pixel ladder jitter.
+            float ladderJit = fract(angle * 0.15915494) - 0.5;   // [-0.5,0.5)
+            for (int p = 0; p < 4; ++p) {
+                vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
+                float o = 0.0;
+                for (int q = 0; q < 8; ++q) {
+                    float stepN = clamp((float(q) + 0.5 + ladderJit) * 0.125, 0.0, 1.0);
+                    o += 1.0 - texture(dynamicShadowMap,
+                            vec3(uv, currentDepth - fadeNdc * stepN));
+                }
+                occP = max(occP, o * 0.125);
+            }
+            float dNorm = occP;
+#else
             for (int p = 0; p < 4; ++p) {
                 vec2 uv = projCoords.xy + rot * poissonDisk[p] * searchR;
                 float o = 0.0;
@@ -417,6 +476,7 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
                 occP = max(occP, o);
             }
             float dNorm = occP * 0.25;
+#endif
             radius *= 1.0 + 4.0 * dNorm;
             distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
         }

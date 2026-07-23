@@ -194,6 +194,19 @@ float mc2ShadowDistFadeMax()
     return s_m;
 }
 
+// SHADOW-FADE-CONTINUOUS-1: continuous occluder-distance estimate (8 midpoint
+// refs + per-pixel ladder jitter) for the distance fade. Default ON; =0
+// restores the original 4-step staircase ladder (visible fade/penumbra step
+// boundaries, the batch-6 mech-shadow report).
+bool mc2ShadowFadeCont()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_SHADOW_FADE_CONT");
+        return !(v && v[0] == '0');
+    }();
+    return s_on;
+}
+
 // Object shadow-receive normal-offset bias (in cascade texels). Default 2.0,
 // clamped [0,16]. 0 disables the normal-offset (A/B). Slope-scale term in the
 // shader is always-on (tiny); this only gates the world-space normal-offset.
@@ -620,11 +633,13 @@ void gosPostProcess::init(int w, int h)
     // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
     // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
     if (mc2ShadowDistFadeWu() > 0.0f) {
-        char fadeDef[96];
+        char fadeDef[144];
         snprintf(fadeDef, sizeof(fadeDef),
                  "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                 "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n",
-                 mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax());
+                 "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
+                 "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                 mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
+                     mc2ShadowFadeCont() ? 1 : 0);
         screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",

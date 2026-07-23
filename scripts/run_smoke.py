@@ -1268,6 +1268,9 @@ def main():
                             "MC2_SHADOW_DIST_FADE",
                             # SHADOW-DONUT-FIX-1: fade opacity cap (default 0.65).
                             "MC2_SHADOW_DIST_FADE_MAX",
+                            # SHADOW-FADE-CONTINUOUS-1: continuous occluder-distance
+                            # estimate (default ON; =0 restores 4-step ladder).
+                            "MC2_SHADOW_FADE_CONT",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.
