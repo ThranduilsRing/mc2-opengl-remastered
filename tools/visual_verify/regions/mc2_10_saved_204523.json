@@ -1,0 +1,38 @@
+{
+  "bookmark": "mc2_10_saved_204523",
+  "mission": "mc2_10",
+  "framing": "NIGHT near-top-down (proj 85.75), N base; the 'worst water' pose",
+  "source_verdict": "mc2_10_saved_204523 (worst water top-down)",
+  "regions": [
+    {
+      "id": "shore_upperright_inlet",
+      "rect": {"mode": "px", "x": 2330, "y": 640, "w": 200, "h": 290, "ref_w": 3840, "ref_h": 2160},
+      "severity": "critical",
+      "check": "HEADLINE FAIL: water outline snaps to terrain tile grid — one giant ~137-148px axis-aligned step, dead-vertical risers (x varies <=3px over 138px). Fix = subdivide/displace the water-edge isoline. Worst offender.",
+      "thresholds": {"mean_delta": 2.5, "changed_pct": 1.0, "struct": 6.0}
+    },
+    {
+      "id": "shore_right_landmass",
+      "rect": {"mode": "norm", "x": 0.60, "y": 0.30, "w": 0.35, "h": 0.45},
+      "severity": "critical",
+      "approx": true,
+      "check": "Right land-mass shore: repeated 90-degree tile steps; far-right kite has crisp straight angular edges meeting at hard vertices.",
+      "thresholds": {"mean_delta": 2.5, "changed_pct": 1.0, "struct": 6.0}
+    },
+    {
+      "id": "compound_light_wedges",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.30, "w": 0.25, "h": 0.25},
+      "severity": "low",
+      "approx": true,
+      "check": "Lit compound pool coherent + centered; directional yellow wedge/kite light-decal quads persist as hard-edged flat translucent polygons (anchored at fixtures, cosmetic).",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    },
+    {
+      "id": "ghost_light_right",
+      "rect": {"mode": "px", "x": 2680, "y": 560, "w": 360, "h": 300, "ref_w": 3840, "ref_h": 2160},
+      "severity": "low",
+      "check": "PASS (identified): isolated glow is a real lit building prop (bunker/turret + tree + soft ground pool), NOT a stray light. Watch it stays a legit prop.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    }
+  ]
+}

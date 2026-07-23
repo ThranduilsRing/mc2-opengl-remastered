@@ -1,0 +1,39 @@
+{
+  "bookmark": "mc2_10_saved_204611",
+  "mission": "mc2_10",
+  "framing": "NIGHT, low-angle across the lake, airbase; the 'horizon is not right' pose",
+  "source_verdict": "mc2_10_saved_204611 (low-angle across lake, night)",
+  "regions": [
+    {
+      "id": "horizon_white_billboards",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.235, "w": 0.12, "h": 0.075},
+      "severity": "high",
+      "check": "HEADLINE FAIL: distant LOD tree impostors render fullbright PURE WHITE (peak RGB ~255,255,253) against night terrain (~50,49,43) and sky (~127) — un-hazed silhouette cutouts. LOD/billboard crossfade flashes fullbright before resolving. Single most eye-catching defect.",
+      "thresholds": {"mean_delta": 3.0, "changed_pct": 1.5, "struct": 8.0}
+    },
+    {
+      "id": "far_water_surface",
+      "rect": {"mode": "norm", "x": 0.20, "y": 0.30, "w": 0.60, "h": 0.14},
+      "severity": "medium",
+      "approx": true,
+      "check": "Teal far water; no z-fight shimmer or hard tonal banding. Mild alpha-dither stipple on the bright fog-blend horizon band is expected (minor).",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    },
+    {
+      "id": "near_shore_peninsula",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.55, "w": 0.40, "h": 0.25},
+      "severity": "low",
+      "approx": true,
+      "check": "Base peninsula waterline smooth; no staircase outline, sliver, or glow ring.",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "night_base_lighting",
+      "rect": {"mode": "norm", "x": 0.35, "y": 0.55, "w": 0.35, "h": 0.30},
+      "severity": "low",
+      "approx": true,
+      "check": "Coherent night base: warm building interiors, spotlight pools, runway/perimeter lights; sources visible and sanely placed.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    }
+  ]
+}

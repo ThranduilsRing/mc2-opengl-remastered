@@ -1,0 +1,32 @@
+{
+  "bookmark": "mc2_10_saved_212140",
+  "mission": "mc2_10",
+  "framing": "NIGHT snow-band, near-top-down (proj 71); the historical worst-case shadow pose",
+  "source_verdict": "mc2_10_saved_212140 (historical worst-case shadow pose)",
+  "regions": [
+    {
+      "id": "tree_shadows_directional",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.25, "w": 0.45, "h": 0.40},
+      "severity": "high",
+      "approx": true,
+      "check": "Tree shadows must read as intentional directional long shadows from a low sun: PARALLEL (not fanning from a point), crisp/dark at trunk-contact, continuously softening toward the far end. No donut/hollow-center, no hard near/far seam, no ordered dither-step. Length ~2-3x tree height, consistent frame-wide. Currently PASS.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    },
+    {
+      "id": "snow_shadow_crossings",
+      "rect": {"mode": "norm", "x": 0.35, "y": 0.45, "w": 0.35, "h": 0.30},
+      "severity": "medium",
+      "approx": true,
+      "check": "High-albedo snow is the harshest test: tree-base shadows landing on snow stay crisp at contact and fade smoothly; the contrast must NOT expose streak/banding/hard edge.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    },
+    {
+      "id": "snow_terrain_seams",
+      "rect": {"mode": "norm", "x": 0.15, "y": 0.30, "w": 0.35, "h": 0.35},
+      "severity": "low",
+      "approx": true,
+      "check": "Snow renders as smooth wind-ripple texture with soft fog gradients — no stair-step luminance banding, no straight tile-seam lines. Scattered dark ovals = terrain microrelief/rocks (not casterless shadows).",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    }
+  ]
+}

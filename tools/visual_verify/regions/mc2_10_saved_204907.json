@@ -1,0 +1,31 @@
+{
+  "bookmark": "mc2_10_saved_204907",
+  "mission": "mc2_10",
+  "framing": "NIGHT airbase overview, low oblique (proj 12.6, rot -80); frames the distant ridge-top base (lighting-consistency pose B)",
+  "source_verdict": "mc2_10_saved_204907 (airbase overview angle B)",
+  "regions": [
+    {
+      "id": "distant_ridge_base",
+      "rect": {"mode": "px", "x": 1300, "y": 200, "w": 300, "h": 100, "ref_w": 3840, "ref_h": 2160},
+      "severity": "critical",
+      "check": "Distant ridge-top base must be LIT (buildings, warm interiors, road, tower). On nifty this is correct; on deferred-sweep it regressed to PURE BLACK (max=0). Historically all-dark-at-angle-B symptom — key regression sentinel.",
+      "thresholds": {"mean_delta": 3.0, "changed_pct": 1.5, "struct": 8.0}
+    },
+    {
+      "id": "spotlight_towers",
+      "rect": {"mode": "norm", "x": 0.25, "y": 0.30, "w": 0.35, "h": 0.40},
+      "severity": "medium",
+      "approx": true,
+      "check": "Near stepped tower casts two symmetric warm fans, apex at fixture widening to ground (anchor correct); standalone hillside pedestal tower visible/lit.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    },
+    {
+      "id": "near_base_lighting",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.50, "w": 0.40, "h": 0.35},
+      "severity": "low",
+      "approx": true,
+      "check": "Near base: pools feathered, every glow sourced to a building/tower, no ghosts. Warm interiors (nifty) vs cooler/dimmer (deferred) = build tone difference.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    }
+  ]
+}

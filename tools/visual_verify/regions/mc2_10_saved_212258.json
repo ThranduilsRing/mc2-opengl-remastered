@@ -1,0 +1,40 @@
+{
+  "bookmark": "mc2_10_saved_212258",
+  "mission": "mc2_10",
+  "framing": "NIGHT airbase, top-down (proj 77.9, rot -91)",
+  "source_verdict": "mc2_10_saved_212258 (airbase top-down)",
+  "regions": [
+    {
+      "id": "runway_pad_edges_blend",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.45, "w": 0.45, "h": 0.30},
+      "severity": "high",
+      "approx": true,
+      "check": "HEADLINE FAIL: asphalt/cement meets terrain as a HARD, blocky, stairstepped tile boundary with only a 1px stochastic dither — no transition/blend. Matches user complaint 'doesn't blend'. Fix target.",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "runway_grid_complete",
+      "rect": {"mode": "norm", "x": 0.20, "y": 0.30, "w": 0.60, "h": 0.55},
+      "severity": "medium",
+      "approx": true,
+      "check": "Full interconnected runway grid (2 parallel horizontals + 1 vertical crossing); every terminus has threshold number + piano-key bar + end marker; no missing segments at ends or intersections.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    },
+    {
+      "id": "cement_tile_seams",
+      "rect": {"mode": "norm", "x": 0.22, "y": 0.22, "w": 0.30, "h": 0.25},
+      "severity": "low",
+      "approx": true,
+      "check": "Pad interior shows hard straight tonal seams (warm compound floor vs cooler apron/taxiway L-block) — reads as a material/style switch. Low severity, cosmetic.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    },
+    {
+      "id": "light_pools_sourcing",
+      "rect": {"mode": "norm", "x": 0.25, "y": 0.20, "w": 0.35, "h": 0.30},
+      "severity": "low",
+      "approx": true,
+      "check": "Pools soft/warm/non-saturated, no hard discs. NOTE two large central compound floor-pools have no visible lamp fixture (sourceless floodlight glow); edge-marker dots present but non-glowing (deferred feature).",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "bookmark": "mc2_01_saved_205644",
+  "mission": "mc2_01",
+  "framing": "DAY, wide near-level view over water + airbase; distant horizon visible",
+  "source_verdict": "mc2_01_saved_205644 (day, wide over water + airbase)",
+  "regions": [
+    {
+      "id": "horizon_waterline",
+      "rect": {"mode": "norm", "x": 0.15, "y": 0.30, "w": 0.80, "h": 0.10},
+      "severity": "medium",
+      "approx": true,
+      "check": "Far water meets distant land with a natural waterline; NO unnatural dark band across open water/sky. Distant-land silhouette may show mild tile-stepping (marginal, watch).",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "shore_left",
+      "rect": {"mode": "norm", "x": 0.05, "y": 0.52, "w": 0.30, "h": 0.24},
+      "severity": "medium",
+      "approx": true,
+      "check": "Smooth curved waterline with soft teal shallow blend; no tile-staircase, no white sliver.",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "shore_central",
+      "rect": {"mode": "norm", "x": 0.35, "y": 0.58, "w": 0.30, "h": 0.24},
+      "severity": "medium",
+      "approx": true,
+      "check": "Central shore segment: smooth waterline, no staircase/white sliver, no z-fight shimmer.",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "shore_botright",
+      "rect": {"mode": "norm", "x": 0.62, "y": 0.66, "w": 0.33, "h": 0.26},
+      "severity": "medium",
+      "approx": true,
+      "check": "Bottom-right shore: smooth curved waterline; watch for screen-door dither stipple bleeding onto sand.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.0, "struct": 12.0}
+    },
+    {
+      "id": "tree_shadows_palm",
+      "rect": {"mode": "norm", "x": 0.55, "y": 0.55, "w": 0.32, "h": 0.32},
+      "severity": "high",
+      "approx": true,
+      "check": "KNOWN FAIL: palm shadows render as screen-door dithered stipple blotches (diffuse dark-pixel cloud, no solid core) cast down-left. Should be crisp/short. Regression watch = does it get worse/better.",
+      "thresholds": {"mean_delta": 6.0, "changed_pct": 4.0, "struct": 14.0}
+    },
+    {
+      "id": "pad_edge",
+      "rect": {"mode": "norm", "x": 0.05, "y": 0.44, "w": 0.32, "h": 0.22},
+      "severity": "low",
+      "approx": true,
+      "check": "Pad edge is a clean straight diagonal, outline continuous; road/runway meets apron continuously; no cement tile-seam grid on the pad interior.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.0, "struct": 12.0}
+    },
+    {
+      "id": "mech_drop_shadows",
+      "rect": {"mode": "norm", "x": 0.38, "y": 0.48, "w": 0.26, "h": 0.22},
+      "severity": "low",
+      "approx": true,
+      "check": "Mech drop shadows: coherent, correctly placed, solid dark core; soft edge falls off via the same screen-door dither (marginal). No steps, no detached blotch.",
+      "thresholds": {"mean_delta": 6.0, "changed_pct": 4.0, "struct": 14.0}
+    }
+  ]
+}

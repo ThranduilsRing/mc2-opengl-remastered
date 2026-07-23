@@ -1,0 +1,40 @@
+{
+  "bookmark": "mc2_10_saved_204753",
+  "mission": "mc2_10",
+  "framing": "NIGHT airbase overview, near-top-down (proj 25, rot -1.25); lighting-consistency pose A",
+  "source_verdict": "mc2_10_saved_204753 (night airbase overview A)",
+  "regions": [
+    {
+      "id": "light_clusters_census",
+      "rect": {"mode": "norm", "x": 0.20, "y": 0.25, "w": 0.60, "h": 0.50},
+      "severity": "medium",
+      "approx": true,
+      "check": "Airbase lit-cluster census (hangar/cooling compound, command tower + fuel domes, walled barracks, tank farm, quonset + cooling tower, striped-roof pads). All should stay lit and consistent with angle B (204907).",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "runway_edge_lights",
+      "rect": {"mode": "norm", "x": 0.25, "y": 0.45, "w": 0.50, "h": 0.30},
+      "severity": "medium",
+      "approx": true,
+      "check": "Runway/taxiway flat inlaid slabs, crisp flat edge (not elevation cliff), soft AO seam; green/red/amber edge-light sprites line the strips. NOTE edge-light sprites are camera-angle-dependent (vanish near top-down).",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    },
+    {
+      "id": "pad_outline_fence",
+      "rect": {"mode": "norm", "x": 0.20, "y": 0.55, "w": 0.30, "h": 0.25},
+      "severity": "low",
+      "approx": true,
+      "check": "Stippled/noisy white outline around tank-farm/pad = chain-link perimeter fence alpha-tested texture (legit asset, not a render bug). Reads slightly noisy under light pool.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    },
+    {
+      "id": "lamp_cones",
+      "rect": {"mode": "norm", "x": 0.40, "y": 0.35, "w": 0.25, "h": 0.30},
+      "severity": "low",
+      "approx": true,
+      "check": "Light pools feather smoothly to dark; lamp-post ground cones anchored at each fixture base; rooftop beacon wedge traces to source. No ghost lights.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    }
+  ]
+}

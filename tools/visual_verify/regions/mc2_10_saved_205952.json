@@ -1,0 +1,31 @@
+{
+  "bookmark": "mc2_10_saved_205952",
+  "mission": "mc2_10",
+  "framing": "DUSK/night, map-corner wide overview, off-map slab over fog, grazing horizon",
+  "source_verdict": "mc2_10_saved_205952 (map-corner wide overview)",
+  "regions": [
+    {
+      "id": "distant_terrain_horizon_band",
+      "rect": {"mode": "px", "x": 200, "y": 230, "w": 3400, "h": 200, "ref_w": 3840, "ref_h": 2160},
+      "severity": "critical",
+      "check": "SENTINEL: distant terrain below the horizon must render graded terrain + trees + soft fog skirt (nifty). On deferred-sweep it collapses to PURE BLACK below a razor-hard horizontal seam at screen-y~=323 (black-px count 153186 vs 553). Do not ship a build where this region goes black.",
+      "thresholds": {"mean_delta": 3.0, "changed_pct": 1.5, "struct": 8.0}
+    },
+    {
+      "id": "water_shore_grazing",
+      "rect": {"mode": "norm", "x": 0.10, "y": 0.42, "w": 0.45, "h": 0.25},
+      "severity": "medium",
+      "approx": true,
+      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet — no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    },
+    {
+      "id": "map_edge_skirt",
+      "rect": {"mode": "norm", "x": 0.05, "y": 0.66, "w": 0.90, "h": 0.28},
+      "severity": "low",
+      "approx": true,
+      "check": "KNOWN class: pale blue-grey skirt/slab wraps the front corner (terrain feathers into a smooth extruded wall). Prominent purely due to corner framing; identical across builds. Not a new artifact.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    }
+  ]
+}

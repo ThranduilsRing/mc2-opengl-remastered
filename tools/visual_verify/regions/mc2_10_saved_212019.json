@@ -1,0 +1,32 @@
+{
+  "bookmark": "mc2_10_saved_212019",
+  "mission": "mc2_10",
+  "framing": "NIGHT valley, compound + guard towers + road approach",
+  "source_verdict": "mc2_10_saved_212019 (night valley, compound + guard towers + road)",
+  "regions": [
+    {
+      "id": "ghost_wedge_over_road",
+      "rect": {"mode": "norm", "x": 0.40, "y": 0.40, "w": 0.20, "h": 0.22},
+      "severity": "high",
+      "approx": true,
+      "check": "HEADLINE FAIL: bright solid OPAQUE tan/cream 3D wedge (folded-plane mesh: lit top facet + shadowed bottom facet) floats in mid-air above the road between the two foreground guard towers — no support, no caster, empty terrain below. Root cause = searchlight light-cone rendering as opaque geometry.",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "searchlight_cones_compound",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.15, "w": 0.40, "h": 0.30},
+      "severity": "medium",
+      "approx": true,
+      "check": "Compound guard-tower searchlights show the same bug at smaller scale: a little opaque tan wedge at each housing instead of a translucent additive cone.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    },
+    {
+      "id": "light_pools_road",
+      "rect": {"mode": "norm", "x": 0.30, "y": 0.55, "w": 0.40, "h": 0.30},
+      "severity": "low",
+      "approx": true,
+      "check": "Ground pools around tower bases + along the road: soft/feathered radial falloff, no hard discs, no saturation clipping. Real searchlight beam (if framed) traces back to its tower.",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    }
+  ]
+}

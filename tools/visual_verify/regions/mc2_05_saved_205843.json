@@ -1,0 +1,40 @@
+{
+  "bookmark": "mc2_05_saved_205843",
+  "mission": "mc2_05",
+  "framing": "TRUE NIGHT, base compounds; off-map slab over fog",
+  "source_verdict": "mc2_05_saved_205843 (true night, base compounds)",
+  "regions": [
+    {
+      "id": "cement_pads_dark",
+      "rect": {"mode": "norm", "x": 0.35, "y": 0.55, "w": 0.30, "h": 0.22},
+      "severity": "medium",
+      "approx": true,
+      "check": "Cement pads/runway strip stay DARK (pad mean ~[12,15,14], not floodlit). Night-correct.",
+      "thresholds": {"mean_delta": 4.0, "changed_pct": 2.5, "struct": 10.0}
+    },
+    {
+      "id": "light_pools_feathered",
+      "rect": {"mode": "norm", "x": 0.40, "y": 0.30, "w": 0.30, "h": 0.28},
+      "severity": "medium",
+      "approx": true,
+      "check": "Glow pools soft/feathered, no hard-edged discs/eggs/washes; every glow has a visible emitter (no ghost lights).",
+      "thresholds": {"mean_delta": 4.5, "changed_pct": 3.0, "struct": 11.0}
+    },
+    {
+      "id": "mech_night_shadow_fan",
+      "rect": {"mode": "norm", "x": 0.10, "y": 0.55, "w": 0.28, "h": 0.28},
+      "severity": "medium",
+      "approx": true,
+      "check": "KNOWN FAIL: mech ground shadow renders as a light-grey triangular FAN ~2x BRIGHTER than the night terrain it sits on (fan ~[22,24,18] vs terrain ~[9,11,11]). Should darken, not lighten.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.0, "struct": 12.0}
+    },
+    {
+      "id": "shoreline_dark_water",
+      "rect": {"mode": "norm", "x": 0.05, "y": 0.62, "w": 0.40, "h": 0.28},
+      "severity": "low",
+      "approx": true,
+      "check": "Dark water, lamp-lit causeway; perimeter-wall lamps sourced. No orphan glow.",
+      "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
+    }
+  ]
+}
