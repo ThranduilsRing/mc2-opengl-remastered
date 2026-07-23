@@ -8488,6 +8488,12 @@ DWORD gosRendererAddFontBmpTexture(const char* textureName)
     return getGosRenderer()->addTexture(ptex);
 }
 
+// MERGE-WAVE-1 shim: texture fetch for the font TU (rgba-mirror publication).
+gosTexture* gosRendererGetTexture(DWORD texId)
+{
+    return g_gos_renderer ? g_gos_renderer->getTexture(texId) : nullptr;
+}
+
 void gosRendererDeleteTexture(DWORD texId)
 {
     getGosRenderer()->deleteTexture(texId);

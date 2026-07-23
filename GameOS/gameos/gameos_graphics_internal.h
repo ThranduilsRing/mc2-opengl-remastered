@@ -463,6 +463,9 @@ int gosRendererLogicalHeight();
 // (STOPs on failure, matching the old inline behavior) and register it with
 // the renderer. Returns the gos texture handle.
 DWORD gosRendererAddFontBmpTexture(const char* textureName);
+// MERGE-WAVE-1 (VK-HUD-MIRRORCOPY-1 port): fetch a texture by id so the font
+// TU can publish the rgba mirror on the freshly-built atlas.
+gosTexture* gosRendererGetTexture(DWORD texId);
 
 // gosFont::~gosFont: release the font page texture.
 void gosRendererDeleteTexture(DWORD texId);
