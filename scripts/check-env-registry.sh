@@ -584,6 +584,7 @@ ALLOWLIST=(
     MC2_SCENE_LIGHTING_ASSERT         # infra -- fatal-assert opt-in for scene lighting
     MC2_SCENE_LIGHTING_TRACE          # trace
     MC2_SCREENSHOT_AT_FRAME           # infra -- screenshot capture tool
+    MC2_CAMERA_PARK                   # infra -- CAMERA-PARK-1 fixture: live camera pose pin "x,y,rot,proj,alt[@frame]"
     MC2_SCREENSHOT_PATH               # infra -- screenshot capture tool
     MC2_SENSOR_SCAN_FACTS             # trace
     MC2_SHADER_PATH_TINT              # trace
