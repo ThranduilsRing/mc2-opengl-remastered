@@ -254,6 +254,26 @@
    "note": "SHADOW-FADE-CONTINUOUS (deferred-sweep-1): continuous-fade factor, env-seeded literal at program build. [added MERGE-WAVE-2 governance reconcile 2026-07-22]"
   },
   {
+   "name": "MC2_SHADOW_FADE_RAMP0_F",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:486 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-FADE-RAMP0-1 (deferred-sweep-1 c41e82d2): 0/1 toggle for ramp-from-zero dist fade, env-seeded literal at program build; not per-draw. [added MERGE-WAVE-3 governance reconcile 2026-07-23]"
+  },
+  {
+   "name": "MC2_SHADOW_ALT_SCALE_F",
+   "class": "RUNTIME_CONSTANT",
+   "injected": true,
+   "injector": "gameos_graphics.cpp:487 (shadow prefix)",
+   "glsl_tested": true,
+   "reflect_covered": false,
+   "anchor_covered": false,
+   "note": "SHADOW-ALT-SCALE-1 (deferred-sweep-1 c41e82d2): 0/1 toggle for sun-altitude-scaled shadow softness (sunAltSin), env-seeded literal at program build. [added MERGE-WAVE-3 governance reconcile 2026-07-23]"
+  },
+  {
    "name": "MC2_SHADOW_STATIC_BANDFIX",
    "class": "OFFLINE_VARIANT",
    "injected": true,
