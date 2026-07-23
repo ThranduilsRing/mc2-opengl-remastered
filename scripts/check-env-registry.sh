@@ -737,6 +737,7 @@ ALLOWLIST=(
     MC2_LIGHT_CONE_DIAG               # trace -- CONE-AIM-DIAG-1: =1 dumps per-node apex/aim + cone-queue events (throttled)
     MC2_LIGHT_CONE_AIM_FLIP           # probe -- CONE-AIM-FLIP-1: =1 negates the computed cone aim (wrong-side A/B probe, default OFF)
     MC2_LIGHT_POOL_DUMP               # trace -- GHOST-LIGHT-DUMP-1: =1 dumps packed light-pool entries w/ slot+owner every 240 frames
+    MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP  # killswitch -- GHOST-CONE-RECIPE-SKIP-1: =0 restores baking SpotLight_ cone meshes into static recipes (opaque tan wedges)
     MC2_LIGHT_POOL_OBJ_SCALE          # override -- POOL-CONSUMERS-1: object-side pool intensity scale (default 0.7, clamp [0,2])
     MC2_WATER_SHORE_MASK              # killswitch -- WATER-SHORE-MASK-1: =0 restores tile-staircase water shore band (no mask feather)
     MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)

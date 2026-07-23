@@ -4131,6 +4131,26 @@ void BldgAppearance::registerStatic() {
 		// is why mc2_10 buildings (warehouses, S_admin, control) previously
 		// failed registerStatic and never reached the substrate.
 		if (!child->IsShapeNode()) { ++diag_skip_helper; continue; }
+		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
+		// must NOT enter the persistent-bucket recipe. submitMultiShape has
+		// skipped them unconditionally since T3.1 (gos_static_prop_batcher.cpp
+		// ~5006: cones are replaced by real TG_Lights + the additive cone
+		// glow), but THIS registerStatic recipe path still baked the authored
+		// cone MESH into the cached record — every static building with a
+		// searchlight drew its cone as an OPAQUE LIT tan wedge (the user's
+		// "ghost light" floating wedge + the small wedges at every searchlight
+		// housing; proven by A/B: wedge gone with
+		// MC2_STATIC_PROP_PERSISTENT_BUCKETS=0 / MC2_GPU_OBJECTS=0, unchanged
+		// by MC2_LIGHT_CONE_GLOW=0). The bit-2 instanceFlag it used to set was
+		// already dead (shader read deleted in T3.2).
+		// Killswitch MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP=0 restores the bake.
+		{
+			static const bool s_recipeSpotSkip = []() {
+				const char* v = getenv("MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP");
+				return !(v && v[0] == '0');   // default ON
+			}();
+			if (s_recipeSpotSkip && child->GetIsSpotlight()) { ++diag_skip_helper; continue; }
+		}
 		uint32_t flags = 0;
 		if (child->GetLightsOut())   flags |= (1u << 0);
 		if (child->GetIsWindow())    flags |= (1u << 1);
@@ -6998,6 +7018,15 @@ void TreeAppearance::registerStatic() {
 			// 2026-05-10 fix: skip non-SHAPE_NODE helpers (mirror of submitMultiShape's
 			// filter) — see BldgAppearance::registerStatic for full rationale.
 			if (!child->IsShapeNode()) { ++t_diag_skip_h; continue; }
+			// GHOST-CONE-RECIPE-SKIP-1: see BldgAppearance::registerStatic —
+			// same skip for the tree/LOD recipe loop (lockstep).
+			{
+				static const bool s_recipeSpotSkip2 = []() {
+					const char* v = getenv("MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP");
+					return !(v && v[0] == '0');   // default ON
+				}();
+				if (s_recipeSpotSkip2 && child->GetIsSpotlight()) { ++t_diag_skip_h; continue; }
+			}
 			uint32_t flags = 0;
 			if (child->GetLightsOut())   flags |= (1u << 0);
 			if (child->GetIsWindow())    flags |= (1u << 1);

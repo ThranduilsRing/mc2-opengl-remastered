@@ -1296,6 +1296,9 @@ def main():
                             "MC2_LIGHT_CONE_DIAG",
                             "MC2_LIGHT_CONE_AIM_FLIP",
                             "MC2_LIGHT_POOL_DUMP",
+                            # GHOST-CONE-RECIPE-SKIP-1: spotlight cone leaves
+                            # excluded from static recipes (default ON).
+                            "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP",
                             # WATER-SHORE-MASK-1: smoothed-contour water shore feather.
                             "MC2_WATER_SHORE_MASK",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.

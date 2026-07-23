@@ -262,6 +262,20 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     float lenLocal = 0.0f;
     const bool haveAxis = localConeAxis(ts, axisLocal, lenLocal);
 
+    // GHOST-LIGHT-DUMP-1 finding (batch-7): early frames can reach here BEFORE
+    // the owner shape's first TransformMultiShape — shapeToWorld is still
+    // zero/identity ([CONE_QUEUE_DIAG] apexMC2=(0,0,0)) and the cone would be
+    // queued at world origin with a garbage screen transform. Real props never
+    // sit at EXACT world origin (terrain elevation alone is nonzero), so a
+    // near-zero translation is a reliable "not yet transformed" sentinel.
+    {
+        const float tx = rec->shapeToWorld.entries[3];
+        const float ty = rec->shapeToWorld.entries[7];
+        const float tz = rec->shapeToWorld.entries[11];
+        if (std::fabs(tx) + std::fabs(ty) + std::fabs(tz) < 0.01f)
+            return;
+    }
+
     // New-frame reset (renderLists may not have run last frame — pause etc).
     if (s_queueTurn != turn)
     {
