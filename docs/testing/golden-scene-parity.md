@@ -63,7 +63,7 @@ DRIFT. Why not DRIFT: the drift tolerance is `[min − pad, max + pad]` over the
 sampled OFF floor. When the N OFF captures happen to run at similar high
 framerates the sampled range is *tight*, and a slower ON island's much lower count
 falls outside the padded envelope → a **false BEYOND** even though pixels are
-byte-identical. This actually happened on `mc2_01` / `MC2_VULKAN_EDGE_FOG_ISLAND`:
+byte-identical. This actually happened on `mc2_01` / `MC2_VULKAN_EDGE_FOG_ISLAND` (gate since RETIRED — old interop island superseded by the shared-GBuffer VK path; historical example kept for the floor-design rationale):
 OFF ≈ 2400 frames vs ON ≈ 1735, samples `25267 → 14305` (fbo `29477 → 16688`),
 identical fbo:probe ratio `1.167` both, **0 pixels changed**, yet the old floor
 reported `within_floor=False culprits=frame_graph.{ambient_probe,fbo,viewport_probe}_samples`.
