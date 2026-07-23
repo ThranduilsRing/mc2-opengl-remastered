@@ -4131,6 +4131,27 @@ void BldgAppearance::registerStatic() {
 		// is why mc2_10 buildings (warehouses, S_admin, control) previously
 		// failed registerStatic and never reached the substrate.
 		if (!child->IsShapeNode()) { ++diag_skip_helper; continue; }
+		// CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every
+		// static-prop recipe leaf's real node name + flags. cone_glow's diag emits a
+		// node INDEX only, and MC2_ANIMATED_PROP_PROBE fires ONLY inside the PBR-override
+		// block (misses every non-override building), so before this there was no
+		// build-free way to learn a static-prop leaf's NAME. That gap blocked the
+		// batch-7/8 "which leaf draws the 212019 searchlight wedge" question for two
+		// sessions. Answer (this dump, mc2_10): the wedge is the standalone `Spotlight`
+		// prop, whose leaves are 'L_SpotLight'/'L_SpotRotar'/'L_SpotBattery' — all
+		// isSpot=0 because GetIsSpotlight() keys on the EXACT "SpotLight_" 10-char prefix
+		// and "L_SpotLight" does not match it. Building-attached ghost cones
+		// ('Spotlight_Building01', 'SpotLight_Building', 'Spotlight_SensorCon',
+		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
+		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
+		if (getenv("MC2_CONE_LEAF_DUMP")) {
+			fprintf(stderr, "[CONE_LEAF] type=%s leaf=%d node='%s' isSpot=%d isWin=%d lightsOut=%d\n",
+			        appearType ? appearType->name : "?", i,
+			        child->getNodeName() ? child->getNodeName() : "(null)",
+			        (int)child->GetIsSpotlight(), (int)child->GetIsWindow(),
+			        (int)child->GetLightsOut());
+			fflush(stderr);
+		}
 		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
 		// must NOT enter the persistent-bucket recipe. submitMultiShape has
 		// skipped them unconditionally since T3.1 (gos_static_prop_batcher.cpp
@@ -4144,6 +4165,19 @@ void BldgAppearance::registerStatic() {
 		// by MC2_LIGHT_CONE_GLOW=0). The bit-2 instanceFlag it used to set was
 		// already dead (shader read deleted in T3.2).
 		// Killswitch MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP=0 restores the bake.
+		//
+		// CONE-LEAF-NAME INVARIANT (batch-8C -- DO NOT WIDEN THIS PREDICATE):
+		// GetIsSpotlight() is TRUE only for leaves whose node name carries the exact
+		// 10-char "SpotLight_" prefix (tgl.cpp:345/561, case-insensitive). The mc2_10
+		// saved_212019 "cream wedge" belongs to the standalone `Spotlight` prop (leaf
+		// 'L_SpotLight', a TEXTURED 16-vert lamp head, bitmap L_Spotlight.tga), which is
+		// NOT "SpotLight_"-prefixed, so it is legit geometry this skip must leave alone.
+		// Do NOT broaden the test to "SpotLight"/"L_Spot"/a cone-shape heuristic to chase
+		// that wedge: it would EAT the real searchlight-lamp mesh (and other L_Spot* /
+		// LitWin_Spot* leaves). The wedge's wrong cream look is the SAME unlit-static-prop
+		// root as the batch-8 Item A/B far-backdrop artifact (unlit geometry showing raw
+		// art colour); fix it by LIGHTING that pass, not by skipping the prop. Evidence +
+		// the MC2_CONE_LEAF_DUMP census: .claude/DEFERRED-BATCH-8C-STATUS.md.
 		{
 			static const bool s_recipeSpotSkip = []() {
 				const char* v = getenv("MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP");

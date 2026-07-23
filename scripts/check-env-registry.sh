@@ -75,6 +75,7 @@ ALLOWLIST=(
     MC2_BUCKET_HEADER_TRACE     # trace
     MC2_COALESCE_FORCE_DISARM   # override
     MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE  # trace
+    MC2_CONE_LEAF_DUMP          # trace -- batch-8C static-prop leaf-name census (default OFF)
     MC2_CPU_PROJ_COST_SPLIT     # feature -- promote-to-registry
     MC2_DRAW_PACKET_COMPARE         # trace
     MC2_DRAW_PACKET_COMPARE_VERBOSE # trace
