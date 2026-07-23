@@ -763,6 +763,7 @@ ALLOWLIST=(
     MC2_LIGHT_POOL_MOVER_DIM          # override -- NIGHT-LIGHT-POOLS-2/4: mover-light pool dim factor (default 0.25 since POOLS-4)
     MC2_LIGHT_POOL_MOVER_RADIUS       # override -- NIGHT-LIGHT-POOLS-4: mover pool radius scale (default 0.6, 1 = legacy radii)
     MC2_LIGHT_POOL_MOVER_MAXBLEND     # killswitch -- NIGHT-LIGHT-POOLS-4: =0 restores additive mover-pool stacking
+    MC2_MOVER_CONTACT_SHADOW          # override -- MOVER-CONTACT-SHADOW-1 (MASTER-FAIL #7): under-mech night contact shadow strength 0..1 (default 0=off, byte-identical)
     MC2_LIGHT_POOL_VIS_GATE           # killswitch -- LIGHT-POOL-VIS-GATE-1: =0 restores packing inactive lights (FoW leak)
     MC2_LIGHT_CULL_RADIUS             # killswitch -- LIGHT-CULL-RADIUS-1: =0 restores position-only light screen test (pool popping)
     MC2_LIGHT_POOL_MOVER_FWD          # override -- MOVER-LIGHT-FORWARD-1: mover pool forward bias wu (default 24, clamp [0,120]; 0 = centered)

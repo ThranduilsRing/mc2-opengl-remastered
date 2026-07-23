@@ -1491,6 +1491,9 @@ def main():
                             "MC2_LIGHT_POOL_COMPRESS",
                             "MC2_LIGHT_POOL_MOVER_RADIUS",
                             "MC2_LIGHT_POOL_MOVER_MAXBLEND",
+                            # MOVER-CONTACT-SHADOW-1 (MASTER-FAIL #7): under-mech
+                            # night contact shadow strength (default 0 = off).
+                            "MC2_MOVER_CONTACT_SHADOW",
                             # MOVER-LIGHT-HALOGEN-1: mover light color RRGGBB hex.
                             "MC2_LIGHT_POOL_MOVER_COLOR",
                             # PAD-AREA-GLOW-1: night pad-area lift (strength + spill wu).
@@ -1933,6 +1936,14 @@ def main():
                             # StaticPropAmbientV1 hemisphere ambient term (default-OFF).
                             # MC2_STATIC_PROP_AMBIENT_V1=1 enables the ambient V1 path.
                             "MC2_STATIC_PROP_AMBIENT_V1",
+                            # FAR-BACKDROP-LIT night-shade substitution for far/impostor
+                            # static-prop LODs (default-OFF). Gate + distance-band +
+                            # strength + debug tint tunables. OFF -> byte-identical.
+                            "MC2_FAR_BACKDROP_LIT",
+                            "MC2_FAR_BACKDROP_LIT_NEAR",
+                            "MC2_FAR_BACKDROP_LIT_FAR",
+                            "MC2_FAR_BACKDROP_LIT_STRENGTH",
+                            "MC2_FAR_BACKDROP_LIT_TINT",
                             # V-MATERIAL-DEBUG-1 gated debug material views
                             # (default-OFF). 1=albedo, 2=materialIdx, 3=normal,
                             # 4=texArrayLayer, 5=roughness, 6=metallic.

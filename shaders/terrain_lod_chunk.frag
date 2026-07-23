@@ -245,6 +245,19 @@ uniform int   u_lightPoolCompress;
 //     building sum BEFORE compression, keeping POOLS-3 semantics.
 uniform float u_lightPoolMoverScale;
 uniform int   u_lightPoolMoverMax;
+// MOVER-CONTACT-SHADOW-1 (gate MC2_MOVER_CONTACT_SHADOW, default 0 = OFF,
+// byte-identical). MASTER-FAIL #7 (inverted mech night shadows): a mover's
+// attached light pool reaches falloff=1.0 for every fragment within its close
+// radius, so the mech lights the ground BRIGHTEST directly beneath its own body
+// — a bright warm disc exactly where a contact shadow belongs, reading as an
+// "inverted" shadow at night (the CSM sun-cast shadow is a thin side sliver,
+// invisible on near-black night terrain). Physically the mech body occludes its
+// own downward spill. This term (a) carves the bright center of the mover glow
+// into a ring, and (b) applies a small contact-AO darkening to the composited
+// terrain lighting under the body so the mech reads with a real dark contact
+// shadow. Strength in [0,1]; 0 => mix() collapses to 1.0 and moverContact stays
+// 0 => exact legacy output. Buildings/terrain/spot pools are untouched.
+uniform float u_moverContactShadow;
 
 // PAD-AREA-GLOW-1 (gate MC2_PAD_AREA_GLOW, default ON =0.12; =0 kill): night
 // pad-area lift. Buildings register bright warm SpotLight_ pools but the pad
@@ -1678,6 +1691,7 @@ void main() {
     // Cost: uniform-bounded loop (u_numPoolLights, driver-capped 256; night
     // missions typically pack a few dozen), 3 dot/sqrt per light, zero texture
     // taps. u_numPoolLights==0 -> block skipped -> byte-identical.
+    float moverContact = 0.0;   // MOVER-CONTACT-SHADOW-1: strongest under-body AO
     if (u_numPoolLights > 0) {
         vec3 pool      = vec3(0.0);
         vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined mover glows
@@ -1708,6 +1722,16 @@ void main() {
             if (mover) {
                 // Mover-attached light (producer pad flag): dim vs buildings.
                 plCol *= u_lightPoolMoverDim;
+                // MOVER-CONTACT-SHADOW-1: carve the bright center of this mover's
+                // glow into a ring (the mech occludes its own down-spill) and
+                // record a contact-AO darkening under the body. Contact radius
+                // tracks the pool's close distance (its footprint). 0 => no-op.
+                if (u_moverContactShadow > 0.0) {
+                    float cr   = max(nearD, 1.0);
+                    float ring = smoothstep(0.0, cr, len);   // 0 under body -> 1 at edge
+                    falloff     *= mix(1.0, ring, u_moverContactShadow);
+                    moverContact = max(moverContact, (1.0 - ring) * u_moverContactShadow);
+                }
                 // NIGHT-LIGHT-POOLS-4: overlapping mover pools take the MAX
                 // instead of stacking (5-mech union stays a set of glows).
                 if (u_lightPoolMoverMax != 0) {
@@ -1748,6 +1772,15 @@ void main() {
         hemiContrib = hemiFill * hemiAmount * 0.25 * hemiShadowMix;
         lit += hemiContrib;
     }
+
+    // MOVER-CONTACT-SHADOW-1: apply the under-body contact-AO darkening to the
+    // FULLY composited terrain lighting (base + sun + pools + padGlow + hemi), so
+    // the mech's night contact shadow reads DARKER than the surrounding ground
+    // rather than merely neutralizing the mover's own bright disc. 0.55 is the
+    // max darkening at the body center; moverContact already folds in the gate
+    // strength, so u_moverContactShadow==0 => moverContact==0 => no-op.
+    if (moverContact > 0.0)
+        lit *= (1.0 - 0.55 * moverContact);
 
     // LIGHTING-DEBUG-VIEWS-1A-CHUNK: unified lighting debug channels on the
     // DEFAULT (LodChunk) terrain renderer. u_lightingDebugView==0 -> skipped

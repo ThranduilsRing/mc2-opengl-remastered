@@ -107,6 +107,16 @@ const bool  kTglcLightPoolCompress = []() {
     const char* e = std::getenv("MC2_LIGHT_POOL_COMPRESS");
     return !(e && e[0] == '0');
 }();
+// MOVER-CONTACT-SHADOW-1 (MASTER-FAIL #7): strength in [0,1] of the under-mech
+// contact shadow that carves a mover's own bright light-pool center + darkens
+// the ground beneath the body. Default 0.0 => uniform 0 => byte-identical
+// (mix() collapses, no darkening). Recommended ~0.7. MC2_MOVER_CONTACT_SHADOW.
+const float kTglcMoverContactShadow = []() {
+    const char* s = std::getenv("MC2_MOVER_CONTACT_SHADOW");
+    if (!s || !s[0]) return 0.0f;
+    float v = (float)std::atof(s);
+    return (v >= 0.0f && v <= 1.0f) ? v : 0.0f;
+}();
 const bool  kTglcSlopeBias         = []() { return tglc_envOn("MC2_TERRAIN_SLOPE_BIAS"); }();
 const float kTglcSlopeBiasStr      = []() { return tglc_envStrength("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", 1.0f); }();
 const bool  kTglcCliffTriplanar    = []() { return tglc_envOn("MC2_TERRAIN_CLIFF_TRIPLANAR"); }();
@@ -727,6 +737,7 @@ static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoo
 static GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
 static GLint    s_locLightPoolMoverScale = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverScale
 static GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverMax
+static GLint    s_locMoverContactShadow  = -1;  // MOVER-CONTACT-SHADOW-1: u_moverContactShadow
 static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
 static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
@@ -1236,6 +1247,7 @@ void gos_TerrainLodChunk_Init()
             s_locLightPoolCompress = glGetUniformLocation(s_terrainProgram, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
             s_locLightPoolMoverScale = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverScale");  // NIGHT-LIGHT-POOLS-4
             s_locLightPoolMoverMax   = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverMax");    // NIGHT-LIGHT-POOLS-4
+            s_locMoverContactShadow  = glGetUniformLocation(s_terrainProgram, "u_moverContactShadow");   // MOVER-CONTACT-SHADOW-1
             s_locPadGlow      = glGetUniformLocation(s_terrainProgram, "u_padGlow");       // PAD-AREA-GLOW-1
             s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
@@ -2343,6 +2355,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 glUniform1f(s_locLightPoolMoverScale, kTglcLightPoolMoverRadius);
             if (s_locLightPoolMoverMax >= 0)
                 glUniform1i(s_locLightPoolMoverMax, kTglcLightPoolMoverMax ? 1 : 0);
+            // MOVER-CONTACT-SHADOW-1: under-mech contact shadow strength (0 = off).
+            if (s_locMoverContactShadow >= 0)
+                glUniform1f(s_locMoverContactShadow, kTglcMoverContactShadow);
         }
     }
 
