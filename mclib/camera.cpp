@@ -4020,12 +4020,31 @@ void Camera::updateInputSmoothing (Stuff::Vector3D &newPosition)
 {
 	if (scrollSmoothActive)
 	{
-		if ((fabsf(position.x - scrollSmoothLastX) > 0.01f) ||
-			(fabsf(position.y - scrollSmoothLastY) > 0.01f))
+		// External motion since our last step (scripted pan, target tracking,
+		// findObject, bookmark jump): REBASE the goal by the external delta so
+		// pending input is neither lost nor replayed against the new pose. The
+		// residual eased offset stays small (bounded by ~tau worth of input)
+		// and decays in a few hundred ms, so hard-set jumps still land where
+		// they aimed.
 		{
-			scrollSmoothActive = false;		// external motion: drop the goal
+			float ex = position.x - scrollSmoothLastX;
+			float ey = position.y - scrollSmoothLastY;
+			if ((fabsf(ex) > 0.01f) || (fabsf(ey) > 0.01f))
+			{
+				scrollSmoothGoalX += ex;
+				scrollSmoothGoalY += ey;
+				if (land)
+				{
+					float maxVisual = (Terrain::worldUnitsMapSide / 2) - (Terrain::worldUnitsPerVertex * 2.0f);
+					if (!drawTerrainGrid)
+						maxVisual -= (Terrain::worldUnitsPerVertex * 6.0f);
+					if (scrollSmoothGoalX >  maxVisual) scrollSmoothGoalX =  maxVisual;
+					if (scrollSmoothGoalX < -maxVisual) scrollSmoothGoalX = -maxVisual;
+					if (scrollSmoothGoalY >  maxVisual) scrollSmoothGoalY =  maxVisual;
+					if (scrollSmoothGoalY < -maxVisual) scrollSmoothGoalY = -maxVisual;
+				}
+			}
 		}
-		else
 		{
 			float a  = camSmoothAlpha(frameLength);
 			float dx = scrollSmoothGoalX - position.x;
@@ -4051,11 +4070,16 @@ void Camera::updateInputSmoothing (Stuff::Vector3D &newPosition)
 
 	if (rotSmoothActive)
 	{
-		if (fabsf(camWrap180(cameraRotation - rotSmoothLastCam)) > 0.01f)
+		// External rotation since our last step: rebase goals by the external
+		// delta (same reasoning as the scroll rebase above).
 		{
-			rotSmoothActive = false;		// external rotation: drop the goal
+			float er = camWrap180(cameraRotation - rotSmoothLastCam);
+			if (fabsf(er) > 0.01f)
+			{
+				rotSmoothGoalCam   = camWrap180(rotSmoothGoalCam + er);
+				rotSmoothGoalWorld = camWrap180(rotSmoothGoalWorld + er);
+			}
 		}
-		else
 		{
 			float a  = camSmoothAlpha(frameLength);
 			float dc = camWrap180(rotSmoothGoalCam - cameraRotation);
