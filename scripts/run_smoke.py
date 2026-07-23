@@ -1477,6 +1477,12 @@ def main():
                             # dissolves into a soft gradient. Must be allowlisted
                             # or Popen drops it and the gate-ON smoke runs OFF.
                             "MC2_WATER_SHORE_FEATHER",
+                            # EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8):
+                            # render beacon/runway edge-light glow cards
+                            # two-sided so they don't backface-cull toward
+                            # top-down (killswitch, default ON). Must be
+                            # allowlisted or Popen drops it and gate-ON runs OFF.
+                            "MC2_LIGHT_BILLBOARD_TWOSIDED",
                             # NIGHT-LIGHT-POOLS-2/3/4 -- pool falloff/dim/compress
                             # killswitches + mover radius/max-blend (defaults
                             # ON/0.25/ON/0.6/ON).

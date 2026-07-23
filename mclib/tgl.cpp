@@ -67,6 +67,37 @@ float					TG_Shape::fogFull = 0.0f;
 TG_LightPtr				*TG_Shape::s_listOfLights = NULL;
 DWORD					TG_Shape::s_numLights = 0;
 
+//-------------------------------------------------------------------------------
+// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): case-insensitive substring test
+// used at shape load to flag beacon/runway edge-light glow cards. Node names in
+// stock content are "Redbeaconlight02/03", "Greenbeaconlight01", "Bluebeaconlight"
+// (runwaylight.tgl uses "Redbeaconlight03"); all share the "beaconlight" token,
+// which cleanly excludes the flags and the barrels/streetlight props that share
+// the Lightsnflags.tga atlas. These cards are single flat quads with no
+// billboarding, so they backface-cull (vanish) as the RTS camera orbits toward
+// top-down; Render() renders them two-sided when the gate below is on.
+static bool tgNameContainsCI(const char* hay, const char* needle)
+{
+	if (!hay || !needle) return false;
+	const size_t nlen = strlen(needle);
+	if (nlen == 0) return false;
+	for (const char* p = hay; *p; ++p)
+		if (S_strnicmp(p, needle, (int)nlen) == 0)
+			return true;
+	return false;
+}
+
+// Killswitch: MC2_LIGHT_BILLBOARD_TWOSIDED=0 restores legacy backface culling of
+// edge-light cards (byte-identical). Default ON. Parsed once.
+static bool tgLightBillboardTwoSided()
+{
+	static const bool s = []() {
+		const char* v = std::getenv("MC2_LIGHT_BILLBOARD_TWOSIDED");
+		return !(v && v[0] == '0');   // default ON
+	}();
+	return s;
+}
+
 struct TG_RenderShapePbrOverrideState {
 	HGOSRENDERMATERIAL program = NULL;
 	DWORD normalTexture = 0;
@@ -344,6 +375,9 @@ TG_ShapePtr TG_TypeNode::CreateFrom (void)
 
 	newShape->isSpotlight = (S_strnicmp(newShape->getNodeName(),"SpotLight_",10) == 0);
 	newShape->isWindow = (S_strnicmp(newShape->getNodeName(),"LitWin_",6) == 0);
+	// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): flag beacon/runway edge-light
+	// glow cards (see tgNameContainsCI above) so Render() can render them two-sided.
+	newShape->isLightBillboard = tgNameContainsCI(newShape->getNodeName(), "beaconlight");
 
 	if (newShape->isSpotlight)
 		newShape->noShadow = true;
@@ -560,6 +594,9 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 		
 	newShape->isSpotlight = (S_strnicmp(newShape->getNodeName(),"SpotLight_",10) == 0);
 	newShape->isWindow = (S_strnicmp(newShape->getNodeName(),"LitWin_",6) == 0);
+	// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): flag beacon/runway edge-light
+	// glow cards (see tgNameContainsCI above) so Render() can render them two-sided.
+	newShape->isLightBillboard = tgNameContainsCI(newShape->getNodeName(), "beaconlight");
 
 	if (newShape->isSpotlight)
 		newShape->noShadow = true;
@@ -2541,7 +2578,11 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 		// Mark backfacing those that are.
 		float cosine = 0.0;
 		cosine = (*backFacePoint * (tri->faceNormal));
-		if ((cosine > 0.0f) || isSpotlight)
+		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): edge-light glow cards are
+		// two-sided so they stay lit as the camera orbits toward top-down instead
+		// of backface-culling. MC2_LIGHT_BILLBOARD_TWOSIDED=0 restores legacy cull.
+		if ((cosine > 0.0f) || isSpotlight ||
+			(isLightBillboard && tgLightBillboardTwoSided()))
 		{
 			listOfVisibleFaces[numVisibleFaces] = j;
 			numVisibleFaces++;
@@ -2992,7 +3033,11 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 		// Mark backfacing those that are.
 		float cosine = 0.0;
 		cosine = (*backFacePoint * (tri->faceNormal));
-		if ((cosine > 0.0f) || isSpotlight)
+		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): edge-light glow cards are
+		// two-sided so they stay lit as the camera orbits toward top-down instead
+		// of backface-culling. MC2_LIGHT_BILLBOARD_TWOSIDED=0 restores legacy cull.
+		if ((cosine > 0.0f) || isSpotlight ||
+			(isLightBillboard && tgLightBillboardTwoSided()))
 		{
 			listOfVisibleFaces[numVisibleFaces] = j;
 			numVisibleFaces++;

@@ -750,6 +750,7 @@ ALLOWLIST=(
     MC2_WATER_EDGE_FEATHER            # feature -- water edge-feather gate
     MC2_WATER_EDGE_FEATHER_STRENGTH   # override -- water edge-feather strength tuning
     MC2_WATER_SHORE_FEATHER           # feature -- SHORELINE-STAIRCASE-1: shore-band feather floor (wu) dissolving the tile-quantized water-edge staircase; default OFF
+    MC2_LIGHT_BILLBOARD_TWOSIDED      # killswitch -- EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8): =0 restores legacy backface cull of beacon/runway edge-light glow cards; default ON
     MC2_WATER_BIAS_LEGACY             # killswitch -- WATER-BIAS-LINEARIZE-1: =1 restores constant NDC water bias (37557c8b)
     MC2_CEMENT_MISSION_LIGHT          # killswitch -- CEMENT-NIGHT-LIGHT-1: =0 restores unlit cement (67d5ce40)
     MC2_MISSING_RUNWAY_FIX            # killswitch -- MISSING-RUNWAY-1: =0 restores blanket decal skip (ef0f96d5)

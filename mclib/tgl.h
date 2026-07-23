@@ -843,6 +843,11 @@ class TG_Shape
 		bool					recalcShadows;
 		bool					isWindow;
 		bool					isSpotlight;
+		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): beacon/runway edge-light
+		// glow cards are single flat quads that backface-cull (vanish) as the
+		// RTS camera orbits toward top-down. Flagged from the node name at load
+		// so Render() can render them two-sided (see MC2_LIGHT_BILLBOARD_TWOSIDED).
+		bool					isLightBillboard;
 
 		DWORD					lastTurnTransformed;
 
@@ -915,6 +920,7 @@ class TG_Shape
 			recalcShadows = true;
 
 			isWindow = isSpotlight = false;
+			isLightBillboard = false;
 
 			for (long i=0;i<MAX_SHADOWS;i++)
 				shadowsVisible[i] = false;

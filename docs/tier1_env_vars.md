@@ -521,6 +521,32 @@ mask bits are written, and the shader's `featherAlpha` collapses to `1.0`
 **Verify:** runway/airbase poses (day + night). `[RUNWAY_EDGE_BLEND]
 event=edge_mask_baked feathered_solid_tiles=N` on stdout confirms the bake armed.
 
+### MC2_LIGHT_BILLBOARD_TWOSIDED
+
+- `MC2_LIGHT_BILLBOARD_TWOSIDED=0` — killswitch, default **ON**. Restores legacy backface culling of beacon/runway edge-light glow cards.
+
+**Default:** on (killswitch)
+
+EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8). Beacon and runway edge-light glow
+cards (`data/tgl/runwaylight.tgl` + `red/green/bluebeaconlight.tgl`, all sharing
+the `Lightsnflags.tga` atlas, node names `*beaconlight*`) are authored as a single
+flat quad with **no** billboarding. As the RTS camera orbits toward top-down, the
+quad's face normal flips away from the camera and the legacy per-triangle backface
+cull (`TG_Shape::Render`, `mclib/tgl.cpp`) discards it — the light visibly pops out
+by view angle. This gate makes shapes flagged `isLightBillboard` (node name contains
+`beaconlight`) **two-sided**, exactly like the existing `isSpotlight` exemption, so
+the glow stays lit from every orbit angle.
+
+The flag is set once at shape load from the node name, so only beacon/runway lights
+are affected — the flags and the barrels/streetlight props that also draw from the
+`Lightsnflags` atlas keep stock one-sided culling.
+
+**Off (`=0`) = byte-identical stock:** the two-sided OR-term is skipped and edge-light
+cards backface-cull as before.
+
+**Verify:** night runway/airbase pose, rotate the camera through top-down — the edge
+lights should remain visible at every angle instead of blinking out.
+
 ## Terrain debug / visual
 
 - `MC2_TERRAIN_DEBUG_MODE=N` — terrain frag debug-mode (0=off, 1=DepthCmp, 2=RawColormap, 3=BlurredColormap, 4=MatWeights R=rock/G=grass/B=dirt, 5=NormalLighting, 6=ShadowFactor, 7=CloudShadow, 8=CementDiag, 9=ThinRecordDiag, 10=HeightNormal, 11=HemiAdditive, -1=TessAliveProbe).
