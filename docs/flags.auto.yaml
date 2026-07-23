@@ -6,8 +6,8 @@
 generator_version: "1.0.0"
 registry_entry_count: 172
 registry_env_flag_count: 170
-sweep_flag_count: 863
-flag_count: 888
+sweep_flag_count: 867
+flag_count: 892
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -119,7 +119,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:971
+      - mclib/bdactor.cpp:972
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -127,7 +127,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/mech3d.cpp:5172
+      - mclib/mech3d.cpp:5202
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -138,7 +138,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "ANIM-CADENCE-FIX: advance mech gait at most once per render frame; prevents a visible double-step when Mover::getLOSPosition() re-invokes appearance->update() the same frame. Default-ON (user-confi..."
     referenced_at:
-      - mclib/mech3d.cpp:5148
+      - mclib/mech3d.cpp:5178
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -146,7 +146,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/mech3d.cpp:5192
+      - mclib/mech3d.cpp:5222
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -181,7 +181,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader. Default-OFF; =1 enables."
     referenced_at:
-      - mclib/mech3d.cpp:386
+      - mclib/mech3d.cpp:387
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -189,7 +189,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/mech3d.cpp:3735
+      - mclib/mech3d.cpp:3736
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -217,7 +217,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:2144
+      - mclib/bdactor.cpp:2145
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -225,7 +225,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:4174
+      - mclib/bdactor.cpp:4202
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -659,7 +659,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_terrain_patch_stream.cpp:314
-      - mclib/txmmgr.cpp:3188
+      - mclib/txmmgr.cpp:3195
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -686,7 +686,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:479
+      - mclib/bdactor.cpp:480
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -694,7 +694,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:163
+      - mclib/bdactor.cpp:164
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -703,7 +703,7 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/tgl.cpp:3067
-      - mclib/txmmgr.cpp:2176
+      - mclib/txmmgr.cpp:2177
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -734,7 +734,7 @@ flags:
     doc: "TRACKV-CI-GATE-RESTORE-1: camera movement diagnostic readback probe. WARNING: triggers GPU pipeline stall + glGetNamedBufferSubData readback — diagnostic default-OFF only. =1 enables per-frame came..."
     referenced_at:
       - GameOS/gameos/gpu_cull_compute.cpp:898
-      - mclib/txmmgr.cpp:3434
+      - mclib/txmmgr.cpp:3441
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1440,7 +1440,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TRACKV-CI-GATE-RESTORE-1: GPU pipeline flush probe via glFinish. WARNING: triggers GPU pipeline stall — diagnostic default-OFF only. =1 enables glFinish at the probe site to measure GPU-complete la..."
     referenced_at:
-      - mclib/txmmgr.cpp:2791
+      - mclib/txmmgr.cpp:2798
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1500,7 +1500,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD. Overrides distance selection. Default-unset ..."
     referenced_at:
-      - mclib/bdactor.cpp:6674
+      - mclib/bdactor.cpp:6702
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1577,7 +1577,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:3486
+      - mclib/txmmgr.cpp:3493
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1691,7 +1691,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/mech3d.cpp:75
+      - mclib/mech3d.cpp:76
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1757,7 +1757,7 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/assimp_importer.cpp:72
-      - mclib/bdactor.cpp:323
+      - mclib/bdactor.cpp:324
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1774,7 +1774,7 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/assimp_importer.cpp:74
-      - mclib/bdactor.cpp:324
+      - mclib/bdactor.cpp:325
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1963,8 +1963,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/gvactor.cpp:83
-      - mclib/mech3d.cpp:58
+      - mclib/gvactor.cpp:84
+      - mclib/mech3d.cpp:59
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1997,8 +1997,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_registry.cpp:1633
-      - mclib/bdactor.cpp:4238
-      - mclib/bdactor.cpp:7138
+      - mclib/bdactor.cpp:4266
+      - mclib/bdactor.cpp:7166
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2529,7 +2529,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:6679
+      - mclib/bdactor.cpp:6707
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2586,7 +2586,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:1564
+      - mclib/txmmgr.cpp:1565
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2597,7 +2597,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: baked permanent light record == gathered transient record byte/hash parity. Logs [LIGHTBAKE-PROOF v1] event=parity match=1 (capped 32). Default-off; no behav..."
     referenced_at:
-      - mclib/txmmgr.cpp:2057
+      - mclib/txmmgr.cpp:2058
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2608,7 +2608,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot ..."
     referenced_at:
-      - mclib/bdactor.cpp:3059
+      - mclib/bdactor.cpp:3060
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2619,7 +2619,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof. Logs [LIGHTBAKE-PROOF v1] event=first / UNSTABLE (capped 32). Default-off; no behavior change."
     referenced_at:
-      - mclib/txmmgr.cpp:1640
+      - mclib/txmmgr.cpp:1641
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2627,7 +2627,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:1523
+      - mclib/txmmgr.cpp:1524
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2667,7 +2667,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:2977
+      - mclib/bdactor.cpp:2978
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2680,6 +2680,38 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
+  - name: MC2_LIGHT_CONE_GLOW
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - mclib/cone_glow.cpp:125
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
+  - name: MC2_LIGHT_CONE_GLOW_ALPHA
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - mclib/cone_glow.cpp:134
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
+  - name: MC2_LIGHT_CONE_NODES
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - mclib/cone_glow.cpp:116
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
+  - name: MC2_LIGHT_CONE_SPILL
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - mclib/cone_glow.cpp:145
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_LIGHT_COST_SPLIT
     default: unknown
     declared_in: null
@@ -2700,7 +2732,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:1856
+      - mclib/txmmgr.cpp:1857
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2847,7 +2879,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:2277
+      - mclib/bdactor.cpp:2278
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3239,7 +3271,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/mech3d.cpp:50
+      - mclib/mech3d.cpp:51
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3256,7 +3288,7 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/assimp_importer.cpp:1157
-      - mclib/mech3d.cpp:929
+      - mclib/mech3d.cpp:930
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3328,7 +3360,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/mech3d.cpp:3062
+      - mclib/mech3d.cpp:3063
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3669,7 +3701,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_object_parity.cpp:66
       - mclib/tgl.cpp:109
-      - mclib/txmmgr.cpp:2235
+      - mclib/txmmgr.cpp:2236
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3702,7 +3734,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_object_recon_tracy.cpp:95
-      - mclib/txmmgr.cpp:1447
+      - mclib/txmmgr.cpp:1448
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4296,7 +4328,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:207
+      - mclib/txmmgr.cpp:208
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4417,7 +4449,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:3999
+      - mclib/bdactor.cpp:4027
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4678,7 +4710,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:2964
+      - mclib/txmmgr.cpp:2971
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4686,7 +4718,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:2970
+      - mclib/txmmgr.cpp:2977
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4702,7 +4734,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:2947
+      - mclib/txmmgr.cpp:2954
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4761,7 +4793,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:2975
+      - mclib/txmmgr.cpp:2982
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4805,8 +4837,8 @@ flags:
     doc: "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead of the camera-visible s_typeRanges set, wh..."
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:8503
-      - mclib/txmmgr.cpp:2885
-      - mclib/txmmgr.cpp:2886
+      - mclib/txmmgr.cpp:2892
+      - mclib/txmmgr.cpp:2893
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4814,7 +4846,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:2911
+      - mclib/txmmgr.cpp:2918
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5218,7 +5250,7 @@ flags:
     referenced_at:
       - mclib/bdactor.cpp:88
       - mclib/camera.cpp:2560
-      - mclib/gvactor.cpp:113
+      - mclib/gvactor.cpp:114
     referenced_at_more: 3
     registered: no
     in_smoke_passthrough: no
@@ -5271,7 +5303,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:2726
+      - mclib/bdactor.cpp:2727
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5368,7 +5400,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead of the whole LightsData SSBO every frame. ..."
     referenced_at:
-      - mclib/txmmgr.cpp:1625
+      - mclib/txmmgr.cpp:1626
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5416,8 +5448,8 @@ flags:
     doc: "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once per mission at the static-map build. Tre..."
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:8293
-      - mclib/txmmgr.cpp:2741
-      - mclib/txmmgr.cpp:2742
+      - mclib/txmmgr.cpp:2748
+      - mclib/txmmgr.cpp:2749
     referenced_at_more: 3
     registered: yes
     in_smoke_passthrough: yes
@@ -5479,7 +5511,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:141
       - GameOS/gameos/gos_static_prop_registry.cpp:49
-      - mclib/txmmgr.cpp:168
+      - mclib/txmmgr.cpp:169
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5991,7 +6023,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:3211
+      - mclib/txmmgr.cpp:3218
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6022,8 +6054,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system. When ON, cliff-wall decoration types (e.g. \\\"MarbleCliff\\\") are submitted to the GPU static-prop batcher with an explicit CLIFF_WALL face-frame ma..."
     referenced_at:
-      - mclib/bdactor.cpp:4044
-      - mclib/bdactor.cpp:4044
+      - mclib/bdactor.cpp:4072
+      - mclib/bdactor.cpp:4072
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6103,7 +6135,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:4074
+      - mclib/bdactor.cpp:4102
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6831,7 +6863,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TEXMGR-COMPRESSED-UPLOAD-1: teach MC_TextureManager to load a BC7 .ktx2 sidecar (same path/stem as the source data/textures texture, extension -> .ktx2) and upload it via glCompressedTexImage2D in ..."
     referenced_at:
-      - mclib/txmmgr.cpp:4938
+      - mclib/txmmgr.cpp:4945
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6840,8 +6872,8 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/bdactor.cpp:112
-      - mclib/gvactor.cpp:127
-      - mclib/mech3d.cpp:127
+      - mclib/gvactor.cpp:128
+      - mclib/mech3d.cpp:128
     referenced_at_more: 1
     registered: no
     in_smoke_passthrough: yes
@@ -6850,7 +6882,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:4357
+      - mclib/txmmgr.cpp:4364
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6868,7 +6900,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_registry.cpp:226
       - mclib/msl.cpp:1148
-      - mclib/txmmgr.cpp:127
+      - mclib/txmmgr.cpp:128
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6971,7 +7003,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/bdactor.cpp:7022
+      - mclib/bdactor.cpp:7050
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7039,7 +7071,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:283
+      - mclib/txmmgr.cpp:284
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7047,7 +7079,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:324
+      - mclib/txmmgr.cpp:325
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no

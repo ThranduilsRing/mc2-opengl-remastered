@@ -26,20 +26,14 @@ namespace mc2_cone_glow {
 namespace {
 
 // ---- env knobs (parse-once) -------------------------------------------------
+// NOTE: each std::getenv("MC2_...") literal is kept on its own line at the
+// call site (no name-forwarding helper) so scripts/flag-registry-auto-gen.py's
+// single-line getenv sweep and check-env-registry.sh both see the readers.
 
-bool env_on(const char* name)   // default ON, "0" disables
+float clampf(float f, float lo, float hi)
 {
-    const char* v = std::getenv(name);
-    return !(v && v[0] == '0');
-}
-
-float env_f(const char* name, float def, float lo, float hi)
-{
-    const char* v = std::getenv(name);
-    float f = def;
-    if (v && v[0]) f = (float)std::atof(v);
-    if (f < lo) f = lo;
-    if (f > hi) f = hi;
+    if (f < lo) return lo;
+    if (f > hi) return hi;
     return f;
 }
 
@@ -118,25 +112,41 @@ bool localConeAxis(const TG_TypeShape* ts, Stuff::Point3D& axisOut, float& lenOu
 
 bool nodes_enabled()
 {
-    static const bool s = env_on("MC2_LIGHT_CONE_NODES");
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_NODES");
+        return !(v && v[0] == '0');   // default ON
+    }();
     return s;
 }
 
 bool glow_enabled()
 {
-    static const bool s = env_on("MC2_LIGHT_CONE_GLOW");
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_GLOW");
+        return !(v && v[0] == '0');   // default ON
+    }();
     return s;
 }
 
 float glow_alpha()
 {
-    static const float s = env_f("MC2_LIGHT_CONE_GLOW_ALPHA", 40.0f, 0.0f, 255.0f);
+    static const float s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_GLOW_ALPHA");
+        float f = 40.0f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 0.0f, 255.0f);
+    }();
     return s;
 }
 
 float spill_scale()
 {
-    static const float s = env_f("MC2_LIGHT_CONE_SPILL", 1.0f, 0.0f, 3.0f);
+    static const float s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_SPILL");
+        float f = 1.0f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 0.0f, 3.0f);
+    }();
     return s;
 }
 
