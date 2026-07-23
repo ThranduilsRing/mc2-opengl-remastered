@@ -12,3 +12,15 @@ mclib/render_contract.cpp
 #        glMemoryBarrier (~2282), glGetNamedBufferSubData (~2286, ~2288, ~2294)
 #        (all gated by MC2_CAMERA_MOVE_DIAG, diagnostic-only, default-OFF)
 mclib/txmmgr.cpp
+
+# MERGE-WAVE-2 reconcile (2026-07-22):
+# Diagnostic-only preview probes, all env-gated default-OFF (MC2_LOG_PREVIEW
+# readback/log lines, MC2_PREVIEW_NOCULL winding-order experiment) inside the
+# PREVIEW-FBO-FIXED-800x600-1 panel-preview scope; never in the world frame loop.
+code/simplecamera.cpp
+
+# Building-PBR one-shot material SSBO (mission-load-time create/delete around
+# gos_getRenderMaterial("building_pbr"); arrived via the PBR GLB payload lineage).
+# FOLLOW-UP (post v0.5.1): route through the GpuBufferOwner/engine buffer API and
+# remove this entry — RENDERING exception tolerated as a v1 freeze only.
+mclib/bdactor.cpp

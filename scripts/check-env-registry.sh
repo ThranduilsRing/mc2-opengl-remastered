@@ -57,6 +57,36 @@ fi
 #   parity      -- correctness parity check / A-B comparison
 
 ALLOWLIST=(
+    # --- MERGE-WAVE-2 registry reconcile (2026-07-22): vars that landed via the
+    # merge waves (VK diagnostics, unit-profile seam sources, upload stats, boot
+    # fixtures). Alphabetical order below preserved per-batch.
+    MC2_BOOT_QUICKLOAD_AT       # fixture -- quickload boot fixture (issue-fixes wave)
+    MC2_BOOT_QUICKSAVE_AT       # fixture -- quicksave boot fixture (issue-fixes wave)
+    MC2_EQUIPMENT_ADD           # feature -- EQUIP-ADD S2 (unit-profile seam, default OFF)
+    MC2_EQUIPMENT_DEFINITION_SOURCE  # feature -- equipment definition source override (unit-profile seam)
+    MC2_LIGHT_UPLOAD_STATS      # trace -- light SSBO upload stats (vk-interop wave)
+    MC2_TERRAIN_MASK_UPLOAD_STATS  # trace
+    MC2_UNIT_DEFINITION_SOURCE  # feature -- unit definition source override (unit-profile seam)
+    MC2_VFX_TUBE_UPLOAD_STATS   # trace
+    MC2_VISUAL_CAPTURE_EXIT_AFTER  # fixture -- visual capture exit-after frame
+    MC2_VK_COMPOSITE_PRESENT    # vk-diag/override (vk-interop wave)
+    MC2_VK_CSM_BISECT           # vk-diag
+    MC2_VK_CSM_COPYMODE         # vk-diag/override
+    MC2_VK_FEED_DUMP            # vk-diag -- feed dump
+    MC2_VK_GPU_TIMESTAMPS       # vk-diag -- GPU timestamp collection
+    MC2_VK_HUD_DRAW_DUMP        # vk-diag
+    MC2_VK_OBJECTID_DIRECT_CHAIN  # vk-diag/override
+    MC2_VK_PRESENT_SKIP_GL_HANDOFF  # vk-diag/override
+    MC2_VK_PRESENT_VERIFY       # vk-diag
+    MC2_VK_PROP_LIGHT_PROBE     # vk-diag
+    MC2_VK_PROP_LIGHT_VERTEX_PROBE  # vk-diag
+    MC2_VK_PROP_MIP_PROBE       # vk-diag
+    MC2_VK_PROP_PACKET_DUMP     # vk-diag
+    MC2_VK_SELECT_TEST          # vk-diag
+    MC2_VK_TERRAIN_COPY_STATS   # trace
+    MC2_VK_TERRAIN_CSM_DEBUG    # vk-diag
+    MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL  # vk-diag/experimental
+    MC2_VK_WATER_PERF           # trace
     MC2_ABL_REG_TRACE           # trace
     MC2_ABL_TRACE               # trace
     MC2_ALPHA_TEST_TRACE        # trace

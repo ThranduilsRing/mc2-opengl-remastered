@@ -9,6 +9,7 @@
 // calcDynamicShadow (Poisson PCF). The chunk DRIVER must bind those uniforms (same
 // as the legacy terrain draw) or enableShadows reads 0 -> calcShadow returns 1.0.
 #include <include/shadow.hglsl>
+#include <include/render_contract.hglsl> // RENDER-CONTRACT: rc_gbuffer1_* helpers
 #define PREC highp                // noise.hglsl uses PREC (legacy frag defines it)
 #include <include/noise.hglsl>   // fbm() for the colour break-up (matches legacy)
 #include <include/edge_haze.hglsl> // TERRAIN-EDGE-FEATHER-1: edgeHazeAmount + EDGE_HAZE_SKY (legacy parity)
@@ -770,7 +771,7 @@ void main() {
     // MC2_SHADER_PATH_TINT: solid GREEN so this shader's surfaces are unmistakable.
     if (u_pathTint != 0) {
         fragColor = vec4(0.0, 1.0, 0.0, 1.0);
-        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);   // shadowHandled_flatUp
+        GBuffer1  = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -783,7 +784,7 @@ void main() {
         else if (u_shadowTier == 2) tc = vec3(0.0, 0.0, 1.0);   // static-only (far)      blue
         else                        tc = vec3(0.5, 0.5, 0.5);   // none/culled            grey
         fragColor = vec4(tc, 1.0);
-        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1  = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -799,7 +800,7 @@ void main() {
         else if (u_lodStep == 10) bc = vec3(1.0, 0.55, 0.0);  // LOD4 orange
         else                      bc = vec3(1.0, 0.0, 0.0);   // LOD5 red
         fragColor = vec4(bc, 1.0);
-        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1  = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -812,7 +813,7 @@ void main() {
                          clamp(m * 3.0 - 1.0, 0.0, 1.0),
                          clamp(m * 3.0 - 2.0, 0.0, 1.0));
         fragColor = vec4(heat, 1.0);
-        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1  = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -827,7 +828,7 @@ void main() {
         else                      fc = vec3(1.0,  1.0,  1.0);   // LOD5 white
         if (u_skirtDepth > 0.0)   fc = vec3(0.0,  0.0,  0.5);   // skirts dark blue
         fragColor = vec4(fc, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1051,7 +1052,7 @@ void main() {
     if ((u_diag & 64) != 0) {
         vec2 uvDbg = v_worldPos.xy * (detailNormalTiling.x / MAT_WORLD_UNITS_PER_TILE) * matTiling.x;
         fragColor = vec4(texture(matNormalArray, vec3(uvDbg, float(MAT_LAYER_ROCK))).rgb, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
     // DIAG bit 128: visualize v_terrainType (material index 0-3) as grayscale +
@@ -1061,7 +1062,7 @@ void main() {
         float g = clamp(v_terrainType / 3.0, 0.0, 1.0);
         float pc = smoothstep(2.0, 3.0, v_terrainType);
         fragColor = vec4(g + pc, g * (1.0 - pc), g * (1.0 - pc), 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1077,7 +1078,7 @@ void main() {
     // the colormap sample itself is broken (wrong atlas/UV/over-blur).
     if ((u_diag & 256) != 0) {
         fragColor = vec4(base, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1116,7 +1117,7 @@ void main() {
     // comparable by toggling u_useControlMap. TERRAIN-CONTROLMAP-SAMPLE-1.
     if ((u_diag & 1024) != 0) {
         fragColor = vec4(matWeights.rgb, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1214,7 +1215,7 @@ void main() {
     if ((u_diag & 4096) != 0) {
         float h = clamp(length(g_pomOffDbg) / max(pomParams.x, 1e-5), 0.0, 1.0);
         fragColor = vec4(h, h * 0.25, 1.0 - h, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
     // 8192 = view-vector swizzle oracle (ruling R1): RGB = MC2-world fragment->
@@ -1225,7 +1226,7 @@ void main() {
         vec3 camW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
         vec3 Vw = normalize(camW - v_worldPos);
         fragColor = vec4(Vw.x * 0.5 + 0.5, Vw.y * 0.5 + 0.5, clamp(Vw.z, 0.0, 1.0), 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1311,7 +1312,7 @@ void main() {
             + matWeights.w * vec3(1.0, 1.0, 0.0)   // MAT_LAYER_CONCRETE = 3
             + snowWeight   * vec3(1.0, 1.0, 1.0);  // MAT_LAYER_SNOW     = 4
         fragColor = vec4(idxCol, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1522,7 +1523,7 @@ void main() {
             dbg = vec3(a);
         }
         fragColor = vec4(dbg, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1615,7 +1616,7 @@ void main() {
 #endif
         float dynVizS = calcDynamicShadow(v_worldPos, shadowN, terrainLightDir.xyz, 8);
         fragColor = vec4(vec3(dynVizS), 1.0);
-        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1  = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
     if (u_diag == 31) {
@@ -1628,7 +1629,7 @@ void main() {
         float staticVizS = calcShadow(v_worldPos, shadowN, terrainLightDir.xyz, 16);
         float dynVizS2   = calcDynamicShadow(v_worldPos, shadowN, terrainLightDir.xyz, 8);
         fragColor = vec4(vec3(min(staticVizS, dynVizS2)), 1.0);
-        GBuffer1  = vec4(0.5, 0.5, 1.0, 1.0);
+        GBuffer1  = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -1764,7 +1765,7 @@ void main() {
         else handled = false;                                                           // 45/47/48/unknown -> fall through
         if (handled) {
             fragColor = vec4(dbg, 1.0);
-            if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+            if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
             return;
         }
     }
@@ -1990,7 +1991,7 @@ void main() {
             (1.0 - smoothstep(0.0, wetHeightDbg,  horizDistJDbg)) * aboveFadeDbg,
             (1.0 - smoothstep(0.0, foamHeightDbg, horizDistJDbg)) * aboveFadeDbg);
         fragColor = vec4(dbgCol, 1.0);
-        if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
         return;
     }
 
@@ -2009,5 +2010,5 @@ void main() {
     }
 
     fragColor = vec4(lit, 1.0);                                     // alpha forced 1.0
-    if ((u_diag & 1) == 0) GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);     // rc_gbuffer1_shadowHandled_flatUp
+    if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();     // rc_gbuffer1_shadowHandled_flatUp
 }

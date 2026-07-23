@@ -114,6 +114,19 @@ for dir in $SCOPE_DIRS; do
                 if is_comment_line "$line"; then
                     continue
                 fi
+                # MERGE-WAVE-2 (2026-07-22): symbol coupling only matters in CODE.
+                # Strip double-quoted string literals (registry description
+                # strings) and trailing // comments from the body, then re-check
+                # the word match. Doc-string/trailing-comment mentions of game
+                # symbols are documentation, not includes/decls/signatures.
+                code_body="$(printf '%s' "$line" | sed 's/^[^:]*:[0-9][0-9]*://' | sed 's/"[^"]*"//g' | sed 's|//.*$||' | sed 's/RenderResourceLifetime::Mission//g' | sed 's/^[[:space:]]*Mission[[:space:]]*=[[:space:]]*[0-9].*$//')"
+                # (RenderResourceLifetime::Mission is RenderCore's OWN lifetime
+                # enumerator — an unfortunate name collision with the game's
+                # Mission class, not a boundary breach; the enumerator
+                # definition line in RenderResourceRegistry.h likewise.)
+                if ! printf '%s' "$code_body" | grep -qw "${sym}"; then
+                    continue
+                fi
                 echo "VIOLATION: forbidden symbol '${sym}' in ${line}" >&2
                 VIOLATIONS=$((VIOLATIONS+1))
             done < "$TMPHITS"
