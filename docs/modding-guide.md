@@ -378,6 +378,36 @@ Validate any mod offline before launching: `mc2_modlint --manifest`,
 
 ---
 
+## 10. Example mods (shipped in `mods/`)
+
+The install ships four real, working mods — read them as living examples of
+the `mod.json` mod system:
+
+- **`mods/magic-ballistic-weapons/`** — gameplay data mod: rebalanced
+  ballistic weapons + new equipment (double heat sinks, Clan SRMs) via
+  `compbas.csv`/`effects.csv`. By magic (MechCommander Omnitech).
+- **`mods/magic-gamesys-tweaks/`** — gameplay data mod: `Gamesys.FIT` tuning
+  (longer line-of-sight and weapon ranges, live basic sensor, rebalanced
+  difficulty multipliers). By magic.
+- **`mods/modern-tree-pack-v1/`** — asset mod: modern GLB tree replacements
+  cooked through the asset pipeline (see its `docs/README.md` and
+  `cook_report.json` for the pipeline provenance).
+- **`mods/my-explosions/`** — the FX-DEFS worked example: retunes the stock
+  `Fireball` explosion via a single `data/effects/defs/Fireball.fxdef.json`
+  sidecar — no C++, no `mc2.fx` rebuild. Companion to
+  [modding-effects.md](modding-effects.md).
+
+Activate any of them from the launcher's mod picker (or
+`MC2_ACTIVE_MOD=<id>`). For building your own, see section 9 above and
+`examples/mods/README.md`.
+
+> **Step-by-step tutorials:** a set of 9 worked modding tutorials (weapons,
+> variants, effects, textures, trees, missions, and more) lands under
+> `docs/modding/examples/` with the next merge (branch
+> `claude/modding-examples-1`).
+
+---
+
 ## Appendix: Coordinate Spaces
 
 MC2 uses two coordinate spaces that must not be mixed:
