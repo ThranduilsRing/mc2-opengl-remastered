@@ -57,6 +57,7 @@ release" — never listed as shipped until re-verified against the merged tree.
    dirty fingerprints under --require-clean).
 2. Smoke the deployed lane: py -3 scripts/run_smoke.py --tier tier1
    --duration 30 --keep-logs  (plus any release-specific click-throughs).
+2a. Capture a Tracy perf baseline for the release (see §3a below).
 3. Update RELEASE_README.md (version header, known-issues table) and finalize
    the changelog from the draft.
 4. Tag: git tag v<version> && push the tag (user-gated).
@@ -81,6 +82,28 @@ release" — never listed as shipped until re-verified against the merged tree.
 Steps 4 and 8 (tag push, publish) are user-gated — agents prepare, the
 maintainer pulls the trigger.
 
+## 3a. Per-release Tracy perf baseline
+
+Every release gets a Tracy baseline so later releases can be regression-checked
+against it. Capture BOTH arms (GL + VK) at the canonical pose and store the
+result under `release_assets/<version>/tracy/`:
+
+```
+py -3 tools/tracy_capture_compare.py baseline \
+    --install <deployed release lane, e.g. A:/Games/mc2-opengl/releases/mc2-win64-v0.5.1> \
+    --name v<version> --out-dir release_assets/v<version>/tracy
+```
+
+This writes the two `.tracy` traces plus `baseline.json` + `summary.md`
+(frames, fps, per-zone means) into that dir. `release_assets/` is gitignored, so
+archive the `summary.md` + `baseline.json` alongside the published zips (step 7)
+as the perf provenance for the release — the multi-MB `.tracy` files stay local.
+
+Hygiene is baked in: uncapped (`MC2_FPS_CAP=0`), free-timestep, no
+`MC2_VK_PRESENT_VERIFY`. Keep the game window visible during the VK arm or it
+fail-softs to GL. Full details, arms, and the `regress` cross-check against a
+prior release's baseline: [tracy-harness.md](tracy-harness.md).
+
 ## 4. References
 
 - [release-checklist.md](release-checklist.md) — the zip gate in detail
@@ -92,3 +115,5 @@ maintainer pulls the trigger.
   manifest, dirty-fingerprint guard).
 - [data-provenance.md](data-provenance.md) — what game data ships and where
   it came from.
+- [tracy-harness.md](tracy-harness.md) — the Tracy perf harness and the
+  per-release baseline command (step 2a / §3a).

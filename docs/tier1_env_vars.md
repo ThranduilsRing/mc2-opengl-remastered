@@ -580,6 +580,14 @@ call from inside a draw-bind path.
   seconds, driven off the shared S9D fixed sim-frame counter via `SmokeMode::fixedClockSeconds()`),
   so frame N renders identically every run. Makes sim speed fps-proportional → it is a
   CAPTURE/DETERMINISM knob, **NOT** for full-duration regression smokes.
+- `MC2_FPS_CAP=<int>` — frame-rate limiter, read once at startup
+  (`GameOS/gameos/gameosmain.cpp`). `0` = **uncapped** (render-bound). Unset = the
+  build's default limiter. This is the hygienic setting for perf measurement: the
+  Tracy baseline/regress harness (`tools/tracy_capture_compare.py`, see
+  [tracy-harness.md](tracy-harness.md)) sets `MC2_FPS_CAP=0` **and** runs
+  free-timestep (i.e. does NOT set `MC2_SMOKE_FIXED_TIMESTEP`), because fixed
+  timestep decouples frame count from wall-clock render cost. Smoke-allowlisted in
+  `scripts/run_smoke.py`; a diagnostic knob, not a feature gate.
 
 ## Sim clock speed + trace (SIM-CLOCK-SPEED-1 — 2026-07-06)
 

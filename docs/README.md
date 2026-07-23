@@ -41,6 +41,8 @@ Core references:
 - [docs/modding-guide.md §8](modding-guide.md#8-autonomous-development) — `--validate` headless validation mode + Tracy profiling
 - [docs/release-checklist.md](release-checklist.md) — the zips-only release gate
 - [docs/RELEASE-PROCESS.md](RELEASE-PROCESS.md) — end-to-end release runbook (version bump → package → gate → publish)
+- [docs/tracy-harness.md](tracy-harness.md) — canonical Tracy capture/compare/baseline/regress harness (perf measurement + per-release baselines)
+- [docs/visual-verify.md](visual-verify.md) — `tools/visual_verify/` region-level visual verification: capture every saved camera pose from a build, crop the known artifact regions, diff vs a blessed golden, emit a verdict report + contact sheets (automates the manual verification-fleet loop)
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — branch/PR flow, mandatory build config, the tier-1 smoke gate
 
 Fixtures shipped in the v0.5 cycle (all in-tree; one-liners — see
@@ -64,8 +66,11 @@ Fixtures shipped in the v0.5 cycle (all in-tree; one-liners — see
 - **`MC2_BOOT_QUICKSAVE_AT=N` / `MC2_BOOT_QUICKLOAD_AT=M`** — one-shot
   quicksave/quickload at frame N/M via the same flags the pause-menu buttons
   set; M > N gives a deterministic save-then-load cycle in one headless run.
-- **`tools/tracy_capture_compare.py`** — capture + diff Tracy profiles between
-  two runs (zone-level attribution; landed with the Vulkan perf arc).
+- **`tools/tracy_capture_compare.py`** — the canonical Tracy harness: capture,
+  compare (zone-level before/after deltas), `baseline` (both arms at a fixed
+  pose → dated baseline dir), and `regress` (re-capture + pass/warn/fail vs a
+  baseline). Full usage, arms, hygiene rules, and the release baseline flow:
+  [docs/tracy-harness.md](tracy-harness.md).
 
 ## Everything else
 
