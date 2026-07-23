@@ -46,6 +46,51 @@ const float kShadowDistFadeMax = float(MC2_SHADOW_DIST_FADE_MAX_F);
 #ifndef MC2_SHADOW_FADE_CONT_F
 #define MC2_SHADOW_FADE_CONT_F 1
 #endif
+// SHADOW-FADE-RAMP0-1 (batch-7 item 1, env MC2_SHADOW_FADE_RAMP0, killswitch
+// =0): the opacity fade used to switch on at a smoothstep(0.45, 1.0, dNorm)
+// window while the penumbra radius ramped from dNorm=0 — the mismatched onsets
+// drew a visible SEAM between the crisp contact region and the soft far region
+// (user: "trunk is crisp, but the rest is soft — weird transition cut off").
+// Continuous variant: fade = fadeMax * dNorm^2 — zero at contact, zero slope
+// at contact, monotonic to fadeMax at the fade distance. No piecewise window.
+#ifndef MC2_SHADOW_FADE_RAMP0_F
+#define MC2_SHADOW_FADE_RAMP0_F 1
+#endif
+// SHADOW-ALT-SCALE-1 (batch-7 item 2, env MC2_SHADOW_ALT_SCALE, killswitch
+// =0): the ×1→×5 penumbra ramp + fade depth were tuned against the ~10° night
+// sun (km-long grazing silhouettes). At HIGH sun the same gains over-soften
+// short day shadows (user: "too soft shadows around trees" on mc2_01 day).
+// Scale the whole model by sun altitude, read in-shader from lightDir.z
+// (MC2 Z-up; sin of the sun altitude — the same clamped direction the shadow
+// matrices were built from):
+//   grazing sun  (sin <= 0.21, ~12°) -> full soft model (radius gain 4, full
+//                                       fade depth) — the night look, kept;
+//   high sun     (sin >= 0.57, ~35°) -> mostly-crisp (radius gain 1 = tip
+//                                       softening only, fade depth ×0.25).
+#ifndef MC2_SHADOW_ALT_SCALE_F
+#define MC2_SHADOW_ALT_SCALE_F 1
+#endif
+
+// Shared fade-model helpers (SHADOW-DIST-FADE / FADE-CONT / RAMP0 / ALT-SCALE
+// series). Returns vec2(radiusGain, fadeMaxEff) for this pixel's sun.
+vec2 shadowFadeGains(float sunAltSin)
+{
+#if MC2_SHADOW_ALT_SCALE_F != 0
+    float soft = 1.0 - smoothstep(0.21, 0.57, clamp(sunAltSin, 0.0, 1.0));
+    return vec2(mix(1.0, 4.0, soft), kShadowDistFadeMax * mix(0.25, 1.0, soft));
+#else
+    return vec2(4.0, kShadowDistFadeMax);
+#endif
+}
+// Opacity fade from the occluder-distance estimate (dNorm in [0,1]).
+float shadowDistFadeCurve(float dNorm, float fadeMaxEff)
+{
+#if MC2_SHADOW_FADE_RAMP0_F != 0
+    return fadeMaxEff * dNorm * dNorm;                  // continuous from contact
+#else
+    return fadeMaxEff * smoothstep(0.45, 1.0, dNorm);   // legacy windowed onset
+#endif
+}
 
 // 16-sample Poisson disk (well-distributed points in unit circle)
 const vec2 poissonDisk[16] = vec2[](
@@ -192,7 +237,7 @@ uniform int  enableDynamicShadows;
 // Sample one cascade layer with the same gradient-adaptive Poisson PCF the
 // legacy path uses. Returns visibility in [0,1] (1 = lit). projCoords already
 // in [0,1] xy and [0,1] z for that cascade.
-float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int numTaps)
+float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, float sunAltSin, int numTaps)
 {
     // Stage 3: per-cascade texel-scaled depth bias. Scale the cascade's world-texel
     // footprint into NDC depth units via the shared ortho span, then apply slope.
@@ -254,8 +299,11 @@ float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int
         }
         float dNorm = occP * 0.25;          // ~ occluder ray-distance / fade distance
 #endif
-        radius *= 1.0 + 4.0 * dNorm;        // penumbra grows with occluder distance
-        distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
+        // SHADOW-ALT-SCALE-1 + SHADOW-FADE-RAMP0-1: sun-altitude-scaled gains,
+        // continuous-from-contact fade (see macro block writeups above).
+        vec2 fg = shadowFadeGains(sunAltSin);
+        radius *= 1.0 + fg.x * dNorm;       // penumbra grows with occluder distance
+        distFade = shadowDistFadeCurve(dNorm, fg.y);
     }
 
     float shadow = 0.0;
@@ -272,7 +320,7 @@ float csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int
 // Per-cascade shadow resolution: sample the LAST cascade from the separate
 // lower-res 2D depth texture (dynamicFullMapShadow). Mirrors csmSampleLayer's
 // gradient-adaptive Poisson PCF but uses the 2D sampler + dynamicFullMapTexelWorld.
-float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps)
+float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, float sunAltSin, int numTaps)
 {
     float slope = max(1.0 - NdotL, 0.0);
     float texelBias = 1.5 * dynamicFullMapTexelWorld / max(csmDepthSpan, 1.0);
@@ -326,8 +374,10 @@ float csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps)
         }
         float dNorm = occP * 0.25;
 #endif
-        radius *= 1.0 + 4.0 * dNorm;
-        distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
+        // SHADOW-ALT-SCALE-1 + SHADOW-FADE-RAMP0-1 (lockstep with csmSampleLayer).
+        vec2 fg = shadowFadeGains(sunAltSin);
+        radius *= 1.0 + fg.x * dNorm;
+        distFade = shadowDistFadeCurve(dNorm, fg.y);
     }
 
     float shadow = 0.0;
@@ -361,6 +411,10 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
     int count = clamp(dynamicCsmCount, 1, MC2_SHADOW_CSM_MAX);
 
     //PORT-BEGIN:calcDynamicShadowCsm
+    // SHADOW-ALT-SCALE-1: sin(sun altitude) = lightDir.z (MC2 Z-up, normalized
+    // direction TO the sun — the same vector NdotL consumes above).
+    float sunAltSin = clamp(lightDir.z, 0.0, 1.0);
+
     // Select the first (tightest) cascade that contains worldPos. Cascade 0 is
     // the near/highest-resolution slice; fall through to coarser ones. When the
     // sample lands inside the OVERLAP toward the next cascade's near edge, blend
@@ -372,8 +426,8 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
         // Per-cascade shadow resolution: last cascade is the separate full-map 2D
         // texture; near cascades sample their array layer.
         float vis = (c == count - 1)
-                  ? csmSampleFullMap(pc, worldPos, NdotL, numTaps)
-                  : csmSampleLayer(pc, c, worldPos, NdotL, numTaps);
+                  ? csmSampleFullMap(pc, worldPos, NdotL, sunAltSin, numTaps)
+                  : csmSampleLayer(pc, c, worldPos, NdotL, sunAltSin, numTaps);
 
         // Overlap blend with the next cascade near the outer edge of this one.
         if (c + 1 < count) {
@@ -386,8 +440,8 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
                 if (csmProject(worldPos, c + 1, pc2)) {
                     // The next cascade is the full-map one when c+1 == count-1.
                     float vis2 = (c + 1 == count - 1)
-                               ? csmSampleFullMap(pc2, worldPos, NdotL, numTaps)
-                               : csmSampleLayer(pc2, c + 1, worldPos, NdotL, numTaps);
+                               ? csmSampleFullMap(pc2, worldPos, NdotL, sunAltSin, numTaps)
+                               : csmSampleLayer(pc2, c + 1, worldPos, NdotL, sunAltSin, numTaps);
                     float t = smoothstep(0.0, band, edge);   // 0 at border -> use next
                     vis = mix(vis2, vis, t);
                 }
@@ -479,8 +533,11 @@ float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
             }
             float dNorm = occP * 0.25;
 #endif
-            radius *= 1.0 + 4.0 * dNorm;
-            distFade = kShadowDistFadeMax * smoothstep(0.45, 1.0, dNorm);
+            // SHADOW-ALT-SCALE-1 + SHADOW-FADE-RAMP0-1 (lockstep with the CSM
+            // samplers; lightDir is in scope on this legacy single-map path).
+            vec2 fg = shadowFadeGains(clamp(lightDir.z, 0.0, 1.0));
+            radius *= 1.0 + fg.x * dNorm;
+            distFade = shadowDistFadeCurve(dNorm, fg.y);
         }
     }
 

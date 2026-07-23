@@ -14,9 +14,11 @@ namespace mc2_spotlight_diag {
 
 namespace {
 
-std::unordered_map<long, uint8_t>& slot_map()
+struct SlotTag { uint8_t src; const void* owner; };
+
+std::unordered_map<long, SlotTag>& slot_map()
 {
-    static std::unordered_map<long, uint8_t> s_map;
+    static std::unordered_map<long, SlotTag> s_map;
     return s_map;
 }
 
@@ -24,9 +26,19 @@ bool s_enabled_cached = (std::getenv("MC2_SPOT_DIAG") != nullptr);
 
 } // namespace
 
-void tag_slot(long slot, SourceClass src)
+void tag_slot(long slot, SourceClass src, const void* owner)
 {
-    slot_map()[slot] = static_cast<uint8_t>(src);
+    SlotTag t;
+    t.src = static_cast<uint8_t>(src);
+    t.owner = owner;
+    slot_map()[slot] = t;
+}
+
+const void* slot_owner(long slot)
+{
+    auto& m = slot_map();
+    auto it = m.find(slot);
+    return (it == m.end()) ? nullptr : it->second.owner;
 }
 
 void untag_slot(long slot)
@@ -39,7 +51,7 @@ bool is_e_slot(long slot, SourceClass* outSrc)
     auto& m = slot_map();
     auto it = m.find(slot);
     if (it == m.end()) return false;
-    if (outSrc) *outSrc = static_cast<SourceClass>(it->second);
+    if (outSrc) *outSrc = static_cast<SourceClass>(it->second.src);
     return true;
 }
 

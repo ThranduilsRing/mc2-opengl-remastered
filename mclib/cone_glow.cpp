@@ -18,6 +18,7 @@
 #include "timing.h"
 
 #include <cmath>
+#include <cstdio>    // CONE-AIM-DIAG-1 / GHOST-LIGHT-DUMP-1 throttled dumps
 #include <cstdlib>
 #include <vector>
 
@@ -150,6 +151,28 @@ float spill_scale()
     return s;
 }
 
+// CONE-AIM-DIAG-1 (batch-7 item 4): per-node aim/apex dump. Default-off.
+static bool aim_diag_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_DIAG");
+        return (v && v[0] == '1');
+    }();
+    return s;
+}
+
+// CONE-AIM-FLIP-1 (batch-7 item 4, probe): negate the computed world aim so
+// the pool lands on the OPPOSITE side — decisive A/B against the user report
+// "the building light appears to be on the other side". Default OFF.
+static bool aim_flip_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_AIM_FLIP");
+        return (v && v[0] == '1');
+    }();
+    return s;
+}
+
 // ---- (A) node aim -----------------------------------------------------------
 
 bool GetNodeAim(TG_MultiShape* shape, long nodeId,
@@ -182,8 +205,36 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
     aimWorldOut.y = aim.y / alen;
     aimWorldOut.z = aim.z / alen;
 
+    // CONE-AIM-FLIP-1 probe: mirror the beam (see helper above).
+    if (aim_flip_enabled())
+    {
+        aimWorldOut.x = -aimWorldOut.x;
+        aimWorldOut.y = -aimWorldOut.y;
+        aimWorldOut.z = -aimWorldOut.z;
+    }
+
     const float scalar = rec->node->GetShapeScalarValue();
     coneLenOut = lenLocal * ((scalar > 0.0f) ? scalar : 1.0f);
+
+    // CONE-AIM-DIAG-1: throttled apex/aim dump (first 48 calls + 1/600 after).
+    if (aim_diag_enabled())
+    {
+        static unsigned long s_calls = 0;
+        ++s_calls;
+        if (s_calls <= 48 || (s_calls % 600) == 0)
+        {
+            // Apex (node origin) in MC2 frame — same swizzle as the aim.
+            std::fprintf(stderr,
+                "[CONE_AIM_DIAG v1] shape=%p node=%ld apexMC2=(%.1f,%.1f,%.1f) "
+                "aimMC2=(%.3f,%.3f,%.3f) lenLocal=%.1f coneLen=%.1f axisLocal=(%.3f,%.3f,%.3f) flip=%d\n",
+                (void*)shape, nodeId, -oMax.x, oMax.z, oMax.y,
+                aimWorldOut.x, aimWorldOut.y, aimWorldOut.z,
+                lenLocal, coneLenOut,
+                axisLocal.x, axisLocal.y, axisLocal.z,
+                aim_flip_enabled() ? 1 : 0);
+            std::fflush(stderr);
+        }
+    }
     return true;
 }
 
@@ -211,6 +262,20 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     float lenLocal = 0.0f;
     const bool haveAxis = localConeAxis(ts, axisLocal, lenLocal);
 
+    // GHOST-LIGHT-DUMP-1 finding (batch-7): early frames can reach here BEFORE
+    // the owner shape's first TransformMultiShape — shapeToWorld is still
+    // zero/identity ([CONE_QUEUE_DIAG] apexMC2=(0,0,0)) and the cone would be
+    // queued at world origin with a garbage screen transform. Real props never
+    // sit at EXACT world origin (terrain elevation alone is nonzero), so a
+    // near-zero translation is a reliable "not yet transformed" sentinel.
+    {
+        const float tx = rec->shapeToWorld.entries[3];
+        const float ty = rec->shapeToWorld.entries[7];
+        const float tz = rec->shapeToWorld.entries[11];
+        if (std::fabs(tx) + std::fabs(ty) + std::fabs(tz) < 0.01f)
+            return;
+    }
+
     // New-frame reset (renderLists may not have run last frame — pause etc).
     if (s_queueTurn != turn)
     {
@@ -230,6 +295,27 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     const float alphaPeak = glow_alpha() * nightFactor;
     if (alphaPeak < 1.0f) return;
     const DWORD rgb = (DWORD)(argb & 0x00fffffful);
+
+    // GHOST-LIGHT-DUMP-1 (batch-7 item 5): throttled per-queue dump so a
+    // floating cone wedge with no visible caster can be attributed to the
+    // queuing shape (correlate apex position with the light-pool dump).
+    if (aim_diag_enabled())
+    {
+        static unsigned long s_qcalls = 0;
+        ++s_qcalls;
+        if (s_qcalls <= 48 || (s_qcalls % 600) == 0)
+        {
+            std::fprintf(stderr,
+                "[CONE_QUEUE_DIAG v1] shape=%p node=%ld apexMC2=(%.1f,%.1f,%.1f) "
+                "rgb=%06lx alphaPeak=%.1f nightFactor=%.2f\n",
+                (void*)shape, nodeId,
+                -rec->shapeToWorld.entries[3],
+                rec->shapeToWorld.entries[11],
+                rec->shapeToWorld.entries[7],
+                (unsigned long)rgb, alphaPeak, nightFactor);
+            std::fflush(stderr);
+        }
+    }
 
     // Transform all verts once (cone meshes are tiny).
     struct XV { float x, y, z, rhw; bool ok; float fade; };

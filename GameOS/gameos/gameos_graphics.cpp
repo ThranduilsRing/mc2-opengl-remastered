@@ -478,13 +478,17 @@ class gosMaterialVariationHelper {
             // fade (shadow.hglsl). =0 (killswitch) -> no define -> block
             // folds away, current behavior.
             if (mc2ShadowDistFadeWu() > 0.0f) {
-                char fadeDef[144];
+                char fadeDef[240];
                 snprintf(fadeDef, sizeof(fadeDef),
                          "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
                          "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                         "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                         "#define MC2_SHADOW_FADE_CONT_F %d\n"
+                         "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
+                         "#define MC2_SHADOW_ALT_SCALE_F %d\n",
                          mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0);
+                     mc2ShadowFadeCont() ? 1 : 0,
+                     mc2ShadowFadeRamp0() ? 1 : 0,
+                     mc2ShadowAltScale() ? 1 : 0);
                 defines_str.append(fadeDef);
             }
             defines_str.append("\n");
@@ -526,6 +530,7 @@ class gosRenderMaterial {
 
 		static const std::string s_mvp;
 		static const std::string s_fog_color;
+		static const std::string s_world_ambient_floor;
     public:
         static gosRenderMaterial* load(const char* shader, const gosMaterialVariation& mvar) {
             gosASSERT(shader);
@@ -662,6 +667,19 @@ class gosRenderMaterial {
             return true;
 		}
 
+		// FAR-BACKDROP-NIGHT-LIGHTING-1: per-channel black floor for untextured
+		// world geometry (gos_vertex). The far-backdrop horizon terrain + far
+		// tree impostors render through this shader with per-vertex colours that
+		// collapse to ~0 at night (the legacy per-vertex light, not the chunk
+		// colormap floor), so the horizon reads as a hard pure-black band. This
+		// lifts those pixels off pitch-black. The gos_tex_vertex program lacks
+		// this uniform (setFloat3 no-ops), and HUD gos_vertex draws never reach
+		// these sinks (they batch out earlier), so neither is touched.
+		bool setWorldAmbientFloor(const float rgb[3]) {
+            program_->setFloat3(s_world_ambient_floor.c_str(), rgb);
+            return true;
+		}
+
         void apply() {
             gosASSERT(program_);
             program_->apply();
@@ -714,6 +732,7 @@ class gosRenderMaterial {
 
 const std::string gosRenderMaterial::s_mvp = std::string("mvp");
 const std::string gosRenderMaterial::s_fog_color = std::string("fog_color");
+const std::string gosRenderMaterial::s_world_ambient_floor = std::string("u_worldAmbientFloor");
 
 // ---------------------------------------------------------------------------
 // GPU-BUFFER-WRAPPER-TIER0-HUD-1 — gate state (default OFF).
@@ -1553,6 +1572,8 @@ class gosRenderer {
         uint32_t getRenderState(gos_RenderState render_state) { return curStates_[render_state]; }
 
         gosRenderMaterial* selectBasicRenderMaterial(const RenderState& rs) const ;
+        // FAR-BACKDROP-NIGHT-LIGHTING-1: upload the world-geometry black floor.
+        void applyBackdropNightFloor(gosRenderMaterial* mat);
         gosRenderMaterial* selectLightedRenderMaterial(const RenderState& rs) const ;
 
 		void handleEvents();
@@ -5417,13 +5438,17 @@ void gosRenderer::init() {
         // SHADOW-DIST-FADE-1: same define the terrain/material sites inject
         // (overlay + decal receive dynamic shadows too -- keep in lockstep).
         if (mc2ShadowDistFadeWu() > 0.0f) {
-            char fadeDef[144];
+            char fadeDef[240];
             snprintf(fadeDef, sizeof(fadeDef),
                      "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
                      "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                         "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                         "#define MC2_SHADOW_FADE_CONT_F %d\n"
+                     "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
+                     "#define MC2_SHADOW_ALT_SCALE_F %d\n",
                      mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0);
+                     mc2ShadowFadeCont() ? 1 : 0,
+                     mc2ShadowFadeRamp0() ? 1 : 0,
+                     mc2ShadowAltScale() ? 1 : 0);
             overlayPrefix.append(fadeDef);
         }
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",
@@ -6064,6 +6089,52 @@ gosRenderMaterial* gosRenderer::selectLightedRenderMaterial(const RenderState& r
     }
 }
 
+// FAR-BACKDROP-NIGHT-LIGHTING-1 (gate MC2_BACKDROP_NIGHT_LIGHT, default ON).
+// The far-backdrop horizon terrain + far tree impostors render through the
+// untextured gos_vertex path (submitters: MC_TextureManager::renderLists and
+// MidLevelRenderer::MLRSortByOrder::RenderNow, both under GameCamera::render)
+// with per-vertex colours that collapse to ~0 at night -> a hard pure-black
+// horizon band. This returns a per-channel black FLOOR uploaded to the
+// gos_vertex program on the untextured, depth-tested (world) draw paths only.
+// max()-floor is a no-op wherever colours already exceed it (day, lit near
+// geometry), so day stays visually identical. "0" disables (floor {0,0,0} ->
+// byte-identical). Optional "r,g,b" (0..1) overrides the default dim horizon
+// value. Depth-test gate (gos_State_ZCompare) keeps it on world geometry and
+// off screen-space overlays. HUD gos_vertex draws batch out before these
+// sinks and never reach here.
+static const float* mc2BackdropNightFloor()
+{
+    static float s_floor[3] = {0.10f, 0.11f, 0.14f};
+    static const float s_zero[3] = {0.0f, 0.0f, 0.0f};
+    static int s_state = -1;   // -1 uninit, 0 disabled, 1 enabled
+    if (s_state < 0) {
+        s_state = 1;
+        const char* v = getenv("MC2_BACKDROP_NIGHT_LIGHT");
+        if (v && v[0]) {
+            if (v[0] == '0' && v[1] == '\0') {
+                s_state = 0;
+            } else {
+                float r, g, b;
+                if (sscanf(v, "%f,%f,%f", &r, &g, &b) == 3) {
+                    s_floor[0] = r; s_floor[1] = g; s_floor[2] = b;
+                }
+            }
+        }
+    }
+    return s_state ? s_floor : s_zero;
+}
+
+// Upload the backdrop floor to `mat` iff the current render state is untextured
+// world geometry (the gos_vertex far-backdrop path); zero otherwise so the
+// gos_vertex program's uniform is always defined and overlays stay unaffected.
+void gosRenderer::applyBackdropNightFloor(gosRenderMaterial* mat)
+{
+    static const float kZero[3] = {0.0f, 0.0f, 0.0f};
+    const bool worldUntextured = (renderStates_[gos_State_Texture] == 0)
+                              && (renderStates_[gos_State_ZCompare] != 0);
+    mat->setWorldAmbientFloor(worldUntextured ? mc2BackdropNightFloor() : kZero);
+}
+
 void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
     ZoneScopedN("DrawQuads");
     gosASSERT(vertices);
@@ -6099,9 +6170,10 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
 
         mat->setTransform(projection_);
         mat->setFogColor(fog_color_);
+        applyBackdropNightFloor(mat);
         quads_->draw(mat);
         quads_->rewind();
-    } 
+    }
 
     gosASSERT(quads_->getNumVertices() + num_vertices <= quads_->getVertexCapacity());
     for(int i=0; i<count;i+=4) {
@@ -6123,6 +6195,7 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
 
     mat->setTransform(projection_);
     mat->setFogColor(fog_color_);
+    applyBackdropNightFloor(mat);
     quads_->draw(mat);
     quads_->rewind();
 
@@ -6326,6 +6399,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
         mat->setTransform(projection_);
 		mat->setFogColor(fog_color_);
+        applyBackdropNightFloor(mat);
         tris_->draw(mat);
         tris_->rewind();
     } 
@@ -6341,6 +6415,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     mat->setTransform(projection_);
     mat->setFogColor(fog_color_);
+    applyBackdropNightFloor(mat);
     tris_->draw(mat);
     tris_->rewind();
 
@@ -7486,6 +7561,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
         mat->setTransform(projection_);
 		mat->setFogColor(fog_color_);
+        applyBackdropNightFloor(mat);
         indexed_tris_->drawIndexed(mat);
         indexed_tris_->rewind();
     }
@@ -7520,6 +7596,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
             mat->setTransform(projection_);
             mat->setFogColor(fog_color_);
+            applyBackdropNightFloor(mat);
 
             // Water uniforms: set via deferred system before apply() flushes them
             {

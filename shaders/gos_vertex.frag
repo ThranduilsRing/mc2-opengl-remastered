@@ -20,6 +20,12 @@ uniform sampler2D tex2;
 uniform sampler2D tex3;
 
 uniform PREC vec4 fog_color;
+// FAR-BACKDROP-NIGHT-LIGHTING-1: per-channel black floor for the untextured
+// world-geometry path (far horizon terrain + far tree impostors). The driver
+// uploads a small dim value ONLY on untextured, depth-tested world draws and
+// (0,0,0) otherwise, so day / HUD / overlays stay identity (max() no-op). See
+// gosRenderer::applyBackdropNightFloor. Unset uniform reads (0,0,0) => identity.
+uniform PREC vec3 u_worldAmbientFloor;
 
 void main(void)
 {
@@ -29,6 +35,8 @@ void main(void)
 #endif
 	if(fog_color.x>0.0 || fog_color.y>0.0 || fog_color.z>0.0 || fog_color.w>0.0)
 		c.rgb = mix(fog_color.rgb, c.rgb, FogValue);
+    // FAR-BACKDROP-NIGHT-LIGHTING-1: lift the night horizon off pitch-black.
+    c.rgb = max(c.rgb, u_worldAmbientFloor);
     FragColor = c;
 
     // F3 Option A: flat-up, shadow handled — HUD/overlay draws skip post-shadow.

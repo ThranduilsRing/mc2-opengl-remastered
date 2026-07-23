@@ -376,6 +376,32 @@ bool mc2ShadowFadeCont()
     return s_on;
 }
 
+// SHADOW-FADE-RAMP0-1 (batch-7 item 1): continuous-from-contact opacity fade
+// (fadeMax * dNorm^2) instead of the smoothstep(0.45, 1.0) onset window whose
+// boundary drew a visible crisp/soft SEAM along tree shadows. Default ON; =0
+// restores the windowed onset.
+bool mc2ShadowFadeRamp0()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_SHADOW_FADE_RAMP0");
+        return !(v && v[0] == '0');
+    }();
+    return s_on;
+}
+
+// SHADOW-ALT-SCALE-1 (batch-7 item 2): scale the dist-fade penumbra/fade model
+// by sun altitude (lightDir.z in-shader) — grazing sun keeps the aggressive
+// night dissolve, high sun goes mostly-crisp with tip softening only. Default
+// ON; =0 restores the fixed low-sun-tuned gains at every altitude.
+bool mc2ShadowAltScale()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_SHADOW_ALT_SCALE");
+        return !(v && v[0] == '0');
+    }();
+    return s_on;
+}
+
 // Object shadow-receive normal-offset bias (in cascade texels). Default 2.0,
 // clamped [0,16]. 0 disables the normal-offset (A/B). Slope-scale term in the
 // shader is always-on (tiny); this only gates the world-space normal-offset.
@@ -820,13 +846,17 @@ void gosPostProcess::init(int w, int h)
     // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
     // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
     if (mc2ShadowDistFadeWu() > 0.0f) {
-        char fadeDef[144];
+        char fadeDef[240];
         snprintf(fadeDef, sizeof(fadeDef),
                  "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
                  "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                 "#define MC2_SHADOW_FADE_CONT_F %d\n",
+                 "#define MC2_SHADOW_FADE_CONT_F %d\n"
+                 "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
+                 "#define MC2_SHADOW_ALT_SCALE_F %d\n",
                  mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0);
+                     mc2ShadowFadeCont() ? 1 : 0,
+                     mc2ShadowFadeRamp0() ? 1 : 0,
+                     mc2ShadowAltScale() ? 1 : 0);
         screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",

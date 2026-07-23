@@ -2431,6 +2431,36 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         return;
     }
 
+    // GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5, ROOT fix): SpotLight_ cone
+    // TYPE geometry must never enter the immutable VBO / packet stream. The
+    // per-instance skips (submitMultiShape ~:5006 + the bdactor recipe loops)
+    // keep cone INSTANCES out, but the substrate-coalesce multidraw proved able
+    // to draw cone PACKETS anyway (mc2_10 saved_212019: opaque tan wedge gone
+    // with MC2_SUBSTRATE_COALESCE_LEGACY=1, present with coalesce armed, on an
+    // exe whose instance paths all skip cones). Registering the cone type as an
+    // EMPTY type (zero packets — the exact shape the helper branch produces)
+    // removes the geometry at the source; every consumer already treats
+    // zero-packet types as no-draw. Cones are represented by real TG_Lights +
+    // the additive cone glow (LIGHT-CONE-MODELS-1) instead.
+    // Killswitch MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP=0 restores the bake.
+    {
+        static const bool s_typeSpotSkip = []() {
+            const char* v = getenv("MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP");
+            return !(v && v[0] == '0');   // default ON
+        }();
+        const char* nid = typeShape->getNodeId();
+        if (s_typeSpotSkip && nid && _strnicmp(nid, "SpotLight_", 10) == 0) {
+            GpuStaticPropType emptyType{};
+            emptyType.firstPacket = static_cast<uint32_t>(s_packets.size());
+            emptyType.packetCount = 0;
+            emptyType.vertexCount = 0;
+            emptyType.source      = typeShape;
+            s_typeIndex[typeShape] = static_cast<uint32_t>(s_types.size());
+            s_types.push_back(emptyType);
+            return;
+        }
+    }
+
     const uint32_t numTris = typeShape->numTypeTriangles;
     if (numTris == 0 || !typeShape->listOfTypeTriangles ||
         !typeShape->listOfTypeVertices) {

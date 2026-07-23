@@ -19,7 +19,13 @@ enum SourceClass : uint8_t { Bldg = 0, Mech = 1, Gv = 2 };
 // Tag a slot when (E) lazy-init registers a light. Idempotent; safe
 // across duplicate calls (per-mission lifecycle should not re-register,
 // but the set is hash-checked to be safe).
-void tag_slot(long slot, SourceClass src);
+// GHOST-LIGHT-DUMP-1 (batch-7 item 5): `owner` (the registering appearance,
+// may be null) is recorded for the MC2_LIGHT_POOL_DUMP owner-attribution
+// dump; existing 2-arg callers keep compiling via the default.
+void tag_slot(long slot, SourceClass src, const void* owner = nullptr);
+
+// GHOST-LIGHT-DUMP-1: owner appearance recorded at tag time (null if none).
+const void* slot_owner(long slot);
 
 // Untag on destroy/teardown.
 void untag_slot(long slot);

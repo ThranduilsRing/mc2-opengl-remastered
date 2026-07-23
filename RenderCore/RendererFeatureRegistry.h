@@ -1961,6 +1961,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain with no authored transition art. PopulateRecipeCementWords (gos_terrain_indirect.cpp) packs a 4-neighbour open-border mask into cementWord bits 19:16 for those solid boundary tiles (neighbours carrying ANY valid cement word -- solid OR transition -- count as cement, so authored transition edges are left to the legacy blend). gos_terrain.frag reads the mask and ramps cement -> base terrain over the outer HALF tile (discrete SDF from the cement mask, smoothstep(0,0.5,dist)). Indirect path only (does NOT touch terrain_lod_chunk.frag, which already marching-squares-shapes transition tiles). DEFAULT OFF: no mask bits are written, so the frag feather collapses to featherAlpha==1.0 == byte-identical stock full replacement. Baked once per mission load; zero per-frame cost."
     },
     {
+        "MC2_FEATURE_BACKDROP_NIGHT_LIGHT",
+        "MC2_BACKDROP_NIGHT_LIGHT",
+        EnvVarKind::Feature,
+        true,
+        "FAR-BACKDROP-NIGHT-LIGHTING-1: per-channel black floor (default rgb 0.10,0.11,0.14) uploaded to the untextured gos_vertex world path (far horizon terrain + far tree impostors, submitters MC_TextureManager::renderLists + MLRSortByOrder::RenderNow). Their per-vertex legacy light collapses to ~0 at night -> a hard pure-black horizon band; this max()-floors those pixels off pitch-black. Applied only on untextured depth-tested world draws (day/lit colours exceed the floor -> no-op; HUD/overlays untouched). DEFAULT ON; \"0\" disables (byte-identical); \"r,g,b\" overrides the floor colour."
+    },
+    {
         "MC2_TUNE_NIGHT_AMBIENT_FLOOR",
         "MC2_NIGHT_AMBIENT_FLOOR",
         EnvVarKind::Trace,
