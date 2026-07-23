@@ -102,7 +102,7 @@ layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
 
 layout(location = 0) out vec3 v_worldPos;
 
-const float TERRAIN_DEPTH_FUDGE = 0.0;  // lockstep with terrain_lod_chunk.vert
+const float TERRAIN_DEPTH_FUDGE = 0.0;  // LOCKSTEP-MIRROR: terrain_depth_bias.hglsl (lockstep with terrain_lod_chunk.vert)
 
 float sampleH(int mx, int my) {
     mx = clamp(mx, 0, uT.mapSide - 1);

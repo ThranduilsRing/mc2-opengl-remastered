@@ -1,11 +1,11 @@
 {
   "edge_fog_frag": {
     "shaders/edge_fog.frag": "304d337b074b61914a538f51d0f4b49dceec5d3e",
-    "shaders/vulkan/edge_fog.frag": "3b332d823e135a94cd054b42e3b9aa2c1e3afe35"
+    "shaders/vulkan/edge_fog.frag": "4320af670a138fffce8f20a100ea6513622be8db"
   },
   "fog_oob_frag": {
     "shaders/fog_oob.frag": "d8b88ff16cd761e8fbe452e5b24ca0bd61b95eaf",
-    "shaders/vulkan/fog_oob.frag": "d812745763f5defef5a12e93d057c5a7ef3539fc"
+    "shaders/vulkan/fog_oob.frag": "74f5c4412ff39408384c6e8ee9d3d9889e2942c4"
   },
   "shadow_terrain_paths": {
     "shaders/shadow_terrain.tesc": "78fee2b051560c1071ce24218f0221341f84e9f0",
@@ -13,7 +13,7 @@
     "shaders/shadow_terrain.vert": "e6d90a735974c2ca8fff7e381964635c5e117130"
   },
   "water_fast_vs": {
-    "shaders/gos_terrain_water_fast.vert": "2805807faf774aa37673f998344e25abdb7fa461",
-    "shaders/gos_terrain_water_fast_mdi.vert": "8512d1ee2ca5fae6c661eaf0ffc7fdd72fbe9ad3"
+    "shaders/gos_terrain_water_fast.vert": "d3c6cbcef55e1ccebc679b0963a7f70f3b7779b0",
+    "shaders/gos_terrain_water_fast_mdi.vert": "324f48e318ec110fcd8f2f966189f33057b96d6a"
   }
 }
