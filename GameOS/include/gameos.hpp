@@ -2472,14 +2472,6 @@ void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers);
 unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width);
 void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
 void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
-// ROAD-PBR-ASPHALT-1: high-res tiling asphalt albedo for PAVED_ROAD/RUNWAY
-// overlays. bgraData = TGA-loaded B,G,R,0xff bytes (uploaded GL_BGRA).
-unsigned int gos_CreateAsphaltAlbedoTexture(const unsigned char* bgraData, int width);
-void gos_SetTerrainAsphaltAlbedoTexture(unsigned int glTexId);
-// ROAD-MATERIAL-GRAVEL-1: high-res tiling gravel albedo for DIRT_ROAD overlays.
-// bgraData = TGA-loaded B,G,R,0xff bytes (uploaded GL_BGRA).
-unsigned int gos_CreateGravelAlbedoTexture(const unsigned char* bgraData, int width);
-void gos_SetTerrainGravelAlbedoTexture(unsigned int glTexId);
 void gos_SetTerrainViewDir(float x, float y, float z);
 
 // CPU displacement query API

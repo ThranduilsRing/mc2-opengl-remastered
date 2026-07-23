@@ -179,16 +179,6 @@ static constexpr GLint kTerrainTexUnitDynFullMap    = 13;
 static constexpr GLint kTerrainMatNormalUnits[5]    = { 5, 6, 7, 8, 12 };
 // When MC2_TERRAIN_NORMAL_ARRAY=1 (future plan), the array texture occupies unit 5.
 static constexpr GLint kTerrainTexUnitNormalArray   = 5;
-// ROAD-PBR-ASPHALT-1: overlay (terrain_overlay.frag) asphalt material units.
-// The overlay program uses unit 0 (tex1) + 9/10/11/13 (shadows/height); units
-// 4 and 5 are free on that program. Asphalt albedo -> unit 4; the shared
-// terrain normal array (matNormalArray) -> unit 5 (kTerrainTexUnitNormalArray).
-static constexpr GLint kOverlayTexUnitAsphaltAlbedo = 4;
-static constexpr GLint kOverlayTexUnitMatNormalArr  = kTerrainTexUnitNormalArray;
-// ROAD-MATERIAL-GRAVEL-1: high-res tiling gravel albedo for DIRT_ROAD overlays
-// (terrain_overlay.frag v_matId==2). Overlay program uses units 0 (tex1), 4
-// (asphalt), 5 (normal array), 9/10/11/13 (shadows/height/CSM); unit 6 is free.
-static constexpr GLint kOverlayTexUnitGravelAlbedo  = 6;
 static_assert(kTerrainMatNormalUnits[4] != kTerrainTexUnitStaticShadow,
               "matNormal4 collides with static shadow map unit");
 static_assert(kTerrainMatNormalUnits[4] != kTerrainTexUnitDynamicShadow,
@@ -1707,23 +1697,6 @@ class gosRenderer {
                 terrain_normal_array_dirty_ = true;
             }
         }
-        // ROAD-PBR-ASPHALT-1: store the asphalt albedo GL handle (terrtxm2 loads
-        // the TGA + creates the texture; we just hold the id for overlay binding).
-        // ROAD-PBR-FAILSOFT-1: readiness getters for the overlay bake's
-        // legacy-fallback decision (gos_TerrainRoadMaterialReady).
-        GLuint getTerrainAsphaltAlbedoTexture() const { return terrain_asphalt_albedo_tex_; }
-        GLuint getTerrainGravelAlbedoTexture()  const { return terrain_gravel_albedo_tex_; }
-
-        void setTerrainAsphaltAlbedoTexture(GLuint texId) {
-            terrain_asphalt_albedo_tex_ = texId;
-            terrain_asphalt_load_tried_ = true;
-        }
-        // ROAD-MATERIAL-GRAVEL-1: store the gravel albedo GL handle (terrtxm2 loads
-        // the TGA + creates the texture; we just hold the id for overlay binding).
-        void setTerrainGravelAlbedoTexture(GLuint texId) {
-            terrain_gravel_albedo_tex_ = texId;
-            terrain_gravel_load_tried_ = true;
-        }
         void buildTerrainNormalArray() {
             // Require slots 0-4 (rock/grass/dirt/concrete/snow). Slots 5-8 are optional.
             for (int i = 0; i < 5; ++i) {
@@ -2126,23 +2099,6 @@ class gosRenderer {
         GLuint terrain_mat_normal_[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
         GLuint terrain_normal_array_tex_   = 0;     // GL_TEXTURE_2D_ARRAY; 0 = not built
         bool   terrain_normal_array_dirty_ = false; // rebuild needed at next bind
-        // ROAD-PBR-ASPHALT-1: seamless tiling asphalt albedo (GL_TEXTURE_2D).
-        // Lazily loaded from data/textures/asphalt_albedo.tga on first overlay
-        // upload; 0 = not loaded (load attempted once, failure leaves it 0 and
-        // the frag falls back to stock tile RGB because the sampler reads black
-        // → but the v_matId path still mixes; we guard the bind so a failed load
-        // simply leaves unit 4 unbound and the asphalt branch reads whatever was
-        // last bound there — acceptable, but the load is robust below).
-        GLuint terrain_asphalt_albedo_tex_  = 0;
-        bool   terrain_asphalt_load_tried_  = false;
-        // World-units -> UV scale for asphalt tiling. Repeat ~ 1/scale world
-        // units; 0.14 ~= one tile every ~7 world units. Tune later.
-        float  terrain_asphalt_scale_       = 0.14f;
-        // ROAD-MATERIAL-GRAVEL-1: seamless tiling gravel albedo (GL_TEXTURE_2D),
-        // lazily loaded from data/textures/gravel_albedo.tga; 0 = not loaded. Same
-        // graceful-degrade contract as the asphalt handle above.
-        GLuint terrain_gravel_albedo_tex_   = 0;
-        bool   terrain_gravel_load_tried_   = false;
         float terrain_cell_scale_ = 8.0f;
         float terrain_cell_jitter_ = 0.8f;
         float terrain_cell_rotation_ = 1.0f;
@@ -2553,15 +2509,6 @@ class gosRenderer {
             GLint terrainLightingV2ShadowFillFloor   = -1;
             // CLIFF SHADOW FLOOR
             GLint terrainCliffShadowFloor            = -1;
-            // ROAD-PBR-ASPHALT-1: asphalt material samplers + UV scale. Declared
-            // only in terrain_overlay.frag → populated only on overlayProg_;
-            // decalProg_ (decal.frag) leaves these -1 and the helper skips them.
-            GLint asphaltAlbedo                      = -1;  // sampler2D
-            GLint matNormalArray                     = -1;  // sampler2DArray
-            GLint asphaltScale                       = -1;  // float
-            // ROAD-MATERIAL-GRAVEL-1: gravel albedo sampler (terrain_overlay.frag
-            // v_matId==2). Only declared on overlayProg_; decalProg_ leaves it -1.
-            GLint gravelAlbedo                       = -1;  // sampler2D
         };
         OverlayUniformLocs_ overlayLocs_;
         OverlayUniformLocs_ decalLocs_;
@@ -5323,12 +5270,6 @@ void gosRenderer::init() {
         locs.terrainLightingV1Strength        = glGetUniformLocation(shp, "terrainLightingV1Strength");
         locs.terrainLightingV2ShadowFillFloor = glGetUniformLocation(shp, "terrainLightingV2ShadowFillFloor");
         locs.terrainCliffShadowFloor = glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
-        // ROAD-PBR-ASPHALT-1: asphalt material uniforms (overlayProg_ only).
-        locs.asphaltAlbedo   = glGetUniformLocation(shp, "u_asphaltAlbedo");
-        locs.matNormalArray  = glGetUniformLocation(shp, "matNormalArray");
-        locs.asphaltScale    = glGetUniformLocation(shp, "u_asphaltScale");
-        // ROAD-MATERIAL-GRAVEL-1: gravel albedo sampler (overlayProg_ only).
-        locs.gravelAlbedo    = glGetUniformLocation(shp, "u_gravelAlbedo");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
     timeStart_ = timing::get_wall_time_ms();
@@ -8453,22 +8394,10 @@ void gos_RendererRebindVAO() {
 int gosRendererLogicalWidth()  { return g_gos_renderer ? g_gos_renderer->getWidth()  : 0; }
 int gosRendererLogicalHeight() { return g_gos_renderer ? g_gos_renderer->getHeight() : 0; }
 
-// ROAD-PBR-FAILSOFT-1 / ROAD-PBR-OPTIN-1: is the high-res road material for
-// this overlay material id enabled AND loaded? USER RULING 2026-07-05: the
-// PBR asphalt look is rejected — legacy tgl road tiles are the DEFAULT
-// everywhere. MC2_ROAD_PBR=1 opts back in (and still requires the
-// asphalt/gravel TGAs to actually be present).
-bool gos_TerrainRoadMaterialReady(int matId)
-{
-    static const bool s_pbrOn = []() {
-        const char* v = getenv("MC2_ROAD_PBR");
-        return v && v[0] == '1';
-    }();
-    if (!s_pbrOn || !g_gos_renderer) return false;
-    if (matId == 1) return g_gos_renderer->getTerrainAsphaltAlbedoTexture() != 0;
-    if (matId == 2) return g_gos_renderer->getTerrainGravelAlbedoTexture()  != 0;
-    return false;
-}
+// ROAD-PBR-ABANDON-1: gos_TerrainRoadMaterialReady() (the PBR road-material
+// readiness check) was deleted here — the PBR/normal-layer road path is
+// permanently retired (USER RULING 2026-07-18) and decal emission bakes the
+// stock argb unconditionally, so it had no callers left.
 
 void gos_RendererHandleEvents() {
     gosASSERT(g_gos_renderer);
@@ -10168,56 +10097,6 @@ unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int w
     return texId;
 }
 
-// ROAD-PBR-ASPHALT-1: create the asphalt albedo GL_TEXTURE_2D from a TGA-loaded
-// BGRA byte buffer (TGA stores BGR; terrtxm2 hands us bytes in B,G,R,0xff order).
-// Upload as GL_BGRA so the texture samples back as correct RGB (no channel swap),
-// with mipmaps + REPEAT for high-res tiling. Returns the GL id (0 on failure).
-unsigned int gos_CreateAsphaltAlbedoTexture(const unsigned char* bgraData, int width) {
-    if (!bgraData || width <= 0) return 0;
-    GLuint texId = 0;
-    // TEX-CLASS: asset-pool -- asphalt albedo content texture factory
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_BGRA, GL_UNSIGNED_BYTE, bgraData);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    printf("[ROAD-PBR-ASPHALT-1] created asphalt albedo texture: id=%u size=%d\n", texId, width);
-    return texId;
-}
-
-void gos_SetTerrainAsphaltAlbedoTexture(unsigned int glTexId) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainAsphaltAlbedoTexture(glTexId);
-}
-
-// ROAD-MATERIAL-GRAVEL-1: create the gravel albedo GL_TEXTURE_2D from a TGA-loaded
-// BGRA byte buffer (B,G,R,0xff order). Upload as GL_BGRA (samples back as RGB), with
-// mipmaps + REPEAT for high-res tiling. Returns the GL id (0 on failure). Mirrors
-// gos_CreateAsphaltAlbedoTexture exactly.
-unsigned int gos_CreateGravelAlbedoTexture(const unsigned char* bgraData, int width) {
-    if (!bgraData || width <= 0) return 0;
-    GLuint texId = 0;
-    // TEX-CLASS: asset-pool -- gravel albedo content texture factory
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_BGRA, GL_UNSIGNED_BYTE, bgraData);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    printf("[ROAD-MATERIAL-GRAVEL-1] created gravel albedo texture: id=%u size=%d\n", texId, width);
-    return texId;
-}
-
-void gos_SetTerrainGravelAlbedoTexture(unsigned int glTexId) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainGravelAlbedoTexture(glTexId);
-}
-
 void gos_SetTerrainShadowSoftness(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainShadowSoftness(s);
 }
@@ -10545,45 +10424,6 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
                                  terrain_lighting_v2_floor_,
                                  L.terrainCliffShadowFloor,
                                  terrain_cliff_shadow_floor_);
-
-    // ROAD-PBR-ASPHALT-1: bind the asphalt material samplers for the asphalt
-    // branch in terrain_overlay.frag (v_matId==1). Only touches the program that
-    // declares these uniforms — decalProg_ (decal.frag) leaves all three locs -1
-    // so this whole block is skipped there (byte-identical decal path).
-    if (L.asphaltScale >= 0)
-        glUniform1f(L.asphaltScale, terrain_asphalt_scale_);
-    if (L.asphaltAlbedo >= 0) {
-        // Lazy-load the asphalt albedo TGA-backed GL texture handle on first use.
-        // terrtxm2 normally pre-loads it at material init via
-        // gos_SetTerrainAsphaltAlbedoTexture; if that didn't run (e.g. asset
-        // missing) terrain_asphalt_albedo_tex_ stays 0 and we bind 0 — the frag's
-        // asphalt branch then samples black albedo but still keeps markings/alpha,
-        // so the road is still drawn (degraded, not broken).
-        glUniform1i(L.asphaltAlbedo, kOverlayTexUnitAsphaltAlbedo);
-        glActiveTexture(GL_TEXTURE0 + kOverlayTexUnitAsphaltAlbedo);
-        glBindTexture(GL_TEXTURE_2D, terrain_asphalt_albedo_tex_);
-    }
-    // ROAD-MATERIAL-GRAVEL-1: bind the gravel albedo sampler for the gravel branch
-    // in terrain_overlay.frag (v_matId==2). Gated on loc>=0 so decalProg_
-    // (decal.frag), which has no u_gravelAlbedo, is byte-identical (skipped).
-    if (L.gravelAlbedo >= 0) {
-        // Same lazy-load contract as asphalt: terrtxm2 pre-loads via
-        // gos_SetTerrainGravelAlbedoTexture; a missing asset leaves
-        // terrain_gravel_albedo_tex_ at 0 (binds 0 → black albedo, road still
-        // drawn via markings/alpha — degraded, not broken).
-        glUniform1i(L.gravelAlbedo, kOverlayTexUnitGravelAlbedo);
-        glActiveTexture(GL_TEXTURE0 + kOverlayTexUnitGravelAlbedo);
-        glBindTexture(GL_TEXTURE_2D, terrain_gravel_albedo_tex_);
-    }
-    if (L.matNormalArray >= 0) {
-        // Reuse the shared terrain normal array (layer MAT_LAYER_ASPHALT=7).
-        // EnsureBuilt builds lazily from the per-material normals (which terrtxm2
-        // always loads) and returns 0 only if the required slots 0-4 are absent.
-        GLuint narr = getTerrainNormalArrayTexEnsureBuilt();
-        glUniform1i(L.matNormalArray, kOverlayTexUnitMatNormalArr);
-        glActiveTexture(GL_TEXTURE0 + kOverlayTexUnitMatNormalArr);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, narr);
-    }
 
     glActiveTexture(GL_TEXTURE0);
 }
