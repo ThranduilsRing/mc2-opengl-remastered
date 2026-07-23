@@ -106,6 +106,16 @@ const float WAVE_FADE_FAR  = 40000.0; // only the very furthest extreme calms (n
 const float REFL_F0         = 0.02;   // Schlick base reflectance (water ~0.02)
 const float REFL_MAX        = 0.55;   // WATER-REFL-DEFAULT-ON: raised from 0.30 for visible shiny
 const float REFL_WAVE_SLOPE = 0.05;   // fBm-gradient -> wave-normal slope (0.02-0.10)
+// WATER-GRAZE-REFL-1 (master-FAIL #9): at grazing angles the strong Fresnel mix
+// (reflMix -> REFL_MAX) mirrors the HDRI/SH sky sample — but that sample points
+// at a dark clear-sky band that mismatches the rendered dusk/overcast, so
+// grazing water reads flat/dull and "does not reflect the bright sky." Pull the
+// reflected color toward the AUTHORED sky/horizon tint (u_waterSkyTintColor,
+// always uploaded) at grazing angles so the reflection carries the sky the
+// player expects. GRAZE_SKY_PULL is the max pull at full grazing; the pow()
+// exponent keeps top-down water on the true HDRI/SH sample (byte-identical).
+const float GRAZE_SKY_PULL  = 0.70;   // 0 -> exact old reflection color
+const float GRAZE_SKY_EXP   = 4.0;    // grazing sharpness (higher = only near-horizon)
 
 // Precision-safe (fract-early) hash -> stable for large MC2 world coords;
 // value-noise + 3-octave fBm. No texture, no seam (continuous WorldPos).
@@ -311,6 +321,13 @@ void main(void)
                 // evalShL2 returns diffuse IRRADIANCE; /PI -> sky-radiance-like.
                 skyReflCol = clamp(waterEvalSkySh(skyDir) * (1.0 / 3.14159265), 0.0, 2.0);
             }
+            // WATER-GRAZE-REFL-1: bias the reflected color toward the authored
+            // sky/horizon tint at grazing angles (see const block). vdir.z is the
+            // view elevation cosine on flat +Z water; small at grazing -> grazeW
+            // -> 1. Top-down (vdir.z->1) -> grazeW -> 0 -> skyReflCol unchanged.
+            // Lives inside the reflection gate: MC2_WATER_REFLECTION=0 skips it.
+            PREC float grazeW = pow(1.0 - max(vdir.z, 0.0), GRAZE_SKY_EXP);
+            skyReflCol = mix(skyReflCol, u_waterSkyTintColor, GRAZE_SKY_PULL * grazeW);
             reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
             //PORT-END:waterReflSetup
 
