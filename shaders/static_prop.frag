@@ -8,6 +8,14 @@
 
 #include <include/render_contract.hglsl>
 
+// POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for props
+// (binding 28, u_numPoolLights=0 when gated off -> byte-identical). MUST stay
+// OUTSIDE the #ifdef MC2_COALESCE region below -- the legacy (non-coalesce)
+// variant compiles this file too, and the pool block in main() is
+// unconditional (2026-07-22 regression: include placed inside the coalesce
+// guard broke the legacy program -> ALL props CPU-fallback/no meshes).
+#include <include/light_pools.hglsl>
+
 #if defined(MC2_USE_VIEW_UNIFORMS)
 // V-MATERIAL-PBR-3: per-fragment PBR specular consumes u_cameraWorldPos to
 // build the view vector. Same compile-guard contract as static_prop.vert —
@@ -97,9 +105,6 @@ uniform sampler2DArray u_texArr;
 // Always declared in the coalesce variant so the reflection surface is stable.
 // Instance name materialTable_ follows the usage pattern documented in material_gpu.hglsl.
 #include <include/material_gpu.hglsl>
-// POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for props
-// (binding 28, u_numPoolLights=0 when gated off -> byte-identical).
-#include <include/light_pools.hglsl>
 layout(std430, binding = 5) readonly buffer MaterialTable {
     MaterialGpu materials[];
 } materialTable_;
