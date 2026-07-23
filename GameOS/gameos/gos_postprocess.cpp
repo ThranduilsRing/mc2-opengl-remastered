@@ -978,7 +978,7 @@ void gosPostProcess::init(int w, int h)
     {
         const char* nfd = getenv("MC2_NIGHT_FOG_DIM");
         nightFogDimEnabled_ = (nfd && nfd[0] == '1' && nfd[1] == '\0');
-        if (const char* v = getenv("MC2_NIGHT_FOG_DIM_SCALE")) {
+        if (const char* v = getenv("MC2_NIGHT_FOG_DIM_SCALE"); v && v[0] != '\0') {
             float s = (float)std::atof(v);
             if (s < 0.0f) s = 0.0f;
             nightFogDimScale_ = s;
