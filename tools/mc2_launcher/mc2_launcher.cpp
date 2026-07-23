@@ -74,6 +74,7 @@
 #define IDC_ADDON0    1100  // (legacy) add-on checkboxes: IDC_ADDON0 + slot index
 #define IDC_ADDONLIST 1110  // add-on checkbox ListView (replaces fixed add-on slots)
 #define IDC_FASTERWEAPONS 1300  // gameplay toggle (NOT a mod): faster weapons
+#define IDC_DATADRIVEN    1301  // data-source toggle (NOT a mod): generated unit/equipment defs
 
 // Progress-dialog controls.
 #define IDC_PROG_CANCEL 1200
@@ -146,6 +147,7 @@ static HWND      s_hBase[BASE_SLOTS];     // FIXED radio slots — slot 0 = "Non
 static HWND      s_hAddonList;            // add-on checkbox ListView (unbounded, scrolls)
 static HWND      s_hDescBox;              // multiline read-only description pane
 static HWND      s_hFasterWeapons;        // gameplay toggle (NOT a mod): faster weapons
+static HWND      s_hDataDriven;           // data-source toggle (NOT a mod): generated defs
 
 static char      s_launcherDir[MAX_PATH];   // trailing-slash launcher directory
 static char      s_modsPath[MAX_PATH];      // <launcherDir>mods\
@@ -249,6 +251,7 @@ static char s_savedCampaign[256]  = "";   // folder name, "" = Stock
 static char s_savedBase[256]      = "";   // folder name, "" = None
 static char s_savedAddons[1024]   = "";   // comma-delimited folder names, "" = none
 static char s_savedFasterWeapons[4] = ""; // "1" or "0" or ""
+static char s_savedDataDriven[4]    = ""; // "1" or "0" or "" (generated defs toggle)
 
 static const char* k_texTierValues[]    = { "128", "256", "512", "1024" };
 static const char* k_texTierLabels[]    = { "Low (128px)", "Medium (256px)", "High (512px)", "Ultra (1024px)" };
@@ -369,6 +372,7 @@ static void SaveGfxJson() {
     fprintf(f, ",\n  \"last_base\": \"%s\"", s_savedBase);
     fprintf(f, ",\n  \"last_addons\": \"%s\"", s_savedAddons);
     fprintf(f, ",\n  \"last_faster_weapons\": \"%s\"", s_savedFasterWeapons);
+    fprintf(f, ",\n  \"last_data_driven\": \"%s\"", s_savedDataDriven);
     fprintf(f, "\n}\n");
     fclose(f);
 }
@@ -402,6 +406,9 @@ static void LoadMainPageJson() {
     val[0] = '\0';
     if (JsonGetString(buf, "last_faster_weapons", val, sizeof(val)))
         _snprintf(s_savedFasterWeapons, sizeof(s_savedFasterWeapons), "%s", val);
+    val[0] = '\0';
+    if (JsonGetString(buf, "last_data_driven", val, sizeof(val)))
+        _snprintf(s_savedDataDriven, sizeof(s_savedDataDriven), "%s", val);
 }
 
 // Read the current main-page UI state into s_saved* globals, then persist.
@@ -442,6 +449,12 @@ static void SaveMainPageSelections() {
         BOOL fw = s_hFasterWeapons ?
             (SendMessageA(s_hFasterWeapons, BM_GETCHECK, 0, 0) == BST_CHECKED) : FALSE;
         _snprintf(s_savedFasterWeapons, sizeof(s_savedFasterWeapons), "%s", fw ? "1" : "0");
+    }
+    // Data-driven definitions toggle
+    {
+        BOOL dd = s_hDataDriven ?
+            (SendMessageA(s_hDataDriven, BM_GETCHECK, 0, 0) == BST_CHECKED) : FALSE;
+        _snprintf(s_savedDataDriven, sizeof(s_savedDataDriven), "%s", dd ? "1" : "0");
     }
     SaveGfxJson();
 }
@@ -497,6 +510,11 @@ static void RestoreMainPageSelections() {
     if (s_hFasterWeapons && s_savedFasterWeapons[0]) {
         SendMessageA(s_hFasterWeapons, BM_SETCHECK,
                      (s_savedFasterWeapons[0] == '1') ? BST_CHECKED : BST_UNCHECKED, 0);
+    }
+    // Data-driven definitions checkbox.
+    if (s_hDataDriven && s_savedDataDriven[0]) {
+        SendMessageA(s_hDataDriven, BM_SETCHECK,
+                     (s_savedDataDriven[0] == '1') ? BST_CHECKED : BST_UNCHECKED, 0);
     }
     // Sync status bar / auto-detect for the restored campaign selection.
     UpdateForSelection();
@@ -1602,8 +1620,9 @@ static int BaseIndexForKind(CompatKind k) {
 #define LP_RCOL_X     (LP_LIST_X + LP_LIST_W + 15)   // right column left edge
 #define LP_RCOL_W     230                            // right column width
 #define LP_FW_Y       (LP_LCOL_BOTTOM - LP_ROW_H)    // faster-weapons toggle top
+#define LP_DD_Y       (LP_FW_Y - LP_ROW_STEP)        // data-driven defs toggle top
 #define LP_ADDON_LIST_Y LP_LIST_Y                    // add-on ListView top (aligns campaign list)
-#define LP_ADDON_LIST_H (LP_FW_Y - 6 - LP_ADDON_LIST_Y)
+#define LP_ADDON_LIST_H (LP_DD_Y - 6 - LP_ADDON_LIST_Y)
 #define LP_RCOL_BOTTOM LP_LCOL_BOTTOM
 #define LP_COLS_BOTTOM LP_LCOL_BOTTOM
 // Description box (full width, below both columns) — ~2x the old height.
@@ -1966,6 +1985,15 @@ static void DoLaunch(HWND hwnd) {
     SetEnvironmentVariableA("MC2_DIRECT_FIRE_STRAIGHT", fw ? "1" : NULL);
     SetEnvironmentVariableA("MC2_PROJECTILE_SPEED_MULT", fw ? "2" : NULL);
 
+    // Data-driven definitions toggle (NOT a mod): flip the unit+equipment
+    // definition SOURCE to the generated data/defs/ files. Unchecked = all
+    // three UNSET = legacy path (engine default; stock byte-identical).
+    BOOL dd = s_hDataDriven &&
+        (SendMessageA(s_hDataDriven, BM_GETCHECK, 0, 0) == BST_CHECKED);
+    SetEnvironmentVariableA("MC2_UNIT_PROFILE_DATA",           dd ? "1" : NULL);
+    SetEnvironmentVariableA("MC2_UNIT_DEFINITION_SOURCE",      dd ? "generated" : NULL);
+    SetEnvironmentVariableA("MC2_EQUIPMENT_DEFINITION_SOURCE", dd ? "generated" : NULL);
+
     // Apply engine-option env vars from the Options dialog (launcher_env.json).
     // Skip any vars that DoLaunch already sets explicitly above.
     for (int i = 0; i < k_envVarCount; i++) {
@@ -2308,6 +2336,7 @@ static void SetMainControlsEnabled(BOOL en) {
         if (s_hBase[i]) EnableWindow(s_hBase[i], en);
     if (s_hAddonList) EnableWindow(s_hAddonList, en);
     if (s_hFasterWeapons) EnableWindow(s_hFasterWeapons, en);
+    if (s_hDataDriven)    EnableWindow(s_hDataDriven, en);
 }
 
 // Start the worker thread + show the modal progress dialog. s_importForce must
@@ -2626,6 +2655,37 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
         RefreshBaseSlots();    // show/hide + label per current scan; default None
         RefreshAddonList();    // populate ListView rows per current scan
+
+        // Data-driven definitions toggle — under the add-ons pane, above Faster
+        // weapons. NOT a mod: on Launch it sets MC2_UNIT_PROFILE_DATA=1 +
+        // MC2_UNIT_DEFINITION_SOURCE=generated + MC2_EQUIPMENT_DEFINITION_SOURCE=
+        // generated in the child env. Unchecked (default) = all three UNSET =
+        // legacy path. WS_GROUP terminates the base radio group.
+        s_hDataDriven = CreateWindowA("BUTTON", "Data-driven definitions (generated)",
+            WS_CHILD | WS_VISIBLE | WS_GROUP | BS_AUTOCHECKBOX,
+            LP_RCOL_X, LP_DD_Y, LP_RCOL_W, LP_ROW_H,
+            hwnd, (HMENU)(INT_PTR)IDC_DATADRIVEN, s_hInst, NULL);
+        SendMessageA(s_hDataDriven, WM_SETFONT, (WPARAM)hFont, TRUE);
+        SendMessageA(s_hDataDriven, BM_SETCHECK, BST_UNCHECKED, 0);  // default OFF (legacy)
+
+        // Tooltip for the data-driven toggle.
+        {
+            HWND hTip = CreateWindowExA(0, TOOLTIPS_CLASSA, NULL,
+                WS_POPUP | TTS_ALWAYSTIP | TTS_BALLOON,
+                CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+                hwnd, NULL, s_hInst, NULL);
+            if (hTip) {
+                TOOLINFOA ti = {}; ti.cbSize = sizeof(ti);
+                ti.uFlags  = TTF_IDISHWND | TTF_SUBCLASS;
+                ti.hwnd    = hwnd;
+                ti.uId     = (UINT_PTR)s_hDataDriven;
+                ti.lpszText = (LPSTR)"Load mech/vehicle and weapon definitions from the generated\r\n"
+                                     "data/defs/ files instead of the legacy .fit/compbas tables.\r\n"
+                                     "Same stock content, moddable format. Unchecked = legacy (default).";
+                SendMessageA(hTip, TTM_ADDTOOLA, 0, (LPARAM)&ti);
+                SendMessageA(hTip, TTM_SETMAXTIPWIDTH, 0, 300);
+            }
+        }
 
         // Faster-weapons toggle — grouped under the add-ons pane. NOT a mod: it
         // drives engine env vars on Launch, separate from MC2_ACTIVE_MOD/

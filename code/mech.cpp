@@ -102,6 +102,9 @@
 #include"unitdesg.h"
 #endif
 
+// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): resolveTargetWeaponFireEffectType seam.
+#include"unitprofile.h"
+
 #ifdef USE_ELEMENTALS
 #ifndef ELEMNTL_H
 #include<elemntl.h>
@@ -134,6 +137,8 @@
 #include "../GameAdapters/MechRenderAdapter.h"  // M2: mech spawn/destroy adapter
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include "../GameOS/gameos/diagnostic_trace.h"  // COMBAT-TRACE-1: weapon-hit JSONL events
+#include "equipment_registry.h"  // LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef
+#include "modder_finding.h"      // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
@@ -737,13 +742,77 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	dynamics.setType(DYNAMICS_MECH);
 	dynamics.init(&mechCSVFile);
 	
+	// LOCOMOTION-FACET-1 (slice 4): a mech's data-owned locomotion facet defaults
+	// to the mech-walker model (was the BattleMech::locomotionModel() class
+	// override). Set BEFORE the .fit read so an optional [UnitProfile] Locomotion=
+	// token can override it; stock .fits omit the key -> walker preserved (parity
+	// with slice 3). This is the last class-touch: a data default keyed by type,
+	// which a future full UnitDefinition load will supply directly.
+	profile().locomotion = LOCO_MECH_WALKER;
+
+	// DAMAGE-SCHEMA-FACET-1 (slice 5): a mech's data-owned hit-location model
+	// defaults to the 8-body-part schema. The vehicle/base default is
+	// DMG_VEHICLE_FACINGS (UnitProfile's field initializer), so only the mech
+	// type overrides it here. Set BEFORE the .fit read so an optional
+	// [UnitProfile] DamageSchema= token can override; stock .fits omit it ->
+	// mech-8part preserved (no behavior change — nobody reads the facet yet).
+	profile().damageSchema = DMG_MECH_8PART;
+
+	// UNIT-SOURCE-FLIP-SWITCH-1: when MC2_UNIT_DEFINITION_SOURCE=generated, SOURCE
+	// the chassis-level green facets (locomotion + damageSchema) from the generated
+	// UnitDefinition sidecar (data/defs/units/core/<stem>/chassisdef.fit) instead of
+	// the legacy class defaults just set above. Gate=legacy (default) or a missing
+	// generated def -> no-op, the legacy defaults stand (byte-identical). fileType
+	// is the mech ProfileName == the converter's chassis stem. Runs BEFORE the .fit
+	// read so a stock-declared [UnitProfile] block still overrides last.
+	sourceGeneratedChassisFacets(fileType, profile(), mechFile.getFilename());
+
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
+
+	// UNITPROFILE-VALIDATOR-1 (slice 6): report-only construction-rules check,
+	// gated behind MC2_UNIT_PROFILE_DATA. Runs AFTER facets are set. A stock jet
+	// mech (walker + CAP_JUMP) is coherent -> logs nothing. Never rejects.
+	validateAndReportUnitProfile(profile(), mechFile.getFilename());
 
 	//------------------------------------------------------------------
 	// Initialize the base object Type from the current file.
 	result = ObjectType::init(&mechFile);
 	return(result);
+}
+
+//-----------------------------------------------------------------------------------
+// UNITPROFILE-TYPELOAD-SOURCE-1: single owner of the instance-loadout-derived
+// capability write. Previously this was open-coded (and drifted into dead code)
+// in every mech load overload. There are TWO legitimate capability sources and
+// this method owns exactly ONE of them:
+//   (a) TYPE-LOAD declared  -> .fit [UnitProfile] block via populateProfileFromFit
+//       (already single-owner; runs once at type load, grant-only, additive).
+//   (b) INSTANCE-loadout-derived -> CAP_JUMP from numJumpJets, which is only
+//       final AFTER the loadout scan. That is THIS method.
+// Grant-only: we OR the jump fact in when jets are installed; we never clear a
+// capability that (a) may have granted. Then we refresh this instance's runtime
+// state from the (now-updated) shared type baseline. Call from the end of every
+// real load path where numJumpJets is authoritative.
+void BattleMech::refreshDerivedCapabilities (void) {
+	if (!getObjectType())
+		return;
+	CapabilitySet& baseline = getObjectType()->profile().baselineCapabilities;
+	// UNIT-SOURCE-FLIP-SWITCH-1: instance-level CAP_JUMP source selection. Under
+	// MC2_UNIT_DEFINITION_SOURCE=generated, source the jump bit from the spawned
+	// variant's generated unit.fit (keyed by chassis stem + VariantName). The
+	// shadow-compare proved generated jump == the legacy numJumpJets derivation, so
+	// this is behavior-identical. Gate=legacy (default) or a missing generated def
+	// -> sourceGeneratedVariantJump returns false and we keep the legacy path.
+	// Grant-only: we only OR CAP_JUMP in (never clear (a)'s type-load grants).
+	bool genJump = false;
+	const char* chassisStem = getObjectType()->getAppearanceTypeName();
+	if (sourceGeneratedVariantJump(chassisStem, variantName, &genJump)) {
+		if (genJump)
+			baseline.set(CAP_JUMP, true);
+	} else if (numJumpJets > 0)
+		baseline.set(CAP_JUMP, true);      // legacy grant-only; never clears (a)'s grants
+	runtime.currentCapabilities = baseline;
 }
 
 //-----------------------------------------------------------------------------------
@@ -1409,6 +1478,99 @@ void BattleMech::setControl (ControlType ctrlType) {
 }
 
 //----------------------------------------------------------------------------------
+// LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5).
+//
+// ADDITIVE string-id branch beside the legacy numeric MasterID column. The stock
+// loadout parse fills inventory[].masterID from a positional numeric CSV column
+// (readUChar(row, 5, masterID)). This helper adds an OPTIONAL string-id token:
+// gate-ON, it reads an `EquipmentId` string from an out-of-band column of the
+// SAME row; if present and it resolves through the EquipmentRegistry to a legacy
+// ordinal in the existing 0..254 space, that becomes the masterID. Otherwise the
+// caller keeps the already-read legacy numeric masterID UNCHANGED.
+//
+// This is NOT a parser rewrite: the legacy readUChar path runs first and is the
+// default; this only OVERRIDES masterID when a string-id token is present AND the
+// gate is ON. Stock CSVs carry no such column -> readString errors -> no override
+// -> byte-identical. No widen (rejects ids >=255), no firing change.
+//
+// The optional token lives in a high, stock-unused column so a stock loadout row
+// never accidentally supplies one.
+enum { kEquipmentIdCsvColumn = 40 };
+
+// If gate-ON and the row carries an optional EquipmentId string token that
+// resolves to a legacy ordinal in the existing 8-bit space, return that ordinal
+// (0..254). Otherwise return -1 (no override -> caller keeps legacy masterID).
+static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
+{
+	if (!mc2UnitProfileDataEnabled())
+		return -1;                    // gate OFF -> legacy path only (parity)
+
+	char refBuf[64] = {0};
+	// Out-of-band column: stock rows have no data here -> readString != NO_ERR.
+	if (mechFile->readString(row, kEquipmentIdCsvColumn, refBuf, sizeof(refBuf) - 1) != NO_ERR)
+		return -1;                    // no token -> legacy path
+	if (refBuf[0] == '\0')
+		return -1;
+
+	// MODDER-FIRST-ERROR-SURFACE-1: context for both warnings — WHICH csv file,
+	// WHICH row, WHICH field, and the fallback taken. getFilename() is the loadout
+	// CSV being parsed (mods override it whole-file, so the winning path IS the
+	// modder's file).
+	auto idAliasContext = [&](const char* msg, const char* expected) -> std::string {
+		char fieldBuf[48];
+		std::snprintf(fieldBuf, sizeof(fieldBuf), "EquipmentId (csv col %d, row %ld)",
+		              (int)kEquipmentIdCsvColumn, row);
+		ModderFinding f;
+		f.message  = msg;
+		f.file     = mechFile->getFilename() ? mechFile->getFilename() : "";
+		f.id       = refBuf;
+		f.field    = fieldBuf;
+		f.expected = expected;
+		f.fallback = "legacy numeric masterID for this row";
+		return formatModderFinding(f);
+	};
+
+	int resolved = resolveLoadoutEquipmentRef(getEquipmentRegistry(), refBuf);
+	if (resolved == kEquipmentRefNeedsWiden) {
+		printf("[EQUIP-IDALIAS] WARNING: %s\n",
+		       idAliasContext("equipment ref resolves to an id >=255 (future-widen, E4) -- keeping legacy masterID",
+		                      "an equipment id resolving to a legacy ordinal 0..254").c_str());
+		return -1;
+	}
+	if (resolved == kEquipmentRefNotFound) {
+		printf("[EQUIP-IDALIAS] WARNING: %s\n",
+		       idAliasContext("unknown equipment ref -- keeping legacy masterID",
+		                      "a qualified id present in the equipment registry (is the owning mod loaded?)").c_str());
+		return -1;
+	}
+	return resolved;                  // 0..254: override the legacy masterID
+}
+
+//----------------------------------------------------------------------------------
+// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): authoritative-with-fallback
+// weapon-node mount resolution. The pure verdict (socket vs round-robin) lives in
+// chooseWeaponNode() (hardpoint.h); this glue supplies the two node indices.
+long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceWeaponType)
+{
+	// Legacy least-used round-robin -- ALWAYS computed so its nodeUsed[] side
+	// effect is preserved exactly (parity), whichever node we ultimately mount to.
+	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
+
+	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
+	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
+		return roundRobinNode;
+
+	// Declared hardpoint: resolve id -> profile -> socket name -> node index.
+	HardpointProfile hp;
+	long socketNode = -1;
+	if (resolveHardpoint(item.hardpointId, hp) && !hp.socket.empty())
+		socketNode = static_cast<Mech3DAppearance*>(appearance)
+		                 ->resolveWeaponNodeBySocketName(hp.socket.c_str());
+
+	return chooseWeaponNode(/*hasHardpoint*/ true, socketNode, roundRobinNode);
+}
+
+//----------------------------------------------------------------------------------
 long BattleMech::init (DWORD variantNum)
 {
 	//----------------------------------------------
@@ -1544,12 +1706,26 @@ long BattleMech::init (DWORD variantNum)
 	{
 		inventory[curItem].masterID = 0xff;
 		inventory[realItemNum].disabled = true;
+		// LOADOUT-HARDPOINT-JOIN-1: default the optional logical-hardpoint join key
+		// to unset. Stock CSV loadouts carry no hardpoint column, so this stays 0
+		// (legacy positional-CSV mount unchanged). A data source may later set it.
+		inventory[curItem].hardpointId = 0;
 	}
 
 	//Read in everything but weapons and AMMO
 	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
+
+		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override. Gate-ON,
+		// if this row carries an optional EquipmentId="core:<slug>" token that
+		// resolves to a legacy ordinal in 0..254, use it; else keep the numeric
+		// masterID just read. Stock rows have no token -> no override (parity).
+		{
+			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
+			if (aliasId >= 0)
+				inventory[realItemNum].masterID = (unsigned char)aliasId;
+		}
 
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
 		// index MasterComponent::masterList (sized numComponents). A corrupt, modded
@@ -1618,6 +1794,15 @@ long BattleMech::init (DWORD variantNum)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
+		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override (weapons
+		// pass). Same rule as the non-weapon pass above -- gate-ON optional
+		// EquipmentId token resolves to a legacy ordinal; else legacy numeric id.
+		{
+			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
+			if (aliasId >= 0)
+				inventory[realItemNum].masterID = (unsigned char)aliasId;
+		}
+
 		// MECH-INV-IDX-GUARD-1: masterID is read from an untrusted .mdf and used to
 		// index MasterComponent::masterList (sized numComponents). A corrupt, modded
 		// or truncated file can hold an out-of-range id; normalize it to the empty
@@ -1671,7 +1856,12 @@ long BattleMech::init (DWORD variantNum)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
-					inventory[realItemNum].facing = appearance->getWeaponNode(sourceWeaponType);
+					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
+					// weapon-node mount through the item's declared HardpointId when one
+					// resolves to a real model socket; else the legacy least-used
+					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
+					// byte-identical mount (parity). Returns the same node-index domain.
+					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
 					inventory[realItemNum].effectiveness = (short)(MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
@@ -2048,6 +2238,18 @@ long BattleMech::init (DWORD variantNum)
 	mechFile->close();
 	delete mechFile;
 	mechFile = NULL;
+
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is final here (loadout scan
+	// complete). This is the real gameplay mech-load path (init(variantNum)).
+	refreshDerivedCapabilities();
+
+	// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): report-only, gated
+	// (MC2_UNIT_PROFILE_DATA). Inventory + body locations are final here. Gathers
+	// any DECLARED loadout->hardpoint joins and logs coherence findings; stock
+	// loadouts declare no hardpoint -> nothing gathered -> silent (gate-ON parity).
+	// No runtime/visual-mount change: inventory[].facing / getWeaponNode still own
+	// the actual mount (slice 4 routes it through the HardpointId).
+	validateLoadoutHardpointJoins(variantName);
 
 	return(NO_ERR);
 }
@@ -2427,7 +2629,12 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
-					inventory[realItemNum].facing = appearance->getWeaponNode(sourceWeaponType);
+					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
+					// weapon-node mount through the item's declared HardpointId when one
+					// resolves to a real model socket; else the legacy least-used
+					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
+					// byte-identical mount (parity). Returns the same node-index domain.
+					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
 					inventory[realItemNum].effectiveness = (short)(MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
@@ -2782,12 +2989,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
     //sebi: no really...
 	// should set it to zero ?
 	//numJumpJets = numJumpJets;
-
-	// UNIT-PROFILE-SEAM-1: capability fact mirrors installed-equipment truth.
-	// numJumpJets is instance state; write the shared type baseline from it
-	// (idempotent for stock chassis; per-variant divergence deferred).
-	if (getObjectType())
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
 }
 
 long BattleMech::init (FitIniFile* mechFile) {
@@ -3434,11 +3635,9 @@ long BattleMech::init (FitIniFile* mechFile) {
 		}
 	}
 
-	// UNIT-PROFILE-SEAM-1: capability fact mirrors installed-equipment truth.
-	// numJumpJets is instance state; write the shared type baseline from it
-	// (idempotent for stock chassis; per-variant divergence deferred).
-	if (getObjectType())
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative here; fold it
+	// into the type baseline + this instance's runtime via the single owner.
+	refreshDerivedCapabilities();
 
 	return(NO_ERR);
 }
@@ -8977,12 +9176,22 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				hitLocation,
 				entryAngle);
 
-			unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
+			// ONE-WEAPON-PRESENTATION-PROOF-1 (E8): the ONE weapon-fire VFX emit
+			// point intercepted for the equipment arc's final slice. For the ONE
+			// target weapon (core:ppc) under MC2_UNIT_PROFILE_DATA, the muzzle/bolt
+			// effect id is resolved from EquipmentDefinition presentation data;
+			// gate-OFF / every other weapon / stock-no-data returns the legacy
+			// getWeaponSpecialEffect() value UNCHANGED. Presentation ASSET CHOICE
+			// only -- the fire decision, damage, heat, ammo, recycle, and the
+			// createWeaponBolt/connect behavior below are the legacy path, untouched.
+			long legacyEffectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
+			unsigned char effectType = (unsigned char)resolveTargetWeaponFireEffectType(
+				inventory[weaponIndex].masterID, (int)legacyEffectType);
 			weaponFX = ObjectManager->createWeaponBolt(effectType);
-			
-			if (!weaponFX) 
+
+			if (!weaponFX)
 			{
-				if (targetPoint) 
+				if (targetPoint)
 				{
 					//-----------------------------------------
 					// Check for Mine hit and MOVE ON!!!
@@ -8996,7 +9205,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				}
 			}
 			else {
-				if (target) 
+				if (target)
 					weaponFX->connect(this, target, &shotInfo, sourceHotSpot, targetHotSpot);
 				else  {
 					weaponFX->connect(this, *targetPoint, &shotInfo, sourceHotSpot);
@@ -9521,11 +9730,9 @@ void BattleMech::Load (MechData *data)
 	if (!data->sensorOK)
 		sensorSystem->broken = true;
 
-	// UNIT-PROFILE-SEAM-1: numJumpJets is authoritative only after Load.
-	if (getObjectType())
-		getObjectType()->profile().baselineCapabilities.set(CAP_JUMP, (numJumpJets > 0));
-	runtime.currentCapabilities = getObjectType()
-		? getObjectType()->profile().baselineCapabilities : CapabilitySet();
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative only after Load;
+	// fold it into the type baseline + this instance's runtime via the single owner.
+	refreshDerivedCapabilities();
 }
 
 //***************************************************************************

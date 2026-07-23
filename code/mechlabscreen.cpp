@@ -11,6 +11,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 #include"logisticsdata.h"
 #include"mechbayscreen.h"
 #include"cmponent.h"
+#include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include"platform_windows.h"
 #include "../resource.h"
 #include"logisticsdialog.h"
@@ -534,7 +535,13 @@ void MechLabScreen::update()
 	// hack, in case the variant list sets the helpID
 	if ( ::helpTextID )
 	{
-		textObjects[helpTextArrayID].setText( helpTextID );
+		// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled component help ids have no
+		// string-table entry; resolve from the def. Miss -> stock path.
+		const char* addHelpText = equipmentAddUiTextForStringId( ::helpTextID );
+		if ( addHelpText )
+			textObjects[helpTextArrayID].setText( addHelpText );
+		else
+			textObjects[helpTextArrayID].setText( helpTextID );
 	}
 
 	// see if the variant changed

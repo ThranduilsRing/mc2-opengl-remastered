@@ -41,11 +41,39 @@ add_executable(mc2_tests
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
     test_capability.cpp     # UNIT-PROFILE-SEAM-1
+    test_unit_actions.cpp   # UNITPROFILE-OFFLINE-HARNESS-1: resolveAction + executor registry (offline)
+    test_unit_profile_validator.cpp  # UNITPROFILE-VALIDATOR-1: load-time construction-rules validator (offline)
     test_view_currency.cpp  # VIEW-EPOCH-DEDUPE-1: object MVP currency kernel (offline)
     test_frame_graph.cpp    # FRAME-GRAPH-SKELETON-1: resource-DAG validation (offline)
     test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
+    test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
+    test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
+    test_weapon_definition.cpp  # WEAPONDEF-SCHEMA-1: WeaponFacet (was WeaponDefinition) facets + WeaponId string-id identity + weaponFitsHardpoint join (offline)
+    test_equipment_definition.cpp  # EQUIPMENT-DEFINITION-SCHEMA-1: EquipmentDefinition top type (kind/tags/legacyMasterId-alias/facet slots) + WeaponFacet fold-in + equipmentFitsHardpoint (offline)
+    test_nonmech_data_unit_proof.cpp  # NON-MECH-DATA-UNIT-PROOF-1: data-driven mount route + UI override + validateUnitDefinition coherence (offline)
+    test_action_anim_tag.cpp  # ACTION-ANIMATION-BINDINGS-1: ActionAnimTag -> gesture-id resolver + fallback chains (offline)
+    test_ui_profile.cpp       # UI-PROFILE-1: UIProfile facet + accessor-override helpers + UPV_UI_ASSET_MISSING (offline)
+    test_unit_definition.cpp  # SINGLE-SOURCE-UNIT-DEFINITION-1: UnitDefinition facade + mergeUIProfile single UI resolution (offline)
+    test_facet_names.cpp      # UNIT-DEFINITION-SHADOW-COMPARE-1: locomotion/damage token-name emitters + parse round-trip (offline)
+    test_modlint.cpp          # UNIT-MODLINT-CLI-1: reason-code->message table + facts-JSON parse + formatter (offline)
+    test_modlint_manifest.cpp # MOD-PACKAGE-MANIFEST-1: mod.json manifest MODMAN_* rules + formatter (offline)
+    test_mod_conflict.cpp     # MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure conflict classifier + formatter (offline)
+    test_variant_csv_modlint.cpp # UNIT-VARIANT-ADD-1 (S4): legacy chassis-CSV variant-block validator (VARC_ rules: stride/unreachable/dup-name/loadout-refs/truncation) (offline)
+    test_modder_finding.cpp   # MODDER-FIRST-ERROR-SURFACE-1: shared finding struct + one-line context format + silent-fallback token probes (offline)
+    test_qualified_id.cpp     # UNIT-ID-NAMESPACE-1: namespace:name convention + charset + deterministic override precedence (offline)
+    test_weapon_events.cpp    # WEAPON-FACET-PRESENTATION-SCHEMA: WeaponFacet.fireExecutor binding + WeaponEvent->asset presentation grid + flat back-compat (offline)
+    test_equipment_validator.cpp  # WEAPON-VALIDATOR-1: pure construction-rules validator for EquipmentDefinition/WeaponFacet (EQV_* findings) (offline)
+    test_equipment_modlint.cpp    # WEAPON-MODLINT-1: EQV_ reason-code->message table + equipment facts-JSON parse + converter-roster parse + formatter (offline)
+    test_equipment_registry.cpp   # EQUIPMENT-REGISTRY-FACADE-1: pure slug (mirrors converter _slug) + form->kind + registry query API (offline)
+    test_equipment_id_alias.cpp   # LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef qualified/numeric/not-found/needs-widen (offline)
+    test_fire_executor_registry.cpp  # FIRE-EXECUTOR-REGISTRY-1 (E7): bind/isBound/entryFor/resolve + stock executor set + classify unset/unbound (offline)
+    test_weapon_presentation_resolve.cpp  # ONE-WEAPON-PRESENTATION-PROOF-1 (E8): pure OnFire/OnMuzzleFlash data-vs-legacy effect-id resolution + asset->id parse (offline)
+    test_unit_source_flip.cpp  # UNIT-SOURCE-FLIP-SWITCH-1: MC2_UNIT_DEFINITION_SOURCE gate parse + variant-slug + generated-token facet apply (offline)
+    test_equipment_source_flip.cpp  # EQUIPMENT-SOURCE-FLIP-SWITCH-1: MC2_EQUIPMENT_DEFINITION_SOURCE gate parse + range-bucket->ordinal + per-field overlay fallback (offline)
+    test_equipment_add_fill.cpp  # EQUIP-ADD-FILL-1 (S2): gate parse + ns-aware def path + fill decision matrix + kind->form + AllowedLocations->crit + dual-consumer CSV line lock + EQV_ADD_* validator mirrors (offline)
+    test_mod_cache_sig.cpp       # MOD-INDEX-CACHE-MTIME-1: mod-index cache validity-signature kernel (sig-line parse/format + match rule, offline)
     test_vulkan_layout_chain.cpp  # VULKAN-LAYOUT-CHAIN-VALIDATOR-2: sampled-image layout-chain coverage/producer (offline)
     test_subgraph_contiguity.cpp  # SUBGRAPH-CONTIGUITY-GUARD-1: postprocess sub-pass contiguity rule (offline)
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
@@ -189,3 +217,28 @@ target_link_libraries(test_render_contract_3 PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
     opengl32
 )
+
+# UNIT-MODLINT-CLI-1 (Phase-3 slice 3): the offline modder validator CLI.
+# Standalone binary that reads a unit facts-JSON, runs the AUTHORITATIVE pure
+# validateUnitDefinition() (single source of truth, shared with mc2_tests + the
+# engine), and prints modder-readable findings with a CI exit code. GL/IO-free
+# like mc2_tests — the only IO is reading the input file. Built from the SAME
+# standalone cmake as mc2_tests (build64-tests). No engine, no OpenGL link.
+add_executable(mc2_modlint
+    ${MC2_WORKTREE_ROOT}/tools/mc2_modlint/mc2_modlint.cpp
+)
+
+target_include_directories(mc2_modlint PRIVATE
+    ${MC2_WORKTREE_ROOT}/code             # unit_profile_validator.h + facet headers
+    ${MC2_WORKTREE_ROOT}/mclib            # mod_conflict.h (shared pure conflict classifier)
+    ${MC2_WORKTREE_ROOT}/tools/mc2_modlint
+)
+
+target_compile_definitions(mc2_modlint PRIVATE
+    LINUX_BUILD
+    _CRT_SECURE_NO_WARNINGS
+)
+
+if(MSVC)
+    target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
+endif()

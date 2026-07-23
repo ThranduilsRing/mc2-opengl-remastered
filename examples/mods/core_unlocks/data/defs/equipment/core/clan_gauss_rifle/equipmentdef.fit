@@ -1,0 +1,22 @@
+FITini
+
+// core_unlocks (EQUIP-ENABLE-WIRE-1): enable-only purchase unlock for the stock
+// Clan Gauss Rifle (compbas row 113, populated + logistics-icon-valid, but
+// absent from early stock missions' purchase.fit [Components] lists).
+//
+// This is a DELIBERATE core-namespace override that carries ONLY the enable
+// wire: the engine's applyEquipmentEnableWireIfEnabled() reads [Equipment]
+// b Enabled + l LegacyMasterId (key-checked against the row ordinal) and forces
+// available[113]=true at the LogisticsData::updateAvailability seam. No stats
+// here -> the stat overlay (MC2_EQUIPMENT_DEFINITION_SOURCE=generated) keeps
+// legacy values for this row. purchase.fit remains authoritative for everything
+// else; the wire only ADDS, never removes.
+
+[Equipment]
+st EquipmentId="core:clan_gauss_rifle"
+st DisplayName="Clan Gauss Rifle"
+st Kind="Weapon"
+l LegacyMasterId=113
+b Enabled=TRUE
+
+FITend

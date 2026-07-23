@@ -37,6 +37,7 @@
 
 #ifndef CMPONENT_H
 #include"cmponent.h"
+#include"unitprofile.h"		// EQUIPMENT-REGISTRY-FACADE-1: gated registry build hook
 #endif
 
 #ifndef OBJMGR_H
@@ -867,6 +868,16 @@ void Mission::load (const char *loadFileName)
 #endif
 			MasterComponent::loadMasterList(compFileName, 255, baseSensorRange);
 		gosASSERT(loadErr == NO_ERR);
+
+		// EQUIPMENT-SOURCE-FLIP-SWITCH-1: gated green-stat overlay (no-op OFF).
+		overlayGeneratedEquipmentStatsIfEnabled();
+		// EQUIP-ADD-FILL-1 (S2): gated ADD pass -- mod defs fill UNDEFINED
+		// compbas ordinals (no-op OFF). Before the registry rebuild below.
+		applyEquipmentAddFillIfEnabled(baseSensorRange);
+		// EQUIPMENT-REGISTRY-FACADE-1: gated parallel registry build (no-op OFF).
+		buildAndDumpEquipmentRegistryIfEnabled();
+		// FIRE-EXECUTOR-REGISTRY-1 (E7): gated fireExecutor lookup proof (no-op OFF).
+		dumpFireExecutorProofIfEnabled();
 	}
 
 	result = gameSystemFile->readIdUChar("GodMode", godMode);

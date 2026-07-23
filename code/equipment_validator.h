@@ -1,0 +1,325 @@
+#ifndef EQUIPMENT_VALIDATOR_H
+#define EQUIPMENT_VALIDATOR_H
+// WEAPON-VALIDATOR-1 (equipment arc, slice 6).
+//
+// Pure CONSTRUCTION-RULES validator for EquipmentDefinition / WeaponFacet. Mirrors
+// the unit arc's unit_profile_validator.h exactly: it only *describes* incoherence
+// in an equipment definition and yields modder-readable findings keyed by stable
+// reason codes -- it NEVER rejects a component (report-only). The future engine
+// validate hook logs findings; the future WEAPON-MODLINT-1 CLI (next slice) wraps
+// THIS function as a command-line linter over compbas-emitted defs.
+//
+// Pure, header-only (plain enums / bools / the pure schema structs), so it compiles
+// into the offline `mc2_tests` target and drags NO engine/GL/IO code -- exactly
+// like equipment_definition.h / weapon_definition.h / hardpoint.h. No gate: nothing
+// engine-side reads it yet, and it changes no engine behavior.
+//
+// It reuses the schema vocabularies already established by the equipment arc:
+//   * equipment_definition.h  -- EquipmentDefinition, EquipmentKind, facet slots
+//   * weapon_definition.h     -- WeaponFacet, WeaponEvent/AssetKind grid, fireExecutor,
+//                                WeaponCombatStats, WeaponAmmoFacet, weaponFitsHardpoint
+//   * hardpoint.h             -- HardpointProfile, weaponFitsHardpoint / hardpointAcceptsWeapon
+//
+// REASON-CODE DISCIPLINE (same as UnitProfileReasonCode): a NEW, independent
+// `EQV_` vocabulary (Equipment-Validator). Order is NOT significance; each code is
+// a distinct coherence rule. Future equipment-arc slices ADD codes here and grow
+// the vocabulary -- they must NOT renumber existing ones, because logs / mod
+// tooling key on the value. A doctest locks EQV__COUNT.
+
+#include <vector>
+#include "equipment_definition.h"   // EquipmentDefinition, EquipmentKind, facet slots
+#include "weapon_definition.h"      // WeaponFacet, WeaponEvent/AssetKind, combat/ammo
+#include "hardpoint.h"              // HardpointProfile, weaponFitsHardpoint
+
+// -------------------------------------------------------------------------
+// REASON-CODE VOCABULARY. `EQV_` = Equipment-Validator. Stable, modder-facing.
+// APPEND-ONLY (never renumber): logs / mod tooling key on the value.
+// -------------------------------------------------------------------------
+enum EquipmentReasonCode {
+    // --- LIVE (WEAPON-VALIDATOR-1, equipment arc slice 6) ---
+    // A weapon-kind equipment carries a WeaponFacet with NO fireExecutor bound
+    // (fireExecutor.id == 0). A weapon needs an executor to fire; without one it
+    // is inert. WARN, not reject (a converter default may fill it later).
+    EQV_WEAPON_NO_FIRE_EXECUTOR = 0,
+
+    // A weapon-kind equipment carries a WeaponFacet with no category set in a way
+    // the hardpoint spine can use. The stock converter always emits a WeaponTag;
+    // a def whose category never appears in ANY declared hardpoint accept-set is
+    // caught by the hardpoint-context check below. This code fires for the weapon
+    // that DECLARES it uses a presentation event but leaves that (event,kind) cell
+    // empty -- a declared-but-empty presentation asset (mirrors UPV_UI_ASSET_MISSING
+    // and the unit anim/UI declared-but-empty pattern).
+    EQV_PRESENTATION_ASSET_MISSING,
+
+    // A weapon-kind equipment whose category tag is not a modeled weapon class /
+    // the equipment is a weapon but no meaningful WeaponTag was authored. In this
+    // schema WeaponTag is always one of the modeled values (defaults WTAG_ENERGY),
+    // so "no category" is expressed by the caller asserting the def carries a
+    // weapon facet with an out-of-range / unauthored category -- reported here so
+    // the vocabulary has the intended slot for the unit-spine join.
+    EQV_WEAPON_NO_CATEGORY,
+
+    // An ammo-consuming weapon (WeaponAmmoFacet::ammoPerShot > 0) whose
+    // ammoCategory string is EMPTY -- it fires ammo but names no ammo category, so
+    // nothing can supply it. (Or an AMMO-kind equipment whose AmmoFacet names no
+    // category.)
+    EQV_AMMO_CATEGORY_MISSING,
+
+    // A weapon whose range buckets are incoherent: negative range/damage, or the
+    // short/med/long ordering is violated (short > med, or med > long). Ranges must
+    // be non-negative and monotonically non-decreasing; damage non-negative.
+    EQV_WEAPON_RANGE_INVALID,
+
+    // EquipmentKind vs facet mismatch: kind == EQ_WEAPON but no WeaponFacet present,
+    // or a WeaponFacet IS present but kind != EQ_WEAPON. Optional cheap coherence.
+    EQV_KIND_FACET_MISMATCH,
+
+    // The weapon<->hardpoint legality check, reachable when a hardpoint CONTEXT is
+    // supplied: the weapon's category is NOT accepted by the provided hardpoint
+    // (weaponFitsHardpoint == false). REPORT-ONLY -- author-time enforcement is
+    // deferred/blocked per the mech-bay constraint; here it is a finding only.
+    EQV_WEAPON_HARDPOINT_REJECTED,
+
+    // FIRE-EXECUTOR-REGISTRY-1 (E7): the weapon NAMES a fireExecutor (id != 0)
+    // but that name is NOT registered in the FireExecutorRegistry -- the lookup
+    // resolves to nullptr, so no executor could run it. Distinct from
+    // EQV_WEAPON_NO_FIRE_EXECUTOR (which is the UNSET id==0 case). WARN, not
+    // reject: a mod may register the executor later. Report-only in E7 --
+    // nothing fires off this resolution; the classification feeds a finding.
+    EQV_FIRE_EXECUTOR_UNBOUND,
+
+    // EQUIP-ENABLE-WIRE-1 (ADD-ladder S1): the def declares `Enabled=TRUE` (the
+    // enabled->purchase wire) but the enable cannot resolve to a populated
+    // masterList row: legacyMasterId is missing (-1) / outside the 8-bit purchase
+    // space (0..254), or -- when a populated-ordinal CONTEXT is supplied -- names
+    // an ordinal that is NOT a populated row. Such an enable is a silent no-op in
+    // the engine (the wire only ENABLES populated rows; filling an undefined row
+    // is S2 EQUIP-ADD-FILL-1's job), so modlint surfaces it. WARN, report-only.
+    EQV_ENABLE_UNRESOLVED,
+
+    // EQUIP-ADD-FILL-1 (ADD-ladder S2): the def is an ADD (declared via the
+    // add_fill fact) but its LegacyMasterId cannot claim a FREE ordinal: it is
+    // missing (-1, no auto-assign), outside 0..254 (255 = 0xff sentinel), or --
+    // when a populated-ordinal CONTEXT is supplied -- names an ordinal that IS
+    // a populated stock row (the engine refuses to clobber stock). WARN.
+    EQV_ADD_ORDINAL_UNAVAILABLE,
+
+    // EQUIP-ADD-FILL-1: an ADD def is missing a field BOTH row consumers need:
+    // DisplayName (new ids have no string-table entry -> nameless everywhere)
+    // or the [Presentation] Icon (the mechlab consumer DROPS icon-less rows ->
+    // a half-materialized item). WARN.
+    EQV_ADD_FIELDS_INCOMPLETE,
+
+    // EQUIP-ADD-FILL-1: an ADD weapon def links AmmoMasterId to an ordinal that
+    // is NOT a populated row (context-dependent, like the enable check) -- the
+    // weapon would carry a dangling ammo reference. WARN.
+    EQV_ADD_AMMO_UNRESOLVED,
+
+    EQV__COUNT
+};
+
+// A single coherence finding. `code` = stable machine key; `message` = a short
+// modder-facing literal (the future glue/CLI prefixes it with the equipment id).
+// Flat POD, no ownership -- mirrors UnitProfileFinding.
+struct EquipmentFinding {
+    EquipmentReasonCode code;
+    const char*         message;   // static string literal; no ownership
+};
+
+// -------------------------------------------------------------------------
+// Inputs. The def is the pure schema aggregate. The optional hardpoint context
+// (a list of hardpoints the weapon is being mounted against) enables the
+// weapon<->hardpoint legality check; empty = no hardpoint context, that check is
+// skipped. The `usedEvents` list lets the caller state which WeaponEvents the def
+// CLAIMS to use (e.g. from its fire executor's declared event set), so the
+// presentation-asset check reports a declared-but-empty event cell rather than
+// walking every possible event (most are legitimately unmapped).
+// -------------------------------------------------------------------------
+
+// One WeaponEvent the def CLAIMS to present, plus which asset kind is expected.
+// The check reports EQV_PRESENTATION_ASSET_MISSING when the def maps NO asset for
+// this event at all (eventHasAnyAsset == false) -- a declared-but-empty cue.
+struct ClaimedWeaponEvent {
+    WeaponEvent event;
+    ClaimedWeaponEvent() : event(WeaponEvent::OnFire) {}
+    explicit ClaimedWeaponEvent(WeaponEvent e) : event(e) {}
+};
+
+struct EquipmentValidationInputs {
+    EquipmentDefinition             def;
+    // Hardpoints the weapon is being mounted against (optional context). Empty ->
+    // the weapon<->hardpoint legality check is skipped (no context to judge).
+    std::vector<HardpointProfile>   hardpointContext;
+    // WeaponEvents the def CLAIMS to present (optional). Empty -> the presentation
+    // check is skipped (an unmapped event is not a defect unless it is claimed).
+    std::vector<ClaimedWeaponEvent> claimedEvents;
+    // Caller assertion that the weapon's category tag was actually AUTHORED (the
+    // schema can't distinguish an authored WTAG_ENERGY from the default). Default
+    // true (schema always has a value); set false to exercise EQV_WEAPON_NO_CATEGORY.
+    bool                            categoryAuthored;
+    // EQUIP-ENABLE-WIRE-1: the def declares `Enabled=TRUE` (purchase enable
+    // wire). Default false (Enabled key absent -- all stock defs) -> the enable
+    // check is skipped entirely.
+    bool                            enableDeclared;
+    // Optional populated-ordinal CONTEXT for the enable check (the set of
+    // compbas ordinals the load loop actually populates). Empty -> only the
+    // legacyMasterId range half of the check runs (matches the hardpointContext
+    // "no context, skip" pattern).
+    std::vector<long>               populatedLegacyOrdinals;
+
+    // EQUIP-ADD-FILL-1 facts: the def is an ADD (targets a NEW row on a free
+    // ordinal). Default false (all stock/override defs) -> the ADD checks are
+    // skipped entirely. hasDisplayName/hasIcon assert field presence (the pure
+    // schema does not carry the icon/name strings); ammoMasterId is the def's
+    // linked ammo ordinal (0 = none).
+    bool                            addFill;
+    bool                            hasDisplayName;
+    bool                            hasIcon;
+    long                            ammoMasterId;
+
+    EquipmentValidationInputs()
+        : categoryAuthored(true), enableDeclared(false),
+          addFill(false), hasDisplayName(true), hasIcon(true), ammoMasterId(0) {}
+};
+
+// -------------------------------------------------------------------------
+// THE validation entry. Pure; returns aggregated findings in a stable check order.
+// A coherent stock-shaped weapon (category authored, sane ranges, an executor,
+// ammo where needed, no claimed-but-empty events, category accepted by any supplied
+// hardpoint) yields ZERO findings. Report-only -- never rejects.
+// -------------------------------------------------------------------------
+inline std::vector<EquipmentFinding>
+validateEquipmentDefinition(const EquipmentValidationInputs& in) {
+    std::vector<EquipmentFinding> findings;
+    const EquipmentDefinition& e = in.def;
+
+    // --- Kind vs facet coherence (optional, cheap). ---
+    const bool kindSaysWeapon = (e.kind == EQ_WEAPON);
+    if (kindSaysWeapon != e.hasWeapon) {
+        findings.push_back(EquipmentFinding{
+            EQV_KIND_FACET_MISMATCH,
+            "equipment kind and WeaponFacet presence disagree"});
+    }
+
+    // Weapon-facet checks only apply when a weapon facet is actually present.
+    if (e.hasWeapon) {
+        const WeaponFacet& w = e.weapon;
+
+        // --- 1. No fire executor bound. ---
+        if (!w.fireExecutor.valid()) {
+            findings.push_back(EquipmentFinding{
+                EQV_WEAPON_NO_FIRE_EXECUTOR,
+                "weapon has no fire executor bound (cannot fire)"});
+        }
+
+        // --- 2. No authored category (unit-spine join half missing). ---
+        if (!in.categoryAuthored) {
+            findings.push_back(EquipmentFinding{
+                EQV_WEAPON_NO_CATEGORY,
+                "weapon has no authored mount-class category"});
+        }
+
+        // --- 3. Ammo-using weapon names no ammo category. ---
+        if (w.ammo.ammoPerShot > 0 && w.ammo.ammoCategory.empty()) {
+            findings.push_back(EquipmentFinding{
+                EQV_AMMO_CATEGORY_MISSING,
+                "ammo-consuming weapon names no ammo category"});
+        }
+
+        // --- 4. Range / damage coherence. ---
+        {
+            const WeaponCombatStats& c = w.combat;
+            const bool negative = c.damage < 0.f || c.rangeShort < 0.f ||
+                                  c.rangeMed < 0.f || c.rangeLong < 0.f;
+            const bool disordered = c.rangeShort > c.rangeMed ||
+                                    c.rangeMed   > c.rangeLong;
+            if (negative || disordered) {
+                findings.push_back(EquipmentFinding{
+                    EQV_WEAPON_RANGE_INVALID,
+                    "weapon ranges/damage invalid (negative or short>med>long)"});
+            }
+        }
+
+        // --- 5. Claimed-but-empty presentation events. ---
+        for (const ClaimedWeaponEvent& ce : in.claimedEvents) {
+            if (!eventHasAnyAsset(w.presentation, ce.event)) {
+                findings.push_back(EquipmentFinding{
+                    EQV_PRESENTATION_ASSET_MISSING,
+                    "claimed weapon event maps to no presentation asset"});
+            }
+        }
+
+        // --- 6. Weapon<->hardpoint legality (only with a hardpoint context). ---
+        for (const HardpointProfile& hp : in.hardpointContext) {
+            if (!weaponFitsHardpoint(w, hp)) {
+                findings.push_back(EquipmentFinding{
+                    EQV_WEAPON_HARDPOINT_REJECTED,
+                    "weapon category not accepted by a supplied hardpoint"});
+            }
+        }
+    }
+
+    // --- EQUIP-ENABLE-WIRE-1: declared enable must resolve to a populated row. ---
+    if (in.enableDeclared) {
+        const long ord = e.legacyMasterId;
+        bool unresolved = (ord < 0 || ord >= 255);
+        // EQUIP-ADD-FILL-1: an ADD def's row is populated BY the fill pass
+        // before the enable wire runs, so the populated-context half of the
+        // check does not apply to it (the ADD checks below own that ordinal).
+        if (!unresolved && !in.addFill && !in.populatedLegacyOrdinals.empty()) {
+            bool populated = false;
+            for (long p : in.populatedLegacyOrdinals)
+                if (p == ord) { populated = true; break; }
+            unresolved = !populated;
+        }
+        if (unresolved) {
+            findings.push_back(EquipmentFinding{
+                EQV_ENABLE_UNRESOLVED,
+                "Enabled=TRUE does not resolve to a populated masterList row (enable is a no-op)"});
+        }
+    }
+
+    // --- EQUIP-ADD-FILL-1: ADD-def checks (mirror of the engine fill pass). ---
+    if (in.addFill) {
+        const long ord = e.legacyMasterId;
+        // Ordinal must be explicit, in the 8-bit space, and FREE (not populated).
+        bool unavailable = (ord < 0 || ord >= 255);
+        if (!unavailable && !in.populatedLegacyOrdinals.empty()) {
+            for (long p : in.populatedLegacyOrdinals)
+                if (p == ord) { unavailable = true; break; }
+        }
+        if (unavailable) {
+            findings.push_back(EquipmentFinding{
+                EQV_ADD_ORDINAL_UNAVAILABLE,
+                "ADD def LegacyMasterId is missing, out of 0..254, or names a populated stock row"});
+        }
+        // Both consumers need a DisplayName and an icon to materialize the row.
+        if (!in.hasDisplayName || !in.hasIcon) {
+            findings.push_back(EquipmentFinding{
+                EQV_ADD_FIELDS_INCOMPLETE,
+                "ADD def is missing DisplayName and/or [Presentation] Icon"});
+        }
+        // A linked ammo ordinal must resolve to a populated row (context-gated).
+        if (in.ammoMasterId > 0 && !in.populatedLegacyOrdinals.empty()) {
+            bool ammoPopulated = false;
+            for (long p : in.populatedLegacyOrdinals)
+                if (p == in.ammoMasterId) { ammoPopulated = true; break; }
+            if (!ammoPopulated) {
+                findings.push_back(EquipmentFinding{
+                    EQV_ADD_AMMO_UNRESOLVED,
+                    "ADD def AmmoMasterId does not resolve to a populated ammo row"});
+            }
+        }
+    }
+
+    // --- AMMO-kind item with no named category (parallel to the weapon case). ---
+    if (e.hasAmmo && e.ammo.ammoCategory.empty()) {
+        findings.push_back(EquipmentFinding{
+            EQV_AMMO_CATEGORY_MISSING,
+            "ammo item names no ammo category"});
+    }
+
+    return findings;
+}
+
+#endif // EQUIPMENT_VALIDATOR_H

@@ -22,6 +22,8 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 #include"prefs.h"
 #include"comndr.h"
 #include"missionresults.h"
+#include"unitprofile.h"   // EQUIP-ENABLE-WIRE-1: applyEquipmentEnableWireIfEnabled
+#include"equipment_registry.h"   // EQUIP-ADD-FILL-1: EquipmentAddFillRow (second consumer)
 #include<zlib.h>
 #include<vector>
 #include<string>
@@ -294,6 +296,68 @@ void LogisticsData::initComponents()
 
 	delete [] data;
 	data = NULL;
+
+	// EQUIP-ADD-FILL-1 (S2): second consumer of the ADD pass -- the filled rows
+	// are NOT in compbas.csv, so append them here too (gate OFF -> empty list).
+	appendEquipmentAddFillComponents();
+}
+
+//*************************************************************************************************
+// EQUIP-ADD-FILL-1 (S2): append a LogisticsComponent for every row the gated
+// ADD pass materialized in masterList, parsed from the SAME synthesized compbas
+// line (so both consumers see identical stats), with the mechlab display name
+// taken from the def's DisplayName (a new id has no string-table entry).
+// IDEMPOTENT (skips ordinals already present) and re-called from
+// updateAvailability, because the ADD pass runs at the loadMasterList seam which
+// can land AFTER the one-shot initComponents() in the splash->logistics flow.
+// Gate OFF or pass not run -> equipmentAddFillRows() empty -> exact no-op.
+void LogisticsData::appendEquipmentAddFillComponents()
+{
+	const std::vector<EquipmentAddFillRow>& rows = equipmentAddFillRows();
+	if ( rows.empty() )
+		return;
+
+	for ( size_t i = 0; i < rows.size(); ++i )
+	{
+		const EquipmentAddFillRow& r = rows[i];
+
+		bool present = false;
+		for ( COMPONENT_LIST::EIterator iter = components.Begin(); !iter.IsDone(); iter++ )
+		{
+			if ( (*iter).getID() == r.ordinal ) { present = true; break; }
+		}
+		if ( present )
+			continue;
+
+		char lineBuf[1024];
+		strncpy( lineBuf, r.csvLine.c_str(), 1023 );
+		lineBuf[1023] = 0;
+
+		LogisticsComponent blank;
+		components.Append( blank );
+		LogisticsComponent& tmp = components.GetTail();
+		if ( -1 == tmp.init( lineBuf ) )
+		{
+			// icon column is validated by the ADD pass, so this is unexpected --
+			// surface it rather than half-materializing the item.
+			printf( "[EQUIP-ADD] logistics consumer REJECTED synthesized row (id=%s ordinal=%ld) -- item absent from mechlab\n",
+					r.qualifiedId.c_str(), r.ordinal );
+			components.DeleteTail();
+			continue;
+		}
+		tmp.setDisplayName( r.displayName.c_str() );
+
+		// Mirror of the initComponents() ammo fixup: the CSV Ammo column holds
+		// the ammo row's ordinal; logistics wants ammo-per-ton from that row.
+		if ( tmp.getAmmo() && MasterComponent::masterList &&
+			 r.ammoMasterId > 0 && r.ammoMasterId < MasterComponent::numComponents )
+		{
+			tmp.setAmmo( MasterComponent::masterList[r.ammoMasterId].getAmmoPerTon() );
+		}
+
+		printf( "[EQUIP-ADD] mechlab row appended: id=%s ordinal=%ld name=\"%s\"\n",
+				r.qualifiedId.c_str(), r.ordinal, r.displayName.c_str() );
+	}
 }
 
 //*************************************************************************************************
@@ -1909,6 +1973,12 @@ long LogisticsData::updateAvailability()
 		return NO_PURCHASE_FILE;
 	}
 	LOG_LOGISTICS_UA("updateAvailability: purchase file open OK");
+
+	// EQUIP-ADD-FILL-1 (S2): the ADD pass runs at the loadMasterList seam, which
+	// can land after the one-shot initComponents(); re-run the idempotent append
+	// here so filled rows exist in `components` before the availability loops.
+	appendEquipmentAddFillComponents();
+
 	// read in available components
 	bool available[255];
 	memset( available, 0, sizeof( bool ) * 255 );
@@ -1983,6 +2053,29 @@ long LogisticsData::updateAvailability()
 		for ( long i = 0; i < pfCount && i < 1024; i++ )
 			appendAvailability( allPF[i], available );
 		LOG_LOGISTICS_UA( "updateAvailability: MC2_PURCHASE_ALL campaign-wide (%ld purchase files)", pfCount );
+	}
+
+	// EQUIP-ENABLE-WIRE-1 (equipment arc, ADD-ladder S1): first consumer of the
+	// E2 equipment registry `enabled` flag. ENABLE-ONLY union on top of the
+	// purchase.fit verdicts: a populated masterList row whose def sidecar declares
+	// `[Equipment] b Enabled=TRUE` is forced into available[] here, BEFORE the
+	// disable sweep and the [Mechs] variant loop below (so its components and any
+	// variants using them resolve normally). Gate MC2_UNIT_PROFILE_DATA; gate-OFF
+	// or zero mods -> returns 0 and this block is byte-identical no-op.
+	{
+		size_t enableWireForced = applyEquipmentEnableWireIfEnabled( available, 255 );
+		if ( enableWireForced > 0 )
+		{
+			LOG_LOGISTICS_UA( "updateAvailability: enable-wire forced %zu component(s)", enableWireForced );
+			for ( COMPONENT_LIST::EIterator cIter = components.Begin(); !cIter.IsDone(); cIter++ )
+			{
+				if ( available[(*cIter).getID()] && !(*cIter).isAvailable() )
+				{
+					bNewWeapons = true;
+					(*cIter).setAvailable( 1 );
+				}
+			}
+		}
 	}
 
 	// go through comonent list, and set 'em

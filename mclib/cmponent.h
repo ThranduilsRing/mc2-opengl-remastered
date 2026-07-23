@@ -47,8 +47,6 @@
 #define	COMPONENT_USE_CLAN			16
 #define	COMPONENT_USE_INNERSPHERE	32
 
-#define	WEAPON_AMMO_OFFSET			65		// Master Component Index Offset from weapon
-
 typedef enum {
 	COMPONENT_FORM_SIMPLE = 0,
 	COMPONENT_FORM_COCKPIT,
@@ -547,6 +545,19 @@ class MasterComponent {
 
 		char *getAbbreviation (void) {
 			return (&abbreviation[0]);
+		}
+
+		// EQUIP-ADD-FILL-1: initEXCEL fills name/abbreviation from the string
+		// table (IDS 32000/33000 + masterID); a NEW modded id has no string, so
+		// the gated ADD fill pass overwrites them from the def's DisplayName.
+		void setName (const char* n) {
+			strncpy(name, n ? n : "", MAXLEN_COMPONENT_NAME - 1);
+			name[MAXLEN_COMPONENT_NAME - 1] = '\0';
+		}
+
+		void setAbbreviation (const char* a) {
+			strncpy(abbreviation, a ? a : "", MAXLEN_COMPONENT_ABBREV - 1);
+			abbreviation[MAXLEN_COMPONENT_ABBREV - 1] = '\0';
 		}
 		
 		bool isOffensiveWeapon (void);

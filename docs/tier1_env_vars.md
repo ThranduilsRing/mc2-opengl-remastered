@@ -288,6 +288,7 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 - `MC2_UNIT_PROFILE_DATA` — UNIT-PROFILE-ARC data-driven unit+equipment definition source (`code/unitprofile.cpp`). Default **LEGACY** (unset/`0` = legacy path); any non-`0` value switches to the generated `UnitProfileData` source.
 - `MC2_ACTIVE_MOD=<folder>` — active mod overlay id (`mclib/file.cpp`, `mclib/fx_def_registry.cpp`, `mclib/anim_override_registry.cpp`, `mclib/model_override_registry.cpp`). Unset/empty = stock base-game mode. When set, mounts `<folder>`'s content (and any `MC2_MOD_DEPS` add-on layers) over the stock campaign for mod-cache/asset-override resolution.
 - `MC2_FX_DEFS=1` — FX-DEFS-SIDECAR-1: overlay `data/effects/defs/<Name>.fxdef.json` (+ active mod's own defs) onto the loaded effect `SpecLibrary` (`code/mechcmd2.cpp`). Default **OFF**; parsing/diagnostics are always free, but the spec-mutating apply only runs when set. OFF = byte-identical to stock.
+- `MC2_EQUIPMENT_ADD` — EQUIP-ADD-FILL-1 (ADD-ladder S2): mod equipment defs with an explicit `LegacyMasterId` on an UNDEFINED compbas ordinal materialize as live MasterComponent + mechlab rows at load (`code/equipment_registry_engine.cpp`). Default **OFF** (unset/`0`); requires `MC2_UNIT_PROFILE_DATA=1` and an active mod (`MC2_ACTIVE_MOD`/`MC2_MOD_DEPS`). Gate-OFF is zero-I/O byte-identical.
 
 ## EditorBridge
 

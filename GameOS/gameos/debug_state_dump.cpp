@@ -733,7 +733,114 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
               << ", \"cap_jump_baseline\": "; b(s, rows[i].capJumpBaseline != 0);
             s << ", \"cap_jump_current\": ";  b(s, rows[i].capJumpCurrent != 0);
             s << ", \"can_perform_jump\": ";  b(s, rows[i].canPerformJump != 0);
+            // UNIT-DEFINITION-SHADOW-COMPARE-1: chassis stem + locomotion/damage
+            // facet as canonical token names (spellings match the converter and
+            // the parse* inverses, so shadow_compare.py can string-diff directly).
+            s << ", \"chassis\": \"" << rows[i].chassis << "\"";
+            s << ", \"locomotion\": \""
+              << locomotionModelName(static_cast<LocomotionModel>(rows[i].locomotion)) << "\"";
+            s << ", \"damage_schema\": \""
+              << damageSchemaName(static_cast<DamageSchemaId>(rows[i].damageSchema)) << "\"";
+            // LOADOUT-THREE-LAYER-1 (Phase 3): variant identity so shadow_compare
+            // joins per-variant. Empty string when the mover has no variant concept.
+            s << ", \"variant\": \"" << rows[i].variant << "\"";
+            s << ", \"variant_id\": " << rows[i].variantId;
             s << " }" << (i + 1 < nrows ? "," : "") << "\n";
+        }
+        s << "    ]\n";
+        s << "  }\n";
+    }
+    // WEAPON-SHADOW-COMPARE-1 (equipment arc, slice 5): per-loaded-MasterComponent
+    // witness (the engine's authoritative parse of compbas.csv). Additive section,
+    // present ONLY under the same MC2_UNIT_PROFILE_DATA gate — schema byte-for-byte
+    // unchanged when absent. weapon_shadow_compare.py joins masterId <-> the
+    // converter's legacy_master_id and diffs kind/category/damage/heat/recycle/
+    // range/CV/ammo per stock component.
+    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+        constexpr int kCompCap = 512;
+        static ComponentWitnessRow crows[kCompCap];
+        const int ncomp = mc2_component_collect_witness(crows, kCompCap);
+        s << "  ,\n";
+        s << "  \"masterComponents\": {\n";
+        s << "    \"version\": 1,\n";
+        s << "    \"rows\": [\n";
+        for (int i = 0; i < ncomp; ++i) {
+            const ComponentWitnessRow& r = crows[i];
+            s << "      { \"masterId\": " << r.masterId
+              << ", \"form\": \"" << r.form << "\""
+              << ", \"kind\": \"" << r.kind << "\""
+              << ", \"is_weapon\": "; b(s, r.isWeapon != 0);
+            s << ", \"category\": \"" << r.category << "\""
+              << ", \"damage\": " << r.damage
+              << ", \"heat\": " << r.heat
+              << ", \"recycle\": " << r.recycle
+              << ", \"range_bucket\": \"" << r.rangeBucket << "\""
+              << ", \"combat_value\": " << r.combatValue
+              << ", \"ammo_master_id\": " << r.ammoMasterId
+              << ", \"crit_slots\": " << r.critSlots
+              << " }" << (i + 1 < ncomp ? "," : "") << "\n";
+        }
+        s << "    ]\n";
+        s << "  }\n";
+    }
+    // UNIT-PREVIEW-DUMP-1 (Phase 3): headless per-loaded-unit-TYPE presentation
+    // preview (model/sockets/anim-tags/icon/validator findings a modder verifies
+    // WITHOUT an interactive mission). Additive section, present ONLY under the
+    // same MC2_UNIT_PROFILE_DATA gate — schema byte-for-byte unchanged when absent.
+    // Read-only from already-loaded type data (de-duped per ObjectType).
+    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+        constexpr int kPrevCap = 64;
+        static UnitPreviewWitnessRow prows[kPrevCap];
+        const int nprev = mc2_unitpreview_collect_witness(prows, kPrevCap);
+        s << "  ,\n";
+        s << "  \"unitPreview\": {\n";
+        s << "    \"version\": 1,\n";
+        s << "    \"animTagOrder\": [";
+        for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+            s << (a ? ", " : "") << "\"" << mc2_unitpreview_anim_tag_name(a) << "\"";
+        s << "],\n";
+        s << "    \"rows\": [\n";
+        for (int i = 0; i < nprev; ++i) {
+            const UnitPreviewWitnessRow& r = prows[i];
+            s << "      {\n";
+            s << "        \"objectId\": " << r.objectId << ",\n";
+            s << "        \"name\": \"" << r.name << "\",\n";
+            s << "        \"chassis\": \"" << r.chassis << "\",\n";
+            s << "        \"variant\": \"" << r.variant << "\",\n";
+            s << "        \"is_mech\": "; b(s, r.isMech != 0); s << ",\n";
+            s << "        \"socket_count\": " << r.socketCount << ",\n";
+            s << "        \"missing_socket_count\": " << r.missingSocketCount << ",\n";
+            s << "        \"sockets\": [";
+            for (int k = 0; k < r.socketCount; ++k) {
+                s << (k ? ", " : "") << "{ \"name\": \"" << r.sockets[k].name
+                  << "\", \"present\": "; b(s, r.sockets[k].present != 0); s << " }";
+            }
+            s << "],\n";
+            s << "        \"anim_tags_available\": [";
+            {
+                bool first = true;
+                for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+                    if (r.animTagAvailable[a]) {
+                        s << (first ? "" : ", ") << "\"" << mc2_unitpreview_anim_tag_name(a) << "\"";
+                        first = false;
+                    }
+            }
+            s << "],\n";
+            s << "        \"anim_tags_missing\": [";
+            {
+                bool first = true;
+                for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a)
+                    if (r.isMech && !r.animTagAvailable[a]) {
+                        s << (first ? "" : ", ") << "\"" << mc2_unitpreview_anim_tag_name(a) << "\"";
+                        first = false;
+                    }
+            }
+            s << "],\n";
+            s << "        \"icon_resolved\": \"" << r.iconResolved << "\",\n";
+            s << "        \"finding_count\": " << r.findingCount << ",\n";
+            s << "        \"first_finding_code\": " << r.firstFindingCode << ",\n";
+            s << "        \"first_finding_msg\": \"" << r.firstFindingMsg << "\"\n";
+            s << "      }" << (i + 1 < nprev ? "," : "") << "\n";
         }
         s << "    ]\n";
         s << "  }\n";

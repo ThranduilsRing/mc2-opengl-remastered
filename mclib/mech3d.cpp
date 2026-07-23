@@ -33,6 +33,10 @@ extern "C" int mc2CaptureGaitFreezeActive();
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 #include <cstdint>  // M2.5 (Q6 amendment 2): uint64_t for MLR mech draw counter
 #include <unordered_map>  // ANIM-CADENCE-GUARD-1: per-appearance last-advance frame stamp
+#include <vector>  // PRESENTATION-SOCKET-PROFILE-1: DeclaredSocketCheck list
+#include "unitprofile.h"              // PRESENTATION-SOCKET-PROFILE-1: mc2UnitProfileDataEnabled()
+#include "unit_profile_validator.h"  // PRESENTATION-SOCKET-PROFILE-1: validateDeclaredSockets()
+#include "action_executor_registry.h"  // UNIT-DEFINITION-VALIDATOR-1: theActionExecutorRegistry() for the ONE pass
 
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
@@ -804,6 +808,98 @@ void Mech3DAppearanceType::init (const char * fileName)
 			"mech3d.sensor_triangle", NULL);
 	}
 
+	// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): OPTIONAL data-declared
+	// presentation-socket table + report-only validation. Additive & fallback:
+	// stock mechs have no [PresentationSockets] block -> the seekBlock fails
+	// side-effect-free (BLOCK_NOT_FOUND, cursor untouched) -> numPresentationSockets
+	// stays 0 -> zero findings -> full stock parity. This reads and VALIDATES the
+	// table only; it does NOT feed getWeaponNode / nodeData / any render path (that
+	// is a later slice). Format mirrors the [Nodes] idiom above:
+	//   [PresentationSockets]
+	//   NumSockets = N
+	//   [Socket0] SocketName = <model node name>
+	numPresentationSockets = 0;
+	if (mechFile.seekBlock("PresentationSockets") == NO_ERR)
+	{
+		long numSockets = 0;
+		if (mechFile.readIdLong("NumSockets", numSockets) != NO_ERR)
+			numSockets = 0;
+		if (numSockets > MAX_PRESENTATION_SOCKETS)
+			numSockets = MAX_PRESENTATION_SOCKETS;
+		for (long si = 0; si < numSockets; si++)
+		{
+			char blockId[64];
+			sprintf(blockId, "Socket%ld", si);
+			if (mechFile.seekBlock(blockId) != NO_ERR)
+				continue;
+			char socketName[PRESENTATION_SOCKET_NAME_CAP] = "";
+			if (mechFile.readIdString("SocketName", socketName,
+			                          PRESENTATION_SOCKET_NAME_CAP - 1) != NO_ERR)
+				continue;
+			if (!socketName[0])
+				continue;
+			strncpy(presentationSocketName[numPresentationSockets], socketName,
+			        PRESENTATION_SOCKET_NAME_CAP - 1);
+			presentationSocketName[numPresentationSockets][PRESENTATION_SOCKET_NAME_CAP - 1] = '\0';
+			numPresentationSockets++;
+		}
+	}
+
+	// Report-only socket validation, GATED behind MC2_UNIT_PROFILE_DATA. Gate-OFF
+	// (and gate-ON with no declared sockets, i.e. every stock unit) -> no output,
+	// behavioral parity. For each declared socket, ask the loaded LOD0 shape "does
+	// a node of this exact name exist?" -- the impure half of the pure
+	// validateDeclaredSockets() check. GetNodeId()-scan mirrors the same node-name
+	// lookup GetTransformedNodePosition() uses at runtime.
+	if (mc2UnitProfileDataEnabled() && numPresentationSockets > 0)
+	{
+		std::vector<DeclaredSocketCheck> declared;
+		declared.reserve(numPresentationSockets);
+		for (long si = 0; si < numPresentationSockets; si++)
+		{
+			DeclaredSocketCheck d;
+			d.socket  = HardpointSocketName(presentationSocketName[si]);
+			d.present = false;
+			// Node-name present iff LOD0 shape has a TypeShape with this nodeId.
+			if (mechShape[0])
+			{
+				const long numNodes = mechShape[0]->GetNumShapes();
+				for (long ni = 0; ni < numNodes; ni++)
+				{
+					const char* nid = mechShape[0]->GetNodeId(ni);
+					if (nid && S_stricmp(nid, presentationSocketName[si]) == 0)
+					{
+						d.present = true;
+						break;
+					}
+				}
+			}
+			declared.push_back(d);
+		}
+		// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): route the socket facet
+		// through the ONE consolidated validateUnitDefinition() pass instead of the
+		// standalone validateDeclaredSockets() entry. Only the declaredSockets list is
+		// populated at this appearance-init site; profile/loadout/anim/UI inputs stay
+		// empty -> zero extra findings, identical verdict to the old per-facet call.
+		// The glue still names each absent socket for the modder (richer than the
+		// generic message); the aggregate verdict just gates whether we emit at all.
+		UnitDefinitionValidationInputs in;
+		in.declaredSockets = declared;
+		const std::vector<UnitProfileFinding> findings =
+			validateUnitDefinition(in, theActionExecutorRegistry());
+		if (!findings.empty())
+		{
+			for (long si = 0; si < numPresentationSockets; si++)
+			{
+				if (!declared[si].present)
+					printf("[UnitDefinition:VALIDATE] %s: declared socket '%s' not found on model (reason=%d)\n",
+					       fileName ? fileName : "<unknown>",
+					       presentationSocketName[si],
+					       static_cast<int>(UPV_HARDPOINT_SOCKET_MISSING));
+			}
+		}
+	}
+
 }
 
 //----------------------------------------------------------------------------
@@ -1245,10 +1341,31 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 
 	//This should never be called AFTER the game inits!!!
 	setWeaponNodeUsed(bestNode);
-	
+
  	return bestNode;
 }
-		
+
+//-----------------------------------------------------------------------------
+// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): socket NAME -> weapon-node
+// INDEX. Scans ONLY the weapon-node range of nodeData[] (the same range
+// getWeaponNode() picks from) and returns the matching index, or -1. Read-only:
+// unlike getWeaponNode() this does NOT call setWeaponNodeUsed() -- the caller is
+// choosing a specific declared socket, not consuming a round-robin slot.
+long Mech3DAppearance::resolveWeaponNodeBySocketName (const char* socketName)
+{
+	if (!socketName || !socketName[0])
+		return -1;
+	const long numSmokeNodes = mechType->numSmokeNodes;
+	for (long i = 0; i < mechType->numWeaponNodes; i++)
+	{
+		const long idx = numSmokeNodes + i;
+		const char* nid = mechType->nodeData[idx].nodeId;
+		if (nid && S_stricmp(nid, socketName) == 0)
+			return idx;
+	}
+	return -1;
+}
+
 //-----------------------------------------------------------------------------
 float Mech3DAppearance::getWeaponNodeRecycle (long node)
 {

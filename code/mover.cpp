@@ -126,6 +126,10 @@
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include "../GameOS/gameos/diagnostic_trace.h"  // TARGETING-GUARD-1 chokepoint trace
 #include <cstdlib>  // TARGETING-GUARD-1: std::getenv
+#include "unitprofile.h"             // LOADOUT-HARDPOINT-JOIN-1: mc2UnitProfileDataEnabled()
+#include "unit_profile_validator.h"  // LOADOUT-HARDPOINT-JOIN-1: validateLoadoutHardpointJoins()
+#include "hardpoint.h"               // LOADOUT-HARDPOINT-JOIN-1: HardpointProfile / WeaponTag
+#include <cmponent.h>                // LOADOUT-HARDPOINT-JOIN-1: ComponentFormType (weapon form)
 
 //--------
 // DEFINES
@@ -3162,14 +3166,155 @@ void Mover::onTypeBound (void) {
 
 //---------------------------------------------------------------------------
 
-// UNIT-PROFILE-SEAM-1: gameplay intent = capability FACT + working executor.
-// Slice 1's only jump executor is the legacy BattleMech path (override below).
-bool Mover::canPerform(UnitAction a) const {
+// UNIT-ACTION-QUERY-RESULT-1: gameplay intent resolved through the pure
+// unit_action.h contract, which reports a *reason* rather than a bare bool.
+// canPerform() (mover.h) is now a thin adapter: queryAction(a) == Available.
+//
+// Slice-2 input mapping — wire the facts that EXIST TODAY, leave the rest at
+// their non-blocking defaults so future-slice facets never spuriously deny:
+//   validForSchema     = hasCapability(CAP_JUMP)  (no capability == not the
+//                        kind of thing that can ever jump -> InvalidForUnitSchema)
+//   hasCapability      = hasCapability(CAP_JUMP)
+//   hasExecutor        = registry.isCompatible(Jump, locomotionModel())
+//                        (ACTION-EXECUTOR-REGISTRY-1: registry-resolved, NOT a
+//                        class virtual — the jump executor is bound compatible
+//                        with LOCO_MECH_WALKER only, so a BattleMech resolves
+//                        true and a vehicle's non-jump locomotion model false)
+//   locomotionSupports = true   (LOCOMOTION-FACET-1, slice 4 — not yet a fact)
+//   damageDisabled     = false  (no cheap knocked-out signal at this seam yet)
+//   hasAnimation       = true   (presentation adapter facet — future slice)
+//   hasResource        = true   (fuel/heat/ammo facet — future slice)
+// Net reduction, identical to the old bool for real units: cap+compatible-executor
+// -> Available; cap-but-no-compatible-executor -> MissingExecutor; no-cap ->
+// InvalidForUnitSchema.
+//
+// AUDIT NOTE (ACTION-EXECUTOR-REGISTRY-1): this is where a "capability-granted
+// vehicle" now correctly reports MissingExecutor instead of silently-Available.
+// The old world coupled the executor to the BattleMech class; now the executor
+// is resolved from the registry against the unit's locomotionModel(), so a
+// vehicle that is data-granted CAP_JUMP but whose locomotion model isn't
+// jump-compatible is honestly reported as MissingExecutor.
+ActionAvailability Mover::queryAction(UnitAction a) const {
 	switch (a) {
-		case UnitAction::Jump:
-			return hasCapability(CAP_JUMP) && hasJumpExecutor();
+		case UnitAction::Jump: {
+			// Executor resolved from the ONE engine-side registry (slice 3),
+			// against this unit's transitional locomotion model, instead of the
+			// old hasJumpExecutor() class virtual.
+			const bool hasExecutor =
+				theActionExecutorRegistry().isCompatible(UnitAction::Jump,
+				                                         locomotionModel());
+			// Pure inputs-builder (unit_action.h) keeps engine + tests in lockstep.
+			return resolveAction(jumpQueryInputs(hasCapability(CAP_JUMP),
+			                                     hasExecutor));
+		}
 	}
-	return false;
+	return ActionAvailability::InvalidForUnitSchema;
+}
+
+//---------------------------------------------------------------------------
+
+// LOCOMOTION-FACET-1 (slice 4): locomotion model resolved from the DATA facet on
+// the unit's type profile, not the C++ class. BattleMechType::init sets the
+// facet to LOCO_MECH_WALKER at type-load; the base/vehicle default is LOCO_WHEELED
+// (UnitProfile's field initializer); an optional `.fit [UnitProfile] Locomotion=`
+// token can override either. This is the isolation-seam swap the audit tracked:
+// the value now comes from data, so the old virtual + BattleMech override are
+// gone and this single read replaces both class sites. A null type falls back to
+// the base default so early-init paths never crash.
+int Mover::locomotionModel (void) const {
+	// getObjectType() is a non-const legacy accessor but does not mutate; the
+	// read is logically const. const_cast keeps locomotionModel()/queryAction()
+	// const (their callers query availability without a mutable Mover).
+	ObjectTypePtr type = const_cast<Mover*>(this)->getObjectType();
+	if (type)
+		return type->profile().locomotion;
+	return LOCO_WHEELED;
+}
+
+//---------------------------------------------------------------------------
+
+// DAMAGE-SCHEMA-FACET-1 (slice 5): hit-location model resolved from the DATA
+// facet on the unit's type profile, not the C++ class. BattleMechType::init sets
+// the facet to DMG_MECH_8PART at type-load; the base/vehicle default is
+// DMG_VEHICLE_FACINGS (UnitProfile's field initializer); an optional `.fit
+// [UnitProfile] DamageSchema=` token can override either. PURE ACCESSOR — nobody
+// reads it yet; it is the source a future resolveHit(HitRequest) and the Phase-2
+// HardpointId validator will consult. A null type falls back to the base default
+// so early-init paths never crash. Mirrors locomotionModel()'s const_cast: the
+// getObjectType() legacy accessor is non-const but does not mutate.
+DamageSchemaId Mover::damageSchema (void) const {
+	ObjectTypePtr type = const_cast<Mover*>(this)->getObjectType();
+	if (type)
+		return type->profile().damageSchema;
+	return DMG_VEHICLE_FACINGS;
+}
+
+//---------------------------------------------------------------------------
+
+// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3). Map a weapon's coarse component
+// FORM (the legacy Energy/Ballistic/Missile bucket getWeaponNode round-robins
+// over) to the typed WeaponTag the hardpoint accept-set speaks. Returns false for
+// non-weapon / unmapped forms so a bad slot is skipped rather than mis-tagged.
+static bool weaponFormToTag (ComponentFormType form, WeaponTag& out) {
+	switch (form) {
+		case COMPONENT_FORM_WEAPON_ENERGY:    out = WTAG_ENERGY;    return true;
+		case COMPONENT_FORM_WEAPON_BALLISTIC: out = WTAG_BALLISTIC; return true;
+		case COMPONENT_FORM_WEAPON_MISSILE:   out = WTAG_MISSILE;   return true;
+		default: return false;
+	}
+}
+
+// Gated report-only loadout->hardpoint join validation. Walks inventory[],
+// gathers only DECLARED joins (hardpointId != 0 AND resolvable to a profile),
+// runs the pure validator, and logs findings. NO runtime/visual-mount change.
+// Stock loadouts declare no hardpointId -> `joins` empty -> silent (parity).
+void Mover::validateLoadoutHardpointJoins (const char* unitLabel) const {
+	if (!mc2UnitProfileDataEnabled())
+		return;
+
+	const DamageSchemaId schema = damageSchema();
+	std::vector<LoadoutHardpointJoin> joins;
+	for (long i = 0; i < MAX_MOVER_INVENTORY_ITEMS; i++) {
+		const InventoryItem& it = inventory[i];
+		if (it.masterID == 0xff)
+			continue;                       // empty slot
+		if (it.hardpointId == 0)
+			continue;                       // no declared hardpoint -> legacy CSV path
+		HardpointProfile hp;
+		if (!resolveHardpoint(it.hardpointId, hp))
+			continue;                       // declared id has no profile (base: none)
+		WeaponTag tag;
+		if (!weaponFormToTag(MasterComponent::masterList[it.masterID].getForm(), tag))
+			continue;                       // non-weapon slot carrying a hardpoint: skip
+		LoadoutHardpointJoin j;
+		j.hardpoint     = hp;
+		j.weaponTag     = tag;
+		j.unitSchema    = schema;
+		// Socket presence is a model-node lookup this slice does not perform (that is
+		// the getWeaponNode adapter's territory, slice 4). Report the OTHER two joins
+		// now; treat the socket as present so we do not emit a spurious SOCKET_MISSING
+		// here (the authoritative socket check lives in Mech3DAppearanceType::init).
+		j.socketPresent = true;
+		joins.push_back(j);
+	}
+
+	// UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8): route the loadout-join facet
+	// through the ONE consolidated validateUnitDefinition() pass rather than the
+	// standalone validateLoadoutHardpointJoins() entry. Only the loadoutJoins list
+	// is populated at this instance-loadout site; the profile/socket/anim/UI inputs
+	// stay empty -> zero extra findings, identical output to the old per-facet call.
+	// The registry is passed for the (unexercised-here) jump facet so the single
+	// entry never diverges from the runtime executor resolution.
+	UnitDefinitionValidationInputs in;
+	in.loadoutJoins = joins;
+	const std::vector<UnitProfileFinding> findings =
+		::validateUnitDefinition(in, theActionExecutorRegistry());
+	for (const UnitProfileFinding& f : findings) {
+		printf("[UnitDefinition:VALIDATE] %s: %s (reason=%d)\n",
+		       unitLabel ? unitLabel : "<unknown>",
+		       f.message ? f.message : "",
+		       static_cast<int>(f.code));
+	}
 }
 
 //---------------------------------------------------------------------------

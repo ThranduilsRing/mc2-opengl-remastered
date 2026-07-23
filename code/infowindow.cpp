@@ -24,6 +24,7 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"hudimguipanel.h"
 #include"infowindowmodel.h"
 #include "imgui.h"
+#include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 
 long InfoWindow::SCROLLLEFT = 0;
 long InfoWindow::SCROLLRIGHT = 0;
@@ -1446,7 +1447,17 @@ void InfoWindow::drawScrollingStuff()
 			{
 				if ( curY > NAMETOP )
 				{
-					cLoadString( IDS_COMP_ABBR0 + names[i], tmpName, 255 );
+					// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled ids have no string-
+					// table abbrev; use the def DisplayName. Miss -> stock path.
+					const char* addName =
+						equipmentAddUiTextForStringId( IDS_COMP_ABBR0 + names[i] );
+					if ( addName )
+					{
+						strncpy( tmpName, addName, 255 );
+						tmpName[255] = 0;
+					}
+					else
+						cLoadString( IDS_COMP_ABBR0 + names[i], tmpName, 255 );
 					capHeader.Format( "%ld/%ld  %s", disabledCount[i][0], disabledCount[i][1], tmpName );
 					componentFont.render( capHeader, COMPONENTLEFT, curY, SCROLLLEFT - COMPONENTLEFT, height, textColors[j], 0, 0 );
 				}
@@ -1512,7 +1523,16 @@ void InfoWindow::drawScrollingStuff()
 //				color = 0xff7f7f7f;
 
 			char tmpName[256];
-			cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[count[curWeapon]].masterID, tmpName, 255 );
+			// EQUIP-ADD-UI-NAME-1 (S3): same DisplayName fallback as above.
+			const char* addName = equipmentAddUiTextForStringId(
+				IDS_COMP_ABBR0 + pUnit->inventory[count[curWeapon]].masterID );
+			if ( addName )
+			{
+				strncpy( tmpName, addName, 255 );
+				tmpName[255] = 0;
+			}
+			else
+				cLoadString( IDS_COMP_ABBR0 + pUnit->inventory[count[curWeapon]].masterID, tmpName, 255 );
 
 			if ( curY > NAMETOP )
 			{

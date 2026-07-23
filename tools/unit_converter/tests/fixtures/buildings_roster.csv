@@ -1,0 +1,9 @@
+File Name,Group ID,NameID,Type,FitID,SPECIAL TYPE,ALIGNMENT?,CAPTURABLE,Draw Building On TacMap,TGA Filename (if any)
+Streetlight3,-1,27012,BUILDING,114,DROPZONE,1,0,0,0
+Birch1,1,30400,TREE,252,TREE3,0,0,0,tree_birch1
+Atlas,0,28919,MECH,10,,0,0,0,0
+ArmoredCar,0,30302,VEHICLE,20,,0,0,0,0
+GhostTank,0,30999,VEHICLE,99,,0,0,0,0
+GhostMech,0,30998,MECH,98,,0,0,0,0
+Truncated,0
+,0,30997,MECH,97,,0,0,0,0

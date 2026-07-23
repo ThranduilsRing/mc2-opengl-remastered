@@ -31,6 +31,22 @@
 #include"objtype.h"
 #endif
 
+#ifndef UNIT_ACTION_H
+#include"unit_action.h"          // UNIT-ACTION-QUERY-RESULT-1: ActionAvailability
+#endif
+
+#ifndef ACTION_EXECUTOR_REGISTRY_H
+#include"action_executor_registry.h"  // ACTION-EXECUTOR-REGISTRY-1: LocomotionModel + registry
+#endif
+
+#ifndef DAMAGE_SCHEMA_H
+#include"damage_schema.h"             // DAMAGE-SCHEMA-FACET-1: DamageSchemaId
+#endif
+
+#ifndef HARDPOINT_H
+#include"hardpoint.h"                 // LOADOUT-HARDPOINT-JOIN-1: HardpointProfile
+#endif
+
 #ifndef MOVE_H
 #include"move.h"
 #endif
@@ -409,6 +425,18 @@ typedef struct _InventoryItem {
 	float				readyTime;		// next time weapon will be ready
 	unsigned char		bodyLocation;	// where is the weapon located
 	short				effectiveness;	// weapon max effectiveness
+
+	// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): OPTIONAL logical-hardpoint join
+	// key. 0 == unset (the stock case: CSV loadouts carry no hardpoint column, so
+	// this stays 0 and the legacy positional-CSV mount path is unchanged). When a
+	// data source (additive-merge registry / .fit block) declares a HardpointId for
+	// this mount, its FNV hash (hardpoint.h::hardpointHash / HardpointId::id) is
+	// stored here. Report-only this slice: the validator gathers declared joins and
+	// checks weapon-tag/damage-loc/socket coherence; NOTHING reads this to drive the
+	// actual visual mount yet (inventory[].facing / getWeaponNode still own that --
+	// slice 4 routes the mount through the HardpointId). Plain uint keeps
+	// InventoryItem trivially copyable so raw MoverData save/load is unaffected.
+	unsigned int		hardpointId;	// 0 == unset (legacy positional-CSV fallback)
 } InventoryItem;
 
 //------------------------------------------------------------------------------------------
@@ -1652,8 +1680,47 @@ class Mover : public GameObject {
 		
 		// UNIT-PROFILE-SEAM-1
 		bool         hasCapability (Capability c) const { return runtime.currentCapabilities.has(c); }
-		virtual bool canPerform    (UnitAction a) const;
-		virtual bool hasJumpExecutor (void) const { return false; }   // base: no executor
+		// UNIT-ACTION-QUERY-RESULT-1: reasoned availability built on the pure
+		// unit_action.h contract. canPerform() is now a thin adapter over it.
+		virtual ActionAvailability queryAction (UnitAction a) const;
+		bool         canPerform    (UnitAction a) const { return queryAction(a) == ActionAvailability::Available; }
+		// LOCOMOTION-FACET-1 (slice 4): DATA read, no longer class-derived. The
+		// locomotion model is a facet on the unit's type profile (UnitProfile::
+		// locomotion), populated at type-load: LOCO_MECH_WALKER for mechs,
+		// LOCO_WHEELED for the base/vehicle default, optionally overridden by a
+		// `.fit [UnitProfile] Locomotion=` token. queryAction() feeds it into
+		// theActionExecutorRegistry().isCompatible(Jump, locomotionModel()). No
+		// longer virtual — the value comes from data, not the C++ class, so the
+		// BattleMech override was removed. Defined in mover.cpp (needs ObjectType).
+		int  locomotionModel (void) const;   // reads getObjectType()->profile().locomotion
+		// DAMAGE-SCHEMA-FACET-1 (slice 5): DATA read of the unit's hit-location
+		// model from its type profile (UnitProfile::damageSchema), populated at
+		// type-load: DMG_MECH_8PART for mechs, DMG_VEHICLE_FACINGS for the
+		// base/vehicle default, optionally overridden by a `.fit [UnitProfile]
+		// DamageSchema=` token. PURE ACCESSOR — read by nobody yet; it is the
+		// source a future resolveHit(HitRequest) and the Phase-2 HardpointId
+		// validator will consult. A null type falls back to the base default so
+		// early-init paths never crash. Defined in mover.cpp (needs ObjectType).
+		DamageSchemaId damageSchema (void) const;
+
+		// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): OPTIONAL loadout->hardpoint
+		// join, report-only. Resolve an inventory item's optional hardpointId
+		// (InventoryItem::hardpointId, 0 == unset) to its HardpointProfile. The base
+		// has no hardpoint table -> always returns false (stock declares none, so no
+		// join is ever gathered -> zero findings -> gate-ON parity). A future data
+		// source (additive-merge registry / .fit block) overrides this to supply
+		// declared hardpoints. PURE lookup, no mount/render effect.
+		virtual bool resolveHardpoint (unsigned int /*hardpointId*/,
+		                               HardpointProfile& /*out*/) const { return false; }
+
+		// Gated (MC2_UNIT_PROFILE_DATA) report-only pass: walk inventory[], gather
+		// every DECLARED loadout->hardpoint join (hardpointId != 0, resolvable), and
+		// validate weapon-tag / damage-location / socket coherence via the pure
+		// validateLoadoutHardpointJoins(). Logs modder-readable findings; changes NO
+		// runtime state and NO visual mount (inventory[].facing / getWeaponNode still
+		// own that -- slice 4). Stock -> nothing gathered -> silent. Defined in mover.cpp.
+		void validateLoadoutHardpointJoins (const char* unitLabel) const;
+
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return false;                       // original Mover behavior
@@ -1661,6 +1728,16 @@ class Mover : public GameObject {
 
 		// UNIT-PROFILE-SEAM-1: copy type baseline -> runtime at the type-bind seam.
 		virtual void onTypeBound (void);
+
+		// LOADOUT-THREE-LAYER-1 (Phase 3): variant identity for the shadow-compare
+		// witness. The chassis stem alone is too coarse -- a chassis has many
+		// variants (the CSV 97-row-stride blocks) whose loadouts differ (Atlas
+		// Prime has no jumpjets; other Atlas variants do). This lets the offline
+		// compare join by (chassis, variant) instead of chassis stem, so it diffs
+		// the ACTUAL spawned variant against the SAME converted variant. Base Mover
+		// has no variant concept -> empty string (falls back to chassis-level join).
+		virtual const char* getVariantName (void) const { return ""; }
+		virtual long getVariantId (void) const { return -1; }
 
 		virtual float getJumpRange (long* numOffsets = NULL, long* jumpCost = NULL) {
 			if (numOffsets)

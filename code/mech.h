@@ -653,12 +653,46 @@ class BattleMech : public Mover {
 
 		virtual long getSpeedState (void);
 
-		// UNIT-PROFILE-SEAM-1
-		virtual bool hasJumpExecutor (void) const { return true; }   // legacy mech jump path
+		// UNIT-PROFILE-SEAM-1 / UNITPROFILE-TYPELOAD-SOURCE-1
+		// Single owner of the INSTANCE-loadout-derived capability write. CAP_JUMP
+		// for a mech is genuinely instance-derived: it is only known after the
+		// loadout scan populates numJumpJets. Type-load declared capabilities
+		// (from the .fit [UnitProfile] block, via populateProfileFromFit) are the
+		// OTHER, already-single-owner source. This method folds the numJumpJets
+		// truth into the shared type baseline (grant-only) and refreshes this
+		// instance's runtime.currentCapabilities. Call it once at the end of every
+		// real load path where numJumpJets is final. Transitional: a future slice
+		// moves loadout-derivation up to the type layer, retiring this entirely.
+		void refreshDerivedCapabilities (void);
+
+		// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): resolve the weapon
+		// mount node for one inventory item at load time. When the gate is ON and
+		// the item declares a HardpointId that resolveHardpoint() maps to a
+		// HardpointProfile whose .socket names a node on THIS mech's shape, the
+		// item mounts to that socket's node index; otherwise (gate OFF, no declared
+		// hardpoint, unresolved hardpoint, or a socket the model lacks) it falls
+		// back to the legacy least-used round-robin appearance->getWeaponNode().
+		// Stock items carry hardpointId==0 -> always fallback -> parity. Returns the
+		// same node-index domain inventory[].facing already stores.
+		long resolveWeaponMountNode (const InventoryItem& item, long sourceWeaponType);
+
+		// LOCOMOTION-FACET-1 (slice 4): the mech-walker locomotion model is now a
+		// DATA facet set on the type profile at BattleMechType::init (see
+		// mech.cpp), NOT a class override. The former `locomotionModel()` override
+		// (return LOCO_MECH_WALKER) was removed — Mover::locomotionModel() reads
+		// UnitProfile::locomotion for every unit, so this class no longer answers
+		// the locomotion question in code. This retired the last executor-shaped
+		// class-check the audit tracked.
 		virtual bool canJump (void) {
 			if (mc2UnitProfileDataEnabled()) return canPerform(UnitAction::Jump);
 			return (numJumpJets > 0);           // original
 		}
+
+		// LOADOUT-THREE-LAYER-1 (Phase 3): expose the spawned variant identity so
+		// the shadow-compare witness can join per-variant, not per-chassis. Read
+		// from the CSV variant block at init (mech.cpp: 23 + 97*variantNum stride).
+		virtual const char* getVariantName (void) const { return variantName; }
+		virtual long getVariantId (void) const { return variantID; }
 
 		virtual float getJumpRange (long* numOffsets = NULL, long* jumpCost = NULL);
 

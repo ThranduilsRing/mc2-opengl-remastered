@@ -20,6 +20,13 @@ class aButton;
 class aEdit;
 class aAnimObject;
 namespace UiDefs { class GameOSPage; }
+
+// EQUIP-ADD-UI-NAME-1 (S3): optional help-text resolver hook. The gui layer
+// cannot link the game-side equipment engine (EditRel links gui without code/),
+// so the game installs equipmentAddUiTextForStringId here at the S2 ADD-fill
+// seam. Null (default, and always in EditRel/tools) or a null return -> the
+// stock cLoadString(helpTextID) path runs unchanged (byte-identical).
+extern const char* (*gEquipmentUiTextHook)(long stringId);
 /**************************************************************************************************
 CLASS DESCRIPTION
 LogisticsScreen:

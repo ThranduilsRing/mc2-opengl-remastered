@@ -12,6 +12,7 @@ SimpleComponentListBox.cpp			: Implementation of the SimpleComponentListBox comp
 #include"logisticscomponent.h"
 #include"logisticsdata.h"
 #include"cmponent.h"
+#include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 
 //-------------------------------------------------------------------------------------------------
 ComponentListBox::ComponentListBox()
@@ -46,7 +47,13 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 		if ( sensor > 0 )
 		{
 			aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
-			textItem->setText( 32000 + sensor );
+			// EQUIP-ADD-UI-NAME-1 (S3): ADD-filled ids have no 32000-block
+			// string; use the def DisplayName. Miss -> stock string id path.
+			const char* addName = equipmentAddUiTextForStringId( 32000 + sensor );
+			if ( addName )
+				textItem->setText( addName );
+			else
+				textItem->setText( 32000 + sensor );
 			textItem->setColor( 0xffc29b00 );
 			textItem->setHelpID( IDS_HELP_COMP0 + sensor );
 			AddItem( textItem );			
@@ -55,7 +62,12 @@ void ComponentListBox::setMech( LogisticsVariant* pMech )
 		if ( ECM > 0 )
 		{
 			aTextListItem* textItem = new aTextListItem( IDS_SALVAGE_AREA_COMPONENTS );
-			textItem->setText( 32000 + ECM );
+			// EQUIP-ADD-UI-NAME-1 (S3): same DisplayName fallback as above.
+			const char* addNameEcm = equipmentAddUiTextForStringId( 32000 + ECM );
+			if ( addNameEcm )
+				textItem->setText( addNameEcm );
+			else
+				textItem->setText( 32000 + ECM );
 			textItem->setColor( 0xffc29b00 );
 			textItem->setHelpID( IDS_HELP_COMP0 + ECM );
 			AddItem( textItem );

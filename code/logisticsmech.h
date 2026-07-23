@@ -44,9 +44,10 @@ class LogisticsMech
 		int				getSpeed() const { return pVariant->getSpeed(); }
 		int				getDisplaySpeed() const { return pVariant->getDisplaySpeed(); }
 		int				getVariantID() const { return pVariant->ID; }
-		const EString&		getSmallIconFileName() const { return pVariant->chassis->iconFileNames[0]; }
-		const EString&		getMediumIconFileName() const { return pVariant->chassis->iconFileNames[1]; }
-		const EString&		getLargeIconFileName() const { return pVariant->chassis->iconFileNames[2]; }
+		// UI-PROFILE-1: route through the variant's override-aware accessors.
+		const EString&		getSmallIconFileName() const { return pVariant->getSmallIconFileName(); }
+		const EString&		getMediumIconFileName() const { return pVariant->getMediumIconFileName(); }
+		const EString&		getLargeIconFileName() const { return pVariant->getLargeIconFileName(); }
 		int				getComponentsWithLocation( long& count, long* IDArray, long* xLocationArray, long* yLocationArray )
 		{
 			return pVariant->getComponentsWithLocation( count, IDArray, xLocationArray, yLocationArray );

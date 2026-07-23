@@ -1,0 +1,10 @@
+{
+  "schema": "mc2-mod/1",
+  "id": "sample_equipment",
+  "name": "Sample Equipment - Hot Medium Laser",
+  "version": "1.0.0",
+  "author": "MC2 remaster examples",
+  "type": "assets",
+  "dependencies": [],
+  "description": "Worked example: adds one new EquipmentDefinition, sample:hot_medium_laser - a stock Medium Laser (core:laser) cloned with hotter/harder-hitting stats. Ships a generated equipmentdef.fit under data/defs/equipment/ plus a modlint facts-JSON. Namespaced id so it ADDs (does not clobber the stock laser). Proves: EquipmentDefinition + qualified id + generated equipment source + modlint-clean."
+}

@@ -401,7 +401,13 @@ long GroundVehicleType::init (FilePtr objFile, unsigned long fileSize) {
 	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read — SOLE
 	// jump-capability populator for vehicles (no jump component to scan).
 	populateProfileFromFit(vehicleFile, profile());
-	mc2_unitprofile_test_grant_vehicle(profile());   // THROWAWAY slice-9 proof hook
+
+	// UNITPROFILE-VALIDATOR-1 (slice 6): report-only construction-rules check,
+	// gated behind MC2_UNIT_PROFILE_DATA. Runs AFTER facets are set. A stock
+	// vehicle grants no CAP_JUMP -> coherent -> logs nothing. A vehicle authored
+	// with [UnitProfile] Jump=TRUE on a non-walker locomotion trips the one live
+	// finding (no compatible jump executor) — reported, NOT rejected.
+	validateAndReportUnitProfile(profile(), vehicleFile.getFilename());
 
 	//------------------------------------------------------------------
 	// Initialize the base object Type from the current file.

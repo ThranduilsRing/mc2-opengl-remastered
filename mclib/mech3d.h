@@ -136,6 +136,18 @@ class Mech3DAppearanceType: public AppearanceType
 		long						numFootNodes;
 		NodeData					*nodeData;
 
+		// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): OPTIONAL, data-declared
+		// presentation-socket table. Populated ONLY from an optional
+		// [PresentationSockets] INI block in Mech3DAppearanceType::init (stock mechs
+		// have no such block -> numPresentationSockets stays 0). Read-and-validated
+		// only: each declared socket name is checked (report-only, gated
+		// MC2_UNIT_PROFILE_DATA) against the loaded model shape's node list. This is
+		// NOT authoritative for rendering — getWeaponNode / nodeData are untouched.
+		// Fixed inline storage (declared sockets are few; no heap, no layout drag).
+		enum { MAX_PRESENTATION_SOCKETS = 32, PRESENTATION_SOCKET_NAME_CAP = 48 };
+		long						numPresentationSockets;
+		char						presentationSocketName[MAX_PRESENTATION_SOCKETS][PRESENTATION_SOCKET_NAME_CAP];
+
 
 		static TG_TypeMultiShapePtr	SensorSquareShape;
 
@@ -171,6 +183,9 @@ class Mech3DAppearanceType: public AppearanceType
 			
 			nodeData = NULL;
 			numSmokeNodes = numWeaponNodes = numJumpNodes = 0;
+
+			// PRESENTATION-SOCKET-PROFILE-1: no declared sockets by default.
+			numPresentationSockets = 0;
 
 			mechShadowShape = NULL;
     
@@ -765,7 +780,18 @@ class Mech3DAppearance: public ObjectAppearance
 		virtual Stuff::Vector3D getNodeNamePosition (const char *nodeName);
 		
 		virtual long getWeaponNode (long weapontype);
-		
+
+		// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): resolve a declared
+		// hardpoint socket NAME to the weapon-node INDEX the runtime consumes
+		// (index into mechType->nodeData[], in the [numSmokeNodes,
+		// numSmokeNodes+numWeaponNodes) weapon-node range -- the SAME domain
+		// getWeaponNode() returns). Returns -1 when socketName is null/empty or
+		// no weapon node's nodeId matches (case-insensitive, mirroring the slice-2
+		// GetNodeId scan). Pure lookup: does NOT increment nodeUsed / recycle and
+		// does NOT touch nodeData -- authoritative-vs-fallback is owned by the pure
+		// chooseWeaponNode() (hardpoint.h). Used only at load-time mount resolution.
+		virtual long resolveWeaponNodeBySocketName (const char* socketName);
+
 		virtual long getLowestWeaponNode (void);
 		
 		virtual float getWeaponNodeRecycle (long node);

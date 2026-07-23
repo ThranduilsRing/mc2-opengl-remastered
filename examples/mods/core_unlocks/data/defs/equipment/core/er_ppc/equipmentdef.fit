@@ -1,0 +1,18 @@
+FITini
+
+// core_unlocks (EQUIP-ENABLE-WIRE-1): enable-only purchase unlock for the stock
+// ER PPC (compbas row 146, populated + logistics-icon-valid, but absent from
+// early stock missions' purchase.fit [Components] lists — e.g. purchase01.fit
+// offers the plain PPC (145) but not this).
+//
+// Enable-wire-only core-namespace override; see clan_gauss_rifle/equipmentdef.fit
+// for the mechanism notes.
+
+[Equipment]
+st EquipmentId="core:er_ppc"
+st DisplayName="ER PPC"
+st Kind="Weapon"
+l LegacyMasterId=146
+b Enabled=TRUE
+
+FITend

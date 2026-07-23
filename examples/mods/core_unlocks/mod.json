@@ -1,0 +1,10 @@
+{
+  "schema": "mc2-mod/1",
+  "id": "core_unlocks",
+  "name": "Core Unlocks - dormant stock gear, clean enable wire",
+  "version": "0.2.0",
+  "author": "MC2 remaster examples",
+  "type": "assets",
+  "dependencies": [],
+  "description": "Re-surfaces two dormant stock weapons for purchase - the Clan Gauss Rifle (113) and the ER PPC (146) - via the clean enabled->purchase wire (EQUIP-ENABLE-WIRE-1): each ships a tiny data/defs/equipment/core/<slug>/equipmentdef.fit override carrying only [Equipment] b Enabled=TRUE + the key-checked LegacyMasterId. The engine's availability seam (gate MC2_UNIT_PROFILE_DATA=1) forces them purchasable in every mission's mechlab; enable-only, so the mission purchase.fit stays authoritative for everything else. No whole-file compbas.csv override needed anymore."
+}

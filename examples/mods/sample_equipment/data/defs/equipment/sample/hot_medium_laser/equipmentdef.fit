@@ -1,0 +1,59 @@
+FITini
+
+// EXAMPLE-MODS-1 hand-authored EquipmentDefinition (mod: sample_equipment).
+// Cloned from the stock Medium Laser (core:laser, legacyMasterId 156) with a
+// hotter/harder-hitting profile. Namespaced id 'sample:hot_medium_laser' so it
+// ADDS a new component rather than overriding the stock laser.
+//
+// EQUIP-ADD-FILL-1 (S2): LegacyMasterId=40 claims an UNDEFINED stock compbas
+// ordinal (free ordinals include 39/40/41/44...; ids stay in 0..254, no E4
+// widen; 255 = 0xff sentinel is never used). With MC2_UNIT_PROFILE_DATA=1
+// MC2_EQUIPMENT_ADD=1 and this mod active, the engine materializes row 40 as a
+// live MasterComponent AND a mechlab LogisticsComponent at load; Enabled=TRUE
+// then rides the S1 enable wire so it is purchasable without touching any
+// purchase.fit.
+
+[Equipment]
+st EquipmentId="sample:hot_medium_laser"
+st DisplayName="Hot Medium Laser"
+// EQUIP-ADD-UI-NAME-1 (S3): optional UI description; shown in the mechlab
+// component info window / hover help / encyclopedia. Absent -> DisplayName.
+st Description="An overtuned medium laser running hot focusing coils. Hits harder than the stock model at the price of severe waste heat per pulse."
+st Kind="Weapon"
+st Tags="energy"
+l LegacyMasterId=40
+b Enabled=TRUE
+f Heat=4.5
+f Cost=2100.0
+
+[WeaponFacet]
+st Category="Energy"
+st FireExecutor="beam_direct"
+
+[WeaponCombatStats]
+f Damage=3.2
+f Heat=4.5
+f Recycle=4.2
+st RangeBucket="short"
+f CombatValue=120.0
+
+[WeaponAmmo]
+st AmmoCategory=""
+l AmmoMasterId=0
+
+[WeaponFit]
+l CritSlots=1
+f Tonnage=2.0
+st AllowedLocations="CenterTorso,LeftTorso,RightTorso,LeftArm,RightArm"
+
+[Presentation]
+st Icon="MCL_MC_Laser.tga"
+st Picture="MCL_MC_Laser"
+l UINameStringId=32156
+// SpecialEffect 12 = the stock laser firing VFX cue (compbas row 156 column).
+l SpecialEffect=12
+l IconX=1
+l IconY=1
+// event-based presentation cues WAIVED (not derivable from compbas)
+
+FITend

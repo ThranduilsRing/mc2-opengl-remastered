@@ -669,7 +669,17 @@ long MasterComponent::loadMasterList (const char* fileName, long listSize, float
 		if (!lineLength)
 			return(-1);
 
-		masterList[componentNum].initEXCEL(dataLine, baseSensorRange);
+		// EQUIP-ADD-FILL-1 landmine fix: initEXCEL early-returns -1 on an
+		// unknown Type token ("undefined" is NOT in ComponentFormString, so the
+		// masterID=-1 reset inside initEXCEL is unreachable dead code) WITHOUT
+		// resetting masterID/name -- undefined rows kept masterID==ordinal, a
+		// string-table name (non-empty on installs with a full string table),
+		// and a GARBAGE uninitialized form. Restore the sentinel state
+		// (masterID=-1, empty name) on failure so "undefined row" is
+		// deterministic for every consumer (registry, ADD fill, debug-state
+		// witness, saveEXCEL's blank-line branch). Populated rows untouched.
+		if (masterList[componentNum].initEXCEL(dataLine, baseSensorRange) != NO_ERR)
+			masterList[componentNum].init();
 	}
 
 	componentFile.close();

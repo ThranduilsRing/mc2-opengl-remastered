@@ -272,6 +272,9 @@ private:
 	void UnRegisterFunctions();
 
 	void initComponents();
+	// EQUIP-ADD-FILL-1 (S2): idempotent append of ADD-pass rows to `components`
+	// (second consumer). Called from initComponents + updateAvailability.
+	void appendEquipmentAddFillComponents();
 	void initPilots();
 	void initVariants();
 	void initPhaseA();

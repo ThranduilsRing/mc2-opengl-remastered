@@ -1257,6 +1257,20 @@ def main():
                             "MC2_FRAME_PASS_STATS",
                             "MC2_FRAME_PASS_STATS_EVERY",
                             "MC2_DEBUG_STATE_DUMP",
+                            # UNITPROFILE-TYPELOAD-SOURCE-1: data-driven unit
+                            # capability gate. Without this allowlisted Popen
+                            # drops it and the gate-ON witness proof is inert.
+                            "MC2_UNIT_PROFILE_DATA",
+                            # UNIT-SOURCE-FLIP-SWITCH-1: unit-definition SOURCE
+                            # selector (legacy|generated, DEFAULT legacy). Must be
+                            # allowlisted or Popen drops it and the generated
+                            # sourcing path never runs under the smoke gate.
+                            "MC2_UNIT_DEFINITION_SOURCE",
+                            # EQUIPMENT-SOURCE-FLIP-SWITCH-1: equipment-definition
+                            # SOURCE selector (legacy|generated, DEFAULT legacy).
+                            # Must be allowlisted or Popen drops it and the
+                            # generated stat-overlay never runs under the gate.
+                            "MC2_EQUIPMENT_DEFINITION_SOURCE",
                             "MC2_PRESWAP_FINISH",
                             "MC2_MODERN_TERRAIN_SURFACE",
                             "MC2_MODERN_TERRAIN_PATCHES",

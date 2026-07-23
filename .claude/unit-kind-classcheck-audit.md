@@ -140,6 +140,37 @@ Entry schema: `file / line · pattern · current behavior · axis` /
 through the rewired seam automatically once gate-ON; they are not class-checks
 and need no migration.)
 
+### ACTION-EXECUTOR-REGISTRY-1 (slice 3) — executor class-check consolidated
+
+The jump *executor* (previously the `hasJumpExecutor()` class virtual —
+`Mover`=false, `BattleMech`=true) is **no longer a per-class question**. It is
+now resolved from the ONE engine-side `ActionExecutorRegistry` singleton
+(`code/action_executor_registry.cpp`, accessor `theActionExecutorRegistry()`),
+which binds `UnitAction::Jump` → mech jump-jet executor compatible with
+`LOCO_MECH_WALKER` only. `Mover::queryAction(Jump)` feeds
+`isCompatible(Jump, locomotionModel())` as the `hasExecutor` fact.
+
+`hasJumpExecutor()` is **removed** (both the base and the `BattleMech` override).
+All remaining executor class-knowledge is consolidated into ONE method:
+
+| anchor | pattern | current behavior · axis | transitional / future query | owning facet · slice · risk |
+|---|---|---|---|---|
+| `mover.h` `Mover::locomotionModel()` | ~~`return LOCO_WHEELED;` (base)~~ | non-jump locomotion model id · **locomotion** | **DONE (LOCOMOTION-FACET-1):** de-virtualized; now a single DATA read `getObjectType()->profile().locomotion` (defined in `mover.cpp`). Class-derivation removed. | locomotion · **LOCOMOTION-FACET-1 (slice 4) — RETIRED** · LOW |
+| `mech.h` `BattleMech::locomotionModel()` | ~~`return LOCO_MECH_WALKER;`~~ | mech-walker locomotion model id · **locomotion** | **DONE (LOCOMOTION-FACET-1):** override **REMOVED**. The mech-walker value is now a data facet set once at type-load (`BattleMechType::init`, `mech.cpp` `profile().locomotion = LOCO_MECH_WALKER;`) — the last class-touch, a type-keyed data default a future `UnitDefinition` load supplies directly. | locomotion · **LOCOMOTION-FACET-1 (slice 4) — RETIRED** · LOW |
+
+**LOCOMOTION-FACET-1 (slice 4) — DONE.** The two `locomotionModel()` class
+sites are reduced to ONE data read (`Mover::locomotionModel()` →
+`UnitProfile::locomotion`, a `LocomotionModel` field defaulted to `LOCO_WHEELED`).
+The mech-walker value moved to `BattleMechType::init` as a type-load facet
+default (last class-touch, clearly the seam a future `UnitDefinition` removes),
+optionally overridden by a `.fit [UnitProfile] Locomotion=` token
+(`parseLocomotionModel`, `code/locomotion_facet.h`; pure logic covered by
+`tests/unit/test_unit_actions.cpp`). Values unchanged from slice 3 → gate-ON
+parity. The "capability-granted vehicle" audit case still resolves
+`MissingExecutor` (its wheeled/tracked data model isn't jump-compatible), and a
+vehicle whose `.fit` declares `Locomotion=MechWalker` would now be compatible —
+proving the model is data-owned, not class-locked.
+
 ### Completeness check (Task 8, Step 3)
 
 Every **gameplay-bucket** `getObjectClass()==KIND` is accounted for: the one
@@ -149,3 +180,162 @@ companion passability guard (`:3270`) and the run/gait gate (`:801`) are
 **assigned to `LOCOMOTION-DATA-1`**. All remaining Bucket-2 sites are
 non-gameplay (class-specific subsystem access, FX, damage, refit, elemental
 specials) and carry no slice obligation this arc.
+
+**DAMAGE-SCHEMA-FACET-1 (slice 5) — DONE (additive, no class-check retired).**
+Added a second data facet, `UnitProfile::damageSchema` (a `DamageSchemaId`,
+`code/damage_schema.h`), defaulted to `DMG_VEHICLE_FACINGS` and set to
+`DMG_MECH_8PART` once at `BattleMechType::init` (type-load), optionally overridden
+by a `.fit [UnitProfile] DamageSchema=` token (`parseDamageSchema`, pure). Exposed
+read-only via `Mover::damageSchema()` (mover.cpp, mirrors `locomotionModel()`).
+This slice retires NO existing class-check — the armor / hit-application math
+(`injureBodyLocation`, `body[]`, `bodyLocation`, `criticalSpacesReq[]`) is
+untouched. The facet is the DATA SOURCE that a future `resolveHit(HitRequest)`
+will pick its location model from, and that the **Phase-2 HardpointId validator**
+consults via the pure `schemaHasLocation(DamageSchemaId, DamageLocationId)` /
+`schemaLocationCount()` helpers to reject "loadout references RightArm but the
+unit's DamageSchema has no RightArm". Nobody reads the facet at runtime yet, so
+gate-ON and gate-OFF are both parity (Δdestroys +0). Pure logic covered
+RED→GREEN in `tests/unit/test_unit_actions.cpp` (295 doctests pass).
+
+**DamageSchema contract Phase-2 slices MUST honor** — enum vocabulary
+`DamageSchemaId { DMG_MECH_8PART, DMG_VEHICLE_FACINGS, DMG_SQUAD, DMG_SINGLE_ACTOR }`;
+logical locations `DamageLocationId` (mech: `DLOC_MECH_{HEAD,CTORSO,LTORSO,RTORSO,
+LARM,RARM,LLEG,RLEG}` in `MECH_BODY_LOCATION_*` order; vehicle: `DLOC_VEH_{FRONT,
+LEFT,RIGHT,REAR,TURRET}` in `bodyLocationString[]` order; squad/single:
+`DLOC_BODY`). `.fit` tokens are `Mech8Part / VehicleFacings / Squad / SingleActor`
+(case-insensitive; unknown/absent → type-load default). HardpointId→damage-
+location joins are validated against `schemaHasLocation()`; do NOT invent a
+parallel location vocabulary.
+
+## Slice 6 — UNITPROFILE-VALIDATOR-1 (the coherence layer)
+
+Adds a load-time **construction-rules validator** — the layer future slices
+(esp. Phase-2 `UNIT-DEFINITION-VALIDATOR-1`) extend to prove a unit's facets
+COHERE before a mission runs. Pure logic in `code/unit_profile_validator.h`
+(plain enums/bools + `ActionExecutorRegistry`; compiles into `mc2_tests`,
+drags no engine/GL/IO). Engine glue = one report-only call at each type-load
+(`validateAndReportUnitProfile()` in `code/unitprofile_fit.cpp`, wired at
+`mech.cpp` `BattleMechType::init` and `gvehicl.cpp` `GroundVehicleType::init`
+AFTER facets + `populateProfileFromFit`).
+
+**REPORT-FIRST / gated:** behind `mc2UnitProfileDataEnabled()`
+(`MC2_UNIT_PROFILE_DATA`). Never rejects/refuses a spawn this slice — logs one
+`[UnitProfile:VALIDATE] <typeName>: <message> (reason=N)` line per finding.
+Gate-OFF returns immediately (parity). A clean stock gate-ON run logs NOTHING:
+stock jet mechs are walkers (`LOCO_MECH_WALKER` + jump = coherent) and stock
+vehicles grant no `CAP_JUMP` (nothing to prove). Enforcement (rejecting an
+impossible profile) is a deliberate FUTURE toggle. The validator consults the
+SAME `theActionExecutorRegistry()` gameplay queries use, so its verdict can
+never diverge from runtime executor resolution.
+
+**Reason-code vocabulary Phase-2 slices MUST honor** (`UnitProfileReasonCode`,
+`UPV_` prefix — ADD codes, never renumber; logs/mod tooling key on the name):
+
+| code | status | rule |
+|---|---|---|
+| `UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR` | **LIVE** | `grantsJump && !registry.isCompatible(Jump, locomotion)` — the "capability-granted vehicle would report MissingExecutor" audit case, caught at load |
+| `UPV_HARDPOINT_DAMAGE_LOCATION_MISSING` | STUB (Phase 2) | loadout names a damage location the `DamageSchema` lacks (uses `schemaHasLocation()`) |
+| `UPV_HARDPOINT_SOCKET_MISSING` | STUB (Phase 2) | a hardpoint maps to a model socket the presentation profile does not expose |
+| `UPV_ANIMATION_FALLBACK_MISSING` | STUB (Phase 2) | an available action has no animation-binding fallback (e.g. no JumpLand) |
+
+Facts fed today: `UnitProfileFacts { grantsJump, locomotion }`. Phase-2 slices
+ADD facet fields (hardpoint table, socket set, animation bindings) + their
+check + doctests at the single documented extension site in
+`validateUnitProfile()`; each STUB stays non-emitting until its facet inputs
+land. Pure logic covered RED→GREEN in
+`tests/unit/test_unit_profile_validator.cpp` (6 cases; full suite 239 pass).
+
+## VEHICLE-JUMP-PROOF-1 (slice 7 — Phase-1 closer)
+
+The arc's north-star claim — "the C++ class does not gate the jump decision; the
+data facets do" — is now demonstrated end-to-end on a **non-BattleMech**. A gated
+THROWAWAY hook (`mc2_unitprofile_vehicle_jump_proof`, behind the SEPARATE
+`MC2_UNIT_PROFILE_VEHICLE_JUMP_PROOF`, default OFF) writes the SAME two facet
+fields the `.fit [UnitProfile]` path writes — `baselineCapabilities.set(CAP_JUMP)`
++ `locomotion = LOCO_MECH_WALKER` — onto a `GroundVehicleType`'s profile at
+type-load. Through the unchanged stack (`onTypeBound` baseline→current;
+`locomotionModel()` reads the facet; `theActionExecutorRegistry().isCompatible`),
+a GroundVehicle reports `canPerform(Jump) == Available`.
+
+**Measured (mc2_24, has vehicles):** proof-gate ON = 40 `can_perform_jump=TRUE`;
+proof-gate OFF (DATA only) = 22 TRUE (the jet-mechs). The 18-unit flip FALSE→TRUE
+occurs ONLY for units passing through `GroundVehicleType::init` (the hook's sole
+call site) — i.e. the decision became Available on a class that owns no jump
+executor virtual, purely via data. Parity: proof-OFF mc2_24 PASS Δ+0; mc2_01
+DATA-on/proof-off = 4 jet-mechs TRUE PASS Δ+0; mc2_01 both-off = 0 rows PASS Δ+0.
+
+**Honest scope:** this proves the *decision path* is data-driven and
+class-independent. It does NOT make the vehicle functionally jump — no
+jump-*movement* executor runs for vehicles (deferred LOCOMOTION-DATA-1). The hook
+is proof-only and must be removed once a real Phase-2 data-unit proof exists.
+
+## UNIT-DEFINITION-VALIDATOR-1 (Phase-2 slice 8 — validation consolidation)
+
+The per-facet validators that each earlier slice added at its own type-load site
+are now folded into ONE pure aggregating entry `validateUnitDefinition(
+UnitDefinitionValidationInputs&, ActionExecutorRegistry&)`
+(`code/unit_profile_validator.h`). It concatenates the existing pure per-facet
+checks (jump-executor coherence, loadout→hardpoint joins, declared sockets,
+animation-fallback resolution, declared UI assets) in a stable facet order and
+returns the aggregated findings; report-only, engine/GL/IO-free (compiles into
+`mc2_tests`).
+
+Engine glue: the three scattered per-facet validator entries now route through
+this SINGLE call, each populating only its lifecycle-local input subset —
+`validateAndReportUnitProfile` (jump, `unitprofile_fit.cpp`, type-load),
+`Mover::validateLoadoutHardpointJoins` (loadout joins, `mover.cpp`, instance
+loadout), and the socket block in `Mech3DAppearanceType::init` (`mech3d.cpp`,
+appearance init). Log tag unified to `[UnitDefinition:VALIDATE]`. Gated
+`MC2_UNIT_PROFILE_DATA`, report-only — never rejects a spawn. No new class-check
+is introduced or removed; the jump verdict still keys on the ActionExecutorRegistry
++ locomotion facet, never on the C++ class.
+
+**Verified:** offline doctest 362/362 (4 new: coherent→zero, every LIVE reason
+code reachable through the ONE entry, aggregate==sum-of-delegates). mc2_01
+gate-ON = 4 jet-mechs `can_perform_jump=TRUE`, ZERO validation findings for stock,
+PASS Δ+0; gate-OFF PASS Δ+0 (validator a no-op). Code committed first (`0a84da1c`).
+
+**Reason-code vocabulary the Phase-3 `mc2_modlint` CLI wraps** (unchanged, all 6
+LIVE, reachable through the single entry): `UPV_JUMP_GRANTED_NO_COMPATIBLE_EXECUTOR`,
+`UPV_HARDPOINT_DAMAGE_LOCATION_MISSING`, `UPV_HARDPOINT_SOCKET_MISSING`,
+`UPV_ANIMATION_FALLBACK_MISSING`, `UPV_HARDPOINT_WEAPON_CLASS_REJECTED`,
+`UPV_UI_ASSET_MISSING`.
+
+---
+
+## NON-MECH-DATA-UNIT-PROOF-1 (Phase-2 slice 9 — Phase-2 CLOSER, commit 5b78143b)
+
+Proves the presentation/loadout stack is NOT class-locked: a DATA-declared
+hardpoint→socket weapon mount + a UI override fire through the AUTHORITATIVE
+(non-legacy) branches end-to-end, witnessed in-mission. Mirrors the Phase-1
+VEHICLE-JUMP-PROOF shape — a throwaway, opt-in proof hook behind a SEPARATE
+gate `MC2_UNIT_PROFILE_NONMECH_PROOF` (default OFF, distinct from
+`MC2_UNIT_PROFILE_DATA`), NOT stock behavior and NOT a shipped data unit.
+
+Wiring: `BattleMech::nonmechDataUnitMountProof` (mech.cpp), one-shot latch, for
+the first weapon item synthesizes the exact DATA a hardpoint source would supply
+— a `HardpointProfile` whose `.socket` is a REAL existing weapon-node name from
+the mech INI (`Mech3DAppearance::getLastWeaponNodeName`, no model/asset change) —
+then drives the same authoritative stack the `.fit` path selects:
+slice-3 `resolveHardpoint` (yields the profile) → slice-2
+`resolveWeaponNodeBySocketName` (socket NAME → node INDEX) → slice-4
+`chooseWeaponNode` (authoritative verdict). Also exercises the slice-6/7 UI facet
+via the pure `chooseUIAsset`. No class-check is added or removed: the mount is
+selected by the presence of a declared, resolvable socket in DATA, never by the
+C++ class.
+
+**Verified:** offline doctest 366/366 (4 new: authoritative mount route,
+socket-absent fallback, UI override selection, `validateUnitDefinition` coherent
+→ zero findings / one `UPV_HARDPOINT_SOCKET_MISSING` when broken / zero when
+fixed). In-mission witness (mc2_01, gate-ON):
+`[NONMECH-PROOF] declared socket="weapon_lefttorso" -> node=5 ; round-robin=2 ;
+chosen=5 ; authoritative=YES` — chosen mount node == declared socket node ≠
+round-robin, i.e. DATA selected the mount. UI line: declared icon `data-selected`
+over legacy. Gate-ON PASS Δ+0; gate-DATA-ON/proof-OFF: 0 proof lines, 4 jet-mechs
+`can_perform_jump=TRUE`, PASS Δ+0; fully-OFF: 0 proof lines, PASS Δ+0.
+`MC2_UNIT_PROFILE_NONMECH_PROOF` allowlisted in `scripts/run_smoke.py`.
+
+HONEST FRAMING: proves the DATA-DRIVEN mount/UI/validation path works end-to-end
+and is selected by DATA, not C++ class. It is a proof hook (throwaway, opt-in),
+not a shipped data unit — a real shipped data unit is Phase 3 (UnitDefinition
+facade + legacy synthesis).
