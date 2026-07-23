@@ -1944,6 +1944,10 @@ def main():
                             "MC2_FAR_BACKDROP_LIT_FAR",
                             "MC2_FAR_BACKDROP_LIT_STRENGTH",
                             "MC2_FAR_BACKDROP_LIT_TINT",
+                            # BACKDROP-BLIT-ATTRIB-1: night-dim the edge-fog +
+                            # OOB horizon cloud bank (default-OFF, byte-identical).
+                            "MC2_NIGHT_FOG_DIM",
+                            "MC2_NIGHT_FOG_DIM_SCALE",
                             # V-MATERIAL-DEBUG-1 gated debug material views
                             # (default-OFF). 1=albedo, 2=materialIdx, 3=normal,
                             # 4=texArrayLayer, 5=roughness, 6=metallic.

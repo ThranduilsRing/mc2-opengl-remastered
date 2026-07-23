@@ -212,7 +212,15 @@ enum class RendererFeature : int {
     // ON the shader fades the stale seed toward the mission night object-light
     // ambient across the LOD impostor distance. Default-OFF -> byte-identical.
     FarBackdropLit           = 46,  // MC2_FAR_BACKDROP_LIT
-    COUNT                    = 47,
+    // NIGHT-FOG-DIM: the edge-fog "cloud bank" (edge_fog.frag) + OOB fog paint a
+    // hardcoded bright-grey u_fogColor ({0.80,0.81,0.83}) at the map horizon,
+    // never dimmed for the mission's night lighting. On a night map (mc2_10) the
+    // horizon cloud bank composites near-white (0.80 * exposure * warm-grade). When
+    // ON, runEdgeFog/executor scale the fog color toward the measured night sky
+    // shade before upload so the horizon band matches the dark HDRI sky it sits
+    // against. Default-OFF -> uploads the unscaled constant -> byte-identical.
+    NightFogDim              = 47,  // MC2_NIGHT_FOG_DIM
+    COUNT                    = 48,
 };
 
 // ---------------------------------------------------------------------------
@@ -597,6 +605,14 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert). Far/impostor LODs register via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_HierarchyOnly) and never get the per-vertex NIGHT light bake, so base_light (a_aRGBLight) stays a stale mission-load (day) value -> fullbright impostors at night (and pure-black for dark-baked far geometry). When ON, main() fades the stale per-vertex seed toward the mission night object-light ambient (mix over clip.w view-depth across the LOD impostor distance) so far geometry takes the night shade with no hard LOD-pop boundary. Default-OFF -> u_farBackdropLit=0 -> shader branch skipped -> byte-identical. Distance band + strength + debug tint tunable via MC2_FAR_BACKDROP_LIT_NEAR/FAR/STRENGTH/TINT."
+    },
+    // NightFogDim (BACKDROP-BLIT-ATTRIB-1)
+    {
+        "MC2_NIGHT_FOG_DIM",
+        "MC2_NIGHT_FOG_DIM",
+        EnvVarKind::Feature,
+        false,
+        "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG cloud-bank pass (edge_fog.frag, eid 7158) painting a hardcoded bright-grey u_fogColor ({0.80,0.81,0.83}) that is never dimmed for the mission's night lighting; the HDRI sky it sits against measures dark (~0.27 in the same FBO). When ON, runEdgeFog and the frame-graph executor context scale edgeFogColor_ (and the sibling OOB fog color) by MC2_NIGHT_FOG_DIM_SCALE (default 0.35, tuned to the measured night-sky value) before upload so the horizon cloud bank matches the dark sky. Default-OFF -> unscaled constant uploaded -> byte-identical. The cinematic letterbox bars are drawn by a different path and are untouched."
     },
 };
 
@@ -1833,6 +1849,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually obvious (e.g. '1,0,0' paints substituted far geometry red to prove the path fires on the ridge/impostor pixels). Only meaningful when MC2_FAR_BACKDROP_LIT=1. Unset/empty -> 0,0,0 (no tint). Resolved once at process start."
+    },
+    {
+        "MC2_TUNE_NIGHT_FOG_DIM_SCALE",
+        "MC2_NIGHT_FOG_DIM_SCALE",
+        EnvVarKind::Trace,
+        false,
+        "BACKDROP-BLIT-ATTRIB-1: multiplier applied per-channel to the edge-fog + OOB fog color when MC2_NIGHT_FOG_DIM=1. 1.0 = no change; 0.35 (default) drops the bright-grey {0.80,0.81,0.83} cloud bank to ~{0.28,0.28,0.29}, matching the measured mc2_10 night HDRI-sky value in the same scene FBO; 0.0 = black fog (verify-by-exaggeration lower bound). Only meaningful when MC2_NIGHT_FOG_DIM=1. Unset/empty -> default 0.35. Resolved once at process start."
     },
     {
         "MC2_DIAG_DEBUG_STATE_DUMP",

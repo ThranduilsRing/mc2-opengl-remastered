@@ -971,6 +971,22 @@ void gosPostProcess::init(int w, int h)
             edgeFogEnabled_ ? 1 : 0, edgeFogStart_, edgeFogHeight_, edgeFogMax_);
     }
 
+    // BACKDROP-BLIT-ATTRIB-1: night-dim gate for the horizon cloud bank. RenderDoc
+    // pixel-history on the pre-composite HDR scene FBO pinned the mc2_10 night
+    // "white horizon band" to this edge-fog pass painting the hardcoded bright grey
+    // edgeFogColor_ (never night-dimmed). Default-OFF -> unscaled -> byte-identical.
+    {
+        const char* nfd = getenv("MC2_NIGHT_FOG_DIM");
+        nightFogDimEnabled_ = (nfd && nfd[0] == '1' && nfd[1] == '\0');
+        if (const char* v = getenv("MC2_NIGHT_FOG_DIM_SCALE")) {
+            float s = (float)std::atof(v);
+            if (s < 0.0f) s = 0.0f;
+            nightFogDimScale_ = s;
+        }
+        std::fprintf(stderr, "[NIGHT_FOG_DIM] enabled=%d scale=%.3f\n",
+            nightFogDimEnabled_ ? 1 : 0, nightFogDimScale_);
+    }
+
     // FOG-HORIZON-CLAMP-1: elevation profile shared by OOB + edge fog. Rides the
     // existing (default-ON) fog gates -- this is a tuning of the fog's SHAPE, not
     // a new feature. Kill-switch MC2_FOG_HORIZON_CLAMP=0 restores the previous
@@ -3168,6 +3184,17 @@ void gosPostProcess::runShoreline()
     glActiveTexture(GL_TEXTURE0);
 }
 
+// BACKDROP-BLIT-ATTRIB-1: night-dim the horizon cloud-bank fog color. Gate OFF
+// (default) -> straight copy -> byte-identical. Shared by the legacy runEdgeFog
+// upload and the frame-graph executor context so both backends stay consistent.
+void gosPostProcess::effectiveFogColor(const float in[3], float out[3]) const
+{
+    const float s = nightFogDimEnabled_ ? nightFogDimScale_ : 1.0f;
+    out[0] = in[0] * s;
+    out[1] = in[1] * s;
+    out[2] = in[2] * s;
+}
+
 void gosPostProcess::runEdgeFog()
 {
     ZoneScopedN("Render.EdgeFog");
@@ -3213,7 +3240,9 @@ void gosPostProcess::runEdgeFog()
     glUniformMatrix4fv(
         glGetUniformLocation(edgeFogProg_->shp_, "invViewProj"),
         1, GL_FALSE, inverseViewProj_);
-    edgeFogProg_->setFloat3("u_fogColor",        edgeFogColor_);
+    float edgeFogColorEff[3];
+    effectiveFogColor(edgeFogColor_, edgeFogColorEff);   // BACKDROP-BLIT-ATTRIB-1
+    edgeFogProg_->setFloat3("u_fogColor",        edgeFogColorEff);
     edgeFogProg_->setFloat("u_halfExtent",       mapHalfExtent_);
     edgeFogProg_->setFloat("u_fogStart",         edgeFogStart_);
     edgeFogProg_->setFloat("u_fogHeight",        edgeFogHeight_);
@@ -3333,7 +3362,9 @@ void gosPostProcess::runFogOob()
     fogOobProg_->apply();
     fogOobProg_->setInt("depthTex", 0);
     fogOobProg_->setMat4("invViewProj", invT);
-    fogOobProg_->setFloat3("u_fogColor",  oobFogColor_);
+    float oobFogColorEff[3];                              // BACKDROP-BLIT-ATTRIB-1
+    effectiveFogColor(oobFogColor_, oobFogColorEff);
+    fogOobProg_->setFloat3("u_fogColor",  oobFogColorEff);
     fogOobProg_->setFloat("u_fogOpacity", oobFogOpacity_);
     fogOobProg_->setFloat("u_time", fogTime);
 
@@ -3566,9 +3597,11 @@ void gosPostProcess::runFogRegionThroughBackend()
     ctx.resolver = &resolver;
     // EdgeFog params (row-major invViewProj as the GL path uploads with GL_FALSE).
     std::memcpy(ctx.edgeFog.invViewProj, inverseViewProj_, 16 * sizeof(float));
-    ctx.edgeFog.color[0] = edgeFogColor_[0];
-    ctx.edgeFog.color[1] = edgeFogColor_[1];
-    ctx.edgeFog.color[2] = edgeFogColor_[2];
+    float edgeFogColorEffCtx[3];                          // BACKDROP-BLIT-ATTRIB-1
+    effectiveFogColor(edgeFogColor_, edgeFogColorEffCtx);
+    ctx.edgeFog.color[0] = edgeFogColorEffCtx[0];
+    ctx.edgeFog.color[1] = edgeFogColorEffCtx[1];
+    ctx.edgeFog.color[2] = edgeFogColorEffCtx[2];
     ctx.edgeFog.halfExtent     = mapHalfExtent_;
     ctx.edgeFog.fogStart       = edgeFogStart_;
     ctx.edgeFog.fogHeight      = edgeFogHeight_;
@@ -3576,9 +3609,11 @@ void gosPostProcess::runFogRegionThroughBackend()
     ctx.edgeFog.waterElevation = waterElevation_;
     // OOB params.
     std::memcpy(ctx.oobFog.invViewProj, inverseViewProj_, 16 * sizeof(float));
-    ctx.oobFog.color[0] = oobFogColor_[0];
-    ctx.oobFog.color[1] = oobFogColor_[1];
-    ctx.oobFog.color[2] = oobFogColor_[2];
+    float oobFogColorEffCtx[3];                           // BACKDROP-BLIT-ATTRIB-1
+    effectiveFogColor(oobFogColor_, oobFogColorEffCtx);
+    ctx.oobFog.color[0] = oobFogColorEffCtx[0];
+    ctx.oobFog.color[1] = oobFogColorEffCtx[1];
+    ctx.oobFog.color[2] = oobFogColorEffCtx[2];
     ctx.oobFog.opacity  = oobFogOpacity_;
     ctx.oobFog.time     = SmokeMode::fixedTimestepEnabled()
                               ? (float)SmokeMode::fixedClockSeconds()

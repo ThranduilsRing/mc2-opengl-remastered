@@ -212,6 +212,141 @@ def pick_target(controller, pipe, names, explicit_index):
 # ---------------------------------------------------------------------------
 # Mode: attribute -- which draws touched a screen region
 # ---------------------------------------------------------------------------
+def run_textures(controller, job):
+    """Enumerate color textures (render targets) so a caller can pick a
+    pre-composite FBO to PixelHistory against by resid."""
+    global _STRUCT_FILE
+    _STRUCT_FILE = controller.GetStructuredFile()
+    names = resource_names(controller)
+    rows = []
+    for t in controller.GetTextures():
+        try:
+            flags = int(t.creationFlags)
+        except Exception:
+            flags = 0
+        cats = []
+        for label, bit in (("ColorTarget", rd.TextureCategory.ColorTarget),
+                           ("DepthTarget", rd.TextureCategory.DepthTarget),
+                           ("SwapBuffer", rd.TextureCategory.SwapBuffer),
+                           ("ShaderRead", rd.TextureCategory.ShaderRead)):
+            try:
+                if flags & bit:
+                    cats.append(label)
+            except Exception:
+                pass
+        rows.append({
+            "resid": int(t.resourceId),
+            "name": names.get(int(t.resourceId), "?"),
+            "width": t.width, "height": t.height,
+            "format": _fmt(t),
+            "cats": cats,
+        })
+    rows.sort(key=lambda r: (-("ColorTarget" in r["cats"]), r["resid"]))
+    result = {"ok": True, "mode": "textures", "rdc": job["rdc"],
+              "textures": rows}
+    _write_json(job, result)
+    with open(job["result_md"], "w") as fh:
+        fh.write("# RenderDoc textures\n\n| resid | name | dims | format | cats |\n")
+        fh.write("|---|---|---|---|---|\n")
+        for r in rows:
+            fh.write("| %d | %s | %dx%d | %s | %s |\n"
+                     % (r["resid"], _md_cell(r["name"]), r["width"],
+                        r["height"], _md_cell(r["format"]),
+                        ",".join(r["cats"])))
+
+
+def run_disasm(controller, job):
+    """Disassemble/dump the source of a shader resid (identify a program)."""
+    global _STRUCT_FILE
+    _STRUCT_FILE = controller.GetStructuredFile()
+    names = resource_names(controller)
+    want = int(job["shader_resid"])
+    refl = None
+    src = ""
+    for s in controller.GetShaders() if hasattr(controller, "GetShaders") else []:
+        pass
+    # Find via pipeline at the given eid.
+    eid = int(job.get("eid", 0))
+    if eid:
+        controller.SetFrameEvent(eid, True)
+    pipe = controller.GetPipelineState()
+    for st in (rd.ShaderStage.Vertex, rd.ShaderStage.Pixel,
+               rd.ShaderStage.Geometry, rd.ShaderStage.Compute):
+        try:
+            sid = pipe.GetShader(st)
+        except Exception:
+            continue
+        if int(sid) != want:
+            continue
+        try:
+            refl = pipe.GetShaderReflection(st)
+        except Exception:
+            refl = None
+        if refl is not None:
+            targets = controller.GetDisassemblyTargets(True)
+            tgt = targets[0] if targets else ""
+            try:
+                src = controller.DisassembleShader(pipe.GetGraphicsPipelineObject()
+                                                   if hasattr(pipe, "GetGraphicsPipelineObject") else rd.ResourceId.Null(),
+                                                   refl, tgt)
+            except Exception as e:
+                src = "<disasm failed: %r>" % e
+        break
+    result = {"ok": True, "mode": "disasm", "rdc": job["rdc"],
+              "shader_resid": want, "eid": eid,
+              "source": src or "<no reflection>"}
+    _write_json(job, result)
+    with open(job["result_md"], "w") as fh:
+        fh.write("# Shader %d disasm (eid %d)\n\n```\n%s\n```\n"
+                 % (want, eid, src[:20000]))
+
+
+def run_pixel(controller, job):
+    """Dump PixelHistory pre/post colors at one pixel of a target texture,
+    so a caller can see exactly which eid turns a pixel white/black."""
+    global _STRUCT_FILE
+    _STRUCT_FILE = controller.GetStructuredFile()
+    names = resource_names(controller)
+    flat = flatten(controller.GetRootActions())
+    by_eid = {a.eventId: a for a in flat}
+    want_resid = int(job["target_resid"])
+    tgt = None
+    for t in controller.GetTextures():
+        if int(t.resourceId) == want_resid:
+            tgt = t.resourceId
+            break
+    if tgt is None:
+        _die("target_resid %r not found" % want_resid, job)
+    px, py = int(job["px"]), int(job["py"])
+    sub = rd.Subresource(0, 0, 0)
+    mods = controller.PixelHistory(tgt, px, py, sub, rd.CompType.Typeless)
+    rows = []
+    for m in mods:
+        def col(c):
+            try:
+                return [round(float(v), 4) for v in list(c.floatValue)[:4]]
+            except Exception:
+                return None
+        a = by_eid.get(m.eventId)
+        rows.append({
+            "eid": m.eventId,
+            "name": action_name(a) if a else "<eid %d>" % m.eventId,
+            "pre": col(m.preMod.col),
+            "post": col(m.postMod.col),
+            "passed": bool(m.Passed()) if hasattr(m, "Passed") else None,
+        })
+    result = {"ok": True, "mode": "pixel", "rdc": job["rdc"],
+              "target_resid": want_resid, "px": px, "py": py, "mods": rows}
+    _write_json(job, result)
+    with open(job["result_md"], "w") as fh:
+        fh.write("# Pixel history resid %d (%d,%d)\n\n" % (want_resid, px, py))
+        fh.write("| eid | name | pre RGBA | post RGBA | passed |\n|---|---|---|---|---|\n")
+        for r in rows:
+            fh.write("| %d | %s | %s | %s | %s |\n"
+                     % (r["eid"], _md_cell(r["name"])[:40], r["pre"],
+                        r["post"], r["passed"]))
+
+
 def run_attribute(controller, job):
     global _STRUCT_FILE
     _STRUCT_FILE = controller.GetStructuredFile()
@@ -227,8 +362,19 @@ def run_attribute(controller, job):
         _die("capture has no drawcalls", job)
     controller.SetFrameEvent(draws[-1].eventId, True)
     pipe = controller.GetPipelineState()
-    tgt, tex = pick_target(controller, pipe, names,
-                           job.get("target"))
+    want_resid = job.get("target_resid")
+    tgt = tex = None
+    if want_resid is not None:
+        # Sample an explicit texture (e.g. the pre-composite HDR scene FBO).
+        for t in controller.GetTextures():
+            if int(t.resourceId) == int(want_resid):
+                tgt, tex = t.resourceId, t
+                break
+        if tgt is None:
+            _die("target_resid %r not found among capture textures"
+                 % want_resid, job)
+    else:
+        tgt, tex = pick_target(controller, pipe, names, job.get("target"))
     if tgt is None or tex is None:
         _die("could not resolve an output color target to sample", job)
 
@@ -671,6 +817,12 @@ def main():
             run_attribute(controller, JOB)
         elif mode == "states":
             run_states(controller, JOB)
+        elif mode == "textures":
+            run_textures(controller, JOB)
+        elif mode == "pixel":
+            run_pixel(controller, JOB)
+        elif mode == "disasm":
+            run_disasm(controller, JOB)
         else:
             _die("unknown mode: %r" % mode, JOB)
     except SystemExit:

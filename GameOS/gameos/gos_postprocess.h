@@ -440,6 +440,16 @@ public:
     glsl_program* edgeFogProg_ = nullptr;
     void  runEdgeFog();
 
+    // BACKDROP-BLIT-ATTRIB-1: night dimming for the horizon cloud bank.
+    // edgeFogColor_/oobFogColor_ are hardcoded daytime greys never dimmed for the
+    // mission night lighting -> near-white horizon band at night (mc2_10). When the
+    // gate is on, effectiveFogColor() scales the source color toward the measured
+    // night-sky shade before upload. Gate OFF (default): pass-through, byte-identical.
+    bool  nightFogDimEnabled_ = false;
+    float nightFogDimScale_   = 0.35f;   // measured mc2_10 night HDRI-sky ~0.28 / 0.80
+    // Copy `in` -> `out`, scaled by nightFogDimScale_ when nightFogDimEnabled_.
+    void  effectiveFogColor(const float in[3], float out[3]) const;
+
     // RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY). The PostprocessFog region
     // (EdgeFog + OOB fog) made SELECTABLE GL-vs-Vulkan through IRenderBackend.
     //
