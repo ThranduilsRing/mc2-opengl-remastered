@@ -1276,6 +1276,9 @@ def main():
                             "MC2_LIGHT_CULL_RADIUS",
                             # MOVER-LIGHT-FORWARD-1: mover pool forward bias wu.
                             "MC2_LIGHT_POOL_MOVER_FWD",
+                            # POOL-CONSUMERS-1: object-shader pool consumption.
+                            "MC2_LIGHT_POOL_OBJECTS",
+                            "MC2_LIGHT_POOL_OBJ_SCALE",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.

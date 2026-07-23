@@ -97,6 +97,9 @@ uniform sampler2DArray u_texArr;
 // Always declared in the coalesce variant so the reflection surface is stable.
 // Instance name materialTable_ follows the usage pattern documented in material_gpu.hglsl.
 #include <include/material_gpu.hglsl>
+// POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for props
+// (binding 28, u_numPoolLights=0 when gated off -> byte-identical).
+#include <include/light_pools.hglsl>
 layout(std430, binding = 5) readonly buffer MaterialTable {
     MaterialGpu materials[];
 } materialTable_;
@@ -436,6 +439,14 @@ void main() {
         c.rgb += u_terrainDecalFill * tex_color.rgb * shadowW;
     }
     c.rgb += v_highlight.rgb * v_highlight.a;
+
+#if defined(MC2_USE_VIEW_UNIFORMS)
+    // POOL-CONSUMERS-1: additive night light-pool light on props (albedo-
+    // modulated, matching the terrain consumer's lit-accumulator semantics).
+    // u_numPoolLights==0 (gate off / day / no lights) -> exact +0.
+    if (u_numPoolLights > 0)
+        c.rgb += tex_color.rgb * calcLightPools(v_worldPos);
+#endif
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
     // V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular.

@@ -382,6 +382,82 @@ uint32_t GetLightPoolLightCount() {
     return s_lastNumLights;
 }
 
+// POOL-CONSUMERS-1 (batch-6 item 6): shared object-consumer upload. See header.
+void UploadObjectLightPoolUniforms(unsigned int program) {
+    static const bool s_umbrella = []() {
+        const char* v = std::getenv("MC2_TERRAIN_LIGHT_POOLS");
+        return !(v && v[0] == '0');
+    }();
+    static const bool s_objects = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_OBJECTS");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    // Knob values lockstep with the terrain-chunk consumer defaults
+    // (gos_terrain_lod_chunk.cpp / gameos_graphics.cpp overlay path).
+    static const bool s_poolSoft = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_SOFT");
+        return !(v && v[0] == '0');
+    }();
+    static const float s_poolMoverDim = []() {
+        const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
+        if (!s || !s[0]) return 0.25f;
+        float f = (float)std::atof(s);
+        return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
+    }();
+    static const float s_poolMoverRadius = []() {
+        const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
+        if (!s || !s[0]) return 0.6f;
+        float f = (float)std::atof(s);
+        return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
+    }();
+    static const bool s_poolMoverMax = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
+        return !(v && v[0] == '0');
+    }();
+    static const bool s_poolCompress = []() {
+        const char* v = std::getenv("MC2_LIGHT_POOL_COMPRESS");
+        return !(v && v[0] == '0');
+    }();
+    // POOL-CONSUMERS-1: object-side intensity scale (objects hold baked light
+    // rows already; keep the additive pool below the terrain level so the
+    // composite stays atmospheric, not floodlit). MC2_LIGHT_POOL_OBJ_SCALE
+    // override (default 0.7, clamp [0,2]; 0 behaves like the sub-gate off).
+    static const float s_objScale = []() {
+        const char* s = std::getenv("MC2_LIGHT_POOL_OBJ_SCALE");
+        float f = (s && s[0]) ? (float)std::atof(s) : 0.7f;
+        if (f < 0.0f) f = 0.0f;
+        if (f > 2.0f) f = 2.0f;
+        return f;
+    }();
+
+    const GLint locN = glGetUniformLocation(program, "u_numPoolLights");
+    if (locN < 0) return;   // program has no pool block compiled in
+
+    int poolCount = 0;
+    if (s_umbrella && s_objects && s_objScale > 0.0f) {
+        const GLuint   ssbo = GetLightPoolSsbo();
+        const uint32_t n    = GetLightPoolLightCount();
+        if (ssbo != 0 && n > 0) {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 28u, ssbo);
+            poolCount = static_cast<int>(n > 256u ? 256u : n);
+        }
+    }
+    glUniform1i(locN, poolCount);
+    if (poolCount == 0) return;
+    const GLint locSoft     = glGetUniformLocation(program, "u_lightPoolSoft");
+    const GLint locDim      = glGetUniformLocation(program, "u_lightPoolMoverDim");
+    const GLint locScale    = glGetUniformLocation(program, "u_lightPoolMoverScale");
+    const GLint locMax      = glGetUniformLocation(program, "u_lightPoolMoverMax");
+    const GLint locCompress = glGetUniformLocation(program, "u_lightPoolCompress");
+    const GLint locObjScale = glGetUniformLocation(program, "u_lightPoolObjScale");
+    if (locSoft >= 0)     glUniform1i(locSoft, s_poolSoft ? 1 : 0);
+    if (locDim >= 0)      glUniform1f(locDim, s_poolMoverDim);
+    if (locScale >= 0)    glUniform1f(locScale, s_poolMoverRadius);
+    if (locMax >= 0)      glUniform1i(locMax, s_poolMoverMax ? 1 : 0);
+    if (locCompress >= 0) glUniform1i(locCompress, s_poolCompress ? 1 : 0);
+    if (locObjScale >= 0) glUniform1f(locObjScale, s_objScale);
+}
+
 // ---------------------------------------------------------------------------
 // mission_init — per-mission, called alongside gpu_cull::compute_init()
 // ---------------------------------------------------------------------------

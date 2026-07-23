@@ -23,6 +23,7 @@
 #include "gameos.hpp"                 // gos_InvalidateRenderStateCache
 #include "utils/shader_builder.h"
 #include "gos_postprocess.h"           // getGosPostProcess()->getDynamicLightSpaceMatrix()
+#include "gos_terrain_lighting.h"      // POOL-CONSUMERS-1: UploadObjectLightPoolUniforms
 #include "../../mclib/txmmgr.h"       // mcTextureManager->get_gosTextureHandle (live resolve)
 #include <GL/glew.h>
 #include "gl_state_guard.h"            // GlStateGuard adoption: mc2gl::GlScopedSsboBinding
@@ -2377,6 +2378,11 @@ void GpuMechBatcher::flush() {
         glUniform3fv(s_loc_u_iblSh, 9, &RenderCore::kIblShCoeffs[0][0]);
     if (s_loc_u_iblShStrength >= 0)
         glUniform1f(s_loc_u_iblShStrength, s_mechIblShEnabled ? g_iblShStrength : 0.0f);
+
+    // POOL-CONSUMERS-1 (batch-6 item 6): bind + upload the night light-pool
+    // SSBO/uniforms so movers receive pool light (their own headlights,
+    // building pools). u_numPoolLights=0 when gated -> byte-identical.
+    gos_terrain_lighting::UploadObjectLightPoolUniforms(s_mechProgram);
 
     // Projection uniforms — match static_prop batcher and the
     // terrain_overlay.vert convention: terrainMVP = CPU-composed

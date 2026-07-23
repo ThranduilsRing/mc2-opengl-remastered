@@ -126,4 +126,14 @@ GLuint GetLightPoolSsbo();
 // (0 when disabled / no eye / no registered pool lights this frame).
 uint32_t GetLightPoolLightCount();
 
+// POOL-CONSUMERS-1 (batch-6 item 6): bind the pool SSBO at binding 28 and
+// upload the shared pool uniforms (u_numPoolLights + soft/dim/scale/blend/
+// compress knobs, lockstep with the terrain-chunk consumer constants) onto
+// `program` (must be the CURRENTLY BOUND program). Object consumers
+// (static-prop batcher, mech batcher) call this per draw-batch setup.
+// Uploads u_numPoolLights=0 (loop never entered, byte-identical) when the
+// umbrella (MC2_TERRAIN_LIGHT_POOLS) or the object sub-gate
+// (MC2_LIGHT_POOL_OBJECTS) is off, or no lights are packed this frame.
+void UploadObjectLightPoolUniforms(unsigned int program);
+
 } // namespace gos_terrain_lighting

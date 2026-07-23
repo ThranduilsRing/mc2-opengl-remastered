@@ -17,6 +17,7 @@
 #include "mdi_submit.h"                          // MDI-SUBMISSION-SCAFFOLD-1
 #include "static_prop_dispatch_meta.h"
 #include "gos_postprocess.h"             // getGosPostProcess, getDynamicLightSpaceMatrix
+#include "gos_terrain_lighting.h"        // POOL-CONSUMERS-1: UploadObjectLightPoolUniforms
 #include "gos_static_prop_killswitch.h"  // gos_GetGLTextureId
 #include "gos_mech_killswitch.h"          // g_mechPreviewRenderDepth (mech-bay preview gate)
 #include "gos_profiler.h"
@@ -6236,6 +6237,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
             glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz);
         }
+        // POOL-CONSUMERS-1 (batch-6 item 6): bind + upload the night light-pool
+        // SSBO/uniforms (u_numPoolLights=0 when gated -> byte-identical).
+        gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgramCoalesce);
         // V-IBL-STATIC-1: SH-L2 image-based ambient. Strength gate is the env
         // var (s_iblShEnabled); when OFF -> upload 0.0 -> shader short-circuits
         // before evalShL2 (byte-identical to pre-slice output). When ON, the
@@ -7411,6 +7415,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
                 glUniform3f(s_locsLegacy.terrainSunMC2, tsx, tsy, tsz);
             }
+            // POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption
+            // (legacy program path; same gating as the coalesce site).
+            gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgram);
             // V-IBL-STATIC-1: SH-L2 image-based ambient (legacy program). Same
             // semantics as coalesce site: strength 0.0 default -> byte-identical OFF.
             // V-IBL-STATIC-2: same per-mission source as coalesce site.

@@ -1,0 +1,90 @@
+#ifndef __LIGHT_POOLS_HGLSL__
+#define __LIGHT_POOLS_HGLSL__
+
+// POOL-CONSUMERS-1 (batch-6 item 6): object-shader consumption of the
+// per-frame terrain LIGHT POOL SSBO (GpuTerrainLight, 48B std430, binding 28
+// — the SAME buffer terrain_lod_chunk.frag / terrain_overlay.frag consume).
+// Movers didn't receive their own headlight pools and props near pools
+// stayed unlit: the pool loop only existed in the terrain shaders. This
+// include gives static_prop.frag / mech.frag the identical falloff walk.
+//
+// C++ producer/upload: gos_terrain_lighting::UploadObjectLightPoolUniforms
+// (binds the SSBO + uploads the knob uniforms, force-uploads
+// u_numPoolLights=0 when MC2_TERRAIN_LIGHT_POOLS or MC2_LIGHT_POOL_OBJECTS
+// is off — loop never entered, byte-identical output).
+//
+// u_lightPoolObjScale (MC2_LIGHT_POOL_OBJ_SCALE, default 0.7) keeps the
+// object-side contribution below the terrain level: objects already carry
+// baked light rows, and the night composite must stay atmospheric — "some
+// base amount of light due to being occupied ... nothing glowing like
+// daytime".
+
+struct PoolLight {
+    vec3  position;        // MC2/Stuff world (same frame as terrain v_worldPos)
+    uint  lightType;       // 1=point 2=spot 3=terrain, 0=skip
+    vec3  color;           // R/G/B normalized 0..1
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;         // >0.5 = mover-attached (producer flag)
+    float _plPad2;
+};
+layout(binding = 28, std430) readonly buffer ObjectLightPool {
+    PoolLight poolLights[];
+};
+uniform int   u_numPoolLights;       // driver force-uploads 0 when gated off
+uniform int   u_lightPoolSoft;
+uniform float u_lightPoolMoverDim;
+uniform float u_lightPoolMoverScale;
+uniform int   u_lightPoolMoverMax;
+uniform int   u_lightPoolCompress;
+uniform float u_lightPoolObjScale;
+
+// Additive pool light reaching worldPosMC2 (MC2/Stuff frame). Mirrors the
+// terrain_lod_chunk.frag loop exactly (soft tail, mover dim/scale/max-blend,
+// tone compression), then applies the object-side scale.
+vec3 calcLightPools(vec3 worldPosMC2)
+{
+    if (u_numPoolLights <= 0) return vec3(0.0);
+    vec3 pool      = vec3(0.0);
+    vec3 poolMover = vec3(0.0);
+    for (int i = 0; i < u_numPoolLights; ++i) {
+        if (poolLights[i].lightType == 0u) continue;
+        vec3  vtl = worldPosMC2 - poolLights[i].position;
+        float len = sqrt(dot(vtl, vtl));
+        bool  mover = poolLights[i]._plPad1 > 0.5;
+        float farD  = poolLights[i].farDistance;
+        float nearD = poolLights[i].closeDistance;
+        float ooD   = poolLights[i].oneOverDistance;
+        if (mover && u_lightPoolMoverScale < 0.999) {
+            float s = max(u_lightPoolMoverScale, 0.05);
+            farD *= s; nearD *= s; ooD /= s;
+        }
+        if (len >= farD) continue;
+        float falloff = (len <= nearD)
+                      ? 1.0
+                      : (farD - len) * ooD;
+        if (u_lightPoolSoft != 0) {
+            float t = clamp(falloff, 0.0, 1.0);
+            falloff = t * t * (3.0 - 2.0 * t);
+        }
+        vec3 plCol = poolLights[i].color;
+        if (mover) {
+            plCol *= u_lightPoolMoverDim;
+            if (u_lightPoolMoverMax != 0) {
+                poolMover = max(poolMover, plCol * falloff);
+                continue;
+            }
+        }
+        pool += plCol * falloff;
+    }
+    pool += poolMover;
+    vec3 outPool;
+    if (u_lightPoolCompress != 0)
+        outPool = vec3(1.0) - exp(-1.6 * pool);
+    else
+        outPool = min(pool, vec3(1.0));
+    return outPool * u_lightPoolObjScale;
+}
+
+#endif // __LIGHT_POOLS_HGLSL__
