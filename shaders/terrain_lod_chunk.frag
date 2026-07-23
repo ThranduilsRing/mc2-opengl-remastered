@@ -9,8 +9,8 @@
 // calcDynamicShadow (Poisson PCF). The chunk DRIVER must bind those uniforms (same
 // as the legacy terrain draw) or enableShadows reads 0 -> calcShadow returns 1.0.
 #include <include/shadow.hglsl>
-#include <include/render_contract.hglsl> // RENDER-CONTRACT: rc_gbuffer1_* helpers
 #define PREC highp                // noise.hglsl uses PREC (legacy frag defines it)
+#include <include/render_contract.hglsl> // RENDER-CONTRACT: rc_gbuffer1_* helpers (uses PREC)
 #include <include/noise.hglsl>   // fbm() for the colour break-up (matches legacy)
 #include <include/edge_haze.hglsl> // TERRAIN-EDGE-FEATHER-1: edgeHazeAmount + EDGE_HAZE_SKY (legacy parity)
 
