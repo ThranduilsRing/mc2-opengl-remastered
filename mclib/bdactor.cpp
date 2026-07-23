@@ -3291,6 +3291,13 @@ long BldgAppearance::update (bool animate)
 			// matches the existing per-building pointLight gate at :1933.
 			spotlightLights_[k]->active =
 				(eye && eye->isNight && visible && !forceLightsOut);
+			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
+			// Building light positions are static, so persistence while the
+			// prop's visibility-gated update is culled is CORRECT — the
+			// camera-side volume test alone decides screen relevance (fixes
+			// the mc2_10 airbase all-pools-dark angle, 204907).
+			spotlightLights_[k]->ownerEnabled =
+				spotlightLights_[k]->active ? 1 : 0;
 		}
 	}
 

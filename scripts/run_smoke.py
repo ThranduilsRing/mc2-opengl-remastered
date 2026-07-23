@@ -1271,6 +1271,11 @@ def main():
                             # SHADOW-FADE-CONTINUOUS-1: continuous occluder-distance
                             # estimate (default ON; =0 restores 4-step ladder).
                             "MC2_SHADOW_FADE_CONT",
+                            # LIGHT-CULL-RADIUS-1: light-volume frustum test +
+                            # owner-intent composition (default ON).
+                            "MC2_LIGHT_CULL_RADIUS",
+                            # MOVER-LIGHT-FORWARD-1: mover pool forward bias wu.
+                            "MC2_LIGHT_POOL_MOVER_FWD",
                             # SHADOW-STABILITY-1: per-pass GL-state trace gate.
                             "MC2_SHADOW_STATE_TRACE",
                             # GLSTATE-SHADOW-CLIP-RESTORE-1: post-shadow GL state restore trace.

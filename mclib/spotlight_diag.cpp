@@ -70,4 +70,17 @@ unsigned long mover_light_argb()
     return s_argb;
 }
 
+float mover_light_fwd_offset()
+{
+    static const float s_fwd = []() -> float {
+        float f = 24.0f;   // MOVER-LIGHT-FORWARD-1 default
+        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_FWD");
+        if (v && v[0]) f = (float)std::atof(v);
+        if (f < 0.0f) f = 0.0f;
+        if (f > 120.0f) f = 120.0f;
+        return f;
+    }();
+    return s_fwd;
+}
+
 } // namespace mc2_spotlight_diag

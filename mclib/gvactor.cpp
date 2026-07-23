@@ -2674,6 +2674,21 @@ void GVAppearance::updateGeometry (void)
 			{
 				Stuff::Vector3D childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
+				// MOVER-LIGHT-FORWARD-1: bias the pool center AHEAD of the
+				// vehicle along its facing (headlight semantics; see
+				// mech3d.cpp counterpart). MC2_LIGHT_POOL_MOVER_FWD=0
+				// restores centered pools.
+				{
+					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+					if (fwdWu > 0.0f)
+					{
+						Stuff::Vector3D fwdv;
+						fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+						Rotate(fwdv, -rotation);
+						childPos.x += fwdv.x * fwdWu;
+						childPos.y += fwdv.y * fwdWu;
+					}
+				}
 				spotlightLights_[k]->SetPosition(&childPos);
 				// lightToWorld is consumed at msl.cpp:1659; without it the
 				// precomputed s_lightToShape collapses to worldToShape
@@ -2699,7 +2714,13 @@ void GVAppearance::updateGeometry (void)
 				spotlightLights_[k]->active =
 					(eye->isNight && visible && !InEditor
 					 && (status != OBJECT_STATUS_DESTROYED)
-					 && (status != OBJECT_STATUS_DISABLED));
+					 && (status != OBJECT_STATUS_DISABLED)
+					 // LIGHT-CULL-RADIUS-1 ext(a): powered-down vehicles
+					 // emit nothing (parity with the mech predicate).
+					 && (status != OBJECT_STATUS_SHUTDOWN));
+				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
+				spotlightLights_[k]->ownerEnabled =
+					spotlightLights_[k]->active ? 1 : 0;
 			}
 		}
 	//}
@@ -2970,6 +2991,48 @@ long GVAppearance::update (bool animate)
 		}
 		
 		gvShape->SetFrameNum(currentFrame);
+	}
+
+	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): light owner
+	// intent + coarse position refreshed EVERY frame even when
+	// updateGeometry is frustum-culled below (see mech3d.cpp counterpart
+	// for the ghost-light/shutdown-staleness mechanism writeup).
+	if (!spotlightLights_.empty())
+	{
+		const bool ownerOn =
+			(eye && eye->isNight && visible && !InEditor
+			 && (status != OBJECT_STATUS_DESTROYED)
+			 && (status != OBJECT_STATUS_DISABLED)
+			 && (status != OBJECT_STATUS_SHUTDOWN));
+		if (ownerOn)
+		{
+			Stuff::Vector3D lpos = position;
+			const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+			if (fwdWu > 0.0f)
+			{
+				Stuff::Vector3D fwdv;
+				fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+				Rotate(fwdv, -rotation);
+				lpos.x += fwdv.x * fwdWu;
+				lpos.y += fwdv.y * fwdWu;
+			}
+			Stuff::LinearMatrix4D l2w;
+			Stuff::Point3D lposP;
+			lposP.x = lpos.x; lposP.y = lpos.y; lposP.z = lpos.z;
+			l2w.BuildTranslation(lposP);
+			l2w.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+			{
+				spotlightLights_[k]->ownerEnabled = 1;
+				spotlightLights_[k]->SetPosition(&lpos);
+				spotlightLights_[k]->SetLightToWorld(&l2w);
+			}
+		}
+		else
+		{
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+				spotlightLights_[k]->ownerEnabled = 0;
+		}
 	}
 
 	// Mirror the mech fix: under the GPU static-prop killswitch always

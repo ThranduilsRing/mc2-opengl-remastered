@@ -200,6 +200,10 @@ typedef struct _TG_Light
 {
 	DWORD    				lightType;			//Ambient, directional, etc.
 	bool					active;				//Should this light be considered on?
+	unsigned char			ownerEnabled;		//LIGHT-CULL-RADIUS-1: owner intent (FoW/status/night).
+												//Camera::updateLights composes active = ownerEnabled &&
+												//light-VOLUME-on-screen for POINT/SPOT, so appearance
+												//update culling can no longer strand or leak lights.
 	
 	protected:
 	DWORD    				aRGB;				//Color
@@ -231,6 +235,7 @@ typedef struct _TG_Light
 		spotDir.x = spotDir.y = spotDir.z = 0.0f;
 		maxSpotLength = 0.0f;
 		active = false;
+		ownerEnabled = 1;	//LIGHT-CULL-RADIUS-1: enabled until an owner says otherwise
 	}
 
 	void SetaRGB (DWORD newaRGB)

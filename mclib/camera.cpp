@@ -2616,7 +2616,58 @@ void Camera::updateLights()
 				Stuff::Vector4D dummy;
 				// [PROJECTZ:LightingShadow id=light_spot_point_active_test]
 				PROJECTZ_SITE("light_spot_point_active_test", "LightingShadow");
-				light->active = projectForLightingShadow(light->position,dummy);
+				// LIGHT-CULL-RADIUS-1 (batch-6 item 5/9): the legacy test was
+				// position-only ("simple position check. Make complicated
+				// later!") AND unconditionally overwrote the owner's intent.
+				// Two field bugs fell out of that: (1) a mover leaving the
+				// frame kills its pool instantly even though the light VOLUME
+				// still reaches on-screen terrain (headlight popping); (2) at
+				// oblique angles whole building clusters go dark when the
+				// source props' light positions project off-screen while their
+				// pools are plainly in view (mc2_10 airbase 204753 vs 204907).
+				// Fix: admit when ANY extreme of the light volume (position
+				// +/- farDistance on the ground axes) projects on-screen, and
+				// compose with the owner's FoW/status intent (ownerEnabled,
+				// written by mech3d/gvactor/bdactor) instead of racing it.
+				// Killswitch MC2_LIGHT_CULL_RADIUS=0 -> legacy position-only
+				// overwrite.
+				static const bool s_cullRadius = []() {
+					const char* v = getenv("MC2_LIGHT_CULL_RADIUS");
+					return !(v && v[0] == '0');   // default ON
+				}();
+				bool lightOnScreen = projectForLightingShadow(light->position,dummy);
+				if (s_cullRadius)
+				{
+					const float lightR = light->farDistance;
+					if (!lightOnScreen && lightR > 0.0f)
+					{
+						for (int lo = 0; lo < 4 && !lightOnScreen; ++lo)
+						{
+							Stuff::Vector3D probe = light->position;
+							if      (lo == 0) probe.x += lightR;
+							else if (lo == 1) probe.x -= lightR;
+							else if (lo == 2) probe.y += lightR;
+							else              probe.y -= lightR;
+							lightOnScreen = projectForLightingShadow(probe,dummy);
+						}
+					}
+					bool ownerOk = (light->ownerEnabled != 0);
+					// Building-owned slots are night-only by authored
+					// semantic (bdactor writer pred includes isNight) but
+					// their visibility-gated update may not run at a
+					// day/night transition while off-screen — compose the
+					// night gate here so a stale ownerEnabled can't leak a
+					// daytime pool.
+					if (ownerOk && !isNight) {
+						mc2_spotlight_diag::SourceClass lsrc;
+						if (mc2_spotlight_diag::is_e_slot(i, &lsrc)
+							&& lsrc == mc2_spotlight_diag::Bldg)
+							ownerOk = false;
+					}
+					light->active = ownerOk && lightOnScreen;
+				}
+				else
+					light->active = lightOnScreen;
 				// T1.16 [SPOT_DIAG v1] per-slot transition probe — emit ONLY for
 				// (E)-owned slots, state-change-on-transition. Per-summary
 				// snapshot below at end of updateLights() every 600 frames.

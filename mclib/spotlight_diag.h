@@ -41,4 +41,11 @@ bool is_enabled();
 // Buildings (bdactor.cpp, authored warm 0xffe8c870) are NOT routed through this.
 unsigned long mover_light_argb();
 
+// MOVER-LIGHT-FORWARD-1: forward offset (world units) applied to mover
+// SpotLight_/searchlight pool centers along the mover's facing — headlights
+// illuminate AHEAD of the vehicle instead of an omni puddle centered under
+// it. MC2_LIGHT_POOL_MOVER_FWD override (default 24, clamp [0,120]; 0 = off,
+// legacy centered pools).
+float mover_light_fwd_offset();
+
 } // namespace mc2_spotlight_diag
