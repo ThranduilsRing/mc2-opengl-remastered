@@ -146,7 +146,7 @@ gosFont* gosFont::load(const char* fontFile) {
                                 GL_RGBA, GL_UNSIGNED_BYTE, rgba);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, prev_unpack_alignment);
                 glBindTexture(GL_TEXTURE_2D, 0);
-                if(gosTexture* tex = g_gos_renderer->getTexture(tex_id)) {
+                if(gosTexture* tex = getGosRenderer()->getTexture(tex_id)) {
                     tex->setRgbaMirror(atlas.width, atlas.height, TF_RGBA8, rgba);
                     tex->markContentMutated();
                 }

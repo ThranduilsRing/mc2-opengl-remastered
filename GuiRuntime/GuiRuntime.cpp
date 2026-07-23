@@ -853,6 +853,8 @@ static void DrawCliffDecalPanel() {
     ImGui::TextDisabled("as MC2_TERRAIN_DECAL_* env vars");
 
     ImGui::End();
+}
+
 static void maybeTraceVkImguiDecline() {
     if (!vkImguiRequested()) return;
     static bool s_tracedInitial = false;

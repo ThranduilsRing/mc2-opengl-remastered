@@ -1019,6 +1019,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp). Diagnostic only, default-OFF."
+    },
     // VK-P13-SELECTOR-1 / T1: the top-level GL-vs-Vulkan backend selector.
     {
         "MC2_FEATURE_RENDER_BACKEND",
@@ -2737,6 +2738,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST. One O(N) pass over registered existing objects at mission_ready: emits '[APPEAR_AUDIT v1] event=missing reason=appearance_null|base_shape_failed ...' (bounded 32 lines) + a 'summary scanned= missing=' line. POSITION-FREE by the off-map-staging carve-out (INVIS-VEHICLES-FIX-1): staged movers have valid appearances; the scan keys on no positional/visibility term. The appear_audit smoke bucket is registered ADVISORY-DISARMED and may only arm red (and the gate join the tier1 force-set) after a full 24-map failed=0 baseline — whether any class legitimately reports NULL appearance at mission_ready is unverified; the tier1-missions baseline ships with META-FIX-BATCH-3, the 24-map run is the documented follow-up."
+    },
     {
         "MC2_TRACE_VK_SCENE_GL_PRODUCER_QUERY",
         "MC2_VK_SCENE_GL_PRODUCER_QUERY",

@@ -13,6 +13,7 @@
 #include <cstring>
 
 #include "mc2_hitch_trace.h"
+#include "gos_profiler.h"  // ZoneScopedN (VK-ISLAND-TRACY-1 zones)
 
 // MC2_GPUBUF_LIGHT_GROWONCE gate (moved with the cluster).
 static bool gosLightGrowOnceEnabled() {

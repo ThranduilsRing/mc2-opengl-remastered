@@ -3180,7 +3180,7 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
         d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load (heightfield upload)
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_heightSsbo.debugName;
-        d.backendHandle    = static_cast<GLuint>(s_heightSsbo.backendHandle);
+        d.glName    = static_cast<GLuint>(s_heightSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -3260,7 +3260,7 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
         d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_visualHeightSsbo.debugName;
-        d.backendHandle    = static_cast<GLuint>(s_visualHeightSsbo.backendHandle);
+        d.glName    = static_cast<GLuint>(s_visualHeightSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -3308,7 +3308,7 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
         d.lifetime  = RenderCore::RenderResourceLifetime::Mission;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_visualDampSsbo.debugName;
-        d.backendHandle    = s_visualDampSsbo.backendHandle;
+        d.glName    = static_cast<GLuint>(s_visualDampSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -3399,7 +3399,7 @@ void gos_TerrainLodChunk_UploadTerrainTypeFull(const float* types, int mapSide)
         d.lifetime  = s_typeSsbo.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_typeSsbo.debugName;
-        d.backendHandle    = static_cast<GLuint>(s_typeSsbo.backendHandle);
+        d.glName    = static_cast<GLuint>(s_typeSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -3594,7 +3594,7 @@ void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int co
         d.lifetime  = s_cementSsbo.lifetime;
         d.format    = RenderCore::RenderResourceFormat::BufferRaw;
         d.debugName = s_cementSsbo.debugName;
-        d.backendHandle    = static_cast<GLuint>(s_cementSsbo.backendHandle);
+        d.glName    = static_cast<GLuint>(s_cementSsbo.backendHandle);
         d.sizeBytes = static_cast<uint64_t>(bytes);
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
