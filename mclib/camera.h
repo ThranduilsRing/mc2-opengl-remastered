@@ -1646,6 +1646,12 @@ class Camera
 			// legitimately clamps cameraAltitude to the per-projection-angle max,
 			// which is expected and deterministic.)
 			cameraAltitudeDesired = cameraAltitude;
+			// CAMERA-SMOOTHING-1 interop (2026-07-22): kill any in-flight
+			// smoothing glide too — the rebase hook composes external deltas
+			// into these goals, which would otherwise keep sliding the camera
+			// off the parked pose after the hard set.
+			scrollSmoothActive = false;
+			rotSmoothActive = false;
 		}
 
 		void setGoalRotation (Stuff::Vector3D goalRot)
