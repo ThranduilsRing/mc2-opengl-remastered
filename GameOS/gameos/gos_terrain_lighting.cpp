@@ -375,7 +375,7 @@ GLuint GetOutputSsbo() {
 // NIGHT-LIGHT-POOLS-1: forward-consumer accessors for the per-frame light pool.
 GLuint GetLightPoolSsbo() {
     if (!s_initialized) return 0;
-    return static_cast<GLuint>(s_lightInputSsbo.glName);
+    return static_cast<GLuint>(s_lightInputSsbo.backendHandle);
 }
 
 uint32_t GetLightPoolLightCount() {
