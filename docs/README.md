@@ -43,6 +43,7 @@ Core references:
 - [docs/RELEASE-PROCESS.md](RELEASE-PROCESS.md) — end-to-end release runbook (version bump → package → gate → publish)
 - [docs/tracy-harness.md](tracy-harness.md) — canonical Tracy capture/compare/baseline/regress harness (perf measurement + per-release baselines)
 - [docs/visual-verify.md](visual-verify.md) — `tools/visual_verify/` region-level visual verification: capture every saved camera pose from a build, crop the known artifact regions, diff vs a blessed golden, emit a verdict report + contact sheets (automates the manual verification-fleet loop)
+- [docs/renderdoc-automation.md](renderdoc-automation.md) — `tools/renderdoc/` draw-call attribution: capture a posed frame under RenderDoc, then walk pixel-history to report which draws wrote a screen region (shaders/blend/depth/marker) and dump full pipeline state for one draw — the automation the manual black-band tint-hunt needed (complements the Tier-5 parity hook)
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — branch/PR flow, mandatory build config, the tier-1 smoke gate
 
 Fixtures shipped in the v0.5 cycle (all in-tree; one-liners — see
