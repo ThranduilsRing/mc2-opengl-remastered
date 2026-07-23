@@ -281,7 +281,15 @@ void main(void)
             // actually needed.
             float vpAspect = u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0);
             float _ac = vpAspect / max(u_waterProjAspect, 0.0001);
-            PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0);
+            // WATER-GRAZE-REFL-1: fade the wave-normal PERTURBATION by waveLOD so
+            // distant water flattens toward a clean +Z mirror. Beyond ~9000wu
+            // (the grazing horizon) the wave detail was still perturbing the
+            // reflect vector at full strength, scattering the horizon sky sample
+            // into shimmer/alias with no reflection to anchor it. A flat mirror
+            // at distance is both physically right (calm far water) and what
+            // makes the grazing sky reflection read cleanly. Near water
+            // (waveLOD==1) is byte-identical.
+            PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0) * waveLOD;
             PREC vec3  waveNormal = normalize(vec3(nzGrad * REFL_WAVE_SLOPE, 1.0));
             PREC vec3  vdir       = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
             PREC vec3  rdir       = reflect(-vdir, waveNormal);           // MC2 Z-up
@@ -323,7 +331,16 @@ void main(void)
             //PORT-BEGIN:waterReflMix
             // Schlick Fresnel; flat +Z water normal -> N.V = vdir.z; grazing boosts.
             PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(vdir.z, 0.0), 5.0);
-            reflMix = clamp(fres * u_waterReflStrength * waveLOD, 0.0, REFL_MAX);
+            // WATER-GRAZE-REFL-1 (master-FAIL #9): the sky reflection is a SURFACE
+            // property, not wave DETAIL — gating reflMix by waveLOD (0 beyond
+            // ~9000wu) erased the reflection exactly at the grazing horizon, the
+            // one place Fresnel (fres->1) makes it strongest, leaving grazing
+            // water flat/skytint-only. Let grazing fragments keep full reflection
+            // at distance via max(waveLOD, fres): near/top-down water (waveLOD==1)
+            // stays byte-identical; only the far grazing horizon (waveLOD<1,
+            // fres high) now reflects. MC2_WATER_REFLECTION=0 remains the full
+            // killswitch (u_waterReflStrength==0 -> whole block skipped).
+            reflMix = clamp(fres * u_waterReflStrength * max(waveLOD, fres), 0.0, REFL_MAX);
             col = mix(col, reflectCol, reflMix);   // reflMix==0 at SH strength 0 -> no-op
             //PORT-END:waterReflMix
         }
