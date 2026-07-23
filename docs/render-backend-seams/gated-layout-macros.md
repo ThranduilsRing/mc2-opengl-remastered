@@ -350,7 +350,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:521`
+- Header: `GameOS/gameos/gos_postprocess.h:531`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostFogNative* vkPostFogNative_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -358,7 +358,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:540`
+- Header: `GameOS/gameos/gos_postprocess.h:550`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostSsaoNative* vkPostSsaoNative_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -366,7 +366,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:562`
+- Header: `GameOS/gameos/gos_postprocess.h:572`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostScreenFx* vkPostScreenFx_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -374,7 +374,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:576`
+- Header: `GameOS/gameos/gos_postprocess.h:586`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostHzbNative* vkPostHzbNative_ = nullptr;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
@@ -382,7 +382,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_postprocess.h:776`
+- Header: `GameOS/gameos/gos_postprocess.h:786`
 - Class: `gosPostProcess`  (data-member)
 - Member: `GLuint dynShadowInteropTex_ = 0;`
 - Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mclib, renderworld
