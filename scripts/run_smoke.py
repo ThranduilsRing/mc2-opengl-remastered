@@ -1483,6 +1483,11 @@ def main():
                             # PAD-AREA-GLOW-1: night pad-area lift (strength + spill wu).
                             "MC2_PAD_AREA_GLOW",
                             "MC2_PAD_AREA_GLOW_SPILL",
+                            # RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): solid
+                            # cement pad/runway edge feather killswitch
+                            # (default OFF). Must be allowlisted or Popen
+                            # drops it and a gate-ON smoke silently runs OFF.
+                            "MC2_RUNWAY_EDGE_BLEND",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs

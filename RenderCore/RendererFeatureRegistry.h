@@ -1886,6 +1886,15 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1). Single light plateaus ~0.80, stacked lights approach 1.0 asymptotically (no blinding saturated union blob over mech groups / base light clusters). DEFAULT ON; =0 restores the exact legacy hard clamp."
     },
+    // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
+    // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
+    {
+        "MC2_FEATURE_RUNWAY_EDGE_BLEND",
+        "MC2_RUNWAY_EDGE_BLEND",
+        EnvVarKind::Feature,
+        false,
+        "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain with no authored transition art. PopulateRecipeCementWords (gos_terrain_indirect.cpp) packs a 4-neighbour open-border mask into cementWord bits 19:16 for those solid boundary tiles (neighbours carrying ANY valid cement word -- solid OR transition -- count as cement, so authored transition edges are left to the legacy blend). gos_terrain.frag reads the mask and ramps cement -> base terrain over the outer HALF tile (discrete SDF from the cement mask, smoothstep(0,0.5,dist)). Indirect path only (does NOT touch terrain_lod_chunk.frag, which already marching-squares-shapes transition tiles). DEFAULT OFF: no mask bits are written, so the frag feather collapses to featherAlpha==1.0 == byte-identical stock full replacement. Baked once per mission load; zero per-frame cost."
+    },
     {
         "MC2_TUNE_NIGHT_AMBIENT_FLOOR",
         "MC2_NIGHT_AMBIENT_FLOOR",

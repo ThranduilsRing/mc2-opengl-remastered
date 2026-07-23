@@ -854,6 +854,21 @@ static int PadEdgeRoadFixMode() {
 }
 static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 
+// RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
+// that abut BARE terrain (no authored transition art), curing the hard full-tile
+// stairstep cliff. Default OFF (killswitch). When ON, PopulateRecipeCementWords
+// packs a 4-neighbour "open" mask into cementWord bits 19:16 for solid cement
+// boundary tiles; gos_terrain.frag ramps cement -> terrain over the outer half
+// tile (discrete SDF). OFF => no mask bits => the frag's featherAlpha collapses
+// to 1.0 => byte-identical stock full replacement.
+static bool RunwayEdgeBlendEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_RUNWAY_EDGE_BLEND");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
 // True when tile (r,c) carries road/runway art: an &Overlays id, OR a
 // cement-ALPHA transition art tile with NO cement-terrain corner (the
 // MISSING-RUNWAY-1 decal-baked road/runway class). Requires
@@ -1039,6 +1054,49 @@ static void PopulateRecipeCementWords() {
         g_denseRecipeDirty[vn]  = true;
         if (vn < chunkCementWords.size()) chunkCementWords[vn] = cementWord;
     }
+    // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): second pass — pack a 4-neighbour
+    // "open border" mask into cementWord bits 19:16 for SOLID cement boundary
+    // tiles (valid && !transition) that abut BARE terrain. gos_terrain.frag reads
+    // it to feather the pad/runway perimeter over the outer half tile. Neighbours
+    // that carry ANY valid cement word (solid OR transition) count as cement, so
+    // authored transition edges are left alone (legacy blend owns them) and only
+    // the hard solid-cement-vs-terrain cliffs get feathered. Gate OFF => no bits
+    // written => frag feather collapses to full replacement (byte-identical stock).
+    if (RunwayEdgeBlendEnabled()) {
+        auto cementPresent = [&](long x, long y) -> bool {
+            if (x < 0 || y < 0 || x >= mapSide || y >= mapSide) return false;
+            const size_t ci = (size_t)y * (size_t)mapSide + (size_t)x;
+            return ci < chunkCementWords.size()
+                   && (chunkCementWords[ci] & kCementLayerValidBit) != 0u;
+        };
+        long runwayFeatheredTiles = 0;
+        for (size_t vn = 0; vn < N; ++vn) {
+            const long mx = (long)vn % mapSide;
+            const long my = (long)vn / mapSide;
+            if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
+            if (vn >= chunkCementWords.size()) continue;
+            const uint32_t cw = chunkCementWords[vn];
+            if ((cw & kCementLayerValidBit) == 0u) continue;   // not cement
+            if ((cw & kCementTransitionBit) != 0u) continue;   // transition: legacy owns edge
+            uint32_t edge = 0u;
+            if (!cementPresent(mx + 1, my))     edge |= (1u << 16);  // E (+x) open
+            if (!cementPresent(mx - 1, my))     edge |= (1u << 17);  // W (-x) open
+            if (!cementPresent(mx,     my - 1)) edge |= (1u << 18);  // N (-y) open
+            if (!cementPresent(mx,     my + 1)) edge |= (1u << 19);  // S (+y) open
+            if (edge == 0u) continue;                                 // interior tile
+            chunkCementWords[vn] |= edge;
+            uint32_t w;
+            memcpy(&w, &g_denseRecipes[vn]._wp3, 4);
+            w |= edge;
+            memcpy(&g_denseRecipes[vn]._wp3, &w, 4);
+            g_denseRecipeDirty[vn] = true;
+            ++runwayFeatheredTiles;
+        }
+        printf("[RUNWAY_EDGE_BLEND] event=edge_mask_baked feathered_solid_tiles=%ld\n",
+               runwayFeatheredTiles);
+        fflush(stdout);
+    }
+
     g_denseRecipeAnyDirty = true;
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
     gos_TerrainLodChunk_UploadCementWordsFull(

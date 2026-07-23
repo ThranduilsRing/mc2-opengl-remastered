@@ -494,6 +494,33 @@ the `#else` branches (see post-migration section in the plan).
 active texture unit, and texture binding state via `GlPixelStoreGuard`. Safe to
 call from inside a draw-bind path.
 
+### MC2_RUNWAY_EDGE_BLEND
+
+**Default:** off (killswitch)
+
+RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6). Cures the hard full-tile stairstep cliff
+where a **solid** cement pad/runway tile abuts **bare terrain** with no authored
+transition art (the MISSING-RUNWAY / airbase-perimeter class). Indirect terrain
+path only (`gos_terrain.frag`); the LOD-chunk path (`terrain_lod_chunk.frag`)
+already marching-squares-shapes its transition tiles.
+
+Mechanism: `PopulateRecipeCementWords()` (`gos_terrain_indirect.cpp`) runs a
+second pass at mission load that packs a 4-neighbour "open border" mask into
+`cementWord` bits 19:16 for solid cement boundary tiles — an edge is "open" only
+when the neighbour carries **no** valid cement word (neighbours with any valid
+word, solid OR transition, count as cement, so authored transition edges are left
+to the legacy blend). The fragment shader reads the mask and ramps
+cement → base terrain over the outer **half tile** (`smoothstep(0, 0.5, dist)`) —
+a discrete SDF derived from the cement mask. Feather is seam-free: a border shared
+by two cement tiles is never open for either.
+
+**Off = byte-identical stock:** with the gate off the second pass never runs, no
+mask bits are written, and the shader's `featherAlpha` collapses to `1.0`
+(unconditional full replacement). All cost is at mission load; zero per-frame.
+
+**Verify:** runway/airbase poses (day + night). `[RUNWAY_EDGE_BLEND]
+event=edge_mask_baked feathered_solid_tiles=N` on stdout confirms the bake armed.
+
 ## Terrain debug / visual
 
 - `MC2_TERRAIN_DEBUG_MODE=N` — terrain frag debug-mode (0=off, 1=DepthCmp, 2=RawColormap, 3=BlurredColormap, 4=MatWeights R=rock/G=grass/B=dirt, 5=NormalLighting, 6=ShadowFactor, 7=CloudShadow, 8=CementDiag, 9=ThinRecordDiag, 10=HeightNormal, 11=HemiAdditive, -1=TessAliveProbe).
