@@ -34,7 +34,7 @@ Corollaries:
 | **Impostors (Lane C)** | Pending, after Lane A | HANDOFF 2026-06-04 foliage |
 | **Materials/lighting** | Per-vertex Gouraud × albedo; no PBR/normal/ORM/IBL/AO (`static-prop-lighting-audit.md`). ORM+normal recon done: MaterialGpu ABI, KTX loader, manifest validator, RGBA8 cook already in place; verdict = ORM first, normal-map separate arc (tangent prereq) | audit + recon docs; `shaders/static_prop.vert/.frag` |
 | **IBL** | V-IBL-STATIC-0 planned; cooked `.specular.ktx2`/`.irradiance.ktx2`/`brdf_lut.ktx2` sidecars next to the EXR (asset-cook doc §2 table) | `docs/ibl-plan.md`, `gos_hdri.cpp` |
-| **Service lane** | R2b: static-natural (trees) skip default-ON; static-**building** skip default-OFF (`98af2c80`); broadening recon done, widening deferred | `docs/static-building-skip-broadening-recon.md`, SERVICE-LANE-DECOMPOSITION.md |
+| **Service lane** | R2b: static-natural (trees) skip default-ON; static-**building** skip default-OFF (`98af2c80`); broadening recon done, widening deferred | `docs/static-building-skip-broadening-recon.md`, docs/archive/SERVICE-LANE-DECOMPOSITION.md |
 
 ---
 
@@ -117,7 +117,7 @@ Implementation rules (from `tree-override-lod-spec.md`, adopted wholesale):
 Per project memory: static-**building** update-skip shipped default-OFF (`98af2c80`); trees (R2b static-natural) default-ON (`ad6cff3c`); lane widening deferred. What unblocks them:
 
 **Static-building skip → default-ON when ALL of:**
-1. **Event-driven invalidation exists for every mutation class** the broadening recon found load-bearing: damage/destruction state, gate open/close, capture/team change, sensor contact, editor edits. Each mutation site calls a single `StaticPropDirty(handle, reason)` that re-enqueues exactly that prop for one full update (re-arm `needsFullBakeNextFrame` included). Recon (`static-building-skip-broadening-recon.md`) is the authoritative mutation inventory — bridges/forests/walls affect the move map (SERVICE-LANE-DECOMPOSITION.md:22), so move-map contributors get event hooks too.
+1. **Event-driven invalidation exists for every mutation class** the broadening recon found load-bearing: damage/destruction state, gate open/close, capture/team change, sensor contact, editor edits. Each mutation site calls a single `StaticPropDirty(handle, reason)` that re-enqueues exactly that prop for one full update (re-arm `needsFullBakeNextFrame` included). Recon (`static-building-skip-broadening-recon.md`) is the authoritative mutation inventory — bridges/forests/walls affect the move map (docs/archive/SERVICE-LANE-DECOMPOSITION.md:22), so move-map contributors get event hooks too.
 2. **Oracle:** skip-ON vs skip-OFF A/B over tier1 + one interactive destruction-heavy session: per-prop appearance-state hash mismatch budget = 0; Δdestroys = 0; gate/turret functional sanity by hand.
 3. **Frozen cull records are live** — because the skip removes the per-frame walk that today incidentally refreshes batcher state; frozen records make the render side walk-independent first. (Ordering: §11 phases 2 → 4.)
 

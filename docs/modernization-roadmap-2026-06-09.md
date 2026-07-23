@@ -53,7 +53,7 @@ terrain** and **barely started on dynamic actors**.
   fast-path fallback gated by a **6-condition `fullyArmed` conjunction** + `MC2_QUADSETUP_ARMED_SKIP`.
   Deletion (8z) is blocked on fallback-semantics proof, not on the renderer.
 - **Static objects** got a real win: terrain-object update cardinality collapsed ~4977→~145 via the
-  R2b static-natural skip. Service-lane classification exists on paper (SERVICE-LANE-DECOMPOSITION.md).
+  R2b static-natural skip. Service-lane classification exists on paper (docs/archive/SERVICE-LANE-DECOMPOSITION.md).
 - **Dynamic actors (mechs/vehicles/turrets) are entirely legacy:** `TG_Shape::MultiTransformShape`
   CPU-bakes every vertex to clip space every frame, then `addTriangle` → `renderLists()` flush. A
   dormant GPU-VB path (`bShadersDrawPathEnabled=false`) exists but is buggy. S2 was just re-scoped:
@@ -314,7 +314,7 @@ desync after raw GL calls.
 
 ### H. Runtime / gameplay service separation
 
-**Current legacy shape.** `GameObjectManager::update` is monolithic. SERVICE-LANE-DECOMPOSITION.md
+**Current legacy shape.** `GameObjectManager::update` is monolithic. docs/archive/SERVICE-LANE-DECOMPOSITION.md
 classifies objects: gates/turrets/spotlights/special-buildings (alarm/lookout/sensor) = **gameplay-
 service every frame, non-negotiable**; trees/ordinary buildings/gate-control/turret-control/power-gen
 = **pure render-static or event-gated**. R2b already collapsed ~4977→~145 updates by skipping

@@ -238,7 +238,7 @@ and the JUSTCREATED subtype check that sets destroyed status, which then cascade
 through the standard damage/destruction path (`setStatus(DESTROYED)` →
 `GameObject::handleCollision` → passability updates via game logic).
 
-**SERVICE-LANE-DECOMPOSITION.md says** (line 22): "bridges/forests/walls affect
+**docs/archive/SERVICE-LANE-DECOMPOSITION.md says** (line 22): "bridges/forests/walls affect
 move map, but only on destruction (state change). Current code doesn't check
 destruction state per frame; it's one-time during creation (bldng.cpp:826-856).
 Can be event-driven."
@@ -489,7 +489,7 @@ py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs
 
 ---
 
-## Drift assessment vs SERVICE-LANE-DECOMPOSITION.md
+## Drift assessment vs docs/archive/SERVICE-LANE-DECOMPOSITION.md
 
 The decomposition doc was written before the current code state. Key drifts:
 
@@ -512,7 +512,7 @@ The decomposition doc was written before the current code state. Key drifts:
    review above: the JUSTCREATED gate and the `baseTileId==177` one-shot gate confirm
    this is a one-time event. Per-frame update after that is pure appearance work.
 
-4. **MINIMAL-R2B-PATCH.md was written for TerrainObjects only** (trees, bridges,
+4. **docs/archive/MINIMAL-R2B-PATCH.md was written for TerrainObjects only** (trees, bridges,
    forests, walls). It does NOT cover `BUILDING` class objects. The plan above extends
    the skip to `BUILDING` class, which is the dominant `nonNatural` sink.
 
