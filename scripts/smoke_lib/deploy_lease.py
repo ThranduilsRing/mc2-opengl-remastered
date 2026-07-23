@@ -55,6 +55,7 @@ DEPLOY_FOLDERS: list[tuple[str, str]] = [
     ("0.4c",        r"A:/Games/mc2-opengl/mc2-win64-v0.4c"),
     ("0.4d-rc1",    r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1"),
     ("0.5.0",       r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"),
+    ("0.5.1",       r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.1"),  # v0.5.1 release lane (MERGE-WAVE-2)
     ("0.5-testing", r"A:/Games/mc2-opengl/releases/0.5 testing/mc2-win64-v0.5.0"),
 ]
 
