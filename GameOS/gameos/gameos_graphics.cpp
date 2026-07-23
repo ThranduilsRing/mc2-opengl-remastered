@@ -3301,6 +3301,29 @@ void gosRenderer::renderWaterFastPath(
         setMVec3      ("u_waterSkyTintColor",    g_waterSkyTintColor);
         // WATER-SKY-REFLECTION-1: gated SH-L2 sky reflection (strength 0 = no-op).
         setMF         ("u_waterReflStrength",    gos_GetWaterReflStrength());
+        // WATER-SHORE-MASK-1 (batch-6 item 3): feather the water shore band
+        // along the cooked smoothed-contour distance field. Texture unit 4
+        // (0/1 base/detail, 2 refl RT, 3 HDRI). Killswitch
+        // MC2_WATER_SHORE_MASK=0 or no sidecar -> u_hasShoreMask=0 ->
+        // byte-identical.
+        {
+            static const bool s_shoreMaskGate = []() {
+                const char* v = getenv("MC2_WATER_SHORE_MASK");
+                return !(v && v[0] == '0');   // default ON
+            }();
+            extern unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
+            extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
+            const GLuint slTex = s_shoreMaskGate
+                ? (GLuint)gos_TerrainLodChunk_ShorelineMaskTex() : 0u;
+            setMI("u_hasShoreMask", slTex != 0 ? 1 : 0);
+            if (slTex != 0) {
+                setMVec4("u_shoreMaskBounds", gos_TerrainLodChunk_ShorelineMaskBounds());
+                setMI("u_shoreMask", 4);
+                glActiveTexture(GL_TEXTURE0 + 4);
+                glBindTexture(GL_TEXTURE_2D, slTex);
+                glActiveTexture(GL_TEXTURE0);
+            }
+        }
         setMF         ("waterElevation",  waterElevation);
         setMF         ("alphaDepth",      alphaDepth);
         setMI         ("alphaEdgeByte",   (int)alphaEdgeByte);

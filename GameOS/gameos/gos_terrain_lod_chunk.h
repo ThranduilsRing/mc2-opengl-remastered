@@ -173,6 +173,15 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
                                               float boundsTopLeftX, float boundsTopLeftY,
                                               float boundsSizeX, float boundsSizeY);
 
+// WATER-SHORE-MASK-1 (batch-6 item 3): expose the loaded shoreline mask so the
+// WATER shader can feather its shore band along the smoothed contour distance
+// field instead of the tile-quantized WaterThickness staircase (the teal
+// zigzag ring the user reported — unaffected by MC2_TERRAIN_SHORELINE because
+// the water program never consulted the mask). Returns 0 / zeroed bounds when
+// no sidecar is loaded.
+unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
+const float* gos_TerrainLodChunk_ShorelineMaskBounds();
+
 // TERRAIN-SHORELINE-V3: true whenever the elevation-based shoreline band is
 // active (MC2_TERRAIN_SHORELINE gate ON) -- a mask sidecar is NO LONGER
 // required (V3 places the band by v_worldPos.z vs u_waterElevation; a loaded

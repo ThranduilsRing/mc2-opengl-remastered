@@ -465,6 +465,10 @@ const float* gos_TerrainLodChunk_OverlayBounds()        { return s_overlayBounds
 static GLuint s_shorelineMaskTex   = 0;
 static float  s_shorelineBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topLeftY(=maxY),sizeX,sizeY
 
+// WATER-SHORE-MASK-1: water-shader accessors (see header).
+unsigned int gos_TerrainLodChunk_ShorelineMaskTex()     { return s_shorelineMaskTex; }
+const float* gos_TerrainLodChunk_ShorelineMaskBounds()  { return s_shorelineBounds; }
+
 // ---------------------------------------------------------------------------
 // TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB albedo GL_TEXTURE_2D_ARRAY
 // (rock/grass/dirt/concrete/snow/cliff, layer order = MAT_LAYER_* 0..5) loaded

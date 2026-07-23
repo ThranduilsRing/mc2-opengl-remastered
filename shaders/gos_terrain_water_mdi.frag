@@ -54,6 +54,16 @@ uniform PREC vec4 fog_color;
 uniform PREC float time;          // seconds — used for water animation
 uniform PREC vec4 cameraPos;      // water-v1: MC2 world-space camera (Fresnel)
 uniform PREC float alphaDepth;    // MapData::alphaDepth (world-units); shore smoothstep range
+// WATER-SHORE-MASK-1 (batch-6 item 3): OPTIONAL smoothed-contour distance
+// field (the cooked shoreline_mask sidecar, R = signed distance to waterline,
+// 0.5 = edge, +landward, BAND_NORM_WU=128 -> wu = (R-0.5)*256). When present,
+// the shore alpha term is additionally feathered along this SMOOTH contour,
+// dissolving the tile-quantized teal staircase ring at water edges (the
+// WaterThickness-driven band follows raw tile geometry). u_hasShoreMask==0
+// (no sidecar / killswitch MC2_WATER_SHORE_MASK=0) -> byte-identical.
+uniform sampler2D  u_shoreMask;
+uniform int        u_hasShoreMask;
+uniform PREC vec4  u_shoreMaskBounds;   // topLeftX, topLeftY(=maxY), sizeX, sizeY (wu)
 uniform int u_waterDebugMode;     // WATER-DEBUG-VIEWS-1: fragment/material-space debug.
                                   // 0=Final 1=Tint 2=Alpha 3=Normal 4=Depth 5=Shore 6=Lighting
                                   // 7=SHReflect 8=RTsample 9=ReflectBlend 10=Aniso(aspect probe).
@@ -195,6 +205,23 @@ void main(void)
         // the original CPU alpha-band behavior (alphaEdge on above-water verts).
         PREC float shoreBlend = max(alphaDepth, 1.0);
         PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
+        // WATER-SHORE-MASK-1: feather the shore band along the smoothed
+        // contour distance (see uniform block comment). min() with the
+        // depth-driven term: deep water keeps full alpha, and the mask can
+        // only SOFTEN the edge, never extend water onto dry land beyond it.
+        if (u_hasShoreMask != 0) {
+            PREC vec2 slUV;
+            slUV.x = (WorldPos.x - u_shoreMaskBounds.x) / max(u_shoreMaskBounds.z, 1e-5);
+            slUV.y = (u_shoreMaskBounds.y - WorldPos.y) / max(u_shoreMaskBounds.w, 1e-5);
+            if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+                PREC vec4 sl = texture(u_shoreMask, slUV);
+                if (sl.a > 0.5) {
+                    PREC float maskDistWu = (sl.r - 0.5) * 256.0;   // +land / -water
+                    PREC float shoreM = 1.0 - smoothstep(-12.0, 6.0, maskDistWu);
+                    shore = min(shore, shoreM);
+                }
+            }
+        }
         if (shore <= 0.0) discard;            // kill tiles too far above waterline
 
         PREC vec3  vertexLightRGB = Color.bgra.rgb;  // VS packs .bgra; un-swizzle (camera-indep)
