@@ -1470,6 +1470,13 @@ def main():
                             # does nothing.
                             "MC2_TERRAIN_SHORELINE",
                             "MC2_TERRAIN_SHORELINE_FILE",
+                            # SHORELINE-STAIRCASE-1 (MASTER-FAIL #1): water-edge
+                            # shore-band feather floor in world units (default
+                            # OFF). Widens the FS shore smoothstep + beach-ring
+                            # shoreExt so the tile-quantized water outline
+                            # dissolves into a soft gradient. Must be allowlisted
+                            # or Popen drops it and the gate-ON smoke runs OFF.
+                            "MC2_WATER_SHORE_FEATHER",
                             # NIGHT-LIGHT-POOLS-2/3/4 -- pool falloff/dim/compress
                             # killswitches + mover radius/max-blend (defaults
                             # ON/0.25/ON/0.6/ON).

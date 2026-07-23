@@ -295,4 +295,22 @@ bool IsReady();
 // Only valid after IsReady() returns true.
 const WaterRecipe* RecipeForVertexNum(int32_t vn);
 
+// SHORELINE-STAIRCASE-1 (MC2_WATER_SHORE_FEATHER): the water-edge silhouette
+// snaps to the terrain tile grid because the shore alpha ramp (shoreBlend =
+// max(alphaDepth,1) in the water FS) is only ~alphaDepth world-units wide —
+// a 1-2 px transition at top-down altitudes that reads as a hard tile step.
+// This gate sets a FLOOR (world units) on the effective alphaDepth used by
+// BOTH the FS shore smoothstep (fed via the water bridge, no gameos_graphics
+// edit) AND the beach-ring shoreExt geometry (which is exactly alphaDepth*0.5,
+// the band's land-side extent — the two stay matched). A wider band dissolves
+// the staircase into a soft gradient that HUGS the rendered waterline by
+// construction (the FS band is driven by per-fragment WaterThickness =
+// waterElevation - interpolated terrain z), so it auto-widens horizontally on
+// flat shores (worst staircase) and stays tight on cliffs. Read once, cached.
+//   ShoreFeatherFloorWu() : the gate value in wu (0 if unset/<=0 -> disabled).
+//   EffAlphaDepth(base)   : max(base, floor) when the gate is on, else base
+//                           (default OFF -> returns base -> byte-identical).
+float ShoreFeatherFloorWu();
+float EffAlphaDepth(float baseAlphaDepth);
+
 } // namespace WaterStream

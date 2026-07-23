@@ -3639,7 +3639,7 @@ void Terrain::renderWaterFastPath (void)
 	    (unsigned int)waterTexHandle,
 	    (unsigned int)waterDetailTexHandle,
 	    Terrain::waterElevation,
-	    MapData::alphaDepth,
+	    WaterStream::EffAlphaDepth(MapData::alphaDepth),   // SHORELINE-STAIRCASE-1: widened shore band (default OFF -> base)
 	    (unsigned int)((Terrain::alphaEdge   >> 24) & 0xFFu),
 	    (unsigned int)((Terrain::alphaMiddle >> 24) & 0xFFu),
 	    (unsigned int)((Terrain::alphaDeep   >> 24) & 0xFFu),
@@ -3664,7 +3664,7 @@ void Terrain::renderWaterFastPath (void)
 		ZoneScopedN("WaterFast.Parity");
 		WaterStream::ParityFrameUniforms pu;
 		pu.waterElevation             = Terrain::waterElevation;
-		pu.alphaDepth                 = MapData::alphaDepth;
+		pu.alphaDepth                 = WaterStream::EffAlphaDepth(MapData::alphaDepth);  // SHORELINE-STAIRCASE-1: keep parity consistent with the widened bridge upload
 		pu.alphaEdgeDword             = Terrain::alphaEdge;
 		pu.alphaMiddleDword           = Terrain::alphaMiddle;
 		pu.alphaDeepDword             = Terrain::alphaDeep;
@@ -4290,8 +4290,10 @@ void Terrain::geometry (void)
 						const float we = Terrain::waterElevation;
 						// Shore-extension: include tiles slightly ABOVE waterElevation.
 						// VS positions them at terrain surface; FS fades via negative-WT smoothstep.
-						const float shoreExt = MapData::alphaDepth * 0.5f > 0.0f
-						                       ? MapData::alphaDepth * 0.5f : 15.0f;
+						// SHORELINE-STAIRCASE-1: widen with the shore-feather floor (default OFF -> base).
+						const float effAD = WaterStream::EffAlphaDepth(MapData::alphaDepth);
+						const float shoreExt = effAD * 0.5f > 0.0f
+						                       ? effAD * 0.5f : 15.0f;
 						const bool submergedSand = !waterFlagged && (
 						    q.vertices[0]->pVertex->elevation < we + shoreExt ||
 						    q.vertices[1]->pVertex->elevation < we + shoreExt ||
@@ -4302,8 +4304,10 @@ void Terrain::geometry (void)
 						// Legacy path: waterHandle is set by setupTextures for water&1 tiles.
 						const bool waterHandleSet = (q.waterHandle != 0xffffffffu);
 						const float we = Terrain::waterElevation;
-						const float shoreExt = MapData::alphaDepth * 0.5f > 0.0f
-						                       ? MapData::alphaDepth * 0.5f : 15.0f;
+						// SHORELINE-STAIRCASE-1: widen with the shore-feather floor (default OFF -> base).
+						const float effAD = WaterStream::EffAlphaDepth(MapData::alphaDepth);
+						const float shoreExt = effAD * 0.5f > 0.0f
+						                       ? effAD * 0.5f : 15.0f;
 						const bool submergedSand = !waterHandleSet && (
 						    q.vertices[0]->pVertex->elevation < we + shoreExt ||
 						    q.vertices[1]->pVertex->elevation < we + shoreExt ||

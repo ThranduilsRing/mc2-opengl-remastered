@@ -61,6 +61,26 @@ extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 
 namespace WaterStream {
 
+// SHORELINE-STAIRCASE-1: MC2_WATER_SHORE_FEATHER floor on effective alphaDepth
+// (world units). Widens the water FS shore smoothstep band + the beach-ring
+// shoreExt geometry in lockstep so the tile-quantized water-edge staircase
+// dissolves into a soft, waterline-hugging alpha gradient. Read once; default
+// unset/<=0 -> returns 0 -> EffAlphaDepth is the identity -> byte-identical.
+float ShoreFeatherFloorWu() {
+    static const float s_floor = []() -> float {
+        const char* v = getenv("MC2_WATER_SHORE_FEATHER");
+        if (!v || !*v) return 0.0f;
+        const float f = (float)atof(v);
+        return f > 0.0f ? f : 0.0f;
+    }();
+    return s_floor;
+}
+
+float EffAlphaDepth(float baseAlphaDepth) {
+    const float floorWu = ShoreFeatherFloorWu();
+    return floorWu > 0.0f ? fmaxf(baseAlphaDepth, floorWu) : baseAlphaDepth;
+}
+
 namespace {
 
 std::vector<WaterRecipe> g_recipes;
@@ -657,8 +677,9 @@ uint32_t UploadAndBindThinRecords(bool forceFullWalk) {
             const float we = Terrain::waterElevation;
             // Shore-extension: keep tiles slightly above waterElevation (VS sits them
             // on terrain surface; FS fades via negative-WaterThickness smoothstep).
-            const float shoreExt = MapData::alphaDepth * 0.5f > 0.0f
-                                   ? MapData::alphaDepth * 0.5f : 15.0f;
+            const float effAD = EffAlphaDepth(MapData::alphaDepth);  // SHORELINE-STAIRCASE-1
+            const float shoreExt = effAD * 0.5f > 0.0f
+                                   ? effAD * 0.5f : 15.0f;
             if (recS.v0e >= we + shoreExt && recS.v1e >= we + shoreExt &&
                 recS.v2e >= we + shoreExt && recS.v3e >= we + shoreExt)
                 continue;
@@ -1600,8 +1621,9 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     // WATER-BIAS-LINEARIZE-1: pzOk admission gate must agree with the thin VS
     // bias mode. Uniform int defaults to 0 (proportional) if absent.
     const GLint locBiasLegacy  = glGetUniformLocation(g_waterComputeProgram, "u_waterBiasLegacy");
-    const float spikeShoreExt  = (MapData::alphaDepth * 0.5f > 0.0f)
-                                 ? MapData::alphaDepth * 0.5f : 15.0f;
+    const float spikeAD        = EffAlphaDepth(MapData::alphaDepth);  // SHORELINE-STAIRCASE-1
+    const float spikeShoreExt  = (spikeAD * 0.5f > 0.0f)
+                                 ? spikeAD * 0.5f : 15.0f;
 
     if (locWindowCount < 0) {
         fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_windowCount_not_found\n");
