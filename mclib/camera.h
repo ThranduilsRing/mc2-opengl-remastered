@@ -1487,6 +1487,7 @@ class Camera
 		void applyScrollDelta(float dx, float dy);
 		void queueRotationDelta(float amount);
 		void updateInputSmoothing(Stuff::Vector3D &newPosition);
+		static bool inputSmoothingEnabled(void);	// MC2_CAMERA_SMOOTH > 0
 
 		void rotateNormal (void);
 

@@ -2449,6 +2449,13 @@ long Camera::update (void)
 						moveRight(2000.0f * frameLength);
 					if (s_camTestFrame == 150)
 						rotateLeft(11.25f);
+					// Held-rotate burst at the LEGACY quantizer cadence
+					// (11.25-deg snap every 3rd frame ~= the missiongui
+					// accumulator firing at 60-80fps). knob=0 -> raw snaps
+					// in the trace; knob>0 -> exponential shaping.
+					if (s_camTestFrame >= 300 && s_camTestFrame <= 420 &&
+						(s_camTestFrame % 3) == 0)
+						rotateLeft(11.25f);
 				}
 				if (s_camTrace && (dPos > 0.0001f || dRot > 0.0001f || s_camTest)) {
 					if (!s_camTraceFile)
@@ -3992,6 +3999,14 @@ void Camera::queueRotationDelta(float amount)
 	rotSmoothGoalWorld = camWrap180(rotSmoothGoalWorld + amount);
 
 	cameraShiftZ = position.z;	// legacy rotateLeft/rotateRight side-effect
+}
+
+//---------------------------------------------------------------------------
+// [CAMERA-SMOOTHING-1] Exposed so input-layer callers (missiongui rotation
+// quantizer) can switch to continuous dt-scaled feed when smoothing is on.
+bool Camera::inputSmoothingEnabled (void)
+{
+	return camSmoothTau() > 0.0f;
 }
 
 //---------------------------------------------------------------------------
