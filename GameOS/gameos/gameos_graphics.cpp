@@ -3393,6 +3393,15 @@ void gosRenderer::renderWaterFastPath(
             setMF("u_waterEdgeFeatherStrength", s_waterEdgeFeatherStr);
             setMF("u_halfMap",                  ppW ? ppW->getMapHalfExtent() : 0.0f);
         }
+        // SHORELINE-GEOMETRY-1 (MC2_WATER_SHORE_MEANDER): world-space fBm
+        // perturbation of the shore iso-contour, so the coastline silhouette
+        // reads as an organic curve instead of the terraced heightfield's
+        // tile-lattice staircase. Amplitude 0 (default) -> the FS skips the
+        // term entirely -> byte-identical. Same accessors the CPU/GPU tile
+        // admission uses (WaterStream::EffShoreExt), so geometry and contour
+        // stay in lockstep.
+        setMF("u_shoreMeanderWu",   WaterStream::ShoreMeanderWu());
+        setMF("u_shoreMeanderFreq", WaterStream::ShoreMeanderFreq());
         // CINEMATIC-WATER-WHITE-1: same fix as non-MDI path above — read current
         // render state, not stale fog_color_. See comment block above. (time uses
         // the SmokeMode fixed-timestep clock when active, for deterministic capture.)

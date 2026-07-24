@@ -4290,10 +4290,9 @@ void Terrain::geometry (void)
 						const float we = Terrain::waterElevation;
 						// Shore-extension: include tiles slightly ABOVE waterElevation.
 						// VS positions them at terrain surface; FS fades via negative-WT smoothstep.
-						// SHORELINE-STAIRCASE-1: widen with the shore-feather floor (default OFF -> base).
-						const float effAD = WaterStream::EffAlphaDepth(MapData::alphaDepth);
-						const float shoreExt = effAD * 0.5f > 0.0f
-						                       ? effAD * 0.5f : 15.0f;
+						// SHORELINE-STAIRCASE-1 (feather floor) + SHORELINE-GEOMETRY-1
+						// (meander widening) via EffShoreExt (default OFF -> base).
+						const float shoreExt = WaterStream::EffShoreExt(MapData::alphaDepth);
 						const bool submergedSand = !waterFlagged && (
 						    q.vertices[0]->pVertex->elevation < we + shoreExt ||
 						    q.vertices[1]->pVertex->elevation < we + shoreExt ||
@@ -4304,10 +4303,9 @@ void Terrain::geometry (void)
 						// Legacy path: waterHandle is set by setupTextures for water&1 tiles.
 						const bool waterHandleSet = (q.waterHandle != 0xffffffffu);
 						const float we = Terrain::waterElevation;
-						// SHORELINE-STAIRCASE-1: widen with the shore-feather floor (default OFF -> base).
-						const float effAD = WaterStream::EffAlphaDepth(MapData::alphaDepth);
-						const float shoreExt = effAD * 0.5f > 0.0f
-						                       ? effAD * 0.5f : 15.0f;
+						// SHORELINE-STAIRCASE-1 (feather floor) + SHORELINE-GEOMETRY-1
+						// (meander widening) via EffShoreExt (default OFF -> base).
+						const float shoreExt = WaterStream::EffShoreExt(MapData::alphaDepth);
 						const bool submergedSand = !waterHandleSet && (
 						    q.vertices[0]->pVertex->elevation < we + shoreExt ||
 						    q.vertices[1]->pVertex->elevation < we + shoreExt ||

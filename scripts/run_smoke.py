@@ -1498,6 +1498,8 @@ def main():
                             # dissolves into a soft gradient. Must be allowlisted
                             # or Popen drops it and the gate-ON smoke runs OFF.
                             "MC2_WATER_SHORE_FEATHER",
+                            "MC2_WATER_SHORE_MEANDER",
+                            "MC2_WATER_SHORE_MEANDER_FREQ",
                             # EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8):
                             # render beacon/runway edge-light glow cards
                             # two-sided so they don't backface-cull toward

@@ -81,6 +81,40 @@ float EffAlphaDepth(float baseAlphaDepth) {
     return floorWu > 0.0f ? fmaxf(baseAlphaDepth, floorWu) : baseAlphaDepth;
 }
 
+// SHORELINE-GEOMETRY-1 — see the header block for the rationale.
+float ShoreMeanderWu() {
+    static const float s_amp = []() -> float {
+        const char* v = getenv("MC2_WATER_SHORE_MEANDER");
+        if (!v || !*v) return 0.0f;
+        const float f = (float)atof(v);
+        return f > 0.0f ? f : 0.0f;
+    }();
+    return s_amp;
+}
+
+float ShoreMeanderFreq() {
+    // Default 1/384 wu = one dominant fBm cycle per ~3 tiles (tile = 128 wu).
+    // Long enough to bend a whole riser rather than serrate it, short enough
+    // that a single tile edge never stays straight across its full length.
+    static const float s_freq = []() -> float {
+        const char* v = getenv("MC2_WATER_SHORE_MEANDER_FREQ");
+        if (!v || !*v) return 1.0f / 384.0f;
+        const float f = (float)atof(v);
+        return f > 0.0f ? f : 1.0f / 384.0f;
+    }();
+    return s_freq;
+}
+
+float EffShoreExt(float baseAlphaDepth) {
+    const float effAD = EffAlphaDepth(baseAlphaDepth);
+    const float base  = (effAD * 0.5f > 0.0f) ? effAD * 0.5f : 15.0f;
+    // Admit tiles the meander can reach. The perturbation is zero-mean with
+    // amplitude ShoreMeanderWu(), so the waterline can rise by at most that
+    // much locally; without this widening the landward excursions would be
+    // clipped to the stock tile boundary and re-expose the step.
+    return base + ShoreMeanderWu();
+}
+
 namespace {
 
 std::vector<WaterRecipe> g_recipes;
@@ -677,9 +711,10 @@ uint32_t UploadAndBindThinRecords(bool forceFullWalk) {
             const float we = Terrain::waterElevation;
             // Shore-extension: keep tiles slightly above waterElevation (VS sits them
             // on terrain surface; FS fades via negative-WaterThickness smoothstep).
-            const float effAD = EffAlphaDepth(MapData::alphaDepth);  // SHORELINE-STAIRCASE-1
-            const float shoreExt = effAD * 0.5f > 0.0f
-                                   ? effAD * 0.5f : 15.0f;
+            // SHORELINE-STAIRCASE-1 (feather floor) + SHORELINE-GEOMETRY-1
+            // (meander widening), both folded into EffShoreExt — the single
+            // source of truth shared by all four admission mirrors.
+            const float shoreExt = EffShoreExt(MapData::alphaDepth);
             if (recS.v0e >= we + shoreExt && recS.v1e >= we + shoreExt &&
                 recS.v2e >= we + shoreExt && recS.v3e >= we + shoreExt)
                 continue;
@@ -1621,9 +1656,9 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     // WATER-BIAS-LINEARIZE-1: pzOk admission gate must agree with the thin VS
     // bias mode. Uniform int defaults to 0 (proportional) if absent.
     const GLint locBiasLegacy  = glGetUniformLocation(g_waterComputeProgram, "u_waterBiasLegacy");
-    const float spikeAD        = EffAlphaDepth(MapData::alphaDepth);  // SHORELINE-STAIRCASE-1
-    const float spikeShoreExt  = (spikeAD * 0.5f > 0.0f)
-                                 ? spikeAD * 0.5f : 15.0f;
+    // SHORELINE-STAIRCASE-1 + SHORELINE-GEOMETRY-1: same EffShoreExt the CPU
+    // mirrors use, so the GPU cull admits exactly the same tile set.
+    const float spikeShoreExt  = EffShoreExt(MapData::alphaDepth);
 
     if (locWindowCount < 0) {
         fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_windowCount_not_found\n");

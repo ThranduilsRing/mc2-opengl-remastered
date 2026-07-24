@@ -313,4 +313,42 @@ const WaterRecipe* RecipeForVertexNum(int32_t vn);
 float ShoreFeatherFloorWu();
 float EffAlphaDepth(float baseAlphaDepth);
 
+// SHORELINE-GEOMETRY-1 (MC2_WATER_SHORE_MEANDER): the SILHOUETTE fix.
+//
+// Why the feather above was not enough: the water FS already discards on a
+// BILINEARLY interpolated WaterThickness, so its iso-contour is sub-tile by
+// construction. The staircase survives because the stock heightfield is
+// TERRACED — whole runs of shore vertices share one elevation — so the
+// waterline iso-contour of that field degenerates onto the tile lattice: each
+// boundary tile contributes one straight segment, and those segments line up
+// into axis-aligned / 45-degree risers ~1 tile long. Widening the alpha band
+// (MC2_WATER_SHORE_FEATHER) blurs those risers but cannot bend them; the
+// user rejected it for exactly that reason ("still a literal stair step").
+//
+// The cure is to perturb the FIELD, not the alpha: add a static, zero-mean,
+// world-space fBm displacement (world units) to the thickness that drives the
+// shore term, so the discard contour MEANDERS organically across tile
+// interiors instead of tracking the lattice. Horizontal contour displacement
+// is amplitude / |grad(thickness)|, so it is self-scaling: large on the flat
+// terraces that produce the worst steps, small on cliffs. The noise is
+// time-INVARIANT (the coastline must not swim) and keyed on continuous world
+// XY (seam-free, camera-independent).
+//
+//   ShoreMeanderWu()   : amplitude in wu (0 if unset/<=0 -> disabled).
+//   ShoreMeanderFreq() : spatial frequency in cycles/wu (MC2_WATER_SHORE_MEANDER_FREQ).
+//   EffShoreExt(base)  : the SINGLE source of truth for the tile-admission
+//                        shore extent, shared by all four predicate mirrors
+//                        (this .cpp, both mclib/terrain.cpp narrow-append
+//                        branches, and the u_shoreExt fed to
+//                        gpu_driven_water.comp). It widens by the meander
+//                        amplitude so geometry exists wherever the meander
+//                        can push water landward — otherwise the contour
+//                        would be clipped back to a tile edge and the step
+//                        would reappear.
+// All default OFF/0 -> EffShoreExt collapses to the stock expression and the
+// FS perturbation term is skipped -> byte-identical.
+float ShoreMeanderWu();
+float ShoreMeanderFreq();
+float EffShoreExt(float baseAlphaDepth);
+
 } // namespace WaterStream

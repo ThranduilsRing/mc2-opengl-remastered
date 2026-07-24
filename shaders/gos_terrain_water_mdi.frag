@@ -61,6 +61,19 @@ uniform PREC float alphaDepth;    // MapData::alphaDepth (world-units); shore sm
 // dissolving the tile-quantized teal staircase ring at water edges (the
 // WaterThickness-driven band follows raw tile geometry). u_hasShoreMask==0
 // (no sidecar / killswitch MC2_WATER_SHORE_MASK=0) -> byte-identical.
+// SHORELINE-GEOMETRY-1 (MC2_WATER_SHORE_MEANDER): organic-coastline silhouette.
+// The shore discard contour is the iso-line of the bilinearly interpolated
+// WaterThickness. On the stock TERRACED heightfield that iso-line degenerates
+// onto the tile lattice (one straight segment per boundary tile -> the
+// axis-aligned / 45-degree staircase). Perturbing the FIELD by a static,
+// zero-mean, world-space fBm bends the contour through tile interiors, which
+// is what actually changes the silhouette — widening the alpha band (the
+// earlier MC2_WATER_SHORE_FEATHER) only blurs the risers without moving them.
+// Static in time (a swimming coastline would be far worse than a stepped one)
+// and keyed on continuous WorldPos.xy, so it is seam-free and camera-
+// independent. u_shoreMeanderWu == 0 -> term skipped -> byte-identical.
+uniform float u_shoreMeanderWu;     // amplitude, world units
+uniform float u_shoreMeanderFreq;   // cycles per world unit
 uniform sampler2D  u_shoreMask;
 uniform int        u_hasShoreMask;
 uniform PREC vec4  u_shoreMaskBounds;   // topLeftX, topLeftY(=maxY), sizeX, sizeY (wu)
@@ -221,7 +234,23 @@ void main(void)
         // WaterThickness) so the water tint creeps onto the beach, matching
         // the original CPU alpha-band behavior (alphaEdge on above-water verts).
         PREC float shoreBlend = max(alphaDepth, 1.0);
-        PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
+        // SHORELINE-GEOMETRY-1: bend the waterline off the tile lattice.
+        // shoreWT drives ONLY the shore/alpha term and the discard (i.e. the
+        // silhouette); the depth tint above still uses the true
+        // WaterThickness, so shallow/deep colour stays physically keyed to
+        // the real terrain and only the coastline SHAPE changes.
+        PREC float shoreWT = WaterThickness;
+        if (u_shoreMeanderWu > 0.0) {
+            // Two decorrelated octaves of the existing world-space value-fBm.
+            // fbm3 has mean ~0.4375; subtracting it makes each term zero-mean
+            // so the contour wanders equally seaward and landward about its
+            // stock position (no net water gain/loss).
+            PREC vec2  mp = WorldPos.xy * u_shoreMeanderFreq;
+            PREC float mn = (fbm3(mp) - 0.4375) * 1.60
+                          + (fbm3(mp * 2.70 + vec2(37.2, 17.9)) - 0.4375) * 0.80;
+            shoreWT += u_shoreMeanderWu * mn;
+        }
+        PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, shoreWT);
         // WATER-SHORE-MASK-1: feather the shore band along the smoothed
         // contour distance (see uniform block comment). min() with the
         // depth-driven term: deep water keeps full alpha, and the mask can
