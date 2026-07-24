@@ -1730,7 +1730,20 @@ void main() {
                     float cr   = max(nearD, 1.0);
                     float ring = smoothstep(0.0, cr, len);   // 0 under body -> 1 at edge
                     falloff     *= mix(1.0, ring, u_moverContactShadow);
-                    moverContact = max(moverContact, (1.0 - ring) * u_moverContactShadow);
+                    // CONTACT-SHADOW-ALLTYPES-1: altitude fade. The mover pool light
+                    // rides the actor's SLCircle node — at ~ground for mechs/vehicles
+                    // (|vtl.z| small) but at flight altitude for helicopters (mech3d
+                    // isHelicopter=isAirborne, still tagged Mech, so already a mover).
+                    // Without this, a hovering helo glues a full-strength dark contact
+                    // disc to the ground beneath it. Fade the contact-AO by the light's
+                    // height above the ground fragment (|vtl.z|): ground movers keep
+                    // full strength (altFade~1 -> unchanged, prior verification holds);
+                    // an airborne helo keeps only a soft faded blob at its ground point.
+                    // Pure shader math over data already in the pool SSBO — no new
+                    // uniform/env var, and gated inside u_moverContactShadow>0 so
+                    // default-OFF stays byte-identical.
+                    float altFade = 1.0 - 0.8 * smoothstep(20.0, 70.0, abs(vtl.z));
+                    moverContact = max(moverContact, (1.0 - ring) * u_moverContactShadow * altFade);
                 }
                 // NIGHT-LIGHT-POOLS-4: overlapping mover pools take the MAX
                 // instead of stacking (5-mech union stays a set of glows).
