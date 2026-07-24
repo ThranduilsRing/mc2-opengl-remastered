@@ -4281,8 +4281,18 @@ void Mech3DAppearance::updateGeometry (void)
 				// (fixed in gos_terrain_lighting.cpp PackAndDispatch).
 				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown movers
 				// emit nothing (user report: wrecks kept glowing).
+				// GHOST-LIGHT-VISIBILITY-1: the T1.13 note above is WRONG —
+				// `visible` is NOT the mesh-drawn fog-of-war predicate.
+				// code/mech.cpp:6816-6866 calls setVisibility(true,true) on
+				// EVERY contact branch including CONTACT_SENSOR_QUALITY_1..4,
+				// so a mech the player only holds as a sensor blip had
+				// visible==true and lit up the terrain / drew a searchlight
+				// cone — advertising a hidden enemy's exact position. Gate on
+				// the predicate that actually decides whether the MESH draws.
+				// Killswitch MC2_LIGHT_MOVER_VIS_GATE=0.
 				spotlightLights_[k]->active =
 					(eye->isNight && visible && !InEditor
+					 && mc2_cone_glow::mover_model_shown(sensorLevel)
 					 && (status != OBJECT_STATUS_DESTROYED)
 					 && (status != OBJECT_STATUS_DISABLED)
 					 && (status != OBJECT_STATUS_SHUTDOWN));
@@ -5527,8 +5537,12 @@ long Mech3DAppearance::update (bool animate)
 	// positions whenever it runs right after).
 	if (pointLight || !spotlightLights_.empty())
 	{
+		// GHOST-LIGHT-VISIBILITY-1: keep the off-screen freshness refresh in
+		// lockstep with the updateGeometry predicate — a sensor-blip-only
+		// enemy must not keep ownerEnabled latched while culled.
 		const bool ownerOn =
 			(eye && eye->isNight && visible && !InEditor
+			 && mc2_cone_glow::mover_model_shown(sensorLevel)
 			 && (status != OBJECT_STATUS_DESTROYED)
 			 && (status != OBJECT_STATUS_DISABLED)
 			 && (status != OBJECT_STATUS_SHUTDOWN));

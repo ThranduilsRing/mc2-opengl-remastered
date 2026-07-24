@@ -73,4 +73,26 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
 // Called once per frame from MC_TextureManager::renderLists() (top).
 void FlushFrame();
 
+// GHOST-LIGHT-VISIBILITY-1 (mover fairness rule). True when the player is
+// actually being shown this mover's MODEL, i.e. when emitting its light/cone
+// leaks nothing.
+//
+// sensorLevel semantics (code/mech.cpp:6698-6755, code/gvehicl.cpp:3784-3820):
+//   0      enemy at CONTACT_VISUAL (or destroyed/disabled/ShowMovers) — the
+//          real mesh is drawn.
+//   1..4   enemy known ONLY as a sensor contact — mech3d.cpp:3641 /
+//          gvactor.cpp:2432 draw a blip triangle/circle INSTEAD of the mesh.
+//   >=5    not an enemy (home/allied team) — mesh drawn.
+//
+// NOTE the appearance-side `visible` flag is NOT a fog-of-war predicate:
+// code/mech.cpp calls setVisibility(true,true) on EVERY contact branch,
+// including CONTACT_SENSOR_QUALITY_1..4. Gating mover light on `visible`
+// (LIGHT-POOL-VIS-GATE-1 / T1.13) therefore let a hidden enemy's searchlight
+// cone advertise its position — the "poor form" positional leak this predicate
+// closes. Static building lamps deliberately do NOT consult this.
+bool mover_model_shown(long sensorLevel);
+
+// MC2_LIGHT_MOVER_VIS_GATE killswitch (=0 restores the legacy leak).
+bool mover_vis_gate_enabled();
+
 } // namespace mc2_cone_glow

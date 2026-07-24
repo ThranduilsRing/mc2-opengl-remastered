@@ -2760,8 +2760,16 @@ void GVAppearance::updateGeometry (void)
 				// illumination should fire for any visible GV at night.
 				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled movers emit nothing
 				// (user report: wrecks kept glowing).
+				// GHOST-LIGHT-VISIBILITY-1: `visible` is NOT a fog-of-war
+				// predicate (code/gvehicl.cpp:3784-3833 sets visibility true
+				// on every contact branch, sensor-blip ones included), so a
+				// vehicle the player holds only as a blip was emitting a
+				// searchlight cone that gave away its position. Gate on the
+				// predicate that decides whether the MESH draws.
+				// Killswitch MC2_LIGHT_MOVER_VIS_GATE=0.
 				spotlightLights_[k]->active =
 					(eye->isNight && visible && !InEditor
+					 && mc2_cone_glow::mover_model_shown(sensorLevel)
 					 && (status != OBJECT_STATUS_DESTROYED)
 					 && (status != OBJECT_STATUS_DISABLED)
 					 // LIGHT-CULL-RADIUS-1 ext(a): powered-down vehicles
@@ -3054,8 +3062,12 @@ long GVAppearance::update (bool animate)
 	// for the ghost-light/shutdown-staleness mechanism writeup).
 	if (!spotlightLights_.empty())
 	{
+		// GHOST-LIGHT-VISIBILITY-1: keep the off-screen freshness refresh in
+		// lockstep with the updateGeometry predicate — a sensor-blip-only
+		// enemy must not keep ownerEnabled latched while culled.
 		const bool ownerOn =
 			(eye && eye->isNight && visible && !InEditor
+			 && mc2_cone_glow::mover_model_shown(sensorLevel)
 			 && (status != OBJECT_STATUS_DESTROYED)
 			 && (status != OBJECT_STATUS_DISABLED)
 			 && (status != OBJECT_STATUS_SHUTDOWN));

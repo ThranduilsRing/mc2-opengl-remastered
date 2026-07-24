@@ -776,6 +776,7 @@ ALLOWLIST=(
     MC2_LIGHT_CONE_GLOW               # killswitch -- LIGHT-CONE-MODELS-1: =0 hides the additive authored light-cone beams at night
     MC2_LIGHT_CONE_GLOW_ALPHA         # override -- LIGHT-CONE-MODELS-1: peak cone-glow vertex alpha 0..255 (default 40; 255 = exaggeration probe)
     MC2_LIGHT_CONE_SPILL              # override -- LIGHT-CONE-MODELS-1: spill anchor scale on authored cone length (default 1.0, clamp [0,3])
+    MC2_LIGHT_MOVER_VIS_GATE          # killswitch -- GHOST-LIGHT-VISIBILITY-1: =0 restores mover lights/cones emitting for sensor-blip-only enemies (position leak)
     MC2_LIGHT_CONE_VIS_GATE           # killswitch -- GHOST-LIGHT-VISIBILITY-1: =0 restores emitting cone glow for owner leaves the renderer never transformed this frame (ghost cones with no visible caster)
     MC2_LIGHT_CONE_DIAG               # trace -- CONE-AIM-DIAG-1: =1 dumps per-node apex/aim + cone-queue events (throttled)
     MC2_LIGHT_CONE_AIM_FLIP           # probe -- CONE-AIM-FLIP-1: =1 negates the computed cone aim (wrong-side A/B probe, default OFF)

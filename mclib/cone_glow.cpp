@@ -164,6 +164,24 @@ static bool vis_gate_enabled()
     return s;
 }
 
+// GHOST-LIGHT-VISIBILITY-1 (mover fairness rule) — see cone_glow.h for the
+// sensorLevel semantics and why the appearance `visible` flag is not a
+// fog-of-war predicate.
+bool mover_vis_gate_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_MOVER_VIS_GATE");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    return s;
+}
+
+bool mover_model_shown(long sensorLevel)
+{
+    if (!mover_vis_gate_enabled()) return true;   // legacy: emit regardless
+    return (sensorLevel == 0) || (sensorLevel >= 5);
+}
+
 // ---- LIGHT-REALISM-1 --------------------------------------------------------
 // User rejection (2026-07-24, mc2_10 night): "the cones are ultra visible, they
 // need to be feathered / more transparent ... the light sources need to mimic
