@@ -282,6 +282,69 @@ void main() {
     // north and world.z (south distance) as MC2 elev → assets misplaced
     // along a wrong axis (visible 2026-05-04 as "trees in the sky" pattern).
     vec3 world_mc2 = vec3(-world_stuff.x, world_stuff.z, world_stuff.y);
+
+    // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): camera-facing billboarding for
+    // beacon/runway light glow cards (flags bit 4, emitted by the batcher only
+    // for TG_Shape::isLightBillboard children under MC2_LIGHT_BILLBOARD_FACING).
+    //
+    // These are single flat quads with a FIXED orientation. Hardware
+    // GL_CULL_FACE GL_BACK (the static-prop flush's global state) rejects them
+    // as soon as the orbiting RTS camera crosses their face plane, and at
+    // near-top-down they go edge-on (zero projected area) regardless of
+    // culling. Rotating the quad's plane so its normal points at the eye fixes
+    // BOTH: the front face is camera-facing by construction (never
+    // back-culled), and the card never degenerates to an edge.
+    //
+    // Method: express the vertex offset from the instance origin in the card's
+    // own in-plane basis (R0,U0) built from its face normal + world up, then
+    // re-emit it in the camera-facing basis (R1,U1) built the same way from
+    // the eye direction. Both bases are right-handed w.r.t. their third axis
+    // (n, toCam), so the mapping is a pure rotation n->toCam: quad shape,
+    // scale, and TRIANGLE WINDING are all preserved. Out-of-plane depth is
+    // carried along the new normal so multi-face cards (6 vert / 7 face
+    // variants) keep their relief.
+    //
+    // Degenerate guards: a card whose normal is parallel to world-up, or an
+    // eye vector parallel to world-up (true top-down), leaves the geometry
+    // untouched rather than exploding on a zero-length cross product.
+    //
+    // Frame note: world_mc2 and u_cameraWorldPos are the SAME space (see
+    // static_prop.frag's view-vector reconstruction, which subtracts
+    // v_worldPos == world.xyz from u_cameraWorldPos). World up in MC2 is +Z.
+#if defined(MC2_USE_VIEW_UNIFORMS)
+    const uint kFlagIsLightBillboard = (1u << 4);
+    const uint kFlagLightBillboardBig = (1u << 5);
+    if ((inst.flags & kFlagIsLightBillboard) != 0u) {
+        vec4 origin_stuff = vec4(0.0, 0.0, 0.0, 1.0) * inst.modelMatrix;
+        vec3 origin_mc2   = vec3(-origin_stuff.x, origin_stuff.z, origin_stuff.y);
+        vec3 nStuff       = a_normal * mat3(inst.modelMatrix);
+        vec3 nMc2         = vec3(-nStuff.x, nStuff.z, nStuff.y);
+        const vec3 kUpMc2 = vec3(0.0, 0.0, 1.0);
+        vec3 r0raw        = cross(kUpMc2, nMc2);
+        vec3 toCamRaw     = u_cameraWorldPos.xyz - origin_mc2;
+        vec3 r1raw        = cross(kUpMc2, toCamRaw);
+        // 1e-4 on the squared length: below this the basis is numerically
+        // meaningless and the rotation would flip the card randomly.
+        if (dot(r0raw, r0raw) > 1e-4 && dot(r1raw, r1raw) > 1e-4 &&
+            dot(toCamRaw, toCamRaw) > 1e-4) {
+            vec3 n0 = normalize(nMc2);
+            vec3 R0 = normalize(r0raw);
+            vec3 U0 = cross(n0, R0);
+            vec3 toCam = normalize(toCamRaw);
+            vec3 R1 = normalize(r1raw);
+            vec3 U1 = cross(toCam, R1);
+            vec3 d  = world_mc2 - origin_mc2;
+            // Exaggeration is DEBUG-ONLY (MC2_LIGHT_BILLBOARD_FACING=2); the
+            // default path multiplies by exactly 1.0.
+            float s = ((inst.flags & kFlagLightBillboardBig) != 0u) ? 4.0 : 1.0;
+            world_mc2 = origin_mc2
+                      + R1 * (dot(d, R0) * s)
+                      + U1 * (dot(d, U0) * s)
+                      + toCam * dot(d, n0);
+        }
+    }
+#endif
+
     vec4 world = vec4(world_mc2, 1.0);
     // Match terrain_overlay.vert exactly: terrainMVP is the CPU-composed
     // axisSwap * worldToClip matrix uploaded GL_FALSE.

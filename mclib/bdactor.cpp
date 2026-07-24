@@ -4226,6 +4226,19 @@ void BldgAppearance::registerStatic() {
 			// ever sets it, so all other props stay byte-identical.
 			flags |= (1u << 3);
 		}
+		// LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): bit-4 tags beacon/runway glow
+		// cards so static_prop.vert rotates the quad to face the camera (bit-5
+		// = debug exaggeration). This recipe path is the live one for
+		// persistent statics, so it MUST emit the same bit as
+		// GpuStaticPropBatcher::submitMultiShape — a split here would fix only
+		// half the airbase light population. Gate 0 => no bit => byte-identical.
+		if (child->GetIsLightBillboard()) {
+			const int lbMode = gos_lightBillboardFacingMode();
+			if (lbMode != 0) {
+				flags |= (1u << 4);
+				if (lbMode == 2) flags |= (1u << 5);
+			}
+		}
 		GpuStaticPropInstance inst;
 		if (!GpuStaticPropBatcher::instance().buildRecipeFromShape(
 				child, xform,

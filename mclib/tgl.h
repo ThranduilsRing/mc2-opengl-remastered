@@ -1032,6 +1032,12 @@ class TG_Shape
 		bool  GetLightsOut()      const { return lightsOut; }
 		bool  GetIsWindow()       const { return isWindow; }
 		bool  GetIsSpotlight()    const { return isSpotlight; }
+		// LIGHT-BILLBOARD-GPU-1: read-only access for the GPU static-prop
+		// batcher, which needs the beacon/runway light-card classification to
+		// set the per-instance camera-facing billboard flag bit. The batcher
+		// is a friend of TG_MultiShape but not of TG_Shape, so a public
+		// accessor (mirroring GetIsSpotlight above) is the clean seam.
+		bool  GetIsLightBillboard() const { return isLightBillboard; }
 		// LIGHT-CONE-MODELS-1: read-only type/scalar access for the cone-glow
 		// module (mclib/cone_glow.cpp) — needs the spotlight child's immutable
 		// type geometry (cone axis derivation + additive re-render) and the

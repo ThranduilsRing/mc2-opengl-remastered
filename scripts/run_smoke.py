@@ -1504,6 +1504,11 @@ def main():
                             # top-down (killswitch, default ON). Must be
                             # allowlisted or Popen drops it and gate-ON runs OFF.
                             "MC2_LIGHT_BILLBOARD_TWOSIDED",
+                            # LIGHT-BILLBOARD-GPU-1 -- camera-facing billboard
+                            # for the same glow cards on the GPU static-prop
+                            # batcher path (killswitch, default ON; =2
+                            # exaggerates for verification).
+                            "MC2_LIGHT_BILLBOARD_FACING",
                             # NIGHT-LIGHT-POOLS-2/3/4 -- pool falloff/dim/compress
                             # killswitches + mover radius/max-blend (defaults
                             # ON/0.25/ON/0.6/ON).

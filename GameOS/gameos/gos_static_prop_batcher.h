@@ -507,6 +507,15 @@ void batcher_prepareBaseInstanceTable();
 
 extern int g_lightProbeSetupPath;  // [GPUPROPS v1]
 
+// LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): MC2_LIGHT_BILLBOARD_FACING mode.
+//   0 = OFF (killswitch; no instance carries the flag bit -> byte-identical)
+//   1 = ON  (default) — beacon/runway glow cards are camera-facing billboards
+//   2 = ON + exaggerated card scale (verify-by-exaggeration only)
+// Read once (process-lifetime static). Shared by BOTH static-prop instance
+// flag-emission sites: the batcher's submitMultiShape() and the persistent
+// recipe path in mclib/bdactor.cpp — they must agree or the population splits.
+int gos_lightBillboardFacingMode();
+
 // SP-BATCHER-ALPHASCAN-GATE-1: monotonic generation bumped whenever a static-prop
 // type's per-texture alpha bit actually flips (TG_TypeMultiShape::SetTextureAlpha,
 // msl.cpp). Consumed by the batcher's per-frame alpha-test re-resolve scan in

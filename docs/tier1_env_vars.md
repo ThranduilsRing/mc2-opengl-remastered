@@ -543,6 +543,49 @@ The flag is set once at shape load from the node name, so only beacon/runway lig
 are affected — the flags and the barrels/streetlight props that also draw from the
 `Lightsnflags` atlas keep stock one-sided culling.
 
+**Scope limit (measured):** this gate only reaches cards that take the legacy CPU
+`TG_Shape::Render` path. At runtime the airbase light population renders through
+the GPU static-prop batcher instead, so this gate alone is near-inert. See
+`MC2_LIGHT_BILLBOARD_FACING` below for the GPU-path cure.
+
+### MC2_LIGHT_BILLBOARD_FACING
+
+- `MC2_LIGHT_BILLBOARD_FACING=0` — killswitch, default **ON**. Restores stock
+  fixed-orientation light cards on the GPU static-prop batcher path.
+- `MC2_LIGHT_BILLBOARD_FACING=2` — verification only: renders the flagged cards at
+  4x scale so the affected population is unmistakable in a capture.
+
+**Default:** on (killswitch)
+
+LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8, the comprehensive fix). The beacon/runway
+glow cards actually render through `GameOS/gameos/gos_static_prop_batcher.cpp`,
+whose flush relies on the global `GL_CULL_FACE GL_BACK` state — so the whole
+airbase light population is hardware-backface-culled as the camera orbits, and
+goes edge-on (zero projected area) near top-down. Two-sided drawing alone cannot
+fix the edge-on case, and splitting the MDI-coalesced per-packet draw loop to
+bracket `glDisable(GL_CULL_FACE)` would be invasive.
+
+Instead, cards classified `isLightBillboard` carry per-instance flag **bit 4**
+(bit 5 = the exaggeration debug bit) and `shaders/static_prop.vert` rotates the
+quad's plane so its normal points at the eye. The rotation maps the card's own
+in-plane basis onto a camera-facing basis of the same handedness, so quad shape,
+scale and triangle winding are preserved — the front face is camera-facing **by
+construction**, which makes hardware back-face culling structurally unable to
+reject it and removes the edge-on degeneracy at the same time.
+
+Both static-prop instance flag-emission sites emit the bit (the batcher's
+`submitMultiShape()` and the persistent-static recipe path in `mclib/bdactor.cpp`)
+— they must stay in lockstep or only half the population is fixed. With the gate
+at 0 no instance carries the bit, the shader block never executes, and the render
+is byte-identical.
+
+Population covered: `runwaylight` + `red/green/bluebeaconlight` and their
+damage/LOD variants (node names `*beaconlight*`, 4-6 vertex glow cards). An audit
+of every `*light*` node name in the prop library confirms the remaining
+candidates are **solid geometry, not cards** — `streetlight` (12 vert / 14 face
+pole) and the `Light` lamp head inside `*spotlightcontrol` (10 vert / 16 face) —
+so they are correctly excluded, as are the flags and barrels.
+
 **Off (`=0`) = byte-identical stock:** the two-sided OR-term is skipped and edge-light
 cards backface-cull as before.
 

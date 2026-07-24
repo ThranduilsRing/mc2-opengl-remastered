@@ -323,6 +323,40 @@ float g_iblShStrength = []() -> float {
     return f;
 }();
 
+// LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): beacon/runway light glow cards
+// (TG_Shape::isLightBillboard, node-name substring "beaconlight") are single
+// flat 4-6 vertex quads with NO billboarding. They render through THIS GPU
+// batcher, whose flush relies on the global GL_CULL_FACE GL_BACK state, so as
+// the RTS camera orbits/tilts the card's face normal swings away from the eye
+// and the whole airbase light population is hardware-backface-culled — "the
+// lights pop out by view angle". The predecessor lane (EDGE-LIGHT-BILLBOARD-
+// CULL-1, commit 9f8c8086) fixed only the legacy CPU TG_Shape::Render backface
+// loop, which these props do not take at runtime — hence near-null efficacy.
+//
+// The cure implemented here is CAMERA-FACING BILLBOARDING in static_prop.vert
+// (per-instance flag bit 4). Rotating the card's plane to face the eye
+// subsumes the two-sided requirement: the front face is oriented toward the
+// camera BY CONSTRUCTION, so hardware GL_BACK culling can never reject it and
+// no two-sided draw bucket / glDisable(GL_CULL_FACE) bracket is needed in the
+// hot per-packet draw loop (which is MDI-coalesced and would have to be split).
+// It also cures the degenerate edge-on case at true top-down that two-sided
+// alone cannot (zero projected area).
+//
+// Gate MC2_LIGHT_BILLBOARD_FACING — killswitch, default ON. "0" => the flag
+// bit is never emitted => shader block never runs => byte-identical. "2" =>
+// verify-by-exaggeration (bit 5 as well: card scaled 4x in the shader).
+// Companion CPU-path gate MC2_LIGHT_BILLBOARD_TWOSIDED (tgl.cpp) is unchanged.
+int gos_lightBillboardFacingMode() {
+    static const int s_mode = []() -> int {
+        const char* v = std::getenv("MC2_LIGHT_BILLBOARD_FACING");
+        if (!v || !v[0]) return 1;          // default ON
+        if (v[0] == '0') return 0;          // killswitch
+        if (v[0] == '2') return 2;          // exaggerate (verification)
+        return 1;
+    }();
+    return s_mode;
+}
+
 // TERRAIN-DECAL-FILL-1: ambient/fill floor for the cliff-wall mesh-decal's
 // shadow side. static_prop lighting is max(N·L,0) with no ambient floor, so a
 // face pointing away from the sun goes to ~0 (black void). This uniform is a
@@ -5202,6 +5236,19 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         // rotates with camera without this). alphaTestOn lives on TG_TypeShape.
         if (const TG_TypeShape* ts2 = static_cast<const TG_TypeShape*>(child->myType)) {
             if (ts2->alphaTestOn) flags |= (1u << 2);
+        }
+        // LIGHT-BILLBOARD-GPU-1: bit-4 = camera-facing light billboard,
+        // bit-5 = exaggerate (debug). Bit-3 is kFlagDecalFill (cliff decal,
+        // bdactor.cpp:4227) — do NOT reuse. Emitted only for children the
+        // shape loader classified as beacon/runway glow cards; every other
+        // static prop's flags word is bit-for-bit unchanged, and with the
+        // gate at 0 no instance in the scene carries the bit at all.
+        if (const_cast<TG_Shape*>(child)->GetIsLightBillboard()) {
+            const int lbMode = gos_lightBillboardFacingMode();
+            if (lbMode != 0) {
+                flags |= (1u << 4);
+                if (lbMode == 2) flags |= (1u << 5);
+            }
         }
         // [T3.2] Bit-2 was kFlagIsSpotlight (deleted). After T3.1 the
         // spotlight `continue` skip above is unconditional, so this code path
