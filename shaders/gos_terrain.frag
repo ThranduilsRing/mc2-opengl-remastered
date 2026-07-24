@@ -451,36 +451,24 @@ void main(void)
             if (isTransition) {
                 // Transition: legacy overlay draw handles cement blend. Shader pass-through.
             } else {
-                // Solid cement quad. Default: full replacement (original behavior).
+                // Solid cement quad: FULL replacement (original stock behavior).
                 //
-                // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather the pad/runway
-                // perimeter where a solid cement tile abuts BARE terrain (no
-                // authored transition art) — curing the hard full-tile stairstep
-                // cliff. The CPU (PopulateRecipeCementWords, killswitch
-                // MC2_RUNWAY_EDGE_BLEND) packs a 4-neighbour "open" mask into
-                // cementWord bits 19:16 for exactly those solid boundary tiles.
-                // Gate OFF => mask == 0 => featherAlpha == 1.0 => byte-identical
-                // full replacement (stock). The mask is a discrete SDF: within
-                // the boundary tile we take the fragment's distance to each open
-                // border and ramp cement -> base terrain over the outer half-tile.
-                //   bit16 = E(+x open)  bit17 = W(-x)  bit18 = N(-y)  bit19 = S(+y)
-                // Distances are seam-free: a border shared by two cement tiles is
-                // never "open" for either, so both stay full at the seam.
-                PREC float featherAlpha = 1.0;
-                uint edgeMask = (cementWord >> 16) & 0xFu;
-                if (edgeMask != 0u) {
-                    PREC float u  = cTileUV.x;   // 0 at west  (-x), 1 at east  (+x)
-                    PREC float vv = cTileUV.y;   // 0 at north (-y), 1 at south (+y)
-                    PREC float d  = 1.0;         // distance to nearest open border (tiles)
-                    if ((edgeMask & 0x1u) != 0u) d = min(d, 1.0 - u);   // E open
-                    if ((edgeMask & 0x2u) != 0u) d = min(d, u);         // W open
-                    if ((edgeMask & 0x4u) != 0u) d = min(d, vv);        // N open
-                    if ((edgeMask & 0x8u) != 0u) d = min(d, 1.0 - vv);  // S open
-                    // Half-tile window: full cement over the inner half, smooth
-                    // ramp to 0 at the tile's outer boundary.
-                    featherAlpha = smoothstep(0.0, 0.5, d);
-                }
-                texColor = mix(texColor, cementColor, featherAlpha);
+                // RUNWAY-EDGE-BLEND-1 revision 1 feathered the pad/runway
+                // perimeter cement OUT toward terrain here (a half-tile inward
+                // ramp driven by the CPU-baked "open border" mask, cementWord
+                // bits 19:16). The user rejected that look: it ERODES the apron
+                // and reads as a blurry dirty edge ("the answer is usually MORE
+                // concrete, not less"). Revision 2 (RUNWAY-EDGE-DILATE-1) instead
+                // grows concrete OUTWARD from the pad into the bare-terrain
+                // neighbour, which requires a per-tile neighbour lookup into the
+                // cement-word SSBO. This indirect path is per-QUAD off a thin
+                // record and has no such neighbour access, so the dilation lives
+                // only on the LIVE LOD-chunk path (shaders/terrain_lod_chunk.frag).
+                // Here we simply no longer erode: solid cement stays crisp and
+                // full, exactly as stock, on both gate states. The CPU mask bake
+                // (killswitch MC2_RUNWAY_EDGE_BLEND) is unchanged and is consumed
+                // by the chunk shader.
+                texColor = cementColor;
             }
         }
     }
