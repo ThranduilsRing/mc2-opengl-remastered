@@ -1065,7 +1065,11 @@ void main() {
         vec2 rTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
         int  rGridSide = u_cementGridSide;
         if (rGridSide < 1) rGridSide = 1;
-        const float kReDilate = 0.5;   // outward reach, in tiles
+        // Outward reach, in tiles. Pure taste knob: 0.5 (a half-tile skirt) is
+        // measurable but too subtle to read at gameplay zoom on the mc2_01 apron
+        // (only 4 solid-vs-bare tiles are eligible there); 1.0 gives a full-tile
+        // margin that is visibly MORE concrete without swallowing terrain.
+        const float kReDilate = 1.0;
         float rBestAlpha = 0.0;
         uint  rBestLayer = 0u;
         // (neighbour dx, dy, required mask bit, distance from the shared edge)
