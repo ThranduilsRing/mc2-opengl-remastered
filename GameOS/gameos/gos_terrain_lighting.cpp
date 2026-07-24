@@ -912,6 +912,29 @@ void PackAndDispatch() {
                 if (p == lp) return true;
             return false;
         };
+        // LIGHT-REALISM-1: pool-shape knobs (see the reshape block below).
+        // Each std::getenv literal is kept on its own line so the flag-registry
+        // sweep + check-env-registry see the readers.
+        static const bool s_lightRealism = []() {
+            const char* v = std::getenv("MC2_LIGHT_REALISM");
+            return (v && v[0] == '1');   // default OFF
+        }();
+        static const float s_lightRealismPoolSpill = []() {
+            const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_SPILL");
+            float f = 1.6f;
+            if (v && v[0]) f = static_cast<float>(std::atof(v));
+            if (f < 0.25f) f = 0.25f;
+            if (f > 4.0f)  f = 4.0f;
+            return f;
+        }();
+        static const float s_lightRealismPoolCore = []() {
+            const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_CORE");
+            float f = 0.15f;
+            if (v && v[0]) f = static_cast<float>(std::atof(v));
+            if (f < 0.0f) f = 0.0f;
+            if (f > 1.0f) f = 1.0f;
+            return f;
+        }();
         // GHOST-LIGHT-DUMP-1 (batch-7 item 5, env MC2_LIGHT_POOL_DUMP=1):
         // periodic dump of every light the pool pack ACCEPTS this frame, with
         // world-light slot + (E)-owner attribution (mc2_spotlight_diag), so a
@@ -976,6 +999,49 @@ void PackAndDispatch() {
             gl.closeDistance   = tl->closeDistance;
             gl.farDistance     = tl->farDistance;
             gl.oneOverDistance = tl->oneOverDistance;
+            // LIGHT-REALISM-1 (2026-07-24, user rejection of the mc2_10 night
+            // look: "the light needs to spill from there, not be just in random
+            // spots ... mimic LIGHT SOURCES (real ones)").
+            //
+            // TWO artefacts come straight out of these three packed fields, so
+            // both are fixable HERE — no shader edit, and every consumer (the
+            // LOD-chunk frag pool loop, terrain_overlay, mech/static_prop, and
+            // the compute vertex-lighting path) gets the same coherent shape.
+            //
+            //  (a) HARD DISC. The falloff is literally `1.0` for len <= close-
+            //      Distance — a flat-topped plateau. That plateau IS the
+            //      "hard-edged bright disc": a saturated core with an abrupt
+            //      shoulder where the ramp starts. Shrinking closeDistance
+            //      collapses the plateau, leaving a smooth peak-and-decay bell
+            //      (the existing MC2_LIGHT_POOL_SOFT smoothstep then rounds the
+            //      tail), i.e. bright at the source with smooth falloff out.
+            //
+            //  (b) DISCONNECTED BLOB. LIGHT-CONE-MODELS-1 Stage C moves the
+            //      pool centre to the far end of the beam (node pos + aim x
+            //      cone length x MC2_LIGHT_CONE_SPILL). Correct aim, but with
+            //      the stock radius the lit patch stops short of the lamp, so
+            //      it reads as an unrelated bright spot with dark ground
+            //      between it and its emitter. Widening farDistance stretches
+            //      the pool back over the emitter, making cone and ground pool
+            //      ONE continuous light.
+            //
+            // oneOverDistance is the ramp slope 1/(far-close) (TG_Light::
+            // GetFalloff) and MUST be recomputed in lockstep or the ramp
+            // detaches from the radii. Gate default-OFF -> untouched -> byte-
+            // identical.
+            if (s_lightRealism)
+            {
+                const float spill = s_lightRealismPoolSpill;   // farDistance scale
+                const float core  = s_lightRealismPoolCore;    // closeDistance scale
+                float farD   = tl->farDistance * spill;
+                float closeD = tl->closeDistance * core;
+                if (farD < 1.0f) farD = 1.0f;
+                if (closeD < 0.0f) closeD = 0.0f;
+                if (closeD > farD - 1.0f) closeD = farD - 1.0f;
+                gl.closeDistance   = closeD;
+                gl.farDistance     = farD;
+                gl.oneOverDistance = 1.0f / (farD - closeD);
+            }
             // NIGHT-LIGHT-POOLS-2a: mover flag in the pad (pool frag dims
             // mover-attached lights; compute consumer never reads pads).
             gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;

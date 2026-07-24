@@ -151,6 +151,63 @@ float spill_scale()
     return s;
 }
 
+// ---- LIGHT-REALISM-1 --------------------------------------------------------
+// User rejection (2026-07-24, mc2_10 night): "the cones are ultra visible, they
+// need to be feathered / more transparent ... the light sources need to mimic
+// LIGHT SOURCES (real ones)."
+//
+// Two defects, both addressed under ONE default-OFF gate (MC2_LIGHT_REALISM):
+//  (1) the cone reads as a solid painted wedge — every vertex at a given axial
+//      position carries the SAME alpha, so the mesh silhouette is a hard edge;
+//  (2) overall opacity is too high for a light shaft.
+//
+// Fix (1) is the classic screen-space volumetric fake: a view ray through a
+// cone accumulates maximum thickness through the beam CENTRE and ~zero at the
+// silhouette. The silhouette is exactly the set of vertices that project
+// FARTHEST (perpendicular) from the beam's screen-space axis, so fading alpha
+// by perpendicular screen distance feathers the silhouette while keeping a
+// bright core running the full beam length. All inputs are screen coords the
+// transform loop already computes — no extra transforms.
+//
+// Fix (2) is a straight opacity scalar on top of MC2_LIGHT_CONE_GLOW_ALPHA,
+// plus a smoother (squared) axial falloff instead of the linear 1 -> 0.15 ramp.
+//
+// Gate OFF (default) -> every path below is skipped -> byte-identical.
+
+bool realism_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_REALISM");
+        return (v && v[0] == '1');   // default OFF
+    }();
+    return s;
+}
+
+// Multiplies the cone's peak vertex alpha. <1 = more transparent.
+static float realism_cone_opacity()
+{
+    static const float s = []() {
+        const char* v = std::getenv("MC2_LIGHT_REALISM_CONE_OPACITY");
+        float f = 0.55f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 0.0f, 4.0f);
+    }();
+    return s;
+}
+
+// Silhouette feather exponent. Higher = the bright core narrows and the rim
+// fades sooner (softer edge). 0 disables the radial feather.
+static float realism_cone_feather()
+{
+    static const float s = []() {
+        const char* v = std::getenv("MC2_LIGHT_REALISM_CONE_FEATHER");
+        float f = 1.5f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 0.0f, 8.0f);
+    }();
+    return s;
+}
+
 // CONE-AIM-DIAG-1 (batch-7 item 4): per-node aim/apex dump. Default-off.
 static bool aim_diag_enabled()
 {
@@ -292,7 +349,10 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     const float viewMulX = TG_Shape::viewMulX, viewAddX = TG_Shape::viewAddX;
     const float viewMulY = TG_Shape::viewMulY, viewAddY = TG_Shape::viewAddY;
 
-    const float alphaPeak = glow_alpha() * nightFactor;
+    // LIGHT-REALISM-1: overall transparency scalar (gate OFF -> factor 1.0).
+    const bool  realism = realism_enabled();
+    const float alphaPeak = glow_alpha() * nightFactor
+                          * (realism ? realism_cone_opacity() : 1.0f);
     if (alphaPeak < 1.0f) return;
     const DWORD rgb = (DWORD)(argb & 0x00fffffful);
 
@@ -362,7 +422,82 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             if (t < 0.0f) t = 0.0f;
             if (t > 1.0f) t = 1.0f;
         }
-        xv[j].fade = 1.0f - 0.85f * t;
+        // LIGHT-REALISM-1: smoother axial decay (squared) instead of the
+        // linear ramp — bright near the emitter, gently dying out along the
+        // shaft. Gate OFF keeps the exact legacy 1 - 0.85t.
+        xv[j].fade = realism ? ((1.0f - t) * (1.0f - t) * 0.9f + 0.05f)
+                             : (1.0f - 0.85f * t);
+    }
+
+    // LIGHT-REALISM-1: screen-space silhouette feather (see the block comment
+    // by realism_cone_feather). Project the beam axis to screen, then fade each
+    // vertex by its PERPENDICULAR screen distance from that axis: verts on the
+    // extreme left/right silhouette go to ~0 alpha (soft edge) while verts
+    // projecting near the centreline stay bright for the beam's full length
+    // (bright core). Degenerate cases (no axis, axis pointing at the camera so
+    // the screen axis collapses, zero spread) leave alpha untouched.
+    if (realism && haveAxis && nVerts > 0)
+    {
+        const float featherExp = realism_cone_feather();
+        if (featherExp > 0.001f)
+        {
+            // Apex (local origin) and axis tip, through the same transform.
+            auto projectLocal = [&](const Stuff::Point3D& p, float& ox, float& oy) -> bool {
+                Stuff::Vector4D xf;
+                xf.Multiply(p, shapeToClip);
+                if (eye->usePerspective)
+                {
+                    if (xf.w == 0.0f) return false;
+                    const float r = 1.0f / xf.w;
+                    ox = (xf.x * r) * viewMulX + viewAddX;
+                    oy = (xf.y * r) * viewMulY + viewAddY;
+                }
+                else
+                {
+                    ox = (1.0f - xf.x) * viewMulX + viewAddX;
+                    oy = (1.0f - xf.y) * viewMulY + viewAddY;
+                }
+                return true;
+            };
+
+            Stuff::Point3D apexL; apexL.x = apexL.y = apexL.z = 0.0f;
+            Stuff::Point3D tipL;
+            const float sc = (scalar > 0.0f) ? scalar : 1.0f;
+            tipL.x = axisLocal.x * lenLocal * sc;
+            tipL.y = axisLocal.y * lenLocal * sc;
+            tipL.z = axisLocal.z * lenLocal * sc;
+
+            float ax = 0.0f, ay = 0.0f, tx = 0.0f, ty = 0.0f;
+            if (projectLocal(apexL, ax, ay) && projectLocal(tipL, tx, ty))
+            {
+                float dx = tx - ax, dy = ty - ay;
+                const float dlen = std::sqrt(dx * dx + dy * dy);
+                if (dlen > 0.5f)   // axis not collapsed (beam not head-on)
+                {
+                    dx /= dlen; dy /= dlen;
+                    // Perpendicular screen distance per vertex + max spread.
+                    float perp[kMaxConeVerts];
+                    float perpMax = 0.0f;
+                    for (int j = 0; j < nVerts; ++j)
+                    {
+                        const float vx = xv[j].x - ax, vy = xv[j].y - ay;
+                        float d = vx * dy - vy * dx;
+                        if (d < 0.0f) d = -d;
+                        perp[j] = d;
+                        if (d > perpMax) perpMax = d;
+                    }
+                    if (perpMax > 0.5f)   // non-degenerate screen spread
+                    {
+                        for (int j = 0; j < nVerts; ++j)
+                        {
+                            float rN = perp[j] / perpMax;      // 0 core -> 1 rim
+                            if (rN > 1.0f) rN = 1.0f;
+                            xv[j].fade *= std::pow(1.0f - rN, featherExp);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Queue triangles (legacy spotlight path skipped backface culling —
