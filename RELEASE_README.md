@@ -1,4 +1,4 @@
-# MechCommander 2 — OpenGL Remastered (v0.5.1)
+# MechCommander 2 — OpenGL Remastered (v0.5.2)
 
 A modernized build of MechCommander 2: PBR terrain, real-time shadows,
 tessellation, modern post-processing, a campaign/mod launcher, and a Mission
