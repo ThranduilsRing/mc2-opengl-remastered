@@ -4304,7 +4304,8 @@ void Mech3DAppearance::updateGeometry (void)
 				// mechs show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
 				if (spotlightLights_[k]->active)
 					mc2_cone_glow::QueueConeGlow(mechShape, spotlightNodeIds_[k],
-						spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
+						spotlightLights_[k]->GetaRGB(), eye->getNightFactor(),
+						/*ownerIsMover=*/true);
 			}
 		}
 

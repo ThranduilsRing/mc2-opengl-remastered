@@ -66,8 +66,17 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
 // Transforms with the node's current shapeToWorld + TG_Shape camera statics,
 // so call from the owner's update path AFTER TransformMultiShape ran.
 // No-op when glow_enabled() is false or geometry clips fully off screen.
+// ownerIsMover — GHOST-LIGHT-VISIBILITY-1. Movers additionally get the
+// renderer's own staleness guard (TG_Shape::Render, tgl.cpp:3155, drops any
+// leaf whose lastTurnTransformed != turn), so a culled / never-spawned /
+// off-map-staged mover cannot emit a beam from a stale shapeToWorld. Static
+// props pass false BY DESIGN: a building lamp's cone leaf is stripped from the
+// static-prop recipe (GHOST-CONE-RECIPE-SKIP-1) and is not individually
+// transformed on the GPU prop path, so the staleness stamp is meaningless for
+// it — and per the user rule building/static lamp cones may always show.
 void QueueConeGlow(TG_MultiShape* shape, long nodeId,
-                   unsigned long argb, float nightFactor);
+                   unsigned long argb, float nightFactor,
+                   bool ownerIsMover = false);
 
 // LIGHT-REALISM-1 (beacon emission). User: the red/green/blue beacons "emit NO
 // light at all ... they're just bright unlit sprites floating on dark ground."

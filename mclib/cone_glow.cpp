@@ -329,7 +329,8 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
 // ---- (B) cone glow ----------------------------------------------------------
 
 void QueueConeGlow(TG_MultiShape* shape, long nodeId,
-                   unsigned long argb, float nightFactor)
+                   unsigned long argb, float nightFactor,
+                   bool ownerIsMover)
 {
     if (!glow_enabled() || !eye) return;
     if (nightFactor <= 0.001f) return;
@@ -355,7 +356,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     // Fix: apply the renderer's OWN staleness predicate to the emitter. If the
     // model leaf would not be drawn this frame, its glow is not queued.
     // Killswitch MC2_LIGHT_CONE_VIS_GATE=0 -> legacy (emit regardless).
-    if (vis_gate_enabled() && rec->node
+    if (ownerIsMover && vis_gate_enabled() && rec->node
         && rec->node->GetLastTurnTransformed() != (DWORD)turn)
     {
         if (aim_diag_enabled())
