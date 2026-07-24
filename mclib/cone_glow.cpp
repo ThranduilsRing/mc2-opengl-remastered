@@ -151,6 +151,19 @@ float spill_scale()
     return s;
 }
 
+// GHOST-LIGHT-VISIBILITY-1: emitters must follow the model's own draw
+// predicate. Default ON (correctness fix, same convention as
+// MC2_LIGHT_POOL_VIS_GATE / MC2_LIGHT_CULL_RADIUS). =0 restores the legacy
+// "emit even when the owner leaf was never transformed this frame" behaviour.
+static bool vis_gate_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_LIGHT_CONE_VIS_GATE");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    return s;
+}
+
 // ---- LIGHT-REALISM-1 --------------------------------------------------------
 // User rejection (2026-07-24, mc2_10 night): "the cones are ultra visible, they
 // need to be feathered / more transparent ... the light sources need to mimic
@@ -306,6 +319,43 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     const TG_TypeShape* ts = nullptr;
     const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
     if (!rec) return;
+
+    // GHOST-LIGHT-VISIBILITY-1 (user report, mc2_10 @ 212019: "the mech model is
+    // not visible but its light cone is ... if the mech is marked as not
+    // visible, it should not produce light").
+    //
+    // The three callers (mech3d / gvactor / bdactor) gate the queue on the
+    // owner's LIGHT predicate (isNight && visible && status != dead/disabled/
+    // shutdown). That is NOT the predicate that decides whether the owner's
+    // MODEL draws. TG_Shape::Render (tgl.cpp:3155) refuses to draw any leaf
+    // whose `lastTurnTransformed != turn` — a leaf that was culled, LOD-dropped,
+    // never spawned, or off-map-staged this frame simply never gets stamped, so
+    // Render drops it. QueueConeGlow bypassed that guard entirely and re-rendered
+    // the cone node's geometry straight from the (possibly stale) shapeToWorld,
+    // producing a lit beam hanging in mid-air with no emitter under it.
+    //
+    // Fix: apply the renderer's OWN staleness predicate to the emitter. If the
+    // model leaf would not be drawn this frame, its glow is not queued.
+    // Killswitch MC2_LIGHT_CONE_VIS_GATE=0 -> legacy (emit regardless).
+    if (vis_gate_enabled() && rec->node
+        && rec->node->GetLastTurnTransformed() != (DWORD)turn)
+    {
+        if (aim_diag_enabled())
+        {
+            static unsigned long s_rejects = 0;
+            if ((++s_rejects % 240) == 1)
+            {
+                std::fprintf(stderr,
+                    "[CONE_VIS_GATE v1] event=reject_stale shape=%p node=%ld "
+                    "lastTurnTransformed=%lu turn=%ld rejects=%lu\n",
+                    (void*)shape, nodeId,
+                    (unsigned long)rec->node->GetLastTurnTransformed(),
+                    turn, s_rejects);
+                std::fflush(stderr);
+            }
+        }
+        return;
+    }
 
     const TG_TypeVertex* verts = ts->GetTypeVertices();
     const TG_TypeTriangle* tris = ts->GetTypeTriangles();

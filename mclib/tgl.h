@@ -953,6 +953,13 @@ class TG_Shape
 		// skipped by the static-registry fast path.
 		void Touch();
 
+		// GHOST-LIGHT-VISIBILITY-1: read-only view of the staleness stamp that
+		// TG_Shape::Render gates on (tgl.cpp:3155 — a leaf whose
+		// lastTurnTransformed != turn is NOT drawn this frame). Exposed so
+		// light/glow emitters can apply the SAME predicate as the model draw
+		// instead of emitting for a leaf the renderer already rejected.
+		DWORD GetLastTurnTransformed (void) const { return lastTurnTransformed; }
+
 		//This function sets up the camera Matrices for this TG_Shape to transform
 		//itself with.  These matrices are static and only need to be set once per
 		//render pass if the camera does not change for that pass.
