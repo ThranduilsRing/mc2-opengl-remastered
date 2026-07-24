@@ -602,6 +602,187 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     }
 }
 
+// ---- LIGHT-REALISM-1: beacon emission ---------------------------------------
+
+// Beacon glow intensity: peak alpha (0..255) at the disc centre. Restrained by
+// design — a beacon spills a gentle colored pool, never a headlight.
+static float realism_beacon_alpha()
+{
+    static const float s = []() {
+        const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON");
+        float f = 26.0f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 0.0f, 255.0f);
+    }();
+    return s;
+}
+
+// Ground-disc radius in world units.
+static float realism_beacon_radius()
+{
+    static const float s = []() {
+        const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON_RADIUS");
+        float f = 14.0f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 1.0f, 200.0f);
+    }();
+    return s;
+}
+
+namespace {
+
+// Case-insensitive substring test (mirrors tgl.cpp's tgNameContainsCI, kept
+// local so this module does not reach into tgl internals).
+bool nameHasCI(const char* hay, const char* needle)
+{
+    if (!hay || !needle) return false;
+    for (const char* h = hay; *h; ++h)
+    {
+        const char* a = h; const char* b = needle;
+        while (*a && *b)
+        {
+            char ca = *a, cb = *b;
+            if (ca >= 'A' && ca <= 'Z') ca = (char)(ca - 'A' + 'a');
+            if (cb >= 'A' && cb <= 'Z') cb = (char)(cb - 'A' + 'a');
+            if (ca != cb) break;
+            ++a; ++b;
+        }
+        if (!*b) return true;
+    }
+    return false;
+}
+
+// Beacon colour from its authored node name. Stock content spells these
+// "Redbeaconlight02/03", "Greenbeaconlight01", "Bluebeaconlight" (tgl.cpp:73).
+// Unrecognised beacon cards (e.g. plain "runwaylight") get a warm amber, the
+// stock runway-edge tint.
+DWORD beaconRgbFromName(const char* nodeName)
+{
+    if (nameHasCI(nodeName, "red"))   return 0x00ff2a18ul;
+    if (nameHasCI(nodeName, "green")) return 0x0028ff3cul;
+    if (nameHasCI(nodeName, "blue"))  return 0x003c6cfful;
+    return 0x00ffc040ul;   // amber
+}
+
+} // namespace
+
+void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
+{
+    // Default-OFF gate -> byte-identical.
+    if (!realism_enabled() || !glow_enabled() || !shape || !eye) return;
+    if (nightFactor <= 0.001f) return;
+
+    const float peak = realism_beacon_alpha() * nightFactor;
+    if (peak < 1.0f) return;
+    const float radius = realism_beacon_radius();
+
+    if (s_queueTurn != turn)
+    {
+        s_tris.clear();
+        s_queueTurn = turn;
+    }
+
+    const float viewMulX = TG_Shape::viewMulX, viewAddX = TG_Shape::viewAddX;
+    const float viewMulY = TG_Shape::viewMulY, viewAddY = TG_Shape::viewAddY;
+
+    // Project a MAX-frame WORLD point straight through the camera statics
+    // (legacy consumes MAX-frame world directly — see the file header note).
+    struct SV { float x, y, z, rhw; bool ok; };
+    auto projectWorld = [&](float wx, float wy, float wz, SV& out) {
+        Stuff::Point3D p; p.x = wx; p.y = wy; p.z = wz;
+        Stuff::Vector4D xf;
+        xf.Multiply(p, TG_Shape::s_worldToClip);
+        if (eye->usePerspective)
+        {
+            const float rhw = (xf.w != 0.0f) ? (1.0f / xf.w) : 1.0f;
+            out.x = (xf.x * rhw) * viewMulX + viewAddX;
+            out.y = (xf.y * rhw) * viewMulY + viewAddY;
+            out.z = (xf.z * rhw);
+            out.rhw = (float)fabs(rhw);
+        }
+        else
+        {
+            out.x = (1.0f - xf.x) * viewMulX + viewAddX;
+            out.y = (1.0f - xf.y) * viewMulY + viewAddY;
+            out.z = xf.z;
+            out.rhw = 0.000001f;
+        }
+        out.ok = (out.z >= 0.0f) && (out.z < 1.0f);
+    };
+
+    const int kSeg = 12;   // disc tessellation (12 wedges reads as round)
+
+    for (int i = 0; i < shape->GetNumShapes(); ++i)
+    {
+        const TG_ShapeRec* recp = shape->GetShapeRec(i);
+        if (!recp || !recp->processMe) continue;
+        TG_Shape* child = recp->node;
+        if (!child) continue;
+        // Reuse LIGHT-BILLBOARD-GPU-1's classification verbatim (tgl.h:1047).
+        if (!child->GetIsLightBillboard()) continue;
+
+        // Node world position, MAX frame, from the live node matrix. Same
+        // "not yet transformed" sentinel QueueConeGlow uses: a real prop is
+        // never at EXACT world origin.
+        const float wx = recp->shapeToWorld.entries[3];
+        const float wy = recp->shapeToWorld.entries[7];
+        const float wz = recp->shapeToWorld.entries[11];
+        if (std::fabs(wx) + std::fabs(wy) + std::fabs(wz) < 0.01f) continue;
+
+        // Drop the disc to just under the fixture. MAX-frame Y is up (the
+        // world swizzle maps worldMAX.y -> worldMC2.z), so the ground plane
+        // the disc lies in is MAX XZ. A small lift avoids z-fighting with the
+        // terrain; the pass is ZWrite-off additive so this only needs to win
+        // the depth COMPARE.
+        const float gy = wy - radius * 0.35f + 0.35f;
+
+        const DWORD rgb = beaconRgbFromName(child->getNodeName());
+
+        SV c;
+        projectWorld(wx, gy, wz, c);
+        if (!c.ok) continue;   // centre off the z range -> skip whole disc
+
+        // Triangle fan: bright centre -> alpha 0 at the rim = smooth radial
+        // falloff with no hard edge (the pass is untextured, so the gradient
+        // has to come from vertex alpha).
+        SV rim[kSeg];
+        bool rimOk = true;
+        for (int s = 0; s < kSeg; ++s)
+        {
+            const float a = (float)s * (6.28318530718f / (float)kSeg);
+            projectWorld(wx + std::cos(a) * radius, gy,
+                         wz + std::sin(a) * radius, rim[s]);
+            if (!rim[s].ok) { rimOk = false; break; }
+        }
+        if (!rimOk) continue;
+
+        DWORD ca = (DWORD)peak;
+        if (ca > 255) ca = 255;
+
+        for (int s = 0; s < kSeg; ++s)
+        {
+            if (s_tris.size() >= kMaxFrameTris) return;
+            const SV& r0 = rim[s];
+            const SV& r1 = rim[(s + 1) % kSeg];
+
+            QueuedTri qt;
+            const SV* vs[3] = { &c, &r0, &r1 };
+            for (int k = 0; k < 3; ++k)
+            {
+                gos_VERTEX& gv = qt.v[k];
+                gv.x = vs[k]->x; gv.y = vs[k]->y;
+                gv.z = vs[k]->z; gv.rhw = vs[k]->rhw;
+                gv.u = 0.0f; gv.v = 0.0f;
+                const DWORD a = (k == 0) ? ca : 0u;   // centre bright, rim 0
+                gv.argb = (a << 24) | rgb;
+                gv.frgb = 0x00000000;
+            }
+            s_tris.push_back(qt);
+            mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+        }
+    }
+}
+
 void FlushFrame()
 {
     if (s_tris.empty()) return;

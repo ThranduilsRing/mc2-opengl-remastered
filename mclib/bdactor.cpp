@@ -3348,6 +3348,20 @@ long BldgAppearance::update (bool animate)
 				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
+
+		// LIGHT-REALISM-1 (beacon emission): red/green/blue beacon + runway
+		// light cards read as bright UNLIT sprites on dark ground because
+		// nothing spills from them. Queue a small soft colored ground disc per
+		// beacon card. Deliberately outside the spotlightLights_ loop — a
+		// building can carry beacons WITHOUT carrying any SpotLight_ node
+		// (runway light strips are exactly that case).
+		//
+		// Owner predicate mirrors the spotlight one above (visible, not
+		// lights-out); night gating + the MC2_LIGHT_REALISM default-OFF gate
+		// live inside QueueBeaconGlow. No TG_Light slots are consumed — see
+		// the cone_glow.h contract note.
+		if (eye && eye->isNight && visible && !forceLightsOut)
+			mc2_cone_glow::QueueBeaconGlow(bldgShape, eye->getNightFactor());
 	}
 
 	if (forceLightsOut)

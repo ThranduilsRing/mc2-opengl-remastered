@@ -69,6 +69,24 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
 void QueueConeGlow(TG_MultiShape* shape, long nodeId,
                    unsigned long argb, float nightFactor);
 
+// LIGHT-REALISM-1 (beacon emission). User: the red/green/blue beacons "emit NO
+// light at all ... they're just bright unlit sprites floating on dark ground."
+//
+// Emits a SMALL, SOFT, colored additive ground disc under every beacon /
+// runway-light card on `shape` — the light a real beacon spills on its
+// immediate surroundings. Colour is taken from the beacon's own node name
+// (Red/Green/Blue beaconlight), matching the classification the GPU batcher
+// uses (TG_Shape::GetIsLightBillboard, node-name token "beaconlight").
+//
+// Deliberately NOT a registered TG_Light: beacons/runway lights number in the
+// dozens per map and would exhaust the 64-slot pool-light budget, starving the
+// real lamps. This rides the same additive MC2_ISSPOTLGT batch as the cone
+// glow (queued here, flushed by FlushFrame), so it costs no light slots.
+//
+// Gated on MC2_LIGHT_REALISM (default OFF -> no-op). Call from the owner's
+// update path AFTER TransformMultiShape, same contract as QueueConeGlow.
+void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor);
+
 // Submit all queued cone triangles into the MC2_ISSPOTLGT vertex batch.
 // Called once per frame from MC_TextureManager::renderLists() (top).
 void FlushFrame();
