@@ -2,7 +2,7 @@
   "kind": "visual-verify-golden",
   "schema_v": 1,
   "golden_id": "v0.5.1-baseline",
-  "blessed_at": "2026-07-23T18:28:34Z",
+  "blessed_at": "2026-07-24T01:28:41Z",
   "blessed_commit": null,
   "source_capture": "C:\\Users\\Joe\\AppData\\Local\\Temp\\claude\\A--Games-mc2-opengl-src\\b2e9320c-c989-43ba-ba15-d48a2824843d\\scratchpad\\vv\\run_v0.5.1\\capture_run.json",
   "install": "A:\\Games\\mc2-opengl\\releases\\mc2-win64-v0.5.1",
@@ -11,7 +11,7 @@
   "frame": 431,
   "deterministic_clock": true,
   "n_regions": 39,
-  "total_crop_bytes": 29691927,
+  "total_crop_bytes": 29387085,
   "members": [
     {
       "bookmark": "mc2_01_saved_205644",
@@ -395,15 +395,15 @@
       "bookmark": "mc2_10_saved_205952",
       "region": "water_shore_grazing",
       "path": "mc2_10_saved_205952/water_shore_grazing.png",
-      "size": "1728x540",
-      "sha256": "a3c3dc18305c912dbe789d0a739a665c0a3cfb5c25f89634cb1b76c3dffb93cc",
+      "size": "1920x216",
+      "sha256": "a54cb2499229b426dfa3a361bf944daedf2e9909612c6f348304d7e5710ebb2d",
       "severity": "medium",
       "thresholds": {
         "mean_delta": 5.0,
         "changed_pct": 3.5,
         "struct": 12.0
       },
-      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet \u2014 no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement."
+      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet \u2014 no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement. RE-AIMED 2026-07-24: the old rect (y 0.42 h 0.25) covered the pale off-map slab, not the lake, so it read ~0 delta and passed regardless of water state (missed master-FAIL #9). Lake band measured on the blessed frame: water y 0.30-0.39, x 0.10-0.60."
     },
     {
       "bookmark": "mc2_10_saved_205952",

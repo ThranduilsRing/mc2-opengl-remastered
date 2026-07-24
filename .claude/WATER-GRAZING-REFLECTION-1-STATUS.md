@@ -66,11 +66,20 @@ grazing lake (grazeW≈1) changes strongly; top-down pose (grazeW≈0) is 0.0. A
   brightening tripping medium thresholds and (b) `tree_shadows_palm` = #7
   mover-shadow lane contamination (this shared build also carries #7/#8), NOT this
   fix. mc2_10_205952 vs golden PASSES all 3 official regions.
-- **Pipeline finding:** the `water_shore_grazing` region rect in
-  `tools/visual_verify/regions/mc2_10_saved_205952.json` (norm y 0.42, h 0.25)
-  targets the foreground off-map SLAB, not the actual lake (y ~0.30–0.40). It
-  reads ~0 delta and "passes" regardless of water state. Recommend re-aiming it to
-  y≈0.30 h≈0.10 so it actually grades the grazing lake.
+- **Pipeline finding — FIXED 2026-07-24.** The `water_shore_grazing` region rect in
+  `tools/visual_verify/regions/mc2_10_saved_205952.json` used to be
+  `y 0.42 h 0.25`, which targets the foreground off-map SLAB, not the lake — so it
+  read ~0 delta and "passed" regardless of water state (it did not catch this
+  master-FAIL). Re-aimed to `{x 0.10, y 0.30, w 0.50, h 0.10}`, measured off the
+  blessed frame (lake band: rows y 0.30–0.39, columns x 0.10–0.60; w capped at
+  0.50 rather than 0.62 to exclude the tree line + green building markers at
+  x > 0.60, which are noise, not water). Both golden sets re-blessed from their
+  ORIGINAL capture runs, so only this one crop changed
+  (`v0.5.1-baseline`, `v0.5.2-baseline-PROPOSED`).
+  Sensitivity proof — same pose captured with `MC2_WATER_REFLECTION=0`, diffed vs
+  the blessed frame: old rect `mean_delta 0.005 / 0.05% px` (blind), new rect
+  `mean_delta 4.41 / 28.8% px` → region **FAIL** at the existing 5.0/3.5/12.0
+  thresholds via `changed_pct`. The region now grades grazing water.
 - `GRAZE_SKY_PULL`/`GRAZE_SKY_EXP` are taste dials; 0.70/4.0 chosen to read as sky
   reflection without flattening to a blue sheet (glints preserved).
 - Deployed exe fingerprint trails HEAD only because parallel lanes (#7/#8/…) kept

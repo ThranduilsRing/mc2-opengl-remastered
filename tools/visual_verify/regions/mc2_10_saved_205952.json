@@ -13,10 +13,9 @@
     },
     {
       "id": "water_shore_grazing",
-      "rect": {"mode": "norm", "x": 0.10, "y": 0.42, "w": 0.45, "h": 0.25},
+      "rect": {"mode": "norm", "x": 0.10, "y": 0.30, "w": 0.50, "h": 0.10},
       "severity": "medium",
-      "approx": true,
-      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet — no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement.",
+      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet — no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement. RE-AIMED 2026-07-24: the old rect (y 0.42 h 0.25) covered the pale off-map slab, not the lake, so it read ~0 delta and passed regardless of water state (missed master-FAIL #9). Lake band measured on the blessed frame: water y 0.30-0.39, x 0.10-0.60.",
       "thresholds": {"mean_delta": 5.0, "changed_pct": 3.5, "struct": 12.0}
     },
     {
