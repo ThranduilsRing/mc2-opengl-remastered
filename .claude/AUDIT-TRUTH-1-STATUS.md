@@ -310,3 +310,26 @@ the six light-realism constants are unreachable while `MC2_LIGHT_REALISM` is OFF
   is impossible until the tree is clean enough for an attributable build — the same
   blocker as TASK 6.
 - **NEVER pushed.** No `--amend`. All commits local.
+
+---
+
+## Late correction — a sibling landed mid-lane (`ceb5bb06`)
+
+`ceb5bb06` (**VIS-SEMANTICS-FINISH-2**, 15:04) landed between my preflight and my
+first commit, becoming the parent of `31ff3e8d`. Caught by re-reading `git log` at
+lane end, which is exactly the "check whether a later commit already superseded the
+task" item in the new META REVIEW checklist.
+
+It **partially supersedes** a claim I had written into REVIEW §0b. The stale-emitter
+turn guard in `QueueConeGlow` no longer consults the parked `MC2_LIGHT_CONE_VIS_GATE`;
+it now arms off `vis_job_a_armed()` = `MC2_VIS_SEMANTICS` (default ON) ||
+`MC2_LIGHT_CONE_VIS_GATE=1`, disarmed by `MC2_FORCE_ALL_VISIBLE=1`.
+
+**§0b corrected accordingly.** What still stands, verified against source at lane end:
+
+- `MC2_LIGHT_MOVER_VIS_GATE` and `MC2_LIGHT_CONE_VIS_GATE` **are still PARKED
+  default-OFF** (`cone_glow.cpp:168`, `:182`). The original §0 defect — the page
+  claiming both were default-**ON** — was real and is fixed.
+- The cure now rides on `MC2_VIS_SEMANTICS`, which per §0a is **unverified and present
+  in no deployed binary**. So it is a source-level fix awaiting a build and an A/B, not
+  something the user has today.
