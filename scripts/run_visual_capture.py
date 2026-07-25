@@ -52,6 +52,9 @@ from pathlib import Path
 #                  never leaves the mouse permanently warped.
 _SKIP_KILL = False
 _ORIG_CURSOR = None
+# CURSOR-STEAL-HARNESS-GUARD-1: last park outcome, so the per-poll park logs
+# once per state change instead of spamming a line every iteration.
+_PARK_OUTCOME_SEEN = None
 # HARNESS-ISOLATION-1: own-only-your-children. Every child mc2.exe we launch is
 # tracked here; we reap ONLY our own (terminate/kill) at run-start and atexit, and
 # NEVER taskkill a foreign/other-session mc2.exe. With MC2_SMOKE_SEED set (always),
@@ -82,6 +85,8 @@ def _reap_active() -> None:
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
+# CURSOR-STEAL-HARNESS-GUARD-1: single shared implementation of cursor policy.
+from smoke_lib.cursor_guard import park_cursor_if_edge  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1/mc2.exe")
 BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
@@ -145,29 +150,36 @@ def _restore_cursor() -> None:
 
 
 def park_cursor_center() -> None:
-    """Pin the OS cursor to screen center.
+    """Keep the OS cursor out of MC2's edge-scroll bands.
 
     LOAD-BEARING for determinism: the MC2 RTS camera edge-scrolls whenever the
     desktop cursor sits at a screen edge -- regardless of window focus or
     whether mc2.exe is foreground/minimized (memory: smoke_autonomous_run_pattern
     fact #2). The bookmark sweep re-applies the pose each settle frame, but
     edge-scroll adds a per-frame camera delta on top, so an un-parked cursor
-    makes wide/high-altitude framings drift nondeterministically (it "sometimes
-    matches" only when the cursor happens to land off-edge). Parking center kills
-    the edge-scroll input entirely. Dependency-free (Win32 SetCursorPos); no-op
-    off-Windows.
+    makes wide/high-altitude framings drift nondeterministically.
+
+    CURSOR-STEAL-HARNESS-GUARD-1: this used to slam the pointer to screen centre
+    unconditionally, on every launch AND every poll iteration -- which is the
+    "the harness stole my cursor while it launched" symptom the user reported.
+    It now delegates to `cursor_guard.park_cursor_if_edge()`, which moves the
+    pointer ONLY when it actually sits inside a scroll band (see the trigger
+    quoted in cursor_guard.py from missiongui.cpp:5206). A pointer resting
+    mid-screen provably cannot drive edge-scroll, so it is left alone and
+    determinism is unaffected. No-op off-Windows.
     """
     if os.name != "nt":
         return
     _save_cursor()  # WATER-VISUAL-GATE-1: snapshot once before the first park
     try:
-        import ctypes
-        user32 = ctypes.windll.user32
-        w = user32.GetSystemMetrics(0)  # SM_CXSCREEN
-        h = user32.GetSystemMetrics(1)  # SM_CYSCREEN
-        user32.SetCursorPos(w // 2, h // 2)
+        outcome = park_cursor_if_edge()
     except Exception as e:
         print(f"[viscap] WARN park cursor: {e}", file=sys.stderr)
+        return
+    global _PARK_OUTCOME_SEEN
+    if outcome != _PARK_OUTCOME_SEEN:
+        _PARK_OUTCOME_SEEN = outcome
+        print(f"[viscap] cursor park: {outcome}", file=sys.stderr)
 
 
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,

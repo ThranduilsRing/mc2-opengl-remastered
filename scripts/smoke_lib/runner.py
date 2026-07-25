@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
+from .cursor_guard import CursorGuard
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
 
@@ -89,6 +90,12 @@ def run_one(cfg: RunConfig) -> RunResult:
     env["MC2_HEARTBEAT"] = "1"
     env["MC2_TGL_POOL_TRACE"] = "1"
     env["MC2_ASSET_SCALE_TRACE"] = "1"
+    # Engine-side cursor-theft suppression (gos_CursorControlSuppressed,
+    # f0c07b87). MC2_SMOKE_MODE already implies it, but set it explicitly so
+    # the intent survives if the smoke-mode implication is ever narrowed.
+    # NOTE: this only works on exes built AFTER f0c07b87 -- the harness-side
+    # CursorGuard below is what covers older deploy lanes.
+    env["MC2_NO_CURSOR_GRAB"] = "1"
     env.pop("MC2_GL_ERROR_DRAIN_SILENT", None)
     env.update(cfg.env_extra)
 
@@ -115,9 +122,21 @@ def run_one(cfg: RunConfig) -> RunResult:
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()
-    proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            env=env, text=True, bufsize=1, cwd=exe_dir,
-                            startupinfo=startupinfo)
+    # CURSOR-STEAL-HARNESS-GUARD-1: exe-independent protection for the user's
+    # pointer. Older deploy-lane exes (predating f0c07b87) still ClipCursor()
+    # and warp to the window centre every frame; an engine-side fix cannot
+    # reach a binary built before it. The guard releases the clamp on a timer
+    # and snaps the pointer back whenever the game moves it, then restores the
+    # anchor in the finally below (and via atexit if we are hard-killed).
+    # Inert on non-win32 / headless, or with MC2_NO_CURSOR_GUARD=1.
+    cursor_guard = CursorGuard().start()
+    try:
+        proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                env=env, text=True, bufsize=1, cwd=exe_dir,
+                                startupinfo=startupinfo)
+    except BaseException:
+        cursor_guard.stop()
+        raise
 
     # Stream lines and record per-line wallclock so freeze detection can use
     # runner walltime rather than engine-emitted elapsed_ms (which is mission-
@@ -162,6 +181,11 @@ def run_one(cfg: RunConfig) -> RunResult:
             proc.wait(timeout=2)
         # Drain any remaining items so the reader thread can unblock and exit.
         reader.join(timeout=2)
+        # Release the clamp and put the pointer back on the user's anchor. Runs
+        # on every exit path -- normal EOF, walltime kill, or an exception out
+        # of the read loop. (atexit is only the last-resort net for a hard kill
+        # of the harness itself.)
+        cursor_guard.stop()
     walltime = time.monotonic() - t0
     stdout = "\n".join(lines)
 
