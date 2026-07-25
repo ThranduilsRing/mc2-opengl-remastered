@@ -144,6 +144,8 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown
+#include <cmath>          // CONE-SPILL-COUPLING-1 — sqrt for the ray/terrain march
+#include <cstdlib>        // CONE-SPILL-COUPLING-1 — getenv for [CONE_SPILL v1] diag
 
 static bool staticRegIsNaturalBuildingName(const char* name)
 {
@@ -3410,7 +3412,48 @@ long BldgAppearance::update (bool animate)
 					// COUNT, so dropping the clamp costs no extra samples.
 					const float spill = coneLen * mc2_cone_glow::spill_scale();
 					Stuff::Vector3D hit;
-					if (mc2ConeGroundHit(childPos, aimW, spill, hit))
+					const bool got = mc2ConeGroundHit(childPos, aimW, spill, hit);
+
+					// CONE-SPILL-COUPLING-1 evidence (reuses the already
+					// smoke-allowlisted MC2_LIGHT_CONE_DIAG; adds no new gate).
+					// Prints the OLD algorithm's answer (far-end + 200u clamp,
+					// then snap z) beside the NEW intersection, in the SAME
+					// frame, so the two are directly comparable without an A/B
+					// rebuild. horizErr is how far the old pool sat from where
+					// the beam actually lands — the user-visible decoupling.
+					static const bool s_coneDiag = []() {
+						const char* v = std::getenv("MC2_LIGHT_CONE_DIAG");
+						return (v && v[0] == '1');
+					}();
+					if (s_coneDiag)
+					{
+						static unsigned long s_n = 0;
+						if ((s_n++ % 600) < 12)
+						{
+							float oldSpill = spill;
+							if (oldSpill > 200.0f) oldSpill = 200.0f;
+							Stuff::Vector3D oldP;
+							oldP.x = childPos.x + aimW.x * oldSpill;
+							oldP.y = childPos.y + aimW.y * oldSpill;
+							oldP.z = childPos.z + aimW.z * oldSpill;
+							if (land) oldP.z = land->getTerrainElevation(oldP);
+							const float dx = got ? (hit.x - oldP.x) : 0.0f;
+							const float dy = got ? (hit.y - oldP.y) : 0.0f;
+							std::fprintf(stderr,
+								"[CONE_SPILL v1] apex=(%.1f,%.1f,%.1f) aim=(%.3f,%.3f,%.3f) "
+								"coneLen=%.1f spill=%.1f clamped=%d hit=%d "
+								"old=(%.1f,%.1f,%.1f) new=(%.1f,%.1f,%.1f) horizErr=%.1f\n",
+								childPos.x, childPos.y, childPos.z,
+								aimW.x, aimW.y, aimW.z, coneLen, spill,
+								(spill > 200.0f) ? 1 : 0, got ? 1 : 0,
+								oldP.x, oldP.y, oldP.z,
+								got ? hit.x : 0.0f, got ? hit.y : 0.0f, got ? hit.z : 0.0f,
+								std::sqrt(dx * dx + dy * dy));
+							std::fflush(stderr);
+						}
+					}
+
+					if (got)
 						childPos = hit;
 					else
 						coneMissedGround = true;
