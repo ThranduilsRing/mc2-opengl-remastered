@@ -66,10 +66,35 @@ _NEAR_PX = 3
 # The game must be quiet (no blocked warp) for this long before a moved cursor
 # is believed to be the user's hand and adopted as the new anchor.
 _ADOPT_QUIET_S = 0.5
+# Consecutive restores whose IMMEDIATE read-back was not the anchor before we
+# conclude another process is physically holding the pointer. The read-back test
+# (see _restore_to_anchor) already excludes the per-frame-warper case, so this
+# only needs to ride out a transient race -- 25 samples is 0.5s at the default
+# 20ms poll.
+_HELD_STREAK = 25
 
 
 class _POINT(ctypes.Structure):
     _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+class _RECT(ctypes.Structure):
+    _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    """Subset of PROCESSENTRY32W sufficient to read pid + image name."""
+    _fields_ = [("dwSize", ctypes.c_ulong),
+                ("cntUsage", ctypes.c_ulong),
+                ("th32ProcessID", ctypes.c_ulong),
+                ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+                ("th32ModuleID", ctypes.c_ulong),
+                ("cntThreads", ctypes.c_ulong),
+                ("th32ParentProcessID", ctypes.c_ulong),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", ctypes.c_ulong),
+                ("szExeFile", ctypes.c_wchar * 260)]
 
 
 def _user32():
@@ -115,6 +140,96 @@ def unclip_cursor() -> bool:
         return bool(u.ClipCursor(None))
     except Exception:
         return False
+
+
+def _warn(msg: str) -> None:
+    """Single-channel warning so a misled next agent has something to grep for."""
+    try:
+        print(f"[cursor-guard] {msg}", file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
+def get_clip_rect() -> Optional[Tuple[int, int, int, int]]:
+    """Current ClipCursor rect as (l,t,r,b), or None if unavailable."""
+    u = _user32()
+    if u is None:
+        return None
+    r = _RECT()
+    try:
+        if not u.GetClipCursor(ctypes.byref(r)):
+            return None
+    except Exception:
+        return None
+    return (int(r.left), int(r.top), int(r.right), int(r.bottom))
+
+
+def detect_foreign_clip() -> Optional[Tuple[int, int, int, int]]:
+    """Return a pre-existing clamp rect if the cursor is confined, else None.
+
+    A rect smaller than the virtual desktop means SOMEONE ELSE has already
+    called ClipCursor -- typically a foreign mc2.exe from another agent lane.
+    """
+    u = _user32()
+    if u is None:
+        return None
+    clip = get_clip_rect()
+    if clip is None:
+        return None
+    try:
+        SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN = 76, 77
+        SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN = 78, 79
+        vx, vy = u.GetSystemMetrics(SM_XVIRTUALSCREEN), u.GetSystemMetrics(SM_YVIRTUALSCREEN)
+        vw, vh = u.GetSystemMetrics(SM_CXVIRTUALSCREEN), u.GetSystemMetrics(SM_CYVIRTUALSCREEN)
+    except Exception:
+        return None
+    if not vw or not vh:
+        return None
+    full = (vx, vy, vx + vw, vy + vh)
+    # Tolerate a 1px rounding difference on the full-desktop rect.
+    if all(abs(a - b) <= 1 for a, b in zip(clip, full)):
+        return None
+    return clip
+
+
+# Executables that grab the cursor and are launched by sibling agent lanes.
+_GAME_IMAGES = ("mc2.exe", "editrel.exe")
+
+
+def find_foreign_game_pids(exclude_pids: Optional[Set[int]] = None) -> List[Tuple[int, str]]:
+    """List running game processes as (pid, image). NEVER kills anything.
+
+    Uses CreateToolhelp32Snapshot directly -- no `tasklist` subprocess, so this
+    is cheap enough to run on every guard start.
+
+    Any game process alive when the guard starts is by definition NOT our child
+    (runner.py starts the guard before Popen), i.e. it belongs to another lane.
+    """
+    if sys.platform != "win32":
+        return []
+    exclude = exclude_pids or set()
+    out: List[Tuple[int, str]] = []
+    try:
+        k32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        TH32CS_SNAPPROCESS = 0x00000002
+        INVALID = ctypes.c_void_p(-1).value
+        snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+        if snap == INVALID or not snap:
+            return []
+        try:
+            entry = _PROCESSENTRY32W()
+            entry.dwSize = ctypes.sizeof(_PROCESSENTRY32W)
+            ok = k32.Process32FirstW(snap, ctypes.byref(entry))
+            while ok:
+                name = entry.szExeFile
+                if name.lower() in _GAME_IMAGES and entry.th32ProcessID not in exclude:
+                    out.append((int(entry.th32ProcessID), name))
+                ok = k32.Process32NextW(snap, ctypes.byref(entry))
+        finally:
+            k32.CloseHandle(snap)
+    except Exception:
+        return out
+    return out
 
 
 def _screen_centres() -> List[Point]:
@@ -168,6 +283,12 @@ class CursorGuard:
         # verification runs. Kept opt-in so normal smokes stay allocation-free.
         self.sample_log = sample_log
         self.warp_targets: Set[Point] = set()
+        # Startup-defence findings (populated by start()).
+        self.preexisting_clip: Optional[Tuple[int, int, int, int]] = None
+        self.foreign_games: List[Tuple[int, str]] = []
+        # Set when our restores are observed to have no effect -- i.e. some other
+        # process is physically holding the pointer and we cannot win.
+        self.held_by_other = False
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._atexit_registered = False
@@ -177,6 +298,12 @@ class CursorGuard:
     def start(self) -> "CursorGuard":
         if os.environ.get("MC2_NO_CURSOR_GUARD") == "1":
             return self
+        # STARTUP DEFENCE, part 1: release any clamp BEFORE sampling the anchor.
+        # If a foreign process has the cursor clipped, the position we are about
+        # to adopt as "the user's" may be a position they cannot currently leave.
+        self.preexisting_clip = detect_foreign_clip()
+        unclip_cursor()
+
         pos = get_cursor_pos()
         if pos is None:
             # No desktop (headless/CI) -- stay inert.
@@ -186,7 +313,37 @@ class CursorGuard:
         self.active = True
         self._t0 = time.monotonic()
         self.warp_targets.update(_screen_centres())
-        unclip_cursor()
+
+        # STARTUP DEFENCE, part 2: name the situation instead of silently
+        # anchoring to a stolen position.
+        #
+        # A per-run guard defends the pointer around ITS OWN child process. It
+        # cannot defend against another lane's already-running game, and if that
+        # game is holding the cursor when we start, `self.origin` is the STOLEN
+        # position, not the user's. Verified during CURSOR-STEAL-HARNESS-GUARD-1:
+        # a foreign mc2.exe pinned the cursor at (3,3) and the guard dutifully
+        # anchored there. Warn loudly so the next agent is not misled into
+        # trusting `origin`, and so a stuck cursor is attributed to the right
+        # process.
+        if self.preexisting_clip is not None:
+            _warn(f"WARNING: cursor was ALREADY CLIPPED to {self.preexisting_clip} "
+                  f"by another process at guard start; released it with "
+                  f"ClipCursor(NULL).")
+        # Anything running now cannot be our child -- runner.py starts the guard
+        # before Popen. We only report; killing a foreign lane's game is never
+        # this guard's call.
+        self.foreign_games = find_foreign_game_pids()
+        if self.foreign_games:
+            listed = ", ".join(f"{n} pid={p}" for p, n in self.foreign_games)
+            _warn(f"WARNING: {len(self.foreign_games)} foreign game process(es) "
+                  f"already running ({listed}). These belong to OTHER agent lanes "
+                  f"and are NOT touched. If the cursor still gets stolen during "
+                  f"this run, they are the likely cause -- this guard can only "
+                  f"protect against the child it launches.")
+            _warn(f"NOTE: anchor={self.origin} was sampled while those processes "
+                  f"were live, so it may already be a stolen position rather "
+                  f"than where the user left the pointer.")
+
         self._stop.clear()
         self._thread = threading.Thread(target=self._watch, name="cursor-guard",
                                         daemon=True)
@@ -215,6 +372,20 @@ class CursorGuard:
         except Exception:
             pass
 
+    def _restore_to_anchor(self) -> Optional[bool]:
+        """SetCursorPos(anchor) and report whether the write actually landed.
+
+        Returns True if the immediate read-back is the anchor, False if some
+        other process discarded our write, None if undeterminable.
+        """
+        if self.anchor is None:
+            return None
+        set_cursor_pos(self.anchor)
+        back = get_cursor_pos()
+        if back is None:
+            return None
+        return _near(back, self.anchor)
+
     # -- watchdog ----------------------------------------------------------
     def _watch(self) -> None:
         prev = self.anchor
@@ -228,6 +399,9 @@ class CursorGuard:
         # and got adopted, silently disarming the guard for the whole run
         # (observed once at a 50ms poll: warps_blocked=0).
         last_block = time.monotonic()
+        # Consecutive samples where a restore was issued but the pointer did not
+        # come back -- the signature of a foreign holder rather than a warper.
+        failed_restores = 0
         while not self._stop.is_set():
             try:
                 # Defeat the clamp every tick: the game may (re)install a
@@ -239,11 +413,12 @@ class CursorGuard:
                     self.samples += 1
                     action = "ok"
                     now = time.monotonic()
+                    took = None
                     if pos == self.anchor:
                         pass
                     elif any(_near(pos, t) for t in self.warp_targets):
                         # Known machine warp target -- snap back.
-                        set_cursor_pos(self.anchor)
+                        took = self._restore_to_anchor()
                         self.warps_blocked += 1
                         last_block = now
                         action = "restored"
@@ -251,7 +426,7 @@ class CursorGuard:
                         # Parked on the same pixel across samples while off the
                         # anchor: machine, not a human hand. Learn it and undo.
                         self.warp_targets.add(pos)
-                        set_cursor_pos(self.anchor)
+                        took = self._restore_to_anchor()
                         self.warps_blocked += 1
                         last_block = now
                         action = "restored-learned"
@@ -263,7 +438,7 @@ class CursorGuard:
                         # position we are trying to escape (observed: anchor
                         # walked to the warp target at a 10ms poll). Hold the
                         # anchor absolutely until the game goes quiet.
-                        set_cursor_pos(self.anchor)
+                        took = self._restore_to_anchor()
                         self.warps_blocked += 1
                         action = "held"
                     else:
@@ -271,6 +446,31 @@ class CursorGuard:
                         # Follow them so the guard never drags a real hand back.
                         self.anchor = pos
                         action = "adopted"
+                    # Did our restore actually take? Read back IMMEDIATELY after
+                    # the write -- that is what separates the two failure modes:
+                    #   * a per-frame WARPER lets our write land, then moves the
+                    #     pointer again ~a frame later, so the read-back == anchor
+                    #     even though later samples are off-anchor. We are merely
+                    #     losing a ping-pong, which is expected and survivable.
+                    #   * a HOLDER discards the write outright, so the read-back
+                    #     is still the foreign position (observed with a foreign
+                    #     mc2.exe: SetCursorPos returned TRUE with no effect).
+                    # A consecutive-restore streak alone cannot tell these apart
+                    # and false-positived on the warper, so key off `took`.
+                    if took is False:
+                        failed_restores += 1
+                        if failed_restores >= _HELD_STREAK and not self.held_by_other:
+                            self.held_by_other = True
+                            _warn(f"WARNING: cursor appears to be HELD BY ANOTHER "
+                                  f"PROCESS at {pos} -- {failed_restores} consecutive "
+                                  f"restores to {self.anchor} had no effect. This "
+                                  f"guard cannot win against a process it did not "
+                                  f"launch; suspect another lane's game.")
+                            if self.foreign_games:
+                                _warn("  candidates: " + ", ".join(
+                                    f"{n} pid={p}" for p, n in self.foreign_games))
+                    else:
+                        failed_restores = 0
                     if self.sample_log is not None:
                         self.sample_log.append(
                             (round(time.monotonic() - self._t0, 3), pos, action))
@@ -303,6 +503,11 @@ class CursorGuard:
             "warps_blocked": self.warps_blocked,
             "samples": self.samples,
             "learned_targets": sorted(self.warp_targets),
+            # Startup-defence findings. `origin` is UNTRUSTWORTHY when either of
+            # the first two is non-empty -- it may be a stolen position.
+            "preexisting_clip": self.preexisting_clip,
+            "foreign_games": self.foreign_games,
+            "held_by_other": self.held_by_other,
         }
 
 

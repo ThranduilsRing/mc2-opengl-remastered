@@ -207,6 +207,51 @@ smoke/capture path.
 
 ---
 
+## Startup defence (follow-up commit)
+
+Because a per-run guard provably cannot defend against another lane's
+already-running game, `CursorGuard.start()` no longer anchors silently to a
+possibly-stolen position. It now:
+
+1. **Releases `ClipCursor(NULL)` BEFORE sampling the anchor**, and reports any
+   pre-existing clamp via `detect_foreign_clip()` (a clip rect narrower than the
+   virtual desktop means someone else clipped it). Verified: while a clamping
+   process was live it returned exactly `(660,340,1260,740)`, and `None` once
+   that process exited.
+2. **Enumerates foreign game processes** (`find_foreign_game_pids()`, direct
+   `CreateToolhelp32Snapshot` — no `tasklist` subprocess) and names the PIDs.
+   Anything alive at guard start cannot be our child, since `runner.py` starts
+   the guard before `Popen`. **Nothing is ever killed.** Verified against live
+   lanes: reported `mc2.exe pid=33840, pid=38444`, matching `tasklist`.
+3. **Warns that `origin` is untrustworthy** when either of the above fires, so
+   the next agent is not misled into treating a stolen position as the user's.
+4. **Detects at runtime that our writes are being discarded**
+   (`held_by_other`): after each restore the anchor is read back *immediately*.
+   This is what separates the two failure modes — a per-frame **warper** lets
+   the write land and moves the pointer again a frame later (survivable
+   ping-pong), whereas a **holder** discards the write outright (the observed
+   foreign-`mc2.exe` behaviour: `SetCursorPos` returned TRUE with no effect).
+
+`report()` now carries `preexisting_clip`, `foreign_games`, `held_by_other`.
+
+A first attempt keyed `held_by_other` off a consecutive-restore streak alone;
+that **false-positived on the warper**, because the guard rarely observes the
+anchor between frames. The immediate read-back replaced it. Both directions
+verified:
+
+| Scenario | `held_by_other` | Expected |
+|---|---|---|
+| Per-frame warper (16ms `SetCursorPos` + `ClipCursor`) | False (155 warps blocked) | False — PASS |
+| Writes silently discarded (module-boundary simulation) | True, warning names the PIDs | True — PASS |
+| Real exe through `runner.py` | False, cursor `(410,330)` in and out | False — PASS |
+
+Note: the true write-discard mode cannot be reproduced with another
+`SetCursorPos` loop — those writes *do* land momentarily, so such a process is
+just a faster warper. It is therefore exercised by a module-boundary unit
+simulation rather than a live process.
+
+---
+
 ## Follow-ups (not done here)
 
 1. **Other lanes must rebuild** to pick up `f0c07b87`: `LIGHT-REALISM-1`,
