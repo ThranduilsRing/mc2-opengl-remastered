@@ -1710,6 +1710,12 @@ void BuildCementCatalogAtlas() {
 
     // Pass 1: enumerate cement slots, resolve each to (nodeIdx, GLuint).
     std::vector<int>    cementSlots;
+    // CEMENT-UNIFORM-2 fix: parallel "this cell came from the ALPHA pass" flag.
+    // cementSlots feeds BOTH the atlas cell list AND the SOLID slot->layer map
+    // g_cementLayerIndexBySlot. Alpha cells must appear in the former (they need
+    // atlas storage) but NEVER in the latter, or PopulateRecipeCementWords sees
+    // a valid solid layer for a transition slot and bakes an opaque slab.
+    std::vector<uint8_t> cementSlotIsAlpha;
     std::vector<DWORD>  cementNodeIndices;
     std::vector<GLuint> cementGLTextures;
     cementSlots.reserve(64);
@@ -1761,6 +1767,7 @@ void BuildCementCatalogAtlas() {
         // ever exceeds 1024, the atlas budget needs revisiting.
         if (cementNodeIndices.size() < 1024) {
             cementSlots.push_back((int)slot);
+            cementSlotIsAlpha.push_back(0u);
             cementNodeIndices.push_back(nodeIdx);
             cementGLTextures.push_back(glTex);
         } else {
@@ -1792,6 +1799,7 @@ void BuildCementCatalogAtlas() {
                 g_cementAlphaLayerIndexBySlot[slot] = (uint16_t)cementNodeIndices.size();
             }
             cementSlots.push_back((int)slot);
+            cementSlotIsAlpha.push_back(1u);   // CEMENT-UNIFORM-2: keep out of the SOLID map
             cementNodeIndices.push_back(nodeIdx);
             cementGLTextures.push_back(glTex);
             alphaCementSlots.push_back((int)slot);
@@ -1835,6 +1843,11 @@ void BuildCementCatalogAtlas() {
     // the per-frame packer uses; the nodeIdx map is kept for one-commit dead-code.
     memset(g_cementLayerIndexBySlot, 0xFF, sizeof(g_cementLayerIndexBySlot));
     for (int k = 0; k < N; ++k) {
+        // CEMENT-UNIFORM-2: alpha/transition cells own atlas storage but must NOT
+        // register as SOLID cement, or every transition tile takes the solid
+        // branch in PopulateRecipeCementWords and bakes an opaque slab (observed:
+        // gate ON collapsed transition_baked/dropped/alpha_rescued all to 0).
+        if (k < (int)cementSlotIsAlpha.size() && cementSlotIsAlpha[k]) continue;
         if (cementSlots[k] >= 0 && cementSlots[k] < MC_MAX_TERRAIN_TXMS) {
             g_cementLayerIndexBySlot[cementSlots[k]] = (uint16_t)k;
         }
