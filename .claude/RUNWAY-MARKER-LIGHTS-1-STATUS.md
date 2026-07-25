@@ -131,6 +131,18 @@ severity scales with vertical resolution — an 800x600 A/B systematically
 under-reports this entire class of bug. The user runs 3840x2160
 (`mc2-win64-v0.4/options.cfg`).
 
+**Build provenance caveat — read before quoting the absolute look.** This
+worktree is shared and was carrying ~184 dirty files from parallel lanes when I
+built, including four uncommitted engine/shader files (`mclib/cone_glow.cpp`,
+`mclib/genactor.cpp`, `mclib/txmmgr.cpp`,
+`shaders/gos_tex_vertex_lighted.vert`). My own changes were committed before the
+build, but those other lanes' WIP is compiled into the exe I captured with. This
+does **not** weaken the A/B: all three configs used the **same exe** and varied
+only `static_prop.vert` and the env gate, so the comparison is internally valid
+and the attribution to the clamp is sound. It does mean the *absolute* night
+appearance in these crops is not a pure `b3d53b21` frame, and the crops should
+not be used as a golden or quoted as "what v0.5.2 looks like".
+
 **Why the regression shipped.** The predecessor lane verified at five camera
 angles, all at airbase range, and none at map-overview altitude — the only
 altitude where an uncapped constant-screen-size clamp misbehaves. Any future
