@@ -1225,6 +1225,15 @@ static void PopulateRecipeCementWords() {
     // never reaches the transition branch, increments no drop counter, and
     // renders as lit colormap + decal beside a lighting-exempt cement apron.
     // That is the user-annotated "plainly pavement but RED in DIAG=32768" class.
+    // AUDIT-TRUTH-1: this census is a DIAGNOSTIC and must not run in a default
+    // build. It is folded into the existing registered diag facility
+    // MC2_TERRAIN_LOD_CHUNK_DIAG as bit 524288 (0x80000). Unset => the per-tile
+    // getOverlay walk below and the [CEMENT_PAVEMENT_GAP v1] print are both
+    // skipped entirely, which is byte-identical to the pre-a25037cf render.
+    static const bool s_pavementGapDiag = []() -> bool {
+        const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_DIAG");
+        return v && (atoi(v) & 524288) != 0;
+    }();
     long pavedOverlayTiles      = 0;   // tiles carrying a hard-paved overlay id
     long pavedOverlayNoCement   = 0;   // ...of those, tiles that bake NO cement word
     long anyOverlayTiles        = 0;
@@ -1328,7 +1337,8 @@ static void PopulateRecipeCementWords() {
             }
         }
         // CEMENT-UNIFORM-2: true-denominator census (read-only, no behaviour).
-        if (Terrain::mapData) {
+        // AUDIT-TRUTH-1: gated on MC2_TERRAIN_LOD_CHUNK_DIAG bit 524288.
+        if (s_pavementGapDiag && Terrain::mapData) {
             Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
             Terrain::mapData->getOverlay(my, mx, ovT, ovO);
             if (ovT != INVALID_OVERLAY) {
@@ -1362,11 +1372,14 @@ static void PopulateRecipeCementWords() {
     // lighting-exempt cement apron -- the tone split the user reports, and the
     // RED-in-DIAG=32768 tiles they circled. cement_total is the transition
     // census denominator for direct comparison.
-    printf("[CEMENT_PAVEMENT_GAP v1] event=census mission=%s paved_overlay=%ld "
-           "paved_no_cement=%ld any_overlay=%ld cement_total=%ld\n",
-           (::missionName[0] ? ::missionName : "unknown"), pavedOverlayTiles,
-           pavedOverlayNoCement, anyOverlayTiles,
-           transitionQuadCount + transitionDroppedNoLayer + transitionDroppedNoMask);
+    // AUDIT-TRUTH-1: opt-in only -- MC2_TERRAIN_LOD_CHUNK_DIAG bit 524288.
+    if (s_pavementGapDiag) {
+        printf("[CEMENT_PAVEMENT_GAP v1] event=census mission=%s paved_overlay=%ld "
+               "paved_no_cement=%ld any_overlay=%ld cement_total=%ld\n",
+               (::missionName[0] ? ::missionName : "unknown"), pavedOverlayTiles,
+               pavedOverlayNoCement, anyOverlayTiles,
+               transitionQuadCount + transitionDroppedNoLayer + transitionDroppedNoMask);
+    }
     fflush(stdout);
     if (CementTransitionFallbackEnabled() && blocks && tt) {
         const std::vector<uint32_t> before = chunkCementWords;
