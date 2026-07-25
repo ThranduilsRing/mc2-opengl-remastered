@@ -82,12 +82,17 @@ float EffAlphaDepth(float baseAlphaDepth) {
 }
 
 // SHORELINE-GEOMETRY-1 — see the header block for the rationale.
+// AUDIT-TRUTH-1: default is now 75 wu -- the amplitude the user graded and
+// APPROVED (arm "A=75") for the shoreline-staircase cure. Previously 0.0f, i.e.
+// the approved setting existed only in a status doc and shipped disabled.
+// Explicit MC2_WATER_SHORE_MEANDER=0 still disables it (legacy staircase).
+// Known side effect at 75: mc2_01's waterline creeps ~10% further up the beach.
 float ShoreMeanderWu() {
     static const float s_amp = []() -> float {
         const char* v = getenv("MC2_WATER_SHORE_MEANDER");
-        if (!v || !*v) return 0.0f;
+        if (!v || !*v) return 75.0f;      // user-approved default
         const float f = (float)atof(v);
-        return f > 0.0f ? f : 0.0f;
+        return f > 0.0f ? f : 0.0f;       // explicit 0 => off
     }();
     return s_amp;
 }
