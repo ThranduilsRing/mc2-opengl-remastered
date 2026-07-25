@@ -33,6 +33,34 @@ uniform float forceZ; // baked in a wvp matrix
 uniform int gpuProjection;
 uniform mat4 u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToClip)
 
+// VEHICLE-NIGHT-LIT-1: coordinate-frame killswitch for the calc_light feed.
+//
+// ROOT CAUSE. ObjectLights rows produced by GatherLightsParameters
+// (mclib/txmmgr.cpp) carry light_to_world translations and light_dir in the
+// MC2 world frame. The two OTHER consumers of calc_light both feed it MC2-frame
+// inputs:
+//   - mech.vert         : calc_light(idx, worldNormal /*MC2*/, worldMC2, base)
+//   - static_prop.vert  : worldPos is MC2-frame (Stuff->MC2 swap) and
+//                         STATIC-PROP-NORMAL-FRAME-FIX converts the normal via
+//                         normalize(vec3(-n.x, n.z, n.y)) for the same reason.
+// This shader — the legacy mcTextureManager/ShapeRenderer lit path, which is
+// what draws GROUND VEHICLES (GVAppearance::render -> gvShape->Render ->
+// TG_Shape::Render -> addRenderShape -> ShapeRenderer::render) — was the last
+// consumer still feeding STUFF-frame position and normal. Consequences:
+//   - POINT / SPOT / INFINITEWITHFALLOFF: length(vertex_world_pos - light_pos)
+//     mixes frames, so the distance is garbage and GetFalloff() rejects the
+//     light. Vehicles receive NO compound pool light and NO guard-tower cone
+//     light even when parked inside the cone.
+//   - INFINITE (sun): dot(stuffNormal, -mc2LightDir) is ~90deg off and clamps
+//     to 0 on most vertices.
+// What is left is base_light (the static per-vertex aRGBLight seed) plus
+// AMBIENT — which at night reads as a near-black silhouette. Hence "truck dark,
+// mech lit, buildings lit, in the same pool of light".
+//
+// 0 = legacy Stuff-frame feed (byte-identical to pre-fix). 1 = MC2-frame feed,
+// matching mech.vert / static_prop.vert. Driven by MC2_LEGACY_LIT_MC2_FRAME.
+uniform int u_legacyLitMc2Frame;
+
 out vec3 Normal;
 out float FogValue;
 out vec2 Texcoord;
@@ -78,10 +106,23 @@ void main(void)
 #if ENABLE_VERTEX_LIGHTING
     const int lights_index = int(light_offset_.x);
     // Slice 2 (object-offload) — Stage 2.C: calc_light() signature changed
-    // to 4-param. Pass WorldPos (Stuff-space world position) as
-    // vertex_world_pos — distances are rotation-invariant so any consistent
-    // world space works; WorldPos is what we already compute above.
-    VertexLight = calc_light(lights_index, Normal, WorldPos, base_light);
+    // to 4-param.
+    //
+    // VEHICLE-NIGHT-LIT-1: the original comment here claimed "distances are
+    // rotation-invariant so any consistent world space works". That is true
+    // only if BOTH operands share a frame. They do not: the light positions in
+    // the ObjectLights row are MC2-frame, so feeding a Stuff-frame vertex
+    // position makes the distance meaningless. Same for the normal vs
+    // light_dir. See the u_legacyLitMc2Frame block above.
+    if (u_legacyLitMc2Frame != 0) {
+        // MC2-frame feed, matching mech.vert and static_prop.vert.
+        // MC2WorldPos is already the Stuff->MC2 swap of WorldPos (line above);
+        // apply the identical swap to the normal.
+        vec3 normalMC2 = normalize(vec3(-Normal.x, Normal.z, Normal.y));
+        VertexLight = calc_light(lights_index, normalMC2, MC2WorldPos, base_light);
+    } else {
+        VertexLight = calc_light(lights_index, Normal, WorldPos, base_light);
+    }
 #else
     VertexLight = base_light;
 #endif

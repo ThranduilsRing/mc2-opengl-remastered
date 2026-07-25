@@ -220,7 +220,14 @@ enum class RendererFeature : int {
     // shade before upload so the horizon band matches the dark HDRI sky it sits
     // against. Default-OFF -> uploads the unscaled constant -> byte-identical.
     NightFogDim              = 47,  // MC2_NIGHT_FOG_DIM
-    COUNT                    = 48,
+    // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
+    // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
+    // It fed calc_light Stuff-frame position + normal while the ObjectLights
+    // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
+    // every positional light type failed its falloff distance test and vehicles
+    // received no pool / cone light at night. Default-OFF -> byte-identical.
+    LegacyLitMc2Frame        = 48,  // MC2_LEGACY_LIT_MC2_FRAME
+    COUNT                    = 49,
 };
 
 // ---------------------------------------------------------------------------
@@ -613,6 +620,14 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG cloud-bank pass (edge_fog.frag, eid 7158) painting a hardcoded bright-grey u_fogColor ({0.80,0.81,0.83}) that is never dimmed for the mission's night lighting; the HDRI sky it sits against measures dark (~0.27 in the same FBO). When ON, runEdgeFog and the frame-graph executor context scale edgeFogColor_ (and the sibling OOB fog color) by MC2_NIGHT_FOG_DIM_SCALE (default 0.35, tuned to the measured night-sky value) before upload so the horizon cloud bank matches the dark sky. Default-OFF -> unscaled constant uploaded -> byte-identical. The cinematic letterbox bars are drawn by a different path and are untouched."
+    },
+    // LegacyLitMc2Frame (VEHICLE-NIGHT-LIT-1)
+    {
+        "MC2_LEGACY_LIT_MC2_FRAME",
+        "MC2_LEGACY_LIT_MC2_FRAME",
+        EnvVarKind::Feature,
+        false,
+        "VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy mcTextureManager/ShapeRenderer lit program (gos_tex_vertex_lighted.vert) — the program that draws GROUND VEHICLES (GVAppearance::render -> gvShape->Render -> TG_Shape::Render -> addRenderShape -> ShapeRenderer::render). ObjectLights rows from GatherLightsParameters carry MC2-frame light_to_world translations and light_dir, and the two other calc_light consumers feed MC2-frame inputs (mech.vert passes worldMC2 + MC2 normal; static_prop.vert's worldPos is MC2-frame and STATIC-PROP-NORMAL-FRAME-FIX already swapped its normal). gos_tex_vertex_lighted.vert was the last consumer still passing STUFF-frame WorldPos and Normal, so length(vertex_world_pos - light_pos) mixed frames: GetFalloff rejected every POINT/SPOT/INFINITEWITHFALLOFF light and the INFINITE sun NdotL was ~90deg off. Vehicles therefore kept only base_light (static per-vertex aRGBLight seed) + AMBIENT and rendered as near-black silhouettes at night while mechs, buildings, fences and terrain in the SAME light pool were correctly lit — including trucks parked inside a guard-tower cone. When ON, the shader converts position and normal to the MC2 frame (MC2WorldPos, normalize(vec3(-n.x,n.z,n.y))) before calc_light, matching mech.vert/static_prop.vert. Default-OFF -> u_legacyLitMc2Frame=0 -> legacy Stuff-frame feed -> byte-identical. NOTE: this program is shared by other legacy lit shapes, so ON changes their lighting too (day included); that shared blast radius is why it is gated."
     },
 };
 

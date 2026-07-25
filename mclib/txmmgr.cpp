@@ -2189,6 +2189,19 @@ public:
 		// GPU projection via terrainMVP (skip for HUD elements which need legacy viewport projection)
 		gos_SetRenderMaterialParameterInt(mat, "gpuProjection", isHudElement ? 0 : 1);
 
+		// VEHICLE-NIGHT-LIT-1 killswitch: feed calc_light MC2-frame position +
+		// normal (matching mech.vert / static_prop.vert) instead of the legacy
+		// Stuff-frame pair. Default OFF => byte-identical to pre-fix output.
+		// See the u_legacyLitMc2Frame block in shaders/gos_tex_vertex_lighted.vert
+		// for the full root-cause writeup (vehicles received no point/spot light
+		// because the frames were mixed inside GetFalloff's distance test).
+		static const bool s_legacyLitMc2Frame = [](){
+			const char* v = getenv("MC2_LEGACY_LIT_MC2_FRAME");
+			return v && v[0] == '1' && v[1] == '\0';
+		}();
+		gos_SetRenderMaterialParameterInt(mat, "u_legacyLitMc2Frame",
+			s_legacyLitMc2Frame ? 1 : 0);
+
 		// [LIGHTSSBO v1] FORK-2: LightsData is now an SSBO; the UBO-
 		// reflection bind below would silently no-op (SSBO blocks are not
 		// in GL_ACTIVE_UNIFORM_BLOCKS) -> legacy lit meshes would render
