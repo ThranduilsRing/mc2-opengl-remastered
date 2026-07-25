@@ -94,6 +94,11 @@ GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
 BUILDING_PBR_PAYLOAD = [
     "data/tgl/HangarGLB.glb",
     "data/tgl/HangarGLB.mcasset.json",
+    # CONTRACT-HARNESS-REPAIR-1: marble cliff shipped in 5ded0f19 with repo
+    # assets + ini wiring but was never added here, so it never reached an
+    # install tree (data/tgl is enumerated file-by-file, not copied wholesale).
+    "data/tgl/marblecliff.ini",
+    "data/tgl/MarbleCliffGLB.glb",
     "data/tgl/quonset.ini",
     "data/tgl/QuonsetGLB.glb",
     "data/tgl/QuonsetGLB.mcasset.json",

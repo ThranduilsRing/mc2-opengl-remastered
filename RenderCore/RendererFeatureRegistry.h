@@ -2045,6 +2045,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "RUNWAY-APRON-TONE-2 absolute cross-map target tone, \"r,g,b\" in 0..255. When set, every map's cement catalog is normalised to this same tone, which is what makes runways read identically across missions. Unset => each map uses its own upper-cluster band median (the concrete apron tone). No effect unless MC2_RUNWAY_TONE_MATCH is on."
     },
     {
+        "MC2_FEATURE_CEMENT_LIT",
+        "MC2_CEMENT_LIT",
+        EnvVarKind::Feature,
+        false,
+        "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully flat-lit slab (terrain_lod_chunk.frag historically forced normalLight = mix(normalLight, 1.0, pureConcrete)). MEASURED ROOT CAUSE: at that pose the apron is drawn from the flat-lit cement catalog atlas at luminance 145..171 while the runway under the parked aircraft is NOT cement-classified at all -- the MC2_TERRAIN_LOD_CHUNK_DIAG=32768 class view shows it uncoloured, i.e. baked colormap only -- and so is drawn through the full terrain lighting at luminance 65. Two sources, one of them lighting-exempt, is why a single runway changes tone along its length and why the apron reads as pasted art. At 1.0 cement obeys the same light as the terrain it sits on, so the two sources stay in a consistent relationship under sun, dusk and night. DEFAULT 0.0 = byte-identical stock. Per-frame cost: one extra uniform upload."
+    },
+    {
         "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK",
         "MC2_CEMENT_TRANSITION_FALLBACK",
         EnvVarKind::Feature,

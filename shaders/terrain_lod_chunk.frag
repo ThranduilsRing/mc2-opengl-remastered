@@ -271,6 +271,15 @@ uniform float u_moverContactShadow;
 uniform vec3  u_padGlow;
 uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 128
 
+// RUNWAY-APRON-TONE-2 (MC2_CEMENT_LIT, default 0.0 == stock): how much of the
+// terrain's own lighting cement participates in. Stock forces cement fully
+// flat-lit (normalLight = 1.0), so a flat-lit apron sampled from the cement
+// atlas and a LIT runway drawn from the baked colormap diverge by the whole
+// lighting term -- measured 145..171 vs 65 luminance on mc2_10 @ 204937, which
+// is the "runway is grey here and black there" the user reports. 1.0 = cement
+// obeys the same light as the terrain it sits on.
+uniform float u_cementLit;
+
 // Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
 // u_padGlowSpill wu of world distance to the nearest cement tile rect (3x3
 // tile neighborhood — spill is clamped < 128 wu = one tile, so ring-1 is
@@ -1709,7 +1718,13 @@ void main() {
     float NdotL       = dot(N, terrainLightDir.xyz);
     float diffuse     = clamp(NdotL, 0.02, 1.0);
     float normalLight = ((u_diag & 4) != 0) ? 1.0 : mix(0.35, 1.20, diffuse);
-    normalLight = mix(normalLight, 1.0, pureConcrete);  // cement: fully flat-lit slab
+    // Cement lighting. Stock (u_cementLit == 0.0) forces the fully flat-lit slab
+    // and is bit-identical to the historical `mix(normalLight, 1.0, pureConcrete)`.
+    // RUNWAY-APRON-TONE-2: at u_cementLit == 1.0 cement keeps the terrain's own
+    // normalLight, so apron (cement atlas) and runway (baked colormap) share one
+    // lighting term and stop reading as two unrelated materials.
+    float cementLight = mix(1.0, normalLight, u_cementLit);
+    normalLight = mix(normalLight, cementLight, pureConcrete);
 
     float shadow = 1.0;
     if ((u_diag & 8) == 0) {

@@ -1546,6 +1546,8 @@ def main():
                             "MC2_RUNWAY_TONE_MATCH",
                             "MC2_RUNWAY_TONE_STRENGTH",
                             "MC2_RUNWAY_TONE_TARGET",
+                            # RUNWAY-APRON-TONE-2: cement lighting participation.
+                            "MC2_CEMENT_LIT",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
