@@ -949,7 +949,7 @@ void PackAndDispatch() {
         }();
         static const float s_lightRealismPoolSpill = []() {
             const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_SPILL");
-            float f = 1.6f;
+            float f = 2.2f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 1.6)
             if (v && v[0]) f = static_cast<float>(std::atof(v));
             if (f < 0.25f) f = 0.25f;
             if (f > 4.0f)  f = 4.0f;
@@ -957,7 +957,7 @@ void PackAndDispatch() {
         }();
         static const float s_lightRealismPoolCore = []() {
             const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_CORE");
-            float f = 0.15f;
+            float f = 0.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 0.15)
             if (v && v[0]) f = static_cast<float>(std::atof(v));
             if (f < 0.0f) f = 0.0f;
             if (f > 1.0f) f = 1.0f;

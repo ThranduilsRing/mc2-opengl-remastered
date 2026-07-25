@@ -268,11 +268,16 @@ bool realism_enabled()
 }
 
 // Multiplies the cone's peak vertex alpha. <1 = more transparent.
+// AUDIT-TRUTH-1: 0.40 is USER-APPROVED variant B. (Variant A shipped 0.55; the
+// user graded A vs B side by side and chose B.) A later lane proposed 0.15 on
+// the theory that the residual harshness is additive saturation (gos_Alpha_OneOne)
+// rather than alpha -- that is an ALTERNATIVE, not the default; test it with
+// MC2_LIGHT_REALISM_CONE_OPACITY=0.15.
 static float realism_cone_opacity()
 {
     static const float s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM_CONE_OPACITY");
-        float f = 0.55f;
+        float f = 0.40f;   // variant B (user-approved)
         if (v && v[0]) f = (float)std::atof(v);
         return clampf(f, 0.0f, 4.0f);
     }();
@@ -285,7 +290,7 @@ static float realism_cone_feather()
 {
     static const float s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM_CONE_FEATHER");
-        float f = 1.5f;
+        float f = 2.5f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 1.5)
         if (v && v[0]) f = (float)std::atof(v);
         return clampf(f, 0.0f, 8.0f);
     }();
@@ -670,7 +675,7 @@ static float realism_beacon_alpha()
 {
     static const float s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON");
-        float f = 45.0f;
+        float f = 70.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 45)
         if (v && v[0]) f = (float)std::atof(v);
         return clampf(f, 0.0f, 255.0f);
     }();
@@ -682,7 +687,7 @@ static float realism_beacon_radius()
 {
     static const float s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON_RADIUS");
-        float f = 28.0f;
+        float f = 40.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 28)
         if (v && v[0]) f = (float)std::atof(v);
         return clampf(f, 1.0f, 200.0f);
     }();
