@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-07-07** — fixed by fc1b2d4f/2029c044, user-confirmed (see HANDOFF-ui-phase1-bugs-2026-07-05.md). Kept for archaeology only.
+
 # HANDOFF: mech-preview-panel FBO composite — mid-debug, root cause not fully found
 
 Session: UI-phase1 integration (modder's ImGui UI merge) → cursor-z-order fix → mech-bay/mechlopedia
