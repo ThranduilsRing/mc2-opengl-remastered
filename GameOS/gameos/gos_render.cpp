@@ -47,6 +47,12 @@ struct RenderContext {
 
 static void apply_mouse_grab(SDL_Window* window, bool grabbed)
 {
+    // SMOKE-NO-CURSOR-STEAL-1: under automation never clamp/grab the pointer.
+    // Force the released state once so a pre-existing clip cannot survive.
+    if (gos_CursorControlSuppressed()) {
+        grabbed = false;
+    }
+
 #ifdef PLATFORM_WINDOWS
     if (!grabbed) {
         if (!ClipCursor(NULL)) {
@@ -333,6 +339,13 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             const bool resizable = !(renv && renv[0] == '0');
             if (windowed && resizable)
                 winFlags |= SDL_WINDOW_RESIZABLE;
+        }
+        // SMOKE-NO-CURSOR-STEAL-1: automated runs should not steal FOCUS either
+        // -- the user keeps typing in whatever window was already active.
+        // SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN is honored by the Windows
+        // backend (ShowWindow SW_SHOWNOACTIVATE); harmless no-op elsewhere.
+        if (gos_CursorControlSuppressed()) {
+            SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, "1");
         }
         window = SDL_CreateWindow(pwinname ? pwinname : "--",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, winFlags);

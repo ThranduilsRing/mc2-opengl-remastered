@@ -15,6 +15,12 @@
 
 - `MC2_VERIFY_MODE` — mode for the live `MC2_VERIFY` guard family (`docs/verify-primitive.md`). `log` (**default**): shadow-log `[VERIFY]` lines to stderr + crash-bundle ring, continue; `[VERIFY] mission-end fires=N` counter at Mission::destroy. `fatal`: STOP with message + crash bundle + hard terminate (exit 0xE0564631). `off`: exactly-legacy (silent, guarded degradations skipped). Smoke-allowlisted.
 
+## Cursor / focus hands-off for automation (SMOKE-NO-CURSOR-STEAL-1)
+
+- `MC2_NO_CURSOR_GRAB` — suppress **all** OS-cursor manipulation by the engine: the window-creation mouse grab (`SDL_SetWindowMouseGrab` + Win32 `ClipCursor` clamp to the client rect, re-asserted on every `FOCUS_GAINED`/resize/move), and every pointer warp through `gos_SetMousePosition` → `SDL_WarpMouseInWindow` (notably the tutorial `guiFrozen` path in `missiongui.cpp`, which recenters the pointer **every frame**). Also sets `SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN=1` so the game window does not steal keyboard focus on show.
+  **Default: suppression is ON whenever `MC2_SMOKE_MODE` is set** — i.e. every agent-driven smoke / visual_verify / capture / screenshot harness gets it for free (they all set `MC2_SMOKE_MODE=1`; `scripts/smoke_lib/runner.py:83`). Interactive launches (neither var set) keep exactly the legacy behavior.
+  `=1` forces suppression on even for an interactive launch; `=0` forces it **off** even under smoke (escape hatch, e.g. reproducing a grab-dependent bug headlessly). Evaluated once and cached (`gos_CursorControlSuppressed()`, `GameOS/gameos/gameos_input.cpp`).
+
 ## Crash-soak harness (MC2_SOAK_AUTOWIN)
 
 - `MC2_SOAK_AUTOWIN=1` — with a campaign booted via `MC2_BOOT_TO_BAY`, auto-launches each mission from logistics (no clicks), auto-wins it, lets the campaign auto-advance, and repeats until `campaign-complete`. Emits `[SOAK]` stdout markers (autowin/advance/launch/campaign-complete). Default OFF = byte-identical.

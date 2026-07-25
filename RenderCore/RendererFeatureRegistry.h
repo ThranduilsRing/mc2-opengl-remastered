@@ -628,6 +628,19 @@ static_assert(
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
+        "MC2_TRACE_NO_CURSOR_GRAB",
+        "MC2_NO_CURSOR_GRAB",
+        EnvVarKind::Trace,
+        false,
+        "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window "
+        "mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- "
+        "plus window activation on show, so an unattended launch never yanks the "
+        "user's pointer or focus away from another window. Automated runs get "
+        "this for free: suppression defaults ON whenever MC2_SMOKE_MODE is set. "
+        "=1 forces it on for an interactive launch; =0 forces it off even under "
+        "smoke. Unset + no smoke = legacy interactive behavior, unchanged."
+    },
+    {
         "MC2_TRACE_UI_IMGUI_PAUSE",
         "MC2_UI_IMGUI_PAUSE",
         EnvVarKind::Trace,

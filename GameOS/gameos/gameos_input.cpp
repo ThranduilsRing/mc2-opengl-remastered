@@ -14,6 +14,33 @@
 // which under HiDPI diverges from the physical drawable. See gos_GetMouseInfo.
 extern SDL_Window* g_sdl_window;
 
+// SMOKE-NO-CURSOR-STEAL-1 -----------------------------------------------------
+// Automated launches (smoke / visual_verify / capture harness) used to steal the
+// user's mouse: the window-creation mouse-grab clamps the pointer into the game
+// window via Win32 ClipCursor, and the engine also warps the pointer outright
+// (gos_SetMousePosition -> SDL_WarpMouseInWindow; e.g. the tutorial guiFrozen
+// path recenters every frame). Both are pointless for an unattended run and
+// interrupt whatever the user is doing in another window.
+//
+// Policy (evaluated once, cached):
+//   MC2_NO_CURSOR_GRAB=1  -> suppressed (explicit, works interactively too)
+//   MC2_NO_CURSOR_GRAB=0  -> NOT suppressed (escape hatch, even under smoke)
+//   otherwise             -> suppressed iff MC2_SMOKE_MODE is set
+// Interactive launches (neither var set) keep exactly today's behavior.
+bool gos_CursorControlSuppressed()
+{
+    static int s_state = -1;
+    if (s_state < 0) {
+        const char* explicitVar = std::getenv("MC2_NO_CURSOR_GRAB");
+        if (explicitVar && explicitVar[0]) {
+            s_state = (explicitVar[0] == '0') ? 0 : 1;
+        } else {
+            s_state = std::getenv("MC2_SMOKE_MODE") ? 1 : 0;
+        }
+    }
+    return s_state == 1;
+}
+
 // MC2_VK_PICK_PROBE test hook: inject a synthetic raw SDL mouse point (window-
 // points space) so the pick probe can drive the exact production normalize path.
 namespace input { void setMouseInfoRaw(float x, float y); }
@@ -150,6 +177,9 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
 {
+    // SMOKE-NO-CURSOR-STEAL-1: never warp the OS pointer under automation.
+    if(gos_CursorControlSuppressed())
+        return;
     if(g_sdl_window) {
         // XPosition/YPosition arrive as normalized 0..1 coordinates — the
         // write side of the contract established by gos_GetMouseInfo. Must use

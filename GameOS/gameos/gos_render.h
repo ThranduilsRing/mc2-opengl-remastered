@@ -3,6 +3,16 @@
 
 #include <SDL2/SDL.h>
 
+// SMOKE-NO-CURSOR-STEAL-1: true when this process must NOT touch the OS cursor
+// (no SDL_WarpMouseInWindow, no window mouse-grab, no Win32 ClipCursor).
+// Automated runs (MC2_SMOKE_MODE=1) default to suppressed so agent-driven
+// smoke / visual_verify / capture launches never yank the user's pointer out of
+// whatever window they are working in. MC2_NO_CURSOR_GRAB is the explicit
+// override in BOTH directions: =1 forces suppression on (even interactive),
+// =0 forces it off (even under smoke). Defined in gameos_input.cpp so the MFC
+// editor shell (which replaces gos_render.cpp) links too.
+bool gos_CursorControlSuppressed();
+
 namespace graphics {
 
 struct RenderWindow;
