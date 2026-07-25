@@ -2008,6 +2008,28 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "CEMENT-ATLAS-TONE-MATCH-1 (MC2-03-CEMENT-PINK-1): cure the concrete PATCHWORK on airbase aprons/runways (mc2_24, mc2_03). The cement catalog packs concrete art from multiple authored families whose base tone differs materially (measured mc2_24: (134,130,120) warm tan vs (100,100,100) neutral grey). Cement fragments are FLAT-LIT by design (terrain_lod_chunk.frag forces normalLight=1.0 where pureConcrete=1), so no shared lighting term unifies them and the raw per-cell tone difference is exposed at full contrast with straight tile-boundary seams. BuildCementCatalogAtlas normalises every cell's CONCRETE-BAND colour (the [P50,P90] luminance window, which excludes dark asphalt/markings and highlights) to the component-wise MEDIAN across cells, per channel so brightness AND tint match, with per-channel gain clamped to [0.70,1.40]. Per-cell detail (slab lines, cracks, road markings) is untouched. DEFAULT OFF: the atlas buffer is left byte-identical. Runs once per mission load; zero per-frame cost."
     },
+    // RUNWAY-APRON-TONE-2: cross-map absolute runway/apron tone normalisation.
+    {
+        "MC2_FEATURE_RUNWAY_TONE_MATCH",
+        "MC2_RUNWAY_TONE_MATCH",
+        EnvVarKind::Feature,
+        false,
+        "RUNWAY-APRON-TONE-2 (user report, mc2_10 close ground pose): the runway renders as a dark asphalt band against a pale concrete apron, and differs map to map. CEMENT-ATLAS-TONE-MATCH-1 could not close this because it clamps its per-channel gain to [0.70,1.40]: an asphalt-DOMINANT cell has its whole [P50,P90] band inside the asphalt (runway0000 band mean ~53), so reaching a ~123..149 concrete reference needs 2.3x-2.8x and the clamp caps it at +40%. This pass re-measures every cement cell's concrete band AFTER the tone-match pass and pulls it onto an ABSOLUTE cross-map target with a wide [0.35,4.0] gain, so the runway lands on the same colour on every mission rather than merely closer to its own map's median. Highlights (lane markings, painted numbers) pass through a soft knee (linear to 190, asymptotic to 255) so they stay distinct instead of clipping flat. Target defaults to the map's UPPER-cluster band median (the concrete apron tone, not a median dragged down by asphalt cells) and is overridable with MC2_RUNWAY_TONE_TARGET=\"r,g,b\"; MC2_RUNWAY_TONE_STRENGTH (0..1, default 1) is the taste dial. DEFAULT OFF: the atlas buffer is left byte-identical. Once per mission load, zero per-frame cost. The [CEMENT_CELL_TONE v1] per-cell census prints regardless of the gate."
+    },
+    {
+        "MC2_FEATURE_RUNWAY_TONE_STRENGTH",
+        "MC2_RUNWAY_TONE_STRENGTH",
+        EnvVarKind::Feature,
+        false,
+        "RUNWAY-APRON-TONE-2 taste dial, 0..1 (default 1.0). Lerps the per-channel gain of MC2_RUNWAY_TONE_MATCH toward 1.0, so 0 = no change and 1 = land exactly on the target tone. No effect unless MC2_RUNWAY_TONE_MATCH is on."
+    },
+    {
+        "MC2_FEATURE_RUNWAY_TONE_TARGET",
+        "MC2_RUNWAY_TONE_TARGET",
+        EnvVarKind::Feature,
+        false,
+        "RUNWAY-APRON-TONE-2 absolute cross-map target tone, \"r,g,b\" in 0..255. When set, every map's cement catalog is normalised to this same tone, which is what makes runways read identically across missions. Unset => each map uses its own upper-cluster band median (the concrete apron tone). No effect unless MC2_RUNWAY_TONE_MATCH is on."
+    },
     {
         "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK",
         "MC2_CEMENT_TRANSITION_FALLBACK",

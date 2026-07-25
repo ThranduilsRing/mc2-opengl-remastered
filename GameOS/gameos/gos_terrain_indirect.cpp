@@ -918,6 +918,116 @@ static bool CementTransitionFallbackEnabled() {
     return s;
 }
 
+// ---------------------------------------------------------------------------
+// RUNWAY-APRON-TONE-2 (user report, mc2_10 close ground pose): "all of the
+// runways should be the same color ... they should ALWAYS be the color that
+// they are on top of concrete like in mc2_01."
+//
+// WHY THE GAP SURVIVED CEMENT-ATLAS-TONE-MATCH-1: that pass normalises each
+// cell's [P50,P90] concrete band to the atlas median, but clamps the per-channel
+// gain to [0.70,1.40]. A runway cell whose art is asphalt-DOMINANT has its whole
+// [P50,P90] window inside the asphalt (band mean ~53 on runway0000), so the gain
+// it needs to reach a ~123..149 concrete reference is 2.3x-2.8x -- far outside
+// the clamp. It gets +40% at most and stays visibly a dark band against a pale
+// apron. The clamp, not the band window, is the reason. (The band window comment
+// "excludes dark asphalt" only holds for a MIXED cell; for a wholly-asphalt cell
+// the band IS the asphalt.)
+//
+// FIX (MC2_RUNWAY_TONE_MATCH, default OFF): a second, wide-gain pass that pulls
+// EVERY cement cell's concrete band onto one ABSOLUTE cross-map target -- so the
+// runway lands on the same colour on every mission, not merely closer to its own
+// map's median. Highlights (lane markings, painted numbers) go through a soft
+// knee instead of a hard clip so they stay distinct from the paving instead of
+// blowing to flat white.
+static bool RunwayToneMatchEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_RUNWAY_TONE_MATCH");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
+// 0..1 taste dial; 1.0 = land exactly on the target, 0.0 = no change.
+static float RunwayToneStrength() {
+    static const float s = []() {
+        const char* v = getenv("MC2_RUNWAY_TONE_STRENGTH");
+        float f = v && v[0] ? (float)atof(v) : 1.0f;
+        return std::min(1.0f, std::max(0.0f, f));
+    }();
+    return s;
+}
+
+// Absolute cross-map target, "r,g,b". Empty => use this map's own upper-cluster
+// median (cells at or above the atlas median band luminance), which is the
+// concrete-apron tone rather than a median dragged down by asphalt cells.
+static bool RunwayToneTargetOverride(float& r, float& g, float& b) {
+    static float tr = -1.f, tg = -1.f, tb = -1.f;
+    static const bool have = []() {
+        const char* v = getenv("MC2_RUNWAY_TONE_TARGET");
+        if (!v || !v[0]) return false;
+        return sscanf(v, "%f,%f,%f", &tr, &tg, &tb) == 3
+               && tr > 0.f && tg > 0.f && tb > 0.f;
+    }();
+    if (!have) return false;
+    r = tr; g = tg; b = tb;
+    return true;
+}
+
+// Mean RGB over the [P50,P90] luminance window of atlas cell k (the "concrete
+// band"). Returns false when the cell has too few usable texels.
+static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
+                               int atlasPixelSide, int gridSide, int txmSize,
+                               int k, float& outR, float& outG, float& outB) {
+    const int dstX = (k % gridSide) * txmSize;
+    const int dstY = (k / gridSide) * txmSize;
+    std::vector<float> lum;
+    lum.reserve((size_t)txmSize * (size_t)txmSize);
+    for (int py = 0; py < txmSize; ++py) {
+        const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+        for (int px = 0; px < txmSize; ++px) {
+            const uint32_t c = row[px];
+            lum.push_back(0.299f * float((c >> 16) & 0xFFu)
+                        + 0.587f * float((c >>  8) & 0xFFu)
+                        + 0.114f * float( c        & 0xFFu));
+        }
+    }
+    std::vector<float> sorted(lum);
+    std::sort(sorted.begin(), sorted.end());
+    const size_t n = sorted.size();
+    const float p50 = sorted[n * 50 / 100];
+    const float p90 = sorted[n * 90 / 100];
+    double sr = 0.0, sg = 0.0, sb = 0.0; long cnt = 0;
+    for (int py = 0; py < txmSize; ++py) {
+        const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+        for (int px = 0; px < txmSize; ++px) {
+            const uint32_t c = row[px];
+            const float b = float( c        & 0xFFu);
+            const float g = float((c >>  8) & 0xFFu);
+            const float r = float((c >> 16) & 0xFFu);
+            const float L = 0.299f * r + 0.587f * g + 0.114f * b;
+            if (L < p50 || L > p90) continue;
+            sr += r; sg += g; sb += b; ++cnt;
+        }
+    }
+    if (cnt < 16) return false;
+    outR = (float)(sr / (double)cnt);
+    outG = (float)(sg / (double)cnt);
+    outB = (float)(sb / (double)cnt);
+    return outR >= 4.f && outG >= 4.f && outB >= 4.f;
+}
+
+// Soft-knee scale: linear up to `knee`, then asymptotic toward 255, so a lane
+// marking scaled by a 2.5x gain stays a marking instead of clipping to flat 255.
+static inline uint32_t RunwayToneScale(float v, float gain) {
+    const float knee = 190.f;
+    float y = v * gain;
+    if (y > knee) {
+        const float head = 255.f - knee;
+        y = 255.f - head * expf(-(y - knee) / head);
+    }
+    return (uint32_t)std::min(255.f, std::max(0.f, y));
+}
+
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut BARE terrain (no authored transition art), curing the hard full-tile
 // stairstep cliff. Default OFF (killswitch). When ON, PopulateRecipeCementWords
@@ -1720,6 +1830,110 @@ void BuildCementCatalogAtlas() {
                "ref_rgb=%.1f,%.1f,%.1f\n",
                (::missionName[0] ? ::missionName : "unknown"), N, adjusted, refR, refG, refB);
         fflush(stdout);
+    }
+
+    // ---- RUNWAY-APRON-TONE-2: per-cell tone census (always) + gated wide-gain
+    //      absolute-target normalisation.
+    {
+        auto* ttNames = Terrain::terrainTextures;
+        std::vector<float> bR((size_t)N, 0.f), bG((size_t)N, 0.f), bB((size_t)N, 0.f);
+        std::vector<int>   bOk((size_t)N, 0);
+        std::vector<float> bL;
+        bL.reserve((size_t)N);
+        for (int k = 0; k < N; ++k) {
+            if (CementCellBandMean(atlasBuf, atlasPixelSide, gridSide, txmSize, k,
+                                   bR[(size_t)k], bG[(size_t)k], bB[(size_t)k])) {
+                bOk[(size_t)k] = 1;
+                bL.push_back(0.299f * bR[(size_t)k] + 0.587f * bG[(size_t)k]
+                           + 0.114f * bB[(size_t)k]);
+            }
+        }
+        std::vector<float> sortedL(bL);
+        std::sort(sortedL.begin(), sortedL.end());
+        const float medL = sortedL.empty() ? 0.f : sortedL[sortedL.size() / 2];
+
+        // Upper-cluster (concrete) median per channel: cells at/above medL. This
+        // is the apron tone, not a median dragged down by asphalt runway cells.
+        auto upperMedian = [&](const std::vector<float>& v) -> float {
+            std::vector<float> t;
+            for (int k = 0; k < N; ++k) {
+                if (!bOk[(size_t)k]) continue;
+                const float L = 0.299f * bR[(size_t)k] + 0.587f * bG[(size_t)k]
+                              + 0.114f * bB[(size_t)k];
+                if (L + 0.001f >= medL) t.push_back(v[(size_t)k]);
+            }
+            if (t.empty()) return 0.f;
+            std::sort(t.begin(), t.end());
+            return t[t.size() / 2];
+        };
+        float tgtR = upperMedian(bR), tgtG = upperMedian(bG), tgtB = upperMedian(bB);
+        const bool overridden = RunwayToneTargetOverride(tgtR, tgtG, tgtB);
+
+        // Census: summary always; per-cell lines under the indirect trace, plus
+        // the DARK OUTLIERS (the runway/asphalt families) unconditionally, since
+        // those are the cells the user is looking at.
+        long darkCells = 0;
+        for (int k = 0; k < N; ++k) {
+            if (!bOk[(size_t)k]) continue;
+            const float L = 0.299f * bR[(size_t)k] + 0.587f * bG[(size_t)k]
+                          + 0.114f * bB[(size_t)k];
+            const float tgtL = 0.299f * tgtR + 0.587f * tgtG + 0.114f * tgtB;
+            const bool dark = (tgtL > 1.f) && (L < 0.70f * tgtL);
+            if (dark) ++darkCells;
+            if (dark || traceOn()) {
+                const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
+                const long nameId = (ttNames && slot >= 0)
+                                    ? ttNames->getTextureNameID(slot) : -1;
+                printf("[CEMENT_CELL_TONE v1] mission=%s cell=%d slot=%d nameId=%ld "
+                       "band_rgb=%.1f,%.1f,%.1f band_lum=%.1f dark=%d\n",
+                       (::missionName[0] ? ::missionName : "unknown"), k, slot, nameId,
+                       bR[(size_t)k], bG[(size_t)k], bB[(size_t)k], L, dark ? 1 : 0);
+            }
+        }
+        printf("[CEMENT_CELL_TONE v1] event=census mission=%s cells=%d usable=%d "
+               "median_lum=%.1f target_rgb=%.1f,%.1f,%.1f target_src=%s dark_cells=%ld\n",
+               (::missionName[0] ? ::missionName : "unknown"), N, (int)bL.size(),
+               medL, tgtR, tgtG, tgtB, overridden ? "env" : "upper_median", darkCells);
+        fflush(stdout);
+
+        if (RunwayToneMatchEnabled() && N > 0 && tgtR > 0.f && tgtG > 0.f && tgtB > 0.f) {
+            const float strength = RunwayToneStrength();
+            long adjusted = 0;
+            for (int k = 0; k < N; ++k) {
+                if (!bOk[(size_t)k]) continue;
+                // WIDE clamp -- this is the whole point. [0.70,1.40] is what kept
+                // an asphalt runway (band ~53) from ever reaching a ~123 concrete
+                // apron; 2.3x is required and legitimate.
+                auto gainOf = [&](float tgt, float cur) {
+                    float g = std::min(4.0f, std::max(0.35f, tgt / cur));
+                    return 1.0f + strength * (g - 1.0f);   // taste dial
+                };
+                const float gr = gainOf(tgtR, bR[(size_t)k]);
+                const float gg = gainOf(tgtG, bG[(size_t)k]);
+                const float gb = gainOf(tgtB, bB[(size_t)k]);
+                if (gr > 0.995f && gr < 1.005f && gg > 0.995f && gg < 1.005f
+                    && gb > 0.995f && gb < 1.005f) continue;
+                ++adjusted;
+                const int dstX = (k % gridSide) * txmSize;
+                const int dstY = (k / gridSide) * txmSize;
+                for (int py = 0; py < txmSize; ++py) {
+                    uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                    for (int px = 0; px < txmSize; ++px) {
+                        const uint32_t c = row[px];
+                        const uint32_t a = c & 0xFF000000u;
+                        const uint32_t bi = RunwayToneScale(float( c        & 0xFFu), gb);
+                        const uint32_t gi = RunwayToneScale(float((c >>  8) & 0xFFu), gg);
+                        const uint32_t ri = RunwayToneScale(float((c >> 16) & 0xFFu), gr);
+                        row[px] = a | (ri << 16) | (gi << 8) | bi;
+                    }
+                }
+            }
+            printf("[RUNWAY_TONE_MATCH v1] event=applied mission=%s cells=%d adjusted=%ld "
+                   "target_rgb=%.1f,%.1f,%.1f strength=%.2f target_src=%s\n",
+                   (::missionName[0] ? ::missionName : "unknown"), N, adjusted,
+                   tgtR, tgtG, tgtB, strength, overridden ? "env" : "upper_median");
+            fflush(stdout);
+        }
     }
 
     // TEX-CLASS: asset-pool -- cement/road overlay atlas (content)
