@@ -45,9 +45,12 @@
 //     in this header is consulted by mclib/bdactor.cpp.
 //
 // GATE: MC2_VIS_SEMANTICS, default ON (correctness fix). =0 restores the
-// pre-lane predicates exactly. SUPERSEDES MC2_LIGHT_MOVER_VIS_GATE and
-// MC2_LIGHT_CONE_VIS_GATE, which remain registered as legacy killswitches:
-// setting either to 0 also forces this module off for its concern.
+// pre-lane sensorLevel predicates. SUPERSEDES MC2_LIGHT_MOVER_VIS_GATE and
+// MC2_LIGHT_CONE_VIS_GATE, which are PARKED default-OFF (89f0ed4f) and are
+// deliberately NOT ANDed in — consulting them would leave this module dead on
+// arrival. Setting either legacy gate to 1 arms its own job independently;
+// setting either to 0 does NOT disable this module. MC2_FORCE_ALL_VISIBLE=1
+// (a diagnostic, default ON only under the smoke runner) disarms everything.
 //---------------------------------------------------------------------------
 #ifndef VIS_SEMANTICS_H
 #define VIS_SEMANTICS_H

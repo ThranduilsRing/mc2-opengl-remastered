@@ -28,9 +28,12 @@ bool enabled()
     // SUPERSEDED, not ANDed in: GHOST-CONE-VERIFY-4 parked both default-OFF
     // (commit 89f0ed4f) as a safe holding position, so consulting them here
     // would leave this lane's fix dead on arrival. With MC2_VIS_SEMANTICS=0
-    // the fallbacks below route back through mover_model_shown(), which in
-    // its parked state returns true — i.e. exactly the parked legacy
-    // behaviour, byte-for-byte.
+    // the fallbacks below reproduce mover_model_shown()'s ARMED predicate
+    // (legacyVisible && (sensorLevel==0 || sensorLevel>=5)) inline; note that
+    // in its PARKED state mover_model_shown() itself returns true
+    // unconditionally, so =0 is stricter than stock, not looser.
+    // VIS-SEMANTICS-FINISH-2: mover_model_shown() now has no live callers —
+    // both job-(a) guards in cone_glow.cpp arm off vis_job_a_armed().
     static const bool s = env_default_on("MC2_VIS_SEMANTICS");
     return s;
 }

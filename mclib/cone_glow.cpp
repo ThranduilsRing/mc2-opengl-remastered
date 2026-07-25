@@ -200,6 +200,27 @@ bool mover_model_shown(long sensorLevel)
     return (sensorLevel == 0) || (sensorLevel >= 5);
 }
 
+// VIS-SEMANTICS-FINISH-2 — arming predicate shared by BOTH job-(a) MESH DRAWN
+// guards in this file: the alpha guard below and the stale-emitter turn guard
+// in QueueConeGlow. Before this lane the turn guard consulted
+// vis_gate_enabled() alone, i.e. the PARKED MC2_LIGHT_CONE_VIS_GATE, so a
+// culled / LOD-dropped / off-map-staged mover still emitted its cone even with
+// MC2_VIS_SEMANTICS on — the "lit beam hanging in mid-air with no emitter under
+// it" report. Both guards now arm off MC2_VIS_SEMANTICS (default ON), with the
+// parked legacy gate still arming them independently when =1.
+//
+// This is a per-frame DATA-FRESHNESS predicate, not a fog-of-war one: it fires
+// only when the emitter's own leaf was not transformed this frame, in which
+// case the mesh is not on screen at all. It therefore CANNOT blind a player or
+// allied unit that is actually being drawn — the regression mode that got
+// MC2_LIGHT_MOVER_VIS_GATE parked came from the sensorLevel fairness predicate,
+// which lives in mc2_vis::emitsLight() and exempts friendlies outright.
+static bool vis_job_a_armed()
+{
+    if (mc2_vis::force_all_visible()) return false;
+    return mc2_vis::enabled() || vis_gate_enabled();
+}
+
 // GHOST-CONE-VERIFY-4 — cone GEOMETRY leak; see cone_glow.h for the full
 // rationale and why the predicate is alpha-based rather than sensorLevel-based.
 // VISIBILITY-SEMANTICS-1: this IS job (a) MESH DRAWN, expressed on the only
@@ -208,10 +229,9 @@ bool mover_model_shown(long sensorLevel)
 // at 0xff and are untouched — buildings are exempt from every mover rule.
 bool cone_geom_hidden_by_alpha(unsigned alphaValue)
 {
-    if (mc2_vis::force_all_visible()) return false;
     // Armed by MC2_VIS_SEMANTICS (default ON) — this lane owns job (a) now.
     // The parked MC2_LIGHT_CONE_VIS_GATE=1 still arms it independently.
-    if (!mc2_vis::enabled() && !vis_gate_enabled()) return false;
+    if (!vis_job_a_armed()) return false;
     return (alphaValue == 0u);
 }
 
@@ -388,8 +408,14 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     //
     // Fix: apply the renderer's OWN staleness predicate to the emitter. If the
     // model leaf would not be drawn this frame, its glow is not queued.
-    // Killswitch MC2_LIGHT_CONE_VIS_GATE=0 -> legacy (emit regardless).
-    if (ownerIsMover && vis_gate_enabled() && rec->node
+    // VIS-SEMANTICS-FINISH-2: this guard used to consult vis_gate_enabled()
+    // alone. GHOST-CONE-VERIFY-4 (89f0ed4f) then PARKED MC2_LIGHT_CONE_VIS_GATE
+    // default-OFF, which silently disarmed exactly the guard whose comment above
+    // describes the user's symptom, leaving the successor MC2_VIS_SEMANTICS
+    // covering only the alpha==0 path. It now arms off vis_job_a_armed()
+    // (MC2_VIS_SEMANTICS default ON, legacy gate =1 still arms independently,
+    // MC2_FORCE_ALL_VISIBLE=1 disarms for diagnostic captures).
+    if (ownerIsMover && vis_job_a_armed() && rec->node
         && rec->node->GetLastTurnTransformed() != (DWORD)turn)
     {
         if (aim_diag_enabled())
