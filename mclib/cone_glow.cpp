@@ -182,6 +182,14 @@ bool mover_model_shown(long sensorLevel)
     return (sensorLevel == 0) || (sensorLevel >= 5);
 }
 
+// GHOST-CONE-VERIFY-4 — cone GEOMETRY leak; see cone_glow.h for the full
+// rationale and why the predicate is alpha-based rather than sensorLevel-based.
+bool cone_geom_hidden_by_alpha(unsigned alphaValue)
+{
+    if (!vis_gate_enabled()) return false;        // legacy: emit regardless
+    return (alphaValue == 0u);
+}
+
 // ---- LIGHT-REALISM-1 --------------------------------------------------------
 // User rejection (2026-07-24, mc2_10 night): "the cones are ultra visible, they
 // need to be feathered / more transparent ... the light sources need to mimic

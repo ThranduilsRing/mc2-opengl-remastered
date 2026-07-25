@@ -122,4 +122,28 @@ bool mover_model_shown(long sensorLevel);
 // MC2_LIGHT_MOVER_VIS_GATE killswitch (=0 restores the legacy leak).
 bool mover_vis_gate_enabled();
 
+// GHOST-CONE-VERIFY-4 — the cone GEOMETRY leak (distinct from the pool light
+// and the additive glow, both closed by GHOST-LIGHT-VISIBILITY-1).
+//
+// A blip-only enemy is NOT hidden via the appearance `visible` flag — the mesh
+// is submitted every frame and hidden by FADING `alphaValue` to 0
+// (code/gvehicl.cpp ~3760-3820, code/mech.cpp ~6790-6860). Ordinary leaves
+// honour that: TG_Shape::Render / MultiTransformShape route through
+// MC2_DRAWALPHA whenever `alphaValue != 0xff`. The `isSpotlight` branch is
+// tested FIRST and emits at hardcoded 0xffffffff opacity, so the searchlight
+// wedge of a fully-faded (invisible) vehicle/mech kept drawing at full
+// brightness — the user-visible "light cones from invisible vehicles".
+//
+// Vehicles never go through the GPU static-prop or mech batcher (both of which
+// strip SpotLight_ leaves), so this legacy CPU leaf draw is the DEFAULT and
+// ONLY path for every vehicle / helicopter / VTOL / elemental cone.
+//
+// Predicate is alpha-based, NOT sensorLevel-based: tgl.cpp has no sensorLevel,
+// and alpha is the actual mechanism that hides the model — so this also covers
+// the contact fade-in/fade-out transitions for free. Strict `== 0` keeps every
+// static building lamp (alphaValue 0xff) untouched.
+//
+// MC2_LIGHT_CONE_VIS_GATE killswitch (=0 restores the legacy leak).
+bool cone_geom_hidden_by_alpha(unsigned alphaValue);
+
 } // namespace mc2_cone_glow

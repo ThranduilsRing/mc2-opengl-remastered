@@ -219,6 +219,7 @@ bool eligibleForGpuObjects(class TG_Shape* shape);
 
 #include <intrin.h>
 #include "../GameOS/gameos/gos_terrain_indirect.h"  // LightCostSplit_* ([LIGHT_COST_SPLIT v1])
+#include "cone_glow.h"  // GHOST-CONE-VERIFY-4: cone_geom_hidden_by_alpha
 namespace {
 // [LIGHT_COST_SPLIT v1] RAII cycle bracket. Cached-bool early-out; no Tracy
 // zone by design (per-leaf hot loop -- a Tracy zone would bust the 100ns floor).
@@ -1907,7 +1908,14 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 		nightFactor = 0.0f;
 	}
 	
-	if (isSpotlight && !isNight)
+	// GHOST-CONE-VERIFY-4: a blip-only enemy is hidden by fading alphaValue to
+	// 0, not by the `visible` flag — and the isSpotlight branch below emits at
+	// hardcoded full opacity, ignoring alphaValue entirely. Bail here so a
+	// fully-faded (invisible) mover draws no searchlight wedge. Static lamps
+	// sit at alphaValue 0xff and are untouched. MC2_LIGHT_CONE_VIS_GATE=0
+	// restores the legacy leak.
+	if (isSpotlight && (!isNight
+		|| mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 	{
 		listOfVertices = NULL;		//Mark this as untransformed!!
 		return(1);
@@ -2912,7 +2920,14 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 		nightFactor = 0.0f;
 	}
 
-	if (isSpotlight && !isNight)
+	// GHOST-CONE-VERIFY-4: a blip-only enemy is hidden by fading alphaValue to
+	// 0, not by the `visible` flag — and the isSpotlight branch below emits at
+	// hardcoded full opacity, ignoring alphaValue entirely. Bail here so a
+	// fully-faded (invisible) mover draws no searchlight wedge. Static lamps
+	// sit at alphaValue 0xff and are untouched. MC2_LIGHT_CONE_VIS_GATE=0
+	// restores the legacy leak.
+	if (isSpotlight && (!isNight
+		|| mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 	{
 		listOfVertices = NULL;		//Mark this as untransformed!!
 		return(1);
@@ -3194,7 +3209,10 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		nightFactor = 0.0f;
 	}
 
-	if (isSpotlight && !isNight)
+	// GHOST-CONE-VERIFY-4: see MultiTransformShape — the cone leaf must honour
+	// the fade-to-invisible alpha that hides a sensor-blip-only mover's mesh.
+	if (isSpotlight && (!isNight
+		|| mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
 		return;
 
 	// Ensure depth write is on regardless of prior-pass state. This path uses
