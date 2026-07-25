@@ -3128,6 +3128,101 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 }
 
 //-----------------------------------------------------------------------------
+// CONE-SPILL-COUPLING-1 (2026-07-25). User, third framing of the same
+// complaint: "the actual 'light triangles' need to be more transparent, and
+// where they intersect the ground needs to be center of light spill on the
+// ground."
+//
+// LIGHT-CONE-MODELS-1 already moved the pool off the tower base to the beam's
+// far end, but it computed that point as `apex + aim*len` and then SNAPPED z
+// to getTerrainElevation — a vertical DROP, not an intersection. For a tower
+// searchlight raked across rising ground the beam meets terrain well BEFORE
+// its far end, so the pool landed past (or beside) the bright patch the cone
+// visibly makes: the "cone points one way, pool sits elsewhere" decoupling.
+//
+// This is the real thing: march the beam ray against the heightfield and
+// return the FIRST crossing. f(t) = ray.z - terrainHeight(ray.xy) changes sign
+// exactly at the surface, so a coarse march to bracket + bisection to refine
+// lands on the true intersection for any terrain profile.
+//
+// Cost is bounded and independent of beam length: a FIXED step count (not a
+// fixed step size), so a long beam takes coarser steps rather than more
+// samples. ~34 heightfield lookups per fixture per frame worst case, and it
+// returns early on the common near-hit.
+//
+// Returns false when the beam never meets ground within its own length —
+// aimed at a wall, over a cliff edge, or off the map. Callers must then emit
+// NO pool at all; planting one anyway is the phantom-pool artefact.
+static bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
+                              const Stuff::Vector3D& aim,
+                              float beamLen,
+                              Stuff::Vector3D& hitOut)
+{
+	if (!land || !(beamLen > 0.0f))
+		return false;
+
+	// Fixed step COUNT keeps the per-fixture cost flat no matter how long the
+	// authored beam is. 24 coarse steps over a beam is ~1/2 terrain cell at
+	// the stock cone lengths seen on tower lamps.
+	const int   kCoarseSteps = 24;
+	const int   kRefineIters = 10;
+	const float dt = beamLen / (float)kCoarseSteps;
+
+	Stuff::Vector3D prev = apex;
+	// Height is only meaningful on-map; an apex already outside the playfield
+	// has nothing to intersect.
+	bool prevInside = Terrain::IsGameSelectTerrainPosition(prev);
+	float prevF = prevInside ? (prev.z - land->getTerrainElevation(prev)) : 1.0f;
+
+	for (int i = 1; i <= kCoarseSteps; ++i)
+	{
+		const float t = dt * (float)i;
+		Stuff::Vector3D cur;
+		cur.x = apex.x + aim.x * t;
+		cur.y = apex.y + aim.y * t;
+		cur.z = apex.z + aim.z * t;
+
+		// Off-map: the beam has left the heightfield. Stop rather than
+		// extrapolate — sampling outside the map is what produced pools on
+		// ground the fixture cannot possibly light.
+		if (!Terrain::IsGameSelectTerrainPosition(cur))
+			return false;
+
+		const float curF = cur.z - land->getTerrainElevation(cur);
+
+		// Sign change (or exact touch) brackets the surface between prev/cur.
+		if (prevInside && prevF > 0.0f && curF <= 0.0f)
+		{
+			// Bisect the bracket. f is continuous over the bilinear
+			// heightfield, so this converges on the crossing.
+			Stuff::Vector3D lo = prev, hi = cur;
+			for (int r = 0; r < kRefineIters; ++r)
+			{
+				Stuff::Vector3D mid;
+				mid.x = (lo.x + hi.x) * 0.5f;
+				mid.y = (lo.y + hi.y) * 0.5f;
+				mid.z = (lo.z + hi.z) * 0.5f;
+				if ((mid.z - land->getTerrainElevation(mid)) > 0.0f)
+					lo = mid;
+				else
+					hi = mid;
+			}
+			hitOut.x = (lo.x + hi.x) * 0.5f;
+			hitOut.y = (lo.y + hi.y) * 0.5f;
+			hitOut.z = land->getTerrainElevation(hitOut);
+			return true;
+		}
+
+		prev = cur;
+		prevF = curF;
+		prevInside = true;
+	}
+
+	// Beam ran its full authored length without reaching the surface.
+	return false;
+}
+
+//-----------------------------------------------------------------------------
 long BldgAppearance::update (bool animate)
 {
 	::mc2_object_recon::Scope _recon_bldg_(
@@ -3298,19 +3393,27 @@ long BldgAppearance::update (bool animate)
 			// tower searchlights illuminate the compound they're aimed INTO,
 			// not the tower base. No-cone nodes keep the node-origin pool.
 			// MC2_LIGHT_CONE_NODES=0 restores node-origin pools.
+			// CONE-SPILL-COUPLING-1: true beam/terrain INTERSECTION, not the
+			// old far-end-then-drop-z approximation. See mc2ConeGroundHit.
+			// A beam that never meets ground within its own length lights
+			// nothing, so its pool is suppressed entirely (coneMissedGround).
+			bool coneMissedGround = false;
 			if (mc2_cone_glow::nodes_enabled())
 			{
 				Stuff::Vector3D aimW;
 				float coneLen = 0.0f;
 				if (mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen))
 				{
-					float spill = coneLen * mc2_cone_glow::spill_scale();
-					if (spill > 200.0f) spill = 200.0f;
-					childPos.x += aimW.x * spill;
-					childPos.y += aimW.y * spill;
-					childPos.z += aimW.z * spill;
-					if (land)
-						childPos.z = land->getTerrainElevation(childPos);
+					// The authored beam length IS the physical reach — the old
+					// hard 200.0f clamp truncated long beams so their pool fell
+					// short of the visible cone tip. The march is a fixed step
+					// COUNT, so dropping the clamp costs no extra samples.
+					const float spill = coneLen * mc2_cone_glow::spill_scale();
+					Stuff::Vector3D hit;
+					if (mc2ConeGroundHit(childPos, aimW, spill, hit))
+						childPos = hit;
+					else
+						coneMissedGround = true;
 				}
 			}
 			spotlightLights_[k]->SetPosition(&childPos);
@@ -3331,8 +3434,13 @@ long BldgAppearance::update (bool animate)
 			// eye->isNight is a bare field at camera.h:272 (C-r3 C2). visible
 			// matches anubis at mech3d.cpp:3353 (C-r1 C5). forceLightsOut
 			// matches the existing per-building pointLight gate at :1933.
-			spotlightLights_[k]->active =
-				(eye && eye->isNight && visible && !forceLightsOut);
+			// Owner intent: is this lamp switched on at all? Kept SEPARATE from
+			// the pool predicate below — CONE-SPILL-COUPLING-1 suppresses the
+			// ground pool of a beam that lands nowhere, but the beam VOLUME is
+			// still real and must keep rendering. Collapsing the two would make
+			// tower searchlights vanish when aimed at a wall.
+			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
+			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 			// Building light positions are static, so persistence while the
 			// prop's visibility-gated update is culled is CORRECT — the
@@ -3344,7 +3452,9 @@ long BldgAppearance::update (bool animate)
 			// the SAME owner predicate — lights-out/destroyed buildings show
 			// no cone. Screen-clip rejection lives in QueueConeGlow.
 			// MC2_LIGHT_CONE_GLOW=0 kills it.
-			if (spotlightLights_[k]->active)
+			// Gated on ownerLit, NOT on ->active: a beam whose pool was
+			// suppressed for missing the ground is still a visible volume.
+			if (ownerLit)
 				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}
