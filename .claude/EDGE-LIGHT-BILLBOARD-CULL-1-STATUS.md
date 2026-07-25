@@ -1,5 +1,14 @@
 # EDGE-LIGHT-BILLBOARD-CULL-1 — STATUS (master-FAIL #8, MED)
 
+> **SUPERSEDED 2026-07-24 by `.claude/LIGHT-BILLBOARD-GPU-1-STATUS.md`.**
+> The diagnosis below is **FALSIFIED**. These props are not flat quads (they are
+> 6-vertex / 7-face triangular prisms with a horizontal emissive top cap) and
+> they are not being backface-culled. The real mechanism is sub-pixel collapse
+> of that horizontal cap at grazing view angles, so the "real fix (deferred)"
+> two-sided GPU draw bucket specified at the bottom of this file would **not**
+> have worked. Read the superseding doc instead; the sections below are kept
+> only for the measurement notes and the commit record.
+
 **Verdict: PARTIAL / FOUNDATION.** Mechanism confirmed and the legacy CPU
 render path is fixed + gated, but the change is **near-inert under the default
 runtime** because the beacon/runway light props render through the GPU
