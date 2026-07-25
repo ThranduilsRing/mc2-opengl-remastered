@@ -289,3 +289,21 @@ tan-vs-grey slab blocks, resolve into one continuous concrete surface.
   the evidence supports it, but it changes every cement pixel on every map.
 - The known non-deterministic mc2_03 0-frame load crash **did not reproduce**
   across ~8 mc2_03 launches this lane.
+
+---
+
+## tier1 smoke
+
+`2026-07-24T20-06-47 tier=tier1 profile=stock result=**PASS (5/5)**` — mc2_01, mc2_03,
+mc2_10, mc2_17, mc2_24 all PASS, `Δ destroys +0` on every mission,
+`[MOVER-COHERENCE] mc2_24: checked=180 violations=0`. All three new gates are default
+OFF, so this run exercises the OFF (byte-identical) path.
+
+**Caveat, recorded honestly:** the runner claimed deploy lane `0.4` and smoked the exe
+already sitting there (`sha=25aa618027bb`, itself a dirty-tree build from a parallel
+lane), not my `8d68684c` build in `mc2-win64-v0.4c` — hence
+`[DEPLOY_FINGERPRINT] HARD FAIL: … does not match this worktree HEAD`. That is an
+exe-identity mismatch in a shared worktree with several live lanes, not a test failure.
+The gate-ON verification above was all done against the md5-verified `v0.4c` install
+(`2c50e7c52bc16df31464ec0f2ed769b4`). A fingerprint-clean tier1 needs a quiet moment on
+a canonical lane.
