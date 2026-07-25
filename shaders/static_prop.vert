@@ -344,13 +344,34 @@ void main() {
             vec3 R1    = normalize(r1raw);
             vec3 U1    = cross(toCam, R1);   // (R1,U1,toCam) right-handed
 
-            // Minimum silhouette size, in NDC half-extents. 0.0035 ~= 3.8px
-            // on a 2160-tall target, 1.3px at 720p — enough to guarantee the
-            // cap survives rasterisation without turning distant lights into
-            // blobs. kLbRefRadius is the authored cap radius (~0.79 units);
-            // it only sets what "silhouette" means for the clamp.
+            // RUNWAY-MARKER-LIGHTS-1 — two corrections to this clamp. Read
+            // this before touching the constants; the user verdict on the
+            // uncapped version was "atrociously hideous".
+            //
+            // (a) kLbRefRadius was the authored CAP radius (~0.79). But the
+            //     rigid billboard below maps local Z (the 2.85-unit post axis)
+            //     onto toCam, so the post foreshortens and what the viewer
+            //     actually sees is the local XY cross-section — measured from
+            //     runwaylight.ase, extents 2.015 x 2.326, i.e. a silhouette
+            //     radius near 1.2, not 0.8. Feeding the clamp the cap radius
+            //     made it over-inflate every fixture by ~1.5x beyond intent.
+            //
+            // (b) THE STREAK BUG. The clamp was max(1.0, ...) with NO upper
+            //     bound. sil falls off as 1/distance, so k rose without limit
+            //     and pinned every fixture to a CONSTANT ~4-7px on screen at
+            //     EVERY distance. At map-overview altitude, where a runway
+            //     light should be sub-pixel or gone, all several hundred of
+            //     them were still full-size, full-brightness, hard-edged
+            //     triangles — and being regularly spaced along the runway and
+            //     taxiway edges they read as bright white dashed slashes
+            //     across the dark valley. Capping k restores the normal
+            //     1/distance shrink beyond the cap: the fixture is guaranteed
+            //     to survive rasterisation at playable RTS ranges (the point
+            //     of the original fix) and then fades back out on its own at
+            //     overview altitude instead of screaming.
             const float kLbMinNdc     = 0.0012;
-            const float kLbRefRadius  = 0.8;
+            const float kLbRefRadius  = 1.2;
+            const float kLbMaxScale   = 2.5;
             // NDC-per-world-unit across the screen at this depth: push the
             // billboard's own right axis through the clip matrix as a
             // DIRECTION (w=0) and divide by the origin's clip w.
@@ -358,7 +379,7 @@ void main() {
             float ndcPerUnit = length(clipR.xy) / clipOrigin.w;
             float k = 1.0;
             float sil = kLbRefRadius * ndcPerUnit;
-            if (sil > 1e-9) k = max(1.0, kLbMinNdc / sil);
+            if (sil > 1e-9) k = clamp(kLbMinNdc / sil, 1.0, kLbMaxScale);
             // DEBUG ONLY (MC2_LIGHT_BILLBOARD_FACING=2): oversize the fixtures
             // so the affected population is unmistakable in a capture.
             if ((inst.flags & kFlagLightBillboardBig) != 0u) k *= 4.0;

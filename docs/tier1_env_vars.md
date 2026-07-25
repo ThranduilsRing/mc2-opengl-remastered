@@ -557,12 +557,39 @@ the GPU static-prop batcher instead, so this gate alone is near-inert. See
 
 ### MC2_LIGHT_BILLBOARD_FACING
 
-- `MC2_LIGHT_BILLBOARD_FACING=0` — killswitch, default **ON**. Restores stock
-  fixed-orientation light cards on the GPU static-prop batcher path.
+- `MC2_LIGHT_BILLBOARD_FACING` unset or `=0` — **DEFAULT: OFF.** Stock
+  fixed-orientation light fixtures on the GPU static-prop batcher path. No
+  instance carries the flag bit, so the shader block never runs and the frame is
+  byte-identical to stock. **This is the clean way to disable the modern
+  marker-light treatment entirely.**
+- `MC2_LIGHT_BILLBOARD_FACING=1` — opt-in modern treatment: camera-facing
+  fixtures with a **capped** minimum screen size.
 - `MC2_LIGHT_BILLBOARD_FACING=2` — verification only: renders the flagged cards at
   4x scale so the affected population is unmistakable in a capture.
 
-**Default:** on (killswitch)
+**Default:** off
+
+> **RUNWAY-MARKER-LIGHTS-1 (default flipped ON → OFF).** This gate shipped
+> default-ON in `f412423e` and the user verdict on the result was that the
+> runway marker lights were "atrociously hideous" — stark white streaks and
+> dashed slashes scattered across the dark terrain at night, brightest exactly
+> at map-overview altitude where they should have faded out.
+>
+> Cause: the shader's minimum-screen-size clamp was `max(1.0, kLbMinNdc/sil)`
+> with **no upper bound**. Because `sil` falls off as 1/distance, `k` grew
+> without limit and pinned every fixture to a constant ~4-7px hard-edged bright
+> triangle at *every* camera distance. Several hundred regularly-spaced runway
+> and taxiway fixtures, all refusing to shrink, read as bright dashes over the
+> dark valley. A secondary error compounded it: `kLbRefRadius` was set to the
+> authored *cap* radius (0.8) when the rigid billboard actually presents the
+> local XY cross-section (silhouette radius ~1.2), over-inflating by a further
+> ~1.5x.
+>
+> Fix: the clamp is now `clamp(kLbMinNdc/sil, 1.0, kLbMaxScale)` with
+> `kLbMaxScale = 2.5` and the corrected reference radius, so a fixture is still
+> guaranteed to survive rasterisation at playable RTS ranges but resumes normal
+> 1/distance shrink beyond that and goes sub-pixel at overview altitude on its
+> own. The gate default is additionally OFF so stock is what ships.
 
 LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8, the comprehensive fix).
 

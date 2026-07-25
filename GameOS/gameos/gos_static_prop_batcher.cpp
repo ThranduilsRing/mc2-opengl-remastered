@@ -351,17 +351,29 @@ float g_iblShStrength = []() -> float {
 // two-sided draw bucket and no glDisable(GL_CULL_FACE) bracket is needed in
 // the hot MDI-coalesced per-packet draw loop.
 //
-// Gate MC2_LIGHT_BILLBOARD_FACING — killswitch, default ON. "0" => the flag
-// bit is never emitted => shader block never runs => byte-identical. "2" =>
+// Gate MC2_LIGHT_BILLBOARD_FACING — killswitch, default **OFF**. "0" (and
+// unset) => the flag bit is never emitted => shader block never runs =>
+// byte-identical stock. "1" => the modern marker-light treatment. "2" =>
 // verify-by-exaggeration (bit 5 as well: fixture scaled 4x in the shader).
 // Companion CPU-path gate MC2_LIGHT_BILLBOARD_TWOSIDED (tgl.cpp) is unchanged.
+//
+// RUNWAY-MARKER-LIGHTS-1: this shipped default-ON in f412423e and the user
+// verdict on the result was "atrociously hideous". The shader's min-screen-
+// size clamp was uncapped, so every runway/taxiway fixture held a constant
+// ~4-7px hard-edged bright triangle at ALL camera distances; at map-overview
+// altitude the whole regularly-spaced population read as white dashed slashes
+// scattered over the dark valley. The clamp is now capped (static_prop.vert,
+// kLbMaxScale) so fixtures shrink normally with distance again, AND the gate
+// is default-OFF so stock behaviour is what ships unless a user opts in.
+// Setting MC2_LIGHT_BILLBOARD_FACING=0, or simply leaving it unset, disables
+// the modern marker-light treatment entirely.
 int gos_lightBillboardFacingMode() {
     static const int s_mode = []() -> int {
         const char* v = std::getenv("MC2_LIGHT_BILLBOARD_FACING");
-        if (!v || !v[0]) return 1;          // default ON
+        if (!v || !v[0]) return 0;          // default OFF (stock)
         if (v[0] == '0') return 0;          // killswitch
         if (v[0] == '2') return 2;          // exaggerate (verification)
-        return 1;
+        return 1;                           // opt-in modern treatment
     }();
     return s_mode;
 }

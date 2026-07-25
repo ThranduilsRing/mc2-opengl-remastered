@@ -754,7 +754,7 @@ ALLOWLIST=(
     MC2_WATER_SHORE_MEANDER           # feature -- SHORELINE-GEOMETRY-1: world-space fBm amplitude (wu) bending the shore iso-contour off the tile lattice into an organic coastline; default OFF
     MC2_WATER_SHORE_MEANDER_FREQ      # feature -- SHORELINE-GEOMETRY-1: meander spatial frequency (cycles/wu); default 1/384
     MC2_LIGHT_BILLBOARD_TWOSIDED      # killswitch -- EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8): =0 restores legacy backface cull of beacon/runway edge-light glow cards; default ON
-    MC2_LIGHT_BILLBOARD_FACING        # killswitch -- LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8): camera-facing billboard for beacon/runway glow cards on the GPU static-prop batcher path; =0 restores fixed-orientation cards, =2 exaggerates card scale for verification; default ON
+    MC2_LIGHT_BILLBOARD_FACING        # killswitch -- LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8): camera-facing billboard + capped min screen size for beacon/runway light fixtures on the GPU static-prop batcher path; =1 opts in, =2 exaggerates for verification; default OFF (RUNWAY-MARKER-LIGHTS-1 flipped ON->OFF after the user rejected the uncapped-clamp look)
     MC2_WATER_BIAS_LEGACY             # killswitch -- WATER-BIAS-LINEARIZE-1: =1 restores constant NDC water bias (37557c8b)
     MC2_CEMENT_MISSION_LIGHT          # killswitch -- CEMENT-NIGHT-LIGHT-1: =0 restores unlit cement (67d5ce40)
     MC2_MISSING_RUNWAY_FIX            # killswitch -- MISSING-RUNWAY-1: =0 restores blanket decal skip (ef0f96d5)

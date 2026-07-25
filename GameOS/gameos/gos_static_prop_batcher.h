@@ -508,8 +508,11 @@ void batcher_prepareBaseInstanceTable();
 extern int g_lightProbeSetupPath;  // [GPUPROPS v1]
 
 // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): MC2_LIGHT_BILLBOARD_FACING mode.
-//   0 = OFF (killswitch; no instance carries the flag bit -> byte-identical)
-//   1 = ON  (default) — beacon/runway glow cards are camera-facing billboards
+//   0 = OFF (DEFAULT; killswitch — no instance carries the flag bit ->
+//       byte-identical stock. RUNWAY-MARKER-LIGHTS-1 flipped the default here
+//       from ON after the user rejected the shipped look.)
+//   1 = ON  (opt-in) — beacon/runway fixtures are camera-facing billboards
+//       with a CAPPED minimum screen size (see static_prop.vert kLbMaxScale)
 //   2 = ON + exaggerated card scale (verify-by-exaggeration only)
 // Read once (process-lifetime static). Shared by BOTH static-prop instance
 // flag-emission sites: the batcher's submitMultiShape() and the persistent

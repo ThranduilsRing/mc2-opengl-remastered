@@ -159,3 +159,19 @@ is never entered) rather than by capture, because capture cannot resolve it here
 - `MC2_LIGHT_BILLBOARD_TWOSIDED` is now known-near-inert. Consider retiring it.
 - Find the killswitch for the LIGHT-REALISM-1 animation so this scene becomes
   numerically A/B-able again.
+
+## Interaction with the parallel LIGHT-REALISM-1 lane
+
+`cea05a2d` (sibling lane, landed during this one) adds an additive beacon glow
+disc under `MC2_LIGHT_REALISM` (default OFF). **No file overlap** with this lane
+(`cone_glow.cpp` / `genactor.cpp` vs this lane's batcher / bdactor / shader), and
+the two are complementary: that lane adds a glow *around* the fixture, this one
+makes the *fixture itself* survive at every camera angle. They should be
+eyeballed together in the click-through, since with both enabled a beacon gets
+both a larger minimum-size fixture and a glow disc.
+
+That lane also established that standalone `runwaylight` props are
+`GenericAppearance`, not `BldgAppearance` children. This lane emits the flag at
+**both** static-prop instance sites, so coverage does not depend on which owner
+class the prop uses — and the captures confirm the population is covered
+empirically.
