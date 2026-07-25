@@ -11,6 +11,7 @@
 #ifndef GENACTOR_H
 #include"genactor.h"
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
+#include "cone_glow.h"       // LIGHT-REALISM-1 — beacon ground glow
 #endif
 
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
@@ -1166,6 +1167,16 @@ long GenericAppearance::update (bool animate)
 			genShape->SetFogRGB(fogRGB);
 		else
 			genShape->SetFogRGB(0xffffffff);
+
+		// LIGHT-REALISM-1 (beacon emission): standalone beacon / runway-light
+		// props (runwaylight.tgl and friends) are GenericAppearance objects,
+		// NOT BldgAppearance children — a [BEACON_DIAG v1] sweep of every
+		// building shape at mc2_10 found billboards=0 across the board. Queue
+		// the soft colored ground disc here too; the classification, gating
+		// (MC2_LIGHT_REALISM, default OFF) and night check all live inside
+		// QueueBeaconGlow, so this is a no-op for every non-beacon prop.
+		if (eye && eye->isNight)
+			mc2_cone_glow::QueueBeaconGlow(genShape, eye->getNightFactor());
 	}
 
 	if (animate && genFrameRate != 0.0f)

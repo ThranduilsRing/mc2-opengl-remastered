@@ -611,7 +611,7 @@ static float realism_beacon_alpha()
 {
     static const float s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON");
-        float f = 26.0f;
+        float f = 45.0f;
         if (v && v[0]) f = (float)std::atof(v);
         return clampf(f, 0.0f, 255.0f);
     }();
@@ -623,7 +623,7 @@ static float realism_beacon_radius()
 {
     static const float s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON_RADIUS");
-        float f = 14.0f;
+        float f = 28.0f;
         if (v && v[0]) f = (float)std::atof(v);
         return clampf(f, 1.0f, 200.0f);
     }();
@@ -686,32 +686,27 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
     const float viewMulX = TG_Shape::viewMulX, viewAddX = TG_Shape::viewAddX;
     const float viewMulY = TG_Shape::viewMulY, viewAddY = TG_Shape::viewAddY;
 
-    // Project a MAX-frame WORLD point straight through the camera statics
-    // (legacy consumes MAX-frame world directly — see the file header note).
+    // Project the beacon node's OWN origin through the proven QueueConeGlow
+    // transform (shapeToClip = shapeToWorld * s_worldToClip, msl.cpp:2068).
+    //
+    // BEACON-GEOMETRY-1: an earlier revision built the disc as a world-space
+    // ring and projected it with s_worldToClip ALONE. That collapsed — the
+    // rendered blob was identical at radius 30 and radius 200 — because
+    // s_worldToClip is only half of the legacy transform; it is composed with
+    // the node matrix, never applied to world points on its own. So the disc
+    // is now built in SCREEN space around the projected node origin, which is
+    // both correct and what a glow sprite would do anyway. The world radius is
+    // converted to pixels with the standard perspective relation
+    // (screen size of world length L ~= L * viewMulX * rhw), so distant
+    // beacons still get proportionally smaller pools.
     struct SV { float x, y, z, rhw; bool ok; };
-    auto projectWorld = [&](float wx, float wy, float wz, SV& out) {
-        Stuff::Point3D p; p.x = wx; p.y = wy; p.z = wz;
-        Stuff::Vector4D xf;
-        xf.Multiply(p, TG_Shape::s_worldToClip);
-        if (eye->usePerspective)
-        {
-            const float rhw = (xf.w != 0.0f) ? (1.0f / xf.w) : 1.0f;
-            out.x = (xf.x * rhw) * viewMulX + viewAddX;
-            out.y = (xf.y * rhw) * viewMulY + viewAddY;
-            out.z = (xf.z * rhw);
-            out.rhw = (float)fabs(rhw);
-        }
-        else
-        {
-            out.x = (1.0f - xf.x) * viewMulX + viewAddX;
-            out.y = (1.0f - xf.y) * viewMulY + viewAddY;
-            out.z = xf.z;
-            out.rhw = 0.000001f;
-        }
-        out.ok = (out.z >= 0.0f) && (out.z < 1.0f);
-    };
 
     const int kSeg = 12;   // disc tessellation (12 wedges reads as round)
+
+    // BEACON-DIAG-1 (MC2_LIGHT_CONE_DIAG=1): attribute a missing beacon glow to
+    // the stage that dropped it — no billboards on the shape at all vs found
+    // but untransformed vs found but clipped.
+    int dWalked = 0, dFound = 0, dUntransformed = 0, dClipped = 0, dEmitted = 0;
 
     for (int i = 0; i < shape->GetNumShapes(); ++i)
     {
@@ -719,67 +714,168 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         if (!recp || !recp->processMe) continue;
         TG_Shape* child = recp->node;
         if (!child) continue;
+        ++dWalked;
         // Reuse LIGHT-BILLBOARD-GPU-1's classification verbatim (tgl.h:1047).
         if (!child->GetIsLightBillboard()) continue;
+        ++dFound;
 
-        // Node world position, MAX frame, from the live node matrix. Same
-        // "not yet transformed" sentinel QueueConeGlow uses: a real prop is
-        // never at EXACT world origin.
-        const float wx = recp->shapeToWorld.entries[3];
-        const float wy = recp->shapeToWorld.entries[7];
-        const float wz = recp->shapeToWorld.entries[11];
-        if (std::fabs(wx) + std::fabs(wy) + std::fabs(wz) < 0.01f) continue;
-
-        // Drop the disc to just under the fixture. MAX-frame Y is up (the
-        // world swizzle maps worldMAX.y -> worldMC2.z), so the ground plane
-        // the disc lies in is MAX XZ. A small lift avoids z-fighting with the
-        // terrain; the pass is ZWrite-off additive so this only needs to win
-        // the depth COMPARE.
-        const float gy = wy - radius * 0.35f + 0.35f;
+        // "Not yet transformed" sentinel, same as QueueConeGlow: a real prop
+        // is never at EXACT world origin.
+        {
+            const float tx = recp->shapeToWorld.entries[3];
+            const float ty = recp->shapeToWorld.entries[7];
+            const float tz = recp->shapeToWorld.entries[11];
+            if (std::fabs(tx) + std::fabs(ty) + std::fabs(tz) < 0.01f)
+            { ++dUntransformed; continue; }
+        }
 
         const DWORD rgb = beaconRgbFromName(child->getNodeName());
 
+        // Project the node origin exactly the way the cone path does.
+        Stuff::Matrix4D shapeToClip;
+        shapeToClip.Multiply(recp->shapeToWorld, TG_Shape::s_worldToClip);
+
+        Stuff::Point3D originL; originL.x = originL.y = originL.z = 0.0f;
+        Stuff::Vector4D xf;
+        xf.Multiply(originL, shapeToClip);
+
         SV c;
-        projectWorld(wx, gy, wz, c);
-        if (!c.ok) continue;   // centre off the z range -> skip whole disc
-
-        // Triangle fan: bright centre -> alpha 0 at the rim = smooth radial
-        // falloff with no hard edge (the pass is untextured, so the gradient
-        // has to come from vertex alpha).
-        SV rim[kSeg];
-        bool rimOk = true;
-        for (int s = 0; s < kSeg; ++s)
+        float pixPerWu;
+        if (eye->usePerspective)
         {
-            const float a = (float)s * (6.28318530718f / (float)kSeg);
-            projectWorld(wx + std::cos(a) * radius, gy,
-                         wz + std::sin(a) * radius, rim[s]);
-            if (!rim[s].ok) { rimOk = false; break; }
+            const float r = (xf.w != 0.0f) ? (1.0f / xf.w) : 1.0f;
+            c.x = (xf.x * r) * viewMulX + viewAddX;
+            c.y = (xf.y * r) * viewMulY + viewAddY;
+            c.z = (xf.z * r);
+            c.rhw = (float)fabs(r);
+            pixPerWu = viewMulX * (float)fabs(r);
         }
-        if (!rimOk) continue;
-
-        DWORD ca = (DWORD)peak;
-        if (ca > 255) ca = 255;
-
-        for (int s = 0; s < kSeg; ++s)
+        else
         {
-            if (s_tris.size() >= kMaxFrameTris) return;
-            const SV& r0 = rim[s];
-            const SV& r1 = rim[(s + 1) % kSeg];
+            c.x = (1.0f - xf.x) * viewMulX + viewAddX;
+            c.y = (1.0f - xf.y) * viewMulY + viewAddY;
+            c.z = xf.z;
+            c.rhw = 0.000001f;
+            pixPerWu = viewMulX * 0.002f;   // ortho: fixed screen scale
+        }
+        c.ok = (c.z >= 0.0f) && (c.z < 1.0f);
+        if (!c.ok) { ++dClipped; continue; }
 
-            QueuedTri qt;
-            const SV* vs[3] = { &c, &r0, &r1 };
-            for (int k = 0; k < 3; ++k)
+        float radPx = radius * pixPerWu;
+        if (radPx < 2.0f)   { ++dClipped; continue; }   // sub-pixel -> skip
+        if (radPx > 400.0f) radPx = 400.0f;             // sanity clamp
+
+        // BEACON-GEOMETRY-2: the disc is built as CONCENTRIC RINGS, not a
+        // single centre-anchored fan, and its intensity is PRE-MULTIPLIED into
+        // the RGB channels.
+        //
+        // Why rings: this batch renders FLAT-SHADED. A centre-anchored fan
+        // gives every triangle the same provoking (centre) vertex, so the whole
+        // disc took one uniform colour and rendered as a solid hard-edged blob
+        // — the very artefact this slice exists to remove. The authored cone
+        // meshes get away with per-vertex alpha only because they carry many
+        // triangles along the beam, so flat shading still steps a gradient.
+        // Banding the disc into kRings uniform-coloured bands reproduces that:
+        // each band is flat, but band-to-band it steps smoothly, and under
+        // additive blend at these alphas the steps are invisible.
+        //
+        // Why pre-multiplied RGB: the pass is gos_Alpha_OneOne (dst += src) and
+        // untextured, so scaling RGB is the reliable way to scale contribution
+        // regardless of how alpha is treated. Alpha is scaled in lockstep.
+        //
+        // Depth: rings inherit the fixture's depth nudged slightly toward the
+        // camera. Without the nudge the lower half of every disc was clipped by
+        // the ground in front of it (a half-moon, visible in the r40 probe).
+        const int kRings = 5;
+        const float zBias = c.z * 0.998f;
+
+        const float cr = (float)((rgb >> 16) & 0xFFu);
+        const float cg = (float)((rgb >>  8) & 0xFFu);
+        const float cb = (float)( rgb        & 0xFFu);
+        const float aScale = clampf(peak / 255.0f, 0.0f, 1.0f);
+
+        auto mkVert = [&](float px, float py, float inten, gos_VERTEX& gv) {
+            gv.x = px; gv.y = py; gv.z = zBias; gv.rhw = c.rhw;
+            gv.u = 0.0f; gv.v = 0.0f;
+            DWORD R = (DWORD)(cr * inten * aScale);
+            DWORD G = (DWORD)(cg * inten * aScale);
+            DWORD B = (DWORD)(cb * inten * aScale);
+            if (R > 255) R = 255; if (G > 255) G = 255; if (B > 255) B = 255;
+            DWORD A = (DWORD)(255.0f * inten * aScale);
+            if (A > 255) A = 255;
+            gv.argb = (A << 24) | (R << 16) | (G << 8) | B;
+            gv.frgb = 0x00000000;
+        };
+        // Smooth inverse-ish falloff: full at the fixture, 0 at the rim.
+        auto ringInten = [&](float t) { const float u = 1.0f - t; return u * u; };
+
+        bool emittedAny = false;
+        for (int rg = 0; rg < kRings; ++rg)
+        {
+            const float t0 = (float)rg / (float)kRings;
+            const float t1 = (float)(rg + 1) / (float)kRings;
+            const float r0 = t0 * radPx, r1 = t1 * radPx;
+            // One flat colour per band (see the flat-shading note above).
+            const float inten = ringInten((t0 + t1) * 0.5f);
+            if (inten <= 0.002f) continue;
+
+            for (int s = 0; s < kSeg; ++s)
             {
-                gos_VERTEX& gv = qt.v[k];
-                gv.x = vs[k]->x; gv.y = vs[k]->y;
-                gv.z = vs[k]->z; gv.rhw = vs[k]->rhw;
-                gv.u = 0.0f; gv.v = 0.0f;
-                const DWORD a = (k == 0) ? ca : 0u;   // centre bright, rim 0
-                gv.argb = (a << 24) | rgb;
-                gv.frgb = 0x00000000;
+                if (s_tris.size() + 2 > kMaxFrameTris) { ++dEmitted; return; }
+                const float a0 = (float)s * (6.28318530718f / (float)kSeg);
+                const float a1 = (float)(s + 1) * (6.28318530718f / (float)kSeg);
+                const float c0 = std::cos(a0), s0 = std::sin(a0);
+                const float c1 = std::cos(a1), s1 = std::sin(a1);
+
+                const float ix0 = c.x + c0 * r0, iy0 = c.y + s0 * r0;
+                const float ix1 = c.x + c1 * r0, iy1 = c.y + s1 * r0;
+                const float ox0 = c.x + c0 * r1, oy0 = c.y + s0 * r1;
+                const float ox1 = c.x + c1 * r1, oy1 = c.y + s1 * r1;
+
+                if (rg == 0)
+                {
+                    // Innermost band degenerates to a fan triangle.
+                    QueuedTri qt;
+                    mkVert(c.x, c.y, inten, qt.v[0]);
+                    mkVert(ox0, oy0, inten, qt.v[1]);
+                    mkVert(ox1, oy1, inten, qt.v[2]);
+                    s_tris.push_back(qt);
+                    mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+                }
+                else
+                {
+                    QueuedTri q1;
+                    mkVert(ix0, iy0, inten, q1.v[0]);
+                    mkVert(ox0, oy0, inten, q1.v[1]);
+                    mkVert(ox1, oy1, inten, q1.v[2]);
+                    s_tris.push_back(q1);
+                    mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+
+                    QueuedTri q2;
+                    mkVert(ix0, iy0, inten, q2.v[0]);
+                    mkVert(ox1, oy1, inten, q2.v[1]);
+                    mkVert(ix1, iy1, inten, q2.v[2]);
+                    s_tris.push_back(q2);
+                    mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+                }
+                emittedAny = true;
             }
-            s_tris.push_back(qt);
-            mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+        }
+        if (emittedAny) ++dEmitted;
+    }
+
+    if (aim_diag_enabled())
+    {
+        static unsigned long s_bcalls = 0;
+        ++s_bcalls;
+        if (s_bcalls <= 64 || (s_bcalls % 600) == 0)
+        {
+            std::fprintf(stderr,
+                "[BEACON_DIAG v1] shape=%p shapes=%d walked=%d billboards=%d "
+                "untransformed=%d clipped=%d emitted=%d peak=%.1f radius=%.1f\n",
+                (void*)shape, shape->GetNumShapes(), dWalked, dFound,
+                dUntransformed, dClipped, dEmitted, peak, radius);
+            std::fflush(stderr);
         }
     }
 }
