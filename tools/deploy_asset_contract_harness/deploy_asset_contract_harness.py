@@ -75,15 +75,30 @@ def test_building_pbr_payload_exists(t: Ctx) -> bool:
     return t.failures == 0
 
 
-def test_no_stale_v04c_target(t: Ctx) -> bool:
-    # The deploy script's hardcoded target preset must be v0.4, never the old
-    # wrong v0.4c (see MEMORY: deploy target corrected to mc2-win64-v0.4).
-    with open(dp.__file__, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
-    hits = [ln for ln in text.splitlines() if "v0.4c" in ln]
-    for ln in hits:
-        t.fail(f"stale v0.4c reference in deploy_payload.py: {ln.strip()[:80]}")
-    print(f"    v0.4c references: {len(hits)}", file=sys.stderr)
+def test_target_presets_allowlisted(t: Ctx) -> bool:
+    # CONTRACT-HARNESS-REPAIR-1: this used to be `no_stale_v04c_target`, a
+    # whole-file grep for the substring "v0.4c" in deploy_payload.py. That check
+    # rotted the moment DEPLOY_ALLOWLIST gained the legitimate shared deploy
+    # folder "mc2-win64-v0.4c" — the grep cannot tell an allowlist member from a
+    # mis-pointed preset, so it failed on correct code.
+    #
+    # The invariant actually worth guarding (MEMORY: deploy target corrected to
+    # mc2-win64-v0.4) is structural and version-agnostic:
+    #   1. the "game" preset must not point at a 0.4c folder (that folder is the
+    #      EDITOR install; the historical bug was the game preset aimed there);
+    #   2. every preset's target dir must be a DEPLOY_ALLOWLIST member, so a
+    #      preset can never bypass DEPLOY-TARGET-GUARD.
+    # Neither clause pins a version string, so bumping the release does not
+    # require touching this harness.
+    for name, preset in dp.TARGET_PRESETS.items():
+        target = preset.get("target_dir", "")
+        base = os.path.basename(target.rstrip("/\\"))
+        if base not in dp.DEPLOY_ALLOWLIST:
+            t.fail(f"preset '{name}' target not in DEPLOY_ALLOWLIST: {base}")
+        if name == "game" and "0.4c" in base:
+            t.fail(f"game preset points at the editor/0.4c install: {base}")
+    print(f"    target presets checked: {len(dp.TARGET_PRESETS)} "
+          f"(allowlist has {len(dp.DEPLOY_ALLOWLIST)})", file=sys.stderr)
     return t.failures == 0
 
 
@@ -122,7 +137,7 @@ def main():
     h.add("editor_support_trees_exist",       test_editor_support_trees_exist)
     h.add("game_cook_tools_exist",            test_game_cook_tools_exist)
     h.add("building_pbr_payload_exists",      test_building_pbr_payload_exists)
-    h.add("no_stale_v04c_target",             test_no_stale_v04c_target)
+    h.add("target_presets_allowlisted",       test_target_presets_allowlisted)
     h.add("payload_paths_repo_relative_no_escape", test_payload_paths_repo_relative_no_escape)
     h.add("missing_payload_detected",         test_missing_payload_detected, in_default=False)
     return h.run()

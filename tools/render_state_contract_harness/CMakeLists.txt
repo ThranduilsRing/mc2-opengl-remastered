@@ -25,6 +25,11 @@ get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 add_executable(render_state_contract_harness
     render_state_contract_harness.cpp
+    # CONTRACT-HARNESS-REPAIR-1: satisfies the two apply-state *_impl externals
+    # that render_contract.cpp forwards to but which live in
+    # GameOS/gameos/gos_postprocess.cpp (not linked here). See the stub TU's
+    # header comment for the full rationale.
+    gos_counter_stubs.cpp
     ${MC2_ROOT}/mclib/render_contract.cpp
     ${MC2_ROOT}/RenderCore/RenderResourceRegistry.cpp
 )

@@ -71,7 +71,11 @@ diagnostics to stderr), demo/failure tests excluded from default suite.
 - `editor_support_trees_exist` — every `EDITOR_SUPPORT_TREES` dir exists.
 - `game_cook_tools_exist` — every `GAME_COOK_TOOLS` file/dir exists.
 - `building_pbr_payload_exists` — all 7 `BUILDING_PBR_PAYLOAD` assets exist.
-- `no_stale_v04c_target` — deploy_payload.py contains no `v0.4c` path.
+- `target_presets_allowlisted` — every `TARGET_PRESETS` target dir is a
+  `DEPLOY_ALLOWLIST` member, and the `game` preset does not point at the
+  editor/`0.4c` install. (Was `no_stale_v04c_target`, a whole-file grep for
+  `v0.4c`; retired in CONTRACT-HARNESS-REPAIR-1 because it could not
+  distinguish a legitimate allowlist entry from a mis-pointed preset.)
 - (demo, inDefault=false) `missing_payload_detected` — assert a bogus path is
   flagged, proving the detection path.
 - **Out of scope:** `FFMPEG_DLLS`, launcher, exe — build artifacts, absent in a

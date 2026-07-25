@@ -29,6 +29,13 @@
       "notes": "Imported structure GLB; small, git-tracked. Also in deploy_payload BUILDING_PBR_PAYLOAD."
     },
     {
+      "mech_id": "marblecliff",
+      "name": "MarbleCliffGLB",
+      "glb": "data/tgl/MarbleCliffGLB.glb",
+      "source_type": "tracked",
+      "notes": "Cliff-wall dressing prop (TERRAIN-CLIFF-MESH-DRESSING-P0, 5ded0f19); wired via data/tgl/marblecliff.ini + bdactor CLIFF_WALL decal path. Was undeclared until CONTRACT-HARNESS-REPAIR-1. Also in deploy_payload BUILDING_PBR_PAYLOAD. No .mcasset.json sidecar: textures come from marblecliff.ini FileName0, the sidecar is optional."
+    },
+    {
       "mech_id": "quonset",
       "name": "QuonsetGLB",
       "glb": "data/tgl/QuonsetGLB.glb",
