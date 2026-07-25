@@ -755,6 +755,7 @@ ALLOWLIST=(
     MC2_WATER_SHORE_MEANDER_FREQ      # feature -- SHORELINE-GEOMETRY-1: meander spatial frequency (cycles/wu); default 1/384
     MC2_LIGHT_BILLBOARD_TWOSIDED      # killswitch -- EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8): =0 restores legacy backface cull of beacon/runway edge-light glow cards; default ON
     MC2_LIGHT_BILLBOARD_FACING        # killswitch -- LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8): camera-facing billboard + capped min screen size for beacon/runway light fixtures on the GPU static-prop batcher path; =1 opts in, =2 exaggerates for verification; default OFF (RUNWAY-MARKER-LIGHTS-1 flipped ON->OFF after the user rejected the uncapped-clamp look)
+    MC2_LETTERBOX_OPAQUE              # killswitch -- LETTERBOX-TOP-RESTORE-1: cinematic letterbox bars are opaque black while the bar EXTENT still wipes in; =0 restores the stock 5s alpha ramp (translucent bars during the swoop)
     MC2_WATER_BIAS_LEGACY             # killswitch -- WATER-BIAS-LINEARIZE-1: =1 restores constant NDC water bias (37557c8b)
     MC2_CEMENT_MISSION_LIGHT          # killswitch -- CEMENT-NIGHT-LIGHT-1: =0 restores unlit cement (67d5ce40)
     MC2_MISSING_RUNWAY_FIX            # killswitch -- MISSING-RUNWAY-1: =0 restores blanket decal skip (ef0f96d5)
@@ -787,6 +788,7 @@ ALLOWLIST=(
     MC2_LIGHT_REALISM_POOL_SPILL      # override -- LIGHT-REALISM-1: pool farDistance scale so the pool reaches back to its emitter (default 1.6, clamp [0.25,4])
     MC2_LIGHT_REALISM_POOL_CORE       # override -- LIGHT-REALISM-1: pool closeDistance scale; shrinks the flat-topped bright disc (default 0.15, clamp [0,1])
     MC2_LIGHT_REALISM_BEACON          # override -- LIGHT-REALISM-1: beacon ground-glow peak alpha 0..255 (default 45; subtle by design)
+    MC2_LIGHT_POOL_MAX                # override -- LIGHT-POOL-CAP-1: max simultaneous terrain pool lights (default 256, was 64; clamp [1,4096])
     MC2_LIGHT_REALISM_BEACON_RADIUS   # override -- LIGHT-REALISM-1: beacon ground-glow disc radius in world units (default 28, clamp [1,200])
     MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP  # killswitch -- GHOST-CONE-RECIPE-SKIP-1: =0 restores baking SpotLight_ cone meshes into static recipes (opaque tan wedges)
     MC2_LIGHT_POOL_OBJ_SCALE          # override -- POOL-CONSUMERS-1: object-side pool intensity scale (default 0.7, clamp [0,2])

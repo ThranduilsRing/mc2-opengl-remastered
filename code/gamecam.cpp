@@ -811,6 +811,26 @@ void GameCamera::render (void)
 		float barTopX = screenResolution.y * letterBoxPos;
 		float barBotX = screenResolution.y - barTopX;
 
+		// LETTERBOX-TOP-RESTORE-1 (gate MC2_LETTERBOX_OPAQUE, default ON; =0
+		// restores stock). Stock ramps BOTH the bar extent (letterBoxPos) and the
+		// bar ALPHA (letterBoxAlpha) over MaxLetterBoxTime=5s, so for the whole
+		// 5-second swoop-in the bars are translucent and the scene shows through
+		// them. Measured on mc2_10 night, capture frame 100: bar extent 0.0986 of
+		// 0.15 max => ramp at 65.7% => letterBoxAlpha=168, i.e. the bars were 34%
+		// transparent. It reads as a BROKEN TOP BAR (and a fine bottom bar) purely
+		// because of what sits behind each one: the top bar covers the bright
+		// horizon/sky, the bottom bar covers dark near-field terrain, so identical
+		// translucency is glaring on top and invisible on the bottom. The bars are
+		// meant to be opaque black; only the EXTENT should animate. Keep the
+		// letterBoxPos wipe, drop the alpha ramp. (The separate fadeAlpha
+		// fade-to-black quad below is a real fade and is left untouched.)
+		static const bool s_letterboxOpaque = []() {
+			const char* v = getenv("MC2_LETTERBOX_OPAQUE");
+			return !(v && v[0] == '0' && v[1] == '\0');
+		}();
+		const DWORD barARGB =
+			(s_letterboxOpaque ? (DWORD)0xff : (DWORD)letterBoxAlpha) << 24;
+
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 		gos_SetRenderState( gos_State_MonoEnable, 0);
@@ -835,7 +855,7 @@ void GameCamera::render (void)
 		gVertex[0].rhw		= 0.00001f;
 		gVertex[0].u		= 0.0f;
 		gVertex[0].v		= 0.0f;
-		gVertex[0].argb		= (letterBoxAlpha << 24);
+		gVertex[0].argb		= barARGB;
 		gVertex[0].frgb		= 0xff000000;
 
 		gVertex[1].x		= 0.0f;
@@ -844,7 +864,7 @@ void GameCamera::render (void)
 		gVertex[1].rhw		= 0.00001f;               
 		gVertex[1].u		= 0.0f;                  
 		gVertex[1].v		= 0.0f;                  
-		gVertex[1].argb		= (letterBoxAlpha << 24);
+		gVertex[1].argb		= barARGB;
 		gVertex[1].frgb		= 0xff000000;            
 
 		gVertex[2].x		= screenResolution.x;
@@ -853,7 +873,7 @@ void GameCamera::render (void)
 		gVertex[2].rhw		= 0.00001f;               
 		gVertex[2].u		= 0.0f;                  
 		gVertex[2].v		= 0.0f;                  
-		gVertex[2].argb		= (letterBoxAlpha << 24);
+		gVertex[2].argb		= barARGB;
 		gVertex[2].frgb		= 0xff000000;            
 
 		gVertex[3].x		= screenResolution.x;
@@ -862,7 +882,7 @@ void GameCamera::render (void)
 		gVertex[3].rhw		= 0.00001f;               
 		gVertex[3].u		= 0.0f;                  
 		gVertex[3].v		= 0.0f;                  
-		gVertex[3].argb		= (letterBoxAlpha << 24);
+		gVertex[3].argb		= barARGB;
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
@@ -873,7 +893,7 @@ void GameCamera::render (void)
 		gVertex[0].rhw		= 0.00001f;
 		gVertex[0].u		= 0.0f;
 		gVertex[0].v		= 0.0f;
-		gVertex[0].argb		= (letterBoxAlpha << 24);
+		gVertex[0].argb		= barARGB;
 		gVertex[0].frgb		= 0xff000000;
 
 		gVertex[1].x		= screenResolution.x;
@@ -882,7 +902,7 @@ void GameCamera::render (void)
 		gVertex[1].rhw		= 0.00001f;               
 		gVertex[1].u		= 0.0f;                  
 		gVertex[1].v		= 0.0f;                  
-		gVertex[1].argb		= (letterBoxAlpha << 24);
+		gVertex[1].argb		= barARGB;
 		gVertex[1].frgb		= 0xff000000;            
 
 		gVertex[2].x		= screenResolution.x;
@@ -891,7 +911,7 @@ void GameCamera::render (void)
 		gVertex[2].rhw		= 0.00001f;               
 		gVertex[2].u		= 0.0f;                  
 		gVertex[2].v		= 0.0f;                  
-		gVertex[2].argb		= (letterBoxAlpha << 24);
+		gVertex[2].argb		= barARGB;
 		gVertex[2].frgb		= 0xff000000;            
 
 		gVertex[3].x		= 0.0f; 
@@ -900,7 +920,7 @@ void GameCamera::render (void)
 		gVertex[3].rhw		= 0.00001f;               
 		gVertex[3].u		= 0.0f;                  
 		gVertex[3].v		= 0.0f;                  
-		gVertex[3].argb		= (letterBoxAlpha << 24);
+		gVertex[3].argb		= barARGB;
 		gVertex[3].frgb		= 0xff000000;            
 		
 		gos_DrawQuads(gVertex, 4);
