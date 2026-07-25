@@ -21,6 +21,19 @@
   **Default: suppression is ON whenever `MC2_SMOKE_MODE` is set** — i.e. every agent-driven smoke / visual_verify / capture / screenshot harness gets it for free (they all set `MC2_SMOKE_MODE=1`; `scripts/smoke_lib/runner.py:83`). Interactive launches (neither var set) keep exactly the legacy behavior.
   `=1` forces suppression on even for an interactive launch; `=0` forces it **off** even under smoke (escape hatch, e.g. reproducing a grab-dependent bug headlessly). Evaluated once and cached (`gos_CursorControlSuppressed()`, `GameOS/gameos/gameos_input.cpp`).
 
+## Force all units visible for automated captures (FORCE-ALL-VISIBLE-1)
+
+- `MC2_FORCE_ALL_VISIBLE` — mark **every** unit (mechs, ground vehicles, elementals/infantry, all teams) fully visible and sensed, bypassing sensor/contact gating so nothing in a capture is hidden, blip-only or faded out.
+  **Why it exists:** agents repeatedly graded frames in which the unit under test was hidden or mid-fade, producing false negatives — a ghost-cone leak passed verification at four bookmark poses purely because no mover happened to be mid-fade in view, and vehicle-lighting lanes repeatedly captured scenes containing no visible vehicle at all.
+  **Hiding is not one mechanism, it is three**, and this gate defeats all of them at their single source in `BattleMech::update` / `GroundVehicle::update` (`mc2_vis::forceVisibleOverride`, `mclib/vis_semantics.h`):
+  1. **`alphaValue` faded to 0** — the *actual* hide for blip-only enemies (`code/mech.cpp`, `code/gvehicl.cpp` contact branches), honoured by ordinary leaves via `MC2_DRAWALPHA`. Note that `setVisibility(true,true)` is called on **every** contact branch, so the `visible` flag is **not** the real mechanism.
+  2. **`sensorLevel`** — drives the blip-shape draw (`1..4`) and the `sensorLevel == 0 || sensorLevel >= 5` emission predicates. It is written only inside the `isOnGui` arm, so it can otherwise retain a stale value indefinitely. Forced to `5`: the only value satisfying both that predicate and the stricter `sensorLevel > 4` one (`mech3d.cpp` anubis pointLight), and it suppresses the blip shape in favour of the real mesh.
+  3. the legacy **`visible`** flag — set for completeness.
+  It additionally short-circuits the four `mc2_vis` predicates (`meshDrawn` / `knownToPlayer` / `emitsLight` / `selfLit`) and the `cone_glow.cpp` guards, so a forced-visible unit also emits and is lit.
+  **Default: ON whenever `MC2_SMOKE_MODE` is set** — every capture harness gets it for free, since `run_smoke.py`, `run_visual_capture.py`, `capture_baseline.py`, `quick_shot.py`, `mech_shot.py`, `smoke_with_screenshots.py`, `renderdoc_capture.py` and `camera_sweep_smoke.py` all share `scripts/smoke_lib/runner.py`. Same shape as `MC2_NO_CURSOR_GRAB` above.
+  `=0` forces it **off** even under smoke; unset + no smoke = normal interactive fog of war, unchanged. Engine-side default is OFF.
+  > **CONSEQUENCE — read this before grading a capture.** A smoke capture is **no longer a fog-of-war-accurate frame**. Any test that specifically validates sensor, contact, or visibility behaviour **must** set `MC2_FORCE_ALL_VISIBLE=0`. This applies in particular to lane `VISIBILITY-SEMANTICS-1`, which owns the visibility/emission/self-lit predicate redesign and needs the OFF path for its own verification.
+
 ## Crash-soak harness (MC2_SOAK_AUTOWIN)
 
 - `MC2_SOAK_AUTOWIN=1` — with a campaign booted via `MC2_BOOT_TO_BAY`, auto-launches each mission from logistics (no clicks), auto-wins it, lets the campaign auto-advance, and repeats until `campaign-complete`. Emits `[SOAK]` stdout markers (autowin/advance/launch/campaign-complete). Default OFF = byte-identical.

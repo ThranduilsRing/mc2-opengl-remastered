@@ -96,6 +96,25 @@ def run_one(cfg: RunConfig) -> RunResult:
     # NOTE: this only works on exes built AFTER f0c07b87 -- the harness-side
     # CursorGuard below is what covers older deploy lanes.
     env["MC2_NO_CURSOR_GRAB"] = "1"
+    # FORCE-ALL-VISIBLE-1. Every automated capture marks all units visible.
+    #
+    # WHY: units hidden by the sensor/contact fade were repeatedly graded as
+    # evidence, producing false negatives all session -- a ghost-cone leak
+    # passed verification at four bookmark poses only because no mover happened
+    # to be mid-fade in view, and vehicle-lighting lanes repeatedly captured
+    # scenes containing no visible vehicle at all.
+    #
+    # CONSEQUENCE: a smoke capture is NO LONGER a fog-of-war-accurate frame.
+    # Any test that specifically validates sensor / contact / visibility
+    # behaviour MUST pass MC2_FORCE_ALL_VISIBLE=0 (env_extra or the outer
+    # environment; setdefault means an explicit value always wins).
+    #
+    # Same shape as MC2_NO_CURSOR_GRAB above (f0c07b87): this is the single
+    # shared launcher behind run_smoke / run_visual_capture / capture_baseline /
+    # quick_shot / mech_shot / smoke_with_screenshots / renderdoc_capture /
+    # camera_sweep_smoke, so no per-harness edit is needed. Interactive play
+    # never goes through here, and the engine-side default stays OFF.
+    env.setdefault("MC2_FORCE_ALL_VISIBLE", "1")
     env.pop("MC2_GL_ERROR_DRAIN_SILENT", None)
     env.update(cfg.env_extra)
 

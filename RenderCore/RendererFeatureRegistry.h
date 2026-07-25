@@ -668,6 +668,27 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "smoke. Unset + no smoke = legacy interactive behavior, unchanged."
     },
     {
+        "MC2_TRACE_FORCE_ALL_VISIBLE",
+        "MC2_FORCE_ALL_VISIBLE",
+        EnvVarKind::Trace,
+        false,
+        "FORCE-ALL-VISIBLE-1: mark every unit (mechs, ground vehicles, "
+        "elementals, all teams) fully visible and sensed, bypassing sensor / "
+        "contact gating so nothing in an automated capture is hidden, "
+        "blip-only or mid-fade. Defeats all THREE hiding mechanisms at their "
+        "source in Mover::update (mc2_vis::forceVisibleOverride): the "
+        "alphaValue fade-to-0 that is the ACTUAL hide, the sensorLevel that "
+        "drives the blip shape and the emission predicates (forced to 5), and "
+        "the legacy `visible` flag. Also short-circuits the four "
+        "mc2_vis predicates and the cone-glow guards. Automated runs get this "
+        "for free: scripts/smoke_lib/runner.py -- the shared launcher behind "
+        "every capture harness -- defaults it ON whenever MC2_SMOKE_MODE is "
+        "set. =0 forces it off even under smoke; unset + no smoke = normal "
+        "interactive fog of war, unchanged. CONSEQUENCE: a smoke capture is "
+        "no longer a fog-of-war-accurate frame, so any test validating "
+        "sensor / contact / visibility behaviour MUST set =0."
+    },
+    {
         "MC2_TRACE_UI_IMGUI_PAUSE",
         "MC2_UI_IMGUI_PAUSE",
         EnvVarKind::Trace,

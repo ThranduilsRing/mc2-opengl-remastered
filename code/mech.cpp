@@ -139,6 +139,7 @@
 #include "../GameOS/gameos/diagnostic_trace.h"  // COMBAT-TRACE-1: weapon-hit JSONL events
 #include "equipment_registry.h"  // LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): resolveLoadoutEquipmentRef
 #include "modder_finding.h"      // MODDER-FIRST-ERROR-SURFACE-1: shared context format
+#include "../mclib/vis_semantics.h"  // FORCE-ALL-VISIBLE-1: mc2_vis::forceVisibleOverride
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
@@ -6752,9 +6753,13 @@ long BattleMech::update (void)
 			appearance->setAlphaValue(alphaValue);
 		}
 	}
-		
+
+	// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact branch above
+	// and before the appearance is pushed. No-op unless MC2_FORCE_ALL_VISIBLE.
+	mc2_vis::forceVisibleOverride(appearance, alphaValue);
+
 	appearance->update();
-	
+
 	appearance->updateFootprints();
 	
 	float barStatus = getTotalEffectiveness();

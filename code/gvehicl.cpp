@@ -117,6 +117,7 @@
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C3: GPU visibility queries
 #include "../GameOS/gameos/gos_profiler.h"  // Tracy sub-zones for vehicles update
 #include "../GameOS/gameos/diagnostic_trace.h"  // COMBAT-TRACE-1: weapon-hit JSONL events
+#include "../mclib/vis_semantics.h"  // FORCE-ALL-VISIBLE-1: mc2_vis::forceVisibleOverride
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
@@ -3831,6 +3832,12 @@ long GroundVehicle::update (void)
 				}
 				
 				appearance->setVisibility(true,true);
+
+				// FORCE-ALL-VISIBLE-1: single chokepoint, after every contact
+				// branch above and before the appearance is pushed. No-op
+				// unless MC2_FORCE_ALL_VISIBLE.
+				mc2_vis::forceVisibleOverride(appearance, alphaValue);
+
 				appearance->update();
 				windowsVisible = turn;
 				

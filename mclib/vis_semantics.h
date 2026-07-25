@@ -83,8 +83,47 @@ struct MoverVis
 bool enabled();
 
 // MC2_FORCE_ALL_VISIBLE diagnostic: force every mover to read as drawn,
-// known, emitting and lit. Never ship enabled.
+// known, emitting and lit. Never ship enabled in interactive play.
+//
+// FORCE-ALL-VISIBLE-1: default ON whenever MC2_SMOKE_MODE is set (see
+// scripts/smoke_lib/runner.py), default OFF otherwise. `=0` always wins.
+// Rationale: automated captures were repeatedly graded on frames in which the
+// unit under test was hidden or mid-fade, producing false negatives.
 bool force_all_visible();
+
+// FORCE-ALL-VISIBLE-1: defeat all THREE hiding mechanisms at their single
+// source, in Mover::update, before the appearance is pushed.
+//
+// The predicates above only make the *decisions* read "visible"; they cannot
+// undo the state the game layer has already written. There are three distinct
+// mechanisms and returning true from meshDrawn() defeats none of them:
+//
+//   (1) alphaValue faded to 0 — the ACTUAL hide for blip-only enemies
+//       (code/mech.cpp, code/gvehicl.cpp contact branches). Ordinary leaves
+//       honour it via MC2_DRAWALPHA, so a "visible" unit at alpha 0 still
+//       rasterizes to nothing.
+//   (2) sensorLevel — drives the blip-shape draw (1..4) and the
+//       `sensorLevel == 0 || sensorLevel >= 5` emission predicates. It is
+//       written only conditionally (the `isOnGui` arm), so it can retain a
+//       stale value indefinitely. 5 is chosen because it is the only value
+//       that satisfies BOTH that predicate and the stricter `sensorLevel > 4`
+//       one (mech3d.cpp anubis pointLight), and it suppresses the blip shape.
+//   (3) the legacy `visible` flag — set for completeness; it is not the real
+//       mechanism (see the header comment above) but costs nothing.
+//
+// Templated only because BattleMech and GroundVehicle hold different
+// appearance types; both expose the same three setters.
+template <typename AppearanceT, typename AlphaT>
+inline bool forceVisibleOverride(AppearanceT* app, AlphaT& alphaValue)
+{
+    if (!force_all_visible()) return false;
+    if (!app) return false;
+    alphaValue = (AlphaT)0xff;
+    app->setAlphaValue(0xff);
+    app->setSensorLevel(5);
+    app->setVisibility(true, true);
+    return true;
+}
 
 // --- the four separated predicates ------------------------------------------
 
