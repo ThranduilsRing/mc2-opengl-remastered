@@ -108,7 +108,7 @@ var, no new uniform. Default-OFF byte-identical → survives wave-3 merge inert.
 
 User correction: the v0.5.2 review pack shipped the #7 A/B captured at
 **mc2_05**, not mc2_10, and asked why. Answer + fix below. No code change —
-this is a pure evidence recapture against exe `ea999e8b` (contact-shadow
+this is a pure evidence recapture against exe built at `3c6aad71` (deploy manifest records src_commit `ea999e8b` — a PARALLEL lane advanced HEAD between build and deploy; the shader source deployed is `3c6aad71`, md5-verified against the install) (contact-shadow
 source unchanged since `9590805f`).
 
 **Why mc2_05 was used.** Every saved mc2_10 night bookmark (212019, 205952,

@@ -105,7 +105,7 @@ smaller and its edge reads blurry/dirty. Measured at the mc2_01 apron pose,
 brighter** — i.e. the gate was subtracting concrete. That matches the complaint
 exactly.
 
-## Revision 2 (commits `8e59de64`, `ea999e8b`)
+## Revision 2 (commits `8e59de64`, `3c6aad71`)
 Same gate `MC2_RUNWAY_EDGE_BLEND`, same CPU bake, **no C++ change**.
 
 - `shaders/terrain_lod_chunk.frag` (LIVE path):
@@ -129,7 +129,7 @@ no neighbour is ever flagged open => the dilate block is a no-op =>
 byte-identical stock. Transition tiles and the CEMENT-HARD-EDGE-1
 marching-squares cut are untouched.
 
-## Verification (exe `ea999e8b`, install `mc2-win64-abl-validate`, 3840x2160)
+## Verification (exe built at `3c6aad71` (deploy manifest records src_commit `ea999e8b` — a PARALLEL lane advanced HEAD between build and deploy; the shader source deployed is `3c6aad71`, md5-verified against the install), install `mc2-win64-abl-validate`, 3840x2160)
 
 | Check | Verdict | Evidence |
 |---|---|---|
@@ -167,4 +167,4 @@ eroding the crisp outline — but it softens a shipped, user-approved look
 ## Files (revision 2)
 - `shaders/terrain_lod_chunk.frag` — crisp solid + RUNWAY-EDGE-DILATE-1 block
 - `shaders/gos_terrain.frag` — rev-1 erosion removed
-Commits (local only, NOT pushed): `8e59de64`, `ea999e8b`.
+Commits (local only, NOT pushed): `8e59de64`, `3c6aad71`.
