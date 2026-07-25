@@ -918,6 +918,53 @@ static bool CementTransitionFallbackEnabled() {
     return s;
 }
 
+// CEMENT-ALPHA-LAND-1 (successor to RUNWAY-APRON-TONE-2; user has now hit
+// "we are missing part of the runway" on three maps):
+//
+// The transition-tile drop measured by [CEMENT_TRANSITION_DROP v1] is
+// structural, not a tuning problem. `BuildCementCatalogAtlas` admits ONLY
+// pure-cement (isCement && !isAlpha) slots into the catalog, so an alpha
+// (transition) slot has no atlas layer of its own. `PopulateRecipeCementWords`
+// therefore has to BORROW a layer from a corner vertex whose terrainType is a
+// SOLID cement slot -- and where pavement crosses open ground there is no such
+// corner. Result: mc2_10 278/320 = 87% of transition tiles bake no word at all;
+// mc2_24 266/778 = 34%. MC2_CEMENT_TRANSITION_FALLBACK borrows from an
+// orthogonal NEIGHBOUR instead of a corner, but dropped tiles form contiguous
+// runs with no paved neighbour to borrow from, so it recovers only ~12%.
+//
+// This gate closes the hole at the source: alpha cement slots are APPENDED to
+// the catalog atlas as their own cells (after all solid cells, so existing
+// layer indices are byte-stable), and a dropped transition tile bakes a word
+// pointing at ITS OWN slot's layer with the OWN-ALPHA bit set. The fragment
+// shader then uses the atlas cell's own ALPHA channel as coverage -- the road
+// art composites over the terrain instead of replacing it -- so no borrowed
+// corner and no marching-squares mask are needed.
+//
+// Deliberately NARROW: the new path fires ONLY on tiles the existing logic
+// DROPS. Tiles that already bake a marching-squares word keep it untouched, so
+// the user-approved CEMENT-HARD-EDGE-1 crisp transitions are not disturbed.
+// Default OFF => not one atlas texel and not one cement word changes.
+static bool CementAlphaAtlasEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_ALPHA_ATLAS");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
+// Slot -> atlas layer index for ALPHA (transition) cement slots. Kept SEPARATE
+// from g_cementLayerIndexBySlot on purpose: that map is also the "is this
+// terrainType a solid cement corner" oracle used by cemLayerForVertex() and by
+// the solid-quad branch, and folding alpha slots into it would silently promote
+// every transition tile to a full-replacement solid slab.
+static uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
+static bool     g_cementAlphaLayerMapReady = false;
+
+// cementWord bit 23 = OWN-ALPHA transition: layerIdx addresses an alpha cell
+// whose own texel alpha is the coverage. Bits 31,30 and 29:24 (maskId) and
+// 19:16 (runway edge-blend) are already spoken for; 23:20 are free.
+static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
+
 // ---------------------------------------------------------------------------
 // RUNWAY-APRON-TONE-2 (user report, mc2_10 close ground pose): "all of the
 // runways should be the same color ... they should ALWAYS be the color that
@@ -1162,6 +1209,11 @@ static void PopulateRecipeCementWords() {
     // terrain even though the paving/road art exists in the catalog.
     long transitionDroppedNoLayer = 0;
     long transitionDroppedNoMask  = 0;
+    // CEMENT-ALPHA-LAND-1: of the dropped tiles above, how many were rescued by
+    // an own-alpha atlas cell. The drop counters still count them, so
+    // dropped/total stays the LEGACY rate and (dropped-rescued)/total is the
+    // rate with the gate on -- the two arms remain directly comparable.
+    long transitionAlphaRescued   = 0;
     // Step 5c: also collect a full per-vn cement-word array for the terrain LOD
     // chunk path (indexed vn = mx + my*mapSide, matching its heightfield SSBO).
     std::vector<uint32_t> chunkCementWords((size_t)mapSide * (size_t)mapSide, 0u);
@@ -1225,6 +1277,28 @@ static void PopulateRecipeCementWords() {
                                    | ((uint32_t)(maskId & (int)kCementMaskIdMask) << kCementMaskIdShift)
                                    | ((uint32_t)cementLayerIdx & 0xFFFFu);
                         ++transitionQuadCount;
+                    } else if (CementAlphaAtlasEnabled()
+                               && g_cementAlphaLayerMapReady
+                               && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
+                        // CEMENT-ALPHA-LAND-1 rescue. This tile is a transition
+                        // tile the legacy logic DROPS -- it has no solid-cement
+                        // corner to borrow a layer from, or no derivable mask.
+                        // Its own alpha slot now has an atlas cell, so bake a
+                        // word pointing at that cell with OWN_ALPHA set; the
+                        // frag uses the cell's texel alpha as coverage and
+                        // composites over the terrain. maskId is left at the
+                        // all-corners value: the OWN_ALPHA branch in the shader
+                        // never consults it, and any future reader that does
+                        // sees "fully covered", which is the honest answer for
+                        // a tile whose coverage lives in its alpha channel.
+                        cementWord = kCementLayerValidBit
+                                   | kCementTransitionBit
+                                   | kCementOwnAlphaBit
+                                   | ((uint32_t)((int)kCementMaskIdMask) << kCementMaskIdShift)
+                                   | ((uint32_t)g_cementAlphaLayerIndexBySlot[slot] & 0xFFFFu);
+                        ++transitionAlphaRescued;
+                        if (cementLayerIdx == 0xFFFFu) ++transitionDroppedNoLayer;
+                        else                           ++transitionDroppedNoMask;
                     } else if (cementLayerIdx == 0xFFFFu) {
                         ++transitionDroppedNoLayer;   // no solid-cement corner
                     } else {
@@ -1245,10 +1319,12 @@ static void PopulateRecipeCementWords() {
     // whole-tile state anyway -- CEMENT-HARD-EDGE-1 -- so the outline shape is
     // unaffected and only the missing paving is restored).
     printf("[CEMENT_TRANSITION_DROP v1] event=census mission=%s transition_baked=%ld "
-           "dropped_no_layer=%ld dropped_no_mask=%ld fallback=%d\n",
+           "dropped_no_layer=%ld dropped_no_mask=%ld fallback=%d "
+           "alpha_atlas=%d alpha_rescued=%ld\n",
            (::missionName[0] ? ::missionName : "unknown"), transitionQuadCount,
            transitionDroppedNoLayer, transitionDroppedNoMask,
-           CementTransitionFallbackEnabled() ? 1 : 0);
+           CementTransitionFallbackEnabled() ? 1 : 0,
+           CementAlphaAtlasEnabled() ? 1 : 0, transitionAlphaRescued);
     fflush(stdout);
     if (CementTransitionFallbackEnabled() && blocks && tt) {
         const std::vector<uint32_t> before = chunkCementWords;
@@ -1637,6 +1713,43 @@ void BuildCementCatalogAtlas() {
         }
     }
 
+    // CEMENT-ALPHA-LAND-1: second enumeration pass — APPEND alpha (transition)
+    // cement slots as their own atlas cells. Appended after every solid cell so
+    // solid layer indices are byte-stable vs gate-OFF. Same resolve/validation
+    // chain and the same 1024-cell budget cap as the solid pass above.
+    const int nSolidCells = (int)cementNodeIndices.size();
+    long alphaAdmitted = 0, alphaSkipped = 0;
+    memset(g_cementAlphaLayerIndexBySlot, 0xFF, sizeof(g_cementAlphaLayerIndexBySlot));
+    g_cementAlphaLayerMapReady = false;
+    std::vector<int> alphaCementSlots;
+    if (CementAlphaAtlasEnabled()) {
+        for (long slot = 0; slot < lastSlot; ++slot) {
+            if (!tt->isCement((DWORD)slot)) continue;
+            if (!tt->isAlpha((DWORD)slot)) continue;   // alpha/transition slots only
+            const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
+            if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)MC_MAXTEXTURES) { ++alphaSkipped; continue; }
+            const DWORD gosHandle = tex_resolve(nodeIdx);
+            if (gosHandle == 0u) { ++alphaSkipped; continue; }
+            const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
+            if (glTex == 0) { ++alphaSkipped; continue; }
+            if (cementNodeIndices.size() >= 1024) { truncated = true; ++alphaSkipped; continue; }
+            if (slot >= 0 && slot < MC_MAX_TERRAIN_TXMS) {
+                g_cementAlphaLayerIndexBySlot[slot] = (uint16_t)cementNodeIndices.size();
+            }
+            cementSlots.push_back((int)slot);
+            cementNodeIndices.push_back(nodeIdx);
+            cementGLTextures.push_back(glTex);
+            alphaCementSlots.push_back((int)slot);
+            ++alphaAdmitted;
+        }
+        g_cementAlphaLayerMapReady = true;
+    }
+    printf("[CEMENT_ALPHA_ATLAS v1] event=admit mission=%s gate=%d solid_cells=%d "
+           "alpha_admitted=%ld alpha_skipped=%ld\n",
+           (::missionName[0] ? ::missionName : "unknown"),
+           CementAlphaAtlasEnabled() ? 1 : 0, nSolidCells, alphaAdmitted, alphaSkipped);
+    fflush(stdout);
+
     // CEMENT_DIAG summary — always emit when trace on, regardless of cap.
     if (traceOn()) {
         printf("[CEMENT_DIAG] summary mission=%s total_cement=%ld base=%ld transitions=%ld nextAvailable=%ld firstTransition=%ld\n",
@@ -1741,12 +1854,17 @@ void BuildCementCatalogAtlas() {
     }
 
     // ---- CEMENT-ATLAS-TONE-MATCH-1: per-cell concrete-band tone normalisation
-    if (CementToneMatchEnabled() && N > 1) {
+    // CEMENT-ALPHA-LAND-1: tone work is an operation on CONCRETE ART, so it is
+    // bounded to the solid cells. Alpha cells appended by the alpha-atlas gate
+    // are mostly transparent surround and would drag every band statistic.
+    // Gate OFF => nSolidCells == N => identical to before.
+    const int NT = nSolidCells;
+    if (CementToneMatchEnabled() && NT > 1) {
         const size_t cellPx = (size_t)txmSize * (size_t)txmSize;
-        std::vector<float> cellR((size_t)N, 0.f), cellG((size_t)N, 0.f), cellB((size_t)N, 0.f);
-        std::vector<int>   cellOk((size_t)N, 0);
+        std::vector<float> cellR((size_t)NT, 0.f), cellG((size_t)NT, 0.f), cellB((size_t)NT, 0.f);
+        std::vector<int>   cellOk((size_t)NT, 0);
         std::vector<float> lum(cellPx, 0.f);
-        for (int k = 0; k < N; ++k) {
+        for (int k = 0; k < NT; ++k) {
             const int dstX = (k % gridSide) * txmSize;
             const int dstY = (k / gridSide) * txmSize;
             size_t n = 0;
@@ -1788,8 +1906,8 @@ void BuildCementCatalogAtlas() {
         // one outlier family dragging a mean).
         auto medianOf = [&](const std::vector<float>& v) -> float {
             std::vector<float> t;
-            t.reserve((size_t)N);
-            for (int k = 0; k < N; ++k) if (cellOk[(size_t)k]) t.push_back(v[(size_t)k]);
+            t.reserve((size_t)NT);
+            for (int k = 0; k < NT; ++k) if (cellOk[(size_t)k]) t.push_back(v[(size_t)k]);
             if (t.empty()) return 0.f;
             std::sort(t.begin(), t.end());
             return t[t.size() / 2];
@@ -1797,7 +1915,7 @@ void BuildCementCatalogAtlas() {
         const float refR = medianOf(cellR), refG = medianOf(cellG), refB = medianOf(cellB);
         long adjusted = 0;
         if (refR > 0.f && refG > 0.f && refB > 0.f) {
-            for (int k = 0; k < N; ++k) {
+            for (int k = 0; k < NT; ++k) {
                 if (!cellOk[(size_t)k]) continue;
                 // Clamp keeps a wildly-different cell (e.g. an asphalt-dominant pad)
                 // from being violently recoloured; the patchwork families sit well
@@ -1828,7 +1946,7 @@ void BuildCementCatalogAtlas() {
         }
         printf("[CEMENT_TONE_MATCH v1] event=applied mission=%s cells=%d adjusted=%ld "
                "ref_rgb=%.1f,%.1f,%.1f\n",
-               (::missionName[0] ? ::missionName : "unknown"), N, adjusted, refR, refG, refB);
+               (::missionName[0] ? ::missionName : "unknown"), NT, adjusted, refR, refG, refB);
         fflush(stdout);
     }
 
@@ -1836,11 +1954,13 @@ void BuildCementCatalogAtlas() {
     //      absolute-target normalisation.
     {
         auto* ttNames = Terrain::terrainTextures;
-        std::vector<float> bR((size_t)N, 0.f), bG((size_t)N, 0.f), bB((size_t)N, 0.f);
-        std::vector<int>   bOk((size_t)N, 0);
+        // CEMENT-ALPHA-LAND-1: solid cells only (see NT note above), so the
+        // [CEMENT_CELL_TONE v1] census stays comparable across gate arms.
+        std::vector<float> bR((size_t)NT, 0.f), bG((size_t)NT, 0.f), bB((size_t)NT, 0.f);
+        std::vector<int>   bOk((size_t)NT, 0);
         std::vector<float> bL;
-        bL.reserve((size_t)N);
-        for (int k = 0; k < N; ++k) {
+        bL.reserve((size_t)NT);
+        for (int k = 0; k < NT; ++k) {
             if (CementCellBandMean(atlasBuf, atlasPixelSide, gridSide, txmSize, k,
                                    bR[(size_t)k], bG[(size_t)k], bB[(size_t)k])) {
                 bOk[(size_t)k] = 1;
@@ -1856,7 +1976,7 @@ void BuildCementCatalogAtlas() {
         // is the apron tone, not a median dragged down by asphalt runway cells.
         auto upperMedian = [&](const std::vector<float>& v) -> float {
             std::vector<float> t;
-            for (int k = 0; k < N; ++k) {
+            for (int k = 0; k < NT; ++k) {
                 if (!bOk[(size_t)k]) continue;
                 const float L = 0.299f * bR[(size_t)k] + 0.587f * bG[(size_t)k]
                               + 0.114f * bB[(size_t)k];
@@ -1873,7 +1993,7 @@ void BuildCementCatalogAtlas() {
         // the DARK OUTLIERS (the runway/asphalt families) unconditionally, since
         // those are the cells the user is looking at.
         long darkCells = 0;
-        for (int k = 0; k < N; ++k) {
+        for (int k = 0; k < NT; ++k) {
             if (!bOk[(size_t)k]) continue;
             const float L = 0.299f * bR[(size_t)k] + 0.587f * bG[(size_t)k]
                           + 0.114f * bB[(size_t)k];
@@ -1892,14 +2012,14 @@ void BuildCementCatalogAtlas() {
         }
         printf("[CEMENT_CELL_TONE v1] event=census mission=%s cells=%d usable=%d "
                "median_lum=%.1f target_rgb=%.1f,%.1f,%.1f target_src=%s dark_cells=%ld\n",
-               (::missionName[0] ? ::missionName : "unknown"), N, (int)bL.size(),
+               (::missionName[0] ? ::missionName : "unknown"), NT, (int)bL.size(),
                medL, tgtR, tgtG, tgtB, overridden ? "env" : "upper_median", darkCells);
         fflush(stdout);
 
-        if (RunwayToneMatchEnabled() && N > 0 && tgtR > 0.f && tgtG > 0.f && tgtB > 0.f) {
+        if (RunwayToneMatchEnabled() && NT > 0 && tgtR > 0.f && tgtG > 0.f && tgtB > 0.f) {
             const float strength = RunwayToneStrength();
             long adjusted = 0;
-            for (int k = 0; k < N; ++k) {
+            for (int k = 0; k < NT; ++k) {
                 if (!bOk[(size_t)k]) continue;
                 // WIDE clamp -- this is the whole point. [0.70,1.40] is what kept
                 // an asphalt runway (band ~53) from ever reaching a ~123 concrete
@@ -1930,7 +2050,7 @@ void BuildCementCatalogAtlas() {
             }
             printf("[RUNWAY_TONE_MATCH v1] event=applied mission=%s cells=%d adjusted=%ld "
                    "target_rgb=%.1f,%.1f,%.1f strength=%.2f target_src=%s\n",
-                   (::missionName[0] ? ::missionName : "unknown"), N, adjusted,
+                   (::missionName[0] ? ::missionName : "unknown"), NT, adjusted,
                    tgtR, tgtG, tgtB, strength, overridden ? "env" : "upper_median");
             fflush(stdout);
         }

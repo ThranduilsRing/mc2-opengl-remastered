@@ -877,13 +877,16 @@ void main() {
     base /= 9.0;
 
     // Step 5c: cement catalog override.
-    // cw bit layout: bit31=VALID, bit30=IS_TRANSITION, bits29:24=maskId, bits15:0=layerIdx.
+    // cw bit layout: bit31=VALID, bit30=IS_TRANSITION, bits29:24=maskId,
+    //                bit23=OWN_ALPHA (CEMENT-ALPHA-LAND-1), bits19:16=edge-blend
+    //                open-border mask, bits15:0=layerIdx.
     bool cementHit = false;
     float cementTransAlpha = 0.0;  // CEMENT-HARD-EDGE-1: neighbor-derived transition coverage
     // CEMENT-CLASS-DIAG-1 (u_diag & 32768): which code path coloured this pixel's
     // concrete. 0 = none (raw baked colormap), 1 = SOLID cement-atlas replacement,
     // 2 = TRANSITION cement-atlas (marching-squares alpha), 3 = diag-connect,
-    // 4 = runway-edge dilate, 5 = authored overlay sidecar. Diagnostic only.
+    // 4 = runway-edge dilate, 5 = authored overlay sidecar,
+    // 6 = OWN_ALPHA transition (CEMENT-ALPHA-LAND-1). Diagnostic only.
     int cementDbgClass = 0;
     int cementDbgLayer = -1;
     vec3 cementDbgRaw = vec3(0.0);
@@ -918,7 +921,21 @@ void main() {
         vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * u_missionFlatLight;
         cementDbgLayer = int(cLayerIdx);
         cementDbgRaw   = texture(u_cementAtlas, cAtlasUV).rgb;
-        if (isTransition) {
+        // CEMENT-ALPHA-LAND-1: OWN_ALPHA transition. The word points at an ALPHA
+        // cement cell that the CPU appended to the catalog for this tile's OWN
+        // slot, so the road/paving art carries its own coverage in its alpha
+        // channel. Composite it OVER the terrain instead of replacing -- no
+        // borrowed solid-cement corner and no marching-squares mask involved.
+        // Only tiles the legacy path DROPPED ever carry this bit, so the
+        // user-approved CEMENT-HARD-EDGE-1 crisp transitions below are untouched.
+        // With MC2_CEMENT_ALPHA_ATLAS off no word sets bit23 => branch is dead.
+        bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
+        if (isTransition && cementOwnAlpha) {
+            float cOwnA = texture(u_cementAtlas, cAtlasUV).a;
+            base = mix(base, cementColor, cOwnA);
+            cementTransAlpha = cOwnA;
+            if (cOwnA > 0.5) { cementHit = true; cementDbgClass = 6; }
+        } else if (isTransition) {
             // CEMENT-HARD-EDGE-1 (default-on; self-disables if u_useTransitionMask==0):
             // Render the SAME solid cement atlas tile as the interior, cut by a HARD
             // mask derived from NEIGHBOR WHOLE-TILE cement state (NOT the wonky maskId).
@@ -1194,6 +1211,7 @@ void main() {
         else if (cementDbgClass == 3) cc = vec3(0.0, 0.0, 1.0);
         else if (cementDbgClass == 4) cc = vec3(1.0, 1.0, 0.0);
         else if (cementDbgClass == 5) cc = vec3(1.0, 0.0, 1.0);
+        else if (cementDbgClass == 6) cc = vec3(0.0, 1.0, 1.0);  // CEMENT-ALPHA-LAND-1 own-alpha
         else                          cc = base * 0.35;
         fragColor = vec4(cc, 1.0);
         if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();

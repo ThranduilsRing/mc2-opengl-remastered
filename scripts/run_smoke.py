@@ -1554,6 +1554,10 @@ def main():
                             "MC2_CEMENT_LIT",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",
+                            # CEMENT-ALPHA-LAND-1: alpha cement slots admitted
+                            # to the catalog atlas; closes the transition-tile
+                            # pavement drop (mc2_10 87%, mc2_24 34%).
+                            "MC2_CEMENT_ALPHA_ATLAS",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs
