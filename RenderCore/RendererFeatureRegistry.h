@@ -1863,6 +1863,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "V-MATERIAL-PBR-3-DIAG: diagnostic visualizer for the forwarded sunFound state. When ON together with MC2_STATIC_PROP_PBR_V1=1, static_prop.frag replaces the PBR result with cyan (sunFound=true) or magenta (sunFound=false), bypassing Schlick math. Diagnostic-only; never affects default-OFF behavior. Unset/'0' -> off."
     },
     {
+        "MC2_STATIC_PROP_NIGHT_TAGS",
+        "MC2_STATIC_PROP_NIGHT_TAGS",
+        EnvVarKind::Trace,
+        false,
+        "EDGE-LIGHT-EMISSION-1: restores the stock hot-colour NIGHT vertex tags on the GPU static-prop path. Runway/taxiway edge lights and beacons paint their post base 0xff00ff00 ('Hot Green -- Building Base Lights -- ONLY at NIGHT') and declare their emission colour per fixture in the .ini //Night Lights block; the legacy CPU path honours these via eye->getIsNight()/getNightFactor() (mclib/tgl.cpp:1901) but the GPU path passed false/0.0 hardcoded into get_base_light(), so every night-only branch took its daytime arm and the lights never came on. Unset/'0' -> u_isNight=0, u_nightFactor=0, u_nightEmissiveScale=0 -> byte-identical. '1' -> stock emission restored. '2' -> verify-by-exaggeration (4x emission delta). Blast radius: relights every night-tagged static prop, including building windows -- stock-correct but broad, hence default-OFF. Resolved once at process start."
+    },
+    {
+        "MC2_TUNE_STATIC_PROP_NIGHT_TAGS_SCALE",
+        "MC2_STATIC_PROP_NIGHT_TAGS_SCALE",
+        EnvVarKind::Trace,
+        false,
+        "EDGE-LIGHT-EMISSION-1: scales the NIGHT EMISSION DELTA only (night base_light minus day base_light), never the underlying lighting maths, so 0.0 is exactly the pre-fix render and 1.0 is exact stock. Only meaningful when MC2_STATIC_PROP_NIGHT_TAGS is nonzero. Unset -> 1.0 (or 4.0 under mode 2). Clamped [0,16]. Resolved once at process start."
+    },
+    {
         "MC2_TUNE_FAR_BACKDROP_LIT_NEAR",
         "MC2_FAR_BACKDROP_LIT_NEAR",
         EnvVarKind::Trace,

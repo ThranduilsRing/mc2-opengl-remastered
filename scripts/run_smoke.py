@@ -1988,6 +1988,12 @@ def main():
                             "MC2_FAR_BACKDROP_LIT_FAR",
                             "MC2_FAR_BACKDROP_LIT_STRENGTH",
                             "MC2_FAR_BACKDROP_LIT_TINT",
+                            # EDGE-LIGHT-EMISSION-1: restore the stock hot-colour
+                            # NIGHT vertex tags on the GPU static-prop path (runway
+                            # edge lights / beacons / lit windows). Default-OFF ->
+                            # isNight/factor uploaded as 0 -> byte-identical.
+                            "MC2_STATIC_PROP_NIGHT_TAGS",
+                            "MC2_STATIC_PROP_NIGHT_TAGS_SCALE",
                             # BACKDROP-BLIT-ATTRIB-1: night-dim the edge-fog +
                             # OOB horizon cloud bank (default-OFF, byte-identical).
                             "MC2_NIGHT_FOG_DIM",

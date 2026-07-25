@@ -10282,6 +10282,39 @@ void gos_GetTerrainLightDir(float* x, float* y, float* z) {
 void gos_SetTerrainLightDir(float x, float y, float z) {
     if (g_gos_renderer) g_gos_renderer->setTerrainLightDir(x, y, z);
 }
+
+// EDGE-LIGHT-EMISSION-1: night-state bridge for the GPU static-prop path.
+//
+// THE BUG THIS EXISTS TO FIX. Stock MC2 lights runway/taxiway edge lights and
+// beacons through the authored "hot colour magic" vertex tags: every one of
+// data/tgl/{runway,red,green,blue}beaconlight.ase paints its post base pure
+// green (0xff00ff00 = "Hot Green -- Building Base Lights -- ONLY at NIGHT"),
+// and each fixture's .ini carries a `//Night Lights` block giving the colour
+// to emit (runwaylight/redbeaconlight 0x00ff0000 red, greenbeaconlight
+// 0x0000ff00, bluebeaconlight 0x000000ff). The legacy CPU path
+// (mclib/tgl.cpp:1901) reads eye->getIsNight()/getNightFactor() and honours
+// those branches. The GPU static-prop batcher path -- which is the path these
+// props ACTUALLY take at runtime -- passed `false, 0.0` hardcoded into
+// get_base_light() (static_prop.vert, "stubbed for now"), so every night-only
+// branch evaluated its DAYTIME arm and the emission was simply never applied.
+// The lights were switched off. This restores the dropped stock state; it is
+// not a new visual treatment.
+//
+// Push model mirrors gos_SetTerrainLightDir / gos_SetTerrainMissionFlatLight:
+// gamecam.cpp feeds it once per frame, GameOS reads it at uniform-upload time.
+static bool  s_gosIsNight     = false;
+static float s_gosNightFactor = 0.0f;
+
+void gos_SetNightState(bool isNight, float nightFactor) {
+    s_gosIsNight     = isNight;
+    if (nightFactor < 0.0f) nightFactor = 0.0f;
+    if (nightFactor > 1.0f) nightFactor = 1.0f;
+    s_gosNightFactor = nightFactor;
+}
+void gos_GetNightState(bool* isNight, float* nightFactor) {
+    if (isNight)     *isNight     = s_gosIsNight;
+    if (nightFactor) *nightFactor = s_gosNightFactor;
+}
 // VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
 // (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
 // no new accessor needed.

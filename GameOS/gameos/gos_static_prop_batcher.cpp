@@ -754,6 +754,57 @@ static const bool s_staticPropAmbientV1Enabled = []() {
 // Distance band defaults bracket the LOD impostor distance (MC2_IMPOSTOR_DIST,
 // default 800 world units; bdactor.cpp selectActiveLOD) so the fade completes as
 // the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
+// EDGE-LIGHT-EMISSION-1 (master-FAIL #8, re-framed). User verdict that opened
+// this lane: "edge light is just doing the wrong thing entirely. the actual
+// lights are not on at ALL." Two predecessor lanes chased whether the light
+// FIXTURES are visible (backface culling, then camera-facing billboards + a
+// screen-size clamp). That framing is superseded: visibility was never the
+// problem. The fixtures were being drawn -- they were drawn UNLIT.
+//
+// Stock MC2 lights them through authored hot-colour vertex tags. All four
+// fixture meshes (data/tgl/{runway,red,green,blue}beaconlight.ase) paint their
+// post base pure green = 0xff00ff00 = "Hot Green -- Building Base Lights --
+// ONLY at NIGHT", and each fixture's .ini declares the colour to emit in a
+// `//Night Lights` block (runwaylight + redbeaconlight 0x00ff0000 red,
+// greenbeaconlight 0x0000ff00, bluebeaconlight 0x000000ff -- so per-fixture
+// colour is stock data and needs no new authoring). The legacy CPU path reads
+// eye->getIsNight()/getNightFactor() (mclib/tgl.cpp:1901) and honours them.
+// THIS path passed `false, 0.0` hardcoded into get_base_light(), so all three
+// night-only branches (lit windows, outside building lights, base lights) took
+// their daytime arm and emitted nothing.
+//
+// Gate MC2_STATIC_PROP_NIGHT_TAGS: 0 = OFF (isNight/factor uploaded as 0/0 ->
+// byte-identical to the pre-fix render), 1 = ON (stock emission restored),
+// 2 = verify-by-exaggeration (emission delta scaled by
+// MC2_STATIC_PROP_NIGHT_TAGS_SCALE, default 4x under mode 2).
+//
+// BLAST RADIUS, stated plainly: this is not scoped to runway lights. It
+// restores the night tags for EVERY static prop that carries one, so building
+// windows and building base lights relight at night too. That is equally
+// stock-correct and equally currently-wrong, but it is a broad visual change
+// and is the reason this ships default-OFF pending user click-through.
+//
+// NOTE ON DISTANCE BEHAVIOUR: the emission rides real fixture geometry, so it
+// shrinks and fades with distance on its own. It deliberately does NOT
+// resurrect any screen-size clamp -- the unbounded clamp is what produced the
+// "atrociously hideous" overview streaks (RUNWAY-MARKER-LIGHTS-1).
+static const int s_nightTagMode = []() {
+    const char* v = getenv("MC2_STATIC_PROP_NIGHT_TAGS");
+    if (!v || !*v) return 0;
+    int m = atoi(v);
+    return (m < 0) ? 0 : ((m > 2) ? 2 : m);
+}();
+static const float s_nightTagScale = []() {
+    const char* v = getenv("MC2_STATIC_PROP_NIGHT_TAGS_SCALE");
+    if (v && *v) {
+        float f = (float)atof(v);
+        if (f < 0.0f) f = 0.0f;
+        if (f > 16.0f) f = 16.0f;
+        return f;
+    }
+    return (s_nightTagMode == 2) ? 4.0f : 1.0f;
+}();
+
 static const bool s_farBackdropLitEnabled = []() {
     const char* v = getenv("MC2_FAR_BACKDROP_LIT");
     return v != nullptr && v[0] != '0' && v[0] != '\0';
@@ -1181,6 +1232,10 @@ struct ProgramLocs {
     GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
     GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
     GLint terrainSunMC2       = -1;   // GREYBEARD-DIFFUSE-TEST: u_terrainSunMC2 (vec3)
+    // EDGE-LIGHT-EMISSION-1: stock night-tag emission state.
+    GLint isNight            = -1;   // u_isNight (int 0/1)
+    GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
+    GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
     GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
     GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
@@ -1519,6 +1574,9 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.pathTint          = glGetUniformLocation(s_staticPropProgram, "u_pathTint");
     // GREYBEARD-DIFFUSE-TEST: terrain sun (raw MC2) for forced-diffuse probe.
     s_locsLegacy.terrainSunMC2     = glGetUniformLocation(s_staticPropProgram, "u_terrainSunMC2");
+    s_locsLegacy.isNight            = glGetUniformLocation(s_staticPropProgram, "u_isNight");
+    s_locsLegacy.nightFactor        = glGetUniformLocation(s_staticPropProgram, "u_nightFactor");
+    s_locsLegacy.nightEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_nightEmissiveScale");
     // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
     s_locsLegacy.terrainDecalFill  = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalFill");
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -1580,6 +1638,9 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.pathTint          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pathTint");
             // GREYBEARD-DIFFUSE-TEST: terrain sun (raw MC2) for forced-diffuse probe.
             s_locsCoalesce.terrainSunMC2     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainSunMC2");
+            s_locsCoalesce.isNight            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_isNight");
+            s_locsCoalesce.nightFactor        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightFactor");
+            s_locsCoalesce.nightEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightEmissiveScale");
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
             s_locsCoalesce.terrainDecalFill  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalFill");
             // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -6490,6 +6551,24 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
             glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz);
         }
+        // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state. Gate OFF ->
+        // 0/0/0 uploaded -> get_base_light takes its daytime arms -> render is
+        // byte-identical to the pre-fix build.
+        if (s_locsCoalesce.isNight >= 0 || s_locsCoalesce.nightFactor >= 0) {
+            bool  nIsNight = false;
+            float nFactor  = 0.0f;
+            if (s_nightTagMode != 0) {
+                extern void gos_GetNightState(bool*, float*);
+                gos_GetNightState(&nIsNight, &nFactor);
+            }
+            if (s_locsCoalesce.isNight >= 0)
+                glUniform1i(s_locsCoalesce.isNight, nIsNight ? 1 : 0);
+            if (s_locsCoalesce.nightFactor >= 0)
+                glUniform1f(s_locsCoalesce.nightFactor, nFactor);
+            if (s_locsCoalesce.nightEmissiveScale >= 0)
+                glUniform1f(s_locsCoalesce.nightEmissiveScale,
+                            (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
+        }
         // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
         // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->
         // byte-identical. Static-band/strength/tint values are harmless when the
@@ -7682,6 +7761,24 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 float tsx = 0.0f, tsy = 0.0f, tsz = 1.0f;
                 gos_GetTerrainLightDir(&tsx, &tsy, &tsz);
                 glUniform3f(s_locsLegacy.terrainSunMC2, tsx, tsy, tsz);
+            }
+            // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state. Gate OFF ->
+            // 0/0/0 uploaded -> get_base_light takes its daytime arms -> render is
+            // byte-identical to the pre-fix build.
+            if (s_locsLegacy.isNight >= 0 || s_locsLegacy.nightFactor >= 0) {
+                bool  nIsNight = false;
+                float nFactor  = 0.0f;
+                if (s_nightTagMode != 0) {
+                    extern void gos_GetNightState(bool*, float*);
+                    gos_GetNightState(&nIsNight, &nFactor);
+                }
+                if (s_locsLegacy.isNight >= 0)
+                    glUniform1i(s_locsLegacy.isNight, nIsNight ? 1 : 0);
+                if (s_locsLegacy.nightFactor >= 0)
+                    glUniform1f(s_locsLegacy.nightFactor, nFactor);
+                if (s_locsLegacy.nightEmissiveScale >= 0)
+                    glUniform1f(s_locsLegacy.nightEmissiveScale,
+                                (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
             }
             // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy).
             // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 ->

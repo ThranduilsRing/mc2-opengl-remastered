@@ -77,6 +77,22 @@ uniform mat4 u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToCl
 // shader uses. Used as the directional term for static-prop diffuse because
 // calc_light's frozen worldLights[0] sun was ~90deg off.
 uniform vec3 u_terrainSunMC2;
+// EDGE-LIGHT-EMISSION-1 (gate MC2_STATIC_PROP_NIGHT_TAGS): the eye's real
+// night state, so get_base_light() can evaluate the stock hot-colour NIGHT
+// branches. These were hardcoded `false, 0.0` on this path ("stubbed for
+// now"), which meant every runway edge light, taxiway marker and beacon --
+// all authored with the Hot Green "Building Base Lights -- ONLY at NIGHT"
+// vertex tag, each carrying its own emission colour in its .ini `//Night
+// Lights` block -- evaluated its DAYTIME arm and emitted nothing. The lights
+// were off. The legacy CPU path (tgl.cpp:1901) never had this bug.
+//
+// u_nightEmissiveScale is applied to the EMISSION DELTA only (night base minus
+// day base), so 1.0 is exact stock and 0.0 is exactly the old behaviour; it is
+// a grading knob and the verify-by-exaggeration handle, not a fudge in the
+// lighting maths. Gate OFF uploads isNight=0/factor=0 -> byte-identical.
+uniform int   u_isNight;             // 0/1
+uniform float u_nightFactor;         // 0..1 day->night blend
+uniform float u_nightEmissiveScale;  // 1.0 = stock; 0.0 = pre-fix; >1 exaggerate
 // FAR-BACKDROP-LIT (gate MC2_FAR_BACKDROP_LIT, default OFF): night-shade
 // substitution for far/impostor static-prop LODs. Far/impostor LODs register
 // via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_
@@ -460,12 +476,30 @@ void main() {
     //         passes lit=base_light → 0x2F2F2F. MATCHES CPU.
     const uint kFlagIsLightsOut = (1u << 0);
     bool lightsOut = (inst.flags & kFlagIsLightsOut) != 0u;
-    vec3 base_light = get_base_light(
+    // EDGE-LIGHT-EMISSION-1: evaluate get_base_light TWICE -- once with the
+    // night state forced off (exactly the pre-fix "stubbed false/0" result)
+    // and once with the eye's real night state. The difference is the stock
+    // NIGHT EMISSION and nothing else, so scaling only that delta is provably
+    // a no-op at scale 0 and exact stock at scale 1. The tagged vertices are
+    // self-illuminated by construction: this term is ADDITIVE and computed
+    // before ambient/sun, so night ambient never darkens it.
+    vec3 base_day = get_base_light(
         perVertexARGB,
         false, 0.0, false, lightsOut,
         ptd.hotPinkRGB.rgb,
         ptd.hotYellowRGB.rgb,
         ptd.hotGreenRGB.rgb);
+    vec3 base_light = base_day;
+    if (u_isNight != 0 || u_nightFactor > 0.0) {
+        vec3 base_night = get_base_light(
+            perVertexARGB,
+            u_isNight != 0, u_nightFactor, false, lightsOut,
+            ptd.hotPinkRGB.rgb,
+            ptd.hotYellowRGB.rgb,
+            ptd.hotGreenRGB.rgb);
+        base_light = clamp(base_day + (base_night - base_day) * u_nightEmissiveScale,
+                           vec3(0.0), vec3(1.0));
+    }
 
     // 4. Compute world-space normal and position for calc_light's distance
     //    math. modelMatrix is `v * M` form (Stuff convention, SSBO std430),

@@ -462,6 +462,18 @@ void GameCamera::render (void)
 					getLightBlue(flatIntensity)  / 255.0f);
 			}
 
+			// EDGE-LIGHT-EMISSION-1: feed the eye's night state to GameOS so the
+			// GPU static-prop shader can evaluate the stock hot-colour night
+			// branches (lit windows / outside building lights / BASE LIGHTS --
+			// the last of which is what every runway edge light and beacon is
+			// authored as). The legacy CPU path reads eye->getIsNight() directly;
+			// the GPU path had these stubbed to false/0, which is why the
+			// runway lights never came on. See gameos_graphics.cpp.
+			{
+				extern void gos_SetNightState(bool, float);
+				gos_SetNightState(eye->getIsNight(), eye->getNightFactor());
+			}
+
 			// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).
 			mc2SceneLightingTrace();
 
