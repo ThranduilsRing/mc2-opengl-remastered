@@ -101,3 +101,56 @@ covers mechs+vehicles+helos correctly; buildings are correctly excluded).
 ## Merge safety
 Narrow: one shader hunk inside the existing #7 gate. No C++ change, no new env
 var, no new uniform. Default-OFF byte-identical → survives wave-3 merge inert.
+
+---
+
+## RECAP on mc2_10 (2026-07-24, lane RECAP-MECHSHADOW-RUNWAY-1)
+
+User correction: the v0.5.2 review pack shipped the #7 A/B captured at
+**mc2_05**, not mc2_10, and asked why. Answer + fix below. No code change —
+this is a pure evidence recapture against exe `ea999e8b` (contact-shadow
+source unchanged since `9590805f`).
+
+**Why mc2_05 was used.** Every saved mc2_10 night bookmark (212019, 205952,
+204907, 204611, 212140, 204753) is a distant OVERVIEW. 212019 — the lowest of
+them at alt 2113 — frames guard towers and tree line only; no mech appears at
+readable size in any of them. The original capture fell back to the mc2_05
+bookmark because that one happened to contain a (distant) mech.
+
+**How the pose was composed instead of settling.** The CAVEAT in the section
+above ("no verb to stage a mover headless") still holds — the
+`MC2_UI_COMMAND_FILE` channel has only `toggle_pause` / `press pause.*` /
+`press dialog.*` / `debugview` / `screenshot` verbs, so no select/order/camera
+driving is possible. But the movers are already there at mission start: reading
+`data/missions/mc2_10.fit` gives the player lance at `CommanderID = 0`,
+`PositionX = -4842.666504`, `PositionY = -5525.333984`. Composing a bookmark at
+that world position (rot 150, proj 20, alt 900, z 200) frames a player mech
+large, at night, standing in its own light pool. Pose archived at
+`release_assets/0.5.2/REVIEW/03_mech_night_shadow/mc2_10_lance_close.bookmark.json`.
+
+**Result (3840x2160, gate OFF vs `MC2_MOVER_CONTACT_SHADOW=0.7`).**
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| mc2_10 night pose framing a mech at readable size | PASS | composed `mc2_10_lance_close`; mech ~700 px tall |
+| Cross-launch noise floor (OFF vs OFF) | PASS | 16 px changed, max delta 3 |
+| Contact term fires, and DARKENS | PASS | crop 1700x900 at the mover: 44.6% px changed, **71% darker**, mean dLum -3.10, max delta 223 |
+| Full-frame OFF vs ON | PASS | 1.275M px, bbox spans the whole light pool (ring-carve) |
+| Default-OFF byte-identical | PASS | unchanged by construction; OFF/OFF pair above |
+
+**Honest residuals.**
+- The mech **idly rotates its torso** and that animation is not launch-stable
+  (two ON captures differ by 819k px from the torso alone, while two OFF
+  captures differ by 16 px — the ON arms happened to land on different
+  animation phases). The shipped crop is therefore framed on the **legs and
+  ground**, which are pixel-stable. This is correct framing on the merits: the
+  fix is a terrain-shader effect and the mech body carries none of it. A
+  torso-matched full-body pair would need a frame-exact anim clamp that this
+  build does not expose.
+- **No VEHICLE could be framed**, same reason as before: no order/select verb,
+  and mc2_10's vehicles are off-map staged until objective-gated
+  (INVIS-VEHICLES-FIX-1 census). The `Gv` class stays carried by the
+  code-path argument, not a pixel crop. Unchanged from the original caveat.
+- Review pack section 3 images + text replaced; the WEAK-CAPTURE flag is
+  removed (the capture is now clean and on the right map), and replaced with
+  the two narrower flags above.
