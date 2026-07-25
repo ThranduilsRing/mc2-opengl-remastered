@@ -68,6 +68,7 @@ set(SOURCES ${SOURCES}
     xform_conventions.cpp
     spotlight_diag.cpp
     cone_glow.cpp
+    vis_semantics.cpp
     object_admission_predicate.cpp
     projectz_trace.cpp
     projectz_overlay.cpp

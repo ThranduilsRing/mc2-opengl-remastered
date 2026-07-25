@@ -26,6 +26,8 @@
 #include"msl.h"
 #endif
 
+#include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
+
 #include"memfunc.h"
 
 #include<gosfx/gosfxheaders.hpp>
@@ -819,7 +821,21 @@ class Mech3DAppearance: public ObjectAppearance
 		{
 			sensorLevel = lvl;
 		}
-		
+
+		// VISIBILITY-SEMANTICS-1: snapshot of everything the four separated
+		// predicates need. `meshAlpha` is read from the shape because that is
+		// the ONLY place the fade lives — the appearance never stores it.
+		mc2_vis::MoverVis buildVisState (void) const
+		{
+			mc2_vis::MoverVis v;
+			v.sensorLevel   = sensorLevel;
+			v.meshAlpha     = mechShape ? (unsigned)mechShape->GetAlphaValue() : 255u;
+			v.status        = status;
+			v.relation      = homeTeamRelationship;
+			v.legacyVisible = visible;
+						return v;
+		}
+
 		//------------------------------------------------------------------------------------------
 		//Puts mech into hit mode IF and ONLY IF the mech is standing, walking, running or limping.
 		// NO OTHER GESTURE IS VALID!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

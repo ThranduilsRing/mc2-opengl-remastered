@@ -32,6 +32,7 @@ extern "C" int mc2CaptureGaitFreezeActive();
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
+#include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 — drawn/known/emits/lit
 #include <cstdint>  // M2.5 (Q6 amendment 2): uint64_t for MLR mech draw counter
 #include <unordered_map>  // ANIM-CADENCE-GUARD-1: per-appearance last-advance frame stamp
 #include <vector>  // PRESENTATION-SOCKET-PROFILE-1: DeclaredSocketCheck list
@@ -4088,10 +4089,10 @@ void Mech3DAppearance::updateGeometry (void)
 		{
 			// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown mechs emit
 			// nothing (user report: wrecks kept glowing).
-			if (visible && (sensorLevel > 4) && !InEditor
-				&& (status != OBJECT_STATUS_DESTROYED)
-				&& (status != OBJECT_STATUS_DISABLED)
-				&& (status != OBJECT_STATUS_SHUTDOWN))
+			// VISIBILITY-SEMANTICS-1 job (c): was `sensorLevel > 4`, which is
+			// false for every home mech after render() resets it to 0 and for
+			// every vehicle in the game. Own/allied always emit.
+			if (!InEditor && mc2_vis::emitsLight(buildVisState()))
 			{
 				if (lightCircleNodeIndex == -1)
 					lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
@@ -4290,12 +4291,15 @@ void Mech3DAppearance::updateGeometry (void)
 				// cone — advertising a hidden enemy's exact position. Gate on
 				// the predicate that actually decides whether the MESH draws.
 				// Killswitch MC2_LIGHT_MOVER_VIS_GATE=0.
+				// VISIBILITY-SEMANTICS-1: job (c) EMITS LIGHT. Own/allied mechs
+				// always emit; a foreign mech emits only while its mesh is
+				// actually drawn (meshAlpha != 0), which is the real
+				// fog-of-war mechanism. `visible` is deliberately NOT read —
+				// it is true for every live mech every frame (mech.cpp:6638).
+				// Gate MC2_VIS_SEMANTICS=0 restores the pre-lane predicate.
 				spotlightLights_[k]->active =
-					(eye->isNight && visible && !InEditor
-					 && mc2_cone_glow::mover_model_shown(sensorLevel)
-					 && (status != OBJECT_STATUS_DESTROYED)
-					 && (status != OBJECT_STATUS_DISABLED)
-					 && (status != OBJECT_STATUS_SHUTDOWN));
+					(eye->isNight && !InEditor
+					 && mc2_vis::emitsLight(buildVisState()));
 				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 				spotlightLights_[k]->ownerEnabled =
 					spotlightLights_[k]->active ? 1 : 0;
@@ -5541,18 +5545,18 @@ long Mech3DAppearance::update (bool animate)
 		// GHOST-LIGHT-VISIBILITY-1: keep the off-screen freshness refresh in
 		// lockstep with the updateGeometry predicate — a sensor-blip-only
 		// enemy must not keep ownerEnabled latched while culled.
+		// VISIBILITY-SEMANTICS-1: same job-(c) predicate as updateGeometry,
+		// so a culled mover can never latch a stale emission state.
+		const mc2_vis::MoverVis vs_ = buildVisState();
 		const bool ownerOn =
-			(eye && eye->isNight && visible && !InEditor
-			 && mc2_cone_glow::mover_model_shown(sensorLevel)
-			 && (status != OBJECT_STATUS_DESTROYED)
-			 && (status != OBJECT_STATUS_DISABLED)
-			 && (status != OBJECT_STATUS_SHUTDOWN));
+			(eye && eye->isNight && !InEditor && mc2_vis::emitsLight(vs_));
+		mc2_vis::trace("mech", (const void*)this, vs_);
 		if (pointLight)
+			// The legacy `sensorLevel > 4` here excluded every home mech whose
+			// BattleMech::render() had just reset sensorLevel to 0 (mech.cpp:6896)
+			// — the "no mech searchlights at all" regression. Job (c) again.
 			pointLight->ownerEnabled =
-				(visible && (sensorLevel > 4) && !InEditor
-				 && (status != OBJECT_STATUS_DESTROYED)
-				 && (status != OBJECT_STATUS_DISABLED)
-				 && (status != OBJECT_STATUS_SHUTDOWN)) ? 1 : 0;
+				(!InEditor && mc2_vis::emitsLight(vs_)) ? 1 : 0;
 		if (ownerOn && !spotlightLights_.empty())
 		{
 			// Coarse per-frame position: mover position + forward bias, so

@@ -25,6 +25,8 @@
 #include"msl.h"
 #endif
 
+#include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
+
 #ifndef OBJECTAPPEARANCE_H
 #include"objectappearance.h"
 #endif
@@ -330,7 +332,21 @@ class GVAppearance : public ObjectAppearance
 		{
 			sensorLevel = lvl;
 		}
-		
+
+		// VISIBILITY-SEMANTICS-1 — see mech3d.h counterpart. NOTE for vehicles
+		// sensorLevel is NEVER 5: code/gvehicl.cpp only ever passes 0..4, so
+		// any `sensorLevel > 4` predicate is dead for the entire class.
+		mc2_vis::MoverVis buildVisState (void) const
+		{
+			mc2_vis::MoverVis v;
+			v.sensorLevel   = sensorLevel;
+			v.meshAlpha     = gvShape ? (unsigned)gvShape->GetAlphaValue() : 255u;
+			v.status        = status;
+			v.relation      = homeTeamRelationship;
+			v.legacyVisible = visible;
+						return v;
+		}
+
 		virtual void setObjStatus (long oStatus);
 		
 		virtual bool playDestruction (void);

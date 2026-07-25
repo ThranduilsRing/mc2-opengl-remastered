@@ -1412,6 +1412,10 @@ def main():
                             # GHOST-LIGHT-VISIBILITY-1: cone glow follows the
                             # model's own draw predicate (default ON).
                             "MC2_LIGHT_CONE_VIS_GATE",
+                            "MC2_VIS_SEMANTICS",
+                            "MC2_FORCE_ALL_VISIBLE",
+                            "MC2_VIS_SEMANTICS_TRACE",
+                            "MC2_VIS_SEMANTICS_TRACE_EVERY",
                             "MC2_LIGHT_MOVER_VIS_GATE",
                             # CONE-AIM-DIAG-1 / CONE-AIM-FLIP-1 / GHOST-LIGHT-
                             # DUMP-1 (batch-7 items 4+5 diagnostics).

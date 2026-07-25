@@ -14,6 +14,7 @@
 #include "tgl_load_guard.h"       // META-FIX design B PART 1: required base-shape load guard
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
+#include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 — drawn/known/emits/lit
 #endif
 
 #ifndef CAMERA_H
@@ -2767,14 +2768,14 @@ void GVAppearance::updateGeometry (void)
 				// searchlight cone that gave away its position. Gate on the
 				// predicate that decides whether the MESH draws.
 				// Killswitch MC2_LIGHT_MOVER_VIS_GATE=0.
+				// VISIBILITY-SEMANTICS-1 job (c) EMITS LIGHT — identical rule
+				// to the mech path. Own/allied vehicles always emit (they are
+				// never alpha-faded); a foreign vehicle emits only while its
+				// mesh is drawn. MC2_VIS_SEMANTICS=0 restores the pre-lane
+				// predicate.
 				spotlightLights_[k]->active =
-					(eye->isNight && visible && !InEditor
-					 && mc2_cone_glow::mover_model_shown(sensorLevel)
-					 && (status != OBJECT_STATUS_DESTROYED)
-					 && (status != OBJECT_STATUS_DISABLED)
-					 // LIGHT-CULL-RADIUS-1 ext(a): powered-down vehicles
-					 // emit nothing (parity with the mech predicate).
-					 && (status != OBJECT_STATUS_SHUTDOWN));
+					(eye->isNight && !InEditor
+					 && mc2_vis::emitsLight(buildVisState()));
 				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 				spotlightLights_[k]->ownerEnabled =
 					spotlightLights_[k]->active ? 1 : 0;
@@ -3085,12 +3086,11 @@ long GVAppearance::update (bool animate)
 		// GHOST-LIGHT-VISIBILITY-1: keep the off-screen freshness refresh in
 		// lockstep with the updateGeometry predicate — a sensor-blip-only
 		// enemy must not keep ownerEnabled latched while culled.
+		// VISIBILITY-SEMANTICS-1: job (c), in lockstep with updateGeometry.
+		const mc2_vis::MoverVis vs_ = buildVisState();
 		const bool ownerOn =
-			(eye && eye->isNight && visible && !InEditor
-			 && mc2_cone_glow::mover_model_shown(sensorLevel)
-			 && (status != OBJECT_STATUS_DESTROYED)
-			 && (status != OBJECT_STATUS_DISABLED)
-			 && (status != OBJECT_STATUS_SHUTDOWN));
+			(eye && eye->isNight && !InEditor && mc2_vis::emitsLight(vs_));
+		mc2_vis::trace("vehicle", (const void*)this, vs_);
 		if (ownerOn)
 		{
 			Stuff::Vector3D lpos = position;

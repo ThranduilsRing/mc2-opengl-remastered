@@ -11,6 +11,7 @@
 // z-range triangle rejection mirrors TG_Shape::Render (tgl.cpp:3303-3308).
 
 #include "cone_glow.h"
+#include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 supersession
 
 #include "msl.h"
 #include "txmmgr.h"
@@ -187,17 +188,30 @@ bool mover_vis_gate_enabled()
     return s;
 }
 
+// VISIBILITY-SEMANTICS-1 SUPERSESSION: the mover light/cone callers in
+// mech3d.cpp / gvactor.cpp no longer call this — they call
+// mc2_vis::emitsLight(), which separates "drawn / known / emits / lit".
+// Kept as the legacy fallback that mc2_vis consults when MC2_VIS_SEMANTICS=0,
+// and for any caller that only has a sensorLevel.
 bool mover_model_shown(long sensorLevel)
 {
+    if (mc2_vis::force_all_visible()) return true;
     if (!mover_vis_gate_enabled()) return true;   // legacy: emit regardless
     return (sensorLevel == 0) || (sensorLevel >= 5);
 }
 
 // GHOST-CONE-VERIFY-4 — cone GEOMETRY leak; see cone_glow.h for the full
 // rationale and why the predicate is alpha-based rather than sensorLevel-based.
+// VISIBILITY-SEMANTICS-1: this IS job (a) MESH DRAWN, expressed on the only
+// state tgl.cpp has. mc2_vis::meshDrawn() uses the same `alpha != 0` rule for
+// foreign movers, so the two agree by construction. Static building lamps sit
+// at 0xff and are untouched — buildings are exempt from every mover rule.
 bool cone_geom_hidden_by_alpha(unsigned alphaValue)
 {
-    if (!vis_gate_enabled()) return false;        // legacy: emit regardless
+    if (mc2_vis::force_all_visible()) return false;
+    // Armed by MC2_VIS_SEMANTICS (default ON) — this lane owns job (a) now.
+    // The parked MC2_LIGHT_CONE_VIS_GATE=1 still arms it independently.
+    if (!mc2_vis::enabled() && !vis_gate_enabled()) return false;
     return (alphaValue == 0u);
 }
 

@@ -779,6 +779,10 @@ ALLOWLIST=(
     MC2_LIGHT_CONE_SPILL              # override -- LIGHT-CONE-MODELS-1: spill anchor scale on authored cone length (default 1.0, clamp [0,3])
     MC2_LIGHT_MOVER_VIS_GATE          # PARKED default-OFF (GHOST-CONE-VERIFY-4) -- =1 arms the mover fairness gate: suppresses mover lights/cones for sensor-blip-only enemies. Parked because default-ON was reported to blind mech lights in a tier1 smoke.
     MC2_LIGHT_CONE_VIS_GATE           # PARKED default-OFF (GHOST-CONE-VERIFY-4) -- =1 arms the cone staleness guard + the alpha-based cone-GEOMETRY suppression. Parked alongside MC2_LIGHT_MOVER_VIS_GATE.
+    MC2_VIS_SEMANTICS                 # killswitch -- VISIBILITY-SEMANTICS-1: default ON. Separates the four jobs of "visible" (mesh drawn / known to player / emits light / is lit). =0 restores the parked legacy predicates. SUPERSEDES MC2_LIGHT_MOVER_VIS_GATE + MC2_LIGHT_CONE_VIS_GATE.
+    MC2_FORCE_ALL_VISIBLE             # diagnostic -- VISIBILITY-SEMANTICS-1: =1 forces every mover to read as drawn/known/emitting/lit. Never ship enabled.
+    MC2_VIS_SEMANTICS_TRACE           # trace -- VISIBILITY-SEMANTICS-1: =1 dumps [VIS-SEM v1] per-mover predicate state (sensorLevel/meshAlpha/status/relation + the four verdicts)
+    MC2_VIS_SEMANTICS_TRACE_EVERY     # override -- VISIBILITY-SEMANTICS-1: trace sample period in frames (default 120)
     MC2_LIGHT_CONE_DIAG               # trace -- CONE-AIM-DIAG-1: =1 dumps per-node apex/aim + cone-queue events (throttled)
     MC2_LIGHT_CONE_AIM_FLIP           # probe -- CONE-AIM-FLIP-1: =1 negates the computed cone aim (wrong-side A/B probe, default OFF)
     MC2_LIGHT_POOL_DUMP               # trace -- GHOST-LIGHT-DUMP-1: =1 dumps packed light-pool entries w/ slot+owner every 240 frames
