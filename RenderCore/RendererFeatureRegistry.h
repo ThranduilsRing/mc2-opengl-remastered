@@ -1997,6 +1997,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "CEMENT-ATLAS-TONE-MATCH-1 (MC2-03-CEMENT-PINK-1): cure the concrete PATCHWORK on airbase aprons/runways (mc2_24, mc2_03). The cement catalog packs concrete art from multiple authored families whose base tone differs materially (measured mc2_24: (134,130,120) warm tan vs (100,100,100) neutral grey). Cement fragments are FLAT-LIT by design (terrain_lod_chunk.frag forces normalLight=1.0 where pureConcrete=1), so no shared lighting term unifies them and the raw per-cell tone difference is exposed at full contrast with straight tile-boundary seams. BuildCementCatalogAtlas normalises every cell's CONCRETE-BAND colour (the [P50,P90] luminance window, which excludes dark asphalt/markings and highlights) to the component-wise MEDIAN across cells, per channel so brightness AND tint match, with per-channel gain clamped to [0.70,1.40]. Per-cell detail (slab lines, cracks, road markings) is untouched. DEFAULT OFF: the atlas buffer is left byte-identical. Runs once per mission load; zero per-frame cost."
     },
     {
+        "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK",
+        "MC2_CEMENT_TRANSITION_FALLBACK",
+        EnvVarKind::Feature,
+        false,
+        "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24). PopulateRecipeCementWords only bakes a cement word for a TRANSITION tile (isCement && isAlpha) when at least one corner terrainType resolves to a SOLID cement catalog layer AND deriveMaskIdFromCorners >= 0. A road tile running across open ground has neither, so it bakes NO word and falls back to the bare baked colormap -- but the paving/road ART lives in the cement catalog (see MC2_TERRAIN_LOD_CHUNK_DIAG=262144), so the road drops out for a stretch and resumes. When ON, a dropped transition tile adopts the cement layer of an orthogonally adjacent tile that DID bake a word (as a transition word with the all-corners mask; the shader re-derives coverage itself via CEMENT-HARD-EDGE-1, so outline shape is unaffected). DEFAULT OFF => no word changes. The [CEMENT_TRANSITION_DROP v1] census prints regardless of the gate."
+    },
+    {
         "MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY",
         "MC2_CEMENT_ATLAS_MAGENTA_KEY",
         EnvVarKind::Feature,

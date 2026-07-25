@@ -898,6 +898,26 @@ static bool CementAtlasMagentaKeyEnabled() {
     return s;
 }
 
+// CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1, "missing road swaths"):
+// a TRANSITION (isCement && isAlpha) tile only gets a cement word when at least
+// one of its four corner terrainTypes resolves to a SOLID cement catalog layer
+// (`cementLayerIdx != 0xFFFF`) AND deriveMaskIdFromCorners returns >= 0. A road
+// or apron tile whose corners are all road/terrain types -- common where a road
+// runs across open ground away from a pad -- satisfies neither, so it bakes NO
+// cement word and the fragment falls back to the bare baked colormap. Since the
+// paving/road ART lives in the cement catalog (verifiable with
+// MC2_TERRAIN_LOD_CHUNK_DIAG=262144), those tiles render as bare dirt: the road
+// runs, drops out for a stretch, and resumes. When ON, such a dropped tile
+// inherits the cement layer of an orthogonally adjacent tile that DID bake a
+// word, so the run stays continuous. Default OFF => not one word changes.
+static bool CementTransitionFallbackEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_TRANSITION_FALLBACK");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut BARE terrain (no authored transition art), curing the hard full-tile
 // stairstep cliff. Default OFF (killswitch). When ON, PopulateRecipeCementWords
@@ -1027,6 +1047,11 @@ static void PopulateRecipeCementWords() {
 
     long cementQuadCount    = 0;
     long transitionQuadCount = 0;
+    // CEMENT-TRANSITION-FALLBACK-1 census: transition tiles that bake NO cement
+    // word (no solid-cement corner, or maskId<0) and therefore render bare
+    // terrain even though the paving/road art exists in the catalog.
+    long transitionDroppedNoLayer = 0;
+    long transitionDroppedNoMask  = 0;
     // Step 5c: also collect a full per-vn cement-word array for the terrain LOD
     // chunk path (indexed vn = mx + my*mapSide, matching its heightfield SSBO).
     std::vector<uint32_t> chunkCementWords((size_t)mapSide * (size_t)mapSide, 0u);
@@ -1090,6 +1115,10 @@ static void PopulateRecipeCementWords() {
                                    | ((uint32_t)(maskId & (int)kCementMaskIdMask) << kCementMaskIdShift)
                                    | ((uint32_t)cementLayerIdx & 0xFFFFu);
                         ++transitionQuadCount;
+                    } else if (cementLayerIdx == 0xFFFFu) {
+                        ++transitionDroppedNoLayer;   // no solid-cement corner
+                    } else {
+                        ++transitionDroppedNoMask;    // maskId < 0
                     }
                 }
             }
@@ -1098,6 +1127,58 @@ static void PopulateRecipeCementWords() {
         g_denseRecipeDirty[vn]  = true;
         if (vn < chunkCementWords.size()) chunkCementWords[vn] = cementWord;
     }
+    // CEMENT-TRANSITION-FALLBACK-1: census (always) + gated repair of the tiles
+    // the transition branch above dropped. Runs on the completed word array so a
+    // neighbour's word is final; a dropped tile adopts the first orthogonal
+    // neighbour that carries a valid word, as a TRANSITION word with the
+    // all-corners mask (the shader re-derives its own coverage from neighbour
+    // whole-tile state anyway -- CEMENT-HARD-EDGE-1 -- so the outline shape is
+    // unaffected and only the missing paving is restored).
+    printf("[CEMENT_TRANSITION_DROP v1] event=census mission=%s transition_baked=%ld "
+           "dropped_no_layer=%ld dropped_no_mask=%ld fallback=%d\n",
+           (::missionName[0] ? ::missionName : "unknown"), transitionQuadCount,
+           transitionDroppedNoLayer, transitionDroppedNoMask,
+           CementTransitionFallbackEnabled() ? 1 : 0);
+    fflush(stdout);
+    if (CementTransitionFallbackEnabled() && blocks && tt) {
+        const std::vector<uint32_t> before = chunkCementWords;
+        auto wordAt = [&](long x, long y) -> uint32_t {
+            if (x < 0 || y < 0 || x >= mapSide || y >= mapSide) return 0u;
+            const size_t ci = (size_t)y * (size_t)mapSide + (size_t)x;
+            return ci < before.size() ? before[ci] : 0u;
+        };
+        long repaired = 0;
+        for (size_t vn = 0; vn < N; ++vn) {
+            const long mx = (long)vn % mapSide;
+            const long my = (long)vn / mapSide;
+            if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
+            if (vn >= chunkCementWords.size()) continue;
+            if ((chunkCementWords[vn] & kCementLayerValidBit) != 0u) continue;  // already paved
+            const DWORD texData = Terrain::mapData->getTexture(my, mx);
+            const DWORD slot    = texData & 0xFFFFu;
+            if (slot >= (DWORD)MC_MAX_TERRAIN_TXMS) continue;
+            if (!(tt->isCement(slot) && tt->isAlpha(slot))) continue;  // only dropped transitions
+            uint32_t donor = 0u;
+            const uint32_t cand[4] = { wordAt(mx + 1, my), wordAt(mx - 1, my),
+                                       wordAt(mx, my - 1), wordAt(mx, my + 1) };
+            for (int i = 0; i < 4; ++i) {
+                if ((cand[i] & kCementLayerValidBit) != 0u) { donor = cand[i]; break; }
+            }
+            if (donor == 0u) continue;
+            const uint32_t word = kCementLayerValidBit
+                                | kCementTransitionBit
+                                | ((uint32_t)((int)kCementMaskIdMask) << kCementMaskIdShift)
+                                | (donor & 0xFFFFu);
+            chunkCementWords[vn] = word;
+            memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
+            g_denseRecipeDirty[vn] = true;
+            ++repaired;
+        }
+        printf("[CEMENT_TRANSITION_DROP v1] event=fallback_applied mission=%s repaired=%ld\n",
+               (::missionName[0] ? ::missionName : "unknown"), repaired);
+        fflush(stdout);
+    }
+
     // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): second pass — pack a 4-neighbour
     // "open border" mask into cementWord bits 19:16 for SOLID cement boundary
     // tiles (valid && !transition) that abut BARE terrain. gos_terrain.frag reads

@@ -1542,6 +1542,7 @@ def main():
                             "MC2_RUNWAY_EDGE_BLEND",
                             "MC2_CEMENT_TONE_MATCH",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
+                            "MC2_CEMENT_TRANSITION_FALLBACK",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs
