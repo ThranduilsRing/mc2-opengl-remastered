@@ -1427,6 +1427,8 @@ def main():
                             "MC2_LIGHT_REALISM_POOL_CORE",
                             "MC2_LIGHT_REALISM_BEACON",
                             "MC2_LIGHT_REALISM_BEACON_RADIUS",
+                            # LIGHT-POOL-CAP-1: pool slot budget.
+                            "MC2_LIGHT_POOL_MAX",
                             # GHOST-CONE-RECIPE-SKIP-1: spotlight cone leaves
                             # excluded from static recipes (default ON).
                             "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP",

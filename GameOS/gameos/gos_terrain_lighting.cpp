@@ -548,6 +548,34 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     s_numVertices = numVertices;
     s_maxLights   = (maxLights > 0) ? maxLights : 1u;
 
+    // LIGHT-POOL-CAP-1 (user directive, 2026-07-24: "ok just increase the
+    // number of lights available"). Fixtures were silently losing their ground
+    // pool to budget exhaustion — the pack loop below stops accepting lights
+    // once numLights hits this cap, so whether a given lamp lit the ground
+    // depended on its ORDER in the terrain-light list, not on anything the
+    // player can see. That is the "one cone lights the ground, the identical
+    // cone next to it doesn't" inconsistency.
+    //
+    // The callers pass 64. The pool is an SSBO with an UNBOUNDED array
+    // (shaders/terrain_lod_chunk.frag binding 28) and the consumer loop is
+    // bounded by the uniform u_numPoolLights, so there is no uniform-block or
+    // shader-side limit to respect — only per-fragment loop cost. Raised to a
+    // headroom default here (rather than at the two call sites) so the cap is
+    // owned in one place; MC2_LIGHT_POOL_MAX overrides without a rebuild.
+    {
+        static const uint32_t s_capOverride = []() -> uint32_t {
+            const char* v = std::getenv("MC2_LIGHT_POOL_MAX");
+            if (v && v[0]) {
+                const long n = std::atol(v);
+                if (n > 0 && n <= 4096) return static_cast<uint32_t>(n);
+            }
+            return 0u;   // unset -> use the built-in default below
+        }();
+        const uint32_t defaultCap = 256u;
+        const uint32_t want = s_capOverride ? s_capOverride : defaultCap;
+        if (want > s_maxLights) s_maxLights = want;
+    }
+
     const GLsizeiptr vertInputBytes  = static_cast<GLsizeiptr>(numVertices * sizeof(GpuTerrainVertexInput));
     const GLsizeiptr lightInputBytes = static_cast<GLsizeiptr>(s_maxLights * sizeof(GpuTerrainLight));
     const GLsizeiptr outputBytes     = static_cast<GLsizeiptr>(numVertices * sizeof(GpuTerrainLightingOutput));
@@ -956,7 +984,13 @@ void PackAndDispatch() {
                 s_poolDumpFrame, eye->isNight ? 1 : 0, eye->getNumTerrainLights());
         }
         const long nLights = eye->getNumTerrainLights();
-        for (long i = 2; i < nLights && numLights < s_maxLights; ++i) {
+        // LIGHT-POOL-CAP-1: measure real DEMAND, not just what fit. The loop no
+        // longer breaks at the cap — it keeps scanning and counts the lights it
+        // had to drop, so the log states the worst-case slot requirement for a
+        // scene instead of just reporting "full". s_poolWanted counts every
+        // light that passed the visibility gate and therefore wanted a slot.
+        uint32_t poolWanted = 0, poolDropped = 0;
+        for (long i = 2; i < nLights; ++i) {
             TG_LightPtr tl = eye->getTerrainLight(i);
             if (!tl) continue;
             if (dumpThisFrame) {
@@ -980,6 +1014,8 @@ void PackAndDispatch() {
                 std::fflush(stderr);
             }
             if (s_visGate && !tl->active) continue;   // LIGHT-POOL-VIS-GATE-1
+            ++poolWanted;                              // LIGHT-POOL-CAP-1 demand
+            if (numLights >= s_maxLights) { ++poolDropped; continue; }
             GpuTerrainLight& gl = s_lightBuf[numLights];
             gl.position[0]   = tl->position.x;
             gl.position[1]   = tl->position.y;
@@ -1047,6 +1083,30 @@ void PackAndDispatch() {
             gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;
             gl._pad2           = 0.0f;
             ++numLights;
+        }
+
+        // LIGHT-POOL-CAP-1: report peak demand + any starvation. Always-on but
+        // rate-limited to transitions of the high-water mark, so a scene that
+        // never exceeds the cap prints one line and then stays silent, while a
+        // starving scene names the number of slots it actually needs.
+        {
+            static uint32_t s_peakWanted = 0;
+            static bool     s_warnedDrop = false;
+            if (poolWanted > s_peakWanted) {
+                s_peakWanted = poolWanted;
+                std::fprintf(stderr,
+                    "[LIGHT_POOL_CAP v1] peak_wanted=%u packed=%u cap=%u dropped=%u\n",
+                    s_peakWanted, numLights, s_maxLights, poolDropped);
+                std::fflush(stderr);
+            }
+            if (poolDropped > 0 && !s_warnedDrop) {
+                s_warnedDrop = true;
+                std::fprintf(stderr,
+                    "[LIGHT_POOL_CAP v1] STARVED: %u light(s) dropped at cap=%u "
+                    "(wanted=%u). Raise MC2_LIGHT_POOL_MAX.\n",
+                    poolDropped, s_maxLights, poolWanted);
+                std::fflush(stderr);
+            }
         }
 
         if (numLights > 0) {
