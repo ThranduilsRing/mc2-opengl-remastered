@@ -155,11 +155,20 @@ float spill_scale()
 // predicate. Default ON (correctness fix, same convention as
 // MC2_LIGHT_POOL_VIS_GATE / MC2_LIGHT_CULL_RADIUS). =0 restores the legacy
 // "emit even when the owner leaf was never transformed this frame" behaviour.
+// GHOST-CONE-VERIFY-4 (2026-07-25): PARKED default-OFF. See
+// .claude/GHOST-CONE-VERIFY-4-STATUS.md. The `visible`/sensorLevel state is
+// overloaded across three independent questions (is the mesh drawn / is the
+// unit known to the player / does the unit emit + receive light), so gating
+// emission on any one of them trades one failure for another: default-ON
+// closed the hidden-enemy position leak and was reported to blind mechs'
+// lights in a tier1 smoke. Blinding the player's own units is worse than a
+// cosmetic leak, so both gates are parked OFF pending a proper semantic fix.
+// =1 re-arms.
 static bool vis_gate_enabled()
 {
     static const bool s = []() {
         const char* v = std::getenv("MC2_LIGHT_CONE_VIS_GATE");
-        return !(v && v[0] == '0');   // default ON
+        return (v && v[0] == '1');   // PARKED default OFF
     }();
     return s;
 }
@@ -167,11 +176,13 @@ static bool vis_gate_enabled()
 // GHOST-LIGHT-VISIBILITY-1 (mover fairness rule) — see cone_glow.h for the
 // sensorLevel semantics and why the appearance `visible` flag is not a
 // fog-of-war predicate.
+// GHOST-CONE-VERIFY-4 (2026-07-25): PARKED default-OFF alongside
+// MC2_LIGHT_CONE_VIS_GATE — see the note there. =1 re-arms.
 bool mover_vis_gate_enabled()
 {
     static const bool s = []() {
         const char* v = std::getenv("MC2_LIGHT_MOVER_VIS_GATE");
-        return !(v && v[0] == '0');   // default ON
+        return (v && v[0] == '1');   // PARKED default OFF
     }();
     return s;
 }
