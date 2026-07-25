@@ -87,13 +87,23 @@ static bool tgNameContainsCI(const char* hay, const char* needle)
 	return false;
 }
 
-// Killswitch: MC2_LIGHT_BILLBOARD_TWOSIDED=0 restores legacy backface culling of
-// edge-light cards (byte-identical). Default ON. Parsed once.
+// MC2_LIGHT_BILLBOARD_TWOSIDED=1 suppresses legacy backface culling of edge-light
+// cards, so a card survives when the camera orbits behind it. Parsed once.
+//
+// AUDIT-TRUTH-1: RETIRED to default-OFF (was default-ON). It shipped enabled
+// despite being non-stock, never user-approved, and declared falsified and
+// near-inert by its own successor lane. Default OFF == the stock/legacy cull,
+// which is what this predicate did before the gate existed; the gate only ever
+// ADDS faces to listOfVisibleFaces, so OFF cannot remove anything stock drew.
+// Kept as an opt-in lever rather than deleted: two call sites still consume it
+// and it is the only way to A/B the two-sided hypothesis. Note this is the CPU
+// transform path only -- the GPU static-prop equivalent is the separate
+// MC2_LIGHT_BILLBOARD_FACING (also default-OFF).
 static bool tgLightBillboardTwoSided()
 {
 	static const bool s = []() {
 		const char* v = std::getenv("MC2_LIGHT_BILLBOARD_TWOSIDED");
-		return !(v && v[0] == '0');   // default ON
+		return v && v[0] && v[0] != '0';   // default OFF (AUDIT-TRUTH-1)
 	}();
 	return s;
 }
