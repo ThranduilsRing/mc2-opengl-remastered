@@ -35,6 +35,7 @@ extern long g_mvpEarlyPublishSeq;
 
 #include <map>
 #include <vector>
+#include <algorithm>  // CEMENT-ATLAS-TONE-MATCH-1: std::sort / std::min / std::max
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>  // memcpy
@@ -854,6 +855,49 @@ static int PadEdgeRoadFixMode() {
 }
 static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 
+// CEMENT-ATLAS-TONE-MATCH-1 (MC2-03-CEMENT-PINK-1): the cement catalog packs
+// concrete art from MULTIPLE authored families whose base tone differs
+// materially (measured on mc2_24: one family renders (134,130,120) warm tan,
+// another (100,100,100) neutral grey). Cement fragments are FLAT-LIT by design
+// (terrain_lod_chunk.frag: normalLight = mix(normalLight, 1.0, pureConcrete),
+// "cement: fully flat-lit slab"), so the shaded terrain lighting that would
+// otherwise dominate and unify them is absent and the raw per-cell tone
+// difference is exposed at FULL contrast. Adjacent map tiles referencing
+// different families therefore read as a blotchy patchwork with straight
+// tile-boundary seams across aprons and runways.
+//
+// Fix: at atlas build time, normalise every cell's CONCRETE-BAND colour to a
+// single atlas-wide reference, per channel (so both brightness AND tint match),
+// leaving per-cell detail (slab lines, cracks, road markings) untouched. The
+// concrete band is the [P50,P90] luminance window of the cell -- this
+// deliberately excludes dark asphalt/markings (below P50) and highlights
+// (above P90), so runway cells are matched on their concrete, not their paint.
+//
+// Gate MC2_CEMENT_TONE_MATCH (default OFF) -- OFF leaves atlasBuf byte-identical.
+static bool CementToneMatchEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_TONE_MATCH");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
+// CEMENT-ATLAS-MAGENTA-KEY-1: solid cement catalog cells are uploaded through
+// TerrainTextures::textureFromMemory (gos_Texture_Solid), which -- unlike the
+// keyed transition path (textureFromMemoryAlpha, TERRAIN-ROAD-COLORKEY-
+// TRANSPARENCY-1) -- never honours MC2's legacy 0xFF00FF colourkey. Any magenta
+// left in a solid cement cell is packed into the gutterless atlas and sampled
+// GL_LINEAR, which shows as thin pink lines/patches along road and pad edges.
+// A census is ALWAYS printed (so a map can be judged without a gate); zeroing is
+// gated MC2_CEMENT_ATLAS_MAGENTA_KEY (default OFF).
+static bool CementAtlasMagentaKeyEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_ATLAS_MAGENTA_KEY");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut BARE terrain (no authored transition art), curing the hard full-tile
 // stairstep cliff. Default OFF (killswitch). When ON, PopulateRecipeCementWords
@@ -1471,6 +1515,130 @@ void BuildCementCatalogAtlas() {
             uint32_t*       dstRow = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
             memcpy(dstRow, srcRow, (size_t)txmSize * sizeof(uint32_t));
         }
+    }
+
+    // ---- CEMENT-ATLAS-MAGENTA-KEY-1: census (always) + gated zeroing --------
+    {
+        long magentaTexels = 0;
+        long magentaCells  = 0;
+        for (int k = 0; k < N; ++k) {
+            const int dstX = (k % gridSide) * txmSize;
+            const int dstY = (k / gridSide) * txmSize;
+            long cellHits = 0;
+            for (int py = 0; py < txmSize; ++py) {
+                uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                for (int px = 0; px < txmSize; ++px) {
+                    const uint32_t c = row[px];
+                    const int b = (int)( c        & 0xFFu);
+                    const int g = (int)((c >>  8) & 0xFFu);
+                    const int r = (int)((c >> 16) & 0xFFu);
+                    // Same chroma test as terrtxm.cpp textureFromMemoryAlpha: red AND
+                    // blue both clearly dominate green. Grey/asphalt/cement never match.
+                    if (r > 150 && b > 150 && r > g + 40 && b > g + 40) {
+                        ++cellHits;
+                        if (CementAtlasMagentaKeyEnabled()) row[px] = 0u;
+                    }
+                }
+            }
+            if (cellHits > 0) { ++magentaCells; magentaTexels += cellHits; }
+        }
+        printf("[CEMENT_ATLAS_MAGENTA v1] event=census mission=%s cells=%d "
+               "magenta_cells=%ld magenta_texels=%ld keyed=%d\n",
+               (::missionName[0] ? ::missionName : "unknown"), N,
+               magentaCells, magentaTexels, CementAtlasMagentaKeyEnabled() ? 1 : 0);
+        fflush(stdout);
+    }
+
+    // ---- CEMENT-ATLAS-TONE-MATCH-1: per-cell concrete-band tone normalisation
+    if (CementToneMatchEnabled() && N > 1) {
+        const size_t cellPx = (size_t)txmSize * (size_t)txmSize;
+        std::vector<float> cellR((size_t)N, 0.f), cellG((size_t)N, 0.f), cellB((size_t)N, 0.f);
+        std::vector<int>   cellOk((size_t)N, 0);
+        std::vector<float> lum(cellPx, 0.f);
+        for (int k = 0; k < N; ++k) {
+            const int dstX = (k % gridSide) * txmSize;
+            const int dstY = (k / gridSide) * txmSize;
+            size_t n = 0;
+            for (int py = 0; py < txmSize; ++py) {
+                const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                for (int px = 0; px < txmSize; ++px) {
+                    const uint32_t c = row[px];
+                    const float b = float( c        & 0xFFu);
+                    const float g = float((c >>  8) & 0xFFu);
+                    const float r = float((c >> 16) & 0xFFu);
+                    lum[n++] = 0.299f * r + 0.587f * g + 0.114f * b;
+                }
+            }
+            std::vector<float> sorted(lum.begin(), lum.begin() + (long)n);
+            std::sort(sorted.begin(), sorted.end());
+            const float p50 = sorted[(size_t)(n * 50 / 100)];
+            const float p90 = sorted[(size_t)(n * 90 / 100)];
+            double sr = 0.0, sg = 0.0, sb = 0.0; long cnt = 0;
+            for (int py = 0; py < txmSize; ++py) {
+                const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                for (int px = 0; px < txmSize; ++px) {
+                    const uint32_t c = row[px];
+                    const float b = float( c        & 0xFFu);
+                    const float g = float((c >>  8) & 0xFFu);
+                    const float r = float((c >> 16) & 0xFFu);
+                    const float L = 0.299f * r + 0.587f * g + 0.114f * b;
+                    if (L < p50 || L > p90) continue;
+                    sr += r; sg += g; sb += b; ++cnt;
+                }
+            }
+            if (cnt < 16) continue;                    // too little concrete -> leave alone
+            cellR[(size_t)k] = (float)(sr / (double)cnt);
+            cellG[(size_t)k] = (float)(sg / (double)cnt);
+            cellB[(size_t)k] = (float)(sb / (double)cnt);
+            if (cellR[(size_t)k] < 8.f || cellG[(size_t)k] < 8.f || cellB[(size_t)k] < 8.f) continue;
+            cellOk[(size_t)k] = 1;
+        }
+        // Atlas reference = component-wise MEDIAN over the usable cells (robust to
+        // one outlier family dragging a mean).
+        auto medianOf = [&](const std::vector<float>& v) -> float {
+            std::vector<float> t;
+            t.reserve((size_t)N);
+            for (int k = 0; k < N; ++k) if (cellOk[(size_t)k]) t.push_back(v[(size_t)k]);
+            if (t.empty()) return 0.f;
+            std::sort(t.begin(), t.end());
+            return t[t.size() / 2];
+        };
+        const float refR = medianOf(cellR), refG = medianOf(cellG), refB = medianOf(cellB);
+        long adjusted = 0;
+        if (refR > 0.f && refG > 0.f && refB > 0.f) {
+            for (int k = 0; k < N; ++k) {
+                if (!cellOk[(size_t)k]) continue;
+                // Clamp keeps a wildly-different cell (e.g. an asphalt-dominant pad)
+                // from being violently recoloured; the patchwork families sit well
+                // inside this window.
+                const float gr = std::min(1.40f, std::max(0.70f, refR / cellR[(size_t)k]));
+                const float gg = std::min(1.40f, std::max(0.70f, refG / cellG[(size_t)k]));
+                const float gb = std::min(1.40f, std::max(0.70f, refB / cellB[(size_t)k]));
+                if (gr > 0.995f && gr < 1.005f && gg > 0.995f && gg < 1.005f
+                    && gb > 0.995f && gb < 1.005f) continue;
+                ++adjusted;
+                const int dstX = (k % gridSide) * txmSize;
+                const int dstY = (k / gridSide) * txmSize;
+                for (int py = 0; py < txmSize; ++py) {
+                    uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                    for (int px = 0; px < txmSize; ++px) {
+                        const uint32_t c = row[px];
+                        const uint32_t a = c & 0xFF000000u;
+                        const float b = float( c        & 0xFFu) * gb;
+                        const float g = float((c >>  8) & 0xFFu) * gg;
+                        const float r = float((c >> 16) & 0xFFu) * gr;
+                        const uint32_t bi = (uint32_t)std::min(255.f, std::max(0.f, b));
+                        const uint32_t gi = (uint32_t)std::min(255.f, std::max(0.f, g));
+                        const uint32_t ri = (uint32_t)std::min(255.f, std::max(0.f, r));
+                        row[px] = a | (ri << 16) | (gi << 8) | bi;
+                    }
+                }
+            }
+        }
+        printf("[CEMENT_TONE_MATCH v1] event=applied mission=%s cells=%d adjusted=%ld "
+               "ref_rgb=%.1f,%.1f,%.1f\n",
+               (::missionName[0] ? ::missionName : "unknown"), N, adjusted, refR, refG, refB);
+        fflush(stdout);
     }
 
     // TEX-CLASS: asset-pool -- cement/road overlay atlas (content)

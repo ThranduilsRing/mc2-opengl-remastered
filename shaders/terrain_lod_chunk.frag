@@ -871,10 +871,21 @@ void main() {
     // cw bit layout: bit31=VALID, bit30=IS_TRANSITION, bits29:24=maskId, bits15:0=layerIdx.
     bool cementHit = false;
     float cementTransAlpha = 0.0;  // CEMENT-HARD-EDGE-1: neighbor-derived transition coverage
+    // CEMENT-CLASS-DIAG-1 (u_diag & 32768): which code path coloured this pixel's
+    // concrete. 0 = none (raw baked colormap), 1 = SOLID cement-atlas replacement,
+    // 2 = TRANSITION cement-atlas (marching-squares alpha), 3 = diag-connect,
+    // 4 = runway-edge dilate, 5 = authored overlay sidecar. Diagnostic only.
+    int cementDbgClass = 0;
+    int cementDbgLayer = -1;
+    vec3 cementDbgRaw = vec3(0.0);
     int  ctX = clamp(int(floor((v_worldPos.x + u_halfMap) / 128.0)), 0, u_mapSide - 1);
     int  ctY = clamp(int(floor((u_halfMap - v_worldPos.y) / 128.0)), 0, u_mapSide - 1);
     uint cw  = cementWordsF[ctX + ctY * u_mapSide];
-    if (u_useCement != 0 && (cw & 0x80000000u) != 0u) {
+    // CEMENT-BYPASS-DIAG-1 (u_diag & 65536): skip ALL cement-atlas overrides so the
+    // RAW BAKED COLORMAP shows through. A/B oracle for 'is the cement override the
+    // thing that wipes baked road art / creates the tone patchwork?'. Diagnostic only.
+    bool cementBypassDiag = (u_diag & 65536) != 0;
+    if (u_useCement != 0 && !cementBypassDiag && (cw & 0x80000000u) != 0u) {
         uint cLayerIdx    = cw & 0xFFFFu;
         bool isTransition = (cw & 0x40000000u) != 0u;
         int  cGridSide = u_cementGridSide;
@@ -896,6 +907,8 @@ void main() {
         // mission flat-pad light here (covers both the solid and transition
         // branches below).
         vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * u_missionFlatLight;
+        cementDbgLayer = int(cLayerIdx);
+        cementDbgRaw   = texture(u_cementAtlas, cAtlasUV).rgb;
         if (isTransition) {
             // CEMENT-HARD-EDGE-1 (default-on; self-disables if u_useTransitionMask==0):
             // Render the SAME solid cement atlas tile as the interior, cut by a HARD
@@ -984,7 +997,7 @@ void main() {
                 }
                 base = mix(base, cementColor, alpha);
                 cementTransAlpha = alpha;
-                if (alpha > 0.5) cementHit = true;
+                if (alpha > 0.5) { cementHit = true; cementDbgClass = 2; }
             }
         } else {
             // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 (RUNWAY-EDGE-DILATE-1):
@@ -1000,6 +1013,7 @@ void main() {
             // MC2_RUNWAY_EDGE_BLEND) is unchanged -- it is now read by the neighbour.
             base = cementColor;
             cementHit = true;
+            cementDbgClass = 1;
         }
     }
 
@@ -1008,7 +1022,7 @@ void main() {
     // adjacent SOLID cement tile so two diagonal cement squares merge across the shared
     // corner. Hard quadrant cut (no feather) preserves blocky cement edges. Transition
     // (alpha bit30) neighbors are NOT bridged. Off => this whole block is skipped.
-    if (u_cementDiagConnect != 0 && u_useCement != 0 && !cementHit) {
+    if (u_cementDiagConnect != 0 && u_useCement != 0 && !cementBypassDiag && !cementHit) {
         // Sub-tile position; cTileUV.x grows with +ctX, cTileUV.y grows with +ctY.
         vec2 dTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
         int  dGridSide = u_cementGridSide;
@@ -1037,6 +1051,7 @@ void main() {
                 // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light.
                 base = texture(u_cementAtlas, dAtlasUV).rgb * u_missionFlatLight;
                 cementHit = true;
+                cementDbgClass = 3;
             }
         }
     }
@@ -1061,7 +1076,7 @@ void main() {
     //   S neighbour (ctY+1) flags me as its N -> bit18 (0x4)
     // Transition neighbours never carry the mask (CPU skips them), so the authored
     // marching-squares edges (CEMENT-HARD-EDGE-1) stay untouched.
-    if (u_useCement != 0 && !cementHit) {
+    if (u_useCement != 0 && !cementBypassDiag && !cementHit) {
         vec2 rTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
         int  rGridSide = u_cementGridSide;
         if (rGridSide < 1) rGridSide = 1;
@@ -1106,7 +1121,7 @@ void main() {
             // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light.
             vec3 rCement = texture(u_cementAtlas, rAtlasUV).rgb * u_missionFlatLight;
             base = mix(base, rCement, rBestAlpha);
-            if (rBestAlpha > 0.5) cementHit = true;
+            if (rBestAlpha > 0.5) { cementHit = true; cementDbgClass = 4; }
         }
     }
 
@@ -1124,7 +1139,7 @@ void main() {
     // forces matWeights=concrete -> materialTint=tintConcrete muddies it again).
     // Stays 0 when OVERLAY_V2 is off -> byte-identical.
     float overlayCoverage = 0.0;
-    if (u_useOverlaySidecar != 0) {
+    if (u_useOverlaySidecar != 0 && !cementBypassDiag) {
         vec2 ovUV;
         ovUV.x = (v_worldPos.x - u_overlayBounds.x) / max(u_overlayBounds.z, 1e-5);
         ovUV.y = (u_overlayBounds.y - v_worldPos.y) / max(u_overlayBounds.w, 1e-5);
@@ -1134,8 +1149,46 @@ void main() {
             // the mission flat-pad light like the cement atlas above.
             base = mix(base, ov.rgb * u_missionFlatLight, ov.a);
             overlayCoverage = ov.a;
-            if (ov.a > 0.5) cementHit = true;
+            if (ov.a > 0.5) { cementHit = true; cementDbgClass = 5; }
         }
+    }
+
+    // CEMENT-LAYER-DIAG-1 (DIAG bit 131072): hash the cement atlas layer index to a
+    // colour so adjacent tiles that pull DIFFERENT catalog cells are obvious.
+    // Black = no cement word. Diagnostic only.
+    if ((u_diag & 131072) != 0) {
+        vec3 cc = vec3(0.0);
+        if (cementDbgLayer >= 0) {
+            float f = float(cementDbgLayer);
+            cc = fract(vec3(f * 0.6180339887, f * 0.3247179572, f * 0.1341330579));
+            cc = clamp(cc * 0.9 + 0.1, 0.0, 1.0);
+        }
+        fragColor = vec4(cc, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
+        return;
+    }
+    // CEMENT-RAWATLAS-DIAG-1 (DIAG bit 262144): raw (unlit) cement atlas texel.
+    if ((u_diag & 262144) != 0) {
+        fragColor = vec4(cementDbgLayer >= 0 ? cementDbgRaw : vec3(0.0), 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
+        return;
+    }
+    // CEMENT-CLASS-DIAG-1 (DIAG bit 32768): visualise which path coloured the
+    // concrete at this pixel. BLACK = baked colormap only (no cement word, no
+    // overlay); RED = SOLID cement-atlas replacement; GREEN = TRANSITION
+    // cement-atlas; BLUE = diag-connect; YELLOW = runway-edge dilate;
+    // MAGENTA = authored overlay sidecar. Diagnostic only, zero-cost when off.
+    if ((u_diag & 32768) != 0) {
+        vec3 cc = vec3(0.0);
+        if      (cementDbgClass == 1) cc = vec3(1.0, 0.0, 0.0);
+        else if (cementDbgClass == 2) cc = vec3(0.0, 1.0, 0.0);
+        else if (cementDbgClass == 3) cc = vec3(0.0, 0.0, 1.0);
+        else if (cementDbgClass == 4) cc = vec3(1.0, 1.0, 0.0);
+        else if (cementDbgClass == 5) cc = vec3(1.0, 0.0, 1.0);
+        else                          cc = base * 0.35;
+        fragColor = vec4(cc, 1.0);
+        if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
+        return;
     }
 
     // DIAG bit 64: visualize the raw matNormalArray ROCK-layer sample as color

@@ -1988,6 +1988,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain with no authored transition art. PopulateRecipeCementWords (gos_terrain_indirect.cpp) packs a 4-neighbour open-border mask into cementWord bits 19:16 for those solid boundary tiles (neighbours carrying ANY valid cement word -- solid OR transition -- count as cement, so authored transition edges are left to the legacy blend). gos_terrain.frag reads the mask and ramps cement -> base terrain over the outer HALF tile (discrete SDF from the cement mask, smoothstep(0,0.5,dist)). Indirect path only (does NOT touch terrain_lod_chunk.frag, which already marching-squares-shapes transition tiles). DEFAULT OFF: no mask bits are written, so the frag feather collapses to featherAlpha==1.0 == byte-identical stock full replacement. Baked once per mission load; zero per-frame cost."
     },
+    // MC2-03-CEMENT-PINK-1: cement catalog atlas post-processing (build-time, CPU).
+    {
+        "MC2_FEATURE_CEMENT_TONE_MATCH",
+        "MC2_CEMENT_TONE_MATCH",
+        EnvVarKind::Feature,
+        false,
+        "CEMENT-ATLAS-TONE-MATCH-1 (MC2-03-CEMENT-PINK-1): cure the concrete PATCHWORK on airbase aprons/runways (mc2_24, mc2_03). The cement catalog packs concrete art from multiple authored families whose base tone differs materially (measured mc2_24: (134,130,120) warm tan vs (100,100,100) neutral grey). Cement fragments are FLAT-LIT by design (terrain_lod_chunk.frag forces normalLight=1.0 where pureConcrete=1), so no shared lighting term unifies them and the raw per-cell tone difference is exposed at full contrast with straight tile-boundary seams. BuildCementCatalogAtlas normalises every cell's CONCRETE-BAND colour (the [P50,P90] luminance window, which excludes dark asphalt/markings and highlights) to the component-wise MEDIAN across cells, per channel so brightness AND tint match, with per-channel gain clamped to [0.70,1.40]. Per-cell detail (slab lines, cracks, road markings) is untouched. DEFAULT OFF: the atlas buffer is left byte-identical. Runs once per mission load; zero per-frame cost."
+    },
+    {
+        "MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY",
+        "MC2_CEMENT_ATLAS_MAGENTA_KEY",
+        EnvVarKind::Feature,
+        false,
+        "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid), which -- unlike the keyed transition path (textureFromMemoryAlpha / TERRAIN-ROAD-COLORKEY-TRANSPARENCY-1) -- never honours MC2's legacy 0xFF00FF colourkey. Any magenta left in a solid cement cell is packed into the GUTTERLESS atlas and sampled GL_LINEAR, which can show as thin pink lines/patches along road and pad edges. When ON, matching texels (same chroma test as terrtxm.cpp: r>150 && b>150 && r>g+40 && b>g+40) are zeroed to transparent black. DEFAULT OFF. The [CEMENT_ATLAS_MAGENTA v1] census line is printed regardless of the gate, so a map can be judged without enabling it."
+    },
     {
         "MC2_TUNE_NIGHT_AMBIENT_FLOOR",
         "MC2_NIGHT_AMBIENT_FLOOR",
