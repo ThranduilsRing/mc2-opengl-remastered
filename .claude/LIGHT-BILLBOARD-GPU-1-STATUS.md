@@ -175,3 +175,48 @@ That lane also established that standalone `runwaylight` props are
 **both** static-prop instance sites, so coverage does not depend on which owner
 class the prop uses — and the captures confirm the population is covered
 empirically.
+
+## SUPERSEDED IN PART by RUNWAY-MARKER-LIGHTS-1 — read before editing this block
+
+The default shipped by this lane (`MC2_LIGHT_BILLBOARD_FACING` default **ON**,
+`f412423e`) was **rejected by the user in strong terms**: "whatever the hell it
+is doing with the runway marker lights is atrociously hideous, it needs to
+stop." At night mc2_10 **map-overview** altitude the fixtures read as stark
+white streaks / dashed slashes scattered over the dark valley.
+
+**Mechanism.** The min-screen-size clamp was `k = max(1.0, kLbMinNdc / sil)`
+with **no upper bound**. `sil` falls off as 1/distance, so `k` grows without
+limit and pins every flagged fixture to a **constant** ~4-7px hard-edged bright
+triangle at *every* camera distance. That was the clamp's literal intent and it
+is correct at playable RTS range — but past that range several hundred
+regularly-spaced runway/taxiway fixtures never shrink. Regular spacing +
+constant screen size = dashes.
+
+**Secondary (~1.5x compounding).** `kLbRefRadius = 0.8` is the authored top-cap
+radius, but the rigid billboard maps local Z (the 2.85-unit post axis) onto
+`toCam`, so the post foreshortens and what the viewer actually sees is the local
+XY cross-section — `runwaylight.ase` extents 2.015 x 2.326, silhouette radius
+~1.2. The clamp was sizing against a feature that is never on screen.
+
+**Corrections landed by RUNWAY-MARKER-LIGHTS-1:**
+- `clamp(kLbMinNdc / sil, 1.0, kLbMaxScale)`, `kLbMaxScale = 2.5`,
+  `kLbRefRadius = 1.2`. This lane's legitimate win is preserved — fixtures still
+  survive rasterisation at playable ranges — but beyond the cap they resume
+  normal 1/distance shrink and go sub-pixel at overview on their own.
+- `MC2_LIGHT_BILLBOARD_FACING` default flipped **ON -> OFF**.
+
+**Process note — why the regression got through.** This lane's verification set
+was five *airbase-range* camera angles. The failure mode is only visible at
+map-overview altitude, which was never captured. Any future change to this block
+must include an overview-altitude pose.
+
+**Do not flip the default back to ON** without a user click-through on the
+overview pose specifically. If you disagree with `kLbMaxScale`, argue the
+number, not the existence of the cap. Ownership of the billboard block is
+claimed by RUNWAY-MARKER-LIGHTS-1 in the lane registry.
+
+**Attribution note.** Commit `05dbd1f3` (this lane's docs commit) inadvertently
+scooped RUNWAY-MARKER-LIGHTS-1's staged changes to `static_prop.vert`,
+`gos_static_prop_batcher.{cpp,h}`, `docs/tier1_env_vars.md` and
+`scripts/check-env-registry.sh`. The content is intact and correct; only the
+commit message is wrong. Not amended (shared worktree).
