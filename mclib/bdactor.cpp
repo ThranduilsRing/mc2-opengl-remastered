@@ -3404,7 +3404,28 @@ long BldgAppearance::update (bool animate)
 			{
 				Stuff::Vector3D aimW;
 				float coneLen = 0.0f;
-				if (mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen))
+				const bool haveAim =
+					mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen);
+				// CONE-SPILL-COUPLING-1 reach probe: does the BUILDING path
+				// actually get usable cone geometry? (GetNodeAim returns false
+				// for a lamp node with no cone mesh, in which case the pool
+				// keeps the node origin and no coupling is possible at all.)
+				{
+					static const bool s_reach = []() {
+						const char* v = std::getenv("MC2_LIGHT_CONE_DIAG");
+						return (v && v[0] == '1');
+					}();
+					static unsigned long s_r = 0;
+					if (s_reach && (s_r++ % 600) < 6)
+					{
+						std::fprintf(stderr,
+							"[CONE_SPILL_REACH v1] bldg lights=%u k=%u nodeId=%ld haveAim=%d coneLen=%.1f\n",
+							(unsigned)spotlightLights_.size(), (unsigned)k,
+							(long)spotlightNodeIds_[k], haveAim ? 1 : 0, coneLen);
+						std::fflush(stderr);
+					}
+				}
+				if (haveAim)
 				{
 					// The authored beam length IS the physical reach — the old
 					// hard 200.0f clamp truncated long beams so their pool fell
