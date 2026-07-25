@@ -227,7 +227,11 @@ enum class RendererFeature : int {
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
     LegacyLitMc2Frame        = 48,  // MC2_LEGACY_LIT_MC2_FRAME
-    COUNT                    = 49,
+    // VEHICLE-NIGHT-LIT-2: restore the missing else-branch that clears a ground
+    // vehicle's lightsOut flag when it is no longer DESTROYED/DISABLED, matching
+    // the mech path. Default-OFF -> legacy one-way latch -> byte-identical.
+    GvLightsOutClear         = 49,  // MC2_GV_LIGHTSOUT_CLEAR
+    COUNT                    = 50,
 };
 
 // ---------------------------------------------------------------------------
@@ -628,6 +632,14 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy mcTextureManager/ShapeRenderer lit program (gos_tex_vertex_lighted.vert) — the program that draws GROUND VEHICLES (GVAppearance::render -> gvShape->Render -> TG_Shape::Render -> addRenderShape -> ShapeRenderer::render). ObjectLights rows from GatherLightsParameters carry MC2-frame light_to_world translations and light_dir, and the two other calc_light consumers feed MC2-frame inputs (mech.vert passes worldMC2 + MC2 normal; static_prop.vert's worldPos is MC2-frame and STATIC-PROP-NORMAL-FRAME-FIX already swapped its normal). gos_tex_vertex_lighted.vert was the last consumer still passing STUFF-frame WorldPos and Normal, so length(vertex_world_pos - light_pos) mixed frames: GetFalloff rejected every POINT/SPOT/INFINITEWITHFALLOFF light and the INFINITE sun NdotL was ~90deg off. Vehicles therefore kept only base_light (static per-vertex aRGBLight seed) + AMBIENT and rendered as near-black silhouettes at night while mechs, buildings, fences and terrain in the SAME light pool were correctly lit — including trucks parked inside a guard-tower cone. When ON, the shader converts position and normal to the MC2 frame (MC2WorldPos, normalize(vec3(-n.x,n.z,n.y))) before calc_light, matching mech.vert/static_prop.vert. Default-OFF -> u_legacyLitMc2Frame=0 -> legacy Stuff-frame feed -> byte-identical. NOTE: this program is shared by other legacy lit shapes, so ON changes their lighting too (day included); that shared blast radius is why it is gated."
+    },
+    // GvLightsOutClear (VEHICLE-NIGHT-LIT-2)
+    {
+        "MC2_GV_LIGHTSOUT_CLEAR",
+        "MC2_GV_LIGHTSOUT_CLEAR",
+        EnvVarKind::Feature,
+        false,
+        "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or OBJECT_STATUS_DISABLED but has NO else-branch to clear it, unlike the mech path (mech3d.cpp Mech3DAppearance::update sets both arms). The flag is therefore a one-way latch: once a vehicle is disabled its shape can never be lit again, including after the actor slot is recycled for a live vehicle. When ON, the missing else-branch clears lightsOut so the flag tracks status exactly as the mech path does. Default-OFF -> legacy latch preserved -> byte-identical. This is a latent-correctness fix found during VEHICLE-NIGHT-LIT-1 recon; it is NOT the cause of the reported all-vehicles-dark-at-night defect (the reported trucks are intact, never disabled)."
     },
 };
 

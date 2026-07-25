@@ -3001,11 +3001,30 @@ long GVAppearance::update (bool animate)
 	//Always override with our local instance.
 	gvShape->SetTextureHandle(0,localTextureHandle);
  
-	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
+	// VEHICLE-NIGHT-LIT-2 (GV-LIGHTSOUT-CLEAR): the legacy code set lightsOut
+	// for DESTROYED/DISABLED but never cleared it, unlike the mech path
+	// (mech3d.cpp Mech3DAppearance::update, which sets BOTH arms). Once a
+	// vehicle latched lightsOut it could never be lit again — including after
+	// an actor slot is recycled for a live vehicle. MC2_GV_LIGHTSOUT_CLEAR=1
+	// adds the missing else-branch so the flag tracks status like the mech
+	// path does. Default-OFF -> legacy latch preserved -> byte-identical.
 	{
-		gvShape->SetLightsOut(true);
+		static int s_gvLightsOutClear = -1;
+		if (s_gvLightsOutClear < 0)
+		{
+			const char* v = getenv("MC2_GV_LIGHTSOUT_CLEAR");
+			s_gvLightsOutClear = (v && v[0] && v[0] != '0') ? 1 : 0;
+		}
+		if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
+		{
+			gvShape->SetLightsOut(true);
+		}
+		else if (s_gvLightsOutClear)
+		{
+			gvShape->SetLightsOut(false);
+		}
 	}
-	
+
  	if (animate && gvFrameRate != 0.0f)
 	{
 		//--------------------------------------------------------
