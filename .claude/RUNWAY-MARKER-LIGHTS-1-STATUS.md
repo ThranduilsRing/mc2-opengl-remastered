@@ -148,6 +148,31 @@ angles, all at airbase range, and none at map-overview altitude — the only
 altitude where an uncapped constant-screen-size clamp misbehaves. Any future
 change to this block must include an overview pose.
 
+## Smoke / gates
+
+- `check-env-registry.sh` — **PASS** (975 MC2_* vars accounted for).
+- `gate_status MC2_LIGHT_BILLBOARD_FACING` — **OK**, no flags
+  (smoke-allowlisted + registry-allowlisted + documented).
+- `run_smoke.py --tier tier1 --duration 30` — **5/5 PASS**
+  (mc2_01/03/10/17/24, Δdestroys +0 on all).
+  **But read this caveat:** the runner raised
+  `[DEPLOY_FINGERPRINT] HARD FAIL — smoke ran an exe whose fingerprint does not
+  match this worktree HEAD`. tier1 executed the **stale 0.4 deploy exe
+  (`16c2244a`), not my build**, so *that 5/5 does not validate this change*. I
+  did not deploy to `0.4` to fix it: `0.4` is the user-facing install, its
+  manifest already records a dirty-tree build, and pushing a
+  184-dirty-file shared-worktree build into it would make attribution worse, not
+  better. Deploying to `0.4` is left as a user call.
+- **What *did* exercise my build:** 12 full launches of my exe
+  (md5 `9ff0b9a0…`) during capture — 3 configs x 4 poses, each a complete mc2_10
+  mission load plus a 45s run, all reaching the deterministic trigger frame
+  (`det=True` 12/12). No crash, no shader-compile failure (the modified
+  `static_prop.vert` is compiled at runtime, so a bad edit would have failed
+  loudly there), no load regression. That is real runtime validation of this
+  exe, and for a change that is one shader constant plus an env default it is
+  arguably a stronger test than tier1 — but it is **not** the tier1 gate, and I
+  am not claiming it as one.
+
 ## Commits
 
 - `05dbd1f3` — carries the code fix (shader clamp cap + refRadius, gate default
