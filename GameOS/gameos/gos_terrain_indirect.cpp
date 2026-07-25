@@ -1214,6 +1214,26 @@ static void PopulateRecipeCementWords() {
     // dropped/total stays the LEGACY rate and (dropped-rescued)/total is the
     // rate with the gate on -- the two arms remain directly comparable.
     long transitionAlphaRescued   = 0;
+    // CEMENT-UNIFORM-2 census: the TRUE pavement denominator.
+    // [CEMENT_TRANSITION_DROP v1] counts only tiles already recognised as
+    // cement-transition (isCement && isAlpha), so its dropped/total rate is
+    // measured against a denominator that has ALREADY excluded the tiles this
+    // census is about. Roads and runways in MC2 are &Overlays ids (PAVED_ROAD,
+    // RUNWAY, ...) painted over an arbitrary base terrain type; cement is a
+    // disjoint base-type set (BASE_CEMENT_TYPE, START..END_CEMENT_TYPE). A
+    // paved overlay laid on dirt is therefore NOT cement-classified at all: it
+    // never reaches the transition branch, increments no drop counter, and
+    // renders as lit colormap + decal beside a lighting-exempt cement apron.
+    // That is the user-annotated "plainly pavement but RED in DIAG=32768" class.
+    long pavedOverlayTiles      = 0;   // tiles carrying a hard-paved overlay id
+    long pavedOverlayNoCement   = 0;   // ...of those, tiles that bake NO cement word
+    long anyOverlayTiles        = 0;
+    auto IsPavedOverlay = [](Overlays t) -> bool {
+        return t == PAVED_ROAD || t == DIRT_ROAD_TO_PAVED_ROAD
+            || t == PAVED_ROAD_CROSSING_DIRT_ROAD || t == DAMAGED_ROAD
+            || t == RUNWAY || t == X_DIRT_PAVED || t == X_2LANEDIRT_PAVED
+            || t == X_DAMAGED_PAVED || t == X_PAVED_ROAD_BRIDGE;
+    };
     // Step 5c: also collect a full per-vn cement-word array for the terrain LOD
     // chunk path (indexed vn = mx + my*mapSide, matching its heightfield SSBO).
     std::vector<uint32_t> chunkCementWords((size_t)mapSide * (size_t)mapSide, 0u);
@@ -1307,6 +1327,18 @@ static void PopulateRecipeCementWords() {
                 }
             }
         }
+        // CEMENT-UNIFORM-2: true-denominator census (read-only, no behaviour).
+        if (Terrain::mapData) {
+            Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+            Terrain::mapData->getOverlay(my, mx, ovT, ovO);
+            if (ovT != INVALID_OVERLAY) {
+                ++anyOverlayTiles;
+                if (IsPavedOverlay(ovT)) {
+                    ++pavedOverlayTiles;
+                    if (cementWord == 0u) ++pavedOverlayNoCement;
+                }
+            }
+        }
         memcpy(&g_denseRecipes[vn]._wp3, &cementWord, 4);
         g_denseRecipeDirty[vn]  = true;
         if (vn < chunkCementWords.size()) chunkCementWords[vn] = cementWord;
@@ -1325,6 +1357,16 @@ static void PopulateRecipeCementWords() {
            transitionDroppedNoLayer, transitionDroppedNoMask,
            CementTransitionFallbackEnabled() ? 1 : 0,
            CementAlphaAtlasEnabled() ? 1 : 0, transitionAlphaRescued);
+    // CEMENT-UNIFORM-2: the denominator [CEMENT_TRANSITION_DROP v1] cannot see.
+    // paved_no_cement = pavement that renders as LIT colormap+decal beside a
+    // lighting-exempt cement apron -- the tone split the user reports, and the
+    // RED-in-DIAG=32768 tiles they circled. cement_total is the transition
+    // census denominator for direct comparison.
+    printf("[CEMENT_PAVEMENT_GAP v1] event=census mission=%s paved_overlay=%ld "
+           "paved_no_cement=%ld any_overlay=%ld cement_total=%ld\n",
+           (::missionName[0] ? ::missionName : "unknown"), pavedOverlayTiles,
+           pavedOverlayNoCement, anyOverlayTiles,
+           transitionQuadCount + transitionDroppedNoLayer + transitionDroppedNoMask);
     fflush(stdout);
     if (CementTransitionFallbackEnabled() && blocks && tt) {
         const std::vector<uint32_t> before = chunkCementWords;
