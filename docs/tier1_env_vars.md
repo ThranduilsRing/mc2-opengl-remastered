@@ -563,21 +563,38 @@ the GPU static-prop batcher instead, so this gate alone is near-inert. See
 
 **Default:** on (killswitch)
 
-LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8, the comprehensive fix). The beacon/runway
-glow cards actually render through `GameOS/gameos/gos_static_prop_batcher.cpp`,
-whose flush relies on the global `GL_CULL_FACE GL_BACK` state — so the whole
-airbase light population is hardware-backface-culled as the camera orbits, and
-goes edge-on (zero projected area) near top-down. Two-sided drawing alone cannot
-fix the edge-on case, and splitting the MDI-coalesced per-packet draw loop to
-bracket `glDisable(GL_CULL_FACE)` would be invasive.
+LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8, the comprehensive fix).
 
-Instead, cards classified `isLightBillboard` carry per-instance flag **bit 4**
-(bit 5 = the exaggeration debug bit) and `shaders/static_prop.vert` rotates the
-quad's plane so its normal points at the eye. The rotation maps the card's own
-in-plane basis onto a camera-facing basis of the same handedness, so quad shape,
-scale and triangle winding are preserved — the front face is camera-facing **by
-construction**, which makes hardware back-face culling structurally unable to
-reject it and removes the edge-on degeneracy at the same time.
+**The predecessor lane's diagnosis was wrong on both counts.** These props are
+not flat quads, and they are not being backface-culled. Reading
+`data/tgl/runwaylight.ase`, each is a 6-vertex / 7-face **truncated triangular
+prism** about 2.85 units tall whose only emissive element is a small
+**horizontal top-cap triangle**. And they render through the GPU static-prop
+batcher, not the legacy `TG_Shape::Render` loop that `MC2_LIGHT_BILLBOARD_TWOSIDED`
+patched — which is why that gate measured near-null.
+
+The real mechanism, reproduced stock from a fixed camera **position** with only
+the pitch varied (mc2_10 night airbase, bookmarks 204753 vs 204907): the cap is
+horizontal, so its projected area falls off with view angle, and the whole
+fixture already subtends only 1-2 pixels at RTS ranges. At grazing angles the
+cap drops below one pixel and is never rasterised — the entire runway light
+population disappears at once. This is a **sub-pixel geometry** problem, so the
+originally-deferred "two-sided GPU draw bucket" would not have fixed it either.
+
+The cure, in `shaders/static_prop.vert` under per-instance flag **bit 4**
+(bit 5 = the exaggeration debug bit), is two parts:
+
+1. **Rigid camera-facing billboard.** The fixture's LOCAL vertex coordinates are
+   re-emitted in an eye-facing basis `(R1, U1, toCam)`, rotating the whole prop
+   about its own origin so the cap points at the viewer. Both frames are
+   right-handed, so shape, scale and triangle winding are preserved and the cap
+   additionally can never be back-face culled. Using the per-VERTEX normal here
+   instead rotates each vertex differently and tears the prism apart — that was
+   measured (the lights vanished entirely), hence the rigid per-instance form.
+2. **Minimum screen size.** Even facing the eye the cap is sub-pixel at range,
+   so the fixture is uniformly scaled about its origin until its silhouette
+   spans at least `kLbMinNdc` (0.0012 NDC) — the clamp is `max(1.0, ...)`, so it
+   is inactive at close range and the geometry there is untouched.
 
 Both static-prop instance flag-emission sites emit the bit (the batcher's
 `submitMultiShape()` and the persistent-static recipe path in `mclib/bdactor.cpp`)

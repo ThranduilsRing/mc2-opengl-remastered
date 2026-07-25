@@ -323,28 +323,37 @@ float g_iblShStrength = []() -> float {
     return f;
 }();
 
-// LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): beacon/runway light glow cards
-// (TG_Shape::isLightBillboard, node-name substring "beaconlight") are single
-// flat 4-6 vertex quads with NO billboarding. They render through THIS GPU
-// batcher, whose flush relies on the global GL_CULL_FACE GL_BACK state, so as
-// the RTS camera orbits/tilts the card's face normal swings away from the eye
-// and the whole airbase light population is hardware-backface-culled — "the
-// lights pop out by view angle". The predecessor lane (EDGE-LIGHT-BILLBOARD-
-// CULL-1, commit 9f8c8086) fixed only the legacy CPU TG_Shape::Render backface
-// loop, which these props do not take at runtime — hence near-null efficacy.
+// LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): beacon/runway light fixtures
+// (TG_Shape::isLightBillboard, node-name substring "beaconlight") pop in and
+// out with the camera angle across the whole mc2_10 airbase.
 //
-// The cure implemented here is CAMERA-FACING BILLBOARDING in static_prop.vert
-// (per-instance flag bit 4). Rotating the card's plane to face the eye
-// subsumes the two-sided requirement: the front face is oriented toward the
-// camera BY CONSTRUCTION, so hardware GL_BACK culling can never reject it and
-// no two-sided draw bucket / glDisable(GL_CULL_FACE) bracket is needed in the
-// hot per-packet draw loop (which is MDI-coalesced and would have to be split).
-// It also cures the degenerate edge-on case at true top-down that two-sided
-// alone cannot (zero projected area).
+// CORRECTED DIAGNOSIS. The predecessor lane (EDGE-LIGHT-BILLBOARD-CULL-1,
+// 9f8c8086) described these as flat quads that get backface-culled, and made
+// the legacy CPU TG_Shape::Render loop two-sided. Both halves are wrong:
+// (a) the props render through THIS batcher, not that loop — hence the
+// measured near-null efficacy; and (b) reading data/tgl/runwaylight.ase, they
+// are not quads at all but 6-vertex / 7-face truncated triangular prisms
+// ~2.85 units tall, whose only emissive element is the small HORIZONTAL
+// top-cap triangle.
+//
+// The real mechanism, reproduced stock from a fixed camera POSITION with only
+// the pitch varied (bookmarks 204753 vs 204907): the cap's projected area
+// falls off with view angle, and the whole fixture already subtends only 1-2
+// pixels at RTS ranges, so at grazing angles the cap drops below one pixel and
+// is never rasterised — every runway light vanishes at once. This is sub-pixel
+// geometry, not backface culling, so the deferred "two-sided draw bucket"
+// would NOT have fixed it either.
+//
+// The cure is in static_prop.vert (per-instance flag bit 4): a RIGID
+// camera-facing billboard (local coords re-emitted in an eye-facing basis, so
+// the cap always faces the viewer and can never be back-culled) plus a
+// MINIMUM SCREEN SIZE clamp so the fixture never shrinks below a pixel. No
+// two-sided draw bucket and no glDisable(GL_CULL_FACE) bracket is needed in
+// the hot MDI-coalesced per-packet draw loop.
 //
 // Gate MC2_LIGHT_BILLBOARD_FACING — killswitch, default ON. "0" => the flag
 // bit is never emitted => shader block never runs => byte-identical. "2" =>
-// verify-by-exaggeration (bit 5 as well: card scaled 4x in the shader).
+// verify-by-exaggeration (bit 5 as well: fixture scaled 4x in the shader).
 // Companion CPU-path gate MC2_LIGHT_BILLBOARD_TWOSIDED (tgl.cpp) is unchanged.
 int gos_lightBillboardFacingMode() {
     static const int s_mode = []() -> int {

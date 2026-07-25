@@ -283,64 +283,96 @@ void main() {
     // along a wrong axis (visible 2026-05-04 as "trees in the sky" pattern).
     vec3 world_mc2 = vec3(-world_stuff.x, world_stuff.z, world_stuff.y);
 
-    // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): camera-facing billboarding for
-    // beacon/runway light glow cards (flags bit 4, emitted by the batcher only
-    // for TG_Shape::isLightBillboard children under MC2_LIGHT_BILLBOARD_FACING).
+    // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): rigid camera-facing billboard +
+    // minimum screen size for beacon/runway light fixtures (flags bit 4,
+    // emitted only for TG_Shape::isLightBillboard children under
+    // MC2_LIGHT_BILLBOARD_FACING; bit 5 = debug exaggeration).
     //
-    // These are single flat quads with a FIXED orientation. Hardware
-    // GL_CULL_FACE GL_BACK (the static-prop flush's global state) rejects them
-    // as soon as the orbiting RTS camera crosses their face plane, and at
-    // near-top-down they go edge-on (zero projected area) regardless of
-    // culling. Rotating the quad's plane so its normal points at the eye fixes
-    // BOTH: the front face is camera-facing by construction (never
-    // back-culled), and the card never degenerates to an edge.
+    // WHAT THESE ACTUALLY ARE (measured from data/tgl/runwaylight.ase et al —
+    // the predecessor lane's "single flat quad" description is WRONG): a
+    // 6-vertex / 7-face truncated triangular prism, ~2.85 units tall. The
+    // three side faces carry the dark post colour; the ONLY emissive element
+    // is the small horizontal top-cap triangle (~0.79 unit radius, vertex
+    // colour 1,1,0.435).
     //
-    // Method: express the vertex offset from the instance origin in the card's
-    // own in-plane basis (R0,U0) built from its face normal + world up, then
-    // re-emit it in the camera-facing basis (R1,U1) built the same way from
-    // the eye direction. Both bases are right-handed w.r.t. their third axis
-    // (n, toCam), so the mapping is a pure rotation n->toCam: quad shape,
-    // scale, and TRIANGLE WINDING are all preserved. Out-of-plane depth is
-    // carried along the new normal so multi-face cards (6 vert / 7 face
-    // variants) keep their relief.
+    // THE REAL BUG, reproduced stock at a fixed camera POSITION with only the
+    // pitch changed (mc2_10 night airbase, bookmarks 204753 vs 204907): at a
+    // higher angle every runway edge light is a visible dot; at a grazing
+    // angle the runways are bare. The cap is horizontal, so its projected area
+    // falls off with the view angle, and since the whole fixture already
+    // subtends only 1-2 pixels at RTS ranges the cap drops below one pixel and
+    // is simply never rasterised. This is a sub-pixel geometry problem, not a
+    // backface-culling one — which is why the predecessor lane's two-sided CPU
+    // change measured near-null, and why a two-sided GPU draw bucket would
+    // ALSO have failed to fix it.
     //
-    // Degenerate guards: a card whose normal is parallel to world-up, or an
-    // eye vector parallel to world-up (true top-down), leaves the geometry
-    // untouched rather than exploding on a zero-length cross product.
+    // THE FIX, in two parts:
+    //   1. Rigid spherical billboard. The whole fixture is rotated about its
+    //      own origin so its local +Z (the cap normal / post axis) points at
+    //      the eye, using the RIGID per-instance basis (R1,U1,toCam) applied
+    //      to the LOCAL vertex coordinates. Using the per-VERTEX normal here
+    //      instead would rotate each vertex by a different amount and tear the
+    //      prism apart (observed: the lights vanished entirely). The local
+    //      frame and (R1,U1,toCam) are both right-handed, so the mapping is a
+    //      pure rotation: shape, scale and TRIANGLE WINDING are preserved and
+    //      the cap can never be back-face culled either.
+    //   2. Minimum screen size. Even facing the eye, the cap is sub-pixel at
+    //      range, so the fixture is uniformly scaled about its origin until
+    //      its silhouette spans at least kLbMinNdc in NDC. The clamp is
+    //      max(1.0, ...) — inactive at close range, where the geometry is
+    //      therefore untouched.
     //
     // Frame note: world_mc2 and u_cameraWorldPos are the SAME space (see
     // static_prop.frag's view-vector reconstruction, which subtracts
     // v_worldPos == world.xyz from u_cameraWorldPos). World up in MC2 is +Z.
 #if defined(MC2_USE_VIEW_UNIFORMS)
-    const uint kFlagIsLightBillboard = (1u << 4);
+    const uint kFlagIsLightBillboard  = (1u << 4);
     const uint kFlagLightBillboardBig = (1u << 5);
     if ((inst.flags & kFlagIsLightBillboard) != 0u) {
         vec4 origin_stuff = vec4(0.0, 0.0, 0.0, 1.0) * inst.modelMatrix;
         vec3 origin_mc2   = vec3(-origin_stuff.x, origin_stuff.z, origin_stuff.y);
-        vec3 nStuff       = a_normal * mat3(inst.modelMatrix);
-        vec3 nMc2         = vec3(-nStuff.x, nStuff.z, nStuff.y);
         const vec3 kUpMc2 = vec3(0.0, 0.0, 1.0);
-        vec3 r0raw        = cross(kUpMc2, nMc2);
         vec3 toCamRaw     = u_cameraWorldPos.xyz - origin_mc2;
         vec3 r1raw        = cross(kUpMc2, toCamRaw);
-        // 1e-4 on the squared length: below this the basis is numerically
-        // meaningless and the rotation would flip the card randomly.
-        if (dot(r0raw, r0raw) > 1e-4 && dot(r1raw, r1raw) > 1e-4 &&
-            dot(toCamRaw, toCamRaw) > 1e-4) {
-            vec3 n0 = normalize(nMc2);
-            vec3 R0 = normalize(r0raw);
-            vec3 U0 = cross(n0, R0);
+        vec4 clipOrigin   = u_worldToClipGL * vec4(origin_mc2, 1.0);
+        // Degenerate guards: eye directly overhead (r1raw ~ 0), coincident
+        // eye, or the fixture behind the eye — leave the geometry stock
+        // rather than divide by ~0.
+        if (dot(r1raw, r1raw) > 1e-4 && dot(toCamRaw, toCamRaw) > 1e-4 &&
+            clipOrigin.w > 1e-3) {
             vec3 toCam = normalize(toCamRaw);
-            vec3 R1 = normalize(r1raw);
-            vec3 U1 = cross(toCam, R1);
-            vec3 d  = world_mc2 - origin_mc2;
-            // Exaggeration is DEBUG-ONLY (MC2_LIGHT_BILLBOARD_FACING=2); the
-            // default path multiplies by exactly 1.0.
-            float s = ((inst.flags & kFlagLightBillboardBig) != 0u) ? 4.0 : 1.0;
-            world_mc2 = origin_mc2
-                      + R1 * (dot(d, R0) * s)
-                      + U1 * (dot(d, U0) * s)
-                      + toCam * dot(d, n0);
+            vec3 R1    = normalize(r1raw);
+            vec3 U1    = cross(toCam, R1);   // (R1,U1,toCam) right-handed
+
+            // Minimum silhouette size, in NDC half-extents. 0.0035 ~= 3.8px
+            // on a 2160-tall target, 1.3px at 720p — enough to guarantee the
+            // cap survives rasterisation without turning distant lights into
+            // blobs. kLbRefRadius is the authored cap radius (~0.79 units);
+            // it only sets what "silhouette" means for the clamp.
+            const float kLbMinNdc     = 0.0012;
+            const float kLbRefRadius  = 0.8;
+            // NDC-per-world-unit across the screen at this depth: push the
+            // billboard's own right axis through the clip matrix as a
+            // DIRECTION (w=0) and divide by the origin's clip w.
+            vec4 clipR      = u_worldToClipGL * vec4(R1, 0.0);
+            float ndcPerUnit = length(clipR.xy) / clipOrigin.w;
+            float k = 1.0;
+            float sil = kLbRefRadius * ndcPerUnit;
+            if (sil > 1e-9) k = max(1.0, kLbMinNdc / sil);
+            // DEBUG ONLY (MC2_LIGHT_BILLBOARD_FACING=2): oversize the fixtures
+            // so the affected population is unmistakable in a capture.
+            if ((inst.flags & kFlagLightBillboardBig) != 0u) k *= 4.0;
+
+            // Rigid: LOCAL coordinates re-emitted in the camera-facing basis.
+            // Recover the instance's uniform scale from the model matrix so a
+            // scaled placement keeps its size (Stuff row-vector convention:
+            // local +X maps to world through matrix ROW 0, i.e. the .x of each
+            // column). Rotation is discarded on purpose — that is the point.
+            float mScale = length(vec3(inst.modelMatrix[0].x,
+                                       inst.modelMatrix[1].x,
+                                       inst.modelMatrix[2].x));
+            vec3 p    = a_position * (k * mScale);
+            world_mc2 = origin_mc2 + R1 * p.x + U1 * p.y + toCam * p.z;
         }
     }
 #endif
