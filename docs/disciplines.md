@@ -4,6 +4,55 @@ Extracted from CLAUDE.md 2026-05-24. These are the procedural disciplines that
 govern HOW work is done — when to spawn subagents, when to ask for adversarial
 review, when META-FIX is required, when to grep-verify.
 
+## Subagent bookend-review discipline (STANDING USER RULE, 2026-07-25)
+
+**Every dispatched subagent is bookended by two mandatory reviews.** No lane may
+report work as done / good / fixed without the closing one.
+
+*Justification (one line):* the 2026-07-25 adversarial audit found ~35 of ~50
+session items produced code a default launch never executes, docs still
+recommended fixes the user had rejected, and several "verified via smoke" claims
+were void.
+
+### 1. META REVIEW — before starting
+
+Verify the state you are inheriting. Do **not** trust the brief or prior status docs.
+
+- [ ] Read gate defaults from **READER SOURCE** — docs and status docs have
+      repeatedly disagreed with source.
+- [ ] Check what a **DEFAULT LAUNCH** actually executes, vs what is merely committed.
+- [ ] Check whether prior "verified" evidence came from `-dirty` / unattributable builds.
+- [ ] Check the worktree for orphaned/uncommitted work and live lane claims
+      (`preflight`, `list_lanes`, `check_conflict`).
+- [ ] Check whether a later commit already **superseded or regressed** the task.
+- [ ] **Spot-check the brief's own premises.** Four consecutive lanes inherited a
+      false premise ("vehicles are the odd one out on the legacy path") because
+      nobody re-verified it. **Report corrections rather than silently building on
+      a wrong foundation.**
+
+### 2. ADVERSARIAL SELF-REVIEW — before reporting done
+
+Try to **refute your own claim**. Answer explicitly:
+
+- [ ] **If the user launched the game right now with default settings, would they
+      still see this?** A fix behind a default-OFF gate the user never approved is
+      **NOT delivered** — say so in those words.
+- [ ] Gate is **registered** AND **smoke-allowlisted**. An unallowlisted gate makes
+      both A/B arms run the same path; this has silently voided real verification
+      more than once.
+- [ ] Evidence came from a **CLEAN fingerprint build** (`MC2_BUILD_GIT_DIRTY 0`),
+      md5-verified.
+- [ ] The gate string is **actually present in the deployed binary**. One "fix"
+      existed in no binary at all because its rebuild failed silently.
+- [ ] Verified at **poses/conditions where the defect can actually manifest**
+      (see the Standing Capture Rule in `docs/visual-verify.md`).
+- [ ] **Nothing regressed a user approval.**
+- [ ] State **residual risk** and **what you did NOT do**, plainly.
+
+See also: `docs/visual-verify.md` — the Standing Capture Rule (full-frame wide
+verdict shot, ≥3 locations incl. a control area, day AND night, across
+mc2_01/mc2_03/mc2_10/mc2_24).
+
 ## Review discipline
 
 When user asks for "review" / "second opinion": **adversarial, code-grounded by

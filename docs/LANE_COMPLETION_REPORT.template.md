@@ -52,3 +52,42 @@ merge_recommendation: READY   # READY | HOLD | NEEDS-REVIEW
      READY     — tier1 clean, oracle clean, no open blockers, safe to merge.
      HOLD      — passing but waiting on something (state it explicitly).
      NEEDS-REVIEW — specific concern that must be resolved before merge. -->
+
+## Bookend reviews (STANDING USER RULE, 2026-07-25 — both are mandatory)
+
+Full checklist: `docs/disciplines.md`. A lane may not report done without §2.
+
+### META REVIEW (done before starting)
+
+<!-- What state did you inherit, and what did you find WRONG about it?
+     Reader-source gate defaults; what a DEFAULT LAUNCH executes; -dirty or
+     unattributable prior evidence; orphaned/uncommitted work + live lane claims;
+     superseding/regressing commits; and any of the BRIEF'S OWN PREMISES that
+     turned out to be false. Say "no corrections" only if you actually checked. -->
+
+premises_corrected:        # none | <list what the brief got wrong>
+
+### ADVERSARIAL SELF-REVIEW (done before reporting done)
+
+<!-- Try to refute your own claim. Answer the first question in plain words. -->
+
+user_sees_it_on_default_launch: NO   # YES | NO | N/A
+<!-- If NO: this work is NOT DELIVERED. Say so explicitly and name the gate
+     plus who has to approve flipping it. Do not report it as fixed. -->
+
+gate_registered:               # yes | no | N/A
+gate_smoke_allowlisted:        # yes | no | N/A   (no => both A/B arms ran the
+                               #                   same path; verification void)
+clean_fingerprint_build:       # yes | no  (MC2_BUILD_GIT_DIRTY 0, md5-verified)
+gate_string_in_deployed_exe:   # yes | no | N/A  (a rebuild can fail silently)
+verified_where_defect_manifests: # yes | no — see the Standing Capture Rule in
+                               #   docs/visual-verify.md (full-frame wide verdict
+                               #   shot, >=3 locations incl. a control area,
+                               #   day AND night, mc2_01/mc2_03/mc2_10/mc2_24)
+regressed_a_user_approval:     # no | <what>
+
+residual_risk:
+<!-- Plainly. What could still be wrong. -->
+
+not_done:
+<!-- Plainly. What you did NOT do, and why. -->
