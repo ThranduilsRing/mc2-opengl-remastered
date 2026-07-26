@@ -1564,6 +1564,7 @@ def main():
                             "MC2_WATER_SHORE_FEATHER",
                             "MC2_WATER_SHORE_MEANDER",
                             "MC2_WATER_SHORE_MEANDER_FREQ",
+                            "MC2_WATER_SHORE_MEANDER_MAXDIST",
                             # EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8):
                             # render beacon/runway edge-light glow cards
                             # two-sided so they don't backface-cull toward

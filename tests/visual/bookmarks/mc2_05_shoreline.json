@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_05",
+  "_note": "WATER-MEANDER-CLAMP-1. mc2_05 shoreline poses -- mc2_05 had NO water bookmark of any kind before this file. Coordinates decoded from the mission .pak MapData packet (side=120, half-extent 7616 wu) with water = elev <= [Water] Elevation = 140; mc2_05 is only 7.9% water (small inland bodies, not a coast), so poses centre the two largest water/land boundaries whose neighbourhood is ~40-50% water. Wide full-frame framing at normal RTS gameplay altitude. Median shore |grad| 0.259.",
+  "bookmarks": [
+    {
+      "name": "pool_northeast_wide",
+      "pos": [2880.0, 2496.0, 0.0],
+      "rot": 45.0,
+      "proj": 30.0,
+      "alt": 800.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    },
+    {
+      "name": "pool_southwest_wide",
+      "pos": [-1856.0, -4288.0, 0.0],
+      "rot": 225.0,
+      "proj": 32.0,
+      "alt": 840.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "WATER-MEANDER-CLAMP-1. Verified-coordinate mc2_01 shoreline poses. NOTE: the pre-existing mc2_01_water.json carries its own _unverified_framing warning (its poses were never eyeballed and a zero diff there is NOT evidence) -- this file exists so mc2_01's documented meander side effect (the waterline creeping ~10% up the beach at amplitude 75) can actually be measured. Coordinates decoded from the mission .pak MapData packet (side=100, half-extent 6336 wu) with water = elev <= [Water] Elevation = 350; each pose centres a ~50%-water coastline neighbourhood. Wide full-frame framing at normal RTS gameplay altitude. mc2_01's shore is the steepest of the four water maps (median |grad| 0.366), so a horizontal-distance clamp should bind here only weakly.",
+  "bookmarks": [
+    {
+      "name": "beach_north_wide",
+      "pos": [192.0, 3904.0, 0.0],
+      "rot": 45.0,
+      "proj": 32.0,
+      "alt": 850.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    },
+    {
+      "name": "beach_west_wide",
+      "pos": [-2752.0, 1856.0, 0.0],
+      "rot": 135.0,
+      "proj": 30.0,
+      "alt": 820.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    }
+  ]
+}

@@ -111,6 +111,22 @@ float ShoreMeanderFreq() {
     return s_freq;
 }
 
+// WATER-MEANDER-CLAMP-1 (MC2_WATER_SHORE_MEANDER_MAXDIST) — see the header
+// block. Bounds the meander's HORIZONTAL contour travel in world units. The
+// amplitude is a THICKNESS, whose horizontal reach is amplitude/|grad|; on a
+// flat shelf that diverges and the shore term collapses to 0, which the FS
+// `discard` turns into DELETED WATER (measured on mc2_17 at the shipping
+// default of 75). 0 => unclamped => byte-identical to pre-clamp behaviour.
+float ShoreMeanderMaxDistWu() {
+    static const float s_maxDist = []() -> float {
+        const char* v = getenv("MC2_WATER_SHORE_MEANDER_MAXDIST");
+        if (!v || !*v) return 96.0f;      // default: 0.75 tile of contour travel
+        const float f = (float)atof(v);
+        return f > 0.0f ? f : 0.0f;       // explicit 0 => unclamped
+    }();
+    return s_maxDist;
+}
+
 float EffShoreExt(float baseAlphaDepth) {
     const float effAD = EffAlphaDepth(baseAlphaDepth);
     const float base  = (effAD * 0.5f > 0.0f) ? effAD * 0.5f : 15.0f;

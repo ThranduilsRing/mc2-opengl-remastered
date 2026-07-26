@@ -347,8 +347,19 @@ float EffAlphaDepth(float baseAlphaDepth);
 //                        would reappear.
 // All default OFF/0 -> EffShoreExt collapses to the stock expression and the
 // FS perturbation term is skipped -> byte-identical.
+// WATER-MEANDER-CLAMP-1 (MC2_WATER_SHORE_MEANDER_MAXDIST): the amplitude above
+// is a THICKNESS, but its visible reach is amplitude/|grad(thickness)| in
+// DISTANCE. That self-scaling is a feature on graded shores and a defect on
+// flat shelves, where it diverges: on mc2_17 the shipping amplitude of 75
+// pushed the contour so far that `shore` hit 0 over wide regions and the FS
+// `discard` REMOVED the water body, exposing terrain. This clamps the
+// perturbation to maxDist*|grad|, i.e. re-specifies the bound as max horizontal
+// contour travel. It binds only where |grad| is small (flat shelves) and is
+// inert on steeper shores. 0 => unclamped => byte-identical.
+//   ShoreMeanderMaxDistWu() : max horizontal contour travel in wu.
 float ShoreMeanderWu();
 float ShoreMeanderFreq();
+float ShoreMeanderMaxDistWu();
 float EffShoreExt(float baseAlphaDepth);
 
 } // namespace WaterStream

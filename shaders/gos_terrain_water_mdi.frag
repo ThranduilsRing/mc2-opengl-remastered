@@ -72,8 +72,22 @@ uniform PREC float alphaDepth;    // MapData::alphaDepth (world-units); shore sm
 // Static in time (a swimming coastline would be far worse than a stepped one)
 // and keyed on continuous WorldPos.xy, so it is seam-free and camera-
 // independent. u_shoreMeanderWu == 0 -> term skipped -> byte-identical.
-uniform float u_shoreMeanderWu;     // amplitude, world units
-uniform float u_shoreMeanderFreq;   // cycles per world unit
+// WATER-MEANDER-CLAMP-1 (MC2_WATER_SHORE_MEANDER_MAXDIST): bound the meander's
+// HORIZONTAL reach. The amplitude above is specified in world units of
+// THICKNESS, but the contour displacement it buys is amplitude/|grad(thickness)|
+// in world units of DISTANCE. On a flat shelf |grad| -> 0 and a modest
+// thickness amplitude becomes an enormous horizontal excursion — far wider than
+// the smoothstep band — which drives `shore` to 0 and the `discard` then DELETES
+// the water body (measured on mc2_17: at amplitude 75 nearly half the frame
+// changed vs amplitude 0, with terrain exposed under the missing water).
+// This clamp converts the spec from max-thickness to max-DISTANCE: the
+// perturbation is limited to maxDist*|grad|, so the contour can never travel
+// further than maxDist world units from its stock position regardless of how
+// flat the shelf is. On steeper shores |grad| is large and the clamp does not
+// bind, leaving the graded look unchanged. 0 => clamp disabled => byte-identical.
+uniform float u_shoreMeanderWu;         // amplitude, world units of THICKNESS
+uniform float u_shoreMeanderFreq;       // cycles per world unit
+uniform float u_shoreMeanderMaxDistWu;  // max horizontal contour travel, wu (0 = unclamped)
 uniform sampler2D  u_shoreMask;
 uniform int        u_hasShoreMask;
 uniform PREC vec4  u_shoreMaskBounds;   // topLeftX, topLeftY(=maxY), sizeX, sizeY (wu)
@@ -248,7 +262,31 @@ void main(void)
             PREC vec2  mp = WorldPos.xy * u_shoreMeanderFreq;
             PREC float mn = (fbm3(mp) - 0.4375) * 1.60
                           + (fbm3(mp * 2.70 + vec2(37.2, 17.9)) - 0.4375) * 0.80;
-            shoreWT += u_shoreMeanderWu * mn;
+            PREC float pert = u_shoreMeanderWu * mn;
+            // WATER-MEANDER-CLAMP-1: convert the amplitude spec from max
+            // THICKNESS to max horizontal DISTANCE (see uniform block).
+            if (u_shoreMeanderMaxDistWu > 0.0) {
+                // World-space gradient of the thickness field, recovered from
+                // the screen-space Jacobian. WaterThickness and WorldPos.xy are
+                // both LINEARLY interpolated across a primitive, so the
+                // derivative RATIO is the exact per-primitive plane gradient and
+                // is camera-INDEPENDENT (the camera cancels between numerator
+                // and denominator). Only derivative quads straddling a primitive
+                // edge see a ~1px transient, which is orders of magnitude
+                // smaller than the defect this bounds.
+                PREC vec2 dw  = vec2(dFdx(WaterThickness), dFdy(WaterThickness));
+                PREC vec2 dPx = dFdx(WorldPos.xy);
+                PREC vec2 dPy = dFdy(WorldPos.xy);
+                PREC float det = dPx.x * dPy.y - dPx.y * dPy.x;
+                if (abs(det) > 1e-9) {
+                    // Solve [dPx; dPy] * g = dw  (rows are d(world)/d(screen)).
+                    PREC vec2 g = vec2( dPy.y * dw.x - dPx.y * dw.y,
+                                       -dPy.x * dw.x + dPx.x * dw.y) / det;
+                    PREC float maxPert = u_shoreMeanderMaxDistWu * length(g);
+                    pert = clamp(pert, -maxPert, maxPert);
+                }
+            }
+            shoreWT += pert;
         }
         PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, shoreWT);
         // WATER-SHORE-MASK-1: feather the shore band along the smoothed

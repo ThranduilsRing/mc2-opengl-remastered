@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "WATER-MEANDER-CLAMP-1. THE mc2_10 WATER REGRESSION POSES. mc2_10 is the map whose MC2_WATER_SHORE_MEANDER=75 look the user APPROVED, and until this file no mc2_10 bookmark framed water at all (mc2_10_sunclamp / mc2_10_building_faces frame terrain and props), so no shoreline change on this map could be regression-checked. Coordinates are NOT guessed: the mission .pak MapData packet was decoded (side=120, half-extent 7616 wu, 128 wu/vertex) and the water mask taken as elev <= [Water] Elevation = 80. Each pose centres on a water/land boundary cell whose 25x25-cell neighbourhood is ~50% water, i.e. an actual coastline with open water on one side and land on the other -- not a shore-adjacent patch of empty ground. Wide full-frame framing at normal RTS gameplay altitude (alt 800-880, proj 30-34), matching mc2_10_sunclamp's conventions. Local shore |grad| at these three sites is 0.23 / 0.17 / 0.23 wu-elev per wu-horizontal, i.e. representative of the map's median (0.219), so they are the right places to judge whether a horizontal-distance clamp binds here.",
+  "bookmarks": [
+    {
+      "name": "shore_west_wide",
+      "pos": [-4416.0, -1984.0, 0.0],
+      "rot": 73.75,
+      "proj": 32.0,
+      "alt": 850.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    },
+    {
+      "name": "shore_southeast_wide",
+      "pos": [5184.0, -5824.0, 0.0],
+      "rot": 163.75,
+      "proj": 30.0,
+      "alt": 820.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    },
+    {
+      "name": "shore_south_wide",
+      "pos": [1728.0, -6208.0, 0.0],
+      "rot": 253.75,
+      "proj": 34.0,
+      "alt": 880.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_17",
+  "_note": "WATER-MEANDER-CLAMP-1. Presentation-grade WIDE verdict poses for the mc2_17 water-deletion defect. The pre-existing mc2_17_terrain_near.json 'water_near' pose is alt 320 -- close and blurry; it proves the mechanism but is not what the user sees. These are full-frame shots at normal RTS gameplay altitude (alt 820-900, proj 30-34) so the verdict is judged on the same framing the defect was reported in. Coordinates decoded from the mission .pak MapData packet (side=120, half-extent 7616 wu) with water = elev <= [Water] Elevation = 120; each centres a ~50%-water coastline neighbourhood. mc2_17 is the flat-shelf map: median shore |grad| = 0.101 wu-elev per wu-horizontal, the flattest of the four water maps, which is exactly why the thickness-specified meander amplitude diverges into a ~1785 wu horizontal excursion here and deletes the water body.",
+  "bookmarks": [
+    {
+      "name": "shelf_center_wide",
+      "pos": [960.0, 320.0, 0.0],
+      "rot": 30.0,
+      "proj": 32.0,
+      "alt": 860.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    },
+    {
+      "name": "shelf_southwest_wide",
+      "pos": [-2880.0, -2368.0, 0.0],
+      "rot": 120.0,
+      "proj": 30.0,
+      "alt": 820.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    },
+    {
+      "name": "shelf_east_wide",
+      "pos": [4032.0, -4800.0, 0.0],
+      "rot": 210.0,
+      "proj": 34.0,
+      "alt": 900.0,
+      "covers": ["water", "shoreline", "terrain_splat"]
+    }
+  ]
+}
