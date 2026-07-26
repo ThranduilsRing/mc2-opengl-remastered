@@ -220,6 +220,9 @@ float gos_TerrainPadGlowStrength();
 float gos_TerrainPadGlowSpillWu();
 // RUNWAY-APRON-TONE-2: cement lighting participation, 0..1 (MC2_CEMENT_LIT).
 float gos_TerrainCementLit();
+// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): 0=stock linear lighting exemption,
+// 1=exemption follows the same sqrt() curve as the cement albedo.
+float gos_TerrainCementEdgeCurve();
 // Chunk cement-grid geometry (mapSide 0 = grid not resident -> overlay must
 // not read the binding-25 cement SSBO).
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);

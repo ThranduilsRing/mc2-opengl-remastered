@@ -746,6 +746,7 @@ static GLint    s_locMoverContactShadow  = -1;  // MOVER-CONTACT-SHADOW-1: u_mov
 static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
 static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
 static GLint    s_locCementLit           = -1;  // RUNWAY-APRON-TONE-2: u_cementLit (0..1)
+static GLint    s_locCementEdgeCurve     = -1;  // CEMENT-EDGE-CURVE-1: u_cementEdgeCurve (0..1)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -1283,6 +1284,7 @@ void gos_TerrainLodChunk_Init()
             s_locPadGlow      = glGetUniformLocation(s_terrainProgram, "u_padGlow");       // PAD-AREA-GLOW-1
             s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
             s_locCementLit    = glGetUniformLocation(s_terrainProgram, "u_cementLit");     // RUNWAY-APRON-TONE-2
+            s_locCementEdgeCurve = glGetUniformLocation(s_terrainProgram, "u_cementEdgeCurve"); // CEMENT-EDGE-CURVE-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -2350,6 +2352,8 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // flat-lit slab, so the default upload is a no-op by value.
         if (s_locCementLit >= 0)
             glUniform1f(s_locCementLit, gos_TerrainCementLit());
+        if (s_locCementEdgeCurve >= 0)
+            glUniform1f(s_locCementEdgeCurve, gos_TerrainCementEdgeCurve());
         // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
         // the per-frame terrain light pool SSBO (packed+uploaded every frame by
         // gos_terrain_lighting::PackAndDispatch — the SAME buffer the legacy
@@ -3937,6 +3941,22 @@ float gos_TerrainCementLit()
 {
     static const float s_v = []() {
         const char* s = std::getenv("MC2_CEMENT_LIT");
+        if (!s || !s[0]) return 0.0f;
+        float v = (float)std::atof(s);
+        if (v < 0.0f) v = 0.0f;
+        if (v > 1.0f) v = 1.0f;
+        return v;
+    }();
+    return s_v;
+}
+
+// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): 0..1 blend of the cement lighting
+// exemption's curve, from stock LINEAR pureConcrete (0.0) to the sqrt() curve the
+// cement ALBEDO already uses (1.0). Default 0.0 == stock, bit-identical.
+float gos_TerrainCementEdgeCurve()
+{
+    static const float s_v = []() {
+        const char* s = std::getenv("MC2_CEMENT_EDGE_CURVE");
         if (!s || !s[0]) return 0.0f;
         float v = (float)std::atof(s);
         if (v < 0.0f) v = 0.0f;

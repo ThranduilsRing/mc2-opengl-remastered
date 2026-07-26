@@ -304,6 +304,15 @@ uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 
 // is the "runway is grey here and black there" the user reports. 1.0 = cement
 // obeys the same light as the terrain it sits on.
 uniform float u_cementLit;
+// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE, default 0.0 == stock/bit-identical).
+// Albedo crosses a cement boundary on sqrt(pureConcrete) while the lighting
+// exemption crosses on LINEAR pureConcrete. sqrt(t) > t for 0<t<1, so cement-toned
+// albedo arrives BEFORE its lighting exemption, leaving the transition ramp lit by
+// the terrain term. At 1.0 the lighting exemption uses the SAME curve as the albedo
+// so both arrive together. Only the CURVE changes -- the user-approved
+// CEMENT-HARD-EDGE-1 crisp alpha shape is untouched (that path is binary 0/1, where
+// sqrt(0)=0 and sqrt(1)=1, so this uniform cannot move it).
+uniform float u_cementEdgeCurve;
 
 // Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
 // u_padGlowSpill wu of world distance to the nearest cement tile rect (3x3
@@ -1783,7 +1792,11 @@ void main() {
     // normalLight, so apron (cement atlas) and runway (baked colormap) share one
     // lighting term and stop reading as two unrelated materials.
     float cementLight = mix(1.0, normalLight, u_cementLit);
-    normalLight = mix(normalLight, cementLight, pureConcrete);
+    // CEMENT-EDGE-CURVE-1: match the lighting exemption's curve to the albedo's.
+    // u_cementEdgeCurve==0 -> pureConcrete (stock, bit-identical); ==1 -> the
+    // concreteColorBlend=sqrt(pureConcrete) curve the albedo at line ~1535 uses.
+    float cementLightBlend = mix(pureConcrete, concreteColorBlend, u_cementEdgeCurve);
+    normalLight = mix(normalLight, cementLight, cementLightBlend);
     // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting
     // exemption cement receives, while leaving its baked colormap albedo alone.
     // pureConcrete is 0 on these tiles by construction (no cement word, no
