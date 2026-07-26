@@ -290,5 +290,12 @@ publish.
 | Capture env + exe attribution | `golden.json` → `capture_env`, `identity` |
 | IBL mid-lane handling | `golden.json` → `sibling_lane_resolution` |
 | Vendored poses + honesty audit | `golden.json` → `pose_provenance`; `poses/` |
-| Raw 3-run evidence (post-IBL) | `scratch/gr2/{r1,r2,r3}` + each `report.json` |
-| Discarded pre-IBL evidence | `scratch/gr2/preIBL_reports/` |
+| Post-IBL 3-run metrics | `scratch/gr2/{r2,r3}/report.json` (per-region `changed_pct` vs r1) |
+| Discarded pre-IBL metrics | `scratch/gr2/preIBL_reports/` |
+
+**Evidence retention caveat:** the raw 4K capture PNGs (1.7 GB) were **deleted**
+after blessing to hold disk (A: sat at 99 % all lane). The `report.json` files
+that carry every number quoted in this document are retained; the frames they
+were computed from are not. Re-deriving the floors means re-running the three
+captures (~27 min) against exe `6c47e149`. The blessed crops themselves are in
+git.
