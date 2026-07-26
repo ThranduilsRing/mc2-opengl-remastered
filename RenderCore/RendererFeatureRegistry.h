@@ -1835,6 +1835,27 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR). Only consulted when MC2_SHADOW_BOUNDED_NEAR_FIT=1. Resolved once at process start."
     },
     {
+        "MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN",
+        "MC2_SHADOW_GUARD_CLAMPED_SUN",
+        EnvVarKind::Feature,
+        true,
+        "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built from. gameos_graphics.cpp:10197 passes -gos_GetTerrainLightDir() into buildStaticLightMatrix (which runs mc2ClampShadowSunAltitude, 15deg min); runScreenShadow uploaded the byte-identical raw expression UNCLAMPED, so on a near-horizontal authored sun the guard degenerated to a purely azimuthal test and discarded real shadows on every surface leaning away from the sun azimuth -- the mc2_10 night 'shadowed half / unshadowed half' world split. Default-ON; =0 reverts to the raw-sun guard. No-op (byte-identical) wherever sin(LightDirPitch) >= sin(15deg): mc2_01/03/24 unaffected; only mc2_10 (LightDirPitch=180 -> 0.0) changes. Shading light dir / terrain N-dot-L is a separate uniform and is NOT touched -- brightness is unchanged, only wrongly-discarded shadows return."
+    },
+    {
+        "MC2_TUNE_SHADOW_MIN_SUN_ALT",
+        "MC2_SHADOW_MIN_SUN_ALT",
+        EnvVarKind::Trace,
+        false,
+        "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude, gos_postprocess.cpp). Default 15; 0 or negative disables the clamp entirely. Azimuth is preserved. Applied at BOTH the static full-map matrix and the dynamic cascade matrices. Missions authoring a sun at/below the horizon (mc2_10 LightDirPitch=180 -> lightDirection.z = 0) otherwise smear absurdly elongated caster silhouettes across up-facing slopes ('black streak fans'). Suns already above the minimum are untouched (byte-identical). Since SHADOW-SUNCLAMP-1 this same clamp also governs the shadow_screen back-face guard (see MC2_SHADOW_GUARD_CLAMPED_SUN). Resolved once at process start."
+    },
+    {
+        "MC2_TUNE_IMPOSTOR_DIST",
+        "MC2_IMPOSTOR_DIST",
+        EnvVarKind::Trace,
+        false,
+        "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD). Default 800. Hysteresis deadband is applied around it (_near = dist*0.92, _far = dist*1.08), so at the default the LOD flip band is [736, 864]. Lowering it pushes impostor cards nearer the camera (cheaper, more visible pop); raising it keeps full-geometry LODs further out. Resolved once at process start."
+    },
+    {
         "MC2_FEATURE_PROP_SHADOW_RECEIVE",
         "MC2_PROP_SHADOW_RECEIVE",
         EnvVarKind::Feature,

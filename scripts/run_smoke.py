@@ -1635,6 +1635,19 @@ def main():
                             # shadow_screen.frag (default OFF). Must be allowlisted
                             # or Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_SHADOW_RECEIVE",
+                            # SHADOW-SUNCLAMP-1 -- back-face guard dots the same
+                            # altitude-clamped sun the shadow matrices use
+                            # (default ON; =0 reverts to the raw-sun guard).
+                            "MC2_SHADOW_GUARD_CLAMPED_SUN",
+                            # SHADOW-SUN-ALT-CLAMP-1 tunable -- min effective sun
+                            # altitude (deg) for the shadow matrices AND (since
+                            # SHADOW-SUNCLAMP-1) the back-face guard. Default 15,
+                            # 0 disables. Was ENV_DROP_RISK: read by code but not
+                            # allowlisted, so a gate-ON smoke silently ran default.
+                            "MC2_SHADOW_MIN_SUN_ALT",
+                            # Tree/static-prop impostor LOD switch distance (WU),
+                            # default 800. Same ENV_DROP_RISK fix as above.
+                            "MC2_IMPOSTOR_DIST",
                             # Mask-dispatch (pre-bake-terrain merge)
                             "MC2_TERRAIN_MASK_DISPATCH",
                             "MC2_TERRAIN_MASK_DISPATCH_PARITY",

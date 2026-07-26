@@ -448,6 +448,47 @@ int mc2PropShadowReceive()
     return s_v;
 }
 
+// SHADOW-SUNCLAMP-1: the screen-shadow back-face guard must dot against the
+// SAME sun the shadow MATRICES were built from.
+//
+// gameos_graphics.cpp:10197 builds the static light matrix from
+// buildStaticLightMatrix(-lx, -ly, -lz) where (lx,ly,lz) = gos_GetTerrainLightDir();
+// runScreenShadow() below uploads the byte-identical expression {-lx,-ly,-lz}
+// into the `lightDir` uniform. Both are therefore the same light->scene vector
+// in the same convention -- but only the matrix path runs it through
+// mc2ClampShadowSunAltitude() (15 deg minimum altitude).
+//
+// On missions that author a horizontal sun (mc2_10: LightDirPitch=180 ->
+// lightDirection.z = sin(180 deg) = 0) the clamp FIRES for the matrices and does
+// not for the guard. shadow_screen.frag's `if (NdotL < 0.05) return 1.0;` then
+// degenerates into a purely AZIMUTHAL test -- with no vertical component to lift
+// it, every surface leaning away from the sun azimuth is declared "unlit" and
+// discards shadows the shadow map legitimately contains (that map having been
+// rendered from a 15deg-ELEVATED sun that does light those surfaces). The world
+// splits into a shadowed half and an unshadowed half along one compass axis.
+//
+// Map-specificity falls straight out: the clamp only fires where
+// sin(LightDirPitch) < sin(15 deg) = 0.2588 -- mc2_10 (180 deg -> 0.0) alone;
+// mc2_01 = 50 deg, mc2_03 = 46 deg, mc2_24 = 75 deg are all untouched no-ops.
+//
+// Fix: feed the guard the clamped vector too. Only the shadow-visibility guard
+// and its normal-offset change; the SHADING light dir (terrain N-dot-L, diffuse
+// brightness) is a different uniform on a different path and is NOT touched, so
+// scene brightness/colour is unaffected -- this only restores shadows that the
+// guard was wrongly discarding.
+// MC2_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON; =0 reverts to the raw-sun guard.
+static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
+
+bool mc2ShadowGuardClampedSun()
+{
+    static const bool s_on = []() {
+        const char* v = getenv("MC2_SHADOW_GUARD_CLAMPED_SUN");
+        if (!v || !v[0]) return true;            // DEFAULT ON
+        return !(v[0] == '0' && v[1] == '\0');   // =0 disables
+    }();
+    return s_on;
+}
+
 // Cloud-shadow master gate. MC2_CLOUD_SHADOW, DEFAULT ON (preserves the legacy
 // inline-cloud behavior that this fullscreen pass replaces). =0 disables the
 // whole pass (and the C++ early-return skips it entirely).
@@ -2992,6 +3033,14 @@ void gosPostProcess::runScreenShadow()
         if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; }
         // negate: was 180deg off with the raw vector -> flip sign (frame already correct).
         float lightDirVec[3] = { -lx, -ly, -lz };    // matches objN frame, correct sign
+        // SHADOW-SUNCLAMP-1: apply the SAME altitude clamp the shadow matrices
+        // used (gameos_graphics.cpp:10197 passes this identical -raw expression
+        // into buildStaticLightMatrix, which clamps it). Without this the
+        // back-face guard rejects surfaces the shadow map has real occlusion for
+        // whenever the mission authors a near-horizontal sun. No-op on maps whose
+        // sun is already above the 15deg minimum (byte-identical).
+        if (mc2ShadowGuardClampedSun())
+            mc2ClampShadowSunAltitude(lightDirVec[0], lightDirVec[1], lightDirVec[2]);
         screenShadowProg_->setFloat3("lightDir", lightDirVec);
     }
     screenShadowProg_->setInt("debugMode", screenShadowDebug_);
