@@ -2274,6 +2274,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from data/terrain_layers/<channel>_albedo.ktx2, GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM -- sampler does the sRGB decode) sampled world-space with the material-lib per-layer tiling (matTiling; rock /3 matches the detail-normal path). matWeights (classifier or control map) + HSV snow select layers; the colormap stays the MACRO tint (2x multiply keeps burn-in shading); steep slopes take the CLIFF layer triplanar (the 'cliffs look like rock' payoff). Mix knob u_matAlbedoStrength: env MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH > JSON matAlbedoStrength (terrain_materials.json; also supports textureRoot + layers.<channel>.albedo path overrides via the TinyJson nested-layers extension) > 0.7 default. Fail-soft: missing/mismatched/non-BC7-sRGB layer files log [TERRAIN_MAT_TEX] and leave the gate visually OFF. VRAM ~32 MiB (6x2048^2 BC7 + mips). Default-OFF byte-identical."
     },
+    // CONCRETE-DETAIL-NORMAL-1: the concrete detail normal is DEFAULT OFF.
+    {
+        "MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL",
+        "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
+        EnvVarKind::Feature,
+        false,
+        "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:1402-1405, MAT_LAYER_PAINTED_CONC: dN += pureConcrete * matNormalBoost.w * fwC * (cN.rgb*2-1)) by zeroing matNormalBoost.w (nb[3]) at the uniform upload in gos_terrain_lod_chunk.cpp. DEFAULT OFF = the 'original overlay' concrete the user graded and approved in the mc2-win64-v0.3 install -- that install ships WITHOUT data/terrain_layers/, so matNormalArray never loads and the concrete relief never appears; this gate reproduces that look in installs that DO ship the layers, WITHOUT deleting assets or freezing a stale binary. Shader untouched; rock/grass/dirt detail normals (nb[0..2]) and the cement albedo/atlas path are unaffected. '=1' restores the relief treatment. Cost: loses close-up concrete surface relief on runways/aprons -- the flat authored colormap tone is what ships."
+    },
     {
         "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
         "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH",

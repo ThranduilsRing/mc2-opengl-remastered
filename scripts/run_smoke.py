@@ -1664,6 +1664,7 @@ def main():
                             # drops them and the gate-ON smoke does nothing.
                             "MC2_TERRAIN_MATERIAL_TEXTURES",
                             "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
+                            "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
                             # TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 -- world-axis
                             # triplanar rock NORMAL + relief on steep cells
                             # (default OFF) + tilt-strength knob. Decoupled from

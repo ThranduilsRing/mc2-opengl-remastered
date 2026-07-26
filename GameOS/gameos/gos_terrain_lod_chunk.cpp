@@ -897,6 +897,20 @@ static GLint s_locTransitionMaskArray = -1;
 static GLint s_locUseTransitionMask   = -1;
 static constexpr GLint kChunkTexUnitTransitionMask = 11;
 extern void  gos_GetTerrainMatNormalBoost(float*, float*, float*, float*);
+
+// CONCRETE-DETAIL-NORMAL-1: killswitch-shaped gate for the concrete detail
+// normal (terrain_lod_chunk.frag's MAT_LAYER_PAINTED_CONC branch). DEFAULT OFF
+// so every install renders the "original overlay" concrete the user approved in
+// mc2-win64-v0.3; "=1" restores the relief treatment. Evaluated once (static),
+// matching the terrainNormalArrayEnabled()/mc2ShadowStaticBandFixEnabled()
+// pattern in gameos_graphics.cpp. See the consumer at the matNormalBoost upload.
+static bool mc2TerrainConcreteDetailNormalEnabled() {
+    static const bool enabled = []() {
+        const char* v = std::getenv("MC2_TERRAIN_CONCRETE_DETAIL_NORMAL");
+        return v && v[0] == '1' && v[1] == '\0';
+    }();
+    return enabled;
+}
 extern void  gos_GetTerrainClassGrass(float*, float*, float*, float*);
 extern void  gos_GetTerrainClassDirt(float*, float*, float*, float*);
 extern float gos_GetTerrainDetailTiling();
@@ -2731,6 +2745,22 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     {
         float mt[5] = {3,2,1,6,1};  gos_GetTerrainMatTiling(&mt[0], &mt[1], &mt[2], &mt[3], &mt[4]);
         float nb[4] = {0.9f,1.1f,1.1f,2.5f}; gos_GetTerrainMatNormalBoost(&nb[0], &nb[1], &nb[2], &nb[3]);
+        // CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: "I have decided I
+        // don't like the detail normal for concrete" — they graded the
+        // mc2-win64-v0.3 install, which ships WITHOUT data/terrain_layers/, so
+        // matNormalArray never loads and the concrete relief never appears.
+        // That "original overlay" look is the approved reference).
+        //
+        // nb[3] is matNormalBoost.w — the ONLY scale on the concrete branch in
+        // terrain_lod_chunk.frag:1402-1405 (`dN += pureConcrete *
+        // matNormalBoost.w * fwC * (cN.rgb*2-1)`). Zeroing it makes that branch
+        // contribute exactly vec3(0), reproducing the v0.3 look in installs that
+        // DO ship the layers, without touching the shader, the other materials
+        // (rock/grass/dirt keep nb[0..2]), or the cement albedo/atlas path.
+        //
+        // DEFAULT OFF = original overlay = what the user approved.
+        // MC2_TERRAIN_CONCRETE_DETAIL_NORMAL=1 restores the relief treatment.
+        if (!mc2TerrainConcreteDetailNormalEnabled()) nb[3] = 0.0f;
         float cg[4] = {-0.02f,0.06f,0.22f,0.40f}; gos_GetTerrainClassGrass(&cg[0], &cg[1], &cg[2], &cg[3]);
         float cd[4] = {-0.02f,0.06f,0.22f,0.45f}; gos_GetTerrainClassDirt(&cd[0], &cd[1], &cd[2], &cd[3]);
         float dt = gos_GetTerrainDetailTiling();
