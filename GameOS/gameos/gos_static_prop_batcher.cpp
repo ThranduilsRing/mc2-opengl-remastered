@@ -2954,8 +2954,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                     }
                 }
                 std::fprintf(stderr,
-                    "[GPUPROPS] fixture-light type: id=%zu name=%s rgb=0x%06lX
-",
+                    "[GPUPROPS] fixture-light type: id=%zu name=%s rgb=0x%06lX\n",
                     i, fname, (unsigned long)(pink & 0x00FFFFFFu));
             }
         }
