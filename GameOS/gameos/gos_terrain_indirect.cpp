@@ -1225,7 +1225,14 @@ static void PopulateRecipeCementWords() {
     // paved overlay laid on dirt is therefore NOT cement-classified at all: it
     // never reaches the transition branch, increments no drop counter, and
     // renders as lit colormap + decal beside a lighting-exempt cement apron.
-    // That is the user-annotated "plainly pavement but RED in DIAG=32768" class.
+    // That is the user-annotated "plainly pavement but BLACK in DIAG=32768"
+    // class. LEGEND (ground truth: shaders/terrain_lod_chunk.frag:1202-1215) --
+    // RED(1)=SOLID cement-atlas, GREEN(2)=TRANSITION, BLUE(3)=diag-connect,
+    // YELLOW(4)=runway-edge dilate, MAGENTA(5)=authored overlay sidecar,
+    // CYAN(6)=own-alpha rescue, else base*0.35 = BLACK/dim = baked colormap
+    // ONLY. So RED means CORRECTLY cement-classified; BLACK is the defect
+    // marker. Prior notes (and the comment formerly at the census print below)
+    // had this inverted and sent three lanes chasing the wrong tiles.
     // AUDIT-TRUTH-1: this census is a DIAGNOSTIC and must not run in a default
     // build. It is folded into the existing registered diag facility
     // MC2_TERRAIN_LOD_CHUNK_DIAG as bit 524288 (0x80000). Unset => the per-tile
@@ -1371,7 +1378,8 @@ static void PopulateRecipeCementWords() {
     // CEMENT-UNIFORM-2: the denominator [CEMENT_TRANSITION_DROP v1] cannot see.
     // paved_no_cement = pavement that renders as LIT colormap+decal beside a
     // lighting-exempt cement apron -- the tone split the user reports, and the
-    // RED-in-DIAG=32768 tiles they circled. cement_total is the transition
+    // BLACK-in-DIAG=32768 tiles they circled (RED = correctly cement-classified;
+    // see the legend at the census head above). cement_total is the transition
     // census denominator for direct comparison.
     // AUDIT-TRUTH-1: opt-in only -- MC2_TERRAIN_LOD_CHUNK_DIAG bit 524288.
     if (s_pavementGapDiag) {
