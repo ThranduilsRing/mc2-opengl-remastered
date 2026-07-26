@@ -1,0 +1,55 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_23",
+  "_note": "RUNWAY-LIGHT-MISSING-1 verdict poses. mc2_23 is the ONLY stock mission that is BOTH night (DayLightPitch=9 -> lightAltitude 9 < NIGHT_LIGHT_PITCH 10 -> isNight=true, nightFactor=1.0) AND densely populated with the user's named fixtures: 112 RunwayLight + 69 RedBeaconLight placed terrain objects (parsed from the mission .pak terrain-object packet against objects/object2.rsp ordinals). Every prior lane in this area verified on mc2_10, which places ZERO runway lights. Map 15360wu (+-7680), elev 0..1000, water 250. Runway light field: x 619..3733, y -5099..-2368, z 400. Red beacon field: x 3605..4971, y -4715..-2965, z 400. Poses give ground / mid / overview over BOTH fields, which is the per-altitude axis every previous attempt in this area died on.",
+  "bookmarks": [
+    {
+      "name": "runway_ground",
+      "pos": [3300.0, -2620.0, 0.0],
+      "rot": 45.0,
+      "proj": 20.0,
+      "alt": 350.0,
+      "covers": ["static_prop_fixture_lights", "night_ambient"]
+    },
+    {
+      "name": "runway_mid",
+      "pos": [2600.0, -3000.0, 0.0],
+      "rot": 45.0,
+      "proj": 30.0,
+      "alt": 1200.0,
+      "covers": ["static_prop_fixture_lights", "night_ambient"]
+    },
+    {
+      "name": "runway_overview",
+      "pos": [2207.0, -3745.0, 0.0],
+      "rot": 45.0,
+      "proj": 60.0,
+      "alt": 4200.0,
+      "covers": ["static_prop_fixture_lights", "night_ambient"]
+    },
+    {
+      "name": "beacons_ground",
+      "pos": [4269.0, -3984.0, 0.0],
+      "rot": 45.0,
+      "proj": 20.0,
+      "alt": 350.0,
+      "covers": ["static_prop_fixture_lights", "night_ambient"]
+    },
+    {
+      "name": "beacons_mid",
+      "pos": [4269.0, -3984.0, 0.0],
+      "rot": 135.0,
+      "proj": 30.0,
+      "alt": 1200.0,
+      "covers": ["static_prop_fixture_lights", "night_ambient"]
+    },
+    {
+      "name": "both_fields_overview",
+      "pos": [3200.0, -3900.0, 0.0],
+      "rot": 45.0,
+      "proj": 70.0,
+      "alt": 6000.0,
+      "covers": ["static_prop_fixture_lights", "night_ambient"]
+    }
+  ]
+}

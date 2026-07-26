@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "RUNWAY-LIGHT-MISSING-1 day-side control. mc2_01 (campaign mission 1) places 56 RunwayLight terrain objects along a runway at x 2411..4117, y -1685..277, z 401 -- and is a DAY map (DayLightPitch=50 -> lightAltitude 50 > NIGHT_START_PITCH 25 -> nightFactor=0.0, isNight=false). The fixtures register and draw (runtime receipt: 2 x Redbeaconlight03, the node name inside runwaylight.ase), but their night emission is identically zero by design. These poses exist so the day-side 'lights correctly off' half of the story is verifiable, and to prove the props are present as geometry rather than missing.",
+  "bookmarks": [
+    {
+      "name": "day_runway_ground",
+      "pos": [3500.0, -700.0, 0.0],
+      "rot": 45.0,
+      "proj": 20.0,
+      "alt": 350.0,
+      "covers": ["static_prop_fixture_lights"]
+    },
+    {
+      "name": "day_runway_mid",
+      "pos": [3392.0, -649.0, 0.0],
+      "rot": 45.0,
+      "proj": 30.0,
+      "alt": 1200.0,
+      "covers": ["static_prop_fixture_lights"]
+    },
+    {
+      "name": "day_runway_overview",
+      "pos": [3392.0, -649.0, 0.0],
+      "rot": 45.0,
+      "proj": 60.0,
+      "alt": 4200.0,
+      "covers": ["static_prop_fixture_lights"]
+    }
+  ]
+}
