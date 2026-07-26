@@ -328,6 +328,11 @@
     "WATER_MDI v1": {
       "status": "debt",
       "reason": "unconditional in a default build; needs gating"
+    },
+    "CEMENT_ALPHA_ATLAS v1": {
+      "status": "debt",
+      "owner": "CEMENT-ALPHA-LAND-1",
+      "reason": "Landed on nifty DURING VERIFY-INTEGRITY-3 and was caught by this ratchet on its first live run: absent from the 82-tag seed taken at exe 608dea4db465, present at 01bfcc055ff2. RendererFeatureRegistry.h states outright that the [CEMENT_ALPHA_ATLAS v1] admit line prints REGARDLESS of the gate. Recorded as attributed debt, not approved -- gate it with the sibling CEMENT_PAVEMENT_GAP fix under MC2_TERRAIN_LOD_CHUNK_DIAG bit 524288."
     }
   }
 }
