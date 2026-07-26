@@ -1,338 +1,45 @@
 {
-  "_doc": "VERIFY-INTEGRITY-3 baseline for scripts/check-default-build-quiet.py. This is DEBT, NOT an approved list. Every tag here is diagnostic output that a DEFAULT build prints to a real user with no MC2_* env set -- measured from a tier1 smoke run, not inferred from grep. Nine of them recur every 600 frames forever during play (STATIC_UPDATE, APPEAR_ROUTE, ANIM_GATE, CAMERA_MOTION, TEX_RESOLVE, RENDER_STATES, TERRAIN_LIGHTING_GPU, WATER_FULL_RECIPE_AUTH, WATER_REFL_RT). Three (CLUSTER_DEPTH_PYRAMID, LIGHTGRID_BUILD, POSTPROCESS_BLUR) sit inside their own IsEnabled() resolver and so announce features that are OFF. The ratchet only ever tightens: gating a tag and removing it here is always correct; adding a tag requires a keep reason.",
+  "_doc": "QUIET-DEFAULT-BUILD-1 baseline for scripts/check-default-build-quiet.py. This is ATTRIBUTED DEBT, not an approved list -- but unlike the 83-tag seed it replaces, every entry now carries a `keep` reason naming the harness code that parses it. History: VERIFY-INTEGRITY-3 measured 83 tags printing in a default build (nine repeating every 600 frames forever, four announcing switched-OFF features). QUIET-DEFAULT-BUILD-1 gated 70 of them behind MC2_DIAG_VERBOSE, taking a measured default-env mc2_10 run from 79 distinct tags / 439 diagnostic lines to 9 tags / 44 lines. The 9 that remain are load-bearing for verification itself: silencing them would blind the smoke harness, which is a worse failure than being noisy. Changing that is a harness-contract change and belongs to its own slice. The ratchet only ever tightens: gating a tag and removing it here is always correct; adding one requires a keep reason.",
   "tags": {
-    "ABL v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "ANIM_GATE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "APPEAR_ROUTE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
     "ASSET_LOAD v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/logparse.py MarkerBucket matches event=icon_oob."
     },
     "ASSET_SCALE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "BOX_DECAL v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/logparse.py counts event=oob_blit occurrences."
     },
     "BUILD_FINGERPRINT v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CAMERA_MOTION v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CAS v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CEMENT_ATLAS v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CEMENT_ATLAS_MAGENTA v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CEMENT_CELL_TONE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CEMENT_TRANSITION_DROP v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CLUSTER_DEPTH_PYRAMID v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "COALESCE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "EDGE_FOG v3": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "ENGINE_VIEW v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "ENGINE_VIEW_REGISTRY v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "FOG_HORIZON v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "FRAME_JOBS_PATHB v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "FXAA v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "FX_COUNT v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "GAMEPLAY_PICK v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "GPU_CULL v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "HDRI_SKY v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "HZB_BUILD v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "HZB_PROBE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/fingerprint.py parses this to prove the smoked exe matches the worktree HEAD. Silencing it disables DEPLOY_FINGERPRINT attribution -- the single strongest anti-'unverifiable work' control in the harness."
     },
     "INSTR v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "LIGHTBAKE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "LIGHTBRIDGE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "LIGHTGRID_BUILD v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "LIGHT_POOL_CAP v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "LOAD_PHASES v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "MATERIAL_GPU v4": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "MECHBATCHER v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "MECH_MATERIAL_GPU v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "MECH_OBJECT_ID_SELFTEST v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "MVP_DIAG v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "OBJBATCHER v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "OBJECT_ADMISSION_PREDICATE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "OBJECT_ID v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "OOB_FOG v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "PATCH_STREAM v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
     },
     "PERF v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "POSTPROCESS_BLUR v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/logparse.py + oracle_report.py + smoke_with_screenshots.py parse avg_fps/p50_ms/p99_ms. This is the perf regression signal."
     },
     "QUADSETUP_SKIP v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/oracleparse.py QUADSKIP_RE parses fullyArmed=/skip=."
     },
     "RENDER_SNAPSHOT v3": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "RENDER_STATES v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "RENDER_WORLD v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "RING_MVP v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "RING_SINK v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "SHADOW_PROP_ATLAS v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "SKYBOX_FOG_EXCLUDE v2": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/oracleparse.py parses count_mismatch/pkt_mismatch (want 0) -- the static-prop snapshot oracle."
     },
     "SMOKE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "SPOTLIGHT_REAL_TRACE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "SPOT_DIAG v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "SSAO v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "STATIC_FIRST_FRAME v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "STATIC_PROP_PACKET_DISPATCH v8": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "STATIC_PROP_REG v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "STATIC_PROP_TYPE_TABLE v0": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "STATIC_UPDATE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TERRAIN_ADMISSION v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TERRAIN_INDIRECT v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TERRAIN_INDIRECT_PARITY v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TERRAIN_LIGHTING_GPU v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TERRAIN_SHORELINE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TERRAIN_SURFACE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TEX_RESOLVE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/run_smoke.py, smoke_lib/runner.py and run_editor_playtest_smoke.py key their pass/fail verdict off the [SMOKE v1] line; run_editor_playtest_smoke.py requires it explicitly. This IS the harness's result channel."
     },
     "TGL_POOL v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
+      "status": "keep",
+      "reason": "scripts/smoke_lib/logparse.py counts pool_nulls from lines containing 'nulls='."
     },
     "TIMING v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TONEMAP v2": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "TXM v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VEG v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VFX_ORACLE_TUBE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VFX_ROUTE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VIEWMODE v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VIEWMODE_LOWLIGHT v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VIEW_UNIFORMS v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "VISIBILITY v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "WATER_FULL_RECIPE_AUTH v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "WATER_MDI v1": {
-      "status": "debt",
-      "reason": "unconditional in a default build; needs gating"
-    },
-    "CEMENT_ALPHA_ATLAS v1": {
-      "status": "debt",
-      "owner": "CEMENT-ALPHA-LAND-1",
-      "reason": "Landed on nifty DURING VERIFY-INTEGRITY-3 and was caught by this ratchet on its first live run: absent from the 82-tag seed taken at exe 608dea4db465, present at 01bfcc055ff2. RendererFeatureRegistry.h states outright that the [CEMENT_ALPHA_ATLAS v1] admit line prints REGARDLESS of the gate. Recorded as attributed debt, not approved -- gate it with the sibling CEMENT_PAVEMENT_GAP fix under MC2_TERRAIN_LOD_CHUNK_DIAG bit 524288."
+      "status": "keep",
+      "reason": "scripts/smoke_lib/logparse.py TIMING_RE parses event=/elapsed_ms= for load-phase timing."
     }
   }
 }

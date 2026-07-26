@@ -133,6 +133,14 @@ run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
 # manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).
 run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.py"
+# QUIET-DEFAULT-BUILD-1: a DEFAULT build must not grow new unconditional
+# diagnostic output -- that log is what a real user sees on a normal launch.
+# Runtime check, not a grep: "is this printf gated?" is not answerable
+# lexically (getenv-seeded statics, MC2_*_DIAG bitmasks, default-ON IsEnabled(),
+# #ifdefs, gated enclosing functions). It grades the newest smoke run that was
+# taken with NO output-affecting MC2_* env, and SKIPs (exit 0) when no such run
+# exists, so it is safe on a machine that has not smoked.
+run_check "default_build_quiet"    "py -3 scripts/check-default-build-quiet.py"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"

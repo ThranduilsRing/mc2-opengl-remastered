@@ -971,3 +971,75 @@ The two real costs of a missing entry are:
 Keep adding gates to the allowlist — but diagnose an A/B that "showed no
 difference" by checking whether the *harness* set the gate, not by assuming the
 value was stripped.
+
+---
+
+## `MC2_DIAG_VERBOSE` — the umbrella gate for developer chatter
+
+*(QUIET-DEFAULT-BUILD-1. Appended at end-of-file: `EDGE-LIGHT-EMISSION-1` and
+`FORCE-ALL-VISIBLE-1` also claim this file, so this section deliberately does
+not touch theirs.)*
+
+**Default OFF.** Set `MC2_DIAG_VERBOSE=1` to restore the engine's internal
+`[TAG vN]` diagnostic chatter verbatim.
+
+### What it is for
+
+VERIFY-INTEGRITY-3 measured **83 distinct diagnostic tags printing in a DEFAULT
+build** — output a real user sees on a normal launch with no `MC2_*` env set.
+Nine repeated every 600 frames forever during play; four announced features
+that were switched **OFF**. QUIET-DEFAULT-BUILD-1 routed ~380 call sites across
+46 files behind this one gate. A measured default-env `mc2_10` run went from
+**79 distinct tags / 439 diagnostic lines to 9 tags / 44 lines**.
+
+### Why one gate and not one per tag
+
+These lines share a single purpose — "show me the engine's internal chatter" —
+so they share a single switch. Seventy registry entries nobody would ever set
+is not a facility. Anything needing **selective** or **structured** control
+keeps using the per-subsystem facilities: `MC2_TERRAIN_LOD_CHUNK_DIAG` bits for
+terrain, `MC2_DIAG_TAGS` for the structured JSONL trace.
+
+### What it does NOT gate
+
+Ten tags still print unconditionally, on purpose, because the **verification
+harness parses them** — silencing these would blind the smoke gate, which is a
+worse failure than being noisy:
+
+`BUILD_FINGERPRINT` `INSTR` `PERF` `TIMING` `TGL_POOL` `ASSET_SCALE`
+`ASSET_LOAD` `RENDER_SNAPSHOT` `QUADSETUP_SKIP` `SMOKE`
+
+Each is recorded in `tests/contract/default_build_quiet_baseline.json` with a
+`keep` reason naming the harness code that reads it. Moving any of them behind
+a gate is a **harness-contract change** and belongs to its own slice.
+
+### Implementation
+
+`GameOS/include/mc2_diag_verbose.h` — header-only, so no CMake change and no
+link-order risk (GameOS, mclib, code, RenderWorld and GameAdapters are separate
+link units, but `GameOS/include` is on all of their include paths). Four
+macros, each a **one-token** replacement for the print call it wraps:
+
+| macro | replaces |
+|---|---|
+| `MC2_DIAGF` | `printf("[TAG v1] …")` |
+| `MC2_DIAGFE` | `fprintf(stderr, "[TAG v1] …")` |
+| `MC2_DIAG_PUTS` / `MC2_DIAG_FPUTS` | `puts`/`fputs` sink of an assembled line |
+
+Read once per translation unit (getenv-seeded static), so it cannot drift
+mid-run. Default-OFF changes **no** rendering or gameplay behaviour — the only
+effect is whether the lines are written.
+
+**Do not wrap a variadic macro's body in these.** Nesting `##__VA_ARGS__` inside
+another variadic macro does not expand under MSVC's traditional preprocessor
+(this broke `COMPUTE_TRACE` in `gpu_cull_compute.cpp`). Gate such a macro's
+*condition* instead.
+
+### The ratchet
+
+`scripts/check-default-build-quiet.py`, wired into `check-contracts.sh` as
+`default_build_quiet`. It is a **runtime** check because "is this printf gated?"
+is not answerable lexically. It grades the newest smoke run taken with **no
+output-affecting `MC2_*` env** (decided from the run manifest's `env_gates`),
+looks only at the per-mission stdout logs, and fails on any tag not in the
+baseline. It SKIPs (exit 0) when no clean run exists.
