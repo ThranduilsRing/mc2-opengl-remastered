@@ -30,6 +30,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <algorithm>   // LIGHT-CLUSTER-PERF-1: std::fill over the grid cursor
 #include <cstdint>
 #include <unordered_map>   // GHOST-LIGHT-DUMP-1: light-ptr -> world slot
 
@@ -206,6 +207,82 @@ static uint64_t s_frameIndex = 0;
 // knows how many pool lights the (already-uploaded) light SSBO holds this frame.
 static uint32_t s_lastNumLights = 0;
 
+// ---------------------------------------------------------------------------
+// LIGHT-CLUSTER-PERF-1 (2026-07-25): world-space XY light GRID.
+//
+// WHY. LIGHT-POOL-CAP-1 (5213d257) raised the pool cap 64 -> 256 because mc2_10
+// genuinely wants 142 fixtures and 78 of them were being dropped by list order.
+// Correct fix, but the consumer (terrain_lod_chunk.frag) loops EVERY pool light
+// per fragment, so the cost is O(fragments * poolLights) — measured ~34% avg FPS
+// at the busiest mc2_10 night pose. Storage was never the constraint (the pool is
+// an unbounded SSBO); the per-fragment loop is.
+//
+// WHAT. A uniform grid over the XY bounding box of this frame's packed lights.
+// Each cell holds the index list of lights whose ground circle overlaps it. The
+// fragment maps v_worldPos.xy -> cell and loops only that cell's list (typically
+// 1-6 lights instead of 142). Fragments outside the bbox get count 0 and skip the
+// block entirely.
+//
+// WHY IT IS EXACT (not an approximation — no tolerance needed). A light
+// contributes to a fragment only when len < farDistance, i.e. only when the
+// fragment lies inside the light's ground circle of radius farDistance. Insertion
+// uses that same UNSCALED farDistance to stamp the circle's AABB into the grid, so
+// every cell containing any point the light can reach holds that light's index.
+// The shader's mover-radius shrink (u_lightPoolMoverScale <= 1) only ever REDUCES
+// the reach, so the stamped set stays a conservative superset. Same lights, same
+// pixels, bit-for-bit — the loop merely visits fewer zero-contribution lights.
+//
+// Gate MC2_LIGHT_GRID (default ON, =0 killswitch -> linear full-pool loop).
+// MC2_LIGHT_GRID_DIM overrides the cell count per axis (default 64).
+// Small pools bypass the grid (below kLightGridMinLights the build+bind costs
+// more than the loop it saves) by publishing dim=0, which the shader reads as
+// "use the linear path".
+// ---------------------------------------------------------------------------
+static constexpr uint32_t kLightGridMinLights = 8u;   // below this: linear loop
+
+// TERRAIN-LIGHTING-SSBO-OWNER-1 discipline: both grid SSBOs carry GpuBufferOwner
+// identity (logical id + lifetime + debug name), reached only via backendHandle.
+// Lifetime Mission: created lazily on the first frame that bins a pool, released
+// in mission_shutdown, rebuilt on demand.
+static RenderCore::GpuBufferOwner s_lightGridHeader{   // uvec2 {offset,count} per cell (binding 29)
+    RenderCore::RenderResourceId::TerrainLightGridHeaderSsbo,
+    RenderCore::RenderResourceLifetime::Mission,
+    "TerrainLightGridHeaderSsbo",
+    0u};
+static RenderCore::GpuBufferOwner s_lightGridIndex{    // uint light index list (binding 30)
+    RenderCore::RenderResourceId::TerrainLightGridIndexSsbo,
+    RenderCore::RenderResourceLifetime::Mission,
+    "TerrainLightGridIndexSsbo",
+    0u};
+static GLsizeiptr s_lightGridHeaderBytes = 0;
+static GLsizeiptr s_lightGridIndexBytes  = 0;
+static std::vector<uint32_t> s_gridHeader;   // 2 * dim * dim
+static std::vector<uint32_t> s_gridIndices;
+static std::vector<uint32_t> s_gridCounts;   // scratch: per-cell counter
+static uint32_t s_lightGridDim     = 0;      // 0 => grid not active this frame
+static float    s_lightGridMin[2]  = {0.0f, 0.0f};
+static float    s_lightGridInvCell[2] = {0.0f, 0.0f};
+
+static bool LightGridEnabled() {
+    static const bool s_on = [] {
+        const char* v = std::getenv("MC2_LIGHT_GRID");
+        return !(v && v[0] == '0');   // default ON; =0 reverts to the linear loop
+    }();
+    return s_on;
+}
+
+static uint32_t LightGridDimEnv() {
+    static const uint32_t s_dim = [] () -> uint32_t {
+        const char* v = std::getenv("MC2_LIGHT_GRID_DIM");
+        if (v && v[0]) {
+            const long n = std::atol(v);
+            if (n >= 2 && n <= 256) return static_cast<uint32_t>(n);
+        }
+        return 64u;
+    }();
+    return s_dim;
+}
+
 // Stage 3: tryConsume fallback telemetry counters (mirrors readback_fallback_n2 /
 // readback_fallback_conservative pattern from gpu_cull_readback.cpp)
 static uint64_t s_lightingFallbackN1          = 0;  // consumed N-1 (production path)
@@ -223,6 +300,158 @@ static long long s_paritySummaryMismatches   = 0;
 static std::vector<gos_terrain_lighting::GpuTerrainVertexInput> s_packBuf;
 // Light pack buffer
 static std::vector<gos_terrain_lighting::GpuTerrainLight> s_lightBuf;
+
+// Build + upload the grid for s_lightBuf[0..numLights). Sets s_lightGridDim to 0
+// when the grid is not in play (gate off, too few lights, degenerate bbox), which
+// makes every consumer fall back to the exact linear loop.
+static void BuildAndUploadLightGrid(uint32_t numLights) {
+    s_lightGridDim = 0;
+    if (!LightGridEnabled() || numLights < kLightGridMinLights) return;
+
+    // --- bbox over every light's ground circle (unscaled farDistance) ---
+    float minX =  3.0e38f, minY =  3.0e38f;
+    float maxX = -3.0e38f, maxY = -3.0e38f;
+    uint32_t live = 0;
+    for (uint32_t i = 0; i < numLights; ++i) {
+        const gos_terrain_lighting::GpuTerrainLight& L = s_lightBuf[i];
+        if (L.lightType == 0u) continue;      // shader skips these too
+        const float r = L.farDistance;
+        if (!(r > 0.0f)) continue;            // NaN-safe: excludes r<=0 and NaN
+        ++live;
+        if (L.position[0] - r < minX) minX = L.position[0] - r;
+        if (L.position[1] - r < minY) minY = L.position[1] - r;
+        if (L.position[0] + r > maxX) maxX = L.position[0] + r;
+        if (L.position[1] + r > maxY) maxY = L.position[1] + r;
+    }
+    if (live < kLightGridMinLights) return;
+    const float spanX = maxX - minX, spanY = maxY - minY;
+    if (!(spanX > 0.0f) || !(spanY > 0.0f)) return;   // degenerate -> linear
+
+    const uint32_t dim   = LightGridDimEnv();
+    const uint32_t cells = dim * dim;
+    // Pad the bbox by half a cell so floor() at the exact max edge cannot land on
+    // index == dim (the shader also range-checks, but keep the CPU stamp honest).
+    const float cellW = spanX / static_cast<float>(dim);
+    const float cellH = spanY / static_cast<float>(dim);
+    const float invW  = 1.0f / cellW;
+    const float invH  = 1.0f / cellH;
+
+    // --- pass 1: count per cell ---
+    s_gridCounts.assign(cells, 0u);
+    auto cellRange = [&](const gos_terrain_lighting::GpuTerrainLight& L, int& x0, int& y0, int& x1, int& y1) {
+        const float r = L.farDistance;
+        x0 = static_cast<int>(std::floor((L.position[0] - r - minX) * invW));
+        y0 = static_cast<int>(std::floor((L.position[1] - r - minY) * invH));
+        x1 = static_cast<int>(std::floor((L.position[0] + r - minX) * invW));
+        y1 = static_cast<int>(std::floor((L.position[1] + r - minY) * invH));
+        if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+        if (x1 > static_cast<int>(dim) - 1) x1 = static_cast<int>(dim) - 1;
+        if (y1 > static_cast<int>(dim) - 1) y1 = static_cast<int>(dim) - 1;
+    };
+    uint32_t total = 0;
+    for (uint32_t i = 0; i < numLights; ++i) {
+        const gos_terrain_lighting::GpuTerrainLight& L = s_lightBuf[i];
+        if (L.lightType == 0u || !(L.farDistance > 0.0f)) continue;
+        int x0, y0, x1, y1; cellRange(L, x0, y0, x1, y1);
+        for (int y = y0; y <= y1; ++y)
+            for (int x = x0; x <= x1; ++x) { ++s_gridCounts[y * dim + x]; ++total; }
+    }
+    if (total == 0) return;
+
+    // --- prefix sum into the header (offset,count) ---
+    s_gridHeader.assign(cells * 2u, 0u);
+    uint32_t running = 0;
+    for (uint32_t c = 0; c < cells; ++c) {
+        s_gridHeader[c * 2u + 0u] = running;
+        s_gridHeader[c * 2u + 1u] = s_gridCounts[c];
+        running += s_gridCounts[c];
+    }
+
+    // --- pass 2: scatter indices (reuse s_gridCounts as a write cursor) ---
+    s_gridIndices.assign(total, 0u);
+    std::fill(s_gridCounts.begin(), s_gridCounts.end(), 0u);
+    for (uint32_t i = 0; i < numLights; ++i) {
+        const gos_terrain_lighting::GpuTerrainLight& L = s_lightBuf[i];
+        if (L.lightType == 0u || !(L.farDistance > 0.0f)) continue;
+        int x0, y0, x1, y1; cellRange(L, x0, y0, x1, y1);
+        for (int y = y0; y <= y1; ++y)
+            for (int x = x0; x <= x1; ++x) {
+                const uint32_t c = static_cast<uint32_t>(y) * dim + static_cast<uint32_t>(x);
+                s_gridIndices[s_gridHeader[c * 2u] + s_gridCounts[c]++] = i;
+            }
+    }
+
+    // --- upload (grow-only; orphan on resize) ---
+    if (s_lightGridHeader.backendHandle == 0) {
+        GLuint local = 0; glGenBuffers(1, &local);
+        s_lightGridHeader.backendHandle = static_cast<uint32_t>(local);
+    }
+    if (s_lightGridIndex.backendHandle == 0) {
+        GLuint local = 0; glGenBuffers(1, &local);
+        s_lightGridIndex.backendHandle = static_cast<uint32_t>(local);
+    }
+    const GLsizeiptr hdrBytes = static_cast<GLsizeiptr>(s_gridHeader.size()  * sizeof(uint32_t));
+    const GLsizeiptr idxBytes = static_cast<GLsizeiptr>(s_gridIndices.size() * sizeof(uint32_t));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_lightGridHeader.backendHandle));
+    if (hdrBytes > s_lightGridHeaderBytes) {
+        glBufferData(GL_SHADER_STORAGE_BUFFER, hdrBytes, s_gridHeader.data(), GL_STREAM_DRAW);
+        s_lightGridHeaderBytes = hdrBytes;
+    } else {
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, hdrBytes, s_gridHeader.data());
+    }
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_lightGridIndex.backendHandle));
+    if (idxBytes > s_lightGridIndexBytes) {
+        glBufferData(GL_SHADER_STORAGE_BUFFER, idxBytes, s_gridIndices.data(), GL_STREAM_DRAW);
+        s_lightGridIndexBytes = idxBytes;
+    } else {
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, idxBytes, s_gridIndices.data());
+    }
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    // Keep the resource registry honest about the two grid buffers (observe-only
+    // metadata; never read by the draw path). Re-published each frame because the
+    // grow-only upload above can change sizeBytes.
+    {
+        auto publish = [](const RenderCore::GpuBufferOwner& o, GLsizeiptr bytes) {
+            RenderCore::RenderResourceDesc d;
+            d.id        = o.id;
+            d.kind      = RenderCore::RenderResourceKind::Buffer;
+            d.lifetime  = o.lifetime;
+            d.format    = RenderCore::RenderResourceFormat::BufferRaw;
+            d.debugName = o.debugName;
+            d.glName    = static_cast<GLuint>(o.backendHandle);
+            d.sizeBytes = static_cast<uint64_t>(bytes);
+            d.valid     = true;
+            RenderCore::registerOrUpdateRenderResource(d);
+        };
+        publish(s_lightGridHeader, s_lightGridHeaderBytes);
+        publish(s_lightGridIndex,  s_lightGridIndexBytes);
+    }
+
+    s_lightGridMin[0]     = minX;
+    s_lightGridMin[1]     = minY;
+    s_lightGridInvCell[0] = invW;
+    s_lightGridInvCell[1] = invH;
+    s_lightGridDim        = dim;
+
+    // Rate-limited receipt: peak per-cell occupancy is the number the fragment
+    // loop actually pays, so it is the honest "did this help?" telemetry.
+    {
+        static uint32_t s_peakCell = 0;
+        uint32_t peak = 0;
+        for (uint32_t c = 0; c < cells; ++c)
+            if (s_gridHeader[c * 2u + 1u] > peak) peak = s_gridHeader[c * 2u + 1u];
+        if (peak > s_peakCell) {
+            s_peakCell = peak;
+            MC2_DIAGFE(stderr,
+                "[LIGHT_GRID v1] dim=%u lights=%u stamped=%u peak_cell=%u avg_cell=%.2f\n",
+                dim, numLights, total, s_peakCell,
+                static_cast<double>(total) / static_cast<double>(cells));
+            std::fflush(stderr);
+        }
+    }
+}
+
 
 // DRAM-side shadow copy of the last-consumed staging ring slot.
 // BAR memory (s_stagingMapped) is WC (write-combining) — reads from it bypass
@@ -382,6 +611,24 @@ GLuint GetLightPoolSsbo() {
 
 uint32_t GetLightPoolLightCount() {
     return s_lastNumLights;
+}
+
+// LIGHT-CLUSTER-PERF-1: publish this frame's light grid. Returns false when the
+// grid is not in play (gate MC2_LIGHT_GRID=0, pool below kLightGridMinLights,
+// degenerate bbox, or nothing packed) — consumers then use the exact linear
+// full-pool loop, which is the killswitch contract.
+bool GetLightGridParams(LightGridParams& out) {
+    if (!s_initialized || s_lightGridDim == 0 ||
+        s_lightGridHeader.backendHandle == 0 || s_lightGridIndex.backendHandle == 0)
+        return false;
+    out.dim        = s_lightGridDim;
+    out.minXY[0]   = s_lightGridMin[0];
+    out.minXY[1]   = s_lightGridMin[1];
+    out.invCell[0] = s_lightGridInvCell[0];
+    out.invCell[1] = s_lightGridInvCell[1];
+    out.headerSsbo = static_cast<GLuint>(s_lightGridHeader.backendHandle);
+    out.indexSsbo  = static_cast<GLuint>(s_lightGridIndex.backendHandle);
+    return true;
 }
 
 // POOL-CONSUMERS-1 (batch-6 item 6): shared object-consumer upload. See header.
@@ -722,6 +969,7 @@ void mission_shutdown() {
     glDeleteBuffers(RING_FRAMES, s_stagingRing);
     memset(s_stagingRing, 0, sizeof(s_stagingRing));
 
+
     // TERRAIN-LIGHTING-SSBO-OWNER-1: delete via owner.backendHandle + mark the registry slot
     // unavailable (valid=false) on teardown. Same delete order as before.
     auto invalidateLightingSsbo = [](RenderCore::RenderResourceId id) {
@@ -747,6 +995,26 @@ void mission_shutdown() {
         s_vertexInputSsbo.backendHandle = 0;
         invalidateLightingSsbo(s_vertexInputSsbo.id);
     }
+
+    // LIGHT-CLUSTER-PERF-1: release the light-grid SSBOs. Rebuilt lazily on the
+    // next frame that packs enough lights; dim=0 keeps consumers on the linear
+    // loop in the meantime.
+    if (s_lightGridHeader.backendHandle) {
+        GLuint buf = static_cast<GLuint>(s_lightGridHeader.backendHandle);
+        glDeleteBuffers(1, &buf);
+        s_lightGridHeader.backendHandle = 0;
+        invalidateLightingSsbo(s_lightGridHeader.id);
+    }
+    if (s_lightGridIndex.backendHandle) {
+        GLuint buf = static_cast<GLuint>(s_lightGridIndex.backendHandle);
+        glDeleteBuffers(1, &buf);
+        s_lightGridIndex.backendHandle = 0;
+        invalidateLightingSsbo(s_lightGridIndex.id);
+    }
+    s_lightGridHeaderBytes = 0;
+    s_lightGridIndexBytes  = 0;
+    s_lightGridDim         = 0;
+
 
     s_numVertices     = 0;
     s_maxLights       = 0;
@@ -1117,6 +1385,12 @@ void PackAndDispatch() {
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         }
     }
+    // LIGHT-CLUSTER-PERF-1: bin this frame's pool into the world-space XY grid so
+    // the forward consumers loop only over lights whose circle covers the
+    // fragment. Must run AFTER the pack loop (reads s_lightBuf[0..numLights)) and
+    // is a no-op that publishes dim=0 (= linear loop) when gated off or the pool
+    // is too small to be worth binning.
+    BuildAndUploadLightGrid(numLights);
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
     // consumer (LOD-chunk terrain per-fragment light loop).
     s_lastNumLights = numLights;

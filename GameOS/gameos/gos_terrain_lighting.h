@@ -126,6 +126,27 @@ GLuint GetLightPoolSsbo();
 // (0 when disabled / no eye / no registered pool lights this frame).
 uint32_t GetLightPoolLightCount();
 
+// LIGHT-CLUSTER-PERF-1 (2026-07-25): world-space XY light grid over the packed
+// pool. Consumers bind headerSsbo/indexSsbo and upload dim/minXY/invCell, then
+// loop only over the lights binned into the fragment's cell instead of the whole
+// pool. Exact, not approximate: a light is stamped into every cell its ground
+// circle (radius = UNSCALED farDistance) touches, and the shader only ever
+// shrinks that reach — so the per-cell list is a conservative superset of the
+// lights that can contribute, and the lit result is bit-identical to the linear
+// full-pool loop.
+//
+// Returns false when the grid is not in play (MC2_LIGHT_GRID=0, pool too small,
+// degenerate bbox, or nothing packed this frame); consumers must then fall back
+// to the linear loop over GetLightPoolLightCount() lights.
+struct LightGridParams {
+    uint32_t dim;          // cells per axis (grid is dim x dim)
+    float    minXY[2];     // world XY of cell (0,0) corner
+    float    invCell[2];   // 1 / cell size, per axis
+    GLuint   headerSsbo;   // uvec2 {firstIndex, count} per cell
+    GLuint   indexSsbo;    // uint light indices, cell-major
+};
+bool GetLightGridParams(LightGridParams& out);
+
 // POOL-CONSUMERS-1 (batch-6 item 6): bind the pool SSBO at binding 28 and
 // upload the shared pool uniforms (u_numPoolLights + soft/dim/scale/blend/
 // compress knobs, lockstep with the terrain-chunk consumer constants) onto

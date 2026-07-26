@@ -210,6 +210,31 @@ layout(binding = 28, std430) readonly buffer TerrainLightPoolFrag {
     PoolLight poolLights[];
 };
 uniform int u_numPoolLights;   // driver force-uploads 0 when the gate is off
+// LIGHT-CLUSTER-PERF-1 (2026-07-25): world-space XY LIGHT GRID. The pool cap was
+// raised 64 -> 256 (LIGHT-POOL-CAP-1) because mc2_10 genuinely wants 142
+// fixtures — correct, but this loop is per-fragment, so the frame cost scaled
+// with the whole pool (~34% avg FPS at the busiest night pose). The producer
+// (gos_terrain_lighting.cpp BuildAndUploadLightGrid) bins each light into every
+// cell its ground circle overlaps; a fragment maps v_worldPos.xy -> one cell and
+// loops only that cell's list (typically 1-6 lights, not 142).
+//
+// EXACT, not an approximation. A light contributes only when len < farDistance,
+// i.e. only inside its ground circle — and the producer stamps that same circle
+// (using the UNSCALED farDistance) into the grid. The mover-radius shrink below
+// (u_lightPoolMoverScale <= 1) only reduces reach, so the cell list is always a
+// conservative superset of the contributors. Same lights, same pixels.
+//
+// u_lightGridDim == 0 => grid inactive (MC2_LIGHT_GRID=0 killswitch, pool below
+// the bin-it threshold, or degenerate bbox) => the exact linear full-pool loop.
+layout(binding = 29, std430) readonly buffer TerrainLightGridHeader {
+    uvec2 lightGridCells[];   // {firstIndex, count} per cell, row-major y*dim + x
+};
+layout(binding = 30, std430) readonly buffer TerrainLightGridIndices {
+    uint  lightGridIndices[];
+};
+uniform int  u_lightGridDim;       // cells per axis; 0 = grid off
+uniform vec2 u_lightGridMin;       // world XY of cell (0,0) corner
+uniform vec2 u_lightGridInvCell;   // 1 / cell size per axis
 // NIGHT-LIGHT-POOLS-2 (user feedback 2026-07-21): the legacy linear GetFalloff
 // ramp reads as a stamped DISC (hard edge, uniform interior) when applied
 // per-fragment at pool scale. u_lightPoolSoft=1 (default, MC2_LIGHT_POOL_SOFT)
@@ -1834,7 +1859,28 @@ void main() {
     if (u_numPoolLights > 0) {
         vec3 pool      = vec3(0.0);
         vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined mover glows
-        for (int i = 0; i < u_numPoolLights; ++i) {
+        // LIGHT-CLUSTER-PERF-1: narrow the iteration range to this fragment's grid
+        // cell. Grid off (u_lightGridDim==0) -> [0, u_numPoolLights) with direct
+        // indexing, i.e. the original linear loop, byte-for-byte. Fragment outside
+        // the grid bbox -> empty range (it is outside every light's circle, so the
+        // linear loop would have summed exactly zero anyway).
+        int  lgLo = 0;
+        int  lgHi = u_numPoolLights;
+        bool lgIndexed = false;
+        if (u_lightGridDim > 0) {
+            ivec2 c = ivec2(floor((v_worldPos.xy - u_lightGridMin) * u_lightGridInvCell));
+            if (c.x >= 0 && c.y >= 0 && c.x < u_lightGridDim && c.y < u_lightGridDim) {
+                uvec2 cell = lightGridCells[c.y * u_lightGridDim + c.x];
+                lgLo = int(cell.x);
+                lgHi = int(cell.x + cell.y);
+            } else {
+                lgLo = 0;
+                lgHi = 0;
+            }
+            lgIndexed = true;
+        }
+        for (int k = lgLo; k < lgHi; ++k) {
+            int i = lgIndexed ? int(lightGridIndices[k]) : k;
             if (poolLights[i].lightType == 0u) continue;
             vec3  vtl = v_worldPos - poolLights[i].position;
             float len = sqrt(dot(vtl, vtl));   // GetApproximateLength (non-ASM = sqrt)

@@ -2038,6 +2038,33 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consumes (lights [2..N-1] -- building SpotLight_ nodes, light props, mech/vehicle/turret/weapon lights from Camera::terrainLights) at binding 28 and adds color*falloff (TG_Light::GetFalloff math) ADDITIVELY AFTER the shadow multiply, so lamps light shadowed ground and cement pads (rides on top of CEMENT-NIGHT-LIGHT-1's u_missionFlatLight darken). DEFAULT ON; =0 force-uploads u_numPoolLights=0 -> loop never entered -> byte-identical. Also inert whenever MC2_TERRAIN_LIGHTING_GPU=0 (no producer). Driver caps the loop at 256 lights."
     },
+    // LIGHT-POOL-CAP-1 (5213d257) shipped this override unregistered and
+    // undocumented -- registered here by LIGHT-CLUSTER-PERF-1's meta review.
+    {
+        "MC2_TUNE_LIGHT_POOL_MAX",
+        "MC2_LIGHT_POOL_MAX",
+        EnvVarKind::Trace,
+        false,
+        "LIGHT-POOL-CAP-1: per-mission slot count of the terrain light pool (gos_terrain_lighting.cpp mission_init). Default 256, raised from the callers' 64 because mc2_10 genuinely registers 142 fixtures and the pack loop silently dropped everything past the cap -- so whether a lamp lit the ground depended on its ORDER in Camera::terrainLights, not on anything the player can see. The pool is an unbounded SSBO, so there is no uniform-block limit; the only cost is the consumer loop, which LIGHT-CLUSTER-PERF-1's MC2_LIGHT_GRID removes. Accepts [1,4096]; out-of-range/unparseable -> default. Watch [LIGHT_POOL_CAP v1] STARVED lines for scenes that want more."
+    },
+    // LIGHT-CLUSTER-PERF-1: recover the frame time LIGHT-POOL-CAP-1 spent when it
+    // raised the pool cap 64 -> 256 (the fix was correct -- mc2_10 wants 142
+    // fixtures -- but the consumer loop is per-fragment, so cost scaled with the
+    // whole pool).
+    {
+        "MC2_FEATURE_LIGHT_GRID",
+        "MC2_LIGHT_GRID",
+        EnvVarKind::Feature,
+        true,
+        "LIGHT-CLUSTER-PERF-1: world-space XY light GRID over the per-frame terrain light pool. The producer (gos_terrain_lighting.cpp BuildAndUploadLightGrid) bins each packed light into every grid cell its ground circle (radius = UNSCALED farDistance) overlaps, and uploads a per-cell {firstIndex,count} header (binding 29) + cell-major index list (binding 30). terrain_lod_chunk.frag maps v_worldPos.xy to one cell and loops ONLY that cell's lights instead of all u_numPoolLights, collapsing a 142-light mc2_10 night pose to a handful of lights per fragment. EXACT, not an approximation: a light can only contribute inside its own circle, and the shader's mover-radius shrink only reduces reach, so the per-cell list is a conservative superset of the contributors -- same lights, same pixels. DEFAULT ON; =0 uploads u_lightGridDim=0 -> frag takes the exact linear full-pool loop (killswitch). Also inert when the pool holds fewer than 8 lights (binning costs more than it saves) or MC2_TERRAIN_LIGHT_POOLS=0."
+    },
+    {
+        "MC2_TUNE_LIGHT_GRID_DIM",
+        "MC2_LIGHT_GRID_DIM",
+        EnvVarKind::Trace,
+        false,
+        "LIGHT-CLUSTER-PERF-1 knob: cells per axis for the light grid (grid is DIM x DIM over the XY bbox of this frame's packed lights). Default 64; clamped to [2,256], out-of-range/unparseable -> default. Larger = shorter per-cell lists but more header upload; purely a perf knob, output is identical at every value. Only consumed when MC2_LIGHT_GRID is on."
+    },
     // NIGHT-LIGHT-POOLS-3: overlapping pool sums are tone-compressed instead of
     // hard-clamped (5-mech group pools no longer flat-top a saturated blob).
     {

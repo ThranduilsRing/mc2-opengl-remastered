@@ -1531,6 +1531,16 @@ def main():
                             "MC2_LIGHT_POOL_COMPRESS",
                             "MC2_LIGHT_POOL_MOVER_RADIUS",
                             "MC2_LIGHT_POOL_MOVER_MAXBLEND",
+                            # LIGHT-CLUSTER-PERF-1 -- world-space XY light grid
+                            # over the pool (killswitch, default ON) + its cells
+                            # -per-axis knob. Must be allowlisted or Popen drops
+                            # them and a MC2_LIGHT_GRID=0 A/B silently runs ON.
+                            "MC2_LIGHT_GRID",
+                            "MC2_LIGHT_GRID_DIM",
+                            # LIGHT-POOL-CAP-1 -- terrain light pool slot count
+                            # (default 256, raised from 64). Allowlisted so a
+                            # cap=64 baseline arm is actually reproducible.
+                            "MC2_LIGHT_POOL_MAX",
                             # MOVER-CONTACT-SHADOW-1 (MASTER-FAIL #7): under-mech
                             # night contact shadow strength (default 0 = off).
                             "MC2_MOVER_CONTACT_SHADOW",

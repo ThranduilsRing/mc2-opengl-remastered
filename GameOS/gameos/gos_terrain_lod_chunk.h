@@ -19,6 +19,11 @@ constexpr uint32_t TERRAIN_CEMENT_SSBO_BINDING = 25u;  // Step 5c: per-vertex ce
 constexpr uint32_t TERRAIN_VISUAL_HEIGHT_SSBO_BINDING = 26u; // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x VISUAL heightfield (render-only)
 constexpr uint32_t TERRAIN_VISUAL_DAMP_SSBO_BINDING   = 27u; // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp
 constexpr uint32_t TERRAIN_LIGHT_POOL_SSBO_BINDING    = 28u; // NIGHT-LIGHT-POOLS-1: per-frame terrain light pool (GpuTerrainLight[48B], producer gos_terrain_lighting.cpp PackAndDispatch)
+// LIGHT-CLUSTER-PERF-1: world-space XY light grid over the pool (producer
+// gos_terrain_lighting.cpp BuildAndUploadLightGrid). 29 = per-cell
+// {firstIndex,count} header, 30 = the cell-major light index list.
+constexpr uint32_t TERRAIN_LIGHT_GRID_HEADER_SSBO_BINDING = 29u;
+constexpr uint32_t TERRAIN_LIGHT_GRID_INDEX_SSBO_BINDING  = 30u;
 
 // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA control-map texture unit (not an
 // SSBO — sampled with GL_LINEAR like the colormap). Gate MC2_TERRAIN_CONTROLMAP,

@@ -56,6 +56,8 @@ enum class RenderResourceId : uint16_t {
     WaterRecipeBuf       = 45,  // WATER-REGISTRY-0: live MDI water static recipe SSBO (g_recipeBuffer, gos_terrain_water_stream.cpp); Mission lifetime, uploaded once per mission. Bound binding 0 for water compute. L7.4 Water prep.
     WaterHeaderBuf       = 46,  // WATER-REGISTRY-0: live MDI water bucket-header SSBO (g_waterBucketHeaderSsbo, gos_terrain_water_stream.cpp); Mission lifetime, 16 B GpuDrivenBucketHeader (visibleCount). Bound binding 6 (setup) / 0 (cmd patch). L7.4 Water prep.
     WaterIndirectCmdBuf  = 47,  // WATER-REGISTRY-0: live MDI water indirect-command buffer (g_waterIndirectCmdBuffer, gos_terrain_water_stream.cpp); Mission lifetime, 2x DrawArraysIndirectCommand (32 B). Source of glMultiDrawArraysIndirect (gameos_graphics.cpp:3706). Bound binding 1 (cmd patch) + GL_DRAW_INDIRECT_BUFFER. L7.4 Water prep.
+    TerrainLightGridHeaderSsbo = 48,  // LIGHT-CLUSTER-PERF-1: per-cell {firstIndex,count} header of the world-space XY light grid (s_lightGridHeaderSsbo, GL binding 29, gos_terrain_lighting.cpp); Mission lifetime, rebuilt+streamed per frame by BuildAndUploadLightGrid, grow-only. LIVE default-ON (MC2_LIGHT_GRID). GL binding 29 unrelated to id numbering.
+    TerrainLightGridIndexSsbo  = 49,  // LIGHT-CLUSTER-PERF-1: cell-major light index list of the world-space XY light grid (s_lightGridIndexSsbo, GL binding 30, gos_terrain_lighting.cpp); Mission lifetime, rebuilt+streamed per frame, grow-only. LIVE default-ON (MC2_LIGHT_GRID). GL binding 30 unrelated to id numbering.
     Count
 };
 
@@ -78,15 +80,17 @@ static_assert(static_cast<int>(RenderResourceId::PostprocessSubgraphDepth)      
 static_assert(static_cast<int>(RenderResourceId::TerrainVisualDampSsbo)         < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::StaticPropColorRingSsbo)        < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf)            < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::TerrainLightGridHeaderSsbo)     < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
+static_assert(static_cast<int>(RenderResourceId::TerrainLightGridIndexSsbo)      < static_cast<int>(RenderResourceId::Count), "id >= Count would index out of bounds");
 
 // (b) The run is DENSE: Count == number-of-real-slots. WaterIndirectCmdBuf is the
-//     last real id (value 47 after MERGE-WAVE-1 renumber: nifty TerrainVisualDampSsbo
-//     kept 39, VK ring/water ids shifted +1) and Count follows it, so Count must be 48.
-static_assert(static_cast<int>(RenderResourceId::WaterIndirectCmdBuf) + 1
+//     last real id until LIGHT-CLUSTER-PERF-1 appended the two light-grid SSBOs
+//     (48/49), so TerrainLightGridIndexSsbo is now last and Count must be 50.
+static_assert(static_cast<int>(RenderResourceId::TerrainLightGridIndexSsbo) + 1
                   == static_cast<int>(RenderResourceId::Count),
               "RenderResourceId is not a dense 0..Count-1 run (Count must immediately "
               "follow the last real id); dense-index consumers assume no holes above Count");
-static_assert(static_cast<int>(RenderResourceId::Count) == 48,
+static_assert(static_cast<int>(RenderResourceId::Count) == 50,
               "RenderResourceId::Count changed; update dense-index consumers "
               "(frame_graph_validate.h, postprocess_subgraph.h) and this guard");
 

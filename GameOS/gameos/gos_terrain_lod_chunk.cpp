@@ -733,6 +733,10 @@ static GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsM
 static GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
 static GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
 static GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLights (0 = pool loop off)
+// LIGHT-CLUSTER-PERF-1: light-grid uniforms (dim 0 => linear full-pool loop)
+static GLint    s_locLightGridDim     = -1;
+static GLint    s_locLightGridMin     = -1;
+static GLint    s_locLightGridInvCell = -1;
 static GLint    s_locLightPoolSoft     = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolSoft
 static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolMoverDim
 static GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
@@ -1248,6 +1252,9 @@ void gos_TerrainLodChunk_Init()
             s_locLightDir     = glGetUniformLocation(s_terrainProgram, "terrainLightDir");
             s_locMissionFlatLight = glGetUniformLocation(s_terrainProgram, "u_missionFlatLight");  // CEMENT-NIGHT-LIGHT-1
             s_locNumPoolLights = glGetUniformLocation(s_terrainProgram, "u_numPoolLights");  // NIGHT-LIGHT-POOLS-1
+            s_locLightGridDim     = glGetUniformLocation(s_terrainProgram, "u_lightGridDim");      // LIGHT-CLUSTER-PERF-1
+            s_locLightGridMin     = glGetUniformLocation(s_terrainProgram, "u_lightGridMin");      // LIGHT-CLUSTER-PERF-1
+            s_locLightGridInvCell = glGetUniformLocation(s_terrainProgram, "u_lightGridInvCell");  // LIGHT-CLUSTER-PERF-1
             s_locLightPoolSoft     = glGetUniformLocation(s_terrainProgram, "u_lightPoolSoft");      // NIGHT-LIGHT-POOLS-2
             s_locLightPoolMoverDim = glGetUniformLocation(s_terrainProgram, "u_lightPoolMoverDim");  // NIGHT-LIGHT-POOLS-2
             s_locLightPoolCompress = glGetUniformLocation(s_terrainProgram, "u_lightPoolCompress");  // NIGHT-LIGHT-POOLS-3
@@ -2349,6 +2356,30 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             }
             if (s_locNumPoolLights >= 0)
                 glUniform1i(s_locNumPoolLights, poolCount);
+            // LIGHT-CLUSTER-PERF-1: bind this frame's world-space XY light grid so
+            // the frag loop visits only the lights whose ground circle covers the
+            // fragment, instead of the whole (now 256-slot) pool. dim=0 uploads
+            // when the grid is inactive (MC2_LIGHT_GRID=0 killswitch, small pool,
+            // or no pool this frame) -> frag takes the exact linear loop.
+            {
+                gos_terrain_lighting::LightGridParams lg{};
+                bool haveGrid = (poolCount > 0) &&
+                                gos_terrain_lighting::GetLightGridParams(lg);
+                if (haveGrid) {
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                     TERRAIN_LIGHT_GRID_HEADER_SSBO_BINDING, lg.headerSsbo);
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                     TERRAIN_LIGHT_GRID_INDEX_SSBO_BINDING, lg.indexSsbo);
+                }
+                if (s_locLightGridDim >= 0)
+                    glUniform1i(s_locLightGridDim, haveGrid ? static_cast<GLint>(lg.dim) : 0);
+                if (haveGrid) {
+                    if (s_locLightGridMin >= 0)
+                        glUniform2f(s_locLightGridMin, lg.minXY[0], lg.minXY[1]);
+                    if (s_locLightGridInvCell >= 0)
+                        glUniform2f(s_locLightGridInvCell, lg.invCell[0], lg.invCell[1]);
+                }
+            }
             // NIGHT-LIGHT-POOLS-2 tuning (user feedback 2026-07-21): soften the
             // stamped-disc falloff edge (smoothstep tail; MC2_LIGHT_POOL_SOFT=0
             // -> exact legacy TG_Light::GetFalloff linear ramp) and dim
