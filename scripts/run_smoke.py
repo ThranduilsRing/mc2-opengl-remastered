@@ -1692,6 +1692,12 @@ def main():
                             # prop shadow replay (default OFF). Must be allowlisted
                             # or Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_LOD_SHADOW_CAST",
+                            # PROP-BASE-LIGHT-DIR-1 -- directional/hemispherical
+                            # orientation term for the baked static-prop
+                            # base_light seed (float strength 0..1, default 0.0
+                            # = OFF). Must be allowlisted or Popen drops it and
+                            # the gate-ON smoke silently runs gate-OFF.
+                            "MC2_PROP_BASE_LIGHT_DIR",
                             # SHADOW-SUNCLAMP-1 -- back-face guard dots the same
                             # altitude-clamped sun the shadow matrices use
                             # (default ON; =0 reverts to the raw-sun guard).

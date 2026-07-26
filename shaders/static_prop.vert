@@ -217,6 +217,16 @@ uniform int u_parityBaseLightDebugMode;
 // existing window-skip of calc_light).
 uniform float u_ambientV1Strength;
 
+// PROP-BASE-LIGHT-DIR-1: strength of the directional (hemispherical-wrap)
+// modulation applied to the baked per-vertex base_light seed. 0.0 (default,
+// CPU uploads 0.0 when MC2_PROP_BASE_LIGHT_DIR is unset/0) makes the term a
+// bitwise no-op -- the `> 0.0` guard below skips it entirely, so seed ==
+// base_light and the render is byte-identical to pre-slice output.
+// Range 0..1: the modulation factor is mix(1-strength, 1, wrap), so a face
+// pointing AT the sun keeps factor 1.0 exactly and can never brighten; a
+// face pointing directly AWAY is scaled by (1-strength).
+uniform float u_propBaseLightDirStrength;
+
 // V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane.
 // Coefficient order (must match projector tools/ibl/project_sh.py +
 // generated header RenderCore/IblShCoeffs.h):
@@ -734,7 +744,68 @@ void main() {
         // base_light because they skip the per-vertex night bake; near LODs
         // (small clip.w) keep their correct baked seed (fbT==0). u_farBackdropLit
         // ==0 -> fbT==0 -> seed==base_light -> byte-identical pre-change output.
-        vec3 seed = base_light;
+        // PROP-BASE-LIGHT-DIR-1 ---------------------------------------------
+        // THE USER'S DEFECT: "this building face should be in shadow as the
+        // light is from behind." It is not a shadow bug. base_light is a
+        // baked per-vertex constant with NO ORIENTATION TERM, so every face
+        // of a building carries essentially the same value regardless of
+        // which way it points. A face with the light behind it already has
+        // ndl == 0, so its sun term is already zero and there is nothing for
+        // any shadow term to attenuate -- which is exactly why
+        // MC2_PROP_SHADOW_RECEIVE measured <=0.05% of pixels and 0.000% at
+        // night (see .claude/SHADOW-DECISIONS-1-STATUS.md §2). The face is
+        // bright because of base_light. So we modulate base_light itself.
+        //
+        // Form: multiplicative hemispherical wrap against the SAME mission
+        // sun the diffuse term uses (u_terrainSunMC2, direction-TO-sun).
+        //   wrap   = 0.5 + 0.5*dot(N, L)   -- 1.0 facing sun, 0.0 facing away
+        //   factor = mix(1 - strength, 1, wrap)
+        //
+        // Three properties, each answering a stated constraint:
+        //  1. NEVER BRIGHTENS. factor <= 1.0 with equality only at wrap==1.
+        //     This redistributes, it does not add -- so it also helps rather
+        //     than hurts the separate "buildings are over-bright at night"
+        //     complaint, and composes safely with the sibling lane's
+        //     MC2_STATIC_PROP_IBL_NIGHT_SCALE.
+        //  2. PRESERVES AUTHORED VARIATION. It is a MULTIPLY on the existing
+        //     per-vertex seed, not a replacement or a tone remap, so the
+        //     asset's authored per-vertex differences survive scaled. This
+        //     is deliberately not the tone-flattening that was rejected
+        //     elsewhere ("after is WAY worse").
+        //  3. NO DOUBLE-COUNT WITH THE IBL SH PROBE. The SH probe (V-IBL-
+        //     STATIC-1, u_iblShStrength) is an ADDITIVE ambient irradiance
+        //     term added to `lit` further down. This is a MULTIPLICATIVE
+        //     modulation of a different summand (the baked seed). Neither
+        //     term feeds the other, and we never scale the IBL contribution.
+        //
+        // Applied BEFORE the FAR-BACKDROP-LIT mix on purpose: distance-faded
+        // impostors then converge on the untouched ambient target, so the far
+        // horizon is unchanged and no new LOD-pop boundary is introduced.
+        //
+        // ALPHA-TEST INSTANCES ARE EXCLUDED. Foliage/fence cards are two-sided
+        // (the ndl branch above uses abs() for exactly this reason) and their
+        // normals do not describe a solid surface, so a signed wrap would
+        // darken whichever side happened to be authored facing away -- an
+        // arbitrary result. Buildings, the subject of the complaint, are not
+        // alpha-test.
+        //
+        // WHY THE SHADER AND NOT THE CPU BAKE: a bake change would not reach
+        // far/impostor LODs at all, because those register via
+        // TransformMultiShape_HierarchyOnly and never run the per-vertex light
+        // bake. It would also be a per-mission-light-direction rebake. Doing
+        // it here reaches every LOD uniformly for one dot + one mix per
+        // vertex, on a path that already normalizes both operands for ndl.
+        vec3 baseLightDir = base_light;
+        if (u_propBaseLightDirStrength > 0.0 &&
+            (inst.flags & kFlagIsAlphaTest) == 0u) {
+            float wrap = 0.5 + 0.5 * dot(normalize(worldNormalMC2),
+                                         normalize(u_terrainSunMC2));
+            baseLightDir = base_light
+                         * mix(1.0 - u_propBaseLightDirStrength, 1.0, wrap);
+        }
+        // --------------------------------------------------------------------
+
+        vec3 seed = baseLightDir;
         if (u_farBackdropLit != 0) {
             float fbDepth = clip.w;  // perspective w == view-space distance proxy
             float fbT = clamp((fbDepth - u_farBackdropNear)
@@ -745,7 +816,7 @@ void main() {
             // UP to the night ambient and pulls white/day-seeded impostors DOWN
             // to it — a single operation fixing both symptoms with no hard LOD-
             // pop boundary (smooth distance fade).
-            seed = mix(base_light, ambientTerm + u_farBackdropTint, fbT);
+            seed = mix(baseLightDir, ambientTerm + u_farBackdropTint, fbT);
         }
         lit = seed + ambientTerm + sunColor * ndl;
 
@@ -779,7 +850,10 @@ void main() {
         // ambient_v1 + ibl. Sun term is the directional component; everything
         // else above base_light (hot-color seed) is fill/ambient.
         v_dbgSun     = sunColor * ndl;
-        v_dbgAmbient = lit - base_light - sunColor * ndl;
+        // PROP-BASE-LIGHT-DIR-1: decompose against baseLightDir (the seed that
+        // actually entered `lit`), not the raw base_light -- otherwise the
+        // directional modulation would be misattributed to the ambient channel.
+        v_dbgAmbient = lit - baseLightDir - sunColor * ndl;
 
         // V-MATERIAL-PBR-3: per-vertex PBR math REMOVED — moved to
         // static_prop.frag so Schlick-Fresnel + power-lobe specular runs

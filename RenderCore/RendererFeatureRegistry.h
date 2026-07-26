@@ -236,7 +236,8 @@ enum class RendererFeature : int {
     // "shadow depth pass has no alpha discard" rationale has been false since
     // b8f764b6. Default-OFF -> caster set byte-identical.
     PropLodShadowCast        = 50,  // MC2_PROP_LOD_SHADOW_CAST
-    COUNT                    = 51,
+    PropBaseLightDir         = 51,  // MC2_PROP_BASE_LIGHT_DIR
+    COUNT                    = 52,
 };
 
 // ---------------------------------------------------------------------------
@@ -653,6 +654,14 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1). TreeAppearance::registerStatic (mclib/bdactor.cpp) calls GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true) for every lod != 0, justified by a comment claiming the shadow depth pass has no alpha discard -- so flat foliage cards would write their whole quad as depth and cast rectangular blob shadows. That justification has been FALSE since b8f764b6 (2026-06-16, alpha-test foliage shadow casters): resolvePropShadowProgram (gos_static_prop_batcher.cpp:8461) binds shadow_static_prop_alpha_atlas / shadow_static_prop_alpha, both default-ON, and both run the same tex_color.a < 0.5 discard the color pass does (shaders/shadow_static_prop.frag). lod>=1 recipes carry ALPHA_TEST identically to LOD0 (SetAlphaTest(true) on every imported LOD), and the per-packet atlas sidecars are indexed by global packet index in finalizeGeometry() so far-LOD packets bind valid layers; a missing layer fails SAFE (bindPropShadowAtlasPacket clears ALPHA_TEST -> opaque depth), never a wrong-layer sample. SCOPE: the suppression only ever affected getDynamicPropShadowInstances (gos_static_prop_registry.cpp:1895), the full-registry replay; flushShadow's camera-visible loop has no noShadow filter, so visible LOD1 types already cast. Turning this ON therefore grows the caster set AT DISTANCE -- the candidate cure for missing distant-tree shadows -- at a cost proportional to far-prop count. Default-OFF -> setRecipeNoShadow still called -> caster set byte-identical to the shipped build. Visual-only; no geometry/objectId/UI/gameplay change."
+    },
+    // PropBaseLightDir (PROP-BASE-LIGHT-DIR-1)
+    {
+        "MC2_PROP_BASE_LIGHT_DIR",
+        "MC2_PROP_BASE_LIGHT_DIR",
+        EnvVarKind::Feature,
+        false,
+        "PROP-BASE-LIGHT-DIR-1: give the static-prop baked per-vertex base_light seed a directional (hemispherical-wrap) orientation term, so faces pointing away from the mission key light are darker than faces pointing toward it. VALUE = float strength 0..1 (the strength IS the enable; 0.0 == off), clamped. Default 0.0 -> static_prop.vert's `u_propBaseLightDirStrength > 0.0` guard skips the block entirely -> seed == base_light -> BYTE-IDENTICAL to the shipped build. ROOT CAUSE this addresses: the user reported "this building face should be in shadow as the light is from behind". That is not a shadow bug. Prop lighting is base_light + sunColor*ndl + fill, and shadow_screen.frag modulates the SUN TERM ONLY -- but a face with the light behind it already has ndl == 0, so there is nothing for a shadow to attenuate. MC2_PROP_SHADOW_RECEIVE was measured at <=0.05% of pixels by day and 0.000% at night for exactly this reason (.claude/SHADOW-DECISIONS-1-STATUS.md section 2). The face is bright because base_light is a baked per-leaf constant with NO orientation term, so every face of a building carries essentially the same value. MECHANISM: factor = mix(1 - strength, 1, 0.5 + 0.5*dot(N, u_terrainSunMC2)), multiplied into the seed. factor <= 1.0 always, with equality only for a face pointing AT the sun, so the term REDISTRIBUTES and can never brighten -- it composes safely with MC2_STATIC_PROP_IBL_NIGHT_SCALE and does not worsen the separate over-bright-at-night complaint. Multiplicative on the existing per-vertex seed, so authored variation is preserved scaled rather than tone-flattened. No double-count with MC2_STATIC_PROP_IBL_SH: that probe is an ADDITIVE ambient irradiance summand, this is a MULTIPLICATIVE modulation of a different summand, and the IBL contribution is never scaled. Applied BEFORE the FAR-BACKDROP-LIT mix so distance-faded impostors converge on the untouched ambient target and no new LOD-pop boundary appears. Alpha-test instances (foliage/fence cards) are EXCLUDED because they are two-sided -- the ndl branch already uses abs() for that reason -- and a signed wrap would darken an arbitrary side. Implemented in the shader rather than the CPU bake because far/impostor LODs register via TransformMultiShape_HierarchyOnly and never run the per-vertex light bake, so a bake change could not reach them. Visual-only; no geometry/objectId/UI/gameplay change."
     },
 };
 

@@ -752,6 +752,37 @@ static const bool s_staticPropAmbientV1Enabled = []() {
     return v != nullptr && v[0] != '0' && v[0] != '\0';
 }();
 
+// PROP-BASE-LIGHT-DIR-1: directional (hemispherical-wrap) modulation of the
+// baked per-vertex base_light seed. See the long rationale block in
+// shaders/static_prop.vert next to `vec3 baseLightDir`.
+//
+// The user's defect -- "this building face should be in shadow as the light is
+// from behind" -- is NOT a shadow bug. base_light is orientation-free, so a
+// wall facing away from the sun renders as bright as one facing it. Its sun
+// term is already ndl==0, so no shadow term can darken it (measured: <=0.05%
+// of pixels day, 0.000% night for MC2_PROP_SHADOW_RECEIVE). This gate gives
+// that baked seed the missing orientation term.
+//
+// VALUE = float strength 0..1, NOT a bool. This is deliberately one knob
+// rather than an enable-bool plus a separate strength var: the strength IS the
+// enable (0.0 == off), which makes an ENV_DROP failure impossible to confuse
+// with a weak setting, and lets the default be tuned without a code change.
+//   unset / "0" -> 0.0 -> shader's `> 0.0` guard skips the whole block ->
+//                  seed == base_light -> BYTE-IDENTICAL to pre-slice output.
+//   "0.45"      -> back-faces scaled to 55% of their baked seed; faces
+//                  pointing at the sun are multiplied by exactly 1.0.
+// Clamped to [0,1] because >1 would drive the back-face factor negative and
+// produce black-clamped walls -- the exact failure mode of the blunt IBL
+// killswitch the user rejected.
+static const float s_propBaseLightDirStrength = []() {
+    const char* v = getenv("MC2_PROP_BASE_LIGHT_DIR");
+    if (!v || !*v) return 0.0f;              // DEFAULT OFF: exact no-op
+    float f = (float)atof(v);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
+    return f;
+}();
+
 // FAR-BACKDROP-LIT: gate + tunables for the night-shade substitution applied to
 // far/impostor static-prop LODs (see static_prop.vert). Default-OFF; "=1" / any
 // non-"0", non-empty value enables. When OFF the per-frame upload pushes
@@ -1410,6 +1441,7 @@ struct ProgramLocs {
     GLint texArr              = -1;
     GLint materialGpuSample   = -1;   // MaterialGpu-3: u_materialGpuSample
     GLint ambientV1Strength   = -1;   // V-AMBIENT-STATIC-1: u_ambientV1Strength
+    GLint propBaseLightDirStrength = -1; // PROP-BASE-LIGHT-DIR-1: u_propBaseLightDirStrength
     GLint debugMaterialMode   = -1;   // V-MATERIAL-DEBUG-1: u_debugMaterialMode
     GLint iblSh               = -1;   // V-IBL-STATIC-1: u_iblSh[9] (vec3 array)
     GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
@@ -1759,6 +1791,7 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.packetID          = glGetUniformLocation(s_staticPropProgram, "u_packetID");
     // V-AMBIENT-STATIC-1: hemisphere ambient strength uniform (default 0.0 = OFF).
     s_locsLegacy.ambientV1Strength = glGetUniformLocation(s_staticPropProgram, "u_ambientV1Strength");
+    s_locsLegacy.propBaseLightDirStrength = glGetUniformLocation(s_staticPropProgram, "u_propBaseLightDirStrength");
     // V-MATERIAL-DEBUG-1: per-fragment material debug view mode (default 0 = OFF).
     s_locsLegacy.debugMaterialMode = glGetUniformLocation(s_staticPropProgram, "u_debugMaterialMode");
     s_locsLegacy.pathTint          = glGetUniformLocation(s_staticPropProgram, "u_pathTint");
@@ -1825,6 +1858,7 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.materialGpuSample = glGetUniformLocation(s_staticPropProgramCoalesce, "u_materialGpuSample");
             // V-AMBIENT-STATIC-1: hemisphere ambient strength uniform (default 0.0 = OFF).
             s_locsCoalesce.ambientV1Strength = glGetUniformLocation(s_staticPropProgramCoalesce, "u_ambientV1Strength");
+            s_locsCoalesce.propBaseLightDirStrength = glGetUniformLocation(s_staticPropProgramCoalesce, "u_propBaseLightDirStrength");
             // V-MATERIAL-DEBUG-1: per-fragment material debug view mode (default 0 = OFF).
             s_locsCoalesce.debugMaterialMode = glGetUniformLocation(s_staticPropProgramCoalesce, "u_debugMaterialMode");
             s_locsCoalesce.pathTint          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pathTint");
@@ -6711,6 +6745,13 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         if (s_locsCoalesce.ambientV1Strength >= 0)
             glUniform1f       (s_locsCoalesce.ambientV1Strength,
                                s_staticPropAmbientV1Enabled ? 1.0f : 0.0f);
+        // PROP-BASE-LIGHT-DIR-1: directional modulation of the baked seed.
+        // 0.0 (default) -> shader's `> 0.0` guard skips the block entirely,
+        // so this is a no-op stronger than a multiply-by-one: the code path
+        // never runs and the pixel is byte-identical.
+        if (s_locsCoalesce.propBaseLightDirStrength >= 0)
+            glUniform1f       (s_locsCoalesce.propBaseLightDirStrength,
+                               s_propBaseLightDirStrength);
         // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor. Uploaded
         // globally but the frag only applies it to fragments whose instance
         // carries kFlagDecalFill (bit 3) — set solely on MarbleCliff decal
@@ -7940,6 +7981,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (s_locsLegacy.ambientV1Strength >= 0)
                 glUniform1f(s_locsLegacy.ambientV1Strength,
                             s_staticPropAmbientV1Enabled ? 1.0f : 0.0f);
+            // PROP-BASE-LIGHT-DIR-1: same semantics as the coalesce site.
+            // 0.0 default -> byte-identical OFF.
+            if (s_locsLegacy.propBaseLightDirStrength >= 0)
+                glUniform1f(s_locsLegacy.propBaseLightDirStrength,
+                            s_propBaseLightDirStrength);
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (legacy
             // program). Frag applies it only to kFlagDecalFill (bit 3) fragments.
             if (s_locsLegacy.terrainDecalFill >= 0)
