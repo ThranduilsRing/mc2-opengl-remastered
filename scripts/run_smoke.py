@@ -2592,7 +2592,17 @@ def main():
                             # "gate inert" warning. That is what voided the
                             # "verified via smoke" claim for this gate: the A/B
                             # was never shown to have driven the two arms apart.
-                            "MC2_LEGACY_LIT_MC2_FRAME")},
+                            "MC2_LEGACY_LIT_MC2_FRAME",
+                            # QUIET-DEFAULT-BUILD-1: MC2_DIAG_VERBOSE restores
+                            # the ~380 developer diagnostic call sites that a
+                            # default build now keeps quiet. Allowlisted so the
+                            # harness can DRIVE it (capture a verbose log on
+                            # demand) and so setting it stops tripping a
+                            # spurious [ENV-DROP] "gate inert" warning.
+                            # NOTE: the quiet ratchet deliberately refuses to
+                            # grade any run that sets it -- see
+                            # scripts/check-default-build-quiet.py.
+                            "MC2_DIAG_VERBOSE")},
             },
         )
         # SMOKE-GATE-GUARD-1: ENV-DROP WARNING.
