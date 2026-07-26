@@ -451,6 +451,12 @@ float g_pbrV1Strength = []() -> float {
 bool  g_pbrV1RoughnessOverrideEnabled = true;
 float g_pbrV1RoughnessOverrideValue   = 0.95f;
 
+// IBL-NIGHT-SCALE-1: declared at GLOBAL scope on purpose. iblShStrengthNightScaled()
+// lives inside the anonymous namespace below, so an `extern` declared *inside* it
+// would resolve to `(anonymous)::gos_GetNightState` and fail to link against the
+// real definition in gameos_graphics.cpp.
+void gos_GetNightState(bool* isNight, float* nightFactor);
+
 namespace {
 
 // Per-vertex stride in the shared VBO. Layout:
@@ -1032,8 +1038,7 @@ static float iblShStrengthNightScaled() {
     if (s_iblNightFloor >= 1.0f) return g_iblShStrength;   // killswitch: exact
     bool  isNight = false;
     float nFactor = 0.0f;
-    extern void gos_GetNightState(bool*, float*);
-    gos_GetNightState(&isNight, &nFactor);
+    ::gos_GetNightState(&isNight, &nFactor);
     if (nFactor <= 0.0f) return g_iblShStrength;           // day: exact
     return g_iblShStrength * (1.0f - (1.0f - s_iblNightFloor) * nFactor);
 }
