@@ -2939,7 +2939,25 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             // 1.0 = light fixture, 0.0 = everything else.
             perTypeBlob[i].hotPinkRGB[3] =
                 isEmissiveFixtureType(pink, yellow, green) ? 1.0f : 0.0f;
-            if (perTypeBlob[i].hotPinkRGB[3] > 0.0f) ++s_fixtureTypeCount;
+            if (perTypeBlob[i].hotPinkRGB[3] > 0.0f) {
+                ++s_fixtureTypeCount;
+                // FIXTURE-GLOW-1: name the classified types, not just count
+                // them. The count alone hid the fact that a map can register
+                // five fixture types that are all the SAME colour -- which is
+                // exactly what mc2_10 does, and why four lanes only ever put
+                // eyes on green.
+                const char* fname = "<unknown>";
+                for (const auto& kv : s_typeIndex) {
+                    if (kv.second == i && kv.first) {
+                        fname = const_cast<TG_TypeShape*>(kv.first)->getNodeId();
+                        break;
+                    }
+                }
+                std::fprintf(stderr,
+                    "[GPUPROPS] fixture-light type: id=%zu name=%s rgb=0x%06lX
+",
+                    i, fname, (unsigned long)(pink & 0x00FFFFFFu));
+            }
         }
         std::fprintf(stderr, "[GPUPROPS] fixture-lights: %u of %zu types classified"
                              " as emissive fixtures (scale=%.2f)\n",
