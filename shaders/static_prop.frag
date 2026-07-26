@@ -51,6 +51,10 @@ flat in uint v_drawID;          // plan v3.8 Step 8.3: forwarded from VS as
 in       vec3 v_dbgSun;
 in       vec3 v_dbgAmbient;
 flat in  vec4 v_dbgLightMeta;   // x=lightDataIndex, y=numLights
+// FIXTURE-GLOW-1: pre-attenuated additive glow for light-fixture lens vertices.
+// vec3(0.0) everywhere else, and vec3(0.0) for ALL vertices when the gate is off
+// or in daylight or beyond the attenuation far plane. See static_prop.vert.
+in       vec3 v_fixtureGlow;
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
 // V-MATERIAL-PBR-3: per-fragment PBR varyings (must match static_prop.vert
@@ -605,6 +609,19 @@ void main() {
     }
 
     c.rgb = mix(v_fog.rgb, c.rgb, u_fogValue);
+
+    // FIXTURE-GLOW-1: the additive term, applied LAST on purpose.
+    //   * after `c = tex_color * litRgb` (line ~436), so the fixture's dark lens
+    //     albedo cannot multiply the light away -- the failure that made every
+    //     emissive-side attempt look "not on at ALL";
+    //   * after the get_base_light() 1.0 clamp, so it is not swallowed by an
+    //     already-saturated emissive seed (scales 1/4/8 were byte-identical);
+    //   * after fog, so a light still reads through night haze at play distance.
+    // It is added after the debug-view early-returns above, so every debug
+    // channel is unaffected. v_fixtureGlow is exactly vec3(0.0) whenever the
+    // gate is off, in daylight, on non-fixtures, and past the far plane, so all
+    // of those cases stay byte-identical.
+    c.rgb += v_fixtureGlow;
 
     FragColor = c;
     // Static props receive the static shadow map but NOT the dynamic-cascade

@@ -2051,6 +2051,9 @@ def main():
                             # NIGHT vertex tags on the GPU static-prop path (runway
                             # edge lights / beacons / lit windows). Default-OFF ->
                             # isNight/factor uploaded as 0 -> byte-identical.
+                            # FIXTURE-GLOW-1: bounded distance-attenuated
+                            # additive glow on the same fixture types.
+                            "MC2_STATIC_PROP_FIXTURE_GLOW",
                             "MC2_STATIC_PROP_FIXTURE_LIGHTS",
                             "MC2_STATIC_PROP_NIGHT_TAGS",
                             "MC2_STATIC_PROP_NIGHT_TAGS_SCALE",

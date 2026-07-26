@@ -99,6 +99,44 @@ uniform float u_nightEmissiveScale;  // 1.0 = stock; 0.0 = pre-fix; >1 exaggerat
 // else. This is what lets the fixtures come on at night while every building
 // stays byte-identical, which u_nightEmissiveScale (all-props) cannot do.
 uniform float u_fixtureEmissiveScale;
+// FIXTURE-GLOW-1 (gate MC2_STATIC_PROP_FIXTURE_GLOW): a BOUNDED,
+// DISTANCE-ATTENUATED ADDITIVE glow for the same fixture types
+// BEACON-FIXTURE-ID-1 identifies (ptd.hotPinkRGB.w == 1.0).
+//
+// WHY A SEPARATE TERM IS REQUIRED. The emissive path above cannot make a
+// fixture read as a light, for TWO independent reasons, both measured:
+//   1. get_base_light() clamps internally at 1.0, so MC2_STATIC_PROP_FIXTURE_
+//      LIGHTS = 1, 4 and 8 produce BYTE-IDENTICAL frames. There is no headroom
+//      left in base_light.
+//   2. Worse, base_light is then MODULATED by the albedo:
+//      static_prop.frag:436  `vec4 c = tex_color * vec4(litRgb, ...)`.
+//      A fixture's lens texel is dark, so even a fully saturated emissive seed
+//      comes out dim. This is the actual reason the lights "are not on at ALL":
+//      a light source cannot be expressed as a multiplier on a dark texture.
+// This term is added in the FRAGMENT shader AFTER the texture modulate and
+// AFTER fog (static_prop.frag, next to `FragColor = c`), so it escapes both
+// the 1.0 clamp and the albedo multiply. That is the whole mechanism.
+//
+// WHY IT CANNOT REPRODUCE THE RUNWAY-MARKER-LIGHTS-1 REGRESSION. That defect
+// came from an UNBOUNDED minimum-screen-size clamp (k = max(1, kLbMinNdc/sil)),
+// which held every marker at a constant screen size, so hundreds of evenly
+// spaced fixtures became hard dashes at overview altitude. This term does the
+// OPPOSITE at both ends:
+//   * it never touches geometry, position or size -- the fixture keeps shrinking
+//     with distance exactly as it does today;
+//   * its magnitude is multiplied by an attenuation that reaches EXACTLY ZERO
+//     at kFixtureGlowFar (4600 view units). Overview altitude on mc2_10 is
+//     ~6000, i.e. 1400 units PAST the point where the term is identically 0.0 --
+//     not "small", not "sub-pixel", but arithmetically zero. Overview safety is
+//     a property of the formula, not of a measurement.
+// It is also multiplied by the night factor, so it is identically 0.0 in
+// daylight.
+uniform float u_fixtureGlowStrength;   // 0 = off (default-off is byte-identical)
+// Attenuation window, in view depth (clip.w), and the white-hot core blend.
+// Compile-time so the bound is not env-tunable into the failure mode.
+const float kFixtureGlowNear  = 2600.0;  // full strength at or below this depth
+const float kFixtureGlowFar   = 4600.0;  // EXACTLY zero at or beyond this depth
+const float kFixtureGlowWhite = 0.5;     // 0 = pure fixture hue, 1 = white core
 // FAR-BACKDROP-LIT (gate MC2_FAR_BACKDROP_LIT, default OFF): night-shade
 // substitution for far/impostor static-prop LODs. Far/impostor LODs register
 // via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_
@@ -244,6 +282,11 @@ flat out uint v_drawID;          // plan v3.8 Step 8.2: forwarded to FS as
 out      vec3 v_dbgSun;
 out      vec3 v_dbgAmbient;
 flat out vec4 v_dbgLightMeta;
+// FIXTURE-GLOW-1: additive post-modulate glow, already attenuated. vec3(0.0)
+// for every non-fixture vertex and for every fixture vertex that does not carry
+// an emissive hot-colour tag (the pole/base geometry), so the glow lands on the
+// LENS only. Interpolated (not flat) so it falls off smoothly across the lens.
+out      vec3 v_fixtureGlow;
 
 // FOLIAGE-STATICPROP-DEPTH-PREPASS-1: guarantee gl_Position is computed
 // bit-identically across the two program objects that link this same VS — the
@@ -506,18 +549,49 @@ void main() {
     // "atrociously hideous" overview-altitude streaks in RUNWAY-MARKER-LIGHTS-1
     // (and why MC2_LIGHT_BILLBOARD_FACING was defaulted OFF). The emission
     // therefore shrinks and fades with distance on its own.
-    float emissiveScale = (ptd.hotPinkRGB.w > 0.5)
+    bool  isFixture     = (ptd.hotPinkRGB.w > 0.5);
+    float emissiveScale = isFixture
                         ? max(u_nightEmissiveScale, u_fixtureEmissiveScale)
                         : u_nightEmissiveScale;
-    if (emissiveScale > 0.0 && (u_isNight != 0 || u_nightFactor > 0.0)) {
+    // FIXTURE-GLOW-1: night weight, 0.0 in full daylight. Used both to gate the
+    // emissive block (unchanged) and to fade the additive glow, so there is no
+    // dusk pop and no daylight glow.
+    float nightWeight = clamp(max(float(u_isNight), u_nightFactor), 0.0, 1.0);
+    bool  glowWanted  = isFixture && u_fixtureGlowStrength > 0.0;
+    v_fixtureGlow = vec3(0.0);
+    if ((emissiveScale > 0.0 || glowWanted) && nightWeight > 0.0) {
         vec3 base_night = get_base_light(
             perVertexARGB,
             u_isNight != 0, u_nightFactor, false, lightsOut,
             ptd.hotPinkRGB.rgb,
             ptd.hotYellowRGB.rgb,
             ptd.hotGreenRGB.rgb);
-        base_light = clamp(base_day + (base_night - base_day) * emissiveScale,
-                           vec3(0.0), vec3(1.0));
+        // Byte-identity guard: the emissive assignment stays behind its ORIGINAL
+        // condition, so turning the glow on cannot perturb base_light by so much
+        // as an ulp, and turning the glow off restores the exact prior program.
+        if (emissiveScale > 0.0) {
+            base_light = clamp(base_day + (base_night - base_day) * emissiveScale,
+                               vec3(0.0), vec3(1.0));
+        }
+        if (glowWanted) {
+            // The night EMISSION DELTA is the glow tint. Using the delta -- not a
+            // per-type constant -- is what confines the glow to the emissive lens
+            // vertices: the fixture's post/base carries no magic tag, so its delta
+            // is exactly vec3(0.0) and it stays unlit. It also gives each fixture
+            // its own colour for free (white runwaylight, red/green/blue beacons)
+            // with no extra plumbing.
+            vec3 tint = clamp(base_night - base_day, vec3(0.0), vec3(1.0));
+            // White-hot core: push toward the tint's own peak channel rather than
+            // toward vec3(1.0), so vec3(0.0) maps to vec3(0.0) and the "lens only"
+            // property above survives the whitening.
+            float peak = max(tint.r, max(tint.g, tint.b));
+            vec3  core = mix(tint, vec3(peak), kFixtureGlowWhite);
+            // BOUNDED attenuation on view depth. smoothstep saturates, so this is
+            // identically 0.0 at and beyond kFixtureGlowFar -- see the header
+            // comment for why that, and not a screen-size clamp, is the safe shape.
+            float atten = 1.0 - smoothstep(kFixtureGlowNear, kFixtureGlowFar, clip.w);
+            v_fixtureGlow = core * (u_fixtureGlowStrength * atten * nightWeight);
+        }
     }
 
     // 4. Compute world-space normal and position for calc_light's distance

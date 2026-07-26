@@ -834,6 +834,34 @@ static const float s_fixtureLightsScale = []() {
     return f;
 }();
 
+// FIXTURE-GLOW-1: strength of the bounded, distance-attenuated ADDITIVE glow
+// applied to the fixture types isEmissiveFixtureType() classifies.
+//
+// This is the successor mechanism to MC2_STATIC_PROP_FIXTURE_LIGHTS above, and
+// it exists because that gate provably CANNOT fix the defect: get_base_light()
+// clamps at 1.0 (scales 1/4/8 render byte-identical frames), and whatever
+// survives the clamp is then multiplied by the fixture's dark lens albedo in
+// static_prop.frag. A light source is not expressible as a multiplier on a dark
+// texture. This gate adds a separate term after both, in the fragment shader.
+//
+// The two properties that keep it out of the RUNWAY-MARKER-LIGHTS-1 failure
+// mode (constant-screen-size dashes at overview altitude) are enforced in the
+// shader, not here: no geometry/screen-size term of any kind, and an attenuation
+// that is arithmetically zero beyond a compile-time far plane well inside
+// overview altitude. The near/far window is deliberately NOT env-tunable so the
+// bound cannot be configured away.
+//
+// "0" -> off, byte-identical. Unset -> default. Numeric -> strength /
+// verify-by-exaggeration. Resolved once at process start.
+static const float s_fixtureGlowStrength = []() {
+    const char* v = getenv("MC2_STATIC_PROP_FIXTURE_GLOW");
+    if (!v || !*v) return 1.0f;              // DEFAULT ON
+    float f = (float)atof(v);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 8.0f) f = 8.0f;
+    return f;
+}();
+
 // BEACON-FIXTURE-ID-1: the fixture discriminator, validated against all 773
 // stock data/tgl .ini.
 //
@@ -1304,6 +1332,7 @@ struct ProgramLocs {
     GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
     GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
     GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
+    GLint fixtureGlowStrength  = -1; // u_fixtureGlowStrength  (FIXTURE-GLOW-1)
     GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
     GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
@@ -1646,6 +1675,7 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.nightFactor        = glGetUniformLocation(s_staticPropProgram, "u_nightFactor");
     s_locsLegacy.nightEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_nightEmissiveScale");
     s_locsLegacy.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_fixtureEmissiveScale");
+    s_locsLegacy.fixtureGlowStrength  = glGetUniformLocation(s_staticPropProgram, "u_fixtureGlowStrength");
     // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
     s_locsLegacy.terrainDecalFill  = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalFill");
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -1711,6 +1741,7 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.nightFactor        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightFactor");
             s_locsCoalesce.nightEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightEmissiveScale");
             s_locsCoalesce.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureEmissiveScale");
+            s_locsCoalesce.fixtureGlowStrength  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureGlowStrength");
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
             s_locsCoalesce.terrainDecalFill  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalFill");
             // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -6640,7 +6671,8 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
             // Safe for non-fixtures: their scale stays 0.0, so get_base_light
             // keeps its daytime result (delta * 0 == 0).
-            if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f) {
+            if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f ||
+                    s_fixtureGlowStrength > 0.0f) {
                 extern void gos_GetNightState(bool*, float*);
                 gos_GetNightState(&nIsNight, &nFactor);
             }
@@ -6653,6 +6685,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                             (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
             if (s_locsCoalesce.fixtureEmissiveScale >= 0)
                 glUniform1f(s_locsCoalesce.fixtureEmissiveScale, s_fixtureLightsScale);
+            // FIXTURE-GLOW-1: 0.0 -> v_fixtureGlow is vec3(0.0) -> byte-identical.
+            if (s_locsCoalesce.fixtureGlowStrength >= 0)
+                glUniform1f(s_locsCoalesce.fixtureGlowStrength, s_fixtureGlowStrength);
         }
         // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
         // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->
@@ -7856,7 +7891,8 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
                 // Safe for non-fixtures: their scale stays 0.0, so get_base_light
                 // keeps its daytime result (delta * 0 == 0).
-                if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f) {
+                if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f ||
+                    s_fixtureGlowStrength > 0.0f) {
                     extern void gos_GetNightState(bool*, float*);
                     gos_GetNightState(&nIsNight, &nFactor);
                 }
@@ -7869,6 +7905,9 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                                 (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
                 if (s_locsLegacy.fixtureEmissiveScale >= 0)
                     glUniform1f(s_locsLegacy.fixtureEmissiveScale, s_fixtureLightsScale);
+                // FIXTURE-GLOW-1: 0.0 -> v_fixtureGlow is vec3(0.0) -> byte-identical.
+                if (s_locsLegacy.fixtureGlowStrength >= 0)
+                    glUniform1f(s_locsLegacy.fixtureGlowStrength, s_fixtureGlowStrength);
             }
             // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy).
             // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 ->
