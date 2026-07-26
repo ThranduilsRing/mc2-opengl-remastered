@@ -3464,13 +3464,16 @@ long BldgAppearance::update (bool animate)
 							std::fprintf(stderr,
 								"[CONE_SPILL v1] apex=(%.1f,%.1f,%.1f) aim=(%.3f,%.3f,%.3f) "
 								"coneLen=%.1f spill=%.1f clamped=%d hit=%d "
-								"old=(%.1f,%.1f,%.1f) new=(%.1f,%.1f,%.1f) horizErr=%.1f\n",
+								"old=(%.1f,%.1f,%.1f) new=(%.1f,%.1f,%.1f) horizErr=%.1f "
+								"coupling=%d poolKept=%d\n",
 								childPos.x, childPos.y, childPos.z,
 								aimW.x, aimW.y, aimW.z, coneLen, spill,
 								(spill > 200.0f) ? 1 : 0, got ? 1 : 0,
 								oldP.x, oldP.y, oldP.z,
 								got ? hit.x : 0.0f, got ? hit.y : 0.0f, got ? hit.z : 0.0f,
-								std::sqrt(dx * dx + dy * dy));
+								std::sqrt(dx * dx + dy * dy),
+								mc2_cone_glow::spill_coupling_enabled() ? 1 : 0,
+								(!mc2_cone_glow::spill_coupling_enabled() || got) ? 1 : 0);
 							std::fflush(stderr);
 						}
 					}
