@@ -2038,6 +2038,16 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consumes (lights [2..N-1] -- building SpotLight_ nodes, light props, mech/vehicle/turret/weapon lights from Camera::terrainLights) at binding 28 and adds color*falloff (TG_Light::GetFalloff math) ADDITIVELY AFTER the shadow multiply, so lamps light shadowed ground and cement pads (rides on top of CEMENT-NIGHT-LIGHT-1's u_missionFlatLight darken). DEFAULT ON; =0 force-uploads u_numPoolLights=0 -> loop never entered -> byte-identical. Also inert whenever MC2_TERRAIN_LIGHTING_GPU=0 (no producer). Driver caps the loop at 256 lights."
     },
+    // PERF-HARNESS-TRUTH-1: registered while measuring its cost. It was
+    // allowlisted for smoke but neither registered nor documented, so the gate
+    // holding ~6 reported visual items had no discoverable contract.
+    {
+        "MC2_FEATURE_LIGHT_REALISM",
+        "MC2_LIGHT_REALISM",
+        EnvVarKind::Feature,
+        false,
+        "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape. Widens each pool light's ground falloff (MC2_LIGHT_REALISM_POOL_SPILL, default 2.2 = user-approved variant B) with a soft core (MC2_LIGHT_REALISM_POOL_CORE, default 0.0) and softens the spotlight cone billboard (MC2_LIGHT_REALISM_CONE_OPACITY, default 0.40 = user-approved variant B). Covers cone transparency, beacon ground discs and pool continuity. Default OFF -> every path skipped -> byte-identical. PERF (PERF-HARNESS-TRUTH-1, mc2_10 busy night pose, 4K): with MC2_LIGHT_GRID=1 (default) it is FREE -- p50 6.405ms ON vs 6.454ms OFF, inside run-to-run noise -- because the grid holds the per-fragment loop to avg_cell 1.70 even though the reshape triples grid stamping (1962 -> 6945). With MC2_LIGHT_GRID=0 the same gate costs +31% (8.732ms). The grid is what makes it affordable."
+    },
     // PERF-HARNESS-TRUTH-1: shipped unregistered, undocumented AND absent from
     // the run_smoke.py passthrough allowlist, so it silently no-opped through
     // the standard harness -- a lighting investigation could set it, see the
