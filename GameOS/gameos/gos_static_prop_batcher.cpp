@@ -951,7 +951,10 @@ static const bool s_farBackdropTintParsed = []() {
 //     (resolved once at process start; matches V-AMBIENT-STATIC-1 pattern).
 //   - runtime global g_iblShStrength (below) is the ImGui slider value;
 //     it ONLY contributes when the env-gate is on.
-//   - per-frame upload: s_iblShEnabled ? g_iblShStrength : 0.0f.
+//   - per-frame upload: iblShStrengthNightScaled() -- was
+//     `s_iblShEnabled ? g_iblShStrength : 0.0f` until IBL-NIGHT-SCALE-1 added
+//     the night curve on top (see that block below). Still 0.0f when the
+//     feature is off, and still exactly g_iblShStrength in daylight.
 //     => env unset/0 -> upload 0.0 -> shader `if (u_iblShStrength > 0.0)`
 //        short-circuits to byte-identical pre-slice output (proof of
 //        default-OFF kill-switch parity, stronger than multiply-by-zero).
@@ -964,6 +967,76 @@ static const bool s_iblShEnabled = []() {
     const char* v = getenv("MC2_STATIC_PROP_IBL_SH");
     return !(v != nullptr && v[0] == '0');
 }();
+
+// IBL-NIGHT-SCALE-1: night-scale the SH-IBL ambient probe.
+//
+// THE DEFECT. The SH set applied to every static prop is projected from a DAY
+// SKY (RenderCore/IblShCoeffs.h: "Source HDRI: data/hdr/DaySkyHDRI063B_4K.exr"),
+// there is exactly ONE set for every mission and every time of day
+// (kMissionShMap[] is empty), and NOTHING scaled it by night. Since the flip to
+// default-ON (2026-05-27) that means a day sky has been lighting every night
+// mission at full strength. Measured on mc2_10 night (full nightFactor): static
+// props run +44%..+83% brighter than with the probe off and one building face
+// hard-clips to 255 on 2.49% of its pixels. Stock MC2 had no IBL at all.
+//
+// WHY NOT THE EXISTING KILLSWITCH. MC2_STATIC_PROP_IBL_SH=0 removes the term
+// outright and drives the perimeter wall, turrets and bunker domes 29%..46%
+// darker -- the near-black props the user has separately complained about. The
+// probe's DIRECTIONAL STRUCTURE (sky above, ground below) is still correct at
+// night; only its INTENSITY was wrong. So this scales toward a floor rather
+// than to zero.
+//
+// THE CURVE: scale = 1 - (1 - floor) * nightFactor, i.e. mix(1.0, floor,
+// nightFactor). Chosen by measured sweep on mc2_10 night (see
+// .claude/IBL-NIGHT-SCALE-1-STATUS.md), emulating each candidate floor via the
+// pre-existing MC2_STATIC_PROP_IBL_SH_STRENGTH env on ONE binary:
+//
+//   floor  bldg clip%   wall_a   dome_a  turret_c  turret_a
+//    1.00     2.49       0.0%     0.0%     0.0%     0.0%   (today's default)
+//    0.35     0.57      -9.4%   -11.8%   -11.2%    -7.7%
+//    0.25     0.13     -14.1%   -18.4%   -18.3%   -13.0%   <-- chosen (the knee)
+//    0.00     0.00     -36.9%   -45.6%   -38.0%   -29.0%   (== blunt killswitch)
+//
+// 0.25 removes 95% of the clipping for a 13-18% dim, where 0.0 costs 29-46%.
+//
+// DAY IS BYTE-IDENTICAL BY ARITHMETIC, not by measurement: at day nightFactor
+// is exactly 0.0f, so the multiplier is exactly 1.0f and `strength * 1.0f`
+// returns the identical float. No epsilon, no rounding.
+//
+// Value semantics: float 0..1 = the night floor. "1.0" -> multiplier is exactly
+// 1.0 at every nightFactor -> byte-identical to the pre-slice build (this is
+// the killswitch). "0.0" -> hard (1 - nightFactor). Unset -> 0.25.
+static const float s_iblNightFloor = []() {
+    const char* v = getenv("MC2_STATIC_PROP_IBL_NIGHT_SCALE");
+    if (!v || !*v) return 0.25f;             // DEFAULT: night floor 0.25
+    float f = (float)atof(v);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
+    return f;
+}();
+
+// Effective SH-IBL strength for this frame: the configured strength (ImGui
+// slider / MC2_STATIC_PROP_IBL_SH_STRENGTH env / per-mission
+// data/visual_tuning.json "staticPropIblStrength") scaled by the night curve.
+//
+// NOTE ON SOURCING NIGHT STATE. This deliberately calls gos_GetNightState()
+// directly instead of reusing the nFactor computed in the uniform-upload
+// blocks below. Those blocks only fetch real night state when one of
+// MC2_STATIC_PROP_NIGHT_TAGS / _FIXTURE_LIGHTS / _FIXTURE_GLOW is active and
+// otherwise leave nFactor at 0.0. _FIXTURE_LIGHTS happens to default ON today,
+// so piggy-backing would work by luck -- and would silently degrade to a no-op
+// the moment a user set MC2_STATIC_PROP_FIXTURE_LIGHTS=0. This fix must not
+// depend on an unrelated gate's default.
+static float iblShStrengthNightScaled() {
+    if (!s_iblShEnabled) return 0.0f;
+    if (s_iblNightFloor >= 1.0f) return g_iblShStrength;   // killswitch: exact
+    bool  isNight = false;
+    float nFactor = 0.0f;
+    extern void gos_GetNightState(bool*, float*);
+    gos_GetNightState(&isNight, &nFactor);
+    if (nFactor <= 0.0f) return g_iblShStrength;           // day: exact
+    return g_iblShStrength * (1.0f - (1.0f - s_iblNightFloor) * nFactor);
+}
 
 // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe specular gate.
 // Default-OFF; "=1" / any non-"0" value enables. Matches V-IBL-STATIC-1
@@ -6751,7 +6824,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                                &s_currentShSet->coeffs[0][0]);
         if (s_locsCoalesce.iblShStrength >= 0)
             glUniform1f       (s_locsCoalesce.iblShStrength,
-                               s_iblShEnabled ? g_iblShStrength : 0.0f);
+                               iblShStrengthNightScaled());
         // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel specular. Default OFF;
         // strength=0.0 when env unset/=0 -> shader short-circuits (mathematical
         // proof: lit += specular * 0.0 = lit unchanged). Safety interlock:
@@ -7966,7 +8039,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                              &s_currentShSet->coeffs[0][0]);
             if (s_locsLegacy.iblShStrength >= 0)
                 glUniform1f(s_locsLegacy.iblShStrength,
-                            s_iblShEnabled ? g_iblShStrength : 0.0f);
+                            iblShStrengthNightScaled());
             // V-MATERIAL-PBR-2: legacy program upload. Same gating as coalesce
             // site (env + ViewUniforms-disabled interlock). Default-OFF is
             // upload 0.0f -> shader short-circuit.
@@ -9300,7 +9373,7 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
                 sizeof(out->iblSh));
     // s_iblShEnabled: MC2_STATIC_PROP_IBL_SH=0 kill-switch (default-ON). Mirrors the
     // GL per-frame upload rule exactly: env unset/1 -> g_iblShStrength; env=0 -> 0.0.
-    out->iblShStrength = s_iblShEnabled ? g_iblShStrength : 0.0f;
+    out->iblShStrength = iblShStrengthNightScaled();
     return 1;
 }
 #endif // MC2_VULKAN_ISLAND

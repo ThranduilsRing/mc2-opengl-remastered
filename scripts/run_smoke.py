@@ -2075,6 +2075,10 @@ def main():
                             # MC2_STATIC_PROP_IBL_SH=1. ImGui slider may
                             # still override at runtime.
                             "MC2_STATIC_PROP_IBL_SH_STRENGTH",
+                            # IBL-NIGHT-SCALE-1: night floor for the day-sky SH
+                            # probe (default 0.25, DEFAULT-ON). "1.0" restores
+                            # the pre-slice byte-identical behaviour.
+                            "MC2_STATIC_PROP_IBL_NIGHT_SCALE",
                             # V-IBL-STATIC-2: optional SH-set override by name
                             # (e.g. "default"). Unset/empty/unknown falls back
                             # to mission registry or default set. Dev knob.

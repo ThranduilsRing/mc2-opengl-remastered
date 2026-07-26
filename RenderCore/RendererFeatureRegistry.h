@@ -1895,7 +1895,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_STATIC_PROP_IBL_SH_STRENGTH",
         EnvVarKind::Trace,
         false,
-        "V-IBL-STATIC-1: optional default-strength override for SH-L2 ambient (clamped 0..3). ImGui slider g_iblShStrength initial value. Only contributes when MC2_STATIC_PROP_IBL_SH is active; =0 on that gate uploads strength 0.0. Unset/empty -> default 0.5. Resolved once at process start."
+        "V-IBL-STATIC-1: optional default-strength override for SH-L2 ambient (clamped 0..3). ImGui slider g_iblShStrength initial value. Only contributes when MC2_STATIC_PROP_IBL_SH is active; =0 on that gate uploads strength 0.0. Unset/empty -> code fallback 0.5, BUT data/visual_tuning.json normally overrides it (defaults 0.55; mc2_01/mc2_10/mc2_24 0.6) -- setting this env DISABLES that per-mission profile override, so an env value equal to the code fallback is NOT the same as leaving it unset. Resolved once at process start."
+    },
+    {
+        "MC2_FEATURE_STATIC_PROP_IBL_NIGHT_SCALE",
+        "MC2_STATIC_PROP_IBL_NIGHT_SCALE",
+        EnvVarKind::Feature,
+        true,
+        "IBL-NIGHT-SCALE-1: night-scales the SH-IBL ambient probe on static props. The probe is projected from a DAY SKY (IblShCoeffs.h 'DaySkyHDRI063B_4K.exr'), there is one SH set for all missions and all times of day (kMissionShMap[] empty), and nothing scaled it by night -- so since the 2026-05-27 default-ON flip a day sky has lit every night mission at full strength (mc2_10 night: props +44%..+83%, one building face clipping to 255 on 2.49% of pixels; stock MC2 had no IBL at all). Curve: strength *= 1 - (1 - floor) * nightFactor. Value = the night floor, clamped 0..1; unset -> 0.25, chosen at the measured knee (clipping 2.49% -> 0.13% for a 13-18% wall/turret dim, where floor 0.0 -- equivalent to the blunt MC2_STATIC_PROP_IBL_SH=0 killswitch -- costs 29-46% and drives walls/turrets near-black). '1.0' -> multiplier exactly 1.0 at every nightFactor -> byte-identical to the pre-slice build (killswitch). '0.0' -> hard (1 - nightFactor). DAY IS BYTE-IDENTICAL BY ARITHMETIC: nightFactor is exactly 0.0f in daylight so the multiplier is exactly 1.0f. DEFAULT-ON. Resolved once at process start."
     },
     {
         "MC2_TUNE_STATIC_PROP_PBR_V1_STRENGTH",
