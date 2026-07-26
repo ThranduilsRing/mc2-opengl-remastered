@@ -105,6 +105,104 @@ def parse_registry(header_path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# READER-SOURCE default resolution (for gates with no registry entry)
+# ---------------------------------------------------------------------------
+#
+# RendererFeatureRegistry.h is authoritative when it has an entry, but 18 of the
+# gates named in this pack have none, so a registry-only table can say nothing
+# about their real defaults.  Rather than let the manifest assert a default (the
+# exact drift AUDIT-TRUTH-1 had to repair), resolve it from the C++ READER at
+# render time by classifying the getenv idiom, and publish the matched source
+# line as the citation.  Anything that does not match a known idiom renders
+# UNRESOLVED -- never a guess.
+
+_READER_SEARCH_DIRS = ("GameOS", "mclib", "code", "RenderCore")
+_READER_EXTS = (".cpp", ".h", ".hpp", ".cc")
+
+# (regex, verdict, kind).  Applied to the reader site plus the next few lines.
+_IDIOM_RULES = (
+    (re.compile(r"env_default_on\s*\(\s*\"%s\""), "ON", "bool"),
+    (re.compile(r"return\s*!\s*\(\s*\w+\s*&&\s*\w+\[0\]\s*==\s*'0'"), "ON", "bool"),
+    (re.compile(r"return\s*\(\s*\w+\s*&&\s*\w+\[0\]\s*==\s*'1'\s*\)"), "OFF", "bool"),
+    (re.compile(r"return\s+\w+\s*&&\s*\w+\[0\]\s*&&\s*\w+\[0\]\s*!=\s*'0'"), "OFF", "bool"),
+    (re.compile(r"if\s*\(\s*!\w+\s*\|\|\s*!\*?\w+(?:\[0\])?\s*\)\s*return\s+"
+                r"(?P<val>-?[0-9.]+)f?\s*;"), "VALUE", "numeric"),
+    (re.compile(r"\?\s*std::atoi\s*\(\s*\w+\s*\)\s*:\s*(?P<val>-?[0-9]+)"), "VALUE", "numeric"),
+    (re.compile(r"\?\s*atoi\s*\(\s*\w+\s*\)\s*:\s*(?P<val>-?[0-9]+)"), "VALUE", "numeric"),
+)
+
+_READER_WINDOW = 4  # lines after the getenv site to inspect
+
+
+def _iter_source_files(repo_root: str, hint: str | None):
+    if hint:
+        p = os.path.join(repo_root, hint)
+        if os.path.isfile(p):
+            yield p
+            return
+    for d in _READER_SEARCH_DIRS:
+        base = os.path.join(repo_root, d)
+        for root, _dirs, files in os.walk(base):
+            for f in files:
+                if f.endswith(_READER_EXTS):
+                    yield os.path.join(root, f)
+
+
+def resolve_reader_default(env: str, repo_root: str, hint: str | None = None) -> dict:
+    """Classify a gate's default by reading its C++ getenv site.
+
+    Returns {status, verdict, file, lineno, line}.  status is one of
+    'resolved', 'unresolved' (reader found, idiom unrecognised) or
+    'ghost' (no reader anywhere -- the gate does nothing).
+    """
+    needle = '"%s"' % env
+    best = None
+    resolved = None
+    sites = []
+    for path in _iter_source_files(repo_root, hint):
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+        except OSError:
+            continue
+        for i, line in enumerate(lines):
+            if needle not in line or ("getenv" not in line and "env_default_on" not in line):
+                continue
+            window = "".join(lines[i:i + _READER_WINDOW + 1])
+            rel = os.path.relpath(path, repo_root).replace("\\", "/")
+            sites.append("%s:%d" % (rel, i + 1))
+            for rx, verdict, kind in _IDIOM_RULES:
+                pat = rx.pattern
+                m = re.search(pat % env, window) if "%s" in pat else rx.search(window)
+                if not m:
+                    continue
+                if verdict == "VALUE":
+                    val = m.group("val")
+                    v = "OFF" if val in ("0", "0.0", "0.0f") else "DEFAULT %s" % val
+                else:
+                    v = verdict
+                if resolved is None:
+                    resolved = {"status": "resolved", "verdict": v, "kind": kind,
+                                "file": rel, "lineno": i + 1, "line": line.strip()}
+                elif resolved["verdict"] != v:
+                    # two readers of the same gate disagree -- never publish a
+                    # single verdict for that; make a human read both.
+                    resolved = {"status": "unresolved", "verdict": None,
+                                "kind": None, "file": rel, "lineno": i + 1,
+                                "line": "conflicting readers: %s vs %s"
+                                        % (resolved["verdict"], v)}
+                break
+            else:
+                if best is None:
+                    best = {"status": "unresolved", "verdict": None, "kind": None,
+                            "file": rel, "lineno": i + 1, "line": line.strip()}
+    out = resolved or best or {"status": "ghost", "verdict": None, "kind": None,
+                               "file": None, "lineno": None, "line": None}
+    out["sites"] = sites
+    return out
+
+
+# ---------------------------------------------------------------------------
 # HTML helpers
 # ---------------------------------------------------------------------------
 
@@ -123,13 +221,34 @@ OFF = "<b>OFF</b>"
 UNREG = '<b style="color:#f0d890">NOT IN REGISTRY</b>'
 
 
-def render_default_cell(gate_label: str, reg: dict) -> str:
+SMALL = '<br><span style="font-size:11px;color:#9aa3ad">%s</span>'
+
+
+def render_default_cell(gate_label: str, reg: dict, readers: dict | None = None) -> str:
     key = gate_lookup_key(gate_label)
     e = reg.get(key)
-    if e is None:
-        return UNREG + '<br><span style="font-size:12px;color:#9aa3ad">no ' \
-                       "RendererFeatureRegistry.h entry &mdash; default is source-side only</span>"
-    return ON if e["defaultOn"] else OFF
+    if e is not None:
+        return (ON if e["defaultOn"] else OFF) + SMALL % "RendererFeatureRegistry.h"
+
+    r = (readers or {}).get(key)
+    if r is None:
+        return UNREG + SMALL % ("no registry entry and reader not resolved")
+    if r["status"] == "ghost":
+        return ('<b style="color:#f0a0a0">GHOST</b>' + SMALL
+                % "no reader found in GameOS/ mclib/ code/ RenderCore/ &mdash; "
+                  "this gate does nothing")
+    cite = "%s:%d" % (r["file"], r["lineno"])
+    if r["status"] == "unresolved":
+        return ('<b style="color:#f0d890">UNRESOLVED</b>' + SMALL
+                % ("reader at <code>%s</code>, idiom not recognised &mdash; read it"
+                   % esc_attr(cite)))
+    v = r["verdict"]
+    body = ON if v == "ON" else OFF if v == "OFF" else "<b>%s</b>" % v
+    extra = ""
+    if len(r.get("sites") or []) > 1:
+        extra = " (%d reader sites, agreeing)" % len(r["sites"])
+    return body + SMALL % ("from reader <code title=\"%s\">%s</code>%s"
+                           % (esc_attr(r["line"]), esc_attr(cite), extra))
 
 
 def render_gate_cell(gate_label: str, reg: dict) -> str:
@@ -148,7 +267,58 @@ def render_gate_cell(gate_label: str, reg: dict) -> str:
     return out
 
 
-def render_block(b: dict, reg: dict, out: list) -> None:
+_VERDICT_STYLE = {
+    "fixed": ("#a0f0a0", "FIXED"),
+    "partial": ("#f0d890", "PARTIAL"),
+    "rejected-by-user": ("#f0a0a0", "REJECTED BY USER"),
+    "approved-by-user": ("#a0f0a0", "APPROVED BY USER"),
+    "disproven": ("#c0a0f0", "DISPROVEN"),
+    "diagnostic-only": ("#9aa3ad", "DIAGNOSTIC ONLY"),
+    "blocked": ("#f0a0a0", "BLOCKED"),
+    "cancelled": ("#9aa3ad", "CANCELLED"),
+    "in-flight": ("#78b0f0", "IN FLIGHT"),
+}
+
+
+def render_verdict(v: str) -> str:
+    colour, label = _VERDICT_STYLE.get(v, ("#f0d890", v.upper()))
+    return '<b style="color:%s">%s</b>' % (colour, label)
+
+
+def render_lanes_table(b: dict, reg: dict, readers: dict, out: list) -> None:
+    """Section 14 -- one row per lane run this session.
+
+    Sibling lanes still in flight append entries to the manifest's "lanes"
+    list; nothing else in the page has to change.
+    """
+    out.append('<table class="meta" style="font-size:13px">')
+    out.append("<tr>" + "".join(
+        '<th style="text-align:left">%s</th>' % h
+        for h in ("Lane", "Sent to do", "What it actually found",
+                  "Commits", "Gate(s) &amp; CURRENT DEFAULT", "Verdict", "Evidence")) + "</tr>")
+    for ln in b["lanes"]:
+        gates_html = []
+        for g in ln.get("gates") or []:
+            gates_html.append("<code>%s</code> &rarr; %s"
+                              % (esc_attr(g), render_default_cell(g, reg, readers)))
+        ev = " ".join('<a href="%s">%s</a>' % (esc_attr(e["href"]), e.get("text", e["href"]))
+                      for e in (ln.get("evidence") or []))
+        cells = [
+            "<b>%s</b>" % ln["name"],
+            ln.get("sent", ""),
+            ln.get("found", ""),
+            " ".join("<code>%s</code>" % c for c in (ln.get("commits") or [])) or
+            '<span style="color:#9aa3ad">no code shipped</span>',
+            "<br>".join(gates_html) or '<span style="color:#9aa3ad">none</span>',
+            render_verdict(ln.get("verdict", "")),
+            ev or '<span style="color:#9aa3ad">&mdash;</span>',
+        ]
+        out.append("<tr>" + "".join("<td>%s</td>" % c for c in cells) + "</tr>")
+    out.append("</table>")
+
+
+def render_block(b: dict, reg: dict, out: list, readers: dict | None = None) -> None:
+    readers = readers or {}
     t = b["type"]
     if t == "h3":
         out.append("<h3>%s</h3>" % b["html"])
@@ -173,7 +343,7 @@ def render_block(b: dict, reg: dict, out: list) -> None:
         for r in b["rows"]:
             cells = list(r["cells"])
             if dcol is not None:
-                cells.insert(dcol, render_default_cell(r["gate"], reg))
+                cells.insert(dcol, render_default_cell(r["gate"], reg, readers))
             cells[0] = render_gate_cell(r["gate"], reg)
             out.append("<tr>" + "".join("<td>%s</td>" % c for c in cells) + "</tr>")
         out.append("</table>")
@@ -195,11 +365,34 @@ def render_block(b: dict, reg: dict, out: list) -> None:
             if has_fig:
                 out.append("</figure>")
         out.append("</div>")
+    elif t == "lanes_table":
+        render_lanes_table(b, reg, readers, out)
     else:
         raise SystemExit("unknown block type %r" % t)
 
 
-def render(manifest: dict, reg: dict) -> str:
+def build_reader_index(manifest: dict, reg: dict, repo_root: str) -> dict:
+    """Resolve reader-source defaults for every gate the pack names that the
+    registry does not cover.  Done once per render; hints come from the
+    manifest's optional 'reader_hints' map (gate -> repo-relative file)."""
+    hints = manifest.get("reader_hints", {})
+    wanted = set()
+    for s in manifest["sections"]:
+        for b in s["blocks"]:
+            if b["type"] == "gate_table":
+                wanted.update(gate_lookup_key(r["gate"]) for r in b["rows"])
+            elif b["type"] == "lanes_table":
+                for ln in b["lanes"]:
+                    wanted.update(gate_lookup_key(g) for g in (ln.get("gates") or []))
+    out = {}
+    for g in sorted(wanted):
+        if g in reg:
+            continue
+        out[g] = resolve_reader_default(g, repo_root, hints.get(g))
+    return out
+
+
+def render(manifest: dict, reg: dict, readers: dict | None = None) -> str:
     out = ["<!doctype html><html><head><meta charset='utf-8'>"
            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
            "<title>%s</title>" % manifest["title"],
@@ -212,7 +405,7 @@ def render(manifest: dict, reg: dict) -> str:
         out.append('<section id="%s">' % s["id"])
         out.append("<h2>%s</h2>" % s["heading"])
         for b in s["blocks"]:
-            render_block(b, reg, out)
+            render_block(b, reg, out, readers)
         out.append("</section>")
     out.append("</div></body></html>")
     return "\n".join(out) + "\n"
@@ -294,7 +487,10 @@ def main(argv=None) -> int:
         return do_check(manifest, pack_dir)
 
     reg = parse_registry(registry)
-    html = render(manifest, reg)
+    readers = build_reader_index(manifest, reg, REPO_ROOT)
+    ghosts = sorted(g for g, r in readers.items() if r["status"] == "ghost")
+    unres = sorted(g for g, r in readers.items() if r["status"] == "unresolved")
+    html = render(manifest, reg, readers)
     out_dir = os.path.dirname(os.path.abspath(args.out))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
@@ -303,6 +499,12 @@ def main(argv=None) -> int:
     print("wrote %s (%d bytes, %d sections, %d gate entries from %s)"
           % (args.out, len(html.encode("utf-8")), len(manifest["sections"]),
              len(reg), os.path.relpath(registry, REPO_ROOT)))
+    print("reader-source defaults resolved for %d gate(s) with no registry entry"
+          % sum(1 for r in readers.values() if r["status"] == "resolved"))
+    if ghosts:
+        print("GHOST (named in the pack, no reader in source): %s" % ", ".join(ghosts))
+    if unres:
+        print("UNRESOLVED (reader found, idiom unrecognised): %s" % ", ".join(unres))
     return 0
 
 
