@@ -40,12 +40,24 @@ try:
     from scripts.smoke_lib import cockpit as _cockpit
 except Exception:
     _cockpit = None
-# Deploy-fingerprint check (advisory by default; MC2_SMOKE_REQUIRE_FINGERPRINT=1
-# = hard fail). Import-safe: a broken module degrades to "check skipped".
+# Deploy-fingerprint check. DEFAULT = HARD FAIL on mismatch/absence
+# (DEPLOY-FINGERPRINT-DEFAULT-ON-1, e01e8ac1); opt OUT with
+# MC2_SMOKE_REQUIRE_FINGERPRINT=0. See the _fp_require site in main().
+#
+# SMOKE-DEPLOY-TRAP-1: the import stays exception-safe so this module can be
+# imported by contract checkers on a machine with a broken smoke_lib, but a
+# failed import is NOT silently tolerated at run time. If the module is
+# unavailable the fingerprint check cannot run at all, and a run that cannot
+# verify which exe it smoked must not be able to print PASS -- that is the
+# whole defect this guard exists to close, reachable by a 3-line import break.
+# main() promotes the import failure to a hard abort (exit 2) unless the
+# operator has explicitly opted out.
 try:
     from scripts.smoke_lib import fingerprint as _fingerprint
-except Exception:
+    _fingerprint_import_error = None
+except Exception as _fp_import_exc:  # pragma: no cover - defensive
     _fingerprint = None
+    _fingerprint_import_error = _fp_import_exc
 # SMOKE-CRASH-SILENT-EVIDENCE-1: post-verdict environment evidence capture for
 # crash_silent / heartbeat_freeze. Import-safe; never affects the verdict.
 try:
@@ -1097,6 +1109,25 @@ def main():
     # the "passed on the wrong binary" failure this arc exists to kill. Escape
     # hatch preserved for intentionally running a pre-built external exe.
     _fp_require = os.environ.get("MC2_SMOKE_REQUIRE_FINGERPRINT", "1") != "0"
+    # SMOKE-DEPLOY-TRAP-1: no fingerprint module => no way to tell which exe we
+    # smoked. Refuse to start rather than run the missions and print a verdict
+    # that cannot be attributed to a binary.
+    if _fingerprint is None:
+        if _fp_require:
+            print(
+                f"\n[runner] [DEPLOY_FINGERPRINT] FATAL: the fingerprint module "
+                f"could not be imported ({_fingerprint_import_error!r}), so the "
+                f"smoked exe cannot be verified against this worktree HEAD.\n"
+                f"[runner] Refusing to run -- a PASS here would be unattributable "
+                f"to any binary (this is exactly the stale/wrong-lane exe trap).\n"
+                f"[runner] Fix scripts/smoke_lib/fingerprint.py, or set "
+                f"MC2_SMOKE_REQUIRE_FINGERPRINT=0 to intentionally smoke an "
+                f"unverified exe.",
+                file=sys.stderr)
+            sys.exit(2)
+        print(f"[runner] [DEPLOY_FINGERPRINT] check UNAVAILABLE "
+              f"({_fingerprint_import_error!r}) and MC2_SMOKE_REQUIRE_FINGERPRINT=0 "
+              f"-- exe identity is NOT verified for this run.", file=sys.stderr)
     if _fingerprint is not None:
         try:
             _fp_expected_sha = subprocess.check_output(
@@ -2782,8 +2813,9 @@ def main():
               file=sys.stderr)
         result = run_one(cfg)
 
-        # Deploy-fingerprint scan of the captured log (advisory by default;
-        # never touches the mission verdict — see _fp_require at the end).
+        # Deploy-fingerprint scan of the captured log. A mismatch/absence sets
+        # _fp_hard_fail, which clears `passed` at the end of main() unless
+        # MC2_SMOKE_REQUIRE_FINGERPRINT=0 (see the _fp_require site).
         if _fingerprint is not None:
             try:
                 _fp = _fingerprint.parse_fingerprint(result.stdout_text)
@@ -2792,8 +2824,13 @@ def main():
                 for _l in _fp_lines:
                     print(f"[runner] {_l}", file=sys.stderr)
             except Exception as _fpe:
-                print(f"[runner] [DEPLOY_FINGERPRINT] check skipped: {_fpe}",
-                      file=sys.stderr)
+                # SMOKE-DEPLOY-TRAP-1: "check skipped" used to leave
+                # _fp_hard_fail untouched, so a raising check produced a clean
+                # PASS on an unverified exe -- the same lie as a silent
+                # mismatch. An unverifiable exe is a failed verification.
+                _fp_hard_fail = True
+                print(f"[runner] [DEPLOY_FINGERPRINT] check FAILED (treated as "
+                      f"mismatch): {_fpe!r}", file=sys.stderr)
 
         # SMOKE-CRASH-SILENT-EVIDENCE-1: on an external-termination / freeze
         # verdict, capture cheap environment evidence (exit code, event-log TDR /
@@ -2948,8 +2985,11 @@ def main():
             print(f"[runner]   {_of}", file=sys.stderr)
         passed = False
 
-    # MC2_SMOKE_REQUIRE_FINGERPRINT=1: promote fingerprint mismatch/absence to
-    # a hard failure. Default (unset) keeps the verdict untouched (advisory).
+    # Fingerprint mismatch/absence => hard failure. This is ON BY DEFAULT
+    # (DEPLOY-FINGERPRINT-DEFAULT-ON-1); MC2_SMOKE_REQUIRE_FINGERPRINT=0 opts
+    # out for the narrow case of deliberately smoking an external prebuilt exe.
+    # Enforced by scripts/check-smoke-fingerprint-honesty.py -- do not weaken
+    # the default without updating that contract check.
     if _fp_require and _fp_hard_fail:
         print("[runner] [DEPLOY_FINGERPRINT] HARD FAIL: smoke ran an exe whose "
               "fingerprint does not match this worktree HEAD (stale / wrong-lane "

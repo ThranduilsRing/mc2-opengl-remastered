@@ -52,6 +52,12 @@ $env:MC2_DEBUG_STATE_DUMP="1"; $env:MC2_DIAGNOSTIC_TRACE_FILE="debug_state/diagn
 
 `tier1` = mc2_01/03/10/17/24, 30s each. Inner-loop: `--mission mc2_01 --mission mc2_24`. Exit 0 = pass.
 
+**Which exe gets smoked, and why `PASS` alone is not evidence.** With no `--exe`/`--deploy`, the runner AUTO-SELECTS a deploy lane (least-recently-used). That auto-selection smoked another lane's stale exe for eight separate lanes, whose results had to be redone. Two things now make the canonical command above safe to copy-paste — rely on them, and quote them:
+- The runner compares the exe's `[BUILD_FINGERPRINT v1]` sha against this worktree's HEAD and **fails the run on a mismatch** (`DEPLOY_FINGERPRINT`, fatal by default since `e01e8ac1`; opt out with `MC2_SMOKE_REQUIRE_FINGERPRINT=0` only when deliberately smoking an external prebuilt exe). So deploy your build BEFORE smoking, or the run fails rather than lying.
+- Quote the `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD` line as your evidence, not the `PASS (5/5)` line. Exit 0 without that line is not attributable to a binary.
+
+To pin a specific lane instead: `--deploy <name>` where name is one of `0.4` / `0.4c` / `0.4d-rc1` / `0.5.0` / `0.5.1` / `0.5-testing` (the table in `scripts/smoke_lib/deploy_lease.py`; an unknown name is a hard error, not a fall-through), or `--exe <dir>/mc2.exe` for a path outside that table. `0.4c` holds the blessed golden baseline — do not overwrite it casually.
+
 ## Profiling
 
 Tracy (`TRACY_ENABLE`). **100ns floor** — no per-element/per-vertex zones in hot loops. AMD RGP via Radeon Developer Panel.

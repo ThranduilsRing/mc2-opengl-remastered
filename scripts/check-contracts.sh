@@ -157,6 +157,19 @@ run_check "capture_determinism"    "py -3 scripts/check-capture-determinism.py -
 # offline. A ratchet nobody watches fail is indistinguishable from one that
 # cannot fail.
 run_check "capture_determinism_ratchet" "py -3 scripts/check-capture-determinism.py --selftest"
+# SMOKE-DEPLOY-TRAP-1: run_smoke.py printed "PASS (5/5)" alongside a
+# DEPLOY_FINGERPRINT MISMATCH for eight separate lanes -- it had smoked another
+# lane's stale exe, and several lanes reported verification results that were
+# meaningless and had to be redone. DEPLOY-FINGERPRINT-DEFAULT-ON-1 (e01e8ac1)
+# made that fatal by default; this check exists so the fix cannot rot back, and
+# covers the three remaining ways to reopen the trap (flip the knob to opt-in,
+# print the failure without clearing the verdict, or break the import/check so
+# it is skipped silently). Offline, no game launch.
+run_check "smoke_fingerprint_honesty" "py -3 scripts/check-smoke-fingerprint-honesty.py --quiet"
+# ...and prove those guards actually fire, by injecting each regression into a
+# copy of the source. A guard only ever seen passing on good input is not
+# evidence that it works.
+run_check "smoke_fingerprint_ratchet" "py -3 scripts/check-smoke-fingerprint-honesty.py --selftest"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"

@@ -24,6 +24,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 # Explicit registries (NOT discovery — explicit beats clever; never auto-scan
 # build dirs for stray/experimental harnesses).
@@ -58,17 +59,44 @@ PY_HARNESSES = [
 
 
 def find_exe(name, build_dirs, config):
-    """Locate a harness exe across candidate standalone build dirs."""
+    """Locate a harness exe across candidate standalone build dirs.
+
+    HARNESS-STALE-EXE-1: this used to return the FIRST existing candidate in a
+    hardcoded dir list. That list named the old per-harness dirs
+    (build64-shader, build64-ibl, ...) but NOT `build64-h-<name>`, which is
+    where the canonical builder `tools/build_contract_harnesses.py` puts its
+    output. On a tree that has both, the runner silently graded a months-old
+    binary: shader_contract_harness and ibl_registry_contract_harness were
+    reported FAIL here while the current build of the same harness exits 0.
+    That is the same defect as the smoke runner's stale-exe trap -- a verdict
+    on an artifact nobody identified -- only it fails green work instead of
+    passing broken work.
+
+    Two changes: the canonical `build64-h-<name>` dir is searched FIRST, and
+    among existing candidates the NEWEST wins. Returns (path, shadowed) where
+    `shadowed` lists older copies that were passed over, so the caller can say
+    out loud which binary it graded.
+    """
     exe = name + (".exe" if os.name == "nt" else "")
     candidates = []
-    for bd in build_dirs:
+    # Canonical per-harness dir written by tools/build_contract_harnesses.py.
+    for bd in [os.path.join(REPO_ROOT, "build64-h-" + name)] + list(build_dirs):
         base = bd if os.path.isabs(bd) else os.path.join(REPO_ROOT, bd)
         candidates.append(os.path.join(base, config, exe))   # VS multi-config
         candidates.append(os.path.join(base, exe))            # single-config
+
+    found = []
+    seen = set()
     for c in candidates:
-        if os.path.isfile(c):
-            return c
-    return None
+        real = os.path.normcase(os.path.abspath(c))
+        if real in seen or not os.path.isfile(c):
+            continue
+        seen.add(real)
+        found.append((os.path.getmtime(c), c))
+    if not found:
+        return None, []
+    found.sort(key=lambda t: t[0], reverse=True)
+    return found[0][1], [c for _, c in found[1:]]
 
 
 def run_harness(cmd):
@@ -110,14 +138,24 @@ def main():
     results = []
     missing = []
     for name in REGISTERED_HARNESSES:
-        exe = find_exe(name, build_dirs, args.config)
+        exe, shadowed = find_exe(name, build_dirs, args.config)
         if exe is None:
             missing.append(name)
             results.append({"harness": name, "status": "MISSING"})
             continue
+        # HARNESS-STALE-EXE-1: name the binary being graded. A verdict whose
+        # artifact is unidentified is what let a months-old exe be reported as
+        # this tree's result for weeks.
+        built = time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(exe)))
+        if shadowed:
+            print(f"  [exe] {name}: using {os.path.relpath(exe, REPO_ROOT)} "
+                  f"(built {built}); ignored {len(shadowed)} older copy/copies: "
+                  f"{', '.join(os.path.relpath(s, REPO_ROOT) for s in shadowed)}",
+                  file=sys.stderr)
         ok, parsed = run_harness([exe])
         results.append({"harness": name, "status": "PASS" if ok else "FAIL",
-                        "detail": parsed})
+                        "detail": parsed, "exe": os.path.relpath(exe, REPO_ROOT),
+                        "exe_built": built})
 
     # Python harnesses: invoked via the current interpreter, source-of-truth lives
     # in Python (no build step, always present in a checkout).

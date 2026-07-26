@@ -7,8 +7,10 @@ cmake/GenerateBuildFingerprint.cmake):
   [BUILD_FINGERPRINT v1] sha=<12-hex> dirty=<0|1> branch=<name> built=<iso> src=<worktree>
 
 run_smoke compares the exe's sha against the worktree HEAD it runs from.
-DEFAULT = loud advisory only (other sessions legitimately smoke exes built
-elsewhere); MC2_SMOKE_REQUIRE_FINGERPRINT=1 = hard fail on mismatch/absence.
+DEFAULT = HARD FAIL on mismatch/absence (DEPLOY-FINGERPRINT-DEFAULT-ON-1): a
+smoke that ran a stale or wrong-lane exe must never print PASS. Opt OUT with
+MC2_SMOKE_REQUIRE_FINGERPRINT=0 for the narrow case of deliberately smoking an
+external prebuilt exe.
 
 Pure functions, no subprocess/game launch — unit-tested in
 scripts/tests/test_fingerprint.py.
@@ -41,8 +43,9 @@ def parse_fingerprint(log_text: str) -> Optional[dict]:
 def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str]):
     """Compare a parsed fingerprint against the runner worktree HEAD.
 
-    Returns (advisory_lines, hard_fail). hard_fail is only ENFORCED by the
-    caller when MC2_SMOKE_REQUIRE_FINGERPRINT=1; default behavior is advisory.
+    Returns (lines, hard_fail). hard_fail is enforced by the caller BY DEFAULT
+    (run_smoke clears its PASS verdict); MC2_SMOKE_REQUIRE_FINGERPRINT=0
+    downgrades it to advisory.
     """
     lines: list[str] = []
     if fp is None:
