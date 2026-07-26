@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "SHADOW-SUNCLAMP-1 verdict poses. mc2_10 is the ONLY tier map whose authored sun triggers mc2ClampShadowSunAltitude (LightDirPitch=180 -> lightDirection.z = sin(180deg) = 0 -> down = 0 < sin(15deg) = 0.2588). Map is 15360wu (+-7680), elev 0..750, water 80. These are WIDE full-frame poses at normal RTS gameplay altitude (alt 750-900, proj 28-34), deliberately spread across the map and rotated to span BOTH sides of the sun azimuth (LightDirYaw 28.75 + 45 = 73.75deg) so the reported shadowed-half / unshadowed-half split falls inside frame rather than being cropped out. Each pose is over populated terrain (props + relief), NOT empty ground -- the failure mode that got the previous fixtures deleted.",
+  "bookmarks": [
+    {
+      "name": "sunclamp_center_wide",
+      "pos": [0.0, 0.0, 0.0],
+      "rot": 73.75,
+      "proj": 32.0,
+      "alt": 850.0,
+      "covers": ["shadow_screen_backface_guard", "static_shadow_map", "dynamic_csm"]
+    },
+    {
+      "name": "sunclamp_across_azimuth",
+      "pos": [-3200.0, -3200.0, 0.0],
+      "rot": 163.75,
+      "proj": 30.0,
+      "alt": 800.0,
+      "covers": ["shadow_screen_backface_guard", "static_shadow_map"]
+    },
+    {
+      "name": "sunclamp_relief_ne",
+      "pos": [3000.0, 2600.0, 0.0],
+      "rot": 253.75,
+      "proj": 28.0,
+      "alt": 780.0,
+      "covers": ["shadow_screen_backface_guard", "terrain_relief_slopes"]
+    }
+  ]
+}

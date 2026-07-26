@@ -1,0 +1,31 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "SHADOW-SUNCLAMP-1 CONTROL poses. mc2_01 authors LightDirPitch=50 -> sin(50deg)=0.766 >= sin(15deg)=0.2588, so mc2ClampShadowSunAltitude early-returns and SHADOW-SUNCLAMP-1 must be a byte-identical no-op here. Any nonzero diff between gate ON and gate OFF on these poses REFUTES the fix's claimed blast radius. Map is 12800wu (+-6400), elev 200..710. Wide full-frame poses at normal RTS gameplay altitude over populated terrain.",
+  "bookmarks": [
+    {
+      "name": "control_center_wide",
+      "pos": [0.0, 0.0, 0.0],
+      "rot": 56.0,
+      "proj": 32.0,
+      "alt": 850.0,
+      "covers": ["shadow_screen_backface_guard", "static_shadow_map"]
+    },
+    {
+      "name": "control_across_azimuth",
+      "pos": [-2600.0, -2600.0, 0.0],
+      "rot": 146.0,
+      "proj": 30.0,
+      "alt": 800.0,
+      "covers": ["shadow_screen_backface_guard", "static_shadow_map"]
+    },
+    {
+      "name": "control_relief_ne",
+      "pos": [2500.0, 2200.0, 0.0],
+      "rot": 236.0,
+      "proj": 28.0,
+      "alt": 780.0,
+      "covers": ["shadow_screen_backface_guard", "terrain_relief_slopes"]
+    }
+  ]
+}
