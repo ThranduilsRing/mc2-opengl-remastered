@@ -53,6 +53,44 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOKMARK_DIR = ROOT / "tests" / "visual" / "bookmarks"
+GOLDEN_DIR = ROOT / "tests" / "visual" / "goldens"
+
+# DETERMINISM-RATCHET-2: the two pose populations, and why both must be graded.
+#
+# This checker was written for tests/visual/bookmarks/ -- the poses an ad-hoc
+# lane A/B uses. It never looked at the poses that grade RELEASES. Those come
+# from <install>/saved_bookmarks/ and are vendored per golden set as
+# tests/visual/goldens/<set>/poses/*.json. The two sets are DISJOINT: a
+# fraudulent golden pose -- one that frames empty terrain, so both arms match
+# and every region "passes" -- was outside this checker entirely.
+#
+# GOLDEN-REBLESS-2 hit this and audited its 10 golden poses BY HAND, recording
+# the hole in its own golden.json as
+#   pose_provenance.honesty_audit.checker_coverage_gap
+# A hand audit is not a ratchet; the next golden gets no such treatment. Now
+# both populations are graded by the same rules.
+GOLDEN_POSE_GLOB = "*/poses/*.json"
+REGION_DIR = ROOT / "tools" / "visual_verify" / "regions"
+
+
+def golden_sets() -> list[Path]:
+    if not GOLDEN_DIR.is_dir():
+        return []
+    return sorted(d for d in GOLDEN_DIR.iterdir()
+                  if d.is_dir() and (d / "golden.json").is_file())
+
+
+def tracked_golden_pose_files() -> list[Path]:
+    """Vendored golden poses, tracked-only (same rule as bookmarks)."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--", f"tests/visual/goldens/{GOLDEN_POSE_GLOB}"],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=30)
+        if out.returncode == 0 and out.stdout.strip():
+            return sorted(ROOT / line for line in out.stdout.split() if line)
+    except Exception:
+        pass
+    return sorted(GOLDEN_DIR.glob(GOLDEN_POSE_GLOB))
 
 
 def tracked_bookmark_files() -> list[Path]:
@@ -103,13 +141,31 @@ def main() -> int:
         print(f"[bookmark-honesty] SKIP: no {BOOKMARK_DIR}")
         return 0
 
-    files = [p for p in tracked_bookmark_files() if p.is_file()]
+    lane_files = [p for p in tracked_bookmark_files() if p.is_file()]
+    golden_files = [p for p in tracked_golden_pose_files() if p.is_file()]
+    files = lane_files + golden_files
+    golden_set_members = set(golden_files)
     if not files:
         print("[bookmark-honesty] SKIP: no bookmark files")
         return 0
 
     violations: list[str] = []
     warnings: list[str] = []
+
+    # A golden set whose poses are NOT vendored cannot be audited by anything --
+    # not by this checker, not by a human, not by the next lane. Its poses exist
+    # only inside a deploy install, which is not version-controlled; if that dir
+    # is wiped the set can never be re-captured OR checked for fraud. That is a
+    # strictly worse position than a bad pose you can read.
+    for gset in golden_sets():
+        if not any((gset / "poses").glob("*.json")):
+            warnings.append(
+                f"tests/visual/goldens/{gset.name}/: NO vendored poses/ dir -- "
+                f"the poses that define this golden are UNAUDITABLE and "
+                f"unrecoverable (they live only in a deploy install). Nothing, "
+                f"including this checker, can tell whether they frame their "
+                f"subjects. Vendor them as poses/*.json before this set is "
+                f"promoted or cited.")
     # full pose-set signature -> [(file, mission)]
     setsig: dict[tuple, list[tuple[str, str]]] = defaultdict(list)
 
@@ -161,12 +217,53 @@ def main() -> int:
             violations.append(f"{rel}: no bookmarks defined")
             continue
 
-        # (4) undeclared subject
-        for b in marks:
-            if not b.get("covers"):
+        # (4) undeclared subject.
+        #
+        # The two pose populations declare their subject in different places,
+        # and applying the lane rule verbatim to golden poses would be a false
+        # positive that invites someone to paste an empty `covers` key to
+        # silence it. A lane bookmark declares `covers` inline. A GOLDEN pose is
+        # graded region-by-region against tools/visual_verify/regions/<stem>.json,
+        # which carries `framing` (what the pose frames) and a per-region `check`
+        # (what that crop must show) -- a strictly richer declaration. Require
+        # THAT, and require it to be real prose, not a stub.
+        if path in golden_set_members:
+            regfile = REGION_DIR / f"{path.stem}.json"
+            if not regfile.is_file():
                 violations.append(
-                    f"{rel}: pose '{b.get('name','?')}' declares no `covers` -- "
-                    f"it cannot be audited for whether it shows its subject.")
+                    f"{rel}: golden pose has NO region definition at "
+                    f"{regfile.relative_to(ROOT).as_posix()}. Nothing declares "
+                    f"what this pose is supposed to show, so no crop taken at "
+                    f"it can be audited -- and an empty frame would grade as a "
+                    f"clean PASS in both arms.")
+            else:
+                try:
+                    rdoc = json.loads(regfile.read_text(encoding="utf-8"))
+                except Exception as exc:
+                    violations.append(f"{rel}: region file unparseable ({exc})")
+                    rdoc = {}
+                if len(str(rdoc.get("framing", "") or "").strip()) < 20:
+                    violations.append(
+                        f"{rel}: region file declares no/thin `framing`. State "
+                        f"what this pose actually frames.")
+                regions = rdoc.get("regions") or []
+                if not regions:
+                    violations.append(
+                        f"{rel}: region file declares zero regions -- this "
+                        f"golden pose grades nothing.")
+                for r in regions:
+                    if len(str(r.get("check", "") or "").strip()) < 20:
+                        violations.append(
+                            f"{rel}: region '{r.get('id','?')}' declares no/thin "
+                            f"`check` -- it cannot be audited for whether the "
+                            f"crop shows its subject.")
+        else:
+            for b in marks:
+                if not b.get("covers"):
+                    violations.append(
+                        f"{rel}: pose '{b.get('name','?')}' declares no `covers` "
+                        f"-- it cannot be audited for whether it shows its "
+                        f"subject.")
 
         if OPT_OUT_KEY not in doc:
             try:
@@ -203,7 +300,9 @@ def main() -> int:
               "than no pose.")
         return 1
 
-    print(f"[bookmark-honesty] OK: {len(files)} tracked bookmark file(s) clean"
+    print(f"[bookmark-honesty] OK: {len(files)} tracked pose file(s) clean "
+          f"({len(lane_files)} lane bookmarks + {len(golden_files)} vendored "
+          f"golden poses across {len(golden_sets())} golden set(s))"
           + (f"; {len(warnings)} carry ACKNOWLEDGED unverified framing "
              f"(see WARN above -- do not cite those as proof)"
              if warnings else ""))
