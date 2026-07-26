@@ -9,7 +9,7 @@
   "specializationParams": [],
   "artifact": "mech.frag.objectid_viewuniforms.02236e66.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "c24678da4c8f3f9a7f9bc2be164005c06b245a83415802a200b1ff2d84c82658",
+  "source_sha256": "cca3d1f41e1184f355c0f5f6ad490c5250e37185588f9a1bcca01b26ece02e7a",
   "spirv_sha256": "1ac6221dd1cdc23f43fef7d0a7b2ac32acc9dbbddc09cb1883c5e974df98be95",
   "bindings": {
     "ubos": [
