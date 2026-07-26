@@ -290,6 +290,17 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     char num[64];
     snprintf(num, sizeof(num), "  \"frame\": %u,\n", frame); buf += num;
     snprintf(num, sizeof(num), "  \"trigger_frame\": %ld,\n", triggerFrame); buf += num;
+    // CAPTURE-DETERMINISM-1: `frame` above is the RENDER frame counter
+    // (g_mc2FrameCounter, gameosmain.cpp) -- the counter the sweep triggers on.
+    // The SIM advances on a separate counter (g_fixedSimFrame, advanced only on
+    // frames where the fixed step actually ran). The two are NOT locked: frames
+    // rendered while the sim is paused/loading do not advance the sim. Two runs
+    // can therefore reach render frame N having executed a DIFFERENT number of
+    // sim steps, i.e. genuinely different sim states, while every other field
+    // here matches. Record it so that divergence is visible in the artifact
+    // instead of being invisible behind a matching `frame` + `deterministic`.
+    snprintf(num, sizeof(num), "  \"sim_frame\": %ld,\n",
+             (long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5)); buf += num;
     buf += "  \"deterministic\": "; buf += (deterministic ? "true" : "false"); buf += ",\n";
     snprintf(num, sizeof(num), "  \"seed\": %u,\n",
              (unsigned)SmokeMode::state().seed); buf += num;
