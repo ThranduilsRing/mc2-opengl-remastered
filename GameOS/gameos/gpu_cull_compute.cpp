@@ -43,7 +43,7 @@ static const bool s_computeTrace = (getenv("MC2_GPU_CULL_COMPUTE_TRACE") != null
 // Set MC2_GPU_CULL_OWNERSHIP_PARITY=1 to enable.
 static const bool s_ownershipParity = (getenv("MC2_GPU_CULL_OWNERSHIP_PARITY") != nullptr);
 #define COMPUTE_TRACE(fmt, ...) \
-    do { if (s_computeTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+    do { if (s_computeTrace) { printf("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
 namespace gpu_cull {
 

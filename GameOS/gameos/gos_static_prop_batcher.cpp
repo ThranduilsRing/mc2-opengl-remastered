@@ -6714,7 +6714,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                               "[MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\n",
                               reason);
             }
-            MC2_DIAG_FPUTSPUTS(buf, stderr);
+            MC2_DIAG_FPUTS(buf, stderr);
         }
 
         // DrawPacket v5: gate-arm checks (run once per process on first gate-ON flush).
