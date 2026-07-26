@@ -1666,6 +1666,11 @@ def main():
                             # shadow_screen.frag (default OFF). Must be allowlisted
                             # or Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_SHADOW_RECEIVE",
+                            # SHADOW-DECISIONS-1 -- re-enable shadow CASTING for
+                            # far/impostor static-prop LODs (lod>=1) in the dynamic
+                            # prop shadow replay (default OFF). Must be allowlisted
+                            # or Popen drops it and the gate-ON smoke does nothing.
+                            "MC2_PROP_LOD_SHADOW_CAST",
                             # SHADOW-SUNCLAMP-1 -- back-face guard dots the same
                             # altitude-clamped sun the shadow matrices use
                             # (default ON; =0 reverts to the raw-sun guard).

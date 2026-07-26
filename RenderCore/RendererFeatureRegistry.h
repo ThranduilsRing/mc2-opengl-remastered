@@ -641,6 +641,14 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or OBJECT_STATUS_DISABLED but has NO else-branch to clear it, unlike the mech path (mech3d.cpp Mech3DAppearance::update sets both arms). The flag is therefore a one-way latch: once a vehicle is disabled its shape can never be lit again, including after the actor slot is recycled for a live vehicle. When ON, the missing else-branch clears lightsOut so the flag tracks status exactly as the mech path does. Default-OFF -> legacy latch preserved -> byte-identical. This is a latent-correctness fix found during VEHICLE-NIGHT-LIT-1 recon; it is NOT the cause of the reported all-vehicles-dark-at-night defect (the reported trucks are intact, never disabled)."
     },
+    // PropLodShadowCast (SHADOW-DECISIONS-1)
+    {
+        "MC2_PROP_LOD_SHADOW_CAST",
+        "MC2_PROP_LOD_SHADOW_CAST",
+        EnvVarKind::Feature,
+        false,
+        "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1). TreeAppearance::registerStatic (mclib/bdactor.cpp) calls GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true) for every lod != 0, justified by a comment claiming the shadow depth pass has no alpha discard -- so flat foliage cards would write their whole quad as depth and cast rectangular blob shadows. That justification has been FALSE since b8f764b6 (2026-06-16, alpha-test foliage shadow casters): resolvePropShadowProgram (gos_static_prop_batcher.cpp:8461) binds shadow_static_prop_alpha_atlas / shadow_static_prop_alpha, both default-ON, and both run the same tex_color.a < 0.5 discard the color pass does (shaders/shadow_static_prop.frag). lod>=1 recipes carry ALPHA_TEST identically to LOD0 (SetAlphaTest(true) on every imported LOD), and the per-packet atlas sidecars are indexed by global packet index in finalizeGeometry() so far-LOD packets bind valid layers; a missing layer fails SAFE (bindPropShadowAtlasPacket clears ALPHA_TEST -> opaque depth), never a wrong-layer sample. SCOPE: the suppression only ever affected getDynamicPropShadowInstances (gos_static_prop_registry.cpp:1895), the full-registry replay; flushShadow's camera-visible loop has no noShadow filter, so visible LOD1 types already cast. Turning this ON therefore grows the caster set AT DISTANCE -- the candidate cure for missing distant-tree shadows -- at a cost proportional to far-prop count. Default-OFF -> setRecipeNoShadow still called -> caster set byte-identical to the shipped build. Visual-only; no geometry/objectId/UI/gameplay change."
+    },
 };
 
 static_assert(
