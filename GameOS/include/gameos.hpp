@@ -25,6 +25,7 @@
 
 #include<inttypes.h>
 #include <cstdarg> // va_list
+#include <string>  // TERRAIN-SHADOW-GUARD-1: mc2TerrainShadowSunDefine()
 //#include <new> because we have our own new / delete
 
 #ifndef PLATFORM_WINDOWS
@@ -2426,6 +2427,14 @@ bool  mc2ShadowAltScale();       // SHADOW-ALT-SCALE-1: MC2_SHADOW_ALT_SCALE, de
 bool  mc2ShadowStaticBandFixEnabled();    // MC2_SHADOW_STATIC_BANDFIX (v1: PCF tap floor)
 bool  mc2ShadowStaticBandFixV2Enabled();  // MC2_SHADOW_STATIC_BANDFIX_V2 (v2: slope-normal bias + normal-offset receiver)
 int   mc2WaterBiasLegacy();               // MC2_WATER_BIAS_LEGACY (WATER-BIAS-LINEARIZE-1: 1 = legacy constant FAST water bias)
+// TERRAIN-SHADOW-GUARD-1: MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON, "=0"
+// kills. shadow.hglsl's back-face guard must dot the SAME altitude-clamped sun
+// the shadow matrices were built from (mc2ShadowMinSunAltDeg, gos_postprocess).
+// Every terrain-family shader-prefix site MUST append mc2TerrainShadowSunDefine()
+// -- same chokepoint rule as the BANDFIX helpers above.
+bool  mc2TerrainShadowGuardClampedSun();
+std::string mc2TerrainShadowSunDefine();  // "" when off => shader byte-identical
+float mc2ShadowMinSunAltDeg();            // MC2_SHADOW_MIN_SUN_ALT, default 15 deg
 // MC2_SHADER_PATH_TINT: debug-only. 1 = each candidate ground shader outputs a
 // unique solid color so the render path of a given surface can be identified
 // visually. Default 0 => byte-identical normal rendering. See gos_postprocess.cpp.

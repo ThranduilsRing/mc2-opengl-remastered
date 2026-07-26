@@ -5841,13 +5841,23 @@ void gos_ResetStaticShadowPriming()
 // (shadow_screen lightDir, terrain N-dot-L) is NOT touched.
 // Tunable/killswitch: MC2_SHADOW_MIN_SUN_ALT=<degrees>, 0 disables.
 // f = normalized light->scene direction: fz < 0 = descending (day sun).
-static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz)
+// TERRAIN-SHADOW-GUARD-1: single source of truth for the effective minimum sun
+// altitude. Resolved once at process start. The terrain shader family needs the
+// SAME number at shader-compile time (it applies the identical clamp in GLSL for
+// its back-face guard), so this accessor is exported rather than kept static.
+float mc2ShadowMinSunAltDeg()
 {
     static const float s_minAltDeg = []() {
         const char* v = getenv("MC2_SHADOW_MIN_SUN_ALT");
         if (!v || !v[0]) return 15.0f;   // default 15 degrees
         return (float)atof(v);           // 0 (or negative) disables
     }();
+    return s_minAltDeg;
+}
+
+static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz)
+{
+    const float s_minAltDeg = mc2ShadowMinSunAltDeg();
     if (s_minAltDeg <= 0.0f) return;
     const float minDown = sinf(s_minAltDeg * 0.01745329252f);
     const float down = -fz;              // >0 when pointing downward

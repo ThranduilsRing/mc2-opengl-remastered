@@ -22,6 +22,40 @@ uniform float shadowSoftness;  // penumbra radius in texels, default 2.5
 // overlay/decal programs, and shadow_screen.frag) so all dynamic receivers
 // stay in lockstep. Value 0.0 (killswitch or non-injecting site) folds the
 // whole block away -> current behavior.
+// TERRAIN-SHADOW-GUARD-1 (env MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, killswitch
+// =0): the shadow MATRICES are built from a sun forced to a minimum altitude
+// (mc2ClampShadowSunAltitude, gos_postprocess.cpp, 15 deg default). The back-face
+// guard and the SHADOW-ALT-SCALE-1 sunAltSin below consume the caller's RAW
+// authored sun. On a mission authoring a near-horizontal sun (mc2_10:
+// LightDirPitch=180 -> terrainLightDir.z = sin(180deg) = 0) that raw vector has no
+// vertical component, so `NdotL < 0.05` is true for the whole world surface --
+// under MC2_SHADOW_STATIC_BANDFIX_V2 (default ON) `normal` is reset to flat-up
+// just above the guard, making it literally `terrainLightDir.z < 0.05` -- and
+// every terrain pixel early-outs fully lit while props/mechs (unguarded static
+// path) keep their shadows.
+//
+// mc2ShadowClampSunAltitude() is the exact GLSL mirror of the C++ clamp; the
+// compile site injects MC2_SHADOW_MIN_SUN_SIN = sin(minAltDeg). Sites that do not
+// inject it get 0.0 -> the function is the identity -> byte-identical.
+// SHADING light dir (terrain N-dot-L / diffuse) is a separate expression and is
+// NOT routed through this: brightness cannot move, only wrongly-discarded shadows
+// come back.
+#ifndef MC2_SHADOW_MIN_SUN_SIN
+#define MC2_SHADOW_MIN_SUN_SIN 0.0
+#endif
+// d = normalized direction TOWARD the sun (MC2 Z-up); d.z = sin(altitude).
+// C++ mirror operates on the negated (light->scene) vector; signs cancel.
+vec3 mc2ShadowClampSunAltitude(vec3 d)
+{
+    const float minUp = float(MC2_SHADOW_MIN_SUN_SIN);
+    if (minUp <= 0.0) return d;          // killswitch / non-injecting site
+    if (d.z >= minUp) return d;          // healthy sun: untouched
+    float horiz = length(d.xy);
+    float ch = sqrt(max(1.0 - minUp * minUp, 0.0));
+    vec2 xy = (horiz > 1e-6) ? (d.xy / horiz * ch) : vec2(ch, 0.0);
+    return vec3(xy, minUp);
+}
+
 #ifndef MC2_SHADOW_DIST_FADE_WU
 #define MC2_SHADOW_DIST_FADE_WU 0.0
 #endif
@@ -119,6 +153,8 @@ const vec2 poissonDisk[16] = vec2[](
 float calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 {
     if (enableShadows == 0) return 1.0;
+    // TERRAIN-SHADOW-GUARD-1: match the sun the shadow MATRICES were built from.
+    lightDir = mc2ShadowClampSunAltitude(lightDir);
 
 #ifdef MC2_SHADOW_STATIC_BANDFIX_V2
     // STATIC-SHADOW-BANDING-2: normal-offset shadow receiver. The static map's
@@ -404,6 +440,8 @@ bool csmProject(vec3 worldPos, int layer, out vec3 projCoords)
 float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 {
     if (enableDynamicShadows == 0) return 1.0;
+    // TERRAIN-SHADOW-GUARD-1: match the sun the cascade matrices were built from.
+    lightDir = mc2ShadowClampSunAltitude(lightDir);
 
     float NdotL = max(dot(normal, lightDir), 0.0);
     if (NdotL < 0.05) return 1.0;
@@ -465,6 +503,8 @@ uniform int enableDynamicShadows;
 float calcDynamicShadow(vec3 worldPos, vec3 normal, vec3 lightDir, int numTaps)
 {
     if (enableDynamicShadows == 0) return 1.0;
+    // TERRAIN-SHADOW-GUARD-1: match the sun the dynamic matrix was built from.
+    lightDir = mc2ShadowClampSunAltitude(lightDir);
 
     vec4 lsPos = dynamicLightSpaceMatrix * vec4(worldPos, 1.0);
     vec3 projCoords = lsPos.xyz / lsPos.w;

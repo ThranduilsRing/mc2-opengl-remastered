@@ -1200,6 +1200,11 @@ void gos_TerrainLodChunk_Init()
         // exactly how the default-flip initially missed this LIVE path.
         if (mc2ShadowStaticBandFixV2Enabled())
             prefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
+        // TERRAIN-SHADOW-GUARD-1: this LIVE path consumes shadow.hglsl with the
+        // terrain sun too — route it through the SAME shared helper (a local
+        // re-read here is exactly how the BANDFIX_V2 default-flip missed this
+        // file). The tess variant at ~:1382 reuses `prefix`, so it is covered.
+        prefix += mc2TerrainShadowSunDefine();
         if (mc2ShadowCsmEnabled()) {
             char csmDef[64];
             snprintf(csmDef, sizeof(csmDef),

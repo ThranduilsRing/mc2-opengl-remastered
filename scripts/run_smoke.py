@@ -1670,6 +1670,11 @@ def main():
                             # altitude-clamped sun the shadow matrices use
                             # (default ON; =0 reverts to the raw-sun guard).
                             "MC2_SHADOW_GUARD_CLAMPED_SUN",
+                            # TERRAIN-SHADOW-GUARD-1 -- the terrain-side twin:
+                            # shadow.hglsl's back-face guard dots the same
+                            # altitude-clamped sun the shadow matrices use
+                            # (default ON; =0 reverts to the raw-sun guard).
+                            "MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN",
                             # SHADOW-SUN-ALT-CLAMP-1 tunable -- min effective sun
                             # altitude (deg) for the shadow matrices AND (since
                             # SHADOW-SUNCLAMP-1) the back-face guard. Default 15,

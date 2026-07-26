@@ -262,6 +262,42 @@ bool mc2ShadowStaticBandFixV2Enabled() {
     return enabled;
 }
 
+// TERRAIN-SHADOW-GUARD-1 (MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON,
+// "=0" kills). The shadow MATRICES are built from an altitude-clamped sun
+// (mc2ClampShadowSunAltitude, gos_postprocess.cpp, 15deg min) but shadow.hglsl's
+// back-face guard `if (NdotL < 0.05) return 1.0;` dotted the RAW authored sun.
+// Under MC2_SHADOW_STATIC_BANDFIX_V2 (default ON) `normal` is reset to flat-up
+// immediately before that guard, so on terrain it reduces to
+// `terrainLightDir.z < 0.05`. mc2_10 authors LightDirPitch=180 -> z = 0 ->
+// EVERY terrain pixel early-outs fully lit while props/mechs keep their shadows
+// via the unguarded path. Feeding the guard the same clamped sun the matrices
+// used restores them. No-op wherever sin(authored altitude) >= sin(15deg)
+// (mc2_01=50deg, mc2_03=46deg, mc2_24=75deg -> byte-identical).
+bool mc2TerrainShadowGuardClampedSun() {
+    static const bool enabled = []() {
+        const char* v = std::getenv("MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN");
+        return !(v && v[0] == '0' && v[1] == '\0');   // DEFAULT ON
+    }();
+    return enabled;
+}
+
+// mc2ShadowMinSunAltDeg() is defined in gos_postprocess.cpp (declared in
+// gameos.hpp) so the GLSL clamp and the C++ matrix clamp can never drift apart.
+//
+// Emits "#define MC2_SHADOW_MIN_SUN_SIN <sin(minAlt)>" for shader prefixes whose
+// program consumes shadow.hglsl with the terrain sun. Returns "" when the gate is
+// off or the clamp is disabled -> shadow.hglsl's 0.0 default -> identity -> the
+// compiled shader is byte-identical to legacy.
+std::string mc2TerrainShadowSunDefine() {
+    if (!mc2TerrainShadowGuardClampedSun()) return std::string();
+    const float deg = mc2ShadowMinSunAltDeg();
+    if (deg <= 0.0f) return std::string();
+    char buf[80];
+    snprintf(buf, sizeof(buf), "#define MC2_SHADOW_MIN_SUN_SIN %.8f\n",
+             (double)sinf(deg * 0.01745329252f));
+    return std::string(buf);
+}
+
 // WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
 // Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error
 // ~ linear in distance, kills the far-field water-over-ridge z-fight).
@@ -465,6 +501,7 @@ class gosMaterialVariationHelper {
                 defines_str.append("#define MC2_SHADOW_STATIC_BANDFIX 1\n");
             if (mc2ShadowStaticBandFixV2Enabled())
                 defines_str.append("#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n");
+            defines_str.append(mc2TerrainShadowSunDefine());   // TERRAIN-SHADOW-GUARD-1
             // Item 1: Cascaded Shadow Maps. When the gate is ON, shadow.hglsl
             // compiles its sampler2DArrayShadow + mat4[N] variant of
             // calcDynamicShadow (signature frozen; no call-site changes).
@@ -5272,6 +5309,7 @@ void gosRenderer::init() {
             kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
         if (mc2ShadowStaticBandFixV2Enabled())
             kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
+        kThinPrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
         thin_terrain_prog_ = glsl_program::makeProgram(
             "gos_terrain_thin",
             "shaders/gos_terrain_thin.vert",
@@ -5302,6 +5340,7 @@ void gosRenderer::init() {
             kSurfacePrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
         if (mc2ShadowStaticBandFixV2Enabled())
             kSurfacePrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
+        kSurfacePrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
         terrain_surface_prog_ = glsl_program::makeProgram(
             "gos_terrain_surface",
             "shaders/gos_terrain_surface.vert",
@@ -5347,6 +5386,7 @@ void gosRenderer::init() {
             kMaskSolidPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
         if (mc2ShadowStaticBandFixV2Enabled())
             kMaskSolidPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
+        kMaskSolidPrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
         mask_solid_prog_ = glsl_program::makeProgram(
             "gos_terrain_mask_solid",
             "shaders/gos_terrain_mask_solid.vert",
@@ -5444,6 +5484,7 @@ void gosRenderer::init() {
                      mc2ShadowAltScale() ? 1 : 0);
             overlayPrefix.append(fadeDef);
         }
+        overlayPrefix.append(mc2TerrainShadowSunDefine());   // TERRAIN-SHADOW-GUARD-1
         overlayProg_ = glsl_program::makeProgram("terrain_overlay",
             "shaders/terrain_overlay.vert", "shaders/terrain_overlay.frag",
             overlayPrefix.c_str());
