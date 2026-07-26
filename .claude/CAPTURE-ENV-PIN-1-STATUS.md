@@ -156,6 +156,21 @@ Hold **both** the sun state and the light count fixed and vary only the frame:
   frame 1**, six frames earlier. `postInvalidate` correlates only because it is
   a coarse proxy for "later".
 
+### Self-refutation attempt (the frame-0/frame-1 table alone is confoundable)
+
+The frame-0-vs-frame-1 table compares two *populations* of recipes. It is
+possible the frame-1 cohort is simply different props, making the frame
+incidental rather than causal. That objection is real and the table alone cannot
+answer it.
+
+It does not rescue either hypothesis, because the ORDER refutation does not rest
+on that table. It rests on **within-recipe** evidence: 172 recipes baked BRIGHT
+and were later re-baked DIM **with `sunActive=1` at both bakes**. Same recipe,
+sun active both times, opposite outcome — the sun-enable state cannot be what
+distinguishes them. Likewise the TIME-as-stated refutation rests on a fixed
+fact, not a population: the invalidation fires at frame 9 and the earliest
+bright/dim boundary is at frame 0→1.
+
 ### What is actually going on (and it inverts the prior reading)
 
 Of the 250 recipes that baked BRIGHT at frame 0, only **78 stay BRIGHT**. The
