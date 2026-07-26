@@ -1678,7 +1678,7 @@ void loadProgramsIfNeeded() {
             // but the error makes the failure observable without a debugger.
             if (s_materialGpuEnabled && s_materialGpuSampleEnabled &&
                 s_locsCoalesce.materialGpuSample < 0) {
-                std::fputs("[MATERIAL_GPU v4] ERROR uniform_missing name=u_materialGpuSample\n",
+                MC2_DIAG_FPUTS("[MATERIAL_GPU v4] ERROR uniform_missing name=u_materialGpuSample\n",
                            stderr);
             }
 

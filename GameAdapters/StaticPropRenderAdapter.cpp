@@ -3,6 +3,7 @@
 // Slice M1: the bridge .cpp. Includes BOTH sides.
 
 #include "StaticPropRenderAdapter.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 // Engine side.
 #include "../RenderWorld/RenderWorld.h"
@@ -158,7 +159,7 @@ RenderCore::RenderObjectHandle syncStaticProp(
     }
 
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=adapter_sync_static "
             "shape=%p batch=%zu handle.valid=%d legacy=%d\n",
             (void*)shape, batchCount, (int)h.isValid(),
@@ -187,7 +188,7 @@ RenderCore::RenderObjectHandle syncStaticPropLateSpawn(
     }
 
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=adapter_sync_late "
             "app=%p recipe=%d handle.valid=%d\n",
             (void*)app, recipe, (int)h.isValid());

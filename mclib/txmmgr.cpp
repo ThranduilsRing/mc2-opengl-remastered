@@ -1454,7 +1454,7 @@ namespace {
         const char* e = std::getenv("MC2_OBJECT_RECON_TRACY");
         s_lbEnabled = (e != nullptr && e[0] != '\0' && e[0] != '0');
         if (s_lbEnabled) {
-            std::puts("[LIGHTBRIDGE v1] event=enabled note=c5c6_populate_sizing_active");
+            MC2_DIAG_PUTS("[LIGHTBRIDGE v1] event=enabled note=c5c6_populate_sizing_active");
             std::fflush(stdout);
         }
     }
@@ -1945,7 +1945,7 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
             LightSlotEntry{ key, actorARGB, slot };
         if (!s_lbFirstPopulateLogged) {
             s_lbFirstPopulateLogged = true;
-            std::puts("[LIGHTBRIDGE v1] event=first_populate");
+            MC2_DIAG_PUTS("[LIGHTBRIDGE v1] event=first_populate");
             std::fflush(stdout);
         }
         return slot;

@@ -5,6 +5,7 @@
 // (mclib/) and engine-side headers (GameOS/gameos/).
 
 #include "VegetationAdapter.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 // Engine side.
 #include "gos_vegetation.h"
@@ -391,7 +392,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     const unsigned instCount = static_cast<unsigned>(instances.size());
 
     // Always log: needed to diagnose zero-instance cases without re-running.
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[VEG v3] placement_health cells_total=%d oob=%d terrain_type_reject=%d "
         "water=%d density=%d overlay=%d instances=%u max=%d mapSpan=%.0f waterElev=%.2f\n",
         diagCellsTotal, diagOOB, diagHard,

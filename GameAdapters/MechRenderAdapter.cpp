@@ -8,6 +8,7 @@
 // explicit allowlist exception for the Mech3DAppearance forbidden-symbol check.
 
 #include "MechRenderAdapter.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 // Engine side.
 #include "../RenderWorld/RenderWorld.h"
@@ -50,7 +51,7 @@ namespace Mech {
 void beginMission() {
     // Defensive: warn if endMission() was not called before the next begin.
     if (s_mechs_alive > 0) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] WARN: event=mech_begin_without_end alive=%llu "
             "(endMission was skipped)\n",
             (unsigned long long)s_mechs_alive);
@@ -60,13 +61,13 @@ void beginMission() {
     s_mechs_destroyed    = 0;
     s_mech_register_fail = 0;
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr, "[RENDER_WORLD v1] event=mech_begin_mission\n");
+        MC2_DIAGFE(stderr, "[RENDER_WORLD v1] event=mech_begin_mission\n");
     }
 }
 
 void endMission() {
     // Always-on per-mission summary.
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[RENDER_WORLD v1] event=mech_end_mission registered=%llu destroyed=%llu "
         "alive=%llu fail=%llu\n",
         (unsigned long long)s_mechs_registered,
@@ -76,7 +77,7 @@ void endMission() {
 
     // Always-on warning if any handles were not retired normally.
     if (s_mechs_alive > 0) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] WARN: event=mech_leaked_handles count=%llu\n",
             (unsigned long long)s_mechs_alive);
     }
@@ -112,14 +113,14 @@ RenderCore::RenderObjectHandle syncSpawn(Mech3DAppearance& mech,
         ++s_mechs_registered;
         ++s_mechs_alive;
         if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] event=mech_register mech=%p handle.index=%u "
                 "gameObjectId=%u\n",
                 (void*)&mech, (unsigned)h.index(), (unsigned)gameObjectId);
         }
     } else {
         ++s_mech_register_fail;
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_register_fail mech=%p\n",
             (void*)&mech);
     }
@@ -135,7 +136,7 @@ void destroyMech(Mech3DAppearance& mech) {
     }
 
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_destroy handle.index=%u\n",
             (unsigned)h.index());
     }
