@@ -1537,6 +1537,16 @@ def main():
                             # them and a MC2_LIGHT_GRID=0 A/B silently runs ON.
                             "MC2_LIGHT_GRID",
                             "MC2_LIGHT_GRID_DIM",
+                            # CAMERA-PARK-1: one-shot pose pin. Every pose-pinned
+                            # smoke (perf arms, A/B captures) needs this to reach
+                            # the child -- without it the runner warns ENV-DROP and
+                            # the run silently measures the DEFAULT camera instead
+                            # of the pose you asked for.
+                            "MC2_CAMERA_PARK",
+                            # MC2_DIAG_VERBOSE: unmasks MC2_DIAG* receipts (e.g.
+                            # [LIGHT_GRID v1], [LIGHT_POOL_CAP v1]) that the
+                            # quiet-default build suppresses.
+                            "MC2_DIAG_VERBOSE",
                             # LIGHT-POOL-CAP-1 -- terrain light pool slot count
                             # (default 256, raised from 64). Allowlisted so a
                             # cap=64 baseline arm is actually reproducible.
