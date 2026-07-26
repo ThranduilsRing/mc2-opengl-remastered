@@ -3103,6 +3103,35 @@ namespace mc2_lightslot_trace {
     }
 }
 
+// [BAKEORD v1] PROP-BAKE-ORDER-VS-TIME-1 -----------------------------------
+// PROP-RECIPE-BAKE-1 measured that among SUNLIT props the orientation-free
+// ambient term splits per INSTANCE, not per type (Mesh01 28 bright / 132 dim,
+// Barrels 2/8), bright = 0.7529 and dim = 0.2471 = 0x3F -- a 3x difference in
+// the exact term that lights these props. It proposed a bake-ORDER cause (a
+// prop baking inside TreeAppearance's global sun-off window inherits
+// sun-inactive, so decomposeFirstActiveLightColor overwrites the AMBIENT slot
+// instead of the sun slot, collapsing it, frozen by the per-recipe bake).
+//
+// It explicitly did NOT prove that, and named a competing cause the data
+// cannot exclude: the split may be by bake TIME -- before vs after the
+// LIGHTBAKE-REBAKE-ON-READY-1 soft invalidation -- with no tree involvement at
+// all. Both hypotheses predict per-instance within-type variation, so the
+// outcome table alone cannot separate them.
+//
+// This probe therefore logs BOTH discriminators at every bake, or it would
+// confirm whichever hypothesis it was pointed at:
+//   ord=            monotonic bake ordinal      -> ORDER
+//   frame=          bake frame                  -> TIME
+//   postInvalidate= bake is after the rebake    -> TIME, relative to the
+//                                                  invalidation specifically
+//   sunActive=      getWorldLight(0)->active    -> ORDER, the tree-window state
+// plus the resulting amb/sun so each bake carries its own BRIGHT/DIM outcome.
+//
+// Diagnostic only, read-only, default OFF. Reuses the already-registered
+// MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE gate (no new env var). NOTE: MC2_DIAGF
+// is additionally gated on MC2_DIAG_VERBOSE=1 -- without it this emits nothing.
+static bool s_lightBakeRebakeDone = false;
+
 static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
                                          bool registered, int32_t recipeIndex)
 {
@@ -3130,7 +3159,7 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 			const char* v = getenv("MC2_LIGHTBAKE_REBAKE_ON_READY");
 			return !(v && v[0] == '0');
 		}();
-		static bool     s_rebakeDone  = false;
+		bool&            s_rebakeDone = s_lightBakeRebakeDone;  // [BAKEORD v1] file-scope
 		static uint32_t s_readyFrame  = 0;
 		if (s_rebakeOnReady && !s_rebakeDone && SmokeMode::missionHasStarted()) {
 			if (s_readyFrame == 0) {
@@ -3166,6 +3195,58 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 			// path, so from this frame on there is NO per-frame
 			// addLightDataStructure for this recipe.
 			mc2WriteStaticLightSlot(recipeIndex, *leaf);
+			// [BAKEORD v1] order-vs-time discriminator. See the block comment
+			// above this function. One line per real bake (MISS path only --
+			// a HIT recomputes nothing, so it has no bake state to attribute).
+			{
+				static const bool s_bakeOrdProbe =
+					(getenv("MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE") != nullptr);
+				if (s_bakeOrdProbe) {
+					static unsigned long long s_bakeOrd = 0;
+					const unsigned long long ord = s_bakeOrd++;
+					// Sun-enable state AT BAKE TIME. TreeAppearance::update
+					// clears getWorldLight(0)->active across its own bake and
+					// restores it; a non-tree prop baking inside that window is
+					// the ORDER hypothesis' mechanism.
+					int sunActive = -1;
+					if (eye) {
+						TG_LightPtr l0 = eye->getWorldLight(0);
+						if (l0) sunActive = l0->active ? 1 : 0;
+					}
+					// Outcome, computed off the SAME leaf that is being frozen:
+					// ambient sum vs first infinite (sun) colour, exactly the way
+					// static_prop.vert consumes the row.
+					float amb[3] = {0.0f, 0.0f, 0.0f};
+					float sun[3] = {0.0f, 0.0f, 0.0f};
+					bool sunFound = false;
+					const int n = (leaf->numLights_ < MAX_HW_LIGHTS_IN_WORLD)
+					            ? leaf->numLights_ : MAX_HW_LIGHTS_IN_WORLD;
+					for (int i = 0; i < n; ++i) {
+						const int lt = static_cast<int>(leaf->lightDir[i][3]);
+						if (lt == TG_LIGHT_AMBIENT) {
+							amb[0] += leaf->lightColor[i][0];
+							amb[1] += leaf->lightColor[i][1];
+							amb[2] += leaf->lightColor[i][2];
+						} else if (!sunFound &&
+						           (lt == TG_LIGHT_INFINITE ||
+						            lt == TG_LIGHT_INFINITEWITHFALLOFF)) {
+							sun[0] = leaf->lightColor[i][0];
+							sun[1] = leaf->lightColor[i][1];
+							sun[2] = leaf->lightColor[i][2];
+							sunFound = true;
+						}
+					}
+					MC2_DIAGF("[BAKEORD v1] ri=%d ord=%llu frame=%u "
+					          "postInvalidate=%d sunActive=%d nl=%d "
+					          "amb=%.4f,%.4f,%.4f sun=%.4f,%.4f,%.4f\n",
+					          (int)recipeIndex, ord,
+					          (unsigned)g_mc2FrameCounter,
+					          s_lightBakeRebakeDone ? 1 : 0,
+					          sunActive, (int)leaf->numLights_,
+					          amb[0], amb[1], amb[2],
+					          sun[0], sun[1], sun[2]);
+				}
+			}
 			// [LIGHTBAKE-PROOF v1] slot-write integrity check (match=1 = permanent slot
 			// faithfully stores the gathered leaf; NOT an independent A/B — see the
 			// function comment in txmmgr.cpp). pos/appearance are diagnostic labels.
