@@ -1,4 +1,5 @@
 #include "gpu_cull_substrate.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gpu_cull_parity.h"
 #include <GL/glew.h>
 #include <cstdio>
@@ -155,7 +156,7 @@ void substrate_init(uint32_t maxActors) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     if (!s_mappedPtr) {
-        fprintf(stderr, "[GPU_CULL v1] FATAL: persistent map failed\n");
+        MC2_DIAGFE(stderr, "[GPU_CULL v1] FATAL: persistent map failed\n");
         fflush(stderr);
         abort();
     }
@@ -173,7 +174,7 @@ void substrate_init(uint32_t maxActors) {
 
     s_initialized = true;
 
-    printf("[GPU_CULL v1] event=substrate_init maxActors=%u slotBytes=%zu totalBytes=%lld binding=%u\n",
+    MC2_DIAGF("[GPU_CULL v1] event=substrate_init maxActors=%u slotBytes=%zu totalBytes=%lld binding=%u\n",
            maxActors, s_slotBytes, (long long)totalBytes, SUBSTRATE_SSBO_BINDING);
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
@@ -234,7 +235,7 @@ void substrate_shutdown() {
     s_initialized    = false;
     s_firstFlushDone = false;
 
-    printf("[GPU_CULL v1] event=substrate_shutdown\n");
+    MC2_DIAGF("[GPU_CULL v1] event=substrate_shutdown\n");
     fflush(stdout);
 }
 
@@ -356,7 +357,7 @@ void substrate_submitDynamicActor(const GpuActorRecord& rec) {
         // substrate_appendStaticPropRecord (2026-05-11).
         if (!s_overflowLoggedThisFrame) {
             s_overflowLoggedThisFrame = true;
-            printf("[GPU_CULL v1] event=substrate_overflow at=%u cap=%u\n",
+            MC2_DIAGF("[GPU_CULL v1] event=substrate_overflow at=%u cap=%u\n",
                    s_perFrameCount, s_maxActors);
             fflush(stdout);
         }
@@ -403,7 +404,7 @@ void substrate_flushUpload() {
     s_firstFlushDone = true;
 
     if (firstFlush || (s_flushCount % 600) == 0) {
-        printf("[GPU_CULL v1] event=substrate_ready records=%u capacity=%u slot=%u\n",
+        MC2_DIAGF("[GPU_CULL v1] event=substrate_ready records=%u capacity=%u slot=%u\n",
                s_perFrameCount, s_maxActors, s_frameSlot);
         fflush(stdout);
     }
@@ -439,7 +440,7 @@ void substrate_appendStaticPropRecord(const GpuActorRecord& rec) {
         // per frame and visibly stalled the game.
         if (!s_overflowLoggedThisFrame) {
             s_overflowLoggedThisFrame = true;
-            printf("[GPU_CULL v1] event=static_prop_overflow at=%u cap=%u\n",
+            MC2_DIAGF("[GPU_CULL v1] event=static_prop_overflow at=%u cap=%u\n",
                    s_perFrameCount, s_maxActors);
             fflush(stdout);
         }
@@ -477,7 +478,7 @@ void substrate_countParityCheck() {
     for (uint32_t i = 0; i < s_perFrameCount; ++i)
         if (recs[i].prevVisibilityBit) ++legacy;
     if (legacy != s_cpuVisibleCount) {
-        printf("[GPU_CULL v1] event=cpuvis_parity_mismatch legacy=%u accum=%u count=%u\n",
+        MC2_DIAGF("[GPU_CULL v1] event=cpuvis_parity_mismatch legacy=%u accum=%u count=%u\n",
                legacy, s_cpuVisibleCount, s_perFrameCount);
         fflush(stdout);
     }

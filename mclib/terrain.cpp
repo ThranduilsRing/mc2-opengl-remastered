@@ -51,6 +51,7 @@
 #include"terrain_admission_mode.h"  // F6 T2: shared isModern() flag for terrain.cpp + quad.cpp
 #include"terrain_runtime.h"  // TERRAIN-RUNTIME-API-1: compat seam + gated parity walk
 #include <cstdio>            // TERRAIN-RUNTIME-API-1: parity self-test log
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include"move.h"   // MC2_TERRAIN_MINE_AB diagnostic: GameMap (extern MissionMapPtr)
 #include <vector>
@@ -3852,7 +3853,7 @@ void Terrain::geometry (void)
 	static bool s_admissionModeLogged = false;
 	if (!s_admissionModeLogged) {
 		s_admissionModeLogged = true;
-		fprintf(stderr, "[TERRAIN_ADMISSION v1] event=mode_select mode=%s\n",
+		MC2_DIAGFE(stderr, "[TERRAIN_ADMISSION v1] event=mode_select mode=%s\n",
 			s_admissionModern ? "modern" : "legacy");
 		fflush(stderr);
 	}

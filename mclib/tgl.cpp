@@ -11,6 +11,7 @@
 #ifndef TGL_H
 #include"tgl.h"
 #include "gos_crashbundle.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero accumulators
 #endif
@@ -4269,7 +4270,7 @@ void drainTglPoolStatsOnShutdown (void)
 		snprintf(_txmbuf, sizeof(_txmbuf),
 			"[TXM v1] event=process_exit peak_textures=%ld/%d",
 			mcTextureManager->getPeakUsedTextures(), MAX_MC2_GOS_TEXTURES);
-		puts(_txmbuf);
+		MC2_DIAG_PUTS(_txmbuf);
 		crashbundle_append(_txmbuf);
 	}
 

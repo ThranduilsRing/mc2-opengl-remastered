@@ -1,4 +1,5 @@
 #include "gpu_cull_parity.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -41,7 +42,7 @@ void parity_checkRecord(uint32_t actorId, const char* catName,
 
     if (dist > kEpsilon) {
         ++s_mismatches;
-        printf("[GPU_CULL v1] event=parity_mismatch actor=%u cat=%s "
+        MC2_DIAGF("[GPU_CULL v1] event=parity_mismatch actor=%u cat=%s "
                "recCenter=(%.2f,%.2f,%.2f) expected=(%.2f,%.2f,%.2f) delta=%.4f\n",
                actorId, catName,
                recCenter[0], recCenter[1], recCenter[2],
@@ -54,7 +55,7 @@ void parity_flushSummary() {
     if (!parity_isEnabled()) return;
     ++s_flushCount;
     if ((s_flushCount % 600) == 1 || s_flushCount == 1) {
-        printf("[GPU_CULL v1] event=parity_summary mismatches=%llu total=%llu flush=%llu\n",
+        MC2_DIAGF("[GPU_CULL v1] event=parity_summary mismatches=%llu total=%llu flush=%llu\n",
                (unsigned long long)s_mismatches,
                (unsigned long long)s_totalChecked,
                (unsigned long long)s_flushCount);

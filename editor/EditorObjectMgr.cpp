@@ -10,6 +10,7 @@
 
 #define EDITOROBJECTMGR_CPP
 #include "stdafx.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -3606,7 +3607,7 @@ void EditorObjectMgr::registerStaticPropsForMissionLoad()
 		if (app->isStaticRegistered())
 			++registered;
 	}
-	fprintf(stderr, "[STATIC_PROP_REG v1] event=editor_load enumerated=%d registered=%d skipped=%d\n",
+	MC2_DIAGFE(stderr, "[STATIC_PROP_REG v1] event=editor_load enumerated=%d registered=%d skipped=%d\n",
 	        total, registered, total - registered);
 	fflush(stderr);
 }

@@ -1,4 +1,5 @@
 #include "gpu_cull_record.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <cstdio>
 #include <cstddef>
 #include <cstring>
@@ -28,7 +29,7 @@ int gpu_cull_record_selftest() {
         bool ok = (c.expected == c.actual);
         if (!ok) {
             failures++;
-            printf("[GPU_CULL v1] event=selftest_fail case=record_offsets field=%s expected=%zu got=%zu\n",
+            MC2_DIAGF("[GPU_CULL v1] event=selftest_fail case=record_offsets field=%s expected=%zu got=%zu\n",
                    c.name, c.expected, c.actual);  // NOLINT: format string has 3 %
             fflush(stdout);
         }
@@ -39,7 +40,7 @@ int gpu_cull_record_selftest() {
         bool ok = (sizeof(GpuActorRecord) == 64);
         if (!ok) {
             failures++;
-            printf("[GPU_CULL v1] event=selftest_fail case=record_size expected=64 got=%zu\n",
+            MC2_DIAGF("[GPU_CULL v1] event=selftest_fail case=record_size expected=64 got=%zu\n",
                    sizeof(GpuActorRecord));
             fflush(stdout);
         }
@@ -49,12 +50,12 @@ int gpu_cull_record_selftest() {
         bool ok = (sizeof(GpuActorRecordHeader) == 16);
         if (!ok) {
             failures++;
-            printf("[GPU_CULL v1] event=selftest_fail case=header_size expected=16 got=%zu\n",
+            MC2_DIAGF("[GPU_CULL v1] event=selftest_fail case=header_size expected=16 got=%zu\n",
                    sizeof(GpuActorRecordHeader));
             fflush(stdout);
         }
     }
-    printf("[GPU_CULL v1] event=selftest_summary pass=%d fail=%d\n",
+    MC2_DIAGF("[GPU_CULL v1] event=selftest_summary pass=%d fail=%d\n",
            (int)(sizeof(checks)/sizeof(checks[0])) + 2 - failures, failures);
     fflush(stdout);
     return failures;

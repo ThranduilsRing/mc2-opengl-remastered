@@ -1,4 +1,5 @@
 #include "gos_static_prop_batcher.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"                 // GPU-SYNC-CONTRACT typed barrier helper
 #include "render_snapshot.h"             // ExtractedStaticPropPacket full definition for batcher_getDrawSlotEntry
 #include "gos_static_prop_registry.h"    // M1.5: getRecipeIndexForType
@@ -2485,7 +2486,7 @@ void GpuStaticPropBatcher::onMapUnload() {
         std::snprintf(buf, sizeof(buf),
                       "[MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\n",
                       s_materialGpuTable.size(), byteSize);
-        std::fputs(buf, stderr);
+        MC2_DIAG_FPUTS(buf, stderr);
         GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
         glDeleteBuffers(1, &local);
         s_materialGpuSsbo.backendHandle = 0;
@@ -2922,7 +2923,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                                first4);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         }
-        std::fprintf(stderr, "[COALESCE v1] event=permutation_state ssbo=%u "
+        MC2_DIAGFE(stderr, "[COALESCE v1] event=permutation_state ssbo=%u "
                      "typeCount=%zu first4=%u,%u,%u,%u\n",
                      s_permutationSsbo, s_types.size(),
                      first4[0], first4[1], first4[2], first4[3]);
@@ -2948,7 +2949,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         }
         if (malformed) {
             if (coalesceWanted) {
-                std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=malformed_type type=%u\n",
+                MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=malformed_type type=%u\n",
                              typeID);
                 s_coalesceLayoutReady = false;
                 s_coalesceEnabled     = false;
@@ -2981,7 +2982,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             if (t.alphaClass  == 1u) ++alphaOn;
             s_typeDescTable.push_back(desc);
         }
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[STATIC_PROP_TYPE_TABLE v0] types=%u packet_ranges=%u alpha_on=%u noGeom=%u\n",
             static_cast<uint32_t>(s_typeDescTable.size()),
             static_cast<uint32_t>(s_packets.size()),
@@ -3001,7 +3002,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         // forced via MC2_COALESCE_FORCE_DISARM=no_extension.
         const bool forced = (s_coalesceForceDisarm == CoalesceForceDisarm::NoExtension)
                             && !s_coalesceEnvDisabled;
-        std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=%s%s\n",
+        MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=%s%s\n",
                      reason, forced ? " (forced)" : "");
         return;
     }
@@ -3022,7 +3023,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // Simulates disarm at the coalesce-arm decision point; legacy path unaffected.
     if (s_coalesceForceDisarm == CoalesceForceDisarm::MixedAlpha &&
         typeCount > 0u) {
-        std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=mixed_alpha "
+        MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=mixed_alpha "
                              "type=0 (forced)\n");
         s_coalesceLayoutReady = false;
         s_coalesceEnabled     = false;
@@ -3149,7 +3150,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
             glDeleteBuffers(1, &s_coalesceInstanceSsbo);
             s_coalesceInstanceSsbo = 0;
-            std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
+            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
                                  "(glBufferStorage err=0x%04x bytes=%zu)\n",
                          storageErr, totalBytes);
             s_coalesceLayoutReady = false;
@@ -3164,7 +3165,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             // Step 4.3 handles "buffer alloc'd, map failed" via inner null
             // check on s_coalesceInstanceMap; leave the buffer for unload
             // to release.
-            std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
+            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
                                  "(glMapBufferRange returned null)\n");
             s_coalesceLayoutReady = false;
             s_coalesceEnabled     = false;
@@ -3187,7 +3188,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 glDeleteBuffers(1, &s_coalesceInstanceSsbo);
                 s_coalesceInstanceSsbo = 0;
             }
-            std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed (forced)\n");
+            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed (forced)\n");
             s_coalesceLayoutReady = false;
             s_coalesceEnabled     = false;
             s_coalesceArmed       = false;
@@ -3595,7 +3596,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 const TG_TypeShape* src = type.source;
                 if (!src || !src->listOfTextures ||
                     pkt.textureSlot >= src->numTextures) {
-                    std::fprintf(stderr, "[COALESCE v1] event=disarmed "
+                    MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed "
                                  "reason=malformed_type type=%u pkt=%u group=%s\n",
                                  typeID, pIdx, group == 0u ? "off" : "on");
                     coalesceRollbackTexBuild(newlyPinnedThisBuild);
@@ -3713,7 +3714,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             // Plan v3.8 Step 12B.5 — size_mismatch forced-disarm hook.
             if (s_coalesceForceDisarm == CoalesceForceDisarm::SizeMismatch &&
                 group == 0u && uniques.size() == 1u) {
-                std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=size_mismatch "
+                MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=size_mismatch "
                              "group=off expected=%dx%d got=%dx%d (forced)\n",
                              uniques[0].w, uniques[0].h,
                              uniques[0].w + 1, uniques[0].h + 1);
@@ -3853,7 +3854,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         }
         if (maxW <= 0 || maxH <= 0) {
             // Defensive — shouldn't happen because skip-path filtered W/H<=0.
-            std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
+            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
                          "(group=%s maxDims=%dx%d after skip-no-dims pass)\n",
                          group == 0u ? "off" : "on", maxW, maxH);
             coalesceRollbackTexBuild(newlyPinnedThisBuild);
@@ -4757,7 +4758,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 if (layer + 1u > uniqueTexOn)  uniqueTexOn  = layer + 1u;
             }
         }
-        std::fprintf(stderr, "[COALESCE v1] event=armed types=%u "
+        MC2_DIAGFE(stderr, "[COALESCE v1] event=armed types=%u "
                      "off_types=%u on_types=%u unique_tex_off=%u unique_tex_on=%u "
                      "per_frame_inst_bytes=%zu elapsed_ms=%lld\n",
                      typeCount,
@@ -5170,7 +5171,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 // the family). Empty-name shapes cannot be allowlisted —
                 // the file would have no useful key for them.
                 const bool allowed = allowedEvt;
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                        "[OBJBATCHER v1] event=late_register type=%s nodeId=%s caller=%s allowed=%d\n",
                        typeKey.c_str(),
                        (nodeId && nodeId[0]) ? nodeId : "<unnamed>",
@@ -6463,12 +6464,12 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (g_mvpDiagFrame == 1 || g_mvpDiagFrame == 5 ||
                 g_mvpDiagFrame == 30 || g_mvpDiagFrame == 120) {
                 if (mvpPtr) {
-                    fprintf(stderr,
+                    MC2_DIAGFE(stderr,
                             "[MVP_DIAG v1] event=coalesce_upload frame=%ld loc=%d ptr=%p row0=[%g %g %g %g]\n",
                             g_mvpDiagFrame, (int)s_locsCoalesce.terrainMVP,
                             (void*)mvpPtr, mvpPtr[0], mvpPtr[1], mvpPtr[2], mvpPtr[3]);
                 } else {
-                    fprintf(stderr,
+                    MC2_DIAGFE(stderr,
                             "[MVP_DIAG v1] event=coalesce_upload frame=%ld loc=%d ptr=%p row0=null\n",
                             g_mvpDiagFrame, (int)s_locsCoalesce.terrainMVP, (void*)mvpPtr);
                 }
@@ -6668,7 +6669,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 std::snprintf(buf, sizeof(buf),
                               "[MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%x\n",
                               uniformErr);
-                std::fputs(buf, stderr);
+                MC2_DIAG_FPUTS(buf, stderr);
             }
         }
         // If loc == -1: M3 error already logged at loadProgramsIfNeeded(); no-op here.
@@ -6904,7 +6905,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                     s_keepLiveBuilder       ? "live_builder_forced" :
                     !s_snapshotBuildEnabled ? "snapshot_packet_build_disabled_keep_live" :
                                               "snap_cull_collision_keep_live";
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[STATIC_PROP_PACKET_DISPATCH v8] event=arm live_builder_retired=%d"
                     " snapshot_packet_build=%d live_builder_forced=%d reason=%s\n",
                     retireLiveBuilder ? 1 : 0, s_snapshotBuildEnabled ? 1 : 0,
@@ -7663,7 +7664,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // we want a separate ready signal that confirms the GPU actually
         // accepted the coalesce draw without disarm.
         if (!s_coalesceFirstFlushDone) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[COALESCE v1] event=ready buckets_off=%u buckets_on=%u "
                 "cmds_off=%u cmds_on=%u\n",
                 s_alphaOffCount, s_alphaOnCount,
@@ -8383,7 +8384,7 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
         static bool s_atlasTraceOnce = false;
         if (usingAtlasProg && !s_atlasTraceOnce) {
             s_atlasTraceOnce = true;
-            std::fprintf(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=flushShadow "
+            MC2_DIAGFE(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=flushShadow "
                                  "packets=%zu buckets=%zu bc7=%d\n",
                          s_packets.size(), s_bucketArrays.size(),
                          s_staticPropBc7Enabled ? 1 : 0);
@@ -8734,7 +8735,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
         static bool s_atlasTraceOnce = false;
         if (usingAtlasProg && !s_atlasTraceOnce) {
             s_atlasTraceOnce = true;
-            std::fprintf(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=dynamicProp "
+            MC2_DIAGFE(stderr, "[SHADOW_PROP_ATLAS v1] event=engaged pass=dynamicProp "
                                  "packets=%zu buckets=%zu bc7=%d\n",
                          s_packets.size(), s_bucketArrays.size(),
                          s_staticPropBc7Enabled ? 1 : 0);

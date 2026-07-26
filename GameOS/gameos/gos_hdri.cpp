@@ -1,4 +1,5 @@
 #include "gos_hdri.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include <cstdio>
 #include <cstdlib>  // for free()
@@ -110,7 +111,7 @@ GLuint loadHdriTexture(const char* path,
 {
     if (outSunValid) *outSunValid = false;
     if (!path || !*path) {
-        std::fprintf(stderr, "[HDRI_SKY v1] enabled=0 reason=path_empty\n");
+        MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=path_empty\n");
         return 0;
     }
 
@@ -231,7 +232,7 @@ GLuint loadHdriTexture(const char* path,
     const char* err = nullptr;
     int rc = LoadEXR(&pixels, &w, &h, path, &err);
     if (rc != TINYEXR_SUCCESS) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[HDRI_SKY v1] enabled=0 reason=load_failed path=%s rc=%d err=%s\n",
             path, rc, err ? err : "(null)");
         if (err) FreeEXRErrorMessage(err);
@@ -247,7 +248,7 @@ GLuint loadHdriTexture(const char* path,
     // TEX-CLASS: asset-pool -- HDRI sky LDR content texture
     glGenTextures(1, &tex);
     if (!tex) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[HDRI_SKY v1] enabled=0 reason=glGenTextures_failed path=%s\n", path);
         free(pixels);
         return 0;
@@ -274,11 +275,11 @@ GLuint loadHdriTexture(const char* path,
         if (ok) {
             *outSunAzGL = azGL;
             if (outSunValid) *outSunValid = true;
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] sun_scan ok az_gl_rad=%.4f az_gl_deg=%.1f\n",
                 azGL, azGL * 57.2957795f);
         } else {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] sun_scan failed reason=no_above_horizon_energy\n");
         }
     }
@@ -287,14 +288,14 @@ GLuint loadHdriTexture(const char* path,
 
     const GLenum glErr = glGetError();
     if (glErr != GL_NO_ERROR) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[HDRI_SKY v1] enabled=0 reason=gl_error path=%s err=0x%x\n",
             path, glErr);
         glDeleteTextures(1, &tex);
         return 0;
     }
 
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[HDRI_SKY v1] loaded path=%s w=%d h=%d format=RGBA16F tex=%u\n",
         path, w, h, tex);
     return tex;

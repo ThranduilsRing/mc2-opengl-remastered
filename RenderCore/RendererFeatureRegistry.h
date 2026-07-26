@@ -3070,6 +3070,27 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "after the first snapshot so the per-frame audit compare is GUARANTEED to report a mismatch -> "
         "proves the audit can actually detect divergence (has teeth). NEVER on in production."
     },
+    {
+        "MC2_TRACE_DIAG_VERBOSE",
+        "MC2_DIAG_VERBOSE",
+        EnvVarKind::Trace,
+        false,
+        "QUIET-DEFAULT-BUILD-1: ONE umbrella gate for the engine's undifferentiated developer chatter. "
+        "VERIFY-INTEGRITY-3 measured 83 distinct [TAG vN] diagnostic tags printing in a DEFAULT build -- "
+        "output a real user sees on a normal launch with no MC2_* env set -- including nine that repeated "
+        "every 600 frames forever during play and three that announced features which were switched OFF. "
+        "282 call sites across 40 files (GameOS + mclib + code) now route through MC2_DIAGF / MC2_DIAGFE / "
+        "MC2_DIAG_PUTS / MC2_DIAG_FPUTS in GameOS/include/mc2_diag_verbose.h, which are no-ops unless this "
+        "is set. =1 restores the previous output VERBATIM, so nothing is lost -- it moved behind a switch. "
+        "Default-OFF changes no rendering or gameplay behaviour whatsoever: the only effect is whether the "
+        "lines are written to stdout/stderr. Read once per translation unit (getenv-seeded static), so it "
+        "cannot drift mid-run. Deliberately NOT per-tag: these lines share one purpose, so they share one "
+        "switch; anything needing selective or structured control uses the per-subsystem facilities "
+        "(MC2_TERRAIN_LOD_CHUNK_DIAG bits, MC2_DIAG_TAGS) instead. Tags a harness parses "
+        "(BUILD_FINGERPRINT, INSTR, PERF, TIMING, TGL_POOL, ASSET_SCALE, ASSET_LOAD, RENDER_SNAPSHOT, "
+        "QUADSETUP_SKIP, SMOKE) are deliberately EXCLUDED and still print unconditionally -- gating them "
+        "would blind verification. Ratchet: scripts/check-default-build-quiet.py."
+    },
 };
 
 // ---------------------------------------------------------------------------

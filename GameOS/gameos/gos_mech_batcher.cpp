@@ -1,5 +1,6 @@
 // GameOS/gameos/gos_mech_batcher.cpp — GPU mech batcher, Slice A.
 #include "gos_mech_batcher.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "vk_feed_dump.h"        // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 #include "gos_materials.h"       // Slice C1: named material profile SSBO (binding 7)
 #include "ibl_sh_runtime.h"     // PBR-IBL-MECH-1: g_iblShStrength (shared with static props)
@@ -705,7 +706,7 @@ static void loadProgramsIfNeeded() {
         "mech", "shaders/mech.vert", "shaders/mech.frag", mechPrefix.c_str());
 
     if (!s_mechProgramObj || !s_mechProgramObj->is_valid()) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=shader_fail — GPU mech path disabled\n");
         s_mechProgramObj    = nullptr;
         s_mechProgram       = 0;
@@ -838,7 +839,7 @@ static void loadProgramsIfNeeded() {
             s_mechProgram, vuBlockIdx, vuBind, s_loc_terrainMVP);
     }
 
-    std::fprintf(stderr, "[MECHBATCHER v1] event=shader_ok prog=%u\n", s_mechProgram);
+    MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=shader_ok prog=%u\n", s_mechProgram);
 }
 
 // ---------------------------------------------------------------------------
@@ -943,9 +944,9 @@ static void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     if (!s_instanceMap || !s_boneMap) {
-        std::fprintf(stderr, "[MECHBATCHER v1] event=persistent_map_fail\n");
+        MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=persistent_map_fail\n");
     }
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=ring_alloc instances=%zu bones=%zu\n",
         s_instanceCapacity, s_boneCapacity);
 }
@@ -1005,7 +1006,7 @@ void GpuMechBatcher::onMapLoad() {
     s_mechHandleToMaterialIdx.clear();
     s_mechDrawMaterialIdx.clear();
     s_mechMaterialGpuFrameCount = 0;
-    std::fprintf(stderr, "[MECHBATCHER v1] event=map_load\n");
+    MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=map_load\n");
 }
 
 void GpuMechBatcher::onMapUnload() {
@@ -1017,7 +1018,7 @@ void GpuMechBatcher::onMapUnload() {
     // consumeAndResetMlrMechDraws is forward-declared at file scope
     // (external-review C1) -- declaration is NOT inside this function body.
     const uint64_t mlrDraws = consumeAndResetMlrMechDraws();
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=mlr_mech_summary mlr_mech_draws=%llu\n",
         (unsigned long long)mlrDraws);
 
@@ -1025,7 +1026,7 @@ void GpuMechBatcher::onMapUnload() {
     // Surfaces gpu_mech_id_writes to the M2.6 readiness decision rule.
     // Always-on (NOT env-gated): M2.6 needs this signal regardless of
     // MC2_OBJECT_ID_BUFFER state to size the MLR-vs-GPU split.
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=mech_id_summary gpu_mech_id_writes=%llu\n",
         (unsigned long long)s_gpuMechIdWritesThisMission);
     s_gpuMechIdWritesThisMission = 0;
@@ -1079,7 +1080,7 @@ void GpuMechBatcher::onMapUnload() {
     s_mechSurfaceMaterialIdx         = 0u;
     s_mechPaintSurfaceMaterialIdx    = 0u;
     s_mechSurfaceMaterialIdxResolved = false;
-    std::fprintf(stderr, "[MECHBATCHER v1] event=map_unload\n");
+    MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=map_unload\n");
 }
 
 bool GpuMechBatcher::wasLastFailureLateRegistration() const { return s_lastFailWasLateReg; }
@@ -1346,7 +1347,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         // this type (s_typeLodIndex has the entry but the GL buffers
         // predate it) -- harmless because no frame renders between the
         // late registers and the finalizePending() call on that path.
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=late_register type=%p lod=%d (staged_pending)\n",
             (void*)mechType, lod);
         if (s_mechRestoreTrace)
@@ -1364,7 +1365,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
     const int numNodes = typeMulti->GetNumShapes();
     if (numNodes == 0 || numNodes > 255) {
         if (numNodes > 255) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECHBATCHER v1] event=u8_bone_overflow type=%p lod=%d numNodes=%d\n",
                 (void*)mechType, lod, numNodes);
         }
@@ -1438,14 +1439,14 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
             s_spotlightRealTypeNodeCount[mechType] = newCount;
             if (!s_spotlightReal_firstHitTypeNode) {
                 s_spotlightReal_firstHitTypeNode = true;
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=first_hit site=mech_recipe_build "
                     "type=%p lod=%d nodeIdx=%d name=%s\n",
                     (const void*)mechType, lod, nodeIdx, nodeName);
                 std::fflush(stderr);
             }
             if (s_spotlightRealTrace) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=type_spotlight_node "
                     "type=%p lod=%d nodeIdx=%d name=%s type_node_count=%u\n",
                     (const void*)mechType, lod, nodeIdx, nodeName, newCount);
@@ -1702,12 +1703,12 @@ void GpuMechBatcher::finalizeGeometry() {
     // Bail cleanly if shader failed: geometry upload skipped.
     // submit() fast-rejects on s_geometryFinalized==false.
     if (s_programLoadFailed) {
-        std::fprintf(stderr, "[MECHBATCHER v1] event=finalize_skip reason=shader_fail\n");
+        MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=finalize_skip reason=shader_fail\n");
         return;
     }
 
     if (s_stagingVbo.empty()) {
-        std::fprintf(stderr, "[MECHBATCHER v1] event=finalize_empty — no types registered\n");
+        MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=finalize_empty — no types registered\n");
         s_geometryFinalized = true;
         return;
     }
@@ -1745,7 +1746,7 @@ void GpuMechBatcher::finalizeGeometry() {
     // staging. See s_stagingVbo declaration. Cleared only at onMapLoad().
 
     s_geometryFinalized = true;
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=finalize_ok types=%zu packets=%zu\n",
         s_typeLodRecords.size(), s_packets.size());
 }
@@ -1815,7 +1816,7 @@ void GpuMechBatcher::finalizePending() {
     glBindBuffer(GL_ARRAY_BUFFER,         (GLuint)prevArr);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)prevElem);
 
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",
         s_typeLodRecords.size(), lateAdded, s_geometryFinalized ? 1 : 0);
     if (getenv("MC2_MECH_RESTORE_TRACE") != nullptr)
@@ -1935,7 +1936,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         ++s_spotlightReal_drawMono;
         if (!s_spotlightReal_firstHitDraw) {
             s_spotlightReal_firstHitDraw = true;
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[SPOTLIGHT_REAL_TRACE v1] event=first_hit site=mech_submit "
                 "type=%p lod=%d\n",
                 (const void*)desc.mechType, desc.currentLOD);
@@ -1978,7 +1979,7 @@ void GpuMechBatcher::flush() {
     const bool spotlightRealPeriodic =
         (s_spotlightReal_drawFrameCount % 600 == 0 && s_spotlightReal_drawFrameCount > 0);
     if (s_spotlightRealTrace && spotlightRealPeriodic) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[SPOTLIGHT_REAL_TRACE v1] event=summary site=mech_submit "
             "frames=%llu window_mech_spotlight_draws=%llu mono_mech_spotlight_draws=%llu "
             "type_node_events_total=%llu distinct_types_with_spotlights=%zu\n",
@@ -2167,7 +2168,7 @@ void GpuMechBatcher::flush() {
         std::snprintf(buf, sizeof(buf),
             "[MECH_MATERIAL_GPU v1] event=table_link materials=%u\n",
             static_cast<uint32_t>(s_mechMaterialTable.size()));
-        std::fputs(buf, stderr);
+        MC2_DIAG_FPUTS(buf, stderr);
     }
 
     // Step 5: Write instance SSBO in bucket order; collect draw calls.
@@ -2268,7 +2269,7 @@ void GpuMechBatcher::flush() {
                     std::snprintf(buf, sizeof(buf),
                         "[MECH_MATERIAL_GPU v1] MISMATCH dc=%u materialIdx=%u albedo=%u expected=%u\n",
                         i, mIdx, albedo, expected);
-                    std::fputs(buf, stderr);
+                    MC2_DIAG_FPUTS(buf, stderr);
                 }
                 ++mismatches;
             }
@@ -2280,7 +2281,7 @@ void GpuMechBatcher::flush() {
                 s_mechMaterialGpuFrameCount,
                 static_cast<uint32_t>(drawCalls.size()),
                 mismatches);
-            std::fputs(buf, stderr);
+            MC2_DIAG_FPUTS(buf, stderr);
         }
     }
 
@@ -2452,7 +2453,7 @@ void GpuMechBatcher::flush() {
             GLint utexVal = -99;
             if (s_loc_u_tex >= 0)
                 glGetUniformiv(s_mechProgram, s_loc_u_tex, &utexVal);
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECHBATCHER v1] event=uni_probe loc_u_tex=%d u_tex_val=%d s_loc_terrainMVP=%d s_loc_u_mvp=%d\n",
                 s_loc_u_tex, utexVal, s_loc_terrainMVP, s_loc_u_mvp);
         }
@@ -2668,7 +2669,7 @@ void GpuMechBatcher::flush() {
                 glGetSamplerParameteriv((GLuint)boundSampler, GL_TEXTURE_MAG_FILTER, &sampMag);
                 glGetSamplerParameteriv((GLuint)boundSampler, GL_TEXTURE_WRAP_S,     &sampWrapS);
             }
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECHBATCHER v1] event=tex_probe glTex=%u w=%d h=%d fmt=0x%x texMin=0x%x texMag=0x%x boundSampler=%d sampMin=0x%x sampMag=0x%x sampWrapS=0x%x\n",
                 glTexId, tw, th, tfmt, tMin, tMag, boundSampler, sampMin, sampMag, sampWrapS);
             // Pixel-readback diagnostic — gated on its own env var
@@ -2681,7 +2682,7 @@ void GpuMechBatcher::flush() {
                 glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
                 int nonZero = 0;
                 for (uint8_t b : pixels) if (b != 0) { nonZero = 1; break; }
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[MECHBATCHER v1] event=tex_pixels glTex=%u bytes=%zu nonZero=%d first15="
                     "%02x%02x%02x %02x%02x%02x %02x%02x%02x %02x%02x%02x %02x%02x%02x\n",
                     glTexId, pixels.size(), nonZero,
@@ -2803,14 +2804,14 @@ void GpuMechBatcher::flush() {
         uint32_t fallbackTotal = 0;
         for (int i = 0; i < 5; ++i) fallbackTotal += s_fallbacksThisFrame[i];
         extern uint32_t g_mc2FrameCounter;
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "
             "buckets=%zu draw_calls=%u instances=%zu fallback_total=%u\n",
             g_mc2FrameCounter, s_eligibleActorsThisFrame, s_pendingSubmits.size(),
             buckets.size(), drawnCalls, totalInstances, fallbackTotal);
         for (int i = 0; i < 5; ++i) {
             if (s_fallbacksThisFrame[i] > 0) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[MECHBATCHER v1] event=fallback reason=%s count=%u\n",
                     kFallbackNames[i], s_fallbacksThisFrame[i]);
             }
@@ -3276,7 +3277,7 @@ extern "C" void batcher_rebuildMechNormals() {
     glBindVertexArray((GLuint)prevVao);
     glBindBuffer(GL_ARRAY_BUFFER, (GLuint)prevArr);
 
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=normals_rebuild mode=%d smoothDeg=%.1f nodes=%zu vbo_bytes=%zu\n",
         s_mechNormalsMode, s_mechNormalsSmoothDeg, s_nodeVboRanges.size(), s_stagingVbo.size());
 }

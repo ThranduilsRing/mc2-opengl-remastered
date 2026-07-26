@@ -13,6 +13,7 @@
 // Opt-out:    MC2_GPU_CULL=0 and/or MC2_GPU_CULL_SUBSTRATE=0
 
 #include "gpu_cull_compute.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gpu_cull_substrate.h"
 #include "gpu_cull_record.h"
 #include "gpu_cull_readback.h"
@@ -168,7 +169,7 @@ static GLuint compile_compute_shader(const char** strings, int count) {
         if (logLen > 0) {
             char* log = new char[logLen];
             glGetShaderInfoLog(sh, logLen, nullptr, log);
-            printf("[GPU_CULL v1] compute shader compile error:\n%s\n", log);
+            MC2_DIAGF("[GPU_CULL v1] compute shader compile error:\n%s\n", log);
             fflush(stdout);
             delete[] log;
         }
@@ -193,7 +194,7 @@ static GLuint link_compute_program(GLuint shader) {
         if (logLen > 0) {
             char* log = new char[logLen];
             glGetProgramInfoLog(prog, logLen, nullptr, log);
-            printf("[GPU_CULL v1] compute program link error:\n%s\n", log);
+            MC2_DIAGF("[GPU_CULL v1] compute program link error:\n%s\n", log);
             fflush(stdout);
             delete[] log;
         }
@@ -212,7 +213,7 @@ static GLuint build_compute_program_from_file(
 {
     char* fileSrc = load_text_file(fname);
     if (!fileSrc) {
-        printf("[GPU_CULL v1] %s source not found: %s\n", debugName, fname);
+        MC2_DIAGF("[GPU_CULL v1] %s source not found: %s\n", debugName, fname);
         fflush(stdout);
         return 0;
     }
@@ -228,14 +229,14 @@ static GLuint build_compute_program_from_file(
     GLuint sh = compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
     delete[] fileSrc;
     if (!sh) {
-        printf("[GPU_CULL v1] %s compile failed\n", debugName);
+        MC2_DIAGF("[GPU_CULL v1] %s compile failed\n", debugName);
         fflush(stdout);
         return 0;
     }
     GLuint prog = link_compute_program(sh);
     glDeleteShader(sh);
     if (!prog) {
-        printf("[GPU_CULL v1] %s link failed\n", debugName);
+        MC2_DIAGF("[GPU_CULL v1] %s link failed\n", debugName);
         fflush(stdout);
     }
     return prog;
@@ -252,7 +253,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
     char* predicateSrc  = load_text_file("shaders/gpu_cull_predicate.glsl");
     char* computeSrc    = load_text_file("shaders/gpu_cull.comp");
     if (!predicateSrc || !computeSrc) {
-        printf("[GPU_CULL v1] %s source not found (predicate=%s, comp=%s)\n",
+        MC2_DIAGF("[GPU_CULL v1] %s source not found (predicate=%s, comp=%s)\n",
                debugName,
                predicateSrc ? "ok" : "MISSING",
                computeSrc   ? "ok" : "MISSING");
@@ -319,7 +320,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
 bool compute_init() {
     if (!compute_isEnabled()) return true;
     if (!substrate_isEnabled()) {
-        printf("[GPU_CULL v1] event=compute_init_skip reason=substrate_disabled\n");
+        MC2_DIAGF("[GPU_CULL v1] event=compute_init_skip reason=substrate_disabled\n");
         fflush(stdout);
         if (mc2_diag::tagEnabled("GPU_CULL"))
             mc2_diag::writeEvent("GPU_CULL", 1, 0,
@@ -336,7 +337,7 @@ bool compute_init() {
     int glMaj = 0, glMin = 0;
     if (glVer) sscanf(glVer, "%d.%d", &glMaj, &glMin);
     const bool computeOk = (glMaj > 4) || (glMaj == 4 && glMin >= 3);
-    printf("[GPU_CULL v1] event=gl_probe version=%d.%d compute=%s\n",
+    MC2_DIAGF("[GPU_CULL v1] event=gl_probe version=%d.%d compute=%s\n",
            glMaj, glMin, computeOk ? "ok" : "fail");
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
@@ -384,7 +385,7 @@ bool compute_init() {
         }
         GLuint prog = build_cull_program(preambles, nPreambles, "cull_C1b");
         if (!prog) {
-            printf("[GPU_CULL v1] event=c1b_cull_compile_fail — C1b indirect draw disabled\n");
+            MC2_DIAGF("[GPU_CULL v1] event=c1b_cull_compile_fail — C1b indirect draw disabled\n");
             fflush(stdout);
             if (mc2_diag::tagEnabled("GPU_CULL"))
                 mc2_diag::writeEvent("GPU_CULL", 1, 0, "{\"event\":\"c1b_cull_compile_fail\"}");
@@ -419,7 +420,7 @@ bool compute_init() {
         GLuint prog = build_compute_program_from_file("shaders/gpu_cull_block_rollup.comp",
                                                        nullptr, 0, "rollup");
         if (!prog) {
-            printf("[GPU_CULL v1] event=rollup_compile_fail — C1-RB disabled\n");
+            MC2_DIAGF("[GPU_CULL v1] event=rollup_compile_fail — C1-RB disabled\n");
             fflush(stdout);
         }
         s_rollupProgram = prog;
@@ -473,7 +474,7 @@ bool compute_init() {
     // Log dilation setting once at init.
     {
         const float d = compute_getFrustumDilation();
-        printf("[GPU_CULL v1] event=frustum_dilation_init value=%.4f\n", d);
+        MC2_DIAGF("[GPU_CULL v1] event=frustum_dilation_init value=%.4f\n", d);
         fflush(stdout);
     }
 
@@ -488,7 +489,7 @@ bool compute_init() {
     s_accFalsePos      = 0;
     s_dispatchFrames   = 0;
 
-    printf("[GPU_CULL v1] event=compute_selftest result=ok maxActors=%u debugSsboBytes=%lld\n",
+    MC2_DIAGF("[GPU_CULL v1] event=compute_selftest result=ok maxActors=%u debugSsboBytes=%lld\n",
            s_maxActors, (long long)debugSsboBytes);
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
@@ -552,12 +553,12 @@ void compute_shutdown() {
 bool compute_buildIndirectBuffer(uint32_t typeCount) {
     if (!compute_isEnabled() || !s_initialized) return false;
     if (!s_c1bCullProgram || !s_patchProgram) {
-        printf("[GPU_CULL v1] event=c1b_build_skip reason=shaders_missing\n");
+        MC2_DIAGF("[GPU_CULL v1] event=c1b_build_skip reason=shaders_missing\n");
         fflush(stdout);
         return false;
     }
     if (typeCount == 0) {
-        printf("[GPU_CULL v1] event=c1b_build_skip reason=no_types\n");
+        MC2_DIAGF("[GPU_CULL v1] event=c1b_build_skip reason=no_types\n");
         fflush(stdout);
         // C1b temporal-superset (R8 / Gate2 MAJOR-1): a props -> props-less
         // mission ordering early-returns HERE, before the free at :524-530
@@ -836,7 +837,7 @@ bool compute_buildIndirectBuffer(uint32_t typeCount) {
 
     s_c1bInitialized = true;
 
-    printf("[GPU_CULL v1] event=c1b_build_ok"
+    MC2_DIAGF("[GPU_CULL v1] event=c1b_build_ok"
            " typeCount=%u totalVisSlots=%u"
            " indirectBytes=%lld visIdsBytes=%lld\n",
            typeCount, totalVisibleSlots,
@@ -1020,7 +1021,7 @@ void compute_dispatch() {
             // Check for GL_INVALID_VALUE (misalignment, out-of-range, etc).
             const GLenum bindErr = glGetError();
             if (bindErr != GL_NO_ERROR) {
-                printf("[GPU_CULL v1] WARN: glBindBufferRange binding=14 error=0x%X rbOff=%lld rbSz=%lld\n",
+                MC2_DIAGF("[GPU_CULL v1] WARN: glBindBufferRange binding=14 error=0x%X rbOff=%lld rbSz=%lld\n",
                        bindErr, (long long)rbOff, (long long)rbSz);
                 fflush(stdout);
             }
@@ -1474,11 +1475,11 @@ void compute_emitParitySummary() {
             }
 
             if (overflow > 0) {
-                printf("[GPU_CULL v1] event=overflow bucket=all count=%u\n", overflow);
+                MC2_DIAGF("[GPU_CULL v1] event=overflow bucket=all count=%u\n", overflow);
                 fflush(stdout);
             }
 
-            printf("[GPU_CULL v1] event=indirect_draw buckets=%u overflow=%u elapsed_us=%u flush=%u\n",
+            MC2_DIAGF("[GPU_CULL v1] event=indirect_draw buckets=%u overflow=%u elapsed_us=%u flush=%u\n",
                    s_bucketCount, overflow, dispatchUs, s_dispatchFrames);
             fflush(stdout);
             s_dispatchFrames = 0;
@@ -1538,7 +1539,7 @@ void compute_emitParitySummary() {
     const bool doEmit = !s_firstSummaryDone || ((s_summaryCount % 600) == 0);
     if (doEmit) {
         s_firstSummaryDone = true;
-        printf("[GPU_CULL v1] event=parity_summary"
+        MC2_DIAGF("[GPU_CULL v1] event=parity_summary"
                " gpu_visible=%u cpu_visible=%u"
                " total_actors=%u"
                " false_neg=%u false_pos=%u"

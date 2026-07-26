@@ -1,4 +1,5 @@
 #include "gameos.hpp"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
 #include "gos_render_context.h"        // InitializeRenderContextConventions (shared game/editor)
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
@@ -444,7 +445,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
                     // exclusive (spec R1). Ignore the toggle and log once.
                     static bool s_loggedBlock = false;
                     if (!s_loggedBlock) {
-                        fprintf(stderr, "[OBJBATCHER v1] event=legacy_toggle_blocked "
+                        MC2_DIAGFE(stderr, "[OBJBATCHER v1] event=legacy_toggle_blocked "
                                         "reason=g_useGpuObjects_active\n");
                         fflush(stderr);
                         s_loggedBlock = true;

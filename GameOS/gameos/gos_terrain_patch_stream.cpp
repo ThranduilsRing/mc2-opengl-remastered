@@ -1,5 +1,6 @@
 ﻿// GameOS/gameos/gos_terrain_patch_stream.cpp
 #include "gos_terrain_patch_stream.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_terrain_bridge.h"   // gos_terrain_bridge_* free functions (Task 0)
 #include "../../RenderCore/terrain_path_telemetry.h"  // TERRAIN-PATH-TELEMETRY-1
 
@@ -394,7 +395,7 @@ bool TerrainPatchStream::init()
 
     if (!s_colorBuf || !s_extrasBuf) {
         // Init-fail path. Force killswitch off for the rest of the process.
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[PATCH_STREAM v1] event=init_fail reason=glBufferStorage_or_map "
             "colorBuf=%u extrasBuf=%u\n", s_colorBuf, s_extrasBuf);
         fflush(stderr);
@@ -435,7 +436,7 @@ bool TerrainPatchStream::init()
     memset(s_bucketHash, 0xFF, sizeof(s_bucketHash));
 
     s_initOk = true;
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[PATCH_STREAM v1] event=init slots=%u colorBytes=%u extrasBytes=%u "
         "colorBuf=%u extrasBuf=%u trace=%d\n",
         kPatchStreamRingFrames,
@@ -554,7 +555,7 @@ void TerrainPatchStream::destroy()
     }
 
     if (!s_initOk) return;
-    fprintf(stderr, "[PATCH_STREAM v1] event=shutdown\n");
+    MC2_DIAGFE(stderr, "[PATCH_STREAM v1] event=shutdown\n");
     fflush(stderr);
 
     for (uint32_t i = 0; i < kPatchStreamRingFrames; ++i) {
@@ -641,7 +642,7 @@ void TerrainPatchStream::beginFrame()
         glDeleteSync(s_fence[s_slot]);
         s_fence[s_slot] = nullptr;
         if (waitedMs >= 1) {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[PATCH_STREAM v1] event=fence_stall slot=%u waited_ms=%llu\n",
                 s_slot, (unsigned long long)waitedMs);
             fflush(stderr);
@@ -683,7 +684,7 @@ void TerrainPatchStream::appendTriangle(DWORD textureIndex,
         kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX);
 
     if (s_totalVerts + vertsPerTri > maxVertsThisSlot) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[PATCH_STREAM v1] event=overflow slot=%u kind=byte_budget cursor=%u cap=%u\n",
             s_slot, s_totalVerts, maxVertsThisSlot);
         fflush(stderr);
@@ -725,7 +726,7 @@ void TerrainPatchStream::appendQuad(
     const uint32_t maxVertsThisSlot =
         kPatchStreamColorBytesPerSlot / (uint32_t)sizeof(gos_VERTEX);
     if (s_totalVerts + numVerts > maxVertsThisSlot) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[PATCH_STREAM v1] event=overflow slot=%u kind=byte_budget cursor=%u cap=%u\n",
             s_slot, s_totalVerts, maxVertsThisSlot);
         fflush(stderr);
@@ -753,7 +754,7 @@ void TerrainPatchStream::appendQuadRecord(const TerrainQuadRecord& rec) {
     if (s_overflow) return;
     if (s_recordCount >= kPatchStreamMaxRecordsPerSlot) {
         if (s_recordCount == kPatchStreamMaxRecordsPerSlot) {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[PATCH_STREAM v1] event=record_overflow slot=%u cap=%u\n",
                 s_slot, kPatchStreamMaxRecordsPerSlot);
             fflush(stderr);
@@ -804,7 +805,7 @@ uint32_t TerrainPatchStream::ensureRecipeForQuad(uint64_t key,
         static bool s_recipeOverflowLogged = false;
         if (!s_recipeOverflowLogged) {
             s_recipeOverflowLogged = true;
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[PATCH_STREAM v1] event=recipe_overflow cap=%u\n",
                 kPatchStreamMaxRecipesTotal);
             fflush(stderr);
@@ -825,7 +826,7 @@ void TerrainPatchStream::appendThinRecordDirect(const TerrainQuadThinRecord& tr)
     if (s_overflow) return;
     if (s_thinRecordCount >= kPatchStreamMaxThinRecordsPerSlot) {
         if (s_thinRecordCount == kPatchStreamMaxThinRecordsPerSlot) {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[PATCH_STREAM v1] event=thin_record_overflow slot=%u cap=%u\n",
                 s_slot, kPatchStreamMaxThinRecordsPerSlot);
             fflush(stderr);
@@ -849,7 +850,7 @@ void TerrainPatchStream::appendThinRecord(
     if (s_overflow) return;
     if (s_thinRecordCount >= kPatchStreamMaxThinRecordsPerSlot) {
         if (s_thinRecordCount == kPatchStreamMaxThinRecordsPerSlot) {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[PATCH_STREAM v1] event=thin_record_overflow slot=%u cap=%u\n",
                 s_slot, kPatchStreamMaxThinRecordsPerSlot);
             fflush(stderr);

@@ -17,6 +17,7 @@
 // glClientWaitSync timeout is ALWAYS 0 (zero) — never GL_TIMEOUT_IGNORED on hot path.
 
 #include "gpu_cull_readback.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gpu_cull_substrate.h"  // substrate_getCpuVisibleCount(), substrate_getSlotRecords(), substrate_getCpuActorIds()
 #include "gpu_cull_record.h"     // GpuActorRecord
 #include "gos_profiler.h"        // Tracy.hpp + TracyPlot
@@ -260,7 +261,7 @@ bool readback_init(uint32_t maxActors) {
     glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
 
     if (!s_stagingMapped) {
-        fprintf(stderr, "[GPU_CULL v1] FATAL: readback staging persistent map failed\n");
+        MC2_DIAGFE(stderr, "[GPU_CULL v1] FATAL: readback staging persistent map failed\n");
         fflush(stderr);
         abort();
     }
@@ -281,7 +282,7 @@ bool readback_init(uint32_t maxActors) {
 
     s_initialized = true;
 
-    printf("[GPU_CULL v1] event=readback_init maxActors=%u slotBytes=%zu totalBytes=%lld"
+    MC2_DIAGF("[GPU_CULL v1] event=readback_init maxActors=%u slotBytes=%zu totalBytes=%lld"
            " ssboAlignment=%d binding=%u forceNotReady=%d dual_buf=1\n",
            maxActors, s_slotBytes, (long long)totalBytes,
            ssboAlignment, READBACK_SSBO_BINDING, (int)s_forceNotReady);
@@ -352,7 +353,7 @@ void readback_shutdown() {
     s_snapshotCallCount = 0u;
     s_snapshotFirstDone = false;
 
-    printf("[GPU_CULL v1] event=readback_shutdown\n");
+    MC2_DIAGF("[GPU_CULL v1] event=readback_shutdown\n");
     fflush(stdout);
 }
 
@@ -479,7 +480,7 @@ ReadbackTier readback_tryConsume() {
     // data that is arbitrarily stale (covers GPU stall / driver-freeze scenarios).
     ++s_staleFrameCount;
     if (s_staleFrameCount >= MAX_STALE_FRAMES && s_lastGoodSlot != UINT32_MAX) {
-        printf("[GPU_CULL v1] event=readback_stale_reset stale_frames=%u — clearing last-good slot\n",
+        MC2_DIAGF("[GPU_CULL v1] event=readback_stale_reset stale_frames=%u — clearing last-good slot\n",
                s_staleFrameCount);
         fflush(stdout);
         s_lastGoodSlot = UINT32_MAX;
@@ -567,7 +568,7 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            printf("[GPU_CULL v1] event=readback_selftest FAIL tier3 expected got=%d\n", (int)t);
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier3 expected got=%d\n", (int)t);
             fflush(stdout);
         }
         s_forceNotReady = savedForce;
@@ -593,7 +594,7 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            printf("[GPU_CULL v1] event=readback_selftest FAIL tier2 expected got=%d\n", (int)t);
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier2 expected got=%d\n", (int)t);
             fflush(stdout);
         }
 
@@ -617,7 +618,7 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            printf("[GPU_CULL v1] event=readback_selftest FAIL tier1 expected got=%d\n", (int)t);
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier1 expected got=%d\n", (int)t);
             fflush(stdout);
         }
 
@@ -656,14 +657,14 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            printf("[GPU_CULL v1] event=readback_selftest FAIL or_merge actor1=%u actor2=%u flips=%u\n",
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL or_merge actor1=%u actor2=%u flips=%u\n",
                    (unsigned)s_actorVis[1], (unsigned)s_actorVis[2], orFlipsTest);
             fflush(stdout);
         }
         memcpy(s_actorVis, saved, sizeof(saved));
     }
 
-    printf("[GPU_CULL v1] event=readback_selftest pass=%d fail=%d\n", pass, fail);
+    MC2_DIAGF("[GPU_CULL v1] event=readback_selftest pass=%d fail=%d\n", pass, fail);
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[64];

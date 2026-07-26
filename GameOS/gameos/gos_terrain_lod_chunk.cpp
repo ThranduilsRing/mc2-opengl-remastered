@@ -1,4 +1,5 @@
 #include "gos_terrain_lod_chunk.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/gl_utils.h"
 #include "utils/shader_builder.h"
 #include "gos_postprocess.h"   // Phase 10 Step 1c: shadow textures + light matrices
@@ -3720,7 +3721,7 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
         glGenTextures(1, &s_shorelineMaskTex);
     if (s_shorelineMaskTex == 0)
     {
-        fprintf(stderr, "[TERRAIN_SHORELINE v1] glGenTextures failed\n");
+        MC2_DIAGFE(stderr, "[TERRAIN_SHORELINE v1] glGenTextures failed\n");
         fflush(stderr);
         return;
     }
@@ -3746,7 +3747,7 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
     s_shorelineBounds[2] = boundsSizeX;
     s_shorelineBounds[3] = boundsSizeY;
 
-    fprintf(stderr, "[TERRAIN_SHORELINE v1] uploaded handle=%u w=%d h=%d bytes=%zu "
+    MC2_DIAGFE(stderr, "[TERRAIN_SHORELINE v1] uploaded handle=%u w=%d h=%d bytes=%zu "
             "bounds=(%.1f,%.1f,%.1f,%.1f)\n",
             (unsigned)s_shorelineMaskTex, w, h, (size_t)w * (size_t)h * 4u,
             boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);

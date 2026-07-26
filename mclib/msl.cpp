@@ -20,6 +20,7 @@
 #endif
 
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "cpu_proj_cost_split.h"     // F3 CPU projection cost-baseline (RAII scope)
 #include "../GameOS/gameos/gos_static_prop_batcher.h"    // Stage 2.D.2 CacheGpuLightData
 #include "../GameOS/gameos/gos_static_prop_killswitch.h" // g_useGpuObjects extern
@@ -2098,7 +2099,7 @@ void TG_MultiShape::ResubmitCachedGpuLightData()
         static bool s_c6Logged = false;
         if (!s_c6Logged) {
             s_c6Logged = true;
-            printf("[LIGHTBRIDGE v1] event=c6_fastpath_hit\n");
+            MC2_DIAGF("[LIGHTBRIDGE v1] event=c6_fastpath_hit\n");
             fflush(stdout);
         }
         return;

@@ -1,6 +1,7 @@
 // POSTPROCESS-COMPUTE-BLUR-1 — see gos_postprocess_blur.h for intent.
 
 #include "gos_postprocess_blur.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-COMPUTE-IDS-1: PostprocessComputeBlur
 
@@ -89,7 +90,7 @@ char* loadTextFile(const char* fname) {
 GLuint buildProgram(const char* modeDefine) {
     char* fileSrc = loadTextFile("shaders/postprocess_blur.comp");
     if (!fileSrc) {
-        fprintf(stderr, "[POSTPROCESS_BLUR v1] shader source not found: "
+        MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] shader source not found: "
                         "shaders/postprocess_blur.comp\n");
         return 0;
     }
@@ -114,7 +115,7 @@ GLuint buildProgram(const char* modeDefine) {
         GLint n = 0; glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &n);
         std::vector<char> log(n > 1 ? n : 1);
         glGetShaderInfoLog(sh, (GLsizei)log.size(), nullptr, log.data());
-        fprintf(stderr, "[POSTPROCESS_BLUR v1] compile error (%s):\n%s\n",
+        MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] compile error (%s):\n%s\n",
                 modeDefine, log.data());
         glDeleteShader(sh);
         return 0;
@@ -130,7 +131,7 @@ GLuint buildProgram(const char* modeDefine) {
         GLint n = 0; glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &n);
         std::vector<char> log(n > 1 ? n : 1);
         glGetProgramInfoLog(prog, (GLsizei)log.size(), nullptr, log.data());
-        fprintf(stderr, "[POSTPROCESS_BLUR v1] link error (%s):\n%s\n",
+        MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] link error (%s):\n%s\n",
                 modeDefine, log.data());
         glDeleteProgram(prog);
         return 0;
@@ -192,7 +193,7 @@ void ensurePingPong(int halfW, int halfH) {
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
-    fprintf(stderr, "[POSTPROCESS_BLUR v1] ping-pong %dx%d (RGBA16F x2)\n",
+    MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] ping-pong %dx%d (RGBA16F x2)\n",
             halfW, halfH);
 }
 
@@ -329,7 +330,7 @@ void runParityCheck() {
     }
 
     const bool pass = (mismatches == 0);
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
             "[POSTPROCESS_BLUR v1] PARITY %s half=%dx%d texels=%zu mismatches=%zu "
             "worst_delta=%.9g tol=%.1e plant=%d (%s)\n",
             pass ? "PASS" : "FAIL", hw, hh, n / 4, mismatches, worst, kTol,
@@ -381,7 +382,7 @@ bool IsEnabled() {
         s_enabled = envFlagDefaultOff("MC2_POSTPROCESS_COMPUTE_BLUR");
         s_verify  = s_enabled && envFlagDefaultOff("MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY");
         s_plant   = s_verify  && envFlagDefaultOff("MC2_POSTPROCESS_COMPUTE_BLUR_PLANT");
-        fprintf(stderr, "[POSTPROCESS_BLUR v1] enabled=%d verify=%d plant=%d "
+        MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] enabled=%d verify=%d plant=%d "
                         "(MC2_POSTPROCESS_COMPUTE_BLUR)\n",
                 s_enabled ? 1 : 0, s_verify ? 1 : 0, s_plant ? 1 : 0);
     }

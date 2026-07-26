@@ -13,6 +13,7 @@
 #endif
 
 #include <map>    // STATIC-REGISTRY-COVERAGE-RECON-1: top shape names
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <mutex>  // STATIC-REGISTRY-COVERAGE-RECON-1: shape map guard
 
 // [TOBJSPLIT v1] RDTSC includes for the BldgAppearance/TreeAppearance probe
@@ -3358,7 +3359,7 @@ long BldgAppearance::update (bool animate)
 			// for the first 8 actors to avoid log flood; cap is generous enough
 			// to confirm registration is firing across distinct buildings.
 			if (s_spotDiagBldgActors <= 8) {
-				std::fprintf(stderr,
+				MC2_DIAGFE(stderr,
 					"[SPOT_DIAG v1] event=first_register class=bldg actor_id=%p "
 					"children_walked=%d spotlights_found=%d registered=%d overflow=%d\n",
 					(void*)this, diagChildrenWalked, diagSpotlightsFound,

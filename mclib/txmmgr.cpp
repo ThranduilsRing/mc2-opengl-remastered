@@ -15,6 +15,7 @@
 #ifndef TXMMGR_H
 #include"txmmgr.h"
 #include "gos_crashbundle.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #endif
 #include "render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include"tex_resolve_table.h"
@@ -738,7 +739,7 @@ void MC_TextureManager::flush (bool justTextures)
 			snprintf(_cbbuf, sizeof(_cbbuf),
 				"[TXM v1] event=mission_unload peak_textures=%ld/%d",
 				peakUsedTextures, MAX_MC2_GOS_TEXTURES);
-			puts(_cbbuf);
+			MC2_DIAG_PUTS(_cbbuf);
 			crashbundle_append(_cbbuf);
 			fflush(stdout);
 		}
@@ -1482,7 +1483,7 @@ namespace {
                 (unsigned long long)s_lbFrameNs,  (unsigned long long)s_lbFrameCalls,
                 (unsigned long long)s_lbFrameHit, (unsigned long long)s_lbFrameMiss,
                 (unsigned long long)s_lbFrameNo);
-            std::puts(buf); crashbundle_append(buf); std::fflush(stdout);
+            MC2_DIAG_PUTS(buf); crashbundle_append(buf); std::fflush(stdout);
         }
 
         s_lbMonoNs   += s_lbFrameNs;   s_lbMonoCalls += s_lbFrameCalls;
@@ -1502,7 +1503,7 @@ namespace {
                 (unsigned long long)s_lbMonoNo,
                 (unsigned long long)(s_lbMonoCalls ? s_lbMonoNs / s_lbMonoCalls : 0),
                 (unsigned)s_lbFirstDataFrame);
-            std::puts(buf); crashbundle_append(buf); std::fflush(stdout);
+            MC2_DIAG_PUTS(buf); crashbundle_append(buf); std::fflush(stdout);
         }
     }
 
@@ -1529,7 +1530,7 @@ namespace {
         const char* e = std::getenv("MC2_LIGHTBRIDGE");
         // OFF only on explicit "0"; any other value (or unset) = ON.
         s_lbRepointEnabled = !(e != nullptr && e[0] == '0' && e[1] == '\0');
-        std::printf("[LIGHTBRIDGE v1] event=enabled mode=%s\n",
+        MC2_DIAGF("[LIGHTBRIDGE v1] event=enabled mode=%s\n",
                     s_lbRepointEnabled ? "repoint" : "legacy");
         std::fflush(stdout);
     }
@@ -1569,7 +1570,7 @@ namespace {
         s_bakeInit = true;
         const char* e = std::getenv("MC2_LIGHTBAKE");
         s_bakeEnabled = !(e != nullptr && e[0] == '0' && e[1] == '\0');
-        std::printf("[LIGHTBAKE v1] event=enabled mode=%s\n",
+        MC2_DIAGF("[LIGHTBAKE v1] event=enabled mode=%s\n",
                     s_bakeEnabled ? "bake" : "passthrough");
         std::fflush(stdout);
         if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
@@ -1743,7 +1744,7 @@ void mc2SetBakedStaticLight(int32_t recipeIndex, const TG_HWLightsData& in)
     s_bakedStaticLight[recipeIndex] = in;
     if (!s_bakeFirstLogged) {
         s_bakeFirstLogged = true;
-        std::printf("[LIGHTBAKE v1] event=first_bake recipe=%d\n", recipeIndex);
+        MC2_DIAGF("[LIGHTBAKE v1] event=first_bake recipe=%d\n", recipeIndex);
         std::fflush(stdout);
     }
 }
@@ -2486,7 +2487,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	s_spotDiagPackPointSum  += diagPointActive;
 	if (!s_spotDiagPackFirstHit) {
 		s_spotDiagPackFirstHit = true;
-		std::fprintf(stderr,
+		MC2_DIAGFE(stderr,
 			"[SPOT_DIAG v1] event=pack_first_shape shape=%p active_lights=%u "
 			"inactive_lights=%u point_lights_active=%u\n",
 			(void*)lights, diagActiveLights, diagInactiveLights, diagPointActive);

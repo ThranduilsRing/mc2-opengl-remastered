@@ -11,6 +11,7 @@
 #ifndef GVACTOR_H
 #include"gvactor.h"
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "tgl_load_guard.h"       // META-FIX design B PART 1: required base-shape load guard
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
@@ -2658,7 +2659,7 @@ void GVAppearance::updateGeometry (void)
 					// successful GV spotlight registration, matching the
 					// MC2_SPOTLIGHT_REAL_TRACE schema. Kept post-T3.1 per the
 					// Debug Instrumentation Rule (demote, don't delete).
-					fprintf(stderr,
+					MC2_DIAGFE(stderr,
 						"[SPOTLIGHT_REAL_TRACE v1] event=gv_first_hit"
 						" actorHandle=%ld node=%s slot=%ld\n",
 						actorHandle_, nodeName, slotId);
@@ -2669,7 +2670,7 @@ void GVAppearance::updateGeometry (void)
 				s_spotDiagGvOverflows  += (unsigned long)diagOverflow;
 				++s_spotDiagGvActors;
 				if (s_spotDiagGvActors <= 8) {
-					std::fprintf(stderr,
+					MC2_DIAGFE(stderr,
 						"[SPOT_DIAG v1] event=first_register class=gv actor_id=%ld "
 						"children_walked=%d spotlights_found=%d registered=%d overflow=%d\n",
 						actorHandle_, diagChildrenWalked, diagSpotlightsFound,

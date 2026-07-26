@@ -13,6 +13,7 @@
 #endif
 
 #include "gos_crashbundle.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #ifndef MISSION_H
 #include"mission.h"
@@ -7936,7 +7937,7 @@ static void logAblFunctionTableCapacity (void)
 	snprintf(_cbbuf, sizeof(_cbbuf),
 		"[ABL v1] event=functions_registered count=%ld/%d",
 		NumStandardFunctions, MAX_STANDARD_FUNCTIONS);
-	puts(_cbbuf);
+	MC2_DIAG_PUTS(_cbbuf);
 	crashbundle_append(_cbbuf);
 	fflush(stdout);
 }

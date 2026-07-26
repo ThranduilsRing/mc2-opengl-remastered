@@ -2,6 +2,7 @@
 // tex_resolve_table.cpp — sidecar implementation. See tex_resolve_table.h.
 //===========================================================================
 #include "tex_resolve_table.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gos_profiler.h"   // ZoneScopedN
 #include <stdio.h>
 #include <stdlib.h>          // getenv
@@ -25,7 +26,7 @@ namespace {
 void texResolveLogMismatch(DWORD nodeId, DWORD table_h, DWORD legacy_h)
 {
     if (s_mismatchCount++ < kMaxMismatchPrints) {
-        printf("[TEX_RESOLVE v1] event=mismatch frame=%llu nodeId=%u table=0x%08x legacy=0x%08x\n",
+        MC2_DIAGF("[TEX_RESOLVE v1] event=mismatch frame=%llu nodeId=%u table=0x%08x legacy=0x%08x\n",
                (unsigned long long)g_texResolveTable.buildGeneration,
                (unsigned)nodeId, (unsigned)table_h, (unsigned)legacy_h);
         fflush(stdout);
@@ -35,7 +36,7 @@ void texResolveLogMismatch(DWORD nodeId, DWORD table_h, DWORD legacy_h)
 void texResolveLogOOB(DWORD nodeId)
 {
     if (s_oobCount++ < kMaxOobPrints) {
-        printf("[TEX_RESOLVE v1] event=oob_node frame=%llu nodeId=%u max=%d\n",
+        MC2_DIAGF("[TEX_RESOLVE v1] event=oob_node frame=%llu nodeId=%u max=%d\n",
                (unsigned long long)g_texResolveTable.buildGeneration,
                (unsigned)nodeId, (int)MC_MAXTEXTURES);
         fflush(stdout);
@@ -71,7 +72,7 @@ void initTexResolveTable(void)
     if (g_texResolveTable.validate)      mode = "validate";
     else if (g_texResolveTable.enabled)  mode = "on (default)";
 
-    printf("[TEX_RESOLVE v1] event=startup mode=%s max_textures=%d\n",
+    MC2_DIAGF("[TEX_RESOLVE v1] event=startup mode=%s max_textures=%d\n",
            mode, (int)MC_MAXTEXTURES);
     fflush(stdout);
 
@@ -137,7 +138,7 @@ void endFrameTexResolve(void)
 
 void shutdownTexResolveTable(void)
 {
-    printf("[TEX_RESOLVE v1] event=shutdown total_frames=%llu total_resolves=%llu mismatches=%llu oob=%llu\n",
+    MC2_DIAGF("[TEX_RESOLVE v1] event=shutdown total_frames=%llu total_resolves=%llu mismatches=%llu oob=%llu\n",
            (unsigned long long)s_totalFrames,
            (unsigned long long)s_totalResolves,
            (unsigned long long)s_mismatchCount,

@@ -19,6 +19,7 @@
 // with identical statics in gpu_cull_compute.cpp (design doc Q1).
 
 #include "gos_terrain_lighting.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include "gos_profiler.h"  // ZoneScopedN, TracyGpuZone
 
@@ -264,7 +265,7 @@ static GLuint tl_compile_compute_shader(const char** strings, int count) {
         if (logLen > 0) {
             char* log = new char[logLen];
             glGetShaderInfoLog(sh, logLen, nullptr, log);
-            printf("[TERRAIN_LIGHTING_GPU v1] compute shader compile error:\n%s\n", log);
+            MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] compute shader compile error:\n%s\n", log);
             fflush(stdout);
             delete[] log;
         }
@@ -289,7 +290,7 @@ static GLuint tl_link_compute_program(GLuint shader) {
         if (logLen > 0) {
             char* log = new char[logLen];
             glGetProgramInfoLog(prog, logLen, nullptr, log);
-            printf("[TERRAIN_LIGHTING_GPU v1] compute program link error:\n%s\n", log);
+            MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] compute program link error:\n%s\n", log);
             fflush(stdout);
             delete[] log;
         }
@@ -309,7 +310,7 @@ static GLuint tl_build_terrain_lighting_program(const char* compFname,
     char* sharedSrc  = tl_load_text_file(sharedFname);
 
     if (!fileSrc) {
-        printf("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail source_missing=%s\n", compFname);
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail source_missing=%s\n", compFname);
         fflush(stdout);
         delete[] sharedSrc;
         return 0;
@@ -334,7 +335,7 @@ static GLuint tl_build_terrain_lighting_program(const char* compFname,
             fullSrc = fileSrc;
         }
     } else {
-        printf("[TERRAIN_LIGHTING_GPU v1] event=shader_load_warn shared_missing=%s\n", sharedFname);
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_warn shared_missing=%s\n", sharedFname);
         fflush(stdout);
         fullSrc = fileSrc;
     }
@@ -349,14 +350,14 @@ static GLuint tl_build_terrain_lighting_program(const char* compFname,
 
     GLuint sh = tl_compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
     if (!sh) {
-        printf("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail compile_failed=%s\n", debugName);
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail compile_failed=%s\n", debugName);
         fflush(stdout);
         return 0;
     }
     GLuint prog = tl_link_compute_program(sh);
     glDeleteShader(sh);
     if (!prog) {
-        printf("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail link_failed=%s\n", debugName);
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail link_failed=%s\n", debugName);
         fflush(stdout);
     }
     return prog;
@@ -473,7 +474,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
             "terrain_lighting");
         if (!s_program) {
             s_shaderBad = true;
-            printf("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail sticky_disable\n");
+            MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail sticky_disable\n");
             fflush(stdout);
             return;
         }
@@ -506,7 +507,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
         s_uniformLocs[TL_UNI_VERTEX_OFFSET]   = glGetUniformLocation(s_program, "u_vertexOffset");
         // Always-on diagnostic: print all resolved locations so black-terrain debug
         // can immediately see which (if any) came back -1 (uniform not found).
-        printf("[TERRAIN_LIGHTING_GPU v1] event=uniform_locs "
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=uniform_locs "
                "numVerts=%d numLights=%d sunDir=%d "
                "lightR=%d lightG=%d lightB=%d "
                "ambR=%d ambG=%d ambB=%d "
@@ -675,7 +676,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
         glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
 
         if (!s_stagingMapped[i]) {
-            fprintf(stderr, "[TERRAIN_LIGHTING_GPU v1] FATAL: staging persistent map failed slot=%u\n", i);
+            MC2_DIAGFE(stderr, "[TERRAIN_LIGHTING_GPU v1] FATAL: staging persistent map failed slot=%u\n", i);
             fflush(stderr);
             s_shaderBad = true;
             mission_shutdown();
@@ -689,7 +690,7 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     s_frameIndex   = 0;
     s_initialized  = true;
 
-    printf("[TERRAIN_LIGHTING_GPU v1] event=mission_init verts=%u lights=%u outputSlotKB=%zu\n",
+    MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=mission_init verts=%u lights=%u outputSlotKB=%zu\n",
            numVertices, s_maxLights, s_outputSlotBytes / 1024u);
     fflush(stdout);
 }
@@ -756,7 +757,7 @@ void mission_shutdown() {
     s_lastNumLights   = 0;  // NIGHT-LIGHT-POOLS-1: no pool lights across mission boundary
     s_dramShadow.clear();
 
-    printf("[TERRAIN_LIGHTING_GPU v1] event=mission_shutdown\n");
+    MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=mission_shutdown\n");
     fflush(stdout);
 }
 
@@ -1345,7 +1346,7 @@ void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads) {
 
     // 600-frame fallback summary (mirrors gos_terrain_indirect.cpp:291 cadence).
     if (s_fallbackSummaryFrames % 600 == 0) {
-        printf("[TERRAIN_LIGHTING_GPU v1] event=fallback_summary frames=%llu "
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=fallback_summary frames=%llu "
                "n1=%llu n2=%llu conservative=%llu\n",
                (unsigned long long)s_fallbackSummaryFrames,
                (unsigned long long)s_lightingFallbackN1,

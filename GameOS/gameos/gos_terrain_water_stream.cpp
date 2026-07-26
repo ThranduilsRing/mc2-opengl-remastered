@@ -15,6 +15,7 @@
 // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
 
 #include "gos_terrain_water_stream.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"   // GPU-SYNC-CONTRACT: SSBO bind-offset alignment helper
 
 #include "gos_profiler.h"
@@ -1954,7 +1955,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
             uint32_t vis = 0;
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_waterBucketHeaderSsbo);
             glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 4, &vis);
-            printf("[WATER_FULL_RECIPE_AUTH v1] recipeCount=%u authoritativeOutput=%u\n",
+            MC2_DIAGF("[WATER_FULL_RECIPE_AUTH v1] recipeCount=%u authoritativeOutput=%u\n",
                    maxThinRecords, vis);
             fflush(stdout);
         }

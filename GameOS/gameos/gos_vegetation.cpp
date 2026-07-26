@@ -15,6 +15,7 @@
 //   location 6: float seed         offset 24, divisor 1
 
 #include "gos_vegetation.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_static_prop_killswitch.h"  // gos_GetTerrainMVPMat4()
 #include "../../mclib/render_contract.h"
 #include "utils/shader_builder.h"
@@ -108,7 +109,7 @@ bool GosVegetation::isEnabled() {
     if (cached < 0) {
         const char* v = getenv("MC2_VEGETATION_CARDS");
         cached = (v && v[0] && v[0] != '0') ? 1 : 0;
-        fprintf(stderr, "[VEG v1] feature enabled=%d reason=%s\n",
+        MC2_DIAGFE(stderr, "[VEG v1] feature enabled=%d reason=%s\n",
             cached,
             !v         ? "env_missing" :
             (!v[0] || v[0]=='0') ? "env_zero"  : "env_set");
@@ -138,7 +139,7 @@ void GosVegetation::init() {
         "shaders/gos_vegetation_card.frag",
         "#version 430\n");
     if (!s_prog || !s_prog->is_valid()) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[VEG v1] event=init_warn msg=shader_load_failed "
             "vert=shaders/gos_vegetation_card.vert "
             "frag=shaders/gos_vegetation_card.frag\n");
@@ -252,7 +253,7 @@ void GosVegetation::init() {
     if (atlasTex.isValid()) {
         s_atlasTexId = atlasTex.id;
     } else {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[VEG v1] event=atlas_load_failed path=%s "
             "(flush will no-op until uploadInstances + valid atlas)\n",
             atlasPath);
@@ -361,7 +362,7 @@ void GosVegetation::flush(float lightDirX, float lightDirY, float lightDirZ, flo
     static int s_flushCount = 0;
     const bool firstFlush = (s_flushCount++ == 0);
     if (firstFlush) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[VEG v1] flush: instances=%u atlas=%u prog=%s mvp=%s "
             "chunkSide=%d blockSideWU=%.0f mapHalfWU=%.0f\n",
             s_instanceCount, s_atlasTexId,

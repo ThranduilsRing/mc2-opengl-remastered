@@ -9,6 +9,7 @@
 // Pattern mirrors gpu_cull_compute.cpp s_frustumUbo.
 
 #include "view_uniforms_gl.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include <GL/glew.h>
 #include <cstdio>
@@ -65,7 +66,7 @@ void RenderCore::initViewUniformsUbo() {
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
-    fprintf(stderr, "[VIEW_UNIFORMS v1] event=init binding=%u size=%zu\n",
+    MC2_DIAGFE(stderr, "[VIEW_UNIFORMS v1] event=init binding=%u size=%zu\n",
             RenderCore::kViewUniformsBinding, sizeof(RenderCore::ViewUniforms));
     fflush(stderr);
 }
@@ -80,7 +81,7 @@ void RenderCore::uploadViewUniforms(const RenderCore::ViewUniforms& vu) {
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     ++s_vuFrame;
     if (s_vuFrame == 1 || s_vuFrame % 600 == 0) {
-        fprintf(stderr, "[VIEW_UNIFORMS v1] frame=%d uploaded=1 binding=%u size=%zu\n",
+        MC2_DIAGFE(stderr, "[VIEW_UNIFORMS v1] frame=%d uploaded=1 binding=%u size=%zu\n",
                 s_vuFrame, RenderCore::kViewUniformsBinding,
                 sizeof(RenderCore::ViewUniforms));
         fflush(stderr);
@@ -95,7 +96,7 @@ void RenderCore::registerOrUpdateView(const RenderCore::EngineView& view) {
         }
     }
     if (s_viewCount < kMaxRegisteredViews) {
-        fprintf(stderr, "[ENGINE_VIEW_REGISTRY v1] registered id=%u name=%s count=%u\n",
+        MC2_DIAGFE(stderr, "[ENGINE_VIEW_REGISTRY v1] registered id=%u name=%s count=%u\n",
                 view.id, view.debugName ? view.debugName : "?", s_viewCount + 1u);
         fflush(stderr);
         s_viewRegistry[s_viewCount++] = view;
@@ -108,7 +109,7 @@ void RenderCore::setCurrentView(const RenderCore::EngineView& view) {
     static int s_evFrame = 0;
     ++s_evFrame;
     if (s_evFrame == 1 || s_evFrame % 600 == 0) {
-        fprintf(stderr, "[ENGINE_VIEW v1] frame=%d id=%u name=%s mode=%s\n",
+        MC2_DIAGFE(stderr, "[ENGINE_VIEW v1] frame=%d id=%u name=%s mode=%s\n",
                 s_evFrame, view.id, view.debugName ? view.debugName : "?",
                 RenderCore::toString(view.mode));
         fflush(stderr);

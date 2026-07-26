@@ -50,6 +50,7 @@
 // docs/superpowers/explorations/2026-05-07-lifecycle-normal-zoom-design.md.
 #include"../GameOS/gameos/gos_profiler.h"
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <math.h>
 #include <cstdlib>  // std::getenv for [VPL_PICK v1] env-gated trace (Step 3 3a)
 #include <cstdio>   // std::printf for [VPL_PICK v1] lifecycle print
@@ -2477,7 +2478,7 @@ long Camera::update (void)
 			}
 
 			if ((s_motionFrames % SUMMARY_PERIOD) == 0u) {
-				printf("[CAMERA_MOTION v1] event=summary frames=%u stationary=%u moving=%u "
+				MC2_DIAGF("[CAMERA_MOTION v1] event=summary frames=%u stationary=%u moving=%u "
 				       "stationary_pct=%.1f threshold_deg=%.2f threshold_pos=%.2f\n",
 				       s_motionFrames, s_motionStationary, s_motionMoving,
 				       (s_motionFrames > 0u)
@@ -2683,7 +2684,7 @@ void Camera::updateLights()
 							const char* srcName =
 								(src == mc2_spotlight_diag::Bldg ? "bldg" :
 								 src == mc2_spotlight_diag::Mech ? "mech" : "gv");
-							std::fprintf(stderr,
+							MC2_DIAGFE(stderr,
 								"[SPOT_DIAG v1] event=our_slot_transition slot=%ld src=%s "
 								"frame=%lu light_pos=(%.1f, %.1f, %.1f) active=%u prev=%u\n",
 								i, srcName, s_spotDiagCamFrames,
@@ -2701,7 +2702,7 @@ void Camera::updateLights()
 				if ((size_t)i < s_spotDiagCamSeenSlot.size() && !s_spotDiagCamSeenSlot[i]) {
 					s_spotDiagCamSeenSlot[i] = true;
 					const char* tname = (light->lightType == TG_LIGHT_POINT) ? "POINT" : "SPOT";
-					std::fprintf(stderr,
+					MC2_DIAGFE(stderr,
 						"[SPOT_DIAG v1] event=overwrite_first_seen slot=%ld type=%s "
 						"pos=(%.2f,%.2f,%.2f) active_after=%d\n",
 						i, tname,

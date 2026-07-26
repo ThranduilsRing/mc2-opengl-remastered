@@ -1,6 +1,7 @@
 // CLUSTER-DEPTH-PYRAMID-NATIVE-1 — see gos_cluster_depth_pyramid.h for intent.
 
 #include "gos_cluster_depth_pyramid.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-COMPUTE-IDS-1: ClusterDepthPyramid
 
@@ -73,7 +74,7 @@ char* loadTextFile(const char* fname) {
 GLuint buildProgram() {
     char* fileSrc = loadTextFile("shaders/cluster_depth_pyramid.comp");
     if (!fileSrc) {
-        fprintf(stderr, "[CLUSTER_DEPTH_PYRAMID v1] shader source not found: "
+        MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] shader source not found: "
                         "shaders/cluster_depth_pyramid.comp\n");
         return 0;
     }
@@ -96,7 +97,7 @@ GLuint buildProgram() {
         GLint n = 0; glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &n);
         std::vector<char> log(n > 1 ? n : 1);
         glGetShaderInfoLog(sh, (GLsizei)log.size(), nullptr, log.data());
-        fprintf(stderr, "[CLUSTER_DEPTH_PYRAMID v1] compile error:\n%s\n", log.data());
+        MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] compile error:\n%s\n", log.data());
         glDeleteShader(sh);
         return 0;
     }
@@ -111,7 +112,7 @@ GLuint buildProgram() {
         GLint n = 0; glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &n);
         std::vector<char> log(n > 1 ? n : 1);
         glGetProgramInfoLog(prog, (GLsizei)log.size(), nullptr, log.data());
-        fprintf(stderr, "[CLUSTER_DEPTH_PYRAMID v1] link error:\n%s\n", log.data());
+        MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] link error:\n%s\n", log.data());
         glDeleteProgram(prog);
         return 0;
     }
@@ -155,7 +156,7 @@ void ensureTileTexture(int width, int height) {
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
-    fprintf(stderr, "[CLUSTER_DEPTH_PYRAMID v1] tile image %dx%d (RG32F) for "
+    MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] tile image %dx%d (RG32F) for "
                     "scene %dx%d, tile=%d\n", tw, th, width, height, kTileSize);
 }
 
@@ -225,7 +226,7 @@ void runParityCheck(GLuint sceneDepthTex, int width, int height) {
     }
 
     const bool pass = (mismatches == 0);
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
             "[CLUSTER_DEPTH_PYRAMID v1] PARITY %s tiles=%zu mismatches=%zu "
             "worst_delta=%.9g tol=%.1e plant=%d (%s)\n",
             pass ? "PASS" : "FAIL", nTiles, mismatches, worstDelta, kEps,
@@ -242,7 +243,7 @@ bool IsEnabled() {
         s_enabled = envFlagDefaultOff("MC2_CLUSTER_DEPTH_PYRAMID");
         s_verify  = s_enabled && envFlagDefaultOff("MC2_CLUSTER_DEPTH_PYRAMID_VERIFY");
         s_plant   = s_verify  && envFlagDefaultOff("MC2_CLUSTER_DEPTH_PYRAMID_PLANT");
-        fprintf(stderr, "[CLUSTER_DEPTH_PYRAMID v1] enabled=%d verify=%d plant=%d "
+        MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] enabled=%d verify=%d plant=%d "
                         "(MC2_CLUSTER_DEPTH_PYRAMID)\n",
                 s_enabled ? 1 : 0, s_verify ? 1 : 0, s_plant ? 1 : 0);
     }

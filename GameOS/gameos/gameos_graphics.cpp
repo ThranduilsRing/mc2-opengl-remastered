@@ -1,4 +1,5 @@
 #include <vector>
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <memory>   // VK-HUD-MIRRORCOPY-1: shared_ptr rgba mirror
 #include <map>
 #include <algorithm>
@@ -3016,13 +3017,13 @@ void gosRenderer::renderWaterFastPath(
             kWaterMdiPrefix);
         if (mdi && mdi->shp_) {
             s_waterMdiProg = mdi->shp_;
-            printf("[WATER_MDI v1] event=prog_compiled prog=%u\n", (unsigned)s_waterMdiProg);
+            MC2_DIAGF("[WATER_MDI v1] event=prog_compiled prog=%u\n", (unsigned)s_waterMdiProg);
             fflush(stdout);
         } else {
             // Permanently disable MDI path so we don't attempt re-compile every frame.
             // Use a sentinel GLuint of UINT_MAX (not a valid GL object name).
             s_waterMdiProg = (GLuint)~0u;
-            fprintf(stderr, "[WATER_MDI v1] event=prog_compile_fail — MDI path disabled\n");
+            MC2_DIAGFE(stderr, "[WATER_MDI v1] event=prog_compile_fail — MDI path disabled\n");
             fflush(stderr);
         }
     }
@@ -4210,7 +4211,7 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         static bool s_warnedCementUniforms = false;
         if (cementAtlasReady && !s_warnedCementUniforms &&
             (locTex3 < 0 || locUCA < 0 || locGSide < 0 || locWUPT < 0)) {
-            printf("[TERRAIN_INDIRECT v1] event=cement_uniform_missing "
+            MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_uniform_missing "
                    "tex3=%d useCementAtlas=%d gridSide=%d wupt=%d\n",
                    locTex3, locUCA, locGSide, locWUPT);
             fflush(stdout);
@@ -5307,11 +5308,11 @@ void gosRenderer::init() {
             "shaders/gos_terrain.frag",
             kSurfacePrefix.c_str());
         if (!terrain_surface_prog_ || !terrain_surface_prog_->shp_)
-            fprintf(stderr, "[TERRAIN_SURFACE v1] event=shader_compile_fail "
+            MC2_DIAGFE(stderr, "[TERRAIN_SURFACE v1] event=shader_compile_fail "
                             "vs=gos_terrain_surface.vert fs=gos_terrain.frag "
                             "-- MC2_TERRAIN_SURFACE draw disabled\n");
         else
-            printf("[TERRAIN_SURFACE v1] event=shader_loaded prog=%u\n",
+            MC2_DIAGF("[TERRAIN_SURFACE v1] event=shader_loaded prog=%u\n",
                    (unsigned)terrain_surface_prog_->shp_);
         fflush(stdout);
     }
@@ -5527,7 +5528,7 @@ void gosRenderer::init() {
 
     if (!TerrainPatchStream::init()) {
         // init_fail path lives in Task 2; for now this is dead code.
-        fprintf(stderr, "[PATCH_STREAM v1] event=init_fail reason=task1_skeleton_returned_false\n");
+        MC2_DIAGFE(stderr, "[PATCH_STREAM v1] event=init_fail reason=task1_skeleton_returned_false\n");
         fflush(stderr);
     }
 
@@ -5950,7 +5951,7 @@ void gosRenderer::endFrame()
     // RENDER_STATES v1: 600-frame summary line. Always-on counter; gated print.
     rsFrames_++;
     if (rsFrames_ >= 600) {
-        printf("[RENDER_STATES v1] event=summary frames=%u calls=%u skipped_count=%u applied_count=%u\n",
+        MC2_DIAGF("[RENDER_STATES v1] event=summary frames=%u calls=%u skipped_count=%u applied_count=%u\n",
                rsFrames_, rsCalls_, rsSkipped_, rsApplied_);
         fflush(stdout);
         rsFrames_ = 0;
@@ -10154,7 +10155,7 @@ void __stdcall gos_SetWorldToClipGL(const Stuff::Matrix4D& mat)
     }
     if (g_mvpDiagFrame == 1 || g_mvpDiagFrame == 5 ||
         g_mvpDiagFrame == 30 || g_mvpDiagFrame == 120) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
                 "[MVP_DIAG v1] event=set_mvp frame=%ld renderer=%p row0=[%g %g %g %g]\n",
                 g_mvpDiagFrame, (void*)g_gos_renderer,
                 M[0], M[1], M[2], M[3]);
@@ -11365,11 +11366,11 @@ const float* gos_GetTerrainMVPMat4() {
         static long s_lastLogged = -1;
         if (s_lastLogged != g_mvpDiagFrame) {
             s_lastLogged = g_mvpDiagFrame;
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                     "[MVP_DIAG v1] event=get_mvp frame=%ld renderer=%p valid=%d ptr=%p\n",
                     g_mvpDiagFrame, (void*)g_gos_renderer, valid ? 1 : 0, (void*)p);
             if (p) {
-                fprintf(stderr,
+                MC2_DIAGFE(stderr,
                         "[MVP_DIAG v1] event=get_mvp_row0 frame=%ld row0=[%g %g %g %g]\n",
                         g_mvpDiagFrame, p[0], p[1], p[2], p[3]);
             }

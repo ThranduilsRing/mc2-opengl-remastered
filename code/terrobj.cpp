@@ -20,6 +20,7 @@
 #endif
 
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gpu_cull_readback.h"  // Task 5/6: per-actor GPU visibility readback
 
 #ifndef GAMESOUND_H
@@ -144,7 +145,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
         cur.objects_seen   - prev.objects_seen,
         cur.updates_run    - prev.updates_run,
         cur.updates_skipped - prev.updates_skipped);
-    puts(buf);
+    MC2_DIAG_PUTS(buf);
     fflush(stdout);
 
     // [APPEAR_ROUTE v1] Per-class coverage map. One line per non-zero class.
@@ -153,7 +154,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
     // 0x05 (GV_TYPE), 0x0d (MECH_TYPE), 0xFF (no AppearanceType resolved).
     for (int c = 0; c < 256; ++c) {
         if (g_routeTouchByClass[c] || g_routeUpdateByClass[c]) {
-            printf("[APPEAR_ROUTE v1] frame=%u class=0x%02x touch=%llu update=%llu\n",
+            MC2_DIAGF("[APPEAR_ROUTE v1] frame=%u class=0x%02x touch=%llu update=%llu\n",
                 frame, c,
                 (unsigned long long)g_routeTouchByClass[c],
                 (unsigned long long)g_routeUpdateByClass[c]);
@@ -174,7 +175,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
         const uint32_t curIdle  = g_bldgAnimGate_typeIdleNowStatic();
         const uint32_t curStart = g_bldgAnimGate_animStartInvalidated();
         const uint32_t curStoS  = g_bldgAnimGate_animStateToState();
-        printf("[ANIM_GATE v1] frame=%u typeIdleNowStatic_delta=%u animStartInvalidated_delta=%u animStateToState_delta=%u\n",
+        MC2_DIAGF("[ANIM_GATE v1] frame=%u typeIdleNowStatic_delta=%u animStartInvalidated_delta=%u animStateToState_delta=%u\n",
                frame,
                curIdle  - s_prevTypeIdle,
                curStart - s_prevAnimStart,
@@ -919,7 +920,7 @@ long TerrainObject::update (void) {
 					++g_staticUpdateCounters.updates_skipped;
 					++g_routeTouchByClass[_apprClass];
 					if (s_staticUpdateTrace) {
-						printf("[STATIC_UPDATE v1] event=skip frame=%u obj=%p class=0x%02lx\n",
+						MC2_DIAGF("[STATIC_UPDATE v1] event=skip frame=%u obj=%p class=0x%02lx\n",
 							g_mc2FrameCounter, (void*)this, _apprClass);
 						fflush(stdout);
 					}

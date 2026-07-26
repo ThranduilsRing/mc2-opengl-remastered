@@ -2,6 +2,7 @@
 #include<mlr/mlrindexedtrianglecloud.hpp>
 #include"fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split (env MC2_FX_COST_SPLIT)
 #include <tracy/Tracy.hpp>          // Q2-S0 coarse CPU zone
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 // B1 Stage 2' C8: subclass-Start routing into the GPU particle pipeline.
 #include"particles/batcher.h"
@@ -1638,7 +1639,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				static bool s_first = false;
 				if (!s_first && ribbonSubmitted) {
 					s_first = true;
-					std::fprintf(stderr,
+					MC2_DIAGFE(stderr,
 						"[VFX_ORACLE_TUBE v2] class=Tube FIRST_HARVEST spec=\"%s\" "
 						"profileType=%d vc=%u blend=%s activeProfiles=%d verts=%u indices=%u\n",
 						static_cast<const char*>(spec->m_name),
@@ -1650,7 +1651,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 					std::fflush(stderr);
 				}
 				if ((++s_tubeCalls % 240ull) == 0ull) {
-					std::fprintf(stderr,
+					MC2_DIAGFE(stderr,
 						"[VFX_ORACLE_TUBE v2] calls=%llu alphaRibbon=%llu "
 						"addRibbon=%llu polygon=%llu fallback=%llu unsupported=%llu\n",
 						s_tubeCalls, s_subAlphaRibbon, s_subAddRibbon,

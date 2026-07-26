@@ -28,6 +28,7 @@
 #include"missiongui.h"
 #endif
 #include "tacticaloverview.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include"terrain_runtime.h"   // TERRAIN-RUNTIME-CONSUMER-WATER-1
 
 // M1.6 + M2.6: IsStaticPropPickEnabled, lookupAtPixel, setLastGameplayPick,
@@ -8067,7 +8068,7 @@ void MissionInterfaceManager::tryStaticPropPick(bool moverSelectedThisFrame,
         // Unified hit log (META-FIX of the M1.6 static-prop schema);
         // coord-diag fields BYTE-IDENTICAL to M1.6 to keep the
         // user-driven canary semantically stable across rename.
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[GAMEPLAY_PICK v1] hit kind=StaticProp handle=%u idx=%u gen=%u "
             "recipe=%d screen=(%d,%d) gl=(%d,%d) fbo=(%d,%d) "
             "vMul=(%.0f,%.0f) vAdd=(%.0f,%.0f) draw=(%d,%d)\n",
@@ -8090,7 +8091,7 @@ void MissionInterfaceManager::tryStaticPropPick(bool moverSelectedThisFrame,
         // Verbose miss log only when MC2_STATIC_PROP_PICK_DEBUG=1;
         // coord-diag BYTE-IDENTICAL to M1.6 modulo the schema prefix.
         if (RenderWorld::IsStaticPropPickDebugEnabled()) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[GAMEPLAY_PICK v1] miss kind=StaticProp screen=(%d,%d) gl=(%d,%d) "
                 "fbo=(%d,%d) vMul=(%.0f,%.0f) vAdd=(%.0f,%.0f) "
                 "draw=(%d,%d)\n",
@@ -8152,7 +8153,7 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
             // resolver) -- impossible in practice (single-threaded), but
             // defensive design treats it as a benign miss for the click.
             if (RenderWorld::IsMechPickDebugEnabled()) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[GAMEPLAY_PICK v1] miss kind=Mech reason=stale_handle "
                     "handle=%u idx=%u gen=%u screen=(%d,%d) gl=(%d,%d)\n",
                     r.lookup.handle.bits,
@@ -8196,7 +8197,7 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
             // Fog-gated; silent on default path so the substrate cannot
             // become a sensor cheat. Diagnostic log under DEBUG=1.
             if (RenderWorld::IsMechPickDebugEnabled()) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[GAMEPLAY_PICK v1] gated kind=Mech reason=fog_of_war "
                     "handle=%u screen=(%d,%d) gl=(%d,%d)\n",
                     r.lookup.handle.bits,
@@ -8214,7 +8215,7 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
         // Log line carries handle bits/index/generation + the resolved
         // BattleMech pointer (debug; not a stable cookie). NO
         // gameObjectId / partId fields per CRITICAL-1.
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[GAMEPLAY_PICK v1] hit kind=Mech handle=%u idx=%u gen=%u "
             "mech=%p screen=(%d,%d) gl=(%d,%d) "
             "fbo=(%d,%d) vMul=(%.0f,%.0f) vAdd=(%.0f,%.0f) draw=(%d,%d)%s\n",
@@ -8236,7 +8237,7 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
         // is high-frequency for terrain but uninteresting for mechs).
         // Verbose miss only under MC2_MECH_PICK_DEBUG=1.
         if (RenderWorld::IsMechPickDebugEnabled()) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[GAMEPLAY_PICK v1] miss kind=Mech screen=(%d,%d) gl=(%d,%d)\n",
                 r.ctx.mouseX, r.ctx.mouseY,
                 r.ctx.glX,    r.ctx.glY);

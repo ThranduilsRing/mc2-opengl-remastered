@@ -15,6 +15,7 @@
 #endif
 
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C3: GPU visibility queries
 #include "../code/gameobj.h"  // C3: full GameObject definition for obj->getHandle() in init()
 #include "../GameOS/gameos/gos_mech_batcher.h"
@@ -95,7 +96,7 @@ namespace {
 	static void fxCountTick(int site) {
 		++s_fxDrawCounts[site];
 		if ((++s_fxTotalDraws % 9000ULL) == 0ULL) {
-			std::printf(
+			MC2_DIAGF(
 				"[FX_COUNT v1] event=summary total=%llu rDust=%llu lDust=%llu jump=%llu "
 				"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
 				"rArmSmoke=%llu lArmSmoke=%llu\n",
@@ -113,7 +114,7 @@ namespace {
 	// if a short/idle mission drew no effects — proves the chain end to end).
 	static void fxCountEmit() {
 		if (!s_fxCountLog) return;
-		std::printf(
+		MC2_DIAGF(
 			"[FX_COUNT v1] event=shutdown total=%llu rDust=%llu lDust=%llu jump=%llu "
 			"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
 			"rArmSmoke=%llu lArmSmoke=%llu\n",
@@ -2975,7 +2976,7 @@ long Mech3DAppearance::render (long depthFixup)
 		static bool s_fxInitDone = false;
 		if (!s_fxInitDone) {
 			s_fxInitDone = true;
-			std::printf("[FX_COUNT v1] event=init flag=%d\n", s_fxCountLog ? 1 : 0);
+			MC2_DIAGF("[FX_COUNT v1] event=init flag=%d\n", s_fxCountLog ? 1 : 0);
 			std::fflush(stdout);
 			if (s_fxCountLog) std::atexit(&fxCountEmit);
 		}
@@ -4183,7 +4184,7 @@ void Mech3DAppearance::updateGeometry (void)
 				s_spotDiagMechOverflows  += (unsigned long)diagOverflow;
 				++s_spotDiagMechActors;
 				if (s_spotDiagMechActors <= 8) {
-					std::fprintf(stderr,
+					MC2_DIAGFE(stderr,
 						"[SPOT_DIAG v1] event=first_register class=mech actor_id=%ld "
 						"children_walked=%d spotlights_found=%d registered=%d overflow=%d\n",
 						actorHandle_, diagChildrenWalked, diagSpotlightsFound,

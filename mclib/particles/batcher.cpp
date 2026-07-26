@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include "batcher.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include <mlr/mlr.hpp>
 
@@ -139,7 +140,7 @@ bool Batcher::is_oracle_render_enabled() {
         // cards); opt into GPU with "1".
         s_val  = (v && v[0] == '1');
         s_init = true;
-        std::fprintf(stderr, "[VFX_ROUTE v1] oracle_render=%s reason=%s\n",
+        MC2_DIAGFE(stderr, "[VFX_ROUTE v1] oracle_render=%s reason=%s\n",
             s_val ? "on" : "off",
             s_val ? "opt_in" : "default_off");
         std::fflush(stderr);
@@ -194,7 +195,7 @@ bool Batcher::is_oracle_tube_enabled() {
         const char* v = std::getenv("MC2_VFX_ORACLE_TUBE");
         s_val  = (v && v[0] == '1');    // REVERTED: DEFAULT-OFF (legacy MLR tubes); =1 opts into GPU
         s_init = true;
-        std::fprintf(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-off; =1 enables GPU)\n",
+        MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-off; =1 enables GPU)\n",
                      s_val ? "on" : "off");
         std::fflush(stderr);
     }

@@ -13,6 +13,7 @@
 // preflight-arming, and bridge entry.
 
 #include "gos_terrain_indirect.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include "gos_gpu_sync.h"               // GPU-SYNC-CONTRACT typed barrier helper
 #include "gos_terrain_patch_stream.h"  // TerrainQuadRecipe
@@ -434,7 +435,7 @@ void ParityPrintMismatch(int frame, int quad, const char* layer, int tri,
                          uint32_t legacy, uint32_t fast) {
     if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
     ++s_parityMismatchesThisFrame;
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
             "[TERRAIN_INDIRECT_PARITY v1] event=mismatch frame=%d quad=%d "
             "layer=%s tri=%d vert=%d field=%s legacy=0x%08X fast=0x%08X\n",
             frame, quad, layer ? layer : "?", tri, vert, field ? field : "?",
@@ -471,7 +472,7 @@ void ParityFrameTick(int quadsCheckedThisFrame) {
         const long long csSetupPerFrame    = csOn ? csSetupNs   / csFrames : 0;
         const long long csResPerFrame      = csOn ? csResNs     / csFrames : 0;
         if (csOn) {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                     "[TERRAIN_INDIRECT_PARITY v1] event=summary frames=%lld "
                     "quads_checked=%lld total_mismatches=%lld "
                     "legacy_solid_setup_quads=%lld "
@@ -520,7 +521,7 @@ void ParityFrameTick(int quadsCheckedThisFrame) {
                     Counters_GetShapeCInvisibleQuads(),
                     csFrames);
         } else {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                     "[TERRAIN_INDIRECT_PARITY v1] event=summary frames=%lld "
                     "quads_checked=%lld total_mismatches=%lld "
                     "legacy_solid_setup_quads=%lld "
@@ -1181,7 +1182,7 @@ static void BuildTransitionMaskArray() {
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
-    printf("[CEMENT_ATLAS v1] event=transition_mask_array_built layers=%d size=%dx%d\n", N, S, S);
+    MC2_DIAGF("[CEMENT_ATLAS v1] event=transition_mask_array_built layers=%d size=%dx%d\n", N, S, S);
     fflush(stdout);
 }
 
@@ -1360,7 +1361,7 @@ static void PopulateRecipeCementWords() {
     // all-corners mask (the shader re-derives its own coverage from neighbour
     // whole-tile state anyway -- CEMENT-HARD-EDGE-1 -- so the outline shape is
     // unaffected and only the missing paving is restored).
-    printf("[CEMENT_TRANSITION_DROP v1] event=census mission=%s transition_baked=%ld "
+    MC2_DIAGF("[CEMENT_TRANSITION_DROP v1] event=census mission=%s transition_baked=%ld "
            "dropped_no_layer=%ld dropped_no_mask=%ld fallback=%d "
            "alpha_atlas=%d alpha_rescued=%ld\n",
            (::missionName[0] ? ::missionName : "unknown"), transitionQuadCount,
@@ -1415,7 +1416,7 @@ static void PopulateRecipeCementWords() {
             g_denseRecipeDirty[vn] = true;
             ++repaired;
         }
-        printf("[CEMENT_TRANSITION_DROP v1] event=fallback_applied mission=%s repaired=%ld\n",
+        MC2_DIAGF("[CEMENT_TRANSITION_DROP v1] event=fallback_applied mission=%s repaired=%ld\n",
                (::missionName[0] ? ::missionName : "unknown"), repaired);
         fflush(stdout);
     }
@@ -1467,7 +1468,7 @@ static void PopulateRecipeCementWords() {
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
     gos_TerrainLodChunk_UploadCementWordsFull(
         chunkCementWords.data(), (int)chunkCementWords.size(), (int)mapSide);
-    printf("[CEMENT_ATLAS v1] event=cement_words_baked cement_solid=%ld cement_transition=%ld total_vn=%zu\n",
+    MC2_DIAGF("[CEMENT_ATLAS v1] event=cement_words_baked cement_solid=%ld cement_transition=%ld total_vn=%zu\n",
            cementQuadCount, transitionQuadCount, N);
     fflush(stdout);
 }
@@ -1547,7 +1548,7 @@ void BuildColormapAtlas() {
         }
     }
     if (!Terrain::terrainTextures2) {
-        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_terrainTextures2\n");
+        if (traceOn()) MC2_DIAGF("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_terrainTextures2\n");
         return;
     }
     auto* tcm = Terrain::terrainTextures2;
@@ -1615,7 +1616,7 @@ void BuildColormapAtlas() {
     // --- RGBA8 fallback (pre-existing path) ---
     if (!atlasBuilt) {
         if (!tcm->cpuColorMap || tcm->cpuColorMapSize <= 0) {
-            if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_cpuColorMap\n");
+            if (traceOn()) MC2_DIAGF("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_cpuColorMap\n");
             return;
         }
 
@@ -1665,7 +1666,7 @@ void BuildColormapAtlas() {
     g_atlasOneOverWorldUnits = Terrain::oneOverWorldUnitsMapSide;
 
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=atlas_built size=%d numTilesAcross=%.4f "
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=atlas_built size=%d numTilesAcross=%.4f "
                "mapTopLeftX=%.3f mapTopLeftY=%.3f oneOverWorldUnits=%.9f gltex=%u "
                "bc7=%s\n",
                g_atlasSize, g_atlasNumTexturesAcross,
@@ -1696,7 +1697,7 @@ void BuildCementCatalogAtlas() {
     ZoneScopedN("Terrain::IndirectCementAtlasUpload");
 
     if (!Terrain::terrainTextures) {
-        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_terrainTextures\n");
+        if (traceOn()) MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_terrainTextures\n");
         return;
     }
     auto* tt = Terrain::terrainTextures;
@@ -1704,7 +1705,7 @@ void BuildCementCatalogAtlas() {
     const int txmSize = TERRAIN_TXM_SIZE;  // extern int, typically 64 (terrtxm.cpp:51)
     const long lastSlot = tt->getNextAvailableSlot();
     if (lastSlot <= 0) {
-        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_slots\n");
+        if (traceOn()) MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_slots\n");
         return;
     }
 
@@ -1748,7 +1749,7 @@ void BuildCementCatalogAtlas() {
         if (nodeIdx == 0xffffffffu) continue;
         if (nodeIdx >= (DWORD)MC_MAXTEXTURES) {
             if (traceOn()) {
-                printf("[TERRAIN_INDIRECT v1] event=cement_atlas_nodeidx_oob "
+                MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_nodeidx_oob "
                        "slot=%ld nodeIdx=%u cap=%d\n",
                        slot, (unsigned)nodeIdx, (int)MC_MAXTEXTURES);
                 fflush(stdout);
@@ -1807,7 +1808,7 @@ void BuildCementCatalogAtlas() {
         }
         g_cementAlphaLayerMapReady = true;
     }
-    printf("[CEMENT_ALPHA_ATLAS v1] event=admit mission=%s gate=%d solid_cells=%d "
+    MC2_DIAGF("[CEMENT_ALPHA_ATLAS v1] event=admit mission=%s gate=%d solid_cells=%d "
            "alpha_admitted=%ld alpha_skipped=%ld\n",
            (::missionName[0] ? ::missionName : "unknown"),
            CementAlphaAtlasEnabled() ? 1 : 0, nSolidCells, alphaAdmitted, alphaSkipped);
@@ -1824,11 +1825,11 @@ void BuildCementCatalogAtlas() {
 
     const int N = (int)cementNodeIndices.size();
     // Always-on summary — not trace-gated so the count is visible without MC2_TERRAIN_INDIRECT_TRACE.
-    printf("[CEMENT_ATLAS v1] event=build_result N=%d diagTotal=%ld mission=%s\n",
+    MC2_DIAGF("[CEMENT_ATLAS v1] event=build_result N=%d diagTotal=%ld mission=%s\n",
            N, diagTotal, (::missionName[0] ? ::missionName : "unknown"));
     fflush(stdout);
     if (N == 0) {
-        if (traceOn()) printf("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_cement_tiles count=0\n");
+        if (traceOn()) MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_skip reason=no_cement_tiles count=0\n");
         return;
     }
 
@@ -1914,7 +1915,7 @@ void BuildCementCatalogAtlas() {
             }
             if (cellHits > 0) { ++magentaCells; magentaTexels += cellHits; }
         }
-        printf("[CEMENT_ATLAS_MAGENTA v1] event=census mission=%s cells=%d "
+        MC2_DIAGF("[CEMENT_ATLAS_MAGENTA v1] event=census mission=%s cells=%d "
                "magenta_cells=%ld magenta_texels=%ld keyed=%d\n",
                (::missionName[0] ? ::missionName : "unknown"), N,
                magentaCells, magentaTexels, CementAtlasMagentaKeyEnabled() ? 1 : 0);
@@ -2072,13 +2073,13 @@ void BuildCementCatalogAtlas() {
                 const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
                 const long nameId = (ttNames && slot >= 0)
                                     ? ttNames->getTextureNameID(slot) : -1;
-                printf("[CEMENT_CELL_TONE v1] mission=%s cell=%d slot=%d nameId=%ld "
+                MC2_DIAGF("[CEMENT_CELL_TONE v1] mission=%s cell=%d slot=%d nameId=%ld "
                        "band_rgb=%.1f,%.1f,%.1f band_lum=%.1f dark=%d\n",
                        (::missionName[0] ? ::missionName : "unknown"), k, slot, nameId,
                        bR[(size_t)k], bG[(size_t)k], bB[(size_t)k], L, dark ? 1 : 0);
             }
         }
-        printf("[CEMENT_CELL_TONE v1] event=census mission=%s cells=%d usable=%d "
+        MC2_DIAGF("[CEMENT_CELL_TONE v1] event=census mission=%s cells=%d usable=%d "
                "median_lum=%.1f target_rgb=%.1f,%.1f,%.1f target_src=%s dark_cells=%ld\n",
                (::missionName[0] ? ::missionName : "unknown"), NT, (int)bL.size(),
                medL, tgtR, tgtG, tgtB, overridden ? "env" : "upper_median", darkCells);
@@ -2163,7 +2164,7 @@ void BuildCementCatalogAtlas() {
     }
 
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=cement_catalog_built tile_count=%d "
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_catalog_built tile_count=%d "
                "atlas_size=%dx%d grid_side=%d gltex=%u truncated=%d "
                "unmapped_pack_count=%u\n",
                N, atlasPixelSide, atlasPixelSide, gridSide,
@@ -2171,7 +2172,7 @@ void BuildCementCatalogAtlas() {
                g_cementCatalogTruncated,
                g_cementPackUnmappedCount);
         if (truncated) {
-            printf("[TERRAIN_INDIRECT v1] event=cement_catalog_truncated count=1024\n");
+            MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_catalog_truncated count=1024\n");
         }
         fflush(stdout);
     }
@@ -2297,7 +2298,7 @@ void BuildDenseRecipe() {
     g_recipeReady = true;
 
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=recipe_build mapSide=%d entries=%zu "
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=recipe_build mapSide=%d entries=%zu "
                "bytes=%zu ssbo=%u\n",
                g_recipeMapSide, N, N * sizeof(TerrainQuadRecipe),
                (unsigned)g_recipeSSBO);
@@ -2312,7 +2313,7 @@ void ResetDenseRecipe() {
     ZoneScopedN("Terrain::IndirectRecipeReset");
 
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=recipe_reset ssbo=%u\n",
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=recipe_reset ssbo=%u\n",
                (unsigned)g_recipeSSBO);
         fflush(stdout);
     }
@@ -2365,7 +2366,7 @@ void ResetDenseRecipe() {
     memset(g_cementLayerIndexBySlot,    0xFF, sizeof(g_cementLayerIndexBySlot));
 
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=cement_catalog_reset\n");
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_catalog_reset\n");
         fflush(stdout);
     }
 }
@@ -2394,7 +2395,7 @@ void InvalidateRecipeForVertexNum(int32_t vn) {
     g_denseRecipeDirty[vn] = true;
     g_denseRecipeAnyDirty  = true;
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=invalidate vn=%d\n", vn);
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=invalidate vn=%d\n", vn);
         fflush(stdout);
     }
 }
@@ -2414,7 +2415,7 @@ void InvalidateAllRecipes() {
     PopulateRecipeCementWords();
     g_denseRecipeAnyDirty = true;
     if (traceOn()) {
-        printf("[TERRAIN_INDIRECT v1] event=invalidate_all entries=%zu\n", N);
+        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=invalidate_all entries=%zu\n", N);
         fflush(stdout);
     }
 }
@@ -2817,7 +2818,7 @@ static bool ResourcesReady() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         if (g_thinRecordSSBO == 0) {
             if (traceOn()) {
-                fprintf(stderr, "[TERRAIN_INDIRECT v1] event=resources_alloc_fail reason=thin_ssbo\n");
+                MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=resources_alloc_fail reason=thin_ssbo\n");
                 fflush(stderr);
             }
             s_resourcesAllocated = true;
@@ -2864,7 +2865,7 @@ static bool ResourcesReady() {
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         if (g_indirectCmdBuffer == 0) {
             if (traceOn()) {
-                fprintf(stderr, "[TERRAIN_INDIRECT v1] event=resources_alloc_fail reason=indirect_buf\n");
+                MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=resources_alloc_fail reason=indirect_buf\n");
                 fflush(stderr);
             }
             s_resourcesAllocated = true;
@@ -2878,7 +2879,7 @@ static bool ResourcesReady() {
     // arm and the bridge would draw with no texture bound — reproducing the grey bug.
     if (g_atlasGLTex == 0) {
         if (traceOn()) {
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=resources_not_ready reason=atlas_not_built\n");
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=resources_not_ready reason=atlas_not_built\n");
             fflush(stderr);
         }
         // Don't mark s_resourcesAllocated — retry next frame once atlas is ready.
@@ -2888,7 +2889,7 @@ static bool ResourcesReady() {
     s_resourcesAllocated = true;
     s_resourcesReady     = true;
     if (traceOn()) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[TERRAIN_INDIRECT v1] event=resources_ready "
             "thinSSBO=%u indirectBuf=%u ringFrames=%d maxThin=%zu atlasGLTex=%u\n",
             (unsigned)g_thinRecordSSBO, (unsigned)g_indirectCmdBuffer,
@@ -3229,7 +3230,7 @@ static uint32_t UploadTerrainHandleLUT() {
                 if (nodeId > 0u && nodeId < (uint32_t)MC_MAXTEXTURES && lut[nodeId] != 0u)
                     ++nonZero;
             }
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=lut_upload unique=%d nonzero=%d\n",
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=lut_upload unique=%d nonzero=%d\n",
                     (int)g_uniqueTerrainNodeIds.size(), nonZero);
             fflush(stderr);
         }
@@ -3452,7 +3453,7 @@ void ForceDisableArmingForProcess() {
         // fallback, which Phase 8z removes -- after 8z this condition renders NO terrain
         // (black) with no recovery. State it prominently; the preceding event=error line
         // carries the actual cause.
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[TERRAIN_INDIRECT v1] FATAL event=arming_disabled_process_sticky "
             "msg=GPU_terrain_path_PERMANENTLY_DISABLED_after_hard_GL_or_init_failure "
             "(post-8z: terrain will NOT render -- see preceding event=error line)\n");
@@ -3469,7 +3470,7 @@ void BeginFrame() {
     ++s_beginFrameCount;
     if (s_solidGpuDispatchRanThisFrame && !s_frameSolidArmed) {
         // Dispatch ran this frame but arming is already false — double BeginFrame call.
-        fprintf(stderr, "[TERRAIN_INDIRECT v1] event=double_beginframe count=%d\n",
+        MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=double_beginframe count=%d\n",
                 s_beginFrameCount);
         fflush(stderr);
     }
@@ -3528,7 +3529,7 @@ bool ComputePreflight() {
         static bool s_loggedParityRetired = false;
         if (!s_loggedParityRetired) {
             s_loggedParityRetired = true;
-            printf("[TERRAIN_INDIRECT v1] event=parity_infra_retired "
+            MC2_DIAGF("[TERRAIN_INDIRECT v1] event=parity_infra_retired "
                    "path=gos_terrain_indirect scope=full "
                    "removed=s_packParityMask,ComputeDispatchParity_Check,getPackParityMask,txmmgr_call\n");
             fflush(stdout);
@@ -3545,7 +3546,7 @@ bool ComputePreflight() {
         // the condition is unmissable in logs for the whole session it persists.
         static unsigned long s_disabledTicks = 0;
         if ((s_disabledTicks++ % 300u) == 0u) {
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[TERRAIN_INDIRECT v1] FATAL arming still disabled (tick %lu) -- "
                 "GPU terrain not rendering; no fallback post-8z.\n", s_disabledTicks);
             fflush(stderr);
@@ -3565,7 +3566,7 @@ bool ComputePreflight() {
         static bool s_warnedRecipe = false;
         if (!s_warnedRecipe) {
             s_warnedRecipe = true;
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=preflight_fail reason=recipe_not_ready\n");
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=preflight_fail reason=recipe_not_ready\n");
             fflush(stderr);
         }
         return false;
@@ -3574,7 +3575,7 @@ bool ComputePreflight() {
         static bool s_warnedResources = false;
         if (!s_warnedResources) {
             s_warnedResources = true;
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=preflight_fail reason=resources_not_ready\n");
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=preflight_fail reason=resources_not_ready\n");
             fflush(stderr);
         }
         return false;
@@ -3639,7 +3640,7 @@ bool ComputePreflight() {
             static bool s_firstArm = false;
             if (!s_firstArm) {
                 s_firstArm = true;
-                fprintf(stderr, "[TERRAIN_INDIRECT v1] event=first_arm path=gpu nodeIds=%zu atlasTex=%u\n",
+                MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=first_arm path=gpu nodeIds=%zu atlasTex=%u\n",
                         g_uniqueTerrainNodeIds.size(), (unsigned)g_atlasGLTex);
                 fflush(stderr);
             }
@@ -3651,14 +3652,14 @@ bool ComputePreflight() {
     const int thinCount = PackThinRecordsForFrame();
     if (thinCount == 0) {
         if (traceOn())
-            printf("[TERRAIN_INDIRECT v1] event=preflight_skip reason=zero_thin\n");
+            MC2_DIAGF("[TERRAIN_INDIRECT v1] event=preflight_skip reason=zero_thin\n");
         return false;
     }
 
     const int cmdCount = BuildIndirectCommands(thinCount);
     if (cmdCount == 0) {
         if (traceOn())
-            printf("[TERRAIN_INDIRECT v1] event=preflight_skip reason=zero_cmd\n");
+            MC2_DIAGF("[TERRAIN_INDIRECT v1] event=preflight_skip reason=zero_cmd\n");
         return false;
     }
 
@@ -3671,7 +3672,7 @@ bool ComputePreflight() {
         static bool s_firstArm = false;
         if (!s_firstArm) {
             s_firstArm = true;
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=first_arm path=cpu thin=%d cmd=%d\n",
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=first_arm path=cpu thin=%d cmd=%d\n",
                     thinCount, cmdCount);
             fflush(stderr);
         }
@@ -3693,7 +3694,7 @@ void ComputeDispatch() {
     if (lightSsbo == 0) {
         static bool s_warnedLight = false;
         if (!s_warnedLight) {
-            printf("[TERRAIN_INDIRECT v1] event=warn msg=solid_lighting_ssbo_not_ready\n");
+            MC2_DIAGF("[TERRAIN_INDIRECT v1] event=warn msg=solid_lighting_ssbo_not_ready\n");
             fflush(stdout);
             s_warnedLight = true;
         }
@@ -3705,7 +3706,7 @@ void ComputeDispatch() {
         g_solidComputeProgram = gpu_driven::BuildComputeProgramFromFile(
             "shaders/gpu_driven_terrain_solid.comp", nullptr, 0, "gpu_driven_terrain_solid");
         if (g_solidComputeProgram == 0) {
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=error msg=solid_compute_compile_failed\n");
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=error msg=solid_compute_compile_failed\n");
             fflush(stderr);
             ForceDisableArmingForProcess();
             return;
@@ -4222,7 +4223,7 @@ void ComputeDispatch() {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, g_solidQuadWindowSsbo);
 
     if (g_locSolidWC < 0 || g_locSolidMVP < 0) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[TERRAIN_INDIRECT v1] event=error msg=solid_compute_missing_uniform "
             "u_windowCount=%d u_terrainMVP=%d\n",
             g_locSolidWC, g_locSolidMVP);
@@ -4647,7 +4648,7 @@ bool DrawIndirect() {
         static bool s_warnedOnce = false;
         if (!s_warnedOnce) {
             s_warnedOnce = true;
-            fprintf(stderr, "[TERRAIN_INDIRECT v1] event=draw_indirect_skip "
+            MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=draw_indirect_skip "
                    "armed=%d process_disabled=%d\n",
                    (int)s_frameSolidArmed, (int)s_processArmingDisabled);
             fflush(stderr);
@@ -4668,7 +4669,7 @@ bool DrawIndirect() {
         static bool s_hardFailureLogged = false;
         if (!s_hardFailureLogged) {
             s_hardFailureLogged = true;
-            fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[TERRAIN_INDIRECT v1] event=hard_failure reason=bridge_returned_false "
                 "thin_count=%d cmd_count=%d "
                 "advice=set MC2_TERRAIN_INDIRECT=0 to fall back to M2 legacy SOLID\n",
@@ -4684,7 +4685,7 @@ bool DrawIndirect() {
     // it's reset by ResetDenseRecipe() at mission teardown.
     if (!s_firstDrawPrintedThisMission) {
         s_firstDrawPrintedThisMission = true;
-        fprintf(stderr, "[TERRAIN_INDIRECT v1] event=first_draw "
+        MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=first_draw "
                "thin_count=%d cmd_count=%d ring_slot=%d\n",
                s_frameSolidPackedThinCount, s_frameSolidCmdCount, g_thinRingSlot);
         fflush(stderr);

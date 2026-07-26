@@ -1,4 +1,5 @@
 #include "gos_static_prop_registry.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../../mclib/txmmgr.h"  // 2026-05-05: peekLightSlotNumLights/getLightStructCount for flush trace
 #include "../../mclib/appear.h"   // Task 6: Appearance* for registerStaticProp()
 #include "../../mclib/apprtype.h"  // AppearanceType::name (inspector shapeName capture)
@@ -541,7 +542,7 @@ void destroy() {
     // [STATIC_FIRST_FRAME v1] summary — emit BEFORE pin-release loop.
     // Non-zero skip_count means Task 3's cachedFrame_ pre-population didn't
     // reach flush in time for at least one registration; escalate if nonzero.
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[STATIC_FIRST_FRAME v1] event=summary skip_count=%llu\n",
         (unsigned long long)s_firstFrameSkipCount);
     fflush(stderr);
@@ -550,7 +551,7 @@ void destroy() {
     // [STATIC_PROP_REG v1] HC-3 gate signal: late-spawn registration failures.
     // count=0 means every late-spawn actor was eligible and registered.
     // count>0 identifies types that fell through to the first-render path.
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[STATIC_PROP_REG v1] event=type_unknown_at_late_spawn count=%llu\n",
         (unsigned long long)s_lateSpawnTypeUnknownCount);
     fflush(stderr);
@@ -1023,7 +1024,7 @@ void flush() {
                 static int s_warnPrinted = 0;
                 if (s_warnPrinted < 16) {
                     ++s_warnPrinted;
-                    fprintf(stderr,
+                    MC2_DIAGFE(stderr,
                         "[STATIC_FIRST_FRAME v1] event=skip_first_flush regIdx=%u "
                         "registeredOnFrame=%u currentFrame=%u cachedFrame=%u\n",
                         regIdx, rng.registeredOnFrame, currentFrame,

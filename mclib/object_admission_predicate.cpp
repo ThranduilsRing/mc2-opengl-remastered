@@ -1,5 +1,6 @@
 // mclib/object_admission_predicate.cpp
 #include "object_admission_predicate.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "stuff/stuff.hpp"   // Stuff::Vector4D
 #include "stuff/vector3d.hpp" // Stuff::Vector3D (for logProjectZBypassDisagreement)
 #include <cmath>
@@ -87,7 +88,7 @@ void lightingShadowPredicate_init() {
         s_lshadowMode = LightingShadowPredicateMode::Modern;  // default
     }
     s_lshadowInitialized = true;
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=lighting_shadow mode=%s\n",
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=lighting_shadow mode=%s\n",
                 lshadowModeLabel(s_lshadowMode));
     std::fflush(stdout);
 }
@@ -118,7 +119,7 @@ void debugOverlayPredicate_init() {
         s_dbgoverlayMode = DebugOverlayPredicateMode::Modern;  // default
     }
     s_dbgoverlayInitialized = true;
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=debug_overlay mode=%s\n",
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=debug_overlay mode=%s\n",
                 dbgoverlayModeLabel(s_dbgoverlayMode));
     std::fflush(stdout);
 }
@@ -149,7 +150,7 @@ void selectionPickingPredicate_init() {
         s_selfpickMode = SelectionPickingPredicateMode::Modern;  // default
     }
     s_selfpickInitialized = true;
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=selection_picking mode=%s\n",
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=selection_picking mode=%s\n",
                 selfpickModeLabel(s_selfpickMode));
     std::fflush(stdout);
 }
@@ -192,7 +193,7 @@ ProjectZBypassMode projectZBypassMode() {
         const char* label = (s_bypassMode == ProjectZBypassMode::Compare) ? "compare"
                           : (s_bypassMode == ProjectZBypassMode::Bypass)  ? "bypass"
                           :                                                  "off";
-        std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=projectz_bypass mode=%s\n", label);
+        MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=projectz_bypass mode=%s\n", label);
         std::fflush(stdout);
     }
     return s_bypassMode;
@@ -218,7 +219,7 @@ void logProjectZBypassDisagreement(const char* wrapper,
     if (idx < 0) idx = 0;  // unknown wrapper: slot 0
     if (s_counts[idx] >= 64) return;
     ++s_counts[idx];
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=disagree wrapper=%s "
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=disagree wrapper=%s "
                 "world=(%.3f,%.3f,%.3f) "
                 "legacyRawClip=(%.4f,%.4f,%.4f,%.4f) legacyAdmit=%d "
                 "bypassClipGL=(%.4f,%.4f,%.4f,%.4f) bypassAdmit=%d\n",
@@ -240,7 +241,7 @@ void logSelectionPickingScreenDelta(const Stuff::Vector3D& world,
     static int s_count = 0;
     if (s_count >= 64) return;
     ++s_count;
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=picking_screen_delta "
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=picking_screen_delta "
                 "world=(%.3f,%.3f,%.3f) "
                 "legacyScreen=(%.2f,%.2f) "
                 "bypassScreen=(%.2f,%.2f) "
@@ -272,7 +273,7 @@ void screenXYPredicate_init() {
         s_sxyMode = ScreenXYPredicateMode::Modern;  // default: Modern
     }
     s_sxyInitialized = true;
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=screenxy mode=%s\n",
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=mode_select wrapper=screenxy mode=%s\n",
                 sxyModeLabel(s_sxyMode));
     std::fflush(stdout);
 }
@@ -292,7 +293,7 @@ void logScreenXYScreenDelta(const Stuff::Vector3D& world,
     static int s_count = 0;
     if (s_count >= 64) return;
     ++s_count;
-    std::printf("[OBJECT_ADMISSION_PREDICATE v1] event=screenxy_screen_delta "
+    MC2_DIAGF("[OBJECT_ADMISSION_PREDICATE v1] event=screenxy_screen_delta "
                 "world=(%.3f,%.3f,%.3f) "
                 "legacyScreen=(%.2f,%.2f) "
                 "bypassScreen=(%.2f,%.2f) "

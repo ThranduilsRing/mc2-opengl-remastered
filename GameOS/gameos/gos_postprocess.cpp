@@ -1,4 +1,5 @@
 #include "gos_postprocess.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
 #include "utils/vec.h"
@@ -607,7 +608,7 @@ void gosPostProcess::setSkyNumber(int skyNumber)
     if (std::strncmp(hdriCurrentPath_, newPath, sizeof(hdriCurrentPath_)) == 0)
         return;
 
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[HDRI_SKY v1] setSkyNumber sky=%d mood=%s path=%s\n",
         skyNumber, hdriSet.name, newPath);
 
@@ -631,7 +632,7 @@ void gosPostProcess::setSkyNumber(int skyNumber)
     } else {
         // Load failed — keep hdriReady_=false so sky renders black rather than crash.
         hdriReady_ = false;
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[HDRI_SKY v1] setSkyNumber sky=%d load_failed path=%s\n",
             skyNumber, newPath);
     }
@@ -754,7 +755,7 @@ void gosPostProcess::init(int w, int h)
     {
         const char* hzbEnv = getenv("MC2_HZB_BUILD");
         hzbEnabled_ = (hzbEnv && hzbEnv[0] && hzbEnv[0] != '0');
-        std::fprintf(stderr, "[HZB_BUILD v1] enabled=%d (MC2_HZB_BUILD=%s)\n",
+        MC2_DIAGFE(stderr, "[HZB_BUILD v1] enabled=%d (MC2_HZB_BUILD=%s)\n",
                      hzbEnabled_ ? 1 : 0, hzbEnv ? hzbEnv : "(unset)");
     }
 
@@ -812,14 +813,14 @@ void gosPostProcess::init(int w, int h)
                       && hdriSkyboxProg_->is_valid();
 
             if (!hdriReady_) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[HDRI_SKY v1] enabled=0 reason=init_failed "
                     "tex=%u prog=%p valid=%d\n",
                     hdriTex_, (void*)hdriSkyboxProg_,
                     hdriSkyboxProg_ ? (int)hdriSkyboxProg_->is_valid() : 0);
             }
         } else {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] enabled=0 reason=env_gate MC2_HDRI_SKY=0\n");
         }
     }
@@ -893,7 +894,7 @@ void gosPostProcess::init(int w, int h)
     {
         const char* e = getenv("MC2_BOX_DECAL");
         boxDecalEnabled_ = (e && e[0] && e[0] != '0');
-        std::fprintf(stderr, "[BOX_DECAL v1] enabled=%d (MC2_BOX_DECAL=%s)\n",
+        MC2_DIAGFE(stderr, "[BOX_DECAL v1] enabled=%d (MC2_BOX_DECAL=%s)\n",
                      boxDecalEnabled_ ? 1 : 0, e ? e : "(unset)");
         // DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF). When ON, the box-decal
         // pass is fed by the dynamic_decal_ring impact slots instead of the v1 test box.
@@ -911,7 +912,7 @@ void gosPostProcess::init(int w, int h)
         ssaoEnabled_ = (ssaoEnv && ssaoEnv[0] && ssaoEnv[0] != '0');
         const char* dbgEnv = getenv("MC2_SSAO_DEBUG");
         ssaoDebug_ = (dbgEnv && dbgEnv[0] && dbgEnv[0] != '0') ? 1 : 0;
-        std::fprintf(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f\n",
+        MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f\n",
                      ssaoEnabled_ ? 1 : 0, ssaoDebug_,
                      ssaoEnv ? ssaoEnv : "(unset)", aoRadius_, aoStrength_, aoBias_);
     }
@@ -928,7 +929,7 @@ void gosPostProcess::init(int w, int h)
         if (const char* s = getenv("MC2_FXAA_SUBPIX"))            { float v = (float)atof(s); if (v >= 0.0f) fxaaSubpix_ = v; }
         if (const char* s = getenv("MC2_FXAA_EDGE_THRESHOLD"))    { float v = (float)atof(s); if (v >  0.0f) fxaaEdgeThreshold_ = v; }
         if (const char* s = getenv("MC2_FXAA_EDGE_THRESHOLD_MIN")){ float v = (float)atof(s); if (v >  0.0f) fxaaEdgeThresholdMin_ = v; }
-        std::fprintf(stderr, "[FXAA v1] enabled=%d subpix=%.3f edge=%.3f edgeMin=%.4f (MC2_FXAA=%s)\n",
+        MC2_DIAGFE(stderr, "[FXAA v1] enabled=%d subpix=%.3f edge=%.3f edgeMin=%.4f (MC2_FXAA=%s)\n",
                      fxaaEnabled_ ? 1 : 0, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
                      fxEnv ? fxEnv : "(unset)");
     }
@@ -945,7 +946,7 @@ void gosPostProcess::init(int w, int h)
             float v = (float)atof(s);
             casSharpness_ = (v < 0.0f) ? 0.0f : (v > 1.0f ? 1.0f : v);
         }
-        std::fprintf(stderr, "[CAS v1] enabled=%d sharpness=%.3f (MC2_POST_CAS=%s)\n",
+        MC2_DIAGFE(stderr, "[CAS v1] enabled=%d sharpness=%.3f (MC2_POST_CAS=%s)\n",
                      casEnabled_ ? 1 : 0, casSharpness_,
                      casEnv ? casEnv : "(unset)");
     }
@@ -962,7 +963,7 @@ void gosPostProcess::init(int w, int h)
             else if (v[0]=='2' || !strcmp(v,"hable"))    tonemapMode_ = 2;
             else if (v[0]=='3' || !strcmp(v,"reinhard")) tonemapMode_ = 3;
         }
-        std::fprintf(stderr, "[TONEMAP v2] mode=%d (MC2_TONEMAP_V2=%s)\n",
+        MC2_DIAGFE(stderr, "[TONEMAP v2] mode=%d (MC2_TONEMAP_V2=%s)\n",
                      tonemapMode_, getenv("MC2_TONEMAP_V2") ? getenv("MC2_TONEMAP_V2") : "(unset)");
     }
 
@@ -1040,7 +1041,7 @@ void gosPostProcess::init(int w, int h)
         const float kDeg2Rad = 3.14159265358979323846f / 180.0f;
         fogHorizonFadeStartSin_ = std::sin(fogHorizonFadeStartDeg_ * kDeg2Rad);
         fogHorizonFadeEndSin_   = std::sin(fogHorizonFadeEndDeg_   * kDeg2Rad);
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[FOG_HORIZON v1] clamp=%d fadeStart=%.2fdeg(sin=%.4f) fadeEnd=%.2fdeg(sin=%.4f)\n",
             fogHorizonClampEnabled_ ? 1 : 0,
             fogHorizonFadeStartDeg_, fogHorizonFadeStartSin_,
@@ -1058,7 +1059,7 @@ void gosPostProcess::init(int w, int h)
         const char* probeEnv = getenv("MC2_HZB_PROBE");
         hzbProbeEnabled_ = hzbEnabled_ &&
                            (probeEnv && probeEnv[0] && probeEnv[0] != '0');
-        std::fprintf(stderr, "[HZB_PROBE v1] enabled=%d (MC2_HZB_PROBE=%s, requires MC2_HZB_BUILD)\n",
+        MC2_DIAGFE(stderr, "[HZB_PROBE v1] enabled=%d (MC2_HZB_PROBE=%s, requires MC2_HZB_BUILD)\n",
                      hzbProbeEnabled_ ? 1 : 0, probeEnv ? probeEnv : "(unset)");
     }
 
@@ -1721,7 +1722,7 @@ void gosPostProcess::createFBOs(int w, int h)
         // in runHzbReduce(). No dedicated registry slot yet -- surfaced via the
         // getHzb* accessors.
 
-        std::fprintf(stderr, "[HZB_BUILD v1] allocated %dx%d mips=%d (R32F, per-level textures)\n",
+        MC2_DIAGFE(stderr, "[HZB_BUILD v1] allocated %dx%d mips=%d (R32F, per-level textures)\n",
                      hzbW_, hzbH_, hzbMipCount_);
 
         // REGISTRY-POSTPROCESS-FBO-1: publish the Hi-Z pyramid base level (observe-only).
@@ -2674,7 +2675,7 @@ void gosPostProcess::runHzbProbe()
     const bool logTick = (s_probeFrame <= 5 || (s_probeFrame % 600) == 0);
 
     if (s_probeFrame <= 3 || (s_probeFrame % 600) == 0 || wouldCull || integrityMismatch) {
-        fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[HZB_PROBE v1] parentL=%d(%dx%d) childL=%d(%dx%d) tested=%u "
             "wouldKeep=%u wouldCull=%u integrityMismatch=%u invalidDepth=%u "
             "neverAppliedToDraws=1\n",
@@ -4649,7 +4650,7 @@ void gosPostProcess::endScene()
         if (effectiveMode == 1 && sceneObjectIdTex_ == 0) {
             static bool s_warnedOidMissing = false;
             if (!s_warnedOidMissing) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[VIEWMODE v1] ObjectIdDebug requested but sceneObjectIdTex_=0 "
                     "(MC2_OBJECT_ID_BUFFER not set); falling back to Visual\n");
                 s_warnedOidMissing = true;
@@ -5068,7 +5069,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
                 "shaders/hdri_skybox_stencil_tag.frag",
                 kStencilTagPrefix);
             if (!hdriSkyboxStencilTagProg_ || !hdriSkyboxStencilTagProg_->is_valid()) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[SKYBOX_FOG_EXCLUDE v1] stencil-tag shader failed to compile; "
                     "gate stays ON but exclusion pass is skipped this/every frame\n");
             }
@@ -5109,7 +5110,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
             static const bool s_tagLogOnce = []() {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[SKYBOX_FOG_EXCLUDE v2] enabled=1 stencil_tag_pass=active "
                     "threshold=worldDir.y>0.22 (elevation; v1 wedge bug fixed)\n");
                 std::fflush(stderr);

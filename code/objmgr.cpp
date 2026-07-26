@@ -19,6 +19,7 @@
 #endif
 
 #include <cstdio>
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <cmath>   // std::abs for clip.w sign-safe frustum test
 #include <cstring>
 #include <string>
@@ -1652,10 +1653,10 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 	for (long i = 0; i < numGates; ++i)
 		registerOne(gates[i]);
 
-	fprintf(stderr,
+	MC2_DIAGFE(stderr,
 		"[STATIC_PROP_REG v1] event=mission_load enumerated=%d registered=%d skipped=%d\n",
 		totalEnumerated, totalRegistered, totalSkipped);
-	fprintf(stderr,
+	MC2_DIAGFE(stderr,
 		"[STATIC_PROP_REG v1] event=mission_load_byarr "
 		"terrainObjects=%d/%d (skip=%d noapp=%d) "
 		"buildings=%d/%d (skip=%d noapp=%d) "
@@ -2735,7 +2736,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		if (!s_pathBDiagBanner) {
 			s_pathBDiagBanner = true;
 			const char* pathbEnv = std::getenv("MC2_FRAME_JOBS_PATHB_DIAG");
-			printf("[FRAME_JOBS_PATHB v1] event=startup gate_var=%s diag=%d\n",
+			MC2_DIAGF("[FRAME_JOBS_PATHB v1] event=startup gate_var=%s diag=%d\n",
 			       pathbEnv ? pathbEnv : "(null)", s_pathBDiag ? 1 : 0);
 			std::fflush(stdout);
 		}

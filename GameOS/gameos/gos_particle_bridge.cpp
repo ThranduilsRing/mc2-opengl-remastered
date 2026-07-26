@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "gos_particle_bridge.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include "particles/spec.h"
 #include "particles/batcher.h"  // GroupInfo
@@ -444,13 +445,13 @@ void tubeEnsureInitialized() {
             kPrefix);
         if (!s_tubeProg || !s_tubeProg->shp_) {
             s_tubeInitFailed = true;
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[VFX_ORACLE_TUBE v1] event=prog_compile_fail — ribbon bridge disabled\n");
             std::fflush(stderr);
             s_tubeProg = nullptr;
             return;
         }
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[VFX_ORACLE_TUBE v1] event=prog_compiled prog=%u\n",
             (unsigned)s_tubeProg->shp_);
         std::fflush(stderr);
@@ -530,7 +531,7 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
         static bool s_failLogged = false;
         if (!s_failLogged) {
             s_failLogged = true;
-            std::fprintf(stderr, "[VFX_ORACLE_TUBE v1] ERROR ribbon_init_failed\n");
+            MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] ERROR ribbon_init_failed\n");
             std::fflush(stderr);
         }
         return;
@@ -542,7 +543,7 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
         if (groupLogEnabled()) {
             static std::unordered_set<uint32_t> s_loggedMissing;
             if (s_loggedMissing.insert(gosHandle).second) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[VFX_ORACLE_TUBE v1] skip missing_texture handle=%u\n", gosHandle);
                 std::fflush(stderr);
             }
@@ -555,7 +556,7 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
         static bool s_banner = false;
         if (!s_banner) {
             s_banner = true;
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[VFX_ORACLE_TUBE v1] enabled=1 verts=%u indices=%u tex=%u blend=%s\n",
                 numVerts, numIndices, gosHandle,
                 blendMode == 1 ? "additive" : "alpha");

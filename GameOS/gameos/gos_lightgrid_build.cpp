@@ -4,6 +4,7 @@
 // visual change. Mirrors the CLUSTER-DEPTH-PYRAMID-NATIVE-1 build+parity shape.
 
 #include "gos_lightgrid_build.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_cluster_depth_pyramid.h"
 #include "gos_gpu_sync.h"
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-COMPUTE-IDS-1: LightgridGrid/LightgridIndex
@@ -108,7 +109,7 @@ char* loadTextFile(const char* fname) {
 GLuint buildStage(int stage) {
     char* fileSrc = loadTextFile("shaders/lightgrid_build.comp");
     if (!fileSrc) {
-        fprintf(stderr, "[LIGHTGRID_BUILD v1] shader source not found: "
+        MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] shader source not found: "
                         "shaders/lightgrid_build.comp\n");
         return 0;
     }
@@ -128,7 +129,7 @@ GLuint buildStage(int stage) {
         GLint n = 0; glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &n);
         std::vector<char> log(n > 1 ? n : 1);
         glGetShaderInfoLog(sh, (GLsizei)log.size(), nullptr, log.data());
-        fprintf(stderr, "[LIGHTGRID_BUILD v1] stage %d compile error:\n%s\n",
+        MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] stage %d compile error:\n%s\n",
                 stage, log.data());
         glDeleteShader(sh);
         return 0;
@@ -142,7 +143,7 @@ GLuint buildStage(int stage) {
         GLint n = 0; glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &n);
         std::vector<char> log(n > 1 ? n : 1);
         glGetProgramInfoLog(prog, (GLsizei)log.size(), nullptr, log.data());
-        fprintf(stderr, "[LIGHTGRID_BUILD v1] stage %d link error:\n%s\n",
+        MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] stage %d link error:\n%s\n",
                 stage, log.data());
         glDeleteProgram(prog);
         return 0;
@@ -194,7 +195,7 @@ void ensureBuffers(int tileW, int tileH) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RG32UI, tileW, tileH);
         glBindTexture(GL_TEXTURE_2D, 0);
-        fprintf(stderr, "[LIGHTGRID_BUILD v1] header image %dx%d (RG32UI), "
+        MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] header image %dx%d (RG32UI), "
                         "index pool %d tiles x %d = %d uints\n",
                 tileW, tileH, nTiles, kMaxLights, nTiles * kMaxLights);
     }
@@ -407,7 +408,7 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
     }
 
     const bool pass = (mismatches == 0);
-    fprintf(stderr,
+    MC2_DIAGFE(stderr,
             "[LIGHTGRID_BUILD v1] PARITY %s tiles=%d lights=%d mismatches=%zu "
             "worst_count_delta=%d plant=%d (%s)\n",
             pass ? "PASS" : "FAIL", nTiles, nLights, mismatches, worstCountDelta,
@@ -424,7 +425,7 @@ bool IsEnabled() {
         s_enabled = envFlagDefaultOff("MC2_LIGHTGRID_BUILD");
         s_verify  = s_enabled && envFlagDefaultOff("MC2_LIGHTGRID_VERIFY");
         s_plant   = s_verify  && envFlagDefaultOff("MC2_LIGHTGRID_PLANT");
-        fprintf(stderr, "[LIGHTGRID_BUILD v1] enabled=%d verify=%d plant=%d "
+        MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] enabled=%d verify=%d plant=%d "
                         "(MC2_LIGHTGRID_BUILD)\n",
                 s_enabled ? 1 : 0, s_verify ? 1 : 0, s_plant ? 1 : 0);
     }
@@ -446,7 +447,7 @@ void Run(const float* invViewProj16, int sceneW, int sceneH) {
         static bool warned = false;
         if (!warned) {
             warned = true;
-            fprintf(stderr, "[LIGHTGRID_BUILD v1] no depth pyramid tile texture "
+            MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] no depth pyramid tile texture "
                             "(set MC2_CLUSTER_DEPTH_PYRAMID=1) — pass skipped\n");
         }
         return;
