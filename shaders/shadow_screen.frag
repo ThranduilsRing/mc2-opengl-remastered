@@ -273,7 +273,11 @@ void main()
             float shadow = 1.0;
             if (enableShadows == 1)
                 shadow = min(shadow, sampleShadowMap(shadowMap, worldPos, lightSpaceMatrix, 8));
-            if (enableDynamicShadows == 1 && (!isProp || propShadowReceive != 0))
+            // PROP-ALPHA-SHADOW-CLASS-1: lattice props (0.375) stay excluded
+            // from the RECEIVE opt-in even when it is on (debug view mirrors
+            // the real path below).
+            if (enableDynamicShadows == 1
+                && (!isProp || (propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))))
                 shadow = min(shadow, sampleDynamicShadow(worldPos, N, mechSoft,
                                                          isProp ? 0.4 : 0.55));
 
@@ -330,7 +334,14 @@ void main()
         // low-poly facets fade across the terminator instead of popping.
         float dynShadow = sampleDynamicShadow(worldPos, objN, mechSoft, 0.55);
         shadow = min(shadow, dynShadow);
-    } else if (enableDynamicShadows == 1 && propShadowReceive != 0) {
+    } else if (enableDynamicShadows == 1 && propShadowReceive != 0
+               && !rc_isAlphaTestProp(normalData)) {
+        // PROP-ALPHA-SHADOW-CLASS-1: alpha-test LATTICE props (a=0.1875) are
+        // EXCLUDED here. The shadow depth pass has no alpha discard, so a
+        // chain-link fence writes a SOLID slab of depth into the cascades;
+        // sampling it back would self-shadow the entire lattice uniformly.
+        // They keep the static map above and keep CASTING onto terrain (the
+        // caster set is CPU-side, txmmgr.cpp — GBuffer1 cannot affect it).
         // PROP-SHADOW-RECEIVE-1 (gate MC2_PROP_SHADOW_RECEIVE, default OFF):
         // static props sample the dynamic CSM cascades too -> self-shadow +
         // prop-on-prop (cascades already contain the full prop caster set;

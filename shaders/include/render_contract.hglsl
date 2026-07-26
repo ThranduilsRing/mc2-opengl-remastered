@@ -40,11 +40,52 @@ PREC vec4 rc_gbuffer1_screenShadowEligible_noSelfShadow(PREC vec3 normal) {
     return vec4(normal * 0.5 + 0.5, 0.25);
 }
 
+// PROP-ALPHA-SHADOW-CLASS-1: alpha-test LATTICE prop (chain-link fence,
+// railing, grating). Same static-prop class as 0.25 — still inside the
+// (0.1, 0.5] band, so BOTH rc_isStaticPropNoSelfShadow and the canonical
+// rc_pixelHandlesOwnShadow threshold behave EXACTLY as before — but
+// distinguishable, so the PROP-SHADOW-RECEIVE opt-in can skip it.
+//
+// Rationale: the shadow depth pass has no alpha discard, so a lattice writes
+// its depth into the cascades as a SOLID slab; letting it RECEIVE that depth
+// self-shadows the whole lattice uniformly (fence reads as a dark panel).
+// CASTING is untouched — the caster set is assembled CPU-side in
+// mclib/txmmgr.cpp and never consults GBuffer1 — so fences keep casting onto
+// terrain, which they correctly do today.
+//
+// VALUE CHOICE — 0.1875, and NOT 0.375. This is load-bearing:
+// shoreline.frag:22 (and shaders/vulkan/shoreline.frag:102) classify a WATER
+// pixel as `myAlpha > 0.15 && myAlpha < 0.35` — a CONTINUOUS read of this same
+// channel that does not go through any rc_* helper. The existing 0.25 prop
+// class already sits inside that band. Picking 0.375 would have moved
+// alpha-test props OUT of it and silently changed shoreline output, so the
+// change would NOT have been the no-op it must be while RECEIVE is default-OFF.
+// 0.1875 sits inside the water band exactly as 0.25 does, so every continuous
+// reader is bit-for-bit unaffected.
+//
+// 0.1875 (= 3/16) is exactly representable in fp16 (GBuffer1 is RGBA16F). It
+// clears the mech threshold (a <= 0.1) by 0.0875 and is 0.0625 from 0.25 —
+// both margins are ~3 orders of magnitude above the fp16 ulp at this
+// magnitude, matching the "comfortable float-precision margin" 0.25 claims.
+PREC vec4 rc_gbuffer1_screenShadowEligible_noSelfShadow_alphaTest(PREC vec3 normal) {
+    return vec4(normal * 0.5 + 0.5, 0.1875);
+}
+
 // Reader side — true when the pixel is a static prop (no dynamic self-shadow).
 // Mid band (0.1, 0.5); below the terrain threshold (0.5) so it still enters
 // shadow_screen.frag's object path, above the mech band (< 0.1).
+// Matches BOTH 0.25 (solid prop) and 0.375 (alpha-test lattice) by design.
 bool rc_isStaticPropNoSelfShadow(PREC vec4 gbuffer1) {
     return gbuffer1.a > 0.1 && gbuffer1.a <= 0.5;
+}
+
+// Reader side — true only for the alpha-test LATTICE sub-class (0.1875).
+// Sub-band (0.1, 0.22] carves 0.1875 out of the (0.1, 0.5] prop band without
+// disturbing it: 0.25 stays above 0.22, and the mech class stays at/below 0.1.
+// Used SOLELY to exclude lattices from the dynamic-cascade RECEIVE opt-in;
+// every other consumer keeps treating them as ordinary static props.
+bool rc_isAlphaTestProp(PREC vec4 gbuffer1) {
+    return gbuffer1.a > 0.1 && gbuffer1.a <= 0.22;
 }
 
 // PRE-ENCODED-NORMAL VARIANT — same semantic as rc_gbuffer1_shadowHandled,

@@ -613,7 +613,17 @@ void main() {
     // PROP-SHADOW-RECEIVE-1: MC2_PROP_SHADOW_RECEIVE=1 opts the a=0.25 class
     // back INTO the dynamic CSM sample inside shadow_screen.frag (softened,
     // floor 0.4) — the mask class here is unchanged either way.
-    GBuffer1  = rc_gbuffer1_screenShadowEligible_noSelfShadow(normalize(v_normal));
+    // PROP-ALPHA-SHADOW-CLASS-1: alpha-test LATTICE props (chain-link fence,
+    // railing, grating) emit 0.1875 instead of 0.25. Same band, same behaviour
+    // for every existing reader — it only lets shadow_screen.frag exclude them
+    // from the RECEIVE opt-in, because the shadow depth pass has no alpha
+    // discard and would self-shadow the lattice as a solid slab. Pure
+    // shader-side select off the flag the batcher already sets per packet.
+    if ((materialFlags & ALPHA_TEST_BIT) != 0) {
+        GBuffer1 = rc_gbuffer1_screenShadowEligible_noSelfShadow_alphaTest(normalize(v_normal));
+    } else {
+        GBuffer1 = rc_gbuffer1_screenShadowEligible_noSelfShadow(normalize(v_normal));
+    }
 #ifdef MC2_OBJECT_ID_BUFFER
     // M1.5: emit handle.raw() to attachment-2. Alpha-tested fragments
     // that discard() above skip this write naturally. Coalesce path
