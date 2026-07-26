@@ -103,9 +103,15 @@ PROFILES = {
 def _capture(exe: str, prof: dict, out_dir: Path, runs: int, warmup: int,
              trace: bool, dry_run: bool) -> int:
     env = os.environ.copy()
-    env.update(prof.get("force_env", {}))
+    _declared = dict(prof.get("force_env", {}))
+    env.update(_declared)
     if trace:
         env["MC2_PIPELINE_BIND_TRACE"] = "1"
+        _declared["MC2_PIPELINE_BIND_TRACE"] = "1"
+    # CAPTURE-ENV-PIN-1: run_visual_capture scrubs ambient MC2_* by default.
+    # Declare the gates THIS profile deliberately forces, or the A/B silently
+    # runs with them dropped and both arms come out identical.
+    env["MC2_CAPTURE_ENV_DECLARE"] = ",".join(sorted(_declared))
     cmd = [sys.executable, str(RVC),
            "--no-kill",                       # concurrent-safe: never kill foreign mc2.exe
            "--exe", exe,

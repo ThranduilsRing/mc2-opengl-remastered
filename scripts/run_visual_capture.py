@@ -46,6 +46,10 @@ import sys
 import time
 from pathlib import Path
 
+# CAPTURE-ENV-PIN-1: shipped-by-default MC2_* pinning + sidecar recording.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mc2_env_pin as env_pin  # noqa: E402
+
 # WATER-VISUAL-GATE-1 concurrent-safety:
 #   _SKIP_KILL  — when True, do NOT taskkill foreign mc2.exe (set by --no-kill).
 #   _ORIG_CURSOR — saved desktop cursor pos, restored at exit so the harness
@@ -184,7 +188,8 @@ def park_cursor_center() -> None:
 
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int,
-            deterministic_clock: bool, show_window: bool = False) -> dict:
+            deterministic_clock: bool, show_window: bool = False,
+            declared_env: dict | None = None) -> dict:
     """Launch one capture sweep; return a result dict (never raises on engine
     failure -- records it instead)."""
     # The engine runs with cwd = the deploy dir and resolves
@@ -220,21 +225,31 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     log_path = out_dir / f"{mission_token}_capture.log"
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
-    env = os.environ.copy()
-    env["MC2_SMOKE_MODE"] = "1"
-    # MC2_LOG master gate: keep stdout live (engine default redirects it -> NUL
-    # so normal play never hitches on the unbuffered printf flush). Capture
-    # detection reads [VISUAL_CAPTURE] from stderr, but this keeps capture-run
-    # behavior identical to pre-gate. See gameosmain.cpp after setvbuf.
-    env["MC2_LOG"] = "1"
-    env["MC2_SMOKE_SEED"] = "0xC0FFEE"
+    # CAPTURE-ENV-PIN-1: do NOT inherit the ambient MC2_* environment.
+    # This used to be os.environ.copy(), which silently rode every stray gate in
+    # the operator's shell into the captured frame -- unrecorded. See
+    # scripts/mc2_env_pin.py for the incident that motivated this.
+    harness_sets = {
+        "MC2_SMOKE_MODE": "1",
+        # MC2_LOG master gate: keep stdout live (engine default redirects it -> NUL
+        # so normal play never hitches on the unbuffered printf flush). Capture
+        # detection reads [VISUAL_CAPTURE] from stderr, but this keeps capture-run
+        # behavior identical to pre-gate. See gameosmain.cpp after setvbuf.
+        "MC2_LOG": "1",
+        "MC2_SMOKE_SEED": "0xC0FFEE",
+        "MC2_HEARTBEAT": "1",
+        "MC2_VISUAL_BOOKMARK_CAPTURE": str(bookmarks_path),
+        "MC2_VISUAL_CAPTURE_DIR": str(out_dir),
+        "MC2_VISUAL_CAPTURE_FRAME": str(trigger_frame),
+        "MC2_VISUAL_SETTLE": str(settle),
+    }
     if deterministic_clock:
-        env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
-    env["MC2_HEARTBEAT"] = "1"
-    env["MC2_VISUAL_BOOKMARK_CAPTURE"] = str(bookmarks_path)
-    env["MC2_VISUAL_CAPTURE_DIR"] = str(out_dir)
-    env["MC2_VISUAL_CAPTURE_FRAME"] = str(trigger_frame)
-    env["MC2_VISUAL_SETTLE"] = str(settle)
+        harness_sets["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+
+    env, env_record = env_pin.build_pinned_env(harness_sets, declared_env)
+    warn = env_pin.format_warning(env_record)
+    if warn:
+        print(warn, file=sys.stderr)
 
     startupinfo = None
     if os.name == "nt":
@@ -327,6 +342,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         "show_window": show_window,
         "bookmarks": bm_results,
         "log": str(log_path),
+        # CAPTURE-ENV-PIN-1: what the engine actually saw.
+        "mc2_env": env_record,
     }
 
 
@@ -339,11 +356,14 @@ def write_manifest(result: dict, exe: Path) -> Path:
         exe_path=exe,
         repo_root=str(ROOT),
         deploy_target=str(exe.parent),
-        env_keys=["MC2_SMOKE_MODE", "MC2_SMOKE_SEED", "MC2_SMOKE_FIXED_TIMESTEP",
-                  "MC2_VISUAL_CAPTURE_FRAME", "MC2_VISUAL_SETTLE"],
+        # CAPTURE-ENV-PIN-1: snapshot the env the ENGINE saw (pinned), not the
+        # harness's own ambient env, and not a hardcoded 5-name subset.
+        env=(result.get("mc2_env") or {}).get("effective") or {},
+        env_keys=None,
         extra={
             "bookmarks_path": result["bookmarks_path"],
             "show_window": bool(result.get("show_window", False)),
+            "mc2_env": result.get("mc2_env"),
         },
     )
     rep = ms.report_summary(
@@ -432,8 +452,9 @@ def materialize_candidate(set_name: str, last_run: dict, per: dict,
         exe_path=exe,
         repo_root=str(ROOT),
         deploy_target=str(exe.parent),
-        env_keys=["MC2_SMOKE_MODE", "MC2_SMOKE_SEED", "MC2_SMOKE_FIXED_TIMESTEP",
-                  "MC2_VISUAL_CAPTURE_FRAME", "MC2_VISUAL_SETTLE"],
+        env=(last_run.get("mc2_env") or {}).get("effective") or {},
+        env_keys=None,
+        extra={"mc2_env": last_run.get("mc2_env")},
     )
     set_record = {
         "set_id": set_name,
@@ -517,6 +538,15 @@ def main() -> int:
                          "bookmarks drift (the drifters are recorded as "
                          "excluded_unstable). A small-but-real baseline. "
                          "Requires >=1 stable bookmark + engine fired.")
+    # CAPTURE-ENV-PIN-1: the ONLY sanctioned way to deviate from the shipped
+    # MC2_* configuration. Everything else in the ambient shell is scrubbed.
+    ap.add_argument("--env-declare", action="append", default=[],
+                    metavar="MC2_KEY=VALUE",
+                    help="explicitly opt this MC2_* var into the capture "
+                         "environment (repeatable). Ambient MC2_* vars that are "
+                         "NOT declared are scrubbed so the capture runs the "
+                         "shipped configuration; the full effective set is "
+                         "recorded in the sidecar.")
     ap.add_argument("--no-kill", action="store_true",
                     help="WATER-VISUAL-GATE-1: do NOT taskkill foreign mc2.exe "
                          "(concurrent-safe). The capture still launches its own "
@@ -546,6 +576,15 @@ def main() -> int:
     base_out = Path(args.out_dir) if args.out_dir else (DEFAULT_OUT / args.mission)
     det_clock = not args.no_fixed_clock
 
+    try:
+        declared_env = env_pin.parse_declarations(args.env_declare)
+    except ValueError as e:
+        print(f"[viscap] ERROR {e}", file=sys.stderr)
+        return 4
+    if declared_env:
+        print(f"[viscap] env-declare: "
+              f"{', '.join(f'{k}={v}' for k, v in sorted(declared_env.items()))}")
+
     # Resolve run plan. --verify is the legacy 2-run alias.
     n_runs = 2 if (args.verify and args.runs <= 1) else max(1, args.runs)
     n_warmup = max(0, args.warmup)
@@ -558,7 +597,7 @@ def main() -> int:
     if n_runs == 1:
         result = run_one(exe, args.mission, bookmarks_path, base_out,
                          args.trigger_frame, args.settle, args.duration,
-                         det_clock, args.show_window)
+                         det_clock, args.show_window, declared_env)
         man = write_manifest(result, exe)
         _print_result(result, man)
         return 0 if (result["all_present"] and result["engine_capture_fired"]) else 1
@@ -573,7 +612,7 @@ def main() -> int:
         out_i = base_out / f"r{i}"
         r = run_one(exe, args.mission, bookmarks_path, out_i,
                     args.trigger_frame, args.settle, args.duration, det_clock,
-                    args.show_window)
+                    args.show_window, declared_env)
         write_manifest(r, exe)
         runs.append(r)
         time.sleep(2)

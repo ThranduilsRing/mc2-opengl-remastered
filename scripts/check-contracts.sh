@@ -170,6 +170,18 @@ run_check "smoke_fingerprint_honesty" "py -3 scripts/check-smoke-fingerprint-hon
 # copy of the source. A guard only ever seen passing on good input is not
 # evidence that it works.
 run_check "smoke_fingerprint_ratchet" "py -3 scripts/check-smoke-fingerprint-honesty.py --selftest"
+# CAPTURE-ENV-PIN-1: run_visual_capture.py launched the engine with
+# os.environ.copy(), so every stray MC2_* in the operator's shell rode into the
+# captured frame unrecorded. Three vars removed from the registry persisted in
+# every already-open shell and contaminated dozens of captures; one of them
+# (MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE=1, default-OFF in the shipped game) hid
+# 35 never-baked prop light slots and moved a capture hash. This check enforces
+# both halves of the fix: capture harnesses pin their env through
+# scripts/mc2_env_pin.py, and every capture manifest records the MC2_* set it
+# actually ran under. Offline, no game launch.
+run_check "capture_env_declared"   "py -3 scripts/check-capture-env-declared.py"
+# ...and prove it fires, by injecting a contaminated manifest.
+run_check "capture_env_ratchet"    "py -3 scripts/check-capture-env-declared.py --self-test"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"

@@ -174,27 +174,39 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
 
     # Base env for both children.
     env = os.environ.copy()
+    # CAPTURE-ENV-PIN-1: names this state deliberately sets/clears. Passed to
+    # run_visual_capture via MC2_CAPTURE_ENV_DECLARE so its shipped-default
+    # scrub does not drop the very knob under test (an undeclared gate would
+    # make both parity arms identical and the comparison meaningless).
+    _declared: list[str] = []
     if backend is not None:
         # BACKEND-COMPARE: the state is "which backend implements the region",
         # not a feature-gate on/off. Enable the region interface + pick backend.
         env["MC2_RENDER_BACKEND_REGION_IFACE"] = "1"
         env["MC2_POSTPROCESS_BACKEND"] = backend
+        _declared += ["MC2_RENDER_BACKEND_REGION_IFACE", "MC2_POSTPROCESS_BACKEND"]
         # Region-specific enable env applies to BOTH states (and the floor):
         # the region must actually run in-frame for the compare to mean anything.
         for k, v in REGION_SPEC.get(region or "PostprocessFog",
                                     REGION_SPEC["PostprocessFog"])["extra_env"].items():
             env[k] = v
+            _declared.append(k)
     elif gate_name:
         # FEATURE-GATE mode: OFF and ON differ only by this one knob.
         if gate_value is None:
             env.pop(gate_name, None)
         else:
             env[gate_name] = gate_value
+        # Declared either way: the OFF arm's absence is as deliberate as the
+        # ON arm's presence.
+        _declared.append(gate_name)
     # Determinism knobs the visual capture needs are set by that tool itself;
     # golden_scene sets its own screenshot/dump knobs. We only ensure the fixed
     # timestep intent is visible to golden_scene's child too.
     if fixed_timestep:
         env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+        _declared.append("MC2_SMOKE_FIXED_TIMESTEP")
+    env["MC2_CAPTURE_ENV_DECLARE"] = ",".join(sorted(set(_declared)))
 
     # --- 1) PIXEL ORACLE: run_visual_capture (bookmark, deterministic FBO) -----
     viscap_out = state_dir / "viscap"
