@@ -530,6 +530,12 @@ def main():
     ap.add_argument("--fail-fast", action="store_true")
     ap.add_argument("--continue", dest="cont", action="store_true", default=True)
     ap.add_argument("--keep-logs", action="store_true")
+    ap.add_argument("--allow-env-drop", action="store_true",
+                    help="proceed even when MC2_* vars set in the environment "
+                         "cannot be passed through to mc2.exe. Default is to "
+                         "REFUSE: a run that silently ignores your gate "
+                         "produces a PASS for a configuration that was never "
+                         "applied (DETERMINISM-RATCHET-2).")
     ap.add_argument("--baseline-update", action="store_true")
     ap.add_argument("--kill-existing", action="store_true")
     # Safety hatch: restore old global-block behavior (ANY mc2.exe, regardless
@@ -2725,6 +2731,36 @@ def main():
                 f"scripts/run_smoke.py.",
                 file=sys.stderr,
             )
+        # DETERMINISM-RATCHET-2: a WARNING is not enough, and this session is
+        # the proof. A tier1 command has printed "PASS (5/5)" alongside a
+        # DEPLOY_FINGERPRINT MISMATCH for six different lanes -- a stderr line
+        # nobody reads is indistinguishable from no line at all, and the run
+        # still ends in a green verdict that gets cited as evidence.
+        #
+        # If you set an MC2_* var and this runner cannot deliver it, the run
+        # does not test what you asked for. There is no useful result to
+        # salvage, so refuse to start rather than produce a PASS for a
+        # configuration that never executed. Costs nothing on a normal run:
+        # this fires only when a var is ACTUALLY set in the environment.
+        if _dropped_gates and not getattr(args, "allow_env_drop", False):
+            print(
+                f"\n[runner] [ENV-DROP] FATAL: {len(_dropped_gates)} MC2_* var(s) "
+                f"set in the environment cannot reach mc2.exe: "
+                f"{', '.join(_dropped_gates)}.\n"
+                f"[runner] Refusing to run -- a PASS here would grade a "
+                f"configuration that was never applied.\n"
+                f"[runner] Fix: add them to the allowlist tuple in "
+                f"scripts/run_smoke.py (see MC2_LETTERBOX_OPAQUE for the shape), "
+                f"or pass --allow-env-drop if you genuinely want them ignored.",
+                file=sys.stderr,
+            )
+            # sys.exit, NOT `return`: main() terminates via sys.exit() and its
+            # return value is discarded by the `main()` call at module scope, so
+            # a bare `return 2` prints FATAL and then exits 0 -- a red message
+            # with a green exit code, which is the precise failure this ratchet
+            # exists to prevent. (Caught by checking the exit code instead of
+            # trusting the message.)
+            sys.exit(2)
 
         # Clear the file-sink probe log next to mc2.exe before each mission
         # so each run captures its own probe events.  See gos_terrain_indirect
