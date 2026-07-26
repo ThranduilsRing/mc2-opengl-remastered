@@ -89,6 +89,7 @@ run_check() {
 # Checks
 # ---------------------------------------------------------------------------
 run_check "env_registry"           "sh scripts/check-env-registry.sh"
+run_check "harness_gate_drive"     "py -3 scripts/check-harness-gate-drive.py"
 run_check "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
 run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
 run_check "include_firewall"       "sh scripts/check-include-firewall.sh"

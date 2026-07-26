@@ -2641,7 +2641,32 @@ def main():
                             # NOTE: the quiet ratchet deliberately refuses to
                             # grade any run that sets it -- see
                             # scripts/check-default-build-quiet.py.
-                            "MC2_DIAG_VERBOSE")},
+                            "MC2_DIAG_VERBOSE",
+                            # PERF-HARNESS-TRUTH-1 (2026-07-25): the MASTER gate
+                            # for the night light-pool feature (registered,
+                            # default ON, 3 code readers) was absent here, so a
+                            # harness could not DRIVE it -- the OFF arm of every
+                            # light-pool A/B silently ran the ON path. Its
+                            # dependants MC2_LIGHT_POOL_MAX / MC2_LIGHT_GRID
+                            # were allowlisted while the switch that makes them
+                            # mean anything was not.
+                            "MC2_TERRAIN_LIGHT_POOLS",
+                            # PERF-HARNESS-TRUTH-1: unregistered + undocumented
+                            # + unallowlisted, so it silently no-opped through
+                            # this runner. Now registered (RendererFeatureRegistry.h)
+                            # and documented (docs/tier1_env_vars.md); allowlisted
+                            # here so setting it actually reaches mc2.exe.
+                            "MC2_LIGHTING_DEBUG_VIEW",
+                            # PERF-HARNESS-TRUTH-1: found by the new
+                            # scripts/check-harness-gate-drive.py ratchet on its
+                            # first run. tools/run_nvidia_readiness_smoke.py sets
+                            # both in its FUNCTIONAL_ENV and delegates to this
+                            # runner, which stripped them -- so the NVIDIA
+                            # readiness runbook's "live pass/path identity" and
+                            # "indirect submitters" traces produced NO output and
+                            # the absence read as "nothing to report".
+                            "MC2_RENDER_FRAME_PLAN_TRACE",
+                            "MC2_MDI_SUBMIT_TRACE")},
             },
         )
         # SMOKE-GATE-GUARD-1: ENV-DROP WARNING.

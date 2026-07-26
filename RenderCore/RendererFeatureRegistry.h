@@ -2038,6 +2038,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consumes (lights [2..N-1] -- building SpotLight_ nodes, light props, mech/vehicle/turret/weapon lights from Camera::terrainLights) at binding 28 and adds color*falloff (TG_Light::GetFalloff math) ADDITIVELY AFTER the shadow multiply, so lamps light shadowed ground and cement pads (rides on top of CEMENT-NIGHT-LIGHT-1's u_missionFlatLight darken). DEFAULT ON; =0 force-uploads u_numPoolLights=0 -> loop never entered -> byte-identical. Also inert whenever MC2_TERRAIN_LIGHTING_GPU=0 (no producer). Driver caps the loop at 256 lights."
     },
+    // PERF-HARNESS-TRUTH-1: shipped unregistered, undocumented AND absent from
+    // the run_smoke.py passthrough allowlist, so it silently no-opped through
+    // the standard harness -- a lighting investigation could set it, see the
+    // ordinary lit render, and conclude the debug view showed nothing wrong.
+    {
+        "MC2_FEATURE_LIGHTING_DEBUG_VIEW",
+        "MC2_LIGHTING_DEBUG_VIEW",
+        EnvVarKind::Feature,   // not Trace: it REPLACES the lit render output
+        false,
+        "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs. String-valued: off|albedo|normal|sun|ambient|shadow|final|overbright|lightcount|lightindex (unknown value = safe fallback to the normal render). Resolved ONCE per process (no setenv path); the `debugview N` command channel overrides it at runtime via gos_SetGlobalDebugView(). Default OFF (unset = -1 = no override). Diagnostic only -- never ship a build relying on it."
+    },
     // LIGHT-POOL-CAP-1 (5213d257) shipped this override unregistered and
     // undocumented -- registered here by LIGHT-CLUSTER-PERF-1's meta review.
     {
