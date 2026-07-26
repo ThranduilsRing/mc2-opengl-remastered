@@ -3475,7 +3475,21 @@ long BldgAppearance::update (bool animate)
 						}
 					}
 
-					if (got)
+					// CONE-SPILL-GRADE-1: MC2_CONE_SPILL_COUPLING=0 restores the
+					// exact pre-c1f98b45 placement (far-end + snap z, 200.0f
+					// clamp, no miss rejection) so this ungated default-behaviour
+					// change can be A/B graded on ONE attributable exe.
+					if (!mc2_cone_glow::spill_coupling_enabled())
+					{
+						float oldSpill = spill;
+						if (oldSpill > 200.0f) oldSpill = 200.0f;
+						childPos.x += aimW.x * oldSpill;
+						childPos.y += aimW.y * oldSpill;
+						childPos.z += aimW.z * oldSpill;
+						if (land)
+							childPos.z = land->getTerrainElevation(childPos);
+					}
+					else if (got)
 						childPos = hit;
 					else
 						coneMissedGround = true;

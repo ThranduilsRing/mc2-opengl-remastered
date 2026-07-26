@@ -48,6 +48,12 @@ namespace mc2_cone_glow {
 // Env gates (cached at first call).
 bool nodes_enabled();       // MC2_LIGHT_CONE_NODES
 bool glow_enabled();        // MC2_LIGHT_CONE_GLOW
+// CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45). ON = march the
+// beam ray for the true terrain intersection and suppress the pool on a miss;
+// OFF = the prior far-end-then-snap-z approximation with the 200.0f clamp and
+// no miss rejection. Exists so the ungated default-behaviour change shipped by
+// c1f98b45 can be A/B graded on a single attributable exe.
+bool spill_coupling_enabled();  // MC2_CONE_SPILL_COUPLING
 float glow_alpha();         // MC2_LIGHT_CONE_GLOW_ALPHA (0..255)
 float spill_scale();        // MC2_LIGHT_CONE_SPILL (0..3)
 

@@ -1543,6 +1543,11 @@ def main():
                             # the run silently measures the DEFAULT camera instead
                             # of the pose you asked for.
                             "MC2_CAMERA_PARK",
+                            # CONE-SPILL-GRADE-1: isolates the ungated
+                            # c1f98b45 cone/terrain spill coupling so the
+                            # OFF arm of an A/B capture actually reaches the
+                            # child instead of silently running the default.
+                            "MC2_CONE_SPILL_COUPLING",
                             # MC2_DIAG_VERBOSE: unmasks MC2_DIAG* receipts (e.g.
                             # [LIGHT_GRID v1], [LIGHT_POOL_CAP v1]) that the
                             # quiet-default build suppresses.

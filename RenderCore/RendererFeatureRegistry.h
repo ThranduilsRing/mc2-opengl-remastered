@@ -1905,6 +1905,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "V-MATERIAL-PBR-3-DIAG: diagnostic visualizer for the forwarded sunFound state. When ON together with MC2_STATIC_PROP_PBR_V1=1, static_prop.frag replaces the PBR result with cyan (sunFound=true) or magenta (sunFound=false), bypassing Schlick math. Diagnostic-only; never affects default-OFF behavior. Unset/'0' -> off."
     },
     {
+        "MC2_CONE_SPILL_COUPLING",
+        "MC2_CONE_SPILL_COUPLING",
+        EnvVarKind::Trace,
+        true,
+        "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES. ON (default, unset/'1') -> building/guard-tower spotlight ground pools are placed at the TRUE beam/terrain intersection found by marching the ray (mc2ConeGroundHit), the arbitrary 200.0f spill clamp is gone, and a beam that never meets ground within its own length or leaves the map emits NO pool. '0' -> restores the exact pre-c1f98b45 placement (apex + aim*spill, 200.0f clamp, z snapped to getTerrainElevation, no miss rejection). Exists so the change can be A/B graded on one attributable exe. Resolved once at process start.",
+    },
+    {
         "MC2_STATIC_PROP_NIGHT_TAGS",
         "MC2_STATIC_PROP_NIGHT_TAGS",
         EnvVarKind::Trace,

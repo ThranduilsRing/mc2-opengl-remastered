@@ -121,6 +121,18 @@ bool nodes_enabled()
     return s;
 }
 
+// CONE-SPILL-GRADE-1: see cone_glow.h. Default ON preserves the behaviour
+// c1f98b45 shipped, so adding this gate is itself a no-op; OFF restores the
+// pre-c1f98b45 pool placement for grading.
+bool spill_coupling_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_CONE_SPILL_COUPLING");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    return s;
+}
+
 bool glow_enabled()
 {
     static const bool s = []() {
