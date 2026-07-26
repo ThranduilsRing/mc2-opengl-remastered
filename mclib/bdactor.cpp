@@ -3272,6 +3272,39 @@ static bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
 }
 
 //-----------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+// FOGLIGHT-LATCH-1 (diagnostic): `fogLightSet` makes `lightRGB` a ONE-SHOT
+// per-actor latch -- sampled from land->getTerrainLight(position) at whatever
+// moment this actor first ran update(), then fed to eye->setLightColor(0,...)
+// (the SUN slot for BldgAppearance) every frame forever. This probe dumps, per
+// actor: appearance name, latch frame, the latched lightRGB, and the light that
+// the SAME actor at the SAME position would sample RIGHT NOW. If a dark truck's
+// latched value differs from its current value while a correctly-lit building's
+// agree, the latch is the defect.
+//
+// MC2_PROP_LIGHT_LATCH_DIAG=1 enables. MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL sets
+// the per-frame re-sample throttle (default 120 frames). Default OFF: zero cost
+// (one boot-cached bool test on the per-frame path).
+static bool mc2PropLightLatchDiag (void)
+{
+	static const bool s_on = [] {
+		const char* v = getenv("MC2_PROP_LIGHT_LATCH_DIAG");
+		return (v && v[0] && v[0] != '0');
+	}();
+	return s_on;
+}
+
+static uint32_t mc2PropLightLatchDiagInterval (void)
+{
+	static const uint32_t s_iv = [] {
+		const char* v = getenv("MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL");
+		uint32_t iv = (v && v[0]) ? (uint32_t)atol(v) : 120u;
+		if (iv == 0) iv = 120u;
+		return iv;
+	}();
+	return s_iv;
+}
+
 long BldgAppearance::update (bool animate)
 {
 	::mc2_object_recon::Scope _recon_bldg_(
@@ -3697,8 +3730,45 @@ long BldgAppearance::update (bool animate)
 			}
 
 			fogLightSet = true;
+
+			// FOGLIGHT-LATCH-1: record the moment of latch.
+			if (mc2PropLightLatchDiag())
+			{
+				MC2_DIAGF("[PROPLATCH v1] event=latch name=%s frame=%u intensity=%.4f "
+				          "latchRGB=%02X%02X%02X nightFactor=%.3f pos=(%.1f,%.1f,%.1f)\n",
+				          (appearType && appearType->name) ? appearType->name : "?",
+				          (unsigned)g_mc2FrameCounter, lightIntensity,
+				          (unsigned)lightr, (unsigned)lightg, (unsigned)lightb,
+				          eye ? eye->nightFactor : -1.0f,
+				          position.x, position.y, position.z);
+			}
 		}
-	
+
+		// FOGLIGHT-LATCH-1: throttled latched-vs-current comparison. Re-samples
+		// exactly what the latch block would sample today, WITHOUT mutating
+		// lightRGB -- pure observation, so gate-ON output still reflects the
+		// shipping (latched) behaviour.
+		if (mc2PropLightLatchDiag() &&
+		    (g_mc2FrameCounter % mc2PropLightLatchDiagInterval()) == 0)
+		{
+			float curIntensity = 1.0f;
+			if (land)
+				curIntensity = land->getTerrainLight(position);
+			unsigned char cr = eye->getLightRed(curIntensity);
+			unsigned char cg = eye->getLightGreen(curIntensity);
+			unsigned char cb = eye->getLightBlue(curIntensity);
+			DWORD curRGB = (cr<<16) + (cg<<8) + cb;
+			MC2_DIAGF("[PROPLATCH v1] event=compare name=%s frame=%u "
+			          "latchRGB=%06X curRGB=%06X %s curIntensity=%.4f "
+			          "nightFactor=%.3f pos=(%.1f,%.1f,%.1f)\n",
+			          (appearType && appearType->name) ? appearType->name : "?",
+			          (unsigned)g_mc2FrameCounter,
+			          (unsigned)(lightRGB & 0xFFFFFF), (unsigned)(curRGB & 0xFFFFFF),
+			          ((lightRGB & 0xFFFFFF) == (curRGB & 0xFFFFFF)) ? "MATCH" : "STALE",
+			          curIntensity, eye ? eye->nightFactor : -1.0f,
+			          position.x, position.y, position.z);
+		}
+
 		eye->setLightColor(0,lightRGB);
 		eye->setLightIntensity(0,1.0);
 

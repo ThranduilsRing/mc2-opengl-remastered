@@ -1081,6 +1081,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         true,
         "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot freeze a wrong (day-bright) light row for the whole mission. Slot indices/high-water preserved; entries lazily re-gather into the same permanent slots. DEFAULT ON; =0 restores frozen-first-bake behavior."
     },
+    // FOGLIGHT-LATCH-1: diagnostic probe for the one-shot per-actor light latch.
+    {
+        "MC2_PROP_LIGHT_LATCH_DIAG",
+        "MC2_PROP_LIGHT_LATCH_DIAG",
+        EnvVarKind::Trace,
+        false,
+        "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs the light the same actor at the same position would sample now (MATCH/STALE). Diagnostic only, never mutates lighting. Default OFF."
+    },
+    {
+        "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
+        "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
+        EnvVarKind::Trace,
+        false,
+        "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120). No effect unless MC2_PROP_LIGHT_LATCH_DIAG=1."
+    },
     // SP-BATCHER-ALPHASCAN-GATE-1 (framebudget-2 perf).
     {
         "MC2_SP_ALPHASCAN_GATE",

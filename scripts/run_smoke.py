@@ -1872,6 +1872,9 @@ def main():
                             "MC2_SP_GLASS_DITHER",
                             # LIGHTBAKE-REBAKE-ON-READY-1 killswitch.
                             "MC2_LIGHTBAKE_REBAKE_ON_READY",
+                            # FOGLIGHT-LATCH-1: per-actor light-latch diagnostic.
+                            "MC2_PROP_LIGHT_LATCH_DIAG",
+                            "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB",
                             "MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE",
                             "MC2_STATIC_PROP_COLORS_FILL",
