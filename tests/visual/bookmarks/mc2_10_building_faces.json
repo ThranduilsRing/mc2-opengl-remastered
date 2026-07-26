@@ -1,0 +1,47 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "BUILDING-FACE-POSE-1. Poses that actually frame BUILDING WALLS, authored to grade the user's report 'this building face should be in shadow as the light is from behind'. Sites were not guessed: they are building-class object clusters read out of the mission .pak packet-1 object list (int32 count, then per object int32 objTypeNum + float x,y,z + float rotation, code/objmgr.cpp:1276-1305), classified via ObjectTypeClass in data/objects/object2.pak (code/objtype.cpp:355-376); building-like = BUILDING/TREEBUILDING/TURRET/GATE/KLIEG_LIGHT/BRIDGE. 'compound' = the 53-object cluster at (-2371,2890): two-storey stone barrack blocks with roof vents, chain-link fencing, a wrecked vehicle and a lookout tower -- this is the block in the user's own screenshot. 'settlement' = the 48-object cluster at (-4866,184): geodesic domes, tin shacks, liquid storage and pipe tanks, with pine trees and fencing in the same frame so foliage leakage is visible alongside the building walls. A 60-object depot cluster at (3093,5026) was tried first and REJECTED ON MEASUREMENT, not taste: two identical gate-OFF runs of that pose differ on 66.6-69.8 percent of pixels at maxAbs 255, because mission movers cross it -- an A/B graded there measures traffic, not lighting. The sites kept here were re-measured the same way and are byte-identical across two gate-OFF runs. Each site is captured at two rotations 180 deg apart so one frame shows the wall the light falls on and the other shows the wall turned away from it; mc2_10's sun is HORIZONTAL (LightDirPitch=180 -> lightDirection.z = sin(180)=0, mclib/camera.cpp:346-348) with azimuth LightDirYaw(28.75)+45 = 73.75 deg, which is why this map gives the strongest wall-orientation contrast of any tier map. alt 650 / proj 22 was chosen by inspection: higher altitude or larger projection angle renders the compound as roofs only, and no wall face is gradeable. mc2_10 is a night map. The control frames terrain carrying no building-class object at all, so a change that shows up there is not a building-lighting change.",
+  "bookmarks": [
+    {
+      "name": "compound_lightaway",
+      "pos": [-2371.0, 2890.0, 0.0],
+      "rot": 253.75,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "night_prop_ambient"]
+    },
+    {
+      "name": "compound_lightfacing",
+      "pos": [-2371.0, 2890.0, 0.0],
+      "rot": 73.75,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "night_prop_ambient"]
+    },
+    {
+      "name": "settlement_lightaway",
+      "pos": [-4866.0, 184.0, 0.0],
+      "rot": 253.75,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "static_prop_wall_turret"]
+    },
+    {
+      "name": "settlement_lightfacing",
+      "pos": [-4866.0, 184.0, 0.0],
+      "rot": 73.75,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "static_prop_wall_turret"]
+    },
+    {
+      "name": "control_no_buildings",
+      "pos": [0.0, -3000.0, 0.0],
+      "rot": 253.75,
+      "proj": 26.0,
+      "alt": 750.0,
+      "covers": ["no_building_control", "prop_base_light_dir"]
+    }
+  ]
+}

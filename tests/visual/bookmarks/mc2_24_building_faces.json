@@ -1,0 +1,47 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_24",
+  "_note": "BUILDING-FACE-POSE-1. Third map in the building-wall grading matrix. Sites are building-class object clusters read out of the mission .pak packet-1 object list and classified by ObjectTypeClass (method note in mc2_10_building_faces.json). 'palace' = the 20-object cluster at (28,5103): s_main, s_main_leftwing, s_main_rightwing, s_gov2, s_govresidence, s_adminquarter -- the tallest authored buildings on any tier map, and mc2_24's high sun (LightDirPitch 75 deg) throws hard ground shadows that make the light direction unambiguous in-frame. 'fortress' = the walled turret city around (-763,2652); note this map's wall segments chain across the whole fortress, so that cluster is one continuous compound rather than a discrete building group. Sun azimuth = LightDirYaw(300)+45 = 345 deg. Two rotations 180 deg apart at the palace put the light-facing wall in one frame and the light-away wall in the other. The control frames the rock outcrop area at (3200,3413), which carries terrain-object props but no building-class object -- deliberately not empty ground, so it also shows whether a prop-lighting change leaks onto non-building props.",
+  "bookmarks": [
+    {
+      "name": "palace_lightaway",
+      "pos": [28.0, 5103.0, 0.0],
+      "rot": 165.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "multi_storey_wall"]
+    },
+    {
+      "name": "palace_lightfacing",
+      "pos": [28.0, 5103.0, 0.0],
+      "rot": 345.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "multi_storey_wall"]
+    },
+    {
+      "name": "fortress_lightaway",
+      "pos": [-763.0, 2652.0, 0.0],
+      "rot": 165.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "static_prop_wall_turret"]
+    },
+    {
+      "name": "industrial_lightfacing",
+      "pos": [-1626.0, 4911.0, 0.0],
+      "rot": 345.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir"]
+    },
+    {
+      "name": "control_no_buildings",
+      "pos": [3200.0, 3413.0, 0.0],
+      "rot": 345.0,
+      "proj": 26.0,
+      "alt": 750.0,
+      "covers": ["no_building_control", "prop_base_light_dir", "terrain_object_props"]
+    }
+  ]
+}

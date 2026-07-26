@@ -1,0 +1,39 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "BUILDING-FACE-POSE-1. mc2_01's coverage in the building-wall matrix, and a deliberate honesty record about this map. mc2_01 is an airbase: of 1000 placed objects only 44 are building-class, and they are low-rise -- curved-roof Quonset huts, geodesic domes, a hangar. It has NO multi-storey flat wall anywhere, so it is a WEAK site for the question 'is this wall turned away from the light too bright', and it is included for map coverage and as the clean-determinism brightness/clipping guardrail arm, NOT as the acceptance test. The acceptance test lives in mc2_10_building_faces.json. This file also exists to stop the next lane repeating the mistake that blocked the last one: tests/visual/bookmarks/mc2_01_buildings.json is misnamed -- its frames are tarmac, runway, chain-link fence and parked aircraft, with one building clipped at a corner, so day-time 'building' results measured on it actually landed on a fence. Sites here are building-class object clusters read out of the mission .pak packet-1 object list and classified by ObjectTypeClass (method note in mc2_10_building_faces.json): 'quonset' = the 13-object cluster at (2631,-927) (Quonset, Quonset2, GeodesicDome, LookoutTower); 'hangar' = the 13-object cluster at (3546,-41) (Hangar, GeodesicDome, Quonset, GenericMilitary). Sun azimuth = LightDirYaw(11)+45 = 56 deg, elevation 50 deg. The control at (1000,-3000) frames day-lit island terrain, water and palm props and no building-class object, so it shows whether a prop-lighting change leaks onto non-building props and onto foliage; it was chosen after a first candidate at (-5200,-3200) was inspected and found to frame open water only, which would have passed any A/B trivially.",
+  "bookmarks": [
+    {
+      "name": "quonset_lightaway",
+      "pos": [2631.0, -927.0, 0.0],
+      "rot": 236.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "low_rise_curved_roof"]
+    },
+    {
+      "name": "quonset_lightfacing",
+      "pos": [2631.0, -927.0, 0.0],
+      "rot": 56.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "low_rise_curved_roof"]
+    },
+    {
+      "name": "hangar_lightaway",
+      "pos": [3546.0, -41.0, 0.0],
+      "rot": 236.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir"]
+    },
+    {
+      "name": "control_no_buildings",
+      "pos": [1000.0, -3000.0, 0.0],
+      "rot": 56.0,
+      "proj": 26.0,
+      "alt": 750.0,
+      "covers": ["no_building_control", "prop_base_light_dir"]
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_03",
+  "_note": "BUILDING-FACE-POSE-1. Day-lit counterpart to mc2_10_building_faces.json, on the map whose capture determinism is clean, so it carries the quantitative arm of the building-wall grading. Sites are building-class object clusters read out of the mission .pak packet-1 object list and classified by ObjectTypeClass (see mc2_10_building_faces.json for the full method note). 'industrial' = the 38-object cluster at (566,2041): HeavyIndustrial, PurificationPlant, IndustrialPlant, ChemicalPlant, ProcessingPlant -- multi-storey blocks with large flat walls, the best wall-face subject on any tier map, and the sun casts hard ground shadows here so the light direction is visible in-frame. 'sam' = the 74-object walled compound at (-3710,3995): VehicleHangar, Liao walls and gates, SRM turrets. 'civstore' = the 29-object cluster at (-1072,1248) (CivStorageA/B, GrainStorage and vehicle props). A civilian-housing site at (546,3676) was tried first and REJECTED after inspection: at that pose the housing renders as ground shadows with no building geometry above them, so it would have graded nothing. Sun azimuth = LightDirYaw(-206)+45 = -161 deg, elevation LightDirPitch 46 deg. Two rotations 180 deg apart at the industrial and sam sites put the light-facing wall in one frame and the light-away wall in the other. alt 650 / proj 22 chosen by inspection so vertical walls occupy real screen area. The control at (3000,-1500) frames in-map terrain carrying no building-class object. Its sensitivity is LOW and deliberately recorded as such: that part of mc2_03 sits in terrain shadow and is dark, so a small change there is harder to see than on the mc2_10 or mc2_01 controls; a first candidate at (4200,-4200) was inspected and rejected outright for framing off-map blackness.",
+  "bookmarks": [
+    {
+      "name": "industrial_lightaway",
+      "pos": [566.0, 2041.0, 0.0],
+      "rot": 199.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "day_prop_sun_term"]
+    },
+    {
+      "name": "industrial_lightfacing",
+      "pos": [566.0, 2041.0, 0.0],
+      "rot": 19.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "day_prop_sun_term"]
+    },
+    {
+      "name": "sam_lightaway",
+      "pos": [-3710.0, 3995.0, 0.0],
+      "rot": 199.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "static_prop_wall_turret"]
+    },
+    {
+      "name": "sam_lightfacing",
+      "pos": [-3710.0, 3995.0, 0.0],
+      "rot": 19.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "static_prop_wall_turret"]
+    },
+    {
+      "name": "civstore_lightaway",
+      "pos": [-1072.0, 1248.0, 0.0],
+      "rot": 199.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "civilian_storage"]
+    },
+    {
+      "name": "control_no_buildings",
+      "pos": [3000.0, -1500.0, 0.0],
+      "rot": 199.0,
+      "proj": 26.0,
+      "alt": 750.0,
+      "covers": ["no_building_control", "prop_base_light_dir"]
+    }
+  ]
+}

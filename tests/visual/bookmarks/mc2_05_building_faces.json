@@ -1,0 +1,55 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_05",
+  "_note": "BUILDING-FACE-POSE-1. mc2_05 non-degradation set. mc2_05 is the only tier map that runs a real day/night cycle (DayToNightTime = 864000 in the mission .fit, versus -1 on mc2_01/03/10/24) and its night lighting is USER-APPROVED, so any prop-lighting change has to be shown NOT to damage it -- but no mc2_05 bookmark set existed in this directory at all, which left that claim unverifiable. This file closes that hole. Sites are building-class object clusters read out of the mission .pak packet-1 object list and classified by ObjectTypeClass (method note in mc2_10_building_faces.json): 'liao_compound' = the 82-object walled compound at (-4009,-2751) (Liao medium walls and gates, SRM turrets, large fuel tanks, HeavyIndustrial); 'east_compound' = the 82-object walled compound at (3133,-1788); 'spotlight_yard' = the 34-object cluster at (-236,448) carrying LiaoSpotlight and its control, i.e. the object-light fixtures whose night pools are the approved look; 'refinery' = the 34-object plant at (-1006,4587). Sun azimuth = LightDirYaw(15)+45 = 60 deg. The control frames terrain carrying no building-class object.",
+  "bookmarks": [
+    {
+      "name": "liao_compound_lightaway",
+      "pos": [-4009.0, -2751.0, 0.0],
+      "rot": 240.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "mc2_05_night_approved"]
+    },
+    {
+      "name": "liao_compound_lightfacing",
+      "pos": [-4009.0, -2751.0, 0.0],
+      "rot": 60.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "mc2_05_night_approved"]
+    },
+    {
+      "name": "east_compound_lightfacing",
+      "pos": [3133.0, -1788.0, 0.0],
+      "rot": 60.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_facing", "prop_base_light_dir", "mc2_05_night_approved"]
+    },
+    {
+      "name": "spotlight_yard",
+      "pos": [-236.0, 448.0, 0.0],
+      "rot": 60.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["object_light_spotlight_pool", "prop_base_light_dir", "mc2_05_night_approved"]
+    },
+    {
+      "name": "refinery_lightaway",
+      "pos": [-1006.0, 4587.0, 0.0],
+      "rot": 240.0,
+      "proj": 22.0,
+      "alt": 650.0,
+      "covers": ["static_prop_building_wall_light_behind", "prop_base_light_dir", "mc2_05_night_approved"]
+    },
+    {
+      "name": "control_no_buildings",
+      "pos": [1500.0, -6200.0, 0.0],
+      "rot": 60.0,
+      "proj": 26.0,
+      "alt": 750.0,
+      "covers": ["no_building_control", "prop_base_light_dir"]
+    }
+  ]
+}
