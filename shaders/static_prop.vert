@@ -93,6 +93,12 @@ uniform vec3 u_terrainSunMC2;
 uniform int   u_isNight;             // 0/1
 uniform float u_nightFactor;         // 0..1 day->night blend
 uniform float u_nightEmissiveScale;  // 1.0 = stock; 0.0 = pre-fix; >1 exaggerate
+// BEACON-FIXTURE-ID-1: emission scale applied ONLY to types the CPU-side
+// discriminator classified as light fixtures (runway/taxiway edge lights and
+// beacons). The flag rides ptd.hotPinkRGB.w -- 1.0 = fixture, 0.0 = everything
+// else. This is what lets the fixtures come on at night while every building
+// stays byte-identical, which u_nightEmissiveScale (all-props) cannot do.
+uniform float u_fixtureEmissiveScale;
 // FAR-BACKDROP-LIT (gate MC2_FAR_BACKDROP_LIT, default OFF): night-shade
 // substitution for far/impostor static-prop LODs. Far/impostor LODs register
 // via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_
@@ -490,14 +496,27 @@ void main() {
         ptd.hotYellowRGB.rgb,
         ptd.hotGreenRGB.rgb);
     vec3 base_light = base_day;
-    if (u_isNight != 0 || u_nightFactor > 0.0) {
+    // BEACON-FIXTURE-ID-1: pick the emission scale by fixture identity. A
+    // fixture takes max(all-props scale, fixture scale) so the two gates
+    // compose instead of fighting; everything else keeps the all-props scale,
+    // which is 0.0 by default -> base_light == base_day -> byte-identical.
+    // NOTE: this scales the emission on the fixture's REAL geometry only. It
+    // deliberately introduces no screen-size clamp and no billboard -- the
+    // unbounded min-screen-size clamp is exactly what produced the
+    // "atrociously hideous" overview-altitude streaks in RUNWAY-MARKER-LIGHTS-1
+    // (and why MC2_LIGHT_BILLBOARD_FACING was defaulted OFF). The emission
+    // therefore shrinks and fades with distance on its own.
+    float emissiveScale = (ptd.hotPinkRGB.w > 0.5)
+                        ? max(u_nightEmissiveScale, u_fixtureEmissiveScale)
+                        : u_nightEmissiveScale;
+    if (emissiveScale > 0.0 && (u_isNight != 0 || u_nightFactor > 0.0)) {
         vec3 base_night = get_base_light(
             perVertexARGB,
             u_isNight != 0, u_nightFactor, false, lightsOut,
             ptd.hotPinkRGB.rgb,
             ptd.hotYellowRGB.rgb,
             ptd.hotGreenRGB.rgb);
-        base_light = clamp(base_day + (base_night - base_day) * u_nightEmissiveScale,
+        base_light = clamp(base_day + (base_night - base_day) * emissiveScale,
                            vec3(0.0), vec3(1.0));
     }
 

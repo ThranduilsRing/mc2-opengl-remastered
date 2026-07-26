@@ -2051,6 +2051,7 @@ def main():
                             # NIGHT vertex tags on the GPU static-prop path (runway
                             # edge lights / beacons / lit windows). Default-OFF ->
                             # isNight/factor uploaded as 0 -> byte-identical.
+                            "MC2_STATIC_PROP_FIXTURE_LIGHTS",
                             "MC2_STATIC_PROP_NIGHT_TAGS",
                             "MC2_STATIC_PROP_NIGHT_TAGS_SCALE",
                             # BACKDROP-BLIT-ATTRIB-1: night-dim the edge-fog +

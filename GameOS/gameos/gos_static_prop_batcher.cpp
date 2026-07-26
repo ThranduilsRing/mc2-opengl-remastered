@@ -806,6 +806,72 @@ static const float s_nightTagScale = []() {
     return (s_nightTagMode == 2) ? 4.0f : 1.0f;
 }();
 
+// BEACON-FIXTURE-ID-1: fixture-scoped night emission.
+//
+// MC2_STATIC_PROP_NIGHT_TAGS (above) restores the stock night vertex tags for
+// EVERY tagged prop, which is why it ships default-OFF: 738 of 2947 stock .ase
+// carry the Hot Green tag and only 8 of them are runway/beacon fixtures -- the
+// other ~730 are buildings. The tag's stock name is literally "Building Base
+// Lights" (shaders/include/lighting.hglsl:118); the fixtures BORROW it. So
+// vertex colour cannot separate fixtures from buildings, and scoping by colour
+// would relight 730 buildings to buy 8 fixtures -- straight into the user's
+// separate over-lit-buildings complaint.
+//
+// This gate scopes by FIXTURE IDENTITY instead, via a discriminator on the
+// per-shape .ini emission colours (see isEmissiveFixtureType below). It relights
+// ONLY the runway/taxiway/beacon fixtures and leaves every building byte-
+// identical, so it is safe to default ON.
+//
+// Unset/"1" -> stock fixture emission (default ON). "0" -> off, byte-identical
+// to the pre-fix render. Numeric > 1 -> verify-by-exaggeration. Resolved once at
+// process start.
+static const float s_fixtureLightsScale = []() {
+    const char* v = getenv("MC2_STATIC_PROP_FIXTURE_LIGHTS");
+    if (!v || !*v) return 1.0f;              // DEFAULT ON
+    float f = (float)atof(v);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 16.0f) f = 16.0f;
+    return f;
+}();
+
+// BEACON-FIXTURE-ID-1: the fixture discriminator, validated against all 773
+// stock data/tgl .ini.
+//
+// A light fixture declares the SAME saturated primary for all three Hot*RGB
+// slots -- it has one emission colour and does not care which magic tag the
+// artist painted the post with. Buildings declare desaturated greys/olives
+// (0x00707070, 0x00557238, 0x006AA6A6, ...) and declare them INDEPENDENTLY per
+// slot, so their three values are essentially never equal.
+//
+// Both halves of the test are load-bearing. "Saturated primary" ALONE is leaky
+// because mclib/bdactor.cpp:813-819 defaults an undeclared slot to the magic tag
+// itself (HotGreenRGB -> 0xff00ff00, a saturated primary): 503 of 773 .ini trip
+// the naive test. Requiring all three EQUAL rejects every one of those, because
+// the three defaults differ from each other.
+//
+// Measured on the stock data set: 4 of 773 .ini match -- runwaylight,
+// redbeaconlight, greenbeaconlight, bluebeaconlight -- backing the ~24 fixture
+// .ase (base/x/dam/damx/l1 variants). Zero buildings match. This is data-driven
+// rather than a hardcoded name list, so it also classifies modded fixtures that
+// follow the same authoring convention.
+static bool isEmissiveFixtureType(DWORD pink, DWORD yellow, DWORD green)
+{
+    const DWORD rgbP = pink & 0x00FFFFFFu;
+    const DWORD rgbY = yellow & 0x00FFFFFFu;
+    const DWORD rgbG = green & 0x00FFFFFFu;
+    if (rgbP != rgbY || rgbY != rgbG) return false;   // rejects the default-mix case
+    const int r = (int)((rgbP >> 16) & 0xFFu);
+    const int g = (int)((rgbP >>  8) & 0xFFu);
+    const int b = (int)((rgbP >>  0) & 0xFFu);
+    const int mx = (r > g ? (r > b ? r : b) : (g > b ? g : b));
+    const int mn = (r < g ? (r < b ? r : b) : (g < b ? g : b));
+    return mx >= 200 && mn <= 40 && (mx - mn) >= 160;  // saturated primary
+}
+
+// BEACON-FIXTURE-ID-1: numeric receipt -- how many registered types the
+// discriminator classified as fixtures on the loaded map.
+static unsigned s_fixtureTypeCount = 0;
+
 static const bool s_farBackdropLitEnabled = []() {
     const char* v = getenv("MC2_FAR_BACKDROP_LIT");
     return v != nullptr && v[0] != '0' && v[0] != '\0';
@@ -1237,6 +1303,7 @@ struct ProgramLocs {
     GLint isNight            = -1;   // u_isNight (int 0/1)
     GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
     GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
+    GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
     GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
     GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
@@ -1578,6 +1645,7 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.isNight            = glGetUniformLocation(s_staticPropProgram, "u_isNight");
     s_locsLegacy.nightFactor        = glGetUniformLocation(s_staticPropProgram, "u_nightFactor");
     s_locsLegacy.nightEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_nightEmissiveScale");
+    s_locsLegacy.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgram, "u_fixtureEmissiveScale");
     // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
     s_locsLegacy.terrainDecalFill  = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalFill");
     // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -1642,6 +1710,7 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.isNight            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_isNight");
             s_locsCoalesce.nightFactor        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightFactor");
             s_locsCoalesce.nightEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_nightEmissiveScale");
+            s_locsCoalesce.fixtureEmissiveScale = glGetUniformLocation(s_staticPropProgramCoalesce, "u_fixtureEmissiveScale");
             // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (flag-gated in frag).
             s_locsCoalesce.terrainDecalFill  = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalFill");
             // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend (flag-gated in frag).
@@ -2833,7 +2902,17 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             unpack(pink,   perTypeBlob[i].hotPinkRGB);
             unpack(yellow, perTypeBlob[i].hotYellowRGB);
             unpack(green,  perTypeBlob[i].hotGreenRGB);
+            // BEACON-FIXTURE-ID-1: ride the existing std430 vec4 padding lane
+            // (hotPinkRGB.w, previously a hardcoded 0.0) rather than growing the
+            // struct -- no size change, no lockstep risk, no new binding.
+            // 1.0 = light fixture, 0.0 = everything else.
+            perTypeBlob[i].hotPinkRGB[3] =
+                isEmissiveFixtureType(pink, yellow, green) ? 1.0f : 0.0f;
+            if (perTypeBlob[i].hotPinkRGB[3] > 0.0f) ++s_fixtureTypeCount;
         }
+        std::fprintf(stderr, "[GPUPROPS] fixture-lights: %u of %zu types classified"
+                             " as emissive fixtures (scale=%.2f)\n",
+                     s_fixtureTypeCount, s_types.size(), s_fixtureLightsScale);
 
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
@@ -6558,7 +6637,10 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         if (s_locsCoalesce.isNight >= 0 || s_locsCoalesce.nightFactor >= 0) {
             bool  nIsNight = false;
             float nFactor  = 0.0f;
-            if (s_nightTagMode != 0) {
+            // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
+            // Safe for non-fixtures: their scale stays 0.0, so get_base_light
+            // keeps its daytime result (delta * 0 == 0).
+            if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f) {
                 extern void gos_GetNightState(bool*, float*);
                 gos_GetNightState(&nIsNight, &nFactor);
             }
@@ -6569,6 +6651,8 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (s_locsCoalesce.nightEmissiveScale >= 0)
                 glUniform1f(s_locsCoalesce.nightEmissiveScale,
                             (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
+            if (s_locsCoalesce.fixtureEmissiveScale >= 0)
+                glUniform1f(s_locsCoalesce.fixtureEmissiveScale, s_fixtureLightsScale);
         }
         // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When
         // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped ->
@@ -7769,7 +7853,10 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (s_locsLegacy.isNight >= 0 || s_locsLegacy.nightFactor >= 0) {
                 bool  nIsNight = false;
                 float nFactor  = 0.0f;
-                if (s_nightTagMode != 0) {
+                // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state.
+                // Safe for non-fixtures: their scale stays 0.0, so get_base_light
+                // keeps its daytime result (delta * 0 == 0).
+                if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f) {
                     extern void gos_GetNightState(bool*, float*);
                     gos_GetNightState(&nIsNight, &nFactor);
                 }
@@ -7780,6 +7867,8 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 if (s_locsLegacy.nightEmissiveScale >= 0)
                     glUniform1f(s_locsLegacy.nightEmissiveScale,
                                 (s_nightTagMode != 0) ? s_nightTagScale : 0.0f);
+                if (s_locsLegacy.fixtureEmissiveScale >= 0)
+                    glUniform1f(s_locsLegacy.fixtureEmissiveScale, s_fixtureLightsScale);
             }
             // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy).
             // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 ->
