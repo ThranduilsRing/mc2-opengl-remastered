@@ -8,6 +8,22 @@ Lane BUILDING-FACE-POSE-1. Worktree `A:/Games/mc2-main`, branch
   blessed golden baseline exe).
 - Evidence: `scratch/bfp1/`. All PNGs verified non-zero. Disk held at ~13 GB
   free throughout; no build tree added (Tracy still compiled in none).
+- **tier1: PASS (5/5) with explicit `DEPLOY_FINGERPRINT OK` on all five
+  missions** (`exe sha=0745a13bda31 matches worktree HEAD`), run with an
+  explicit `--exe` — `run_smoke.py` auto-selects a lane otherwise, which is how
+  eight previous lanes got a PASS printed next to a MISMATCH.
+  MOVER-COHERENCE 0 violations on all five. Contracts **70/70**.
+- Contract harnesses: 14 PASS via `tools/run_contract_tests.py`;
+  `shader_contract_harness` and `ibl_registry_contract_harness` are reported
+  FAIL by that runner but **both exit 0 with all tests passing when executed
+  directly**, so the runner verdict is a harness-runner artifact;
+  `timing_math_harness` / `job_system_harness` are unbuilt (MISSING). None of
+  this is attributable to this lane — **the whole change set is 5 JSON pose
+  files and one Markdown document, no C++, no shaders** (`git diff --name-only
+  b8211bce..HEAD` returns no code file).
+- **★ Nothing about the DEFAULT RENDER changed. The user's building face still
+  looks exactly as it did on a default launch** — this lane made the fix
+  gradeable and found what blocks enabling it; it did not enable it.
 
 | Objective | Verdict |
 |---|---|
@@ -277,4 +293,12 @@ Ordered next steps:
 - **mc2_24 fortress pose is weak** — mostly pavement with one wall segment; kept
   for coverage, it carries little of the map's verdict.
 - **The mc2_05 mechanism is unexplained**, deliberately (§4).
+- **The sun's in-frame direction was inferred, not independently measured.**
+  The claim "walls turned away from the light darken most" rests on the shader
+  dotting against `u_terrainSunMC2`, which is the mission light direction by
+  construction. What is *convention-free and measured* is the orientation
+  dependence itself: the same buildings from two 180°-opposed rotations move
+  20.3 % vs 5.3 % of pixels, and the per-pixel map separates walls from roofs
+  from sun-facing faces. If someone wants the absolute sense nailed down, that
+  needs a light-direction debug overlay, which I did not build.
 - No push, no `--amend`, no foreign-process kills.
