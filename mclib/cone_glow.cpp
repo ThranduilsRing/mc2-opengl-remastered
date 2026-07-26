@@ -121,14 +121,38 @@ bool nodes_enabled()
     return s;
 }
 
-// CONE-SPILL-GRADE-1: see cone_glow.h. Default ON preserves the behaviour
-// c1f98b45 shipped, so adding this gate is itself a no-op; OFF restores the
-// pre-c1f98b45 pool placement for grading.
+// CONE-SPILL-GRADE-1: see cone_glow.h.
+//
+// DEFAULT FLIPPED TO OFF on measured evidence. MC2_LIGHT_CONE_DIAG=1 on mc2_10
+// (attributable exe 6823bc001562) over all 9 distinct building spotlight
+// fixtures in the mission:
+//
+//   hit=1 (pool kept, repositioned) : 2   -- horizErr 7.0 world units, i.e. the
+//                                           "true intersection" moves the pool
+//                                           an imperceptible distance
+//   hit=0 (pool SUPPRESSED entirely): 7   -- every one of these HAD a pool
+//                                           before c1f98b45
+//   clamped=1 (200u clamp would fire): 0  -- the clamp removal is a no-op here
+//
+// Why the misses: the stock fixtures are authored near-horizontal
+// (aim.z = -0.089, coneLen = 167.8 -> only 14.9 units of drop across the whole
+// beam) from an apex ~17 units above the terrain, and 3 more point straight UP
+// (aim = (0,0,1) beacons). The authored cone length is a VISUAL extent, not a
+// physical reach, so requiring a real ray/terrain intersection within that
+// length rejects almost every fixture. The pre-c1f98b45 code snapped z to the
+// terrain and therefore always produced a pool near where the beam pointed.
+//
+// Net effect of c1f98b45 at default: 7 of 9 night ground pools DELETED for an
+// imperceptible reposition of the other 2 -- a regression against the very
+// complaint it was written for ("the actual lights are not on at ALL").
+// Hence OFF by default. Set MC2_CONE_SPILL_COUPLING=1 to re-enable the
+// intersection path (e.g. to re-grade it after the fixture authoring or the
+// miss policy is revisited -- see .claude/CONE-SPILL-GRADE-1-STATUS.md).
 bool spill_coupling_enabled()
 {
     static const bool s = []() {
         const char* v = std::getenv("MC2_CONE_SPILL_COUPLING");
-        return !(v && v[0] == '0');   // default ON
+        return (v && v[0] == '1');   // default OFF (evidence above)
     }();
     return s;
 }

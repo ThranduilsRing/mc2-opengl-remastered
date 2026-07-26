@@ -1915,8 +1915,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_CONE_SPILL_COUPLING",
         "MC2_CONE_SPILL_COUPLING",
         EnvVarKind::Trace,
-        true,
-        "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES. ON (default, unset/'1') -> building/guard-tower spotlight ground pools are placed at the TRUE beam/terrain intersection found by marching the ray (mc2ConeGroundHit), the arbitrary 200.0f spill clamp is gone, and a beam that never meets ground within its own length or leaves the map emits NO pool. '0' -> restores the exact pre-c1f98b45 placement (apex + aim*spill, 200.0f clamp, z snapped to getTerrainElevation, no miss rejection). Exists so the change can be A/B graded on one attributable exe. Resolved once at process start.",
+        false,
+        "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES and is now DEFAULT-OFF on measured evidence (on mc2_10 it suppressed 7 of 9 building spotlight ground pools while moving the other 2 by only 7 world units; the 200u clamp never fired). '1' -> building/guard-tower spotlight ground pools are placed at the TRUE beam/terrain intersection found by marching the ray (mc2ConeGroundHit), the arbitrary 200.0f spill clamp is gone, and a beam that never meets ground within its own length or leaves the map emits NO pool. '0' -> restores the exact pre-c1f98b45 placement (apex + aim*spill, 200.0f clamp, z snapped to getTerrainElevation, no miss rejection). Exists so the change can be A/B graded on one attributable exe. Resolved once at process start.",
     },
     {
         "MC2_STATIC_PROP_NIGHT_TAGS",
