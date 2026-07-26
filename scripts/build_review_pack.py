@@ -224,10 +224,37 @@ UNREG = '<b style="color:#f0d890">NOT IN REGISTRY</b>'
 SMALL = '<br><span style="font-size:11px;color:#9aa3ad">%s</span>'
 
 
+# A numeric KNOB (pool sizes, grid dimensions, strengths) carries its real
+# default in the registry DOC string, while the struct's boolean defaultOn
+# field is meaningless for it and reads false.  Rendering those as a bold OFF
+# actively misinforms -- MC2_LIGHT_POOL_MAX would publish as "OFF" when source
+# says 256.  Detect the declared value and publish that instead, still entirely
+# source-derived.  The guard is deliberately tight: a boolean gate can never
+# declare "Default 256", so values of 0 and 1 are left alone as genuinely
+# boolean and never reinterpreted.
+_DOC_NUMERIC_DEFAULT = re.compile(r"\bDefault\s+(\d+(?:\.\d+)?)\b")
+
+
+def _numeric_default(entry: dict) -> str | None:
+    m = _DOC_NUMERIC_DEFAULT.search(entry.get("doc") or "")
+    if not m:
+        return None
+    val = m.group(1)
+    if val in ("0", "1", "0.0", "1.0"):
+        return None
+    return val
+
+
 def render_default_cell(gate_label: str, reg: dict, readers: dict | None = None) -> str:
     key = gate_lookup_key(gate_label)
     e = reg.get(key)
     if e is not None:
+        if not e["defaultOn"]:
+            num = _numeric_default(e)
+            if num is not None:
+                return ("<b>DEFAULT %s</b>" % num + SMALL
+                        % "numeric knob &mdash; value from the "
+                          "RendererFeatureRegistry.h doc string")
         return (ON if e["defaultOn"] else OFF) + SMALL % "RendererFeatureRegistry.h"
 
     r = (readers or {}).get(key)

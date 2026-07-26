@@ -5,9 +5,135 @@
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 — Fix Review",
  "lede": "Session 2026-07-23. One card per fix below: what changed, the gate + recommended setting, and full-resolution before/after crops. Click any image to open the full file. All fixes are default-OFF byte-identical unless noted.",
- "toc_html": "<b>Jump to:</b> <a href=\"#gates\"><b>Gate inventory (approve defaults here)</b></a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">1 shoreline</a> <a href=\"#02_runway\">2 runway</a> <a href=\"#03_mech_night_shadow\">3 contact shadow</a> <a href=\"#04_water_graze\">4 water graze</a> <a href=\"#05_night_fog_dim\">5 night fog</a> <a href=\"#06_edge_light_billboard\">6 billboard (superseded)</a> <a href=\"#07_cone_lamp_guard\">7 cone guard</a> <a href=\"#08_prop_self_shadow\">8 prop shadow</a> <a href=\"#09_runway_marker_lights\">9 marker lights</a> <a href=\"#10_light_realism\">10 light realism</a> <a href=\"#11_vehicle_night_lit\">11 vehicle night (not fixed)</a> <a href=\"#12_mc2_24_cement\">12 mc2_24 cement</a><a href=\"#13_unlinked\">13 unlinked captures</a> <a href=\"#14_lanes\"><b>14 lanes &amp; efforts</b></a> <a href=\"#golden\">Golden re-bless</a>",
+ "toc_html": "<b>Jump to:</b> <a href=\"#open_gates\"><b style=\"color:#f0d890\">Open user gates</b></a> &nbsp;|&nbsp; <a href=\"#gates\"><b>Gate inventory (approve defaults here)</b></a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">1 shoreline</a> <a href=\"#02_runway\">2 runway</a> <a href=\"#03_mech_night_shadow\">3 contact shadow</a> <a href=\"#04_water_graze\">4 water graze</a> <a href=\"#05_night_fog_dim\">5 night fog</a> <a href=\"#06_edge_light_billboard\">6 billboard (superseded)</a> <a href=\"#07_cone_lamp_guard\">7 cone guard</a> <a href=\"#08_prop_self_shadow\">8 prop shadow</a> <a href=\"#09_runway_marker_lights\">9 marker lights</a> <a href=\"#10_light_realism\">10 light realism</a> <a href=\"#11_vehicle_night_lit\">11 vehicle night (not fixed)</a> <a href=\"#12_mc2_24_cement\">12 mc2_24 cement</a><a href=\"#13_unlinked\">13 unlinked captures</a> <a href=\"#14_lanes\"><b>14 lanes &amp; efforts</b></a> <a href=\"#instruments\"><b>Instruments that lied</b></a> <a href=\"#golden\">Golden re-bless</a>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
+  {
+   "id": "open_gates",
+   "heading": "Open user gates &mdash; the things only you can decide",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "Everything below is <b>blocked on a decision, not on work</b>. Each one has its evidence already gathered and linked; none of them needs another lane first. They are listed here rather than buried in &sect;14 because a lane that does not see them can regress one by accident."
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Decision"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What to do"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Why it is yours"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Grade the pool-spill constant</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Compare <code>MC2_LIGHT_REALISM_POOL_SPILL</code> at <b>1.3 vs 2.2</b> across the blowout, continuity and cone poses."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "You approved 2.2 as &ldquo;variant B&rdquo; <i>and</i> complained about the blown-out pool. Those two facts conflict and only you can settle it. 1.3 keeps the cone and beacon wins whole and cuts blowout from 8.29% to 1.27%; if you accept it, the whole flip becomes a one-constant change with evidence already in hand."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Grade the fixture glow</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>MC2_STATIC_PROP_FIXTURE_GLOW=3</code>, mission <b>mc2_23</b>, at <b>ground level over the runway</b>. Do those read as runway lights?"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "It must be mc2_23, not mc2_10 &mdash; <b>mc2_10 has zero runway lights authored</b>, which is what five earlier lanes were unknowingly grading against. mc2_23 has 112. If they read correctly, this gate should flip default-ON."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Retire <code>v0.5.2-baseline-PROPOSED</code>?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Decide whether to drop it rather than promote it."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "It <b>fails 32 of 39 regions</b> against the current build, and that is real content drift from ~70 commits of night-lighting work, not noise. Worse, <b>it has no vendored poses</b> &mdash; its defining poses live only inside a deploy install and are not version-controlled, so <b>it is unauditable</b> and cannot be reconstructed. GOLDEN-REBLESS-2 recommends against promotion."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Free 8.2&nbsp;GB</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Deleting the superseded <code>release_assets</code> 0.4 + 0.4-testing recovers ~8.2&nbsp;GB."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "A release re-cut peaks at ~<b>18.2&nbsp;GB</b> against ~<b>13&nbsp;GB free</b>, so it cannot run. This is not a hypothetical: the volume already hit <b>0 bytes free</b> once this session and silently wrote 12 zero-byte PNGs, killing half of LIGHT-REALISM-FLIP-1's matrix. <code>release_assets/</code> and <code>releases/</code> are user-gated; no agent will delete them."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Tag, push, upload</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The v0.5.2 cut."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Nothing in this session was ever pushed. All commits are local to <code>claude/nifty-mendeleev</code>."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0d890\">DEFAULT-LAUNCH REALITY &mdash; what you actually get if you launch and change nothing.</b> The single most important question about every fix below is whether a player still sees the defect on a default launch. Read this as the honest answer. <b>Active by default, so the fix is really in your hands:</b> <code>MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN</code> and <code>MC2_SHADOW_GUARD_CLAMPED_SUN</code> (terrain sun shadows restored &mdash; the shadow buffer was 70% saturated white before), <code>MC2_STATIC_PROP_IBL_NIGHT_SCALE</code> (night white-clipping on building faces cut 19&times;), <code>MC2_STATIC_PROP_FIXTURE_LIGHTS</code>, and <code>MC2_LIGHT_GRID</code> (perf). The <b>mc2_01 load crash is also fixed unconditionally</b> &mdash; it is not behind any gate. <b>Default-OFF, so you WILL still see the defect:</b> the runway/apron tone mismatch (<code>MC2_PAVED_OVERLAY_CLASS</code>), dull runway and beacon fixtures (<code>MC2_STATIC_PROP_FIXTURE_GLOW</code>), flat building faces (<code>MC2_PROP_BASE_LIGHT_DIR</code>), absent contact shadows (<code>MC2_SSAO</code>, <code>MC2_PROP_SHADOW_RECEIVE</code>), and the night light look (<code>MC2_LIGHT_REALISM</code>). <b>Two of those are default-OFF deliberately and must stay that way</b>: <code>MC2_CONE_SPILL_COUPLING</code> is regressive (it deletes 7 of 9 night light pools) and <code>MC2_SSAO</code> is latent-broken rather than merely unused (no blur pass exists). In short: <b>the crash and the shadow and night-clipping fixes ship; most of the look work does not, and is waiting on the gradings above.</b>"
+    },
+    {
+     "type": "note",
+     "html": "<b>Staleness, stated plainly.</b> Every image on this page is <b>one executable old</b> &mdash; they remain REVIEW-ALLPOSES-1's clean-fingerprint set. No lane since has been able to re-capture: the shared worktree was held dirty by parallel lanes, a foreign smoke lease was live on the deploy path, and the disk is too tight to spend on a capture pass. <b>The prose and gate defaults below are current; the pictures are not.</b> Re-capture is the first thing to do once the tree settles and the disk is freed."
+    }
+   ]
+  },
   {
    "id": "gates",
    "anchor": "#gates",
@@ -1119,6 +1245,10 @@
        "src": "07_cone_lamp_guard/07b_wedge_batch8c.png"
       }
      ]
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; <code>c1f98b45</code> was regressive and is now default-OFF.</b> The cone/pool coupling shipped without a gate of its own, riding an unregistered, undocumented, default-ON <code>MC2_LIGHT_CONE_NODES</code>. Graded numerically it <b>deletes 7 of the 9 night ground light pools on mc2_10</b> (<code>POOLS_KEPT</code> 9/9 &rarr; 2/9), in exchange for moving the two survivors by 7 world units and removing a 200.0f clamp that fires <b>0 times out of 9</b>. The cause is that stock fixtures are authored near-horizontal &mdash; 14.9 units of drop over a 167.8-unit beam &mdash; so the ray/terrain intersection almost never lands on ground, and the miss-rejection wrongly treats buildings (absent from the heightfield) and border terrain as misses. It is now behind <code>MC2_CONE_SPILL_COUPLING</code>, <b>default OFF</b>, and should not be revived without fixing the miss test. <i>(CONE-SPILL-GRADE-1.)</i>"
     }
    ]
   },
@@ -1257,6 +1387,10 @@
        "src": "08_prop_self_shadow/05_caveat_fence_slab_shadow.png"
       }
      ]
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; prop self-shadow CANNOT fix the building-face complaint, and <code>MC2_SSAO</code> is broken rather than merely off.</b> Three corrections to this section. <b>(1)</b> A face turned away from the sun already has <b><code>ndl = 0</code></b>; a shadow term multiplying zero changes nothing, so <code>MC2_PROP_SHADOW_RECEIVE</code> is architecturally incapable of addressing it &mdash; measured, it moves 0.005-0.183% of pixels and only on props like aircraft. <b>(2)</b> The follow-up premise that <code>base_light</code> was the culprit is <b>falsified</b>: a gate built on it was byte-identical at strength 1.0, which multiplies the seed by zero &mdash; <b><code>base_light</code> is effectively ZERO on these props, day and night</b>. The term that actually lights them is <b><code>ambientTerm</code></b>, the orientation-free per-actor object-light ambient; that is the real cure site. <b>(3) <code>MC2_SSAO</code> is latent-broken, not off</b>: the AO buffer is white (mean 254.99/255) because <code>aoRadius_</code> is <b>3.0 world units against a 42.67 wu map cell</b> &mdash; 2% of one cell &mdash; and <b>there is no blur pass at all</b>, only a 4-tap box over &plusmn;0.5 of a half-res texel, which cannot denoise a 16-sample stochastic kernel. Raising the radius alone therefore trades no-occlusion for visible dither. The 20-60&times; coverage figure quoted above should not be relied on. <i>(SHADOW-DECISIONS-1, SSAO-RETUNE-1, PROP-BASE-LIGHT-DIR-1.)</i>"
     }
    ]
   },
@@ -1442,6 +1576,10 @@
        "src": "09_runway_marker_lights/09d_close_ground_AFTER_capped_optin.png"
       }
      ]
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; nothing was ever missing.</b> The premise that runway-light props were being culled or lost is <b>refuted by runtime receipt</b>: placement-to-render agreement is <i>exact</i> on mc2_01, mc2_10 and mc2_23. <b>mc2_10 simply has no runway lights authored</b> &mdash; it places 32 red / 12 green / 16 blue beacons and zero runway lights. Campaign-wide there are <b>365 runway lights</b>: <b>mc2_23 has 112</b> at full night and <b>mc2_01 has 56</b> in daylight. <b>Five prior lanes verified fixture work on the one map that has none of the fixture in question</b>, which is why the work kept appearing to do nothing. On maps that do have them, the lights are drawn but read as dull amber cones because emission is clamped at 1.0 and then multiplied by a dark lens albedo &mdash; a brightness ceiling on present geometry. Grade this on <b>mc2_23</b>, never mc2_10. <i>(RUNWAY-LIGHT-MISSING-1, FIXTURE-GLOW-1.)</i>"
     }
    ]
   },
@@ -1707,6 +1845,10 @@
     {
      "type": "what",
      "html": "Full writeup: <code>vehicle_night_lit_1/README.md</code>, <code>VEHICLE-NIGHT-LIT-2-STATUS.md</code>."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; this whole section is aimed at the wrong subject and the wrong cause.</b> Two findings retire the thread. <b>First, the objects are not vehicles.</b> They are <b>static props</b>, and the lanes that chased them through the vehicle lighting path were in the wrong subsystem. <b>Second, the cause is albedo, not lighting.</b> <code>MC2_LIGHTING_DEBUG_VIEW=sun</code> shows every static prop black at night, buildings included &mdash; there is no tree-vs-building or truck-vs-building lighting differential to fix, and the truck's own sun term (49.0) is in fact <i>higher</i> than the building's (16.0). The <b>truck texture is ~3.3&times; darker than the building texture</b>, and lighting <i>narrows</i> the gap rather than widening it (gain 2.31&times; truck vs 1.02-1.23&times; buildings). Independently confirmed by killing the night IBL probe, which barely moves the ratios (truck/bldg_tower 0.590 &rarr; 0.609) and widens some. <b>Five lanes chased this before it was pinned.</b> <i>(PROP-LIGHT-CLASS-4, NIGHT-AMBIENT-BALANCE-1.)</i>"
     }
    ]
   },
@@ -1885,6 +2027,10 @@
     {
      "type": "note",
      "html": "<b>Fix landed for (c), not yet verified.</b> <code>MC2_CEMENT_LIT</code> (0..1, default 0.0) lerps cement back into the terrain's own lighting term, so apron and colormap-runway share one light and hold a consistent relationship under sun, dusk and night. At 0.0 the expression collapses to the historical flat-lit slab and is bit-identical to stock. <b>Caveat, recorded honestly: the ON arm has NOT been captured.</b> Parallel lanes committed into the shared worktree mid-session, so a clean-fingerprint build of that commit could not be produced and it was not deployed. The diagnosis above is fully evidenced from the clean <code>608dea4d</code> exe; the cure is not. It needs a quiet worktree before it can be recommended."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; <code>MC2_CEMENT_LIT</code> is NOT the fix for (c).</b> The note above says the ON arm was never captured. It has been captured since, and the result is a <b>clean negative</b>: the runway's luma is <b>bit-identical at 66.51 across the OFF / 0.35 / 0.6 / 1.0 arms</b>. The lever sits behind <code>pureConcrete</code> and <b>cannot reach overlay pavement at all</b>. It closes only ~24% of the night tone gap on mc2_10, and <b>in daylight it WIDENS the gap</b> (mc2_24 concrete +16.38 &rarr; +17.71 with the gate ON). The real defect is <b>classification, not lighting</b> &mdash; the runway is 100% unclassified, apron slabs 56-69%. The successor lever is <code>MC2_PAVED_OVERLAY_CLASS</code>, which closes the classification gap 100% on all five maps; note that even it cannot close the residual <i>tone</i> gap, because what remains after flat-lighting both is pure albedo. <i>(ROAD-OVERLAY-LIGHT-1, PAVED-OVERLAY-CLASS-1.)</i>"
     }
    ]
   },
@@ -2330,6 +2476,10 @@
     {
      "type": "note",
      "html": "<b>Read verdicts precisely.</b> <span style='color:#a0f0a0'>APPROVED BY USER</span> means the user saw it and said yes &mdash; do not regress it. <span style='color:#f0a0a0'>REJECTED BY USER</span> means the user saw it and said no &mdash; do not revive it or present it as a candidate. <span style='color:#c0a0f0'>DISPROVEN</span> means the lane refuted its own premise, which is a real result and not a failure. <span style='color:#a0f0a0'>FIXED</span> without an approval tag means <i>agent-verified only, user click-through still pending</i>."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; three &ldquo;no code exists&rdquo; claims from the audit were false.</b> Each of the following had <b>already shipped</b> when it was reported missing: <b>foliage alpha-test shadows</b> (landed in June and default-ON &mdash; the &ldquo;no alpha discard&rdquo; premise is true only of the <i>depth</i> shader, and the residual defect is a stale justification comment); <b>the LOD flash cure</b>; and <b>the pool consumers</b>. Absence of a lane's memory is not absence of code &mdash; each was confirmed present by reading source. This is the same failure shape as the status-doc staleness noted below, which is why &sect;0 and the gate column are rebuilt from source at render time and never read from a document."
     },
     {
      "type": "lanes_table",
@@ -2882,14 +3032,19 @@
       },
       {
        "name": "ROAD-OVERLAY-LIGHT-1",
-       "sent": "Overlay-drawn pavement (roads/runways) vs cement-classified pavement tone mismatch.",
-       "found": "Confirmed and documented the session's most reusable structural finding: <b>roads and runways are an Overlays channel disjoint from the cement flag</b>. A runway laid across dirt has isCement(slot)==false, so it falls off the bottom of the classify chain, increments no drop counter, and no existing cement lever can reach it. Corrected the inverted class-diag legend comment in source.",
+       "sent": "Fix the runway/apron &ldquo;weird coloured edge&rdquo; tone mismatch, evaluating whether <code>MC2_CEMENT_LIT</code> is the cure.",
+       "found": "<b>Refuted <code>MC2_CEMENT_LIT</code> as a fix, by capture.</b> The runway's luma is <b>bit-identical (66.51) across the OFF / 0.35 / 0.6 / 1.0 arms</b> &mdash; the lever cannot reach overlay pavement at all, because it sits behind <code>pureConcrete</code>. It closes only ~24% of the night gap on mc2_10 (+23.92&rarr;+18.12) and in <i>daylight it WIDENS it</i> (mc2_24 concrete +16.38&rarr;+17.71 with the gate ON). Class-diag proved the real defect is <b>classification, not lighting</b>: the runway is 100% unclassified, apron slabs 56-69%. Also produced the session's most reusable structural finding &mdash; roads/runways are an <b>Overlays</b> channel disjoint from the cement flag &mdash; and corrected the inverted class-diag legend in source.",
        "commits": [
         "27c70d26"
        ],
        "gates": [],
-       "verdict": "in-flight",
-       "evidence": []
+       "verdict": "disproven",
+       "evidence": [
+        {
+         "href": "#instruments",
+         "text": "see corrections"
+        }
+       ]
       },
       {
        "name": "DROPPED-ITEMS-1",
@@ -2902,13 +3057,15 @@
       },
       {
        "name": "SHADOW-SUNCLAMP-1",
-       "sent": "Act on DROPPED-ITEMS-1's unclamped-sun finding.",
-       "found": "Landed the fix: the back-face guard must use the clamped sun, matching the matrices. Moved off deploy lane 0.4c because of a fresh foreign smoke lease &mdash; verification is still outstanding at the time of writing.",
+       "sent": "Act on DROPPED-ITEMS-1's unclamped-sun finding and fix the reported world-scale shadowed-half / unshadowed-half split on mc2_10.",
+       "found": "<b>The handed-over root cause was refuted by its own A/B.</b> Three wide mc2_10 night poses plus a liveness arm came back <b>byte-identical gate ON vs OFF</b> (<code>sunclamp_center_wide</code> hashes <code>ea1688351a3d60a7</code> both ways) &mdash; because the <code>NdotL</code> guard only exists in <code>sampleDynamicShadow</code>, on the mech path, and terrain/grass/decals early-out before ever reading <code>lightDir</code>. The lane then located the <i>real</i> mechanism on the terrain path: <code>shadow.hglsl</code> resets <code>normal=(0,0,1)</code> under <code>MC2_SHADOW_STATIC_BANDFIX_V2</code> (default ON) <i>before</i> the guard, so on mc2_10 (LightDirPitch 180) <code>NdotL &asymp; 0 &lt; 0.05</code> and terrain sun shadows are suppressed globally while props/mechs keep theirs. Handed to TERRAIN-SHADOW-GUARD-1, which confirmed it.",
        "commits": [
         "ad43dab5"
        ],
-       "gates": [],
-       "verdict": "in-flight",
+       "gates": [
+        "MC2_SHADOW_GUARD_CLAMPED_SUN"
+       ],
+       "verdict": "disproven",
        "evidence": []
       },
       {
@@ -3051,24 +3208,29 @@
       },
       {
        "name": "LIGHT-CLUSTER-PERF-1",
-       "sent": "Recover the ~34% night FPS cost of the 64-to-256 light-pool cap raise.",
-       "found": "Registered and running at the time this page was generated; no result yet. The cost it targets is documented by LIGHT-REALISM-1 as the per-fragment loop rather than storage.",
-       "commits": [],
+       "sent": "Recover the ~34% night FPS cost of the 64&rarr;256 light-pool cap raise, with a frame-time table proving the win.",
+       "found": "Shipped a world-space XY light grid; its <i>mechanism</i> is measured working (worst-case per-fragment pool-light iterations ~200&rarr;&le;20, average ~200&rarr;&lt;1.2 at the busiest mc2_10 night pose, 201 lights packed). <b>But the frame-time table could not be produced, because the harness was blind</b> &mdash; cap=64 and cap=256 arms were statistically indistinguishable (2.590 vs 2.574&nbsp;ms p50) when the briefed regression should have shown ~34%. Also found <b><code>MC2_CAMERA_PARK</code> was never in <code>run_smoke.py</code>'s passthrough allowlist</b>, so every pose-pinned smoke run silently measured the <i>default</i> camera; all prior pose-pinned evidence gathered that way is suspect.",
+       "commits": [
+        "93c22e39",
+        "cadf9a92"
+       ],
        "gates": [
+        "MC2_LIGHT_GRID",
+        "MC2_LIGHT_GRID_DIM",
         "MC2_LIGHT_POOL_MAX"
        ],
-       "verdict": "in-flight",
+       "verdict": "partial",
        "evidence": []
       },
       {
        "name": "PROP-LIGHT-CLASS-4",
-       "sent": "Tree-vs-building prop light class, and the MC2_PROP_SHADOW_RECEIVE default flip.",
-       "found": "Registered and running at the time this page was generated; no result yet. Inherits PROP-NIGHT-LIGHT-3's candidate (TreeAppearance writes terrain light into the AMBIENT slot and deactivates the sun, BldgAppearance writes the SUN slot) and PROP-SHADOW-ENABLE-2's alpha-test blocker.",
+       "sent": "Fix the tree-vs-building prop light-class bug, and flip <code>MC2_PROP_SHADOW_RECEIVE</code> default ON.",
+       "found": "<b>Both halves failed, and the failure is the finding.</b> (a) <code>MC2_LIGHTING_DEBUG_VIEW=sun</code> shows <b>every static prop is black at night, buildings included</b> &mdash; the predicted tree-vs-building differential does not exist. Worse, the truck's own sun term (49.0) is <i>higher</i> than the building's (16.0), the opposite of the prediction. <b>The dark-truck complaint is real but it is ALBEDO: the truck texture is 3.3&times; darker than the building texture</b>, and lighting gain <i>narrows</i> the gap (2.31&times; truck vs 1.02-1.23&times; buildings) rather than widening it. (b) The fence self-shadow blocker did clear, but RECEIVE ON changes only <b>0.003-0.10% of pixels</b> at every pose &mdash; the promised building self-shadow benefit could not be demonstrated at all.",
        "commits": [],
        "gates": [
         "MC2_PROP_SHADOW_RECEIVE"
        ],
-       "verdict": "in-flight",
+       "verdict": "disproven",
        "evidence": [
         {
          "href": "08_prop_self_shadow/",
@@ -3079,10 +3241,14 @@
       {
        "name": "EDGE-LIGHT-EMISSION-1",
        "sent": "Make runway/taxiway edge lights and beacons actually read as lit at night.",
-       "found": "Registered and running at the time this page was generated. Its claim on static_prop.frag is the recorded blocker for PROP-SHADOW-ENABLE-2.",
-       "commits": [],
-       "gates": [],
-       "verdict": "in-flight",
+       "found": "Shipped <code>fbef958e</code>, and CONE-SPILL-GRADE-1 later graded it a <b>correct, real fix</b>: the GPU static-prop path was passing <code>false, 0.0</code> into <code>get_base_light()</code>, forcing the daytime arm always (+17.1 mean luminance, 100% of pixels brighter at the one noise-clean pose). <b>But it must not be flipped on as-is</b> &mdash; the emission is additive against an already near-saturated night ambient (~196/255), and a 4&times; exaggeration produced only +17.27 vs +17.14, the signature of a term already saturating.",
+       "commits": [
+        "fbef958e"
+       ],
+       "gates": [
+        "MC2_STATIC_PROP_NIGHT_TAGS"
+       ],
+       "verdict": "partial",
        "evidence": [
         {
          "href": "edge_light_emission_1/",
@@ -3093,10 +3259,266 @@
       {
        "name": "REVIEW-EXHAUSTIVE-1",
        "sent": "Make this page the single complete record of the session, exhaustive in evidence and provenance.",
-       "found": "Its own brief was substantially overtaken: the exhaustive capture pass had already been done by REVIEW-ALLPOSES-1 from a clean exe, and the tracked generator already existed, with the orphan count already repaired from 48 to 0. What was genuinely missing was this lanes log and reader-source defaults for the 18 gates the registry does not cover. <b>New captures were not possible</b> &mdash; see the provenance note above this table.",
+       "found": "Its brief was substantially overtaken: the exhaustive capture pass had already been done by REVIEW-ALLPOSES-1 from a clean exe, and the tracked generator already existed with orphans already repaired 48&rarr;0. What was genuinely missing was this lanes log and reader-source defaults for the 18 gates the registry did not cover at the time. <b>That count is 16 today</b>, and the drop is itself a result: LIGHT-CLUSTER-PERF-1 registered <code>MC2_LIGHT_POOL_MAX</code> and DETERMINISM-RATCHET-2 registered <code>MC2_LETTERBOX_OPAQUE</code>, both of which had shipped unregistered and undocumented. Found <b><code>MC2_ROAD_PBR</code> is a GHOST</b> &mdash; documented in two places, no reader anywhere. <b>New captures were not possible</b>; see the provenance note above.",
        "commits": [],
        "gates": [],
        "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "TERRAIN-SHADOW-GUARD-1",
+       "sent": "Land and capture-confirm the terrain-path fix for the NdotL-guard-on-raw-sun mechanism SHADOW-SUNCLAMP-1 located but could not land.",
+       "found": "<b>Confirmed by capture, not by argument.</b> With the gate OFF, <code>MC2_LIGHTING_DEBUG_VIEW=shadow</code> renders the terrain shadow-factor buffer as featureless saturated white &mdash; <b>70.0% of the frame above 250/255</b> on <code>sunclamp_center_wide</code>, the literal <code>return 1.0</code> early-out firing for every terrain pixel. With the gate ON that falls to <b>2.9%</b> and relief-following terrain shadow structure appears (69.4%&rarr;28.1% on <code>sunclamp_relief_ne</code>). The fix landed broader than briefed &mdash; inside <code>calcShadow</code>/<code>calcDynamicShadow</code>, so it also covers decal, grass and terrain-overlay frags. Purely subtractive: <b>0.00% of pixels brightened in any pose</b>. Beauty-frame magnitude is modest at night (max channel delta 4-14/255) because night ambient dominates.",
+       "commits": [
+        "1b23a82b",
+        "c63fec74"
+       ],
+       "gates": [
+        "MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN"
+       ],
+       "verdict": "fixed",
+       "evidence": [
+        {
+         "href": "#instruments",
+         "text": "scratch/tsg1/"
+        }
+       ]
+      },
+      {
+       "name": "PERF-HARNESS-TRUTH-1",
+       "sent": "Fix the performance harness so GPU/fragment-bound cost is visible, and deliver the light-grid frame-time table LIGHT-CLUSTER-PERF-1 owed.",
+       "found": "<b>The inherited diagnosis was false on both counts</b> &mdash; no window consumer reads <code>MC2_SMOKE_MODE</code>, and the 10&nbsp;ms throttle is OS show-state-driven, not harness-driven; with a visible window the two arms still measured within 0.2%. <b>The real cause: the harness reported CPU-side <code>DrawScreen</code> zone duration, which cannot show GPU fragment cost because GL submission is async</b> &mdash; raising the per-fragment loop 4&times; genuinely did not move CPU time. Separately <code>MC2_LOG</code> was never set, so <b>all nine <code>.game.log</code> files were zero bytes</b>: the runs were not merely wrong, they were unverifiable. Once fixed (true frame-interval timing + visible window + receipt verification), the light grid lands <i>at or slightly below</i> the cap=64 baseline (night_busy p50 6.679&rarr;6.481&nbsp;ms, &minus;3.0%) and <code>MC2_LIGHT_REALISM</code> costs nothing measurable.",
+       "commits": [
+        "1d8b0248",
+        "5d398133"
+       ],
+       "gates": [
+        "MC2_LIGHT_REALISM",
+        "MC2_LIGHT_GRID",
+        "MC2_TERRAIN_LIGHT_POOLS"
+       ],
+       "verdict": "fixed",
+       "evidence": []
+      },
+      {
+       "name": "PAVED-OVERLAY-CLASS-1",
+       "sent": "Close the classification gap ROAD-OVERLAY-LIGHT-1 found &mdash; roads/runways on non-cement slots never reaching the cement classify chain.",
+       "found": "Classification gap <b>closed 100% on all 5 maps</b> (residual 0 tiles baked). Within-pavement uniformity improved on 13/15 poses, strongest at the user's own mc2_10 pose (sd 82.50&rarr;67.83, &minus;17.8%). <b>But the mean tone offset did not uniformly converge</b>: it closes 50-94% where pavement was darker than cement, and <i>widens by up to 483%</i> where pavement was already brighter &mdash; because once both are flat-lit the residue is pure albedo, which no lighting-side lever can reach. This is the same wall PROP-LIGHT-CLASS-4 hit on trucks. Mode 2 (albedo swap) is deliberately <b>not</b> recommended: it is the same class of change the user has twice rejected.",
+       "commits": [
+        "04ac21e3"
+       ],
+       "gates": [
+        "MC2_PAVED_OVERLAY_CLASS"
+       ],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "CONE-SPILL-GRADE-1",
+       "sent": "Adversarially grade two lanes (CONE-SPILL-COUPLING-1, EDGE-LIGHT-EMISSION-1) that shipped code and died without ever being reviewed.",
+       "found": "<b><code>c1f98b45</code> is REGRESSIVE and is now default-OFF.</b> It <b>deletes 7 of the 9 night ground light pools on mc2_10</b> (<code>POOLS_KEPT</code> 9/9 &rarr; 2/9) in exchange for moving the 2 survivors by 7 world units and removing a 200.0f clamp that fires <b>0/9 times</b>. Cause: stock fixtures are authored near-horizontal (14.9 units of drop over a 167.8-unit beam) so the ray/terrain intersection almost never lands on ground, and the miss-rejection wrongly counts buildings (absent from the heightfield) and border terrain as misses. It was riding an <b>unregistered, undocumented, default-ON</b> gate (<code>MC2_LIGHT_CONE_NODES</code>) with no gate of its own. EDGE-LIGHT-EMISSION-1 by contrast is a real fix, but saturating &mdash; see its row.",
+       "commits": [
+        "6823bc00",
+        "7f3d0eec",
+        "c0111762"
+       ],
+       "gates": [
+        "MC2_CONE_SPILL_COUPLING",
+        "MC2_LIGHT_CONE_NODES"
+       ],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "NIGHT-TAGS-GREEN-1",
+       "sent": "Implement a scoped Hot-Green-only mode for <code>MC2_STATIC_PROP_NIGHT_TAGS</code>, on the premise that Hot Green tags are exclusive to runway/beacon fixtures.",
+       "found": "<b>The premise is false, and the lane refused to build on it.</b> Of <b>738 meshes carrying Hot Green</b> (<code>0xff00ff00</code>) in <code>data/tgl/*.ase</code>, only <b>8</b> are beacon/runway fixtures &mdash; the other <b>730 are buildings</b> (barracks, palaces, city blocks, HPG, turrets). The shader says so itself at <code>lighting.hglsl:118</code>: <i>Hot Green &mdash; Building Base Lights</i>. Cross-checked in data: of 274 <code>.ini</code> files declaring <code>HotGreenRGB</code>, only 4 use it as a beacon emission colour; <b>270 use it as a building base glow</b>. A green-only mode would relight ~270 building types to fix ~8 fixture types &mdash; a <i>larger</i> blast radius than the all-branch gate it was meant to narrow, aimed straight at the user's separate over-lit-buildings complaint.",
+       "commits": [],
+       "gates": [
+        "MC2_STATIC_PROP_NIGHT_TAGS",
+        "MC2_LIGHT_CONE_NODES"
+       ],
+       "verdict": "disproven",
+       "evidence": []
+      },
+      {
+       "name": "CAPTURE-DETERMINISM-1",
+       "sent": "Characterise and where possible fix the run-to-run nondeterminism in mc2_10 captures that had been invalidating pixel-A/B evidence across many lanes.",
+       "found": "Reproduced the problem <i>worse</i> than briefed: <b>up to 27.3% of pixels differing</b> across three launches with byte-identical env. Found and fixed one real cause &mdash; <code>code/mechcmd2.cpp:2245</code> computed <code>frameLength</code> from the <i>real measured framerate</i> even under <code>MC2_SMOKE_FIXED_TIMESTEP</code>, so movers integrated a different dt each launch; pinning it dropped <code>lance_close</code> noise 20.4%&rarr;0.269%. Raising settle frames 30&rarr;150 cut <code>saved_204937</code> 23.4%&rarr;15.5% but never reaches zero. <b>A third source remains open and unpinned (12.4-15.5%): mc2_10 captures are still not reproducible.</b> Sim/render frame skew and streaming/LOD were explicitly refuted as causes.",
+       "commits": [
+        "5737632b",
+        "3b0f22d5"
+       ],
+       "gates": [],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "LIGHT-REALISM-FLIP-1",
+       "sent": "Decide whether <code>MC2_LIGHT_REALISM</code> should flip default-ON, by grading variant B against the user's four night-lighting complaints.",
+       "found": "Three of the four complaints (feathered cones, spill continuity, LIGHT SOURCE-like beacons) are convincingly solved. <b>The fourth is measurably worsened.</b> <code>MC2_LIGHT_REALISM_POOL_SPILL=2.2</code> scales <code>farDistance</code> for <i>every</i> pool light uniformly, including near-camera mover lights, and hot-pixel area explodes at <code>lance_close</code> from 0.360% to <b>8.250% &mdash; 23&times;</b>; at the user's own grading poses 11&times; and 6.3&times;. The proposed cure (spare mover lights) was handed to POOL-SPILL-STATIC-1, which proved it inert. <b>Half this lane's matrix never ran: the A: volume hit 0 bytes free and 12 of 14 PNGs in one arm were written zero-byte.</b>",
+       "commits": [],
+       "gates": [
+        "MC2_LIGHT_REALISM",
+        "MC2_LIGHT_REALISM_POOL_SPILL"
+       ],
+       "verdict": "blocked",
+       "evidence": []
+      },
+      {
+       "name": "POOL-SPILL-STATIC-1",
+       "sent": "Implement LIGHT-REALISM-FLIP-1's prescribed cure &mdash; apply pool spill to static lights only, sparing mover lights &mdash; and verify it removes the blowout.",
+       "found": "<b>Implemented, proven INERT, and reverted.</b> <code>MC2_LIGHT_POOL_DUMP=1</code> receipts at the user's exact complaint poses show the light rows by class are <code>{other: 1684, bldg: 81}</code> &mdash; <b>zero mech, zero gv</b>. <code>lightIsMover()</code> never returns true there, so the blowout is caused entirely by static/untagged lights and the mover carve-out cannot touch it. Uniform-2.2 and static-only-2.2 are numerically indistinguishable at <code>lance_close</code> (7.834% vs 8.288% hot area &mdash; the &ldquo;fix&rdquo; is fractionally <i>worse</i>). A dose-response sweep then found the actual lever: <b><code>POOL_SPILL=1.3</code> keeps the cone and beacon wins whole while cutting blowout from 8.29% to 1.27%.</b>",
+       "commits": [
+        "c2e2473d"
+       ],
+       "gates": [
+        "MC2_LIGHT_REALISM_POOL_SPILL"
+       ],
+       "verdict": "disproven",
+       "evidence": []
+      },
+      {
+       "name": "BEACON-FIXTURE-ID-1",
+       "sent": "Implement an exact discriminator so stock night emission can be scoped to runway/beacon fixtures and not buildings.",
+       "found": "<b>The brief's proposed discriminator was refuted before it was built.</b> &ldquo;Saturated-primary <code>Hot*RGB</code>&rdquo; matches <b>503 of 773</b> stock <code>.ini</code> files &mdash; useless &mdash; because <code>mclib/bdactor.cpp:813-819</code> <i>defaults undeclared <code>HotGreenRGB</code> to <code>0xff00ff00</code></i>, so ~499 buildings inherit a saturated primary they never declared. The shipped discriminator adds an equality clause (all three equal AND saturated), narrowing to <b>exactly 4 of 773 with zero building leakage</b>. But the mechanism only delivers already-stock emission: <code>get_base_light</code> clamps at 1.0, so <b>scales 1, 4 and 8 are byte-identical</b> and the visible effect is +21/255 on an already-green beacon. The user's actual complaint is not closed by this.",
+       "commits": [
+        "6c5c60c2"
+       ],
+       "gates": [
+        "MC2_STATIC_PROP_FIXTURE_LIGHTS"
+       ],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "FIXTURE-GLOW-1",
+       "sent": "Build a bounded additive glow so runway/beacon fixtures read as lit light sources, verify it is safe at overview altitude, and decide its default.",
+       "found": "Diagnosed why every prior emissive attempt was structurally doomed: <code>static_prop.frag:436</code> multiplies lighting <i>by albedo</i>, so a dark lens texel dims any emissive seed. Fix is a separate additive term after the albedo multiply and fog. <b>The first shipped design was falsified by its own measurement</b> &mdash; a view-depth <code>clip.w</code> window is meaningless because MC2 changes altitude by <i>scaling the projection</i>, not moving the eye, so ground (~659) and overview (~800) eye-distances are nearly flat and the bound was unbounded at every altitude. Re-cut as an NDC-silhouette smoothstep: 2&nbsp;px changed at 1&times; <i>and</i> at 4&times; strength against a 232&nbsp;px noise floor. Also found <b>stock data has no white fixture at all</b> (<code>runwaylight.ini</code> is red) and that at 1:1 the glow only desaturates an already channel-max lens toward white &mdash; it cannot brighten it further.",
+       "commits": [
+        "7758c938",
+        "5dd46496"
+       ],
+       "gates": [
+        "MC2_STATIC_PROP_FIXTURE_GLOW"
+       ],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "NIGHT-AMBIENT-BALANCE-1",
+       "sent": "Test whether inflated night ambient explains the truck-vs-building contrast complaint, and whether a default flip is warranted.",
+       "found": "Night ambient <i>is</i> inflated &mdash; but by a different mechanism than everyone had been citing, and <b>it does not explain the complaint</b>. <b>The widely-quoted &ldquo;196/255 night ambient&rdquo; figure is wrong</b>: <code>static_prop.vert:242</code>'s <code>v_dbgAmbient</code> is authored ambient <i>plus two port-added fill terms</i>, not the mission's raw ambient, which is stock-faithful at <code>NightAmbient{Red,Green,Blue}=32</code>. The real inflator is <code>MC2_STATIC_PROP_IBL_SH</code> &mdash; a <b>day-sky HDRI probe applied at full strength at night with zero night scaling</b>, multiplicative into albedo: <code>bldg_left</code> gains +54.2% luminance and white-clips on 2.76% of its pixels. <b>But killing IBL does not fix the truck gap</b> (truck/bldg_tower 0.590&rarr;0.609) &mdash; independently confirming PROP-LIGHT-CLASS-4: it is albedo, not lighting.",
+       "commits": [],
+       "gates": [
+        "MC2_STATIC_PROP_IBL_SH"
+       ],
+       "verdict": "diagnostic-only",
+       "evidence": []
+      },
+      {
+       "name": "IBL-NIGHT-SCALE-1",
+       "sent": "Act on NIGHT-AMBIENT-BALANCE-1: night-scale the day-sky SH-IBL probe instead of killing it.",
+       "found": "Landed the night-scaling curve <code>strength *= mix(1.0, floor, nightFactor)</code> with floor 0.25, chosen as the measured knee &mdash; it removes <b>95% of the clipping for a 13-18% brightness cost</b>, against 29-46% for a blunt killswitch. On mc2_10 night, hard-clipped pixels on a building face fall <b>2.49% &rarr; 0.13% (19&times;)</b>. Found two linkage traps en route: <code>u_nightFactor</code> was <b>silently zero unless an unrelated gate happened to be on</b>, and the IBL strength is not the neutral 0.5 default it appears to be &mdash; <code>data/visual_tuning.json</code> overrides it per-mission to 0.55-0.6.",
+       "commits": [
+        "7dd64716",
+        "6c47e149"
+       ],
+       "gates": [
+        "MC2_STATIC_PROP_IBL_NIGHT_SCALE"
+       ],
+       "verdict": "fixed",
+       "evidence": []
+      },
+      {
+       "name": "RUNWAY-LIGHT-MISSING-1",
+       "sent": "Find out why runway-light props are missing campaign-wide, per the report that they are absent on mc2_10.",
+       "found": "<b>Nothing is missing. Nothing was ever being lost.</b> Runtime receipts on mc2_01, mc2_10 and mc2_23 show placement-to-render agreement is <i>exact</i> on all three &mdash; nothing culled, nothing dropped. <b>mc2_10 simply places zero runway lights</b> (it has 32 red / 12 green / 16 blue beacons and no runway lights at all), while <b>365 runway lights exist across the campaign</b>: <b>mc2_23 has 112</b> at full night, <b>mc2_01 has 56</b> in daylight. <b>Five prior lanes verified fixture work on the one map that has none of the fixture in question.</b> On maps that do have them the lights <i>are</i> drawn, but read as dull amber cones because emission is clamped at 1.0 then multiplied by a dark lens albedo &mdash; a brightness ceiling on present geometry, not absent geometry. The lane also caught its own first-pass table (which claimed mc2_10 had 32) as wrong, via an ordinal off-by-one, by cross-checking the engine's runtime receipt.",
+       "commits": [],
+       "gates": [
+        "MC2_STATIC_PROP_FIXTURE_GLOW"
+       ],
+       "verdict": "disproven",
+       "evidence": []
+      },
+      {
+       "name": "SHADOW-DECISIONS-1",
+       "sent": "Grade three shadow/AO gates (<code>MC2_SSAO</code>, <code>MC2_PROP_SHADOW_RECEIVE</code>, <code>MC2_PROP_LOD_SHADOW_CAST</code>) against the user's building-face complaint.",
+       "found": "All three recommended to stay default-OFF, each for a different reason. <b><code>MC2_SSAO</code> measures essentially zero benefit at shipped tuning</b> &mdash; AO buffer mean <b>254.99/255</b>, byte-identical at night &mdash; traced to <code>aoRadius_</code> defaulting to 3.0 world units. <b><code>MC2_PROP_SHADOW_RECEIVE</code> architecturally cannot fix the complaint</b>: a face turned away from the sun already has <code>ndl = 0</code>, so a shadow term multiplying it changes nothing; it moves 0.005-0.183% of pixels and only on props like aircraft, never on building faces. <code>MC2_PROP_LOD_SHADOW_CAST</code> landed as code but showed no demonstrable benefit across 14 day + 3 night poses &mdash; what changed were mover sprites, not tree shadows. Its identification of <code>base_light</code> as the culprit was itself later falsified by PROP-BASE-LIGHT-DIR-1.",
+       "commits": [
+        "6a02565e",
+        "092fab0e"
+       ],
+       "gates": [
+        "MC2_SSAO",
+        "MC2_PROP_SHADOW_RECEIVE",
+        "MC2_PROP_LOD_SHADOW_CAST"
+       ],
+       "verdict": "diagnostic-only",
+       "evidence": []
+      },
+      {
+       "name": "SSAO-RETUNE-1",
+       "sent": "Establish whether <code>MC2_SSAO</code>'s zero measured benefit is a radius-tuning problem or something deeper.",
+       "found": "<b><code>MC2_SSAO</code> is latent-broken, not merely off.</b> The radius half was confirmed: <code>aoRadius_</code> defaults to <b>3.0 world units against a 42.67 wu map cell</b> &mdash; a mean reach of 0.87&nbsp;wu, <b>2% of one cell</b> &mdash; producing literally zero occlusion (0&nbsp;px below 250/255). Raising it to 40 produces real structured signal at prop bases, fence lines and gantry cranes. <b>But grading that at 1:1 overturned the &ldquo;just retune it&rdquo; premise by surfacing a second, independent defect: there is no blur pass at all.</b> <code>runSSAO</code> is two draws, gen and apply; the only denoise is a 4-tap box spanning &plusmn;0.5 of a half-res texel, which cannot denoise a 16-sample stochastic kernel. So any radius large enough to show occlusion also shows speckled dither on flat unoccluded faces &mdash; worse than the darkening it was meant to add. A bilateral blur must land before any default-ON proposal.",
+       "commits": [],
+       "gates": [
+        "MC2_SSAO"
+       ],
+       "verdict": "disproven",
+       "evidence": []
+      },
+      {
+       "name": "PROP-BASE-LIGHT-DIR-1",
+       "sent": "Add a directional term to static-prop base lighting to darken building faces turned away from the sun, per SHADOW-DECISIONS-1's identified root cause.",
+       "found": "<b>The inherited root cause was falsified by measurement.</b> Built on <code>base_light</code>, the gate gave <b>byte-identical output at every strength including 1.0</b> &mdash; which multiplies the seed by zero, and is impossible if <code>base_light</code> mattered. After ruling out env-drop, harness caching, wrong-shader and props-not-in-frame, the lane proved <b><code>base_light</code> is effectively ZERO on these props, day and night</b>. The term actually lighting them is <b><code>ambientTerm</code></b>, the per-actor object-light ambient &mdash; orientation-free by construction, exactly the defect shape described, in a different summand. Re-pointed there it moves 2.5-6.9% of pixels, monotonic and safe. <b>But the user's acceptance test was never demonstrated: no bookmark pose showing an actual lit-from-behind wall was ever found</b>, and the designed foliage alpha-test exclusion does not fire (trees darken, 33,053&nbsp;px on one pose).",
+       "commits": [
+        "c2999bd7",
+        "02471415",
+        "1a727339"
+       ],
+       "gates": [
+        "MC2_PROP_BASE_LIGHT_DIR"
+       ],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "GOLDEN-REBLESS-2",
+       "sent": "Re-bless the visual regression goldens honestly from a deterministic, attributable build; audit pose honesty; report on a release re-cut.",
+       "found": "<b>The prior 16-entry golden registry was already entirely dead</b> &mdash; 16/16 pointed at a deleted worktree path, so there was nothing to re-bless. Live goldens carried <code>blessed_commit: null</code> and no recorded env or gate state. Under a 3-run-minimum rule, <b>27 of 39 regions were blessed and 12 were REFUSED</b> with measured noise floors up to 20.04% &mdash; refused rather than silently passed. Critically, <b><code>v0.5.2-baseline-PROPOSED</code> fails 32 of 39 regions</b> (up to 96.3% pixel change), and that is real content drift from ~70 commits of night-lighting work, not noise &mdash; the same regions measure 0.0000% run-to-run. <b>Its defining poses exist only inside a deploy install and are not version-controlled, so it is unauditable and unrecoverable.</b> Recommendation: do not promote it.",
+       "commits": [],
+       "gates": [
+        "MC2_STATIC_PROP_IBL_NIGHT_SCALE"
+       ],
+       "verdict": "partial",
+       "evidence": []
+      },
+      {
+       "name": "DETERMINISM-RATCHET-2",
+       "sent": "Make the capture-determinism ratchet actually catch nondeterministic regions, attribute the residual mc2_10 drift, and close gate-hygiene issues voiding verifications.",
+       "found": "<b>The ratchet was blind by directory depth.</b> It globbed <code>r1/*.png</code>, one flat level, while captures nest two deep as <code>crops/&lt;bookmark&gt;/&lt;region&gt;.png</code> &mdash; so on a real <b>234-PNG, 3-run noisy set it saw 0 files, printed SKIP and exited 0</b>. Fixed with <code>rglob</code>, empty-set-now-fails, and all-pairs <code>--min-runs 3</code>; it then caught all 12 regions GOLDEN-REBLESS-2 refused <i>plus 2 more that lane had wrongly blessed</i>, because that lane only ever compared r1-v-r2 and r1-v-r3, never r2-v-r3. <b>Also overturned the registry-debt numbers by an order of magnitude: ENV_DROP_RISK is 620, not the 101 previously believed</b> (830 unregistered, 726 undocumented, 5 genuine ghosts). Attributed the residual mc2_10 drift to a single target-acquisition divergence at t=34.1&nbsp;s (one Centipede, id 711); mover iteration order and ASLR were explicitly refuted.",
+       "commits": [
+        "4dc9dfcd",
+        "5efbb2e6",
+        "9cd10896",
+        "352c6da6"
+       ],
+       "gates": [
+        "MC2_LETTERBOX_OPAQUE"
+       ],
+       "verdict": "fixed",
+       "evidence": []
+      },
+      {
+       "name": "BUILDING-FACE-POSE-1",
+       "sent": "Find and vendor a bookmark pose that actually shows the user's building-face defect, so <code>MC2_PROP_BASE_LIGHT_DIR</code> can be graded against it.",
+       "found": "<b>Not landed at the time this page was generated</b> &mdash; no status document and no registered lane. It exists here because PROP-BASE-LIGHT-DIR-1 names it as the first of three things that must land before that gate's default flip is defensible. Until it does, the building-face complaint has a shipped mechanism and <b>no pose that demonstrates it</b>.",
+       "commits": [],
+       "gates": [
+        "MC2_PROP_BASE_LIGHT_DIR"
+       ],
+       "verdict": "in-flight",
        "evidence": []
       }
      ]
@@ -3116,6 +3538,24 @@
     {
      "type": "pl",
      "html": "<ul><li><b>Unattributable builds were the single biggest tax.</b> A shared worktree held dirty by parallel lanes meant repeated <code>-dirty</code> fingerprints; at least one whole verification pass was graded against an exe whose manifest sha was wrong, and one deploy lane is recorded as poisoned as a baseline by four independent lanes.</li><li><b>Fixtures that cannot fail.</b> Four visual bookmark fixtures were numerically identical copies of one template framing empty terrain, and a verification region rect pointed at an off-map slab instead of the lake. Both \"passed\" continuously while the defects they named were live. Both were deleted or re-aimed.</li><li><b>The capture harness was blind to a whole bug class</b> because the runner silently forced all units visible by default.</li><li><b>Status docs went stale within a day</b>, repeatedly and in the dangerous direction. That is why &sect;0 and the gate column above are rebuilt from source at render time and never read from a document.</li><li><b>Small-resolution A/B under-reports.</b> One lane established that 800&times;600 systematically hides this defect class; another that night light pools drift ~7% run-to-run, making naive full-frame numeric A/B meaningless at mc2_10 night.</li></ul>"
+    }
+   ]
+  },
+  {
+   "id": "instruments",
+   "heading": "Instruments that lied &mdash; the session's real throughline",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "This is the most reusable thing on the page. Again and again the expensive failure was not a wrong fix &mdash; it was a <b>measurement that reported success while seeing nothing</b>. Every item below is a real instrument that returned a passing or confident reading while blind, mis-scoped, or measuring a different quantity than the one it was named for. Several of them invalidated multiple lanes' evidence before being caught."
+    },
+    {
+     "type": "pl",
+     "html": "<ul><li><b>Four bookmark fixtures were the same file.</b> <code>mc2_03/10/17/24.json</code> were <i>numerically identical to each other</i> &mdash; one template copy-pasted &mdash; each advertising distinct coverage, each framing empty terrain. They passed continuously while the defects they claimed to cover were live. Deleted rather than repaired. <i>(VERIFY-INTEGRITY-3)</i></li><li><b>A camera-pinning gate the smoke runner threw away.</b> <code>MC2_CAMERA_PARK</code> was never in <code>run_smoke.py</code>'s passthrough allowlist, so <b>every pose-pinned smoke run silently measured the default camera</b> instead of the requested pose. All prior pose-pinned evidence gathered that way is suspect. <i>(LIGHT-CLUSTER-PERF-1.)</i> Note the precise scope: CAPTURE-DETERMINISM-1 checked the other harness and <b>refuted</b> the same claim for <code>run_visual_capture.py</code>, which copies the environment and strips nothing &mdash; the defect was real in one runner and not the other.</li><li><b>A perf harness reporting CPU time for a GPU cost.</b> <code>tracy_capture_compare.py</code> reported CPU-side <code>DrawScreen</code> zone duration as &ldquo;frame time&rdquo; for a fully async GL pipeline, so raising per-fragment work <b>4&times;</b> moved the number by <b>0.2%</b>. The real signal was sitting in the discarded column all along &mdash; frame <i>counts</i> differed by 12% while the reported p50s did not move. <i>(PERF-HARNESS-TRUTH-1)</i></li><li><b>Nine perf logs that were zero bytes.</b> <code>MC2_LOG</code> was never set and stdout went to NUL, so all nine <code>.game.log</code> files were empty. There was no receipt that the pose, gate or mission had ever applied &mdash; the runs were not merely wrong, they were <b>unverifiable</b>. Results were reported anyway. <i>(PERF-HARNESS-TRUTH-1)</i></li><li><b>A determinism ratchet that globbed the wrong depth.</b> It looked for <code>r1/*.png</code>, one flat level; captures nest two deep as <code>crops/&lt;bookmark&gt;/&lt;region&gt;.png</code>. On a real <b>234-PNG, three-run, visibly noisy set it found 0 files, printed SKIP and exited 0</b> &mdash; indistinguishable from a check that cannot fail. Once fixed it immediately caught 12 known-bad regions <i>and 2 more that had already been blessed</i>. <i>(DETERMINISM-RATCHET-2)</i></li><li><b><code>deterministic: true</code> meant only &ldquo;the gate was set&rdquo;.</b> The sidecar flag is literally <code>SmokeMode::fixedTimestepEnabled()</code>. <b>Frames differing by 27% of pixels carried it.</b> <code>docs/visual-verify.md</code> had claimed the engine stamps the flag honestly; that claim is now corrected. <i>(CAPTURE-DETERMINISM-1)</i></li><li><b>A clock probe that agreed with itself.</b> <code>[SMOKE_CLOCK_PROBE]</code> is indexed by <i>sim</i> frame and prints <code>scenarioTime</code>, which is a pure function of that index &mdash; <b>it matches tautologically</b> and proves nothing. Captures trigger on a <i>different</i> counter, render frames. Fixed by recording <code>sim_frame</code> beside <code>frame</code> so the two can actually be compared. <i>(CAPTURE-DETERMINISM-1)</i></li><li><b><code>PASS (5/5)</code> printed directly above <code>DEPLOY_FINGERPRINT MISMATCH</code>.</b> A tier1 run reports pass while smoking a <i>foreign lane's executable</i>. <b>Eight separate lanes hit this trap</b> before it was closed. The standing rule it produced: <i>a PASS line alone is not evidence; the fingerprint line is.</i> <i>(SHADOW-DECISIONS-1, IBL-NIGHT-SCALE-1, PROP-BASE-LIGHT-DIR-1)</i></li><li><b>620 gates strippable by harnesses, not the 101 believed.</b> The registry-debt survey was off by roughly an order of magnitude: <b>620</b> gates are read by code but absent from the smoke passthrough allowlist (830 unregistered, 726 undocumented, 5 genuine ghosts). Every one of those is a silent gate-OFF run wearing a gate-ON label. Compounding it, <code>check-env-registry.sh</code> was itself found blind to ~142 readers. <i>(DETERMINISM-RATCHET-2, overturning VERIFY-INTEGRITY-3's figure)</i></li><li><b>A disk that hit zero and said nothing.</b> The A: volume reached <b>0 bytes free</b> mid-capture; four runs failed at 76&nbsp;s and <b>12 of 14 PNGs in one arm were written zero-byte</b>. Half of LIGHT-REALISM-FLIP-1's matrix &mdash; including a required verify-by-exaggeration arm &mdash; was never run. <i>(LIGHT-REALISM-FLIP-1)</i></li><li><b>Pixel A/B itself, at mc2_10 night.</b> A noise-floor control with byte-identical environment on both arms showed captures differing by up to <b>24.3%</b>, later reproduced at <b>27.3%</b>. Several reported &ldquo;effects&rdquo; of 21-26% changed pixels were therefore indistinguishable from launch-to-launch noise. Lanes had to fall back to numeric diagnostics to get any trustworthy verdict at all. <i>(CONE-SPILL-GRADE-1, CAPTURE-DETERMINISM-1)</i></li></ul>"
+    },
+    {
+     "type": "note",
+     "html": "<b>The pattern worth keeping.</b> In every case the instrument's failure mode was <i>silence</i>: an empty set treated as a pass, a stripped variable warned about but not refused, a flag that reported intent instead of outcome, a zero-byte file accepted as a result. The repairs that stuck all took the same shape &mdash; <b>make the instrument prove it can see</b>: empty-set-now-fails, ENV-DROP promoted from warning to refusal, receipt assertions on non-zero logs, and <code>--selftest</code> assertions that fail on synthetic violations."
     }
    ]
   },
