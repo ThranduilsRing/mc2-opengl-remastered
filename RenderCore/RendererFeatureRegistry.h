@@ -231,7 +231,12 @@ enum class RendererFeature : int {
     // vehicle's lightsOut flag when it is no longer DESTROYED/DISABLED, matching
     // the mech path. Default-OFF -> legacy one-way latch -> byte-identical.
     GvLightsOutClear         = 49,  // MC2_GV_LIGHTSOUT_CLEAR
-    COUNT                    = 50,
+    // SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop
+    // LODs (lod >= 1) in the dynamic-prop shadow replay. The exclusion's original
+    // "shadow depth pass has no alpha discard" rationale has been false since
+    // b8f764b6. Default-OFF -> caster set byte-identical.
+    PropLodShadowCast        = 50,  // MC2_PROP_LOD_SHADOW_CAST
+    COUNT                    = 51,
 };
 
 // ---------------------------------------------------------------------------
