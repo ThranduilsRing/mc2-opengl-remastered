@@ -129,6 +129,10 @@ run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --qui
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
 run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
+# VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
+# A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
+# manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).
+run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.py"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"

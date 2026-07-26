@@ -1,23 +1,38 @@
 {
   "schema_v": 1,
   "mission": "mc2_01",
-  "_note": "WATER-VISUAL-GATE-1 candidate water-framing poses for clearwater. The stock mc2_01.json poses deliberately MINIMIZE water; these aim a high-wide + an oblique low-angle shot to put water IN-FRAME so the WaterArmed pass contributes visible pixels. CANDIDATE — framing not yet eyeball-verified; the gate confirms WaterArmed drew via [PIPELINE_BIND], but VISIBLE-water confirmation may require re-authoring from an in-game [BOOKMARK v1] dump (owner doc 2.1b) or an operator eyeball. Animation clock is pinned by MC2_SMOKE_FIXED_TIMESTEP + sim-freeze so water UV scroll is byte-stable.",
+  "_note": "WATER-VISUAL-GATE-1 candidate water-framing poses for clearwater. The stock mc2_01.json poses deliberately MINIMIZE water; these aim a high-wide + an oblique low-angle shot to put water IN-FRAME so the WaterArmed pass contributes visible pixels. CANDIDATE \u2014 framing not yet eyeball-verified; the gate confirms WaterArmed drew via [PIPELINE_BIND], but VISIBLE-water confirmation may require re-authoring from an in-game [BOOKMARK v1] dump (owner doc 2.1b) or an operator eyeball. Animation clock is pinned by MC2_SMOKE_FIXED_TIMESTEP + sim-freeze so water UV scroll is byte-stable.",
   "bookmarks": [
     {
       "name": "water_overview_high",
-      "pos": [0.0, 0.0, 0.0],
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
       "rot": 45.0,
       "proj": 55.0,
       "alt": 1900.0,
-      "covers": ["water", "terrain_splat"]
+      "covers": [
+        "water",
+        "terrain_splat"
+      ]
     },
     {
       "name": "water_oblique_low",
-      "pos": [-600.0, -600.0, 0.0],
+      "pos": [
+        -600.0,
+        -600.0,
+        0.0
+      ],
       "rot": 30.0,
       "proj": 12.0,
       "alt": 500.0,
-      "covers": ["water", "shoreline"]
+      "covers": [
+        "water",
+        "shoreline"
+      ]
     }
-  ]
+  ],
+  "_unverified_framing": "WATER-VISUAL-GATE-1 owns this. The gate confirms WaterArmed DREW (via [PIPELINE_BIND]), but nobody has confirmed that VISIBLE water pixels are in shot at these two poses -- the file's own note says so. Until an operator eyeballs the captures (or the poses are re-authored from an in-game [BOOKMARK v1] dump), a zero diff between two arms here is NOT evidence the water path is unchanged: it is equally consistent with no water in frame. Kept rather than deleted because the poses are purpose-aimed at water and one eyeball promotes them; surfaced on every run so nobody cites them as proof by accident."
 }

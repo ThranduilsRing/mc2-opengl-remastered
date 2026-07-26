@@ -1,23 +1,35 @@
 {
   "schema_v": 1,
   "mission": "mc2_24",
-  "_note": "SHADOW-STUTTER-1 camera-jump fixture: two proven-good mc2_24 poses (from mc2_24.json) placed back-to-back to model an instant >500-unit camera teleport onto a shadow_cascade-covering view. 'landing' is highangle_wide's exact pose (settle-warms first); 'jump_target' is ridge_lowangle's exact pose, reached by a single hard cut of sqrt(700^2+700^2)=989.9 world units -- comfortably over the known_issues.md ~500-unit stutter threshold. Compare jump_target's captured PNG across two runs at different MC2_VISUAL_SETTLE values (e.g. 1 vs 60): if the bytes are identical the shadow content is already converged on frame 1 post-jump (no multi-frame pop); if they differ, a settle-dependent shadow artifact remains.",
+  "_note": "SHADOW-STUTTER-1 camera-jump fixture: an instant ~990-unit camera teleport between two mc2_24 poses, used to show the static shadow map is fully converged one frame after a hard cut. PROVENANCE CORRECTION (VERIFY-INTEGRITY-3, 2026-07-25): this file previously claimed its two poses were 'proven-good mc2_24 poses (from mc2_24.json)'. They were not proven and they were not mc2_24-specific -- they are verbatim the 'S9 v1 PROVISIONAL' 3-pose template (highangle_wide and ridge_lowangle) that was copy-pasted BYTE-IDENTICALLY across mc2_03/mc2_10/mc2_17/mc2_24, so they framed map centre on every map regardless of contents. Those four template files were DELETED in VERIFY-INTEGRITY-3; this fixture is KEPT because its subject is shadow CONVERGENCE TIMING across a camera cut, which a terrain-only view can legitimately show -- unlike the deleted files, which advertised covers=[static_prop_pbr] etc. for subjects provably not in shot. Do NOT reuse these coordinates to grade anything that needs a unit, prop or structure in frame; author a pose from an in-game [BOOKMARK v1] dump instead.",
   "bookmarks": [
     {
       "name": "landing",
-      "pos": [300.0, 300.0, 0.0],
+      "pos": [
+        300.0,
+        300.0,
+        0.0
+      ],
       "rot": 0.0,
       "proj": 42.0,
       "alt": 1800.0,
-      "covers": ["terrain_splat", "static_prop_pbr"]
+      "covers": [
+        "shadow_convergence_timing"
+      ]
     },
     {
       "name": "jump_target",
-      "pos": [-400.0, -400.0, 0.0],
+      "pos": [
+        -400.0,
+        -400.0,
+        0.0
+      ],
       "rot": 135.0,
       "proj": 18.0,
       "alt": 900.0,
-      "covers": ["terrain_lod_chunk_skirts", "shadow_cascade"]
+      "covers": [
+        "shadow_convergence_timing"
+      ]
     }
   ]
 }
