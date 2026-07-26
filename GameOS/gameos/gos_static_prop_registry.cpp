@@ -45,6 +45,11 @@ extern bool mc2IsStaticLightSlotBaked(int32_t recipeIndex);
 extern bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
                                           float amb[3], float sun[3]);
 
+// PROP-RECIPE-BAKE-1 typeID -> shape node name + alpha class (defined in
+// gos_static_prop_batcher.cpp). File-scope for the same LNK2019 reason.
+extern bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName,
+                                      int* outAlphaClass);
+
 // ---------------------------------------------------------------------------
 // [SPFLUSH_COST_SPLIT v1] — env gate + RDTSC storage + TSC calibration.
 // Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
@@ -1681,10 +1686,14 @@ void flush() {
                 if (r.first < s_recipes.size()) typeID = s_recipes[r.first].typeID;
                 float m[16] = {0};
                 const bool haveM = staticPropGetModelMatrix(ri, m);
+                const char* tname = "-";
+                int alphaClass = -1;
+                mc2PeekStaticPropTypeInfo(typeID, &tname, &alphaClass);
                 fprintf(stderr,
-                    "[PROPROW v1] ri=%d type=%u leaves=%u name=%s ldi=%u baked=%d nL=%d "
+                    "[PROPROW v1] ri=%d type=%u tname=%s alpha=%d leaves=%u name=%s "
+                    "ldi=%u baked=%d nL=%d "
                     "amb=%.4f,%.4f,%.4f sun=%.4f,%.4f,%.4f pos=%.1f,%.1f,%.1f\n",
-                    ri, typeID, r.count,
+                    ri, typeID, tname, alphaClass, r.count,
                     (r.shapeName[0] ? r.shapeName : "-"),
                     r.lightDataIndex, baked ? 1 : 0, nL,
                     amb[0], amb[1], amb[2], sun[0], sun[1], sun[2],

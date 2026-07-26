@@ -10508,3 +10508,25 @@ void batcher_prepareBaseInstanceTable() {
     s_onGroupBytesThisFrame   = (totalCount - offGroupCount) * sizeof(GpuStaticPropInstance);
     s_totalUsedBytesThisFrame = totalCount * sizeof(GpuStaticPropInstance);
 }
+
+// PROP-RECIPE-BAKE-1 (diagnostic, read-only). Resolve a batcher typeID to its
+// source shape node name and its alpha class. Used by the [PROPROW v1] probe in
+// gos_static_prop_registry.cpp to answer the load-bearing question for the
+// dark-prop defect: are the prop types that bake a SUNLESS light row (nL=1,
+// sun=0 -- the TreeAppearance treatment, which deactivates worldLights[0]) real
+// alpha-test foliage, where that treatment is correct, or opaque scenery props
+// where it is wrong? alphaClass is the same foliage-ness discriminator
+// FOLIAGE-ALPHAFLAG-1 uses (0 = alpha-OFF = opaque = NOT foliage).
+// Global scope on purpose: declaring it inside the registry's flush() would
+// namespace it into GpuStaticPropRegistry:: and fail to link.
+bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName, int* outAlphaClass)
+{
+    if (outName) *outName = "-";
+    if (outAlphaClass) *outAlphaClass = -1;
+    if (typeID >= s_types.size()) return false;
+    const GpuStaticPropType& t = s_types[typeID];
+    if (outName && t.source)
+        *outName = const_cast<TG_TypeShape*>(t.source)->getNodeId();
+    if (outAlphaClass) *outAlphaClass = static_cast<int>(t.alphaClass);
+    return true;
+}
