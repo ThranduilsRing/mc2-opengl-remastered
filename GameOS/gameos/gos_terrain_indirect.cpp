@@ -1153,6 +1153,33 @@ static bool RunwayEdgeBlendEnabled() {
     return s;
 }
 
+// CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD). Default OFF.
+//
+// MEASURED root cause of the long-standing "atrocious outlines of the concrete":
+// the one-tile terrainType ramp band (0 < smoothstep(2,3,v_terrainType) < 1) has
+// NO cement word of its own, so terrain_lod_chunk.frag keeps the dark baked
+// colormap as `base` there while the pad interior draws cementAtlas x
+// missionFlatLight. Measured on mc2_23: band L~16-22 against pad L~70-123, i.e.
+// 30-58 luma BELOW a straight blend. Lighting-side levers cannot close an
+// albedo-source gap.
+//
+// The gate widens the open-border mask (cementWord bits 19:16) to include
+// TRANSITION cement boundary tiles as donors, not just SOLID ones. The stock
+// MC2_RUNWAY_EDGE_BLEND pass only marks solid tiles, which on mc2_23 is 71 tiles
+// and leaves nearly the whole pad perimeter (authored transition art) unmarked --
+// measured: it recovers only 1-2.6 luma of the 30-58 luma deficit.
+//
+// The mask lives on the CEMENT tile and is read by its BARE-TERRAIN neighbour, so
+// nothing about the donor tile's own rendering changes: the user-approved crisp
+// CEMENT-HARD-EDGE-1 marching-squares transitions are structurally untouched.
+static bool CementRampWordEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_RAMP_WORD");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
 // True when tile (r,c) carries road/runway art: an &Overlays id, OR a
 // cement-ALPHA transition art tile with NO cement-terrain corner (the
 // MISSING-RUNWAY-1 decal-baked road/runway class). Requires
@@ -1561,7 +1588,11 @@ static void PopulateRecipeCementWords() {
     // authored transition edges are left alone (legacy blend owns them) and only
     // the hard solid-cement-vs-terrain cliffs get feathered. Gate OFF => no bits
     // written => frag feather collapses to full replacement (byte-identical stock).
-    if (RunwayEdgeBlendEnabled()) {
+    // CEMENT-WORD-RAMP-1 widens the SAME pass to transition donors (see the
+    // CementRampWordEnabled() comment). Either gate alone runs the pass; the
+    // ramp gate additionally drops the "transition: legacy owns edge" skip.
+    const bool rampWordOn = CementRampWordEnabled();
+    if (RunwayEdgeBlendEnabled() || rampWordOn) {
         auto cementPresent = [&](long x, long y) -> bool {
             if (x < 0 || y < 0 || x >= mapSide || y >= mapSide) return false;
             const size_t ci = (size_t)y * (size_t)mapSide + (size_t)x;
@@ -1576,7 +1607,12 @@ static void PopulateRecipeCementWords() {
             if (vn >= chunkCementWords.size()) continue;
             const uint32_t cw = chunkCementWords[vn];
             if ((cw & kCementLayerValidBit) == 0u) continue;   // not cement
-            if ((cw & kCementTransitionBit) != 0u) continue;   // transition: legacy owns edge
+            // Stock: transition tiles are skipped (legacy owns their edge).
+            // CEMENT-WORD-RAMP-1: admit them as DONORS. Their word already points
+            // at a solid cement catalog cell (borrowed from a cement corner), so
+            // the neighbour samples real concrete art, and marking the donor does
+            // not alter how the donor itself is rendered.
+            if (!rampWordOn && (cw & kCementTransitionBit) != 0u) continue;
             uint32_t edge = 0u;
             if (!cementPresent(mx + 1, my))     edge |= (1u << 16);  // E (+x) open
             if (!cementPresent(mx - 1, my))     edge |= (1u << 17);  // W (-x) open
@@ -1591,8 +1627,8 @@ static void PopulateRecipeCementWords() {
             g_denseRecipeDirty[vn] = true;
             ++runwayFeatheredTiles;
         }
-        printf("[RUNWAY_EDGE_BLEND] event=edge_mask_baked feathered_solid_tiles=%ld\n",
-               runwayFeatheredTiles);
+        printf("[RUNWAY_EDGE_BLEND] event=edge_mask_baked feathered_solid_tiles=%ld ramp_word=%d\n",
+               runwayFeatheredTiles, rampWordOn ? 1 : 0);
         fflush(stdout);
     }
 

@@ -224,6 +224,11 @@ float gos_TerrainCementLit();
 // exemption ramp. 1.0=stock linear (bit-identical), 0.5=matches the albedo's sqrt
 // curve, <0.5=sharper (collapses the night dark-ring around pads).
 float gos_TerrainCementEdgeCurve();
+// CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD): 0=off (stock). 1=give the
+// terrainType ramp band an ALBEDO source -- borrow the adjacent pad's cement
+// atlas cell into `base` weighted by sqrt(ramp), so the band stops falling back
+// to the dark baked colormap. Cures the measured dark ring around concrete pads.
+int gos_TerrainCementRampWord();
 // Chunk cement-grid geometry (mapSide 0 = grid not resident -> overlay must
 // not read the binding-25 cement SSBO).
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);

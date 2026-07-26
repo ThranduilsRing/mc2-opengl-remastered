@@ -1564,7 +1564,6 @@ def main():
                             "MC2_WATER_SHORE_FEATHER",
                             "MC2_WATER_SHORE_MEANDER",
                             "MC2_WATER_SHORE_MEANDER_FREQ",
-                            "MC2_WATER_SHORE_MEANDER_MAXDIST",
                             # EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8):
                             # render beacon/runway edge-light glow cards
                             # two-sided so they don't backface-cull toward
@@ -1631,6 +1630,7 @@ def main():
                             # RUNWAY-APRON-TONE-2: cement lighting participation.
                             "MC2_CEMENT_LIT",
                             "MC2_CEMENT_EDGE_CURVE",
+                            "MC2_CEMENT_RAMP_WORD",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",
                             # CEMENT-ALPHA-LAND-1: alpha cement slots admitted

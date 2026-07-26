@@ -747,6 +747,7 @@ static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (p
 static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
 static GLint    s_locCementLit           = -1;  // RUNWAY-APRON-TONE-2: u_cementLit (0..1)
 static GLint    s_locCementEdgeCurve     = -1;  // CEMENT-EDGE-CURVE-1: u_cementEdgeCurve (0..1)
+static GLint    s_locCementRampWord      = -1;  // CEMENT-WORD-RAMP-1: u_cementRampWord (0/1)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
 static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
@@ -1285,6 +1286,7 @@ void gos_TerrainLodChunk_Init()
             s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
             s_locCementLit    = glGetUniformLocation(s_terrainProgram, "u_cementLit");     // RUNWAY-APRON-TONE-2
             s_locCementEdgeCurve = glGetUniformLocation(s_terrainProgram, "u_cementEdgeCurve"); // CEMENT-EDGE-CURVE-1
+            s_locCementRampWord  = glGetUniformLocation(s_terrainProgram, "u_cementRampWord");  // CEMENT-WORD-RAMP-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
             s_locPathTint     = glGetUniformLocation(s_terrainProgram, "u_pathTint");
@@ -2354,6 +2356,8 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             glUniform1f(s_locCementLit, gos_TerrainCementLit());
         if (s_locCementEdgeCurve >= 0)
             glUniform1f(s_locCementEdgeCurve, gos_TerrainCementEdgeCurve());
+        if (s_locCementRampWord >= 0)
+            glUniform1i(s_locCementRampWord, gos_TerrainCementRampWord());   // CEMENT-WORD-RAMP-1
         // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
         // the per-frame terrain light pool SSBO (packed+uploaded every frame by
         // gos_terrain_lighting::PackAndDispatch — the SAME buffer the legacy
@@ -3963,6 +3967,22 @@ float gos_TerrainCementEdgeCurve()
         if (v < 0.05f) v = 0.05f;              // near-step, but never pow(x, 0)
         if (v > 1.0f)  v = 1.0f;
         return v;
+    }();
+    return s_v;
+}
+
+// CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD): default OFF. When ON, the
+// terrainType ramp band (0 < pureConcrete < 1, one tile wide, NO cement word of
+// its own) borrows the adjacent pad's cement atlas cell as its albedo instead of
+// keeping the dark baked colormap. MEASURED root cause of the user's "atrocious
+// outlines": the band is an ALBEDO-source discontinuity, not a lighting one --
+// every prior lighting-side lever (MC2_CEMENT_LIT, the tone-match gates,
+// MC2_CEMENT_EDGE_CURVE) could not close it because base never became cement.
+int gos_TerrainCementRampWord()
+{
+    static const int s_v = []() {
+        const char* s = std::getenv("MC2_CEMENT_RAMP_WORD");
+        return (s && s[0] && s[0] != '0') ? 1 : 0;
     }();
     return s_v;
 }

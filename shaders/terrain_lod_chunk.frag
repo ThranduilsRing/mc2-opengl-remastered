@@ -318,6 +318,21 @@ uniform float u_cementLit;
 // untouched at EVERY value -- this uniform can only move the feathered ramp.
 uniform float u_cementEdgeCurve;
 
+// CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD, default 0 = stock/bit-identical).
+// The MEASURED cure for the dark ring around concrete pads. The one-tile
+// terrainType ramp band has no cement word, so `base` stays the dark baked
+// colormap while the pad interior draws the cement atlas -- an ALBEDO-source
+// discontinuity of 30-58 luma, which no lighting curve can close. When 1, the
+// band borrows the adjacent pad's atlas cell into `base` weighted by sqrt(ramp).
+// sqrt is deliberate: the albedo mix below already multiplies by
+// concreteColorBlend = sqrt(pureConcrete), so sqrt(ramp)*sqrt(ramp) = ramp makes
+// the effective cement fraction EXACTLY LINEAR in the ramp -- the same weight the
+// lighting exemption uses. Albedo and lighting finally agree across the band.
+// Unlike the RUNWAY-EDGE-DILATE-1 block it never sets cementHit, so it adds no
+// new 0.5-contour and therefore no hard step (that snap is what makes
+// MC2_RUNWAY_EDGE_BLEND measure 0.6-10.8% hard-step pixels).
+uniform int u_cementRampWord;
+
 // Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
 // u_padGlowSpill wu of world distance to the nearest cement tile rect (3x3
 // tile neighborhood — spill is clamped < 128 wu = one tile, so ring-1 is
@@ -1127,6 +1142,63 @@ void main() {
                 base = texture(u_cementAtlas, dAtlasUV).rgb * u_missionFlatLight;
                 cementHit = true;
                 cementDbgClass = 3;
+            }
+        }
+    }
+
+    // CEMENT-WORD-RAMP-1: give the terrainType ramp band an ALBEDO source.
+    // Runs on the BARE-TERRAIN tile (no cement word, so `base` is the dark baked
+    // colormap) wherever the vertex-interpolated terrainType is ramping toward
+    // cement. Borrows the cement atlas cell of an orthogonal neighbour that
+    // flagged this side open (cementWord bits 19:16; with MC2_CEMENT_RAMP_WORD
+    // the CPU marks TRANSITION donors too, which is where nearly all pad
+    // perimeter actually lives). Weight is sqrt(ramp) so that, after the
+    // concreteColorBlend = sqrt(pureConcrete) mix downstream, the net cement
+    // fraction is exactly `ramp` -- matching the lighting exemption weight.
+    // Gate OFF => block skipped entirely => byte-identical stock.
+    if (u_cementRampWord != 0 && u_useCement != 0 && !cementBypassDiag && !cementHit) {
+        float wRamp = clamp(smoothstep(2.0, 3.0, v_terrainType), 0.0, 1.0);
+        if (wRamp > 0.001) {
+            vec2 wTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / u_cementWUPT);
+            int  wGridSide = u_cementGridSide;
+            if (wGridSide < 1) wGridSide = 1;
+            // Pick the donor whose shared edge is NEAREST -- the pad this band
+            // is ramping toward. Same mirrored bit convention as the dilate block.
+            float wBestProx = -1.0;
+            uint  wBestLayer = 0u;
+            bool  wFound = false;
+            for (int s = 0; s < 4; ++s) {
+                int  wnX = ctX, wnY = ctY;
+                uint wBit = 0u;
+                float wDist = 1.0;
+                if (s == 0)      { wnX = ctX + 1; wBit = 0x2u; wDist = 1.0 - wTileUV.x; }
+                else if (s == 1) { wnX = ctX - 1; wBit = 0x1u; wDist = wTileUV.x; }
+                else if (s == 2) { wnY = ctY - 1; wBit = 0x8u; wDist = wTileUV.y; }
+                else             { wnY = ctY + 1; wBit = 0x4u; wDist = 1.0 - wTileUV.y; }
+                if (wnX < 0 || wnX >= u_mapSide || wnY < 0 || wnY >= u_mapSide) continue;
+                uint wnw = cementWordsF[wnX + wnY * u_mapSide];
+                if ((wnw & 0x80000000u) == 0u) continue;              // not cement
+                if ((((wnw >> 16) & 0xFu) & wBit) == 0u) continue;    // not open toward me
+                float wProx = 1.0 - clamp(wDist, 0.0, 1.0);
+                if (wProx > wBestProx) { wBestProx = wProx; wBestLayer = wnw & 0xFFFFu; wFound = true; }
+            }
+            if (wFound) {
+                int  wCol = int(wBestLayer) % wGridSide;
+                int  wRow = int(wBestLayer) / wGridSide;
+                vec2 wSampleUV = wTileUV;
+                if (u_cementAtlasSeamFix != 0) {
+                    float wCellPx = float(textureSize(u_cementAtlas, 0).x) / float(wGridSide);
+                    float wInset  = 0.5 / max(wCellPx, 1.0);
+                    wSampleUV = clamp(wTileUV, vec2(wInset), vec2(1.0 - wInset));
+                }
+                vec2 wAtlasUV = (vec2(float(wCol), float(wRow)) + wSampleUV) / float(wGridSide);
+                // CEMENT-NIGHT-LIGHT-1: raw atlas texel -> mission flat light,
+                // same as every other cement sample site.
+                vec3 wCement = texture(u_cementAtlas, wAtlasUV).rgb * u_missionFlatLight;
+                base = mix(base, wCement, sqrt(wRamp));
+                // Deliberately NOT setting cementHit: no new hard contour, and
+                // pureConcrete keeps its smooth ramp so lighting stays continuous.
+                if (cementDbgClass == 0) cementDbgClass = 4;
             }
         }
     }
