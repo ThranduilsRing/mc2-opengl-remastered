@@ -1167,18 +1167,24 @@ void main() {
             float wBestProx = -1.0;
             uint  wBestLayer = 0u;
             bool  wFound = false;
+            // Donor = nearest orthogonal neighbour carrying ANY valid cement word.
+            // NOTE: deliberately does NOT require the bits 19:16 "open border"
+            // mask that RUNWAY-EDGE-DILATE-1 uses. That mask is only set where a
+            // cement tile abuts BARE terrain, but a TRANSITION tile is itself
+            // cement, so a pad never flags the side facing one as open -- and that
+            // is precisely where most band pixels live. Requiring it left the ring
+            // ~80% intact (measured). wRamp is already the correct spatial
+            // limiter: one tile out it is ~0, so a far donor contributes nothing.
             for (int s = 0; s < 4; ++s) {
                 int  wnX = ctX, wnY = ctY;
-                uint wBit = 0u;
                 float wDist = 1.0;
-                if (s == 0)      { wnX = ctX + 1; wBit = 0x2u; wDist = 1.0 - wTileUV.x; }
-                else if (s == 1) { wnX = ctX - 1; wBit = 0x1u; wDist = wTileUV.x; }
-                else if (s == 2) { wnY = ctY - 1; wBit = 0x8u; wDist = wTileUV.y; }
-                else             { wnY = ctY + 1; wBit = 0x4u; wDist = 1.0 - wTileUV.y; }
+                if (s == 0)      { wnX = ctX + 1; wDist = 1.0 - wTileUV.x; }
+                else if (s == 1) { wnX = ctX - 1; wDist = wTileUV.x; }
+                else if (s == 2) { wnY = ctY - 1; wDist = wTileUV.y; }
+                else             { wnY = ctY + 1; wDist = 1.0 - wTileUV.y; }
                 if (wnX < 0 || wnX >= u_mapSide || wnY < 0 || wnY >= u_mapSide) continue;
                 uint wnw = cementWordsF[wnX + wnY * u_mapSide];
                 if ((wnw & 0x80000000u) == 0u) continue;              // not cement
-                if ((((wnw >> 16) & 0xFu) & wBit) == 0u) continue;    // not open toward me
                 float wProx = 1.0 - clamp(wDist, 0.0, 1.0);
                 if (wProx > wBestProx) { wBestProx = wProx; wBestLayer = wnw & 0xFFFFu; wFound = true; }
             }
