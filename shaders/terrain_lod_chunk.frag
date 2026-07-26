@@ -918,6 +918,17 @@ void main() {
     int  ctX = clamp(int(floor((v_worldPos.x + u_halfMap) / 128.0)), 0, u_mapSide - 1);
     int  ctY = clamp(int(floor((u_halfMap - v_worldPos.y) / 128.0)), 0, u_mapSide - 1);
     uint cw  = cementWordsF[ctX + ctY * u_mapSide];
+    // PAVED-OVERLAY-CLASS-1 (bit 22, gate MC2_PAVED_OVERLAY_CLASS=1): this tile
+    // carries a hard-paved overlay id (PAVED_ROAD / RUNWAY / ...) but no cement
+    // word, because `isCement` tests the BASE SLOT and overlays are a disjoint
+    // channel. Such a tile renders as LIT baked colormap beside a flat-lit
+    // cement apron -- that lighting difference is the tone split the user
+    // reports, and it is why the runway "changes tone along its own length"
+    // while the apron does not. The bit is baked WITHOUT bit 31, so every cement
+    // path above/below ignores it; it feeds ONLY the lighting exemption at the
+    // normalLight site. Mode 2 instead bakes a real solid word (bit 31 set) and
+    // never reaches here.
+    bool pavedOverlayFlat = (cw & 0x00400000u) != 0u;
     // CEMENT-BYPASS-DIAG-1 (u_diag & 65536): skip ALL cement-atlas overrides so the
     // RAW BAKED COLORMAP shows through. A/B oracle for 'is the cement override the
     // thing that wipes baked road art / creates the tone patchwork?'. Diagnostic only.
@@ -1237,6 +1248,11 @@ void main() {
         else if (cementDbgClass == 4) cc = vec3(1.0, 1.0, 0.0);
         else if (cementDbgClass == 5) cc = vec3(1.0, 0.0, 1.0);
         else if (cementDbgClass == 6) cc = vec3(0.0, 1.0, 1.0);  // CEMENT-ALPHA-LAND-1 own-alpha
+        // PAVED-OVERLAY-CLASS-1: WHITE = overlay-only pavement now given the
+        // cement lighting exemption. With the gate OFF these tiles are BLACK
+        // (the defect marker), so a before/after pair of class-diag shots reads
+        // directly as "black runway -> white runway".
+        else if (pavedOverlayFlat)    cc = vec3(1.0, 1.0, 1.0);
         else                          cc = base * 0.35;
         fragColor = vec4(cc, 1.0);
         if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
@@ -1768,6 +1784,16 @@ void main() {
     // lighting term and stop reading as two unrelated materials.
     float cementLight = mix(1.0, normalLight, u_cementLit);
     normalLight = mix(normalLight, cementLight, pureConcrete);
+    // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting
+    // exemption cement receives, while leaving its baked colormap albedo alone.
+    // pureConcrete is 0 on these tiles by construction (no cement word, no
+    // concrete terrain type), which is exactly why the line above cannot reach
+    // them -- this is the fix living outside that guard. Albedo is deliberately
+    // untouched: swapping the source texture is what got the two tone-match
+    // gates rejected, and a residual albedo gap is expected and measured.
+    if (pavedOverlayFlat) {
+        normalLight = mix(1.0, normalLight, u_cementLit);
+    }
 
     float shadow = 1.0;
     if ((u_diag & 8) == 0) {

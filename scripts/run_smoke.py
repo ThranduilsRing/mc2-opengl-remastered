@@ -1578,6 +1578,12 @@ def main():
                             # to the catalog atlas; closes the transition-tile
                             # pavement drop (mc2_10 87%, mc2_24 34%).
                             "MC2_CEMENT_ALPHA_ATLAS",
+                            # PAVED-OVERLAY-CLASS-1: classify overlay-only
+                            # pavement (roads/runways painted as &Overlays ids
+                            # over a non-cement base slot) so it gets cement's
+                            # lighting exemption. Must be allowlisted or Popen
+                            # drops it and a gate-ON run silently measures OFF.
+                            "MC2_PAVED_OVERLAY_CLASS",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs
