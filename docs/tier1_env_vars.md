@@ -786,6 +786,25 @@ lights should remain visible at every angle instead of blinking out.
   128 terrainType, 256 raw-colormap, 512 bypass-tint. (bit 2 dead — depth now in vert.)
 - `MC2_TERRAIN_NORMAL_ARRAY` — material normal sampler2DArray path. Now **default ON**
   (opt-out `=0`); the chunk path needs it built (mip-completeness fixed 2026-06-09).
+- `MC2_LETTERBOX_OPAQUE` — cinematic letterbox bars drawn opaque black; only their
+  EXTENT animates. **DEFAULT ON** killswitch (`MC2_TERRAIN_TESS` shape); `=0` restores
+  the legacy alpha ramp verbatim. Read once at `code/gamecam.cpp:841` (getenv-seeded
+  static, cannot drift mid-run). Legacy behaviour ramped `letterBoxAlpha` with the bar
+  extent, so during the ~5s swoop-in the bars were translucent: measured on mc2_10 night
+  at capture frame 100, extent 0.0986 of 0.15 max => ramp 65.7% => `letterBoxAlpha=168`,
+  i.e. 34% transparent. It read as a broken TOP bar and a fine bottom bar only because
+  of what sits behind each — bright horizon/sky above, dark near-field terrain below.
+  The separate `fadeAlpha` fade-to-black quad is a real fade and is untouched.
+  Visual-only; byte-identical at its default.
+  **Registered/documented/allowlisted by DETERMINISM-RATCHET-2**, which found it read by
+  code but missing from all three: a smoke run setting `=0` was silently dropped by
+  `run_smoke.py` and ran the `=1` path, so the verification was void and said nothing.
+- `MC2_BRIDGE_MOVER_STATE` — emit one `[MOVER v2] id=… name=… team=… pos=…` line per live
+  mover (`code/mission.cpp:516`), plus `[MOVER v2 begin] t=… count=…`, at a period set by
+  `MC2_BRIDGE_MOVER_PERIOD_SEC` (default 2.0s, floor 0.25s). **DEFAULT OFF**;
+  diagnostics-only, no gameplay or render effect. Added to the smoke passthrough
+  allowlist by DETERMINISM-RATCHET-2 (same ENV_DROP gap). Note `scripts/run_visual_capture.py`
+  inherits the full environment (`os.environ.copy()`), so it was never subject to the drop.
 - `MC2_TERRAIN_TESS` — TCS/TES terrain tessellation material. **DEFAULT ON**; `=0` skips
   the `gos_terrain` material load (ISSUE-34 kill-switch — same engine state as a TCS/TES
   compile failure, for headless A/B of the no-tess config; console prints

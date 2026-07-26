@@ -1309,6 +1309,21 @@ def main():
                             # ISSUE-34 terrain tessellation kill-switch (default
                             # ON; =0 exercises the no-tess config headlessly).
                             "MC2_TERRAIN_TESS",
+                            # DETERMINISM-RATCHET-2: letterbox-bar opacity
+                            # killswitch (default ON; =0 restores the legacy
+                            # alpha ramp). It was read by code/gamecam.cpp:841
+                            # but absent from this allowlist, so a smoke run
+                            # setting MC2_LETTERBOX_OPAQUE=0 silently ran the
+                            # gate-ON path and "verified" the wrong build. That
+                            # is the ENV_DROP class: the verification is void,
+                            # and nothing says so.
+                            "MC2_LETTERBOX_OPAQUE",
+                            # DETERMINISM-RATCHET-2: per-mover state dump
+                            # ([MOVER v2] lines, ~2 Hz) + its period knob. Same
+                            # ENV_DROP gap; diagnostics-only, default OFF. Used
+                            # to attribute run-to-run capture drift to movers.
+                            "MC2_BRIDGE_MOVER_STATE",
+                            "MC2_BRIDGE_MOVER_PERIOD_SEC",
                             # ISSUE-9 called-shot gate + headless aimed-fire probe
                             # (both default OFF).
                             "MC2_CALLED_SHOT_FIX",

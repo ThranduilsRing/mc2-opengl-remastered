@@ -3222,6 +3222,26 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "QUADSETUP_SKIP, SMOKE) are deliberately EXCLUDED and still print unconditionally -- gating them "
         "would blind verification. Ratchet: scripts/check-default-build-quiet.py."
     },
+    // LetterboxOpaque (DETERMINISM-RATCHET-2)
+    {
+        "MC2_FEATURE_LETTERBOX_OPAQUE",
+        "MC2_LETTERBOX_OPAQUE",
+        EnvVarKind::Feature,
+        true,
+        "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates. Default-ON killswitch: "
+        "=0 restores the legacy alpha ramp verbatim. Read once at code/gamecam.cpp:841 (getenv-seeded "
+        "static), so it cannot drift mid-run. WHY IT EXISTS: during the ~5s swoop-in the legacy code ramped "
+        "letterBoxAlpha with the bar extent, so the bars were translucent and the scene showed through. "
+        "Measured on mc2_10 night at capture frame 100: extent 0.0986 of 0.15 max => ramp 65.7% => "
+        "letterBoxAlpha=168, i.e. 34% transparent. It read as a BROKEN TOP BAR and a fine bottom bar purely "
+        "because of what sits behind each: the top bar covers the bright horizon/sky, the bottom covers dark "
+        "near-field terrain, so identical translucency is glaring on top and invisible below. The separate "
+        "fadeAlpha fade-to-black quad is a real fade and is untouched. WHY THIS ENTRY EXISTS: the gate "
+        "shipped UNREGISTERED, UNDOCUMENTED and absent from run_smoke.py's passthrough allowlist, so a smoke "
+        "run setting =0 silently ran the =1 path -- an ENV_DROP that voids the verification without saying "
+        "so. Registered/documented/allowlisted by DETERMINISM-RATCHET-2. No geometry/objectId/gameplay "
+        "change; visual-only, and byte-identical to the shipped build at its default."
+    },
 };
 
 // ---------------------------------------------------------------------------
