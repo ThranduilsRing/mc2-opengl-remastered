@@ -32,7 +32,7 @@
 // Env-gated trace macro.
 static const bool s_readbackTrace = (getenv("MC2_GPU_CULL_READBACK_TRACE") != nullptr);
 #define RB_TRACE(fmt, ...) \
-    do { if (s_readbackTrace) { printf("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+    do { if (s_readbackTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
 namespace gpu_cull {
 
@@ -414,7 +414,7 @@ ReadbackTier readback_tryConsume() {
         readback_shadowCopySlot((n1Slot + RING_FRAMES - 1u) % RING_FRAMES);
 
         if (s_readbackTrace) {
-            printf("[GPU_CULL v1] DEBUG tier1 slot=%u visCount_staged=%u\n",
+            MC2_DIAGF("[GPU_CULL v1] DEBUG tier1 slot=%u visCount_staged=%u\n",
                    n1Slot, s_lastGoodVisibleCount);
             fflush(stdout);
         }
@@ -432,7 +432,7 @@ ReadbackTier readback_tryConsume() {
             const bool doLog = !s_firstConsumeDone || ((s_consumeCount % 600u) == 0u);
             if (doLog) {
                 s_firstConsumeDone = true;
-                printf("[GPU_CULL v1] event=readback_ok slot=%u stale_frames=0 visibleCount=%u\n",
+                MC2_DIAGF("[GPU_CULL v1] event=readback_ok slot=%u stale_frames=0 visibleCount=%u\n",
                        n1Slot, s_lastGoodVisibleCount);
                 fflush(stdout);
             }
@@ -703,7 +703,7 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
             const bool doLog = !s_snapshotFirstDone || ((s_snapshotCallCount % 600u) == 0u);
             if (doLog) {
                 s_snapshotFirstDone = true;
-                printf("[GPU_CULL v1] event=lifecycle_snapshot slot=none visible=0 invisible=0 conservative=1\n");
+                MC2_DIAGF("[GPU_CULL v1] event=lifecycle_snapshot slot=none visible=0 invisible=0 conservative=1\n");
                 fflush(stdout);
             }
         }
@@ -717,7 +717,7 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
             const bool doLog = !s_snapshotFirstDone || ((s_snapshotCallCount % 600u) == 0u);
             if (doLog) {
                 s_snapshotFirstDone = true;
-                printf("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=0 invisible=0 conservative=1\n",
+                MC2_DIAGF("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=0 invisible=0 conservative=1\n",
                        s_lastGoodSlot);
                 fflush(stdout);
             }
@@ -796,7 +796,7 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
             const bool doLog = !s_snapshotFirstDone || ((s_snapshotCallCount % 600u) == 0u);
             if (doLog) {
                 s_snapshotFirstDone = true;
-                printf("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=0 invisible=0 conservative=1\n",
+                MC2_DIAGF("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=0 invisible=0 conservative=1\n",
                        s_lastGoodSlot);
                 fflush(stdout);
             }
@@ -819,7 +819,7 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
     if (doMotionLog) {
         if (s_readbackTrace) {
             s_motionTolFirstDone = true;
-            printf("[GPU_CULL v1] event=motion_tolerance frames=%u dilated_admits=%llu conservative_or_admits=%llu or_enabled=%d\n",
+            MC2_DIAGF("[GPU_CULL v1] event=motion_tolerance frames=%u dilated_admits=%llu conservative_or_admits=%llu or_enabled=%d\n",
                    s_motionTolFrames,
                    (unsigned long long)s_accDilatedAdmits,
                    (unsigned long long)s_accConservativeOrAdmits,
@@ -842,7 +842,7 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
             for (uint32_t id = 1u; id < cap; ++id) {
                 if (s_actorVis[id]) ++nVisible; else ++nInvisible;
             }
-            printf("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=%u invisible=%u conservative=0 or_admits=%u\n",
+            MC2_DIAGF("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=%u invisible=%u conservative=0 or_admits=%u\n",
                    s_lastGoodSlot, nVisible, nInvisible, orFlips);
             fflush(stdout);
         }

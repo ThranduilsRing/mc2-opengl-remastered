@@ -145,7 +145,7 @@ GLuint loadHdriTexture(const char* path,
                 // TEX-CLASS: asset-pool -- HDRI sky BC6H content texture
                 glGenTextures(1, &tex);
                 if (!tex) {
-                    std::fprintf(stderr,
+                    MC2_DIAGFE(stderr,
                         "[HDRI_SKY v1] bc6h: glGenTextures failed path=%s\n", path);
                     // Fall through to tinyexr path below.
                 } else {
@@ -168,7 +168,7 @@ GLuint loadHdriTexture(const char* path,
 
                     const GLenum glErr = glGetError();
                     if (glErr != GL_NO_ERROR) {
-                        std::fprintf(stderr,
+                        MC2_DIAGFE(stderr,
                             "[HDRI_SKY v1] bc6h: gl_error=0x%x path=%s\n",
                             glErr, path);
                         glDeleteTextures(1, &tex);
@@ -191,16 +191,16 @@ GLuint loadHdriTexture(const char* path,
                                 if (scanHdriSunAzGL(pixels, sw, sh, &azGL)) {
                                     *outSunAzGL = azGL;
                                     if (outSunValid) *outSunValid = true;
-                                    std::fprintf(stderr,
+                                    MC2_DIAGFE(stderr,
                                         "[HDRI_SKY v1] bc6h: sun_scan ok az_gl_rad=%.4f az_gl_deg=%.1f\n",
                                         azGL, azGL * 57.2957795f);
                                 } else {
-                                    std::fprintf(stderr,
+                                    MC2_DIAGFE(stderr,
                                         "[HDRI_SKY v1] bc6h: sun_scan failed reason=no_above_horizon_energy\n");
                                 }
                                 free(pixels);
                             } else {
-                                std::fprintf(stderr,
+                                MC2_DIAGFE(stderr,
                                     "[HDRI_SKY v1] bc6h: sun_scan skipped reason=exr_load_failed err=%s\n",
                                     err ? err : "(null)");
                                 if (err) FreeEXRErrorMessage(err);
@@ -213,7 +213,7 @@ GLuint loadHdriTexture(const char* path,
                 }
             } else {
                 // Sidecar missing or wrong format — log at debug level and fall through.
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[HDRI_SKY v1] bc6h: sidecar not found or wrong format "
                     "(%s), falling back to RGBA16F\n", sidecarPath);
             }

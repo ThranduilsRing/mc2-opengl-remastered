@@ -11,6 +11,7 @@
 // Section 10 amendment 2026-05-22: two seams in M1.)
 
 #include "RenderWorld.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 // C1 fix: this TU MUST NOT include gos_static_prop_batcher.h (it
 // transitively pulls GL + Stuff). All translation between
@@ -417,7 +418,7 @@ void runSubstrateSelfTest() {
 // unreliable.
 void RunMechObjectIdSelfTest() {
     if (!envFlag("MC2_MECH_OBJECT_ID_SELFTEST")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=SKIPPED reason=env_disabled\n");
         return;
     }
@@ -429,7 +430,7 @@ void RunMechObjectIdSelfTest() {
     desc.debugCookie  = 0u;
     RenderCore::RenderObjectHandle h = RenderWorld::registerMech(desc);
     if (!h.isValid()) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=1 reason=registerMech_returned_invalid\n");
         return;
     }
@@ -440,34 +441,34 @@ void RunMechObjectIdSelfTest() {
     {
         std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
         if (idx >= s_objectRecords.size()) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=2 reason=record_index_out_of_range_%u\n",
                 (unsigned)idx);
             return;
         }
         const auto& rec = s_objectRecords[idx];
         if (rec.kind != RenderWorld::RenderObjectKind::Mech) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=2 reason=wrong_kind_%u\n",
                 (unsigned)rec.kind);
             RenderWorld::destroyMech(h);
             return;
         }
         if ((rec.flags & RenderWorld::kRenderObjectFlagAlive) == 0u) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=2 reason=alive_not_set_after_register\n");
             RenderWorld::destroyMech(h);
             return;
         }
         if (rec.generation != gen) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=2 reason=generation_mismatch_record_%u_handle_%u\n",
                 (unsigned)rec.generation, (unsigned)gen);
             RenderWorld::destroyMech(h);
             return;
         }
         if (rec.gameObjectId != 0xC0FFEEu) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=2 reason=gameObjectId_lost\n");
             RenderWorld::destroyMech(h);
             return;
@@ -482,7 +483,7 @@ void RunMechObjectIdSelfTest() {
     const uint32_t raw = h.raw();
     RenderCore::RenderObjectHandle h2 = RenderCore::RenderObjectHandle::make(idx, gen);
     if (h2.raw() != raw) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=3 reason=roundtrip_raw_%08X_vs_%08X\n",
             (unsigned)h2.raw(), (unsigned)raw);
         RenderWorld::destroyMech(h);
@@ -495,19 +496,19 @@ void RunMechObjectIdSelfTest() {
         std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
         const auto& rec = s_objectRecords[idx];
         if ((rec.flags & RenderWorld::kRenderObjectFlagAlive) != 0u) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=4 reason=alive_set_after_destroy\n");
             return;
         }
         if (rec.generation != static_cast<uint16_t>(gen + 1u)) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=4 reason=generation_not_bumped_%u\n",
                 (unsigned)rec.generation);
             return;
         }
     }
 
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECH_OBJECT_ID_SELFTEST v1] result=PASS step=all kind=1 gen=%u handle=0x%08X\n",
         (unsigned)gen, (unsigned)raw);
 }
@@ -526,19 +527,19 @@ void init() {
     s_markVisibleCalls.store(0);
     s_frameCounter.store(0);
     const bool oid = IsObjectIdBufferEnabled();
-    std::fprintf(stderr, "[RENDER_WORLD v1] event=init objectid_buffer=%s\n",
+    MC2_DIAGFE(stderr, "[RENDER_WORLD v1] event=init objectid_buffer=%s\n",
                  oid ? "on" : "off");
     if (oid) {
         // Once-per-process; helps log readers correlate the banner with
         // the integer-MRT attachment lifecycle in gos_postprocess.cpp.
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[OBJECT_ID v1] event=enabled format=R32UI attachment=GL_COLOR_ATTACHMENT2\n");
     }
     // M1.6 + M2.6: pick-wiring banner. Always emitted; useful to log
     // readers diagnosing "why did Shift+click do nothing". M2.6 extends
     // the line with the three mech-pick gate states under the unified
     // [GAMEPLAY_PICK v1] schema name.
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
                  "[GAMEPLAY_PICK v1] static_prop_enabled=%d static_prop_debug=%d "
                  "mech_enabled=%d mech_debug=%d mech_pierce_fog=%d\n",
                  IsStaticPropPickEnabled() ? 1 : 0,
@@ -571,7 +572,7 @@ void destroy() {
     // would confuse anyone grepping the log post-load. Cheap; one
     // mutex-guarded scalar reset per mission end.
     clearLastGameplayPick();
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[RENDER_WORLD v1] event=destroy upsert_ok=%llu upsert_fail=%llu "
         "destroy_calls=%llu mark_visible=%llu\n",
         (unsigned long long)s_upsertOk.load(),
@@ -589,7 +590,7 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
     if (r < 0) {
         s_upsertFail.fetch_add(1, std::memory_order_relaxed);
         if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] event=upsert_fail recipe=-1\n");
         }
         return RenderCore::RenderObjectHandle::invalid();
@@ -609,7 +610,7 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
                    static_cast<uint16_t>(h.generation()),
                    gameObjectId);
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=upsert_ok recipe=%d handle.index=%u\n",
             r, (unsigned)h.index());
     }
@@ -657,7 +658,7 @@ void destroy(RenderCore::RenderObjectHandle h) {
     // M1.5: retire the record (clears alive flag, bumps generation).
     retireRecord(h.index());
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=destroy handle.index=%u\n",
             (unsigned)h.index());
     }
@@ -804,12 +805,12 @@ void frameBannerTick() {
     const int viewValid = (view != nullptr) ? 1 : 0;
     const uint64_t total        = vis.static_props + vis.mechs;
     const char* oidTok = IsObjectIdBufferEnabled() ? "on" : "off";
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[RENDER_WORLD v1] frame=%llu objects=%llu static_props=%llu mechs=%llu "
         "visible=0 packets=0 views=1 objectid_buffer=%s\n",
         (unsigned long long)f, (unsigned long long)total,
         (unsigned long long)vis.static_props, (unsigned long long)vis.mechs, oidTok);
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[VISIBILITY v1] frame=%llu static_props=%llu mechs=%llu "
         "sp_visible=%llu sp_valid=%d "
         "mech_visible=%llu mech_valid=%d "
@@ -830,7 +831,7 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
     if (!IsObjectIdBufferEnabled()) {
         static bool warned = false;
         if (!warned) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] WARN: lookupAtPixel called with MC2_OBJECT_ID_BUFFER=0\n");
             warned = true;
         }
@@ -841,7 +842,7 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
     if (!pp) {
         static bool warned = false;
         if (!warned) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] WARN: lookupAtPixel called before postprocess init\n");
             warned = true;
         }
@@ -913,7 +914,7 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
         static bool warned = false;
         if (!warned) {
             warned = true;
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] WARN: lookupAtPixel returned kind=Terrain but no writer should produce it (M3 reservation; M3.1 would change this)\n");
         }
         out.lookupFailReason = "TERRAIN_RESERVED";
@@ -1042,7 +1043,7 @@ RenderCore::RenderObjectHandle registerMech(RenderMechDesc desc) {
     const uint32_t idx   = kMechHandleBase + slot;
     // 20-bit handle index clamp check.
     if (idx >= 0x000FFFFFu) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] WARN: event=mech_register_fail reason=index_overflow slot=%u\n",
             (unsigned)slot);
         return RenderCore::RenderObjectHandle::invalid();
@@ -1076,7 +1077,7 @@ RenderCore::RenderObjectHandle registerMech(RenderMechDesc desc) {
     s_mechs_alive_rw.fetch_add(1, std::memory_order_relaxed);
 
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_register handle.index=%u mechTypeId=%u "
             "gameObjectId=%u debugCookie=%llu\n",
             (unsigned)idx, (unsigned)desc.mechTypeId,
@@ -1095,7 +1096,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
         auto& rec = s_objectRecords[idx];
         // Defensive: only retire if this is actually a mech record.
         if (rec.kind != RenderObjectKind::Mech) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] WARN: destroyMech called on non-Mech record "
                 "handle.index=%u\n", (unsigned)idx);
             return;
@@ -1107,7 +1108,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
         // s_mechs_alive_rw (would underflow the uint64_t counter).
         if ((rec.flags & kRenderObjectFlagAlive) == 0u) {
             if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[RENDER_WORLD v1] event=mech_destroy_already_dead "
                     "handle.index=%u handle.gen=%u rec.gen=%u\n",
                     (unsigned)idx, (unsigned)h.generation(),
@@ -1117,7 +1118,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
         }
         if (h.generation() != static_cast<uint32_t>(rec.generation)) {
             if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[RENDER_WORLD v1] event=mech_destroy_stale_generation "
                     "handle.index=%u handle.gen=%u rec.gen=%u\n",
                     (unsigned)idx, (unsigned)h.generation(),
@@ -1131,7 +1132,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
     s_mechs_alive_rw.fetch_sub(1, std::memory_order_relaxed);
 
     if (envFlag("MC2_RENDER_WORLD_TRACE")) {
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_destroy handle.index=%u\n",
             (unsigned)idx);
     }

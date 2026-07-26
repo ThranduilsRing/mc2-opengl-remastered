@@ -12,7 +12,7 @@
 // Default off; the 600-frame summary + first-flush banner emit unconditionally.
 static const bool s_substrateTrace = (getenv("MC2_GPU_CULL_SUBSTRATE_TRACE") != nullptr);
 #define SUBSTRATE_TRACE(fmt, ...) \
-    do { if (s_substrateTrace) { printf("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+    do { if (s_substrateTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
 namespace gpu_cull {
 

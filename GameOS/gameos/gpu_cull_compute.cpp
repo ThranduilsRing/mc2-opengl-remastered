@@ -43,7 +43,7 @@ static const bool s_computeTrace = (getenv("MC2_GPU_CULL_COMPUTE_TRACE") != null
 // Set MC2_GPU_CULL_OWNERSHIP_PARITY=1 to enable.
 static const bool s_ownershipParity = (getenv("MC2_GPU_CULL_OWNERSHIP_PARITY") != nullptr);
 #define COMPUTE_TRACE(fmt, ...) \
-    do { if (s_computeTrace) { printf("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+    do { if (s_computeTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
 namespace gpu_cull {
 
@@ -304,7 +304,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
             for (int k = 0; k < (int)srcStrs.size(); ++k)
                 fputs(srcStrs[k], dumpf);
             fclose(dumpf);
-            printf("[GPU_CULL v1] shader dumped to %s\n", fname);
+            MC2_DIAGF("[GPU_CULL v1] shader dumped to %s\n", fname);
             fflush(stdout);
         }
     }
@@ -391,7 +391,7 @@ bool compute_init() {
                 mc2_diag::writeEvent("GPU_CULL", 1, 0, "{\"event\":\"c1b_cull_compile_fail\"}");
             // Non-fatal: fall back to C1a shadow mode.
         } else {
-            printf("[GPU_CULL v1] event=c1b_cull_ok c2_readback=%d\n",
+            MC2_DIAGF("[GPU_CULL v1] event=c1b_cull_ok c2_readback=%d\n",
                    (int)(nPreambles >= 2));
             fflush(stdout);
             if (mc2_diag::tagEnabled("GPU_CULL")) {
@@ -409,7 +409,7 @@ bool compute_init() {
         GLuint prog = build_compute_program_from_file("shaders/gpu_cull_patch.comp",
                                                        nullptr, 0, "patch");
         if (!prog) {
-            printf("[GPU_CULL v1] event=patch_compile_fail — C1b patch disabled\n");
+            MC2_DIAGF("[GPU_CULL v1] event=patch_compile_fail — C1b patch disabled\n");
             fflush(stdout);
         }
         s_patchProgram = prog;
@@ -543,7 +543,7 @@ void compute_shutdown() {
     s_initialized = false;
     s_maxActors   = 0;
 
-    printf("[GPU_CULL v1] event=compute_shutdown\n");
+    MC2_DIAGF("[GPU_CULL v1] event=compute_shutdown\n");
     fflush(stdout);
 }
 
@@ -1324,7 +1324,7 @@ void compute_dispatch() {
                 if (s_bucketCountsBuf)
                     glGetNamedBufferSubData(s_bucketCountsBuf, 0, sizeof(uint32_t), &bucket0Count);
 
-                printf("[GPU_CULL v1] C2_DIAG(c1b) gpuBuf=%u rbOff=%lld bound14=%d rb_vis=%u rb_marker=0x%X bucket0=%u recordCount=%u\n",
+                MC2_DIAGF("[GPU_CULL v1] C2_DIAG(c1b) gpuBuf=%u rbOff=%lld bound14=%d rb_vis=%u rb_marker=0x%X bucket0=%u recordCount=%u\n",
                        rbGpu, (long long)rbOff, bound14, rbVisGpu, rbMarker,
                        bucket0Count, recordCount);
                 fflush(stdout);
@@ -1413,7 +1413,7 @@ void compute_dispatch() {
                 glGetNamedBufferSubData(rbGpu, rbOff, sizeof(uint32_t), &rbVisGpu);
                 GLint bound14 = 0;
                 glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 14, &bound14);
-                printf("[GPU_CULL v1] C2_DIAG(c1a) gpuBuf=%u rbOff=%lld bound14=%d rbVisGpu=%u recordCount=%u\n",
+                MC2_DIAGF("[GPU_CULL v1] C2_DIAG(c1a) gpuBuf=%u rbOff=%lld bound14=%d rbVisGpu=%u recordCount=%u\n",
                        rbGpu, (long long)rbOff, bound14, rbVisGpu, recordCount);
                 fflush(stdout);
             }

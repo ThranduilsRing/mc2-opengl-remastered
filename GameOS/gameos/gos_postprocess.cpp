@@ -982,7 +982,7 @@ void gosPostProcess::init(int w, int h)
                 oobFogColor_[0] = r; oobFogColor_[1] = g; oobFogColor_[2] = b;
             }
         }
-        std::fprintf(stderr, "[OOB_FOG v1] enabled=%d color=(%.2f,%.2f,%.2f)\n",
+        MC2_DIAGFE(stderr, "[OOB_FOG v1] enabled=%d color=(%.2f,%.2f,%.2f)\n",
             fogOobEnabled_ ? 1 : 0, oobFogColor_[0], oobFogColor_[1], oobFogColor_[2]);
     }
 
@@ -998,7 +998,7 @@ void gosPostProcess::init(int w, int h)
         if (const char* v = getenv("MC2_EDGE_FOG_START"))  edgeFogStart_  = std::atof(v);
         if (const char* v = getenv("MC2_EDGE_FOG_HEIGHT")) edgeFogHeight_ = std::atof(v);
         if (const char* v = getenv("MC2_EDGE_FOG_MAX"))    edgeFogMax_    = std::atof(v);
-        std::fprintf(stderr, "[EDGE_FOG v3] enabled=%d start=%.0f height=%.0f max=%.2f\n",
+        MC2_DIAGFE(stderr, "[EDGE_FOG v3] enabled=%d start=%.0f height=%.0f max=%.2f\n",
             edgeFogEnabled_ ? 1 : 0, edgeFogStart_, edgeFogHeight_, edgeFogMax_);
     }
 
@@ -1107,7 +1107,7 @@ void gosPostProcess::init(int w, int h)
             else if (!strcmp(modeEnv, "lowlight")) initialMode = 5;
         }
         gos_SetSelectedViewMode(initialMode);
-        std::fprintf(stderr, "[VIEWMODE v1] framework=%d initialMode=%d (MC2_VIEWMODE_FRAMEWORK=%s MC2_VIEW_MODE=%s)\n",
+        MC2_DIAGFE(stderr, "[VIEWMODE v1] framework=%d initialMode=%d (MC2_VIEWMODE_FRAMEWORK=%s MC2_VIEW_MODE=%s)\n",
                      s_viewmodeFrameworkEnabled ? 1 : 0, s_selectedViewMode,
                      vmEnv ? vmEnv : "(unset)", modeEnv ? modeEnv : "(unset)");
 
@@ -1123,7 +1123,7 @@ void gosPostProcess::init(int w, int h)
         const char* tintEnv = getenv("MC2_VIEWMODE_LOWLIGHT_TINT");
         if (tintEnv && tintEnv[0])
             sscanf(tintEnv, "%f,%f,%f", &lowLightTint_[0], &lowLightTint_[1], &lowLightTint_[2]);
-        std::fprintf(stderr, "[VIEWMODE_LOWLIGHT v1] gain=%.2f tint=(%.2f,%.2f,%.2f)\n",
+        MC2_DIAGFE(stderr, "[VIEWMODE_LOWLIGHT v1] gain=%.2f tint=(%.2f,%.2f,%.2f)\n",
                      lowLightGain_, lowLightTint_[0], lowLightTint_[1], lowLightTint_[2]);
     }
 
@@ -5008,7 +5008,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
             };
             float len = std::sqrt(wd[0]*wd[0] + wd[1]*wd[1] + wd[2]*wd[2]);
             if (len > 0.0f) { wd[0]/=len; wd[1]/=len; wd[2]/=len; }
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] uv_debug center_worldDir=(%.3f,%.3f,%.3f) "
                 "bakedSunValid=%d bakedSunAz=%.4f skyYaw=%.4f\n",
                 wd[0], wd[1], wd[2], hdriBakedSunValid_ ? 1 : 0,
@@ -5172,7 +5172,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
             if (curMask0[k] != probeMask0[k]) mismatch |= 64;
 
         if (mismatch != 0) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] state_probe MISMATCH bits=0x%02x "
                 "depthMask(%d->%d) depthTest(%d->%d) blend(%d->%d) cull(%d->%d) "
                 "fbo(%d->%d) drawBuf0(0x%x->0x%x) "
@@ -5184,7 +5184,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
                 probeMask0[0], probeMask0[1], probeMask0[2], probeMask0[3],
                 curMask0[0], curMask0[1], curMask0[2], curMask0[3]);
         } else {
-            std::fprintf(stderr, "[HDRI_SKY v1] state_probe ok\n");
+            MC2_DIAGFE(stderr, "[HDRI_SKY v1] state_probe ok\n");
         }
         std::fflush(stderr);
     }

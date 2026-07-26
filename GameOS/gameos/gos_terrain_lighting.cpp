@@ -53,7 +53,7 @@ extern bool  useFog;           // defined in mclib/terrain.cpp
 // ---------------------------------------------------------------------------
 static const bool s_trace = (getenv("MC2_TERRAIN_LIGHTING_GPU_TRACE") != nullptr);
 #define TL_TRACE(fmt, ...) \
-    do { if (s_trace) { printf("[TERRAIN_LIGHTING_GPU v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+    do { if (s_trace) { MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
 // Step 7 (VPL retirement): MC2_HAZE_PARITY probe — env-gated default-off.
 // Compares the inline-worldPos hazeFactor formula (CPU-recomputed from
@@ -1095,14 +1095,14 @@ void PackAndDispatch() {
             static bool     s_warnedDrop = false;
             if (poolWanted > s_peakWanted) {
                 s_peakWanted = poolWanted;
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[LIGHT_POOL_CAP v1] peak_wanted=%u packed=%u cap=%u dropped=%u\n",
                     s_peakWanted, numLights, s_maxLights, poolDropped);
                 std::fflush(stderr);
             }
             if (poolDropped > 0 && !s_warnedDrop) {
                 s_warnedDrop = true;
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[LIGHT_POOL_CAP v1] STARVED: %u light(s) dropped at cap=%u "
                     "(wanted=%u). Raise MC2_LIGHT_POOL_MAX.\n",
                     poolDropped, s_maxLights, poolWanted);
@@ -1206,7 +1206,7 @@ void PackAndDispatch() {
     // First-frame always-on diagnostic — prints once per process to confirm
     // ambient/light values are non-zero and the range-dispatch looks sane.
     if (s_frameIndex <= 1) {
-        printf("[TERRAIN_LIGHTING_GPU v1] event=first_dispatch "
+        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=first_dispatch "
                "frame=%llu totalVerts=%u dispatchRange=[%u,%u] numGroups=%u "
                "eye=%s ambR=%d ambG=%d ambB=%d lightR=%d lightG=%d lightB=%d\n",
                (unsigned long long)s_frameIndex, s_numVertices,

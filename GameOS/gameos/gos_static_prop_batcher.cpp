@@ -1143,7 +1143,7 @@ static const bool s_coalesceTrace =
     (getenv("MC2_SUBSTRATE_COALESCE_TRACE") != nullptr);
 #define COALESCE_TRACE(fmt, ...) \
     do { if (s_coalesceTrace) { \
-        std::fprintf(stderr, "[COALESCE v1] " fmt "\n", ##__VA_ARGS__); \
+        MC2_DIAGFE(stderr, "[COALESCE v1] " fmt "\n", ##__VA_ARGS__); \
         std::fflush(stderr); \
     } } while (0)
 
@@ -2158,7 +2158,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
             total_submitted += s_counters.mono_submitted_instances_by_pop[p];
         }
 
-        std::fprintf(stderr,
+        MC2_DIAGFE(stderr,
                "[OBJBATCHER v1] event=summary frames=%llu "
                "eligible_actors=%llu submitted_instances=%llu "
                "submitted_children=%llu skipped_children=%llu "
@@ -3112,7 +3112,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         if (!isAligned(sizeof(GpuStaticPropInstance)) ||
             !isAligned(s_offGroupTotalBytes) ||
             !isAligned(s_coalescePerFrameInstanceBytes)) {
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[COALESCE v1] event=disarmed reason=alloc_failed "
                 "(alignment: ssboAlign=%d sizeofInst=%zu offTotal=%zu perFrame=%zu)\n",
                 ssboAlign,
@@ -4398,7 +4398,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                     std::snprintf(buf, sizeof(buf),
                                   "[MATERIAL_GPU v4] GL ERROR after upload: 0x%x — buffer deleted, sampling disabled\n",
                                   uploadErr);
-                    std::fputs(buf, stderr);
+                    MC2_DIAG_FPUTS(buf, stderr);
                     // Delete the corrupt/incomplete buffer so s_materialGpuSsbo returns to 0.
                     // sampleOn checks s_materialGpuSsbo.backendHandle != 0, so this guarantees sampling is
                     // disabled without needing a separate s_materialGpuSidecarValid invalidation.
@@ -4436,7 +4436,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                               "[MATERIAL_GPU v4] event=table_upload"
                               " materials=%zu bytes=%zu emitted=%u\n",
                               s_materialGpuTable.size(), byteSize, emittedCount);
-                std::fputs(buf, stderr);
+                MC2_DIAG_FPUTS(buf, stderr);
             }
 
             // --- Debug compare ---
@@ -4458,7 +4458,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                                       "[MATERIAL_GPU v4] MISMATCH slot=%u pkt=%u"
                                       " materialIdx=%u albedoTex=%u expected=%u\n",
                                       i, globalPktIdx, idx, albedo, expected);
-                        std::fputs(buf, stderr);
+                        MC2_DIAG_FPUTS(buf, stderr);
                     }
                     ++mismatches;
                 }
@@ -4468,7 +4468,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 std::snprintf(buf, sizeof(buf),
                               "[MATERIAL_GPU v4] event=compare emitted=%u mismatches=%d\n",
                               emittedCount, mismatches);
-                std::fputs(buf, stderr);
+                MC2_DIAG_FPUTS(buf, stderr);
             }
 
             // C1 fix: record whether the sidecar is aligned with the emitted draw count.
@@ -4483,7 +4483,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                               "[MATERIAL_GPU v4] ERROR materialIdx sidecar size mismatch"
                               " emitted=%zu sidecar=%zu sample_forced=0\n",
                               s_sortedPacketOrder.size(), s_packetMaterialIdx.size());
-                std::fputs(buf, stderr);
+                MC2_DIAG_FPUTS(buf, stderr);
             }
         } // end s_materialGpuEnabled (sidecar)
 
@@ -4622,7 +4622,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             std::snprintf(buf, sizeof(buf),
                           "[MATERIAL_GPU v4] event=entry_material_idx emitted=%u mismatches=%d\n",
                           emittedCount2, entryMismatches);
-            std::fputs(buf, stderr);
+            MC2_DIAG_FPUTS(buf, stderr);
         }
 
         // TIER2-EXCLUDED: dead-path
@@ -4691,7 +4691,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 glDeleteBuffers(1, &s_baseInstanceByCmdSsbo);
                 s_baseInstanceByCmdSsbo          = 0;
                 s_baseInstanceByCmdBytesPerFrame = 0;
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[COALESCE v1] event=disarmed reason=alloc_failed "
                     "(baseInstanceByCmdSsbo glBufferStorage err=0x%04x bytes=%zu)\n",
                     storageErr, totalBytes);
@@ -4704,7 +4704,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 GL_SHADER_STORAGE_BUFFER, 0, totalBytes, mapFlags);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
             if (!s_baseInstanceByCmdMap) {
-                std::fprintf(stderr,
+                MC2_DIAGFE(stderr,
                     "[COALESCE v1] event=disarmed reason=alloc_failed "
                     "(baseInstanceByCmdSsbo glMapBufferRange returned null)\n");
                 s_coalesceLayoutReady = false;
@@ -4712,7 +4712,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 s_coalesceArmed       = false;
                 return;
             }
-            std::fprintf(stderr,
+            MC2_DIAGFE(stderr,
                 "[COALESCE v1] event=baseInstance_buffer_ok cmds=%u "
                 "bytes_per_frame=%zu total_bytes=%zu\n",
                 totalCmds, s_baseInstanceByCmdBytesPerFrame, totalBytes);
@@ -6229,7 +6229,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 if (firstPkt.textureSlot < src->numTextures) {
                     const DWORD now = src->listOfTextures[firstPkt.textureSlot].gosTextureHandle;
                     if (now != type.lastSeenGosHandle) {
-                        std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted "
+                        MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted "
                                      "type=%u old_handle=%lu new_handle=%lu\n",
                                      typeID,
                                      (unsigned long)type.lastSeenGosHandle,
@@ -6274,7 +6274,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
 
             // Per-type overflow guard.
             if (bucket.instances.size() > type.instanceCap) {
-                std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=type_overflow "
+                MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=type_overflow "
                              "type=%u count=%zu cap=%u\n",
                              typeID, bucket.instances.size(), type.instanceCap);
                 s_coalesceArmed = false;
@@ -6289,7 +6289,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 if (firstPkt.textureSlot < src->numTextures) {
                     const DWORD now = src->listOfTextures[firstPkt.textureSlot].gosTextureHandle;
                     if (now != type.lastSeenGosHandle) {
-                        std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted "
+                        MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted "
                                      "type=%u old_handle=%lu new_handle=%lu\n",
                                      typeID,
                                      (unsigned long)type.lastSeenGosHandle,
@@ -6647,7 +6647,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 char buf[96];
                 std::snprintf(buf, sizeof(buf),
                               "[MATERIAL_GPU v4] GL ERROR after bind (real): 0x%x\n", bindErr);
-                std::fputs(buf, stderr);
+                MC2_DIAG_FPUTS(buf, stderr);
             }
         }
 
@@ -6714,7 +6714,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                               "[MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\n",
                               reason);
             }
-            std::fputs(buf, stderr);
+            MC2_DIAG_FPUTSPUTS(buf, stderr);
         }
 
         // DrawPacket v5: gate-arm checks (run once per process on first gate-ON flush).
@@ -10140,7 +10140,7 @@ void batcher_prepareBaseInstanceTable() {
             const size_t cmpN = std::min(s_priorFrameCpuCount.size(), bucketCountGpu.size() - 1);
             for (uint32_t t = 0; t < (uint32_t)cmpN; ++t) {
                 if (bucketCountGpu[t] > s_priorFrameCpuCount[t]) {
-                    std::fprintf(stderr,
+                    MC2_DIAGFE(stderr,
                         "[COALESCE v1] event=gpu_count_exceeds_cpu type=%u gpu=%u cpu=%u\n",
                         t, bucketCountGpu[t], s_priorFrameCpuCount[t]);
                     std::fflush(stderr);
@@ -10175,7 +10175,7 @@ void batcher_prepareBaseInstanceTable() {
     const uint32_t totalCount    = offGroupCount + groupCursor[1];
 
     if (totalCount > s_globalInstanceCap) {
-        std::fprintf(stderr, "[COALESCE v1] event=disarmed reason=global_pool_overflow "
+        MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=global_pool_overflow "
                      "used=%u cap=%u\n", totalCount, s_globalInstanceCap);
         std::fflush(stderr);
         s_coalesceArmed = false;

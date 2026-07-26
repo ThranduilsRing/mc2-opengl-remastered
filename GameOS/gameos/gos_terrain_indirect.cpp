@@ -4546,7 +4546,7 @@ void ComputeDispatch() {
             static bool s_loggedFixADemote = false;
             if (!s_loggedFixADemote) {
                 s_loggedFixADemote = true;
-                printf("[RING_MVP v1] event=fixA_demoted gate=MC2_RING_TRACE\n");
+                MC2_DIAGF("[RING_MVP v1] event=fixA_demoted gate=MC2_RING_TRACE\n");
                 fflush(stdout);
             }
         }

@@ -960,7 +960,10 @@ extern "C" void mission_phase_report()
                          i + 1, g_loadPhaseSamples[i].name, delta_ms);
         prev_ms = g_loadPhaseSamples[i].t_ms;
     }
-    printf("%s\n", buf);
+    // QUIET-DEFAULT-BUILD-1: the [LOAD_PHASES v1] line is assembled across
+    // several snprintf appends, so the tag literal is not the format string of
+    // the call that prints it -- gate the SINK.
+    MC2_DIAGF("%s\n", buf);
     fflush(stdout);
 }
 
@@ -1313,7 +1316,7 @@ int main(int argc, char** argv)
             std::snprintf(buf, sizeof(buf),
                           "[MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n",
                           (int)matGpuOn, (int)matSampleOn);
-            std::fputs(buf, stderr);
+            MC2_DIAG_FPUTS(buf, stderr);
         }
 
         // [UNIFIED_PROJ v1] Warn when MC2_DISABLE_GOSFX=0 dev-override is active
@@ -1332,7 +1335,7 @@ int main(int argc, char** argv)
         {
             int gcFail = gpu_cull::gpu_cull_record_selftest();
             if (gcFail > 0) {
-                fprintf(stderr, "[GPU_CULL v1] FATAL: selftest failed (%d); "
+                MC2_DIAGFE(stderr, "[GPU_CULL v1] FATAL: selftest failed (%d); "
                                 "GpuActorRecord layout corrupt, see log above.\n", gcFail);
                 fflush(stderr);
                 gosASSERT(false);
