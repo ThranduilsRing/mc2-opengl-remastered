@@ -149,6 +149,14 @@ run_check "default_build_quiet"    "py -3 scripts/check-default-build-quiet.py"
 # Grades the newest multi-run capture set on disk; SKIPs (exit 0) when none
 # exists, so it never launches the game from the contract suite.
 run_check "capture_determinism"    "py -3 scripts/check-capture-determinism.py --quiet"
+# DETERMINISM-RATCHET-2: the ratchet above shipped BROKEN -- it globbed one flat
+# level, so it was blind to tools/visual_verify's nested crop layout (the
+# pipeline that produces the goldens which grade releases), reported EMPTY as a
+# pass, and compared only 2 runs. It returned 0 with a 44%-noise 3-run set in
+# its own search root. This check proves it still fires, on synthetic bad input,
+# offline. A ratchet nobody watches fail is indistinguishable from one that
+# cannot fail.
+run_check "capture_determinism_ratchet" "py -3 scripts/check-capture-determinism.py --selftest"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"
