@@ -382,6 +382,42 @@ def zone_samples(trace: Path, zone: str, export_exe: Path):
     return out
 
 
+def frame_intervals_ms(trace: Path, export_exe: Path, zone: str = FRAME_ZONE,
+                       warmup_frac: float = 0.4, hitch_ms: float = 200.0):
+    """TRUE frame times: wall-clock deltas between consecutive frame starts.
+
+    THE central correction of PERF-HARNESS-TRUTH-1. The old harness reported the
+    *CPU duration* of the DrawScreen zone (`exec_time_ns`). GL is asynchronous:
+    the CPU records its commands and returns long before the GPU has shaded a
+    single fragment, so a fragment-bound cost -- light-pool loops, fill rate,
+    post -- does NOT appear in that number. That is why raising the light-pool
+    cap 4x measured as +0.2%: the CPU-side submission genuinely did not change.
+
+    Frame-to-frame wall time DOES capture it, because the driver eventually
+    blocks on the queued GPU work. Measured this way the same two arms separate
+    by ~29%, consistent with the reported regression.
+
+    `ns_since_start` (from csvexport --unwrap) is the zone's start timestamp;
+    consecutive deltas are the real frame period.
+
+    warmup_frac drops the leading fraction of frames -- mission load and the
+    settle to the parked pose are not steady-state and would poison p99.
+    hitch_ms discards outliers above a threshold (load hitches / alt-tab).
+    """
+    p = subprocess.run([str(export_exe), "-f", zone, "-u", str(trace)],
+                       capture_output=True, text=True, timeout=600)
+    if p.returncode != 0:
+        return []
+    ts = sorted(int(r["ns_since_start"])
+                for r in csv.DictReader(io.StringIO(p.stdout))
+                if r.get("name") == zone and r.get("ns_since_start"))
+    if len(ts) < 10:
+        return []
+    ts = ts[int(len(ts) * warmup_frac):]
+    d = [(b - a) / 1e6 for a, b in zip(ts, ts[1:])]
+    return [x for x in d if x < hitch_ms]
+
+
 def pct(samples, q: float):
     """Nearest-rank percentile of a list of numbers (q in 0..100)."""
     if not samples:
@@ -705,13 +741,20 @@ def _measure_pose(install: Path, out_dir: Path, tag: str, mission: str, pose: st
     assert_window_was_visible(trace, export_exe, context=tag)
     if pose:
         assert_receipt(trace.with_suffix(".game.log"), "[CAMERA_PARK", f"pose {pose}")
-    s = zone_samples(trace, zone, export_exe)
+    # TRUE frame time (wall-clock frame-to-frame), NOT the CPU zone duration --
+    # see frame_intervals_ms() for why the latter is blind to fragment cost.
+    s = frame_intervals_ms(trace, export_exe, zone)
     if not s:
-        sys.exit(f"REFUSING TO REPORT: zone '{zone}' has no samples in {trace.name}.")
+        sys.exit(f"REFUSING TO REPORT: zone '{zone}' yielded no frame intervals "
+                 f"in {trace.name}.")
+    cpu = zone_samples(trace, zone, export_exe)
+    p50 = pct(s, 50)
     return {"tag": tag, "n": len(s),
-            "p50_ms": pct(s, 50) / 1e6, "p99_ms": pct(s, 99) / 1e6,
-            "mean_ms": sum(s) / len(s) / 1e6,
-            "fps_p50": 1000.0 / (pct(s, 50) / 1e6) if pct(s, 50) else 0.0}
+            "p50_ms": p50, "p99_ms": pct(s, 99),
+            "mean_ms": sum(s) / len(s),
+            "fps_p50": 1000.0 / p50 if p50 else 0.0,
+            # kept for contrast: the number the old harness reported.
+            "cpu_zone_p50_ms": (pct(cpu, 50) / 1e6) if cpu else None}
 
 
 def cmd_selfcheck(args: argparse.Namespace) -> int:
@@ -748,9 +791,14 @@ def cmd_selfcheck(args: argparse.Namespace) -> int:
             f"measured within {sep:.1f}% of each other. Raising the per-fragment "
             f"light-pool loop 4x MUST cost more than that at a busy night pose, so "
             f"this harness is NOT seeing fragment-bound work. Do not report frame "
-            f"times from it. Likely causes: window minimized/hidden (throttle), the "
-            f"pose not actually applied, MC2_TERRAIN_LIGHT_POOLS off, or the wrong "
-            f"zone (--zone).", file=sys.stderr)
+            f"times from it. Likely causes, in the order they have actually bitten:\n"
+            f"  1. Measuring CPU ZONE DURATION instead of frame-to-frame wall time. "
+            f"GL is async, so GPU fragment cost never shows up in a CPU zone. This "
+            f"is what made the original 34% regression read as 0.2%.\n"
+            f"  2. Window minimized/hidden -> 10ms background throttle.\n"
+            f"  3. The pose did not apply (no [CAMERA_PARK] receipt).\n"
+            f"  4. MC2_TERRAIN_LIGHT_POOLS off, so the loop under test never ran.",
+            file=sys.stderr)
         return 2
     print("SELFCHECK PASSED: the harness resolves a known fragment-bound cost.")
     return 0
@@ -762,16 +810,24 @@ def cmd_matrix(args: argparse.Namespace) -> int:
     """arms x poses frame-time table with real p50/p99, every arm verified."""
     export_exe = tracy_exe("tracy-csvexport.exe")
     out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
-    arms, poses = json.loads(Path(args.spec).read_text(encoding="utf-8")).values()
+    spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+    arms, poses = spec["arms"], spec["poses"]
     results = {}
-    for pname, pose in poses.items():
+    for pname, pdef in poses.items():
+        # A pose entry is either a bare MC2_CAMERA_PARK string, or an object
+        # {"mission": ..., "pose": ...} when the pose lives on another map
+        # (e.g. the day/no-pool control is a different mission entirely).
+        if isinstance(pdef, dict):
+            mission, pose = pdef.get("mission", args.mission), pdef.get("pose")
+        else:
+            mission, pose = args.mission, pdef
         for aname, aenv in arms.items():
             tag = f"{aname}__{pname}"
-            print(f"[matrix] {tag}")
+            print(f"[matrix] {tag} mission={mission} pose={pose}")
             results[tag] = _measure_pose(
-                Path(args.install), out_dir, tag, args.mission, pose,
+                Path(args.install), out_dir, tag, mission, pose,
                 args.seconds, aenv, export_exe, args.zone)
-            results[tag].update(arm=aname, pose=pname)
+            results[tag].update(arm=aname, pose=pname, mission=mission)
     (out_dir / "matrix.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
 
     md = [f"# Frame-time matrix (zone `{args.zone}`)", "",
