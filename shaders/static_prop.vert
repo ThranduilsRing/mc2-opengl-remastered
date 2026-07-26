@@ -100,7 +100,7 @@ uniform float u_nightEmissiveScale;  // 1.0 = stock; 0.0 = pre-fix; >1 exaggerat
 // stays byte-identical, which u_nightEmissiveScale (all-props) cannot do.
 uniform float u_fixtureEmissiveScale;
 // FIXTURE-GLOW-1 (gate MC2_STATIC_PROP_FIXTURE_GLOW): a BOUNDED,
-// DISTANCE-ATTENUATED ADDITIVE glow for the same fixture types
+// APPARENT-SIZE-ATTENUATED ADDITIVE glow for the same fixture types
 // BEACON-FIXTURE-ID-1 identifies (ptd.hotPinkRGB.w == 1.0).
 //
 // WHY A SEPARATE TERM IS REQUIRED. The emissive path above cannot make a
@@ -124,19 +124,41 @@ uniform float u_fixtureEmissiveScale;
 // OPPOSITE at both ends:
 //   * it never touches geometry, position or size -- the fixture keeps shrinking
 //     with distance exactly as it does today;
-//   * its magnitude is multiplied by an attenuation that reaches EXACTLY ZERO
-//     at kFixtureGlowFar (4600 view units). Overview altitude on mc2_10 is
-//     ~6000, i.e. 1400 units PAST the point where the term is identically 0.0 --
-//     not "small", not "sub-pixel", but arithmetically zero. Overview safety is
-//     a property of the formula, not of a measurement.
+//   * it is driven by the SAME apparent-size quantity that clamp used (sil), but
+//     inverted: where that clamp grew the fixture as sil fell, this FADES the
+//     glow as sil falls, through a smoothstep that is bounded to [0,1] and is
+//     exactly 0.0 once the fixture is about a pixel across. See the calibration
+//     block below the uniform.
 // It is also multiplied by the night factor, so it is identically 0.0 in
 // daylight.
 uniform float u_fixtureGlowStrength;   // 0 = off (default-off is byte-identical)
-// Attenuation window, in view depth (clip.w), and the white-hot core blend.
-// Compile-time so the bound is not env-tunable into the failure mode.
-const float kFixtureGlowNear  = 2600.0;  // full strength at or below this depth
-const float kFixtureGlowFar   = 4600.0;  // EXACTLY zero at or beyond this depth
-const float kFixtureGlowWhite = 0.5;     // 0 = pure fixture hue, 1 = white core
+// ATTENUATION METRIC -- read this before touching the constants.
+//
+// The driver is the fixture's APPARENT SILHOUETTE SIZE IN NDC, computed with
+// exactly the same math the RUNWAY-MARKER-LIGHTS-1 billboard clamp uses a few
+// hundred lines above:  sil = kLbRefRadius * ndcPerUnit.  Same quantity, used
+// in the OPPOSITE direction: that clamp took max() to push size UP when sil got
+// small (unbounded -> constant-size dashes at overview); this fades the glow
+// OUT when sil gets small, via a smoothstep whose output is bounded to [0,1] by
+// construction and is EXACTLY 0.0 below kFixtureGlowSilMin.
+//
+// ★ Do NOT drive this off view depth (clip.w). MC2's camera changes ALTITUDE by
+// scaling the PROJECTION, not by moving the eye (Camera::AltitudeMaximumLo and
+// the newScaleFactor = 1 - (alt-min)/testMax term in mclib/camera.cpp). Measured
+// with debug view 50: median eye distance is ~700 units at alt 350 AND ~800 at
+// alt 6000 -- essentially flat. A clip.w window therefore never engages and
+// gives an UNBOUNDED glow at every altitude. This lane shipped that mistake
+// first and the capture caught it; the metric below is the correction.
+//
+// Calibration, anchored to BEACON-FIXTURE-ID-1's measured pixel counts at 4K
+// (1 screen pixel ~= 0.000926 NDC vertically at 2160 rows):
+//   ground alt 350  -- fixture covered ~1676 px => radius ~23 px => sil ~0.021  -> FULL
+//   mid    alt 2200 -- 24..64 px                => radius ~3-4.5 px => sil ~0.0035 -> ~full ("bright speck")
+//   overview alt 6000 -- 69 px across ALL fixtures => each sub-pixel => sil < 0.0009 -> ZERO
+const float kFixtureGlowRefRadius = 1.2;      // == kLbRefRadius (runwaylight.ase silhouette)
+const float kFixtureGlowSilMin    = 0.0009;   // ~1 px radius: at/below this the glow is EXACTLY 0
+const float kFixtureGlowSilFull   = 0.0035;   // ~3.8 px radius: full strength at/above this
+const float kFixtureGlowWhite     = 0.5;      // 0 = pure fixture hue, 1 = white core
 // FAR-BACKDROP-LIT (gate MC2_FAR_BACKDROP_LIT, default OFF): night-shade
 // substitution for far/impostor static-prop LODs. Far/impostor LODs register
 // via the positions-only hierarchy walk (bdactor.cpp TransformMultiShape_
@@ -586,10 +608,20 @@ void main() {
             // property above survives the whitening.
             float peak = max(tint.r, max(tint.g, tint.b));
             vec3  core = mix(tint, vec3(peak), kFixtureGlowWhite);
-            // BOUNDED attenuation on view depth. smoothstep saturates, so this is
-            // identically 0.0 at and beyond kFixtureGlowFar -- see the header
-            // comment for why that, and not a screen-size clamp, is the safe shape.
-            float atten = 1.0 - smoothstep(kFixtureGlowNear, kFixtureGlowFar, clip.w);
+            // BOUNDED attenuation on APPARENT SIZE. ndcPerUnit = NDC covered by
+            // one world unit at this depth; push two world axes through the clip
+            // matrix as DIRECTIONS (w=0) and divide by the vertex's clip w. The
+            // max() over two axes avoids the degenerate case where one axis
+            // points nearly along the view direction.
+            vec4  clipAxX    = u_worldToClipGL * vec4(1.0, 0.0, 0.0, 0.0);
+            vec4  clipAxY    = u_worldToClipGL * vec4(0.0, 1.0, 0.0, 0.0);
+            float ndcPerUnit = max(length(clipAxX.xy), length(clipAxY.xy))
+                             / max(clip.w, 1e-3);
+            float sil        = kFixtureGlowRefRadius * ndcPerUnit;
+            // smoothstep saturates at both ends, so atten is in [0,1] and is
+            // EXACTLY 0.0 for any sil <= kFixtureGlowSilMin. Nothing here can
+            // grow without bound and nothing here touches geometry or size.
+            float atten = smoothstep(kFixtureGlowSilMin, kFixtureGlowSilFull, sil);
             v_fixtureGlow = core * (u_fixtureGlowStrength * atten * nightWeight);
         }
     }
