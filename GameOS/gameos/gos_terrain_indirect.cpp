@@ -2071,7 +2071,15 @@ void BuildCementCatalogAtlas() {
             if (dark) ++darkCells;
             if (dark || traceOn()) {
                 const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
-                const long nameId = (ttNames && slot >= 0)
+                // CEMENT-ATLAS-CRASH-1: `slot` is a texture SLOT in
+                // [0,getNextAvailableSlot()), but getTextureNameID indexes the
+                // much smaller types[] array (numTypes entries).  Cement slots are
+                // createTransition() handles and are routinely >= numTypes, so an
+                // unqualified call here read past the end of types[] -- the
+                // intermittent READ access violation at mission load.  Only the
+                // base-type slots have a name id at all; report -1 for the rest.
+                const long nTypes = ttNames ? ttNames->getNumTypes() : 0;
+                const long nameId = (ttNames && slot >= 0 && slot < (int)nTypes)
                                     ? ttNames->getTextureNameID(slot) : -1;
                 MC2_DIAGF("[CEMENT_CELL_TONE v1] mission=%s cell=%d slot=%d nameId=%ld "
                        "band_rgb=%.1f,%.1f,%.1f band_lum=%.1f dark=%d\n",

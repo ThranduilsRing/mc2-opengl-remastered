@@ -258,7 +258,25 @@ class TerrainTextures
 		// firstTransition is -1 until the first createTransition() call.
 		long getFirstTransition() const { return firstTransition; }
 
-		long getTextureNameID( long id ) const { return types[id].nameId; }
+		// CEMENT-ATLAS-CRASH-1: `id` indexes types[], which is numTypes entries
+		// (terrtxm.cpp:223).  It is NOT a texture SLOT -- slots run [0,nextAvailable)
+		// over the much larger textures[] array and are handed out by
+		// createTransition(), so any runtime-created transition slot is >> numTypes.
+		// Callers that walk slots (BuildCementCatalogAtlas's cement census) used to
+		// land here and read off the end of the heap block: an intermittent READ
+		// access violation at mission load, depending on whether types+id*sizeof
+		// happened to hit an unmapped page.  Every sibling accessor (terrainMapRGB,
+		// terrainPriority) already gosASSERTs id < numTypes; this one did not.
+		// Return -1 for out-of-range rather than reading garbage, and assert in
+		// debug so a slot/type mixup fails loudly at the call site instead of
+		// corrupting a diagnostic string on some random mission.
+		long getTextureNameID( long id ) const
+		{
+			gosASSERT((id >= 0) && (id < numTypes));
+			if ((id < 0) || (id >= numTypes))
+				return -1;
+			return types[id].nameId;
+		}
 		
 		float getDetailFrameRate (long typeInfo)
 		{
