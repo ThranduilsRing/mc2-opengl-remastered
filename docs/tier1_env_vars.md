@@ -778,7 +778,7 @@ lights should remain visible at every angle instead of blinking out.
 
 ## Deterministic capture clock
 
-- `MC2_SMOKE_FIXED_TIMESTEP=1` — deterministic capture clock (S9D sim + S9E render-shader).
+- `MC2_SMOKE_FIXED_TIMESTEP=1` — deterministic capture clock (S9D sim + S9E render-shader + CAPTURE-DETERMINISM-1 `frameLength` motion pin). NOTE: engaging this gate does NOT guarantee reproducible frames — the sidecar's `deterministic` flag only reports that the gate was set. Measured residual on mc2_10: up to 27% of pixels between identical launches. See docs/visual-verify.md "Capture nondeterminism".
   Opt-in, default **OFF** (byte-identical retail/normal smoke). Pins BOTH the sim clock
   (S9D: scenarioTime/frameRate advance a fixed 1/30s per frame) AND every render-shader
   `time` uniform (S9E: water/terrain/overlay/decal/screen-shadow/godray/shoreline, all in

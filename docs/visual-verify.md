@@ -153,7 +153,9 @@ Inherited from `scripts/run_visual_capture.py` and enforced by `capture.py`:
 - **Pre-created capture dirs** — every output dir is created before launch.
 - **Determinism** — `MC2_SMOKE_MODE=1`, fixed seed, `MC2_SMOKE_FIXED_TIMESTEP=1`,
   cursor parked center (kills RTS edge-scroll drift). The engine stamps each
-  sidecar's `deterministic` flag honestly.
+  sidecar's `deterministic` flag — but see the warning below: **that flag means
+  "the fixed clock was engaged", NOT "this frame is reproducible."** On mc2_10 it
+  reads `true` on frames that differ by 27% of pixels between launches.
 
 ## Relationship to the existing tooling
 
@@ -164,3 +166,107 @@ Inherited from `scripts/run_visual_capture.py` and enforced by `capture.py`:
   + triptych HTML. Complementary: use it for full-frame byte-regression; use
   `verify.py` for **region-level, checklist-aligned** grading.
 - `tools/visual/png_io.py` — the shared stdlib PNG codec both use.
+
+---
+
+## Capture nondeterminism — the measured noise floor, and what to do about it
+
+**CAPTURE-DETERMINISM-1, 2026-07-26.** Repeated launches at a fixed pose with
+byte-identical environment do **not** always produce identical frames. Measure
+before you grade.
+
+### Measured noise floor (3 launches, same arm, same env, 3840x2160)
+
+`pct_any` = share of pixels differing at all; `pct_gt8` = differing by >8/255.
+
+| map | pose | pct_any (worst pair) | pct_gt8 |
+|---|---|---|---|
+| mc2_10 | `saved_204937` | **27.3 %** | 17.4 % |
+| mc2_10 | `lance_close` | **23.2 %** | 8.4 % |
+| mc2_10 | `saved_204753` | 9.1 % | 6.3 % |
+| mc2_10 | `saved_204523` | 0.008 % | 0.008 % |
+| mc2_10 | `saved_212019` | 0.000 % | 0.000 % |
+| mc2_10 | `saved_212140` | 0.000 % * | 0.000 % |
+| mc2_01 | all 5 poses | **≤ 0.004 %** | ≤ 0.003 % |
+
+\* `saved_212140` was byte-identical across five consecutive launches and then
+drifted on the sixth. **The noise is intermittent.** A pose that passed a 2- or
+3-run check is not proven stable; repeat counts understate the floor.
+
+**It is map- and content-specific, not global.** mc2_01 is effectively clean.
+On mc2_10 the drift is spatially concentrated on **movers** (vehicles/mechs) —
+poses framing only terrain and static props are byte-identical, poses containing
+vehicles are the ones that swing 10–27 %. It is not "animated night light pools"
+or cloud shadows: those are pinned by the fixed clock and the sweep's sim-freeze.
+
+### What is pinned, and what is not
+
+| source | status |
+|---|---|
+| `scenarioTime` (sim clock) | **pinned** — S9D, `MC2_SMOKE_FIXED_TIMESTEP` |
+| shader/render clocks | **pinned** — S9E |
+| camera pose | **pinned** — bookmark re-applied each settle frame + `freezeScriptedCameraForCapture` |
+| `frameLength` (drives ALL mover/object/GOSFX motion integration) | **pinned as of CAPTURE-DETERMINISM-1** — was still `1.0/frameRate` from the *real* measured framerate under the fixed-timestep gate |
+| render-side warmup (streaming, chunk-LOD admission, shadow, bloom history) | **converges with settle frames** — raising `--settle 30 → 150` cut `lance_close` from 20.4 % to 1.6 % |
+| residual mover-position divergence | **NOT PINNED — open** |
+
+The residual is real and unexplained. With `sim_frame`, render `frame`, pose,
+seed, `scenarioTime` and per-frame dt all now *verified identical* across runs,
+mover positions still differ. Two candidate mechanisms remain untested:
+address/iteration-order dependence (ASLR) and job-system scheduling. Do not
+assume mc2_10 is reproducible.
+
+### Two traps that made this invisible for so long
+
+1. **`deterministic: true` in the sidecar does not mean reproducible.** It is
+   `SmokeMode::fixedTimestepEnabled()` — i.e. "the gate was set". Frames that
+   differ by 27 % carry it.
+2. **`[SMOKE_CLOCK_PROBE]` agreeing across runs proves nothing.** It is indexed
+   by *sim* frame (`g_fixedSimFrame`) and prints `scenarioTime` — which is a
+   pure function of that index. It matches tautologically. The capture triggers
+   on a *different* counter (`g_mc2FrameCounter`, render frames). The sidecar now
+   records `sim_frame` alongside `frame` so the two can actually be compared.
+
+### What a lane should do when it cannot get determinism
+
+In descending order of preference:
+
+1. **Prefer a numeric diag receipt over a whole-frame delta.** A counter printed
+   by the code under test (`MC2_LIGHT_CONE_DIAG`-style) is immune to render
+   nondeterminism. CONE-SPILL-GRADE-1 could only reach a verdict this way: its
+   pixel A/B was swamped, its diag counted "7 of 9 pools deleted" exactly.
+2. **A/B in-process, without relaunching.** Two poses in one sweep share one
+   process state, so they do not carry launch-to-launch divergence.
+3. **Publish a noise floor and only claim effects above it.** Run the same arm
+   ≥3 times *first*, quote the worst pair, and refuse to claim any effect
+   smaller. An unqualified "X % of pixels changed" is not evidence.
+4. **Mask the animated features out.** Grade per-region with movers excluded —
+   on mc2_10 the terrain/static-prop regions are byte-stable while the vehicle
+   regions are not.
+5. **Pick a clean pose or a clean map.** mc2_01, and the mover-free mc2_10 poses,
+   are reproducible. Grading a terrain/lighting change on a pose full of moving
+   vehicles is choosing the worst available instrument.
+
+### The ratchet
+
+`scripts/check-capture-determinism.py`, wired into `scripts/check-contracts.sh`
+as **`capture_determinism`**. It compares repeated captures of the same arm and
+fails when they differ beyond `--max-pct` (default **0.0**, because the capture
+path claims byte-stability).
+
+```powershell
+# grade an existing multi-run set (r1/, r2/, ... from --runs N)
+py -3 scripts/check-capture-determinism.py --set-dir <dir>
+
+# perform the captures and grade them
+py -3 scripts/check-capture-determinism.py --run `
+    --exe "A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe" `
+    --mission mc2_10 --bookmarks <bookmarks.json> --runs 3
+```
+
+In the contract suite it grades the newest set under `scratch/capdet_ratchet/`
+or `tests/visual/captures/` and **SKIPs** when none exists — it never launches
+the game from a contract run.
+
+**Before trusting any capture-based verdict, run this against your own capture
+set.** If it fails, your instrument is broken and the verdict is not evidence.
