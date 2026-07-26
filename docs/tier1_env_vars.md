@@ -893,3 +893,81 @@ $env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE,LIGHTBAKE_PROOF"
 `get_diagnostic_events("LIGHTBAKE_PROOF", 20)` — enabled/first/coverage/UNSTABLE events.
 
 **Fail-open:** Shader compile failures emit `SHADER_COMPILE compile_fail` with `info_log` and do not abort optional shader paths where the existing loader already continues gracefully (e.g. vegetation, optional overlays). Core shaders that call `STOP()` on failure remain fatal — fail-open applies only to paths the loader was already skipping.
+
+## Visibility semantics + light-cone diagnostics (VERIFY-INTEGRITY-3 backfill)
+
+Both gates below were live in shipped builds while being **absent from this
+file**. `MC2_VIS_SEMANTICS` is worse than a plain omission: it is **default ON**
+and it changes what a capture can even show, so an undocumented default-ON
+visibility gate is exactly the shape of defect that lets a lane "verify" a fix
+against frames the subject was never in. Documented here as part of the
+verification-integrity sweep.
+
+- `MC2_VIS_SEMANTICS` — **default ON** (`env_default_on`, `mclib/vis_semantics.cpp:37`).
+  The single gate for the centralised mover-visibility predicate family in
+  `mclib/vis_semantics.{h,cpp}` (`powered()`, `friendly()`, and the mover
+  model/cone-emission predicates). It **supersedes** `MC2_LIGHT_MOVER_VIS_GATE`
+  and `MC2_LIGHT_CONE_VIS_GATE` rather than ANDing with them — GHOST-CONE-VERIFY-4
+  parked both of those default-OFF (`89f0ed4f`), so consulting them would leave
+  the semantics dead on arrival.
+  `=0` does **not** mean "stock": it inlines `mover_model_shown()`'s ARMED
+  predicate (`legacyVisible && (sensorLevel==0 || sensorLevel>=5)`), which is
+  **stricter** than the parked `mover_model_shown()` (that returns true
+  unconditionally). So `=0` hides *more* than stock, not less — do not reach for
+  it as an "off" baseline.
+  Related: `MC2_FORCE_ALL_VISIBLE` (default OFF) in the section above, which is
+  the correct lever for making sure a capture actually contains its subject.
+  **Registry status:** carried in the `scripts/check-env-registry.sh` `ALLOWLIST`
+  array, not in `RendererFeatureRegistry.h`'s `kFeatureTable`/`kAuxEnvVars`.
+  Smoke-allowlisted (`scripts/run_smoke.py:1415`).
+
+- `MC2_LIGHT_CONE_DIAG` — default OFF. Diagnostic trace for the vehicle/mech
+  headlight light-cone path; read at `mclib/bdactor.cpp:3415`, `:3446` and
+  `mclib/cone_glow.cpp:304`. Emits per-cone placement/curl census lines used by
+  the ghost-cone and cone-spill lanes. No rendering effect when OFF.
+  **Registry status:** `check-env-registry.sh` `ALLOWLIST` array, not the
+  feature table. Smoke-allowlisted (`scripts/run_smoke.py:1422`).
+
+### Known gate-hygiene debt (measured 2026-07-25, VERIFY-INTEGRITY-3)
+
+A four-way sweep (registry / this file / `run_smoke.py` passthrough / code
+readers) found, and these numbers are the baseline for the next lane to burn
+down — do not re-derive them by hand:
+
+- **121 of 297** registry-table gates are undocumented here. This file is a
+  *Tier-1 subset* by design, so that is not all debt, but the feature-grade
+  omissions are (`MC2_TERRAIN_CLIFF_*` ×9, `MC2_TERRAIN_POM*` ×5,
+  `MC2_TERRAIN_DECAL_*` ×8, `MC2_GPU_MECH_*` ×4, `MC2_POST_CAS*`,
+  `MC2_SHADER_SPIRV*`, `MC2_FOG_HORIZON_*` ×3). `docs/flags.auto.yaml` is the
+  generated full inventory (1154 names) and is the right reconciliation target
+  for the long tail.
+- **8 documented-but-dead** gates: `MC2_DRAWALPHA`, `MC2_GL_B`,
+  `MC2_HUD_IMGUI_INFOWINDOW`, `MC2_IS_EDITOR`, `MC2_ROAD_PBR`,
+  `MC2_STATIC_PROP_LIGHTING`, `MC2_VERIFY`, `MC2_VULKAN_ISLAND`.
+- **5 ghost gates** — in the registry tables with zero code reader:
+  `MC2_DRAW_PACKET_STATIC_PROP_V6`, `MC2_HUD_IMGUI_PAUSE`,
+  `MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT`, `MC2_VULKAN_EDGE_FOG_ISLAND`,
+  `MC2_VULKAN_POSTPROCESS_SUBGRAPH`.
+- **101 registered+read gates missing from the `run_smoke.py` passthrough
+  allowlist.** See the correction below on what that does and does not mean.
+
+### Correction: what a missing allowlist entry actually costs
+
+Step 4 of the checklist at the top of this file says an unallowlisted gate means
+"Popen drops it and the gate-ON smoke does nothing". **That is no longer true of
+the current code** and believing it will send you chasing the wrong bug:
+`scripts/smoke_lib/runner.py:83` does `env = os.environ.copy()` before
+`env.update(cfg.env_extra)` at `:119`, so the parent environment **is** inherited
+and a gate set in your shell **does** reach `mc2.exe` even when unallowlisted.
+`scripts/check-env-allowlist.sh:13-19` documents this and is advisory for exactly
+that reason.
+
+The two real costs of a missing entry are:
+1. the harness itself cannot **drive** the gate (only the operator's shell can),
+   so any A/B that relies on `run_smoke.py` setting it runs both arms identically; and
+2. `run_smoke.py:2588-2605` (`SMOKE-GATE-GUARD-1`) prints a loud and, in this
+   case, **false** `[ENV-DROP] WARNING ... gate inert` for it.
+
+Keep adding gates to the allowlist — but diagnose an A/B that "showed no
+difference" by checking whether the *harness* set the gate, not by assuming the
+value was stripped.

@@ -2582,7 +2582,17 @@ def main():
                             # Popen drops them and a gate-ON perf/parity smoke
                             # silently runs the GL_TRIANGLES (gate-OFF) path.
                             "MC2_TERRAIN_CLIFF_DISPLACE",
-                            "MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS")},
+                            "MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS",
+                            # VERIFY-INTEGRITY-3: registered Feature gate
+                            # (RendererFeatureRegistry.h, VEHICLE-NIGHT-LIT-1,
+                            # defaultOn=false) read at mclib/txmmgr.cpp:2199,
+                            # documented in tier1_env_vars.md -- but absent
+                            # here, so the harness could not DRIVE it and every
+                            # run that set it tripped a spurious [ENV-DROP]
+                            # "gate inert" warning. That is what voided the
+                            # "verified via smoke" claim for this gate: the A/B
+                            # was never shown to have driven the two arms apart.
+                            "MC2_LEGACY_LIT_MC2_FRAME")},
             },
         )
         # SMOKE-GATE-GUARD-1: ENV-DROP WARNING.
