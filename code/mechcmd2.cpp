@@ -2246,6 +2246,28 @@ void __stdcall DoGameLogic()
 		if (frameLength > 0.25f)
 			frameLength = 0.25f;
 
+		// CAPTURE-DETERMINISM-1: frameLength drives ALL mover / object / GOSFX
+		// motion integration, but until now it was derived from the REAL
+		// measured frameRate even under MC2_SMOKE_FIXED_TIMESTEP. S9D pinned
+		// scenarioTime (mission.cpp) and S9E pinned the shader clocks, so both
+		// runs reached a given render frame with an identical scenarioTime and
+		// an identical `deterministic:true` sidecar -- while every mover had
+		// integrated a DIFFERENT per-frame dt on the way there. Two launches
+		// therefore captured the same pose, same frame, same clock, and
+		// visibly different unit positions (measured: up to 27% of pixels on
+		// mc2_10 poses containing movers; exactly 0.000% on poses containing
+		// none). Pin frameLength to the same fixed step as scenarioTime so the
+		// sim integrates identically frame-for-frame. Deliberately placed
+		// BEFORE the sim-speed multiply and left unmultiplied below, matching
+		// mission.cpp's fixed-timestep branch which likewise keeps 1x.
+		if (SmokeMode::fixedTimestepEnabled())
+		{
+			// Fixed-step sim; the sim-speed multiply in the else-branch is
+			// deliberately NOT applied (mission.cpp parity: determinism = 1x).
+			frameLength = SmokeMode::fixedTimestepMs() / 1000.0f;   // 1/30
+		}
+		else
+		{
 		// SIM-CLOCK-SPEED-1 / SIM-SPEED-BUTTON-1: sim-speed multiplier applied
 		// at the frameLength site so mover / object / GOSFX motion (all
 		// frameLength-driven) tracks the same multiplier as scenarioTime
@@ -2254,6 +2276,7 @@ void __stdcall DoGameLogic()
 		// single source in mission.cpp (simSpeedGetMultiplier, mission.h).
 		// OFF path (unset env, never set) is a no-op multiply by 1.0.
 		frameLength *= simSpeedGetMultiplier();
+		}
 
 		//Calc out the average frame rate so we can decide if we should use the
 		// movie Video or Just the Audio Track!
