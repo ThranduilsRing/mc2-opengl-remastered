@@ -3950,17 +3950,18 @@ float gos_TerrainCementLit()
     return s_v;
 }
 
-// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): 0..1 blend of the cement lighting
-// exemption's curve, from stock LINEAR pureConcrete (0.0) to the sqrt() curve the
-// cement ALBEDO already uses (1.0). Default 0.0 == stock, bit-identical.
+// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): EXPONENT of the cement lighting
+// exemption ramp, clamped to [0.05, 1.0]. 1.0 = stock LINEAR = bit-identical;
+// 0.5 = the sqrt() curve the cement ALBEDO already uses; below 0.5 sharpens and
+// collapses the measured night dark-ring around concrete pads.
 float gos_TerrainCementEdgeCurve()
 {
     static const float s_v = []() {
         const char* s = std::getenv("MC2_CEMENT_EDGE_CURVE");
-        if (!s || !s[0]) return 0.0f;
+        if (!s || !s[0]) return 1.0f;          // stock LINEAR ramp == bit-identical
         float v = (float)std::atof(s);
-        if (v < 0.0f) v = 0.0f;
-        if (v > 1.0f) v = 1.0f;
+        if (v < 0.05f) v = 0.05f;              // near-step, but never pow(x, 0)
+        if (v > 1.0f)  v = 1.0f;
         return v;
     }();
     return s_v;

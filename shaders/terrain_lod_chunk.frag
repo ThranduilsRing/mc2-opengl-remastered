@@ -304,14 +304,18 @@ uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 
 // is the "runway is grey here and black there" the user reports. 1.0 = cement
 // obeys the same light as the terrain it sits on.
 uniform float u_cementLit;
-// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE, default 0.0 == stock/bit-identical).
-// Albedo crosses a cement boundary on sqrt(pureConcrete) while the lighting
-// exemption crosses on LINEAR pureConcrete. sqrt(t) > t for 0<t<1, so cement-toned
-// albedo arrives BEFORE its lighting exemption, leaving the transition ramp lit by
-// the terrain term. At 1.0 the lighting exemption uses the SAME curve as the albedo
-// so both arrive together. Only the CURVE changes -- the user-approved
-// CEMENT-HARD-EDGE-1 crisp alpha shape is untouched (that path is binary 0/1, where
-// sqrt(0)=0 and sqrt(1)=1, so this uniform cannot move it).
+// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): EXPONENT of the cement lighting
+// exemption ramp. Default 1.0 == stock LINEAR == bit-identical.
+// Measured on mc2_23 (the only stock NIGHT mission): terrain luma ~13, concrete
+// interior ~60, but the smoothstep(2,3,v_terrainType) transition ramp sits at
+// ~14-22 -- a 15-20px DARK RING tracing every pad, 15-25 luma BELOW the plain
+// terrain->concrete midpoint. Cause: the lighting exemption (normalLight 0.35 ->
+// 1.0, a ~2.9x jump at night) ramps in LINEARLY across a full 128wu tile while the
+// albedo has already gone cement-toned on sqrt(pureConcrete).
+// 0.5 matches the albedo's own curve; below 0.5 sharpens further and collapses the
+// ring toward the pad edge. pow(0,x)==0 and pow(1,x)==1, so the user-approved
+// binary CEMENT-HARD-EDGE-1 marching-squares path and cementHit interiors are
+// untouched at EVERY value -- this uniform can only move the feathered ramp.
 uniform float u_cementEdgeCurve;
 
 // Soft dilated cement mask: 1 on any VALID cement tile, feathered to 0 over
@@ -1795,7 +1799,15 @@ void main() {
     // CEMENT-EDGE-CURVE-1: match the lighting exemption's curve to the albedo's.
     // u_cementEdgeCurve==0 -> pureConcrete (stock, bit-identical); ==1 -> the
     // concreteColorBlend=sqrt(pureConcrete) curve the albedo at line ~1535 uses.
-    float cementLightBlend = mix(pureConcrete, concreteColorBlend, u_cementEdgeCurve);
+    // u_cementEdgeCurve is the EXPONENT of that ramp: 1.0 = stock linear
+    // (bit-identical); 0.5 = the sqrt() curve the albedo already uses (curves
+    // matched); below 0.5 = progressively sharper, collapsing the dark ring toward
+    // the pad edge. pow(0,x)==0 and pow(1,x)==1, so the binary CEMENT-HARD-EDGE-1
+    // marching-squares path and cementHit interiors are untouched at every value.
+    // max() guards the uninitialised-uniform case: GL defaults a float uniform to
+    // 0.0, and pow(x, 0) == 1.0 would flat-light the ENTIRE terrain.
+    float cementLightBlend = pow(clamp(pureConcrete, 0.0, 1.0),
+                                 max(u_cementEdgeCurve, 0.05));
     normalLight = mix(normalLight, cementLight, cementLightBlend);
     // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting
     // exemption cement receives, while leaving its baked colormap albedo alone.
