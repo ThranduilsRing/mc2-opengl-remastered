@@ -39,6 +39,12 @@ extern void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightData
 // File-scope so the declaration lands outside the GpuStaticPropRegistry namespace.
 extern bool mc2IsStaticLightSlotBaked(int32_t recipeIndex);
 
+// PROP-RECIPE-BAKE-1 per-recipe row summary (defined in mclib/txmmgr.cpp).
+// File-scope for the SAME reason as the declaration above — declaring it inside
+// flush() namespaces it into GpuStaticPropRegistry:: and fails to link (LNK2019).
+extern bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
+                                          float amb[3], float sun[3]);
+
 // ---------------------------------------------------------------------------
 // [SPFLUSH_COST_SPLIT v1] — env gate + RDTSC storage + TSC calibration.
 // Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
@@ -1648,6 +1654,44 @@ void flush() {
             (unsigned long long)s_diag_flush_calls, aliveProps, zeroLightSlots,
             s_staticEagerGate ? 1 : 0);
         fflush(stderr);
+
+        // PROP-RECIPE-BAKE-1: per-recipe row dump, ONCE, under the same
+        // already-registered gate (no new env var). The aggregate counter above
+        // cannot distinguish "this truck is dark" from "this building is lit" --
+        // this does, by dumping what static_prop.vert actually reads per recipe:
+        //   baked   = slot ever written (0 => all-zero row => black actor)
+        //   nL      = numLights_ in the permanent slot
+        //   amb/sun = the shader's orientation-free vs NdotL-scaled terms
+        //             (mc2PeekStaticLightSlotSummary, mirrors static_prop.vert:720)
+        //   pos     = model-matrix translation -- the only reliable per-instance
+        //             identifier, since shapeName is populated ONLY by the
+        //             late-spawn path (registerStaticPropAndReturnRecipe:480);
+        //             mission-load bulk registerRecipe() leaves it empty.
+        // Read-only: no light data is written, no render state touched.
+        static bool s_rowDumpDone = false;
+        if (!s_rowDumpDone) {
+            s_rowDumpDone = true;
+            for (int32_t ri = 0; ri < static_cast<int32_t>(s_recipeRanges.size()); ++ri) {
+                const RecipeRange& r = s_recipeRanges[static_cast<size_t>(ri)];
+                if (r.count == 0u) continue;   // tombstone
+                int   nL = 0;
+                float amb[3] = {0,0,0}, sun[3] = {0,0,0};
+                const bool baked = mc2PeekStaticLightSlotSummary(ri, &nL, amb, sun);
+                uint32_t typeID = 0u;
+                if (r.first < s_recipes.size()) typeID = s_recipes[r.first].typeID;
+                float m[16] = {0};
+                const bool haveM = staticPropGetModelMatrix(ri, m);
+                fprintf(stderr,
+                    "[PROPROW v1] ri=%d type=%u leaves=%u name=%s ldi=%u baked=%d nL=%d "
+                    "amb=%.4f,%.4f,%.4f sun=%.4f,%.4f,%.4f pos=%.1f,%.1f,%.1f\n",
+                    ri, typeID, r.count,
+                    (r.shapeName[0] ? r.shapeName : "-"),
+                    r.lightDataIndex, baked ? 1 : 0, nL,
+                    amb[0], amb[1], amb[2], sun[0], sun[1], sun[2],
+                    haveM ? m[12] : 0.0f, haveM ? m[13] : 0.0f, haveM ? m[14] : 0.0f);
+            }
+            fflush(stderr);
+        }
     }
 
     static const bool s_regflushTrace = (getenv("MC2_REGFLUSH_DIAG_TRACE") != nullptr);

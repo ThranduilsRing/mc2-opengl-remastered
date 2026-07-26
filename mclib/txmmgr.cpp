@@ -1798,6 +1798,49 @@ bool mc2IsStaticLightSlotBaked(int32_t recipeIndex)
     return slot.numLights_ > 0;
 }
 
+// PROP-RECIPE-BAKE-1 (diagnostic, read-only). Summarize a permanent static
+// light slot the way static_prop.vert actually consumes it, so a probe can
+// compare a dark prop against a lit building on the SAME ObjectLights row
+// semantics rather than on raw struct bytes:
+//   amb[] = SUM of every TG_LIGHT_AMBIENT lightColor row  -> the shader's
+//           orientation-free `ambientTerm`.
+//   sun[] = FIRST TG_LIGHT_INFINITE/INFINITEWITHFALLOFF lightColor row ->
+//           the shader's `sunColor`, which is scaled by NdotL.
+// Mirrors the scan at shaders/static_prop.vert:720-729 exactly (type lives in
+// lightDir[i][3], i.e. light_dir[i].w on the GLSL side).
+// Returns false when the slot was never written by mc2WriteStaticLightSlot.
+bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
+                                   float amb[3], float sun[3])
+{
+    if (outNumLights) *outNumLights = 0;
+    if (amb) amb[0] = amb[1] = amb[2] = 0.0f;
+    if (sun) sun[0] = sun[1] = sun[2] = 0.0f;
+    if (recipeIndex < 0 || !mcTextureManager) return false;
+    const uint32_t ri = static_cast<uint32_t>(recipeIndex);
+    if (ri >= s_staticLightHighWater) return false;   // slot never written
+    TG_HWLightsData slot{};
+    if (!mcTextureManager->copyLightSlot(ri, slot)) return false;
+    if (outNumLights) *outNumLights = slot.numLights_;
+    const int n = (slot.numLights_ < MAX_HW_LIGHTS_IN_WORLD)
+                ? slot.numLights_ : MAX_HW_LIGHTS_IN_WORLD;
+    bool sunFound = false;
+    for (int i = 0; i < n; ++i) {
+        const int lt = static_cast<int>(slot.lightDir[i][3]);
+        if (lt == TG_LIGHT_AMBIENT) {
+            if (amb) { amb[0] += slot.lightColor[i][0];
+                       amb[1] += slot.lightColor[i][1];
+                       amb[2] += slot.lightColor[i][2]; }
+        } else if (!sunFound &&
+                   (lt == TG_LIGHT_INFINITE || lt == TG_LIGHT_INFINITEWITHFALLOFF)) {
+            if (sun) { sun[0] = slot.lightColor[i][0];
+                       sun[1] = slot.lightColor[i][1];
+                       sun[2] = slot.lightColor[i][2]; }
+            sunFound = true;
+        }
+    }
+    return true;
+}
+
 // [LIGHTBAKE v2] Persistent static slot write. Replaces the retired
 // per-frame mc2SubmitBakedLightSlot (which re-ran addLightDataStructure
 // -> 1792B FNV + 1792B memcmp every frame per recipe). Called ONCE per
