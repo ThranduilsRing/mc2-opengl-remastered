@@ -142,6 +142,13 @@ run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.
 # taken with NO output-affecting MC2_* env, and SKIPs (exit 0) when no such run
 # exists, so it is safe on a machine that has not smoked.
 run_check "default_build_quiet"    "py -3 scripts/check-default-build-quiet.py"
+# CAPTURE-DETERMINISM-1: two captures of the SAME arm must be identical, or
+# every pixel A/B taken across two launches is measuring noise. Measured on
+# mc2_10 (2026-07-26): up to 27.3% of pixels differed between byte-identical
+# runs, while the sidecars agreed on frame, pose, seed AND deterministic:true.
+# Grades the newest multi-run capture set on disk; SKIPs (exit 0) when none
+# exists, so it never launches the game from the contract suite.
+run_check "capture_determinism"    "py -3 scripts/check-capture-determinism.py --quiet"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"
