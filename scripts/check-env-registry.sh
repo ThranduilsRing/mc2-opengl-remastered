@@ -753,7 +753,6 @@ ALLOWLIST=(
     MC2_WATER_SHORE_FEATHER           # feature -- SHORELINE-STAIRCASE-1: shore-band feather floor (wu) dissolving the tile-quantized water-edge staircase; default OFF
     MC2_WATER_SHORE_MEANDER           # feature -- SHORELINE-GEOMETRY-1: world-space fBm amplitude (wu) bending the shore iso-contour off the tile lattice into an organic coastline; default OFF
     MC2_WATER_SHORE_MEANDER_FREQ      # feature -- SHORELINE-GEOMETRY-1: meander spatial frequency (cycles/wu); default 1/384
-    MC2_WATER_SHORE_MEANDER_MAXDIST   # feature -- WATER-MEANDER-CLAMP-1: max horizontal contour travel (wu); default 96, 0=unclamped
     MC2_LIGHT_BILLBOARD_TWOSIDED      # killswitch -- EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8): =0 restores legacy backface cull of beacon/runway edge-light glow cards; default ON
     MC2_LIGHT_BILLBOARD_FACING        # killswitch -- LIGHT-BILLBOARD-GPU-1 (MASTER-FAIL #8): camera-facing billboard + capped min screen size for beacon/runway light fixtures on the GPU static-prop batcher path; =1 opts in, =2 exaggerates for verification; default OFF (RUNWAY-MARKER-LIGHTS-1 flipped ON->OFF after the user rejected the uncapped-clamp look)
     MC2_LETTERBOX_OPAQUE              # killswitch -- LETTERBOX-TOP-RESTORE-1: cinematic letterbox bars are opaque black while the bar EXTENT still wipes in; =0 restores the stock 5s alpha ramp (translucent bars during the swoop)

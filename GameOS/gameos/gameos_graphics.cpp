@@ -3440,8 +3440,6 @@ void gosRenderer::renderWaterFastPath(
         // stay in lockstep.
         setMF("u_shoreMeanderWu",   WaterStream::ShoreMeanderWu());
         setMF("u_shoreMeanderFreq", WaterStream::ShoreMeanderFreq());
-        // WATER-MEANDER-CLAMP-1: bound the meander's horizontal reach.
-        setMF("u_shoreMeanderMaxDistWu", WaterStream::ShoreMeanderMaxDistWu());
         // CINEMATIC-WATER-WHITE-1: same fix as non-MDI path above — read current
         // render state, not stale fog_color_. See comment block above. (time uses
         // the SmokeMode fixed-timestep clock when active, for deterministic capture.)

@@ -83,15 +83,55 @@ float EffAlphaDepth(float baseAlphaDepth) {
 }
 
 // SHORELINE-GEOMETRY-1 — see the header block for the rationale.
-// AUDIT-TRUTH-1: default is now 75 wu -- the amplitude the user graded and
-// APPROVED (arm "A=75") for the shoreline-staircase cure. Previously 0.0f, i.e.
-// the approved setting existed only in a status doc and shipped disabled.
-// Explicit MC2_WATER_SHORE_MEANDER=0 still disables it (legacy staircase).
-// Known side effect at 75: mc2_01's waterline creeps ~10% further up the beach.
+// WATER-MEANDER-CLAMP-1 (2026-07-26): default REVERTED 75 -> 0 (OFF).
+//
+// AUDIT-TRUTH-1 baked in 75 as "the amplitude the user graded and APPROVED".
+// That approval does not survive wide, normal-altitude captures on poses that
+// actually frame water:
+//
+//   * mc2_17 (flat shelf) at A=75 DELETES water. Wide pose shelf_east_wide loses
+//     11.2 percentage points of frame water (42.95% -> 31.78%), and the loss is
+//     ONE-WAY -- 11.23% lost against 0.05% gained. The perturbation is zero-mean,
+//     but `if (shore <= 0.0) discard;` is not: a seaward excursion adds nothing,
+//     while a landward one destroys the fragment. The result is a smeared brown
+//     blob eating the bay with detached islands floating in open water -- the
+//     user's "the mc2_17 water is atrocious / the smoothing line looks terrible".
+//   * mc2_10 -- the map the approval was granted on -- ALSO loses water at 75.
+//     Nobody had seen it because no mc2_10 bookmark framed water until this slice
+//     authored one. On shore_south_wide an entire inlet that is water at A=0 is a
+//     brown wedge at A=75. On shore_west_wide, meanwhile, A=75 is BYTE-IDENTICAL
+//     to A=0 -- so where the approved look is good, the meander contributed
+//     exactly nothing to it.
+//
+// Root cause: the amplitude is a THICKNESS carrying fBm gain 2.40, so A=75 is a
+// +/-180 wu excursion -- larger than the entire water depth range of either map
+// (mc2_17 tops out at 120 wu, mc2_10 at 80). It cannot act as an edge treatment
+// when it exceeds the field it perturbs everywhere; it punches holes in open water.
+//
+// Two rescues were implemented and MEASURED, and both rejected:
+//   1. Clamp horizontal reach (the deferred MC2_WATER_SHORE_MEANDER_MAXDIST).
+//      Reduces water loss monotonically (-11.2 -> -2.5 at D=24, -1.3 at D=12) but
+//      is SELF-DEFEATING: it scales the perturbation by |grad(thickness)|, and the
+//      staircase it must cure lives precisely where |grad| is small, so it
+//      suppresses the cure exactly where it is needed -- the sawtooth survived
+//      every clamped arm. It also facets, since the gradient of a linearly
+//      interpolated varying is piecewise-constant per primitive. Code reverted.
+//   2. Lower the amplitude (A=25 / A=15). Fixes mc2_17 handsomely, but at A=15
+//      mc2_10's shore_west_wide grows a hard blocky staircase that neither A=0 nor
+//      A=75 has -- EffShoreExt widens tile admission BY A, so a small A clips
+//      landward excursions back to tile edges and re-creates the risers. The knob
+//      is not monotonic and no single global amplitude is safe.
+//
+// So the default parks at 0 = OFF, provably the stock, long-shipped waterline.
+// What is lost is the staircase refinement, not correctness; what is gained is a
+// shipping default that stops deleting water on two maps. MC2_WATER_SHORE_MEANDER=75
+// restores the previous behaviour exactly for anyone re-grading it. Re-enabling by
+// default needs a fix that separates the cure from the defect -- the |grad|-keyed
+// clamp provably cannot, because both have the same cause.
 float ShoreMeanderWu() {
     static const float s_amp = []() -> float {
         const char* v = getenv("MC2_WATER_SHORE_MEANDER");
-        if (!v || !*v) return 75.0f;      // user-approved default
+        if (!v || !*v) return 0.0f;       // OFF -- see the block above
         const float f = (float)atof(v);
         return f > 0.0f ? f : 0.0f;       // explicit 0 => off
     }();
@@ -109,22 +149,6 @@ float ShoreMeanderFreq() {
         return f > 0.0f ? f : 1.0f / 384.0f;
     }();
     return s_freq;
-}
-
-// WATER-MEANDER-CLAMP-1 (MC2_WATER_SHORE_MEANDER_MAXDIST) — see the header
-// block. Bounds the meander's HORIZONTAL contour travel in world units. The
-// amplitude is a THICKNESS, whose horizontal reach is amplitude/|grad|; on a
-// flat shelf that diverges and the shore term collapses to 0, which the FS
-// `discard` turns into DELETED WATER (measured on mc2_17 at the shipping
-// default of 75). 0 => unclamped => byte-identical to pre-clamp behaviour.
-float ShoreMeanderMaxDistWu() {
-    static const float s_maxDist = []() -> float {
-        const char* v = getenv("MC2_WATER_SHORE_MEANDER_MAXDIST");
-        if (!v || !*v) return 96.0f;      // default: 0.75 tile of contour travel
-        const float f = (float)atof(v);
-        return f > 0.0f ? f : 0.0f;       // explicit 0 => unclamped
-    }();
-    return s_maxDist;
 }
 
 float EffShoreExt(float baseAlphaDepth) {
