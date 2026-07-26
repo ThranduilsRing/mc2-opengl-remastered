@@ -27,11 +27,56 @@ Recorder notes:
   - Left click records "click x y", right click records "rclick x y".
   - Common keys (escape, enter, arrows, tab, space, letters/digits) record as "key name".
 """
+import atexit
 import ctypes
 import sys
 import time
 import subprocess
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# VERIFY-INTEGRITY-3: do_click/do_rclick/do_move genuinely NEED to move the
+# pointer -- that is this tool's whole job -- but they previously left it
+# wherever the last scripted action dropped it, with no save/restore and no
+# release of any ClipCursor the game had installed. So a one-line
+# `game_auto.py click 800 600` permanently relocated the user's pointer.
+#
+# Fix shape (deliberately NOT "stop moving the cursor"): remember where the
+# pointer was on entry, and put it back when the command/script finishes.
+from smoke_lib.cursor_guard import (  # noqa: E402
+    get_cursor_pos,
+    set_cursor_pos,
+    unclip_cursor,
+)
+
+# Session cursor bookkeeping. `_CURSOR_MOVED` stays False for commands that
+# never touch the pointer (launch/kill/key/wait/screenshot), so those restore
+# nothing and cannot fight a user who is moving the mouse themselves.
+_CURSOR_ORIGIN = None
+_CURSOR_MOVED = False
+
+
+def _cursor_session_begin() -> None:
+    global _CURSOR_ORIGIN
+    if _CURSOR_ORIGIN is None:
+        _CURSOR_ORIGIN = get_cursor_pos()
+
+
+def _cursor_session_end() -> None:
+    """Release any game clamp and put the pointer back. Idempotent."""
+    global _CURSOR_MOVED
+    unclip_cursor()
+    if _CURSOR_MOVED and _CURSOR_ORIGIN is not None:
+        set_cursor_pos(_CURSOR_ORIGIN)
+    _CURSOR_MOVED = False
+
+
+def _warp(x: int, y: int) -> None:
+    """Single chokepoint for every pointer warp -- records that we moved it."""
+    global _CURSOR_MOVED
+    _cursor_session_begin()
+    _CURSOR_MOVED = True
+    user32.SetCursorPos(int(x), int(y))
 
 GAME_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.1.1\mc2.exe"
 GAME_DIR = r"A:\Games\mc2-opengl\mc2-win64-v0.1.1"
@@ -184,7 +229,7 @@ def do_chord(spec: str):
 
 
 def do_click(x: int, y: int):
-    user32.SetCursorPos(int(x), int(y))
+    _warp(x, y)
     time.sleep(0.03)
     user32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
     time.sleep(0.03)
@@ -192,7 +237,7 @@ def do_click(x: int, y: int):
 
 
 def do_rclick(x: int, y: int):
-    user32.SetCursorPos(int(x), int(y))
+    _warp(x, y)
     time.sleep(0.03)
     user32.mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
     time.sleep(0.03)
@@ -200,7 +245,7 @@ def do_rclick(x: int, y: int):
 
 
 def do_move(x: int, y: int):
-    user32.SetCursorPos(int(x), int(y))
+    _warp(x, y)
 
 
 def do_screenshot(path: str):
@@ -366,4 +411,13 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
-    dispatch(sys.argv[1], sys.argv[2:])
+    # VERIFY-INTEGRITY-3: the pointer goes back where the user left it even if
+    # the scripted sequence raises or is Ctrl-C'd. atexit covers interpreter
+    # teardown paths `finally` alone misses; _cursor_session_end is idempotent
+    # and a no-op when no command actually warped the pointer.
+    _cursor_session_begin()
+    atexit.register(_cursor_session_end)
+    try:
+        dispatch(sys.argv[1], sys.argv[2:])
+    finally:
+        _cursor_session_end()

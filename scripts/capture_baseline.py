@@ -29,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import atexit
 import datetime as dt
 import hashlib
 import json
@@ -37,6 +38,14 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# VERIFY-INTEGRITY-3 / CURSOR-STEAL-HARNESS-GUARD-1: shared cursor policy
+# (conditional park + guaranteed restore) instead of a bare pyautogui.moveTo.
+from smoke_lib.cursor_guard import (  # noqa: E402
+    park_cursor_if_edge,
+    restore_parked_cursor,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
@@ -107,13 +116,25 @@ def kill_existing_mc2() -> None:
 
 
 def park_mouse_center() -> None:
-    try:
-        import pyautogui
-        pyautogui.FAILSAFE = False
-        w, h = pyautogui.size()
-        pyautogui.moveTo(w // 2, h // 2)
-    except Exception as e:
-        print(f"[baseline] WARN park cursor: {e}", file=sys.stderr)
+    """Conditional cursor park -- VERIFY-INTEGRITY-3.
+
+    WAS: an unconditional `pyautogui.moveTo(centre)` with NO restore, called
+    three times per capture. Because capture_baseline is also exposed as an MCP
+    tool (`run_capture_baseline`), that stole the user's pointer on every
+    invocation, whether or not the pointer could actually drive edge-scroll.
+
+    NOW: delegates to the shared policy in `smoke_lib/cursor_guard.py` (same
+    module used by run_visual_capture / camera_sweep_smoke / smoke runner):
+      * the pointer is left ALONE when it is already outside the edge-scroll
+        band, or when the engine gate MC2_VISUAL_DIFF_CAPTURE already disables
+        edge-scroll, so the common case is now zero theft;
+      * the pre-park position is snapshotted once and put back by
+        `restore_parked_cursor()`, wired to `finally` + `atexit` in main().
+    """
+    outcome = park_cursor_if_edge(reason="capture_baseline")
+    if outcome == "parked":
+        print("[baseline] cursor was in an edge-scroll band; parked "
+              "(will be restored on exit)", file=sys.stderr)
 
 
 def bring_mc2_foreground() -> bool:
@@ -533,4 +554,12 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # VERIFY-INTEGRITY-3: the pointer goes back where the user left it even on
+    # crash, exception, or Ctrl-C. atexit covers interpreter teardown paths that
+    # `finally` alone misses; restore_parked_cursor() is idempotent and a no-op
+    # when nothing was ever parked.
+    atexit.register(restore_parked_cursor)
+    try:
+        sys.exit(main())
+    finally:
+        restore_parked_cursor()

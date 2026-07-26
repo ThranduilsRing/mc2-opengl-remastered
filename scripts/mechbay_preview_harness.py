@@ -25,6 +25,14 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# VERIFY-INTEGRITY-3: this harness launches mc2.exe for up to --timeout seconds
+# and previously set NEITHER MC2_SMOKE_MODE nor MC2_NO_CURSOR_GRAB, so the game
+# clamped and re-centred the user's pointer for the whole run. Same belt-and-
+# braces pairing as scripts/smoke_lib/runner.py: the env gate stops NEW binaries
+# grabbing, CursorGuard defends from outside so OLDER deploys are covered too.
+from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
+
 DEFAULT_DEPLOY = "A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"
 
 
@@ -84,17 +92,24 @@ def main():
         "MC2_SOAK_AUTOWIN": "1",
         "MC2_SOAK_WIN_AFTER_SEC": str(args.win_after_sec),
         "MC2_SOAK_STOP_AT_BAY": "1",   # park at the bay, never NEXT past it
+        # VERIFY-INTEGRITY-3: engine-side cursor release (commit f0c07b87).
+        # NOT MC2_SMOKE_MODE -- this harness deliberately drives the real
+        # logistics/front-end path and smoke mode skips movies and screens.
+        "MC2_NO_CURSOR_GRAB": "1",
     })
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
     with open(out_stdout, "w") as fo, open(out_stderr, "w") as fe:
-        p = subprocess.Popen([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
-        try:
-            p.wait(timeout=args.timeout)
-            print(f"[harness] process exited on its own (code {p.returncode})")
-        except subprocess.TimeoutExpired:
-            p.kill()
-            print(f"[harness] killed after {args.timeout}s (expected — screenshot hook doesn't self-exit)")
+        # Guard STARTS BEFORE Popen so its anchor is the user's real position
+        # and any foreign clamp is reported rather than silently adopted.
+        with CursorGuard():
+            p = subprocess.Popen([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
+            try:
+                p.wait(timeout=args.timeout)
+                print(f"[harness] process exited on its own (code {p.returncode})")
+            except subprocess.TimeoutExpired:
+                p.kill()
+                print(f"[harness] killed after {args.timeout}s (expected — screenshot hook doesn't self-exit)")
 
     if out_tga.exists():
         print(f"[harness] screenshot captured: {out_tga} ({out_tga.stat().st_size} bytes)")

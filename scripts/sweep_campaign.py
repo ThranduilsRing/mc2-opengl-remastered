@@ -14,6 +14,14 @@ import json, os, re, subprocess, sys, time, glob
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+# VERIFY-INTEGRITY-3: this harness launches mc2.exe for up to `secs` (default
+# 300s) and previously set NEITHER MC2_SMOKE_MODE nor MC2_NO_CURSOR_GRAB, so the
+# game clamped and re-centred the user's pointer for the whole soak. Belt and
+# braces, matching scripts/smoke_lib/runner.py: the env gate stops NEW binaries
+# grabbing at all, and CursorGuard defends from outside the process so OLDER
+# deploys (this script targets v0.4d-rc1 by default) are covered too.
+from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
 # Computer-agnostic: override with MC2_DEPLOY_DIR env; literal is a last-resort dev fallback.
 DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1")
 
@@ -49,15 +57,22 @@ def main():
         "MC2_SOAK_PILOT_PROMOTE": "1", "MC2_SOAK_CHECK_SCREENS": "1",
         "MC2_SOAK_LANCE_RANDOM": "1", "MC2_BRIDGE_MOVER_STATE": "1",
         "MC2_DEBUG_STATE_DUMP": "1", "MC2_DIAG_TAGS": "LOGISTICS",
+        # VERIFY-INTEGRITY-3: engine-side cursor release (commit f0c07b87).
+        # NOT MC2_SMOKE_MODE -- that changes game behaviour (skips movies,
+        # pins the RNG seed) and would alter what this soak actually exercises.
+        "MC2_NO_CURSOR_GRAB": "1",
     })
     crash_before = newest_crash(deploy)
     with open(outp, "w") as fo, open(errp, "w") as fe:
-        p = subprocess.Popen([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
-        try:
-            p.wait(timeout=secs)
-            exited = True
-        except subprocess.TimeoutExpired:
-            p.kill(); exited = False
+        # Guard STARTS BEFORE Popen so its anchor is the user's real position
+        # and any foreign clamp is reported rather than silently adopted.
+        with CursorGuard():
+            p = subprocess.Popen([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
+            try:
+                p.wait(timeout=secs)
+                exited = True
+            except subprocess.TimeoutExpired:
+                p.kill(); exited = False
 
     out = Path(outp).read_text(errors="replace")
     err = Path(errp).read_text(errors="replace")
