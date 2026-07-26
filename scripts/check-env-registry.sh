@@ -791,6 +791,7 @@ ALLOWLIST=(
     MC2_LIGHT_REALISM_CONE_FEATHER    # override -- LIGHT-REALISM-1: screen-space silhouette feather exponent (default 1.5, clamp [0,8]; 0 = no feather)
     MC2_LIGHT_REALISM_POOL_SPILL      # override -- LIGHT-REALISM-1: pool farDistance scale so the pool reaches back to its emitter (default 1.6, clamp [0.25,4])
     MC2_LIGHT_REALISM_POOL_CORE       # override -- LIGHT-REALISM-1: pool closeDistance scale; shrinks the flat-topped bright disc (default 0.15, clamp [0,1])
+    MC2_LIGHT_REALISM_MOVER_SPILL     # override -- POOL-SPILL-STATIC-1: farDistance scale for MOVER-attached (mech/elemental) pool lights only (default 1.0 = stock reach, clamp [0.25,4]); set = MC2_LIGHT_REALISM_POOL_SPILL to restore the pre-fix uniform spill that blew out near-camera pools
     MC2_LIGHT_REALISM_BEACON          # override -- LIGHT-REALISM-1: beacon ground-glow peak alpha 0..255 (default 45; subtle by design)
     MC2_LIGHT_POOL_MAX                # override -- LIGHT-POOL-CAP-1: max simultaneous terrain pool lights (default 256, was 64; clamp [1,4096])
     MC2_LIGHT_REALISM_BEACON_RADIUS   # override -- LIGHT-REALISM-1: beacon ground-glow disc radius in world units (default 28, clamp [1,200])

@@ -1224,6 +1224,25 @@ void PackAndDispatch() {
             if (f > 4.0f)  f = 4.0f;
             return f;
         }();
+        // POOL-SPILL-STATIC-1 (2026-07-26): the spill scale above must apply to
+        // STATIC (building / tower / runway) lights ONLY. Applied uniformly it
+        // also widened mover-attached (mech / elemental) pools, which sit
+        // nearest the camera and are already near-saturating, so the rim
+        // softened but the blown-out AREA grew (mc2_10 lance_close hot-pixel
+        // area 0.36% -> 8.25%, 23x) — reproducing the user's own "terrible
+        // lighting here" failure mode from the opposite direction. Movers keep
+        // stock reach (1.0) by default; the core collapse below still applies to
+        // them, which removes their flat-topped saturated plateau. Set this to
+        // match MC2_LIGHT_REALISM_POOL_SPILL to restore the old uniform
+        // behaviour (that is how the regression is reproduced on demand).
+        static const float s_lightRealismMoverSpill = []() {
+            const char* v = std::getenv("MC2_LIGHT_REALISM_MOVER_SPILL");
+            float f = 1.0f;   // stock reach for mover-attached lights
+            if (v && v[0]) f = static_cast<float>(std::atof(v));
+            if (f < 0.25f) f = 0.25f;
+            if (f > 4.0f)  f = 4.0f;
+            return f;
+        }();
         static const float s_lightRealismPoolCore = []() {
             const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_CORE");
             float f = 0.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 0.15)
@@ -1334,9 +1353,14 @@ void PackAndDispatch() {
             // GetFalloff) and MUST be recomputed in lockstep or the ramp
             // detaches from the radii. Gate default-OFF -> untouched -> byte-
             // identical.
+            // POOL-SPILL-STATIC-1: mover classification is needed BOTH by the
+            // reshape below (static-only spill) and by the _pad1 feed, so it is
+            // computed once here instead of at the pad assignment.
+            const bool isMoverLight = lightIsMover(tl);
             if (s_lightRealism)
             {
-                const float spill = s_lightRealismPoolSpill;   // farDistance scale
+                const float spill = isMoverLight ? s_lightRealismMoverSpill
+                                                 : s_lightRealismPoolSpill;   // farDistance scale
                 const float core  = s_lightRealismPoolCore;    // closeDistance scale
                 float farD   = tl->farDistance * spill;
                 float closeD = tl->closeDistance * core;
@@ -1349,7 +1373,7 @@ void PackAndDispatch() {
             }
             // NIGHT-LIGHT-POOLS-2a: mover flag in the pad (pool frag dims
             // mover-attached lights; compute consumer never reads pads).
-            gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;
+            gl._pad1           = isMoverLight ? 1.0f : 0.0f;
             gl._pad2           = 0.0f;
             ++numLights;
         }

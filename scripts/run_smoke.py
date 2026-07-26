@@ -1429,6 +1429,7 @@ def main():
                             "MC2_LIGHT_REALISM_CONE_FEATHER",
                             "MC2_LIGHT_REALISM_POOL_SPILL",
                             "MC2_LIGHT_REALISM_POOL_CORE",
+                            "MC2_LIGHT_REALISM_MOVER_SPILL",
                             "MC2_LIGHT_REALISM_BEACON",
                             "MC2_LIGHT_REALISM_BEACON_RADIUS",
                             # LIGHT-POOL-CAP-1: pool slot budget.
