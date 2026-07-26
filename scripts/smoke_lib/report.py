@@ -18,9 +18,22 @@ class Row:
 
 
 def render_markdown(rows: list[Row], *, tier: str, profile: str,
-                    timestamp: str, show_window: bool = False) -> str:
+                    timestamp: str, show_window: bool = False,
+                    run_failures: Optional[list[str]] = None) -> str:
+    """Render the smoke report.
+
+    SMOKE-DEPLOY-TRAP-1: `run_failures` carries RUN-LEVEL failures that are not
+    attributable to any single mission -- above all a DEPLOY_FINGERPRINT
+    mismatch, i.e. "every mission passed, but on the wrong binary". Without it
+    the header said `result=PASS (5/5 passed)` while the runner exited 1, and
+    that header is what report.md / report.json / the get_latest_smoke_report()
+    MCP tool serve to the next reader. The exit code was honest; the artifact
+    everyone actually quotes was not.
+    """
+    run_failures = list(run_failures or [])
     passed = sum(1 for r in rows if r.verdict.passed)
     total = len(rows)
+    run_ok = not run_failures
     fps_note = (
         "window starts visible; FPS reflects foreground throughput subject to "
         "the active MC2_FPS_CAP / MC2_VSYNC settings."
@@ -29,9 +42,13 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
         "rendering to ~100 fps when minimized; Avg FPS / p1% reflect that cap, "
         "not GPU throughput. Not a perf regression."
     )
+    _verdict = "PASS" if (passed == total and run_ok) else "FAIL"
     head = (f"# Smoke run {timestamp}  tier={tier}  profile={profile}  "
-            f"result={'PASS' if passed == total else 'FAIL'} ({passed}/{total} passed)\n\n"
+            f"result={_verdict} ({passed}/{total} passed)\n\n"
             f"> **FPS note:** {fps_note}\n\n")
+    if run_failures:
+        head += ("> **RUN INVALID — the missions' results do not count.**\n>\n"
+                 + "".join(f"> - {f}\n" for f in run_failures) + "\n")
     table = [
         "| Mission | Result | Bucket                 | Frames | Avg FPS | p1% | Load ms | Δ destroys |",
         "|---------|--------|------------------------|--------|---------|-----|---------|-----------|"
@@ -59,11 +76,20 @@ def render_markdown(rows: list[Row], *, tier: str, profile: str,
 
 
 def render_json(rows: list[Row], *, tier: str, profile: str,
-                timestamp: str, show_window: bool = False) -> dict:
+                timestamp: str, show_window: bool = False,
+                run_failures: Optional[list[str]] = None) -> dict:
+    run_failures = list(run_failures or [])
+    _all_missions_passed = all(r.verdict.passed for r in rows) and bool(rows)
     return {
         "timestamp": timestamp,
         "tier": tier,
         "profile": profile,
+        # SMOKE-DEPLOY-TRAP-1: an explicit top-level verdict that accounts for
+        # run-level failures (chiefly DEPLOY_FINGERPRINT mismatch). Consumers
+        # used to derive PASS from the per-mission rows alone, which is how a
+        # green report got quoted for a run that smoked the wrong binary.
+        "overall_result": "PASS" if (_all_missions_passed and not run_failures) else "FAIL",
+        "run_failures": run_failures,
         "fps_note": ("window visible; fps reflects foreground throughput subject to MC2_FPS_CAP/MC2_VSYNC"
                      if show_window else
                      "window minimized; SDL throttles rendering; fps reflects ~100fps cap not GPU throughput"),

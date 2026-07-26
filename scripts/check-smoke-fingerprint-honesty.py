@@ -83,12 +83,16 @@ def _check_default_on(smoke_src: str) -> str | None:
 
 def _check_clears_verdict(smoke_src: str) -> str | None:
     """The hard-fail site must actually set passed = False."""
-    m = re.search(r"if\s+_fp_require\s+and\s+_fp_hard_fail\s*:(?P<body>.*?)\n(?=\s{0,4}\S)",
-                  smoke_src, re.S)
-    if not m:
+    # There is more than one `if _fp_require and _fp_hard_fail:` site (one
+    # feeds the written report, one clears the verdict). At least one must
+    # clear `passed`, so check them all rather than only the first.
+    bodies = [m.group("body") for m in re.finditer(
+        r"if\s+_fp_require\s+and\s+_fp_hard_fail\s*:(?P<body>.*?)\n(?=\s{0,4}\S)",
+        smoke_src, re.S)]
+    if not bodies:
         return ("no `if _fp_require and _fp_hard_fail:` verdict site in "
                 "run_smoke.py -- nothing demotes a mismatch to a failure")
-    if not re.search(r"^\s+passed\s*=\s*False\s*$", m.group("body"), re.M):
+    if not any(re.search(r"^\s+passed\s*=\s*False\s*$", b, re.M) for b in bodies):
         return ("the fingerprint hard-fail site prints a message but never sets "
                 "`passed = False` -- a red message with a green verdict, which "
                 "is the exact defect this contract exists to prevent")
@@ -124,6 +128,34 @@ def _check_import_fatal(smoke_src: str) -> str | None:
         return ("the `_fingerprint is None` guard does not abort via sys.exit() "
                 "when _fp_require is set -- breaking the import is a 3-line way "
                 "to disable the fingerprint gate and still get a PASS")
+    return None
+
+
+def _check_report_wired(smoke_src: str) -> str | None:
+    """run_smoke must actually FEED the fingerprint verdict into the report.
+
+    _check_report_honest proves the renderer obeys run_failures; this proves
+    run_smoke passes them. Both are needed: a correct renderer nobody calls
+    correctly is how the report said PASS while the exit code said 1.
+    """
+    if not re.search(r"_run_failures\s*(:\s*list\[str\]\s*)?=\s*\[\]", smoke_src):
+        return ("run_smoke.py never builds a _run_failures list -- run-level "
+                "failures cannot reach the written report")
+    if not re.search(r"if\s+_fp_require\s+and\s+_fp_hard_fail\s*:\s*\n\s*_run_failures\.append",
+                     smoke_src):
+        return ("the fingerprint verdict is not appended to _run_failures, so "
+                "report.md/report.json can still record PASS for a run that "
+                "smoked the wrong binary")
+    for fn in ("render_markdown", "render_json"):
+        m = re.search(r"report\.%s\((?P<args>.*?)\)\s*\n" % fn, smoke_src, re.S)
+        if not m or "run_failures" not in m.group("args"):
+            return (f"report.{fn}(...) is called without run_failures -- the "
+                    f"written report ignores the fingerprint verdict")
+    # Ordering: the failure list must be built BEFORE the report is rendered.
+    if smoke_src.index("_run_failures.append") > smoke_src.index("report.render_markdown("):
+        return ("_run_failures is populated AFTER report.render_markdown() -- "
+                "the report is rendered before the verdict exists, which is "
+                "the original defect")
     return None
 
 
@@ -195,6 +227,52 @@ def _check_behaviour() -> str | None:
     return None
 
 
+def _check_report_honest() -> str | None:
+    """The written REPORT must not say PASS when the run is invalid.
+
+    The exit code being right is not enough: report.md / report.json are what
+    get quoted, and get_latest_smoke_report() serves them. This drives the real
+    renderers with an all-missions-passed row set plus a run-level failure and
+    requires both artifacts to say FAIL.
+    """
+    sys.path.insert(0, str(ROOT))
+    try:
+        from scripts.smoke_lib import report as rep
+        from scripts.smoke_lib.gates import Verdict
+        from scripts.smoke_lib.logparse import LogSummary
+    except Exception as exc:  # pragma: no cover
+        return f"cannot import scripts.smoke_lib.report: {exc!r}"
+
+    try:
+        row = rep.Row(stem="mc2_01",
+                      verdict=Verdict(passed=True, buckets=[], details=[]),
+                      summary=LogSummary(), destroys_delta=0)
+    except Exception as exc:
+        return f"cannot construct a synthetic passing Row: {exc!r}"
+
+    kw = dict(tier="tier1", profile="stock", timestamp="T")
+    fail = ["DEPLOY_FINGERPRINT: wrong binary"]
+
+    md = rep.render_markdown([row], run_failures=fail, **kw)
+    if "result=PASS" in md:
+        return ("report.md says result=PASS despite a run-level failure "
+                "(fingerprint mismatch) -- the artifact readers quote would "
+                "still certify a run on the wrong binary")
+    js = rep.render_json([row], run_failures=fail, **kw)
+    if js.get("overall_result") != "FAIL":
+        return (f"report.json overall_result={js.get('overall_result')!r} "
+                f"despite a run-level failure; expected 'FAIL'")
+    if not js.get("run_failures"):
+        return "report.json drops run_failures, hiding WHY the run is invalid"
+
+    # And the clean case must still read PASS, or the check is vacuous.
+    md_ok = rep.render_markdown([row], run_failures=[], **kw)
+    if "result=PASS" not in md_ok:
+        return ("a clean run no longer renders result=PASS -- the honesty fix "
+                "over-fires and would mark good runs invalid")
+    return None
+
+
 def run_checks(smoke_src: str, fp_src: str, with_behaviour: bool = True):
     """Return a list of (name, error_or_None)."""
     results = [
@@ -202,11 +280,13 @@ def run_checks(smoke_src: str, fp_src: str, with_behaviour: bool = True):
         ("fp_clears_verdict", _check_clears_verdict(smoke_src)),
         ("fp_exc_is_failure", _check_exc_is_failure(smoke_src)),
         ("fp_import_fatal", _check_import_fatal(smoke_src)),
+        ("fp_report_wired", _check_report_wired(smoke_src)),
         ("fp_docs_honest", _check_docs_honest(
             {"run_smoke.py": smoke_src, "smoke_lib/fingerprint.py": fp_src})),
     ]
     if with_behaviour:
         results.append(("fp_behaviour", _check_behaviour()))
+        results.append(("fp_report_honest", _check_report_honest()))
     return results
 
 
@@ -221,10 +301,19 @@ def _mut_default_off(src: str) -> str:
 
 
 def _mut_no_verdict_clear(src: str) -> str:
-    m = re.search(r"(if\s+_fp_require\s+and\s+_fp_hard_fail\s*:.*?)\n(\s+)passed\s*=\s*False",
+    """Remove the fingerprint block's `passed = False`.
+
+    Anchored on the HARD FAIL message, NOT on `if _fp_require and
+    _fp_hard_fail:`: there are two such `if`s, and a lazy match from the first
+    one reaches past it to the VEG-SMOKE-FLOOR block's `passed = False`, so the
+    injection silently mutilated an unrelated guard and left the fingerprint
+    one intact. The selftest caught that -- it reported the guard as not
+    firing, which was true of the injection, not of the guard.
+    """
+    m = re.search(r"(HARD FAIL: smoke ran an exe.*?)\n(\s+)passed\s*=\s*False",
                   src, re.S)
     if not m:
-        raise RuntimeError("selftest mutation target (passed = False) not found")
+        raise RuntimeError("selftest mutation target (fingerprint passed=False) not found")
     return src[:m.start(2)] + m.group(2) + "pass" + src[m.end(0):]
 
 
@@ -248,7 +337,14 @@ def _mut_dishonest_doc(src: str) -> str:
         "MC2_SMOKE_REQUIRE_FINGERPRINT=1\n# = hard fail)", 1)
 
 
+def _mut_report_unwired(src: str) -> str:
+    """Drop run_failures from the report calls (the pre-fix shape)."""
+    return re.sub(r",?\s*\n\s*run_failures=_run_failures", "", src)
+
+
 SELFTEST_CASES = [
+    ("fp_report_wired", "stop feeding the verdict to the report",
+     _mut_report_unwired, "smoke"),
     ("fp_default_on", "flip the gate back to opt-in", _mut_default_off, "smoke"),
     ("fp_clears_verdict", "print the message but not fail", _mut_no_verdict_clear, "smoke"),
     ("fp_exc_is_failure", "swallow the check exception", _mut_exc_swallowed, "smoke"),

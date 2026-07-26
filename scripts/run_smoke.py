@@ -2948,14 +2948,31 @@ def main():
         # 2s grace for PDB lock release before next spawn.
         import time as _t; _t.sleep(2)
 
+    # SMOKE-DEPLOY-TRAP-1: collect RUN-LEVEL failures BEFORE rendering. The
+    # report used to be written here, ahead of the fingerprint verdict below,
+    # so report.md/report.json (and the get_latest_smoke_report() MCP tool that
+    # serves them) recorded "result=PASS (5/5 passed)" for a run that exited 1
+    # because it had smoked the wrong binary. The exit code was honest; the
+    # artifact people actually quote was not -- and quoting the artifact is
+    # exactly what the eight trapped lanes did.
+    _run_failures: list[str] = []
+    if _fp_require and _fp_hard_fail:
+        _run_failures.append(
+            "DEPLOY_FINGERPRINT: the smoked exe does not match this worktree "
+            "HEAD (stale / wrong-lane / built-from-dirty). The mission results "
+            "below were produced by a different binary and prove nothing about "
+            "this commit.")
+
     md = report.render_markdown(rows, tier=args.tier or "adhoc",
                                  profile=args.profile, timestamp=timestamp,
-                                 show_window=args.show_window)
+                                 show_window=args.show_window,
+                                 run_failures=_run_failures)
     (artifact_dir / "report.md").write_text(md, encoding="utf-8")
     (artifact_dir / "report.json").write_text(
         json.dumps(report.render_json(rows, tier=args.tier or "adhoc",
                                       profile=args.profile, timestamp=timestamp,
-                                      show_window=args.show_window),
+                                      show_window=args.show_window,
+                                      run_failures=_run_failures),
                    indent=2), encoding="utf-8")
 
     if args.baseline_update:
