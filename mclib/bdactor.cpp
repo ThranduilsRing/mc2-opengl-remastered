@@ -37,6 +37,42 @@ static const bool s_propLodShadowCast = []() {
 	return v && v[0] && v[0] != '0';
 }();
 
+// FOLIAGE-ALPHAFLAG-1: MC2_PROP_FOLIAGE_ALPHAFLAG (default OFF).
+//
+// THE BUG. Both recipe paths (BldgAppearance/TreeAppearance::registerStatic)
+// built their per-instance flags word with
+//     if (child->GetIsSpotlight()) flags |= (1u << 2);
+// but bit 2 was repurposed to kFlagIsAlphaTest in T3.2 (see the lockstep note
+// at gos_static_prop_batcher.cpp:5590-5600 and the shader-side declaration at
+// static_prop.vert:690). Spotlight children are `continue`-skipped ~10 lines
+// above both sites, so bit 2 was NEVER set on the recipe path at all. Two
+// shader features that key off it were consequently dead there:
+//   1. the alpha-test EXCLUSION in the MC2_PROP_BASE_LIGHT_DIR wrap term
+//      (static_prop.vert:800) — foliage was modulated by a directional term
+//      explicitly designed to exclude it;
+//   2. two-sided abs(NdotL) foliage lighting (static_prop.vert:731).
+//
+// WHY GATED, AND WHY GATED *HERE*. GpuStaticPropBatcher::submitMultiShape
+// already sets bit 2 correctly from the same alphaTestOn source
+// (gos_static_prop_batcher.cpp:5575), so two-sided foliage lighting is ALREADY
+// LIVE on that path in the shipped render. Gating the shader-side abs() branch
+// would therefore have CHANGED shipped pixels. Gating at this emission site
+// instead makes default-OFF byte-identical by construction (the recipe path
+// emits the same zero bit it emits today, and submitMultiShape is untouched),
+// and makes gate-ON *converge* the two paths rather than diverge them.
+//
+// NOT a GBuffer1 classification change either way: the alpha-test shadow class
+// (a=0.1875, PROP-ALPHA-SHADOW-CLASS-1) is driven by the per-PACKET
+// materialFlags baked at registerType from the same alphaTestOn
+// (gos_static_prop_batcher.cpp:2894), which is an independent channel from this
+// per-INSTANCE flags word. So this cannot double-classify and cannot move
+// shipped shoreline pixels.
+static const bool s_propFoliageAlphaFlag = []() {
+	const char* v = getenv("MC2_PROP_FOLIAGE_ALPHAFLAG");
+	return v && v[0] && v[0] != '0';
+}();
+static inline bool propFoliageAlphaFlag() { return s_propFoliageAlphaFlag; }
+
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
 // 0       = legacy: bldgTypeHasAnimations disqualifies entire type.
@@ -4425,7 +4461,7 @@ void BldgAppearance::registerStatic() {
 		uint32_t flags = 0;
 		if (child->GetLightsOut())   flags |= (1u << 0);
 		if (child->GetIsWindow())    flags |= (1u << 1);
-		if (child->GetIsSpotlight()) flags |= (1u << 2);
+		if (propFoliageAlphaFlag() && child->GetIsAlphaTest()) flags |= (1u << 2);
 		// rec->shapeToWorld is LinearMatrix4D; convert to Matrix4D for buildRecipeFromShape().
 		Stuff::Matrix4D xform(rec->shapeToWorld);
 		// TERRAIN-DECAL-SLICE-0A: replace the yaw-only leaf transform with the
@@ -7329,7 +7365,7 @@ void TreeAppearance::registerStatic() {
 			uint32_t flags = 0;
 			if (child->GetLightsOut())   flags |= (1u << 0);
 			if (child->GetIsWindow())    flags |= (1u << 1);
-			if (child->GetIsSpotlight()) flags |= (1u << 2);
+			if (propFoliageAlphaFlag() && child->GetIsAlphaTest()) flags |= (1u << 2);
 			Stuff::Matrix4D xform(rec->shapeToWorld);
 			GpuStaticPropInstance inst;
 			if (!GpuStaticPropBatcher::instance().buildRecipeFromShape(

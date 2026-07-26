@@ -1058,6 +1058,14 @@ class TG_Shape
 		// Returns true only when myType is non-null AND its node-type is
 		// SHAPE_NODE (the only kind that has TG_TypeShape geometry).
 		bool  IsShapeNode()       const;
+		// FOLIAGE-ALPHAFLAG-1: alpha-test (foliage/lattice) classification for
+		// non-friend recipe builders (BldgAppearance/TreeAppearance::registerStatic).
+		// alphaTestOn lives on the TG_TypeShape behind the protected myType, so
+		// this mirrors IsShapeNode's out-of-line seam. This is the SAME source
+		// GpuStaticPropBatcher::submitMultiShape already reads for its bit-2
+		// (gos_static_prop_batcher.cpp:5575) — the accessor exists so the recipe
+		// path can agree with it instead of carrying the retired spotlight meaning.
+		bool  GetIsAlphaTest()    const;
 
 		void SetLightsOut (bool lightFlag)
 		{

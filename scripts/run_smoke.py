@@ -1723,6 +1723,12 @@ def main():
                             # prop shadow replay (default OFF). Must be allowlisted
                             # or Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_LOD_SHADOW_CAST",
+                            # FOLIAGE-ALPHAFLAG-1 -- recipe-path per-instance
+                            # flags bit 2 carries kFlagIsAlphaTest (from
+                            # alphaTestOn) instead of the retired spotlight
+                            # meaning (default OFF). Must be allowlisted or
+                            # Popen drops it and the gate-ON smoke does nothing.
+                            "MC2_PROP_FOLIAGE_ALPHAFLAG",
                             # PROP-BASE-LIGHT-DIR-1 -- directional/hemispherical
                             # orientation term for the baked static-prop
                             # base_light seed (float strength 0..1, default 0.0

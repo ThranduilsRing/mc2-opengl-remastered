@@ -829,6 +829,16 @@ bool TG_Shape::IsShapeNode() const
 }
 
 //-------------------------------------------------------------------------------
+// FOLIAGE-ALPHAFLAG-1: out-of-line for the same reason as IsShapeNode above —
+// myType is protected. Only SHAPE_NODEs have a TG_TypeShape with alphaTestOn;
+// anything else classifies as not-alpha-test.
+bool TG_Shape::GetIsAlphaTest() const
+{
+	if (!IsShapeNode()) return false;
+	return static_cast<const TG_TypeShape*>(myType)->alphaTestOn;
+}
+
+//-------------------------------------------------------------------------------
 //Frees memory and resets locals to defaults.
 void TG_Shape::destroy (void)
 {
