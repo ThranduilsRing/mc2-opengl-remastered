@@ -106,6 +106,16 @@ the same, but for a DIM-baked prop it *replaces* the 0.7529 ambient instead of
 matches both prior lanes' constants) is strong; the causal step "these specific
 DIM instances baked inside a tree window" has not been directly instrumented.
 
+**Competing hypothesis that the data does NOT yet exclude.** The BRIGHT/DIM split
+could instead be a bake-*time* split rather than a bake-*order* split: recipes
+baked before vs after the `LIGHTBAKE-REBAKE-ON-READY-1` soft cache invalidation
+(`bdactor.cpp:3128-3147`, mission-start + 8 frames, default-ON) would sample a
+genuinely different scene ambient, with no tree involvement at all. Both
+hypotheses predict per-instance within-type variation, so the observed table
+cannot separate them. The §3.1 probe must therefore log **both**
+`getWorldLight(0)->active` **and** the bake frame per recipe — logging only the
+first would confirm a hypothesis it cannot actually distinguish.
+
 ## 3. Suggested next slice (do NOT skip the proof step)
 
 1. Instrument: log `getWorldLight(0)->active` at each `mc2CacheOrBakeStaticGpuLight`
