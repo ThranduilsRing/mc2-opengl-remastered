@@ -29,7 +29,7 @@ Output: `build64/RelWithDebInfo/mc2.exe`
 The game runs from a separate deployment directory, not the source tree. The exe and shaders must stay in lockstep (a shader-only or exe-only copy silently drifts the two apart), so the canonical way to deploy is `scripts/deploy_payload.py`, which copies the exe together with shaders and the rest of the payload and verifies the result against a manifest:
 
 ```bash
-py -3 scripts/deploy_payload.py <deploy-dir> --source-root . --build-dir build64 --exe-name mc2.exe
+py -3 scripts/deploy_payload.py <deploy-dir> --source-root . --build-dir build64/RelWithDebInfo --exe-name mc2.exe
 ```
 
 If `<deploy-dir>` isn't one of the script's known canonical targets, add `--allow-new-target` to confirm the new location deliberately.

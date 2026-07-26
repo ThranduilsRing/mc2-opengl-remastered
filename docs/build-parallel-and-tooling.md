@@ -74,7 +74,7 @@ dir**. The pipeline:
 2. cd into it; git checkout --detach <nifty-commit-sha>  (detached — no branch conflict)
 3. cmake configure if build64/ is empty or CMakeCache references the wrong commit.
 4. cmake --build build64 --config RelWithDebInfo --target mc2
-5. py -3 scripts/deploy_payload.py <SPARE-DEPLOY-DIR> --source-root . --build-dir build64 --exe-name mc2.exe
+5. py -3 scripts/deploy_payload.py <SPARE-DEPLOY-DIR> --source-root . --build-dir build64/RelWithDebInfo --exe-name mc2.exe
 6. py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs
    (run_smoke auto-leases the deploy dir; or pass --exe <SPARE-DEPLOY-DIR>/mc2.exe)
 ```

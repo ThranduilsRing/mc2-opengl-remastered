@@ -162,7 +162,7 @@ verify `git diff` is yours-only before staging. Do the same.
 - **CMake:** `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
 - **Build (always RelWithDebInfo):** `<cmake> --build build64 --config RelWithDebInfo --target mc2`
   — capture the REAL exit code (don't pipe to tail/head; that masks failures — bit me twice).
-- **Deploy:** `py -3 scripts/deploy_payload.py "A:/Games/mc2-opengl/mc2-win64-0.4c" --source-root . --exe-name mc2.exe`
+- **Deploy:** `py -3 scripts/deploy_payload.py "A:/Games/mc2-opengl/mc2-win64-v0.4c" --source-root . --build-dir build64/RelWithDebInfo --exe-name mc2.exe`
 - **Smoke (2 missions, routine):** `MC2_DEBUG_STATE_DUMP=1 py -3 scripts/run_smoke.py --duration 30 --keep-logs --no-lease --exe "A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe" --mission mc2_01 --mission mc2_24`
   (full tier1 only for landing checks; 2 missions for iteration — NOT 5 every time.)
 - **Offline logic tests:** `bash scripts/run-unit-tests.sh --ts=FrameGraph` (or ViewCurrency, or all).

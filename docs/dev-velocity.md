@@ -65,7 +65,11 @@ One deploy dir per concurrent lane, always (`.claude/DEPLOY-DIR-LANE-MAP.md`).
    --branch <lane-branch>` (spawn_lane `--suggest-deploy` prints this for
    you at standup time).
 2. **Deploy there:** `py -3 scripts/deploy_payload.py <dir> --source-root .
-   --build-dir build64 --exe-name mc2.exe`.
+   --build-dir build64/RelWithDebInfo --exe-name mc2.exe`.
+   `--build-dir` must be the **per-config** dir: `deploy_payload.py` looks for
+   `<build-dir>/mc2.exe`, and the MSVC generator emits
+   `build64/RelWithDebInfo/mc2.exe`. Passing plain `build64` fails with
+   `source exe not found: build64\mc2.exe`.
 3. **Smoke with an explicit exe:** `run_smoke.py ... --exe <dir>/mc2.exe` —
    this LEASES that folder in `A:/Games/mc2-opengl/.smoke_leases.json`
    (TTL 1 h) so concurrent smokes skip it. Plain `run_smoke.py` with no
