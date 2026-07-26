@@ -851,11 +851,26 @@ static const float s_fixtureLightsScale = []() {
 // overview altitude. The near/far window is deliberately NOT env-tunable so the
 // bound cannot be configured away.
 //
-// "0" -> off, byte-identical. Unset -> default. Numeric -> strength /
-// verify-by-exaggeration. Resolved once at process start.
+// DEFAULT-OFF on measured evidence. The mechanism is verified and bounded
+// (see .claude/FIXTURE-GLOW-1-STATUS.md), but at strength 1.0 the visible
+// result on the only fixtures that could be observed on screen -- the green
+// beacons of mc2_10 -- is a modest pale-ing of an already-green cone, not the
+// "a light came on" the user asked for. Two facts drive the OFF default:
+//   * the fixture lens already renders at channel max, so the ONLY headroom
+//     left in an LDR target is the OTHER channels -- i.e. any additional glow
+//     necessarily desaturates toward white. That is physically what a hot light
+//     core does, but it is an aesthetic call, and this user has already
+//     rejected one fixture-lighting attempt as "atrociously hideous";
+//   * the red and blue fixture types were never observed glowing on screen (see
+//     the status doc) -- only green was, for the fifth lane running.
+// Shipping this ON would repeat the predecessor's outcome: a safe default-ON
+// change that does not close the complaint. It needs a strength picked by eye.
+//
+// "0"/unset -> off, byte-identical. Numeric -> strength; 1.0 is the calibrated
+// baseline, 3-4 is the "clearly a light" range. Resolved once at process start.
 static const float s_fixtureGlowStrength = []() {
     const char* v = getenv("MC2_STATIC_PROP_FIXTURE_GLOW");
-    if (!v || !*v) return 1.0f;              // DEFAULT ON
+    if (!v || !*v) return 0.0f;              // DEFAULT OFF
     float f = (float)atof(v);
     if (f < 0.0f) f = 0.0f;
     if (f > 8.0f) f = 8.0f;
