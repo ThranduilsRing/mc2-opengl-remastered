@@ -3093,7 +3093,7 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 				extern void mc2InvalidateBakedStaticLightCache();
 				mc2InvalidateBakedStaticLightCache();
 				s_rebakeDone = true;
-				printf("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
+				MC2_DIAGF("[LIGHTBAKE v1] event=rebake_on_ready frame=%u\n",
 				       (unsigned)g_mc2FrameCounter);
 				fflush(stdout);
 			}

@@ -1144,7 +1144,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 					FILE* sf = fopen(slPath, "rb");
 					if (!sf)
 					{
-						printf("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
+						MC2_DIAGF("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
 						       " -- pure elevation bands, no mask modulator\n", slPath);
 						fflush(stdout);
 					}
@@ -1156,7 +1156,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 						if (sFileSize <= 0)
 						{
 							fclose(sf);
-							printf("[TERRAIN_SHORELINE v1] EMPTY FILE path=%s\n", slPath);
+							MC2_DIAGF("[TERRAIN_SHORELINE v1] EMPTY FILE path=%s\n", slPath);
 							fflush(stdout);
 						}
 						else
@@ -1166,7 +1166,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 							fclose(sf);
 							if (rd != (size_t)sFileSize)
 							{
-								printf("[TERRAIN_SHORELINE v1] READ FAIL path=%s read=%zu want=%ld\n",
+								MC2_DIAGF("[TERRAIN_SHORELINE v1] READ FAIL path=%s read=%zu want=%ld\n",
 								       slPath, rd, sFileSize);
 								fflush(stdout);
 							}
@@ -1177,7 +1177,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 									pngBytes.data(), (int)sFileSize, &sw, &sh);
 								if (!srgba)
 								{
-									printf("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path=%s\n", slPath);
+									MC2_DIAGF("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path=%s\n", slPath);
 									fflush(stdout);
 								}
 								else
@@ -1201,7 +1201,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 										if (fscanf(sbf, "%f %f %f %f", &sbx, &sby, &sbw, &sbh) == 4)
 										{
 											sTLX = sbx; sTLY = sby; sSizeX = sbw; sSizeY = sbh;
-											printf("[TERRAIN_SHORELINE v1] bounds override path=%s (%.1f,%.1f,%.1f,%.1f)\n",
+											MC2_DIAGF("[TERRAIN_SHORELINE v1] bounds override path=%s (%.1f,%.1f,%.1f,%.1f)\n",
 											       sBoundsPath, sTLX, sTLY, sSizeX, sSizeY);
 											fflush(stdout);
 										}
@@ -1209,7 +1209,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 									}
 									gos_TerrainLodChunk_UploadShorelineMask(srgba, sw, sh,
 									                                         sTLX, sTLY, sSizeX, sSizeY);
-									printf("[TERRAIN_SHORELINE v1] LOADED path=%s size=%dx%d bounds=(%.1f,%.1f,%.1f,%.1f)\n",
+									MC2_DIAGF("[TERRAIN_SHORELINE v1] LOADED path=%s size=%dx%d bounds=(%.1f,%.1f,%.1f,%.1f)\n",
 									       slPath, sw, sh, sTLX, sTLY, sSizeX, sSizeY);
 									fflush(stdout);
 									ControlMapPng_FreePixels(srgba);

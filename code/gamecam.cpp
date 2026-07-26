@@ -40,6 +40,7 @@
 #endif
 
 #include "ground_contact_blob.h"  // GROUND-CONTACT-BLOB-1
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include<mlr/mlr.hpp>
 #include <tracy/Tracy.hpp>
@@ -360,7 +361,7 @@ void GameCamera::render (void)
 							}
 							const int ok = (legacy != nullptr) && (maxDiff <= 1e-5f) ? 1 : 0;
 							if (s_vuCompareFrame <= 10 || ok == 0) {
-								fprintf(stderr, "[VIEW_UNIFORMS v1] compare frame=%d max_diff=%.6f ok=%d\n",
+								MC2_DIAGFE(stderr, "[VIEW_UNIFORMS v1] compare frame=%d max_diff=%.6f ok=%d\n",
 								        s_vuCompareFrame, maxDiff, ok);
 								fflush(stderr);
 							}

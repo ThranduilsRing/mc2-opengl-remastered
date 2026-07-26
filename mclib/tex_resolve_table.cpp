@@ -100,7 +100,7 @@ void beginFrameTexResolve(uint64_t frameId)
     g_texResolveTable.frameActive = true;
 
     if (g_texResolveTable.trace) {
-        printf("[TEX_RESOLVE v1] event=begin_frame frame=%llu\n",
+        MC2_DIAGF("[TEX_RESOLVE v1] event=begin_frame frame=%llu\n",
                (unsigned long long)frameId);
         fflush(stdout);
     }
@@ -127,7 +127,7 @@ void endFrameTexResolve(void)
 
     if ((s_totalFrames % kSummaryEveryNFrames) == 0) {
         const double avg_resolved = (double)s_totalResolves / (double)s_totalFrames;
-        printf("[TEX_RESOLVE v1] event=summary frames=%llu resolved_per_frame_avg=%.1f mismatches=%llu oob=%llu\n",
+        MC2_DIAGF("[TEX_RESOLVE v1] event=summary frames=%llu resolved_per_frame_avg=%.1f mismatches=%llu oob=%llu\n",
                (unsigned long long)s_totalFrames,
                avg_resolved,
                (unsigned long long)s_mismatchCount,
