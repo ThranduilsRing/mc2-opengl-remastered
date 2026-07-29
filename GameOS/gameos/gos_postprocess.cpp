@@ -771,7 +771,13 @@ gosPostProcess::gosPostProcess()
     // SSAO-BLUR-1: blur on by default whenever SSAO runs (the un-blurred chain
     // is not a shippable configuration -- see shaders/ssao_blur.frag header).
     , ssaoBlurEnabled_(true)
-    , aoBlurDepthSigma_(0.02f)
+    // SSAO-BLUR-1: 0.10 chosen by measured sweep (mc2_01, AO buffer, half-res
+    // HF-noise metric, vs blur OFF on cliff_wall_sideon -- the pose that
+    // actually carries noise): 0.02 -> -52.5%, 0.10 -> -68.6%, 0.40 -> -69.3%.
+    // 0.10 takes essentially all the available denoise while keeping a real
+    // edge-stop; 0.40 buys +0.7pp more and bleeds more occlusion outward
+    // (%<250 21.98 -> 22.04 vs 19.39 with blur off).
+    , aoBlurDepthSigma_(0.10f)
 {
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));

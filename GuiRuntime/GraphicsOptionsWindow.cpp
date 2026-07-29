@@ -2075,7 +2075,7 @@ void draw() {
                     // turned the feature off.
                     pp->aoRadius_ = 24.0f; pp->aoStrength_ = 0.7f;
                     pp->aoBias_ = 0.0025f; pp->aoPower_ = 1.5f;
-                    pp->ssaoBlurEnabled_ = true; pp->aoBlurDepthSigma_ = 0.02f;
+                    pp->ssaoBlurEnabled_ = true; pp->aoBlurDepthSigma_ = 0.10f;
                 }
                 ImGui::Unindent();
             }
