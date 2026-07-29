@@ -1220,7 +1220,7 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
     // paint (bright lane stripes / numbers) or tar (dark seams), not concrete.
     const int dstX = (k % gridSide) * txmSize;
     const int dstY = (k / gridSide) * txmSize;
-    long far = 0, tot = 0;
+    long offBand = 0, tot = 0;   // NB: not `far` -- that is a Windows keyword macro.
     for (int py = 0; py < txmSize; ++py) {
         const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
@@ -1230,10 +1230,10 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
                           + 0.587f * float((c >>  8) & 0xFFu)
                           + 0.114f * float( c        & 0xFFu);
             ++tot;
-            if (std::fabs(L - s.lum) > kConcreteMarkDelta) ++far;
+            if (std::fabs(L - s.lum) > kConcreteMarkDelta) ++offBand;
         }
     }
-    s.markFrac = (tot > 0) ? (float)far / (float)tot : 0.f;
+    s.markFrac = (tot > 0) ? (float)offBand / (float)tot : 0.f;
     s.marks    = s.markFrac > kConcreteMarkFrac;
 }
 
