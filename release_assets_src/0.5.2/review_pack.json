@@ -5,7 +5,7 @@
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 — Fix Review",
  "lede": "Session 2026-07-23. One card per fix below: what changed, the gate + recommended setting, and full-resolution before/after crops. Click any image to open the full file. All fixes are default-OFF byte-identical unless noted.",
- "toc_html": "<b>Jump to:</b> <a href=\"#open_gates\"><b style=\"color:#f0d890\">Open user gates</b></a> &nbsp;|&nbsp; <a href=\"#gates\"><b>Gate inventory (approve defaults here)</b></a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">1 shoreline</a> <a href=\"#02_runway\">2 runway</a> <a href=\"#03_mech_night_shadow\">3 contact shadow</a> <a href=\"#04_water_graze\">4 water graze</a> <a href=\"#05_night_fog_dim\">5 night fog</a> <a href=\"#06_edge_light_billboard\">6 billboard (superseded)</a> <a href=\"#07_cone_lamp_guard\">7 cone guard</a> <a href=\"#08_prop_self_shadow\">8 prop shadow</a> <a href=\"#09_runway_marker_lights\">9 marker lights</a> <a href=\"#10_light_realism\">10 light realism</a> <a href=\"#11_vehicle_night_lit\">11 vehicle night (not fixed)</a> <a href=\"#12_mc2_24_cement\">12 mc2_24 cement</a><a href=\"#13_unlinked\">13 unlinked captures</a> <a href=\"#14_lanes\"><b>14 lanes &amp; efforts</b></a> <a href=\"#instruments\"><b>Instruments that lied</b></a> <a href=\"#golden\">Golden re-bless</a>",
+ "toc_html": "<b>Jump to:</b> <a href=\"#open_gates\"><b style=\"color:#f0d890\">Open user gates</b></a> &nbsp;|&nbsp; <a href=\"#gates\"><b>Gate inventory (approve defaults here)</b></a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">1 shoreline</a> <a href=\"#02_runway\">2 runway</a> <a href=\"#03_mech_night_shadow\">3 contact shadow</a> <a href=\"#04_water_graze\">4 water graze</a> <a href=\"#05_night_fog_dim\">5 night fog</a> <a href=\"#06_edge_light_billboard\">6 billboard (superseded)</a> <a href=\"#07_cone_lamp_guard\">7 cone guard</a> <a href=\"#08_prop_self_shadow\">8 prop shadow</a> <a href=\"#09_runway_marker_lights\">9 marker lights</a> <a href=\"#10_light_realism\">10 light realism</a> <a href=\"#11_vehicle_night_lit\">11 vehicle night (not fixed)</a> <a href=\"#12_mc2_24_cement\">12 mc2_24 cement</a><a href=\"#13_unlinked\">13 unlinked captures</a> <a href=\"#14_lanes\"><b>14 lanes &amp; efforts</b></a> <a href=\"#instruments\"><b>Instruments that lied</b></a> <a href=\"#golden\">Golden re-bless</a> <a href=\"#19_cement_concrete\">19. Concrete tone: ARM A vs ARM B</a>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
   {
@@ -3754,6 +3754,1897 @@
        "caption": "NEW (v0.5.2 proposed)",
        "role": "AFTER",
        "src": "golden_rebless/mc2_10_saved_204753__lamp_cones__NEW_v0.5.2.png"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "19_cement_concrete",
+   "anchor": "#19_cement_concrete",
+   "heading": "19. Concrete tone &mdash; ARM A vs ARM B (your choice)",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "The user's ruling: <i>\"do 3, in the index.html &mdash; also ... by all concrete I mean only the <b>actual concrete</b> ... obviously runways, roads, other overlays etc. are their own layer and are currently handled by the shader.\"</i> Two arms are built, both <b>default OFF</b>, and presented here to choose from. Neither is recommended by the lane &mdash; the frames are the decision.<br><br><b>ARM A</b> <code>MC2_CEMENT_CONCRETE_TONE=1</code> &mdash; each concrete cell keeps its own art; only its <i>base tone</i> is pulled onto one reference. <b>ARM B</b> <code>MC2_CEMENT_CONCRETE_CANON=1</code> &mdash; every plain-concrete tile samples <i>one</i> canonical cell, so concrete cannot change colour tile to tile at all. Both act only on cells passing an explicit <b>is-this-actually-concrete</b> test (near-neutral chroma &le; 0.20, band luminance within [0.72,1.32] of the family centre)."
+    },
+    {
+     "type": "note",
+     "html": "<b>SCOPE QUESTION ANSWERED &mdash; markings do NOT live in the concrete cells.</b> This is what blocked the previous lane, and the ruling is confirmed twice over. <b>From source:</b> the solid-cement map <code>g_cementLayerIndexBySlot</code> that ARM B repoints is built only from slots where <code>isCement &amp;&amp; !isAlpha</code>; alpha cells are explicitly skipped when it is filled, and <code>TileIsRoadArt()</code> says it outright &mdash; a slot present in that map is <i>\"solid cement, not road\"</i>. Runway and road art arrives either as an <code>&amp;Overlays</code> id (its own sampler and blend, <code>u_overlaySidecar</code> / <code>terrain_overlay.frag</code>) or as a cement-<b>alpha</b> transition cell, which is appended past the solid range both arms operate on. <b>From measurement:</b> the cement atlas was dumped (new <code>MC2_CEMENT_ATLAS_DUMP</code> diagnostic) and inspected &mdash; on mc2_24, <b>not one of the 110 solid cells has a single texel more than 45 luma above its band mean</b> (largest excursion ~11). There is no painted marking art in solid concrete cells to erase. The census reports <code>family_marked=0</code>; a map that <i>does</i> pack paint into a solid cell is detected (&gt;2% of texels &gt;60 luma above band) and excluded from ARM B by index."
+    },
+    {
+     "type": "note",
+     "html": "<b>MEASURED &mdash; and it reframes the problem.</b> Dumping the atlas showed cross-cell <i>base tone</i> is far more uniform than assumed: on mc2_24 the median cell sits at L=146.3 with p05&ndash;p95 = 133&ndash;148. What actually varies is <i>inside</i> the cells &mdash; <b>78 of 110 cells carry a large dark region</b>, 36&ndash;52% of the tile at L&asymp;60 against concrete at L&asymp;147. That in-cell dark art, not cross-cell tone, is the dominant reason concrete reads as changing colour here. It is why ARM B (which replaces the whole cell) moves ~11&ndash;15 luma while ARM A (which only rescales base tone) moves ~1&ndash;2."
+    },
+    {
+     "type": "note",
+     "html": "<b>HONEST CAVEAT ON ARM A &mdash; read before grading.</b> On mc2_24 ARM A's census line is <code>family=110 adjusted=96 ref_rgb=149.0,146.4,138.4</code>, which is <b>numerically identical</b> to the census of the gate already rejected (<code>MC2_CEMENT_TONE_MATCH</code>, <i>\"after is WAY worse\"</i>). On that map every solid cell passes the concrete test, so concrete-only scoping buys nothing and ARM A <b>is</b> that rejected lever with a narrower clamp. It differs only where a map packs genuinely non-concrete cement cells. If mc2_24 is the reference, expect to reject ARM A again &mdash; the lane will not claim otherwise."
+    },
+    {
+     "type": "meta",
+     "attrs": "class=\"meta\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Gates"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>MC2_CEMENT_CONCRETE_TONE=1</code> (ARM A) &middot; <code>MC2_CEMENT_CONCRETE_CANON=1</code> (ARM B) &mdash; both DEFAULT OFF, byte-identical when off"
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Commits"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>d6ae45f9</code> both arms + concrete-family classifier &middot; <code>7c80c004</code> marking detector recalibrated against the dumped atlas"
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Build"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "exe sha <code>7c80c004ada9</code>, DIRTY=0, built in an <b>isolated worktree</b> (the shared tree was under live sibling edits mid-session). <b>tier1 5/5 PASS</b> with <code>[DEPLOY_FINGERPRINT] OK</code> logged on all five missions."
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Measurement floor"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Two-run floor published per pose below, before any claim. <b>0.0000% exact</b> on the headline poses (mc2_01 &times;3, mc2_03 &times;2, mc2_05 control, mc2_23 runway_ground, mc2_24 industrial + water control). Poses whose floor exceeds the effect are marked FLOOR-INVALID and carry no claim."
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "No-pavement control"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_24 water_near, mc2_01 beach_north_wide, mc2_05 control_no_buildings, mc2_03 civstore_lightaway, mc2_10 saved_212019 &mdash; all measure <b>exactly 0.00%</b> changed on both arms. Neither gate touches anything but concrete."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "Concrete tone spread across atlas cells (the &ldquo;43 &rarr; 135&rdquo; number, measured at source)"
+    },
+    {
+     "type": "note",
+     "html": "ARM A rescales the cells, so its effect shows here directly. ARM B leaves the atlas untouched and instead makes every plain-concrete tile sample a <b>single</b> cell &mdash; so its effective in-use spread is <b>zero by construction</b>, which no atlas statistic can express."
+    },
+    {
+     "type": "meta",
+     "attrs": "class=\"meta\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Map"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "OFF cross-cell spread"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM A"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM B"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_01</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "61.1 luma (std 10.38)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "61.1 luma (std 7.50)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "atlas unchanged &mdash; collapses to <b>one cell in use</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_03</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "4.0 luma (std 1.31)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.7 luma (std 0.25)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "atlas unchanged &mdash; collapses to <b>one cell in use</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_05</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "20.6 luma (std 2.60)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.7 luma (std 0.25)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "atlas unchanged &mdash; collapses to <b>one cell in use</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_10</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "7.2 luma (std 1.90)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.3 luma (std 0.43)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "atlas unchanged &mdash; collapses to <b>one cell in use</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_23</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "61.1 luma (std 15.72)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "59.1 luma (std 10.91)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "atlas unchanged &mdash; collapses to <b>one cell in use</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_24</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "40.6 luma (std 7.19)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "13.0 luma (std 2.02)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "atlas unchanged &mdash; collapses to <b>one cell in use</b>"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "Per-pose measurement (two-run floor first, as required)"
+    },
+    {
+     "type": "note",
+     "html": "<b>Hard-step %</b> is the fraction of adjacent-pixel luminance jumps &gt;16 &mdash; introducing new hard steps is what sank <code>MC2_PAVED_OVERLAY_CLASS</code> (0.6&ndash;10.8pp). <b>ARM A adds at most +0.06pp; ARM B at most +0.62pp</b> (mc2_24 saved_192316) &mdash; both at or below the bottom of that rejected range, and on several poses both <i>reduce</i> it."
+    },
+    {
+     "type": "meta",
+     "attrs": "class=\"meta\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Map"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Pose"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "2-run floor"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM A: px / mean &Delta;L"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM B: px / mean &Delta;L"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "hard-step % OFF / A / B"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_01</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "day_runway_ground"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "27.3% / 3.77"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "18.5% / 10.82"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.072 / 0.128 / 0.083"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_01</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "day_runway_mid"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "23.3% / 2.86"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "16.0% / 9.34"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.403 / 1.491 / 1.408"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_01</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "beach_north_wide"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.132 / 0.132 / 0.132"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_03</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "sam_lightfacing"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0608%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "30.0% / 0.36"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "17.7% / 6.03"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.355 / 1.354 / 1.339"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_03</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "industrial_lightaway"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "20.2% / 0.22"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "16.9% / 4.39"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.027 / 1.026 / 1.026"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_03</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "civstore_lightaway"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.845 / 1.845 / 1.845"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_05</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_102009"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b style=\"color:#c0392b\">14.4327% FLOOR-INVALID</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "16.9% / 4.47"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "19.8% / 5.48"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.102 / 1.095 / 1.093"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_05</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "east_compound_lightfacing"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.1259%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "12.8% / 0.24"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "17.7% / 1.49"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.372 / 1.390 / 1.382"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_05</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "control_no_buildings"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.000 / 0.000 / 0.000"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_10</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_204937"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b style=\"color:#c0392b\">27.3360% FLOOR-INVALID</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "23.7% / 5.83"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "21.4% / 5.09"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "2.272 / 2.215 / 2.265"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_10</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "lance_close"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b style=\"color:#c0392b\">30.5794% FLOOR-INVALID</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "29.8% / 3.39"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "30.6% / 3.80"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "2.494 / 2.448 / 2.395"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_10</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_212019"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b style=\"color:#c0392b\">0.2467% FLOOR-INVALID</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.614 / 0.614 / 0.614"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_23</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "beacons_mid"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "7.7239%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "25.7% / 16.14"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "20.1% / 14.39"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.474 / 1.430 / 1.480"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_23</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "runway_ground"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "63.7% / 2.40"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "38.7% / 8.29"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.340 / 0.341 / 0.382"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_24</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "industrial_lightfacing"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "52.9% / 0.83"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "26.9% / 14.76"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3.029 / 3.028 / 3.042"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_24</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_192316"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0184%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "43.9% / 1.69"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "21.7% / 11.58"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3.078 / 3.178 / 3.697"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>mc2_24</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "water_near"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000%"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0% / 0.00"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.000 / 0.000 / 0.000"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "mc2_24 &mdash; DAY airbase apron, the richest concrete atlas (110 cells)"
+    },
+    {
+     "type": "pl",
+     "html": "<b>industrial_lightfacing</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>saved_192316</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_saved_192316_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_saved_192316_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_saved_192316_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_saved_192316_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_saved_192316_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_saved_192316_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_saved_192316_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>water_near</b> &mdash; <b>no-pavement CONTROL: both arms exactly 0.00%</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_water_near_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_water_near_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_water_near_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_water_near_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_water_near_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_water_near_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_water_near_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "mc2_23 &mdash; NIGHT runway, the reference map for this complaint (floor 0.0000%)"
+    },
+    {
+     "type": "pl",
+     "html": "<b>beacons_mid</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_beacons_mid_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>runway_ground</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_runway_ground_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_ground_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_ground_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_runway_ground_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_ground_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_runway_ground_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_ground_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "mc2_01 &mdash; DAY airbase runway apron (floor 0.0000%)"
+    },
+    {
+     "type": "pl",
+     "html": "<b>beach_north_wide</b> &mdash; <b>no-pavement CONTROL: both arms exactly 0.00%</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_beach_north_wide_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>day_runway_ground</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_ground_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>day_runway_mid</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_01_day_runway_mid_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "mc2_03 &mdash; NIGHT industrial (floor 0.0000%)"
+    },
+    {
+     "type": "pl",
+     "html": "<b>civstore_lightaway</b> &mdash; <b>no-pavement CONTROL: both arms exactly 0.00%</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_civstore_lightaway_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>industrial_lightaway</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_industrial_lightaway_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>sam_lightfacing</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_03_sam_lightfacing_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "mc2_05 &mdash; user bookmark pose + compound"
+    },
+    {
+     "type": "pl",
+     "html": "<b>control_no_buildings</b> &mdash; <b>no-pavement CONTROL: both arms exactly 0.00%</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_control_no_buildings_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>east_compound_lightfacing</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_east_compound_lightfacing_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>saved_102009</b> &mdash; <b style=\"color:#c0392b\">FLOOR-INVALID (two-run floor 14.4% exceeds the effect)</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_saved_102009_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_saved_102009_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_saved_102009_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_saved_102009_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_saved_102009_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_saved_102009_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_saved_102009_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "mc2_10 &mdash; NIGHT airbase (dynamic poses FLOOR-INVALID, shown for completeness only)"
+    },
+    {
+     "type": "pl",
+     "html": "<b>lance_close</b> &mdash; <b style=\"color:#c0392b\">FLOOR-INVALID (two-run floor 30.6% exceeds the effect)</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_lance_close_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_lance_close_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_lance_close_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_lance_close_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_lance_close_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_lance_close_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_lance_close_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>saved_204937</b> &mdash; <b style=\"color:#c0392b\">FLOOR-INVALID (two-run floor 27.3% exceeds the effect)</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_saved_204937_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_204937_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_204937_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_saved_204937_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_204937_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_saved_204937_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_204937_armB_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "<b>saved_212019</b> &mdash; <b>no-pavement CONTROL: both arms exactly 0.00%</b> &mdash; <b style=\"color:#c0392b\">FLOOR-INVALID (two-run floor 0.2% exceeds the effect)</b>"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_saved_212019_off.png"
+      },
+      {
+       "caption": "ARM A &mdash; concrete tone normalised",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_212019_armA.png"
+      },
+      {
+       "caption": "ARM B &mdash; one canonical concrete cell",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_212019_armB.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;, largest-change region)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_saved_212019_off_crop.png"
+      },
+      {
+       "caption": "ARM A &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_212019_armA_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "OFF &mdash; detail (2&times;)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_10_saved_212019_off_crop.png"
+      },
+      {
+       "caption": "ARM B &mdash; same detail (2&times;)",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_10_saved_212019_armB_crop.png"
       }
      ]
     }
