@@ -3762,7 +3762,7 @@
   {
    "id": "19_cement_concrete",
    "anchor": "#19_cement_concrete",
-   "heading": "19. Concrete tone &mdash; ARM A vs ARM B (your choice)",
+   "heading": "19. Concrete tone &mdash; ARM A vs ARM B vs <b>ARM C</b> (your choice)",
    "blocks": [
     {
      "type": "what",
@@ -5647,6 +5647,1004 @@
        "src": "19_cement_concrete/mc2_10_saved_212019_armB_crop.png"
       }
      ]
+    },
+    {
+     "type": "h3",
+     "html": "ARM C &mdash; what the &ldquo;dark regions&rdquo; actually are",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "note",
+     "html": "<b>A correction to this section, from measurement.</b> The two arms above were built on the premise that solid concrete cells carry no road or marking art &mdash; stated in this pack as <i>&ldquo;markings do NOT live in the concrete cells&rdquo;</i>, and supported by a test that found no texel more than 45 luma <b>above</b> its cell band. That test looked only at the <b>bright</b> side. The large dark region it then found in <b>78 of 110</b> mc2_24 cells was recorded as <i>&ldquo;authored material (joints, tarmac, shadowed detail)&rdquo;</i>.<br><br>Dumping the atlas and <b>rendering it</b> shows what it is: a <b>baked asphalt road tileset</b> &mdash; straights, curves, T-junctions, crossroads with crosswalk stripes, end caps and a multi-lane highway-with-guardrail piece, painted onto a concrete background. Asphalt is <b>dark</b>, which is precisely why the bright-side test could not see it.",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "stack",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 &mdash; the first 48 SOLID cement catalog cells, as the shader samples them. These are roads.",
+       "role": "EVIDENCE",
+       "src": "19_cement_concrete/mc2_24_atlas_roadtileset.png"
+      },
+      {
+       "caption": "mc2_23 &mdash; same, on your reference map.",
+       "role": "EVIDENCE",
+       "src": "19_cement_concrete/mc2_23_atlas_roadtileset.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "note",
+     "html": "<b>The reframe this forces &mdash; there is no concrete tone problem.</b> Measured with the road texels excluded, the concrete <b>background</b> is already one colour on every map: mc2_24 <code>144.7&ndash;149.5</code> (spread <b>4.7</b> luma, std 0.89), mc2_05 3.2, mc2_03 2.4, mc2_10 2.0. mc2_23 and mc2_01 show a ~43-luma span driven entirely by <b>two</b> and <b>one</b> cells, and those cells are wide highway pieces &mdash; not concrete.<br><br>What makes concrete &ldquo;magically become a different color&rdquo; inside a cell is a <b>road</b>: background <code>L&asymp;147</code> against asphalt <code>L&asymp;82</code>, a <b>~65-luma hard-edged step</b>. That is exactly the class you scoped <i>out</i> &mdash; <i>&ldquo;obviously runways, roads, other overlays etc. are their own layer and are currently handled by the shader.&rdquo;</i> True for the <code>&amp;Overlays</code> class. <b>Not</b> true for this one: it is baked into the terrain texture catalog, so <code>TileIsRoadArt()</code> reports <i>&ldquo;solid cement, not road&rdquo;</i> and every concrete lever treats a road as concrete.",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "h3",
+     "html": "What ARM C does",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "what",
+     "html": "<b>ARM C</b> <code>MC2_CEMENT_ROAD_ART_DETECT=1</code> &mdash; detect the baked road art and <b>exclude those cells from every concrete treatment</b> (ARM A's tone pass, ARM B's remap, and the choice of canonical cell). Each cell is split against its own <code>[P60,P95]</code> upper mode &mdash; the concrete background &mdash; rather than the whole-cell band mean, which on a road-heavy cell is dragged down by the road and hides it. A cell with more than 5% of its texels more than 40 luma <b>below</b> that background is flagged as carrying road art.<br><br><b>ARM C on its own changes no pixels.</b> It writes nothing to the atlas and nothing to the slot&rarr;layer map; it only changes which cells ARM A and ARM B are allowed to touch. Its purpose is to make the concrete arms obey your own scope ruling.",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "note",
+     "html": "<b>What ARM C prevents, measured in-engine.</b> Without it, ARM B repoints <b>90&ndash;100%</b> of the road-carrying cells at its canonical cell &mdash; and on <b>5 of the 6</b> maps that canonical cell is <b>itself a road tile</b>. On mc2_24 the engine logs <code>canon_cell=10 canon_road_frac=0.312 remapped=109 kept_road=0</code>: ARM B erases every junction, curve and end cap <i>and stamps one straight road segment across every plain concrete tile on the map</i>. With ARM C the same map logs <code>canon_cell=0 canon_road_frac=0.000 remapped=31 kept_road=78</code> &mdash; only the genuinely plain cells are collapsed, and the road network survives intact.",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "h3",
+     "html": "ARM B alone vs ARM B + ARM C (floor-valid poses only)",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_23 runway_overview &mdash; your reference map</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_runway_overview_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_overview_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_overview_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_23 runway_mid</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_runway_mid_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_mid_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_mid_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_23 runway_ground</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_23_runway_ground_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_ground_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_23_runway_ground_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_24 industrial_lightfacing</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_24 fortress_lightaway</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_fortress_lightaway_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_fortress_lightaway_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_fortress_lightaway_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_24 saved_192316 (your pose)</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_24_saved_192316_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_saved_192316_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_24_saved_192316_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "pl",
+     "html": "<b>mc2_05 refinery_lightfacing</b>",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "figures",
+     "layout": "pair",
+     "pair": false,
+     "items": [
+      {
+       "caption": "OFF (default / shipped)",
+       "role": "BEFORE",
+       "src": "19_cement_concrete/mc2_05_refinery_lightfacing_off.png"
+      },
+      {
+       "caption": "ARM B alone &mdash; road network destroyed",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_refinery_lightfacing_armB.png"
+      },
+      {
+       "caption": "ARM B + ARM C &mdash; roads preserved",
+       "role": "AFTER",
+       "src": "19_cement_concrete/mc2_05_refinery_lightfacing_armBC.png"
+      }
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "h3",
+     "html": "Measurements (two-run floor published first; &#9940; = floor exceeds the effect, no claim)",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "meta",
+     "attrs": "class=\"meta\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "map"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "pose"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "two-run floor %"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM A % px"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM B % px"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM B+C % px"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "B vs B+C %"
+       },
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "hard-step % OFF / B / B+C"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_23"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "runway_overview"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "59.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "31.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "31.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3.014 / 3.202 / 3.014"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_23"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "runway_mid"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "68.6"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "32.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "32.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.657 / 0.758 / 0.657"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_23"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "runway_ground"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "63.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "38.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "38.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.340 / 0.382 / 0.340"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_23"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "both_fields_overview"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.0288 &#9940;"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "32.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "17.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "17.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "2.369 / 2.487 / 2.370"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_23"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "beacons_mid"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "17.4930 &#9940;"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "14.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "18.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "18.6"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "21.6"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.457 / 1.473 / 1.438"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_24"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "industrial_lightfacing"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "52.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "26.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "26.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3.029 / 3.042 / 3.029"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_24"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fortress_lightaway"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "53.6"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "24.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "24.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.581 / 0.630 / 0.581"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_24"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_192316"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0198"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "43.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "21.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "21.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3.079 / 3.697 / 3.079"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_24"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "base_near"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "16.4"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "4.3"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.4"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.942 / 0.918 / 0.938"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_24"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "water_near (control)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.000 / 0.000 / 0.000"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_05"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "refinery_lightfacing"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "5.2"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "11.4"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "11.4"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.651 / 0.656 / 0.651"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_05"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "refinery_lightaway"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "4.8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "7.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "7.9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.554 / 0.553 / 0.554"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_05"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_101748 (your pose)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.012 / 0.012 / 0.012"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_05"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "saved_102009 (your pose)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "13.7105 &#9940;"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "18.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "15.6"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "13.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "16.7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1.102 / 1.093 / 1.094"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "mc2_05"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "control_no_buildings"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0000"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.0"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "0.000 / 0.000 / 0.000"
+       }
+      ]
+     ],
+     "cic1": "CIC1"
+    },
+    {
+     "type": "note",
+     "html": "<b>How to read this.</b> <code>ARM B+C % px</code> is <b>0.0</b> on every floor-valid pose on mc2_23, mc2_24 and mc2_05. That is not ARM C being weak &mdash; it means that on those views, <b>100% of ARM B's measured effect was road destruction</b>. Once roads are protected there is nothing left for ARM B to do, because every concrete cell in frame carries road art.<br><br><b>Hard-step %</b> (adjacent-pixel luma jump &gt; 16 &mdash; the metric that sank <code>MC2_PAVED_OVERLAY_CLASS</code> at 0.6&ndash;10.8pp): ARM B alone <b>raises</b> it by up to <b>+0.618pp</b> (mc2_24 saved_192316, 3.079&rarr;3.697). <b>ARM B + ARM C returns it to the OFF value exactly</b> on every floor-valid pose &mdash; ARM C's own hard-step delta is <b>0.000pp</b>.<br><br><b>Intra-cell spread</b> is unchanged by ARM C, deliberately: the ~65-luma step from concrete (<code>L&asymp;147</code>) to asphalt (<code>L&asymp;82</code>) is the road, and ARM C exists to protect it. <b>Cross-cell</b> concrete-background span, from the engine's own census: mc2_24 <code>bg_span=17.6</code>, mc2_23 <code>18.0</code>, mc2_05 <code>6.9</code>. Offline, with a stricter road exclusion, mc2_24 measures <b>4.7</b> &mdash; the shipped in-engine estimate is conservative on the heaviest crossroads cells and <i>over</i>states the span. Either number says the same thing: the concrete is one colour.",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "note",
+     "html": "<b>Honest limits.</b> (1) ARM C does not make the airbase look different on its own &mdash; by design it is a pixel no-op. If you want a visible change here, the frames above say the candidate is <b>OFF</b>, not any arm. (2) This lane did not establish <i>why</i> the mc2_23 apron reads as patchy to you if the concrete is one colour; the remaining suspects are the tile-level lighting term and how the road tileset pieces are <i>placed</i> on the map (a mismatched piece leaves a stub or a broken run), neither of which is an atlas-tone question. (3) Poses marked &#9940; carry no claim &mdash; their two-run floor exceeds the effect.",
+     "cic1": "CIC1"
+    },
+    {
+     "type": "meta",
+     "attrs": "class=\"meta\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "ARM C gate"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>MC2_CEMENT_ROAD_ART_DETECT=1</code> &mdash; DEFAULT OFF; ON with both other arms OFF is a pixel no-op"
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Diagnostic"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>MC2_CEMENT_ATLAS_DUMP=&lt;prefix&gt;</code> &mdash; writes the assembled atlas as <code>.rgba</code> + <code>.csv</code>. This is the instrument that found the road tileset."
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Census (prints with no gate on)"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>[CEMENT_CONCRETE v1] event=census &hellip; family_road=&hellip; bg_span=&hellip;</code>"
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Build"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>f51cd63d</code> &middot; tier1 <b>5/5 PASS</b> with <code>[DEPLOY_FINGERPRINT] OK</code> on every mission"
+       }
+      ]
+     ],
+     "cic1": "CIC1"
     }
    ]
   }
