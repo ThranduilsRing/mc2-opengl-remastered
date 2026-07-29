@@ -185,7 +185,27 @@ bool spot_direction_fix_enabled()
 {
     static const bool s = []() {
         const char* v = std::getenv("MC2_SPOTLIGHT_DIRECTION_FIX");
-        return (v && v[0] == '1');   // default OFF
+        return (v && (v[0] == '1' || v[0] == '2'));   // default OFF
+    }();
+    return s;
+}
+
+// SPOTLIGHT-DIRECTION-1 falsification arm. `=2` writes a WILDLY displaced
+// light-spot position instead of the correct one. Purpose: the `=1` arm proved
+// byte-identical to the OFF arm across all 19 building-face poses on
+// mc2_01/03/10/24 while the FULLBAKE_DIAG counters simultaneously proved the
+// consumer WAS reached with changed data. Two explanations fit that: (i) the
+// correction is too small to move a pixel, or (ii) the value the consumer
+// computes is discarded downstream and no direction can ever move a pixel.
+// `=2` separates them: if an absurd position still renders byte-identically,
+// the consumer's output is provably dead on the default GPU static-prop path.
+// Same role as the MC2_NIGHT_FOG_DIM_SCALE=0.0 exaggeration lower-bound.
+// Diagnostic only -- never a shipping value.
+bool spot_direction_exaggerate()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_SPOTLIGHT_DIRECTION_FIX");
+        return (v && v[0] == '2');
     }();
     return s;
 }

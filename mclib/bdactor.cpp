@@ -3717,6 +3717,16 @@ long BldgAppearance::update (bool animate)
 				childPosP.y =  childPos.z;
 				childPosP.z =  childPos.y;
 				spotlightLights_[k]->direction = childPosP;
+				// MC2_SPOTLIGHT_DIRECTION_FIX=2 falsification arm — see
+				// cone_glow.cpp spot_direction_exaggerate(). Absurd spot centre;
+				// a byte-identical frame under this proves the consumer's output
+				// is discarded downstream. Diagnostic only.
+				if (mc2_cone_glow::spot_direction_exaggerate())
+				{
+					Stuff::Point3D wild;
+					wild.x = 100000.0f; wild.y = 100000.0f; wild.z = 100000.0f;
+					spotlightLights_[k]->direction = wild;
+				}
 			}
 			else
 			{
