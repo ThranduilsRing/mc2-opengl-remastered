@@ -18,10 +18,17 @@ Hard-won correctness details (do NOT remove):
   * Window restore = ShowWindow(SW_RESTORE) + SetForegroundWindow, preceded by
     an ALT key tap (keybd_event 0x12) — Windows refuses SetForegroundWindow
     from a background process unless an input event unlocks it.
+    BACKGROUND-SMOKE-1: this is a foreground STEAL, so it now runs only when
+    MC2_HARNESS_ALLOW_FOREGROUND=1. By default the exe is launched via
+    smoke_lib.nofocus with SW_SHOWNOACTIVATE — visible, never activated — and
+    ImageGrab reads its on-screen pixels without it ever taking focus. ESC taps
+    are likewise skipped by default (they would land in the user's own window).
   * Foreground is VERIFIED via WindowFromPoint at the client-rect center; the
     grab is retried (window nudged TOPMOST to 60,60) until the point resolves
     to our hwnd. A grab without this check can silently capture an occluding
-    window.
+    window. That verification is only possible when foreground is allowed; in
+    background mode the result carries "foreground_verified": false and an
+    occluding window could contaminate the grab.
 
 KNOWN LIMIT: a sparse text-on-black menu can legitimately read mean < 1 while
 perfectly visible. The default threshold (mean > 10 AND nonblack_frac > 0.05)
@@ -39,6 +46,11 @@ import subprocess
 import sys
 import time
 from ctypes import wintypes
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "scripts"))
+# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+from smoke_lib import nofocus  # noqa: E402
 
 
 def parse_args():
@@ -82,8 +94,12 @@ def main():
     except Exception:
         u32.SetProcessDPIAware()
 
-    p = subprocess.Popen([exe], cwd=workdir, env=env,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    # BACKGROUND-SMOKE-1: launch non-activating (and with MC2_NO_CURSOR_GRAB=1).
+    # show_window=True keeps the window VISIBLE (SW_SHOWNOACTIVATE) rather than
+    # minimized, because this tool grabs the client rect -- a minimized window
+    # has no on-screen pixels to grab. It still never takes focus.
+    p = nofocus.spawn([exe], cwd=workdir, env=env, show_window=True,
+                      stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     print(f"[menu_oracle] launched pid={p.pid}, waiting {args.wait}s", flush=True)
     result = {"mean": -1.0, "nonblack_frac": -1.0, "verdict": "INCONCLUSIVE"}
     try:
@@ -108,17 +124,37 @@ def main():
             return 2
         h = hwnds[0]
 
-        u32.ShowWindow(h, 9)          # SW_RESTORE
-        u32.SetForegroundWindow(h)
+        # BACKGROUND-SMOKE-1: restore+foreground is a deliberate foreground
+        # steal (with an ALT-tap below to defeat the foreground lock). It is
+        # user-present-only now; by default the window is already visible but
+        # unactivated, and ImageGrab reads its on-screen pixels regardless.
+        if nofocus.allow_foreground():
+            u32.ShowWindow(h, 9)          # SW_RESTORE
+            u32.SetForegroundWindow(h)
         time.sleep(2)
-        for _ in range(args.esc_taps):
-            u32.keybd_event(0x1B, 0, 0, 0)
-            u32.keybd_event(0x1B, 0, 2, 0)
-            time.sleep(2)
+        # Synthetic keystrokes land in whatever window has focus -- forbidden
+        # unless the session is user-present (BACKGROUND-SMOKE-1).
+        if args.esc_taps and not nofocus.allow_foreground():
+            print("[menu_oracle] --esc-taps ignored: needs "
+                  "MC2_HARNESS_ALLOW_FOREGROUND=1", flush=True)
+        elif nofocus.allow_foreground():
+            for _ in range(args.esc_taps):
+                u32.keybd_event(0x1B, 0, 0, 0)
+                u32.keybd_event(0x1B, 0, 2, 0)
+                time.sleep(2)
 
         # Bring to front and VERIFY with WindowFromPoint before grabbing.
+        # BACKGROUND-SMOKE-1: the whole raise-and-verify dance (ALT tap to
+        # defeat the foreground lock, TOPMOST reposition, SetForegroundWindow)
+        # is a foreground steal, so it runs only when explicitly allowed. In
+        # background mode we grab the unactivated window's rect directly and
+        # accept that an occluding window could contaminate the grab -- an
+        # INCONCLUSIVE-vs-wrong-pixels tradeoff the caller is warned about.
         verified = False
-        for attempt in range(6):
+        if not nofocus.allow_foreground():
+            result["foreground_verified"] = False
+            verified = True
+        for attempt in range(0 if verified else 6):
             u32.keybd_event(0x12, 0, 0, 0)  # ALT tap unlocks SetForegroundWindow
             u32.keybd_event(0x12, 0, 2, 0)
             u32.SetWindowPos(h, -1, 60, 60, 0, 0, 0x0001)  # HWND_TOPMOST, NOSIZE

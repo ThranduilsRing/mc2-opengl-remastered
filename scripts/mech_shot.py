@@ -22,6 +22,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from smoke_lib import nofocus  # noqa: E402
+
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0/mc2.exe")
 
 
@@ -79,8 +83,8 @@ def main():
 
     cmd = [str(exe), "--profile", "stock", "--mission", args.mission, "--duration", str(args.duration)]
     print(f"[mech_shot] launching {exe.name} mission={args.mission} frame={args.frame}")
-    proc = subprocess.Popen(cmd, cwd=str(exe.parent), env=env,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = nofocus.spawn(cmd, cwd=str(exe.parent), env=env,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # Wait for the engine to write the TGA at the target frame (poll, with grace).
     deadline = time.monotonic() + args.duration + 30

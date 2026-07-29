@@ -38,6 +38,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from smoke_lib import nofocus  # noqa: E402
+
 FIELD_ENV = {
     "MC2_NO_LAUNCHER": "1",
     "MC2_DEBUG_STATE_DUMP": "1",
@@ -222,7 +226,7 @@ def props_pose_assert(install: Path, mission: str, wait: int) -> bool:
     env["MC2_VK_PRESENT_VERIFY"] = "1"
     env["MC2_VK_PRESENT_DUMP_PPM"] = str(ppm)
     print(f"[vk-field-check] props-pose assert: launching at airport pose")
-    proc = subprocess.Popen([str(exe), "-mission", mission], cwd=str(install), env=env)
+    proc = nofocus.spawn([str(exe), "-mission", mission], cwd=str(install), env=env)
     try:
         time.sleep(wait)
     finally:
@@ -264,7 +268,7 @@ def main() -> int:
     env.update(FIELD_ENV)
 
     print(f"[vk-field-check] launching {exe} -mission {args.mission} (field env only)")
-    proc = subprocess.Popen([str(exe), "-mission", args.mission], cwd=str(install), env=env)
+    proc = nofocus.spawn([str(exe), "-mission", args.mission], cwd=str(install), env=env)
     ok = False
     try:
         time.sleep(args.wait)

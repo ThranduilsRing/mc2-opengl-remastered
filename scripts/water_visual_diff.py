@@ -9,6 +9,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+from smoke_lib import nofocus  # noqa: E402
 
 EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.2/mc2.exe")
 ARTIFACT_DIR = ROOT / "tests" / "smoke" / "artifacts" / f"water-diff-{int(time.time())}"
@@ -53,7 +56,7 @@ def run_and_screenshot(mode_label, fast_path: bool, mission="mc2_01", wait_sec=3
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
     print(f"[{mode_label}] launching mc2.exe (fastpath={fast_path}) for {mission}")
-    proc = subprocess.Popen(
+    proc = nofocus.spawn(
         [str(EXE), "--profile", "stock", "--mission", mission, "--duration", str(wait_sec + 10)],
         stdout=log_fp, stderr=subprocess.STDOUT, env=env,
         cwd=str(EXE.parent),
@@ -62,7 +65,8 @@ def run_and_screenshot(mode_label, fast_path: bool, mission="mc2_01", wait_sec=3
     print(f"[{mode_label}] sleeping {wait_sec}s to let mission load + stabilize...")
     time.sleep(wait_sec)
 
-    # Bring mc2 window to foreground before screenshot
+    # Locate the mc2 window. BACKGROUND-SMOKE-1: we do NOT raise it -- pyautogui
+    # grabs the desktop composite, so a non-activated window still captures.
     try:
         import ctypes
         user32 = ctypes.windll.user32
@@ -73,9 +77,11 @@ def run_and_screenshot(mode_label, fast_path: bool, mission="mc2_01", wait_sec=3
         if not hwnd:
             hwnd = user32.FindWindowW(None, "mc2 - Remastered")
         if hwnd:
-            user32.SetForegroundWindow(hwnd)
-            time.sleep(0.5)
-            print(f"[{mode_label}] brought mc2 window to foreground (hwnd={hwnd})")
+            if nofocus.set_foreground_window(hwnd):
+                time.sleep(0.5)
+                print(f"[{mode_label}] brought mc2 window to foreground (hwnd={hwnd})")
+            else:
+                print(f"[{mode_label}] found mc2 window (hwnd={hwnd}); not raised (background mode)")
         else:
             print(f"[{mode_label}] WARN: could not find mc2 window by title")
     except Exception as e:

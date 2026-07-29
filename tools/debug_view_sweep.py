@@ -29,6 +29,11 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+
+from smoke_lib import nofocus  # noqa: E402
+
 
 def mc2_running_from(install_dir):
     """Paths of running mc2.exe processes launched FROM install_dir (the user
@@ -206,9 +211,9 @@ def main():
     # --duration is SIM seconds (fixed timestep runs sim fast headless); give
     # generous headroom — the sweep kills its own PID right after the last
     # capture, so wall runtime stays short regardless.
-    proc = subprocess.Popen([exe, "--profile", "stock", "--mission", args.mission,
-                             "--duration", "600"],
-                            cwd=install, env=env, stdout=log, stderr=subprocess.STDOUT)
+    proc = nofocus.spawn([exe, "--profile", "stock", "--mission", args.mission,
+                          "--duration", "600"],
+                         cwd=install, env=env, stdout=log, stderr=subprocess.STDOUT)
     print("spawned pid=%d (only this PID will be killed)" % proc.pid)
 
     rc = 0

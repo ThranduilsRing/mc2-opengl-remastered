@@ -46,6 +46,8 @@ from smoke_lib.cursor_guard import (  # noqa: E402
     park_cursor_if_edge,
     restore_parked_cursor,
 )
+# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+from smoke_lib import nofocus  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
@@ -144,8 +146,12 @@ def bring_mc2_foreground() -> bool:
         for title in ("mc2", "MechCommander 2", "mc2 - Remastered"):
             hwnd = user32.FindWindowW(None, title)
             if hwnd:
-                user32.SetForegroundWindow(hwnd)
-                time.sleep(0.3)
+                # BACKGROUND-SMOKE-1: no-op unless MC2_HARNESS_ALLOW_FOREGROUND=1.
+                # The screenshot below uses pyautogui, which grabs the desktop
+                # composite -- a non-activated window still renders into it, so
+                # raising the window was never required for capture.
+                if nofocus.set_foreground_window(hwnd):
+                    time.sleep(0.3)
                 return True
     except Exception as e:
         print(f"[baseline] WARN foreground: {e}", file=sys.stderr)
@@ -312,19 +318,14 @@ def run_capture(exe: Path, preset_name: str, preset: dict,
     proc_args = [str(exe), "--profile", "stock", "--mission", mission,
                  "--duration", str(duration)]
     # Launch minimized so the game does not steal foreground from the user's
-    # desktop while the capture warm-up runs. bring_mc2_foreground() below
-    # un-minimizes briefly just before the screenshot. Mirrors the pattern
-    # in scripts/smoke_lib/runner.py.
-    startupinfo = None
-    if os.name == "nt":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7  # SW_SHOWMINNOACTIVE
+    # desktop while the capture warm-up runs.
+    # BACKGROUND-SMOKE-1: the STARTUPINFO (SW_SHOWMINNOACTIVE) now comes from
+    # smoke_lib.nofocus, which ALSO sets MC2_NO_CURSOR_GRAB=1 -- STARTUPINFO
+    # alone does not stop an SDL app from activating its window.
     print(f"[baseline] preset={preset_name} mission={mission} warmup={warmup}s")
     t0 = time.time()
-    proc = subprocess.Popen(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
-                            cwd=str(exe.parent), env=env,
-                            startupinfo=startupinfo)
+    proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
+                         cwd=str(exe.parent), env=env)
 
     time.sleep(max(0, warmup - 5))
     park_mouse_center()

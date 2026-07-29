@@ -26,6 +26,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from smoke_lib import nofocus  # noqa: E402
+
 # Canonical install path on this machine (memory says RenderDoc lives here).
 DEFAULT_RDOC_DIR = Path(r"C:/Program Files/RenderDoc")
 WORKTREE = Path(__file__).resolve().parent.parent
@@ -169,7 +173,12 @@ def run_capture(args) -> Path:
           flush=True)
     print(f"[rdoc_capture]   template={tpl}", flush=True)
 
-    proc = subprocess.run(cmd, env=env, cwd=str(DEPLOY))
+    # NOTE: our STARTUPINFO stops at renderdoccmd -- it spawns mc2.exe itself,
+    # so nCmdShow never reaches the engine window. The ENV is what covers it:
+    # renderdoccmd passes its environment through, so nofocus's
+    # MC2_NO_CURSOR_GRAB=1 reaches the engine and suppresses SDL activation
+    # and cursor grabbing.
+    proc = nofocus.run(cmd, env=env, cwd=str(DEPLOY))
     # renderdoccmd capture returns the child's exit code. The engine exits 0
     # on success after MC2_RDC_EXIT_AFTER fires.
     if proc.returncode not in (0, 4):

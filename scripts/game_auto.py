@@ -48,6 +48,7 @@ from smoke_lib.cursor_guard import (  # noqa: E402
     set_cursor_pos,
     unclip_cursor,
 )
+from smoke_lib import nofocus  # noqa: E402
 
 # Session cursor bookkeeping. `_CURSOR_MOVED` stays False for commands that
 # never touch the pointer (launch/kill/key/wait/screenshot), so those restore
@@ -72,11 +73,17 @@ def _cursor_session_end() -> None:
 
 
 def _warp(x: int, y: int) -> None:
-    """Single chokepoint for every pointer warp -- records that we moved it."""
+    """Single chokepoint for every pointer warp -- records that we moved it.
+
+    BACKGROUND-SMOKE-1: routed through nofocus.set_cursor_pos, which is a
+    NO-OP unless MC2_HARNESS_ALLOW_FOREGROUND=1. Agent runs must never move
+    the user's pointer; the restore path (cursor_guard) is exempt.
+    """
     global _CURSOR_MOVED
     _cursor_session_begin()
+    if not nofocus.set_cursor_pos(int(x), int(y)):
+        return
     _CURSOR_MOVED = True
-    user32.SetCursorPos(int(x), int(y))
 
 GAME_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.1.1\mc2.exe"
 GAME_DIR = r"A:\Games\mc2-opengl\mc2-win64-v0.1.1"
@@ -104,7 +111,9 @@ def launch():
     if running():
         print("already running")
         return
-    subprocess.Popen([GAME_EXE], cwd=GAME_DIR, creationflags=0x00000008)  # DETACHED_PROCESS
+    # DETACHED_PROCESS (0x8) preserved; nofocus adds MC2_NO_CURSOR_GRAB=1 +
+    # a non-activating STARTUPINFO so the window never takes focus.
+    nofocus.spawn([GAME_EXE], cwd=GAME_DIR, creationflags=0x00000008)
     print("launched")
 
 
@@ -192,6 +201,10 @@ def native_key_up(name: str) -> bool:
 
 
 def do_key(name: str, hold_ms: int = 50):
+    # NOTE (BACKGROUND-SMOKE-1): keystrokes are left UNGUARDED, but they go to
+    # whatever window has FOCUS. Under the no-focus contract the game window is
+    # never activated, so it will not receive them -- a known limitation of the
+    # menu-canary path, not something to "fix" by stealing focus.
     if native_key_down(name):
         time.sleep(hold_ms / 1000.0)
         native_key_up(name)
@@ -229,6 +242,12 @@ def do_chord(spec: str):
 
 
 def do_click(x: int, y: int):
+    # Synthetic clicks are meaningless when we may not own the pointer: the
+    # warp is a no-op, so mouse_event would click wherever the USER's cursor
+    # happens to be -- in his game. Skip entirely unless opted in.
+    if not nofocus.allow_foreground():
+        print("click skipped (background mode; MC2_HARNESS_ALLOW_FOREGROUND=1 to enable)")
+        return
     _warp(x, y)
     time.sleep(0.03)
     user32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
@@ -237,6 +256,9 @@ def do_click(x: int, y: int):
 
 
 def do_rclick(x: int, y: int):
+    if not nofocus.allow_foreground():
+        print("rclick skipped (background mode; MC2_HARNESS_ALLOW_FOREGROUND=1 to enable)")
+        return
     _warp(x, y)
     time.sleep(0.03)
     user32.mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
