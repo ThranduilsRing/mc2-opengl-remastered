@@ -695,6 +695,22 @@ static_assert(
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
+        "MC2_TRACE_CEMENT_ATLAS_DUMP",
+        "MC2_CEMENT_ATLAS_DUMP",
+        EnvVarKind::Trace,
+        false,
+        "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so "
+        "cell art can be inspected directly -- which cells actually carry "
+        "painted markings is an empirical question about the ART, not one to "
+        "answer from thresholds (this dump is what proved there is no paint in "
+        "solid concrete cells). Value is a PATH PREFIX, not a bool: "
+        "MC2_CEMENT_ATLAS_DUMP=<prefix> writes <prefix>.rgba (raw BGRA8, "
+        "atlasPixelSide^2) + <prefix>.csv (per-cell slot/is_alpha/geometry "
+        "stats) and emits [CEMENT_ATLAS_DUMP v1]. Empty or unset = no dump. "
+        "Diagnostic-only: writes files and a log line, never alters the atlas "
+        "or any render state. Consumer: gos_terrain_indirect.cpp."
+    },
+    {
         "MC2_TRACE_NO_CURSOR_GRAB",
         "MC2_NO_CURSOR_GRAB",
         EnvVarKind::Trace,
@@ -2208,6 +2224,15 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "REJECTED BY USER 2026-07-25 (CEMENT-ALPHA-LAND-1, grading the REVIEW section 12(a) mc2_24 before/after pair): \"sigh. after is WAY worse.\" The ON arm flattens the apron into a uniform pale wash -- it destroys the legible material variation (the darker transition ring around the pad, the tonal separation between apron slabs, roads and shoulders) and reads worse than the patchwork it was meant to cure. KEEP DEFAULT OFF; do not build further work on top of it. Atlas-tone normalisation is the wrong lever for the tone problem -- MC2_CEMENT_LIT (share one lighting term rather than flatten authored tone) is the live candidate. Original rationale follows. CEMENT-ATLAS-TONE-MATCH-1 (MC2-03-CEMENT-PINK-1): cure the concrete PATCHWORK on airbase aprons/runways (mc2_24, mc2_03). The cement catalog packs concrete art from multiple authored families whose base tone differs materially (measured mc2_24: (134,130,120) warm tan vs (100,100,100) neutral grey). Cement fragments are FLAT-LIT by design (terrain_lod_chunk.frag forces normalLight=1.0 where pureConcrete=1), so no shared lighting term unifies them and the raw per-cell tone difference is exposed at full contrast with straight tile-boundary seams. BuildCementCatalogAtlas normalises every cell's CONCRETE-BAND colour (the [P50,P90] luminance window, which excludes dark asphalt/markings and highlights) to the component-wise MEDIAN across cells, per channel so brightness AND tint match, with per-channel gain clamped to [0.70,1.40]. Per-cell detail (slab lines, cracks, road markings) is untouched. DEFAULT OFF: the atlas buffer is left byte-identical. Runs once per mission load; zero per-frame cost."
+    },
+    // CEMENT-INTRACELL-1 (ARM C): make the concrete arms obey the user's own
+    // scope ruling by detecting the BAKED ROAD ART inside solid cement cells.
+    {
+        "MC2_FEATURE_CEMENT_ROAD_ART_DETECT",
+        "MC2_CEMENT_ROAD_ART_DETECT",
+        EnvVarKind::Feature,
+        false,
+        "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete treatment (ARM A tone, ARM B canon, and the canonical-cell choice). WHAT WAS MEASURED, and why this arm exists at all: CEMENT-ATLAS-CELL-2 found a large dark region in 78 of 110 mc2_24 solid cells and recorded it as \"authored material (joints, tarmac, shadowed detail)\". Dumping and RENDERING the atlas (MC2_CEMENT_ATLAS_DUMP) shows what it actually is -- straights, curves, T-junctions, crossroads with crosswalk stripes, end caps and a multi-lane highway-with-guardrail piece: a road tileset painted onto a concrete background. The prior marking test could not see it because it tested the BRIGHT side only (L - bandL > 60) and asphalt is DARK. THE REFRAME THIS FORCES: measured with the road texels excluded, the concrete BACKGROUND is already one colour on every map -- mc2_24 144.7..149.5 (spread 4.7, std 0.89), mc2_05 3.2, mc2_03 2.4, mc2_10 2.0; mc2_23 and mc2_01 show a 43-luma span driven entirely by two and one cells respectively, and those cells are wide highway pieces, not concrete. There is no cross-cell concrete tone problem. What makes concrete \"magically become a different color\" inside a cell is a road: background L~147 against asphalt L~82, a ~65-luma hard-edged step. That is precisely the class the user scoped OUT (\"obviously runways, roads, other overlays etc. are their own layer and are currently handled by the shader\") -- true for the &Overlays class, NOT true for this one, which is baked into the terrain texture catalog, so TileIsRoadArt() reports \"solid cement, not road\" and every concrete lever treats a road as concrete. WHAT ARM C PREVENTS, measured offline on the six atlas dumps: ARM B repoints 90-100% of the road-carrying cells at its canonical cell, and on 5 of the 6 maps that canonical cell is ITSELF a road tile (mc2_24 canon road fraction 0.312) -- so ARM B erases every junction, curve and end cap AND stamps one straight road segment across every plain concrete tile on the map. MECHANISM: CementCellComputeStats splits each cell against its own [P60,P95] upper mode (the concrete background) rather than the whole-cell band mean, which on a road-heavy cell is dragged down by the road and hides it; a cell with >5% of texels more than 40 luma below that background is flagged road=1. DEFAULT OFF. ON with both other arms OFF is a PIXEL NO-OP -- no write to atlasBuf and no write to g_cementLayerIndexBySlot -- it only changes which cells ARM A / ARM B are allowed to touch. The [CEMENT_CONCRETE v1] census reports road_frac, bg_lum and the family bg_span regardless of the gate, so the evidence is reproducible with nothing enabled. Once per mission load; zero per-frame cost."
     },
     // CEMENT-ATLAS-CELL-2: the two arms of the "concrete shouldn't magically
     // become a different color" fix, scoped to ACTUAL concrete only.

@@ -1162,6 +1162,54 @@ static const float kConcreteMarkFrac   = 0.02f;  // >2% such texels = cell carri
 static const float kConcreteToneGainLo = 0.80f;  // Arm A gain clamp -- NARROW on purpose
 static const float kConcreteToneGainHi = 1.25f;
 
+// ---------------------------------------------------------------------------
+// CEMENT-INTRACELL-1 (ARM C) tunables. MEASURED, mc2_24/23/05/03/01/10 atlas
+// dumps 2026-07-28. The "large dark region" CEMENT-ATLAS-CELL-2 found in 78/110
+// mc2_24 cells and recorded as "authored material (joints, tarmac, shadowed
+// detail)" is NOT material variation: it is a BAKED ASPHALT ROAD TILESET --
+// straights, curves, T-junctions, crossroads with crosswalk stripes, end caps
+// and a multi-lane highway-with-guardrail piece -- authored directly into the
+// SOLID cement catalog cells. Rendering the dumped atlas shows the pieces
+// plainly. The prior lane's marking test could not see them because it looked
+// only at the BRIGHT side (L - bandL > 60), and asphalt is DARK.
+//
+// The classification must be done against the cell's own CONCRETE BACKGROUND
+// (the [P60,P95] upper mode), NOT against the whole-cell band mean, because on
+// a road-heavy cell the road drags the band mean down and hides itself.
+// Measured with that split, across all six maps:
+//   concrete background   L = 144.7 .. 149.5   (mc2_24, spread 4.7, std 0.89)
+//   baked road art        L =  66.2 ..  86.2
+//   step background->road ~ 65 luma, hard-edged at the art boundary
+// i.e. THE CONCRETE IS ALREADY ONE COLOUR. What changes colour inside a
+// concrete cell is a road.
+static const float kRoadArtDarkDelta = 40.f;   // bgL - L beyond this = asphalt
+static const float kRoadArtFrac      = 0.05f;  // >5% such texels = cell carries road art
+
+// ARM C. Detect the baked road art and EXCLUDE those cells from every concrete
+// treatment (ARM A tone, ARM B canon). Default OFF.
+//
+// WHY THIS IS THE ARM. The user's scope ruling put roads OUT of scope --
+// "obviously runways, roads, other overlays etc. are their own layer and are
+// currently handled by the shader." For the &Overlays class that is true. For
+// THIS class it is not: the road is painted into the terrain texture catalog,
+// so TileIsRoadArt() calls it "solid cement, not road" and every concrete lever
+// treats a road as concrete. Consequence, measured offline on the dumps:
+// ARM B repoints 90-100% of the road-carrying cells at its canonical cell, and
+// on 5 of the 6 maps that canonical cell is ITSELF a road tile -- so ARM B
+// replaces every junction, curve and end cap with one straight segment AND
+// stamps that segment across every plain concrete tile on the map. ARM C is
+// what makes the concrete arms obey the user's own scope ruling.
+//
+// ON, with both other arms OFF, this gate is a pixel no-op: it only changes
+// which cells ARM A / ARM B are allowed to touch.
+static bool RoadArtDetectEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_ROAD_ART_DETECT");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
 // ARM A. Tone-normalise ONLY the concrete family. Default OFF => atlasBuf is
 // left byte-identical. Differs from the user-rejected MC2_CEMENT_TONE_MATCH in
 // the SET it acts on, not the arithmetic: that gate moved every solid cell
@@ -1214,6 +1262,11 @@ struct CementCellStats {
     bool  ok = false;                  // enough usable texels
     bool  family = false;              // classified as actual concrete
     bool  marks = false;               // carries bright painted markings
+    // CEMENT-INTRACELL-1 (ARM C): the concrete BACKGROUND, measured with the
+    // baked road art excluded, plus the road census itself.
+    float bgLum = 0.f;                 // [P60,P95] upper-mode luminance = the concrete
+    float roadFrac = 0.f;              // fraction of texels well BELOW bgLum (asphalt)
+    bool  road = false;                // carries baked road art
 };
 
 // Neutrality + marking census for one cell, on top of the band mean.
@@ -1233,6 +1286,8 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
     const int dstX = (k % gridSide) * txmSize;
     const int dstY = (k / gridSide) * txmSize;
     long offBand = 0, tot = 0;   // NB: not `far` -- that is a Windows keyword macro.
+    std::vector<float> lums;
+    lums.reserve((size_t)txmSize * (size_t)txmSize);
     for (int py = 0; py < txmSize; ++py) {
         const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
         for (int px = 0; px < txmSize; ++px) {
@@ -1242,11 +1297,30 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
                           + 0.587f * float((c >>  8) & 0xFFu)
                           + 0.114f * float( c        & 0xFFu);
             ++tot;
+            lums.push_back(L);
             if (L - s.lum > kConcreteMarkDelta) ++offBand;   // BRIGHT side only
         }
     }
     s.markFrac = (tot > 0) ? (float)offBand / (float)tot : 0.f;
     s.marks    = s.markFrac > kConcreteMarkFrac;
+
+    // CEMENT-INTRACELL-1 (ARM C): split the cell into concrete BACKGROUND and
+    // baked ROAD art. The background reference is the [P60,P95] upper mode --
+    // deliberately NOT s.lum, which on a road-heavy cell is dragged down by the
+    // road itself and would hide it (that is exactly how the road tileset went
+    // unnoticed in CEMENT-ATLAS-CELL-2).
+    if (!lums.empty()) {
+        std::sort(lums.begin(), lums.end());
+        const size_t lo = (size_t)((float)lums.size() * 0.60f);
+        const size_t hi = std::min(lums.size() - 1, (size_t)((float)lums.size() * 0.95f));
+        double acc = 0.0; long n = 0;
+        for (size_t i = lo; i <= hi; ++i) { acc += lums[i]; ++n; }
+        s.bgLum = (n > 0) ? (float)(acc / (double)n) : s.lum;
+        long dark = 0;
+        for (float L : lums) if (s.bgLum - L > kRoadArtDarkDelta) ++dark;
+        s.roadFrac = (float)dark / (float)lums.size();
+        s.road     = s.roadFrac > kRoadArtFrac;
+    }
 }
 
 // Classify [0,NT) solid cells. Seeds the reference from the UPPER-cluster median
@@ -1305,6 +1379,10 @@ static int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
     for (int k = 0; k < NT; ++k) {
         const CementCellStats& c = st[(size_t)k];
         if (!c.family || c.marks) continue;
+        // ARM C: never canonicalise ON a road tile. Without this the canonical
+        // cell is itself a road piece on 5 of the 6 measured maps, so ARM B
+        // stamps a road segment across every plain concrete tile on the map.
+        if (RoadArtDetectEnabled() && c.road) continue;
         const float d = (c.r - refR) * (c.r - refR)
                       + (c.g - refG) * (c.g - refG)
                       + (c.b - refB) * (c.b - refB);
@@ -2458,44 +2536,60 @@ void BuildCementCatalogAtlas() {
         // Census prints regardless of either gate, so a map can be judged --
         // and the "do markings live in solid concrete cells?" question answered
         // per-cell by NAME -- without enabling anything.
-        long famCells = 0, markCells = 0;
+        long famCells = 0, markCells = 0, roadCells = 0;
         float famLmin = 1e30f, famLmax = -1e30f;
+        // CEMENT-INTRACELL-1: the BACKGROUND-only span is the number that decides
+        // whether a cross-cell concrete TONE problem exists at all. Measured on
+        // all six maps it is 2-5 luma, i.e. there is none -- what varies inside a
+        // concrete cell is the baked road art (~65 luma below the background).
+        float bgLmin = 1e30f, bgLmax = -1e30f;
         for (int k = 0; k < NT; ++k) {
             const CementCellStats& c = st[(size_t)k];
             if (!c.family) continue;
             ++famCells;
             if (c.marks) ++markCells;
+            if (c.road)  ++roadCells;
             famLmin = std::min(famLmin, c.lum);
             famLmax = std::max(famLmax, c.lum);
+            bgLmin  = std::min(bgLmin, c.bgLum);
+            bgLmax  = std::max(bgLmax, c.bgLum);
         }
         for (int k = 0; k < NT; ++k) {
             const CementCellStats& c = st[(size_t)k];
-            if (!(c.marks || traceOn())) continue;
+            if (!(c.marks || c.road || traceOn())) continue;
             const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
             const long nTypes = Terrain::terrainTextures
                               ? Terrain::terrainTextures->getNumTypes() : 0;
             const long nameId = (Terrain::terrainTextures && slot >= 0 && slot < (int)nTypes)
                               ? Terrain::terrainTextures->getTextureNameID(slot) : -1;
             MC2_DIAGF("[CEMENT_CONCRETE v1] mission=%s cell=%d slot=%d nameId=%ld "
-                   "band_lum=%.1f chroma=%.3f mark_frac=%.4f family=%d marks=%d\n",
+                   "band_lum=%.1f bg_lum=%.1f chroma=%.3f mark_frac=%.4f "
+                   "road_frac=%.4f family=%d marks=%d road=%d\n",
                    (::missionName[0] ? ::missionName : "unknown"), k, slot, nameId,
-                   c.lum, c.chroma, c.markFrac, c.family ? 1 : 0, c.marks ? 1 : 0);
+                   c.lum, c.bgLum, c.chroma, c.markFrac, c.roadFrac,
+                   c.family ? 1 : 0, c.marks ? 1 : 0, c.road ? 1 : 0);
         }
         MC2_DIAGF("[CEMENT_CONCRETE v1] event=census mission=%s solid_cells=%d "
-               "family=%ld family_marked=%ld family_lum=%.1f..%.1f "
-               "ref_rgb=%.1f,%.1f,%.1f canon_cell=%d armA=%d armB=%d\n",
+               "family=%ld family_marked=%ld family_road=%ld family_lum=%.1f..%.1f "
+               "family_bg_lum=%.1f..%.1f bg_span=%.1f "
+               "ref_rgb=%.1f,%.1f,%.1f canon_cell=%d armA=%d armB=%d armC=%d\n",
                (::missionName[0] ? ::missionName : "unknown"), NT, famCells, markCells,
+               roadCells,
                (famCells ? famLmin : 0.f), (famCells ? famLmax : 0.f),
+               (famCells ? bgLmin : 0.f), (famCells ? bgLmax : 0.f),
+               (famCells ? bgLmax - bgLmin : 0.f),
                refR, refG, refB, canon,
-               ConcreteToneEnabled() ? 1 : 0, ConcreteCanonEnabled() ? 1 : 0);
+               ConcreteToneEnabled() ? 1 : 0, ConcreteCanonEnabled() ? 1 : 0,
+               RoadArtDetectEnabled() ? 1 : 0);
         fflush(stdout);
 
         // ARM A -- per-cell gain onto the family reference, family cells only.
         if (ConcreteToneEnabled() && refR > 0.f) {
-            long adjusted = 0;
+            long adjusted = 0, keptRoadA = 0;
             for (int k = 0; k < NT; ++k) {
                 const CementCellStats& c = st[(size_t)k];
                 if (!c.family) continue;          // asphalt/dirt/coloured: untouched
+                if (RoadArtDetectEnabled() && c.road) { ++keptRoadA; continue; }  // ARM C
                 auto gainOf = [&](float tgt, float cur) {
                     return std::min(kConcreteToneGainHi,
                            std::max(kConcreteToneGainLo, tgt / std::max(cur, 1.f)));
@@ -2523,9 +2617,10 @@ void BuildCementCatalogAtlas() {
                 }
             }
             MC2_DIAGF("[CEMENT_CONCRETE_TONE v1] event=applied mission=%s family=%ld "
-                   "adjusted=%ld ref_rgb=%.1f,%.1f,%.1f\n",
+                   "adjusted=%ld kept_road=%ld armC=%d ref_rgb=%.1f,%.1f,%.1f\n",
                    (::missionName[0] ? ::missionName : "unknown"),
-                   famCells, adjusted, refR, refG, refB);
+                   famCells, adjusted, keptRoadA, RoadArtDetectEnabled() ? 1 : 0,
+                   refR, refG, refB);
             fflush(stdout);
         }
 
@@ -2535,11 +2630,15 @@ void BuildCementCatalogAtlas() {
         // TileIsRoadArt oracle all see the same layer. TileIsRoadArt only tests
         // != 0xFFFF, so road/runway classification is unaffected by construction.
         if (ConcreteCanonEnabled() && canon >= 0) {
-            long remapped = 0, keptMarked = 0;
+            long remapped = 0, keptMarked = 0, keptRoad = 0;
             for (int k = 0; k < NT; ++k) {
                 const CementCellStats& c = st[(size_t)k];
                 if (!c.family) continue;
                 if (c.marks) { ++keptMarked; continue; }  // painted cell keeps its art
+                // ARM C: a cell carrying baked road art keeps its own art. Without
+                // this ARM B erases the map's road network (measured: 90-100% of
+                // road cells repointed on all six maps).
+                if (RoadArtDetectEnabled() && c.road) { ++keptRoad; continue; }
                 if (k == canon) continue;
                 const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
                 if (slot < 0 || slot >= MC_MAX_TERRAIN_TXMS) continue;
@@ -2548,9 +2647,11 @@ void BuildCementCatalogAtlas() {
                 ++remapped;
             }
             MC2_DIAGF("[CEMENT_CONCRETE_CANON v1] event=applied mission=%s canon_cell=%d "
-                   "family=%ld remapped=%ld kept_marked=%ld\n",
+                   "canon_road_frac=%.3f family=%ld remapped=%ld kept_marked=%ld "
+                   "kept_road=%ld armC=%d\n",
                    (::missionName[0] ? ::missionName : "unknown"), canon,
-                   famCells, remapped, keptMarked);
+                   st[(size_t)canon].roadFrac, famCells, remapped, keptMarked,
+                   keptRoad, RoadArtDetectEnabled() ? 1 : 0);
             fflush(stdout);
         }
     }

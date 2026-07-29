@@ -1636,6 +1636,11 @@ def main():
                             #  B = collapse it onto one canonical cell).
                             "MC2_CEMENT_CONCRETE_TONE",
                             "MC2_CEMENT_CONCRETE_CANON",
+                            # CEMENT-INTRACELL-1: ARM C = detect the baked road
+                            # tileset inside solid cement cells and keep both
+                            # arms off it. Also the atlas dump diagnostic.
+                            "MC2_CEMENT_ROAD_ART_DETECT",
+                            "MC2_CEMENT_ATLAS_DUMP",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",
                             # CEMENT-ALPHA-LAND-1: alpha cement slots admitted
