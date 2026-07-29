@@ -35,6 +35,34 @@ SEVENZIP="${SEVENZIP:-/c/Program Files/7-Zip/7z.exe}"
 [ -d "$DEPLOY" ]   || { echo "DEPLOY not found: $DEPLOY"; exit 1; }
 [ -d "$SRCDATA" ]  || { echo "SRCDATA not found: $SRCDATA"; exit 1; }
 [ -x "$SEVENZIP" ] || { echo "7z not at: $SEVENZIP"; exit 1; }
+
+# ---------------------------------------------------------------------------
+# DISK-GUARD-1 (2026-07-29 ENOSPC incident)
+# ---------------------------------------------------------------------------
+# Runs BEFORE mkdir -p / mktemp -d, i.e. before the first byte is written. A
+# full re-cut peaks around 18.2 GB of zips, plus a staging tree that holds a
+# second copy of the burnin overlay. OUTDIR and $TMPDIR can be on different
+# volumes, so both are checked separately.
+#
+# CRITICAL (exit 3) is FATAL here, not advisory. A 7z run that hits ENOSPC
+# mid-stream leaves a truncated zip that still looks like a file -- exactly the
+# silent-corruption mode that cost four lanes their work. LOW (exit 1) warns
+# and proceeds; the guard has already printed the detail.
+disk_guard() {   # $1=path  $2=need-gb  $3=label
+    set +e
+    py -3 "$REPO/scripts/check-disk-space.py" --path "$1" --need-gb "$2" --label "$3"
+    local rc=$?
+    set -e
+    if [ "$rc" -eq 3 ] || [ "$rc" -eq 2 ]; then
+        echo "[build_release] ABORT: insufficient free space for $3 — nothing was written."
+        echo "[build_release] Reclaim first (.claude/DISK-RECLAIM-PLAN.md), then re-run."
+        exit 1
+    fi
+    return 0
+}
+disk_guard "$OUTDIR"          20 "release re-cut (7 zips)"
+disk_guard "${TMPDIR:-/tmp}"   8 "release staging tree (mktemp -d)"
+
 mkdir -p "$OUTDIR"
 
 z() { "$SEVENZIP" a -tzip -mx=7 -bso0 -bsp0 "$@"; }

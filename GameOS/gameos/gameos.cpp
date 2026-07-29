@@ -479,9 +479,34 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 
     return s.f_bsize * s.f_bfree;
 #else
+	// DISK-GUARD-1 (2026-07-29): this passed NULL instead of Path, so it
+	// reported free space on the CURRENT drive and silently ignored its own
+	// argument. Both callers (mechcmd2.cpp startup check, saveload.cpp
+	// Mission::save) pass gos_GetCurrentPath(), so on a single-drive install
+	// the answer happened to be right -- but a save-game directory or install
+	// on another volume got a free-space figure for the wrong disk, which is
+	// exactly how you end up writing a save until ENOSPC truncates it.
+	//
+	// Also: the return value was unchecked. On failure freeBytesAvailable is
+	// left UNINITIALISED and a garbage value was returned -- a large garbage
+	// value defeats the caller's "do I have room" test entirely. Return 0 on
+	// failure so callers take the conservative branch.
 	ULARGE_INTEGER freeBytesAvailable;
-	GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL);
-	return freeBytesAvailable.QuadPart;
+	freeBytesAvailable.QuadPart = 0;
+	if (!GetDiskFreeSpaceEx(Path, &freeBytesAvailable, NULL, NULL))
+	{
+		// Path may be a file, a relative path, or a UNC root we cannot query.
+		// Fall back to the previous behaviour (current drive) rather than
+		// hard-failing a startup check that used to succeed.
+		// SPEW signature is (Group, printf-fmt, ...) -- see gameos.hpp:3589.
+		SPEW(("DISK", "gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed for "
+		      "'%s' (err %lu); falling back to current drive\n",
+		      Path ? Path : "(null)", (unsigned long)GetLastError()));
+		freeBytesAvailable.QuadPart = 0;
+		if (!GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL))
+			return 0;
+	}
+	return (__int64)freeBytesAvailable.QuadPart;
 #endif
 }
 

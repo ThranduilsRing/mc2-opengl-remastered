@@ -269,6 +269,52 @@ def fail(msg, code=1):
     sys.exit(code)
 
 
+def check_free_space_for_payload(items, target):
+    """DISK-GUARD-1: refuse to start a deploy that cannot fit.
+
+    Motivated by the 2026-07-29 ENOSPC incident: a write that runs out of space
+    part-way through TRUNCATES its target. A deploy that dies mid-copy leaves a
+    half-written mc2.exe in a deploy dir that other lanes then smoke, and the
+    manifest hash check only catches it *after* the damage.
+
+    The required figure is MEASURED from the enumerated payload, not guessed.
+    +15% headroom covers filesystem slack, the manifest, and the fact that
+    overwriting an existing file can transiently need space for both copies.
+    CRITICAL is fatal; LOW warns and proceeds.
+    """
+    total = 0
+    missing = 0
+    for src, _rel, _kind in items:
+        try:
+            total += os.path.getsize(src)
+        except OSError:
+            missing += 1  # optional payload entry (e.g. absent pdb) -- fine
+    need = int(total * 1.15)
+    log(f"disk guard: payload {total} bytes across {len(items) - missing} "
+        f"present files; requiring {need} bytes (+15% headroom) on {target}")
+
+    guard = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "check-disk-space.py")
+    if not os.path.isfile(guard):
+        log(f"WARNING: disk guard script not found at {guard} — "
+            "deploy proceeding UNGUARDED")
+        return
+    try:
+        r = subprocess.run(
+            [sys.executable, guard, "--path", target,
+             "--need-bytes", str(need), "--label", "deploy payload"],
+            timeout=60)
+        rc = r.returncode
+    except Exception as e:  # noqa: BLE001
+        log(f"WARNING: disk guard could not run ({e}) — deploy proceeding "
+            "UNGUARDED")
+        return
+    if rc in (2, 3):
+        fail("insufficient free space for this deploy payload — NOTHING was "
+             "written. See the [DISK_GUARD] lines above, reclaim space "
+             "(.claude/DISK-RECLAIM-PLAN.md), then re-run.")
+
+
 def sha256_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -1159,6 +1205,12 @@ def main():
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
         f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
+
+    # DISK-GUARD-1 (2026-07-29 ENOSPC incident) -- checked HERE, immediately
+    # after enumeration, because this is the first moment the required byte
+    # count is actually KNOWN. Every byte below is measured from the real
+    # payload; nothing is guessed. Still before deploy() copies anything.
+    check_free_space_for_payload(items, target)
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
     write_manifest(target, hashes, src_commit)
     log("deploy COMPLETE — payload verified, manifest written")

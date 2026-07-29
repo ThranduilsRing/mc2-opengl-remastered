@@ -189,6 +189,25 @@ def park_cursor_center() -> None:
         print(f"[viscap] cursor park: {outcome}", file=sys.stderr)
 
 
+def _disk_guard_advisory(path, need_gb: float, label: str) -> None:
+    """DISK-GUARD-1 advisory probe. Prints the verdict; never blocks a capture.
+
+    Capture output is the tree's biggest untracked-byte producer, so this is the
+    natural place to surface a tightening drive. It stays advisory because
+    aborting an investigation on a threshold is its own failure mode; the sites
+    that abort are build_release.sh and deploy_payload.py.
+    """
+    guard = Path(__file__).resolve().parent / "check-disk-space.py"
+    if not guard.is_file():
+        return
+    try:
+        subprocess.run([sys.executable, str(guard), "--path", str(path),
+                        "--need-gb", str(need_gb), "--label", label],
+                       timeout=60)
+    except Exception as e:  # noqa: BLE001 -- advisory only
+        print(f"[visual_capture] disk guard skipped ({e})", file=sys.stderr)
+
+
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int,
             deterministic_clock: bool, show_window: bool = False,
@@ -200,6 +219,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # under the deploy (and fopen-fail if absent). Always pass an absolute path.
     out_dir = Path(out_dir).resolve()
     bookmarks_path = Path(bookmarks_path).resolve()
+
+    # DISK-GUARD-1 (2026-07-29 ENOSPC incident): probe BEFORE mkdir / engine
+    # launch. Capture sweeps are the single largest untracked-byte producer in
+    # the tree (34.7 GB of PNG/TGA/.rdc accumulated under .claude/ across two
+    # lanes and filled the drive). Advisory: warns, never blocks a capture.
+    _disk_guard_advisory(out_dir, need_gb=2, label="visual capture sweep")
+
     out_dir.mkdir(parents=True, exist_ok=True)
     file_mission, marks = _load_bookmarks(bookmarks_path)
     mission_token = file_mission or mission

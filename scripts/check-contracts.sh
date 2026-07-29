@@ -279,6 +279,22 @@ run_check "tgl_load_callers"   "sh scripts/check-tgl-load-callers.sh"
 run_check "tgl_load_selftest"  "sh scripts/check-tgl-load-callers.sh --self-test"
 
 # ---------------------------------------------------------------------------
+# DISK-GUARD-1 (2026-07-29 ENOSPC incident)
+# ---------------------------------------------------------------------------
+# The A: drive hit 0 bytes free. Because no script checked free space, a write
+# hit ENOSPC mid-stream and TRUNCATED THREE FILES TO ZERO BYTES; they survived
+# only because sibling worktrees held copies. scripts/check-disk-space.py is
+# the preflight that makes that failure loud and early instead of silent.
+#
+# ONLY the selftest is registered. A live free-space probe is
+# environment-dependent and would make this aggregator flaky -- and the
+# selftest is what actually proves the guard works, since a guard only ever
+# seen passing on good input is not evidence of anything. The live checks live
+# at the call sites (build_release.sh, deploy_payload.py, run_visual_capture.py,
+# renderdoc_capture.py). Read-only, no build, sub-second.
+run_check "disk_guard_selftest" "py -3 scripts/check-disk-space.py --selftest"
+
+# ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------
 echo "====================================================================="

@@ -139,9 +139,65 @@ def load_normalized_lines(path: Path) -> list[str]:
     return out
 
 
+def _disk_guard_advisory(path, need_gb: float, label: str) -> None:
+    """DISK-GUARD-1 advisory probe. Prints the guard's verdict, never blocks.
+
+    Developer capture tools warn rather than abort: a lost capture is cheap to
+    redo, and blocking an investigation on a threshold is its own failure mode.
+    The two sites that DO abort are build_release.sh and deploy_payload.py,
+    where a truncated output is expensive and hard to notice.
+    """
+    guard = Path(__file__).resolve().parent / "check-disk-space.py"
+    if not guard.is_file():
+        return
+    try:
+        subprocess.run([sys.executable, str(guard), "--path", str(path),
+                        "--need-gb", str(need_gb), "--label", label],
+                       timeout=60)
+    except Exception as e:  # noqa: BLE001 -- advisory only
+        print(f"[rdoc_capture] disk guard skipped ({e})", file=sys.stderr)
+
+
+def expand_out_template(raw: str, mission: str, frame: int) -> str:
+    """Expand {mission}/{frame} in --out, and REFUSE any other placeholder.
+
+    CAPTURE-FILENAME-1 (2026-07-29). A 1,010,693,435-byte capture was found on
+    disk named `vk_airport_{frame}_frame41.rdc`. `--out` was passed straight
+    through to RenderDoc's SetCaptureFilePathTemplate, so a caller who wrote
+    `--out .../vk_airport_{frame}` (reasonably assuming a placeholder, and/or
+    having built the string with a plain `r"..."` instead of an f-string) got a
+    literal `{frame}` baked into a ~1 GB filename. Nothing complained.
+
+    Two changes, because expansion alone is not enough:
+      1. {mission} and {frame} now actually expand, so the natural assumption
+         is correct rather than silently wrong.
+      2. Any *surviving* brace is a hard error. A typo'd or unsupported
+         placeholder must not be discoverable only by finding a gigabyte of
+         mis-named evidence weeks later.
+    """
+    expanded = raw.replace("{mission}", str(mission)).replace(
+        "{frame}", str(frame))
+    if "{" in expanded or "}" in expanded:
+        raise SystemExit(
+            f"[rdoc_capture] --out contains an unexpanded placeholder: "
+            f"{expanded!r}\n"
+            f"  supported placeholders: {{mission}}, {{frame}}\n"
+            f"  (refusing to write a ~1 GB capture under a mis-named path -- "
+            f"see CAPTURE-FILENAME-1)")
+    return expanded
+
+
 def run_capture(args) -> Path:
-    rdc_path = Path(args.out).resolve()
+    rdc_path = Path(expand_out_template(
+        args.out, args.mission, args.frame)).resolve()
     rdc_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # DISK-GUARD-1: a single .rdc runs ~1 GB (two near-1 GB captures were found
+    # on the full drive on 2026-07-29), and the XML conversion writes another
+    # large file alongside it. Advisory here -- a capture is cheap to redo and
+    # this is a developer tool, so it warns rather than blocks.
+    _disk_guard_advisory(rdc_path.parent, need_gb=3,
+                         label="RenderDoc capture (.rdc + XML)")
 
     # Path template the engine hands to SetCaptureFilePathTemplate must NOT
     # include the .rdc suffix; RenderDoc appends it (potentially with a
@@ -278,7 +334,9 @@ def main(argv=None) -> int:
     cap.add_argument("--frame", type=int, default=120,
                      help="frames after intro-complete latch")
     cap.add_argument("--out", required=True,
-                     help="output .rdc path (suffix optional)")
+                     help="output .rdc path (suffix optional). Supports the "
+                          "{mission} and {frame} placeholders; any other "
+                          "brace is a hard error (CAPTURE-FILENAME-1).")
     cap.add_argument("--xml", help="output pipeline-state XML path (default: alongside .rdc)")
     cap.add_argument("--baseline", help="baseline XML to diff against")
     cap.add_argument("--skip-convert", action="store_true",
