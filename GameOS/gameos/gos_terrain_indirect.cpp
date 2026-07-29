@@ -1138,6 +1138,169 @@ static inline uint32_t RunwayToneScale(float v, float gain) {
     return (uint32_t)std::min(255.f, std::max(0.f, y));
 }
 
+// ---------------------------------------------------------------------------
+// CEMENT-ATLAS-CELL-2 tunables. Deliberately NOT env-exposed: they define what
+// "actual concrete" means, and a taste dial on the CLASSIFIER would make the
+// two arms non-comparable in the review pack.
+static const float kConcreteChromaMax  = 0.20f;  // >this = coloured art, not concrete
+static const float kConcreteLumLo      = 0.72f;  // family window, x family centre
+static const float kConcreteLumHi      = 1.32f;
+static const float kConcreteMarkDelta  = 45.f;   // |L - bandL| beyond this = paint/tar
+static const float kConcreteMarkFrac   = 0.02f;  // >2% such texels = cell carries markings
+static const float kConcreteToneGainLo = 0.80f;  // Arm A gain clamp -- NARROW on purpose
+static const float kConcreteToneGainHi = 1.25f;
+
+// ARM A. Tone-normalise ONLY the concrete family. Default OFF => atlasBuf is
+// left byte-identical. Differs from the user-rejected MC2_CEMENT_TONE_MATCH in
+// the SET it acts on, not the arithmetic: that gate moved every solid cell
+// toward a whole-atlas median with a [0.70,1.40] clamp; this one moves only
+// cells that pass the neutrality+luminance concrete test, toward the family's
+// OWN median, and never touches an asphalt/dirt/coloured cell at all.
+static bool ConcreteToneEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_CONCRETE_TONE");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
+// ARM B. Point every plain-concrete slot at ONE canonical concrete cell, so the
+// apron cannot change colour tile to tile. Cells carrying painted markings are
+// excluded and keep their own art. Default OFF => no remap => byte-identical.
+static bool ConcreteCanonEnabled() {
+    static const bool s = []() {
+        const char* v = getenv("MC2_CEMENT_CONCRETE_CANON");
+        return v && v[0] && v[0] != '0';
+    }();
+    return s;
+}
+
+// ---------------------------------------------------------------------------
+// CEMENT-ATLAS-CELL-2: the CONCRETE-FAMILY classifier, shared by both arms.
+//
+// WHY THIS EXISTS. Every prior tone lever (MC2_CEMENT_TONE_MATCH,
+// MC2_RUNWAY_TONE_MATCH) normalised EVERY solid cement cell toward one global
+// median. That is why the user rejected them ("after is WAY worse" -- authored
+// material variation flattened into a pale wash): an asphalt cell, a dirt-
+// stained pad and a clean concrete apron were all dragged onto one tone.
+// The user's scope ruling is narrower: "by all concrete I mean only the actual
+// concrete ... runways, roads, other overlays etc. are their own layer".
+//
+// So this classifier answers a question no prior gate asked: IS THIS CELL
+// ACTUALLY CONCRETE? Cells outside the family are left byte-identical by both
+// arms. Runway/road art cannot reach here in the first place -- it arrives as
+// an &Overlays id or as a cement-ALPHA transition cell, and the ALPHA cells are
+// deliberately kept out of g_cementLayerIndexBySlot (see CEMENT-UNIFORM-2 at
+// the slot-map build) and out of the [0,nSolidCells) range this operates on.
+// Painted markings that DO live inside a solid concrete cell are detected here
+// (markFrac) and reported per-cell, so they can be excluded by index.
+struct CementCellStats {
+    float r = 0.f, g = 0.f, b = 0.f;   // [P50,P90] band mean
+    float lum = 0.f;                   // band mean luminance
+    float chroma = 0.f;                // 0 = neutral grey, 1 = fully saturated
+    float markFrac = 0.f;              // fraction of texels far from the band
+    bool  ok = false;                  // enough usable texels
+    bool  family = false;              // classified as actual concrete
+    bool  marks = false;               // carries painted markings
+};
+
+// Neutrality + marking census for one cell, on top of the band mean.
+static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
+                                   int atlasPixelSide, int gridSide, int txmSize,
+                                   int k, CementCellStats& s) {
+    s.ok = CementCellBandMean(atlasBuf, atlasPixelSide, gridSide, txmSize,
+                              k, s.r, s.g, s.b);
+    if (!s.ok) return;
+    s.lum = 0.299f * s.r + 0.587f * s.g + 0.114f * s.b;
+    const float mx = std::max(s.r, std::max(s.g, s.b));
+    const float mn = std::min(s.r, std::min(s.g, s.b));
+    s.chroma = (mx > 1.f) ? ((mx - mn) / mx) : 0.f;
+
+    // Marking census: texels a long way off the cell's own band luminance are
+    // paint (bright lane stripes / numbers) or tar (dark seams), not concrete.
+    const int dstX = (k % gridSide) * txmSize;
+    const int dstY = (k / gridSide) * txmSize;
+    long far = 0, tot = 0;
+    for (int py = 0; py < txmSize; ++py) {
+        const uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+        for (int px = 0; px < txmSize; ++px) {
+            const uint32_t c = row[px];
+            if ((c & 0xFF000000u) == 0u) continue;   // transparent surround
+            const float L = 0.299f * float((c >> 16) & 0xFFu)
+                          + 0.587f * float((c >>  8) & 0xFFu)
+                          + 0.114f * float( c        & 0xFFu);
+            ++tot;
+            if (std::fabs(L - s.lum) > kConcreteMarkDelta) ++far;
+        }
+    }
+    s.markFrac = (tot > 0) ? (float)far / (float)tot : 0.f;
+    s.marks    = s.markFrac > kConcreteMarkFrac;
+}
+
+// Classify [0,NT) solid cells. Seeds the reference from the UPPER-cluster median
+// (the apron tone, not a median dragged down by asphalt), admits neutral cells
+// within a luminance window, then re-medians once over the admitted set so the
+// reference is the family's own tone rather than the whole atlas's.
+// Returns the family reference in refR/refG/refB and the canonical cell index.
+static int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
+                                  float& refR, float& refG, float& refB) {
+    std::vector<float> okL;
+    for (int k = 0; k < NT; ++k) if (st[(size_t)k].ok) okL.push_back(st[(size_t)k].lum);
+    if (okL.empty()) return -1;
+    std::sort(okL.begin(), okL.end());
+    const float medL = okL[okL.size() / 2];
+
+    std::vector<float> upper;
+    for (float L : okL) if (L + 0.001f >= medL) upper.push_back(L);
+    float seedL = upper.empty() ? medL : upper[upper.size() / 2];
+
+    auto admit = [&](float centreL) {
+        for (int k = 0; k < NT; ++k) {
+            CementCellStats& c = st[(size_t)k];
+            c.family = c.ok
+                    && c.chroma <= kConcreteChromaMax
+                    && c.lum >= centreL * kConcreteLumLo
+                    && c.lum <= centreL * kConcreteLumHi;
+        }
+    };
+    admit(seedL);
+
+    // Re-centre on the admitted family, then re-admit once.
+    std::vector<float> famL;
+    for (int k = 0; k < NT; ++k) if (st[(size_t)k].family) famL.push_back(st[(size_t)k].lum);
+    if (!famL.empty()) {
+        std::sort(famL.begin(), famL.end());
+        seedL = famL[famL.size() / 2];
+        admit(seedL);
+    }
+
+    auto medOf = [&](float CementCellStats::* m) -> float {
+        std::vector<float> t;
+        for (int k = 0; k < NT; ++k) if (st[(size_t)k].family) t.push_back(st[(size_t)k].*m);
+        if (t.empty()) return 0.f;
+        std::sort(t.begin(), t.end());
+        return t[t.size() / 2];
+    };
+    refR = medOf(&CementCellStats::r);
+    refG = medOf(&CementCellStats::g);
+    refB = medOf(&CementCellStats::b);
+    if (!(refR > 0.f && refG > 0.f && refB > 0.f)) return -1;
+
+    // Canonical cell = family member closest to the reference that carries NO
+    // markings (substituting a marked cell everywhere would smear paint across
+    // the whole apron). Lowest index wins ties -> deterministic across runs.
+    int canon = -1; float bestD = 1e30f;
+    for (int k = 0; k < NT; ++k) {
+        const CementCellStats& c = st[(size_t)k];
+        if (!c.family || c.marks) continue;
+        const float d = (c.r - refR) * (c.r - refR)
+                      + (c.g - refG) * (c.g - refG)
+                      + (c.b - refB) * (c.b - refB);
+        if (d < bestD - 1e-4f) { bestD = d; canon = k; }
+    }
+    return canon;
+}
+
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut BARE terrain (no authored transition art), curing the hard full-tile
 // stairstep cliff. Default OFF (killswitch). When ON, PopulateRecipeCementWords
@@ -2262,6 +2425,120 @@ void BuildCementCatalogAtlas() {
                    "target_rgb=%.1f,%.1f,%.1f strength=%.2f target_src=%s\n",
                    (::missionName[0] ? ::missionName : "unknown"), NT, adjusted,
                    tgtR, tgtG, tgtB, strength, overridden ? "env" : "upper_median");
+            fflush(stdout);
+        }
+    }
+
+    // ---- CEMENT-ATLAS-CELL-2: concrete-family classification + the two arms.
+    // Runs AFTER the tone-match/runway-tone passes above (so it sees whatever
+    // atlasBuf those produced) and BEFORE the GL upload below. Solid cells only:
+    // [0,nSolidCells). Alpha/transition cells -- which is where authored runway
+    // and road MARKING art lives -- are appended past nSolidCells and are never
+    // touched by either arm, by construction.
+    if (NT > 0) {
+        std::vector<CementCellStats> st((size_t)NT);
+        for (int k = 0; k < NT; ++k)
+            CementCellComputeStats(atlasBuf, atlasPixelSide, gridSide, txmSize, k, st[(size_t)k]);
+
+        float refR = 0.f, refG = 0.f, refB = 0.f;
+        const int canon = ClassifyConcreteFamily(st, NT, refR, refG, refB);
+
+        // Census prints regardless of either gate, so a map can be judged --
+        // and the "do markings live in solid concrete cells?" question answered
+        // per-cell by NAME -- without enabling anything.
+        long famCells = 0, markCells = 0;
+        float famLmin = 1e30f, famLmax = -1e30f;
+        for (int k = 0; k < NT; ++k) {
+            const CementCellStats& c = st[(size_t)k];
+            if (!c.family) continue;
+            ++famCells;
+            if (c.marks) ++markCells;
+            famLmin = std::min(famLmin, c.lum);
+            famLmax = std::max(famLmax, c.lum);
+        }
+        for (int k = 0; k < NT; ++k) {
+            const CementCellStats& c = st[(size_t)k];
+            if (!(c.marks || traceOn())) continue;
+            const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
+            const long nTypes = Terrain::terrainTextures
+                              ? Terrain::terrainTextures->getNumTypes() : 0;
+            const long nameId = (Terrain::terrainTextures && slot >= 0 && slot < (int)nTypes)
+                              ? Terrain::terrainTextures->getTextureNameID(slot) : -1;
+            MC2_DIAGF("[CEMENT_CONCRETE v1] mission=%s cell=%d slot=%d nameId=%ld "
+                   "band_lum=%.1f chroma=%.3f mark_frac=%.4f family=%d marks=%d\n",
+                   (::missionName[0] ? ::missionName : "unknown"), k, slot, nameId,
+                   c.lum, c.chroma, c.markFrac, c.family ? 1 : 0, c.marks ? 1 : 0);
+        }
+        MC2_DIAGF("[CEMENT_CONCRETE v1] event=census mission=%s solid_cells=%d "
+               "family=%ld family_marked=%ld family_lum=%.1f..%.1f "
+               "ref_rgb=%.1f,%.1f,%.1f canon_cell=%d armA=%d armB=%d\n",
+               (::missionName[0] ? ::missionName : "unknown"), NT, famCells, markCells,
+               (famCells ? famLmin : 0.f), (famCells ? famLmax : 0.f),
+               refR, refG, refB, canon,
+               ConcreteToneEnabled() ? 1 : 0, ConcreteCanonEnabled() ? 1 : 0);
+        fflush(stdout);
+
+        // ARM A -- per-cell gain onto the family reference, family cells only.
+        if (ConcreteToneEnabled() && refR > 0.f) {
+            long adjusted = 0;
+            for (int k = 0; k < NT; ++k) {
+                const CementCellStats& c = st[(size_t)k];
+                if (!c.family) continue;          // asphalt/dirt/coloured: untouched
+                auto gainOf = [&](float tgt, float cur) {
+                    return std::min(kConcreteToneGainHi,
+                           std::max(kConcreteToneGainLo, tgt / std::max(cur, 1.f)));
+                };
+                const float gr = gainOf(refR, c.r);
+                const float gg = gainOf(refG, c.g);
+                const float gb = gainOf(refB, c.b);
+                if (gr > 0.995f && gr < 1.005f && gg > 0.995f && gg < 1.005f
+                    && gb > 0.995f && gb < 1.005f) continue;
+                ++adjusted;
+                const int dstX = (k % gridSide) * txmSize;
+                const int dstY = (k / gridSide) * txmSize;
+                for (int py = 0; py < txmSize; ++py) {
+                    uint32_t* row = &atlasBuf[(size_t)(dstY + py) * atlasPixelSide + dstX];
+                    for (int px = 0; px < txmSize; ++px) {
+                        const uint32_t c32 = row[px];
+                        const uint32_t a = c32 & 0xFF000000u;
+                        // Soft knee: a lane marking inside a concrete cell keeps
+                        // its identity instead of clipping to flat white.
+                        const uint32_t bi = RunwayToneScale(float( c32        & 0xFFu), gb);
+                        const uint32_t gi = RunwayToneScale(float((c32 >>  8) & 0xFFu), gg);
+                        const uint32_t ri = RunwayToneScale(float((c32 >> 16) & 0xFFu), gr);
+                        row[px] = a | (ri << 16) | (gi << 8) | bi;
+                    }
+                }
+            }
+            MC2_DIAGF("[CEMENT_CONCRETE_TONE v1] event=applied mission=%s family=%ld "
+                   "adjusted=%ld ref_rgb=%.1f,%.1f,%.1f\n",
+                   (::missionName[0] ? ::missionName : "unknown"),
+                   famCells, adjusted, refR, refG, refB);
+            fflush(stdout);
+        }
+
+        // ARM B -- repoint plain-concrete SOLID slots at the canonical cell.
+        // Remapping the slot->layer map (rather than the frag shader) means every
+        // downstream reader agrees: the word bake, cemLayerForVertex, and the
+        // TileIsRoadArt oracle all see the same layer. TileIsRoadArt only tests
+        // != 0xFFFF, so road/runway classification is unaffected by construction.
+        if (ConcreteCanonEnabled() && canon >= 0) {
+            long remapped = 0, keptMarked = 0;
+            for (int k = 0; k < NT; ++k) {
+                const CementCellStats& c = st[(size_t)k];
+                if (!c.family) continue;
+                if (c.marks) { ++keptMarked; continue; }  // painted cell keeps its art
+                if (k == canon) continue;
+                const int slot = (k < (int)cementSlots.size()) ? cementSlots[k] : -1;
+                if (slot < 0 || slot >= MC_MAX_TERRAIN_TXMS) continue;
+                if (g_cementLayerIndexBySlot[slot] != (uint16_t)k) continue;  // not a solid owner
+                g_cementLayerIndexBySlot[slot] = (uint16_t)canon;
+                ++remapped;
+            }
+            MC2_DIAGF("[CEMENT_CONCRETE_CANON v1] event=applied mission=%s canon_cell=%d "
+                   "family=%ld remapped=%ld kept_marked=%ld\n",
+                   (::missionName[0] ? ::missionName : "unknown"), canon,
+                   famCells, remapped, keptMarked);
             fflush(stdout);
         }
     }

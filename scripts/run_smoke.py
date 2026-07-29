@@ -1631,6 +1631,11 @@ def main():
                             "MC2_CEMENT_LIT",
                             "MC2_CEMENT_EDGE_CURVE",
                             "MC2_CEMENT_RAMP_WORD",
+                            # CEMENT-ATLAS-CELL-2: the two concrete-only arms
+                            # (A = tone-normalise the concrete family,
+                            #  B = collapse it onto one canonical cell).
+                            "MC2_CEMENT_CONCRETE_TONE",
+                            "MC2_CEMENT_CONCRETE_CANON",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",
                             # CEMENT-ALPHA-LAND-1: alpha cement slots admitted
