@@ -2648,6 +2648,7 @@ class gosRenderer {
             GLint padGlow                            = -1;  // vec3 (premultiplied)
             GLint padGlowSpill                       = -1;  // float (wu)
             GLint padGlowMapSide                     = -1;  // int (0 = grid absent)
+            GLint overlayCementShadowMatch           = -1;  // OVERLAY-CEMENT-SHADOW-MATCH-1
             GLint padGlowHalfMap                     = -1;  // float (wu)
         };
         OverlayUniformLocs_ overlayLocs_;
@@ -5537,6 +5538,10 @@ void gosRenderer::init() {
         locs.padGlow        = glGetUniformLocation(shp, "u_padGlow");
         locs.padGlowSpill   = glGetUniformLocation(shp, "u_padGlowSpill");
         locs.padGlowMapSide = glGetUniformLocation(shp, "u_padGlowMapSide");
+        // OVERLAY-CEMENT-SHADOW-MATCH-1 (overlayProg_ only; decal.frag does not
+        // declare it, so the loc stays -1 there and the upload is skipped).
+        locs.overlayCementShadowMatch =
+            glGetUniformLocation(shp, "u_overlayCementShadowMatch");
         locs.padGlowHalfMap = glGetUniformLocation(shp, "u_padGlowHalfMap");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
@@ -10768,6 +10773,19 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
             glUniform1i(L.padGlowMapSide, pgSide);
         if (L.padGlowHalfMap >= 0)
             glUniform1f(L.padGlowHalfMap, pgHalf);
+    }
+
+    // OVERLAY-CEMENT-SHADOW-MATCH-1 (CEMENT-PATCHY-CAUSE-1): give the overlay
+    // layer the same concrete static-shadow exemption terrain_lod_chunk.frag
+    // applies, so the two shaders stop disagreeing across the seam where a
+    // paved surface is split between them. Default OFF => uploads 0 => the
+    // frag's first compare short-circuits => byte-identical.
+    if (L.overlayCementShadowMatch >= 0) {
+        static const int s_overlayCementShadowMatch = [] {
+            const char* v = getenv("MC2_OVERLAY_CEMENT_SHADOW_MATCH");
+            return (v && v[0] && v[0] != '0') ? 1 : 0;
+        }();
+        glUniform1i(L.overlayCementShadowMatch, s_overlayCementShadowMatch);
     }
 
     // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as

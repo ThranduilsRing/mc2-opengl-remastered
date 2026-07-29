@@ -1640,6 +1640,11 @@ def main():
                             # tileset inside solid cement cells and keep both
                             # arms off it. Also the atlas dump diagnostic.
                             "MC2_CEMENT_ROAD_ART_DETECT",
+                            # CEMENT-PATCHY-CAUSE-1: give the overlay/decal
+                            # layer the same concrete static-shadow exemption
+                            # terrain_lod_chunk.frag applies, so the two
+                            # shaders stop disagreeing across their seam.
+                            "MC2_OVERLAY_CEMENT_SHADOW_MATCH",
                             "MC2_CEMENT_ATLAS_DUMP",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",

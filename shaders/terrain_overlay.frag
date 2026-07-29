@@ -102,6 +102,33 @@ uniform PREC float u_padGlowSpill;   // feather distance (wu), < 128
 uniform int        u_padGlowMapSide; // chunk cement grid side (0 = unavailable)
 uniform PREC float u_padGlowHalfMap; // mapSide * 128 / 2 (wu)
 
+// OVERLAY-CEMENT-SHADOW-MATCH-1 (gate MC2_OVERLAY_CEMENT_SHADOW_MATCH, default
+// 0 = OFF = byte-identical). CEMENT-PATCHY-CAUSE-1 attributed the mc2_23 apron
+// "outlines of the concrete" to a SEAM BETWEEN TWO SHADERS, not to the cement
+// atlas: a paved surface is drawn partly by terrain_lod_chunk.frag (the cement
+// terrain) and partly by THIS shader (the overlay/decal layer, eid 3678 in
+// scratch/cpc1/rg_bm.rdc), and the two disagree about the concrete lighting
+// exemption. The chunk frag drops the STATIC (baked) shadow on concrete —
+// `shadow = mix(shadow, dynS, pureConcrete)` — while the overlay multiplies by
+// staticShadow * dynamicShadow unconditionally. Where the two layers abut, the
+// static-shadow term appears on one side of a hard polygon edge and not the
+// other, which reads as a tone outline through flat concrete.
+//
+// When armed, an overlay fragment whose OWN 128wu tile carries a VALID cement
+// word (bit31 — the same word the chunk frag keys `cementHit` off, and the same
+// SSBO already bound at binding 25 for the pad glow) drops staticShadow exactly
+// as the chunk frag does, keeping the dynamic shadow. No new binding, no new
+// texture fetch — one SSBO word. u_padGlowMapSide == 0 (legacy terrain path, no
+// chunk grid) => never armed => the SSBO is not read.
+uniform int u_overlayCementShadowMatch;
+
+bool overlayOwnTileIsCement(PREC vec2 wp) {
+    if (u_overlayCementShadowMatch == 0 || u_padGlowMapSide <= 0) return false;
+    int cx = clamp(int(floor((wp.x + u_padGlowHalfMap) / 128.0)), 0, u_padGlowMapSide - 1);
+    int cy = clamp(int(floor((u_padGlowHalfMap - wp.y) / 128.0)), 0, u_padGlowMapSide - 1);
+    return (cementWordsPG[cx + cy * u_padGlowMapSide] & 0x80000000u) != 0u;
+}
+
 // Lockstep with terrain_lod_chunk.frag padGlowMask() — see the writeup there.
 PREC float padGlowMaskOv(PREC vec2 wp) {
     PREC vec2 g = vec2((wp.x + u_padGlowHalfMap) / 128.0,
@@ -222,6 +249,10 @@ void main()
     float staticShadow  = calcShadow(WorldPos, shadowN, lightDir3, 8);
     float dynamicShadow = calcDynamicShadow(WorldPos, shadowN, lightDir3, 4);
     float shadow        = staticShadow * dynamicShadow;
+    // OVERLAY-CEMENT-SHADOW-MATCH-1: on a cement tile, match the chunk frag's
+    // concrete exemption (static shadow dropped, dynamic kept). Gate OFF =>
+    // overlayOwnTileIsCement() returns false on its first compare => unchanged.
+    if (overlayOwnTileIsCement(WorldPos.xy)) shadow = dynamicShadow;
     // DEBUG-VIZ: 30 = dynamic-cast shadow only (isolates building dynamic shadow
     // on cement vs grass), 31 = combined. Grayscale, early-return.
     if (surfaceDebugMode == 30) {
