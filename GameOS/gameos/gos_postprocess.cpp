@@ -990,6 +990,38 @@ void gosPostProcess::init(int w, int h)
         // than 2%, so every neighbour tap was rejected and the result collapsed
         // to the centre pixel -- a blur that silently does nothing exactly where
         // the AO buffer is noisiest.
+        // VERIFY-DEBT-1 (SSAO-RADIUS-REVERT-1). SSAO-BLUR-1 changed TWO coupled
+        // things: it added the denoise pass AND raised aoRadius 3.0 -> 24.0. Only
+        // the first had a killswitch. That left MC2_SSAO_BLUR=0 claiming to
+        // "restore the pre-SSAO-BLUR-1 two-draw chain" while silently keeping the
+        // 8x radius -- i.e. radius-24-without-denoise, a combination that has
+        // never shipped and is exactly the speckle-on-flat-faces failure
+        // SSAO-RETUNE-1 documented. The radius needed its own revert.
+        //
+        // Why the radius is NOT simply slaved to the blur gate: the stated
+        // purpose of MC2_SSAO_BLUR=0 is to A/B the BLUR on one exe. Flipping the
+        // radius with it makes that a two-variable change and stops being a blur
+        // A/B at all. Worse, 3.0 is STRUCTURALLY DEAD -- one map cell is 42.67 wu
+        // and the baked kernel's mean |v| is 0.289, so radius 3 puts the mean tap
+        // 0.87 wu out (sub-pixel) while rangeCheck zeroes any occluder past 3 wu;
+        // measured occlusion is identically 0.0000%. Auto-reverting to 3.0 would
+        // therefore silently turn AO OFF for anyone who set MC2_SSAO_BLUR=0,
+        // which is a worse failure than the one being fixed.
+        //
+        // So: an explicit, independent revert (MC2_SSAO_RADIUS, any float in the
+        // gos_SetSsaoRadius clamp range 0.1..64), plus a loud diagnostic when the
+        // known-bad pairing is actually selected. The radius keeps its own
+        // runtime reverts too (ImGui, and the per-mission visual-tuning-profile
+        // `aoRadius` key) -- this adds the launch-time one those cannot give.
+        const char* radEnv = getenv("MC2_SSAO_RADIUS");
+        bool radiusOverridden = false;
+        if (radEnv && radEnv[0]) {
+            float r = (float)atof(radEnv);
+            if (r < 0.1f)  r = 0.1f;
+            if (r > 64.0f) r = 64.0f;
+            aoRadius_ = r;
+            radiusOverridden = true;
+        }
         const char* sigEnv = getenv("MC2_SSAO_BLUR_SIGMA");
         if (sigEnv && sigEnv[0]) {
             float s = (float)atof(sigEnv);
@@ -997,10 +1029,25 @@ void gosPostProcess::init(int w, int h)
             if (s > 1.0f)   s = 1.0f;
             aoBlurDepthSigma_ = s;
         }
-        MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f blur=%d sigma=%.4f\n",
+        MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f (MC2_SSAO_RADIUS=%s) strength=%.2f bias=%.4f blur=%d sigma=%.4f\n",
                      ssaoEnabled_ ? 1 : 0, ssaoDebug_,
-                     ssaoEnv ? ssaoEnv : "(unset)", aoRadius_, aoStrength_, aoBias_,
+                     ssaoEnv ? ssaoEnv : "(unset)", aoRadius_,
+                     radEnv && radEnv[0] ? radEnv : "(unset)",
+                     aoStrength_, aoBias_,
                      ssaoBlurEnabled_ ? 1 : 0, aoBlurDepthSigma_);
+        // The one combination that is known-bad rather than merely untuned.
+        if (ssaoEnabled_ && !ssaoBlurEnabled_ && !radiusOverridden && aoRadius_ > 3.0f) {
+            std::fprintf(stderr,
+                "[SSAO v1] WARNING: MC2_SSAO_BLUR=0 with the SSAO-BLUR-1 retuned "
+                "aoRadius=%.2f. This pairing NEVER shipped: the 16-sample "
+                "stochastic estimator's noise scales with radius and nothing is "
+                "denoising it, so expect speckle on flat unoccluded faces. This is "
+                "NOT the pre-SSAO-BLUR-1 chain -- that also had aoRadius=3.0. For "
+                "the historical chain set MC2_SSAO_RADIUS=3 as well (note it "
+                "measures 0.0000%% occlusion, i.e. AO effectively off); to A/B the "
+                "blur alone, keep this radius and ignore this warning.\n",
+                aoRadius_);
+        }
     }
 
     // POST-FX-FXAA-1: FXAA gate + tunables, resolved once from env. Default OFF

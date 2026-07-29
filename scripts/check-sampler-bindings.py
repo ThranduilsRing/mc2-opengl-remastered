@@ -103,23 +103,50 @@ HARD_ANCHORS = {
     "sceneTex": (0, "shaders/postprocess.frag", "compositeProg_"),
 }
 
-# Anchors DEMOTED by the self-demoting rule above (removed deliberately, not lost
-# to attrition). Recorded so a future reader can tell an intentional demotion
-# from a silently-dropped anchor, and can re-anchor if the name ever
-# de-multiplexes again.
+# ---------------------------------------------------------------------------
+# Multiplex anchors (MULTIPLEX-ANCHOR-1, VERIFY-DEBT-1)
+# ---------------------------------------------------------------------------
+# Names DEMOTED out of HARD_ANCHORS by the self-demoting rule above, re-armed as
+# a PER-PASS anchor. The old DEMOTED_ANCHORS was a bare tuple that NOTHING read:
+# demoting ssaoTex dropped enforced anchors 3 -> 2 and left behind a comment, not
+# a guard. An inert record is documentation.
+#
+# The insight: a name that is multiplexed across N passes is not un-anchorable,
+# it is anchorable N times. Instead of one (name -> unit) pair we pin the whole
+# multiplex SET -- every (glsl decl file, C++ receiver, unit) triple -- so each
+# pass keeps exactly the protection the single anchor used to give, and the
+# second pass gains protection the single anchor never had.
+#
+# Checked below (FAIL 4), all of it:
+#   * the name is STILL multiplexed. If it de-multiplexes back to one decl file
+#     and one receiver it must be promoted back into HARD_ANCHORS -- that is the
+#     reverse of the self-demoting rule, and without it a name can quietly lose
+#     a pass and land in the un-anchored WARN census forever.
+#   * the decl-file set, receiver set and unit set all match exactly (a NEW third
+#     pass, or a deleted pass, fails).
+#   * per-pass unit: each named receiver binds the name to its declared unit.
+#   * per-pass comment: each named GLSL file's unit comment matches its declared
+#     unit. This is the one that catches the real historical bug -- CONTRACT-
+#     REPAIR-2 found ssao_blur.frag's comments INVERTED vs the C++ (claimed
+#     ssaoTex=0 / sceneDepthTex=1, actual 1 / 0). A whole-name check cannot see
+#     that: {0,1} is the correct unit SET either way. Only the per-file pin does.
 #
 #   ssaoTex — demoted CONTRACT-REPAIR-2 (2026-07). Was (0, ssao_apply.frag,
 #     ssaoApplyProg_). SSAO-BLUR-1 added shaders/ssao_blur.frag, which declares
 #     ssaoTex a SECOND time and binds it via a SECOND receiver (ssaoBlurProg_)
 #     to a DIFFERENT unit (1 — the blur pass puts sceneDepthTex on 0). That is
-#     legitimate multiplexing, not drift: two passes, two unit assignments. The
-#     name therefore fails all three anchor criteria (one decl file / one
-#     receiver / one unit) and cannot be re-anchored as-is. It still appears in
-#     the WARN census. NOTE: the same lane found ssao_blur.frag's unit comments
-#     were INVERTED vs the C++ (claimed ssaoTex=0 / sceneDepthTex=1, actual
-#     1 / 0) and corrected them — comments only, no runtime effect, since setInt
-#     is authoritative.
-DEMOTED_ANCHORS = ("ssaoTex",)
+#     legitimate multiplexing, not drift: two passes, two unit assignments.
+MULTIPLEX_ANCHORS = {
+    # name: ((glsl_file_substr, cpp_receiver, unit), ...)
+    "ssaoTex": (
+        ("shaders/ssao_apply.frag", "ssaoApplyProg_", 0),
+        ("shaders/ssao_blur.frag",  "ssaoBlurProg_",  1),
+    ),
+}
+
+# Back-compat alias: the names that are no longer HARD_ANCHORS. Derived, so it
+# can never drift from the table that is actually enforced.
+DEMOTED_ANCHORS = tuple(sorted(MULTIPLEX_ANCHORS))
 
 # ---------------------------------------------------------------------------
 # Vulkan descriptor-contract cross-reference (SAMPLER-UNIT-MANIFEST-1)
@@ -357,6 +384,74 @@ def main():
         for p in problems:
             fails.append(f"hard-anchor '{name}' (expect unit {exp_unit}): {p}")
 
+    # FAIL 4 (multiplex anchors, MULTIPLEX-ANCHOR-1): a name demoted out of
+    # HARD_ANCHORS is anchored PER PASS instead of being merely recorded. See the
+    # MULTIPLEX_ANCHORS comment for why each clause exists.
+    multiplex = []
+    for name, rows in sorted(MULTIPLEX_ANCHORS.items()):
+        decls = glsl.get(name, [])
+        binds = by_name.get(name, [])
+        problems = []
+        files = {d["file"] for d in decls}
+        recvs = {a["receiver"] for a in binds}
+        units = {a["unit"] for a in binds}
+
+        if not decls:
+            problems.append("GLSL declaration vanished/renamed")
+        if not binds:
+            problems.append("C++ setter vanished/renamed")
+
+        # (a) still multiplexed? If not, it must go back into HARD_ANCHORS.
+        if decls and binds and len(files) <= 1 and len(recvs) <= 1:
+            problems.append(
+                f"NO LONGER MULTIPLEXED (decl files {sorted(files)}, receivers "
+                f"{sorted(recvs)}) — it now meets the hard-anchor criteria again. "
+                f"Promote it back into HARD_ANCHORS and remove it from "
+                f"MULTIPLEX_ANCHORS, or it silently loses all enforcement.")
+
+        # (b) the multiplex SET itself must match exactly.
+        exp_files = {f for f, _, _ in rows}
+        exp_recvs = {r for _, r, _ in rows}
+        exp_units = {u for _, _, u in rows}
+        unmatched = sorted(f for f in files
+                           if not any(e in f for e in exp_files))
+        if unmatched:
+            problems.append(f"unexpected GLSL decl file(s) {unmatched} — a new pass "
+                            f"declares '{name}'; add it to MULTIPLEX_ANCHORS")
+        for e in sorted(exp_files):
+            if not any(e in f for f in files):
+                problems.append(f"expected GLSL decl file ~'{e}' is gone")
+        if recvs and recvs != exp_recvs:
+            problems.append(f"C++ receiver set {sorted(recvs)} != expected "
+                            f"{sorted(exp_recvs)}")
+        if units and units != exp_units:
+            problems.append(f"C++ unit set {sorted(units)} != expected "
+                            f"{sorted(exp_units)}")
+
+        # (c) per-pass unit: each declared receiver binds to its declared unit.
+        for _f, recv, unit in rows:
+            got = {a["unit"] for a in binds if a["receiver"] == recv}
+            if got and got != {unit}:
+                problems.append(f"receiver '{recv}' binds '{name}' to {sorted(got)}, "
+                                f"expected unit {unit}")
+
+        # (d) per-pass comment: the unit comment in each declared GLSL file must
+        #     match that pass's unit. Catches the inverted-comment class.
+        for f_sub, _recv, unit in rows:
+            for d in decls:
+                if f_sub not in d["file"]:
+                    continue
+                if d["comment_unit"] is not None and d["comment_unit"] != unit:
+                    problems.append(
+                        f"per-pass comment drift: {d['file']}:{d['line']} comments "
+                        f"unit {d['comment_unit']} but this pass binds unit {unit}")
+
+        multiplex.append({"name": name, "expected": [list(r) for r in rows],
+                          "status": "clean" if not problems else "drift",
+                          "problems": problems})
+        for p in problems:
+            fails.append(f"multiplex-anchor '{name}': {p}")
+
     # WARN: same receiver, one unit, two distinct sampler names (collision or
     # intentional mode-alternate).
     for recv, items in sorted(by_recv.items()):
@@ -441,6 +536,9 @@ def main():
             "glActiveTexture_sites": n_activetex,
             "hard_anchors": len(anchors),
             "anchors_drift": sum(1 for a in anchors if a["status"] == "drift"),
+            "multiplex_anchors": len(multiplex),
+            "multiplex_anchor_passes": sum(len(m["expected"]) for m in multiplex),
+            "multiplex_drift": sum(1 for m in multiplex if m["status"] == "drift"),
             "vulkan_cis_rows": len(vk_cis_ids),
             "vulkan_linked_samplers": len(vk_linked),
             "fails": len(fails),
@@ -455,6 +553,7 @@ def main():
         "fails": fails,
         "warns": warns,
         "anchors": anchors,
+        "multiplex_anchors": multiplex,
         "samplers": samplers_out,
         "assignments": sorted(assigns, key=lambda a: (a["unit"], a["name"], a["file"])),
         "occupancy": {str(u): occ[u] for u in sorted(occ)},
@@ -472,6 +571,9 @@ def main():
         print(f"  glActiveTexture sites      : {n_activetex}")
         print(f"  hard anchors               : {len(anchors)} "
               f"({sum(1 for a in anchors if a['status']=='drift')} drift)")
+        print(f"  multiplex anchors          : {len(multiplex)} over "
+              f"{sum(len(m['expected']) for m in multiplex)} passes "
+              f"({sum(1 for m in multiplex if m['status']=='drift')} drift)")
         print(f"  vulkan CIS rows (contract) : {len(vk_cis_ids)}")
         print(f"  vulkan-linked samplers     : {len(vk_linked)} "
               f"-> {', '.join(f'{k}:{len(v)}' for k, v in sorted(vk_by_resource.items()))}")

@@ -101,6 +101,17 @@ run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet
 run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
 run_check "sampler_bindings"       "py -3 scripts/check-sampler-bindings.py --quiet"
+# MULTIPLEX-ANCHOR-1 (VERIFY-DEBT-1): proves the per-pass anchor that replaced the
+# inert DEMOTED_ANCHORS tuple actually FAILS on drift -- inverted unit comments,
+# a rebound unit, a de-multiplexed name, an unrecorded third pass.
+run_check "sampler_bindings_selftest" "py -3 scripts/check-sampler-bindings-selftest.py"
+# GOLDEN-COVERAGE-LEDGER-1 (VERIFY-DEBT-1): committed golden sets must account for
+# every region they could cover, and must contain no un-failable (flat) crops.
+run_check "golden_coverage"          "py -3 scripts/check-golden-coverage.py --quiet"
+run_check "golden_coverage_selftest" "py -3 scripts/check-golden-coverage.py --selftest"
+# THREE-RUN-ALL-PAIRS-1 + DEGENERATE-CROP-REFUSAL-1 (VERIFY-DEBT-1): proves bless.py
+# refuses a two-run set, a duplicated run, a degenerate crop and an unstable region.
+run_check "bless_selftest"           "py -3 tools/visual_verify/bless_selftest.py"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 run_check "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
 run_check "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
