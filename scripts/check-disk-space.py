@@ -43,7 +43,19 @@ argument against a purely advisory rollout: a warning that scrolls by is what
 we already had (nothing), so the two sites where the money is actually spent --
 `scripts/build_release.sh` and `scripts/deploy_payload.py` -- treat CRITICAL as
 FATAL from day one. Lighter sites (worktree bootstrap, visual capture,
-renderdoc capture) warn and proceed. See docs/disk-space-guard.md.
+renderdoc capture) warn and proceed -- a capture is cheap to redo.
+
+DISK-GUARD-3 addendum: at those two fatal sites, a guard that CANNOT RUN
+(this script missing, the interpreter missing, an unrecognised exit code) is
+also fatal, not a warning. LOW is the only advisory verdict. The reasoning is
+that failing open retires the protection precisely when the checkout is in an
+unverified state, and it does so via a log line -- and a log line nobody reads
+is what we already had on 2026-07-29. Both sites expose a deliberate, loud
+bypass (MC2_DEPLOY_SKIP_DISK_GUARD=1) so the decision is a human's and is
+visible afterwards.
+
+(No docs/disk-space-guard.md exists; DISK-GUARD-2 referenced one that was
+never written. This docstring is the contract.)
 
 Pure stdlib. Read-only. No build. Sub-second.
 

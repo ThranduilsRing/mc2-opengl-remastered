@@ -245,6 +245,9 @@ ALLOWLIST=(
     MC2_RDC_CAPTURE_FRAME       # infra -- RenderDoc capture
     MC2_RDC_CAPTURE_PATH        # infra -- RenderDoc capture
     MC2_RDC_EXIT_AFTER          # infra -- RenderDoc capture
+    MC2_RDC_MISSION             # infra -- RenderDoc capture: supplies {mission} for
+                                #          MC2_RDC_CAPTURE_PATH expansion when the
+                                #          run is not under smoke mode (--mission)
     MC2_RENDER_SNAPSHOT_LOG     # trace
     MC2_REGFLUSH_DIAG_TRACE     # trace
     MC2_REGFLUSH_MULTI          # trace

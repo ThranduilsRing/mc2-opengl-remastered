@@ -497,14 +497,30 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 	{
 		// Path may be a file, a relative path, or a UNC root we cannot query.
 		// Fall back to the previous behaviour (current drive) rather than
-		// hard-failing a startup check that used to succeed.
-		// SPEW signature is (Group, printf-fmt, ...) -- see gameos.hpp:3589.
-		SPEW(("DISK", "gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed for "
-		      "'%s' (err %lu); falling back to current drive\n",
-		      Path ? Path : "(null)", (unsigned long)GetLastError()));
+		// hard-failing a startup check that used to succeed -- but say so
+		// out loud. NOT SPEW(): SPEW compiles to ((void)0) unless _ARMOR is
+		// defined (gameos.hpp:135), so a SPEW here would be invisible in
+		// every shipping build, which is the failure mode this lane exists
+		// to remove. The fallback answers for the WRONG VOLUME, so the line
+		// has to survive to stderr.
+		const DWORD err = GetLastError();
+		fprintf(stderr,
+		        "[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed "
+		        "for '%s' (err %lu); falling back to CURRENT DRIVE -- the "
+		        "figure below may describe a different volume\n",
+		        Path ? Path : "(null)", (unsigned long)err);
+		fflush(stderr);
 		freeBytesAvailable.QuadPart = 0;
 		if (!GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL))
+		{
+			fprintf(stderr,
+			        "[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback "
+			        "also failed (err %lu); returning 0 so callers take the "
+			        "out-of-space branch\n",
+			        (unsigned long)GetLastError());
+			fflush(stderr);
 			return 0;
+		}
 	}
 	return (__int64)freeBytesAvailable.QuadPart;
 #endif

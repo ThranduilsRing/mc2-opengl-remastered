@@ -2,11 +2,13 @@
 // See gos_rdoc_capture.h for the contract.
 #include "gos_rdoc_capture.h"
 #include "gos_terrain_indirect.h"  // WasEverFrameSolidArmed()
+#include "gos_smoke.h"             // SmokeMode::state().mission
 
 #include "../../3rdparty/renderdoc/renderdoc_app.h"
 
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
@@ -35,6 +37,7 @@ struct State {
     bool                  introObserved       = false;
     Phase                 phase               = Phase::Waiting;
     int                   triggeredAt         = -1;
+    std::string           capturePath;                 // expanded, validated
 };
 State s_state;
 
@@ -42,6 +45,69 @@ int envInt(const char* name, int dflt) {
     const char* v = std::getenv(name);
     if (!v || !v[0]) return dflt;
     return std::atoi(v);
+}
+
+// DISK-GUARD-3 (2026-07-29): MC2_RDC_CAPTURE_PATH used to be handed to
+// SetCaptureFilePathTemplate VERBATIM. That is how a 1,010,693,435-byte
+// capture ended up on disk named
+//
+//     vk_airport_{frame}_frame41.rdc
+//
+// -- a literal, unexpanded "{frame}" in the filename of a ~1 GB file, which
+// nobody could later attribute to a mission or a frame. scripts/
+// renderdoc_capture.py was taught to expand its own --out, but that fix only
+// covers callers that go THROUGH the script; the offending capture came from
+// an ad-hoc invocation that set MC2_RDC_CAPTURE_PATH directly and bypassed it
+// entirely. This function is the real chokepoint: every caller, script or
+// ad-hoc, passes through here.
+//
+// Contract:
+//   {mission} -> --mission stem (SmokeMode), or $MC2_RDC_MISSION
+//   {frame}   -> $MC2_RDC_CAPTURE_FRAME (s_state.captureFrame)
+//   any surviving '{' or '}' -> FATAL. A mis-named gigabyte is worse than no
+//   capture at all, and silently proceeding is precisely the failure this
+//   lane exists to remove. Refusing to set the template is NOT an option
+//   either: RenderDoc would then fall back to its own default path, which is
+//   just a different flavour of "the file is not where you told it to be".
+std::string expandCaptureTemplate(const char* raw) {
+    std::string out(raw);
+
+    auto replaceAll = [&out](const char* token, const std::string& value) {
+        const std::string tok(token);
+        for (std::string::size_type p = out.find(tok);
+             p != std::string::npos;
+             p = out.find(tok, p + value.size())) {
+            out.replace(p, tok.size(), value);
+        }
+    };
+
+    std::string mission = SmokeMode::state().mission;
+    if (mission.empty()) {
+        const char* m = std::getenv("MC2_RDC_MISSION");
+        if (m && m[0]) mission = m;
+    }
+    if (!mission.empty()) replaceAll("{mission}", mission);
+
+    char frameBuf[32];
+    std::snprintf(frameBuf, sizeof(frameBuf), "%d", s_state.captureFrame);
+    replaceAll("{frame}", frameBuf);
+
+    if (out.find('{') != std::string::npos ||
+        out.find('}') != std::string::npos) {
+        std::fprintf(stderr,
+            "[RDOC v1] event=capture_path_unexpanded FATAL\n"
+            "[RDOC v1]   MC2_RDC_CAPTURE_PATH='%s'\n"
+            "[RDOC v1]   after expansion    ='%s'\n"
+            "[RDOC v1]   unexpanded placeholder(s) remain. Supported tokens are\n"
+            "[RDOC v1]   {mission} and {frame}; {mission} additionally needs\n"
+            "[RDOC v1]   --mission <stem> (smoke mode) or MC2_RDC_MISSION set.\n"
+            "[RDOC v1]   Refusing to write a ~1 GB capture under a name that\n"
+            "[RDOC v1]   cannot be attributed to a mission or a frame.\n",
+            raw, out.c_str());
+        std::fflush(stderr);
+        std::exit(5);
+    }
+    return out;
 }
 
 void readEnvOnce() {
@@ -54,6 +120,17 @@ void readEnvOnce() {
     s_state.enabled      = true;
     s_state.captureFrame = n;
     s_state.exitAfter    = (std::getenv("MC2_RDC_EXIT_AFTER") != nullptr);
+
+    // Expand and VALIDATE the path template here, at arm time -- deliberately
+    // NOT down in resolveApiOnce(). resolveApiOnce() early-returns whenever
+    // renderdoc.dll is absent, so validating there would make a malformed
+    // MC2_RDC_CAPTURE_PATH surface only on the runs that were about to write
+    // a gigabyte. Checking at arm time means the bad template is rejected
+    // before a single frame is rendered, and it is reachable (and therefore
+    // testable) without RenderDoc attached at all.
+    if (const char* tpl = std::getenv("MC2_RDC_CAPTURE_PATH")) {
+        if (tpl[0]) s_state.capturePath = expandCaptureTemplate(tpl);
+    }
 }
 
 void resolveApiOnce() {
@@ -103,8 +180,14 @@ void resolveApiOnce() {
     }
     s_state.api = reinterpret_cast<RENDERDOC_API_1_5_0*>(p);
 
-    if (const char* tpl = std::getenv("MC2_RDC_CAPTURE_PATH")) {
-        if (tpl[0]) s_state.api->SetCaptureFilePathTemplate(tpl);
+    // Already expanded + validated in readEnvOnce(); empty means the caller
+    // set no template and RenderDoc's own default applies.
+    if (!s_state.capturePath.empty()) {
+        s_state.api->SetCaptureFilePathTemplate(s_state.capturePath.c_str());
+        std::fprintf(stderr,
+            "[RDOC v1] event=capture_path template='%s'\n",
+            s_state.capturePath.c_str());
+        std::fflush(stderr);
     }
 
     int major = 0, minor = 0, patch = 0;

@@ -280,8 +280,39 @@ def check_free_space_for_payload(items, target):
     The required figure is MEASURED from the enumerated payload, not guessed.
     +15% headroom covers filesystem slack, the manifest, and the fact that
     overwriting an existing file can transiently need space for both copies.
-    CRITICAL is fatal; LOW warns and proceeds.
+    Verdict handling (DISK-GUARD-3, 2026-07-29):
+      OK (0)            -> proceed silently.
+      LOW (1)           -> warn and proceed. This is the genuine advisory case:
+                           the guard RAN, measured the volume, and said "tight
+                           but it fits."
+      CRITICAL (3) /
+      ERROR (2)         -> fatal, nothing written.
+      guard missing, guard un-runnable, or guard returned an unrecognised
+      code -> ALSO FATAL.
+
+    That last line is a reversal of DISK-GUARD-2, which warned and proceeded
+    UNGUARDED. The reasoning: this guard's entire purpose is to prevent a
+    silent, hard-to-attribute corruption (an ENOSPC-truncated mc2.exe that
+    other lanes then smoke). Degrading to unguarded on a missing dependency
+    means the protection evaporates exactly when the checkout is already in a
+    state nobody has verified -- and it does so in a WARNING line, in the
+    middle of a deploy's normal chatter, which is precisely the kind of
+    diagnostic the 2026-07-29 incident proved nobody reads. A guard that
+    fails open is not a guard; it is a log line.
+    check-disk-space.py is a sibling file in this same repo, so its absence
+    means a broken or partial checkout -- not a condition to shrug at.
+
+    There is a deliberate, LOUD escape hatch: MC2_DEPLOY_SKIP_DISK_GUARD=1.
+    Bypassing is a decision someone makes on purpose and can be found in the
+    environment afterwards, rather than something the tool does quietly on
+    their behalf.
     """
+    if os.environ.get("MC2_DEPLOY_SKIP_DISK_GUARD") == "1":
+        log("WARNING: MC2_DEPLOY_SKIP_DISK_GUARD=1 -- free-space preflight "
+            "BYPASSED BY REQUEST. A mid-copy ENOSPC will truncate its target "
+            "and the manifest check only catches that afterwards.")
+        return
+
     total = 0
     missing = 0
     for src, _rel, _kind in items:
@@ -296,9 +327,11 @@ def check_free_space_for_payload(items, target):
     guard = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "check-disk-space.py")
     if not os.path.isfile(guard):
-        log(f"WARNING: disk guard script not found at {guard} — "
-            "deploy proceeding UNGUARDED")
-        return
+        fail(f"disk guard script not found at {guard} — refusing to deploy "
+             "UNGUARDED. check-disk-space.py is a sibling of this script in "
+             "the same repo; its absence means a broken or partial checkout. "
+             "Restore it, or set MC2_DEPLOY_SKIP_DISK_GUARD=1 to bypass "
+             "deliberately.")
     try:
         r = subprocess.run(
             [sys.executable, guard, "--path", target,
@@ -306,13 +339,20 @@ def check_free_space_for_payload(items, target):
             timeout=60)
         rc = r.returncode
     except Exception as e:  # noqa: BLE001
-        log(f"WARNING: disk guard could not run ({e}) — deploy proceeding "
-            "UNGUARDED")
-        return
+        fail(f"disk guard could not run ({e}) — refusing to deploy UNGUARDED. "
+             "Fix the guard invocation, or set MC2_DEPLOY_SKIP_DISK_GUARD=1 "
+             "to bypass deliberately.")
     if rc in (2, 3):
         fail("insufficient free space for this deploy payload — NOTHING was "
              "written. See the [DISK_GUARD] lines above, reclaim space "
              "(.claude/DISK-RECLAIM-PLAN.md), then re-run.")
+    if rc == 1:
+        log("WARNING: disk guard verdict LOW — the payload fits but headroom "
+            "is thin. Proceeding.")
+    elif rc != 0:
+        fail(f"disk guard returned unrecognised exit code {rc} — refusing to "
+             "deploy on an unreadable verdict. Set "
+             "MC2_DEPLOY_SKIP_DISK_GUARD=1 to bypass deliberately.")
 
 
 def sha256_file(path):

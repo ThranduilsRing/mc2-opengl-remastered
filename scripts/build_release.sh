@@ -48,6 +48,12 @@ SEVENZIP="${SEVENZIP:-/c/Program Files/7-Zip/7z.exe}"
 # mid-stream leaves a truncated zip that still looks like a file -- exactly the
 # silent-corruption mode that cost four lanes their work. LOW (exit 1) warns
 # and proceeds; the guard has already printed the detail.
+#
+# DISK-GUARD-3: a guard that cannot RUN is also fatal, not a shrug. Only rc 0
+# (OK) and rc 1 (LOW) let the cut proceed; everything else -- CRITICAL, the
+# guard's own ERROR, a missing check-disk-space.py (python exits 2), a missing
+# `py` launcher (127) -- aborts. Failing open on a missing dependency retires
+# the protection at exactly the moment the checkout is in an unverified state.
 disk_guard() {   # $1=path  $2=need-gb  $3=label
     set +e
     py -3 "$REPO/scripts/check-disk-space.py" --path "$1" --need-gb "$2" --label "$3"
@@ -56,6 +62,12 @@ disk_guard() {   # $1=path  $2=need-gb  $3=label
     if [ "$rc" -eq 3 ] || [ "$rc" -eq 2 ]; then
         echo "[build_release] ABORT: insufficient free space for $3 — nothing was written."
         echo "[build_release] Reclaim first (.claude/DISK-RECLAIM-PLAN.md), then re-run."
+        exit 1
+    fi
+    if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
+        echo "[build_release] ABORT: free-space guard failed to run for $3 (exit $rc)."
+        echo "[build_release] Refusing to cut a release UNGUARDED — a 7z run that hits"
+        echo "[build_release] ENOSPC leaves a truncated zip that still looks like a file."
         exit 1
     fi
     return 0
