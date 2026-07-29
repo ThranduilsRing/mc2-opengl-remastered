@@ -1145,7 +1145,19 @@ static inline uint32_t RunwayToneScale(float v, float gain) {
 static const float kConcreteChromaMax  = 0.20f;  // >this = coloured art, not concrete
 static const float kConcreteLumLo      = 0.72f;  // family window, x family centre
 static const float kConcreteLumHi      = 1.32f;
-static const float kConcreteMarkDelta  = 45.f;   // |L - bandL| beyond this = paint/tar
+// MEASURED CALIBRATION (mc2_24 atlas dump, 110 solid cells, 2026-07-28). The
+// first cut tested |L - bandL| > 45 in BOTH directions and misfired badly: it
+// flagged 78/110 cells, which gutted ARM B (remapped=31, visually inert).
+// Dumping the atlas showed why -- NOT ONE solid cell on mc2_24 has a single
+// texel more than 45 luma ABOVE its band mean (painted markings simply are not
+// authored into solid cement cells on this map), while 78 cells carry a large
+// DARK region: 36-52% of the tile at L~60 against concrete at L~147. Those dark
+// regions are authored material (joints, tarmac, shadowed detail), not paint --
+// and whether to keep them is exactly the ARM A vs ARM B question the user is
+// grading, so they must NOT be silently excluded. Markings are therefore tested
+// on the BRIGHT side only, at a delta no ordinary concrete texture reaches
+// (measured max excursion above band on mc2_24: ~11 luma).
+static const float kConcreteMarkDelta  = 60.f;   // L - bandL beyond this = bright paint
 static const float kConcreteMarkFrac   = 0.02f;  // >2% such texels = cell carries markings
 static const float kConcreteToneGainLo = 0.80f;  // Arm A gain clamp -- NARROW on purpose
 static const float kConcreteToneGainHi = 1.25f;
@@ -1198,10 +1210,10 @@ struct CementCellStats {
     float r = 0.f, g = 0.f, b = 0.f;   // [P50,P90] band mean
     float lum = 0.f;                   // band mean luminance
     float chroma = 0.f;                // 0 = neutral grey, 1 = fully saturated
-    float markFrac = 0.f;              // fraction of texels far from the band
+    float markFrac = 0.f;              // fraction of texels well ABOVE the band (paint)
     bool  ok = false;                  // enough usable texels
     bool  family = false;              // classified as actual concrete
-    bool  marks = false;               // carries painted markings
+    bool  marks = false;               // carries bright painted markings
 };
 
 // Neutrality + marking census for one cell, on top of the band mean.
@@ -1230,7 +1242,7 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
                           + 0.587f * float((c >>  8) & 0xFFu)
                           + 0.114f * float( c        & 0xFFu);
             ++tot;
-            if (std::fabs(L - s.lum) > kConcreteMarkDelta) ++offBand;
+            if (L - s.lum > kConcreteMarkDelta) ++offBand;   // BRIGHT side only
         }
     }
     s.markFrac = (tot > 0) ? (float)offBand / (float)tot : 0.f;
@@ -2539,6 +2551,37 @@ void BuildCementCatalogAtlas() {
                    "family=%ld remapped=%ld kept_marked=%ld\n",
                    (::missionName[0] ? ::missionName : "unknown"), canon,
                    famCells, remapped, keptMarked);
+            fflush(stdout);
+        }
+    }
+
+    // ---- CEMENT-ATLAS-CELL-2 diagnostic: dump the assembled atlas so cell art
+    // can be inspected directly (which cells actually carry painted markings is
+    // an empirical question about the ART, not one to answer from thresholds).
+    // MC2_CEMENT_ATLAS_DUMP=<path-prefix>. Writes <prefix>.rgba (raw BGRA8,
+    // atlasPixelSide^2) + <prefix>.csv (per-cell stats). Diagnostic-only.
+    if (const char* dumpPfx = getenv("MC2_CEMENT_ATLAS_DUMP")) {
+        if (dumpPfx[0]) {
+            char pathBuf[1024];
+            snprintf(pathBuf, sizeof(pathBuf), "%s.rgba", dumpPfx);
+            if (FILE* f = fopen(pathBuf, "wb")) {
+                fwrite(atlasBuf.data(), 4, atlasBuf.size(), f);
+                fclose(f);
+            }
+            snprintf(pathBuf, sizeof(pathBuf), "%s.csv", dumpPfx);
+            if (FILE* f = fopen(pathBuf, "w")) {
+                fprintf(f, "cell,slot,is_alpha,grid_side,tile_px,atlas_px\n");
+                for (int k = 0; k < N; ++k) {
+                    fprintf(f, "%d,%d,%d,%d,%d,%d\n", k,
+                            (k < (int)cementSlots.size()) ? cementSlots[k] : -1,
+                            (k < (int)cementSlotIsAlpha.size()) ? (int)cementSlotIsAlpha[k] : -1,
+                            gridSide, txmSize, atlasPixelSide);
+                }
+                fclose(f);
+            }
+            MC2_DIAGF("[CEMENT_ATLAS_DUMP v1] event=written prefix=%s atlas_px=%d "
+                   "grid=%d tile=%d cells=%d solid=%d\n",
+                   dumpPfx, atlasPixelSide, gridSide, txmSize, N, nSolidCells);
             fflush(stdout);
         }
     }
