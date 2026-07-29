@@ -2038,17 +2038,44 @@ void draw() {
                 ImGui::SetTooltip("MC2_SSAO. Half-res grounding AO.\nIndependent of the HDR master gate.");
             if (pp->ssaoEnabled_) {
                 ImGui::Indent();
-                ImGui::SliderFloat("Radius (wu)##ssao", &pp->aoRadius_,   0.1f, 32.0f);
+                // SSAO-BLUR-1 clamp fix. The old 0.1..32 range was calibrated for
+                // a world scale ~40x smaller than MC2's: one map cell is 42.67 wu
+                // (worldUnitsPerVertex 128 / MAPCELL_DIM 3), and the baked kernel
+                // is not unit-normalised (mean |v| 0.289), so this slider's value
+                // is ~3.5x the actual mean sample reach. The useful band is ~12-48,
+                // which the old max could barely reach. NOTE this slider writes
+                // aoRadius_ DIRECTLY and never goes through gos_SetSsaoRadius, so
+                // the setter's 64.0 clamp never applied here -- the 32.0 above was
+                // the real cap. Both now agree at 64 wu (~1.5 map cells), past which
+                // AO stops being a contact term and competes with the shadow cascades.
+                ImGui::SliderFloat("Radius (wu)##ssao", &pp->aoRadius_,   0.1f, 64.0f);
                 ImGui::SliderFloat("Strength##ssao",    &pp->aoStrength_, 0.0f, 2.0f);
                 ImGui::SliderFloat("Bias##ssao",        &pp->aoBias_,     0.0f, 0.05f, "%.4f");
                 ImGui::SliderFloat("Power##ssao",       &pp->aoPower_,    0.1f, 4.0f);
+                // SSAO-BLUR-1 denoise controls.
+                ImGui::Checkbox("Bilateral blur##ssao", &pp->ssaoBlurEnabled_);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("MC2_SSAO_BLUR. OFF reproduces the pre-SSAO-BLUR-1\n"
+                                      "chain, which had NO denoise at all.");
+                ImGui::SliderFloat("Blur depth sigma##ssao", &pp->aoBlurDepthSigma_,
+                                   0.002f, 0.10f, "%.4f");
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Relative depth tolerance for edge-stopping.\n"
+                                      "Lower = blur respects silhouettes more strictly\n"
+                                      "but denoises less.");
                 bool ssaoDbg = (pp->ssaoDebug_ != 0);
                 if (ImGui::Checkbox("Debug: show AO buffer##ssao", &ssaoDbg))
                     pp->ssaoDebug_ = ssaoDbg ? 1 : 0;
                 ImGui::SameLine();
                 if (ImGui::SmallButton("Reset##ssao")) {
-                    pp->aoRadius_ = 3.0f; pp->aoStrength_ = 0.7f;
+                    // SSAO-BLUR-1: reset to the SHIPPING defaults. This used to
+                    // restore radius 3.0, which is the structurally-dead value
+                    // (mean tap reach 0.87 wu => every tap reads the centre depth
+                    // texel => occlusion identically zero), so "Reset" silently
+                    // turned the feature off.
+                    pp->aoRadius_ = 24.0f; pp->aoStrength_ = 0.7f;
                     pp->aoBias_ = 0.0025f; pp->aoPower_ = 1.5f;
+                    pp->ssaoBlurEnabled_ = true; pp->aoBlurDepthSigma_ = 0.02f;
                 }
                 ImGui::Unindent();
             }

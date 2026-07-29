@@ -2442,6 +2442,15 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead of multiplying, so the raw occlusion can be inspected. Diagnostic-only; no effect when MC2_SSAO is off. Default-OFF."
     },
+    // SSAO-BLUR-1: the missing denoise. Killswitch, NOT an opt-in -- default ON
+    // whenever SSAO runs, because the un-blurred chain is not a shippable config.
+    {
+        "MC2_FEATURE_SSAO_BLUR",
+        "MC2_SSAO_BLUR",
+        EnvVarKind::Feature,
+        true,
+        "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass (shaders/ssao_blur.frag; H into a scratch half-res target then V back into ssaoColorTex_, so the SsaoOcclusion resource id and the UNCHANGED ssao_apply pass always read the final AO). DEFAULT ON whenever MC2_SSAO=1; MC2_SSAO_BLUR=0 restores the pre-SSAO-BLUR-1 two-draw chain for A/B on one exe. WHY: ssao.frag integrates 16 hemisphere samples with a per-pixel hash12 rotation of the TBN basis -- a stochastic estimator whose noise amplitude GROWS with aoRadius. Before this the ONLY denoise was a 4-tap box spanning +/-0.5 of a half-res texel inside ssao_apply.frag, whose comment claimed it 'denoises'; it cannot, because the rotation decorrelates every pixel. SSAO-RETUNE-1 measured the consequence: at any aoRadius large enough to produce visible occlusion, the added darkening read as speckled dither on FLAT, unoccluded faces (a container's end face) rather than as contact shading. Each tap is weighted by RELATIVE depth difference (|d-dc|/dc, a constant fraction of view distance -- an absolute epsilon would be far too permissive up close and far too strict in the distance under reverse-Z) so the blur averages within a surface and stops at silhouettes instead of dragging a building's contact darkening onto the tarmac behind it. Sky/cleared taps (depth<=0.0001, AO=1) are excluded so the background stays intact. Cost: two half-res 9-tap draws (9x9 effective support for 18 taps, at a quarter of the full-res pixel count). SCOPE: GL path only. The native Vulkan SSAO path (MC2_VK_POST_SSAO, rung 8.2, default-OFF opt-in) reuses the ssao/ssao_apply SPIR-V verbatim and does NOT include this blur, so with that gate ON the noise returns; porting it is unfinished follow-up work. MC2_SSAO itself remains default-OFF, so this changes no default launch."
+    },
     {
         "MC2_DIAG_SHADOW_DEBUG_MODE",
         "MC2_SHADOW_DEBUG_MODE",

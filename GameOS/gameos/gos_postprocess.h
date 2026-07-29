@@ -352,6 +352,17 @@ public:
     float aoStrength_;      // 0..2 occlusion strength
     float aoBias_;          // window-depth compare bias
     float aoPower_;         // contrast curve
+
+    // SSAO-BLUR-1: depth-aware (joint bilateral) blur between the AO gen pass
+    // and the apply pass. Before this, runSSAO() issued exactly two draws and
+    // the chain had NO denoise -- the 4-tap +/-0.5-texel box in ssao_apply.frag
+    // cannot resolve a 16-sample stochastic kernel with per-pixel hash rotation.
+    // That is why SSAO-RETUNE-1 found that any aoRadius large enough to produce
+    // visible occlusion also produced visible speckle on flat, unoccluded faces.
+    // Default ON whenever SSAO itself is on; MC2_SSAO_BLUR=0 restores the old
+    // no-denoise chain so the two can be A/B'd against one exe.
+    bool  ssaoBlurEnabled_;
+    float aoBlurDepthSigma_;   // relative depth tolerance for edge-stopping
     void runSSAO();
 
     // VK-REGION-SSAO-1 (RENDER-BACKEND-REGION-IFACE-1, second region): the SSAO
@@ -849,6 +860,15 @@ private:
     int           ssaoH_        = 0;
     glsl_program* ssaoProg_      = nullptr;
     glsl_program* ssaoApplyProg_ = nullptr;
+
+    // SSAO-BLUR-1: ping-pong target for the separable bilateral blur. Same
+    // half-res R16F format as ssaoColorTex_. The blur runs H into this texture
+    // then V back into ssaoColorTex_, so ssaoColorTex_ (and therefore the
+    // SsaoOcclusion resource id and the unchanged apply pass) always holds the
+    // FINAL AO -- no downstream reader needs to know the blur exists.
+    GLuint        ssaoBlurFBO_   = 0;
+    GLuint        ssaoBlurTex_   = 0;
+    glsl_program* ssaoBlurProg_  = nullptr;
 
     // HZB depth pyramid (HZB-DEPTH-PYRAMID-MVP-1). Allocated lazily in
     // createFBOs only when hzbEnabled_. One ceil-sized R32F texture per level.

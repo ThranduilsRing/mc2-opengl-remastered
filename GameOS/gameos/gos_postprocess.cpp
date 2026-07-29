@@ -626,7 +626,7 @@ bool  gos_IsSsaoEnabled() { return s_postProcess && s_postProcess->ssaoEnabled_;
 void  gos_SetSsaoRadius(float v)   { if (s_postProcess) s_postProcess->aoRadius_   = (v < 0.1f ? 0.1f : (v > 64.0f ? 64.0f : v)); }
 void  gos_SetSsaoStrength(float v) { if (s_postProcess) s_postProcess->aoStrength_ = (v < 0.0f ? 0.0f : (v > 2.0f  ? 2.0f  : v)); }
 void  gos_SetSsaoBias(float v)     { if (s_postProcess) s_postProcess->aoBias_     = (v < 0.0f ? 0.0f : (v > 0.1f  ? 0.1f  : v)); }
-float gos_GetSsaoRadius()   { return s_postProcess ? s_postProcess->aoRadius_   : 3.0f; }
+float gos_GetSsaoRadius()   { return s_postProcess ? s_postProcess->aoRadius_   : 24.0f; }
 float gos_GetSsaoStrength() { return s_postProcess ? s_postProcess->aoStrength_ : 0.7f; }
 float gos_GetSsaoBias()     { return s_postProcess ? s_postProcess->aoBias_     : 0.0025f; }
 
@@ -755,10 +755,23 @@ gosPostProcess::gosPostProcess()
     , shorelineProg_(nullptr)
     , ssaoEnabled_(false)
     , ssaoDebug_(0)
-    , aoRadius_(3.0f)
+    // SSAO-BLUR-1: was 3.0, which is structurally dead. One map cell is 42.67 wu
+    // and the baked kernel's mean |v| is 0.289, so radius 3 put the mean tap
+    // 0.87 wu from the centre -- sub-pixel, every tap reading the same depth
+    // texel -- while rangeCheck = smoothstep(0,1, aoRadius/dist) independently
+    // drove any occluder past 3 wu to zero weight. Measured result: 0.0000% of
+    // AO-buffer pixels below 250/255. 24 follows SSAO-RETUNE-1's 12-24 band
+    // (40 measurably invents occlusion on flat faces) and matches the value the
+    // separate .claude/vk-post-ssao prior art independently landed on.
+    // MC2_SSAO is default-OFF, so this changes no default launch.
+    , aoRadius_(24.0f)
     , aoStrength_(0.7f)
     , aoBias_(0.0025f)
     , aoPower_(1.5f)
+    // SSAO-BLUR-1: blur on by default whenever SSAO runs (the un-blurred chain
+    // is not a shippable configuration -- see shaders/ssao_blur.frag header).
+    , ssaoBlurEnabled_(true)
+    , aoBlurDepthSigma_(0.02f)
 {
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
@@ -925,6 +938,11 @@ void gosPostProcess::init(int w, int h)
         "shaders/postprocess.vert", "shaders/ssao_apply.frag", kShaderPrefix);
     if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile ssao_apply shader\n");
+    // SSAO-BLUR-1: depth-aware bilateral blur (run separably H then V).
+    ssaoBlurProg_ = glsl_program::makeProgram("ssao_blur",
+        "shaders/postprocess.vert", "shaders/ssao_blur.frag", kShaderPrefix);
+    if (!ssaoBlurProg_ || !ssaoBlurProg_->is_valid())
+        fprintf(stderr, "gosPostProcess: failed to compile ssao_blur shader\n");
 
     // BT2018-BOX-DECAL-1: screen-space box-decal program. Its OWN vert (cube volume),
     // not postprocess.vert. Default-OFF gate resolved once from env (SSAO style).
@@ -953,9 +971,14 @@ void gosPostProcess::init(int w, int h)
         ssaoEnabled_ = (ssaoEnv && ssaoEnv[0] && ssaoEnv[0] != '0');
         const char* dbgEnv = getenv("MC2_SSAO_DEBUG");
         ssaoDebug_ = (dbgEnv && dbgEnv[0] && dbgEnv[0] != '0') ? 1 : 0;
-        MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f\n",
+        // SSAO-BLUR-1: blur defaults ON with SSAO; MC2_SSAO_BLUR=0 restores the
+        // pre-SSAO-BLUR-1 two-draw chain (no denoise) for A/B on one exe.
+        const char* blurEnv = getenv("MC2_SSAO_BLUR");
+        ssaoBlurEnabled_ = !(blurEnv && blurEnv[0] == '0');
+        MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f blur=%d sigma=%.4f\n",
                      ssaoEnabled_ ? 1 : 0, ssaoDebug_,
-                     ssaoEnv ? ssaoEnv : "(unset)", aoRadius_, aoStrength_, aoBias_);
+                     ssaoEnv ? ssaoEnv : "(unset)", aoRadius_, aoStrength_, aoBias_,
+                     ssaoBlurEnabled_ ? 1 : 0, aoBlurDepthSigma_);
     }
 
     // POST-FX-FXAA-1: FXAA gate + tunables, resolved once from env. Default OFF
@@ -1263,6 +1286,10 @@ void gosPostProcess::destroy()
     if (ssaoProg_) {
         glsl_program::deleteProgram("ssao");
         ssaoProg_ = nullptr;
+    }
+    if (ssaoBlurProg_) {                       // SSAO-BLUR-1
+        glsl_program::deleteProgram("ssao_blur");
+        ssaoBlurProg_ = nullptr;
     }
     if (ssaoApplyProg_) {
         glsl_program::deleteProgram("ssao_apply");
@@ -1656,6 +1683,27 @@ void gosPostProcess::createFBOs(int w, int h)
         d.glName    = ssaoColorTex_;
         d.valid     = (aoStatus == GL_FRAMEBUFFER_COMPLETE);
         RenderCore::registerOrUpdateRenderResource(d);
+
+        // SSAO-BLUR-1: ping-pong half-res target for the separable bilateral
+        // blur. Identical format/filtering to ssaoColorTex_. Deliberately NOT
+        // published as a RenderResource -- it is a scratch buffer that never
+        // holds the final AO (the V pass writes back into ssaoColorTex_), so
+        // publishing it would give downstream readers a second, wrong handle
+        // for "the AO buffer".
+        glGenTextures(1, &ssaoBlurTex_);
+        glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, ssaoW_, ssaoH_, 0, GL_RED, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glGenFramebuffers(1, &ssaoBlurFBO_);
+        glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTex_, 0);
+        GLenum aoBlurStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (aoBlurStatus != GL_FRAMEBUFFER_COMPLETE)
+            fprintf(stderr, "gosPostProcess: SSAO blur FBO incomplete (0x%x)\n", aoBlurStatus);
     }
 
     // --- WATER-REFLECTION-RESOURCE-1: quarter-res reflection target ---
@@ -2018,6 +2066,10 @@ void gosPostProcess::destroyFBOs()
         RenderCore::registerOrUpdateRenderResource(inv);
     }
     if (ssaoFBO_)      { glDeleteFramebuffers(1, &ssaoFBO_);   ssaoFBO_ = 0; }
+    // SSAO-BLUR-1: scratch ping-pong target. Not a published RenderResource,
+    // so there is no registry invalidation to mirror here.
+    if (ssaoBlurTex_)  { glDeleteTextures(1, &ssaoBlurTex_);    ssaoBlurTex_ = 0; }
+    if (ssaoBlurFBO_)  { glDeleteFramebuffers(1, &ssaoBlurFBO_); ssaoBlurFBO_ = 0; }
     ssaoW_ = ssaoH_ = 0;
 
     // HZB-DEPTH-PYRAMID-MVP-1: free the per-level pyramid textures + FBO
@@ -2820,6 +2872,53 @@ void gosPostProcess::runSSAO()
 
     glBindVertexArray(quadVAO_);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // --- Pass 1b/1c: SSAO-BLUR-1 separable depth-aware bilateral blur ---
+    //
+    // H into ssaoBlurTex_, then V back into ssaoColorTex_, so ssaoColorTex_
+    // still holds the FINAL AO when the (unchanged) apply pass and the
+    // SsaoOcclusion resource id read it. Both draws stay at half res.
+    //
+    // Depth stays bound on unit 0 from the gen pass; the AO source goes on
+    // unit 1. Skipped entirely when MC2_SSAO_BLUR=0 or the program failed to
+    // compile, which reproduces the pre-SSAO-BLUR-1 chain exactly.
+    if (ssaoBlurEnabled_ && ssaoBlurProg_ && ssaoBlurProg_->is_valid() &&
+        ssaoBlurFBO_ && ssaoBlurTex_)
+    {
+        TracyGpuZone("Render.SSAO.Blur");
+
+        const float hTexel[2] = { 1.0f / (float)ssaoW_, 0.0f };
+        const float vTexel[2] = { 0.0f, 1.0f / (float)ssaoH_ };
+
+        ssaoBlurProg_->setInt("ssaoTex", 1);
+        ssaoBlurProg_->setInt("sceneDepthTex", 0);
+        ssaoBlurProg_->setFloat("depthSigma", aoBlurDepthSigma_);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
+
+        // Horizontal: ssaoColorTex_ -> ssaoBlurTex_
+        glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
+        glViewport(0, 0, ssaoW_, ssaoH_);
+        ssaoBlurProg_->setFloat2("blurDir", hTexel);
+        ssaoBlurProg_->apply();
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        // Vertical: ssaoBlurTex_ -> ssaoColorTex_
+        glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
+        glViewport(0, 0, ssaoW_, ssaoH_);
+        ssaoBlurProg_->setFloat2("blurDir", vTexel);
+        ssaoBlurProg_->apply();
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, ssaoBlurTex_);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        // Leave unit 1 clean for the apply pass (which binds only unit 0).
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE0);
+    }
 
     // --- Pass 2: apply AO multiplicatively into the scene color ---
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);

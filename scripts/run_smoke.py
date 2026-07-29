@@ -2575,6 +2575,22 @@ def main():
                             # lets the raw occlusion buffer be inspected under smoke.
                             "MC2_SSAO",
                             "MC2_SSAO_DEBUG",
+                            # SSAO-BLUR-1: the depth-aware bilateral blur killswitch
+                            # (default ON with SSAO). Allowlisted so an A/B smoke can
+                            # actually reach the no-denoise chain -- without it Popen
+                            # drops MC2_SSAO_BLUR=0 and the "blur OFF" arm silently
+                            # runs blur ON, i.e. both arms identical and the compare
+                            # proves nothing (the MC2_SSAO trap fixed by 5cd3cc65).
+                            "MC2_SSAO_BLUR",
+                            # SSAO-BLUR-1 housekeeping: MC2_VISUAL_TUNING_FILE points
+                            # the visual-tuning profile reader (visual_tuning_profile.cpp)
+                            # at an alternate JSON, which is how aoRadius/aoStrength/
+                            # aoBias (and every other profile key) are graded WITHOUT a
+                            # rebuild. It had a live reader but was never registered,
+                            # documented, or allowlisted -- so any smoke-driven tuning
+                            # sweep silently graded the built-in defaults instead of the
+                            # supplied file. Not a renderer gate; a tuning-input path.
+                            "MC2_VISUAL_TUNING_FILE",
                             # HZB-DEPTH-PYRAMID-MVP-1 / VK-REGION-HZB-1: the HZB build
                             # gate (+ its CPU cross-check probe). The PostprocessHzb
                             # backend-compare (run_golden_parity --region PostprocessHzb)
