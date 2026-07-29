@@ -101,8 +101,25 @@ HARD_ANCHORS = {
     # name: (expected_unit, glsl_file_substr, cpp_receiver)
     "uSrc":     (0, "shaders/hzb_reduce.frag",  "hzbReduceProg_"),
     "sceneTex": (0, "shaders/postprocess.frag", "compositeProg_"),
-    "ssaoTex":  (0, "shaders/ssao_apply.frag",  "ssaoApplyProg_"),
 }
+
+# Anchors DEMOTED by the self-demoting rule above (removed deliberately, not lost
+# to attrition). Recorded so a future reader can tell an intentional demotion
+# from a silently-dropped anchor, and can re-anchor if the name ever
+# de-multiplexes again.
+#
+#   ssaoTex — demoted CONTRACT-REPAIR-2 (2026-07). Was (0, ssao_apply.frag,
+#     ssaoApplyProg_). SSAO-BLUR-1 added shaders/ssao_blur.frag, which declares
+#     ssaoTex a SECOND time and binds it via a SECOND receiver (ssaoBlurProg_)
+#     to a DIFFERENT unit (1 — the blur pass puts sceneDepthTex on 0). That is
+#     legitimate multiplexing, not drift: two passes, two unit assignments. The
+#     name therefore fails all three anchor criteria (one decl file / one
+#     receiver / one unit) and cannot be re-anchored as-is. It still appears in
+#     the WARN census. NOTE: the same lane found ssao_blur.frag's unit comments
+#     were INVERTED vs the C++ (claimed ssaoTex=0 / sceneDepthTex=1, actual
+#     1 / 0) and corrected them — comments only, no runtime effect, since setInt
+#     is authoritative.
+DEMOTED_ANCHORS = ("ssaoTex",)
 
 # ---------------------------------------------------------------------------
 # Vulkan descriptor-contract cross-reference (SAMPLER-UNIT-MANIFEST-1)

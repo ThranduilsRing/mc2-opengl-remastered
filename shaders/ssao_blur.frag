@@ -32,8 +32,8 @@
 in vec2 TexCoord;
 layout(location = 0) out vec4 FragColor;
 
-uniform sampler2D ssaoTex;        // unit 0: half-res AO (the buffer being blurred)
-uniform sampler2D sceneDepthTex;  // unit 1: full-res scene depth (edge-stopping)
+uniform sampler2D ssaoTex;        // unit 1: half-res AO (the buffer being blurred)
+uniform sampler2D sceneDepthTex;  // unit 0: full-res scene depth (edge-stopping)
 uniform vec2  blurDir;            // half-res texel step: (1/w,0) then (0,1/h)
 uniform float depthSigma;         // RELATIVE depth tolerance (fraction of centre depth)
 
