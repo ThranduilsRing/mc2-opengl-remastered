@@ -1761,6 +1761,12 @@ def main():
                             # Popen drops it and the gate-ON smoke silently
                             # runs gate-OFF.
                             "MC2_LIGHT_POS_COLUMN_FIX",
+                            # LIGHT-POS-COMBAT-1 -- session-long per-light-type
+                            # census of the uploaded light rows (source
+                            # translation [3]/[7]/[11] vs uploaded position
+                            # [12]/[13]/[14]). Pure observation, default OFF.
+                            # Allowlisted for the same reason as the gate above.
+                            "MC2_LIGHT_ROW_CENSUS",
                             # PROP-BASE-LIGHT-DIR-1 -- directional/hemispherical
                             # orientation term for the baked static-prop
                             # base_light seed (float strength 0..1, default 0.0
