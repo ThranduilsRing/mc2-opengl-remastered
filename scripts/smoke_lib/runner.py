@@ -35,9 +35,105 @@ def _reader_thread(stream, q: "queue.Queue[tuple[str, float] | tuple[None, float
         q.put((None, 0.0))  # EOF sentinel
 
 
+# ---------------------------------------------------------------------------
+# ENV COMPOSITION CONTRACT (HARNESS-HYGIENE-3)
+# ---------------------------------------------------------------------------
+# The child env is built as:
+#
+#     env = os.environ.copy()      # <-- ambient MC2_* DOES reach the engine
+#     env.update(FORCED_ENV)       # hard overrides; ambient value is DISCARDED
+#     env.setdefault(SOFT_ENV)     # defaults; an ambient value WINS
+#     env.pop(POPPED_ENV)          # deleted outright
+#     env.update(cfg.env_extra)    # per-run values; last writer wins
+#
+# CORRECTION OF A LONG-STANDING FALSE PREMISE: several comments in run_smoke.py
+# and mc2_env_pin.py claim this runner "launches with a from-scratch env={...}
+# dict" so unlisted MC2_* vars are "silently dropped by the Popen
+# env-replacement". That is NOT true and has not been true: line 1 above is
+# os.environ.copy(), so the ambient environment is inherited in full. The
+# run_smoke "allowlist" entries that merely copy os.environ values into
+# env_extra are therefore no-ops -- they re-set a var to the value it already
+# has.
+#
+# What IS genuinely undriveable is exactly the three tables below (plus any
+# env_extra key whose computed value differs from the ambient one): for those,
+# and ONLY those, setting the var in your shell has no effect on the child.
+FORCED_ENV: dict = {
+    # Smoke-harness identity. Interactive play never goes through here.
+    "MC2_SMOKE_MODE": "1",
+    # MC2_LOG master gate: keep the engine's stdout telemetry live so the smoke
+    # harness can parse [SMOKE v1]/[PERF v1]/oracle tags. Without it the engine
+    # redirects stdout -> NUL (default, so NORMAL PLAY never hitches on the
+    # unbuffered per-mission printf flush). See gameosmain.cpp after setvbuf.
+    "MC2_LOG": "1",
+    "MC2_HEARTBEAT": "1",
+    "MC2_TGL_POOL_TRACE": "1",
+    "MC2_ASSET_SCALE_TRACE": "1",
+    # Engine-side cursor-theft suppression (gos_CursorControlSuppressed,
+    # f0c07b87). MC2_SMOKE_MODE already implies it, but set it explicitly so
+    # the intent survives if the smoke-mode implication is ever narrowed.
+    # NOTE: this only works on exes built AFTER f0c07b87 -- the harness-side
+    # CursorGuard below is what covers older deploy lanes.
+    "MC2_NO_CURSOR_GRAB": "1",
+}
+
+SOFT_ENV: dict = {
+    # FORCE-ALL-VISIBLE-1. Every automated capture marks all units visible.
+    #
+    # WHY: units hidden by the sensor/contact fade were repeatedly graded as
+    # evidence, producing false negatives all session -- a ghost-cone leak
+    # passed verification at four bookmark poses only because no mover happened
+    # to be mid-fade in view, and vehicle-lighting lanes repeatedly captured
+    # scenes containing no visible vehicle at all.
+    #
+    # CONSEQUENCE: a smoke capture is NO LONGER a fog-of-war-accurate frame.
+    # Any test that specifically validates sensor / contact / visibility
+    # behaviour MUST pass MC2_FORCE_ALL_VISIBLE=0 (env_extra or the outer
+    # environment; setdefault means an explicit value always wins -- which is
+    # why this lives in SOFT_ENV and is fully driveable from a shell).
+    "MC2_FORCE_ALL_VISIBLE": "1",
+}
+
+POPPED_ENV: frozenset = frozenset({
+    # Deleted so the GL error drain always speaks during a smoke run.
+    "MC2_GL_ERROR_DRAIN_SILENT",
+})
+
+
+def undriveable_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
+    """Ambient MC2_* vars this runner CANNOT deliver to the engine.
+
+    Returns {name: (ambient_value, effective_value_or_None, reason)} for every
+    MC2_* var that is set in `environ` but whose value the child will NOT see.
+    An empty dict means every ambient MC2_* var reaches mc2.exe unchanged.
+
+    This is the honest replacement for the old "not in the allowlist" test,
+    which flagged ~600 vars that in fact pass through untouched.
+    """
+    env_extra = env_extra or {}
+    out: dict = {}
+    for name, ambient in environ.items():
+        if not name.startswith("MC2_"):
+            continue
+        if name in POPPED_ENV:
+            out[name] = (ambient, None,
+                         "deleted by the runner (POPPED_ENV)")
+            continue
+        if name in env_extra:
+            eff = env_extra[name]
+            if eff != ambient:
+                out[name] = (ambient, eff,
+                             "overwritten by this run's env_extra")
+            continue
+        if name in FORCED_ENV and FORCED_ENV[name] != ambient:
+            out[name] = (ambient, FORCED_ENV[name],
+                         "hard-forced by the runner (FORCED_ENV)")
+    return out
+
+
 @dataclass
 class RunConfig:
-    exe: List[str]                      # argv[0..n]; usually [exe_path, --profile, stock, --mission, stem, --duration, d]
+    exe: List[str]                    # argv[0..n]; usually [exe_path, --profile, stock, --mission, stem, --duration, d]
     profile: str
     stem: str
     duration: int
@@ -81,41 +177,12 @@ def run_one(cfg: RunConfig) -> RunResult:
     argv = list(cfg.exe) if has_embedded else _build_argv(cfg.exe, cfg)
 
     env = os.environ.copy()
-    env["MC2_SMOKE_MODE"] = "1"
-    # MC2_LOG master gate: keep the engine's stdout telemetry live so the smoke
-    # harness can parse [SMOKE v1]/[PERF v1]/oracle tags. Without it the engine
-    # redirects stdout -> NUL (default, so NORMAL PLAY never hitches on the
-    # unbuffered per-mission printf flush). See gameosmain.cpp after setvbuf.
-    env["MC2_LOG"] = "1"
-    env["MC2_HEARTBEAT"] = "1"
-    env["MC2_TGL_POOL_TRACE"] = "1"
-    env["MC2_ASSET_SCALE_TRACE"] = "1"
-    # Engine-side cursor-theft suppression (gos_CursorControlSuppressed,
-    # f0c07b87). MC2_SMOKE_MODE already implies it, but set it explicitly so
-    # the intent survives if the smoke-mode implication is ever narrowed.
-    # NOTE: this only works on exes built AFTER f0c07b87 -- the harness-side
-    # CursorGuard below is what covers older deploy lanes.
-    env["MC2_NO_CURSOR_GRAB"] = "1"
-    # FORCE-ALL-VISIBLE-1. Every automated capture marks all units visible.
-    #
-    # WHY: units hidden by the sensor/contact fade were repeatedly graded as
-    # evidence, producing false negatives all session -- a ghost-cone leak
-    # passed verification at four bookmark poses only because no mover happened
-    # to be mid-fade in view, and vehicle-lighting lanes repeatedly captured
-    # scenes containing no visible vehicle at all.
-    #
-    # CONSEQUENCE: a smoke capture is NO LONGER a fog-of-war-accurate frame.
-    # Any test that specifically validates sensor / contact / visibility
-    # behaviour MUST pass MC2_FORCE_ALL_VISIBLE=0 (env_extra or the outer
-    # environment; setdefault means an explicit value always wins).
-    #
-    # Same shape as MC2_NO_CURSOR_GRAB above (f0c07b87): this is the single
-    # shared launcher behind run_smoke / run_visual_capture / capture_baseline /
-    # quick_shot / mech_shot / smoke_with_screenshots / renderdoc_capture /
-    # camera_sweep_smoke, so no per-harness edit is needed. Interactive play
-    # never goes through here, and the engine-side default stays OFF.
-    env.setdefault("MC2_FORCE_ALL_VISIBLE", "1")
-    env.pop("MC2_GL_ERROR_DRAIN_SILENT", None)
+    for _k, _v in FORCED_ENV.items():
+        env[_k] = _v
+    for _k, _v in SOFT_ENV.items():
+        env.setdefault(_k, _v)
+    for _k in POPPED_ENV:
+        env.pop(_k, None)
     env.update(cfg.env_extra)
 
     cap = cfg.duration + cfg.grace_s

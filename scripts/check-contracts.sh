@@ -182,6 +182,33 @@ run_check "smoke_fingerprint_ratchet" "py -3 scripts/check-smoke-fingerprint-hon
 run_check "capture_env_declared"   "py -3 scripts/check-capture-env-declared.py"
 # ...and prove it fires, by injecting a contaminated manifest.
 run_check "capture_env_ratchet"    "py -3 scripts/check-capture-env-declared.py --self-test"
+# CAPTURE-RESOLUTION-ASSERT-1 (HARNESS-HYGIENE-3). Golden region rects are
+# normalized fractions and verify.py silently nearest-neighbour-upscales a
+# smaller candidate crop to the golden's dims, so a capture taken at the WRONG
+# RESOLUTION crops, grades and blesses successfully. A deploy install shipped at
+# 800x600 was graded against a 4K-referenced golden -- ~17x fewer pixels -- and
+# only a human reading a sidecar caught it. No tool asserted resolution; now one
+# does. Self-test only here (a live check needs a capture + golden pair).
+run_check "capture_resolution_ratchet" "py -3 scripts/check-capture-resolution.py --selftest"
+# ENV-DRIVE-GUARD-1 (HARNESS-HYGIENE-3). run_smoke's ENV-DROP guard used to
+# refuse to start whenever ANY MC2_* var was set but unallowlisted, on the false
+# premise that Popen's env replacement drops unlisted vars. runner.py builds the
+# child env from os.environ.copy(), so nothing is dropped -- the guard was
+# hard-stopping legitimate A/B arms. It now refuses only the genuinely
+# UNDRIVEABLE set (FORCED_ENV / POPPED_ENV / conflicting env_extra) and RECORDS
+# deliberate ambient gates in the run manifest.
+run_check "env_drive_guard"        "py -3 scripts/check-env-drive-guard.py --quiet"
+# ...and prove it fires, by mutating the runner's env tables.
+run_check "env_drive_ratchet"      "py -3 scripts/check-env-drive-guard.py --selftest"
+# DEPLOY-LANE-PARITY-1 (HARNESS-HYGIENE-3). Two deploy-lane registries exist
+# (deploy_lease.DEPLOY_FOLDERS and check-deploy-target.GOOD_DIRS) and the MCP
+# deploy_status tool answers from their UNION -- so it reports lanes that
+# `run_smoke.py --deploy` cannot resolve, and tolerates one name mapping to two
+# different trees. --allow-unresolved keeps the known 0.4d-rc1 path conflict a
+# LOUD WARN (it needs a user ruling) while any NEW divergence hard-fails.
+run_check "deploy_lane_parity"     "py -3 scripts/check-deploy-lane-parity.py --allow-unresolved"
+# ...and prove it fires, on synthetic diverged registries.
+run_check "deploy_lane_ratchet"    "py -3 scripts/check-deploy-lane-parity.py --selftest"
 run_check "brain_fit_schema"       "py -3 scripts/check-brain-fit-schema.py --quiet"
 run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.py --quiet"
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"

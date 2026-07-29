@@ -858,6 +858,79 @@ ALLOWLIST=(
     MC2_HUD_SIM_SPEED                 # feature -- HUD sim-speed tab 1x/2x/4x (requires MC2_HUD_IMGUI_TABS; default OFF)
     MC2_SIM_CLOCK_TRACE               # trace -- once-per-second sim/wall clock ratio stderr line
     MC2_SIM_SPEED                     # override -- sim-speed multiplier env seed [0.25,4.0], runtime-settable via HUD speed tab
+    # --- batch 10 (HARNESS-HYGIENE-3, 2026-07-29): readers made visible by
+    # closing the accessor-idiom blind spot in step 4. The scan previously
+    # matched only getenv/envFlag/selftestEnvFlag/envFlagDefaultOn, so these
+    # 66 vars were read by shipping code while CI reported PASS. Nothing here
+    # is new code -- only newly VISIBLE. Categories assigned by reader idiom;
+    # the VK native-post family and the lightgrid/cluster/blur trios are real
+    # feature gates that should be promoted to the registry.
+    MC2_CLUSTER_DEPTH_PYRAMID                 # feature -- read via envFlagDefaultOff in gos_cluster_depth_pyramid.cpp
+    MC2_CLUSTER_DEPTH_PYRAMID_PLANT           # feature -- read via envFlagDefaultOff in gos_cluster_depth_pyramid.cpp
+    MC2_CLUSTER_DEPTH_PYRAMID_VERIFY          # trace -- read via envFlagDefaultOff in gos_cluster_depth_pyramid.cpp
+    MC2_CRASH_FAST_EXIT                       # feature -- read via read_env_flag in gos_crashbundle.cpp
+    MC2_DEBUG_RENDERER_TEST                   # feature -- read via envFlagDefaultOff in debug_renderer.cpp
+    MC2_FOO_AUDIT                             # infra -- NOT A REAL GATE -- doc/test fixture literal, newly visible to the broadened scan
+    MC2_FRAME_JOBS_TOUCH_DIAG                 # trace -- read via ParseEnvBool in bdactor.cpp
+    MC2_GPU_GV_SHADOW_SKIP                    # feature -- read via gvEnvFlagDefaultOn in gvactor.cpp
+    MC2_HOSTSVC_DEFINITELY_UNSET_KEY_XYZ      # infra -- NOT A REAL GATE -- doc/test fixture literal, newly visible to the broadened scan
+    MC2_HUD_IMGUI_TACMAP                      # feature -- read via HudImGui::envGateOn in gametacmap.cpp
+    MC2_HZB_FORCE_HORIZON_ALT                 # override -- read via envf in gamecam.cpp
+    MC2_HZB_FORCE_HORIZON_ANGLE               # override -- read via envf in gamecam.cpp
+    MC2_HZB_FORCE_HORIZON_ROT                 # override -- read via envf in gamecam.cpp
+    MC2_HZB_FORCE_HORIZON_X                   # override -- read via envf in gamecam.cpp
+    MC2_HZB_FORCE_HORIZON_Y                   # override -- read via envf in gamecam.cpp
+    MC2_LIGHTBRIDGE_STABLE_SKIP               # feature -- read via ParseEnvBool in bdactor.cpp
+    MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG          # trace -- read via ParseEnvBool in bdactor.cpp
+    MC2_LIGHTGRID_BUILD                       # feature -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
+    MC2_LIGHTGRID_PLANT                       # feature -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
+    MC2_LIGHTGRID_VERIFY                      # trace -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
+    MC2_LIGHT_CLAMP_FIXTURE                   # feature -- read via lightClampEnvFlagDefaultOff in txmmgr.cpp
+    MC2_LIGHT_CLAMP_PROBE                     # trace -- read via lightClampEnvFlagDefaultOff in txmmgr.cpp
+    MC2_PLAYTEST_EXE                          # override -- read via GetEnvironmentVariableA in EditorPlaytest.cpp
+    MC2_POSTPROCESS_COMPUTE_BLUR              # feature -- read via envFlagDefaultOff in gos_postprocess_blur.cpp
+    MC2_POSTPROCESS_COMPUTE_BLUR_PLANT        # feature -- read via envFlagDefaultOff in gos_postprocess_blur.cpp
+    MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY       # trace -- read via envFlagDefaultOff in gos_postprocess_blur.cpp
+    MC2_RDC_MAX_WAIT                          # override -- read via envInt in gos_rdoc_capture.cpp
+    MC2_SMOKE_ACTIVE                          # feature -- read via GetEnvironmentVariableA in EditorPlaytest.cpp
+    MC2_STABLE_LIGHT_SKIP_DIAG                # trace -- read via ParseEnvBool in bdactor.cpp
+    MC2_STABLE_LIGHT_SKIP_TOUCH               # feature -- read via ParseEnvBool in bdactor.cpp
+    MC2_STATIC_PER_INSTANCE_LIGHT             # feature -- read via parseEnvBoolWithDefault in gos_static_prop_registry.cpp
+    MC2_STATIC_PROP_LATE_SPAWN_REG            # feature -- read via parseEnvBoolWithDefault in gos_static_prop_registry.cpp
+    MC2_STATIC_PROP_MISSION_LOAD_REG          # feature -- read via parseEnvBoolWithDefault in gos_static_prop_registry.cpp
+    MC2_STATIC_UPDATE_TRACE                   # trace -- read via ParseEnvBool,suParseBool in gameosmain.cpp,terrobj.cpp
+    MC2_TERRAIN_CONTROLMAP_ALBEDO             # feature -- read via envIsSet in terrain_material_lib.cpp
+    MC2_TERRAIN_DETAIL_FADE_END               # override -- read via envF in gameos_graphics.cpp
+    MC2_TERRAIN_DETAIL_FADE_START             # override -- read via envF in gameos_graphics.cpp
+    MC2_TERRAIN_DETAIL_LOD1_STRENGTH          # override -- read via envF in gos_terrain_lod_chunk.cpp
+    MC2_TERRAIN_DETAIL_MACRO_STRENGTH         # override -- read via envF in gameos_graphics.cpp,gos_terrain_lod_chunk.cpp
+    MC2_VEGETATION_DENSITY                    # override -- read via envInt in VegetationAdapter.cpp
+    MC2_VEGETATION_MAX                        # override -- read via envInt in VegetationAdapter.cpp
+    MC2_VISUAL_DIFF_FRAME_N                   # feature -- read via envInt in gos_visual_diff.cpp
+    MC2_VISUAL_DIFF_MAX_FRAMES                # feature -- read via envInt in gos_visual_diff.cpp
+    MC2_VK_HUD                                # feature -- read via mc2vkgate::subGate in gameos_graphics.cpp
+    MC2_VK_HUD_COLOR_PROOF                    # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
+    MC2_VK_HUD_SKIP_GL                        # feature -- read via mc2vkgate::subGate in gameos_graphics.cpp
+    MC2_VK_MECH_FEED_AUDIT                    # trace -- read via mc2vkgate::envTriState in vulkan_mech_island.cpp
+    MC2_VK_MECH_FEED_NATIVE                   # feature -- read via mc2vkgate::envTriState in gos_mech_batcher.cpp
+    MC2_VK_POST_COMPOSITE                     # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
+    MC2_VK_POST_FOG_DIRECT_CHAIN              # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_fog_native.cpp
+    MC2_VK_POST_FOG_NATIVE                    # feature -- read via mc2vkgate::subGate in vulkan_post_fog_native.cpp
+    MC2_VK_POST_HZB                           # feature -- read via mc2vkgate::envTriState in vulkan_post_hzb_native.cpp
+    MC2_VK_POST_HZB_DIRECT_CHAIN              # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_hzb_native.cpp
+    MC2_VK_POST_SCREENFX                      # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_CLOUD                # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_DIRECT_CHAIN         # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_SHADOW               # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_SHORELINE            # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SSAO                          # feature -- read via mc2vkgate::envTriState in vulkan_post_ssao_native.cpp
+    MC2_VK_POST_SSAO_DIRECT_CHAIN             # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_ssao_native.cpp
+    MC2_VK_PRESENT_DIRECT_FBO                 # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
+    MC2_VK_TERRAIN_ALL_LODS                   # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp
+    MC2_VK_TERRAIN_SKIRTS                     # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp
+    MC2_VK_TERRAIN_VISUALDISPLACE_FAR         # feature -- read via mc2vkgate::envTriState in vulkan_terrain_island.cpp
+    MC2_VK_WATER_FENCE_DEFER                  # feature -- read via mc2vkgate::envTriState in vulkan_water_island.cpp
+    MC2_VK_WATER_TIER1                        # feature -- read via mc2vkgate::subGate,subGate in engine_present_vk.cpp,vk_shared_gbuffer_gate.h,vulkan_water_island.cpp
 )
 
 if [[ $VERBOSE -eq 1 ]]; then
@@ -875,21 +948,46 @@ for v in "${ALLOWLIST[@]}";   do KNOWN["$v"]=1; done
 # ---------------------------------------------------------------------------
 # Step 4: extract all MC2_* vars used in source
 # ---------------------------------------------------------------------------
-# Matches getenv("MC2_...") and envFlag("MC2_...") in .cpp / .h files.
-# Excludes the header itself (it's the registry, not a consumer).
+# HARNESS-HYGIENE-3 -- BLIND SPOT CLOSED.
+#
+# This step used to match only FOUR hardcoded accessor names:
+#     (getenv|envFlag|selftestEnvFlag|envFlagDefaultOn)\s*\(\s*"MC2_..."
+# and it therefore reported PASS while not seeing 134 readers. The codebase
+# reads env vars through 25+ other idioms -- mc2vkgate::envTriState,
+# mc2vkgate::subGate, envFlagDefaultOff (!), parseEnvBoolWithDefault,
+# ParseEnvBool, envFloat, envInt, envF, envf, tglc_envOn, tglc_envStrength,
+# mc2AuditLatch, HudImGui::envGateOn, read_env_flag, lightClampEnvFlagDefaultOff,
+# gvEnvFlagDefaultOn, bdForceDynamicDefault, directChainGate, ... The
+# envFlagDefaultOn/envFlagDefaultOff pair is the clearest illustration: the
+# "On" spelling was listed, the "Off" spelling was invisible.
+#
+# A name whitelist cannot keep up with that, and every gap in it is silent and
+# fail-OPEN. So match ANY identifier immediately followed by an "MC2_*" string
+# literal, and subtract the known env WRITERS (which are not reads). This
+# over-reports rather than under-reports: a false positive costs one ALLOWLIST
+# row with a comment, whereas a false negative is an unregistered gate that CI
+# swears is accounted for.
+#
+# Excludes the registry header itself (it's the registry, not a consumer).
 # Excludes scripts/ and docs/ to avoid false positives from comments.
 
 SOURCE_DIRS=(
     "$WORKTREE/GameOS"
     "$WORKTREE/GameAdapters"
     "$WORKTREE/RenderWorld"
+    "$WORKTREE/RenderCore"
     "$WORKTREE/mclib"
     "$WORKTREE/code"
     "$WORKTREE/editor"
     "$WORKTREE/GuiRuntime"
     "$WORKTREE/gui"
     "$WORKTREE/EditorBridge"
+    "$WORKTREE/tests"
 )
+
+# Identifiers that WRITE the environment -- matching them would register vars
+# that no code ever reads. Anchored as whole trailing identifiers.
+ENV_WRITERS='(_putenv_s|_putenv|putenv|setenv|SetEnvironmentVariableA|SetEnvironmentVariableW)'
 
 FOUND=()
 for dir in "${SOURCE_DIRS[@]}"; do
@@ -897,8 +995,10 @@ for dir in "${SOURCE_DIRS[@]}"; do
     while IFS= read -r name; do
         FOUND+=("$name")
     done < <(
-        grep -rh --include='*.cpp' --include='*.h' \
-             -oE '(getenv|envFlag|selftestEnvFlag|envFlagDefaultOn)\s*\(\s*"MC2_[A-Z0-9_]+"' "$dir" 2>/dev/null \
+        grep -rh --include='*.cpp' --include='*.h' --include='*.hpp' \
+                 --include='*.cc' --include='*.cxx' --include='*.c' --include='*.inl' \
+             -oE '[A-Za-z_][A-Za-z0-9_:]*[[:space:]]*\([[:space:]]*"MC2_[A-Z0-9_]+"' "$dir" 2>/dev/null \
+        | grep -vE "(^|[^A-Za-z0-9_])${ENV_WRITERS}[[:space:]]*\(" \
         | grep -oE '"MC2_[A-Z0-9_]+"' \
         | tr -d '"' \
         | sort -u

@@ -170,6 +170,27 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict
         raise SystemExit(f"[vv-verify] no capture_run.json in {run_dir}")
     cap = json.loads(manifest_path.read_text(encoding="utf-8"))
 
+    # CAPTURE-RESOLUTION-ASSERT-1 (HARNESS-HYGIENE-3). Region rects are
+    # normalized fractions and diff_crops() below silently upscales a smaller
+    # candidate to the golden's crop dims, so a capture taken at the wrong
+    # resolution crops, grades and blesses cleanly with a fraction of the real
+    # pixels. That happened (an 800x600 install vs a 4K-referenced golden) and
+    # was caught only by a human reading a sidecar. Assert it here, before any
+    # crop is graded -- and only when there is a golden to be measured against.
+    if golden_dir is not None:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location(
+            "check_capture_resolution",
+            Path(__file__).resolve().parents[2] / "scripts" /
+            "check-capture-resolution.py")
+        _crm = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_crm)
+        try:
+            _crm.assert_capture_resolution(golden_dir, run_dir)
+        except _crm.ResolutionMismatch as _e:
+            raise SystemExit(f"[vv-verify] RESOLUTION MISMATCH: {_e}")
+
     crops_root = run_dir / "crops"
     crops_root.mkdir(exist_ok=True)
     contact_root = run_dir / "contact_sheets"

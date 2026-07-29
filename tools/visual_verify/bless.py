@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import struct
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +56,7 @@ def bless(run_dir: Path, to_dir: Path) -> dict:
     manifests = regionlib.load_all_manifests()
     members = []
     total_bytes = 0
+    _frame_res: set = set()
     for pose in cap.get("poses", []):
         bm = pose["bookmark"]
         doc = manifests.get(bm)
@@ -62,6 +64,16 @@ def bless(run_dir: Path, to_dir: Path) -> dict:
         if doc is None or not png_path or not Path(png_path).exists():
             continue
         png_bytes = Path(png_path).read_bytes()
+        # CAPTURE-RESOLUTION-ASSERT-1: record the resolution this golden was
+        # actually blessed at, measured from the frame's own IHDR. Without it
+        # scripts/check-capture-resolution.py has no reference to compare a
+        # future candidate against, and a wrong-resolution capture grades
+        # cleanly (region rects are normalized; verify.py upscales silently).
+        try:
+            _w, _h = struct.unpack(">II", png_bytes[16:24])
+            _frame_res.add(f"{int(_w)}x{int(_h)}")
+        except Exception:
+            pass
         bm_dir = to_dir / bm
         bm_dir.mkdir(parents=True, exist_ok=True)
         for reg in doc["regions"]:
@@ -100,6 +112,15 @@ def bless(run_dir: Path, to_dir: Path) -> dict:
         "total_crop_bytes": total_bytes,
         "members": members,
     }
+    # A golden that cannot state its own reference resolution cannot be
+    # checked. Refuse to mint one rather than mint an untrustworthy one.
+    if len(_frame_res) != 1:
+        raise SystemExit(
+            f"[vv-bless] refusing to bless: source frames have "
+            f"{'inconsistent' if _frame_res else 'unreadable'} resolutions "
+            f"{sorted(_frame_res) or '[]'}. A golden must carry exactly one "
+            f"capture_env.resolution (CAPTURE-RESOLUTION-ASSERT-1).")
+    golden["capture_env"] = {"resolution": next(iter(_frame_res))}
     (to_dir / "golden.json").write_text(json.dumps(golden, indent=2) + "\n",
                                         encoding="utf-8")
     return golden

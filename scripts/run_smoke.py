@@ -34,6 +34,12 @@ from scripts.smoke_lib import baselines, manifest, report
 from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
 from scripts.smoke_lib.runner import RunConfig, run_one
+from scripts.smoke_lib import runner as _smoke_runner
+
+# HARNESS-HYGIENE-3: what the run was ACTUALLY configured with. Ambient MC2_*
+# vars reach the engine (see runner.py's ENV COMPOSITION CONTRACT), so the run
+# is only self-describing if we write them down. Emitted into report.json.
+_env_manifest: dict = {}
 # Cockpit is strictly post-verdict and must never affect the smoke verdict,
 # including via an import-time failure (e.g. SyntaxError in cockpit.py).
 try:
@@ -2802,44 +2808,74 @@ def main():
                             "MC2_MDI_SUBMIT_TRACE")},
             },
         )
-        # SMOKE-GATE-GUARD-1: ENV-DROP WARNING.
-        # cfg.env_extra was built from the allowlist above.  Any MC2_* var
-        # that is set in the parent env but absent from cfg.env_extra was
-        # silently dropped by the Popen env-replacement — the gate runs
-        # inert.  This is the exact failure mode that caused executor
-        # ON-smokes to run as OFF for ~8 slices.  Make it LOUD.
-        _dropped_gates = sorted(
+        # SMOKE-GATE-GUARD-1 / HARNESS-HYGIENE-3: ENV-DROP guard, corrected.
+        #
+        # THE OLD DIAGNOSIS WAS WRONG. This guard used to flag every MC2_* var
+        # that was set in the shell but absent from the env_extra "allowlist",
+        # on the stated grounds that it would be "silently dropped by the Popen
+        # env-replacement". Reader source says otherwise: smoke_lib/runner.py
+        # builds the child env with os.environ.copy() and then .update()s it,
+        # so ambient MC2_* vars DO reach mc2.exe. Nothing is stripped. The
+        # allowlist rows that copy os.environ values into env_extra are no-ops.
+        #
+        # The cost of the wrong diagnosis was real: the guard hard-stopped
+        # legitimate A/B runs (an OFF arm setting MC2_TERRAIN_LOD_CHUNK=0 is
+        # exactly the thing you want to be able to do) while explaining itself
+        # with a mechanism that does not exist.
+        #
+        # The guard now distinguishes two cases:
+        #   (a) UNDRIVEABLE -- the runner genuinely overwrites, deletes, or
+        #       supersedes the ambient value (runner.FORCED_ENV / POPPED_ENV /
+        #       a conflicting env_extra). Setting it does nothing, so a PASS
+        #       would grade a configuration that never executed. FAIL CLOSED.
+        #   (b) DELIBERATE -- the var passes through untouched. That is a
+        #       legitimate run configuration, not an error. RECORD it (so the
+        #       manifest says what was actually measured) and proceed.
+        _undriveable = _smoke_runner.undriveable_ambient(os.environ, cfg.env_extra)
+        _ambient_gates = sorted(
             k for k in os.environ
-            if k.startswith("MC2_") and k not in cfg.env_extra
+            if k.startswith("MC2_") and k not in _undriveable
         )
-        for _dk in _dropped_gates:
+        if _ambient_gates:
+            # Case (b). Not an error -- but never silent: an unrecorded ambient
+            # var is how three scrubbed gates rode into dozens of captures
+            # (see scripts/mc2_env_pin.py).
+            _env_manifest["ambient_mc2_env"] = {
+                k: os.environ[k] for k in _ambient_gates
+            }
             print(
-                f"[runner] [ENV-DROP] WARNING: {_dk}={os.environ[_dk]!r} is set "
-                f"in your shell but NOT in the smoke allowlist -- it will NOT "
-                f"reach mc2.exe (gate inert). Add it to the allowlist tuple in "
-                f"scripts/run_smoke.py.",
+                f"[runner] [ENV-DECLARED] {len(_ambient_gates)} ambient MC2_* "
+                f"var(s) will reach mc2.exe and are recorded in the run "
+                f"manifest: "
+                + ", ".join(f"{k}={os.environ[k]}" for k in _ambient_gates),
                 file=sys.stderr,
             )
-        # DETERMINISM-RATCHET-2: a WARNING is not enough, and this session is
+        for _dk, (_amb, _eff, _why) in sorted(_undriveable.items()):
+            print(
+                f"[runner] [ENV-DROP] WARNING: {_dk}={_amb!r} is set in your "
+                f"shell but the harness cannot DRIVE it -- {_why}; the engine "
+                f"will see {_eff!r}.",
+                file=sys.stderr,
+            )
+        # DETERMINISM-RATCHET-2: a WARNING is not enough, and a prior session is
         # the proof. A tier1 command has printed "PASS (5/5)" alongside a
         # DEPLOY_FINGERPRINT MISMATCH for six different lanes -- a stderr line
         # nobody reads is indistinguishable from no line at all, and the run
         # still ends in a green verdict that gets cited as evidence.
         #
-        # If you set an MC2_* var and this runner cannot deliver it, the run
-        # does not test what you asked for. There is no useful result to
-        # salvage, so refuse to start rather than produce a PASS for a
-        # configuration that never executed. Costs nothing on a normal run:
-        # this fires only when a var is ACTUALLY set in the environment.
-        if _dropped_gates and not getattr(args, "allow_env_drop", False):
+        # So for the UNDRIVEABLE set only, refuse to start. Costs nothing on a
+        # normal run: this fires only when a var is ACTUALLY set AND actually
+        # cannot be delivered.
+        if _undriveable and not getattr(args, "allow_env_drop", False):
             print(
-                f"\n[runner] [ENV-DROP] FATAL: {len(_dropped_gates)} MC2_* var(s) "
-                f"set in the environment cannot reach mc2.exe: "
-                f"{', '.join(_dropped_gates)}.\n"
+                f"\n[runner] [ENV-DROP] FATAL: {len(_undriveable)} MC2_* var(s) "
+                f"set in the environment cannot be DRIVEN by this harness: "
+                f"{', '.join(sorted(_undriveable))}.\n"
                 f"[runner] Refusing to run -- a PASS here would grade a "
                 f"configuration that was never applied.\n"
-                f"[runner] Fix: add them to the allowlist tuple in "
-                f"scripts/run_smoke.py (see MC2_LETTERBOX_OPAQUE for the shape), "
+                f"[runner] Fix: these are overwritten/deleted by "
+                f"scripts/smoke_lib/runner.py (FORCED_ENV / POPPED_ENV) or by "
+                f"this run's env_extra. Unset them, drive them via env_extra, "
                 f"or pass --allow-env-drop if you genuinely want them ignored.",
                 file=sys.stderr,
             )
@@ -3020,12 +3056,17 @@ def main():
                                  show_window=args.show_window,
                                  run_failures=_run_failures)
     (artifact_dir / "report.md").write_text(md, encoding="utf-8")
-    (artifact_dir / "report.json").write_text(
-        json.dumps(report.render_json(rows, tier=args.tier or "adhoc",
+    _report_json = report.render_json(rows, tier=args.tier or "adhoc",
                                       profile=args.profile, timestamp=timestamp,
                                       show_window=args.show_window,
-                                      run_failures=_run_failures),
-                   indent=2), encoding="utf-8")
+                                      run_failures=_run_failures)
+    # HARNESS-HYGIENE-3: record the env the run actually executed under, so a
+    # deliberate ambient gate is auditable after the fact instead of refused
+    # up front. Always present (empty dict = shipped default configuration).
+    if isinstance(_report_json, dict):
+        _report_json["env_manifest"] = dict(_env_manifest)
+    (artifact_dir / "report.json").write_text(
+        json.dumps(_report_json, indent=2), encoding="utf-8")
 
     if args.baseline_update:
         baselines.save(BASELINE_PATH, baseline_data)
