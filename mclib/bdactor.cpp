@@ -138,6 +138,18 @@ static unsigned long s_spotDiagBldgOverflows  = 0;   // pool-overflow count
 static unsigned long s_spotDiagBldgActors     = 0;   // actor first-hits
 static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
+// [FULLBAKE_DIAG v1] TEMPORARY measurement scaffolding — SPOTLIGHT-DIRECTION-1.
+// Question being answered: does any stock building actually reach the full
+// TransformMultiShape() bake? That is the ONLY path which runs the msl.cpp
+// TG_LIGHT_POINT lighting block, i.e. the only consumer of TG_Light::direction.
+// If these counts are zero in real missions, the unset-direction defect is
+// latent-only and needs no gate/capture campaign. REMOVE before landing.
+static unsigned long s_fbDiagBranchCalls   = 0;  // times the update() branch ran
+static unsigned long s_fbDiagGpuEligible   = 0;  // gpuEligible == true
+static unsigned long s_fbDiagElseHierOnly  = 0;  // !gpuEligible, hierarchy-only
+static unsigned long s_fbDiagElseFullBake  = 0;  // !gpuEligible, FULL bake  <== key
+static unsigned long s_fbDiagDualEmitFull  = 0;  // gpuEligible parity dual-emit full bake
+
 #include "gos_static_prop_killswitch.h"
 #include "gos_static_prop_batcher.h"
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
@@ -3961,6 +3973,20 @@ long BldgAppearance::update (bool animate)
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}
 
+		// [FULLBAKE_DIAG v1] TEMPORARY — see decl block. Emits a running tally so
+		// the "is the direction-consumer path ever reached?" question is answered
+		// from a real mission rather than from static reading.
+		++s_fbDiagBranchCalls;
+		if (gpuEligible) ++s_fbDiagGpuEligible;
+		if ((s_fbDiagBranchCalls % 600) == 0) {
+			std::fprintf(stderr,
+				"[FULLBAKE_DIAG v1] calls=%lu gpuEligible=%lu else_hier=%lu "
+				"else_FULLBAKE=%lu dualemit_full=%lu\n",
+				s_fbDiagBranchCalls, s_fbDiagGpuEligible, s_fbDiagElseHierOnly,
+				s_fbDiagElseFullBake, s_fbDiagDualEmitFull);
+			std::fflush(stderr);
+		}
+
 		if (gpuEligible)
 		{
 			// Stage 2.D.2 fix: cache GPU light data NOW, while worldLights[0]->aRGB
@@ -4001,6 +4027,7 @@ long BldgAppearance::update (bool animate)
 			// Stage 2.D.3: per-actor gate. Bootstrap arm returns true for
 			// every shape; sample arm returns true only for the picked actor.
 			if (gos_object_parity::IsDualEmitArmedForActor(bldgShape)) {
+				++s_fbDiagDualEmitFull;   // [FULLBAKE_DIAG] temporary
 				bldgShape->TransformMultiShape (&xlatPosition,&rot);
 			}
 		}
@@ -4019,9 +4046,17 @@ long BldgAppearance::update (bool animate)
 			    !gos_StaticPropLegacyInstancePools() &&
 			    (g_mechPreviewRenderDepth == 0) &&
 			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
+			{
+				++s_fbDiagElseHierOnly;   // [FULLBAKE_DIAG] temporary
 				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+			}
 			else
+			{
+				++s_fbDiagElseFullBake;   // [FULLBAKE_DIAG] temporary — THE path
+				                          // that runs msl.cpp TG_LIGHT_POINT
+				                          // lighting and reads TG_Light::direction
 				bldgShape->TransformMultiShape (&xlatPosition,&rot);
+			}
 			// 2026-05-10: also seed cachedGpuLightIndex_ in the full-bake
 			// branch. Without this, the first-frame transition out of the
 			// H4 latch (set by registerStatic at :2754) leaves the index
