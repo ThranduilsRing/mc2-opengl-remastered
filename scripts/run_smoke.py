@@ -1606,6 +1606,15 @@ def main():
                             # OFF arm of an A/B capture actually reaches the
                             # child instead of silently running the default.
                             "MC2_CONE_SPILL_COUPLING",
+                            # SPOTLIGHT-DIRECTION-1: building spotlight
+                            # direction/lightToWorld coordinate-space fix. Must
+                            # reach the child or the ON arm of an A/B night
+                            # capture silently measures the default.
+                            "MC2_SPOTLIGHT_DIRECTION_FIX",
+                            # SPOTLIGHT-DIRECTION-1 measurement instrument --
+                            # allowlisted so a capture arm can prove it actually
+                            # reached the TG_LIGHT_POINT/SPOT consumer.
+                            "MC2_FULLBAKE_DIAG",
                             # MC2_DIAG_VERBOSE: unmasks MC2_DIAG* receipts (e.g.
                             # [LIGHT_GRID v1], [LIGHT_POOL_CAP v1]) that the
                             # quiet-default build suppresses.
