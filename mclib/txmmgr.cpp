@@ -165,6 +165,13 @@ static unsigned long s_lightClampProbeCalls     = 0;
 static const bool    s_lightClampFixture      = lightClampEnvFlagDefaultOff("MC2_LIGHT_CLAMP_FIXTURE");
 static bool          s_lightClampFixtureYelled = false;
 
+// MC2_LIGHT_POS_COLUMN_FIX (default OFF) — LIGHT-POS-COLUMN-1.
+// Writes the light's world translation into the mat4 slots the GLSL/SPIR-V
+// consumers actually read as the translation column. See the long comment at
+// the memcpy in GatherLightsParameters for the full derivation. Default OFF
+// keeps the shipped (0,0,0) upload byte-identical.
+static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOff("MC2_LIGHT_POS_COLUMN_FIX");
+
 // ---------------------------------------------------------------------------
 // [SPFLUSH_COST_SPLIT v1] — txmmgr-side RDTSC accumulator.
 // Measures the batcher_prepareBaseInstanceTable() + bucket-upload span each
@@ -2370,8 +2377,54 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			else
 				light2world = Stuff::LinearMatrix4D::Identity;
 
+			// LIGHT-POS-COLUMN-1 — light world POSITION never reaches the GPU.
+			//
+			// Stuff::AffineMatrix4D is 3 columns x 4 rows, indexed
+			// entries[(column<<2)+row] (mclib/stuff/affinematrix.hpp:141), and
+			// BuildTranslation writes (W_Axis, {X,Y,Z}_Axis) — i.e. the world
+			// translation lives at entries[3], [7], [11]. BuildRotation only
+			// touches rows 0..2 (mclib/stuff/affinematrix.cpp:162-194), so a
+			// BuildTranslation-then-BuildRotation producer (bdactor.cpp:3435 /
+			// :3673, carnage.cpp:742, turret.cpp:917, weaponbolt.cpp:1451)
+			// really does leave the position in those three slots.
+			//
+			// The memcpy below therefore lands the translation at GPU floats
+			// [3]/[7]/[11] — which, read as a column-major GLSL mat4, is
+			// m[0].w / m[1].w / m[2].w. But EVERY consumer decodes the light
+			// origin as m[3].xyz == floats [12][13][14]:
+			//     shaders/include/lighting.hglsl:246,256,274 (POINT/SPOT/
+			//                                     INFINITEWITHFALLOFF)
+			//     shaders/vulkan/mech_tier1.vert:110,117,124
+			//     shaders/lightgrid_build.comp:112
+			// and the line below explicitly ZEROES exactly those three slots.
+			// Net effect in the shipped build: every object-path POINT / SPOT /
+			// INFINITEWITHFALLOFF light is evaluated as if it sat at the world
+			// origin.
+			//
+			// WHY THE FIX IS HERE AND NOT IN THE SHADERS: this is the single
+			// chokepoint feeding all seven read sites across three shader
+			// languages (GLSL, SPIR-V, compute), so one edit corrects them
+			// together and needs no SPIR-V rebake. It also CANNOT double-correct:
+			// the value currently uploaded is the constant (0,0,0), which carries
+			// no information, so no downstream consumer can possibly be
+			// compensating for it.
+			//
+			// NOT TOUCHED: lightDir is gathered separately below via
+			// GetLocalForwardInWorld and is already correct; the CPU mirror
+			// (msl.cpp:1792) sources POINT position from TG_Light::direction and
+			// never reads this matrix. The rotation 3x3 left in [0..11] stays as
+			// shipped — no consumer reads it.
 			memcpy(lights->lightToWorld[num_lights], (const float*)light2world, 12*sizeof(float));
-			lights->lightToWorld[num_lights][12] = lights->lightToWorld[num_lights][13] = lights->lightToWorld[num_lights][14] = 0.0f;
+			if (s_lightPosColumnFix)
+			{
+				lights->lightToWorld[num_lights][12] = lights->lightToWorld[num_lights][3];
+				lights->lightToWorld[num_lights][13] = lights->lightToWorld[num_lights][7];
+				lights->lightToWorld[num_lights][14] = lights->lightToWorld[num_lights][11];
+			}
+			else
+			{
+				lights->lightToWorld[num_lights][12] = lights->lightToWorld[num_lights][13] = lights->lightToWorld[num_lights][14] = 0.0f;
+			}
 			lights->lightToWorld[num_lights][15] = 1.0f;
 
 			Stuff::UnitVector3D uVec;

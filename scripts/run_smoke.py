@@ -1737,6 +1737,14 @@ def main():
                             # meaning (default OFF). Must be allowlisted or
                             # Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_FOLIAGE_ALPHAFLAG",
+                            # LIGHT-POS-COLUMN-1 -- deliver the object-path
+                            # light world position to the GPU (copy affine
+                            # translation from floats [3]/[7]/[11] into the
+                            # [12]/[13]/[14] slots every shader decodes as
+                            # m[3].xyz), default OFF. Must be allowlisted or
+                            # Popen drops it and the gate-ON smoke silently
+                            # runs gate-OFF.
+                            "MC2_LIGHT_POS_COLUMN_FIX",
                             # PROP-BASE-LIGHT-DIR-1 -- directional/hemispherical
                             # orientation term for the baked static-prop
                             # base_light seed (float strength 0..1, default 0.0

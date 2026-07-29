@@ -202,10 +202,22 @@ bool GetFalloff(float length, vec3 falloff_data, out float falloff)
 //                            useShadows fires (per spec line 245), else
 //                            ignore here (CPU path retains the bake).
 //
-// Light position decoding: light_to_world is the per-light transform; the
-// world-space light origin is column 3 (translation), i.e.
-//   lightPos = (ld.light_to_world[i] * vec4(0,0,0,1)).xyz
-// which equals ld.light_to_world[i][3].xyz under column-major mat4.
+// Light position decoding: light_to_world is the per-light transform and the
+// world-space light origin is read below as ld.light_to_world[i][3].xyz, i.e.
+// floats [12][13][14] of the uploaded mat4.
+//
+// LIGHT-POS-COLUMN-1 — READ THIS BEFORE TRUSTING light_to_world[i][3].
+// The CPU source is Stuff::AffineMatrix4D, which is 3 columns x 4 rows indexed
+// entries[(column<<2)+row], so its translation lives at entries[3]/[7]/[11] --
+// m[0].w / m[1].w / m[2].w here, NOT m[3].xyz. GatherLightsParameters
+// (mclib/txmmgr.cpp) memcpys 12 floats and then zeroes [12][13][14], so in the
+// SHIPPED build this decode yields (0,0,0) and every POINT / SPOT /
+// INFINITEWITHFALLOFF light is evaluated at the world origin.
+// The fix is at the upload, gated by MC2_LIGHT_POS_COLUMN_FIX (default OFF),
+// which copies [3]/[7]/[11] into [12]/[13]/[14] so this decode becomes correct
+// for all consumers at once. Do NOT "fix" the decode here as well -- that would
+// double-correct once the gate is on. Same applies to the sibling decodes in
+// shaders/vulkan/mech_tier1.vert and shaders/lightgrid_build.comp.
 //
 // MUST preserve the `numLights.x == 0 → return vec3(1)` early-return:
 // other shaders include this header (gos_tex_vertex_lighted.{vert,frag})
