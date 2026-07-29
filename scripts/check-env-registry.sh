@@ -887,6 +887,7 @@ ALLOWLIST=(
     MC2_LIGHTGRID_VERIFY                      # trace -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
     MC2_LIGHT_CLAMP_FIXTURE                   # feature -- read via lightClampEnvFlagDefaultOff in txmmgr.cpp
     MC2_LIGHT_CLAMP_PROBE                     # trace -- read via lightClampEnvFlagDefaultOff in txmmgr.cpp
+    MC2_LIGHT_ROW_CENSUS                      # trace -- read via lightClampEnvFlagDefaultOff in txmmgr.cpp
     MC2_PLAYTEST_EXE                          # override -- read via GetEnvironmentVariableA in EditorPlaytest.cpp
     MC2_POSTPROCESS_COMPUTE_BLUR              # feature -- read via envFlagDefaultOff in gos_postprocess_blur.cpp
     MC2_POSTPROCESS_COMPUTE_BLUR_PLANT        # feature -- read via envFlagDefaultOff in gos_postprocess_blur.cpp

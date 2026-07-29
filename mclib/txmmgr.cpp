@@ -172,6 +172,62 @@ static bool          s_lightClampFixtureYelled = false;
 // keeps the shipped (0,0,0) upload byte-identical.
 static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOff("MC2_LIGHT_POS_COLUMN_FIX");
 
+// MC2_LIGHT_ROW_CENSUS (default OFF) — LIGHT-POS-COMBAT-1. Pure observation.
+//
+// The pre-existing MC2_OBJECT_PARITY_TRACE dump latches after the FIRST
+// GatherLightsParameters call of the session, so it can only ever sample a
+// static opening frame. The lights this lane cares about — carnage.cpp
+// explosions (POINT), weaponbolt.cpp bolts (POINT), turret.cpp turret lamps
+// (SPOT, falloff 50/450) — are transient and only exist during combat, so the
+// latched trace structurally CANNOT observe them. This census instead keeps a
+// running per-light-type tally for the whole session and emits:
+//   * one FIRST line the first time each positional type (INFINITEWITHFALLOFF
+//     /POINT/SPOT) is ever gathered, and
+//   * a periodic full dump every kCensusPeriod calls.
+// It records BOTH the source translation (dest [3]/[7]/[11], where
+// BuildTranslation left it) and the uploaded position ([12]/[13]/[14], what
+// every shader actually decodes as the light origin), so the receipt shows
+// directly whether the position survives the upload under either gate state.
+// Observation only: never changes a single uploaded float.
+static const bool    s_lightRowCensus = lightClampEnvFlagDefaultOff("MC2_LIGHT_ROW_CENSUS");
+namespace {
+struct LightRowCensusRec {
+    unsigned long seen;
+    bool          firstEmitted;
+    float         src[3];   // dest[3]/[7]/[11] — where BuildTranslation put it
+    float         up[3];    // dest[12]/[13]/[14] — what the shaders read
+    float         falloff[2];
+    float         maxSrcAbs; // largest |component| of src ever seen for this type
+};
+// TG_LIGHT_* ids are 0..5 (tgl.h:163-168); index defensively.
+static LightRowCensusRec s_lightRowCensusTab[8] = {};
+static unsigned long     s_lightRowCensusCalls  = 0;
+static const char* lightRowCensusTypeName(unsigned t) {
+    switch (t) {
+    case 0: return "AMBIENT";
+    case 1: return "INFINITE";
+    case 2: return "INFINITEWITHFALLOFF";
+    case 3: return "POINT";
+    case 4: return "SPOT";
+    case 5: return "TERRAIN";
+    default: return "UNKNOWN";
+    }
+}
+static void lightRowCensusEmit(const char* tag, unsigned t) {
+    const LightRowCensusRec& r = s_lightRowCensusTab[t & 7];
+    std::fprintf(stderr,
+        "[LIGHT_ROW_CENSUS v1] %s type=%u(%s) seen=%lu "
+        "src=(%.3f,%.3f,%.3f) up=(%.3f,%.3f,%.3f) maxSrcAbs=%.3f "
+        "falloff=(%.1f,%.1f) fix=%d\n",
+        tag, t, lightRowCensusTypeName(t), r.seen,
+        r.src[0], r.src[1], r.src[2],
+        r.up[0], r.up[1], r.up[2],
+        r.maxSrcAbs, r.falloff[0], r.falloff[1],
+        s_lightPosColumnFix ? 1 : 0);
+    std::fflush(stderr);
+}
+} // namespace
+
 // ---------------------------------------------------------------------------
 // [SPFLUSH_COST_SPLIT v1] — txmmgr-side RDTSC accumulator.
 // Measures the batcher_prepareBaseInstanceTable() + bucket-upload span each
@@ -2487,7 +2543,47 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 				std::fflush(stderr);
 			}
 
+			// MC2_LIGHT_ROW_CENSUS (default OFF) — LIGHT-POS-COMBAT-1.
+			// Observation only; records what this row carried in and what it
+			// uploaded out. See the header comment near s_lightRowCensus.
+			if (s_lightRowCensus) {
+				const unsigned ti = ((unsigned)type) & 7u;
+				LightRowCensusRec& rec = s_lightRowCensusTab[ti];
+				const float* row = lights->lightToWorld[num_lights];
+				rec.seen++;
+				rec.src[0] = row[3];  rec.src[1] = row[7];  rec.src[2] = row[11];
+				rec.up[0]  = row[12]; rec.up[1]  = row[13]; rec.up[2]  = row[14];
+				rec.falloff[0] = lights->lightFalloff[num_lights][0];
+				rec.falloff[1] = lights->lightFalloff[num_lights][1];
+				for (int c = 0; c < 3; ++c) {
+					const float a = rec.src[c] < 0.0f ? -rec.src[c] : rec.src[c];
+					if (a > rec.maxSrcAbs) rec.maxSrcAbs = a;
+				}
+				// One line the first time a POSITIONAL type ever appears — this
+				// is the event the whole lane is waiting on.
+				if (!rec.firstEmitted &&
+				    (type == TG_LIGHT_INFINITEWITHFALLOFF ||
+				     type == TG_LIGHT_POINT ||
+				     type == TG_LIGHT_SPOT)) {
+					rec.firstEmitted = true;
+					lightRowCensusEmit("FIRST", ti);
+				}
+			}
+
 			num_lights++;
+		}
+	}
+
+	if (s_lightRowCensus) {
+		// Periodic full dump so a long combat run leaves a running receipt
+		// rather than a single sample. Period is in GatherLightsParameters
+		// calls (many per frame), so this is a few lines per second at most.
+		static const unsigned long kCensusPeriod = 5000;
+		if ((++s_lightRowCensusCalls % kCensusPeriod) == 0) {
+			for (unsigned t = 0; t < 8; ++t) {
+				if (s_lightRowCensusTab[t].seen)
+					lightRowCensusEmit("DUMP", t);
+			}
 		}
 	}
 
