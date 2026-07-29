@@ -71,6 +71,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(REPO_ROOT, "scripts", "smoke_lib", "runner.py")
 RUN_SMOKE = os.path.join(REPO_ROOT, "scripts", "run_smoke.py")
+VISCAP = os.path.join(REPO_ROOT, "scripts", "run_visual_capture.py")
 REGISTRY = os.path.join(REPO_ROOT, "RenderCore", "RendererFeatureRegistry.h")
 
 GATE = r"MC2_[A-Z0-9_]+"
@@ -177,6 +178,19 @@ CONTRACTS = [
         "run_smoke.py no longer records ambient MC2_* vars in the run manifest.\n"
         "     An unrecorded ambient var is how three scrubbed gates rode into dozens\n"
         "     of captures without any run saying so.",
+    ),
+    (
+        "visual-capture launches through the pinned-env policy",
+        VISCAP,
+        r"env_pin\.build_pinned_env\s*\(",
+        "scripts/run_visual_capture.py no longer builds its launch env via\n"
+        "     mc2_env_pin.build_pinned_env(). That path is the OTHER A/B-bearing\n"
+        "     launcher and it works the opposite way to the smoke runner: it scrubs\n"
+        "     every behaviour-affecting ambient MC2_* unless explicitly --env-declare'd\n"
+        "     (CAPTURE-ENV-PIN-1). That deny-by-default scrub is only safe because it\n"
+        "     is LOUD -- it warns and records `still_scrubbed` in the sidecar. Bypassing\n"
+        "     build_pinned_env() would make capture A/Bs silently drop the gate under\n"
+        "     test, which is the same failure in the opposite direction.",
     ),
 ]
 
