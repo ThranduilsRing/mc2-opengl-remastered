@@ -149,6 +149,9 @@ static unsigned long s_fbDiagGpuEligible   = 0;  // gpuEligible == true
 static unsigned long s_fbDiagElseHierOnly  = 0;  // !gpuEligible, hierarchy-only
 static unsigned long s_fbDiagElseFullBake  = 0;  // !gpuEligible, FULL bake  <== key
 static unsigned long s_fbDiagDualEmitFull  = 0;  // gpuEligible parity dual-emit full bake
+// Defined here, incremented in mclib/msl.cpp at the TG_LIGHT_POINT/SPOT consumer.
+unsigned long g_fbDiagPtSpotConsumed = 0;  // active POINT/SPOT lights baked
+unsigned long g_fbDiagPtSpotZeroDir  = 0;  // ...of those, direction still (0,0,0)
 
 #include "gos_static_prop_killswitch.h"
 #include "gos_static_prop_batcher.h"
@@ -3981,9 +3984,10 @@ long BldgAppearance::update (bool animate)
 		if ((s_fbDiagBranchCalls % 600) == 0) {
 			std::fprintf(stderr,
 				"[FULLBAKE_DIAG v1] calls=%lu gpuEligible=%lu else_hier=%lu "
-				"else_FULLBAKE=%lu dualemit_full=%lu\n",
+				"else_FULLBAKE=%lu dualemit_full=%lu ptspot_consumed=%lu ptspot_zerodir=%lu\n",
 				s_fbDiagBranchCalls, s_fbDiagGpuEligible, s_fbDiagElseHierOnly,
-				s_fbDiagElseFullBake, s_fbDiagDualEmitFull);
+				s_fbDiagElseFullBake, s_fbDiagDualEmitFull,
+				g_fbDiagPtSpotConsumed, g_fbDiagPtSpotZeroDir);
 			std::fflush(stderr);
 		}
 

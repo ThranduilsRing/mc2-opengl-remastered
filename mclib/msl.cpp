@@ -1745,6 +1745,24 @@ long TG_MultiShape::TransformMultiShape (Stuff::Point3D *pos, Stuff::UnitQuatern
                 {
                     if ((TG_Shape::s_listOfLights[iLight] != NULL) && (TG_Shape::s_listOfLights[iLight]->active))
                     {
+                        // [FULLBAKE_DIAG v1] TEMPORARY — SPOTLIGHT-DIRECTION-1.
+                        // Counts ACTIVE POINT/SPOT lights actually consumed by this
+                        // bake, split by whether ->direction is still the init()
+                        // default (0,0,0). direction is a POSITION for POINT/SPOT
+                        // (tgl.h:213), so a (0,0,0) direction means "light sits at
+                        // the world origin" — the defect signature. REMOVE.
+                        {
+                            const TG_LightPtr dl_ = TG_Shape::s_listOfLights[iLight];
+                            const DWORD dt_ = dl_->lightType;
+                            if (dt_ == TG_LIGHT_POINT || dt_ == TG_LIGHT_SPOT) {
+                                extern unsigned long g_fbDiagPtSpotConsumed;
+                                extern unsigned long g_fbDiagPtSpotZeroDir;
+                                ++g_fbDiagPtSpotConsumed;
+                                if (dl_->direction.x == 0.0f && dl_->direction.y == 0.0f &&
+                                    dl_->direction.z == 0.0f)
+                                    ++g_fbDiagPtSpotZeroDir;
+                            }
+                        }
                         switch (TG_Shape::s_listOfLights[iLight]->lightType)
                         {
                             case TG_LIGHT_AMBIENT:
