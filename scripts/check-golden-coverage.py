@@ -63,10 +63,6 @@ REQUIRED_HOLE_KEYS = ("bookmark", "region", "rule", "reason", "subject_protected
 # baseline. Removing a region from a set a human is about to promote is a user
 # call, not an agent's, so it is waived-and-surfaced rather than edited here.
 LEGACY_WAIVERS = {
-    "baseline-6c47e149": (
-        "pre-ledger set: 12 regions unaccounted + carries the same degenerate "
-        "distant_ridge_base crop. Superseded by baseline-5ef261f4; re-bless or "
-        "retire rather than back-fill."),
     "v0.5.1-baseline": (
         "shipped release baseline (39 regions, blessed before the three-run "
         "all-pairs and degeneracy rules existed). Carries the degenerate "
@@ -77,6 +73,33 @@ LEGACY_WAIVERS = {
         "un-failable) and blesses all 11 regions later refused for instability. "
         "Editing it would change what the user is about to promote. RAISE THIS "
         "AT THE PROMOTION GATE."),
+}
+
+# ---------------------------------------------------------------------------
+# Retired sets (GOLDEN-6C47-AUDIT-1)
+# ---------------------------------------------------------------------------
+# A golden set that was deleted from the tree ON PURPOSE, with the reasoning
+# kept here so the deletion is a decision on the record and not an unexplained
+# absence -- the same failure mode this checker exists to prevent, one level up.
+#
+# The guard below FAILs if a retired id reappears on disk. Restoring a retired
+# set must therefore be a deliberate edit to this table, never a silent
+# `git checkout` of the directory.
+#
+# Full audit + restore instructions: tests/visual/goldens/RETIRED.md
+RETIRED_SETS = {
+    "baseline-6c47e149": (
+        "Retired by GOLDEN-6C47-AUDIT-1: strictly dominated by baseline-5ef261f4 "
+        "and carried un-failable coverage. (1) ZERO unique coverage -- all 27 of "
+        "its blessed regions are either blessed in 5ef261f4 (24) or recorded "
+        "there as explicit rule/reason/subject coverage holes (3). (2) 5ef261f4 "
+        "additionally BLESSES 3 regions 6c47e149 had refused. (3) Two of its 3 "
+        "non-overlapping blessings are provably bad references: "
+        "distant_ridge_base is the 167-byte all-black un-failable crop, and "
+        "runway_grid_complete was blessed only because 6c47e149's rule compared "
+        "r1-v-r2 and r1-v-r3 but never r2-v-r3 -- the pair on which it later "
+        "measured 5.16% movement. (4) Its 10 vendored poses survive: 5ef261f4 "
+        "carries all 10, verified byte-identical."),
 }
 
 
@@ -146,8 +169,10 @@ def check_golden(gdir: Path, manifests: dict) -> "tuple[list, list]":
 
 
 def run(quiet: bool = False, goldens: "Path | None" = None,
-        manifests: "dict | None" = None, waivers: "dict | None" = None) -> int:
+        manifests: "dict | None" = None, waivers: "dict | None" = None,
+        retired: "dict | None" = None) -> int:
     gdir_root = goldens or GOLDENS
+    retired = RETIRED_SETS if retired is None else retired
     manifests = manifests if manifests is not None else regionlib.load_all_manifests()
     waivers = LEGACY_WAIVERS if waivers is None else waivers
     fails, warns, notes = [], [], []
@@ -168,6 +193,18 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
     for wid in sorted(set(waivers) - seen):
         fails.append(f"stale legacy waiver for golden set {wid!r}: no such set on "
                      f"disk -- remove it from LEGACY_WAIVERS")
+    # A retired set must stay retired: resurrection has to be a deliberate edit
+    # to RETIRED_SETS, not a silent restore of the directory.
+    for rid in sorted(set(retired) & seen):
+        fails.append(f"golden set {rid!r} is recorded RETIRED but is present on "
+                     f"disk again -- it was deleted on purpose (see "
+                     f"tests/visual/goldens/RETIRED.md). Either remove the "
+                     f"directory, or remove it from RETIRED_SETS and state why "
+                     f"the retirement no longer holds.")
+    # A set cannot be simultaneously excused and retired.
+    for bid in sorted(set(retired) & set(waivers)):
+        fails.append(f"golden set {bid!r} appears in BOTH LEGACY_WAIVERS and "
+                     f"RETIRED_SETS -- a retired set has no findings to waive")
     if not quiet:
         print("[check-golden-coverage] GOLDEN-COVERAGE-LEDGER-1")
         print(f"  golden sets inspected      : {n} "
@@ -176,6 +213,8 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
             print(f"  {x}")
         for wid in sorted(seen & set(waivers)):
             print(f"  WAIVED {wid}: {waivers[wid]}")
+        for rid in sorted(retired):
+            print(f"  RETIRED {rid}: {retired[rid]}")
         for w in warns:
             print(f"  WARN: {w}")
         for f in fails:

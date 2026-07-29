@@ -1,0 +1,78 @@
+# Retired golden sets
+
+A golden set removed from this tree gets an entry here. An absent set with no
+record is indistinguishable from a set nobody ever built — the exact failure
+mode `GOLDEN-COVERAGE-LEDGER-1` exists to prevent, one level up.
+
+Enforced by `scripts/check-golden-coverage.py`: every id below is in
+`RETIRED_SETS`, and the checker FAILs if a retired id reappears on disk.
+Restoring one is a deliberate edit to that table, not a silent `git checkout`.
+
+---
+
+## `baseline-6c47e149` — retired by GOLDEN-6C47-AUDIT-1 (2026-07-29)
+
+**Superseded by:** `baseline-5ef261f4` (27 blessed + 12 recorded coverage holes).
+
+**Restore with:** `git checkout 43846054 -- tests/visual/goldens/baseline-6c47e149`
+(38 tracked files, intact at `43846054`, the commit immediately before this
+retirement; also remove the `RETIRED_SETS` entry in
+`scripts/check-golden-coverage.py`, or the checker will FAIL by design).
+
+### Correction to the standing description first
+
+The `LEGACY_WAIVERS` text this retirement replaces said 6c47e149 had "12 regions
+unaccounted". That is how the **checker** saw it, but it is not what the set
+actually contains. `golden.json` records all 12 under a key named
+`refused_regions`, each with `severity`, `check`, `refusal_reason` and
+`measured_noise_floor`. The checker reads the key `refused` and requires
+`rule` / `reason` / `subject_protected`, so a pre-ledger schema read as silence.
+
+So this is **not** a case of lost documentation, and "back-fill the ledger" was
+never the live option. It is retired for what it *is*, below.
+
+### Why retire rather than re-bless
+
+**1. Zero unique coverage.** All 27 blessed regions are already accounted for in
+`baseline-5ef261f4` — 24 blessed outright, and the other 3 recorded there as
+explicit coverage holes with rule, reason and protected subject:
+
+| region blessed only in 6c47e149 | status in 5ef261f4 |
+|---|---|
+| `mc2_10_saved_204907/distant_ridge_base` | hole — `DEGENERATE-CROP-REFUSAL-1` |
+| `mc2_10_saved_204907/near_base_lighting` | hole — `THREE-RUN-ALL-PAIRS-1` |
+| `mc2_10_saved_212258/runway_grid_complete` | hole — `THREE-RUN-ALL-PAIRS-1` |
+
+Deleting the set loses no coverage that is not already written down.
+
+**2. It is strictly dominated.** 5ef261f4 *blesses* three regions 6c47e149 had
+refused: `mc2_10_saved_204523/compound_light_wedges`,
+`mc2_10_saved_205952/water_shore_grazing`,
+`mc2_10_saved_212258/cement_tile_seams`. Same 27-region headline count, more
+real coverage.
+
+**3. Two of its three non-overlapping blessings are bad references.**
+
+- `distant_ridge_base` — 300x100, **167 bytes, exactly one unique colour
+  (0,0,0)**, registered at severity `critical`. Byte-identical across all three
+  runs while sibling regions in the same frames carried 6.5k–36.5k unique
+  colours. The rect (px 1300,200 300x100 @ ref 3840x2160) sits in void night sky
+  *above* the ridge it claims to frame. It could never fail a diff.
+- `runway_grid_complete` — blessed only because 6c47e149's stated rule was
+  `"r1-vs-r2 and r1-vs-r3, worst governs"` (`bless_policy.pairs` in its own
+  `golden.json`). It never compared **r2-v-r3** — the pair on which 5ef261f4
+  later measured it moving **5.16%**. Same structural blind spot flagged
+  `pad_outline_fence` at 1.275% and `cement_pads_dark` at 0.825%.
+
+**4. Re-blessing was not available.** The 3 regions are refused under
+`THREE-RUN-ALL-PAIRS-1` for run-to-run instability exceeding their own verify
+thresholds (floors up to 25.18%). Importing 6c47e149's crops would re-add
+references captured on a *different exe* (`6c47e149353c` vs `5ef261f4dd03`)
+under the superseded 2-pair rule, making every future verify a coin flip. That
+is worse than an honest hole.
+
+**5. Nothing else in it is unique.** Its 10 vendored poses were copied into
+`baseline-5ef261f4/poses/` by the successor lane; verified here **byte-identical
+for all 10** (`cmp` on each). No tracked file outside `.claude/` status docs and
+the two `golden.json` provenance strings referenced the set; the only other hits
+are untracked `scratch/` capture artifacts.
