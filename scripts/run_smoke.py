@@ -2582,6 +2582,7 @@ def main():
                             # runs blur ON, i.e. both arms identical and the compare
                             # proves nothing (the MC2_SSAO trap fixed by 5cd3cc65).
                             "MC2_SSAO_BLUR",
+                            "MC2_SSAO_BLUR_SIGMA",
                             # SSAO-BLUR-1 housekeeping: MC2_VISUAL_TUNING_FILE points
                             # the visual-tuning profile reader (visual_tuning_profile.cpp)
                             # at an alternate JSON, which is how aoRadius/aoStrength/

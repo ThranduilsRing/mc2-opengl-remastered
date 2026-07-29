@@ -975,6 +975,22 @@ void gosPostProcess::init(int w, int h)
         // pre-SSAO-BLUR-1 two-draw chain (no denoise) for A/B on one exe.
         const char* blurEnv = getenv("MC2_SSAO_BLUR");
         ssaoBlurEnabled_ = !(blurEnv && blurEnv[0] == '0');
+        // SSAO-BLUR-1: sigma MUST be env-tunable. Measured 2026-07-28: at the
+        // initial 0.02 (2% relative depth) the blur was strongly effective on
+        // flat near-constant-depth faces (cliff_wall_sideon, HF noise -52.5%)
+        // but COMPLETELY INERT on oblique/grazing views (cross_map_view,
+        // oblique_fog, oblique_horizon: HF delta ~0.0%, maxAbs 1-4). On a
+        // grazing surface adjacent half-res texels differ in depth by far more
+        // than 2%, so every neighbour tap was rejected and the result collapsed
+        // to the centre pixel -- a blur that silently does nothing exactly where
+        // the AO buffer is noisiest.
+        const char* sigEnv = getenv("MC2_SSAO_BLUR_SIGMA");
+        if (sigEnv && sigEnv[0]) {
+            float s = (float)atof(sigEnv);
+            if (s < 0.001f) s = 0.001f;
+            if (s > 1.0f)   s = 1.0f;
+            aoBlurDepthSigma_ = s;
+        }
         MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f strength=%.2f bias=%.4f blur=%d sigma=%.4f\n",
                      ssaoEnabled_ ? 1 : 0, ssaoDebug_,
                      ssaoEnv ? ssaoEnv : "(unset)", aoRadius_, aoStrength_, aoBias_,
