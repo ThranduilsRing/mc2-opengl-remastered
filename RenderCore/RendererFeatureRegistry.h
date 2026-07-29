@@ -2343,6 +2343,21 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:1402-1405, MAT_LAYER_PAINTED_CONC: dN += pureConcrete * matNormalBoost.w * fwC * (cN.rgb*2-1)) by zeroing matNormalBoost.w (nb[3]) at the uniform upload in gos_terrain_lod_chunk.cpp. DEFAULT OFF = the 'original overlay' concrete the user graded and approved in the mc2-win64-v0.3 install -- that install ships WITHOUT data/terrain_layers/, so matNormalArray never loads and the concrete relief never appears; this gate reproduces that look in installs that DO ship the layers, WITHOUT deleting assets or freezing a stale binary. Shader untouched; rock/grass/dirt detail normals (nb[0..2]) and the cement albedo/atlas path are unaffected. '=1' restores the relief treatment. Cost: loses close-up concrete surface relief on runways/aprons -- the flat authored colormap tone is what ships."
     },
+    // SHORELINE-GEOMETRY-1 / WATER-MEANDER-CLAMP-1: shore meander is DEFAULT OFF (0).
+    {
+        "MC2_FEATURE_WATER_SHORE_MEANDER",
+        "MC2_WATER_SHORE_MEANDER",
+        EnvVarKind::Feature,
+        false,
+        "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the tile-quantised staircase waterline into an organic coastline. Value is an AMPLITUDE, not a boolean: unset/empty or <=0 => 0.0f = OFF = the stock, long-shipped waterline. '=75' was the previously-shipped setting and restores that behaviour exactly. DEFAULT PARKED AT 0 by 67b25f47 (WATER-MEANDER-CLAMP-1) because 75 CARVES AWAY WATER on mc2_10 and mc2_17 -- the |grad|-keyed clamp was refuted (cure and defect share a cause), so no separation exists yet. REGISTERED BY REFERENCE-REBUILD-1: this gate had its default changed while unregistered, surviving check-env-registry.sh only via that script's ALLOWLIST -- the same shape as the CONE-SPILL-COUPLING-1 defect the registry exists to catch. NOT byte-identical at 75 vs 0: measured on mc2_10 water poses with a clean cf97ed52 exe, 3 runs/arm, within-arm floor 0.0000% changed (max=0), between-arm 4.07% / 6.52% / 9.74% of pixels changed (max channel delta 73/73/115). Companion knob: MC2_WATER_SHORE_MEANDER_FREQ."
+    },
+    {
+        "MC2_TUNE_WATER_SHORE_MEANDER_FREQ",
+        "MC2_WATER_SHORE_MEANDER_FREQ",
+        EnvVarKind::Feature,
+        false,
+        "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit (gos_terrain_water_stream.cpp ShoreMeanderFreq()). Unset or <=0 => 1/384 wu = one dominant cycle per ~3 tiles (tile = 128 wu) -- long enough to bend a whole riser rather than serrate it, short enough that no single tile edge stays straight across its full length. INERT while MC2_WATER_SHORE_MEANDER is 0 (the shipping default), so this knob is byte-identical by construction unless the amplitude gate is also raised."
+    },
     {
         "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
         "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
