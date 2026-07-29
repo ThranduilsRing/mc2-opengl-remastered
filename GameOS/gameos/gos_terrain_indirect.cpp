@@ -1316,6 +1316,17 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
         double acc = 0.0; long n = 0;
         for (size_t i = lo; i <= hi; ++i) { acc += lums[i]; ++n; }
         s.bgLum = (n > 0) ? (float)(acc / (double)n) : s.lum;
+        // SECOND PASS. On a cell where the road covers >40% of the tile (the
+        // crossroads and highway pieces do), the [P60,P95] window still straddles
+        // the asphalt and drags the reference down -- measured, that reports a
+        // 26.3-luma family background span on mc2_24 where the true concrete
+        // span is 4.7. Re-mean over the texels the first pass identified as
+        // background, so bgLum is the CONCRETE, not a road-weighted average.
+        {
+            double acc2 = 0.0; long n2 = 0;
+            for (float L : lums) if (s.bgLum - L <= kRoadArtDarkDelta) { acc2 += L; ++n2; }
+            if (n2 >= 16) s.bgLum = (float)(acc2 / (double)n2);
+        }
         long dark = 0;
         for (float L : lums) if (s.bgLum - L > kRoadArtDarkDelta) ++dark;
         s.roadFrac = (float)dark / (float)lums.size();
