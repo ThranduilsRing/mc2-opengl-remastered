@@ -1,0 +1,563 @@
+{
+  "kind": "visual-verify-golden",
+  "schema_v": 1,
+  "golden_id": "v0.5.2-baseline-PROPOSED",
+  "blessed_at": "2026-07-24T01:28:52Z",
+  "blessed_commit": null,
+  "source_capture": "A:\\Games\\mc2-main\\scratch\\vv\\run_wave3\\capture_run.json",
+  "install": "A:\\Games\\mc2-opengl\\releases\\mc2-win64-v0.5.1",
+  "exe": "A:\\Games\\mc2-opengl\\releases\\mc2-win64-v0.5.1\\mc2.exe",
+  "exe_mtime": "2026-07-23T23:50:29Z",
+  "frame": 431,
+  "deterministic_clock": true,
+  "n_regions": 39,
+  "total_crop_bytes": 29403966,
+  "members": [
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "horizon_waterline",
+      "path": "mc2_01_saved_205644/horizon_waterline.png",
+      "size": "3072x216",
+      "sha256": "dc9c2416d2ee3161c8cbe1eeacf6654ef1b847a7e6d53ea373bb1049b540332b",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Far water meets distant land with a natural waterline; NO unnatural dark band across open water/sky. Distant-land silhouette may show mild tile-stepping (marginal, watch)."
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "shore_left",
+      "path": "mc2_01_saved_205644/shore_left.png",
+      "size": "1152x519",
+      "sha256": "a347bb82d48007a2387fee4bb82d9369aca8cecc0c06184d9b478858e758f056",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Smooth curved waterline with soft teal shallow blend; no tile-staircase, no white sliver."
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "shore_central",
+      "path": "mc2_01_saved_205644/shore_central.png",
+      "size": "1152x518",
+      "sha256": "b1b72b1fa33dae1d27c2b235c9ef75b343e27b53bf31b0531ebf749d5005acc7",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Central shore segment: smooth waterline, no staircase/white sliver, no z-fight shimmer."
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "shore_botright",
+      "path": "mc2_01_saved_205644/shore_botright.png",
+      "size": "1267x561",
+      "sha256": "c090cd0fb181cbaf96a9ccda1bc3abffa4e193a4cea288536872e5fa9b13dbee",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.0,
+        "struct": 12.0
+      },
+      "check": "Bottom-right shore: smooth curved waterline; watch for screen-door dither stipple bleeding onto sand."
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "tree_shadows_palm",
+      "path": "mc2_01_saved_205644/tree_shadows_palm.png",
+      "size": "1229x691",
+      "sha256": "065d74db81ec588a324e4eb2cc093ca2b57e9ecc836c90aa301f5a0ea6bb1d7e",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 6.0,
+        "changed_pct": 4.0,
+        "struct": 14.0
+      },
+      "check": "KNOWN FAIL: palm shadows render as screen-door dithered stipple blotches (diffuse dark-pixel cloud, no solid core) cast down-left. Should be crisp/short. Regression watch = does it get worse/better."
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "pad_edge",
+      "path": "mc2_01_saved_205644/pad_edge.png",
+      "size": "1229x476",
+      "sha256": "904d9a632ab9f1b46b5f3c235c7c433c4ac47b8f719418b6d7aa16768479d4d3",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.0,
+        "struct": 12.0
+      },
+      "check": "Pad edge is a clean straight diagonal, outline continuous; road/runway meets apron continuously; no cement tile-seam grid on the pad interior."
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "mech_drop_shadows",
+      "path": "mc2_01_saved_205644/mech_drop_shadows.png",
+      "size": "999x475",
+      "sha256": "fe0e1952b2b30e3d13b5078b3e5dcf8f2c053ab0df33d2b842948752ff0bfedf",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 6.0,
+        "changed_pct": 4.0,
+        "struct": 14.0
+      },
+      "check": "Mech drop shadows: coherent, correctly placed, solid dark core; soft edge falls off via the same screen-door dither (marginal). No steps, no detached blotch."
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "cement_pads_dark",
+      "path": "mc2_05_saved_205843/cement_pads_dark.png",
+      "size": "1152x475",
+      "sha256": "cb56856b2a56c2006f638aae27a114c7036d2703711391d9c41b9125a9839f71",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Cement pads/runway strip stay DARK (pad mean ~[12,15,14], not floodlit). Night-correct."
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "light_pools_feathered",
+      "path": "mc2_05_saved_205843/light_pools_feathered.png",
+      "size": "1152x605",
+      "sha256": "25c955bf8f10b4005204cdf75857b587919cd0de5fcc33700aa7a6ddd6c689a1",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Glow pools soft/feathered, no hard-edged discs/eggs/washes; every glow has a visible emitter (no ghost lights)."
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "mech_night_shadow_fan",
+      "path": "mc2_05_saved_205843/mech_night_shadow_fan.png",
+      "size": "1075x605",
+      "sha256": "01955f48377d1c927ad7a3490ed76fedc248e8767a0d1adc4ba65ada1d94bddc",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.0,
+        "struct": 12.0
+      },
+      "check": "KNOWN FAIL: mech ground shadow renders as a light-grey triangular FAN ~2x BRIGHTER than the night terrain it sits on (fan ~[22,24,18] vs terrain ~[9,11,11]). Should darken, not lighten."
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "shoreline_dark_water",
+      "path": "mc2_05_saved_205843/shoreline_dark_water.png",
+      "size": "1536x605",
+      "sha256": "9c22b9a2fce250133e9498bc0bf26f5bcaddb6d6f48258d8ae14c0923b8e0891",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Dark water, lamp-lit causeway; perimeter-wall lamps sourced. No orphan glow."
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "shore_upperright_inlet",
+      "path": "mc2_10_saved_204523/shore_upperright_inlet.png",
+      "size": "200x290",
+      "sha256": "1555d00022cf848c02192f4f0e2b565d33e8c725fe25d738be0d789add017c7c",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 2.5,
+        "changed_pct": 1.0,
+        "struct": 6.0
+      },
+      "check": "HEADLINE FAIL: water outline snaps to terrain tile grid \u2014 one giant ~137-148px axis-aligned step, dead-vertical risers (x varies <=3px over 138px). Fix = subdivide/displace the water-edge isoline. Worst offender."
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "shore_right_landmass",
+      "path": "mc2_10_saved_204523/shore_right_landmass.png",
+      "size": "1344x972",
+      "sha256": "651e47a78542f639641d4c201c8d02904dcaf68acae69943bf622a5a6da48ffb",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 2.5,
+        "changed_pct": 1.0,
+        "struct": 6.0
+      },
+      "check": "Right land-mass shore: repeated 90-degree tile steps; far-right kite has crisp straight angular edges meeting at hard vertices."
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "compound_light_wedges",
+      "path": "mc2_10_saved_204523/compound_light_wedges.png",
+      "size": "960x540",
+      "sha256": "6df6d11477cda741da8f8b3b4da8ceaed9a458392f618f5ddbd1bad28d33c614",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Lit compound pool coherent + centered; directional yellow wedge/kite light-decal quads persist as hard-edged flat translucent polygons (anchored at fixtures, cosmetic)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "ghost_light_right",
+      "path": "mc2_10_saved_204523/ghost_light_right.png",
+      "size": "360x300",
+      "sha256": "068a261e0defdfa6cac8362b851f012fac6b2ec4dd3c98ba5e126851535ed2e6",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "PASS (identified): isolated glow is a real lit building prop (bunker/turret + tree + soft ground pool), NOT a stray light. Watch it stays a legit prop."
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "horizon_white_billboards",
+      "path": "mc2_10_saved_204611/horizon_white_billboards.png",
+      "size": "461x162",
+      "sha256": "566e87d3469c4afda81164d41d1eac11cc5977235924ce678e357485f85daa00",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 3.0,
+        "changed_pct": 1.5,
+        "struct": 8.0
+      },
+      "check": "HEADLINE FAIL: distant LOD tree impostors render fullbright PURE WHITE (peak RGB ~255,255,253) against night terrain (~50,49,43) and sky (~127) \u2014 un-hazed silhouette cutouts. LOD/billboard crossfade flashes fullbright before resolving. Single most eye-catching defect."
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "far_water_surface",
+      "path": "mc2_10_saved_204611/far_water_surface.png",
+      "size": "2304x302",
+      "sha256": "2b043f84bbcc39b603973cf12f841f2ab4af4e25f5a037c872e654bf3638f88b",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Teal far water; no z-fight shimmer or hard tonal banding. Mild alpha-dither stipple on the bright fog-blend horizon band is expected (minor)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "near_shore_peninsula",
+      "path": "mc2_10_saved_204611/near_shore_peninsula.png",
+      "size": "1536x540",
+      "sha256": "932ea4e375460584ed70d94658b3db0d05ee597425f9d409a75e2f091a8c79c8",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Base peninsula waterline smooth; no staircase outline, sliver, or glow ring."
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "night_base_lighting",
+      "path": "mc2_10_saved_204611/night_base_lighting.png",
+      "size": "1344x648",
+      "sha256": "43cddd42cadade59b3aecb92da7b0f48dee9ebc57eed2a9a1ee9733abd53100c",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Coherent night base: warm building interiors, spotlight pools, runway/perimeter lights; sources visible and sanely placed."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "light_clusters_census",
+      "path": "mc2_10_saved_204753/light_clusters_census.png",
+      "size": "2304x1080",
+      "sha256": "4cd45f36e2936251be49d670237e66bfe32ab2a7f53dfbcfc137526e7d07c531",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Airbase lit-cluster census (hangar/cooling compound, command tower + fuel domes, walled barracks, tank farm, quonset + cooling tower, striped-roof pads). All should stay lit and consistent with angle B (204907)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "runway_edge_lights",
+      "path": "mc2_10_saved_204753/runway_edge_lights.png",
+      "size": "1920x648",
+      "sha256": "62067d9a1232644c4357645c131b067d370e252aed549be670662eca9fc6170b",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Runway/taxiway flat inlaid slabs, crisp flat edge (not elevation cliff), soft AO seam; green/red/amber edge-light sprites line the strips. NOTE edge-light sprites are camera-angle-dependent (vanish near top-down)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "pad_outline_fence",
+      "path": "mc2_10_saved_204753/pad_outline_fence.png",
+      "size": "1152x540",
+      "sha256": "1b89edda491cd26b2965c19047cab25ce4b52fc43779cab3968a639b502cd5c2",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Stippled/noisy white outline around tank-farm/pad = chain-link perimeter fence alpha-tested texture (legit asset, not a render bug). Reads slightly noisy under light pool."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "lamp_cones",
+      "path": "mc2_10_saved_204753/lamp_cones.png",
+      "size": "960x648",
+      "sha256": "f1bec4186392813ba386049cf51122a07a944f872822d920aeaabb6e0cd6f6d5",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Light pools feather smoothly to dark; lamp-post ground cones anchored at each fixture base; rooftop beacon wedge traces to source. No ghost lights."
+    },
+    {
+      "bookmark": "mc2_10_saved_204907",
+      "region": "distant_ridge_base",
+      "path": "mc2_10_saved_204907/distant_ridge_base.png",
+      "size": "300x100",
+      "sha256": "68745c5bfd6bd7165b9b965e311ec09074c46492878a54d91593d3bbddd6ecbb",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 3.0,
+        "changed_pct": 1.5,
+        "struct": 8.0
+      },
+      "check": "Distant ridge-top base must be LIT (buildings, warm interiors, road, tower). On nifty this is correct; on deferred-sweep it regressed to PURE BLACK (max=0). Historically all-dark-at-angle-B symptom \u2014 key regression sentinel."
+    },
+    {
+      "bookmark": "mc2_10_saved_204907",
+      "region": "spotlight_towers",
+      "path": "mc2_10_saved_204907/spotlight_towers.png",
+      "size": "1344x864",
+      "sha256": "7fc697f389c35bc4f3406810f0329544036671549a8b7ec80e63b852d61bd2e7",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Near stepped tower casts two symmetric warm fans, apex at fixture widening to ground (anchor correct); standalone hillside pedestal tower visible/lit."
+    },
+    {
+      "bookmark": "mc2_10_saved_204907",
+      "region": "near_base_lighting",
+      "path": "mc2_10_saved_204907/near_base_lighting.png",
+      "size": "1536x756",
+      "sha256": "c1fe605856bf53019840de8013deb3a14e43e9f3b0e6e95fe3bff045842651a1",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Near base: pools feathered, every glow sourced to a building/tower, no ghosts. Warm interiors (nifty) vs cooler/dimmer (deferred) = build tone difference."
+    },
+    {
+      "bookmark": "mc2_10_saved_205952",
+      "region": "distant_terrain_horizon_band",
+      "path": "mc2_10_saved_205952/distant_terrain_horizon_band.png",
+      "size": "3400x200",
+      "sha256": "659dc1d4184ccfb510fe2aacb1e8e452befa0c599226c65db4f1009b00728e66",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 3.0,
+        "changed_pct": 1.5,
+        "struct": 8.0
+      },
+      "check": "SENTINEL: distant terrain below the horizon must render graded terrain + trees + soft fog skirt (nifty). On deferred-sweep it collapses to PURE BLACK below a razor-hard horizontal seam at screen-y~=323 (black-px count 153186 vs 553). Do not ship a build where this region goes black."
+    },
+    {
+      "bookmark": "mc2_10_saved_205952",
+      "region": "water_shore_grazing",
+      "path": "mc2_10_saved_205952/water_shore_grazing.png",
+      "size": "1920x216",
+      "sha256": "c2712238fcfe82cf1e1f9615e7a862e5b2785f9460222da1abab337e137ae6ab",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet \u2014 no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement. RE-AIMED 2026-07-24: the old rect (y 0.42 h 0.25) covered the pale off-map slab, not the lake, so it read ~0 delta and passed regardless of water state (missed master-FAIL #9). Lake band measured on the blessed frame: water y 0.30-0.39, x 0.10-0.60."
+    },
+    {
+      "bookmark": "mc2_10_saved_205952",
+      "region": "map_edge_skirt",
+      "path": "mc2_10_saved_205952/map_edge_skirt.png",
+      "size": "3456x604",
+      "sha256": "2c4464154a73f218178b44cb58038102fa61200295dc0e1e7b13697335bbe948",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "KNOWN class: pale blue-grey skirt/slab wraps the front corner (terrain feathers into a smooth extruded wall). Prominent purely due to corner framing; identical across builds. Not a new artifact."
+    },
+    {
+      "bookmark": "mc2_10_saved_212019",
+      "region": "ghost_wedge_over_road",
+      "path": "mc2_10_saved_212019/ghost_wedge_over_road.png",
+      "size": "768x475",
+      "sha256": "38bd98d59f4f728fb5204190c43802a6ebb5460be838873b46f6cd09a7f1d643",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "HEADLINE FAIL: bright solid OPAQUE tan/cream 3D wedge (folded-plane mesh: lit top facet + shadowed bottom facet) floats in mid-air above the road between the two foreground guard towers \u2014 no support, no caster, empty terrain below. Root cause = searchlight light-cone rendering as opaque geometry."
+    },
+    {
+      "bookmark": "mc2_10_saved_212019",
+      "region": "searchlight_cones_compound",
+      "path": "mc2_10_saved_212019/searchlight_cones_compound.png",
+      "size": "1536x648",
+      "sha256": "200d004d5beb1b80b50279ea3fe09e9c5f5ee1161f2e914babe819b18fa1a8e7",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Compound guard-tower searchlights show the same bug at smaller scale: a little opaque tan wedge at each housing instead of a translucent additive cone."
+    },
+    {
+      "bookmark": "mc2_10_saved_212019",
+      "region": "light_pools_road",
+      "path": "mc2_10_saved_212019/light_pools_road.png",
+      "size": "1536x648",
+      "sha256": "bc1bf0125e1dd27b33051b64feff6c970529acdb37d39535599c2b165b32c921",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Ground pools around tower bases + along the road: soft/feathered radial falloff, no hard discs, no saturation clipping. Real searchlight beam (if framed) traces back to its tower."
+    },
+    {
+      "bookmark": "mc2_10_saved_212140",
+      "region": "tree_shadows_directional",
+      "path": "mc2_10_saved_212140/tree_shadows_directional.png",
+      "size": "1728x864",
+      "sha256": "97aeef19541c18820c180707a67c4af0c2feabe41c14eace564b09aa6f678400",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Tree shadows must read as intentional directional long shadows from a low sun: PARALLEL (not fanning from a point), crisp/dark at trunk-contact, continuously softening toward the far end. No donut/hollow-center, no hard near/far seam, no ordered dither-step. Length ~2-3x tree height, consistent frame-wide. Currently PASS."
+    },
+    {
+      "bookmark": "mc2_10_saved_212140",
+      "region": "snow_shadow_crossings",
+      "path": "mc2_10_saved_212140/snow_shadow_crossings.png",
+      "size": "1344x648",
+      "sha256": "96d333b73274315d5c27dbcf650a8a6a76c7a7d5e92b3b97ef5ef4a194224ef8",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "High-albedo snow is the harshest test: tree-base shadows landing on snow stay crisp at contact and fade smoothly; the contrast must NOT expose streak/banding/hard edge."
+    },
+    {
+      "bookmark": "mc2_10_saved_212140",
+      "region": "snow_terrain_seams",
+      "path": "mc2_10_saved_212140/snow_terrain_seams.png",
+      "size": "1344x756",
+      "sha256": "e4304c4c240fe8bb6cd6e955b56ef341f96170bc9acb8150289e24f98c6e51f7",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Snow renders as smooth wind-ripple texture with soft fog gradients \u2014 no stair-step luminance banding, no straight tile-seam lines. Scattered dark ovals = terrain microrelief/rocks (not casterless shadows)."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "runway_pad_edges_blend",
+      "path": "mc2_10_saved_212258/runway_pad_edges_blend.png",
+      "size": "1728x648",
+      "sha256": "f5d5a9a0268b09bb6d313dab87eba89457f11fbedf7d1773c6fa9b7b93be4efc",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "HEADLINE FAIL: asphalt/cement meets terrain as a HARD, blocky, stairstepped tile boundary with only a 1px stochastic dither \u2014 no transition/blend. Matches user complaint 'doesn't blend'. Fix target."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "runway_grid_complete",
+      "path": "mc2_10_saved_212258/runway_grid_complete.png",
+      "size": "2304x1188",
+      "sha256": "bcaec3c28e93fbfe69675278304d0c8c19ece1f4f1021fb141287b0bbaff6163",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Full interconnected runway grid (2 parallel horizontals + 1 vertical crossing); every terminus has threshold number + piano-key bar + end marker; no missing segments at ends or intersections."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "cement_tile_seams",
+      "path": "mc2_10_saved_212258/cement_tile_seams.png",
+      "size": "1152x540",
+      "sha256": "f00350e6df6148a8f03eb0f0f4b62bfdf78c021fa58b9c9e999b6f9d415e89a1",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Pad interior shows hard straight tonal seams (warm compound floor vs cooler apron/taxiway L-block) \u2014 reads as a material/style switch. Low severity, cosmetic."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "light_pools_sourcing",
+      "path": "mc2_10_saved_212258/light_pools_sourcing.png",
+      "size": "1344x648",
+      "sha256": "1a89875ffe4899160a5d0f984a8f595ebba712c66379ee9ac9c74d7569ac037f",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Pools soft/warm/non-saturated, no hard discs. NOTE two large central compound floor-pools have no visible lamp fixture (sourceless floodlight glow); edge-marker dots present but non-glowing (deferred feature)."
+    }
+  ]
+}
