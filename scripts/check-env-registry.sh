@@ -495,7 +495,6 @@ ALLOWLIST=(
     MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE  # feature -- static-prop eager light-bake gate
     MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE  # parity
     MC2_GPU_CULL_STATIC_FROZEN_RECORDS  # feature -- static-prop frozen-records gate
-    MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE  # trace
     MC2_GPU_DEBUG_NAMES               # infra -- KHR_debug object labels (documented tier1)
     MC2_GPU_PICK_HOVER                # feature -- GPU pick-hover gate
     MC2_GPU_PICK_HOVER_TRACE          # trace

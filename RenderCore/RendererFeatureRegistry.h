@@ -3394,6 +3394,31 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "so. Registered/documented/allowlisted by DETERMINISM-RATCHET-2. No geometry/objectId/gameplay "
         "change; visual-only, and byte-identical to the shipped build at its default."
     },
+    // GATE-HYGIENE-CLOSE-1: static-prop light-bake probe (was legacy-allowlist-escaped).
+    {
+        "MC2_TRACE_GPU_CULL_STATIC_LIGHT_ZERO_PROBE",
+        "MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE",
+        EnvVarKind::Trace,
+        false,
+        "Static-prop light-bake observation gate, default OFF. Drives TWO diagnostics off one env var: "
+        "(1) [STATIC_LIGHT_ZERO v1] in gos_static_prop_registry.cpp -- every ~300 registry flushes, counts "
+        "alive prop recipes and how many have a permanent light slot with numLights_=0 (never baked); with "
+        "MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE also set, zeroLightSlots should reach 0 after mission load. "
+        "(2) [BAKEORD v1] in mclib/bdactor.cpp -- one line per real bake (MISS path only) carrying bake "
+        "ordinal, pre/post-invalidate timing and sunActive at bake time, the order-vs-time discriminator "
+        "for the tree-window light-bake hypothesis. Read-only observation: emits log lines, never alters a "
+        "light slot, bake decision or any render state. NOTE: the [BAKEORD v1] arm additionally routes "
+        "through MC2_DIAGF, so it emits NOTHING unless MC2_DIAG_VERBOSE=1 is also set -- a probe run "
+        "reporting 'zero [BAKEORD v1] lines' proves nothing on its own. WHY THIS ENTRY EXISTS: the gate "
+        "shipped registered NOWHERE -- it survived check-env-registry.sh only via that script's legacy "
+        "ALLOWLIST escape hatch, and had no docs/tier1_env_vars.md entry, so it was invisible to every "
+        "gate inventory. bdactor.cpp's own comment asserted it was 'already-registered', which was false. "
+        "Registered + documented by GATE-HYGIENE-CLOSE-1. NOTE for anyone reading the run_smoke.py "
+        "passthrough allowlist: this gate is not in it, and that is HARMLESS -- smoke_lib/runner.py builds "
+        "the child env with os.environ.copy(), so ambient MC2_* vars reach mc2.exe and the allowlist drops "
+        "nothing (HARNESS-HYGIENE-3). The real undriveable set is runner.FORCED_ENV / POPPED_ENV / a "
+        "conflicting env_extra, and run_smoke.py already refuses to start on it."
+    },
 };
 
 // ---------------------------------------------------------------------------

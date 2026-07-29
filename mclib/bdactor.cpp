@@ -3127,8 +3127,11 @@ namespace mc2_lightslot_trace {
 //   sunActive=      getWorldLight(0)->active    -> ORDER, the tree-window state
 // plus the resulting amb/sun so each bake carries its own BRIGHT/DIM outcome.
 //
-// Diagnostic only, read-only, default OFF. Reuses the already-registered
-// MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE gate (no new env var). NOTE: MC2_DIAGF
+// Diagnostic only, read-only, default OFF. Reuses the
+// MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE gate (no new env var). That gate was
+// described here as "already-registered" but was in fact registered NOWHERE
+// until GATE-HYGIENE-CLOSE-1 added it to kAuxEnvVars, docs/tier1_env_vars.md
+// and run_smoke.py's passthrough allowlist. NOTE: MC2_DIAGF
 // is additionally gated on MC2_DIAG_VERBOSE=1 -- without it this emits nothing.
 static bool s_lightBakeRebakeDone = false;
 
