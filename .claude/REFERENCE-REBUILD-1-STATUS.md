@@ -101,7 +101,13 @@ references. `v0.3`, `v0.4`, `v0.4c` were **not** touched.
 | Manifest `src_commit` | `cf97ed524df62ea13a49f7647daf1f6a1fcc539f`, 804 rows, `--require-clean` |
 | md5 build == deployed | `a6bd4e8f87c474f031731fcaeebfd804` both sides |
 | Gates present (`pe_gate_scan`) | MEANDER, CONCRETE_DETAIL_NORMAL, LIGHT_GRID, SHADOW_GUARD_CLAMPED_SUN, IBL_NIGHT_SCALE — all PRESENT; ROAD_PBR ABSENT (correct) |
-| `[DEPLOY_FINGERPRINT]` | `OK: exe sha=cf97ed524df6 matches worktree HEAD` |
+| `[DEPLOY_FINGERPRINT]` | `OK: exe sha=cf97ed524df6 matches worktree HEAD` — **5 of 5 missions**, not one |
+| `[DEPLOY_COHERENCE]` / `[DEPLOY_STALENESS]` | OK; 804 files match manifest, no newer code commits |
+| tier1 smoke | **PASS (5/5)** — mc2_01/03/10/17/24, `Δ destroys +0` on every mission, MOVER-COHERENCE `violations=0` throughout |
+
+tier1 was run from `A:/Games/mc2-refbuild` (HEAD `cf97ed52`) so the fingerprint gate
+could actually bind. Per the CLAUDE.md rule, the evidence is the five
+`[DEPLOY_FINGERPRINT] OK` lines quoted above, **not** the `PASS (5/5)` line.
 
 **Honest caveat: this exe is `cf97ed52`, which was HEAD when built but is no longer HEAD**
 — four sibling commits landed during the lane. It is *clean and attributable*, which is
