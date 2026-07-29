@@ -57,21 +57,44 @@ REQUIRED_HOLE_KEYS = ("bookmark", "region", "rule", "reason", "subject_protected
 # reason; the waiver list is itself checked (an unknown or stale id FAILs), so a
 # waiver cannot outlive the set it excuses.
 #
-# NOTE THE THIRD ONE. The degenerate mc2_10_saved_204907/distant_ridge_base crop
-# that motivated DEGENERATE-CROP-REFUSAL-1 is present in FOUR sets, including
-# v0.5.2-baseline-PROPOSED -- the set queued for USER promotion as the release
-# baseline. Removing a region from a set a human is about to promote is a user
-# call, not an agent's, so it is waived-and-surfaced rather than edited here.
+# The degenerate mc2_10_saved_204907/distant_ridge_base crop that motivated
+# DEGENERATE-CROP-REFUSAL-1 is present in several sets. Removing a region from a
+# set is a decision on the record, so it is waived-and-surfaced, not edited here.
 LEGACY_WAIVERS = {
     "v0.5.1-baseline": (
         "shipped release baseline (39 regions, blessed before the three-run "
         "all-pairs and degeneracy rules existed). Carries the degenerate "
         "distant_ridge_base crop. Historical artifact -- do not rewrite."),
+}
+
+# ---------------------------------------------------------------------------
+# Pending user decision (PENDING-SET-STATE-1)
+# ---------------------------------------------------------------------------
+# A THIRD lifecycle state, distinct from both of the above.
+#
+#   LEGACY_WAIVERS  -- committed set, excused findings, MUST be on disk.
+#   RETIRED_SETS    -- deliberately deleted, MUST NOT be on disk.
+#   PENDING_SETS    -- a candidate awaiting a USER promotion decision. It is
+#                      deliberately UNTRACKED: it must not be committed (that
+#                      would pre-empt the decision) and must not be deleted
+#                      (that would discard the candidate). Therefore it MAY or
+#                      MAY NOT be present in any given checkout, and BOTH are
+#                      correct. Present = the deciding user's working tree.
+#                      Absent = every other checkout, CI, and fresh clone.
+#
+# Before this table existed, the only way to excuse a pending set's findings was
+# a LEGACY_WAIVERS entry -- but that list FAILs on a waiver whose set is not on
+# disk, so the entry was correct in the author's tree and a hard contract FAIL
+# everywhere else. The state was not representable; this makes it representable.
+#
+# Findings in a present pending set are WARNed, not FAILed, for the same reason
+# a waiver is: editing a set a human is about to promote is the human's call.
+PENDING_SETS = {
     "v0.5.2-baseline-PROPOSED": (
-        "USER-GATED: this is the set awaiting promotion to release golden. It "
-        "carries the degenerate distant_ridge_base crop (severity `critical`, "
-        "un-failable) and blesses all 11 regions later refused for instability. "
-        "Editing it would change what the user is about to promote. RAISE THIS "
+        "USER-GATED: the set awaiting promotion to release golden. Deliberately "
+        "untracked -- do NOT commit, delete, or promote it. It carries the "
+        "degenerate distant_ridge_base crop (severity `critical`, un-failable) "
+        "and blesses all 11 regions later refused for instability. RAISE BOTH "
         "AT THE PROMOTION GATE."),
 }
 
@@ -170,9 +193,10 @@ def check_golden(gdir: Path, manifests: dict) -> "tuple[list, list]":
 
 def run(quiet: bool = False, goldens: "Path | None" = None,
         manifests: "dict | None" = None, waivers: "dict | None" = None,
-        retired: "dict | None" = None) -> int:
+        retired: "dict | None" = None, pending: "dict | None" = None) -> int:
     gdir_root = goldens or GOLDENS
     retired = RETIRED_SETS if retired is None else retired
+    pending = PENDING_SETS if pending is None else pending
     manifests = manifests if manifests is not None else regionlib.load_all_manifests()
     waivers = LEGACY_WAIVERS if waivers is None else waivers
     fails, warns, notes = [], [], []
@@ -187,9 +211,12 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
         notes += nt
         if gdir.name in waivers:
             warns += [f"[WAIVED] {x}" for x in f]
+        elif gdir.name in pending:
+            warns += [f"[PENDING-USER] {x}" for x in f]
         else:
             fails += f
-    # A waiver must not outlive its set.
+    # A waiver must not outlive its set. (A PENDING set is exempt by design: its
+    # absence is the expected state everywhere but the deciding user's tree.)
     for wid in sorted(set(waivers) - seen):
         fails.append(f"stale legacy waiver for golden set {wid!r}: no such set on "
                      f"disk -- remove it from LEGACY_WAIVERS")
@@ -201,18 +228,34 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
                      f"tests/visual/goldens/RETIRED.md). Either remove the "
                      f"directory, or remove it from RETIRED_SETS and state why "
                      f"the retirement no longer holds.")
-    # A set cannot be simultaneously excused and retired.
-    for bid in sorted(set(retired) & set(waivers)):
-        fails.append(f"golden set {bid!r} appears in BOTH LEGACY_WAIVERS and "
-                     f"RETIRED_SETS -- a retired set has no findings to waive")
+    # The three lifecycle states are mutually exclusive: each set is in at most
+    # one table, or the tables disagree about what the set IS.
+    for a, b, an, bn, why in (
+            (retired, waivers, "RETIRED_SETS", "LEGACY_WAIVERS",
+             "a retired set has no findings to waive"),
+            (retired, pending, "RETIRED_SETS", "PENDING_SETS",
+             "a set cannot be both deleted-on-purpose and awaiting promotion"),
+            (waivers, pending, "LEGACY_WAIVERS", "PENDING_SETS",
+             "a waiver requires the set on disk; a pending set need not be -- "
+             "pick one"),
+    ):
+        for bid in sorted(set(a) & set(b)):
+            fails.append(f"golden set {bid!r} appears in BOTH {an} and {bn} -- "
+                         f"{why}")
     if not quiet:
         print("[check-golden-coverage] GOLDEN-COVERAGE-LEDGER-1")
         print(f"  golden sets inspected      : {n} "
-              f"({len(seen & set(waivers))} legacy-waived)")
+              f"({len(seen & set(waivers))} legacy-waived, "
+              f"{len(seen & set(pending))} pending-user)")
         for x in notes:
             print(f"  {x}")
         for wid in sorted(seen & set(waivers)):
             print(f"  WAIVED {wid}: {waivers[wid]}")
+        for pid in sorted(pending):
+            state = ("PRESENT on disk (untracked -- do not commit)"
+                     if pid in seen else
+                     "ABSENT from this checkout (expected: untracked)")
+            print(f"  PENDING-USER {pid} [{state}]: {pending[pid]}")
         for rid in sorted(retired):
             print(f"  RETIRED {rid}: {retired[rid]}")
         for w in warns:
@@ -289,6 +332,49 @@ def _selftest() -> int:
             check(label, rc == want, f"exit {rc}, wanted {want}")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    # C6-C10: the three lifecycle states (PENDING-SET-STATE-1)
+    HOLE = [{"bookmark": BM, "region": "b", "rule": "R", "reason": "why",
+             "subject_protected": "what"}]
+    lifecycle = [
+        # (label, on-disk sets, waivers, pending, retired, want)
+        ("C6 waiver whose set is absent FAILs (stale)",
+         True, {"ghost": "r"}, {}, {}, 1),
+        ("C7 PENDING set absent from checkout PASSes (untracked is expected)",
+         True, {}, {"ghost": "r"}, {}, 0),
+        ("C8 PENDING set present on disk has findings WARNed not FAILed",
+         False, {}, {"set1": "r"}, {}, 0),
+        ("C9 same set in PENDING and RETIRED FAILs",
+         True, {}, {"x": "r"}, {"x": "r"}, 1),
+        ("C10 same set in PENDING and LEGACY_WAIVERS FAILs",
+         True, {"x": "r"}, {"x": "r"}, {}, 1),
+    ]
+    for label, good, wv, pd, rt, want in lifecycle:
+        tmp = Path(tempfile.mkdtemp(prefix="covsel_"))
+        try:
+            # good=True -> a fully accounted set1 (no findings of its own)
+            gr = build(tmp, ["a"], HOLE if good else [], flat=not good)
+            rc = run(quiet=True, goldens=gr, manifests=manifests,
+                     waivers=wv, pending=pd, retired=rt)
+            check(label, rc == want, f"exit {rc}, wanted {want}")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    # C11: a retired set reappearing on disk still FAILs (GOLDEN-6C47-AUDIT-1
+    # guard -- must survive the PENDING_SETS change intact)
+    tmp = Path(tempfile.mkdtemp(prefix="covsel_"))
+    try:
+        gr = build(tmp, ["a"], HOLE)
+        rc_absent = run(quiet=True, goldens=gr, manifests=manifests, waivers={},
+                        pending={}, retired={"set1": "retired on purpose"})
+        check("C11 retired set present on disk FAILs", rc_absent == 1,
+              f"exit {rc_absent}, wanted 1")
+        rc_gone = run(quiet=True, goldens=gr, manifests=manifests, waivers={},
+                      pending={}, retired={"notondisk": "retired on purpose"})
+        check("C11b retired set absent from disk PASSes", rc_gone == 0,
+              f"exit {rc_gone}, wanted 0")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
     # C5: the degenerate clause must specifically name un-failability
     tmp = Path(tempfile.mkdtemp(prefix="covsel_"))

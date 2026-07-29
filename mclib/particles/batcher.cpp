@@ -212,8 +212,12 @@ bool Batcher::is_oracle_shape_enabled() {
         const char* v = std::getenv("MC2_VFX_ORACLE_SHAPE");
         s_val  = (v && v[0] == '1');
         s_init = true;
-        std::fprintf(stderr, "[VFX_MESH v1] oracle_shape=%s\n",
-                     s_val ? "on" : "off");
+        // QUIET-DEFAULT-BUILD-1: announce behind MC2_DIAG_VERBOSE, matching the
+        // sibling is_oracle_tube_enabled() gate above. A default-OFF gate
+        // printing "I am off" on every default run is the exact noise class
+        // that contract owns.
+        MC2_DIAGFE(stderr, "[VFX_MESH v1] oracle_shape=%s\n",
+                   s_val ? "on" : "off");
         std::fflush(stderr);
     }
     return s_val;

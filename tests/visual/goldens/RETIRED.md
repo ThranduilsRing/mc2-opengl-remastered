@@ -8,6 +8,27 @@ Enforced by `scripts/check-golden-coverage.py`: every id below is in
 `RETIRED_SETS`, and the checker FAILs if a retired id reappears on disk.
 Restoring one is a deliberate edit to that table, not a silent `git checkout`.
 
+## The three lifecycle states
+
+`scripts/check-golden-coverage.py` carries one table per state, and a set may be
+in at most one of them (the checker FAILs on overlap):
+
+| Table | On disk? | Findings |
+|---|---|---|
+| `LEGACY_WAIVERS` | MUST be present (absent ⇒ stale waiver ⇒ FAIL) | WARN |
+| `RETIRED_SETS` | MUST be absent (present ⇒ FAIL, see above) | n/a |
+| `PENDING_SETS` | EITHER — deliberately untracked, awaiting a user decision | WARN |
+
+`PENDING_SETS` exists because a candidate set queued for user promotion is
+untracked on purpose: committing it pre-empts the decision, deleting it discards
+the candidate. So it is present in the deciding user's tree and absent in every
+other checkout, and **both are correct**. Excusing such a set via
+`LEGACY_WAIVERS` instead made it a hard contract FAIL everywhere but that one
+tree — the state simply was not representable. Now it is.
+
+Currently pending: **`v0.5.2-baseline-PROPOSED`** — do not commit, delete, or
+promote it; that is the user's call at the promotion gate.
+
 ---
 
 ## `baseline-6c47e149` — retired by GOLDEN-6C47-AUDIT-1 (2026-07-29)
