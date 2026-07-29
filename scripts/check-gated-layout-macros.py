@@ -387,9 +387,12 @@ def analyze(macro_defs, simulate_prefix_only=False):
     return rows, violations
 
 
-def write_report(rows, violations, out_rel):
-    out = os.path.join(ROOT, out_rel)
-    os.makedirs(os.path.dirname(out), exist_ok=True)
+def render_report(rows, violations):
+    """Build the report text. Pure -- writes nothing.
+
+    Separated from writing so the default path can VERIFY the tracked report
+    instead of rewriting it. See verify_or_write_report().
+    """
     lines = []
     lines.append("# Gated layout-macro guard report")
     lines.append("")
@@ -421,21 +424,73 @@ def write_report(rows, violations, out_rel):
     lines.append("")
     lines.append("Result: %d guard(s) analyzed, %d violation(s)."
                  % (len(rows), len(violations)))
-    with open(out, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
-    return out_rel
+    return "\n".join(lines) + "\n"
+
+
+def verify_or_write_report(rows, violations, out_rel, write=False):
+    """VERIFY the tracked report by default; regenerate only with --write.
+
+    This checker used to rewrite `out_rel` as a side effect of merely running.
+    `out_rel` is TRACKED SOURCE, so every invocation dirtied the working tree --
+    and on Windows the text-mode write also flipped the file's LF endings to
+    CRLF, so the rewrite dirtied the file even when the CONTENT was identical.
+    A `git checkout`/`git stash` cleaning up that spurious dirt is then free to
+    discard unrelated edits in the same file. A checker that mutates the tree it
+    is checking cannot be run safely; verifying is the correct default.
+
+    Returns 0 on match/write, 1 on drift.
+    """
+    out = os.path.join(ROOT, out_rel)
+    want = render_report(rows, violations)
+
+    if write:
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        # newline="\n": never emit CRLF, so a regen on Windows does not dirty
+        # the file through line endings alone.
+        with open(out, "w", encoding="utf-8", newline="\n") as f:
+            f.write(want)
+        print("  report REGENERATED -> %s" % out_rel)
+        return 0
+
+    try:
+        with open(out, "r", encoding="utf-8", newline="") as f:
+            have = f.read()
+    except FileNotFoundError:
+        print("FAIL: report is missing: %s\n"
+              "      regenerate with: py -3 scripts/check-gated-layout-macros.py "
+              "--write" % out_rel, file=sys.stderr)
+        return 1
+
+    # Compare on normalized endings: a pure CRLF/LF difference is not drift
+    # worth failing a contract run over, and is exactly what the old
+    # unconditional rewrite kept manufacturing.
+    if have.replace("\r\n", "\n") == want:
+        return 0
+
+    print("FAIL: %s is STALE -- it does not match what the current tree "
+          "generates.\n"
+          "      This checker no longer rewrites it automatically (doing so "
+          "silently dirtied\n"
+          "      tracked source and destroyed unrelated in-flight edits).\n"
+          "      Regenerate deliberately and review the diff:\n"
+          "        py -3 scripts/check-gated-layout-macros.py --write"
+          % out_rel, file=sys.stderr)
+    return 1
 
 
 def main():
     quiet = "--quiet" in sys.argv or "-q" in sys.argv
     negative = "--negative-test" in sys.argv
+    # Opt-in regeneration. Default is verify-only: this script must never
+    # mutate tracked source as a side effect of being run.
+    write = "--write" in sys.argv
 
     cmake_text = read_cmake_text()
     macro_defs = parse_macro_target_defs(cmake_text)
 
     rows, violations = analyze(macro_defs)
     out_rel = "docs/render-backend-seams/gated-layout-macros.md"
-    write_report(rows, violations, out_rel)
+    report_rc = verify_or_write_report(rows, violations, out_rel, write=write)
 
     if not quiet:
         print("GATED-LAYOUT-MACRO-GUARD-1 check:")
@@ -446,7 +501,8 @@ def main():
             if r["missing"]:
                 print("         consuming=%s  MISSING=%s"
                       % (r["consuming"], r["missing"]))
-        print("  report -> %s" % out_rel)
+        print("  report %s %s"
+              % ("REGENERATED ->" if write else "verified (read-only)", out_rel))
 
     if negative:
         # Differential test: the pre-9cce8e68 state left gameos_main (and mc2)
@@ -485,6 +541,11 @@ def main():
                   % (v["header"], v["line"], v["macro"], v["kind"],
                      v["class"], v["missing"]), file=sys.stderr)
         return 1
+
+    # A stale report is a real failure: the tracked doc no longer describes the
+    # tree. Reported after violations so a genuine ODR violation still wins.
+    if report_rc:
+        return report_rc
 
     if not quiet:
         acks = [r for r in rows if r["verdict"] == "ACK"]
