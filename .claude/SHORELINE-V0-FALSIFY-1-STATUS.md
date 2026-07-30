@@ -17,7 +17,12 @@ was written for. A negative result here saves an implementation, a build, and a
 fourth rejected shoreline change — and it redirects the search.
 
 Artifacts (images + JSON + the scripts, all reproducible offline):
-`.claude/shoreline-v0-falsify-1/`.
+`.claude/shoreline-v0-falsify-1/` — **pruned from the tip by FABLE-DEBLOAT-1
+(2026-07-30)**: ~5.5k lines of machine-generated JSON, 14 PNGs and the one-shot
+scripts for a NO-GO'd design. This doc carries the verdict and every
+load-bearing number; the raw artifacts are recoverable with
+`git show 95ffdb9b^..95ffdb9b -- .claude/shoreline-v0-falsify-1/` or by
+re-running the scripts from that commit (deterministic, offline).
 
 ---
 
