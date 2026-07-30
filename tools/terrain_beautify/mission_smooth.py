@@ -99,7 +99,7 @@ def main() -> int:
     ap.add_argument("mission")
     add_missions_dir_arg(ap)
     ap.add_argument("--out", default="tests/terrain/beautify")
-    ap.add_argument("--max-delta", type=float, default=14.0, help="clamp |Δelev| (wu)")
+    ap.add_argument("--max-delta", type=float, default=14.0, help="clamp |d-elev| (wu)")
     ap.add_argument("--passes", type=int, default=8)
     ap.add_argument("--ugly-percentile", type=float, default=78.0)
     args = ap.parse_args()
