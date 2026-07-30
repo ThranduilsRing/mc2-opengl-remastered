@@ -34,6 +34,26 @@ The stamp is a claim that parity was RE-VERIFIED.
 | `water_fast_vs` | `gos_terrain_water_fast.vert` ↔ `gos_terrain_water_fast_mdi.vert` | identical water surface math, MDI vs non-MDI submission | water A/B smoke + visual capture (INDEX-TERRAIN water-v2 slices) |
 | `shadow_terrain_paths` | `shadow_terrain.tesc` + `shadow_terrain.tese` ↔ `shadow_terrain.vert` | tess and non-tess shadow-terrain emit the same depth | nightly `MC2_TERRAIN_TESS=0/1` A/B leg (Probe-B recipe, ISSUE-FIXES-STATUS.md) with `MC2_SPLIT_PATH_PARITY_TRACE=1` |
 
+### Re-stamp log
+
+- **2026-07-30, BACKEND-DEFAULT-PARITY-1 — `edge_fog_frag` + `fog_oob_frag`.**
+  Both GL members were re-stamped after a **comment-only** edit (the
+  `MC2_SKYBOX_FOG_EXCLUDE` header block in each said "default OFF" long after
+  the gate was flipped default-ON; the gate-default checker could not see the
+  lie while the var had two contradicting C++ readers). The documented parity
+  evidence for these two pairs is a **capture-baseline compare**, and engine
+  launches were hard-blocked in that lane, so it could not be re-run. The
+  evidence used instead is *stronger for this particular class of edit, and
+  weaker for any other* — do not treat it as a precedent for a code change:
+  - the VK members were not touched at all;
+  - each GL member's comment-stripped, whitespace-normalized text is
+    **byte-identical** to its pre-edit content (2019 chars for `edge_fog.frag`,
+    2169 for `fog_oob.frag`), i.e. the pair's divergence surface did not move;
+  - neither pair's four files contain `__LINE__` or `__FILE__`, so there is no
+    construct by which comment lines could reach codegen.
+  A re-stamp after any edit that changes a single token of GLSL **code** still
+  requires the real capture compare.
+
 ## Island-only entries (stated reasons)
 
 | File | Reason |

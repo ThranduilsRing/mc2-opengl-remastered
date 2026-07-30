@@ -18,8 +18,9 @@ uniform vec3      u_fogColor;
 uniform float     u_fogOpacity;
 uniform float     u_time;
 
-// SKYBOX-FOG-EXCLUDE-1/2 (gate MC2_SKYBOX_FOG_EXCLUDE, default OFF -> u_skyExcludeEnabled=0,
-// byte-identical to legacy). When enabled, true-sky pixels are tagged stencil=1 by
+// SKYBOX-FOG-EXCLUDE-1/2. Gate MC2_SKYBOX_FOG_EXCLUDE is default ON as of
+// SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1; MC2_SKYBOX_FOG_EXCLUDE=0 -> u_skyExcludeEnabled=0,
+// byte-identical to legacy. When enabled, true-sky pixels are tagged stencil=1 by
 // the HDRI skybox's stencil-tag pass (shaders/hdri_skybox_stencil_tag.frag --
 // elevation test equivalent to this shader's worldDir.z < -0.22 band top) and
 // FEATHER-excluded here (v2: modulate by the retained worldDir fade instead of

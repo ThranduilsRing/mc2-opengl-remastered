@@ -583,14 +583,18 @@ bool gosPostProcess::runVkPostFogNative()
     // sky-exclusion path (usampler2D stencilTex + u_skyExcludeEnabled exist only
     // in the GL frags). When that gate is ON the GL passes diverge from the VK
     // port on sky pixels -> fall through to GL (same limitation as the subgraph,
-    // now made explicit). Default OFF -> this guard is inert.
-    {
-        static const bool s_skyExclude = []() {
-            const char* v = std::getenv("MC2_SKYBOX_FOG_EXCLUDE");
-            return v && v[0] == '1';
-        }();
-        if (s_skyExclude) return false;
-    }
+    // now made explicit).
+    //
+    // SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: this used to be a PRIVATE static reading
+    // `v && v[0] == '1'` (default OFF) while gos_postprocess.cpp's
+    // skyboxFogExcludeEnabled() reads `!(v && v[0] == '0')` (default ON, flipped by
+    // SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1). Same variable, two readers, opposite unset
+    // defaults -- so on an unset environment this guard silently did NOT fire and
+    // the native VK fog painted over the exact sky pixels the GL passes exclude:
+    // the divergence the guard exists to prevent. GL is the authority; there is now
+    // one reader for this gate and both the region-iface guard
+    // (gos_postprocess.cpp runFogRegionVulkanBackend) and this one call it.
+    if (gos_SkyboxFogExcludeEnabled()) return false;
 
     if (width_ <= 0 || height_ <= 0) return false;
 

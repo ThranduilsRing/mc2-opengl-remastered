@@ -581,6 +581,17 @@ static bool skyboxFogExcludeEnabled()
     return s_on;
 }
 
+// SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: THE one exported authority for this gate.
+//
+// vulkan_post_fog_native.cpp used to carry its OWN `getenv("MC2_SKYBOX_FOG_EXCLUDE")`
+// static, written `v && v[0] == '1'` -- default OFF -- while the helper directly
+// above defaults ON. Both were "the guard that keeps VK from fogging sky pixels GL
+// excludes"; they disagreed about when it fires, so with the env UNSET the guard was
+// inert and the VK-native fog path rendered sky WITHOUT the exclusion GL applies.
+// A second copy of a gate reader is a second default, and defaults drift. There is
+// now exactly one getenv site for this variable in the tree; the VK TU calls this.
+bool gos_SkyboxFogExcludeEnabled() { return skyboxFogExcludeEnabled(); }
+
 static bool sceneGlProducerQueryEnabled()
 {
     static const bool s_on = []() {

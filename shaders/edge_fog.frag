@@ -30,8 +30,12 @@ uniform float     u_fogHeight;
 uniform float     u_fogMax;
 uniform float     u_waterElevation;  // sea-level world Z — skip fog at/below water surface
 
-// SKYBOX-FOG-EXCLUDE-1/2 (gate MC2_SKYBOX_FOG_EXCLUDE, default OFF -> u_skyExcludeEnabled=0,
-// byte-identical to legacy). Mirrors fog_oob.frag: true-sky pixels are tagged
+// SKYBOX-FOG-EXCLUDE-1/2. Gate MC2_SKYBOX_FOG_EXCLUDE is default ON as of
+// SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1; MC2_SKYBOX_FOG_EXCLUDE=0 -> u_skyExcludeEnabled=0,
+// byte-identical to legacy. (This line said "default OFF" for the whole life of the
+// flip -- it was unreachable by the gate-default checker because the var was
+// unregistered AND its two C++ readers disagreed, which suppressed the comment rule.)
+// Mirrors fog_oob.frag: true-sky pixels are tagged
 // stencil=1 by the HDRI skybox's stencil-tag pass and FEATHER-excluded here
 // (v2: modulate by the same worldDir.z fade band fog_oob uses instead of the
 // v1 hard zero, so any tag/fog frame mismatch degrades to a smooth rolloff,

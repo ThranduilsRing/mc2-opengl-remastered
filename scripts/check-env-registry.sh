@@ -310,7 +310,11 @@ ALLOWLIST=(
     MC2_TERRAIN_LIGHTING_GPU_TRACE  # trace
     MC2_TERRAIN_LIGHTING_PARITY # parity
     MC2_GROUND_CONTACT_BLOB     # feature -- GROUND-CONTACT-BLOB-1 contact-darkening disc under movers (default OFF)
-    MC2_SKYBOX_FOG_EXCLUDE      # feature -- SKYBOX-FOG-EXCLUDE-1 fog passes exclude stencil-tagged sky (default OFF)
+# MC2_SKYBOX_FOG_EXCLUDE -- REMOVED by BACKEND-DEFAULT-PARITY-1: now a real
+# RendererFeatureRegistry.h entry (kAuxEnvVars, Feature, defaultOn=true). The
+# line that used to sit here said "(default OFF)" long after
+# SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1 flipped it, and because this allowlist is the
+# ONLY thing that accounted for the var, nothing compared that claim to a reader.
     MC2_TERRAIN_CONTROLMAP      # feature -- TERRAIN-CONTROLMAP-SAMPLE-1 authored material-weight override (default OFF)
     MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH  # override -- TERRAIN-CONTROLMAP-ALBEDO-1 strength env override
     MC2_TERRAIN_CONTROLMAP_FILE # override -- explicit control-map path override

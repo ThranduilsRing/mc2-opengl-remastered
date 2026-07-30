@@ -6,7 +6,7 @@
   "specializationParams": [],
   "artifact": "fog_oob.frag.default.498ade97.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "9ecd11927dcac84e6cf4af9675cf73c170e3c2ecc90b74933edc39723a01ab9d",
+  "source_sha256": "053bedbda54fe89264d5461a1d72f90494fc19115b70b164e638a064a6d64b52",
   "spirv_sha256": "7164e7a333b526e9b96a2ad904d0796a7729f04eeee28e3faa2cb0e56f75db25",
   "bindings": {
     "ubos": [],

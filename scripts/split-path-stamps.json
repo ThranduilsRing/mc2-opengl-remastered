@@ -1,10 +1,10 @@
 {
   "edge_fog_frag": {
-    "shaders/edge_fog.frag": "304d337b074b61914a538f51d0f4b49dceec5d3e",
+    "shaders/edge_fog.frag": "16670b3b571311de9272b886863c3e62e47f0ccd",
     "shaders/vulkan/edge_fog.frag": "4320af670a138fffce8f20a100ea6513622be8db"
   },
   "fog_oob_frag": {
-    "shaders/fog_oob.frag": "d8b88ff16cd761e8fbe452e5b24ca0bd61b95eaf",
+    "shaders/fog_oob.frag": "d3beddcc875b6fd2ff62dc3534d6b51e30cba443",
     "shaders/vulkan/fog_oob.frag": "74f5c4412ff39408384c6e8ee9d3d9889e2942c4"
   },
   "shadow_terrain_paths": {

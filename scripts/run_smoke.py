@@ -2763,9 +2763,10 @@ def main():
                             "MC2_VK_STATIC_SHADOW_MAP",
                             # SKYBOX-FOG-EXCLUDE-1: stencil-tag true sky pixels during
                             # the HDRI skybox draw so runEdgeFog/runFogOob hard-exclude
-                            # them (default OFF -> byte-identical). Without this in the
-                            # allowlist Popen drops it and gate-ON smoke silently runs
-                            # the legacy worldDir.z-only fog path.
+                            # them. DEFAULT ON since SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1; the
+                            # byte-identical arm is the explicit "=0" kill, not unset.
+                            # Without this in the allowlist Popen drops it and a smoke
+                            # run driving "=0" silently keeps the exclusion ON.
                             "MC2_SKYBOX_FOG_EXCLUDE",
                             # VULKAN-ISLAND-VALIDATION-WIRING-1: opt-in Vulkan
                             # validation preset (off/core/sync/gpu-assisted/

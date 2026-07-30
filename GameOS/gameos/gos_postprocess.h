@@ -924,4 +924,12 @@ float gos_GetSsaoBias();
 // No-op when HDRI is disabled or skyNumber is out of range (1-21).
 void gos_SetSkyNumber(int skyNumber);
 
+// SKYBOX-FOG-EXCLUDE-SINGLE-READER-1: sole cross-TU accessor for the
+// MC2_SKYBOX_FOG_EXCLUDE gate (default ON; `=0` restores the legacy OFF path).
+// Exists so vulkan_post_fog_native.cpp's parity guard reads the SAME default the
+// GL fog passes do -- it previously kept a private getenv that defaulted OFF, so
+// the guard never fired on an unset environment and VK fogged sky pixels GL
+// excluded. Do not add a second reader; add a call to this.
+bool gos_SkyboxFogExcludeEnabled();
+
 #endif // GOS_POSTPROCESS_H

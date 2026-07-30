@@ -65,6 +65,33 @@ OFF. See CLAIM_DIRS. The lesson is the general one: when a checker's stated
 scope is a CLASS ("in-source comments") but its implementation is a LIST, the
 list silently becomes the scope, and no failure is ever reported for the gap.
 
+SCOPE WIDENED A FOURTH TIME BY BACKEND-DEFAULT-PARITY-1 (2026-07-30), and this
+one is about rule 2, which had the same disease in a nastier form: the rule that
+detects TWO READERS CONTRADICTING EACH OTHER was implemented as a branch inside
+`for e in <registry entries>`. So it could only ever fire on a variable somebody
+had already bothered to register -- and an unregistered variable is exactly the
+one nobody has audited. Rule 3 then hid the same vars a second time, because it
+attributed a comment claim only when a var had ONE classifiable verdict, and a
+var whose readers CONFLICT has none. Two readers disagreeing therefore bought
+immunity from the comment rule as well.
+
+  MC2_SKYBOX_FOG_EXCLUDE -- gos_postprocess.cpp:578 `!(v && v[0] == '0')`
+    (default ON, the GL fog passes) against vulkan_post_fog_native.cpp:589
+    `v && v[0] == '1'` (default OFF, the VK parity guard that exists to stop VK
+    fogging the sky pixels GL excludes). Same unset environment, opposite
+    behaviour, and the guard was inert precisely when it was needed. Two shader
+    comments asserted "default OFF" alongside. Unregistered, so rule 1 never
+    looked; conflicting, so rule 3 dropped it. Three rules, zero coverage, for
+    the entire life of the gate. Sweeping the readers instead of the registry
+    also surfaced MC2_TERRAIN_SHORELINE, where a default flip updated two of
+    three readers.
+
+Rule 2 is now reader_conflicts(), a pass over EVERY var with a reader. Rule 3's
+attribution moved to implemented_default(), which ignores UNCLASSIFIABLE siblings
+when the classifiable readers agree -- "I cannot read this idiom" is not evidence
+the default differs, and treating it as such is how docs/tier1_env_vars.md could
+call MC2_WATER_REFLECTION "Default OFF" against a reader returning 1 when unset.
+
 UNCLASSIFIABLE IS A FAILURE, NOT A PASS -- for Feature entries. A reader written
 in an idiom this script cannot classify is exactly the situation that hides a
 lie, so it fails and must either be rewritten into a known idiom or given an
@@ -551,17 +578,33 @@ _NOT_A_READER_CALLEE = re.compile(
     r"make_pair|emplace_back|push_back|insert)$")
 
 
-def find_readers(var, sources, helpers=None):
-    """-> list of dicts {path, line, verdict, rule, stmt}.
+#: The SAME needle as the per-var one below, with the name captured instead of
+#: interpolated. BACKEND-DEFAULT-PARITY-1 added it because every reader question
+#: this file asks used to start from a LIST OF NAMES KNOWN IN ADVANCE (the
+#: registry), and the one rule that does not need a name -- "do this var's own
+#: readers contradict each other?" -- was asked var-by-var through that list
+#: anyway. See reader_conflicts() for what that cost.
+_ANY_VAR_NEEDLE = re.compile(r'\(\s*"(MC2_[A-Z0-9_]+)"\s*(?=[),])')
+
+
+def _reader_hits(sources, helpers, var=None):
+    """-> {var: [ {path, line, verdict, rule, stmt}, ... ]}.
+
+    `var=None` scans EVERY MC2_* name in the call-argument position, in one pass.
+    ONE implementation, two entry points (find_readers / find_all_readers) --
+    deliberately, because a second copy of this classifier is a second opinion
+    about what a default is, which is the very defect the file exists to catch.
 
     `sources` must already be comment-stripped, which is what makes a var named
     only in a comment incapable of registering as a reader.
     """
     helpers = helpers or {}
-    needle = re.compile(r'\(\s*"' + re.escape(var) + r'"\s*(?=[),])')
-    hits = []
+    needle = (_ANY_VAR_NEEDLE if var is None
+              else re.compile(r'\(\s*"(' + re.escape(var) + r')"\s*(?=[),])'))
+    out = {}
     for path, body in sources:
         for m in needle.finditer(body):
+            name = m.group(1)
             # Identify the callee immediately left of the '(' -- getenv, or a
             # resolved helper, or something else entirely.
             callee_m = CALLEE_RE.search(body[max(0, m.start() - 64):m.start()])
@@ -572,12 +615,12 @@ def find_readers(var, sources, helpers=None):
             if arg:
                 if _NOT_A_READER_CALLEE.match(callee):
                     continue
-                hits.append({
+                out.setdefault(name, []).append({
                     "path": path,
                     "line": body.count("\n", 0, m.start()) + 1,
                     "verdict": ON if arg.group(1) == "true" else OFF,
                     "rule": f"explicit default argument -> {arg.group(1)}",
-                    "stmt": f"{callee}(\"{var}\", {arg.group(1)})",
+                    "stmt": f"{callee}(\"{name}\", {arg.group(1)})",
                 })
                 continue
             if body[m.end():m.end() + 1] != ")":
@@ -592,14 +635,87 @@ def find_readers(var, sources, helpers=None):
 
             if verdict is None:
                 continue
-            hits.append({
+            out.setdefault(name, []).append({
                 "path": path,
                 "line": body.count("\n", 0, m.start()) + 1,
                 "verdict": verdict,
                 "rule": rule,
                 "stmt": re.sub(r"\s+", " ", stmt).strip()[:180],
             })
-    return hits
+    return out
+
+
+def find_readers(var, sources, helpers=None):
+    """-> list of dicts {path, line, verdict, rule, stmt} for ONE var."""
+    return _reader_hits(sources, helpers, var).get(var, [])
+
+
+def find_all_readers(sources, helpers=None):
+    """-> {var: [hit, ...]} for EVERY MC2_* var with a reader, registered or not."""
+    return _reader_hits(sources, helpers, None)
+
+
+def reader_conflicts(all_readers, allow):
+    """-> [(var, readers)] for every var with BOTH an ON reader and an OFF one.
+
+    BACKEND-DEFAULT-PARITY-1 -- WHY THIS IS ITS OWN PASS OVER THE READERS.
+    ---------------------------------------------------------------------
+    READER_CONFLICT was written for exactly one shape: "two readers of the same
+    variable disagree about the unset default, so the same command line produces
+    different behaviour depending on which one you land on." It lived INSIDE the
+    `for e in registry_entries` loop, so it could only ever see that shape on a
+    var somebody had already registered -- and an unregistered var is precisely
+    the one nobody has audited. Worse, the loop's UNKNOWN branch ran FIRST, so a
+    registered var with readers {ON, OFF, UNCLASSIFIABLE} was reported as merely
+    unreadable rather than as contradictory.
+
+    The comment rule then hid the same vars a second time. It attributes a claim
+    only when a var has exactly one non-UNCLASSIFIABLE verdict, so a var whose
+    readers CONFLICT gets no `implemented` value, and every comment and doc line
+    about it is skipped -- silently. Two readers disagreeing therefore bought
+    total immunity from the third rule as well.
+
+    MC2_SKYBOX_FOG_EXCLUDE sat in that blind spot for the entire life of the
+    gate: gos_postprocess.cpp:578 `!(v && v[0] == '0')` (default ON, GL) against
+    vulkan_post_fog_native.cpp:589 `v && v[0] == '1'` (default OFF, VK), plus two
+    shader comments asserting "default OFF". Unregistered, so rule 1 never looked;
+    conflicting, so rule 3 dropped it. Three rules, zero coverage.
+
+    Vars on the allowlist are skipped here as everywhere else -- that file is a
+    DEBT list with a written reason per line, not silence.
+    """
+    out = []
+    for var in sorted(all_readers):
+        if var in allow:
+            continue
+        hard = {r["verdict"] for r in all_readers[var]} & {ON, OFF}
+        if len(hard) > 1:
+            out.append((var, all_readers[var]))
+    return out
+
+
+def implemented_default(readers):
+    """-> ON / OFF when every CLASSIFIED reader agrees; None otherwise.
+
+    UNCLASSIFIABLE readers are IGNORED here rather than fatal, which is the
+    second half of the BACKEND-DEFAULT-PARITY-1 fix. "I cannot read this idiom"
+    is not evidence that the default differs, but rule 3 treated it as such: it
+    attributed a comment claim only when a var had exactly ONE verdict and that
+    verdict was classifiable, so a single unreadable sibling reader made every
+    comment and doc line about the var unauditable. That is how
+    docs/tier1_env_vars.md:783 could say MC2_WATER_REFLECTION is "Default
+    **OFF**" while gos_GetWaterReflectionGate() reads
+    `(v && v[0] == '0') ? 0 : 1` -- default ON -- and its sibling
+    gos_GetWaterReflStrength() returns 1.5 unset. Measured cost of the widening
+    across the whole tree: 15 vars newly attributable, 2 new contradictions, of
+    which 1 was a real lie and 1 was the `whenever` gap now closed in _COND_RE.
+
+    Rule 1 (registry vs reader) still refuses to guess and keeps failing
+    UNCLASSIFIABLE for Feature entries -- there the unreadable idiom IS the
+    finding. These two rules want different things from the same input.
+    """
+    hard = {r["verdict"] for r in readers} & {ON, OFF}
+    return hard.pop() if len(hard) == 1 else None
 
 
 # ---------------------------------------------------------------------------
@@ -635,9 +751,16 @@ def find_readers(var, sources, helpers=None):
 _VAR_RE = re.compile(r"MC2_[A-Z0-9_]+")
 _CLAIM_RE = re.compile(
     r"default(?:s|ed)?\s*(?:is\s+|to\s+|=\s*|-|:|\s)\s*\**\s*(on|off)\b", re.I)
+#: BACKEND-DEFAULT-PARITY-1 added `whenever`/`wherever`: `\bwhen\b` does not match
+#: `whenever` (the boundary fails on the trailing "ever"), so two genuinely
+#: conditional claims -- "Default ON whenever SSAO itself is on"
+#: (gos_postprocess.h:362) and "default ON whenever MC2_SMOKE_MODE is set"
+#: (mclib/vis_semantics.h:91, a claim about a DIFFERENT gate) -- read as
+#: unconditional assertions. Both surfaced the moment attribution widened below;
+#: the second would have been a false positive, which is how this rule dies.
 _COND_RE = re.compile(
-    r"\b(under|when|unless|if|while|once|pending|until|would|was|used to|"
-    r"previously|no longer|should)\b", re.I)
+    r"\b(under|when(?:ever)?|wherever|unless|if|while|once|pending|until|"
+    r"would|was|used to|previously|no longer|should)\b", re.I)
 _COMMENT_LINE_RE = re.compile(r"^\s*(?://|\*|/\*)")
 
 
@@ -772,6 +895,11 @@ def analyse(registry_text, sources, allow, claims=None):
     """-> (findings, stats)."""
     entries = parse_registry(registry_text)
     helpers = resolve_helpers(sources)
+    # BACKEND-DEFAULT-PARITY-1: ONE reader pass for the whole tree, keyed by var.
+    # Everything below indexes into it instead of re-scanning per registry entry
+    # (which was also ~340 full-tree scans), and the conflict rule below can now
+    # see vars the registry has never heard of.
+    all_readers = find_all_readers(sources, helpers)
     findings = []
     implemented_by_var: dict = {}
     stats = {"feature_entries": 0, "checked": 0, "no_reader": 0,
@@ -781,6 +909,25 @@ def analyse(registry_text, sources, allow, claims=None):
              "reader_conflict": 0, "allowlisted": 0,
              "helpers_resolved": len([v for v in helpers.values()
                                       if v in (ON, OFF)])}
+
+    # --- rule 2, run over the READERS (BACKEND-DEFAULT-PARITY-1) --------------
+    # Registered or not, allowlisted excepted. See reader_conflicts() for why
+    # this is no longer a branch inside the registry loop.
+    conflicts = dict(reader_conflicts(all_readers, allow))
+    stats["reader_conflict"] = len(conflicts)
+    stats["reader_vars_scanned"] = len(all_readers)
+    for var in sorted(conflicts):
+        rs = conflicts[var]
+        reg = "REGISTERED" if any(e["var"] == var for e in entries) else "UNREGISTERED"
+        findings.append({
+            "kind": "READER_CONFLICT", "var": var,
+            "msg": ("readers disagree with EACH OTHER about the unset default "
+                    f"({reg}). The same unset environment therefore behaves "
+                    "differently depending on which reader the code path hits."),
+            "sites": [f"{r['path']}:{r['line']}  [{r['verdict']}] {r['rule']}"
+                      for r in sorted(rs, key=lambda x: (x["verdict"], x["path"],
+                                                         x["line"]))],
+        })
 
     for e in entries:
         # ENV-DROP-CLOSE-1: ALL kinds are compared now. This used to be
@@ -800,7 +947,7 @@ def analyse(registry_text, sources, allow, claims=None):
         # fail for every kind.
         stats["feature_entries"] += 1
         strict = e["kind"] == "Feature"
-        readers = find_readers(e["var"], sources, helpers)
+        readers = all_readers.get(e["var"], [])
 
         if not readers:
             # No reader found. That is check-env-registry.sh / dead-gate
@@ -810,13 +957,22 @@ def analyse(registry_text, sources, allow, claims=None):
 
         stats["checked"] += 1
         verdicts = {r["verdict"] for r in readers}
-        if len(verdicts) == 1 and UNKNOWN not in verdicts:
-            implemented_by_var[e["var"]] = next(iter(verdicts))
+        impl0 = implemented_default(readers)
+        if impl0 is not None:
+            implemented_by_var[e["var"]] = impl0
         if e["var"] in allow:
             stats["allowlisted"] += 1
             continue
 
         stated = ON if e["default_on"] else OFF
+
+        # Already reported by the reader-scan pass above, and no single
+        # `implemented` default exists to compare the registry against. This
+        # check precedes the UNKNOWN branch on purpose: readers {ON, OFF,
+        # UNCLASSIFIABLE} is a CONTRADICTION first and an unreadable idiom
+        # second, and the old ordering downgraded it to the weaker finding.
+        if e["var"] in conflicts:
+            continue
 
         if UNKNOWN in verdicts:
             stats["unclassifiable"] += 1
@@ -832,16 +988,8 @@ def analyse(registry_text, sources, allow, claims=None):
             })
             continue
 
-        if len(verdicts) > 1:
-            stats["reader_conflict"] += 1
-            findings.append({
-                "kind": "READER_CONFLICT", "var": e["var"],
-                "msg": "readers disagree with EACH OTHER about the unset default",
-                "sites": [f"{r['path']}:{r['line']}  [{r['verdict']}] {r['rule']}"
-                          for r in readers],
-            })
-            continue
-
+        # Guaranteed singleton here: not in `conflicts` (so at most one of
+        # ON/OFF) and no UNKNOWN, with at least one reader.
         implemented = verdicts.pop()
         if implemented != stated:
             stats["disagree"] += 1
@@ -862,10 +1010,9 @@ def analyse(registry_text, sources, allow, claims=None):
     # which is not in RendererFeatureRegistry.h at all -- so scoping the sweep
     # to the registry would have missed the exemplar.
     for var in sorted({c["var"] for c in (claims or [])} - set(implemented_by_var)):
-        rs = find_readers(var, sources, helpers)
-        vs = {r["verdict"] for r in rs}
-        if len(vs) == 1 and UNKNOWN not in vs:
-            implemented_by_var[var] = next(iter(vs))
+        impl0 = implemented_default(all_readers.get(var, []))
+        if impl0 is not None:
+            implemented_by_var[var] = impl0
 
     for c in (claims or []):
         impl = implemented_by_var.get(c["var"])
@@ -1007,6 +1154,32 @@ bool splitB() {
     const char* v = getenv("MC2_ST_SPLIT");
     return v && v[0] == '1';
 }
+// BACKEND-DEFAULT-PARITY-1 fixture: the EXACT shape of MC2_SKYBOX_FOG_EXCLUDE --
+// two readers with opposite unset defaults on a var that is in NO registry table,
+// plus a comment asserting the losing one. Before the conflict rule scanned
+// readers instead of the registry this was invisible twice over: unregistered, so
+// the registry loop never looked at it; conflicting, so the comment rule dropped
+// it for having no single implemented verdict.
+// MC2_ST_UNREG_SPLIT default OFF
+bool unregSplitA() {
+    const char* v = getenv("MC2_ST_UNREG_SPLIT");
+    return !(v && v[0] == '0');
+}
+bool unregSplitB() {
+    const char* v = getenv("MC2_ST_UNREG_SPLIT");
+    return v && v[0] == '1';
+}
+// A var with ONE classified reader and one unreadable one must NOT be called a
+// conflict -- "I cannot classify it" is not "it disagrees", and a rule that
+// conflates them is the false-positive mill this file refuses to become.
+bool mixedA() {
+    const char* v = getenv("MC2_ST_MIXED");
+    return !(v && v[0] == '0');
+}
+bool mixedB() {
+    const char* v = getenv("MC2_ST_MIXED");
+    return v ? someUnknownHelper(v) : fallbackFromConfigFile();
+}
 bool inverted() {
     const char* v = getenv("MC2_ST_INVERTED");
     // The honest idiom, left ONLY in a comment:
@@ -1106,6 +1279,24 @@ def _selftest():
     check("readers disagreeing with EACH OTHER is a FAILURE",
           by_var.get("MC2_ST_SPLIT", {}).get("kind") == "READER_CONFLICT",
           str(by_var.get("MC2_ST_SPLIT")))
+
+    # 4b. BACKEND-DEFAULT-PARITY-1 -- THE HOLE THE RULE ABOVE HAD. Same shape,
+    #     on a var in NO registry table. The rule was iterating the REGISTRY, so
+    #     it structurally could not see the case it was written for whenever the
+    #     var was unregistered -- which is the case nobody has audited. This is
+    #     MC2_SKYBOX_FOG_EXCLUDE (GL default-ON vs VK default-OFF) exactly.
+    check("an UNREGISTERED var with conflicting readers is caught",
+          by_var.get("MC2_ST_UNREG_SPLIT", {}).get("kind") == "READER_CONFLICT",
+          str(by_var.get("MC2_ST_UNREG_SPLIT")))
+    check("the conflict finding says the var is UNREGISTERED",
+          "UNREGISTERED" in by_var.get("MC2_ST_UNREG_SPLIT", {}).get("msg", ""),
+          str(by_var.get("MC2_ST_UNREG_SPLIT")))
+
+    # 4c. And the inverse, so the widened rule is not a false-positive mill:
+    #     one classified reader plus one UNREADABLE one is not a contradiction.
+    check("one classified + one unclassifiable reader is NOT a conflict",
+          by_var.get("MC2_ST_MIXED", {}).get("kind") != "READER_CONFLICT",
+          str(by_var.get("MC2_ST_MIXED")))
 
     # 5. THE ANTI-THEATRE CASE. Two contract rules added earlier the same day
     #    passed their own self-tests while satisfied by an identifier sitting in

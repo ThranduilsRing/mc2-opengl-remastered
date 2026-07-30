@@ -6,7 +6,7 @@
   "specializationParams": [],
   "artifact": "edge_fog.frag.default.07734eb0.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "0d7475f95702380735a5a335ac8b2bda2e05e089650c0aacaa9fb7e25ac857e9",
+  "source_sha256": "e5ecd706028e1f7ee2bbd80d2f3f8659aae272b3ee5cd3e2087a546794f53131",
   "spirv_sha256": "a0151ace62e38735d5c8941d49303710b6bae7ca05248d44f565fc0358ca3323",
   "bindings": {
     "ubos": [],
