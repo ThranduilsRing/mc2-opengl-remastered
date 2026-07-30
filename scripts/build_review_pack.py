@@ -11,10 +11,15 @@ makes the pack reproducible:
     by parsing RenderCore/RendererFeatureRegistry.h, so the published defaults
     can never drift from the compiled ones.  Gate defaults are deliberately
     NOT stored in the manifest.
+  * every reviewable artifact (image, prose block, table row, section) carries a
+    STABLE ANCHOR ID derived from manifest content -- never from DOM order -- so
+    the in-page annotation layer (see release_assets_src/annotate/) can survive
+    regeneration.  See iter_anchors() for the id contract.
 
 Usage:
     py -3 scripts/build_review_pack.py --check
     py -3 scripts/build_review_pack.py --out /tmp/INDEX.html
+    py -3 scripts/build_review_pack.py --dump-anchors anchors.json
 
 Windows / Python 3 / standard library only.
 """
@@ -22,6 +27,7 @@ Windows / Python 3 / standard library only.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -31,6 +37,8 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DEFAULT_MANIFEST = os.path.join(REPO_ROOT, "release_assets_src", "0.5.2", "review_pack.json")
 DEFAULT_OUT = os.path.join(REPO_ROOT, "release_assets", "0.5.2", "REVIEW", "INDEX.html")
+
+ANNOTATE_DIR = os.path.join(REPO_ROOT, "release_assets_src", "annotate")
 
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 
@@ -216,6 +224,240 @@ def gate_lookup_key(gate_label: str) -> str:
     return m.group(0) if m else gate_label.strip()
 
 
+# ---------------------------------------------------------------------------
+# STABLE ANCHOR IDS  (the contract the annotation layer depends on)
+# ---------------------------------------------------------------------------
+#
+# The user annotates artifacts in the rendered page; the page is regenerated
+# whenever the manifest or the source changes.  An annotation that silently
+# re-attached to a DIFFERENT artifact would put his words against something he
+# never saw -- strictly worse than having no annotation feature at all.  So:
+#
+#   rid    -- the LOOKUP key.  Derived only from content that identifies the
+#             artifact (section id, image path, gate name, lane name) or, when
+#             no such intrinsic key exists (prose, meta rows), from a hash of
+#             the artifact's own content.  DOM order is never an input, so
+#             inserting or deleting a section/block/figure cannot shift any
+#             other artifact's id.
+#   digest -- the ATTACHMENT PROOF.  A hash over the artifact's identity tuple
+#             INCLUDING its displayed content.  The annotation stores the digest
+#             it was written against; the page only silently re-attaches when
+#             the live digest matches.  A digest mismatch renders the annotation
+#             with a CHANGED badge (content edited under an existing comment); a
+#             missing rid renders it in the ORPHANED drawer.  Neither case ever
+#             quietly moves the user's words onto different content.
+#
+# Duplicate rids are resolved by appending "@<hash of the figure group's sibling
+# image paths>" (image items) or "~<n>" (everything else), and the build prints
+# a warning.  Both tiebreaks are content-derived, not positional.
+#
+# read_review_feedback.py imports iter_anchors() from this module, so the writer
+# and the reader can never disagree about what an id means.
+
+ANCHOR_SCHEMA = "mc2.review.anchor/1"
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+
+
+def _h(*parts) -> str:
+    """Short stable hash of a canonical JSON tuple."""
+    blob = json.dumps(parts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+_IMG_HASH_CACHE: dict = {}
+
+
+def image_content_hash(pack_dir: str, src: str) -> str:
+    """Hash of the image FILE, folded into that image's digest.
+
+    This pack re-captures poses under identical filenames constantly, so a
+    manifest-only digest would leave a "this is wrong" comment silently riding
+    onto a freshly captured frame the user never saw -- the exact mis-attachment
+    this whole design exists to prevent.  Hashing all 255 images costs ~0.5s and
+    is cached per render.  A missing file gets a stable sentinel, so an image
+    that later appears correctly reads as changed.
+    """
+    path = os.path.normpath(os.path.join(pack_dir, src))
+    hit = _IMG_HASH_CACHE.get(path)
+    if hit is not None:
+        return hit
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        out = h.hexdigest()[:12]
+    except OSError:
+        out = "absent"
+    _IMG_HASH_CACHE[path] = out
+    return out
+
+
+def _plain(html: str, limit: int = 160) -> str:
+    """HTML -> collapsed plain text, for human-readable anchor labels."""
+    s = _TAG_RE.sub(" ", html or "")
+    s = (s.replace("&mdash;", "--").replace("&ndash;", "-").replace("&amp;", "&")
+          .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
+          .replace("&rarr;", "->").replace("&nbsp;", " "))
+    s = _WS_RE.sub(" ", s).strip()
+    return s[:limit]
+
+
+_PROSE_TYPES = ("h3", "what", "note", "pl", "lede", "para")
+
+_SLUG_BAD = re.compile(r"[^A-Za-z0-9_.+-]+")
+
+
+def _slug(s: str, limit: int = 72) -> str:
+    """Readable, id-safe form of a label.  Kept readable on purpose: a lane
+    reads exported ids by eye, so 'gate/gates/MC2_LIGHT_REALISM-6-tunables'
+    beats an opaque hash whenever a human-meaningful key exists."""
+    return _SLUG_BAD.sub("-", _plain(s, limit)).strip("-") or "x"
+
+
+def _anchor(kind, rid, digest_tuple, **fields) -> dict:
+    a = {"kind": kind, "rid": rid, "digest": _h(kind, *digest_tuple)[:16]}
+    a.update(fields)
+    return a
+
+
+def iter_anchors(manifest: dict) -> list:
+    """Every reviewable artifact in the pack, in manifest order.
+
+    Pure function of the manifest.  Each record carries 'obj' -- the manifest
+    object it came from -- so the renderer can look anchors up by identity;
+    read_review_feedback.py ignores that field.
+    """
+    out = []
+    pack_dir = os.path.join(REPO_ROOT, manifest.get("pack_dir", ""))
+    for s in manifest["sections"]:
+        sid = s["id"]
+        out.append(_anchor("section", "sec/%s" % sid, (sid, s["heading"]),
+                           obj=s, section_id=sid, section_heading=_plain(s["heading"]),
+                           heading=None, label=_plain(s["heading"]), src=None,
+                           caption=None, text=_plain(s["heading"])))
+        h3 = None
+        for b in s["blocks"]:
+            t = b["type"]
+            if t == "h3":
+                h3 = _plain(b["html"])
+            common = dict(section_id=sid, section_heading=_plain(s["heading"]), heading=h3)
+            if t in _PROSE_TYPES:
+                txt = _plain(b["html"])
+                out.append(_anchor(
+                    "text", "txt/%s/%s" % (sid, _h(t, b["html"])[:12]), (sid, t, b["html"]),
+                    obj=b, label="%s: %s" % (t, txt), src=None, caption=None,
+                    text=_plain(b["html"], 400), **common))
+            elif t == "meta":
+                for row in b["rows"]:
+                    lbl = _plain(row[0]["html"]) if row else ""
+                    body = " | ".join(_plain(c["html"], 200) for c in row[1:])
+                    out.append(_anchor(
+                        "row", "mrow/%s/%s" % (sid, _h(row)[:12]), (sid, row),
+                        obj=row, label="%s: %s" % (lbl, body), src=None, caption=None,
+                        text=body, **common))
+            elif t == "gate_table":
+                for r in b["rows"]:
+                    # the FULL label, not gate_lookup_key(): two rows in one
+                    # section can share a lookup key ("MC2_LIGHT_REALISM
+                    # tunables" vs "MC2_LIGHT_REALISM (+6 tunables)") and must
+                    # still get distinct ids without a positional tiebreak.
+                    out.append(_anchor(
+                        "gate", "gate/%s/%s" % (sid, _slug(r["gate"])),
+                        (sid, r["gate"], r["cells"]),
+                        obj=r, label=r["gate"], src=None, caption=None,
+                        text=_plain(" | ".join(r["cells"]), 400), **common))
+            elif t == "lanes_table":
+                for ln in b["lanes"]:
+                    out.append(_anchor(
+                        "lane", "lane/%s" % _slug(ln["name"]),
+                        (ln["name"], ln.get("sent"), ln.get("found"),
+                         ln.get("commits"), ln.get("gates"), ln.get("verdict")),
+                        obj=ln, label=ln["name"], src=None, caption=None,
+                        text=_plain("%s -- %s" % (ln.get("sent", ""), ln.get("found", "")), 400),
+                        **common))
+            elif t == "figures":
+                sibs = sorted((it.get("src") or "").replace("\\", "/") for it in b["items"])
+                for it in b["items"]:
+                    src = (it.get("src") or "").replace("\\", "/")
+                    if not src:
+                        continue  # download links, not visual artifacts
+                    out.append(_anchor(
+                        "image", "img/%s/%s" % (sid, src),
+                        (sid, src, it.get("caption") or "",
+                         image_content_hash(pack_dir, src)),
+                        obj=it, label=_plain(it.get("caption") or "") or os.path.basename(src),
+                        src=src, caption=_plain(it.get("caption") or ""),
+                        text=None, _sibs=sibs, _cap=it.get("caption") or "", **common))
+    _dedupe_rids(out)
+    for a in out:
+        a.pop("_sibs", None)
+        a.pop("_cap", None)
+    return out
+
+
+def _rid_counts(anchors: list) -> set:
+    counts = {}
+    for a in anchors:
+        counts[a["rid"]] = counts.get(a["rid"], 0) + 1
+    return {r for r, c in counts.items() if c > 1}
+
+
+def _dedupe_rids(anchors: list) -> None:
+    """Make rids unique with content-derived tiebreaks, never DOM position.
+
+    Applied in escalating tiers so the common case keeps the shortest, most
+    edit-resistant id.  24 of the pack's 276 images repeat a path inside one
+    section (the same OFF frame used in two comparison groups), so tier 2 is
+    load-bearing, and tier 3 covers the 3 pairs whose captions match too.
+
+      tier 1  img/<section>/<path>
+      tier 2  + #<caption>.<hash>   -- survives adding/removing group siblings
+      tier 3  + @<hash of the group's sibling PATHS>  -- survives caption edits
+
+    The tier-2 slug is truncated for readability, so it carries a hash of the
+    FULL caption as well: without it, two captions agreeing in their first 40
+    characters collide, and the tiebreak silently degrades to the positional
+    ~n it exists to avoid.
+    """
+    dupes = _rid_counts(anchors)
+    if not dupes:
+        return
+    for a in anchors:
+        if a["rid"] in dupes and a["kind"] == "image":
+            a["rid"] = "%s#%s.%s" % (a["rid"], _slug(a["_cap"], 40), _h(a["_cap"])[:6])
+    dupes = _rid_counts(anchors)
+    for a in anchors:
+        if a["rid"] in dupes and a["kind"] == "image":
+            a["rid"] = "%s@%s" % (a["rid"], _h(a["_sibs"])[:8])
+
+    seen = {}
+    still = []
+    for a in anchors:
+        n = seen.get(a["rid"], 0)
+        seen[a["rid"]] = n + 1
+        if n:
+            a["rid"] = "%s~%d" % (a["rid"], n + 1)
+            still.append(a["rid"])
+    if still:
+        print("WARNING: %d anchor id(s) needed a positional ~n tiebreak "
+              "(byte-identical content in one section): %s"
+              % (len(still), ", ".join(still[:5])), file=sys.stderr)
+
+
+def anchor_attrs(rec: dict | None) -> str:
+    """Render the data-* attributes the annotation layer binds to."""
+    if not rec:
+        return ""
+    out = ' data-rid="%s" data-adigest="%s" data-akind="%s"' % (
+        esc_attr(rec["rid"]), rec["digest"], rec["kind"])
+    if rec.get("label"):
+        out += ' data-alabel="%s"' % esc_attr(rec["label"])
+    return out
+
+
 ON = '<b style="color:#a0f0a0">ON</b>'
 OFF = "<b>OFF</b>"
 UNREG = '<b style="color:#f0d890">NOT IN REGISTRY</b>'
@@ -312,7 +554,7 @@ def render_verdict(v: str) -> str:
     return '<b style="color:%s">%s</b>' % (colour, label)
 
 
-def render_lanes_table(b: dict, reg: dict, readers: dict, out: list) -> None:
+def render_lanes_table(b: dict, reg: dict, readers: dict, out: list, amap: dict) -> None:
     """Section 14 -- one row per lane run this session.
 
     Sibling lanes still in flight append entries to the manifest's "lanes"
@@ -340,22 +582,26 @@ def render_lanes_table(b: dict, reg: dict, readers: dict, out: list) -> None:
             render_verdict(ln.get("verdict", "")),
             ev or '<span style="color:#9aa3ad">&mdash;</span>',
         ]
-        out.append("<tr>" + "".join("<td>%s</td>" % c for c in cells) + "</tr>")
+        out.append("<tr%s>" % anchor_attrs(amap.get(id(ln)))
+                   + "".join("<td>%s</td>" % c for c in cells) + "</tr>")
     out.append("</table>")
 
 
-def render_block(b: dict, reg: dict, out: list, readers: dict | None = None) -> None:
+def render_block(b: dict, reg: dict, out: list, readers: dict | None = None,
+                 amap: dict | None = None) -> None:
     readers = readers or {}
+    amap = amap if amap is not None else {}
+    A = anchor_attrs(amap.get(id(b)))
     t = b["type"]
     if t == "h3":
-        out.append("<h3>%s</h3>" % b["html"])
+        out.append("<h3%s>%s</h3>" % (A, b["html"]))
     elif t in ("what", "note", "pl", "lede", "para"):
         cls = "" if t == "para" else ' class="%s"' % t
-        out.append("<p%s>%s</p>" % (cls, b["html"]))
+        out.append("<p%s%s>%s</p>" % (cls, A, b["html"]))
     elif t == "meta":
         out.append('<table class="meta"%s>' % (" " + b["attrs"] if b.get("attrs") else ""))
         for row in b["rows"]:
-            out.append("<tr>")
+            out.append("<tr%s>" % anchor_attrs(amap.get(id(row))))
             for c in row:
                 out.append("<%s%s>%s</%s>" % (c["tag"], c.get("attrs", ""), c["html"], c["tag"]))
             out.append("</tr>")
@@ -372,14 +618,19 @@ def render_block(b: dict, reg: dict, out: list, readers: dict | None = None) -> 
             if dcol is not None:
                 cells.insert(dcol, render_default_cell(r["gate"], reg, readers))
             cells[0] = render_gate_cell(r["gate"], reg)
-            out.append("<tr>" + "".join("<td>%s</td>" % c for c in cells) + "</tr>")
+            out.append("<tr%s>" % anchor_attrs(amap.get(id(r)))
+                       + "".join("<td>%s</td>" % c for c in cells) + "</tr>")
         out.append("</table>")
     elif t == "figures":
         out.append('<div class="%s">' % b["layout"])
         for it in b["items"]:
-            has_fig = bool(it.get("caption")) or b["layout"] != "single"
+            rec = amap.get(id(it))
+            # image items ALWAYS get a <figure> so the annotation layer has a
+            # per-image container to hang its bar and region overlay on.
+            # figure{margin:0} in the pack stylesheet, so this is visually inert.
+            has_fig = bool(it.get("caption")) or b["layout"] != "single" or bool(rec)
             if has_fig:
-                out.append("<figure>")
+                out.append("<figure%s>" % anchor_attrs(rec))
                 if it.get("caption"):
                     out.append("<figcaption>%s</figcaption>" % it["caption"])
             if "src" in it:
@@ -393,7 +644,7 @@ def render_block(b: dict, reg: dict, out: list, readers: dict | None = None) -> 
                 out.append("</figure>")
         out.append("</div>")
     elif t == "lanes_table":
-        render_lanes_table(b, reg, readers, out)
+        render_lanes_table(b, reg, readers, out, amap)
     else:
         raise SystemExit("unknown block type %r" % t)
 
@@ -419,22 +670,50 @@ def build_reader_index(manifest: dict, reg: dict, repo_root: str) -> dict:
     return out
 
 
-def render(manifest: dict, reg: dict, readers: dict | None = None) -> str:
+def _read_asset(name: str) -> str:
+    with open(os.path.join(ANNOTATE_DIR, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def pack_id(manifest: dict) -> str:
+    """Storage namespace for the annotation layer.  Explicit manifest key wins;
+    otherwise the version directory under release_assets/."""
+    if manifest.get("pack_id"):
+        return manifest["pack_id"]
+    parts = manifest["pack_dir"].replace("\\", "/").rstrip("/").split("/")
+    return parts[-2] if len(parts) >= 2 else parts[-1]
+
+
+def render(manifest: dict, reg: dict, readers: dict | None = None,
+           annotate: bool = True) -> str:
+    anchors = iter_anchors(manifest) if annotate else []
+    amap = {id(a["obj"]): a for a in anchors}
+
     out = ["<!doctype html><html><head><meta charset='utf-8'>"
            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
            "<title>%s</title>" % manifest["title"],
-           "<style>", manifest["style"], "</style>",
-           '</head><body><div class="wrap">',
-           "<h1>%s</h1>" % manifest["h1"],
-           '<p class="lede">%s</p>' % manifest["lede"],
-           '<nav class="toc">%s</nav>' % manifest["toc_html"]]
+           "<style>", manifest["style"], "</style>"]
+    if annotate:
+        out += ["<style>", _read_asset("review_annotate.css"), "</style>"]
+    out += ['</head><body><div class="wrap">',
+            "<h1>%s</h1>" % manifest["h1"],
+            '<p class="lede">%s</p>' % manifest["lede"],
+            '<nav class="toc">%s</nav>' % manifest["toc_html"]]
     for s in manifest["sections"]:
-        out.append('<section id="%s">' % s["id"])
+        out.append('<section id="%s"%s>' % (s["id"], anchor_attrs(amap.get(id(s)))))
         out.append("<h2>%s</h2>" % s["heading"])
         for b in s["blocks"]:
-            render_block(b, reg, out, readers)
+            render_block(b, reg, out, readers, amap)
         out.append("</section>")
-    out.append("</div></body></html>")
+    out.append("</div>")
+    if annotate:
+        meta = {"schema": ANCHOR_SCHEMA, "pack_id": pack_id(manifest),
+                "title": manifest["title"], "anchors": len(anchors),
+                "images": sum(1 for a in anchors if a["kind"] == "image")}
+        out.append('<script type="application/json" id="rv-pack-meta">%s</script>'
+                   % json.dumps(meta, ensure_ascii=False).replace("</", "<\\/"))
+        out.append("<script>%s</script>" % _read_asset("review_annotate.js"))
+    out.append("</body></html>")
     return "\n".join(out) + "\n"
 
 
@@ -502,6 +781,11 @@ def main(argv=None) -> int:
                     help="image root (default: from manifest 'pack_dir')")
     ap.add_argument("--check", action="store_true",
                     help="validate manifest<->disk image sets; exit 1 on mismatch")
+    ap.add_argument("--dump-anchors", metavar="PATH",
+                    help="write the stable anchor-id table as JSON and exit "
+                         "(no rendering; used by the id-stability test)")
+    ap.add_argument("--no-annotate", action="store_true",
+                    help="render without the annotation layer (diff/regression aid)")
     args = ap.parse_args(argv)
 
     with open(args.manifest, encoding="utf-8") as fh:
@@ -513,11 +797,22 @@ def main(argv=None) -> int:
     if args.check:
         return do_check(manifest, pack_dir)
 
+    if args.dump_anchors:
+        anchors = iter_anchors(manifest)
+        payload = {"schema": ANCHOR_SCHEMA, "pack_id": pack_id(manifest),
+                   "anchors": [{k: v for k, v in a.items() if k != "obj"}
+                               for a in anchors]}
+        with open(args.dump_anchors, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(payload, fh, indent=1, ensure_ascii=False, sort_keys=True)
+        print("wrote %s (%d anchors, %d unique rids)"
+              % (args.dump_anchors, len(anchors), len({a["rid"] for a in anchors})))
+        return 0
+
     reg = parse_registry(registry)
     readers = build_reader_index(manifest, reg, REPO_ROOT)
     ghosts = sorted(g for g, r in readers.items() if r["status"] == "ghost")
     unres = sorted(g for g, r in readers.items() if r["status"] == "unresolved")
-    html = render(manifest, reg, readers)
+    html = render(manifest, reg, readers, annotate=not args.no_annotate)
     out_dir = os.path.dirname(os.path.abspath(args.out))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
