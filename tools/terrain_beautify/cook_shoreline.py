@@ -110,6 +110,10 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_water_elevation,
 )
 
+# STOCK-DATA-TRUTH-1: verify the batch-cook corpus. See tools/mc2data/stock_missions.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import StockDataError, resolve_missions_dir  # noqa: E402
+
 WORLD_UNITS_PER_VERTEX = 128.0
 
 # Band-width floors (recon landmine #4): a band derived from a runtime/authored
@@ -303,7 +307,17 @@ def cmd_all_missions(args) -> int:
     import glob as _glob
     import json as _json
 
-    mdir = Path(args.missions_dir)
+    # STOCK-DATA-TRUTH-1: --missions-dir is REQUIRED here, so this subcommand
+    # never had the silent-default defect -- but "required" is not "correct".
+    # The standing batch-cook recipe named A:/Games/Carver5-feasibility/data/
+    # missions, which differs from the shipped mission.fst on all 24 campaign
+    # maps. Verify whatever was passed; refuse it if it is not stock.
+    try:
+        mdir = resolve_missions_dir(args.missions_dir,
+                                    allow_nonstock=bool(getattr(args, "allow_nonstock", False))).dir
+    except StockDataError as e:
+        print(f"[all-missions] ERROR {e}", file=sys.stderr)
+        return 4
     beauty_root = Path(args.beauty_root) if args.beauty_root else mdir
     out_root = Path(args.out_root)
     paks = sorted(mdir.glob("*.pak"))
@@ -484,7 +498,13 @@ def main() -> int:
     p = sub.add_parser("all-missions", help="SHORELINE-BATCH-COOK-1: cook masks for "
                        "every water-bearing mission in a dir (skips dry maps, emits census)")
     p.add_argument("--missions-dir", required=True,
-                   help="dir of stock <stem>.pak/.fit missions")
+                   help="dir of stock <stem>.pak/.fit missions. Byte-verified "
+                        "against the shipped mission.fst digest "
+                        "(tools/mc2data/stock_missions.md5); a non-stock dir is "
+                        "refused unless --allow-nonstock.")
+    p.add_argument("--allow-nonstock", action="store_true",
+                   help="cook from mission data that does NOT match the shipped "
+                        "bytes (modded/custom maps). Prints a loud banner.")
     p.add_argument("--beauty-root",
                    help="dir holding <stem>.beauty/visual_height_4x.r32 hi-res bakes "
                         "(default: --missions-dir); falls back to coarse pak grid if absent")

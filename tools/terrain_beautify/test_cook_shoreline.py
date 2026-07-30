@@ -412,7 +412,11 @@ def test_install_without_bounds_warns(tmp_path):
     assert "WARN" in r.stdout
 
 
-# --- all-missions batch (SHORELINE-BATCH-COOK-1) -----------------------------
+# --- all-missions batch (SHORELINE-BATCH-COOK-1) ---
+# NOTE --allow-nonstock below: these fixtures are SYNTHETIC paks, which is
+# exactly the case STOCK-DATA-TRUTH-1 wants stated out loud rather than
+# assumed. Without it cook_shoreline refuses the dir -- and it should.
+# -----------------------------
 @pytest.fixture()
 def synthetic_missions_dir(tmp_path):
     """A missions dir with two synthetic maps: one water-bearing island and one
@@ -437,7 +441,8 @@ def test_all_missions_cooks_water_skips_dry(synthetic_missions_dir, tmp_path):
     # can't land on that (same coarse-grid landmine the real batch avoids by
     # baking a 4x hi-res source first). Widen foam so the census row is nonzero;
     # the real batch keeps the 6wu default against its hi-res bakes.
-    r = run("all-missions", "--missions-dir", str(synthetic_missions_dir),
+    r = run("all-missions", "--allow-nonstock",
+            "--missions-dir", str(synthetic_missions_dir),
             "--out-root", str(out_root), "--supersample", "8",
             "--foam-width", "24", "--census", str(census))
     assert r.returncode == 0, r.stdout + r.stderr
@@ -458,9 +463,11 @@ def test_all_missions_cooks_water_skips_dry(synthetic_missions_dir, tmp_path):
 
 def test_all_missions_deterministic(synthetic_missions_dir, tmp_path):
     o1 = tmp_path / "o1"; o2 = tmp_path / "o2"
-    r1 = run("all-missions", "--missions-dir", str(synthetic_missions_dir),
+    r1 = run("all-missions", "--allow-nonstock",
+            "--missions-dir", str(synthetic_missions_dir),
              "--out-root", str(o1), "--supersample", "8")
-    r2 = run("all-missions", "--missions-dir", str(synthetic_missions_dir),
+    r2 = run("all-missions", "--allow-nonstock",
+            "--missions-dir", str(synthetic_missions_dir),
              "--out-root", str(o2), "--supersample", "8")
     assert r1.returncode == 0 and r2.returncode == 0
     a = np.array(Image.open(o1 / "wet_map.beauty" / "shoreline_mask.png"))
