@@ -18,7 +18,7 @@ check-editor-build.sh: Compiles and links the EditRel + mc2_asset_viewer targets
 check-frame-graph.py: Drives a standalone cmake configure+build of tests/unit (VS2022). Its invocation was broken (exit 127 on every run) until UNWIRED-CHECK-CLOSE-1 fixed the WSL-bash/backslash defect; it is now genuinely runnable, but still a build, so it belongs to the unit-test lane, not the static aggregator.
 
 # --- needs a cooked asset tree --------------------------------------------
-check-texture-resolution.py: Validates a COOKED texture inventory and emits cook.json provenance; requires a cook output tree that does not exist in a source checkout. Currently reports real findings (KTX2 vkFormat 0 under _aoktxtmp) -- owner: asset-cook lane.
+check-texture-resolution.py: Validates a COOKED texture inventory and emits cook.json provenance; requires a deployed cook tree (default A:/Games/mc2-opengl/mc2-win64-v0.4) that does not exist in a source checkout. Its 100 FAILs were NOT asset defects -- every one was cook SCRATCH under _aoktxtmp/ (the transcoder temp dir made by tools/bt2018_import/cook_ao_from_package.py), which the walk now skips; it reports FAIL=0 over 8053 real cooked textures. TRIGGER for wiring: a runner that owns a deployed tree, e.g. the deploy/cook lane.
 check-ktx2-probe.py: Bakes and inspects a KTX2 probe; writes artifacts under out/asset-pipeline-probe. Side-effecting, so it must not run inside a read-only aggregator.
 
 # --- needs a deployed release tree ----------------------------------------

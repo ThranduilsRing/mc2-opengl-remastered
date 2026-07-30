@@ -235,6 +235,19 @@ def scan(roots, verbose=False):
             print(f"{PREFIX} WARN: dir not found, skipping: {root}", file=sys.stderr)
             continue
         for dirpath, dirs, files in os.walk(str(root)):
+            # UNWIRED-CHECK-CLOSE-1 (2026-07-30): do not grade cook SCRATCH.
+            # This validator was reporting 100 FAILs -- every single one a
+            # "vkFormat 0 not in cook-allowed" under _aoktxtmp/, which is the
+            # temp dir tools/bt2018_import/cook_ao_from_package.py creates for
+            # intermediate KTX2 output (see its `tmp = os.path.join(args.deploy,
+            # "_aoktxtmp")`). Those files are transcoder scratch that never
+            # ships, so their headers are not expected to satisfy the shipping
+            # format rules. Grading them made the check permanently and
+            # WRONGLY red, which is its own kind of blindness: a gate that is
+            # always red teaches everyone to ignore it, and would have hidden a
+            # real cooked-texture regression among the noise. Nobody saw it
+            # because this check was wired to nothing.
+            dirs[:] = [d for d in dirs if d not in COOK_SCRATCH_DIRS]
             dirs.sort()  # deterministic descent order -> byte-stable cook.json
             for fn in sorted(files):
                 p = Path(dirpath) / fn
@@ -242,6 +255,12 @@ def scan(roots, verbose=False):
                 if rec is not None:
                     records.append(rec)
     return records
+
+
+# Cook SCRATCH directories -- transcoder intermediates that never ship, so the
+# shipping format rules do not apply to them. Grading them is what made this
+# validator permanently red on 100 phantom failures.
+COOK_SCRATCH_DIRS = {"_aoktxtmp"}
 
 
 def main(argv=None) -> int:
