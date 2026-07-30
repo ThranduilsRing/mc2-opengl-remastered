@@ -6073,6 +6073,13 @@ void gosRenderer::handleEvents()
 		{
             { ZoneScopedN("gosRenderer::handleEvents fullscreen"); graphics::set_window_fullscreen(win_h_, reqGotoFullscreen); }
 
+            // NOFOCUS-HARDEN-1: this is the SetScreenMode re-issue path
+            // (prefs.applyPrefs() replays options.cfg during boot). Under
+            // MC2_WINDOW_OFFSCREEN re-assert the offscreen origin here, in the
+            // same synchronous step that changed the mode, so the window is
+            // never observable at a visible position between the two.
+            graphics::enforce_window_offscreen(win_h_);
+
             Environment.screenWidth = width_;
             Environment.screenHeight = height_;
 

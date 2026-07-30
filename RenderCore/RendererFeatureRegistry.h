@@ -774,6 +774,53 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "=1 forces it on for an interactive launch; =0 forces it off even under "
         "smoke. Unset + no smoke = legacy interactive behavior, unchanged."
     },
+    // ── NOFOCUS-HARDEN-1 ───────────────────────────────────────────────────
+    // KIND NOTE, stated so a later audit does not have to guess: this is
+    // classified Trace to sit beside MC2_TRACE_NO_CURSOR_GRAB above, which is
+    // its functional sibling (both are harness/window hands-off gates read in
+    // GameOS/gameos/gos_render.cpp). It is NOT a Feature: it gates no render
+    // code path and changes no rendered pixel -- the GL drawable keeps its full
+    // size, so glReadPixels/FBO capture is bit-identical with it on or off.
+    // What it changes is the OS window's POSITION, plus a refusal of fullscreen.
+    // `defaultOn` is false and that is what the reader implements
+    // (gos_render.cpp window_offscreen_requested(): `e && e[0] && e[0] != '0'`,
+    // i.e. unset => OFF). Do not "tidy" it to true: an unset engine launch is
+    // exactly-legacy, and the harness turns it on explicitly.
+    {
+        "MC2_TRACE_WINDOW_OFFSCREEN",
+        "MC2_WINDOW_OFFSCREEN",
+        EnvVarKind::Trace,
+        false,
+        "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and "
+        "keep it there, so an agent-launched engine window never occupies "
+        "visible desktop area at ANY point in its lifetime. THE DEFECT: the "
+        "previous design created the window at options.cfg size in the middle of "
+        "the desktop and relied on an EXTERNAL 250ms python poller "
+        "(smoke_lib/nofocus.park_window_offscreen) to move it away afterwards, "
+        "which guarantees a multi-second desktop-covering flash on every launch "
+        "-- measured live at 1719x995 on a 1707x960 desktop. Post-hoc "
+        "repositioning is the wrong SHAPE: the only way a window is never seen "
+        "is for it never to be created anywhere visible. THE MECHANISM: position "
+        "correct at CreateWindow time; re-asserted immediately before the single "
+        "SDL_ShowWindow; re-asserted SYNCHRONOUSLY from resize_window() and "
+        "set_window_fullscreen() (the path prefs.applyPrefs()'s SetScreenMode "
+        "re-issue takes during boot, which is what used to undo a one-shot "
+        "park); and fullscreen is REFUSED outright, because a fullscreen window "
+        "has no position that hides it. -32000 is off every physical monitor on "
+        "a normal multi-mon layout and is what Windows itself uses for minimized "
+        "placeholders. NO PIXEL EFFECT: the GL drawable keeps its full size, so "
+        "glReadPixels/FBO readback (the golden visual-capture path) is "
+        "unaffected -- unlike minimizing, which makes SDL throttle and can zero "
+        "the drawable. DEFAULT OFF: unset is exactly-legacy interactive "
+        "behaviour; scripts/smoke_lib/nofocus.py sets it to 1 for agent launches "
+        "(OFFSCREEN_ENV, apply_env(offscreen=True)). Consumers: "
+        "GameOS/gameos/gos_render.cpp, GameOS/gameos/gameos_graphics.cpp. "
+        "CAVEAT for harnesses that screenshot the DESKTOP COMPOSITE via "
+        "pyautogui/mss rather than reading the engine FBO: an offscreen window "
+        "contributes no pixels to the composite, so those call sites must pass "
+        "nofocus.apply_env(offscreen=False). MC2_RES_DIAG=1 additionally prints "
+        "one [RES_DIAG] line giving the resolved origin and size."
+    },
     {
         "MC2_TRACE_FORCE_ALL_VISIBLE",
         "MC2_FORCE_ALL_VISIBLE",

@@ -21,6 +21,17 @@
   **Default: suppression is ON whenever `MC2_SMOKE_MODE` is set** — i.e. every agent-driven smoke / visual_verify / capture / screenshot harness gets it for free (they all set `MC2_SMOKE_MODE=1`; `scripts/smoke_lib/runner.py:83`). Interactive launches (neither var set) keep exactly the legacy behavior.
   `=1` forces suppression on even for an interactive launch; `=0` forces it **off** even under smoke (escape hatch, e.g. reproducing a grab-dependent bug headlessly). Evaluated once and cached (`gos_CursorControlSuppressed()`, `GameOS/gameos/gameos_input.cpp`).
 
+## Window never on the visible desktop (NOFOCUS-HARDEN-1)
+
+- `MC2_WINDOW_OFFSCREEN` — create the SDL window **hidden at (-32000,-32000)** and keep it there, so an agent-launched engine window never occupies visible desktop area at *any* point in its lifetime.
+  **Default: OFF** for `MC2_WINDOW_OFFSCREEN` — the engine-side polarity is opt-in, and unset means exactly-legacy interactive behaviour.
+  Reader: `window_offscreen_requested()` in `GameOS/gameos/gos_render.cpp` (`e && e[0] && e[0] != '0'`, evaluated a single time and cached). `=1` enables; `=0` disables.
+  **Why not the old poller.** The previous design created the window at `options.cfg` size in the middle of the desktop and relied on an external 250 ms Python poller (`smoke_lib/nofocus.park_window_offscreen`) to move it away *afterwards* — which guarantees a multi-second desktop-covering flash on every launch, measured live at 1719x995 on a 1707x960 desktop. Post-hoc repositioning is the wrong shape: the only way a window is never seen is for it never to be created anywhere visible. The poller is now a **backstop only**, for deployed exes built before this change (where the var is inert).
+  **What it does:** position is correct at `SDL_CreateWindow` time (`SDL_WINDOW_HIDDEN` + explicit offscreen origin, so the `CreateWindowEx` HWND never lands on a visible pixel); re-asserted immediately before the single `SDL_ShowWindow`; re-asserted **synchronously** from `resize_window()` and `set_window_fullscreen()` — the path `prefs.applyPrefs()` → `gos_SetScreenMode` takes during boot, which is what used to undo a one-shot park; and **fullscreen is refused outright**, because a fullscreen window has no position that hides it.
+  **No pixel effect.** The GL drawable keeps its full size, so `glReadPixels`/FBO readback — the golden visual-capture path — is unaffected, unlike minimizing (which makes SDL throttle and can zero the drawable). Golden capture resolution is preserved, so window *size* stops mattering.
+  **Harness side:** `scripts/smoke_lib/nofocus.py` applies it via `OFFSCREEN_ENV` from `apply_env(offscreen=True)`, which is the parameter's default for agent launches.
+  > **CAVEAT — desktop-composite harnesses.** Any harness that screenshots the **desktop composite** (`pyautogui`/`mss`) rather than reading the engine FBO gets *no pixels* from an offscreen window and would capture the user's wallpaper. Those call sites must pass `nofocus.apply_env(offscreen=False)`. Converting them to the engine capture path retires the exception.
+
 ## Force all units visible for automated captures (FORCE-ALL-VISIBLE-1)
 
 - `MC2_FORCE_ALL_VISIBLE` — mark **every** unit (mechs, ground vehicles, elementals/infantry, all teams) fully visible and sensed, bypassing sensor/contact gating so nothing in a capture is hidden, blip-only or faded out.

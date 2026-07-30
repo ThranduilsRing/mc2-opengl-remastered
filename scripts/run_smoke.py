@@ -1392,6 +1392,19 @@ def main():
                             "MC2_WIDTH",
                             "MC2_HEIGHT",
                             "MC2_WINDOWED",
+                            # NOFOCUS-HARDEN-1: create the engine window hidden
+                            # off the visible desktop (-32000,-32000) instead of
+                            # letting a 250ms external poller move it after the
+                            # fact. Grouped with the window-shape overrides above
+                            # because it belongs to the same surface. Listed here
+                            # for convention parity -- smoke_lib/runner.py builds
+                            # the child env from os.environ.copy(), so it already
+                            # reaches mc2.exe -- but if the runner ever stops
+                            # inheriting os.environ, dropping THIS one silently
+                            # puts a desktop-sized window back on the user's
+                            # screen, which is the exact complaint that got game
+                            # launches hard-blocked.
+                            "MC2_WINDOW_OFFSCREEN",
                             "MC2_FORCE_43",
                             "MC2_CAMERA_ASPECT_NATIVE",
                             # META-FIX-BATCH-2 design F: order-liveness fixture

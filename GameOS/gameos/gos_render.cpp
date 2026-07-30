@@ -123,6 +123,63 @@ void refresh_mouse_grab()
 
 static void PrintRenderer(SDL_RendererInfo * info);
 
+//==============================================================================
+// NOFOCUS-HARDEN-1 -- correct-at-creation offscreen geometry.
+//
+// WHY: an agent-launched engine window must never occupy visible desktop area
+// at ANY point in its lifetime. The previous design created the window at
+// options.cfg size in the middle of the desktop and relied on an EXTERNAL
+// python poller (smoke_lib/nofocus.park_window_offscreen, 250ms tick) to move
+// it away afterwards. That guarantees a multi-second desktop-covering flash on
+// every single launch -- measured live at 1719x995 on a 1707x960 desktop --
+// which is precisely the user-visible complaint. Post-hoc repositioning is the
+// wrong shape: the only way for the window to never be seen is for it to never
+// be created anywhere visible.
+//
+// MC2_WINDOW_OFFSCREEN=1 makes the position right at CreateWindow time:
+//   * the SDL window is created HIDDEN at (-32000,-32000) -- so even the
+//     CreateWindowEx call never places an HWND on a visible pixel;
+//   * the position is re-asserted immediately before the single SDL_ShowWindow;
+//   * fullscreen is refused outright (a fullscreen window has no position to
+//     move and would cover the display regardless);
+//   * enforce_window_offscreen() re-asserts it SYNCHRONOUSLY after every later
+//     mode change (resize_window / set_window_fullscreen -- which is how
+//     prefs.applyPrefs()'s SetScreenMode re-issue used to bounce the window
+//     back to centre mid-boot).
+//
+// -32000 is off every physical monitor on a normal multi-mon layout and is
+// what Windows itself uses for minimized-window placeholders. The GL drawable
+// keeps its full size, so glReadPixels/FBO readback captures (the golden
+// visual-capture path) are completely unaffected -- unlike minimizing, which
+// makes SDL throttle and can zero the drawable.
+static const int kOffscreenWindowX = -32000;
+static const int kOffscreenWindowY = -32000;
+
+bool window_offscreen_requested()
+{
+    static int s_cached = -1;
+    if (s_cached < 0) {
+        const char* e = getenv("MC2_WINDOW_OFFSCREEN");
+        s_cached = (e && e[0] && e[0] != '0') ? 1 : 0;
+    }
+    return s_cached != 0;
+}
+
+static void apply_offscreen_position(SDL_Window* w)
+{
+    if (!w || !window_offscreen_requested())
+        return;
+    SDL_SetWindowPosition(w, kOffscreenWindowX, kOffscreenWindowY);
+}
+
+void enforce_window_offscreen(RenderWindowHandle rw_handle)
+{
+    if (!window_offscreen_requested())
+        return;
+    RenderWindow* rw = (RenderWindow*)rw_handle;
+    if (rw)
+        apply_offscreen_position(rw->window_);
+}
 
 //==============================================================================
 void set_verbose(bool is_verbose)
@@ -344,11 +401,28 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // -- the user keeps typing in whatever window was already active.
         // SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN is honored by the Windows
         // backend (ShowWindow SW_SHOWNOACTIVATE); harmless no-op elsewhere.
-        if (gos_CursorControlSuppressed()) {
+        if (gos_CursorControlSuppressed() || window_offscreen_requested()) {
             SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, "1");
         }
+
+        // NOFOCUS-HARDEN-1: geometry correct AT CREATION, not repaired after.
+        // HIDDEN + explicit offscreen origin means the HWND is never mapped to
+        // a visible pixel, not even for the one frame between CreateWindowEx
+        // and the SDL_ShowWindow below.
+        int winX = SDL_WINDOWPOS_CENTERED;
+        int winY = SDL_WINDOWPOS_CENTERED;
+        if (window_offscreen_requested()) {
+            winX = kOffscreenWindowX;
+            winY = kOffscreenWindowY;
+            winFlags |= SDL_WINDOW_HIDDEN;
+            // A fullscreen window has no position to move it out of the way:
+            // it covers the display by definition. Refuse it here so
+            // MC2_WINDOW_OFFSCREEN is self-sufficient and does not depend on
+            // the caller also remembering MC2_WINDOWED.
+            winFlags &= ~(Uint32)(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+        }
         window = SDL_CreateWindow(pwinname ? pwinname : "--",
-                SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, winFlags);
+                winX, winY, width, height, winFlags);
 
         // ISSUE-49 verification diag (existing MC2_RES_DIAG gate): one boot
         // line proving whether the OS window carries the resizable flag.
@@ -375,7 +449,20 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             return NULL;
         }
 
+        // NOFOCUS-HARDEN-1: re-assert the origin immediately before the ONLY
+        // ShowWindow in the engine. SDL_SetWindowDisplayMode above can move a
+        // window; this closes the gap so the first mapped frame is already off
+        // the visible desktop.
+        apply_offscreen_position(window);
         SDL_ShowWindow(window);
+        apply_offscreen_position(window);
+        if (window_offscreen_requested() && getenv("MC2_RES_DIAG")) {
+            int px = 0, py = 0;
+            SDL_GetWindowPosition(window, &px, &py);
+            printf("[RES_DIAG] offscreen window origin=%d,%d size=%dx%d\n",
+                   px, py, width, height);
+            fflush(stdout);
+        }
 
         // Hide the OS cursor. MC2 renders its own in-game cursor sprite, so
         // the default arrow would otherwise double up on top of it.
@@ -626,6 +713,11 @@ bool resize_window(RenderWindowHandle rw_handle, int width, int height)
     SDL_SetWindowSize(rw->window_, width, height);
     rw->width_ = width;
     rw->height_ = height;
+    // NOFOCUS-HARDEN-1: SDL re-centres on resize. Re-assert SYNCHRONOUSLY here
+    // (not from a 250ms external poller) so the window is never observable at a
+    // visible position. This is the path prefs.applyPrefs() -> gos_SetScreenMode
+    // takes during boot, which is what used to undo a one-shot park.
+    apply_offscreen_position(rw->window_);
     if (rw->window_ == g_sdl_window) {
         refresh_mouse_grab();
     }
@@ -639,12 +731,23 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
     RenderWindow* rw = (RenderWindow*)rw_handle;
     assert(rw);
 
+    // NOFOCUS-HARDEN-1: a fullscreen window covers the display by definition --
+    // there is no position that hides it. Under MC2_WINDOW_OFFSCREEN a later
+    // fullscreen request (options.cfg FullScreen=TRUE replayed by
+    // prefs.applyPrefs()) is refused outright rather than granted-then-parked.
+    if (fullscreen && window_offscreen_requested()) {
+        fullscreen = false;
+    }
+
     Uint32 flags = fullscreen ? /*SDL_WINDOW_FULLSCREEN*/ SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
-    
+
     if(0 != SDL_SetWindowFullscreen(rw->window_, flags)) {
         log_error("SDL_SetWindowFullscreen: %s\n", SDL_GetError());
         return false;
     }
+
+    // Leaving fullscreen restores the pre-fullscreen (visible) origin; re-assert.
+    apply_offscreen_position(rw->window_);
 
     if (rw->window_ == g_sdl_window) {
         refresh_mouse_grab();

@@ -60,6 +60,8 @@ from typing import List, Optional, Sequence
 
 __all__ = [
     "NOFOCUS_ENV",
+    "OFFSCREEN_ENV",
+    "SMALL_WINDOW_ENV",
     "allow_foreground",
     "apply_env",
     "startupinfo",
@@ -116,6 +118,27 @@ SMALL_WINDOW_ENV = {
     "MC2_HEIGHT": "480",
 }
 
+#: NOFOCUS-HARDEN-1 -- the actual invariant: an agent-launched engine window
+#: must never occupy visible desktop area at ANY point in its lifetime.
+#:
+#: Small + windowed + unactivated is NOT that. Two holes stayed open:
+#:   (a) SMALL_WINDOW_ENV is setdefault, and the busiest launch paths
+#:       deliberately do NOT set the size (run_visual_capture grades goldens at
+#:       options.cfg resolution; smoke_lib.runner never set it at all), so those
+#:       windows come up desktop-sized -- measured live at 1719x995 on a
+#:       1707x960 desktop;
+#:   (b) even a small window is still ON the user's screen.
+#:
+#: MC2_WINDOW_OFFSCREEN=1 (gos_render.cpp) creates the SDL window HIDDEN at
+#: (-32000,-32000) and re-asserts that origin synchronously after every later
+#: mode change. Nothing is ever mapped to a visible pixel, so the SIZE stops
+#: mattering and golden capture resolution is preserved. This replaces
+#: park_window_offscreen() as the mechanism -- the poller remains only as a
+#: backstop for exes built before this change.
+OFFSCREEN_ENV = {
+    "MC2_WINDOW_OFFSCREEN": "1",
+}
+
 
 def allow_foreground() -> bool:
     """True only when a user-present session explicitly opted in."""
@@ -123,12 +146,21 @@ def allow_foreground() -> bool:
     return bool(v) and v != "0"
 
 
-def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True) -> dict:
+def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
+              offscreen: bool = True) -> dict:
     """Return `env` (or a copy of os.environ) with the no-focus vars applied.
 
     `setdefault` semantics: an explicit caller value always wins, so a test
     that specifically wants cursor grabbing can pass MC2_NO_CURSOR_GRAB=0, and
     a capture harness that grades at 1600x900 can pass MC2_WIDTH/MC2_HEIGHT.
+
+    `offscreen=False` is the ONLY sanctioned way to put an agent-launched
+    engine window on the visible desktop. It exists for the harnesses that
+    screenshot the DESKTOP COMPOSITE (pyautogui/mss) instead of reading the
+    engine's glReadPixels FBO -- an offscreen window contributes no pixels to
+    the composite, so those tools would capture the user's wallpaper. Every
+    such call site is listed in check-background-launch.COMPOSITE_CAPTURE_FILES;
+    converting them to the engine capture path retires the exception.
     """
     out = dict(os.environ if env is None else env)
     if allow_foreground():
@@ -137,6 +169,9 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True) -> dic
         out.setdefault(k, v)
     if small_window:
         for k, v in SMALL_WINDOW_ENV.items():
+            out.setdefault(k, v)
+    if offscreen:
+        for k, v in OFFSCREEN_ENV.items():
             out.setdefault(k, v)
     return out
 
@@ -168,28 +203,32 @@ def popen_kwargs(show_window: bool = False, **extra) -> dict:
 
 def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
                           proc: "object" = None, force: bool = False) -> "object":
-    """Move the child's top-level window off the visible desktop, unactivated.
+    """BACKSTOP ONLY -- move a child's window offscreen if it got created there.
 
-    WHY: STARTUPINFO's SW_SHOWMINNOACTIVE governs only the first
-    ShowWindow(SW_SHOWDEFAULT). SDL calls ShowWindow(hwnd, SW_SHOW) explicitly,
-    so the window IS shown regardless. The engine's NO_ACTIVATION hint
-    downgrades that to SW_SHOWNOACTIVATE -- never focused, but still VISIBLE,
-    painting over whatever the user is looking at.
+    NOFOCUS-HARDEN-1 DEMOTED THIS. It is no longer the mechanism, because
+    polling cannot satisfy the invariant: this thread ticks every 250ms and the
+    window does not even exist at spawn time, so a window created at
+    options.cfg size in the middle of the desktop is VISIBLE for seconds before
+    the first successful reposition. That multi-second desktop-covering flash on
+    every launch is the user-visible complaint, and no tick rate fixes it --
+    correct-at-creation geometry does.
 
-    SetWindowPos with SWP_NOACTIVATE moves it to negative coordinates well
-    outside the virtual desktop. The GL drawable keeps its full size, so
-    glReadPixels screenshots (the visual-verify path) are unaffected -- unlike
-    minimizing, which makes SDL throttle and can zero the drawable.
+    The real fix is `MC2_WINDOW_OFFSCREEN=1` (OFFSCREEN_ENV, applied by
+    apply_env), which makes gos_render.cpp create the SDL window HIDDEN at
+    (-32000,-32000) and re-assert that origin synchronously after every later
+    mode change. This poller now exists solely to cover DEPLOYED EXES BUILT
+    BEFORE that change, where the env var is inert. Delete it once no lane
+    points at a pre-NOFOCUS-HARDEN-1 exe.
 
-    Runs on a daemon thread because the window does not exist at spawn time.
+    Mechanics: SetWindowPos with SWP_NOACTIVATE, to coordinates outside the
+    virtual desktop. The GL drawable keeps its full size, so glReadPixels
+    captures are unaffected -- unlike minimizing, which makes SDL throttle and
+    can zero the drawable.
 
-    OPT-IN (MC2_HARNESS_PARK=1), not default. The default already achieves the
-    user-visible goal: windowed + small + never activated + no mode change
-    (verified live). Parking additionally removes the window from the desktop
-    composite, which BREAKS every harness that screenshots the composite via
-    pyautogui/mss (quick_shot, quick_sweep, smoke_with_screenshots,
-    water_visual_diff, camera_sweep_smoke, capture_baseline) rather than
-    glReadPixels. Promote to default only after those are converted.
+    Runs whenever offscreen operation is wanted (force=True, or
+    MC2_HARNESS_PARK=1). Harnesses that screenshot the DESKTOP COMPOSITE via
+    pyautogui/mss must not park and must not set MC2_WINDOW_OFFSCREEN -- see
+    apply_env(offscreen=False).
     """
     if sys.platform != "win32" or allow_foreground():
         return None
@@ -258,19 +297,32 @@ def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
 
 
 def spawn(argv: Sequence[str], *, show_window: bool = False,
+          offscreen: "Optional[bool]" = None,
           env: "Optional[dict]" = None, **kw) -> "subprocess.Popen":
-    """subprocess.Popen that cannot steal focus, the cursor, or the display."""
-    proc = subprocess.Popen(list(argv), env=apply_env(env),
+    """subprocess.Popen whose window never occupies visible desktop area.
+
+    `offscreen` defaults to `not show_window`: asking for a visible window is
+    already an explicit statement that the desktop is wanted. Pass
+    `offscreen=False` only from a desktop-composite capture harness.
+    """
+    if offscreen is None:
+        offscreen = not show_window
+    proc = subprocess.Popen(list(argv), env=apply_env(env, offscreen=offscreen),
                             **popen_kwargs(show_window=show_window, **kw))
-    if not show_window:
-        park_window_offscreen(proc.pid, proc=proc)
+    if offscreen:
+        # Backstop for exes predating MC2_WINDOW_OFFSCREEN; a current exe is
+        # already offscreen at creation and the poller finds nothing to move.
+        park_window_offscreen(proc.pid, proc=proc, force=True)
     return proc
 
 
 def run(argv: Sequence[str], *, show_window: bool = False,
+        offscreen: "Optional[bool]" = None,
         env: "Optional[dict]" = None, **kw):
-    """subprocess.run that cannot steal focus or the cursor."""
-    return subprocess.run(list(argv), env=apply_env(env),
+    """subprocess.run that cannot steal focus, the cursor, or the desktop."""
+    if offscreen is None:
+        offscreen = not show_window
+    return subprocess.run(list(argv), env=apply_env(env, offscreen=offscreen),
                           **popen_kwargs(show_window=show_window, **kw))
 
 

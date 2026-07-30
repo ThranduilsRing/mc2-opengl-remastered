@@ -37,6 +37,13 @@ void                refresh_mouse_grab      ();
 void                swap_window             (RenderWindowHandle h);
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
+// NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is
+// created off the visible desktop and must be kept there. See gos_render.cpp.
+bool                window_offscreen_requested();
+// Re-assert the offscreen origin after any external window-mode change. No-op
+// unless MC2_WINDOW_OFFSCREEN is set. Synchronous by design: post-hoc POLLING
+// is what let a desktop-sized window flash on screen for seconds.
+void                enforce_window_offscreen(RenderWindowHandle rw_handle);
 bool                is_mode_supported       (int width, int height, int bpp);
 int                 get_window_display_index(RenderContextHandle ctx_h);
 bool                get_desktop_display_mode(int display_index, int* width, int* height, int* bpp);
