@@ -1663,6 +1663,14 @@ def main():
                             # DEFAULT ON; listed so an explicit =0 revert run is
                             # not silently dropped by the ENV passthrough guard.
                             "MC2_OVERLAY_CEMENT_ADOPT",
+                            # TERRAIN-AMBIENT-FLOOR-2: terrain-only ambient floor.
+                            # DEFAULT ON at 0.35; listed so the =0 revert arm (the
+                            # single, complete revert) is not silently dropped by
+                            # the ENV passthrough guard -- an A/B where the "off"
+                            # run is secretly the "on" build is how this whole
+                            # family of measurements goes wrong.
+                            "MC2_TERRAIN_AMBIENT_FLOOR",
+                            "MC2_TERRAIN_AMBIENT_FLOOR_TRACE",
                             "MC2_CEMENT_ATLAS_DUMP",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",

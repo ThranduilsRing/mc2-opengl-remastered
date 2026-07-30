@@ -10388,6 +10388,31 @@ void gos_GetNightState(bool* isNight, float* nightFactor) {
     if (isNight)     *isNight     = s_gosIsNight;
     if (nightFactor) *nightFactor = s_gosNightFactor;
 }
+
+// TERRAIN-AMBIENT-FLOOR-2: daylight level in [0,1] for the terrain ambient
+// floor, pushed from gamecam.cpp once per frame in the same place the night
+// state is pushed. The DECISION lives in GameOS/gameos/utils/terrain_daylight.h
+// (pure, harness-executed); this is only the transport.
+//
+// Deliberately NOT derived here from s_gosIsNight/s_gosNightFactor alone. Those
+// come from Camera::isNight / Camera::nightFactor, which Camera::update()
+// re-derives from lightPitch AFTER camera.cpp:2033 has folded a below-horizon
+// authored pitch into a moon pitch -- so on mc2_05 (authored 270) they report
+// full day with the light overhead. The authored pitch is the signal that
+// survives that fold; see the header.
+//
+// Default 0.0 = fully night = the floor is OFF until something feeds it. A
+// missing feed can only make this change a no-op, never a bright regression.
+static float s_gosTerrainDaylight = 0.0f;
+
+void gos_SetTerrainDaylightLevel(float level) {
+    if (!(level >= 0.0f)) level = 0.0f;   // also catches NaN
+    if (level > 1.0f)     level = 1.0f;
+    s_gosTerrainDaylight = level;
+}
+float gos_GetTerrainDaylightLevel() {
+    return s_gosTerrainDaylight;
+}
 // VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
 // (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
 // no new accessor needed.

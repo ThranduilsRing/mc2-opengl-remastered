@@ -74,6 +74,7 @@ namespace gos_terrain_indirect { void RenderWaterReflectionPass(); }
 #include <cmath>
 #include <cstdlib>
 #include "../RenderCore/SceneLighting.h"  // SCENE-LIGHTING-STATE-1 canonical mirror
+#include "../GameOS/gameos/utils/terrain_daylight.h"  // TERRAIN-AMBIENT-FLOOR-2 daylight gate (pure)
 #include "../GameOS/gameos/vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-6: gosFX flush IsHUD route
 extern float g_iblShStrength;             // static-prop SH ambient slider (gos_static_prop_batcher.cpp)
 
@@ -473,6 +474,20 @@ void GameCamera::render (void)
 			{
 				extern void gos_SetNightState(bool, float);
 				gos_SetNightState(eye->getIsNight(), eye->getNightFactor());
+			}
+
+			// TERRAIN-AMBIENT-FLOOR-2: daylight level for the terrain ambient
+			// floor. Same push point, same cadence as the night state above, but
+			// keyed on the AUTHORED sun pitch min the runtime night state --
+			// eye->getIsNight()/getNightFactor() alone report full day on the
+			// below-horizon missions (mc2_05/mc2_21 author pitch 270) because
+			// camera.cpp:2033 folds them to a moon overhead first. All of the
+			// decision is in terrain_daylight.h so it can be executed by
+			// tools/terrain_daylight_harness without launching anything.
+			{
+				extern void gos_SetTerrainDaylightLevel(float);
+				gos_SetTerrainDaylightLevel(terrain_daylight::level(
+					eye->getDayLightPitch(), eye->getIsNight(), eye->getNightFactor()));
 			}
 
 			// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).

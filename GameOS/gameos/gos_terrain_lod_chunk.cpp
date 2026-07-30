@@ -834,6 +834,8 @@ extern int   g_terrainMaterialProfile;   // global; 0 = legacy
 static GLint s_locLightingV1     = -1;
 static GLint s_locLightingV2     = -1;
 static GLint s_locCliffShadowFloor = -1;  // CLIFF SHADOW FLOOR
+static GLint s_locAmbientFloor     = -1;  // TERRAIN-AMBIENT-FLOOR-2
+static GLint s_locAmbientDayGate   = -1;  // TERRAIN-AMBIENT-FLOOR-2
 static GLint s_locNfhStrength    = -1;
 static GLint s_locUseRockSlopeBias = -1;  // TERRAIN-SLOPE-BIAS-VISUAL-1 (B4a)
 static GLint s_locRockSlopeBiasStr = -1;
@@ -955,6 +957,10 @@ extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
 extern void   gos_GetTerrainLightDir(float* x, float* y, float* z);
 // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (gameos.hpp).
 extern void   gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
+// TERRAIN-AMBIENT-FLOOR-2: daylight level (gameos_graphics.cpp), pushed by
+// gamecam.cpp from terrain_daylight.h. Night state is the TRACE input only.
+extern float  gos_GetTerrainDaylightLevel();
+extern void   gos_GetNightState(bool* isNight, float* nightFactor);
 
 // ---------------------------------------------------------------------------
 // Patch geometry cache (Phase 4).
@@ -1332,6 +1338,8 @@ void gos_TerrainLodChunk_Init()
             s_locLightingV1  = glGetUniformLocation(s_terrainProgram, "terrainLightingV1Strength");
             s_locLightingV2  = glGetUniformLocation(s_terrainProgram, "terrainLightingV2ShadowFillFloor");
             s_locCliffShadowFloor = glGetUniformLocation(s_terrainProgram, "u_terrainCliffShadowFloor");
+            s_locAmbientFloor     = glGetUniformLocation(s_terrainProgram, "u_terrainAmbientFloor");   // TERRAIN-AMBIENT-FLOOR-2
+            s_locAmbientDayGate   = glGetUniformLocation(s_terrainProgram, "u_terrainAmbientDayGate"); // TERRAIN-AMBIENT-FLOOR-2
             s_locNfhStrength = glGetUniformLocation(s_terrainProgram, "terrainNormalsFromHeightStrength");
             s_locUseRockSlopeBias = glGetUniformLocation(s_terrainProgram, "useRockSlopeBias");
             s_locRockSlopeBiasStr = glGetUniformLocation(s_terrainProgram, "rockSlopeBiasStrength");
@@ -2852,6 +2860,58 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 if (cf < 0.0f) cf = 0.0f;
                 if (cf > 1.0f) cf = 1.0f;
                 glUniform1f(s_locCliffShadowFloor, cf);
+            }
+        }
+        // ── TERRAIN-AMBIENT-FLOOR-2 (MC2_TERRAIN_AMBIENT_FLOOR) — DEFAULT-ON at 0.35 ──
+        //
+        // Terrain receives NO ambient term at all: the hemisphere fill two
+        // uniforms above is default-OFF (MC2_TERRAIN_LIGHTING_V1), so terrain is
+        // exactly `baseColor * normalLight * shadow`, while static props standing
+        // on it get ambient through SH-IBL. That is what bottoms out daylight
+        // ground on mc2_03 beside the (correctly, user-ratified) flat-lit pads.
+        // The frag adds `baseColor * ambCol * floor * ...`, albedo-scaled so dark
+        // materials stay proportionally dark, masked by the flat-lit share so
+        // concrete AND paved-overlay pavement are bit-identical.
+        //
+        // FULL REVERT IS THIS ONE GATE: MC2_TERRAIN_AMBIENT_FLOOR=0 uploads 0.0,
+        // the frag block is skipped, output is byte-identical. There is no second
+        // gate to remember -- the predecessor slice shipped two (a diffuse wrap
+        // as well) and documented a one-gate revert that left half the change
+        // running. Bounded 0..2; junk/NaN clamps to 0. Resolved once at start.
+        {
+            static const char* s_ambEnv = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
+            static const float s_amb    = []() {
+                const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
+                if (!e || !e[0]) return 0.35f;          // DEFAULT-ON
+                float v = (float)atof(e);
+                if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
+                if (v > 2.0f)     v = 2.0f;
+                return v;
+            }();
+            if (s_locAmbientFloor >= 0) glUniform1f(s_locAmbientFloor, s_amb);
+            // Daylight level, computed by terrain_daylight.h from the AUTHORED sun
+            // pitch min the engine night state and pushed per frame by gamecam.cpp.
+            // 0 on every night mission in the shipping data -> the block is skipped
+            // there -> night is byte-identical.
+            const float dayGate = gos_GetTerrainDaylightLevel();
+            if (s_locAmbientDayGate >= 0) glUniform1f(s_locAmbientDayGate, dayGate);
+            // MC2_TERRAIN_AMBIENT_FLOOR_TRACE: one line, first upload. Prints the
+            // resolved floor, the day gate actually uploaded, and both raw inputs,
+            // so "did the gate engage on this mission and why" is answerable from
+            // a log instead of from a capture diff.
+            static bool s_traced = false;
+            if (!s_traced && getenv("MC2_TERRAIN_AMBIENT_FLOOR_TRACE")) {
+                s_traced = true;
+                bool  isNight = false; float nf = 0.0f;
+                gos_GetNightState(&isNight, &nf);
+                float lx = 0.0f, ly = 0.0f, lz = 0.0f;
+                gos_GetTerrainLightDir(&lx, &ly, &lz);
+                fprintf(stderr,
+                        "[TERRAIN_AMBIENT_FLOOR v2] floor=%.3f dayGate=%.4f env=%s "
+                        "runtime_isNight=%d runtime_nightFactor=%.3f runtime_lightDirZ=%.4f\n",
+                        s_amb, dayGate, s_ambEnv ? s_ambEnv : "(unset)",
+                        isNight ? 1 : 0, nf, lz);
+                fflush(stderr);
             }
         }
         if (s_locNfhStrength >= 0) glUniform1f(s_locNfhStrength, gos_GetTerrainNormalsFromHeightStrength());
