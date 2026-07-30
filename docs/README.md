@@ -23,6 +23,7 @@
 - [docs/render-contract.md](render-contract.md)
 - [docs/cxx17-coding-rules.md](cxx17-coding-rules.md)
 - [docs/disciplines.md](disciplines.md)
+- [docs/deploy-isolation.md](deploy-isolation.md) — hardlinked deploy dirs: why a "free" lane dir can be someone else's install
 - [docs/known_issues.md](known_issues.md)
 
 ## Ledgers

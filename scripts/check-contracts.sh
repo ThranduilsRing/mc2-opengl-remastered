@@ -302,6 +302,28 @@ run_check "tgl_load_selftest"  "sh scripts/check-tgl-load-callers.sh --self-test
 run_check "disk_guard_selftest" "py -3 scripts/check-disk-space.py --selftest"
 
 # ---------------------------------------------------------------------------
+# LINK-GUARD-1 (2026-07-30 shared-install incident)
+# ---------------------------------------------------------------------------
+# Four deploy dirs under A:/Games/mc2-opengl shared ~1530 hardlinked files each
+# -- mc2.exe, the whole shader tree, every DLL, and .mc2_deploy_lane.json (the
+# lane lock itself). deploy_payload.py copies with shutil.copyfile, which opens
+# the destination "wb" and so TRUNCATES THE SHARED INODE instead of replacing
+# the directory entry: deploying to one dir rewrote the other three in place.
+# Every existing guard was path-keyed and reported each dir free.
+#
+# Same registration shape as DISK-GUARD-1 above, for the same reason: ONLY the
+# selftests run here. A live scan of A:/Games/mc2-opengl is machine-specific
+# and would make this aggregator flaky on any other checkout, while the
+# selftests are what actually prove the guard fires -- they build real
+# hardlinks in a temp dir, assert the shared inode is detected and the peer
+# named, assert read-only data sharing is NOT flagged (it is the cheap-install
+# mechanism, not the bug), and assert a bad path fails closed. The live checks
+# live at the call sites (deploy_payload.py, deploy_status(), register_lane()).
+# Read-only outside a temp dir, no build, sub-second.
+run_check "link_guard_selftest"  "py -3 scripts/check-hardlink-isolation.py --selftest"
+run_check "iso_deploy_selftest"  "py -3 scripts/make-isolated-deploy.py --selftest"
+
+# ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------
 echo "====================================================================="
