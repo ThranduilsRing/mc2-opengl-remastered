@@ -113,7 +113,14 @@ def launch():
         return
     # DETACHED_PROCESS (0x8) preserved; nofocus adds MC2_NO_CURSOR_GRAB=1 +
     # a non-activating STARTUPINFO so the window never takes focus.
-    nofocus.spawn([GAME_EXE], cwd=GAME_DIR, creationflags=0x00000008)
+    # NOFOCUS-FINISH-1: offscreen=False. This tool is the synthetic-input
+    # driver -- its clicks target SCREEN coordinates and its `screenshot` verb
+    # is pyautogui (the DESKTOP COMPOSITE), neither of which can reach a window
+    # parked at (-32000,-32000). Declaring it makes nofocus REFUSE the launch
+    # unless MC2_HARNESS_ALLOW_FOREGROUND=1, which is the correct outcome:
+    # driving the game by synthetic input IS a user-present activity.
+    nofocus.spawn([GAME_EXE], cwd=GAME_DIR, creationflags=0x00000008,
+                  offscreen=False)
     print("launched")
 
 

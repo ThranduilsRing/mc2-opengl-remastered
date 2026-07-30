@@ -82,6 +82,23 @@ FORCED_ENV: dict = {
     # STARTUPINFO. Hard override at both engine decision points; see
     # smoke_lib/nofocus.py.
     "MC2_WINDOWED": "1",
+    # NOFOCUS-FINISH-1: and never occupy visible desktop area either. WINDOWED
+    # only demotes fullscreen to a window the size of options.cfg ResolutionX/Y
+    # -- measured live at 1719x995 on a 1707x960 desktop, i.e. indistinguishable
+    # from fullscreen to the user, which is the actual complaint.
+    #
+    # FORCED, not SOFT, and set HERE rather than inherited from
+    # nofocus.OFFSCREEN_ENV: run_one() below builds its own STARTUPINFO and its
+    # own subprocess.Popen and never calls nofocus.apply_env(), so the nofocus
+    # default cannot reach the child. This is the tier-1 smoke path -- the most
+    # frequently launched engine process in the project.
+    #
+    # Not in tension with cfg.show_window: an offscreen window is neither
+    # MINIMIZED nor HIDDEN, and gameosmain.cpp's background throttle keys on
+    # exactly those two SDL flags (`SDL_GetWindowFlags & (MINIMIZED|HIDDEN)`),
+    # so a perf run still measures real throughput. Pixel-neutral: the GL
+    # drawable keeps its full size.
+    "MC2_WINDOW_OFFSCREEN": "1",
 }
 
 SOFT_ENV: dict = {

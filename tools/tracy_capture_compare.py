@@ -228,6 +228,25 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         # harness intent; a caller overriding via --env still wins downstream.
         "MC2_WINDOWED": "1",
         "MC2_NO_CURSOR_GRAB": "1",
+        # NOFOCUS-FINISH-1: and never occupy visible desktop area. This harness
+        # was invisible to BOTH guards until now -- it hand-rolls its own
+        # STARTUPINFO and its own Popen (no nofocus), and its argv name
+        # `game_cmd` was not in check-background-launch's ENGINE_ARGV heuristic,
+        # so it never appeared in the launch inventory either. Combined with
+        # SW_SHOWNOACTIVATE below that made it the one harness that put a
+        # genuinely VISIBLE, options.cfg-sized window on the user's desktop for
+        # the entire capture.
+        #
+        # Safe for the measurement, which is the whole point of this file:
+        # gameosmain.cpp's 10ms background throttle keys on
+        # `SDL_GetWindowFlags & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)`, and
+        # an offscreen-but-shown window sets NEITHER -- so
+        # Frame.BackgroundThrottle still never fires and
+        # assert_window_was_visible() still passes. Offscreen is a POSITION, not
+        # a visibility state. Same reason the VK arm is unaffected: the
+        # swapchain surface extent comes from the drawable, which keeps its full
+        # size, so the VK present path does not fail-soft to GL.
+        "MC2_WINDOW_OFFSCREEN": "1",
         # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
         # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
         # so nothing about the run can be verified afterwards.

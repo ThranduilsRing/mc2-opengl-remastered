@@ -98,7 +98,17 @@ def main():
     # show_window=True keeps the window VISIBLE (SW_SHOWNOACTIVATE) rather than
     # minimized, because this tool grabs the client rect -- a minimized window
     # has no on-screen pixels to grab. It still never takes focus.
+    #
+    # NOFOCUS-FINISH-1: show_window is no longer sufficient. It used to imply
+    # offscreen=False via `offscreen = not show_window`, but those two are
+    # orthogonal (a window can be shown AND parked at (-32000,-32000)), and the
+    # coupling was silently putting perf-run windows back on the user's desktop.
+    # offscreen now defaults True everywhere, so this tool -- which reads the
+    # DESKTOP pixels under the window rect via ImageGrab -- has to say so.
+    # nofocus REFUSES the launch unless MC2_HARNESS_ALLOW_FOREGROUND=1, which is
+    # correct: this oracle genuinely requires the user's visible desktop.
     p = nofocus.spawn([exe], cwd=workdir, env=env, show_window=True,
+                      offscreen=False,
                       stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     print(f"[menu_oracle] launched pid={p.pid}, waiting {args.wait}s", flush=True)
     result = {"mean": -1.0, "nonblack_frac": -1.0, "verdict": "INCONCLUSIVE"}

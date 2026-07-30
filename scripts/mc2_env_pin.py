@@ -96,6 +96,18 @@ HARNESS_CONTROL = frozenset({
     # Never ClipCursor, never warp the pointer, never activate the window
     # (drives SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN engine-side).
     "MC2_NO_CURSOR_GRAB",
+    # NOFOCUS-FINISH-1: never occupy visible desktop area at all. The four
+    # above make the window small, windowed and unactivated -- it is still ON
+    # the user's screen. Only this one keeps it off (gos_render.cpp creates it
+    # hidden at (-32000,-32000) and re-asserts that origin after every mode
+    # change). It was MISSING here, and because this policy is deny-by-default,
+    # scripts/run_visual_capture.py -- which builds its child env through
+    # build_pinned_env() rather than nofocus.apply_env() -- delivered an inert
+    # var to the engine and fell back to the 250ms external poller. That is
+    # precisely the multi-second desktop-covering flash NOFOCUS-HARDEN-1 exists
+    # to delete. Pixel-neutral: the GL drawable keeps its full size, so golden
+    # capture resolution is unchanged (unlike MC2_WIDTH/MC2_HEIGHT below).
+    "MC2_WINDOW_OFFSCREEN",
 })
 
 #: Declaration channel for PROGRAMMATIC callers.

@@ -157,8 +157,13 @@ def run_mission(exe: Path, mission: str, duration: int, screenshot_at: int,
                  "--duration", str(duration)]
     print(f"[smoke] launching {mission}: {' '.join(proc_args)}")
     t0 = time.time()
+    # NOFOCUS-FINISH-1: take_screenshot() above is pyautogui (DESKTOP
+    # COMPOSITE), which sees nothing of a window parked at (-32000,-32000) --
+    # so declare offscreen=False. nofocus then REFUSES the launch unless
+    # MC2_HARNESS_ALLOW_FOREGROUND=1 instead of attaching wallpaper frames to a
+    # smoke report. Listed in check-background-launch.COMPOSITE_CAPTURE_FILES.
     proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
-                         cwd=str(exe.parent), env=env)
+                         cwd=str(exe.parent), env=env, offscreen=False)
 
     # Wait until screenshot point, with a cursor re-park midway to be safe.
     time.sleep(max(0, screenshot_at - 5))

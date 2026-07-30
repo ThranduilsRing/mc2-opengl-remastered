@@ -324,8 +324,18 @@ def run_capture(exe: Path, preset_name: str, preset: dict,
     # alone does not stop an SDL app from activating its window.
     print(f"[baseline] preset={preset_name} mission={mission} warmup={warmup}s")
     t0 = time.time()
+    # NOFOCUS-FINISH-1: screenshot_to() above grades the DESKTOP COMPOSITE
+    # (pyautogui), which sees nothing of a window parked at (-32000,-32000).
+    # This is the highest-consequence instance of that hazard in the tree -- the
+    # output here becomes a CHECKED-IN VISUAL BASELINE, so a wallpaper frame
+    # would silently become the reference every later comparison is graded
+    # against. Declaring offscreen=False makes nofocus REFUSE the launch unless
+    # MC2_HARNESS_ALLOW_FOREGROUND=1. Listed in
+    # check-background-launch.COMPOSITE_CAPTURE_FILES; porting this to the
+    # engine readback path (MC2_VISUAL_CAPTURE, as run_visual_capture.py does)
+    # retires the exception and makes the harness agent-runnable again.
     proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
-                         cwd=str(exe.parent), env=env)
+                         cwd=str(exe.parent), env=env, offscreen=False)
 
     time.sleep(max(0, warmup - 5))
     park_mouse_center()

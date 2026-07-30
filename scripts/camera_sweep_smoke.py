@@ -116,8 +116,13 @@ def run(exe: Path, mission: str, duration: int, screenshot_at: int,
             "--duration", str(duration)]
     print(f"[camsweep] launch {mission}: {' '.join(args)}")
     t0 = time.time()
+    # NOFOCUS-FINISH-1: this harness grades the DESKTOP COMPOSITE (pyautogui
+    # below), which sees nothing of a window parked at (-32000,-32000) -- so it
+    # must declare offscreen=False. nofocus then REFUSES the launch unless
+    # MC2_HARNESS_ALLOW_FOREGROUND=1, rather than letting the sweep save the
+    # user's wallpaper. Listed in check-background-launch.COMPOSITE_CAPTURE_FILES.
     proc = nofocus.spawn(args, stdout=log_fp, stderr=subprocess.STDOUT,
-                         cwd=str(exe.parent), env=env)
+                         cwd=str(exe.parent), env=env, offscreen=False)
     # Mission load + stabilize, then deliberate camera motion.
     time.sleep(9)
     _foreground_mc2()

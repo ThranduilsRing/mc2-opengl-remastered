@@ -51,10 +51,14 @@ log_path = OUT_DIR / f"{MISSION}-{LABEL}.log"
 log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
 print(f"[sweep] launching mc2.exe mission={MISSION} duration={DURATION}s label={LABEL} times={TIMES}")
+# NOFOCUS-FINISH-1: the grabs below are pyautogui (DESKTOP COMPOSITE), which see
+# nothing of a window parked at (-32000,-32000) -- so declare offscreen=False.
+# nofocus then REFUSES the launch unless MC2_HARNESS_ALLOW_FOREGROUND=1 instead
+# of writing a timed series of wallpaper frames.
 proc = nofocus.spawn(
     [str(EXE), "--profile", "stock", "--mission", MISSION, "--duration", str(DURATION)],
     stdout=log_fp, stderr=subprocess.STDOUT, env=env,
-    cwd=str(EXE.parent),
+    cwd=str(EXE.parent), offscreen=False,
 )
 
 # Window-locator helper. BACKGROUND-SMOKE-1: the raise is a no-op unless

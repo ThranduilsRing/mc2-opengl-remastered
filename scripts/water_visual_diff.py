@@ -56,10 +56,16 @@ def run_and_screenshot(mode_label, fast_path: bool, mission="mc2_01", wait_sec=3
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
     print(f"[{mode_label}] launching mc2.exe (fastpath={fast_path}) for {mission}")
+    # NOFOCUS-FINISH-1: take_screenshot below is pyautogui (DESKTOP COMPOSITE),
+    # which sees nothing of a window parked at (-32000,-32000) -- so declare
+    # offscreen=False. Without it BOTH arms of this A/B would capture the same
+    # wallpaper and the diff would read "no difference", which is the worst
+    # possible failure for a comparison harness. nofocus REFUSES the launch
+    # unless MC2_HARNESS_ALLOW_FOREGROUND=1.
     proc = nofocus.spawn(
         [str(EXE), "--profile", "stock", "--mission", mission, "--duration", str(wait_sec + 10)],
         stdout=log_fp, stderr=subprocess.STDOUT, env=env,
-        cwd=str(EXE.parent),
+        cwd=str(EXE.parent), offscreen=False,
     )
 
     print(f"[{mode_label}] sleeping {wait_sec}s to let mission load + stabilize...")

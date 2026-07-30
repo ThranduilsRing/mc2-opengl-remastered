@@ -287,6 +287,28 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     for _k, _v in nofocus.NOFOCUS_ENV.items():
         harness_sets.setdefault(_k, _v)
 
+    # NOFOCUS-FINISH-1: deliver MC2_WINDOW_OFFSCREEN too. This is the busiest
+    # capture path in the project and it was the one still exposed: it builds
+    # its child env through env_pin.build_pinned_env() rather than
+    # nofocus.apply_env(), env_pin is deny-by-default, and MC2_WINDOW_OFFSCREEN
+    # was not in its HARNESS_CONTROL passthrough -- so the engine-side fix
+    # arrived inert and the only thing left was the 250ms park poller, which
+    # cannot fire before the window exists. With MC2_WIDTH/MC2_HEIGHT
+    # deliberately unset here (goldens are graded at options.cfg resolution),
+    # that window comes up desktop-sized. This is the fix for the flash, not
+    # the backstop for it.
+    #
+    # Free of pixel consequences: the GL drawable keeps its full size, and this
+    # runner reads pixels via the engine's glReadPixels FBO readback, not the
+    # desktop composite -- same reason park_window_offscreen(force=True) below
+    # is safe here and is not safe in the pyautogui harnesses.
+    #
+    # --show-window is the operator saying "I am here and I want to watch", so
+    # it opts out, exactly as it already does for the parker below.
+    if not show_window:
+        for _k, _v in nofocus.OFFSCREEN_ENV.items():
+            harness_sets.setdefault(_k, _v)
+
     env, env_record = env_pin.build_pinned_env(harness_sets, declared_env)
     warn = env_pin.format_warning(env_record)
     if warn:

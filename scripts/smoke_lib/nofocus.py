@@ -46,7 +46,12 @@ ESCAPE HATCH
 an interactive, user-present session. It is OFF by default and nothing in the
 tree sets it. `show_window=True` asks for a visible (still non-activating)
 window -- used by perf runs, because SW_SHOWMINNOACTIVE makes SDL throttle a
-minimized window to ~100fps and Avg FPS then is not GPU throughput.
+minimized window to ~100fps and Avg FPS then is not GPU throughput. It does
+NOT ask for the visible DESKTOP: `show_window` and `offscreen` are orthogonal
+(see spawn()), and an offscreen window is neither MINIMIZED nor HIDDEN, so it
+is not throttled. Only `offscreen=False` asks for desktop area, only a
+desktop-composite capture harness has a reason to, and only a user-present
+session is granted it -- otherwise `apply_env` raises DesktopOccupancyRefused.
 
 Enforced by `scripts/check-background-launch.py` (wired into check-contracts).
 """
@@ -59,6 +64,7 @@ import time
 from typing import List, Optional, Sequence
 
 __all__ = [
+    "DesktopOccupancyRefused",
     "NOFOCUS_ENV",
     "OFFSCREEN_ENV",
     "SMALL_WINDOW_ENV",
@@ -72,6 +78,24 @@ __all__ = [
     "set_foreground_window",
     "set_cursor_pos",
 ]
+
+class DesktopOccupancyRefused(RuntimeError):
+    """A launch asked for a window ON the user's visible desktop. Refused.
+
+    NOFOCUS-FINISH-1. `apply_env(offscreen=False)` is the one sanctioned way to
+    ask for that, and it exists only for the DESKTOP-COMPOSITE capture
+    harnesses (pyautogui / mss / PIL.ImageGrab), which read the input desktop's
+    pixels and therefore get nothing but wallpaper from an offscreen window.
+
+    The request is granted ONLY in a user-present session
+    (`MC2_HARNESS_ALLOW_FOREGROUND=1`), because the invariant an agent lane
+    must not be able to waive is exactly this one: an agent-launched engine
+    window may not occupy visible desktop area at any point in its lifetime.
+    So a composite harness in an agent run does not silently bless the user's
+    wallpaper as a golden -- it aborts here, before the engine starts, with a
+    message that names the two real options.
+    """
+
 
 # ShowWindow constants (winuser.h).
 SW_HIDE = 0
@@ -154,17 +178,43 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
     that specifically wants cursor grabbing can pass MC2_NO_CURSOR_GRAB=0, and
     a capture harness that grades at 1600x900 can pass MC2_WIDTH/MC2_HEIGHT.
 
-    `offscreen=False` is the ONLY sanctioned way to put an agent-launched
-    engine window on the visible desktop. It exists for the harnesses that
-    screenshot the DESKTOP COMPOSITE (pyautogui/mss) instead of reading the
-    engine's glReadPixels FBO -- an offscreen window contributes no pixels to
-    the composite, so those tools would capture the user's wallpaper. Every
-    such call site is listed in check-background-launch.COMPOSITE_CAPTURE_FILES;
-    converting them to the engine capture path retires the exception.
+    `offscreen=False` DECLARES that this harness needs the window on the
+    visible desktop. It exists for the harnesses that screenshot the DESKTOP
+    COMPOSITE (pyautogui / mss / PIL.ImageGrab) instead of reading the engine's
+    glReadPixels FBO -- an offscreen window contributes no pixels to the
+    composite, so those tools would otherwise save the user's WALLPAPER as a
+    golden and grade it. Every such call site is listed (with its reason) in
+    `check-background-launch.COMPOSITE_CAPTURE_FILES`, and RULE 6/RULE 7 there
+    keep that list honest in both directions: a composite harness that does not
+    declare `offscreen=False` fails the build, and a non-composite file that
+    does fails it too. Converting a harness to the engine capture path
+    (MC2_VISUAL_CAPTURE / MC2_SCREENSHOT_SOURCE=backbuffer) retires its entry.
+
+    Declaring it is not the same as being granted it. In an agent session the
+    request RAISES `DesktopOccupancyRefused`: a wallpaper golden and a stolen
+    desktop are both unacceptable, so the run stops instead of picking one.
+    `MC2_HARNESS_ALLOW_FOREGROUND=1` -- the existing, OFF-by-default,
+    user-present opt-in that nothing in the tree sets -- is what grants it.
     """
     out = dict(os.environ if env is None else env)
     if allow_foreground():
+        # User-present session: the human asked to see the game, so none of the
+        # hands-off policy applies (and `offscreen` is moot -- nothing below runs).
         return out
+    if not offscreen:
+        # Refuse BEFORE anything is spawned or established: there is no partial
+        # state to unwind, and the message is the whole point.
+        raise DesktopOccupancyRefused(
+            "this launch asked for offscreen=False, i.e. an engine window ON "
+            "the user's visible desktop. That is refused in an agent session. "
+            "It is only reachable with MC2_HARNESS_ALLOW_FOREGROUND=1 (a "
+            "user-present session). If you are here because a pyautogui/mss/"
+            "ImageGrab screenshot came back as wallpaper: that is the same "
+            "defect seen from the other side -- port the harness to the engine "
+            "readback path (MC2_VISUAL_CAPTURE=1 or "
+            "MC2_SCREENSHOT_SOURCE=backbuffer, see scripts/run_visual_capture.py "
+            "and scripts/mech_shot.py), which reads the GL drawable and is "
+            "unaffected by where the window sits.")
     for k, v in NOFOCUS_ENV.items():
         out.setdefault(k, v)
     if small_window:
@@ -301,12 +351,28 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
           env: "Optional[dict]" = None, **kw) -> "subprocess.Popen":
     """subprocess.Popen whose window never occupies visible desktop area.
 
-    `offscreen` defaults to `not show_window`: asking for a visible window is
-    already an explicit statement that the desktop is wanted. Pass
-    `offscreen=False` only from a desktop-composite capture harness.
+    `show_window` and `offscreen` are ORTHOGONAL, and conflating them is a
+    defect this function used to have (`offscreen = not show_window`).
+
+      * `show_window` picks the STARTUPINFO ShowWindow verb: SW_SHOWNOACTIVATE
+        instead of SW_SHOWMINNOACTIVE. Its only job is to keep the window out
+        of the MINIMIZED state, because gameosmain.cpp throttles the whole
+        frame loop by 10ms when `SDL_GetWindowFlags & (MINIMIZED|HIDDEN)` --
+        so a minimized run measures a sleep, not the renderer.
+      * `offscreen` decides WHERE the window is: MC2_WINDOW_OFFSCREEN pins it
+        at (-32000,-32000). That flag is neither MINIMIZED nor HIDDEN, so an
+        offscreen window does NOT throttle.
+
+    A perf run therefore wants BOTH -- visible-but-parked-offscreen is full
+    throughput AND zero desktop pixels -- which the old coupling made
+    unexpressible: `show_window=True` silently put a full options.cfg-sized
+    window back on the user's screen (tools/perf_snapshot.py:106,
+    tools/menu_oracle.py:101). `offscreen` therefore defaults to True
+    unconditionally; only a desktop-composite capture harness passes False,
+    and only a user-present session is granted it (see apply_env).
     """
     if offscreen is None:
-        offscreen = not show_window
+        offscreen = True
     proc = subprocess.Popen(list(argv), env=apply_env(env, offscreen=offscreen),
                             **popen_kwargs(show_window=show_window, **kw))
     if offscreen:
@@ -319,9 +385,13 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
 def run(argv: Sequence[str], *, show_window: bool = False,
         offscreen: "Optional[bool]" = None,
         env: "Optional[dict]" = None, **kw):
-    """subprocess.run that cannot steal focus, the cursor, or the desktop."""
+    """subprocess.run that cannot steal focus, the cursor, or the desktop.
+
+    Same orthogonality as spawn(): `offscreen` defaults True regardless of
+    `show_window`.
+    """
     if offscreen is None:
-        offscreen = not show_window
+        offscreen = True
     return subprocess.run(list(argv), env=apply_env(env, offscreen=offscreen),
                           **popen_kwargs(show_window=show_window, **kw))
 
