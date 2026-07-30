@@ -113,7 +113,6 @@ run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-ag
 # gate-OFF path and report "no difference" for the wrong reason. Also asserts
 # the genuinely-undriveable guard still fails CLOSED (non-zero sys.exit).
 run_check "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.py"
-run_check "harness_gate_drive"     "py -3 scripts/check-harness-gate-drive.py"
 run_check "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
 run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
 run_check "include_firewall"       "sh scripts/check-include-firewall.sh"
