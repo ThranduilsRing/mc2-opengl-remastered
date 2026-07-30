@@ -441,7 +441,36 @@ def assert_light(spec, snaps, cmd_file, ack, proc):
     return True, detail
 
 
+def assert_mission(spec, snaps, cmd_file, ack, proc):
+    """Assert on mission_status fields. NOTE: `expect` only substring-matches the
+    ACK line, never the readback payload, so a mission-state check must come
+    through here (0=mis_PLAYING, 1=LOST_BIG, 3=DRAW, 5=WIN_BIG)."""
+    _, body = query(cmd_file, ack, proc, "mission_status")
+    txt = " ".join(body)
+    got = {}
+    for key, pat in (("status", r"\bstatus=(-?\d+)"),
+                     ("frame", r"frame=(\d+)"),
+                     ("movers", r"movers=(-?\d+)"),
+                     ("paused", r"paused=(\d)"),
+                     ("objectives", r"objectives: status=(-?\d+)")):
+        m = re.search(pat, txt)
+        if m:
+            got[key] = int(m.group(1))
+    if not got:
+        return False, "could not parse mission_status payload: %r" % txt[:160]
+    problems = []
+    for key in ("status", "objectives", "paused"):
+        if key in spec and got.get(key) != int(spec[key]):
+            problems.append("%s=%s want %s" % (key, got.get(key), spec[key]))
+    if "min_frame" in spec and got.get("frame", -1) < int(spec["min_frame"]):
+        problems.append("frame=%s < %s" % (got.get("frame"), spec["min_frame"]))
+    detail = "mission_status %s" % got
+    return (not problems), (detail if not problems
+                            else detail + " FAILED: " + "; ".join(problems))
+
+
 ASSERTS = {
+    "assert_mission": assert_mission,
     "assert_moved": assert_moved,
     "assert_hp": assert_hp,
     "assert_pos": assert_pos,

@@ -416,6 +416,8 @@ bool showFrameRate = false;
 bool Mission::terminationCounterStarted = false;
 double Mission::missionTerminationTime = -1.0;
 unsigned long Mission::terminationResult = mis_PLAYING;
+// GAMEPLAY-DRIVER-2: see mission.h. mis_PLAYING == unarmed.
+unsigned long Mission::forcedTerminationResult = mis_PLAYING;
 
 extern float OneOverProcessorSpeed;
 extern PriorityQueuePtr	openList;
@@ -1274,6 +1276,14 @@ long Mission::update (void)
 					return(terminationResult = 9999);
 				if (!MPlayer)
 					terminationResult = missionResult;
+				// GAMEPLAY-DRIVER-2: re-assert a forced outcome. The line above
+				// is the documented point where the mission brain trashes
+				// terminationResult; a forced result set from the command
+				// channel would otherwise live exactly one frame.
+				if (forcedTerminationResult != mis_PLAYING) {
+					terminationResult = forcedTerminationResult;
+					terminationCounterStarted = true;
+				}
 			}
 		}
 
@@ -1913,6 +1923,7 @@ long Mission::getStatus (void) {
 void Mission::forceTerminate (unsigned long result) {
 
 	terminationResult = result;
+	forcedTerminationResult = result;   // survive the mission brain's per-frame write
 	terminationCounterStarted = true;
 	// The authored callers use actualTime + 5.0 to let the objective-results
 	// GUI play out. Fire immediately instead -- the update() guard still waits
@@ -2950,6 +2961,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// Always reset turn at scenario start
 	turn = 0;
 	terminationCounterStarted = 0;
+	// GAMEPLAY-DRIVER-2: scope a forced outcome to the mission that forced it.
+	forcedTerminationResult = mis_PLAYING;
 
 	#ifdef LAB_ONLY
 	x=GetCycles();

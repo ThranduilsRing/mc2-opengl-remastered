@@ -200,6 +200,17 @@ class Mission
 		// result: one of mis_PLAYER_WIN_BIG / mis_PLAYER_LOST_BIG / etc.
 		void forceTerminate (unsigned long result);
 
+		// GAMEPLAY-DRIVER-2: sticky latch for forceTerminate. mis_PLAYING (0)
+		// == unarmed. Needed because the mission ABL brain re-writes
+		// terminationResult from its return value EVERY frame
+		// (mission.cpp, "if (!MPlayer) terminationResult = missionResult;" --
+		// the site the neighbouring comment calls "mission brain frequently
+		// trashes the termination result"). Without the latch a forced result
+		// survived exactly one frame: end_mission acked ok and mission_status
+		// still read status=0 six seconds later. Re-asserted immediately after
+		// the brain runs.
+		static unsigned long forcedTerminationResult;
+
 		unsigned long					numObjectives;
 		ObjectivePtr					objectives;
 		float						m_timeLimit;
