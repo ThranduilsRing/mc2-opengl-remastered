@@ -2653,6 +2653,7 @@ class gosRenderer {
             GLint cementAtlasOv                      = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint cementGridSideOv                   = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint cementWUPTOv                       = -1;  // OVERLAY-CEMENT-ADOPT-1
+            GLint cementSeamFixOv                    = -1;  // OVERLAY-CEMENT-SEAM-PARITY-1
             GLint padGlowHalfMap                     = -1;  // float (wu)
         };
         OverlayUniformLocs_ overlayLocs_;
@@ -5552,6 +5553,8 @@ void gosRenderer::init() {
         locs.cementAtlasOv      = glGetUniformLocation(shp, "u_cementAtlasOv");
         locs.cementGridSideOv   = glGetUniformLocation(shp, "u_cementGridSideOv");
         locs.cementWUPTOv       = glGetUniformLocation(shp, "u_cementWUPTOv");
+        // OVERLAY-CEMENT-SEAM-PARITY-1.
+        locs.cementSeamFixOv    = glGetUniformLocation(shp, "u_cementSeamFixOv");
         locs.padGlowHalfMap = glGetUniformLocation(shp, "u_padGlowHalfMap");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
@@ -10841,7 +10844,17 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         // of the lighting reconciliation. Never sample an unbound sampler.
         const bool cementReady =
             (s_overlayCementAdopt != 0) && gos_terrain_indirect_isCementAtlasReady();
-        if (L.cementAtlasOv >= 0) {
+        // OVERLAY-CEMENT-REVERT-PURITY-1 (CONCRETE-DELIVER-2): only touch GL
+        // texture unit 3 when the gate is actually ON. As landed, the killswitch
+        // path still ran glActiveTexture(3) + glBindTexture(2D, 0) every overlay
+        // draw, i.e. it UNBOUND unit 3 on a code path that is supposed to be a
+        // no-op. Harmless in practice (the chunk terrain rebinds unit 3 per draw,
+        // and the two indirect sites save/restore it), but it made the documented
+        // "MC2_OVERLAY_CEMENT_ADOPT=0 => byte-identical stock" revert untrue at
+        // the GL-state level. With the gate off we now leave unit 3 exactly as we
+        // found it; u_cementAtlasOv keeps its default 0 and is never sampled,
+        // because ovAdoptAlbedo is false whenever u_overlayCementAdopt is 0.
+        if (s_overlayCementAdopt != 0 && L.cementAtlasOv >= 0) {
             glUniform1i(L.cementAtlasOv, 3);
             glActiveTexture(GL_TEXTURE0 + 3);
             glBindTexture(GL_TEXTURE_2D,
@@ -10853,6 +10866,21 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
                         cementReady ? gos_terrain_indirect_getCementAtlasGridSide() : 0);
         if (L.cementWUPTOv >= 0)
             glUniform1f(L.cementWUPTOv, gos_terrain_indirect_getWorldUnitsPerVertex());
+        // OVERLAY-CEMENT-SEAM-PARITY-1 (CONCRETE-DELIVER-2): the chunk frag
+        // applies a half-texel inset to its cement-atlas sample
+        // (CEMENT-ATLAS-SEAM-1, kTglcCementAtlasSeamFix in
+        // gos_terrain_lod_chunk.cpp:73, DEFAULT ON). The adopt path claimed
+        // identical UV math but omitted it, which would leave a half-texel
+        // neighbour-cell bleed along every 128wu tile border INSIDE the region
+        // the adoption exists to make seamless. Read the SAME env var with the
+        // SAME default so the two shaders cannot drift apart.
+        if (L.cementSeamFixOv >= 0) {
+            static const int s_cementSeamFixOv = [] {
+                const char* v = getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
+                return (v && v[0] == '0') ? 0 : 1;   // default ON, matches the chunk
+            }();
+            glUniform1i(L.cementSeamFixOv, s_cementSeamFixOv);
+        }
     }
 
     // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as
