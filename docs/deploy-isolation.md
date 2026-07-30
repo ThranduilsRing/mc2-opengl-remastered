@@ -81,11 +81,19 @@ saved by linking        : 94.8%
 ```sh
 py -3 scripts/make-isolated-deploy.py \
     --from A:/Games/mc2-opengl/mc2-win64-v0.4 \
-    --to   A:/Games/mc2-opengl/mc2-win64-<lane>
+    --lane <your-lane-name>
 
 # see the cost first, write nothing
-py -3 scripts/make-isolated-deploy.py --from ... --to ... --dry-run
+py -3 scripts/make-isolated-deploy.py --from ... --lane ... --dry-run
 ```
+
+`--lane NAME` resolves to **`A:/Games/mc2-opengl/private/NAME`**, the convention
+root for private lane installs. Prefer it. Use `--to DIR` only when that root is
+genuinely not what you want; there is no default `--to`, and passing both is an
+error.
+
+`--from` has deliberately **no** default: which build you branch from is a real
+choice, and a guessed donor is a silently wrong baseline.
 
 It hardlinks the data class, byte-copies the mutated class, and then **runs the
 guard against what it just built and requires verdict OK** — it will not leave
@@ -95,10 +103,24 @@ The result is deliberately not in `DEPLOY_ALLOWLIST` (that list is about
 install *count*, a separate concern), so deploy into it with
 `--allow-new-target`.
 
-It refuses, before writing anything, if `--from` and `--to` are on different
-volumes: `os.link()` cannot span volumes, so every file would fall back to a
-byte copy and the "cheap" 0.64 GB operation would land as 12 GB — past a disk
-guard that already approved the smaller figure.
+### Two refusals, before anything is written
+
+**Different volumes.** `os.link()` cannot span volumes, so every file would fall
+back to a byte copy and the "cheap" 0.64 GB operation would land as 12 GB — past
+a disk guard that already approved the smaller figure.
+
+**Destination on the system drive.** Refused outright, `C:` or wherever the OS
+lives. This is a *separate* check, not a corollary of the volume one, and the
+distinction is the whole point: the volume check catches `A: -> C:` only
+incidentally, as a mismatch, and has nothing at all to say about `C: -> C:` —
+which links fine, verifies as properly isolated, and satisfies every success
+criterion this tool has except the one that matters. That is not hypothetical:
+lane FALSE-CONCLUSION-RETRACT-1 put a 7.00 GB install at `C:\mc2-priv-fcr1`
+because `A:` was full. If `A:` is tight, reclaim space or ask — do not spill onto
+the system drive. Deliberate override: `MC2_ISO_ALLOW_SYSTEM_DRIVE=1`.
+
+On Windows, a system drive that cannot be determined at all is **fatal**, not
+skipped — the guard does not write on an unknown answer.
 
 ## Check a dir yourself
 

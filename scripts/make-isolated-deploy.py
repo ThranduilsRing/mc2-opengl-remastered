@@ -77,6 +77,21 @@ SCRIPTS = Path(__file__).resolve().parent
 
 GIB = 1024 ** 3
 
+# LINK-GUARD-2 (2026-07-30, handoff from DISK-RECLAIM-EXECUTE-1): the
+# convention root for private lane installs. Before this existed every lane
+# invented its own location -- `C:\mc2-priv-fcr1`, `concrete-deliver-1-private`
+# -- because `--to` was a free-form required path with nothing behind it. One
+# of those inventions was a 7.00 GB full-byte copy on the user's SYSTEM drive.
+# `--lane NAME` resolves here so that the cheap, correct path is also the
+# shortest one to type; previously the expensive one was the easier one.
+PRIVATE_ROOT = Path("A:/Games/mc2-opengl/private")
+
+# Lane names become a directory under PRIVATE_ROOT, so they are validated
+# rather than trusted: `--lane ../../../Windows` must not resolve outside the
+# root, and a name with a drive letter or a separator is a caller who meant
+# --to. Deliberately narrow -- these are lane names, not free-form paths.
+_LANE_OK = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+
 
 def out(msg: str) -> None:
     print(f"{PREFIX} {msg}")
@@ -154,6 +169,103 @@ def same_volume(a: Path, b: Path) -> bool:
         return os.stat(a).st_dev == os.stat(probe).st_dev
     except OSError:
         return False
+
+
+def resolve_lane(name: str) -> Path:
+    """Map a --lane NAME to PRIVATE_ROOT/NAME, or die explaining why not.
+
+    Validation is not paranoia about a hostile caller; it is about the tool
+    silently doing something other than what the flag says. `--lane
+    ../../mc2-win64-v0.4` that quietly resolved outside PRIVATE_ROOT would put
+    a lane back exactly where this flag exists to stop it going.
+    """
+    if not name:
+        fail("--lane needs a name", 2)
+    if os.path.splitdrive(name)[0] or "/" in name or "\\" in name:
+        fail(f"--lane takes a bare lane NAME, not a path: {name!r}\n"
+             f"  It always resolves under {PRIVATE_ROOT}. If you genuinely "
+             "want somewhere else, use --to and say so explicitly.", 2)
+    if name.startswith(".") or name.strip() != name:
+        fail(f"--lane name may not start with '.' or hold surrounding "
+             f"whitespace: {name!r}", 2)
+    bad = sorted({c for c in name if c not in _LANE_OK})
+    if bad:
+        fail(f"--lane name has character(s) not allowed in a directory name: "
+             f"{''.join(bad)!r} in {name!r}", 2)
+    return PRIVATE_ROOT / name
+
+
+def system_drive() -> str:
+    """The drive the OS is installed on, casefolded with colon (e.g. 'c:').
+
+    Empty string when the platform has no drive-letter concept (POSIX) or the
+    environment does not say. Callers decide what to do with "unknown" -- this
+    function does not guess, because guessing 'c:' on a machine where it is
+    wrong would refuse a perfectly good destination.
+    """
+    for var in ("SystemDrive", "SystemRoot", "windir"):
+        val = os.environ.get(var)
+        if val:
+            drive = os.path.splitdrive(val)[0]
+            if drive:
+                return drive.casefold()
+    return ""
+
+
+def drive_of(p: Path) -> str:
+    return os.path.splitdrive(str(p))[0].casefold()
+
+
+def check_not_system_drive(dst: Path, src: Path) -> None:
+    """LINK-GUARD-2: refuse to build a private install on the system drive.
+
+    The volume check below is about whether os.link() *can* work. It catches
+    `A: -> C:` only incidentally, as a volume mismatch, and says nothing at all
+    about `C: -> C:` -- which links fine, verifies clean, and is the single
+    case where every one of this tool's own success criteria is satisfied by
+    the wrong answer. That is not hypothetical: lane FALSE-CONCLUSION-RETRACT-1
+    put a 7.00 GB install at C:\\mc2-priv-fcr1 because A: was full, and nothing
+    here objected.
+
+    Fail-closed on an undeterminable system drive, but only on Windows, where
+    one always exists -- on POSIX there is no drive letter to compare and
+    nothing to enforce.
+
+    LOUD escape hatch: MC2_ISO_ALLOW_SYSTEM_DRIVE=1.
+    """
+    if os.environ.get("MC2_ISO_ALLOW_SYSTEM_DRIVE") == "1":
+        out("WARNING: MC2_ISO_ALLOW_SYSTEM_DRIVE=1 -- system-drive refusal "
+            "BYPASSED BY REQUEST. You are about to write an install onto the "
+            "drive the OS boots from.")
+        return
+
+    sd = system_drive()
+    if not sd:
+        if os.name == "nt":
+            fail("could not determine the system drive (SystemDrive, "
+                 "SystemRoot and windir are all unset or driveless) -- "
+                 "refusing to write without knowing whether the destination "
+                 "is the OS drive. Set MC2_ISO_ALLOW_SYSTEM_DRIVE=1 to bypass "
+                 "deliberately.", 2)
+        return                      # POSIX: no drive letters, nothing to check
+
+    if drive_of(dst) != sd:
+        return
+
+    also_src = "" if drive_of(src) != sd else (
+        f"\n  NOTE: --from is ALSO on {sd.upper()} ({src}). Same-drive means "
+        "the volume check below passes and the result verifies as properly "
+        "isolated -- correct by every measure this tool has except the one "
+        "that matters. That is exactly how the 7 GB C: install happened.")
+
+    fail(f"--to is on the SYSTEM DRIVE ({sd.upper()}): {dst}"
+         f"{also_src}\n"
+         f"  The system drive is not a deploy target -- not as a fallback, "
+         f"not 'just this once because A: is full'. If A: is tight, reclaim "
+         f"space or ask; do not spill onto {sd.upper()}.\n"
+         f"  Use the convention root instead:  --lane <your-lane-name>  "
+         f"(-> {PRIVATE_ROOT}\\<your-lane-name>)\n"
+         f"  Deliberate override: MC2_ISO_ALLOW_SYSTEM_DRIVE=1.", 2)
 
 
 def check_space(need_bytes: int, target: Path) -> None:
@@ -305,6 +417,86 @@ def selftest() -> int:
         # Cross-volume precondition helper agrees with itself.
         check("same_volume() is true within one temp tree",
               same_volume(src, tmp / "not-yet-created"))
+
+        # ------------------------------------------------------------------
+        # LINK-GUARD-2: default destination + system-drive refusal
+        # ------------------------------------------------------------------
+        def exit_code(fn, *a, **kw):
+            """Run fn; return its sys.exit code, or None if it did not exit."""
+            try:
+                fn(*a, **kw)
+            except SystemExit as e:
+                return e.code
+            return None
+
+        check("--lane resolves under the convention root",
+              resolve_lane("mylane-1") == PRIVATE_ROOT / "mylane-1",
+              str(resolve_lane("mylane-1")))
+        for bad_name in ("../escape", "..", "sub/dir", "sub\\dir",
+                         "C:/elsewhere", ".hidden", "has space", "pipe|char",
+                         ""):
+            check(f"--lane rejects {bad_name!r}",
+                  exit_code(resolve_lane, bad_name) == 2)
+
+        # Synthesise the system drive rather than reading the real one, so the
+        # assertion is identical on every machine and nothing ever probes C:.
+        saved = {k: os.environ.get(k)
+                 for k in ("SystemDrive", "SystemRoot", "windir",
+                           "MC2_ISO_ALLOW_SYSTEM_DRIVE")}
+        try:
+            os.environ.pop("MC2_ISO_ALLOW_SYSTEM_DRIVE", None)
+            os.environ["SystemDrive"] = "Q:"
+            os.environ.pop("SystemRoot", None)
+            os.environ.pop("windir", None)
+            check("system_drive() reads SystemDrive", system_drive() == "q:",
+                  system_drive())
+
+            if os.name == "nt":
+                check("REFUSES a destination on the system drive",
+                      exit_code(check_not_system_drive,
+                                Path("Q:/mc2-priv-lane"), Path("A:/donor"))
+                      == 2)
+                check("REFUSES system-drive dst even when src is there too "
+                      "(the C:->C: case the volume check cannot see)",
+                      exit_code(check_not_system_drive,
+                                Path("Q:/mc2-priv-lane"), Path("Q:/donor"))
+                      == 2)
+                check("ALLOWS a destination off the system drive",
+                      exit_code(check_not_system_drive,
+                                Path("A:/Games/mc2-opengl/private/lane"),
+                                Path("A:/donor")) is None)
+                check("the convention root itself is allowed",
+                      exit_code(check_not_system_drive,
+                                PRIVATE_ROOT / "lane", Path("A:/donor"))
+                      is None)
+
+                os.environ["MC2_ISO_ALLOW_SYSTEM_DRIVE"] = "1"
+                check("MC2_ISO_ALLOW_SYSTEM_DRIVE=1 bypasses the refusal",
+                      exit_code(check_not_system_drive,
+                                Path("Q:/mc2-priv-lane"), Path("A:/donor"))
+                      is None)
+                os.environ.pop("MC2_ISO_ALLOW_SYSTEM_DRIVE", None)
+
+                # Fail CLOSED when the system drive cannot be determined.
+                os.environ.pop("SystemDrive", None)
+                check("undeterminable system drive is FATAL on Windows",
+                      exit_code(check_not_system_drive,
+                                Path("A:/somewhere"), Path("A:/donor")) == 2)
+            else:
+                # POSIX has no drive letters; there is nothing to enforce and
+                # the guard must not invent a refusal.
+                os.environ.pop("SystemDrive", None)
+                check("no drive-letter concept -> no system drive",
+                      system_drive() == "")
+                check("...and the refusal is a no-op, not a false positive",
+                      exit_code(check_not_system_drive,
+                                Path("/tmp/lane"), Path("/tmp/donor")) is None)
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -325,7 +517,12 @@ def main(argv=None) -> int:
         description="Create a hardlink-isolated private lane install: share "
                     "read-only data, copy only what gets written.")
     ap.add_argument("--from", dest="src", help="existing install to base on")
-    ap.add_argument("--to", dest="dst", help="new private install dir")
+    ap.add_argument("--lane", dest="lane",
+                    help=f"lane NAME -> {PRIVATE_ROOT}\\NAME (the default "
+                         "destination convention; prefer this over --to)")
+    ap.add_argument("--to", dest="dst",
+                    help="explicit destination dir, when --lane's convention "
+                         "root is genuinely not what you want")
     ap.add_argument("--dry-run", action="store_true",
                     help="report the plan and cost; write nothing")
     ap.add_argument("--selftest", action="store_true",
@@ -334,12 +531,26 @@ def main(argv=None) -> int:
 
     if args.selftest:
         return selftest()
-    if not args.src or not args.dst:
-        fail("--from and --to are both required (or --selftest)", 2)
+    if args.lane and args.dst:
+        fail("--lane and --to are two ways to say the same thing; pass one.\n"
+             f"  --lane {args.lane}  would mean  --to {resolve_lane(args.lane)}",
+             2)
+    if not args.src:
+        fail("--from is required (or --selftest). It names the install to base "
+             "this one on, e.g. --from A:/Games/mc2-opengl/mc2-win64-v0.4 -- "
+             "there is deliberately no default, because which build you branch "
+             "from is a real choice and a wrong guess is a silently wrong "
+             "baseline.", 2)
+    if not args.lane and not args.dst:
+        fail("no destination: pass --lane NAME (recommended) or --to DIR.\n"
+             f"  --lane NAME resolves to {PRIVATE_ROOT}\\NAME, which is the "
+             "convention root for private lane installs. Use your lane's name.",
+             2)
 
     guard = _load_guard()
     src = Path(args.src).expanduser().resolve()
-    dst = Path(args.dst).expanduser().absolute()
+    dst = (resolve_lane(args.lane) if args.lane
+           else Path(args.dst).expanduser().absolute())
 
     if not src.is_dir():
         fail(f"--from is not a directory: {src}", 2)
@@ -351,6 +562,11 @@ def main(argv=None) -> int:
     if str(dst).replace("\\", "/").casefold() == \
        str(src).replace("\\", "/").casefold():
         fail("--to and --from are the same directory", 2)
+
+    # LINK-GUARD-2: before the volume check, because for `A: -> C:` both fire
+    # and this is the message the caller actually needs -- and for `C: -> C:`
+    # the volume check has nothing to say at all.
+    check_not_system_drive(dst, src)
 
     if not same_volume(src, dst):
         fail(f"--from and --to are on DIFFERENT VOLUMES.\n"
