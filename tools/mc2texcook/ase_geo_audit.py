@@ -4,11 +4,31 @@
 Sums *MESH_NUMVERTEX / *MESH_NUMFACES across all GEOMOBJECTs per .ase, categorizes
 by filename, and prints a per-category summary + heaviest meshes. Read-only.
 
-Usage: py -3 ase_geo_audit.py [--dir A:/Games/mc2-srcdata/tgl]
+Usage: py -3 ase_geo_audit.py [--dir DIR] [--allow-nonstock]
+
+DATA-PROVENANCE-CLOSE-1 (2026-07-30)
+------------------------------------
+`--dir` used to default to the absolute path `A:/Games/mc2-srcdata/tgl` -- an
+EDITABLE checkout, taken on faith. There is no default now: the tree is
+resolved and byte-verified against the shipped `tgl.fst` before anything is
+parsed (`tools/mc2data/stock_corpus.py`).
+
+READ THE CAVEAT BEFORE QUOTING THESE NUMBERS. The engine does not load `.ase`.
+It loads the 2030 `.tgl` + 750 `.agl` compiled shapes in `tgl.fst`, and a
+`.ase` has NO shipped counterpart of any kind. So verification here proves THE
+TREE is the stock authoring tree -- via the 1432 members that ARE shipped
+(773 `.ini` + 659 `128/*.tga`) -- and nothing stronger. These are AUTHORING
+vertex/triangle budgets. Treating them as the renderer's budgets is an
+inference this tool cannot make for you.
 """
-import argparse, re, statistics
+import argparse, re, statistics, sys
 from pathlib import Path
 from collections import defaultdict
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mc2data"))
+from stock_corpus import (  # noqa: E402
+    StockDataError, add_allow_nonstock_arg, resolve as resolve_corpus,
+)
 
 V = re.compile(r"\*MESH_NUMVERTEX\s+(\d+)")
 F = re.compile(r"\*MESH_NUMFACES\s+(\d+)")
@@ -39,9 +59,23 @@ def parse(p: Path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default=r"A:/Games/mc2-srcdata/tgl")
+    ap.add_argument("--dir", default=None,
+                    help="stock tgl source dir. Omit to auto-resolve and "
+                         "byte-verify against the shipped tgl.fst; whatever "
+                         "is passed is verified too.")
     ap.add_argument("--top", type=int, default=12)
+    add_allow_nonstock_arg(ap)
     a = ap.parse_args()
+    try:
+        res = resolve_corpus("tgl", explicit=a.dir,
+                             allow_nonstock=a.allow_nonstock)
+    except StockDataError as e:
+        print(f"[ase-audit] ERROR {e}", file=sys.stderr)
+        return 2
+    a.dir = res.dir
+    print(f"[ase-audit] CAVEAT: {res.unshipped} source file(s) in this tree "
+          f"(including every .ase below) have NO shipped counterpart -- the "
+          f"engine loads compiled .tgl/.agl. These are AUTHORING budgets.")
     files = sorted(Path(a.dir).glob("*.ase"))
     rows = []
     for p in files:
@@ -76,6 +110,7 @@ def main():
         print(f"\nMech meshes (base-ish, {len(mech_base)} of {len(cats['mech'])} mech files):")
         for stem, cat, v, f in sorted(mech_base, key=lambda r:-r[3])[:12]:
             print(f"  {f:>7} tris {v:>7} verts  {stem}")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

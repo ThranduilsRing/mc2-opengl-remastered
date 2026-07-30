@@ -56,11 +56,44 @@ def test_env_var_override_wins_over_probes(tmp_path, monkeypatch):
 
 
 def test_no_probes_hit_raises_with_probe_list(tmp_path, monkeypatch):
+    """DATA-PROVENANCE-CLOSE-1 changed this contract, deliberately.
+
+    "No probe hit" is no longer the end of the road: the resolver can now
+    materialise the corpus straight out of a deployed `tgl.fst`, so the tool
+    works on a machine that has an install but no source checkout. The failure
+    case is "no probe AND no deployed archive", and it must still name what was
+    tried rather than guessing.
+    """
+    import stock_corpus as sc
     missing = tmp_path / "nope"
     monkeypatch.delenv("MC2_SRCDATA", raising=False)
     monkeypatch.setattr(srcdata, "SRCDATA_ROOT_PROBES", (missing,))
+    monkeypatch.setattr(sc, "CANDIDATE_FST_ROOTS", ())
     with pytest.raises(RuntimeError, match="Probed"):
         srcdata.find_tgl_dir(None)
+
+
+def test_synthetic_tree_is_refused_without_the_opt_out(tmp_path, monkeypatch):
+    """The gate itself, with conftest's blanket opt-out removed.
+
+    Everything else in this suite runs under MC2_STOCK_DATA_ALLOW_NONSTOCK=1
+    because its fixtures are synthetic. That fixture must not be able to hide a
+    regression in the verification it opts out of -- so this one test takes the
+    opt-out away and asserts the default behaviour: a two-file synthetic tgl
+    dir is NOT the stock data the engine ships, and is refused rather than
+    silently used.
+    """
+    import stock_corpus as sc
+    monkeypatch.delenv(sc.ENV_ALLOW_NONSTOCK, raising=False)
+    monkeypatch.delenv("MC2_SRCDATA", raising=False)
+    fake = tmp_path / "fake"
+    _make_tgl(fake)
+    with pytest.raises(RuntimeError, match="NOT the stock tgl data"):
+        srcdata.find_tgl_dir(fake)
+
+    # ... and the documented escape hatch lets it through, still flagged.
+    got = srcdata.find_tgl_dir(fake, verify=False)
+    assert got == fake / "tgl"
 
 
 # ---------------------------------------------------------------------------

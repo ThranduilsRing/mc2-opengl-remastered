@@ -24,6 +24,12 @@ import csv
 import json
 import os
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mc2data"))
+from stock_corpus import (  # noqa: E402
+    StockDataError, add_allow_nonstock_arg, resolve as resolve_corpus,
+)
 
 WEAPON_TYPES = {"energyweapon", "ballisticweapon", "missileweapon"}
 
@@ -49,30 +55,75 @@ COMPBAS_FIELDS = [
     ("iconY", "icon y"),
 ]
 
-# Candidate locations for the loose source CSVs (first existing wins).
-COMPBAS_CANDIDATES = [
-    "data/objects/compbas.csv",
-    "A:/Games/mc2-srcdata/objects/compbas.csv",
-    "A:/Games/mc2-opengl/mc2-win64-v0.4/data/objects/compbas.csv",
-    "A:/Games/mc2-opengl/mc2srcdata-fresh/objects/compbas.csv",
-]
-EFFECTS_CANDIDATES = [
-    "data/objects/effects.csv",
-    "A:/Games/mc2-opengl/mc2-win64-v0.4/data/objects/effects.csv",
-    "A:/Games/mc2-srcdata/objects/effects.csv",
-]
+# ---------------------------------------------------------------------------
+# DATA-PROVENANCE-CLOSE-1 (2026-07-30) -- where the stock CSVs come from.
+#
+# This used to be two hand-written candidate lists searched first-hit-wins:
+#
+#     COMPBAS_CANDIDATES = ["data/objects/compbas.csv",
+#                           "A:/Games/mc2-srcdata/objects/compbas.csv",     <-- EDITABLE clone
+#                           "A:/Games/mc2-opengl/mc2-win64-v0.4/data/objects/compbas.csv",
+#                           "A:/Games/mc2-opengl/mc2srcdata-fresh/objects/compbas.csv"]
+#
+# Two defects, and the second is the interesting one:
+#
+#  1. The EDITABLE srcdata clone was searched BEFORE anything deployed, so a
+#     local edit would silently win over the shipped data and the tool would
+#     report the edited stats as stock.
+#
+#  2. Reordering alone would have fixed NOTHING. Measured 2026-07-30: NO deploy
+#     lane on this machine carries a loose `data/objects/compbas.csv` or
+#     `effects.csv` at all -- both files exist only inside `misc.fst`. So the
+#     "deploy" rung it was ordered behind never resolved, and never will. The
+#     clone was not merely preferred; it was the only rung that ever hit.
+#
+# Verification is the fix. The corpus resolver (tools/mc2data/stock_corpus.py)
+# checks whatever it finds against the digests of the shipped `misc.fst`, per
+# name, and falls back to extracting the CSVs straight out of that archive when
+# no source tree verifies. `--allow-nonstock` is the loud escape hatch, and it
+# is what a MOD overlay legitimately needs -- editing a mod's compbas is a
+# supported workflow, calling a mod's numbers "stock" is not.
+#
+# Verified PER NAME on purpose: `badpilots.csv` differs from the shipped
+# `misc.fst` in every source tree on this machine, so a whole-directory gate
+# would refuse `compbas.csv` -- which does match -- over a file nothing here
+# opens.
+# ---------------------------------------------------------------------------
+STOCK_CSVS = ("compbas.csv", "effects.csv")
 
 
-def _find(path_arg, candidates, what):
-    if path_arg:
-        if not os.path.isfile(path_arg):
-            sys.exit(f"mc2weapon: --{what} not found: {path_arg}")
-        return path_arg
-    for c in candidates:
-        if os.path.isfile(c):
-            return c
-    sys.exit(f"mc2weapon: could not locate {what}.csv; pass --{what} <path>. "
-             f"Tried: {', '.join(candidates)}")
+def _resolve_csvs(compbas_arg, effects_arg, allow_nonstock):
+    """Return (compbas_path, effects_path), both proven or loudly flagged."""
+    explicit = {}
+    for what, arg in (("compbas", compbas_arg), ("effects", effects_arg)):
+        if arg:
+            if not os.path.isfile(arg):
+                sys.exit(f"mc2weapon: --{what} not found: {arg}")
+            explicit[what] = Path(arg)
+
+    need = [f"{w}.csv" for w in ("compbas", "effects") if w not in explicit]
+    resolved = {}
+    if need:
+        try:
+            res = resolve_corpus("objects", names=need,
+                                 allow_nonstock=allow_nonstock)
+        except StockDataError as e:
+            sys.exit(f"mc2weapon: {e}")
+        for n in need:
+            resolved[n[:-4]] = res.member(n)
+
+    # An explicit path is verified too -- a path typed on the command line is
+    # exactly as unproven as one baked into a list, which is why the original
+    # STOCK-DATA-TRUTH-1 fix did not simply make the flag required.
+    for what, p in explicit.items():
+        try:
+            resolve_corpus("objects", explicit=p.parent, names=[p.name],
+                           allow_nonstock=allow_nonstock)
+        except StockDataError as e:
+            sys.exit(f"mc2weapon: --{what} {p}\n{e}")
+        resolved[what] = p
+
+    return str(resolved["compbas"]), str(resolved["effects"])
 
 
 def _col_index(header, needle):
@@ -530,8 +581,11 @@ def cmd_new(args):
 def main(argv=None):
     p = argparse.ArgumentParser(prog="mc2weapon",
                                 description="MC2 weapon viewer / modder tool")
-    p.add_argument("--compbas", help="path to compbas.csv (auto-detected if omitted)")
-    p.add_argument("--effects", help="path to effects.csv (auto-detected if omitted)")
+    p.add_argument("--compbas", help="path to compbas.csv (auto-resolved and "
+                                     "byte-verified against the shipped "
+                                     "misc.fst if omitted; verified if given)")
+    p.add_argument("--effects", help="path to effects.csv (same treatment)")
+    add_allow_nonstock_arg(p)
     p.add_argument("--mods-dir", default="mods", help="dir holding mod folders")
     p.add_argument("--from-mod", help="load weapons from <mods-dir>/<id>/data/objects/compbas.csv")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -590,13 +644,17 @@ def main(argv=None):
     pn.set_defaults(func=cmd_new)
 
     args = p.parse_args(argv)
-    # --from-mod loads weapons from a mod's overlay compbas.
+    # --from-mod loads weapons from a mod's overlay compbas. A mod overlay is
+    # BY DEFINITION not stock, so it implies --allow-nonstock: the resolver
+    # still prints the loud "does NOT describe stock data" banner, which is the
+    # correct thing to say about a mod, but it does not refuse the run.
     if getattr(args, "from_mod", None) and not args.compbas:
         args.compbas = os.path.join(args.mods_dir, args.from_mod,
                                     "data", "objects", "compbas.csv")
+        args.allow_nonstock = True
     if not getattr(args, "_no_csv", False):
-        args.compbas = _find(args.compbas, COMPBAS_CANDIDATES, "compbas")
-        args.effects = _find(args.effects, EFFECTS_CANDIDATES, "effects")
+        args.compbas, args.effects = _resolve_csvs(
+            args.compbas, args.effects, args.allow_nonstock)
     args.func(args)
 
 

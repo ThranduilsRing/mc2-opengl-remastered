@@ -263,37 +263,52 @@ def fst_blob(data: bytes, off: int, size: int, real: int) -> Optional[bytes]:
         return None
 
 
-def fst_mission_digests(fst: Path) -> dict[str, str]:
-    """{relpath under data/missions -> md5hex} for every mission member."""
+def fst_digests(fst: Path, prefix: str) -> dict[str, str]:
+    """{relpath under `prefix` -> md5hex} for every member under `prefix`.
+
+    `prefix` is parameterised so the SAME reader serves every FST-backed
+    corpus (`data/missions/` here, `data/tgl/` and `data/textures/` and
+    `data/objects/` in `stock_corpus.py`). One FST parser in this repo, not
+    one per corpus -- a second copy is how two "authorities" start disagreeing.
+    """
     data, ms = fst_members(fst)
     out: dict[str, str] = {}
     for nm, off, size, real in ms:
-        if not nm.startswith(MANIFEST_PREFIX):
+        if not nm.startswith(prefix):
             continue
         blob = fst_blob(data, off, size, real)
         if blob is None:
             raise StockDataError(f"{fst}: member {nm} failed zlib decompress")
-        out[nm[len(MANIFEST_PREFIX):]] = hashlib.md5(blob).hexdigest()
+        out[nm[len(prefix):]] = hashlib.md5(blob).hexdigest()
     return out
 
 
-def find_deployed_fst(roots: Sequence[str] = CANDIDATE_FST_ROOTS) -> Optional[Path]:
+def fst_mission_digests(fst: Path) -> dict[str, str]:
+    """{relpath under data/missions -> md5hex} for every mission member."""
+    return fst_digests(fst, MANIFEST_PREFIX)
+
+
+def find_deployed_fst(roots: Sequence[str] = CANDIDATE_FST_ROOTS,
+                      name: str = "mission.fst") -> Optional[Path]:
     for r in roots:
-        p = Path(r) / "mission.fst"
+        p = Path(r) / name
         if p.is_file():
             return p
     return None
 
 
-def materialize_from_fst(fst: Path, cache_root: Optional[Path] = None) -> Path:
-    """Extract `data/missions/*` out of a deployed FST into a temp cache dir.
+def materialize_from_fst(fst: Path, cache_root: Optional[Path] = None,
+                         prefix: str = MANIFEST_PREFIX) -> Path:
+    """Extract `<prefix>*` out of a deployed FST into a temp cache dir.
 
-    Keyed by the FST's own md5, so two different archives never share a cache
-    and a re-run over the same archive is a no-op.
+    Keyed by the FST's own md5 AND the prefix, so two different archives (or
+    two different corpora out of one archive) never share a cache and a re-run
+    over the same pair is a no-op.
     """
     digest = _md5(fst)
     root = cache_root or Path(tempfile.gettempdir()) / "mc2_stock_missions"
-    out = root / digest[:12]
+    tag = prefix.strip("/").replace("/", "_")
+    out = root / (digest[:12] if prefix == MANIFEST_PREFIX else f"{digest[:12]}-{tag}")
     stamp = out / ".complete"
     if stamp.is_file():
         return out
@@ -301,9 +316,9 @@ def materialize_from_fst(fst: Path, cache_root: Optional[Path] = None) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     n = 0
     for nm, off, size, real in ms:
-        if not nm.startswith(MANIFEST_PREFIX):
+        if not nm.startswith(prefix):
             continue
-        rel = nm[len(MANIFEST_PREFIX):]
+        rel = nm[len(prefix):]
         blob = fst_blob(data, off, size, real)
         if blob is None:
             continue

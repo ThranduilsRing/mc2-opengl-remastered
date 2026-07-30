@@ -31,7 +31,13 @@ Usage:
                            user-launch lane. Copies each .ktx2 as a sidecar
                            next to the matching .tga under data/tgl/, or
                            into data/tgl/<tier>/ when no .tga is found.
-        [--ase-root DIR]   stock source root (default A:/Games/mc2-srcdata/tgl)
+        [--ase-root DIR]   stock .ase/.ini root. NO baked-in default
+                           (DATA-PROVENANCE-CLOSE-1): omit it and the verified
+                           resolver in tools/mc2data/stock_corpus.py locates a
+                           tree and PROVES it matches the shipped tgl.fst.
+                           Whatever is passed is verified too.
+        [--allow-nonstock] proceed on a tree that does NOT match the shipped
+                           bytes (modded/authored assets). Loud banner.
         [--tga-root DIR]   source-TGA search root; repeatable; defaults to
                            <ase-root>/128 then <ase-root>
         [--tier N]         tier-dir name for seam 2 (default 128*scale)
@@ -55,7 +61,16 @@ from pathlib import Path
 TOOL_DIR = Path(__file__).resolve().parent
 COOK_SINGLE = TOOL_DIR.parent / "mc2texcook" / "cook_tgl_upscale_single.py"
 
-DEFAULT_ASE_ROOT = Path("A:/Games/mc2-srcdata/tgl")
+sys.path.insert(0, str(TOOL_DIR))
+sys.path.insert(0, str(TOOL_DIR.parents[1] / "tools" / "mc2data"))
+import srcdata as _srcdata  # noqa: E402
+from stock_corpus import add_allow_nonstock_arg  # noqa: E402
+
+# DATA-PROVENANCE-CLOSE-1: `--ase-root` used to default to the absolute path
+# `A:/Games/mc2-srcdata/tgl` -- an EDITABLE checkout, taken on faith. It agrees
+# with the shipped tgl.fst today; it was never checked, and nothing here could
+# have told you if it stopped. There is no default now: the resolver finds a
+# tree and proves it. See tools/mc2data/stock_corpus.py.
 DEFAULT_SCALE = 4  # mc2texcook cook_tgl_upscale_single.py default (128 -> 512)
 
 # .ase material record:  *BITMAP "\\Aas1\mc2\Art\...\A_Quonset.tga"
@@ -250,11 +265,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--deploy-dir", type=Path, default=None,
                     help="optional install root to copy cooked .ktx2 into "
                          "(NO default — never auto-targets the user-launch lane)")
-    ap.add_argument("--ase-root", type=Path, default=DEFAULT_ASE_ROOT,
-                    help=f"stock .ase/.ini root (default {DEFAULT_ASE_ROOT})")
+    ap.add_argument("--ase-root", type=Path, default=None,
+                    help="stock .ase/.ini root. Omit to auto-resolve and "
+                         "byte-verify against the shipped tgl.fst; whatever "
+                         "is passed is verified too.")
     ap.add_argument("--tga-root", type=Path, action="append", default=None,
                     help="source-TGA search root (repeatable; default "
                          "<ase-root>/128 then <ase-root>)")
+    add_allow_nonstock_arg(ap)
     ap.add_argument("--tier", type=int, default=0,
                     help="tier-dir name for the tier seam (default 128*scale)")
     ap.add_argument("--dry-run", action="store_true",
@@ -264,9 +282,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.scale < 1:
         print("ERROR: --scale must be >= 1", file=sys.stderr)
         return 2
-    ase_root: Path = args.ase_root
-    if not ase_root.is_dir():
-        print(f"ERROR: --ase-root not a directory: {ase_root}", file=sys.stderr)
+    try:
+        ase_root: Path = _srcdata.find_tgl_dir(args.ase_root,
+                                               verify=not args.allow_nonstock)
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         return 2
     tga_roots: list[Path] = args.tga_root or [ase_root / "128", ase_root]
     tier: int = args.tier or 128 * args.scale

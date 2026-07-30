@@ -37,7 +37,23 @@ SKIP_NO_STOCK = ("verified stock mission data not available -- see "
 
 def _have_stock(stem: str) -> bool:
     return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
-STOCK_OVERLAYS = Path("A:/Games/mc2-srcdata/textures/64Overlays")
+
+
+# DATA-PROVENANCE-CLOSE-1: this used to be
+#   STOCK_OVERLAYS = Path("A:/Games/mc2-srcdata/textures/64Overlays")
+# an EDITABLE checkout read as if it were the shipped tile art. The engine
+# loads `data/textures/64overlays/*` out of `textures.fst`; 475 members, and
+# both source trees currently reproduce all 475 byte-for-byte -- but nothing
+# checked, so a retouched tile would have silently changed what these tests
+# assert about "real tile art". Only the three tiles the test actually opens
+# are verified, which keeps the check exact and sub-second.
+_OVERLAY_TILES = ("64overlays/runway0011.tga",
+                  "64overlays/runway0000.tga",
+                  "64overlays/dirtroad0000.tga")
+from stock_corpus import resolve_or_none  # noqa: E402
+
+_ovl = resolve_or_none("textures", names=_OVERLAY_TILES)
+STOCK_OVERLAYS = _ovl.member(_OVERLAY_TILES[0]).parent if _ovl else None
 
 sys.path.insert(0, str(HERE))
 import marking_glyphs as mg  # noqa: E402
@@ -295,8 +311,9 @@ def test_extract_missing_pak_fails(tmp_path):
 
 
 # --- twins CLI (real tile art, skipif; bicubic path for determinism) -------------
-@pytest.mark.skipif(not (STOCK_OVERLAYS / "runway0011.tga").is_file(),
-                    reason="mc2srcdata 64Overlays tile art not present")
+@pytest.mark.skipif(STOCK_OVERLAYS is None,
+                    reason="verified stock 64Overlays tile art not available -- "
+                           "see tools/mc2data/stock_corpus.py")
 def test_twins_builds_runway_stamp_and_report(tmp_path):
     """runway0011 carries real bright markings (threshold bars + numerals) ->
     a stamp is built. runway0000 is a plain taxiway with NO bright markings
