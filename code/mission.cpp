@@ -46,6 +46,7 @@ extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
 // FREEZE-MOVERS-1: defined in code/missiongui.cpp next to the command channel.
 extern "C" int mc2FreezeMoversActive();              // 0 unless the verb armed it
+extern "C" void mc2FreezeMoversMissionReset();       // scope a freeze to one mission
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
 //
@@ -2908,6 +2909,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// unset). Also (re)register the dev-shell get/set command (inert without
 	// MC2_DEV_SHELL=1; re-registration replaces).
 	simSpeedResetToSeed();
+	// FREEZE-MOVERS-1: same scoping rule as sim speed above. Re-stamps the
+	// mission-frame baseline and disarms any freeze left over from a previous
+	// mission, so `freeze_movers on <frame>` counts frames from THIS mission's
+	// start (g_mc2FrameCounter is process-lifetime and never resets) and a
+	// campaign cannot inherit a freeze nobody asked for in this mission.
+	mc2FreezeMoversMissionReset();
 	gos_dev_shell::registerCommand("sim_speed", devShellSimSpeed);
 	// F3 CPU projection cost-baseline: flush previous-mission samples and
 	// clear ring buffer. No-op when env OFF.

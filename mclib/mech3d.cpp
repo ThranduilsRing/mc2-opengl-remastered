@@ -5408,7 +5408,16 @@ long Mech3DAppearance::update (bool animate)
 					// while the capture sim is frozen. Capture-mode-only: the shim is 0
 					// whenever no MC2_VISUAL_* capture is active -> byte-identical live
 					// behavior. See gos_visual_capture.cpp mc2CaptureGaitFreezeActive().
-					const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0);
+					// FREEZE-MOVERS-1: the cadence guard alone is NOT enough under
+					// freeze_movers. Mover::getLOSPosition (code/mover.cpp:3697)
+					// calls appearance->update() with the DEFAULT animate=true, and
+					// LOS resolution still runs while movers are frozen. Because the
+					// normal walk is skipped, lastAnimAdvanceFrame was never stamped
+					// this frame, so _alreadyAdvanced is false and the first
+					// LOS-triggered call would silently tick the gait -- precisely
+					// the run-to-run pose drift this feature exists to remove.
+					const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0) ||
+					                           (mc2FreezeMoversActive() != 0);
 					if (!_alreadyAdvanced && !_captureFroze)
 					{
 						if (inReverse)

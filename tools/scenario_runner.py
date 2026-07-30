@@ -467,7 +467,12 @@ def assert_mission(spec, snaps, cmd_file, ack, proc):
                      # scenario can only see the freeze_movers ACK, which says
                      # the command was accepted -- not that the latch fired.
                      ("frozen", r"frozen=(\d)"),
+                     # NOTE frozen_at and mission_frame are MISSION-relative
+                     # (frames since Mission::init), while `frame` is the
+                     # process-lifetime counter that at_frame gates on. They
+                     # are different clocks -- do not compare them.
                      ("frozen_at", r"frozenAt=(-?\d+)"),
+                     ("mission_frame", r"missionFrame=(-?\d+)"),
                      ("objectives", r"objectives: status=(-?\d+)")):
         m = re.search(pat, txt)
         if m:
@@ -475,7 +480,8 @@ def assert_mission(spec, snaps, cmd_file, ack, proc):
     if not got:
         return False, "could not parse mission_status payload: %r" % txt[:160]
     problems = []
-    for key in ("status", "objectives", "paused", "frozen", "frozen_at"):
+    for key in ("status", "objectives", "paused", "frozen", "frozen_at",
+                "mission_frame"):
         if key in spec and got.get(key) != int(spec[key]):
             problems.append("%s=%s want %s" % (key, got.get(key), spec[key]))
     if "min_frame" in spec and got.get("frame", -1) < int(spec["min_frame"]):

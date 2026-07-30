@@ -3117,7 +3117,13 @@ long GVAppearance::update (bool animate)
 		}
 	}
 
- 	if (animate && gvFrameRate != 0.0f)
+	// FREEZE-MOVERS-1: the VEHICLE track/limb animation had NO freeze guard at
+	// all -- not the mech path's ANIM-CADENCE-FIX, not a capture check. Since
+	// Mover::getLOSPosition (code/mover.cpp:3697) calls appearance->update()
+	// with the default animate=true, and LOS resolution still runs while movers
+	// are frozen, a frozen vehicle's animation could keep ticking off the
+	// wall-clock frameLength. Same mech-vs-vehicle asymmetry as sensorSpin.
+ 	if (animate && gvFrameRate != 0.0f && (mc2FreezeMoversActive() == 0))
 	{
 		//--------------------------------------------------------
 		// Make sure animation runs no faster than bdFrameRate fps.

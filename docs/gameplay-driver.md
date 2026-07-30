@@ -156,12 +156,21 @@ dropped by `Popen`, which silently makes both arms of an A/B run the same path.
 ### `freeze_movers on <frame> | off | status`
 
 ```
-freeze_movers on 900        arm; engages the first frame counter >= 900
+freeze_movers on 900        arm; engages at MISSION frame 900
 freeze_movers off           thaw
-freeze_movers status        active / armedAt / engagedAt
+freeze_movers status        active / armedAt / engagedAt / missionFrame / absFrame
 ```
 
 Or without the channel at all: `MC2_FREEZE_MOVERS_AT=900`.
+
+**`<frame>` is MISSION-relative — frames since `Mission::init`, not the
+process-lifetime counter.** `g_mc2FrameCounter` starts at 0 once per process and
+is never reset per mission, so arming against it directly would make `900` mean a
+different instant in mission B than in mission A and would let a freeze armed in
+one mission fire in the next. `Mission::init` re-stamps the baseline and disarms
+any leftover freeze. Note this is a *different clock* from the one `at_frame`
+and `mission_status frame=` use (both process-lifetime); `mission_status` reports
+`missionFrame=` alongside so you can see both. Do not compare them.
 
 **Always assert the latch fired** — the ack proves the command was accepted, not
 that the freeze happened:

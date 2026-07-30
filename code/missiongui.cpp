@@ -863,7 +863,14 @@ extern "C" int  gos_GetGlobalDebugView();
 // mission.cpp is unchanged, so stock behaviour is byte-identical.
 static bool s_freezeMoversOn      = false;
 static long s_freezeMoversAt      = -2;   // -2 uninitialised, -1 disarmed, >=0 armed
-static long s_freezeMoversEngaged = -1;   // frame the latch actually fired
+static long s_freezeMoversEngaged = -1;   // MISSION frame the latch actually fired
+// g_mc2FrameCounter is process-lifetime: it starts at 0 once and is never reset
+// per mission (GameOS/gameos/gameosmain.cpp). Arming against it directly would
+// make "<frame>" mean a different point in mission B than in mission A, which
+// defeats the whole reproducibility claim, and would let a freeze armed in one
+// mission fire in the next. So the latch works in MISSION-RELATIVE frames off
+// this baseline, re-stamped by mc2FreezeMoversMissionReset() at Mission::init.
+static long s_freezeMoversBase    = 0;
 
 // Must be declared at FILE scope, not inside the extern "C" bodies below: a
 // declaration inside an extern "C" function inherits C linkage and would look
@@ -875,6 +882,24 @@ extern uint32_t g_mc2FrameCounter;
 // Consulted by code/mission.cpp (the sim branch) and by the residual-drift
 // sites in mclib/mech3d.cpp + mclib/gvactor.cpp. Self-latching so it does not
 // matter which of them runs first in a frame.
+// Frames since Mission::init. THIS is what `freeze_movers on <frame>` counts.
+extern "C" long mc2FreezeMoversMissionFrame()
+{
+	return (long)g_mc2FrameCounter - s_freezeMoversBase;
+}
+
+// Called from Mission::init so a freeze is scoped to the mission that armed it
+// and <frame> means the same instant in every mission and every build. Without
+// this a campaign or a multi-mission harness run could start mission B already
+// frozen, with no command in mission B's own session having asked for it.
+extern "C" void mc2FreezeMoversMissionReset()
+{
+	s_freezeMoversBase    = (long)g_mc2FrameCounter;
+	s_freezeMoversOn      = false;
+	s_freezeMoversEngaged = -1;
+	s_freezeMoversAt      = -2;   // re-read env so the gate re-arms per mission
+}
+
 extern "C" int mc2FreezeMoversActive()
 {
 	if (s_freezeMoversAt == -2) {
@@ -883,10 +908,10 @@ extern "C" int mc2FreezeMoversActive()
 		const char* v = getenv("MC2_FREEZE_MOVERS_AT");
 		s_freezeMoversAt = (v && v[0]) ? atol(v) : -1L;
 	}
-	if (!s_freezeMoversOn && s_freezeMoversAt >= 0 &&
-		(long)g_mc2FrameCounter >= s_freezeMoversAt) {
+	const long mf = mc2FreezeMoversMissionFrame();
+	if (!s_freezeMoversOn && s_freezeMoversAt >= 0 && mf >= s_freezeMoversAt) {
 		s_freezeMoversOn = true;
-		s_freezeMoversEngaged = (long)g_mc2FrameCounter;
+		s_freezeMoversEngaged = mf;
 	}
 	return s_freezeMoversOn ? 1 : 0;
 }
@@ -910,7 +935,7 @@ extern "C" void mc2FreezeMoversSet(int on, long atFrame)
 	} else {
 		s_freezeMoversAt = -1;
 		s_freezeMoversOn = true;
-		s_freezeMoversEngaged = (long)g_mc2FrameCounter;
+		s_freezeMoversEngaged = mc2FreezeMoversMissionFrame();
 	}
 }
 
@@ -1643,14 +1668,15 @@ void MissionInterfaceManager::processUiCommandChannel()
 			// movers really were pinned, at the frame I asked for".
 			snprintf(b, sizeof(b),
 				"  frame=%lu scenarioTime=%.2f simSpeed=%.2f fixedTimestep=%d "
-				"status=%ld paused=%d movers=%ld frozen=%d frozenAt=%ld\n",
+				"status=%ld paused=%d movers=%ld frozen=%d frozenAt=%ld missionFrame=%ld\n",
 				(unsigned long)g_mc2FrameCounter, (double)scenarioTime,
 				(double)simSpeedGetMultiplier(),
 				SmokeMode::fixedTimestepEnabled() ? 1 : 0,
 				mission ? mission->getStatus() : -1L,
 				isPaused() ? 1 : 0,
 				ObjectManager ? ObjectManager->getNumMovers() : -1L,
-				mc2FreezeMoversActive(), mc2FreezeMoversEngagedAt());
+				mc2FreezeMoversActive(), mc2FreezeMoversEngagedAt(),
+				mc2FreezeMoversMissionFrame());
 			extra += b;
 			if (Team::home) {
 				snprintf(b, sizeof(b), "  objectives: status=%d\n",
@@ -1909,20 +1935,22 @@ void MissionInterfaceManager::processUiCommandChannel()
 				result = "ok";
 				if (nf >= 2)
 					snprintf(b, sizeof(b),
-						"armed for frame %ld (engagedAt=%ld, now f=%lu); "
+						"armed for MISSION frame %ld (engagedAt=%ld, now missionFrame=%ld); "
 						"REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1",
 						mc2FreezeMoversArmedAt(), mc2FreezeMoversEngagedAt(),
-						(unsigned long)g_mc2FrameCounter);
+						mc2FreezeMoversMissionFrame());
 				else
 					snprintf(b, sizeof(b),
-						"frozen NOW at frame %ld -- not cross-build reproducible; "
+						"frozen NOW at mission frame %ld -- not cross-build reproducible; "
 						"use `freeze_movers on <frame>` for that",
 						mc2FreezeMoversEngagedAt());
 				note = b;
 			} else if (s == "status") {
-				snprintf(b, sizeof(b), "active=%d armedAt=%ld engagedAt=%ld now=%lu",
+				snprintf(b, sizeof(b),
+					"active=%d armedAt=%ld engagedAt=%ld missionFrame=%ld absFrame=%lu",
 					mc2FreezeMoversActive(), mc2FreezeMoversArmedAt(),
-					mc2FreezeMoversEngagedAt(), (unsigned long)g_mc2FrameCounter);
+					mc2FreezeMoversEngagedAt(), mc2FreezeMoversMissionFrame(),
+					(unsigned long)g_mc2FrameCounter);
 				note = b;
 				result = "ok";
 			} else {
@@ -2054,7 +2082,21 @@ void MissionInterfaceManager::processUiCommandChannel()
 						note = "already in that gesture (setGesture early-returns)";
 					} else {
 						ba->setGesture((unsigned long)g);
-						result = "ok";
+						// setGesture silently early-returns when the object is
+						// DESTROYED or DISABLED (mclib/bdactor.cpp:1820), BEFORE
+						// touching bdAnimationState. Acking a bare "ok" there
+						// would be the exact "the ack describes the COMMAND, not
+						// the WORLD" failure this harness exists to kill: after
+						// `animate <id> damaged`, a following `animate <id> 3`
+						// would report ok while doing nothing at all. So verify
+						// the gesture actually moved.
+						if (ba->getCurrentGestureId() == g) {
+							result = "ok";
+						} else {
+							result = "blocked";
+							note = "setGesture was a no-op (object DESTROYED/DISABLED?) "
+								   "-- gesture unchanged; use `animate <id> normal` first";
+						}
 					}
 				}
 				if (!strcmp(result, "ok")) {
