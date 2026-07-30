@@ -2256,6 +2256,31 @@ uint64_t s_late_register_recovery_skips = 0;
 // snapshot map only carries entries for the sampled actor's types).
 const TG_MultiShape* s_currentSubmittingMulti = nullptr;
 
+// TREE-POP-TAG-1: population of the actor whose leaves submit() is currently
+// pushing. Written ONLY while MC2_TREE_DIAG_TRACE is armed (see
+// submitMultiShape) and read ONLY by the [TREE_DIAG] record, so the unarmed
+// hot path is unchanged. See popShortName() for why this field had to exist.
+GpuStaticPropPopulation s_currentSubmitPop = GpuStaticPropPopulation::Legacy;
+
+// The [TREE_DIAG] stream is named for the 2026-05-05 "black billboard square"
+// bug, but submit() runs for EVERY static-prop leaf of EVERY population — the
+// name has never scoped the output. On 2026-07-29 that cost real time: eight
+// `path=dyn` records were read as proof that trees were dynamically submitting,
+// and a root cause was written on top of that reading. (They were building
+// leaves: the same run reported submit_buildings=3061, submit_trees=0,
+// cpu_fallback=0 — every submitMultiShape succeeded, and every success was
+// tagged Building.) A trace that cannot say which population it is describing
+// invites exactly that inference, so every record now names it.
+inline const char* popShortName(GpuStaticPropPopulation p) {
+    switch (p) {
+        case GpuStaticPropPopulation::Building: return "bldg";
+        case GpuStaticPropPopulation::Tree:     return "tree";
+        case GpuStaticPropPopulation::Generic:  return "generic";
+        case GpuStaticPropPopulation::Legacy:   return "legacy";
+    }
+    return "?";
+}
+
 // 2026-05-10 actor-center fix: parent multishape's world position captured
 // at the top of submitMultiShape and read by submit() when populating the
 // substrate-record worldCenter. Every leaf of one multishape shares the same
@@ -5170,13 +5195,15 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
         if (s_treeDiagTrace && s_dynPrinted == kTreeDiagSample) {
             ++s_dynPrinted;   // == kTreeDiagSample+1: notice emitted, never again
             TREE_DIAG("path=dyn sample=first%d SAMPLE-CAP-REACHED further path=dyn records suppressed; "
-                      "this stream is a SAMPLE not a census -- line count != submission count",
+                      "this stream is a SAMPLE not a census -- line count != submission count; "
+                      "and it covers ALL prop populations (see pop=), not just trees",
                       kTreeDiagSample);
         }
         if (s_treeDiagTrace && s_dynPrinted < kTreeDiagSample) {
             ++s_dynPrinted;
-            TREE_DIAG("path=dyn sample=first%d n=%llu typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
+            TREE_DIAG("path=dyn sample=first%d n=%llu pop=%s typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
                 kTreeDiagSample, (unsigned long long)s_dynSeen,
+                popShortName(s_currentSubmitPop),
                 inst.typeID, inst.flags, inst.lightDataIndex, inst.firstColorOffset,
                 // Stuff::Matrix4D translation lives at (3,0)/(3,1)/(3,2) which the
                 // operator()(row,col) maps to entries[(col<<2)+row] = [3]/[7]/[11].
@@ -5407,6 +5434,12 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     s_currentSubmittingActorCenter[1]   = 0.0f;
     s_currentSubmittingActorCenter[2]   = 0.0f;
     // pop consumed by counters below.
+    // TREE-POP-TAG-1: publish it to the per-leaf [TREE_DIAG] record too, so a
+    // `path=dyn` line names the population of the actor it came from instead of
+    // leaving the reader to infer it from the macro's (misleading) name. Guarded
+    // on the trace flag: with MC2_TREE_DIAG_TRACE unset nothing is written and
+    // this function's behaviour is unchanged.
+    if (s_treeDiagTrace) s_currentSubmitPop = pop;
     if (!multi || s_fatalRegistrationFailure) {
         s_currentSubmittingMulti = nullptr;
         return false;
@@ -9610,7 +9643,10 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
         if (s_treeDiagTrace && s_staticPrinted == kTreeDiagSample) {
             ++s_staticPrinted;
             TREE_DIAG("path=stat sample=first%d SAMPLE-CAP-REACHED further path=stat records suppressed; "
-                      "this stream is a SAMPLE not a census -- line count != replay count",
+                      "this stream is a SAMPLE not a census -- line count != replay count; "
+                      "and it covers ALL prop populations, not just trees. NOTE: this path "
+                      "carries no pop= -- submitCachedInstance replays a registry recipe and "
+                      "is not told the population; do not infer one from the [TREE_DIAG] name",
                       kTreeDiagSample);
         }
         if (s_treeDiagTrace && s_staticPrinted < kTreeDiagSample) {

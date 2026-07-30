@@ -1,0 +1,38 @@
+# scripts/counter-honesty-population-inventory.txt
+#
+# TREE-POP-TAG-1 -- INVENTORY of GpuStaticPropPopulation enumerators that NO
+# setRecipePopulation() call site anywhere in the tree ever assigns.
+#
+# WHY THIS FILE EXISTS
+#   The [OBJBATCHER v1] summary prints one reg_recipes_<pop> field per
+#   enumerator.  A field whose enumerator is never assigned can only ever
+#   print 0 -- and a 0 that no code path could have made non-zero is not a
+#   measurement, it is a lie shaped like one.  That exact failure already cost
+#   this project real time: submit_trees=0 was read as "trees are culled"
+#   during a P0, and reg_recipes_generics=0 reads as "no generic props" when
+#   the truth is "nothing tags Generic".
+#
+#   Rule R3 in scripts/check-counter-honesty.py fails on any enumerator that
+#   is never assigned AND not listed here.  Entries here are a deliberate,
+#   reasoned record of a field that is structurally zero -- NOT permission to
+#   print it as though it were data.
+#
+# IT RATCHETS BOTH WAYS
+#   - A new never-assigned enumerator (e.g. someone extends the enum, or
+#     deletes the last setRecipePopulation(Tree) call) fails R3 until it is
+#     either wired up or consciously inventoried here.
+#   - An enumerator listed here that LATER gains a real assignment site also
+#     fails R3, as a stale entry.  The inventory can never quietly over-claim
+#     blindness once the blindness is fixed.
+#
+# KEY FORMAT
+#   <EnumeratorName>  # <reason it is never assigned>
+#   No line numbers, no paths -- ordinary edits must not churn this file.
+#
+# REGENERATE
+#   py -3 scripts/check-counter-honesty.py --write
+#   (verify-only by default; --write preserves the reason text of surviving
+#    entries and marks new ones REASON REQUIRED for a human to fill in.)
+#
+Generic  # GenericAppearance (mclib/genactor.cpp) submits with pop=Generic on the DYNAMIC batcher path only; it has no registerStatic override, so it never mints a recipe and never reaches setRecipePopulation. reg_recipes_generics is structurally 0 and says nothing about how many generic props the scene holds.
+Legacy  # Legacy is a SUBMIT-path tag for the !g_useGpuObjects killswitch route (mclib/bdactor.cpp:2339, :6802; mclib/genactor.cpp:864). That route never mints a recipe, so no recipe can carry the value. reg_recipes_legacy is structurally 0.

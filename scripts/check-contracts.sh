@@ -312,6 +312,13 @@ run_check "tgl_load_selftest"  "sh scripts/check-tgl-load-callers.sh --self-test
 # census). R2 = every first-N print limiter emits a self-declaring token, so a
 # truncated stream cannot be read as a census; pre-existing sites are inventoried
 # in scripts/counter-honesty-allowlist.txt and the rule ratchets on new ones.
+# TREE-POP-TAG-1 adds R3 = every GpuStaticPropPopulation enumerator has a real
+# setRecipePopulation() assignment site, or an inventoried reason in
+# scripts/counter-honesty-population-inventory.txt. R1 asks "does this mint tag
+# something?"; R3 asks the dual question R1 cannot — "is this VALUE ever
+# assigned at all?" — which is what makes a reg_recipes_* field structurally
+# incapable of being non-zero. Ratchets both ways (a stale entry for a value
+# that has since gained an assignment site also fails). Regen: --write.
 run_check "counter_honesty"          "py -3 scripts/check-counter-honesty.py --quiet"
 run_check "counter_honesty_selftest" "py -3 scripts/check-counter-honesty.py --self-test 2>/dev/null"
 

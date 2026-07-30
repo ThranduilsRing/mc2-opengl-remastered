@@ -37,10 +37,27 @@ R2  SAMPLE SELF-DECLARATION.  Any first-N print limiter (`s_<name>Printed < N`
     grandfathered via ALLOWLIST below; the rule is a RATCHET -- new limiters
     must self-declare or be consciously allowlisted with a reason.
 
+R3  POPULATION-VALUE COVERAGE (TREE-POP-TAG-1).  R1 asks "does this mint tag
+    something?".  It cannot catch the dual failure: an enum VALUE that no mint
+    anywhere ever assigns.  The [OBJBATCHER v1] summary prints one
+    reg_recipes_<pop> field per GpuStaticPropPopulation enumerator, so an
+    unassigned enumerator ships a field that is structurally incapable of
+    being non-zero -- a permanent 0 indistinguishable from a real count of
+    zero.  That is precisely the misread that cost a P0 investigation hours
+    ("submit_trees=0" -> "trees are culled").  R3 requires every enumerator to
+    have at least one real assignment site, or an entry in the sidecar
+    inventory stating why it cannot.  It ratchets BOTH ways: a stale entry for
+    an enumerator that has since gained an assignment site also fails.
+
+    Note R3 is the STATIC counterpart to the runtime `reg_pops_ever_tagged`
+    field.  The runtime marker needs a launch and a scene that exercises the
+    path; R3 answers the same question from source, in the contract suite.
+
 Usage:
     py -3 scripts/check-counter-honesty.py [--quiet]
     py -3 scripts/check-counter-honesty.py --self-test
     py -3 scripts/check-counter-honesty.py --list-limiters   # audit aid
+    py -3 scripts/check-counter-honesty.py --write           # regen R3 inventory
 
 Exit: 0 pass / 1 violation / 2 harness error.
 """
@@ -108,6 +125,30 @@ R2_SCAN_DIRS = ["GameOS", "mclib", "code", "RenderCore", "RenderWorld",
 # without a self-declaring output.  Read it before trusting any capped trace.
 # ADDING TO IT IS A CONSCIOUS ACT.  Prefer fixing the instrument.
 R2_ALLOWLIST_PATH = os.path.join(SCRIPT_DIR, "counter-honesty-allowlist.txt")
+
+# --------------------------------------------------------------------------
+# R3 -- every population enum VALUE must have an assignment site (or a reason)
+# --------------------------------------------------------------------------
+R3_ENUM_FILE = os.path.join("GameOS", "gameos", "gos_static_prop_batcher.h")
+R3_ENUM_NAME = "GpuStaticPropPopulation"
+R3_ENUM_BODY = re.compile(
+    r"enum\s+class\s+" + R3_ENUM_NAME + r"\b[^{]*\{(?P<body>[^}]*)\}", re.S)
+# An enumerator is the leading identifier of a comma-separated entry, with or
+# without an `= N` initialiser.
+R3_ENUMERATOR = re.compile(r"^\s*([A-Za-z_]\w*)\s*(?:=|$)")
+# Assignment SITE = a setRecipePopulation( call. The value may sit on a later
+# line (the house style wraps these), so read a small window forward and take
+# the FIRST qualified enumerator in it -- that is the argument.
+R3_ASSIGN_CALL = re.compile(r"setRecipePopulation\s*\(")
+R3_ASSIGN_VALUE = re.compile(R3_ENUM_NAME + r"::(\w+)")
+R3_ASSIGN_WINDOW = 4
+R3_SCAN_DIRS = ["mclib", "code", "editor", "GameAdapters", "GameOS",
+                "RenderWorld", "RenderCore"]
+# Sidecar inventory of enumerators no site assigns. Same contract as the R2
+# allowlist: an AUDIT RECORD, not permission. See the file's own header.
+R3_INVENTORY_PATH = os.path.join(SCRIPT_DIR,
+                                 "counter-honesty-population-inventory.txt")
+R3_NEEDS_REASON = "<REASON REQUIRED -- state why no site can assign this>"
 
 
 def load_allowlist():
@@ -230,6 +271,154 @@ def check_r2(files, allowlist=None):
     return violations
 
 
+def parse_population_enumerators(header_path):
+    """Enumerator names of the population enum, in declaration order.
+
+    Raises on a parse miss: silently returning an empty list would make R3 a
+    rule that always passes -- the exact species of instrument this script
+    exists to outlaw. A harness error (exit 2) is the honest outcome.
+    """
+    if not os.path.isfile(header_path):
+        raise RuntimeError("R3: enum header not found: %s" % header_path)
+    text = open(header_path, "r", encoding="utf-8", errors="replace").read()
+    m = R3_ENUM_BODY.search(text)
+    if not m:
+        raise RuntimeError("R3: could not locate `enum class %s` in %s -- the "
+                           "rule cannot verify coverage it cannot enumerate."
+                           % (R3_ENUM_NAME, rel(header_path)))
+    names = []
+    for entry in m.group("body").split(","):
+        entry = entry.split("//", 1)[0]
+        em = R3_ENUMERATOR.match(entry)
+        if em:
+            names.append(em.group(1))
+    if not names:
+        raise RuntimeError("R3: `enum class %s` parsed to zero enumerators."
+                           % R3_ENUM_NAME)
+    return names
+
+
+def find_population_assignments(files):
+    """Map enumerator -> [ "path:line", ... ] for every real assignment site.
+
+    Comments are stripped first, for the R1 reason: a rule that prose can
+    satisfy is itself a lying instrument.
+    """
+    assigned = {}
+    for path in files:
+        lines = strip_comments(read_lines(path))
+        for i, line in enumerate(lines):
+            if not R3_ASSIGN_CALL.search(line):
+                continue
+            window = "\n".join(lines[i:i + R3_ASSIGN_WINDOW])
+            vm = R3_ASSIGN_VALUE.search(window)
+            if not vm:
+                continue
+            assigned.setdefault(vm.group(1), []).append(
+                "%s:%d" % (rel(path), i + 1))
+    return assigned
+
+
+def load_population_inventory(path=None):
+    """Ordered [(enumerator, reason)] from the sidecar inventory."""
+    path = path or R3_INVENTORY_PATH
+    entries = []
+    if not os.path.isfile(path):
+        return entries
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for raw in fh:
+            line = raw.rstrip("\n")
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            name, _, reason = line.partition("#")
+            entries.append((name.strip(), reason.strip()))
+    return entries
+
+
+def render_population_inventory(unassigned, existing):
+    """Inventory text for `unassigned`, carrying over known reason text."""
+    known = dict(existing)
+    head = []
+    if os.path.isfile(R3_INVENTORY_PATH):
+        with open(R3_INVENTORY_PATH, "r", encoding="utf-8",
+                  errors="replace") as fh:
+            for raw in fh:
+                if raw.lstrip().startswith("#") or not raw.strip():
+                    head.append(raw.rstrip("\n"))
+                else:
+                    break
+    body = ["%s  # %s" % (n, known.get(n) or R3_NEEDS_REASON)
+            for n in unassigned]
+    return "\n".join(head + body) + "\n"
+
+
+def check_r3(files, header_path=None, inventory_path=None):
+    """Every population enumerator needs an assignment site, or a reason."""
+    header_path = header_path or os.path.join(ROOT, R3_ENUM_FILE)
+    enumerators = parse_population_enumerators(header_path)
+    assigned = find_population_assignments(files)
+    inventory = load_population_inventory(inventory_path)
+    inv_names = [n for n, _ in inventory]
+
+    violations = []
+    for name in enumerators:
+        if name in assigned:
+            continue
+        if name in inv_names:
+            continue
+        violations.append(
+            "%s::%s is never assigned by any setRecipePopulation() call site. "
+            "Every recipe therefore keeps the 0xFF 'never tagged' default for "
+            "this value, so the [OBJBATCHER v1] reg_recipes_* field for it can "
+            "only ever print 0 -- a zero no code path could have moved, which "
+            "reads exactly like a real count of zero. Wire an assignment site, "
+            "or record why none can exist in %s (regen: --write)."
+            % (R3_ENUM_NAME, name, rel(R3_INVENTORY_PATH)))
+
+    # Ratchet the other way: an inventory entry that has since gained a real
+    # assignment site is a stale over-claim of blindness. Left unchecked, the
+    # file would keep excusing a field that is now genuinely measured.
+    for name, _reason in inventory:
+        if name in assigned:
+            violations.append(
+                "%s lists %s::%s as never-assigned, but it IS assigned at %s. "
+                "Stale inventory entry -- drop it (regen: --write)."
+                % (rel(R3_INVENTORY_PATH), R3_ENUM_NAME, name,
+                   ", ".join(assigned[name][:3])))
+        elif name not in enumerators:
+            violations.append(
+                "%s lists %s, which is not an enumerator of %s. Stale entry."
+                % (rel(R3_INVENTORY_PATH), name, R3_ENUM_NAME))
+
+    # A reasonless entry is an entry that explains nothing. The whole point of
+    # the sidecar is the reason text; an empty one silently becomes a mute
+    # suppression list.
+    for name, reason in inventory:
+        if not reason or reason == R3_NEEDS_REASON:
+            violations.append(
+                "%s entry `%s` carries no reason. State why no site can assign "
+                "it -- an unexplained suppression is how the original bug hid."
+                % (rel(R3_INVENTORY_PATH), name))
+    return violations
+
+
+def write_population_inventory():
+    """Regenerate the R3 inventory. newline='\\n' so a Windows regen with
+    identical content does not dirty the tracked file with CRLF."""
+    enumerators = parse_population_enumerators(os.path.join(ROOT, R3_ENUM_FILE))
+    assigned = find_population_assignments(repo_files(R3_SCAN_DIRS))
+    unassigned = [n for n in enumerators if n not in assigned]
+    text = render_population_inventory(unassigned,
+                                       load_population_inventory())
+    with open(R3_INVENTORY_PATH, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+    print("counter-honesty: R3 inventory regenerated -> %s (%d never-assigned "
+          "enumerator(s): %s)"
+          % (rel(R3_INVENTORY_PATH), len(unassigned),
+             ", ".join(unassigned) or "none"))
+    return 0
+
+
 # --------------------------------------------------------------------------
 # Self-test: prove each rule still catches a fresh violation.
 # --------------------------------------------------------------------------
@@ -291,6 +480,82 @@ void emit() {
 """
 
 
+R3_ENUM_HEADER_FIXTURE = """\
+enum class GpuStaticPropPopulation : uint8_t {
+    Building = 0,
+    Tree     = 1,
+    Generic  = 2,
+};
+"""
+
+# Only Building is really assigned. Tree's ONLY mention is inside a comment --
+# the R1 lesson applied to R3: prose must not satisfy the rule.
+R3_SRC_PARTIAL = """\
+void a() {
+    GpuStaticPropRegistry::setRecipePopulation(
+        regIdx, GpuStaticPropPopulation::Building);
+}
+void b() {
+    // Historically this called setRecipePopulation(GpuStaticPropPopulation::Tree).
+    staticReg.registered = true;
+}
+"""
+
+R3_SRC_ALL = """\
+void a() {
+    GpuStaticPropRegistry::setRecipePopulation(
+        regIdx, GpuStaticPropPopulation::Building);
+    GpuStaticPropRegistry::setRecipePopulation(
+        regIdx, GpuStaticPropPopulation::Tree);
+    GpuStaticPropRegistry::setRecipePopulation(
+        regIdx, GpuStaticPropPopulation::Generic);
+}
+"""
+
+
+def _r3_case(td, tag, src, inventory_text):
+    """Materialise an R3 fixture triple; return the check_r3 violations."""
+    hdr = os.path.join(td, "%s_enum.h" % tag)
+    with open(hdr, "w", encoding="utf-8") as fh:
+        fh.write(R3_ENUM_HEADER_FIXTURE)
+    src_path = os.path.join(td, "%s_src.cpp" % tag)
+    with open(src_path, "w", encoding="utf-8") as fh:
+        fh.write(src)
+    inv = os.path.join(td, "%s_inv.txt" % tag)
+    with open(inv, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(inventory_text)
+    return check_r3([src_path], header_path=hdr, inventory_path=inv)
+
+
+def self_test_r3():
+    ok = True
+    checks = [
+        ("R3 must FLAG an enumerator no site assigns",
+         R3_SRC_PARTIAL, "# inv\n", True),
+        ("R3 must FLAG an enumerator whose only assignment is in a COMMENT",
+         R3_SRC_PARTIAL, "# inv\nGeneric  # no registerStatic override\n", True),
+        ("R3 must PASS when every unassigned enumerator is inventoried",
+         R3_SRC_PARTIAL,
+         "# inv\nTree  # fixture\nGeneric  # fixture\n", False),
+        ("R3 must PASS when every enumerator has a real assignment site",
+         R3_SRC_ALL, "# inv\n", False),
+        ("R3 must FLAG a STALE inventory entry (now assigned)",
+         R3_SRC_ALL, "# inv\nTree  # fixture\n", True),
+        ("R3 must FLAG an inventory entry with no reason",
+         R3_SRC_PARTIAL, "# inv\nTree\nGeneric  # fixture\n", True),
+    ]
+    with tempfile.TemporaryDirectory() as td:
+        for idx, (label, src, inv, expect_hit) in enumerate(checks):
+            got = bool(_r3_case(td, "c%d" % idx, src, inv))
+            if got != expect_hit:
+                print("SELF-TEST FAIL: %s (expected hit=%s, got=%s)"
+                      % (label, expect_hit, got))
+                ok = False
+            else:
+                print("SELF-TEST ok: %s" % label)
+    return ok
+
+
 def self_test():
     ok = True
     with tempfile.TemporaryDirectory() as td:
@@ -316,6 +581,8 @@ def self_test():
                 ok = False
             else:
                 print("SELF-TEST ok: %s" % label)
+    if not self_test_r3():
+        ok = False
     return 0 if ok else 1
 
 
@@ -328,7 +595,13 @@ def main():
     ap.add_argument("--emit-allowlist", action="store_true",
                     help="print allowlist keys for every currently-silent limiter "
                          "(regeneration aid; review before pasting)")
+    ap.add_argument("--write", action="store_true",
+                    help="regenerate the R3 never-assigned-population inventory "
+                         "(verify-only without this flag)")
     args = ap.parse_args()
+
+    if args.write:
+        return write_population_inventory()
 
     if args.emit_allowlist:
         for path, lineno, text, declares in find_limiters(repo_files(R2_SCAN_DIRS)):
@@ -347,7 +620,8 @@ def main():
 
     v1 = check_r1(repo_files(R1_SCAN_DIRS))
     v2 = check_r2(repo_files(R2_SCAN_DIRS))
-    violations = v1 + v2
+    v3 = check_r3(repo_files(R3_SCAN_DIRS))
+    violations = v1 + v2 + v3
 
     if violations:
         print("counter-honesty: %d violation(s)" % len(violations))
@@ -357,7 +631,8 @@ def main():
 
     if not args.quiet:
         print("counter-honesty: R1 recipe-population pairing OK; "
-              "R2 sample self-declaration OK")
+              "R2 sample self-declaration OK; "
+              "R3 population-value coverage OK")
     return 0
 
 
