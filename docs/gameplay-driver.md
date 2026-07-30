@@ -304,6 +304,28 @@ If `assert_building: {min_animatable: 1}` fails, that is a **finding**, not a
 setup error: the mission cannot witness this defect class, and the honest result
 is "cannot reproduce under harness" rather than arms that prove nothing.
 
+**Order `freeze_movers` BEFORE `animate`, and know what you get.** Verified by
+reading `GameObjectManager::updateAppearancesOnly` (`code/objmgr.cpp:4857`) and
+`BldgAppearance::update` (`mclib/bdactor.cpp:3873`):
+
+- Under freeze, `Building::update()` is **not** called at all — only
+  `appearance->update(false)`. That matters twice over:
+  - `Building::updateAnimations()` (`code/bldng.cpp:691-704`) re-issues
+    `setGesture(0)` every frame once the object is out of transition. Frozen,
+    that stomp **cannot** run, so a gesture set by `animate` sticks. Unfrozen,
+    it will revert to idle at the end of the animation cycle.
+  - `update(false)` skips the `if (animate && bdFrameRate != 0.0f)` frame
+    advance, so the animation **holds at its first frame** instead of playing.
+- So `freeze_movers` then `animate` gives a *deterministic* frame: the object is
+  off the static batch and on the animated path, posed at animation frame 0,
+  identically on every run and every build. That is what you want for an A/B.
+- If you need a *later* animation frame, `animate` first, let it run, then
+  freeze — but that pose depends on how many frames elapsed and is **not**
+  reproducible across builds. Do not use it for a byte-diff.
+- The terrain-object branch is gated on `recalcBounds()`, i.e. **in view**. A
+  building the camera is not looking at is not updated; frame the target with
+  `camera` before asserting on it.
+
 ## Adding a verb
 
 1. One `else if` in `processUiCommandChannel()` (`code/missiongui.cpp`). Write
