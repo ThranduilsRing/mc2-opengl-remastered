@@ -268,9 +268,116 @@ def cooked_corpus(repo: str, names: set, cook_root: str = COOK_ROOT,
     return corpus
 
 
-def audit(corpus, target: str):
-    """-> (missing, drift, ok) lists of (mission, filename, detail)."""
-    missing, drift, ok = [], [], []
+# --------------------------------------------------------------------------
+# Content validity — presence is NOT effectiveness
+# --------------------------------------------------------------------------
+# A shoreline_mask.png can be installed, load cleanly, and still carry no
+# contour. Both consuming gates would report healthy. Worse than absent: a
+# missing sidecar at least logs "sidecar NOT FOUND".
+#
+# CHANNEL SEMANTICS (cook_shoreline.py:31-44) -- get these backwards and the
+# verdict inverts:
+#   R = signed distance to the waterline, normalised by BAND_NORM_WU=128
+#       (0.5 == exactly on the waterline). THIS IS THE SIGNAL.
+#   G = wet weight, B = foam weight (terrain-side modulators).
+#   A = valid/COVERAGE. 255 = "this texel is inside the cooked bounds, apply
+#       the mask here". A full-map cook is 255 EVERYWHERE by construction.
+# The water shader gates on `if (sl.a > 0.5)`, so A==255 everywhere means the
+# mask APPLIES everywhere -- the opposite of inert. A==0 everywhere is the
+# degenerate case: the shader never enters the block at all.
+#
+# Consumption (shaders/gos_terrain_water_mdi.frag:258-270):
+#   maskDistWu = (R-0.5)*256 ; shoreM = 1 - smoothstep(-12, 6, maskDistWu)
+#   shore = min(shore, shoreM)
+# so the mask can only ever REMOVE water. The only texels where it can change
+# anything are the ones with 0 < shoreM < 1 (the 18wu feather band) plus the
+# shoreM==0 region where geometry still wanted water. A mask with an EMPTY
+# feather band carries no contour and cannot do anything at all.
+SHORE_FEATHER_LO, SHORE_FEATHER_HI = -12.0, 6.0   # must track the frag shader
+BAND_NORM_WU = 128.0                              # must track cook_shoreline.py
+
+
+def _smoothstep(e0, e1, x):
+    import numpy as np
+    t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def content_validity(path: str, name: str):
+    """-> (verdict, metrics). verdict in {OK, DEGENERATE, UNCHECKED, ERROR}."""
+    if name == "shoreline_mask.png":
+        try:
+            import numpy as np
+            from PIL import Image
+        except ImportError:
+            return "UNCHECKED", {"why": "numpy/PIL unavailable"}
+        try:
+            a = np.array(Image.open(path).convert("RGBA"))
+        except Exception as e:  # noqa: BLE001
+            return "ERROR", {"why": f"decode failed: {e}"}
+        A = a[..., 3].astype(np.float64)
+        R = a[..., 0].astype(np.float64)
+        coverage = float((A > 127.5).mean())
+        d = (R / 255.0 - 0.5) * (2.0 * BAND_NORM_WU)
+        shore_m = 1.0 - _smoothstep(SHORE_FEATHER_LO, SHORE_FEATHER_HI, d)
+        feather = float(((shore_m > 0.001) & (shore_m < 0.999)).mean())
+        kills = float((shore_m <= 0.001).mean())
+        codes = int(len(np.unique(a[..., 0])))
+        m = {"coverage_pct": round(100 * coverage, 3),
+             "feather_pct": round(100 * feather, 4),
+             "kill_pct": round(100 * kills, 3),
+             "distinct_R_codes": codes,
+             "size": f"{a.shape[1]}x{a.shape[0]}"}
+        if coverage <= 0.0:
+            m["why"] = ("A(coverage)==0 everywhere: the frag `if (sl.a > 0.5)` "
+                        "never fires, mask is inert")
+            return "DEGENERATE", m
+        if codes < 8 or feather <= 0.0:
+            m["why"] = ("R(signal) carries no contour: empty feather band, so "
+                        "min(shore, shoreM) can never bind")
+            return "DEGENERATE", m
+        return "OK", m
+    if name.endswith(".r32"):
+        try:
+            sz = os.path.getsize(path)
+        except OSError as e:
+            return "ERROR", {"why": str(e)}
+        if sz == 0 or sz % 4:
+            return "DEGENERATE", {"bytes": sz,
+                                  "why": "not a whole number of float32"}
+        return "OK", {"bytes": sz, "floats": sz // 4}
+    if name.endswith(".bounds.txt"):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                parts = f.read().split()
+            vals = [float(x) for x in parts]
+        except Exception as e:  # noqa: BLE001
+            return "ERROR", {"why": f"parse failed: {e}"}
+        if len(vals) != 4:
+            return "DEGENERATE", {"why": f"expected 4 floats, got {len(vals)}"}
+        if vals[2] <= 0 or vals[3] <= 0:
+            return "DEGENERATE", {"why": f"non-positive extent {vals[2]}x{vals[3]}"}
+        return "OK", {"topLeft": vals[:2], "size": vals[2:]}
+    if name.endswith(".png"):
+        try:
+            with open(path, "rb") as f:
+                magic = f.read(8)
+        except OSError as e:
+            return "ERROR", {"why": str(e)}
+        if magic != b"\x89PNG\r\n\x1a\n":
+            return "DEGENERATE", {"why": "not a PNG"}
+        return "OK", {}
+    return "UNCHECKED", {}
+
+
+def audit(corpus, target: str, check_content: bool = False):
+    """-> (missing, drift, ok, degenerate).
+
+    First three are lists of (mission, filename, path). `degenerate` is a list
+    of (mission, filename, path, metrics) for INSTALLED copies that are present
+    but cannot do anything -- the failure mode presence-only checking misses.
+    """
+    missing, drift, ok, degenerate = [], [], [], []
     for mission in sorted(corpus):
         for fn in sorted(corpus[mission]):
             src = corpus[mission][fn]
@@ -278,11 +385,16 @@ def audit(corpus, target: str):
                                mission + ".beauty", fn)
             if not os.path.isfile(dst):
                 missing.append((mission, fn, dst))
-            elif sha256(src) != sha256(dst):
+                continue
+            if sha256(src) != sha256(dst):
                 drift.append((mission, fn, dst))
             else:
                 ok.append((mission, fn, dst))
-    return missing, drift, ok
+            if check_content:
+                verdict, metrics = content_validity(dst, fn)
+                if verdict in ("DEGENERATE", "ERROR"):
+                    degenerate.append((mission, fn, dst, metrics))
+    return missing, drift, ok, degenerate
 
 
 # --------------------------------------------------------------------------
@@ -404,7 +516,7 @@ def selftest() -> int:
         # INJECTED REGRESSION: deploy tree exists, sidecar was never installed.
         target = os.path.join(tmp, "deploy")
         os.makedirs(os.path.join(target, "data", "missions", "mc2_99.beauty"))
-        missing, drift, ok = audit(corpus, target)
+        missing, drift, ok, _deg = audit(corpus, target)
         check("REGRESSION: uninstalled cooked sidecar reported MISSING",
               len(missing) == 2 and not ok, f"missing={missing} ok={ok}")
 
@@ -412,7 +524,7 @@ def selftest() -> int:
         for fn, src in corpus["mc2_99"].items():
             shutil.copyfile(src, os.path.join(
                 target, "data", "missions", "mc2_99.beauty", fn))
-        missing, drift, ok = audit(corpus, target)
+        missing, drift, ok, _deg = audit(corpus, target)
         check("installed sidecar passes", not missing and not drift and len(ok) == 2,
               f"missing={missing} drift={drift}")
 
@@ -420,9 +532,86 @@ def selftest() -> int:
         with open(os.path.join(target, "data", "missions", "mc2_99.beauty",
                                "shoreline_mask.png"), "wb") as f:
             f.write(b"DIFFERENT")
-        missing, drift, ok = audit(corpus, target)
+        missing, drift, ok, _deg = audit(corpus, target)
         check("content drift detected and NOT reported as missing",
               not missing and len(drift) == 1, f"drift={drift}")
+
+        # ------------------------------------------------------------------
+        # CONTENT VALIDITY. Presence != effectiveness, and the channel
+        # semantics are easy to invert: A is COVERAGE, R is the SIGNAL.
+        # ------------------------------------------------------------------
+        try:
+            import numpy as np
+            from PIL import Image
+        except ImportError:
+            print("  skip content-validity checks (numpy/PIL unavailable)")
+        else:
+            cdir = os.path.join(tmp, "content")
+            os.makedirs(cdir)
+
+            def _mask(path, r, a):
+                Image.fromarray(
+                    np.dstack([r, np.zeros_like(r), np.zeros_like(r), a]),
+                    "RGBA").save(path)
+
+            n = 64
+            ramp = np.tile(np.linspace(0, 255, n, dtype=np.uint8), (n, 1))
+            full = np.full((n, n), 255, np.uint8)
+
+            good = os.path.join(cdir, "good.png")
+            _mask(good, ramp, full)
+            v, mt = content_validity(good, "shoreline_mask.png")
+            # THE TRAP: A==255 on 100% of texels is a FULL-MAP COOK, the normal
+            # and correct state -- the frag gates on `if (sl.a > 0.5)`, so full
+            # coverage means the mask APPLIES everywhere. Reading that as
+            # "inert" inverts the verdict on a healthy mask.
+            check("CONTENT: A==255 everywhere + R contour => OK, NOT degenerate",
+                  v == "OK" and mt["coverage_pct"] == 100.0, f"{v} {mt}")
+            check("CONTENT: healthy mask has a non-empty feather band",
+                  mt["feather_pct"] > 0.0, str(mt))
+
+            nocov = os.path.join(cdir, "nocov.png")
+            _mask(nocov, ramp, np.zeros((n, n), np.uint8))
+            v, mt = content_validity(nocov, "shoreline_mask.png")
+            check("CONTENT: A==0 everywhere => DEGENERATE (frag never enters)",
+                  v == "DEGENERATE", f"{v} {mt}")
+
+            flat = os.path.join(cdir, "flat.png")
+            _mask(flat, np.zeros((n, n), np.uint8), full)
+            v, mt = content_validity(flat, "shoreline_mask.png")
+            check("CONTENT: constant R (no contour) => DEGENERATE",
+                  v == "DEGENERATE", f"{v} {mt}")
+
+            # A degenerate INSTALLED copy must fail the audit even though the
+            # file is present and byte-identical to the cook -- the exact case
+            # presence-only checking waves through.
+            dgn_repo = os.path.join(tmp, "dgnrepo")
+            dgn_cook = os.path.join(dgn_repo, COOK_ROOT, "mc2_97")
+            os.makedirs(dgn_cook)
+            shutil.copyfile(flat, os.path.join(dgn_cook, "shoreline_mask.png"))
+            with open(os.path.join(dgn_cook, "shoreline_mask.bounds.txt"), "w",
+                      encoding="utf-8", newline="\n") as f:
+                f.write("0 0 100 100\n")
+            dc = cooked_corpus(dgn_repo, {"shoreline_mask.png"},
+                               tracked_only=False)
+            dt = os.path.join(tmp, "dgndeploy", "data", "missions",
+                              "mc2_97.beauty")
+            os.makedirs(dt)
+            for fn, src in dc["mc2_97"].items():
+                shutil.copyfile(src, os.path.join(dt, fn))
+            ms, dr, okk, dg = audit(dc, os.path.join(tmp, "dgndeploy"),
+                                    check_content=True)
+            check("CONTENT: present+byte-identical BUT inert => reported "
+                  "degenerate (presence-only would pass)",
+                  not ms and not dr and len(okk) == 2 and len(dg) == 1,
+                  f"missing={ms} drift={dr} ok={len(okk)} degen={dg}")
+
+            # bounds.txt validity
+            bad_b = os.path.join(cdir, "b.bounds.txt")
+            with open(bad_b, "w", encoding="utf-8", newline="\n") as f:
+                f.write("0 0 0 0\n")
+            v, _ = content_validity(bad_b, "shoreline_mask.bounds.txt")
+            check("CONTENT: zero-extent bounds => DEGENERATE", v == "DEGENERATE")
 
         # A companion with no cooked principal is not an obligation.
         cook2 = os.path.join(repo, COOK_ROOT, "mc2_98")
@@ -459,6 +648,8 @@ def main(argv=None) -> int:
                     help="copy missing cooked sidecars into the target tree")
     ap.add_argument("--strict", action="store_true",
                     help="content drift is a failure, not a warning")
+    ap.add_argument("--no-content", action="store_true",
+                    help="skip the content-validity pass (presence only)")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--self-test", dest="selftest", action="store_true")
     ap.add_argument("--json", action="store_true")
@@ -516,30 +707,37 @@ def main(argv=None) -> int:
             if not args.quiet:
                 print(f"  {label:<10} SKIP (tree absent) {path}")
             continue
-        missing, drift, ok = audit(corpus, path)
+        missing, drift, ok, degen = audit(corpus, path,
+                                           check_content=not args.no_content)
         if args.install and enforced:
             for mission, fn, dst in missing:
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copyfile(corpus[mission][fn], dst)
                 print(f"  installed {mission}/{fn} -> {dst}")
-            missing, drift, ok = audit(corpus, path)
+            missing, drift, ok, degen = audit(corpus, path,
+                                           check_content=not args.no_content)
         report["lanes"][label] = {
             "path": path, "enforced": enforced,
             "ok": len(ok),
             "missing": [f"{m}/{f}" for m, f, _ in missing],
             "drift": [f"{m}/{f}" for m, f, _ in drift],
+            "degenerate": {f"{m}/{f}": mt for m, f, _, mt in degen},
         }
-        bad = bool(missing) or (args.strict and bool(drift))
+        bad = bool(missing) or bool(degen) or (args.strict and bool(drift))
         if enforced and bad:
             failed = True
         if not args.quiet:
-            tag = "FAIL" if (enforced and bad) else ("WARN" if (missing or drift) else "PASS")
+            tag = ("FAIL" if (enforced and bad)
+                   else ("WARN" if (missing or drift or degen) else "PASS"))
             print(f"  {label:<10} {tag} ok={len(ok)} missing={len(missing)} "
-                  f"drift={len(drift)}{'' if enforced else '  (not enforced)'}")
+                  f"drift={len(drift)} degenerate={len(degen)}"
+                  f"{'' if enforced else '  (not enforced)'}")
             for m, f_, dst in missing:
                 print(f"      MISSING {m}/{f_} -> {dst}")
             for m, f_, dst in drift:
                 print(f"      DRIFT   {m}/{f_} (installed copy differs from cook)")
+            for m, f_, dst, mt in degen:
+                print(f"      DEGENERATE {m}/{f_}: {mt.get('why', mt)}")
 
     if inv_stale:
         failed = True
