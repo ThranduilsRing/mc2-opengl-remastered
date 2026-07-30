@@ -588,7 +588,19 @@ def register_lane(name: str, worktree: str = "", files_claimed: Optional[list] =
       deploy_lane   — deploy dir name you'll smoke against (e.g. "0.4", "0.5-testing").
       note          — free text (what the lane is doing).
 
-    Returns JSON: {registered, store, file_conflicts, deploy_lane_clash, warnings}.
+    Returns JSON: {registered, store, file_conflicts, deploy_lane_clash,
+    link_group, same_bytes_as, warnings}.
+
+    LINK-GUARD-1 (2026-07-30): deploy_lane_clash compares deploy_lane STRINGS,
+    so it only catches two lanes that named the same dir. `link_group` reports
+    whether your deploy dir's written artifacts (exe, shaders, dlls, defs,
+    options.cfg, the lane lock) are hardlinked to another install, and
+    `same_bytes_as` names lanes holding a DIFFERENT PATH that is the SAME
+    BYTES. Four dirs shared ~1530 inodes on 2026-07-30 with an empty clash list
+    the whole time. verdict SHARED means deploying there rewrites someone
+    else's install in place; UNKNOWN means the check could not run and must NOT
+    be read as isolated. Remedy is in the warning: make-isolated-deploy.py.
+
     Re-registering the same name refreshes last_touch (entries go stale after
     MC2_LANE_TTL_SECS, default 12h). Release by registering with a done note
     or ignore — stale entries stop counting.
@@ -703,12 +715,21 @@ def deploy_status(lane: str, expected_sha: str = "") -> str:
       expected_sha — HEAD the exe/manifest must carry (default: this
                      worktree's HEAD).
 
-    Returns JSON with verdict OK | CONTENDED | BROKEN-TREE | STALE |
-    FINGERPRINT-MISMATCH | NO-EXE | MISSING + action, plus:
+    Returns JSON with verdict OK | CONTENDED | BROKEN-TREE | SHARED-INSTALL |
+    STALE | FINGERPRINT-MISMATCH | NO-EXE | MISSING + action, plus:
       fingerprint — sha/branch embedded in the on-disk exe vs expected
       manifest    — .deployed_manifest.csv src_commit vs expected
       lane_lock   — .mc2_deploy_lane.json holder (fresh? foreign?)
       smoke_lease — .smoke_leases.json holder (pid, worktree, age, stale)
+      link_group  — LINK-GUARD-1: is this install really yours? {verdict
+                    OK|SHARED|UNKNOWN, isolated, shared_count, peers, remedy}.
+                    Every other field above is PATH-KEYED and so cannot see a
+                    hardlink, where two paths are one object: on 2026-07-30
+                    four dirs each reported OK while sharing ~1530 files
+                    including mc2.exe and .mc2_deploy_lane.json itself.
+                    SHARED-INSTALL outranks CONTENDED — contention is at least
+                    visible to whoever looks; a shared inode is not.
+                    UNKNOWN is not "fine": it means the check could not run.
 
     READ-ONLY: never writes the lane lock (unlike check-deploy-target.py's
     default) — claiming a dir stays the smoking session's job.

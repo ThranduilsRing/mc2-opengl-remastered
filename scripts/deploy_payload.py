@@ -45,6 +45,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 try:
     import psutil
@@ -353,6 +354,109 @@ def check_free_space_for_payload(items, target):
         fail(f"disk guard returned unrecognised exit code {rc} — refusing to "
              "deploy on an unreadable verdict. Set "
              "MC2_DEPLOY_SKIP_DISK_GUARD=1 to bypass deliberately.")
+
+
+def check_hardlink_isolation(items, target):
+    """LINK-GUARD-1: refuse to deploy into an install that is somebody else's.
+
+    Motivated by the 2026-07-30 shared-install incident. Four deploy dirs under
+    A:/Games/mc2-opengl shared one hardlinked mc2.exe, one shader tree, and --
+    as the guard's first real run revealed -- ~1530 files each, including
+    "Mission Editor.exe", every DLL, .deployed_manifest.csv, and
+    .mc2_deploy_lane.json (the lane lock itself). deploy() below copies with
+    shutil.copyfile, which opens the destination "wb": that TRUNCATES AND
+    REWRITES THE SHARED INODE rather than replacing the directory entry, so a
+    deploy into one of those dirs rewrote the other three in place.
+
+    Nothing already in this script could see it. check_locks() asks whether a
+    PROCESS holds the target; the lane lock and smoke lease ask whether another
+    lane holds THIS PATH; DEPLOY_ALLOWLIST asks whether the path is canonical
+    (mc2-win64-v0.4d-rc1 is BOTH allowlisted AND in the shared group, so the
+    allowlist actively steered lanes into it). All path-keyed -- and a hardlink
+    is exactly the case where two paths are one object. Every one of those
+    guards returned a correct answer to its own question and a deploy still
+    silently destroyed another lane's comparison baseline.
+
+    The payload item list is passed through verbatim, so this is not a
+    heuristic at the one site where being wrong costs evidence: the guard
+    checks precisely the relpaths deploy() is about to overwrite, no more and
+    no fewer.
+
+    Verdict handling follows the DISK-GUARD-3 reasoning (c5d934d5):
+      OK (0)           -> proceed silently.
+      LINKED-DATA (1)  -> proceed. Read-only data sharing is CORRECT and is
+                          what makes a private install affordable; it is only
+                          reachable here via --data-links, which we do not pass.
+      SHARED (3) /
+      ERROR (2)        -> fatal, nothing written.
+      guard missing, un-runnable, or an unrecognised code -> ALSO FATAL.
+
+    Failing open was rejected for the same reason it was rejected for the disk
+    guard: this guard's whole job is to prevent a silent, hard-to-attribute
+    corruption, and degrading to unguarded on a missing dependency retires the
+    protection exactly when the checkout is in a state nobody has verified.
+    check-hardlink-isolation.py is a sibling file in this same repo.
+
+    LOUD escape hatch: MC2_DEPLOY_ALLOW_SHARED_LINKS=1.
+    """
+    if os.environ.get("MC2_DEPLOY_ALLOW_SHARED_LINKS") == "1":
+        log("WARNING: MC2_DEPLOY_ALLOW_SHARED_LINKS=1 -- hardlink-isolation "
+            "preflight BYPASSED BY REQUEST. If this target shares inodes with "
+            "another install, the deploy below rewrites that install's files "
+            "in place and nothing afterwards will report it.")
+        return
+
+    guard = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "check-hardlink-isolation.py")
+    if not os.path.isfile(guard):
+        fail(f"hardlink-isolation guard not found at {guard} — refusing to "
+             "deploy UNGUARDED. check-hardlink-isolation.py is a sibling of "
+             "this script in the same repo; its absence means a broken or "
+             "partial checkout. Restore it, or set "
+             "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
+
+    # Hand the guard the EXACT relpaths about to be written, via a temp file
+    # (a 1500-entry argv is not portable).
+    listfile = None
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
+                                         encoding="utf-8", newline="\n") as fh:
+            listfile = fh.name
+            for _src, rel, _kind in items:
+                fh.write(rel.replace(os.sep, "/") + "\n")
+        log(f"link guard: checking {len(items)} payload relpath(s) in {target}")
+        try:
+            r = subprocess.run(
+                [sys.executable, guard, "--target", target,
+                 "--payload-list", listfile, "--quiet",
+                 "--label", "deploy payload"],
+                timeout=120)
+            rc = r.returncode
+        except Exception as e:  # noqa: BLE001
+            fail(f"hardlink-isolation guard could not run ({e}) — refusing to "
+                 "deploy UNGUARDED. Fix the guard invocation, or set "
+                 "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
+    finally:
+        if listfile:
+            try:
+                os.unlink(listfile)
+            except OSError:
+                pass
+
+    if rc == 3:
+        fail("deploy target is NOT hardlink-isolated — NOTHING was written. "
+             "See the [LINK_GUARD] lines above for the other dirs in this "
+             "target's link group and the make-isolated-deploy.py remedy.")
+    if rc == 2:
+        fail("hardlink-isolation guard reported ERROR — refusing to deploy "
+             "without a real verdict. See the [LINK_GUARD] lines above.")
+    if rc == 1:
+        log("link guard: read-only data is shared with another install "
+            "(expected and desirable); written artifacts are private.")
+    elif rc != 0:
+        fail(f"hardlink-isolation guard returned unrecognised exit code {rc} "
+             "— refusing to deploy on an unreadable verdict. Set "
+             "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
 
 
 def sha256_file(path):
@@ -1002,6 +1106,17 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
 
     if not hashes:
         fail("no payload files present in target -- nothing to record")
+
+    # LINK-GUARD-1: this path writes no binaries, but it DOES write
+    # .deployed_manifest.csv -- and in the 2026-07-30 incident that file was
+    # itself hardlinked four ways (nlink=4). write_manifest() below opens it
+    # "w", which truncates the shared inode, so a manifest refresh here would
+    # silently overwrite three other installs' manifests with this tree's
+    # hashes: every one of them would then read as coherent while describing
+    # somebody else's payload. Guarding only the copy path would have left the
+    # cheapest way to forge a clean manifest wide open.
+    check_hardlink_isolation([(None, MANIFEST_NAME, "manifest")], target_dir)
+
     write_manifest(target_dir, hashes, git_head(src_root))
     log("manifest-only COMPLETE -- .deployed_manifest.csv refreshed (no copy)")
 
@@ -1251,6 +1366,20 @@ def main():
     # count is actually KNOWN. Every byte below is measured from the real
     # payload; nothing is guessed. Still before deploy() copies anything.
     check_free_space_for_payload(items, target)
+
+    # LINK-GUARD-1 (2026-07-30 shared-install incident) -- checked HERE for the
+    # same reason as the disk guard: `items` is the first moment the exact set
+    # of relpaths about to be overwritten is known, and it is still before
+    # deploy() writes a single byte. Order relative to the disk guard is not
+    # load-bearing (neither writes anything); both must pass.
+    # write_manifest() below writes .deployed_manifest.csv, which
+    # enumerate_payload() does not list (it is an output, not payload) -- and
+    # that file was itself hardlinked four ways in the incident. Append it so
+    # the guard covers every file this run will write, not just the copied
+    # ones.
+    check_hardlink_isolation(items + [(None, MANIFEST_NAME, "manifest")],
+                             target)
+
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve)
     write_manifest(target, hashes, src_commit)
     log("deploy COMPLETE — payload verified, manifest written")

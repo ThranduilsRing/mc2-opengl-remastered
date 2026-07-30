@@ -206,20 +206,66 @@ def register_lane(repo_root: Path, name: str, worktree: str = "",
         _write(path, data)
 
     conflicts = check_conflict(repo_root, rec["files_claimed"], exclude_lane=name)
+    fresh = _fresh_lanes(repo_root)
     deploy_clash = [
-        ln for ln, e in _fresh_lanes(repo_root).items()
+        ln for ln, e in fresh.items()
         if ln != name and rec["deploy_lane"] and e.get("deploy_lane") == rec["deploy_lane"]
     ]
+
+    # LINK-GUARD-1 (2026-07-30): deploy_clash above compares deploy_lane
+    # STRINGS, so it only ever catches two lanes that named the same dir. On
+    # 2026-07-30 four dirs under A:/Games/mc2-opengl had different names and
+    # ~1530 shared inodes; that clash list was empty the whole time and the
+    # registry reported every one of them free. Report the LINK GROUP, not just
+    # the path, so a lane asking "is this install really mine?" gets a true
+    # answer.
+    link_warnings: list = []
+    link_group_info: dict = {}
+    same_bytes: list = []
+    if rec["deploy_lane"]:
+        try:
+            import link_group as lgrp  # noqa: PLC0415 -- sibling module, lazy
+            xr = lgrp.cross_lane_link_clash(repo_root, rec["deploy_lane"],
+                                            fresh, my_name=name)
+            link_group_info = xr["link_group"]
+            same_bytes = xr["same_bytes_as"]
+        except Exception as e:  # noqa: BLE001
+            link_group_info = {
+                "verdict": "UNKNOWN", "isolated": None,
+                "note": f"link-group check unavailable: {e} -- treat as "
+                        "unknown, not as isolated",
+            }
+        if link_group_info.get("verdict") == "SHARED":
+            peers = ", ".join(link_group_info.get("peers") or []) or \
+                "(peers not nameable; st_nlink says shared regardless)"
+            link_warnings.append(
+                f"deploy lane '{rec['deploy_lane']}' is NOT hardlink-isolated: "
+                f"{link_group_info.get('shared_count')} written artifact(s) are "
+                f"the SAME INODES as {peers}. Deploying there rewrites those "
+                f"installs in place. Remedy: {link_group_info.get('remedy')}")
+        elif link_group_info.get("verdict") == "UNKNOWN":
+            link_warnings.append(
+                f"deploy lane '{rec['deploy_lane']}' link group UNVERIFIED "
+                f"({link_group_info.get('note')})")
+        for c in same_bytes:
+            link_warnings.append(
+                f"lane '{c['lane']}' claims deploy lane '{c['deploy_lane']}' "
+                f"({c['path']}) -- a DIFFERENT PATH holding the SAME BYTES as "
+                f"yours. You are both writing one install.")
+
     return {
         "registered": rec,
         "store": str(path),
         "file_conflicts": conflicts.get("conflicts", []),
         "deploy_lane_clash": deploy_clash,
+        "link_group": link_group_info,
+        "same_bytes_as": same_bytes,
         "warnings": (
             ([f"deploy lane '{rec['deploy_lane']}' also claimed by: {', '.join(deploy_clash)}"]
              if deploy_clash else [])
             + ([f"{len(conflicts.get('conflicts', []))} claimed path(s) overlap another lane"]
                if conflicts.get("conflicts") else [])
+            + link_warnings
         ),
     }
 

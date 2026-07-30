@@ -13,7 +13,17 @@ lane lock (that stays the smoking session's job) — plus the smoke lease
 registry (scripts/smoke_lib/deploy_lease.py, A:/Games/mc2-opengl/.smoke_leases.json).
 
 Verdict mirrors check-deploy-target.py ordering (most severe wins):
-  BROKEN-TREE > CONTENDED > FINGERPRINT-MISMATCH > STALE > NO-EXE > OK
+  BROKEN-TREE > SHARED-INSTALL > CONTENDED > FINGERPRINT-MISMATCH > STALE
+  > NO-EXE > OK
+
+SHARED-INSTALL (LINK-GUARD-1, 2026-07-30) sits second because it is the only
+verdict here that this module was previously STRUCTURALLY unable to reach.
+Every other field is path-keyed -- the lane lock, the smoke lease, the
+manifest, the fingerprint all describe "the thing at this path". A hardlink
+makes two paths one object, so four dirs under A:/Games/mc2-opengl each
+reported OK while sharing ~1530 files including mc2.exe and, memorably,
+.mc2_deploy_lane.json itself. It outranks CONTENDED because contention is at
+least visible to whoever looks; a shared inode is not visible to anyone.
 """
 from __future__ import annotations
 
@@ -203,9 +213,31 @@ def deploy_status(repo_root: Path, lane: str, expected_sha: str = "",
         "manifest_mtime_utc": _mtime_iso(manifest_csv),
     }
 
+    # 6. Link group (LINK-GUARD-1): is this install really THIS lane's, or are
+    #    its written artifacts the same inodes as another dir's? Everything
+    #    above answers a path-keyed question and therefore cannot see this.
+    try:
+        import link_group as lgrp  # noqa: PLC0415 -- sibling module, lazy
+        result["link_group"] = lgrp.link_group(repo_root, target_p)
+    except Exception as e:  # noqa: BLE001
+        result["link_group"] = {
+            "verdict": "UNKNOWN", "isolated": None,
+            "note": f"link-group check unavailable: {e} -- treat as unknown, "
+                    "not as isolated",
+        }
+    lg = result["link_group"]
+    shared_install = lg.get("verdict") == "SHARED"
+
     # Verdict (most severe wins, mirrors check-deploy-target.py)
     if bad:
         verdict, action = "BROKEN-TREE", bad
+    elif shared_install:
+        verdict = "SHARED-INSTALL"
+        peers = ", ".join(lg.get("peers") or []) or "(peers not nameable; " \
+            "st_nlink says shared regardless)"
+        action = (f"{lg.get('shared_count')} written artifact(s) here are the "
+                  f"SAME INODES as: {peers}. Deploying REWRITES those installs "
+                  f"in place. Make a private one: {lg.get('remedy')}")
     elif contended:
         verdict = "CONTENDED"
         action = (f"dir held by FRESH foreign lane lock (branch="
