@@ -2842,6 +2842,13 @@ def main():
                             # passthrough-allowlisted or an A/B run setting =0
                             # silently runs the =1 path (ENV_DROP class).
                             "MC2_VEHICLE_LIT_PATH",
+                            # VEHICLE-AMBIENT-FLOOR-1: default-ON killswitch for
+                            # the mech.vert ambient floor (0.35) + clamp(0,1)
+                            # mirrored onto the legacy lit vehicle path. Must be
+                            # passthrough-allowlisted or an A/B run setting =0
+                            # silently runs the =1 path (ENV_DROP class) and
+                            # grades ON against ON.
+                            "MC2_VEHICLE_AMBIENT_FLOOR",
                             # QUIET-DEFAULT-BUILD-1: MC2_DIAG_VERBOSE restores
                             # the ~380 developer diagnostic call sites that a
                             # default build now keeps quiet. Allowlisted so the

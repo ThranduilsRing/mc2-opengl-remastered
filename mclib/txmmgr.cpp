@@ -2361,6 +2361,39 @@ public:
 		gos_SetRenderMaterialParameterInt(mat, "u_legacyLitMc2Frame",
 			s_legacyLitMc2Frame ? 1 : 0);
 
+		// VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON. Finishes VEHICLE-LIGHTING-PATH-1
+		// by giving this path the two terms mech.vert has and it did not --
+		// the kAmbientFloor = 0.35 seed handed to calc_light, and the
+		// clamp(...,0,1) on the result (shaders/mech.vert:204,:223).
+		//
+		// VEHICLE-LIGHTING-PATH-1 fixed "vehicles have no light row". It did
+		// NOT fix "the truck is darker than the mech next to it", because a
+		// vehicle computed base_light + A + S*ndl (base_light == 0 for stock:
+		// tgl.cpp:1093 aRGBLight = 0xff000000, prefs.cpp:91 BaseVertexColor = 0)
+		// while a mech computes clamp(0.35 + A + S*ndl, 0, 1). On mc2_10 --
+		// the map in the user's report -- that is 0.753 against 1.0 on shadow
+		// faces, so the reported symptom survived the fix intended to cure it;
+		// on mc2_03 the vehicle peak is 0.796, below 1.0 at EVERY normal, so
+		// every vehicle pixel darkened. With this on, the vehicle expression is
+		// arithmetically identical to the mech expression for the same row.
+		//
+		// Blast radius is self-limiting for the same reason as
+		// MC2_LEGACY_LIT_MC2_FRAME above: a shape that never gathers still has
+		// numLights == 0, so calc_light returns vec3(1,1,1) before it reads the
+		// seed (lighting.hglsl:232-236), and clamp(vec3(1),0,1) == vec3(1).
+		// Only shapes carrying a real light row can observe the flip.
+		//
+		// MC2_VEHICLE_AMBIENT_FLOOR=0 -> u_vehicleAmbientFloor=0 -> no floor,
+		// no clamp -> byte-identical to the pre-slice shipped build.
+		static const bool s_vehicleAmbientFloor = [](){
+			const char* v = getenv("MC2_VEHICLE_AMBIENT_FLOOR");
+			if (v == nullptr) return true;                  // unset -> on (default)
+			if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" -> off
+			return true;
+		}();
+		gos_SetRenderMaterialParameterInt(mat, "u_vehicleAmbientFloor",
+			s_vehicleAmbientFloor ? 1 : 0);
+
 		// [LIGHTSSBO v1] FORK-2: LightsData is now an SSBO; the UBO-
 		// reflection bind below would silently no-op (SSBO blocks are not
 		// in GL_ACTIVE_UNIFORM_BLOCKS) -> legacy lit meshes would render
