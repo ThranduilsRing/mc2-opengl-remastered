@@ -93,6 +93,12 @@ R2_DECLARES = re.compile(
     re.IGNORECASE,
 )
 R2_BLOCK = 30           # lines after the limiter that form its emission block
+# The declaration must appear in an EMITTED STRING, not anywhere in the source.
+# Caught by the lane's ratchet test: stripping the real `sample=first%d` token out
+# of [TREE_DIAG] left R2 green, because the constant named `kTreeDiagSample`
+# contains "Sample" and the search was case-insensitive over raw source. A rule an
+# identifier can satisfy does not make any log line honest.
+R2_STRING_LIT = re.compile(r'"((?:[^"\\]|\\.)*)"')
 R2_SCAN_DIRS = ["GameOS", "mclib", "code", "RenderCore", "RenderWorld",
                 "GameAdapters", "editor"]
 
@@ -148,14 +154,28 @@ def rel(path):
         return path.replace("\\", "/")
 
 
+def strip_comments(lines):
+    """Drop // comment text so PROSE mentioning a symbol cannot satisfy a rule.
+
+    Caught by the lane's own ratchet test: deleting the real
+    setRecipePopulation(Tree) call left R1 green, because the explanatory comment
+    directly above it contains the words "setRecipePopulation()". A guard that a
+    comment can satisfy is itself a lying instrument.
+    """
+    out = []
+    for ln in lines:
+        idx = ln.find("//")
+        out.append(ln if idx < 0 else ln[:idx])
+    return out
+
+
 def check_r1(files):
     """Every recipe mint must tag its population within R1_WINDOW lines."""
     violations = []
     for path in files:
-        lines = read_lines(path)
+        raw = read_lines(path)
+        lines = strip_comments(raw)
         for i, line in enumerate(lines):
-            if line.lstrip().startswith("//"):
-                continue
             if not R1_MINT.search(line):
                 continue
             window = "\n".join(lines[i:i + R1_WINDOW])
@@ -186,8 +206,9 @@ def find_limiters(files):
             block = "\n".join(lines[i:i + R2_BLOCK])
             if not R2_EMITS.search(block):
                 continue
+            emitted = " ".join(R2_STRING_LIT.findall(block))
             yield (path, i + 1, m.group(0).strip(),
-                   bool(R2_DECLARES.search(block)))
+                   bool(R2_DECLARES.search(emitted)))
 
 
 def check_r2(files, allowlist=None):
@@ -218,6 +239,20 @@ void Foo::registerStatic() {
     (void)GameAdapters::StaticProp::syncStaticProp(
         shape, batch.data(), batch.size(), &regIdx);
     if (regIdx >= 0) {
+        staticReg.registered = true;
+    }
+}
+"""
+
+# Regression fixture for the ratchet test that caught R1 red-handed: a comment
+# mentioning setRecipePopulation() must NOT satisfy the pairing rule.
+R1_BAD_COMMENT_ONLY = """\
+void Foo::registerStatic() {
+    int32_t regIdx = -1;
+    (void)GameAdapters::StaticProp::syncStaticProp(
+        shape, batch.data(), batch.size(), &regIdx);
+    if (regIdx >= 0) {
+        // Historically only BldgAppearance called setRecipePopulation() here.
         staticReg.registered = true;
     }
 }
@@ -262,6 +297,8 @@ def self_test():
         cases = [
             ("r1_bad.cpp", R1_BAD, check_r1, True, "R1 must FLAG an untagged mint"),
             ("r1_good.cpp", R1_GOOD, check_r1, False, "R1 must PASS a tagged mint"),
+            ("r1_comment.cpp", R1_BAD_COMMENT_ONLY, check_r1, True,
+             "R1 must FLAG a mint whose only setRecipePopulation is in a COMMENT"),
             ("r2_bad.cpp", R2_BAD, lambda f: check_r2(f, allowlist=set()),
              True, "R2 must FLAG a silent limiter"),
             ("r2_good.cpp", R2_GOOD, lambda f: check_r2(f, allowlist=set()),

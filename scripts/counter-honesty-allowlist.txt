@@ -116,3 +116,24 @@ mclib/txmmgr.cpp::s_frames < 60
 mclib/txmmgr.cpp::s_lbFirstSeenIndex.size() <= 32
 mclib/txmmgr.cpp::s_lbParityChecks <= 32
 mclib/txmmgr.cpp::s_lbStabilityViolations <= 32
+
+# ---------------------------------------------------------------------------
+# FALSE "DECLARED" SITES, exposed when R2 was tightened to require the token in
+# an EMITTED STRING rather than anywhere in the source.  Each of these looked
+# self-declaring only because a nearby IDENTIFIER contained the word "sample"
+# (kMaxLoadPhaseSamples, s_chunkShadowSamplePrints, ...).  None of them actually
+# tells a log reader that the stream is truncated.  Inventoried, not excused.
+#
+# gameosmain.cpp is the worst of the seven: past kMaxLoadPhaseSamples the
+# [LOAD_PHASES v1] summary silently drops phases AND its total_ms is derived from
+# the last retained sample, so the cap corrupts the reported TOTAL, not just the
+# list.  Fixing it needs a behaviour decision, so it is recorded here rather than
+# patched blind by this lane.
+# ---------------------------------------------------------------------------
+GameOS/gameos/gameosmain.cpp::g_loadPhaseCount < kMaxLoadPhaseSamples
+GameOS/gameos/gos_postprocess.cpp::s_csmN <= 1
+editor/EditorDebugOverlay.cpp::s_warned < 3
+editor/EditorDebugOverlay.cpp::s_logged < 3
+mclib/move_recon.cpp::s_pcBurstPrints < 30
+mclib/move_recon.cpp::s_chunkShadowSamplePrints < 40
+mclib/txmmgr.cpp::s_pbrRenderTrace < 64
