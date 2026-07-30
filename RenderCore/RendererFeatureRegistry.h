@@ -2170,6 +2170,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES and is now DEFAULT-OFF on measured evidence (on mc2_10 it suppressed 7 of 9 building spotlight ground pools while moving the other 2 by only 7 world units; the 200u clamp never fired). '1' -> building/guard-tower spotlight ground pools are placed at the TRUE beam/terrain intersection found by marching the ray (mc2ConeGroundHit), the arbitrary 200.0f spill clamp is gone, and a beam that never meets ground within its own length or leaves the map emits NO pool. '0' -> restores the exact pre-c1f98b45 placement (apex + aim*spill, 200.0f clamp, z snapped to getTerrainElevation, no miss rejection). Exists so the change can be A/B graded on one attributable exe. Resolved once at process start.",
     },
     {
+        "MC2_FULLBAKE_DIAG",
+        "MC2_FULLBAKE_DIAG",
+        EnvVarKind::Trace,
+        false,
+        "SPOTLIGHT-DIRECTION-1 measurement instrument. '1' -> mclib/bdactor.cpp emits a running '[FULLBAKE_DIAG v1] calls=.. gpuEligible=.. else_hier=.. else_FULLBAKE=.. dualemit_full=.. ptspot_consumed=.. ptspot_zerodir=..' tally to stderr every 600 BldgAppearance::update() branch executions. else_FULLBAKE is the non-gpuEligible fallback that runs the full TransformMultiShape() bake -- the ONLY path that reaches the msl.cpp TG_LIGHT_POINT/SPOT lighting block, i.e. the only consumer of TG_Light::direction. ptspot_consumed/ptspot_zerodir are incremented at that consumer (mclib/msl.cpp) and split active POINT/SPOT lights by whether ->direction is still the init() default (0,0,0). Exists to separate latent-from-live for the MC2_SPOTLIGHT_DIRECTION_FIX defect and to prove an A/B capture arm actually reached the consumer. The msl.cpp counter sits in a hot inner loop (4.3 M trips in a 15 s mc2_10 run) so it is gated, not unconditional. Unset/'0' (DEFAULT) -> one static bool test, no counting, no output, quiet-build clean. Resolved once at process start.",
+    },
+    {
+        "MC2_SPOTLIGHT_DIRECTION_FIX",
+        "MC2_SPOTLIGHT_DIRECTION_FIX",
+        EnvVarKind::Trace,
+        false,
+        "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp). (a) TG_Light::direction was never set, so it kept the init() default (0,0,0). direction is a POSITION for POINT/SPOT lights -- tgl.h:213 'This is the light spot center for POINT and SPOT' -- and mclib/msl.cpp subtracts it from a world position to derive the per-vertex light vector, so every CPU-baked vertex was lit as though the lamp sat at the WORLD ORIGIN instead of on its own building. (b) SetLightToWorld() was built from the RAW MC2-space childPos rather than the swizzled Stuff-space position every other consumer expects. '1' -> both fields use the MC2->Stuff position swizzle (-x, z, y), matching the sibling terrain-light site in the same file. Unset/'0' (DEFAULT) -> historical behaviour, byte-identical. NOT latent: measured on the deployed build via FULLBAKE_DIAG, mc2_10 (night) consumed 4,310,486 active POINT/SPOT lights in the CPU bake over 15 s, 3,995,686 of them (92.7%) with direction still (0,0,0); mc2_01/mc2_03/mc2_24 measured 0 because these lights are night-gated (eye->isNight). Default-OFF because the correction changes default night appearance on mc2_10. Single reader: mclib/cone_glow.cpp spot_direction_fix_enabled(). Resolved once at process start.",
+    },
+    {
         "MC2_LIGHT_CONE_NODES",
         "MC2_LIGHT_CONE_NODES",
         EnvVarKind::Trace,

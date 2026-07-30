@@ -138,6 +138,34 @@ static unsigned long s_spotDiagBldgOverflows  = 0;   // pool-overflow count
 static unsigned long s_spotDiagBldgActors     = 0;   // actor first-hits
 static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
+// [FULLBAKE_DIAG v1] SPOTLIGHT-DIRECTION-1 measurement instrument, gated on
+// MC2_FULLBAKE_DIAG=1 (default OFF = one static bool test, no output).
+// Question being answered: does any stock building actually reach the full
+// TransformMultiShape() bake? That is the ONLY path which runs the msl.cpp
+// TG_LIGHT_POINT lighting block, i.e. the only consumer of TG_Light::direction.
+// If these counts are zero in real missions, the unset-direction defect is
+// latent-only. MEASURED 2026-07-29: NOT latent — mc2_10 (night) baked 4,310,486
+// active POINT/SPOT lights in 15 s, 3,995,686 of them with direction still
+// (0,0,0); mc2_01/03/24 (day) measured 0. Kept (not deleted) because this is
+// the only instrument that separates latent-from-live for this defect class and
+// the A/B capture arms need it to prove the ON arm reached the consumer.
+bool mc2FullBakeDiagEnabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_FULLBAKE_DIAG");
+        return (v && v[0] == '1');   // default OFF
+    }();
+    return s;
+}
+static unsigned long s_fbDiagBranchCalls   = 0;  // times the update() branch ran
+static unsigned long s_fbDiagGpuEligible   = 0;  // gpuEligible == true
+static unsigned long s_fbDiagElseHierOnly  = 0;  // !gpuEligible, hierarchy-only
+static unsigned long s_fbDiagElseFullBake  = 0;  // !gpuEligible, FULL bake  <== key
+static unsigned long s_fbDiagDualEmitFull  = 0;  // gpuEligible parity dual-emit full bake
+// Defined here, incremented in mclib/msl.cpp at the TG_LIGHT_POINT/SPOT consumer.
+unsigned long g_fbDiagPtSpotConsumed = 0;  // active POINT/SPOT lights baked
+unsigned long g_fbDiagPtSpotZeroDir  = 0;  // ...of those, direction still (0,0,0)
+
 #include "gos_static_prop_killswitch.h"
 #include "gos_static_prop_batcher.h"
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
@@ -3672,7 +3700,41 @@ long BldgAppearance::update (bool animate)
 			// for POINT lights (matches the anubis/terrain-light pattern).
 			Stuff::LinearMatrix4D lightToWorldMatrix;
 			Stuff::Point3D childPosP;
-			childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
+			if (mc2_cone_glow::spot_direction_fix_enabled())
+			{
+				// SPOTLIGHT-DIRECTION-1. TRAP: despite the name, TG_Light::
+				// direction is a POSITION for POINT/SPOT lights -- tgl.h:213
+				// says "This is the light spot center for POINT and SPOT", and
+				// the consumer in mclib/msl.cpp reads it as
+				//     lightPos = light->direction; shapePosition -= lightPos;
+				// i.e. it SUBTRACTS it from a world position to derive the
+				// per-vertex light vector. Writing a normalized aim vector here
+				// would be a silent wrong fix (it nearly happened twice).
+				//
+				// Both fields below use the same MC2 -> Stuff position swizzle
+				// (-x, z, y) as the sibling terrain-light registration earlier
+				// in this file; the historical code left `direction` at the
+				// init() default (0,0,0) -- the world origin -- and built
+				// lightToWorld from the RAW, unswizzled childPos.
+				childPosP.x = -childPos.x;
+				childPosP.y =  childPos.z;
+				childPosP.z =  childPos.y;
+				spotlightLights_[k]->direction = childPosP;
+				// MC2_SPOTLIGHT_DIRECTION_FIX=2 falsification arm — see
+				// cone_glow.cpp spot_direction_exaggerate(). Absurd spot centre;
+				// a byte-identical frame under this proves the consumer's output
+				// is discarded downstream. Diagnostic only.
+				if (mc2_cone_glow::spot_direction_exaggerate())
+				{
+					Stuff::Point3D wild;
+					wild.x = 100000.0f; wild.y = 100000.0f; wild.z = 100000.0f;
+					spotlightLights_[k]->direction = wild;
+				}
+			}
+			else
+			{
+				childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
+			}
 			lightToWorldMatrix.BuildTranslation(childPosP);
 			lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
 			spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
@@ -3964,6 +4026,23 @@ long BldgAppearance::update (bool animate)
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}
 
+		// [FULLBAKE_DIAG v1] see decl block. Emits a running tally so the "is the
+		// direction-consumer path ever reached?" question is answered from a real
+		// mission rather than from static reading. MC2_FULLBAKE_DIAG=1 only.
+		if (mc2FullBakeDiagEnabled()) {
+		++s_fbDiagBranchCalls;
+		if (gpuEligible) ++s_fbDiagGpuEligible;
+		if ((s_fbDiagBranchCalls % 600) == 0) {
+			std::fprintf(stderr,
+				"[FULLBAKE_DIAG v1] calls=%lu gpuEligible=%lu else_hier=%lu "
+				"else_FULLBAKE=%lu dualemit_full=%lu ptspot_consumed=%lu ptspot_zerodir=%lu\n",
+				s_fbDiagBranchCalls, s_fbDiagGpuEligible, s_fbDiagElseHierOnly,
+				s_fbDiagElseFullBake, s_fbDiagDualEmitFull,
+				g_fbDiagPtSpotConsumed, g_fbDiagPtSpotZeroDir);
+			std::fflush(stderr);
+		}
+		}
+
 		if (gpuEligible)
 		{
 			// Stage 2.D.2 fix: cache GPU light data NOW, while worldLights[0]->aRGB
@@ -4004,6 +4083,7 @@ long BldgAppearance::update (bool animate)
 			// Stage 2.D.3: per-actor gate. Bootstrap arm returns true for
 			// every shape; sample arm returns true only for the picked actor.
 			if (gos_object_parity::IsDualEmitArmedForActor(bldgShape)) {
+				++s_fbDiagDualEmitFull;   // [FULLBAKE_DIAG] temporary
 				bldgShape->TransformMultiShape (&xlatPosition,&rot);
 			}
 		}
@@ -4022,9 +4102,17 @@ long BldgAppearance::update (bool animate)
 			    !gos_StaticPropLegacyInstancePools() &&
 			    (g_mechPreviewRenderDepth == 0) &&
 			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
+			{
+				++s_fbDiagElseHierOnly;   // [FULLBAKE_DIAG] temporary
 				bldgShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
+			}
 			else
+			{
+				++s_fbDiagElseFullBake;   // [FULLBAKE_DIAG] temporary — THE path
+				                          // that runs msl.cpp TG_LIGHT_POINT
+				                          // lighting and reads TG_Light::direction
 				bldgShape->TransformMultiShape (&xlatPosition,&rot);
+			}
 			// 2026-05-10: also seed cachedGpuLightIndex_ in the full-bake
 			// branch. Without this, the first-frame transition out of the
 			// H4 latch (set by registerStatic at :2754) leaves the index

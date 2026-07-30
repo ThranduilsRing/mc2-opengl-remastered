@@ -157,6 +157,59 @@ bool spill_coupling_enabled()
     return s;
 }
 
+// SPOTLIGHT-DIRECTION-1. Two coordinate-space defects at the building
+// spotlight registration site (mclib/bdactor.cpp):
+//
+//  (a) TG_Light::direction is never set for spotlightLights_. Despite its
+//      name, `direction` is a POSITION for POINT/SPOT lights -- see the
+//      comment at mclib/tgl.h:213 ("This is the light spot center for POINT
+//      and SPOT") and the consumer at mclib/msl.cpp, which does
+//      `lightPos = light->direction; shapePosition -= lightPos;`. Left at the
+//      init() default it is (0,0,0), so every lit vertex is shaded as though
+//      the lamp sat at the WORLD ORIGIN rather than on its own building.
+//      The sibling terrain-light site (bdactor.cpp) sets it correctly, with
+//      the MC2->Stuff position swizzle (-x, z, y).
+//
+//  (b) SetLightToWorld() is built from the RAW MC2-space childPos while every
+//      other consumer of that matrix expects the same swizzled Stuff-space
+//      position. The terrain-light site again shows the correct form.
+//
+// Measured on the deployed build before gating (FULLBAKE_DIAG): mc2_10 (night)
+// consumed 4,310,486 active POINT/SPOT lights in the CPU bake over a 15 s run,
+// of which 3,995,686 (92.7%) still carried direction == (0,0,0). The day
+// missions mc2_01 / mc2_03 / mc2_24 measured 0 -- these lights are night-gated
+// (`eye->isNight`), so the defect is night-only but is NOT latent.
+//
+// Gated because the correction changes default night appearance on mc2_10.
+bool spot_direction_fix_enabled()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_SPOTLIGHT_DIRECTION_FIX");
+        return (v && (v[0] == '1' || v[0] == '2'));   // default OFF
+    }();
+    return s;
+}
+
+// SPOTLIGHT-DIRECTION-1 falsification arm. `=2` writes a WILDLY displaced
+// light-spot position instead of the correct one. Purpose: the `=1` arm proved
+// byte-identical to the OFF arm across all 19 building-face poses on
+// mc2_01/03/10/24 while the FULLBAKE_DIAG counters simultaneously proved the
+// consumer WAS reached with changed data. Two explanations fit that: (i) the
+// correction is too small to move a pixel, or (ii) the value the consumer
+// computes is discarded downstream and no direction can ever move a pixel.
+// `=2` separates them: if an absurd position still renders byte-identically,
+// the consumer's output is provably dead on the default GPU static-prop path.
+// Same role as the MC2_NIGHT_FOG_DIM_SCALE=0.0 exaggeration lower-bound.
+// Diagnostic only -- never a shipping value.
+bool spot_direction_exaggerate()
+{
+    static const bool s = []() {
+        const char* v = std::getenv("MC2_SPOTLIGHT_DIRECTION_FIX");
+        return (v && v[0] == '2');
+    }();
+    return s;
+}
+
 bool glow_enabled()
 {
     static const bool s = []() {

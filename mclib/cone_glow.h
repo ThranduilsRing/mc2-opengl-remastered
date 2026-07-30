@@ -54,6 +54,16 @@ bool glow_enabled();        // MC2_LIGHT_CONE_GLOW
 // no miss rejection. Exists so the ungated default-behaviour change shipped by
 // c1f98b45 can be A/B graded on a single attributable exe.
 bool spill_coupling_enabled();  // MC2_CONE_SPILL_COUPLING
+// SPOTLIGHT-DIRECTION-1: sets the building spotlight's TG_Light::direction
+// (which is a light-spot POSITION for POINT/SPOT, tgl.h:213) and builds its
+// lightToWorld from the swizzled Stuff-space position, matching the sibling
+// terrain-light site. OFF = the historical unset direction (0,0,0) + raw-space
+// lightToWorld. See cone_glow.cpp for the measured evidence.
+bool spot_direction_fix_enabled();  // MC2_SPOTLIGHT_DIRECTION_FIX (1 or 2)
+// MC2_SPOTLIGHT_DIRECTION_FIX=2: falsification arm, writes an absurd light-spot
+// position so a byte-identical frame proves the consumer's output is discarded
+// downstream rather than merely changed by a sub-pixel amount. Diagnostic only.
+bool spot_direction_exaggerate();
 float glow_alpha();         // MC2_LIGHT_CONE_GLOW_ALPHA (0..255)
 float spill_scale();        // MC2_LIGHT_CONE_SPILL (0..3)
 
