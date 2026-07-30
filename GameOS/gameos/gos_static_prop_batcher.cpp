@@ -2434,7 +2434,14 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                // props replay via submitCachedInstance() which does not tick them,
                // so submit_trees=0 means "no dynamic tree submits", NEVER "no trees".
                // reg_recipes_* below is the authoritative live-registry census.
-               "submit_note=dyn_path_only_registered_props_replay_uncounted "
+               // Two separate lies in one field name, both named here:
+               //  - "instances" is a misnomer: this counter ticks ONCE per
+               //    successful submitMultiShape (an ACTOR). Per-leaf instances
+               //    are submitted_children. See the increment site (once, after
+               //    the child loop) vs submitted_children (inside it).
+               //  - it only ever sees the DYNAMIC path; registered props replay
+               //    via submitCachedInstance() which does not tick it.
+               "submit_note=actors_not_instances;dyn_path_only_registered_props_replay_uncounted "
                "submit_buildings=%llu submit_trees=%llu "
                "submit_generics=%llu submit_legacy=%llu "
                "reg_recipes_buildings=%u reg_recipes_trees=%u "
