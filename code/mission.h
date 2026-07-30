@@ -190,6 +190,16 @@ class Mission
 		static bool						terminationCounterStarted;
 		static unsigned long			terminationResult;
 
+		// GAMEPLAY-DRIVER-2 (MC2_UI_COMMAND_FILE `end_mission` verb): force the
+		// mission-termination counter from outside. Sets exactly the three
+		// fields the authored win/loss paths set (mission.cpp:1315 / 1357 /
+		// 1414) so the NORMAL terminationCounterStarted -> resultsDone() ->
+		// scenarioResult -> log_RESULTS flow runs; it does not shortcut it.
+		// missionTerminationTime is protected, which is the only reason this
+		// needs to be a member rather than a free function.
+		// result: one of mis_PLAYER_WIN_BIG / mis_PLAYER_LOST_BIG / etc.
+		void forceTerminate (unsigned long result);
+
 		unsigned long					numObjectives;
 		ObjectivePtr					objectives;
 		float						m_timeLimit;

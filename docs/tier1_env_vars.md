@@ -888,6 +888,61 @@ lights should remain visible at every angle instead of blinking out.
   Kept permanently gated for future field diagnosis. Allowlisted in
   `scripts/run_smoke.py`.
 
+## Gameplay command channel (UI-COMMAND-CHANNEL-1 / GAMEPLAY-DRIVER-1/2)
+
+- `MC2_UI_COMMAND_FILE=<path>` — default **unset** = byte-identical. Points at a plain
+  text file that `MissionInterfaceManager::processUiCommandChannel()` (`code/missiongui.cpp`)
+  polls once per frame from `MissionInterfaceManager::update()`. Each line is one verb;
+  the file is read-then-truncated (empty = all consumed) and every consumed line is
+  appended to `<path>.ack` as `[f=<frame>] <cmd> -> ok|unknown|blocked (reason)`. The
+  `[f=]` prefix is the render frame counter (`g_mc2FrameCounter`) — gate on it instead of
+  wall-clock guesses. Readback verbs append extra indented lines after their ack line.
+  **The channel is mission-only**: nothing outside the mission loop polls it, so the
+  first ack doubles as a "mission is live" probe and the AAR/logistics/mechbay screens
+  are unreachable from it. Commands are consumed during the intro swoop AND while paused
+  (`Mission::update` calls `missionInterface->update()` regardless of pause state).
+  Allowlisted in `scripts/run_smoke.py` (Popen drops non-allowlisted env).
+  Verbs:
+  - UI: `toggle_pause`, `press pause.<BTN>`, `press dialog.YES|NO`, `debugview <0..6>`,
+    `screenshot <name> [backbuffer]` (needs `MC2_DEV_SHELL=1`).
+  - World (all route through the same dispatchers the mouse/keyboard use, so game rules
+    apply): `select <partId|all|lance|class <NAME>|name <substr>>`,
+    `order move <x> <y> [run|walk]`, `order attack <targetPartId>`,
+    `order stop|hold_fire|powerup|powerdown|withdraw`,
+    `camera <x> <y> [rotDeg] [zoomAlt]`, `camera_follow <partId|off>`,
+    `time_scale <f>`.
+  - Readback (multi-line ack payload): `status` (SELECTED units only),
+    `list [all|player|enemy|team <N>|class <NAME>]` (every mover incl. enemies — the only
+    way to obtain a target partId), `unit <partId>` (deep readback **including which draw
+    path the object took**: appearance type + number, `inView`, static recipe index,
+    `screenPos`), `mission_status`, `light_state`.
+  - Lighting: `time_of_day <0..1>` (0.25 noon / 0.5 sunset / 0.75 midnight — full
+    sun + ambient + sky + fog recompute via `Camera::setDaylightFraction`) and
+    `sun_pitch <deg> [yaw]` (light DIRECTION only, colors unchanged). These make the
+    day AND night verdict rule enforceable on ANY mission instead of only on ones that
+    ship as night.
+  - `end_mission win|loss|draw` — forces `Mission::forceTerminate`, i.e. the same three
+    fields the authored win/loss paths set, so the normal results flow runs.
+  - Notes: `time_scale` routes through `simSpeedSetMultiplier()` (see
+    **Sim clock speed** above) so `scenarioTime` and `frameLength` stay in lockstep —
+    it is clamped `[0.25, 4.0]` and is a **no-op under `MC2_SMOKE_FIXED_TIMESTEP=1`**,
+    which pins both clocks to 1x. `camera_follow` is mutually exclusive with
+    `MC2_CAMERA_PARK` (the park path deliberately clears `lookTargetObject`).
+- `MC2_TEST_SPAWN=1` — default **unset** = the two fixture verbs ack `blocked`; zero
+  behavior change. Arms `spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]`
+  (runs `mission->addMover`, the same path reinforcements take; `vehicle` clones an
+  existing `GROUNDVEHICLE` so a mech and a vehicle can be posed side by side under
+  identical light for a lighting A/B) and `teleport <partId> <x> <y>`
+  (`Mover::setTeleportPosition`). Allowlisted in `scripts/run_smoke.py`.
+  **KNOWN DEFECT — do not trust a bare `ok`**: spawned movers come up with
+  `getStatusRating() == 0` and ignore group move orders (evidence: the 2026-07-23
+  gameplay-driver capture, where five spawned clones sat at byte-identical positions for
+  5+ seconds while their authored peers moved ~380 world units). They are selectable and
+  they render, so they are usable as *lighting/render* subjects, but they are not
+  functional gameplay actors. The spawn ack now reports the unit's actual `hp` and appends
+  `WARNING:hp=0 spawned unit may be inert` rather than acking a bare `ok`; use
+  `unit <partId>` for the per-unit detail.
+
 ## Diagnostic JSONL trace (diagnostic_trace.cpp — 2026-06-17)
 
 Structured per-event JSONL output replacing env-gated stderr prints.

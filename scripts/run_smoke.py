@@ -1601,6 +1601,14 @@ def main():
                             # the run silently measures the DEFAULT camera instead
                             # of the pose you asked for.
                             "MC2_CAMERA_PARK",
+                            # UI-COMMAND-CHANNEL-1 / GAMEPLAY-DRIVER-1/2: the
+                            # command-file verb channel and its test-spawn arm.
+                            # Without these on the allowlist Popen drops them and
+                            # a scenario-driven smoke silently runs with NO
+                            # command channel at all -- every verb is a no-op and
+                            # the run still reports success.
+                            "MC2_UI_COMMAND_FILE",
+                            "MC2_TEST_SPAWN",
                             # CONE-SPILL-GRADE-1: isolates the ungated
                             # c1f98b45 cone/terrain spill coupling so the
                             # OFF arm of an A/B capture actually reaches the

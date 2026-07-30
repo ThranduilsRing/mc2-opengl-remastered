@@ -1909,6 +1909,19 @@ long Mission::getStatus (void) {
 }
 
 //----------------------------------------------------------------------------------
+// GAMEPLAY-DRIVER-2: see the contract comment in mission.h.
+void Mission::forceTerminate (unsigned long result) {
+
+	terminationResult = result;
+	terminationCounterStarted = true;
+	// The authored callers use actualTime + 5.0 to let the objective-results
+	// GUI play out. Fire immediately instead -- the update() guard still waits
+	// on ControlGui::resultsDone(), so the results screen is not skipped, only
+	// the 5-second grace is.
+	missionTerminationTime = actualTime;
+}
+
+//----------------------------------------------------------------------------------
 
 long Mission::render (void)
 {

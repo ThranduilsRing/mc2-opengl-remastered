@@ -1806,6 +1806,37 @@ float smoothConnectingInterpolation(float y0, float y1, float x)
 	return retval;
 }
 
+//---------------------------------------------------------------------------
+// GAMEPLAY-DRIVER-2: runtime sun control for the MC2_UI_COMMAND_FILE channel.
+// See the contract comment on the declarations in camera.h.
+float Camera::setDaylightFraction (float f)
+{
+	// Wrap rather than clamp: 0.25 == noon, 0.5 == sunset, 0.75 == midnight.
+	f = f - floorf(f);
+
+	// updateDaylight()'s entire body is inside `if (day2NightTransitionTime >
+	// 0.0f)`, and missions without a DayToNightTime park it at -1 (camera.cpp
+	// readIdFloat fallback). Seed a nominal transition so the recompute runs.
+	if (day2NightTransitionTime <= 0.0f)
+		day2NightTransitionTime = 3600.0f/*seconds*/;
+
+	dayLightTime = f * day2NightTransitionTime;
+	updateDaylight(false);   // rewrites lightPitch + ambient/sun/sky/fog
+	return lightPitch;
+}
+
+float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
+{
+	while (pitchDeg < 0.0f)     pitchDeg += 360.0f;
+	while (pitchDeg >= 360.0f)  pitchDeg -= 360.0f;
+	lightPitch = pitchDeg;
+	if (setYaw)
+		lightYaw = yawDeg;
+	// Camera::update() recomputes lightDirection + isNight + nightFactor from
+	// lightPitch every frame, so nothing else needs poking here.
+	return lightPitch;
+}
+
 void Camera::updateDaylight (bool bInitialize)
 {
 	float day2NightTransitionTime = this->day2NightTransitionTime;
