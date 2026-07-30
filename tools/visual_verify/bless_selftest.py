@@ -14,8 +14,26 @@ each, and asserts bless.py refuses them. It is the standing proof for:
                         r1/r2 pair scores 0.0000%. It is why MIN_RUNS is 3.
   T5  resolution     -- mixed capture resolutions are refused.
   T6  happy path     -- a clean 3-run set DOES bless, with tool-emitted
-                        provenance (blessed_commit / capture_env / gate_state)
-                        and all-pairs reproducibility recorded per region.
+                        provenance (identity.binary_provenance / capture_env /
+                        gate_state) and all-pairs reproducibility per region.
+
+GOLDEN-PROVENANCE-TRUTH-1 adds three more, and they are the reason this file
+grew a synthetic BINARY: the runs now have to name one, by content, with its own
+embedded build fingerprint, or the golden cannot be minted at all.
+
+  T7  unattributable -- a legacy capture manifest that names its exe by PATH +
+                        MTIME is refused. This is the exact shape of the manifest
+                        that minted the committed tests/visual/goldens/
+                        v0.5.1-baseline, whose binary was later overwritten in
+                        place and is now unrecoverable.
+  T8  two binaries   -- three runs that measured DIFFERENT builds are refused.
+                        R1's all-pairs reproducibility number across different
+                        builds measures a code change, not noise, and R1 alone
+                        would have blessed it.
+  T9  shared frames  -- three run manifests pointing at ONE set of PNGs are
+                        refused. R1 rejects duplicate run DIRECTORIES; this is
+                        the same self-comparison one level down, and it scores a
+                        perfect 0.0000% on every pair.
 
 Run:  py -3 tools/visual_verify/bless_selftest.py
 Exit 0 = every guard fired exactly where it should.
@@ -29,12 +47,16 @@ import tempfile
 from pathlib import Path
 
 _THIS = Path(__file__).resolve()
+_ROOT = _THIS.parents[2]
 sys.path.insert(0, str(_THIS.parents[1] / "visual"))
 sys.path.insert(0, str(_THIS.parent))
+sys.path.insert(0, str(_ROOT / "scripts"))
 
 import regions as regionlib  # noqa: E402
 import bless as blesslib  # noqa: E402
 from png_io import encode_png  # noqa: E402
+import manifest_schema as ms  # noqa: E402
+import provenance_gate as pg  # noqa: E402
 
 W, H = 400, 200
 BM = "selftest_pose"
@@ -87,15 +109,41 @@ def _frame(run_index: int, w: int = W, h: int = H) -> bytes:
     return encode_png(w, h, 3, px)
 
 
-def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H) -> Path:
+def _make_binary(path: Path, sha: str, branch: str = "claude/selftest") -> Path:
+    """A file carrying a REAL, parseable build-fingerprint stamp -- the same
+    .rdata layout MSVC emits for the printf in code/mechcmd2.cpp. The identity
+    blocks below are then produced by the SHIPPING emitter
+    (manifest_schema.exe_block) reading these actual bytes, so the provenance in
+    the synthetic capture manifests is genuine, not typed in."""
+    path.write_bytes(pg._synthetic_binary(sha, branch, "2026-07-30T00:00:00",
+                                          "A:/Games/selftest", dirty=False))
+    return path
+
+
+def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H,
+              exe: "Path | None" = None, legacy: bool = False,
+              share_png: "Path | None" = None) -> Path:
+    """One synthetic capture run.
+
+    exe        -- binary whose identity block the manifest carries. None with
+                  legacy=False is a programming error in this file.
+    legacy     -- emit the pre-CAPTURE-PROVENANCE-TRUTH-1 shape (path + mtime,
+                  no identity block). This is what T7 feeds bless.
+    share_png  -- point `primary_png` at somebody else's frame instead of
+                  writing our own (T9).
+    """
     rd = root / name
     pose_dir = rd / BM
     pose_dir.mkdir(parents=True, exist_ok=True)
-    png = pose_dir / f"{BM}.png"
-    png.write_bytes(_frame(run_index, w, h))
-    (rd / "capture_run.json").write_text(json.dumps({
-        "kind": "visual-verify-capture", "schema_v": 1,
-        "install": "SELFTEST", "exe": "SELFTEST/mc2.exe",
+    if share_png is not None:
+        png = share_png
+    else:
+        png = pose_dir / f"{BM}.png"
+        png.write_bytes(_frame(run_index, w, h))
+    doc = {
+        "kind": "visual-verify-capture", "schema_v": 1 if legacy else 2,
+        "install": "SELFTEST",
+        "exe": str(exe) if exe else "SELFTEST/mc2.exe",
         "exe_mtime": "2026-01-01T00:00:00Z",
         "frame": 431, "settle": 150, "deterministic_clock": True,
         "effective_mc2_env": ["MC2_SMOKE_MODE", "MC2_VISUAL_BOOKMARK_CAPTURE"],
@@ -104,7 +152,13 @@ def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H) -> 
                    "engine_deterministic": True, "all_present": True,
                    "engine_capture_fired": True}],
         "n_captured": 1, "n_requested": 1,
-    }, indent=2), encoding="utf-8")
+    }
+    if not legacy:
+        ms.attach(doc, ms.identity_block(generator="bless_selftest",
+                                         exe_path=exe, repo_root=None,
+                                         deploy_target="SELFTEST"))
+    (rd / "capture_run.json").write_text(json.dumps(doc, indent=2),
+                                         encoding="utf-8")
     return rd
 
 
@@ -141,9 +195,13 @@ def main() -> int:
                                          encoding="utf-8")
         regionlib.REGIONS_DIR = rdir
 
-        r1 = _make_run(tmp, "r1", 1)
-        r2 = _make_run(tmp, "r2", 2)
-        r3 = _make_run(tmp, "r3", 3)
+        exe = _make_binary(tmp / "engine_a.bin", "a1b2c3d4e5f6")
+        exe_other = _make_binary(tmp / "engine_b.bin", "ffffffff0000",
+                                 branch="claude/other-lane")
+
+        r1 = _make_run(tmp, "r1", 1, exe=exe)
+        r2 = _make_run(tmp, "r2", 2, exe=exe)
+        r3 = _make_run(tmp, "r3", 3, exe=exe)
 
         print("bless_selftest: proving each refusal fires on synthetic bad input")
 
@@ -158,10 +216,37 @@ def main() -> int:
                        "more than once")
 
         # T5 -- mixed capture resolution.
-        r_odd = _make_run(tmp, "r_odd", 1, w=200, h=100)
+        r_odd = _make_run(tmp, "r_odd", 1, w=200, h=100, exe=exe)
         expect_refusal("T5 mixed capture resolution refused",
                        lambda: blesslib.bless([r1, r2, r_odd], tmp / "g_t5"),
                        "resolution")
+
+        # ---- GOLDEN-PROVENANCE-TRUTH-1 -----------------------------------
+        # T7 -- the exact shape of the manifest that minted the committed
+        # v0.5.1-baseline golden: exe named by path + mtime, no digest, no
+        # embedded build stamp. Unattributable in, unattributable out.
+        l1 = _make_run(tmp, "l1", 1, legacy=True)
+        l2 = _make_run(tmp, "l2", 2, legacy=True)
+        l3 = _make_run(tmp, "l3", 3, legacy=True)
+        expect_refusal("T7 path+mtime capture (no binary identity) refused",
+                       lambda: blesslib.bless([l1, l2, l3], tmp / "g_t7"),
+                       "not an identity")
+
+        # T8 -- three runs, two different binaries. R1 would have blessed this
+        # and recorded the resulting all-pairs number as run-to-run NOISE.
+        x3 = _make_run(tmp, "x3", 3, exe=exe_other)
+        expect_refusal("T8 runs that measured DIFFERENT binaries refused",
+                       lambda: blesslib.bless([r1, r2, x3], tmp / "g_t8"),
+                       "did NOT measure the same binary")
+
+        # T9 -- three manifests, one set of frames: R1's duplicate-directory
+        # rule does not see it, and every pair scores a perfect 0.0000%.
+        shared = tmp / "r1" / BM / f"{BM}.png"
+        s2 = _make_run(tmp, "s2", 2, exe=exe, share_png=shared)
+        s3 = _make_run(tmp, "s3", 3, exe=exe, share_png=shared)
+        expect_refusal("T9 runs sharing ONE primary PNG refused",
+                       lambda: blesslib.bless([r1, s2, s3], tmp / "g_t9"),
+                       "same primary PNG")
 
         # T6 (+T3, +T4) -- the clean 3-run path.
         g = blesslib.bless([r1, r2, r3], tmp / "g_ok")
@@ -197,8 +282,30 @@ def main() -> int:
         check("T6 blessed member carries all-pairs reproducibility",
               good["reproducibility"]["pairs_graded"] == 3
               and good["reproducibility"]["runs"] == 3)
-        check("T6 provenance tool-emitted: blessed_commit",
-              bool(g.get("blessed_commit")), str(g.get("blessed_commit"))[:12])
+        # T6 provenance: the binary, read out of the binary.
+        bp = (g.get("identity") or {}).get("binary_provenance") or {}
+        check("T6 provenance names the BINARY's commit, read from its bytes",
+              bp.get("commit") == "a1b2c3d4e5f6"
+              and bp.get("commit_source") == "exe-embedded-build-fingerprint",
+              f"commit={bp.get('commit')} source={bp.get('commit_source')}")
+        check("T6 golden identifies its binary by CONTENT (sha256), not mtime",
+              isinstance(g.get("exe_sha256"), str) and len(g["exe_sha256"]) == 64,
+              str(g.get("exe_sha256"))[:16])
+        # THE DEFECT THIS SLICE REMOVED: `blessed_commit` was the BLESSER's
+        # worktree HEAD sitting at the top level of the most authoritative
+        # artifact in the repo, indistinguishable from provenance. It must be
+        # GONE -- not renamed in place, not null -- so a reader looking for it
+        # fails to find it and goes to identity.binary_provenance instead.
+        check("T6 top-level `blessed_commit` (source HEAD as provenance) is GONE",
+              "blessed_commit" not in g, str(sorted(g.keys()))[:120])
+        swh = g.get("source_worktree_head_at_bless") or {}
+        check("T6 blesser's HEAD kept, but named + labelled describes_binary=false",
+              swh.get("describes_binary") is False
+              and swh.get("describes") == "source_worktree_head_at_bless",
+              f"commit={str(swh.get('commit'))[:12]}")
+        check("T6 the golden ESTABLISHES its own provenance (gate agrees)",
+              pg.establish(g, "golden")["ok"] is True,
+              pg.establish(g, "golden")["level"])
         check("T6 provenance tool-emitted: capture_env.resolution",
               g["capture_env"]["resolution"] == f"{W}x{H}")
         check("T6 provenance tool-emitted: capture_env.runs == 3",

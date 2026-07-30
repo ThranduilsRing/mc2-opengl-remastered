@@ -18,6 +18,16 @@ epsilon/mean-delta idea as tools/visual/visual_diff.py, but operates on the
 committed *regions* rather than the whole frame -- so the automated grade lines
 up with what the fleet actually cropped and complained about.
 
+GOLDEN-PROVENANCE-TRUTH-1 (2026-07-30) -- this tool used to grade blind.
+    It read crop PNGs out of the golden directory and never opened golden.json,
+    so it could not have known -- and did not ask -- which binary minted the
+    reference it was grading a release against. Measured over the three
+    committed goldens: none of them can say. `verify_run` now refuses to grade
+    unless BOTH the golden and the candidate capture name their own binary by
+    content sha256 and carry that binary's embedded build fingerprint
+    (scripts/provenance_gate.py). There is no override flag; the way out is to
+    re-bless, or to drop --golden and get crops without a verdict.
+
 Verdict math per region (candidate vs golden crop):
     FAIL if  mean_delta > t.mean_delta
          or  changed_pct > t.changed_pct
@@ -46,8 +56,10 @@ from pathlib import Path
 _THIS = Path(__file__).resolve()
 sys.path.insert(0, str(_THIS.parents[1] / "visual"))
 sys.path.insert(0, str(_THIS.parent))
+sys.path.insert(0, str(_THIS.parents[2] / "scripts"))
 from png_io import decode_png, encode_png  # noqa: E402
 import regions as regionlib  # noqa: E402
+import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
 
 EPSILON_LSB = 2  # per-channel LSB treated as dither noise (matches visual_diff.py)
 
@@ -170,6 +182,52 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict
         raise SystemExit(f"[vv-verify] no capture_run.json in {run_dir}")
     cap = json.loads(manifest_path.read_text(encoding="utf-8"))
 
+    # GOLDEN-PROVENANCE-TRUTH-1 -- REFUSE TO GRADE AGAINST AN UNATTRIBUTABLE
+    # GOLDEN. This is the decision point that mints a PASS/FAIL verdict against
+    # a release, and until now it performed ZERO provenance checks: it read the
+    # crop PNGs out of the golden dir and never opened golden.json at all. A
+    # golden whose binary is unknown grades every candidate against an unknown,
+    # and the resulting PASS looks exactly like a real one.
+    #
+    # Both sides are interrogated. The golden and the candidate are NOT required
+    # to name the same binary -- comparing a new build to an old reference is
+    # the entire point -- only to name THEIR OWN, by content, with that binary's
+    # own embedded build stamp.
+    #
+    # Not gated in --baseline mode: nothing is graded there, every region is
+    # NEW, and the seed crops become a golden only via bless.py, which runs the
+    # same gate.
+    if golden_dir is not None and not baseline:
+        gj = Path(golden_dir) / "golden.json"
+        if not gj.exists():
+            raise SystemExit(
+                f"[vv-verify] PROVENANCE UNESTABLISHED -- refusing to grade "
+                f"against {golden_dir}: it has no golden.json, so it cannot "
+                f"state which binary minted its crops. A directory of PNGs is "
+                f"not a golden.")
+        try:
+            pg.refuse_unless_established(
+                [pg.establish_path(gj, "golden"),
+                 pg.establish(cap, "candidate capture")],
+                decision=("grade a candidate against a golden -- this call "
+                          "mints the PASS/FAIL a release is judged on"),
+                remedy=(
+                    "GOLDEN: re-bless it from captures that identify their "
+                    "binary (tools/visual_verify/bless.py, which now refuses "
+                    "unattributable input). Re-blessing a committed golden is "
+                    "a tracked-file diff and a USER decision -- do not do it "
+                    "to make this message go away.\n"
+                    "         CANDIDATE: recapture with "
+                    "tools/visual_verify/capture.py (schema_v>=2), which emits "
+                    "identity.exe.sha256 plus the binary's embedded build "
+                    "fingerprint.\n"
+                    "         MEANWHILE: `verify.py --run <dir>` with NO "
+                    "--golden still emits every region crop and contact sheet "
+                    "for eyeball comparison. It just does not pretend to be a "
+                    "verdict."))
+        except pg.ProvenanceUnestablished as e:
+            raise SystemExit(f"[vv-verify] {e}")
+
     # CAPTURE-RESOLUTION-ASSERT-1 (HARNESS-HYGIENE-3). Region rects are
     # normalized fractions and diff_crops() below silently upscales a smaller
     # candidate to the golden's crop dims, so a capture taken at the wrong
@@ -281,7 +339,7 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict
 
     report = {
         "kind": "visual-verify-report",
-        "schema_v": 1,
+        "schema_v": 2,
         "generated_at": _now_iso(),
         "run_dir": str(run_dir),
         "golden_dir": str(golden_dir) if golden_dir else None,
@@ -289,6 +347,14 @@ def verify_run(run_dir: Path, golden_dir: "Path | None", baseline: bool) -> dict
         "install": cap.get("install"),
         "exe": cap.get("exe"),
         "frame": cap.get("frame"),
+        # GOLDEN-PROVENANCE-TRUTH-1: a verdict must carry what it graded, not
+        # just its own conclusion. Populated only on the grading path; in
+        # crop-emit / baseline mode there is no verdict to attribute.
+        "graded_provenance": ({
+            "golden": pg.establish_path(Path(golden_dir) / "golden.json",
+                                        "golden"),
+            "candidate": pg.establish(cap, "candidate capture"),
+        } if (golden_dir is not None and not baseline) else None),
         "poses": pose_reports,
     }
     report["summary"] = _summarize(pose_reports)

@@ -1,0 +1,64 @@
+{
+  "schema": "mc2-known-failure-ledger/1",
+  "check": "capture_provenance (scripts/check-capture-provenance.py)",
+  "what_this_is": [
+    "A ledger of check findings that are CORRECT, PERMANENT and IRREPARABLE, so",
+    "that a RED contract row still means 'action required by you, now'. A check",
+    "that is permanently red trains people to ignore red -- and the usual cure, a",
+    "suppression list, can hide a real failure. This is not that.",
+    "",
+    "IT IS CONSUMED EXACTLY, IN BOTH DIRECTIONS:",
+    "  * a FAIL that is not listed here            -> RED (regression)",
+    "  * an entry here that matches no FAIL        -> RED (stale entry, OR the",
+    "                                                 checker went blind and",
+    "                                                 stopped seeing it)",
+    "  * an entry on a code that HAS a remedy      -> RED (only EMPTY-MANIFEST",
+    "                                                 and UNPARSEABLE may be",
+    "                                                 pinned; those record no",
+    "                                                 binary at all, so no tool",
+    "                                                 can ever reconcile them)",
+    "  * an entry past `expires_utc`               -> RED",
+    "  * all FAILs pinned, irreparable, unexpired  -> exit 3, reported KNOWN",
+    "",
+    "KNOWN IS NOT PASS. It prints its own row in the contract table, with the",
+    "reason and the expiry. The reverse-direction rule means this file doubles as",
+    "a liveness assertion on the checker: if the scan ever stops finding these",
+    "two files, it fails loudly instead of turning green.",
+    "",
+    "Cleaning the referenced artifacts up (they are scratch working space, and a",
+    "disk-reclaim pass may well remove them) will turn this check RED until the",
+    "matching entry is deleted. That is deliberate: a two-line diff is the price",
+    "of an acknowledgement that cannot silently outlive its condition."
+  ],
+  "adding_an_entry": [
+    "1. Confirm the finding's code is in IRREPARABLE_CODES. If a tool can fix it,",
+    "   fix it -- the ledger will refuse the entry anyway.",
+    "2. Copy the `id` verbatim from the checker's output (CODE:repo-relative-path).",
+    "   Globs, directories and bare codes are not accepted: an entry pins ONE",
+    "   finding on ONE file, so a different failure in the same file is still RED.",
+    "3. State why no tool can repair it, and what the human remedy is.",
+    "4. Set an expiry. An acknowledgement with no expiry is a permanent suppression."
+  ],
+  "entries": [
+    {
+      "id": "EMPTY-MANIFEST:scratch/mc203air/21_late3600_rep/mc2_03_capture_manifest.json",
+      "class": "IRREPARABLE",
+      "why_irreparable": "Zero bytes. The manifest names no exe, no digest and no fingerprint, so there is nothing for any tool to reconcile against any binary -- unlike a legacy manifest, which at least names a path that can be re-read while the file survives. Truncated by the ENOSPC incident; the bytes are not recoverable.",
+      "evidence": "st_size == 0, re-checked on every run by check_manifest()",
+      "remedy": "Delete scratch/mc203air/21_late3600_rep/ or recapture the arm. Deleting evidence and spending a capture are both USER decisions, not a tool's.",
+      "acknowledged_utc": "2026-07-30",
+      "acknowledged_by": "GOLDEN-PROVENANCE-TRUTH-1 lane (pending USER confirmation)",
+      "expires_utc": "2026-10-31"
+    },
+    {
+      "id": "EMPTY-MANIFEST:scratch/mc203air/30_texhandoff/mc2_03_capture_manifest.json",
+      "class": "IRREPARABLE",
+      "why_irreparable": "Zero bytes; same ENOSPC truncation as the entry above. No exe, no digest, no fingerprint -- nothing to reconcile.",
+      "evidence": "st_size == 0, re-checked on every run by check_manifest()",
+      "remedy": "Delete scratch/mc203air/30_texhandoff/ or recapture the arm. USER decision.",
+      "acknowledged_utc": "2026-07-30",
+      "acknowledged_by": "GOLDEN-PROVENANCE-TRUTH-1 lane (pending USER confirmation)",
+      "expires_utc": "2026-10-31"
+    }
+  ]
+}

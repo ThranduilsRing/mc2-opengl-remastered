@@ -51,6 +51,7 @@ done
 # ---------------------------------------------------------------------------
 PASS_COUNT=0
 FAIL_COUNT=0
+KNOWN_COUNT=0
 
 # Arrays to collect results for the summary table.
 NAMES=()
@@ -81,6 +82,61 @@ run_check() {
             NAMES+=("$label")
             RESULTS+=("FAIL")
         fi
+        echo ""
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# TRI-STATE RUNNER -- so that RED still means "action required by you, now"
+# ---------------------------------------------------------------------------
+# GOLDEN-PROVENANCE-TRUTH-1 (2026-07-30). One check on this board fails
+# permanently and CORRECTLY: capture_provenance reports two zero-byte capture
+# manifests (ENOSPC truncation) that record no binary at all, so no tool can
+# ever attribute them. A row that is red every single day teaches everyone to
+# skip red -- at which point the next REAL failure is invisible.
+#
+# The usual cure is a suppression list, which can hide a real failure. This is
+# not that. A check opted into this runner may return exit 3 to mean "there are
+# failures and every one of them is pinned in an exact, expiring,
+# irreparable-only ledger". The check itself proves that, and it fails RED if:
+#   * a failure is NOT in the ledger              (a regression)
+#   * a ledger entry matches NO failure           (stale entry -- or the check
+#                                                  went blind and stopped
+#                                                  seeing it)
+#   * a ledger entry pins a REPAIRABLE finding    (fix it instead)
+#   * a ledger entry is past its expiry
+#
+# KNOWN IS NOT PASS. It gets its own row, its own count, and its reason is
+# printed even in --quiet. Any exit code other than 0 or 3 -- including a crash,
+# a syntax error or a missing interpreter -- is FAIL, so this fails closed.
+run_check_tri() {
+    local label="$1"
+    local cmd="$2"
+    local out rc
+
+    out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
+
+    NAMES+=("$label")
+    if [ "$rc" -eq 0 ]; then
+        PASS_COUNT=$((PASS_COUNT + 1))
+        RESULTS+=("PASS")
+    elif [ "$rc" -eq 3 ]; then
+        KNOWN_COUNT=$((KNOWN_COUNT + 1))
+        RESULTS+=("KNOWN")
+    else
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        RESULTS+=("FAIL")
+    fi
+
+    if [ "$QUIET" -eq 1 ]; then
+        # Even in --quiet, a KNOWN must state WHY it is known. A silent amber
+        # row is indistinguishable from a green one at a glance.
+        if [ "$rc" -eq 3 ]; then
+            printf '%s\n' "$out" | grep -E 'KNOWN' || true
+        fi
+    else
+        echo "--- $label ---"
+        printf '%s\n' "$out"
         echo ""
     fi
 }
@@ -452,8 +508,31 @@ run_check "stock_mission_data_selftest" "py -3 scripts/check-stock-mission-data.
 # a missing exe sha256 and a zero-byte manifest are all caught, that an honest
 # manifest passes, and that a manifest carrying every keyword ONLY inside a
 # comment still fails. Offline, read-only, no game launch.
-run_check "capture_provenance"          "py -3 scripts/check-capture-provenance.py --quiet"
+#
+# GOLDEN-PROVENANCE-TRUTH-1 extends the same ratchet to `golden.json` --
+# tests/visual/goldens was in NEITHER the filename list NOR the scan roots, so
+# the artifact class that GRADES RELEASES was 100% unscanned while the checker
+# reported confidently on 141 lesser manifests (same shape as a shader checker
+# that silently skips every GLSL file). Scan is now 144; the three extra are the
+# three committed goldens, and all three FAIL: none can name the binary that
+# minted it. `--write` deliberately REFUSES to back-stamp a golden -- that is a
+# tracked-file diff and a USER decision, and back-stamping would record whatever
+# binary sits at that path today, which for baseline-5ef261f4 is a different
+# lane's build.
+#
+# run_check_tri (not run_check): exit 3 == "failures, all pinned in
+# scripts/provenance-known-failures.json, all irreparable, none expired" and
+# prints as KNOWN, not PASS. See the runner's comment above for why that is not
+# a suppression mechanism.
+run_check_tri "capture_provenance"      "py -3 scripts/check-capture-provenance.py --quiet"
 run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.py --selftest"
+# The provenance GATE the minting tools call (bless.py / verify.py /
+# run_golden_parity.py). Proves each verdict on binaries carrying real
+# fingerprint stamps, that a hand-added claim and a keywords-in-a-comment
+# manifest both stay UNESTABLISHED, and -- the other half -- that an honest
+# artifact still passes. Offline, read-only, no game launch.
+run_check "provenance_gate_selftest"    "py -3 scripts/provenance_gate.py --selftest"
+run_check "bless_refusals_selftest"     "py -3 tools/visual_verify/bless_selftest.py"
 
 # ---------------------------------------------------------------------------
 # The review pack's annotation anchors must never re-attach a stored comment to
@@ -478,12 +557,25 @@ for i in "${!NAMES[@]}"; do
     label="${NAMES[$i]}"
     if [ "$result" = "PASS" ]; then
         printf "  %-40s  PASS\n" "$label"
+    elif [ "$result" = "KNOWN" ]; then
+        printf "  %-40s  KNOWN (correct failure, ledger-pinned)\n" "$label"
     else
         printf "  %-40s  FAIL  <---\n" "$label"
     fi
 done
 echo "---------------------------------------------------------------------"
-printf "  %d passed, %d failed\n" "$PASS_COUNT" "$FAIL_COUNT"
+printf "  %d passed, %d failed, %d known-correct-failure\n" \
+    "$PASS_COUNT" "$FAIL_COUNT" "$KNOWN_COUNT"
+if [ "$KNOWN_COUNT" -gt 0 ]; then
+    echo ""
+    echo "  KNOWN is NOT a pass. It means every failure that check found is"
+    echo "  pinned by exact identity in a ledger, is irreparable by any tool,"
+    echo "  and has an unexpired human acknowledgement. The underlying defect is"
+    echo "  still there and the remedy is a USER decision. It is separated from"
+    echo "  FAIL so that a FAIL row still means: action required by you, now."
+    echo "  A ledger entry that matches no finding is itself a FAIL, so this"
+    echo "  cannot quietly outlive its condition -- nor hide a blind checker."
+fi
 echo "====================================================================="
 
 if [ "$FAIL_COUNT" -gt 0 ]; then

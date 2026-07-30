@@ -130,12 +130,35 @@ If you ever need **frame-level** goldens (full 4K), keep them in an external dir
 `frames_dir`. For **regression goldens** the default path is crop-only. (This is
 *not* a licence to grade a fix on crops — see the Standing Capture Rule above.)
 
-Bless is deliberate and reviewable:
+Bless is deliberate and reviewable, and takes **three** independent capture runs
+(THREE-RUN-ALL-PAIRS-1 — two cannot distinguish "reproducible" from "happened to
+agree once"):
 
 ```powershell
-py -3 tools/visual_verify/bless.py --run <capture-dir> --to tests/visual/goldens/<name>
-# then: git add tests/visual/goldens/<name> && commit (set blessed_commit)
+py -3 tools/visual_verify/bless.py --run <cap1> --run <cap2> --run <cap3> `
+    --to tests/visual/goldens/<name>
+# then: git add tests/visual/goldens/<name> && commit
 ```
+
+**Do not hand-add provenance.** An earlier version of this page said "commit (set
+`blessed_commit`)". That field no longer exists, and what it held was the
+*blesser's worktree HEAD* — the lane that happened to run bless.py, which is
+routinely neither the lane that built the exe nor the commit that rendered the
+crops, and blessing can happen days after capture. A golden now carries:
+
+| field | means |
+|---|---|
+| `identity.binary_provenance.commit` | the commit **compiled into the binary that rendered these crops**, read out of its own `.rdata` build stamp |
+| `identity.exe.sha256` | that binary by **content**. A path plus an mtime is not an identity |
+| `source_worktree_head_at_bless` | who ran bless.py. Carries `describes_binary: false` **in the JSON** so it cannot be misread as provenance |
+
+All three are tool-emitted (GOLDEN-PROVENANCE-TRUTH-1). `bless.py` **refuses** to
+mint a golden whose source captures cannot name their binary, whose runs measured
+*different* binaries, or whose runs point at the same PNG.
+`verify.py` **refuses to grade** against a golden that cannot name its binary —
+drop `--golden` if you just want crops without a verdict. There is no override
+flag on either. `scripts/check-capture-provenance.py` scans
+`tests/visual/goldens/**/golden.json` and fails any golden that cannot.
 
 ---
 

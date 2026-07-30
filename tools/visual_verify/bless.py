@@ -47,11 +47,52 @@ R3 -- DEGENERATE CROP. An all-black / all-white / near-flat crop can never fail
   failure but a genuinely void rect (night sky above the ridge it claimed to
   frame), sitting in the set marked severity=critical.
 
-Provenance is TOOL-EMITTED, never hand-added (PROVENANCE-EMIT-1). blessed_commit,
-gate_state and capture_env used to be written by hand into golden.json after the
-fact -- which means the audit trail was exactly as trustworthy as the human who
-typed it. All three are now derived here: the commit from git, the resolution
-from each frame's own IHDR, the env from the capture manifests.
+Provenance is TOOL-EMITTED, never hand-added (PROVENANCE-EMIT-1). gate_state and
+capture_env used to be written by hand into golden.json after the fact -- which
+means the audit trail was exactly as trustworthy as the human who typed it. Both
+are now derived here: the resolution from each frame's own IHDR, the env from
+the capture manifests.
+
+-----------------------------------------------------------------------------
+GOLDEN-PROVENANCE-TRUTH-1 -- R4/R5/R6, and what `blessed_commit` was
+-----------------------------------------------------------------------------
+Until this change, the most authoritative artifact class in the repo recorded
+its binary by PATH + MTIME and stamped `blessed_commit` from `git rev-parse
+HEAD` in the BLESSER'S WORKTREE. That is the source-HEAD-as-provenance defect
+CAPTURE-PROVENANCE-TRUTH-1 removed from capture manifests, laundered straight
+back into the goldens -- and the ratchet could not see it, because `golden.json`
+was in neither the checker's filename list nor its scan roots.
+
+It was not hypothetical. Measured 2026-07-30 over the three committed goldens:
+`v0.5.1-baseline` and `v0.5.2-baseline-PROPOSED` name the SAME exe path with two
+different mtimes; the file there today has the second mtime, so the binary that
+minted the first is overwritten and gone. `baseline-5ef261f4`'s hand-added
+identity block claims exe_sha256 99a12c41...; the file at its path today is
+4b195092..., a different lane's build. NONE of the three can prove which binary
+minted it. `blessed_commit` was null in all three, and would have been a
+different lane's HEAD if it had not been.
+
+  R4 -- BINARY IDENTIFIED. Every source run's capture manifest must name its
+    binary by CONTENT (identity.exe.sha256) and carry that binary's own embedded
+    build fingerprint. A legacy path+mtime capture is refused: the crops it
+    produced cannot be attributed, so a golden minted from them cannot be
+    either.
+
+  R5 -- ONE BINARY. All runs must name the SAME binary sha256, and the file on
+    disk (when still present) must still be those bytes. Three runs of three
+    different builds have an all-pairs "reproducibility" number that measures
+    nothing, and R1 would have blessed it.
+
+  R6 -- DISTINCT FRAMES. Two runs must not name the same primary PNG file. R1
+    rejects duplicated run DIRECTORIES; nothing stopped three manifests pointing
+    at one set of images, which is the same self-comparison one level down.
+
+The golden now carries the unified identity block (scripts/manifest_schema.py):
+`identity.binary_provenance.commit` is the commit compiled INTO the binary, read
+out of its bytes. The blesser's worktree HEAD is still recorded -- it is useful
+for finding the lane afterwards -- but under the name
+`source_worktree_head_at_bless`, carrying `describes_binary: false` IN the JSON,
+so a reader with no access to this docstring cannot mistake it for provenance.
 
 Usage:
   py -3 tools/visual_verify/bless.py --run <run1> --run <run2> --run <run3> \
@@ -74,9 +115,12 @@ _THIS = Path(__file__).resolve()
 ROOT = _THIS.parents[2]
 sys.path.insert(0, str(_THIS.parents[1] / "visual"))
 sys.path.insert(0, str(_THIS.parent))
+sys.path.insert(0, str(ROOT / "scripts"))
 import regions as regionlib  # noqa: E402
 from verify import diff_crops, grade, DEFAULT_THRESHOLDS  # noqa: E402
 from png_io import decode_png  # noqa: E402
+import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
+import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
 
 DEFAULT_GOLDENS = ROOT / "tests" / "visual" / "goldens"
 
@@ -180,6 +224,38 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
             f"another. Capture {min_runs - len(run_dirs)} more run(s) and re-bless.")
 
     runs = _load_runs(run_dirs)
+
+    # ---- R4/R5: the source runs must name ONE binary, by content ------------
+    # Nothing downstream can repair an unattributable input, so this is checked
+    # BEFORE a single crop is written. `establish` accepts only a tool-emitted
+    # exe digest plus that binary's own embedded build stamp, read from those
+    # same bytes -- never a path+mtime, never a hand-added claim.
+    ests = [pg.establish(r["cap"], f"run{i + 1} ({r['dir'].name})")
+            for i, r in enumerate(runs)]
+    try:
+        pg.refuse_unless_established(
+            ests,
+            decision=("mint a golden -- the reference every later release is "
+                      "graded against"),
+            remedy=("recapture with the current tools/visual_verify/capture.py, "
+                    "which emits identity.exe.sha256 + the binary's embedded "
+                    "build fingerprint (manifest_schema.identity_block). A "
+                    "capture that only names its exe by path and mtime cannot "
+                    "be attributed to any binary, so neither can a golden "
+                    "minted from it."))
+    except pg.ProvenanceUnestablished as e:
+        raise SystemExit(f"[vv-bless] refusing to bless: {e}")
+
+    ok_same, detail = pg.same_binary(ests)
+    if not ok_same:
+        raise SystemExit(
+            f"[vv-bless] refusing to bless: the {len(runs)} capture runs did "
+            f"NOT measure the same binary ({detail}). The three-run all-pairs "
+            f"rule (R1) grades run-to-run reproducibility; across different "
+            f"builds that number measures a code change, not noise, and a "
+            f"golden minted from it would carry a reproducibility claim it "
+            f"never earned.")
+
     to_dir = Path(to_dir).resolve()
     to_dir.mkdir(parents=True, exist_ok=True)
 
@@ -201,6 +277,7 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
             continue
         # every run must carry this pose, else it is not N-run reproducible
         pngs = []
+        png_paths: list = []
         missing = False
         for i, poses in enumerate(per_run_poses):
             p = poses.get(bm)
@@ -208,7 +285,22 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
             if not png_path or not Path(png_path).exists():
                 missing = True
                 break
+            png_paths.append(Path(png_path).resolve())
             pngs.append(Path(png_path).read_bytes())
+        # ---- R6: DISTINCT FRAMES ------------------------------------------
+        # R1 rejects the same run DIRECTORY passed twice. Nothing stopped N
+        # manifests naming ONE set of images, which is the identical
+        # self-comparison a level down: every pair would score 0.0000% and the
+        # golden would record an all-pairs reproducibility it never measured.
+        if not missing and len(set(str(p) for p in png_paths)) != len(png_paths):
+            dupes = sorted({str(p) for p in png_paths
+                            if png_paths.count(p) > 1})
+            raise SystemExit(
+                f"[vv-bless] refusing to bless: bookmark {bm!r} names the SAME "
+                f"primary PNG in more than one run ({dupes}). All-pairs "
+                f"grading over one image is self-comparison: every pair scores "
+                f"0.0000% and the golden would claim a reproducibility nobody "
+                f"measured.")
         if missing:
             refused.append({"bookmark": bm, "region": "*",
                             "reason": f"pose absent or frame missing in at least one "
@@ -295,7 +387,7 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
     cap0 = runs[0]["cap"]
     golden = {
         "kind": "visual-verify-golden",
-        "schema_v": 2,
+        "schema_v": 3,
         "golden_id": to_dir.name,
         "blessed_at": _now_iso(),
         "source_capture": str(runs[0]["path"]),
@@ -303,6 +395,11 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
         "install": cap0.get("install"),
         "exe": cap0.get("exe"),
         "exe_mtime": cap0.get("exe_mtime"),
+        # GOLDEN-PROVENANCE-TRUTH-1: `exe` above is a path and `exe_mtime` an
+        # mtime -- kept only for back-compat with schema_v<=2 readers. NEITHER
+        # is an identity. The binary is identified by content here and, in full,
+        # under `identity`.
+        "exe_sha256": ests[0].get("exe_sha256"),
         "frame": cap0.get("frame"),
         "deterministic_clock": cap0.get("deterministic_clock"),
         "n_regions": len(members),
@@ -322,10 +419,66 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
             f"{sorted(_frame_res) or '[]'}. A golden must carry exactly one "
             f"capture_env.resolution (CAPTURE-RESOLUTION-ASSERT-1).")
 
+    # ---- GOLDEN-PROVENANCE-TRUTH-1: WHAT WAS MEASURED, then what the blesser
+    # happened to be sitting on. The two are named so they cannot be confused.
+    #
+    # `blessed_commit` USED TO LIVE HERE and was `git rev-parse HEAD` in the
+    # BLESSER's worktree. It described the blesser's lane, not the binary that
+    # rendered a single one of these crops, and it sat beside a `dirty` flag
+    # that made the pair read as authoritative. It is deleted, not renamed in
+    # place: a reader looking for it must fail to find it and go read
+    # `identity.binary_provenance` instead.
+    exe_for_identity = ests[0].get("exe_path") or cap0.get("exe")
+    ident = ms.identity_block(
+        generator="visual_verify_bless",
+        exe_path=exe_for_identity,
+        repo_root=str(ROOT),
+        deploy_target=cap0.get("install"),
+    )
+    # The exe at that path may have been REBUILT between capture and bless (it
+    # is, right now, for two of the three committed goldens). The binary the
+    # RUNS measured is the authority, so the runs' recorded exe block is carried
+    # verbatim. `ms.identity_block` above re-read the path LIVE, and that block
+    # describes today's file -- letting it stand in when the runs' block is
+    # missing would silently record the wrong binary, which is the exact defect
+    # this slice removes. So its absence is fatal, not a fallback.
+    src_exe_blk = ((runs[0]["cap"].get("identity") or {}).get("exe"))
+    if not isinstance(src_exe_blk, dict):
+        raise SystemExit(
+            "[vv-bless] refusing to bless: the source capture established its "
+            "binary but carries no identity.exe block to copy forward. "
+            "Recording the live re-read of that path instead would describe "
+            "whatever binary sits there NOW, not the one that rendered these "
+            "crops -- that substitution is the defect, not a fallback.")
+    ident["exe"] = src_exe_blk
+    ident["binary_provenance"] = ms.binary_provenance(
+        src_exe_blk, ident.get("source_worktree_head_at_capture") or {})
+    ident["binary_identity_established"] = {
+        "level": ests[0]["level"],
+        "checked_by": "scripts/provenance_gate.py (GOLDEN-PROVENANCE-TRUTH-1)",
+        "runs_agree_on_binary": True,
+        "detail": ests[0]["why"],
+    }
+    golden["identity"] = ident
+
     head = _git(ROOT, "rev-parse", "HEAD")
-    dirty = _git(ROOT, "status", "--porcelain")
-    golden["blessed_commit"] = head
-    golden["blessed_tree_dirty"] = bool(dirty) if dirty is not None else None
+    dirty = _git(ROOT, "status", "--porcelain", "-uno")
+    golden["source_worktree_head_at_bless"] = {
+        "commit": head,
+        "branch": _git(ROOT, "rev-parse", "--abbrev-ref", "HEAD"),
+        "dirty": bool(dirty) if dirty is not None else None,
+        "worktree": str(ROOT),
+        "describes": "source_worktree_head_at_bless",
+        "describes_binary": False,
+        "dirty_describes": ms.SOURCE_DIRTY_NOTE,
+        "note": ("SOURCE WORKTREE HEAD of whoever ran bless.py. It does NOT "
+                 "describe the binary that rendered these crops -- the blessing "
+                 "worktree and the worktree that compiled the exe are routinely "
+                 "different lanes, and blessing can happen days after capture. "
+                 "For the commit that was actually exercised, read "
+                 "identity.binary_provenance.commit. This block exists only to "
+                 "find the lane that made the blessing decision."),
+    }
     golden["provenance_emitted_by"] = "tools/visual_verify/bless.py (PROVENANCE-EMIT-1)"
 
     env_keys: set = set()
@@ -369,10 +522,17 @@ def main(argv=None) -> int:
           f"-> {args.to}")
     for r in golden["refused"]:
         print(f"[vv-bless] REFUSED {r['bookmark']}/{r['region']}: {r['reason']}")
+    bp = (golden.get("identity") or {}).get("binary_provenance") or {}
+    print(f"[vv-bless] binary measured: commit={bp.get('commit')} "
+          f"branch={bp.get('branch')} dirty={bp.get('dirty')} "
+          f"sha256={str(golden.get('exe_sha256'))[:12]} "
+          f"[{(golden['identity']['binary_identity_established'])['level']}]")
+    print(f"[vv-bless] blesser's worktree HEAD (NOT provenance): "
+          f"{str(golden['source_worktree_head_at_bless'].get('commit'))[:12]}")
     print(f"[vv-bless] golden.json: {Path(args.to).resolve() / 'golden.json'}")
     print("[vv-bless] BLESS is complete on disk; commit the golden dir to make it "
-          "the reference. Provenance (blessed_commit / capture_env / gate_state) is "
-          "tool-emitted -- do not hand-edit it.")
+          "the reference. Provenance (identity.binary_provenance / capture_env / "
+          "gate_state) is tool-emitted -- do not hand-edit it.")
     return 0
 
 

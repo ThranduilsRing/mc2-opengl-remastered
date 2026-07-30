@@ -47,16 +47,62 @@ header freshly stamped and the exe stale, so a guard reading it passes while
 measuring the wrong binary (c5d934d5 fixed exactly that in a sibling guard).
 Truth is read out of the binary's bytes, or it is reported as unknown.
 
+GOLDEN-PROVENANCE-TRUTH-1 (2026-07-30) -- THE RATCHET COULD NOT SEE THE GOLDENS
+------------------------------------------------------------------------------
+`golden.json` was in neither MANIFEST_NAMES nor DEFAULT_ROOTS, so the most
+authoritative artifact class in the repo -- the reference every release is
+graded against -- was 100% outside this checker. Same class of hole as
+PROVENANCE-RATCHET-SCOPE-1 above (scratch/ excluded), and as a shader checker
+that silently skipped every GLSL file: the instrument reported clean on a corpus
+it never opened.
+
+Adding both took the default scan from 141 manifests to 144 and immediately
+surfaced 3 FAILs on tracked files. All three committed goldens name their binary
+by PATH + MTIME only. `v0.5.1-baseline` and `v0.5.2-baseline-PROPOSED` name the
+SAME path with different mtimes and the file there today matches only the
+second, so the binary that minted the first is overwritten and gone.
+
+A golden is graded by pg.establish() rather than by the generic exe rules: it is
+the artifact class where "which binary" matters most, and its `blessed_commit`
+field -- the BLESSER's worktree HEAD -- is explicitly refused as provenance.
+`--write` will NOT touch a golden: a golden's binary identity had to be recorded
+at mint time, and back-stamping one now would fabricate exactly the authority
+this checker exists to protect.
+
+RED MUST MEAN "ACT NOW" (KNOWN-FAILURE LEDGER)
+----------------------------------------------
+Two of the FAILs here are irreparable and correct: zero-byte manifests from an
+ENOSPC truncation. A check that is permanently red trains people to ignore red,
+and the usual cure -- a suppression list -- can hide a real failure.
+
+So this is not a suppression list. scripts/provenance-known-failures.json pins
+EXACT finding identities (code + path) and is consumed EXACTLY:
+
+  * a FAIL not in the ledger            -> RED (regression)
+  * a ledger entry with no matching FAIL -> RED (stale ledger, or -- the case
+                                            that matters -- this instrument went
+                                            blind and stopped seeing it)
+  * a ledger entry on a REPAIRABLE code  -> RED (the ledger may only ever
+                                            acknowledge findings no tool can fix)
+  * a ledger entry past its expiry       -> RED
+  * every FAIL ledgered, irreparable, unexpired -> exit 3, reported as KNOWN
+
+KNOWN is never PASS. It prints its own row in the contract table with the reason
+and the expiry. And because ledger entries must be OBSERVED, the ledger doubles
+as a liveness assertion on the checker itself: if this scan ever stops finding
+those two files, it fails loudly instead of turning green.
+
 Usage:
     py -3 scripts/check-capture-provenance.py [ROOT ...]      # verify (default)
     py -3 scripts/check-capture-provenance.py --write [ROOT]  # backfill truth
     py -3 scripts/check-capture-provenance.py --selftest      # prove it fires
 
-Exit: 0 clean | 1 violation(s) | 2 self-test failed.
+Exit: 0 clean | 1 violation(s) | 2 self-test failed | 3 failures, all KNOWN.
 """
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -69,6 +115,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import exe_fingerprint as ef        # noqa: E402
 import manifest_schema as ms        # noqa: E402
+import provenance_gate as pg        # noqa: E402
 
 #: Artifact trees the repo treats as EVIDENCE.
 #:
@@ -85,14 +132,30 @@ import manifest_schema as ms        # noqa: E402
 #: Operator working space is where conclusions actually get formed, so it is
 #: exactly where attribution has to hold. A ratchet aimed away from the incident
 #: that motivated it is decoration.
-DEFAULT_ROOTS = ("tests/visual/captures", "tests/visual/baselines", "run",
-                 "scratch")
+#: GOLDEN-PROVENANCE-TRUTH-1: `tests/visual/goldens` was missing here, and
+#: `golden.json` was missing from MANIFEST_NAMES below. Both were needed -- a
+#: filename this checker does not recognise inside a root it does not walk is
+#: invisible twice over -- so the artifact class that GRADES RELEASES was 100%
+#: unscanned while the checker reported on 141 lesser manifests.
+DEFAULT_ROOTS = ("tests/visual/captures", "tests/visual/baselines",
+                 "tests/visual/goldens", "run", "scratch")
 
 #: Manifest filenames that record a measurement of a binary.
 MANIFEST_SUFFIXES = ("_capture_manifest.json",)
-MANIFEST_NAMES = ("capture_run.json", "manifest.json", "set.json")
+MANIFEST_NAMES = ("capture_run.json", "manifest.json", "set.json",
+                  "golden.json")
 
 SKIP_DIRS = {".git", "build64", "__pycache__", "node_modules"}
+
+#: Findings NO TOOL CAN REPAIR: the artifact recorded nothing, so there is
+#: nothing to reconcile against any binary, ever. Only these may be ledgered as
+#: known-correct failures. Every other code has a real remedy (--write, a
+#: recapture, a re-bless) and must stay RED until someone performs it.
+IRREPARABLE_CODES = ("EMPTY-MANIFEST", "UNPARSEABLE")
+
+#: The known-correct-failure ledger. See the module docstring: this is NOT a
+#: suppression list -- it is consumed exactly, in both directions.
+LEDGER_PATH = ROOT / "scripts" / "provenance-known-failures.json"
 
 
 # --------------------------------------------------------------------------- #
@@ -139,6 +202,21 @@ class Finding:
 
     def __str__(self) -> str:
         return f"[{self.level}] {self.code}: {self.path}\n        {self.msg}"
+
+    def ident(self) -> str:
+        """Stable identity for the known-failure ledger: CODE + repo-relative
+        path. Deliberately NOT a glob, a directory or a bare code -- a ledger
+        entry must pin ONE finding on ONE file, so that a different failure in
+        the same file, or the same failure in another file, is still RED."""
+        p = Path(self.path)
+        try:
+            rel = p.resolve().relative_to(ROOT).as_posix()
+        except Exception:  # noqa: BLE001 -- outside the repo: use it verbatim
+            rel = p.as_posix()
+        return f"{self.code}:{rel}"
+
+    def repairable(self) -> bool:
+        return self.code not in IRREPARABLE_CODES
 
 
 def _sha256_file(p: Path) -> str | None:
@@ -203,6 +281,48 @@ def check_manifest(path: Path, strict_unverifiable: bool) -> list[Finding]:
         return [Finding(path, "FAIL", "UNPARSEABLE", f"not valid JSON: {e}")]
     if not isinstance(doc, dict):
         return [Finding(path, "FAIL", "UNPARSEABLE", "top level is not an object")]
+
+    # ---- GOLDEN species (GOLDEN-PROVENANCE-TRUTH-1) ------------------------
+    # A golden is the reference releases are graded against, so it gets the
+    # strongest available statement rather than the generic exe rules:
+    # provenance_gate.establish() accepts only a content digest plus the
+    # binary's own embedded build stamp, read from those same bytes, and
+    # re-reads the binary live when it is still on disk.
+    if doc.get("kind") == "visual-verify-golden":
+        # Fires on a CLAIM, not on the key's mere presence: the three legacy
+        # goldens carry `blessed_commit: null`, which asserts nothing and is
+        # already covered by GOLDEN-UNATTRIBUTABLE below -- two findings for one
+        # root cause is how a report becomes wallpaper. A NON-NULL value is the
+        # actual regression: a commit stated at the top level of a golden that
+        # describes the blesser's lane rather than the rendering binary.
+        if doc.get("blessed_commit"):
+            out.append(Finding(
+                path, "FAIL", "SOURCE-HEAD-AS-PROVENANCE",
+                "carries a non-null top-level `blessed_commit`. That field was "
+                "`git rev-parse HEAD` in the BLESSER'S WORKTREE -- the lane "
+                "that ran bless.py, which is routinely neither the lane that "
+                "built the exe nor the commit that rendered these crops, and "
+                "blessing can happen days after capture. It sits at the top "
+                "level of the repo's most authoritative artifact where it "
+                "reads as provenance. Re-bless with the current bless.py, "
+                "which emits identity.binary_provenance (the commit read out "
+                "of the binary) and records the blesser's HEAD under "
+                "`source_worktree_head_at_bless` with describes_binary=false."))
+        est = pg.establish(doc, "golden")
+        if not est["ok"]:
+            out.append(Finding(
+                path, "FAIL", "GOLDEN-UNATTRIBUTABLE",
+                f"cannot prove which binary minted its crops: {est['why']} "
+                f"Every verdict graded against this golden inherits that "
+                f"unknown. Re-bless from captures that identify their binary "
+                f"(tools/visual_verify/bless.py now refuses input that does "
+                f"not). Re-blessing a committed golden is a tracked-file diff "
+                f"and a USER decision -- `--write` deliberately will not do it."))
+        else:
+            problems = ms.validate_provenance(doc)
+            for pr in problems:
+                out.append(Finding(path, "FAIL", "PROVENANCE-SHAPE", pr))
+        return out
 
     exe_path, rec_sha, exe_blk = _recorded_exe(doc)
     if exe_path is None:
@@ -327,6 +447,15 @@ def rewrite_manifest(path: Path) -> str:
     if not isinstance(doc, dict):
         return "skipped-unparseable"
 
+    # A golden's binary identity had to be recorded AT MINT TIME, from the exe
+    # that rendered its crops. Back-stamping one now would record whatever
+    # binary happens to sit at that path today -- which is exactly the defect
+    # (for baseline-5ef261f4 that is a different lane's build). Refusing here
+    # also keeps `--write` from mass-editing tracked files, which is a USER
+    # decision, not a tool's.
+    if doc.get("kind") == "visual-verify-golden":
+        return "skipped-golden-not-backstampable"
+
     exe_path, rec_sha, exe_blk = _recorded_exe(doc)
     if exe_path is None:
         return "skipped-no-exe"
@@ -382,6 +511,125 @@ def rewrite_manifest(path: Path) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# KNOWN-CORRECT-FAILURE ledger -- so that RED still means "act now"
+# --------------------------------------------------------------------------- #
+
+LEDGER_SCHEMA = "mc2-known-failure-ledger/1"
+
+
+def load_ledger(path: Path = None) -> "tuple[list[dict], list[str]]":
+    """(entries, problems). A malformed ledger is a PROBLEM, never an empty
+    ledger: silently treating an unreadable suppression file as 'nothing
+    suppressed' is how a guard's first version ended up allowing everything."""
+    p = Path(path or LEDGER_PATH)
+    if not p.exists():
+        return [], []
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        return [], [f"ledger {p} is not valid JSON ({e}); refusing to treat an "
+                    f"unreadable ledger as an empty one"]
+    if not isinstance(doc, dict) or doc.get("schema") != LEDGER_SCHEMA:
+        return [], [f"ledger {p} does not declare schema {LEDGER_SCHEMA!r}"]
+    entries = doc.get("entries")
+    if not isinstance(entries, list):
+        return [], [f"ledger {p} has no `entries` list"]
+    return entries, []
+
+
+def _entry_in_scope(eid: str, roots: "list[Path] | None") -> bool:
+    """Is the file an entry pins inside the roots this run actually scanned?
+
+    `roots=None` (the default full scan) means everything is in scope, which is
+    what the contract runs and where the blind-instrument property has to hold.
+    An ad-hoc subset scan should not be told its ledger is stale merely because
+    it did not look there -- and narrowing the roots is NOT a way to hide an
+    entry, because it drops the corresponding FINDING too, which is a far more
+    visible change and a tracked diff in check-contracts.sh.
+    """
+    if roots is None:
+        return True
+    try:
+        p = (ROOT / eid.split(":", 1)[1]).resolve()
+    except Exception:  # noqa: BLE001
+        return True
+    for r in roots:
+        try:
+            rr = Path(r).resolve()
+        except Exception:  # noqa: BLE001
+            continue
+        if p == rr or rr in p.parents:
+            return True
+    return False
+
+
+def reconcile_ledger(fails: "list[Finding]", entries: "list[dict]",
+                     today: datetime.date = None,
+                     roots: "list[Path] | None" = None
+                     ) -> "tuple[list, list, list]":
+    """(known_fails, unledgered_fails, ledger_problems).
+
+    Consumed EXACTLY, in both directions. The reverse direction is the part
+    that makes this not a suppression mechanism: an entry that matches nothing
+    is itself a failure, so an entry cannot outlive the condition it describes,
+    and this checker cannot go blind without the ledger noticing.
+    """
+    today = today or datetime.date.today()
+    by_id: dict[str, Finding] = {f.ident(): f for f in fails}
+    problems: list[str] = []
+    known_ids: set[str] = set()
+
+    seen: set[str] = set()
+    for i, e in enumerate(entries):
+        if not isinstance(e, dict):
+            problems.append(f"entry #{i} is not an object")
+            continue
+        eid = e.get("id")
+        if not isinstance(eid, str) or ":" not in eid:
+            problems.append(f"entry #{i} has no usable `id` (want CODE:path)")
+            continue
+        if eid in seen:
+            problems.append(f"entry {eid!r} appears twice")
+            continue
+        seen.add(eid)
+        if not _entry_in_scope(eid, roots):
+            continue
+        if not e.get("why_irreparable"):
+            problems.append(f"entry {eid!r} states no `why_irreparable`")
+        exp = e.get("expires_utc")
+        try:
+            exp_d = datetime.date.fromisoformat(str(exp))
+        except Exception:  # noqa: BLE001
+            problems.append(
+                f"entry {eid!r} has no valid `expires_utc` (YYYY-MM-DD). An "
+                f"acknowledgement with no expiry is a permanent suppression.")
+            exp_d = None
+        if exp_d is not None and exp_d < today:
+            problems.append(
+                f"entry {eid!r} EXPIRED on {exp_d} -- re-decide it or remove "
+                f"the artifacts; do not extend it reflexively.")
+        f = by_id.get(eid)
+        if f is None:
+            problems.append(
+                f"entry {eid!r} matches NO current finding. Either the "
+                f"condition was cleaned up (remove the entry) or this checker "
+                f"stopped seeing it, which would mean the instrument is blind. "
+                f"An unobserved ledger entry is a failure, not a courtesy.")
+            continue
+        if f.repairable():
+            problems.append(
+                f"entry {eid!r} acknowledges code {f.code}, which HAS a remedy. "
+                f"The ledger may only ever pin findings no tool can repair "
+                f"({', '.join(IRREPARABLE_CODES)}). Fix it instead.")
+            continue
+        known_ids.add(eid)
+
+    known = [f for f in fails if f.ident() in known_ids]
+    unledgered = [f for f in fails if f.ident() not in known_ids]
+    return known, unledgered, problems
+
+
+# --------------------------------------------------------------------------- #
 # Self-test: inject the real regression, not a token
 # --------------------------------------------------------------------------- #
 
@@ -425,6 +673,16 @@ def _selftest() -> int:
         return 2
     print("[self-test]   ok  extractor literals still match the emitting printf")
     ok = True
+
+    def _c(label: str, cond: bool, detail: str = "") -> None:
+        nonlocal ok
+        if cond:
+            print(f"[self-test]   ok  {label}")
+        else:
+            ok = False
+            print(f"[self-test] FAIL: {label}"
+                  + (f" -- {detail}" if detail else ""), file=sys.stderr)
+
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         binp = root / "engine_under_test.bin"
@@ -554,6 +812,166 @@ def _selftest() -> int:
             ok = False
             print("[self-test] FAIL: --write emitted CRLF", file=sys.stderr)
 
+        # ---- GOLDEN-PROVENANCE-TRUTH-1 -----------------------------------
+        # 9. The committed-golden shape: exe named by path + mtime. This is a
+        #    byte-for-byte copy of what tests/visual/goldens/v0.5.1-baseline
+        #    records, and the artifact class this checker could not see at all
+        #    until golden.json entered MANIFEST_NAMES *and* tests/visual/goldens
+        #    entered DEFAULT_ROOTS.
+        p9 = root / "g9" / "golden.json"
+        _write(p9, {"kind": "visual-verify-golden", "schema_v": 1,
+                    "golden_id": "v0.5.1-baseline",
+                    "blessed_at": "2026-07-24T01:28:41Z",
+                    "blessed_commit": None,
+                    "exe": r"A:\Games\mc2-opengl\releases\mc2-win64-v0.5.1\mc2.exe",
+                    "exe_mtime": "2026-07-23T04:20:42Z",
+                    "members": []})
+        cases9 = check_manifest(p9, strict_unverifiable=False)
+        c9 = {f.code for f in cases9 if f.level == "FAIL"}
+        if "GOLDEN-UNATTRIBUTABLE" in c9:
+            print("[self-test]   ok  golden naming its exe by path+mtime: "
+                  "detected GOLDEN-UNATTRIBUTABLE")
+        else:
+            ok = False
+            print(f"[self-test] FAIL: legacy golden not caught (got "
+                  f"{sorted(c9) or 'nothing'})", file=sys.stderr)
+        if "SOURCE-HEAD-AS-PROVENANCE" in c9:
+            ok = False
+            print("[self-test] FAIL: a NULL blessed_commit asserts nothing and "
+                  "must not be double-reported", file=sys.stderr)
+
+        # 10. An otherwise-perfect golden that re-introduces the defect: a
+        #     NON-NULL top-level blessed_commit, which is literally what the
+        #     pre-GOLDEN-PROVENANCE-TRUTH-1 bless.py wrote
+        #     (`golden["blessed_commit"] = _git(ROOT, "rev-parse", "HEAD")`).
+        good_exe = {"path": str(binp), "sha256": true_sha256,
+                    "embedded_fingerprint": dict(fp)}
+        g_ident = {"schema": ms.SCHEMA, "generator": "visual_verify_bless",
+                   "generated_utc": "2026-07-30T00:00:00Z", "host": "t",
+                   "git": {"commit": "3ab322a0cadd", "commit_short": "3ab322a0cadd",
+                           "branch": "b", "dirty": False, "describe": "x",
+                           "describes_binary": False},
+                   "source_worktree_head_at_capture": {
+                       "commit": "3ab322a0cadd", "commit_short": "3ab322a0cadd",
+                       "branch": "b", "dirty": False, "describe": "x",
+                       "describes_binary": False},
+                   "exe": good_exe, "deploy_target": None, "env_delta": {},
+                   "zip_set": None}
+        g_ident["binary_provenance"] = ms.binary_provenance(good_exe,
+                                                            g_ident["git"])
+        p10 = root / "g10" / "golden.json"
+        _write(p10, {"kind": "visual-verify-golden", "schema_v": 3,
+                     "identity": g_ident, "members": [],
+                     "blessed_commit": "3ab322a0cadd0000000000000000000000000000"})
+        c10 = {f.code for f in check_manifest(p10, False) if f.level == "FAIL"}
+        if "SOURCE-HEAD-AS-PROVENANCE" in c10:
+            print("[self-test]   ok  golden re-introducing blessed_commit: "
+                  "detected SOURCE-HEAD-AS-PROVENANCE")
+        else:
+            ok = False
+            print(f"[self-test] FAIL: a golden stamping the blesser's HEAD at "
+                  f"the top level was NOT caught (got {sorted(c10) or 'nothing'})",
+                  file=sys.stderr)
+
+        # 11. The same golden WITHOUT that field must be clean -- a rule that
+        #     fails every golden detects nothing.
+        p11 = root / "g11" / "golden.json"
+        _write(p11, {"kind": "visual-verify-golden", "schema_v": 3,
+                     "identity": g_ident, "members": [],
+                     "source_worktree_head_at_bless": {
+                         "commit": "3ab322a0cadd", "describes_binary": False}})
+        c11 = {f.code for f in check_manifest(p11, False) if f.level == "FAIL"}
+        if not c11:
+            print("[self-test]   ok  an honest golden passes")
+        else:
+            ok = False
+            print(f"[self-test] FAIL: honest golden rejected ({sorted(c11)})",
+                  file=sys.stderr)
+
+        # 12. COMMENT TRAP for the golden species.
+        p12 = root / "g12" / "golden.json"
+        _write(p12, {"kind": "visual-verify-golden", "schema_v": 1,
+                     "exe": r"A:\x\mc2.exe", "exe_mtime": "2026-01-01T00:00:00Z",
+                     "_note": ("identity binary_provenance embedded_fingerprint "
+                               "exe_sha256_at_scan VERIFIED-LIVE present true "
+                               "79360fdb565e"), "members": []})
+        c12 = {f.code for f in check_manifest(p12, False) if f.level == "FAIL"}
+        if "GOLDEN-UNATTRIBUTABLE" in c12:
+            print("[self-test]   ok  golden with keywords only in a comment "
+                  "still fails")
+        else:
+            ok = False
+            print("[self-test] FAIL: comment-only keywords satisfied the golden "
+                  "rule", file=sys.stderr)
+
+        # 13. --write must REFUSE to back-stamp a golden. Mass-stamping tracked
+        #     goldens with whatever binary sits at that path today is the
+        #     defect, not the fix.
+        before = p9.read_bytes()
+        outcome13 = rewrite_manifest(p9)
+        if outcome13 == "skipped-golden-not-backstampable" and p9.read_bytes() == before:
+            print("[self-test]   ok  --write refuses to back-stamp a golden")
+        else:
+            ok = False
+            print(f"[self-test] FAIL: --write touched a golden "
+                  f"(outcome={outcome13}, changed={p9.read_bytes() != before})",
+                  file=sys.stderr)
+
+        # ---- KNOWN-FAILURE LEDGER ----------------------------------------
+        # The ledger must not be usable as a suppression mechanism. Each case
+        # below is a way somebody would try, and each must stay RED.
+        empty_f = Finding(p4, "FAIL", "EMPTY-MANIFEST", "zero bytes")
+        golden_f = Finding(p9, "FAIL", "GOLDEN-UNATTRIBUTABLE", "path+mtime")
+        today = datetime.date(2026, 7, 30)
+
+        def led(**kw):
+            base = {"id": empty_f.ident(), "why_irreparable": "zero bytes",
+                    "expires_utc": "2026-10-31"}
+            base.update(kw)
+            return base
+
+        k, u, pr = reconcile_ledger([empty_f], [led()], today)
+        _c("ledger pins the irreparable finding -> KNOWN, no problems",
+           len(k) == 1 and not u and not pr)
+        k, u, pr = reconcile_ledger([empty_f, golden_f], [led()], today)
+        _c("an UNLEDGERED fail stays RED", len(u) == 1 and not pr)
+        k, u, pr = reconcile_ledger([empty_f, golden_f],
+                                    [led(), led(id=golden_f.ident())], today)
+        _c("ledgering a REPAIRABLE finding is itself a failure",
+           any("HAS a remedy" in x for x in pr) and golden_f in u,
+           f"problems={pr}")
+        k, u, pr = reconcile_ledger([], [led()], today)
+        _c("a ledger entry matching NOTHING is a failure (stale, or blind "
+           "instrument)", any("matches NO current finding" in x for x in pr))
+        # ...but a SUBSET scan must not be told its ledger is stale merely
+        # because it did not look there. Narrowing roots is not a suppression
+        # path: it drops the FINDING too, and it is a tracked diff in
+        # check-contracts.sh, which runs the full default scan.
+        k, u, pr = reconcile_ledger([], [led()], today,
+                                    roots=[ROOT / "tests" / "visual"])
+        _c("an out-of-scope entry is not evaluated on a subset scan", not pr,
+           f"problems={pr}")
+        k, u, pr = reconcile_ledger([empty_f], [led()], today, roots=[root])
+        _c("an in-scope entry IS evaluated on a subset scan",
+           len(k) == 1 and not pr)
+        k, u, pr = reconcile_ledger([empty_f], [led(expires_utc="2026-01-01")],
+                                    today)
+        _c("an EXPIRED acknowledgement is a failure",
+           any("EXPIRED" in x for x in pr))
+        k, u, pr = reconcile_ledger([empty_f], [led(expires_utc=None)], today)
+        _c("an acknowledgement with no expiry is refused",
+           any("expires_utc" in x for x in pr))
+        k, u, pr = reconcile_ledger(
+            [empty_f], [{"id": "EMPTY-MANIFEST:*", "why_irreparable": "x",
+                         "expires_utc": "2026-10-31"}], today)
+        _c("a GLOB id pins nothing and is refused",
+           len(u) == 1 and any("matches NO current finding" in x for x in pr))
+        _, pr_bad = load_ledger(root / "nope" / "not-json.json")
+        (root / "badledger.json").write_text("{not json", encoding="utf-8")
+        _, pr_bad = load_ledger(root / "badledger.json")
+        _c("an UNREADABLE ledger is a problem, not an empty ledger",
+           bool(pr_bad))
+
         # 8. A replaced binary must become UNVERIFIABLE, never silently "fine".
         binp.write_bytes(_synthetic_binary("deadbeef1234", "other",
                                            "2026-07-30T00:00:00", "A:/z", False))
@@ -582,6 +1000,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="promote 'exe gone/replaced' from WARN to FAIL")
     ap.add_argument("--selftest", action="store_true",
                     help="inject the regression and prove this checker fires")
+    ap.add_argument("--ledger", default=None,
+                    help=f"known-correct-failure ledger (default "
+                         f"{LEDGER_PATH.name}). NOT a suppression list: it is "
+                         f"consumed exactly, an entry that matches no finding "
+                         f"is itself a failure, and only irreparable codes "
+                         f"({', '.join(IRREPARABLE_CODES)}) may be pinned.")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
@@ -600,6 +1024,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     roots = [Path(r) for r in (args.roots or [ROOT / r for r in DEFAULT_ROOTS])]
+    # None == the full default scan: every ledger entry is in scope, and the
+    # blind-instrument assertion (an entry that matches nothing is a failure)
+    # applies in full. That is the mode check-contracts.sh runs.
+    ledger_scope = None if not args.roots else roots
     manifests = [m for r in roots if r.exists() for m in iter_manifests(r)]
 
     if args.write:
@@ -622,14 +1050,48 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quiet:
         for f in findings:
             print(str(f))
+
+    entries, ledger_problems = load_ledger(args.ledger)
+    known, unledgered, more = reconcile_ledger(fails, entries,
+                                               roots=ledger_scope)
+    ledger_problems += more
+
     print(f"\n[provenance] scanned={len(manifests)} FAIL={len(fails)} "
+          f"(unledgered={len(unledgered)} known={len(known)}) "
           f"WARN={len(warns)}  roots={[str(r) for r in roots]}")
-    if fails:
-        print(f"[provenance] {len(fails)} manifest(s) cannot state which binary "
-              f"they measured. A capture whose commit is unknown cannot prove "
-              f"a fix; re-emit via manifest_schema.identity_block, or run "
-              f"--write where the binary is still on disk.", file=sys.stderr)
+
+    for f in known:
+        entry = next((e for e in entries if e.get("id") == f.ident()), {})
+        print(f"[provenance] KNOWN  {f.ident()}\n"
+              f"             correct+irreparable: {entry.get('why_irreparable')}\n"
+              f"             remedy (a USER decision): {entry.get('remedy')}\n"
+              f"             acknowledgement expires {entry.get('expires_utc')}")
+
+    if ledger_problems:
+        for p in ledger_problems:
+            print(f"[provenance] LEDGER: {p}", file=sys.stderr)
+        print(f"[provenance] the known-failure ledger ({LEDGER_PATH}) does not "
+              f"reconcile with what was actually found. It is consumed exactly "
+              f"in BOTH directions on purpose: an entry that matches nothing "
+              f"means either the condition is gone or this checker went blind, "
+              f"and neither may pass silently.", file=sys.stderr)
         return 1
+
+    if unledgered:
+        print(f"[provenance] {len(unledgered)} manifest(s) cannot state which "
+              f"binary they measured. A capture whose commit is unknown cannot "
+              f"prove a fix; re-emit via manifest_schema.identity_block, run "
+              f"--write where the binary is still on disk, or re-bless the "
+              f"golden. ACTION REQUIRED.", file=sys.stderr)
+        return 1
+
+    if known:
+        print(f"[provenance] KNOWN-CORRECT-FAILURE: {len(known)} finding(s), all "
+              f"pinned in {LEDGER_PATH.name}, all irreparable, none expired. "
+              f"This is NOT a pass -- the artifacts remain unattributable and "
+              f"the remedy is a USER decision. It is reported separately so "
+              f"that a RED row still means 'act now'.")
+        return 3
     return 0
 
 

@@ -54,9 +54,24 @@ DETERMINISM / RESIDUAL DRIFT ENVELOPE:
   ALL pixel bookmarks drift OFF-vs-OFF the harness says so loudly (the oracle is
   too blunt for this scene -- see the RESULT line and the docstring caveat).
 
+GOLDEN-PROVENANCE-TRUTH-1 (2026-07-30) -- THE FLOOR IS A GOLDEN.
+  A noise floor is the reference this harness grades against, and it was never
+  asked which binary produced it. A floor measured on binary X does not bound
+  binary Y's run-to-run noise: reuse it via --noise-floor after a rebuild and
+  every field it froze as `exact` is now an assertion about a build that no
+  longer exists. The committed golden_floors/mc2_01.json records `exe_md5` and
+  three `sample_sources` filenames that no longer exist on this machine -- it
+  cannot say which binary it measured, and neither could the harness.
+  provenance_preflight() below now establishes the floor AND both arms from each
+  one's own recorded binary identity (content sha256 + the binary's embedded
+  build fingerprint) and refuses to compare unless all three establish and name
+  the SAME binary. An A/B whose two arms ran different builds is not a gate flip.
+  There is no override flag.
+
 EXIT: 0 iff A(gate OFF) vs B(gate ON) is WITHIN the established floor for every
 field INCLUDING every exact pixel_sha; nonzero otherwise, printing the culprit
-fields + the diff-report path.
+fields + the diff-report path. Exit 6 = provenance unestablished (distinct from
+a parity FAIL: nothing was graded).
 
 Pure stdlib, Windows / py-3.  Captures run against the v0.4 deploy.
 NEVER --kill-existing (run_visual_capture reaps only its own children).
@@ -80,6 +95,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
 GOLDEN_SCENE = SCRIPTS / "golden_scene.py"
 VISUAL_CAPTURE = SCRIPTS / "run_visual_capture.py"
 GOLDEN_COMPARE = SCRIPTS / "golden_compare.py"
@@ -258,6 +275,26 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
     pixel_sha_all = "|".join("%s=%s" % (k, pixel_shas[k])
                              for k in sorted(pixel_shas))
 
+    # GOLDEN-PROVENANCE-TRUTH-1: carry the binary's identity FORWARD out of the
+    # visual-capture manifest (run_visual_capture emits manifest_schema's
+    # identity block, which reads the exe's own embedded build fingerprint out
+    # of its bytes). Only the deterministic sub-fields are copied: everything
+    # here is constant for a given binary, so an A/B on one build leaves them
+    # identical and golden_compare never sees them -- which is exactly what
+    # makes their DIVERGENCE meaningful if two arms ever ran different builds.
+    _vm_exe = ((vm.get("identity") or {}).get("exe")) or {}
+    _vm_fp = (_vm_exe.get("embedded_fingerprint") or {}) if isinstance(_vm_exe, dict) else {}
+    binary_identity = {
+        "exe": {"path": _vm_exe.get("path"),
+                "sha256": _vm_exe.get("sha256"),
+                "embedded_fingerprint": _vm_fp},
+        "commit": _vm_fp.get("sha"),
+        "branch": _vm_fp.get("branch"),
+        "dirty": _vm_fp.get("dirty"),
+        "source": "run_visual_capture identity block (exe bytes, not the "
+                  "generated header)",
+    }
+
     # --- 2) STRUCTURAL: golden_scene (registry_hash / counters / health) -------
     gs_out = state_dir / "golden_manifest.json"
     gs_cmd = [
@@ -318,6 +355,10 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
         "bookmark_present": present_map,
         "engine_capture_fired": engine_fired,
         # provenance / volatile:
+        # WHICH BINARY THIS ARM MEASURED (GOLDEN-PROVENANCE-TRUTH-1). Read out
+        # of the exe's own bytes, never from the source worktree HEAD and never
+        # from generated/build_fingerprint.h.
+        "binary_identity": binary_identity,
         "viscap_manifest": str(viscap_manifest),
         "golden_scene_manifest": str(gs_out),
         "generated_at_epoch": int(time.time()),
@@ -507,7 +548,83 @@ def build_floor(scene: str, exe: Path, work: Path, n: int,
     rc = _run(cmd, timeout=60)
     if rc != 0 or not out_path.exists():
         raise RuntimeError("noise-floor build FAILED (rc=%d)" % rc)
+    # GOLDEN-PROVENANCE-TRUTH-1: stamp the floor with the binary it measured.
+    # golden_compare records only `sample_sources` -- three FILENAMES, which on
+    # the committed golden_floors/mc2_01.json no longer resolve to anything, so
+    # a reused floor could not be checked at all. Stamping the identity into the
+    # floor itself means a floor stays checkable after its samples are gone.
+    try:
+        floor_doc = json.loads(out_path.read_text(encoding="utf-8"))
+        floor_doc["binary_identity"] = (
+            json.loads(Path(manifests[0]).read_text(encoding="utf-8"))
+            .get("binary_identity"))
+        floor_doc["binary_identity_note"] = (
+            "The binary all floor samples measured. A floor bounds THAT "
+            "binary's run-to-run noise and no other's; run_golden_parity "
+            "refuses to grade arms from a different build against it.")
+        out_path.write_text(json.dumps(floor_doc, indent=2, sort_keys=True)
+                            + "\n", encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError("noise-floor built but could not be stamped with "
+                           "its binary identity (%s); refusing to hand back an "
+                           "unattributable floor." % e)
     return out_path
+
+
+class ProvenanceRefusal(RuntimeError):
+    """The floor or an arm cannot name the binary it measured. Distinct from a
+    parity FAIL (pixels differ) and from CAPTURE-LIVENESS (the oracle broke):
+    here nothing was graded at all, because the reference is unattributable."""
+
+
+def provenance_preflight(floor_path: Path, man_a: dict, man_b: dict) -> list:
+    """GOLDEN-PROVENANCE-TRUTH-1 -- the gate at the moment a verdict is minted.
+
+    Three questions, in order, all answered from the artifacts' OWN recorded
+    binary identity (content sha256 + the binary's embedded build fingerprint):
+
+      1. Can the FLOOR say which binary it measured?  A floor is a golden: it
+         froze a set of fields as `exact` on one build. Against a different
+         build those assertions are about code that is not running.
+      2. Can each ARM say which binary it measured?
+      3. Do all three name the SAME binary?  An A/B whose arms ran different
+         builds is not a gate flip, and every culprit it names is unearned.
+
+    Raises ProvenanceRefusal with a message a reader can act on. No override.
+    """
+    ests = []
+    try:
+        floor_doc = json.loads(Path(floor_path).read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        raise ProvenanceRefusal("noise floor %s could not be read (%s)"
+                                % (floor_path, e))
+    ests.append(pg.establish(floor_doc, "noise floor (%s)" % Path(floor_path).name))
+    ests.append(pg.establish(man_a, "arm A"))
+    ests.append(pg.establish(man_b, "arm B"))
+    try:
+        pg.refuse_unless_established(
+            ests,
+            decision=("grade an A/B parity verdict -- this call decides whether "
+                      "a render island ships"),
+            remedy=("rebuild the noise floor on the binary under test (drop "
+                    "--noise-floor and let the harness capture --n-floor arms), "
+                    "and capture both arms with a build that carries an "
+                    "embedded build fingerprint. A floor whose samples are gone "
+                    "and which never recorded its exe's digest -- e.g. the "
+                    "committed golden_floors/mc2_01.json -- cannot be repaired "
+                    "in place; it has to be re-measured."))
+    except pg.ProvenanceUnestablished as e:
+        raise ProvenanceRefusal(str(e))
+
+    ok, detail = pg.same_binary(ests)
+    if not ok:
+        raise ProvenanceRefusal(
+            "floor and arms did NOT measure the same binary (%s). A floor "
+            "bounds one build's run-to-run noise; comparing another build "
+            "against it grades a code change as if it were drift, and an A/B "
+            "whose two arms ran different builds is not a gate flip at all."
+            % detail)
+    return ests
 
 
 def classify_pixel_fields(floor_path: Path) -> tuple[list[str], list[str]]:
@@ -851,6 +968,22 @@ def main() -> int:
           "all expected bookmarks present, hashes populated)"
           % (lbl_a, lbl_b))
 
+    # --- PROVENANCE PREFLIGHT (GOLDEN-PROVENANCE-TRUTH-1) ---------------------
+    # Liveness above proves the captures FIRED. It says nothing about WHAT they
+    # fired. Run this before golden_compare so an unattributable floor or arm
+    # can never produce a clean-looking RESULT line.
+    try:
+        prov = provenance_preflight(floor_path, man_a, man_b)
+    except ProvenanceRefusal as e:
+        print("[golden_parity] %s" % e, file=sys.stderr)
+        print("RESULT: PROVENANCE-UNESTABLISHED scene=%s %s -- nothing was "
+              "graded (this is neither a PASS nor a FAIL)" % (args.scene, ctx))
+        return 6
+    print("[golden_parity] provenance preflight OK: floor + both arms all "
+          "measured binary %s (commit %s, branch %s, dirty=%s) [%s]"
+          % (str(prov[0]["exe_sha256"])[:12], prov[0]["commit"],
+             prov[0]["branch"], prov[0]["dirty"], prov[0]["level"]))
+
     # --- BACKEND-COMPARE fallback detection -----------------------------------
     # If the Vulkan backend failed to init and the region ran on GL (FallbackGL),
     # a "backend compare" is really GL-vs-GL and would pass trivially. DETECT and
@@ -1109,6 +1242,99 @@ def _selftest() -> int:
           " 2LSB-exceeds=%s, 0.11%%-exceeds=%s, structural-refuse=%s,"
           " empty-refuse=%s, missing-png-refuse=%s)"
           % ("OK" if e_ok else "WRONG", e1, e2, e3, e4, e5, e6))
+
+    # (f) PROVENANCE PREFLIGHT (GOLDEN-PROVENANCE-TRUTH-1). Synthetic binaries
+    #     carrying REAL build-fingerprint stamps, plus -- when it is present --
+    #     the actual committed golden_floors/mc2_01.json, which is the live
+    #     regression rather than a fixture: it records `exe_md5` and three
+    #     sample filenames that no longer exist, so it cannot name its binary.
+    import tempfile as _tf
+    f_ok = True
+    with _tf.TemporaryDirectory() as _td:
+        _root = Path(_td)
+        _bin_a = _root / "a.bin"
+        _bin_a.write_bytes(pg._synthetic_binary(
+            "aaaaaaaaaaaa", "claude/lane-a", "2026-07-30T00:00:00", "A:/a", False))
+        _bin_b = _root / "b.bin"
+        _bin_b.write_bytes(pg._synthetic_binary(
+            "bbbbbbbbbbbb", "claude/lane-b", "2026-07-30T00:00:00", "A:/b", False))
+
+        def _bi(p: Path) -> dict:
+            fp = pg.ef.extract(str(p))
+            return {"exe": {"path": str(p), "sha256": fp["exe_sha256_at_scan"],
+                            "embedded_fingerprint": fp},
+                    "commit": fp["sha"], "branch": fp["branch"],
+                    "dirty": fp["dirty"]}
+
+        good_floor = _root / "floor_ok.json"
+        good_floor.write_text(json.dumps(
+            {"schema": "GOLDEN_NOISE_FLOOR_V1", "fields": {},
+             "binary_identity": _bi(_bin_a)}), encoding="utf-8")
+        blind_floor = _root / "floor_blind.json"
+        blind_floor.write_text(json.dumps(
+            {"schema": "GOLDEN_NOISE_FLOOR_V1", "fields": {},
+             "sample_sources": ["floor0_combined.json"],
+             "exe_md5": "b1597c01e2602a0fc97e0a37066a215e"}), encoding="utf-8")
+
+        man_a = {"binary_identity": _bi(_bin_a)}
+        man_b = {"binary_identity": _bi(_bin_a)}
+        man_b_other = {"binary_identity": _bi(_bin_b)}
+
+        # f1: everything establishes and agrees -> preflight passes silently.
+        try:
+            provenance_preflight(good_floor, man_a, man_b)
+            f1 = True
+        except ProvenanceRefusal as e:
+            f1 = False
+            print("[selftest]     f1 unexpected refusal: %s" % str(e)[:120])
+        # f2: floor that cannot name its binary (the committed-floor shape).
+        try:
+            provenance_preflight(blind_floor, man_a, man_b)
+            f2 = False
+        except ProvenanceRefusal as e:
+            f2 = "noise floor" in str(e) and "UNESTABLISHED" in str(e)
+        # f3: arms from two different builds -> refused.
+        try:
+            provenance_preflight(good_floor, man_a, man_b_other)
+            f3 = False
+        except ProvenanceRefusal as e:
+            f3 = "same binary" in str(e)
+        # f4: an arm with no binary identity at all -> refused, naming the arm.
+        try:
+            provenance_preflight(good_floor, man_a, {"pixel_shas": {}})
+            f4 = False
+        except ProvenanceRefusal as e:
+            f4 = "arm B" in str(e)
+        f_ok = all((f1, f2, f3, f4))
+
+    # f5: THE LIVE ARTIFACT. Not a fixture -- the floor committed in this repo.
+    live_floor = ROOT / "golden_floors" / "mc2_01.json"
+    if live_floor.exists():
+        try:
+            with _tf.TemporaryDirectory() as _td2:
+                _p = Path(_td2) / "x.bin"
+                _p.write_bytes(pg._synthetic_binary(
+                    "cccccccccccc", "b", "2026-07-30T00:00:00", "A:/c", False))
+                fp = pg.ef.extract(str(_p))
+                m = {"binary_identity": {
+                    "exe": {"path": str(_p), "sha256": fp["exe_sha256_at_scan"],
+                            "embedded_fingerprint": fp}}}
+                provenance_preflight(live_floor, m, m)
+            f5 = False
+            print("[selftest]     f5: the COMMITTED floor was accepted -- if it "
+                  "has since been re-measured with a binary identity this is "
+                  "correct; if not, the gate is blind")
+        except ProvenanceRefusal:
+            f5 = True
+    else:
+        f5 = True
+        print("[selftest]     f5 skipped: golden_floors/mc2_01.json absent")
+    f_ok = f_ok and f5
+    ok = ok and f_ok
+    print("[selftest] (f) provenance preflight     -> %s (agree-pass=%s, "
+          "blind-floor-refuse=%s, two-builds-refuse=%s, no-identity-refuse=%s, "
+          "LIVE-committed-floor-refuse=%s)"
+          % ("OK" if f_ok else "WRONG", f1, f2, f3, f4, f5))
 
     print("[selftest] RESULT: %s" % ("ALL PASS" if ok else "FAILED"))
     return 0 if ok else 1
