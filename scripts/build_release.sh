@@ -37,6 +37,36 @@ SEVENZIP="${SEVENZIP:-/c/Program Files/7-Zip/7z.exe}"
 [ -x "$SEVENZIP" ] || { echo "7z not at: $SEVENZIP"; exit 1; }
 
 # ---------------------------------------------------------------------------
+# BEAUTY-SIDECAR-INSTALL-GATE-1 (2026-07-30 uninstalled-cook audit)
+# ---------------------------------------------------------------------------
+# THE v0.5.2 BUG, exactly: this script packages whatever is in $DEPLOY/data.
+# docs/RELEASE-PROCESS.md tells you to create a NEW lane per release and point
+# $DEPLOY at it -- but deploy_payload.py carries exe/shaders/manifest only and
+# deliberately never walks data/missions/*.beauty/. So a fresh release lane
+# starts with ZERO terrain-beautify sidecars, and the only thing that ever put
+# them in a lane was a MANUAL copy someone remembered to run. v0.5.2 was cut
+# from releases/mc2-win64-v0.5.1 and shipped 0 of them. Nothing failed: the
+# engine loaders fopen(), miss, log one line, carry on -- and
+# MC2_WATER_SHORE_MASK (default-ON) degrades to a complete no-op.
+#
+# Runs BEFORE any byte is written so a bad lane costs seconds, not an 18 GB
+# re-cut. Fix with:
+#   py -3 scripts/check-beauty-sidecars.py --target "$DEPLOY" --install
+# MC2_RELEASE_SKIP_SIDECAR_GATE=1 is a deliberate, loud escape hatch for a cut
+# that genuinely ships no mission content.
+if [ "${MC2_RELEASE_SKIP_SIDECAR_GATE:-0}" = "1" ]; then
+    echo "[sidecars] WARNING: MC2_RELEASE_SKIP_SIDECAR_GATE=1 -- cooked-sidecar"
+    echo "[sidecars]          install gate BYPASSED for $DEPLOY"
+elif ! py -3 "$REPO/scripts/check-beauty-sidecars.py" --target "$DEPLOY"; then
+    echo "[sidecars] FAIL — \$DEPLOY is missing cooked terrain-beautify sidecars."
+    echo "[sidecars]        \$DEPLOY = $DEPLOY"
+    echo "[sidecars]        Packaging now would ship a release whose .beauty"
+    echo "[sidecars]        loaders all miss silently. Install them first:"
+    echo "[sidecars]          py -3 scripts/check-beauty-sidecars.py --target \"\$DEPLOY\" --install"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # DISK-GUARD-1 (2026-07-29 ENOSPC incident)
 # ---------------------------------------------------------------------------
 # Runs BEFORE mkdir -p / mktemp -d, i.e. before the first byte is written. A
@@ -138,6 +168,30 @@ fi
 if "$SEVENZIP" l "$OUTDIR/mc2-gamedata.zip" | grep -qi "\.bik"; then
     echo "[gamedata] FAIL — .BIK leaked into gamedata.zip"; exit 1
 fi
+# Sanity (BEAUTY-SIDECAR-INSTALL-GATE-1, 2026-07-30): terrain-beautify sidecars
+# under data/missions/<stem>.beauty/ must survive the staging copy. This is the
+# SECOND half of the gate — it only proves the `cp -r` above did not drop them.
+# The FIRST half (the one that actually catches the v0.5.2 loss) is the
+# check-beauty-sidecars.py preflight near the top of this script: for v0.5.2
+# $DEPLOY was overridden to the fresh release lane
+# A:/Games/mc2-opengl/releases/mc2-win64-v0.5.1, which had ZERO .beauty dirs
+# because deploy_payload.py carries exe/shaders/manifest only and nobody ran the
+# manual sidecar copy for that lane. There was nothing here to drop, so a
+# copy-integrity check alone would have passed the broken cut.
+# This assertion still earns its place: it compares COUNTS, so a partial copy
+# cannot pass by shipping one token .beauty file.
+src_beauty=$(find "$DEPLOY/data/missions" -mindepth 2 -path "*.beauty/*" -type f 2>/dev/null | wc -l)
+zip_beauty=$("$SEVENZIP" l "$OUTDIR/mc2-gamedata.zip" | grep -c "\.beauty[\\/]" || true)
+if [ "$src_beauty" -gt 0 ] && [ "$zip_beauty" -lt "$src_beauty" ]; then
+    echo "[gamedata] FAIL — beauty sidecars dropped by staging:"
+    echo "           $DEPLOY/data/missions has $src_beauty file(s) under *.beauty/,"
+    echo "           mc2-gamedata.zip has $zip_beauty. The engine reads these from"
+    echo "           data/missions/<stem>.beauty/ and fails SILENTLY when absent."
+    echo "           Check the 'cp -r \$DEPLOY/data' above and free space on \$STAGE"
+    echo "           (\$STAGE is a mktemp -d, i.e. the SYSTEM temp drive, not \$OUTDIR)."
+    exit 1
+fi
+echo "[gamedata] beauty sidecars: $zip_beauty file(s) (source has $src_beauty)"
 echo "[gamedata] $(ls -lh "$OUTDIR/mc2-gamedata.zip" | awk '{print $5}')"
 
 # ---------- mc2-movies.zip ----------

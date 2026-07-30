@@ -56,3 +56,59 @@ cliff_candidates, flat_playable, roads_overlays, building_footprints, protected_
 
 ## Tunables (top of analyzer)
 `CLIFF_SLOPE_DEG=35`, `FLAT_SLOPE_DEG=10`, `PYRAMID_MAX_AREA=600`, `BUILDING_FOOTPRINT_RADIUS=1`.
+
+---
+
+## Installing a cook into a deploy tree (READ THIS — cooks do not ship themselves)
+
+A cook under `tests/terrain/beautify/` is **not** live. The engine reads sidecars
+from `<deploy>/data/missions/<stem>.beauty/`, and `scripts/deploy_payload.py`
+**deliberately never walks `data/missions/*.beauty/`** — it is a build-output
+deployer, not a mission-content deployer. Installing is a separate, explicit act.
+
+Every loader fails **silently** when its sidecar is absent: it `fopen()`s, misses,
+prints one diagnostic line and carries on. `MC2_WATER_SHORE_MASK` is **default-ON**
+and degrades to a complete no-op. Nothing crashes, nothing warns, and the feature
+you just cooked simply is not there. This has already shipped once (v0.5.2 carried
+zero sidecars).
+
+### Do it
+
+```
+# audit every known lane
+py -3 scripts/check-beauty-sidecars.py --all-lanes
+
+# install everything cooked-and-committed but missing, into one tree
+py -3 scripts/check-beauty-sidecars.py --target "A:/Games/mc2-opengl/mc2-win64-v0.4" --install
+
+# after adding or re-cooking a sidecar, refresh the committed inventory
+py -3 scripts/check-beauty-sidecars.py --write
+```
+
+Per-asset installers also exist (one file per call, useful when you want the
+tool's own validation): `cook_shoreline.py`, `control_map_tool.py`,
+`overlay_extract.py`, `cook_markings.py` — all take
+`install --png <file> --deploy <dir> --mission <stem>`.
+
+**`visual_height_4x.r32`, `visual_height_mips.r32` and `visual_damp.r32` have no
+per-tool installer** (`visual_heightfield.py` only writes to `--out`). Use
+`check-beauty-sidecars.py --install`, or copy them by hand.
+
+### Gates
+
+`scripts/check-beauty-sidecars.py` fails when a git-tracked cook is not installed
+in an enforced lane; it is wired into `scripts/check-contracts.sh` (repo-only +
+self-test halves — the live lane audit is machine-specific and run deliberately).
+`scripts/build_release.sh` runs the same gate against `$DEPLOY` **before** writing
+a byte, so a fresh release lane cannot ship empty again.
+
+Its mirror image is `scripts/check-deploy-hygiene.py`, which fails on cook
+*byproducts* (`*_preview.png`, `*_delta_heatmap.png`, `*_report.json`) that leaked
+**into** a tree. Do not `cp -r` a whole cook dir into a deploy lane — that is how
+diagnostics ship. Install the named runtime files only.
+
+### Only what is COMMITTED counts
+
+The install gate reads git-tracked cooks. A bake sitting untracked in a scratch
+worktree is work in progress, not a shipping obligation — commit it first, or it
+will never be installed and nothing will tell you.

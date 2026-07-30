@@ -324,6 +324,33 @@ run_check "link_guard_selftest"  "py -3 scripts/check-hardlink-isolation.py --se
 run_check "iso_deploy_selftest"  "py -3 scripts/make-isolated-deploy.py --selftest"
 
 # ---------------------------------------------------------------------------
+# BEAUTY-SIDECAR-INSTALL-GATE-1 (2026-07-30 uninstalled-cook audit)
+# ---------------------------------------------------------------------------
+# Terrain-beautify sidecars (data/missions/<stem>.beauty/*) are cooked offline
+# into tests/terrain/beautify/ and then installed into a deploy tree by a MANUAL
+# copy. deploy_payload.py deliberately never walks .beauty/, so a cooked-but-
+# never-installed sidecar was invisible to every existing gate -- and the engine
+# loaders fail SILENTLY (one diagnostic line, then carry on). MC2_WATER_SHORE_MASK
+# is default-ON and degrades to a complete no-op without shoreline_mask.png.
+# check-deploy-hygiene.py is the mirror image (cook byproducts that LEAKED INTO a
+# tree); neither subsumes the other.
+#
+# Same registration shape as DISK-GUARD-1 / LINK-GUARD-1 above and for the same
+# reason: the LANE audit reads A:/Games/mc2-opengl/*, which is machine-specific
+# and would make this aggregator flaky on any other checkout. Registered here are
+# the two machine-independent halves -- --no-lanes (proves the engine-source
+# extractor still finds the loader literals and the committed inventory is
+# current; fails closed on zero extractions) and --selftest (proves the gate
+# actually FIRES: it builds a synthetic repo + deploy tree, asserts an
+# uninstalled cook is reported MISSING, asserts content drift is distinguished
+# from absence, and asserts a sidecar name appearing ONLY inside a comment is
+# NOT counted as a loader). The live lane audit is run deliberately:
+#   py -3 scripts/check-beauty-sidecars.py [--all-lanes] [--install]
+# Read-only, no build, sub-second.
+run_check "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet"
+run_check "beauty_sidecars_selftest" "py -3 scripts/check-beauty-sidecars.py --selftest"
+
+# ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------
 echo "====================================================================="
