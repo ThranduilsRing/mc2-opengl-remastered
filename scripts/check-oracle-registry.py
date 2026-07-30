@@ -110,6 +110,26 @@ def main():
         default=DEFAULT_GATE_DOC,
         help="Path to oracle-dynamic-pipeline-gate.md",
     )
+    # UNWIRED-CHECK-CLOSE-1 (2026-07-30). This check has TWO sources of
+    # required tags: the gate doc, and the versioned tags found in a golden
+    # artifact log dir. The artifact dir is a smoke-run output that is often
+    # absent -- and when it is, scan_logs() printed a WARNING to stderr,
+    # returned an empty set, and the run went on to report
+    # "OK: all 8 required tags present" having exercised only HALF the check.
+    # That is exactly a green light from a blind instrument: it passed today,
+    # unwired, reporting "Tags found in logs: 0" on the line above its own OK.
+    #
+    # Silently degrading to half a check is the disease. Degrading is still
+    # sometimes legitimate -- so it must be DECLARED AT THE CALL SITE with
+    # this flag, never assumed inside.
+    parser.add_argument(
+        "--allow-missing-artifacts",
+        action="store_true",
+        help="Permit the artifact-log half of the check to be skipped when the "
+             "artifact dir is absent (doc half still enforced). Without this, "
+             "a missing artifact dir is a FAILURE, because a half-run check "
+             "that reports a full PASS is worse than no check.",
+    )
     args = parser.parse_args()
 
     # ------------------------------------------------------------------
@@ -124,6 +144,17 @@ def main():
     # ------------------------------------------------------------------
     # 2. Collect required tags from artifact logs
     # ------------------------------------------------------------------
+    artifacts_present = os.path.isdir(args.artifact_dir)
+    if not artifacts_present and not args.allow_missing_artifacts:
+        print(f"\nFAIL: artifact dir absent: {args.artifact_dir}", file=sys.stderr)
+        print("  The artifact-log half of this check cannot run, so a PASS here "
+              "would grade only the gate doc while claiming to grade both.",
+              file=sys.stderr)
+        print("  Point --artifact-dir at a real golden artifact dir, or pass "
+              "--allow-missing-artifacts to declare the reduced scope "
+              "explicitly.", file=sys.stderr)
+        return 1
+
     from_logs = scan_logs(args.artifact_dir)
     print(f"Artifact dir: {args.artifact_dir}")
     print(f"  Tags found in logs: {len(from_logs)}  ({', '.join(sorted(from_logs))})")
@@ -193,7 +224,13 @@ def main():
         )
         return 1
 
-    print(f"\nOK: all {len(required)} required tags present in registry.")
+    if not artifacts_present:
+        print(f"\nOK (REDUCED SCOPE -- artifact-log half SKIPPED, dir absent: "
+              f"{args.artifact_dir}): all {len(required)} doc-required tags "
+              f"present in registry.")
+    else:
+        print(f"\nOK: all {len(required)} required tags present in registry "
+              f"({len(from_logs)} tag(s) seen in artifact logs).")
     return 0
 
 

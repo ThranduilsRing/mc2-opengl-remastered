@@ -30,6 +30,21 @@ FORBIDDEN_B1='cameraToClip|Camera::projectZ|worldToClipMatrix|projectForObjectAd
 # on .planning/, docs/, memory/, or the gate script itself.
 HITS=$(git grep -nE "$FORBIDDEN_B1" -- 'mclib/particles/**' || true)
 
+# CORPUS FLOOR (UNWIRED-CHECK-CLOSE-1, 2026-07-30). This is an ABSENCE gate:
+# it passes when the forbidden pattern is not found. That is the correct
+# semantics, and it is also why it cannot tell "the pattern is absent" from
+# "the pathspec matches no files at all". Move or rename mclib/particles/ and
+# this gate goes green forever while guarding nothing -- the pathspec is the
+# single point of blindness. Assert the corpus exists before trusting a clean
+# result. 10 files when this floor was set.
+CORPUS_FLOOR=3
+N_CORPUS=$(git ls-files -- 'mclib/particles/**' | grep -cE '\.(cpp|h|hpp|inl)$' || true)
+if [ "$N_CORPUS" -lt "$CORPUS_FLOOR" ]; then
+    printf '%s\n' "[check-particles-no-cpu-projection] WENT BLIND: pathspec 'mclib/particles/**' matches only $N_CORPUS source file(s), floor is $CORPUS_FLOOR." >&2
+    printf '%s\n' "  An absence verdict over an empty corpus is not a pass. Update the pathspec if the tree moved." >&2
+    exit 1
+fi
+
 if [ -n "$HITS" ]; then
     printf '%s\n' "[check-particles-no-cpu-projection] FAIL — forbidden CPU-projection API inside mclib/particles/:" >&2
     printf '%s\n' "$HITS" >&2

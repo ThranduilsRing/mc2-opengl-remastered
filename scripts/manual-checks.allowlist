@@ -1,0 +1,34 @@
+# manual-checks.allowlist -- check scripts that legitimately CANNOT run in
+# check-contracts.sh, each with the reason.
+#
+# UNWIRED-CHECK-CLOSE-1 (2026-07-30). Enforced by check-contract-coverage.py:
+# every scripts/check-*.{py,sh} must be either wired into check-contracts.sh
+# or listed here WITH A REASON. A row with no reason fails the coverage check,
+# because an unexplained exemption is indistinguishable from an oversight --
+# and an oversight here is exactly how 21 checks went dark and 6 of them sat
+# red for weeks with nobody watching.
+#
+# Format:  <script-name>: <reason it cannot run in the seconds-scale aggregator>
+#
+# Being on this list is NOT permission to rot. Each row states what would have
+# to change for the script to become wirable, so the exemption is falsifiable.
+
+# --- needs a compiler / build ---------------------------------------------
+check-editor-build.sh: Compiles and links the EditRel + mc2_asset_viewer targets; minutes, not seconds. Wirable only behind a separate heavy-gate runner.
+check-frame-graph.py: Drives a standalone cmake configure+build of tests/unit (VS2022). Its invocation was broken (exit 127 on every run) until UNWIRED-CHECK-CLOSE-1 fixed the WSL-bash/backslash defect; it is now genuinely runnable, but still a build, so it belongs to the unit-test lane, not the static aggregator.
+
+# --- needs a cooked asset tree --------------------------------------------
+check-texture-resolution.py: Validates a COOKED texture inventory and emits cook.json provenance; requires a cook output tree that does not exist in a source checkout. Currently reports real findings (KTX2 vkFormat 0 under _aoktxtmp) -- owner: asset-cook lane.
+check-ktx2-probe.py: Bakes and inspects a KTX2 probe; writes artifacts under out/asset-pipeline-probe. Side-effecting, so it must not run inside a read-only aggregator.
+
+# --- needs a deployed release tree ----------------------------------------
+check-icon-atlases.py: Scans deployed release dirs under A:/Games/mc2-opengl/releases/ for icon-atlas size agreement. No deploy tree in a source checkout. NOTE: currently prints "!! FLAG: size disagreement" yet exits 0 -- report-only. Wiring it requires first deciding whether that flag is a failure.
+
+# --- needs a live engine run ----------------------------------------------
+check-ambient-guard.py: Reads latest_render_state.json from a live engine run (MC2_DEBUG_STATE_DUMP=1). Same class as the header-documented check-debug-state-json.py exclusion.
+check-debug-state-json.py: Requires a live engine JSON snapshot. Already named as an explicit exclusion in the check-contracts.sh header; this row makes that exclusion machine-readable instead of a comment.
+
+# --- blocked on a clean tree ----------------------------------------------
+check-flag-registry-drift.sh: Reports REAL drift right now (docs/flags.auto.yaml says 195 registry entries / 960 swept flags; a live regen says 242 / 1024) -- but it is report-only: without --strict it prints the whole diff and still exits 0, which is why nobody noticed. It cannot simply be wired --strict yet, because the fix is to regenerate docs/flags.auto.yaml and the generator sweeps the WORKING TREE, where RenderCore/RendererFeatureRegistry.h and docs/tier1_env_vars.md are currently sibling-hot with uncommitted gates. Regenerating now would bake another lane's unlanded work into a committed doc. TRIGGER: once those two files are committed, run `py -3 scripts/flag-registry-auto-gen.py --out docs/flags.auto.yaml` and wire this as `sh scripts/check-flag-registry-drift.sh --strict`.
+check-brain-opord.py: Runs a mission headless against a staged mod and asserts runtime BRAIN_* traces. Requires --exe plus a staged carver_probe mod; also blocked outright while game launches are hard-blocked.
+check_vk_nointerop_log.py: Grades a Vulkan no-interop smoke LOG supplied as a positional argument. Branch-specific (claude/vk-interop-bridge-1) and log-dependent.

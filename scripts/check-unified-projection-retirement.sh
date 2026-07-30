@@ -38,13 +38,42 @@ if [ -n "$hits_filtered" ]; then
     fail=1
 fi
 
+# ---------------------------------------------------------------------------
+# UNWIRED-CHECK-CLOSE-1 (2026-07-30): this subcheck FUSED TWO CLAIMS. Split.
+# ---------------------------------------------------------------------------
+# It used to also match `"gos_SetTerrainMVP"|gos_SetTerrainMVP\s*\(`, asserting
+# the API itself no longer EXISTS. Adjudicated 2026-07-30; that half is ROT:
+#
+#   * The F1 spec (docs/superpowers/specs/2026-05-22-unified-projection-v2-f1-
+#     atomic-design.md §5.2) did intend to delete the API, and 59fae278 did
+#     delete it. It stayed deleted for TWO DAYS.
+#   * 2f92e322 (05-24, editor bring-up) deliberately re-added the decl+def for
+#     an EditorCamera.h shim; b09da4be (05-29, WATER-TERRAIN-REFLECTION-1)
+#     added the two call sites. Both were reviewed decisions taken by people
+#     who had no signal this gate existed -- because it was never wired to
+#     anything. The gate has been red continuously for ~2 months.
+#   * At HEAD the API is a raw float[16] setter used ONLY inside
+#     RenderWaterReflectionPass(), which early-returns unless
+#     MC2_WATER_REFLECTION_RT=1 (default OFF). Zero calls on the default path.
+#   * Migrating those two calls to gos_SetWorldToClipGL would be an ACTIVE
+#     REGRESSION: that setter bumps g_viewContentEpoch, and ComputeDispatch
+#     stamps g_dispatchMvpViewEpoch from it, so a scoped mirror install/restore
+#     would desynchronise the snapshot stamp and silently disable the FixB
+#     z-fight fix via gos_GetObjectDrawMVP's staleness fallback. The raw
+#     setter's BYPASS of publish bookkeeping is precisely what makes it correct
+#     for save/install/restore.
+#
+# The other half -- that no CPU code looks up the RETIRED UNIFORM NAMES -- has
+# held cleanly since 05-22 and is still worth guarding, so it is kept alone.
+# Deliberately NOT allowlisted instead: `grep -vFf` makes an allowlist entry a
+# blanket substring exemption that would also silence FUTURE call sites.
 echo "Checking terrainMVP string-literal retirement in CPU code..."
-hits=$(grep -RE '"terrainMVP"|"u_terrainMVP"|"gos_SetTerrainMVP"|gos_SetTerrainMVP\s*\(' code GameOS mclib 2>/dev/null || true)
+hits=$(grep -RE '"terrainMVP"|"u_terrainMVP"' code GameOS mclib 2>/dev/null || true)
 hits_filtered=$(echo "$hits" | grep -vFf "$ALLOWLIST_CLEAN" 2>/dev/null || true)
 # Filter line-leading comments (CPP/GLSL `//`, shell-style `#`) -- comments are doc-debt, not live code.
 hits_filtered=$(echo "$hits_filtered" | grep -vE '^[^:]+:\s*(//|#)' 2>/dev/null || true)
 if [ -n "$hits_filtered" ]; then
-    echo "FAIL: legacy terrainMVP string-literal lookups or gos_SetTerrainMVP calls:"
+    echo "FAIL: legacy terrainMVP/u_terrainMVP string-literal uniform lookups in CPU code:"
     echo "$hits_filtered"
     fail=1
 fi

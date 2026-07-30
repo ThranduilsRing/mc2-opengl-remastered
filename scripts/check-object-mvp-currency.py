@@ -55,15 +55,31 @@ RAW = re.compile(r"\bgos_terrain_indirect_getDispatchMvp16\b")
 SCAN_DIRS = ["GameOS/gameos", "mclib", "code", "RenderCore", "RenderWorld", "GameAdapters"]
 EXTS = {".cpp", ".cc", ".cxx", ".h", ".hpp", ".inl"}
 
+# CORPUS FLOOR (UNWIRED-CHECK-CLOSE-1, 2026-07-30).
+# This check reports a violation-free PASS by finding nothing. That verdict is
+# indistinguishable from finding nothing because it LOOKED AT NOTHING: the
+# `if not base.is_dir(): continue` below silently skips a scan dir that has
+# been renamed, moved or is absent because the check ran from the wrong cwd.
+# Rename all six dirs and this prints "OK (no raw dispatch-MVP reads...)"
+# having opened zero files. The corpus was 1147 files when this floor was set;
+# 200 is a deliberately loose floor that a real refactor will not trip but a
+# blind run always will.
+CORPUS_FLOOR = 200
+
+
 def main() -> int:
     violations = []
+    scanned = 0
+    missing_dirs = []
     for d in SCAN_DIRS:
         base = ROOT / d
         if not base.is_dir():
+            missing_dirs.append(d)
             continue
         for f in base.rglob("*"):
             if f.suffix not in EXTS or f.name in FULL_ALLOW:
                 continue
+            scanned += 1
             marker_ok = f.name in MARKER_REQUIRED
             try:
                 text = f.read_text(encoding="utf-8", errors="replace")
@@ -91,8 +107,57 @@ def main() -> int:
         print(f"\n{len(violations)} violation(s).", file=sys.stderr)
         return 1
 
-    print("check-object-mvp-currency: OK (no raw dispatch-MVP reads outside terrain phase)")
+    # Blindness floor is checked AFTER violations: a run that found real
+    # violations proves it could see, and should report them as violations.
+    if scanned < CORPUS_FLOOR:
+        print("check-object-mvp-currency WENT BLIND: scanned only "
+              f"{scanned} file(s), floor is {CORPUS_FLOOR}.", file=sys.stderr)
+        if missing_dirs:
+            print(f"  missing scan dirs: {', '.join(missing_dirs)}", file=sys.stderr)
+        print("  A clean verdict from an empty corpus is not a pass. Check the "
+              "cwd/repo root, or update SCAN_DIRS if the tree was reorganised.",
+              file=sys.stderr)
+        return 1
+
+    print(f"check-object-mvp-currency: OK (no raw dispatch-MVP reads outside "
+          f"terrain phase; {scanned} files scanned)")
     return 0
 
+
+def selftest() -> int:
+    """Prove the blindness floor fires. Not a fixture -- it re-runs the REAL
+    scan against a root where the scan dirs do not exist, which is exactly the
+    condition that produced a silent green before the floor existed."""
+    global ROOT
+    import tempfile
+    ok = True
+
+    real = main()
+    if real != 0:
+        print("[selftest] SKIP: live tree is not clean, cannot grade the floor",
+              file=sys.stderr)
+        return 0
+    print("[selftest]   ok  live scan passes and reports its corpus size")
+
+    saved = ROOT
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            ROOT = Path(td)          # no SCAN_DIRS exist under here
+            blind = main()
+    finally:
+        ROOT = saved
+
+    if blind == 0:
+        print("[selftest] FAIL: empty corpus still returned PASS -- the floor "
+              "is not wired", file=sys.stderr)
+        ok = False
+    else:
+        print("[selftest]   ok  empty corpus FAILS (blindness floor fires)")
+
+    return 0 if ok else 1
+
+
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
     sys.exit(main())

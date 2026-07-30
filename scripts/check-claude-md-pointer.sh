@@ -38,10 +38,24 @@ fi
 # is missing, someone has replaced the template with substantive
 # content -- revert. To intentionally update the template, edit both
 # the file AND this script's SENTINELS array in the same commit.
+#
+# UNWIRED-CHECK-CLOSE-1 (2026-07-30): the pointer-path sentinel was
+# "../mc2-main/CLAUDE.md" (relative form). Commit 8adda834 (2026-07-16)
+# rewrote the root template to name the canonical worktree by ABSOLUTE
+# path -- "A:/Games/mc2-main/CLAUDE.md" -- without updating this array,
+# which is exactly the both-in-one-commit rule above. That commit's own
+# message asserts it "restored checker-compliant pointer ... without
+# editing the SENTINELS array"; the checker disagreed for 14 days and
+# nobody saw it, because this script has never been wired into any
+# runner. The template is a legitimate thin pointer (16 lines, every
+# other sentinel present), so the stale token is this array's, not the
+# file's. Matching on the path SUFFIX accepts both the relative and
+# absolute spellings while still proving the pointer names the
+# canonical worktree file -- which is the invariant that matters.
 SENTINELS=(
     "DO NOT EDIT"
     "root CLAUDE.md placeholder"
-    "../mc2-main/CLAUDE.md"
+    "mc2-main/CLAUDE.md"
     "must remain a thin pointer"
     "check-claude-md-pointer.sh"
 )

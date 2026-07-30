@@ -561,6 +561,44 @@ run_check "sim_identity_fieldsets" "py -3 scripts/check-sim-identity-fieldsets.p
 # boundary-straddle label. Offline, no GPU, no capture.
 run_check "sim_identity_gate_selftest" "py -3 scripts/sim_identity.py self-test"
 # ---------------------------------------------------------------------------
+# UNWIRED-CHECK-CLOSE-1 (2026-07-30) -- the checks nobody was running
+# ---------------------------------------------------------------------------
+# A census found 21 of 117 check scripts with ZERO executable callers. Running
+# them for the first time turned up SIX live failures, some weeks or months
+# old: a memory ratchet red on 3 files, a projection gate red for ~2 months
+# while two reviewed arcs quietly reversed its invariant, a pointer gate red
+# for 14 days, and a frame-graph gate that exited 127 on literally every
+# invocation because bare "bash" resolved to WSL. None of it was noticed,
+# because none of it ran.
+#
+# Everything cheap, deterministic and source-only is wired here. Everything
+# that needs a build, a cook, a deploy tree or a live engine is in
+# scripts/manual-checks.allowlist WITH A REASON, and check-contract-coverage.py
+# fails if any check script is in neither list -- so this class cannot recur.
+run_check "contract_coverage"          "py -3 scripts/check-contract-coverage.py"
+run_check "contract_coverage_selftest" "py -3 scripts/check-contract-coverage.py --selftest"
+run_check "agents_md"                  "sh scripts/check-agents-md.sh"
+run_check "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fixtures.py"
+run_check "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
+run_check "claude_md_pointer"          "sh scripts/check-claude-md-pointer.sh"
+run_check "json_isolation"             "sh scripts/check-json-isolation.sh"
+run_check "memory_size"                "py -3 scripts/check-memory-size.py"
+run_check "mlr_leaves_gated"           "sh scripts/check-mlr-leaves-gated.sh"
+run_check "object_mvp_currency"        "py -3 scripts/check-object-mvp-currency.py"
+run_check "object_mvp_currency_selftest" "py -3 scripts/check-object-mvp-currency.py --selftest"
+run_check "particles_no_cpu_projection" "sh scripts/check-particles-no-cpu-projection.sh"
+run_check "toolchain_bom"              "py -3 scripts/check-toolchain-bom.py"
+run_check "unified_projection_retirement" "sh scripts/check-unified-projection-retirement.sh"
+# --allow-missing-artifacts is DELIBERATE and must stay explicit: this check
+# grades the tag registry against BOTH a gate doc and a golden artifact log
+# dir. The log dir is a smoke output that is usually absent in a source
+# checkout, and until today the script silently skipped that half and still
+# printed "OK: all 8 required tags present" -- a full-credit PASS from a
+# half-run check. It now FAILS on a missing dir unless the reduced scope is
+# declared right here, at the call site, where a reader can see it.
+run_check "oracle_registry"            "py -3 scripts/check-oracle-registry.py --allow-missing-artifacts"
+
+# ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------
 echo "====================================================================="
