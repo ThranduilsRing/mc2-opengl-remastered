@@ -178,3 +178,7 @@ data/hdr/*_16k.ktx2
 
 # Example-mod payloads must stay tracked (global *.tga/*.cfg rules would silently drop them)
 !docs/modding/examples/**
+
+# scratch/ is the untracked per-lane workbench (FABLE-DEBLOAT-1: two one-shots
+# were committed by accident and untracked in a4bd0ffa; keep it out of the index)
+/scratch/
