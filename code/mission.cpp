@@ -47,6 +47,28 @@ extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
 // FREEZE-MOVERS-1: defined in code/missiongui.cpp next to the command channel.
 extern "C" int mc2FreezeMoversActive();              // 0 unless the verb armed it
 
+// FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
+//
+// Every site below was previously written `!missionInterface->isPaused()`. If
+// the freeze only widened the ObjectManager branch and left these alone, the
+// sim would be half-frozen, which is worse than either extreme:
+//   * mcTextureManager->update() -- its own comment says it must not run while
+//     paused because it "uncaches things which only objectManager->update can
+//     cache back in", and under a freeze that call is exactly what is skipped.
+//     Half-freezing would uncache textures with nothing to restore them, i.e.
+//     manufacture missing/black texture artifacts -- the very defect class this
+//     harness exists to REPRODUCE, which would make it a confound.
+//   * SensorManager::update / updateCollisions -- keep mutating contact and
+//     drawFlags state, so two "frozen" arms could still render differently.
+//   * the mission ABL brain -- keeps issuing orders and rewriting mission state.
+//   * scenarioTime -- drives gosFX ExecuteInfo, so effects keep animating.
+// Returns false unless the verb / MC2_FREEZE_MOVERS_AT armed it, so the stock
+// path is byte-identical.
+static inline bool mc2SimTickFrozen(MissionInterfaceManager* mim)
+{
+	return (mim && mim->isPaused()) || (mc2FreezeMoversActive() != 0);
+}
+
 // SIM-CLOCK-SPEED-1: gated sim-speed multiplier + once-per-second wall/sim
 // clock trace. Diagnostic for the "sim runs ~2x wall time" field report.
 // simClockTraceTick(): MC2_SIM_CLOCK_TRACE=1 arms a once-per-second stderr
@@ -1035,7 +1057,7 @@ long Mission::update (void)
 
 		//--------------------------------------------------
 		// Update length of time scenario has been running.
-		if (!missionInterface->isPaused() || MPlayer )
+		if (!mc2SimTickFrozen(missionInterface) || MPlayer )
 		{
 			//First Frame we just set LastTimeGetTime.
 			// After that, it increments based on System Time.
@@ -1209,7 +1231,7 @@ long Mission::update (void)
 		// value -- the drift that invalidated an earlier vehicle-vs-mech
 		// luma A/B. mc2FreezeMoversActive() is 0 unless the verb or
 		// MC2_FREEZE_MOVERS_AT armed it, so the default path is unchanged.
-		if ( (missionInterface->isPaused() || mc2FreezeMoversActive() != 0) && !MPlayer )
+		if ( mc2SimTickFrozen(missionInterface) && !MPlayer )
 			ObjectManager->updateAppearancesOnly( true, true, true );
 		else
 			{ MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }
@@ -1262,20 +1284,20 @@ long Mission::update (void)
 
 		//Do not UPDATE the textures during a pause.
 		//This uncaches things which only objectManager->update can cache back in!!!!!
-		if ( !missionInterface->isPaused() || MPlayer )
+		if ( !mc2SimTickFrozen(missionInterface) || MPlayer )
 			{ ZoneScopedN("GameLogic.Mission.TextureManager"); mcTextureManager->update(); }
 
 		//--------------------------------------
 		// update sensor and contact managers...
-		if (useSensors && ( !missionInterface->isPaused() || MPlayer ) )
+		if (useSensors && ( !mc2SimTickFrozen(missionInterface) || MPlayer ) )
 			{ ZoneScopedN("GameLogic.Mission.Sensors"); SensorManager->update(); }
 
-		if (useCollisions && ( !missionInterface->isPaused() || MPlayer ) )
+		if (useCollisions && ( !mc2SimTickFrozen(missionInterface) || MPlayer ) )
 			{ ZoneScopedN("GameLogic.Mission.Collisions"); ObjectManager->updateCollisions(); }
 
 		if (missionBrain)
 		{
-			if ( !missionInterface->isPaused() || MPlayer )
+			if ( !mc2SimTickFrozen(missionInterface) || MPlayer )
 			{
 				// ABL-VM-FACTS-1: time the mission-brain fire; byte-identical when OFF.
 				mc2_abl_trace::FireScope ablFire("mission", -1);

@@ -963,6 +963,15 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "(the mech path was frozen by VK-MECH-CAPTURE-DETERMINISM-1, the "
         "vehicle path was not). Those guards test THIS gate only, never the "
         "visual-capture predicate, so existing capture goldens are unchanged. "
+        "Freezes the whole SIM TICK, not literally movers alone: scenarioTime, "
+        "mcTextureManager::update, SensorManager::update, updateCollisions and "
+        "the mission ABL brain are all suspended exactly as the pause path "
+        "suspends them, while rendering continues. A half-frozen sim is worse "
+        "than either extreme -- mcTextureManager::update's own comment says it "
+        "must not run while paused because it uncaches things only "
+        "objectManager->update can restore, and a freeze skips precisely that "
+        "call, so leaving it live would MANUFACTURE missing/black-texture "
+        "artifacts (the defect class this harness exists to reproduce). "
         "Unset -> reader parks at -1 and the latch never fires; default OFF."
     },
     {

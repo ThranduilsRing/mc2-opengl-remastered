@@ -175,6 +175,19 @@ Use `on <frame>`, not bare `on`. Bare `on` freezes whenever the driver's write
 landed, which is not the same instant twice and gives you nothing across a
 rebuild.
 
+**It freezes the whole simulation tick, not literally "only movers".** The verb
+keeps its name, but it suspends every system the pause path suspends —
+`scenarioTime`, `mcTextureManager::update`, `SensorManager::update`,
+`updateCollisions`, and the mission ABL brain — while rendering continues. That
+is deliberate and it is not over-reach: a half-frozen sim is worse than either
+extreme. In particular `mcTextureManager::update`'s own comment says it must not
+run while paused because it "uncaches things which only `objectManager->update`
+can cache back in", and a freeze skips exactly that call — so leaving the texture
+manager live would *manufacture* missing/black-texture artifacts, which is the
+defect class this harness exists to reproduce. Live sensors and a live ABL brain
+would likewise keep mutating `drawFlags` and issuing orders between two arms
+that are supposed to be identical.
+
 **Unlocks — the mover-frozen vehicle-vs-mech lighting comparison**
 (`tools/scenarios/lighting_pair.json`). This is the comparison that previously
 produced a **retracted** "+14.8 luma brighter" result: the two arms differed by
