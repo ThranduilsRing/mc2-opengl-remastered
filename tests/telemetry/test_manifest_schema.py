@@ -32,7 +32,20 @@ def test_git_block_from_repo_has_commit():
     g = ms.git_block(ROOT)
     # In a real checkout these resolve; tolerate detached/unknown by allowing
     # None but the keys must exist (validate_identity only requires keys).
-    assert set(g) == {"commit", "commit_short", "branch", "dirty", "describe"}
+    assert {"commit", "commit_short", "branch", "dirty", "describe"} <= set(g)
+
+
+def test_git_block_labels_itself_as_not_the_binary():
+    """CAPTURE-PROVENANCE-TRUTH-1: the block must say what it is, in the JSON.
+
+    A reader with only the file in front of them must not be able to read
+    `commit` as "the commit that was measured".
+    """
+    for g in (ms.git_block(None), ms.git_block(ROOT)):
+        assert g["describes"] == "source_worktree_head_at_capture"
+        assert g["describes_binary"] is False
+        assert "does NOT describe the binary" in g["note"]
+        assert "SOURCE WORKTREE" in g["dirty_describes"]
 
 
 def test_exe_block_from_real_file(tmp_path):
@@ -46,6 +59,50 @@ def test_exe_block_from_real_file(tmp_path):
     )
     assert blk["size_bytes"] == 11
     assert blk["mtime_iso"].endswith("Z")
+    # A binary with no build stamp must say so with a REASON -- never a silent
+    # null that a reader would take for "clean".
+    fp = blk["embedded_fingerprint"]
+    assert fp["present"] is False and fp["reason"] == "banner-absent"
+
+
+def test_embedded_fingerprint_is_read_from_the_binary(tmp_path):
+    """The recorded commit comes from the exe's bytes, not from any worktree."""
+    import exe_fingerprint as ef
+    p = tmp_path / "stamped.bin"
+    p.write_bytes(
+        b"MZ\x00pad\x00A:/Games/lane-x\x002026-07-29T13:52:25\x00"
+        b"claude/lane-x\x00abc123def456\x00" + ef.BANNER_FMT)
+    blk = ms.exe_block(p)
+    fp = blk["embedded_fingerprint"]
+    assert fp["present"] and fp["sha"] == "abc123def456"
+    assert fp["branch"] == "claude/lane-x" and fp["dirty"] is False
+    assert fp["exe_sha256_at_scan"] == blk["sha256"]
+
+    head = {"commit": "0000000000000000000000000000000000000000"}
+    bp = ms.binary_provenance(blk, head)
+    assert bp["commit"] == "abc123def456"
+    assert bp["verdict"] == "SOURCE-HEAD-MISMATCH"
+    assert bp["source_head_matches_binary"] is False
+
+
+def test_validate_provenance_rejects_manifest_without_exe_sha():
+    bad = {"identity": {"exe": {"path": "x", "sha256": None,
+                                "embedded_fingerprint": {"present": False,
+                                                         "reason": "unreadable"}},
+                        "binary_provenance": {"available": False},
+                        "git": {"describes_binary": False}}}
+    problems = ms.validate_provenance(bad)
+    assert any("sha256 is missing" in p for p in problems)
+
+
+def test_validate_provenance_rejects_unlabelled_git_block():
+    ok_exe = {"path": "x", "sha256": "0" * 64,
+              "embedded_fingerprint": {"present": False, "reason": "banner-absent"}}
+    bad = {"identity": {"exe": ok_exe,
+                        "binary_provenance": {"available": False},
+                        "git": {"commit": "deadbeef"}}}
+    assert any("describes_binary=false" in p
+               for p in ms.validate_provenance(bad))
 
 
 def test_env_delta_allowlist_and_prefix():

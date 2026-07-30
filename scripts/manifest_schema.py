@@ -20,7 +20,13 @@ they adopt additively (old keys stay; consumers keep working).
 Canonical field names (the user-facing contract -- every script reads these):
 
     identity.exe.sha256       <- exe_sha
-    identity.git.commit       <- git_commit (full sha; .commit_short + .describe also present)
+    identity.binary_provenance.commit
+                              <- THE COMMIT THAT WAS ACTUALLY MEASURED, read out
+                                 of the binary's own embedded build fingerprint
+    identity.source_worktree_head_at_capture.commit
+                              <- the tool's worktree HEAD when the artifact was
+                                 written. NOT provenance. Also mirrored at the
+                                 legacy key `identity.git` for back-compat.
     identity.deploy_target    <- deploy_target
     identity.env_delta        <- env_delta (MC2_* deltas vs a clean env)
     identity.zip_set          <- zip_set (fst/pak set for release/package species)
@@ -31,6 +37,36 @@ Canonical field names (the user-facing contract -- every script reads these):
 A manifest conforms to "mc2-manifest/1" when it carries an `identity` block
 that `validate_identity()` accepts. `report` is optional (only run/release/
 visual species have a verdict).
+
+CAPTURE-PROVENANCE-TRUTH-1 (2026-07-30) -- WHAT `git` DOES NOT MEAN
+-------------------------------------------------------------------
+`identity.git` was, and is, `git rev-parse HEAD` in the worktree THE TOOL RAN
+FROM. It says nothing about the binary that produced the artifact. Sitting next
+to `"dirty": false` it reads as authoritative provenance, and it is not.
+
+Measured 2026-07-30 across 404 manifests on this machine: of the 31 whose
+recorded exe still exists byte-identical (so the truth is checkable at all),
+28 name a commit the binary was NOT built from. scratch/mc203reg and
+scratch/mc203air together record SEVEN distinct `git.commit` values across 23
+arms while every one of those arms ran the SAME binary, built from 79360fdb on
+branch claude/spotlight-direction-1 -- a commit and a branch that appear in no
+manifest. 23 of the 31 disagree on branch, 11 disagree on dirty.
+
+The fix is additive and lives here so every species inherits it:
+
+  * `identity.exe.embedded_fingerprint` -- the binary's OWN stamp, extracted
+    from its bytes by scripts/exe_fingerprint.py. This is the only field in the
+    manifest that describes the thing that was measured.
+  * `identity.binary_provenance` -- that stamp promoted to the top level with a
+    reconciliation verdict against the source HEAD.
+  * `identity.source_worktree_head_at_capture` -- the honest name for the old
+    `git` block. `identity.git` remains as a byte-identical alias so existing
+    readers keep working; both now carry `describes` / `describes_binary` /
+    `note` fields stating plainly what they are.
+
+Read the EXE, never the generated header (c5d934d5): a failed compile leaves
+generated/build_fingerprint.h freshly stamped and the exe stale, so a guard
+that reads the header passes while measuring the wrong binary.
 """
 from __future__ import annotations
 
@@ -39,10 +75,37 @@ import hashlib
 import os
 import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+# Sibling module, stdlib-only. Emitters import manifest_schema from all over the
+# tree, so make the sibling importable regardless of the caller's sys.path.
+_HERE = str(Path(__file__).resolve().parent)
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+import exe_fingerprint  # noqa: E402
+
 SCHEMA = "mc2-manifest/1"
+
+#: Verbatim in every manifest, next to the source-HEAD block, so a reader who
+#: opens the JSON and nothing else cannot mistake it for provenance.
+SOURCE_HEAD_NOTE = (
+    "SOURCE WORKTREE HEAD at the moment this artifact was written. It does NOT "
+    "describe the binary that was measured -- the tool's worktree and the "
+    "worktree that compiled the exe are frequently different lanes. For the "
+    "commit that was actually exercised, read identity.binary_provenance."
+)
+SOURCE_DIRTY_NOTE = (
+    "'dirty' here = uncommitted TRACKED modifications in the SOURCE WORKTREE at "
+    "capture time. It says nothing about whether the measured binary was built "
+    "from a clean tree; that is identity.binary_provenance.dirty."
+)
+BINARY_PROVENANCE_NOTE = (
+    "Read out of the binary's own compiled-in build fingerprint (.rdata string "
+    "literals stamped by cmake/GenerateBuildFingerprint.cmake). This is the "
+    "only commit in this manifest that describes the code that ran."
+)
 
 # MC2_* env vars are the render-affecting gate surface. env_delta records the
 # subset actually set in the captured environment (value as the process saw
@@ -85,14 +148,28 @@ def _git(repo_root: str | os.PathLike, *args: str) -> str | None:
 
 
 def git_block(repo_root: str | os.PathLike | None) -> dict[str, Any]:
-    """{commit, commit_short, branch, dirty, describe} -- any field may be null.
+    """The SOURCE WORKTREE HEAD at capture time. NOT the binary's provenance.
+
+    {commit, commit_short, branch, dirty, describe} -- any field may be null --
+    plus the self-describing keys `describes` / `describes_binary` /
+    `dirty_describes` / `note` (CAPTURE-PROVENANCE-TRUTH-1). Those four exist so
+    that a human or a tool reading the raw JSON, with no access to this
+    docstring, cannot read `commit` as "the commit that was measured". It is
+    `git rev-parse HEAD` in whatever worktree the emitting tool happened to run
+    from, which is routinely a different lane from the one that built the exe.
 
     Unifies the three prior namings: cockpit `git_head` (short),
     write-deploy-manifest `git_head`(full)+`git_branch`+`git_dirty`.
     """
+    labels = {
+        "describes": "source_worktree_head_at_capture",
+        "describes_binary": False,
+        "dirty_describes": SOURCE_DIRTY_NOTE,
+        "note": SOURCE_HEAD_NOTE,
+    }
     if repo_root is None:
         return {"commit": None, "commit_short": None, "branch": None,
-                "dirty": None, "describe": None}
+                "dirty": None, "describe": None, **labels}
     commit = _git(repo_root, "rev-parse", "HEAD")
     # FINGERPRINT-CONTRADICTION FIX (VK-NOINTEROP-STRICT-REVIEW, 2026-07-10):
     # use `--porcelain -uno` (untracked-files=no) so `dirty` means TRACKED
@@ -112,14 +189,25 @@ def git_block(repo_root: str | os.PathLike | None) -> dict[str, Any]:
         "branch": _git(repo_root, "rev-parse", "--abbrev-ref", "HEAD"),
         "dirty": (bool(porcelain) if porcelain is not None else None),
         "describe": _git(repo_root, "describe", "--always", "--dirty"),
+        "worktree": str(repo_root),
+        **labels,
     }
 
 
 def exe_block(exe_path: str | os.PathLike | None) -> dict[str, Any] | None:
-    """{path, sha256, mtime_iso, size_bytes} -- full sha256 (NOT a prefix).
+    """{path, sha256, mtime_iso, size_bytes, embedded_fingerprint}.
 
-    Unifies cockpit `exe.sha256_prefix` (16ch) and deploy `files[].sha256`
-    (full) onto one full-hash block. Returns None if exe_path is None.
+    Full sha256 (NOT a prefix). Unifies cockpit `exe.sha256_prefix` (16ch) and
+    deploy `files[].sha256` (full) onto one full-hash block. Returns None if
+    exe_path is None.
+
+    `embedded_fingerprint` (CAPTURE-PROVENANCE-TRUTH-1) is the binary's own
+    compiled-in build stamp, read from its bytes. When the binary carries no
+    stamp the key is still present and carries a `reason` -- an absent
+    fingerprint must be visible, not a silent null that reads like "clean".
+
+    The file is read exactly once and both the digest and the fingerprint are
+    derived from the same buffer, so the two can never describe different bytes.
     """
     if exe_path is None:
         return None
@@ -133,11 +221,77 @@ def exe_block(exe_path: str | os.PathLike | None) -> dict[str, Any] | None:
     except Exception:
         mtime_iso = None
         size = None
+    try:
+        blob = p.read_bytes()
+    except Exception as e:  # noqa: BLE001
+        return {
+            "path": str(p), "sha256": None, "mtime_iso": mtime_iso,
+            "size_bytes": size,
+            "embedded_fingerprint": {
+                "present": False, "reason": "unreadable",
+                "detail": f"{type(e).__name__}: {e}"},
+        }
+    fp = exe_fingerprint.extract_from_bytes(blob)
+    digest = hashlib.sha256(blob).hexdigest()
+    fp["exe_sha256_at_scan"] = digest
     return {
         "path": str(p),
-        "sha256": file_sha256(p),
+        "sha256": digest,
         "mtime_iso": mtime_iso,
         "size_bytes": size,
+        "embedded_fingerprint": fp,
+    }
+
+
+def binary_provenance(exe_blk: Mapping[str, Any] | None,
+                      source_head: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Promote the exe's own stamp to a top-level, plainly-worded verdict.
+
+    This is the block a reader should reach for when asking "what code produced
+    this artifact". It is derived ONLY from the binary; `source_head` is used
+    solely to compute the reconciliation verdict, never as a fallback value --
+    falling back would reintroduce exactly the misattribution being fixed.
+
+    verdict:
+      reconciled            binary commit and source HEAD agree
+      SOURCE-HEAD-MISMATCH  they disagree; the source HEAD is not what ran
+      unknown               the binary carries no usable stamp, or the source
+                            HEAD is unavailable, so nothing can be concluded
+    """
+    fp = (exe_blk or {}).get("embedded_fingerprint") or {}
+    head_sha = (source_head or {}).get("commit")
+    if not fp.get("present"):
+        return {
+            "commit": None,
+            "commit_source": "exe-embedded-build-fingerprint",
+            "available": False,
+            "reason": fp.get("reason", "no-exe-recorded"),
+            "detail": fp.get("detail", ""),
+            "verdict": "unknown",
+            "source_head_matches_binary": None,
+            "note": ("This artifact's binary carries no readable build "
+                     "fingerprint, so the commit it was built from is NOT "
+                     "recorded anywhere and cannot be recovered later. Treat "
+                     "any commit attribution for this artifact as unproven."),
+        }
+    agrees = exe_fingerprint.sha_agrees(fp.get("sha"), head_sha)
+    return {
+        "commit": fp.get("sha"),
+        "commit_source": "exe-embedded-build-fingerprint",
+        "available": True,
+        "dirty": fp.get("dirty"),
+        "dirty_describes": ("uncommitted TRACKED modifications in the worktree "
+                            "the BINARY was compiled from, at compile time"),
+        "branch": fp.get("branch"),
+        "built_utc": fp.get("built"),
+        "built_from_worktree": fp.get("src"),
+        "method": fp.get("method"),
+        "verdict": ("reconciled" if agrees is True
+                    else "SOURCE-HEAD-MISMATCH" if agrees is False
+                    else "unknown"),
+        "source_head_matches_binary": agrees,
+        "source_head_commit": head_sha,
+        "note": BINARY_PROVENANCE_NOTE,
     }
 
 
@@ -184,13 +338,22 @@ def identity_block(
     zip_set:       fst/pak/archive set names (release/package species) or None.
     extra:         species-specific extra fields merged at the top level.
     """
+    head = git_block(repo_root)
+    exe = exe_block(exe_path)
     block: dict[str, Any] = {
         "schema": SCHEMA,
         "generator": generator,
         "generated_utc": _utc_now_iso(),
         "host": platform.node() or None,
-        "git": git_block(repo_root),
-        "exe": exe_block(exe_path),
+        # WHAT WAS MEASURED. Listed first because it is the field that answers
+        # the question every reader of a capture manifest is actually asking.
+        "binary_provenance": binary_provenance(exe, head),
+        # WHAT THE TOOL'S WORKTREE HAPPENED TO BE ON. Not provenance.
+        "source_worktree_head_at_capture": head,
+        # Legacy alias, byte-identical to the block above. Kept so existing
+        # readers of `identity.git` keep working; deprecated for new code.
+        "git": head,
+        "exe": exe,
         "deploy_target": (str(deploy_target) if deploy_target is not None else None),
         "env_delta": env_delta(env=env, keys=env_keys),
         "zip_set": zip_set,
@@ -287,6 +450,89 @@ def is_conformant(obj: Any) -> bool:
     return not validate_identity(obj)
 
 
+# --------------------------------------------------------------------------- #
+# Provenance validation (CAPTURE-PROVENANCE-TRUTH-1)
+# --------------------------------------------------------------------------- #
+
+#: Species that measure a binary and therefore MUST record which binary.
+#: A manifest of one of these kinds without an exe sha256 is not a weak
+#: manifest, it is an unattributable measurement.
+BINARY_BEARING_KINDS = ("visual-capture", "visual-verify-capture",
+                        "visual-compare", "smoke-run", "golden-set")
+
+
+def validate_provenance(manifest: Mapping[str, Any]) -> list[str]:
+    """Problems that make a manifest's provenance untrustworthy. [] == fine.
+
+    Deliberately does NOT check the source HEAD against anything: a manifest
+    whose source HEAD differs from the binary's commit is normal and honest so
+    long as it SAYS so. What is checked is that the manifest states what it can
+    actually know:
+
+      * an exe was recorded at all, with a full sha256;
+      * the binary's own fingerprint was recorded, or its absence has a reason;
+      * `binary_provenance` exists and does not contradict the exe block.
+    """
+    errs: list[str] = []
+    if not isinstance(manifest, Mapping):
+        return ["manifest is not an object"]
+    ident = manifest.get("identity")
+    if not isinstance(ident, Mapping):
+        return ["no identity block -- provenance is unrecorded"]
+
+    exe = ident.get("exe")
+    if not isinstance(exe, Mapping):
+        return ["identity.exe is absent -- the manifest does not say which "
+                "binary it measured"]
+    sha = exe.get("sha256")
+    if not sha:
+        errs.append("identity.exe.sha256 is missing -- the binary is not "
+                    "identified, so nothing can be attributed to it later "
+                    "(an mtime is not an identity)")
+    elif not (isinstance(sha, str) and len(sha) == 64
+              and all(c in "0123456789abcdef" for c in sha.lower())):
+        errs.append(f"identity.exe.sha256 is not a full sha256: {sha!r}")
+
+    fp = exe.get("embedded_fingerprint")
+    if not isinstance(fp, Mapping):
+        errs.append("identity.exe.embedded_fingerprint is absent -- the "
+                    "binary's own build stamp was never read, so the commit "
+                    "this artifact exercised is unrecorded")
+    elif not fp.get("present") and not fp.get("reason"):
+        errs.append("identity.exe.embedded_fingerprint says neither present "
+                    "nor why not -- a silent null reads as 'fine'")
+    elif fp.get("present"):
+        scanned = fp.get("exe_sha256_at_scan")
+        if sha and scanned and scanned != sha:
+            errs.append(
+                f"identity.exe.embedded_fingerprint was read from different "
+                f"bytes than identity.exe.sha256 names "
+                f"(scan={scanned[:12]} recorded={sha[:12]})")
+
+    bp = ident.get("binary_provenance")
+    if not isinstance(bp, Mapping):
+        errs.append("identity.binary_provenance is absent -- the manifest "
+                    "never states which commit was measured")
+    else:
+        if isinstance(fp, Mapping) and bool(bp.get("available")) != bool(fp.get("present")):
+            errs.append("identity.binary_provenance.available contradicts "
+                        "identity.exe.embedded_fingerprint.present")
+        if bp.get("available") and not bp.get("commit"):
+            errs.append("identity.binary_provenance claims available but "
+                        "records no commit")
+
+    src = ident.get("source_worktree_head_at_capture")
+    if isinstance(src, Mapping) and src.get("describes_binary") is not False:
+        errs.append("identity.source_worktree_head_at_capture must carry "
+                    "describes_binary=false so it cannot be misread as "
+                    "provenance")
+    legacy = ident.get("git")
+    if isinstance(legacy, Mapping) and legacy.get("describes_binary") is not False:
+        errs.append("identity.git must carry describes_binary=false -- it is "
+                    "the source worktree HEAD, not the binary's commit")
+    return errs
+
+
 # Convenience flat accessors (the user's named fields), null-safe.
 
 def get_exe_sha(manifest: Mapping[str, Any]) -> str | None:
@@ -296,8 +542,31 @@ def get_exe_sha(manifest: Mapping[str, Any]) -> str | None:
 
 
 def get_git_commit(manifest: Mapping[str, Any]) -> str | None:
+    """DEPRECATED -- returns the SOURCE WORKTREE HEAD, not what was measured.
+
+    Kept because existing callers depend on it. New code that wants "which
+    commit produced this artifact" must call get_binary_commit(); this function
+    answers a different question and answering it is almost never what a reader
+    of a capture manifest intends.
+    """
     ident = manifest.get("identity") or {}
-    return (ident.get("git") or {}).get("commit")
+    src = ident.get("source_worktree_head_at_capture") or ident.get("git") or {}
+    return src.get("commit")
+
+
+def get_binary_commit(manifest: Mapping[str, Any]) -> str | None:
+    """The commit compiled into the measured binary, or None if unknowable.
+
+    None means "this artifact does not record what produced it" -- it never
+    means "same as the source HEAD". Callers must not substitute one for the
+    other.
+    """
+    ident = manifest.get("identity") or {}
+    bp = ident.get("binary_provenance") or {}
+    if bp.get("available"):
+        return bp.get("commit")
+    fp = ((ident.get("exe") or {}).get("embedded_fingerprint") or {})
+    return fp.get("sha") if fp.get("present") else None
 
 
 def get_verdict(manifest: Mapping[str, Any]) -> str | None:

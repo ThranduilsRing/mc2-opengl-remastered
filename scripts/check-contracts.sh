@@ -350,6 +350,25 @@ run_check "iso_deploy_selftest"  "py -3 scripts/make-isolated-deploy.py --selfte
 run_check "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet"
 run_check "beauty_sidecars_selftest" "py -3 scripts/check-beauty-sidecars.py --selftest"
 
+# CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it
+# measured, not the worktree the tool happened to run from. `identity.git.commit`
+# was `git rev-parse HEAD` in the emitting worktree and sat beside "dirty": false,
+# so it read as provenance while describing an unrelated lane. Measured over 404
+# manifests: of the 31 whose exe still exists byte-identical, 28 name a commit
+# their binary was NOT built from -- scratch/mc203reg + scratch/mc203air record
+# seven different commits across 23 arms that all ran ONE binary (79360fdb,
+# branch claude/spotlight-direction-1). The live check runs over the evidence
+# trees (tests/visual, run) and reconciles each manifest against the exe's own
+# embedded fingerprint, read from the binary's bytes -- never from the generated
+# header, which a failed compile leaves freshly stamped beside a stale exe
+# (c5d934d5). --selftest proves it FIRES: it builds synthetic binaries carrying
+# real fingerprint stamps and asserts misattribution, a contradicted fingerprint,
+# a missing exe sha256 and a zero-byte manifest are all caught, that an honest
+# manifest passes, and that a manifest carrying every keyword ONLY inside a
+# comment still fails. Offline, read-only, no game launch.
+run_check "capture_provenance"          "py -3 scripts/check-capture-provenance.py --quiet"
+run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.py --selftest"
+
 # ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------

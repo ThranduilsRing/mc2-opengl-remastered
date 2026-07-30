@@ -55,6 +55,7 @@ _THIS = Path(__file__).resolve()
 ROOT = _THIS.parents[2]  # repo root (tools/visual_verify/capture.py -> up 2)
 sys.path.insert(0, str(ROOT / "scripts"))
 import run_visual_capture as rvc  # noqa: E402  (the hardened launcher we build on)
+import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
 
 
 def _now_iso() -> str:
@@ -164,9 +165,16 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             f"det={primary.get('engine_deterministic') if primary else None} "
             f"{dt:.1f}s")
 
+    # CAPTURE-PROVENANCE-TRUTH-1: this manifest used to record only `exe` and
+    # `exe_mtime`. An mtime is not an identity -- the moment that file is
+    # rebuilt, every PNG in this sweep becomes unattributable, and nothing in
+    # the file said which commit it exercised. Emit the unified identity block
+    # so the sweep carries the binary's sha256 AND the binary's own embedded
+    # build fingerprint (the only field that describes the code that ran).
+    # Legacy keys stay for back-compat.
     manifest = {
         "kind": "visual-verify-capture",
-        "schema_v": 1,
+        "schema_v": 2,
         "generated_at": _now_iso(),
         "install": str(install.resolve()),
         "exe": str(exe.resolve()),
@@ -179,8 +187,14 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
         "n_captured": sum(1 for p in poses if p["primary_png"]),
         "n_requested": len(bookmark_files),
     }
+    ms.attach(manifest, ms.identity_block(
+        generator="visual_verify_capture",
+        exe_path=exe,
+        repo_root=str(ROOT),
+        deploy_target=str(install.resolve()),
+    ))
     (out_dir / "capture_run.json").write_text(
-        json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     return manifest
 
 
