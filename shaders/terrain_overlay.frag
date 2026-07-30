@@ -323,12 +323,14 @@ void main()
     // the narrower of the two.
     uint ovCw          = overlayCementWord(WorldPos.xy);
     bool ovCementTile  = (ovCw & 0x80000000u) != 0u;          // bit 31 valid
-    // bit 24 = ANY authored &Overlays art on this cement tile (roads, runways,
-    // dirt tracks, ROUGH, bridges). OVERLAY-CEMENT-ARTGUARD-1 widened this from
-    // "hard-paved ids only": the narrow form left DIRT_ROAD / ROUGH /
-    // TWO_LANE_DIRT_ROAD / the dirt-damaged crossings / OBRIDGE / DAMAGED_BRIDGE
-    // unmarked, so authored art of those types sitting on a cement base slot
-    // would have been overpainted with plain concrete.
+    // bit 24 = ANY authored art on this cement tile, from EITHER channel.
+    // OVERLAY-CEMENT-ARTGUARD-1 widened this from "hard-paved ids only" (the
+    // narrow form left DIRT_ROAD / ROUGH / TWO_LANE_DIRT_ROAD / the dirt-damaged
+    // crossings / OBRIDGE / DAMAGED_BRIDGE unmarked) to any &Overlays id;
+    // CORRECTION-FIRST-MERGE-1 widened it again to the host-side TileIsRoadArt()
+    // oracle, which ALSO covers cement-ALPHA road art carrying no &Overlays id
+    // at all -- the class mc2_10's runway belongs to, and the one whose repaint
+    // measured +46.8 L over 23% of that frame.
     bool ovAuthoredArt = (ovCw & 0x01000000u) != 0u;          // bit 24
     bool ovAdoptAlbedo = ovCementTile && !ovAuthoredArt && u_cementGridSideOv > 0;
 

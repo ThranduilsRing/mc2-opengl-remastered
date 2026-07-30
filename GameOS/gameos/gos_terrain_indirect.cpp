@@ -1006,18 +1006,29 @@ static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 // terrain (static-shadow exemption + no in-shader distance fog) but leaves its
 // ALBEDO alone.
 //
-// WIDENED FROM IsPavedOverlayType() TO "ANY AUTHORED OVERLAY" (CONCRETE-DELIVER-2).
-// The original landing marked only the 9 hard-paved ids, which left EIGHT authored
-// overlay types unmarked -- DIRT_ROAD(0), ROUGH(2), TWO_LANE_DIRT_ROAD(5),
-// X_DIRT_2LANEDIRT(9), X_DIRT_DAMAGED(10), X_2LANEDIRT_DAMAGED(13), OBRIDGE(14),
-// DAMAGED_BRIDGE(16). Any of those sitting on a cement base slot (a dirt track
-// running onto an apron, a bridge deck approaching a paved pad) would have been
-// classified as a bare cement transition and had its authored art OVERPAINTED with
-// plain concrete -- silently deleting hand-placed map art. The user's scoping was
-// "runways, roads, OTHER OVERLAYS are their own layer", so the guard is the
-// presence of authored art, not its paved-ness. Ambiguity resolves to do-nothing:
-// only a cement tile with NO authored overlay at all is treated as a genuine
-// concrete transition and repainted.
+// WIDENED TWICE. (1) CONCRETE-DELIVER-2 went from IsPavedOverlayType() to "ANY
+// AUTHORED &Overlays ID". The original landing marked only the 9 hard-paved ids,
+// leaving EIGHT authored overlay types unmarked -- DIRT_ROAD(0), ROUGH(2),
+// TWO_LANE_DIRT_ROAD(5), X_DIRT_2LANEDIRT(9), X_DIRT_DAMAGED(10),
+// X_2LANEDIRT_DAMAGED(13), OBRIDGE(14), DAMAGED_BRIDGE(16). Any of those on a
+// cement base slot (a dirt track running onto an apron, a bridge deck approaching
+// a paved pad) was classified as a bare cement transition and had its authored art
+// OVERPAINTED with plain concrete -- silently deleting hand-placed map art. The
+// user's scoping was "runways, roads, OTHER OVERLAYS are their own layer", so the
+// guard is the presence of authored art, not its paved-ness.
+//
+// (2) CORRECTION-FIRST-MERGE-1 went from "any &Overlays id" to TileIsRoadArt(),
+// because the &Overlays channel is not the only place authored road art lives.
+// mc2_10's roads and airbase runway are cement-ALPHA transition art over snow
+// carrying NO &Overlays id, and they still arrive here with a valid cement word
+// via the CEMENT-ALPHA-LAND-1 rescue -- so the id-based guard let the adoption
+// repaint them (+46.8 L over 23.0% of the runway frame). TileIsRoadArt() tests
+// "&Overlays id OR cement-alpha art with no cement corner" and so is a strict
+// superset of (1).
+//
+// Ambiguity resolves to do-nothing in both directions: only a cement tile with NO
+// authored art of EITHER kind is treated as a genuine concrete transition and
+// repainted, and when the oracle's inputs are not ready the tile is protected.
 //
 // Inert to every pre-existing reader by construction: bits 30/23/22/19:16/15:0
 // are untouched, and no existing code path masks or compares bit 24.
@@ -1814,15 +1825,20 @@ static void PopulateRecipeCementWords() {
     // that already carry bit 31 and therefore never revisits these.
     if (OverlayCementAdoptEnabled() && Terrain::mapData) {
         long authoredArtMarked = 0;
-        // ARTGUARD-1 attribution counter. pavedSubset counts how many of the
-        // marked tiles the ORIGINAL narrow IsPavedOverlayType() predicate would
-        // also have caught, so (authoredArtMarked - pavedSubset) is exactly the
-        // number of tiles whose hand-placed art the narrow form would have
-        // OVERPAINTED with plain concrete on this mission. Diagnostic only --
-        // it changes no word and no pixel -- but it makes the whole point of
-        // this guard measurable in ONE headless trace run instead of requiring
-        // an A/B pair of builds.
-        long pavedSubset = 0;
+        // ARTGUARD-1 attribution counters, one per widening, so the trace says
+        // which guard saved what instead of asserting a single unfalsifiable
+        // total. Diagnostic only -- neither changes a word or a pixel.
+        //   pavedSubset     = tiles the ORIGINAL narrow IsPavedOverlayType()
+        //                     predicate (9 hard-paved ids) would have caught.
+        //   overlayIdSubset = tiles CONCRETE-DELIVER-2's "any &Overlays id"
+        //                     widening would have caught (all 17 ids).
+        // So (overlayIdSubset - pavedSubset) is the dirt-road/bridge art the
+        // first widening saved, and (authoredArtMarked - overlayIdSubset) is the
+        // MISSING-RUNWAY-1 cement-alpha class that ONLY TileIsRoadArt() reaches
+        // -- the mc2_10 runway. Both numbers land in ONE headless trace run
+        // instead of requiring an A/B pair of builds.
+        long pavedSubset     = 0;
+        long overlayIdSubset = 0;
         for (size_t vn = 0; vn < N; ++vn) {
             const long mx = (long)vn % mapSide;
             const long my = (long)vn / mapSide;
@@ -1832,20 +1848,51 @@ static void PopulateRecipeCementWords() {
             // without bit 31 and must never be the sole content of a word.
             if ((chunkCementWords[vn] & kCementLayerValidBit) == 0u) continue;
 
+            // Read for ATTRIBUTION ONLY. The decision is TileIsRoadArt() below;
+            // ovT is kept so the trace can report how much each of the two
+            // successive widenings actually bought.
             Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
             Terrain::mapData->getOverlay(my, mx, ovT, ovO);
-            // ANY authored overlay id, not just IsPavedOverlayType(): see the
-            // kCementAuthoredArtBit block above. DIRT_ROAD, ROUGH, the bridges and
-            // the dirt/damaged crossings are authored art too, and repainting them
-            // with the concrete atlas would delete hand-placed map art.
-            if (ovT == INVALID_OVERLAY) continue;
+
+            // CONCRETE-DELIVER-2 landed the FIRST widening: from the 9 hard-paved
+            // ids (IsPavedOverlayType) to ANY authored &Overlays id, because
+            // DIRT_ROAD, ROUGH, TWO_LANE_DIRT_ROAD, the dirt/damaged crossings,
+            // OBRIDGE and DAMAGED_BRIDGE are authored art too, and repainting
+            // them with the concrete atlas deletes hand-placed map art.
+            //
+            // CONCRETE-DELIVER-1's own mc2_10 capture finding forces a SECOND
+            // widening, and it is the one that matters most: even "any &Overlays
+            // id" MISSES the entire MISSING-RUNWAY-1 class. mc2_10's roads and
+            // its airbase runway are authored as cement-ALPHA transition art
+            // over snow with NO &Overlays id at all. Those tiles still reach
+            // this loop carrying a VALID cement word -- the CEMENT-ALPHA-LAND-1
+            // rescue branch above sets kCementLayerValidBit for exactly the
+            // corner-less alpha tiles -- so they went unmarked, the frag treated
+            // them as plain concrete transitions, and the albedo adoption
+            // repainted them: measured 23.0% of the mc2_10 runway frame
+            // brightened by +46.8 L. The road art was being erased. That is
+            // precisely the albedo swap the user rejected twice as "WAY worse".
+            //
+            // TileIsRoadArt() is the codebase's existing oracle for exactly this
+            // question ("&Overlays id OR cement-alpha art with no cement
+            // corner"), and its first clause is `ovT != INVALID_OVERLAY`, so it
+            // is a strict SUPERSET of the widening CONCRETE-DELIVER-2 shipped:
+            // strictly more tiles get protected, never fewer. Requires
+            // g_cementLayerMapReady + blocks, which this function already has.
+            const bool roadArt = (g_cementLayerMapReady && blocks)
+                                     ? TileIsRoadArt(my, mx, mapSide, blocks)
+                                     : true;   // unknown => protect (conservative)
+            if (!roadArt) continue;
 
             const uint32_t word = chunkCementWords[vn] | kCementAuthoredArtBit;
             chunkCementWords[vn] = word;
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
             g_denseRecipeDirty[vn] = true;
             ++authoredArtMarked;
-            if (IsPavedOverlayType(ovT)) ++pavedSubset;
+            if (ovT != INVALID_OVERLAY) {
+                ++overlayIdSubset;
+                if (IsPavedOverlayType(ovT)) ++pavedSubset;
+            }
         }
         static const bool s_adoptTrace = [] {
             const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
@@ -1853,9 +1900,12 @@ static void PopulateRecipeCementWords() {
         }();
         if (s_adoptTrace) {
             printf("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission=%s "
-                   "tiles=%ld paved_subset=%ld art_saved_by_artguard=%ld\n",
+                   "tiles=%ld paved_subset=%ld overlay_id_subset=%ld "
+                   "art_saved_vs_paved=%ld art_saved_vs_overlay_id=%ld\n",
                    (::missionName[0] ? ::missionName : "unknown"),
-                   authoredArtMarked, pavedSubset, authoredArtMarked - pavedSubset);
+                   authoredArtMarked, pavedSubset, overlayIdSubset,
+                   authoredArtMarked - pavedSubset,
+                   authoredArtMarked - overlayIdSubset);
             fflush(stdout);
         }
     }
