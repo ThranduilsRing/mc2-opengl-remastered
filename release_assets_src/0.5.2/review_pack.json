@@ -2645,7 +2645,7 @@
       {
        "name": "FAR-BACKDROP-TEXTURED-LIGHT-1-IMPL-1",
        "sent": "Implement and verify option A (shader base_light night substitution) from the design above.",
-       "found": "Disproved its own design's root cause for the headline symptom. The white horizon \"impostors\" are not on the static-prop path at all &mdash; submit_trees=0 at this pose, and the RenderDoc event is the fullscreen tonemap composite, not impostor geometry. Exaggeration turned buildings solid red while the impostors stayed pure white. Code is correct and safe but cannot touch the defect; gate stays OFF.",
+       "found": "The white horizon \"impostors\" are not on the static-prop path at all: exaggeration turned buildings solid red while the impostors stayed pure white, and the RenderDoc event is the fullscreen tonemap composite, not impostor geometry. Code is correct and safe but cannot touch the defect; gate stays OFF. RETRACTED 2026-07-30 (FALSE-CONCLUSION-RETRACT-1): this entry also read \"submit_trees=0 at this pose\" as corroboration, and claimed the lane had \"disproved its own design's root cause\". Both are withdrawn. submit_trees is a dynamic-submit-path counter that registry-replayed props never tick, so 0 is the healthy steady state and proves nothing; the exaggeration test is what carries the impostor conclusion. The design's stale-perVertexARGB root cause was never actually tested &mdash; re-tested at mc2_03 on 2026-07-30 it is NOT the cause of anything observable there (no near-vs-far base_light asymmetry; the gate is a distance-ramped ambient doubler, and mc2_03 is a day mission so a skipped night bake cannot show). Status: untested where it could apply, not disproven.",
        "commits": [
         "98ed1d32"
        ],

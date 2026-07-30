@@ -67,7 +67,20 @@ No legacy terrain fallback occurred in any run.
 
 ---
 
-## 5. Oracle counters (all clean)
+## 5. Oracle counters (all clean — but see the RETRACTION note below)
+
+> **RETRACTED IN PART (2026-07-30, lane FALSE-CONCLUSION-RETRACT-1).** The
+> `[OBJBATCHER v1]` row of this section listed `gpu_drawn_instances=0`,
+> `submit_legacy=0` and `submit_trees=0` as *clean oracle readings*. **Three of
+> those zeros are structural, not observations** — they would read 0 whether the
+> renderer was healthy or catastrophically broken, so they are not oracles and
+> this section must not be cited as if they were. Detail in the note at the end
+> of the `OBJBATCHER v1` bullet. The rest of §5 (RENDER_SNAPSHOT, TEX_RESOLVE,
+> MECH_MATERIAL_GPU, GPU_CULL) is unaffected and stands.
+>
+> **This matters beyond this file:** `docs/perf-budget.md:26` points future
+> baseline captures at this document as the pattern to copy, so the framing
+> propagates forward unless corrected here.
 
 Per-mission, end-of-run / last-dump values:
 
@@ -83,6 +96,48 @@ Per-mission, end-of-run / last-dump values:
 - **TEX_RESOLVE v1:** `mismatches=0 oob=0` at shutdown, all missions.
 - **MECH_MATERIAL_GPU v1:** `mismatches=0` every compare (mechs 12–84 per mission).
 - **OBJBATCHER v1:** `gpu_drawn_instances=0`, `submit_legacy=0`, `submit_trees=0` everywhere. **`cpu_fallback` is non-zero on mc2_01 (1456) and mc2_24 (3941)** — but in both, `cpu_fallback == late_register_recovery_skips` and `fallback_rate ≤ 0.0007`. These are **late-register recovery skips** (e.g. the `compass` HUD node registering after the batch window), **not** GPU-cull CPU fallback of real geometry. Recorded honestly as a non-zero baseline value to watch, not a regression.
+
+  > **RETRACTED (2026-07-30) — the three zeros above are not evidence of health.**
+  > What this bullet claimed: that `gpu_drawn_instances=0`, `submit_legacy=0` and
+  > `submit_trees=0` "everywhere" were clean oracle readings corroborating a
+  > healthy renderer (reinforced by the section heading "Oracle counters (all
+  > clean)" and by the §1/§5 table columns). **Why they cannot support that:**
+  >
+  > - **`submit_trees` / `submit_buildings` / `submit_generics` / `submit_legacy`**
+  >   are `submitted_instances_by_pop[]`, incremented ONLY at
+  >   `GameOS/gameos/gos_static_prop_batcher.cpp:5613`, on the **dynamic**
+  >   `submitMultiShape` path. Once an actor registers a persistent recipe it
+  >   replays every frame via `submitCachedInstance()` (`:9516`), which
+  >   **deliberately does not tick them** (comment at `:9526`). In a steady-state
+  >   scene essentially all static props are registry-replayed, so these read 0
+  >   while the geometry draws every frame. `submit_trees=0` is the *expected*
+  >   value and says nothing about whether trees drew. The batcher's own comment
+  >   at `:9262` records the contradiction: "733 trees eligible, all via the
+  >   store, dyn-submit=0". Reading `submit_legacy=0` as "the legacy path never
+  >   activated" is the same error — 0 is what you get either way.
+  > - **`gpu_drawn_instances`** is incremented only on the legacy/per-type path
+  >   (`:8153`, from the CPU-side `TypeRangeSsbo.instanceCount`). The live
+  >   GPU-authority coalesce-v6 path authors instance counts on the GPU and never
+  >   reaches that site, so it reads 0 there. This is now declared in the source
+  >   (STALE-COUNTER-RETIRE-1) and the summary line carries
+  >   `gpu_drawn_note=legacy_path_only_v6_uses_submitted`.
+  >
+  > **Also wrong as a unit:** these counters increment **once per ACTOR**, not
+  > once per instance, despite the name `submitted_instances` — child packets go
+  > to the separate `submitted_children` counter. Any reasoning about instance
+  > counts or geometry volume from them (here or downstream) is invalid.
+  >
+  > **What is still true:** the raw values recorded above were correctly
+  > transcribed from the logs — they are accurate readings of the counters. Only
+  > the inference "therefore clean" is withdrawn. The `cpu_fallback` /
+  > `late_register_recovery_skips` analysis in this bullet is independent of the
+  > three zeros and **stands unchanged**.
+  >
+  > **Replacement signal:** do not substitute `submitted_instances` (a prior
+  > recon recommended this; it is per-actor and dynamic-path-only, so it has the
+  > same blind spot). Use the population census
+  > (`gos_static_prop_registry.h::getPopulationCensus()` /
+  > `getPopulationsEverTagged()`), or pixel/RenderDoc draw attribution.
 - **GPU_CULL v1:** substrate ready every frame (records 2.6k–2.9k / capacity 12295), `indirect_draw overflow=0`, `submit flush=600`. Clean shutdown (substrate/compute/readback).
 
 ---
@@ -141,4 +196,4 @@ Source available headless: **GL `TIME_ELAPSED` query** — but the engine only w
 
 ## Gate
 
-Baseline A captured. Tier1 5/5 pass, FATAL=0, FASTPATH_DROP=0, all correctness oracles clean (terrain chunk-only + armed, parity MATCH), OBJBATCHER late-register skips recorded as known non-zero. **CPU per-pass attribution FILLED** (§6a, cost-split). **GPU per-pass times remain OPEN** (§6b) — scoped to a small per-pass GL-timer instrumentation lane, not a headless limitation. With that caveat noted, this freezes the post-8z reference; the modernization backlog (GlStateGuard, visual lanes, Tube merge) may open against it. GlStateGuard slice 1 can use §6a CPU attribution + the whole-frame `p99_ms` budget as its before/after comparator today; 6b sharpens it.
+Baseline A captured. Tier1 5/5 pass, FATAL=0, FASTPATH_DROP=0, all correctness oracles clean (terrain chunk-only + armed, parity MATCH), OBJBATCHER late-register skips recorded as known non-zero. **(2026-07-30: "all correctness oracles clean" is narrowed — the three OBJBATCHER zeros counted here are structural, not oracles; see the RETRACTED note in §5. The terrain/parity/snapshot/TEX_RESOLVE oracles are unaffected, so the gate verdict itself is unchanged.)** **CPU per-pass attribution FILLED** (§6a, cost-split). **GPU per-pass times remain OPEN** (§6b) — scoped to a small per-pass GL-timer instrumentation lane, not a headless limitation. With that caveat noted, this freezes the post-8z reference; the modernization backlog (GlStateGuard, visual lanes, Tube merge) may open against it. GlStateGuard slice 1 can use §6a CPU attribution + the whole-frame `p99_ms` budget as its before/after comparator today; 6b sharpens it.
