@@ -145,6 +145,31 @@ void destroyStaticPropByIndex(int32_t recipeIndex);
 // recipeIndex comes from LookupResult::gameObjectId (M1.6 sentinel: -1 == invalid).
 void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen);
 
+// RENDERER-INPUT-READBACK-1: five narrow read-only recipe accessors for the
+// `draw_path` / `shadow_feed` / `ground` / `light_row` command-channel verbs.
+//
+// They exist HERE rather than as a direct
+// `#include "gos_static_prop_registry.h"` in code/missiongui.cpp because that
+// header drags <GL/glew.h> and Stuff/Stuff.hpp behind it, and because this
+// adapter is the sanctioned seam for exactly this traffic (the neighbouring
+// getRecipeShapeName is already used by the inspector for the same reason).
+// Each is a straight pass-through to the identically-named
+// GpuStaticPropRegistry accessor -- no derivation, no caching, no
+// reinterpretation. All return false and leave *out untouched when the
+// registry is off, recipeIndex < 0, or the recipe is tombstoned; false is
+// therefore "cannot answer", never "answer is zero".
+//
+// WHY THESE FIELDS: they are what the batcher actually replays. The baked
+// modelMatrix -- NOT the object's live transform -- is what places a
+// registered prop's pixels and what both shadow feeds submit, so a drift
+// between it and the live pose is a renderer-input defect that no
+// game-state readback could ever see.
+bool recipeModelMatrix(int32_t recipeIndex, float out[16]);
+bool recipeTypeId(int32_t recipeIndex, uint32_t* out);
+bool recipeLightDataIndex(int32_t recipeIndex, uint32_t* out);
+bool recipeInstanceFlags(int32_t recipeIndex, uint32_t* out);
+bool recipeHadCullRecord(int32_t recipeIndex, bool* out);
+
 // M3-inspector: look up the MaterialGpu sidecar entry for a material handle.
 // materialHandleBits is LookupResult::materialHandleBits (0 = sentinel / unknown).
 // Returns true and fills *out when MC2_MATERIAL_GPU=1, the handle is valid, and

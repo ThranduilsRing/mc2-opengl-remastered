@@ -963,6 +963,47 @@ lights should remain visible at every angle instead of blinking out.
     way to obtain a target partId), `unit <partId>` (deep readback **including which draw
     path the object took**: appearance type + number, `inView`, static recipe index,
     `screenPos`), `mission_status`, `light_state`.
+  - **Renderer-input readback (RENDERER-INPUT-READBACK-1).** Every verb above this
+    line reads GAME state — position, hp, gesture, cull verdict. These five read what
+    the RENDERER was handed, which is the half that did not exist. Four of five open
+    user complaints are wrong-renderer-INPUT defects, and without these the only
+    available grade was whole-frame mean luma — the instrument class that produced the
+    retracted "+14.8 luma" result. All five are read-only and carry **no extra env
+    gate**; see the runbook in [`docs/gameplay-driver.md`](gameplay-driver.md) for the
+    exact command and the exact assert each one unlocks.
+    - `light_row <partId>` — the per-object light row, produced by the **same**
+      `GatherLightsParameters()` the draw path calls (`mclib/txmmgr.cpp:2476`), fed
+      from the **same** list that object's appearance class passes to `SetLightList`.
+      Prints `feed=worldLights|NULL`, then per light: type, the **uploaded** origin
+      (`lightToWorld[12..14]`, the only slots any shader reads as `m[3].xyz`) beside
+      the **source** origin (`[3]/[7]/[11]`, where `BuildTranslation` leaves it), plus
+      `atOrigin=1` when those disagree — i.e. that light is evaluated at the world
+      origin wherever it actually sits. Then the **baked** row still being replayed
+      for a registered static prop, read back through
+      `MC_TextureManager::copyLightSlot`. `feed=NULL` is real, not an error:
+      `GenericAppearance::SetLightList(NULL, 0)` (`mclib/genactor.cpp:1238`) hands the
+      gather nothing, so that whole class gathers zero lights on this path.
+    - `draw_path <partId>` — `recipe_replay` | `dynamic_submit` | `legacy_cpu`, plus
+      `recipeDrift` = distance between the recipe's **baked** model matrix and the
+      object's live position. The batcher replays the baked matrix, never the live
+      transform, so a non-zero drift means every pixel for that object is placed from
+      an old pose.
+    - `shadow_feed <partId>` — membership in the two prop shadow feeds
+      (`getBuildingShadowInstances`, `getDynamicPropShadowInstances`), the pose each
+      one **submitted**, `shadowDrift` against the live pose, and `staticBldgPass:
+      drew=` from `gos_GetStaticBuildingShadowCounts` (documented zero unless
+      `MC2_STATIC_PROP_BUILDING_SHADOW` actually drew). Membership in a feed that never
+      drew is not a shadow, which is why the draw receipt is printed alongside.
+    - `ground <partId>` / `ground <x> <y>` — terrain elevation, type, normal and
+      terrain light under a point; for an object also `objAboveGround`, and for a
+      static prop `recipeAboveGround` (baked render pose vs terrain) and `recipeVsObj`.
+    - `pixel <x> <y> [z]` / `pixel screen <px> <py>` — one texel of the scene colour
+      attachment, at a world point projected through `Camera::projectForScreenXY` or at
+      a raw FBO texel. **`srcFrame` is CURRENT-1**: the channel is polled from
+      `MissionInterfaceManager::update()`, before this frame renders, so the FBO holds
+      the previous frame — a `screenshot` issued on the same line is an end-of-frame
+      capture and is one frame AHEAD. Both the Y-down screen coordinate and the Y-up
+      FBO texel are printed so a disagreement with a TGA is diagnosable.
   - Lighting: `time_of_day <0..1>` (0.25 noon / 0.5 sunset / 0.75 midnight — full
     sun + ambient + sky + fog recompute via `Camera::setDaylightFraction`) and
     `sun_pitch <deg> [yaw]` (light DIRECTION only, colors unchanged). These make the

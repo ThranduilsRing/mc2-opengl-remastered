@@ -2801,6 +2801,45 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	}
 }
 
+//----------------------------------------------------------------------
+// RENDERER-INPUT-READBACK-1: see the contract comment in mclib/tgl.h.
+//
+// Placed HERE, directly under GatherLightsParameters, because it must observe
+// the same TG_Shape statics from the same translation unit and because any
+// future edit to the gather must be seen by whoever maintains the probe.
+//
+// The save/restore is the load-bearing part. TG_Shape::s_listOfLights is live
+// renderer state: whatever actor drew last owns it, and the next
+// submitMultiShape()/GatherGpuObjectLightDataOnly() read will use it. A probe
+// that installed a list and walked away would silently re-light the next
+// object drawn -- an observation tool that changes the thing observed. Both
+// statics go back byte-for-byte before this returns.
+void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
+                              TG_HWLightsData* out)
+{
+	if (!out)
+		return;
+	*out = TG_HWLightsData();   // ctor zeroes arrays and sets numLights_ = 0
+
+	TG_LightPtr* const savedList  = TG_Shape::s_listOfLights;
+	const DWORD        savedCount = TG_Shape::s_numLights;
+
+	// Mirror SetLightList's own null-normalisation (mclib/tgl.cpp:1821-1835):
+	// a NULL list forces the count to 0 there, and the gather's
+	// `listOfLights[iLight]` deref would otherwise run against a null base.
+	if (lights) {
+		TG_Shape::s_listOfLights = lights;
+		TG_Shape::s_numLights    = (DWORD)nLights;
+	} else {
+		TG_Shape::s_listOfLights = NULL;
+		TG_Shape::s_numLights    = 0;
+	}
+
+	GatherLightsParameters(out);
+
+	TG_Shape::s_listOfLights = savedList;
+	TG_Shape::s_numLights    = savedCount;
+}
 
 
 //----------------------------------------------------------------------

@@ -40,6 +40,10 @@ set(SOURCES ${SOURCES}
     gos_validate.cpp
     gos_screenshot.cpp
     gos_dev_shell.cpp
+    # RENDERER-INPUT-READBACK-1: engine half of the `shadow_feed` / `pixel`
+    # command-channel readback verbs (raw-GL pixel read + static-prop shadow
+    # feed scan; both forbidden to code/ by the M6 firewall).
+    gos_renderer_input_probe.cpp
     gos_visual_capture.cpp
     gos_visual_diff.cpp
     gos_rdoc_capture.cpp

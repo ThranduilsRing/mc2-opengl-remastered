@@ -217,6 +217,36 @@ void getRecipeShapeName(int32_t recipeIndex, char* out, size_t outLen) {
     out[outLen - 1] = '\0';
 }
 
+// RENDERER-INPUT-READBACK-1: pass-through recipe readback. See the contract
+// block in StaticPropRenderAdapter.h. The `recipeIndex < 0` guard is the
+// sentinel-translation rule at this seam (-1 == invalid); the registry
+// accessors range-check and tombstone-check on their own side, so a false
+// from either layer means the same thing to the caller: cannot answer.
+bool recipeModelMatrix(int32_t recipeIndex, float out[16]) {
+    if (!out || recipeIndex < 0) return false;
+    return GpuStaticPropRegistry::staticPropGetModelMatrix(recipeIndex, out);
+}
+
+bool recipeTypeId(int32_t recipeIndex, uint32_t* out) {
+    if (!out || recipeIndex < 0) return false;
+    return GpuStaticPropRegistry::staticPropGetTypeId(recipeIndex, out);
+}
+
+bool recipeLightDataIndex(int32_t recipeIndex, uint32_t* out) {
+    if (!out || recipeIndex < 0) return false;
+    return GpuStaticPropRegistry::staticPropGetLightDataIndex(recipeIndex, out);
+}
+
+bool recipeInstanceFlags(int32_t recipeIndex, uint32_t* out) {
+    if (!out || recipeIndex < 0) return false;
+    return GpuStaticPropRegistry::staticPropGetInstanceFlags(recipeIndex, out);
+}
+
+bool recipeHadCullRecord(int32_t recipeIndex, bool* out) {
+    if (!out || recipeIndex < 0) return false;
+    return GpuStaticPropRegistry::staticPropGetHasCullRecord(recipeIndex, out);
+}
+
 bool getMaterialGpuData(uint32_t materialHandleBits, RenderCore::MaterialGpu* out) {
     if (!out || materialHandleBits == 0u) return false;
     RenderCore::MaterialHandle mh;

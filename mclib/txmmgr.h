@@ -1399,6 +1399,10 @@ class MC_TextureManager
 };
 
 void GatherLightsParameters(TG_HWLightsData* lights);
+// RENDERER-INPUT-READBACK-1: the probe wrapper around the function above is
+// declared in mclib/tgl.h, not here -- its signature needs TG_LightPtr, whose
+// underlying TG_Light is an anonymous-struct typedef (tgl.h:300) and so cannot
+// be forward-declared in this header.
 
 //----------------------------------------------------------------------
 extern MC_TextureManager *mcTextureManager;

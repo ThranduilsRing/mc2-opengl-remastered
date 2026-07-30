@@ -351,6 +351,48 @@ static_assert(sizeof(TG_HWLightsData) == 3600, "TG_HWLightsData must be 3600 B (
 
 typedef TG_HWLightsData* TG_HWLightsDataPtr;
 
+//-------------------------------------------------------------------------------
+// RENDERER-INPUT-READBACK-1 -- backing call for the `light_row <partId>`
+// command-channel verb. Body lives in mclib/txmmgr.cpp, immediately below
+// GatherLightsParameters(), because it must see the same file-static state.
+//
+// WHY A WRAPPER IS NEEDED AT ALL: GatherLightsParameters() takes no light list.
+// It reads TG_Shape::s_listOfLights / s_numLights -- statics that the LAST
+// SetLightList() caller wrote. "Which lights did object X get?" is therefore
+// not a property of X; it is the result of running the gather against the list
+// X's appearance class passes (eye->getWorldLights() for Bldg/Tree/Mech3D/GV,
+// and literally NULL for GenericAppearance -- mclib/genactor.cpp:1238).
+//
+// This installs `lights`/`nLights`, calls the REAL GatherLightsParameters, and
+// restores both statics. It does NOT reimplement the active-filter, the
+// runtime clamp, or the MC2_LIGHT_POS_COLUMN_FIX translation copy: a second
+// copy of that arithmetic could agree with itself while disagreeing with the
+// shipped draw, which is the exact instrument failure this readback family
+// exists to remove.
+//
+// `lights == NULL, nLights == 0` is a legitimate input, not an error.
+// Read-only with respect to the frame: both statics are restored before
+// return, so probing from the mission-update half of a frame cannot change
+// what the render that follows gathers.
+//
+// KNOWN OBSERVER EFFECT -- read this before trusting a counter.
+// Calling the real gather means this probe also trips the gather's own
+// DIAGNOSTIC state, all of it in mclib/txmmgr.cpp:
+//   * MC2_OBJECT_PARITY_TRACE's one-shot dump (s_lightDumpDone) -- a probe
+//     can consume the single session dump that a real draw was meant to emit;
+//   * MC2_LIGHT_ROW_CENSUS tallies (s_lightRowCensusTab / ...Calls) and its
+//     "FIRST positional light" edge;
+//   * MC2_LIGHT_CLAMP_PROBE's call count and high-water;
+//   * the SPOT_DIAG v1 pack counters (s_spotDiagPack*).
+// So: do NOT issue `light_row` during a run whose purpose is to read any of
+// those counters. The alternative -- a private reimplementation of the
+// gather -- was rejected deliberately: a second copy can agree with itself
+// while disagreeing with the shipped draw, and a wrong light row reported
+// confidently is far worse than a perturbed diagnostic tally. Nothing here
+// touches render state, only diagnostic bookkeeping.
+void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
+                              TG_HWLightsData* out);
+
 
 
 //-------------------------------------------------------------------------------

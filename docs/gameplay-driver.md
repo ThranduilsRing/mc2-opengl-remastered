@@ -348,6 +348,260 @@ reading `GameObjectManager::updateAppearancesOnly` (`code/objmgr.cpp:4857`) and
   building the camera is not looking at is not updated; frame the target with
   `camera` before asserting on it.
 
+## Runbook — the five verbs that read RENDERER input (RENDERER-INPUT-READBACK-1)
+
+Every verb above this section reads **game** state: position, hp, gesture, the
+cull verdict. None of them could read a **renderer input** — not the light row a
+draw used, not what the shadow pass submitted for a building, not the pixel at a
+world point, not the terrain under an object. So a wrong-input defect could only
+be graded by whole-frame `mean_luma`: the instrument class that produced the
+retracted "+14.8 luma" result, where two arms differed by a turret barrel angle
+rather than by lighting.
+
+These five close that gap. The organising question for each is **"which renderer
+input would, if readable, make this defect a one-line assert?"**
+
+### Preconditions
+
+```
+MC2_UI_COMMAND_FILE=<path>        the channel itself (already allowlisted in run_smoke.py)
+MC2_SMOKE_FIXED_TIMESTEP=1        for any cross-build claim
+```
+
+**No new env gate.** All five are read-only, and they are already behind
+`MC2_UI_COMMAND_FILE`. A second gate in front of a read-only verb inside an
+already-gated channel buys nothing and adds one more documented-vs-actual
+default to drift out of truth. Nothing to add to the `run_smoke.py` passthrough
+list; `check-gate-default-agreement.py` is unaffected (verified: `DISAGREE 0`,
+`CONTRADICT 0`).
+
+### Reading a `-1`
+
+`recipeDrift`, `shadowDrift` and every `*AboveGround` field print `-1` or `n/a`
+for **"not computable"**, never for "zero". A `0.0000` drift is a measurement; a
+`-1` is the absence of one. Do not write an assert that treats them alike.
+
+---
+
+### `light_row <partId>` — which lights this object's draw was handed
+
+```
+list buildings                 (or `list all` for movers) -> pick an id
+light_row 32771
+```
+
+```
+  src: class=building(0x10) feed=worldLights srcListCount=1024 gathered=3
+  [0] type=5(TERRAIN) up=(0.00,0.00,0.00) src=(0.00,0.00,0.00) atOrigin=0 dir=(...) color=(...) falloff=(...)
+  [1] type=3(POINT)   up=(0.00,0.00,0.00) src=(-4218.73,-5031.72,42.10) atOrigin=1 ...
+  baked: recipe=42 lightDataIndex=17 slots=200 numLights=3 firstType=5 firstColor=(...)
+```
+
+Runs the **same** `GatherLightsParameters()` the draw path calls
+(`mclib/txmmgr.cpp:2476`), against the **same** list this object's appearance
+class passes to `SetLightList`. It is not a reimplementation — a second copy of
+that arithmetic could agree with itself while disagreeing with the shipped draw.
+
+**Unlocks — "92.7% of lamps sit at the world origin".** That figure came from an
+aggregate census. `atOrigin` answers it per light, per object, from the bytes
+that would be uploaded: `up=` is `lightToWorld[12..14]`, the only slots any
+consumer reads as `m[3].xyz`; `src=` is `[3]/[7]/[11]`, where `BuildTranslation`
+actually leaves the translation.
+
+```json
+{ "cmd": "light_row 32771", "expect": "ok" }
+```
+assert: **no line has `atOrigin=1`.** A single `atOrigin=1` on a `POINT`,
+`SPOT` or `INFINITEWITHFALLOFF` light is the origin defect, on that object, now.
+
+**Unlocks — "vehicles and mechs are not lit the same".** Spawn the pair
+(`spawn clone` / `spawn vehicle`), `freeze_movers on <frame>`, then `light_row`
+each. Both classes pass `eye->getWorldLights()`, so **if the two rows are
+byte-identical the lighting inputs are identical and the difference is
+elsewhere** — material, normals, or shader. That is a one-command elimination of
+an entire hypothesis that previously needed a capture pair.
+
+**Unlocks — "trees carry no directional light".** Check `feed=` first.
+`feed=NULL` is a real state, not a parse failure:
+`GenericAppearance::SetLightList(NULL, 0)` (`mclib/genactor.cpp:1238`) hands the
+gather nothing, so every object on that class gathers **zero** lights on this
+path. If a tree reports `feed=worldLights gathered=N` with `N > 0`, the "no
+directional light" theory is about the *bake*, not the feed — which is what the
+`baked:` line is for: it is the row actually uploaded and still being replayed
+for a registered prop, read back through `MC_TextureManager::copyLightSlot`.
+`gathered` disagreeing with `baked ... numLights` is a stale bake.
+
+> **Observer effect, stated plainly.** Because `light_row` calls the *real*
+> gather, it also trips the gather's diagnostic bookkeeping:
+> `MC2_OBJECT_PARITY_TRACE`'s one-shot dump, the `MC2_LIGHT_ROW_CENSUS` tallies,
+> `MC2_LIGHT_CLAMP_PROBE`'s counts, and the `SPOT_DIAG v1` pack counters. **Do
+> not issue `light_row` in a run whose purpose is to read those counters.** No
+> render state is touched. The alternative — a private copy of the gather — was
+> rejected: a confidently-wrong light row is far worse than a perturbed tally.
+
+---
+
+### `draw_path <partId>` — which lane, and is the recipe stale
+
+```
+draw_path 32771
+```
+
+```
+  path: verdict=recipe_replay class=0x10 type=bldg_gate inView=1 staticReg=1 staticNow=1 recipe=42
+  pose: obj=(-4218.730,-5031.720,395.480) screen=(...)
+  recipe: shape=gate01.asb baked=(-4218.730,-5031.720,395.480) recipeDrift=0.0000
+  submit: typeID=7 flags=0x00(lightsOut=0 window=0 spotlight=0) cullRecordPrevFrame=1
+```
+
+`unit <partId>` already prints `inView` and `staticRecipe`. What it cannot say is
+whether that recipe is **stale**. The batcher replays the recipe's **baked**
+model matrix, never the object's live transform, so `recipeDrift` is the
+distance between where the sim thinks the object is and where its pixels are
+being placed.
+
+**Unlocks — the sunk-turret and black-quad hypotheses, which currently rest on
+source reading alone.**
+
+```json
+{ "cmd": "draw_path 32771", "expect": "ok" }
+```
+assert: **`recipeDrift` < 0.01** on any object that has not moved, and
+`verdict=recipe_replay` only while `staticNow=1`. A `dynamic_submit` verdict on
+an object you did not animate means something knocked it off the static batch.
+
+---
+
+### `shadow_feed <partId>` — what the shadow pass submitted, and from what pose
+
+```
+freeze_movers on 900
+animate 32771 1
+shadow_feed 32771
+```
+
+```
+  feed: registryQueried=1 recipe=42 recipeResolved=1 buildingFeed=311 dynamicFeed=2044 modernShadowPath=1
+  staticBldgPass: drew=1 types=12 instances=311 draws=12
+  building: present=1 sameTypeLeaves=4 exactLeaves=1 submitted=(-4218.730,-5031.720,395.480) live=(-4218.730,-5031.720,412.900) shadowDrift=17.4200
+  dynamic:  present=0 sameTypeLeaves=0 exactLeaves=0 submitted=(0.000,0.000,0.000) live=(...) shadowDrift=-1.0000
+```
+
+**Unlocks — the leading black-quad hypothesis becomes a one-line assert.** That
+hypothesis is that an animating building casts from its frozen mission-load
+pose. The mechanism is now readable: the static building shadow map is built
+**once per mission** (`mclib/txmmgr.cpp:3090-3114`) from the registry's **baked**
+matrices, and the per-frame dynamic prop caster feed (`:3283`) reads those same
+baked matrices. Neither reads the live transform.
+
+```json
+{ "cmd": "list buildings",  "expect": "ok" },
+{ "assert_building": { "min_animatable": 1 } },
+{ "cmd": "shadow_feed 32771", "expect": "ok" },
+{ "cmd": "animate 32771 1",   "expect": "ok" },
+{ "cmd": "shadow_feed 32771", "expect": "ok" }
+```
+assert: **`shadowDrift` is unchanged and ≈ 0 across the `animate`.** A drift that
+appears only after the animate is the frozen-pose cast, measured rather than
+argued.
+
+`staticBldgPass: drew=` is printed beside membership on purpose. It comes from
+`gos_GetStaticBuildingShadowCounts`, which is documented zero unless
+`MC2_STATIC_PROP_BUILDING_SHADOW` actually drew this mission — **membership in a
+feed that never drew is not a shadow**, and reporting one without the other
+would be a lying instrument.
+
+`sameTypeLeaves > 0` with `exactLeaves = 0` is a distinct and interesting answer:
+the type is being fed, but nothing is fed at this recipe's location. `shadowDrift`
+stays `-1` there by design — differencing against an unrelated sibling instance
+of the same building type would emit a large number that reads exactly like the
+stale-pose signal.
+
+---
+
+### `ground <partId>` / `ground <x> <y>` — is it actually sunk
+
+```
+ground 32771
+```
+
+```
+  at=(-4218.730,-5031.720) terrainZ=395.4800 waterZ=0.0000 terrainType=3 normal=(...) terrainLight=...
+  obj: id=32771 z=395.4800 objAboveGround=0.0000
+  recipe: idx=42 baked=(-4218.730,-5031.720,378.100) recipeTerrainZ=395.4800 recipeAboveGround=-17.3800 recipeVsObj=-17.3800
+```
+
+Three numbers, three different ways to be wrong: the **sim** pose vs terrain
+(`objAboveGround`), the **render** pose vs terrain (`recipeAboveGround`), and
+render vs sim (`recipeVsObj`).
+
+**Unlocks — "sunk turret", settled objectively instead of by eye.**
+
+```json
+{ "cmd": "ground 32771", "expect": "ok" }
+```
+assert: **`recipeAboveGround` ≥ -0.5.** A large negative value is the object
+being *drawn* below the terrain. If `objAboveGround` is fine while
+`recipeAboveGround` is not, the sim is right and the **baked render pose** is
+wrong — which points at the recipe, not at placement, and is the single most
+useful discrimination this verb makes.
+
+---
+
+### `pixel <x> <y> [z]` / `pixel screen <px> <py>` — the texel at a world point
+
+```
+pixel -4218 -5031
+pixel screen 320 240
+```
+
+```
+  world=(-4218.000,-5031.000,395.480) screenYDown=(612.4,377.1) w=0.0021 behindCamera=0 offScreen=0 screenRes=(1280,720)
+  fbo=1280x720 texelYUp=(612,342) inBounds=1 rgba=(0,0,0,255) luma=0.000 srcFrame=899
+```
+
+**Unlocks — "there is a black quad there" becomes a number.**
+
+```json
+{ "cmd": "pixel -4218 -5031", "expect": "ok" }
+```
+assert: **`luma` > 2.0** at a world point known to be lit terrain. `rgba=(0,0,0,*)`
+on a daylit surface is the black quad, located at a coordinate rather than in a
+screenshot.
+
+**Two provenance facts, both printed, both load-bearing:**
+
+1. **`srcFrame` is CURRENT-1.** This channel is polled from
+   `MissionInterfaceManager::update()`, which runs before the frame renders, so
+   the scene FBO still holds the previous frame. A `screenshot` issued on the
+   same line is an **end-of-frame** capture and is one frame **AHEAD**. Comparing
+   them without accounting for that is the most likely way this verb could lie.
+2. **`Camera::projectForScreenXY` returns Y-DOWN** screen coordinates
+   (`mclib/camera.h:593-635`), while `glReadPixels` is Y-UP. Both the Y-down
+   screen coordinate and the Y-up FBO texel are printed so a disagreement with a
+   TGA is diagnosable rather than mysterious.
+
+**Cross-check it once, on first use, before believing any of it.** Park the
+camera, `pixel screen <px> <py>`, then `screenshot probe`, and compare that texel
+in `probe.tga` against the reported `rgba` — remembering the one-frame offset.
+Under `MC2_CAMERA_PARK` + `freeze_movers` the two frames are identical, so they
+should match exactly. If they do not, the Y-flip or the FBO scaling is wrong and
+**every `pixel` result is void until it is fixed.** This cross-check has NOT been
+run — the engine cannot be launched in this environment.
+
+---
+
+### What is NOT measured
+
+Nothing in this section has been exercised against a running engine. The verbs
+compile, link, and are confirmed present in the linked image by a byte scan whose
+discrimination was proved by injecting the real regression (`#if 0` around the
+`shadow_feed` branch) and watching exactly its three probes flip to FAIL. That
+proves the code is *in the binary*. It does not prove any printed number is
+*correct*. The first live run should be the `pixel` cross-check above, then a
+`draw_path` on a known-static building (expect `recipeDrift` ≈ 0), because both
+are self-evidently falsifiable.
+
 ## Adding a verb
 
 1. One `else if` in `processUiCommandChannel()` (`code/missiongui.cpp`). Write
