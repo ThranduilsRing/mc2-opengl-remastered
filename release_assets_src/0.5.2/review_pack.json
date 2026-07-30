@@ -5,7 +5,7 @@
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 — Fix Review",
  "lede": "Session 2026-07-23. One card per fix below: what changed, the gate + recommended setting, and full-resolution before/after crops. Click any image to open the full file. All fixes are default-OFF byte-identical unless noted.",
- "toc_html": "<b>Jump to:</b> <a href=\"#open_gates\"><b style=\"color:#f0d890\">Open user gates</b></a> &nbsp;|&nbsp; <a href=\"#gates\"><b>Gate inventory (approve defaults here)</b></a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">1 shoreline</a> <a href=\"#02_runway\">2 runway</a> <a href=\"#03_mech_night_shadow\">3 contact shadow</a> <a href=\"#04_water_graze\">4 water graze</a> <a href=\"#05_night_fog_dim\">5 night fog</a> <a href=\"#06_edge_light_billboard\">6 billboard (superseded)</a> <a href=\"#07_cone_lamp_guard\">7 cone guard</a> <a href=\"#08_prop_self_shadow\">8 prop shadow</a> <a href=\"#09_runway_marker_lights\">9 marker lights</a> <a href=\"#10_light_realism\">10 light realism</a> <a href=\"#11_vehicle_night_lit\">11 vehicle night (not fixed)</a> <a href=\"#12_mc2_24_cement\">12 mc2_24 cement</a><a href=\"#13_unlinked\">13 unlinked captures</a> <a href=\"#14_lanes\"><b>14 lanes &amp; efforts</b></a> <a href=\"#instruments\"><b>Instruments that lied</b></a> <a href=\"#golden\">Golden re-bless</a> <a href=\"#19_cement_concrete\">19. Concrete tone: ARM A vs ARM B</a>",
+ "toc_html": "<b>Jump to:</b> <a href=\"#open_gates\"><b style=\"color:#f0d890\">Open user gates</b></a> &nbsp;|&nbsp; <a href=\"#gates\"><b>Gate inventory (approve defaults here)</b></a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">1 shoreline</a> <a href=\"#02_runway\">2 runway</a> <a href=\"#03_mech_night_shadow\">3 contact shadow</a> <a href=\"#04_water_graze\">4 water graze</a> <a href=\"#05_night_fog_dim\">5 night fog</a> <a href=\"#06_edge_light_billboard\">6 billboard (superseded)</a> <a href=\"#07_cone_lamp_guard\">7 cone guard</a> <a href=\"#08_prop_self_shadow\">8 prop shadow</a> <a href=\"#09_runway_marker_lights\">9 marker lights</a> <a href=\"#10_light_realism\">10 light realism</a> <a href=\"#11_vehicle_night_lit\">11 vehicle night (not fixed)</a> <a href=\"#12_mc2_24_cement\">12 mc2_24 cement</a><a href=\"#13_unlinked\">13 unlinked captures</a> <a href=\"#14_lanes\"><b>14 lanes &amp; efforts</b></a> <a href=\"#instruments\"><b>Instruments that lied</b></a> <a href=\"#golden\">Golden re-bless</a> <a href=\"#19_cement_concrete\">19. Concrete tone: ARM A vs ARM B</a> <a href=\"#20_session_0730\"><b style=\"color:#f0d890\">20. Session 2026-07-29/30 &mdash; what actually changed</b></a>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
   {
@@ -6645,6 +6645,1709 @@
       ]
      ],
      "cic1": "CIC1"
+    }
+   ]
+  },
+  {
+   "id": "20_session_0730",
+   "heading": "20. Session 2026-07-29/30 &mdash; what actually changed, and what did not",
+   "blocks": [
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0d890\">READ THIS FIRST &mdash; what would you actually see differently on a default launch?</b> <b>Almost nothing.</b> That is the honest answer and it is the most important line in this section. The session produced <b>44 commits (37 non-merge)</b> on <code>claude/nifty-mendeleev</code>, from <code>a4fda7ed</code> (07-29 13:00) to <code>886dd319</code> (2026-07-30 12:36). <b>Two surfaces changed by default, and <u>neither has been confirmed visually</u></b>: concrete transition tiles (<code>3ab322a0</code>, then corrected three times over by <code>2ade84a8</code>, <code>3ab33aee</code> and <code>886dd319</code>) and vehicle lighting (<code>5c04048c</code>, <code>ccb713ae</code>). A third gate was flipped on and then <b>reverted the same day</b>. Everything else is infrastructure, guard rails, retractions of earlier claims, or diagnosis with no cure attached. <b>Captures did run &mdash; and not one of them can be attributed to either change</b> (measured below). Both live changes are therefore backed by <i>mechanism</i> evidence only. <b>Nothing was pushed.</b>"
+    },
+    {
+     "type": "note",
+     "html": "<b>&ldquo;Unverified&rdquo; is not shorthand for &ldquo;nobody bothered&rdquo;. Here is exactly what was captured and why none of it counts.</b> I measured this from the manifests on disk rather than taking it from a report. <b>Seventeen capture arms</b> were run against the mc2_03 airfield and <b>twenty-seven</b> against the vehicle A/B, all on 2026-07-30 between 08:54 and 10:09 &mdash; before launches were blocked at 10:53. Then: <br>&bull; <b>The thirteen non-empty airfield arms all measured the SAME binary</b> (fingerprint <code>79360fdb565e</code>) &mdash; and that binary <b>is not an ancestor of this branch at all</b>; it was built in a different lane. Their manifests nonetheless name <b>five different commits</b> between them (<code>7f9b857d</code>, <code>ccb713ae</code>, <code>5c04048c</code>, <code>70aea8c1</code>, …), because the field recorded the moving worktree head rather than the binary. <b>None of that binary’s arms contains <code>3ab322a0</code>, so nothing on disk exercises the concrete change.</b> <br>&bull; <b>The twenty-seven vehicle A/B manifests carry no binary provenance field at all</b> &mdash; they predate the repair that added one &mdash; and they name a worktree commit that <b>precedes <code>ccb713ae</code></b>, the follow-up that lights every vehicle leaf rather than one. <b>Which binary they measured can no longer be established.</b> <br>&bull; <b>Two manifests are zero bytes</b> (decision 3 in &sect;20e). <br>This is the capture-provenance defect of &sect;20c happening to this session’s own evidence, caught by the ratchet that same session shipped."
+    },
+    {
+     "type": "what",
+     "html": "This section is <b>additive</b>. It covers 2026-07-29/30 and does not rewrite anything in &sect;0&ndash;&sect;19 above, which you have already graded. Where this session <i>corrected</i> an earlier claim, the correction is stated here and the old wording is left in place deliberately &mdash; so you can see what changed rather than finding the page silently edited under you. One side effect worth knowing: publishing this section regenerated the whole page from its source manifest, so a handful of cells in &sect;11 and &sect;14 now show newer text and newer gate defaults that a previous lane had already written into the manifest but never rendered. Those are corrections, not edits made here. <b style=\"color:#f0d890\">This section is anchored to commit <code>886dd319</code> (2026-07-30 12:36), and lanes were still landing while it was written</b> &mdash; several commits arrived mid-draft and changed two of its conclusions, which are marked where they occur. If a gate default in this prose ever disagrees with a gate table elsewhere on the page, <b>trust the table</b>: tables are read from source at render time; prose is not. <b>Labels used below:</b> <b style=\"color:#a0f0a0\">DELIVERED</b> = in the default build &middot; <b style=\"color:#f0a0a0\">NOT DELIVERED</b> = not in the default build &middot; <b style=\"color:#f0d890\">UNVERIFIED</b> = shipped or claimed but never seen working &middot; <b style=\"color:#78b0f0\">OPEN</b> = still an open defect &middot; <b style=\"color:#c0a0f0\">RETRACTED</b> = a previous claim withdrawn."
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Question"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Answer"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Does the game look different if I launch and change nothing?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two surfaces changed, across six commits.</b> Concrete transition tiles now take the terrain concrete's texture and lighting instead of the overlay's double-fogged version; ground vehicles now receive lighting at all, instead of drawing at raw albedo. Both are <b style=\"color:#f0d890\">UNVERIFIED</b>."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Are any of my four complaints closed?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>None of them.</b> One has a shipped cure nobody has looked at (concrete tone). One has a shipped cure whose mechanism is proven and whose pixels are not (vehicles). One is measured as <i>unreachable</i> by the lever that was tried (runway colour). One had its newest proposed cure falsified before anyone built it (water staircase)."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>What did the session actually spend itself on?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Finding out the instruments were lying.</b> Six separate measuring tools were shown to return confident readings while structurally blind. That is the session's real product &mdash; and it weakens earlier evidence, including two claims on this page."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Is anything worse?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>3ab322a0</code> <b>widens</b> the separate mc2_03 “terrain outside the pads is near-black” contrast. That is disclosed in its own gate documentation, not discovered afterwards."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Is the release affected?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The shipped v0.5.2 zips contain <b>zero</b> <code>.beauty</code> sidecars &mdash; verified two ways. A default-ON water feature silently degrades to a no-op without them. Gates now stop it recurring; <b>the release has not been re-cut</b>."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>The DEFAULT-LAUNCH REALITY note at the top of this page is still accurate &mdash; I checked every gate it names.</b> It briefly stopped being true: <code>3ab322a0</code> flipped <code>MC2_PAVED_OVERLAY_CLASS</code> to default-ON, which would have contradicted that note. <code>2ade84a8</code> reverted it hours later. All seven gates that note names (<code>MC2_PAVED_OVERLAY_CLASS</code>, <code>MC2_STATIC_PROP_FIXTURE_GLOW</code>, <code>MC2_PROP_BASE_LIGHT_DIR</code>, <code>MC2_SSAO</code>, <code>MC2_PROP_SHADOW_RECEIVE</code>, <code>MC2_LIGHT_REALISM</code>, <code>MC2_CONE_SPILL_COUPLING</code>) verify as <b>OFF</b> against the registry as I write this. The gate <i>tables</i> throughout this page read their defaults from source at render time, so they cannot drift; only hand-written prose can, and this is the sentence to re-check first if anything moves again."
+    },
+    {
+     "type": "h3",
+     "html": "20a. Your four complaints &mdash; honest status"
+    },
+    {
+     "type": "what",
+     "html": "One row per complaint. <b>&ldquo;Delivered&rdquo; means the code is in the default build</b>, not that anyone has seen it work. Where a cure ships unverified that is said in the same cell, not in a footnote."
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Complaint"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Status"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What actually happened"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Commits / gate"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>1. Concrete tone &amp; transition tiles</b><br><span style='color:#9aa3ad'>&ldquo;the transition tiles should just use the same concrete texture&rdquo;</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">DELIVERED</b><br><b style=\"color:#f0d890\">UNVERIFIED</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Root cause found and cured.</b> Eleven earlier lanes attacked the cement <i>atlas</i> and none of them could move it, because the defect was never in the atlas. The overlay layer and the terrain chunk layer disagree on <b>four</b> terms over one physical surface, and the missed one is <b>fog</b>: <code>terrain_overlay.frag</code> carries its own in-shader distance fog toward <code>(0.58,0.65,0.75)</code> clamped at 0.70, <code>terrain_lod_chunk.frag</code> has none, and <i>both</i> layers then receive the shared screen-space <code>edge_fog</code>/<code>fog_oob</code>. The overlay is <b>double-fogged</b>, so the two paths diverge with camera distance. Two pieces of the previous lane's own unexplained data prove it: the seam step <b>grows with distance</b> (<code>runway_ground</code> &minus;4.95&nbsp;L, <code>runway_mid</code> &minus;16.93&nbsp;L, <code>runway_overview</code> &minus;14.81&nbsp;L &mdash; only a distance-dependent term can do that), and the overlay pixels are <b>blue-dominant</b> (RenderDoc eid 3678 wrote <code>[0.301,0.3083,0.3623]</code>) which its own <i>warm</i> <code>vec3(0.82,0.80,0.76)</code> tint cannot produce &mdash; but the fog colour can. <br><br><b>The cure respects your two rulings.</b> Genuine concrete transition tiles adopt the cement atlas albedo and flat light; tiles carrying <i>authored road or runway art</i> keep their albedo and only get their lighting reconciled &mdash; repainting those would be the albedo swap you rejected twice as &ldquo;WAY worse&rdquo;. Anything the classifier is unsure about is left entirely alone. The authored marching-squares transition <i>shape</i> is untouched; only the colour inside it moves.<br><br><b style='color:#f0a0a0'>&#9888; IT SHIPPED WITH A HOLE, AND THE HOLE WAS THE THING YOU REJECTED TWICE.</b> Two follow-up lanes landed the same day and corrected it three ways. <b>(1) The art guard was wrong twice.</b> The &ldquo;do not repaint this&rdquo; mark was first stamped only for 9 of the 17 overlay ids &mdash; so a dirt track running onto an apron, or a bridge deck meeting a paved pad, was classified as bare concrete and <b>had its hand-placed art overpainted with plain concrete</b>. Widening it to <i>any</i> overlay id was still not enough: <b>mc2_10's roads and its airbase runway carry no overlay id at all</b> &mdash; they are authored as cement-alpha transition art over snow &mdash; so they were still being repainted, <b>measured at +46.8&nbsp;L across 23.0% of the mc2_10 runway frame</b>. <i>That is the albedo swap you rejected twice, arriving through a scoping hole rather than through the gate that owns it.</i> The guard is now the <b>presence of authored art of either kind</b>, and only a cement tile with no authored art at all is repainted. <b>(2) The &ldquo;identical UV math&rdquo; claim was not true.</b> The terrain shader insets its atlas sample by half a texel; the adopt path omitted it, so within half a texel of every 128&nbsp;wu tile border the adopted sample reached into the <i>neighbouring</i> atlas cell &mdash; <b>laying a thin wrong-coloured fringe along exactly the borders the change exists to make seamless</b>. Same artifact class as the &ldquo;weird coloured edge&rdquo; you reported; it would have traded one edge for another. <b>(3)</b> The killswitch was not clean &mdash; it still touched a texture unit when off. <br><br><b style=\"color:#f0d890\">UNVERIFIED</b> <b>&mdash; no before/after frame exists.</b> Captures were taken that day, but I checked their manifests: every one measured a binary that does not contain any of these commits. <b>Nothing on disk exercises it.</b> <b>And it knowingly makes one thing worse</b>: its own gate doc records that it <b>widens</b> the separate mc2_03 &ldquo;terrain outside the pads is near-black&rdquo; contrast, because concrete becomes more uniformly flat-lit while surrounding terrain keeps <code>mix(0.35,1.20,diffuse)</code> with diffuse clamped at 0.02."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>3ab322a0</code> original<br><code>2ade84a8</code> art guard + seam parity<br><code>3ab33aee</code> clean killswitch<br><code>886dd319</code> guard widened again<br><code>8ba5817e</code> attribution counter<br><code>MC2_OVERLAY_CEMENT_ADOPT</code> <b>default-ON</b><br><span style='color:#9aa3ad'>revert: set to 0 &rarr; byte-identical stock</span>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>2. Runway colour</b><br><span style='color:#9aa3ad'>&ldquo;all of the runways should be the same color&hellip; like in mc2_01&rdquo;</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0a0a0\">NOT DELIVERED</b><br><b style=\"color:#78b0f0\">OPEN</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Not solved, and the reason is arithmetic rather than effort.</b> At <i>your</i> pose &mdash; <code>mc2_10 saved_204937</code>, which is <b>night</b>, not dusk &mdash; the apron slabs read mean luma <b>90.43</b> and the runway <b>66.51</b>: a gap of <b>+23.92&nbsp;L</b> between two surfaces both sitting in the L~66&ndash;90 range. Driving the flat-lighting lever <code>MC2_CEMENT_LIT</code> to maximum strength moves the apron down to 84.63 and closes the gap only to <b>+18.12</b> &mdash; <b>24% of it</b> &mdash; and then stalls. <b>The runway value is bit-identical (61.56 / 71.46) across all four arms.</b> That is direct empirical proof the lighting lever cannot reach overlay pavement at all. <br><br>The direction even <b>reverses by time of day</b>: on mc2_24 in daylight the same gate <i>widens</i> the concrete-vs-road gap from +16.38 to +17.71, because <code>normalLight = mix(0.35,1.20,diffuse)</code> exceeds 1.0 on well-lit surfaces so cement brightens. A lever whose sign depends on time of day is not a uniformity fix. <br><br><b>What is left is an albedo change</b> &mdash; and that is exactly the class of change you have rejected twice. <b>Nobody has designed a third approach.</b> <br><br><b style='color:#f0a0a0'>&#9888; AND THE ONE LEVER THAT DID FLIP ON WAS FLIPPED BACK OFF THE SAME DAY.</b> The classification gate <code>MC2_PAVED_OVERLAY_CLASS</code> was promoted to default-ON as &ldquo;the lever for <i>all of the runways should be the same color</i>&rdquo; &mdash; and then reverted, because a <i>previous</i> lane had <b>already measured that mode at your own night poses</b> and found it made things worse: <b>max delta 20&ndash;29/255 and 9.2&ndash;21.7% hard-step pixels &mdash; &ldquo;it ADDS hard-edged outlines rather than removing them&rdquo;</b>. The promotion flipped a gate whose own retraction was already sitting on disk. It is <b>default-OFF again</b>, which is what the top of this page already says. <br>(The underlying classification finding still stands: at your pose the runway is <b>100% unclassified</b> &mdash; zero cement classification, pure colormap.) <br><br><b>Net for this complaint: nothing shipped, and nothing is queued.</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>MC2_CEMENT_LIT</code> &mdash; <b>stays 0.0</b><br><code>MC2_PAVED_OVERLAY_CLASS</code> &mdash; flipped ON by <code>3ab322a0</code>, <b>reverted to OFF by <code>2ade84a8</code></b><br><span style='color:#9aa3ad'>albedo arm = mode 2, deliberately still opt-in</span>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>3. Vehicles not on the same lighting path</b><br><span style='color:#9aa3ad'>&ldquo;that is just wrong&hellip; it is the lighting path&rdquo;</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">DELIVERED</b><br><b style=\"color:#f0d890\">UNVERIFIED</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>You were right, and here is the mechanism.</b> Every other object class populates its per-object light row via <code>CacheGpuLightData()</code> before drawing &mdash; mechs (<code>mech3d.cpp:5614</code>), buildings (<code>bdactor.cpp:3144/:3181/:4821</code>), trees (<code>:6566</code>), generic props (<code>genactor.cpp:1256</code>). <b><code>GVAppearance</code> called neither that nor the batcher</b>, yet renders unconditionally through the legacy <code>TG_Shape::Render</code> path, which consumes <code>lightData_</code> (<code>tgl.cpp:3508</code>) <b>with no gather and no eligibility guard</b>. The chain, each link cited to a committed blob: <code>numLights_</code> zero-inits (<code>tgl.h:339</code>) &rarr; <code>addLightDataStructure</code> is pure dedup/append with <b>no back-fill</b>, so the all-zero row is stored verbatim (<code>txmmgr.cpp:1929-1988</code>) &rarr; <code>calc_light</code> takes its <code>numLights.x==0</code> early return and returns <b><code>vec3(1,1,1)</code></b>, discarding even the per-vertex <code>base_light</code> (<code>lighting.hglsl:232-236</code>) &rarr; the fragment shader multiplies by it. <b>Vehicles drew at raw albedo &times; 1.0 &mdash; completely unlit, day and night.</b> Buildings reach that same legacy path only as a fallback they normally never take, so <b>vehicles were the only class actually exercising an ungathered row</b>. <br><br>This also settles the old &ldquo;trucks are just darker textures&rdquo; thread: the albedo measurement was <i>right</i> (<code>trucksprop.tga</code> masked luminance 85.9 vs a 787-texture corpus median of 86.2 &mdash; 49th percentile, dead average) and the albedo <i>theory</i> was wrong. Mechs and buildings get ambient + sun&times;ndl, which exceeds 1.0 in daylight, so a median-brightness texture at &times;1.0 still looks dark parked beside one. <b style=\"color:#c0a0f0\">RETRACTED</b> in <code>fc43338a</code>. <br><br><b>The follow-up matters.</b> The first commit lit exactly <b>one leaf per vehicle</b>, because <code>CacheGpuLightData()</code> populates only <code>firstShapeNodeLeaf</code> (correct for the batcher, which broadcasts it; wrong for the legacy path, where <code>TG_MultiShape::Render</code> loops every leaf and each submits its own row). <code>ccb713ae</code> gathers for all leaves. <br><br><b style=\"color:#f0d890\">UNVERIFIED</b> <b>&mdash; mechanism proven, pixels not.</b> <code>MC2_LIGHT_ROW_CENSUS</code> fires with the gate on and is completely silent with <code>MC2_VEHICLE_LIT_PATH=0</code> on both missions (mc2_03 day: AMBIENT seen=5000, INFINITE 4998; mc2_10 night: POINT 151385, SPOT 13232, AMBIENT 10601) &mdash; so vehicles demonstrably went from no light row to real gathered rows. But at every pose that is byte-stable within a single arm, ON and OFF are <b>byte-identical</b>; and the poses that <i>do</i> differ between arms also <b>drift within a single arm</b>. Earlier &ldquo;+14.8 / +18.8 luma brighter&rdquo; readings are <b style=\"color:#c0a0f0\">RETRACTED</b> &mdash; the changed pixels were a turret barrel at a different aim angle and building windows at a different animation phase. <b>Vehicles are movers, so byte-diff A/B is structurally unable to evaluate exactly the objects this changes.</b> A mover-freeze fixture is the prerequisite, and it does not exist. <b>One more gap I measured directly:</b> the 27 A/B manifests on disk carry <b>no binary-provenance field at all</b> and name a worktree commit that <i>precedes</i> <code>ccb713ae</code> &mdash; so even the all-leaves follow-up, the half that actually lights the whole vehicle, has no capture attributable to it."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>5c04048c</code> <code>ccb713ae</code><br><code>MC2_VEHICLE_LIT_PATH</code> (default-ON)<br><code>MC2_LEGACY_LIT_MC2_FRAME</code> &rarr; ON<br><code>MC2_LIGHT_POS_COLUMN_FIX</code> &rarr; ON<br><span style='color:#9aa3ad'>the latter two are correctness requirements of the first, not optional extras &mdash; do not demote them as inert</span>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>4. Water shoreline staircase</b><br><span style='color:#9aa3ad'>mc2_17</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0a0a0\">NOT DELIVERED</b><br><b style=\"color:#78b0f0\">OPEN</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>The cause is understood as a class, both previous cures were rejected by you, and the newest proposed cure was falsified before anyone built it.</b> A B-spline-residual design was written to be one-sided-safe (it can only add water, never delete it, so it can fill notches but never shave a seaward tongue). An offline falsification lane ran it over the <b>shipping</b> heightfields &mdash; no engine, no build &mdash; and returned <b>NO-GO</b> against the design's own decision rule (&ldquo;abandon if median reach is under ~40 wu&rdquo;): mc2_17 comes in at <b>5.1 wu</b>, roughly <b>1/20th</b> of the threshold and 1/20th of a 128 wu tile riser. The budget <code>C = k&middot;alphaDepth/2</code> is 5&ndash;10 wu, shore slope is 0.12&ndash;0.35, so the contour can move ~5&ndash;36 wu. <i>&ldquo;You cannot move a contour 128 wu with a 5 wu budget on a 0.12 slope.&rdquo;</i> <br><br><b>And a larger result: mc2_17's waterline is not stair-stepped in the shipping heightfield at all.</b> Staircase index 0.260 against an isotropic-curve floor of 0.222 &mdash; within noise of a smooth curve. <b>mc2_10</b> scores <b>0.737</b> and <i>is</i> a textbook tile-locked staircase. <b>The mechanism every shoreline design has been written for is on a different map from the complaint.</b> <br><br>This is the <b>third</b> shoreline mechanism to die on the same structural point, and the pattern is now named: <b>any knob whose budget is specified in elevation units inherits 1/|grad| and will be weakest on flat shelves</b> &mdash; which is exactly where the defect is worst. A cure has to be specified in <i>horizontal distance</i>. <br><br><b>Next lead, untested:</b> terrain <b>LOD decimation</b> at gameplay altitude &mdash; if shore blocks render at <code>lodStep&gt;1</code> the land/water edge would step at 256/512 wu granularity, which would look exactly like the complaint and is invisible to full-resolution heightfield analysis."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>95ffdb9b</code><br><span style='color:#9aa3ad'>no gate &mdash; nothing was implemented, deliberately</span>"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>Method note worth keeping.</b> The shoreline lane nearly graded the wrong terrain: <code>tools/terrain_beautify/mission_terrain_analyzer.py:450</code> defaults its <code>--missions-dir</code> to <code>A:/Games/Carver5-feasibility/data/missions</code>, and four other tools plus three test files hard-code the same path as &ldquo;stock mission data&rdquo;. <b>It is not what the engine loads</b> &mdash; all four maps differ there. The lane extracted the paks out of the deployed <code>mission.fst</code> instead. In its own words: <i>&ldquo;Had I taken the brief at its word and used the analyzer’s default, this report would be a confident go/no-go computed on the wrong terrain.&rdquo;</i>"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "items": [
+      {
+       "caption": "<b>mc2_17 intro view</b> &mdash; the map the complaint is about. Blue lines are the 128&nbsp;wu terrain tile lattice. The stock waterline (black) is a smooth sinuous curve that <b>ignores the lattice</b>. The proposed cure (orange) is glued to it. Staircase index 0.260 vs an isotropic floor of 0.222.",
+       "src": "20_session_0730/shoreline_mc2_17_intro.png"
+      },
+      {
+       "caption": "<b>mc2_10 map centre</b> &mdash; the contrast case. The dotted line (the real drawn silhouette) <b>is</b> a right-angle staircase on the tile grid. This is what every shoreline design describes &mdash; and it is on the wrong map.",
+       "src": "20_session_0730/shoreline_mc2_10_center.png"
+      }
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>Why the vehicle change could not be graded, in two pictures.</b> These are the A/B crops that were <i>almost</i> reported as a lighting win. They are not one. Both pairs differ because the scene moved between runs, not because the gate did anything &mdash; and the same poses drift the same way <b>within a single arm</b>. This is what it means that vehicles are movers: byte-diff A/B is structurally unable to evaluate exactly the objects this change touches."
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "items": [
+      {
+       "caption": "<b>mc2_10 south-west</b> &mdash; the difference is the <b>building window animation phase</b> (which lit strip is on) and the turret aim. Not lighting.",
+       "src": "20_session_0730/vehicle_ab_window_phase.png"
+      },
+      {
+       "caption": "<b>mc2_03 close</b> &mdash; the difference is <b>a turret barrel at a different aim angle</b>. The earlier “+14.8 / +18.8 luma brighter” readings came from pixels like these and are withdrawn.",
+       "src": "20_session_0730/vehicle_ab_turret_aim.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "20b. Trees, black quads, sunk turrets"
+    },
+    {
+     "type": "what",
+     "html": "Three defects that were <b>not</b> fixed. One had a false closure removed; two are still uncaused. The useful part of all three is the same discovery: <b>the tests that were supposed to cover them cannot reach them.</b>"
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Defect"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Status"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What is now known"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Trees</b><br><span style='color:#9aa3ad'>tree silhouettes on the terrain</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#c0a0f0\">RETRACTED</b><br><b style=\"color:#78b0f0\">OPEN</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>A previous session closed this as &ldquo;CLOSED, NO DEFECT &mdash; the silhouettes are baked colormap art from <code>burnInShadows</code>&rdquo;. That closure is now refuted, not merely unsupported</b> &mdash; and it left no artifact on disk anywhere, so there was nothing to re-read. <br><br><b>Refuted at source:</b> <code>burnInShadows</code> (<code>mclib/terrtxm2.cpp:609</code>) builds a height map, ray-marches shadows through <i>that</i>, and modulates the colormap. <b>It never touches an object list, an appearance, a <code>TG_Shape</code>, or any prop or tree structure.</b> It cannot produce a tree-shaped silhouette. <br><b>Refuted in the texels.</b> The mission's own object list was parsed out of the shipping archive: <b>2560 objects &mdash; 2088 TREE</b>, 241 terrain objects, 219 buildings, 11 turrets, 1 gate. Every one of the <b>2088</b> tree positions was tested for a core-vs-ring darkening against the deployed colormap under <b>all 8 orientations</b> (4 rotations &times; optional mirror), so no orientation choice could rescue the claim. <b>Every reading is within 1.5&sigma; and inside the spread of the random control points; <code>p(core darker)</code> never exceeds 0.541 &mdash; a coin flip.</b> The statistic is strong enough to exclude any silhouette of depth &ge;20 luminance on more than ~2.4% of the trees. <br>A structural backstop makes it moot anyway: the stock burn-in is 1280&sup2; over 12800 world units &mdash; <b>10 world units per pixel</b> &mdash; and a tree card is 2&ndash;4 pixels. A recognisable tree silhouette cannot come from that texture at any resolution in the chain. <br><br><b>The real finding, and it is structural.</b> <code>TreeAppearance::update</code> writes the terrain light sample into <b>slot 1, the AMBIENT light</b> (<code>bdactor.cpp:6924</code>) and then <b>deactivates the sun outright</b> &mdash; <code>light-&gt;active = false</code> at <code>:6938</code>, restored only at <code>:7054</code>, with the static light bake at <code>:7039</code> sitting <i>inside</i> that window. <code>GatherLightsParameters</code> skips inactive lights (<code>txmmgr.cpp:2488</code>), so <b>a tree's light row contains one AMBIENT entry and no INFINITE entry at all</b>. The shader's sun scan (<code>static_prop.vert:715-728</code>) therefore never finds one and <code>sunColor</code> stays <code>vec3(0.0)</code>, which makes the load-bearing line <code>lit = (seed + ambientTerm) * propDirFactor + <b>sunColor * ndl</b></code> (<code>:823</code>) carry a term that is <b>identically zero for every tree</b>. <br><b>Buildings do the opposite</b> &mdash; they write to slot 0 and leave the sun active (<code>bdactor.cpp:3856</code>). <br><b>Consequence:</b> <code>MC2_PROP_FOLIAGE_ALPHAFLAG</code>, which only changes how <code>ndl</code> is computed, is a <b>guaranteed no-op for trees on a default launch</b> &mdash; it is multiplied by zero. <br><br><b>This is not a port regression.</b> Both lines are present in the first commit of the imported Microsoft source. <b>Trees have always been ambient-only.</b> What changed is the <i>consumer</i>: <code>static_prop.vert</code> has no ambient floor and no protective early return, unlike <code>calc_light</code>, which returns <code>vec3(1)</code> when a row is empty. <br><br><b>Nothing shipped.</b> <code>03519ea1</code> is one file, +402 lines of markdown, no code, no gate, no build, no launch. Seven discriminating A/B tests are specified and <b>none were run</b>, because launches are blocked. And the lane says the honest thing: <i>&ldquo;I never saw the user's frame&hellip; the single highest-value next step is asking the user which frame.&rdquo;</i>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Black quads</b><br><span style='color:#9aa3ad'>mc2_03 airfield / control tower</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0a0a0\">UNCAUSED</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>The defect, stated precisely for the first time:</b> on <code>BTurretControl</code> and <code>LiaoTurretGenerator</code> the window and vent panels render as <b>solid pure-black quads (RGB 0,0,0) with a dithered 1-bit-alpha fringe</b>, while the same window bands on <code>LiaoHeavyGateControl</code>, the Barracks and the Quonsets render correctly. <b>So a pose that frames only the latter grades nothing</b> &mdash; which is exactly what earlier work did. The previous pose set sat inside the same walled compound but at altitude 650, where it framed the perimeter wall and the Quonset row and the defect is simply not in shot. <br><br><b>One cause is ruled out:</b> the far-backdrop path is <b>not</b> it &mdash; across six poses there were no black quads to fix. (Those six poses were the wrong frame, which is itself the finding.) <br><b>Nothing is ruled in.</b> <b style=\"color:#f0a0a0\">UNCAUSED</b>."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Sunk turrets</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0a0a0\">UNCAUSED</b><br><b style=\"color:#f0d890\">UNVERIFIED</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Uncaused, and worse &mdash; barely described.</b> The defect survives on disk as a two-word phrase in a session ledger and a single pose-coverage tag (<code>turret_ground_seating</code>). <b>There is no prose anywhere saying what &ldquo;sunk&rdquo; means concretely</b> &mdash; how far, which turrets, or a screenshot. <b style=\"color:#f0d890\">UNVERIFIED</b> as a defect description, not just as a fix. <br>A related live observation was recorded earlier and left open: turret animation is gated at <code>bdactor.cpp:3326</code>, and frozen turrets were seen at a night pose but never reproduced."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0d890\">&#9888; THE KEY INSIGHT, and it applies to both of the uncaused defects.</b> The live lead is <code>BldgAppearance::setGesture</code> (<code>mclib/bdactor.cpp:1829-1848</code>): an idle building that is registered as a static prop has its <b>static registration invalidated on its first gesture</b>, because the GPU registry is holding a stale static-pose recipe. It fires <b>at most once per building, ever</b> &mdash; <code>bdAnimationState</code> never returns to idle, there is no reset path. <b>No test that has ever run reaches that line.</b> The only entry point is <code>Building::updateAnimations()</code>, whose ~17 gesture calls all sit inside gameplay state switches &mdash; sensor-tower contact counts, gate open/close cycles, damage and destruction. The smoke tier is five stock missions, 30 seconds each, <b>idle fly-throughs</b>: no AI engagement, no weapon fire, no gate traversal, so <b>no building ever leaves the idle state</b> and the counter stays zero. This was <b>designed in and disclosed from the start</b> &mdash; the 2026-06-03 implementation plan says the path would be <i>&ldquo;code-reviewed but not runtime-exercised&rdquo;</i> and told reviewers not to block on it. <b>A fixture that fires a building gesture is the prerequisite for testing this defect class at all.</b> It does not exist."
+    },
+    {
+     "type": "note",
+     "html": "<b>Two honesty notes on the evidence behind the paragraph above.</b> <b>(1)</b> Seventeen capture arms were run against the airfield (<code>scratch/mc203air/</code>, 6 poses each at 4K) and <b>produced no written verdict of any kind</b> &mdash; no status document exists for that lane in any worktree. <b>(2)</b> The anim-gate A/B arm was run <b>without its own instrument switched on</b>: the <code>[ANIM_GATE v1]</code> counter is emitted through a diagnostic macro that is invisible unless a verbosity variable is set, and that variable is in no arm’s environment. Grepping all seventeen capture logs for it returns <b>zero hits</b>. So <b>&ldquo;the path was never exercised&rdquo; rests on reading the source, not on a measured zero.</b> Stated as <b style=\"color:#f0d890\">UNVERIFIED</b> rather than asserted."
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "items": [
+      {
+       "caption": "<b>The tree-silhouette test.</b> The densest tree window on mc2_03 (1600&times;1600 world units, <b>191 trees</b>), cropped 1:1 from the deployed colormap with every tree position ringed in red. The texels are a smooth natural rock/grass/snow blend: <b>nothing repeats at tree cadence and there is no discrete dark blob under any marker.</b>",
+       "src": "20_session_0730/trees_positions_marked.png"
+      },
+      {
+       "caption": "<b>The same crop, unannotated</b> &mdash; the control. This is what is actually baked into the terrain colormap where 191 trees stand.",
+       "src": "20_session_0730/trees_colormap_raw.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "20c. The instruments lied again &mdash; six new ones"
+    },
+    {
+     "type": "what",
+     "html": "This is the session’s real product. The <a href=\"#instruments\">Instruments that lied</a> section above lists eleven from the previous session; <b>none of these six duplicates one of those</b>. The shape is identical every time: a tool returns a confident, passing, authoritative-looking reading <b>while it is structurally incapable of seeing the thing it names</b>. Each one invalidates evidence that was already spent and, in two cases, evidence still sitting on this page."
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Instrument"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What it reported"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What was actually true"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Fix"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Capture manifests</b><br><code>identity.git.commit</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Every capture manifest carried a commit sha and <code>\"dirty\": false</code> side by side, reading as authoritative provenance for the measured binary."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The field was <code>git rev-parse HEAD</code> of <b>the worktree the tool ran from</b>, not the commit compiled into the exe it measured. Of <b>404</b> manifests on this machine, only <b>31</b> are checkable (recorded exe still exists byte-identical) &mdash; and <b>28 of those 31 name a commit their binary was never built from</b>. 23 of 31 also disagree on branch, 11 on dirty. Across two scratch trees, <b>seven distinct commit values over 23 arms</b> all describe <i>one</i> binary, built from a branch and commit that appear in no manifest at all. Worked example from the commit: a reader of <code>04_animstatic</code> would conclude it exercised <code>3ab322a0</code> &mdash; <i>that code was never in the binary</i>. <b>338 manifests are permanently unverifiable</b> (exe rebuilt or deleted), <b>including every golden under <code>tests/visual/baselines</code></b>."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>e81d7930</code> &mdash; new <code>scripts/exe_fingerprint.py</code> reads the binary’s own <code>.rdata</code> stamp out of its bytes. Manifests now emit <code>binary_provenance</code> <b>first</b>, keep the worktree head separately and explicitly marked <code>describes_binary: false</code>, and <b>validation now fails</b> a manifest lacking it. New ratchet <code>check-capture-provenance.py</code> registered in contracts. 21 of the 28 were backfilled; 2 left FAIL as zero-byte."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b><code>MC2_SHADOW_ENABLE</code></b><br>registry vs readers"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The feature registry declares it <b>default-OFF</b> (<code>RendererFeatureRegistry.h:309</code>, doc string <i>&ldquo;Opt-in MC2_SHADOW_ENABLE=1&rdquo;</i>), and <code>docs/tier1_env_vars.md:48</code> repeats it."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Both GL readers implement default-ON.</b> <code>gos_static_prop_batcher.cpp:8647-8649</code> and <code>gos_mech_batcher.cpp:1112-1114</code> use the byte-identical opt-<i>out</i> idiom <code>!(v != nullptr &amp;&amp; v[0] == '0')</code> &mdash; unset means ON; only a literal leading <code>'0'</code> disables it. A third reader, the Vulkan one (<code>vulkan_post_screenfx_native.cpp:760</code>), implements default-<b>OFF</b>. <b>Anyone who graded a shadow A/B off the registry graded the wrong arm.</b> Three readers, two behaviours, one published default."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Recorded, not fixed.</b> <code>03519ea1</code> flags it and explicitly scopes the repair out: <i>&ldquo;That inconsistency deserves its own hygiene fix and is out of scope here.&rdquo;</i> <b style=\"color:#78b0f0\">OPEN</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b><code>submit_trees</code></b><br>batcher counter"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Zero trees submitted &mdash; read by multiple lanes as evidence that trees were not on the static-prop path."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>0 is the healthy reading and is evidence of nothing.</b> The counter increments only on the dynamic <code>submitMultiShape</code> path (<code>gos_static_prop_batcher.cpp:5613</code>). Registered actors replay every frame through <code>submitCachedInstance</code> (<code>:9516</code>), which <b>deliberately does not tick it</b> (<code>:9526</code>). In steady state essentially all static props are registry-replayed. The batcher’s own comment at <code>:9262</code> had already recorded the contradiction &mdash; <i>&ldquo;733 trees eligible, all via the store, dyn-submit=0&rdquo;</i> &mdash; and a correct explanation had existed since <b>2026-05-06</b> in <code>docs/superpowers/specs/2026-05-06-track-b-acceptance-envelope.md:46</code>. <b>Neither was consulted.</b> Second flaw: the counters tick <b>per actor, not per instance</b>, so volume inferences off them are invalid independently."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b style=\"color:#a0f0a0\">RETRACTED AND MERGED</b> &mdash; <code>9c71dff5</code>, merged to the branch as <code>b631efe6</code> while this section was being written. It withdraws the inference at three tracked documents, <b>including this review pack</b>: &sect;14’s FAR-BACKDROP-TEXTURED-LIGHT-1 row no longer cites <i>&ldquo;submit_trees=0 at this pose&rdquo;</i> as evidence and now states why the counter cannot carry it. <b>The row’s primary conclusion is unaffected</b> &mdash; it rests on an independent exaggeration test, and only the counter citation was void."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two contract rules</b><br><code>check-counter-honesty.py</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Both rules passed their own synthetic self-tests, green."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Both failed when ratchet-tested against the real code they were written to protect</b> &mdash; and they are <b>two different defects</b>, not one. <b>R1:</b> deleting the real <code>setRecipePopulation(Tree)</code> call left the check <b>GREEN</b>, because the explanatory <b>comment</b> above it contains the string. <i>&ldquo;A contract a COMMENT can satisfy protects nothing.&rdquo;</i> <b>R2:</b> stripping the real <code>sample=first%d</code> token out of <code>[TREE_DIAG]</code> left it <b>GREEN</b>, because the cap constant is named <code>kTreeDiagSample</code> &mdash; <b>an identifier satisfied a rule about output</b>. Tightening R2 exposed <b>7 more sites</b> declared only by an identifier."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>50b8343f</code> (COUNTER-HONESTY-1) &mdash; R1 strips comments before matching; R2 now searches concatenated string literals rather than raw source. <b style=\"color:#a0f0a0\">Merged to the branch as <code>42833715</code></b> while this section was being written. <b>The standard it produced is the durable part:</b> passing a fixture you wrote is not evidence that a guard guards anything &mdash; verification is self-test fixtures <b>plus</b> delete-the-real-call / strip-the-real-token runs that must go red at the real <code>file:line</code>. That standard was immediately applied in <code>check-capture-provenance.py</code> (a &ldquo;COMMENT TRAP&rdquo; self-test) and <code>check-beauty-sidecars.py</code>."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>A &ldquo;loud&rdquo; alarm</b><br><code>SPEW()</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "DISK-GUARD-2 shipped a fallback diagnostic announcing that the free-space figure being returned describes a <b>different volume</b> than the caller asked about."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>It compiled to <code>((void)0)</code>.</b> <code>GameOS/include/gameos.hpp:134-138</code> defines <code>SPEW(x)</code> as <code>InternalFunctionSpew x</code> only <code>#ifdef _ARMOR</code>; otherwise <code>((void)0)</code> at line <b>137</b>. <code>_ARMOR</code> is not defined in shipping builds, so the loud notice was <b>invisible in every shipping build</b>. The double-failure case also just <code>return 0;</code> silently."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>1a7a1c3c</code> (DISK-GUARD-3) &mdash; replaced with an unconditional <code>fprintf(stderr, \"[DISK_GUARD] …\")</code> + <code>fflush</code>. <b>It was only caught because DISK-GUARD-3 actually compiled DISK-GUARD-2’s code</b>; DISK-GUARD-2 shipped C++ that had never been built."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b><code>gos_GetDriveFreeSpace()</code></b><br><code>gameos.cpp:471</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "A free-space figure, used by <code>mechcmd2.cpp:977</code> (&lt;20&nbsp;MB) and <code>saveload.cpp:288</code> (&lt;5&nbsp;MB) to decide &ldquo;do I have room?&rdquo;"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two bugs.</b> It passed <code>NULL</code> instead of <code>Path</code> to <code>GetDiskFreeSpaceEx</code>, so it reported the <i>current</i> drive and silently ignored its argument. And it never checked the return value, so <b>on failure it returned an uninitialised value</b>. <b>That is the dangerous half:</b> a garbage-large value passes both thresholds, so <i>the &ldquo;do I have room&rdquo; check silently degraded to a no-op precisely when the query had failed</i>. The A: volume hit zero bytes <b>twice</b> this session."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>1f96a6fb</code> + <code>1a7a1c3c</code> &mdash; zero-init before the call, honour <code>Path</code>, fall back to the current drive on failure with a visible <code>[DISK_GUARD]</code> line, and return a conservative <b>0</b> if that fails too (0 takes the low-space branch in both callers)."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>The one that reaches back onto this page.</b> The capture-provenance defect means every manifest-attributed claim in &sect;0&ndash;&sect;19 is only as good as its binary, and <b>338 manifests can no longer be checked at all</b> &mdash; including every golden baseline. It does <b>not</b> invalidate the <i>images</i>, which were taken from real frames; it invalidates the <b>attribution</b> of those frames to particular commits. The <code>submit_trees</code> citation in &sect;14 was withdrawn in the source manifest while this section was being written, so that one is closed."
+    },
+    {
+     "type": "h3",
+     "html": "20d. Infrastructure &mdash; the machine you build on"
+    },
+    {
+     "type": "what",
+     "html": "None of this changes a pixel. All of it changes whether the <i>next</i> session can produce trustworthy evidence, and two items were actively destroying evidence before they were found."
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Item"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What was true"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "State now"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Disk</b><br><span style='color:#9aa3ad'>A: volume</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The A: volume hit <b>zero bytes free twice</b> this session. Once it silently truncated three status documents to <b>0 bytes</b> (recovered from a sibling worktree); once a lane wrote a <b>35&nbsp;GB test file to test its own disk-full guard</b>. An earlier zero-space event had already written 12 zero-byte PNGs and killed half of a capture matrix."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Reclaimed. Recorded as 7.2&nbsp;GB &rarr; 144.1&nbsp;GB free.</b> <b>I measured it myself just now: 142.8&nbsp;GB free of 838.3&nbsp;GB (83% used).</b> <br><b>Deleted:</b> stale deploy installs under <code>releases/</code> (<code>v0.5.0</code>, <code>shoreline-test</code>, <code>deferred-test</code>, <code>issuefix-test</code>, <code>invisveh-test</code>, <code>deferred2-test</code>, <code>0.5 testing</code>) and under <code>mc2-opengl/</code> (<code>iface-fbo-iso</code>, <code>decal-integrate-test</code>, <code>v0.5.0-repro</code>, <code>mechguard</code>); <b>48 dormant build dirs</b> (&gt;5&nbsp;days); <b>930 smoke runs</b> (&gt;14&nbsp;days); 4 superseded release archives; and a stray <b>7.0&nbsp;GB</b> install someone had put on <code>C:</code>. <br><b>Archived to E: (35.8&nbsp;GB, <code>E:/mc2-archive-2026-07-30</code>):</b> <code>release_assets</code> 0.5.1 / 0.3 / 0.2, VK captures, and this worktree's old <code>debug_state</code> / <code>scratch</code>. <br><b>Untouched deliberately:</b> all live installs, all goldens, all of 0.5.2, all worktrees, and <code>.git/lost-found</code>."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b><code>.git/lost-found</code></b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Holds <b>205 dangling commits</b> (counted) recovered by a live <code>fsck</code>, ~5.94&nbsp;GB. The reclaim plan originally classified it as <i>&ldquo;regenerable &mdash; gc debris&rdquo;</i> and carried a literal <code>rm -rf .git/lost-found</code> command."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Already repaired &mdash; and an earlier warning about it is now out of date.</b> The plan was patched about a minute after the problem was recorded: the row now reads <i>&ldquo;DO NOT DELETE: 5.94&nbsp;GB / 205 dangling commits&rdquo;</i>, the &ldquo;debris&rdquo; classification is reversed, and the command is commented out under <code># !! DO NOT RUN !!</code>. Nothing to do."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Deploy directories were one object wearing five names</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>deploy_payload.py:996</code> used <code>shutil.copyfile</code>, which opens the destination <code>\"wb\"</code> &mdash; it <b>truncates and rewrites the shared inode instead of replacing the directory entry</b>. So a deploy into one directory silently rewrote the others <i>in place</i>. A second writer, <code>deploy-mc2fx-tools.sh</code>, used <code>cp -f</code> with the same hazard. <br><b>Measured now, by inode identity:</b> the base <code>mc2-win64-v0.4d-rc1</code> holds <b>28,803 files and every single one has nlink&gt;1</b>; the union shared with the other four is <b>28,803 of 28,803 &mdash; 100%</b>. At the narrower <i>deploy-payload</i> scope the figure usually quoted is <b>1530 written artifacts</b>, four directories fully shared plus a fifth (<code>refbuild-cf97ed52</code>) partially at 751. <b style='color:#f0a0a0'>An earlier figure of &ldquo;1522 files&rdquo; is wrong</b> and appears in no script, doc or commit in either repo. <br><b>The sharpest part:</b> every lock, lease and registry check is <b>path-keyed</b> &mdash; <code>DEPLOY_ALLOWLIST</code>, <code>.mc2_deploy_lane.json</code>, <code>.smoke_leases.json</code>, <code>deploy_status()</code>, <code>deploy_lane_clash</code> &mdash; and a hardlink is precisely the case where two paths are one object. <i>There was no question anyone could ask that would have returned the true answer.</i> Worse, <code>v0.4d-rc1</code> is <b>on the allowlist</b>, so the tidiness guard was steering lanes <i>into</i> the shared group. Two evidence losses are attributed to this."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Guarded, not migrated.</b> LINK-GUARD-1 (<code>5c25b3bb</code>, <code>f73f821b</code>) adds <code>check-hardlink-isolation.py</code> and wires both writers to it: a <code>SHARED</code> verdict is <b>fatal and nothing is written</b>, and a guard that is missing or un-runnable is <b>also fatal</b> (fail-closed, explicitly rejecting fail-open). Loud bypass exists and is deliberately awkward. LINK-GUARD-2 (<code>7dfe6f27</code>, <code>09378c2d</code>) gives isolated deploys a validated default destination under <code>A:/Games/mc2-opengl/private/</code> (lane names are validated, not trusted &mdash; <code>../../</code> cannot escape) and <b>refuses the system drive</b>, which is how a 7&nbsp;GB install ended up on <code>C:</code>. <code>c00d0fe6</code> replaces inherited size estimates with measured ones: a full install is <b>12.26&nbsp;GB across 40,135 files</b>, of which only <b>~1,100 files / 0.4&ndash;0.64&nbsp;GB</b> are actually written &mdash; <b>96.7% saved by linking</b>. <b style='color:#f0a0a0'>The five directories are still shared. Migration is NOT done.</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>The shipped v0.5.2 release contains ZERO <code>.beauty</code> sidecars</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Verified two independent ways.</b> I read the release's own <code>release_install_manifest.csv</code>: <b>0 of 28,459 installed files</b> match <code>.beauty</code>, and <b>0</b> match <code>shoreline_mask</code>. Opening all seven zips gives the same answer: <b>28,645 entries, 0 <code>.beauty</code> files</b>. <br><b>Cause:</b> v0.5.2 was cut from the fresh lane <code>releases/mc2-win64-v0.5.1</code>, which had zero <code>.beauty</code> dirs because <code>deploy_payload.py</code> deliberately carries exe / shaders / manifest only and never walks <code>data/missions/*.beauty/</code>. The canonical dev lane <code>mc2-win64-v0.4</code> has <b>63</b> such files. <br><b>Why it matters and why nobody noticed:</b> <code>MC2_WATER_SHORE_MASK</code> is <b>default-ON</b> and degrades to a complete no-op when the sidecar is absent, and every loader <code>fopen()</code>s, misses, logs one line and carries on. <b>The failure is 100% silent at runtime.</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two new contract gates.</b> <code>65b5510d</code> + <code>b7e0d278</code> fail the build when a cooked sidecar never reaches a deploy tree &mdash; and derive the runtime filename set <b>from engine source with comments stripped</b>, so prose cannot satisfy the rule. The follow-up found a <b>second loader in the editor</b> (<code>editor/BeautySidecarPreview.cpp</code>), which matters because <i>Mission&nbsp;Editor.exe ships in the release</i> where its repo fallback does not exist &mdash; runtime set 6 &rarr; 8. <code>db5a597c</code> adds the harder check: <b>presence is not effectiveness</b>. A sidecar can install, load cleanly, carry no contour, and then <i>both</i> consuming gates report healthy &mdash; which is worse than absence, because an absent file at least logs a miss. It decodes the channels the shader actually consumes and fails on a constant signal. All four installed shoreline masks measured content-valid. <b>The release itself has not been re-cut.</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Game launches are hard-blocked</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "After repeated reports that agent-initiated launches steal the mouse, keyboard and focus, a <code>PreToolUse</code> hook now refuses any command naming the engine or its harnesses &mdash; 14 patterns including <code>mc2.exe</code>, <code>run_smoke.py</code>, <code>run_visual_capture.py</code>, <code>renderdoc_capture.py</code>. It matches on <b>command text, not process launches</b>, so it also blocks read-only static analysis that merely mentions those names &mdash; <b>that happened during the research for this page</b>."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two halves.</b> The soft half is <code>36f2f079</code> (07-29 14:16): a new chokepoint routes <b>all 20 launch sites</b> through forced windowed mode, a 640&times;480 window, no cursor grab, and no foreground activation. Its root-cause finding is worth keeping &mdash; <code>STARTUPINFO</code> alone was <b>never sufficient</b>, because it governs only the first <code>ShowWindow</code> call and SDL issues its own; that is why harnesses that set it still stole focus. Also: <code>MC2_WINDOWED</code> alone still opened an <code>options.cfg</code>-sized window &mdash; <b>observed at 1719&times;995 on a 1707&times;960 desktop</b>, windowed but indistinguishable from fullscreen. The hard half is the hook, added ~20 hours later. <b>Consequence for this page: no capture could be taken, so nothing here is verified visually.</b>"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#a0f0a0\">One genuinely good thing landed late, and it is the one that unblocks the rest.</b> A new gameplay driver (<code>3a7543f3</code>, <code>360b43c1</code>, <code>a599b41f</code>) gives an agent world verbs it never had: <code>list</code> every mover including enemies, <code>select</code>, <code>order move/attack/stop</code>, <code>spawn</code>, <code>teleport</code>, <code>camera_follow &lt;unit&gt;</code>, per-unit readback of <b>which draw path an object actually took</b>, and <code>time_of_day</code> / <code>sun_pitch</code> to move the sun at runtime. Before this, the only harness verbs were pause-menu clicks, debug views and screenshots, and <b>the only way to see night lighting was to pick a mission that ships as night</b>. <b>This is the prerequisite for two things this page repeatedly says are untestable</b>: making a building fire a gesture (the black-quad / sunk-turret path, &sect;20b) and pinning movers so a vehicle A/B can be graded (&sect;20a). It does not fix anything by itself, and nothing has been run through it yet."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">Three of these live only on disk.</b> <code>.claude/DISK-RECLAIM-PLAN.md</code>, the launch-block hook, and the settings file that wires it are all <b>untracked</b> in git. A clean checkout loses all three &mdash; including the record of what was deleted and archived."
+    },
+    {
+     "type": "h3",
+     "html": "20e. Decisions waiting on you &mdash; one pass, one list"
+    },
+    {
+     "type": "what",
+     "html": "Everything here is blocked on <b>a decision, not on work</b>. This list is deliberately complete for 2026-07-29/30 and is meant to be answerable in a single sitting. It does <b>not</b> repeat the five decisions in <a href=\"#open_gates\">Open user gates</a> at the top of the page &mdash; except where this session changed one of them, which is flagged as such."
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "#"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Decision"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "What you would be deciding"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Why it is yours"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "1"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Shoreline: what next?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The one-sided-safe B-spline design does <b>not</b> need approval any more &mdash; it was falsified offline before it was built (&sect;20a). The live question is whether to spend a lane on the <b>next lead: terrain LOD decimation</b>, which would step the land/water edge at 256/512 wu and is invisible to heightfield analysis."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Three shoreline mechanisms have now died on the same structural point, and two cures were rejected by you. Nobody should start a fourth without your say-so. <b>Also worth your eye:</b> the analysis says <b>mc2_17 is not stair-stepped at all</b> and <b>mc2_10 is</b> &mdash; so it is worth confirming which map you were looking at."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "2"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Runway colour: authorise a third approach?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Flat lighting is measured as unable to close the gap &mdash; the runway is <b>bit-identical across all four strength arms</b>. What is left is an albedo change, <b>the class of change you rejected twice as &ldquo;WAY worse&rdquo;</b>. Nobody has designed a third approach because nobody has been told to."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Only you can say whether a narrower, concrete-only albedo arm is worth building, or whether the runway gap is acceptable and the item should be closed."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "3"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two zero-byte capture manifests</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Delete or recapture <code>scratch/mc203air/21_late3600_rep/</code> and <code>scratch/mc203air/30_texhandoff/</code> manifests (both 0 bytes). <code>21_late3600_rep</code> has real output beside it and is worth recapturing; <code>30_texhandoff</code> holds only a log and produced nothing."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Recapture needs a game launch, which is now hard-blocked. Their zero-byte state is the signature of the disk-full events, so they are corrupt rather than merely absent."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "4"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Stamp 53 capture manifests as unknowable?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The new provenance ratchet reports <b>53 scanned, 0 FAIL, 53 WARN</b>, all one category: <code>UNVERIFIABLE-EXE-REPLACED</code> &mdash; the exe they measured has been rebuilt or overwritten, so the commit is no longer recoverable. Promote them to a permanent &ldquo;unknowable&rdquo; stamp, or leave them warning on every contracts run forever."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Correction to how this was framed earlier:</b> these are <b>not</b> &ldquo;53 tracked golden baselines&rdquo;. They are <b>53 capture manifests &mdash; 8 tracked, 45 untracked</b>. The actual tracked golden set is <b>79 files</b> under <code>tests/visual/goldens/</code>. Wider context: of <b>404</b> manifests on this machine only 31 were checkable at all, and <b>338 are permanently unverifiable</b>."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "5"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Promote or retire <code>v0.5.2-baseline-PROPOSED</code></b><br><span style='color:#9aa3ad'>updates decision 3 in the top section</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "It is now <b>representable as a state</b> (&ldquo;untracked, awaiting user decision&rdquo;) rather than passing a contract by accident, and it was un-tracked after being swept in by a stray <code>git add -A</code>. Files are intact on disk. The retirement case is written and recommends <b>not</b> promoting it."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The evidence against promoting has grown: <b>11 of 39</b> blessed regions are ones the next baseline <b>refused as run-to-run unstable</b> (floors up to 25.18%) &mdash; a verify against those is a coin flip on 28% of the set; one region is a <b>167-byte crop of exactly one colour (0,0,0)</b> in void night sky, registered <i>critical</i> and structurally unable to fail; it was blessed on a <b>single run</b> when three are now enforced; and both sets record the <b>same</b> exe path with <b>28 of 39 sha256s differing</b> &mdash; two different renders claiming one provenance string. <b>Coupled obligation:</b> whichever way you go, the legacy waiver entries in the coverage checker must be removed in the same change, or it fails."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "6"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Empty the Recycle Bin</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Measured now: 38.4&nbsp;GB across 143,630 files</b>, not emptied. It is the single largest remaining reclaimable object."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "It is the <b>one irreversible action</b> in the reclaim plan, so no agent will do it. (The plan quotes both 38.8&nbsp;GB and 39.7&nbsp;GB for the same object; my measurement is 38.4.)"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "7"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Which install is canonical?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Two separate ambiguities.</b> (a) Two on-disk trees are both named <code>0.4d-rc1</code> &mdash; one under <code>mc2-opengl/</code> and one under <code>mc2-opengl/releases/</code>, each with its own binary. (b) Which install is authoritative for recovering the golden sets' camera poses, which exist only inside deploy installs and are not version-controlled."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>releases/</code> is user-gated, so no tool may pick. The duplicate name is worse than a missing one because <b>nothing errors</b> &mdash; it is a loud warning on every contracts run and nothing more. Compounding it: <code>mc2-win64-v0.4d-rc1</code> is both <b>on the deploy allowlist</b> and the <b>base of the five-way hardlink group</b>. For reference, <code>mc2-win64-v0.4</code> is the tree the tooling treats as the canonical dev lane and the only one carrying a full 63-file beauty-sidecar set."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "8"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b style='color:#a0f0a0'>RESOLVED while this was written</b> &mdash; two retractions merged"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>9c71dff5</code> (withdraws the <code>submit_trees</code> inferences at three tracked documents, <b>including this review pack</b>) and <code>50b8343f</code> (the two contract-rule repairs) landed on the branch as <code>b631efe6</code> and <code>42833715</code>. <b>Nothing for you to do.</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Listed anyway so the record is complete: this item was open when the section was started and closed before it was published."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "9"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Re-cut v0.5.2 with beauty sidecars?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The shipped release contains <b>zero</b> <code>.beauty</code> sidecars (&sect;20d). Gates now prevent it recurring, but <b>the release itself has not been re-cut</b>."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Re-cutting is a release action, and the top section's &ldquo;tag, push, upload&rdquo; decision is still open too &mdash; these should be answered together."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "10"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Terrain floor rework: which branch survives?</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Two branches exist, neither merged. The cleaned one <b>rebuts the merge review's own attribution</b> with a gate-split capture: the ambient floor alone is <b>byte-identical on all four poses</b>, while the diffuse wrap alone changes 60&ndash;69% of pixels. <b>The wrap was the entire regression, and the wrap is the half whose premise the evidence refuted.</b> The cleaned branch deletes it, leaving one gate with one accurate revert."
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "The rejection on record was argued partly from reasons that did not survive re-check. Only you can decide whether to take the cleaned branch or drop the work."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>One item in the top section is now obsolete.</b> &ldquo;Free 8.2&nbsp;GB&rdquo; can be struck &mdash; the reclaim executed and the volume went from single-digit GB free to <b>142.8&nbsp;GB free</b>, measured. Nothing further is needed there except the Recycle Bin above."
+    },
+    {
+     "type": "h3",
+     "html": "20f. Every commit in the session, with what it is"
+    },
+    {
+     "type": "what",
+     "html": "<b>44 commits, 37 non-merge</b>, all local to <code>claude/nifty-mendeleev</code>, read from git at the moment this page was built. <b>6 of them change what you see by default</b> (green) &mdash; but those 6 commits touch only <b>two surfaces</b>, concrete and vehicles, corrected and re-corrected through the day. Everything else is infrastructure, instrument repairs, retractions, a new gameplay harness, or contract hygiene. <b>That ratio is the honest headline of the session.</b>"
+    },
+    {
+     "type": "meta",
+     "attrs": " style=\"font-size:13px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Commit"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Kind"
+       },
+       {
+        "tag": "th",
+        "attrs": " style=\"text-align:left\"",
+        "html": "Subject"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>886dd319</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">CHANGES PIXELS</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(terrain): OVERLAY-CEMENT-ARTGUARD-2 — the art guard must not be an &amp;Overlays-id test"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>42833715</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "merge(tooling): COUNTER-HONESTY-1 onto canonical -- stop the static-prop instruments stating zeros they cannot know"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>b631efe6</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "merge(retract): FALSE-CONCLUSION-RETRACT-1 onto canonical -- stop asserting withdrawn submit_trees inferences"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>a8ea9be5</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "merge(terrain): CONCRETE-DELIVER-2 onto canonical -- get the road-art repaint and the retracted default-ON off the tip"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>d8139fc2</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "merge(driver): GAMEPLAY-DRIVER-2 world-state harness onto canonical"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>95ffdb9b</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#78b0f0\">diagnosis, no cure</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "docs(water): SHORELINE-V0-FALSIFY-1 -- B-spline-residual shoreline cure, NO-GO"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>03519ea1</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#c0a0f0\">retraction</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "docs(trees): TREES-REOPEN-1 -- the burn-in &ldquo;no defect&rdquo; verdict is refuted, not just unsupported"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>e81d7930</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(evidence): CAPTURE-PROVENANCE-TRUTH-1 — manifests must name the binary they measured, not the worktree the tool ran from"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>db5a597c</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(ops): BEAUTY-SIDECAR-CONTENT-VALIDITY-1 — presence is not effectiveness"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>8ba5817e</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "diag(terrain): ARTGUARD-1 attribution counter — make the art-saved claim measurable headless"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>09378c2d</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(ops): LINK-GUARD-2 — run the system-drive refusal first, so its message wins"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>3ab33aee</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">CHANGES PIXELS</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(terrain): OVERLAY-CEMENT-REVERT-PURITY-1 — killswitch stops touching GL unit 3"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>b7e0d278</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(ops): BEAUTY-SIDECAR-INSTALL-GATE-1 follow-up — cover the editor loader too"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>65b5510d</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(ops): BEAUTY-SIDECAR-INSTALL-GATE-1 — fail when a cooked sidecar never reaches a deploy tree"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>2ade84a8</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">CHANGES PIXELS</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(terrain): CONCRETE-DELIVER-2 — art guard + seam parity; revert the PAVED_OVERLAY_CLASS default-ON"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>7dfe6f27</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "feat(ops): LINK-GUARD-2 — default destination + system-drive refusal for isolated deploys"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>f4eb0b80</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Merge claude/deploy-isolation-1 into claude/nifty-mendeleev"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>c00d0fe6</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "docs(ops): LINK-GUARD-1 — replace estimated install sizes with measured ones"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>f73f821b</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(ops): LINK-GUARD-1 — guard the second deploy-dir writer too"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>5c25b3bb</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "feat(ops): LINK-GUARD-1 — detect and refuse hardlink-shared deploy dirs"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>a599b41f</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#78b0f0\">new gameplay harness</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(driver): make end_mission actually terminate + assert_mission"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>9c71dff5</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#c0a0f0\">retraction</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "docs(retract): FALSE-CONCLUSION-RETRACT-1 -- withdraw the submit_trees inferences"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>ccb713ae</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">CHANGES PIXELS</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(lighting): VEHICLE-LIGHTING-PATH-1 follow-up - gather light rows for ALL vehicle leaves, not just the first"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>360b43c1</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#78b0f0\">new gameplay harness</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(driver): make the day/night verb actually flip night + add the assertion runner"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>50b8343f</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(tooling): COUNTER-HONESTY-1 -- the guard itself was a lying instrument, twice"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>7f9b857d</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "chore(harness): refresh background-launch inventory after HARNESS-MERGE-1"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>b7b182b2</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(diag): COUNTER-HONESTY-1 -- name the third mislabel in the OBJBATCHER line"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>5f4974cb</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(diag): COUNTER-HONESTY-1 follow-up -- the new census must not repeat the bug"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>3a7543f3</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#78b0f0\">new gameplay harness</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "feat(driver): GAMEPLAY-DRIVER-2 world+lighting+readback verbs on the command channel"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>1ee3fe05</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(diag): COUNTER-HONESTY-1 -- stop the static-prop instruments stating zeros they cannot know"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>70aea8c1</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Merge claude/gate-hygiene-close-1 into claude/nifty-mendeleev"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>1a7a1c3c</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(ops): DISK-GUARD-3 — build the C++ fix, move the capture-name guard to the real chokepoint, stop failing open"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>1f96a6fb</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "feat(ops): DISK-GUARD-2 — sized free-space preflight + ENOSPC root-cause fixes"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>69cb5d31</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">merge</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "Merge claude/background-smoke-1 into claude/nifty-mendeleev"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>7147434f</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(harness): windowing survives env-pin; add check-background-launch guard"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>5c04048c</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">CHANGES PIXELS</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(lighting): VEHICLE-LIGHTING-PATH-1 - put vehicles on the same lighting path as everything else, default-ON"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>3ab322a0</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#a0f0a0\">CHANGES PIXELS</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(terrain): OVERLAY-CEMENT-ADOPT-1 -- close the two-shader concrete seam, default-ON"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>36f2f079</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(harness): agent runs never launch fullscreen, take focus, or grab the cursor"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>5a622db5</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "test(contracts): PENDING-SET-STATE-1 -- make &ldquo;untracked, awaiting user decision&rdquo; representable"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>a39d25db</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(gates): extend smoke env checker to the visual-capture launch path"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>71d79f54</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(gates): register MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE; guard the smoke env-inheritance contract"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>f99cf37d</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#f0d890\">instrument repair</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "fix(contracts): make the gated-layout-macro checker verify-only, never rewrite"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>fc43338a</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<b style=\"color:#c0a0f0\">retraction</b>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "docs(review): REVIEW-ALBEDO-RETRACT-1 -- withdraw the &ldquo;albedo, not lighting&rdquo; claim"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>a4fda7ed</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " style=\"white-space:nowrap\"",
+        "html": "<span style=\"color:#9aa3ad\">infrastructure / contracts</span>"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "test(visual): GOLDEN-6C47-AUDIT-1 -- retire baseline-6c47e149, record why"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>Contracts, measured here rather than quoted.</b> <code>check-contracts.sh</code> reported <b>91 passed / 1 failed</b> when I ran it. <b>The single failure is caused by uncommitted work, not by anything committed</b>: <code>check-env-registry.sh</code> reports <code>MC2_WINDOW_OFFSCREEN</code> unregistered, and that gate exists only in the dirty working tree (<code>gos_render.{h,cpp}</code>, <code>gameos_graphics.cpp</code>, <code>scripts/smoke_lib/nofocus.py</code> &mdash; an in-flight lane). Confirmed by running the checker alone and by grepping the committed tree, where the name appears only inside a status document. Whoever lands that lane owns the registry row."
     }
    ]
   }
