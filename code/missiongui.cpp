@@ -1633,7 +1633,16 @@ void MissionInterfaceManager::processUiCommandChannel()
 						MoverPtr nm = (h > 0) ? (MoverPtr)ObjectManager->get(h) : NULL;
 						if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
 						else {
-							nm->setOnGUI(true);
+							// NOTE: do NOT call nm->setOnGUI(true) here. The
+							// GAMEPLAY-DRIVER-1 prototype did, but Mission::
+							// addMover already sets it (code/mission.cpp, just
+							// before it returns the handle), so the extra call
+							// was redundant -- and it is a setOnGUI() caller
+							// outside the MOVER-COHERENCE S1a allowlist, which
+							// the mover-registry contract (added after that
+							// prototype was written) correctly rejects: every
+							// setOnGUI(true) must be paired with the mission-
+							// interface registration that addMover performs.
 							if (!MPlayer && data.commanderID == (char)homeCmdr)
 								nm->setLocalMoverId(0);
 							result = "ok";
@@ -1644,13 +1653,23 @@ void MissionInterfaceManager::processUiCommandChannel()
 							// hp=0.000 and ignored every move order; because
 							// scenario_runner only substring-matches acks, the
 							// report said ok=True. Surfacing hp here means a
-							// driver can assert on it. hp≈0 on a fresh spawn is
-							// the known defect -- use `unit <id>` for detail.
+							// driver can assert on it. A non-positive OR NaN hp on
+							// a fresh spawn is the known defect -- use
+							// `unit <id>` for detail.
+							//
+							// Written as !(hp > 0) and NOT as (hp <= 0): a
+							// spawned BattleMech's getStatusRating() can come
+							// back -nan(ind) (observed 2026-07-30, mc2_10,
+							// `spawn clone`), and EVERY comparison against NaN
+							// is false -- so the `<= 0` form let the exact case
+							// the warning exists to catch slip through acking a
+							// clean "ok".
+							const float spawnHp = nm->getStatusRating();
 							sprintf(b, "spawned id=%ld obj=%d team=%d hp=%.3f%s",
 								nm->getPartId(), (int)data.objNumber, (int)data.teamID,
-								nm->getStatusRating(),
-								(nm->getStatusRating() <= 0.0f)
-									? " WARNING:hp=0 spawned unit may be inert" : "");
+								spawnHp,
+								!(spawnHp > 0.0f)
+									? " WARNING:bad hp, spawned unit may be inert" : "");
 							note = b;
 						}
 					}

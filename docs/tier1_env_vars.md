@@ -920,7 +920,21 @@ lights should remain visible at every angle instead of blinking out.
     sun + ambient + sky + fog recompute via `Camera::setDaylightFraction`) and
     `sun_pitch <deg> [yaw]` (light DIRECTION only, colors unchanged). These make the
     day AND night verdict rule enforceable on ANY mission instead of only on ones that
-    ship as night.
+    ship as night. Verified on mc2_10 from one frozen pose: `time_of_day 0.25` →
+    `isNight=0 lightPitch=90`, `0.75` → `isNight=1 lightPitch=270`, with the rendered
+    frame measurably darker (mean luma 67.3 → 57.2 on the standard baseline pose;
+    2.9x on a close-in lance pose).
+    - **Assert on `isNight` / `lightPitch`, NOT on `nightFactor`.** `nightFactor` is
+      not purely a function of the sun: `Weather::update` (`code/weather.cpp`) raises
+      it to `rainLightLevel / 4` and takes the MAX while it is raining, so a rainy
+      DAY reports `nightFactor ≈ 0.8` with `isNight=0`.
+    - Engine note behind these verbs: `Camera::update()` re-derives
+      `isNight`/`nightFactor`/`lightDirection` from `lightPitch` EVERY frame and
+      assumes it is the sun, but `updateDaylight()`'s night branch replaces
+      `lightPitch` with the MOON's pitch (`180 - |180 - pitch|`). A midnight moon at
+      zenith therefore left `lightPitch == 90`, which `update()` read back one frame
+      later as high noon — so the night verdict was silently undone.
+      `setDaylightFraction` restores the true sun angle after the colour recompute.
   - `end_mission win|loss|draw` — forces `Mission::forceTerminate`, i.e. the same three
     fields the authored win/loss paths set, so the normal results flow runs.
   - Notes: `time_scale` routes through `simSpeedSetMultiplier()` (see
@@ -928,20 +942,30 @@ lights should remain visible at every angle instead of blinking out.
     it is clamped `[0.25, 4.0]` and is a **no-op under `MC2_SMOKE_FIXED_TIMESTEP=1`**,
     which pins both clocks to 1x. `camera_follow` is mutually exclusive with
     `MC2_CAMERA_PARK` (the park path deliberately clears `lookTargetObject`).
+    **For an A/B capture use `MC2_CAMERA_PARK`, not the `camera` verb**: `camera`
+    calls `eye->setPosition(pos, TRUE)` — the SWOOPY goal-seek — and the in-mission
+    scripted camera keeps writing the pose afterwards, so two arms end up framing
+    different scenes (measured: an unsettled pair reported midnight BRIGHTER than
+    noon). `MC2_CAMERA_PARK` does a one-shot hard set plus
+    `freezeScriptedCameraForCapture()`, so every arm shares one frozen pose.
 - `MC2_TEST_SPAWN=1` — default **unset** = the two fixture verbs ack `blocked`; zero
   behavior change. Arms `spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]`
   (runs `mission->addMover`, the same path reinforcements take; `vehicle` clones an
   existing `GROUNDVEHICLE` so a mech and a vehicle can be posed side by side under
   identical light for a lighting A/B) and `teleport <partId> <x> <y>`
   (`Mover::setTeleportPosition`). Allowlisted in `scripts/run_smoke.py`.
-  **KNOWN DEFECT — do not trust a bare `ok`**: spawned movers come up with
-  `getStatusRating() == 0` and ignore group move orders (evidence: the 2026-07-23
-  gameplay-driver capture, where five spawned clones sat at byte-identical positions for
-  5+ seconds while their authored peers moved ~380 world units). They are selectable and
-  they render, so they are usable as *lighting/render* subjects, but they are not
-  functional gameplay actors. The spawn ack now reports the unit's actual `hp` and appends
-  `WARNING:hp=0 spawned unit may be inert` rather than acking a bare `ok`; use
-  `unit <partId>` for the per-unit detail.
+  **KNOWN DEFECT — do not trust a bare `ok`**: a spawned BattleMech (`spawn clone`)
+  comes up with a broken status rating. Measured 2026-07-30 on mc2_10: `getStatusRating()`
+  returned `-nan(ind)` on three consecutive runs and `1.000` on a fourth, i.e. it is
+  uninitialised, not merely zero. (The 2026-07-23 capture recorded the same units at
+  `hp=0.000` ignoring group move orders while their authored peers moved ~380 world
+  units.) `spawn vehicle` is healthy in the same runs (`hp=1.000`). Spawned units ARE
+  added to the GUI roster — `select all` counts them — and they render, so they are
+  usable as *lighting / render* subjects for an A/B; do not treat a spawned mech as a
+  functional gameplay actor. The spawn ack reports the unit's actual `hp` and appends
+  `WARNING:bad hp, spawned unit may be inert`; the test is written `!(hp > 0)` rather
+  than `hp <= 0` precisely because every comparison against NaN is false and the `<= 0`
+  form let the NaN case ack a clean `ok`. Use `unit <partId>` for the per-unit detail.
 
 ## Diagnostic JSONL trace (diagnostic_trace.cpp — 2026-06-17)
 
