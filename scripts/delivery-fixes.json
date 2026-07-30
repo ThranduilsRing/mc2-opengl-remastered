@@ -1,0 +1,90 @@
+{
+  "_comment": [
+    "DELIVERY-GATE-1 fix manifest, read by scripts/check-delivery.py.",
+    "",
+    "EVERY FIELD HERE IS A CLAIM THAT THE CHECKER VERIFIES AGAINST A PRIMARY",
+    "SOURCE. Nothing in this file is trusted. A commit that does not exist, a",
+    "gate that is not in RendererFeatureRegistry.h, an `expect_default` that",
+    "disagrees with the C++ reader, a `needle` that is absent from the named",
+    "path at the named commit -- each of those is an INTEGRITY FAILURE (exit 2),",
+    "not a skipped entry. That is the whole point: this manifest is the kind of",
+    "artifact that historically became the lie, so it is the artifact under the",
+    "most suspicion.",
+    "",
+    "FIELDS",
+    "  id             stable name, used as --fix argument",
+    "  commit         the commit that INTRODUCED the code (git log -S on the reader)",
+    "  gate           MC2_* env var, or null for an ungated change",
+    "  expect_default 'ON' | 'OFF' | a decimal string for numeric gates | null",
+    "  exe_needle     a literal the fix puts in the IMAGE (uniform name, gate",
+    "                 name). Strongest evidence tier: it is read out of the",
+    "                 binary's own bytes, so a revert, a failed compile or a",
+    "                 stale copy cannot fake it.",
+    "  code_evidence  [{path, needle}] checked against `git show <embedded>:<path>`",
+    "                 for each install -- catches WITHDRAWN code, which ancestry",
+    "                 alone cannot (a revert leaves the introducing commit an",
+    "                 ancestor forever).",
+    "  data           [{kind, path|glob, needle?, min_count?}] the deploy-tree",
+    "                 files the fix needs. kind=file with a needle is the",
+    "                 half-data shape: the file is there but predates the fix, so",
+    "                 glGetUniformLocation returns -1 and the gate runs OFF while",
+    "                 reporting ON."
+  ],
+  "fixes": [
+    {
+      "id": "LEGACY-LIT-MC2-FRAME",
+      "commit": "b01a7a96",
+      "gate": "MC2_LEGACY_LIT_MC2_FRAME",
+      "expect_default": "ON",
+      "exe_needle": "u_legacyLitMc2Frame",
+      "code_evidence": [
+        {"path": "mclib/txmmgr.cpp", "needle": "MC2_LEGACY_LIT_MC2_FRAME"}
+      ],
+      "data": [
+        {"kind": "file", "path": "shaders/gos_tex_vertex_lighted.vert",
+         "needle": "u_legacyLitMc2Frame"}
+      ],
+      "note": "VEHICLE-NIGHT-LIT-1. Introduced default-OFF, promoted to default-ON by VEHICLE-LIGHTING-PATH-1. The per-install default column is therefore expected to DIFFER between installs, which is exactly the thing this tool exists to show."
+    },
+    {
+      "id": "VEHICLE-AMBIENT-FLOOR-1",
+      "commit": "e3310409",
+      "gate": "MC2_VEHICLE_AMBIENT_FLOOR",
+      "expect_default": "ON",
+      "exe_needle": "u_vehicleAmbientFloor",
+      "code_evidence": [
+        {"path": "mclib/txmmgr.cpp", "needle": "MC2_VEHICLE_AMBIENT_FLOOR"}
+      ],
+      "data": [
+        {"kind": "file", "path": "shaders/gos_tex_vertex_lighted.vert",
+         "needle": "u_vehicleAmbientFloor"}
+      ],
+      "note": "The half-data fix named in its own commit message: 'the deployed shaders/ tree must carry the new gos_tex_vertex_lighted.vert or the uniform does not exist in the program, glGetUniformLocation returns -1, the set silently no-ops and the gate runs OFF while reporting ON.'"
+    },
+    {
+      "id": "CONCRETE-DELIVER-2-RETRACTION",
+      "commit": "2ade84a8",
+      "gate": "MC2_PAVED_OVERLAY_CLASS",
+      "expect_default": "0",
+      "exe_needle": null,
+      "code_evidence": [],
+      "data": [],
+      "note": "A RETRACTION, not a feature: CONCRETE-DELIVER-2 reverts a default-ON that the promoting lane's own status doc had already retracted in writing. A numeric gate, so check-gate-default-agreement.py skips it as 'value-read (not a boolean gate)' -- nothing else in the tree compares its per-install default against the tip. Grading concrete on an install that predates this commit grades WITHDRAWN code."
+    },
+    {
+      "id": "WATER-SHORE-MASK-1",
+      "commit": "3c864eac",
+      "gate": "MC2_WATER_SHORE_MASK",
+      "expect_default": "ON",
+      "exe_needle": "MC2_WATER_SHORE_MASK",
+      "code_evidence": [
+        {"path": "GameOS/gameos/gameos_graphics.cpp", "needle": "MC2_WATER_SHORE_MASK"}
+      ],
+      "data": [
+        {"kind": "glob", "glob": "data/missions/*.beauty/shoreline_mask.png",
+         "min_count": 1}
+      ],
+      "note": "Default-ON and degrades to a silent no-op when the .beauty sidecar is absent (check-beauty-sidecars.py module docstring). scripts/deploy_payload.py deliberately never walks data/missions/*.beauty/, so the sidecar reaches a tree only by a manual copy."
+    }
+  ]
+}

@@ -253,6 +253,32 @@ run_check "brain_fixture_manifest" "py -3 scripts/check_brain_fixture_manifest.p
 run_check "brain_fixture_deploy"   "py -3 scripts/check_brain_fixture_deploy_sync.py --quiet"
 run_check "brain_relaxed_guard"    "py -3 scripts/check_brain_relaxed_guard_doc.py --quiet"
 run_check "deploy_data_parity"     "py -3 scripts/check-deploy-data-parity.py --quiet"
+# DELIVERY-GATE-1: every check above asks "is the fix CORRECT?". None of them
+# asks the only question the user ever experiences -- "is the fix in the binary
+# I run, ON by default, with its required data present?" -- because its four
+# parts live in four tools (exe_fingerprint, gate-default-agreement,
+# beauty-sidecars, deploy-data-parity) and nothing JOINed them. The cost was
+# measured: 19 of 27 gates shipped default-OFF, the v0.5.2 release ships 0 of
+# 28,459 files as .beauty sidecars, and VEHICLE-AMBIENT-FLOOR-1 landed
+# default-ON while HALF DATA (its uniform exists in no deployed shaders/ tree,
+# so glGetUniformLocation returns -1 and the gate runs OFF while reporting ON).
+#
+# --contract is the machine-independent half: it never touches an install, and
+# fails when scripts/delivery-fixes.json describes code that is not there --
+# a commit that does not exist, a needle absent from the path at the commit
+# claiming it, a data path missing from the tree, or an expect_default that
+# disagrees with the C++ READER in the working tree. Install grading needs
+# binaries on disk and is run by hand: py -3 scripts/check-delivery.py
+#
+# Live-fired during bring-up, not just self-tested: flipping the real
+# MC2_WATER_SHORE_MASK reader in GameOS/gameos/gameos_graphics.cpp from
+# kill-switch to opt-in took this check to exit 2 while the whole rest of the
+# suite stayed green -- that gate is allowlisted out of the registry
+# (check-env-registry.sh:803), so GATE-DEFAULT-TRUTH-1 iterates registry
+# entries and never sees it. An unregistered default-ON gate had nothing
+# checking its default at all.
+run_check "delivery_manifest"      "py -3 scripts/check-delivery.py --contract --quiet"
+run_check "delivery_selftest"      "py -3 scripts/check-delivery.py --selftest"
 run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
 run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
