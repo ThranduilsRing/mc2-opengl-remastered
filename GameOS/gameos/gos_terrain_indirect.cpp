@@ -1814,6 +1814,15 @@ static void PopulateRecipeCementWords() {
     // that already carry bit 31 and therefore never revisits these.
     if (OverlayCementAdoptEnabled() && Terrain::mapData) {
         long authoredArtMarked = 0;
+        // ARTGUARD-1 attribution counter. pavedSubset counts how many of the
+        // marked tiles the ORIGINAL narrow IsPavedOverlayType() predicate would
+        // also have caught, so (authoredArtMarked - pavedSubset) is exactly the
+        // number of tiles whose hand-placed art the narrow form would have
+        // OVERPAINTED with plain concrete on this mission. Diagnostic only --
+        // it changes no word and no pixel -- but it makes the whole point of
+        // this guard measurable in ONE headless trace run instead of requiring
+        // an A/B pair of builds.
+        long pavedSubset = 0;
         for (size_t vn = 0; vn < N; ++vn) {
             const long mx = (long)vn % mapSide;
             const long my = (long)vn / mapSide;
@@ -1836,6 +1845,7 @@ static void PopulateRecipeCementWords() {
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
             g_denseRecipeDirty[vn] = true;
             ++authoredArtMarked;
+            if (IsPavedOverlayType(ovT)) ++pavedSubset;
         }
         static const bool s_adoptTrace = [] {
             const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
@@ -1843,8 +1853,9 @@ static void PopulateRecipeCementWords() {
         }();
         if (s_adoptTrace) {
             printf("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission=%s "
-                   "tiles=%ld\n",
-                   (::missionName[0] ? ::missionName : "unknown"), authoredArtMarked);
+                   "tiles=%ld paved_subset=%ld art_saved_by_artguard=%ld\n",
+                   (::missionName[0] ? ::missionName : "unknown"),
+                   authoredArtMarked, pavedSubset, authoredArtMarked - pavedSubset);
             fflush(stdout);
         }
     }
