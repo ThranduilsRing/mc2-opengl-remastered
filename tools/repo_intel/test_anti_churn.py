@@ -240,6 +240,74 @@ def test_gate_status_live_repo_known_gate():
 
 
 # ---------------------------------------------------------------------------
+# ENV-DROP-CLOSE-1: ENV_DROP_RISK is conditional on the runner's real policy
+# ---------------------------------------------------------------------------
+
+def test_runner_env_policy_live_repo():
+    """The env-composition facts must be READ from smoke_lib/runner.py.
+
+    If this ever fails with inherits=False, the run_smoke.py passthrough tuple
+    has genuinely become load-bearing and ~100 registered gates start dropping —
+    see scripts/check-smoke-env-inheritance.py, which enforces the same line.
+    """
+    p = gs.parse_runner_env_policy(REPO_ROOT)
+    assert p["anchors_ok"], "FORCED_ENV/SOFT_ENV/POPPED_ENV tables not found"
+    assert p["inherits"] is True
+    assert "MC2_SMOKE_MODE" in p["forced"]
+    assert "MC2_FORCE_ALL_VISIBLE" in p["soft"]
+    assert "MC2_GL_ERROR_DRAIN_SILENT" in p["popped"]
+
+
+def test_gate_status_no_false_env_drop_while_inheriting():
+    """THE REGRESSION THIS LOCKS OUT.
+
+    MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE and MC2_STATIC_UPDATE_SKIP are read by
+    the engine and absent from the run_smoke.py tuple. The old tool called that
+    ENV_DROP_RISK and a lane wrote off a correctly-declared A/B as "void" on its
+    word. While the runner inherits os.environ the ambient value reaches the
+    engine, so the flag must NOT fire — and the absence must be reported as a
+    convention gap in plain words, not left as a bare boolean for the next
+    reader to re-derive "voided A/B" from.
+    """
+    for var in ("MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", "MC2_STATIC_UPDATE_SKIP"):
+        r = gs.gate_status(REPO_ROOT, var)
+        assert r["reader_count"] > 0, var
+        assert r["smoke_env_inherited"] is True, var
+        assert not any(f.startswith("ENV_DROP_RISK") for f in r["flags"]), \
+            f"{var}: false ENV_DROP_RISK -> {r['flags']}"
+        if not r["smoke_allowlisted"]:
+            assert any("convention gap ONLY" in n for n in r["parse_notes"]), \
+                f"{var}: tuple gap reported without the correction: {r['parse_notes']}"
+
+
+def test_gate_status_flags_genuinely_undriveable():
+    """POPPED_ENV / FORCED_ENV vars ARE undeliverable — that must still fire.
+
+    This is the true half of the old flag, and the old tool never reported it:
+    MC2_GL_ERROR_DRAIN_SILENT is deleted from the child env outright, so an A/B
+    arm that sets it really does not run.
+    """
+    r = gs.gate_status(REPO_ROOT, "MC2_GL_ERROR_DRAIN_SILENT")
+    assert r["smoke_env_popped"] is True
+    assert any(f.startswith("ENV_UNDRIVEABLE") for f in r["flags"])
+
+    r = gs.gate_status(REPO_ROOT, "MC2_SMOKE_MODE")
+    assert r["smoke_env_forced"] is True
+    assert any(f.startswith("ENV_UNDRIVEABLE") for f in r["flags"])
+
+
+def test_gate_status_env_drop_fails_closed_without_runner(tmp_path):
+    """Unknown policy must be treated as 'the tuple is load-bearing'.
+
+    A missing/renamed runner.py must not be read as 'nothing is dropped'; it
+    restores the conservative flag AND says the policy could not be parsed.
+    """
+    root = _mini_repo(tmp_path)
+    p = gs.parse_runner_env_policy(root)
+    assert p["anchors_ok"] is False and p["inherits"] is False
+
+
+# ---------------------------------------------------------------------------
 # deploy_status — fake deploy dir (no exe fingerprint, manifest only)
 # ---------------------------------------------------------------------------
 

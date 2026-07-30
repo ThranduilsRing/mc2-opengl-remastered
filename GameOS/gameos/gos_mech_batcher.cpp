@@ -229,12 +229,15 @@ static glsl_program* s_mechProgramObj = nullptr;
 // 0 = Final (normal rendering); env MC2_MECH_FRAG_DEBUG wins when set.
 static int s_mechDebugMode = 0;
 
-// MECH-VIEWUNIFORMS-BLOCKBINDING-1: mech-specific ViewUniforms opt-in gate,
-// DEFAULT OFF (MC2_MECH_VIEWUNIFORMS=1). Independent of the global
-// MC2_VIEW_UNIFORMS. When ON, the mech shader is compiled with the
+// MECH-VIEWUNIFORMS-BLOCKBINDING-1: mech-specific ViewUniforms gate,
+// DEFAULT ON -- kill-switch MC2_MECH_VIEWUNIFORMS=0. Independent of the global
+// MC2_VIEW_UNIFORMS. When ON (default), the mech shader is compiled with the
 // ViewUniformsBlock (binding=3) consumer and the block binding is enforced
-// explicitly after link; the legacy u_worldToClipGL upload is skipped. When
-// OFF (default), the mech path is byte-identical to legacy.
+// explicitly after link; the legacy u_worldToClipGL upload is skipped. Setting
+// =0 restores the legacy upload, byte-identical to pre-feature.
+// This block said "DEFAULT OFF ... opt-in (=1)" until ENV-DROP-CLOSE-1
+// (2026-07-30) while the reader four lines below already said DEFAULT-ON, so
+// the two halves of the same declaration disagreed.
 static const bool s_mechViewUniforms = []() {
     const char* v = std::getenv("MC2_MECH_VIEWUNIFORMS");
     return !(v != nullptr && v[0] == '0');   // DEFAULT-ON; kill-switch =0

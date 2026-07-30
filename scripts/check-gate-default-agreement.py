@@ -29,22 +29,46 @@ shadow work was steered by it.
 
 WHAT THIS CHECKS
 ----------------
-For every Feature-kind entry in RenderCore/RendererFeatureRegistry.h that names
-an env var, locate its reader(s) in C++ source, classify each reader's unset-case
-default from its idiom, and require:
+For EVERY entry in RenderCore/RendererFeatureRegistry.h that names an env var,
+locate its reader(s) in C++ source, classify each reader's unset-case default
+from its idiom, and require:
 
-  1. every reader agrees with the registry's `defaultOn`, and
-  2. every reader agrees with every other reader.
+  1. every reader agrees with the registry's `defaultOn`,
+  2. every reader agrees with every other reader, and
+  3. every in-source comment and every docs/tier1_env_vars.md line that asserts
+     a default for that var agrees with the reader too.
 
-UNCLASSIFIABLE IS A FAILURE, NOT A PASS. A reader written in an idiom this script
-cannot classify is exactly the situation that hides a lie, so it fails and must
-either be rewritten into a known idiom or given an explicit, reasoned entry in
-scripts/gate-defaults-allowlist.txt. Silence is never evidence of agreement.
+SCOPE WIDENED TWICE BY ENV-DROP-CLOSE-1 (2026-07-30), because the registry is
+neither the only nor the first place a default is written down:
 
-COMMENTS ARE STRIPPED BEFORE ANY MATCHING. Two contract rules added earlier in
-the same session passed their own self-tests while satisfied by nothing more than
-an identifier sitting in a comment. Comment text is not code; the self-test
-asserts this directly (see the "comment_only" case in _selftest).
+  * ALL KINDS, not just Feature. 144 Trace entries and 3 Retired ones were exempt
+    on the theory that "defaultOn carries no shipping semantics" for them. Many
+    are numeric knobs where that is true -- and those are skipped anyway, because
+    a value read is not a boolean gate. But a BOOLEAN Trace gate misleads exactly
+    like a Feature one. Checked entries went 146 -> 225.
+  * COMMENTS AND THE TIER1 DOC. code/objmgr.cpp:1610 said
+    "Default-off: MC2_STATIC_PROP_MISSION_LOAD_REG=0" for ~3 months while
+    gos_static_prop_registry.cpp:141 read `parseEnvBoolWithDefault(..., true)`.
+    Mission-load registration was LIVE and the only note about it said it wasn't.
+    Sweeping this class found 7 more in-source comment inversions and 3 in
+    docs/tier1_env_vars.md, one of which (MC2_STANDARD_LIT_V1, "Default ON.
+    Kill=`=0`" against a reader whose own comment says "TEMPORARY DEFAULT-OFF")
+    would have had anyone A/B-ing `=0` versus unset grading OFF against OFF.
+
+UNCLASSIFIABLE IS A FAILURE, NOT A PASS -- for Feature entries. A reader written
+in an idiom this script cannot classify is exactly the situation that hides a
+lie, so it fails and must either be rewritten into a known idiom or given an
+explicit, reasoned entry in scripts/gate-defaults-allowlist.txt. Silence is never
+evidence of agreement. For Trace/Retired it is REPORTED but not failed; see the
+note in analyse() for why that asymmetry is deliberate.
+
+COMMENTS ARE STRIPPED BEFORE ANY READER MATCHING. Two contract rules added
+earlier in the same session passed their own self-tests while satisfied by
+nothing more than an identifier sitting in a comment. Comment text is not code;
+the self-test asserts this directly (see the "comment_only" case in _selftest).
+Note that stripping comments for CLASSIFICATION and never CHECKING them are two
+different decisions -- only the first was ever deliberate, and rule 3 above
+closes the second.
 
 USAGE
   py -3 scripts/check-gate-default-agreement.py            # report
@@ -183,6 +207,10 @@ CLASSIFY_RULES = [
      "envFlagDefaultOff helper"),
     (OFF, _R(r"\[\s*0\s*\]\s*==\s*'1'"), "v[0]=='1'"),
     (OFF, _R(r"envTriState\s*\([^)]*\)\s*==\s*1"), "envTriState()==1"),
+    # envIsSet("X") is literally a presence test, so unset means OFF. Needed once
+    # Trace-kind entries are checked: visual_tuning_profile.cpp gates every
+    # per-profile override on `if (!envIsSet(VAR))`, i.e. an operator-set value wins.
+    (OFF, _R(r"\benvIsSet\s*\("), "envIsSet() presence test"),
     # VK family helpers. subGate()/directChainGate() fall back to umbrellaOn(),
     # which is `envTriState("MC2_VK_SHARED_GBUFFER") == 1` -- default OFF -- so an
     # unset member of either family resolves OFF. (vk_shared_gbuffer_gate.h:87-101)
@@ -229,7 +257,32 @@ PRE_RULES = [
              r"return\s+(?:0|false)\b"), "if(unset) return 0 [explicit]"),
     (ON, _R(r"if\s*\(\s*!\s*\w+\s*\|\|\s*!\s*\w+\s*\[\s*0\s*\]\s*\)\s*"
             r"return\s+(?:1|true)\b"), "if(unset) return 1 [explicit]"),
+    # Generalisation of the two above: `if (!v || <anything>) return X`. The
+    # `!v ||` short-circuits when the var is unset, so X *is* the default no
+    # matter what the second disjunct tests. shader_builder.cpp:420 writes it as
+    # `if (!e || e[0] != '1') return false;` and no rule covered that, so it fell
+    # through to whatever else happened to be in the enclosing block.
+    (OFF, _R(r"if\s*\(\s*!\s*\w+\s*\|\|[^;{)]*\)\s*return\s+(?:false|0)\b"),
+     "if(!v || ...) return false [explicit unset]"),
+    (ON, _R(r"if\s*\(\s*!\s*\w+\s*\|\|[^;{)]*\)\s*return\s+(?:true|1)\b"),
+     "if(!v || ...) return true [explicit unset]"),
 
+    # v && v[0] && !(v[0] == '0' && v[1] == '\0')  -- PRESENCE-gated, default OFF.
+    # Same shape as the rule below but with one extra conjunct, which is enough
+    # to slip past `\w+\s*&&\s*!\s*\(` and land on the generic kill-switch rule.
+    # Found by extending this checker to Trace-kind entries (ENV-DROP-CLOSE-1):
+    # it manufactured a DISAGREEMENT against MC2_DIAG_VERBOSE
+    # (GameOS/include/mc2_diag_verbose.h:58), an honest default-OFF gate.
+    (OFF, _R(r"\w+\s*&&\s*\w+\s*\[\s*0\s*\]\s*&&\s*!\s*\([^;]*\[\s*0\s*\]\s*==\s*'0'"),
+     "v && v[0] && !(v[0]=='0') presence-gated"),
+    # ...and the same shape written out longhand:
+    #   v != nullptr && v[0] != '\0' && !(v[0] == '0' && v[1] == '\0')
+    # Any number of leading conjuncts, as long as SOMETHING is AND-ed in front
+    # of the `!(...=='0')`: that leading conjunct is what makes unset resolve
+    # false. gos_terrain_surface.cpp:73 writes it this way and was classified ON.
+    (OFF, _R(r"\w+\s*(?:!=\s*(?:nullptr|NULL)\s*)?&&\s*(?:[^;]*&&\s*)?"
+             r"!\s*\([^;]*\[\s*0\s*\]\s*==\s*'0'"),
+     "<presence> && ... && !(v[0]=='0') presence-gated"),
     # v && !(v[0] == '0' && v[1] == '\0')   -- PRESENCE-gated, so default OFF.
     # Without this, the "!(...[0]=='0')" kill-switch rule below claims it and
     # reports ON. That is not hypothetical: it mis-classified the real helper
@@ -249,8 +302,14 @@ PRE_RULES = [
 
 # A getenv() hit inside one of these is a VALUE read (a path, a radius, a
 # bitmask), not a boolean gate, so `defaultOn` carries no meaning for it.
+#
+# atol/atoll/strtoll/strtof were MISSING until ENV-DROP-CLOSE-1. Every numeric
+# Trace knob in code/ uses `(v && v[0]) ? atol(v) : DEFAULT` -- eight of them --
+# and each one landed in UNCLASSIFIABLE (a FAILURE) purely because the most
+# common integer parser in this codebase was not on the list.
 VALUE_READ_RE = re.compile(
-    r"\batof\s*\(|\batoi\s*\(|\bstrtol\s*\(|\bstrtod\s*\(|\bstrtoul\s*\(|"
+    r"\batof\s*\(|\batoi\s*\(|\batol\s*\(|\batoll\s*\(|\b_atoi64\s*\(|"
+    r"\bstrtol\s*\(|\bstrtoll\s*\(|\bstrtod\s*\(|\bstrtof\s*\(|\bstrtoul\s*\(|"
     r"\bsscanf\s*\(|\bstd::sto[il]\b|\bstrcmp\s*\(|\b_stricmp\s*\(|"
     r"\bstrncmp\s*\(|\bstrchr\s*\(|\bstrstr\s*\("
 )
@@ -321,11 +380,62 @@ def statement_around(text, pos):
         # four-line function. Measuring raw span pushed exactly those
         # heavily-documented readers -- the interesting ones -- past the cap.
         if len(re.sub(r"\s+", "", body)) <= MAX_BLOCK:
-            return body
+            return _isolate_reader(text, blk[0], blk[1], pos)
     start = max(text.rfind(";", 0, pos), text.rfind("{", 0, pos),
                 text.rfind("}", 0, pos))
     start = 0 if start == -1 else start + 1
-    return text[start:min(len(text), pos + FALLBACK_TAIL)]
+    # The fallback tail is a fixed 400-char slice, so it happily runs straight
+    # through the NEXT gate's resolution. Isolate here too: gos_postprocess.cpp's
+    # SSAO block is over MAX_BLOCK, so MC2_SSAO_DEBUG took this path and picked
+    # up MC2_SSAO_BLUR's kill-switch idiom. Isolating only the block path fixed
+    # the small cases and left the big ones -- which are the poisonous ones.
+    return _isolate_reader(text, start, min(len(text), pos + FALLBACK_TAIL), pos)
+
+
+_GETENV_RE = re.compile(r"\bgetenv\s*\(")
+#: `const char* v = std::getenv(` -- the local this read is bound to.
+_BIND_RE = re.compile(r"([A-Za-z_]\w*)\s*=\s*(?:std\s*::\s*)?$")
+
+
+def _isolate_reader(text, lo, hi, pos):
+    """Restrict a block window to the statements that talk about THIS read.
+
+    A block that resolves several gates in a row is common, and it silently
+    poisons classification: the rules scan the whole window and the first match
+    wins regardless of which variable it belongs to. Two real cases, both found
+    by extending this checker to Trace-kind entries (ENV-DROP-CLOSE-1):
+
+      gos_postprocess.cpp:975-983 resolves MC2_SSAO, MC2_SSAO_DEBUG and
+      MC2_SSAO_BLUR in one brace block. MC2_SSAO_DEBUG is presence-gated
+      (default OFF, registry says OFF) but the window also held MC2_SSAO_BLUR's
+      `!(blurEnv[0]=='0')` kill-switch, so the checker said ON and reported a
+      DISAGREEMENT against an honest entry -- inventing a lie in the tool whose
+      only job is finding lies.
+
+      spawn.cpp:32-39 hoists BOTH getenv() calls before either classification,
+      so trimming at "the next sibling getenv" would cut the answer off. The
+      binding identifier is what actually separates the two reads, not position.
+
+    So: find the local the getenv result is bound to, then keep the binding
+    statement plus every later statement in the block naming that local. With
+    no binding (inline `if (getenv(X))`) the idiom is on the statement itself
+    and the whole block is returned unchanged -- the pre-existing behaviour.
+    """
+    body = text[lo:hi]
+    if len(_GETENV_RE.findall(body)) <= 1:
+        return body
+    stmt_start = max(text.rfind(";", lo, pos), text.rfind("{", lo, pos),
+                     text.rfind("}", lo, pos))
+    stmt_start = lo if stmt_start == -1 else stmt_start + 1
+    gv = _GETENV_RE.search(text, stmt_start, pos + 1)
+    m = _BIND_RE.search(text[stmt_start:gv.start()]) if gv else None
+    if not m:
+        return body
+    name = m.group(1)
+    named = re.compile(r"\b%s\b" % re.escape(name))
+    parts = text[stmt_start:hi].split(";")
+    kept = [parts[0]] + [p for p in parts[1:] if named.search(p)]
+    return ";".join(kept) + ";"
 
 
 def classify_statement(stmt, helper_body=False):
@@ -389,6 +499,19 @@ def resolve_helpers(sources):
 
 CALLEE_RE = re.compile(r"([A-Za-z_]\w*)\s*(?:::\s*)?$")
 
+#: helper("MC2_X", true)  -- the default is a LITERAL ARGUMENT, so there is
+#: nothing to infer. Invisible until ENV-DROP-CLOSE-1 because the reader needle
+#: only matched a single-argument call, and 22 sites use this form -- including
+#: gos_static_prop_registry.cpp:141 `parseEnvBoolWithDefault(
+#: "MC2_STATIC_PROP_MISSION_LOAD_REG", true)`, the reader that code/objmgr.cpp
+#: contradicted for three months. The comment check could not have caught that
+#: comment while the reader behind it was unreadable.
+_DEFAULT_ARG_TAIL = re.compile(r"\A\s*,\s*(true|false)\s*\)")
+#: Callees for which a ("MC2_X", bool) pair is NOT a default declaration.
+_NOT_A_READER_CALLEE = re.compile(
+    r"^(?:f?printf|vlog|setenv|_putenv(?:_s)?|SetEnvironmentVariable\w*|"
+    r"make_pair|emplace_back|push_back|insert)$")
+
 
 def find_readers(var, sources, helpers=None):
     """-> list of dicts {path, line, verdict, rule, stmt}.
@@ -397,7 +520,7 @@ def find_readers(var, sources, helpers=None):
     only in a comment incapable of registering as a reader.
     """
     helpers = helpers or {}
-    needle = re.compile(r'\(\s*"' + re.escape(var) + r'"\s*\)')
+    needle = re.compile(r'\(\s*"' + re.escape(var) + r'"\s*(?=[),])')
     hits = []
     for path, body in sources:
         for m in needle.finditer(body):
@@ -405,6 +528,23 @@ def find_readers(var, sources, helpers=None):
             # resolved helper, or something else entirely.
             callee_m = CALLEE_RE.search(body[max(0, m.start() - 64):m.start()])
             callee = callee_m.group(1) if callee_m else ""
+
+            # helper("MC2_X", true) -- the default is stated outright.
+            arg = _DEFAULT_ARG_TAIL.match(body[m.end():m.end() + 32])
+            if arg:
+                if _NOT_A_READER_CALLEE.match(callee):
+                    continue
+                hits.append({
+                    "path": path,
+                    "line": body.count("\n", 0, m.start()) + 1,
+                    "verdict": ON if arg.group(1) == "true" else OFF,
+                    "rule": f"explicit default argument -> {arg.group(1)}",
+                    "stmt": f"{callee}(\"{var}\", {arg.group(1)})",
+                })
+                continue
+            if body[m.end():m.end() + 1] != ")":
+                continue   # some other multi-arg call; not a default declaration
+
             stmt = statement_around(body, m.start())
 
             if callee in helpers and helpers[callee] in (ON, OFF):
@@ -422,6 +562,110 @@ def find_readers(var, sources, helpers=None):
                 "stmt": re.sub(r"\s+", " ", stmt).strip()[:180],
             })
     return hits
+
+
+# ---------------------------------------------------------------------------
+# Comment claims (ENV-DROP-CLOSE-1)
+# ---------------------------------------------------------------------------
+#
+# The registry is not the only place a default is written down, and it is not
+# where a reader looks first. code/objmgr.cpp:1610 said
+#
+#     // Default-off: MC2_STATIC_PROP_MISSION_LOAD_REG=0 (first-render fallback covers).
+#
+# for nearly three months while gos_static_prop_registry.cpp:141 read
+# `parseEnvBoolWithDefault(..., true)`. Mission-load registration was LIVE and
+# the comment said it was not. Nothing machine-checked that, because this file
+# STRIPS comments -- correctly, so that a commented-out getenv cannot pose as a
+# reader. Stripping them for classification and never checking them at all are
+# two different decisions, and only the first one was deliberate.
+#
+# SCOPE IS DELIBERATELY NARROW, because a proximity-based version of this rule
+# was tried first and produced 18 hits of which every single one was a false
+# positive: comments about a NEIGHBOURING gate ("MC2_SSAO_BLUR defaults ON" four
+# lines from MC2_SSAO_DEBUG), and conditional claims ("default-ON under the
+# umbrella"). A rule with that hit rate gets deleted by the first person it
+# annoys. So a claim counts only when all of the following hold:
+#   * it is on a COMMENT line,
+#   * that line names EXACTLY ONE MC2_* variable -- so the claim cannot be about
+#     a neighbour,
+#   * the claim is unconditional (no under/when/unless/if/pending/previously/...
+#     qualifying it), and
+#   * the variable has exactly one non-UNCLASSIFIABLE reader verdict.
+# That leaves 106 assertions in-scope across the tree.
+
+_VAR_RE = re.compile(r"MC2_[A-Z0-9_]+")
+_CLAIM_RE = re.compile(
+    r"default(?:s|ed)?\s*(?:is\s+|to\s+|=\s*|-|:|\s)\s*\**\s*(on|off)\b", re.I)
+_COND_RE = re.compile(
+    r"\b(under|when|unless|if|while|once|pending|until|would|was|used to|"
+    r"previously|no longer|should)\b", re.I)
+_COMMENT_LINE_RE = re.compile(r"^\s*(?://|\*|/\*)")
+
+
+def comment_claims(lines, path, prose=False):
+    """-> list of {var, claim, path, line, text} for attributable claims.
+
+    `prose=True` skips the comment-marker test so the same rule can be applied
+    to a markdown doc, where every line is prose.
+    """
+    out = []
+    for i, ln in enumerate(lines, 1):
+        if not prose and not _COMMENT_LINE_RE.match(ln):
+            continue
+        names = set(_VAR_RE.findall(ln))
+        if len(names) != 1:
+            continue
+        a = _CLAIM_RE.search(ln)
+        if not a:
+            continue
+        if _COND_RE.search(ln[:a.start()]) or _COND_RE.search(ln[a.end():]):
+            continue
+        out.append({"var": names.pop(), "claim": a.group(1).upper(),
+                    "path": path, "line": i, "text": ln.strip()[:160]})
+    return out
+
+
+def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,)):
+    scan_dirs = SCAN_DIRS if scan_dirs is None else scan_dirs
+    excl = {os.path.normcase(os.path.abspath(p)) for p in exclude}
+    claims = []
+    for d in scan_dirs:
+        base = os.path.join(root, d)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [x for x in dirnames
+                           if x not in (".git", "build64", "third_party", "3rdparty")]
+            for fn in filenames:
+                if not fn.endswith(SCAN_EXTS):
+                    continue
+                full = os.path.join(dirpath, fn)
+                if os.path.normcase(os.path.abspath(full)) in excl:
+                    continue
+                try:
+                    with open(full, "r", encoding="utf-8", errors="replace") as fh:
+                        lines = fh.read().splitlines()
+                except OSError:
+                    continue
+                claims.extend(comment_claims(
+                    lines, os.path.relpath(full, root).replace("\\", "/")))
+    # docs/tier1_env_vars.md is the OTHER place a default is written down, and
+    # it is the one a human is told to read. The same three lies that shipped in
+    # the registry shipped there too, and this sweep found three more that only
+    # exist in the doc -- including MC2_STANDARD_LIT_V1, documented as "Default
+    # ON. Kill=`=0`" while gos_mech_batcher.cpp:365 reads
+    # `(v != nullptr && v[0] == '1')  // TEMPORARY DEFAULT-OFF`.
+    doc = os.path.join(root, "docs", "tier1_env_vars.md")
+    if os.path.isfile(doc):
+        try:
+            with open(doc, "r", encoding="utf-8", errors="replace") as fh:
+                claims.extend(comment_claims(fh.read().splitlines(),
+                                             "docs/tier1_env_vars.md",
+                                             prose=True))
+        except OSError:
+            pass
+    return claims
 
 
 # ---------------------------------------------------------------------------
@@ -477,21 +721,38 @@ def load_sources(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,)):
     return out
 
 
-def analyse(registry_text, sources, allow):
+def analyse(registry_text, sources, allow, claims=None):
     """-> (findings, stats)."""
     entries = parse_registry(registry_text)
     helpers = resolve_helpers(sources)
     findings = []
+    implemented_by_var: dict = {}
     stats = {"feature_entries": 0, "checked": 0, "no_reader": 0,
              "agree": 0, "disagree": 0, "unclassifiable": 0,
+             "unclassifiable_nonfeature": 0,
+             "comment_claims": 0, "comment_agree": 0, "comment_disagree": 0,
              "reader_conflict": 0, "allowlisted": 0,
              "helpers_resolved": len([v for v in helpers.values()
                                       if v in (ON, OFF)])}
 
     for e in entries:
-        if e["kind"] != "Feature":
-            continue  # Trace/Retired: defaultOn carries no shipping semantics
+        # ENV-DROP-CLOSE-1: ALL kinds are compared now. This used to be
+        # Feature-only ("Trace/Retired: defaultOn carries no shipping
+        # semantics"), which left 147 of the registry's 340 env entries
+        # unchecked -- including boolean Trace gates, where an inverted
+        # defaultOn misleads exactly the same way a Feature one does.
+        #
+        # UNCLASSIFIABLE stays a FAILURE for Feature and is REPORTED-ONLY for
+        # the other kinds. That asymmetry is deliberate and is the one place
+        # this file relaxes its own doctrine: a Trace entry's defaultOn is a
+        # formality on what is usually a numeric or string knob
+        # (MC2_LIGHT_POOL_MAX, MC2_STATIC_PROP_IBL_SH_SET, the *_GL_CANARY
+        # probes), so failing on an unreadable idiom there is a false-positive
+        # mill rather than a lie detector. DISAGREEMENT and READER_CONFLICT --
+        # the two findings that mean a written default contradicts a binary --
+        # fail for every kind.
         stats["feature_entries"] += 1
+        strict = e["kind"] == "Feature"
         readers = find_readers(e["var"], sources, helpers)
 
         if not readers:
@@ -501,15 +762,20 @@ def analyse(registry_text, sources, allow):
             continue
 
         stats["checked"] += 1
+        verdicts = {r["verdict"] for r in readers}
+        if len(verdicts) == 1 and UNKNOWN not in verdicts:
+            implemented_by_var[e["var"]] = next(iter(verdicts))
         if e["var"] in allow:
             stats["allowlisted"] += 1
             continue
 
-        verdicts = {r["verdict"] for r in readers}
         stated = ON if e["default_on"] else OFF
 
         if UNKNOWN in verdicts:
             stats["unclassifiable"] += 1
+            if not strict:
+                stats["unclassifiable_nonfeature"] += 1
+                continue
             bad = [r for r in readers if r["verdict"] == UNKNOWN]
             findings.append({
                 "kind": "UNCLASSIFIABLE", "var": e["var"],
@@ -543,6 +809,34 @@ def analyse(registry_text, sources, allow):
         else:
             stats["agree"] += 1
 
+    # --- comment claims vs the implemented default ------------------------
+    # Deliberately NOT limited to registered vars. The comment defect this rule
+    # exists for (code/objmgr.cpp:1610) named MC2_STATIC_PROP_MISSION_LOAD_REG,
+    # which is not in RendererFeatureRegistry.h at all -- so scoping the sweep
+    # to the registry would have missed the exemplar.
+    for var in sorted({c["var"] for c in (claims or [])} - set(implemented_by_var)):
+        rs = find_readers(var, sources, helpers)
+        vs = {r["verdict"] for r in rs}
+        if len(vs) == 1 and UNKNOWN not in vs:
+            implemented_by_var[var] = next(iter(vs))
+
+    for c in (claims or []):
+        impl = implemented_by_var.get(c["var"])
+        if impl is None or c["var"] in allow:
+            continue
+        stats["comment_claims"] += 1
+        if c["claim"] == impl:
+            stats["comment_agree"] += 1
+            continue
+        stats["comment_disagree"] += 1
+        findings.append({
+            "kind": "COMMENT_DISAGREEMENT", "var": c["var"],
+            "msg": (f"{c['path']} states default {c['claim']} but the "
+                    f"reader implements default {impl}. The reader is the only "
+                    f"authority; fix the comment (or the reader)."),
+            "sites": [f"{c['path']}:{c['line']}  {c['text']}"],
+        })
+
     return findings, stats
 
 
@@ -551,7 +845,8 @@ def run(quiet=False):
         registry_text = fh.read()
     sources = load_sources()
     allow, malformed = load_allowlist()
-    findings, stats = analyse(registry_text, sources, allow)
+    findings, stats = analyse(registry_text, sources, allow,
+                              claims=load_comment_claims())
 
     for line in malformed:
         findings.append({
@@ -566,14 +861,20 @@ def run(quiet=False):
         print("=" * 70)
         print("  GATE-DEFAULT-TRUTH-1 -- registry default vs reader default")
         print("=" * 70)
-        print(f"  Feature entries with an env var : {stats['feature_entries']}")
+        print(f"  Registry entries with an env var: {stats['feature_entries']}"
+              "   (ALL kinds)")
         print(f"  ... with a reader found         : {stats['checked']}")
         print(f"  ... no reader in scanned source : {stats['no_reader']}")
         print(f"  allowlisted (explicit reason)   : {stats['allowlisted']}")
         print(f"  AGREE                           : {stats['agree']}")
         print(f"  DISAGREE                        : {stats['disagree']}")
         print(f"  READER CONFLICT                 : {stats['reader_conflict']}")
-        print(f"  UNCLASSIFIABLE                  : {stats['unclassifiable']}")
+        print(f"  UNCLASSIFIABLE                  : {stats['unclassifiable']}"
+              f"   (of which {stats['unclassifiable_nonfeature']} non-Feature "
+              "= reported, not failed)")
+        print(f"  comment/doc default claims      : {stats['comment_claims']}")
+        print(f"  ... AGREE with the reader       : {stats['comment_agree']}")
+        print(f"  ... CONTRADICT the reader       : {stats['comment_disagree']}")
         print()
         for f in findings:
             print(f"  [{f['kind']}] {f['var']}")
@@ -582,8 +883,8 @@ def run(quiet=False):
                 print(f"      - {s}")
             print()
         if not findings:
-            print("  OK: every classifiable Feature gate's registry default "
-                  "matches its reader.")
+            print("  OK: every classifiable gate's registry default matches its "
+                  "reader, and no in-source comment or tier1 doc line contradicts one.")
         print("=" * 70)
 
     return 0 if not findings else 1
@@ -610,7 +911,18 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     { "MC2_FEATURE_ST_INVERTED",   "MC2_ST_INVERTED",   EnvVarKind::Feature, true,
       "explicit unset branch says OFF while a later expression looks like ON" },
     { "MC2_TRACE_ST_VALUE",        "MC2_ST_VALUE",      EnvVarKind::Trace,   false,
-      "Trace kind numeric tunable -- must be skipped" },
+      "Trace kind numeric tunable -- atol() value read, no boolean to compare" },
+    { "MC2_TRACE_ST_LIAR",         "MC2_ST_TRACE_LIAR", EnvVarKind::Trace,   false,
+      "Trace kind BOOLEAN gate that lies -- must be caught now that all kinds "
+      "are compared" },
+    { "MC2_TRACE_ST_ODD",          "MC2_ST_TRACE_ODD",  EnvVarKind::Trace,   false,
+      "Trace kind unreadable idiom -- reported, NOT failed" },
+    { "MC2_FEATURE_ST_SIBLING",    "MC2_ST_SIBLING",    EnvVarKind::Feature, false,
+      "presence-gated, but shares a block with a kill-switch sibling" },
+    { "MC2_FEATURE_ST_HOISTED",    "MC2_ST_HOISTED",    EnvVarKind::Feature, false,
+      "two getenv()s hoisted before either classification" },
+    { "MC2_FEATURE_ST_ORGUARD",    "MC2_ST_ORGUARD",    EnvVarKind::Feature, false,
+      "if (!v || v[0] != '1') return false" },
 };
 '''
 
@@ -660,8 +972,42 @@ bool inverted() {
 /* Block comment naming getenv("MC2_ST_COMMENT") for good measure. */
 int radius() {
     const char* v = getenv("MC2_ST_VALUE");
-    return v ? atoi(v) : 2500;
+    return v ? atol(v) : 2500;
 }
+bool traceLiar() {
+    const char* v = getenv("MC2_ST_TRACE_LIAR");
+    return !(v && v[0] == '0');
+}
+bool traceOdd() {
+    const char* v = getenv("MC2_ST_TRACE_ODD");
+    return v ? someUnknownHelper(v) : fallbackFromConfigFile();
+}
+// SIBLING/HOISTED: two gates resolved inside ONE block. The presence-gated one
+// must not be classified from its neighbour's kill-switch idiom.
+void resolveSiblings() {
+    const char* sib = getenv("MC2_ST_SIBLING");
+    s_sibling = (sib && sib[0] && sib[0] != '0') ? 1 : 0;
+    const char* killer = getenv("MC2_ST_KILLSWITCH");
+    s_killer = !(killer && killer[0] == '0');
+}
+void resolveHoisted() {
+    const char* h  = getenv("MC2_ST_HOISTED");
+    const char* hk = getenv("MC2_ST_HOISTED_KILL");
+    s_hoisted = (h && h[0] == '1');
+    s_hoistedKill = !(hk && hk[0] == '0');
+}
+bool orGuard() {
+    const char* e = getenv("MC2_ST_ORGUARD");
+    if (!e || e[0] != '1') return false;
+    return true;
+}
+// COMMENT CLAIMS. The first line is the objmgr.cpp:1610 shape: one variable,
+// an unconditional default assertion, and a reader that says the opposite.
+// MC2_ST_HONEST_ON is Default-off: set =0 to disable.
+// The next two must NOT be attributed -- two variables in one line, and a
+// conditional claim. Both were real false-positive shapes in the live tree.
+// MC2_ST_HONEST_OFF and MC2_ST_LIAR both default ON in that configuration.
+// MC2_ST_HONEST_OFF is default-ON under the umbrella gate.
 '''
 
 
@@ -679,8 +1025,10 @@ def _selftest():
     print("-" * 70)
 
     sources = [("selftest_fake.cpp", strip_comments(_SELF_SOURCE))]
-    findings, stats = analyse(_SELF_REGISTRY, sources, allow={})
+    claims = comment_claims(_SELF_SOURCE.splitlines(), "selftest_fake.cpp")
+    findings, stats = analyse(_SELF_REGISTRY, sources, allow={}, claims=claims)
     by_var = {f["var"]: f for f in findings}
+    by_kind = {(f["kind"], f["var"]) for f in findings}
 
     # 1. THE REAL THING: registry says OFF, code says ON -- the exact shape of
     #    MC2_SHADOW_ENABLE and MC2_SHADOW_BOUNDED_NEAR_FIT.
@@ -690,8 +1038,12 @@ def _selftest():
 
     # 2. Honest entries must NOT be flagged, or the rule is noise and the first
     #    person it annoys deletes it.
+    # (It DOES carry a deliberate comment lie for case 7c, so scope this to the
+    # registry-vs-reader findings rather than "appears in findings at all".)
     check("does not flag an honest default-ON gate",
-          "MC2_ST_HONEST_ON" not in by_var)
+          not any(k for k, v in by_kind
+                  if v == "MC2_ST_HONEST_ON" and k != "COMMENT_DISAGREEMENT"),
+          str(by_kind))
     check("does not flag an honest default-OFF gate",
           "MC2_ST_HONEST_OFF" not in by_var)
 
@@ -725,10 +1077,61 @@ def _selftest():
           by_var.get("MC2_ST_INVERTED", {}).get("kind") == "DISAGREEMENT",
           str(by_var.get("MC2_ST_INVERTED")))
 
-    # 7. Trace-kind entries are skipped: defaultOn is meaningless for a numeric
-    #    tunable and flagging them would be a false-positive mill.
-    check("Trace-kind entries are not compared",
+    # 7. ALL KINDS ARE COMPARED (ENV-DROP-CLOSE-1). A numeric Trace knob is still
+    #    skipped -- but because atol() makes it a VALUE READ, not because of its
+    #    kind. A BOOLEAN Trace gate that lies must now be caught: 144 Trace
+    #    entries used to be exempt purely for being Trace.
+    check("a numeric Trace knob is skipped as a value read",
           "MC2_ST_VALUE" not in by_var)
+    check("a BOOLEAN Trace gate that lies IS caught (all kinds compared)",
+          by_var.get("MC2_ST_TRACE_LIAR", {}).get("kind") == "DISAGREEMENT",
+          str(by_var.get("MC2_ST_TRACE_LIAR")))
+    check("an unreadable Trace idiom is reported, NOT failed",
+          "MC2_ST_TRACE_ODD" not in by_var
+          and stats["unclassifiable_nonfeature"] == 1,
+          f"nonfeature_unclass={stats['unclassifiable_nonfeature']}")
+
+    # 7b. BLOCK CONTAMINATION. Both shapes below put two gates in one block. The
+    #     presence-gated gate is default OFF and the registry says OFF, so a
+    #     finding here means the checker classified it from its NEIGHBOUR --
+    #     which is what it did to MC2_SSAO_DEBUG (gos_postprocess.cpp) and would
+    #     have done to MC2_VFX_AGE_SAMPLE (spawn.cpp) under a naive fix.
+    check("a gate is not classified from a SIBLING gate in the same block",
+          "MC2_ST_SIBLING" not in by_var, str(by_var.get("MC2_ST_SIBLING")))
+    check("hoisted getenv()s do not cut the classification off",
+          "MC2_ST_HOISTED" not in by_var, str(by_var.get("MC2_ST_HOISTED")))
+    check("`if (!v || <anything>) return false` reads as default OFF",
+          "MC2_ST_ORGUARD" not in by_var, str(by_var.get("MC2_ST_ORGUARD")))
+
+    # 7c. COMMENTS ARE NOW CHECKED TOO. Stripping them so they cannot pose as a
+    #     reader (case 5) is right; never comparing them to the reader is what
+    #     let code/objmgr.cpp:1610 say "Default-off" for ~3 months about a gate
+    #     whose reader defaulted true. Note this is the exact inverse of case 5,
+    #     and both must hold: comment text is not a READER, and it is not
+    #     exempt from being CHECKED.
+    check("an in-source comment contradicting the reader is caught",
+          ("COMMENT_DISAGREEMENT", "MC2_ST_HONEST_ON") in by_kind,
+          str(findings))
+    check("a comment naming TWO vars is not attributed to either",
+          ("COMMENT_DISAGREEMENT", "MC2_ST_HONEST_OFF") not in by_kind,
+          str([c for c in claims]))
+    check("a CONDITIONAL default claim is not treated as an assertion",
+          stats["comment_claims"] == 1,
+          f"claims={claims}")
+
+    # 7d. The tier1 doc is prose, not comment-marked, so it needs prose=True.
+    #     Shape copied verbatim from the real docs/tier1_env_vars.md line for
+    #     MC2_STANDARD_LIT_V1, which was a live lie until this rule landed.
+    doc = comment_claims(
+        ["- `MC2_ST_HONEST_ON` — GGX PBR on mechs. Default **OFF**. Kill=`=0`.",
+         "  narrative line naming MC2_ST_HONEST_ON with no default assertion"],
+        "docs/tier1_env_vars.md", prose=True)
+    check("a markdown doc line asserting a default is attributed",
+          len(doc) == 1 and doc[0]["claim"] == "OFF"
+          and doc[0]["var"] == "MC2_ST_HONEST_ON", str(doc))
+    check("prose=False still ignores the same line (comment marker required)",
+          comment_claims(
+              ["- `MC2_ST_HONEST_ON` — Default **OFF**."], "x.cpp") == [])
 
     # 7. Comment stripping must not eat real code or string literals.
     stripped = strip_comments('a(); // getenv("X")\nb("/* not a comment */");')
@@ -752,7 +1155,7 @@ def _selftest():
     if failures:
         print(f"SELF-TEST FAILED: {len(failures)} case(s): {failures}")
         return 1
-    print("SELF-TEST PASSED (9 cases)")
+    print("SELF-TEST PASSED (18 cases)")
     return 0
 
 

@@ -4341,15 +4341,27 @@ void BldgAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 // IsStaticNow / touch / invalidateStaticRegistration / isStaticEligible.
 // Registry-replay eligibility for buildings is stricter than for trees because
 // buildings have many dynamic states (animation, spin, flash, destruct FX).
-// memory/bldg_animation_lod_swap_unsafe.md is the load-bearing reason: animated
+// memory/bldg_animation_lod_swap_unsafe.md WAS the load-bearing reason: animated
 // types share LOD-0 node-index state across instances, so replaying a recipe
 // for an animated building drives the wrong node when LOD swaps.
+//
+// ENV-DROP-CLOSE-1 (2026-07-30) -- THAT MECHANISM IS DEAD TODAY. Building LOD is
+// pinned to 0: every currentLOD write in this file assigns 0 (:1499 :1678 :5268
+// :5336 :5807 :6183 :7081 :7135), no path assigns nonzero, and the LOD-select
+// body was deleted from recalcBounds (see the LATENT HAZARD note at :2002). There
+// is no LOD swap for the shared shapeId cache to be wrong about. The cache defect
+// itself is unfixed (msl.cpp:3003 shapeIdsSet is still per-type), so the hazard is
+// LATENT, not gone -- it re-arms the moment the TEMP LOD-0 pin is lifted.
+// Do NOT cite it to explain a present-day building/turret symptom; several lanes
+// were sent chasing this dead path on 2026-07-30.
 
 namespace {
 	// Type-level "any animation defined for this building type". Even if the
 	// current instance isn't actively animating, an animated TYPE is excluded
 	// from the static path because LOD swap could surface the animation later
-	// and break the cached recipe.
+	// and break the cached recipe. (Unreachable today -- LOD-0 pin, see above --
+	// and additionally the exclusion is default-OFF: the caller applies it only
+	// when MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE=0.)
 	bool bldgTypeHasAnimations(const BldgAppearanceType* t) {
 		if (!t) return false;
 		for (long i = 0; i < MAX_BD_ANIMATIONS; ++i) {

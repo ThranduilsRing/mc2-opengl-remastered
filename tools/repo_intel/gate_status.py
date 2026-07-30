@@ -16,12 +16,43 @@ plus a live `git grep` for code readers (fast single-var path; env_index's
 full source walk is only used as fallback).
 
 Verdict flags map 1:1 to the failure classes:
-  ENV_DROP_RISK   — read by engine but NOT in run_smoke passthrough allowlist
-                    -> gate-ON smoke silently runs gate-OFF (Mistake E)
+  ENV_UNDRIVEABLE — the smoke runner really does NOT deliver this var's ambient
+                    value to the engine (runner.FORCED_ENV / POPPED_ENV)
+                    -> a shell-set value is discarded; an A/B arm never ran
+  ENV_DROP_RISK   — read by engine but NOT in the run_smoke passthrough tuple
+                    AND the runner has stopped inheriting os.environ, so the
+                    tuple is load-bearing again (see below). Conditional.
   UNREGISTERED    — not in RendererFeatureRegistry.h AND not in the
                     check-env-registry.sh ALLOWLIST -> CI gate fails
   UNDOCUMENTED    — no docs/tier1_env_vars.md entry
   GHOST           — registered/documented but no code reader found
+
+ENV_DROP_RISK IS CONDITIONAL, AND THAT CORRECTION IS THE POINT (ENV-DROP-CLOSE-1)
+--------------------------------------------------------------------------------
+This tool used to raise ENV_DROP_RISK on *any* engine-read gate missing from the
+run_smoke.py `if k in ( ... )` tuple, and told the caller its "gate-ON smoke may
+silently run the gate-OFF path". That was wrong for every one of the ~500 gates
+it fired on, because `scripts/smoke_lib/runner.py` builds the child env as
+
+    env = os.environ.copy()  ->  FORCED_ENV  ->  SOFT_ENV(setdefault)
+                             ->  POPPED_ENV(pop)  ->  cfg.env_extra
+
+so an ambient MC2_* reaches mc2.exe whether or not the tuple names it. The
+tuple's os.environ-copying rows are NO-OPS. HARNESS-HYGIENE-3 established this
+(scripts/check-env-drive-guard.py) and GATE-HYGIENE-CLOSE-1 made it a contract
+(scripts/check-smoke-env-inheritance.py), which prints in so many words: "Do NOT
+file this gap as 'voided A/B verifications'."
+
+The cost of the false flag is not cosmetic and it is not symmetrical with a
+missed one: it invites a reader to THROW AWAY VALID EVIDENCE. Sessions have been
+spent re-running A/Bs that were fine, and a real, correctly-declared A/B on
+MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE was written off as void on this tool's word.
+
+So the flag is now computed from READER SOURCE rather than assumed: the runner's
+inheritance line and its three undriveable tables are parsed out of
+scripts/smoke_lib/runner.py. If someone ever changes the runner back to a
+from-scratch env dict, `smoke_env_inherited` goes False, the tuple becomes
+load-bearing, and ENV_DROP_RISK starts firing again — correctly, that time.
 """
 from __future__ import annotations
 
@@ -64,6 +95,55 @@ def parse_smoke_allowlist(repo_root: Path) -> tuple[set, bool]:
             if ")}," in line:
                 in_block = False
     return names, found
+
+
+# ---------------------------------------------------------------------------
+# Source 3b: smoke_lib/runner.py env-composition policy (the REAL drop mechanism)
+# ---------------------------------------------------------------------------
+
+#: Matches the runner's child-env base. Deliberately the SAME pattern
+#: scripts/check-smoke-env-inheritance.py enforces as a CI contract, so the two
+#: cannot drift into disagreeing about whether the harness inherits.
+_INHERIT_RE = re.compile(r"^\s*env\s*=\s*os\.environ\.copy\(\)", re.M)
+
+
+def _table_names(text: str, header: str) -> tuple[set, bool]:
+    """Quoted MC2_* names in a `HEADER ... {` block up to its closing brace."""
+    names: set = set()
+    i = text.find(header)
+    if i == -1:
+        return names, False
+    for line in text[i:].splitlines()[1:]:
+        s = line.strip()
+        if s.startswith("}"):
+            break
+        names.update(_QUOTED_MC2.findall(line))
+    return names, True
+
+
+def parse_runner_env_policy(repo_root: Path) -> dict:
+    """What scripts/smoke_lib/runner.py ACTUALLY does to the child environment.
+
+    Returns {inherits, forced, soft, popped, anchors_ok}. `anchors_ok=False`
+    means the file could not be read or the tables could not be located — the
+    caller must treat the result as unknown rather than as "nothing is dropped".
+    """
+    path = Path(repo_root) / "scripts" / "smoke_lib" / "runner.py"
+    out = {"inherits": False, "forced": set(), "soft": set(),
+           "popped": set(), "anchors_ok": False}
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return out
+    forced, f_ok = _table_names(text, "FORCED_ENV: dict = {")
+    soft, s_ok = _table_names(text, "SOFT_ENV: dict = {")
+    popped, p_ok = _table_names(text, "POPPED_ENV: frozenset = frozenset({")
+    out.update({
+        "inherits": bool(_INHERIT_RE.search(text)),
+        "forced": forced, "soft": soft, "popped": popped,
+        "anchors_ok": f_ok and s_ok and p_ok,
+    })
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +215,7 @@ def gate_status(repo_root: Path, var: str) -> dict:
     tier1 = ei._parse_tier1_docs(repo_root)
     smoke_allow, smoke_anchor_ok = parse_smoke_allowlist(repo_root)
     check_allow, check_anchor_ok = parse_registry_check_allowlist(repo_root)
+    runner_env = parse_runner_env_policy(repo_root)
     readers = _grep_readers(repo_root, var)
 
     reg = registry.get(var)
@@ -151,11 +232,27 @@ def gate_status(repo_root: Path, var: str) -> dict:
     elif t1 and t1.get("default"):
         default = str(t1["default"]).upper()
 
+    inherits = runner_env["inherits"]
+    in_forced = var in runner_env["forced"]
+    in_popped = var in runner_env["popped"]
+    in_soft = var in runner_env["soft"]
+
     flags: list[str] = []
-    if has_readers and not in_smoke_allow:
-        flags.append("ENV_DROP_RISK: read by code but NOT in the run_smoke.py "
-                     "passthrough allowlist — a gate-ON smoke may silently run "
-                     "the gate-OFF path")
+    # REAL undriveability, independent of the vestigial passthrough tuple.
+    if in_popped:
+        flags.append("ENV_UNDRIVEABLE: scripts/smoke_lib/runner.py DELETES this "
+                     "var from the child env (POPPED_ENV) — a shell-set value "
+                     "never reaches mc2.exe under the smoke harness")
+    if in_forced:
+        flags.append("ENV_UNDRIVEABLE: scripts/smoke_lib/runner.py HARD-FORCES "
+                     "this var (FORCED_ENV) — a conflicting shell value is "
+                     "discarded, so an A/B arm that sets it never runs")
+    # Conditional: only a real drop once the runner stops inheriting os.environ.
+    if has_readers and not in_smoke_allow and not inherits:
+        flags.append("ENV_DROP_RISK: read by code, NOT in the run_smoke.py "
+                     "passthrough tuple, and the runner no longer inherits "
+                     "os.environ — the tuple is load-bearing, so a gate-ON "
+                     "smoke silently runs the gate-OFF path")
     if has_readers and not in_registry and not in_check_allow:
         flags.append("UNREGISTERED: not in RendererFeatureRegistry.h and not in "
                      "check-env-registry.sh ALLOWLIST — CI env-registry gate fails")
@@ -174,6 +271,19 @@ def gate_status(repo_root: Path, var: str) -> dict:
     if not check_anchor_ok:
         parse_notes.append("check-env-registry.sh ALLOWLIST block not found — "
                            "registry_check_allowlist result unreliable")
+    if not runner_env["anchors_ok"]:
+        parse_notes.append("smoke_lib/runner.py FORCED_ENV/SOFT_ENV/POPPED_ENV "
+                           "tables not found — ENV_UNDRIVEABLE result unreliable")
+
+    # Advisory, NOT a flag: missing from the tuple is a convention gap, not a
+    # drop, while the runner inherits. Stated positively so nobody re-derives
+    # "void A/B" from a bare boolean. See scripts/check-smoke-env-inheritance.py.
+    if has_readers and not in_smoke_allow and inherits:
+        parse_notes.append(
+            "not in the run_smoke.py passthrough tuple — convention gap ONLY: "
+            "the runner inherits os.environ (smoke_lib/runner.py), so the "
+            "ambient value reaches mc2.exe and both A/B arms are real. Do NOT "
+            "treat this as a voided verification.")
 
     return {
         "var": var,
@@ -188,6 +298,13 @@ def gate_status(repo_root: Path, var: str) -> dict:
         "tier1_documented": in_tier1,
         "tier1_line": (t1.get("raw_line", "")[:200] if t1 else None),
         "smoke_allowlisted": in_smoke_allow,
+        # The env-composition facts, read out of smoke_lib/runner.py rather than
+        # assumed. `smoke_env_inherited` is what makes `smoke_allowlisted` a
+        # convention fact instead of a delivery fact.
+        "smoke_env_inherited": inherits,
+        "smoke_env_forced": in_forced,
+        "smoke_env_popped": in_popped,
+        "smoke_env_soft_default": in_soft,
         "registry_check_allowlisted": in_check_allow,
         "reader_count": len(readers),
         "readers": readers,

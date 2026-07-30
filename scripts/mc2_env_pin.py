@@ -3,11 +3,25 @@
 
 WHY THIS EXISTS
 ---------------
-`run_smoke.py` launches the engine with a from-scratch `env={...}` dict, so an
-ambient `MC2_*` set in the operator's shell is DROPPED unless it appears in that
-runner's explicit allowlist. `run_visual_capture.py` did the opposite -- it used
-`os.environ.copy()` -- so every stray `MC2_*` in the shell silently rode into the
-captured frame, unrecorded.
+`run_visual_capture.py` used to launch the engine with `os.environ.copy()`, so
+every stray `MC2_*` in the operator's shell silently rode into the captured
+frame, unrecorded.
+
+CORRECTION (ENV-DROP-CLOSE-1). This paragraph used to open by contrasting that
+with `run_smoke.py`, which it said "launches the engine with a from-scratch
+`env={...}` dict, so an ambient `MC2_*` is DROPPED unless it appears in that
+runner's explicit allowlist". THAT IS FALSE AND WAS ALREADY FALSE WHEN WRITTEN:
+`scripts/smoke_lib/runner.py` builds the child env from `os.environ.copy()` too
+(HARNESS-HYGIENE-3; enforced by `scripts/check-smoke-env-inheritance.py`). The
+smoke runner's passthrough tuple drops nothing. The claim is corrected here
+rather than deleted because this file was one of the places it was read back
+out of, and it kept regenerating a false audit finding -- "gate X is not
+allowlisted, therefore both arms of its A/B ran the same path and the result is
+void" -- which cost real, valid evidence.
+
+The scrub below is a genuine deny-by-default policy and applies to THIS
+launcher only. It is safe because it is LOUD: what it removed is recorded in
+`ambient_scrubbed` and warned about, and a deliberate deviation is declared.
 
 That is not hypothetical. On 2026-07-2x this machine's already-open shells
 carried three vars that had been removed from the user's registry:

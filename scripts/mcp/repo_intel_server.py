@@ -689,15 +689,28 @@ def gate_status(var: str) -> str:
     Call BEFORE relying on a gate in a smoke run and AFTER adding a new gate.
 
     Flags returned (each maps to an observed failure class):
-      ENV_DROP_RISK — read by code but not in the run_smoke passthrough
-                      allowlist: your gate-ON smoke silently runs gate-OFF.
+      ENV_UNDRIVEABLE — smoke_lib/runner.py really does discard this var's
+                      ambient value (FORCED_ENV / POPPED_ENV): an A/B arm
+                      that sets it never ran.
+      ENV_DROP_RISK — read by code, absent from the run_smoke passthrough
+                      tuple, AND the runner has stopped inheriting
+                      os.environ so the tuple is load-bearing again.
       UNREGISTERED  — check-env-registry.sh CI gate will fail.
       UNDOCUMENTED  — no docs/tier1_env_vars.md entry.
       GHOST         — registered/documented but no code reader found.
 
+    ABSENCE FROM THE PASSTHROUGH TUPLE IS NOT A DROP. The runner builds the
+    child env from os.environ.copy(), so ambient MC2_* reach mc2.exe whether
+    or not the tuple names them (~100 registered gates are in that gap). Do
+    NOT conclude "both A/B arms ran the same path, the result is void" from
+    smoke_allowlisted=false — read smoke_env_inherited, and see
+    scripts/check-smoke-env-inheritance.py. Until ENV-DROP-CLOSE-1 this tool
+    asserted the opposite and real evidence was thrown away on its word.
+
     Returns JSON: {var, verdict OK|GAPS, flags, default, registered,
-    registry_entry, tier1_documented, smoke_allowlisted,
-    registry_check_allowlisted, reader_count, readers}.
+    registry_entry, tier1_documented, smoke_allowlisted, smoke_env_inherited,
+    smoke_env_forced, smoke_env_popped, smoke_env_soft_default,
+    registry_check_allowlisted, reader_count, readers, parse_notes}.
     """
     root = _repo()
     return _j(gstat.gate_status(root, var))

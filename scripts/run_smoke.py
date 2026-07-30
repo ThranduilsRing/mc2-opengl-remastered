@@ -2854,7 +2854,22 @@ def main():
                             # "indirect submitters" traces produced NO output and
                             # the absence read as "nothing to report".
                             "MC2_RENDER_FRAME_PLAN_TRACE",
-                            "MC2_MDI_SUBMIT_TRACE")},
+                            "MC2_MDI_SUBMIT_TRACE",
+                            # ENV-DROP-CLOSE-1. HONEST NOTE, because several
+                            # comments above this line are not: these two rows
+                            # (like every other os.environ-copying row here) are
+                            # NO-OPS. smoke_lib/runner.py builds the child env
+                            # from os.environ.copy(), so an ambient MC2_* already
+                            # reaches mc2.exe whether or not it is named here.
+                            # They are listed for convention parity only -- both
+                            # are actively A/B'd, and their absence kept being
+                            # re-reported as an "ENV_DROP_RISK / voided A/B" by
+                            # tools/repo_intel/gate_status.py (now corrected).
+                            # If the runner ever stops inheriting os.environ this
+                            # tuple becomes load-bearing for real; that is what
+                            # scripts/check-smoke-env-inheritance.py guards.
+                            "MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE",
+                            "MC2_STATIC_UPDATE_SKIP")},
             },
         )
         # SMOKE-GATE-GUARD-1 / HARNESS-HYGIENE-3: ENV-DROP guard, corrected.

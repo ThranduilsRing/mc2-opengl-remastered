@@ -2949,8 +2949,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // REDUNDANT-PASS-HUNT-1: env resolved once (kTglcMacroVariation).
         if (s_locMacroVariation >= 0)
             glUniform1f(s_locMacroVariation, kTglcMacroVariation);
-        // TERRAIN-EDGE-FEATHER-1: env gate MC2_TERRAIN_EDGE_FEATHER, default OFF
-        // -> uploads 0 -> frag block skipped (byte-identical). Fades the terrain
+        // TERRAIN-EDGE-FEATHER-1: env gate MC2_TERRAIN_EDGE_FEATHER, default ON
+        // (kill-switch; reader gos_terrain_lod_chunk.cpp:158 is `!(e && e[0]=='0')`.
+        // Said "default OFF" until ENV-DROP-CLOSE-1, 2026-07-30).
+        // =0 uploads 0 -> frag block skipped (byte-identical). Fades the terrain
         // colormap to sky/haze over the last ~tile band so the hard straight
         // map-perimeter line dissolves into the fog. Strength via
         // MC2_TERRAIN_EDGE_FEATHER_STRENGTH (default 1.0).

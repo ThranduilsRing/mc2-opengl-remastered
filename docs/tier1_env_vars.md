@@ -247,7 +247,7 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 - `MC2_PROP_SHADOW_RECEIVE` — PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade (building self-shadow + prop-on-prop) in `shadow_screen.frag`. Default **OFF**; `=1` enables. OFF = legacy static-map-only reception for the a=0.25 prop class (pixel-identical). Shares the CSM PCF ledger + `MC2_SHADOW_MECH_SOFT` terminator; floor 0.4 min-combined with the static map (no double-darken).
 - `MC2_SHADOW_PROP_ALPHA` — tree-foliage shadow alpha-test (`shadow_static_prop.frag`). Default **ON**. Covers BOTH the legacy per-texture path and (since SHADOW-PROP-ALPHA-ATLAS-1) the coalesce/BC7-atlas path.
 - `MC2_SHADOW_PROP_ALPHA_ATLAS` — SHADOW-PROP-ALPHA-ATLAS-1 kill switch: routes the prop-shadow alpha-test through the SAME coalesce group/bucket `GL_TEXTURE_2D_ARRAY` the color pass samples (program `shadow_static_prop_alpha_atlas`, per-packet `u_texLayer`/`u_uvScale`) whenever coalesce is armed. Default **ON**; `=0` reverts to legacy per-texture binds (pre-slice behavior: atlas trees whose legacy gos texture is dead cast solid square shadows). Inert when `MC2_SHADOW_PROP_ALPHA=0` or coalesce is disarmed.
-- `MC2_CLOUD_SHADOW` — cloud-shadow pass. Default **ON**.
+- `MC2_CLOUD_SHADOW` — cloud-shadow pass. Default **OFF** (opt in with `=1`). Reader: `GameOS/gameos/gos_postprocess.cpp:502` early-returns false when unset. Documented as **ON** until ENV-DROP-CLOSE-1 (2026-07-30).
 - **DEBUG-only:** `MC2_SHADER_PATH_TINT` (shader-path tint); `MC2_TERRAIN_DEBUG_MODE` / `MC2_TERRAIN_LOD_CHUNK_DIAG` = **30/31** = dynamic-shadow viz.
 
 ## GPU cull readback diagnostics
@@ -405,7 +405,7 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 
 ## Mech PBR lighting (StandardLit GGX path)
 
-- `MC2_STANDARD_LIT_V1` — Cook-Torrance GGX PBR on mechs. Default **ON**. Kill=`=0`.
+- `MC2_STANDARD_LIT_V1` — Cook-Torrance GGX PBR on mechs. Default **OFF**, opt in with `=1`. Reader: `GameOS/gameos/gos_mech_batcher.cpp:365`, `(v != nullptr && v[0] == '1')  // TEMPORARY DEFAULT-OFF (PBR mech rendering disabled)`. Documented as "Default **ON**. Kill=`=0`" until ENV-DROP-CLOSE-1 (2026-07-30) — an A/B of `=0` versus unset graded OFF against OFF.
 - `MC2_MECH_SURFACE_MATERIAL` — surface material profile for mechs. Default **unset** = passthrough (no surface material). Explicit values:
   - `=metal061b` — Metal061B normal+ORM as substrate + PaintedMetal003 paint layer (debug/exposed-metal look; strong PBR)
   - `=painted_subtle` — ORM-only (flat normal, no perturbation) using Metal061B roughness/metalness. Soft defaults: metallic=0.03, roughness 0.65–0.90, wear=0.0, tile_scale=2.0. For "mech catches light better" not "mech looks like raw metal".
@@ -614,7 +614,7 @@ event=edge_mask_baked feathered_solid_tiles=N` on stdout confirms the bake armed
 
 ### MC2_LIGHT_BILLBOARD_TWOSIDED
 
-- `MC2_LIGHT_BILLBOARD_TWOSIDED=0` — killswitch, default **ON**. Restores legacy backface culling of beacon/runway edge-light glow cards.
+- `MC2_LIGHT_BILLBOARD_TWOSIDED=1` — opt-in, default **OFF** (reader `mclib/tgl.cpp:107`, whose own comment says "default OFF (AUDIT-TRUTH-1)"; documented as a default-**ON** killswitch until ENV-DROP-CLOSE-1, 2026-07-30). Restores legacy backface culling of beacon/runway edge-light glow cards.
 
 **Default:** on (killswitch)
 

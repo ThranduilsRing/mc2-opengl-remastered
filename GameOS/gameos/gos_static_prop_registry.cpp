@@ -299,7 +299,9 @@ static std::vector<RecipeRange>           s_recipeRanges;
 // per mission, but "is this population instrumented in this build" does not.
 static uint8_t s_popsEverTagged = 0u;
 
-// RECIPE-SLOT-RECYCLE (MC2_STATIC_RECIPE_RECYCLE, default OFF). The registry
+// RECIPE-SLOT-RECYCLE (MC2_STATIC_RECIPE_RECYCLE, default ON -- kill-switch =0;
+// reader at :318 is `!(v && v[0]=='0')`. Said "default OFF" until
+// ENV-DROP-CLOSE-1, 2026-07-30). The registry
 // historically only APPENDED: registerRecipe() pushed a new s_recipeRanges slot
 // and invalidate() merely tombstoned (count=0), never reclaiming the index. Under
 // per-frame invalidate+re-register churn (LOD swap, damage, and force-dynamic props

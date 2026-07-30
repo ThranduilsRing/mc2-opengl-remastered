@@ -4161,8 +4161,11 @@ void Terrain::geometry (void)
 		// wx/wy/wz/clipInfo dependency). The narrow walk MUST still run every
 		// frame because quadList is a camera-relative sliding window (its slots
 		// remap to different world tiles as the view pans), so the eligible-water
-		// set is NOT cacheable across frames. Gate default-OFF; MC2_QUADSETUP_ARMED_SKIP
-		// (unset/"0" = OFF kill-switch, any other value = ON). NarrowEnabled() is
+		// set is NOT cacheable across frames. Gate MC2_QUADSETUP_ARMED_SKIP is
+		// DEFAULT-ON: only literal "0" opts out, UNSET opts IN. (This sentence read
+		// "Gate default-OFF; ... unset/\"0\" = OFF kill-switch" until ENV-DROP-CLOSE-1,
+		// 2026-07-30 -- contradicting both the DEFAULT-ON line three rows below it
+		// and the reader below that.) NarrowEnabled() is
 		// in the predicate so we only skip when the pVertex water producer is live.
 		// DEFAULT-ON since 2026-06-03 (clean Tracy mc2_01 1.01ms->372us, tier1 5/5,
 		// water/mines/decals/picking user-verified): only literal "0" opts out

@@ -3408,8 +3408,12 @@ void gosRenderer::renderWaterFastPath(
         setMF         ("maxMinUV",        maxMinUV);
         // WATER-EDGE-FEATHER-1: dissolve the hard map-edge water rim into the
         // fog'd horizon (companion to TERRAIN-EDGE-FEATHER-1). Gate
-        // MC2_WATER_EDGE_FEATHER default-OFF -> upload 0 -> frag block skipped
-        // (byte-identical). Strength MC2_WATER_EDGE_FEATHER_STRENGTH (default 1.0).
+        // MC2_WATER_EDGE_FEATHER default-ON (reader: gameos_graphics.cpp:3427,
+        // `(e && e[0]=='0') ? 0 : 1` -- a kill-switch); =0 uploads 0 -> frag block
+        // skipped (byte-identical vs pre-feature). This line said default-OFF until
+        // ENV-DROP-CLOSE-1 (2026-07-30), i.e. it described the OPPOSITE of what a
+        // default launch renders.
+        // Strength MC2_WATER_EDGE_FEATHER_STRENGTH (default 1.0).
         // halfMap = the canonical WORLD-unit half-extent (gosPostProcess::
         // getMapHalfExtent), the SAME value the legacy terrain edge-haze + post-fx
         // edge_fog use against WorldPos.xy (raw MC2 world units). Origin-centered.

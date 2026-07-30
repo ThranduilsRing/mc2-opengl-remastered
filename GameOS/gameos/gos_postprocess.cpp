@@ -489,9 +489,13 @@ bool mc2ShadowGuardClampedSun()
     return s_on;
 }
 
-// Cloud-shadow master gate. MC2_CLOUD_SHADOW, DEFAULT ON (preserves the legacy
-// inline-cloud behavior that this fullscreen pass replaces). =0 disables the
-// whole pass (and the C++ early-return skips it entirely).
+// Cloud-shadow master gate. MC2_CLOUD_SHADOW is DEFAULT OFF -- opt in with =1.
+// The reader below early-returns false on unset (`if (!v || !v[0]) return false`),
+// so a default launch takes NO fullscreen cloud-shadow pass; the legacy
+// inline-cloud behaviour this pass replaces is what still ships. Setting =0
+// also disables it (the C++ early-return skips the pass entirely).
+// This line claimed DEFAULT ON until ENV-DROP-CLOSE-1 (2026-07-30), which would
+// have had anyone A/B-ing "=0 versus unset" grading OFF against OFF.
 bool mc2CloudShadowEnabled()
 {
     static const bool s_on = []() {

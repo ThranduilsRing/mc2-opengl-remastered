@@ -1607,7 +1607,13 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 // finalizeGeometry. registerStatic() calls TransformMultiShape_PositionsOnly
 // to populate per-leaf shapeToWorld matrices, then buildRecipeFromShape per
 // leaf, then GpuStaticPropRegistry::registerRecipe.
-// Default-off: MC2_STATIC_PROP_MISSION_LOAD_REG=0 (first-render fallback covers).
+// Default-ON. Set MC2_STATIC_PROP_MISSION_LOAD_REG=0 to opt out (the first-render
+// fallback then covers registration). Reader source, and the only authority:
+// GameOS/gameos/gos_static_prop_registry.cpp:141 —
+//   parseEnvBoolWithDefault("MC2_STATIC_PROP_MISSION_LOAD_REG", true)
+// This comment said "Default-off" until 2026-07-30 (ENV-DROP-CLOSE-1) while the
+// reader had defaulted true since Task 9 Track B (2026-05-06), i.e. mission-load
+// registration was LIVE for everyone reading here that it was not.
 void GameObjectManager::registerStaticPropsForMissionLoad() {
 	ZoneScopedN("GameObjectManager::registerStaticPropsForMissionLoad");
 	if (!GpuStaticPropRegistry::isMissionLoadRegEnabled()) return;

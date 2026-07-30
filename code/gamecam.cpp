@@ -656,7 +656,10 @@ void GameCamera::render (void)
 				// DRYRUN-OBSERVE-COVERAGE-1: observe-only. ParticleEffect (VFX) has no
 				// AmbientContract row and no declared FBO target -> ambient/FBO probe skips
 				// it. Fires once per frame even on empty-particle frames (the pass was
-				// entered). Gated MC2_GPU_PARTICLES (default ON). No draw change.
+				// entered). Gated MC2_GPU_PARTICLES (default OFF -- reader
+				// mclib/particles/batcher.cpp:80 sets false when unset and requires
+				// v[0]=='1' to enable. Said "default ON" until ENV-DROP-CLOSE-1,
+				// 2026-07-30). No draw change.
 				mc2_note_particle_effect_pass();
 				// VFX-FBO-ONLY-VALIDATE-1: top-level validate-only ownership (gate
 				// MC2_FRAMEGRAPH_EXECUTOR). begin fires right after the note; the RAII
