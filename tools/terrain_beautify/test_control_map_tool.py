@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """pytest for control_map_tool.py: pattern determinism, validate error cases,
-and (skip-if-missing) generate against a real Carver5 stock .pak."""
+and (skip-if-missing) generate against the verified stock .pak."""
 from __future__ import annotations
 
 import subprocess
@@ -13,7 +13,24 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "control_map_tool.py"
-CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# STOCK-DATA-TRUTH-1: this used to be
+#   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
+# "real stock .pak" tests were asserting against terrain the engine never
+# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# a test that cannot get stock data SKIPS rather than passing on wrong data.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import stock_missions_dir_or_none  # noqa: E402
+
+STOCK_MISSIONS = stock_missions_dir_or_none()
+
+
+SKIP_NO_STOCK = ("verified stock mission data not available -- see "
+                 "tools/mc2data/stock_missions.py")
+
+
+def _have_stock(stem: str) -> bool:
+    return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
 
 sys.path.insert(0, str(HERE))
 from control_map_tool import (  # noqa: E402
@@ -150,12 +167,12 @@ def test_install_copies_to_beauty_dir(tmp_path):
     assert dest.is_file()
 
 
-# --- generate (skip if Carver5 stock data absent) ----------------------------
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+# --- generate (skip if verified stock data absent) ----------------------------
+@pytest.mark.skipif(not _have_stock("mc2_01"),
+                     reason=SKIP_NO_STOCK)
 def test_generate_runs_on_mc2_01(tmp_path):
     out = tmp_path / "mc2_01_control_map.png"
-    r = run("generate", "--pak", str(CARVER5_MISSIONS / "mc2_01.pak"), "--out", str(out))
+    r = run("generate", "--pak", str(STOCK_MISSIONS / "mc2_01.pak"), "--out", str(out))
     assert r.returncode == 0, r.stdout + r.stderr
     assert out.is_file()
     img = Image.open(out)
@@ -169,12 +186,12 @@ def test_generate_runs_on_mc2_01(tmp_path):
     assert np.all((total == 255) | (total == 0))
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"),
+                     reason=SKIP_NO_STOCK)
 def test_generate_output_validates(tmp_path):
     out = tmp_path / "mc2_01_cm.png"
-    run("generate", "--pak", str(CARVER5_MISSIONS / "mc2_01.pak"), "--out", str(out))
-    r = run("validate", "--png", str(out), "--pak", str(CARVER5_MISSIONS / "mc2_01.pak"))
+    run("generate", "--pak", str(STOCK_MISSIONS / "mc2_01.pak"), "--out", str(out))
+    r = run("validate", "--png", str(out), "--pak", str(STOCK_MISSIONS / "mc2_01.pak"))
     assert r.returncode == 0, r.stdout + r.stderr
 
 

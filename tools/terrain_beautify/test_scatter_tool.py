@@ -20,7 +20,24 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "scatter_tool.py"
-CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# STOCK-DATA-TRUTH-1: this used to be
+#   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
+# "real stock .pak" tests were asserting against terrain the engine never
+# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# a test that cannot get stock data SKIPS rather than passing on wrong data.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import stock_missions_dir_or_none  # noqa: E402
+
+STOCK_MISSIONS = stock_missions_dir_or_none()
+
+
+SKIP_NO_STOCK = ("verified stock mission data not available -- see "
+                 "tools/mc2data/stock_missions.py")
+
+
+def _have_stock(stem: str) -> bool:
+    return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
 
 sys.path.insert(0, str(HERE))
 import scatter_tool as st  # noqa: E402
@@ -40,11 +57,11 @@ def run(*args, env=None) -> subprocess.CompletedProcess:
 
 
 # --- determinism (subprocess, guards against PYTHONHASHSEED dict-order bugs) -
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(), reason="Carver5 fixture pak not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"), reason=SKIP_NO_STOCK)
 def test_plan_deterministic_same_seed(tmp_path):
     out1 = tmp_path / "run1"
     out2 = tmp_path / "run2"
-    common = ["plan", "mc2_01", "--missions-dir", str(CARVER5_MISSIONS), "--count", "30", "--seed", "7"]
+    common = ["plan", "mc2_01", "--missions-dir", str(STOCK_MISSIONS), "--count", "30", "--seed", "7"]
     r1 = run(*common, "--out", str(out1), env={"PYTHONHASHSEED": "1"})
     r2 = run(*common, "--out", str(out2), env={"PYTHONHASHSEED": "42"})
     assert r1.returncode == 0, r1.stderr
@@ -58,11 +75,11 @@ def test_plan_deterministic_same_seed(tmp_path):
     assert m1["count_final"] == m2["count_final"]
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(), reason="Carver5 fixture pak not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"), reason=SKIP_NO_STOCK)
 def test_plan_different_seed_differs(tmp_path):
     out1 = tmp_path / "s1"
     out2 = tmp_path / "s2"
-    common = ["plan", "mc2_01", "--missions-dir", str(CARVER5_MISSIONS), "--count", "30"]
+    common = ["plan", "mc2_01", "--missions-dir", str(STOCK_MISSIONS), "--count", "30"]
     run(*common, "--seed", "1", "--out", str(out1))
     run(*common, "--seed", "2", "--out", str(out2))
     m1 = json.loads((out1 / "mc2_01.scatter_manifest.json").read_text())
@@ -414,12 +431,12 @@ def test_cook_refuses_mixed_manifest_with_one_bad_objtypenum(tmp_path):
 
 
 # --- round-trip prior-packet byte-identity -----------------------------------
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(), reason="Carver5 fixture pak not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"), reason=SKIP_NO_STOCK)
 def test_cook_roundtrip_byte_identity_on_real_pak_copy(tmp_path):
     """Copy a real stock mission .pak, plan a small scatter, cook it, then
     verify every OTHER packet (not the object packet) is byte-identical
     pre/post, mirroring install_cliff_dressing's object2.pak verification."""
-    src = CARVER5_MISSIONS / "mc2_01.pak"
+    src = STOCK_MISSIONS / "mc2_01.pak"
     pak_copy = tmp_path / "mc2_01_copy.pak"
     shutil.copyfile(src, pak_copy)
 
@@ -432,7 +449,7 @@ def test_cook_roundtrip_byte_identity_on_real_pak_copy(tmp_path):
     (tmp_path / "fixture_dir").mkdir(exist_ok=True)
     fixture_pak = tmp_path / "fixture_dir" / "mc2_01.pak"
     shutil.copyfile(src, fixture_pak)
-    fit_src = CARVER5_MISSIONS / "mc2_01.fit"
+    fit_src = STOCK_MISSIONS / "mc2_01.fit"
     if fit_src.is_file():
         shutil.copyfile(fit_src, tmp_path / "fixture_dir" / "mc2_01.fit")
     r2 = run("plan", "mc2_01", "--missions-dir", str(tmp_path / "fixture_dir"),

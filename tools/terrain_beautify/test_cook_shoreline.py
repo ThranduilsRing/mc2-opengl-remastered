@@ -15,7 +15,24 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "cook_shoreline.py"
-CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# STOCK-DATA-TRUTH-1: this used to be
+#   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
+# "real stock .pak" tests were asserting against terrain the engine never
+# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# a test that cannot get stock data SKIPS rather than passing on wrong data.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import stock_missions_dir_or_none  # noqa: E402
+
+STOCK_MISSIONS = stock_missions_dir_or_none()
+
+
+SKIP_NO_STOCK = ("verified stock mission data not available -- see "
+                 "tools/mc2data/stock_missions.py")
+
+
+def _have_stock(stem: str) -> bool:
+    return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
 
 sys.path.insert(0, str(HERE))
 import cook_shoreline as cs  # noqa: E402
@@ -291,24 +308,24 @@ def test_cook_pak_and_fit_untouched(synthetic_island, tmp_path):
 
 
 # --- cook: real stock mission (skip-if-missing) ------------------------------
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_17.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_17"),
+                     reason=SKIP_NO_STOCK)
 def test_cook_mc2_17_has_water(tmp_path):
     out = tmp_path / "mc2_17_shoreline.png"
-    r = run("cook", "--pak", str(CARVER5_MISSIONS / "mc2_17.pak"), "--out", str(out))
+    r = run("cook", "--pak", str(STOCK_MISSIONS / "mc2_17.pak"), "--out", str(out))
     assert r.returncode == 0, r.stdout + r.stderr
     assert "water_cells=" in r.stdout
     water_cells = int(r.stdout.split("water_cells=")[1].split()[0])
     assert water_cells > 0, "expected mc2_17 (the smear-reference water mission) to have water cells"
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                     reason=SKIP_NO_STOCK)
 def test_cook_mc2_24_deterministic(tmp_path):
     out1 = tmp_path / "a.png"
     out2 = tmp_path / "b.png"
-    r1 = run("cook", "--pak", str(CARVER5_MISSIONS / "mc2_24.pak"), "--out", str(out1))
-    r2 = run("cook", "--pak", str(CARVER5_MISSIONS / "mc2_24.pak"), "--out", str(out2))
+    r1 = run("cook", "--pak", str(STOCK_MISSIONS / "mc2_24.pak"), "--out", str(out1))
+    r2 = run("cook", "--pak", str(STOCK_MISSIONS / "mc2_24.pak"), "--out", str(out2))
     assert r1.returncode == 0, r1.stdout + r1.stderr
     assert r2.returncode == 0, r2.stdout + r2.stderr
     assert np.array_equal(np.array(Image.open(out1)), np.array(Image.open(out2)))

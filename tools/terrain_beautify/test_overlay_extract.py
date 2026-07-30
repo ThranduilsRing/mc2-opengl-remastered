@@ -13,7 +13,24 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "overlay_extract.py"
-CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# STOCK-DATA-TRUTH-1: this used to be
+#   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
+# "real stock .pak" tests were asserting against terrain the engine never
+# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# a test that cannot get stock data SKIPS rather than passing on wrong data.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import stock_missions_dir_or_none  # noqa: E402
+
+STOCK_MISSIONS = stock_missions_dir_or_none()
+
+
+SKIP_NO_STOCK = ("verified stock mission data not available -- see "
+                 "tools/mc2data/stock_missions.py")
+
+
+def _have_stock(stem: str) -> bool:
+    return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
 
 
 def run(*args) -> subprocess.CompletedProcess:
@@ -24,13 +41,13 @@ def run(*args) -> subprocess.CompletedProcess:
 
 
 def _extract(pak_stem: str, out: Path, supersample: int = 1) -> subprocess.CompletedProcess:
-    return run("extract", "--pak", str(CARVER5_MISSIONS / f"{pak_stem}.pak"),
+    return run("extract", "--pak", str(STOCK_MISSIONS / f"{pak_stem}.pak"),
                "--out", str(out), "--supersample", str(supersample))
 
 
 # --- extract: determinism + basic shape --------------------------------------
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                     reason=SKIP_NO_STOCK)
 def test_extract_deterministic(tmp_path):
     out1 = tmp_path / "a.png"
     out2 = tmp_path / "b.png"
@@ -47,8 +64,8 @@ def test_extract_deterministic(tmp_path):
     assert b1 == b2
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                     reason=SKIP_NO_STOCK)
 def test_extract_mc2_24_has_concrete_coverage(tmp_path):
     """mc2_24 is the cement-heavy tier1 mission (memory: 8282 draw stat) --
     the extractor must find a non-trivial amount of concrete."""
@@ -64,8 +81,8 @@ def test_extract_mc2_24_has_concrete_coverage(tmp_path):
     assert coverage == cells  # supersample=1 -> 1:1 texel:cell
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                     reason=SKIP_NO_STOCK)
 def test_extract_supersample_scales_resolution(tmp_path):
     out1 = tmp_path / "ss1.png"
     out2 = tmp_path / "ss2.png"
@@ -77,8 +94,8 @@ def test_extract_supersample_scales_resolution(tmp_path):
     assert w2 == 2 * w1 and h2 == 2 * h1
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                     reason=SKIP_NO_STOCK)
 def test_extract_output_validates(tmp_path):
     out = tmp_path / "mc2_24_ov.png"
     _extract("mc2_24", out)
@@ -87,8 +104,8 @@ def test_extract_output_validates(tmp_path):
     assert "PASS" in r.stdout
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                     reason=SKIP_NO_STOCK)
 def test_bridge_gate_exclusion_does_not_swallow_non_bridge_concrete():
     """Regression for the latent bridge/gate exclusion bug (flagged by
     WHOLESALE-VECTORIZE-1, root-fixed here): `read_bridge_gate_overlay_cells`
@@ -103,7 +120,7 @@ def test_bridge_gate_exclusion_does_not_swallow_non_bridge_concrete():
     from mission_terrain_analyzer import read_packets, locate_mapdata, extract_layers, read_water_elevation
     from overlay_extract import classify_concrete, read_bridge_gate_overlay_cells
 
-    pak = CARVER5_MISSIONS / "mc2_24.pak"
+    pak = STOCK_MISSIONS / "mc2_24.pak"
     packets = read_packets(pak)
     pkt_idx, side, blocks = locate_mapdata(packets)
     water_elev = read_water_elevation(pak.with_suffix(".fit"))
@@ -141,11 +158,11 @@ def test_bridge_gate_exclusion_does_not_swallow_non_bridge_concrete():
         "cells there per recon), but the fix dropped some")
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(),
-                     reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"),
+                     reason=SKIP_NO_STOCK)
 def test_extract_pak_untouched_byte_identical(tmp_path):
     """Read-only w.r.t. .pak -- extraction must never mutate the source pak."""
-    pak = CARVER5_MISSIONS / "mc2_01.pak"
+    pak = STOCK_MISSIONS / "mc2_01.pak"
     before = pak.read_bytes()
     out = tmp_path / "mc2_01_ov.png"
     _extract("mc2_01", out)

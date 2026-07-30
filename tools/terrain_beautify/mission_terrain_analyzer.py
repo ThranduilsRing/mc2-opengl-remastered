@@ -40,6 +40,16 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+# STOCK-DATA-TRUTH-1: `--missions-dir` used to default to
+# A:/Games/Carver5-feasibility/data/missions, which differs from the shipped
+# mission.fst on ALL 24 campaign maps. There is no default any more; the
+# resolver below finds stock data and PROVES it byte-matches what the engine
+# loads, or refuses to run.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_missions_dir_arg, resolve_from_args,
+)
+
 # --- PacketFile constants (mclib/packet.h) -----------------------------------
 PACKET_MAGIC = 0xFEEDFACE
 TYPE_SHIFT = 29
@@ -447,16 +457,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="MISSION-TERRAIN-ANALYZER-1 (read-only)")
     ap.add_argument("missions", nargs="*", default=["mc2_01"],
                     help="mission names (no .pak). Default: mc2_01")
-    ap.add_argument("--missions-dir", default="A:/Games/Carver5-feasibility/data/missions")
+    add_missions_dir_arg(ap)
     ap.add_argument("--out", default="tests/terrain/beautify",
                     help="output root (per-mission subdir created)")
     args = ap.parse_args()
 
-    missions_dir = Path(args.missions_dir)
-    out_root = Path(args.out)
-    if not missions_dir.is_dir():
-        print(f"[analyzer] ERROR missions dir not found: {missions_dir}", file=sys.stderr)
+    try:
+        missions_dir = resolve_from_args(args, missions=args.missions).dir
+    except StockDataError as e:
+        print(f"[analyzer] ERROR {e}", file=sys.stderr)
         return 4
+    out_root = Path(args.out)
 
     rc = 0
     for m in args.missions:

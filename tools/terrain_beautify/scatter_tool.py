@@ -62,6 +62,12 @@ from mission_terrain_analyzer import (  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pak_append  # noqa: E402
 
+# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_missions_dir_arg, resolve_from_args,
+)
+
 # --- reserved objTypeNums (user ruling #4) -----------------------------------
 # v0 originally reused MarbleCliff itself (FitID 1188, hand-placeable) as the
 # scatter prop, which meant a re-cook's "delete by objTypeNum" step could nuke
@@ -511,7 +517,11 @@ def _load_common(mission: str, missions_dir: Path):
 
 
 def cmd_plan(args) -> int:
-    missions_dir = Path(args.missions_dir)
+    try:
+        missions_dir = resolve_from_args(args, missions=[args.mission]).dir
+    except StockDataError as e:
+        print(f"[scatter] ERROR {e}", file=sys.stderr)
+        return 2
     out_dir = Path(args.out)
     count = min(args.count, HARD_CAP)
     if args.count > HARD_CAP:
@@ -581,7 +591,7 @@ def main(argv=None) -> int:
 
     p_plan = sub.add_parser("plan", help="dry-run: masks + blue-noise -> manifest + preview (default-safe)")
     p_plan.add_argument("mission")
-    p_plan.add_argument("--missions-dir", default="A:/Games/Carver5-feasibility/data/missions")
+    add_missions_dir_arg(p_plan)
     p_plan.add_argument("--out", default="_harness_out/scatter")
     p_plan.add_argument("--count", type=int, default=200)
     p_plan.add_argument("--seed", type=int, default=1)

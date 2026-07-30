@@ -100,6 +100,12 @@ from mission_terrain_analyzer import (  # noqa: E402
     WORLD_UNITS_PER_VERTEX, CLIFF_SLOPE_DEG,
 )
 
+# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_missions_dir_arg, resolve_from_args,
+)
+
 
 def upsample_corner_pinned(elev: np.ndarray, factor: int) -> np.ndarray:
     """Bilinear upsample with exact corner preservation.
@@ -1361,7 +1367,7 @@ def bake(mission: str, missions_dir: Path, out_root: Path, factor: int,
 def main() -> int:
     ap = argparse.ArgumentParser(description="VISUAL-HEIGHTFIELD-BAKE-1 (offline, corner-pinned)")
     ap.add_argument("missions", nargs="*", default=["mc2_01", "mc2_24"])
-    ap.add_argument("--missions-dir", default="A:/Games/Carver5-feasibility/data/missions")
+    add_missions_dir_arg(ap)
     ap.add_argument("--out", default="tests/terrain/beautify")
     ap.add_argument("--factor", type=int, default=4)
     ap.add_argument("--reshape", action="store_true", help="de-pyramid reshape (else boring bilinear)")
@@ -1409,7 +1415,11 @@ def main() -> int:
     if args.reauth and args.reshape:
         print("[visual-bake] --reauth and --reshape are mutually exclusive", file=sys.stderr)
         return 2
-    missions_dir = Path(args.missions_dir)
+    try:
+        missions_dir = resolve_from_args(args, missions=args.missions).dir
+    except StockDataError as e:
+        print(f"[visual-bake] ERROR {e}", file=sys.stderr)
+        return 4
     out_root = Path(args.out)
     rc = 0
     for m in args.missions:

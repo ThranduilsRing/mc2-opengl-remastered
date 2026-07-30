@@ -42,6 +42,12 @@ from mission_terrain_analyzer import (  # noqa: E402
     _dilate, WORLD_UNITS_PER_VERTEX, CLIFF_SLOPE_DEG,
 )
 from mission_terrain_analyzer import label_components  # noqa: E402
+
+# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_missions_dir_arg, resolve_from_args,
+)
 from visual_heightfield import (  # noqa: E402  TERRAIN-REAUTH-UNPIN-1 gates
     upsample_corner_pinned, detect_coarse_extrema, mountain_rock_mask, _box3,
     coarse_cliff_mask, onesided_step, _bilinear_sample,  # CLIFF-SMOOTH-1
@@ -676,13 +682,18 @@ def run(mission: str, missions_dir: Path, beauty_root: Path, out_root: Path) -> 
 def main() -> int:
     ap = argparse.ArgumentParser(description="TERRAIN-WORKBENCH-REPORT-1 (offline)")
     ap.add_argument("missions", nargs="*", default=["mc2_01", "mc2_24"])
-    ap.add_argument("--missions-dir", default="A:/Games/Carver5-feasibility/data/missions")
+    add_missions_dir_arg(ap)
     ap.add_argument("--beauty", default="tests/terrain/beautify", help="dir holding <mission>.beauty/")
     ap.add_argument("--out", default="tests/terrain/workbench")
     args = ap.parse_args()
+    try:
+        missions_dir = resolve_from_args(args, missions=args.missions).dir
+    except StockDataError as e:
+        print(f"[workbench] ERROR {e}", file=sys.stderr)
+        return 4
     rc = 0
     for m in args.missions:
-        r = run(m, Path(args.missions_dir), Path(args.beauty), Path(args.out))
+        r = run(m, missions_dir, Path(args.beauty), Path(args.out))
         if r.get("error"):
             print(f"[workbench] {m}: ERROR {r['error']}", file=sys.stderr); rc = 1; continue
         print(f"[workbench] {m}: {r['summary']}  " +

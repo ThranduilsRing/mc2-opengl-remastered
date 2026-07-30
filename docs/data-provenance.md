@@ -131,6 +131,97 @@ ship silently): the local `mc2srcdata` clone carries uncommitted edits to
 2026-06/07). v0.5.0's `mission.fst` (built 2026-04-21) predates them. Any
 future FST rebuild MUST either commit-and-document or revert these first.
 
+## Which copy of the mission data is authoritative (STOCK-DATA-TRUTH-1)
+
+Everything above is about *where the data came from*. This section answers the
+operational question that offline tooling actually asks: **given several trees
+on disk that all look like mission data, which one does the engine load?**
+
+**Answer: the deployed `mission.fst`, definitionally.** `mclib/file.cpp`
+(`fileExists()` / `File::open()`) resolves in one order:
+
+> active mod overlay → loose file on disk → FastFile (`.fst`)
+
+For every `mc2_*` map, in every deploy lane, the first two rungs miss — no
+loose file in any lane shadows an FST member (the loose files are ABL/brain
+test fixtures and the custom `gaea_peaks_01` map, none of which are FST
+members). So the bytes always come from `mission.fst`.
+
+**A source tree is never authoritative on its own.** It is usable only by
+*proving* it equals the authority. That proof is
+[`tools/mc2data/stock_missions.md5`](../tools/mc2data/stock_missions.md5) — a
+committed md5 of every `data/missions/*` member of the shipped FST, generated
+by `scripts/check-stock-mission-data.py --write`.
+[`tools/mc2data/stock_missions.py`](../tools/mc2data/stock_missions.py) is the
+resolver every offline tool uses; it refuses to return data it cannot verify.
+
+Measured 2026-07-30, whole-archive (not a sampled subset):
+
+| tree | vs the shipped `mission.fst` |
+|---|---|
+| `mission.fst` in lanes 0.4 / 0.4c / 0.4d-rc1 / 0.5.1 | **byte-identical**, md5 `1e7935dc33fe…`, all 1346 members |
+| `A:/Games/mc2-opengl/mc2srcdata-fresh/missions/` | **all 1344 members match**, 0 differ, 0 absent |
+| `A:/Games/mc2-srcdata/missions/` (working clone) | differs on `mc2_01` + `mc2_13` (`.pak` and `.fit`) — the uncommitted edits flagged above, independently confirmed |
+| `A:/Games/Carver5-feasibility/data/missions/` | **differs on ALL 24 campaign maps**, `.pak` and `.fit` |
+
+### What actually differs in the Carver5 tree — decoded, not just hashed
+
+"Different md5" is not the same claim as "different terrain", so the grids were
+decoded field by field across all 24 maps:
+
+- **`elevation` is BIT-IDENTICAL on all 24** (max |delta| = 0.0). Carver5 stores
+  the same heightfield uncompressed (packet type `RAW` vs the shipped `ZLIB`) —
+  that accounts for most of the size gap (mc2_17: 2.9 MB vs 394 KB).
+- `[Water] Elevation` in the `.fit` is identical on all 24.
+- `textureData` (base TXM + hi16 overlay handle) differs — 137…14 121 vertices
+  per map. `terrainType` differs on 11 maps, up to 14 076 vertices. The packed
+  `water` alpha byte and vertex `normal` differ on all 24. Terrain object
+  records differ on mc2_04/05/06/11 (up to 14 objects). Every `.fit` differs
+  (camera params, `ObjectNumber` lists, `NewScale`).
+
+So a **height-only** analysis reached the same answer either way — the shoreline
+lane's NO-GO stands on its own. But anything reading overlays, terrain type,
+normals, or the object list (`cook_markings.py`, `overlay_extract.py`,
+control-map classification, scatter exclusion, smooth-pass footprint
+protection) **was** reading different data, and nothing in the tooling could
+tell which. That is the defect: not "the numbers were wrong" but "nobody could
+tell whether they were."
+
+Why this section exists: twelve offline tools defaulted their mission-data
+path to `A:/Games/Carver5-feasibility/data/missions` and called it "stock
+mission data". Everything run with default flags was therefore grading terrain
+the engine never loads — silently, because the files exist, parse, and produce
+plausible numbers. A shoreline lane came within one meta-review of publishing
+a go/no-go computed on it
+(`.claude/SHORELINE-V0-FALSIFY-1-STATUS.md` §0a). Note that *requiring* the
+flag would not have prevented it: the wrong path arrived in a brief, and a
+required flag would have had the lane type the same wrong path and get the
+same silence. **Verification is the fix; requiredness is not.**
+
+`scripts/check-stock-mission-data.py` keeps it from returning: a structural
+`ast` scan that fails on any hard-coded absolute mission-data path in
+executable code anywhere in `tools/` or `scripts/` — not a denylist of one bad
+string, so the same defect cannot come back under a different wrong path.
+Registered in `check-contracts.sh` as `stock_mission_data` +
+`stock_mission_data_selftest`.
+
+**Not settled by this**: the *derived* beauty sidecars
+(`data/missions/<stem>.beauty/shoreline_mask.png` etc). Those are cook outputs,
+not FST members — `check-beauty-sidecars.py` owns their cooked-vs-installed
+drift. See the note under "Remaining unknowns".
+
+**Adjacent, latent, unfixed**: the same "a source tree is assumed
+authoritative" shape exists for other corpora, with no verification attached —
+`tools/blender_pipeline/{srcdata,tex_hd}.py` and `tools/mc2texcook/
+ase_geo_audit.py` (`mc2srcdata/tgl` vs `tgl.fst`),
+`tools/terrain_beautify/test_cook_markings.py` (`mc2srcdata/textures/
+64Overlays` vs `textures.fst`), and `tools/mc2weapon/mc2weapon.py`
+(`objects/compbas.csv`, which searches the editable clone *before* the deploy).
+All four were measured 2026-07-30 and are currently **correct** (64Overlays
+475/475 match `textures.fst`; `tgl` 1432/1432 of the members that exist as
+source files match `tgl.fst`) — so they are a drift risk, not a live wrong
+answer, and were left alone rather than half-fixed.
+
 ## Relevance to the AI documentation in `/docs/`
 
 The AI behavior documented in this repo (corebrain FSM, `calcTacOrder`

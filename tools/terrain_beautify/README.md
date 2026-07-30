@@ -17,8 +17,27 @@ same feature-mask language (slope / curvature / cliff / flat / shoreline).
 
 ```
 python tools/terrain_beautify/mission_terrain_analyzer.py mc2_01 mc2_24 \
-    [--missions-dir DIR] [--out tests/terrain/beautify]
+    [--missions-dir DIR] [--allow-nonstock] [--out tests/terrain/beautify]
 ```
+
+### Where the mission data comes from (STOCK-DATA-TRUTH-1)
+
+**`--missions-dir` has no default, and never should again.** It used to default
+to `A:/Games/Carver5-feasibility/data/missions`, which differs from the shipped
+`mission.fst` on **all 24 campaign maps** — so every tool in this directory,
+run with default flags, was grading terrain the engine never loads. Silently.
+
+Omit the flag and [`tools/mc2data/stock_missions.py`](../mc2data/stock_missions.py)
+resolves stock data and proves it byte-matches the shipped archive, or refuses
+to run. Pass the flag and the directory you named is verified the same way;
+a mismatch is a hard error, not a warning. `--allow-nonstock` is the deliberate
+opt-out for modded/custom maps and prints a banner on every run.
+
+This applies to `mission_terrain_analyzer.py`, `mission_smooth.py`,
+`scatter_tool.py plan`, `terrain_workbench.py`, `visual_heightfield.py`, all
+five `test_*.py` that touch real maps, and `scripts/terrain_{height,grounding}_audit.py`.
+`scripts/check-stock-mission-data.py` fails the contract suite if a hard-coded
+default returns. Background: [docs/data-provenance.md](../../docs/data-provenance.md).
 
 Read-only. Emits per-mission `report.json` + `masks/*.png`:
 height, slope, curvature, blockiness, water, shoreline, islands, pyramid_island_candidates,

@@ -26,7 +26,9 @@ from pathlib import Path
 # Vendor the parser/locator from the slice-3 script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from terrain_height_audit import (  # noqa: E402
-    DEFAULT_MISSIONS_DIR,
+    StockDataError,
+    add_missions_dir_arg,
+    resolve_from_args,
     DEFAULT_TIER1,
     DEFAULT_OUT_DIR,
     POSTCOMP_VERTEX_SIZE,
@@ -210,13 +212,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("missions", nargs="*", default=DEFAULT_TIER1,
                     help="Mission names (without .pak). Default: tier1.")
-    ap.add_argument("--missions-dir", default=str(DEFAULT_MISSIONS_DIR))
+    add_missions_dir_arg(ap)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    missions_dir = Path(args.missions_dir)
-    if not missions_dir.is_dir():
-        print(f"[grounding] ERROR missions dir not found: {missions_dir}", file=sys.stderr)
+    try:
+        missions_dir = resolve_from_args(args, missions=args.missions).dir
+    except StockDataError as e:
+        print(f"[grounding] ERROR {e}", file=sys.stderr)
         return 4
 
     results: list[tuple[str, Path, dict]] = []

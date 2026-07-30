@@ -19,7 +19,24 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 TOOL = HERE / "cook_markings.py"
-CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# STOCK-DATA-TRUTH-1: this used to be
+#   CARVER5_MISSIONS = Path("A:/Games/Carver5-feasibility/data/missions")
+# which differs from the shipped mission.fst on ALL 24 campaign maps, so these
+# "real stock .pak" tests were asserting against terrain the engine never
+# loads. STOCK_MISSIONS is byte-verified against the shipped bytes, or None --
+# a test that cannot get stock data SKIPS rather than passing on wrong data.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import stock_missions_dir_or_none  # noqa: E402
+
+STOCK_MISSIONS = stock_missions_dir_or_none()
+
+
+SKIP_NO_STOCK = ("verified stock mission data not available -- see "
+                 "tools/mc2data/stock_missions.py")
+
+
+def _have_stock(stem: str) -> bool:
+    return bool(STOCK_MISSIONS) and (STOCK_MISSIONS / f"{stem}.pak").is_file()
 STOCK_OVERLAYS = Path("A:/Games/mc2-srcdata/textures/64Overlays")
 
 sys.path.insert(0, str(HERE))
@@ -218,11 +235,11 @@ def test_iou_helper():
 
 # --- extract (real pak, skipif) --------------------------------------------------
 def _extract(pak_stem: str, out: Path) -> subprocess.CompletedProcess:
-    return run("extract", "--pak", str(CARVER5_MISSIONS / f"{pak_stem}.pak"), "--out", str(out))
+    return run("extract", "--pak", str(STOCK_MISSIONS / f"{pak_stem}.pak"), "--out", str(out))
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                    reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                    reason=SKIP_NO_STOCK)
 def test_extract_mc2_24_decodes_runway_and_roads(tmp_path):
     out = tmp_path / "m.json"
     r = _extract("mc2_24", out)
@@ -236,8 +253,8 @@ def test_extract_mc2_24_decodes_runway_and_roads(tmp_path):
         assert 0 <= cell["tile"] < dict(cm.OVERLAY_FAMILIES)[cell["family"]]
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_24.pak").is_file(),
-                    reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_24"),
+                    reason=SKIP_NO_STOCK)
 def test_extract_deterministic(tmp_path):
     out1 = tmp_path / "a.json"
     out2 = tmp_path / "b.json"
@@ -247,8 +264,8 @@ def test_extract_deterministic(tmp_path):
     assert out1.read_text() == out2.read_text()
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(),
-                    reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"),
+                    reason=SKIP_NO_STOCK)
 def test_extract_mc2_01_finds_runway_tiles_and_cement_report(tmp_path):
     """mc2_01: the runway PAINT lives in runway#### overlay tiles (decoded +
     stamped); the CEMENT diamond is detection/report only (extraction-gap fix
@@ -263,10 +280,10 @@ def test_extract_mc2_01_finds_runway_tiles_and_cement_report(tmp_path):
     assert "cement_runway_components=1" in r.stdout
 
 
-@pytest.mark.skipif(not (CARVER5_MISSIONS / "mc2_01.pak").is_file(),
-                    reason="Carver5-feasibility stock mission data not present")
+@pytest.mark.skipif(not _have_stock("mc2_01"),
+                    reason=SKIP_NO_STOCK)
 def test_extract_pak_untouched_byte_identical(tmp_path):
-    pak = CARVER5_MISSIONS / "mc2_01.pak"
+    pak = STOCK_MISSIONS / "mc2_01.pak"
     before = pak.read_bytes()
     _extract("mc2_01", tmp_path / "m.json")
     assert pak.read_bytes() == before

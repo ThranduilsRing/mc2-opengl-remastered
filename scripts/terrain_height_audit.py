@@ -39,7 +39,19 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MISSIONS_DIR = Path("A:/Games/Carver5-feasibility/data/missions")
+
+# STOCK-DATA-TRUTH-1: DEFAULT_MISSIONS_DIR used to be
+# A:/Games/Carver5-feasibility/data/missions, which differs from the shipped
+# mission.fst on ALL 24 campaign maps -- so every audit report this script
+# produced by default graded terrain the engine never loads. There is no
+# baked-in default any more; the resolver proves whatever it uses.
+# scripts/terrain_grounding_audit.py imports the helpers below, so fixing them
+# here fixes both.
+sys.path.insert(0, str(ROOT / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_missions_dir_arg, resolve_from_args,
+)
+
 DEFAULT_TIER1 = ["mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24"]
 DEFAULT_OUT_DIR = ROOT / "tests" / "terrain"
 
@@ -395,16 +407,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("missions", nargs="*", default=DEFAULT_TIER1,
                     help="Mission names (without .pak). Default: tier1.")
-    ap.add_argument("--missions-dir", default=str(DEFAULT_MISSIONS_DIR))
+    add_missions_dir_arg(ap)
     ap.add_argument("--out", default=None,
                     help="Output Markdown path. Default: "
                          "tests/terrain/terrain_height_audit_<timestamp>.md")
     args = ap.parse_args()
 
-    missions_dir = Path(args.missions_dir)
-    if not missions_dir.is_dir():
-        print(f"[audit] ERROR missions dir not found: {missions_dir}",
-              file=sys.stderr)
+    try:
+        missions_dir = resolve_from_args(args, missions=args.missions).dir
+    except StockDataError as e:
+        print(f"[audit] ERROR {e}", file=sys.stderr)
         return 4
 
     results: list[tuple[str, Path, dict]] = []

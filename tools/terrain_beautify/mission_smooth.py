@@ -32,6 +32,12 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_object_footprints,
     read_water_elevation, _dilate, WORLD_UNITS_PER_VERTEX,
 )
+
+# STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_missions_dir_arg, resolve_from_args,
+)
 import mission_sidecar as sidecar  # noqa: E402
 
 
@@ -91,14 +97,19 @@ def compute_smooth_delta(elev: np.ndarray, protect_hard: np.ndarray,
 def main() -> int:
     ap = argparse.ArgumentParser(description="B3 conservative protection-aware smooth")
     ap.add_argument("mission")
-    ap.add_argument("--missions-dir", default="A:/Games/Carver5-feasibility/data/missions")
+    add_missions_dir_arg(ap)
     ap.add_argument("--out", default="tests/terrain/beautify")
     ap.add_argument("--max-delta", type=float, default=14.0, help="clamp |Δelev| (wu)")
     ap.add_argument("--passes", type=int, default=8)
     ap.add_argument("--ugly-percentile", type=float, default=78.0)
     args = ap.parse_args()
 
-    pak = Path(args.missions_dir) / f"{args.mission}.pak"
+    try:
+        missions_dir = resolve_from_args(args, missions=[args.mission]).dir
+    except StockDataError as e:
+        print(f"[smooth] ERROR {e}", file=sys.stderr)
+        return 2
+    pak = missions_dir / f"{args.mission}.pak"
     if not pak.is_file():
         print(f"[smooth] not found: {pak}", file=sys.stderr)
         return 2
@@ -107,7 +118,7 @@ def main() -> int:
         print(f"[smooth] no MapData in {pak}", file=sys.stderr)
         return 2
     _, side, blocks = md
-    water_elev = read_water_elevation(Path(args.missions_dir) / f"{args.mission}.fit")
+    water_elev = read_water_elevation(missions_dir / f"{args.mission}.fit")
     layers = extract_layers(side, blocks, water_elev)
     foot, _objs, _ = read_object_footprints(read_packets(pak), side)
     # Hard-protect ONLY gameplay structures (road/runway/bridge overlays + building

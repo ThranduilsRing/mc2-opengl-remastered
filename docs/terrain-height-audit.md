@@ -36,10 +36,20 @@ Optional extension (post-Slice-5 plan):
 ### Mission files
 
 Path convention: `data/missions/<mission>.pak` plus `<mission>.fit`.
-Live source: `/a/Games/Carver5-feasibility/data/missions/` (per recon).
-Deploy: `A:/Games/mc2-opengl/mc2-win64-v0.4/data/missions/` (deploy
-tree; may be empty in this worktree if the deploy script hasn't
-populated it for current branch).
+
+Live source: **resolved and byte-verified** by
+[`tools/mc2data/stock_missions.py`](../tools/mc2data/stock_missions.py) — do
+not hard-code one. This doc previously named
+`/a/Games/Carver5-feasibility/data/missions/` "per recon"; that tree differs
+from the shipped `mission.fst` on **all 24 campaign maps**, so audits run
+against it graded terrain the engine never loads. See
+[data-provenance.md](data-provenance.md) § "Which copy of the mission data is
+authoritative". `scripts/terrain_height_audit.py` now has no `--missions-dir`
+default and refuses unverifiable data.
+
+Deploy: `A:/Games/mc2-opengl/mc2-win64-v0.4/data/missions/` holds only loose
+ABL/brain fixtures and custom maps; the `mc2_*` maps live in that lane's
+`mission.fst`, which is the authority.
 
 ### Terrain elevation packet
 

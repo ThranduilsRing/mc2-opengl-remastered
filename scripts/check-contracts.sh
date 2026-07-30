@@ -387,6 +387,30 @@ run_check "iso_deploy_selftest"  "py -3 scripts/make-isolated-deploy.py --selfte
 run_check "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet"
 run_check "beauty_sidecars_selftest" "py -3 scripts/check-beauty-sidecars.py --selftest"
 
+# ---------------------------------------------------------------------------
+# STOCK-DATA-TRUTH-1 (2026-07-30 wrong-mission-data audit)
+# ---------------------------------------------------------------------------
+# Twelve offline tools hard-coded A:/Games/Carver5-feasibility/data/missions as
+# "stock mission data". Measured against the shipped mission.fst it differs on
+# ALL 24 campaign maps -- .pak AND .fit -- so anything run with default flags
+# graded terrain the engine never loads, silently: the files exist, they parse,
+# the numbers look plausible. One lane came within a meta-review of publishing
+# a shoreline go/no-go computed on it.
+#
+# Same registration shape as beauty_sidecars above: the DATA arm reads
+# A:/Games/mc2-opengl/* and A:/Games/mc2-opengl/mc2srcdata-fresh, which are
+# machine-specific, so only the two machine-independent halves are registered.
+# --no-data is a pure `ast` scan of tools/**.py + scripts/**.py plus manifest
+# shape; --selftest proves the scanner FIRES on an argparse default, a module
+# constant, and a DIFFERENT wrong tree, and proves it is NOT satisfied by the
+# path appearing only in a comment or only in a docstring. The live data arm
+# (candidate trees + every deploy lane's mission.fst vs the committed digest)
+# is run deliberately:
+#   py -3 scripts/check-stock-mission-data.py
+# Read-only, no build, sub-second.
+run_check "stock_mission_data"          "py -3 scripts/check-stock-mission-data.py --no-data --quiet"
+run_check "stock_mission_data_selftest" "py -3 scripts/check-stock-mission-data.py --selftest"
+
 # CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it
 # measured, not the worktree the tool happened to run from. `identity.git.commit`
 # was `git rev-parse HEAD` in the emitting worktree and sat beside "dirty": false,
@@ -405,6 +429,18 @@ run_check "beauty_sidecars_selftest" "py -3 scripts/check-beauty-sidecars.py --s
 # comment still fails. Offline, read-only, no game launch.
 run_check "capture_provenance"          "py -3 scripts/check-capture-provenance.py --quiet"
 run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.py --selftest"
+
+# ---------------------------------------------------------------------------
+# The review pack's annotation anchors must never re-attach a stored comment to
+# a DIFFERENT artifact after the page is regenerated -- that would put the
+# user's words against something he never saw. Mutates the real manifest the
+# way a future session will (insert/delete sections, figure blocks, images,
+# gate/lane/meta rows, plus a pure reorder) and asserts every id shared across
+# the mutation still points at the same artifact. --self-test proves it FIRES:
+# it re-runs the whole battery under a deliberately positional (DOM-order) id
+# scheme and requires that mis-attachments are detected. Offline, read-only.
+run_check "review_anchor_stability"          "py -3 scripts/check-review-anchor-stability.py --quiet"
+run_check "review_anchor_stability_selftest" "py -3 scripts/check-review-anchor-stability.py --self-test"
 
 # ---------------------------------------------------------------------------
 # Summary table
