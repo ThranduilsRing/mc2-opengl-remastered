@@ -2368,9 +2368,13 @@ public:
 		//
 		// VEHICLE-LIGHTING-PATH-1 fixed "vehicles have no light row". It did
 		// NOT fix "the truck is darker than the mech next to it", because a
-		// vehicle computed base_light + A + S*ndl (base_light == 0 for stock:
-		// tgl.cpp:1093 aRGBLight = 0xff000000, prefs.cpp:91 BaseVertexColor = 0)
-		// while a mech computes clamp(0.35 + A + S*ndl, 0, 1). On mc2_10 --
+		// vehicle computed base_light + A + S*ndl, unclamped, while a mech
+		// computes clamp(0.35 + A + S*ndl, 0, 1). base_light is the per-vertex
+		// aRGBLight seed: measured across the 8 stock ground-vehicle .tgl
+		// binaries it is 0x000000 on 56-110 verts/file, 0x010101 on 3-6, and
+		// 0x646257 (0.392, the only value above the 0.35 floor) on at most 2.
+		// See the base_light block in shaders/gos_tex_vertex_lighted.vert.
+		// On mc2_10 --
 		// the map in the user's report -- that is 0.753 against 1.0 on shadow
 		// faces, so the reported symptom survived the fix intended to cure it;
 		// on mc2_03 the vehicle peak is 0.796, below 1.0 at EVERY normal, so

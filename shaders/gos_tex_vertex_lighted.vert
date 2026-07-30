@@ -76,11 +76,7 @@ uniform int u_legacyLitMc2Frame;
 // The 0.35 seed is what keeps a shadow-side mech from going near-black; the
 // clamp is what stops a lit-side mech from running past 1.0. Vehicles had
 // neither, so post-VEHICLE-LIGHTING-PATH-1 their multiplier was
-//     M = base_light + A + S*ndl      (base_light == 0 for stock vehicles --
-//                                      tgl.cpp:1093 inits aRGBLight to
-//                                      0xff000000 and prefs.cpp:91 inits
-//                                      BaseVertexColor to 0, so get_base_light
-//                                      falls through every branch to vec3(0))
+//     M = base_light + A + S*ndl
 // against a mech's
 //     M = clamp(0.35 + A + S*ndl, 0, 1)
 // where A = AmbientRed/255 and S = getLightRed(terrainLight)/255
@@ -102,6 +98,23 @@ uniform int u_legacyLitMc2Frame;
 // because it has no per-vertex seed to lose. This shader does: get_base_light
 // still implements the hot-colour window/lamp conventions. max(base_light,
 // 0.35) is a true FLOOR -- it can only ever raise the seed, never discard it.
+//
+// WHAT base_light ACTUALLY IS ON STOCK VEHICLES -- measured, not assumed.
+// tgl.cpp:1093 seeds aRGBLight to 0xff000000, but the ASE loader OVERWRITES it
+// from *MESH_VERTCOL whenever *MESH_NUMCVFACES is present (tgl.cpp:1319-1448),
+// and every stock vehicle ASE has that block. The binary .tgl loader then reads
+// the whole TG_TypeVertex array verbatim (tgl.cpp:641), so whatever was baked
+// ships. Counted over the 8 stock ground-vehicle .tgl binaries:
+//     0xff000000 (0.0000)   56-110 per file   -- the overwhelming majority
+//     0xff010101 (0.0039)    3-6   per file
+//     0xff646257 (0.3922)    1-2   per file   -- the ONLY value above the floor
+//     0xffece7cc (0.9255)    0     per file   -- in the ASE palette, but no
+//                                               CFACE ever references it
+// So the floor raises ~97%+ of vehicle vertices and is inert on at most two,
+// and the largest above-floor seed is 0.392 -- 12% over the floor, not a
+// multiple of it. Per-component max() also nudges that vertex's G/B (0.384 /
+// 0.341) up to 0.35, a <= 0.009 hue shift on those two vertices; mech.vert
+// flattens all three channels to 0.35 outright, so this is the milder form.
 //
 // 0 = pre-slice behaviour, byte-identical. 1 = floor + clamp.
 // Driven by MC2_VEHICLE_AMBIENT_FLOOR, DEFAULT-ON (mclib/txmmgr.cpp).
