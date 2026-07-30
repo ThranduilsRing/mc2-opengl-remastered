@@ -10844,7 +10844,17 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         // of the lighting reconciliation. Never sample an unbound sampler.
         const bool cementReady =
             (s_overlayCementAdopt != 0) && gos_terrain_indirect_isCementAtlasReady();
-        if (L.cementAtlasOv >= 0) {
+        // OVERLAY-CEMENT-REVERT-PURITY-1 (CONCRETE-DELIVER-2): only touch GL
+        // texture unit 3 when the gate is actually ON. As landed, the killswitch
+        // path still ran glActiveTexture(3) + glBindTexture(2D, 0) every overlay
+        // draw, i.e. it UNBOUND unit 3 on a code path that is supposed to be a
+        // no-op. Harmless in practice (the chunk terrain rebinds unit 3 per draw,
+        // and the two indirect sites save/restore it), but it made the documented
+        // "MC2_OVERLAY_CEMENT_ADOPT=0 => byte-identical stock" revert untrue at
+        // the GL-state level. With the gate off we now leave unit 3 exactly as we
+        // found it; u_cementAtlasOv keeps its default 0 and is never sampled,
+        // because ovAdoptAlbedo is false whenever u_overlayCementAdopt is 0.
+        if (s_overlayCementAdopt != 0 && L.cementAtlasOv >= 0) {
             glUniform1i(L.cementAtlasOv, 3);
             glActiveTexture(GL_TEXTURE0 + 3);
             glBindTexture(GL_TEXTURE_2D,
