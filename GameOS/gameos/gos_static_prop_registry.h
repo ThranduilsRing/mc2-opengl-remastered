@@ -190,6 +190,14 @@ void setRecipeNoShadow(int32_t recipeIndex, bool noShadow);
 // by-population breakdown is incomplete and must not be read as a census.
 void getPopulationCensus(uint32_t out[5]);
 
+// COUNTER-HONESTY-1: bitmask, bit p set iff setRecipePopulation() has ever been
+// called with population p in this process. Pair it with getPopulationCensus():
+// a zero count for a population whose bit is CLEAR is not a measurement, it means
+// nothing in this build ever tags that population (true today for Generic and
+// Legacy, which have no recipe-mint path at all). Never assume it is stable --
+// read it, do not hardcode it.
+uint8_t getPopulationsEverTagged();
+
 // SHADOW-STATIC-BUILDINGS-2: append all non-tombstoned BUILDING recipe leaves
 // (baked modelMatrix + typeID) to `out` for the static building shadow pass.
 // Reads the full registry, not per-frame buckets. Trees/unset excluded.

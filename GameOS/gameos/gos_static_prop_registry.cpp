@@ -283,6 +283,22 @@ struct RecipeRange {
 static std::vector<GpuStaticPropInstance> s_recipes;
 static std::vector<RecipeRange>           s_recipeRanges;
 
+// COUNTER-HONESTY-1: bit p set once setRecipePopulation() has ever been called
+// with population p in this process. This is what lets a population census
+// distinguish "zero recipes of this kind exist" from "nothing ever tags this
+// kind, so the zero is meaningless".
+//
+// It is load-bearing right now: GenericAppearance has no registerStatic() and
+// never calls syncStaticProp(), so no Generic recipe is ever minted and
+// reg_recipes_generics is structurally 0 -- exactly the blind-counter shape this
+// lane exists to kill. Rather than let that zero look like a measurement, the
+// summary prints which populations are instrumented at all, and the mask
+// maintains itself when a Generic mint path is added later (no doc to go stale).
+//
+// Process-lifetime, deliberately NOT cleared in init(): the recipe COUNTS reset
+// per mission, but "is this population instrumented in this build" does not.
+static uint8_t s_popsEverTagged = 0u;
+
 // RECIPE-SLOT-RECYCLE (MC2_STATIC_RECIPE_RECYCLE, default OFF). The registry
 // historically only APPENDED: registerRecipe() pushed a new s_recipeRanges slot
 // and invalidate() merely tombstoned (count=0), never reclaiming the index. Under
@@ -1039,7 +1055,8 @@ void flush() {
                     // is the uncapped truth -- print it so nobody counts log lines.
                     MC2_DIAGFE(stderr,
                         "[STATIC_FIRST_FRAME v1] event=skip_first_flush "
-                        "sample=first16 total_skips_so_far=%llu regIdx=%u "
+                        "sample=first16 skips_so_far_this_mission=%llu "
+                        "(destroy() emits event=summary with the final total) regIdx=%u "
                         "registeredOnFrame=%u currentFrame=%u cachedFrame=%u\n",
                         (unsigned long long)s_firstFrameSkipCount,
                         regIdx, rng.registeredOnFrame, currentFrame,
@@ -1909,10 +1926,14 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
 
 // SHADOW-STATIC-BUILDINGS-2: tag a recipe's population at registration time.
 void setRecipePopulation(int32_t recipeIndex, GpuStaticPropPopulation pop) {
+    const uint8_t p = static_cast<uint8_t>(pop);
+    // COUNTER-HONESTY-1: record instrumentation coverage BEFORE the range check,
+    // so "this population has a tagging path" stays true even if one particular
+    // call arrives with a stale index.
+    if (p < 8u) s_popsEverTagged |= static_cast<uint8_t>(1u << p);
     if (recipeIndex < 0 ||
         recipeIndex >= static_cast<int32_t>(s_recipeRanges.size())) return;
-    s_recipeRanges[static_cast<size_t>(recipeIndex)].population =
-        static_cast<uint8_t>(pop);
+    s_recipeRanges[static_cast<size_t>(recipeIndex)].population = p;
 }
 
 void setRecipeNoShadow(int32_t recipeIndex, bool noShadow) {
@@ -1933,6 +1954,8 @@ void getPopulationCensus(uint32_t out[5]) {
         else                     out[4]++;        // 0xFF = never tagged
     }
 }
+
+uint8_t getPopulationsEverTagged() { return s_popsEverTagged; }
 
 // SHADOW-STATIC-BUILDINGS-2: append every non-tombstoned BUILDING recipe's leaf
 // instances (baked modelMatrix + typeID) to `out`. Visibility-independent — reads

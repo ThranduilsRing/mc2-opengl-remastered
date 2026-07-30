@@ -2404,6 +2404,19 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
         // line now carries both the honest denominator and an explicit note.
         uint32_t popCensus[5] = {0, 0, 0, 0, 0};
         GpuStaticPropRegistry::getPopulationCensus(popCensus);
+        // Which populations are instrumented AT ALL. Without this, a reader
+        // cannot tell reg_recipes_generics=0 ("no generic props") from the truth
+        // ("nothing ever tags Generic, so this field can only ever be 0" --
+        // GenericAppearance has no registerStatic and mints no recipe). Same
+        // trap as submit_trees; refusing to repeat it here.
+        const uint8_t popMask = GpuStaticPropRegistry::getPopulationsEverTagged();
+        char popTagged[24];
+        std::snprintf(popTagged, sizeof(popTagged), "%s%s%s%s",
+                      (popMask & 1u) ? "B" : "", (popMask & 2u) ? "T" : "",
+                      (popMask & 4u) ? "G" : "", (popMask & 8u) ? "L" : "");
+        if (popTagged[0] == '\0') {
+            std::snprintf(popTagged, sizeof(popTagged), "NONE");
+        }
 
         MC2_DIAGFE(stderr,
                "[OBJBATCHER v1] event=summary frames=%llu "
@@ -2427,6 +2440,8 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                "reg_recipes_buildings=%u reg_recipes_trees=%u "
                "reg_recipes_generics=%u reg_recipes_legacy=%u "
                "reg_recipes_untagged=%u "
+               // A zero for a population NOT listed here is not a measurement.
+               "reg_pops_ever_tagged=%s "
                "reg_census_trustworthy=%s "
                "late_register_recovery_skips=%llu\n",
                (unsigned long long)s_counters.frame_count,
@@ -2442,7 +2457,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                (unsigned long long)s_counters.mono_submitted_instances_by_pop[2],
                (unsigned long long)s_counters.mono_submitted_instances_by_pop[3],
                popCensus[0], popCensus[1], popCensus[2], popCensus[3],
-               popCensus[4],
+               popCensus[4], popTagged,
                // "no" the moment any live recipe carries the 0xFF unset default:
                // the breakdown is then incomplete and must not be read as a census.
                (popCensus[4] == 0u) ? "yes" : "no_untagged_recipes_present",
