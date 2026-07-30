@@ -306,8 +306,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_SHADOW_MAPS",
         "MC2_SHADOW_ENABLE",
         EnvVarKind::Feature,
-        false,
-        "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow). Opt-in MC2_SHADOW_ENABLE=1. VAO restore order fixed (SHADOW-DYNAMIC-RESTORE-1); prop-invisibility-with-shadows-on regression RESOLVED (flush-order bug, commit 2764cb65 — registry flush must precede flushShadow)."
+        true,
+        "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow). **DEFAULT ON; kill-switch MC2_SHADOW_ENABLE=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which had declared default `false` / \"Opt-in =1\" since it landed while BOTH GL readers implemented default ON: gos_static_prop_batcher.cpp:8717-8719 and gos_mech_batcher.cpp:1112-1114, each `!(getenv(...) && getenv(...)[0]=='0')`. The registry, docs/tier1_env_vars.md and docs/engine-closure-audit.md all said OFF, so every A/B graded as \"=1 vs unset\" compared ON against ON. TREES-REOPEN-1 documented the disagreement and nobody corrected the entry; the reader is what ships, so the entry now matches the reader. **KNOWN BACKEND DIVERGENCE, NOT FIXED HERE:** the VK reader (vulkan_post_screenfx_native.cpp:760, `mc2vkgate::envTriState(\"MC2_SHADOW_ENABLE\") == 1`) is genuinely opt-in, so a default VK session takes NO dynamic caster pass while a default GL session does. That is a real cross-backend parity defect and flipping it blind would change VK output with no capture to check it against, so it is named here instead of silently changed. VAO restore order fixed (SHADOW-DYNAMIC-RESTORE-1); prop-invisibility-with-shadows-on regression RESOLVED (flush-order bug, commit 2764cb65 — registry flush must precede flushShadow)."
     },
     // ImGui
     {
@@ -586,8 +586,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_TEXMGR_COMPRESSED_UPLOAD",
         "MC2_TEXMGR_COMPRESSED_UPLOAD",
         EnvVarKind::Feature,
-        false,
-        "TEXMGR-COMPRESSED-UPLOAD-1: teach MC_TextureManager to load a BC7 .ktx2 sidecar (same path/stem as the source data/textures texture, extension -> .ktx2) and upload it via glCompressedTexImage2D in MC_TextureNode::get_gosTextureHandle (mclib/txmmgr.cpp), through the new gos_NewCompressedTexture2D GameOS creator. Default-OFF; =1 enables. Requires GLEW_ARB_texture_compression_bptc (falls through + logs once if absent). This is the path for mech/vehicle/building/prop/UI/decal albedo textures — NOT static-prop texture arrays (MC2_STATICPROP_BC7) and NOT terrain splatting. All such textures are albedo/color (key in {Solid,Alpha,Keyed}) so vkFormat 146->GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM and 145->GL_COMPRESSED_RGBA_BPTC_UNORM. These loads use gosHint_DisableMipmap (single-level, GL_LINEAR/no-mip), so the sidecar is uploaded MIP 0 ONLY (byteLen = mipByteOffsets[1] if >1 mip, else pixels.size()); no glGenerateMipmap. Disk-only probe (std::fopen, not File/FastFile). On any failure (no sidecar, not BC7, load/upload fail, no BPTC support) the hook falls through to gos_NewTextureFromMemory unchanged. When OFF, the hook is fully gated (the env check short-circuits before any sidecar probe) -> byte-identical to the legacy RGBA8 path. The new gos_NewCompressedTexture2D mirrors gos_NewTextureFromMemory's gosTexture+addTexture lifecycle (handle integrates with textureList_/bind/destroy)."
+        true,
+        "TEXMGR-COMPRESSED-UPLOAD-1: teach MC_TextureManager to load a BC7 .ktx2 sidecar (same path/stem as the source data/textures texture, extension -> .ktx2) and upload it via glCompressedTexImage2D in MC_TextureNode::get_gosTextureHandle (mclib/txmmgr.cpp), through the new gos_NewCompressedTexture2D GameOS creator. **DEFAULT ON; opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which read \"Default-OFF; =1 enables\" while mclib/txmmgr.cpp:5356-5359 does `(!v || !v[0]) ? true : (v[0] != '0')` -- and the comment directly above that reader already said \"Default-ON (opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0)\". The registry was the only source still claiming OFF. Found by scripts/check-gate-default-agreement.py on its first run. Requires GLEW_ARB_texture_compression_bptc (falls through + logs once if absent). This is the path for mech/vehicle/building/prop/UI/decal albedo textures — NOT static-prop texture arrays (MC2_STATICPROP_BC7) and NOT terrain splatting. All such textures are albedo/color (key in {Solid,Alpha,Keyed}) so vkFormat 146->GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM and 145->GL_COMPRESSED_RGBA_BPTC_UNORM. These loads use gosHint_DisableMipmap (single-level, GL_LINEAR/no-mip), so the sidecar is uploaded MIP 0 ONLY (byteLen = mipByteOffsets[1] if >1 mip, else pixels.size()); no glGenerateMipmap. Disk-only probe (std::fopen, not File/FastFile). On any failure (no sidecar, not BC7, load/upload fail, no BPTC support) the hook falls through to gos_NewTextureFromMemory unchanged. When OFF, the hook is fully gated (the env check short-circuits before any sidecar probe) -> byte-identical to the legacy RGBA8 path. The new gos_NewCompressedTexture2D mirrors gos_NewTextureFromMemory's gosTexture+addTexture lifecycle (handle integrates with textureList_/bind/destroy)."
     },
     // ColormapCpuRetire
     {
@@ -932,7 +932,38 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "DEFECT: spawned movers come up with getStatusRating()==0 and ignore "
         "group move orders (evidence: gameplay-driver capture 2026-07-23); the "
         "spawn ack now reports hp and warns when it is 0 instead of acking a "
-        "bare 'ok'. Unset -> both verbs ack blocked; zero behavior change."
+        "bare 'ok'. Unset -> both verbs ack blocked; zero behavior change. "
+        "ALSO arms 'animate <partId> <gestureId|damaged|normal>' "
+        "(ANIMATE-BUILDING-1), which forces one building off the GPU "
+        "static-prop batch and onto the per-frame animated path -- the defect "
+        "class code/terrobj.cpp's own comment says smoke fly-throughs never "
+        "exercise. Enumerate candidates with the ungated 'list buildings'."
+    },
+    {
+        "MC2_TRACE_FREEZE_MOVERS_AT",
+        "MC2_FREEZE_MOVERS_AT",
+        EnvVarKind::Trace,
+        false,
+        "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame "
+        "g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel "
+        "(the 'freeze_movers on [frame]' verb is the same latch). Frozen movers "
+        "still draw: this widens the predicate on Mission::update's existing "
+        "pause branch, which calls ObjectManager::updateAppearancesOnly -- "
+        "recalcBounds + setObjectParameters + updateGeometry still run, "
+        "Appearance::update(false) skips the gait, and setMoverParameters is "
+        "never called so torso twist and turret aim hold their last value. "
+        "That last part is the point: a turret resting at a different aim "
+        "angle between two arms produced a retracted '+14.8 luma brighter' "
+        "result. Arming by FRAME (not wall clock) is what makes a pose "
+        "reproducible across a REBUILD; pair with MC2_SMOKE_FIXED_TIMESTEP=1 "
+        "or frameLength stays wall-clock and frame N is a different simulated "
+        "instant per build. Also freezes the residual wall-clock accumulators "
+        "that survive a pause: mech idleTime (which FLIPS the gesture 2->13 at "
+        "idleMAX), mech+vehicle damage-flash blink, and vehicle sensorSpin "
+        "(the mech path was frozen by VK-MECH-CAPTURE-DETERMINISM-1, the "
+        "vehicle path was not). Those guards test THIS gate only, never the "
+        "visual-capture predicate, so existing capture goldens are unchanged. "
+        "Unset -> reader parks at -1 and the latch never fires; default OFF."
     },
     {
         "MC2_DIAG_DEBUG_VIEW",
@@ -1959,8 +1990,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FEATURE_SHADOW_BOUNDED_NEAR_FIT",
         "MC2_SHADOW_BOUNDED_NEAR_FIT",
         EnvVarKind::Feature,
-        false,
-        "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS) for higher texel density. Default-off; =1 enables. Gate OFF = byte-identical full-frustum fit. Trades far-map coverage for crisp near shadows. Applied before pow-2/texel snap (snap preserved)."
+        true,
+        "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS, default 2500wu) for higher texel density. **DEFAULT ON; opt out with MC2_SHADOW_BOUNDED_NEAR_FIT=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry. THREE written sources said OFF -- this registry entry (`false`, \"Default-off; =1 enables\"), docs/tier1_env_vars.md, and the reader's OWN comment two lines above itself (\"gate, default OFF\") -- while the reader at gos_postprocess.cpp:6749-6752 does `return !(v && v[0] == '0'); // default ON; opt out with =0`. So every default launch has always capped the sun-shadow fit to a 2500wu camera-centered radius, trading far-map coverage for near crispness, and any A/B graded \"=1 vs unset\" compared ON against ON. The reader is what ships, so the documentation now matches it rather than the reverse: flipping the reader to OFF would change default shadow coverage for every user, which is a visual decision and not a documentation fix. **If the original OFF intent was correct, the one-line change is in the reader and it needs a capture pass.** Gate OFF = full-frustum fit. Applied before pow-2/texel snap (snap preserved). Tunable radius is only consulted when this gate is ON."
     },
     {
         "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS",
@@ -3052,8 +3083,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FEATURE_SMART_LOAD",
         "MC2_SMART_LOAD",
         EnvVarKind::Feature,
-        false,
-        "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp). Default-OFF; =1 enables. MC2_SMART_LOAD_TRACE (allowlisted trace) logs the load-time breakdown."
+        true,
+        "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp). **DEFAULT ON; kill-switch MC2_SMART_LOAD=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which read \"Default-OFF; =1 enables\" while code/logisticsdata.cpp:44-48 does `if (!v) return true; // default ON`. Found by scripts/check-gate-default-agreement.py on its first run. MC2_SMART_LOAD_TRACE (allowlisted trace) logs the load-time breakdown."
     },
     {
         "MC2_FEATURE_DYNAMIC_DECALS",

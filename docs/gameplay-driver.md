@@ -43,8 +43,8 @@ world-changing verb with an assertion:
 ```
 
 Available: `assert_moved`, `assert_pos`, `assert_hp`, `assert_count`,
-`assert_light`. Each reads the world back through `list` / `unit` /
-`light_state`.
+`assert_light`, `assert_mission`, `assert_building`. Each reads the world back
+through `list` / `list buildings` / `unit` / `light_state` / `mission_status`.
 
 **3. You need `list` before you can target anything.** `select` only reaches
 home-commander units and `status` only dumps units already selected, so `list`
@@ -132,6 +132,153 @@ MC2_WINDOWED=1 MC2_WIDTH=640 MC2_HEIGHT=480 MC2_NO_CURSOR_GRAB=1
 `MC2_WINDOWED` alone opens an `options.cfg`-sized window covering the whole
 desktop, and `STARTUPINFO`/`wShowWindow` does not help because SDL calls
 `ShowWindow(SW_SHOW)` explicitly.
+
+## Runbook — the three verbs that make A/Bs comparable
+
+`freeze_movers`, `set_light` and `animate` exist because three specific classes
+of measurement were impossible without them. Each entry below is the exact
+command a lane runs and the exact comparison it unlocks.
+
+### Preconditions (all three verbs)
+
+```
+MC2_UI_COMMAND_FILE=<path>        the channel itself
+MC2_SMOKE_FIXED_TIMESTEP=1        REQUIRED for any cross-build claim
+MC2_TEST_SPAWN=1                  only for spawn / teleport / animate
+```
+
+`MC2_SMOKE_FIXED_TIMESTEP=1` is not optional garnish. Without it `frameLength`
+is wall-clock, so "frame 900" is a different simulated instant in every build
+and a frozen pose is reproducible **within one process only**. Every gate above
+is on the `run_smoke.py` passthrough allowlist; anything not on that list is
+dropped by `Popen`, which silently makes both arms of an A/B run the same path.
+
+### `freeze_movers on <frame> | off | status`
+
+```
+freeze_movers on 900        arm; engages the first frame counter >= 900
+freeze_movers off           thaw
+freeze_movers status        active / armedAt / engagedAt
+```
+
+Or without the channel at all: `MC2_FREEZE_MOVERS_AT=900`.
+
+**Always assert the latch fired** — the ack proves the command was accepted, not
+that the freeze happened:
+
+```json
+{ "at_frame": 900, "cmd": "freeze_movers on 900", "expect": "ok" },
+{ "assert_mission": { "frozen": 1 } }
+```
+
+Use `on <frame>`, not bare `on`. Bare `on` freezes whenever the driver's write
+landed, which is not the same instant twice and gives you nothing across a
+rebuild.
+
+**Unlocks — the mover-frozen vehicle-vs-mech lighting comparison**
+(`tools/scenarios/lighting_pair.json`). This is the comparison that previously
+produced a **retracted** "+14.8 luma brighter" result: the two arms differed by
+a turret barrel resting at a different aim angle, not by lighting. Frozen movers
+still draw, but `updateAppearancesOnly` never calls `setMoverParameters`, so
+torso twist and turret aim hold their last value — the drift is gone by
+construction. Spawn a mech and a vehicle at adjacent known coordinates, freeze at
+a fixed frame, then vary **one** thing:
+
+- `pair_day` vs `pair_night` → light varies, chassis held constant.
+- `pair_day` mech vs vehicle → chassis varies, light held constant.
+- `pair_day` vs `pair_night` **across two builds** → the fix varies; only valid
+  because the freeze is frame-armed.
+
+Do not read the cross pair (mech_day vs vehicle_night) — two variables.
+
+### `set_light <phase|0..1>` / `set_light alt <deg> [yaw]`
+
+```
+set_light day | noon | dawn | morning | afternoon | dusk | sunset | night | midnight
+set_light 0.75              raw daylight fraction (0.25 noon, 0.5 sunset, 0.75 midnight)
+set_light alt 15            sun ALTITUDE only -- ambient/sky/fog untouched
+```
+
+Delegates to the same `Camera::setDaylightFraction` / `Camera::setSunPitch` that
+`time_of_day` and `sun_pitch` use; it is a named front door, not a second
+lighting mechanism. Assert on `isNight` / `lightPitch`, never `nightFactor`
+(`Weather::update` raises it while raining and takes the MAX).
+
+**Unlocks — the standing day-AND-night verdict rule becomes a fixture.**
+Previously enforceable only on missions that happen to ship with the sun you
+need, which is why the old night test hardcoded `mc2_10`. Now any mission:
+
+```json
+{ "cmd": "set_light day",   "expect": "ok" },
+{ "assert_light": { "is_night": false } },
+{ "cmd": "screenshot arm_day" },
+{ "cmd": "set_light night", "expect": "ok" },
+{ "assert_light": { "is_night": true } },
+{ "cmd": "screenshot arm_night" }
+```
+
+**Unlocks — the sun-altitude sweep for the terrain floor.** `alt` moves the sun
+*direction* while leaving ambient, sky and fog exactly as they were, which is the
+only way to separate "the terrain floor responds to sun angle" from "the whole
+frame got a different colour recompute". Sweep and read `mean_luma` per capture
+from `report.json`:
+
+```json
+{ "cmd": "set_light alt 5",  "expect": "ok" }, { "cmd": "screenshot floor_a05" },
+{ "cmd": "set_light alt 15", "expect": "ok" }, { "cmd": "screenshot floor_a15" },
+{ "cmd": "set_light alt 30", "expect": "ok" }, { "cmd": "screenshot floor_a30" },
+{ "cmd": "set_light alt 60", "expect": "ok" }, { "cmd": "screenshot floor_a60" },
+{ "cmd": "set_light alt 85", "expect": "ok" }, { "cmd": "screenshot floor_a85" }
+```
+
+A terrain floor that is *clamped* shows a luma curve that flattens at low
+altitude while `lightPitch` keeps moving — that divergence is the measurement.
+Freeze movers first, or movers in frame add their own variation to every sample.
+
+### `animate <partId> <gestureId|damaged|normal>` (needs `MC2_TEST_SPAWN=1`)
+
+```
+list buildings              ungated; ids + which gestures have animation data
+animate 32771 1             setGesture -> explicit invalidateStaticRegistration
+animate 32771 damaged       setObjStatus -> bldgDmgShape swap (different route)
+animate 32771 normal        back to the undamaged shape
+```
+
+Building part ids are **position-derived**
+(`MIN_TERRAIN_PART_ID + vertex*width + block`), not sequential — always resolve
+them from `list buildings` at runtime. Requesting a gesture with no animation
+data is acked `blocked` rather than silently doing nothing, because `setGesture`
+would call `ClearAnimation()` and leave the object on the static path, which
+looks exactly like success.
+
+**Unlocks — the animated-building black-quad reproduction**
+(`tools/scenarios/animated_building.json`). `code/terrobj.cpp`'s own comment
+says its `animStartInvalidated` counter "may be zero in smoke missions if no
+registered-static building animates" — an admission that the render path the
+user's black quads *and* sunk turrets both live on had never been exercised,
+because a passive fly-through never makes a building animate.
+
+Assert the object actually left the static batch; the ack reports intent, the
+readback reports the world:
+
+```json
+{ "cmd": "list buildings", "expect": "ok" },
+{ "assert_building": { "min_animatable": 1 } },
+{ "cmd": "animate 32771 1", "expect": "ok" },
+{ "assert_building": { "id": 32771, "static_now": 0 } },
+{ "assert_building": { "min_anim_invalidated": 1 } }
+```
+
+The two sub-verbs leave the static batch by **different** routes and should both
+be captured: `setGesture` invalidates the registration explicitly, while
+`damaged` swaps in `bldgDmgShape` and does *not* — the stale
+`staticReg.shape != bldgShape` is dropped a frame **later** from `render()`. That
+one-frame window is itself a prime black-quad suspect, so capture immediately
+after the damage step, not only once settled.
+
+If `assert_building: {min_animatable: 1}` fails, that is a **finding**, not a
+setup error: the mission cannot witness this defect class, and the honest result
+is "cannot reproduce under harness" rather than arms that prove nothing.
 
 ## Adding a verb
 

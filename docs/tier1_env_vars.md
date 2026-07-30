@@ -45,7 +45,7 @@
 - `MC2_COLORMAP_KTX2` — BC7 KTX2 atlas. Default **ON**. Kill=`=0`. Bake: `py -3 scripts/bake_colormap_ktx2.py`.
 - `MC2_COLORMAP_CPU_RETIRE` — free cpuColorMap after atlas upload. Default **ON**.
 - `MC2_VIEW_UNIFORMS` — ViewUniforms UBO. Default **ON**. Kill=`=0`. Requires restart.
-- `MC2_SHADOW_ENABLE=1` — dynamic shadow caster pass. Default **OFF**.
+- `MC2_SHADOW_ENABLE=0` — dynamic shadow caster pass. Default **ON** (kill-switch). **Corrected 2026-07-30 (GATE-DEFAULT-TRUTH-1): this line said "Default OFF" and was wrong.** Both GL readers implement default-ON (`gos_static_prop_batcher.cpp:8717`, `gos_mech_batcher.cpp:1112` — `!(v && v[0]=='0')`), so `=1 vs unset` A/Bs were comparing ON against ON. ⚠ **The VK reader disagrees**: `vulkan_post_screenfx_native.cpp:760` is opt-in `== 1`, so a default *Vulkan* session takes no dynamic caster pass. Known parity defect, deliberately not flipped blind.
 - `MC2_IMGUI=1` — ImGui overlay. Default **OFF**.
 - `MC2_IMGUI_INSPECTOR=1` — inspector panel. Default **OFF**. Requires `MC2_IMGUI`.
 - `MC2_DEBUG_RENDERER=1` — debug overlay. Requires `MC2_IMGUI_INSPECTOR`.
@@ -207,7 +207,7 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 
 ## Shadow tuning
 
-- `MC2_SHADOW_BOUNDED_NEAR_FIT=1` — cap fit radius for crisp near shadows. Default **OFF**.
+- `MC2_SHADOW_BOUNDED_NEAR_FIT=0` — cap the dynamic sun-shadow fit radius (`MC2_SHADOW_BOUNDED_NEAR_RADIUS`, default 2500wu) for crisp near shadows. Default **ON** (opt out with `=0`). **Corrected 2026-07-30 (GATE-DEFAULT-TRUTH-1): this line said "Default OFF" and was wrong**, as did the registry entry and the reader's own adjacent comment — while `gos_postprocess.cpp:6749-6752` does `return !(v && v[0] == '0')`. Every default launch caps sun-shadow coverage to a 2500wu camera-centered radius. Whether that is the *desired* default is a separate visual question needing a capture pass; this is only the documentation catching up to the binary.
 - `MC2_SHADOW_BOUNDED_NEAR_RADIUS=2500` — bounded near-fit radius in wu. Default 2500.
 - `MC2_SHADOW_FRUSTUM_DIAG=1` — per-frame coverage probe. Read-only.
 - `MC2_STATIC_PROP_BUILDING_SHADOW=1` — replay all buildings into world-fixed static shadow map. Default **OFF**. `=2` adds trace.
@@ -988,6 +988,63 @@ lights should remain visible at every angle instead of blinking out.
   `WARNING:bad hp, spawned unit may be inert`; the test is written `!(hp > 0)` rather
   than `hp <= 0` precisely because every comparison against NaN is false and the `<= 0`
   form let the NaN case ack a clean `ok`. Use `unit <partId>` for the per-unit detail.
+  `MC2_TEST_SPAWN=1` **also** arms `animate <partId> <gestureId|damaged|normal>`
+  (ANIMATE-BUILDING-1) — see below.
+- `MC2_FREEZE_MOVERS_AT=<frame>` — default **unset** (reader parks at `-1`, latch never
+  fires, `mc2FreezeMoversActive()` returns 0 and `Mission::update`'s predicate is
+  unchanged) = **OFF**. Set it, or send `freeze_movers on <frame>` on the command
+  channel, and every mover is pinned the first frame `g_mc2FrameCounter >= <frame>`.
+  Allowlisted in `scripts/run_smoke.py`.
+  **Frozen movers still draw.** This does not add a second freeze mechanism: it widens
+  the predicate on the pause branch `Mission::update` already had, which calls
+  `ObjectManager::updateAppearancesOnly()` — `recalcBounds` + `setObjectParameters` +
+  `updateGeometry` still run, `Appearance::update(false)` skips the gait, and
+  `setMoverParameters` is deliberately never called, so **torso twist and turret aim
+  hold their last value**. That is the whole point: a turret barrel resting at a
+  different aim angle between two arms is what produced the retracted "+14.8 luma
+  brighter" result.
+  **Arm by FRAME, not by wall clock.** `freeze_movers on` with no frame freezes
+  whenever the driver's write happens to land, which is reproducible within one
+  process and nothing more. `freeze_movers on <frame>` is what makes a pose
+  reproducible across a **rebuild** — but only together with
+  `MC2_SMOKE_FIXED_TIMESTEP=1`, without which `frameLength` stays wall-clock and
+  "frame N" is a different simulated instant in each build.
+  Also freezes the wall-clock accumulators that survive an ordinary pause and would
+  otherwise keep a "frozen" pose drifting: mech `idleTime` (which **flips the gesture**
+  2→13 at `idleMAX`, so two arms can differ by a whole animation), mech and vehicle
+  damage-flash blink, and vehicle `sensorSpin` (the mech path was frozen by
+  VK-MECH-CAPTURE-DETERMINISM-1; the vehicle path never was). Every one of those guards
+  tests **this** gate only and never the visual-capture predicate, so existing capture
+  goldens render exactly as before.
+  Readback: `mission_status` reports `frozen=` and `frozenAt=`; `freeze_movers status`
+  reports `active/armedAt/engagedAt`.
+- `animate <partId> <gestureId|damaged|normal>` (verb, gated by `MC2_TEST_SPAWN=1`) —
+  forces ONE building off the GPU static-prop batch and onto the per-frame animated
+  path. `code/terrobj.cpp`'s own comment notes its `animStartInvalidated` counter "may
+  be zero in smoke missions if no registered-static building animates" — that is the
+  whole defect class (the black-quad and sunk-turret reports) never being exercised,
+  because a passive fly-through never makes a building animate.
+  Two **different** routes off the static batch, both exposed on purpose:
+  `<gestureId>` calls `setGesture()`, which explicitly calls
+  `invalidateStaticRegistration()` on the idle→animated edge; `damaged` calls
+  `setObjStatus()`, which swaps in `bldgDmgShape` and does **not** invalidate — the
+  stale `staticReg.shape != bldgShape` is dropped a frame *later* from `render()`, and
+  that one-frame asymmetry is itself a black-quad candidate.
+  Enumerate targets with the **ungated** `list buildings`, which prints each building's
+  `animGestures` (which gesture slots actually have animation data), `staticReg`,
+  `recipe`, `staticNow` and `eligible`. Requesting a gesture with no animation data is
+  acked `blocked` rather than silently doing nothing — `setGesture` would call
+  `ClearAnimation()` and leave the object on the static path, which looks like success.
+  The ack reports `animStartInvalidated` before→after, so a scenario can assert the
+  object really left the static batch.
+- `set_light <phase|0..1>` / `set_light alt <deg> [yaw]` (verb, ungated) — one named
+  front door for the sun (`dawn`/`morning`/`day`/`noon`/`afternoon`/`dusk`/`sunset`/
+  `night`/`midnight`), delegating to the same `Camera::setDaylightFraction` /
+  `Camera::setSunPitch` that `time_of_day` and `sun_pitch` use. The standing
+  day-AND-night verdict rule was previously enforceable only on whichever missions
+  happen to author the sun you need; this makes it expressible in a scenario file on
+  any mission. `alt` moves direction only, leaving ambient/sky/fog untouched, which is
+  how you isolate a terrain-lighting response from a colour change.
 
 ## Diagnostic JSONL trace (diagnostic_trace.cpp — 2026-06-17)
 

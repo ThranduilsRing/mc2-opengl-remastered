@@ -1614,6 +1614,15 @@ def main():
                             # the run still reports success.
                             "MC2_UI_COMMAND_FILE",
                             "MC2_TEST_SPAWN",
+                            # FREEZE-MOVERS-1: =<frame> pins every mover at a
+                            # deterministic mission frame so a pose framing a
+                            # vehicle/mech is byte-comparable across BUILDS.
+                            # Must be allowlisted or Popen drops it and a
+                            # "frozen" arm silently runs a LIVE sim -- which is
+                            # exactly the failure that produced a retracted
+                            # +14.8 luma result (a turret at a different aim
+                            # angle read as a lighting change).
+                            "MC2_FREEZE_MOVERS_AT",
                             # CONE-SPILL-GRADE-1: isolates the ungated
                             # c1f98b45 cone/terrain spill coupling so the
                             # OFF arm of an A/B capture actually reaches the

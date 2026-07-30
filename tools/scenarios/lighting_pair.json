@@ -1,0 +1,76 @@
+{
+  "_doc": [
+    "LIGHTING-PAIR-1 -- the 'identical light, two chassis classes' comparison,",
+    "as a fixture instead of a bespoke per-session improvisation.",
+    "",
+    "WHAT IT ANSWERS: do vehicles and mechs actually light differently, at the",
+    "same world position, under the same sun? Every previous attempt at this",
+    "was uninterpretable because the two arms were not comparable:",
+    "  - movers drift run-to-run, so a turret barrel resting at a different aim",
+    "    angle read as '+14.8 luma brighter' (that result was RETRACTED),",
+    "  - and the sun could only be whatever the mission happened to author.",
+    "freeze_movers + set_light remove both. The four captures below differ in",
+    "EXACTLY ONE variable each.",
+    "",
+    "REQUIRED ENV (all three, or the run silently proves nothing):",
+    "  MC2_UI_COMMAND_FILE=<path>   the channel itself",
+    "  MC2_TEST_SPAWN=1             arms spawn/teleport",
+    "  MC2_SMOKE_FIXED_TIMESTEP=1   without it frameLength is wall-clock and",
+    "                               'frame 900' is a different simulated instant",
+    "                               in every build -- the freeze is then",
+    "                               reproducible within one process only.",
+    "",
+    "WHY freeze AT A FRAME and not just 'freeze now': arming for frame 900 makes",
+    "this pose reproducible across a REBUILD, which is what lets you compare a",
+    "capture taken before a fix with one taken after it. 'freeze_movers on' with",
+    "no frame pins whenever the driver's write landed, which is not the same",
+    "instant twice.",
+    "",
+    "READ THE RESULT AS: compare mech_day vs vehicle_day (chassis class, light",
+    "held constant) and mech_day vs mech_night (light, chassis held constant).",
+    "The cross pair mech_day vs vehicle_night answers nothing -- two variables."
+  ],
+  "mission": "mc2_10",
+  "profile": "stock",
+  "boot_timeout": 300,
+  "duration": 420,
+  "settle": 1.0,
+  "steps": [
+    { "cmd": "mission_status", "expect": "ok" },
+
+    { "_c": "Put a mech and a vehicle at KNOWN, adjacent coordinates so the only",
+      "__c": "difference between the two subjects is the chassis class.",
+      "cmd": "spawn clone 350 350 0", "expect": "ok" },
+    { "cmd": "spawn vehicle 420 350 0", "expect": "ok" },
+
+    { "_c": "Pin everything at a deterministic frame, THEN verify the latch fired.",
+      "at_frame": 900, "cmd": "freeze_movers on 900", "expect": "ok" },
+    { "assert_mission": { "frozen": 1 } },
+
+    { "_c": "Frame the pair, then hold the camera for the rest of the run.",
+      "cmd": "camera 385 350 0 120", "wait": 2.0 },
+
+    { "cmd": "set_light day", "expect": "ok" },
+    { "assert_light": { "is_night": false } },
+    { "cmd": "screenshot pair_day" },
+
+    { "cmd": "set_light night", "expect": "ok" },
+    { "assert_light": { "is_night": true } },
+    { "cmd": "screenshot pair_night" },
+
+    { "_c": "Sun ALTITUDE sweep at constant colour: isolates the terrain/mover",
+      "__c": "lighting response from the ambient+fog recompute that set_light",
+      "___c": "day|night also performs.",
+      "cmd": "set_light alt 15", "expect": "ok" },
+    { "cmd": "screenshot pair_sun15" },
+    { "cmd": "set_light alt 45", "expect": "ok" },
+    { "cmd": "screenshot pair_sun45" },
+    { "cmd": "set_light alt 75", "expect": "ok" },
+    { "cmd": "screenshot pair_sun75" },
+
+    { "_c": "Prove the freeze held for the WHOLE run. If this fails, every",
+      "__c": "capture above is incomparable and the run is void.",
+      "assert_mission": { "frozen": 1 } },
+    { "cmd": "freeze_movers status", "expect": "ok" }
+  ]
+}

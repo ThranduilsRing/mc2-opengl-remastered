@@ -30,6 +30,11 @@ extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVAN
 // gos_visual_capture.cpp). Returns nonzero only while a visual-capture sweep has
 // the sim frozen; 0 whenever no MC2_VISUAL_* capture is active -> byte-safe live.
 extern "C" int mc2CaptureGaitFreezeActive();
+// FREEZE-MOVERS-1: 0 unless the `freeze_movers` verb / MC2_FREEZE_MOVERS_AT
+// armed it. Kept SEPARATE from mc2CaptureGaitFreezeActive() on purpose: these
+// guards must not change what an existing visual-capture run renders, only
+// what a freeze_movers run renders. See code/missiongui.cpp.
+extern "C" int mc2FreezeMoversActive();
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
@@ -3984,7 +3989,9 @@ void Mech3DAppearance::updateGeometry (void)
    	xlatPosition.z = position.y;
 
 	//Update flashing regardless of view!!!
-	if (duration > 0.0f)
+	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
+	// mech blinks between arms of an A/B and the diff is the blink, not the fix.
+	if (duration > 0.0f && (mc2FreezeMoversActive() == 0))
 	{
 		duration -= frameLength;
 		currentFlash -= frameLength;
@@ -4633,7 +4640,7 @@ void Mech3DAppearance::updateGeometry (void)
 	// frameLength every render frame; during a frozen capture sweep it drifted
 	// run-to-run (a rotating triangle/square near detected enemy mechs). Freeze
 	// its advance while the capture sim is frozen. Capture-mode-only, byte-safe.
-	if (mc2CaptureGaitFreezeActive() == 0)
+	if (mc2CaptureGaitFreezeActive() == 0 && mc2FreezeMoversActive() == 0)
 	sensorSpin += SPIN_RATE * frameLength;
 	if (sensorSpin > 180)
 		sensorSpin -= 360;
@@ -5145,7 +5152,12 @@ long Mech3DAppearance::update (bool animate)
 	//----------------------------------------------
 	//If mech is in 2 and does NOT have a target.
 	//Fix please
-	if (!inCombatMode && (currentGestureId == 2))
+	// FREEZE-MOVERS-1: idleTime is a wall-clock accumulator that FLIPS THE
+	// GESTURE (2 -> 13) once it passes idleMAX. Left running under a freeze it
+	// silently changes which animation a "pinned" mech is posed in, so two
+	// arms of the same A/B can differ by a whole gesture. Frozen only when
+	// freeze_movers armed it; stock and capture paths are untouched.
+	if (!inCombatMode && (currentGestureId == 2) && (mc2FreezeMoversActive() == 0))
 	{
 		idleTime += frameLength;
 		if (idleTime > idleMAX)

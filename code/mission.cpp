@@ -44,6 +44,8 @@
 
 extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
+// FREEZE-MOVERS-1: defined in code/missiongui.cpp next to the command channel.
+extern "C" int mc2FreezeMoversActive();              // 0 unless the verb armed it
 
 // SIM-CLOCK-SPEED-1: gated sim-speed multiplier + once-per-second wall/sim
 // clock trace. Diagnostic for the "sim runs ~2x wall time" field report.
@@ -1198,7 +1200,16 @@ long Mission::update (void)
 		// prop's origin.
 		gpu_cull::substrate_frameBegin();
 
-		if ( missionInterface->isPaused() && !MPlayer )
+		// FREEZE-MOVERS-1: the `freeze_movers` driver verb rides the EXISTING
+		// pause branch rather than adding a second freeze mechanism.
+		// updateAppearancesOnly() (objmgr.cpp:4857) still runs recalcBounds +
+		// setObjectParameters + updateGeometry so frozen actors keep drawing,
+		// calls Appearance::update(false) so the gait does not advance, and
+		// never calls setMoverParameters so torso/turret aim holds its last
+		// value -- the drift that invalidated an earlier vehicle-vs-mech
+		// luma A/B. mc2FreezeMoversActive() is 0 unless the verb or
+		// MC2_FREEZE_MOVERS_AT armed it, so the default path is unchanged.
+		if ( (missionInterface->isPaused() || mc2FreezeMoversActive() != 0) && !MPlayer )
 			ObjectManager->updateAppearancesOnly( true, true, true );
 		else
 			{ MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }

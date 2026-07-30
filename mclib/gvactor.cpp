@@ -16,6 +16,10 @@
 #include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 — drawn/known/emits/lit
+
+// FREEZE-MOVERS-1: 0 unless the `freeze_movers` verb / MC2_FREEZE_MOVERS_AT
+// armed it. Defined in code/missiongui.cpp next to the command channel.
+extern "C" int mc2FreezeMoversActive();
 #endif
 
 #ifndef CAMERA_H
@@ -3024,6 +3028,12 @@ void GVAppearance::updateGeometry (void)
 		activity->Execute(&info);
 	}
 	
+	// FREEZE-MOVERS-1: the mech path got a spin freeze in
+	// VK-MECH-CAPTURE-DETERMINISM-1 (mech3d.cpp) and the VEHICLE path did not,
+	// so a frozen pose containing a vehicle still drifted a rotating sensor
+	// marker run-to-run. Guarded on freeze_movers ONLY (not on the capture
+	// predicate) so existing visual-capture goldens render exactly as before.
+	if (mc2FreezeMoversActive() == 0)
 	sensorSpin += SPIN_RATE * frameLength;
 	if (sensorSpin > 180)
 		sensorSpin -= 360;
@@ -3064,7 +3074,8 @@ long GVAppearance::update (bool animate)
 	}
 
 	//Update flashing regardless of view!!!
-	if (duration > 0.0f)
+	// FREEZE-MOVERS-1: same wall-clock blink as the mech path; see mech3d.cpp.
+	if (duration > 0.0f && (mc2FreezeMoversActive() == 0))
 	{
 		duration -= frameLength;
 		currentFlash -= frameLength;

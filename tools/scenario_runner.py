@@ -40,7 +40,17 @@ Scenario JSON schema
     {"assert_hp":    {"unit": 512, "min": 0.5}},
     {"assert_pos":   {"unit": 512, "near": [200, 200], "within": 300}},
     {"assert_light": {"is_night": true}},
-    {"assert_count": {"filter": "enemy", "min": 1}}
+    {"assert_count": {"filter": "enemy", "min": 1}},
+    # FREEZE-MOVERS-1: prove the movers were really pinned, and pinned at the
+    # frame you asked for -- the freeze_movers ack only proves the command
+    # was accepted, not that the latch fired.
+    {"assert_mission":  {"frozen": 1, "frozen_at": 900}},
+    # ANIMATE-BUILDING-1: min_animatable is the witness check. A mission with
+    # zero animatable buildings cannot exhibit the animated-building defect
+    # class at all, so this FAILING is the useful outcome ("cannot reproduce
+    # under harness") rather than running arms that prove nothing.
+    {"assert_building": {"min_animatable": 1}},
+    {"assert_building": {"id": 32771, "static_now": 0, "has_anim_data": true}}
   ],
   "captures": [
     {"name": "after_move", "after_step": 2},  # screenshot after steps[2]
@@ -452,6 +462,12 @@ def assert_mission(spec, snaps, cmd_file, ack, proc):
                      ("frame", r"frame=(\d+)"),
                      ("movers", r"movers=(-?\d+)"),
                      ("paused", r"paused=(\d)"),
+                     # FREEZE-MOVERS-1: gate an A/B arm on "the movers really
+                     # were pinned, at the frame I asked for". Without this a
+                     # scenario can only see the freeze_movers ACK, which says
+                     # the command was accepted -- not that the latch fired.
+                     ("frozen", r"frozen=(\d)"),
+                     ("frozen_at", r"frozenAt=(-?\d+)"),
                      ("objectives", r"objectives: status=(-?\d+)")):
         m = re.search(pat, txt)
         if m:
@@ -459,7 +475,7 @@ def assert_mission(spec, snaps, cmd_file, ack, proc):
     if not got:
         return False, "could not parse mission_status payload: %r" % txt[:160]
     problems = []
-    for key in ("status", "objectives", "paused"):
+    for key in ("status", "objectives", "paused", "frozen", "frozen_at"):
         if key in spec and got.get(key) != int(spec[key]):
             problems.append("%s=%s want %s" % (key, got.get(key), spec[key]))
     if "min_frame" in spec and got.get("frame", -1) < int(spec["min_frame"]):
@@ -469,8 +485,78 @@ def assert_mission(spec, snaps, cmd_file, ack, proc):
                             else detail + " FAILED: " + "; ".join(problems))
 
 
+def assert_building(spec, snaps, cmd_file, ack, proc):
+    """Assert on the `list buildings` readback (ANIMATE-BUILDING-1).
+
+    This is the only way a scenario can prove an `animate` step actually moved a
+    building OFF the GPU static-prop batch. The `animate` ack reports what was
+    ASKED FOR; this reports what the world says afterwards -- the same
+    instrument-vs-world split that makes the rest of the assert_* family worth
+    having.
+
+    Keys: id, gesture, static_now, static_reg, eligible,
+          min_animatable / min_count (mission-level),
+          min_anim_invalidated (the terrobj.cpp counter, cumulative).
+    """
+    _, body = query(cmd_file, ack, proc, "list buildings")
+    row_re = re.compile(
+        r"\[id=(\d+) type=(\S+) class=(\S+) pos=\([^)]*\) gesture=(-?\d+) "
+        r"animGestures=(\S+) staticReg=(\d) recipe=(-?\d+) staticNow=(\d) "
+        r"eligible=(\d)\]")
+    rows = {}
+    for ln in body:
+        m = row_re.search(ln)
+        if m:
+            rows[int(m.group(1))] = {
+                "type": m.group(2), "class": m.group(3),
+                "gesture": int(m.group(4)),
+                "anim_gestures": ("" if m.group(5) == "-" else m.group(5)),
+                "static_reg": int(m.group(6)), "recipe": int(m.group(7)),
+                "static_now": int(m.group(8)), "eligible": int(m.group(9)),
+            }
+    txt = " ".join(body)
+    summary = {}
+    for key, pat in (("count", r"buildings=(\d+)"),
+                     ("animatable", r"animatable=(\d+)"),
+                     ("anim_invalidated", r"animStartInvalidated=(\d+)")):
+        m = re.search(pat, txt)
+        if m:
+            summary[key] = int(m.group(1))
+    if not rows and not summary:
+        return False, "could not parse `list buildings` payload: %r" % txt[:160]
+
+    problems = []
+    for key, sk in (("min_count", "count"),
+                    ("min_animatable", "animatable"),
+                    ("min_anim_invalidated", "anim_invalidated")):
+        if key in spec and summary.get(sk, -1) < int(spec[key]):
+            # A mission with zero animatable buildings cannot witness the defect
+            # class at all. Failing here is the point: per the witness-first
+            # rule that is a finding ("cannot reproduce under harness"), not a
+            # reason to run the arms anyway.
+            problems.append("%s=%s < %s" % (sk, summary.get(sk), spec[key]))
+
+    if "id" in spec:
+        bid = int(spec["id"])
+        row = rows.get(bid)
+        if row is None:
+            problems.append("no building id=%d in `list buildings`" % bid)
+        else:
+            for key in ("gesture", "static_now", "static_reg", "eligible"):
+                if key in spec and row.get(key) != int(spec[key]):
+                    problems.append("id=%d %s=%s want %s"
+                                    % (bid, key, row.get(key), spec[key]))
+            if spec.get("has_anim_data") and not row.get("anim_gestures"):
+                problems.append("id=%d has NO animatable gestures" % bid)
+            summary["id=%d" % bid] = row
+    detail = "list buildings %s" % summary
+    return (not problems), (detail if not problems
+                            else detail + " FAILED: " + "; ".join(problems))
+
+
 ASSERTS = {
     "assert_mission": assert_mission,
+    "assert_building": assert_building,
     "assert_moved": assert_moved,
     "assert_hp": assert_hp,
     "assert_pos": assert_pos,
