@@ -33,7 +33,7 @@ Documented in `docs/disciplines.md` § "Agent-efficiency tools":
 
 - `py -3 tools/build_quiet.py --target mc2` — quiet build verdict.
 - `py -3 tools/witness_smoke.py --install <dir> [--deploy] --mission mc2_01 --expect "<regex>" [--forbid "<regex>"]` — deploy+smoke+log-grep → single PASS/FAIL.
-- `py -3 tools/menu_oracle.py --exe <mc2.exe> --env MC2_NO_LAUNCHER=1` — is the main menu visibly rendering (JSON verdict). Sparse text menus can read mean<1 while visible.
+- `py -3 tools/menu_oracle.py --exe <mc2.exe> --env MC2_NO_LAUNCHER=1` — is the main menu visibly rendering (JSON verdict). Sparse text menus can read mean<1 while visible. **USER-PRESENT ONLY (NOFOCUS-FINISH-1):** it grabs the DESKTOP COMPOSITE via `ImageGrab`, so it needs the window on the visible desktop and now aborts with `DesktopOccupancyRefused` unless `MC2_HARNESS_ALLOW_FOREGROUND=1`. In an agent session that abort is the correct answer — without it the oracle would have graded the user's wallpaper. Same applies to the other 7 files in `check-background-launch.COMPOSITE_CAPTURE_FILES` (`capture_baseline.py`, `quick_shot.py`, `quick_sweep.py`, `smoke_with_screenshots.py`, `water_visual_diff.py`, `camera_sweep_smoke.py`, `game_auto.py`). The agent-runnable capture path is the engine readback: `run_visual_capture.py` / `mech_shot.py` / `mechbay_preview_harness.py`.
 - `py -3 tools/list_free_ordinals.py --compbas <csv-or-install-dir>` — free compbas equipment ordinals per install.
 - `tools/mc2x_import/fst.py` — FST archive extraction (engine-faithful LZW + zlib).
 - `py -3 tools/repo_intel/repo_query.py slice-preflight --slice NAME --symbols "a,b" --paths p1 --base SHA` — MANDATORY before coding a recon-derived fix; `verdict=STOP` means re-recon, do not code.

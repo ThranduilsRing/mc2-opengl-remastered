@@ -215,6 +215,7 @@ Four tools subagents should NAME instead of rebuilding (AGENT-EFFICIENCY-TOOLS-1
   `py -3 tools/menu_oracle.py --exe <mc2.exe> [--env MC2_NO_LAUNCHER=1] [--wait 18] [--threshold 10] [--shot out.png]`
   → JSON `{mean, nonblack_frac, verdict}`; exit 0 VISIBLE / 1 BLACK / 2 INCONCLUSIVE.
   Caveat: sparse text-on-black menus can read mean <1 while visible — threshold is the caller's judgment.
+  **USER-PRESENT ONLY (NOFOCUS-FINISH-1).** It reads the DESKTOP COMPOSITE (`PIL.ImageGrab` of the window's client rect), so it cannot see an engine window parked offscreen at (-32000,-32000), which is now the default for every agent launch. `nofocus.apply_env` therefore raises `DesktopOccupancyRefused` unless `MC2_HARNESS_ALLOW_FOREGROUND=1`. That abort is deliberate: the alternative is a confident verdict on the user's wallpaper. The registry of composite-capture harnesses is `check-background-launch.COMPOSITE_CAPTURE_FILES`; the agent-runnable equivalents read the engine's own framebuffer (`scripts/run_visual_capture.py`, `scripts/mech_shot.py`, `scripts/mechbay_preview_harness.py`).
 - **`tools/witness_smoke.py`** — deploy+smoke+log-grep verdict in one call:
   `py -3 tools/witness_smoke.py --install <dir> [--deploy] --mission mc2_01 --expect "<regex>" [--forbid "<regex>"]`
   → smoke table + per-expect FOUND/MISSING; exit 0 only if smoke passed + all expects + no forbids.

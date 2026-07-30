@@ -2,6 +2,16 @@
 
 `scripts/game_auto.py` is the lightweight MC2 UI automation helper.
 
+> **USER-PRESENT ONLY (NOFOCUS-FINISH-1).** This tool drives the game with
+> synthetic input aimed at SCREEN coordinates and screenshots the DESKTOP
+> COMPOSITE, so it needs the window on the visible desktop — which every agent
+> launch now refuses. `game_auto.py launch` declares `offscreen=False` and
+> `nofocus.apply_env` raises `DesktopOccupancyRefused` unless the session sets
+> `MC2_HARNESS_ALLOW_FOREGROUND=1`. That is not a bug to work around: driving
+> the game by synthetic mouse and keyboard IS taking over the user's desktop,
+> and the reason engine launches were hard-blocked in the first place. Run it
+> only in a session where a human is present and expecting it.
+
 ## Commands
 
 Run from anywhere:
