@@ -25,12 +25,27 @@
 
 set -e
 
-ROOT_REPO="A:/Games/mc2-opengl-src"
+ROOT_REPO="${MC2_ROOT_REPO:-A:/Games/mc2-opengl-src}"
 TARGET="$ROOT_REPO/CLAUDE.md"
 LINE_CAP=60
 
+# UNWIRED-CHECK-CLOSE-1 (2026-07-30): this path is MACHINE-SPECIFIC. While the
+# script was unwired that only cost a confusing manual run; wiring it into
+# check-contracts.sh would have made every clone on any other machine report a
+# permanent spurious FAIL -- manufacturing exactly the always-red row this lane
+# exists to abolish. A missing root repo is therefore a SKIP (exit 0), the same
+# convention check-memory-size.py uses for the user-specific memory dir.
+# Override with MC2_ROOT_REPO. This is NOT a softening of the guard: when the
+# root repo IS present the check is unchanged and still fails on a replaced
+# template (exit 2) or an over-cap file (exit 3).
+if [ ! -d "$ROOT_REPO" ]; then
+    echo "[check-claude-md-pointer] SKIP: root repo not present on this machine: $ROOT_REPO"
+    echo "[check-claude-md-pointer] (machine-specific path; set MC2_ROOT_REPO to override)"
+    exit 0
+fi
+
 if [ ! -f "$TARGET" ]; then
-    echo "[check-claude-md-pointer] FAIL: $TARGET does not exist" >&2
+    echo "[check-claude-md-pointer] FAIL: $ROOT_REPO exists but $TARGET does not" >&2
     exit 1
 fi
 
