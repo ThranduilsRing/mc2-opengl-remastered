@@ -6742,9 +6742,17 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     if (fitRadius > r) fitRadius = r;
     const float origFitRadius = fitRadius;
 
-    // SHADOW-BOUNDED-NEAR-FIT-1 (gate, default OFF): cap fit radius for higher
-    // near-shadow texel density. Center is now correct by construction (light-
-    // space AABB); no separate center-override needed.
+    // SHADOW-BOUNDED-NEAR-FIT-1 (gate, DEFAULT ON -- opt out with
+    // MC2_SHADOW_BOUNDED_NEAR_FIT=0): cap fit radius for higher near-shadow
+    // texel density. Center is now correct by construction (light-space AABB);
+    // no separate center-override needed.
+    //
+    // GATE-DEFAULT-TRUTH-1: this comment used to say "default OFF" while the
+    // reader four lines below implemented default ON, and the registry entry and
+    // docs/tier1_env_vars.md agreed with the comment rather than with the code.
+    // A comment is not a default. If you change the idiom below, change this
+    // line, RendererFeatureRegistry.h and the tier1 doc in the SAME commit --
+    // scripts/check-gate-defaults.py now fails the build if they disagree.
     {
         static const bool s_boundedNear = []() {
             const char* v = getenv("MC2_SHADOW_BOUNDED_NEAR_FIT");

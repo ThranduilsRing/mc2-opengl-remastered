@@ -89,6 +89,23 @@ run_check() {
 # Checks
 # ---------------------------------------------------------------------------
 run_check "env_registry"           "sh scripts/check-env-registry.sh"
+
+# ---------------------------------------------------------------------------
+# GATE-DEFAULT-TRUTH-1 (2026-07-30)
+# ---------------------------------------------------------------------------
+# check-env-registry.sh above proves a gate is REGISTERED. It has never proved
+# the registry's stated `defaultOn` AGREES with what the reader does when the
+# var is unset -- and that gap shipped live lies: MC2_SHADOW_BOUNDED_NEAR_FIT
+# (registry, tier1 doc, and the reader's own adjacent comment all said OFF while
+# gos_postprocess.cpp implemented ON) and MC2_SHADOW_ENABLE (registry said
+# opt-in while both GL readers were kill-switches). Anyone A/B-ing "=1 vs unset"
+# off those entries graded ON against ON.
+#
+# UNCLASSIFIABLE counts as FAIL here, not as a silent pass: an unreadable idiom
+# is precisely where a lie hides. Exemptions live in
+# scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
+run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
+run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
 # GATE-HYGIENE-CLOSE-1: the smoke harness must keep INHERITING the parent env
 # (os.environ.copy()). If that ever changes, run_smoke.py's vestigial
 # passthrough tuple becomes load-bearing and every registered gate missing

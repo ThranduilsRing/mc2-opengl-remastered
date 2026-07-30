@@ -70,9 +70,23 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import exe_fingerprint as ef        # noqa: E402
 import manifest_schema as ms        # noqa: E402
 
-#: Artifact trees the repo treats as EVIDENCE. `scratch/` is operator working
-#: space and is scanned only when named explicitly on the command line.
-DEFAULT_ROOTS = ("tests/visual/captures", "tests/visual/baselines", "run")
+#: Artifact trees the repo treats as EVIDENCE.
+#:
+#: PROVENANCE-RATCHET-SCOPE-1 (2026-07-30): `scratch/` was originally excluded as
+#: "operator working space", which meant this checker's DEFAULT run skipped the
+#: exact corpus its own docstring cites as the smoking gun -- scratch/mc203reg
+#: and scratch/mc203air, the 23 arms recording seven different git.commit values
+#: for one binary. With scratch excluded the default run scanned 53 manifests and
+#: returned FAIL=0 WARN=53: every single one unverifiable, nothing confirmed, and
+#: a green "capture_provenance PASS" certifying nothing. Adding scratch/ took the
+#: scan to 141 manifests and immediately surfaced 3 real FAILs (2 zero-byte
+#: manifests from the ENOSPC truncation incident, 1 provably misattributed arm).
+#:
+#: Operator working space is where conclusions actually get formed, so it is
+#: exactly where attribution has to hold. A ratchet aimed away from the incident
+#: that motivated it is decoration.
+DEFAULT_ROOTS = ("tests/visual/captures", "tests/visual/baselines", "run",
+                 "scratch")
 
 #: Manifest filenames that record a measurement of a binary.
 MANIFEST_SUFFIXES = ("_capture_manifest.json",)
