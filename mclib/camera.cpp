@@ -1806,6 +1806,64 @@ float smoothConnectingInterpolation(float y0, float y1, float x)
 	return retval;
 }
 
+//---------------------------------------------------------------------------
+// GAMEPLAY-DRIVER-2: runtime sun control for the MC2_UI_COMMAND_FILE channel.
+// See the contract comment on the declarations in camera.h.
+float Camera::setDaylightFraction (float f)
+{
+	// Wrap rather than clamp: 0.25 == noon, 0.5 == sunset, 0.75 == midnight.
+	f = f - floorf(f);
+
+	// updateDaylight()'s entire body is inside `if (day2NightTransitionTime >
+	// 0.0f)`, and missions without a DayToNightTime park it at -1 (camera.cpp
+	// readIdFloat fallback). Seed a nominal transition so the recompute runs.
+	if (day2NightTransitionTime <= 0.0f)
+		day2NightTransitionTime = 3600.0f/*seconds*/;
+
+	dayLightTime = f * day2NightTransitionTime;
+
+	// The geometric SUN altitude this fraction corresponds to. updateDaylight()
+	// derives the same value internally, then -- on its night branch -- REPLACES
+	// lightPitch with the MOON's pitch (`moonPitch = 180 - |180 - lightPitch|`).
+	// That is fine for updateDaylight's own colour maths, but Camera::update()
+	// re-derives isNight / nightFactor / lightDirection from lightPitch EVERY
+	// frame and assumes it is the SUN. A midnight moon at zenith therefore
+	// leaves lightPitch == 90, which update() reads back one frame later as high
+	// noon -- silently undoing the night verdict. Measured before this line
+	// existed: `time_of_day 0.75` acked isNight=1 and the very next
+	// `light_state` read isNight=0. So restore the sun angle after the colour
+	// recompute and let the per-frame derivation agree with the fraction asked
+	// for. Night is then produced the same way a mission that SHIPS as night
+	// produces it: a low/negative sun altitude, not a pitch past 180.
+	const float sunPitch = f * 360.0f;
+	updateDaylight(false);            // ambient / sun / sky / fog for this time
+	setSunPitch(sunPitch);            // ... but hand update() the SUN angle
+	return lightPitch;
+}
+
+float Camera::setSunPitch (float pitchDeg, bool setYaw, float yawDeg)
+{
+	while (pitchDeg < 0.0f)     pitchDeg += 360.0f;
+	while (pitchDeg >= 360.0f)  pitchDeg -= 360.0f;
+	lightPitch = pitchDeg;
+	if (setYaw)
+		lightYaw = yawDeg;
+
+	// Camera::update() recomputes lightDirection + isNight + nightFactor from
+	// lightPitch every frame, but the GameOS world light's TRANSFORM is only
+	// rebuilt where updateDaylight() and init do it -- so re-sync it here, or the
+	// directional light keeps pointing at the old sun while every other consumer
+	// has moved. Same expression as updateDaylight / Camera::init.
+	if (worldLights && worldLights[0]) {
+		Stuff::LinearMatrix4D lightToWorldMatrix;
+		lightToWorldMatrix.BuildTranslation(Stuff::Point3D(0.0f, 0.0f, 0.0f));
+		lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(
+			lightPitch * DEGREES_TO_RADS, (lightYaw + 135.0) * DEGREES_TO_RADS, 0.0f));
+		worldLights[0]->SetLightToWorld(&lightToWorldMatrix);
+	}
+	return lightPitch;
+}
+
 void Camera::updateDaylight (bool bInitialize)
 {
 	float day2NightTransitionTime = this->day2NightTransitionTime;

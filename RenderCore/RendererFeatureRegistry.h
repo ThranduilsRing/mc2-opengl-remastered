@@ -889,15 +889,50 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_UI_COMMAND_FILE",
         EnvVarKind::Trace,
         false,
-        "UI-COMMAND-CHANNEL-1: =<path> polls that file once per frame "
-        "(MissionInterfaceManager::update) and executes its lines as UI "
-        "commands: toggle_pause, press pause.<BTN> (PauseWindow::handleClick), "
-        "press dialog.YES|NO (pause confirm LogisticsOKDialog), and "
-        "screenshot <name> [backbuffer] (DEV-SHELL capture point, needs "
-        "MC2_DEV_SHELL=1). Consumed lines are truncated and acked to "
-        "<path>.ack as '<cmd> -> ok|unknown|blocked (reason)'. Lets agents "
-        "press any pause-menu button in a running instance headlessly. "
-        "Default unset -> byte-identical."
+        "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file "
+        "once per frame (MissionInterfaceManager::update) and executes its "
+        "lines as commands. UI verbs: toggle_pause, press pause.<BTN> "
+        "(PauseWindow::handleClick), press dialog.YES|NO (pause confirm "
+        "LogisticsOKDialog), debugview <n>, screenshot <name> [backbuffer] "
+        "(DEV-SHELL capture point, needs MC2_DEV_SHELL=1). World verbs (route "
+        "through the same dispatchers the mouse/keyboard use): select "
+        "<partId|all|lance|class <NAME>|name <substr>>, order move <x> <y> "
+        "[run|walk] (handleOrders), order attack <targetPartId>, order "
+        "stop|hold_fire|powerup|powerdown|withdraw, camera <x> <y> [rot] "
+        "[zoomAlt], camera_follow <partId|off> (Camera::setCameraTargetId), "
+        "time_scale <f> (simSpeedSetMultiplier -- scenarioTime AND frameLength "
+        "in lockstep, clamp 0.25..4). Readback verbs write multi-line payloads "
+        "to the ack: status (selected units only), list "
+        "[all|player|enemy|team <N>|class <NAME>] (every mover incl. enemies -- "
+        "the only source of a target partId), unit <partId> (deep readback "
+        "including which DRAW PATH the object took: appearance type, inView, "
+        "static recipe index, screenPos), mission_status, light_state. "
+        "Lighting verbs: time_of_day <0..1> (full sun+ambient+sky+fog "
+        "recompute; 0.25 noon, 0.5 sunset, 0.75 midnight) and sun_pitch <deg> "
+        "[yaw] (direction only) make the day AND night verdict rule "
+        "enforceable without hunting for a mission that ships as night. "
+        "end_mission win|loss|draw forces the termination counter. "
+        "spawn/teleport are gated behind MC2_TEST_SPAWN=1. Consumed lines are "
+        "truncated and acked to <path>.ack as '[f=<frame>] <cmd> -> "
+        "ok|unknown|blocked (reason)' -- the frame number makes at_frame gates "
+        "exact instead of wall-clock guesses. Lets agents drive a running "
+        "instance headlessly for test. Default unset -> byte-identical."
+    },
+    {
+        "MC2_TRACE_TEST_SPAWN",
+        "MC2_TEST_SPAWN",
+        EnvVarKind::Trace,
+        false,
+        "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the "
+        "MC2_UI_COMMAND_FILE channel. 'spawn <clone|vehicle|infantry|objNum> "
+        "<x> <y> [team] [variant]' runs mission->addMover (the same "
+        "reinforcement path); 'vehicle' clones an existing GROUNDVEHICLE so a "
+        "mech and a vehicle can be posed side by side under identical light. "
+        "'teleport <partId> <x> <y>' sets Mover::setTeleportPosition. KNOWN "
+        "DEFECT: spawned movers come up with getStatusRating()==0 and ignore "
+        "group move orders (evidence: gameplay-driver capture 2026-07-23); the "
+        "spawn ack now reports hp and warns when it is 0 instead of acking a "
+        "bare 'ok'. Unset -> both verbs ack blocked; zero behavior change."
     },
     {
         "MC2_DIAG_DEBUG_VIEW",

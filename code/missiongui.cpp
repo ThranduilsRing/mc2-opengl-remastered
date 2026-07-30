@@ -48,6 +48,7 @@
 #include "imgui.h"
 #endif
 #include "../GameOS/gameos/gos_input.h"  // IMGUI-PAUSE-INPUT-FIX-1: input::setGameModalActive
+#include "../GameOS/gameos/gos_smoke.h"  // GAMEPLAY-DRIVER-2: SmokeMode::fixedTimestepEnabled
 
 #ifndef OBJMGR_H
 #include"objmgr.h"
@@ -853,9 +854,39 @@ extern "C" int  gos_GetGlobalDebugView();
 //                           writes dev_shell_out/<name>.tga). Requires
 //                           MC2_DEV_SHELL=1 (the capture hook is gated on the
 //                           shell); acked blocked otherwise.
-// Every consumed line is acknowledged by appending "<line> -> ok|unknown|
-// blocked (reason)" to <path>.ack, so a driving agent can confirm the engine
-// actually saw each command. Lets agents press ANY pause-menu UI button in a
+// GAMEPLAY-DRIVER-1 world verbs (route through the mouse/keyboard dispatchers):
+//   select <partId|all|lance|class <NAME>|name <substr>>
+//   order move <x> <y> [run|walk]  - MOVETO order via handleOrders (doMove path)
+//   order attack <targetPartId>    - ATTACK_OBJECT via handleTacticalOrder
+//   order stop|hold_fire|free_fire - the corresponding TACTICAL_ORDER_* code
+//   camera <x> <y> [rot] [zoomAlt] - eye->setPosition (swoopy goal-seek) + rot/zoom
+//   camera_follow <partId|off>     - Camera::setCameraTargetId (frame one unit)
+//   time_scale <f>                 - simSpeedSetMultiplier (scenarioTime AND
+//                                    frameLength in lockstep), clamp 0.25..4
+//   status                         - dump SELECTED units id/name/pos/hp to .ack
+// GAMEPLAY-DRIVER-2 readback verbs (write multi-line payloads to .ack):
+//   list [all|player|enemy|team <N>|class <NAME>]
+//                                  - enumerate EVERY mover incl. enemies; the
+//                                    only way to obtain a target partId
+//   unit <partId>                  - deep per-unit readback, including which
+//                                    draw path it took (appearance type,
+//                                    inView, static recipe index, screenPos)
+//   mission_status                 - frame / scenarioTime / sim speed / mission
+//                                    status / objective status / mover count
+// GAMEPLAY-DRIVER-2 lighting verbs (the day AND night verdict rule):
+//   time_of_day <0..1>             - full sun+ambient+sky+fog recompute
+//                                    (0.25 noon, 0.5 sunset, 0.75 midnight)
+//   sun_pitch <deg> [yaw]          - light DIRECTION only, colors unchanged
+//   light_state                    - readback pitch/yaw/isNight/nightFactor/
+//                                    ambient/light/fog so a driver can ASSERT
+//   end_mission win|loss|draw      - force the termination counter (AAR path)
+// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1, else blocked):
+//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant] - addMover
+//   teleport <partId> <x> <y>      - Mover::setTeleportPosition engine hook
+// Every consumed line is acknowledged by appending "[f=<frame>] <line> -> ok|
+// unknown|blocked (reason)" to <path>.ack, so a driving agent can confirm the
+// engine actually saw each command AND gate on an exact frame number. Lets
+// agents press ANY pause-menu UI button in a
 // running instance headlessly (fix-verification driver). Same fixture family
 // as MC2_BOOT_PAUSED above. Registered (Trace).
 void MissionInterfaceManager::processUiCommandChannel()
@@ -907,6 +938,7 @@ void MissionInterfaceManager::processUiCommandChannel()
 		const std::string& line = lines[i];
 		const char* result = "unknown";
 		std::string note;
+		std::string extra;   // GAMEPLAY-DRIVER-1: multi-line ack payload (readback dumps)
 
 		if (line == "toggle_pause") {
 			if (eye && eye->inMovieMode) {
@@ -999,12 +1031,683 @@ void MissionInterfaceManager::processUiCommandChannel()
 				note = "dev_shell_out/" + name + ".tga at end of frame";
 			}
 		}
+		//---------------------------------------------------------------------
+		// GAMEPLAY-DRIVER-1 world verbs. Every one routes through the SAME
+		// dispatcher the mouse/keyboard uses (handleOrders / Mover::setSelected
+		// / Camera::setPosition) so game rules apply. The homeCmdr / homeTeam
+		// gate matches the roster walks in doMove/doAttack.
+		else if (line.compare(0, 7, "select ") == 0) {
+			// select <partId|all|lance|class <NAME>|name <substr>>
+			const std::string arg = line.substr(7);
+			Team* pTeam = Team::home;
+			const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
+			if (!pTeam) { result = "blocked"; note = "no home team"; }
+			else if (arg == "all" || arg == "lance") {
+				long n = 0;
+				for (long i = 0; i < pTeam->getRosterSize(); i++) {
+					Mover* m = (Mover*)pTeam->getMover(i);
+					if (!m) continue;
+					const bool mine = m->isOnGUI() && !m->isDisabled() &&
+						m->getCommander()->getId() == homeCmdr;
+					m->setSelected(mine);
+					if (mine) n++;
+				}
+				result = "ok";
+				char b[48]; sprintf(b, "%ld selected", n); note = b;
+			}
+			// GAMEPLAY-DRIVER-2: predicate selection. `select <partId>` alone
+			// forces an agent to hardcode ids that change per mission AND per
+			// run (spawned ids are allocated in a different range), which is
+			// exactly what made the shipped night_light_test scenario aim at
+			// the wrong units.
+			else if (arg.compare(0, 6, "class ") == 0 || arg.compare(0, 5, "name ") == 0) {
+				const bool byClass = (arg.compare(0, 6, "class ") == 0);
+				std::string needle = arg.substr(byClass ? 6 : 5);
+				for (size_t c = 0; c < needle.size(); ++c)
+					needle[c] = (char)toupper((unsigned char)needle[c]);
+				long n = 0;
+				for (long i = 0; i < pTeam->getRosterSize(); i++) {
+					Mover* m = (Mover*)pTeam->getMover(i);
+					if (!m) continue;
+					bool hit = false;
+					if (m->isOnGUI() && !m->isDisabled() &&
+						m->getCommander()->getId() == homeCmdr) {
+						std::string hay = byClass
+							? std::string(getObjectClassName(m->getObjectClass()))
+							: std::string(m->getName() ? m->getName() : "");
+						for (size_t c = 0; c < hay.size(); ++c)
+							hay[c] = (char)toupper((unsigned char)hay[c]);
+						hit = (hay.find(needle) != std::string::npos);
+					}
+					m->setSelected(hit);
+					if (hit) n++;
+				}
+				result = n ? "ok" : "blocked";
+				char b[96];
+				sprintf(b, "%ld matched %s '%s'", n, byClass ? "class" : "name", needle.c_str());
+				note = b;
+			}
+			else {
+				char* end = nullptr;
+				const long pid = strtol(arg.c_str(), &end, 10);
+				if (arg.empty() || !end || *end != '\0') {
+					note = "select <partId|all|lance|class <NAME>|name <substr>>";
+				} else {
+					GameObjectPtr obj = ObjectManager->findByPartId(pid);
+					if (!obj || !obj->isMover()) {
+						result = "blocked"; note = "no such mover";
+					} else if (((Mover*)obj)->getCommander()->getId() != homeCmdr) {
+						result = "blocked"; note = "not a player unit";
+					} else {
+						for (long i = 0; i < pTeam->getRosterSize(); i++) {
+							Mover* m = (Mover*)pTeam->getMover(i);
+							if (m) m->setSelected(false);
+						}
+						((Mover*)obj)->setSelected(true);
+						result = "ok";
+					}
+				}
+			}
+		}
+		else if (line.compare(0, 11, "order move ") == 0) {
+			// order move <x> <y> [run|walk]  (default run)
+			float x = 0, y = 0; char mode[16] = {0};
+			const int nf = sscanf(line.c_str() + 11, "%f %f %15s", &x, &y, mode);
+			if (nf < 2) {
+				note = "order move <x> <y> [run|walk]";
+			} else {
+				const bool walk = (nf >= 3 && strcmp(mode, "walk") == 0);
+				Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+				if (land) pos.z = land->getTerrainElevation(pos);
+				Team* pTeam = Team::home;
+				const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
+				long sel = 0;
+				for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
+					Mover* m = (Mover*)pTeam->getMover(i);
+					if (m && m->isSelected() && m->getCommander()->getId() == homeCmdr) sel++;
+				}
+				if (!sel) {
+					result = "blocked"; note = "no player unit selected (use select)";
+				} else {
+					LocationNode path; path.location = pos; path.run = !walk; path.next = NULL;
+					TacticalOrder tacOrder;
+					tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_MOVETO_POINT, false);
+					tacOrder.initWayPath(&path);
+					tacOrder.moveParams.wait = false;
+					tacOrder.moveParams.wayPath.mode[0] = walk ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
+					tacOrder.pack(NULL, NULL);
+					handleOrders(tacOrder);   // same dispatcher doMove() calls
+					result = "ok";
+					char b[96];
+					sprintf(b, "%ld unit(s) -> (%.1f,%.1f) %s", sel, x, y, walk ? "walk" : "run");
+					note = b;
+				}
+			}
+		}
+		else if (line.compare(0, 13, "order attack ") == 0) {
+			// order attack <targetPartId>
+			const std::string arg = line.substr(13);
+			char* end = nullptr;
+			const long tid = strtol(arg.c_str(), &end, 10);
+			if (arg.empty() || !end || *end != '\0') {
+				note = "order attack <targetPartId>";
+			} else {
+				GameObjectPtr tobj = ObjectManager->findByPartId(tid);
+				if (!tobj) { result = "blocked"; note = "no such target"; }
+				else {
+					Team* pTeam = Team::home;
+					const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
+					long sel = 0;
+					for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
+						Mover* m = (Mover*)pTeam->getMover(i);
+						if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
+							continue;
+						TacticalOrder tacOrder;
+						tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
+						tacOrder.targetWID = tobj->getWatchID();
+						tacOrder.attackParams.type = ATTACK_TO_DESTROY;
+						tacOrder.attackParams.method = ATTACKMETHOD_RANGED;
+						tacOrder.attackParams.range = FIRERANGE_OPTIMAL;
+						tacOrder.attackParams.pursue = true;
+						tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
+						tacOrder.pack(NULL, NULL);
+						m->handleTacticalOrder(tacOrder);
+						sel++;
+					}
+					if (!sel) { result = "blocked"; note = "no player unit selected"; }
+					else {
+						result = "ok";
+						char b[64]; sprintf(b, "%ld unit(s) attacking %ld", sel, tid); note = b;
+					}
+				}
+			}
+		}
+		// GAMEPLAY-DRIVER-2: the no-argument TacticalOrder codes. Without at
+		// least a stop an agent can start a move but never cancel it.
+		// (There is no FREE_FIRE counterpart to HOLD_FIRE in the enum --
+		// tacordr.h:134-162 -- so hold_fire is cleared by issuing a new order.)
+		else if (line.compare(0, 6, "order ") == 0 &&
+				 (line.substr(6) == "stop" || line.substr(6) == "hold_fire" ||
+				  line.substr(6) == "powerup" || line.substr(6) == "powerdown" ||
+				  line.substr(6) == "withdraw")) {
+			const std::string sub = line.substr(6);
+			TacticalOrderCode code = TACTICAL_ORDER_STOP;
+			if      (sub == "hold_fire") code = TACTICAL_ORDER_HOLD_FIRE;
+			else if (sub == "powerup")   code = TACTICAL_ORDER_POWERUP;
+			else if (sub == "powerdown") code = TACTICAL_ORDER_POWERDOWN;
+			else if (sub == "withdraw")  code = TACTICAL_ORDER_WITHDRAW;
+			Team* pTeam = Team::home;
+			const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
+			long sel = 0;
+			for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
+				Mover* m = (Mover*)pTeam->getMover(i);
+				if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
+					continue;
+				TacticalOrder tacOrder;
+				tacOrder.init(ORDER_ORIGIN_PLAYER, code);
+				tacOrder.pack(NULL, NULL);
+				m->handleTacticalOrder(tacOrder);
+				sel++;
+			}
+			if (!sel) { result = "blocked"; note = "no player unit selected"; }
+			else {
+				result = "ok";
+				char b[64]; sprintf(b, "%ld unit(s) %s", sel, sub.c_str()); note = b;
+			}
+		}
+		else if (line.compare(0, 7, "camera ") == 0) {
+			// camera <x> <y> [rotDeg] [zoomAltitude]
+			float x = 0, y = 0, rot = 0, zoom = 0;
+			const int nf = sscanf(line.c_str() + 7, "%f %f %f %f", &x, &y, &rot, &zoom);
+			if (nf < 2) { note = "camera <x> <y> [rotDeg] [zoomAlt]"; }
+			else if (!eye) { result = "blocked"; note = "no camera"; }
+			else {
+				Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+				if (land) pos.z = land->getTerrainElevation(pos);
+				eye->setPosition(pos, true);              // swoopy = goal-seek smoothing
+				if (nf >= 3) eye->setCameraRotation(rot, rot);
+				if (nf >= 4) eye->setCameraAltitudeDesired(zoom);
+				result = "ok";
+				char b[96];
+				sprintf(b, "cam (%.1f,%.1f)%s%s", x, y, nf >= 3 ? " +rot" : "", nf >= 4 ? " +zoom" : "");
+				note = b;
+			}
+		}
+		// GAMEPLAY-DRIVER-2: frame a SPECIFIC unit instead of guessing world
+		// coordinates. Camera::setCameraTargetId sets lookTargetObject, which
+		// GameCamera::update consumes every frame via getCamObject(partId,true).
+		// NOTE: mutually exclusive with MC2_CAMERA_PARK -- freezeScriptedCamera
+		// ForCapture() deliberately clears lookTargetObject.
+		else if (line.compare(0, 14, "camera_follow ") == 0) {
+			const std::string arg = line.substr(14);
+			if (!eye) { result = "blocked"; note = "no camera"; }
+			else if (arg == "off") {
+				eye->setCameraTargetId(-1);
+				result = "ok"; note = "follow cleared";
+			} else {
+				char* end = nullptr;
+				const long pid = strtol(arg.c_str(), &end, 10);
+				if (arg.empty() || !end || *end != '\0') {
+					note = "camera_follow <partId|off>";
+				} else {
+					GameObjectPtr obj = ObjectManager->findByPartId(pid);
+					if (!obj) { result = "blocked"; note = "no such object"; }
+					else {
+						eye->setCameraTargetId(pid);
+						Stuff::Vector3D p = obj->getPosition();
+						result = "ok";
+						char b[96];
+						sprintf(b, "following %ld at (%.1f,%.1f)", pid, p.x, p.y);
+						note = b;
+					}
+				}
+			}
+		}
+		else if (line.compare(0, 11, "time_scale ") == 0) {
+			// GAMEPLAY-DRIVER-2 CORRECTION: the ui-phase1 prototype wrote its own
+			// g_uiTimeScale, which multiplied frameLength ONLY -- so motion sped
+			// up while scenarioTime (objective timers) did not, and the two
+			// clocks silently diverged. Canonical has since grown
+			// SIM-SPEED-BUTTON-1, which applies one multiplier at BOTH drivers
+			// in lockstep (scenarioTime in mission.cpp, frameLength in
+			// mechcmd2.cpp). Route the verb through that instead of
+			// reintroducing the divergence. Clamp is the shared [0.25, 4.0].
+			const std::string arg = line.substr(11);
+			char* end = nullptr;
+			const float f = strtof(arg.c_str(), &end);
+			if (arg.empty() || !end || *end != '\0') {
+				note = "time_scale <factor 0.25..4>";
+			} else {
+				simSpeedSetMultiplier(f);
+				result = "ok";
+				char b[128];
+				sprintf(b, "sim_speed=%.2f%s", (double)simSpeedGetMultiplier(),
+					SmokeMode::fixedTimestepEnabled()
+						? " (NOTE: MC2_SMOKE_FIXED_TIMESTEP pins both clocks to 1x)"
+						: "");
+				note = b;
+			}
+		}
+		else if (line == "status") {
+			// dump every selected player unit's id/name/pos/health to the ack file
+			Team* pTeam = Team::home;
+			const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
+			long n = 0;
+			for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
+				Mover* m = (Mover*)pTeam->getMover(i);
+				if (!(m && m->isSelected() && m->getCommander()->getId() == homeCmdr))
+					continue;
+				Stuff::Vector3D p = m->getPosition();
+				char b[224];
+				snprintf(b, sizeof(b),
+					"  [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]\n",
+					m->getPartId(), (m->getName() ? m->getName() : "?"),
+					p.x, p.y, p.z, m->getStatusRating(),
+					m->isDestroyed() ? " DESTROYED" : "");
+				extra += b;
+				n++;
+			}
+			result = "ok";
+			char h[48]; sprintf(h, "%ld selected", n); note = h;
+		}
+		//---------------------------------------------------------------------
+		// GAMEPLAY-DRIVER-2 readback verbs. `status` only reports units that are
+		// ALREADY selected, and `select` only reaches home-commander units, so
+		// nothing in the channel could ever produce an ENEMY partId -- which is
+		// why `order attack` was undrivable end-to-end and why no shipped
+		// scenario exercised it.
+		else if (line == "list" || line.compare(0, 5, "list ") == 0) {
+			// list [all|player|enemy|team <N>|class <NAME>]
+			const std::string arg = (line.size() > 5) ? line.substr(5) : std::string("all");
+			const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
+			const long homeTeam = Team::home ? Team::home->getId() : -1;
+			long wantTeam = -2, n = 0;
+			std::string wantClass;
+			bool bad = false, playerOnly = false, enemyOnly = false;
+			if (arg == "all" || arg.empty()) { /* default */ }
+			else if (arg == "player") playerOnly = true;
+			else if (arg == "enemy")  enemyOnly = true;
+			else if (arg.compare(0, 5, "team ") == 0) {
+				char* end = nullptr;
+				wantTeam = strtol(arg.c_str() + 5, &end, 10);
+				if (!end || *end != '\0') bad = true;
+			}
+			else if (arg.compare(0, 6, "class ") == 0) {
+				wantClass = arg.substr(6);
+				for (size_t c = 0; c < wantClass.size(); ++c)
+					wantClass[c] = (char)toupper((unsigned char)wantClass[c]);
+			}
+			else bad = true;
+
+			if (bad) {
+				note = "list [all|player|enemy|team <N>|class <NAME>]";
+			} else if (!ObjectManager) {
+				result = "blocked"; note = "no object manager";
+			} else {
+				for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
+					MoverPtr m = ObjectManager->getMover(i);
+					if (!m) continue;
+					const bool mine = (m->getCommanderId() == homeCmdr);
+					if (playerOnly && !mine) continue;
+					if (enemyOnly && mine) continue;
+					if (wantTeam != -2 && m->getTeamId() != wantTeam) continue;
+					const char* cls = getObjectClassName(m->getObjectClass());
+					if (!wantClass.empty()) {
+						std::string hay(cls ? cls : "");
+						for (size_t c = 0; c < hay.size(); ++c)
+							hay[c] = (char)toupper((unsigned char)hay[c]);
+						if (hay.find(wantClass) == std::string::npos) continue;
+					}
+					Stuff::Vector3D p = m->getPosition();
+					AppearancePtr ap = m->getAppearance();
+					char b[288];
+					snprintf(b, sizeof(b),
+						"  [id=%ld name=%s class=%s team=%ld cmdr=%ld pos=(%.1f,%.1f,%.1f) "
+						"hp=%.3f sel=%d gui=%d inView=%d%s%s]\n",
+						m->getPartId(), (m->getName() ? m->getName() : "?"),
+						cls ? cls : "?", m->getTeamId(), m->getCommanderId(),
+						p.x, p.y, p.z, m->getStatusRating(),
+						m->isSelected() ? 1 : 0, m->isOnGUI() ? 1 : 0,
+						(ap && ap->canBeSeen()) ? 1 : 0,
+						m->isDisabled()  ? " DISABLED"  : "",
+						m->isDestroyed() ? " DESTROYED" : "");
+					extra += b;
+					n++;
+				}
+				result = "ok";
+				char h[80];
+				sprintf(h, "%ld mover(s) of %ld", n, ObjectManager->getNumMovers());
+				note = h;
+			}
+		}
+		// GAMEPLAY-DRIVER-2: per-unit deep readback, INCLUDING which draw path
+		// the object took. getStatusRating() collapses armor x weapons x pilot
+		// into one float, so `status` can report hp=0.000 without telling you
+		// WHY -- which is precisely how the shipped night_light_test scenario
+		// passed while every unit it spawned was inert.
+		else if (line.compare(0, 5, "unit ") == 0) {
+			const std::string arg = line.substr(5);
+			char* end = nullptr;
+			const long pid = strtol(arg.c_str(), &end, 10);
+			if (arg.empty() || !end || *end != '\0') {
+				note = "unit <partId>";
+			} else {
+				GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : NULL;
+				if (!obj) { result = "blocked"; note = "no such object"; }
+				else {
+					Stuff::Vector3D p = obj->getPosition();
+					char b[512];
+					snprintf(b, sizeof(b),
+						"  id=%ld name=%s class=%s pos=(%.2f,%.2f,%.2f) hp=%.3f "
+						"exists=%d disabled=%d destroyed=%d\n",
+						pid, (obj->getName() ? obj->getName() : "?"),
+						getObjectClassName(obj->getObjectClass()),
+						p.x, p.y, p.z, obj->getStatusRating(),
+						obj->getExists() ? 1 : 0,
+						obj->isDisabled() ? 1 : 0, obj->isDestroyed() ? 1 : 0);
+					extra += b;
+
+					if (obj->isMover()) {
+						MoverPtr m = (MoverPtr)obj;
+						MechWarriorPtr pilot = m->getPilot();
+						snprintf(b, sizeof(b),
+							"  mover: team=%ld cmdr=%ld gui=%d selected=%d "
+							"typeHandle=%ld pilot=%s\n",
+							m->getTeamId(), m->getCommanderId(),
+							m->isOnGUI() ? 1 : 0, m->isSelected() ? 1 : 0,
+							m->getTypeHandle(),
+							(pilot && pilot->getName()) ? pilot->getName() : "<none>");
+						extra += b;
+					}
+
+					// --- draw-path readback -------------------------------------
+					// Which renderer lane did this object actually take this
+					// frame? inView is the cull verdict, staticRecipe >= 0 means
+					// it went through the StaticSceneProxy / GPU-direct static
+					// recipe path (BldgAppearance / TreeAppearance register
+					// there), -1 means the per-frame dynamic walk. screenPos is
+					// the post-transform position the HUD/pick code uses, so a
+					// unit that renders off-frustum shows here as w<=0.
+					AppearancePtr ap = obj->getAppearance();
+					if (!ap) {
+						extra += "  draw: <no appearance>\n";
+					} else {
+						AppearanceTypePtr at = ap->getAppearanceType();
+						Stuff::Vector4D sp = ap->getScreenPos();
+						snprintf(b, sizeof(b),
+							"  draw: appearType=%s appearNum=%lu inView=%d "
+							"staticRecipe=%d screenPos=(%.1f,%.1f,%.3f,%.3f)\n",
+							(at && at->name) ? at->name : "?",
+							at ? (unsigned long)at->appearanceNum : 0UL,
+							ap->canBeSeen() ? 1 : 0,
+							(int)ap->getStaticRecipeIndex(),
+							sp.x, sp.y, sp.z, sp.w);
+						extra += b;
+					}
+					result = "ok";
+				}
+			}
+		}
+		// GAMEPLAY-DRIVER-2: mission-level readback. Lets a driver gate on real
+		// mission state instead of wall-clock guesses.
+		else if (line == "mission_status") {
+			extern uint32_t g_mc2FrameCounter;
+			char b[320];
+			snprintf(b, sizeof(b),
+				"  frame=%lu scenarioTime=%.2f simSpeed=%.2f fixedTimestep=%d "
+				"status=%ld paused=%d movers=%ld\n",
+				(unsigned long)g_mc2FrameCounter, (double)scenarioTime,
+				(double)simSpeedGetMultiplier(),
+				SmokeMode::fixedTimestepEnabled() ? 1 : 0,
+				mission ? mission->getStatus() : -1L,
+				isPaused() ? 1 : 0,
+				ObjectManager ? ObjectManager->getNumMovers() : -1L);
+			extra += b;
+			if (Team::home) {
+				snprintf(b, sizeof(b), "  objectives: status=%d\n",
+					(int)Team::home->objectives.Status());
+				extra += b;
+			}
+			result = "ok";
+		}
+		// GAMEPLAY-DRIVER-2: force a mission outcome. Without this a driver has
+		// to satisfy real objectives or lose every unit, so the AAR / salvage /
+		// campaign-progression paths were untestable headlessly.
+		else if (line.compare(0, 12, "end_mission ") == 0) {
+			const std::string arg = line.substr(12);
+			unsigned long res = 0;
+			bool ok = true;
+			if      (arg == "win")  res = mis_PLAYER_WIN_BIG;
+			else if (arg == "loss") res = mis_PLAYER_LOST_BIG;
+			else if (arg == "draw") res = mis_PLAYER_DRAW;
+			else ok = false;
+			if (!ok) { note = "end_mission win|loss|draw"; }
+			else if (!mission) { result = "blocked"; note = "no mission"; }
+			else {
+				mission->forceTerminate(res);
+				result = "ok";
+				char b[96];
+				sprintf(b, "%s (result=%lu); channel goes dead once logistics takes over",
+					arg.c_str(), res);
+				note = b;
+			}
+		}
+		//---------------------------------------------------------------------
+		// GAMEPLAY-DRIVER-2 lighting verbs. The day AND night verdict rule was
+		// unenforceable from the channel: the ONLY way to see night light was to
+		// pick a mission that ships as night, which is why night_light_test.json
+		// hardcodes mc2_10. See the contract comment in mclib/camera.h.
+		else if (line.compare(0, 12, "time_of_day ") == 0) {
+			const std::string arg = line.substr(12);
+			char* end = nullptr;
+			const float f = strtof(arg.c_str(), &end);
+			if (arg.empty() || !end || *end != '\0') {
+				note = "time_of_day <0..1>  (0.25=noon, 0.5=sunset, 0.75=midnight)";
+			} else if (!eye) {
+				result = "blocked"; note = "no camera";
+			} else {
+				const float pitch = eye->setDaylightFraction(f);
+				result = "ok";
+				char b[128];
+				sprintf(b, "lightPitch=%.1f isNight=%d nightFactor=%.2f (full recompute)",
+					(double)pitch, eye->getIsNight() ? 1 : 0, (double)eye->getNightFactor());
+				note = b;
+			}
+		}
+		else if (line.compare(0, 10, "sun_pitch ") == 0) {
+			// sun_pitch <deg> [yawDeg]   -- direction only, colors unchanged
+			float pitch = 0, yaw = 0;
+			const int nf = sscanf(line.c_str() + 10, "%f %f", &pitch, &yaw);
+			if (nf < 1) { note = "sun_pitch <deg 0..360> [yawDeg]"; }
+			else if (!eye) { result = "blocked"; note = "no camera"; }
+			else {
+				const float p = eye->setSunPitch(pitch, nf >= 2, yaw);
+				result = "ok";
+				char b[128];
+				sprintf(b, "lightPitch=%.1f%s (direction only; ambient/fog unchanged)",
+					(double)p, nf >= 2 ? " +yaw" : "");
+				note = b;
+			}
+		}
+		else if (line == "light_state") {
+			// Readback so a driver can ASSERT the light condition rather than
+			// eyeball a screenshot. Pair with time_of_day for a day/night A/B.
+			if (!eye) { result = "blocked"; note = "no camera"; }
+			else {
+				char b[384];
+				snprintf(b, sizeof(b),
+					"  lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3f\n"
+					"  ambient=(%u,%u,%u) light=(%u,%u,%u) fog=0x%06lx "
+					"day2NightTransitionTime=%.1f dayLightTime=%.1f\n",
+					(double)eye->lightPitch, (double)eye->lightYaw,
+					eye->getIsNight() ? 1 : 0, (double)eye->getNightFactor(),
+					(unsigned)eye->ambientRed, (unsigned)eye->ambientGreen,
+					(unsigned)eye->ambientBlue,
+					(unsigned)eye->lightRed, (unsigned)eye->lightGreen,
+					(unsigned)eye->lightBlue,
+					(unsigned long)(eye->fogColor & 0xffffffUL),
+					(double)eye->day2NightTransitionTime, (double)eye->dayLightTime);
+				extra += b;
+				result = "ok";
+			}
+		}
+		else if (line.compare(0, 6, "spawn ") == 0 || line.compare(0, 9, "teleport ") == 0) {
+			// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1).
+			//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]
+			//   teleport <partId> <x> <y>
+			static const char* s_spawnGate = getenv("MC2_TEST_SPAWN");
+			const bool armed = s_spawnGate && s_spawnGate[0] == '1';
+			if (!armed) {
+				result = "blocked"; note = "needs MC2_TEST_SPAWN=1";
+			}
+			else if (line.compare(0, 6, "spawn ") == 0) {
+				char kind[40] = {0}; float x = 0, y = 0; int team = -1, variant = 0;
+				const int nf = sscanf(line.c_str() + 6, "%39s %f %f %d %d",
+					kind, &x, &y, &team, &variant);
+				if (nf < 3) {
+					note = "spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]";
+				} else {
+					const long homeCmdr = Commander::home ? Commander::home->getId() : 0;
+					const long homeTeam = Team::home ? Team::home->getId() : 0;
+					MoverInitData data; memset(&data, 0, sizeof(data));
+					strcpy(data.pilotFileName, "pmw00080");
+					strcpy(data.brainFileName, "pbrain");
+					data.controlDataType = 0;
+					data.rosterIndex = 255;
+					data.gestureID = 2;
+					data.active = true; data.exists = true; data.capturable = false;
+					data.variant = (DWORD)variant;
+					data.baseColor = prefs.baseColor;
+					data.highlightColor1 = prefs.highlightColor;
+					data.highlightColor2 = prefs.highlightColor;
+					data.commanderID = (char)homeCmdr;
+					data.teamID = (char)((team >= 0) ? team : homeTeam);
+					bool ok = true;
+					if (strcmp(kind, "infantry") == 0) {
+						strcpy(data.brainFileName, "infantry001");
+						strcpy(data.csvFileName, "PM101100");
+						data.objNumber = 53; data.variant = 0;
+					} else if (strcmp(kind, "clone") == 0 || strcmp(kind, "vehicle") == 0) {
+						// GAMEPLAY-DRIVER-2: `vehicle` clones an existing GROUND
+						// VEHICLE (any team -- missions often have none on the
+						// player roster) so a mech and a vehicle can be placed
+						// side by side under identical light for a lighting A/B.
+						const ObjectClass wantCls =
+							(strcmp(kind, "vehicle") == 0) ? GROUNDVEHICLE : BATTLEMECH;
+						Mover* tmpl = NULL;
+						Team* pTeam = Team::home;
+						for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
+							Mover* m = (Mover*)pTeam->getMover(i);
+							if (m && m->getCommander()->getId() == homeCmdr &&
+								m->getObjectClass() == wantCls) { tmpl = m; break; }
+						}
+						if (!tmpl && ObjectManager) {
+							// widen to the whole mission before giving up
+							for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
+								MoverPtr m = ObjectManager->getMover(i);
+								if (m && m->getObjectClass() == wantCls) { tmpl = m; break; }
+							}
+						}
+						if (!tmpl) {
+							ok = false; result = "blocked";
+							note = (wantCls == GROUNDVEHICLE)
+								? "no ground vehicle in mission to clone"
+								: "no player mech to clone";
+						} else {
+							data.objNumber = tmpl->getTypeHandle();
+							data.variant = (wantCls == BATTLEMECH)
+								? (DWORD)((BattleMechPtr)tmpl)->variantID : 0;
+						}
+					} else {
+						char* end = nullptr; const long on = strtol(kind, &end, 10);
+						if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>"; }
+						else data.objNumber = on;
+					}
+					if (ok) {
+						Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+						if (land) pos.z = land->getTerrainElevation(pos);
+						data.position = pos; data.rotation = 0;
+						data.controlType = (data.commanderID == (char)homeCmdr && !MPlayer)
+							? CONTROL_PLAYER : CONTROL_AI;
+						const long h = mission ? mission->addMover(&data) : -1;
+						MoverPtr nm = (h > 0) ? (MoverPtr)ObjectManager->get(h) : NULL;
+						if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
+						else {
+							// NOTE: do NOT call nm->setOnGUI(true) here. The
+							// GAMEPLAY-DRIVER-1 prototype did, but Mission::
+							// addMover already sets it (code/mission.cpp, just
+							// before it returns the handle), so the extra call
+							// was redundant -- and it is a setOnGUI() caller
+							// outside the MOVER-COHERENCE S1a allowlist, which
+							// the mover-registry contract (added after that
+							// prototype was written) correctly rejects: every
+							// setOnGUI(true) must be paired with the mission-
+							// interface registration that addMover performs.
+							if (!MPlayer && data.commanderID == (char)homeCmdr)
+								nm->setLocalMoverId(0);
+							result = "ok";
+							char b[192];
+							// GAMEPLAY-DRIVER-2 HONESTY: report the spawned unit's
+							// ACTUAL status rating in the ack. The 2026-07-23 run
+							// acked five `spawn clone` as ok while all five were
+							// hp=0.000 and ignored every move order; because
+							// scenario_runner only substring-matches acks, the
+							// report said ok=True. Surfacing hp here means a
+							// driver can assert on it. A non-positive OR NaN hp on
+							// a fresh spawn is the known defect -- use
+							// `unit <id>` for detail.
+							//
+							// Written as !(hp > 0) and NOT as (hp <= 0): a
+							// spawned BattleMech's getStatusRating() can come
+							// back -nan(ind) (observed 2026-07-30, mc2_10,
+							// `spawn clone`), and EVERY comparison against NaN
+							// is false -- so the `<= 0` form let the exact case
+							// the warning exists to catch slip through acking a
+							// clean "ok".
+							const float spawnHp = nm->getStatusRating();
+							sprintf(b, "spawned id=%ld obj=%d team=%d hp=%.3f%s",
+								nm->getPartId(), (int)data.objNumber, (int)data.teamID,
+								spawnHp,
+								!(spawnHp > 0.0f)
+									? " WARNING:bad hp, spawned unit may be inert" : "");
+							note = b;
+						}
+					}
+				}
+			}
+			else {   // teleport <partId> <x> <y>
+				long pid = 0; float x = 0, y = 0;
+				const int nf = sscanf(line.c_str() + 9, "%ld %f %f", &pid, &x, &y);
+				if (nf < 3) { note = "teleport <partId> <x> <y>"; }
+				else {
+					GameObjectPtr obj = ObjectManager->findByPartId(pid);
+					if (!obj || !obj->isMover()) { result = "blocked"; note = "no such mover"; }
+					else {
+						Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+						if (land) pos.z = land->getTerrainElevation(pos);
+						((Mover*)obj)->setTeleportPosition(pos);   // engine teleport hook
+						result = "ok";
+						char b[80]; sprintf(b, "teleport %ld -> (%.1f,%.1f)", pid, x, y); note = b;
+					}
+				}
+			}
+		}
 
 		if (ack) {
+			// GAMEPLAY-DRIVER-2: echo the render frame number on EVERY ack. The
+			// ack previously carried no frame, which is the single reason
+			// scenario_runner's at_frame / capture-by-frame gates had to be
+			// wall-clock approximations ((now - t_live) * fps). With this a
+			// driver can gate exactly.
+			extern uint32_t g_mc2FrameCounter;
 			if (note.empty())
-				fprintf(ack, "%s -> %s\n", line.c_str(), result);
+				fprintf(ack, "[f=%lu] %s -> %s\n",
+					(unsigned long)g_mc2FrameCounter, line.c_str(), result);
 			else
-				fprintf(ack, "%s -> %s (%s)\n", line.c_str(), result, note.c_str());
+				fprintf(ack, "[f=%lu] %s -> %s (%s)\n",
+					(unsigned long)g_mc2FrameCounter, line.c_str(), result, note.c_str());
+			if (!extra.empty())
+				fprintf(ack, "%s", extra.c_str());
 		}
 	}
 	if (ack) {

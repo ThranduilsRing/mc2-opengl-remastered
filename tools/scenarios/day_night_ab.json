@@ -1,0 +1,59 @@
+{
+  "_doc": [
+    "GAMEPLAY-DRIVER-2 self-test + the reference day/night A/B.",
+    "Frames the player lance, spawns a MECH and a VEHICLE side by side under",
+    "identical light, then captures the SAME pose at noon and at midnight so a",
+    "rendering change can be judged under both light conditions (the day AND",
+    "night verdict rule) without hunting for a mission that ships as night.",
+    "Every claim is asserted against world state read back through the channel,",
+    "not against ack text -- see the assert_* steps."
+  ],
+  "mission": "mc2_10",
+  "env": { "MC2_TEST_SPAWN": "1" },
+  "_camera_note": [
+    "Use MC2_CAMERA_PARK, not the `camera` verb, to pin an A/B pose.",
+    "`camera <x> <y>` calls eye->setPosition(pos, TRUE) -- the SWOOPY goal-seek --",
+    "and the in-mission scripted camera keeps writing the pose afterwards, so the",
+    "two arms end up framing different scenes. Measured with the verb: the arms",
+    "landed on different terrain and one even had the HUD faded in, making the",
+    "luminance comparison meaningless. camera_park does a one-shot HARD set",
+    "(setPosition(p, FALSE)) plus freezeScriptedCameraForCapture(), so every arm",
+    "shares one frozen pose. This is the standard mc2_10 baseline pose."
+  ],
+  "camera_park": "-6656,-6656,150.625,10.9094,6045.2358@600",
+  "boot_timeout": 300,
+  "duration": 420,
+  "settle": 1.2,
+  "steps": [
+    { "cmd": "mission_status" },
+
+    { "cmd": "list player", "expect": "ok" },
+    { "assert_count": { "filter": "player", "min": 1 } },
+    { "assert_count": { "filter": "enemy", "min": 1 } },
+
+    { "cmd": "spawn clone -4750 -5250", "expect": "ok" },
+    { "cmd": "spawn vehicle -4650 -5250", "expect": "ok" },
+
+    { "_note": "wait past the camera_park frame so both arms share the frozen pose",
+      "at_frame": 700 },
+
+    { "cmd": "time_of_day 0.25", "expect": "ok", "wait": 4.0 },
+    { "assert_light": { "is_night": false, "pitch_min": 80, "pitch_max": 100 } },
+
+    { "cmd": "time_of_day 0.75", "expect": "ok", "wait": 4.0 },
+    { "assert_light": { "is_night": true } },
+
+    { "snapshot": "before_move" },
+    { "cmd": "select all", "expect": "ok" },
+    { "cmd": "order move -4200 -5000 run", "expect": "ok", "wait": 12.0 },
+    { "assert_moved": { "since": "before_move", "unit": 512, "min_dist": 40 } },
+    { "assert_hp": { "unit": 512, "min": 0.5 } },
+
+    { "cmd": "order stop", "expect": "ok" },
+    { "cmd": "unit 512", "expect": "ok" }
+  ],
+  "captures": [
+    { "name": "dn_noon",     "after_step": 8 },
+    { "name": "dn_midnight", "after_step": 10 }
+  ]
+}

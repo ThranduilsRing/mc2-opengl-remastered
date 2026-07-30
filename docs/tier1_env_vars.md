@@ -910,6 +910,85 @@ lights should remain visible at every angle instead of blinking out.
   Kept permanently gated for future field diagnosis. Allowlisted in
   `scripts/run_smoke.py`.
 
+## Gameplay command channel (UI-COMMAND-CHANNEL-1 / GAMEPLAY-DRIVER-1/2)
+
+- `MC2_UI_COMMAND_FILE=<path>` — default **unset** = byte-identical. Points at a plain
+  text file that `MissionInterfaceManager::processUiCommandChannel()` (`code/missiongui.cpp`)
+  polls once per frame from `MissionInterfaceManager::update()`. Each line is one verb;
+  the file is read-then-truncated (empty = all consumed) and every consumed line is
+  appended to `<path>.ack` as `[f=<frame>] <cmd> -> ok|unknown|blocked (reason)`. The
+  `[f=]` prefix is the render frame counter (`g_mc2FrameCounter`) — gate on it instead of
+  wall-clock guesses. Readback verbs append extra indented lines after their ack line.
+  **The channel is mission-only**: nothing outside the mission loop polls it, so the
+  first ack doubles as a "mission is live" probe and the AAR/logistics/mechbay screens
+  are unreachable from it. Commands are consumed during the intro swoop AND while paused
+  (`Mission::update` calls `missionInterface->update()` regardless of pause state).
+  Allowlisted in `scripts/run_smoke.py` (Popen drops non-allowlisted env).
+  Verbs:
+  - UI: `toggle_pause`, `press pause.<BTN>`, `press dialog.YES|NO`, `debugview <0..6>`,
+    `screenshot <name> [backbuffer]` (needs `MC2_DEV_SHELL=1`).
+  - World (all route through the same dispatchers the mouse/keyboard use, so game rules
+    apply): `select <partId|all|lance|class <NAME>|name <substr>>`,
+    `order move <x> <y> [run|walk]`, `order attack <targetPartId>`,
+    `order stop|hold_fire|powerup|powerdown|withdraw`,
+    `camera <x> <y> [rotDeg] [zoomAlt]`, `camera_follow <partId|off>`,
+    `time_scale <f>`.
+  - Readback (multi-line ack payload): `status` (SELECTED units only),
+    `list [all|player|enemy|team <N>|class <NAME>]` (every mover incl. enemies — the only
+    way to obtain a target partId), `unit <partId>` (deep readback **including which draw
+    path the object took**: appearance type + number, `inView`, static recipe index,
+    `screenPos`), `mission_status`, `light_state`.
+  - Lighting: `time_of_day <0..1>` (0.25 noon / 0.5 sunset / 0.75 midnight — full
+    sun + ambient + sky + fog recompute via `Camera::setDaylightFraction`) and
+    `sun_pitch <deg> [yaw]` (light DIRECTION only, colors unchanged). These make the
+    day AND night verdict rule enforceable on ANY mission instead of only on ones that
+    ship as night. Verified on mc2_10 from one frozen pose: `time_of_day 0.25` →
+    `isNight=0 lightPitch=90`, `0.75` → `isNight=1 lightPitch=270`, with the rendered
+    frame measurably darker (mean luma 67.3 → 57.2 on the standard baseline pose;
+    2.9x on a close-in lance pose).
+    - **Assert on `isNight` / `lightPitch`, NOT on `nightFactor`.** `nightFactor` is
+      not purely a function of the sun: `Weather::update` (`code/weather.cpp`) raises
+      it to `rainLightLevel / 4` and takes the MAX while it is raining, so a rainy
+      DAY reports `nightFactor ≈ 0.8` with `isNight=0`.
+    - Engine note behind these verbs: `Camera::update()` re-derives
+      `isNight`/`nightFactor`/`lightDirection` from `lightPitch` EVERY frame and
+      assumes it is the sun, but `updateDaylight()`'s night branch replaces
+      `lightPitch` with the MOON's pitch (`180 - |180 - pitch|`). A midnight moon at
+      zenith therefore left `lightPitch == 90`, which `update()` read back one frame
+      later as high noon — so the night verdict was silently undone.
+      `setDaylightFraction` restores the true sun angle after the colour recompute.
+  - `end_mission win|loss|draw` — forces `Mission::forceTerminate`, i.e. the same three
+    fields the authored win/loss paths set, so the normal results flow runs.
+  - Notes: `time_scale` routes through `simSpeedSetMultiplier()` (see
+    **Sim clock speed** above) so `scenarioTime` and `frameLength` stay in lockstep —
+    it is clamped `[0.25, 4.0]` and is a **no-op under `MC2_SMOKE_FIXED_TIMESTEP=1`**,
+    which pins both clocks to 1x. `camera_follow` is mutually exclusive with
+    `MC2_CAMERA_PARK` (the park path deliberately clears `lookTargetObject`).
+    **For an A/B capture use `MC2_CAMERA_PARK`, not the `camera` verb**: `camera`
+    calls `eye->setPosition(pos, TRUE)` — the SWOOPY goal-seek — and the in-mission
+    scripted camera keeps writing the pose afterwards, so two arms end up framing
+    different scenes (measured: an unsettled pair reported midnight BRIGHTER than
+    noon). `MC2_CAMERA_PARK` does a one-shot hard set plus
+    `freezeScriptedCameraForCapture()`, so every arm shares one frozen pose.
+- `MC2_TEST_SPAWN=1` — default **unset** = the two fixture verbs ack `blocked`; zero
+  behavior change. Arms `spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]`
+  (runs `mission->addMover`, the same path reinforcements take; `vehicle` clones an
+  existing `GROUNDVEHICLE` so a mech and a vehicle can be posed side by side under
+  identical light for a lighting A/B) and `teleport <partId> <x> <y>`
+  (`Mover::setTeleportPosition`). Allowlisted in `scripts/run_smoke.py`.
+  **KNOWN DEFECT — do not trust a bare `ok`**: a spawned BattleMech (`spawn clone`)
+  comes up with a broken status rating. Measured 2026-07-30 on mc2_10: `getStatusRating()`
+  returned `-nan(ind)` on three consecutive runs and `1.000` on a fourth, i.e. it is
+  uninitialised, not merely zero. (The 2026-07-23 capture recorded the same units at
+  `hp=0.000` ignoring group move orders while their authored peers moved ~380 world
+  units.) `spawn vehicle` is healthy in the same runs (`hp=1.000`). Spawned units ARE
+  added to the GUI roster — `select all` counts them — and they render, so they are
+  usable as *lighting / render* subjects for an A/B; do not treat a spawned mech as a
+  functional gameplay actor. The spawn ack reports the unit's actual `hp` and appends
+  `WARNING:bad hp, spawned unit may be inert`; the test is written `!(hp > 0)` rather
+  than `hp <= 0` precisely because every comparison against NaN is false and the `<= 0`
+  form let the NaN case ack a clean `ok`. Use `unit <partId>` for the per-unit detail.
+
 ## Diagnostic JSONL trace (diagnostic_trace.cpp — 2026-06-17)
 
 Structured per-event JSONL output replacing env-gated stderr prints.

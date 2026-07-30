@@ -1,0 +1,64 @@
+{
+  "_doc": [
+    "GAMEPLAY-DRIVER-2 verb self-test. Exercises the verbs the shipped scenarios",
+    "never touched -- notably `order attack`, which was undrivable end-to-end",
+    "before `list` existed because nothing in the channel could produce an ENEMY",
+    "partId. Also covers time_scale, camera_follow, sun_pitch, order sub-verbs",
+    "and end_mission. Run it after touching processUiCommandChannel()."
+  ],
+  "mission": "mc2_10",
+  "env": { "MC2_TEST_SPAWN": "1" },
+  "camera_park": "-6656,-6656,150.625,10.9094,6045.2358@600",
+  "boot_timeout": 300,
+  "duration": 400,
+  "settle": 1.2,
+  "steps": [
+    { "cmd": "mission_status", "expect": "ok" },
+
+    { "_note": "list is the ONLY source of an enemy partId; 707 is an authored mc2_10 LRM Carrier on team 1",
+      "cmd": "list enemy", "expect": "ok" },
+    { "assert_count": { "filter": "enemy", "min": 10 } },
+
+    { "cmd": "select all", "expect": "ok" },
+    { "cmd": "order attack 707", "expect": "ok" },
+    { "cmd": "order stop", "expect": "ok" },
+    { "cmd": "order hold_fire", "expect": "ok" },
+    { "cmd": "order powerdown", "expect": "ok" },
+    { "cmd": "order powerup", "expect": "ok" },
+
+    { "_note": "predicate selection - no hardcoded ids",
+      "cmd": "select class BattleMech", "expect": "ok" },
+    { "cmd": "select name Raven", "expect": "ok" },
+    { "cmd": "status", "expect": "ok" },
+    { "cmd": "select all", "expect": "ok" },
+
+    { "cmd": "camera_follow 512", "expect": "ok" },
+    { "cmd": "camera_follow off", "expect": "ok" },
+
+    { "_note": "time_scale is a NO-OP under MC2_SMOKE_FIXED_TIMESTEP (both clocks pinned to 1x); the ack says so",
+      "cmd": "time_scale 3", "expect": "ok" },
+    { "cmd": "time_scale 1", "expect": "ok" },
+
+    { "cmd": "sun_pitch 5", "expect": "ok", "wait": 2.0 },
+    { "assert_light": { "is_night": true } },
+    { "cmd": "sun_pitch 90", "expect": "ok", "wait": 2.0 },
+    { "assert_light": { "is_night": false } },
+
+    { "cmd": "teleport 512 -6600 -6600", "expect": "ok", "wait": 2.0 },
+    { "assert_pos": { "unit": 512, "near": [-6600, -6600], "within": 200 } },
+
+    { "cmd": "unit 707", "expect": "ok" },
+    { "cmd": "light_state", "expect": "ok" },
+    { "cmd": "debugview 1", "expect": "ok" },
+    { "cmd": "debugview 0", "expect": "ok" },
+    { "cmd": "no_such_verb", "expect": "unknown" },
+
+    { "assert_mission": { "status": 0 } },
+    { "cmd": "end_mission win", "expect": "ok", "wait": 6.0 },
+    { "_note": "status 5 == mis_PLAYER_WIN_BIG; proves the forced result SURVIVED the mission brain's per-frame overwrite of terminationResult",
+      "assert_mission": { "status": 5 } }
+  ],
+  "captures": [
+    { "name": "selftest_final", "after_step": 25 }
+  ]
+}

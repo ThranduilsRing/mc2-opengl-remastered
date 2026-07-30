@@ -507,6 +507,40 @@ class Camera
 			return(cameraAltitudeDesired);
 		}
 
+		// GAMEPLAY-DRIVER-1: drive the perspective-zoom goal-seek directly (the
+		// `camera` command-channel verb's optional zoom arg). update() lerps
+		// cameraAltitude toward this each frame, so the same smoothing the wheel
+		// zoom uses applies. Only meaningful in perspective mode.
+		void setCameraAltitudeDesired (float alt)
+		{
+			cameraAltitudeDesired = alt;
+		}
+
+		// GAMEPLAY-DRIVER-2 (MC2_UI_COMMAND_FILE `time_of_day` / `sun_pitch`):
+		// move the sun at runtime so a capture agent can render the SAME pose
+		// under day and night light without hunting for a mission that ships
+		// as night.
+		//
+		// setDaylightFraction(f) does the FULL recompute: it seeds dayLightTime
+		// from f (0..1 == one whole 0..360 degree day/night sweep) and calls
+		// updateDaylight(), which rewrites lightPitch AND the ambient / sun /
+		// sky / fog colors. Missions with DayToNightTime <= 0 (camera.cpp:341
+		// parks it at -1) skip updateDaylight's whole body, so this seeds a
+		// 3600s transition first -- nothing else in the GAME reads
+		// day2NightTransitionTime (the two other readers are an editor save and
+		// a commented-out gamecam block), so that seed is inert by itself.
+		//
+		// setSunPitch(deg) is the cheap half: it only writes lightPitch/lightYaw.
+		// Camera::update() rebuilds lightDirection and re-derives isNight /
+		// nightFactor from lightPitch EVERY frame (camera.cpp:2185-2223), so the
+		// sun really moves -- but the ambient/fog colors keep their mission
+		// values. Use setDaylightFraction for a true day/night A/B and
+		// setSunPitch to isolate light DIRECTION at constant color.
+		//
+		// Returns the resulting lightPitch in degrees.
+		float setDaylightFraction (float f);
+		float setSunPitch (float pitchDeg, bool setYaw = false, float yawDeg = 0.0f);
+
 		// [MOUSE-ANCHORED-ZOOM-1 / FIX-4] perspective vs parallel projection.
 		bool getUsePerspective (void)
 		{
