@@ -35,8 +35,8 @@ from its idiom, and require:
 
   1. every reader agrees with the registry's `defaultOn`,
   2. every reader agrees with every other reader, and
-  3. every in-source comment and every docs/tier1_env_vars.md line that asserts
-     a default for that var agrees with the reader too.
+  3. every in-source comment (C++ AND GLSL) and every docs/tier1_env_vars.md
+     line that asserts a default for that var agrees with the reader too.
 
 SCOPE WIDENED TWICE BY ENV-DROP-CLOSE-1 (2026-07-30), because the registry is
 neither the only nor the first place a default is written down:
@@ -54,6 +54,16 @@ neither the only nor the first place a default is written down:
     docs/tier1_env_vars.md, one of which (MC2_STANDARD_LIT_V1, "Default ON.
     Kill=`=0`" against a reader whose own comment says "TEMPORARY DEFAULT-OFF")
     would have had anyone A/B-ing `=0` versus unset grading OFF against OFF.
+
+SCOPE WIDENED A THIRD TIME BY SHADER-COMMENT-TRUTH-1 (2026-07-30): "every
+in-source comment" meant every C++ in-source comment, because the comment sweep
+reused the READER directory and extension lists. shaders/ was in neither, so
+100% of GLSL was skipped in silence -- and GLSL is where a renderer gate is most
+often explained. Three more inversions were sitting there, each a gate promoted
+to default-ON in C++ and in the tier1 doc while its shader comment still said
+OFF. See CLAIM_DIRS. The lesson is the general one: when a checker's stated
+scope is a CLASS ("in-source comments") but its implementation is a LIST, the
+list silently becomes the scope, and no failure is ever reported for the gap.
 
 UNCLASSIFIABLE IS A FAILURE, NOT A PASS -- for Feature entries. A reader written
 in an idiom this script cannot classify is exactly the situation that hides a
@@ -93,6 +103,34 @@ ALLOWLIST = os.path.join(SCRIPT_DIR, "gate-defaults-allowlist.txt")
 # var in string literals, so scanning it would find a "reader" for everything.
 SCAN_DIRS = ["GameOS", "mclib", "code", "RenderCore", "editor"]
 SCAN_EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
+
+# SHADER COMMENTS ARE CLAIM-SCANNED BUT NEVER READER-SCANNED (SHADER-COMMENT-TRUTH-1).
+#
+# The two lists above are the READER surface, and they were also -- silently --
+# the whole comment surface, because load_comment_claims() reused them. So a
+# checker whose stated rule 3 covers "every in-source comment" skipped every
+# shader in the tree twice over: `shaders` is in neither SCAN_DIRS, nor is any
+# GLSL extension in SCAN_EXTS. Nothing reported a gap; the sweep just returned
+# fewer files. That is the false-assurance shape this file exists to kill, so it
+# is worth naming: a checker that covers a class "except where it silently does
+# not" is worse than one that never claimed the class at all.
+#
+# It hid three live inversions, all of the same shape -- a gate PROMOTED to
+# default-ON in C++ and in docs/tier1_env_vars.md while the shader comment
+# describing the very same gate kept saying OFF:
+#   shaders/include/lighting.hglsl  MC2_LIGHT_POS_COLUMN_FIX    (VEHICLE-LIGHTING-PATH-1)
+#   shaders/gos_terrain.frag        MC2_SHADOW_STATIC_BANDFIX   (SHADOW-BANDING-DEFAULT-ON)
+#   shaders/gos_terrain.frag        MC2_SHADOW_STATIC_BANDFIX_V2(SHADOW-BANDING-DEFAULT-ON)
+#
+# Shaders are added to the CLAIM sweep only, never to load_sources(). GLSL has
+# no getenv(), so a shader can never be a reader -- it receives its gate state as
+# an injected #define or a uniform. Adding them to the reader scan could only
+# manufacture noise, while the authority a shader comment must be checked
+# against still lives in C++. Comment syntax is the same // and /* */, so
+# comment_claims() needs no change.
+CLAIM_DIRS = ["shaders"]
+CLAIM_EXTS = (".hglsl", ".glsl", ".vert", ".frag", ".comp", ".geom",
+              ".tesc", ".tese", ".mesh", ".task")
 
 ON, OFF, UNKNOWN = "ON", "OFF", "UNCLASSIFIABLE"
 
@@ -626,30 +664,39 @@ def comment_claims(lines, path, prose=False):
     return out
 
 
-def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,)):
+def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,),
+                        claim_dirs=None):
     scan_dirs = SCAN_DIRS if scan_dirs is None else scan_dirs
+    claim_dirs = CLAIM_DIRS if claim_dirs is None else claim_dirs
     excl = {os.path.normcase(os.path.abspath(p)) for p in exclude}
     claims = []
-    for d in scan_dirs:
-        base = os.path.join(root, d)
-        if not os.path.isdir(base):
-            continue
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [x for x in dirnames
-                           if x not in (".git", "build64", "third_party", "3rdparty")]
-            for fn in filenames:
-                if not fn.endswith(SCAN_EXTS):
-                    continue
-                full = os.path.join(dirpath, fn)
-                if os.path.normcase(os.path.abspath(full)) in excl:
-                    continue
-                try:
-                    with open(full, "r", encoding="utf-8", errors="replace") as fh:
-                        lines = fh.read().splitlines()
-                except OSError:
-                    continue
-                claims.extend(comment_claims(
-                    lines, os.path.relpath(full, root).replace("\\", "/")))
+
+    def sweep(dirs, exts):
+        for d in dirs:
+            base = os.path.join(root, d)
+            if not os.path.isdir(base):
+                continue
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = [x for x in dirnames
+                               if x not in (".git", "build64", "third_party", "3rdparty")]
+                for fn in filenames:
+                    if not fn.endswith(exts):
+                        continue
+                    full = os.path.join(dirpath, fn)
+                    if os.path.normcase(os.path.abspath(full)) in excl:
+                        continue
+                    try:
+                        with open(full, "r", encoding="utf-8", errors="replace") as fh:
+                            lines = fh.read().splitlines()
+                    except OSError:
+                        continue
+                    claims.extend(comment_claims(
+                        lines, os.path.relpath(full, root).replace("\\", "/")))
+
+    sweep(scan_dirs, SCAN_EXTS)
+    # SHADER-COMMENT-TRUTH-1: the same rule over GLSL. See CLAIM_DIRS above for
+    # why shaders are swept for CLAIMS but never for READERS.
+    sweep(claim_dirs, CLAIM_EXTS)
     # docs/tier1_env_vars.md is the OTHER place a default is written down, and
     # it is the one a human is told to read. The same three lies that shipped in
     # the registry shipped there too, and this sweep found three more that only
@@ -1013,8 +1060,10 @@ bool orGuard() {
 
 def _selftest():
     failures = []
+    ran = []
 
     def check(label, cond, detail=""):
+        ran.append(label)
         if cond:
             print(f"  PASS  {label}")
         else:
@@ -1133,6 +1182,39 @@ def _selftest():
           comment_claims(
               ["- `MC2_ST_HONEST_ON` — Default **OFF**."], "x.cpp") == [])
 
+    # 7e. SHADER-COMMENT-TRUTH-1. The defect was never in comment_claims() -- it
+    #     was in WHICH FILES were handed to it. So this case must exercise the
+    #     real directory/extension sweep, not the regex: a unit test that fed
+    #     comment_claims() a GLSL line directly would have passed on the broken
+    #     version and proved nothing. (The live-tree injection that actually
+    #     demonstrated the fix is recorded in the SHADER-COMMENT-TRUTH-1 commit;
+    #     this case is the permanent regression guard for the wiring.)
+    import shutil
+    import tempfile   # NOTE: also imported by case 8 below; a function-local
+                      # `import` binds the name for the WHOLE function, so this
+                      # one must precede first use or it is an UnboundLocalError.
+    tmproot = tempfile.mkdtemp()
+    try:
+        shdir = os.path.join(tmproot, "shaders", "include")
+        os.makedirs(shdir)
+        with open(os.path.join(shdir, "probe.hglsl"), "w", encoding="utf-8") as fh:
+            fh.write("// gated by MC2_ST_SHADER_GATE (default OFF), decoded below\n"
+                     "vec3 f() { return vec3(1); }\n")
+        # A C++-only sweep must NOT see it (this is the pre-fix behaviour) ...
+        pre = load_comment_claims(root=tmproot, scan_dirs=["shaders"],
+                                  claim_dirs=[], exclude=())
+        check("a .hglsl claim is INVISIBLE to the C++ extension list",
+              pre == [], str(pre))
+        # ... and the shader sweep must.
+        got = load_comment_claims(root=tmproot, scan_dirs=[],
+                                  claim_dirs=["shaders"], exclude=())
+        check("a .hglsl comment asserting a default IS swept",
+              len(got) == 1 and got[0]["var"] == "MC2_ST_SHADER_GATE"
+              and got[0]["claim"] == "OFF"
+              and got[0]["path"] == "shaders/include/probe.hglsl", str(got))
+    finally:
+        shutil.rmtree(tmproot, ignore_errors=True)
+
     # 7. Comment stripping must not eat real code or string literals.
     stripped = strip_comments('a(); // getenv("X")\nb("/* not a comment */");')
     check("strip_comments preserves code and string literals",
@@ -1155,7 +1237,7 @@ def _selftest():
     if failures:
         print(f"SELF-TEST FAILED: {len(failures)} case(s): {failures}")
         return 1
-    print("SELF-TEST PASSED (18 cases)")
+    print(f"SELF-TEST PASSED ({len(ran)} cases)")
     return 0
 
 

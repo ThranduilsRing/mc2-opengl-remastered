@@ -921,7 +921,7 @@ void main(void)
     // vec3(0,0,1) for the same reason.
     PREC vec3 shadowN = vec3(0.0, 0.0, 1.0);
 #ifdef MC2_SHADOW_STATIC_BANDFIX_V2
-    // STATIC-SHADOW-BANDING-2 (gate MC2_SHADOW_STATIC_BANDFIX_V2, default OFF,
+    // STATIC-SHADOW-BANDING-2 (gate MC2_SHADOW_STATIC_BANDFIX_V2, default ON,
     // additive on top of _BANDFIX/v1): round 1 raised the mid/far PCF tap floor
     // but left calcShadow()'s bias computed against a FAKE flat-up normal
     // (shadowN above), so slope-scaled bias (0.005*(1-NdotL)) never actually
@@ -941,7 +941,7 @@ void main(void)
     }
 #endif
 #ifdef MC2_SHADOW_STATIC_BANDFIX
-    // STATIC-SHADOW-BANDING-1 (gate MC2_SHADOW_STATIC_BANDFIX, default OFF):
+    // STATIC-SHADOW-BANDING-1 (gate MC2_SHADOW_STATIC_BANDFIX, default ON, "=0" reverts):
     // the LOD tap ladder below existed purely for perf, but on FLAT terrain
     // shadow.hglsl's gradient-adaptive PCF widens its radius toward 3.2x at
     // the exact same distances this ladder drops taps to 8/4 -- wide radius +
