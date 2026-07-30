@@ -554,6 +554,16 @@ def main(argv=None) -> int:
 
     if not src.is_dir():
         fail(f"--from is not a directory: {src}", 2)
+
+    # LINK-GUARD-2: FIRST of the destination checks, deliberately. Every check
+    # below also refuses a bad C: path, but each does so for an incidental
+    # reason and says something less useful: an existing C: dir would report
+    # "already exists", and `A: -> C:` would report a volume mismatch. Only
+    # this one names the actual problem, and for `C: -> C:` it is the only
+    # check with anything to say at all. Whichever refusal fires is the one
+    # the caller reads, so the teaching one goes first.
+    check_not_system_drive(dst, src)
+
     if dst.exists() and any(dst.iterdir()):
         fail(f"--to already exists and is not empty: {dst}\n"
              "  Refusing to merge into an existing install -- that is how a "
@@ -562,11 +572,6 @@ def main(argv=None) -> int:
     if str(dst).replace("\\", "/").casefold() == \
        str(src).replace("\\", "/").casefold():
         fail("--to and --from are the same directory", 2)
-
-    # LINK-GUARD-2: before the volume check, because for `A: -> C:` both fire
-    # and this is the message the caller actually needs -- and for `C: -> C:`
-    # the volume check has nothing to say at all.
-    check_not_system_drive(dst, src)
 
     if not same_volume(src, dst):
         fail(f"--from and --to are on DIFFERENT VOLUMES.\n"
