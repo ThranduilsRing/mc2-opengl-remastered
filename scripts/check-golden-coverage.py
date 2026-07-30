@@ -21,6 +21,13 @@ Two distinct rots this closes:
       (This is what caught mc2_10_saved_204907/distant_ridge_base: 167 bytes,
       one unique colour, severity `critical`.)
 
+  (C) A PENDING SET SILENTLY BECOMING TRACKED (PENDING-UNTRACKED-1). The
+      PENDING_SETS table below says a candidate awaiting a user decision is
+      "deliberately UNTRACKED" -- but the check that introduced that table never
+      called git, so committing or staging the set left this suite at
+      bit-identical pass/fail. Tracked-ness is now asked OF GIT, against the
+      INDEX, so a `git add` is caught before it is ever committed.
+
 It also verifies each member's crop file exists and still hashes to the sha256
 the golden recorded -- a golden whose crops have drifted from their manifest is
 not a reference.
@@ -34,6 +41,7 @@ import argparse
 import hashlib
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -97,6 +105,64 @@ PENDING_SETS = {
         "and blesses all 11 regions later refused for instability. RAISE BOTH "
         "AT THE PROMOTION GATE."),
 }
+
+# ---------------------------------------------------------------------------
+# "Deliberately untracked" is a claim about GIT, so ASK GIT (PENDING-UNTRACKED-1)
+# ---------------------------------------------------------------------------
+# PENDING-SET-STATE-1 introduced the table above in response to a near-miss in
+# which a sweep STAGED all 40 files of v0.5.2-baseline-PROPOSED, and wrote
+# "deliberately UNTRACKED -- it must not be committed" into the docstring. But
+# the checker it wrote that into never called git: there was no `subprocess`
+# import anywhere in this file, and the only set-existence knowledge it had came
+# from `gdir_root.iterdir()` -- i.e. from DIRECTORIES ON DISK. A pending set is
+# on disk in exactly the same way whether it is committed or untracked, so
+# committing all 40 files would have left this suite at bit-identical pass/fail.
+# The rule was a comment, in the file whose entire purpose is to stop rules from
+# being comments.
+#
+# So the tracked-ness question is asked of git directly, and asked of the INDEX
+# (`git ls-files`) rather than of HEAD: the near-miss was a `git add` that had
+# not been committed yet, and a rule that only notices after the commit lands
+# has already missed the moment where it was cheap to fix.
+#
+# THIS DOES NOT FAIL OPEN. If git cannot be run, or answers non-zero, that is a
+# FAIL and not a silent pass -- "the tool could not tell" and "the tool checked
+# and it was fine" must never produce the same exit code. (Same lesson as
+# DISK-GUARD-3, "stop failing open".)
+
+
+class GitQueryError(RuntimeError):
+    """git could not be asked, or refused to answer."""
+
+
+def git_tracked_under(relpath: str, root: "Path | None" = None) -> "list[str]":
+    """-> tracked (index-resident) paths under `relpath`. Raises GitQueryError.
+
+    `git ls-files` reports the INDEX, so a staged-but-uncommitted `git add`
+    counts as TRACKED. That is deliberate; see the note above.
+    """
+    root = ROOT if root is None else root
+    try:
+        cp = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--", relpath],
+            capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise GitQueryError(f"could not run git: {exc}") from exc
+    if cp.returncode != 0:
+        raise GitQueryError(
+            f"git ls-files exited {cp.returncode}: "
+            f"{cp.stderr.decode('utf-8', 'replace').strip()}")
+    return [p.decode("utf-8", "replace")
+            for p in cp.stdout.split(b"\0") if p]
+
+
+def _default_tracked_query(gid: str) -> "list[str]":
+    return git_tracked_under(f"tests/visual/goldens/{gid}")
+
+
+def _raise_git_error(_gid: str) -> "list[str]":
+    """Self-test stand-in for 'git could not be asked'."""
+    raise GitQueryError("simulated: git binary unavailable")
 
 # ---------------------------------------------------------------------------
 # Retired sets (GOLDEN-6C47-AUDIT-1)
@@ -193,10 +259,17 @@ def check_golden(gdir: Path, manifests: dict) -> "tuple[list, list]":
 
 def run(quiet: bool = False, goldens: "Path | None" = None,
         manifests: "dict | None" = None, waivers: "dict | None" = None,
-        retired: "dict | None" = None, pending: "dict | None" = None) -> int:
+        retired: "dict | None" = None, pending: "dict | None" = None,
+        tracked_query=None) -> int:
     gdir_root = goldens or GOLDENS
     retired = RETIRED_SETS if retired is None else retired
     pending = PENDING_SETS if pending is None else pending
+    # Only ask git about the REAL goldens tree. A caller pointing `goldens` at a
+    # scratch directory (the self-test) is not asking a question about this
+    # repository's index, so the default query is not installed there -- such
+    # callers inject their own instead.
+    if tracked_query is None and gdir_root == GOLDENS:
+        tracked_query = _default_tracked_query
     manifests = manifests if manifests is not None else regionlib.load_all_manifests()
     waivers = LEGACY_WAIVERS if waivers is None else waivers
     fails, warns, notes = [], [], []
@@ -215,6 +288,33 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
             warns += [f"[PENDING-USER] {x}" for x in f]
         else:
             fails += f
+    # A PENDING set's defining property is that it is UNTRACKED. Ask git, not
+    # the filesystem -- being on disk says nothing either way (PENDING-UNTRACKED-1).
+    pending_tracked: dict = {}
+    if tracked_query is not None:
+        for pid in sorted(pending):
+            try:
+                hits = tracked_query(pid)
+            except GitQueryError as exc:
+                pending_tracked[pid] = None      # unknown, and that is a FAIL
+                fails.append(
+                    f"golden set {pid!r} is PENDING a user decision, but git "
+                    f"could not be asked whether it is tracked ({exc}). "
+                    f"Refusing to pass on an unanswered question -- 'could not "
+                    f"check' must not look like 'checked and fine'.")
+                continue
+            pending_tracked[pid] = hits
+            if hits:
+                sample = ", ".join(hits[:3]) + (" ..." if len(hits) > 3 else "")
+                fails.append(
+                    f"golden set {pid!r} is recorded PENDING a USER decision but "
+                    f"is TRACKED in git: {len(hits)} file(s) in the index "
+                    f"({sample}). Committing or staging it PRE-EMPTS the "
+                    f"decision it is waiting on. Un-track it with "
+                    f"`git rm --cached -r tests/visual/goldens/{pid}` (the files "
+                    f"stay on disk, which is correct), or -- if the user has "
+                    f"actually promoted it -- move it out of PENDING_SETS and "
+                    f"say so.")
     # A waiver must not outlive its set. (A PENDING set is exempt by design: its
     # absence is the expected state everywhere but the deciding user's tree.)
     for wid in sorted(set(waivers) - seen):
@@ -252,10 +352,17 @@ def run(quiet: bool = False, goldens: "Path | None" = None,
         for wid in sorted(seen & set(waivers)):
             print(f"  WAIVED {wid}: {waivers[wid]}")
         for pid in sorted(pending):
-            state = ("PRESENT on disk (untracked -- do not commit)"
-                     if pid in seen else
-                     "ABSENT from this checkout (expected: untracked)")
-            print(f"  PENDING-USER {pid} [{state}]: {pending[pid]}")
+            state = ("PRESENT on disk" if pid in seen
+                     else "ABSENT from this checkout")
+            if pid not in pending_tracked:
+                vcs = "git not consulted"
+            elif pending_tracked[pid] is None:
+                vcs = "git UNAVAILABLE"
+            elif pending_tracked[pid]:
+                vcs = f"TRACKED in git ({len(pending_tracked[pid])} files)"
+            else:
+                vcs = "untracked in git (correct)"
+            print(f"  PENDING-USER {pid} [{state}; {vcs}]: {pending[pid]}")
         for rid in sorted(retired):
             print(f"  RETIRED {rid}: {retired[rid]}")
         for w in warns:
@@ -359,6 +466,44 @@ def _selftest() -> int:
             check(label, rc == want, f"exit {rc}, wanted {want}")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    # C12-C15: the tracked-ness rule (PENDING-UNTRACKED-1). These are UNIT
+    # cases with an injected query and they are NOT the proof -- the proof is
+    # the live injection recorded in the commit message (`git add` the real 40
+    # paths, watch this contract go red, unstage, watch it go green). They exist
+    # so a later refactor cannot delete the rule without a red test.
+    tracked_cases = [
+        ("C12 PENDING set TRACKED in git FAILs",
+         lambda gid: [f"tests/visual/goldens/{gid}/golden.json"], 1),
+        ("C13 PENDING set untracked in git PASSes",
+         lambda gid: [], 0),
+        ("C14 git query failure FAILs (does not fail open)",
+         _raise_git_error, 1),
+    ]
+    for label, q, want in tracked_cases:
+        tmp = Path(tempfile.mkdtemp(prefix="covsel_"))
+        try:
+            gr = build(tmp, ["a"], HOLE)
+            rc = run(quiet=True, goldens=gr, manifests=manifests, waivers={},
+                     pending={"set1": "pending"}, retired={}, tracked_query=q)
+            check(label, rc == want, f"exit {rc}, wanted {want}")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    # C15: the rule must be reachable through the DEFAULT path, not only when a
+    # query is injected. Without this, deleting the `tracked_query = _default_*`
+    # wiring in run() would leave C12-C14 green and the contract dead -- which is
+    # precisely the failure this whole check exists to prevent.
+    check("C15 real goldens root installs the git query by default",
+          run.__defaults__ is not None and _default_tracked_query is not None
+          and "tracked_query" in run.__code__.co_varnames,
+          "run() must accept and default-install tracked_query")
+    try:
+        real = git_tracked_under("scripts/check-golden-coverage.py")
+        check("C15b git_tracked_under sees a known-tracked file",
+              real == ["scripts/check-golden-coverage.py"], f"got {real}")
+    except GitQueryError as exc:
+        check("C15b git_tracked_under sees a known-tracked file", False, str(exc))
 
     # C11: a retired set reappearing on disk still FAILs (GOLDEN-6C47-AUDIT-1
     # guard -- must survive the PENDING_SETS change intact)
