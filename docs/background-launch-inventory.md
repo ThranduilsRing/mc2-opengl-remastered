@@ -14,12 +14,12 @@ non-activating by default -- see `scripts/smoke_lib/nofocus.py`.
 | `scripts/mechbay_preview_harness.py` | 107 | `nofocus.spawn` |
 | `scripts/quick_shot.py` | 48 | `nofocus.spawn` |
 | `scripts/quick_sweep.py` | 54 | `nofocus.spawn` |
-| `scripts/renderdoc_capture.py` | 181 | `nofocus.run` |
+| `scripts/renderdoc_capture.py` | 237 | `nofocus.run` |
 | `scripts/run_editor_playtest_smoke.py` | 233 | `nofocus.spawn` |
 | `scripts/run_editor_smoke.py` | 142 | `nofocus.spawn` |
 | `scripts/run_smoke.py` | 363 | `nofocus.spawn` |
 | `scripts/run_smoke_asan.py` | 193 | `nofocus.spawn` |
-| `scripts/run_visual_capture.py` | 279 | `subprocess.Popen` |
+| `scripts/run_visual_capture.py` | 305 | `subprocess.Popen` |
 | `scripts/run_vk_field_check.py` | 229 | `nofocus.spawn` |
 | `scripts/run_vk_field_check.py` | 271 | `nofocus.spawn` |
 | `scripts/smoke_with_screenshots.py` | 160 | `nofocus.spawn` |
