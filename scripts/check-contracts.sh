@@ -258,6 +258,11 @@ run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet
 run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
+# TERRAIN-AMBIENT-FLOOR-2: terrain_daylight.h duplicates camera.cpp's night-band
+# constants so the harness can build standalone. Pin them, and prove the pin
+# fires (the header's comment claimed they were pinned before anything was).
+run_check "terrain_daylight_consts"  "py -3 scripts/check-terrain-daylight-constants.py --quiet"
+run_check "terrain_daylight_selftest" "py -3 scripts/check-terrain-daylight-constants.py --self-test"
 run_check "doc_links"             "py -3 scripts/check-doc-links.py --quiet"
 # META-FIX-BATCH-1 (design C): split rendering-path contracts — color
 # convention table (#24 class), depth-fudge single-source/form, tess predicate

@@ -475,6 +475,18 @@ class Camera
 			cameraAltitudeDesired = 1200.0f;
 
 			nightFactor = 0.0f;
+
+			// TERRAIN-AMBIENT-FLOOR-2: dayLightPitch was the ONLY member of the
+			// day/night set left indeterminate here (isNight is zeroed at :440,
+			// nightFactor directly above). It is assigned only by
+			// init(FitIniFile*) at camera.cpp:371/375, so a default-constructed
+			// Camera read back garbage. Nothing used to read it before that load
+			// -- updateDaylight() is the sole consumer and always runs after --
+			// but getDayLightPitch() now feeds the terrain ambient floor's
+			// daylight gate, and an indeterminate pitch could resolve to a
+			// fully-ON brightening gate. 0 == sun exactly at the horizon ==
+			// gate 0, so an unloaded camera fails DARK.
+			dayLightPitch = 0.0f;
 		}
 
 		Camera (void)
@@ -1402,6 +1414,20 @@ class Camera
 		float getNightFactor (void)
 		{
 			return nightFactor;
+		}
+
+		// TERRAIN-AMBIENT-FLOOR-2: the AUTHORED sun pitch, in degrees, as it
+		// came out of the mission camera file (LightDirPitch, or DayLightPitch
+		// on the DayToNightTime missions). This is NOT lightPitch: lightPitch is
+		// overwritten at camera.cpp:2033 with the mirrored MOON pitch whenever
+		// the authored sun is below the horizon, after which isNight,
+		// nightFactor and lightDirection.z all describe the moon and report
+		// "day". dayLightPitch is written only at load and never folded, so it
+		// is the one stable per-mission record of where the sun was actually
+		// authored. Read-only accessor; no behaviour change.
+		float getDayLightPitch (void)
+		{
+			return dayLightPitch;
 		}
 		
  		long getScreenResX (void)
