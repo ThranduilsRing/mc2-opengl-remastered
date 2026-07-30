@@ -62,6 +62,40 @@ for target in $DEPLOY; do
         status=1
         continue
     fi
+    # LINK-GUARD-1 (2026-07-30): `cp -f` below opens the destination with
+    # O_TRUNC -- it only unlinks if that open FAILS -- so copying into a
+    # hardlinked deploy dir rewrites the shared inode in place, exactly as
+    # deploy_payload.py's shutil.copyfile did. tools/ is in the guard's
+    # mutated set for that reason. Checked against the EXACT relpaths written
+    # below, so an unrelated shared file elsewhere in the install does not
+    # block a tools-only deploy. Fatal on SHARED/ERROR and on a guard that
+    # will not run (c5d934d5: a guard that fails open is just a log line).
+    guard="$REPO/scripts/check-hardlink-isolation.py"
+    if [ "${MC2_DEPLOY_ALLOW_SHARED_LINKS:-0}" = "1" ]; then
+        echo "[deploy-mc2fx-tools] WARNING: MC2_DEPLOY_ALLOW_SHARED_LINKS=1 --" \
+             "hardlink preflight BYPASSED for $target" >&2
+    elif [ ! -f "$guard" ]; then
+        echo "[deploy-mc2fx-tools] FAIL: $guard missing -- refusing to deploy" \
+             "UNGUARDED into $target. Restore it, or set" \
+             "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately." >&2
+        exit 3
+    else
+        linklist="$(mktemp)"
+        printf '%s\n' \
+            "tools/mc2fx.exe" "tools/mc2fx_preview.exe" \
+            "tools/mc2fx-console.bat" "tools/mc2fx-preview.bat" \
+            "tools/README.md" > "$linklist"
+        rc=0
+        py -3 "$guard" --target "$target" --payload-list "$linklist" \
+            --quiet --label "mc2fx tools deploy" || rc=$?
+        rm -f "$linklist"
+        if [ "$rc" -ne 0 ]; then
+            echo "[deploy-mc2fx-tools] FAIL: $target is not hardlink-isolated" \
+                 "for these files (guard exit $rc) -- NOTHING written there." >&2
+            exit 3
+        fi
+    fi
+
     tools="$target/tools"
     mkdir -p "$tools"
     echo "[deploy-mc2fx-tools] -> $tools"
