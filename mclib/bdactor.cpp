@@ -2158,7 +2158,7 @@ long BldgAppearance::render (long depthFixup)
 				        && s_seamRenderLogged < 12) {
 					++s_seamRenderLogged;
 					fprintf(stderr,
-						"[SEAMPROBE] bldg render name=%s isnow=%d reg=%d shapeMatch=%d "
+						"[SEAMPROBE] sample=first12 bldg render name=%s isnow=%d reg=%d shapeMatch=%d "
 						"needBake=%d elig=%d recipeIdx=%d | spin=%d "
 						"drawFlash=%d destructFX=%d activity=%d activity1=%d animState=%d\n",
 						appearType->name, (int)isnow, (int)staticReg.registered,
@@ -3520,7 +3520,7 @@ long BldgAppearance::update (bool animate)
 			// to confirm registration is firing across distinct buildings.
 			if (s_spotDiagBldgActors <= 8) {
 				MC2_DIAGFE(stderr,
-					"[SPOT_DIAG v1] event=first_register class=bldg actor_id=%p "
+					"[SPOT_DIAG v1] event=first_register sample=first8_actors class=bldg actor_id=%p "
 					"children_walked=%d spotlights_found=%d registered=%d overflow=%d\n",
 					(void*)this, diagChildrenWalked, diagSpotlightsFound,
 					diagRegistered, diagOverflow);
@@ -4695,7 +4695,7 @@ void BldgAppearance::registerStatic() {
 		if (s_trace && s_loggedCount < 80) {
 			++s_loggedCount;
 			fprintf(stderr,
-				"[BLDG_REG_DIAG v1] appearType=%s numShapes=%d total=%d processMe_skip=%d "
+				"[BLDG_REG_DIAG v1] sample=first80 appearType=%s numShapes=%d total=%d processMe_skip=%d "
 				"helper_skip=%d unreg_skip=%d added=%d\n",
 				(appearType ? appearType->name : "<null>"),
 				numShapes, diag_total, diag_skip_processMe, diag_skip_helper,
@@ -6668,6 +6668,13 @@ long TreeAppearance::render (long depthFixup)
 					staticReg[activeLOD].registered  = (staticReg[activeLOD].recipeIndex >= 0);
 					staticReg[activeLOD].shape        = treeShape;
 					if (staticReg[activeLOD].registered) {
+						// COUNTER-HONESTY-1: tag Tree on the dynamic re-register
+						// path too (mirror of the Building tag at :2288). See
+						// TreeAppearance::registerStatic for the full rationale —
+						// behaviour-neutral, census-honest.
+						GpuStaticPropRegistry::setRecipePopulation(
+							staticReg[activeLOD].recipeIndex,
+							GpuStaticPropPopulation::Tree);
 						// H4 follow-up (2026-05-07): per-frame re-registration
 						// after LOD/shape swap has the same lightData_ gap as
 						// mission-load registerStatic(). Force one full update()
@@ -7567,7 +7574,7 @@ void TreeAppearance::registerStatic() {
 			if (s_trace && s_treeRegLogged < 80) {
 				++s_treeRegLogged;
 				fprintf(stderr,
-					"[TREE_REG_DIAG v1] appearType=%s lod=%d numShapes=%d total=%d pm_skip=%d "
+					"[TREE_REG_DIAG v1] sample=first80 appearType=%s lod=%d numShapes=%d total=%d pm_skip=%d "
 					"h_skip=%d unreg_skip=%d added=%d\n",
 					(appearType ? appearType->name : "<null>"), lod,
 					numShapes, t_diag_total, t_diag_skip_pm, t_diag_skip_h,
@@ -7615,6 +7622,19 @@ void TreeAppearance::registerStatic() {
 			staticReg[lod].shape       = (lod == 0) ? treeShape : nullptr;
 			staticReg[lod].recipeIndex = regIdx;
 			anyRegistered = true;
+
+			// COUNTER-HONESTY-1: tag the recipe Tree. Until this lane, ONLY the
+			// two BldgAppearance sites called setRecipePopulation(), so every tree
+			// recipe kept the 0xFF "unset" default and the registry's population
+			// breakdown was structurally building-only — an instrument that could
+			// only ever report the one value it was wired for.
+			// Behaviour-neutral for both existing consumers: getBuildingShadowInstances
+			// keeps `population != Building` (Tree and unset are both excluded), and
+			// getDynamicPropShadowInstances keeps `population == Building` (Tree and
+			// unset are both admitted). The tag makes the census honest; it does not
+			// move a single shadow caster.
+			GpuStaticPropRegistry::setRecipePopulation(
+				regIdx, GpuStaticPropPopulation::Tree);
 
 			// TREE-OVERRIDE-LOD-MVP Task 3 (K×M GATE): bake the higher-LOD light
 			// slot HERE, at registration, from this LOD's OWN transformed render-

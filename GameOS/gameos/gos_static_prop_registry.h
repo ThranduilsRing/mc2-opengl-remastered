@@ -175,6 +175,21 @@ void setRecipePopulation(int32_t recipeIndex, GpuStaticPropPopulation pop);
 // SHADOW-FOLIAGE: mark a recipe (impostor/far-LOD) to skip dynamic shadow casting.
 void setRecipeNoShadow(int32_t recipeIndex, bool noShadow);
 
+// COUNTER-HONESTY-1: authoritative census of live (non-tombstoned) recipes by
+// population tag. out[0..3] = Building/Tree/Generic/Legacy; out[4] = UNSET
+// (population still 0xFF because no caller ever tagged the recipe).
+//
+// Why this exists: the per-population *submit* counters in the batcher only see
+// the DYNAMIC submitMultiShape path. Once an actor registers a recipe it replays
+// through submitCachedInstance(), which deliberately does not tick them, so
+// `submit_trees=0` is the healthy steady state and says NOTHING about how many
+// trees exist or draw. This census reads the registry itself, so it can answer
+// "are there trees at all?" without the reader having to know that.
+//
+// out[4] (unset) is the "never instrumented" bucket: any non-zero value means the
+// by-population breakdown is incomplete and must not be read as a census.
+void getPopulationCensus(uint32_t out[5]);
+
 // SHADOW-STATIC-BUILDINGS-2: append all non-tombstoned BUILDING recipe leaves
 // (baked modelMatrix + typeID) to `out` for the static building shadow pass.
 // Reads the full registry, not per-frame buckets. Trees/unset excluded.

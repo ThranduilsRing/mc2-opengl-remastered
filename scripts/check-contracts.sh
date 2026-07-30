@@ -272,6 +272,14 @@ run_check "mover_registry_selftest"  "sh scripts/check-mover-registry-coherence.
 # stays position/visibility-free — INVIS-VEHICLES-FIX-1).
 run_check "tgl_load_callers"   "sh scripts/check-tgl-load-callers.sh"
 run_check "tgl_load_selftest"  "sh scripts/check-tgl-load-callers.sh --self-test"
+# COUNTER-HONESTY-1: instruments must not be able to state a confident number
+# they cannot know. R1 = every syncStaticProp() recipe mint pairs with a
+# setRecipePopulation() (an untagged recipe silently corrupts the population
+# census). R2 = every first-N print limiter emits a self-declaring token, so a
+# truncated stream cannot be read as a census; pre-existing sites are inventoried
+# in scripts/counter-honesty-allowlist.txt and the rule ratchets on new ones.
+run_check "counter_honesty"          "py -3 scripts/check-counter-honesty.py --quiet"
+run_check "counter_honesty_selftest" "py -3 scripts/check-counter-honesty.py --self-test 2>/dev/null"
 
 # ---------------------------------------------------------------------------
 # Summary table
