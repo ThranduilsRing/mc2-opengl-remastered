@@ -283,6 +283,22 @@ struct RecipeRange {
 static std::vector<GpuStaticPropInstance> s_recipes;
 static std::vector<RecipeRange>           s_recipeRanges;
 
+// COUNTER-HONESTY-1: bit p set once setRecipePopulation() has ever been called
+// with population p in this process. This is what lets a population census
+// distinguish "zero recipes of this kind exist" from "nothing ever tags this
+// kind, so the zero is meaningless".
+//
+// It is load-bearing right now: GenericAppearance has no registerStatic() and
+// never calls syncStaticProp(), so no Generic recipe is ever minted and
+// reg_recipes_generics is structurally 0 -- exactly the blind-counter shape this
+// lane exists to kill. Rather than let that zero look like a measurement, the
+// summary prints which populations are instrumented at all, and the mask
+// maintains itself when a Generic mint path is added later (no doc to go stale).
+//
+// Process-lifetime, deliberately NOT cleared in init(): the recipe COUNTS reset
+// per mission, but "is this population instrumented in this build" does not.
+static uint8_t s_popsEverTagged = 0u;
+
 // RECIPE-SLOT-RECYCLE (MC2_STATIC_RECIPE_RECYCLE, default OFF). The registry
 // historically only APPENDED: registerRecipe() pushed a new s_recipeRanges slot
 // and invalidate() merely tombstoned (count=0), never reclaiming the index. Under
@@ -1011,7 +1027,7 @@ void flush() {
                     const int tid = (rng.count > 0 && rng.first < s_recipes.size())
                                       ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
                     fprintf(stderr,
-                        "[TOMBDIAG] frame=%u regIdx=%u count=%u multi=%d typeID=%d%s\n",
+                        "[TOMBDIAG] sample=first90_per_frame frame=%u regIdx=%u count=%u multi=%d typeID=%d%s\n",
                         fr, regIdx, rng.count, (int)(rng.multi != nullptr), tid,
                         (rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : "");
                     fflush(stderr);
@@ -1035,9 +1051,14 @@ void flush() {
                 static int s_warnPrinted = 0;
                 if (s_warnPrinted < 16) {
                     ++s_warnPrinted;
+                    // COUNTER-HONESTY-1: capped at 16 lines, but s_firstFrameSkipCount
+                    // is the uncapped truth -- print it so nobody counts log lines.
                     MC2_DIAGFE(stderr,
-                        "[STATIC_FIRST_FRAME v1] event=skip_first_flush regIdx=%u "
+                        "[STATIC_FIRST_FRAME v1] event=skip_first_flush "
+                        "sample=first16 skips_so_far_this_mission=%llu "
+                        "(destroy() emits event=summary with the final total) regIdx=%u "
                         "registeredOnFrame=%u currentFrame=%u cachedFrame=%u\n",
+                        (unsigned long long)s_firstFrameSkipCount,
                         regIdx, rng.registeredOnFrame, currentFrame,
                         rng.multi->getCachedFrame());
                     fflush(stderr);
@@ -1117,7 +1138,8 @@ void flush() {
                 s_seenMulti.find(regIdx) == s_seenMulti.end()) {
                 s_seenMulti.insert(regIdx);
                 uint32_t firstTid = s_recipes[rng.first].typeID;
-                fprintf(stderr, "[REGFLUSH_MULTI v1] regIdx=%u count=%u firstTypeID=%u multi=%p\n",
+                fprintf(stderr, "[REGFLUSH_MULTI v1] sample=first100_distinct_regidx "
+                    "regIdx=%u count=%u firstTypeID=%u multi=%p\n",
                     regIdx, rng.count, firstTid, (void*)rng.multi);
                 fflush(stderr);
             }
@@ -1166,7 +1188,7 @@ void flush() {
                 // H2 trace: if peek.numLights>0 but firstColor is (0,0,0) and/or
                 // firstType is AMBIENT, that explains tree-leaf vertices going
                 // black on the static replay (base_light=0 + ambient*0 = 0).
-                SP_TRACE("flush regIdx=%u lightIdx=%u count=%u nL=%d type0=%d c0=(%.3f,%.3f,%.3f) sc=%u",
+                SP_TRACE("flush sample=first16 regIdx=%u lightIdx=%u count=%u nL=%d type0=%d c0=(%.3f,%.3f,%.3f) sc=%u",
                          regIdx, freshLightIdx, rng.count,
                          peek.numLights, peek.firstType,
                          peek.firstColorR, peek.firstColorG, peek.firstColorB,
@@ -1204,7 +1226,7 @@ void flush() {
                 if (t0 == 33u || t0 == 41u || t0 == 42u || t0 == 43u) {
                     ++s_seamFlushLogged;
                     fprintf(stderr,
-                        "[SEAMPROBE] flush-emit regIdx=%u firstTypeID=%u count=%u "
+                        "[SEAMPROBE] sample=first200 flush-emit regIdx=%u firstTypeID=%u count=%u "
                         "extentRadius=%.2f rootCtr=(%.1f,%.1f,%.1f)\n",
                         regIdx, t0, rng.count, rng.extentRadius,
                         actorWorldCenter[0], actorWorldCenter[1], actorWorldCenter[2]);
@@ -1253,7 +1275,7 @@ void flush() {
                 const bool leaf0Zero = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
                 const bool midZero   = (mm[0]==0.0f && mm[3]==0.0f && mm[7]==0.0f && mm[11]==0.0f);
                 fprintf(stderr,
-                    "[LEAFDIAG] regIdx=%u typeID=%u count=%u cachedBlob=%d freshLight=%u "
+                    "[LEAFDIAG] sample=first48 regIdx=%u typeID=%u count=%u cachedBlob=%d freshLight=%u "
                     "storedLight=%u leaf0_rawXYZ=(%.1f,%.1f,%.1f) leaf0Zero=%d midZero=%d\n",
                     regIdx, s_recipes[rng.first].typeID, rng.count, (int)useCachedBlob,
                     freshLightIdx, s_recipes[rng.first].lightDataIndex,
@@ -1523,6 +1545,7 @@ void flush() {
                             ++s_cmp_mismatch_cap;
                             fprintf(stderr,
                                 "[SPFLUSH_CACHED_COMPARE v1] event=mismatch"
+                                " sample=first32 (event=summary carries the true total)"
                                 " recipe=%u field=inst_light"
                                 " cached_light=%u legacy_light=%u\n",
                                 ri, cachedLightIdx, freshLightIdx);
@@ -1542,6 +1565,7 @@ void flush() {
                             ++s_cmp_mismatch_cap;
                             fprintf(stderr,
                                 "[SPFLUSH_CACHED_COMPARE v1] event=mismatch"
+                                " sample=first32 (event=summary carries the true total)"
                                 " recipe=%u field=record"
                                 " hash_cached=%llu hash_legacy=%llu\n",
                                 ri,
@@ -1592,7 +1616,9 @@ void flush() {
             if (storedCount != expect) {
                 ++s_pbCmpMismatch;
                 if (s_pbCmpCap < 32) { ++s_pbCmpCap;
-                    fprintf(stderr, "[PERSIST_BUCKET_COMPARE v1] event=mismatch stored=%llu expect=%llu dirty=%d\n",
+                    fprintf(stderr, "[PERSIST_BUCKET_COMPARE v1] event=mismatch "
+                        "sample=first32 (event=summary carries the true total) "
+                        "stored=%llu expect=%llu dirty=%d\n",
                         (unsigned long long)storedCount, (unsigned long long)expect, s_storeDirty ? 1 : 0);
                     fflush(stderr);
                 }
@@ -1900,10 +1926,14 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
 
 // SHADOW-STATIC-BUILDINGS-2: tag a recipe's population at registration time.
 void setRecipePopulation(int32_t recipeIndex, GpuStaticPropPopulation pop) {
+    const uint8_t p = static_cast<uint8_t>(pop);
+    // COUNTER-HONESTY-1: record instrumentation coverage BEFORE the range check,
+    // so "this population has a tagging path" stays true even if one particular
+    // call arrives with a stale index.
+    if (p < 8u) s_popsEverTagged |= static_cast<uint8_t>(1u << p);
     if (recipeIndex < 0 ||
         recipeIndex >= static_cast<int32_t>(s_recipeRanges.size())) return;
-    s_recipeRanges[static_cast<size_t>(recipeIndex)].population =
-        static_cast<uint8_t>(pop);
+    s_recipeRanges[static_cast<size_t>(recipeIndex)].population = p;
 }
 
 void setRecipeNoShadow(int32_t recipeIndex, bool noShadow) {
@@ -1911,6 +1941,21 @@ void setRecipeNoShadow(int32_t recipeIndex, bool noShadow) {
         recipeIndex >= static_cast<int32_t>(s_recipeRanges.size())) return;
     s_recipeRanges[static_cast<size_t>(recipeIndex)].noShadow = noShadow;
 }
+
+// COUNTER-HONESTY-1: see header. out[4] counts recipes whose population was
+// never tagged by any caller — the "never instrumented" bucket that keeps the
+// breakdown from masquerading as a complete census.
+void getPopulationCensus(uint32_t out[5]) {
+    if (!out) return;
+    for (int i = 0; i < 5; ++i) out[i] = 0u;
+    for (const RecipeRange& rng : s_recipeRanges) {
+        if (rng.count == 0) continue;             // tombstone
+        if (rng.population < 4u) out[rng.population]++;
+        else                     out[4]++;        // 0xFF = never tagged
+    }
+}
+
+uint8_t getPopulationsEverTagged() { return s_popsEverTagged; }
 
 // SHADOW-STATIC-BUILDINGS-2: append every non-tombstoned BUILDING recipe's leaf
 // instances (baked modelMatrix + typeID) to `out`. Visibility-independent — reads

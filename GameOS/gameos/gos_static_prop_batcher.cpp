@@ -298,6 +298,13 @@ static uint32_t s_v5TotalFrameCount      = 0u;
 #define TREE_DIAG(fmt, ...) \
     do { if (s_treeDiagTrace) { fprintf(stderr, "[TREE_DIAG] " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
 
+// COUNTER-HONESTY-1: [TREE_DIAG] per-instance records are capped at this many
+// per path per process. That makes the stream a SAMPLE, and a sample must say so
+// in its own output — a reader who counts log lines must not be able to mistake
+// them for a total. Both emission sites print `sample=firstN` on every record and
+// emit one SAMPLE-CAP-REACHED notice when they stop.
+static constexpr int kTreeDiagSample = 8;
+
 // [GPUPROPS v1] setup-path attribution for registerType calls.
 // 0=unknown 1=mission_init_firstload 2=ims_objmgr_load 3=sp_logistics_postinit
 // Declared extern in gos_static_prop_batcher.h; set by mission.cpp / saveload.cpp / logistics.cpp.
@@ -2385,6 +2392,32 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
             total_submitted += s_counters.mono_submitted_instances_by_pop[p];
         }
 
+        // COUNTER-HONESTY-1: authoritative registry census, so a reader can never
+        // again conclude "no trees in this scene" from submit_trees=0.
+        //
+        // submit_* counts DYNAMIC submitMultiShape successes only. The moment an
+        // actor registers a recipe it switches to the persistent-static replay
+        // path (submitCachedInstance, ~line 9525) which deliberately does NOT tick
+        // these counters. Steady state for a fully-registered scene is therefore
+        // submit_trees=0 with hundreds of trees drawing every frame. That zero has
+        // already been misread at least twice in committed status docs, so the
+        // line now carries both the honest denominator and an explicit note.
+        uint32_t popCensus[5] = {0, 0, 0, 0, 0};
+        GpuStaticPropRegistry::getPopulationCensus(popCensus);
+        // Which populations are instrumented AT ALL. Without this, a reader
+        // cannot tell reg_recipes_generics=0 ("no generic props") from the truth
+        // ("nothing ever tags Generic, so this field can only ever be 0" --
+        // GenericAppearance has no registerStatic and mints no recipe). Same
+        // trap as submit_trees; refusing to repeat it here.
+        const uint8_t popMask = GpuStaticPropRegistry::getPopulationsEverTagged();
+        char popTagged[24];
+        std::snprintf(popTagged, sizeof(popTagged), "%s%s%s%s",
+                      (popMask & 1u) ? "B" : "", (popMask & 2u) ? "T" : "",
+                      (popMask & 4u) ? "G" : "", (popMask & 8u) ? "L" : "");
+        if (popTagged[0] == '\0') {
+            std::snprintf(popTagged, sizeof(popTagged), "NONE");
+        }
+
         MC2_DIAGFE(stderr,
                "[OBJBATCHER v1] event=summary frames=%llu "
                "eligible_actors=%llu submitted_instances=%llu "
@@ -2397,8 +2430,26 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                // reads 0 there. submitted_instances is the honest live-path signal.
                "gpu_drawn_note=legacy_path_only_v6_uses_submitted "
                "fallback_rate=%.4f "
+               // COUNTER-HONESTY-1: submit_* are DYNAMIC-PATH-ONLY. Registered
+               // props replay via submitCachedInstance() which does not tick them,
+               // so submit_trees=0 means "no dynamic tree submits", NEVER "no trees".
+               // reg_recipes_* below is the authoritative live-registry census.
+               // Two separate lies in one field name, both named here:
+               //  - "instances" is a misnomer: this counter ticks ONCE per
+               //    successful submitMultiShape (an ACTOR). Per-leaf instances
+               //    are submitted_children. See the increment site (once, after
+               //    the child loop) vs submitted_children (inside it).
+               //  - it only ever sees the DYNAMIC path; registered props replay
+               //    via submitCachedInstance() which does not tick it.
+               "submit_note=actors_not_instances;dyn_path_only_registered_props_replay_uncounted "
                "submit_buildings=%llu submit_trees=%llu "
                "submit_generics=%llu submit_legacy=%llu "
+               "reg_recipes_buildings=%u reg_recipes_trees=%u "
+               "reg_recipes_generics=%u reg_recipes_legacy=%u "
+               "reg_recipes_untagged=%u "
+               // A zero for a population NOT listed here is not a measurement.
+               "reg_pops_ever_tagged=%s "
+               "reg_census_trustworthy=%s "
                "late_register_recovery_skips=%llu\n",
                (unsigned long long)s_counters.frame_count,
                (unsigned long long)slice1_eligible,
@@ -2412,6 +2463,11 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                (unsigned long long)s_counters.mono_submitted_instances_by_pop[1],
                (unsigned long long)s_counters.mono_submitted_instances_by_pop[2],
                (unsigned long long)s_counters.mono_submitted_instances_by_pop[3],
+               popCensus[0], popCensus[1], popCensus[2], popCensus[3],
+               popCensus[4], popTagged,
+               // "no" the moment any live recipe carries the 0xFF unset default:
+               // the breakdown is then incomplete and must not be read as a census.
+               (popCensus[4] == 0u) ? "yes" : "no_untagged_recipes_present",
                (unsigned long long)s_late_register_recovery_skips);
         std::fflush(stderr);
     }
@@ -2916,7 +2972,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         static int s_seamRegLogged = 0;
         if (getenv("MC2_MODOVERRIDE_TRACE") && s_seamRegLogged < 400) {
             ++s_seamRegLogged;
-            fprintf(stderr, "[SEAMPROBE] registerType src=%p typeID=%u numTris=%u numVerts=%u finalized=%d\n",
+            fprintf(stderr, "[SEAMPROBE] sample=first400 registerType src=%p typeID=%u numTris=%u numVerts=%u finalized=%d\n",
                 (void*)typeShape, newTypeID, numTris, numVerts, (int)s_geometryFinalized);
             fflush(stderr);
         }
@@ -2962,7 +3018,7 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
                     const DWORD gosH = (typeShape->listOfTextures && j < typeShape->numTextures)
                                        ? typeShape->listOfTextures[j].gosTextureHandle
                                        : 0xdeadbeef;
-                    TEX_HANDOFF("register multiShape=%p leaf=%p slot=%ld nodeIdx=0x%08x gosHandle=0x%08x",
+                    TEX_HANDOFF("register sample=first8_of_~10k multiShape=%p leaf=%p slot=%ld nodeIdx=0x%08x gosHandle=0x%08x",
                                 (void*)multiShape, (void*)typeShape, j, nodeIdx, gosH);
                     ++s_texHandoffRegPrinted;
                 }
@@ -3929,7 +3985,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                     static int s_seamLayerSkip = 0;
                     if (getenv("MC2_MODOVERRIDE_TRACE") && s_seamLayerSkip < 200) {
                         ++s_seamLayerSkip;
-                        std::fprintf(stderr, "[SEAMPROBE] layer=-1 SKIP type=%u pkt=%u "
+                        std::fprintf(stderr, "[SEAMPROBE] sample=first200 layer=-1 SKIP type=%u pkt=%u "
                             "nodeIdx=%lu gosHandle=%lu glTexId=%u W=%d H=%d override=%d uniques=%zu\n",
                             typeID, pIdx, (unsigned long)nodeIdx,
                             (unsigned long)gosHandle, glTexId, (int)W, (int)H,
@@ -5103,10 +5159,24 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     inst.fogRGB[3] = ((fogARGB >> 24) & 0xFF) / 255.0f;
     {
         // MC2_TREE_DIAG_TRACE diagnostic. See macro definition near line ~50.
-        static int s_dynPrinted = 0;
-        if (s_treeDiagTrace && s_dynPrinted < 8) {
+        // COUNTER-HONESTY-1: this is a SAMPLE (first kTreeDiagSample records),
+        // never a census. Counting [TREE_DIAG] path=dyn lines in a log does NOT
+        // count submissions. Every line now says so, and the running ordinal `n`
+        // plus the one-shot cap notice let a reader see the truncation instead of
+        // inferring a total from the line count.
+        static int      s_dynPrinted = 0;
+        static uint64_t s_dynSeen    = 0;
+        if (s_treeDiagTrace) ++s_dynSeen;
+        if (s_treeDiagTrace && s_dynPrinted == kTreeDiagSample) {
+            ++s_dynPrinted;   // == kTreeDiagSample+1: notice emitted, never again
+            TREE_DIAG("path=dyn sample=first%d SAMPLE-CAP-REACHED further path=dyn records suppressed; "
+                      "this stream is a SAMPLE not a census -- line count != submission count",
+                      kTreeDiagSample);
+        }
+        if (s_treeDiagTrace && s_dynPrinted < kTreeDiagSample) {
             ++s_dynPrinted;
-            TREE_DIAG("path=dyn typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
+            TREE_DIAG("path=dyn sample=first%d n=%llu typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
+                kTreeDiagSample, (unsigned long long)s_dynSeen,
                 inst.typeID, inst.flags, inst.lightDataIndex, inst.firstColorOffset,
                 // Stuff::Matrix4D translation lives at (3,0)/(3,1)/(3,2) which the
                 // operator()(row,col) maps to entries[(col<<2)+row] = [3]/[7]/[11].
@@ -5755,7 +5825,7 @@ bool uploadAllBucketsIfNeeded() {
                 else if (hd)  ++dOnly;
             }
             std::fprintf(stderr,
-                "[BUCKET_ORDER v1] uploadCall=%llu types=%zu static_only=%u dynamic_only=%u mixed=%u "
+                "[BUCKET_ORDER v1] sample=first16_every60calls uploadCall=%llu types=%zu static_only=%u dynamic_only=%u mixed=%u "
                 "mixed_static_first=%u mixed_dynamic_first=%u\n",
                 (unsigned long long)s_botCall, s_bucketsByType.size(), sOnly, dOnly, mixed, mixSF, mixDF);
             std::fflush(stderr);
@@ -8171,7 +8241,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 const float* mm = reinterpret_cast<const float*>(base + midOff);
                 const bool z0 = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
                 fprintf(stderr,
-                    "[INSTDIAG] typeID=%u slot=%u instByteOff=%zu count=%u byteSize=%zu "
+                    "[INSTDIAG] sample=first40 typeID=%u slot=%u instByteOff=%zu count=%u byteSize=%zu "
                     "drawData0_rawXYZ=(%.1f,%.1f,%.1f) zero0=%d midXYZ=(%.1f,%.1f,%.1f)\n",
                     typeID, (unsigned)s_frameSlot, (size_t)r.instanceByteOffset,
                     r.instanceCount, (size_t)r.instanceByteSize,
@@ -8297,7 +8367,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             }
             const uint32_t glTexId = gos_GetGLTextureId(gosHandle);
             if (doTypeTrace && p < 2) {
-                TEX_HANDOFF("flush  typeID=%u pkt=%u slot=%u src=%p gosHandle=0x%08x glTexId=%u numTex=%d",
+                TEX_HANDOFF("flush  sample=first8types_x_first2pkts typeID=%u pkt=%u slot=%u src=%p gosHandle=0x%08x glTexId=%u numTex=%d",
                             typeID, p, pkt.textureSlot, (void*)src, gosHandle, glTexId,
                             src ? src->numTextures : -1);
             }
@@ -9533,10 +9603,20 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
     {
         // MC2_TREE_DIAG_TRACE diagnostic. Same format as submit() so a grep
         // diff (`grep "[TREE_DIAG]" log | sort`) lines up dyn-vs-static fields.
-        static int s_staticPrinted = 0;
-        if (s_treeDiagTrace && s_staticPrinted < 8) {
+        // COUNTER-HONESTY-1: SAMPLE, not a census — see the submit() mirror.
+        static int      s_staticPrinted = 0;
+        static uint64_t s_staticSeen    = 0;
+        if (s_treeDiagTrace) ++s_staticSeen;
+        if (s_treeDiagTrace && s_staticPrinted == kTreeDiagSample) {
             ++s_staticPrinted;
-            TREE_DIAG("path=stat typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
+            TREE_DIAG("path=stat sample=first%d SAMPLE-CAP-REACHED further path=stat records suppressed; "
+                      "this stream is a SAMPLE not a census -- line count != replay count",
+                      kTreeDiagSample);
+        }
+        if (s_treeDiagTrace && s_staticPrinted < kTreeDiagSample) {
+            ++s_staticPrinted;
+            TREE_DIAG("path=stat sample=first%d n=%llu typeID=%u flags=0x%x lightIdx=%u colOff=%u tx=%.2f ty=%.2f tz=%.2f fog=%.3f,%.3f,%.3f,%.3f hi=%.3f,%.3f,%.3f,%.3f bucketInsts=%zu",
+                kTreeDiagSample, (unsigned long long)s_staticSeen,
                 updated.typeID, updated.flags, updated.lightDataIndex, updated.firstColorOffset,
                 // Same offset fix as submit() — translation at [3]/[7]/[11], not [12..14].
                 updated.modelMatrix[3], updated.modelMatrix[7], updated.modelMatrix[11],
