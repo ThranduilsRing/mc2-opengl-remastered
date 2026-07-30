@@ -368,6 +368,23 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
         # CAPTURE-LIVENESS fields (asserted by preflight BEFORE any compare):
         "bookmark_present": present_map,
         "engine_capture_fired": engine_fired,
+        # SIM-IDENTITY-HASH-1: the world-state hash the refuse-to-grade gate
+        # reads. THIS KEY IS LOAD-BEARING -- omitting it (as the first draft of
+        # this slice did) leaves the combined manifest with no block at all, so
+        # sim_identity.find_block() returns None, every comparison comes back
+        # UNVERIFIED, and the gate grades everything while appearing installed.
+        # That failure is invisible: it looks exactly like an old exe.
+        # check-sim-identity-propagation.py exists solely to keep this key here.
+        #
+        # `sim_identity` is the block the gate grades; the per-bookmark map is
+        # kept beside it because the sweep freezes the sim
+        # (mc2VisualCaptureSetPaused(1)) so every bookmark in one run should
+        # observe the SAME world -- if they ever disagree, that pause guarantee
+        # has regressed and the whole run is suspect. _first_sim_identity()
+        # surfaces exactly that instead of silently grading bookmark #1.
+        "sim_identity": _first_sim_identity(sim_ids),
+        "sim_identity_by_bookmark": sim_ids,
+        "sim_identity_bookmarks_agree": _sim_ids_agree(sim_ids),
         # provenance / volatile:
         # WHICH BINARY THIS ARM MEASURED (GOLDEN-PROVENANCE-TRUTH-1). Read out
         # of the exe's own bytes, never from the source worktree HEAD and never
@@ -386,6 +403,33 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
               "NON-deterministic -- pixel oracle is soft for that bookmark."
               % label, file=sys.stderr)
     return combined
+
+
+def _first_sim_identity(sim_ids: dict):
+    """The block the refuse-to-grade gate grades: the first non-null
+    per-bookmark block in sorted bookmark order (stable run to run).
+    None when no bookmark carried one (old exe / MC2_SIM_IDENTITY=0)."""
+    for name in sorted(sim_ids or {}):
+        blk = sim_ids[name]
+        if isinstance(blk, dict) and blk.get("digest"):
+            return blk
+    return None
+
+
+def _sim_ids_agree(sim_ids: dict) -> bool:
+    """True iff every bookmark that carried a block reports the SAME world.
+
+    The capture sweep pauses the sim before the first bookmark and unpauses
+    after the last, so all bookmarks in one run observe one frozen world and
+    their digests must be identical. A False here does NOT mean the two arms
+    differ -- it means this SINGLE run saw its world change mid-sweep, i.e. the
+    freeze did not hold, which invalidates the deterministic-capture premise
+    the whole pixel oracle rests on. Reported rather than asserted: it is an
+    engine-behaviour signal, not a parity verdict.
+    """
+    digests = {blk.get("digest") for blk in (sim_ids or {}).values()
+               if isinstance(blk, dict) and blk.get("digest")}
+    return len(digests) <= 1
 
 
 def _dig_bookmarks(obj):

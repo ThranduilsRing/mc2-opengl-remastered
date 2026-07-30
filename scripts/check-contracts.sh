@@ -560,6 +560,15 @@ run_check "sim_identity_fieldsets" "py -3 scripts/check-sim-identity-fieldsets.p
 # localisation (names the first diverging mover and field) and the sub-quantum
 # boundary-straddle label. Offline, no GPU, no capture.
 run_check "sim_identity_gate_selftest" "py -3 scripts/sim_identity.py self-test"
+# PIPE-LIVENESS: the hash crosses engine -> sidecar -> capture manifest ->
+# combined manifest -> gate. The first version of this slice dropped the
+# combined-manifest link: every other check stayed GREEN while the gate was
+# dead and graded everything as UNVERIFIED. Re-injecting that bug leaves
+# sim_identity_fieldsets and sim_identity_gate_selftest at exit 0; only this
+# check fires. A gate is wired when the payload traverses the pipe, not when
+# both ends compile.
+run_check "sim_identity_propagation" "py -3 scripts/check-sim-identity-propagation.py"
+
 # ---------------------------------------------------------------------------
 # UNWIRED-CHECK-CLOSE-1 (2026-07-30) -- the checks nobody was running
 # ---------------------------------------------------------------------------
