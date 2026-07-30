@@ -204,6 +204,30 @@ Delegates to the same `Camera::setDaylightFraction` / `Camera::setSunPitch` that
 lighting mechanism. Assert on `isNight` / `lightPitch`, never `nightFactor`
 (`Weather::update` raises it while raining and takes the MAX).
 
+**Only `day`/`noon` and `night`/`midnight` are guaranteed to be opposite.**
+`Camera::update` derives `isNight` from sun *altitude* against
+`NIGHT_LIGHT_PITCH = 10°` (`mclib/camera.cpp:149-150`), where
+`altitude = pitch` and `180 - pitch` past 90°. The phase table maps
+`pitch = fraction * 360`, so:
+
+| phase | pitch | altitude | `isNight` |
+|---|---|---|---|
+| `dawn` | 0° | 0° | **1** |
+| `morning` | 45° | 45° | 0 |
+| `day` / `noon` | 90° | 90° | 0 |
+| `afternoon` | 135° | 45° | 0 |
+| `dusk` / `sunset` | 180° | 0° | **1** |
+| `night` / `midnight` | 270° | −90° | **1** |
+
+`dawn`, `dusk` and `sunset` put the sun *on the horizon*, which is below the
+engine's night threshold — they ack `isNight=1`. That is the engine being
+consistent, not a bug, but `{"assert_light": {"is_night": false}}` after
+`set_light dusk` **will fail**. For those phases assert on `light_pitch`
+instead. `dawn` and `dusk` also share an altitude, so they differ only in the
+colour recompute, not in sun direction. Only the `day`↔`night` pair was
+measured live (by the GAMEPLAY-DRIVER-2 lane); the rest of this table is
+derived from the threshold arithmetic and has not been run.
+
 **Unlocks — the standing day-AND-night verdict rule becomes a fixture.**
 Previously enforceable only on missions that happen to ship with the sun you
 need, which is why the old night test hardcoded `mc2_10`. Now any mission:

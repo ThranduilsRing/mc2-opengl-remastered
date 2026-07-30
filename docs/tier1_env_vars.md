@@ -1045,6 +1045,12 @@ lights should remain visible at every angle instead of blinking out.
   happen to author the sun you need; this makes it expressible in a scenario file on
   any mission. `alt` moves direction only, leaving ambient/sky/fog untouched, which is
   how you isolate a terrain-lighting response from a colour change.
+  **Only `day`/`noon` and `night`/`midnight` are guaranteed opposite.** `isNight` comes
+  from sun *altitude* vs `NIGHT_LIGHT_PITCH = 10°` (`mclib/camera.cpp:149`), and the
+  phase table maps `pitch = fraction*360`, so `dawn` (0°), `dusk` and `sunset` (180°)
+  all put the sun on the horizon at altitude 0 and therefore ack `isNight=1`. Asserting
+  `is_night: false` after `set_light dusk` will fail — assert `light_pitch` for those.
+  Only the day↔night pair has been measured live; the rest is threshold arithmetic.
 
 ## Diagnostic JSONL trace (diagnostic_trace.cpp — 2026-06-17)
 
