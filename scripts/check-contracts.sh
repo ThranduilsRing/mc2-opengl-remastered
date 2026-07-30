@@ -89,6 +89,13 @@ run_check() {
 # Checks
 # ---------------------------------------------------------------------------
 run_check "env_registry"           "sh scripts/check-env-registry.sh"
+# GATE-HYGIENE-CLOSE-1: the smoke harness must keep INHERITING the parent env
+# (os.environ.copy()). If that ever changes, run_smoke.py's vestigial
+# passthrough tuple becomes load-bearing and every registered gate missing
+# from it starts silently dropping -- gate-ON smoke runs would execute the
+# gate-OFF path and report "no difference" for the wrong reason. Also asserts
+# the genuinely-undriveable guard still fails CLOSED (non-zero sys.exit).
+run_check "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.py"
 run_check "harness_gate_drive"     "py -3 scripts/check-harness-gate-drive.py"
 run_check "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
 run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"

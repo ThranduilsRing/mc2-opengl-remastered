@@ -829,6 +829,28 @@ lights should remain visible at every angle instead of blinking out.
   **Registered/documented/allowlisted by DETERMINISM-RATCHET-2**, which found it read by
   code but missing from all three: a smoke run setting `=0` was silently dropped by
   `run_smoke.py` and ran the `=1` path, so the verification was void and said nothing.
+- `MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE` — static-prop light-bake observation gate,
+  **DEFAULT OFF**. Drives **two** diagnostics off one env var: `[STATIC_LIGHT_ZERO v1]`
+  (`GameOS/gameos/gos_static_prop_registry.cpp:1644`) counts, every ~300 registry
+  flushes, alive prop recipes vs those whose permanent light slot has `numLights_=0`
+  (never baked) — with `MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE` also set `zeroLightSlots`
+  should reach 0 after mission load; and `[BAKEORD v1]` (`mclib/bdactor.cpp:3203`) emits
+  one line per real bake (MISS path only) carrying bake ordinal, pre/post-invalidate
+  timing and `sunActive` at bake time — the order-vs-time discriminator for the
+  tree-window light-bake hypothesis. Read-only observation: emits log lines, never
+  alters a light slot, a bake decision, or any render state.
+  **GOTCHA:** the `[BAKEORD v1]` arm additionally routes through `MC2_DIAGF`, so it emits
+  **nothing** unless `MC2_DIAG_VERBOSE=1` is also set — a run reporting "zero `[BAKEORD v1]`
+  lines" proves nothing on its own.
+  **Registered/documented by GATE-HYGIENE-CLOSE-1**, which found it registered *nowhere*:
+  it passed `check-env-registry.sh` only via that script's legacy `ALLOWLIST` escape hatch
+  and had no tier1 entry, so it was invisible to every gate inventory.
+  `mclib/bdactor.cpp`'s own comment asserted the gate was "already-registered" — it was not.
+  It is **not** in `run_smoke.py`'s passthrough allowlist, and that is **harmless**:
+  `smoke_lib/runner.py` builds the child env with `os.environ.copy()`, so ambient `MC2_*`
+  vars reach `mc2.exe` and the allowlist drops nothing (HARNESS-HYGIENE-3). Contrast
+  `MC2_LETTERBOX_OPAQUE` above, whose "allowlisted by DETERMINISM-RATCHET-2" note predates
+  that correction.
 - `MC2_BRIDGE_MOVER_STATE` — emit one `[MOVER v2] id=… name=… team=… pos=…` line per live
   mover (`code/mission.cpp:516`), plus `[MOVER v2 begin] t=… count=…`, at a period set by
   `MC2_BRIDGE_MOVER_PERIOD_SEC` (default 2.0s, floor 0.25s). **DEFAULT OFF**;
