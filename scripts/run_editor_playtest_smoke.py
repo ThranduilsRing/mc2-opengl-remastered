@@ -43,6 +43,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from smoke_lib import nofocus  # noqa: E402
+
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-0.4c\Mission Editor.exe"
 ARTIFACT_ROOT = REPO / "tests" / "smoke" / "editor"
@@ -216,19 +220,18 @@ def main() -> int:
         env["MC2_ACTIVE_MOD"] = active_mod
         print(f"[playtest] MC2_ACTIVE_MOD={active_mod}")
 
-    startupinfo = None
-    if args.minimized and os.name == "nt":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7  # SW_SHOWMINNOACTIVE
-
+    # BACKGROUND-SMOKE-1: minimized + non-activating is now UNCONDITIONAL via
+    # nofocus. --minimized remains only as a no-op alias; it is no longer what
+    # decides whether this run steals focus. The env var nofocus also sets
+    # (MC2_NO_CURSOR_GRAB=1) is inherited by the mc2.exe child the editor
+    # spawns for the playtest, so the GAME window does not activate either.
     print(f"[playtest] launch editor: -mission {mission.name}  timeout={args.timeout}s"
-          f"{'  [minimized]' if startupinfo else ''}")
+          f"{'  [minimized]' if args.minimized else ''}")
     t0 = time.time()
     timed_out = False
     try:
-        proc = subprocess.Popen(argv, cwd=str(deploy), env=env, startupinfo=startupinfo,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        proc = nofocus.spawn(argv, cwd=str(deploy), env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         try:
             out, _ = proc.communicate(timeout=proc_timeout)
         except subprocess.TimeoutExpired:

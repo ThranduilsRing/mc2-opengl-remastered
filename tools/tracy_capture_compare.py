@@ -223,6 +223,11 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     env.update({
         "MC2_NO_LAUNCHER": "1",
         "MC2_SMOKE_MODE": "1",
+        # BACKGROUND-SMOKE-1: never fullscreen / never grab the pointer.
+        # setdefault-equivalent is not used here because this dict IS the
+        # harness intent; a caller overriding via --env still wins downstream.
+        "MC2_WINDOWED": "1",
+        "MC2_NO_CURSOR_GRAB": "1",
         # PERF-HARNESS-TRUTH-1: without this the engine sends stdout to NUL and
         # the .game.log is zero bytes -- no pose/gate/mission receipt survives,
         # so nothing about the run can be verified afterwards.

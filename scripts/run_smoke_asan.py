@@ -39,6 +39,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from smoke_lib import nofocus  # noqa: E402
+
 ASAN_BUILD_DIR = ROOT / "build64-asan" / "RelWithDebInfo"
 DEPLOY_SRC = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4")
 ASAN_EXE_NAME = "mc2-asan.exe"
@@ -186,7 +190,7 @@ def main() -> int:
     print(f"[asan-smoke] ASAN_OPTIONS={env['ASAN_OPTIONS']}", file=sys.stderr)
 
     start_wall = time.monotonic()
-    proc = subprocess.Popen(
+    proc = nofocus.spawn(
         [str(exe_path), "-mission", args.mission],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

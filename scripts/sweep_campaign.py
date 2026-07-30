@@ -22,6 +22,7 @@ sys.path.insert(0, str(HERE))
 # grabbing at all, and CursorGuard defends from outside the process so OLDER
 # deploys (this script targets v0.4d-rc1 by default) are covered too.
 from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
+from smoke_lib import nofocus  # noqa: E402
 # Computer-agnostic: override with MC2_DEPLOY_DIR env; literal is a last-resort dev fallback.
 DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1")
 
@@ -67,7 +68,7 @@ def main():
         # Guard STARTS BEFORE Popen so its anchor is the user's real position
         # and any foreign clamp is reported rather than silently adopted.
         with CursorGuard():
-            p = subprocess.Popen([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
+            p = nofocus.spawn([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
             try:
                 p.wait(timeout=secs)
                 exited = True

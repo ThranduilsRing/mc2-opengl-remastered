@@ -45,6 +45,10 @@ import _rdcommon as rc  # noqa: E402
 
 WORKTREE = Path(__file__).resolve().parents[2]
 
+sys.path.insert(0, str(WORKTREE / "scripts"))
+
+from smoke_lib import nofocus  # noqa: E402
+
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
@@ -133,7 +137,11 @@ def main(argv=None) -> int:
     try:
         print("[capture] launching (own PID sequential lane held)...")
         t0 = time.time()
-        proc = subprocess.run(cmd, env=env, cwd=str(install))
+        # NOTE: our STARTUPINFO stops at renderdoccmd -- IT spawns mc2.exe, so
+        # nCmdShow never reaches the engine window. The ENV is what covers the
+        # engine: renderdoccmd passes its environment through, so nofocus's
+        # MC2_NO_CURSOR_GRAB=1 suppresses SDL activation and cursor grabbing.
+        proc = nofocus.run(cmd, env=env, cwd=str(install))
         dt = time.time() - t0
         print("[capture] renderdoccmd exit=%s in %.1fs"
               % (proc.returncode, dt))

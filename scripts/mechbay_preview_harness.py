@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # braces pairing as scripts/smoke_lib/runner.py: the env gate stops NEW binaries
 # grabbing, CursorGuard defends from outside so OLDER deploys are covered too.
 from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
+from smoke_lib import nofocus  # noqa: E402
 
 DEFAULT_DEPLOY = "A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"
 
@@ -103,7 +104,7 @@ def main():
         # Guard STARTS BEFORE Popen so its anchor is the user's real position
         # and any foreign clamp is reported rather than silently adopted.
         with CursorGuard():
-            p = subprocess.Popen([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
+            p = nofocus.spawn([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
             try:
                 p.wait(timeout=args.timeout)
                 print(f"[harness] process exited on its own (code {p.returncode})")

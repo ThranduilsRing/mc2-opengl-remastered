@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.smoke_lib import baselines, manifest, report
+from scripts.smoke_lib import baselines, manifest, nofocus, report
 from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
 from scripts.smoke_lib.runner import RunConfig, run_one
@@ -354,8 +354,13 @@ def _run_menu_canary(exe: Path, script_path: Path, artifact_dir: Path,
     for var in ["MC2_SMOKE_MODE", "MC2_HEARTBEAT", "MC2_SMOKE_SEED"]:
         env.pop(var, None)
     env["MC2_MENU_CANARY_SKIP_INTRO"] = "1"
+    # The MC2_SMOKE_MODE pop above is deliberate (the canary must exercise the
+    # real menu path), but it also drops the engine-side cursor/activation
+    # suppression that smoke mode implies. nofocus.apply_env re-adds
+    # MC2_NO_CURSOR_GRAB=1, which is what actually stops SDL from activating
+    # its window; the STARTUPINFO only covers the early-boot/console window.
     exe_dir = str(exe.resolve().parent)
-    proc = subprocess.Popen(
+    proc = nofocus.spawn(
         [str(exe)],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

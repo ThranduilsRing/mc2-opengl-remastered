@@ -26,6 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 # CURSOR-STEAL-HARNESS-GUARD-1: shared cursor policy (conditional park + restore).
 from smoke_lib.cursor_guard import park_cursor_if_edge, restore_parked_cursor  # noqa: E402
+# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+from smoke_lib import nofocus  # noqa: E402
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 
@@ -64,11 +66,17 @@ atexit.register(restore_parked_cursor)
 
 
 def _foreground_mc2():
+    """Locate the mc2 window; raise it ONLY if a user-present session opted in.
+
+    BACKGROUND-SMOKE-1: screenshots do not need the window foregrounded --
+    pyautogui/mss grab the desktop composite and a non-activated window still
+    renders. The find-window walk is kept because callers may want the hwnd.
+    """
     for title in ("mc2", "MechCommander 2", "mc2 - Remastered"):
         hwnd = _user32.FindWindowW(None, title)
         if hwnd:
-            _user32.SetForegroundWindow(hwnd)
-            time.sleep(0.3)
+            if nofocus.set_foreground_window(hwnd):
+                time.sleep(0.3)
             return True
     return False
 
@@ -108,8 +116,8 @@ def run(exe: Path, mission: str, duration: int, screenshot_at: int,
             "--duration", str(duration)]
     print(f"[camsweep] launch {mission}: {' '.join(args)}")
     t0 = time.time()
-    proc = subprocess.Popen(args, stdout=log_fp, stderr=subprocess.STDOUT,
-                            cwd=str(exe.parent), env=env)
+    proc = nofocus.spawn(args, stdout=log_fp, stderr=subprocess.STDOUT,
+                         cwd=str(exe.parent), env=env)
     # Mission load + stabilize, then deliberate camera motion.
     time.sleep(9)
     _foreground_mc2()

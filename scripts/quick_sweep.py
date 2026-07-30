@@ -7,6 +7,10 @@ Usage:
 import os, sys, subprocess, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+from smoke_lib import nofocus  # noqa: E402
+
 MISSION = sys.argv[1] if len(sys.argv) > 1 else "mc2_10"
 LABEL   = sys.argv[2] if len(sys.argv) > 2 else "sweep"
 TIMES   = [float(x) for x in (sys.argv[3] if len(sys.argv) > 3 else "8,14,20,26").split(",")]
@@ -47,13 +51,15 @@ log_path = OUT_DIR / f"{MISSION}-{LABEL}.log"
 log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
 print(f"[sweep] launching mc2.exe mission={MISSION} duration={DURATION}s label={LABEL} times={TIMES}")
-proc = subprocess.Popen(
+proc = nofocus.spawn(
     [str(EXE), "--profile", "stock", "--mission", MISSION, "--duration", str(DURATION)],
     stdout=log_fp, stderr=subprocess.STDOUT, env=env,
     cwd=str(EXE.parent),
 )
 
-# Foregrounder helper
+# Window-locator helper. BACKGROUND-SMOKE-1: the raise is a no-op unless
+# MC2_HARNESS_ALLOW_FOREGROUND=1 -- pyautogui screenshots grab the desktop
+# composite, so a non-activated window still captures correctly.
 import ctypes
 user32 = ctypes.windll.user32
 def foreground():
@@ -61,7 +67,7 @@ def foreground():
            user32.FindWindowW(None, "MechCommander 2") or \
            user32.FindWindowW(None, "mc2 - Remastered")
     if hwnd:
-        user32.SetForegroundWindow(hwnd)
+        nofocus.set_foreground_window(hwnd)
         return True
     return False
 

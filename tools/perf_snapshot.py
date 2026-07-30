@@ -33,6 +33,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from smoke_lib import nofocus  # noqa: E402
+
 
 def taskkill_exact_pid(pid: int):
     subprocess.run(["taskkill", "/F", "/PID", str(pid)],
@@ -93,8 +97,13 @@ def main():
         env[k] = v
 
     exe_dir = str(exe.resolve().parent)
-    proc = subprocess.Popen(
+    # show_window=True: this is a PERF measurement. SW_SHOWMINNOACTIVE would
+    # leave the window minimized and SDL throttles a minimized window, so the
+    # numbers would not be GPU throughput. SW_SHOWNOACTIVATE still NEVER
+    # activates the window or takes focus.
+    proc = nofocus.spawn(
         [str(exe), "-mission", args.mission] if args.mission else [str(exe)],
+        show_window=True,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
         cwd=exe_dir, env=env,
     )

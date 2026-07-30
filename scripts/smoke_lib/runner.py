@@ -75,6 +75,13 @@ FORCED_ENV: dict = {
     # NOTE: this only works on exes built AFTER f0c07b87 -- the harness-side
     # CursorGuard below is what covers older deploy lanes.
     "MC2_NO_CURSOR_GRAB": "1",
+    # BACKGROUND-SMOKE-1: never take the display fullscreen. Without this the
+    # engine inherits options.cfg FullScreen=TRUE and a tier1 smoke covers the
+    # user's screen -- STARTUPINFO's SW_SHOWMINNOACTIVE does NOT prevent it,
+    # because SDL calls ShowWindow(SW_SHOW) explicitly and that ignores
+    # STARTUPINFO. Hard override at both engine decision points; see
+    # smoke_lib/nofocus.py.
+    "MC2_WINDOWED": "1",
 }
 
 SOFT_ENV: dict = {

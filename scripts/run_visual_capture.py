@@ -91,6 +91,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
 # CURSOR-STEAL-HARNESS-GUARD-1: single shared implementation of cursor policy.
 from smoke_lib.cursor_guard import park_cursor_if_edge  # noqa: E402
+# BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
+from smoke_lib import nofocus  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1/mc2.exe")
 BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
@@ -147,8 +149,9 @@ def _restore_cursor() -> None:
     if os.name != "nt" or _ORIG_CURSOR is None:
         return
     try:
-        import ctypes
-        ctypes.windll.user32.SetCursorPos(_ORIG_CURSOR[0], _ORIG_CURSOR[1])
+        # BACKGROUND-SMOKE-1: restoring the user's OWN anchor is the one
+        # sanctioned pointer move (restoring=True); everything else is a no-op.
+        nofocus.set_cursor_pos(_ORIG_CURSOR[0], _ORIG_CURSOR[1], restoring=True)
     except Exception as e:
         print(f"[viscap] WARN restore cursor: {e}", file=sys.stderr)
 
@@ -246,18 +249,22 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     if deterministic_clock:
         harness_sets["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
 
+    # BACKGROUND-SMOKE-1: an agent capture must never take the display
+    # fullscreen or grab the pointer. These are HARNESS_CONTROL vars in
+    # mc2_env_pin, so they survive the scrub and are recorded under
+    # `harness_control` in the sidecar.
+    #
+    # MC2_WIDTH/MC2_HEIGHT are deliberately NOT forced here: capture output
+    # resolution is graded (check-capture-resolution.py) and goldens are
+    # sized by options.cfg ResolutionX/Y. Only the fullscreen->windowed
+    # switch and the cursor policy are applied.
+    for _k, _v in nofocus.NOFOCUS_ENV.items():
+        harness_sets.setdefault(_k, _v)
+
     env, env_record = env_pin.build_pinned_env(harness_sets, declared_env)
     warn = env_pin.format_warning(env_record)
     if warn:
         print(warn, file=sys.stderr)
-
-    startupinfo = None
-    if os.name == "nt":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = (
-            4 if show_window else 7
-        )  # SW_SHOWNOACTIVATE for present harnesses, else SW_SHOWMINNOACTIVE.
 
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
@@ -265,10 +272,23 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
           f"trigger={trigger_frame} settle={settle} dur={duration}s "
           f"fixed_clock={deterministic_clock}")
     t0 = time.time()
+    # BACKGROUND-SMOKE-1: nofocus supplies the non-activating STARTUPINFO
+    # (SW_SHOWNOACTIVATE when a present harness needs a visible window, else
+    # SW_SHOWMINNOACTIVE) -- same values as the hand-rolled block it replaces.
+    # `env` is already pinned, so pass it through untouched.
     proc = subprocess.Popen(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
                             cwd=str(exe.parent), env=env,
-                            startupinfo=startupinfo)
+                            **nofocus.popen_kwargs(show_window=show_window))
     _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
+    # BACKGROUND-SMOKE-1: park the window off the visible desktop. Safe HERE
+    # (unlike the pyautogui/mss harnesses) because this runner reads pixels via
+    # the engine's glReadPixels FBO readback -- the window contributes nothing
+    # to the capture, so removing it from the desktop costs nothing and keeps
+    # the full drawable size (and therefore golden resolution) intact.
+    # MC2_WIDTH/HEIGHT are deliberately not forced, so without this the window
+    # is options.cfg-sized (3840x2160) and covers the user's whole screen.
+    if not show_window:
+        nofocus.park_window_offscreen(proc.pid, proc=proc, force=True)
 
     # Poll for all expected PNGs, or process exit, or timeout. Re-park the
     # cursor every iteration so it stays pinned center through the ENTIRE sweep

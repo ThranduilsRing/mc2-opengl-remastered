@@ -50,6 +50,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from smoke_lib import nofocus  # noqa: E402
+
 DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-0.4c\Mission Editor.exe"
 
 # Run the editor window minimized/non-activating during smoke (set from --minimized).
@@ -126,19 +130,17 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     # window over the user's work. The editor's MFC main frame honors nCmdShow from
     # the process STARTUPINFO on its first ShowWindow, and the GL viewport is a child
     # of that frame, so the whole editor comes up minimized.
-    startupinfo = None
-    if MINIMIZED and os.name == "nt":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7  # SW_SHOWMINNOACTIVE
-
+    #
+    # BACKGROUND-SMOKE-1: this is now UNCONDITIONAL (nofocus), not gated on
+    # MINIMIZED. --minimized survives only as a no-op alias; it must never again
+    # be what decides whether the run steals focus.
     print(f"[case {name}] launch: {' '.join(extra_flags) or '(gen-map only)'}  exit_sec={exit_sec}"
-          f"{'  [minimized]' if startupinfo else ''}")
+          f"{'  [minimized]' if MINIMIZED else ''}")
     t0 = time.time()
     timed_out = False
     try:
-        proc = subprocess.Popen(argv, cwd=str(deploy), env=env, startupinfo=startupinfo,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        proc = nofocus.spawn(argv, cwd=str(deploy), env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         try:
             out, _ = proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:

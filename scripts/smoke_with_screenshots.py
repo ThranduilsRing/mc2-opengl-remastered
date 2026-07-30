@@ -32,6 +32,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
+from smoke_lib import nofocus  # noqa: E402
+
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 
@@ -43,35 +47,35 @@ def kill_existing_mc2() -> None:
 
 
 def park_mouse_center() -> tuple[int, int] | None:
-    """Move the OS cursor to the dead center of the primary monitor.
+    """No-op. Retained as a call site only.
 
-    Prevents edge-scroll: MC2 RTS camera scrolls when the OS cursor sits at a
-    screen edge, regardless of whether the game window is focused. Parking the
-    cursor at center makes mission-load and screenshot-time camera state
-    deterministic across runs.
+    BACKGROUND-SMOKE-1: this used to slam the pointer to screen centre --
+    unconditionally, several times per mission, with no restore -- which yanked
+    the mouse out from under the user while an agent lane ran. Edge-scroll is
+    now suppressed engine-side instead: nofocus.spawn() sets
+    MC2_NO_CURSOR_GRAB=1 (and MC2_SMOKE_MODE is set below), which makes
+    gos_CursorControlSuppressed() true, so the engine skips ClipCursor() and
+    ignores the OS pointer. Moving the user's cursor is never required.
     """
-    try:
-        import pyautogui
-        pyautogui.FAILSAFE = False
-        w, h = pyautogui.size()
-        cx, cy = w // 2, h // 2
-        pyautogui.moveTo(cx, cy)
-        return cx, cy
-    except Exception as e:
-        print(f"[smoke] WARN: failed to park cursor: {e}", file=sys.stderr)
-        return None
+    return None
 
 
 def bring_mc2_foreground() -> bool:
-    """Bring the mc2 window to the foreground by enumerating known titles."""
+    """Locate the mc2 window; raise it only in a user-present session.
+
+    BACKGROUND-SMOKE-1: take_screenshot() below uses pyautogui, which grabs the
+    desktop composite; a non-activated window still renders into it, so the
+    foreground raise was never needed for capture. nofocus.set_foreground_window
+    is a no-op unless MC2_HARNESS_ALLOW_FOREGROUND=1.
+    """
     try:
         import ctypes
         user32 = ctypes.windll.user32
         for title in ("mc2", "MechCommander 2", "mc2 - Remastered"):
             hwnd = user32.FindWindowW(None, title)
             if hwnd:
-                user32.SetForegroundWindow(hwnd)
-                time.sleep(0.3)
+                if nofocus.set_foreground_window(hwnd):
+                    time.sleep(0.3)
                 return True
     except Exception as e:
         print(f"[smoke] WARN: foreground bring failed: {e}", file=sys.stderr)
@@ -153,8 +157,8 @@ def run_mission(exe: Path, mission: str, duration: int, screenshot_at: int,
                  "--duration", str(duration)]
     print(f"[smoke] launching {mission}: {' '.join(proc_args)}")
     t0 = time.time()
-    proc = subprocess.Popen(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
-                            cwd=str(exe.parent), env=env)
+    proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
+                         cwd=str(exe.parent), env=env)
 
     # Wait until screenshot point, with a cursor re-park midway to be safe.
     time.sleep(max(0, screenshot_at - 5))
