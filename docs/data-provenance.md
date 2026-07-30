@@ -210,17 +210,80 @@ Registered in `check-contracts.sh` as `stock_mission_data` +
 not FST members — `check-beauty-sidecars.py` owns their cooked-vs-installed
 drift. See the note under "Remaining unknowns".
 
-**Adjacent, latent, unfixed**: the same "a source tree is assumed
-authoritative" shape exists for other corpora, with no verification attached —
-`tools/blender_pipeline/{srcdata,tex_hd}.py` and `tools/mc2texcook/
-ase_geo_audit.py` (`mc2srcdata/tgl` vs `tgl.fst`),
-`tools/terrain_beautify/test_cook_markings.py` (`mc2srcdata/textures/
-64Overlays` vs `textures.fst`), and `tools/mc2weapon/mc2weapon.py`
-(`objects/compbas.csv`, which searches the editable clone *before* the deploy).
-All four were measured 2026-07-30 and are currently **correct** (64Overlays
-475/475 match `textures.fst`; `tgl` 1432/1432 of the members that exist as
-source files match `tgl.fst`) — so they are a drift risk, not a live wrong
-answer, and were left alone rather than half-fixed.
+### DATA-PROVENANCE-CLOSE-1 — the other corpora, closed the same way
+
+The four sites listed above as "adjacent, latent, unfixed" are now closed
+(2026-07-30). They had the same shape — a source tree assumed authoritative,
+never checked — in `tools/blender_pipeline/{srcdata,tex_hd}.py`,
+`tools/mc2texcook/ase_geo_audit.py`, `tools/terrain_beautify/
+test_cook_markings.py` and `tools/mc2weapon/mc2weapon.py`.
+
+Authority, per the same `mclib/file.cpp` ladder: `data/tgl/` ← `tgl.fst`,
+`data/textures/` ← `textures.fst`, `data/objects/` ← `misc.fst`. The digest is
+[`tools/mc2data/stock_data.md5`](../tools/mc2data/stock_data.md5) (5649
+entries), the resolver is [`tools/mc2data/stock_corpus.py`](../tools/mc2data/
+stock_corpus.py), and both arms of `check-stock-mission-data.py` were widened
+to cover them — the static ban is no longer `missions`-specific, and the data
+arm verifies each corpus against every deploy lane.
+
+Measured 2026-07-30, and worth stating precisely because three of these
+numbers are easy to over-read:
+
+| corpus | shipped | reproduced by a source tree |
+|---|---|---|
+| `data/textures/` | 1396 | **1396 / 1396**, both trees, incl. all 475 `64overlays/` |
+| `data/tgl/` | 4212 | **1432 / 1432** of the members that exist as source files (773 `.ini` + 659 `128/*.tga`) |
+| `data/objects/` | 41 | **40 / 41** — `badpilots.csv` differs in *every* source tree |
+
+Three consequences, all encoded in the code rather than left as lore:
+
+- **`data/objects/` has no automatic candidate.** No source tree fully
+  reproduces it, so under the admission rule none qualifies; `mc2weapon`
+  resolves by extracting `compbas.csv`/`effects.csv` straight out of
+  `misc.fst`. Verification is **per name**, which is why one unrelated
+  divergent file cannot block a tool that never opens it.
+- **`mc2weapon`'s precedence bug was worse than "wrong order".** It searched
+  the editable clone before the deploy — but no deploy lane carries a loose
+  `data/objects/compbas.csv` at all (both CSVs live only inside `misc.fst`), so
+  the rung it was ordered behind never resolved. Reordering alone would have
+  fixed nothing; verification is the fix.
+- **`.ase` cannot be proven.** The 2947 authoring meshes in `mc2srcdata/tgl`
+  have no shipped counterpart of any kind — the engine loads compiled
+  `.tgl`/`.agl`. Verification proves the *tree* is stock via its 1432 shipped
+  members; it says nothing about an individual `.ase`. `ase_geo_audit.py` now
+  prints that caveat on every run, because its numbers are **authoring**
+  budgets, not the renderer's.
+
+**The architecture decision, and what was rejected.** Three shapes were
+available: (A) rewrite `stock_missions.py` into a generic engine with missions
+as just another corpus; (B) a sibling resolver + manifest per corpus; (C) one
+corpus-parameterised module that imports its primitives from
+`stock_missions.py`. **(C) was chosen.** (A) risks the one currently
+load-bearing provenance artifact — twelve shipped call sites depend on that
+module's API and on its manifest key convention — for no behavioural gain. (B)
+means four copies of the FastFile parser, the md5 walk and the verify loop, free
+to drift apart, and is precisely the parallel-mechanism shape a debloat pass
+should delete. (C) adds one module and one data file and duplicates **zero**
+logic: the FST reader, md5, manifest parser and result banner are each defined
+exactly once. Mission data keeps its own manifest under (C) deliberately —
+copying those 1344 digests into `stock_data.md5` would create a *second*
+authority for the same bytes, which is the failure this arc exists to prevent.
+
+**The asymmetry trap.** "Absent from the source tree" is not failure for every
+corpus: 2780 of `tgl.fst`'s 4212 members are compiled `.tgl`/`.agl` with no
+source form, so treating absence as failure makes the corpus permanently
+unverifiable — while a blanket "absence is fine" makes verification
+meaningless. Absence is tolerated only for extensions declared engine-only for
+that corpus, the count is always reported, and an engine-only file that *is*
+present is verified like anything else. The reverse asymmetry is reported too:
+source files with no shipped counterpart, which is how `ase_geo_audit.py`
+learns its 2947 `.ase` inputs sit outside any available proof.
+
+**Still open, named rather than implied**: `scripts/deploy_payload.py`
+`find_srcdata()` probes an editable `mc2srcdata` clone first-hit-wins with no
+verification. It is the same shape, but it feeds a deploy payload rather than
+an analysis verdict; it is exempted by literal (with that reason) in
+`check-stock-mission-data.py`, not silently skipped.
 
 ## Relevance to the AI documentation in `/docs/`
 

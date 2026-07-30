@@ -87,6 +87,57 @@ Escape hatches, both loud, both mirroring `stock_missions.py`:
     still verified; the env var chooses a candidate, it does not bless one.
   * `$MC2_STOCK_DATA_ALLOW_NONSTOCK=1` -- global opt-out.
 
+ARCHITECTURE DECISION -- corpus-parameterised, not sibling mechanisms
+--------------------------------------------------------------------
+Three shapes were available. The choice matters because a debloat pass is
+concurrently deleting duplicated tooling, and the wrong answer here is exactly
+what it would (correctly) delete.
+
+  (A) REWRITE `stock_missions.py` into a generic engine and make missions just
+      another corpus.  REJECTED. Twelve shipped call sites depend on its exact
+      API and on its manifest's key convention (relative to `data/missions/`).
+      A rewrite puts the ONE currently load-bearing provenance artifact at risk
+      for zero behavioural gain.
+
+  (B) A SIBLING resolver + manifest per corpus (`stock_tgl.py`,
+      `stock_textures.py`, `stock_objects.py`).  REJECTED. That is three more
+      copies of the FastFile parser, the md5 walk, the manifest parser and the
+      verify loop -- i.e. four "authorities" free to drift apart. It is also
+      the literal parallel-mechanism shape the debloat pass exists to remove.
+
+  (C) CHOSEN. ONE corpus-parameterised module that IMPORTS its primitives from
+      `stock_missions` (FastFile reader, md5, manifest parser, `Resolved`
+      banner, deploy-lane roots) and generalises only what is genuinely
+      per-corpus: archive name, member prefix, candidate trees, env override,
+      and which extensions have no source form. ONE manifest file
+      (`stock_data.md5`) keyed by FULL FST member path, so "a corpus" is just a
+      prefix and adding the next one is a table entry, not a file.
+
+      Net new mechanism: one module, one data file. Net duplicated logic: zero
+      -- the FST parser, md5, manifest parser and banner are each defined
+      exactly once, in `stock_missions.py`.
+
+      Mission data KEEPS its own manifest under (C), which looks like the
+      inconsistency but is the point: copying those 1344 digests into
+      `stock_data.md5` would create a SECOND authority for the same bytes, and
+      "two digests of one truth" is the failure this whole arc exists to
+      prevent. Two files, one format, zero overlap.
+
+THE ASYMMETRY TRAP (the real design hazard, handled explicitly)
+--------------------------------------------------------------
+"Absent from the source tree" is NOT failure for every corpus, and treating it
+as failure would make `tgl` permanently unverifiable -- 2780 of its 4212
+members are compiled `.tgl`/`.agl` with no source form at all. But a blanket
+"absent is fine" would make verification meaningless. So:
+
+  * absence is tolerated ONLY for extensions declared `engine_only_exts` for
+    that corpus, and the count is REPORTED, never hidden;
+  * an engine-only file that IS present gets verified like anything else -- the
+    rule is "no source counterpart exists", not "this extension is exempt";
+  * the REVERSE asymmetry is reported too (`unshipped`): source files with no
+    shipped counterpart, which is how `ase_geo_audit.py` learns that its 2947
+    `.ase` inputs are outside any proof this module can offer.
+
 DELIBERATE NON-GOALS
 --------------------
   * External tool paths (`ktx.exe` and friends) and deploy-lane tables are a
