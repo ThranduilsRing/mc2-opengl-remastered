@@ -2301,8 +2301,16 @@ long GVAppearance::render (long depthFixup)
 			// (ambient/infinite/falloff/point/spot) that mech.vert:219 uses --
 			// a strict superset of the building path, which deliberately omits
 			// point/spot (static_prop.vert:713).
+			// ALL leaves, not just the first: TG_MultiShape::Render loops every
+			// leaf and each TG_Shape::Render submits its OWN lightData_
+			// (tgl.cpp:3508). CacheGpuLightData() fills only the first leaf
+			// (correct for the batcher, which broadcasts one index) and left
+			// every other leaf at numLights_==0 -> raw albedo. Verified: the
+			// first-leaf-only form produced ZERO pixel change at deterministic
+			// A/B poses even though the CPU gather was demonstrably running
+			// (MC2_LIGHT_ROW_CENSUS fired ON, silent OFF).
 			if (s_vehicleLitPath)
-				gvShape->CacheGpuLightData();
+				gvShape->CacheGpuLightDataAllLeaves();
 
 			gvShape->Render(true);
 

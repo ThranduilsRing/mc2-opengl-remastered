@@ -2028,6 +2028,34 @@ void TG_MultiShape::CacheGpuLightData()
     }
 }
 
+// VEHICLE-LIGHTING-PATH-1: per-leaf gather for the legacy render path.
+// See the header comment for why the first-leaf-only CacheGpuLightData() is
+// insufficient for TG_MultiShape::Render (each TG_Shape::Render submits its own
+// lightData_, mclib/tgl.cpp:3508). Same guard and same per-leaf gather call as
+// CacheGpuLightData; the only difference is that it does not stop at the first
+// SHAPE_NODE leaf. cachedGpuLightIndex_/cachedFrame_ are set from the FIRST
+// leaf so any batcher-side reader keeps identical semantics.
+void TG_MultiShape::CacheGpuLightDataAllLeaves()
+{
+    if (!g_useGpuObjects && !g_useGpuMechs)
+        return;
+
+    bool first = true;
+    for (int i = 0; i < numTG_Shapes; ++i) {
+        TG_ShapeRec& rec = listOfShapes[i];
+        if (!rec.processMe || !rec.node) continue;
+        TG_Shape* child = rec.node;
+        if (!child->myType) continue;
+        if (child->myType->GetNodeType() != SHAPE_NODE) continue;
+        const uint32_t idx = child->GatherGpuObjectLightDataOnly();
+        if (first) {
+            first = false;
+            cachedGpuLightIndex_ = idx;
+            cachedFrame_         = g_mc2FrameCounter;
+        }
+    }
+}
+
 // [LIGHTBAKE v1] First SHAPE_NODE leaf's durable post-decompose
 // lightData_ (TG_Shape member; TG_MultiShape is friend of TG_Shape).
 // Call AFTER CacheGpuLightData() has run this frame:

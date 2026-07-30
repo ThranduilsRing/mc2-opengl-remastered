@@ -387,6 +387,25 @@ class TG_MultiShape
 		// Only call when g_useGpuObjects is true (no-op guard inside).
 		void CacheGpuLightData();
 
+		// VEHICLE-LIGHTING-PATH-1: gather a light row into EVERY SHAPE_NODE
+		// leaf, not just the first.
+		//
+		// CacheGpuLightData() above populates only firstShapeNodeLeaf->lightData_
+		// because its consumer, GpuStaticPropBatcher::submitMultiShape, BROADCASTS
+		// the one returned index into every per-leaf GpuStaticPropInstance. That is
+		// correct for the batcher path.
+		//
+		// It is NOT sufficient for the legacy TG_MultiShape::Render path used by
+		// ground vehicles (GVAppearance): that loops every leaf and each
+		// TG_Shape::Render independently submits its OWN lightData_
+		// (mclib/tgl.cpp:3508). With only the first leaf populated, every other
+		// leaf still carries numLights_==0, so calc_light takes its early-return
+		// and those leaves render at raw albedo -- the exact defect this lane
+		// fixes, just narrowed from "whole vehicle" to "all but one leaf".
+		// Measured: with only CacheGpuLightData(), deterministic A/B poses showed
+		// ZERO pixel change despite the CPU gather demonstrably running.
+		void CacheGpuLightDataAllLeaves();
+
 		// Stage 3.C: re-submit cached light data each frame on update()-skipped frames.
 		// Finds the first SHAPE_NODE leaf and calls ResubmitCachedLightData() on it,
 		// refreshing cachedGpuLightIndex_ without touching s_listOfLights.
