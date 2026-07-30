@@ -90,9 +90,15 @@ tool's own validation): `cook_shoreline.py`, `control_map_tool.py`,
 `overlay_extract.py`, `cook_markings.py` — all take
 `install --png <file> --deploy <dir> --mission <stem>`.
 
-**`visual_height_4x.r32`, `visual_height_mips.r32` and `visual_damp.r32` have no
-per-tool installer** (`visual_heightfield.py` only writes to `--out`). Use
+**`visual_height_4x.r32`, `visual_height_mips.r32`, `visual_damp.r32`,
+`height_delta.r32` and `protected.r8` have no per-tool installer**
+(`visual_heightfield.py` only writes to `--out`). Use
 `check-beauty-sidecars.py --install`, or copy them by hand.
+
+The last two are read by the **editor** (`editor/BeautySidecarPreview.cpp`),
+which falls back to `tests/terrain/beautify/<stem>.beauty/` when the deploy copy
+is absent. That fallback hides the gap in a dev worktree and then dies in a
+shipped install, where no repo dir exists — so install them anyway.
 
 ### Gates
 

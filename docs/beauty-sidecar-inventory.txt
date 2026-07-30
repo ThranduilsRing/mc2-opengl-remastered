@@ -11,7 +11,9 @@
 
 [runtime]
 control_map.png
+height_delta.r32
 overlay_v2.png
+protected.r8
 shoreline_mask.png
 visual_damp.r32
 visual_height_4x.r32

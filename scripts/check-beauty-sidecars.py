@@ -67,9 +67,17 @@ import tempfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Engine files that resolve a `<stem>.beauty/` sidecar path.
+# Files that resolve a `<stem>.beauty/` sidecar path. Found by:
+#   grep -rn "\.beauty" --include=*.cpp --include=*.h .
+# mclib/terrain.cpp is the GAME loader. editor/BeautySidecarPreview.cpp is the
+# EDITOR loader and belongs here for a non-obvious reason: it tries
+# `tests/terrain/beautify/<stem>.beauty/...` as a FALLBACK, so an uninstalled
+# cook still resolves in a dev worktree and the gap stays invisible -- but
+# "Mission Editor.exe" ships in the release, where no repo dir exists and the
+# fallback dies. Same silent-miss bug class, one step further from view.
 ENGINE_SOURCES = [
     "mclib/terrain.cpp",
+    "editor/BeautySidecarPreview.cpp",
 ]
 
 # Sidecars resolved by overwriting the basename of an already-built `.beauty`
