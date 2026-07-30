@@ -7,15 +7,15 @@ WHY THIS EXISTS
 `scripts/check-hardlink-isolation.py` refuses to let a lane deploy into a
 directory whose written artifacts are hardlinked to somebody else's install.
 A refusal with no affordable remedy is just an obstacle, so this is the
-remedy: it makes a private install for a few hundred megabytes instead of
-seven gigabytes.
+remedy: it makes a private install for the ~0.6 GB that actually gets
+written, instead of the full 12 GB.
 
 THE SPLIT
 ---------
-A full MC2 install is ~7 GB / ~28.8k files, and A: had 11.5 GB free when this
-was written -- three naive copies would fill the volume, which is exactly the
-P0 this session already suffered once. But almost all of that is data the game
-only ever READS. So:
+A full MC2 install MEASURES 12.26 GB / 40135 files (mc2-win64-v0.4) and A: had
+8-11 GB free while this was written -- one naive copy does not fit, which is
+exactly the P0 this session already suffered once. But almost all of that is
+data the game only ever READS. So:
 
     data class    -> os.link()        free, instant, zero bytes
     mutated class -> real byte copy   private inode, safe to overwrite
@@ -35,8 +35,8 @@ it does not print a hopeful summary and leave a booby-trapped install behind.
 FAILURE MODES IT REFUSES TO PAPER OVER
 --------------------------------------
 * --from and --to on DIFFERENT VOLUMES. os.link() cannot span volumes, so
-  every file would silently fall back to a byte copy and the "cheap" 300 MB
-  install would land as 7 GB. Checked BEFORE anything is written, by st_dev,
+  every file would silently fall back to a byte copy and the measured 0.64 GB
+  install would land as 12.26 GB. Checked BEFORE anything is written, by st_dev,
   and fatal. This is the single most expensive way this tool could fail, and
   it is the one a per-file try/except would hide.
 * --to already exists and is non-empty. Refused; the caller picks a new name.
@@ -208,7 +208,7 @@ def build(src: Path, dst: Path, to_link, to_copy) -> tuple[int, int]:
                  f"  {linked} linked / {copied} copied before this point; "
                  f"{dst} is INCOMPLETE -- delete it and re-run.\n"
                  "  Not falling back to a byte copy: that would silently turn "
-                 "a ~300 MB operation into a ~7 GB one, past a disk guard "
+                 "a sub-GB operation into a 12 GB one, past a disk guard "
                  "that already approved the smaller figure.", 4)
         linked += 1
     for rel, _size in to_copy:
@@ -356,8 +356,8 @@ def main(argv=None) -> int:
         fail(f"--from and --to are on DIFFERENT VOLUMES.\n"
              f"    from: {src}\n    to:   {dst}\n"
              "  os.link() cannot span volumes, so every one of these files "
-             "would fall back to a byte copy: a ~7 GB full install instead of "
-             "a few hundred MB. Choose a --to on the same volume as --from.", 2)
+             "would fall back to a byte copy: a 12 GB full install instead of "
+             "well under one. Choose a --to on the same volume as --from.", 2)
 
     out(f"planning: {src}  ->  {dst}")
     to_link, to_copy, link_bytes, copy_bytes = plan(src, guard)

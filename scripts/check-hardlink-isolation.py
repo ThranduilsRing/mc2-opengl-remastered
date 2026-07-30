@@ -43,10 +43,11 @@ ask that would have returned the true answer. This script is that question.
 
 HARDLINKS ARE NOT THE ENEMY
 ---------------------------
-The A: volume had 11.5 GB free when this was written and a full install is
-~7 GB, so per-lane full copies are not affordable -- an earlier lane made a
-7 GB private install for free precisely BY hardlinking, which was the right
-instinct. The rule is not "no hardlinks", it is:
+The A: volume had 8-11 GB free while this was written and a full install
+MEASURES 12.26 GB / 40135 files (mc2-win64-v0.4), so a single naive per-lane
+copy does not even fit -- and an earlier lane got a private install for free
+precisely BY hardlinking, which was the right instinct. The rule is not "no
+hardlinks", it is:
 
     data that is only ever READ   -> share it, linking is free and correct
     artifacts that get WRITTEN    -> must be a private inode per lane
@@ -105,7 +106,7 @@ depended on a hardcoded search list would have the same blind spot as the
 path-keyed registries it exists to backstop.
 
 Pure stdlib. Read-only. No build. Sub-second on the default bounded roots
-(~1.5k files vs ~28.8k for a full install).
+(~1.1-1.5k files vs the 28.8k-40k in a full install).
 
 Examples:
   # before deploying: is this dir mine?
