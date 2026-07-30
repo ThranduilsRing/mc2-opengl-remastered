@@ -2649,6 +2649,10 @@ class gosRenderer {
             GLint padGlowSpill                       = -1;  // float (wu)
             GLint padGlowMapSide                     = -1;  // int (0 = grid absent)
             GLint overlayCementShadowMatch           = -1;  // OVERLAY-CEMENT-SHADOW-MATCH-1
+            GLint overlayCementAdopt                 = -1;  // OVERLAY-CEMENT-ADOPT-1
+            GLint cementAtlasOv                      = -1;  // OVERLAY-CEMENT-ADOPT-1
+            GLint cementGridSideOv                   = -1;  // OVERLAY-CEMENT-ADOPT-1
+            GLint cementWUPTOv                       = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint padGlowHalfMap                     = -1;  // float (wu)
         };
         OverlayUniformLocs_ overlayLocs_;
@@ -5542,6 +5546,12 @@ void gosRenderer::init() {
         // declare it, so the loc stays -1 there and the upload is skipped).
         locs.overlayCementShadowMatch =
             glGetUniformLocation(shp, "u_overlayCementShadowMatch");
+        // OVERLAY-CEMENT-ADOPT-1. Absent from decal.frag => resolve to -1 there
+        // => every upload below is skipped. Safe by construction.
+        locs.overlayCementAdopt = glGetUniformLocation(shp, "u_overlayCementAdopt");
+        locs.cementAtlasOv      = glGetUniformLocation(shp, "u_cementAtlasOv");
+        locs.cementGridSideOv   = glGetUniformLocation(shp, "u_cementGridSideOv");
+        locs.cementWUPTOv       = glGetUniformLocation(shp, "u_cementWUPTOv");
         locs.padGlowHalfMap = glGetUniformLocation(shp, "u_padGlowHalfMap");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
@@ -9633,6 +9643,22 @@ void __stdcall gos_BindLightDataStorageBlock(HGOSRENDERMATERIAL material)
 		glShaderStorageBlockBinding(shp, idx, LIGHT_DATA_SSBO_BINDING);
 }
 
+// VEHICLE-LIGHTING-PATH-1: expose the night light-pool bind/upload to callers
+// that only hold an HGOSRENDERMATERIAL (mclib's ShapeRenderer), mirroring
+// gos_BindLightDataStorageBlock above. The two GPU batchers call
+// UploadObjectLightPoolUniforms directly with a raw GL program id
+// (gos_mech_batcher.cpp:2519, gos_static_prop_batcher.cpp:6860/:8084); the
+// legacy lit path had no way to reach it, which is why vehicles were the only
+// object class receiving NO night pool light at all.
+// Safe when gated off: UploadObjectLightPoolUniforms force-uploads
+// u_numPoolLights=0, so calcLightPools returns exact vec3(0.0).
+void __stdcall gos_UploadObjectLightPools(HGOSRENDERMATERIAL material)
+{
+	if (!material || !material->getShader() || !material->getShader()->shp_)
+		return;
+	gos_terrain_lighting::UploadObjectLightPoolUniforms(material->getShader()->shp_);
+}
+
 void __stdcall gos_SetRenderMaterialUniformBlockBindingPoint(HGOSRENDERMATERIAL material, const char* name, uint32_t slot)
 {
 	gosASSERT(material && name);
@@ -10786,6 +10812,47 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
             return (v && v[0] && v[0] != '0') ? 1 : 0;
         }();
         glUniform1i(L.overlayCementShadowMatch, s_overlayCementShadowMatch);
+    }
+
+    // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1). This helper is the SINGLE
+    // chokepoint every binder of terrain_overlay.frag routes through, so
+    // uploading here covers BOTH overlay bind sites (drawTerrainOverlays and
+    // drawDecalStaticBatch) — MC2_TERRAIN_INDIRECT_OVERLAY=0 flips which one is
+    // live and cannot silently lose the feature.
+    //
+    // Bind the SAME cement atlas the chunk pass samples, at the SAME unit 3
+    // (kChunkTexUnitCement), so the adopted albedo is identical to the terrain's
+    // by construction. Unit 3 is free on the overlay path (it guards only unit 0
+    // for tex1) and is not one of the shadow/height/normal units (5, 9-11, 13).
+    if (L.overlayCementAdopt >= 0) {
+        extern GLuint gos_terrain_indirect_getCementAtlasGLTex();
+        extern int    gos_terrain_indirect_getCementAtlasGridSide();
+        extern bool   gos_terrain_indirect_isCementAtlasReady();
+        extern float  gos_terrain_indirect_getWorldUnitsPerVertex();
+
+        static const int s_overlayCementAdopt = [] {
+            const char* v = getenv("MC2_OVERLAY_CEMENT_ADOPT");
+            return (v && v[0] == '0') ? 0 : 1;   // default ON
+        }();
+        glUniform1i(L.overlayCementAdopt, s_overlayCementAdopt);
+
+        // gridSide force-uploads 0 unless the gate is on AND the atlas is
+        // resident, which disarms the ALBEDO adoption in the frag independently
+        // of the lighting reconciliation. Never sample an unbound sampler.
+        const bool cementReady =
+            (s_overlayCementAdopt != 0) && gos_terrain_indirect_isCementAtlasReady();
+        if (L.cementAtlasOv >= 0) {
+            glUniform1i(L.cementAtlasOv, 3);
+            glActiveTexture(GL_TEXTURE0 + 3);
+            glBindTexture(GL_TEXTURE_2D,
+                          cementReady ? gos_terrain_indirect_getCementAtlasGLTex() : 0);
+            glActiveTexture(GL_TEXTURE0);
+        }
+        if (L.cementGridSideOv >= 0)
+            glUniform1i(L.cementGridSideOv,
+                        cementReady ? gos_terrain_indirect_getCementAtlasGridSide() : 0);
+        if (L.cementWUPTOv >= 0)
+            glUniform1f(L.cementWUPTOv, gos_terrain_indirect_getWorldUnitsPerVertex());
     }
 
     // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as

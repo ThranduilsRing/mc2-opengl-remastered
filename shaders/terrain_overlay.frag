@@ -122,6 +122,93 @@ uniform PREC float u_padGlowHalfMap; // mapSide * 128 / 2 (wu)
 // chunk grid) => never armed => the SSBO is not read.
 uniform int u_overlayCementShadowMatch;
 
+// OVERLAY-CEMENT-ADOPT-1 (gate MC2_OVERLAY_CEMENT_ADOPT, default 1 = ON).
+// This is the delivered cure for the long-running "the concrete is a patchwork /
+// the transition tiles are the wrong colour" report, and it SUPERSEDES
+// MC2_OVERLAY_CEMENT_SHADOW_MATCH above (which is retained only as the narrow
+// legacy killswitch; the adopt path applies that same static-shadow exemption
+// and more).
+//
+// THE SEAM, from source. One physical concrete surface is drawn partly by
+// terrain_lod_chunk.frag and partly by THIS shader, and the two compute:
+//
+//   chunk :  base = cementAtlas * u_missionFlatLight        (:985)
+//            normalLight -> 1.0 on concrete                 (:1868-1889)
+//            shadow      -> dynamicShadow only              (:1937)
+//            NO distance fog anywhere in the shader
+//   overlay: c = decalTex * vec3(0.82,0.80,0.76) * flatLight  (a DIFFERENT
+//            texture, plus a hard ~18-20% darkening)
+//            shadow = staticShadow * dynamicShadow           (static NOT dropped)
+//            c = mix(c, vec3(0.58,0.65,0.75), fogAmount)     (IN-SHADER FOG,
+//                                                             up to 0.70)
+//
+// FOUR disagreements, not one. CEMENT-PATCHY-CAUSE-1 found and gated only the
+// static-shadow term, measured it at 0.0000%, and correctly reported it was not
+// the cure. The term it missed is the DISTANCE FOG, and that term is what its
+// own data was already showing:
+//   * its measured seam step GROWS with camera distance (runway_ground -4.95 L,
+//     runway_mid -16.93 L, runway_overview -14.81 L). Only a distance-dependent
+//     term can do that, and fog is the only one in the difference set.
+//   * its RenderDoc pixel values are BLUE-SHIFTED on the overlay side only:
+//     overlay eid 3678 wrote [0.301,0.3083,0.3623] (B > R); terrain eid 408
+//     wrote [0.1515,0.1836,0.1495] (B lowest). The overlay's own albedo tint is
+//     WARM (0.82/0.80/0.76, B lowest) and cannot produce a blue-dominant pixel.
+//     The fog colour (0.58,0.65,0.75) is blue-dominant.
+// The overlay layer is DOUBLE-FOGGED: its own in-shader fog, then the shared
+// screen-space edge_fog/fog_oob that both layers receive. That lifts and blues
+// it away from the terrain concrete progressively with distance -- the
+// "patchwork" as seen at normal gameplay altitude.
+//
+// THE DESIGN CALL (user-ratified): the TERRAIN path wins on a cement tile. It
+// owns ~75% of the pixels, it is flat-lit by construction, and that flat-lit
+// look is what the user has ratified as correct (mc2_01 concrete, the mc2_03
+// pads). So on cement this shader adopts the chunk frag's expression exactly.
+//
+// SCOPING (user requirement 3 -- "roads/runways are their own layer"):
+//   bit 31 set, bit 24 CLEAR -> genuine concrete transition tile:
+//        adopt the cement ATLAS albedo (user requirement 1, "the transition
+//        tiles should just use the same concrete texture"), drop the warm tint,
+//        drop static shadow, skip in-shader fog.
+//   bit 31 set, bit 24 SET   -> authored road/runway art ON a cement base:
+//        KEEP its own albedo untouched; reconcile lighting only (drop static
+//        shadow, skip in-shader fog). Repainting here would be the albedo swap
+//        the user rejected twice as "WAY worse".
+//   bit 31 clear             -> not cement, or class unknown: LEAVE ENTIRELY
+//        ALONE. Ambiguity always resolves to "do nothing".
+//
+// Cost: zero new bindings and zero new plumbing on the class channel -- the
+// cement-word SSBO is already bound at binding 25 for PAD-AREA-GLOW-1, and the
+// cement atlas is the same texture the chunk pass samples. u_padGlowMapSide == 0
+// (legacy terrain path, no chunk grid) => never armed => the SSBO is not read.
+// Gate OFF => u_overlayCementAdopt uploads 0 => the first compare in
+// overlayCementWord() short-circuits => byte-identical.
+uniform int         u_overlayCementAdopt;
+uniform sampler2D   u_cementAtlasOv;
+uniform int         u_cementGridSideOv;   // 0 = atlas not resident
+uniform PREC float  u_cementWUPTOv;       // world units per cement tile
+
+// Returns this fragment's own 128wu cement word, or 0 when the adopt path is
+// disarmed / the chunk grid is absent (in which case the SSBO is NOT read).
+uint overlayCementWord(PREC vec2 wp) {
+    if (u_overlayCementAdopt == 0 || u_padGlowMapSide <= 0) return 0u;
+    int cx = clamp(int(floor((wp.x + u_padGlowHalfMap) / 128.0)), 0, u_padGlowMapSide - 1);
+    int cy = clamp(int(floor((u_padGlowHalfMap - wp.y) / 128.0)), 0, u_padGlowMapSide - 1);
+    return cementWordsPG[cx + cy * u_padGlowMapSide];
+}
+
+// Cement atlas sample, byte-for-byte the same UV math as
+// terrain_lod_chunk.frag:971-985 (cell from the low 16 bits, tile UV from world
+// position, atlas UV from cell + tile) times the same u_missionFlatLight.
+PREC vec3 overlayCementAlbedo(uint cw, PREC vec2 wp) {
+    uint cLayerIdx = cw & 0xFFFFu;
+    int  cGridSide = max(u_cementGridSideOv, 1);
+    int  cCol = int(cLayerIdx) % cGridSide;
+    int  cRow = int(cLayerIdx) / cGridSide;
+    PREC vec2 cTileUV  = fract(vec2(wp.x, -wp.y) / u_cementWUPTOv);
+    PREC vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
+    return texture(u_cementAtlasOv, cAtlasUV).rgb * u_missionFlatLight;
+}
+
 bool overlayOwnTileIsCement(PREC vec2 wp) {
     if (u_overlayCementShadowMatch == 0 || u_padGlowMapSide <= 0) return false;
     int cx = clamp(int(floor((wp.x + u_padGlowHalfMap) / 128.0)), 0, u_padGlowMapSide - 1);
@@ -206,13 +293,33 @@ void main()
     // Intentional border darkening: ~18% under interior cement so the edge reads as
     // deliberate weathered concrete rather than a failed near-match.
     // Warm tilt (B pulled lower than R/G) matches the ochre cast of the solid interior.
-    PREC vec4 c;
-    c.rgb = tex_color.rgb * vec3(0.82, 0.80, 0.76);
-    c.a   = tex_color.a;
+    // OVERLAY-CEMENT-ADOPT-1: classify this fragment once; see the block comment
+    // above. ovCementTile gates the LIGHTING reconciliation (shadow + fog),
+    // ovAdoptAlbedo additionally gates the ALBEDO adoption and is deliberately
+    // the narrower of the two.
+    uint ovCw          = overlayCementWord(WorldPos.xy);
+    bool ovCementTile  = (ovCw & 0x80000000u) != 0u;          // bit 31 valid
+    bool ovPavedArt    = (ovCw & 0x01000000u) != 0u;          // bit 24 road/runway art
+    bool ovAdoptAlbedo = ovCementTile && !ovPavedArt && u_cementGridSideOv > 0;
 
-    // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
-    // albedo (cement transition tint — raw/unburned art).
-    c.rgb *= u_missionFlatLight;
+    PREC vec4 c;
+    // Alpha ALWAYS comes from the decal texture: the marching-squares transition
+    // SHAPE is authored there and must survive the albedo adoption untouched.
+    // Only the colour inside that shape changes.
+    c.a = tex_color.a;
+    if (ovAdoptAlbedo) {
+        // User requirement 1: "the transition tiles should just use the same
+        // concrete texture." Same atlas, same cell, same UV math, same flat
+        // light as the terrain beside it -> no tone step across the seam. The
+        // hardcoded vec3(0.82,0.80,0.76) "intentional border darkening" is
+        // dropped here: that ~18-20% tint IS the user's "weird colored edge".
+        c.rgb = overlayCementAlbedo(ovCw, WorldPos.xy);
+    } else {
+        c.rgb = tex_color.rgb * vec3(0.82, 0.80, 0.76);
+        // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
+        // albedo (cement transition tint — raw/unburned art).
+        c.rgb *= u_missionFlatLight;
+    }
 
     // Discard transparent pixels — cement transitions are binary-alpha tiles.
     // This keeps depth writes and GBuffer1 writes on the cement-visible region only,
@@ -253,6 +360,11 @@ void main()
     // concrete exemption (static shadow dropped, dynamic kept). Gate OFF =>
     // overlayOwnTileIsCement() returns false on its first compare => unchanged.
     if (overlayOwnTileIsCement(WorldPos.xy)) shadow = dynamicShadow;
+    // OVERLAY-CEMENT-ADOPT-1: same exemption, applied to EVERY cement-classified
+    // fragment (concrete transitions AND road/runway art sitting on cement), so
+    // the two shaders agree on the shadow term. Matches terrain_lod_chunk.frag
+    // :1937 `shadow = mix(shadow, dynS, pureConcrete)` on full concrete.
+    if (ovCementTile) shadow = dynamicShadow;
     // DEBUG-VIZ: 30 = dynamic-cast shadow only (isolates building dynamic shadow
     // on cement vs grass), 31 = combined. Grayscale, early-return.
     if (surfaceDebugMode == 30) {
@@ -320,7 +432,18 @@ void main()
         return;
     }
     PREC vec3 fogCol = vec3(0.58, 0.65, 0.75);
-    c.rgb = mix(c.rgb, fogCol, fogAmount);
+    // OVERLAY-CEMENT-ADOPT-1 — THE DOMINANT SEAM TERM. terrain_lod_chunk.frag
+    // applies NO distance fog at all (verified: its only in-shader haze is the
+    // map-edge sky blend at :2172); distance fog for BOTH layers is applied
+    // later, in screen space, by edge_fog/fog_oob. So an overlay fragment is
+    // DOUBLE-FOGGED relative to the terrain fragment beside it, and because the
+    // fog colour is a light blue-grey the overlay drifts lighter and bluer with
+    // distance. That is why the measured seam step grows from -4.95 L at ground
+    // level to -16.93 L at mid altitude, and why the overlay pixel in the
+    // RenderDoc capture is blue-dominant while the terrain pixel is not.
+    // On cement, skip it and let the shared screen-space fog do the job once.
+    if (!ovCementTile)
+        c.rgb = mix(c.rgb, fogCol, fogAmount);
 
     // NIGHT-LIGHT-POOLS-2b: additive light pool AFTER the distance-fog mix —
     // the chunk terrain applies NO distance fog to its pool term, so adding

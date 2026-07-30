@@ -1651,6 +1651,13 @@ def main():
                             # terrain_lod_chunk.frag applies, so the two
                             # shaders stop disagreeing across their seam.
                             "MC2_OVERLAY_CEMENT_SHADOW_MATCH",
+                            # OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): the
+                            # delivered cure -- the overlay adopts the terrain's
+                            # concrete albedo + lighting model on cement tiles
+                            # (incl. skipping its double-applied in-shader fog).
+                            # DEFAULT ON; listed so an explicit =0 revert run is
+                            # not silently dropped by the ENV passthrough guard.
+                            "MC2_OVERLAY_CEMENT_ADOPT",
                             "MC2_CEMENT_ATLAS_DUMP",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
                             "MC2_CEMENT_TRANSITION_FALLBACK",
@@ -2777,6 +2784,12 @@ def main():
                             # "verified via smoke" claim for this gate: the A/B
                             # was never shown to have driven the two arms apart.
                             "MC2_LEGACY_LIT_MC2_FRAME",
+                            # VEHICLE-LIGHTING-PATH-1: default-ON killswitch for
+                            # the GVAppearance CacheGpuLightData() call that
+                            # finally populates the vehicle light row. Must be
+                            # passthrough-allowlisted or an A/B run setting =0
+                            # silently runs the =1 path (ENV_DROP class).
+                            "MC2_VEHICLE_LIT_PATH",
                             # QUIET-DEFAULT-BUILD-1: MC2_DIAG_VERBOSE restores
                             # the ~380 developer diagnostic call sites that a
                             # default build now keeps quiet. Allowlisted so the

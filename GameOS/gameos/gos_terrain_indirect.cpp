@@ -995,6 +995,32 @@ static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 // terrain_lod_chunk.frag consults it.
 static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 
+// cementWord bit 24 = PAVED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1). This tile
+// has a VALID cement word (bit 31) AND carries an authored hard-paved &Overlays
+// id, i.e. a road/runway painted on top of a genuine cement base slot. It marks
+// the ONE case where "this fragment sits on cement" is NOT sufficient licence to
+// repaint it with the concrete atlas: the visible art there is the authored road
+// tile, and replacing it would be exactly the albedo swap the user rejected
+// twice as "WAY worse". terrain_overlay.frag reconciles such a tile's LIGHTING
+// MODEL with the terrain (static-shadow exemption + no in-shader distance fog)
+// but leaves its ALBEDO alone.
+//
+// Inert to every pre-existing reader by construction: bits 30/23/22/19:16/15:0
+// are untouched, and no existing code path masks or compares bit 24.
+static constexpr uint32_t kCementPavedArtBit = 0x01000000u;
+
+// MC2_OVERLAY_CEMENT_ADOPT — 1 = ON (default). See RendererFeatureRegistry.h and
+// terrain_overlay.frag for the full mechanism. Host side, this gate only decides
+// whether the bit-24 marking pass below runs; the frag reads its own uniform.
+// 0 = OFF => no bit 24 written AND the frag uniform uploads 0 => byte-identical.
+static bool OverlayCementAdoptEnabled() {
+    static const bool s = [] {
+        const char* v = getenv("MC2_OVERLAY_CEMENT_ADOPT");
+        return !(v && v[0] == '0');   // default ON
+    }();
+    return s;
+}
+
 // MC2_PAVED_OVERLAY_CLASS — 0 = OFF (default, byte-identical to stock)
 //   1 = LIGHTING mode. Paved-overlay tiles get the same lighting exemption
 //       cement gets (flat-lit), but KEEP their own baked colormap albedo. This
@@ -1009,7 +1035,14 @@ static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 static int PavedOverlayClassMode() {
     static const int s = []() {
         const char* v = getenv("MC2_PAVED_OVERLAY_CLASS");
-        if (!v || !v[0]) return 0;
+        // PAVED-OVERLAY-CLASS-DEFAULT-ON-1 (CONCRETE-DELIVER-1): promoted to
+        // default 1 (LIGHTING mode). Measured by the originating lane to close
+        // the classification gap to residual 0 on all five maps, best on mc2_10
+        // (sd -16% at saved_204937) -- that gap is why mc2_10's runway is 100%
+        // unclassified and renders terrain-lit grey while mc2_01's, mostly
+        // classified, renders concrete-toned. Mode 2 (albedo swap) stays
+        // opt-in. MC2_PAVED_OVERLAY_CLASS=0 restores stock.
+        if (!v || !v[0]) return 1;
         if (v[0] == '1') return 1;
         if (v[0] == '2') return 2;
         return 0;
@@ -1725,6 +1758,49 @@ static void PopulateRecipeCementWords() {
     // denominator and the two arms stay directly comparable.
     //
     // Gate OFF => not a single word is written => byte-identical to stock.
+    // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): mark tiles that are BOTH
+    // genuine cement (valid word) AND carry authored hard-paved road/runway art,
+    // so terrain_overlay.frag can reconcile their lighting without repainting
+    // their albedo. This is the requirement-3 scoping guard ("roads/runways are
+    // their own layer") and it is deliberately CONSERVATIVE: it only ever ADDS a
+    // reason to leave a fragment's art alone. A tile with no valid cement word is
+    // never marked and is never touched by the adopt path at all.
+    //
+    // Runs BEFORE the PavedOverlayClass pass below, which early-outs on tiles
+    // that already carry bit 31 and therefore never revisits these.
+    if (OverlayCementAdoptEnabled() && Terrain::mapData) {
+        long pavedArtMarked = 0;
+        for (size_t vn = 0; vn < N; ++vn) {
+            const long mx = (long)vn % mapSide;
+            const long my = (long)vn / mapSide;
+            if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
+            if (vn >= chunkCementWords.size()) continue;
+            // Only genuine cement tiles are candidates -- bit 24 is meaningless
+            // without bit 31 and must never be the sole content of a word.
+            if ((chunkCementWords[vn] & kCementLayerValidBit) == 0u) continue;
+
+            Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+            Terrain::mapData->getOverlay(my, mx, ovT, ovO);
+            if (ovT == INVALID_OVERLAY || !IsPavedOverlayType(ovT)) continue;
+
+            const uint32_t word = chunkCementWords[vn] | kCementPavedArtBit;
+            chunkCementWords[vn] = word;
+            memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
+            g_denseRecipeDirty[vn] = true;
+            ++pavedArtMarked;
+        }
+        static const bool s_adoptTrace = [] {
+            const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
+            return v && v[0] == '1' && v[1] == '\0';
+        }();
+        if (s_adoptTrace) {
+            printf("[OVERLAY_CEMENT_ADOPT v1] event=paved_art_marked mission=%s "
+                   "tiles=%ld\n",
+                   (::missionName[0] ? ::missionName : "unknown"), pavedArtMarked);
+            fflush(stdout);
+        }
+    }
+
     if (PavedOverlayClassMode() != 0 && Terrain::mapData) {
         const int  mode = PavedOverlayClassMode();
         // Mode 2 only: a map-wide solid cement layer to adopt. A 1-ring donor
