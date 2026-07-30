@@ -130,7 +130,7 @@ def main():
         # unactivated, and ImageGrab reads its on-screen pixels regardless.
         if nofocus.allow_foreground():
             u32.ShowWindow(h, 9)          # SW_RESTORE
-            u32.SetForegroundWindow(h)
+            nofocus.set_foreground_window(h)
         time.sleep(2)
         # Synthetic keystrokes land in whatever window has focus -- forbidden
         # unless the session is user-present (BACKGROUND-SMOKE-1).
@@ -158,7 +158,7 @@ def main():
             u32.keybd_event(0x12, 0, 0, 0)  # ALT tap unlocks SetForegroundWindow
             u32.keybd_event(0x12, 0, 2, 0)
             u32.SetWindowPos(h, -1, 60, 60, 0, 0, 0x0001)  # HWND_TOPMOST, NOSIZE
-            u32.SetForegroundWindow(h)
+            nofocus.set_foreground_window(h)
             time.sleep(0.8)
             c = wintypes.RECT()
             u32.GetClientRect(h, ctypes.byref(c))

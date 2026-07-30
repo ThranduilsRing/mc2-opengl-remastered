@@ -167,7 +167,7 @@ def popen_kwargs(show_window: bool = False, **extra) -> dict:
 
 
 def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
-                          proc: "object" = None) -> "object":
+                          proc: "object" = None, force: bool = False) -> "object":
     """Move the child's top-level window off the visible desktop, unactivated.
 
     WHY: STARTUPINFO's SW_SHOWMINNOACTIVE governs only the first
@@ -193,7 +193,10 @@ def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
     """
     if sys.platform != "win32" or allow_foreground():
         return None
-    if os.environ.get("MC2_HARNESS_PARK", "") in ("", "0"):
+    # force=True: the caller KNOWS its capture path reads pixels via the
+    # engine's glReadPixels FBO readback, not the desktop composite, so an
+    # offscreen window is not merely safe but correct (run_visual_capture).
+    if not force and os.environ.get("MC2_HARNESS_PARK", "") in ("", "0"):
         return None
 
     import ctypes

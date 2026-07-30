@@ -59,6 +59,31 @@ TRANSPORT_PASSTHROUGH = frozenset({
     "MC2_CAPTURE_ENV_DECLARE",
 })
 
+#: HARNESS-CONTROL vars (BACKGROUND-SMOKE-1). These govern WINDOWING, FOCUS and
+#: CURSOR -- where the OS puts the window and who owns the pointer -- not what
+#: the renderer draws into it. They are harness plumbing and must ALWAYS reach
+#: the child, because the alternative is an agent run taking over the user's
+#: display while he is using the machine for something else.
+#:
+#: This is deliberately a SEPARATE class from TRANSPORT_PASSTHROUGH so the
+#: sidecar can record them under their own key: a reader must be able to tell
+#: "the harness forced this" from "the operator declared a render gate".
+#:
+#: HONESTY NOTE -- MC2_WINDOWED and MC2_WIDTH/MC2_HEIGHT are not pixel-neutral.
+#: They change the DRAWABLE SIZE (fullscreen-desktop pins the drawable to the
+#: desktop; windowed pins it to ResolutionX/Y), so they can change a capture's
+#: output resolution. That is why they are recorded explicitly rather than
+#: folded into `effective` alone -- golden provenance must show them.
+HARNESS_CONTROL = frozenset({
+    # Never take the display fullscreen for an agent run.
+    "MC2_WINDOWED",
+    "MC2_WIDTH",
+    "MC2_HEIGHT",
+    # Never ClipCursor, never warp the pointer, never activate the window
+    # (drives SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN engine-side).
+    "MC2_NO_CURSOR_GRAB",
+})
+
 #: Declaration channel for PROGRAMMATIC callers.
 #:
 #: `--env-declare` covers a human at a shell. But in-repo harnesses
@@ -105,7 +130,7 @@ def scrubbable_ambient(environ: Mapping[str, str] | None = None) -> dict[str, st
     """Ambient MC2_* vars that are NOT transport plumbing -- i.e. the ones that
     can change what the engine renders. These are the contaminants."""
     return {k: v for k, v in ambient_mc2(environ).items()
-            if k not in TRANSPORT_PASSTHROUGH}
+            if k not in TRANSPORT_PASSTHROUGH and k not in HARNESS_CONTROL}
 
 
 def build_pinned_env(
@@ -136,10 +161,16 @@ def build_pinned_env(
     scrubbed = scrubbable_ambient(src)
     passthrough = {k: v for k, v in ambient_mc2(src).items()
                    if k in TRANSPORT_PASSTHROUGH}
+    # BACKGROUND-SMOKE-1: windowing/focus/cursor always survives the scrub.
+    # Ambient value first; a harness_set below still wins, which is what makes
+    # the no-focus default apply even to a totally clean shell.
+    harness_control = {k: v for k, v in ambient_mc2(src).items()
+                       if k in HARNESS_CONTROL}
 
     # Base: the real environment with EVERY behaviour-affecting MC2_* removed.
     env = {k: v for k, v in src.items() if not k.startswith(PREFIX)}
     env.update(passthrough)
+    env.update(harness_control)
 
     # A declared var overrides the scrub -- that is the whole point of declaring.
     # Track which declarations rescued an ambient value vs introduced a new one,
@@ -162,6 +193,13 @@ def build_pinned_env(
         "declared": dict(sorted(declared.items())),
         "declared_via_channel": channel_names,
         "transport_passthrough": dict(sorted(passthrough.items())),
+        # BACKGROUND-SMOKE-1: windowing/focus/cursor actually delivered to the
+        # child, from EITHER the ambient shell or harness_sets. Recorded on its
+        # own key because MC2_WINDOWED / MC2_WIDTH / MC2_HEIGHT move the
+        # drawable size and therefore can move a golden's resolution -- a
+        # reader must see them without digging through `effective`.
+        "harness_control": {k: v for k, v in sorted(env.items())
+                            if k in HARNESS_CONTROL},
         # Contaminants that were present in the shell and REMOVED. Non-empty
         # here means the operator's shell was dirty; the run is still correct
         # (they were scrubbed) but the ratchet flags it so the shell gets fixed.

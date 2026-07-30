@@ -144,6 +144,11 @@ run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
 # VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
 # manufactures evidence (mc2_10: byte-identical frames, 4801 logged rejects).
+# BACKGROUND-SMOKE-1: an agent run must never take focus, go fullscreen, or
+# grab the user's cursor. Three bypasses are checked: a bare Popen of the
+# engine, an env policy that STRIPS the windowing vars before they reach the
+# child (how the capture path silently regressed), and raw focus/cursor Win32.
+run_check "background_launch"      "py -3 scripts/check-background-launch.py --quiet"
 run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.py"
 # QUIET-DEFAULT-BUILD-1: a DEFAULT build must not grow new unconditional
 # diagnostic output -- that log is what a real user sees on a normal launch.
