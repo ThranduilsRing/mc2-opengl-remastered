@@ -164,12 +164,15 @@ uniform int u_overlayCementShadowMatch;
 // look is what the user has ratified as correct (mc2_01 concrete, the mc2_03
 // pads). So on cement this shader adopts the chunk frag's expression exactly.
 //
-// SCOPING (user requirement 3 -- "roads/runways are their own layer"):
-//   bit 31 set, bit 24 CLEAR -> genuine concrete transition tile:
+// SCOPING (user requirement 3 -- "runways, roads, other overlays are their own
+// layer"):
+//   bit 31 set, bit 24 CLEAR -> genuine concrete transition tile, i.e. cement
+//        with NO authored overlay art on it at all:
 //        adopt the cement ATLAS albedo (user requirement 1, "the transition
 //        tiles should just use the same concrete texture"), drop the warm tint,
 //        drop static shadow, skip in-shader fog.
-//   bit 31 set, bit 24 SET   -> authored road/runway art ON a cement base:
+//   bit 31 set, bit 24 SET   -> ANY authored &Overlays art ON a cement base
+//        (paved road, runway, dirt road, ROUGH, bridge, crossings):
 //        KEEP its own albedo untouched; reconcile lighting only (drop static
 //        shadow, skip in-shader fog). Repainting here would be the albedo swap
 //        the user rejected twice as "WAY worse".
@@ -186,6 +189,10 @@ uniform int         u_overlayCementAdopt;
 uniform sampler2D   u_cementAtlasOv;
 uniform int         u_cementGridSideOv;   // 0 = atlas not resident
 uniform PREC float  u_cementWUPTOv;       // world units per cement tile
+// OVERLAY-CEMENT-SEAM-PARITY-1 (CONCRETE-DELIVER-2): mirror of the chunk frag's
+// u_cementAtlasSeamFix (gate MC2_CEMENT_ATLAS_SEAM_FIX, default ON). Uploaded
+// from the SAME env read so the two shaders can never disagree on it.
+uniform int         u_cementSeamFixOv;
 
 // Returns this fragment's own 128wu cement word, or 0 when the adopt path is
 // disarmed / the chunk grid is absent (in which case the SSBO is NOT read).
@@ -196,16 +203,33 @@ uint overlayCementWord(PREC vec2 wp) {
     return cementWordsPG[cx + cy * u_padGlowMapSide];
 }
 
-// Cement atlas sample, byte-for-byte the same UV math as
-// terrain_lod_chunk.frag:971-985 (cell from the low 16 bits, tile UV from world
-// position, atlas UV from cell + tile) times the same u_missionFlatLight.
+// Cement atlas sample, the same UV math as terrain_lod_chunk.frag:965-985 (cell
+// from the low 16 bits, tile UV from world position, atlas UV from cell + tile)
+// times the same u_missionFlatLight.
+//
+// OVERLAY-CEMENT-SEAM-PARITY-1 (CONCRETE-DELIVER-2): the original
+// OVERLAY-CEMENT-ADOPT-1 landing claimed "byte-for-byte the same UV math" but
+// OMITTED the chunk frag's CEMENT-ATLAS-SEAM-1 half-texel inset (:976-980),
+// which is DEFAULT ON. Without it the adopted sample runs to the raw cell edge,
+// so within a half-texel of every 128wu tile border the bilinear tap reaches
+// into the NEIGHBOURING atlas cell -- a different cement layer -- and lays a thin
+// wrong-coloured fringe along exactly the tile boundaries the adopt path was
+// added to make seamless. That is the same artifact class the user reports as a
+// "weird coloured edge", so shipping the adoption without the inset would have
+// traded one edge for another. Inset here, from the SAME gate, same formula.
 PREC vec3 overlayCementAlbedo(uint cw, PREC vec2 wp) {
     uint cLayerIdx = cw & 0xFFFFu;
     int  cGridSide = max(u_cementGridSideOv, 1);
     int  cCol = int(cLayerIdx) % cGridSide;
     int  cRow = int(cLayerIdx) / cGridSide;
-    PREC vec2 cTileUV  = fract(vec2(wp.x, -wp.y) / u_cementWUPTOv);
-    PREC vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
+    PREC vec2 cTileUV   = fract(vec2(wp.x, -wp.y) / u_cementWUPTOv);
+    PREC vec2 cSampleUV = cTileUV;
+    if (u_cementSeamFixOv != 0) {
+        PREC float cCellPx = float(textureSize(u_cementAtlasOv, 0).x) / float(cGridSide);
+        PREC float cInset  = 0.5 / max(cCellPx, 1.0);
+        cSampleUV = clamp(cTileUV, vec2(cInset), vec2(1.0 - cInset));
+    }
+    PREC vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
     return texture(u_cementAtlasOv, cAtlasUV).rgb * u_missionFlatLight;
 }
 
@@ -299,8 +323,14 @@ void main()
     // the narrower of the two.
     uint ovCw          = overlayCementWord(WorldPos.xy);
     bool ovCementTile  = (ovCw & 0x80000000u) != 0u;          // bit 31 valid
-    bool ovPavedArt    = (ovCw & 0x01000000u) != 0u;          // bit 24 road/runway art
-    bool ovAdoptAlbedo = ovCementTile && !ovPavedArt && u_cementGridSideOv > 0;
+    // bit 24 = ANY authored &Overlays art on this cement tile (roads, runways,
+    // dirt tracks, ROUGH, bridges). OVERLAY-CEMENT-ARTGUARD-1 widened this from
+    // "hard-paved ids only": the narrow form left DIRT_ROAD / ROUGH /
+    // TWO_LANE_DIRT_ROAD / the dirt-damaged crossings / OBRIDGE / DAMAGED_BRIDGE
+    // unmarked, so authored art of those types sitting on a cement base slot
+    // would have been overpainted with plain concrete.
+    bool ovAuthoredArt = (ovCw & 0x01000000u) != 0u;          // bit 24
+    bool ovAdoptAlbedo = ovCementTile && !ovAuthoredArt && u_cementGridSideOv > 0;
 
     PREC vec4 c;
     // Alpha ALWAYS comes from the decal texture: the marching-squares transition

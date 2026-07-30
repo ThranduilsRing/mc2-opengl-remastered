@@ -2653,6 +2653,7 @@ class gosRenderer {
             GLint cementAtlasOv                      = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint cementGridSideOv                   = -1;  // OVERLAY-CEMENT-ADOPT-1
             GLint cementWUPTOv                       = -1;  // OVERLAY-CEMENT-ADOPT-1
+            GLint cementSeamFixOv                    = -1;  // OVERLAY-CEMENT-SEAM-PARITY-1
             GLint padGlowHalfMap                     = -1;  // float (wu)
         };
         OverlayUniformLocs_ overlayLocs_;
@@ -5552,6 +5553,8 @@ void gosRenderer::init() {
         locs.cementAtlasOv      = glGetUniformLocation(shp, "u_cementAtlasOv");
         locs.cementGridSideOv   = glGetUniformLocation(shp, "u_cementGridSideOv");
         locs.cementWUPTOv       = glGetUniformLocation(shp, "u_cementWUPTOv");
+        // OVERLAY-CEMENT-SEAM-PARITY-1.
+        locs.cementSeamFixOv    = glGetUniformLocation(shp, "u_cementSeamFixOv");
         locs.padGlowHalfMap = glGetUniformLocation(shp, "u_padGlowHalfMap");
     };
     { ZoneScopedN("gosRenderer::init overlayUniforms"); cacheOverlayLocs(overlayProg_, overlayLocs_); cacheOverlayLocs(decalProg_, decalLocs_); }
@@ -10853,6 +10856,21 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
                         cementReady ? gos_terrain_indirect_getCementAtlasGridSide() : 0);
         if (L.cementWUPTOv >= 0)
             glUniform1f(L.cementWUPTOv, gos_terrain_indirect_getWorldUnitsPerVertex());
+        // OVERLAY-CEMENT-SEAM-PARITY-1 (CONCRETE-DELIVER-2): the chunk frag
+        // applies a half-texel inset to its cement-atlas sample
+        // (CEMENT-ATLAS-SEAM-1, kTglcCementAtlasSeamFix in
+        // gos_terrain_lod_chunk.cpp:73, DEFAULT ON). The adopt path claimed
+        // identical UV math but omitted it, which would leave a half-texel
+        // neighbour-cell bleed along every 128wu tile border INSIDE the region
+        // the adoption exists to make seamless. Read the SAME env var with the
+        // SAME default so the two shaders cannot drift apart.
+        if (L.cementSeamFixOv >= 0) {
+            static const int s_cementSeamFixOv = [] {
+                const char* v = getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
+                return (v && v[0] == '0') ? 0 : 1;   // default ON, matches the chunk
+            }();
+            glUniform1i(L.cementSeamFixOv, s_cementSeamFixOv);
+        }
     }
 
     // NIGHT-LIGHT-POOLS-2b: decals take the same additive light-pool term as

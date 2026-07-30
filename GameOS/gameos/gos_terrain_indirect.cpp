@@ -995,19 +995,33 @@ static constexpr uint32_t kCementOwnAlphaBit = 0x00800000u;
 // terrain_lod_chunk.frag consults it.
 static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 
-// cementWord bit 24 = PAVED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1). This tile
-// has a VALID cement word (bit 31) AND carries an authored hard-paved &Overlays
-// id, i.e. a road/runway painted on top of a genuine cement base slot. It marks
-// the ONE case where "this fragment sits on cement" is NOT sufficient licence to
-// repaint it with the concrete atlas: the visible art there is the authored road
-// tile, and replacing it would be exactly the albedo swap the user rejected
-// twice as "WAY worse". terrain_overlay.frag reconciles such a tile's LIGHTING
-// MODEL with the terrain (static-shadow exemption + no in-shader distance fog)
-// but leaves its ALBEDO alone.
+// cementWord bit 24 = AUTHORED-ART-ON-CEMENT (OVERLAY-CEMENT-ADOPT-1, widened by
+// OVERLAY-CEMENT-ARTGUARD-1 / CONCRETE-DELIVER-2). This tile has a VALID cement
+// word (bit 31) AND carries an authored &Overlays id, i.e. hand-placed art
+// painted on top of a genuine cement base slot. It marks the case where "this
+// fragment sits on cement" is NOT sufficient licence to repaint it with the
+// concrete atlas: the visible art there is the authored overlay tile, and
+// replacing it would be exactly the albedo swap the user rejected twice as "WAY
+// worse". terrain_overlay.frag reconciles such a tile's LIGHTING MODEL with the
+// terrain (static-shadow exemption + no in-shader distance fog) but leaves its
+// ALBEDO alone.
+//
+// WIDENED FROM IsPavedOverlayType() TO "ANY AUTHORED OVERLAY" (CONCRETE-DELIVER-2).
+// The original landing marked only the 9 hard-paved ids, which left EIGHT authored
+// overlay types unmarked -- DIRT_ROAD(0), ROUGH(2), TWO_LANE_DIRT_ROAD(5),
+// X_DIRT_2LANEDIRT(9), X_DIRT_DAMAGED(10), X_2LANEDIRT_DAMAGED(13), OBRIDGE(14),
+// DAMAGED_BRIDGE(16). Any of those sitting on a cement base slot (a dirt track
+// running onto an apron, a bridge deck approaching a paved pad) would have been
+// classified as a bare cement transition and had its authored art OVERPAINTED with
+// plain concrete -- silently deleting hand-placed map art. The user's scoping was
+// "runways, roads, OTHER OVERLAYS are their own layer", so the guard is the
+// presence of authored art, not its paved-ness. Ambiguity resolves to do-nothing:
+// only a cement tile with NO authored overlay at all is treated as a genuine
+// concrete transition and repainted.
 //
 // Inert to every pre-existing reader by construction: bits 30/23/22/19:16/15:0
 // are untouched, and no existing code path masks or compares bit 24.
-static constexpr uint32_t kCementPavedArtBit = 0x01000000u;
+static constexpr uint32_t kCementAuthoredArtBit = 0x01000000u;
 
 // MC2_OVERLAY_CEMENT_ADOPT — 1 = ON (default). See RendererFeatureRegistry.h and
 // terrain_overlay.frag for the full mechanism. Host side, this gate only decides
@@ -1035,14 +1049,43 @@ static bool OverlayCementAdoptEnabled() {
 static int PavedOverlayClassMode() {
     static const int s = []() {
         const char* v = getenv("MC2_PAVED_OVERLAY_CLASS");
-        // PAVED-OVERLAY-CLASS-DEFAULT-ON-1 (CONCRETE-DELIVER-1): promoted to
-        // default 1 (LIGHTING mode). Measured by the originating lane to close
-        // the classification gap to residual 0 on all five maps, best on mc2_10
-        // (sd -16% at saved_204937) -- that gap is why mc2_10's runway is 100%
-        // unclassified and renders terrain-lit grey while mc2_01's, mostly
-        // classified, renders concrete-toned. Mode 2 (albedo swap) stays
-        // opt-in. MC2_PAVED_OVERLAY_CLASS=0 restores stock.
-        if (!v || !v[0]) return 1;
+        // PAVED-OVERLAY-CLASS-DEFAULT-ON-1 (CONCRETE-DELIVER-1) promoted this to
+        // default 1. CONCRETE-DELIVER-2 REVERTS THAT to default 0, because the
+        // justification it shipped was a claim a later lane had already measured
+        // and retracted IN WRITING:
+        //
+        //   .claude/CEMENT-EDGE-CURVE-1-STATUS.md sec.4, measured at the user's
+        //   own night poses: mode 1 produces max delta 20-29/255 and 9.2-21.7%
+        //   HARD-STEP pixels -- "It ADDS hard-edged outlines rather than removing
+        //   them." Same doc: "the ROAD-OVERLAY-LIGHT-1 attribution -- that the
+        //   user's 'weird coloured edge' IS the classification boundary and that
+        //   closing the classification gap cures it -- is wrong in the direction
+        //   it claims... This should not propagate into another status doc."
+        //   It then propagated into the CONCRETE-DELIVER-1 commit message and
+        //   into this comment block verbatim.
+        //
+        // The mechanism refutes the promotion independently. Mode 1 is
+        // LIGHTING-ONLY by construction (terrain_lod_chunk.frag:1897 sets
+        // normalLight = 1.0 and the code there states "Albedo is deliberately
+        // untouched... a residual albedo gap is expected and measured"). An
+        // unclassified paved tile keeps its DARK baked colormap, so
+        // CEMENT-EDGE-CURVE-1 sec.3 measured its ceiling at L~24 against concrete
+        // at L~60-87: flat lighting alone can never make mc2_10's runway "the
+        // color they are on top of concrete like in mc2_01", which is the user
+        // requirement the promotion was justified by. The gap is albedo-side.
+        //
+        // The originating lane also set its own precondition, unmet:
+        // .claude/PAVED-OVERLAY-CLASS-1-STATUS.md "Recommended next steps" 1-2 --
+        // a user click-through on mc2_10 saved_204937 is "the single decision
+        // that gates everything else", and pose coverage must be extended
+        // "before any default-ON proposal". Neither happened.
+        //
+        // Default 0 = not one word written = byte-identical stock. The user can
+        // evaluate it in one step with MC2_PAVED_OVERLAY_CLASS=1; nothing else
+        // in the concrete-seam fix depends on it (OVERLAY-CEMENT-ADOPT-1 acts
+        // only on tiles that already carry a valid cement word, which this pass
+        // explicitly skips).
+        if (!v || !v[0]) return 0;
         if (v[0] == '1') return 1;
         if (v[0] == '2') return 2;
         return 0;
@@ -1758,18 +1801,19 @@ static void PopulateRecipeCementWords() {
     // denominator and the two arms stay directly comparable.
     //
     // Gate OFF => not a single word is written => byte-identical to stock.
-    // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): mark tiles that are BOTH
-    // genuine cement (valid word) AND carry authored hard-paved road/runway art,
-    // so terrain_overlay.frag can reconcile their lighting without repainting
-    // their albedo. This is the requirement-3 scoping guard ("roads/runways are
-    // their own layer") and it is deliberately CONSERVATIVE: it only ever ADDS a
-    // reason to leave a fragment's art alone. A tile with no valid cement word is
-    // never marked and is never touched by the adopt path at all.
+    // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1), scope widened by
+    // OVERLAY-CEMENT-ARTGUARD-1 (CONCRETE-DELIVER-2): mark tiles that are BOTH
+    // genuine cement (valid word) AND carry ANY authored &Overlays art, so
+    // terrain_overlay.frag can reconcile their lighting without repainting their
+    // albedo. This is the requirement-3 scoping guard ("runways, roads, other
+    // overlays are their own layer") and it only ever ADDS a reason to leave a
+    // fragment's art alone. A tile with no valid cement word is never marked and
+    // is never touched by the adopt path at all.
     //
     // Runs BEFORE the PavedOverlayClass pass below, which early-outs on tiles
     // that already carry bit 31 and therefore never revisits these.
     if (OverlayCementAdoptEnabled() && Terrain::mapData) {
-        long pavedArtMarked = 0;
+        long authoredArtMarked = 0;
         for (size_t vn = 0; vn < N; ++vn) {
             const long mx = (long)vn % mapSide;
             const long my = (long)vn / mapSide;
@@ -1781,22 +1825,26 @@ static void PopulateRecipeCementWords() {
 
             Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
             Terrain::mapData->getOverlay(my, mx, ovT, ovO);
-            if (ovT == INVALID_OVERLAY || !IsPavedOverlayType(ovT)) continue;
+            // ANY authored overlay id, not just IsPavedOverlayType(): see the
+            // kCementAuthoredArtBit block above. DIRT_ROAD, ROUGH, the bridges and
+            // the dirt/damaged crossings are authored art too, and repainting them
+            // with the concrete atlas would delete hand-placed map art.
+            if (ovT == INVALID_OVERLAY) continue;
 
-            const uint32_t word = chunkCementWords[vn] | kCementPavedArtBit;
+            const uint32_t word = chunkCementWords[vn] | kCementAuthoredArtBit;
             chunkCementWords[vn] = word;
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
             g_denseRecipeDirty[vn] = true;
-            ++pavedArtMarked;
+            ++authoredArtMarked;
         }
         static const bool s_adoptTrace = [] {
             const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
             return v && v[0] == '1' && v[1] == '\0';
         }();
         if (s_adoptTrace) {
-            printf("[OVERLAY_CEMENT_ADOPT v1] event=paved_art_marked mission=%s "
+            printf("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission=%s "
                    "tiles=%ld\n",
-                   (::missionName[0] ? ::missionName : "unknown"), pavedArtMarked);
+                   (::missionName[0] ? ::missionName : "unknown"), authoredArtMarked);
             fflush(stdout);
         }
     }
