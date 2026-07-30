@@ -112,6 +112,14 @@ static bool gvEnvFlagDefaultOn(const char* name) {
 }
 static const bool g_useGpuGVShadowSkip = gvEnvFlagDefaultOn("MC2_GPU_GV_SHADOW_SKIP");
 
+// VEHICLE-LIGHTING-PATH-1 killswitch (default ON). Gates the
+// CacheGpuLightData() call in GVAppearance::render that finally populates the
+// vehicle light row. MC2_VEHICLE_LIT_PATH=0 restores the shipped behavior --
+// an all-zero row -> calc_light numLights==0 early-return -> vec3(1,1,1) ->
+// raw albedo, i.e. byte-identical to the unlit vehicles users have been
+// reporting. See the long root-cause note at the call site.
+static const bool s_vehicleLitPath = gvEnvFlagDefaultOn("MC2_VEHICLE_LIT_PATH");
+
 // T1.15 SpotLight_ illumination diagnostic — registration probe (gv class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
 static const bool s_spotDiagGvEnabled = (getenv("MC2_SPOT_DIAG") != nullptr);
@@ -1161,6 +1169,27 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		}
 
 		// GPU static-prop batcher: register this GV's type shapes + variants.
+		//
+		// VEHICLE-LIGHTING-PATH-1 -- LATENT TRAP, DO NOT REMOVE BLIND.
+		// These registerMultiShape calls put GV types into the batcher's
+		// s_typeIndex, which is the sole membership test of
+		// eligibleForGpuObjects() (gos_static_prop_batcher.cpp:9490-9497).
+		// But gvactor NEVER calls submitMultiShape() -- vehicles are movers and
+		// are deliberately kept off the static-prop path (static_prop.vert:713
+		// omits point/spot by design, so it would match buildings but still not
+		// mechs). So GV shapes report "GPU-eligible" while actually drawing
+		// through legacy TG_Shape::Render.
+		//
+		// eligibleForGpuObjects() gates the GatherLightsParameters calls at
+		// tgl.cpp:1898 and :2869. Those are currently unreachable anyway --
+		// both sit inside `if (bShadersDrawPathEnabled && ...)` and
+		// bShadersDrawPathEnabled is false (tgl.cpp:222) -- so this
+		// misregistration is harmless TODAY only by that accident. If anyone
+		// ever flips bShadersDrawPathEnabled true, vehicles will silently lose
+		// their gather again and regress to unlit raw albedo.
+		// Removing these lines is NOT the fix either: registration is still
+		// consumed elsewhere in the batcher. Fix the eligibility predicate
+		// (submitted-ness, not registered-ness) if this ever goes live.
 		for (int i = 0; i < MAX_LODS; ++i)
 			GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShape[i]);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->gvShadowShape);
@@ -2233,6 +2262,48 @@ long GVAppearance::render (long depthFixup)
 			//---------------------------------------------
 			// Call Multi-shape render stuff here.
 			// Force textures to reload due to unique instance.
+
+			// VEHICLE-LIGHTING-PATH-1 (default ON, MC2_VEHICLE_LIT_PATH=0 to
+			// revert): populate this actor's light row before the draw.
+			//
+			// ROOT CAUSE. Every other object class populates lightData_ via
+			// CacheGpuLightData() before drawing -- mech3d.cpp:5614,
+			// bdactor.cpp:3144/:3181/:4821 (bldg), :6566 (tree),
+			// genactor.cpp:1256 (generic prop). GVAppearance called NEITHER
+			// CacheGpuLightData() NOR GpuStaticPropBatcher::submitMultiShape(),
+			// yet renders unconditionally through the legacy TG_Shape::Render
+			// path, which consumes lightData_ at tgl.cpp:3508 with no gather
+			// and no eligibility guard. (Buildings reach that same legacy
+			// Render only as an `if (!submittedToGpu)` fallback --
+			// bdactor.cpp:2313 -- which they normally never take.)
+			//
+			// Consequence chain, all verified from source:
+			//   1. TG_HWLightsData() zero-inits numLights_        (tgl.h:339)
+			//   2. addLightDataStructure is pure dedup/append with NO
+			//      back-fill                              (txmmgr.cpp:1929)
+			//   3. calc_light takes its numLights.x==0 early-return; because
+			//      MC2_STATIC_PROP_LIGHTING is NOT defined for this shader
+			//      (only mech.vert:15 / static_prop.vert:20) it returns
+			//      vec3(1,1,1), discarding even the vertex color
+			//                              (lighting.hglsl:232-236)
+			//   4. ENABLE_VERTEX_LIGHTING==1 globally    (lighting.hglsl:8)
+			//   5. gos_tex_vertex_lighted.frag: c.xyz = c.xyz * lighting
+			//  => vehicles rendered at RAW ALBEDO x 1.0, fully unlit.
+			//
+			// Mechs and buildings get ambient + sun*ndl, which exceeds 1.0 in
+			// daylight. THAT is why a vehicle texture measured at the 49th
+			// percentile of the corpus (trucksprop.tga 85.9 vs median 86.2)
+			// looks dark parked next to a mech. The albedo theory was
+			// correctly retracted in fc43338a; this reconciles the
+			// measurement with the observation. Do not reopen it.
+			//
+			// This call routes vehicles into the SAME full 6-type calc_light
+			// (ambient/infinite/falloff/point/spot) that mech.vert:219 uses --
+			// a strict superset of the building path, which deliberately omits
+			// point/spot (static_prop.vert:713).
+			if (s_vehicleLitPath)
+				gvShape->CacheGpuLightData();
+
 			gvShape->Render(true);
 
 			if (selected & DRAW_TEXT)

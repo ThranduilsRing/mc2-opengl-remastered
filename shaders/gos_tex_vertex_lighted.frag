@@ -6,6 +6,12 @@
 
 #include <include/lighting.hglsl>
 #include <include/shadow.hglsl>
+// VEHICLE-LIGHTING-PATH-1: night light-pool consumption, matching
+// mech.frag:23/:399 and static_prop.frag:17/:456. This was the only object
+// shader lacking the pool, so vehicles got no light from building pools,
+// turret lamps or their own headlights. Uploaded from the ShapeRenderer path
+// via gos_UploadObjectLightPools (mclib/txmmgr.cpp).
+#include <include/light_pools.hglsl>
 // F3 canary (claude/f3-amd-canary-temp): explicit GBuffer1 write to test
 // AMD location=1 corruption claim per render-contract f3 design §4.
 #include <include/render_contract.hglsl>
@@ -58,6 +64,16 @@ void main(void)
     // 2D UI elements and should not receive world shadows — skip shadow sampling entirely.
 
     c.xyz = c.xyz * lighting;
+
+    // VEHICLE-LIGHTING-PATH-1: additive night pool light, albedo-modulated --
+    // identical accumulator semantics to static_prop.frag:456-457 and
+    // mech.frag:399-400. calcLightPools takes MC2-frame world position (see
+    // light_pools.hglsl PoolLight.position), so feed MC2WorldPos, NOT the
+    // Stuff-frame WorldPos -- same frame discipline that
+    // u_legacyLitMc2Frame enforces for calc_light above.
+    // u_numPoolLights==0 (gate off / day / no lights) -> exact +0.0.
+    if (u_numPoolLights > 0)
+        c.xyz += tex_color.rgb * calcLightPools(MC2WorldPos);
 
     c.xyz = apply_fog(c.xyz, WorldPos.xyz, CameraPos);
 

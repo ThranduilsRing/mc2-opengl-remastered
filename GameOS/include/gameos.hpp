@@ -2886,6 +2886,9 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
                                              size_t totalBytes, bool prefixDirty);
 void __stdcall gos_LightDataSsbo_Destroy();
 void __stdcall gos_BindLightDataStorageBlock(HGOSRENDERMATERIAL material);
+// VEHICLE-LIGHTING-PATH-1: night light-pool bind/upload for material-only
+// callers (mclib ShapeRenderer). No-op-safe when the pool gates are off.
+void __stdcall gos_UploadObjectLightPools(HGOSRENDERMATERIAL material);
 
 
 

@@ -150,6 +150,15 @@ static inline bool lightClampEnvFlagDefaultOff(const char* name) {
     return v && v[0] == '1' && v[1] == '\0';
 }
 
+// VEHICLE-LIGHTING-PATH-1 — default-ON sibling ("0" only turns it off).
+// Matches the canonical envFlagDefaultOn pattern (gos_mech_batcher.cpp:120).
+static inline bool lightClampEnvFlagDefaultOn(const char* name) {
+    const char* v = getenv(name);
+    if (v == nullptr) return true;                  // unset -> on
+    if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" -> off
+    return true;                                     // any other value -> on
+}
+
 // MC2_LIGHT_CLAMP_PROBE (default OFF) — pure observation. Tracks the per-object
 // HIGH-WATER populated light count across all GatherLightsParameters calls and
 // emits a summary line. Answers "do stock missions ever exceed 16 lights/object?"
@@ -165,12 +174,28 @@ static unsigned long s_lightClampProbeCalls     = 0;
 static const bool    s_lightClampFixture      = lightClampEnvFlagDefaultOff("MC2_LIGHT_CLAMP_FIXTURE");
 static bool          s_lightClampFixtureYelled = false;
 
-// MC2_LIGHT_POS_COLUMN_FIX (default OFF) — LIGHT-POS-COLUMN-1.
+// MC2_LIGHT_POS_COLUMN_FIX (default ON as of VEHICLE-LIGHTING-PATH-1) —
+// LIGHT-POS-COLUMN-1.
 // Writes the light's world translation into the mat4 slots the GLSL/SPIR-V
 // consumers actually read as the translation column. See the long comment at
-// the memcpy in GatherLightsParameters for the full derivation. Default OFF
-// keeps the shipped (0,0,0) upload byte-identical.
-static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOff("MC2_LIGHT_POS_COLUMN_FIX");
+// the memcpy in GatherLightsParameters for the full derivation. Set
+// MC2_LIGHT_POS_COLUMN_FIX=0 to restore the shipped (0,0,0) upload.
+//
+// PROMOTED TO DEFAULT-ON. Its prior "sub-perceptual, 1/255 delta" measurement
+// NO LONGER CHARACTERISES THIS GATE and must not be cited as grounds to demote
+// it. That number was taken at sun-dominated fixture poses, where the only
+// meaningful contributor is the INFINITE sun -- which has no position term and
+// is therefore structurally immune to this bug. It measured the one condition
+// under which the fix cannot matter.
+//
+// It becomes load-bearing here. With the vehicle light row now populated
+// (VEHICLE-LIGHTING-PATH-1), vehicles are ground-level MOVERS that sit close to
+// exactly the light classes this bug breaks -- POINT (carnage.cpp explosions,
+// weaponbolt.cpp bolts) and SPOT (turret.cpp lamps, guard-tower cones) -- all
+// of which were being evaluated at the world origin, so their falloff tracked
+// distance-from-origin instead of distance-from-lamp. Requires re-measurement
+// at vehicle-adjacent night poses, not at the old fixtures.
+static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOn("MC2_LIGHT_POS_COLUMN_FIX");
 
 // MC2_LIGHT_ROW_CENSUS (default OFF) — LIGHT-POS-COMBAT-1. Pure observation.
 //
@@ -2298,13 +2323,40 @@ public:
 
 		// VEHICLE-NIGHT-LIT-1 killswitch: feed calc_light MC2-frame position +
 		// normal (matching mech.vert / static_prop.vert) instead of the legacy
-		// Stuff-frame pair. Default OFF => byte-identical to pre-fix output.
+		// Stuff-frame pair.
 		// See the u_legacyLitMc2Frame block in shaders/gos_tex_vertex_lighted.vert
 		// for the full root-cause writeup (vehicles received no point/spot light
 		// because the frames were mixed inside GetFalloff's distance test).
+		//
+		// VEHICLE-LIGHTING-PATH-1: PROMOTED TO DEFAULT-ON, and this is a
+		// CORRECTNESS REQUIREMENT of the CacheGpuLightData() call added at
+		// gvactor.cpp -- NOT an optional enhancement. DO NOT "clean up" this
+		// gate as inert.
+		//
+		// Why it looked inert before: until this slice, vehicles never
+		// populated lightData_ at all, so calc_light took its numLights==0
+		// early-return (lighting.hglsl:232-236) and returned vec3(1,1,1)
+		// regardless of frame. Correcting the FRAME of a row containing ZERO
+		// lights is necessarily a no-op -- which is exactly why
+		// VEHICLE-NIGHT-LIT-1 measured as "disproven" on its own. It was never
+		// wrong, only unreachable.
+		//
+		// Now that the row is populated, the frame becomes load-bearing:
+		// feeding Stuff-frame position/normal against MC2-frame light rows
+		// makes length(vertex_world_pos - light_pos) meaningless inside
+		// GetFalloff and puts the sun NdotL ~90 degrees off. Shipping the
+		// gather with this OFF would produce confidently-wrong lighting.
+		//
+		// Blast radius is now self-limiting: this program is shared with other
+		// legacy lit shapes, but any shape that does not gather still has
+		// numLights==0 and returns before the frame is ever read. Only shapes
+		// that actually carry lights -- i.e. the vehicles this slice fixes --
+		// can observe the flip.
 		static const bool s_legacyLitMc2Frame = [](){
 			const char* v = getenv("MC2_LEGACY_LIT_MC2_FRAME");
-			return v && v[0] == '1' && v[1] == '\0';
+			if (v == nullptr) return true;                  // unset -> on (new default)
+			if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" -> off
+			return true;
 		}();
 		gos_SetRenderMaterialParameterInt(mat, "u_legacyLitMc2Frame",
 			s_legacyLitMc2Frame ? 1 : 0);
@@ -2354,6 +2406,17 @@ public:
 
 		gos_ApplyRenderMaterial(mat);
 		gos_BindLightDataStorageBlock(mat);
+
+		// VEHICLE-LIGHTING-PATH-1: night light-pool parity. mech.frag:399 and
+		// static_prop.frag:456 both consume the pool; this legacy lit program
+		// was the only object shader with no pool term and no upload, so
+		// vehicles received zero contribution from building pools, turret
+		// lamps and their own headlights at night. Must come after
+		// gos_ApplyRenderMaterial (needs the active program).
+		// Gated off (MC2_TERRAIN_LIGHT_POOLS / MC2_LIGHT_POOL_OBJECTS) this
+		// force-uploads u_numPoolLights=0 -> calcLightPools returns +0.0
+		// exactly -> byte-identical.
+		gos_UploadObjectLightPools(mat);
 
 		// Bind shadow maps + terrainMVP after apply() (requires active program)
 		if (!isHudElement) {
