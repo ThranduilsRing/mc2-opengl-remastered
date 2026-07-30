@@ -546,6 +546,20 @@ run_check "bless_refusals_selftest"     "py -3 tools/visual_verify/bless_selftes
 run_check "review_anchor_stability"          "py -3 scripts/check-review-anchor-stability.py --quiet"
 run_check "review_anchor_stability_selftest" "py -3 scripts/check-review-anchor-stability.py --self-test"
 
+# SIM-IDENTITY-HASH-1: the refuse-to-grade gate splits mover fields VISUAL vs
+# NON-VISUAL in two independent places (C++ digestMoverVisual, Python
+# VISUAL_FIELDS). If they drift, the gate misgrades in the DANGEROUS direction:
+# a real visual divergence gets classified LATENT and GRADED -- a false pass
+# produced by the instrument built to stop false passes. Both halves' own
+# self-tests stay green through that drift, because each is internally
+# consistent; only this cross-check catches it. Live-fired by moving `status`
+# from VISUAL to NON-VISUAL in the real module: the check went FAIL/exit 1, and
+# an arm-A-alive / arm-B-DEAD mover pair graded LATENT + exit 0 until reverted.
+run_check "sim_identity_fieldsets" "py -3 scripts/check-sim-identity-fieldsets.py"
+# The gate's own verdict logic: GRADED / LATENT / UNVERIFIED / UNGRADED, plus
+# localisation (names the first diverging mover and field) and the sub-quantum
+# boundary-straddle label. Offline, no GPU, no capture.
+run_check "sim_identity_gate_selftest" "py -3 scripts/sim_identity.py self-test"
 # ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------

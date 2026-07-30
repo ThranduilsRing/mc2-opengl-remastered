@@ -1,0 +1,312 @@
+//---------------------------------------------------------------------------
+// SIM-IDENTITY-HASH-1 -- engine-side collector for the world-state hash.
+//
+// Walks ObjectManager's live movers into mc2_sim_identity::MoverRecord and
+// folds them with the pure kernel in mclib/sim_identity.h. Strictly READ-ONLY:
+// getters only, every deref null-guarded, no allocation on the per-frame path.
+//
+// Two consumers:
+//   1. mc2SimIdentityWriteJson()  -- the capture sidecar / manifest block.
+//      Called once per bookmark capture from GameOS/gameos/gos_visual_capture.cpp
+//      via an extern "C" shim (same pattern as mc2VisualCaptureSetPaused).
+//   2. mc2SimIdentityTraceFrame() -- one line per SIM frame into the run log,
+//      so two runs' logs can be diffed to find the FIRST divergent sim frame.
+//
+// WHY A TRACE LINE PER SIM FRAME, NOT PER MOVER
+//      The pre-existing instrument (MC2_BRIDGE_MOVER_STATE, code/mission.cpp)
+//      emits one line PER MOVER per period -- ~58k lines/run on mc2_10, which
+//      DETERMINISM-RATCHET-2 then had to post-process with a bespoke script to
+//      find one differing `target` field. This emits ONE hash line per sim
+//      frame (~30/s), so `diff run_a.log run_b.log | head -1` names the first
+//      divergent sim frame with no tooling at all. The per-mover detail is
+//      opt-in on top (MC2_SIM_IDENTITY_TRACE_DETAIL) once you know the frame.
+//
+// GATE DEFAULTS -- READ THEM HERE, THIS FILE IS THE READER
+//      MC2_SIM_IDENTITY           default ON   (unset => ON)
+//      MC2_SIM_IDENTITY_TRACE     default OFF  (unset => OFF)
+//      MC2_SIM_IDENTITY_TRACE_DETAIL default OFF
+//   All three parse "0"/"false"/"off"/"no" as OFF and anything else set as ON.
+//   Note the deliberate contrast with MC2_BRIDGE_MOVER_STATE two files over,
+//   which is `getenv(...) != nullptr` and therefore ENABLES on `=0`. That is
+//   the seventeen-documented-gate-lies failure mode; envOnOff() below does not
+//   reproduce it.
+//
+//   MC2_SIM_IDENTITY defaults ON on purpose, and the purpose is anti-wallpaper:
+//   a refuse-to-grade gate whose input is default-OFF would find the block
+//   missing in every pre-existing manifest and return UNGRADED for everything,
+//   which is precisely the failure the brief warns about. Cost is a few
+//   hundred getter calls once per capture; the per-FRAME path is opt-in.
+//---------------------------------------------------------------------------
+
+#include "objmgr.h"
+#include "mover.h"
+#include "warrior.h"
+#include "../mclib/appear.h"
+#include "../mclib/sim_identity.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+
+namespace {
+
+using mc2_sim_identity::MoverRecord;
+
+// Case-insensitive equality, ASCII, no CRT/platform dependency. The codebase's
+// own helper is S_stricmp (code/carnage.cpp etc.) which lives behind headers
+// this TU has no reason to pull in; four lines is cheaper than the coupling.
+bool ieq(const char* a, const char* b) {
+	for (; *a && *b; ++a, ++b) {
+		char ca = *a, cb = *b;
+		if (ca >= 'A' && ca <= 'Z') ca = (char)(ca - 'A' + 'a');
+		if (cb >= 'A' && cb <= 'Z') cb = (char)(cb - 'A' + 'a');
+		if (ca != cb) return false;
+	}
+	return *a == *b;
+}
+
+// Tri-state env read. Unset/empty -> defaultOn. Set to a falsey token -> false.
+// Anything else set -> true.
+bool envOnOff(const char* name, bool defaultOn) {
+	const char* v = getenv(name);
+	if (!v || !v[0]) return defaultOn;
+	if (ieq(v, "0") || ieq(v, "false") || ieq(v, "off") || ieq(v, "no"))
+		return false;
+	return true;
+}
+
+bool simIdentityEnabled() {
+	static const bool on = envOnOff("MC2_SIM_IDENTITY", /*defaultOn=*/true);
+	return on;
+}
+
+bool simIdentityTrace() {
+	static const bool on = envOnOff("MC2_SIM_IDENTITY_TRACE", /*defaultOn=*/false);
+	return on;
+}
+
+bool simIdentityTraceDetail() {
+	static const bool on =
+		envOnOff("MC2_SIM_IDENTITY_TRACE_DETAIL", /*defaultOn=*/false);
+	return on;
+}
+
+// Collect every live mover. NO CAP.
+//
+// MC2_BRIDGE_MOVER_STATE caps at 64 movers (code/mission.cpp kCap). For a
+// human-read debug table a cap is a kindness; for a HASH it is a correctness
+// hole -- a digest over a truncated population would agree between two arms
+// while movers 65+ diverged, i.e. the instrument would lie in exactly the
+// direction this whole slice exists to stop. The vector is sized once from
+// getNumMovers() and reused across frames.
+void collectMovers(std::vector<MoverRecord>& out) {
+	out.clear();
+	if (!ObjectManager)
+		return;
+	const long total = ObjectManager->getNumMovers();
+	if (total <= 0)
+		return;
+	out.reserve((size_t)total);
+
+	for (long i = 0; i < total; ++i) {
+		MoverPtr mover = ObjectManager->getMover(i);
+		if (!mover)
+			continue;
+
+		MoverRecord r;
+		r.id   = (int32_t)mover->getPartId();
+		r.team = (int32_t)mover->getTeamId();
+
+		Stuff::Vector3D pos = mover->getPosition();
+		r.px  = pos.x;
+		r.py  = pos.y;
+		r.pz  = pos.z;
+		r.rot = mover->getRotation();
+
+		float dmg = mover->getDamageLevel();
+		float hpFrac = 1.0f - dmg;
+		if (hpFrac < 0.0f) hpFrac = 0.0f;
+		if (hpFrac > 1.0f) hpFrac = 1.0f;
+		r.hp = hpFrac;
+
+		// Appearance drives what is actually DRAWN: which gesture is playing and
+		// how far into it. Both are public virtuals on the Appearance base with
+		// safe defaults (mclib/appear.h:339,381), so a mover whose appearance is
+		// a different subclass still yields a defined value rather than a branch.
+		AppearancePtr app = mover->getAppearance();
+		if (app) {
+			r.gesture   = (int32_t)app->getCurrentGestureId();
+			r.animFrame = (int32_t)app->getFrameNumber();
+		}
+
+		MechWarriorPtr pilot = mover->getPilot();
+		if (pilot) {
+			r.status     = (int32_t)pilot->getStatus();
+			r.brainState = (int32_t)pilot->getBrainState();
+			r.moveState  = (int32_t)pilot->getMoveState();
+			// getMovePath(long) is a PURE accessor; the zero-arg getMovePath()
+			// MUTATES (swaps path slots) and must never be called from a
+			// read-only observer -- calling it here would make the act of
+			// hashing the world change the world.
+			MovePathPtr mp = pilot->getMovePath(0);
+			if (mp) {
+				r.pathStep  = (int32_t)mp->curStep;
+				r.pathSteps = (int32_t)mp->numStepsWhenNotPaused;
+			}
+			GameObjectPtr tgt = pilot->getCurrentTarget();
+			if (tgt)
+				r.target = (int32_t)tgt->getPartId();
+		}
+
+		out.push_back(r);
+	}
+}
+
+// Scratch reused across calls so the per-sim-frame trace path allocates nothing
+// in steady state.
+std::vector<MoverRecord>& scratch() {
+	static std::vector<MoverRecord> s;
+	return s;
+}
+
+} // namespace
+
+//---------------------------------------------------------------------------
+// extern "C" shims. Declared in GameOS/gameos/gos_visual_capture.cpp -- the
+// GameOS translation unit cannot include objmgr.h/mover.h (their quote-includes
+// are not on its include path), the same reason mc2VisualCaptureSetPaused
+// exists as a shim rather than a direct call.
+//---------------------------------------------------------------------------
+
+// Emit the "sim_identity" JSON object body (no enclosing braces, no trailing
+// comma) into `buf`, at most `cap-1` chars plus NUL. Returns chars written, or
+// 0 when disabled / no movers -- in which case the caller emits nothing and the
+// comparator will correctly report the block ABSENT rather than empty.
+extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
+                                       double scenarioTimeNow, long simFrame) {
+	if (!buf || cap <= 1)
+		return 0;
+	buf[0] = '\0';
+	if (!simIdentityEnabled() || !ObjectManager)
+		return 0;
+
+	// NOTE: an EMPTY mover set still emits a full block (mover_count 0).
+	// Returning nothing here would make "this mission has no movers, so there
+	// is no mover-desync to worry about" indistinguishable from "nothing
+	// measured this" -- and the comparator treats those two very differently
+	// (the first grades, the second cannot). Absence must mean exactly one
+	// thing: an exe without this feature, or an operator who turned it off.
+	std::vector<MoverRecord> recs;
+	collectMovers(recs);
+
+	// digestWorld sorts in place; take all three off the SAME sorted buffer.
+	const uint64_t graded = mc2_sim_identity::digestWorld(
+		recs.data(), recs.size(), mc2_sim_identity::DIGEST_GRADED);
+	const uint64_t visual = mc2_sim_identity::digestWorld(
+		recs.data(), recs.size(), mc2_sim_identity::DIGEST_VISUAL);
+	const uint64_t strict = mc2_sim_identity::digestWorld(
+		recs.data(), recs.size(), mc2_sim_identity::DIGEST_STRICT);
+
+	char hg[17], hv[17], hs[17];
+	mc2_sim_identity::toHex16(graded, hg);
+	mc2_sim_identity::toHex16(visual, hv);
+	mc2_sim_identity::toHex16(strict, hs);
+
+	int n = 0;
+	int w = snprintf(buf + n, (size_t)(cap - n),
+		"  \"sim_identity\": {\n"
+		"    \"schema\": \"SIM_IDENTITY_V%u\",\n"
+		"    \"digest\": \"%s\",\n"
+		"    \"digest_visual\": \"%s\",\n"
+		"    \"digest_strict\": \"%s\",\n"
+		"    \"mover_count\": %d,\n"
+		"    \"truncated\": false,\n"
+		"    \"scenario_time\": %.3f,\n"
+		"    \"sim_frame\": %ld,\n"
+		"    \"quantum\": { \"pos\": %.9g, \"ang\": %.9g, \"frac\": %.9g },\n"
+		"    \"movers\": [",
+		mc2_sim_identity::kSchemaVersion, hg, hv, hs,
+		(int)recs.size(), scenarioTimeNow, simFrame,
+		(double)mc2_sim_identity::kPosQuantum,
+		(double)mc2_sim_identity::kAngQuantum,
+		(double)mc2_sim_identity::kFracQuantum);
+	if (w < 0 || w >= cap - n) { buf[0] = '\0'; return 0; }
+	n += w;
+
+	for (size_t i = 0; i < recs.size(); ++i) {
+		const MoverRecord& r = recs[i];
+		char hm[17];
+		mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
+		// Raw (unquantized) pos/rot/hp are emitted so the comparator can print a
+		// TRUE delta beside the quantum. Without them a quantum-boundary
+		// straddle and a real divergence are indistinguishable -- both would
+		// arrive as nothing but "the digests differ".
+		w = snprintf(buf + n, (size_t)(cap - n),
+			"%s\n      {\"id\":%d,\"team\":%d,\"vd\":\"%s\","
+			"\"pos\":[%.4f,%.4f,%.4f],\"rot\":%.4f,\"hp\":%.5f,"
+			"\"gesture\":%d,\"anim\":%d,\"status\":%d,"
+			"\"target\":%d,\"brain\":%d,\"mstate\":%d,\"pstep\":%d,\"psteps\":%d}",
+			i ? "," : "", r.id, r.team, hm,
+			r.px, r.py, r.pz, r.rot, r.hp,
+			r.gesture, r.animFrame, r.status,
+			r.target, r.brainState, r.moveState, r.pathStep, r.pathSteps);
+		if (w < 0 || w >= cap - n) {
+			// Ran out of room mid-array. Emitting a half-written array would
+			// hand the comparator a truncated population that hashes fine --
+			// the exact lie this slice exists to prevent. Emit nothing.
+			buf[0] = '\0';
+			return 0;
+		}
+		n += w;
+	}
+
+	w = snprintf(buf + n, (size_t)(cap - n), "\n    ]\n  }");
+	if (w < 0 || w >= cap - n) { buf[0] = '\0'; return 0; }
+	n += w;
+	return n;
+}
+
+// One line per SIM frame into the run log. Opt-in (MC2_SIM_IDENTITY_TRACE).
+// Called from the fixed-step sim advance; see code/mission.cpp.
+extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) {
+	if (!simIdentityEnabled() || !simIdentityTrace() || !ObjectManager)
+		return;
+
+	std::vector<MoverRecord>& recs = scratch();
+	collectMovers(recs);
+	if (recs.empty())
+		return;
+
+	const uint64_t graded = mc2_sim_identity::digestWorld(
+		recs.data(), recs.size(), mc2_sim_identity::DIGEST_GRADED);
+	const uint64_t visual = mc2_sim_identity::digestWorld(
+		recs.data(), recs.size(), mc2_sim_identity::DIGEST_VISUAL);
+	const uint64_t strict = mc2_sim_identity::digestWorld(
+		recs.data(), recs.size(), mc2_sim_identity::DIGEST_STRICT);
+
+	char hg[17], hv[17], hs[17];
+	mc2_sim_identity::toHex16(graded, hg);
+	mc2_sim_identity::toHex16(visual, hv);
+	mc2_sim_identity::toHex16(strict, hs);
+
+	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
+	// differing line IS the first divergent sim frame.
+	printf("[SIMID v1] simframe=%ld t=%.3f n=%d graded=%s visual=%s strict=%s\n",
+	       simFrame, scenarioTimeNow, (int)recs.size(), hg, hv, hs);
+
+	if (simIdentityTraceDetail()) {
+		for (size_t i = 0; i < recs.size(); ++i) {
+			const MoverRecord& r = recs[i];
+			char hm[17];
+			mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
+			printf("[SIMID v1 mover] simframe=%ld id=%d vd=%s "
+			       "pos=%.4f,%.4f,%.4f rot=%.4f hp=%.5f gesture=%d anim=%d "
+			       "status=%d target=%d brain=%d mstate=%d pstep=%d/%d\n",
+			       simFrame, r.id, hm, r.px, r.py, r.pz, r.rot, r.hp,
+			       r.gesture, r.animFrame, r.status, r.target,
+			       r.brainState, r.moveState, r.pathStep, r.pathSteps);
+		}
+	}
+	fflush(stdout);
+}

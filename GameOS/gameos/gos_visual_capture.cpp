@@ -88,6 +88,11 @@ extern "C" {
     void mc2VisualCaptureRestorePauseState(int packed);
 }
 
+// SIM-IDENTITY-HASH-1: per-capture world-state hash. Dependency-free prototype
+// header, same layering reason as the pause shims above -- the collector in
+// code/sim_identity.cpp is what includes objmgr.h / mover.h / appear.h.
+#include "../../code/sim_identity.h"
+
 // Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
 // and calls gos_TerminateApplication(). Declared here so MC2_VISUAL_CAPTURE_EXIT_AFTER
 // can request a clean shutdown after the bookmark sweep.
@@ -326,7 +331,35 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
         if (i) buf += ", ";
         buf += "\""; esc.clear(); json_escape(gateEnv[i], esc); buf += esc; buf += "\"";
     }
-    buf += "]\n}\n";
+    buf += "]";
+
+    // SIM-IDENTITY-HASH-1: the world-state hash for THIS capture.
+    //
+    // This is the sim half of the identity the parity harness grades on. The
+    // pixel sha answers "do these two frames look the same"; this answers "were
+    // these two frames even drawn from the same world". Two arms whose worlds
+    // differ are not comparable, and scripts/sim_identity.py turns that into an
+    // explicit UNGRADED verdict rather than a pass.
+    //
+    // The sweep has already called mc2VisualCaptureSetPaused(1) by the time a
+    // bookmark is written, so the sim is FROZEN here -- the hash describes a
+    // stationary world, not one being sampled mid-step.
+    //
+    // Heap, not stack: a few hundred movers at ~200 bytes each would be a
+    // quarter-megabyte stack frame. A zero return means "emit nothing" -- an
+    // absent block reads as "not recorded", a truncated one would read as valid.
+    {
+        std::vector<char> sib(512 * 1024);
+        const double clockSec = SmokeMode::fixedClockSeconds();
+        const int wrote = mc2SimIdentityWriteJson(
+            sib.data(), (int)sib.size(), clockSec,
+            (long)(clockSec * 30.0 + 0.5));
+        if (wrote > 0) {
+            buf += ",\n";
+            buf += sib.data();
+        }
+    }
+    buf += "\n}\n";
     fwrite(buf.data(), 1, buf.size(), f);
     fclose(f);
 }

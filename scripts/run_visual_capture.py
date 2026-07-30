@@ -376,11 +376,20 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         all_present = all_present and present
         sha = ms.file_sha256(png) if present else None
         det = None
+        # SIM-IDENTITY-HASH-1: carry the engine's world-state hash out of the
+        # sidecar and into the manifest. Without this the block dies here and
+        # the refuse-to-grade gate downstream sees nothing -- which it would
+        # correctly report as UNGRADED, i.e. a broken pipe would look exactly
+        # like a real desync.
+        simid = None
         if side.exists():
             try:
-                det = json.loads(side.read_text(encoding="utf-8")).get("deterministic")
+                sc = json.loads(side.read_text(encoding="utf-8"))
+                det = sc.get("deterministic")
+                simid = sc.get("sim_identity")
             except Exception:
                 det = None
+                simid = None
         if det is False:
             any_nondet = True
         bm_results.append({
@@ -390,6 +399,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             "sha256": sha,
             "covers": m.get("covers", []),
             "engine_deterministic": det,
+            "sim_identity": simid,
         })
 
     # Detect whether the engine's capture path even fired (RC may predate S9).

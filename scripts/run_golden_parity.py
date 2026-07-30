@@ -106,6 +106,14 @@ FLOORS_DIR = ROOT / "golden_floors"
 # Per-capture wall budget: a smoke/visual sweep is ~30-45s; give generous margin.
 CAP_TIMEOUT_S = 180
 
+# SIM-IDENTITY-HASH-1: exit code for "the two arms were not drawing the same
+# world". Kept in sync with sim_identity.EXIT_UNGRADED (7). Distinct from 0/1
+# (graded pass/fail), 3 (abort), 4 (capture-liveness), 5 (backend fallback) and
+# 6 (GOLDEN-PROVENANCE-TRUTH-1 provenance unestablished). 6 and 7 are the same
+# family -- refuse to grade -- on different axes: 6 = different BINARIES,
+# 7 = different WORLDS.
+SIM_EXIT_UNGRADED = 7
+
 # BACKEND-COMPARE region map (VK-REGION-SSAO-1 made the region set >1).
 # Each region names (a) the debug-state health block its fallback detection
 # reads (region_impl / fallback_reason live per-region now) and (b) any extra
@@ -256,11 +264,17 @@ def capture_state(label: str, scene: str, exe: Path, work: Path,
     pixel_pngs = {}
     present_map = {}
     any_nondet = False
+    # SIM-IDENTITY-HASH-1: the world-state hash per bookmark. Kept per-bookmark
+    # rather than collapsed to one: each bookmark is captured at its own moment,
+    # so one may be comparable while another is not, and refusing the whole run
+    # because the last bookmark drifted would throw away real signal.
+    sim_ids = {}
     for b in bmarks or []:
         name = b.get("name", "?")
         pixel_shas[name] = b.get("sha256")
         pixel_pngs[name] = b.get("png")
         present_map[name] = bool(b.get("present"))
+        sim_ids[name] = b.get("sim_identity")
         if b.get("engine_deterministic") is False:
             any_nondet = True
     # engine_capture_fired lives on the visual-capture report_summary extras;
@@ -853,6 +867,17 @@ def main() -> int:
     ap.add_argument("--no-fixed-timestep", dest="fixed_timestep",
                     action="store_false",
                     help="disable the fixed clock (drift EXPECTED; debug only)")
+    ap.add_argument("--sim-affecting", action="store_true",
+                    help="SIM-IDENTITY-HASH-1: declare that this gate "
+                         "legitimately CHANGES THE SIM (an AI/rules fix, not a "
+                         "shading change), so the two arms are expected to "
+                         "produce different worlds. World divergence is then "
+                         "reported but never refused. Without this, a "
+                         "sim-affecting gate would be permanently UNGRADED.")
+    ap.add_argument("--require-sim-identity", action="store_true",
+                    help="SIM-IDENTITY-HASH-1 strict mode: an ABSENT world hash "
+                         "becomes UNGRADED instead of a stamped UNVERIFIED. "
+                         "Use once every deploy under test emits the block.")
     ap.add_argument("--work-dir", default=None,
                     help="artifact dir (default <exe_dir>/debug_state/"
                          "golden_parity/<scene>)")
@@ -1003,7 +1028,28 @@ def main() -> int:
     # --- compare A vs B against the floor -------------------------------------
     cmp_cmd = [sys.executable, str(GOLDEN_COMPARE), "compare",
                man_a["_path"], man_b["_path"], "--noise-floor", str(floor_path)]
+    # SIM-IDENTITY-HASH-1: golden_compare runs the world-state refuse-to-grade
+    # gate before it grades anything, and returns 7 when the two arms were not
+    # drawing the same world. Backend-compare mode is GL-vs-Vulkan on identical
+    # sim input, so a world divergence there is never expected; feature-gate mode
+    # forwards --sim-affecting for gates that legitimately change the sim.
+    if args.sim_affecting:
+        cmp_cmd.append("--sim-affecting")
+    if args.require_sim_identity:
+        cmp_cmd.append("--require-sim-identity")
     cmp_rc = _run(cmp_cmd, timeout=60)
+
+    # UNGRADED is neither PASS nor FAIL and must not be collapsed into either.
+    # Returning 1 here would file "these arms are not comparable" as a parity
+    # regression; returning 0 would file it as proof of parity. Both are lies,
+    # and the second is the one that got false fixes reported.
+    if cmp_rc == SIM_EXIT_UNGRADED:
+        print("RESULT: UNGRADED scene=%s %s reason=sim-identity-divergence "
+              "(the two arms were not drawing the same world; nothing about "
+              "pixels was measured -- see the [golden_compare] sim_identity "
+              "block above for the first diverging mover and field)"
+              % (args.scene, ctx))
+        return SIM_EXIT_UNGRADED
 
     # --- diff report (culprit fields / passes / pixel bookmarks) --------------
     report_dir = work / "report"

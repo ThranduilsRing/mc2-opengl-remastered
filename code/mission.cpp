@@ -15,6 +15,7 @@
 #include "gos_crashbundle.h"
 #include "gos_smoke.h"            // S9D fixed-timestep deterministic smoke clock
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (hard_reset)
+#include "sim_identity.h"         // SIM-IDENTITY-HASH-1 per-sim-frame world hash
 #define CB_PRINTF(fmt, ...) do { \
     char _cbbuf[256]; \
     snprintf(_cbbuf, sizeof(_cbbuf), fmt, ##__VA_ARGS__); \
@@ -1330,6 +1331,21 @@ long Mission::update (void)
 		// MC2_BRIDGE_MOVER_STATE=1.
 		if (s_bridgeMoverState)
 			bridgeEmitMoverState(scenarioTime);
+
+		// SIM-IDENTITY-HASH-1: one world-state hash line per sim frame (opt-in,
+		// MC2_SIM_IDENTITY_TRACE). Diffing two runs' logs names the FIRST
+		// divergent sim frame directly -- the bridge above needs ~58k per-mover
+		// lines and a bespoke script to answer the same question.
+		//
+		// simFrame is derived exactly as the capture sidecar derives its
+		// `sim_frame` (gos_visual_capture.cpp write_sidecar) so a trace line and
+		// a manifest taken in the same run carry the SAME frame number. That
+		// derivation is only meaningful under the fixed clock; with the fixed
+		// clock off it pins to 0 and the `t=` field is the usable diff axis --
+		// which is correct, because determinism is not claimed at all then.
+		mc2SimIdentityTraceFrame(
+			(double)scenarioTime,
+			(long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5));
 
 		// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
 		// home-commander movers + force-bar icons; read-only). No-op unless

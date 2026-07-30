@@ -451,6 +451,7 @@ set(SOURCES
     "code/gamecam.cpp"
     "code/mission.cpp"
     "code/mission2.cpp"
+    "code/sim_identity.cpp"
     "code/objective.cpp"
     "code/saveload.cpp"
     "code/trigger.cpp"

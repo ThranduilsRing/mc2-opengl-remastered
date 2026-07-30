@@ -95,6 +95,22 @@ IGNORE_SUFFIXES = (
     "viewport_probe_samples",
 )
 
+# SIM-IDENTITY-HASH-1: the sim_identity block is graded by a DEDICATED gate
+# (scripts/sim_identity.py), not by this field-diff machinery, and the two must
+# not both grade it.
+#
+# If these leaves fell through to the normal classifier, every one of them would
+# hit the `no-floor-rule` branch the moment a world drifted and report as a
+# beyond-floor parity FAIL. That is the wrong verdict twice over: it says
+# "regression" when the truth is "not comparable", and it would fire on the
+# LATENT case (a target id differing while every pixel-relevant field matches)
+# where a pixel comparison is still perfectly valid.
+#
+# So: ignored HERE, refused THERE. The dedicated gate returns UNGRADED with the
+# diverging mover and field named; this classifier keeps answering the only
+# question it was built for, which is whether the pixels and pass counters moved.
+SIM_IDENTITY_PREFIX = "sim_identity"
+
 # Numeric drift fields get a small symmetric pad on the observed range so a
 # value just outside the sampled envelope (e.g. one extra shutdown frame) is
 # still within-floor. Pad is fraction-of-range with an absolute floor.
@@ -103,7 +119,22 @@ DRIFT_PAD_ABS = 2.0
 
 
 def _is_ignored(path: str) -> bool:
+    if _is_sim_identity(path):
+        return True
     return any(path == s or path.endswith("." + s) for s in IGNORE_SUFFIXES)
+
+
+def _is_sim_identity(path: str) -> bool:
+    """True for any leaf inside a sim_identity block, at any nesting depth.
+
+    Matches the segment, never a substring: `sim_identity.digest` and
+    `bookmarks[0].sim_identity.movers[3].pos` both match, while a hypothetical
+    `my_sim_identity_score` does not.
+    """
+    for seg in path.replace("[", ".[").split("."):
+        if seg.split("[")[0] == SIM_IDENTITY_PREFIX:
+            return True
+    return False
 
 
 def flatten(obj, prefix=""):
@@ -218,6 +249,39 @@ def compare(a_path, b_path, floor):
     return beyond, within, notes
 
 
+# SIM-IDENTITY-HASH-1 bridge. Imported lazily inside the helper so this module
+# keeps working standalone (and its own self-test keeps running) if the sibling
+# script is absent -- but note the failure DIRECTION: an import failure yields
+# `None`, which SKIPS the gate rather than refusing. That is deliberate for a
+# missing-file case, and it is also the most dangerous line in this file, so it
+# announces itself on stderr instead of failing open in silence.
+_SIM_EXIT_UNGRADED = 7
+
+
+def _sim_identity_gate(a_path, b_path, sim_affecting, require_identity=False):
+    """Run the world-state refuse-to-grade gate. Returns a dict with
+    {verdict, render} or None when the gate could not run at all."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import sim_identity as si
+    except Exception as e:
+        print("[golden_compare] WARNING: sim-identity gate UNAVAILABLE (%s) -- "
+              "arms were NOT checked for world identity; a pass below does not "
+              "rule out that the two arms were showing different worlds." % e,
+              file=sys.stderr)
+        return None
+    try:
+        ba = si.load_block(a_path)
+        bb = si.load_block(b_path)
+    except Exception as e:
+        print("[golden_compare] WARNING: sim-identity manifests unreadable (%s)"
+              % e, file=sys.stderr)
+        return None
+    res = si.compare(ba, bb, sim_affecting=sim_affecting,
+                     require_identity=require_identity)
+    return {"verdict": res["verdict"], "render": si.render(res, "[golden_compare]")}
+
+
 def _pixel_frame(manifest_path):
     try:
         m = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
@@ -325,6 +389,20 @@ def main():
     cp.add_argument("--noise-floor", default=None,
                     help="noise_floor.json; without it every diff on a "
                          "non-ignored field is BEYOND")
+    cp.add_argument("--sim-affecting", action="store_true",
+                    help="SIM-IDENTITY-HASH-1: declare that these two arms are "
+                         "EXPECTED to produce different worlds (a gate that "
+                         "changes the sim, not just the shading). World "
+                         "divergence is then reported but never refused.")
+    cp.add_argument("--require-sim-identity", action="store_true",
+                    help="SIM-IDENTITY-HASH-1 strict mode: an ABSENT world hash "
+                         "becomes UNGRADED instead of a stamped UNVERIFIED. "
+                         "Correct once every deploy in use emits the block.")
+    cp.add_argument("--no-sim-identity-gate", action="store_true",
+                    help="skip the refuse-to-grade gate entirely. Escape hatch "
+                         "for triage ONLY: it turns 'these arms are not "
+                         "comparable' back into a silent pass, which is the "
+                         "exact failure this gate exists to stop.")
 
     args = ap.parse_args()
 
@@ -359,6 +437,25 @@ def main():
         floor = None
         if args.noise_floor:
             floor = json.loads(Path(args.noise_floor).read_text(encoding="utf-8"))
+
+        # --- SIM-IDENTITY REFUSE-TO-GRADE GATE (runs BEFORE any comparison) ---
+        # Ordering is the whole point. Grading first and refusing afterwards
+        # would still have printed a PASS/FAIL line, and a PASS line is what
+        # gets pasted into a status doc. Nothing gradeable is emitted until the
+        # two arms are shown to have been drawing the same world.
+        sim_verdict = "SKIPPED"
+        if not args.no_sim_identity_gate:
+            si = _sim_identity_gate(args.a, args.b, args.sim_affecting,
+                                    args.require_sim_identity)
+            if si is not None:
+                sim_verdict = si["verdict"]
+                print(si["render"])
+                if si["verdict"] == "UNGRADED":
+                    print("[golden_compare] RESULT: UNGRADED (arms not "
+                          "comparable -- NOT a pass and NOT a fail; nothing "
+                          "about pixels was measured)")
+                    return _SIM_EXIT_UNGRADED
+
         beyond, within, _ = compare(args.a, args.b, floor)
 
         print("[golden_compare] A=%s" % args.a)
@@ -374,11 +471,18 @@ def main():
                       "fixed-frame screenshot differs -- visual regression."
                       % _pixel_frame(args.a))
 
+        # SIM-IDENTITY-HASH-1: every terminal verdict carries the world-identity
+        # verdict. A bare "parity holds" is the exact string that gets pasted
+        # into a status doc, so it must never be able to mean "parity holds
+        # between two arms nobody proved were showing the same world".
+        stamp = " [sim_identity=%s]" % sim_verdict
         if beyond:
-            print("[golden_compare] RESULT: BEYOND NOISE FLOOR (%d offending field(s)): %s"
-                  % (len(beyond), ", ".join(k for k, *_ in beyond)))
+            print("[golden_compare] RESULT: BEYOND NOISE FLOOR (%d offending "
+                  "field(s)): %s%s"
+                  % (len(beyond), ", ".join(k for k, *_ in beyond), stamp))
             return 1
-        print("[golden_compare] RESULT: WITHIN NOISE FLOOR (parity holds)")
+        print("[golden_compare] RESULT: WITHIN NOISE FLOOR (parity holds)%s"
+              % stamp)
         return 0
 
 

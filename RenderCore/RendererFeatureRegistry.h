@@ -737,6 +737,47 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    // ── SIM-IDENTITY-HASH-1 ────────────────────────────────────────────────
+    // Per-sim-frame world-state hash (mover positions / orientations / gesture
+    // + anim phase / target ids) feeding the refuse-to-grade gate in
+    // scripts/sim_identity.py. Mover nondeterminism is a DESYNC, not a metrics
+    // problem; this is the lockstep-game instrument for it.
+    //
+    // `defaultOn = true` is deliberate and load-bearing, NOT a copy-paste slip.
+    // The consumer is a gate that REFUSES to compare two capture arms whose
+    // worlds differ. A default-OFF producer would leave the block absent from
+    // every manifest, and "absent" is the one input the gate cannot grade -- so
+    // the refusal would fire on everything on day one, get called noise, and be
+    // switched off. Classified Trace because it emits diagnostic output only:
+    // the collector is read-only (getters only; the mutating zero-arg
+    // getMovePath() is deliberately never called) and changes no render, no
+    // gameplay and no sim state.
+    //
+    // The DEFAULT IS READ FROM code/sim_identity.cpp envOnOff(), which parses
+    // "0"/"false"/"off"/"no" as OFF -- unlike the neighbouring
+    // MC2_BRIDGE_MOVER_STATE, which is `getenv() != nullptr` and therefore
+    // ENABLES on `=0`. Do not "harmonize" these two; the difference is the fix.
+    {
+        "MC2_SIM_IDENTITY",
+        "MC2_SIM_IDENTITY",
+        EnvVarKind::Trace,
+        true,
+        "SIM-IDENTITY-HASH-1: emit a world-state hash (sorted-by-partId digest over mover position/rotation/gesture/anim-frame/damage/status/team plus target/brain/move/path) into every visual-capture sidecar as a `sim_identity` block. DEFAULT ON. Consumed by scripts/sim_identity.py, which returns UNGRADED (exit 7) when two A/B arms' worlds differ in VISUAL fields -- i.e. when a pixel comparison between them measures nothing. Read-only: getters only, no allocation on the per-frame path, no sim mutation. Set MC2_SIM_IDENTITY=0 to omit the block entirely (which downgrades the gate to UNVERIFIED, not to a pass)."
+    },
+    {
+        "MC2_SIM_IDENTITY_TRACE",
+        "MC2_SIM_IDENTITY_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "SIM-IDENTITY-HASH-1: emit one `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` line per SIM frame to stdout. DEFAULT OFF. Diffing two runs' logs names the FIRST divergent sim frame directly (`sim_identity.py trace-diff a.log b.log`), where the pre-existing MC2_BRIDGE_MOVER_STATE needs ~58k per-mover lines plus a bespoke script to answer the same question."
+    },
+    {
+        "MC2_SIM_IDENTITY_TRACE_DETAIL",
+        "MC2_SIM_IDENTITY_TRACE_DETAIL",
+        EnvVarKind::Trace,
+        false,
+        "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame. DEFAULT OFF. Very verbose -- intended for a narrow frame window once trace-diff has already named the divergent frame."
+    },
     // ── TERRAIN-AMBIENT-FLOOR-2 ────────────────────────────────────────────
     // DEFAULT-ON visual change. `defaultOn` below is `true` ON PURPOSE and must
     // stay true: the predecessor slice registered the identical gate as
@@ -3637,6 +3678,33 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "the child env with os.environ.copy(), so ambient MC2_* vars reach mc2.exe and the allowlist drops "
         "nothing (HARNESS-HYGIENE-3). The real undriveable set is runner.FORCED_ENV / POPPED_ENV / a "
         "conflicting env_extra, and run_smoke.py already refuses to start on it."
+    },
+    // BACKEND-DEFAULT-PARITY-1: skybox fog exclusion (was unregistered, and that
+    // is what let two readers disagree in silence for the whole life of the gate).
+    {
+        "MC2_FEATURE_SKYBOX_FOG_EXCLUDE",
+        "MC2_SKYBOX_FOG_EXCLUDE",
+        EnvVarKind::Feature,
+        true,
+        "SKYBOX-FOG-EXCLUDE-1/2. DEFAULT-ON (SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1); "
+        "MC2_SKYBOX_FOG_EXCLUDE=0 is the single complete revert to the legacy OFF path. "
+        "WHAT IT DOES: on HDRI missions the skybox color draw is followed by a stencil-only "
+        "tag pass (shaders/hdri_skybox_stencil_tag.frag) marking true-sky pixels stencil=1; "
+        "runEdgeFog/runFogOob then sample that stencil through a GL_STENCIL_INDEX texture "
+        "view of sceneDepthTex_ and feather-exclude those pixels, so the OOB cloud bank stops "
+        "painting over the sky (the user-reported 'can't see the skybox'). INERT ON NON-HDRI "
+        "MISSIONS: renderHdriSkybox() early-returns before the tag pass, nothing is ever "
+        "tagged, the frags' stencil branch is a no-op and fog_oob.frag's worldDir.z<-0.22 band "
+        "fallback is retained -- byte-identical to legacy there. WHY IT IS REGISTERED NOW: it "
+        "was accounted for only by scripts/check-env-registry.sh's ALLOWLIST, whose comment "
+        "still said '(default OFF)' months after the flip. Being unregistered ALSO made it "
+        "invisible to check-gate-default-agreement.py, which iterated the registry -- so its "
+        "two readers (GL default-ON, VK default-OFF) contradicted each other unreported until "
+        "BACKEND-DEFAULT-PARITY-1 made that rule scan readers instead. There is now exactly "
+        "one reader: gos_postprocess.cpp skyboxFogExcludeEnabled(), exported as "
+        "gos_SkyboxFogExcludeEnabled() for the Vulkan fog TU's parity guard. NOT VISUALLY "
+        "VERIFIED IN THIS LANE: engine launches are hard-blocked here; the flip below is a "
+        "reader-default correction on the VK guard only and does not change any GL pixel."
     },
 };
 
