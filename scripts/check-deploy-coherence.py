@@ -19,11 +19,49 @@ scripts/deploy_payload.py, preferred when newer) or .deploy-manifest.json
   - manifest HEAD older than current branch commits touching
     code/ mclib/ GameOS/ shaders/
 
-ALWAYS exits 0 — advisory only, never a hard gate. All warnings are
-prefixed [DEPLOY_COHERENCE].
+Exits 0 by default — advisory, never a hard gate — so the run_smoke.py caller
+keeps the behaviour it was written against. Pass --strict to turn the same
+warnings into exit 1 for a caller that wants a gate rather than a report. All
+warnings are prefixed [DEPLOY_COHERENCE].
+
+KIT-COHERENCE-1 (2026-07-31) — the payload manifest's structural blindness
+--------------------------------------------------------------------------
+The manifest above lists exactly what deploy_payload.py COPIED. Anything a lane
+writes into the install AFTERWARDS was never a payload row, so this check was
+structurally incapable of seeing it — and reported the install coherent anyway.
+
+Measured on A:/Games/MC2-OpenGL-FINAL-2026-07-31: 805 manifest rows, 90 files in
+the install root, 80 of them uncovered. Most of those 80 are the stock game tree
+(art.fst, textures.fst, the editor) and legitimately are not payload. But
+thirteen of them are the A/B diagnostic kit — nine AB-*.bat arms, two CURSOR-*
+files, READ-ME-FIRST.md and verify-ab-kit.py — i.e. every file the user actually
+double-clicks. This check said OK while covering none of them.
+
+That already cost something. A lane edited an arm and its careless restore left
+the bytes diverged while every effective value stayed correct; check-ab-kit.py
+passed it, and what caught it was an ad-hoc sha256 list that lane happened to
+make for itself. Coherence did not, and could not.
+
+Extending the install's own .deployed_manifest.csv was rejected: deploy_payload's
+write_manifest() opens that file "w" and writes only the enumerated payload, so
+hand-added rows are destroyed by the next full deploy — and afterwards this check
+prints OK again. A mitigation that silently un-applies is worse than none.
+
+So the expected digests live in the SOURCE REPO, at scripts/kit-digests.csv,
+git-tracked. A redeploy cannot erase them; changing them is a reviewable diff.
+The arm is presence-triggered: an install with no kit reports N/A out loud
+rather than claiming a green it did not earn. It also sweeps the declared globs
+for kit files that are present but NOT pinned, so an added tenth arm is a
+warning rather than an invisible passenger.
+
+What it does NOT do: put the arms in the repo. A clone still has nothing for
+check-ab-kit.py to parse, so that script's manual-checks.allowlist exemption and
+its wiring TRIGGER are unchanged. This is a drift pin, not a source of truth.
 
 Example:
   py -3 scripts/check-deploy-coherence.py A:/Games/mc2-opengl/mc2-win64-v0.4
+  py -3 scripts/check-deploy-coherence.py <install> --strict
+  py -3 scripts/check-deploy-coherence.py <install> --bless-kit   # rewrite pins
 """
 from __future__ import annotations
 
@@ -39,6 +77,15 @@ CSV_MANIFEST_NAME = ".deployed_manifest.csv"  # written by scripts/deploy_payloa
 DEFAULT_DEPLOY_DIR = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 CODE_PATHS = ["code", "mclib", "GameOS", "shaders"]
 PREFIX = "[DEPLOY_COHERENCE]"
+
+# --- KIT-COHERENCE-1: post-deploy files the payload manifest cannot see -----
+# Lives in the repo (git-tracked), NOT in the install, so a redeploy cannot
+# erase it and a re-bless is a reviewable diff. See the module docstring.
+KIT_DIGESTS_NAME = "kit-digests.csv"
+# Used only by --bless-kit when the digest file does not exist yet; once it
+# does, the globs it carries are authoritative (the data owns its own scope).
+DEFAULT_KIT_GLOBS = ["AB-*.bat", "CURSOR-*.bat", "READ-ME-FIRST.md",
+                     "verify-ab-kit.py"]
 
 
 def _sha256(path: Path) -> str:
@@ -89,6 +136,203 @@ def _load_csv_manifest(path: Path) -> dict:
             "written_at": written_at,
             "source_worktree": f"({CSV_MANIFEST_NAME} via deploy_payload.py)",
             "files": files}
+
+
+def _kit_digest_path(worktree: Path) -> Path:
+    return worktree / "scripts" / KIT_DIGESTS_NAME
+
+
+def _samedir(a, b) -> bool:
+    """True if two paths name the same directory, case-insensitively on NTFS."""
+    if not a or not b:
+        return False
+    try:
+        import os
+        return (os.path.normcase(os.path.realpath(str(a)))
+                == os.path.normcase(os.path.realpath(str(b))))
+    except Exception:
+        return False
+
+
+def _load_kit_digests(worktree: Path):
+    """Parse scripts/kit-digests.csv.
+
+    Returns (rows, globs, blessed_from), or (None, None, None) if absent.
+
+    Format (comment lines start with '#'; '#glob <pattern>' declares scope,
+    '# blessed_from: <dir>' records WHICH install the pin describes):
+        relpath,sha256,bytes,source
+    `source` is optional and repo-relative: when set, the install's copy is
+    ALSO required to equal that repo file, which turns "the shipped copy of
+    check-ab-kit.py is byte-identical" from allowlist prose into a live check.
+    """
+    import csv as _csv
+    path = _kit_digest_path(worktree)
+    if not path.is_file():
+        return None, None, None
+    rows, globs, blessed_from = [], [], ""
+    with open(path, newline="", encoding="utf-8") as f:
+        for raw in f:
+            line = raw.rstrip("\r\n")
+            if line.startswith("#glob "):
+                globs.append(line[len("#glob "):].strip())
+                continue
+            if line.startswith("# blessed_from:"):
+                blessed_from = line.split(":", 1)[1].strip()
+                continue
+            if not line.strip() or line.startswith("#"):
+                continue
+            rec = next(_csv.reader([line]))
+            if not rec or rec[0] == "relpath":
+                continue
+            rel, sha, size, source = (rec + ["", "", "", ""])[:4]
+            rows.append({"path": rel.replace("\\", "/"), "sha256": sha,
+                         "size": int(size) if size.isdigit() else None,
+                         "source": source})
+    return rows, (globs or list(DEFAULT_KIT_GLOBS)), blessed_from
+
+
+def check_kit(deploy_dir: Path, worktree: Path, warn, info) -> None:
+    """Grade the post-deploy kit against the repo-tracked digest pin.
+
+    Never silent, and never a green it did not earn. Two cases, and the
+    discriminator is the pin's own `# blessed_from:` line, NOT mere presence:
+
+      * deploy_dir IS the blessed install -> EVERY pinned row must be present.
+        Presence-triggering alone was wrong here and a test caught it: with a
+        presence trigger, deleting the WHOLE kit lands in the "no kit in this
+        install" branch and reports N/A. Wholesale deletion is the loudest
+        drift there is; it must not be the quietest verdict.
+      * deploy_dir is some OTHER install (mc2-win64-v0.4, an editor target) ->
+        grade whatever kit files it does have and say how many, but do not
+        demand a kit it was never supposed to carry. Otherwise run_smoke.py
+        prints thirteen warnings on every unrelated run and the row becomes
+        the permanently-red wallpaper manual-checks.allowlist refuses twice.
+    """
+    rows, globs, blessed_from = _load_kit_digests(worktree)
+    if rows is None:
+        info(f"kit: no scripts/{KIT_DIGESTS_NAME} under {worktree} -- "
+             "post-deploy kit files are NOT covered by this run")
+        return
+    if not rows:
+        warn(f"scripts/{KIT_DIGESTS_NAME} exists but pins nothing -- an empty "
+             "pin is a green that measures no file")
+        return
+
+    pinned = {r["path"] for r in rows}
+    present = [r for r in rows if (deploy_dir / r["path"]).is_file()]
+    is_blessed_target = _samedir(deploy_dir, blessed_from)
+    if not present and not is_blessed_target:
+        info(f"kit: 0/{len(rows)} pinned kit files present in {deploy_dir} -- "
+             f"not the blessed install ({blessed_from or 'unrecorded'}), "
+             "kit coverage N/A (not a pass)")
+        return
+    if not is_blessed_target:
+        info(f"kit: {len(present)}/{len(rows)} pinned files present in "
+             f"{deploy_dir}, which is not the blessed install "
+             f"({blessed_from or 'unrecorded'}) -- grading only what is here")
+
+    bad = 0
+    for r in rows:
+        rel = r["path"]
+        p = deploy_dir / rel
+        if not p.is_file():
+            if not is_blessed_target:
+                continue        # a partial copy elsewhere is not this pin's business
+            bad += 1
+            warn(f"kit file missing: {rel} -- pinned in scripts/"
+                 f"{KIT_DIGESTS_NAME} but not in the blessed install "
+                 f"{deploy_dir}")
+            continue
+        st = p.stat()
+        if r["size"] is not None and st.st_size != r["size"]:
+            bad += 1
+            warn(f"kit size drift: {rel} (pinned {r['size']} vs actual "
+                 f"{st.st_size}) -- the kit changed since it was blessed")
+            continue
+        if _sha256(p) != r["sha256"]:
+            bad += 1
+            warn(f"kit hash drift: {rel} -- contents changed since it was "
+                 "blessed (edit, careless restore, or bit-rot)")
+            continue
+        src = r.get("source")
+        if src:
+            sp = worktree / src
+            if not sp.is_file():
+                bad += 1
+                warn(f"kit source missing: {rel} claims to mirror {src}, which "
+                     f"is not in {worktree}")
+            elif _sha256(sp) != r["sha256"]:
+                bad += 1
+                warn(f"kit mirror drift: {src} no longer matches the shipped "
+                     f"{rel} -- the repo copy moved and was never re-shipped")
+
+    # Kit files present but NOT pinned. Without this arm the fix would repeat
+    # the very blindness it closes: a tenth arm dropped into the install would
+    # be graded by nothing at all.
+    for g in globs:
+        for p in sorted(deploy_dir.glob(g)):
+            if not p.is_file():
+                continue
+            rel = p.name
+            if rel not in pinned:
+                bad += 1
+                warn(f"unpinned kit file: {rel} matches declared kit glob "
+                     f"'{g}' but has no row in scripts/{KIT_DIGESTS_NAME} -- "
+                     "add it (--bless-kit) or remove it")
+
+    if bad == 0:
+        graded = len(rows) if is_blessed_target else len(present)
+        info(f"kit OK: {graded}/{len(rows)} pinned files byte-identical "
+             f"(globs {' '.join(globs)})")
+
+
+def bless_kit(deploy_dir: Path, worktree: Path, out=sys.stdout) -> int:
+    """Rewrite scripts/kit-digests.csv from the install. Returns rows written.
+
+    This is a re-bless button, and the bound on it is deliberate: the file it
+    writes is git-TRACKED, so laundering drift means committing the changed
+    hashes where a reviewer sees them. The alternative -- hand-editing thirteen
+    sha256 lines -- is how a pin rots into wallpaper.
+    """
+    import csv as _csv
+    old_rows, globs, _ = _load_kit_digests(worktree)
+    sources = {r["path"]: r.get("source", "") for r in (old_rows or [])}
+    if globs is None:
+        globs = list(DEFAULT_KIT_GLOBS)
+
+    found = {}
+    for g in globs:
+        for p in sorted(deploy_dir.glob(g)):
+            if p.is_file():
+                found[p.name] = p
+
+    path = _kit_digest_path(worktree)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    head = _git(worktree, "rev-parse", "HEAD") or "?"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        f.write("# kit-digests v1 -- sha256 pin for files written into a deploy\n")
+        f.write("# target AFTER deploy_payload.py ran, which the payload\n")
+        f.write("# manifest (.deployed_manifest.csv) is structurally unable to\n")
+        f.write("# cover. Graded by scripts/check-deploy-coherence.py; see that\n")
+        f.write("# file's KIT-COHERENCE-1 docstring for why this lives here and\n")
+        f.write("# not in the install.\n")
+        f.write(f"# blessed_from: {deploy_dir}\n")
+        f.write(f"# blessed_head: {head}\n")
+        f.write("#\n")
+        f.write("# The globs below are the arm's SCOPE: a file matching one of\n")
+        f.write("# them that has no row is reported as unpinned, so a tenth arm\n")
+        f.write("# cannot ride along ungraded.\n")
+        for g in globs:
+            f.write(f"#glob {g}\n")
+        w = _csv.writer(f)
+        w.writerow(["relpath", "sha256", "bytes", "source"])
+        for rel in sorted(found):
+            p = found[rel]
+            w.writerow([rel, _sha256(p), p.stat().st_size, sources.get(rel, "")])
+    print(f"{PREFIX} blessed {len(found)} kit file(s) from {deploy_dir} "
+          f"into {path} -- REVIEW THE DIFF before committing", file=out)
+    return len(found)
 
 
 def check(deploy_dir: Path, worktree: Path, out=sys.stdout) -> int:
@@ -161,6 +405,10 @@ def check(deploy_dir: Path, worktree: Path, out=sys.stdout) -> int:
                      "(remember: v0.4 = game, 0.4c = editor; deploy BOTH "
                      "targets you intend to run)")
 
+    # Post-deploy kit (KIT-COHERENCE-1). Runs after the manifest arm so the
+    # summary line below cannot claim OK while the kit is drifted.
+    check_kit(deploy_dir, worktree, warn, info)
+
     if warns == 0:
         info(f"OK: {deploy_dir} matches manifest, no newer code commits")
     return warns
@@ -172,14 +420,27 @@ def main() -> int:
     ap.add_argument("deploy_dir", nargs="?", default=DEFAULT_DEPLOY_DIR)
     ap.add_argument("--worktree", default=str(Path(__file__).resolve().parents[1]),
                     help="worktree for git staleness comparison (default: this repo)")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit 1 if anything warned (default: advisory, exit 0). "
+                         "run_smoke.py does not pass this, so its behaviour is "
+                         "unchanged; a caller that wants a GATE passes it.")
+    ap.add_argument("--bless-kit", action="store_true",
+                    help="rewrite scripts/kit-digests.csv from this install's "
+                         "kit files, then exit. Writes a git-TRACKED file: "
+                         "review the diff before committing.")
     args = ap.parse_args()
 
     deploy_dir = Path(args.deploy_dir)
     if not deploy_dir.is_dir():
         print(f"{PREFIX} deploy dir not found: {deploy_dir} (skipping check)")
+        return 1 if args.strict else 0
+    if args.bless_kit:
+        bless_kit(deploy_dir, Path(args.worktree))
         return 0
-    check(deploy_dir, Path(args.worktree))
-    return 0  # advisory only -- never hard-fail
+    warns = check(deploy_dir, Path(args.worktree))
+    # Advisory by default (documented contract, and run_smoke.py's caller reads
+    # only stdout); --strict is the opt-in gate.
+    return 1 if (args.strict and warns) else 0
 
 
 if __name__ == "__main__":

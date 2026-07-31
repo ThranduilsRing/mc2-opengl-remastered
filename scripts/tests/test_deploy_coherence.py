@@ -206,6 +206,196 @@ def test_csv_manifest_detects_exe_mutation(deploy, tmp_path):
     assert "drift" in text and "mc2.exe" in text
 
 
+# --- KIT-COHERENCE-1: post-deploy kit files the payload manifest cannot see --
+#
+# The bug these guard: .deployed_manifest.csv lists only what deploy_payload.py
+# COPIED, so files a lane writes into the install afterwards (the A/B kit) had
+# no rows at all -- and the checker reported the install coherent regardless.
+
+
+def _fake_worktree(tmp_path: Path, rows, globs=("AB-*.bat",),
+                   blessed_from: Path | None = None) -> Path:
+    """A worktree stub carrying scripts/kit-digests.csv."""
+    wt = tmp_path / "wt"
+    (wt / "scripts").mkdir(parents=True, exist_ok=True)
+    lines = ["# test pin"]
+    if blessed_from is not None:
+        lines.append(f"# blessed_from: {blessed_from}")
+    lines += [f"#glob {g}" for g in globs]
+    lines.append("relpath,sha256,bytes,source")
+    lines += [",".join(str(c) for c in r) for r in rows]
+    (wt / "scripts" / checker.KIT_DIGESTS_NAME).write_text(
+        "\n".join(lines) + "\n", encoding="utf-8")
+    return wt
+
+
+def _kit(deploy: Path, name: str = "AB-0-DEFAULT-baseline.bat",
+         body: bytes = b"@echo off\r\nREM measured 47.7%\r\n") -> Path:
+    p = deploy / name
+    p.write_bytes(body)
+    return p
+
+
+def test_kit_absent_digest_file_says_so_not_ok(deploy, tmp_path):
+    """No pin file -> the run must SAY the kit is uncovered, never imply green."""
+    n, text = _warns(deploy, tmp_path)
+    assert n == 0
+    assert "post-deploy kit files are NOT covered" in text
+
+
+def test_kit_match_is_reported(deploy, tmp_path):
+    p = _kit(deploy)
+    wt = _fake_worktree(tmp_path, [[p.name, checker._sha256(p),
+                                    p.stat().st_size, ""]])
+    n, text = _warns(deploy, wt)
+    assert n == 0
+    assert "kit OK: 1/1" in text
+
+
+def test_kit_one_byte_drift_warns(deploy, tmp_path):
+    """Same SIZE, one byte different -> must take the sha256 arm.
+
+    The byte lives in the arm's header prose, which check-ab-kit.py excludes
+    from the common block and never parses as a `set` line: exactly the class
+    both existing graders pass.
+    """
+    p = _kit(deploy)
+    wt = _fake_worktree(tmp_path, [[p.name, checker._sha256(p),
+                                    p.stat().st_size, ""]])
+    p.write_bytes(p.read_bytes().replace(b"47.7%", b"47.1%"))
+    n, text = _warns(deploy, wt)
+    assert n == 1
+    assert "kit hash drift" in text and p.name in text
+
+
+def test_kit_deleted_file_warns(deploy, tmp_path):
+    """Deleting the WHOLE kit must be loud, not N/A.
+
+    This test failed the first implementation, which triggered on presence:
+    with every pinned file gone there was nothing to trigger on, so wholesale
+    deletion produced the quietest verdict the checker has. The blessed-install
+    discriminator exists because of this failure.
+    """
+    p = _kit(deploy)
+    wt = _fake_worktree(tmp_path, [[p.name, checker._sha256(p),
+                                    p.stat().st_size, ""]],
+                        blessed_from=deploy)
+    p.unlink()
+    n, text = _warns(deploy, wt)
+    assert n == 1
+    assert "kit file missing" in text
+
+
+def test_kit_wholesale_deletion_from_blessed_install_warns_every_row(
+        deploy, tmp_path):
+    files = [_kit(deploy, n) for n in ("AB-0-A.bat", "AB-1-B.bat", "AB-2-C.bat")]
+    wt = _fake_worktree(
+        tmp_path,
+        [[p.name, checker._sha256(p), p.stat().st_size, ""] for p in files],
+        blessed_from=deploy)
+    for p in files:
+        p.unlink()
+    n, text = _warns(deploy, wt)
+    assert n == 3
+    assert text.count("kit file missing") == 3
+    assert "N/A" not in text
+
+
+def test_kit_unpinned_extra_arm_warns(deploy, tmp_path):
+    """An added tenth arm must not ride along ungraded."""
+    p = _kit(deploy)
+    wt = _fake_worktree(tmp_path, [[p.name, checker._sha256(p),
+                                    p.stat().st_size, ""]])
+    _kit(deploy, "AB-9-INJECTED.bat", b"@echo off\r\n")
+    n, text = _warns(deploy, wt)
+    assert n == 1
+    assert "unpinned kit file" in text and "AB-9-INJECTED.bat" in text
+
+
+def test_kit_mirror_drift_warns(deploy, tmp_path):
+    """The shipped copy of a repo script must track the repo copy."""
+    p = _kit(deploy, "verify-ab-kit.py", b"print('grader v1')\n")
+    wt = _fake_worktree(tmp_path,
+                        [[p.name, checker._sha256(p), p.stat().st_size,
+                          "scripts/check-ab-kit.py"]],
+                        globs=("verify-ab-kit.py",))
+    (wt / "scripts" / "check-ab-kit.py").write_bytes(b"print('grader v2')\n")
+    n, text = _warns(deploy, wt)
+    assert n == 1
+    assert "kit mirror drift" in text
+
+
+def test_kit_no_kit_in_this_install_is_na_not_pass(deploy, tmp_path):
+    """A deploy dir with no kit reports N/A out loud -- never a silent green."""
+    wt = _fake_worktree(tmp_path, [["AB-0-DEFAULT-baseline.bat", "0" * 64,
+                                    10, ""]])
+    n, text = _warns(deploy, wt)
+    assert n == 0
+    assert "kit coverage N/A (not a pass)" in text
+
+
+def test_kit_empty_pin_is_a_warn_not_a_green(deploy, tmp_path):
+    wt = _fake_worktree(tmp_path, [])
+    n, text = _warns(deploy, wt)
+    assert n == 1
+    assert "pins nothing" in text
+
+
+def test_strict_flag_turns_drift_into_exit_1(deploy, tmp_path):
+    """The whole point: the report can now be used as a gate."""
+    (deploy / "mc2.exe").write_bytes(b"stale!")
+    argv = [sys.executable, str(SCRIPTS / "check-deploy-coherence.py"),
+            str(deploy), "--worktree", str(tmp_path)]
+    assert subprocess.run(argv, capture_output=True).returncode == 0
+    r = subprocess.run(argv + ["--strict"], capture_output=True, text=True)
+    assert r.returncode == 1
+    assert "WARN" in r.stdout
+
+
+def test_strict_exit_0_when_clean(deploy, tmp_path):
+    r = subprocess.run(
+        [sys.executable, str(SCRIPTS / "check-deploy-coherence.py"),
+         str(deploy), "--worktree", str(tmp_path), "--strict"],
+        capture_output=True, text=True)
+    assert r.returncode == 0
+
+
+def test_bless_kit_roundtrip_and_source_preserved(deploy, tmp_path):
+    """--bless-kit must be re-runnable and must not drop the source column."""
+    p = _kit(deploy, "verify-ab-kit.py", b"print('grader')\n")
+    wt = _fake_worktree(tmp_path,
+                        [[p.name, checker._sha256(p), p.stat().st_size,
+                          "scripts/check-ab-kit.py"]],
+                        globs=("verify-ab-kit.py", "AB-*.bat"))
+    (wt / "scripts" / "check-ab-kit.py").write_bytes(b"print('grader')\n")
+    _kit(deploy, "AB-4-NEW.bat", b"@echo off\r\n")
+    assert checker.bless_kit(deploy, wt, out=io.StringIO()) == 2
+    rows, globs, blessed_from = checker._load_kit_digests(wt)
+    assert checker._samedir(deploy, blessed_from), blessed_from
+    by = {r["path"]: r for r in rows}
+    assert set(by) == {"verify-ab-kit.py", "AB-4-NEW.bat"}
+    assert by["verify-ab-kit.py"]["source"] == "scripts/check-ab-kit.py"
+    assert set(globs) == {"verify-ab-kit.py", "AB-*.bat"}
+    n, text = _warns(deploy, wt)
+    assert n == 0 and "kit OK: 2/2" in text
+
+
+def test_real_repo_pin_is_parseable_and_nonempty():
+    """The shipped scripts/kit-digests.csv must actually load.
+
+    A pin file that silently fails to parse would restore the exact blindness
+    this arm removes, with no signal at all.
+    """
+    rows, globs, blessed_from = checker._load_kit_digests(SCRIPTS.parent)
+    assert rows is not None, "scripts/kit-digests.csv is missing"
+    assert len(rows) >= 13
+    assert globs and all(g.strip() for g in globs)
+    assert blessed_from, "pin records no blessed_from -- deletion would be N/A"
+    for r in rows:
+        assert len(r["sha256"]) == 64, r
+        assert r["size"] and r["size"] > 0, r
+
+
 def test_newest_manifest_wins(deploy, tmp_path):
     import os
     # json exists (from fixture); csv written later -> csv must be chosen

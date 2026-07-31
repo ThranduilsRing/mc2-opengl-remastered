@@ -1,0 +1,30 @@
+# kit-digests v1 -- sha256 pin for files written into a deploy
+# target AFTER deploy_payload.py ran, which the payload
+# manifest (.deployed_manifest.csv) is structurally unable to
+# cover. Graded by scripts/check-deploy-coherence.py; see that
+# file's KIT-COHERENCE-1 docstring for why this lives here and
+# not in the install.
+# blessed_from: A:\Games\MC2-OpenGL-FINAL-2026-07-31
+# blessed_head: d730c3622ad98e093d162aac7b9b7fa728923108
+#
+# The globs below are the arm's SCOPE: a file matching one of
+# them that has no row is reported as unpinned, so a tenth arm
+# cannot ride along ungraded.
+#glob AB-*.bat
+#glob CURSOR-*.bat
+#glob READ-ME-FIRST.md
+#glob verify-ab-kit.py
+relpath,sha256,bytes,source
+AB-0-DEFAULT-baseline.bat,36db35e6030d4eb9fd2b4c4ec1f3afc808c1fb56882b1e3130fbd62d1666f1a1,5424,
+AB-1-CPU_PHONG_RETIRE-0-legacy-object-seating.bat,7b2a9738dfcb0379bff667ecf918312f31a05685c455524d5efa730c1ceccdf8,6713,
+AB-2-SHORELINE_LEGACY_SUPPRESS-0-legacy-prop-rim.bat,3ef78d8fab01cc4e30b3fab7baf35c561bf8bf946aab43d0730c59dbc35a81a7,6739,
+AB-3-SUN_AXIS_FIX-1-mech-vehicle-diffuse.bat,2d8178b8f1cb78ab36b04e6ceb02b83722eaad78def0a6bdc719b2052d7f34b5,6505,
+AB-4-SUN_ELEVATION_FIX-1-world-sun-and-shadows.bat,ed11b497701d72e46e2be767a0abc66dc1f04316423495a9bd35eea20891d777,6699,
+AB-5-STATIC_PROP_IBL_SUN_ROTATE-1-prop-probe-aim.bat,013ad81f5c4db4945a1cdd68090a09ff98067e6d55fef9d3ce0d487251c5dd66,6532,
+AB-6a-STATIC_PROP_LIGHT_FRESHNESS-1-counter-read.bat,b0d38325a1962ca663bf9e76494eaf1dcd84a51fe632e2e43af18d9ecc98c05e,6949,
+AB-6b-STATIC_PROP_LIGHT_FRESHNESS-0-legacy-stale-row.bat,ee2e1f6faa6f83641ea994dfdf871340550a95f11e8445beb74c43a9baf4be3d,6752,
+AB-7-LAUNCHER-FOUR-1-what-the-launcher-adds.bat,e64872aff0a3b7f05805ceaa5e6714a1e632511576579f6a997bf3e10c651d6f,6810,
+CURSOR-1-normal-launch.bat,8ff37f4bcb5b3ba53c05783bd89e090887774b937f6781876b2da5b0e88a2584,2304,
+CURSOR-2-offscreen-alone.bat,6f906e77fcc8ff3e36eee2a5bb2736a5dc9dede7b80d48b3c94a7d42158f1221,4860,
+READ-ME-FIRST.md,b68beb2612602529c43431bf42dfb25167db0f9bf903fef0f6fc50afac3ec8c3,16670,
+verify-ab-kit.py,d726abad8768114dbdd022f7c9f141343fafd378a98c86d36968770950d7cafa,10981,scripts/check-ab-kit.py
