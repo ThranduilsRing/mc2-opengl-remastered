@@ -40,11 +40,26 @@ PREC vec4 rc_gbuffer1_screenShadowEligible_noSelfShadow(PREC vec3 normal) {
     return vec4(normal * 0.5 + 0.5, 0.25);
 }
 
-// PROP-ALPHA-SHADOW-CLASS-1: alpha-test LATTICE prop (chain-link fence,
-// railing, grating). Same static-prop class as 0.25 — still inside the
-// (0.1, 0.5] band, so BOTH rc_isStaticPropNoSelfShadow and the canonical
-// rc_pixelHandlesOwnShadow threshold behave EXACTLY as before — but
-// distinguishable, so the PROP-SHADOW-RECEIVE opt-in can skip it.
+// PROP-ALPHA-SHADOW-CLASS-1: alpha-test CUTOUT prop. Same static-prop class as
+// 0.25 — still inside the (0.1, 0.5] band, so BOTH rc_isStaticPropNoSelfShadow
+// and the canonical rc_pixelHandlesOwnShadow threshold behave EXACTLY as before
+// — but distinguishable, so the PROP-SHADOW-RECEIVE opt-in can skip it.
+//
+// WHO IS ACTUALLY IN THIS CLASS (CONTRACT-TRUTH-2). This paragraph used to read
+// "alpha-test LATTICE prop (chain-link fence, railing, grating)" and named
+// nothing else. That is not false so much as backwards about the membership:
+// the class is every prop packet carrying ALPHA_TEST_BIT, and it is dominated
+// by TREES. The bit has exactly two sources, both in
+// GameOS/gameos/gos_static_prop_batcher.cpp:
+//   * shape-level TG_TypeShape::alphaTestOn (:3325) — and the ONLY
+//     SetAlphaTest(true) call sites in the engine are the tree shapes in
+//     mclib/bdactor.cpp (:6255, :6289, :6337, :6387). EVERY tree is in here.
+//   * per-texture-slot textureAlpha, OR'd in at draw time (:5235, :8911) —
+//     binary-alpha cutout textures, which is where fences, gates and
+//     multi-textured building faces actually enter.
+// Reading "fence, railing, grating" and picturing a rare bit of set dressing is
+// how a change to this class gets waved through as low-blast-radius. It lands
+// on every tree on the map.
 //
 // Rationale: the shadow depth pass has no alpha discard, so a lattice writes
 // its depth into the cascades as a SOLID slab; letting it RECEIVE that depth
@@ -74,15 +89,27 @@ PREC vec4 rc_gbuffer1_screenShadowEligible_noSelfShadow_alphaTest(PREC vec3 norm
 // Reader side — true when the pixel is a static prop (no dynamic self-shadow).
 // Mid band (0.1, 0.5); below the terrain threshold (0.5) so it still enters
 // shadow_screen.frag's object path, above the mech band (< 0.1).
-// Matches BOTH 0.25 (solid prop) and 0.375 (alpha-test lattice) by design.
+// Matches BOTH 0.25 (solid prop) and 0.1875 (alpha-test cutout) by design.
+//
+// THAT SECOND NUMBER WAS WRONG UNTIL CONTRACT-TRUTH-2: it named the REJECTED
+// value from the VALUE CHOICE block above -- a value this file has never
+// emitted -- so the canonical description of the class table contradicted both
+// its own rationale twenty lines up and its own code ten lines up, in the one
+// file every other shader conforms to. The same stale constant had been copied
+// into shaders/shadow_screen.frag. Nothing noticed, because nothing compared
+// this prose against the constants the shaders actually emit;
+// scripts/check-render-contract-alpha-classes.py now does exactly that, and
+// would have failed the commit that wrote it.
 bool rc_isStaticPropNoSelfShadow(PREC vec4 gbuffer1) {
     return gbuffer1.a > 0.1 && gbuffer1.a <= 0.5;
 }
 
-// Reader side — true only for the alpha-test LATTICE sub-class (0.1875).
+// Reader side — true only for the alpha-test CUTOUT sub-class (0.1875): every
+// tree, plus binary-alpha fences/gates/building faces. See the membership note
+// on the emitter above before assuming this is a niche class.
 // Sub-band (0.1, 0.22] carves 0.1875 out of the (0.1, 0.5] prop band without
 // disturbing it: 0.25 stays above 0.22, and the mech class stays at/below 0.1.
-// Used SOLELY to exclude lattices from the dynamic-cascade RECEIVE opt-in;
+// Used SOLELY to exclude cutouts from the dynamic-cascade RECEIVE opt-in;
 // every other consumer keeps treating them as ordinary static props.
 bool rc_isAlphaTestProp(PREC vec4 gbuffer1) {
     return gbuffer1.a > 0.1 && gbuffer1.a <= 0.22;

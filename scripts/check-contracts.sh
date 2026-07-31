@@ -826,6 +826,19 @@ run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quie
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
+# CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
+# rc_* helpers. It says nothing about whether the helpers' own documentation is
+# true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the
+# alpha-test class as a value no shader has ever emitted -- contradicting the
+# helper ten lines above it AND the rationale block twenty lines above it -- and
+# the same stale constant had been copied into shaders/shadow_screen.frag. A
+# constant duplicated between a comment and code, where only the code is
+# checked, drifts silently. This row derives the class table from the EMITTED
+# literals (GL helper bodies + the VK shader's inlined copy), cross-checks it
+# against the reader bands, and fails when prose in the contract file set names
+# a prop-band value that nothing emits.
+run_check "render_contract_alpha_classes"          "py -3 scripts/check-render-contract-alpha-classes.py"
+run_check "render_contract_alpha_classes_selftest" "py -3 scripts/check-render-contract-alpha-classes.py --selftest"
 # RED-ROWS-CLOSE-2 (2026-07-31): the C++/GLSL struct ABI gate, wired at last --
 # see the header for why the comment that excluded it was wrong on both clauses.
 # It asserts that every field with an offsetof static_assert on the C++ side

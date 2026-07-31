@@ -648,8 +648,11 @@ void main() {
     // PROP-SHADOW-RECEIVE-1: MC2_PROP_SHADOW_RECEIVE=1 opts the a=0.25 class
     // back INTO the dynamic CSM sample inside shadow_screen.frag (softened,
     // floor 0.4) — the mask class here is unchanged either way.
-    // PROP-ALPHA-SHADOW-CLASS-1: alpha-test LATTICE props (chain-link fence,
-    // railing, grating) emit 0.1875 instead of 0.25. Same band, same behaviour
+    // PROP-ALPHA-SHADOW-CLASS-1: alpha-test CUTOUT props emit 0.1875 instead
+    // of 0.25 -- that is EVERY tree (shape-level alphaTestOn, set only by the
+    // tree shapes in mclib/bdactor.cpp) plus every packet whose texture slot
+    // is flagged textureAlpha (fences, gates, multi-textured building faces).
+    // Not a niche class. Same band, same behaviour
     // for every existing reader — it only lets shadow_screen.frag exclude them
     // from the RECEIVE opt-in, because the shadow depth pass has no alpha
     // discard and would self-shadow the lattice as a solid slab. Pure

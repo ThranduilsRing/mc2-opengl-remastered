@@ -273,9 +273,13 @@ void main()
             float shadow = 1.0;
             if (enableShadows == 1)
                 shadow = min(shadow, sampleShadowMap(shadowMap, worldPos, lightSpaceMatrix, 8));
-            // PROP-ALPHA-SHADOW-CLASS-1: lattice props (0.375) stay excluded
-            // from the RECEIVE opt-in even when it is on (debug view mirrors
-            // the real path below).
+            // PROP-ALPHA-SHADOW-CLASS-1: alpha-test cutout props (a=0.1875 --
+            // every tree, plus binary-alpha fences/gates) stay excluded from
+            // the RECEIVE opt-in even when it is on (debug view mirrors the
+            // real path below). Until CONTRACT-TRUTH-2 this named the value
+            // the contract header's VALUE CHOICE block explicitly REJECTED --
+            // a constant no shader has ever emitted -- copied from the same
+            // stale line in shaders/include/render_contract.hglsl.
             if (enableDynamicShadows == 1
                 && (!isProp || (propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))))
                 shadow = min(shadow, sampleDynamicShadow(worldPos, N, mechSoft,
