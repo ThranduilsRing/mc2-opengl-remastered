@@ -29,30 +29,93 @@ MEASURED, 2026-07-30, on the three committed goldens:
     build, sitting exactly where the golden points.
   * 0 of 3 could prove which binary minted them.
 
+PROVENANCE-FORGERY-CLOSE-1 -- THE HOLE THIS MODULE SHIPPED WITH
+---------------------------------------------------------------
+The paragraph above ("a hand-added identity block is not accepted") was FALSE
+for the entire life of af4f79c8, in the very module written to stop forgeries.
+
+A 16-line hand-typed golden.json naming `Z:/no/such/dir/never_existed_vtu1.exe`
+-- a binary that has never existed on any machine -- graded
+`[OK ] RECORDED-AT-MINT commit=d15ea5edbeef`, exit 0. Two reasons, both here:
+
+  * `establish()` returned ok=True whenever the recorded exe path was simply
+    ABSENT FROM DISK. "I cannot check this" was spelled the same as "I checked
+    this". Absence of contradiction was read as corroboration.
+  * NOTHING outside the file was ever consulted. Self-consistency means
+    `embedded_fingerprint.exe_sha256_at_scan == exe.sha256` -- two fields in one
+    JSON object, both typed by the same hand in the same keystroke. That is not
+    a cross-check; it is the file agreeing with itself.
+
+The original self-test passed while blind because its "hand-added" case OMITTED
+`exe_sha256_at_scan` -- the one field a forger must type. It proved that a
+careless forgery fails, and called that proof against a careful one.
+
 THE RULE
 --------
-Provenance is ESTABLISHED only when the artifact names its binary by CONTENT and
-records that binary's OWN embedded build fingerprint, read from those same bytes.
-Three levels, and only the first two may be graded against:
+Provenance is ESTABLISHED only when the artifact names its binary by CONTENT,
+records that binary's OWN embedded build fingerprint read from those same bytes,
+AND something OUTSIDE the artifact agrees. Four levels; only the first two may
+be graded against:
 
-  VERIFIED-LIVE     recorded sha256 + embedded fingerprint, the binary is still
-                    on disk byte-identical, and a live re-read of its stamp
-                    agrees. The strongest statement available.
-  RECORDED-AT-MINT  same recording, but the binary is gone or replaced. It
-                    cannot be re-read -- yet the record is internally
-                    self-consistent (`embedded_fingerprint.exe_sha256_at_scan`
-                    equals `exe.sha256`, i.e. the stamp was demonstrably read
-                    from the very bytes the digest names) and was tool-emitted.
-  UNESTABLISHED     everything else. REFUSE TO GRADE.
+  VERIFIED-LIVE         recorded sha256 + embedded fingerprint, the binary is
+                        still on disk byte-identical, and a live re-read of its
+                        stamp agrees. The strongest statement available, and the
+                        only one that is proof rather than corroboration.
+  CORROBORATED-AT-MINT  the binary is gone or replaced, so it cannot be re-read
+                        -- but at least one INDEPENDENT WITNESS, outside this
+                        file, agrees with what the record claims. Gradeable.
+  UNCORROBORATED        internally self-consistent and nothing more. Every field
+                        in it is hand-typeable and no witness anywhere agrees.
+                        REFUSE TO GRADE. This is the forged-golden level.
+  UNESTABLISHED         malformed, incomplete or CONTRADICTED. REFUSE TO GRADE.
+
+WITNESSES -- what "outside this file" means
+-------------------------------------------
+A witness must be checkable by this module without trusting the artifact's own
+prose. Any ONE suffices; every witness found is listed in the result.
+
+  W-REPO-COMMIT     the commit named by the embedded stamp resolves as a real
+                    commit object in this repository (`git cat-file -e
+                    <sha>^{commit}`). All lane worktrees share one object
+                    database (`git rev-parse --git-common-dir`), so a binary
+                    built in ANY lane corroborates here -- and it keeps
+                    corroborating long after that lane's install is deleted,
+                    which is the property a golden needs.
+  W-ARTIFACT        another JSON on disk, NAMED BY THIS RECORD and pinned by its
+                    own sha256, that independently records the SAME exe digest.
+                    Tamper-evident: edit the witness to agree and its digest
+                    stops matching, so it stops counting.
+
+WHY "ANY ONE", NOT "ALL"
+------------------------
+Because a gate that refuses all history gets deleted within a day, and then
+protects nothing. Goldens legitimately outlive the binaries that minted them:
+installs are overwritten every build, scratch capture trees are pruned, lanes
+are deleted. Requiring live bytes would refuse every golden older than its
+install -- i.e. all of them, eventually. W-REPO-COMMIT is the arm that survives
+that, because git objects are not deleted when an install is.
+
+HONEST LIMITATION -- state it rather than imply more
+----------------------------------------------------
+W-REPO-COMMIT proves the commit is REAL. It does not prove THIS BINARY was built
+from it, and it cannot: no signature and no external append-only store exists.
+A determined forger who copies a genuine sha out of `git log` still reaches
+CORROBORATED-AT-MINT. What changed is the bar: from "type any twelve hex
+characters" to "name a commit that exists and a digest a second on-disk artifact
+already carries". Only VERIFIED-LIVE is proof. The level names say so, and a
+reader who wants proof should require that level rather than `ok`.
 
 WHAT IS DELIBERATELY *NOT* ACCEPTED
 -----------------------------------
   * path + mtime. An mtime is not an identity; overwrite the file and the
     measurement is unattributable, which is precisely what happened above.
-  * a hand-added identity block. PROVENANCE-EMIT-1 already ruled that provenance
-    is tool-emitted or it is nothing: a hand-typed claim is exactly as
-    trustworthy as the human who typed it, and the one in the tree today is
-    already contradicted by the bytes.
+  * a self-consistent record with no witness. This is the forgery the module
+    shipped blind to, and it is now its own named level (UNCORROBORATED) so a
+    reader can tell "unwitnessed" apart from "malformed".
+  * a malformed digest or commit. `exe.sha256` must be exactly 64 hex
+    characters and the stamped commit 7..40; the forged golden that started
+    this slice carried a SIXTY-FIVE character "sha256" and nothing noticed,
+    because nothing looked.
   * the source worktree HEAD, under any spelling. `blessed_commit`,
     `identity.git.commit`, `source_worktree_head_*` -- none of them describe the
     binary. A multi-lane worktree setup makes them routinely a DIFFERENT commit
@@ -73,6 +136,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -82,8 +147,20 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 import exe_fingerprint as ef  # noqa: E402
 
-#: Levels that may be graded against, strongest first.
-GRADEABLE = ("VERIFIED-LIVE", "RECORDED-AT-MINT")
+ROOT = _HERE.parent
+
+#: Levels that may be graded against, strongest first. UNCORROBORATED is
+#: deliberately absent: a record that only agrees with itself is the forgery
+#: shape this module exists to refuse (PROVENANCE-FORGERY-CLOSE-1).
+GRADEABLE = ("VERIFIED-LIVE", "CORROBORATED-AT-MINT")
+
+#: A sha256 is 64 hex characters. Exactly. The forged golden that opened
+#: PROVENANCE-FORGERY-CLOSE-1 carried 65 and graded clean, because the only
+#: thing ever done with this field was compare it to another field in the same
+#: file -- and 65 characters compare equal to themselves just fine.
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+#: An abbreviated-or-full git commit id.
+_HEXCOMMIT = re.compile(r"^[0-9a-f]{7,40}$")
 
 
 class ProvenanceUnestablished(Exception):
@@ -99,6 +176,130 @@ def _sha256_file(p: Path) -> "str | None":
         return h.hexdigest()
     except Exception:
         return None
+
+
+#: Memo for repo_has_commit. Keyed by (repo_root, sha).
+_COMMIT_CACHE: "dict[tuple[str, str], bool]" = {}
+_GITDIR_CACHE: "dict[str, bool]" = {}
+
+
+def git_object_db_available(repo_root: "str | Path" = None) -> bool:
+    """Is there a git object database to ask at all?
+
+    Kept separate from `repo_has_commit` so a refusal can say which of the two
+    very different things happened. "This commit does not exist" and "I had no
+    way to look" must not print the same sentence -- collapsing those two is the
+    same mistake as grading an absent binary OK, one layer up.
+    """
+    root = str(repo_root or ROOT)
+    if root in _GITDIR_CACHE:
+        return _GITDIR_CACHE[root]
+    try:
+        r = subprocess.run(["git", "-C", root, "rev-parse", "--git-dir"],
+                           capture_output=True, timeout=30)
+        avail = (r.returncode == 0)
+    except Exception:  # noqa: BLE001 -- git missing entirely
+        avail = False
+    _GITDIR_CACHE[root] = avail
+    return avail
+
+
+def repo_has_commit(sha: "str | None", repo_root: "str | Path" = None) -> bool:
+    """W-REPO-COMMIT: does `sha` resolve to a real commit OBJECT in this repo?
+
+    This is the witness that survives everything else. Installs are overwritten
+    on every build and scratch capture trees are pruned, but a commit object is
+    not deleted when an install is -- and every lane worktree shares ONE object
+    database (`git rev-parse --git-common-dir`), so a binary built in another
+    lane still corroborates from here.
+
+    It proves the commit is REAL, not that this binary was built from it. See
+    the module docstring's HONEST LIMITATION section; do not let a caller read
+    more into it than that.
+    """
+    if not sha or not _HEXCOMMIT.match(sha):
+        return False
+    root = str(repo_root or ROOT)
+    key = (root, sha)
+    if key in _COMMIT_CACHE:
+        return _COMMIT_CACHE[key]
+    try:
+        r = subprocess.run(["git", "-C", root, "cat-file", "-e", f"{sha}^{{commit}}"],
+                           capture_output=True, timeout=30)
+        found = (r.returncode == 0)
+    except Exception:  # noqa: BLE001 -- no git, not a repo: no witness, not a lie
+        found = False
+    _COMMIT_CACHE[key] = found
+    return found
+
+
+def _witness_records(doc: "dict[str, Any]") -> "list[dict[str, Any]]":
+    """The corroborating artifacts this record NAMES, if any.
+
+    Emitted by the minting tool (bless.py) under
+    `identity.binary_corroboration.witnesses`; each entry pins one other file by
+    its OWN sha256 so that editing the witness to agree stops it counting.
+    """
+    ident = doc.get("identity")
+    if not isinstance(ident, dict):
+        return []
+    bc = ident.get("binary_corroboration")
+    if not isinstance(bc, dict):
+        return []
+    ws = bc.get("witnesses")
+    return [w for w in ws if isinstance(w, dict)] if isinstance(ws, list) else []
+
+
+def _exe_sha_of(doc: "dict[str, Any]") -> "str | None":
+    blk = _exe_block(doc)
+    return blk.get("sha256") if isinstance(blk, dict) else None
+
+
+def check_witness_artifacts(doc: "dict[str, Any]", sha: str, self_path: "Path | None"
+                            ) -> "tuple[list[str], str | None]":
+    """(usable witness descriptions, contradiction).
+
+    A witness counts only if it is a DIFFERENT file that still exists, whose own
+    digest matches what this record pinned, and whose independently-recorded exe
+    digest is the same one. A witness that exists, verifies, and names a
+    DIFFERENT binary is not a missing witness -- it is a contradiction, and the
+    record must not grade at all.
+    """
+    good: "list[str]" = []
+    for w in _witness_records(doc):
+        wp_raw = w.get("path")
+        if not isinstance(wp_raw, str) or not wp_raw:
+            continue
+        wp = Path(wp_raw)
+        if self_path is not None:
+            try:
+                if wp.resolve() == self_path.resolve():
+                    continue  # a file is never its own witness
+            except Exception:  # noqa: BLE001
+                pass
+        if not wp.exists():
+            continue
+        pinned = w.get("artifact_sha256")
+        actual = _sha256_file(wp)
+        if not pinned or actual != pinned:
+            continue  # edited or unreadable since mint: no longer tamper-evident
+        try:
+            wdoc = json.loads(wp.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        if not isinstance(wdoc, dict):
+            continue
+        wsha = _exe_sha_of(wdoc)
+        if not wsha:
+            continue
+        if wsha != sha:
+            return good, (f"names witness {wp} (digest pinned and matching), but "
+                          f"that artifact independently records exe "
+                          f"{wsha[:12]} while this record claims {sha[:12]} -- "
+                          f"the witness it chose CONTRADICTS it.")
+        good.append(f"W-ARTIFACT:{wp.name} (pinned sha matches, records the "
+                    f"same exe digest)")
+    return good, None
 
 
 def _exe_block(doc: "dict[str, Any]") -> "dict[str, Any] | None":
@@ -126,17 +327,22 @@ def _exe_block(doc: "dict[str, Any]") -> "dict[str, Any] | None":
     return None
 
 
-def establish(doc: "dict[str, Any]", label: str = "artifact") -> "dict[str, Any]":
+def establish(doc: "dict[str, Any]", label: str = "artifact",
+              self_path: "Path | None" = None) -> "dict[str, Any]":
     """Answer 'can this artifact prove which binary produced it?'.
 
     Returns a dict that is always shaped the same:
-        {label, level, ok, commit, dirty, branch, exe_sha256, exe_path, why}
+        {label, level, ok, commit, dirty, branch, exe_sha256, exe_path,
+         witnesses, why}
     `ok` is True only for a level in GRADEABLE. `why` always states, in one
     sentence a human can act on, what is missing or what was proven.
+
+    `self_path` is this document's own file, when known, so that a record
+    cannot be offered as its own witness.
     """
     out = {"label": label, "level": "UNESTABLISHED", "ok": False,
            "commit": None, "dirty": None, "branch": None,
-           "exe_sha256": None, "exe_path": None, "why": ""}
+           "exe_sha256": None, "exe_path": None, "witnesses": [], "why": ""}
 
     blk = _exe_block(doc)
     if blk is None:
@@ -162,6 +368,13 @@ def establish(doc: "dict[str, Any]", label: str = "artifact") -> "dict[str, Any]
     if not sha:
         out["why"] = ("records an exe block with no sha256 -- the binary is "
                       "not identified by content.")
+        return out
+    if not isinstance(sha, str) or not _HEX64.match(sha):
+        out["why"] = (f"records exe.sha256={sha!r}, which is not a sha256 "
+                      f"(want exactly 64 lowercase hex characters, got "
+                      f"{len(sha) if isinstance(sha, str) else 'a non-string'}). "
+                      f"A digest nothing ever validated is a string, not an "
+                      f"identity.")
         return out
 
     fp = blk.get("embedded_fingerprint")
@@ -189,27 +402,76 @@ def establish(doc: "dict[str, Any]", label: str = "artifact") -> "dict[str, Any]
                       f"two different binaries.")
         return out
 
-    out["commit"] = fp.get("sha")
+    commit = fp.get("sha")
+    if not isinstance(commit, str) or not _HEXCOMMIT.match(commit):
+        out["why"] = (f"records a build stamp whose commit is {commit!r}, which "
+                      f"is not a git object id (want 7..40 hex characters). "
+                      f"Nothing that cannot even be a commit can name one.")
+        return out
+    out["commit"] = commit
     out["dirty"] = fp.get("dirty")
     out["branch"] = fp.get("branch")
 
     p = Path(blk.get("path") or "")
     live_sha = _sha256_file(p) if p.name and p.exists() else None
+
+    # ---- PROVENANCE-FORGERY-CLOSE-1 -------------------------------------- #
+    # Everything checked so far lives INSIDE this one JSON object and was typed
+    # in one keystroke by whoever wrote it. Before the binary is consulted, ask
+    # what outside this file agrees. `establish` used to skip this question
+    # entirely and answer OK on the strength of the file agreeing with itself.
+    witnesses: "list[str]" = []
+    no_commit_witness = (
+        f"commit {commit} is not a commit object in {ROOT}"
+        if git_object_db_available()
+        else f"there is no readable git object database at {ROOT}, so commit "
+             f"{commit} could not be checked at all")
+    art_w, contradiction = check_witness_artifacts(doc, sha, self_path)
+    if contradiction:
+        out["why"] = contradiction
+        return out
+    witnesses += art_w
+    if repo_has_commit(commit):
+        witnesses.append(f"W-REPO-COMMIT:{commit} resolves to a real commit "
+                         f"object in {ROOT}")
+    out["witnesses"] = witnesses
+
     if live_sha is None:
-        out["level"] = "RECORDED-AT-MINT"
+        if not witnesses:
+            out["level"] = "UNCORROBORATED"
+            out["why"] = (
+                f"names binary {p}, which is NOT ON DISK, and nothing outside "
+                f"this file agrees with it: {no_commit_witness}, and no on-disk "
+                f"witness artifact records exe "
+                f"{sha[:12]}. Every field here is hand-typeable and only this "
+                f"file vouches for it. 'I could not check' is not 'I checked'.")
+            return out
+        out["level"] = "CORROBORATED-AT-MINT"
         out["ok"] = True
         out["why"] = (f"binary {p} is no longer on disk, so the record cannot "
-                      f"be re-verified live; the recording is self-consistent "
-                      f"(stamp read from the digested bytes) and names commit "
-                      f"{out['commit']}.")
+                      f"be re-verified live; it names commit {commit} and is "
+                      f"corroborated from outside the file by "
+                      f"{'; '.join(witnesses)}.")
         return out
     if live_sha != sha:
-        out["level"] = "RECORDED-AT-MINT"
+        if not witnesses:
+            out["level"] = "UNCORROBORATED"
+            out["why"] = (
+                f"binary at {p} has been replaced since mint (now "
+                f"{live_sha[:12]}, recorded {sha[:12]}), so the record cannot "
+                f"be re-verified live -- and nothing outside this file agrees "
+                f"with it: {no_commit_witness}, and no on-disk witness "
+                f"artifact records exe {sha[:12]}. A "
+                f"recorded digest that names neither the bytes on disk nor "
+                f"anything else is just a string someone typed.")
+            return out
+        out["level"] = "CORROBORATED-AT-MINT"
         out["ok"] = True
         out["why"] = (f"binary at {p} has been replaced since mint (now "
                       f"{live_sha[:12]}, recorded {sha[:12]}), so the record "
-                      f"cannot be re-verified live; the recording is "
-                      f"self-consistent and names commit {out['commit']}.")
+                      f"cannot be re-verified live; it names commit {commit} "
+                      f"and is corroborated from outside the file by "
+                      f"{'; '.join(witnesses)}.")
         return out
 
     live = ef.extract(str(p))
@@ -248,14 +510,15 @@ def establish_path(path: "str | Path", label: str = None) -> "dict[str, Any]":
     except Exception as e:  # noqa: BLE001
         return {"label": lbl, "level": "UNESTABLISHED", "ok": False,
                 "commit": None, "dirty": None, "branch": None,
-                "exe_sha256": None, "exe_path": None,
+                "exe_sha256": None, "exe_path": None, "witnesses": [],
                 "why": f"cannot be read as JSON ({type(e).__name__}: {e})."}
     if not isinstance(doc, dict):
         return {"label": lbl, "level": "UNESTABLISHED", "ok": False,
                 "commit": None, "dirty": None, "branch": None,
-                "exe_sha256": None, "exe_path": None,
+                "exe_sha256": None, "exe_path": None, "witnesses": [],
                 "why": "top level is not a JSON object."}
-    est = establish(doc, lbl)
+    # `self_path` so a record cannot list ITSELF as its corroborating witness.
+    est = establish(doc, lbl, self_path=p)
     est["source"] = str(p)
     return est
 
@@ -336,6 +599,21 @@ def _synthetic_binary(sha: str, branch: str, built: str, src: str,
     return blob + b"\x00" * 32
 
 
+def _absent_commit(seed: int) -> str:
+    """A well-formed 12-hex commit id that is NOT an object in this repo.
+
+    The witness arms below must be unambiguous. If the self-test's synthetic
+    binary carried a commit that happens to be REAL here (the original carried
+    79360fdb565e, which is), W-REPO-COMMIT would fire on every case and the
+    'no witness at all' assertions would silently test nothing.
+    """
+    for i in range(64):
+        cand = f"{(seed + i * 0x9E3779B9) & 0xFFFFFFFFFFFF:012x}"
+        if not repo_has_commit(cand):
+            return cand
+    raise RuntimeError("could not find a commit id absent from this repo")
+
+
 def _selftest() -> int:
     import tempfile
     print("[prov-gate] self-test: proving each verdict on real stamped bytes")
@@ -348,16 +626,23 @@ def _selftest() -> int:
         if not cond:
             ok = False
 
+    # Two commit ids guaranteed absent from this repo, so "corroborated" below
+    # can only ever come from a witness this test actually built.
+    SYN_A = _absent_commit(0x5E1F7E57)
+    SYN_B = _absent_commit(0x1234ABCD)
+    print(f"  [ok  ] control: synthetic commits {SYN_A}/{SYN_B} are absent from "
+          f"this repo, so W-REPO-COMMIT cannot mask a missing witness")
+
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         binp = root / "engine.bin"
-        binp.write_bytes(_synthetic_binary("79360fdb565e",
+        binp.write_bytes(_synthetic_binary(SYN_A,
                                            "claude/spotlight-direction-1",
                                            "2026-07-29T13:52:25",
                                            "A:/Games/mc2-spotdir1", dirty=False))
         true_sha = _sha256_file(binp)
         fp = ef.extract(str(binp))
-        if not (fp.get("present") and fp["sha"] == "79360fdb565e"):
+        if not (fp.get("present") and fp["sha"] == SYN_A):
             print("  [FAIL] extractor could not read the injected stamp -- "
                   "every verdict below would be a false positive", file=sys.stderr)
             return 2
@@ -372,7 +657,7 @@ def _selftest() -> int:
         e = establish(doc(good), "good")
         chk("byte-identical binary on disk -> VERIFIED-LIVE",
             e["level"] == "VERIFIED-LIVE" and e["ok"]
-            and e["commit"] == "79360fdb565e", e["level"])
+            and e["commit"] == SYN_A, e["level"])
 
         # THE defect: path + mtime, the exact shape of the committed goldens.
         e = establish({"kind": "visual-verify-golden",
@@ -388,11 +673,90 @@ def _selftest() -> int:
 
         # Hand-added claim: fields look right, but no proof of which bytes.
         hand = {"path": str(binp), "sha256": true_sha,
-                "embedded_fingerprint": {"present": True, "sha": "79360fdb565e",
+                "embedded_fingerprint": {"present": True, "sha": SYN_A,
                                          "dirty": False, "branch": "b"}}
         e = establish(doc(hand), "handadded")
         chk("hand-added fingerprint (no exe_sha256_at_scan) -> UNESTABLISHED",
             not e["ok"] and "hand-added" in e["why"], e["level"])
+
+        # ------------------------------------------------------------------ #
+        # PROVENANCE-FORGERY-CLOSE-1: THE CASE THIS SELF-TEST USED TO MISS.
+        #
+        # WHY THE ORIGINAL WAS BLIND: the "handadded" case above OMITS
+        # `exe_sha256_at_scan`. That single missing field is the only thing that
+        # failed it -- so the test proved a CARELESS forgery is caught and
+        # reported that as proof against a CAREFUL one. A forger's entire
+        # obligation was to type the field the test declined to type. Below it
+        # IS typed, which is the actual threat, and the whole block names a
+        # binary that has never existed anywhere.
+        # ------------------------------------------------------------------ #
+        forged_sha = "ab" * 32
+        forged = {"kind": "visual-verify-golden", "identity": {"exe": {
+            "path": "Z:/no/such/dir/never_existed_vtu1.exe",
+            "sha256": forged_sha,
+            "embedded_fingerprint": {
+                "present": True, "sha": "d15ea5edbeef", "dirty": False,
+                "branch": "claude/totally-made-up", "built": "2026-07-30T00:00:00",
+                "src": "Z:/no/such/dir", "method": "pe-string-scan/v1",
+                "exe_sha256_at_scan": forged_sha}}}}
+        e = establish(forged, "forged")
+        chk("FORGED golden, every field typed, binary never existed -> "
+            "UNCORROBORATED (refused)",
+            not e["ok"] and e["level"] == "UNCORROBORATED"
+            and "not a commit object" in e["why"], e["level"])
+
+        # The same forgery with a REAL commit id still gets no artifact witness,
+        # but W-REPO-COMMIT does fire -- and the module says so out loud rather
+        # than implying proof. This asserts the documented limitation is the
+        # ACTUAL behaviour, so the docstring cannot drift back into a promise.
+        real_commit = None
+        try:
+            rc = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                capture_output=True, text=True, timeout=30)
+            if rc.returncode == 0:
+                real_commit = rc.stdout.strip()[:12]
+        except Exception:  # noqa: BLE001
+            pass
+        if real_commit:
+            forged2 = json.loads(json.dumps(forged))
+            forged2["identity"]["exe"]["embedded_fingerprint"]["sha"] = real_commit
+            e = establish(forged2, "forged-real-commit")
+            chk("documented limitation is REAL: a forgery naming a genuine "
+                "commit reaches CORROBORATED-AT-MINT, never VERIFIED-LIVE",
+                e["level"] == "CORROBORATED-AT-MINT" and e["ok"]
+                and any("W-REPO-COMMIT" in w for w in e["witnesses"]),
+                e["level"])
+
+        # "This commit does not exist" and "I had no way to look" must not print
+        # the same sentence. Collapsing those two is the same mistake as grading
+        # an absent binary OK, one layer up -- so assert the distinction exists
+        # rather than trusting that it reads well.
+        _GITDIR_CACHE[str(ROOT)] = False
+        e_nogit = establish(forged, "forged-no-gitdb")
+        _GITDIR_CACHE.pop(str(ROOT), None)
+        chk("with no git object database the refusal says 'could not be "
+            "checked', not 'does not exist'",
+            not e_nogit["ok"] and "could not be checked at all" in e_nogit["why"]
+            and "is not a commit object" not in e_nogit["why"], e_nogit["level"])
+
+        # A 65-character "sha256" -- the literal shape of the golden that opened
+        # this slice. It graded clean because nothing ever looked at the field
+        # except to compare it with itself.
+        bad_len = "a" * 65
+        e = establish(doc({"path": str(binp), "sha256": bad_len,
+                           "embedded_fingerprint": {
+                               "present": True, "sha": SYN_A,
+                               "exe_sha256_at_scan": bad_len}}), "badsha")
+        chk("a 65-character 'sha256' -> UNESTABLISHED (it is not a digest)",
+            not e["ok"] and "not a sha256" in e["why"], e["level"])
+
+        # A commit id that cannot be one.
+        e = establish(doc({"path": str(binp), "sha256": true_sha,
+                           "embedded_fingerprint": {
+                               "present": True, "sha": "not-a-commit",
+                               "exe_sha256_at_scan": true_sha}}), "badcommit")
+        chk("a non-hex 'commit' -> UNESTABLISHED",
+            not e["ok"] and "not a git object id" in e["why"], e["level"])
 
         # Stamp read from other bytes than the digest names.
         crossed = dict(good)
@@ -403,19 +767,101 @@ def _selftest() -> int:
             not e["ok"] and "two different binaries" in e["why"], e["level"])
 
         # Binary replaced in place -- the v0.5.1-baseline situation.
-        binp.write_bytes(_synthetic_binary("deadbeef1234", "other",
+        binp.write_bytes(_synthetic_binary(SYN_B, "other",
                                            "2026-07-30T00:00:00", "A:/z", False))
-        e = establish(doc(good), "replaced")
-        chk("binary replaced in place -> RECORDED-AT-MINT (still gradeable)",
-            e["level"] == "RECORDED-AT-MINT" and e["ok"]
-            and e["commit"] == "79360fdb565e", e["level"])
+
+        # ...with NO witness. This used to be RECORDED-AT-MINT and gradeable on
+        # the strength of the file agreeing with itself. It is the same shape as
+        # the forgery: nothing outside the record backs any of it.
+        e = establish(doc(good), "replaced-unwitnessed")
+        chk("binary replaced, NO witness -> UNCORROBORATED (refused)",
+            not e["ok"] and e["level"] == "UNCORROBORATED", e["level"])
+
+        # ...and with a real W-ARTIFACT witness: a genuinely separate file that
+        # independently records the same exe digest, pinned by its own sha256.
+        # THIS is the case a golden that outlived its binary must still pass, so
+        # the gate is not one that refuses all history.
+        wpath = root / "r1_capture_run.json"
+        wpath.write_text(json.dumps(
+            {"kind": "visual-verify-capture",
+             "identity": {"exe": {"path": str(binp), "sha256": true_sha}}},
+            indent=2), encoding="utf-8")
+        wit = {"path": str(wpath), "artifact_sha256": _sha256_file(wpath),
+               "records_exe_sha256": true_sha}
+
+        def doc_w(exe_blk, witnesses):
+            return {"kind": "visual-verify-golden",
+                    "identity": {"exe": exe_blk,
+                                 "binary_corroboration": {"witnesses": witnesses}}}
+
+        e = establish(doc_w(good, [wit]), "replaced-witnessed")
+        chk("binary replaced, ONE pinned witness agrees -> CORROBORATED-AT-MINT "
+            "(history still grades)",
+            e["ok"] and e["level"] == "CORROBORATED-AT-MINT"
+            and any("W-ARTIFACT" in w for w in e["witnesses"]), e["level"])
+
+        # Binary entirely absent from disk, but witnessed: the legitimate
+        # "golden outlived its install" case. Must still grade.
+        gone = {"path": str(root / "deleted_install" / "mc2.exe"),
+                "sha256": true_sha, "embedded_fingerprint": dict(fp)}
+        e = establish(doc_w(gone, [wit]), "absent-witnessed")
+        chk("binary GONE but witnessed -> CORROBORATED-AT-MINT (a golden may "
+            "outlive its install)",
+            e["ok"] and e["level"] == "CORROBORATED-AT-MINT", e["level"])
+        e = establish(doc(gone), "absent-unwitnessed")
+        chk("binary GONE and unwitnessed -> UNCORROBORATED (refused)",
+            not e["ok"] and e["level"] == "UNCORROBORATED", e["level"])
+
+        # A witness that was EDITED after mint stops counting: its pinned digest
+        # no longer matches, so agreeing with the record buys nothing.
+        tampered = dict(wit)
+        tampered["artifact_sha256"] = "cc" * 32
+        e = establish(doc_w(gone, [tampered]), "witness-tampered")
+        chk("a witness whose pinned digest no longer matches does NOT count",
+            not e["ok"] and e["level"] == "UNCORROBORATED", e["level"])
+
+        # A witness that verifies but names a DIFFERENT binary is not a missing
+        # witness -- it is a contradiction, and must refuse outright.
+        wpath2 = root / "r2_capture_run.json"
+        wpath2.write_text(json.dumps(
+            {"kind": "visual-verify-capture",
+             "identity": {"exe": {"path": str(binp), "sha256": "dd" * 32}}},
+            indent=2), encoding="utf-8")
+        e = establish(doc_w(gone, [{"path": str(wpath2),
+                                    "artifact_sha256": _sha256_file(wpath2)}]),
+                      "witness-contradicts")
+        chk("a verified witness naming a DIFFERENT binary -> UNESTABLISHED",
+            not e["ok"] and "CONTRADICTS" in e["why"], e["level"])
+
+        # A record must not be its own witness. `establish_path` knows the file
+        # it came from; without that, a forger lists the forgery as its own
+        # proof and the "outside this file" rule is decoration.
+        #
+        # The control is the TWIN below: byte-identical content at a different
+        # path DOES corroborate. So the only difference between the two cases is
+        # the self-reference -- not a stale digest, not a shape problem.
+        selfw = root / "selfwitness.json"
+        selfw.write_text(json.dumps(doc_w(gone, [{"path": str(selfw)}]),
+                                    indent=2), encoding="utf-8")
+        e = establish_path(selfw, "selfwitness")
+        chk("a record listing ITSELF as its witness -> UNCORROBORATED",
+            not e["ok"] and e["level"] == "UNCORROBORATED", e["level"])
+
+        twin = root / "twin.json"
+        twin.write_bytes(selfw.read_bytes())
+        e = establish(doc_w(gone, [{"path": str(twin),
+                                    "artifact_sha256": _sha256_file(twin)}]),
+                      "twinwitness")
+        chk("control: the SAME bytes at a different path DO corroborate "
+            "(so the case above failed on self-reference, nothing else)",
+            e["ok"] and e["level"] == "CORROBORATED-AT-MINT", e["level"])
 
         # Contradicted: the artifact claims a commit the byte-identical binary
         # on disk denies.
         live_sha = _sha256_file(binp)
         lying = {"path": str(binp), "sha256": live_sha,
                  "embedded_fingerprint": {"present": True,
-                                          "sha": "79360fdb565e", "dirty": False,
+                                          "sha": SYN_A, "dirty": False,
                                           "branch": "b", "built": "x", "src": "y",
                                           "method": "pe-string-scan/v1",
                                           "exe_sha256_at_scan": live_sha}}
@@ -436,9 +882,14 @@ def _selftest() -> int:
             not e["ok"], e["level"])
 
         # refuse_unless_established must raise, and must NAME the bad input.
+        # NOTE the witnessed form: `good` alone no longer establishes here,
+        # because the binary was replaced in place above and nothing outside
+        # that record vouches for it. Using the unwitnessed form would make the
+        # "silent when all establish" arm below pass for the wrong reason.
+        est_ok = lambda lbl: establish(doc_w(good, [wit]), lbl)  # noqa: E731
         try:
             refuse_unless_established(
-                [establish(doc(good), "golden"), establish(trap, "candidate")],
+                [est_ok("golden"), establish(trap, "candidate")],
                 decision="grade", remedy="re-bless")
             chk("refuse_unless_established raises on a bad input", False,
                 "returned normally")
@@ -447,7 +898,7 @@ def _selftest() -> int:
                 "candidate" in str(exc), "")
         # ...and must NOT raise when everything establishes.
         try:
-            refuse_unless_established([establish(doc(good), "golden")],
+            refuse_unless_established([est_ok("golden")],
                                       decision="grade", remedy="x")
             chk("refuse_unless_established is silent when all establish", True)
         except ProvenanceUnestablished:
@@ -455,7 +906,7 @@ def _selftest() -> int:
                 "raised on a clean input -- a gate that refuses everything "
                 "proves nothing")
 
-        a = establish(doc(good), "A")
+        a = est_ok("A")
         b = establish(doc(lying), "B")
         chk("same_binary detects two different binaries",
             same_binary([a, b])[0] is False)

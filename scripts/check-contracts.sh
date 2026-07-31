@@ -57,9 +57,48 @@ KNOWN_COUNT=0
 NAMES=()
 RESULTS=()
 
+# ---------------------------------------------------------------------------
+# DUPLICATE REGISTRATION GUARD (PROVENANCE-FORGERY-CLOSE-1)
+# ---------------------------------------------------------------------------
+# `bless_refusals_selftest` was a byte-identical duplicate of `bless_selftest`:
+# same command, different label, so nothing noticed. It counted one selftest
+# twice. A board whose headline number is "122 passed" is a measurement, and a
+# measurement that can silently double-count is not one.
+#
+# Registration is now checked in BOTH directions -- a repeated label, and a
+# repeated command under a fresh label (the shape that actually happened). A
+# duplicate is a bug in this file, not a contract failure, so it is reported as
+# its own FAIL row (the suite must exit non-zero) and the command is NOT run
+# again: re-running it would put the inflated count right back.
+SEEN_LABELS=""
+SEEN_CMDS=""
+
+_register_row() {   # 0 = ok to run, 1 = duplicate (already reported)
+    local label="$1" cmd="$2" why=""
+    case "$SEEN_LABELS" in *"<${label}>"*) why="label '${label}' is already registered" ;; esac
+    if [ -z "$why" ]; then
+        case "$SEEN_CMDS" in *"<${cmd}>"*) why="command is byte-identical to an earlier row's" ;; esac
+    fi
+    if [ -n "$why" ]; then
+        echo "DUPLICATE CONTRACT ROW: $why" >&2
+        echo "    label: $label" >&2
+        echo "    cmd:   $cmd" >&2
+        echo "    A duplicated row double-counts one check as two greens." >&2
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        NAMES+=("DUPLICATE-ROW:$label")
+        RESULTS+=("FAIL")
+        return 1
+    fi
+    SEEN_LABELS="${SEEN_LABELS}<${label}>"
+    SEEN_CMDS="${SEEN_CMDS}<${cmd}>"
+    return 0
+}
+
 run_check() {
     local label="$1"
     local cmd="$2"
+
+    _register_row "$label" "$cmd" || return 0
 
     if [ "$QUIET" -eq 1 ]; then
         if (cd "$WORKTREE_ROOT" && eval "$cmd" > /dev/null 2>&1); then
@@ -113,6 +152,8 @@ run_check_tri() {
     local label="$1"
     local cmd="$2"
     local out rc
+
+    _register_row "$label" "$cmd" || return 0
 
     out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
 
@@ -532,7 +573,11 @@ run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.
 # manifest both stay UNESTABLISHED, and -- the other half -- that an honest
 # artifact still passes. Offline, read-only, no game launch.
 run_check "provenance_gate_selftest"    "py -3 scripts/provenance_gate.py --selftest"
-run_check "bless_refusals_selftest"     "py -3 tools/visual_verify/bless_selftest.py"
+# PROVENANCE-FORGERY-CLOSE-1: `bless_refusals_selftest` USED TO SIT HERE running
+# a command byte-identical to the `bless_selftest` row above -- one selftest,
+# counted twice, inflating the board's green by a row that measured nothing new.
+# Removed here; `run_check` now refuses a duplicate label OR command outright,
+# and check-contract-coverage.py arm (d) fails the suite if one is committed.
 
 # ---------------------------------------------------------------------------
 # The review pack's annotation anchors must never re-attach a stored comment to

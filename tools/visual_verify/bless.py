@@ -94,6 +94,40 @@ for finding the lane afterwards -- but under the name
 `source_worktree_head_at_bless`, carrying `describes_binary: false` IN the JSON,
 so a reader with no access to this docstring cannot mistake it for provenance.
 
+-----------------------------------------------------------------------------
+PROVENANCE-FORGERY-CLOSE-1 -- this file was still writing the defect it named
+-----------------------------------------------------------------------------
+Deleting `blessed_commit` moved the lie; it did not remove it. Until this
+change, three lines below the paragraph above, bless.py called
+`ms.identity_block(repo_root=str(ROOT))` -- and `identity_block` fills
+`source_worktree_head_at_capture`, its legacy alias `git`, and
+`binary_provenance` from THAT root. So the BLESSER'S HEAD landed in two of the
+exact spellings scripts/provenance_gate.py lists under "none of them describe
+the binary", one of them named `..._at_capture` while describing neither the
+capture's worktree nor the capture's moment.
+
+The consequence was not cosmetic: `binary_provenance` reconciles the binary's
+compiled-in commit against that head, so every HONEST cross-lane golden -- the
+normal case, since the lane that captures is routinely not the lane that
+blesses -- was stamped `SOURCE-HEAD-MISMATCH`. A verdict that fires on the
+normal case is noise, and noise is what gets ignored when it is real.
+
+The checker added in the same commit could not see it, because it looks only for
+a TOP-LEVEL `blessed_commit`: the field that was deleted, not the mechanism that
+produced it.
+
+Now: `identity_block` is called with `repo_root=None` and `exe_path=None`, and
+every field claiming to describe the capture is carried forward from the CAPTURE
+manifest -- the exe block, the source head, and the reconciliation against it.
+The blesser's HEAD appears exactly once, under `source_worktree_head_at_bless`,
+with `describes_binary: false`.
+
+The golden also now emits `identity.binary_corroboration.witnesses`: the source
+capture manifests, each pinned by its OWN sha256. provenance_gate.establish()
+requires a witness from OUTSIDE the artifact before it will grade -- self-
+consistency is a file agreeing with itself, which is exactly what a forger
+supplies.
+
 Usage:
   py -3 tools/visual_verify/bless.py --run <run1> --run <run2> --run <run3> \
       --to tests/visual/goldens/v0.5.1-baseline
@@ -142,6 +176,19 @@ MIN_LUMA_STDDEV = 0.5
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _sha256_path(p: Path) -> "str | None":
+    """Digest of a whole file. Used to PIN each corroborating witness by its own
+    content, so a witness edited after the bless stops corroborating."""
+    try:
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _git(root: Path, *args: str) -> "str | None":
@@ -428,21 +475,29 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
     # that made the pair read as authoritative. It is deleted, not renamed in
     # place: a reader looking for it must fail to find it and go read
     # `identity.binary_provenance` instead.
-    exe_for_identity = ests[0].get("exe_path") or cap0.get("exe")
+    # PROVENANCE-FORGERY-CLOSE-1. `repo_root` and `exe_path` are deliberately
+    # NOT passed. Passing them made `identity_block` fill
+    # `source_worktree_head_at_capture`, `git` and `binary_provenance` from the
+    # BLESSER'S worktree and a LIVE re-read of today's file -- i.e. the exact
+    # source-HEAD-as-provenance defect this module's own docstring lists under
+    # "none of them describe the binary", re-introduced two fields below the
+    # paragraph that forbids it. `identity_block(repo_root=None)` returns an
+    # all-null head carrying the honest describes_binary=false labels; every
+    # field that claims to describe the CAPTURE is then filled from the capture.
     ident = ms.identity_block(
         generator="visual_verify_bless",
-        exe_path=exe_for_identity,
-        repo_root=str(ROOT),
+        exe_path=None,
+        repo_root=None,
         deploy_target=cap0.get("install"),
     )
     # The exe at that path may have been REBUILT between capture and bless (it
     # is, right now, for two of the three committed goldens). The binary the
     # RUNS measured is the authority, so the runs' recorded exe block is carried
-    # verbatim. `ms.identity_block` above re-read the path LIVE, and that block
-    # describes today's file -- letting it stand in when the runs' block is
-    # missing would silently record the wrong binary, which is the exact defect
-    # this slice removes. So its absence is fatal, not a fallback.
-    src_exe_blk = ((runs[0]["cap"].get("identity") or {}).get("exe"))
+    # verbatim. Re-reading the path live would describe whatever binary sits
+    # there NOW, not the one that rendered these crops -- that substitution is
+    # the defect, not a fallback. So its absence is fatal.
+    cap_ident = (runs[0]["cap"].get("identity") or {})
+    src_exe_blk = cap_ident.get("exe")
     if not isinstance(src_exe_blk, dict):
         raise SystemExit(
             "[vv-bless] refusing to bless: the source capture established its "
@@ -451,13 +506,67 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
             "whatever binary sits there NOW, not the one that rendered these "
             "crops -- that substitution is the defect, not a fallback.")
     ident["exe"] = src_exe_blk
-    ident["binary_provenance"] = ms.binary_provenance(
-        src_exe_blk, ident.get("source_worktree_head_at_capture") or {})
+
+    # The source head that belongs in a field named `..._at_capture` is the one
+    # the CAPTURE recorded, not the blesser's. Carried forward verbatim, exactly
+    # like the exe block, and for the same reason.
+    cap_head = cap_ident.get("source_worktree_head_at_capture") or cap_ident.get("git")
+    if not isinstance(cap_head, dict):
+        cap_head = {
+            "commit": None, "commit_short": None, "branch": None, "dirty": None,
+            "describe": None, "worktree": None,
+            "describes": "source_worktree_head_at_capture",
+            "describes_binary": False,
+            "unavailable_reason": (
+                "the source capture manifest recorded no worktree head. It is "
+                "left NULL rather than filled from the blessing worktree: a "
+                "wrong commit under a right-sounding name is worse than none."),
+            "note": ms.SOURCE_HEAD_NOTE,
+        }
+    ident["source_worktree_head_at_capture"] = cap_head
+    ident["git"] = cap_head  # legacy alias; must stay byte-identical to the above
+
+    # Reconciled against the CAPTURE's head. Reconciling against the BLESSER's
+    # head stamped `SOURCE-HEAD-MISMATCH` on every honest cross-lane golden --
+    # blessing from a different worktree than the one that built the exe is the
+    # normal case here, and a verdict that fires on the normal case is noise.
+    ident["binary_provenance"] = ms.binary_provenance(src_exe_blk, cap_head)
     ident["binary_identity_established"] = {
         "level": ests[0]["level"],
         "checked_by": "scripts/provenance_gate.py (GOLDEN-PROVENANCE-TRUTH-1)",
         "runs_agree_on_binary": True,
         "detail": ests[0]["why"],
+    }
+
+    # ---- PROVENANCE-FORGERY-CLOSE-1: name the independent witnesses ---------
+    # `establish()` used to grade a record OK on the strength of the record
+    # agreeing with itself. It now requires something OUTSIDE the file. The
+    # source capture manifests ARE that something: separate files, emitted by a
+    # separate tool at a separate time, that independently record the same exe
+    # digest. Each is pinned by its OWN sha256, so editing one to agree stops it
+    # counting. This is emitted, never hand-added (PROVENANCE-EMIT-1).
+    witnesses = []
+    for r in runs:
+        wsha = _sha256_path(r["path"])
+        if not wsha:
+            continue
+        witnesses.append({
+            "path": str(r["path"]),
+            "artifact_sha256": wsha,
+            "records_exe_sha256": ((r["cap"].get("identity") or {})
+                                   .get("exe") or {}).get("sha256"),
+            "kind": "source-capture-manifest",
+        })
+    ident["binary_corroboration"] = {
+        "emitted_by": "tools/visual_verify/bless.py (PROVENANCE-FORGERY-CLOSE-1)",
+        "witnesses": witnesses,
+        "note": ("Independent artifacts that record the SAME exe digest as "
+                 "identity.exe.sha256. Consumed by provenance_gate.establish() "
+                 "as W-ARTIFACT: each must still exist, still hash to "
+                 "`artifact_sha256`, and still name that digest. They are a "
+                 "convenience, not the only arm -- if these capture trees are "
+                 "pruned, W-REPO-COMMIT still corroborates from the git object "
+                 "database, which outlives every install."),
     }
     golden["identity"] = ident
 

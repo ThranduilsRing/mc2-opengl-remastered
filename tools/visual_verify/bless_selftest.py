@@ -61,6 +61,14 @@ import provenance_gate as pg  # noqa: E402
 W, H = 400, 200
 BM = "selftest_pose"
 
+#: The commit compiled into the synthetic binary every non-legacy run measures.
+BINARY_COMMIT = "a1b2c3d4e5f6"
+#: The HEAD of the worktree that CAPTURED. Deliberately a full-length spelling
+#: of BINARY_COMMIT: the honest arrangement is "the lane that captured is the
+#: lane that built", and T10 proves that arrangement now reconciles instead of
+#: being stamped SOURCE-HEAD-MISMATCH by a comparison against the blesser.
+CAPTURE_LANE_HEAD = BINARY_COMMIT + "0" * (40 - len(BINARY_COMMIT))
+
 # Region rects, in normalized coords, over disjoint horizontal bands.
 #   good     y 0.00-0.25   textured, identical every run   -> blesses
 #   void     y 0.25-0.50   solid black every run           -> T3 degenerate
@@ -157,6 +165,22 @@ def _make_run(root: Path, name: str, run_index: int, w: int = W, h: int = H,
         ms.attach(doc, ms.identity_block(generator="bless_selftest",
                                          exe_path=exe, repo_root=None,
                                          deploy_target="SELFTEST"))
+        # PROVENANCE-FORGERY-CLOSE-1. A real capture records the CAPTURING
+        # worktree's HEAD. Stamp a distinctive one here so T10 below can tell
+        # whether the golden carried THIS forward or substituted the blesser's.
+        # It is set to the same commit the synthetic binary is stamped with,
+        # which is the HONEST case: the lane that captured is the lane that
+        # built. The blesser is a different lane -- the normal arrangement, and
+        # the one the old code mis-flagged as SOURCE-HEAD-MISMATCH.
+        cap_head = dict(ms.git_block(None))
+        cap_head.update({"commit": CAPTURE_LANE_HEAD,
+                         "commit_short": CAPTURE_LANE_HEAD[:12],
+                         "branch": "claude/capture-lane-selftest",
+                         "dirty": False, "worktree": "SELFTEST/capture-lane"})
+        doc["identity"]["source_worktree_head_at_capture"] = cap_head
+        doc["identity"]["git"] = cap_head
+        doc["identity"]["binary_provenance"] = ms.binary_provenance(
+            doc["identity"].get("exe"), cap_head)
     (rd / "capture_run.json").write_text(json.dumps(doc, indent=2),
                                          encoding="utf-8")
     return rd
@@ -316,6 +340,83 @@ def main() -> int:
               "bless.py" in (g.get("provenance_emitted_by") or ""))
         check("T6 refusals are recorded in golden.json, not silently dropped",
               g["n_refused"] == 2 and len(g["refused"]) == 2)
+
+        # ------------------------------------------------------------------ #
+        # T10 -- PROVENANCE-FORGERY-CLOSE-1: bless.py was WRITING the defect
+        # it named. `ms.identity_block(repo_root=str(ROOT))` filled
+        # `source_worktree_head_at_capture`, its alias `git`, and
+        # `binary_provenance` from the BLESSER'S worktree -- two of the exact
+        # spellings provenance_gate lists under "none of them describe the
+        # binary", one of them named `..._at_capture` while describing neither
+        # the capture's worktree nor its moment. T6 above could not see it: it
+        # only checked that the top-level `blessed_commit` was gone, i.e. the
+        # field that was deleted rather than the mechanism that filled it.
+        # ------------------------------------------------------------------ #
+        ident = g.get("identity") or {}
+        blesser_head = blesslib._git(blesslib.ROOT, "rev-parse", "HEAD")
+        capture_recorded = (ident.get("source_worktree_head_at_capture") or {})
+        check("T10 control: blesser's HEAD really is a DIFFERENT commit from "
+              "the capture lane's (else T10 proves nothing)",
+              bool(blesser_head) and blesser_head != CAPTURE_LANE_HEAD,
+              f"blesser={str(blesser_head)[:12]} capture={CAPTURE_LANE_HEAD[:12]}")
+        check("T10 `source_worktree_head_at_capture` carries the CAPTURE's head, "
+              "not the blesser's",
+              capture_recorded.get("commit") == CAPTURE_LANE_HEAD,
+              f"recorded={str(capture_recorded.get('commit'))[:12]}")
+        check("T10 legacy alias `identity.git` agrees with it (not the blesser)",
+              (ident.get("git") or {}).get("commit") == CAPTURE_LANE_HEAD,
+              f"recorded={str((ident.get('git') or {}).get('commit'))[:12]}")
+        blesser_spellings = [k for k, v in ident.items()
+                             if isinstance(v, dict) and v.get("commit") == blesser_head]
+        check("T10 the blesser's HEAD appears in NO identity field at all",
+              not blesser_spellings, f"found in {blesser_spellings}")
+        check("T10 the blesser's HEAD is still recorded ONCE, honestly named",
+              (g.get("source_worktree_head_at_bless") or {}).get("commit")
+              == blesser_head)
+        # The false alarm: reconciling the binary against the BLESSER's head
+        # stamped SOURCE-HEAD-MISMATCH on every honest cross-lane golden.
+        check("T10 an HONEST cross-lane golden reconciles instead of being "
+              "stamped SOURCE-HEAD-MISMATCH",
+              bp.get("verdict") == "reconciled"
+              and bp.get("source_head_commit") == CAPTURE_LANE_HEAD,
+              f"verdict={bp.get('verdict')} "
+              f"vs_head={str(bp.get('source_head_commit'))[:12]}")
+
+        # ------------------------------------------------------------------ #
+        # T11 -- the golden must name INDEPENDENT witnesses, because
+        # provenance_gate.establish() no longer grades a record that only
+        # agrees with itself.
+        # ------------------------------------------------------------------ #
+        bc = ident.get("binary_corroboration") or {}
+        wits = bc.get("witnesses") or []
+        check("T11 golden names its source capture manifests as witnesses",
+              len(wits) == 3, f"{len(wits)} witness(es)")
+        check("T11 every witness is pinned by its OWN sha256 and records the "
+              "same exe digest",
+              all(isinstance(w.get("artifact_sha256"), str)
+                  and len(w["artifact_sha256"]) == 64
+                  and w.get("records_exe_sha256") == g.get("exe_sha256")
+                  for w in wits))
+        check("T11 witnesses are files that actually exist on disk",
+              all(Path(w["path"]).exists() for w in wits))
+        # And the whole point: with the binary DELETED, the witnesses are what
+        # keeps a legitimate golden gradeable. This is the "goldens outlive
+        # their binaries" case that a refuse-everything gate would break.
+        Path(exe).unlink()
+        est_gone = pg.establish(g, "golden-after-binary-deleted")
+        check("T12 with its binary DELETED the golden still grades, on the "
+              "strength of its witnesses",
+              est_gone["ok"] and est_gone["level"] == "CORROBORATED-AT-MINT",
+              est_gone["level"])
+        # ...and strip the witnesses and it does NOT. Same record, same missing
+        # binary: the only difference is whether anything outside it agrees.
+        g_naked = json.loads(json.dumps(g))
+        g_naked["identity"].pop("binary_corroboration", None)
+        est_naked = pg.establish(g_naked, "golden-witnesses-stripped")
+        check("T12 strip the witnesses and the same record is REFUSED "
+              "(so T12 above is the witnesses, not luck)",
+              not est_naked["ok"] and est_naked["level"] == "UNCORROBORATED",
+              est_naked["level"])
 
         print()
         if FAILURES:

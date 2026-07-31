@@ -157,6 +157,21 @@ IRREPARABLE_CODES = ("EMPTY-MANIFEST", "UNPARSEABLE")
 #: suppression list -- it is consumed exactly, in both directions.
 LEDGER_PATH = ROOT / "scripts" / "provenance-known-failures.json"
 
+#: PROVENANCE-FORGERY-CLOSE-1. The longest acknowledgement this ledger accepts.
+#:
+#: A KNOWN row never touches the suite's exit code -- that is the whole point of
+#: the tri-state runner, and it is defensible only because an acknowledgement is
+#: temporary. The expiry check below rejected a MISSING expiry with the words
+#: "an acknowledgement with no expiry is a permanent suppression", and then
+#: accepted `expires_utc: "2999-12-31"`, which is the same thing spelled in a
+#: way that parses. An entry that outlives everyone who could review it is a
+#: permanent suppression whether the date field is empty or absurd.
+#:
+#: One year: long enough that a genuinely irreparable artifact is not re-argued
+#: every sprint, short enough that every entry is re-decided by a human who can
+#: still remember why it is there.
+MAX_ACK_DAYS = 365
+
 
 # --------------------------------------------------------------------------- #
 # Findings
@@ -308,7 +323,9 @@ def check_manifest(path: Path, strict_unverifiable: bool) -> list[Finding]:
                 "which emits identity.binary_provenance (the commit read out "
                 "of the binary) and records the blesser's HEAD under "
                 "`source_worktree_head_at_bless` with describes_binary=false."))
-        est = pg.establish(doc, "golden")
+        # `self_path` so a golden cannot be offered as its own corroborating
+        # witness (PROVENANCE-FORGERY-CLOSE-1).
+        est = pg.establish(doc, "golden", self_path=Path(path))
         if not est["ok"]:
             out.append(Finding(
                 path, "FAIL", "GOLDEN-UNATTRIBUTABLE",
@@ -608,6 +625,17 @@ def reconcile_ledger(fails: "list[Finding]", entries: "list[dict]",
             problems.append(
                 f"entry {eid!r} EXPIRED on {exp_d} -- re-decide it or remove "
                 f"the artifacts; do not extend it reflexively.")
+        elif exp_d is not None and exp_d > today + datetime.timedelta(days=MAX_ACK_DAYS):
+            problems.append(
+                f"entry {eid!r} expires {exp_d}, which is more than "
+                f"{MAX_ACK_DAYS} days out. A KNOWN row never touches the exit "
+                f"code, so an acknowledgement nobody will live to re-read is a "
+                f"PERMANENT SUPPRESSION -- the exact thing the missing-expiry "
+                f"rule above refuses, spelled in a way that parses. Set a date "
+                f"within {MAX_ACK_DAYS} days and re-decide it then.")
+            # Do not let it pin: an entry this checker refuses must not also be
+            # the reason a finding stops being counted as unledgered.
+            continue
         f = by_id.get(eid)
         if f is None:
             problems.append(
@@ -961,6 +989,22 @@ def _selftest() -> int:
         k, u, pr = reconcile_ledger([empty_f], [led(expires_utc=None)], today)
         _c("an acknowledgement with no expiry is refused",
            any("expires_utc" in x for x in pr))
+        # PROVENANCE-FORGERY-CLOSE-1: a MISSING expiry was refused as "a
+        # permanent suppression" while a year-2999 expiry sailed through -- the
+        # same suppression, spelled so it parses. A KNOWN row never touches the
+        # exit code, so this was the one way the ledger could quietly outlive
+        # review.
+        k, u, pr = reconcile_ledger([empty_f], [led(expires_utc="2999-12-31")],
+                                    today)
+        _c("an acknowledgement expiring beyond the cap is refused as a "
+           "PERMANENT SUPPRESSION",
+           any("PERMANENT SUPPRESSION" in x for x in pr) and len(k) == 0)
+        # ...and the boundary still works, so the cap is not "refuse everything".
+        just_inside = (today + datetime.timedelta(days=MAX_ACK_DAYS - 1)).isoformat()
+        k, u, pr = reconcile_ledger([empty_f], [led(expires_utc=just_inside)],
+                                    today)
+        _c(f"an acknowledgement {MAX_ACK_DAYS - 1} days out is still accepted",
+           len(k) == 1 and not pr, f"problems={pr}")
         k, u, pr = reconcile_ledger(
             [empty_f], [{"id": "EMPTY-MANIFEST:*", "why_irreparable": "x",
                          "expires_utc": "2026-10-31"}], today)

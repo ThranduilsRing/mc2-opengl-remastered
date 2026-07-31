@@ -44,8 +44,19 @@ script gets a spurious suite FAILURE from a check that does not exist. So:
 
   (c) every run_check row must name a script that git actually TRACKS.
 
+PROVENANCE-FORGERY-CLOSE-1 adds the mirror-image failure. Coverage asked "is
+every check WIRED?" and never asked "is any check wired TWICE?".
+`bless_refusals_selftest` was a byte-identical duplicate of `bless_selftest` --
+same command, fresh label -- so one selftest contributed two greens to the
+board's headline count. The suite's number is a measurement; a measurement that
+can silently double-count is not one. So:
+
+  (d) no two rows may share a label, and no two rows may share a COMMAND. The
+      command arm is the one that matters: a repeated label is obvious on sight,
+      a repeated command under a new name is exactly what shipped.
+
 Exit 0 = every check accounted for. 1 = at least one unaccounted.
-Run with --selftest to prove all three arms still fire.
+Run with --selftest to prove all four arms still fire.
 """
 import re
 import subprocess
@@ -95,6 +106,44 @@ def rows_referencing_scripts(aggregator_text):
         for s in re.finditer(r"scripts/([\w.-]+\.(?:py|sh))", cmd):
             out.append((label, s.group(1)))
     return out
+
+
+def all_rows(aggregator_text):
+    """(label, command) for EVERY run_check / run_check_tri row.
+
+    Deliberately not filtered to rows naming a scripts/ file the way
+    `rows_referencing_scripts` is: the duplicate that shipped ran
+    `tools/visual_verify/bless_selftest.py`, which that filter drops.
+    """
+    out = []
+    for line in aggregator_text.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        m = re.search(r'run_check(?:_tri)?\s+"([^"]+)"\s+"([^"]+)"', line)
+        if m:
+            out.append((m.group(1), m.group(2)))
+    return out
+
+
+def duplicate_rows(aggregator_text):
+    """Arm (d): a label or a command registered more than once."""
+    problems = []
+    seen_label, seen_cmd = {}, {}
+    for label, cmd in all_rows(aggregator_text):
+        if label in seen_label:
+            problems.append(
+                f"duplicate contract row LABEL '{label}' -- registered twice. "
+                f"Two rows with one name double-count a single check")
+        seen_label[label] = cmd
+        if cmd in seen_cmd:
+            problems.append(
+                f"duplicate contract row COMMAND: '{label}' runs exactly what "
+                f"'{seen_cmd[cmd]}' already runs ({cmd}). One check, two greens "
+                f"-- delete one row. This is the shape that shipped as "
+                f"bless_refusals_selftest")
+        else:
+            seen_cmd[cmd] = label
+    return problems
 
 
 def parse_manual(text):
@@ -210,6 +259,9 @@ def run(aggregator_text=None, manual_text=None, checks=None, tracked=None,
                 f"FAIL from a check that does not exist. Commit the script in "
                 f"the same commit as its row")
 
+    # --- arm (d): no row registered twice, by label OR by command -----------
+    problems.extend(duplicate_rows(aggregator_text))
+
     # --- stale manual rows --------------------------------------------------
     for name in manual:
         if name not in checks:
@@ -294,6 +346,22 @@ def selftest():
           run(agg, man + "\ncheck-long-since-deleted.py: some reason\n",
               checks, tracked, head, ext)[0],
           "stale row")
+
+    # arm (d): THE REAL REGRESSION, re-injected verbatim. This is the exact
+    # line that shipped in af4f79c8 -- a second label running the identical
+    # bless selftest command -- appended to the live aggregator text.
+    grade("duplicate row COMMAND under a fresh label",
+          run(agg + '\nrun_check "bless_refusals_selftest"     '
+                    '"py -3 tools/visual_verify/bless_selftest.py"\n',
+              man, checks, tracked, head, ext)[0],
+          "duplicate contract row COMMAND")
+
+    # ...and the easier half: the same label twice.
+    grade("duplicate row LABEL",
+          run(agg + '\nrun_check "bless_selftest"           '
+                    '"py -3 scripts/check-memory-size.py"\n',
+              man, checks, tracked, head, ext)[0],
+          "duplicate contract row LABEL")
 
     return 0 if ok else 1
 
