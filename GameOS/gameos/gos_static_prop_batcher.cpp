@@ -41,11 +41,19 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <set>            // LIGHTROW-FRESHNESS-1: per-type stale-row log dedup
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
+
+// LIGHTROW-FRESHNESS-1: the per-frame stamp that cachedFrame_ is compared
+// against. Defined in code/gameobj.cpp; declared extern exactly as every other
+// consumer does (code/gameobj.cpp:104, code/controlgui.cpp:2390, ...).
+// MUST stay at true file scope -- inside the anonymous namespace below this
+// would acquire internal linkage and fail to resolve at link time.
+extern uint32_t g_mc2FrameCounter;
 
 // Global runtime toggle for the GPU static-prop renderer. Defined here
 // (in the gameos lib) so every consumer — mc2.exe, aseconv, other data
@@ -2519,8 +2527,31 @@ struct ObjBatcherCounters {
     uint64_t mono_skipped_children                  = 0;
     uint64_t mono_gpu_drawn_instances               = 0;
     uint64_t frame_count                            = 0;
+    // LIGHTROW-FRESHNESS-1: dynamic-path light-row staleness accounting.
+    // stale_light_row_regathered = the defect this slice fixes -- a multi whose
+    // cachedGpuLightIndex_ was stamped on an EARLIER frame and would previously
+    // have been trusted verbatim, now re-gathered. Non-zero here in steady state
+    // means the bug was live on this run.
+    uint64_t mono_stale_light_row_regathered        = 0;
+    // Could not re-gather (no SHAPE_NODE leaf) -- the row is unresolvable and the
+    // actor is dropped rather than drawn against an arbitrary slot.
+    uint64_t mono_stale_light_row_unresolvable      = 0;
+    // Invariant break: a resolved row index outside [0, getLightStructCount()).
+    // The shader indexes light[] unchecked, so this must be zero.
+    uint64_t mono_light_row_out_of_range            = 0;
 };
 ObjBatcherCounters s_counters;
+
+// LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch; MC2_STATIC_PROP_LIGHT_FRESHNESS=0
+// restores the pre-slice behaviour (trust cachedGpuLightIndex_ with no frame check)
+// bit-for-bit, which is the only way to grade a suspected regression against it.
+static bool staticPropLightFreshnessEnabled() {
+    static const bool s_on = []() {
+        const char* v = std::getenv("MC2_STATIC_PROP_LIGHT_FRESHNESS");
+        return !(v != nullptr && v[0] == '0');
+    }();
+    return s_on;
+}
 bool s_objbatcherTrace     = false;
 bool s_objbatcherTraceInit = false;
 bool s_atexitRegistered    = false;
@@ -2784,7 +2815,14 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                // A zero for a population NOT listed here is not a measurement.
                "reg_pops_ever_tagged=%s "
                "reg_census_trustworthy=%s "
-               "late_register_recovery_skips=%llu\n",
+               "late_register_recovery_skips=%llu "
+               // LIGHTROW-FRESHNESS-1. stale_light_rows_regathered > 0 means the
+               // dynamic path was handed prior-frame light slots on this run --
+               // the defect the slice fixes, measured rather than assumed. The
+               // other two must read 0; non-zero is an invariant break.
+               "stale_light_rows_regathered=%llu "
+               "stale_light_rows_unresolvable=%llu "
+               "light_rows_out_of_range=%llu\n",
                (unsigned long long)s_counters.frame_count,
                (unsigned long long)slice1_eligible,
                (unsigned long long)total_submitted,
@@ -2802,7 +2840,10 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                // "no" the moment any live recipe carries the 0xFF unset default:
                // the breakdown is then incomplete and must not be read as a census.
                (popCensus[4] == 0u) ? "yes" : "no_untagged_recipes_present",
-               (unsigned long long)s_late_register_recovery_skips);
+               (unsigned long long)s_late_register_recovery_skips,
+               (unsigned long long)s_counters.mono_stale_light_row_regathered,
+               (unsigned long long)s_counters.mono_stale_light_row_unresolvable,
+               (unsigned long long)s_counters.mono_light_row_out_of_range);
         std::fflush(stderr);
     }
 
@@ -5910,13 +5951,139 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     //   terrain-scaled value during its own update(). This causes the hot-green
     //   (daytime base=0) vertex mismatch: GPU applies white directional light,
     //   CPU applied the terrain-tinted (~0.88) directional light.
+    // ------------------------------------------------------------------
+    // LIGHTROW-FRESHNESS-1 (default-ON; MC2_STATIC_PROP_LIGHT_FRESHNESS=0 reverts)
+    //
+    // THE DEFECT THIS FIXES. cachedGpuLightIndex_ is a DYNAMIC slot index, and
+    // dynamic slot indices are rebased EVERY FRAME: MC_TextureManager::resetLightData
+    // (mclib/txmmgr.cpp:2137) resets lightDataStructuresCount to the static
+    // high-water and clears every dedup map, and its own comment states that
+    // "any stale hash->slot entries from the prior frame are invalid". A slot
+    // number from frame N therefore names a DIFFERENT actor's light row -- or no
+    // written row at all -- on frame N+1.
+    //
+    // The other two consumers of this field both know that. TG_MultiShape::
+    // ResubmitCachedGpuLightData (mclib/msl.cpp:2147-2149) requires
+    // `cachedFrame_ == g_mc2FrameCounter` before trusting the index, and
+    // GpuStaticPropRegistry's flush (gos_static_prop_registry.cpp:1051) compares
+    // getCachedFrame() against the current frame and suppresses the draw when it
+    // is stale -- its comment at :1045 names the consequence exactly: a slot
+    // "whose content this frame was filled by a different actor -- emitting a
+    // draw with that index produces wrong/black lighting". The declaration of
+    // cachedFrame_ itself (mclib/msl.h:315-320) documents the same contract.
+    //
+    // This site -- the DYNAMIC submit path -- was the one consumer that checked
+    // only the 0xFFFFFFFF sentinel and never the frame stamp, so it accepted a
+    // prior-frame index verbatim. Animated buildings are precisely the actors
+    // that land here: BldgAppearance::setGesture calls invalidateStaticRegistration()
+    // (mclib/bdactor.cpp:1874) the moment a real animation starts, dropping the
+    // actor out of the static registry (which HAS the check) and onto this path
+    // (which did not). The shader indexes light[] unchecked
+    // (shaders/static_prop.vert:714), so a stale or never-written row shades the
+    // actor with zeroes -- pure black, texture-independent, silhouette-shaped.
+    //
+    // WHAT HAPPENS WHEN THE CHECK FAILS: we RE-GATHER, we do not substitute.
+    // Falling back to slot 0 (the pre-slice behaviour when the sentinel hit) is
+    // what made this silent, but pointing at some other actor's row would just
+    // trade a black building for a wrongly-lit one. GatherGpuObjectLightDataOnly()
+    // allocates/dedups a row for THIS actor in THIS frame, which is the same
+    // repair msl.cpp:2171 performs when its guard rejects the cache. If even that
+    // is impossible (no SHAPE_NODE leaf to gather through) the actor is dropped
+    // rather than drawn against an arbitrary slot, matching the registry's choice.
+    // ------------------------------------------------------------------
+    const bool freshnessOn = staticPropLightFreshnessEnabled();
+    const bool cacheFresh  = (multi->cachedFrame_ == g_mc2FrameCounter);
+    const bool cacheSet    = (multi->cachedGpuLightIndex_ != 0xFFFFFFFFu);
+
     uint32_t lightDataIndex = 0;
-    if (multi->cachedGpuLightIndex_ != 0xFFFFFFFFu) {
+    bool     lightRowResolved = false;
+    if (cacheSet && (!freshnessOn || cacheFresh)) {
         // Happy path: lights were gathered at update() time (correct per-actor).
-        lightDataIndex = multi->cachedGpuLightIndex_;
+        lightDataIndex   = multi->cachedGpuLightIndex_;
+        lightRowResolved = true;
     } else if (firstShapeNodeLeaf != nullptr) {
-        // Fallback: first frame or non-GPU-object path cached nothing.
-        lightDataIndex = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly();
+        // Fallback: first frame, non-GPU-object path cached nothing, or (new)
+        // the cached index is a stale prior-frame slot. Re-gather for this frame.
+        if (freshnessOn && cacheSet && !cacheFresh) {
+            ++s_counters.mono_stale_light_row_regathered;
+            // FAIL-LOUD: one line per distinct typeID, uncapped counter in the
+            // message so nobody counts log lines. Silence here is what let this
+            // ship; steady-state hits mean the defect was live on this run.
+            static std::set<const TG_TypeShape*> s_loggedStaleTypes;
+            const TG_TypeShape* ts0 =
+                static_cast<const TG_TypeShape*>(firstShapeNodeLeaf->myType);
+            if (s_loggedStaleTypes.insert(ts0).second) {
+                MC2_DIAGFE(stderr,
+                    "[LIGHTROW_FRESHNESS v1] event=stale_row_regathered "
+                    "nodeId=%s caller=%s staleIndex=%u cachedFrame=%u currentFrame=%u "
+                    "regathered_so_far=%llu (prior-frame light slot rejected; "
+                    "see LIGHTROW-FRESHNESS-1)\n",
+                    (ts0 && const_cast<TG_TypeShape*>(ts0)->getNodeId() &&
+                     const_cast<TG_TypeShape*>(ts0)->getNodeId()[0])
+                        ? const_cast<TG_TypeShape*>(ts0)->getNodeId() : "<unnamed>",
+                    (callerName && callerName[0]) ? callerName : "<unknown>",
+                    multi->cachedGpuLightIndex_, multi->cachedFrame_,
+                    g_mc2FrameCounter,
+                    (unsigned long long)s_counters.mono_stale_light_row_regathered);
+                std::fflush(stderr);
+            }
+        }
+        lightDataIndex   = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly();
+        lightRowResolved = true;
+    }
+
+    // Unresolvable row. Pre-slice this fell through with lightDataIndex == 0 --
+    // a REAL slot, not a sentinel, so the actor drew against whatever row 0
+    // happened to hold. Drop it instead; drawing an actor against another
+    // actor's lighting is not a smaller error than not drawing it.
+    //
+    // Reachability note, stated so the next reader does not have to re-derive it:
+    // firstShapeNodeLeaf == nullptr means the first pass (:5788-5796) found no
+    // SHAPE_NODE leaf, and the submit loop below applies the same predicate, so
+    // it would emit nothing anyway. This branch is therefore expected to be
+    // unreachable in practice -- which is exactly why it gets a counter rather
+    // than a silent `= 0`. If it ever fires, that assumption has broken.
+    if (freshnessOn && !lightRowResolved) {
+        ++s_counters.mono_stale_light_row_unresolvable;
+        static bool s_loggedUnresolvable = false;
+        if (!s_loggedUnresolvable) {
+            s_loggedUnresolvable = true;
+            MC2_DIAGFE(stderr,
+                "[LIGHTROW_FRESHNESS v1] event=unresolvable_row caller=%s "
+                "cachedIndex=%u cachedFrame=%u currentFrame=%u "
+                "(no SHAPE_NODE leaf to gather through; actor dropped)\n",
+                (callerName && callerName[0]) ? callerName : "<unknown>",
+                multi->cachedGpuLightIndex_, multi->cachedFrame_, g_mc2FrameCounter);
+            std::fflush(stderr);
+        }
+        s_currentSubmittingMulti = nullptr;
+        return false;
+    }
+
+    // RANGE CHECK. shaders/static_prop.vert:714 does `light[int(inst.lightDataIndex)]`
+    // with no bounds test, so an index >= the live row count is an out-of-bounds
+    // SSBO read. A row resolved above is always < getLightStructCount() by
+    // construction, so this is an invariant assertion, not a expected path --
+    // it must read zero. It is NOT repaired by clamping (clamping would just
+    // re-introduce the silent wrong-row substitution this slice removes).
+    if (freshnessOn && mcTextureManager &&
+        lightDataIndex >= mcTextureManager->getLightStructCount()) {
+        ++s_counters.mono_light_row_out_of_range;
+        static bool s_loggedOob = false;
+        if (!s_loggedOob) {
+            s_loggedOob = true;
+            MC2_DIAGFE(stderr,
+                "[LIGHTROW_FRESHNESS v1] event=row_out_of_range caller=%s "
+                "index=%u liveRowCount=%u currentFrame=%u "
+                "(INVARIANT BREAK -- shader would read light[] out of bounds; "
+                "actor dropped)\n",
+                (callerName && callerName[0]) ? callerName : "<unknown>",
+                lightDataIndex, mcTextureManager->getLightStructCount(),
+                g_mc2FrameCounter);
+            std::fflush(stderr);
+        }
+        s_currentSubmittingMulti = nullptr;
+        return false;
     }
 
     // Second pass: submit each eligible child, silently skipping those the

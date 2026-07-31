@@ -2934,6 +2934,15 @@ def main():
                             # silently runs the =1 path (ENV_DROP class) and
                             # grades ON against ON.
                             "MC2_VEHICLE_AMBIENT_FLOOR",
+                            # LIGHTROW-FRESHNESS-1: default-ON killswitch for the
+                            # cachedFrame_ staleness check on the DYNAMIC static-prop
+                            # submit path (gos_static_prop_batcher.cpp). Must be
+                            # passthrough-allowlisted or an A/B run setting =0
+                            # silently runs the =1 path (ENV_DROP class) and grades
+                            # the fix against itself -- which for this gate would
+                            # hide the one arm that matters, since =0 is the only
+                            # way to reproduce the stale-row read on purpose.
+                            "MC2_STATIC_PROP_LIGHT_FRESHNESS",
                             # SUN-AXIS-FIX-1: default-OFF opt-in for the
                             # Stuff->MC2 swap on ObjectLights.light_dir in
                             # calc_light's DIFFUSE directional branches (mech +

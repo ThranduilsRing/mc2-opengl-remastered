@@ -291,6 +291,13 @@ run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh
 run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
 run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
+# LIGHTROW-FRESHNESS-1. cachedGpuLightIndex_ names a light slot that is rebased
+# every frame; reading it without its cachedFrame_ stamp draws the actor against
+# another actor's row (pure black, since the shader indexes light[] unchecked).
+# Two of three consumers already guarded; the dynamic static-prop submit path
+# did not. This freezes "every consumer references the stamp".
+run_check "light_row_freshness"          "py -3 scripts/check-light-row-freshness.py --quiet"
+run_check "light_row_freshness_selftest" "py -3 scripts/check-light-row-freshness.py --selftest"
 # LIGHTING-DIVERGENCE-PIN-1: MC2 has no single shading model -- FIVE scalar
 # ambient floors, FOUR hemisphere-fill colour pairs, two calc_light definitions
 # and two no-lights semantics. Every one of those is deliberate today and
