@@ -1320,6 +1320,39 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 # MC2_* gate that is in neither RendererFeatureRegistry.h nor tier1_env_vars.md?
 # The 99-gate backlog is real and stays visible: `py -3 scripts/check-new-gates.py --all`.
 run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base HEAD~1"
+
+# ---------------------------------------------------------------------------
+# SCRIPTS-TESTS-WIRE-1 (2026-07-31) -- a whole TEST TIER nothing executed
+# ---------------------------------------------------------------------------
+# check-contract-coverage.py grades scripts/check-*.{py,sh}. It does not look
+# into scripts/tests/, so the four pytest modules there were dark in the one way
+# this board cannot see: not "unwired and reported", just absent from the census
+# entirely. Nothing in scripts/, no CI (there is no .github/workflows), and no
+# row here ran them. Their only mentions in the whole repo are two prose docs
+# and one docstring -- the mention-is-not-a-caller shape that arm (b) of
+# check-contract-coverage.py exists to refuse, one directory out of its reach.
+#
+# A test tier nothing executes is indistinguishable from no tests at all, and
+# that is not a slogan here: this session found a doctest binary reporting
+# "630 passed, 0 failed, SUCCESS, exit 0" while a real case had been silenced,
+# and a `COUNT == 46` assertion that sat unevaluated while the true value walked
+# to 61 over fifteen appends.
+#
+# MEASURED, not taken on report: 46 tests, 2.2-2.4s wall over three runs, which
+# is inside the 5s-per-check budget this file promises and ~0.7% of a ~340s
+# board. `-B` and `-p no:cacheprovider` keep it honestly READ-ONLY: no .pyc, no
+# .pytest_cache write. Exit 5 on zero-collected (verified), so the tier being
+# deleted or renamed out from under this row fails LOUD instead of passing on an
+# empty set.
+#
+# WHAT THIS ROW DOES NOT DO, stated so nobody reads more into a green: it does
+# not pin the test COUNT, so deleting ONE test still passes. A naked count
+# assertion here would go red the day someone adds a test, and a permanently-red
+# row teaches everyone to skip red -- the failure mode the PER-CHECK WALL TIME
+# note above refuses for the same reason. scripts/check-doctest-count-locks.py
+# is the mechanism that manages a count lock properly if this tier ever needs
+# one.
+run_check "scripts_tests"              "py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider"
 fi   # end of the real board (skipped under --selftest-render, above)
 
 # ---------------------------------------------------------------------------
