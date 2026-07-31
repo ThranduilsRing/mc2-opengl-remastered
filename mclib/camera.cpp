@@ -2241,9 +2241,81 @@ long Camera::update (void)
 	// Check if light moved.
 	// Should not be necessary every frame.
 	// TEST FOR NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	lightDirection.x = cos((lightYaw + 45.0f) * DEGREES_TO_RADS);
-	lightDirection.y = sin((lightYaw + 45.0f) * DEGREES_TO_RADS);
-	lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
+	//
+	// SUN-ELEVATION-FIX-1 -- MC2_SUN_ELEVATION_FIX, DEFAULT OFF.
+	//
+	// THE DEFECT, and it is arithmetic, not taste. The legacy three lines below
+	// build a vector whose HORIZONTAL part is already unit length and whose z is
+	// sin(pitch), and only THEN normalize the whole thing. That is not a
+	// direction at elevation `pitch`: its elevation is atan(sin(pitch)). Every
+	// mission with a non-zero authored pitch therefore gets a sun LOWER than the
+	// one its .fit asked for -- mc2_24 authors 75 deg and receives 44.0, mc2_01
+	// authors 50 and receives 37.5, mc2_03 authors 46 and receives 35.7.
+	// Measured across all 24 shipping missions by tools/class_light_band_harness
+	// (test terrain_sun_elevation_is_atan_sin_pitch_not_pitch, Stage B5).
+	//
+	// WHY THIS IS GATED AND WHY IT IS OFF. lightDirection is NOT a local
+	// terrain-shading detail -- it is the single source for gos_GetTerrainLightDir,
+	// and through it for: the terrain lighting NdotL; the static-prop sun
+	// (u_terrainSunMC2); the SHADOW projection matrix (gos_postprocess.cpp:455
+	// buildStaticLightMatrix, :3214, :5208, :5502, :5688); SSAO/screen-FX; and --
+	// via `intensity = terrainNormal . lightDirection` handed to
+	// Camera::getLightRed (mclib/mapdata.cpp:1892-1900) -- the SUN COLOUR BYTE of
+	// every actor class AND the pre-burned terrain colormap (mclib/terrtxm2.cpp
+	// :1132 burnInShadows). So this moves the sun's direction, the world's shadow
+	// direction, and the baked ground colour together, on every mission at once.
+	// That is far too large to enable on arithmetic alone with launches blocked.
+	//
+	// DEGENERATE-PITCH GUARD. mc2_10 authors pitch 180 and mc2_05 / mc2_21 author
+	// 270, which are not solar elevations. For cos(pitch) < 0 the spherical form
+	// flips the AZIMUTH 180 deg against every shipped build, so those missions
+	// return the legacy vector VERBATIM -- among the 24 that is mc2_10 alone, one
+	// of the user's regular check missions. cos(pitch) == 0 (pitch 270) is NOT
+	// degenerate: the spherical form collapses to straight down (0,0,-1) and no
+	// azimuth exists to flip. THE EPSILON IS LOAD-BEARING: cos(270 deg) evaluates
+	// to -1.8e-16, not 0, so a bare `< 0.0` test would silently drop mc2_05 and
+	// mc2_21 onto the legacy branch. The harness caught exactly that.
+	//
+	// WHEN ON, this also UNIFIES the world: the corrected terrain sun becomes
+	// EXACTLY -swap(ObjectLights.light_dir), the vector mech specular already
+	// uses and the one MC2_SUN_AXIS_FIX gives mech/vehicle diffuse -- so terrain,
+	// props, mech diffuse, mech specular and vehicles land on ONE sun vector by
+	// construction. Neither gate alone achieves that (harness test
+	// fix_b_unifies_terrain_sun_with_the_object_row).
+	//
+	// Unset/0 -> the legacy three lines, bit-for-bit.
+	// Canonical DEFAULT-OFF OPT-IN idiom `(v && v[0] && v[0] != '0')`. This form
+	// is mandatory, not stylistic: scripts/check-gate-default-agreement.py reads
+	// a Feature gate's real default OUT OF ITS READER and compares it with the
+	// registry. The first draft here used an early-return for the unset case and
+	// then `return !(v[0] == '0' ...)`, and the checker latched onto that second
+	// statement and classified the gate as DEFAULT-ON -- a direct contradiction
+	// of the registry's stated OFF, reported as a DISAGREEMENT. The behaviour was
+	// right and the idiom was unreadable, which is exactly how the four gate-
+	// default defects found today survived. Do not "simplify" this back.
+	static const bool s_sunElevationFix = [](){
+		const char* v = getenv("MC2_SUN_ELEVATION_FIX");
+		return (v && v[0] && v[0] != '0');
+	}();
+
+	const float sunAzimuthRad = (lightYaw + 45.0f) * DEGREES_TO_RADS;
+	const float sunPitchRad   = lightPitch * DEGREES_TO_RADS;
+	const float sunCosPitch   = cos(sunPitchRad);
+
+	if (s_sunElevationFix && sunCosPitch >= -1e-6f)
+	{
+		// True spherical direction at the AUTHORED elevation. Already unit
+		// length, so the Normalize below is a no-op rather than a correction.
+		lightDirection.x = sunCosPitch * cos(sunAzimuthRad);
+		lightDirection.y = sunCosPitch * sin(sunAzimuthRad);
+		lightDirection.z = sin(sunPitchRad);
+	}
+	else
+	{
+		lightDirection.x = cos(sunAzimuthRad);
+		lightDirection.y = sin(sunAzimuthRad);
+		lightDirection.z = sin(sunPitchRad);
+	}
 
 	lightDirection.Normalize(lightDirection);
 

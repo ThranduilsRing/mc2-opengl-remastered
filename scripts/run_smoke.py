@@ -2904,6 +2904,14 @@ def main():
                             # captures identical frames -- the ENV_DROP class,
                             # found twice on 2026-07-30 alone.
                             "MC2_SUN_AXIS_FIX",
+                            # SUN-ELEVATION-FIX-1: default-OFF opt-in for the
+                            # true-spherical Camera::lightDirection (the shipped
+                            # one normalizes AFTER, so its elevation is
+                            # atan(sin(pitch)), not pitch). Drives terrain, prop
+                            # sun, SHADOW direction and the sun colour byte, so
+                            # an A/B that could not DRIVE it would grade the
+                            # whole world OFF against OFF.
+                            "MC2_SUN_ELEVATION_FIX",
                             # QUIET-DEFAULT-BUILD-1: MC2_DIAG_VERBOSE restores
                             # the ~380 developer diagnostic call sites that a
                             # default build now keeps quiet. Allowlisted so the
