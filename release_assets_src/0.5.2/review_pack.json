@@ -5,7 +5,7 @@
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 &mdash; Fix Review",
  "lede": "<b>Start at the top and stop when you are tired</b> &mdash; the page is ordered so that the parts that block work come first. <b>Sections 1, 2 and 5 are the ones to read today:</b> which install to launch, the single supervised launch that would close most of the open questions, and what has landed since this page was last built &mdash; the cursor-capture fix, the isolation study, and a whole-fleet object-burial audit whose headline numbers were wrong yesterday and are corrected here. Everything below those is reference you have already seen.",
- "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install to launch</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">2. The one launch that unblocks everything</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">3. The A/B tests</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\">4. Decision queue</a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since this page was last built</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">6. Corrections</a> &nbsp;|&nbsp; <a href=\"#readfirst\">7. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">8. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a>",
+ "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install to launch</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">2. The one launch that unblocks everything</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">3. The A/B tests</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\">4. Decision queue</a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since this page was last built</b></a> &nbsp;|&nbsp; <a href=\"#selfcheck\"><b style=\"color:#78b0f0\">6. The checks that were lying</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">7. Corrections</a> &nbsp;|&nbsp; <a href=\"#readfirst\">8. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">9. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
   {
@@ -102,7 +102,7 @@
       [
        {
         "tag": "td",
-        "html": "<code>MC2-OpenGL-TIP-2026-07-31/</code><br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; NEW &mdash; the newest install on the machine</span>"
+        "html": "<code>MC2-OpenGL-TIP-2026-07-31/</code><br><span style=\"font-size:11px;color:#9aa3ad\">superseded at 03:31</span>"
        },
        {
         "tag": "td",
@@ -114,7 +114,25 @@
        },
        {
         "tag": "td",
-        "html": "<b style=\"color:#a0f0a0\">Use this one.</b> Everything AB-SUNAXIS has, plus the launcher killswitch repair &mdash; and, unlike every other install, it contains <code>MC2_STATIC_PROP_IBL_SUN_ROTATE</code>, the strongest finding of the session. Eight one-click arms, <code>AB-0-DEFAULT-baseline.bat</code> through <code>AB-7-PROPS-stocklike-no-IBL.bat</code>. Its own README says, in bold: <i>&ldquo;Nothing in this install has ever been run. Not once, not by anyone.&rdquo;</i>"
+        "html": "<b style=\"color:#f0d890\">Superseded &mdash; do not launch this one.</b> Everything in it is also in CURSORFIX below, which is a strict descendant of it (21 commits behind the tip, where TIP is 33). <b>If any document still tells you to launch TIP, that document is stale.</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2-OpenGL-CURSORFIX-2026-07-31/</code><br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; NEW &mdash; the one to launch</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<code>3d7f9d7871f7</code><br><span style=\"font-size:11px;color:#9aa3ad\">deploy/cursorfix-2026-07-31 &mdash; on the mainline</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>2026-07-31 03:31</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">Use this one.</b> Everything TIP has, <b>plus the cursor-capture fix</b> &mdash; the first binary anywhere on this disk that contains it. Eight <code>AB-0</code>&hellip;<code>AB-7</code> arms plus <code>CURSOR-1</code> and <code>CURSOR-2</code>.<br><br><b>Two things it does not have</b>, said out loud rather than left for you to discover: <b>(1)</b> the light-row freshness fix (<code>480ceaafa</code>), one of the ten default-ON changes &mdash; so this install grades <b>nine of ten</b>; <b>(2)</b> <code>c5a42e808</code>, which repaired a regression <i>inside</i> the cursor fix &mdash; so on this build <b>do not set <code>MC2_NO_CURSOR_GRAB</code> by hand</b>, because here it also strips the taskbar button and the Alt-Tab entry and makes the window refuse keyboard focus. The four-step cursor check never sets it, and <code>CURSOR-2</code> deletes it explicitly, so the check itself is unaffected."
        }
       ]
      ]
@@ -153,7 +171,11 @@
        },
        {
         "tag": "th",
-        "html": "TIP 07-31 01:31<br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; the one to launch</span>"
+        "html": "TIP<br><span style=\"font-size:11px;color:#9aa3ad\">07-31 01:31 &mdash; superseded</span>"
+       },
+       {
+        "tag": "th",
+        "html": "CURSORFIX 07-31 03:31<br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; the one to launch</span>"
        }
       ],
       [
@@ -168,6 +190,10 @@
        {
         "tag": "td",
         "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
        },
        {
         "tag": "td",
@@ -198,6 +224,10 @@
        {
         "tag": "td",
         "html": "<b style=\"color:#a0f0a0\">present</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
        }
       ],
       [
@@ -212,6 +242,10 @@
        {
         "tag": "td",
         "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
        },
        {
         "tag": "td",
@@ -242,12 +276,20 @@
        {
         "tag": "td",
         "html": "<b style=\"color:#a0f0a0\">present</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
        }
       ],
       [
        {
         "tag": "td",
         "html": "<code>MC2_STATIC_PROP_IBL_SH</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
        },
        {
         "tag": "td",
@@ -286,6 +328,10 @@
        {
         "tag": "td",
         "html": "<b style=\"color:#a0f0a0\">present</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
        }
       ],
       [
@@ -308,6 +354,62 @@
        {
         "tag": "td",
         "html": "<b style=\"color:#a0f0a0\">present</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "cursor-capture guard<br><span style=\"font-size:11px;color:#9aa3ad\">not an env var &mdash; unconditional</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#a0f0a0\">present</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_STATIC_PROP_LIGHT_FRESHNESS</code><br><span style=\"font-size:11px;color:#9aa3ad\">default-ON change #10</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
        }
       ]
      ]
@@ -322,7 +424,7 @@
     },
     {
      "type": "note",
-     "html": "&#9888; <b>No install on this machine contains the cursor-capture fix.</b> <code>ffebf5e87</code> landed at 02:49, after TIP was built. The seven commits between TIP and the current tip are six documentation/tooling commits and <b>exactly one engine change &mdash; the cursor fix itself</b>. So TIP is behaviourally the current tip minus that one fix: it is the right install for everything on this page <b>except</b> the cursor check in section 5, which needs a rebuild first."
+     "html": "<b>Correction &mdash; a fifth install exists, and it has the cursor fix.</b> This section previously ended by saying that <b>no install on this machine contains the cursor-capture fix</b>, and sent you to TIP. That was true when it was written and was out of date within the hour: <code>MC2-OpenGL-CURSORFIX-2026-07-31</code> was built at 03:31 from <code>3d7f9d7871f7</code>, and the fix is in it. <b style=\"color:#a0f0a0\">Launch CURSORFIX, not TIP.</b><br><br><span style=\"font-size:11px;color:#9aa3ad\">Route disclosure, because this page now holds itself to it: that identity is read from the install&rsquo;s own <code>.deployed_manifest.csv</code> (all 805 rows stamped <code>3d7f9d7871f7&hellip;</code>, no <code>-dirty</code> suffix) plus git ancestry. That is the <i>manifest</i> route, which is the weaker of the two. The strong route reads the fingerprint out of the executable&rsquo;s own bytes &mdash; and the launch block prevents an agent from running that tool at all, because the tool takes the blocked filename as its one argument. So every &ldquo;verified from the executable&rdquo; claim made by a blocked lane is in fact the weaker route unless it names a different mechanism.</span>"
     }
    ]
   },
@@ -355,7 +457,7 @@
        },
        {
         "tag": "td",
-        "html": "Nine changes ship active with no environment variable (section 7). Not one has been seen by a human or by a capture. Two of them push in <b>opposite directions on the same pixels</b> and partly cancel &mdash; nobody can say from source which wins on your screen."
+        "html": "<b>Ten</b> changes ship active with no environment variable (section 7). Not one has been seen by a human or by a capture. Two of them push in <b>opposite directions on the same pixels</b> and partly cancel &mdash; nobody can say from source which wins on your screen."
        }
       ],
       [
@@ -404,7 +506,7 @@
        },
        {
         "tag": "td",
-        "html": "<code>A:/Games/MC2-OpenGL-TIP-2026-07-31/</code> &mdash; <code>AB-0-DEFAULT-baseline.bat</code>. Not the Start-menu one; see section 1."
+        "html": "<b><code>A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31/</code></b> &mdash; <code>AB-0-DEFAULT-baseline.bat</code>. <b>Not</b> the Start-menu one, and <b>not</b> TIP &mdash; see section 1. It carries <b>nine of the ten</b> default-ON changes; the tenth is in no binary yet."
        }
       ],
       [
@@ -434,7 +536,7 @@
        },
        {
         "tag": "td",
-        "html": "Alt-F4, or Task Manager &rarr; End task. On a default launch the window is an ordinary foreground window and the cursor is confined to it, which is correct and unchanged by anything this session."
+        "html": "Alt-F4, or Task Manager &rarr; End task. On a <b>normal</b> launch the window is an ordinary foreground window and the cursor is confined to it, which is correct and unchanged. <b>The offscreen cursor check in section 5 is the exception</b> &mdash; it deliberately has no taskbar button and no Alt-Tab entry, so Task Manager is the only way out. <b>Open it before you start that one.</b>"
        }
       ]
      ]
@@ -1287,6 +1389,140 @@
    ]
   },
   {
+   "id": "selfcheck",
+   "anchor": "selfcheck",
+   "heading": "6. The checks that were lying &mdash; why &ldquo;all green&rdquo; meant nothing",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "There are no pixels in this section. It is here because it explains why a page full of confident numbers kept turning out to be wrong. <b>Five separate automated checks were reporting green while asserting things that were false</b> &mdash; and a checker that lies is worse than no checker, because it converts <i>unknown</i> into a false <i>verified</i>. The board went from <b>137 rows (131 passing, 6 failing)</b> to <b>143 rows (142 passing, 1 failing)</b>, and the six reds had six different causes, only one of which was the code under test."
+    },
+    {
+     "type": "h3",
+     "html": "The five that were closed, and what was really wrong"
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "Check"
+       },
+       {
+        "tag": "th",
+        "html": "What was actually wrong"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>spirv_artifacts</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>A stale bake, not a bad check.</b> A mech vertex shader changed with the sun-axis fix on 07-30, while its compiled form dated from <b>22 July</b>. Anyone running with that path enabled would have rendered mech vertices from <b>pre-fix</b> code while the normal path ran the new one. <br><span style=\"font-size:11px;color:#9aa3ad\">Scope, stated honestly: that path sits behind a default-OFF switch, so no default launch was affected. The row was right to be red anyway &mdash; a divergent bake is a live trap the moment anyone flips it.</span>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>delivery_installs</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>The check was asserting a falsehood.</b> A disk sweep found <b>30</b> engine binaries where the previous scan found <b>22</b>, with <b>four of the newest outside the folders it had been told to look in</b> &mdash; including the CURSORFIX install this page now tells you to launch. <b>That was the third time in one day that install discovery turned out to be the real bug.</b><br><span style=\"font-size:11px;color:#9aa3ad\">Not a clean win: the pass bar is &ldquo;at least one install shows the fix&rdquo;, so finding more installs can only make the row easier to pass. Which install gets graded is a decision left to you.</span>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>split_path_contracts</code><br><code>split_path_selftest</code>"
+       },
+       {
+        "tag": "td",
+        "html": "A rule was grading English prose as if it were code. One proof cleared both rows; a follow-up took the self-test from 26.4&nbsp;s to 3.0&nbsp;s."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>raw_gl_fbobind</code>"
+       },
+       {
+        "tag": "td",
+        "html": "A probe&rsquo;s readback bracket needed tagging per call site."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>All five were closed the same way: by putting the real regression back into the live tree, watching the check fire, then reverting it.</b> A checker that has only ever seen the fixed tree is a checker that has never been tested. That is the standard here now, and it is the single practice that would have prevented most of this page&rsquo;s corrections."
+    },
+    {
+     "type": "h3",
+     "html": "The comment stripper was hiding 34,385 lines of real code"
+    },
+    {
+     "type": "what",
+     "html": "The trigger is the game&rsquo;s own stock banner comment, <code>//****</code>. Two slashes followed by a star is <code>/*</code> starting one character later &mdash; so a stripper built out of pattern-matching opens a block comment that was never opened, and swallows everything until it finds a closing <code>*/</code> somewhere further down the file. <b>34,385 lines across 73 files</b> were invisible to every check that used the shared helper. <span style=\"font-size:11px;color:#9aa3ad\">Re-measured today at the current tip: 34,376 lines across 75 files &mdash; within 0.03%, the difference being drift since the fix landed.</span> A <b>private copy</b> of the identical bug in a second family of checks skipped a further <b>67,983 lines</b> &mdash; though that one was an advisory mode that no gate consumes, so nothing was being waved through on its account."
+    },
+    {
+     "type": "note",
+     "html": "<b>The part worth remembering.</b> Exactly <b>three</b> scripts called the shared stripper. <b>Seventeen others carried their own private copies</b> of the same logic. It had been duplicated, never centralised &mdash; and the shared file&rsquo;s own documentation claimed the opposite, which is where the misconception started. Fixing one copy fixed three checks and left seventeen unfixed."
+    },
+    {
+     "type": "h3",
+     "html": "No compiled test had ever been run by any check"
+    },
+    {
+     "type": "what",
+     "html": "Before this session, <b>not one</b> of the board&rsquo;s 141 rows invoked a compiled test binary. Every row was a static text check over source files. There are <b>638 test declarations, 631 of them runnable</b>. They now run, and this is the output:"
+    },
+    {
+     "type": "what",
+     "html": "<div style=\"background:#0e1013;border:1px solid #2a3038;border-radius:4px;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#d7e3ee;white-space:pre;overflow-x:auto\">[doctest] test cases:    631 |    631 passed | 0 failed | 1 skipped\n[doctest] assertions: 116854 | 116854 passed | 0 failed |\n[doctest] Status: SUCCESS!</div>"
+    },
+    {
+     "type": "what",
+     "html": "One of them had not merely gone quiet &mdash; it had <b>rotted</b>, and no longer even linked: two unresolved symbols. A comment in the source had <b>predicted exactly this</b>. It was a comment, not a guard, so nothing acted on it for however long it had been true."
+    },
+    {
+     "type": "note",
+     "html": "&#9888; <b>Read this before taking any comfort from &ldquo;631 passed&rdquo;.</b> Those tests cover <b>essentially none of what changed today</b>, and structurally cannot: not one of the source files behind the lighting, terrain, elevation or cursor work is even compiled into a test binary. <b>631 green says nothing whatsoever about tonight&rsquo;s render work.</b><br><span style=\"font-size:11px;color:#9aa3ad\">One literal exception, so the sentence is not overclaimed: a registry header that changed today <i>is</i> asserted on &mdash; but only as a count of entries, never as behaviour.</span>"
+    },
+    {
+     "type": "note",
+     "html": "<b>And the failure mode that makes all of this necessary.</b> Silencing a real test case makes the runner print <b>&ldquo;630 passed, 0 failed, SUCCESS&rdquo;</b> and exit clean. <b>The binary is blind to its own silencing</b> &mdash; demonstrated live, not theorised. A ratchet now pins how many cases are disabled, so that number cannot drift upward quietly."
+    },
+    {
+     "type": "h3",
+     "html": "A fix whose own author argued against it"
+    },
+    {
+     "type": "what",
+     "html": "One of the ten default-ON changes &mdash; the light-row freshness fix &mdash; corrected a path that trusted a cached lighting slot with <b>no freshness check, no range check and no empty check</b>, while its sibling consumers guard it and one of their comments names the symptom outright: <i>&ldquo;produces wrong/black lighting&rdquo;</i>. <b>Then its author wrote a second commit refuting it.</b> The re-gather can <b>mistint</b> a prop in the case where the stale slot happened to be correct. The trade is <b>&ldquo;possibly pure black&rdquo; &rarr; &ldquo;possibly mistinted, never black&rdquo;</b> &mdash; a real trade, not a free win, and the commit says so in as many words."
+    },
+    {
+     "type": "note",
+     "html": "<b>There is a counter, and it is the only evidence that will ever exist about whether the trade was worth taking.</b> The engine prints <code>stale_light_rows_regathered</code> on its object-batcher summary line. <b>A high number means this change should be reconsidered, not defended.</b> Two companion counters must read zero. Nobody has seen any of the three, because this fix is in <b>no binary on disk</b> &mdash; including the one this page tells you to launch."
+    },
+    {
+     "type": "h3",
+     "html": "The one row still red is correctly red"
+    },
+    {
+     "type": "what",
+     "html": "<code>capture_provenance</code> fails on five findings, and <b>three of them need a decision from you</b>. They cannot be acknowledged away: the remedy is to re-bless the golden captures from runs that record which binary produced them, and that needs actual capturing, which needs a launch. <b>It is a user decision wearing a red light, and it should stay red until you make it.</b>"
+    },
+    {
+     "type": "note",
+     "html": "Two smaller findings from the same sweep, both honest limitations rather than bugs. <b>(1)</b> When a row fails, the board runs in a quiet mode that <b>threw the failing row&rsquo;s explanation away</b> &mdash; so the one check capable of saying why it was unhappy printed a bare <code>FAIL</code>. Fixed for that row; it does <b>not</b> generalise to the other 142, which never capture their output at all. <b>(2)</b> An acknowledged warning carries a 365-day cap, but the cap is measured from <i>the day you run the check</i>, not from the day it was acknowledged &mdash; so nudging the expiry forward once a year renews it forever. The field that would have caught that is written on every entry and <b>read by nothing</b>."
+    }
+   ]
+  },
+  {
    "id": "corrections",
    "anchor": "corrections",
    "heading": "Corrections &mdash; things this page, or a previous session, told you that were wrong",
@@ -1427,6 +1663,36 @@
         "tag": "td",
         "html": "<b>The number is right; the impression it creates is wrong.</b> The &minus;24.93 comes entirely from an <b>8-vertex decorative <code>Coil</code> card that straddles the origin symmetrically</b>. The actual body is <b>1.22%</b> below origin. Anyone quoting 47.95% is describing a decoration, not a sunk building. <b>Quote 1.22%, or quote both.</b> Also: that prop is BUILDING-class and re-snaps to ground every frame, so the authored-height columns do not even apply to it."
        }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;No install on this machine contains the cursor-capture fix &mdash; launch TIP.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">this page, earlier today</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Out of date within the hour.</b> A fifth install, <code>MC2-OpenGL-CURSORFIX-2026-07-31</code>, was built at 03:31 and does contain it. <b style=\"color:#a0f0a0\">Launch CURSORFIX, not TIP.</b> The sweep that found it also found that the check responsible for noticing new installs had been looking in the wrong folders &mdash; it saw 22 binaries where 30 exist, and four of the newest, including this one, were outside its search roots."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;Nine changes ship default-ON.&rdquo;"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Ten.</b> The light-row freshness fix also defaults on. It is in <b>no binary on disk</b>, so launching CURSORFIX grades nine of the ten &mdash; which is why this page now says which nine."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;The contract board went from 131 rows to 143.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">relayed internally; never published to you</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>131 was the number of rows <i>passing</i>, not the number of rows.</b> The board was <b>137 rows: 131 passing, 6 failing</b>. It is now <b>143 rows: 142 passing, 1 failing</b>. Recorded here even though you never saw the wrong version, because the mistake is the same shape as several larger ones on this page &mdash; a number carried one step too far from the place it was measured."
+       }
       ]
      ]
     },
@@ -1450,7 +1716,7 @@
    "blocks": [
     {
      "type": "note",
-     "html": "<b>It is nine now, not five.</b> This section was written when five changes shipped default-ON. Four more have landed since and are described elsewhere on this page: the sidecar loader fix (<code>e1bdb7af6</code>), the <b>CPU Phong retirement</b> (<code>a75339bb0</code> &mdash; <code>MC2_CPU_PHONG_RETIRE</code>, reader <code>mclib/mapdata.cpp:2452-2453</code>, see section 5.3), the <b>legacy shoreline foam suppression</b> (<code>6340e0523</code> &mdash; <code>MC2_SHORELINE_LEGACY_SUPPRESS</code>, reader <code>gos_terrain_lod_chunk.cpp:4056-4057</code>, default flipped OFF&rarr;ON by that commit), and the <b>cursor-capture fix</b> (<code>ffebf5e87</code>, ungated, section 5.1). <b>The sentence that matters is unchanged and now applies to nine things instead of five: not one of them has ever been seen running.</b>"
+     "html": "<b>It is <b>ten</b> now, not five.</b> This section was written when five changes shipped default-ON. Five more have landed since and are described elsewhere on this page: the sidecar loader fix (<code>e1bdb7af6</code>), the <b>CPU Phong retirement</b> (<code>a75339bb0</code> &mdash; <code>MC2_CPU_PHONG_RETIRE</code>, reader <code>mclib/mapdata.cpp:2452-2453</code>, see section 5.3), the <b>legacy shoreline foam suppression</b> (<code>6340e0523</code> &mdash; <code>MC2_SHORELINE_LEGACY_SUPPRESS</code>, reader <code>gos_terrain_lod_chunk.cpp:4056-4057</code>, default flipped OFF&rarr;ON by that commit), and the <b>cursor-capture fix</b> (<code>ffebf5e87</code>, ungated, section 5.1). <b>The sentence that matters is unchanged and now applies to nine things instead of five: not one of them has ever been seen running.</b> <b>And a tenth landed after that:</b> the light-row freshness fix (<code>480ceaafa</code>), described in section 6 &mdash; it is in no binary on disk, so it is the one default-ON change that even the newest install cannot show you."
     },
     {
      "type": "note",
