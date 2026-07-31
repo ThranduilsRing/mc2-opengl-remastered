@@ -72,6 +72,32 @@ justification is not allowed. Documented history of additive slices netting
 ~0ms (`memory/feedback_offload_must_be_substitutive_not_additive.md`).
 Dispatch prompts MUST include "run the greybeard skill" verbatim.
 
+## MEASURED-BY discipline (numbers must be re-derivable)
+
+When a commit message or status doc states a **number** for the first time, put
+a trailer in that commit naming the tracked command that produces it:
+
+```
+MEASURED-BY: py -3 scripts/water_class_flip_audit.py
+```
+
+Why: 24 of the 160 commits since 2026-07-29 are corrections or retractions of
+numbers claimed in the same session. The one measurement that was never
+disputed is `6d9360046` — it committed the *script*, a `--selftest` with
+negative controls, and the exact CLI, and stated the number as a consequence of
+running it. Commit the script in the **same** commit as the claim.
+
+Checked by `check-contract-coverage.py` arm (f): if HEAD carries the trailer,
+the script it names must exist in HEAD. The check is deliberately opt-in — it
+cannot tell that a message states a number (SHAs and line numbers look like
+numbers too), so it does not guess. It guarantees that a trailer, once
+written, is true. A reproduction command nobody else can run is worse than no
+trailer.
+
+Not a replacement for `.claude/MEASUREMENT-LEDGER.md`, which records six
+already-settled disputes. Keep that as a record; do not grow it — new numbers
+go in the trailer, at the moment of the claim.
+
 ## Slice-preflight discipline (anti-rediscovery / stale-base gate)
 
 Before any **recon-derived fix slice** (a fix whose justification came from a

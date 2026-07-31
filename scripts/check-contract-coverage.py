@@ -85,7 +85,24 @@ exactly like a passing one -- and until this arm existed the whole file
 contained zero occurrences of the word "harness", so it structurally could not
 notice. See scripts/unregistered-harness-debt.txt for the ratchet.
 
-Run with --selftest to prove all six arms still fire.
+META4-CLOSE-1 (2026-07-31) adds arm (f), and fixes the ledger this whole file
+grades against: every "is it tracked?" test read `git ls-files`, i.e. the
+INDEX, so `git add` alone could satisfy it. See tracked_files().
+
+  (f) if HEAD's commit message carries a `MEASURED-BY: <command>` trailer, the
+      script that command names must exist IN HEAD -- the same test arm (c)
+      applies to aggregator rows, pointed at the moment a NUMBER is claimed.
+
+      Motivation: 24 of the 160 commits since 2026-07-29 are corrections or
+      retractions of numbers claimed in the same session. The convention that
+      worked is 6d9360046 -- commit the script, state the CLI, and the number
+      stops being arguable. This arm is opt-in by construction: it cannot tell
+      that a message states a number (SHAs, line numbers and dates all look
+      like numbers), so it does not try. It guarantees only that a trailer,
+      once written, is TRUE -- which matters because a reproduction command
+      nobody can run is worse than no trailer at all.
+
+Run with --selftest to prove all seven arms still fire.
 """
 import ast
 import os
@@ -342,6 +359,66 @@ def head_aggregator_text():
     return r.stdout if r.returncode == 0 else ""
 
 
+# --- arm (f): MEASURED-BY (META4-CLOSE-1) -----------------------------------
+# 24 of the 160 commits since 2026-07-29 are corrections, retractions or
+# refutations of numbers claimed in the same session -- one of them titled
+# "retract my own retraction". The ledger written afterwards
+# (.claude/MEASUREMENT-LEDGER.md) records six settled disputes but routes no
+# seventh number into itself.
+#
+# The convention that DID work is 6d9360046: commit the script, state the CLI,
+# and the number stops being arguable. One line makes it checkable --
+#
+#     MEASURED-BY: <command>
+#
+# in the commit message where a number is first claimed. This arm grades HEAD's
+# trailer against exactly the test arm (c) already applies to aggregator rows:
+# the script it names must be in HEAD, or nobody else can re-derive the number.
+#
+# SCOPE, STATED HONESTLY: this cannot detect a commit that states a number and
+# omits the trailer -- "message contains a number" is undecidable in practice
+# (SHAs, line numbers, dates, exit codes all match). So the trailer is opt-in;
+# what this guarantees is that a trailer, once written, is TRUE. That is worth
+# having on its own: a reproduction command nobody can run is worse than none,
+# and this repo demonstrably ships rows naming uncommitted scripts.
+MEASURED_BY_RE = re.compile(r"^[ \t]*MEASURED-BY:[ \t]*(.+?)[ \t]*$", re.M)
+SCRIPT_IN_CMD_RE = re.compile(r"((?:scripts|tools)/[\w./+-]+\.(?:py|sh|ps1))")
+
+
+def tracked_paths():
+    """Every path in HEAD. Same ledger as tracked_files(): HEAD, not the index."""
+    r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD"],
+                       cwd=ROOT, capture_output=True, text=True)
+    return set(r.stdout.splitlines())
+
+
+def head_commit_message():
+    r = subprocess.run(["git", "log", "-1", "--format=%B", "HEAD"],
+                       cwd=ROOT, capture_output=True, text=True)
+    return r.stdout if r.returncode == 0 else ""
+
+
+def measured_by_problems(message, paths):
+    out = []
+    for cmd in MEASURED_BY_RE.findall(message or ""):
+        named = SCRIPT_IN_CMD_RE.findall(cmd)
+        if not named:
+            out.append(
+                f"HEAD's MEASURED-BY trailer names no runnable script: {cmd!r}. "
+                f"The trailer exists so a stated number can be RE-DERIVED by "
+                f"someone else -- point it at a scripts/ or tools/ .py/.sh/.ps1, "
+                f"or drop the trailer rather than leave it decorative")
+            continue
+        for s in named:
+            if s not in paths:
+                out.append(
+                    f"HEAD's MEASURED-BY names {s}, which is NOT in HEAD. A "
+                    f"reproduction command nobody else can run is exactly the "
+                    f"unverifiable number the trailer exists to abolish -- "
+                    f"commit the script in the same commit as the claim")
+    return out
+
+
 # Executable surfaces that count as "something runs this". A check driven by a
 # deploy script, the smoke runner, cmake or a hook is WATCHED -- it just is not
 # watched by the aggregator. Only a check reachable from NOTHING is dark. Doc
@@ -486,7 +563,7 @@ def externally_called(checks):
 
 
 def run(aggregator_text=None, manual_text=None, checks=None, tracked=None,
-        head_text=None, external_map=None):
+        head_text=None, external_map=None, head_message=None, paths=None):
     if aggregator_text is None:
         aggregator_text = AGGREGATOR.read_text(encoding="utf-8", errors="replace")
     if manual_text is None:
@@ -498,6 +575,10 @@ def run(aggregator_text=None, manual_text=None, checks=None, tracked=None,
         tracked = tracked_files()
     if head_text is None:
         head_text = head_aggregator_text()
+    if head_message is None:
+        head_message = head_commit_message()
+    if paths is None:
+        paths = tracked_paths()
 
     wired = wired_scripts(aggregator_text)
     manual = parse_manual(manual_text)
@@ -534,6 +615,9 @@ def run(aggregator_text=None, manual_text=None, checks=None, tracked=None,
 
     # --- arm (d): no row registered twice, by label OR by command -----------
     problems.extend(duplicate_rows(aggregator_text))
+
+    # --- arm (f): HEAD's MEASURED-BY must name a script HEAD has ------------
+    problems.extend(measured_by_problems(head_message, paths))
 
     # --- arm (e): no contract HARNESS may be unregistered --------------------
     problems.extend(harness_problems())
@@ -658,6 +742,26 @@ def selftest():
     grade("stale debt row",
           harness_problems([], _real_reg, "long_gone_harness # reason\n"),
           "stale row")
+
+    # --- arm (f): MEASURED-BY (META4-CLOSE-1) -------------------------------
+    _paths = tracked_paths()
+    grade("MEASURED-BY names an untracked script",
+          measured_by_problems(
+              "fix: something\n\nMEASURED-BY: py -3 scripts/check-phantom-untracked.py\n",
+              _paths),
+          "is NOT in HEAD")
+    grade("MEASURED-BY names no script at all",
+          measured_by_problems("fix: something\n\nMEASURED-BY: I eyeballed it\n", _paths),
+          "names no runnable script")
+    # ...and the positive control: a real tracked script must NOT fire.
+    if measured_by_problems(
+            "fix: x\n\nMEASURED-BY: py -3 scripts/check-contract-coverage.py --selftest\n",
+            _paths):
+        print("[selftest] FAIL  MEASURED-BY false positive on a TRACKED script",
+              file=sys.stderr)
+        ok = False
+    else:
+        print("[selftest]   ok  MEASURED-BY naming a tracked script -> silent")
 
     # --- THE LEDGER ITSELF: HEAD, never the index (META4-CLOSE-1) -----------
     # tracked_files() must answer "would every clone of this commit have the
