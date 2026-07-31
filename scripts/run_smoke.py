@@ -2297,6 +2297,15 @@ def main():
                             # (e.g. "default"). Unset/empty/unknown falls back
                             # to mission registry or default set. Dev knob.
                             "MC2_STATIC_PROP_IBL_SH_SET",
+                            # IBL-ROTATION-LAND-1: rotate the SH-IBL probe onto
+                            # the mission sun azimuth, CPU-side at the upload
+                            # site (default-OFF). Without this passthrough row a
+                            # gate-ON A/B would silently grade OFF against OFF.
+                            "MC2_STATIC_PROP_IBL_SUN_ROTATE",
+                            # ...and its companion floor (default 0.45, in the
+                            # probe's irradiance units). Inert unless the gate
+                            # above is on; "0" gives the bare rotation.
+                            "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR",
                             # V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel
                             # + power-lobe specular gate (default-OFF).
                             # MC2_STATIC_PROP_PBR_V1=1 enables; ImGui slider

@@ -1206,6 +1206,253 @@ static const char* s_iblShSetEnvOverride = []() -> const char* {
     return (v != nullptr && v[0] != '\0') ? v : nullptr;
 }();
 
+// ── IBL-SUN-ROTATE-1 ────────────────────────────────────────────────────────
+// Rotate the SH-IBL ambient probe about world-up so its bright lobe lands on
+// the MISSION SUN, instead of staying pinned wherever the source HDRI's own sun
+// happened to be.
+//
+// THE DEFECT, measured offline in tools/class_light_band_harness Stage F (no
+// launch, no capture -- it is arithmetic over the shipped tables):
+//   - There is ONE coefficient set for the whole game. RenderCore/
+//     IblShRegistry.h kIblShSetCount == 1, and kMissionShMap[] holds a single
+//     {nullptr,nullptr} placeholder -- so its COUNT IS 1, not 0, and every one
+//     of the 24 shipping missions resolves to "default" through lookupShSet().
+//   - Its bright axis is therefore a constant: the L1 band IS the radiance's
+//     first directional moment, so the axis is normalize([3],[1],[2]) under the
+//     shader's binding = Stuff azimuth +0.344 deg on every mission.
+//   - The MEDIAN mission misses that axis by 106 deg; the worst is mc2_14 at
+//     176.7 deg. On 17 of the 24 the probe is strictly BRIGHTER on the wall
+//     facing AWAY from the sun than on the wall facing it. The swing it is
+//     mis-aiming is 21.05:1 across the sphere.
+//
+// WHY THIS IS AN OVERSIGHT AND NOT A DESIGN CHOICE. The VISIBLE skybox drawn
+// from the SAME HDRI is already sun-synced: gos_postprocess.cpp:5201-5218 scans
+// the EXR for its baked sun azimuth (gos_hdri.cpp) and sets
+// `skyYaw = hdriBakedSunAz_ - sunAzGL` so the HDRI's sun lands on the mission
+// sun. The probe DERIVED FROM THAT SKY is the one consumer that skips the step.
+// IblShRegistry.h's own creating commit says future slices would populate
+// kMissionShMap; none ever did, and the V-IBL default-ON flip (2026-05-27) made
+// the unrotated probe live behaviour on every mission.
+//
+// WHY THE FIX IS HERE AND NOT IN THE SHADER. A rotation about the basis POLE is
+// the closed-form case of SH rotation -- no Wigner matrices. Grouping
+// static_prop.vert::evalShL2's terms by their (x,z) angular dependence, with
+// x = s*cos(a), z = s*sin(a):
+//     m=0, INVARIANT : [0] L00, [1] L1-1 (the POLE term under the Y-up
+//                      binding: evalShL2 multiplies u_iblSh[1] by n.y), [6] L20
+//     m=1, angle  t  : ([3] L11 ~ x, [2] L10 ~ z) and ([4] L2-2 ~ xy, [5] L2-1 ~ yz)
+//     m=2, angle 2t  : ([8] L22 ~ x^2-z^2, [7] L21 ~ xz)
+//   each pair mixing as (A,B) -> (A cos mt - B sin mt, A sin mt + B cos mt).
+// tools/class_light_band_harness test_sh_y_rotation_equals_rotating_the_normal
+// proves to 1e-12 that this equals counter-rotating the NORMAL, so the whole
+// fix is nine CPU-side coefficient updates once per sun change -- zero
+// per-vertex cost, and shaders/static_prop.vert is not touched at all.
+//
+// DEFAULT OFF, deliberately. Nobody has seen this render: engine launches are
+// hard-blocked in this lane. It moves the clamped prop multiplier by up to
+// -0.70 on shadow-side walls (see the floor below), which is a large visible
+// change that wants a graded A/B before it ships on.
+//
+// GRADE IT ON mc2_17 (mean move 0.181, 54.6% of wall azimuths unclamped -- the
+// most headroom in tier1) or mc2_24 (0.231, the largest tier1 move). NOT on
+// mc2_10 or mc2_22: both are ambient-192 AND sun-192, so ~91% of wall azimuths
+// are already at the clamp and the rotation moves a mean of 0.0037 / 0.0123 --
+// one byte. mc2_05 moves most overall (0.358) but its sun is below the horizon,
+// where "aim at the sun" is not a well-posed request.
+static const bool s_iblSunRotateEnabled = []() {
+    // Canonical DEFAULT-OFF opt-in reader.
+    const char* v = getenv("MC2_STATIC_PROP_IBL_SUN_ROTATE");
+    return (v != nullptr && v[0] != '\0' && v[0] != '0');
+}();
+
+// ── IBL-SUN-ROTATE-1's FLOOR, independently adjustable ──────────────────────
+//
+// WHY A ROTATION NEEDS A FLOOR AT ALL. A rotation is an isometry of the sphere,
+// so it cannot create a darker value than the probe already had -- min and max
+// over the sphere are invariant. What it changes is WHICH wall gets the dark
+// end, and that is the whole problem: once the probe is aimed correctly, the
+// probe's dark lobe COINCIDES with the wall that also has NdotL == 0. Before
+// the rotation those two darknesses sat on different walls and partially
+// covered for each other; after it they stack. Measured worst drops on the
+// clamped prop multiplier are -0.705 (mc2_13), -0.704 (mc2_17), -0.692
+// (mc2_12) and -0.692 (mc2_18) -- and mc2_12/13/17/18 all carry ambient
+// 31/255 == 0.1216, i.e. almost no other fill to catch a face when the probe
+// leaves it. An earlier IBL_NIGHT_SCALE floor of 0.0 was rejected for exactly
+// this near-black failure; this slice is not going to reintroduce it.
+//
+// THE SHAPE: a lower bound on the probe's own irradiance, applied as ONE
+// UNIFORM LIFT on L00 -- the only isotropic coefficient in evalShL2 (its
+// spherical mean is exactly c4*L00, because c5 == c3/3 makes the L20 pair's
+// mean vanish). Consequences, all of them wanted:
+//   - the AIM IS UNTOUCHED. L1 and L2 are the directional bands and this does
+//     not read or write them, so the bright axis lands on the sun to 1e-9
+//     whatever the floor is. The floor cannot quietly undo the fix.
+//   - it can only LIFT. There is no floor value that makes any direction darker
+//     than the plain rotation, so the floor is safe to tune in either direction.
+//   - it is UNIFORM across R,G,B (one lift sized by the worst channel) rather
+//     than per-channel, which would flatten the dark side's colour: the baked
+//     probe's dark end is blue-dominant (min 0.232 R / 0.360 G / 0.477 B) and a
+//     per-channel clamp would neutralise exactly that.
+//   - the minimum is ROTATION-INVARIANT, so the lift is computed ONCE from the
+//     baked table and never per mission.
+//
+// THE DEFAULT VALUE, 0.45, and where it comes from -- an in-engine anchor, not
+// taste. terrain_lod_chunk.frag's own lighting cannot go below
+// mix(0.35,1.20,0.02) == 0.367 (pinned by class_light_band_harness
+// test_terrain_floor_is_not_0_35). So the GROUND a building stands on has a
+// hard 0.367 floor while the building's shadow-side wall has none -- which is
+// the "prop reads black against lit ground" complaint in one line. Solving
+//     ambient + floor * strength >= 0.367
+// at the darkest shipping case (ambient 31/255 == 0.1216 on mc2_12/13/17/18)
+// and the shipped daytime IBL strength 0.55 gives floor >= 0.446. 0.45 is that,
+// rounded up. On the baked table the resulting lift is +0.218 irradiance, which
+// against a bright end of 4.896 is +4.5% -- almost entirely inside the clamp.
+//
+// "0" or unset-to-0 disables the floor and gives the bare rotation; that is the
+// arm to use when measuring how much of a graded difference the floor is worth.
+// Bounded [0,2]; negative / NaN / junk -> 0.0 (fail to the bare rotation, never
+// to a silent giant lift).
+static const float s_iblSunRotateFloor = []() {
+    const char* v = getenv("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR");
+    if (v == nullptr || v[0] == '\0') return 0.45f;   // DEFAULT
+    const double d = atof(v);
+    if (!(d > 0.0)) return 0.0f;                     // 0, negative, NaN, junk
+    return (d > 2.0) ? 2.0f : (float)d;
+}();
+
+// shaders/static_prop.vert::evalShL2, transcribed verbatim (constants c1..c5
+// read from the shader body, coefficient binding read from the same lines).
+// Used ONLY for the one-off spherical-minimum search below -- the per-vertex
+// evaluation stays in the shader. double, not float, so the harness port can
+// agree with it exactly.
+static double iblEvalShL2Cpu(const float (*C)[3], int ch,
+                             double nx, double ny, double nz) {
+    const double c1 = 0.429043, c2 = 0.511664, c3 = 0.743125,
+                 c4 = 0.886227, c5 = 0.247708;
+    return c1 * C[8][ch] * (nx * nx - nz * nz)
+         + c3 * C[6][ch] * (ny * ny)
+         + c4 * C[0][ch]
+         - c5 * C[6][ch]
+         + 2.0 * c1 * C[4][ch] * (nx * ny)
+         + 2.0 * c1 * C[5][ch] * (ny * nz)
+         + 2.0 * c1 * C[7][ch] * (nx * nz)
+         + 2.0 * c2 * C[3][ch] * nx
+         + 2.0 * c2 * C[1][ch] * ny
+         + 2.0 * c2 * C[2][ch] * nz;
+}
+
+// The smallest UNIFORM lift, in irradiance units, that brings every channel's
+// spherical minimum up to s_iblSunRotateFloor. Searched numerically rather than
+// baked as a constant on purpose: RenderCore/IblShCoeffs.h is regenerated by
+// tools/ibl/project_sh.py, and a hardcoded lift would go silently stale the
+// next time it is. 129*256*3 evaluations, once per coefficient table, off the
+// render path.
+static double iblSunRotateLift(const float (*C)[3]) {
+    if (s_iblSunRotateFloor <= 0.0f || C == nullptr) return 0.0;
+    const double kPi = 3.14159265358979323846;
+    double worstDeficit = 0.0;
+    const int kLat = 128, kLon = 256;
+    for (int i = 0; i <= kLat; ++i) {
+        const double th = kPi * (double)i / (double)kLat;
+        const double sth = std::sin(th), cth = std::cos(th);
+        for (int j = 0; j < kLon; ++j) {
+            const double ph = 2.0 * kPi * (double)j / (double)kLon;
+            const double nx = sth * std::cos(ph), ny = cth, nz = sth * std::sin(ph);
+            for (int ch = 0; ch < 3; ++ch) {
+                const double deficit =
+                    (double)s_iblSunRotateFloor - iblEvalShL2Cpu(C, ch, nx, ny, nz);
+                if (deficit > worstDeficit) worstDeficit = deficit;
+            }
+        }
+    }
+    return worstDeficit;
+}
+
+static float  s_iblShRotated[9][3]      = {};
+static bool   s_iblShRotatedValid       = false;
+static const float (*s_iblShRotatedSrc)[3] = nullptr;
+static float  s_iblShRotatedSun[3]      = { 0.0f, 0.0f, 0.0f };
+
+// The 9x3 coefficient block to upload this flush.
+//
+// GATE OFF returns the shipped table pointer unchanged -- the identical bytes
+// the pre-slice build uploads, not a copy that happens to compare equal.
+static const float* iblShCoeffsForUpload() {
+    const float (*src)[3] = s_currentShSet ? s_currentShSet->coeffs
+                                           : RenderCore::kIblShCoeffs;
+    if (!s_iblSunRotateEnabled) return &src[0][0];
+
+    // NOTE: no local `extern` re-declaration here, unlike the neighbouring
+    // upload blocks. This function lives INSIDE the anonymous namespace, where a
+    // block-scope extern declares `(anonymous namespace)::gos_GetTerrainLightDir`
+    // and links to nothing -- LNK2019, caught on the first build of this slice.
+    // gameos.hpp (included at the top of this file) already declares the real
+    // one at global scope; `::` says so unambiguously.
+    float sx = 0.0f, sy = 0.0f, sz = 1.0f;
+    ::gos_GetTerrainLightDir(&sx, &sy, &sz);
+
+    if (s_iblShRotatedValid && src == s_iblShRotatedSrc &&
+        sx == s_iblShRotatedSun[0] && sy == s_iblShRotatedSun[1] &&
+        sz == s_iblShRotatedSun[2]) {
+        return &s_iblShRotated[0][0];
+    }
+
+    // THE FRAME. static_prop.vert feeds evalShL2 the STUFF-space normal
+    // (`worldNormal`, :652) -- NOT the MC2-swapped `worldNormalMC2` (:664) that
+    // the diffuse term uses. So the sun, which arrives in the MC2 frame from
+    // gos_GetTerrainLightDir, has to be carried back into Stuff before its
+    // azimuth means anything to the probe. The swap is
+    // stuff -> mc2 : (x,y,z) -> (-x, z, y)   [static_prop.vert:664, mech.vert:162]
+    // and it is its own inverse, so mc2 -> stuff is the same expression:
+    // stuff.x = -mc2.x, stuff.y = mc2.z, stuff.z = mc2.y. Stuff is Y-up, so its
+    // horizontal plane is x-z and azimuth = atan2(stuff.z, stuff.x)
+    //                                     = atan2(mc2.y, -mc2.x).
+    const double sunHoriz2 = (double)sx * sx + (double)sy * sy;
+    double t = 0.0;
+    if (sunHoriz2 > 1e-12) {
+        const double sunAz = std::atan2((double)sy, -(double)sx);
+        // The baked probe's bright axis IS its L1 band. R channel: all three
+        // agree to within 0.5 deg (harness F2), and one angle has to serve all
+        // three or the channels would shear apart.
+        const double probeAz = std::atan2((double)src[2][0], (double)src[3][0]);
+        t = sunAz - probeAz;
+    }
+
+    const double c1t = std::cos(t),       s1t = std::sin(t);
+    const double c2t = std::cos(2.0 * t), s2t = std::sin(2.0 * t);
+    for (int ch = 0; ch < 3; ++ch) {
+        for (int i = 0; i < 9; ++i) s_iblShRotated[i][ch] = src[i][ch];
+        // m=0 ([0] L00, [1] L1-1 pole term, [6] L20) are invariant -- copied above.
+        const double a3 = src[3][ch], b2 = src[2][ch];   // m=1 (L11 ~x, L10 ~z)
+        s_iblShRotated[3][ch] = (float)(a3 * c1t - b2 * s1t);
+        s_iblShRotated[2][ch] = (float)(a3 * s1t + b2 * c1t);
+        const double a4 = src[4][ch], b5 = src[5][ch];   // m=1 (L2-2 ~xy, L2-1 ~yz)
+        s_iblShRotated[4][ch] = (float)(a4 * c1t - b5 * s1t);
+        s_iblShRotated[5][ch] = (float)(a4 * s1t + b5 * c1t);
+        const double a8 = src[8][ch], b7 = src[7][ch];   // m=2 (L22 ~x^2-z^2, L21 ~xz)
+        s_iblShRotated[8][ch] = (float)(a8 * c2t - b7 * s2t);
+        s_iblShRotated[7][ch] = (float)(a8 * s2t + b7 * c2t);
+    }
+
+    // The floor. Rotation-invariant, so it is searched once per source table
+    // and reused for every sun angle.
+    static const float (*s_liftSrc)[3] = nullptr;
+    static double s_liftValue = 0.0;
+    if (s_liftSrc != src) { s_liftValue = iblSunRotateLift(src); s_liftSrc = src; }
+    if (s_liftValue > 0.0) {
+        const double dL00 = s_liftValue / 0.886227;   // c4: L00's weight in evalShL2
+        for (int ch = 0; ch < 3; ++ch)
+            s_iblShRotated[0][ch] = (float)((double)src[0][ch] + dL00);
+    }
+
+    s_iblShRotatedSrc    = src;
+    s_iblShRotatedSun[0] = sx;
+    s_iblShRotatedSun[1] = sy;
+    s_iblShRotatedSun[2] = sz;
+    s_iblShRotatedValid  = true;
+    return &s_iblShRotated[0][0];
+}
+
 // V-MATERIAL-DEBUG-1: per-fragment material debug view mode for the
 // StaticPropOpaque lane. Default 0 = OFF (byte-identical to legacy output —
 // shader short-circuits via `if (u_debugMaterialMode != 0) { ...; return; }`).
@@ -7030,9 +7277,12 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // V-IBL-STATIC-2: source coeffs from the per-mission set (defaults to
         // "default" == kIblShCoeffs, so byte-identical to V-IBL-STATIC-1 when
         // no registry entry matches).
+        // IBL-SUN-ROTATE-1: when MC2_STATIC_PROP_IBL_SUN_ROTATE is off this
+        // returns &s_currentShSet->coeffs[0][0] -- the same pointer this line
+        // passed before the slice -- so the upload is byte-identical.
         if (s_locsCoalesce.iblSh >= 0)
             glUniform3fv      (s_locsCoalesce.iblSh, 9,
-                               &s_currentShSet->coeffs[0][0]);
+                               iblShCoeffsForUpload());
         if (s_locsCoalesce.iblShStrength >= 0)
             glUniform1f       (s_locsCoalesce.iblShStrength,
                                iblShStrengthNightScaled());
@@ -8250,9 +8500,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // V-IBL-STATIC-1: SH-L2 image-based ambient (legacy program). Same
             // semantics as coalesce site: strength 0.0 default -> byte-identical OFF.
             // V-IBL-STATIC-2: same per-mission source as coalesce site.
+            // IBL-SUN-ROTATE-1: same accessor as the coalesce site; gate OFF
+            // returns the unchanged shipped-table pointer.
             if (s_locsLegacy.iblSh >= 0)
                 glUniform3fv(s_locsLegacy.iblSh, 9,
-                             &s_currentShSet->coeffs[0][0]);
+                             iblShCoeffsForUpload());
             if (s_locsLegacy.iblShStrength >= 0)
                 glUniform1f(s_locsLegacy.iblShStrength,
                             iblShStrengthNightScaled());
@@ -9584,9 +9836,10 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     }
     // s_currentShSet: the live per-mission SH-L2 set (RenderCore::IblShRegistry),
     // same table the GL static-prop VS uniform upload uses (u_iblSh[9]).
-    std::memcpy(out->iblSh, s_currentShSet ? &s_currentShSet->coeffs[0][0]
-                                            : &RenderCore::kIblShCoeffs[0][0],
-                sizeof(out->iblSh));
+    // IBL-SUN-ROTATE-1: routed through the SAME accessor as the two GL upload
+    // sites, so VK and the debug state dump see the rotated set when the gate
+    // is on and cannot silently disagree with GL. Gate OFF -> identical bytes.
+    std::memcpy(out->iblSh, iblShCoeffsForUpload(), sizeof(out->iblSh));
     // s_iblShEnabled: MC2_STATIC_PROP_IBL_SH=0 kill-switch (default-ON). Mirrors the
     // GL per-frame upload rule exactly: env unset/1 -> g_iblShStrength; env=0 -> 0.0.
     out->iblShStrength = iblShStrengthNightScaled();

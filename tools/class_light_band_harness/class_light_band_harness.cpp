@@ -2366,6 +2366,418 @@ static bool print_stage_f_probe_aim(TestCtx&)
 }
 
 //=============================================================================
+// STAGE G TESTS -- IBL-ROTATION-LAND-1, the SHIPPED fix
+//
+// Stage F above is offline analysis of a defect. Stage G is the CONTRACT for
+// the code that fixes it. Every expression below is a transcription of
+// GameOS/gameos/gos_static_prop_batcher.cpp with the reader named beside it, so
+// that a later edit to the engine that changes the arithmetic breaks a test
+// here rather than silently diverging from the analysis that justified it.
+//
+// SHIPPED GATE : MC2_STATIC_PROP_IBL_SUN_ROTATE        (default OFF)
+// SHIPPED FLOOR: MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR  (default 0.45)
+//=============================================================================
+
+// gos_static_prop_batcher.cpp iblShCoeffsForUpload(): the DEFAULT floor value.
+static const double kShippedSunRotateFloor = 0.45;
+
+// gos_static_prop_batcher.cpp iblShCoeffsForUpload(), the frame + angle block.
+// Input is the sun in the MC2 frame -- i.e. exactly what gos_GetTerrainLightDir
+// hands the engine -- NOT a pre-converted Stuff vector. That is the point: this
+// is the expression that has to get the frame right at runtime.
+static double shippedSunRotationRad(const V3& sunMC2, const ShSet9& base)
+{
+    const double sunHoriz2 = sunMC2.x * sunMC2.x + sunMC2.y * sunMC2.y;
+    if (!(sunHoriz2 > 1e-12)) return 0.0;
+    const double sunAz   = std::atan2(sunMC2.y, -sunMC2.x);
+    const double probeAz = std::atan2(base.c[2][0], base.c[3][0]);
+    return sunAz - probeAz;
+}
+
+// gos_static_prop_batcher.cpp iblSunRotateLift(): smallest UNIFORM lift, in
+// irradiance units, that brings every channel's spherical minimum up to the
+// floor. Same sampling grid (kLat=128, kLon=256, inclusive in latitude) so the
+// harness reproduces the engine's number, not merely a nearby one.
+static double shippedSunRotateLift(const ShSet9& S, double floorV)
+{
+    if (floorV <= 0.0) return 0.0;
+    const double kPi = 3.14159265358979323846;
+    double worstDeficit = 0.0;
+    const int kLat = 128, kLon = 256;
+    for (int i = 0; i <= kLat; ++i) {
+        const double th = kPi * (double)i / (double)kLat;
+        const double sth = std::sin(th), cth = std::cos(th);
+        for (int j = 0; j < kLon; ++j) {
+            const double ph = 2.0 * kPi * (double)j / (double)kLon;
+            const V3 n = v3(sth * std::cos(ph), cth, sth * std::sin(ph));
+            for (int ch = 0; ch < 3; ++ch) {
+                const double d = floorV - evalShL2Set(S, n, ch);
+                if (d > worstDeficit) worstDeficit = d;
+            }
+        }
+    }
+    return worstDeficit;
+}
+
+// The complete shipped transform: rotate to the mission sun, then lift L00.
+// c4 == 0.886227 is L00's weight inside evalShL2, so dividing the irradiance
+// lift by it converts to a coefficient delta.
+static ShSet9 shippedUploadSet(const Mission& m, double floorV)
+{
+    const ShSet9 base = shippedShSet();
+    const double t    = shippedSunRotationRad(terrainSunMC2(m.pitch, m.yaw), base);
+    ShSet9 o = rotateShAboutY(base, t);
+    const double lift = shippedSunRotateLift(base, floorV);
+    if (lift > 0.0) {
+        const double dL00 = lift / 0.886227;
+        for (int ch = 0; ch < 3; ++ch) o.c[0][ch] = base.c[0][ch] + dL00;
+    }
+    return o;
+}
+
+// Lowest FINAL CLAMPED prop multiplier over all vertical-wall azimuths. This is
+// the number the floor exists to defend -- not the probe's own irradiance.
+static double minWallMultiplier(const Mission& m, const ShSet9& S, int samples = 720)
+{
+    const MissionLight L = missionLight(m);
+    const double st = iblStrengthShipped(m.name);
+    double lo = 1e30;
+    for (int k = 0; k < samples; ++k) {
+        const double az = 2.0 * 3.14159265358979323846 * k / samples;
+        const V3 nMC2   = v3(std::cos(az), std::sin(az), 0.0);
+        const V3 nStuff = swapStuffToMC2(nMC2);
+        const double ndl = std::max(0.0, dot(nMC2, L.terrainSun));
+        lo = std::min(lo, propMul(0.0, L.A, L.S, ndl, evalShL2Set(S, nStuff, 0) * st));
+    }
+    return lo;
+}
+
+// G1. THE SIGN TEST, and the one that matters most: get this wrong and every
+// prop in the game rotates the WRONG WAY, which would look entirely plausible.
+// The shipped angle formula consumes the MC2-frame sun and does its own frame
+// carry (atan2(mc2.y, -mc2.x)); Stage F's derivation goes the other way, through
+// swapStuffToMC2 and stuffAzimuthDeg. The two must agree on all 24 missions.
+static bool test_shipped_angle_matches_the_stuff_frame_derivation(TestCtx& t)
+{
+    const ShSet9 base = shippedShSet();
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const double shipped = shippedSunRotationRad(terrainSunMC2(m.pitch, m.yaw), base);
+        const double ref     = sunAlignRotationRad(m);
+        CH_CHECK(t, std::fabs(wrap180((shipped - ref) / kDeg2Rad)) < 1e-9);
+    }
+    // And it is NOT sign-symmetric -- a flipped sign would fail the above on a
+    // mission whose error is neither 0 nor 180. Pin one such mission so the
+    // test cannot be satisfied by a degenerate all-zero angle.
+    const double t01 = shippedSunRotationRad(terrainSunMC2(kMissions[0].pitch,
+                                                           kMissions[0].yaw), base);
+    CH_CHECK(t, std::fabs(t01 / kDeg2Rad - 123.66) < 0.01);   // mc2_01, +123.66
+    return t.failures == 0;
+}
+
+// G2. With the floor disabled the shipped transform IS the reference rotation
+// proved correct by test_sh_y_rotation_equals_rotating_the_normal -- exactly,
+// on every coefficient, on every mission. No epsilon.
+static bool test_shipped_transform_with_no_floor_is_the_bare_rotation(TestCtx& t)
+{
+    const ShSet9 base = shippedShSet();
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        // (a) EXACT: floor 0 must add nothing at all -- the transform is then
+        //     the pure rotation at the shipped angle, bit for bit. This is the
+        //     "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR=0 gives the bare rotation"
+        //     contract, and it must not hold merely to within an epsilon.
+        const ShSet9 got  = shippedUploadSet(m, 0.0);
+        const ShSet9 pure = rotateShAboutY(base,
+                              shippedSunRotationRad(terrainSunMC2(m.pitch, m.yaw), base));
+        for (int k = 0; k < 9; ++k)
+            for (int ch = 0; ch < 3; ++ch)
+                CH_CHECK(t, got.c[k][ch] == pure.c[k][ch]);
+        // (b) TO 1e-12, not exactly: against Stage F's REFERENCE angle. These
+        //     are two different computations of the same rotation -- the
+        //     shipped one works in radians and does not wrap, Stage F's works
+        //     in degrees through wrap180 -- so they differ by a multiple of
+        //     2*pi in the argument and by float rounding in the result. G1
+        //     already pins the angles themselves to 1e-9; this pins the
+        //     coefficients they produce.
+        const ShSet9 ref = rotateShAboutY(base, sunAlignRotationRad(m));
+        for (int k = 0; k < 9; ++k)
+            for (int ch = 0; ch < 3; ++ch)
+                CH_CHECK(t, std::fabs(got.c[k][ch] - ref.c[k][ch]) < 1e-12);
+    }
+    return t.failures == 0;
+}
+
+// G3. The acceptance criterion survives the floor. The floor touches L00 only,
+// so the aim -- which lives entirely in the L1 band -- must be untouched.
+static bool test_floor_does_not_move_the_aim(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const ShSet9 rot = shippedUploadSet(m, kShippedSunRotateFloor);
+        const V3 axis = norm(v3(rot.c[3][0], rot.c[1][0], rot.c[2][0]));
+        const double err = wrap180(stuffAzimuthDeg(axis)
+                                 - stuffAzimuthDeg(missionSunStuff(m)));
+        CH_CHECK(t, std::fabs(err) < 1e-9);
+        // ...and the L1/L2 bands are bit-identical to the unfloored rotation.
+        const ShSet9 bare = shippedUploadSet(m, 0.0);
+        for (int k = 1; k < 9; ++k)
+            for (int ch = 0; ch < 3; ++ch)
+                CH_CHECK(t, rot.c[k][ch] == bare.c[k][ch]);
+    }
+    return t.failures == 0;
+}
+
+// G4. The floor can only LIFT. There must be no direction on the sphere, on any
+// mission, where the floored set is darker than the unfloored one -- otherwise
+// "raise the floor" could darken something and the knob would be untunable.
+static bool test_floor_is_a_pure_lift_and_never_darkens(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; i += 4) {          // 6 missions, 3 channels
+        const Mission& m  = kMissions[i];
+        const ShSet9 bare = shippedUploadSet(m, 0.0);
+        const ShSet9 flr  = shippedUploadSet(m, kShippedSunRotateFloor);
+        forEachNormal(32, [&](const V3& n) {
+            for (int ch = 0; ch < 3; ++ch)
+                CH_CHECK(t, evalShL2Set(flr, n, ch) >= evalShL2Set(bare, n, ch) - 1e-12);
+        });
+    }
+    // Monotone in the knob, so tuning it up never darkens anything either.
+    const ShSet9 lo = shippedUploadSet(kMissions[16], 0.30);
+    const ShSet9 hi = shippedUploadSet(kMissions[16], 0.60);
+    CH_CHECK(t, hi.c[0][0] > lo.c[0][0]);
+    return t.failures == 0;
+}
+
+// G5. The floor actually reaches its target: every channel's spherical minimum
+// clears the floor value afterwards. This is what "0.45" MEANS.
+static bool test_floor_lifts_every_channel_minimum_to_the_floor(TestCtx& t)
+{
+    const ShSet9 flr = shippedUploadSet(kMissions[16], kShippedSunRotateFloor);
+    double worst[3] = { 1e30, 1e30, 1e30 };
+    forEachNormal(96, [&](const V3& n) {
+        for (int ch = 0; ch < 3; ++ch)
+            worst[ch] = std::min(worst[ch], evalShL2Set(flr, n, ch));
+    });
+    for (int ch = 0; ch < 3; ++ch)
+        CH_CHECK(t, worst[ch] >= kShippedSunRotateFloor - 2e-3);
+    // The R channel is the binding one (the baked minimum is 0.232 R / 0.360 G
+    // / 0.477 B), so R should land ON the floor and G/B strictly above it.
+    CH_CHECK(t, std::fabs(worst[0] - kShippedSunRotateFloor) < 2e-3);
+    CH_CHECK(t, worst[1] > worst[0] && worst[2] > worst[1]);
+    // The lift itself, pinned: 0.45 - 0.232 = 0.218 irradiance.
+    CH_CHECK(t, std::fabs(shippedSunRotateLift(shippedShSet(),
+                                               kShippedSunRotateFloor) - 0.218) < 2e-3);
+    return t.failures == 0;
+}
+
+// G6. WHY 0.45 AND NOT SOME OTHER NUMBER. terrain_lod_chunk.frag's lighting
+// cannot go below mix(0.35,1.20,0.02) == kTerrainFloor == 0.367 (test A1). The
+// bare rotation puts the four ambient-31 missions' darkest wall BELOW that --
+// a building wall darker than the ground it stands on. The default floor is
+// exactly the value that fixes that at the shipped daytime IBL strength.
+static bool test_bare_rotation_puts_the_dark_missions_under_the_terrain_floor(TestCtx& t)
+{
+    const char* dark[] = { "mc2_12", "mc2_13", "mc2_17", "mc2_18" };
+    int checked = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const std::string n(kMissions[i].name);
+        bool isDark = false;
+        for (const char* d : dark) if (n == d) isDark = true;
+        if (!isDark) continue;
+        ++checked;
+        CH_CHECK(t, kMissions[i].ambR == 31);            // the shared cause
+        const double bare = minWallMultiplier(kMissions[i], shippedUploadSet(kMissions[i], 0.0));
+        CH_CHECK(t, bare < kTerrainFloor);               // BELOW the ground's floor
+        const double flr  = minWallMultiplier(kMissions[i],
+                                shippedUploadSet(kMissions[i], kShippedSunRotateFloor));
+        CH_CHECK(t, flr >= kTerrainFloor);               // the floor recovers it
+        CH_CHECK(t, flr > bare);
+    }
+    CH_CHECK(t, checked == 4);
+    // The arithmetic the default was solved from, restated so it cannot drift:
+    // ambient 31/255 + FLOOR * 0.55 >= 0.367  ->  FLOOR >= 0.4462.
+    const double needed = (kTerrainFloor - 31.0 / 255.0) / 0.55;
+    CH_CHECK(t, std::fabs(needed - 0.4462) < 1e-3);
+    CH_CHECK(t, kShippedSunRotateFloor >= needed);
+    return t.failures == 0;
+}
+
+// G7. The floor is not free and this test refuses to hide it: it lifts the
+// BRIGHT end too, by the same absolute irradiance. Pin how much, so a future
+// reader can see the cost rather than rediscover it. At the bright end (4.896)
+// the 0.218 lift is +4.5%, and on the CLAMPED multiplier the missions that were
+// already saturated do not move at all.
+static bool test_floor_cost_at_the_bright_end_is_bounded(TestCtx& t)
+{
+    const ShSet9 bare = shippedUploadSet(kMissions[16], 0.0);
+    const ShSet9 flr  = shippedUploadSet(kMissions[16], kShippedSunRotateFloor);
+    double hiBare = -1e30, hiFlr = -1e30;
+    forEachNormal(96, [&](const V3& n) {
+        hiBare = std::max(hiBare, evalShL2Set(bare, n, 0));
+        hiFlr  = std::max(hiFlr,  evalShL2Set(flr,  n, 0));
+    });
+    CH_CHECK(t, std::fabs(hiFlr - hiBare - 0.218) < 2e-3);
+    CH_CHECK(t, hiFlr / hiBare < 1.05);                       // +4.5%
+    // On the two saturation-trap missions the floor is very nearly inert on the
+    // clamped multiplier, because their walls were already at 1.0.
+    for (int i = 0; i < kNumMissions; ++i) {
+        const std::string n(kMissions[i].name);
+        if (n != "mc2_10" && n != "mc2_22") continue;
+        const double a = minWallMultiplier(kMissions[i], shippedUploadSet(kMissions[i], 0.0));
+        const double b = minWallMultiplier(kMissions[i],
+                            shippedUploadSet(kMissions[i], kShippedSunRotateFloor));
+        CH_CHECK(t, b - a < 0.12);
+    }
+    return t.failures == 0;
+}
+
+// G8. Junk-value contract for the floor reader, transcribed from
+// gos_static_prop_batcher.cpp s_iblSunRotateFloor: unset -> 0.45; "0",
+// negative, NaN and non-numeric junk -> 0.0 (fail to the BARE ROTATION, never
+// to a silent giant lift); above 2.0 -> clamped to 2.0.
+static double shippedFloorFromEnv(const char* v)
+{
+    if (v == nullptr || v[0] == '\0') return 0.45;
+    const double d = std::atof(v);
+    if (!(d > 0.0)) return 0.0;
+    return (d > 2.0) ? 2.0 : d;
+}
+static bool test_floor_env_reader_junk_contract(TestCtx& t)
+{
+    CH_CHECK(t, shippedFloorFromEnv(nullptr) == 0.45);
+    CH_CHECK(t, shippedFloorFromEnv("")      == 0.45);
+    CH_CHECK(t, shippedFloorFromEnv("0")     == 0.0);
+    CH_CHECK(t, shippedFloorFromEnv("0.0")   == 0.0);
+    CH_CHECK(t, shippedFloorFromEnv("-1")    == 0.0);
+    CH_CHECK(t, shippedFloorFromEnv("banana")== 0.0);
+    CH_CHECK(t, shippedFloorFromEnv("99")    == 2.0);
+    CH_CHECK(t, std::fabs(shippedFloorFromEnv("0.30") - 0.30) < 1e-12);
+    // A zero floor must give back the bare rotation exactly (G2's contract).
+    CH_CHECK(t, shippedSunRotateLift(shippedShSet(), shippedFloorFromEnv("0")) == 0.0);
+    return t.failures == 0;
+}
+
+// G9. THE CORRECTION THIS LANE OWES ITS INHERITANCE. The rotation was handed
+// down with the warning that it "darkens shadow-side walls hard -- maxDown
+// -0.705", carrying the implication that it creates a NEW near-black failure of
+// the kind that got an earlier IBL_NIGHT_SCALE floor of 0.0 rejected. Those
+// maxDown figures are real (Stage F measures them) but they are PER-AZIMUTH
+// DELTAS, and a delta is not a new minimum. A rotation is an isometry of the
+// sphere, so the SET of probe values is invariant -- only their assignment to
+// azimuths changes. Measured on the darkest-wall statistic that a viewer would
+// actually notice, the bare rotation moves the four ambient-31 missions by
+// -0.012 or by nothing at all, because they were ALREADY at that value on some
+// other wall of the same building.
+//
+// The floor still earns its place, for the honest reason rather than the
+// inherited one: on those missions the darkest wall sits at 0.295, BELOW the
+// terrain's 0.367 floor, in the build that ships TODAY -- and the rotation
+// moves that pre-existing dark value onto the anti-sun wall, where the probe's
+// dark lobe and NdotL == 0 now coincide instead of covering for each other. It
+// is a pre-existing defect being made legible, not a new one being created.
+static bool test_rotation_does_not_create_a_new_darkest_wall(TestCtx& t)
+{
+    double worstRegression = 0.0;
+    const char* worstName = "";
+    for (int i = 0; i < kNumMissions; ++i) {
+        const double stock = minWallMultiplier(kMissions[i], shippedShSet());
+        const double bare  = minWallMultiplier(kMissions[i],
+                                shippedUploadSet(kMissions[i], 0.0));
+        if (stock - bare > worstRegression) {
+            worstRegression = stock - bare; worstName = kMissions[i].name;
+        }
+        // On EVERY mission the bare rotation's darkest wall is at worst a
+        // quarter of the quoted -0.705 below the shipped build's darkest wall.
+        CH_CHECK(t, bare >= stock - 0.25);
+    }
+    // ...and the worst is mc2_14, the 176.7-degree mission -- not one of the
+    // four the maxDown ranking named.
+    CH_CHECK(t, std::string(worstName) == "mc2_14");
+    CH_CHECK(t, std::fabs(worstRegression - 0.2476) < 2e-3);
+    CH_CHECK(t, worstRegression < 0.705);              // strictly under the quoted delta
+    // The four ambient-31 missions barely move at all on this statistic.
+    for (int i = 0; i < kNumMissions; ++i) {
+        if (kMissions[i].ambR != 31) continue;
+        const double stock = minWallMultiplier(kMissions[i], shippedShSet());
+        const double bare  = minWallMultiplier(kMissions[i],
+                                shippedUploadSet(kMissions[i], 0.0));
+        CH_CHECK(t, stock - bare <= 0.0125);
+        // ...and BOTH arms are already under the terrain floor, which is the
+        // condition the floor actually cures.
+        CH_CHECK(t, stock < kTerrainFloor);
+        CH_CHECK(t, bare  < kTerrainFloor);
+    }
+    return t.failures == 0;
+}
+
+// G10. Perturbation sentinel for Stage G's own constants.
+static bool test_sentinel_ibl_sun_rotate_constants(TestCtx& t)
+{
+    CH_CHECK(t, kShippedSunRotateFloor == 0.45);
+    // The baked spherical minimum per channel -- the floor's input.
+    double lo[3] = { 1e30, 1e30, 1e30 };
+    forEachNormal(96, [&](const V3& n) {
+        for (int ch = 0; ch < 3; ++ch)
+            lo[ch] = std::min(lo[ch], evalShL2Set(shippedShSet(), n, ch));
+    });
+    CH_CHECK(t, std::fabs(lo[0] - 0.232) < 2e-3);
+    CH_CHECK(t, std::fabs(lo[1] - 0.360) < 2e-3);
+    CH_CHECK(t, std::fabs(lo[2] - 0.477) < 2e-3);
+    // The two named worst-look-risk missions and their recovered multipliers.
+    for (int i = 0; i < kNumMissions; ++i) {
+        const std::string n(kMissions[i].name);
+        if (n != "mc2_12" && n != "mc2_18") continue;
+        CH_CHECK(t, std::fabs(minWallMultiplier(kMissions[i], shippedShSet())
+                              - 0.3076) < 2e-3);          // SHIPPED build today
+        const double bare = minWallMultiplier(kMissions[i], shippedUploadSet(kMissions[i], 0.0));
+        CH_CHECK(t, std::fabs(bare - 0.2953) < 2e-3);     // bare rotation
+        const double flr = minWallMultiplier(kMissions[i],
+                             shippedUploadSet(kMissions[i], kShippedSunRotateFloor));
+        CH_CHECK(t, std::fabs(flr - 0.4149) < 2e-3);      // rotation + default floor
+    }
+    // THE GUARANTEE the 0.45 default was solved for, as arithmetic rather than
+    // as a sweep: no normal ANYWHERE on the sphere may take a prop below the
+    // terrain's own floor at the darkest shipping ambient and the shipped
+    // daytime strength.  0.1216 + 0.45*0.55 = 0.3691 >= 0.367.
+    const double guaranteed = 31.0 / 255.0 + kShippedSunRotateFloor * 0.55;
+    CH_CHECK(t, std::fabs(guaranteed - 0.3691) < 1e-3);
+    CH_CHECK(t, guaranteed >= kTerrainFloor);
+    return t.failures == 0;
+}
+
+static bool print_stage_g_floor(TestCtx&)
+{
+    const double lift = shippedSunRotateLift(shippedShSet(), kShippedSunRotateFloor);
+    std::fprintf(stderr,
+        "\n=== STAGE G: the shipped fix (MC2_STATIC_PROP_IBL_SUN_ROTATE) ===\n"
+        "floor %.2f -> uniform L00 lift %.4f irradiance (%.4f coeff)\n"
+        "terrain's own floor multiplier (the target) = %.4f\n\n"
+        "%-8s %5s %8s | %8s %8s %8s | %s\n",
+        kShippedSunRotateFloor, lift, lift / 0.886227, kTerrainFloor,
+        "mission", "ambR", "rotDeg", "minStock", "minRot", "minRot+F", "verdict");
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const double stock = minWallMultiplier(m, shippedShSet());
+        const double bare  = minWallMultiplier(m, shippedUploadSet(m, 0.0));
+        const double flr   = minWallMultiplier(m, shippedUploadSet(m, kShippedSunRotateFloor));
+        const char* verdict = (bare < kTerrainFloor && flr >= kTerrainFloor) ? "FLOOR SAVES IT"
+                            : (bare < kTerrainFloor)                        ? "still under"
+                                                                            : "clear either way";
+        std::fprintf(stderr, "%-8s %5d %+8.2f | %8.4f %8.4f %8.4f | %s\n",
+            m.name, m.ambR,
+            shippedSunRotationRad(terrainSunMC2(m.pitch, m.yaw), shippedShSet()) / kDeg2Rad,
+            stock, bare, flr, verdict);
+    }
+    std::fprintf(stderr,
+        "\nminStock is the SHIPPED build's darkest wall; minRot is the bare\n"
+        "rotation's. A rotation is an isometry, so it cannot invent a darker\n"
+        "probe value -- but it makes the probe's dark lobe COINCIDE with the\n"
+        "NdotL==0 wall, which is why minRot drops below minStock at all.\n");
+    return true;
+}
+
+//=============================================================================
 int main(int argc, char** argv)
 {
     Harness h("class_light_band_harness");
@@ -2461,8 +2873,26 @@ int main(int argc, char** argv)
     h.add("mc2_10_is_a_saturation_trap_for_probe_rotation",
           test_mc2_10_is_a_saturation_trap_for_probe_rotation);
 
+    // Stage G -- IBL-ROTATION-LAND-1 (the shipped fix)
+    h.add("shipped_angle_matches_the_stuff_frame_derivation",
+          test_shipped_angle_matches_the_stuff_frame_derivation);
+    h.add("shipped_transform_with_no_floor_is_the_bare_rotation",
+          test_shipped_transform_with_no_floor_is_the_bare_rotation);
+    h.add("floor_does_not_move_the_aim",            test_floor_does_not_move_the_aim);
+    h.add("floor_is_a_pure_lift_and_never_darkens", test_floor_is_a_pure_lift_and_never_darkens);
+    h.add("floor_lifts_every_channel_minimum_to_the_floor",
+          test_floor_lifts_every_channel_minimum_to_the_floor);
+    h.add("bare_rotation_puts_the_dark_missions_under_the_terrain_floor",
+          test_bare_rotation_puts_the_dark_missions_under_the_terrain_floor);
+    h.add("floor_cost_at_the_bright_end_is_bounded",
+          test_floor_cost_at_the_bright_end_is_bounded);
+    h.add("floor_env_reader_junk_contract",         test_floor_env_reader_junk_contract);
+    h.add("rotation_does_not_create_a_new_darkest_wall",
+          test_rotation_does_not_create_a_new_darkest_wall);
+
     // Perturbation sentinels
     h.add("sentinel_ibl_probe_axis_constants",          test_sentinel_ibl_probe_axis_constants);
+    h.add("sentinel_ibl_sun_rotate_constants",         test_sentinel_ibl_sun_rotate_constants);
     h.add("sentinel_tree_constants",                   test_sentinel_tree_constants);
     h.add("sentinel_fix_constants",                    test_sentinel_fix_constants);
     h.add("sentinel_terrain_constants",                test_sentinel_terrain_constants);
@@ -2478,6 +2908,7 @@ int main(int argc, char** argv)
     h.add("print_stage_c_table",  print_stage_c_table,  false);
     h.add("print_stage_e_tree_table", print_stage_e_tree_table, false);
     h.add("print_stage_f_probe_aim",  print_stage_f_probe_aim,  false);
+    h.add("print_stage_g_floor",      print_stage_g_floor,      false);
 
     return h.run(argc, argv);
 }

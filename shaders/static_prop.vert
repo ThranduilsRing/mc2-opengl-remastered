@@ -985,11 +985,16 @@ void main() {
         //      constant table projected from ONE day-sky HDRI with that
         //      HDRI's own sun baked in, shared by all 24 missions
         //      (RenderCore/IblShRegistry.h: kIblShSets[] has a single entry
-        //      and kMissionShMap[] is empty), and nothing here rotates them:
-        //      evalShL2 is fed the raw Stuff-space normal. The L1 band
-        //      (L11 1.966, L1-1 0.587, L10 0.012) puts the bright axis at
-        //      Stuff +X, ~0 deg azimuth, with a 7.7:1 swing between +X
-        //      (4.62) and -X (0.60) -- while the actual sun this shader uses
+        //      and kMissionShMap[] is FUNCTIONALLY empty -- correction
+        //      2026-07-31, IBL-PROBE-ROTATION-1: it is not LITERALLY empty, it
+        //      holds one {nullptr,nullptr} placeholder, so its COUNT IS 1 and a
+        //      reader that trusts "empty" would mis-size a loop), and nothing
+        //      here rotates them: evalShL2 is fed the raw Stuff-space normal.
+        //      The L1 band (L11 1.966, L1-1 0.587, L10 0.012) puts the bright
+        //      axis at Stuff +X, ~0 deg azimuth (+0.344 exactly), with a 7.7:1
+        //      swing between +X (4.62) and -X (0.60) -- that PAIR ratio is what
+        //      7.7:1 measures; the swing across the whole sphere is larger,
+        //      21.05:1 -- while the actual sun this shader uses
         //      for its diffuse term is u_terrainSunMC2, which is per-mission
         //      and unrelated. So on any mission whose sun is not near Stuff
         //      +X this probe is putting its brightest ambient on a side of
@@ -998,16 +1003,35 @@ void main() {
         //      in shadow, the light is from behind" -- one that no amount of
         //      tuning on the knobs above can cancel, because they are all
         //      bounded by (a).
-        //      NOT YET FIXED, deliberately: the correct repairs (rotate the
-        //      SH about world-up to the mission sun azimuth, or drop the
-        //      probe's L1/L2 bands and keep the isotropic L00 term) both
-        //      change the default render on every mission, so they need a
-        //      gate with an argued default and an A/B the user grades. The
-        //      pose to grade it on is mc2_10 night compound_lightaway: its
-        //      OFF-vs-OFF noise floor is 0.000% and MC2_PROP_BASE_LIGHT_DIR
-        //      already moved 20.3% of its pixels there, so it is proven
-        //      non-saturated and sensitive to exactly this class of change
-        //      (.claude/BUILDING-FACE-POSE-1-STATUS.md sections 2-3).
+        //      FIXED BEHIND A DEFAULT-OFF GATE, 2026-07-31 (IBL-ROTATION-LAND-1):
+        //      MC2_STATIC_PROP_IBL_SUN_ROTATE rotates the nine coefficients
+        //      about the basis pole onto the mission sun azimuth, CPU-side at
+        //      the upload site (gos_static_prop_batcher.cpp
+        //      iblShCoeffsForUpload()). A rotation about the POLE is closed
+        //      form -- the m=0 terms [0]/[1]/[6] are invariant, the m=1 pairs
+        //      ([3],[2]) and ([4],[5]) mix at t, the m=2 pair ([8],[7]) at 2t --
+        //      and rotating the COEFFICIENTS is provably identical to
+        //      counter-rotating the NORMAL (class_light_band_harness
+        //      test_sh_y_rotation_equals_rotating_the_normal, 1e-12). So THIS
+        //      SHADER IS NOT INVOLVED and costs nothing: do not add a sincos
+        //      here. Paired with MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR (default
+        //      0.45), a uniform lift on L00 that keeps any prop face from
+        //      falling under terrain's own 0.367 floor.
+        //      ★ THE POSE THIS BLOCK USED TO NOMINATE WAS WRONG FOR THIS FIX,
+        //      and it is the reason this correction exists. It said to grade on
+        //      mc2_10 night compound_lightaway. mc2_10 is a SATURATION TRAP for
+        //      a probe rotation: ambient 192/255 AND sun 192/255 leave only 8.6%
+        //      of wall azimuths unclamped, and a full sun-align rotation there
+        //      moves a mean of 0.0037 -- ONE BYTE. mc2_22 is the same trap
+        //      (0.0123). That pose earned its reputation from
+        //      MC2_PROP_BASE_LIGHT_DIR, which is a MULTIPLICATIVE darkening and
+        //      so pulls pixels DOWN out of the clamp; a rotation mostly swaps
+        //      one clamped state for another. Different term shape, different
+        //      trap. GRADE INSTEAD ON mc2_17 (mean move 0.181, 54.6% of wall
+        //      azimuths unclamped -- the most headroom in tier1) or mc2_24
+        //      (0.231, the largest tier1 move). mc2_05 moves most of all
+        //      (0.358) but its sun is below the horizon, where "aim at the sun"
+        //      is not a well-posed request. Numbers: harness Stage F/G.
         if (u_iblShStrength > 0.0) {
             vec3 ibl = evalShL2(normalize(worldNormal));
             lit += ibl * u_iblShStrength;

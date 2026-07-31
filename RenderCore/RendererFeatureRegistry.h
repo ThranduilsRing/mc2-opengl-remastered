@@ -3864,6 +3864,124 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "needs a tier1 run and a click-through before merge. '=0' restores the exact legacy "
         "term. Enforced against silent re-divergence by scripts/check-cpu-gpu-cogating.py.",
     },
+    // ── IBL-ROTATION-LAND-1 ────────────────────────────────────────────────
+    // Both rows live in kAuxEnvVars, not kFeatureTable: kFeatureTable is
+    // INDEXED BY RendererFeature and neither of these needs an enum ordinal --
+    // nothing dispatches on them, the only consumer is a uniform upload. Same
+    // placement rationale as MC2_FEATURE_WATER_SHORE_MEANDER above.
+    {
+        "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE",
+        "MC2_STATIC_PROP_IBL_SUN_ROTATE",
+        EnvVarKind::Feature,
+        false,
+        "[DEFAULT-OFF OPT-IN. Canonical reader `(v && v[0] && v[0] != '0')` at "
+        "gos_static_prop_batcher.cpp s_iblSunRotateEnabled. Unset -> "
+        "iblShCoeffsForUpload() returns &s_currentShSet->coeffs[0][0], the SAME POINTER the "
+        "two glUniform3fv sites passed before this slice, so the upload is byte-identical -- "
+        "not a copy that happens to compare equal.] "
+        "IBL-ROTATION-LAND-1: rotate the SH-IBL ambient probe about world-up so its bright "
+        "lobe lands on the MISSION SUN instead of staying pinned wherever the source HDRI's "
+        "own sun happened to be. "
+        "THE DEFECT, measured offline in tools/class_light_band_harness Stage F (59->69 tests; "
+        "no launch, no capture -- it is arithmetic over the shipped constexpr tables): there "
+        "is ONE coefficient set for the whole game (RenderCore/IblShRegistry.h "
+        "kIblShSetCount == 1, and kMissionShMap[] holds a single {nullptr,nullptr} "
+        "placeholder so its COUNT IS 1, NOT 0 -- functionally empty, not literally, and a "
+        "reader who trusts 'empty' mis-sizes the loop). Its bright axis is therefore a "
+        "constant +0.344 deg Stuff azimuth on all 24 missions. The MEDIAN mission misses it "
+        "by 106 deg, the worst by 176.7 (mc2_14), and on 17 of the 24 the probe is strictly "
+        "BRIGHTER on the wall facing AWAY from the sun. The swing being mis-aimed is 21.05:1 "
+        "across the sphere (the widely-quoted 7.71:1 is only the +X/-X PAIR). "
+        "WHY THIS IS AN OVERSIGHT AND NOT A DESIGN CHOICE: the VISIBLE skybox drawn from the "
+        "SAME HDRI is already sun-synced -- gos_postprocess.cpp:5201-5218 scans the EXR for "
+        "its baked sun azimuth and sets skyYaw = hdriBakedSunAz_ - sunAzGL. The probe derived "
+        "from that sky is the ONE consumer that skips the step. IblShRegistry.h's creating "
+        "commit (5bfd15d8d) says future slices would populate kMissionShMap; none did, and "
+        "the V-IBL default-ON flip (2026-05-27) made the unrotated probe live behaviour. "
+        "IMPLEMENTATION: CPU-side at the upload site, zero per-vertex cost, "
+        "shaders/static_prop.vert NOT TOUCHED. A rotation about the basis POLE is closed form "
+        "-- m=0 ([0] L00, [1] L1-1 the pole term, [6] L20) invariant; m=1 pairs ([3],[2]) and "
+        "([4],[5]) mix at t; m=2 pair ([8],[7]) at 2t -- and rotating the COEFFICIENTS is "
+        "provably identical to counter-rotating the NORMAL "
+        "(test_sh_y_rotation_equals_rotating_the_normal, 1e-12). The frame carry is the part "
+        "that can silently invert: static_prop.vert feeds evalShL2 the STUFF-space "
+        "`worldNormal` (:652), NOT the MC2-swapped `worldNormalMC2` (:664) the diffuse term "
+        "uses, so the MC2 sun from gos_GetTerrainLightDir is carried back through the "
+        "self-inverse swap and its Stuff azimuth is atan2(mc2.y, -mc2.x). Pinned against an "
+        "independent derivation on all 24 missions by "
+        "test_shipped_angle_matches_the_stuff_frame_derivation. "
+        "WHY OFF: nobody has seen it render -- engine launches are hard-blocked in this lane "
+        "-- and it is a large, deliberately visible change. "
+        "GRADE IT ON mc2_17 (mean move 0.181 on the clamped multiplier, 54.6% of wall "
+        "azimuths unclamped -- most headroom in tier1) or mc2_24 (0.231, largest tier1 move). "
+        "NOT on mc2_10 or mc2_22: both are ambient-192 AND sun-192, ~91% of wall azimuths are "
+        "already clamped, and a full sun-align rotation moves 0.0037 / 0.0123 -- ONE BYTE. "
+        "That trap is why shaders/static_prop.vert's own tuning note used to nominate mc2_10 "
+        "and was corrected in the same commit. mc2_05 moves most overall (0.358) but its sun "
+        "is below the horizon, where 'aim at the sun' is not well posed. "
+        "SHIP IT WITH ITS FLOOR: MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR (default 0.45). "
+        "Visual-only; no geometry, objectId, UI or gameplay change. NOT VISUALLY VERIFIED -- "
+        "engine launches are blocked in this lane.",
+    },
+    {
+        "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE_FLOOR",
+        "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR",
+        EnvVarKind::Feature,
+        true,
+        "[VALUE, not a boolean: the floor in the probe's own irradiance units. DEFAULT 0.45. "
+        "Reader gos_static_prop_batcher.cpp s_iblSunRotateFloor: unset -> 0.45; '0', negative, "
+        "NaN and non-numeric junk -> 0.0 (fail to the BARE ROTATION, never to a silent giant "
+        "lift); above 2.0 -> clamped to 2.0. INERT UNLESS MC2_STATIC_PROP_IBL_SUN_ROTATE IS "
+        "ON -- it is that gate's companion, has no effect of its own, and is registered "
+        "default-ON only in the sense that it is non-zero when its parent gate is armed.] "
+        "IBL-ROTATION-LAND-1's floor. "
+        "WHY A ROTATION NEEDS A FLOOR: a rotation is an ISOMETRY of the sphere, so it cannot "
+        "create a probe value darker than the table already had -- min and max are invariant. "
+        "What it changes is WHICH wall gets the dark end, and that is the point: once the "
+        "probe is aimed correctly its dark lobe COINCIDES with the wall that also has "
+        "NdotL == 0, where before they sat apart and partly covered for each other. "
+        "AN INHERITED FIGURE CORRECTED, because it overstates the risk: the warning handed to "
+        "this lane was 'shadow-side walls darken hard, maxDown -0.705 (mc2_13), -0.704 "
+        "(mc2_17), -0.692 (mc2_12/mc2_18)'. Those deltas are real, but a DELTA IS NOT A NEW "
+        "MINIMUM. Measured on the darkest-wall statistic a viewer would actually notice "
+        "(test_rotation_does_not_create_a_new_darkest_wall), the bare rotation moves those "
+        "four missions by -0.012 or by nothing at all -- 0.3076 -> 0.2953 on mc2_12/18, "
+        "0.2953 -> 0.2953 on mc2_13/17 -- because that value was ALREADY on another wall of "
+        "the same building. The worst darkest-wall regression in the game is mc2_14 at "
+        "-0.248, not one of the four the maxDown ranking named. A second inherited detail is "
+        "also wrong: the four are indeed all ambient 31/255, but only mc2_12/18 are near 106 "
+        "deg of error -- mc2_13 is -75.3 and mc2_17 is -51.6. "
+        "THE FLOOR STILL EARNS ITS PLACE, for the honest reason: on those four the darkest "
+        "wall sits at 0.295 in the build that SHIPS TODAY, BELOW terrain's own hard floor of "
+        "mix(0.35,1.20,0.02) == 0.367 -- a building wall darker than the ground it stands on "
+        "-- and the rotation relocates that pre-existing dark value onto the anti-sun wall "
+        "where it becomes legible. "
+        "THE SHAPE: one UNIFORM lift on L00, the only isotropic coefficient (evalShL2's "
+        "spherical mean is exactly c4*L00, because c5 == c3/3 makes the L20 pair's mean "
+        "vanish). Consequences, all wanted: the AIM IS UNTOUCHED (L1/L2 are neither read nor "
+        "written, so the bright axis still lands on the sun to 1e-9 at every floor value -- "
+        "the floor cannot quietly undo the fix); it can only LIFT, so the knob is safe to "
+        "tune in either direction; it is UNIFORM across R,G,B rather than per-channel, "
+        "because the baked probe's dark end is blue-dominant (min 0.232 R / 0.360 G / 0.477 "
+        "B) and a per-channel clamp would neutralise exactly that; and because the sphere "
+        "minimum is ROTATION-INVARIANT the lift is searched ONCE per coefficient table, not "
+        "per mission. Searched numerically rather than baked as a constant on purpose -- "
+        "RenderCore/IblShCoeffs.h is regenerated by tools/ibl/project_sh.py and a hardcoded "
+        "lift would go silently stale. "
+        "WHERE 0.45 COMES FROM -- an in-engine anchor, not taste. Solve "
+        "`ambient + FLOOR * strength >= 0.367` at the darkest shipping ambient (31/255 == "
+        "0.1216, shared by mc2_12/13/17/18) and the shipped daytime IBL strength 0.55: "
+        "FLOOR >= 0.4462. 0.45 is that rounded up, giving a guaranteed 0.3691 >= 0.367 for "
+        "EVERY normal on the sphere. On vertical walls specifically it over-delivers (0.4149) "
+        "because the wall great-circle does not reach the sphere minimum. "
+        "COST, stated rather than hidden: the lift is +0.218 irradiance and applies to the "
+        "BRIGHT end too -- against a maximum of 4.896 that is +4.5%, almost entirely inside "
+        "the clamp, and on the saturated mc2_10/mc2_22 it is nearly inert. "
+        "'=0' gives the bare rotation and is the arm to use when grading how much the floor "
+        "is worth. Contract tests: class_light_band_harness Stage G (10 tests). "
+        "Visual-only; no geometry, objectId, UI or gameplay change. NOT VISUALLY VERIFIED -- "
+        "engine launches are blocked in this lane.",
+    },
 };
 
 // ---------------------------------------------------------------------------
