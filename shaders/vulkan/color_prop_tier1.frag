@@ -25,13 +25,35 @@
 //       diff after the screen shadow pass = the ambient/sun-color feed gap + dynamic
 //       screen-space shadow.
 //   location=1 GBuffer1    -> sceneNormalTex_ (MRT1, RGBA16F). BIT-ADJACENT to the GL
-//                            producer static_prop.frag:
-//                              rc_gbuffer1_screenShadowEligible_noSelfShadow(N) =
-//                              vec4(normalize(N)*0.5+0.5, 0.25)
+//                            producer static_prop.frag:657-661, which selects between
+//                            TWO classes off the packet alpha-test bit:
+//                              solid      rc_gbuffer1_screenShadowEligible_noSelfShadow(N)
+//                                         = vec4(normalize(N)*0.5+0.5, 0.25)
+//                              alpha-test ..._noSelfShadow_alphaTest(N)
+//                                         = vec4(normalize(N)*0.5+0.5, 0.1875)
 //                            ★N is the STUFF-SPACE (un-swapped) normal from the VS.
-//                            a=0.25 = static-prop shadow class (static-map shadow OK,
-//                            no dynamic-cascade self-shadow); shadow_screen.frag gates
-//                            rc_isStaticPropNoSelfShadow (0.1 < a <= 0.5).
+//                            Both are the static-prop shadow class (static-map shadow
+//                            OK, no dynamic-cascade self-shadow); shadow_screen.frag
+//                            gates rc_isStaticPropNoSelfShadow (0.1 < a <= 0.5), which
+//                            matches both. 0.1875 exists ONLY so the default-OFF
+//                            MC2_PROP_SHADOW_RECEIVE opt-in can exclude lattices.
+//                            VK-GBUFFER1-CENSUS-1 made VK emit both; see main().
+//
+// ===== CENSUS WITNESS / DECOY -- DO NOT DELETE (VK-GBUFFER1-CENSUS-1) =========
+// The next line is a COMMENT that quotes a complete, semicolon-terminated
+// attachment-1 write whose value is deliberately NOT this shader's and is NOT in
+// scripts/check-render-contract-gbuffer1.allowlist:
+//
+//     oGBuffer1 = vec4(0.0, 0.0, 0.0, 0.9);
+//
+// scripts/check-render-contract-gbuffer1.sh asserts this file censuses to EXACTLY
+// ONE attachment-1 write. If its `//` comment stripper ever breaks, this decoy is
+// counted as code: the count becomes 2 AND the unlisted 0.9 value trips the
+// forward ratchet, so the check fails LOUDLY instead of quietly scanning prose as
+// if it were live code. A scanner that has gone blind reports a clean tree, which
+// is indistinguishable from a correct one until someone trusts it.
+// Deleting these lines, or adding a second real write here, fails the check.
+// =============================================================================
 #version 450
 
 layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
@@ -61,7 +83,12 @@ layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 
 void main() {
     vec3 rgb;
+    // VK-GBUFFER1-CENSUS-1: which GBuffer1 shadow CLASS this fragment belongs to.
+    // Set true by the alpha-ON branch below -- see the oGBuffer1 write at the end
+    // of main() for why the distinction exists and what its granularity is.
+    bool alphaTestClass = false;
     if (uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
+        alphaTestClass = true;
         // ALPHA-ON group (alpha-MIXED buildings): sample the alpha-ON array and apply the
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
         // (materialFlags & ALPHA_TEST_BIT) && tex_color.a < 0.5 -> discard). A discarded
@@ -126,7 +153,37 @@ void main() {
     }
     oColor = vec4(rgb, 1.0);
 
-    // location 1: GBuffer1 = vec4(normalize(N_stuff)*0.5+0.5, 0.25) — bit-adjacent to
-    // static_prop.frag's rc_gbuffer1_screenShadowEligible_noSelfShadow(normalize(v_normal)).
-    oGBuffer1 = vec4(normalize(vNormalStuff) * 0.5 + 0.5, 0.25);
+    // location 1: GBuffer1 — bit-adjacent to static_prop.frag:657-661, which selects
+    // between TWO shadow classes off the packet's alpha-test bit:
+    //   solid prop      -> rc_gbuffer1_screenShadowEligible_noSelfShadow()          a=0.25
+    //   alpha-test prop -> rc_gbuffer1_screenShadowEligible_noSelfShadow_alphaTest() a=0.1875
+    // (values inlined; VK has no include of shaders/include/render_contract.hglsl --
+    // same convention as vulkan/water_geom.frag:13. The inlined constants are pinned
+    // by scripts/check-render-contract-gbuffer1.allowlist, which fails if either
+    // number is edited here without re-adjudicating the class.)
+    //
+    // VK-GBUFFER1-CENSUS-1 CONFORMANCE FIX: this used to emit a FLAT 0.25 for every
+    // prop, including the alpha-ON group -- which IS the GL ALPHA_TEST class (tree
+    // cards, foliage, chain-link fences; see the alpha-ON branch above, which already
+    // applies both the GL 0.5 alpha-test discard and the GL alpha-test light floor).
+    // A flat 0.25 therefore misclassified every VK-drawn tree and fence as a solid
+    // prop. GL is canonical; VK conforms.
+    //
+    // GRANULARITY CAVEAT (stated, not hidden). GL selects PER PACKET
+    // (PerDrawEntry.materialFlags, gos_static_prop_batcher.cpp:5234-5242). The VK
+    // island's material feed carries only a PER TYPE alpha class
+    // (Mc2ColorPropMaterialFeed::typeAlphaClass; packetLayerOn[] is filled for every
+    // packet of a class-1 type -- vulkan_color_prop_island.cpp:1426-1432), so an
+    // ALPHA-MIXED type's opaque packets take this branch too. That makes the VK
+    // alpha-test set a strict SUPERSET of GL's at packet granularity. It is inert for
+    // every consumer that exists today: 0.1875 and 0.25 are both inside
+    // rc_isStaticPropNoSelfShadow's (0.1, 0.5] and both inside the shoreline water
+    // band (0.15, 0.35) that shoreline.frag:22 / vulkan/shoreline.frag:102 select on.
+    // The ONLY reader that separates them is rc_isAlphaTestProp, used solely by
+    // shadow_screen.frag under MC2_PROP_SHADOW_RECEIVE (default OFF) -- and the VK
+    // screen-shadow ports (vulkan/screen_shadow_csm.frag, screen_shadow_static.frag)
+    // inline only rc_pixelHandlesOwnShadow / rc_isStaticPropNoSelfShadow and have no
+    // RECEIVE opt-in at all. Closing the granularity gap needs a per-packet alpha bit
+    // on the feed; it is not required for class correctness and is NOT done here.
+    oGBuffer1 = vec4(normalize(vNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
 }

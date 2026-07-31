@@ -1,0 +1,124 @@
+# scripts/check-render-contract-gbuffer1.allowlist
+#
+# VK-GBUFFER1-CENSUS-1 -- INVENTORY of Vulkan fragment shaders that write color
+# attachment 1 (GBuffer1) with a raw `vec4(...)` instead of an rc_* helper from
+# shaders/include/render_contract.hglsl.
+#
+# This file is the audit record, not a permission slip. Every entry is a CLAIM
+# that was verified at source; the reason lines say what was checked.
+#
+# WHY VK IS ALLOWLISTED AT ALL AND GL IS NOT
+#   The GL half of Census 1 is ZERO-TOLERANCE and has no allowlist: every
+#   shaders/*.frag attachment-1 write routes through an rc_* helper today, and
+#   must keep doing so. The Vulkan shaders under shaders/vulkan/ are compiled by
+#   glslangValidator/glslc (GameOS/gameos/CMakeLists.txt:300-380) from a source
+#   tree that does NOT include shaders/include/, so they cannot call the helpers.
+#   The house convention -- established by shaders/vulkan/water_geom.frag:13-14
+#   ("value inlined (render_contract.hglsl) so the VK shader needs no GL include")
+#   -- is to INLINE the helper's literal value. That convention is fine, but it
+#   makes the constant invisible to the contract: nothing stopped VK from drifting.
+#   It already had. See the color_prop_tier1.frag entry below.
+#
+# WHAT AN ENTRY ACTUALLY BUYS YOU -- READ THIS BEFORE ADDING ONE
+#   An entry exempts ONE EXACT WRITE EXPRESSION, not a file and not a shader.
+#   The literal alpha constant is part of the key. Consequences:
+#     * editing 0.25 -> 0.5 in an allowlisted write does NOT stay allowlisted;
+#       the key stops matching and the write is reported as a fresh violation;
+#     * adding a SECOND write to an already-listed file is NOT covered;
+#     * renaming the output variable is not an escape -- the checker discovers
+#       the attachment-1 output name from the shader's own
+#       `layout(location = 1) out` declaration, so `o_normal` is censused exactly
+#       like `oGBuffer1`.
+#   It ratchets BOTH ways: an entry whose expression no longer appears anywhere in
+#   the tree FAILS as stale, so deleting a write forces the reason to be retired
+#   with it rather than rotting here as a false record of what the tree does.
+#
+# WHAT AN ENTRY STILL DOES NOT BUY YOU (the residual risk, stated)
+#   The key pins the VALUE and the SITE. It does NOT prove the value is the RIGHT
+#   one -- that is a human adjudication, recorded in the reason. If GL changes a
+#   class constant, these entries keep passing while silently diverging. The GL
+#   helpers are single-definition in render_contract.hglsl, so that is a small and
+#   reviewable surface, but it is real and it is why each reason below names the
+#   exact GL helper and file:line it was compared against.
+#
+# KEY FORMAT
+#   <repo-relative-path>::<write expression, whitespace-squeezed, incl. the `;`>
+#   Line numbers are deliberately NOT part of the key so ordinary edits above a
+#   site do not churn this file.
+#
+# TO SEE THE CURRENT CENSUS (including what is NOT allowlisted)
+#   sh scripts/check-render-contract-gbuffer1.sh --list-vk
+
+# ---------------------------------------------------------------------------
+# LIVE WRITERS -- these reach the shared scene normal attachment for real.
+# (Verified: the prop/mech/terrain islands set colorWriteMask to all four bits
+#  on attachment 1 -- vulkan_color_prop_island.cpp:1220, vulkan_mech_island.cpp:846,
+#  vulkan_terrain_island.cpp:1318.)
+# ---------------------------------------------------------------------------
+
+# STATIC PROPS. Inlines BOTH static-prop classes from render_contract.hglsl:
+#   rc_gbuffer1_screenShadowEligible_noSelfShadow()           -> a = 0.25   (:39-41)
+#   rc_gbuffer1_screenShadowEligible_noSelfShadow_alphaTest() -> a = 0.1875 (:70-72)
+# selected off the same alpha-test predicate the shader already uses for the GL
+# 0.5 alpha-test discard. Mirrors GL static_prop.frag:657-661.
+# THIS SITE IS WHY THE CENSUS WAS EXTENDED: it shipped a FLAT 0.25, misclassifying
+# every VK-drawn tree/fence as a solid prop, and the census could not see it
+# because Census 1 globbed only shaders/*.frag. Fixed in VK-GBUFFER1-CENSUS-1.
+# Known, deliberate residual: GL selects per PACKET, the VK feed only carries a
+# per-TYPE alpha class, so VK's alpha-test set is a superset at packet
+# granularity. Inert for every consumer that exists -- both constants sit inside
+# rc_isStaticPropNoSelfShadow (0.1, 0.5] and inside the shoreline water band
+# (0.15, 0.35). Argued in full at the write site.
+shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(vNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
+
+# MECHS. a = 0.0 == rc_gbuffer1_screenShadowEligible() (render_contract.hglsl:27-29).
+# Matches the GL producer mech.frag:428 `rc_gbuffer1_screenShadowEligible(N_gbuf)`.
+# Class is unconditional on both backends -- mechs have no second class -- so there
+# is no per-fragment selection to get wrong here.
+shaders/vulkan/mech_tier1.frag::oGBuffer1 = vec4(normalize(vNormalGL) * 0.5 + 0.5, 0.0);
+
+# TERRAIN, main pass. (0.5, 0.5, 1.0, 1.0) == rc_gbuffer1_shadowHandled_flatUp()
+# (render_contract.hglsl:95-97). Matches the GL producer this island ports,
+# terrain_lod_chunk.frag, whose every attachment-1 write is flatUp (:863-2608).
+# Terrain handles its own shadow in-shader, hence a = 1.0 (> the 0.5
+# rc_pixelHandlesOwnShadow threshold).
+shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+
+# TERRAIN, CSM debug early-outs (uT.csmDebugMode 1..8, eight sites collapsing to
+# one key -- the expression is identical at every one). Same flatUp value as the
+# main pass above, which is the correct behaviour for a debug view: the debug
+# colour goes to attachment 0 and the normal target keeps a well-formed
+# shadow-handled pixel instead of a stale or garbage one. GL's equivalent debug
+# early-outs do the same (terrain_lod_chunk.frag:920 etc.).
+shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(0.5,0.5,1.0,1.0);
+
+# TERRAIN SKIRT. Same flatUp value, same reason as the terrain main pass; the
+# skirt is the same surface class and shares terrain's in-shader shadow.
+shaders/vulkan/terrain_tier1_skirt.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+
+# ---------------------------------------------------------------------------
+# STRUCTURALLY INERT WRITERS -- the write is masked off in hardware, so its value
+# cannot reach the attachment at all. These are exempt for a stronger reason than
+# "the constant looks right": the pipeline state makes the constant unreachable.
+# Verify the mask, not the constant, if you ever revisit these.
+# ---------------------------------------------------------------------------
+
+# VFX PARTICLES. vulkan_vfx_island.cpp:228 sets `cba[1].colorWriteMask = 0`, so
+# attachment 1 is write-masked off for this pipeline. The declaration exists only
+# because the shared scene renderpass has two colour attachments and the FS must
+# declare both. vec4(0.0) is the inert placeholder; GL's VFX path writes nothing
+# to the normal target either. RISK IF THE MASK CHANGES: an additive particle
+# would last-write-wins a = 0.0 (the MECH class) over whatever is underneath,
+# which would both break screen-shadow classification and -- because 0.0 is
+# OUTSIDE the (0.15, 0.35) water band -- punch holes in shoreline foam. If you
+# ever set that mask non-zero, this entry must be re-adjudicated, not carried.
+shaders/vulkan/vfx_particle.frag::o_normal = vec4(0.0);
+
+# WATER GEOMETRY. vulkan_water_island.cpp:881 sets `cba[1].colorWriteMask = 0`,
+# with the reason stated inline there: GL's water GBuffer1 output has src.a = 0,
+# so under GL's SRC_ALPHA blend it contributes nothing, and writeMask = 0 is the
+# exact no-op without requiring independentBlend. Doubly safe: the value
+# (0.5, 0.5, 1.0, 0.0) is also exactly rc_gbuffer1_screenShadowEligible(0,0,1),
+# matching the GL producer gos_terrain_water_mdi.frag:551, so even if the mask
+# were opened the constant would still be contract-correct.
+shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
