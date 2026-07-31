@@ -10408,12 +10408,24 @@ void gos_GetNightState(bool* isNight, float* nightFactor) {
 // state is pushed. The DECISION lives in GameOS/gameos/utils/terrain_daylight.h
 // (pure, harness-executed); this is only the transport.
 //
-// Deliberately NOT derived here from s_gosIsNight/s_gosNightFactor alone. Those
-// come from Camera::isNight / Camera::nightFactor, which Camera::update()
-// re-derives from lightPitch AFTER camera.cpp:2033 has folded a below-horizon
-// authored pitch into a moon pitch -- so on mc2_05 (authored 270) they report
-// full day with the light overhead. The authored pitch is the signal that
-// survives that fold; see the header.
+// Deliberately NOT derived here from s_gosIsNight/s_gosNightFactor alone.
+//
+// CORRECTED 2026-07-30 (DAYLIGHT-GATE-RECHECK-1). This comment used to justify
+// that by claiming Camera::update() re-derives the flags "AFTER camera.cpp:2033
+// has folded a below-horizon authored pitch into a moon pitch -- so on mc2_05
+// (authored 270) they report full day with the light overhead." That is FALSE.
+// The fold is at camera.cpp:2079-2080 inside updateDaylight(), which never runs
+// in a mission (GameCamera::activate overrides the virtual base without chaining
+// -- code/gamecam.cpp:1024, its own call commented at :1060; per-frame site
+// commented at camera.cpp:2238). On mc2_05 lightPitch stays 270, so
+// Camera::update() (camera.cpp:2254-2281) gets altitude -90 and correctly
+// reports isNight = true, nightFactor = 1.
+//
+// The decision to key on the AUTHORED pitch still stands, for a sounder reason:
+// dayLightPitch is written once at load and is never folded or animated, so it
+// stays correct even if the fold is ever revived, whereas the runtime flags are
+// one commented-out line away from being wrong. The gate takes the MIN of both,
+// which fails dark on disagreement. See the header for the measured evidence.
 //
 // Default 0.0 = fully night = the floor is OFF until something feeds it. A
 // missing feed can only make this change a no-op, never a bright regression.

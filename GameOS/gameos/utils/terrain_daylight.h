@@ -15,60 +15,76 @@
 // tools/terrain_daylight_harness executes it against every authored mission
 // pitch in the shipping data. No window, no mission load, no GPU.
 //
-// WHICH SIGNAL. Not mission flat light (cannot reach zero, see above). Not the
-// RUNTIME sun altitude or the RUNTIME night flags either, because both are
-// derived from Camera::lightPitch AFTER camera.cpp:2033 has overwritten it:
+// WHICH SIGNAL. Not mission flat light (cannot reach zero, see above). The
+// AUTHORED pitch (Camera::dayLightPitch) instead, because it is the one input
+// that is correct on every path and cannot be rewritten behind this gate's back.
+//
+// THE STATE OF THE MOON FOLD, STATED TRUTHFULLY AND UP FRONT so that no reader
+// can stop halfway through this block and leave with the wrong model. The fold
+// is real code but it is UNREACHABLE IN A MISSION. updateDaylight()'s night
+// branch substitutes a moon at the mirrored altitude and writes it back:
 //
 //     float moonPitch = 180.0f - fabs(180.0f - lightPitch);
-//     lightPitch = moonPitch;                       // camera.cpp:2032-2033
+//     lightPitch = moonPitch;                       // camera.cpp:2079-2080
 //
-// On a mission that authors a pitch BELOW the horizon, updateDaylight()
-// substitutes the moon at the mirrored altitude AND WRITES IT BACK OVER
-// lightPitch; Camera::update() (camera.cpp:2196-2223) then re-derives
-// isNight/nightFactor from that substituted pitch and concludes "day".
-// mc2_05 and mc2_21 author LightDirPitch = 270 (sun straight DOWN): after the
-// fold lightPitch = 90, so terrainLightDir.z = sin(90) normalized = +0.707 and
-// nightFactor = 0 -- the runtime signals then describe a NOON SUN OVERHEAD on a
-// mission the engine itself classified as night and whose light colours it has
-// already set to nightLight*.
+// and Camera::update() re-derives isNight/nightFactor from lightPitch every
+// frame (camera.cpp:2254-2281, its `day2NightTransitionTime` guard commented
+// out), so IF the fold ever landed, mc2_05 / mc2_21 (authored 270, sun straight
+// DOWN) would read back as a noon sun overhead on a mission the engine had just
+// classified as night. IT NEVER LANDS. updateDaylight() NEVER RUNS IN A MISSION:
+// activate() is VIRTUAL (mclib/camera.h:1285), the in-mission camera is a
+// GameCamera (code/mission.cpp:5108 `eye = new GameCamera`), and
+// GameCamera::activate (code/gamecam.cpp:1024) fully overrides the base without
+// chaining to it -- its own updateDaylight(true) is commented out at
+// gamecam.cpp:1060. All three game-side callers (mechcmd2.cpp:1847,
+// logistics.cpp:875, saveload.cpp:1654) dispatch there, and the per-frame call
+// site is commented out too (camera.cpp:2238). The only surviving caller is
+// Camera::setDaylightFraction (the MC2_UI_COMMAND_FILE sun driver, not a
+// default-launch path), and even that RESTORES the sun angle immediately after
+// (camera.cpp:1840, setSunPitch) precisely so the fold cannot leak. So the fold
+// reaches no downstream reader on ANY path, cold or post-load.
+// CORRECTED 2026-07-30 (PROP-BAKE-TIME-1): this block previously said the fold
+// was merely skipped on a cold start and "becomes wrong on any later activate()
+// taken with the camera already ready+active". That was wrong, and the
+// `ready && active` early-exit is not the reason -- the missing chain is.
+// RE-VERIFIED AND RESTRUCTURED 2026-07-30 (DAYLIGHT-GATE-RECHECK-1), which also
+// found the same false claim still standing in two other files and fixed them:
+// mclib/camera.h getDayLightPitch() and GameOS/gameos/gameos_graphics.cpp
+// gos_SetTerrainDaylightLevel.
 //
-// PRECISION ABOUT WHEN THAT BITES, because it is worth being exact rather than
-// alarming: the fold only happens if updateDaylight() actually runs, and IT
-// NEVER DOES during a mission. CORRECTED 2026-07-30 (PROP-BAKE-TIME-1) -- this
-// paragraph previously said the fold was merely skipped on a cold start and
-// "becomes wrong on any later activate() taken with the camera already
-// ready+active -- e.g. saveload.cpp:1654 after loading a save". That is not
-// right, and the `ready && active` early-exit is not the reason. activate() is
-// VIRTUAL (mclib/camera.h:1285), the in-mission camera is a GameCamera
-// (code/mission.cpp:5108 `eye = new GameCamera`), and GameCamera::activate
-// (code/gamecam.cpp:1024) fully overrides the base without chaining to it -- its
-// own updateDaylight(true) is commented out at gamecam.cpp:1060. All three
-// game-side callers (mechcmd2.cpp:1847, logistics.cpp:875, saveload.cpp:1654)
-// dispatch there, and the per-frame call site is commented out too
-// (camera.cpp:2238). So lightPitch keeps its authored value on EVERY path
-// including post-load, Camera::update() computes lightAltitude = 180-270 = -90
-// -> isNight = true, and the runtime signals are consistently CORRECT rather
-// than unreliably right. The only surviving caller of updateDaylight() is
-// Camera::setDaylightFraction (the MC2_UI_COMMAND_FILE sun driver), which is not
-// a default-launch path.
-// The authored pitch is 270 regardless, so this gate does not care either way --
-// which is why the correction changes no behaviour here, only what a reader may
-// safely cite from this file.
+// CONSEQUENCE FOR THIS GATE -- the reassuring part, so it is worth being plain
+// about. lightPitch keeps its AUTHORED value everywhere, so Camera::update()
+// computes lightAltitude = 180-270 = -90 -> isNight = true on mc2_05/mc2_21, and
+// the runtime arm is CORRECT rather than lying. The two arms therefore AGREE on
+// every shipping mission. The AUTHORED arm alone already returns exactly 0.000
+// on all five night maps (mc2_10 pitch 180 -> altitude 0 <= kNightFullDeg), so
+// the mc2_10 protection that got the predecessor rejected does NOT depend on the
+// runtime arm at all. Measured, not assumed: DAYLIGHT-GATE-RECHECK-1 deleted the
+// runtime arm in the live tree (level() -> return a) and all ten mission-derived
+// harness tests still passed; only the two synthetic fail-dark tests went red.
+// Do NOT conclude from that the runtime arm is spare and can be dropped: the
+// reverse substitution (level() -> return r, a "simplification" to the runtime
+// signal alone) takes the harness to 4 failures, because it is the arm that
+// would go wrong first if the fold were ever revived. Keep the min().
 //
-// (Root cause of the fold leaking out at all: Camera::update()'s guard
-// `if (day2NightTransitionTime <= 0.0f)` is commented out at camera.cpp:2192-
-// 2195 while its comment still says the flags "have already been set in
-// updateDaylight". Repairing that is a global change to isNight/nightFactor --
-// runway edge lights, night fog dim, prop night branches -- and is emphatically
-// NOT in scope for a terrain shading floor.)
+// (Adjacent inversion, noted so nobody "fixes" it casually: Camera::update()'s
+// guard `if (day2NightTransitionTime <= 0.0f)` is commented out at
+// camera.cpp:2254 while its comment still says the flags "have already been set
+// in updateDaylight" -- so that block reads as a fallback when it is in fact the
+// ONLY producer of isNight/nightFactor. Repairing the comment-vs-code mismatch
+// there is a global change to isNight/nightFactor -- runway edge lights, night
+// fog dim, prop night branches -- and is emphatically NOT in scope for a terrain
+// shading floor.)
 //
 // The AUTHORED pitch (Camera::dayLightPitch) is never folded and never
 // animated: updateDaylight() writes lightPitch and dayLightTime but never
-// dayLightPitch, and it is only ever called with bInitialize=true from
-// Camera::activate() (camera.cpp:2766) because the per-frame call site is
-// commented out (camera.cpp:2180, "WE ARE NEVER TRANSITIONING ANYMORE"). So it
-// is a stable, per-mission constant, and it is the value the engine's OWN
-// day/night classifier looks at before it substitutes anything.
+// dayLightPitch. Its bInitialize=true call is Camera::activate()
+// (camera.cpp:2824, dead per above) and the per-frame call site is commented out
+// (camera.cpp:2238, "WE ARE NEVER TRANSITIONING ANYMORE"). So dayLightPitch is a
+// stable, per-mission constant equal to the authored LightDirPitch on all 25
+// shipping missions (verified against mc2-srcdata/missions/*.fit), and it is the
+// value the engine's OWN day/night classifier looks at before it substitutes
+// anything.
 //
 // Everything here is constexpr-friendly, allocation-free, and side-effect-free.
 

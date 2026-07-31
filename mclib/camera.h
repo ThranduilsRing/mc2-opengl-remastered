@@ -481,7 +481,10 @@ class Camera
 			// nightFactor directly above). It is assigned only by
 			// init(FitIniFile*) at camera.cpp:371/375, so a default-constructed
 			// Camera read back garbage. Nothing used to read it before that load
-			// -- updateDaylight() is the sole consumer and always runs after --
+			// (this line used to add "-- updateDaylight() is the sole consumer
+			// and always runs after --"; corrected 2026-07-30
+			// DAYLIGHT-GATE-RECHECK-1: updateDaylight() never runs in a mission
+			// at all, and it never reads dayLightPitch either),
 			// but getDayLightPitch() now feeds the terrain ambient floor's
 			// daylight gate, and an indeterminate pitch could resolve to a
 			// fully-ON brightening gate. 0 == sun exactly at the horizon ==
@@ -1418,13 +1421,26 @@ class Camera
 
 		// TERRAIN-AMBIENT-FLOOR-2: the AUTHORED sun pitch, in degrees, as it
 		// came out of the mission camera file (LightDirPitch, or DayLightPitch
-		// on the DayToNightTime missions). This is NOT lightPitch: lightPitch is
-		// overwritten at camera.cpp:2033 with the mirrored MOON pitch whenever
-		// the authored sun is below the horizon, after which isNight,
-		// nightFactor and lightDirection.z all describe the moon and report
-		// "day". dayLightPitch is written only at load and never folded, so it
-		// is the one stable per-mission record of where the sun was actually
-		// authored. Read-only accessor; no behaviour change.
+		// on the DayToNightTime missions).
+		//
+		// CORRECTED 2026-07-30 (DAYLIGHT-GATE-RECHECK-1). This comment used to
+		// say lightPitch "is overwritten at camera.cpp:2033 with the mirrored
+		// MOON pitch whenever the authored sun is below the horizon, after which
+		// isNight, nightFactor and lightDirection.z all describe the moon and
+		// report 'day'." That does not happen. The fold lives at
+		// camera.cpp:2079-2080 inside updateDaylight(), and updateDaylight()
+		// never runs in a mission: GameCamera::activate (code/gamecam.cpp:1024)
+		// overrides the virtual base (camera.h:1285) without chaining and has its
+		// own call commented out at gamecam.cpp:1060, and the per-frame site is
+		// commented out at camera.cpp:2238. lightPitch therefore keeps its
+		// authored value, and Camera::update()'s per-frame re-derivation
+		// (camera.cpp:2254-2281) yields the CORRECT night verdict -- e.g. mc2_05
+		// authors 270, altitude 180-270 = -90, isNight = true.
+		//
+		// dayLightPitch is still the right thing to read here: it is written only
+		// at load, never folded and never animated, so it is a stable per-mission
+		// record that stays correct even if the fold is ever revived. Read-only
+		// accessor; no behaviour change. See GameOS/gameos/utils/terrain_daylight.h.
 		float getDayLightPitch (void)
 		{
 			return dayLightPitch;
