@@ -4,25 +4,25 @@
  "registry_header": "RenderCore/RendererFeatureRegistry.h",
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 &mdash; Fix Review",
- "lede": "<b>Start at the top and stop when you are tired</b> &mdash; the page is ordered so that the parts that block work come first. <b>Sections 1, 2 and 5 are the ones to read today:</b> which install to launch, the single supervised launch that would close most of the open questions, and what has landed since this page was last built &mdash; the cursor-capture fix, the isolation study, and a whole-fleet object-burial audit whose headline numbers were wrong yesterday and are corrected here. Everything below those is reference you have already seen.",
- "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install to launch</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">2. The one launch that unblocks everything</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">3. The A/B tests</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\">4. Decision queue</a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since this page was last built</b></a> &nbsp;|&nbsp; <a href=\"#selfcheck\"><b style=\"color:#78b0f0\">6. The checks that were lying</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">7. Corrections</a> &nbsp;|&nbsp; <a href=\"#readfirst\">8. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">9. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a>",
+ "lede": "<b>Two decisions are waiting on you, and they are the first two things on this page.</b> Everything after them is ordered so you can stop whenever you are tired without missing anything that blocks work. <b>&sect;1 is which install to launch</b> &mdash; and the delivery question it forces. <b>&sect;2 is the launcher default flip.</b> &sect;3 is the one supervised launch that would close four open questions at once; &sect;4 is the A/B queue, where <b>every row now names both the mission to use and the missions that are mathematically incapable of showing the change</b>. <span style=\"font-size:12px;color:#9aa3ad\">This build is shorter than the last one on purpose: <b>22 blocks and one whole section were removed</b> and the manifest is 11.6% smaller &mdash; and that is <i>after</i> adding the two decisions, a rewritten A/B table and a board breakdown, so considerably more prose came out than the net figure shows. Nothing with a picture in it was cut. The full list of what went and why is at the end of &sect;6 &mdash; a pack you finish beats a complete one you abandon.</span>",
+ "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install &mdash; DECISION</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\"><b style=\"color:#f0a0a0\">2. Decisions waiting on you</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">3. The one supervised launch</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">4. The A/B queue (mission + traps)</b></a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since the last build</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">6. Corrections &amp; what was cut</a> &nbsp;|&nbsp; <a href=\"#readfirst\">7. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">8. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">The pictures &rarr;</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a><br><span style=\"font-size:12px;color:#9aa3ad\"><b>A note on the numbers, because they collide and always have.</b> The eight sections above are numbered <b>1&ndash;8</b>; the picture sections below them keep their original <i>fix</i> numbers, which also start at 1 and run to 12, then 19 and 20. So &ldquo;&sect;2&rdquo; is the decision queue up here and the runway/cement blend down there. Where this page says <b>&sect;5.1</b>, <b>&sect;5.3</b>, <b>&sect;5.4</b> or <b>&sect;20e</b> it always means the numbered section above; a bare &sect; with a fix name next to it means the picture section.</span>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
   {
    "id": "install",
-   "heading": "<b style=\"color:#f0a0a0\">START HERE</b> &mdash; the build you have been grading does not contain the fixes",
+   "heading": "<b style=\"color:#f0a0a0\">1. START HERE</b> &mdash; which install to launch, and the delivery decision it forces",
    "blocks": [
     {
      "type": "note",
-     "html": "<b>&#9888; Your product install is from 2026-07-05 and contains none of this session&rsquo;s work.</b> <code>A:/Games/MC2 OpenGL Remastered/</code> was built from <code>85aaaa4f57b1</code> on <b>2026-07-05T18:49:33</b> &mdash; read out of the executable&rsquo;s own embedded fingerprint, not inferred from a file date. You spent a day reporting complaints against it. The fixes for those complaints were never in a binary you could launch. That is the single most important fact on this page, and it is the reason the pack now opens with an install table instead of a fix list."
+     "html": "<b>&#9888; The build on your Start menu contains none of this session&rsquo;s work &mdash; and that has now been confirmed rather than merely asserted.</b> <code>A:/Games/MC2 OpenGL Remastered/</code> was built from <code>85aaaa4f57b1</code> on <b>2026-07-05T18:49:33</b>. Against the nine fixes the delivery checker grades, it scores <b style=\"color:#f0a0a0\">0 of 9</b>. You spent a day filing complaints against it; the fixes for those complaints were never in a binary you could launch."
+    },
+    {
+     "type": "note",
+     "html": "<b>Why you are being told this twice.</b> Yesterday that <b>0 of 9</b> was suspect, because a bug in the fingerprint reader had been found and any implausible zero deserved a re-measure. It was re-measured. <b>The zero is real, on three independent legs:</b><br><b>(1)</b> That binary always had a readable fingerprint &mdash; the <i>old</i> reader extracted the same <code>85aaaa4f57b1</code>, so it was never a parse failure.<br><b>(2)</b> All nine fixes were introduced between <b>2026-07-22 and 07-30</b>; <code>merge-base --is-ancestor</code> says <b>no</b> to every one of them against a binary linked on 07-05. A binary cannot contain code written 17 days after it.<br><b>(3)</b> The second binary in that tree (<code>eca37ed36f25</code>, 2026-06-14) also answers 0/9, so the verdict does not depend on which one launches.<br><span style=\"font-size:11px;color:#9aa3ad\">Evidence: <code>.claude/DELIVERY-REGRADE-1.md</code> (<code>cf0912c64</code>), &sect;4 and its negative control.</span>"
     },
     {
      "type": "h3",
-     "html": "The three installs on this machine, by embedded fingerprint"
-    },
-    {
-     "type": "what",
-     "html": "Each row was read from the <code>[BUILD_FINGERPRINT v1]</code> string compiled into that executable, then cross-checked with <code>git merge-base --is-ancestor</code>. The two agree on every row. <b>AB-SUNAXIS is a strict superset of CURRENT</b> (CURRENT&rsquo;s commit is an ancestor of AB&rsquo;s, +8 commits), so there is no reason to launch CURRENT except to fall back if something in AB misbehaves."
+     "html": "The installs on this machine, by embedded fingerprint"
     },
     {
      "type": "meta",
@@ -138,16 +138,12 @@
      ]
     },
     {
-     "type": "note",
-     "html": "<b>A correction to what you were told about these installs.</b> CURRENT was described to me as &ldquo;9/9 fixes, the stable baseline&rdquo;. It is not 9/9: the two most recent default-ON changes &mdash; <code>a75339bb0</code> (CPU-Phong retire) and <code>6340e0523</code> (shoreline suppression) &mdash; are both absent from it. I checked by ancestry and again by searching the binary. Repeating that &ldquo;9/9&rdquo; to you would have reproduced this very page&rsquo;s headline failure in miniature: you grading a binary that lacks the fixes you were told it had."
-    },
-    {
      "type": "h3",
      "html": "Which gates actually exist in each binary"
     },
     {
      "type": "what",
-     "html": "This is the table that would have saved you the day. A gate that is not compiled into the executable is <b>a silent no-op</b> &mdash; you can set the variable, launch, see no change, and reasonably conclude the fix does nothing. Each cell below is a literal search for the environment-variable name in that executable&rsquo;s string table. Every row agrees with what <code>git</code> says about which commits are in which build, which is why I trust it."
+     "html": "A gate that is not compiled into the executable is <b>a silent no-op</b> &mdash; you can set the variable, launch, see nothing, and reasonably conclude the fix does nothing. Each cell is a literal search for the variable name in that executable&rsquo;s string table, cross-checked against <code>git merge-base --is-ancestor</code>. The two methods agree on every row."
     },
     {
      "type": "meta",
@@ -411,31 +407,42 @@
         "tag": "td",
         "html": "<span style=\"color:#f0a0a0\">absent</span>"
        }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_MECH_LIGHT_FRESHNESS</code><br><span style=\"font-size:11px;color:#9aa3ad\">default-ON change #11, landed today</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#f0a0a0\">absent</span>"
+       }
       ]
      ]
     },
     {
-     "type": "note",
-     "html": "<b>&#9888; The strongest finding of the session cannot be graded by you at all.</b> <code>MC2_STATIC_PROP_IBL_SUN_ROTATE</code> landed at 00:51, after both installs were built. It is <b>absent from all three binaries</b>. If you set it, nothing happens &mdash; not because the fix is weak but because there is no code in the exe to read the variable. It needs a rebuild before it can be judged. It is listed below as <b>NOT GRADABLE</b> rather than given a mission, because sending you to look at a map where nothing can change is worse than saying nothing."
+     "type": "h3",
+     "html": "<b style=\"color:#f0a0a0\">DECISION 1</b> &nbsp;Which install should the delivery gate grade?"
     },
-    {
-     "type": "note",
-     "html": "<b>Correction &mdash; the strongest finding IS gradable after all, on the new install.</b> This section previously ended by saying <code>MC2_STATIC_PROP_IBL_SUN_ROTATE</code> is absent from all three binaries and therefore cannot be judged. That was true of those three, and it is now out of date: a fourth install, <code>MC2-OpenGL-TIP-2026-07-31</code>, was built at 01:31, after the gate landed at 00:51. Both statements are correct about different points in time. The TIP column above is derived by commit ancestry &mdash; every gate&rsquo;s introducing commit is an ancestor of <code>e4ce37d91162</code> &mdash; and for <code>MC2_STATIC_PROP_IBL_SUN_ROTATE</code> it is independently confirmed by a literal search of that executable&rsquo;s string table, with a positive and a negative control (<code>.claude/MEASUREMENT-LEDGER.md</code>, Dispute 6). The two methods agree. It has still never been looked at."
-    },
-    {
-     "type": "note",
-     "html": "<b>Correction &mdash; a fifth install exists, and it has the cursor fix.</b> This section previously ended by saying that <b>no install on this machine contains the cursor-capture fix</b>, and sent you to TIP. That was true when it was written and was out of date within the hour: <code>MC2-OpenGL-CURSORFIX-2026-07-31</code> was built at 03:31 from <code>3d7f9d7871f7</code>, and the fix is in it. <b style=\"color:#a0f0a0\">Launch CURSORFIX, not TIP.</b><br><br><span style=\"font-size:11px;color:#9aa3ad\">Route disclosure, because this page now holds itself to it: that identity is read from the install&rsquo;s own <code>.deployed_manifest.csv</code> (all 805 rows stamped <code>3d7f9d7871f7&hellip;</code>, no <code>-dirty</code> suffix) plus git ancestry. That is the <i>manifest</i> route, which is the weaker of the two. The strong route reads the fingerprint out of the executable&rsquo;s own bytes &mdash; and the launch block prevents an agent from running that tool at all, because the tool takes the blocked filename as its one argument. So every &ldquo;verified from the executable&rdquo; claim made by a blocked lane is in fact the weaker route unless it names a different mechanism.</span>"
-    }
-   ]
-  },
-  {
-   "id": "one_launch",
-   "anchor": "one_launch",
-   "heading": "2. The one thing that would unblock everything &mdash; a single supervised launch",
-   "blocks": [
     {
      "type": "what",
-     "html": "<b>One launch. Not a session of launches.</b> Nothing on this page has ever been seen running &mdash; every visual claim here is offline arithmetic from the C++, the shaders and the shipped mission data. That is real evidence and it caught real bugs, but it cannot tell you whether a thing <i>looks</i> right. A single supervised launch would close the largest open set on this page at once: whether any of the nine default-ON changes look right, whether the cursor fix holds, and the popup-turret question that no amount of source reading can settle."
+     "html": "<b>This is a real fork and it is filed as yours in the checker&rsquo;s own source</b> (<code>scripts/check-delivery.py:178</code>: <i>&ldquo;Nominating the graded install is the real fix and is a USER decision&hellip; so it is filed, not silently taken here&rdquo;</i>). Today the row passes if <b>at least one</b> of 23 installs carries a fix &mdash; which means it can be green while the install bearing the product name has none of the nine. Both options below are defensible; they answer different questions."
     },
     {
      "type": "meta",
@@ -443,223 +450,186 @@
       [
        {
         "tag": "th",
-        "html": "Question"
+        "html": "Option"
        },
        {
         "tag": "th",
-        "html": "What one launch would settle"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>Do the default-ON changes look right?</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Ten</b> changes ship active with no environment variable (section 7). Not one has been seen by a human or by a capture. Two of them push in <b>opposite directions on the same pixels</b> and partly cancel &mdash; nobody can say from source which wins on your screen."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>Does the cursor fix hold?</b>"
-       },
-       {
-        "tag": "td",
-        "html": "The four-step check in section 5. <b>Needs a rebuild first</b> &mdash; the fix is in no binary on disk, and an offscreen run against TIP would reproduce the exact cursor theft the fix exists to prevent."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>Which things are &ldquo;sunk&rdquo;?</b>"
-       },
-       {
-        "tag": "td",
-        "html": "Two different populations answer to that word and they have different cures: the TURRET-class popups, which never re-snap after placement, and the turret-<i>named</i> BUILDING-class props, which re-snap every frame. <b>Only an eye on the screen separates them.</b>"
-       }
-      ]
-     ]
-    },
-    {
-     "type": "h3",
-     "html": "The minimal version"
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "html": "&nbsp;"
+        "html": "What the gate would then mean"
        },
        {
         "tag": "th",
-        "html": "&nbsp;"
+        "html": "What it costs you"
        }
       ],
       [
        {
         "tag": "td",
-        "html": "<b>Which install</b>"
+        "html": "<b>(a) Nominate the product install</b><br><code>A:/Games/MC2 OpenGL Remastered</code>"
        },
        {
         "tag": "td",
-        "html": "<b><code>A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31/</code></b> &mdash; <code>AB-0-DEFAULT-baseline.bat</code>. <b>Not</b> the Start-menu one, and <b>not</b> TIP &mdash; see section 1. It carries <b>nine of the ten</b> default-ON changes; the tenth is in no binary yet."
+        "html": "&ldquo;<b>Would the person who double-clicks the Start-menu icon see this fix?</b>&rdquo; That is the honest reading of the words <i>delivered</i>, and it is the question you actually ask when you launch by habit."
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0a0a0\">The row goes red the moment you set it, and stays red</b> until a build is promoted into that directory. Nine reds, today. Every board run is a failing board run until you do a promotion you have not agreed to do."
        }
       ],
       [
        {
         "tag": "td",
-        "html": "<b>Which mission</b>"
+        "html": "<b>(b) Nominate the freshest dated cut</b><br><code>MC2-OpenGL-*</code>, newest wins"
        },
        {
         "tag": "td",
-        "html": "<b>mc2_03</b>. It is the only stock map that exercises all three questions at once: daylight, curved terrain, turrets on sloped ground, and buildings and fences meeting the ground."
+        "html": "&ldquo;<b>Did the fix reach a shipped binary at all?</b>&rdquo; It tracks build completeness, and it is what the row effectively measures today."
+       },
+       {
+        "tag": "td",
+        "html": "<b>It stays green and says nothing about what you would launch.</b> That is exactly the weak assertion the checker&rsquo;s own comment calls out. It cannot catch &ldquo;the fix exists but your install is 25 days stale&rdquo; &mdash; the failure that cost you this session."
        }
       ],
       [
        {
         "tag": "td",
-        "html": "<b>Four things to look at</b>"
+        "html": "<b>(c) Do nothing</b>"
        },
        {
         "tag": "td",
-        "html": "<b>(a)</b> Do turrets and trees sit <i>on</i> the ground &mdash; not floating, not sunk?<br><b>(b)</b> Is the ground away from the concrete pads still near-black, or has it lifted?<br><b>(c)</b> Is there a shimmering bright rim where buildings meet terrain? (It should be gone. Move the camera &mdash; it is a temporal artifact and a still frame understates it.)<br><b>(d)</b> Is the lit side of a mech on the same side as its shadow?"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>How to abort</b>"
+        "html": "Status quo: pass if any of 23 installs has it."
        },
        {
         "tag": "td",
-        "html": "Alt-F4, or Task Manager &rarr; End task. On a <b>normal</b> launch the window is an ordinary foreground window and the cursor is confined to it, which is correct and unchanged. <b>The offscreen cursor check in section 5 is the exception</b> &mdash; it deliberately has no taskbar button and no Alt-Tab entry, so Task Manager is the only way out. <b>Open it before you start that one.</b>"
+        "html": "Cheapest, and it is what produced this page&rsquo;s headline. Choosing it deliberately is fine; drifting into it is what happened last time."
        }
       ]
      ]
     },
     {
      "type": "note",
-     "html": "<b>This is a decision, not a recommendation, and nothing here lifts the block.</b> Engine launches are blocked by a hook and stay blocked until you say otherwise. The isolation study in section 5 assessed the mechanisms that might have let an agent do this without you, and <b>none of them was proven safe</b> &mdash; which is exactly why the only remaining route runs through you. You are being handed the choice, not asked to ratify one already made."
-    }
-   ]
-  },
-  {
-   "id": "ab_queue",
-   "anchor": "ab_queue",
-   "heading": "The A/B experiments &mdash; each with its mission, and the maps that cannot show it",
-   "blocks": [
-    {
-     "type": "note",
-     "html": "<b>Updated.</b> The row for <code>MC2_STATIC_PROP_IBL_SUN_ROTATE</code> used to read NOT GRADABLE. It is now gradable &mdash; on the <code>MC2-OpenGL-TIP-2026-07-31</code> install only, which was built after the gate landed. See the correction at the end of section 1."
-    },
-    {
-     "type": "what",
-     "html": "Five things are waiting on your eyes, and each one has exactly one recipe. Run them from <code>A:/Games/MC2-OpenGL-AB-SUNAXIS-2026-07-30/</code> using the <code>AB-*.bat</code> files. <b>The trap column is the point of this table.</b> Several of these gates produce <i>mathematically exactly zero</i> change on the missions you habitually check &mdash; not &ldquo;a small change&rdquo;, zero &mdash; so grading one there would tell you the fix is dead when it is merely invisible."
+     "html": "<b>One number here was wrong and is retracted, because it bears on how much of the disk this rests on.</b> Two separate sweeps each published a bare binary count: <b>&ldquo;16/16 binaries fingerprint&rdquo;</b> and <b>&ldquo;30 engine binaries&rdquo;</b>. Neither was wrong and neither was whole &mdash; <b>16 is exactly the binaries in <code>build64/</code> output dirs, 30 is exactly the ones in install trees, and 16 + 30 = 46</b>, the real count on <code>A:/</code>. Each sweep was blind to the other&rsquo;s half, and the half the first one could not see is the half where installs live and grades are computed. <b>Read either figure as a whole-disk total and you overstate the coverage by half.</b> <span style=\"font-size:11px;color:#9aa3ad\">Re-verified for this page by an independent filesystem sweep of <code>A:/Games</code> today: exactly <b>46</b> <code>mc2.exe</code>, of which <b>16</b> sit under a <code>build64/RelWithDebInfo/</code> and <b>30</b> in install or deploy trees &mdash; the two earlier figures, reconciled. 42 of the 46 carry the fingerprint banner; the other 4, plus 14 non-engine binaries, correctly do not. Other volumes were spot-checked, not swept.</span>"
     },
     {
      "type": "note",
-     "html": "<b>&#9888; The launcher will silently wipe a variable you set in a shell.</b> The launcher explicitly unsets every gate it manages whose checkbox is unticked, so <code>set MC2_SUN_AXIS_FIX=1</code> followed by launching through the GUI gives you the OFF arm and no warning. Use the <code>.bat</code> files, <i>or</i> tick the boxes &mdash; never both routes. The launcher checkboxes have <b>never been click-tested</b> (engine launches are hard-blocked for the agents that built them), so the <code>.bat</code> files are the route that can be stood behind."
-    },
-    {
-     "type": "note",
-     "html": "<b>Also clear your environment first.</b> <code>HKCU:\\Environment</code> on this machine still carries <code>MC2_STATIC_POP_SPLIT</code>, <code>MC2_GPU_CULL_STATIC_FROZEN_RECORDS</code> and <code>MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE</code>. These are presence-keyed &mdash; the value is irrelevant &mdash; so every launch, including a double-click from Explorer, forces three experimental paths ON underneath whatever you are grading."
-    },
-    {
-     "type": "gate_table",
-     "headers": [
-      "Gate",
-      "Default (resolved from source)",
-      "Run this",
-      "Grade on",
-      "&#9940; Cannot show it",
-      "What a pass looks like"
-     ],
-     "default_col": 1,
-     "rows": [
-      {
-       "gate": "MC2_SUN_AXIS_FIX",
-       "cells": [
-        "",
-        "<code>AB-1-SUN-AXIS-on.bat</code><br>vs <code>AB-0</code>",
-        "<b>mc2_03</b> or <b>mc2_13</b><br><span style='font-size:11px;color:#9aa3ad'>both tie for the largest move, 0.53 of full scale</span>",
-        "<b>mc2_10, mc2_22</b><br><span style='font-size:11px;color:#9aa3ad'>authored ambient 192/255 makes 0.35+A &ge; 1, pinning the multiplier at 1.0 for every normal &mdash; measured delta exactly 0.0000</span>",
-        "The lit side of a mech agrees with where the sun is &mdash; same direction as the shadows and the specular highlight. <b>Not &ldquo;mechs get brighter&rdquo;</b>: over 4096 normals it darkens about as many as it brightens (mc2_13: 47.7% brighter / 48.0% darker; mc2_03: 44.2 / 44.1). Half the surfaces going darker is the expected result."
-       ]
-      },
-      {
-       "gate": "MC2_SUN_ELEVATION_FIX",
-       "cells": [
-        "",
-        "<code>AB-2-SUN-ELEVATION-on.bat</code><br>vs <code>AB-0</code>",
-        "<b>mc2_24</b><br><span style='font-size:11px;color:#9aa3ad'>authors a 75&deg; sun, currently receives 44.0&deg; &mdash; the biggest <i>day-mission</i> move. mc2_01 and mc2_03 also move clearly.</span>",
-        "<b>mc2_10</b><br><span style='font-size:11px;color:#9aa3ad'>authored pitch 180&deg; is a degenerate case the fix routes back to the legacy vector verbatim &mdash; bit-identical with the gate on</span>",
-        "Shadow <b>length</b> and direction first &mdash; the most legible signal. On mc2_24 the sun should sit visibly higher and shadows shorten toward midday. <b>Blast radius is the whole world</b>: this vector drives terrain shading, the static-prop sun, the shadow projection matrix, SSAO and every actor&rsquo;s sun colour."
-       ]
-      },
-      {
-       "gate": "MC2_SHORELINE_LEGACY_SUPPRESS",
-       "cells": [
-        "",
-        "<code>AB-3-SHORELINE-SUPPRESS-on.bat</code><br>vs <code>AB-0</code><br><span style='font-size:11px;color:#f0d890'>the =1 arm previews what is now the source default</span>",
-        "<b>mc2_01</b> or <b>mc2_03</b>, with a <b>moving camera</b><br><span style='font-size:11px;color:#9aa3ad'>the artifact is time-scrolled, so a single still frame understates it</span>",
-        "<span style='font-size:11px;color:#9aa3ad'>any map with no buildings or fences near terrain &mdash; the pass only touches static-prop pixels within ~6 screen texels of ground</span>",
-        "The shimmering bright rim where <b>buildings and fences meet the ground</b> disappears, and <b>water does not change at all</b>. <b style='color:#f0a0a0'>If water changes, stop and say so</b> &mdash; that would falsify the pixel census this whole change rests on. Negative result: prop edges now read too dark, which matters while your &ldquo;props look dark&rdquo; report is still open."
-       ]
-      },
-      {
-       "gate": "MC2_CPU_PHONG_RETIRE",
-       "cells": [
-        "",
-        "already ON &mdash; run <code>AB-4-PHONG-RETIRE-OFF-legacy.bat</code> to see the <b>old</b> behaviour",
-        "<b>Curved terrain</b> &mdash; ridges, saddles, hillsides. <b>Turrets on sloped ground</b> is the named case. For the gameplay half, a <b>shoreline on <code>mc2_m01</code></b> &mdash; 1,797 water-class flips, 330 cells newly blocked to ground movers, the worst of any map.",
-        "<b>Flat ground, and grid vertices</b><br><span style='font-size:11px;color:#9aa3ad'>the retired term is identically zero there &mdash; a flat plateau shows nothing however long you stare</span>",
-        "<b>The riskiest thing on disk.</b> It moves the gameplay elevation that objects are grounded on, on every map: mean 0.58&ndash;1.35 wu, p99 3.8&ndash;6.4, <b>max 12.7&ndash;18.9 wu</b> (1 wu = 0.2 m, so <b>up to ~3.8 m</b>), moving <b>19&ndash;49% of sampled positions by more than 1 wu</b>. <b>The gameplay consumer has a name and a number now.</b> It is the movement map's <b>water class</b>: <code>mclib/move.cpp:1057</code> classifies every movement cell by comparing terrain elevation against the mission's water elevation and shallow depth, and <code>code/mover.cpp:4598</code> refuses <b>DEEP</b> water to ground movers. Across all 37 stock maps, <b>10,357 cells change water class</b> &mdash; <b>6,568 of them deep&harr;shallow</b>, of which <b>1,759 become newly BLOCKED</b> to ground movers and 5,212 become newly walkable. Median change among flipped cells is <b>0.98 wu</b>. <b>Pathfinding itself does not move:</b> <code>getPassable</code> is read from the mission <code>.pak</code> cell record (<code>mclib/move.cpp:1049</code>), not computed from elevation &mdash; only the water overlay shifts. <b>The direction argues for shipping:</b> the Phong term was <i>added</i> on 2026-04-10 (<code>4684ec0d</code>), so these cells are being <b>restored</b> to their stock classification &mdash; a port-era commit had been silently altering water blocking on <b>34 of 37 maps for three and a half months</b>. <b style='color:#f0a0a0'>Where to look &mdash; not &ldquo;anywhere&rdquo;:</b> a <b>shoreline on <code>mc2_m01</code></b>, the worst map on both counts (<b>1,797 flips, 330 cells newly blocked</b>). Walk a ground mech along the beach and try to order it into shallow water. The failure looks like a move order <i>refused</i> on a beach cell it should accept, or a mech walking into water it should not. <code>mc2_02</code> (704 flips) and <code>mc2_20</code> (667) are second and third; ranked by newly-blocked cells specifically it is <code>mc2_17</code> (160) then <code>mc2_20</code> (137). A good result is &ldquo;it looks the same&rdquo;, &ldquo;the turrets sit right now&rdquo;, and &ldquo;the beach still takes a move order&rdquo;. <b>Revert is <code>MC2_CPU_PHONG_RETIRE=0</code>.</b> Reproduce the water numbers yourself: <code>py -3 scripts/water_class_flip_audit.py</code>. Never run, no smoke, no human eyes."
-       ]
-      },
-      {
-       "gate": "MC2_STATIC_PROP_IBL_SH",
-       "cells": [
-        "",
-        "<code>AB-5-TREES-stocklike.bat</code> (=0, stock-like)<br>vs <code>AB-0</code> (shipped)",
-        "<b>mc2_05</b><br><span style='font-size:11px;color:#9aa3ad'>largest difference of the 24; second best mc2_23</span>",
-        "<b>mc2_22</b> (exactly zero) and <b>mc2_01, mc2_04, mc2_07, mc2_24</b><br><span style='font-size:11px;color:#9aa3ad'>tree multiplier pinned at 1.0 for every normal on those maps</span>",
-        "<b>This is a preference, not a fix &mdash; whichever you prefer IS the result.</b> Stock MC2 deliberately switches the sun off while baking tree lighting, so flat-lit foliage is correct, not a port bug; the port <i>over</i>-lights them. <b>Not a trees-only switch</b> &mdash; the gate covers the whole static-prop lane, so buildings move too."
-       ]
-      },
-      {
-       "gate": "MC2_STATIC_PROP_IBL_SUN_ROTATE",
-       "cells": [
-        "",
-        "<code>AB-7</code> arms on the <b>TIP</b> install<br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; NEWLY GRADABLE &mdash; see the correction in section 1</span>",
-        "<b>mc2_17</b> or <b>mc2_24</b><br><span style=\"font-size:11px;color:#9aa3ad\">on the TIP install only; the other three binaries do not contain the variable</span>",
-        "<b>Any install except TIP</b><br><span style=\"font-size:11px;color:#9aa3ad\">the variable name is absent from the other three executables&rsquo; string tables &mdash; setting it there is a silent no-op, which is what &ldquo;NOT GRADABLE&rdquo; used to mean here. mc2_10 and mc2_22 remain saturated traps even on TIP.</span>",
-        "When it can be built: grade on <b>mc2_17</b> (mean |&Delta;| 0.181, 54.6% unclamped) or <b>mc2_24</b> (0.231). <b>mc2_10 and mc2_22 are traps</b> (0.0037 and 0.0123). A comment in <code>static_prop.vert</code> used to nominate mc2_10 for exactly this class of change and was wrong; <code>f16b49e96</code> replaced it with the retraction."
-       ]
-      }
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>Two standing caveats that will cost you a session if you miss them.</b> (1) <b>The terrain ambient floor is day-gated</b> &mdash; it uploads exactly 0.0 on night missions, so grading it on one proves nothing. The night missions are <b>mc2_05, mc2_10, mc2_19, mc2_21, mc2_23</b>. (2) The AB install predates the shoreline default flip, so in <i>that</i> binary the gate is still opt-in and <code>AB-3</code> is the ON arm; in the source tree it is now default-ON and <code>=0</code> is the revert. Both statements are true of different builds, which is exactly the kind of thing that reads as a contradiction later."
-    },
-    {
-     "type": "h3",
-     "html": "The open question worth answering plainly"
-    },
-    {
-     "type": "what",
-     "html": "The SH-IBL probe that lights every static prop is <b>never rotated to the mission sun</b>. It is baked once with a fixed bright axis, and on <b>17 of the 24 missions</b> that leaves a building <i>brighter on the wall facing away from the sun</i>. The median aim error is 106&deg;; the worst, mc2_14, is 177&deg; &mdash; almost exactly backwards. I re-derived this from the shipped coefficient table rather than trusting the harness, and got 17 of 24 independently. <b>The fix is written and landed</b> (<code>f16b49e96</code>) <b>but gated OFF, because nobody has ever seen it render</b> &mdash; and, as the table above says, it is not in any binary you can launch. The question for you: is a defect that is live on every default launch today worth a rebuild to look at?"
+     "html": "<b>Exactly one install was genuinely mis-graded, and it was not this one.</b> <code>mc2-win64-ambientfloor-1</code> moved <b>0/9 &rarr; 3/9</b> once its fingerprint could be read. It is a test install, not one you launch. <b>The bug was also not what anyone thought:</b> the suspected cause was detached-HEAD builds, and that was refuted &mdash; three detached-HEAD builds parse fine under both the old and the new reader, while both recovered binaries sit on <i>named</i> branches. The real cause is <b>linker alignment filler welding itself onto a pooled string literal</b>, after which the tokenizer discarded the whole token. It is branch-agnostic and data-dependent &mdash; which is why it hit two arbitrary binaries and no others. The fix is strictly additive: <b>all 40 binaries the old reader could read parse bit-identically under the new one</b>, and it recovers 2 more."
     }
    ]
   },
   {
    "id": "open_gates",
-   "heading": "Decisions waiting on you &mdash; the whole queue, in one place",
+   "heading": "2. Decisions waiting on you &mdash; the whole queue, in one place",
    "blocks": [
+    {
+     "type": "h3",
+     "html": "<b style=\"color:#f0a0a0\">DECISION 2</b> &nbsp;The launcher turns four features ON that the engine leaves OFF. Flip it, or keep it?"
+    },
+    {
+     "type": "note",
+     "html": "<b>The launcher and a shell launch are not the same environment.</b> <code>DoLaunch</code> applies <i>every</i> row of its variable table unconditionally &mdash; you never have to open the Options dialog for it to fire &mdash; and four of those rows declare <code>defaultVal&nbsp;&quot;1&quot;</code> against an engine reader that is <b>default-OFF</b>. So <b>a launcher launch runs these four ON and a <code>.bat</code> or shell launch runs them OFF</b>, and until now neither arm was labelled with which set it got. <b style=\"color:#f0d890\">Any A/B you graded through the GUI on one day and from a batch file on another was not comparing the same build environment.</b>"
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "Gate"
+       },
+       {
+        "tag": "th",
+        "html": "Engine reader says"
+       },
+       {
+        "tag": "th",
+        "html": "Launcher declares"
+       },
+       {
+        "tag": "th",
+        "html": "Why it matters"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_STATIC_PROP_PBR_V1</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gos_static_prop_batcher.cpp:1161; registry agrees</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">ON</b>"
+       },
+       {
+        "tag": "td",
+        "html": "Prop specular. Changes how every building reads."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_STATIC_PROP_AMBIENT_V1</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gos_static_prop_batcher.cpp:828; registry agrees</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">ON</b>"
+       },
+       {
+        "tag": "td",
+        "html": "Prop hemisphere ambient. Sits directly on your &ldquo;props look dark&rdquo; report."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_CLOUD_SHADOW</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gos_postprocess.cpp:502-503, <code>if (!v || !v[0]) return false;</code></span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">ON</b>"
+       },
+       {
+        "tag": "td",
+        "html": "Its row also <i>labelled</i> the gate &ldquo;default ON&rdquo; &mdash; a copy of the exact false claim that had to be deleted from the engine source. The label is now corrected."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_WATER_SKYTINT</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gameos_graphics.cpp:2867</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">ON</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0a0a0\">The worst of the four.</b> A second reader (<code>visual_tuning_profile.cpp:182</code>) is a pure <i>presence</i> test, so setting the variable to <b>anything &mdash; &ldquo;0&rdquo; included &mdash; suppresses the per-mission water art direction</b> from <code>data/visual_tuning.json</code>. Every launcher launch trips it."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>What you are choosing.</b> <b>(a) FLIP</b> &mdash; set all four to unset, so the launcher and a shell agree and both match the engine default. Every default launcher launch changes appearance; that is a user-graded default flip, which is why no lane took it. <b>(b) KEEP</b> &mdash; leave them ON and treat the launcher as a deliberate preset, now that the labels say <code>(engine OFF; launcher ON)</code> instead of lying. <b>(c) SPLIT</b> &mdash; flip <code>MC2_WATER_SKYTINT</code> only, on the narrow ground that it is not a preference at all but a suppression of authored per-mission art, and leave the other three as a preset. <span style=\"font-size:11px;color:#9aa3ad\">Nothing has been flipped. The labels were corrected and the decision left open on purpose.</span>"
+    },
+    {
+     "type": "h3",
+     "html": "The rest of the queue"
+    },
     {
      "type": "what",
      "html": "<b>This is the only part of this page that blocks work.</b> Everything below is waiting on a decision, not on effort. Each row has its evidence already gathered and linked; none of them needs another lane first. This queue used to live at &sect;20e, roughly 95% of the way down a 600&nbsp;KB page, which is a good way to make sure it never gets answered &mdash; it has been moved here and merged with the four decisions that were already at the top. <b>Decision 11 is the one that unblocks the most: saying yes to it closes four other open questions and is the precondition for re-capturing every stale picture on this page.</b>"
@@ -742,50 +712,6 @@
        {
         "tag": "td",
         "attrs": "",
-        "html": "3"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Two zero-byte capture manifests: delete or recapture?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>scratch/mc203air/21_late3600_rep/</code> and <code>scratch/mc203air/30_texhandoff/</code> &mdash; both manifests confirmed <b>still 0 bytes</b> at the time of this update. <code>21_late3600_rep</code> has real output beside it and is worth recapturing; <code>30_texhandoff</code> may be disposable."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Recapture needs a game launch, which is hard-blocked. Their zero-byte state is the signature of the disk-full events, so they are <b>corrupt rather than merely absent</b>. <b style=\"color:#f0d890\">New reason to decide:</b> these two files are <b>the entire <code>capture_provenance</code> contract failure</b>. Deleting them turns that row green &mdash; while <b>117 unverifiable manifests remain unchanged</b>. Do not let that happen by accident; if you delete, say so, and the row should be re-armed with <code>--strict-unverifiable</code> at the same time."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "4"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Stamp the unverifiable capture manifests as provenance-unknowable?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The provenance ratchet now reports <b>141 scanned, 2 FAIL, 117 WARN</b> &mdash; the WARNs all one category, <code>UNVERIFIABLE-EXE-REPLACED</code>: the exe they measured has been rebuilt or overwritten, so the commit is no longer recoverable. Options: <b>stamp them unknowable</b> (honest, permanent), <b>delete them</b>, or <b>leave them</b> and accept that 83% of the corpus certifies nothing."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Correction carried forward:</b> these are <b>not</b> &ldquo;53 tracked golden baselines&rdquo;. They are capture manifests &mdash; a mix of tracked and untracked. <b style=\"color:#f0d890\">New, and it makes the number worse:</b> the registered check&rsquo;s roots <b>omit <code>tests/smoke/artifacts</code></b> &mdash; the evidence tree <code>run_smoke</code> itself writes, and the largest manifest corpus in the repo. Pointed at it by hand it reports <b>scanned=165 FAIL=7 WARN=158</b>, including two 07-30 runs with <b>no embedded fingerprint at all though the binary states one</b>. <b>So the true corpus is ~306 manifests, not 141</b>, and the registered row has never opened more than half of it."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
         "html": "5"
        },
        {
@@ -802,28 +728,6 @@
         "tag": "td",
         "attrs": "",
         "html": "The evidence against promoting has grown: <b>11 of 39</b> blessed regions are ones the next baseline <b>refused as run-to-run unstable</b> (noise floors up to 25.18%). <b style=\"color:#f0a0a0\">AND THE LANDMINE IS STILL ARMED.</b> Branch <code>claude/disk-guard-1</code> still carries commit <code>4ab0241f</code>, which <b>ADDS all 40 files</b>; it is <b>NOT merged</b>, and merging or squashing it re-tracks the set behind your back. It was dodged on 07-30 by <b>cherry-picking two commits off that branch by hand</b> &mdash; a manual dodge, not a fix. Worse: <b>the contract written in response to that near-miss does not check the thing it was created to check</b>. <code>check-golden-coverage.py</code> never calls git &mdash; it only reads directories on disk &mdash; so committing the 40 files leaves the suite at exactly <b>96/2</b>. <b>The rule is a comment, not a check.</b> Whatever you decide, that branch needs defusing. <b>Absorbed from the duplicate row this replaces:</b> it also <b>fails 32 of 39 regions</b> against the current build &mdash; real content drift from ~70 commits of night-lighting work, not noise &mdash; and GOLDEN-REBLESS-2 recommends against promotion. <b>Re-measured today:</b> 40 files, 28.1&nbsp;MiB, <b>zero tracked</b>, not gitignored. Four status docs now say retire."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "6"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Empty the Recycle Bin</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>~38.4&nbsp;GB across ~143,630 files</b> when last measured. The single largest remaining reclaimable object. (The reclaim plan variously quotes 38.8 and 39.7&nbsp;GB for the same object.)"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "It is the <b>one irreversible action</b> in the reclaim plan, so no agent will do it. <b>Unchanged</b> &mdash; the 137&nbsp;GB the reclaim lane freed on 07-30 did not touch it."
        }
       ],
       [
@@ -957,6 +861,24 @@
         "attrs": "",
         "html": "Nothing in this session was ever pushed. All commits are local to <code>claude/nifty-mendeleev</code>."
        }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>3&middot;4&middot;6</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Three housekeeping decisions, folded into one row</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>(3)</b> Two capture manifests are <b>zero bytes</b> &mdash; <code>scratch/mc203air/21_late3600_rep/</code> and <code>&hellip;/30_texhandoff/</code>. Delete them or recapture. <b>(4)</b> <b>117</b> further manifests are stamped <code>UNVERIFIABLE-EXE-REPLACED</code> &mdash; the binary they measured has been rebuilt. Stamp them provenance-unknowable, or leave the row red. <b>(6)</b> The Recycle Bin holds <b>38.41&nbsp;GB across 143,630 files</b> on <code>A:</code> and a further <b>18.78&nbsp;GB</b> on <code>C:</code> &mdash; <b>57.19&nbsp;GB</b> total."
+       },
+       {
+        "tag": "td",
+        "html": "All three are irreversible-or-costly actions, which is why no agent will take them, and none of them changes a pixel. <b>They are why <code>capture_provenance</code> is the one correctly-red row on the board</b> (&sect;5.4). Answering (3) and (4) turns it green; answering (6) frees the largest reclaimable object on the disk."
+       }
       ]
      ]
     },
@@ -975,9 +897,324 @@
    ]
   },
   {
+   "id": "one_launch",
+   "anchor": "one_launch",
+   "heading": "3. The one thing that would unblock everything &mdash; a single supervised launch",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "<b>One launch. Not a session of launches.</b> Nothing on this page has ever been seen running &mdash; every visual claim here is offline arithmetic from the C++, the shaders and the shipped mission data. That is real evidence and it caught real bugs, but it cannot tell you whether a thing <i>looks</i> right. A single supervised launch would close the largest open set on this page at once: whether any of the nine default-ON changes look right, whether the cursor fix holds, and the popup-turret question that no amount of source reading can settle."
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "Question"
+       },
+       {
+        "tag": "th",
+        "html": "What one launch would settle"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Do the default-ON changes look right?</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Ten</b> changes ship active with no environment variable (section 7). Not one has been seen by a human or by a capture. Two of them push in <b>opposite directions on the same pixels</b> and partly cancel &mdash; nobody can say from source which wins on your screen."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Does the cursor fix hold?</b>"
+       },
+       {
+        "tag": "td",
+        "html": "The four-step check in section 5. <b>Needs a rebuild first</b> &mdash; the fix is in no binary on disk, and an offscreen run against TIP would reproduce the exact cursor theft the fix exists to prevent."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Which things are &ldquo;sunk&rdquo;?</b>"
+       },
+       {
+        "tag": "td",
+        "html": "Two different populations answer to that word and they have different cures: the TURRET-class popups, which never re-snap after placement, and the turret-<i>named</i> BUILDING-class props, which re-snap every frame. <b>Only an eye on the screen separates them.</b>"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "The minimal version"
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "&nbsp;"
+       },
+       {
+        "tag": "th",
+        "html": "&nbsp;"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Which install</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b><code>A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31/</code></b> &mdash; <code>AB-0-DEFAULT-baseline.bat</code>. <b>Not</b> the Start-menu one, and <b>not</b> TIP &mdash; see section 1. It carries <b>nine of the ten</b> default-ON changes; the tenth is in no binary yet."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Which mission</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>mc2_03</b>. It is the only stock map that exercises all three questions at once: daylight, curved terrain, turrets on sloped ground, and buildings and fences meeting the ground."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Four things to look at</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>(a)</b> Do turrets and trees sit <i>on</i> the ground &mdash; not floating, not sunk?<br><b>(b)</b> Is the ground away from the concrete pads still near-black, or has it lifted?<br><b>(c)</b> Is there a shimmering bright rim where buildings meet terrain? (It should be gone. Move the camera &mdash; it is a temporal artifact and a still frame understates it.)<br><b>(d)</b> Is the lit side of a mech on the same side as its shadow?"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>How to abort</b>"
+       },
+       {
+        "tag": "td",
+        "html": "Alt-F4, or Task Manager &rarr; End task. On a <b>normal</b> launch the window is an ordinary foreground window and the cursor is confined to it, which is correct and unchanged. <b>The offscreen cursor check in section 5 is the exception</b> &mdash; it deliberately has no taskbar button and no Alt-Tab entry, so Task Manager is the only way out. <b>Open it before you start that one.</b>"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>This is a decision, not a recommendation, and nothing here lifts the block.</b> Engine launches are blocked by a hook and stay blocked until you say otherwise. The isolation study in section 5 assessed the mechanisms that might have let an agent do this without you, and <b>none of them was proven safe</b> &mdash; which is exactly why the only remaining route runs through you. You are being handed the choice, not asked to ratify one already made."
+    }
+   ]
+  },
+  {
+   "id": "ab_queue",
+   "anchor": "ab_queue",
+   "heading": "4. The A/B queue &mdash; every row carries its mission <i>and</i> the missions that cannot show it",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "<b>Six things are waiting on your eyes, and each one has exactly one recipe.</b> Run them from <code>A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31/</code> &mdash; <b>not</b> the 07-30 AB install this page used to name, and not the Start-menu one. <b>The trap column is the point of this table.</b> Several of these gates produce <i>mathematically exactly zero</i> change on the missions you habitually check &mdash; not &ldquo;a small change&rdquo;, zero &mdash; so grading one there would tell you the fix is dead when it is merely invisible."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; READ THIS BEFORE YOU RUN ANY ARM &mdash; the numbers moved, and the old numbers still exist.</b> The 07-30 install and the CURSORFIX install both ship files called <code>AB-3</code>, <code>AB-4</code> and <code>AB-5</code>, and <b>they are different experiments</b>. This page previously listed the 07-30 names while telling you to launch CURSORFIX, so following it would have run the wrong arm three times out of six without any error. The table below is the <b>CURSORFIX</b> set, verified against the files in that directory."
+    },
+    {
+     "type": "meta",
+     "attrs": "style=\"font-size:12px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "File"
+       },
+       {
+        "tag": "th",
+        "html": "AB-SUNAXIS 07-30 (old)"
+       },
+       {
+        "tag": "th",
+        "html": "CURSORFIX 07-31 &mdash; <b>use this</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>AB-3</code>"
+       },
+       {
+        "tag": "td",
+        "html": "SHORELINE-SUPPRESS-<b>on</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">IBL-SUN-ROTATE-on</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>AB-4</code>"
+       },
+       {
+        "tag": "td",
+        "html": "PHONG-RETIRE-OFF-legacy"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">IBL-SUN-ROTATE-bare-no-floor</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>AB-5</code>"
+       },
+       {
+        "tag": "td",
+        "html": "TREES-stocklike"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0d890\">SHORELINE-SUPPRESS-<b>off</b>-legacy</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>AB-6</code>, <code>AB-7</code>"
+       },
+       {
+        "tag": "td",
+        "html": "&mdash; do not exist"
+       },
+       {
+        "tag": "td",
+        "html": "PHONG-RETIRE-off-legacy, PROPS-stocklike-no-IBL"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>AB-0</code>, <code>AB-1</code>, <code>AB-2</code>"
+       },
+       {
+        "tag": "td",
+        "attrs": " colspan=\"2\"",
+        "html": "the same in both &mdash; which is exactly why the collision is easy to miss"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>Two of them also reversed polarity.</b> Shoreline suppression and the Phong retire were default-OFF opt-ins on 07-30 and are default-ON now, so in CURSORFIX <b><code>AB-0</code> is the new behaviour and the numbered arm restores the old one</b>. The arms&rsquo; own <code>REM</code> headers say so; this page did not."
+    },
+    {
+     "type": "note",
+     "html": "<b>&#9888; The launcher will silently wipe a variable you set in a shell.</b> The launcher explicitly unsets every gate it manages whose checkbox is unticked, so <code>set MC2_SUN_AXIS_FIX=1</code> followed by launching through the GUI gives you the OFF arm and no warning. Use the <code>.bat</code> files, <i>or</i> tick the boxes &mdash; never both routes. The launcher checkboxes have <b>never been click-tested</b> (engine launches are hard-blocked for the agents that built them), so the <code>.bat</code> files are the route that can be stood behind."
+    },
+    {
+     "type": "note",
+     "html": "<b>Also clear your environment first.</b> <code>HKCU:\\Environment</code> on this machine still carries <code>MC2_STATIC_POP_SPLIT</code>, <code>MC2_GPU_CULL_STATIC_FROZEN_RECORDS</code> and <code>MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE</code>. These are presence-keyed &mdash; the value is irrelevant &mdash; so every launch, including a double-click from Explorer, forces three experimental paths ON underneath whatever you are grading."
+    },
+    {
+     "type": "gate_table",
+     "headers": [
+      "Gate",
+      "Default (resolved from source)",
+      "Run this<br><span style=\"font-size:11px;color:#9aa3ad\">CURSORFIX install</span>",
+      "Grade on",
+      "&#9940; Cannot show it",
+      "What a pass looks like"
+     ],
+     "default_col": 1,
+     "rows": [
+      {
+       "gate": "MC2_SUN_AXIS_FIX",
+       "cells": [
+        "",
+        "<code>AB-1-SUN-AXIS-on.bat</code><br>vs <code>AB-0</code>",
+        "<b>mc2_03</b> or <b>mc2_13</b><br><span style=\"font-size:11px;color:#9aa3ad\">both tie for the largest move, 0.53 of full scale</span>",
+        "<b>mc2_10, mc2_22</b><br><span style=\"font-size:11px;color:#9aa3ad\">authored ambient 192/255 makes 0.35+A &ge; 1, pinning the multiplier at 1.0 for every normal &mdash; measured delta exactly 0.0000</span>",
+        "The lit side of a mech agrees with where the sun is &mdash; same direction as the shadows and the specular highlight. <b>Not &ldquo;mechs get brighter&rdquo;</b>: over 4096 normals it darkens about as many as it brightens (mc2_13: 47.7% brighter / 48.0% darker; mc2_03: 44.2 / 44.1). Half the surfaces going darker is the expected result."
+       ]
+      },
+      {
+       "gate": "MC2_SUN_ELEVATION_FIX",
+       "cells": [
+        "",
+        "<code>AB-2-SUN-ELEVATION-on.bat</code><br>vs <code>AB-0</code>",
+        "<b>mc2_24</b><br><span style=\"font-size:11px;color:#9aa3ad\">authors a 75&deg; sun, currently receives 44.0&deg; &mdash; the biggest day-mission move. mc2_01 and mc2_03 also move clearly.</span>",
+        "<b>mc2_10</b><br><span style=\"font-size:11px;color:#9aa3ad\">authored pitch 180&deg; is a degenerate case the fix routes back to the legacy vector verbatim &mdash; bit-identical with the gate on</span>",
+        "Shadow <b>length</b> and direction first &mdash; the most legible signal. On mc2_24 the sun should sit visibly higher and shadows shorten toward midday. <b>Blast radius is the whole world</b>: this vector drives terrain shading, the static-prop sun, the shadow projection matrix, SSAO and every actor&rsquo;s sun colour."
+       ]
+      },
+      {
+       "gate": "MC2_STATIC_PROP_IBL_SUN_ROTATE",
+       "cells": [
+        "",
+        "<code>AB-3-IBL-SUN-ROTATE-on.bat</code><br>vs <code>AB-0</code><br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; <b style=\"color:#a0f0a0\">NEWLY GRADABLE</b> &mdash; the first install that contains this variable at all. <code>AB-4</code> is the bare arm (probe floor 0.45&rarr;0); compare it against <b>AB-3</b>, not AB-0.</span>",
+        "<b>mc2_17</b> or <b>mc2_24</b><br><span style=\"font-size:11px;color:#9aa3ad\">mc2_17 has the most unclamped headroom in tier 1 (mean |&Delta;| 0.181, 54.6% unclamped); mc2_24 the largest move, 0.231</span>",
+        "<b>mc2_10, mc2_22</b> and <b>mc2_05</b><br><span style=\"font-size:11px;color:#9aa3ad\">mc2_10/mc2_22 have ~91% of wall azimuths already clamped &mdash; the rotation moves about one byte (0.0037 and 0.0123). mc2_05&rsquo;s sun is below the horizon, where &ldquo;aim at the sun&rdquo; is not a well-posed request. <b>Every install except CURSORFIX and TIP is also a trap</b> &mdash; the variable name is absent from their string tables, so setting it is a silent no-op.</span>",
+        "The SH-IBL probe that lights every static prop is <b>never rotated to the mission sun</b> today &mdash; it is baked once on a fixed bright axis, and on <b>17 of 24 missions</b> that leaves a building <i>brighter on the wall facing away from the sun</i> (median aim error 106&deg;; worst is mc2_14 at 177&deg;, almost exactly backwards). A pass looks like the lit wall and the sun finally agreeing. <b>This is the strongest unlooked-at finding of the session</b>, and it has still never been seen render."
+       ]
+      },
+      {
+       "gate": "MC2_SHORELINE_LEGACY_SUPPRESS",
+       "cells": [
+        "",
+        "<code>AB-5-SHORELINE-SUPPRESS-off-legacy.bat</code><br><span style=\"font-size:11px;color:#9aa3ad\"><b style=\"color:#f0d890\">POLARITY REVERSED.</b> This gate is now default-ON, so <b>AB-0 is the NEW behaviour</b> and AB-5 restores the OLD one.</span>",
+        "<b>mc2_01</b> or <b>mc2_03</b>, with a <b>moving camera</b><br><span style=\"font-size:11px;color:#9aa3ad\">the artifact is time-scrolled, so a single still frame understates it</span>",
+        "<span style=\"font-size:11px;color:#9aa3ad\">any map with no buildings or fences near terrain &mdash; the pass only touches static-prop pixels within ~6 screen texels of ground</span>",
+        "The shimmering bright rim where <b>buildings and fences meet the ground</b> disappears on AB-0 and comes back on AB-5, and <b>water does not change at all</b>. <b style=\"color:#f0a0a0\">If water changes, stop and say so</b> &mdash; that would falsify the pixel census this whole change rests on. Negative result to watch for: prop edges reading too dark, which matters while your &ldquo;props look dark&rdquo; report is open."
+       ]
+      },
+      {
+       "gate": "MC2_CPU_PHONG_RETIRE",
+       "cells": [
+        "",
+        "<code>AB-6-PHONG-RETIRE-off-legacy.bat</code><br><span style=\"font-size:11px;color:#9aa3ad\"><b style=\"color:#f0d890\">POLARITY REVERSED.</b> Default-ON. AB-0 is the new grounding; AB-6 restores the legacy term.</span>",
+        "<b>Curved terrain</b> &mdash; ridges, saddles, hillsides; <b>turrets on sloped ground</b> is the named case. For the gameplay half, a <b>shoreline on <code>mc2_m01</code></b> (1,797 water-class flips, 330 cells newly blocked to ground movers &mdash; the worst of any map).",
+        "<b>Flat ground, and grid vertices</b><br><span style=\"font-size:11px;color:#9aa3ad\">the retired term is identically zero there &mdash; a flat plateau shows nothing however long you stare</span>",
+        "<b>The riskiest change on disk</b>, and the one thing an offline audit did settle: across all <b>72,153 stock objects on 37 maps</b>, the shipped authored heights match the <i>retired</i> heightfield to <b>0.0001 wu</b> and disagree with the legacy one by up to <b>13.39 wu</b>. The data was authored on the plain field; the engine had been grounding against the other one. What you would actually notice: <b>6,155 objects (8.5%)</b> settle differently, <b>all of them buildings and gates</b> &mdash; no tree, turret or terrain object moves at all."
+       ]
+      },
+      {
+       "gate": "MC2_STATIC_PROP_IBL_SH",
+       "cells": [
+        "",
+        "<code>AB-7-PROPS-stocklike-no-IBL.bat</code><br><span style=\"font-size:11px;color:#9aa3ad\">default-ON; AB-7 is the flatter, closer-to-stock arm.</span>",
+        "<b>mc2_05</b><br><span style=\"font-size:11px;color:#9aa3ad\">largest difference of the 24; second best mc2_23</span>",
+        "<b>mc2_22</b> (exactly zero) and <b>mc2_01, mc2_04, mc2_07, mc2_24</b><br><span style=\"font-size:11px;color:#9aa3ad\">tree multiplier pinned at 1.0 for every normal on those maps</span>",
+        "<b>This is a preference, not a fix &mdash; whichever you prefer IS the result.</b> Stock MC2 deliberately switches the sun off while baking tree lighting, so flat-lit foliage is correct, not a port bug; the port <i>over</i>-lights them. <b>Not a trees-only switch</b> &mdash; the gate covers the whole static-prop lane, so buildings move too."
+       ]
+      }
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>One standing caveat that will cost you a session if you miss it.</b> <b>The terrain ambient floor is day-gated</b> &mdash; it uploads exactly 0.0 on night missions, so grading it on one proves nothing. The night missions are <b>mc2_05, mc2_10, mc2_19, mc2_21, mc2_23</b>. <span style=\"font-size:11px;color:#9aa3ad\">That list is not a guess: it is the engine&rsquo;s own daylight classifier applied to each mission&rsquo;s authored sun pitch, pinned in tracked source at <code>tools/terrain_daylight_harness/terrain_daylight_harness.cpp:47-54</code>, and a contract row fails if the constants behind it ever drift from <code>mclib/camera.cpp</code>.</span>"
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0d890\">Three things landed today that are deliberately NOT in the table above, because grading them would waste your time.</b> Saying so is the point &mdash; a recipe pointing at a change that cannot move a pixel is worse than no recipe.<br><br><b>(1) <code>MC2_MECH_LIGHT_FRESHNESS</code> (<code>db221dcc2</code>, default-ON).</b> Real bug, real fix &mdash; the mech path trusted a cached light-slot index without checking the frame stamp, and those slots are rebased every frame. <b>But its own author was explicit that in steady state the gate is likely inert</b>, and that what he has is evidence the stale read <i>can</i> occur, not that it <i>does</i>. There is an instrument rather than a picture: the counter <code>s_mechStaleLightRowDeclines</code> on the <code>[MECHBATCHER v1]</code> summary line. <b>A high number means reconsider this change, not defend it.</b> Nobody has seen it, because the fix is in no binary on disk.<br><br><b>(2) The GL/VK prop-shadow class divergence (<code>5efd553e0</code>).</b> Vulkan&rsquo;s prop shader wrote a flat <code>0.25</code> where GL distinguishes <code>0.1875</code> for the alpha-test lattice &mdash; trees, fences, foliage cards were all classified as solid props. Genuine, and now fixed. <b style=\"color:#a0f0a0\">Zero pixels change today:</b> Vulkan is not the default backend (<code>MC2_VK_SHARED_GBUFFER</code> is presence-gated and default-OFF), and no consumer that currently exists separates the two values &mdash; the only reader that does is used solely by <code>shadow_screen.frag</code> under <code>MC2_PROP_SHADOW_RECEIVE</code>, also default-OFF, and the VK ports have no opt-in for it at all. <b>The value is conformance, not appearance.</b><br><br><b>(3) The four launcher gates in &sect;2.</b> Those are a decision, not an experiment &mdash; and until you make it, an A/B run through the GUI and one run from a <code>.bat</code> are not the same arm."
+    }
+   ]
+  },
+  {
    "id": "since_0731",
    "anchor": "since_0731",
-   "heading": "5. New since this page was last built &mdash; cursor fix, isolation verdict, burial audit",
+   "heading": "5. New since this page was last built &mdash; cursor fix, isolation verdict, burial audit, and the board",
    "blocks": [
     {
      "type": "what",
@@ -990,71 +1227,6 @@
     {
      "type": "what",
      "html": "<b>What it means for you:</b> an offscreen run should now be unable to touch your mouse, your keyboard or your foreground window. That was the failure that cost you this session &mdash; <code>MC2_WINDOW_OFFSCREEN=1</code> parked the window at (-32000,-32000), then <i>showed</i> it, and Win32 <code>ClipCursor</code> confined your physical pointer to a rectangle on no monitor. The offscreen mode that existed to keep agent runs off your desktop was itself taking your cursor, and the focus-gained handler re-armed the grab after any startup-only suppression."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "html": "Piece"
-       },
-       {
-        "tag": "th",
-        "html": "Where"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "One policy predicate: <code>gos_CursorCaptureForbidden()</code>, keyed on <b>both</b> intent and <b>actual visibility</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<code>GameOS/gameos/gameos_input.cpp:116</code>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "The chokepoint all seven arm paths funnel through, re-evaluated on <b>every</b> call &mdash; which is what defeats the focus-gained re-arm"
-       },
-       {
-        "tag": "td",
-        "html": "<code>apply_mouse_grab()</code>, <code>gos_render.cpp:48</code>, guard at <code>:69</code>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>Geometry failsafe, independent of every environment variable:</b> <code>ClipCursor</code> is refused outright when the rectangle lands on no monitor, so you can always reach your own desktop"
-       },
-       {
-        "tag": "td",
-        "html": "<code>gos_render.cpp:139-146</code>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "No taskbar button, no Alt-Tab entry, no foreground activation on an unattended run &mdash; applied <i>before</i> the window is ever mapped"
-       },
-       {
-        "tag": "td",
-        "html": "<code>gos_render.cpp:254</code>, applied <code>:551</code>, before <code>SDL_ShowWindow</code> at <code>:552</code>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "The crash bundle&rsquo;s topmost modal dialog &mdash; a focus-stealing box in the middle of your work &mdash; suppressed on unattended runs"
-       },
-       {
-        "tag": "td",
-        "html": "<code>gos_crashbundle.cpp:516-521</code>"
-       }
-      ]
-     ]
     },
     {
      "type": "note",
@@ -1144,10 +1316,6 @@
      "html": "&#9940; <b>Trap in step 2 &mdash; do not run it through <code>run-with-log.bat</code>.</b> That file now contains <code>if defined MC2_WINDOW_OFFSCREEN set MC2_NO_CURSOR_GRAB=1</code> (<code>run-with-log.bat:16</code>), deliberately, because it is meant as an <i>interactive</i> launcher. Running step 2 through it would free your cursor via the <b>old</b> <code>MC2_NO_CURSOR_GRAB</code> arm and never exercise the new <code>MC2_WINDOW_OFFSCREEN</code> arm at all &mdash; <b>a false pass</b>. Set the variable directly and invoke the executable."
     },
     {
-     "type": "note",
-     "html": "<b>Three residual gaps, found in review and not yet closed.</b> <code>WS_EX_APPWINDOW</code> is only ORed, never cleared &mdash; if SDL ever sets it, it would override the taskbar suppression (the editor&rsquo;s own window code does clear it, <code>editor/EditorGosRender.cpp:283</code>). <code>SDL_ShowCursor</code> (<code>gos_render.cpp:569/571</code>) is still unguarded and is not in the checker&rsquo;s watched-API list. And the live-tree injection proof was taken 18 minutes before the final window-styles edit, so it validated a pre-final revision &mdash; the mutated regions are byte-identical, so the coverage still holds, but the proof is not against the committed file."
-    },
-    {
      "type": "h3",
      "html": "5.2 &nbsp;Launch isolation &mdash; none of the mechanisms proved safe, the block stays"
     },
@@ -1219,10 +1387,6 @@
        }
       ]
      ]
-    },
-    {
-     "type": "note",
-     "html": "<b>The escape was reproduced, in four unprivileged calls.</b> A process confined to a private window station walked straight back out to your interactive desktop with <code>OpenWindowStationW(&quot;WinSta0&quot;)</code> &rarr; <code>SetProcessWindowStation</code> &rarr; <code>OpenDesktopW(&quot;Default&quot;)</code> &rarr; <code>SetThreadDesktop</code>. Same user, same token, no administrator rights. The earlier lane&rsquo;s proof of the opposite turned out to be a tautology &mdash; it called <code>OpenDesktopW</code> from <i>inside</i> the private station, where desktop names resolve relative to the caller&rsquo;s own station, so that call was guaranteed to fail and tested nothing. The call that decides it had never been made."
     },
     {
      "type": "note",
@@ -1385,21 +1549,14 @@
     {
      "type": "note",
      "html": "<b>Reproduce it yourself:</b> <code>py -3 scripts/object_burial_audit.py --top 0</code> for the table, <code>--selftest</code> for its eight negative controls (I ran them today: <b>ALL PASS</b>, including a mutation control that re-parses with the wrong byte layout and requires it to be rejected, and an axis control that requires the wrong up-axis to give a visibly different answer). One caveat worth knowing: the script needs stock mission data it finds in a <i>sibling install</i>, not in the worktree, and it byte-verifies whatever it finds against the shipped <code>mission.fst</code> and refuses data it cannot verify. A clone alone is not enough &mdash; an install has to be present."
-    }
-   ]
-  },
-  {
-   "id": "selfcheck",
-   "anchor": "selfcheck",
-   "heading": "6. The checks that were lying &mdash; why &ldquo;all green&rdquo; meant nothing",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "There are no pixels in this section. It is here because it explains why a page full of confident numbers kept turning out to be wrong. <b>Five separate automated checks were reporting green while asserting things that were false</b> &mdash; and a checker that lies is worse than no checker, because it converts <i>unknown</i> into a false <i>verified</i>. The board went from <b>137 rows</b> to <b>143</b>, and from <b>six failing to one</b>. The six reds had six different causes, only one of which was the code under test."
     },
     {
      "type": "h3",
-     "html": "The five that were closed, and what was really wrong"
+     "html": "5.4 &nbsp;What the automated board is worth today"
+    },
+    {
+     "type": "what",
+     "html": "The contract board is now <b>150 rows</b> &mdash; it was <b>137</b> when this page was first written. I ran it for this update rather than quoting it. At <b>2026-07-31 09:40</b>, against <code>5efd553e0</code>, it printed <b>144 passing, 6 failing</b> &mdash; and the split needs that timestamp, because the row count does not. <b style=\"color:#f0d890\">I was told to publish &ldquo;148 passing&rdquo; and I am not going to, because I could not reproduce it</b> &mdash; and the reason why is worth more to you than the number was:"
     },
     {
      "type": "meta",
@@ -1407,11 +1564,57 @@
       [
        {
         "tag": "th",
-        "html": "Check"
+        "html": "Failing row"
        },
        {
         "tag": "th",
-        "html": "What was actually wrong"
+        "html": "Cause"
+       },
+       {
+        "tag": "th",
+        "html": "Whose"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>flag_registry_truth</code><br><code>flag_registry_truth_selftest</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<code>MC2_MECH_LIGHT_FRESHNESS</code> was registered this morning but <code>docs/flags.auto.yaml</code> was never regenerated, so the tracked flag doc and the registry disagree. The self-test refuses to grade itself while the live doc is wrong, which is correct behaviour, so it cascades."
+       },
+       {
+        "tag": "td",
+        "html": "<b>Real, and one command fixes it</b> &mdash; <code>py -3 scripts/flag-registry-auto-gen.py</code>. Not this lane&rsquo;s to run.<br><b style=\"color:#f0d890\">Still failing at 10:20.</b>"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>contract_coverage</code><br><code>contract_coverage_selftest</code>"
+       },
+       {
+        "tag": "td",
+        "html": "A new checker, <code>scripts/check-render-contract-alpha-classes.py</code>, exists in the worktree but is <b>untracked and unwired</b> &mdash; nothing runs it. Same cascade shape."
+       },
+       {
+        "tag": "td",
+        "html": "<b>A sibling lane&rsquo;s work in flight.</b> Not a regression; an unfinished landing.<br><b style=\"color:#a0f0a0\">RESOLVED while this page was being written</b> &mdash; a sibling lane wired the checker at <code>0090e1457</code>. Re-checked individually at 10:20: both rows now pass."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>capture_provenance</code>"
+       },
+       {
+        "tag": "td",
+        "html": "Three capture manifests cannot say which binary produced them, plus the two zero-byte manifests from the disk-full incident."
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0a0a0\">Yours</b> &mdash; decision 3 and 4 in &sect;2. It should stay red until you answer them."
        }
       ],
       [
@@ -1421,111 +1624,33 @@
        },
        {
         "tag": "td",
-        "html": "<b>A stale bake, not a bad check.</b> A mech vertex shader changed with the sun-axis fix on 07-30, while its compiled form dated from <b>22 July</b>. Anyone running with that path enabled would have rendered mech vertices from <b>pre-fix</b> code while the normal path ran the new one. <br><span style=\"font-size:11px;color:#9aa3ad\">Scope, stated honestly: that path sits behind a default-OFF switch, so no default launch was affected. The row was right to be red anyway &mdash; a divergent bake is a live trap the moment anyone flips it.</span>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>delivery_installs</code>"
+        "html": "Failed during the board run and <b>passes when re-run on its own</b>. A sibling lane re-baked the mech shader set while the board was mid-flight."
        },
        {
         "tag": "td",
-        "html": "<b>The check was asserting a falsehood.</b> A disk sweep found <b>30</b> engine binaries where the previous scan found <b>22</b>, with <b>four of the newest outside the folders it had been told to look in</b> &mdash; including the CURSORFIX install this page now tells you to launch. <b>That was the third time in one day that install discovery turned out to be the real bug.</b><br><span style=\"font-size:11px;color:#9aa3ad\">Not a clean win: the pass bar is &ldquo;at least one install shows the fix&rdquo;, so finding more installs can only make the row easier to pass. Which install gets graded is a decision left to you.</span>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>split_path_contracts</code><br><code>split_path_selftest</code>"
-       },
-       {
-        "tag": "td",
-        "html": "A rule was grading English prose as if it were code. One proof cleared both rows; a follow-up took the self-test from 26.4&nbsp;s to 3.0&nbsp;s."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>raw_gl_fbobind</code>"
-       },
-       {
-        "tag": "td",
-        "html": "A probe&rsquo;s readback bracket needed tagging per call site."
+        "html": "<b>An artifact of a shared, moving worktree</b> &mdash; not a defect in the tree or the check.<br><b style=\"color:#a0f0a0\">Green on re-run</b>, then and now."
        }
       ]
      ]
     },
     {
      "type": "note",
-     "html": "<b>All five were closed the same way: by putting the real regression back into the live tree, watching the check fire, then reverting it.</b> A checker that has only ever seen the fixed tree is a checker that has never been tested. That is the standard here now, and it is the single practice that would have prevented most of this page&rsquo;s corrections."
-    },
-    {
-     "type": "h3",
-     "html": "The comment stripper was hiding 34,385 lines of real code"
-    },
-    {
-     "type": "what",
-     "html": "The trigger is the game&rsquo;s own stock banner comment, <code>//****</code>. Two slashes followed by a star is <code>/*</code> starting one character later &mdash; so a stripper built out of pattern-matching opens a block comment that was never opened, and swallows everything until it finds a closing <code>*/</code> somewhere further down the file. <b>34,385 lines across 73 files</b> were invisible to every check that used the shared helper. <span style=\"font-size:11px;color:#9aa3ad\">Re-measured today at the current tip: 34,376 lines across 75 files &mdash; within 0.03%, the difference being drift since the fix landed.</span> A <b>private copy</b> of the identical bug in a second family of checks skipped a further <b>67,983 lines</b> &mdash; though that one was an advisory mode that no gate consumes, so nothing was being waved through on its account."
+     "html": "<b>The honest reading, and the reason the number is not the point.</b> Of the failing rows, <b>one</b> is genuinely yours to decide, one is a stale generated file, and the rest are a sibling lane&rsquo;s uncommitted work sitting in the same worktree. <b>Subtract the two rows the untracked checker caused and you get 148</b> &mdash; which is almost certainly where that figure came from, and it was true of a tree that no longer exists. <b style=\"color:#a0f0a0\">Those two rows went green while this page was being written</b>, so the live figure has already moved again; the only row still failing that is not yours is the stale flag doc. <b style=\"color:#f0d890\">A pass count measured against a worktree three lanes are writing to is a number with a shelf life of minutes.</b> The list of failing rows above is the durable form, which is why it is printed instead.<br><br><b style=\"color:#f0d890\">That is not a hypothesis &mdash; it happened while this page was being written.</b> I started a second board run 40 minutes after the first, to publish a fresher split. <b>It aborted</b>: <code>scripts/check-contracts.sh: line 1377: syntax error near unexpected token</code> &mdash; a sibling lane was part-way through editing the board script itself. That lane has since committed (<code>918f12799</code>), the file is valid again, and <b>the tip moved from <code>5efd553e0</code> to <code>1fbaa8b31</code> between the two attempts</b>. The measurement above is stamped rather than refreshed, because a refresh would have been just as perishable.<br><br><span style=\"font-size:11px;color:#9aa3ad\">Historical note kept because it is the practice that changed: the board went from 137 rows with six reds, and five of those six were checks <i>reporting green while asserting something false</i> &mdash; worse than no check, because it converts <i>unknown</i> into a false <i>verified</i>. All five were closed the same way: put the real regression back into the live tree, watch the check fire, then revert it. A checker that has only ever seen a fixed tree has never been tested.</span>"
     },
     {
      "type": "note",
-     "html": "<b>The part worth remembering.</b> Exactly <b>three</b> scripts called the shared stripper. <b>Seventeen others carried their own private copies</b> of the same logic. It had been duplicated, never centralised &mdash; and the shared file&rsquo;s own documentation claimed the opposite, which is where the misconception started. Fixing one copy fixed three checks and left seventeen unfixed."
-    },
-    {
-     "type": "h3",
-     "html": "No compiled test had ever been run by any check"
-    },
-    {
-     "type": "what",
-     "html": "Before this session, <b>not one</b> of the board&rsquo;s 141 rows invoked a compiled test binary. Every row was a static text check over source files. There are <b>638 test declarations, 631 of them runnable</b>. They now run, and this is the output:"
-    },
-    {
-     "type": "what",
-     "html": "<div style=\"background:#0e1013;border:1px solid #2a3038;border-radius:4px;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#d7e3ee;white-space:pre;overflow-x:auto\">[doctest] test cases:    631 |    631 passed | 0 failed | 1 skipped\n[doctest] assertions: 116854 | 116854 passed | 0 failed |\n[doctest] Status: SUCCESS!</div>"
-    },
-    {
-     "type": "what",
-     "html": "One of them had not merely gone quiet &mdash; it had <b>rotted</b>, and no longer even linked: two unresolved symbols. A comment in the source had <b>predicted exactly this</b>. It was a comment, not a guard, so nothing acted on it for however long it had been true."
-    },
-    {
-     "type": "note",
-     "html": "&#9888; <b>Read this before taking any comfort from &ldquo;631 passed&rdquo;.</b> Those tests cover <b>essentially none of what changed today</b>, and structurally cannot: not one of the source files behind the lighting, terrain, elevation or cursor work is even compiled into a test binary. <b>631 green says nothing whatsoever about tonight&rsquo;s render work.</b><br><span style=\"font-size:11px;color:#9aa3ad\">One literal exception, so the sentence is not overclaimed: a registry header that changed today <i>is</i> asserted on &mdash; but only as a count of entries, never as behaviour.</span>"
-    },
-    {
-     "type": "note",
-     "html": "<b>And the failure mode that makes all of this necessary.</b> Silencing a real test case makes the runner print <b>&ldquo;630 passed, 0 failed, SUCCESS&rdquo;</b> and exit clean. <b>The binary is blind to its own silencing</b> &mdash; demonstrated live, not theorised. A ratchet now pins how many cases are disabled, so that number cannot drift upward quietly."
-    },
-    {
-     "type": "h3",
-     "html": "A fix whose own author argued against it"
-    },
-    {
-     "type": "what",
-     "html": "One of the ten default-ON changes &mdash; the light-row freshness fix &mdash; corrected a path that trusted a cached lighting slot with <b>no freshness check, no range check and no empty check</b>, while its sibling consumers guard it and one of their comments names the symptom outright: <i>&ldquo;produces wrong/black lighting&rdquo;</i>. <b>Then its author wrote a second commit refuting it.</b> The re-gather can <b>mistint</b> a prop in the case where the stale slot happened to be correct. The trade is <b>&ldquo;possibly pure black&rdquo; &rarr; &ldquo;possibly mistinted, never black&rdquo;</b> &mdash; a real trade, not a free win, and the commit says so in as many words."
-    },
-    {
-     "type": "note",
-     "html": "<b>There is a counter, and it is the only evidence that will ever exist about whether the trade was worth taking.</b> The engine prints <code>stale_light_rows_regathered</code> on its object-batcher summary line. <b>A high number means this change should be reconsidered, not defended.</b> Two companion counters must read zero. Nobody has seen any of the three, because this fix is in <b>no binary on disk</b> &mdash; including the one this page tells you to launch."
-    },
-    {
-     "type": "h3",
-     "html": "The one row still red is correctly red"
+     "html": "&#9888; <b>Read this before taking any comfort from a green board.</b> The compiled test suite reports <b>631 passed, 0 failed</b> &mdash; and it covers <b>essentially none of what changed today</b>, structurally: not one of the source files behind the lighting, terrain, elevation or cursor work is compiled into a test binary. <b>631 green says nothing whatsoever about tonight&rsquo;s render work.</b> Separately, the runner is blind to its own silencing &mdash; disabling a real case still prints SUCCESS &mdash; so a ratchet now pins the disabled count."
     },
     {
      "type": "what",
      "html": "<code>capture_provenance</code> fails on five findings, and <b>three of them need a decision from you</b>. They cannot be acknowledged away: the remedy is to re-bless the golden captures from runs that record which binary produced them, and that needs actual capturing, which needs a launch. <b>It is a user decision wearing a red light, and it should stay red until you make it.</b>"
-    },
-    {
-     "type": "note",
-     "html": "Two smaller findings from the same sweep, both honest limitations rather than bugs. <b>(1)</b> When a row fails, the board runs in a quiet mode that <b>threw the failing row&rsquo;s explanation away</b> &mdash; so the one check capable of saying why it was unhappy printed a bare <code>FAIL</code>. Fixed for that row &mdash; and then, while this page was being rewritten, <b>fixed for the other 142 as well</b>. It could not be done by copying the first fix, because those rows never captured their output at all; it needed the runner rebuilt. <b>A passing row still prints nothing</b>, so a green board stays exactly as quiet as before and the extra output is proportional to red rows only. <b>(2)</b> An acknowledged warning carries a 365-day cap, but the cap is measured from <i>the day you run the check</i>, not from the day it was acknowledged &mdash; so nudging the expiry forward once a year renews it forever. The field that would have caught that is written on every entry and <b>read by nothing</b>."
     }
    ]
   },
   {
    "id": "corrections",
    "anchor": "corrections",
-   "heading": "Corrections &mdash; things this page, or a previous session, told you that were wrong",
+   "heading": "6. Corrections &mdash; and what was cut from this build of the page",
    "blocks": [
     {
      "type": "what",
@@ -1587,26 +1712,6 @@
       [
        {
         "tag": "td",
-        "html": "<b>&ldquo;Trees are the darkest asset class at every shipped colour scheme, and mechs are the brightest &mdash; a rank that flips on 5 of 10 schemes.&rdquo;</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Half of this is withdrawn.</b> Tree median albedo <b>L = 58.0</b> is real. But &ldquo;darkest class&rdquo; is <b>contradicted inside the same document</b>, which elsewhere lists unpainted mech 47.0 and vehicle 48.4 <i>below</i> it. And &ldquo;at every colour scheme&rdquo; is not a property trees can have &mdash; <b>trees are never repainted</b>, so their number is scheme-independent by construction. The <b>&ldquo;5 of 10&rdquo; is withdrawn entirely</b>: no such sweep output exists on disk, and &ldquo;10&rdquo; is a tool&rsquo;s default <code>--paint-sweep-limit</code>, not a count of shipped schemes. What survives, and is well sourced: <b>the paint scheme moves brightness further than any lighting effect under study</b> (mech 71.2&ndash;117.2, a 1.65&times; range), so &ldquo;which asset class is brightest&rdquo; is not a stable question."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>&ldquo;Sunk turrets: the 11 turret-class objects sit on the heightfield to 2e-6 wu, but three L_TurretGenerator objects have 47.95% of their mesh below their origin &mdash; and the black-quad report names the same two models.&rdquo;</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Only the first number survives, and the last clause is wrong.</b> There are exactly <b>11 TURRET-class objects</b> on mc2_03 &mdash; confirmed from the mission object list. But <b>&ldquo;2e-6&rdquo; and &ldquo;47.95%&rdquo; appear nowhere in the repo</b>; the decisive offline check (placed z vs terrain elevation) is specified and has <b>never been run</b>, and the mission .pak is not in this worktree. The black-quad report names <b>BTurretControl</b> and <b>LiaoTurretGenerator</b> &mdash; two <i>model types</i>, only one of which overlaps, so &ldquo;the same two models&rdquo; cannot be true of a three-instance single-model group. <b>See the question below.</b>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
         "html": "&ldquo;Roughly half the props in the world move vertically by up to &plusmn;2.4&nbsp;m.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">relayed for publication &mdash; withdrawn, un-withdrawn, and now corrected a third time</span>"
        },
        {
@@ -1617,81 +1722,11 @@
       [
        {
         "tag": "td",
-        "html": "&ldquo;<code>MC2_STATIC_PROP_IBL_SUN_ROTATE</code> is absent from all three binaries and cannot be graded by you at all.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">published in section 1 of this page</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Out of date, not wrong.</b> It was true of the three installs that existed when it was written. A fourth, <code>MC2-OpenGL-TIP-2026-07-31</code>, was built at 01:31 &mdash; 40 minutes after the gate landed &mdash; and <b>does</b> contain it, confirmed two ways (commit ancestry, and a string-table search with positive and negative controls). <b>The strongest finding of the session is gradable.</b> It still has never been looked at."
-       }
-      ],
-      [
-       {
-        "tag": "td",
         "html": "&ldquo;The rank flips on <b>5 of 10</b> schemes, so &lsquo;mechs are the brightest&rsquo; is not robust.&rdquo;"
        },
        {
         "tag": "td",
         "html": "<b>Withdrawn.</b> The <code>10</code> is a command-line default (<code>--paint-sweep-limit</code>) that merely caps how many schemes get iterated &mdash; a flag default wearing a measurement&rsquo;s clothes. The real population is <b>114</b> mission-authored schemes, and no reading reproduces 5-of-10. <b>The qualitative claim survives:</b> paint scheme swings mech albedo <b>1.58&times;</b> over 10 schemes and <b>5.66&times;</b> over all 114, so &ldquo;mechs are the brightest&rdquo; is not a scheme-stable property. Say that; do not say 5 of 10."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "&ldquo;Trees are the darkest asset class at every shipped colour scheme.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">this page previously withdrew the whole claim; that went too far</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Restated, and the restated form is true.</b> Trees <i>are</i> the darkest as-drawn class (median L 58.0, against vehicle 96.9, static prop 103.9, mech 112.0) &mdash; and trivially so at every scheme, <b>because trees are never repainted</b>: paint applies only to mech and vehicle. &ldquo;At every scheme&rdquo; is not a property trees can have. <b>The trap:</b> at the raw texture convention &mdash; a paint mask that is never drawn &mdash; mech reads 47.0 and vehicle 48.4, <i>below</i> tree, and you conclude the opposite. <b>Always say as-drawn.</b>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "&ldquo;The turret arithmetic (2e-6 wu, 47.95%) appears nowhere in the repo &mdash; the decisive check has never been run.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">an objection this page relied on</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>The objection was reasonable when written and is now false.</b> The check had been run twice; it has since been run a third time, and the entire apparatus &mdash; the 1,314-line tool and both result tables &mdash; is committed at <code>6d9360046</code>. It was <i>untracked</i>, not absent. <b>This is the session&rsquo;s most expensive recurring mistake in miniature:</b> a lane measures a number, reports it, and never commits the artifact; the next lane greps the repo, finds nothing, and grades it fabricated. Both behaved correctly. <b>The repo is not a record of what was measured &mdash; it is a record of what was committed.</b>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "&ldquo;47.95% of the <code>L_TurretGenerator</code> mesh is below its origin.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">quoted bare</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>The number is right; the impression it creates is wrong.</b> The &minus;24.93 comes entirely from an <b>8-vertex decorative <code>Coil</code> card that straddles the origin symmetrically</b>. The actual body is <b>1.22%</b> below origin. Anyone quoting 47.95% is describing a decoration, not a sunk building. <b>Quote 1.22%, or quote both.</b> Also: that prop is BUILDING-class and re-snaps to ground every frame, so the authored-height columns do not even apply to it."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "&ldquo;No install on this machine contains the cursor-capture fix &mdash; launch TIP.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">this page, earlier today</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Out of date within the hour.</b> A fifth install, <code>MC2-OpenGL-CURSORFIX-2026-07-31</code>, was built at 03:31 and does contain it. <b style=\"color:#a0f0a0\">Launch CURSORFIX, not TIP.</b> The sweep that found it also found that the check responsible for noticing new installs had been looking in the wrong folders &mdash; it saw 22 binaries where 30 exist, and four of the newest, including this one, were outside its search roots."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "&ldquo;Nine changes ship default-ON.&rdquo;"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Ten.</b> The light-row freshness fix also defaults on. It is in <b>no binary on disk</b>, so launching CURSORFIX grades nine of the ten &mdash; which is why this page now says which nine."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "&ldquo;The contract board went from 131 rows to 143.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">relayed internally; never published to you</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>131 was a number of rows <i>passing</i>, not a number of rows.</b> The board was <b>137 rows</b> and is now <b>143</b>, and it went from <b>six failing to one</b>. Recorded here even though you never saw the wrong version, because the mistake is the same shape as several larger ones on this page &mdash; a number carried one step too far from the place it was measured. <span style=\"font-size:11px;color:#9aa3ad\">The pass/fail split in particular moved twice inside one session, so it only means anything with a timestamp attached.</span>"
        }
       ]
      ]
@@ -1707,24 +1742,113 @@
     {
      "type": "note",
      "html": "<b>Where these come from.</b> Every correction above is adjudicated in <code>.claude/MEASUREMENT-LEDGER.md</code>, which grades each disputed number three ways &mdash; <i>measured and reproducible</i>, <i>measured but uncommitted</i>, or <i>unsupported</i>. The middle category is the point of the file: &ldquo;I could not find it in the repo&rdquo; is evidence of non-commitment, not of falsity. Nothing graded <i>unsupported</i> appears anywhere on this page."
+    },
+    {
+     "type": "h3",
+     "html": "What was cut from this build of the page, and why"
+    },
+    {
+     "type": "what",
+     "html": "<b>You have never finished one of these packs.</b> That is a fact about the page, not about you: the previous build ran to <b>298 blocks over 24 sections</b>, and <b>48% of its weight was prose in sections containing not one picture</b>. This build is <b>276 blocks over 23 sections</b> &mdash; and that is <i>after</i> adding two decisions, a corrected A/B table and a board breakdown, so more came out than the net figure suggests. Everything removed is listed here rather than deleted quietly:"
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "Cut"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;1: four separate stacked &ldquo;Correction &mdash;&rdquo; notes (IBL-rotate gradability, the fifth install, the 9/9 claim, the route disclosure). Their live content is now one paragraph; the superseded halves are gone."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;2 queue: rows <b>3</b>, <b>4</b> and <b>6</b> (zero-byte manifests, unverifiable manifests, Recycle Bin) collapsed from three long rows into one. They are disk hygiene, not rendering, and they were taking up a third of the decision queue."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;4: the &ldquo;Updated &mdash; the IBL-rotate row used to read NOT GRADABLE&rdquo; note, and the whole A/B table&rsquo;s old recipe column &mdash; see the ARM COLLISION warning, which replaces it."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;4: the &ldquo;open question worth answering plainly&rdquo; heading and paragraph about the un-rotated SH-IBL probe. It is now the <i>What a pass looks like</i> cell of the row you would actually run, instead of a separate essay 400 words below it."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;4: the standing caveat that &ldquo;the AB install predates the shoreline default flip, so AB-3 is the ON arm&rdquo;. Superseded and inverted by the ARM COLLISION table &mdash; on the install you are told to launch, AB-3 is not the shoreline arm at all."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;5: the cursor fix&rsquo;s seven-row internals table and its three-residual-gaps note (both about source structure, not about anything you can look at); the launch-isolation study&rsquo;s reproduce-the-escape and two-limits notes, kept as one line in the verdict row."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;6 (&ldquo;the checks that were lying&rdquo;), 19 blocks of tooling archaeology &mdash; the comment-stripper bug, the five closed checks, the duplicated-stripper story, the fail-reason rendering. None of it is anything you can look at. The three sentences that change what you should believe are kept below."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;6 corrections table: 9 of 15 rows. Dropped were corrections that have since been adjudicated closed in <code>.claude/MEASUREMENT-LEDGER.md</code> and corrections-of-corrections whose live half is now stated in place (the turret 47.95%, the trees-darkest restatement, the IBL-rotate gradability, the 2e-6 objection)."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;7: the two stale preamble notes (one dated the section against installs that no longer matter, one repeated the image-staleness warning that &sect;5 already carries)."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;8: table <b>0b</b> (&ldquo;gates CORRECTED since the last version of this page&rdquo;) and its heading. It corrected a version of this page that no longer exists; the corrected values are what tables 0a and 0c already publish, and those are re-read from the C++ at render time."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;20: 14 of 23 blocks &mdash; the duplicate DEFAULT-LAUNCH-REALITY note (&sect;2 carries it), the &ldquo;what was captured and why none of it counts&rdquo; preamble, the additive-section disclaimer, three method-honesty notes, and the closing &ldquo;what this update did not do&rdquo;. The four-complaints table, the three-defects table, the root-causes-that-MOVED table and all six pictures are kept."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&sect;20i (&ldquo;root causes that MOVED&rdquo;) &mdash; heading, intro and a five-row table. Every live entry in it is either a row of the corrections table in &sect;6 or a queue row in &sect;2; it was a third copy."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>Nothing with a picture in it was cut.</b> All 126 images the previous build referenced are still referenced, in the same sections. Everything removed was prose about tooling, prose that narrated a previous edit to this page, or prose whose live half is now stated in place."
+       }
+      ]
+     ]
     }
    ]
   },
   {
    "id": "readfirst",
-   "heading": "Background &mdash; the five default-ON changes nobody has looked at",
+   "heading": "7. The default-ON changes nobody has looked at",
    "blocks": [
     {
      "type": "note",
-     "html": "<b>It is <b>ten</b> now, not five.</b> This section was written when five changes shipped default-ON. Five more have landed since and are described elsewhere on this page: the sidecar loader fix (<code>e1bdb7af6</code>), the <b>CPU Phong retirement</b> (<code>a75339bb0</code> &mdash; <code>MC2_CPU_PHONG_RETIRE</code>, reader <code>mclib/mapdata.cpp:2452-2453</code>, see section 5.3), the <b>legacy shoreline foam suppression</b> (<code>6340e0523</code> &mdash; <code>MC2_SHORELINE_LEGACY_SUPPRESS</code>, reader <code>gos_terrain_lod_chunk.cpp:4056-4057</code>, default flipped OFF&rarr;ON by that commit), and the <b>cursor-capture fix</b> (<code>ffebf5e87</code>, ungated, section 5.1). <b>The sentence that matters is unchanged and now applies to nine things instead of five: not one of them has ever been seen running.</b> <b>And a tenth landed after that:</b> the light-row freshness fix (<code>480ceaafa</code>), described in section 6 &mdash; it is in no binary on disk, so it is the one default-ON change that even the newest install cannot show you."
-    },
-    {
-     "type": "note",
-     "html": "<b>&#9888; This section pre-dates the two 2026-07-30 installs.</b> It was written when the only builds on this machine were the 14 stale trees under <code>A:/Games/mc2-opengl/</code>, and its original warning &mdash; that no install contained the concrete retraction &mdash; has been overtaken. Read the install table at the top of this page instead; it is current and binary-verified. What survives here, and is still worth your eyes, is <b>the list of changes that ship active with no environment variable</b> and have still never been seen by a human or a capture."
-    },
-    {
-     "type": "note",
-     "html": "<b>Every image on this page is at least one executable old.</b> They remain REVIEW-ALLPOSES-1&rsquo;s clean-fingerprint set. No lane since has been able to re-capture: the shared worktree was held dirty by parallel lanes, a foreign smoke lease was live on the deploy path, and engine launches are now hard-blocked by a hook. The prose and the gate defaults on this page are current and were re-resolved from source when this page was built; <b>the pictures are not</b>. Two of the five surfaces below have <b>no picture at all</b>."
+     "html": "<b>It is <b>eleven</b> now, not five.</b> This section was written when five changes shipped default-ON. Six more have landed since: the sidecar loader fix (<code>e1bdb7af6</code>); the <b>CPU Phong retirement</b> (<code>a75339bb0</code> &mdash; <code>MC2_CPU_PHONG_RETIRE</code>, reader <code>mclib/mapdata.cpp:2452-2453</code>, &sect;5.3); the <b>legacy shoreline foam suppression</b> (<code>6340e0523</code> &mdash; <code>MC2_SHORELINE_LEGACY_SUPPRESS</code>, reader <code>gos_terrain_lod_chunk.cpp:4056-4057</code>, default flipped OFF&rarr;ON by that commit); the <b>cursor-capture fix</b> (<code>ffebf5e87</code>, ungated, &sect;5.1); the <b>static-prop light-row freshness</b> fix (<code>480ceaafa</code>); and, landed today, the <b>mech light-row freshness</b> fix (<code>db221dcc2</code> &mdash; <code>MC2_MECH_LIGHT_FRESHNESS</code>). <b>The sentence that matters is unchanged: not one of the eleven has ever been seen running.</b> <b style=\"color:#f0d890\">The last three are in no binary on disk at all</b> &mdash; not even in CURSORFIX &mdash; so even the install this page tells you to launch cannot show them to you.<br><br><b>On the newest one, stated the way its own author stated it.</b> The mech path was reading a cached light-slot index and testing only the &ldquo;no slot&rdquo; sentinel &mdash; never the frame stamp &mdash; while those slots are rebased every frame, so an index minted on one frame could name another actor&rsquo;s row on the next and shade the mech with zeroes. Three sibling consumers already guarded against exactly this; the mech path was the last that did not. <b>But he was explicit that in steady state the gate is probably inert</b>, and that what he has is evidence the stale read <i>can</i> happen, not that it <i>does</i>. It ships ON because declining one mech one frame of GPU batching costs nothing (the CPU path draws it anyway with its own lighting), not because anyone has seen it fire. The counter <code>s_mechStaleLightRowDeclines</code> is the only evidence that will ever exist either way."
     },
     {
      "type": "h3",
@@ -1881,7 +2005,7 @@
   {
    "id": "gates",
    "anchor": "#gates",
-   "heading": "0. Gate inventory &mdash; every gate this session added or changed",
+   "heading": "8. Gate inventory &mdash; every gate this session added or changed",
    "blocks": [
     {
      "type": "what",
@@ -1951,77 +2075,6 @@
         "<code>MC2_SHADOW_FADE_RAMP0</code>",
         "Companion ramp; preserves the night shadow dissolve",
         "<b>Genuinely done</b> (ships with ALT_SCALE)."
-       ]
-      }
-     ],
-     "attrs": "class=\"meta\" style=\"width:100%;border-collapse:collapse\""
-    },
-    {
-     "type": "h3",
-     "html": "0b. Gates CORRECTED since the last version of this page"
-    },
-    {
-     "type": "gate_table",
-     "headers": [
-      "Gate",
-      "This page previously said",
-      "Source actually says",
-      "Consequence"
-     ],
-     "default_col": null,
-     "rows": [
-      {
-       "gate": "MC2_LIGHT_MOVER_VIS_GATE",
-       "cells": [
-        "<code>MC2_LIGHT_MOVER_VIS_GATE</code>",
-        "<b style=\"color:#f0a0a0\">ON</b>",
-        "<b style=\"color:#f0d890\">OFF &mdash; PARKED</b> by <code>89f0ed4f</code> (<code>cone_glow.cpp:185</code>)",
-        "Misreported in the dangerous direction. The mover-light leak is <b>default behaviour in every binary that exists</b>."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_CONE_VIS_GATE",
-       "cells": [
-        "<code>MC2_LIGHT_CONE_VIS_GATE</code>",
-        "<b style=\"color:#f0a0a0\">ON</b>",
-        "<b style=\"color:#f0d890\">OFF &mdash; PARKED</b> by <code>89f0ed4f</code> (<code>cone_glow.cpp:171</code>)",
-        "Same &mdash; <b>the gate itself is still PARKED OFF</b>. <b style=\"color:#a0f0a0\">Partially superseded 2026-07-25 by <code>ceb5bb06</code></b> (VIS-SEMANTICS-FINISH-2, landed while this page was being rebuilt): the stale-emitter turn guard &mdash; the one whose comment describes &ldquo;a lit beam hanging in mid-air with no emitter under it&rdquo; &mdash; no longer consults this parked gate. It now arms off <code>vis_job_a_armed()</code> = <code>MC2_VIS_SEMANTICS</code> (default ON) <i>or</i> <code>MC2_LIGHT_CONE_VIS_GATE=1</code>, disarmed by <code>MC2_FORCE_ALL_VISIBLE=1</code>. So a culled / LOD-dropped / off-map-staged mover should no longer emit its cone <b>by default</b>. <b>Caveat:</b> <code>MC2_VIS_SEMANTICS</code> is itself unverified and was found in <b>no deployed binary</b> (see 0a), so this is a source-level fix awaiting an actual build and an A/B."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_BILLBOARD_TWOSIDED",
-       "cells": [
-        "<code>MC2_LIGHT_BILLBOARD_TWOSIDED</code>",
-        "<b style=\"color:#f0a0a0\">ON</b> (&ldquo;contested&rdquo;)",
-        "<b style=\"color:#a0f0a0\">OFF</b> &mdash; <b>retired</b> 2026-07-25 (<code>tgl.cpp:92</code>)",
-        "Was default-ON while non-stock, never approved, and called falsified / near-inert by its own successor lane. OFF == the stock legacy cull. Kept as an opt-in lever."
-       ]
-      },
-      {
-       "gate": "MC2_WATER_SHORE_MEANDER",
-       "cells": [
-        "<code>MC2_WATER_SHORE_MEANDER</code>",
-        "OFF, &ldquo;click-through pending&rdquo;",
-        "<b style=\"color:#a0f0a0\">75</b> &mdash; the <b>user-approved</b> amplitude is now the compiled default",
-        "The approval previously existed only in a status doc, so the feature shipped disabled &mdash; and this pack's own A/B drove amplitude <b>1</b>, not 75. <b>Watch:</b> mc2_01&rsquo;s waterline creeps ~10% further up the beach at 75."
-       ]
-      },
-      {
-       "gate": "MC2_CEMENT_TONE_MATCH",
-       "cells": [
-        "<code>MC2_CEMENT_TONE_MATCH</code>",
-        "&ldquo;Cures the concrete patchwork&rdquo; &mdash; <b>Candidate</b>, with a BEFORE/AFTER figure selling it (&sect;12)",
-        "OFF &mdash; <b style=\"color:#f0a0a0\">REJECTED BY YOU</b> (&ldquo;after is WAY worse&rdquo;)",
-        "This page was still recommending an arm you rejected. Corrected here and in &sect;12."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_REALISM tunables",
-       "cells": [
-        "<code>MC2_LIGHT_REALISM</code> tunables",
-        "&mdash; (not stated)",
-        "Constants were <b>variant A</b>; you approved <b>variant B</b>. Now compiled as B (0.40 / 2.5 / 2.2 / 0.0 / 70 / 40)",
-        "Enabling the gate previously gave you the arm you did <b>not</b> pick."
        ]
       }
      ],
@@ -4336,100 +4389,6 @@
    "heading": "Session 2026-07-29/30 &mdash; your complaints, the three unfixed defects, and the root causes that moved. <span style='font-size:12px;color:#9aa3ad'>Trimmed: the instrument post-mortems, the infrastructure log, the 53-commit table and the adversarial-review write-ups were cut &mdash; none of them can support a verdict from you.</span>",
    "blocks": [
     {
-     "type": "note",
-     "html": "<b style=\"color:#f0d890\">READ THIS FIRST &mdash; what would you actually see differently on a default launch?</b> <b>Three things, and nobody has seen any of them.</b> That is the honest answer and it is the most important line in this section. It has <b>changed since this section was first written</b>: it used to say &ldquo;almost nothing&rdquo;, because at that moment two of the three had not landed yet. <br><br><b>1. The ground gets brighter on daylight maps.</b> On <b>21 of 26 campaign missions</b> (plus every multiplayer <code>mc2_m*</code> map) the terrain away from concrete gains a modest albedo-scaled ambient lift &mdash; brighter, slightly cooler, a little less contrast between sunlit and shaded ground. Concrete pads deliberately do not move, so <b>the pad-vs-dirt gap you complained about narrows</b>. The five night missions (<code>mc2_05</code>, <code>10</code>, <code>19</code>, <code>21</code>, <code>23</code>) are bit-for-bit unchanged, because the daylight gate computes to exactly 0.0000 on their authored sun pitch. <br><b>2. The pale ring around concrete pads should largely disappear.</b> Transition tiles now sample the pad&rsquo;s own concrete texture and stop being fogged twice. Side effect: <b>distant concrete reads darker and warmer</b> than it does today. <br><b>3. Ground vehicles change brightness in both directions.</b> Trucks, tanks and APCs were being drawn <b>completely unlit at full texture brightness</b>. They now take the same lighting path as everything else, so in daylight they brighten <i>toward</i> the mechs &mdash; and <b style=\"color:#f0a0a0\">at night they will get noticeably DARKER than they are now</b>. That night direction is the change most likely to read as a regression, and it is the one with <b>no prediction, no capture and no measurement</b> behind it. The five night missions are exactly the ones where the terrain ambient floor is OFF, so nothing offsets it. <br><br><b style=\"color:#f0d890\">THE CAVEAT THAT MATTERS MOST: a binary containing these three changes does not exist.</b> The install you actually play (<code>A:/Games/MC2 OpenGL Remastered</code>) was built <b>2026-07-05</b> and contains none of it. Four test installs under <code>A:/Games/mc2-opengl</code> <i>were</i> re-deployed on 07-30 &mdash; but every one of them carries an <b>earlier, since-withdrawn</b> version of the concrete work, including a runway-lighting switch the afternoon commits deliberately turned back off, and the two that have a ground-brightening shader carry <b>the exact version merge review rejected</b>. <b>A click-through on any binary currently on disk grades code that no longer exists.</b> Everything else the session produced &mdash; and it is most of it &mdash; is tooling, docs, diagnostics, retractions, or sits behind a switch that is off. <b>Nothing was pushed.</b>"
-    },
-    {
-     "type": "note",
-     "html": "<b>&ldquo;Unverified&rdquo; is not shorthand for &ldquo;nobody bothered&rdquo;. Here is exactly what was captured, what is on disk, and why none of it grades the tip.</b> Measured from manifests and from file timestamps rather than taken from a report. <br>&bull; <b>Seventeen capture arms</b> ran against the mc2_03 airfield and <b>twenty-seven</b> against the vehicle A/B, all on 2026-07-30 between 08:54 and 10:09 &mdash; before launches were blocked at 10:53. The thirteen non-empty airfield arms <b>all measured the same binary</b> (fingerprint <code>79360fdb565e</code>), and that binary <b>is not an ancestor of this branch</b> &mdash; it is the tip of <code>claude/spotlight-direction-1</code>, an unmerged lane. Their manifests nonetheless name <b>five different commits</b> between them, because the field recorded the moving worktree head rather than the binary. <br>&bull; The <b>twenty-seven vehicle A/B manifests carry no binary provenance field at all</b> &mdash; they predate the repair that added one &mdash; and they name a worktree commit that <i>precedes</i> <code>ccb713ae</code>, the follow-up that lights every vehicle leaf rather than one. Which binary they measured can no longer be established. <br>&bull; <b>Two manifests are zero bytes</b> (decision 3 in &sect;20e). Both confirmed still present and still empty. <br><br><b style=\"color:#f0d890\">CORRECTION to the first draft of this section.</b> It said no launchable binary contained any of the day&rsquo;s commits. <b>That is now false and was already becoming false as it was written.</b> Four deploy directories were re-deployed on 07-30 (binary mtimes, read from disk): <code>mc2-win64-v0.4c</code> 14:12Z, <code>mc2-win64-pom1</code> 14:18Z, <code>mc2-win64-v0.4</code> 14:51Z, <code>mc2-win64-ambientfloor-1</code> 15:04Z. They contain <code>3ab322a0</code> (the <i>original</i> concrete adopt, which promoted <code>MC2_PAVED_OVERLAY_CLASS</code> to default 1) and <code>5c04048c</code> (vehicle lighting). What <b>no</b> binary anywhere contains is the <i>corrected</i> tip: <code>2ade84a8</code>, <code>886dd319</code>, <code>3ab33aee</code>, <code>96ffc35d</code> are in zero builds. Independently checked here: the deployed <code>shaders/terrain_lod_chunk.frag</code> in both <code>ambientfloor-1</code> and <code>pom1</code> declares <code>u_terrainAmbientFloor</code> but has <b>zero occurrences of <code>u_terrainAmbientDayGate</code></b> &mdash; i.e. it is TERRAIN-AMBIENT-FLOOR-<b>1</b>, the rejected predecessor with no night gate, not the version that merged. The canonical shader has four. <br>This is the capture-provenance defect of &sect;20c happening to this session&rsquo;s own evidence, caught by the ratchet that same session shipped."
-    },
-    {
-     "type": "what",
-     "html": "This section is <b>additive</b>. It covers 2026-07-29/30 and does not rewrite anything in &sect;0&ndash;&sect;19 above, which you have already graded. Where this session <i>corrected</i> an earlier claim, the correction is stated here and the old wording is left in place deliberately &mdash; so you can see what changed rather than finding the page silently edited under you. One side effect worth knowing: publishing this section regenerated the whole page from its source manifest, so a handful of cells in &sect;11 and &sect;14 now show newer text and newer gate defaults that a previous lane had already written into the manifest but never rendered. Those are corrections, not edits made here. <b style=\"color:#f0d890\">This section is anchored to commit <code>886dd319</code> (2026-07-30 12:36), and lanes were still landing while it was written</b> &mdash; several commits arrived mid-draft and changed two of its conclusions, which are marked where they occur. If a gate default in this prose ever disagrees with a gate table elsewhere on the page, <b>trust the table</b>: tables are read from source at render time; prose is not. <b>Labels used below:</b> <b style=\"color:#a0f0a0\">DELIVERED</b> = in the default build &middot; <b style=\"color:#f0a0a0\">NOT DELIVERED</b> = not in the default build &middot; <b style=\"color:#f0d890\">UNVERIFIED</b> = shipped or claimed but never seen working &middot; <b style=\"color:#78b0f0\">OPEN</b> = still an open defect &middot; <b style=\"color:#c0a0f0\">RETRACTED</b> = a previous claim withdrawn."
-    },
-    {
-     "type": "meta",
-     "attrs": " style=\"font-size:13px\"",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Question"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Answer"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Does the game look different if I launch and change nothing?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Two surfaces changed, across six commits.</b> Concrete transition tiles now take the terrain concrete's texture and lighting instead of the overlay's double-fogged version; ground vehicles now receive lighting at all, instead of drawing at raw albedo. Both are <b style=\"color:#f0d890\">UNVERIFIED</b>."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Are any of my four complaints closed?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>None of them.</b> One has a shipped cure nobody has looked at (concrete tone). One has a shipped cure whose mechanism is proven and whose pixels are not (vehicles). One is measured as <i>unreachable</i> by the lever that was tried (runway colour). One had its newest proposed cure falsified before anyone built it (water staircase)."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>What did the session actually spend itself on?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Finding out the instruments were lying.</b> Six separate measuring tools were shown to return confident readings while structurally blind. That is the session's real product &mdash; and it weakens earlier evidence, including two claims on this page."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Is anything worse?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>3ab322a0</code> <b>widens</b> the separate mc2_03 “terrain outside the pads is near-black” contrast. That is disclosed in its own gate documentation, not discovered afterwards."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Is the release affected?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The shipped v0.5.2 zips contain <b>zero</b> <code>.beauty</code> sidecars &mdash; verified two ways. A default-ON water feature silently degrades to a no-op without them. Gates now stop it recurring; <b>the release has not been re-cut</b>."
-       }
-      ]
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>The DEFAULT-LAUNCH REALITY note at the top of this page is still accurate &mdash; I re-checked every gate it names at the new tip.</b> All seven (<code>MC2_PAVED_OVERLAY_CLASS</code>, <code>MC2_STATIC_PROP_FIXTURE_GLOW</code>, <code>MC2_PROP_BASE_LIGHT_DIR</code>, <code>MC2_SSAO</code>, <code>MC2_PROP_SHADOW_RECEIVE</code>, <code>MC2_LIGHT_REALISM</code>, <code>MC2_CONE_SPILL_COUPLING</code>) verify <b>OFF</b>. <code>3ab322a0</code> briefly flipped <code>MC2_PAVED_OVERLAY_CLASS</code> to default-ON; <code>2ade84a8</code> reverted it and <code>a8ea9be5</code> merged the revert. <b>Read from the C++ reader, not the registry:</b> <code>gos_terrain_indirect.cpp</code> <code>PavedOverlayClassMode()</code> now ends <code>if (!v || !v[0]) return 0;</code> &mdash; confirmed by reading the function here. <br><br><b style=\"color:#f0a0a0\">But the lie did not die &mdash; it MOVED, and the new contract cannot catch its new shape.</b> <code>MC2_PAVED_OVERLAY_CLASS</code>&rsquo;s own registry row is now honest. However <b>two other places assert a false fact about it</b>, both landed <i>after</i> the revert: <code>RendererFeatureRegistry.h</code> (inside <code>MC2_TERRAIN_AMBIENT_FLOOR</code>&rsquo;s description) and <code>shaders/terrain_lod_chunk.frag:1915</code> both state the gate <i>&ldquo;returns 1 when unset &hellip; whatever the stale comment above it says&rdquo;</i>, i.e. that it is <b>live at stock</b>. It is not. <b>Consequence:</b> the ambient floor&rsquo;s pavement exemption is <b>dead code</b> at default settings &mdash; <code>pavedOverlayFlat</code> reads cementWord bit&nbsp;22, which is written only by the PAVED_OVERLAY_CLASS pass, so at stock it is false everywhere and the <code>if (pavedOverlayFlat)</code> branch never fires. The design claim &ldquo;concrete <i>and pavement</i> do not move at all&rdquo; is <b>true for concrete, false for pavement</b>. <code>GATE-DEFAULT-TRUTH-1</code> does not catch it: it compares a gate&rsquo;s own registry default to its own reader, and this is <b>gate A&rsquo;s default asserted inside gate B&rsquo;s prose</b>. <code>gate_default_agreement</code> PASSES in the run measured for this page. <b>This is the sentence to re-check first if anything moves again.</b>"
-    },
-    {
      "type": "h3",
      "html": "20a. Your four complaints &mdash; honest status"
     },
@@ -4554,10 +4513,6 @@
      ]
     },
     {
-     "type": "note",
-     "html": "<b>Method note worth keeping.</b> The shoreline lane nearly graded the wrong terrain: <code>tools/terrain_beautify/mission_terrain_analyzer.py:450</code> defaults its <code>--missions-dir</code> to <code>A:/Games/Carver5-feasibility/data/missions</code>, and four other tools plus three test files hard-code the same path as &ldquo;stock mission data&rdquo;. <b>It is not what the engine loads</b> &mdash; all four maps differ there. The lane extracted the paks out of the deployed <code>mission.fst</code> instead. In its own words: <i>&ldquo;Had I taken the brief at its word and used the analyzer’s default, this report would be a confident go/no-go computed on the wrong terrain.&rdquo;</i>"
-    },
-    {
      "type": "figures",
      "layout": "ba",
      "items": [
@@ -4676,10 +4631,6 @@
      "html": "<b style=\"color:#f0d890\">&#9888; THE KEY INSIGHT, and it applies to both of the uncaused defects.</b> The live lead is <code>BldgAppearance::setGesture</code> (<code>mclib/bdactor.cpp:1829-1848</code>): an idle building that is registered as a static prop has its <b>static registration invalidated on its first gesture</b>, because the GPU registry is holding a stale static-pose recipe. It fires <b>at most once per building, ever</b> &mdash; <code>bdAnimationState</code> never returns to idle, there is no reset path. <b>No test that has ever run reaches that line.</b> The only entry point is <code>Building::updateAnimations()</code>, whose ~17 gesture calls all sit inside gameplay state switches &mdash; sensor-tower contact counts, gate open/close cycles, damage and destruction. The smoke tier is five stock missions, 30 seconds each, <b>idle fly-throughs</b>: no AI engagement, no weapon fire, no gate traversal, so <b>no building ever leaves the idle state</b> and the counter stays zero. This was <b>designed in and disclosed from the start</b> &mdash; the 2026-06-03 implementation plan says the path would be <i>&ldquo;code-reviewed but not runtime-exercised&rdquo;</i> and told reviewers not to block on it. <b>A fixture that fires a building gesture is the prerequisite for testing this defect class at all.</b> It does not exist."
     },
     {
-     "type": "note",
-     "html": "<b>Two honesty notes on the evidence behind the paragraph above.</b> <b>(1)</b> Seventeen capture arms were run against the airfield (<code>scratch/mc203air/</code>, 6 poses each at 4K) and <b>produced no written verdict of any kind</b> &mdash; no status document exists for that lane in any worktree. <b>(2)</b> The anim-gate A/B arm was run <b>without its own instrument switched on</b>: the <code>[ANIM_GATE v1]</code> counter is emitted through a diagnostic macro that is invisible unless a verbosity variable is set, and that variable is in no arm’s environment. Grepping all seventeen capture logs for it returns <b>zero hits</b>. So <b>&ldquo;the path was never exercised&rdquo; rests on reading the source, not on a measured zero.</b> Stated as <b style=\"color:#f0d890\">UNVERIFIED</b> rather than asserted."
-    },
-    {
      "type": "figures",
      "layout": "ba",
      "items": [
@@ -4692,138 +4643,6 @@
        "src": "20_session_0730/trees_colormap_raw.png"
       }
      ]
-    },
-    {
-     "type": "h3",
-     "html": "20i. Root causes that MOVED &mdash; corrections to &sect;20a and &sect;20b"
-    },
-    {
-     "type": "what",
-     "html": "Four investigations changed their answer after &sect;20a/&sect;20b were written. Three of them <b>killed a mechanism the whole session had been reasoning from</b>. None of the four produced a fix, and that is the point: <b>the value here is that four wrong roads are now closed</b>, cheaply, without a launch. <b>Nothing in this sub-section is a delivered change.</b>"
-    },
-    {
-     "type": "meta",
-     "attrs": " style=\"font-size:13px\"",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Defect"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "What was believed"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "What is now known"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Status"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>mc2_03 black quads</b><br>+ <b>sunk turrets</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Two unrelated defects, cause unknown, with a LOD-swap mechanism cited as the likely path for both."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>A SINGLE candidate root cause now covers both.</b> A static prop <i>recipe</i> is a <b>frozen snapshot</b> that is <b>not invalidated</b> when a building becomes ineligible via a state-to-state gesture, flash or activity &mdash; so a live recipe holds a <b>stale pose</b>. <b>Black outlines:</b> the shadow-caster feed walks the <b>full registry</b>, visibility- and eligibility-independent, and is <b>DEFAULT-ON</b> &mdash; so an animating building casts a shadow from its <b>mission-load pose</b>. <b>Sunk turrets:</b> turrets have <b>no ground-snap at all</b>, and the recipe bakes the raw <code>.ase</code> rest pose <i>pre-snap</i>."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#78b0f0\">OPEN &mdash; NOT CONFIRMED.</b> These are <b>ranked hypotheses with default-ON reachability proven at source</b>, not a diagnosis. <b>Settled by decision&nbsp;11:</b> list the buildings on mc2_03, then a one-frame shadow-caster A/B."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>The LOD-swap mechanism</b><br><span style='color:#9aa3ad'>cited all session</span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Building LOD swaps were the leading explanation for prop pop and were reasoned from repeatedly."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">IT CANNOT FIRE.</b> Building LOD is <b>pinned to 0</b>. Every chain of reasoning that routed through it is void."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#c0a0f0\">RETRACTED.</b> The memory file asserting the mechanism is <b>stale and should not be trusted</b> until corrected. Worth noting <i>how</i> this survived so long: it was in a memory file, and memory files are not covered by any contract."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Shoreline</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The one-sided-safe B-spline was the designed cure; <code>mc2_17</code> and <code>mc2_10</code> were the same tile-locked defect."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>The B-spline was FALSIFIED OFFLINE before it was built:</b> it moves the waterline <b>5.1&nbsp;wu</b> against the <b>~100&nbsp;wu</b> required. <b><code>mc2_17</code> is NOT tile-locked</b> (staircase index 0.260 vs a 0.222 floor); <b><code>mc2_10</code> IS</b> (0.737). <b>Different defects.</b> The real <code>mc2_17</code> mechanism is the <b>drape cap handing the edge to the depth test at 128&nbsp;wu on 66.7% of the waterline</b>."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#c0a0f0\">RETRACTED</b> &middot; <b style=\"color:#78b0f0\">OPEN</b><br><b>A general principle now kills a whole FAMILY of cures:</b> anything budgeted in <i>elevation</i> units inherits <code>1/|grad|</code> and is <b>weakest exactly where the defect is worst</b>. <b>Blocked on decision&nbsp;1</b> (displacement or faceting?)."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Trees</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Tree silhouettes were suspected to be baked into the art."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Proven NOT baked art</b> &mdash; <b>2,088 positions measured under all 8 orientations</b>. <b>The real finding:</b> trees carry <b>no directional light at all</b>, so <code>sunColor * ndl</code> is <b>identically zero</b>."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#c0a0f0\">FALSE LEAD CLOSED</b> &middot; <b style=\"color:#78b0f0\">OPEN</b><br>A real, specific, mechanism-level cause now exists with no cure attached. <b>This is the same shape as the vehicle defect</b> (<code>numLights==0</code> &rarr; <code>vec3(1,1,1)</code>) that VEHICLE-LIGHTING-PATH-1 addressed &mdash; which makes it a strong candidate for the same treatment, and a strong candidate to have the <b>same untested night direction</b>."
-       }
-      ]
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#a0f0a0\">Two mechanical blocks are now live and tested, and both exist because a written rule was violated repeatedly.</b> <b>(1) Game launches are hard-blocked</b> by a <code>PreToolUse</code> hook. You reported five separate times that agent launches steal your mouse, keyboard and focus. Every prompt-level rule was violated anyway, so the block is now mechanical. <b>It is not being worked around</b> &mdash; this update was written entirely from source, git, and offline file inspection, and the hook fired once during it (on a command that merely <i>named</i> the binary to read its timestamp) and was obeyed. <b>(2) <code>git add -A</code> / <code>git add .</code> / <code>git commit -a</code> are blocked</b>, because several lanes share worktrees and a sweep stages other lanes&rsquo; work. <b>That happened twice.</b> <br><br><b>The honest cost of block (1), stated plainly:</b> it is now the binding constraint on the project. <b>Every pixel-changing change on this page is UNVERIFIED because of it</b>, and no amount of further source reading will change that &mdash; the remaining questions are questions about pixels. That is what <b>decision&nbsp;11</b> is asking you to unblock, once, supervised."
-    },
-    {
-     "type": "note",
-     "html": "<b>What this update did NOT do &mdash; stated so it is not mistaken for coverage.</b> <b>Nothing was built and nothing was launched.</b> Every pixel statement in &sect;20 is derived from shader and C++ source. <b>No luma number on this page was measured by anyone this session.</b> A clean build of the tip was <b>not</b> attempted: the merge audit deliberately did not stash, because three lanes&rsquo; uncommitted work is sitting in the canonical worktree and stashing it is the exact hazard being audited. So <b>&ldquo;no line was dropped&rdquo; is proven; &ldquo;the merged tree compiles&rdquo; is not</b>. The contract audit injected against <b>6 of 98</b> rows and did a structural census of the rest &mdash; the older checks are <b>unexamined</b>, and the identifier-in-a-comment defect appearing three times suggests a systematic comment-stripping audit of all 73 tree-inspecting checks would pay. Binary fingerprinting covered <b>engine binaries only</b>; editor and tool executables were not checked, and three mod installs carry no fingerprint banner at all. Finally, <b>a build from the canonical worktree right now would be stamped BUILT-FROM-DIRTY-TREE</b> and its manifest <code>src_commit</code> suffixed <code>-dirty</code> &mdash; though the dirty edits themselves add no default pixel change (two are comment-only; the rest are guarded by an env var that is unset)."
     }
    ]
   },
