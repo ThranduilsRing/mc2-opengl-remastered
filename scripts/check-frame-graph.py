@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""check-frame-graph.py — CI gate for the render-frame contract's offline suites.
+"""check-frame-graph.py — gate for the render-frame contract's offline suites.
 
-Builds + runs the pure-logic doctest suites that guard the contract (no GL/engine/
-deploy/smoke):
+Builds + runs the WHOLE pure-logic doctest tier (no GL/engine/deploy/smoke).
+The suites this gate is named for are still the reason it exists:
   - FrameGraph:   resource-DAG validation -- reorder / missing-producer regression guard
                   (FRAME-GRAPH-SKELETON-1)
   - ViewCurrency: object MVP view-epoch currency + same-camera dedupe, incl. the
                   counter-proof of the old stale-every-frame bug (VIEW-EPOCH-DEDUPE-1)
+...but it no longer FILTERS to them (DARK-TESTS-RUN-1; see the comment at the
+call site). Running only those two made this script the sole doctest driver in
+the repo while still skipping TEST_SUITE("RenderCore"), where a count lock had
+drifted 46-vs-62 unnoticed.
 
-Delegates to scripts/run-unit-tests.sh so there is ONE builder/runner. Exit 0 iff both
-suites pass.
+Delegates to scripts/run-unit-tests.sh so there is ONE builder/runner. Exit 0
+iff every doctest case passes.
 """
 import os
 import shutil
@@ -77,6 +81,21 @@ if bash is None:
     )
     sys.exit(2)
 
-# --ts filters to the two contract suites so the gate is fast and focused.
-cmd = [bash, runner.as_posix(), "--ts=FrameGraph,ViewCurrency"]
+# ---------------------------------------------------------------------------
+# DARK-TESTS-RUN-1 (2026-07-31): the --ts filter is gone, deliberately.
+# ---------------------------------------------------------------------------
+# This gate used to pass `--ts=FrameGraph,ViewCurrency`, which reads as a
+# focus optimisation and behaved as a blind spot. Once check-frame-graph.py was
+# repaired it became the ONLY script in the repo that drove the doctest binary
+# at all -- and it excluded TEST_SUITE("RenderCore") even on a fully successful
+# run. That is precisely where test_rendercore.cpp pinned
+# RendererFeature::COUNT == 46 against a real value of 62 and went unnoticed
+# through fifteen appends.
+#
+# The filter bought nothing it was worth: the whole doctest suite is 631 cases
+# in ~0.22s, and the build in front of it dominates either way (~0.7s warm,
+# minutes cold). So the gate now runs the FULL doctest tier. --doctest-only
+# keeps it off the engine build64/ cache, which this gate has no business
+# configuring.
+cmd = [bash, runner.as_posix(), "--doctest-only"]
 sys.exit(subprocess.call(cmd))

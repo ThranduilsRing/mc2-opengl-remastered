@@ -328,6 +328,22 @@ run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet
 # can live in this ~5s-per-check aggregator. They do NOT restore test execution.
 run_check "doctest_count_locks"    "py -3 scripts/check-doctest-count-locks.py --quiet"
 run_check "doctest_count_selftest" "py -3 scripts/check-doctest-count-locks.py --self-test"
+# DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
+# unrun binary cannot. These arm the tier itself. check-contract-coverage.py
+# made an unwired script in scripts/ structurally impossible and its docstring
+# names the hole it leaves -- "It has no equivalent for tests/." This is that
+# equivalent: a test source in no target, a target no runner names, an
+# add_test() nothing drives, or a TEST_CASE newly hidden behind `#if 0` all
+# fail here. Measured on the tree that produced them: test_render_contract_3
+# was named by no runner AND did not link (LNK2019 x2), which is the state
+# self-test arm 2 re-injects verbatim.
+#
+# Static only -- no compiler, so it stays inside this file's ~5s promise
+# (measured 0.2s). Test EXECUTION deliberately stays in the manual tier with
+# scripts/run-unit-tests.sh; see manual-checks.allowlist for why, and for the
+# measured numbers that would justify promoting it.
+run_check "test_tier_coverage"     "py -3 scripts/check-test-tier-coverage.py --quiet"
+run_check "test_tier_selftest"     "py -3 scripts/check-test-tier-coverage.py --self-test"
 run_check "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
 run_check "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
 run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet"
