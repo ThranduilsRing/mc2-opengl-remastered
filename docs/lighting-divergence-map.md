@@ -321,6 +321,17 @@ land in the same `TG_HWLightsData` table via `addLightDataStructure`.
   other shapes (e.g. `clamp(x, 0.1, 1.0)` at `gos_grass.frag:54`, or a floor
   applied C++-side before upload) are **not** pinned. `check-lighting-divergence.py`
   will not catch those.
+- The `no_lights_semantics_fork` category detects `#define
+  MC2_STATIC_PROP_LIGHTING`. `shaders/vulkan/mech_tier1.vert:97` takes the same
+  fork by **hardcoding** it (`if (ld.numLights.x == 0) return base_light;`) with
+  no macro, so that shader's fork is invisible to the category even though it is
+  correctly pinned via `calc_light_definition`. A third shader adopting the
+  hardcoded form would not be caught.
+- Adjacent-check gap, noted not fixed: `scripts/check-light-loop-numlights-bound.py`
+  declares a 3-file scope (`lighting.hglsl`, `mech.vert`, `static_prop.vert`).
+  `vulkan/mech_tier1.vert:100` and `vulkan/color_prop_tier1.vert:279` also loop
+  per-light. Both are correctly bounded by `min(numLights.x, MAX)` **today**, so
+  nothing is broken — but they are outside that tripwire's scope.
 - Fog and night columns are less thoroughly sourced than ambient/clamp/light-type.
   Where they say UNKNOWN, that is literal.
 - **This lane changed no pixels.** It produces a map, a guard and a
