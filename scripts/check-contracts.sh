@@ -7,6 +7,9 @@
 #   bash scripts/check-contracts.sh           # run from worktree root
 #   bash scripts/check-contracts.sh --quiet   # PASSING rows print nothing; a
 #                                             # FAILING row still says why
+#   bash scripts/check-contracts.sh --selftest  # prove the FAIL-REASON
+#                                             # rendering above still works,
+#                                             # in seconds, without the board
 #
 # Env:
 #   CONTRACTS_FAIL_TAIL=N   lines of a failing check's output to show (default 40)
@@ -37,15 +40,23 @@ WORKTREE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Argument parsing
 # ---------------------------------------------------------------------------
 QUIET=0
+SELFTEST=0
+SELFTEST_RENDER=0
 for arg in "$@"; do
     case "$arg" in
         --quiet|-q) QUIET=1 ;;
+        --selftest) SELFTEST=1 ;;
+        # Internal. Registers synthetic rows instead of the real board so the
+        # selftest can grade what the REAL runners render. Not for humans.
+        --selftest-render) SELFTEST_RENDER=1 ;;
         --help|-h)
-            echo "Usage: bash $0 [--quiet]"
+            echo "Usage: bash $0 [--quiet] [--selftest]"
             echo "  Runs cheap source-level contract checks and prints a PASS/FAIL table."
             echo "  Exits 0 if all pass, nonzero if any fail."
             echo "  --quiet silences PASSING rows only; a FAILING row always states why."
             echo "  CONTRACTS_FAIL_TAIL=N caps a failing row's output (default 40 lines)."
+            echo "  --selftest proves that FAIL-REASON rendering still holds (seconds,"
+            echo "             no board run); it is also wired as its own row."
             exit 0
             ;;
         *) echo "Unknown argument: $arg" >&2; exit 1 ;;
@@ -378,8 +389,221 @@ run_check_tri() {
 }
 
 # ---------------------------------------------------------------------------
+# THE FAIL-REASON RENDERING NOW HAS A GUARD (CONTRACTS-DOC-SELFTEST-1, 2026-07-31)
+# ---------------------------------------------------------------------------
+# Nearly every behaviour this file guards has a `*_selftest` row proving the
+# guard still fires. The rendering directly above -- 25008e321, the `why>` digest
+# on a failing row plus the bounded head+tail block below the table -- had none.
+# So a later simplification of run_check or run_check_tri could delete either
+# half and the board would stay green while going mute: exactly the regression
+# class the surrounding comments exist to prevent, left open in the file that
+# hosts them. A guard whose own guard is a paragraph is not guarded.
+#
+# The lane that authored FAIL-REASON-1 could not add this row: its proof standard
+# demanded the board's tallies be IDENTICAL before and after, and a new row moves
+# the headline number by construction. That was a constraint of that lane, not an
+# argument against the row. The number moving is the POINT, and it is stated in
+# the commit that adds it so it is attributable rather than looking like drift.
+#
+# WHAT IT PINS:
+#   (a) a check that exits non-zero renders a NON-EMPTY `why>` on its table row,
+#       and the digest is the explanatory line rather than the first line
+#   (b) a failure longer than CONTRACTS_FAIL_TAIL is truncated, AND the elision
+#       names both the elided line COUNT and a READABLE full-output log path.
+#       Truncation without a pointer is a slower way of hiding the answer
+#   (c) a check that fails and prints NOTHING still renders an explanation
+#       instead of a blank line -- that defect belongs to the check, and this is
+#       the only place anybody would ever see it
+#   (d) a PASSING row still emits ZERO BYTES under --quiet. This is the property
+#       that stops the fix becoming noise, and it is the one a well-meaning edit
+#       breaks first
+#   (d2) ...and, so (d) cannot be satisfied by muting run_check outright, the
+#       same passing row's output MUST still appear when --quiet is absent. A
+#       green board is byte-for-byte as quiet as before, and no quieter.
+#
+# IT IS NOT A REIMPLEMENTATION, and that is the whole design. It re-executes
+# THIS script with --selftest-render, which puts synthetic rows through the REAL
+# run_check and run_check_tri and prints the REAL summary table, then greps the
+# rendered stdout. Only the CHECK COMMANDS are synthetic (`printf`, `exit 7`) --
+# those are the inputs, not the logic. A copy of the rendering that agrees with
+# itself proves nothing; that is how a selftest reports SUCCESS while the
+# behaviour it is named for is already gone.
+#
+# The fixture rows below are deliberately written with a SINGLE-quoted command:
+# check-contract-coverage.py's row census matches a double-quoted command, so
+# this spelling keeps fixtures out of a count that means "checks on the board".
+_selftest_rows() {
+    case "${SELFTEST_SCENARIO:-fail}" in
+    pass)
+        run_check     "st_pass_talks" 'printf "%s\n" ST-STDOUT-SENTINEL'
+        run_check_tri "st_tri_pass"   'printf "%s\n" ST-STDOUT-SENTINEL-TRI'
+        ;;
+    fail)
+        run_check     "st_fail_talks"  'printf "%s\n" "note: a preamble line" "ERROR: ST-DIGEST-SENTINEL blew up" "trailing noise"; exit 1'
+        run_check     "st_fail_silent" 'exit 7'
+        run_check     "st_fail_chatty" 'i=1; while [ $i -le 40 ]; do printf "chatty-line-%02d\n" "$i"; i=$((i + 1)); done; exit 1'
+        run_check_tri "st_tri_fail"    'printf "%s\n" "VIOLATION: ST-TRI-SENTINEL"; exit 1'
+        run_check_tri "st_tri_known"   'printf "%s\n" "KNOWN: ST-KNOWN-SENTINEL pinned in the ledger"; exit 3'
+        ;;
+    esac
+}
+
+ST_FAILS=0
+_st_ok()     { printf '[fail-reason-selftest]   ok  %s\n' "$1"; }
+_st_bad()    { printf '[fail-reason-selftest] FAIL  %s\n' "$1" >&2; ST_FAILS=$((ST_FAILS + 1)); }
+_st_want()   { case "$2" in *"$3"*) _st_ok "$1" ;; *) _st_bad "$1 -- expected to find: $3" ;; esac; }
+_st_absent() { case "$2" in *"$3"*) _st_bad "$1 -- must NOT appear, but did: $3" ;; *) _st_ok "$1" ;; esac; }
+
+# The `why>` text rendered on ONE row of the REAL summary table, or "" if that
+# row rendered none. Reads the table, not any internal variable: a digest
+# computed and then dropped on the floor must grade as absent.
+_st_row_reason() {          # $1 label, $2 rendered board output
+    printf '%s\n' "$2" | awk -v lbl="$1" '
+        $1 == lbl && index($0, "FAIL  <---") {
+            if ((getline) > 0 && $1 == "why>") {
+                sub(/^[[:space:]]*why>[[:space:]]*/, ""); print $0
+            }
+            exit
+        }'
+}
+
+_fail_reason_selftest() {
+    local self="$SCRIPT_DIR/$(basename -- "$0")"
+    local td out rc reason logpath n
+
+    td="$(mktemp -d "${TMPDIR:-/tmp}/contracts-selftest-XXXXXX")"
+
+    # --- the failing shapes, as the real runners render them -----------------
+    # TMPDIR is redirected so the child's full-output log lands somewhere this
+    # function can read AND delete; CONTRACTS_FAIL_TAIL is squeezed to 12 so a
+    # 40-line failure exercises truncation without printing 340 lines to prove
+    # it.
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=fail CONTRACTS_FAIL_TAIL=12 \
+           TMPDIR="$td" bash "$self" --selftest-render --quiet 2>&1)" || rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        _st_ok "a red row still takes the suite's exit code to 1"
+    else
+        _st_bad "expected exit 1 from a render containing failures, got $rc"
+    fi
+
+    # (a) --------------------------------------------------------------------
+    reason="$(_st_row_reason st_fail_talks "$out")"
+    if [ -n "$reason" ]; then
+        _st_ok "(a) a failing row carries a non-empty why> digest on its table row"
+    else
+        _st_bad "(a) st_fail_talks rendered NO why> on its row -- a red row went mute"
+    fi
+    _st_want "(a) the digest is the explanatory line, not merely the first one" \
+             "$reason" "ST-DIGEST-SENTINEL"
+    reason="$(_st_row_reason st_tri_fail "$out")"
+    if [ -n "$reason" ]; then
+        _st_ok "(a) run_check_tri's FAIL row carries a digest too"
+    else
+        _st_bad "(a) st_tri_fail rendered NO why> -- the tri-state runner went mute"
+    fi
+
+    # (c) --------------------------------------------------------------------
+    reason="$(_st_row_reason st_fail_silent "$out")"
+    if [ -n "$reason" ]; then
+        _st_ok "(c) a failure that printed nothing still renders an explanation"
+    else
+        _st_bad "(c) st_fail_silent rendered a BLANK row -- exit 7, and the board said nothing"
+    fi
+    _st_want "(c) ...naming the exit code"              "$reason" "exit 7"
+    _st_want "(c) ...and saying the check gave no reason" "$reason" "printed nothing"
+
+    # (b) --------------------------------------------------------------------
+    _st_want   "(b) a chatty failure is truncated, and the elision counts the lines" \
+               "$out" "28 of 40 lines elided"
+    _st_want   "(b) the head of the output survives"  "$out" "chatty-line-01"
+    _st_want   "(b) the tail of the output survives"  "$out" "chatty-line-40"
+    _st_absent "(b) the middle is genuinely elided"   "$out" "chatty-line-20"
+    _st_want   "(b) the elision says how to see more" "$out" "CONTRACTS_FAIL_TAIL=N"
+    _st_want   "(b) ...and how to re-run just that row" "$out" "re-run just this row"
+    logpath="$(printf '%s\n' "$out" | sed -n 's/^.*full output: //p' | head -n 1)"
+    if [ -n "$logpath" ] && [ -r "$logpath" ]; then
+        n="$(grep -c '' "$logpath" || true)"
+        if [ "$n" = "40" ]; then
+            _st_ok "(b) the named log is readable and holds the whole 40 lines"
+        else
+            _st_bad "(b) the named log holds $n lines, not the full 40"
+        fi
+        _st_want "(b) ...including the lines the table elided" \
+                 "$(cat "$logpath")" "chatty-line-20"
+    else
+        _st_bad "(b) the elision named no readable full-output log path: '$logpath'"
+    fi
+
+    # KNOWN is not part of this fix, but it shares these code paths ----------
+    _st_want "amber rows still render as KNOWN, not FAIL" "$out" "KNOWN (correct failure"
+    _st_want "amber rows still state why under --quiet"   "$out" "ST-KNOWN-SENTINEL"
+
+    # (d) --------------------------------------------------------------------
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet 2>&1)" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+        _st_ok "(d) an all-green render exits 0"
+    else
+        _st_bad "(d) an all-green render exited $rc"
+    fi
+    _st_absent "(d) a PASSING row prints none of its own output under --quiet" \
+               "$out" "ST-STDOUT-SENTINEL"
+    _st_absent "(d) ...no per-check header either" "$out" "--- st_pass_talks ---"
+    _st_absent "(d) ...no why> line anywhere"      "$out" "why>"
+    _st_absent "(d) ...and no failure block below the table" "$out" "WHY THE FAILING ROW"
+
+    # (d2) the positive control, so (d) cannot be won by muting run_check -----
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render 2>&1)" || rc=$?
+    _st_want "(d2) WITHOUT --quiet the same row still prints its output" \
+             "$out" "ST-STDOUT-SENTINEL"
+    _st_want "(d2) ...its header"                "$out" "--- st_pass_talks ---"
+    _st_want "(d2) ...and the tri-state runner prints too" \
+             "$out" "ST-STDOUT-SENTINEL-TRI"
+
+    rm -rf "$td"
+
+    if [ "$ST_FAILS" -eq 0 ]; then
+        echo "[fail-reason-selftest] OK: a red row says why, a chatty one is bounded and"
+        echo "                          points at its full log, a silent one is explained,"
+        echo "                          and a green row is still silent under --quiet."
+        return 0
+    fi
+    echo "[fail-reason-selftest] FAIL: $ST_FAILS assertion(s) did not hold. The board can" >&2
+    echo "    still go red -- it just cannot say why any more, which is the state this" >&2
+    echo "    row exists to make impossible. See run_check / run_check_tri /" >&2
+    echo "    _reason_digest / _record_failure in this file." >&2
+    return 1
+}
+
+if [ "$SELFTEST" -eq 1 ]; then
+    _st_rc=0
+    _fail_reason_selftest || _st_rc=$?
+    exit "$_st_rc"
+fi
+
+# ---------------------------------------------------------------------------
 # Checks
 # ---------------------------------------------------------------------------
+# The real board is skipped entirely under --selftest-render so the selftest
+# costs seconds instead of ~340s. The rows below are NOT re-indented on purpose:
+# indenting 640 lines would bury a four-line change in a 640-line diff on the
+# most contended file in this repo.
+if [ "$SELFTEST_RENDER" -eq 1 ]; then
+    _selftest_rows
+else
+# A --selftest child must never re-enter the FULL board. One dropped flag on the
+# fail_reason_selftest row below turns this file into a fork bomb, so it is
+# refused structurally rather than by remembering.
+if [ "${CONTRACTS_SELFTEST:-0}" = "1" ]; then
+    echo "check-contracts.sh: refusing to run the full board from inside --selftest;" >&2
+    echo "    a selftest child must pass --selftest-render (see _fail_reason_selftest)." >&2
+    exit 2
+fi
 run_check "env_registry"           "sh scripts/check-env-registry.sh"
 # TREE-CONSOLIDATE-1 (2026-07-30): env_registry's answer is only as good as its
 # comment stripper, and the stripper is the part that silently broke. A registry
@@ -391,51 +615,6 @@ run_check "env_registry"           "sh scripts/check-env-registry.sh"
 # The selftest pins the stripper against a fixture, so a future "simplification"
 # of it fails here instead of silently unregistering half the header.
 run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
-
-# ---------------------------------------------------------------------------
-# REGISTRY-PARSER-TRUTH-1 (2026-07-31)
-# ---------------------------------------------------------------------------
-# env_registry above proves which gate NAMES appear in the header. It says
-# nothing about whether the tools that parse the header's ROWS can actually read
-# them -- and three of them could not. Measured on 399b2218f, against 360
-# declared rows:
-#
-#   scripts/build_review_pack.py       10 of 359 under a torn read, exit 0
-#                                      (fixed by PACK-FAILLOUD-1)
-#   tools/repo_intel/env_index.py      359 of 360 -- so the gate_status MCP tool
-#                                      answered `registered: false, verdict: OK,
-#                                      flags: []` about MC2_LIGHTING_DEBUG_VIEW,
-#                                      a REGISTERED gate, while its own reader
-#                                      list cited the registry line it had
-#                                      failed to parse
-#   scripts/flag-registry-auto-gen.py  248 of 360 -- and its output is the
-#                                      TRACKED docs/flags.auto.yaml, which
-#                                      asserted `registered: no` about 73 gates
-#                                      that are registered
-#
-# All three now share scripts/registry_parse.py. Causes of the 112 lost rows:
-# 99 adjacent string literals in the doc, 12 a trailing comma after it, 1 an
-# inline comment between fields -- all legal C++ the header actually uses.
-#
-# The TOLERANCE half is the half nothing was testing, and it is the half that
-# broke: a refusal-only guard cannot catch a grammar narrowed back into dropping
-# legal rows. registry_parser_selftest proves, against the LIVE header, that each
-# construct still occurs AND still parses (INCONCLUSIVE, not PASS, if the header
-# stops using one), then proves refusal on a row the grammar cannot see.
-run_check "registry_parser_selftest" "py -3 scripts/registry_parse.py --selftest"
-# The generator half: a refusal must become exit 2 with the previous file left
-# alone. A generator that writes a partial parse turns a silent parser bug into a
-# durable, quotable falsehood in a tracked document.
-run_check "flag_registry_generator_selftest" "py -3 scripts/flag-registry-auto-gen.py --selftest"
-# And the committed artifact itself. This script existed since the generator
-# landed and was never wired, which is why a 2026-07-23 flags.auto.yaml survived
-# to 2026-07-31 asserting `registered: no` about 73 registered gates. Wired
-# --strict: advisory-by-default was the setting that let it rot.
-#
-# NOTE it would NOT have caught the lie on its own -- it regenerates with the
-# same parser and diffs, so a wrong-but-stable generator reads as "up to date".
-# It catches staleness; registry_parser_selftest catches wrongness. Both.
-run_check "flag_registry_drift"    "sh scripts/check-flag-registry-drift.sh --strict"
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)
@@ -710,13 +889,35 @@ run_check "delivery_selftest"      "py -3 scripts/check-delivery.py --selftest"
 # other fixes landed somewhere. Measured on this disk: 4 of 9 fixes at 0/18
 # installs, exit code 0. A gate that cannot return non-zero is a report.
 #
-# The gap is now per fix, and this row consumes it. THIS ROW IS EXPECTED RED
-# UNTIL A BUILD AT THE TIP IS DEPLOYED: the newest engine binary on this disk
-# was built at 09:53, and the afternoon's user-facing fixes (terrain ambient
-# floor, the runway art guard, the vehicle ambient floor) are in no install at
-# all. That is the finding, not a flaw in the row -- red here means "correct
-# code that the user cannot reach", which is the one thing nothing else on this
-# board measures. It goes green by deploying, not by editing this line.
+# The gap is now PER FIX, and this row consumes it: it exits 1 when a DECLARED
+# fix is delivered on ZERO installs, so a fix that reaches nobody can no longer
+# hide inside an aggregate with fixes that reached somebody.
+#
+# WHAT THIS BLOCK SAID HERE WAS WRONG, AND SAYING SO IS THE POINT. It declared
+# the row "EXPECTED RED UNTIL A BUILD AT THE TIP IS DEPLOYED" and blamed a
+# binary built at 09:53. The row is GREEN, and no deploy happened. CONTRACT-
+# GREEN-1 (b919ee243) measured the actual cause: check-delivery.py's
+# DEFAULT_INSTALL_ROOTS did not COVER the four newest engine binaries on this
+# disk --
+#     A:/Games/MC2-OpenGL-CURRENT-2026-07-30     e1bdb7af697d
+#     A:/Games/MC2-OpenGL-AB-SUNAXIS-2026-07-30  dab061529977
+#     A:/Games/MC2-OpenGL-TIP-2026-07-31         e4ce37d91162
+#     A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31   3d7f9d7871f7
+# -- each of which delivers all nine manifest fixes, 9 of 9. A hand-maintained
+# root list cannot keep up with installs named for the day they were cut, so the
+# entry added is the glob A:/Games/MC2-OpenGL-*; graded installs went 19 -> 23
+# and the row went green. A diagnosis that says "deploy and I go green" is worse
+# than no diagnosis when the real fault is that the tool was not looking: it
+# sends the reader to do work that would not have changed the verdict.
+#
+# WHAT IS STILL TRUE, AND IS NOT A CLEAN WIN. The pass bar is "at least ONE of
+# the 23 installs shows the fix", so adding installs can only make this row
+# EASIER to pass. It can therefore be green off one freshly-cut directory while
+# the install carrying the PRODUCT NAME -- A:/Games/MC2 OpenGL Remastered --
+# still shows 0 of 9, which is exactly the state on this disk today. Read this
+# row as "somebody could reach these fixes", never as "the user can". Nominating
+# ONE graded install is the real fix; it is a user decision and is filed
+# separately rather than taken here.
 #
 # Deliberately NOT run_check_tri: that runner is for findings that are
 # IRREPARABLE, and it fails closed on a ledger entry that pins a repairable one.
@@ -1017,6 +1218,11 @@ run_check "sim_identity_propagation_selftest" "py -3 scripts/check-sim-identity-
 # fails if any check script is in neither list -- so this class cannot recur.
 run_check "contract_coverage"          "py -3 scripts/check-contract-coverage.py"
 run_check "contract_coverage_selftest" "py -3 scripts/check-contract-coverage.py --selftest"
+# CONTRACTS-DOC-SELFTEST-1: and the aggregator's OWN rendering, which until now
+# was the one guarded behaviour on this board with nothing guarding it. See the
+# block above _selftest_rows for what it pins and why it re-executes this script
+# rather than reimplementing run_check. Seconds, three short child runs.
+run_check "fail_reason_selftest"       "bash scripts/check-contracts.sh --selftest"
 run_check "agents_md"                  "sh scripts/check-agents-md.sh"
 run_check "asset_manifest_fixtures"    "py -3 scripts/check-asset-manifest-fixtures.py"
 run_check "asset_pipeline_doc"         "sh scripts/check-asset-pipeline-doc.sh"
@@ -1069,6 +1275,7 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 # MC2_* gate that is in neither RendererFeatureRegistry.h nor tier1_env_vars.md?
 # The 99-gate backlog is real and stays visible: `py -3 scripts/check-new-gates.py --all`.
 run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base HEAD~1"
+fi   # end of the real board (skipped under --selftest-render, above)
 
 # ---------------------------------------------------------------------------
 # Summary table

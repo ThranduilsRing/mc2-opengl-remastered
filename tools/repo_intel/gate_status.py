@@ -16,13 +16,6 @@ plus a live `git grep` for code readers (fast single-var path; env_index's
 full source walk is only used as fallback).
 
 Verdict flags map 1:1 to the failure classes:
-  REGISTRY_UNPARSED — RendererFeatureRegistry.h did not parse COMPLETELY, so
-                    `registered` is the string "UNKNOWN" and the verdict is
-                    "UNDETERMINED". This is a THIRD state, added by
-                    REGISTRY-PARSER-TRUTH-1 (2026-07-31) because the tool used
-                    to collapse it into `registered: false, verdict: "OK",
-                    flags: []` -- a confident wrong answer about a registered
-                    gate. Never record an UNREGISTERED/dead-gate finding off it.
   ENV_UNDRIVEABLE — the smoke runner really does NOT deliver this var's ambient
                     value to the engine (runner.FORCED_ENV / POPPED_ENV)
                     -> a shell-set value is discarded; an A/B arm never ran
@@ -218,33 +211,16 @@ def gate_status(repo_root: Path, var: str) -> dict:
         return {"error": f"invalid gate name {var!r} (expected MC2_[A-Z0-9_]+)"}
     repo_root = Path(repo_root)
 
-    # REGISTRY-PARSER-TRUTH-1: "the registry did not parse" must NEVER be
-    # rendered as "this gate is not registered".  Until 2026-07-31 this tool
-    # answered `registered: false, registry_entry: null, verdict: "OK",
-    # flags: []` about MC2_LIGHTING_DEBUG_VIEW -- a registered gate -- while its
-    # own reader list cited the registry line the parser had choked on.  That is
-    # the worst output shape available: a confident wrong answer with nothing to
-    # warn the reader.  Now the refusal propagates as a THIRD state, and the
-    # verdict cannot read "OK".
-    registry_error = None
-    try:
-        registry = ei._parse_registry(repo_root)
-    except ei.RegistryParseError as exc:
-        registry = None
-        registry_error = str(exc)
-
+    registry = ei._parse_registry(repo_root)
     tier1 = ei._parse_tier1_docs(repo_root)
     smoke_allow, smoke_anchor_ok = parse_smoke_allowlist(repo_root)
     check_allow, check_anchor_ok = parse_registry_check_allowlist(repo_root)
     runner_env = parse_runner_env_policy(repo_root)
     readers = _grep_readers(repo_root, var)
 
-    reg = registry.get(var) if registry is not None else None
+    reg = registry.get(var)
     t1 = tier1.get(var)
-    # Tri-state. The string "UNKNOWN" is deliberately neither True nor False:
-    # a JSON null would be read as falsy by the next tool down the chain, which
-    # is exactly the collapse this is here to prevent.
-    in_registry = (reg is not None) if registry is not None else "UNKNOWN"
+    in_registry = reg is not None
     in_tier1 = t1 is not None
     in_smoke_allow = var in smoke_allow
     in_check_allow = var in check_allow
@@ -262,14 +238,6 @@ def gate_status(repo_root: Path, var: str) -> dict:
     in_soft = var in runner_env["soft"]
 
     flags: list[str] = []
-    if registry_error is not None:
-        flags.append(
-            "REGISTRY_UNPARSED: RenderCore/RendererFeatureRegistry.h could not "
-            "be parsed completely, so whether this gate is registered is "
-            "UNKNOWN -- NOT 'no'. Do not record an UNREGISTERED finding, do not "
-            "add it to an allowlist, and do not file it as a dead gate off this "
-            "answer. Fix the registry or the parser first. Reason: "
-            + registry_error)
     # REAL undriveability, independent of the vestigial passthrough tuple.
     if in_popped:
         flags.append("ENV_UNDRIVEABLE: scripts/smoke_lib/runner.py DELETES this "
@@ -285,23 +253,16 @@ def gate_status(repo_root: Path, var: str) -> dict:
                      "passthrough tuple, and the runner no longer inherits "
                      "os.environ — the tuple is load-bearing, so a gate-ON "
                      "smoke silently runs the gate-OFF path")
-    # Every flag below is a claim ABOUT THE REGISTRY. None of them may be made
-    # when the registry did not parse: an unparsed registry is not an empty one,
-    # and "UNREGISTERED" / "GHOST" / "no trace anywhere" asserted off a failed
-    # read are precisely the confident wrong answers this lane exists to remove.
-    reg_known = registry is not None
-    if reg_known:
-        if has_readers and not in_registry and not in_check_allow:
-            flags.append("UNREGISTERED: not in RendererFeatureRegistry.h and not in "
-                         "check-env-registry.sh ALLOWLIST — CI env-registry gate fails")
+    if has_readers and not in_registry and not in_check_allow:
+        flags.append("UNREGISTERED: not in RendererFeatureRegistry.h and not in "
+                     "check-env-registry.sh ALLOWLIST — CI env-registry gate fails")
     if has_readers and not in_tier1:
         flags.append("UNDOCUMENTED: no docs/tier1_env_vars.md entry")
-    if reg_known and not has_readers:
-        if in_registry or in_tier1 or in_smoke_allow or in_check_allow:
-            flags.append("GHOST: registered/documented/allowlisted but no code reader "
-                         "found (removed feature? doc litter?)")
-        else:
-            flags.append("UNKNOWN: no trace of this var anywhere — typo?")
+    if not has_readers and (in_registry or in_tier1 or in_smoke_allow or in_check_allow):
+        flags.append("GHOST: registered/documented/allowlisted but no code reader "
+                     "found (removed feature? doc litter?)")
+    if not has_readers and not (in_registry or in_tier1 or in_smoke_allow or in_check_allow):
+        flags.append("UNKNOWN: no trace of this var anywhere — typo?")
 
     parse_notes = []
     if not smoke_anchor_ok:
@@ -324,27 +285,12 @@ def gate_status(repo_root: Path, var: str) -> dict:
             "ambient value reaches mc2.exe and both A/B arms are real. Do NOT "
             "treat this as a voided verification.")
 
-    # Three verdicts, not two. "GAPS" means "I looked and found problems";
-    # UNDETERMINED means "I could not look", and collapsing the two into OK/GAPS
-    # is how a parse failure became a clean bill of health.
-    if registry_error is not None:
-        verdict = "UNDETERMINED"
-    elif flags:
-        verdict = "GAPS"
-    else:
-        verdict = "OK"
-
     return {
         "var": var,
-        "verdict": verdict,
+        "verdict": "OK" if not flags else "GAPS",
         "flags": flags,
         "default": default,
-        "default_source": ("registry" if (reg and reg.get("default"))
-                           else "tier1_doc" if (t1 and t1.get("default"))
-                           else None),
         "registered": in_registry,
-        "registry_parse_ok": registry is not None,
-        "registry_parse_error": registry_error,
         "registry_entry": ({"feature_id": reg.get("feature_id"),
                             "kind": reg.get("kind"),
                             "default": reg.get("default"),

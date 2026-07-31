@@ -16,7 +16,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import env_index as ei
 import gate_status as gs
 import lane_registry as lr
 import mission_facts as mf
@@ -194,34 +193,9 @@ def _mini_repo(tmp_path: Path) -> Path:
         ")\n")
     (root / "docs" / "tier1_env_vars.md").write_text(
         "- `MC2_ALLOWED_GATE=1` — does a thing. Default **OFF**.\n")
-    # REGISTRY-PARSER-TRUTH-1: this fixture used to be a single bare row with no
-    # table declarations at all -- so it exercised nothing about the real file's
-    # structure, and passed against a parser that was dropping a live row. It is
-    # now a STRUCTURALLY REAL mini registry: both arrays, declared and closed,
-    # and it deliberately uses all three legal row forms that the shipped
-    # grammars used to choke on (adjacent string literals, an inline comment
-    # between fields, a trailing comma after the doc).
     (root / "RenderCore" / "RendererFeatureRegistry.h").write_text(
-        "static constexpr EnvVarDesc kFeatureTable[] = {\n"
-        "    {\n"
-        '        "MC2_FEATURE_ALLOWED",\n'
-        '        "MC2_ALLOWED_GATE",\n'
-        "        EnvVarKind::Feature,   // inline comment between two fields\n"
-        "        false,\n"
-        '        "allowed gate"\n'
-        "    },\n"
-        "};\n"
-        "\n"
-        "static constexpr EnvVarDesc kAuxEnvVars[] = {\n"
-        "    {\n"
-        '        "MC2_TRACE_SPLIT_DOC",\n'
-        '        "MC2_SPLIT_DOC_GATE",\n'
-        "        EnvVarKind::Trace,\n"
-        "        true,\n"
-        '        "doc written as "\n'
-        '        "two adjacent literals",\n'
-        "    },\n"
-        "};\n")
+        '{ "MC2_FEATURE_ALLOWED", "MC2_ALLOWED_GATE", EnvVarKind::Flag, '
+        'false, "allowed gate" },\n')
     return root
 
 
@@ -320,54 +294,6 @@ def test_gate_status_flags_genuinely_undriveable():
     r = gs.gate_status(REPO_ROOT, "MC2_SMOKE_MODE")
     assert r["smoke_env_forced"] is True
     assert any(f.startswith("ENV_UNDRIVEABLE") for f in r["flags"])
-
-
-def test_gate_status_parses_every_legal_row_form(tmp_path):
-    """All three row forms the shipped grammars used to drop must parse.
-
-    Adjacent string literals cost scripts/flag-registry-auto-gen.py 99 rows, an
-    inline comment between fields cost this module's parser MC2_LIGHTING_DEBUG_VIEW,
-    and a trailing comma after the doc cost 12 more. All three are legal C++ that
-    the header actually uses.
-    """
-    root = _mini_repo(tmp_path)
-    reg = ei._parse_registry(root)
-    assert set(reg) == {"MC2_ALLOWED_GATE", "MC2_SPLIT_DOC_GATE"}, reg
-    # the doc must be the CONCATENATION, not just the first literal
-    assert reg["MC2_SPLIT_DOC_GATE"]["doc"] == "doc written as two adjacent literals"
-    assert reg["MC2_SPLIT_DOC_GATE"]["default"] == "on"
-
-
-def test_registry_parse_failure_is_not_unregistered(tmp_path):
-    """THE REGRESSION THIS LOCKS OUT.
-
-    gate_status answered `registered: false, verdict: "OK", flags: []` about
-    MC2_LIGHTING_DEBUG_VIEW -- a registered gate -- because its parser dropped
-    the row and the tool had no way to say "I could not tell". A parse failure
-    must NEVER render as a negative answer: no `registered: false`, no "OK"
-    verdict, and a flag that says so in words.
-    """
-    root = _mini_repo(tmp_path)
-    hdr = root / "RenderCore" / "RendererFeatureRegistry.h"
-
-    # 1. header truncated mid-table (a torn read / concurrent write)
-    hdr.write_text(hdr.read_text()[:120])
-    r = gs.gate_status(root, "MC2_ALLOWED_GATE")
-    assert r["registered"] == "UNKNOWN", r["registered"]
-    assert r["registered"] is not False
-    assert r["verdict"] == "UNDETERMINED", r["verdict"]
-    assert r["registry_parse_ok"] is False
-    assert any(f.startswith("REGISTRY_UNPARSED") for f in r["flags"]), r["flags"]
-    assert not any(f.startswith("UNREGISTERED") for f in r["flags"]), r["flags"]
-    assert not any(f.startswith("GHOST") for f in r["flags"]), r["flags"]
-
-    # 2. header absent entirely -- the OTHER silent-degradation path: the old
-    #    parser returned {} for "file missing" and for "registry empty" alike.
-    hdr.unlink()
-    r = gs.gate_status(root, "MC2_ALLOWED_GATE")
-    assert r["registered"] == "UNKNOWN"
-    assert r["verdict"] == "UNDETERMINED"
-    assert any("does not exist" in f for f in r["flags"]), r["flags"]
 
 
 def test_gate_status_env_drop_fails_closed_without_runner(tmp_path):

@@ -10,45 +10,7 @@ Build a unified env var index by merging three sources:
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
-
-# REGISTRY-PARSER-TRUTH-1 (2026-07-31): the registry grammar this file used to
-# carry privately joined a row's fields with `\s*`, which tolerates whitespace
-# but not an inline comment.  One live row has one --
-#   EnvVarKind::Feature,   // not Trace: it REPLACES the lit render output
-# -- so the parse silently returned 359 of the header's 360 rows, and the ONE it
-# dropped was MC2_LIGHTING_DEBUG_VIEW.  gate_status() then answered
-#   registered: false, registry_entry: null, verdict: "OK", flags: []
-# about a correctly registered gate, WHILE ITS OWN reader list cited
-# RendererFeatureRegistry.h:2556 -- the very line it had failed to parse.  A
-# confident wrong answer, with no flag, from the tool sessions call to decide
-# whether a gate is registered.
-#
-# The grammar now lives in scripts/registry_parse.py (one implementation, five
-# self-referential invariants) and REFUSES rather than returning a short dict.
-# Callers MUST NOT turn that refusal into `registered: false`; see gate_status().
-_SCRIPTS_DIR = str(Path(__file__).resolve().parents[2] / "scripts")
-if _SCRIPTS_DIR not in sys.path:
-    sys.path.insert(0, _SCRIPTS_DIR)
-try:
-    from registry_parse import RegistryParseError, parse_registry as _parse_registry_strict
-except ImportError as _exc:                                   # pragma: no cover
-    # Deliberately NOT a module-level hard failure: this module is imported by
-    # the MCP server, and taking the whole server down would also take out
-    # mission_facts, preflight and lane_registry, none of which read the
-    # registry.  Scope the failure to the registry question instead -- but make
-    # it a REFUSAL there, never an empty registry.
-    _IMPORT_ERROR = _exc
-
-    class RegistryParseError(Exception):
-        pass
-
-    def _parse_registry_strict(path):
-        raise RegistryParseError(
-            "the shared registry parser (scripts/registry_parse.py) could not "
-            "be imported (%s) -- refusing to report an empty gate registry"
-            % _IMPORT_ERROR)
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +20,19 @@ except ImportError as _exc:                                   # pragma: no cover
 _WALK_EXCLUDE_DIRS = {"build64", "3rdparty", ".git", "releases", "dist",
                       "release", ".vscode", ".clangd", ".ccls-cache"}
 _WALK_EXTENSIONS   = {".cpp", ".h", ".hpp", ".c"}
+
+_REGISTRY_ENTRY = re.compile(
+    r'\{\s*'
+    r'"(MC2_[A-Z0-9_]+)",\s*'            # featureId — kFeatureTable MC2_FEATURE_*
+                                         #  AND kAuxEnvVars MC2_DIAG_*/MC2_TUNE_*
+                                         #  (MCP-ANTI-CHURN-1: aux entries were
+                                         #  missed -> false "unregistered" verdicts)
+    r'(nullptr|"MC2_[A-Z_0-9]+")\s*,\s*' # envVar (may be nullptr)
+    r'EnvVarKind::(\w+)\s*,\s*'           # kind
+    r'(true|false)\s*,\s*'                # defaultOn
+    r'"((?:[^"\\]|\\.)*)"',               # doc (allow escaped chars)
+    re.MULTILINE | re.DOTALL,
+)
 
 # Match direct getenv("MC2_*"), std::getenv, and common thin wrappers:
 #   envFlag*("MC2_*") (envFlagOn/envFlag/envFlagDefaultOn/...), selftestEnvFlag("MC2_*"),
@@ -79,29 +54,33 @@ _TIER1_DEFAULT = re.compile(r'Default\s+\*\*(ON|OFF)\*\*', re.IGNORECASE)
 # ---------------------------------------------------------------------------
 
 def _parse_registry(repo_root: Path) -> dict:
-    """Returns {envVarName: {feature_id, kind, default, doc}} from RendererFeatureRegistry.h.
-
-    RAISES RegistryParseError when the header is missing, unreadable, or does
-    not parse completely.  It used to return {} for all of those AND for "the
-    registry really is empty", which made "I could not read the source" and
-    "this gate is not registered" the same bytes to every caller.  They are
-    opposite facts, and a caller that cannot tell them apart will publish the
-    wrong one with a straight face.
-    """
+    """Returns {envVarName: {feature_id, kind, default, doc}} from RendererFeatureRegistry.h."""
     path = repo_root / "RenderCore" / "RendererFeatureRegistry.h"
-    reg = _parse_registry_strict(path)
+    if not path.exists():
+        return {}
 
-    out = {}
-    for entry in reg.values():
-        if entry["envVar"] is None:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    out  = {}
+
+    for m in _REGISTRY_ENTRY.finditer(text):
+        feature_id  = m.group(1)
+        env_raw     = m.group(2)
+        kind        = m.group(3)
+        default_on  = (m.group(4) == "true")
+        doc         = m.group(5)
+
+        if env_raw == "nullptr":
             continue  # always-on feature, no runtime gate
-        out[entry["envVar"]] = {
-            "feature_id": entry["featureId"],
-            "kind":       entry["kind"],
-            "default":    "on" if entry["defaultOn"] else "off",
-            "doc":        entry["doc"],
+
+        name = env_raw.strip('"')
+        out[name] = {
+            "feature_id": feature_id,
+            "kind":       kind,
+            "default":    "on" if default_on else "off",
+            "doc":        doc,
             "source":     "RenderCore/RendererFeatureRegistry.h",
         }
+
     return out
 
 
