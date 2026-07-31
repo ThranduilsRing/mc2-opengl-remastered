@@ -381,7 +381,18 @@ def head_aggregator_text():
 # what this guarantees is that a trailer, once written, is TRUE. That is worth
 # having on its own: a reproduction command nobody can run is worse than none,
 # and this repo demonstrably ships rows naming uncommitted scripts.
-MEASURED_BY_RE = re.compile(r"^[ \t]*MEASURED-BY:[ \t]*(.+?)[ \t]*$", re.M)
+# COLUMN 0 ONLY -- git trailer convention, and the reason is not theoretical.
+# The first cut of this arm allowed leading whitespace and immediately fired on
+# the commit that INTRODUCED it, because that message documents the convention
+# with an indented example:
+#
+#     MEASURED-BY: <command>
+#
+# A prose EXAMPLE is not a claim. That is the same mention-vs-invocation
+# distinction arm (b) exists to enforce, reintroduced by its own author inside
+# one commit; the suite caught it. An author who needs a literal example in a
+# message indents it, exactly as this comment does.
+MEASURED_BY_RE = re.compile(r"^MEASURED-BY:[ \t]*(.+?)[ \t]*$", re.M)
 SCRIPT_IN_CMD_RE = re.compile(r"((?:scripts|tools)/[\w./+-]+\.(?:py|sh|ps1))")
 
 
@@ -762,6 +773,17 @@ def selftest():
         ok = False
     else:
         print("[selftest]   ok  MEASURED-BY naming a tracked script -> silent")
+    # THE REAL REGRESSION, re-injected verbatim: an INDENTED prose example is
+    # documentation, not a claim. This exact string is in the commit that added
+    # arm (f), and the first cut of the arm failed the whole suite on it.
+    if measured_by_problems(
+            "feat: add the convention\n\nOne line in the commit:\n\n"
+            "    MEASURED-BY: <command>\n\nArm (f) grades it.\n", _paths):
+        print("[selftest] FAIL  MEASURED-BY fired on an INDENTED prose example",
+              file=sys.stderr)
+        ok = False
+    else:
+        print("[selftest]   ok  indented MEASURED-BY example -> not a claim")
 
     # --- THE LEDGER ITSELF: HEAD, never the index (META4-CLOSE-1) -----------
     # tracked_files() must answer "would every clone of this commit have the
