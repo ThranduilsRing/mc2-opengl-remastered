@@ -1608,24 +1608,70 @@ static bool test_head_ibl_pins_trees_that_stock_left_free(TestCtx& t)
     return t.failures == 0;
 }
 
-// E5. MC2_PROP_SHADOW_RECEIVE consequence. It modulates sunColor*ndl only, and
-// a tree row's sunColor is identically vec3(0) (static_prop.vert:715-728 finds
-// no INFINITE entry). So ANY shadow factor in [0,1] leaves the tree unchanged.
-// This holds at stock AND at HEAD, and it would STOP holding the moment a sun
-// entered the row.
+// E5. MC2_PROP_SHADOW_RECEIVE is an exact no-op on trees. THE VERDICT IS RIGHT
+// BUT THE INHERITED REASON IS WRONG, and the difference decides whether
+// restoring a sun would "wake it up".
+//
+// The inherited claim is that RECEIVE "modulates only sunColor * ndl", so a
+// tree with no sun has nothing to attenuate -- which would mean restoring a sun
+// makes RECEIVE live on trees for the first time. That is NOT the mechanism.
+// RECEIVE is a DEFERRED SCREEN-SPACE gate, not a vertex-lighting term:
+//
+//   shaders/static_prop.frag:649-652  alpha-test props emit GBuffer1 via
+//        rc_gbuffer1_screenShadowEligible_noSelfShadow_alphaTest()
+//   shaders/include/render_contract.hglsl:70-72   ...which writes a = 0.1875
+//   shaders/include/render_contract.hglsl:87-89   rc_isAlphaTestProp(g) :=
+//        g.a > 0.1 && g.a <= 0.22          -> TRUE for 0.1875
+//   shaders/shadow_screen.frag:337-339
+//        else if (enableDynamicShadows == 1 && propShadowReceive != 0
+//                 && !rc_isAlphaTestProp(normalData))      <- EXCLUDED
+//   (and the debug-view mirror at shadow_screen.frag:280)
+//
+// Trees carry ALPHA_TEST_BIT: gos_static_prop_batcher.cpp:3028-3030 sets
+// materialFlags from TG_TypeShape::alphaTestOn and its own comment names
+// trees; :5733 sets the matching instance bit-2 from the same field.
+//
+// So trees are excluded from RECEIVE by an EXPLICIT ALPHA-TEST CLASS CHECK
+// (PROP-ALPHA-SHADOW-CLASS-1), for a reason that has nothing to do with the
+// sun: the shadow depth pass has no alpha discard, so a card writes a solid
+// slab of depth and sampling it back self-shadows the whole card uniformly.
+// CONSEQUENCE: restoring a sun to the tree row would NOT make
+// MC2_PROP_SHADOW_RECEIVE live on trees. The exclusion is sun-independent.
+//
+// NOTE the documentation gap this exposes: render_contract.hglsl:43-44 calls
+// the 0.1875 class "alpha-test LATTICE prop (chain-link fence, railing,
+// grating)". Every TREE in the game is also in it.
 static bool test_prop_shadow_receive_is_an_exact_no_op_on_trees(TestCtx& t)
 {
-    const double kTreeSunColor = 0.0;          // static_prop.vert:716 init, never written
+    // (a) The alpha-test class check, ported verbatim from render_contract.hglsl.
+    const double kTreeGBuffer1Alpha = 0.1875;   // :71
+    auto rc_isAlphaTestProp = [](double a) { return a > 0.1 && a <= 0.22; };
+    CH_CHECK(t, rc_isAlphaTestProp(kTreeGBuffer1Alpha));        // tree  -> EXCLUDED
+    CH_CHECK(t, !rc_isAlphaTestProp(0.25));                     // solid prop -> included
+    // The band is still inside the static-prop band for every OTHER reader
+    // (render_contract.hglsl:78-80), which is why the class split was a no-op.
+    auto rc_isStaticPropNoSelfShadow = [](double a) { return a > 0.1 && a <= 0.5; };
+    CH_CHECK(t, rc_isStaticPropNoSelfShadow(kTreeGBuffer1Alpha));
+
+    // (b) The exclusion does not consult the sun, so it holds identically for
+    // the stock tree AND for a hypothetical sun-restored tree. Sweep both.
     for (int i = 0; i < kNumMissions; ++i) {
         const MissionLight L = missionLight(kMissions[i]);
         for (int s = 0; s <= 10; ++s) {
             const double shadow = s / 10.0;    // full shadow .. full light
             for (int k = 0; k <= 10; ++k) {
                 const double ndl = k / 10.0;
-                // lit = (seed + ambientTerm) + sunColor*ndl*shadow
-                const double withShadow =
-                    clampd(0.0 + L.S + kTreeSunColor * ndl * shadow, 0.0, 1.0);
-                CH_CHECK(t, std::fabs(withShadow - treeMulStock(0.0, L.S)) < 1e-12);
+                // RECEIVE never reaches a tree pixel, so the shadow factor is
+                // discarded whatever the row contains.
+                const double stockTree = treeMulStock(0.0, L.S);
+                CH_CHECK(t, std::fabs(stockTree - treeMulStock(0.0, L.S)) < 1e-12);
+                // ...including with a sun present: still excluded by class.
+                const double sunRestored = clampd(L.S + L.S * ndl, 0.0, 1.0);
+                const double sunRestoredShadowed =
+                    rc_isAlphaTestProp(kTreeGBuffer1Alpha)
+                        ? sunRestored                            // gate skipped
+                        : clampd(L.S + L.S * ndl * shadow, 0.0, 1.0);
+                CH_CHECK(t, std::fabs(sunRestoredShadowed - sunRestored) < 1e-12);
             }
         }
     }
