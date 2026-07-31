@@ -19,12 +19,40 @@ SCOPE (lighting consumers only):
   shaders/include/lighting.hglsl
   shaders/mech.vert
   shaders/static_prop.vert
+  shaders/vulkan/mech_tier1.vert        — VK re-port of calc_light
+  shaders/vulkan/color_prop_tier1.vert  — VK prop ambient/sun scan
+
+  The two Vulkan shaders consume the SAME ObjectLights record over the same
+  slot range, so the identical corruption/perf failure applies to them. Both
+  were already correctly bounded when they entered scope (VK-SCOPE-EXTEND-1,
+  verified by reading the lines, not by trusting a green run) — this is a
+  tripwire extension, not a bug fix. GL is canonical and VK conforms, which is
+  precisely why VK must be held to the same invariant: a VK-only rewrite to the
+  bare cap would diverge silently from the GL path it was ported from.
+
+  These five are the COMPLETE set of light-array consumers in shaders/ — see
+  the exclusion below for the only other file that touches the light arrays.
 
 DELIBERATELY EXCLUDED:
-  shaders/lightgrid_build.comp — the froxel / clustered light-grid build path
-  loops the FIXED cap (LIGHTGRID_MAX_LIGHTS) BY DESIGN (it bins every potential
-  slot), and it is DEFERRED / gated off (not on the Stage-1 shading path). It is
-  not a per-object populated-count consumer, so the invariant does not apply.
+  shaders/lightgrid_build.comp — the froxel / clustered light-grid build path.
+  It is DEFERRED / gated off (not on the Stage-1 shading path) and is not a
+  per-object populated-count consumer, so the invariant does not apply.
+
+  NOTE (VK-SCOPE-EXTEND-1, measured): this entry previously said the file "loops
+  the FIXED cap BY DESIGN". That mechanism is wrong and the claim is corrected
+  here rather than propagated. The file contains NO per-light loop at all — it
+  DISPATCHES one invocation per potential slot (`local_size_x =
+  LIGHTGRID_MAX_LIGHTS`, `uint i = gl_GlobalInvocationID.x`), so the parallelism
+  replaces the loop. Its only `for` iterates six frustum planes, not lights. It
+  also does read `light[0].numLights.x` and explicitly neutralises inactive
+  slots with a zero-radius sphere, so it is not ignoring the populated count.
+  The exclusion stands; only its stated reason was inaccurate.
+
+  Consequence worth knowing: because that file has no matching loop, this
+  exclusion is currently VACUOUS — the file would report 0 loops and PASS if it
+  were in scope. So the exclusion is not load-bearing today, and if someone
+  later adds a genuine per-light loop there, this entry would hide it rather
+  than the checker adjudicating it. Re-examine the exclusion at that point.
 
 Logic per file:
   - Find every `for (...)` loop.
@@ -49,6 +77,10 @@ CONSUMERS = [
     "shaders/include/lighting.hglsl",
     "shaders/mech.vert",
     "shaders/static_prop.vert",
+    # VK-SCOPE-EXTEND-1: same ObjectLights record, same slot range, same failure
+    # mode. Correctly bounded on entry; in scope so a rewrite cannot go quiet.
+    "shaders/vulkan/mech_tier1.vert",
+    "shaders/vulkan/color_prop_tier1.vert",
 ]
 
 LIGHT_ARRAY_RE = re.compile(r"light_(dir|color|falloff|to_world)\s*\[")
