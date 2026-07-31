@@ -5990,6 +5990,22 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // repair msl.cpp:2171 performs when its guard rejects the cache. If even that
     // is impossible (no SHAPE_NODE leaf to gather through) the actor is dropped
     // rather than drawn against an arbitrary slot, matching the registry's choice.
+    //
+    // THE TRADE, WRITTEN DOWN BECAUSE THIS IS NOT A PURE WIN. The re-gather is
+    // not free: addLightDataStructureWithPerActorColor (mclib/txmmgr.cpp:2062)
+    // does `*light_data = it->second.data`, overwriting lightData_ from a scene
+    // template that GatherLightsParameters builds off the TG_Shape::s_listOfLights
+    // / s_numLights STATICS the last-transformed shape set. That is the very
+    // render-time timing bug the Stage 2.D.2 comment above describes. So on the
+    // stale path we swap one wrong answer for another: BEFORE = a prior-frame
+    // slot that may name another actor's row or an unwritten zero row (possibly
+    // PURE BLACK); AFTER = a valid current-frame row that may carry the
+    // last-transformed actor's tint (MISTINTED, never black). Strictly better in
+    // the worst case; a REGRESSION for an actor whose stale index happened to
+    // still point at its own correct row, which self-heals on its next update().
+    // mono_stale_light_row_regathered sizes this. If it reads high in steady
+    // state, the right fix is to re-stamp the row at update() time rather than
+    // re-gather here, and this gate should be reconsidered rather than defended.
     // ------------------------------------------------------------------
     const bool freshnessOn = staticPropLightFreshnessEnabled();
     const bool cacheFresh  = (multi->cachedFrame_ == g_mc2FrameCounter);
