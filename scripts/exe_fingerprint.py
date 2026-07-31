@@ -51,6 +51,12 @@ scanner works is not a finding.
 
 Usage:
     py -3 scripts/exe_fingerprint.py <binary> [--json]
+    py -3 scripts/exe_fingerprint.py <binary> --operands
+
+--operands dumps the pooled literals (with offsets and alignment) and the raw
+bytes preceding the format literal. Reach for it when a binary reports
+layout-unrecognized: it shows directly which operand went missing and why,
+instead of leaving the reason code to be theorised about.
 
 Exit: 0 fingerprint extracted | 1 absent/unreadable | 2 self-test failed.
 """
