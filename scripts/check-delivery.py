@@ -122,7 +122,42 @@ MANIFEST = os.path.join(SCRIPT_DIR, "delivery-fixes.json")
 EXE_NAME = "mc2" + ".exe"
 
 # Where installs live. Both a flat layout and a releases/ subdir are scanned.
-DEFAULT_INSTALL_ROOTS = ["A:/Games/mc2-opengl"]
+#
+# THE ROOT LIST IS ITSELF AN AXIS-4 CLAIM, AND THE FIRST VERSION'S WAS WRONG.
+# ---------------------------------------------------------------------------
+# This was `["A:/Games/mc2-opengl"]` -- the directory full of LANE SCRATCH
+# BUILDS (mc2-win64-pom1, mc2-win64-treesoff-1, mc2-win64-abl-validate ...).
+# A disk sweep for the engine binary (DELIVERY-CLOSE-1) found 22 of them and
+# this tool was grading 18. Among the four it could not see was
+#
+#     A:/Games/MC2 OpenGL Remastered/<engine>   built from 85aaaa4f, 2026-07-05
+#
+# -- the install carrying the PRODUCT name, i.e. the likeliest thing a person
+# actually double-clicks, and 25 days behind the tip. All nine manifest fixes
+# grade 0/3 against that root. So the tool whose entire purpose is "would the
+# user see it?" was answering for every directory EXCEPT the one named like the
+# user's, and answering 6/18 where the honest answer for that install is 0.
+#
+# An install root that is not scanned cannot report NO; it reports nothing, and
+# nothing reads as fine. Roots are therefore listed explicitly and a new one is
+# a deliberate edit, not a silent default.
+#
+# STILL UNSCANNED AFTER THIS CHANGE, NAMED SO IT IS A KNOWN GAP RATHER THAN AN
+# UNKNOWN ONE -- the sweep found 22 engine binaries, these 3 are not among the
+# 19 graded:
+#   * A:/Games/Carver5-feasibility  and  A:/Games/test -- both verified
+#     banner-absent (no build-fingerprint), so not attributable engine builds
+#     this repo produced. They would grade "?" on every axis: noise, not answer.
+#   * A:/Games/MC2 OpenGL Remastered/data/mc2-win64-v0.4 -- fingerprint
+#     eca37ed3 (2026-06-14) and built from a DIRTY tree. Two levels below its
+#     root, so no pattern here reaches it without a speculative <root>/*/*/
+#     glob that would also sweep arbitrary subdirectories. Grade it explicitly
+#     with --install-root when it matters.
+# Re-check with --install-root if any of that changes.
+DEFAULT_INSTALL_ROOTS = [
+    "A:/Games/mc2-opengl",
+    "A:/Games/MC2 OpenGL Remastered",
+]
 
 REGISTRY_REL = "RenderCore/RendererFeatureRegistry.h"
 
@@ -581,7 +616,14 @@ def read_default_at(sha: str | None, var: str) -> dict:
 def find_installs(roots) -> list[dict]:
     seen, out = set(), []
     for root in roots:
-        pats = [os.path.join(root, "*", EXE_NAME),
+        # `root` ITSELF may be an install dir, not just a parent of them. The
+        # first version matched only <root>/*/ and <root>/releases/*/, so
+        # "A:/Games/MC2 OpenGL Remastered/<engine>" -- an install that IS its
+        # own root -- was unreachable no matter what root you passed: naming it
+        # found nothing, and naming its parent swept in every unrelated folder
+        # under A:/Games. Three patterns, so a root can be either shape.
+        pats = [os.path.join(root, EXE_NAME),
+                os.path.join(root, "*", EXE_NAME),
                 os.path.join(root, "releases", "*", EXE_NAME)]
         for pat in pats:
             for exe in sorted(_glob.glob(pat)):
