@@ -161,11 +161,24 @@ run_check() {
 # ---------------------------------------------------------------------------
 # TRI-STATE RUNNER -- so that RED still means "action required by you, now"
 # ---------------------------------------------------------------------------
-# GOLDEN-PROVENANCE-TRUTH-1 (2026-07-30). One check on this board fails
-# permanently and CORRECTLY: capture_provenance reports two zero-byte capture
-# manifests (ENOSPC truncation) that record no binary at all, so no tool can
-# ever attribute them. A row that is red every single day teaches everyone to
-# skip red -- at which point the next REAL failure is invisible.
+# GOLDEN-PROVENANCE-TRUTH-1 (2026-07-30). Some findings are correct, permanent
+# and irreparable: capture_provenance reports two zero-byte capture manifests
+# (ENOSPC truncation) that record no binary at all, so no tool can ever
+# attribute them. A row that is red every single day teaches everyone to skip
+# red -- at which point the next REAL failure is invisible.
+#
+# TRISTATE-WIRE-1 (2026-07-31) corrects what this paragraph used to claim. It
+# said "ONE CHECK ON THIS BOARD FAILS PERMANENTLY AND CORRECTLY", naming
+# capture_provenance, and that sentence was read for a day as "that row is the
+# amber one". It is not, and never has been -- af4f79c8a introduced this runner
+# and the goldens scan in ONE commit, so the row was red from birth. It exits 1,
+# because only 2 of the 5 findings it reports are ledgerable and the other 3 are
+# GOLDEN-UNATTRIBUTABLE, a code the ledger refuses on purpose. Opting a check
+# into this runner does not make its row amber. The CHECK decides, per run, by
+# reconciling every finding it has against the ledger -- and if even one finding
+# is unpinned it returns 1 and the row is red. Measured, this session:
+# amber(3) with only ledgered findings in scope; red(1) the moment one more
+# unledgered finding appears, including one of the very same irreparable class.
 #
 # The usual cure is a suppression list, which can hide a real failure. This is
 # not that. A check opted into this runner may return exit 3 to mean "there are
@@ -211,6 +224,27 @@ run_check_tri() {
         # row is indistinguishable from a green one at a glance.
         if [ "$rc" -eq 3 ]; then
             printf '%s\n' "$out" | grep -E 'KNOWN' || true
+        elif [ "$rc" -ne 0 ]; then
+            # TRISTATE-WIRE-1 (2026-07-31): ...and a FAIL must state why far
+            # more urgently than a KNOWN does, because FAIL is the state that
+            # means "act now". This runner ALREADY HAS the explanation sitting
+            # in $out -- run_check throws its output at /dev/null and genuinely
+            # cannot show you anything, but this one captured it and then
+            # discarded it on every code except 3. So the one row on this board
+            # equipped to tell "understood, pinned, bounded" apart from "new
+            # regression" rendered, in the mode everybody actually runs, as a
+            # bare `FAIL <---` with no reason attached at all.
+            #
+            # That is exactly how a red row becomes wallpaper: capture_provenance
+            # has been red for three GOLDEN-UNATTRIBUTABLE findings the ledger
+            # REFUSES to pin (see the row's own comment below), and lane after
+            # lane walked past it as "known-red, not mine" because the amber
+            # mechanism next to it was the only thing that ever explained itself.
+            # Printing is strictly additive: it cannot pass a check that failed,
+            # and it cannot change any count.
+            echo "--- $label (FAIL, rc=$rc) ---"
+            printf '%s\n' "$out"
+            echo ""
         fi
     else
         echo "--- $label ---"
@@ -708,6 +742,23 @@ run_check "stock_mission_data_selftest" "py -3 scripts/check-stock-mission-data.
 # scripts/provenance-known-failures.json, all irreparable, none expired" and
 # prints as KNOWN, not PASS. See the runner's comment above for why that is not
 # a suppression mechanism.
+#
+# THIS ROW IS RED, NOT AMBER, AND THAT IS THE CORRECT ANSWER (TRISTATE-WIRE-1,
+# 2026-07-31 -- measured, not inherited). Being wired to the tri-state runner is
+# an ELIGIBILITY, not a colour. Today the check finds 5 failures and exits 1:
+#   * 2 x EMPTY-MANIFEST  -- zero-byte, ledgered, irreparable  -> would be KNOWN
+#   * 3 x GOLDEN-UNATTRIBUTABLE on the three committed goldens -> UNLEDGERED
+# The three goldens CANNOT be acknowledged away, and this was proven by trying:
+# appending one is rejected with "acknowledges code GOLDEN-UNATTRIBUTABLE, which
+# HAS a remedy ... Fix it instead" (check-capture-provenance.py:664-669,
+# IRREPARABLE_CODES at :154). The remedy is real but is a USER decision and
+# needs a capture run: retire v0.5.1-baseline and v0.5.2-baseline-PROPOSED (the
+# case is prepared in .claude/GOLDEN-v051-v052-RETIREMENT-CASE.md) and re-bless
+# baseline-5ef261f4, whose identity block is hand-added -- it carries no
+# `embedded_fingerprint` and no `exe_sha256_at_scan`, so it is a claim rather
+# than a reading (provenance_gate.py:392, :404), and the binary it names was
+# overwritten by another lane's build. Red here means "act now", and the act is
+# the user's. Do NOT step around this row as "known-red": it is a live item.
 run_check_tri "capture_provenance"      "py -3 scripts/check-capture-provenance.py --quiet"
 run_check "capture_provenance_selftest" "py -3 scripts/check-capture-provenance.py --selftest"
 # The provenance GATE the minting tools call (bless.py / verify.py /

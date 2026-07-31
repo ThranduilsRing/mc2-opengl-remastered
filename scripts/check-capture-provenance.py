@@ -170,6 +170,23 @@ LEDGER_PATH = ROOT / "scripts" / "provenance-known-failures.json"
 #: One year: long enough that a genuinely irreparable artifact is not re-argued
 #: every sprint, short enough that every entry is re-decided by a human who can
 #: still remember why it is there.
+#:
+#: WHAT THIS CAP DOES NOT DO -- state it rather than let the number imply more
+#: (TRISTATE-WIRE-1, 2026-07-31). The window is measured from the RUN DATE
+#: (`today + MAX_ACK_DAYS` in reconcile_ledger below), not from when the entry
+#: was first written. `acknowledged_utc` is recorded on every entry and is read
+#: by NOTHING in this file -- grep it. So an entry CAN sit amber indefinitely:
+#: editing one date field once a year renews it forever, and nothing here counts
+#: renewals or remembers the original acknowledgement. What the cap buys is that
+#: the renewal is an explicit, dated, tracked-file diff that a human has to type
+#: on purpose -- not that the acknowledgement expires in fact.
+#:
+#: Closing that would need something this repo does not have (an append-only
+#: store, or a first_acknowledged_utc that a renewer has no reason to leave
+#: alone -- an honour-system field is not a control). It is recorded here as a
+#: known limitation instead of being papered over with a mechanism that only
+#: looks like one. If an entry here reaches its second renewal, that is the
+#: signal to retire the artifacts rather than re-acknowledge them again.
 MAX_ACK_DAYS = 365
 
 
