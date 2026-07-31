@@ -141,6 +141,20 @@ USAGE
   py -3 tools/albedo_masked_audit.py --data-root <deploy> --negative-control
   py -3 tools/albedo_masked_audit.py --data-root <deploy> --assets truckprop,cargotruckprop
   py -3 tools/albedo_masked_audit.py --data-root <deploy> --json out.json --report-per-node
+  py -3 tools/albedo_masked_audit.py --data-root <deploy> --paint-sweep
+
+CONVENTION (ALBEDO-RECONCILE-1 -- read this before quoting a mech number)
+-------------------------------------------------------------------------
+mech and vehicle albedo exists in TWO conventions that differ by more than 2x:
+  raw .tga   -- the authored image, which for these classes is a PAINT MASK and
+                is never what the engine samples.
+  as drawn   -- after setPaintScheme rewrote it at load. This is the only one
+                that composes with lighting.
+Two lanes once published contradictory censuses of the SAME run by quoting
+different fields of it. Every mech/vehicle row printed by this tool therefore
+carries its convention, and the as-drawn value additionally depends on the
+paint scheme (per-player options.cfg, per-mission-part .fit), so it must be
+reported with its scheme or with the --paint-sweep range -- never as one number.
 
 --data-root must contain data/objects/, data/tgl/ and data/tgl/128/. Both a
 deployed install and an unpacked srcdata tree satisfy that (srcdata has the
@@ -902,6 +916,226 @@ BANDS = {
 }
 
 
+# --------------------------------------------------------------------------
+# CONVENTION DECLARATION -- mandatory for mech and vehicle
+# --------------------------------------------------------------------------
+#
+# ALBEDO-RECONCILE-1.  Two lanes ran THIS tool over THE SAME 468-asset catalog
+# and published contradictory censuses:
+#     lane A: mech 120.7 / vehicle 113.8   ("as drawn")
+#     lane B: mech  47.0 / vehicle  48.4   (console CLASS SUMMARY)
+# Neither lane was wrong about its own arithmetic. They quoted two DIFFERENT
+# fields of one run: the console summary printed `L_srgb` (the raw .tga) for
+# every class, while `L_srgb_painted` (the as-drawn value) existed only inside
+# --json and --compose. The two differ by >2x for mech and vehicle, so a bare
+# number was worth nothing without its convention.
+#
+# The defect was the AMBIGUITY, not the arithmetic. This module therefore never
+# prints a mech or vehicle figure without the convention attached, and never
+# silently substitutes one convention for the other.
+PAINTED_CLASSES = ("mech", "vehicle")
+
+CONV_RAW = "raw .tga  <- NOT what is drawn"
+CONV_UNPAINTED_CLASS = "authored .tga = as drawn"
+
+
+def scheme_str(ps_slots):
+    """Render a paint scheme as psRed/psGreen/psBlue, low 24 bits."""
+    if ps_slots is None:
+        return "none"
+    return "/".join("%06X" % (int(c) & 0xFFFFFF) for c in ps_slots)
+
+
+def _stats_row(label, conv, vals):
+    a = np.array(sorted(vals), dtype=float)
+    return (f"{label:<13}{conv:<36}{len(a):>4}{a.mean():>9.1f}"
+            f"{np.median(a):>10.1f}{np.percentile(a, 25):>8.1f}"
+            f"{np.percentile(a, 75):>8.1f}{a.min():>8.1f}{a.max():>8.1f}")
+
+
+def print_class_summary(ok, ps_slots):
+    """Print the class table with a MANDATORY convention column.
+
+    Invariant enforced here: a mech/vehicle row never appears without saying
+    which convention produced it, and when the as-drawn figure was not computed
+    the table says so loudly instead of falling back to the raw one.
+    """
+    print("\n=== CLASS SUMMARY (area-weighted masked mean, sRGB byte space) ===")
+    print(f"{'class':<13}{'CONVENTION':<36}{'n':>4}{'L_mean':>9}{'L_median':>10}"
+          f"{'L_p25':>8}{'L_p75':>8}{'L_min':>8}{'L_max':>8}")
+
+    by = defaultdict(list)
+    for r in ok:
+        by[r["cls"]].append(r)
+
+    missing_asdrawn = []
+    for cls in ("static_prop", "mech", "vehicle", "tree"):
+        rows = by.get(cls, [])
+        if not rows:
+            continue
+        if cls not in PAINTED_CLASSES:
+            # Never repainted at load -> one convention only, no ambiguity.
+            print(_stats_row(cls, CONV_UNPAINTED_CLASS, [r["L_srgb"] for r in rows]))
+            continue
+        # Painted class: the authored .tga is a PAINT MASK, not a colour.
+        # mclib/mech3d.cpp:2104-2233 and mclib/gvactor.cpp:1303-1400 rewrite it
+        # at load, so the raw mean is never the drawn mean.
+        print(_stats_row(cls, CONV_RAW, [r["L_srgb"] for r in rows]))
+        painted = [r["L_srgb_painted"] for r in rows
+                   if r.get("L_srgb_painted") is not None]
+        if painted:
+            print(_stats_row("", "as drawn, ps=" + scheme_str(ps_slots), painted))
+        else:
+            missing_asdrawn.append(cls)
+            print(f"{'':<13}{'as drawn':<36}"
+                  f"{'NOT COMPUTED -- run without --no-paint':>47}")
+
+    print("\nCONVENTION NOTES (read before quoting any number above):")
+    print("  * static_prop and tree are never repainted; their one number is"
+          " unambiguous.")
+    print("  * mech and vehicle are REWRITTEN AT LOAD by setPaintScheme"
+          " (mech3d.cpp:2104-2233,")
+    print("    gvactor.cpp:1303-1400). The raw .tga row is a paint MASK, not a"
+          " colour, and is")
+    print("    NOT what the engine samples. Only the 'as drawn' row composes"
+          " with lighting.")
+    print("  * The as-drawn row depends on the PAINT SCHEME, which is per-player"
+          " (options.cfg)")
+    print("    and per-mission-part (mission .fit). It is not a property of the"
+          " asset. Quote it")
+    print("    with its scheme, or with the --paint-sweep range -- never alone.")
+    if missing_asdrawn:
+        print(f"  * WARNING: --no-paint suppressed the as-drawn figure for"
+              f" {', '.join(missing_asdrawn)}.")
+        print("    The rows shown for those classes are raw .tga and must NOT be"
+              " reported as albedo.")
+
+
+# --------------------------------------------------------------------------
+# Paint-scheme sensitivity sweep
+# --------------------------------------------------------------------------
+
+def harvest_mission_schemes(data_root):
+    """Every (psRed, psGreen, psBlue) triple a default launch can actually draw.
+
+    code/mission.cpp:2315-2317 passes
+        resetPaintScheme(highlightColor1, highlightColor2, baseColor)
+    for every mover that is NOT on Commander::home, reading those three keys
+    per [PartN] block (code/mission.cpp:4760-4768). The home commander's own
+    lance instead takes prefs.highlightColor/prefs.baseColor
+    (code/mission.cpp:2313), which options.cfg overrides
+    (code/prefs.cpp:230-235, keys "BaseColor" / "Highlightcolor").
+
+    Returns [(count, (psRed, psGreen, psBlue)), ...] most-common first.
+    """
+    mdir = None
+    for cand in (os.path.join(data_root, "missions"),
+                 os.path.join(data_root, "data", "missions")):
+        if os.path.isdir(cand):
+            mdir = cand
+            break
+    if not mdir:
+        return []
+    trip = defaultdict(int)
+    part_re = re.compile(r"\[Part\d+\]")
+    for fn in sorted(os.listdir(mdir)):
+        if not fn.lower().endswith(".fit"):
+            continue
+        try:
+            with open(os.path.join(mdir, fn), "r", errors="ignore") as fh:
+                txt = fh.read()
+        except OSError:
+            continue
+        for blk in part_re.split(txt)[1:]:
+            vals = []
+            for key in ("HighlightColor1", "HighlightColor2", "BaseColor"):
+                m = re.search(r"\b" + key + r"\s*=\s*(-?\d+)", blk)
+                vals.append(int(m.group(1)) & 0xFFFFFF if m else None)
+            if None not in vals:
+                trip[tuple(vals)] += 1
+    return sorted(((c, t) for t, c in trip.items()), reverse=True)
+
+
+def read_options_cfg_scheme(data_root, explicit=""):
+    """(psRed, psGreen, psBlue) for the player's own lance, from options.cfg.
+
+    code/mission.cpp:2313: resetPaintScheme(highlight, highlight, base).
+    The census tree (srcdata) and the install that owns options.cfg are usually
+    DIFFERENT directories, so --options-cfg exists to point at the real one.
+    """
+    cands = [explicit] if explicit else []
+    cands += [os.path.join(data_root, "options.cfg"),
+              os.path.join(os.path.dirname(data_root.rstrip("/\\")), "options.cfg")]
+    for cand in cands:
+        if not cand or not os.path.isfile(cand):
+            continue
+        try:
+            with open(cand, "r", errors="ignore") as fh:
+                txt = fh.read()
+        except OSError:
+            continue
+        b = re.search(r"BaseColor\s*=\s*(-?\d+)", txt)
+        h = re.search(r"Highlightcolor\s*=\s*(-?\d+)", txt, re.IGNORECASE)
+        if b and h:
+            hv, bv = int(h.group(1)) & 0xFFFFFF, int(b.group(1)) & 0xFFFFFF
+            return (hv, hv, bv), cand
+    return None, None
+
+
+def run_paint_sweep(sel, tex_dir, samples, data_root, limit, options_cfg=""):
+    """Measure the as-drawn median under every scheme that actually ships.
+
+    A single as-drawn mech number is not a property of the asset -- it is a
+    property of (asset, paint scheme). This prints the range so the number is
+    never quoted alone.
+    """
+    schemes = []
+    ocfg, ocfg_path = read_options_cfg_scheme(data_root, options_cfg)
+    if ocfg:
+        schemes.append((f"player options.cfg ({os.path.basename(ocfg_path)})", ocfg))
+    v = DEFAULT_PS_ARGB & 0xFFFFFF
+    schemes.append(("stock prefs.cpp default", (v, v, v)))
+    for count, trip in harvest_mission_schemes(data_root)[:limit]:
+        schemes.append((f"mission-authored (x{count} parts)", trip))
+
+    painted_sel = [c for c in sel if c["cls"] in PAINTED_CLASSES]
+    if not painted_sel:
+        print("\n=== PAINT-SCHEME SWEEP === (no mech/vehicle in selection)")
+        return
+    print("\n=== PAINT-SCHEME SWEEP -- as-drawn albedo vs paint scheme ===")
+    print("Every scheme below is one a DEFAULT LAUNCH actually draws: the "
+          "player's lance takes")
+    print("options.cfg, every other mover takes its mission [PartN] colours "
+          "(mission.cpp:2313-2317).")
+    print(f"\n{'scheme source':<34}{'psR/psG/psB':<24}"
+          f"{'mech L':>9}{'vehicle L':>11}")
+    agg = defaultdict(list)
+    for name, slots in schemes:
+        vals = defaultdict(list)
+        for c in painted_sel:
+            try:
+                st = measure_shape(c["ase"], tex_dir, samples, paint=slots)
+            except Exception:                              # noqa: BLE001
+                continue
+            if st.get("ok") and st.get("L_srgb_painted") is not None:
+                vals[c["cls"]].append(st["L_srgb_painted"])
+        row = {k: float(np.median(x)) for k, x in vals.items()}
+        for k, x in row.items():
+            agg[k].append(x)
+        print(f"{name:<34}{scheme_str(slots):<24}"
+              f"{row.get('mech', float('nan')):>9.1f}"
+              f"{row.get('vehicle', float('nan')):>11.1f}")
+    print("\nAS-DRAWN RANGE over shipped schemes:")
+    for cls in PAINTED_CLASSES:
+        if agg.get(cls):
+            lo, hi = min(agg[cls]), max(agg[cls])
+            print(f"  {cls:<10} {lo:.1f} .. {hi:.1f}   ({hi / max(lo, 1e-9):.2f}x"
+                  f" swing from the paint scheme alone)")
+    print("  => a single as-drawn mech/vehicle albedo is NOT a property of the"
+          " asset. Report the")
+    print("     range plus the specific scheme, never one number.")
+
+
 def compose_table(census_json, missions=("mc2_10", "mc2_03")):
     with open(census_json) as fh:
         data = json.load(fh)
@@ -911,13 +1145,36 @@ def compose_table(census_json, missions=("mc2_10", "mc2_03")):
         v = [r[key] for r in R if r["cls"] == cls and r.get(key) is not None]
         return np.median(v) if v else None
 
-    albedo = {
-        "static_prop": stat("static_prop", "L_srgb"),
-        # mech/vehicle albedo is the PAINTED texture -- the raw .tga mean is not
-        # what is drawn (the paint mask covers most of the surface).
-        "mech": stat("mech", "L_srgb_painted") or stat("mech", "L_srgb"),
-        "vehicle": stat("vehicle", "L_srgb_painted") or stat("vehicle", "L_srgb"),
-    }
+    # CONVENTION GUARD. The previous code did
+    #     stat(cls,"L_srgb_painted") or stat(cls,"L_srgb")
+    # which SILENTLY fell back to the raw .tga when the census was produced
+    # with --no-paint, and then printed the result under an "albedo" heading as
+    # though it were the as-drawn value. That silent substitution is the same
+    # defect this module exists to prevent, so it is now refused and declared.
+    conv = {}
+    albedo = {"static_prop": stat("static_prop", "L_srgb")}
+    conv["static_prop"] = CONV_UNPAINTED_CLASS
+    for cls in PAINTED_CLASSES:
+        painted = stat(cls, "L_srgb_painted")
+        if painted is not None:
+            albedo[cls] = painted
+            conv[cls] = "as drawn (painted)"
+        else:
+            albedo[cls] = stat(cls, "L_srgb")
+            conv[cls] = "RAW .tga -- census was --no-paint, NOT as drawn"
+
+    print("=== ALBEDO CONVENTION USED BY THIS TABLE ===")
+    for cls in ("static_prop", "mech", "vehicle"):
+        if albedo.get(cls) is not None:
+            print(f"  {cls:<14}{albedo[cls]:>8.1f}   {conv[cls]}")
+    if any("RAW" in c for c in conv.values()):
+        print("  !! At least one class is quoted in the RAW convention. Those"
+              " rows are NOT")
+        print("     comparable to static_prop and must not be reported as"
+              " albedo.")
+    print("  NOTE: the as-drawn mech/vehicle figure is scheme-dependent"
+          " (see --paint-sweep).")
+
     for m in missions:
         b = BANDS.get(m)
         if not b:
@@ -964,7 +1221,22 @@ def main():
     ap.add_argument("--paint-slots", default="",
                     help="explicit per-slot colours 'R,G,B' as ARGB hex -- the "
                          "engine passes resetPaintScheme(highlight, highlight, base)")
-    ap.add_argument("--no-paint", action="store_true")
+    ap.add_argument("--no-paint", action="store_true",
+                    help="skip the load-time repaint. NOTE: this does NOT make "
+                         "mech/vehicle rows comparable to static_prop -- it "
+                         "suppresses the as-drawn figure entirely and the table "
+                         "will say so.")
+    ap.add_argument("--paint-sweep", action="store_true",
+                    help="measure the as-drawn median under every paint scheme "
+                         "a default launch can draw (options.cfg + shipped "
+                         "mission [PartN] colours) and print the range")
+    ap.add_argument("--options-cfg", default="",
+                    help="path to the install's options.cfg, for the player's "
+                         "own paint scheme in --paint-sweep (the census tree "
+                         "and the install are usually different directories)")
+    ap.add_argument("--paint-sweep-limit", type=int, default=10,
+                    help="how many mission-authored schemes to sweep, most "
+                         "common first (default 10)")
     ap.add_argument("--report-per-node", action="store_true")
     ap.add_argument("--negative-control", action="store_true")
     ap.add_argument("--control-alt-root", default="",
@@ -1024,20 +1296,11 @@ def main():
 
     ok = [r for r in results if r.get("ok")]
 
-    print("\n=== CLASS SUMMARY (area-weighted masked mean, sRGB byte space) ===")
-    print(f"{'class':<14}{'n':>4}{'L_mean':>9}{'L_median':>10}{'L_p25':>8}"
-          f"{'L_p75':>8}{'L_min':>8}{'L_max':>8}")
-    by_cls = defaultdict(list)
-    for r in ok:
-        by_cls[r["cls"]].append(r["L_srgb"])
-    for cls in ("static_prop", "mech", "vehicle", "tree"):
-        v = sorted(by_cls.get(cls, []))
-        if not v:
-            continue
-        a = np.array(v)
-        print(f"{cls:<14}{len(v):>4}{a.mean():>9.1f}{np.median(a):>10.1f}"
-              f"{np.percentile(a,25):>8.1f}{np.percentile(a,75):>8.1f}"
-              f"{a.min():>8.1f}{a.max():>8.1f}")
+    print_class_summary(ok, ps_slots)
+
+    if args.paint_sweep:
+        run_paint_sweep(sel, tex_dir, args.samples, args.data_root,
+                        args.paint_sweep_limit, args.options_cfg)
 
     if args.json:
         with open(args.json, "w") as fh:
