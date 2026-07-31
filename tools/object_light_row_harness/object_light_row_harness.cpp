@@ -1135,6 +1135,77 @@ static bool test_guard_catches_every_zero_row_route(TestCtx& t)
     return t.failures == 0;
 }
 
+// The guard/forward mismatch, as a truth table. The two MIXED states are the
+// entire finding: one lets through a prop a correct guard would reject, the
+// other rejects a prop a correct guard would keep. Both are behaviour changes,
+// which is why the shipped code only COUNTS them.
+static bool test_guard_validates_a_different_variable_than_it_forwards(TestCtx& t)
+{
+    const uint32_t kS = slr::kNoLightIndex;
+
+    // Agreement: the common case, nothing to decide.
+    CH_CHECK(t, slr::classifyGuardForward(4u, 4u) == slr::kAgree);
+
+    // Both usable but different -> the per-actor capture is doing real work.
+    // Forwarding it is CORRECT; the guard is merely irrelevant here.
+    CH_CHECK(t, slr::classifyGuardForward(4u, 9u) == slr::kDifferBothValid);
+
+    // THE MISSED CASE: guard inspects a healthy shared cache and waves through
+    // an actor whose own capture never happened. resolve() then substitutes the
+    // sibling's row -- the prop is lit, by the wrong actor's light.
+    CH_CHECK(t, slr::classifyGuardForward(4u, kS) == slr::kForwardedSentinelOnly);
+
+    // THE INVERSE: guard rejects on a stale shared cache even though this actor
+    // HAD a good per-actor index -- needless deregistration churn.
+    CH_CHECK(t, slr::classifyGuardForward(kS, 4u) == slr::kValidatedSentinelOnly);
+
+    // Both sentinel -> invalidating is right, and the current guard does it.
+    CH_CHECK(t, slr::classifyGuardForward(kS, kS) == slr::kBothSentinel);
+
+    // Exactly the two mixed states differ between current and corrected guards.
+    CH_CHECK(t,  slr::guardCorrectionWouldChangeBehaviour(slr::kForwardedSentinelOnly));
+    CH_CHECK(t,  slr::guardCorrectionWouldChangeBehaviour(slr::kValidatedSentinelOnly));
+    CH_CHECK(t, !slr::guardCorrectionWouldChangeBehaviour(slr::kAgree));
+    CH_CHECK(t, !slr::guardCorrectionWouldChangeBehaviour(slr::kDifferBothValid));
+    CH_CHECK(t, !slr::guardCorrectionWouldChangeBehaviour(slr::kBothSentinel));
+
+    // The census line prints these names; a rename must break a test, not a run.
+    CH_CHECK(t, std::string(slr::divergenceName(slr::kForwardedSentinelOnly))
+                    == "forwarded_sentinel_only");
+    CH_CHECK(t, std::string(slr::divergenceName(slr::kValidatedSentinelOnly))
+                    == "validated_sentinel_only");
+    return t.failures == 0;
+}
+
+// The mismatch is only INTERESTING because of what resolve() does next. Compose
+// the two shipped functions and pin the end-to-end consequence of each state:
+// which light row the prop actually ends up reading, and whether it is a zero
+// row. This is what stops the finding from being oversold -- kForwardedSentinelOnly
+// is a WRONG-LIGHT bug, not a black-quad bug, and the test says so.
+static bool test_missed_case_is_wrong_light_not_a_zero_row(TestCtx& t)
+{
+    const uint32_t kS = slr::kNoLightIndex;
+    const uint32_t kMine = 7u, kSibling = 21u;
+
+    // Forwarded sentinel + healthy sibling cache: guard passes, resolve falls
+    // back to the SIBLING row. Lit -- but by another actor's light.
+    const uint32_t got = slr::resolve(true, kS, kSibling);
+    CH_CHECK(t, got == kSibling);
+    CH_CHECK(t, got != kMine);
+    CH_CHECK(t, !slr::isZeroRow(got, 2));      // NOT a zero row. Not the black quad.
+
+    // It only becomes a zero row when the sibling cache is ALSO unusable, and
+    // that is exactly the state the current guard already rejects.
+    CH_CHECK(t, slr::isZeroRow(slr::resolve(true, kS, kS), 2));
+    CH_CHECK(t, slr::classifyGuardForward(kS, kS) == slr::kBothSentinel);
+
+    // ...or when the sibling cache points at a never-baked slot, which the
+    // guard does NOT reject, because it only ever tests for the sentinel.
+    CH_CHECK(t, slr::isZeroRow(slr::resolve(true, kS, kSibling), 0));
+    CH_CHECK(t, slr::classifyGuardForward(kSibling, kS) == slr::kForwardedSentinelOnly);
+    return t.failures == 0;
+}
+
 int main(int argc, char** argv)
 {
     Harness h("object_light_row_harness");
@@ -1176,5 +1247,9 @@ int main(int argc, char** argv)
           test_zero_light_row_is_classified_not_silently_shaded);
     h.add("guard_catches_every_zero_row_route",
           test_guard_catches_every_zero_row_route);
+    h.add("guard_validates_a_different_variable_than_it_forwards",
+          test_guard_validates_a_different_variable_than_it_forwards);
+    h.add("missed_case_is_wrong_light_not_a_zero_row",
+          test_missed_case_is_wrong_light_not_a_zero_row);
     return h.run(argc, argv);
 }

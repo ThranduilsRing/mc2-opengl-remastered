@@ -86,6 +86,67 @@ inline bool isZeroRow(uint32_t resolvedLightIdx, int numLightsAtSlot)
     return classify(resolvedLightIdx, numLightsAtSlot) != kHealthy;
 }
 
+// ── GUARD/FORWARD DIVERGENCE ────────────────────────────────────────────────
+// ZERO-LIGHT-ROW-1 follow-up. BldgAppearance::render (bdactor.cpp:2214) and
+// TreeAppearance::render (:6860) VALIDATE `shape->getCachedGpuLightIndex()` --
+// the shared per-multi cache -- and then FORWARD `staticReg.lightDataIndex` --
+// the per-actor captured value -- to markVisibleChecked (:2230 / :6878).
+// Those are different variables by design: per-actor capture was introduced
+// precisely because the multi cache is last-writer-wins across sibling
+// instances. So the guard tests the variable the fix was introduced to stop
+// trusting, and never tests the one it introduced.
+//
+// This classifier names the four states so the divergence can be COUNTED before
+// anyone changes what is drawn. Correcting the guard would alter which light row
+// some props receive -- a visible change on a default launch -- so the census
+// runs first and the behaviour change waits on its number.
+enum Divergence {
+    kAgree                 = 0,  // both usable and equal -- nothing to decide
+    kDifferBothValid       = 1,  // both usable but different: the per-actor capture
+                                 // is doing real work; forwarding it is CORRECT and
+                                 // the guard happens to be harmless here
+    kForwardedSentinelOnly = 2,  // forwarded is the sentinel, validated is fine.
+                                 // GUARD PASSES, then resolve() silently falls back
+                                 // to the sibling's row -> prop lit by another actor.
+                                 // Wrong light, not a zero row. THE MISSED CASE.
+    kValidatedSentinelOnly = 3,  // validated is the sentinel, forwarded is fine.
+                                 // GUARD INVALIDATES a prop that HAD a good
+                                 // per-actor index -> needless deregistration churn.
+    kBothSentinel          = 4    // guard invalidates, and that is correct.
+};
+
+inline Divergence classifyGuardForward(uint32_t validatedIdx, uint32_t forwardedIdx)
+{
+    const bool vBad = (validatedIdx == kNoLightIndex);
+    const bool fBad = (forwardedIdx == kNoLightIndex);
+    if (vBad && fBad) return kBothSentinel;
+    if (fBad)         return kForwardedSentinelOnly;
+    if (vBad)         return kValidatedSentinelOnly;
+    return (validatedIdx == forwardedIdx) ? kAgree : kDifferBothValid;
+}
+
+// True when the CURRENT (guard-validates-the-wrong-variable) code and a
+// CORRECTED (guard-validates-what-it-forwards) code would behave differently.
+// Exactly the two mixed states: one passes a prop the corrected guard would
+// reject, the other rejects a prop the corrected guard would keep. If a run
+// reports zero of both, this defect is LATENT rather than live -- a materially
+// different report, and the reason the census exists.
+inline bool guardCorrectionWouldChangeBehaviour(Divergence d)
+{
+    return d == kForwardedSentinelOnly || d == kValidatedSentinelOnly;
+}
+
+inline const char* divergenceName(Divergence d)
+{
+    switch (d) {
+        case kDifferBothValid:       return "differ_both_valid";
+        case kForwardedSentinelOnly: return "forwarded_sentinel_only";
+        case kValidatedSentinelOnly: return "validated_sentinel_only";
+        case kBothSentinel:          return "both_sentinel";
+        default:                     return "agree";
+    }
+}
+
 inline const char* className(Class c)
 {
     switch (c) {

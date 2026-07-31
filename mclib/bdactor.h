@@ -248,7 +248,16 @@ class BldgAppearance : public ObjectAppearance
 			bool             registered;   // true iff recipeIndex is valid
 			TG_MultiShapePtr shape;        // bldgShape at registration time; detects swap
 			int32_t          recipeIndex;  // index into GpuStaticPropRegistry s_recipeRanges
-			bool             hasValidStaticLight = false;  // diagnostic-only cache validity
+			// ZERO-LIGHT-ROW-1 (2026-07-31): this was labelled "diagnostic-only"
+			// and it is NOT. It is load-bearing: bdactor.cpp:5147 uses it as a
+			// term of `stableLightSkipEligible`, which decides whether the
+			// STABLE_LIGHT_SKIP optimisation may skip a light resubmit. A field
+			// that looks like decoration but gates real work is its own hazard,
+			// so the label is corrected rather than the field removed.
+			// Maintained ONLY by the building paths (:5102, :5214, :5447);
+			// TreeAppearance's mirror struct has no equivalent and its touch
+			// paths perform no sentinel test at all.
+			bool             hasValidStaticLight = false;  // load-bearing: gates STABLE_LIGHT_SKIP
 			uint64_t         lastLightEnvGen = 0;          // coarse mission light generation
 			// 2026-05-11: captured at update/touch time, immediately after
 			// CacheGpuLightData / ResubmitCachedGpuLightData write multi's

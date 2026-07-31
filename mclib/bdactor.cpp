@@ -688,6 +688,7 @@ static void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 #endif
 
 #include"terrain_runtime.h"
+#include"static_light_row_guard.h"  // ZERO-LIGHT-ROW-1: guard/forward divergence census
 
 #ifndef TIMING_H
 #include"timing.h"
@@ -2206,6 +2207,45 @@ long BldgAppearance::render (long depthFixup)
 				else ++s_diag_static_now_false_other;
 			}
 			if (isnow) {
+				// ── [GUARD_FORWARD v1] ZERO-LIGHT-ROW-1 divergence census ──────
+				// Measure, WITHOUT changing behaviour, how often the variable
+				// this guard validates (the shared per-multi cache) disagrees
+				// with the variable it forwards (the per-actor capture).
+				// Default-ON and cheap: two loads + a switch per static building
+				// render, printed once every 600 renders. The two mixed states
+				// are the whole question -- if both stay 0 across a real run the
+				// guard/forward mismatch is LATENT, not live, and no behaviour
+				// change is warranted. See mclib/static_light_row_guard.h.
+				if (bldgShape) {
+					static uint64_t s_gf_total = 0, s_gf_agree = 0, s_gf_differ = 0;
+					static uint64_t s_gf_fwdSentinel = 0, s_gf_valSentinel = 0, s_gf_bothSentinel = 0;
+					const static_light_row::Divergence gfd =
+						static_light_row::classifyGuardForward(
+							bldgShape->getCachedGpuLightIndex(),   // validated
+							staticReg.lightDataIndex);            // forwarded
+					++s_gf_total;
+					switch (gfd) {
+						case static_light_row::kAgree:                 ++s_gf_agree;        break;
+						case static_light_row::kDifferBothValid:       ++s_gf_differ;       break;
+						case static_light_row::kForwardedSentinelOnly: ++s_gf_fwdSentinel;  break;
+						case static_light_row::kValidatedSentinelOnly: ++s_gf_valSentinel;  break;
+						case static_light_row::kBothSentinel:          ++s_gf_bothSentinel; break;
+					}
+					if ((s_gf_total % 600ull) == 0ull) {
+						fprintf(stderr,
+							"[GUARD_FORWARD v1] event=census class=bldg total=%llu agree=%llu "
+							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
+							"validated_sentinel_only=%llu both_sentinel=%llu would_change=%llu\n",
+							(unsigned long long)s_gf_total,
+							(unsigned long long)s_gf_agree,
+							(unsigned long long)s_gf_differ,
+							(unsigned long long)s_gf_fwdSentinel,
+							(unsigned long long)s_gf_valSentinel,
+							(unsigned long long)s_gf_bothSentinel,
+							(unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel));
+						fflush(stderr);
+					}
+				}
 				static const bool s_forceDynamicBldgs =
 				    bdForceDynamicDefault("MC2_FORCE_DYNAMIC_BUILDINGS");
 				if (s_forceDynamicBldgs) {
@@ -2214,6 +2254,10 @@ long BldgAppearance::render (long depthFixup)
 				} else if (bldgShape && bldgShape->getCachedGpuLightIndex() == UINT32_MAX) {
 					// Light gather failed this frame — invalidate so dynamic
 					// path re-runs and re-registers next frame.
+					// ZERO-LIGHT-ROW-1: NOTE the variable. This tests the shared
+					// per-multi cache; the value forwarded ~15 lines below is
+					// staticReg.lightDataIndex, the PER-ACTOR capture. The census
+					// immediately above measures how often that distinction bites.
 					++s_diag_lightidx_uintmax;
 					invalidateStaticRegistration();
 				} else {
@@ -6852,6 +6896,42 @@ long TreeAppearance::render (long depthFixup)
 				// disappear with the env var set, the static replay path is the
 				// failing boundary. If they remain, shared draw/material/global
 				// state is guilty. Revert by unsetting the env var (no rebuild).
+				// ── [GUARD_FORWARD v1] ZERO-LIGHT-ROW-1 divergence census ──────
+				// Same measurement as BldgAppearance::render. Trees are the
+				// WEAKER of the two sites: TreeAppearance::touch/touchSerialCommit
+				// (:7604 / :7698) assign staticReg[activeLOD].lightDataIndex with
+				// no sentinel test at all, where the building touch paths at least
+				// record one into hasValidStaticLight. Counting only.
+				{
+					static uint64_t s_gf_total = 0, s_gf_agree = 0, s_gf_differ = 0;
+					static uint64_t s_gf_fwdSentinel = 0, s_gf_valSentinel = 0, s_gf_bothSentinel = 0;
+					const static_light_row::Divergence gfd =
+						static_light_row::classifyGuardForward(
+							treeShape->getCachedGpuLightIndex(),          // validated
+							staticReg[activeLOD].lightDataIndex);         // forwarded
+					++s_gf_total;
+					switch (gfd) {
+						case static_light_row::kAgree:                 ++s_gf_agree;        break;
+						case static_light_row::kDifferBothValid:       ++s_gf_differ;       break;
+						case static_light_row::kForwardedSentinelOnly: ++s_gf_fwdSentinel;  break;
+						case static_light_row::kValidatedSentinelOnly: ++s_gf_valSentinel;  break;
+						case static_light_row::kBothSentinel:          ++s_gf_bothSentinel; break;
+					}
+					if ((s_gf_total % 600ull) == 0ull) {
+						fprintf(stderr,
+							"[GUARD_FORWARD v1] event=census class=tree total=%llu agree=%llu "
+							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
+							"validated_sentinel_only=%llu both_sentinel=%llu would_change=%llu\n",
+							(unsigned long long)s_gf_total,
+							(unsigned long long)s_gf_agree,
+							(unsigned long long)s_gf_differ,
+							(unsigned long long)s_gf_fwdSentinel,
+							(unsigned long long)s_gf_valSentinel,
+							(unsigned long long)s_gf_bothSentinel,
+							(unsigned long long)(s_gf_fwdSentinel + s_gf_valSentinel));
+						fflush(stderr);
+					}
+				}
 				static const bool s_forceDynamicTrees =
 				    bdForceDynamicDefault("MC2_FORCE_DYNAMIC_TREES");
 				if (s_forceDynamicTrees) {
