@@ -891,6 +891,26 @@ lights should remain visible at every angle instead of blinking out.
   diagnostics-only, no gameplay or render effect. Added to the smoke passthrough
   allowlist by DETERMINISM-RATCHET-2 (same ENV_DROP gap). Note `scripts/run_visual_capture.py`
   inherits the full environment (`os.environ.copy()`), so it was never subject to the drop.
+- `MC2_SIM_IDENTITY` — SIM-IDENTITY-HASH-1 world-state hash. **DEFAULT ON**; `=0`/`off`/
+  `false`/`no` turns it off. Reader is `code/sim_identity.cpp:80` (`envOnOff`, so unlike
+  `MC2_BRIDGE_MOVER_STATE` above it does *not* enable on `=0`). ON emits a `sim_identity`
+  block — sorted-by-partId digest over every live mover, no cap — into each visual-capture
+  sidecar; `scripts/sim_identity.py` is the refuse-to-grade gate that reads it
+  (`golden_compare.py compare` exits **7** = arms were not showing the same world). Costs a
+  few hundred getter calls once per capture; the per-frame path is the opt-in below.
+  Default ON on purpose: a refuse-to-grade gate whose input defaults OFF returns UNGRADED
+  for everything and becomes wallpaper.
+- `MC2_SIM_IDENTITY_TRACE` — one `[SIMID v1] simframe=… t=… n=… graded=… visual=… strict=…`
+  line per SIM frame to stdout (`code/sim_identity.cpp:85`, called from
+  `code/mission.cpp` Mission::update). **DEFAULT OFF**; diagnostics-only. Fixed arity and
+  width, so `diff run_a.log run_b.log | head -1` names the FIRST divergent sim frame with
+  no tooling — the successor to the ~58k-line per-mover dump above.
+- `MC2_SIM_IDENTITY_TRACE_DETAIL` — with the trace on, additionally emit one
+  `[SIMID v1 mover]` line per mover per sim frame (`code/sim_identity.cpp:91`).
+  **DEFAULT OFF**; very verbose, intended for a narrow frame window once the trace has
+  named the frame. All three were added to the smoke passthrough allowlist by
+  VERIFY-THE-UNVERIFIED-1; they shipped without it, so a smoke run setting
+  `MC2_SIM_IDENTITY_TRACE=1` had it dropped by Popen and got no trace at all.
 - `MC2_TERRAIN_TESS` — TCS/TES terrain tessellation material. **DEFAULT ON**; `=0` skips
   the `gos_terrain` material load (ISSUE-34 kill-switch — same engine state as a TCS/TES
   compile failure, for headless A/B of the no-tess config; console prints

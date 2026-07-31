@@ -568,6 +568,16 @@ run_check "sim_identity_gate_selftest" "py -3 scripts/sim_identity.py self-test"
 # check fires. A gate is wired when the payload traverses the pipe, not when
 # both ends compile.
 run_check "sim_identity_propagation" "py -3 scripts/check-sim-identity-propagation.py"
+# VERIFY-THE-UNVERIFIED-1: the propagation check above shipped WITHOUT a
+# selftest, and it was blind. Its link-5 needles (`_sim_identity_gate(` and
+# `_SIM_EXIT_UNGRADED`) were satisfied by the DEFINITION and the module-level
+# constant, so replacing golden_compare.py's gate block with `if False:` --
+# deleting the only call, making exit 7 unreachable, grading every comparison --
+# left this row, sim_identity_fieldsets and sim_identity_gate_selftest all at
+# exit 0. Measured by injection into the live tree, not theorised. Link 5 is now
+# AST-verified and comments are stripped before any substring match; this row
+# proves that machinery still discriminates.
+run_check "sim_identity_propagation_selftest" "py -3 scripts/check-sim-identity-propagation.py --selftest"
 
 # ---------------------------------------------------------------------------
 # UNWIRED-CHECK-CLOSE-1 (2026-07-30) -- the checks nobody was running

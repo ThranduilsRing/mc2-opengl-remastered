@@ -1372,6 +1372,24 @@ def main():
                             # to attribute run-to-run capture drift to movers.
                             "MC2_BRIDGE_MOVER_STATE",
                             "MC2_BRIDGE_MOVER_PERIOD_SEC",
+                            # SIM-IDENTITY-HASH-1: the successor to the two
+                            # above -- one [SIMID v1] world-hash line per SIM
+                            # frame instead of ~58k per-mover lines, so
+                            # `diff run_a.log run_b.log | head -1` names the
+                            # first divergent sim frame. Shipped in baf64733
+                            # WITHOUT these three entries, which reintroduced
+                            # the exact ENV_DROP the MC2_LETTERBOX_OPAQUE
+                            # comment above records: MC2_SIM_IDENTITY_TRACE=1
+                            # on a smoke run was dropped by Popen, the trace
+                            # never fired, and the headline claim ("localise
+                            # the residual to the first divergent sim frame")
+                            # was unreachable from the smoke harness.
+                            # MC2_SIM_IDENTITY is default ON; the other two are
+                            # default OFF (code/sim_identity.cpp:80,85,91 is the
+                            # reader). Added by VERIFY-THE-UNVERIFIED-1.
+                            "MC2_SIM_IDENTITY",
+                            "MC2_SIM_IDENTITY_TRACE",
+                            "MC2_SIM_IDENTITY_TRACE_DETAIL",
                             # ISSUE-9 called-shot gate + headless aimed-fire probe
                             # (both default OFF).
                             "MC2_CALLED_SHOT_FIX",
