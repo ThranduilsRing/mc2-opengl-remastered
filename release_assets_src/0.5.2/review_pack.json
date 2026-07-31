@@ -4,7 +4,7 @@
  "registry_header": "RenderCore/RendererFeatureRegistry.h",
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 &mdash; Fix Review",
- "lede": "<b>Two decisions are waiting on you, and they are the first two things on this page.</b> Everything after them is ordered so you can stop whenever you are tired without missing anything that blocks work. <b>&sect;1 is which install to launch</b> &mdash; and the delivery question it forces. <b>&sect;2 is the launcher default flip.</b> &sect;3 is the one supervised launch that would close four open questions at once; &sect;4 is the A/B queue, where <b>every row now names both the mission to use and the missions that are mathematically incapable of showing the change</b>. <span style=\"font-size:12px;color:#9aa3ad\">This build is shorter than the last one on purpose: <b>22 blocks and one whole section were removed</b> and the manifest is 11.6% smaller &mdash; and that is <i>after</i> adding the two decisions, a rewritten A/B table and a board breakdown, so considerably more prose came out than the net figure shows. Nothing with a picture in it was cut. The full list of what went and why is at the end of &sect;6 &mdash; a pack you finish beats a complete one you abandon.</span>",
+ "lede": "<b>Two decisions are waiting on you, and they are the first two things on this page.</b> Everything after them is ordered so you can stop whenever you are tired without missing anything that blocks work. <b>&sect;1 is which install to launch</b> &mdash; and the delivery question it forces. <b>&sect;2 is the launcher default flip.</b> &sect;3 is the one supervised launch that would close four open questions at once; &sect;4 is the A/B queue, where <b>every row now names both the mission to use and the missions that are mathematically incapable of showing the change</b>. <span style=\"font-size:12px;color:#9aa3ad\">This build is shorter than the last one on purpose: <b>One whole section and 12 blocks net came out</b> (manifest &minus;6.8%) &mdash; and that is after adding two decisions, a rewritten A/B table, a board breakdown and five corrections, so a good deal more prose was cut than the net figure shows. Nothing with a picture in it was cut. The full list of what went and why is at the end of &sect;6 &mdash; a pack you finish beats a complete one you abandon.</span>",
  "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install &mdash; DECISION</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\"><b style=\"color:#f0a0a0\">2. Decisions waiting on you</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">3. The one supervised launch</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">4. The A/B queue (mission + traps)</b></a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since the last build</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">6. Corrections &amp; what was cut</a> &nbsp;|&nbsp; <a href=\"#readfirst\">7. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">8. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">The pictures &rarr;</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a><br><span style=\"font-size:12px;color:#9aa3ad\"><b>A note on the numbers, because they collide and always have.</b> The eight sections above are numbered <b>1&ndash;8</b>; the picture sections below them keep their original <i>fix</i> numbers, which also start at 1 and run to 12, then 19 and 20. So &ldquo;&sect;2&rdquo; is the decision queue up here and the runway/cement blend down there. Where this page says <b>&sect;5.1</b>, <b>&sect;5.3</b>, <b>&sect;5.4</b> or <b>&sect;20e</b> it always means the numbered section above; a bare &sect; with a fix name next to it means the picture section.</span>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
@@ -521,11 +521,11 @@
    "blocks": [
     {
      "type": "h3",
-     "html": "<b style=\"color:#f0a0a0\">DECISION 2</b> &nbsp;The launcher turns four features ON that the engine leaves OFF. Flip it, or keep it?"
+     "html": "<b style=\"color:#f0a0a0\">DECISION 2</b> &nbsp;Four features are ON that the engine leaves OFF. Which way do you want them?"
     },
     {
      "type": "note",
-     "html": "<b>The launcher and a shell launch are not the same environment.</b> <code>DoLaunch</code> applies <i>every</i> row of its variable table unconditionally &mdash; you never have to open the Options dialog for it to fire &mdash; and four of those rows declare <code>defaultVal&nbsp;&quot;1&quot;</code> against an engine reader that is <b>default-OFF</b>. So <b>a launcher launch runs these four ON and a <code>.bat</code> or shell launch runs them OFF</b>, and until now neither arm was labelled with which set it got. <b style=\"color:#f0d890\">Any A/B you graded through the GUI on one day and from a batch file on another was not comparing the same build environment.</b>"
+     "html": "<b>The situation.</b> Four gates are engine-default-<b>OFF</b>, and both routes onto your screen turn them <b>ON</b>: the launcher declares <code>defaultVal&nbsp;&quot;1&quot;</code> for them and applies it unconditionally, and every install on disk carries a <code>launcher_env.json</code> holding the same four, which the <i>engine</i> applies to any variable you have not set yourself. So in practice <b>you have never seen these four off</b>, and nothing was labelled to tell you."
     },
     {
      "type": "meta",
@@ -624,7 +624,88 @@
     },
     {
      "type": "note",
-     "html": "<b>What you are choosing.</b> <b>(a) FLIP</b> &mdash; set all four to unset, so the launcher and a shell agree and both match the engine default. Every default launcher launch changes appearance; that is a user-graded default flip, which is why no lane took it. <b>(b) KEEP</b> &mdash; leave them ON and treat the launcher as a deliberate preset, now that the labels say <code>(engine OFF; launcher ON)</code> instead of lying. <b>(c) SPLIT</b> &mdash; flip <code>MC2_WATER_SKYTINT</code> only, on the narrow ground that it is not a preference at all but a suppression of authored per-mission art, and leave the other three as a preset. <span style=\"font-size:11px;color:#9aa3ad\">Nothing has been flipped. The labels were corrected and the decision left open on purpose.</span>"
+     "html": "<b style=\"color:#f0a0a0\">Correction &mdash; this page told you an hour ago that &ldquo;a launcher launch runs these four ON while a shell or batch launch runs them OFF&rdquo;. That is wrong, and I wrote it.</b> I took it from the comment in <code>mc2_launcher.cpp</code>, which is also wrong. The <code>.bat</code> route sets <code>MC2_NO_LAUNCHER=1</code>, and that is precisely the branch on which the engine reads <code>launcher_env.json</code> itself (<code>gameosmain.cpp:1091</code>). <b>Both routes give you the four ON.</b> The only ways to get them off are to set them to <code>0</code> yourself, or to set <code>MC2_LAUNCHER_ENV_JSON=0</code>."
+    },
+    {
+     "type": "h3",
+     "html": "2a. &nbsp;The one that is a defect, not a preference"
+    },
+    {
+     "type": "note",
+     "html": "<b><code>MC2_WATER_SKYTINT</code> should be decided on its own, and it is not a taste call.</b> A second reader (<code>visual_tuning_profile.cpp:182</code>) is a pure <i>presence</i> test: <code>if (!envIsSet(&quot;MC2_WATER_SKYTINT&quot;))</code>. So the variable being set to <b>anything &mdash; including <code>&quot;0&quot;</code> &mdash; suppresses the per-mission <code>waterSkyTintStrength</code></b> that <code>data/visual_tuning.json</code> authors. Turning it &ldquo;off&rdquo; by writing <code>0</code> does not restore the authored art; it silences it. <b>This one wants to be unset, not zeroed</b>, and bundling it with three preference questions &mdash; as this page did an hour ago &mdash; forces you to answer a bug and three matters of taste with a single yes."
+    },
+    {
+     "type": "h3",
+     "html": "2b. &nbsp;The three that are genuine judgement calls"
+    },
+    {
+     "type": "what",
+     "html": "<code>MC2_STATIC_PROP_PBR_V1</code>, <code>MC2_STATIC_PROP_AMBIENT_V1</code> and <code>MC2_CLOUD_SHADOW</code> are preferences. There are <b>three</b> ways to settle them, not the two this page offered:"
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "Option"
+       },
+       {
+        "tag": "th",
+        "html": "What it means"
+       },
+       {
+        "tag": "th",
+        "html": "What it costs"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>(a) Make the launcher agree with the engine</b><br><span style=\"font-size:11px;color:#9aa3ad\">flip <code>defaultVal</code> to unset</span>"
+       },
+       {
+        "tag": "td",
+        "html": "You decide these three are <i>not</i> wanted by default. Launcher, shell and engine finally say the same thing."
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0a0a0\">It does not heal a single install you already have.</b> <code>LoadEnvJson</code> seeds from <code>defaultVal</code> and then overwrites from the on-disk JSON (<code>mc2_launcher.cpp:805-836</code>), so every existing <code>launcher_env.json</code> keeps its <code>&quot;1&quot;</code>. The flip only affects a fresh install with no JSON. Fixing what is on your disk is a separate, manual step."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>(b) Make the engine agree with the launcher</b><br><span style=\"font-size:11px;color:#9aa3ad\">flip the ENGINE defaults ON</span>"
+       },
+       {
+        "tag": "td",
+        "html": "You decide these three <i>are</i> wanted &mdash; which is what you have actually been playing with all along. The launcher stops being a lie by becoming right."
+       },
+       {
+        "tag": "td",
+        "html": "A real default-behaviour change for anyone who is not you, and it needs the same eyes-on grading as any default flip. <b>This option was missing when the decision was put to you</b>, which made the choice look narrower than it is."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<b>(c) Keep the split, now that it is labelled</b>"
+       },
+       {
+        "tag": "td",
+        "html": "Treat the launcher as a deliberate preset. The rows now read <code>(engine OFF; launcher ON)</code> instead of claiming the engine default."
+       },
+       {
+        "tag": "td",
+        "html": "Cheapest and already true. But <code>AB-0</code> keeps not being a default frame, so every absolute judgement on this page needs the <code>MC2_LAUNCHER_ENV_JSON=0</code> caveat forever."
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>Nothing has been flipped either way.</b> The labels were corrected so the dialog stops asserting a false default; the decision itself was left open, and it is genuinely yours. <span style=\"font-size:11px;color:#9aa3ad\">Until this page, <b>the decision existed only inside a commit message</b> &mdash; no page, dialog or README named it, so there was no route by which you could have known you were being asked. That is the part worth fixing regardless of which option you pick.</span>"
     },
     {
      "type": "h3",
@@ -1012,6 +1093,10 @@
     {
      "type": "note",
      "html": "<b>This is a decision, not a recommendation, and nothing here lifts the block.</b> Engine launches are blocked by a hook and stay blocked until you say otherwise. The isolation study in section 5 assessed the mechanisms that might have let an agent do this without you, and <b>none of them was proven safe</b> &mdash; which is exactly why the only remaining route runs through you. You are being handed the choice, not asked to ratify one already made."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; The recipe above says to launch <code>AB-0-DEFAULT-baseline.bat</code> and look at the ground and the props. Read the AB-0 warning in &sect;4 first.</b> That file is not a default frame &mdash; the install&rsquo;s <code>launcher_env.json</code> turns on four features the engine leaves off, two of which (<code>MC2_STATIC_PROP_AMBIENT_V1</code>, <code>MC2_STATIC_PROP_PBR_V1</code>) land squarely on the prop brightness you are being asked to judge. <b>Add <code>set MC2_LAUNCHER_ENV_JSON=0</code> to a copy of the file before you use it for absolute judgements.</b> For the A/B comparisons it does not matter."
     }
    ]
   },
@@ -1023,6 +1108,118 @@
     {
      "type": "what",
      "html": "<b>Six things are waiting on your eyes, and each one has exactly one recipe.</b> Run them from <code>A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31/</code> &mdash; <b>not</b> the 07-30 AB install this page used to name, and not the Start-menu one. <b>The trap column is the point of this table.</b> Several of these gates produce <i>mathematically exactly zero</i> change on the missions you habitually check &mdash; not &ldquo;a small change&rdquo;, zero &mdash; so grading one there would tell you the fix is dead when it is merely invisible."
+    },
+    {
+     "type": "note",
+     "html": "<b style=\"color:#f0a0a0\">&#9888; <code>AB-0-DEFAULT-baseline.bat</code> IS NOT A DEFAULT FRAME. This corrects something this page told you an hour ago.</b><br>The engine reads <code>launcher_env.json</code> from beside the executable and applies every <code>MC2_*</code> key in it that <b>you have not already set</b> (<code>gameosmain.cpp:1075-1141</code>; a shell value always wins). That happens on the <code>.bat</code> route too &mdash; the arms set <code>MC2_NO_LAUNCHER=1</code>, which is exactly the branch that triggers the JSON read. The CURSORFIX install ships such a file with <b>12</b> keys; <code>AB-0</code> spells out <b>7</b> gates and only one of them overlaps. So <b>11 of the 12 reach you</b>, and <b>four of them switch on a feature the engine leaves off</b>:"
+    },
+    {
+     "type": "meta",
+     "attrs": "style=\"font-size:12px\"",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "html": "Forced ON by the install&rsquo;s <code>launcher_env.json</code>"
+       },
+       {
+        "tag": "th",
+        "html": "Engine default"
+       },
+       {
+        "tag": "th",
+        "html": "Effect on AB-0"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_CLOUD_SHADOW</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b>"
+       },
+       {
+        "tag": "td",
+        "html": "cloud shadows are on"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_STATIC_PROP_PBR_V1</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b>"
+       },
+       {
+        "tag": "td",
+        "html": "prop specular is on"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_STATIC_PROP_AMBIENT_V1</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b>"
+       },
+       {
+        "tag": "td",
+        "html": "prop hemisphere ambient is on &mdash; directly on top of your &ldquo;props look dark&rdquo; report"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_WATER_SKYTINT</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>OFF</b>"
+       },
+       {
+        "tag": "td",
+        "html": "water sky tint on, <b>and</b> per-mission water art direction suppressed"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_SHADOW_MAP_SIZE</code>=8192, <code>MC2_FPS_CAP</code>=165, <code>MC2_STATICPROP_TEX_TIER</code>=512"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#9aa3ad\">no registry entry</span>"
+       },
+       {
+        "tag": "td",
+        "html": "non-default quality/perf settings"
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "<code>MC2_SHADOW_CSM</code>, <code>MC2_TERRAIN_LOD_CHUNK</code>, <code>MC2_COLORMAP_KTX2</code>, <code>MC2_STATIC_PROP_IBL_SH</code>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>ON</b>"
+       },
+       {
+        "tag": "td",
+        "html": "<span style=\"color:#a0f0a0\">inert &mdash; the JSON agrees with the engine</span>"
+       }
+      ]
+     ]
+    },
+    {
+     "type": "note",
+     "html": "<b>What this does and does not invalidate.</b> <b style=\"color:#a0f0a0\">Every A/B <i>delta</i> on this page stays valid</b> &mdash; both arms inherit the same JSON, so the difference between <code>AB-0</code> and <code>AB-n</code> is still purely the gate you are testing. <b style=\"color:#f0a0a0\">Absolute judgements do not.</b> Anywhere this page asks &ldquo;is the ground still near-black?&rdquo; or &ldquo;is this what a player sees?&rdquo;, <code>AB-0</code> cannot answer it: you would be looking at four extra rendering features. <b>To get a real default frame</b>, add <code>set MC2_LAUNCHER_ENV_JSON=0</code> to a copy of <code>AB-0</code> &mdash; that is the engine&rsquo;s own kill-switch for the JSON path (<code>gameosmain.cpp:1095</code>) &mdash; or spell the four gates out as <code>=0</code>. <span style=\"font-size:11px;color:#9aa3ad\">The batch file&rsquo;s own header says &ldquo;<code>launcher_env.json</code> cannot reach any of them&rdquo;. Read strictly, that is true of the seven gates it lists. Read the way anyone reads a file called DEFAULT-baseline, it is misleading, and it is why this went unnoticed.</span>"
     },
     {
      "type": "note",
@@ -1207,7 +1404,7 @@
     },
     {
      "type": "note",
-     "html": "<b style=\"color:#f0d890\">Three things landed today that are deliberately NOT in the table above, because grading them would waste your time.</b> Saying so is the point &mdash; a recipe pointing at a change that cannot move a pixel is worse than no recipe.<br><br><b>(1) <code>MC2_MECH_LIGHT_FRESHNESS</code> (<code>db221dcc2</code>, default-ON).</b> Real bug, real fix &mdash; the mech path trusted a cached light-slot index without checking the frame stamp, and those slots are rebased every frame. <b>But its own author was explicit that in steady state the gate is likely inert</b>, and that what he has is evidence the stale read <i>can</i> occur, not that it <i>does</i>. There is an instrument rather than a picture: the counter <code>s_mechStaleLightRowDeclines</code> on the <code>[MECHBATCHER v1]</code> summary line. <b>A high number means reconsider this change, not defend it.</b> Nobody has seen it, because the fix is in no binary on disk.<br><br><b>(2) The GL/VK prop-shadow class divergence (<code>5efd553e0</code>).</b> Vulkan&rsquo;s prop shader wrote a flat <code>0.25</code> where GL distinguishes <code>0.1875</code> for the alpha-test lattice &mdash; trees, fences, foliage cards were all classified as solid props. Genuine, and now fixed. <b style=\"color:#a0f0a0\">Zero pixels change today:</b> Vulkan is not the default backend (<code>MC2_VK_SHARED_GBUFFER</code> is presence-gated and default-OFF), and no consumer that currently exists separates the two values &mdash; the only reader that does is used solely by <code>shadow_screen.frag</code> under <code>MC2_PROP_SHADOW_RECEIVE</code>, also default-OFF, and the VK ports have no opt-in for it at all. <b>The value is conformance, not appearance.</b><br><br><b>(3) The four launcher gates in &sect;2.</b> Those are a decision, not an experiment &mdash; and until you make it, an A/B run through the GUI and one run from a <code>.bat</code> are not the same arm."
+     "html": "<b style=\"color:#f0d890\">Three things landed today that are deliberately NOT in the table above, because grading them would waste your time.</b> Saying so is the point &mdash; a recipe pointing at a change that cannot move a pixel is worse than no recipe.<br><br><b>(1) <code>MC2_MECH_LIGHT_FRESHNESS</code> (<code>db221dcc2</code>, default-ON).</b> Real bug, real fix &mdash; the mech path trusted a cached light-slot index without checking the frame stamp, and those slots are rebased every frame. <b>But its own author was explicit that in steady state the gate is likely inert</b>, and that what he has is evidence the stale read <i>can</i> occur, not that it <i>does</i>. There is an instrument rather than a picture: the counter <code>s_mechStaleLightRowDeclines</code> on the <code>[MECHBATCHER v1]</code> summary line. <b>A high number means reconsider this change, not defend it.</b> Nobody has seen it, because the fix is in no binary on disk.<br><br><b>(2) The GL/VK prop-shadow class divergence (<code>5efd553e0</code>).</b> Vulkan&rsquo;s prop shader wrote a flat <code>0.25</code> where GL distinguishes <code>0.1875</code> for the alpha-test lattice &mdash; trees, fences, foliage cards were all classified as solid props. Genuine, and now fixed. <b style=\"color:#a0f0a0\">Zero pixels change today:</b> Vulkan is not the default backend (<code>MC2_VK_SHARED_GBUFFER</code> is presence-gated and default-OFF), and no consumer that currently exists separates the two values &mdash; the only reader that does is used solely by <code>shadow_screen.frag</code> under <code>MC2_PROP_SHADOW_RECEIVE</code>, also default-OFF, and the VK ports have no opt-in for it at all. <b>The value is conformance, not appearance.</b><br><br><b>(3) The four launcher gates in &sect;2.</b> Those are a decision, not an experiment. <span style=\"font-size:11px;color:#9aa3ad\">This sentence used to end &ldquo;an A/B run through the GUI and one run from a <code>.bat</code> are not the same arm&rdquo;. That was wrong &mdash; both routes end up with the four ON, because the engine applies <code>launcher_env.json</code> itself on the <code>MC2_NO_LAUNCHER</code> branch the <code>.bat</code> files take. See the AB-0 warning at the top of this section.</span>"
     }
    ]
   },
@@ -1728,6 +1925,56 @@
         "tag": "td",
         "html": "<b>Withdrawn.</b> The <code>10</code> is a command-line default (<code>--paint-sweep-limit</code>) that merely caps how many schemes get iterated &mdash; a flag default wearing a measurement&rsquo;s clothes. The real population is <b>114</b> mission-authored schemes, and no reading reproduces 5-of-10. <b>The qualitative claim survives:</b> paint scheme swings mech albedo <b>1.58&times;</b> over 10 schemes and <b>5.66&times;</b> over all 114, so &ldquo;mechs are the brightest&rdquo; is not a scheme-stable property. Say that; do not say 5 of 10."
        }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;<code>AB-0-DEFAULT-baseline.bat</code> is the default launch &mdash; the &lsquo;before&rsquo; side for every arm.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">this page, and the batch file&rsquo;s own header</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0a0a0\">It is not a default frame.</b> The engine applies the install&rsquo;s <code>launcher_env.json</code> to every <code>MC2_*</code> you have not set (<code>gameosmain.cpp:1075-1141</code>), and that file turns <b>four engine-default-OFF features ON</b>. A/B deltas survive; absolute judgements do not. See &sect;4."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;A launcher launch runs those four ON while a shell or <code>.bat</code> launch runs them OFF.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">written on this page an hour ago, taken from the comment in <code>mc2_launcher.cpp</code></span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Wrong, both places.</b> The <code>.bat</code> arms set <code>MC2_NO_LAUNCHER=1</code>, which is the exact branch that makes the engine read the JSON itself. <b>Both routes give you the four ON.</b> The divergence only appears with <code>MC2_LAUNCHER_ENV_JSON=0</code>, or on an install with no JSON."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;The launcher decision is: flip its <code>defaultVal</code> to match the engine, or leave it.&rdquo;"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Two errors.</b> <b>(1)</b> There is a <b>third</b> option &mdash; flip the <i>engine</i> defaults ON, making the launcher right rather than making it agree. <b>(2)</b> It bundled a <b>defect</b> (<code>MC2_WATER_SKYTINT</code>, whose second reader is a presence test, so any value suppresses per-mission art) with three <b>preferences</b>. Split in &sect;2a/&sect;2b."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;Flipping the launcher default fixes it.&rdquo;"
+       },
+       {
+        "tag": "td",
+        "html": "<b>It cannot reach an install you already have.</b> <code>LoadEnvJson</code> overwrites the defaults from the on-disk <code>launcher_env.json</code> (<code>mc2_launcher.cpp:805-836</code>), so every deployed install keeps its stored <code>&quot;1&quot;</code> whatever the source says. Repairing them is a separate manual step."
+       }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;Ten default-ON changes nobody has looked at.&rdquo;"
+       },
+       {
+        "tag": "td",
+        "html": "<b>Eleven.</b> Re-counted for this build against the tracked record rather than inherited: all twelve introducing commits verified as ancestors of HEAD, and all eight of the changes that carry a gate verified <code>defaultOn=true</code> in <code>RendererFeatureRegistry.h</code>. <b style=\"color:#f0d890\">Weakest number on this page</b>, and stated so on purpose: there is <b>no tracked list</b> of &ldquo;default-ON changes this session&rdquo; &mdash; the count is maintained by hand, which is exactly how it drifted to ten. It should become a file."
+       }
       ]
      ]
     },
@@ -1749,7 +1996,7 @@
     },
     {
      "type": "what",
-     "html": "<b>You have never finished one of these packs.</b> That is a fact about the page, not about you: the previous build ran to <b>298 blocks over 24 sections</b>, and <b>48% of its weight was prose in sections containing not one picture</b>. This build is <b>276 blocks over 23 sections</b> &mdash; and that is <i>after</i> adding two decisions, a corrected A/B table and a board breakdown, so more came out than the net figure suggests. Everything removed is listed here rather than deleted quietly:"
+     "html": "<b>You have never finished one of these packs.</b> That is a fact about the page, not about you: the previous build ran to <b>298 blocks over 24 sections</b>, and <b>48% of its weight was prose in sections containing not one picture</b>. This build is <b>286 blocks over 23 sections</b> &mdash; and that is <i>after</i> adding two decisions, a corrected A/B table and a board breakdown, so more came out than the net figure suggests. Everything removed is listed here rather than deleted quietly:"
     },
     {
      "type": "meta",
