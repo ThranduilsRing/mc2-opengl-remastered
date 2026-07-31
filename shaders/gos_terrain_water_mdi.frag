@@ -84,6 +84,17 @@ uniform int u_waterDebugMode;     // WATER-DEBUG-VIEWS-1: fragment/material-spac
 uniform float u_waterSkyTintStrength;  // WATER-VISUAL-FIRST-SLICE: 0 = exact no-op (default).
 uniform vec3  u_waterSkyTintColor;     // camera-INDEPENDENT sky/horizon tint target (NOT fresnel)
 uniform float u_waterReflStrength;     // WATER-SKY-REFLECTION-1: 0 = exact no-op (gate OFF default).
+// WATER-SUN-SPEC-2 (repairs WATER-SUN-SPEC-1, c50e99a6). BOTH of these were
+// uploaded EVERY FRAME by gameos_graphics.cpp since c50e99a6 and NEITHER was
+// ever declared here, in gos_terrain_water_fast_mdi.vert, or in ANY shader in
+// this repo's history (`git log -S"u_waterSpecIntensity" --all -- 'shaders/*'`
+// returns no commits). glGetUniformLocation returned -1 and the upload lambda
+// skips loc < 0 silently, so MC2_WATER_SHINE was arithmetically incapable of
+// changing one pixel at any value, on any mission -- and the water surface had
+// NO sun direction at all, which is why "the sun does not glint off the water"
+// could not be fixed by any lighting tuning. Declaring them is the repair.
+uniform PREC vec4 terrainLightDir;     // RAW MC2 Z-up sun dir (.z = sin(elevation)); NOT the Stuff frame.
+uniform float u_waterSpecIntensity;    // MC2_WATER_SHINE; 0 = exact no-op (default OFF).
 // WATER-HDRI-REFL-1: direct equirect HDRI sample for specular sun glint.
 // u_waterHdriLod < 0 => HDRI unavailable, fall back to SH-L2 only.
 uniform sampler2D u_hdri;        // HDRI equirect (unit 3, with mipmaps)
@@ -129,6 +140,13 @@ const float REFL_WAVE_SLOPE = 0.05;   // fBm-gradient -> wave-normal slope (0.02
 // exponent keeps top-down water on the true HDRI/SH sample (byte-identical).
 const float GRAZE_SKY_PULL  = 0.70;   // 0 -> exact old reflection color
 const float GRAZE_SKY_EXP   = 4.0;    // grazing sharpness (higher = only near-horizon)
+
+// WATER-SUN-SPEC-2: Blinn-Phong sun-glint constants. The lobe is deliberately
+// TIGHT -- this is the specular highlight of a ~0.5-degree solar disk on a
+// near-flat dielectric, not a broad sheen. A wide lobe would just re-add the
+// camera-independent GLINT_GAIN shimmer that already exists above.
+const float SUN_SPEC_POWER  = 96.0;   // Blinn-Phong exponent (tight sun lobe)
+const vec3  SUN_SPEC_TINT   = vec3(1.00, 0.97, 0.90);  // slightly warm sun white
 
 // Precision-safe (fract-early) hash -> stable for large MC2 world coords;
 // value-noise + 3-octave fBm. No texture, no seam (continuous WorldPos).
@@ -390,6 +408,43 @@ void main(void)
             col = mix(col, reflectCol, reflMix);   // reflMix==0 at SH strength 0 -> no-op
             //PORT-END:waterReflMix
         }
+
+        // ---- WATER-SUN-SPEC-2: gated Blinn-Phong SUN glint (MC2_WATER_SHINE) ----
+        //PORT-BEGIN:waterSunSpec
+        // Placed AFTER the reflection mix and BEFORE fog on purpose: a specular
+        // highlight is emitted light, so it must not be diluted by the sky-tint
+        // or reflection mix()es, but it MUST be attenuated by distance fog.
+        //
+        // WHY THIS IS NOT THE EXISTING GLINT: GLINT_GAIN above is a
+        // camera-INDEPENDENT crest shimmer keyed on nz alone -- it has no sun
+        // and no view vector, so it cannot move when the camera orbits and
+        // cannot vanish when the sun is behind you. This term is the real thing:
+        // half-vector between the sun and the eye against the fBm wave normal.
+        //
+        // ARITHMETIC PRECONDITION, stated so the next reader does not repeat
+        // entry 17: this is EXACTLY 0.0 whenever terrainLightDir.z <= 0, i.e. on
+        // every mission whose [Mission] LightDirPitch puts the sun at or below
+        // the horizon. On those maps no value of MC2_WATER_SHINE can do
+        // anything, and that is correct behaviour, not a dead gate.
+        //
+        // Control flow here is UNIFORM (both tests read uniforms only), so the
+        // dFdx/dFdy below are well-defined inside the branch.
+        if (u_waterSpecIntensity > 0.0 && terrainLightDir.z > 0.0) {
+            // Same aspect correction the reflection wave-normal uses
+            // (WATER-ASPECT-CORRECT-1/2); 1.0 no-op under the default frustum.
+            float _sac = (u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0))
+                       / max(u_waterProjAspect, 0.0001);
+            PREC vec2  sGrad = clamp(vec2(dFdx(nz) * _sac, dFdy(nz)), -2.0, 2.0) * waveLOD;
+            PREC vec3  sN    = normalize(vec3(sGrad * REFL_WAVE_SLOPE, 1.0));
+            PREC vec3  sV    = normalize(viewVec);                    // MC2 Z-up eye vector
+            PREC vec3  sL    = normalize(terrainLightDir.xyz);        // MC2 Z-up sun vector
+            PREC vec3  sH    = normalize(sL + sV);
+            PREC float spec  = pow(max(dot(sN, sH), 0.0), SUN_SPEC_POWER);
+            // sL.z fades the lobe out as the sun approaches the horizon, so a
+            // low sun cannot produce a hard-edged highlight out of nowhere.
+            col += spec * u_waterSpecIntensity * sL.z * waveLOD * SUN_SPEC_TINT;
+        }
+        //PORT-END:waterSunSpec
 
         if (fog_color.x > 0.0 || fog_color.y > 0.0 || fog_color.z > 0.0 || fog_color.w > 0.0)
             col = mix(fog_color.rgb, col, FogValue);

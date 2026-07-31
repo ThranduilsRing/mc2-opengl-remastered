@@ -2919,20 +2919,44 @@ int  gos_GetWaterReflectionRtGate()
     return (v && v[0] && v[0] != '0') ? 1 : 0;
 }
 
-// WATER-SUN-SPEC-1: Blinn-Phong sun specular intensity on MDI water FS.
-// Default 0.0 = exact no-op (byte-identical). Env MC2_WATER_SHINE=1 bumps
-// the default to 0.25 for quick A/B; the ImGui slider is authoritative once
-// touched. Sentinel -1 = uninit (resolve env once).
+// WATER-SUN-SPEC-2 (repairs WATER-SUN-SPEC-1, c50e99a6). Blinn-Phong sun
+// specular intensity on the MDI water FS. Default 0.0 = exact no-op.
+//
+// WHAT WAS WRONG FOR THE WHOLE LIFE OF WATER-SUN-SPEC-1, and why this comment
+// block is long: the value below was uploaded to "u_waterSpecIntensity" every
+// frame (see the MDI bind block), and that uniform WAS NEVER DECLARED IN ANY
+// SHADER IN THIS REPO'S HISTORY -- `git log -S"u_waterSpecIntensity" --all --
+// 'shaders/*'` returns zero commits. Same for the "terrainLightDir" upload two
+// lines above it. glGetUniformLocation returned -1 for both and the upload
+// helper skips loc < 0 silently, so this gate was arithmetically incapable of
+// changing a pixel at any value on any mission. WATER-SUN-SPEC-2 declares and
+// consumes both in shaders/gos_terrain_water_mdi.frag; do not delete either
+// upload without deleting the shader term with it.
+//
+// The previous comment here also claimed "the ImGui slider is authoritative
+// once touched". There is no slider: gos_SetWaterSpecIntensity() had ZERO
+// callers anywhere in the tree and has been deleted, and grepping the whole
+// repo case-insensitively for "shine" finds no UI control. If a Graphics
+// Options control is wanted later, add the setter back WITH its caller.
+//
+// The value is the additive peak of the specular lobe in linear light, before
+// fog. Recommended 0.2-0.5; 1.0 is an exaggerated value that makes the
+// mechanism unmistakable when confirming it works. Sentinel -1 = uninit.
 float g_waterSpecIntensity = -1.0f;
 float gos_GetWaterSpecIntensity()
 {
     if (g_waterSpecIntensity < 0.0f) {
         const char* v = getenv("MC2_WATER_SHINE");
-        g_waterSpecIntensity = (v && v[0] && v[0] != '0') ? 0.25f : 0.0f;
+        const bool on = (v && v[0] && v[0] != '0');   // canonical default-OFF opt-in
+        float s = 0.0f;
+        if (on) {
+            const float f = (float)atof(v);
+            s = (f > 0.0f) ? f : 0.25f;               // non-numeric truthy ("on", "yes") -> 0.25
+        }
+        g_waterSpecIntensity = s;
     }
     return g_waterSpecIntensity;
 }
-void gos_SetWaterSpecIntensity(float v) { g_waterSpecIntensity = (v < 0.0f) ? 0.0f : v; }
 
 void gos_terrain_bridge_renderWaterFast(
     unsigned int recordCount,
@@ -3469,6 +3493,11 @@ void gosRenderer::renderWaterFastPath(
         const float camMC2[4] = { -terrain_camera_pos_.x, terrain_camera_pos_.z,
                                    terrain_camera_pos_.y,  1.0f };
         setMVec4      ("cameraPos", camMC2);  // water-v1 reflection/Fresnel (raw MC2)
+        // WATER-SUN-SPEC-2: these two uploads were DEAD from c50e99a6 until
+        // WATER-SUN-SPEC-2 declared the matching uniforms in
+        // shaders/gos_terrain_water_mdi.frag (neither name had ever existed in
+        // any shader in this repo -- see gos_GetWaterSpecIntensity above).
+        // They are load-bearing now.
         // WATER-SUN-SPEC-1: upload terrainLightDir RAW MC2 (no camMC2 swap).
         // The camMC2 swap above is for cameraPos only (Stuff->MC2 frame fix).
         // Light dir is already raw MC2 from gamecam.cpp:314 ("NOT swizzled — MC2 Z-up");
