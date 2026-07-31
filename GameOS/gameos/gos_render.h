@@ -32,11 +32,26 @@ bool gos_CursorControlSuppressed();
 // engine; graphics::window_offscreen_requested() delegates here.
 bool gos_WindowOffscreenRequested();
 
-// True when this process was started to run WITHOUT a user watching it: either
-// cursor control is suppressed or the window is parked offscreen. Use for
-// anything that would take the user's attention (modal dialogs, foreground
-// activation), not just the pointer.
+// True when cursor control is suppressed OR the window is parked offscreen.
+// META4-CLOSE-1 NARROWED THE SCOPE OF THIS ONE. It is now only for things that
+// are correct for an interactive MC2_NO_CURSOR_GRAB=1 launch as well -- in
+// practice just SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, which is documented
+// behaviour of that flag ("does not steal keyboard focus on show").
+//
+// For anything a PRESENT USER would miss if it were taken away -- his taskbar
+// button, his Alt-Tab entry, his crash dialog -- use
+// gos_NoUserPresentRequested() below instead. This predicate is true for a
+// documented interactive option and must not be used to disable UI.
 bool gos_UnattendedRunRequested();
+
+// True only when there is no window a user could be looking at: MC2_WINDOW_
+// OFFSCREEN (parked on no monitor) or MC2_SMOKE_MODE (a harness run). NOT
+// true for a bare MC2_NO_CURSOR_GRAB=1, which is a documented user-facing
+// interactive option -- see the long rationale in gameos_input.cpp.
+//
+// This is the guard for suppressing user-visible UI and for window styles that
+// remove the window from the user's reach (WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW).
+bool gos_NoUserPresentRequested();
 
 // True only when `window` actually occupies pixels a user could be looking at:
 // non-null, not HIDDEN, not MINIMIZED, non-degenerate, and intersecting at

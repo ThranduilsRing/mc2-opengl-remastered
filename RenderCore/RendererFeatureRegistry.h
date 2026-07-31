@@ -928,7 +928,12 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "user's pointer or focus away from another window. Automated runs get "
         "this for free: suppression defaults ON whenever MC2_SMOKE_MODE is set. "
         "=1 forces it on for an interactive launch; =0 forces it off even under "
-        "smoke. Unset + no smoke = legacy interactive behavior, unchanged."
+        "smoke. Unset + no smoke = legacy interactive behavior, unchanged. "
+        "META4-CLOSE-1 SCOPE: cursor + show-time activation ONLY. This flag does "
+        "NOT strip the taskbar button or Alt-Tab entry, does NOT make the window "
+        "refuse keyboard focus, and does NOT suppress the crash dialog -- those "
+        "are gos_NoUserPresentRequested() (MC2_WINDOW_OFFSCREEN / MC2_SMOKE_MODE), "
+        "so the 'interactive launch' promise above is true again."
     },
     // ── NOFOCUS-HARDEN-1 ───────────────────────────────────────────────────
     // KIND NOTE, stated so a later audit does not have to guess: this is

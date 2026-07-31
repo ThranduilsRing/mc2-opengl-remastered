@@ -38,7 +38,10 @@ extern "C" void crashbundle_trigger_test_crash(void) {
 // (defined in gameos_input.cpp). Forward-declared rather than included so the
 // crash-handler TU does not pull in SDL. A rename on the far side is a LINK
 // error here, not a silent miss.
-bool gos_UnattendedRunRequested();
+// META4-CLOSE-1: the NARROW predicate (MC2_WINDOW_OFFSCREEN / MC2_SMOKE_MODE).
+// gos_UnattendedRunRequested() is also true for a bare MC2_NO_CURSOR_GRAB=1,
+// which is a documented interactive option, and must not gate user-visible UI.
+bool gos_NoUserPresentRequested();
 
 // ---------------------------------------------------------------------------
 // Ring buffer
@@ -688,7 +691,14 @@ extern "C" void crashbundle_init(void)
     // rather than by adding another read_env_flag() line per variable so this
     // file agrees with the engine's ONE definition of "no user is watching"
     // (gos_render.h / gameos_input.cpp) instead of re-deriving it and drifting.
-    g_cfg.unattended = gos_UnattendedRunRequested() ? 1 : 0;
+    //
+    // META4-CLOSE-1: that definition is gos_NoUserPresentRequested(), not the
+    // wider gos_UnattendedRunRequested(). The wide one is true for a bare
+    // MC2_NO_CURSOR_GRAB=1 -- a documented INTERACTIVE option -- so a player
+    // who set it lost the crash dialog and got a forced fast-exit instead. A
+    // crash dialog is exactly the user-visible UI that may only be suppressed
+    // when there is provably no user to see it.
+    g_cfg.unattended = gos_NoUserPresentRequested() ? 1 : 0;
     if (g_cfg.unattended)
         g_cfg.crash_fast_exit = 1;
 

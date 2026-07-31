@@ -74,6 +74,50 @@ bool gos_UnattendedRunRequested()
     return gos_CursorControlSuppressed() || gos_WindowOffscreenRequested();
 }
 
+// META4-CLOSE-1 ---------------------------------------------------------------
+// "Do not touch my cursor" and "no human is at this machine" are DIFFERENT
+// claims, and gos_UnattendedRunRequested() conflates them because
+// gos_CursorControlSuppressed() is true for a bare MC2_NO_CURSOR_GRAB=1.
+//
+// That flag is documented in three places as a user-facing INTERACTIVE option
+// (docs/tier1_env_vars.md, docs/gameplay-driver.md's windowed recipe, and
+// RendererFeatureRegistry.h: "=1 forces it on for an interactive launch").
+// Keying window styles and the crash dialog on the union made that
+// documentation false: a player who set it to play without a cursor clamp got
+// WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW -- no taskbar button, no Alt-Tab entry,
+// a window that refuses keyboard focus -- plus a silently suppressed crash
+// dialog and a forced fast-exit.
+//
+// So: only the two intents that mean "there is no window a user could be
+// looking at" answer this one.
+//
+//   MC2_WINDOW_OFFSCREEN -- the window is parked at (-32000,-32000), on no
+//     monitor. Giving THAT an Alt-Tab entry is the trap CURSOR-GRAB-FIX-1
+//     closed: the user Alt-Tabs, and his keystrokes disappear into a window he
+//     cannot see. Still covered, so that fix is not reopened.
+//   MC2_SMOKE_MODE -- a harness run by definition.
+//
+// Dropping the bare MC2_NO_CURSOR_GRAB arm costs NO coverage, and that is a
+// property of the harness, not a hope: scripts/smoke_lib/nofocus.py:230-253 is
+// the single launch chokepoint (enforced by scripts/check-background-launch.py)
+// and it either sets MC2_WINDOW_OFFSCREEN=1 alongside MC2_NO_CURSOR_GRAB=1, or
+// RAISES DesktopOccupancyRefused, or has already returned early because
+// MC2_HARNESS_ALLOW_FOREGROUND=1 declared a user-present session. There is no
+// path through it that reaches the engine with MC2_NO_CURSOR_GRAB alone.
+//
+// KNOWN AND DELIBERATE: MC2_SMOKE_MODE is taken at face value, so a
+// user-present session that also asks for smoke mode still gets the unattended
+// styles. That is the caller stating two things at once, not a gap.
+bool gos_NoUserPresentRequested()
+{
+    static int s_state = -1;
+    if (s_state < 0) {
+        s_state = (gos_WindowOffscreenRequested() ||
+                   std::getenv("MC2_SMOKE_MODE") != nullptr) ? 1 : 0;
+    }
+    return s_state == 1;
+}
+
 bool gos_WindowUserVisible(SDL_Window* window)
 {
     if (!window)

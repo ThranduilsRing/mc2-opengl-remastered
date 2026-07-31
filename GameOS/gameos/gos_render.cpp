@@ -233,9 +233,17 @@ static void apply_offscreen_position(SDL_Window* w)
 //
 // Applied ONLY when the run already declared itself unattended, so a normal
 // interactive launch is byte-identical to before.
+//
+// META4-CLOSE-1: gated on gos_NoUserPresentRequested(), NOT
+// gos_UnattendedRunRequested(). The union included a bare MC2_NO_CURSOR_GRAB=1,
+// which is a documented user-facing INTERACTIVE option, so a player who set it
+// to play without a cursor clamp got a window with no taskbar button, no
+// Alt-Tab entry and no way to give it keyboard focus. Both styles here are
+// about putting the window out of the user's REACH, which is only ever right
+// when there is no user watching it.
 static void apply_unattended_window_styles(SDL_Window* window)
 {
-    if (!window || !gos_UnattendedRunRequested())
+    if (!window || !gos_NoUserPresentRequested())
         return;
 
     SDL_SetHint(SDL_HINT_MOUSE_AUTO_CAPTURE, "0");
