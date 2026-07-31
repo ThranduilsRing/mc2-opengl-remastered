@@ -82,7 +82,7 @@ The question that decides whether to spend money.
 | # | Divergence | Evidence it was chosen |
 |---|---|---|
 | 1 | **Static props omit point/spot lights.** | Stated at the site, with a reason: `static_prop.vert:713` — *"Point/spot lights are omitted (negligible for buildings); noted."* Buildings are large, static, and mostly lit by the sun + a per-actor ambient; per-vertex point falloff on a 4-vertex wall face is close to a no-op. Reinforced by `[T3.2]` at `:677-684`, where spotlight *cone billboards* were deliberately deleted in favour of real `TG_Light` registrations. |
-| 2 | **The 0.35 floor is duplicated as a literal rather than hoisted into `lighting.hglsl`.** | `gos_tex_vertex_lighted.vert:165-168` argues it explicitly: `lighting.hglsl` is *also* included by shaders that must **not** get a floor (terrain, particles), so hoisting would widen the blast radius past the object paths. This is a correct read of the include graph — `lighting.hglsl` is included by 5 files across 3 unrelated classes. |
+| 2 | **The 0.35 floor is duplicated as a literal rather than hoisted into `lighting.hglsl`.** | Intentional — a decision was made and written down at `gos_tex_vertex_lighted.vert:165-168`. **But its stated reason does not survive checking, and this is the one place in this document where a defended divergence has a bad defence.** The comment says `lighting.hglsl` is "included by shaders that must NOT get a floor (terrain, particles)". It is not: the header's nine includers are `mech.vert`, `static_prop.vert`, `gos_tex_vertex_lighted.{vert,frag}`, `building_pbr.{vert,frag}`, `lightgrid_build.comp`, and the two VK object shaders — **no terrain shader and no particle shader includes it.** Independently, a `const float` in a header applies a floor to nobody; only a shader that *writes* the identifier gets one. So the blast-radius argument is wrong twice over. See §4.1 Move 1 — the real argument against hoisting is coupling, not include scope. |
 | 3 | **Vehicles use `max(base_light, 0.35)` where mechs use a bare `vec3(0.35)`.** | `gos_tex_vertex_lighted.vert:97-100`: mechs have no per-vertex seed to lose; vehicles do (`get_base_light` implements the hot-colour window conventions), so `max()` is a floor that can only raise. Backed by a measured census of all 8 stock vehicle `.tgl` binaries at `:102-117`. |
 | 4 | **Terrain's ambient is albedo-scaled and day-gated; the object floors are flat and unconditional.** | `terrain_lod_chunk.frag:2166-2184` rejects the flat form by name and by measurement (a flat add inflated the user-ratified concrete pads +21-26%). The day gate exists because every night mission in shipping data has an authored sun pitch that zeroes it (`:2193-2198`, proved offline by `tools/terrain_daylight_harness`). Terrain also genuinely differs: its albedo already carries baked mission light, objects' does not. |
 | 5 | **Static props use `u_terrainSunMC2` instead of the ObjectLights sun direction.** | `static_prop.vert:701-703`: `calc_light`'s frozen `worldLights[0]` sun was ~90° off for this path. Substituting the terrain sun is a fix, not drift. |
@@ -207,13 +207,18 @@ review established that GL and VK props differ there for a measured reason
 pre-burned. Those are four different quantities that happen to share a shape.
 Hoisting them would be exactly the cargo-culting this lane was asked to avoid.
 
-The counter-argument is already on record and must be answered:
-`gos_tex_vertex_lighted.vert:165-168` refused to hoist into `lighting.hglsl`
-because that header is included by shaders that must not get a floor. That
-argument is against hoisting into *`lighting.hglsl`* — it is not against a new,
-constants-only header that defines nothing executable. A `#define
-MC2_OBJECT_AMBIENT_FLOOR 0.35` cannot leak a floor into terrain; only a shader
-that writes `MC2_OBJECT_AMBIENT_FLOOR` gets one.
+The counter-argument on record is **factually wrong**, and should not be what
+decides this either way. `gos_tex_vertex_lighted.vert:165-168` refused to hoist
+because `lighting.hglsl` is "included by shaders that must NOT get a floor
+(terrain, particles)". Checked against the live include graph: the header's nine
+includers are the two mech shaders, the two prop shaders, the two vehicle
+shaders, the two `building_pbr` shaders, and `lightgrid_build.comp` — **no
+terrain shader and no particle shader includes it.** Independently, a `#define`
+or `const float` in a header hands a floor to nobody; only a shader that *writes*
+the identifier gets one. Both halves of the stated reason fail.
+
+That makes Move 1 more *available* than the tree's own comment suggests. It does
+not make it more *valuable* — the real objection is coupling, immediately below.
 
 **Move 2 — finish or delete `building_pbr.*`** (divergences C and D). It is the
 one genuinely unfinished lighting path left: a hardcoded specular light vector
