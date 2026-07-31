@@ -67,9 +67,16 @@ WHAT EACH COLUMN IS, AND WHERE IT COMES FROM
                             current ground.
   burial_authored_{plain,   ground - (authored_z + mesh_min_up). Applies when the
     phong}                  drawn base is the frozen authored Z.
-  burial_change_wu          burial_authored_plain - burial_authored_phong, i.e.
-                            how far this object's apparent burial moved when
-                            a75339bb0 landed. 0 for re-snapping classes.
+  burial_change_wu          How far this object's VISIBLE burial moved when
+                            a75339bb0 landed: `+ground_delta` for a RE-SNAPPING
+                            class, EXACTLY 0 for every other class. See
+                            `burial_change()` for the derivation and for the
+                            RESNAP-INVERSION-1 note on why the first cut of this
+                            file had those two cases backwards. NOT
+                            `burial_authored_plain - burial_authored_phong`:
+                            that difference describes a world in which the DRAWN
+                            ground was Phong-smoothed, which it has not been
+                            since 75b8ebef (2026-06-29).
 
 RE-SNAP BEHAVIOUR (verified at source, 2026-07-31)
 --------------------------------------------------
@@ -164,6 +171,42 @@ OBJECT_TYPE_CLASS = {
 # Classes whose update() re-snaps position.z onto the terrain every in-view
 # frame. Verified at source; see module docstring.
 RESNAP_CLASSES = {"BUILDING", "TREEBUILDING", "GATE"}
+
+
+def burial_change(resnaps: bool, g_plain: float, g_phong: float,
+                  min_up: float) -> float:
+    """How far an object's VISIBLE burial moved when a75339bb0 landed.
+
+    RESNAP-INVERSION-1 (2026-07-31).  The first cut of this file had the two
+    classes exactly backwards, because it assumed the DRAWN ground was Phong-
+    smoothed before a75339bb0.  It never was.  a75339bb0 changed
+    `MapData::terrainElevation()` -- GAMEPLAY elevation only.  The rasterized
+    surface is `shaders/terrain_lod_chunk.vert/.frag`; its optional TCS/TES pair
+    is a 20-line barycentric pass-through with no displacement, built only under
+    the default-OFF cliff-tess gate (`gos_terrain_lod_chunk.cpp:1405-1418`).  The
+    one terrain TES that DID Phong-smooth, `shaders/gos_terrain.tese`, has had no
+    C++ loader since 75b8ebef deleted the tess-solid draw on 2026-06-29 -- which
+    is the entire premise of a75339bb0's own commit message.  So the drawn ground
+    is `g_plain` on BOTH sides of the change, and only the object's base moves:
+
+      burial = drawn_ground - (base_z + mesh_min_up),  drawn_ground = g_plain
+
+      re-snapping class (bldng.cpp:829, gate.cpp:361 assign position.z from
+      TerrainRuntime::groundElevation -> ... -> MapData::terrainElevation, the
+      exact function a75339bb0 edited):
+          base_z = g_phong (pre) -> g_plain (post)
+          change = (-min_up) - (-min_up - (g_phong - g_plain)) = +ground_delta
+
+      non-re-snapping class (TURRET/TERRAINOBJECT/TREE keep the authored Z; no
+      assignment to position.z exists in turret.cpp or terrobj.cpp):
+          base_z = authored_z on both sides  ->  change = EXACTLY 0
+
+    The delta is independent of how faithfully `g_plain` models the raster,
+    because the drawn-ground term cancels.  Proven by NEGATIVE CONTROL 9.
+    """
+    if min_up != min_up:                 # NaN: mesh never parsed
+        return float("nan")
+    return (g_phong - g_plain) if resnaps else 0.0
 
 DEPLOY_LANES = (
     "A:/Games/mc2-opengl/mc2-win64-v0.4c",
@@ -757,16 +800,10 @@ def build_rows(mission: str, hf: Heightfield, objs: list[dict],
         g_phong = hf.elevation(o["x"], o["y"], phong=True)
         resnaps = cls in RESNAP_CLASSES
 
-        # A re-snapping class is drawn with its base AT the current ground, so
-        # its burial is a pure property of the mesh and cannot change with the
-        # Phong retire. A TURRET keeps the authored Z, so its burial is
-        # (ground - (authored_z + mesh_min_up)) and DOES move with the ground.
         burial_resnap = -min_up if min_up == min_up else float("nan")
         b_plain = (g_plain - (o["z"] + min_up)) if min_up == min_up else float("nan")
         b_phong = (g_phong - (o["z"] + min_up)) if min_up == min_up else float("nan")
-        change = (b_plain - b_phong) if min_up == min_up else float("nan")
-        if resnaps:
-            change = 0.0
+        change = burial_change(resnaps, g_plain, g_phong, min_up)
 
         rows.append({
             "mission": mission, "obj_index": o["idx"],
@@ -995,6 +1032,33 @@ def selftest(gd: GameData, hf: Heightfield | None) -> int:
                 n += 1
         check("vertex round-trip |delta| < 0.02 wu", worst < 0.02,
               f"max |delta| = {worst:.6f} wu over {n} vertices")
+
+    print("\nNEGATIVE CONTROL 9 -- RESNAP-INVERSION-1: burial_change_wu must "
+          "attribute the a75339bb0 move to the RE-SNAPPING class and to no "
+          "other, and must report zero when there was nothing to move.")
+    # Curvature present (g_phong != g_plain): only the re-snapping class moves.
+    gp, gf, mu = 100.0, 100.75, -0.5
+    check("re-snapping class moves by exactly +ground_delta",
+          burial_change(True, gp, gf, mu) == (gf - gp),
+          f"got {burial_change(True, gp, gf, mu):+.6f}, want {gf - gp:+.6f}")
+    check("non-re-snapping class (TURRET) moves by EXACTLY 0",
+          burial_change(False, gp, gf, mu) == 0.0,
+          f"got {burial_change(False, gp, gf, mu):+.6f}")
+    # The mutation this control exists to catch: the pre-fix model, which
+    # returned -ground_delta for a turret and 0 for a building -- both classes
+    # wrong, and inverted with respect to each other.
+    check("the INVERTED model is rejected (turret != -ground_delta)",
+          burial_change(False, gp, gf, mu) != -(gf - gp),
+          f"inverted model would have said {-(gf - gp):+.6f}")
+    check("the INVERTED model is rejected (building != 0 under curvature)",
+          burial_change(True, gp, gf, mu) != 0.0)
+    # Planar terrain: the Phong term is identically zero (controls 1-2), so
+    # NOTHING moved, for either class. A measurement that always reports a
+    # change is as useless as one that never does.
+    check("flat/planar terrain: re-snapping class reports EXACTLY 0",
+          burial_change(True, 100.0, 100.0, mu) == 0.0)
+    check("unparsed mesh propagates NaN rather than a fake 0",
+          burial_change(True, gp, gf, float("nan")) != burial_change(True, gp, gf, mu))
 
     print(f"\nselftest: {'ALL PASS' if fails == 0 else str(fails) + ' FAILURE(S)'}")
     return 0 if fails == 0 else 1
