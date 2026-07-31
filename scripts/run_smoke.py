@@ -2943,6 +2943,17 @@ def main():
                             # hide the one arm that matters, since =0 is the only
                             # way to reproduce the stale-row read on purpose.
                             "MC2_STATIC_PROP_LIGHT_FRESHNESS",
+                            # MECH-LIGHTROW-FRESHNESS-1: default-ON killswitch
+                            # for the cachedFrame_ staleness check on the GPU
+                            # MECH submit path (mclib/mech3d.cpp). Same ENV_DROP
+                            # reasoning as the static-prop gate above: =0 is the
+                            # only way to reproduce the stale-row read on
+                            # purpose, so an A/B that could not drive it would
+                            # grade the fix against itself. Additionally load-
+                            # bearing here because =0 vs =1 changes which PATH
+                            # draws the mech (GPU batch vs CPU MLR), so a
+                            # dropped env silently changes draw-call counts too.
+                            "MC2_MECH_LIGHT_FRESHNESS",
                             # SUN-AXIS-FIX-1: default-OFF opt-in for the
                             # Stuff->MC2 swap on ObjectLights.light_dir in
                             # calc_light's DIFFUSE directional branches (mech +

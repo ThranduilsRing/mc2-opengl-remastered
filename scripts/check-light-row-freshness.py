@@ -76,17 +76,12 @@ EXEMPT: dict[str, str] = {
         "GameOS/gameos/gos_static_prop_registry.cpp flush() -- compares "
         "getCachedFrame() against the current frame at :1051 and suppresses the "
         "draw when stale. Handing an index onward to a checker is not trusting it.",
-    "mclib/mech3d.cpp":
-        "KNOWN-UNGUARDED, NOT FIXED, DIFFERENT LANE. mech3d.cpp:3150-3151 reads "
-        "mechShape->getCachedGpuLightIndex() and substitutes slot 0 on the "
-        "sentinel -- the SAME shape as the static-prop defect LIGHTROW-FRESHNESS-1 "
-        "fixed -- and its consumer GameOS/gameos/gos_mech_batcher.cpp contains "
-        "ZERO cachedFrame_ references, so nothing downstream checks freshness "
-        "either. This is recorded rather than repaired because the blast radius "
-        "is every mech rather than animated buildings, and it wants its own "
-        "graded slice. The in-source comment above that line argues the failure "
-        "is 'imperceptible at 60 Hz'; that argument was never measured. Remove "
-        "this exemption when the mech path takes the same treatment.",
+    # mclib/mech3d.cpp was exempt here until MECH-LIGHTROW-FRESHNESS-1 repaired
+    # it (gate MC2_MECH_LIGHT_FRESHNESS, default-ON). The GPU-mech submit path
+    # now reads getCachedFrame() and DECLINES the submit on a stale stamp,
+    # routing the mech to the CPU MLR draw it already falls back to. The
+    # exemption is deleted rather than reworded so this file stops advertising
+    # an open defect that is closed.
 }
 
 

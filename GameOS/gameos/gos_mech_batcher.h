@@ -155,6 +155,14 @@ enum class GpuMechFallbackReason : uint8_t {
     RingOverflow      = 2,
     TglGpuUnsupported = 3,
     ShaderInitFailure = 4,
+    // MECH-LIGHTROW-FRESHNESS-1: the actor's cached light-row index failed the
+    // cachedFrame_ freshness test (or the range check) at mclib/mech3d.cpp, so
+    // the GPU submit was declined and the mech took the CPU MLR draw instead.
+    // Distinct from the failures above because nothing is broken -- the GPU path
+    // is healthy and simply had no trustworthy light row for this actor this
+    // frame. Appending here requires bumping the s_fallbacksThisFrame[] bound
+    // and kFallbackNames[] in gos_mech_batcher.cpp (both sized to this enum).
+    StaleLightRow     = 5,
 };
 
 // Ring depth — must match STATIC_PROP_RING_FRAMES to share fence semantics

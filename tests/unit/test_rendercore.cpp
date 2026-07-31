@@ -327,8 +327,9 @@ TEST_CASE("RenderDebugView out-of-range returns false") {
 // RendererFeatureRegistry
 // ---------------------------------------------------------------------------
 
-TEST_CASE("RendererFeatureRegistry COUNT is 62") {
-    // 62 since LIGHTROW-FRESHNESS-1 (StaticPropLightFreshness append).
+TEST_CASE("RendererFeatureRegistry COUNT is 63") {
+    // 63 since MECH-LIGHTROW-FRESHNESS-1 (MechLightFreshness append).
+    // Was 62 at LIGHTROW-FRESHNESS-1 (StaticPropLightFreshness append).
     //
     // FOUND STALE 2026-07-31 (LIGHTROW-FRESHNESS-1): this assertion still read
     // 46 -- "46 since 65bae0f6" -- while RendererFeature::COUNT had already
@@ -341,7 +342,7 @@ TEST_CASE("RendererFeatureRegistry COUNT is 62") {
     // number was updated. If it drifts again the same way, delete it in favour
     // of the length/non-null checks rather than re-pinning a number nobody
     // maintains.
-    CHECK(static_cast<int>(RendererFeature::COUNT) == 62);
+    CHECK(static_cast<int>(RendererFeature::COUNT) == 63);
 }
 
 TEST_CASE("RendererFeatureRegistry kFeatureTable length matches COUNT") {

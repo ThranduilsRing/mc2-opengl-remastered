@@ -600,7 +600,12 @@ static bool     s_mechLightTrace       = false;
 static bool     s_mechLightTraceInit   = false;
 static uint32_t s_lightCacheFullFrames = 0;  // monotonic; emitted on first overflow per frame
 static uint32_t s_eligibleActorsThisFrame = 0;
-static uint32_t s_fallbacksThisFrame[5]   = {};  // indexed by GpuMechFallbackReason
+// MECH-LIGHTROW-FRESHNESS-1: bound is (int)GpuMechFallbackReason::StaleLightRow + 1.
+// Sized from the enum rather than a bare literal so a future append cannot
+// silently write past the end -- the previous bare 5 was exactly that hazard.
+static constexpr int kGpuMechFallbackReasonCount =
+    static_cast<int>(GpuMechFallbackReason::StaleLightRow) + 1;
+static uint32_t s_fallbacksThisFrame[kGpuMechFallbackReasonCount] = {};  // indexed by GpuMechFallbackReason
 
 // M2.5 (Q4): always-on per-mission counter of per-instance fills whose
 // objectIdRaw was non-zero. Incremented in flush()'s per-instance loop;
@@ -2821,17 +2826,22 @@ void GpuMechBatcher::flush() {
     if (s_mechBatcherTrace) {
         static const char* const kFallbackNames[] = {
             "UnregisteredType", "U8BoneOverflow", "RingOverflow",
-            "TglGpuUnsupported", "ShaderInitFailure"
+            "TglGpuUnsupported", "ShaderInitFailure",
+            "StaleLightRow"   // MECH-LIGHTROW-FRESHNESS-1
         };
+        static_assert(sizeof(kFallbackNames) / sizeof(kFallbackNames[0])
+                          == kGpuMechFallbackReasonCount,
+                      "kFallbackNames must cover every GpuMechFallbackReason");
         uint32_t fallbackTotal = 0;
-        for (int i = 0; i < 5; ++i) fallbackTotal += s_fallbacksThisFrame[i];
+        for (int i = 0; i < kGpuMechFallbackReasonCount; ++i)
+            fallbackTotal += s_fallbacksThisFrame[i];
         extern uint32_t g_mc2FrameCounter;
         MC2_DIAGFE(stderr,
             "[MECHBATCHER v1] event=summary frame=%u eligible=%u submitted=%zu "
             "buckets=%zu draw_calls=%u instances=%zu fallback_total=%u\n",
             g_mc2FrameCounter, s_eligibleActorsThisFrame, s_pendingSubmits.size(),
             buckets.size(), drawnCalls, totalInstances, fallbackTotal);
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i < kGpuMechFallbackReasonCount; ++i) {
             if (s_fallbacksThisFrame[i] > 0) {
                 MC2_DIAGFE(stderr,
                     "[MECHBATCHER v1] event=fallback reason=%s count=%u\n",
