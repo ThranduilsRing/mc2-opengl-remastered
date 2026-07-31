@@ -84,6 +84,16 @@ UNKNOWN = "unknown"
 #: How far back from the format literal to look for the pooled operands.
 _WINDOW = 1024
 
+#: Alignment of pooled .rdata string literals; used only to skip filler bytes
+#: packed into an inter-literal gap (see _printable_runs).
+_ALIGN = 8
+
+#: Minimum length of a SALVAGED run (clean tokens are never length-filtered).
+#: Shorter salvage results are shards of a neighbouring binary constant, not
+#: operands: sha is >= 7 and the ISO stamp is 19. Only a 1-character branch
+#: name could be lost here, costing a refusal (honest) not a mis-attribution.
+_MIN_OPERAND = 2
+
 
 class FingerprintError(Exception):
     """Raised only by the CLI; the library returns an error dict instead."""
@@ -104,14 +114,74 @@ def selftest(blob: bytes) -> tuple[bool, str]:
     return True, "ok"
 
 
-def _strings_before(blob: bytes, off: int, window: int = _WINDOW) -> list[str]:
-    """NUL-delimited printable ASCII literals immediately preceding `off`."""
-    chunk = blob[max(0, off - window):off]
-    out: list[str] = []
+def _printable_runs(blob: bytes, off: int,
+                    window: int = _WINDOW) -> list[tuple[int, str]]:
+    """(start_offset, text) for the pooled literals preceding `off`.
+
+    OPERAND-LOST-TO-ALIGNMENT-FILLER (FINGERPRINT-DETACHED-1, 2026-07-31)
+    --------------------------------------------------------------------
+    This used to split on NUL alone and drop any token that was not entirely
+    printable. That silently DELETES an operand, because the linker packs small
+    binary constants into the alignment gaps between pooled .rdata literals.
+    Observed in A:/Games/mc2-terrain-ambient-floor's build, where the gap after
+    the timestamp holds four bytes of data instead of padding:
+
+        ...2026-07-30T12:33:10\\x00 \\xe7\\x84\\x11U claude/terrain-ambient-floor-2\\x00
+
+    NUL-splitting welds b"\\xe7\\x84\\x11U" onto the branch literal; the
+    all-printable test then discards the whole token. The branch operand
+    vanishes, the positional tail-4 window slides one slot, and _classify
+    reports layout-unrecognized on a perfectly good binary.
+
+    Note the last filler byte (0x55 'U') is itself printable, so "strip leading
+    non-printable bytes" would yield "Uclaude/..." -- a silently corrupted
+    branch, which is worse than refusing.
+
+    The fix is STRICTLY ADDITIVE: a NUL-delimited token that is entirely
+    printable is still taken verbatim, so every binary that parses today parses
+    bit-for-bit identically. Only a token the old code would have THROWN AWAY is
+    salvaged, by taking its trailing printable run and then advancing that run's
+    start to the next 8-byte boundary. Pooled literals are 8-byte aligned
+    (verified on every operand of all 16 builds on this disk) while filler
+    shards are not, so 0x...657 -> 0x...658 drops exactly the 'U' and nothing
+    else. Trimming is confined to already-rejected tokens, so it can never
+    corrupt an operand that reads correctly today.
+
+    Residual limit, deliberately not handled: filler that is ITSELF entirely
+    printable (b"ABCD") leaves a wholly printable token, indistinguishable from
+    a literal that genuinely begins "ABCD" without assuming alignment -- and
+    assuming it universally would corrupt tightly packed layouts. That case
+    yields a contaminated BRANCH but a correct sha/built/src, because the shape
+    checks still gate those three. See test_entirely_printable_filler_*.
+    """
+    start = max(0, off - window)
+    chunk = blob[start:off]
+    runs: list[tuple[int, str]] = []
+
+    pos = 0
     for raw in chunk.split(b"\x00"):
-        if raw and all(0x20 <= c < 0x7F for c in raw):
-            out.append(raw.decode("ascii"))
-    return out
+        tok = start + pos
+        pos += len(raw) + 1
+        if not raw:
+            continue
+        if all(0x20 <= c < 0x7F for c in raw):
+            runs.append((tok, raw.decode("ascii")))
+            continue
+        # Old code dropped this token whole, deleting an operand. Salvage the
+        # trailing printable run, then realign past any printable filler byte.
+        i = len(raw)
+        while i > 0 and 0x20 <= raw[i - 1] < 0x7F:
+            i -= 1
+        i += -(tok + i) % _ALIGN
+        if len(raw) - i < _MIN_OPERAND:
+            continue
+        runs.append((tok + i, raw[i:].decode("ascii")))
+    return runs
+
+
+def _strings_before(blob: bytes, off: int, window: int = _WINDOW) -> list[str]:
+    """Printable ASCII literals immediately preceding `off`."""
+    return [s for _, s in _printable_runs(blob, off, window)]
 
 
 def _classify(tail: list[str]) -> dict[str, Any] | None:
@@ -169,11 +239,17 @@ def extract_from_bytes(blob: bytes) -> dict[str, Any]:
                     "[BUILD_FINGERPRINT v1] tag present but the v1 printf "
                     "format literal was not found; the emitting printf in "
                     "code/mechcmd2.cpp probably changed shape")
-    fields = _classify(_strings_before(blob, off))
+    tail = _strings_before(blob, off)
+    fields = _classify(tail)
     if fields is None:
+        # Report WHAT WAS SEEN. A bare "layout-unrecognized" sent one
+        # investigation chasing a detached-HEAD theory for a build whose real
+        # problem was a filler byte in an alignment gap; the observed tail
+        # would have shown that in one command.
         return _err("layout-unrecognized",
                     "the four pooled operands before the format literal do "
-                    "not match {path, iso-timestamp, branch, sha}")
+                    "not match {path, iso-timestamp, branch, sha}; observed "
+                    f"tail: {[s[:60] for s in tail[-6:]]!r}")
     sha = fields["sha"].lower()
     return {
         "present": True,
@@ -226,7 +302,23 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("binary", help="path to the binary to read")
     ap.add_argument("--json", action="store_true", help="emit JSON")
+    ap.add_argument("--operands", action="store_true",
+                    help="dump the literal window preceding the format string "
+                         "(diagnostic for layout-unrecognized)")
     args = ap.parse_args(argv)
+
+    if args.operands:
+        blob = Path(args.binary).read_bytes()
+        off = blob.find(BANNER_FMT)
+        if off < 0:
+            print("format literal not found", file=sys.stderr)
+            return 1
+        print(f"format literal at 0x{off:x}")
+        for i, (o, s) in enumerate(_printable_runs(blob, off)):
+            print(f"  [{i}] 0x{o:x} align{_ALIGN}={o % _ALIGN} {s!r}")
+        print("raw bytes preceding the format literal:")
+        print("  " + repr(blob[max(0, off - 160):off]))
+        return 0
 
     fp = extract(args.binary)
     if args.json:
