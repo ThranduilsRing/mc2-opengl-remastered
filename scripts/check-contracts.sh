@@ -663,6 +663,38 @@ run_check "unified_projection_retirement" "sh scripts/check-unified-projection-r
 run_check "oracle_registry"            "py -3 scripts/check-oracle-registry.py --allow-missing-artifacts"
 
 # ---------------------------------------------------------------------------
+# UNWIRED-CHECKS-CLOSE-1 (2026-07-30) -- the checks the CENSUS was blind to
+# ---------------------------------------------------------------------------
+# The block above closed 21 dark checks and installed check-contract-coverage.py
+# so the class could not recur. It recurred immediately. Coverage's arm (b),
+# "driven by another runner", was a bare substring test -- `if name in text` --
+# so a check counted as watched when its name appeared in a COMMENT, a docstring
+# or an English sentence. Injection-proven: one Python comment naming a
+# brand-new dark check moved it straight into "driven by another runner".
+#
+# Nine more checks were sitting behind that credit. check-new-gates.py was held
+# up by the words "Modeled on scripts/check-new-gates.py Mode A" in an unrelated
+# checker's docstring, and was exiting 1. Arm (b) is now invocation-shaped, and
+# these are the ones that turned out to be cheap, deterministic and source-only.
+run_check "asset_manifests"            "py -3 scripts/check-asset-manifests.py --quiet"
+run_check "asset_scale_callers"        "sh scripts/check-asset-scale-callers.sh"
+run_check "smoke_matrices"             "py -3 scripts/check-smoke-matrices.py --quiet"
+# --strict is REQUIRED, not decoration: bare mode returns 0 unconditionally, so
+# wiring it without --strict would register a row that cannot ever go red. Its
+# two --strict failures were a classify() bug, not stale fixtures -- it keyed on
+# the basename alone, so an asset manifest and a brain-fixture corpus manifest
+# were both graded as run/release manifests and told to grow an identity block.
+run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py --strict"
+# --base HEAD~1 is the whole point. The default base is `merge-base HEAD
+# origin/main`, which on this long-lived branch is 25 days back, so a bare run
+# grades the ENTIRE branch and reports 99 gates -- true, useless, and unfixable
+# in one commit. Mode A diffs the WORKING TREE against the base, so HEAD~1 asks
+# the question this aggregator can act on: does the change in front of me add an
+# MC2_* gate that is in neither RendererFeatureRegistry.h nor tier1_env_vars.md?
+# The 99-gate backlog is real and stays visible: `py -3 scripts/check-new-gates.py --all`.
+run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base HEAD~1"
+
+# ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------
 echo "====================================================================="

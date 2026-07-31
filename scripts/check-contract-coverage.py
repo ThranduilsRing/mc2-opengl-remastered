@@ -55,9 +55,32 @@ can silently double-count is not one. So:
       command arm is the one that matters: a repeated label is obvious on sight,
       a repeated command under a new name is exactly what shipped.
 
+UNWIRED-CHECKS-CLOSE-1 (2026-07-30) closes arm (b)'s own blindness. As shipped,
+"driven by another runner" was a bare SUBSTRING test: `if name in text` over
+every tracked .py/.sh/.json/.cmake. So a check was credited as watched when its
+name appeared in a COMMENT, a docstring, or an English sentence -- the exact
+comment-satisfiable class this file's own author diagnosed in their first census
+pass and then shipped into the guard. Injection-proven before the fix: adding a
+brand-new dark check and then ONE Python comment naming it moved it out of
+"UNWIRED and unaccounted" into "driven by another runner" (75 -> 76) without a
+line of it ever executing.
+
+Nine real checks were dark behind that credit, each held up by prose alone --
+e.g. check-new-gates.py (exit 1, 99 unregistered gates) was "accounted for" by
+the sentence "Modeled on scripts/check-new-gates.py Mode A" in another checker's
+docstring. A guard whose evidence is a sentence is not a guard.
+
+  (b) is now INVOCATION-shaped, not mention-shaped. A caller must actually run
+      the thing: a runner token governing the path (py -3 / python / bash / sh /
+      pwsh / cmake COMMAND / a run_check row), or -- for Python -- the script
+      name reaching a subprocess call, resolved through the AST so that variable
+      indirection still counts (deploy_payload.py builds the path into `hygiene`
+      and then subprocess.run()s it) while docstrings and comments never do.
+
 Exit 0 = every check accounted for. 1 = at least one unaccounted.
-Run with --selftest to prove all four arms still fire.
+Run with --selftest to prove all five arms still fire.
 """
+import ast
 import re
 import subprocess
 import sys
@@ -183,13 +206,100 @@ CALLER_EXTS = (".py", ".sh", ".ps1", ".bat", ".cmd", ".json", ".yml", ".yaml",
                ".cmake", ".toml", ".txt")
 
 
+# A line that RUNS the script: a runner token governing the path. Anchored on
+# the runner, not on the name, so "see scripts/check-foo.py" never matches.
+RUNNER_RE = re.compile(
+    r"""(?:py\s+-3|python[23]?|\bbash\b|\bsh\b|\bpwsh\b|powershell|
+         COMMAND\b[^\n]*?|run_check(?:_tri)?\s+"[^"]+"\s+")
+        [^\n]{0,120}?%s""",
+    re.X)
+
+COMMENT_RE = re.compile(r'^\s*(?:#|//|--(?!\s*\[)|\*|/\*)')
+
+# Python constructs that actually spawn a process.
+SPAWN_RE = re.compile(r"\b(?:subprocess\.\w+|Popen|check_call|check_output|"
+                      r"os\.system|os\.exec\w*|runpy\.\w+)\b")
+
+
+def _line_invokes(line, name):
+    """True if this non-comment line runs `name` via an explicit runner."""
+    if COMMENT_RE.match(line):
+        return False
+    return bool(re.search(RUNNER_RE.pattern % re.escape(name), line, re.X))
+
+
+def _dotted(node):
+    """Render a Call's func as a dotted name: subprocess.run, Popen, ..."""
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def _str_constants(node):
+    return [n.value for n in ast.walk(node)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+
+
+def _py_spawns(text, name):
+    """True if `name` reaches a process-spawning call in this Python source.
+
+    Matches STRING CONSTANTS in the AST, never raw source text. Using
+    ast.get_source_segment here would be wrong in a way that is easy to miss:
+    a segment is a raw slice, so a COMMENT sitting inside a multi-line call is
+    part of it. That alone re-credited check-file-resolve-miss.py, whose only
+    mention in run_smoke.py is a comment inside a long env-allowlist literal.
+
+    So: docstrings and comments never count -- that is the whole point --
+    while variable indirection still does, because deploy_payload.py
+    legitimately does  hygiene = os.path.join(..., "check-deploy-hygiene.py")
+    and then subprocess.run([sys.executable, hygiene, target]).
+    """
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+
+    carriers = set()          # variables holding the script path
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and \
+           any(name in s for s in _str_constants(node.value)):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name):
+                    carriers.add(tgt.id)
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not SPAWN_RE.search(_dotted(node.func)):
+            continue
+        if any(name in s for s in _str_constants(node)):
+            return True
+        if carriers and any(isinstance(n, ast.Name) and n.id in carriers
+                            for n in ast.walk(node)):
+            return True
+    return False
+
+
 def externally_called(checks):
-    """name -> first caller path, for checks invoked outside the aggregator."""
+    """name -> first caller path, for checks genuinely INVOKED outside the
+    aggregator.
+
+    A mention is not a caller. See the module docstring: crediting a bare
+    substring is what kept nine dead checks green.
+    """
     r = subprocess.run(["git", "ls-files"], cwd=ROOT,
                        capture_output=True, text=True)
     surfaces = [p for p in r.stdout.splitlines()
                 if (p.endswith(CALLER_EXTS) or Path(p).name in ("CMakeLists.txt", "Makefile"))
-                and not p.startswith("graphify-out/")]
+                and not p.startswith("graphify-out/")
+                # .claude/ holds PROSE -- handoffs, ledgers and design docs that
+                # happen to be .json. META-FIX-DESIGNS-2026-07-16.json alone was
+                # crediting four dead checks, purely because its English
+                # sentences contain the words "bash" and "python" near a script
+                # name. Notes are not runners. Hooks (added below) are.
+                and not p.startswith(".claude/")]
     hooks = ROOT / ".claude" / "hooks"
     if hooks.is_dir():
         surfaces += [str(p.relative_to(ROOT)) for p in hooks.iterdir() if p.is_file()]
@@ -204,10 +314,24 @@ def externally_called(checks):
             text = (ROOT / rel).read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        lines = None
         for name in checks:
             if name == base or name in found:
                 continue
-            if name in text:
+            if name not in text:          # cheap reject before the real test
+                continue
+            if rel.endswith(".py"):
+                # Python gets the AST test ONLY. A line test would credit
+                # new_lane.py for "Run `sh scripts/check-worktree-context.sh`
+                # before editing." -- a sentence PRINTED AT a human, which runs
+                # nothing. Executed command strings still count: they are
+                # arguments to the spawn call, so the AST sees them.
+                if _py_spawns(text, name):
+                    found[name] = rel
+                continue
+            if lines is None:
+                lines = text.splitlines()
+            if any(_line_invokes(ln, name) for ln in lines):
                 found[name] = rel
     return found
 
@@ -362,6 +486,54 @@ def selftest():
                     '"py -3 scripts/check-memory-size.py"\n',
               man, checks, tracked, head, ext)[0],
           "duplicate contract row LABEL")
+
+    # --- arm (b) itself: a MENTION is not a CALLER --------------------------
+    # UNWIRED-CHECKS-CLOSE-1. The arm that decides "something else runs this"
+    # used to be `if name in text`, so the shapes below all counted as callers
+    # and nine live checks went dark behind them. These are the genuine
+    # article, copied from the files that actually did the false crediting --
+    # not invented fixtures.
+    def assert_(name, got, want):
+        nonlocal ok
+        if got == want:
+            print(f"[selftest]   ok  {name}")
+        else:
+            print(f"[selftest] FAIL  {name}: got {got}, want {want}",
+                  file=sys.stderr)
+            ok = False
+
+    T = "check-target.py"
+
+    # NOT callers -- every one of these credited a dead check before the fix.
+    assert_("bare comment is not a caller",
+            _line_invokes(f"# see scripts/{T} for the pattern", T), False)
+    assert_("prose sentence is not a caller",
+            _line_invokes(f"Modeled on scripts/{T} Mode A (diff vs base)", T), False)
+    assert_("module docstring is not a caller",
+            _py_spawns(f'"""Clone of scripts/{T} per INFRA-5."""\nimport os\n', T), False)
+    # The run_smoke.py shape: a comment INSIDE a multi-line spawn call. Raw
+    # source-segment matching credits this; constant matching does not.
+    assert_("comment inside a spawn call is not a caller",
+            _py_spawns('import subprocess\n'
+                       'subprocess.run([\n'
+                       f'    "a",   # {T} sets both through this runner\n'
+                       '    "b"])\n', T), False)
+    # A command string PRINTED AT a human runs nothing (scripts/new_lane.py).
+    assert_("printed advice is not a caller",
+            _py_spawns(f'print("Run `sh scripts/{T}` before editing")\n', T), False)
+
+    # ARE callers -- the fix must not throw these away.
+    assert_("runner token governs the path",
+            _line_invokes(f"py -3 scripts/{T} --quiet", T), True)
+    assert_("cmake COMMAND is a caller",
+            _line_invokes(f"COMMAND ${{BASH_EXECUTABLE}} ${{DIR}}/scripts/{T}", T), True)
+    assert_("direct subprocess constant is a caller",
+            _py_spawns(f'import subprocess\nsubprocess.run([sys.executable, "scripts/{T}"])\n', T), True)
+    # deploy_payload.py's real shape: path built into a variable, then spawned.
+    assert_("variable indirection is a caller",
+            _py_spawns('import subprocess, os\n'
+                       f'p = os.path.join(d, "{T}")\n'
+                       'subprocess.run([sys.executable, p, target])\n', T), True)
 
     return 0 if ok else 1
 
