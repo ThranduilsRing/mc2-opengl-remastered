@@ -2260,11 +2260,20 @@ long Camera::update (void)
 	// (u_terrainSunMC2); the SHADOW projection matrix (gos_postprocess.cpp:455
 	// buildStaticLightMatrix, :3214, :5208, :5502, :5688); SSAO/screen-FX; and --
 	// via `intensity = terrainNormal . lightDirection` handed to
-	// Camera::getLightRed (mclib/mapdata.cpp:1892-1900) -- the SUN COLOUR BYTE of
-	// every actor class AND the pre-burned terrain colormap (mclib/terrtxm2.cpp
-	// :1132 burnInShadows). So this moves the sun's direction, the world's shadow
-	// direction, and the baked ground colour together, on every mission at once.
-	// That is far too large to enable on arithmetic alone with launches blocked.
+	// Camera::getLightRed (mclib/mapdata.cpp:1898) -- the SUN COLOUR BYTE of
+	// every actor class. So this moves the sun's direction and the world's shadow
+	// direction together, on every mission at once. That is far too large to
+	// enable on arithmetic alone with launches blocked.
+	//
+	// WHAT IT DOES *NOT* REACH, checked by call order rather than assumed: the
+	// pre-burned terrain colormap. burnInShadows (mclib/terrtxm2.cpp:609) reads
+	// eye->lightDirection only under `if (eye)` at :816, and its call chain runs
+	// inside land->init() at code/mission.cpp:3710 -- BEFORE `eye = new
+	// GameCamera` at :5108, with eye nulled on teardown at :5541. At burn time
+	// eye is NULL, so the bake takes the (0,0,1) straight-up fallback and the
+	// mission sun never reaches it; it is also one-shot and disk-cached
+	// (`if (!burnedIn)` then saveTGAFile). An earlier draft of this comment and
+	// of the registry entry claimed the colormap moved. It does not.
 	//
 	// DEGENERATE-PITCH GUARD. mc2_10 authors pitch 180 and mc2_05 / mc2_21 author
 	// 270, which are not solar elevations. For cos(pitch) < 0 the spherical form
