@@ -2432,10 +2432,12 @@ public:
 		// almost exactly as many surface normals get DARKER as brighter. No
 		// human has seen it (engine launches are hard-blocked in this lane), so
 		// it ships opt-in. MC2_SUN_AXIS_FIX=1 enables.
+		// Canonical DEFAULT-OFF OPT-IN idiom `(v && v[0] && v[0] != '0')`, so
+		// scripts/check-gate-default-agreement.py can read the default OUT of
+		// the reader. An unparseable idiom is a FAILURE for a Feature gate.
 		static const bool s_sunAxisMc2Fix = [](){
 			const char* v = getenv("MC2_SUN_AXIS_FIX");
-			if (v == nullptr || v[0] == '\0') return false;   // unset -> OFF
-			return !(v[0] == '0' && v[1] == '\0');
+			return (v && v[0] && v[0] != '0');
 		}();
 		gos_SetRenderMaterialParameterInt(mat, "u_sunAxisMc2Fix",
 			s_sunAxisMc2Fix ? 1 : 0);

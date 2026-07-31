@@ -2457,12 +2457,16 @@ void GpuMechBatcher::flush() {
     // Boot-cached (Debug Instrumentation Rule). Default OFF -> uniform 0 ->
     // shipped expression bit-for-bit. See RendererFeatureRegistry.h.
     if (s_loc_u_sunAxisMc2Fix >= 0) {
-        static const int s_sunAxisMc2Fix = [](){
+        // Canonical DEFAULT-OFF OPT-IN idiom `(v && v[0] && v[0] != '0')`.
+        // Written in exactly this form on purpose: scripts/check-gate-default-
+        // agreement.py classifies a Feature gate's default FROM ITS READER, and
+        // an idiom it cannot parse is a FAILURE, not a pass. The first draft
+        // here used an early-return plus `? 0 : 1` and came back UNCLASSIFIABLE.
+        static const bool s_sunAxisMc2Fix = [](){
             const char* v = getenv("MC2_SUN_AXIS_FIX");
-            if (v == nullptr || v[0] == '\0') return 0;      // unset -> OFF
-            return (v[0] == '0' && v[1] == '\0') ? 0 : 1;
+            return (v && v[0] && v[0] != '0');
         }();
-        glUniform1i(s_loc_u_sunAxisMc2Fix, s_sunAxisMc2Fix);
+        glUniform1i(s_loc_u_sunAxisMc2Fix, s_sunAxisMc2Fix ? 1 : 0);
     }
     if (s_mechBatcherTrace) {
         static int s_uniDiagPrinted = 0;
