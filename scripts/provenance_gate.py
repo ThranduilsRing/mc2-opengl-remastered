@@ -97,13 +97,23 @@ that, because git objects are not deleted when an install is.
 
 HONEST LIMITATION -- state it rather than imply more
 ----------------------------------------------------
-W-REPO-COMMIT proves the commit is REAL. It does not prove THIS BINARY was built
-from it, and it cannot: no signature and no external append-only store exists.
-A determined forger who copies a genuine sha out of `git log` still reaches
-CORROBORATED-AT-MINT. What changed is the bar: from "type any twelve hex
-characters" to "name a commit that exists and a digest a second on-disk artifact
-already carries". Only VERIFIED-LIVE is proof. The level names say so, and a
-reader who wants proof should require that level rather than `ok`.
+Neither witness is proof, and since ANY ONE suffices, each must be read at its
+own weakest. State that plainly rather than let "corroborated" imply more:
+
+  * W-REPO-COMMIT proves the commit is REAL. It does not prove THIS BINARY was
+    built from it. A forger who copies a genuine sha out of `git log` satisfies
+    it on its own.
+  * W-ARTIFACT proves a SECOND file on disk already carries this digest. It does
+    not prove either file was tool-emitted. A forger who writes two consistent
+    files satisfies it on its own.
+
+Nothing here closes those, and nothing can without a signature or an external
+append-only store, neither of which exists. What changed is the cost of a
+forgery: from typing twelve hex characters into one file, to producing something
+that survives contact with either the object database or a second artifact.
+Only VERIFIED-LIVE is proof. The level names say so, and a reader who needs
+proof should require that LEVEL rather than the `ok` flag, which deliberately
+spans both gradeable levels.
 
 WHAT IS DELIBERATELY *NOT* ACCEPTED
 -----------------------------------
