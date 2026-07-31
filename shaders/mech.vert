@@ -84,6 +84,16 @@ uniform mat4 u_worldToClipGL;
 // 'uniform uint' crashes the engine's shader compile (see
 // memory/uniform_uint_crash.md); use int.
 uniform int u_lightingMode;
+
+// SUN-AXIS-FIX-1: 1 = hand calc_light's DIFFUSE directional branches the same
+// Stuff->MC2 swap this shader already applies to the sun direction for SPECULAR
+// at :279. 0 = shipped behaviour, bit-for-bit. See the derivation block in
+// shaders/include/lighting.hglsl. Driven by MC2_SUN_AXIS_FIX.
+//
+// DELIBERATELY NOT APPLIED TO THE SPECULAR BLOCK BELOW: that consumer already
+// swaps and is the one path that has been correct all along. Touching it would
+// break the thing that works and double-apply the correction.
+uniform int u_sunAxisMc2Fix;
 // Slice C2: 0 = rigid per-bone (Slice A behavior, single boneIndices.x
 // lookup), 1 = weighted multi-bone blend across all 4 bone slots. Stock
 // data has boneWeights = (1,0,0,0) so the two paths are byte-identical
@@ -219,7 +229,8 @@ void main() {
             vec3 litRGB = calc_light(int(inst.lightDataIndex),
                                      worldNormal,
                                      worldMC2,
-                                     base);
+                                     base,
+                                     u_sunAxisMc2Fix);
             baseLight = clamp(litRGB + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a,
                               0.0, 1.0);
         }

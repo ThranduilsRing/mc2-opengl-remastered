@@ -61,6 +61,20 @@ uniform mat4 u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToCl
 // matching mech.vert / static_prop.vert. Driven by MC2_LEGACY_LIT_MC2_FRAME.
 uniform int u_legacyLitMc2Frame;
 
+// SUN-AXIS-FIX-1: hand calc_light's DIFFUSE directional branches the Stuff->MC2
+// swap for ObjectLights.light_dir, so the sun NdotL stops mixing frames. See
+// the derivation block in shaders/include/lighting.hglsl. Driven by
+// MC2_SUN_AXIS_FIX. 0 = shipped behaviour, bit-for-bit.
+//
+// COUPLED TO u_legacyLitMc2Frame BY CONSTRUCTION, and only applied on its
+// MC2-frame branch below: the correction converts light_dir INTO the MC2 frame,
+// so it is only meaningful against an MC2-frame normal. On the =0 legacy branch
+// the normal is still Stuff-frame, where the RAW light_dir is the matching
+// operand -- applying the swap there would introduce the mismatch it exists to
+// remove. MC2_LEGACY_LIT_MC2_FRAME=0 therefore reverts this shader completely,
+// which is what a killswitch is supposed to mean.
+uniform int u_sunAxisMc2Fix;
+
 // VEHICLE-AMBIENT-FLOOR-1: give this path mech.vert's ambient FLOOR and its
 // output CLAMP, so a vehicle and a mech standing side by side compute the SAME
 // multiplier instead of the vehicle landing below.
@@ -188,8 +202,12 @@ void main(void)
         // MC2WorldPos is already the Stuff->MC2 swap of WorldPos (line above);
         // apply the identical swap to the normal.
         vec3 normalMC2 = normalize(vec3(-Normal.x, Normal.z, Normal.y));
-        lit = calc_light(lights_index, normalMC2, MC2WorldPos, seed_light);
+        lit = calc_light(lights_index, normalMC2, MC2WorldPos, seed_light,
+                         u_sunAxisMc2Fix);
     } else {
+        // SUN-AXIS-FIX-1 is deliberately NOT passed here -- see the
+        // u_sunAxisMc2Fix block above. Stuff-frame normal wants the raw
+        // Stuff-frame light_dir.
         lit = calc_light(lights_index, Normal, WorldPos, seed_light);
     }
     // VEHICLE-AMBIENT-FLOOR-1: mech.vert:223 clamps its calc_light result to

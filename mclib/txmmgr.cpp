@@ -2410,6 +2410,36 @@ public:
 		gos_SetRenderMaterialParameterInt(mat, "u_legacyLitMc2Frame",
 			s_legacyLitMc2Frame ? 1 : 0);
 
+		// SUN-AXIS-FIX-1. ObjectLights.light_dir is a STUFF-frame vector --
+		// GetLocalForwardInWorld() on a BuildRotation(EulerAngles(pitch,
+		// yaw+135, 0)) transform (this file :2621, mclib/camera.cpp:509/:1860/
+		// :2110/:4252) returns matrix row 2 = (cosP*sinY, -sinP, cosP*cosY).
+		// Applying the same Stuff->MC2 swap used for normals and negating for
+		// the toward-sun convention gives (cosP*cos a, cosP*sin a, sinP) with
+		// a = lightYaw + 45 -- the true spherical sun. The +90deg between
+		// yaw+135 and the terrain sun's yaw+45 is EXACTLY cancelled by the
+		// swap, which is why the one consumer that swaps (mech.vert:279,
+		// specular) has always been right and the ones that do not are wrong.
+		// Proven on all 24 shipping missions offline by
+		// tools/class_light_band_harness Stage B/D -- no launch required.
+		//
+		// Only meaningful on the u_legacyLitMc2Frame=1 branch, which is where
+		// the shader hands calc_light an MC2-frame normal; the shader applies
+		// it there and nowhere else.
+		//
+		// DEFAULT OFF. This is a correctness fix but a LARGE and TWO-SIDED
+		// visual one -- 22 of 24 missions move, up to 0.53 of full scale, and
+		// almost exactly as many surface normals get DARKER as brighter. No
+		// human has seen it (engine launches are hard-blocked in this lane), so
+		// it ships opt-in. MC2_SUN_AXIS_FIX=1 enables.
+		static const bool s_sunAxisMc2Fix = [](){
+			const char* v = getenv("MC2_SUN_AXIS_FIX");
+			if (v == nullptr || v[0] == '\0') return false;   // unset -> OFF
+			return !(v[0] == '0' && v[1] == '\0');
+		}();
+		gos_SetRenderMaterialParameterInt(mat, "u_sunAxisMc2Fix",
+			s_sunAxisMc2Fix ? 1 : 0);
+
 		// VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON. Finishes VEHICLE-LIGHTING-PATH-1
 		// by giving this path the two terms mech.vert has and it did not --
 		// the kAmbientFloor = 0.35 seed handed to calc_light, and the

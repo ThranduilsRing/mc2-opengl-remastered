@@ -1099,8 +1099,359 @@ static bool test_sentinel_sun_frame_constants(TestCtx& t)
 }
 
 //=============================================================================
+// STAGE D TESTS -- SUN-AXIS-FIX-1. What the two candidate fixes actually
+// CHANGE, per mission, with the clamp LEFT IN (unlike Stage B, which removed
+// it to expose the error). Stage B proved the axis is wrong; Stage D answers
+// the only question that decides a gate default: WHERE IS IT VISIBLE.
+//
+// CITATION CORRECTION inherited from Stage B. Stage B's derivation comment
+// cites mclib/stuff/matrix.cpp:87-115 Matrix4D::BuildRotation. That is the
+// WRONG CLASS: the producers use Stuff::LinearMatrix4D (mclib/camera.cpp:509,
+// :1860, :2110, :4252), and LinearMatrix4D::BuildRotation(EulerAngles)
+// forwards to AffineMatrix4D::BuildRotation (mclib/stuff/linearmatrix.hpp:85-86
+// -> mclib/stuff/affinematrix.cpp:162-194). Re-read at source: the two bodies
+// are arithmetically IDENTICAL for EulerAngles, so the derived row-2 formula
+// stands unchanged. Only the citation was wrong. test_row2_matches_the_affine_
+// builder below pins the arithmetic that actually runs.
+//=============================================================================
+
+// FIX A (SUN-AXIS-FIX-1). The light_dir the MC2-frame diffuse consumers should
+// have been reading all along: the SAME swap mech.vert:279 already applies for
+// specular. Shader form: vec3(-d.x, d.z, d.y), applied to ld.light_dir[i].xyz
+// in the two directional branches of lighting.hglsl calc_light.
+static V3 rowLightDirFixed(const V3& rawRow) { return swapStuffToMC2(rawRow); }
+
+static double ndlMechDiffuseFixed(const V3& nMC2, const V3& rawRow)
+{
+    const V3 d = rowLightDirFixed(rawRow);
+    return clampd(dot(nMC2, v3(-d.x, -d.y, -d.z)), 0.0, 1.0);
+}
+
+// FIX B (SUN-ELEVATION-FIX-1). Camera::lightDirection built as a true spherical
+// direction at the AUTHORED elevation instead of unit-horizontal + sin(pitch)
+// normalized afterwards. DEGENERATE GUARD: when cos(pitch) < 0 the authored
+// pitch cannot be read as a solar elevation and the spherical form flips the
+// AZIMUTH by 180 deg against every shipped build, so the legacy vector is
+// returned verbatim. Among the 24 shipping missions only mc2_10 (pitch 180)
+// takes that branch; mc2_05 / mc2_21 (pitch 270) have cos(pitch) == 0, where
+// the spherical form degenerates to straight-down (0,0,-1) with no azimuth to
+// flip.
+// EPSILON IS LOAD-BEARING, not decoration: cos(270 deg) evaluates to -1.8e-16,
+// not 0, so a bare `< 0.0` classifies mc2_05 and mc2_21 as degenerate and
+// silently drops them onto the legacy branch. This harness caught exactly that
+// on the first run of Stage D. Same constant as mclib/camera.cpp.
+static const double kSunPitchDegenerateEps = 1e-6;
+static bool sunPitchIsDegenerate(double pitchDeg)
+{
+    return std::cos(pitchDeg * kDeg2Rad) < -kSunPitchDegenerateEps;
+}
+static V3 terrainSunMC2Fixed(double pitchDeg, double yawDeg)
+{
+    if (sunPitchIsDegenerate(pitchDeg))
+        return terrainSunMC2(pitchDeg, yawDeg);       // legacy, bit-identical
+    const double a = (yawDeg + 45.0) * kDeg2Rad;
+    const double P = pitchDeg * kDeg2Rad;
+    return v3(std::cos(P) * std::cos(a), std::cos(P) * std::sin(a), std::sin(P));
+}
+
+// A deterministic near-uniform sphere of normals (Fibonacci lattice). The delta
+// is a function of the surface normal, so "how much does this change" is an
+// integral over the sphere, not a single pose.
+static const int kSphereN = 4096;
+static V3 sphereNormal(int i)
+{
+    const double ga = 3.14159265358979323846 * (3.0 - std::sqrt(5.0));
+    const double z  = 1.0 - 2.0 * (i + 0.5) / (double)kSphereN;
+    const double r  = std::sqrt(std::max(0.0, 1.0 - z * z));
+    const double th = ga * i;
+    return v3(r * std::cos(th), r * std::sin(th), z);
+}
+
+// One mission's delta summary for the mech/vehicle expression.
+struct DeltaStat {
+    double maxAbs   = 0.0;   // largest |M_after - M_before| over the sphere
+    double meanAbs  = 0.0;
+    double fracVisible = 0.0;  // fraction of normals moving >= 1/255 (one byte)
+    double fracBrighter = 0.0;
+    double fracDarker   = 0.0;
+    bool   fullySaturated = false;  // 0.35 + A >= 1 -> clamp pins M at 1.0
+};
+
+static DeltaStat mechDeltaForMission(const Mission& m)
+{
+    const MissionLight L = missionLight(m);
+    DeltaStat st{};
+    st.fullySaturated = (0.35 + L.A >= 1.0);
+    const double kByte = 1.0 / 255.0;
+    long visible = 0, brighter = 0, darker = 0;
+    double sum = 0.0;
+    for (int i = 0; i < kSphereN; ++i) {
+        const V3 n = sphereNormal(i);
+        const double before = mechMul(L.A, L.S, ndlMechDiffuse(n, L.rowLightDir));
+        const double after  = mechMul(L.A, L.S, ndlMechDiffuseFixed(n, L.rowLightDir));
+        const double d = after - before;
+        const double ad = std::fabs(d);
+        sum += ad;
+        if (ad > st.maxAbs) st.maxAbs = ad;
+        if (ad >= kByte) { ++visible; if (d > 0) ++brighter; else ++darker; }
+    }
+    st.meanAbs      = sum / kSphereN;
+    st.fracVisible  = visible  / (double)kSphereN;
+    st.fracBrighter = brighter / (double)kSphereN;
+    st.fracDarker   = darker   / (double)kSphereN;
+    return st;
+}
+
+// D0. The arithmetic that ACTUALLY runs is AffineMatrix4D::BuildRotation
+// (affinematrix.cpp:162-194), reached via LinearMatrix4D::BuildRotation
+// (linearmatrix.hpp:85-86). Transcribed here independently of objectRowLightDir
+// and required to agree -- so the row-2 formula is pinned to the real builder,
+// not to the Matrix4D one Stage B mis-cited.
+static bool test_row2_matches_the_affine_builder(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const double xs = std::sin(m.pitch * kDeg2Rad), xc = std::cos(m.pitch * kDeg2Rad);
+        const double ys = std::sin((m.yaw + 135.0) * kDeg2Rad),
+                     yc = std::cos((m.yaw + 135.0) * kDeg2Rad);
+        const double zs = 0.0, zc = 1.0;                 // roll == 0
+        // affinematrix.cpp:189-191, verbatim.
+        const double m20 = xc * ys * zc + xs * zs;
+        const double m21 = xc * ys * zs - xs * zc;
+        const double m22 = xc * yc;
+        // affinematrix.hpp:156-162 GetLocalForwardInWorld -> (FORWARD_AXIS=2, {X,Y,Z})
+        // with APPLY_FORWARD_SIGN == identity (vector3d.hpp:73).
+        const V3 built = v3(m20, m21, m22);
+        const V3 have  = objectRowLightDir(m.pitch, m.yaw);
+        CH_CHECK(t, std::fabs(built.x - have.x) < 1e-12);
+        CH_CHECK(t, std::fabs(built.y - have.y) < 1e-12);
+        CH_CHECK(t, std::fabs(built.z - have.z) < 1e-12);
+    }
+    return t.failures == 0;
+}
+
+// D1. THE FIX IS CORRECT: with Fix A applied, a face whose MC2 normal points at
+// the true spherical sun returns ndl == 1 on EVERY mission, degenerate pitches
+// included. Stage B's B2 shows the shipped feed manages this on none of them.
+static bool test_fix_a_gives_ndl_one_at_the_true_sun(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const double a = (m.yaw + 45.0) * kDeg2Rad, P = m.pitch * kDeg2Rad;
+        const V3 truth = v3(std::cos(P)*std::cos(a), std::cos(P)*std::sin(a), std::sin(P));
+        const V3 row   = objectRowLightDir(m.pitch, m.yaw);
+        CH_CHECK(t, std::fabs(ndlMechDiffuseFixed(truth, row) - 1.0) < 1e-9);
+    }
+    return t.failures == 0;
+}
+
+// D2. FIX A AGREES WITH MECH SPECULAR EXACTLY, on every mission and every
+// normal. This is the whole safety argument for leaving specular alone: the fix
+// does not invent a direction, it adopts the one the correct consumer already
+// uses, so diffuse and specular stop disagreeing instead of starting to.
+static bool test_fix_a_equals_the_specular_consumer(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; ++i) {
+        const V3 row = objectRowLightDir(kMissions[i].pitch, kMissions[i].yaw);
+        for (int k = 0; k < 64; ++k) {
+            const V3 n = sphereNormal(k * (kSphereN / 64));
+            CH_CHECK(t, std::fabs(ndlMechDiffuseFixed(n, row)
+                                - ndlMechSpecular(n, row)) < 1e-12);
+        }
+    }
+    return t.failures == 0;
+}
+
+// D3. WHERE THE DELTA IS CLAMPED AWAY. On a mission whose authored ambient
+// alone clears the clamp (0.35 + A >= 1), the mech/vehicle multiplier is pinned
+// at 1.0 for every normal and every ndl, so Fix A changes NOTHING visible --
+// including on mc2_10, one of the user's regular check missions. This is the
+// claim that makes the degenerate-pitch risk survivable.
+static bool test_saturated_missions_show_zero_delta(TestCtx& t)
+{
+    int saturated = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const DeltaStat st = mechDeltaForMission(kMissions[i]);
+        if (!st.fullySaturated) continue;
+        ++saturated;
+        CH_CHECK(t, st.maxAbs == 0.0);
+        CH_CHECK(t, st.fracVisible == 0.0);
+    }
+    CH_CHECK(t, saturated > 0);
+    // mc2_10 (AmbientRed 192 -> A = 0.7529, 0.35 + A = 1.103) must be one.
+    for (int i = 0; i < kNumMissions; ++i) {
+        if (std::string(kMissions[i].name) != "mc2_10") continue;
+        const DeltaStat st = mechDeltaForMission(kMissions[i]);
+        CH_CHECK(t, st.fullySaturated);
+        CH_CHECK(t, st.maxAbs == 0.0);
+    }
+    return t.failures == 0;
+}
+
+// D4. WHERE IT IS VISIBLE. On the unsaturated missions the delta is large and
+// two-sided: faces the shipped garbled axis happened to favour go DARKER, and
+// the faces that should have been lit go BRIGHTER. "Mechs get brighter" is NOT
+// a safe summary of this change and must not be reported as one.
+static bool test_unsaturated_missions_move_in_both_directions(TestCtx& t)
+{
+    int twoSided = 0, unsat = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const DeltaStat st = mechDeltaForMission(kMissions[i]);
+        if (st.fullySaturated) continue;
+        ++unsat;
+        if (st.fracBrighter > 0.01 && st.fracDarker > 0.01) ++twoSided;
+    }
+    CH_CHECK(t, unsat >= 10);
+    CH_CHECK(t, twoSided >= unsat / 2);   // most unsaturated missions darken somewhere
+    return t.failures == 0;
+}
+
+// D5. THE DEGENERATE THREE, handled explicitly rather than hoped over.
+//   mc2_05 / mc2_21 (pitch 270): cos(pitch) == 0, so Fix B's spherical form is
+//     straight down (0,0,-1) -- no azimuth exists to flip.
+//   mc2_10 (pitch 180): cos(pitch) < 0. The spherical form would flip the
+//     terrain sun's azimuth by 180 deg against every shipped build, so Fix B
+//     returns the legacy vector BIT-IDENTICALLY there.
+static bool test_fix_b_degenerate_pitch_is_handled(TestCtx& t)
+{
+    int degenerate = 0, poles = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const V3 legacy = terrainSunMC2(m.pitch, m.yaw);
+        const V3 fixed  = terrainSunMC2Fixed(m.pitch, m.yaw);
+        if (sunPitchIsDegenerate(m.pitch)) {
+            ++degenerate;
+            CH_CHECK(t, fixed.x == legacy.x && fixed.y == legacy.y && fixed.z == legacy.z);
+            CH_CHECK(t, std::string(m.name) == "mc2_10");
+        }
+        if (std::fabs(std::cos(m.pitch * kDeg2Rad)) < 1e-12) {
+            ++poles;
+            CH_CHECK(t, std::fabs(fixed.x) < 1e-12 && std::fabs(fixed.y) < 1e-12);
+            CH_CHECK(t, std::fabs(fixed.z + 1.0) < 1e-9);      // straight down
+        }
+    }
+    CH_CHECK(t, degenerate == 1);   // exactly mc2_10
+    CH_CHECK(t, poles == 2);        // exactly mc2_05 + mc2_21
+    return t.failures == 0;
+}
+
+// D6. THE UNIFICATION. On every NON-degenerate mission, Fix B makes the terrain
+// sun EXACTLY EQUAL to -swap(row) -- the vector mech specular already uses and
+// the one Fix A gives mech/vehicle diffuse. So the two fixes together put
+// terrain, props, mech diffuse, mech specular and vehicles on ONE sun vector,
+// by construction rather than by tuning. Neither fix alone achieves that.
+static bool test_fix_b_unifies_terrain_sun_with_the_object_row(TestCtx& t)
+{
+    int unified = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        if (sunPitchIsDegenerate(m.pitch)) continue;
+        const V3 s = swapStuffToMC2(objectRowLightDir(m.pitch, m.yaw));
+        const V3 minusSwap = v3(-s.x, -s.y, -s.z);
+        const V3 fixed = terrainSunMC2Fixed(m.pitch, m.yaw);
+        CH_CHECK(t, std::fabs(fixed.x - minusSwap.x) < 1e-9);
+        CH_CHECK(t, std::fabs(fixed.y - minusSwap.y) < 1e-9);
+        CH_CHECK(t, std::fabs(fixed.z - minusSwap.z) < 1e-9);
+        ++unified;
+    }
+    CH_CHECK(t, unified == kNumMissions - 1);
+    // ...and the shipped terrain sun does NOT have this property.
+    int legacyMismatch = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const V3 s = swapStuffToMC2(objectRowLightDir(m.pitch, m.yaw));
+        const V3 legacy = terrainSunMC2(m.pitch, m.yaw);
+        if (std::fabs(legacy.z + s.y) > 1e-6) ++legacyMismatch;
+    }
+    CH_CHECK(t, legacyMismatch >= kNumMissions - 3);
+    return t.failures == 0;
+}
+
+// D7. FIX B IS NOT A SMALL FIX -- it moves the sun COLOUR too, not only its
+// direction. `intensity` handed to Camera::getLightRed is terrainNormal .
+// lightDirection (mclib/mapdata.cpp:1892-1900), so raising the elevation from
+// atan(sin P) to P raises S on flat ground for every object class AND rebakes
+// the terrain colormap (mclib/terrtxm2.cpp:1132 burnInShadows). Recorded here
+// so the gate default argument cannot pretend this is direction-only.
+static bool test_fix_b_also_moves_the_sun_colour_byte(TestCtx& t)
+{
+    int moved = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const double iBefore = terrainSunMC2(m.pitch, m.yaw).z;
+        const double iAfter  = terrainSunMC2Fixed(m.pitch, m.yaw).z;
+        const int sBefore = getLightByte(m.lightR, m.ambR, iBefore);
+        const int sAfter  = getLightByte(m.lightR, m.ambR, iAfter);
+        if (sBefore != sAfter) ++moved;
+    }
+    CH_CHECK(t, moved > 0);
+    // mc2_03: elevation 35.7 -> 46 deg raises sin from 0.583 to 0.719.
+    for (int i = 0; i < kNumMissions; ++i) {
+        if (std::string(kMissions[i].name) != "mc2_03") continue;
+        const Mission& m = kMissions[i];
+        CH_CHECK(t, terrainSunMC2Fixed(m.pitch, m.yaw).z
+                  > terrainSunMC2(m.pitch, m.yaw).z + 0.1);
+    }
+    return t.failures == 0;
+}
+
+// D8. SENTINEL for the two fix constants, so a silent edit to either shader
+// expression goes red here rather than in the user's eyes.
+static bool test_sentinel_fix_constants(TestCtx& t)
+{
+    // Fix A is EXACTLY the mech.vert:279 swap, no extra sign.
+    const V3 f = rowLightDirFixed(v3(1, 2, 3));
+    CH_CHECK(t, f.x == -1 && f.y == 3 && f.z == 2);
+    // Fix B's guard is cos(pitch) < 0, not "pitch > 90" (270 must NOT trip it).
+    CH_CHECK(t, sunPitchIsDegenerate(180.0));
+    CH_CHECK(t, !sunPitchIsDegenerate(46.0));
+    CH_CHECK(t, !sunPitchIsDegenerate(0.0));
+    // THE EPSILON ARM. cos(270 deg) == -1.8e-16 < 0, so a bare sign test puts
+    // mc2_05 / mc2_21 on the legacy branch by floating-point accident. Deleting
+    // kSunPitchDegenerateEps must turn this red.
+    CH_CHECK(t, !sunPitchIsDegenerate(270.0));
+    CH_CHECK(t, std::cos(270.0 * kDeg2Rad) < 0.0);   // the trap itself is real
+    return t.failures == 0;
+}
+
+//=============================================================================
 // REPORT PRINTERS (not in the default suite; --test <name> to run)
 //=============================================================================
+static bool print_stage_d_delta(TestCtx&)
+{
+    std::fprintf(stderr,
+        "\n=== STAGE D: SUN-AXIS-FIX-1 mech/vehicle visual delta, clamp IN ===\n"
+        "  M = clamp(0.35 + A + S*ndl, 0, 1); delta over %d sphere normals.\n"
+        "  'sat' = 0.35+A >= 1 -> pinned at 1.0 -> fix is invisible there.\n\n"
+        "  mission   pitch    A      S    sat  maxAbs  meanAbs  vis%%  brt%%  drk%%\n"
+        "  -------- ------ ------ ------ ---- ------- -------- ----- ----- -----\n",
+        kSphereN);
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const MissionLight L = missionLight(m);
+        const DeltaStat st = mechDeltaForMission(m);
+        std::fprintf(stderr,
+            "  %-8s %6.2f %6.4f %6.4f  %-3s %7.4f %8.5f %5.1f %5.1f %5.1f\n",
+            m.name, m.pitch, L.A, L.S, st.fullySaturated ? "YES" : "no",
+            st.maxAbs, st.meanAbs, st.fracVisible * 100.0,
+            st.fracBrighter * 100.0, st.fracDarker * 100.0);
+    }
+    std::fprintf(stderr,
+        "\n  FIX B (elevation) per-mission sun elevation, degrees:\n"
+        "  mission   authored  shipped  fixed   degenerate\n"
+        "  -------- --------- -------- ------- ----------\n");
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const double eBefore = std::asin(clampd(terrainSunMC2(m.pitch, m.yaw).z, -1, 1)) / kDeg2Rad;
+        const double eAfter  = std::asin(clampd(terrainSunMC2Fixed(m.pitch, m.yaw).z, -1, 1)) / kDeg2Rad;
+        std::fprintf(stderr, "  %-8s %9.2f %8.2f %7.2f %s\n",
+            m.name, m.pitch, eBefore, eAfter,
+            sunPitchIsDegenerate(m.pitch) ? "YES -> legacy verbatim" : "");
+    }
+    std::fprintf(stderr, "\n");
+    return true;
+}
+
 static bool print_stage_a_matrix(TestCtx&)
 {
     std::fprintf(stderr,
@@ -1236,7 +1587,20 @@ int main(int argc, char** argv)
     h.add("terrain_band_ignores_the_mission_light_colours",
           test_terrain_band_ignores_the_mission_light_colours);
 
+    // Stage D -- SUN-AXIS-FIX-1
+    h.add("row2_matches_the_affine_builder",           test_row2_matches_the_affine_builder);
+    h.add("fix_a_gives_ndl_one_at_the_true_sun",       test_fix_a_gives_ndl_one_at_the_true_sun);
+    h.add("fix_a_equals_the_specular_consumer",        test_fix_a_equals_the_specular_consumer);
+    h.add("saturated_missions_show_zero_delta",        test_saturated_missions_show_zero_delta);
+    h.add("unsaturated_missions_move_in_both_directions",
+          test_unsaturated_missions_move_in_both_directions);
+    h.add("fix_b_degenerate_pitch_is_handled",         test_fix_b_degenerate_pitch_is_handled);
+    h.add("fix_b_unifies_terrain_sun_with_the_object_row",
+          test_fix_b_unifies_terrain_sun_with_the_object_row);
+    h.add("fix_b_also_moves_the_sun_colour_byte",      test_fix_b_also_moves_the_sun_colour_byte);
+
     // Perturbation sentinels
+    h.add("sentinel_fix_constants",                    test_sentinel_fix_constants);
     h.add("sentinel_terrain_constants",                test_sentinel_terrain_constants);
     h.add("sentinel_mech_floor",                       test_sentinel_mech_floor);
     h.add("sentinel_ibl_strength",                     test_sentinel_ibl_strength);
@@ -1244,6 +1608,7 @@ int main(int argc, char** argv)
     h.add("sentinel_sun_frame_constants",              test_sentinel_sun_frame_constants);
 
     // Report printers -- excluded from the default suite.
+    h.add("print_stage_d_delta", print_stage_d_delta, false);
     h.add("print_stage_a_matrix", print_stage_a_matrix, false);
     h.add("print_stage_b_frames", print_stage_b_frames, false);
     h.add("print_stage_c_table",  print_stage_c_table,  false);

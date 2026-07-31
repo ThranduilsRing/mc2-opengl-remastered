@@ -421,6 +421,7 @@ static GLint s_loc_u_debugMode       = -1;
 static GLint s_loc_u_mechAmbientV1Strength = -1;  // MECH-AMBIENT-1
 static GLint s_loc_u_lightingMode    = -1;
 static GLint s_loc_u_skinningMode    = -1;
+static GLint s_loc_u_sunAxisMc2Fix   = -1;  // SUN-AXIS-FIX-1
 // MECH-SPECULAR-V1: cached locations (all -1 on non-viewuniforms variants).
 static GLint s_loc_u_mechSpecularV1Strength  = -1;
 static GLint s_loc_u_mechMetalRoughness      = -1;
@@ -785,6 +786,7 @@ static void loadProgramsIfNeeded() {
     s_loc_u_mechAmbientV1Strength = loc("u_mechAmbientV1Strength");  // MECH-AMBIENT-1
     s_loc_u_lightingMode    = loc("u_lightingMode");
     s_loc_u_skinningMode    = loc("u_skinningMode");
+    s_loc_u_sunAxisMc2Fix   = loc("u_sunAxisMc2Fix");   // SUN-AXIS-FIX-1
     // MECH-SPECULAR-V1: all return -1 on non-viewuniforms variants; guarded at upload.
     s_loc_u_mechSpecularV1Strength  = loc("u_mechSpecularV1Strength");
     s_loc_u_mechMetalRoughness      = loc("u_mechMetalRoughness");
@@ -2449,6 +2451,19 @@ void GpuMechBatcher::flush() {
     // multi-bone blend. Stock data is byte-identical across modes.
     if (s_loc_u_skinningMode >= 0)
         glUniform1i(s_loc_u_skinningMode, 1);   // SKIN-RETIRE-1: weighted skinning always on
+    // SUN-AXIS-FIX-1: hand calc_light's DIFFUSE directional branches the same
+    // Stuff->MC2 swap mech.vert:279 already applies for SPECULAR, so mech
+    // diffuse stops dotting an MC2-frame normal against a Stuff-frame sun.
+    // Boot-cached (Debug Instrumentation Rule). Default OFF -> uniform 0 ->
+    // shipped expression bit-for-bit. See RendererFeatureRegistry.h.
+    if (s_loc_u_sunAxisMc2Fix >= 0) {
+        static const int s_sunAxisMc2Fix = [](){
+            const char* v = getenv("MC2_SUN_AXIS_FIX");
+            if (v == nullptr || v[0] == '\0') return 0;      // unset -> OFF
+            return (v[0] == '0' && v[1] == '\0') ? 0 : 1;
+        }();
+        glUniform1i(s_loc_u_sunAxisMc2Fix, s_sunAxisMc2Fix);
+    }
     if (s_mechBatcherTrace) {
         static int s_uniDiagPrinted = 0;
         if (s_uniDiagPrinted < 2) {

@@ -2895,6 +2895,15 @@ def main():
                             # silently runs the =1 path (ENV_DROP class) and
                             # grades ON against ON.
                             "MC2_VEHICLE_AMBIENT_FLOOR",
+                            # SUN-AXIS-FIX-1: default-OFF opt-in for the
+                            # Stuff->MC2 swap on ObjectLights.light_dir in
+                            # calc_light's DIFFUSE directional branches (mech +
+                            # legacy-lit vehicle paths). Must be passthrough-
+                            # allowlisted or the A/B that is supposed to DECIDE
+                            # its default silently runs OFF against OFF and
+                            # captures identical frames -- the ENV_DROP class,
+                            # found twice on 2026-07-30 alone.
+                            "MC2_SUN_AXIS_FIX",
                             # QUIET-DEFAULT-BUILD-1: MC2_DIAG_VERBOSE restores
                             # the ~380 developer diagnostic call sites that a
                             # default build now keeps quiet. Allowlisted so the

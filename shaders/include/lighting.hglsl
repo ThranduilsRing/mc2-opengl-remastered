@@ -223,9 +223,54 @@ bool GetFalloff(float length, vec3 falloff_data, out float falloff)
 // other shaders include this header (gos_tex_vertex_lighted.{vert,frag})
 // and may call calc_light() through code paths that fire when no lights
 // are populated.
+//
+// SUN-AXIS-FIX-1 — sunAxisMc2Fix, the 5th parameter.
+//
+// THE DEFECT. ObjectLights.light_dir is NOT in the MC2 world frame, whatever
+// the surrounding texts say. It is produced by GetLocalForwardInWorld() on the
+// sun's light-to-world transform (mclib/object_light_row.h:123,:265-267 <-
+// mclib/txmmgr.cpp:2621), and that transform is built as
+// BuildRotation(EulerAngles(lightPitch, lightYaw + 135, 0)) at mclib/camera.cpp
+// :509, :1860, :2110 and :4252. Reading the arithmetic that actually runs --
+// LinearMatrix4D::BuildRotation forwards to AffineMatrix4D::BuildRotation
+// (mclib/stuff/linearmatrix.hpp:85-86 -> mclib/stuff/affinematrix.cpp:162-194),
+// with roll == 0 so z.sine == 0 -- matrix row 2 is
+//     ( cosP*sinY, -sinP, cosP*cosY ),  Y = lightYaw + 135
+// and GetLocalForwardInWorld returns exactly that row, because FORWARD_AXIS ==
+// Z_Axis == 2 and APPLY_FORWARD_SIGN is the identity (mclib/stuff/vector3d.hpp
+// :55,:73). That vector is in the STUFF frame (Y up, Z forward).
+//
+// THE CANCELLATION, which is why this went unnoticed for so long. Applying the
+// same Stuff->MC2 swap used for every normal in these shaders, (-x, z, y), and
+// negating for the toward-sun convention:
+//     -swap(row) == ( cosP*cos(a), cosP*sin(a), sinP ),  a = lightYaw + 45
+// i.e. the TRUE spherical toward-sun direction. The +90 deg difference between
+// the object light's yaw+135 and the terrain sun's yaw+45 (camera.cpp:2244) is
+// EXACTLY cancelled by the axis swap. Verified identically on all 24 shipping
+// missions by tools/class_light_band_harness (Stage B/D).
+//
+// SO: the consumer that swaps is right and the consumers that do not are wrong.
+// mech.vert:279 swaps before using light_dir for SPECULAR and is CORRECT and
+// untouched by this gate. The DIFFUSE branches below did not swap, so they dot
+// an MC2-frame normal against a Stuff-frame direction -- not "90 degrees off"
+// but a garbled permutation that is ANTI-correlated with the true sun on most
+// missions: with the mech clamp removed, a face pointed straight at the sun
+// receives ndl == 0.0 on 14 of 24 missions. The clamp is what hid it.
+//
+// SCOPE. Applied ONLY to the two DIRECTIONAL branches, because they are the
+// only ones that read light_dir.xyz as a direction. POINT and SPOT below both
+// derive their direction from `to_light` (a position difference) and never read
+// light_dir.xyz at all -- note that the SPOT comment's claim that it uses
+// light_dir.xyz as the cone axis is FALSE of the code beneath it. TERRAIN and
+// AMBIENT read no direction either. So no other light type can move.
+//
+// sunAxisMc2Fix == 0 reproduces the shipped expression bit-for-bit, and the
+// 4-argument overload below hard-codes 0, so every existing caller that has not
+// opted in is byte-identical by construction.
 //================================================================================
 //PORT-BEGIN:calc_light
-vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, in vec3 base_light)
+vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, in vec3 base_light,
+                in int sunAxisMc2Fix)
 {
     ObjectLights ld = light[lights_index];
 
@@ -248,7 +293,12 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
             ambient += lcolor;
         }
         else if (light_type == TG_LIGHT_INFINITE) {
-            float n_dot_l = clamp(dot(normal, -ld.light_dir[i].xyz), 0.0, 1.0);
+            // SUN-AXIS-FIX-1: see the header block. The swap is the SAME one
+            // mech.vert:279 already applies for specular, not a new direction.
+            vec3 sd = (sunAxisMc2Fix != 0)
+                    ? vec3(-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y)
+                    : ld.light_dir[i].xyz;
+            float n_dot_l = clamp(dot(normal, -sd), 0.0, 1.0);
             final += n_dot_l * lcolor;
         }
         else if (light_type == TG_LIGHT_INFINITEWITHFALLOFF) {
@@ -259,7 +309,14 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
             float dist = length(vertex_world_pos - light_pos);
             float falloff;
             if (GetFalloff(dist, ld.light_falloff[i].xyz, falloff)) {
-                float n_dot_l = clamp(dot(normal, -ld.light_dir[i].xyz), 0.0, 1.0);
+                // SUN-AXIS-FIX-1: stock MC2 missions author the sun as
+                // TG_LIGHT_INFINITEWITHFALLOFF (type 2), so THIS is the branch
+                // the mission sun actually takes -- the type-1 branch above is
+                // the rarer one. Same swap, same reason.
+                vec3 sd = (sunAxisMc2Fix != 0)
+                        ? vec3(-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y)
+                        : ld.light_dir[i].xyz;
+                float n_dot_l = clamp(dot(normal, -sd), 0.0, 1.0);
                 final += n_dot_l * lcolor * falloff;
             }
         }
@@ -305,6 +362,17 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
     }
 
     return final + ambient;
+}
+
+// SUN-AXIS-FIX-1 compatibility overload. Every caller that has NOT opted in
+// (building_pbr.vert, and the gate-OFF branches of the two that have) resolves
+// here and gets sunAxisMc2Fix == 0, i.e. the shipped expression bit-for-bit.
+// Keeping the legacy arity as a forwarder rather than editing every call site
+// is what makes "this gate cannot touch a shader that did not ask for it" a
+// property of the code instead of a promise in a comment.
+vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, in vec3 base_light)
+{
+    return calc_light(lights_index, normal, vertex_world_pos, base_light, 0);
 }
 //PORT-END:calc_light
 
