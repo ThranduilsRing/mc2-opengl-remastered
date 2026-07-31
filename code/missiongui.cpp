@@ -64,6 +64,16 @@
 #include"objmgr.h"
 #endif
 
+// TURRET-LIST-ENUM-1: objmgr.h only forward-declares TurretPtr (via dturret.h),
+// but `list buildings` needs the COMPLETE Turret type for the TurretPtr ->
+// GameObjectPtr derived-to-base conversion in its third enumeration pass.
+// Own guard, NOT nested inside the OBJMGR_H one: if any header above ever
+// pulls in objmgr.h first, a nested include would silently vanish and break
+// this TU with a confusing incomplete-type error.
+#ifndef TURRET_H
+#include"turret.h"
+#endif
+
 #ifndef GAMESOUND_H
 #include"gamesound.h"
 #endif
@@ -1507,16 +1517,32 @@ void MissionInterfaceManager::processUiCommandChannel()
 				result = "blocked"; note = "no object manager";
 			} else {
 				std::vector<long> seen;
-				long n = 0, animatable = 0;
-				// Buildings and terrain objects live in SEPARATE arrays
-				// (objmgr.cpp dispatch switch), so walk both and de-dup by partId.
-				for (int pass = 0; pass < 2; ++pass) {
+				long n = 0, animatable = 0, nTurret = 0;
+				// Buildings, terrain objects and TURRETS live in THREE SEPARATE
+				// arrays -- objmgr.cpp:1348-1360 increments numTerrainObjects /
+				// numTurrets / numGates on independent branches of one switch,
+				// and objmgr.h:481-490 exposes getNumBuildings /
+				// getNumTerrainObjects / getNumTurrets as separate accessors.
+				// Walk all three and de-dup by partId.
+				//
+				// TURRET-LIST-ENUM-1: the turret pass was missing. Every pop-up
+				// turret (151 of them across 11 stock maps) carries a
+				// BldgAppearance with real gesture data, and the `animate` verb
+				// below tells the operator to take ids + animGestures "from
+				// `list buildings`" -- which never listed a single turret.
+				// findByPartId (objmgr.cpp:3750) walks the master objList, so
+				// `animate` could always DRIVE a turret; only the enumeration
+				// that hands you its partId was absent.
+				for (int pass = 0; pass < 3; ++pass) {
 					const long cnt = (pass == 0) ? ObjectManager->getNumBuildings()
-												 : ObjectManager->getNumTerrainObjects();
+								   : (pass == 1) ? ObjectManager->getNumTerrainObjects()
+												 : ObjectManager->getNumTurrets();
 					for (long i = 0; i < cnt; ++i) {
 						GameObjectPtr o = (pass == 0)
 							? (GameObjectPtr)ObjectManager->getBuilding(i)
-							: (GameObjectPtr)ObjectManager->getTerrainObject(i);
+							: (pass == 1)
+								? (GameObjectPtr)ObjectManager->getTerrainObject(i)
+								: (GameObjectPtr)ObjectManager->getTurret(i);
 						if (!o || !o->getExists()) continue;
 						BldgAppearance* ba =
 							dynamic_cast<BldgAppearance*>(o->getAppearance());
@@ -1552,16 +1578,18 @@ void MissionInterfaceManager::processUiCommandChannel()
 							ba->isStaticEligible() ? 1 : 0);
 						extra += b;
 						++n;
+						if (pass == 2) ++nTurret;
 					}
 				}
 				char b[192];
 				snprintf(b, sizeof(b),
-					"  buildings=%ld animatable=%ld animStartInvalidated=%lu\n",
-					n, animatable,
+					"  buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lu\n",
+					n - nTurret, nTurret, animatable,
 					(unsigned long)g_bldgAnimGate_animStartInvalidated());
 				extra += b;
 				snprintf(b, sizeof(b),
-					"%ld building(s), %ld with animation data", n, animatable);
+					"%ld object(s) (%ld turret(s)), %ld with animation data",
+					n, nTurret, animatable);
 				note = b;
 				result = "ok";
 			}
