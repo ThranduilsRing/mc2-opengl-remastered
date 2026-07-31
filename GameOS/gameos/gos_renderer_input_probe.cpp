@@ -72,6 +72,17 @@ bool readScenePixel(int px, int py, PixelProbe& out)
     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevRead);
     glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
 
+    // RAW-GL-FBO-BIND-GATE-1 disposition. This TU owns no FBO -- it borrows
+    // gosPostProcess's scene FBO for one 1x1 glReadPixels. The bind below is
+    // GL_READ_FRAMEBUFFER, so no draw can be retargeted by it, and
+    // GL_READ_FRAMEBUFFER_BINDING is captured two lines above and restored
+    // three lines below (the restore half is auto-exempt under the checker's
+    // prev/saved rule; this acquire half is the one that needs the tag). Same
+    // class as the two brackets already on the gate's file allowlist --
+    // gameosmain.cpp "screenshot / video READ-blit" and RenderWorld.cpp
+    // "readback" -- but tagged per-CALL-SITE instead of allowlisting the whole
+    // file, so a GL_DRAW_FRAMEBUFFER bind added here later still fails the gate.
+    // FBO-OWNER: read-only readback bracket over the scene FBO, restored below.
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
