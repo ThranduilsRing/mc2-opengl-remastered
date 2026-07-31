@@ -3823,6 +3823,47 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "rather than \"the trace never ran\" (ENV_DROP). Observation only: no render, gameplay "
         "or sim state changes, so ON vs OFF is pixel-identical.",
     },
+    // ── CPU-PHONG-RETIRE-1 ─────────────────────────────────────────────────
+    // Lives in kAuxEnvVars, not kFeatureTable: kFeatureTable is indexed by
+    // RendererFeature, and minting an enum ordinal for a gate that guards a
+    // CPU gameplay-elevation term (no render path) buys nothing. Same placement
+    // rationale as MC2_ASSET_FAILLOUD above, which is also a default-ON
+    // killswitch registered here.
+    {
+        "MC2_FEATURE_CPU_PHONG_RETIRE",
+        "MC2_CPU_PHONG_RETIRE",
+        EnvVarKind::Feature,
+        true,
+        "[DEFAULT-ON KILLSWITCH; '=0' is the only revert token -- MC2_TERRAIN_TESS / "
+        "MC2_COLORMAP_CPU_RETIRE shape.] Retires the CPU Phong-smoothing term that "
+        "MapData::terrainElevation() (mclib/mapdata.cpp) adds to GAMEPLAY elevation. "
+        "READER: mclib/mapdata.cpp, `!v || v[0] != '0'`. "
+        "WHY: that term was added by 4684ec0d (2026-04-10) for ONE stated reason -- "
+        "docs/plans/2026-04-10-cpu-terrain-displacement-design.md -- namely that the GPU TES "
+        "(shaders/gos_terrain.tese:101-108) Phong-smooths the DRAWN surface, so the CPU had to "
+        "match or units would float. That counterpart is GONE: 75b8ebef (2026-06-29, "
+        "TERRAIN-DEADCODE-DELETE-1) deleted the legacy tess-solid terrain draw, and the ground "
+        "has since been rasterized by shaders/terrain_lod_chunk.vert + .frag -- VS+FS, no "
+        "TCS/TES (gos_terrain_lod_chunk.cpp:1257) -- which applies neither Phong nor "
+        "displacement. Both surviving call sites of the old funnel "
+        "(gameos_graphics.cpp:7590, :7603) only rewind(). So the CPU half of a mirror kept "
+        "running after the GPU half was deleted, and gameplay elevation drifted off the drawn "
+        "surface with nothing reporting it. The SIBLING half of the very same design doc (dirt "
+        "displacement) was already retired default-ON for exactly this reason by "
+        "COLORMAP-CPU-RETIRE-1 (f9c12b53); leaving the two halves on opposite defaults would "
+        "itself be the gate-halves-disagree defect. "
+        "MAGNITUDE (measured offline against the real tier1 mission .pak heightfields using "
+        "the scripts/terrain_height_audit.py packet reader -- NOT estimated, NOT from a log): "
+        "mean |delta| 0.58-1.35 wu, p99 3.8-6.4 wu, max 12.7-18.9 wu across mc2_01/03/10/17/24; "
+        "1 wu = 0.2 m (mclib/terrain.cpp:104), so up to ~3.8 m. 19-49% of sampled positions "
+        "exceed 1 wu. The term is EXACTLY zero on locally planar terrain (flat AND uniform "
+        "slope) and nonzero only where the surface curves, and it is zero-mean -- pure scatter, "
+        "never a tuned value: objects float on some cells and sink on others. "
+        "USER-VISIBLE: unset now changes where every object sits, on every map, wherever the "
+        "ground curves. NOT SMOKED IN THIS LANE -- engine launches are hard-blocked here; this "
+        "needs a tier1 run and a click-through before merge. '=0' restores the exact legacy "
+        "term. Enforced against silent re-divergence by scripts/check-cpu-gpu-cogating.py.",
+    },
 };
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,39 @@
 # CPU Terrain Displacement — Design Doc
 **Date:** 2026-04-10
 
+> ## ⛔ SUPERSEDED 2026-07-30 — THE PREMISE BELOW NO LONGER HOLDS
+>
+> This document's entire justification is the sentence under **Problem**: *the GPU
+> TES applies Phong smoothing and dirt displacement, so the CPU must match.*
+> **That stopped being true on 2026-06-29.** Commit `75b8ebef`
+> (TERRAIN-DEADCODE-DELETE-1) deleted the legacy tess-solid terrain draw, and
+> `shaders/gos_terrain.tese` has had no reachable draw since — both surviving call
+> sites of the old funnel (`GameOS/gameos/gameos_graphics.cpp:7590`, `:7603`) only
+> `rewind()`. The ground is rasterized by `shaders/terrain_lod_chunk.vert` +
+> `.frag` (VS+FS, no TCS/TES — `gos_terrain_lod_chunk.cpp:1257`), which applies
+> **neither** Phong smoothing **nor** displacement.
+>
+> Both halves this doc specified have therefore been retired, each behind a
+> default-ON killswitch:
+>
+> | Half | Retired by | Killswitch |
+> |---|---|---|
+> | Dirt displacement | `f9c12b53` COLORMAP-CPU-RETIRE-1 (2026-05-31) | `MC2_COLORMAP_CPU_RETIRE=0` |
+> | Phong smoothing | CPU-PHONG-RETIRE-1 (2026-07-30) | `MC2_CPU_PHONG_RETIRE=0` |
+>
+> The Phong half outlived its counterpart by a month. Measured offline against
+> the real tier1 mission `.pak` heightfields, it was moving gameplay elevation off
+> the drawn surface by mean 0.58–1.35 wu, p99 3.8–6.4 wu, max 12.7–18.9 wu
+> (1 wu = 0.2 m → up to ~3.8 m) on 19–49 % of sampled positions — zero on planar
+> ground, nonzero only where the surface curves, and zero-mean, so objects floated
+> on some cells and sank on others. That is the *inverse* of the bug this doc set
+> out to fix, produced by the fix itself once its counterpart was deleted.
+>
+> `scripts/check-cpu-gpu-cogating.py` now fails RED if either half is re-armed
+> without its GPU counterpart, or if the two halves' gates drift apart.
+>
+> **Read the rest of this file as history, not as a specification.**
+
 ## Problem
 Units (mechs, vehicles, buildings, turrets) float above tessellation-displaced terrain. The GPU TES applies Phong smoothing and dirt texture displacement to terrain vertices, but `MapData::terrainElevation()` on the CPU returns only the base mesh height. Every system using `terrainElevation()` (movement, pathfinding, collision, appearance) gets a height that's lower than the visible surface.
 

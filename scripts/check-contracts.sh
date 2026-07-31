@@ -240,6 +240,18 @@ run_check "env_registry"           "sh scripts/check-env-registry.sh"
 # scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
 run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
 run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
+# CPU-GPU-COGATING-1: the check above keeps a gate honest about its OWN default.
+# This one keeps a MIRROR PAIR honest about EACH OTHER. When one quantity is
+# computed twice -- CPU for gameplay, GPU for the picture -- the two halves must
+# be controlled by one predicate. Written from the terrain-Phong defect: the GPU
+# TES half was deleted by 75b8ebef and the CPU half kept feeding gameplay
+# elevation for a month, up to ~19 wu off the drawn surface, while its own
+# comment still claimed it was "matching GPU TES". Both endpoints were
+# internally consistent and correctly registered, so no existing check could
+# see it -- what broke was the RELATIONSHIP. Fails RED (never silently green) if
+# an anchor stops matching, so it cannot go blind on the site it watches.
+run_check "cpu_gpu_cogating"          "py -3 scripts/check-cpu-gpu-cogating.py --quiet"
+run_check "cpu_gpu_cogating_selftest" "py -3 scripts/check-cpu-gpu-cogating.py --selftest"
 # GATE-HYGIENE-CLOSE-1: the smoke harness must keep INHERITING the parent env
 # (os.environ.copy()). If that ever changes, run_smoke.py's vestigial
 # passthrough tuple becomes load-bearing and every registered gate missing

@@ -2412,9 +2412,46 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 		result += triVert[0].z;
 	}
 
-	// --- CPU-side terrain displacement (matching GPU TES) ---
+	// --- CPU-side terrain elevation adjustment (legacy GPU-TES mirror) ---
+	//
+	// CPU-PHONG-RETIRE-1 (2026-07-30). HISTORY, because the old header comment
+	// here said "matching GPU TES" and that has been FALSE since 2026-06-29:
+	//
+	//   4684ec0d 2026-04-10  added this block. Its design doc
+	//     (docs/plans/2026-04-10-cpu-terrain-displacement-design.md) states one
+	//     purpose: the GPU TES (shaders/gos_terrain.tese) Phong-smooths and
+	//     dirt-displaces the drawn surface, so terrainElevation() must apply the
+	//     same two stages or units float above what is drawn.
+	//   f9c12b53 2026-05-31  COLORMAP-CPU-RETIRE-1 freed cpuColorMap/cpuDispAlpha
+	//     after atlas upload -> the DISPLACEMENT half below is inert by default.
+	//   75b8ebef 2026-06-29  TERRAIN-DEADCODE-DELETE-1 deleted the legacy
+	//     tess-solid terrain draw. gos_terrain.tese has had NO reachable draw
+	//     since: the ground is rasterized by shaders/terrain_lod_chunk.vert +
+	//     .frag (VS+FS, no TCS/TES -- gos_terrain_lod_chunk.cpp:1257), which
+	//     applies neither Phong nor displacement. Both guarded call sites of the
+	//     old funnel (gameos_graphics.cpp:7590 / :7603) now only rewind().
+	//
+	// So the mirror lost its counterpart and only the CPU half kept running.
+	// Measured on the five tier1 mission heightfields (real .pak elevations, via
+	// the terrain_height_audit.py packet reader): the Phong term shifts gameplay
+	// elevation away from the DRAWN surface by mean 0.58-1.35 wu, p99 3.8-6.4 wu,
+	// max 12.7-18.9 wu (1 wu = 0.2 m, mclib/terrain.cpp:104 -> up to ~3.8 m), on
+	// 19-49% of sampled positions. It is ZERO on locally planar terrain (flat or
+	// uniform slope) and nonzero only where the surface curves, and it is
+	// zero-mean -- i.e. pure scatter, never a tuned gameplay value: objects float
+	// on some cells and sink on others. That is 19x the +-1 wu displacement error
+	// COLORMAP-CPU-RETIRE-1 already retired default-ON for the same reason.
+	//
+	// Default-ON killswitch (MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape):
+	// unset = Phong retired = gameplay elevation matches the drawn LOD-chunk
+	// surface. MC2_CPU_PHONG_RETIRE=0 restores the exact legacy Phong term.
+	// Enforced against silent re-divergence by scripts/check-cpu-gpu-cogating.py.
 	if (Terrain::terrainTextures2) {
 		TerrainColorMap* tcm = Terrain::terrainTextures2;
+		static const bool s_retireCpuPhong = []() {
+			const char* v = getenv("MC2_CPU_PHONG_RETIRE");
+			return !v || v[0] != '0';   // default ON; only "=0" reverts
+		}();
 		float phongAlpha = gos_GetTerrainPhongAlpha();
 		float displaceScale = gos_GetTerrainDisplaceScale();
 		float detailTiling = gos_GetTerrainDetailTiling();
@@ -2452,8 +2489,10 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			bary2 = 1.0f - bary0 - bary1;
 		}
 
-		// --- Phong smoothing (matching TES lines 77-84) ---
-		if (phongAlpha > 0.0f) {
+		// --- Phong smoothing (legacy mirror of gos_terrain.tese:101-108) ---
+		// Retired by default -- see the CPU-PHONG-RETIRE-1 note above. The TES
+		// this mirrors has had no reachable draw since 75b8ebef.
+		if (!s_retireCpuPhong && phongAlpha > 0.0f) {
 			// Phong projection: project interpolated pos onto tangent plane of each vertex
 			// proj_i = pos - dot(pos - v_i, n_i) * n_i
 			// We only need the Z component
@@ -2482,7 +2521,9 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 			result = result + phongAlpha * (phongZ - result);
 		}
 
-		// --- Dirt texture displacement (matching TES lines 87-99) ---
+		// --- Dirt texture displacement (legacy mirror of gos_terrain.tese:111-125) ---
+		// Same dead-counterpart situation as the Phong block above; this half was
+		// already retired default-ON by COLORMAP-CPU-RETIRE-1 (f9c12b53).
 		// COLORMAP-CPU-RETIRE-1: cpuColorMap is freed in BuildColormapAtlas after
 		// GPU atlas upload (gos_terrain_indirect.cpp), so this block is dead in
 		// the default indirect path. Kill-switch MC2_COLORMAP_CPU_RETIRE=0 keeps
