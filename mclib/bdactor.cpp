@@ -2219,6 +2219,7 @@ long BldgAppearance::render (long depthFixup)
 				if (bldgShape) {
 					static uint64_t s_gf_total = 0, s_gf_agree = 0, s_gf_differ = 0;
 					static uint64_t s_gf_fwdSentinel = 0, s_gf_valSentinel = 0, s_gf_bothSentinel = 0;
+					static bool     s_gf_reported = false;
 					const static_light_row::Divergence gfd =
 						static_light_row::classifyGuardForward(
 							bldgShape->getCachedGpuLightIndex(),   // validated
@@ -2231,11 +2232,21 @@ long BldgAppearance::render (long depthFixup)
 						case static_light_row::kValidatedSentinelOnly: ++s_gf_valSentinel;  break;
 						case static_light_row::kBothSentinel:          ++s_gf_bothSentinel; break;
 					}
-					if ((s_gf_total % 600ull) == 0ull) {
+					// CADENCE: static props render every frame in the thousands, so
+					// a small modulus here would emit hundreds of lines a second
+					// and drown the log this census exists to be read from.
+					// Emit on the FIRST mixed state -- the finding, reported the
+					// instant it exists -- and then only rarely.
+					const bool gfFirstMixed =
+						static_light_row::guardCorrectionWouldChangeBehaviour(gfd)
+						&& !s_gf_reported;
+					if (gfFirstMixed) s_gf_reported = true;
+					if (gfFirstMixed || (s_gf_total % 200000ull) == 0ull) {
 						fprintf(stderr,
-							"[GUARD_FORWARD v1] event=census class=bldg total=%llu agree=%llu "
+							"[GUARD_FORWARD v1] event=%s class=bldg total=%llu agree=%llu "
 							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
 							"validated_sentinel_only=%llu both_sentinel=%llu would_change=%llu\n",
+							gfFirstMixed ? "first_divergence" : "census",
 							(unsigned long long)s_gf_total,
 							(unsigned long long)s_gf_agree,
 							(unsigned long long)s_gf_differ,
@@ -6905,6 +6916,7 @@ long TreeAppearance::render (long depthFixup)
 				{
 					static uint64_t s_gf_total = 0, s_gf_agree = 0, s_gf_differ = 0;
 					static uint64_t s_gf_fwdSentinel = 0, s_gf_valSentinel = 0, s_gf_bothSentinel = 0;
+					static bool     s_gf_reported = false;
 					const static_light_row::Divergence gfd =
 						static_light_row::classifyGuardForward(
 							treeShape->getCachedGpuLightIndex(),          // validated
@@ -6917,11 +6929,19 @@ long TreeAppearance::render (long depthFixup)
 						case static_light_row::kValidatedSentinelOnly: ++s_gf_valSentinel;  break;
 						case static_light_row::kBothSentinel:          ++s_gf_bothSentinel; break;
 					}
-					if ((s_gf_total % 600ull) == 0ull) {
+					// CADENCE: see the BldgAppearance::render census. Trees are the
+					// worst case -- thousands per frame -- so first-hit + a rare
+					// periodic is the only sane emit policy for a default-ON probe.
+					const bool gfFirstMixed =
+						static_light_row::guardCorrectionWouldChangeBehaviour(gfd)
+						&& !s_gf_reported;
+					if (gfFirstMixed) s_gf_reported = true;
+					if (gfFirstMixed || (s_gf_total % 200000ull) == 0ull) {
 						fprintf(stderr,
-							"[GUARD_FORWARD v1] event=census class=tree total=%llu agree=%llu "
+							"[GUARD_FORWARD v1] event=%s class=tree total=%llu agree=%llu "
 							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
 							"validated_sentinel_only=%llu both_sentinel=%llu would_change=%llu\n",
+							gfFirstMixed ? "first_divergence" : "census",
 							(unsigned long long)s_gf_total,
 							(unsigned long long)s_gf_agree,
 							(unsigned long long)s_gf_differ,
