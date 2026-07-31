@@ -56,6 +56,35 @@ KNOWN_COUNT=0
 # Arrays to collect results for the summary table.
 NAMES=()
 RESULTS=()
+SECS=()
+
+# ---------------------------------------------------------------------------
+# PER-CHECK WALL TIME (UNWIRED-CHECKS-CLOSE-1, 2026-07-30)
+# ---------------------------------------------------------------------------
+# This file's own header promises "run time under ~5 seconds" per check. Nobody
+# was measuring, so nobody knew: a full run is 360s over 130 rows. That matters
+# for exactly the reason this lane exists -- a suite too slow to run before a
+# commit only gets run when someone remembers, and "when someone remembers" is
+# how six checks sat red for weeks without being seen. Slowness is not a
+# cosmetic property of a guard; it is the mechanism by which guards go dark.
+#
+# The distribution is not "the suite is slow". Median is 0.24s and 75% of rows
+# finish under a second. EIGHT rows breach the 5s promise and account for 79%
+# of the runtime, and just TWO of them are 60% of the whole suite:
+#     no_raw_gl_from_game  121.7s
+#     include_firewall      95.8s
+# Both are shell scripts doing repeated repo-wide greps. Fixing those two takes
+# the suite from ~6min to ~2.4min without touching the other 128 rows.
+#
+# DELIBERATELY NOT A GATE YET. A budget ratchet wired today would be red on
+# arrival on 8 rows, and a permanently-red row teaches everyone to skip red --
+# the same blindness this lane spent its time removing, in a different colour.
+# So this measures and reports; it does not fail. TRIGGER for making it a gate:
+# once the two offenders above are fixed, set BUDGET_SEC and fail on new
+# breaches.
+BUDGET_SEC=5
+
+_now_ms() { date +%s%N 2>/dev/null | cut -c1-13; }
 
 # ---------------------------------------------------------------------------
 # DUPLICATE REGISTRATION GUARD (PROVENANCE-FORGERY-CLOSE-1)
@@ -100,6 +129,8 @@ run_check() {
 
     _register_row "$label" "$cmd" || return 0
 
+    local t0 t1
+    t0="$(_now_ms)"
     if [ "$QUIET" -eq 1 ]; then
         if (cd "$WORKTREE_ROOT" && eval "$cmd" > /dev/null 2>&1); then
             PASS_COUNT=$((PASS_COUNT + 1))
@@ -123,6 +154,8 @@ run_check() {
         fi
         echo ""
     fi
+    t1="$(_now_ms)"
+    SECS+=("$((t1 - t0))")
 }
 
 # ---------------------------------------------------------------------------
@@ -155,7 +188,11 @@ run_check_tri() {
 
     _register_row "$label" "$cmd" || return 0
 
+    local t0 t1
+    t0="$(_now_ms)"
     out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
+    t1="$(_now_ms)"
+    SECS+=("$((t1 - t0))")
 
     NAMES+=("$label")
     if [ "$rc" -eq 0 ]; then
@@ -220,6 +257,15 @@ run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh
 run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
 run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
+# LIGHTING-DIVERGENCE-PIN-1: MC2 has no single shading model -- four scalar
+# ambient floors, four hemisphere-fill colour pairs, two calc_light definitions
+# and two no-lights semantics. Every one of those is deliberate today and
+# documented in docs/lighting-divergence-map.md; none is visible from any one
+# file. This pins them, so a FIFTH floor or a SIXTH hand-rolled light loop has
+# to be argued for in review instead of landing silently. Exit 2 (check blind)
+# is distinct from exit 1 (real drift); the comment-stripper witness is a live
+# shipping shader, not a fixture.
+run_check "lighting_divergence"    "py -3 scripts/check-lighting-divergence.py"
 run_check "sampler_bindings"       "py -3 scripts/check-sampler-bindings.py --quiet"
 # MULTIPLEX-ANCHOR-1 (VERIFY-DEBT-1): proves the per-pass anchor that replaced the
 # inert DEMOTED_ANCHORS tuple actually FAILS on drift -- inverted unit comments,
@@ -700,20 +746,41 @@ run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base 
 echo "====================================================================="
 echo "  CONTRACT CHECK RESULTS"
 echo "====================================================================="
+TOTAL_MS=0
+OVER_BUDGET=()
 for i in "${!NAMES[@]}"; do
     result="${RESULTS[$i]}"
     label="${NAMES[$i]}"
-    if [ "$result" = "PASS" ]; then
-        printf "  %-40s  PASS\n" "$label"
-    elif [ "$result" = "KNOWN" ]; then
-        printf "  %-40s  KNOWN (correct failure, ledger-pinned)\n" "$label"
+    ms="${SECS[$i]:-0}"
+    TOTAL_MS=$((TOTAL_MS + ms))
+    secs="$(printf '%d.%02d' "$((ms / 1000))" "$(((ms % 1000) / 10))")"
+    if [ "$ms" -gt $((BUDGET_SEC * 1000)) ]; then
+        OVER_BUDGET+=("$label|$secs")
+        mark="  <-- over ${BUDGET_SEC}s budget"
     else
-        printf "  %-40s  FAIL  <---\n" "$label"
+        mark=""
+    fi
+    if [ "$result" = "PASS" ]; then
+        printf "  %-40s %8ss  PASS%s\n" "$label" "$secs" "$mark"
+    elif [ "$result" = "KNOWN" ]; then
+        printf "  %-40s %8ss  KNOWN (correct failure, ledger-pinned)%s\n" "$label" "$secs" "$mark"
+    else
+        printf "  %-40s %8ss  FAIL  <---%s\n" "$label" "$secs" "$mark"
     fi
 done
 echo "---------------------------------------------------------------------"
 printf "  %d passed, %d failed, %d known-correct-failure\n" \
     "$PASS_COUNT" "$FAIL_COUNT" "$KNOWN_COUNT"
+printf "  wall time %d.%02ds across %d rows\n" \
+    "$((TOTAL_MS / 1000))" "$(((TOTAL_MS % 1000) / 10))" "${#NAMES[@]}"
+if [ "${#OVER_BUDGET[@]}" -gt 0 ]; then
+    printf "  %d row(s) over the %ss-per-check budget this file promises:\n" \
+        "${#OVER_BUDGET[@]}" "$BUDGET_SEC"
+    for e in "${OVER_BUDGET[@]}"; do
+        printf "      %-38s %ss\n" "${e%%|*}" "${e##*|}"
+    done
+    echo "  (measured, not enforced -- see the PER-CHECK WALL TIME note above)"
+fi
 if [ "$KNOWN_COUNT" -gt 0 ]; then
     echo ""
     echo "  KNOWN is NOT a pass. It means every failure that check found is"
