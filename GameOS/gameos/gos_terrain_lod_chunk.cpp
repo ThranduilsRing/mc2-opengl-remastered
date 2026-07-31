@@ -3477,10 +3477,23 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // there is no second brightening of the seam to avoid -- there is an
         // animated foam rim on prop silhouettes, and turning the V3 band off
         // must not bring it back. Suppression is now solely its own gate,
-        // default ON. This call site stays inside the LOD-chunk draw ON PURPOSE:
-        // the legacy terrain path (MC2_TERRAIN_LOD_CHUNK=0) never reaches it, so
+        // default ON.
+        //
+        // SHORELINE-DISPOSITION-1 (2026-07-31) CORRECTION: this comment used to
+        // end "This call site stays inside the LOD-chunk draw ON PURPOSE: the
+        // legacy terrain path (MC2_TERRAIN_LOD_CHUNK=0) never reaches it, so
         // that path keeps the pass, which is the one configuration where the
-        // 0.15-0.35 classifier actually matches water.
+        // 0.15-0.35 classifier actually matches water." That is FALSE -- see the
+        // CORRECTION block on gos_TerrainShorelineLegacySuppressOn() below.
+        // gos_terrain.frag's materialAlpha write is behind #ifdef MRT_ENABLED,
+        // which reaches exactly one program, and that program is never bound.
+        // The classifier matches water in NO configuration.
+        //
+        // The call site staying here is therefore an ACCIDENT OF HISTORY, not a
+        // design: under MC2_TERRAIN_LOD_CHUNK=0 the setter simply never runs and
+        // the mis-aimed pass runs unsuppressed. That is a latent wart, not a
+        // feature. It is left in place only because the correct fix is deleting
+        // the pass outright rather than relocating a setter for a dead effect.
         pp->setShorelineSuppressedByTerrainMask(
             gos_TerrainShorelineLegacySuppressOn());
     }
@@ -4038,10 +4051,51 @@ bool gos_TerrainShorelineGateOn()
 //
 // The only shader that ever wrote a continuous ~0.25 there was the LEGACY
 // terrain renderer (gos_terrain.frag rc_gbuffer1_legacyTerrainMaterialAlpha),
-// superseded by the LOD-chunk cutover on 2026-06-09. That is why the
-// suppression is still driven from the LOD-chunk draw path and nowhere else:
-// under MC2_TERRAIN_LOD_CHUNK=0 the setter is never called, the pass keeps
-// running, and on THAT path it still does the job it was written for.
+// superseded by the LOD-chunk cutover on 2026-06-09.
+//
+// ---------------------------------------------------------------------------
+// CORRECTION -- SHORELINE-DISPOSITION-1 (2026-07-31). READ THIS BEFORE QUOTING
+// THE PARAGRAPH ABOVE.
+//
+// This block used to continue: "That is why the suppression is still driven
+// from the LOD-chunk draw path and nowhere else: under MC2_TERRAIN_LOD_CHUNK=0
+// the setter is never called, the pass keeps running, and on THAT path it still
+// does the job it was written for."
+//
+// THAT IS FALSE, and it was load-bearing -- it was the stated reason the pass
+// was kept rather than deleted. Verified at source:
+//
+//   * gos_terrain.frag's two GBuffer1 writes (:1103, :1156) are both inside
+//     `#ifdef MRT_ENABLED`.
+//   * `#define MRT_ENABLED` is injected from exactly ONE C++ site --
+//     gameos_graphics.cpp:495, inside getMaterialVariation(), which feeds only
+//     gosRenderMaterial::load(). The three makeProgram() variants built from
+//     the same .frag (thin / surface / mask_solid) never append it, so those
+//     two lines are PREPROCESSED OUT of every one of them.
+//   * The single program that does get MRT_ENABLED is terrain_material_
+//     (gameos_graphics.cpp:5193). It is created, pushed to materialList_, and
+//     destroyed -- and never apply()'d. Its draw, terrainDrawIndexedPatches,
+//     was deleted by TERRAIN-DEADCODE-DELETE-1 (75b8ebefe); the survivors at
+//     :7619/:7632 rewind() and fire a LegacyMLR tripwire without drawing.
+//
+// So MC2_TERRAIN_LOD_CHUNK=0 is NOT the configuration this pass was written
+// for -- it is not a working configuration for this pass at all. There is NO
+// configuration in which the (0.15, 0.35) classifier matches a water pixel.
+// `MC2_SHORELINE_LEGACY_SUPPRESS=0` does not restore shoreline foam anywhere;
+// it restores the animated rim on prop silhouettes, in every configuration.
+//
+// Census 4 of scripts/check-render-contract-gbuffer1.sh now pins the
+// single-injection-site fact so this cannot silently rot back.
+//
+// DISPOSITION: the pass should be DELETED, not kept and not repointed. The V3
+// terrain band (MC2_TERRAIN_SHORELINE, elevation-placed in the frag) owns the
+// shoreline look now, and a screen-space classifier keyed on a G-buffer alpha
+// tag is the exact design that failed here. The retirement is mechanical but
+// wide -- ~121 non-comment sites across gos_postprocess.{cpp,h},
+// vulkan_post_screenfx_native.cpp, frame_executor.h and PipelineRegistry, plus
+// two shaders, the feature registry, the launcher, doctests and the pipeline
+// schema -- so it is a separate slice, not a drive-by. See the report for the
+// site inventory and the pipeline-slot tombstone rationale.
 //
 // Cost of the flip, stated plainly because it is a real cost: prop silhouettes
 // adjacent to terrain lose up to 1.4x of edge brightness while a dark-props
