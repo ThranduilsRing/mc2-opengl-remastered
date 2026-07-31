@@ -420,6 +420,15 @@ void main() {
     // UNlit the fragment is, applied to the final color so the slider always
     // moves shadow-side pixels while the lit side (shadowW~0) is untouched.
     // Applied after the tex_color multiply -- see the c.rgb block below.
+    // INCAPABLE-BATCH-1 (2026-07-31), two bounds on the v2 form, both real:
+    //   - shadowW = 1 - litMax is EXACTLY 0 on any fragment the vertex clamp
+    //     already saturated, and the default-ON SH-IBL probe saturates 30.7%
+    //     of the normal sphere by itself at the shipped strength 0.55. So v2
+    //     is live, but only on the unsaturated remainder.
+    //   - the kFlagDecalFill producer sits behind the DEFAULT-OFF opt-in
+    //     MC2_TERRAIN_DECAL (mclib/bdactor.cpp useCliffWallFrame), so on a
+    //     default launch this whole block runs for zero fragments. The v1
+    //     no-op was never visible to the user for that reason either.
 
     // TERRAIN-DECAL-COLORBLEND-1: mix the cliff-decal albedo toward the terrain
     // colormap sampled at this fragment's world-XY (same atlas-UV reconstruction

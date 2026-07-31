@@ -319,9 +319,42 @@ int g_lightProbeSetupPath = 0;
 // for the default. ImGui slider remains the interactive tuning surface; the
 // env exists so headless capture harnesses can drive strength deterministically
 // from a parent process. Parsed once at process start, clamped 0.0..3.0.
-// Env unset/empty -> default 0.5f (V-IBL-STATIC-1-TUNE: user eyeball pass
-// at e061e44c selected 0.5 as 'looks good' — subtle ambient fill without
-// over-brightening shadowed sides).
+// Env unset/empty -> 0.5f.
+//
+// ★ 0.5f IS A PRE-MISSION FALLBACK ONLY. NO SHIPPED MISSION EVER RENDERS AT
+// IT. (Correction landed by INCAPABLE-BATCH-1, 2026-07-31; the text here used
+// to read "default 0.5f (V-IBL-STATIC-1-TUNE: user eyeball pass at e061e44c
+// selected 0.5 as 'looks good')", which is a live falsehood in every sense
+// that matters.) data/visual_tuning.json OVERWRITES this global on EVERY
+// mission load -- visual_tuning_profile.cpp applyKey("staticPropIblStrength")
+// -> visualTuning_applyProfile(), called unconditionally from
+// code/mission.cpp:3874, and the file ships (scripts/deploy_payload.py:118,
+// verified present in the 2026-07-30 install). The values that actually
+// render are:
+//     defaults           0.55
+//     mc2_01/10/24       0.60
+//     mc2_03             0.55 (explicit)
+//     gaea_peaks_01      0.65
+// The ONLY way 0.5f survives into a frame is (a) frames drawn before the
+// first mission load (shell/mechbay -- gos_mech_batcher.cpp shares this same
+// global), or (b) data/visual_tuning.json missing/unreadable.
+//
+// CONSEQUENCES, both of which have already cost real work:
+//   - Any eyeball tuning pass recorded "at 0.5" was graded on a value the
+//     game does not use. If you tune this feature, edit the JSON.
+//   - Setting MC2_STATIC_PROP_IBL_SH_STRENGTH does not merely override this
+//     line, it DISABLES the whole per-mission JSON override
+//     (visual_tuning_profile.cpp guards the apply with envIsSet()), so an
+//     env-driven A/B is measuring a different mission profile than a default
+//     launch. docs/tier1_env_vars.md carries this warning too.
+// Left at 0.5f on purpose: changing it would move shell/mechbay frames (a
+// user-visible default-launch delta) while changing nothing in-mission.
+// If you change it, change data/visual_tuning.json "defaults" in the same
+// commit so the two cannot disagree again.
+// KNOWN STILL-DIVERGENT (not fixed here -- the file is held by another lane):
+// tools/class_light_band_harness/class_light_band_harness.cpp hardcodes
+// kIblStrengthDefault = 0.5 and asserts it, so every band the harness models
+// is computed at a strength no mission uses.
 float g_iblShStrength = []() -> float {
     const char* v = std::getenv("MC2_STATIC_PROP_IBL_SH_STRENGTH");
     if (!v || !v[0]) return 0.5f;
@@ -386,16 +419,38 @@ int gos_lightBillboardFacingMode() {
     return s_mode;
 }
 
-// TERRAIN-DECAL-FILL-1: ambient/fill floor for the cliff-wall mesh-decal's
-// shadow side. static_prop lighting is max(N·L,0) with no ambient floor, so a
-// face pointing away from the sun goes to ~0 (black void). This uniform is a
-// per-fragment floor applied ONLY to fragments whose instance carries the
+// TERRAIN-DECAL-FILL-1: ambient/fill term for the cliff-wall mesh-decal's
+// shadow side. Applied ONLY to fragments whose instance carries the
 // kFlagDecalFill bit (bit 3), set on the MarbleCliff decal instances at
 // registration (bdactor.cpp). All other static props (mechs/buildings/trees)
 // never carry that bit, so they are byte-identical regardless of this value.
-// Default 0.20 (modest — shadow side reads as dark rock, not black; lit side
-// unaffected because litRgb is already >= the floor there). MC2_TERRAIN_DECAL_FILL
-// overrides (clamped 0..1). External linkage so GuiRuntime.cpp can drive a slider.
+// MC2_TERRAIN_DECAL_FILL overrides (clamped 0..1). External linkage so
+// GuiRuntime.cpp can drive a slider.
+//
+// ★ TWO CORRECTIONS (INCAPABLE-BATCH-1, 2026-07-31). The text removed from
+// here claimed "static_prop lighting is max(N·L,0) with no ambient floor, so a
+// face pointing away from the sun goes to ~0 (black void)". THAT PREMISE IS
+// FALSE AT HEAD, and it is why the v1 implementation of this feature shipped
+// dead:
+//   1. There IS an ambient floor, and it is large. static_prop.vert sums
+//      base_light + object-light ambientTerm + the DEFAULT-ON SH-IBL probe
+//      before the sun term. The probe alone returns irradiance 0.232..4.896
+//      over the sphere and is multiplied by staticPropIblStrength (0.55-0.65
+//      from data/visual_tuning.json), so an away-facing normal lands around
+//      0.13 at the absolute worst and typically far higher -- never a black
+//      void. Because litRgb therefore essentially never fell below 0.20, the
+//      v1 form `max(litRgb, u_terrainDecalFill)` returned litRgb every time
+//      and was a visual no-op (LIGHTING-HEADROOM-AUDIT.md section 3 #4).
+//      7de56d52 fixed it by moving to a post-texture ADDITIVE weighted by
+//      (1 - litMax); that form is arithmetically live because litMax < 1 on
+//      any fragment the clamp has not already saturated. See the note at
+//      shaders/static_prop.frag next to the c.rgb block.
+//   2. "Default 0.20" reads as default-ON and is NOT. Bit 3 is only ever set
+//      inside `if (useCliffWallFrame)` (mclib/bdactor.cpp), which requires
+//      s_terrainDecal == true, i.e. the DEFAULT-OFF opt-in gate
+//      MC2_TERRAIN_DECAL. On a default launch ZERO fragments carry the flag,
+//      so this 0.20 reaches nothing. It is the fill strength used once
+//      MC2_TERRAIN_DECAL is enabled, not a shipped default-on value.
 float g_terrainDecalFill = []() -> float {
     const char* v = std::getenv("MC2_TERRAIN_DECAL_FILL");
     if (!v || !v[0]) return 0.20f;

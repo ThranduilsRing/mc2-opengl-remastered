@@ -772,17 +772,50 @@ void main() {
         //   lit    = (seed + ambientTerm) * factor + sunColor * ndl
         //
         // Properties, each answering a stated constraint:
-        //  1. NEVER BRIGHTENS. factor <= 1.0, equality only at wrap == 1, and
-        //     the sun term is left untouched. It redistributes, it does not
-        //     add -- so it also helps rather than hurts the separate
-        //     "buildings are over-bright at night" complaint and composes
-        //     safely with MC2_STATIC_PROP_IBL_NIGHT_SCALE.
+        //  1. NEVER BRIGHTENS *THIS EXPRESSION*. factor <= 1.0, equality only
+        //     at wrap == 1, and the sun term is left untouched.
+        //     ★ CORRECTION (INCAPABLE-BATCH-1, 2026-07-31). The original text
+        //     here said "NEVER BRIGHTENS" flat, and generalised that to the
+        //     rendered frame. That generalisation is FALSE AS SHIPPED and was
+        //     measured false: on mc2_05 night at strength 0.55, against a pose
+        //     whose OFF-vs-OFF noise floor is 0.000%, 31.9% of pixels come out
+        //     BRIGHTER (3.3% darker), max +92.7 luminance, and one flat surface
+        //     inside the glow region measures +71.4%
+        //     (.claude/BUILDING-FACE-POSE-1-STATUS.md section 4; the props
+        //     themselves darken correctly, the brightening is a large diffuse
+        //     glow region that lane could not explain away -- time-of-day and
+        //     run-noise were both excluded byte-exactly). The algebra below is
+        //     monotone-darkening; the FRAME is not. Do not re-state the strong
+        //     claim without re-measuring mc2_05.
         //  2. PRESERVES AUTHORED VARIATION. A MULTIPLY on the existing terms,
         //     not a replacement or tone remap -- deliberately not the
         //     tone-flattening rejected elsewhere ("after is WAY worse").
         //  3. NO DOUBLE-COUNT WITH THE IBL SH PROBE. u_iblShStrength is added
         //     to `lit` further down and is NOT scaled here, so the probe's
         //     directional ambient is neither removed nor counted twice.
+        //     ★ THE PRICE OF (3), AND IT BOUNDS THIS GATE'S REACH. Because the
+        //     probe is unscaled and lands before the [0,1] clamp, any fragment
+        //     where the probe ALONE already reaches 1.0 is immovable at every
+        //     strength up to 1.0 -- propDirFactor cannot pull a saturated
+        //     pixel down. That is not a small set: evaluating evalShL2() with
+        //     the shipped RenderCore/IblShCoeffs.h over the unit sphere gives
+        //     irradiance 0.232..4.896 (R), so at the SHIPPED strengths from
+        //     data/visual_tuning.json the probe alone clamps
+        //       strength 0.55 (default) -> 30.7% of the normal sphere in ALL
+        //                                  three channels (33.5% in any one)
+        //       strength 0.60 (mc2_01/10/24) -> 33.5% all / 36.0% any
+        //     with mission lighting set to ZERO. Restricted to the ndl<=0
+        //     hemisphere the immovable share measures 44-53% on mc2_01/04/07/
+        //     11/14/22/24 (.claude/LIGHTING-HEADROOM-AUDIT.md section 3 #6).
+        //     THE GATE IS NOT DEAD -- the complement moves, and it was shown
+        //     moving on the user's own mc2_10 night compound: 20.3% of pixels,
+        //     walls -20..27%, roofs ~9%, sun-facing faces 0-5%, terrain and
+        //     water exactly 0%, on a pose with a 0.000% noise floor
+        //     (BUILDING-FACE-POSE-1-STATUS.md section 3). But its reach is a
+        //     FUNCTION OF staticPropIblStrength: turning the probe down widens
+        //     what this gate can touch, and turning it up narrows it. If you
+        //     are tuning this knob, tune it against a fixed probe strength or
+        //     the measurement is not comparable.
         //
         // ALPHA-TEST INSTANCES ARE EXCLUDED: foliage/fence cards are two-sided
         // (the ndl branch above uses abs() for that reason) and their normals
@@ -830,6 +863,30 @@ void main() {
         // elevation, so +y = up. Using .z here would gradient along the
         // Stuff fwd axis ("north/depth"), making north-facing walls
         // brighten instead of rooftops — see reviewer finding pre-fix.
+        //
+        // ★ WHERE THIS TERM CANNOT HELP, AND WHY (INCAPABLE-BATCH-1,
+        // 2026-07-31). This add is PRE-CLAMP: `lit` is clamped to [0,1] at the
+        // aRGBHighlight line further down. So its delivered gain is not
+        // u_ambientV1Strength -- it is whatever headroom is left after
+        // seed + ambientTerm + sunColor*ndl + the DEFAULT-ON SH-IBL probe
+        // below have already been summed. On the missions that motivated it
+        // ("static props read flat") that headroom is close to zero, and the
+        // sphere-mean gain at FULL strength measures +0.5% mc2_22, +2.7%
+        // mc2_04, +3.3% mc2_09 -- against +36.2% mc2_05 and +21.3% mc2_23,
+        // i.e. 8-70x more effective on the maps nobody complained about
+        // (.claude/LIGHTING-HEADROOM-AUDIT.md section 3 #7, reproduced by an
+        // independent skeptic within 0.5 pp). The term is NOT dead -- it is
+        // mis-targeted, and it is default-OFF.
+        // The ceiling it runs into is dominated by the SH-IBL probe added ~15
+        // lines below: at the shipped staticPropIblStrength that probe ALONE
+        // clamps 30.7% (0.55) / 33.5% (0.60) of the normal sphere with mission
+        // lighting set to zero (derivation in the PROP-BASE-LIGHT-DIR-1 note
+        // above). So the lever for a flat-reading map is the probe strength in
+        // data/visual_tuning.json (DOWN, which un-pins the clamp and makes
+        // every other knob start working), NOT more strength here. If a future
+        // slice wants a fill that survives on the pinned maps, the shape that
+        // works is the post-clamp, albedo-modulated one the mech already ships
+        // default-ON (shaders/mech.frag:229-233) -- not another pre-clamp add.
         const vec3 kAmbientV1Sky    = vec3(0.20, 0.22, 0.28);
         const vec3 kAmbientV1Ground = vec3(0.10, 0.09, 0.07);
         float hemi_t = 0.5 + 0.5 * worldNormal.y;
@@ -842,6 +899,55 @@ void main() {
         // guard short-circuits evalShL2 entirely -> byte-identical pixel.
         // worldNormal is Stuff-space Y-up, matching the projector basis
         // (see tools/ibl/project_sh.py axis-convention block).
+        //
+        // ★ READ THIS BEFORE TUNING ANY OTHER STATIC-PROP LIGHTING KNOB
+        // (INCAPABLE-BATCH-1, 2026-07-31). This is the DOMINANT term on a
+        // static prop, not a garnish, and it has two properties that are not
+        // obvious from the three lines below:
+        //
+        //  (a) IT IS BIG. With the shipped RenderCore/IblShCoeffs.h the
+        //      irradiance evalShL2 returns spans 0.232..4.896 (R channel;
+        //      0.360..4.775 G, 0.477..4.086 B) over the unit sphere. At the
+        //      shipped staticPropIblStrength (0.55 default, 0.60 on
+        //      mc2_01/10/24, 0.65 gaea_peaks_01 -- data/visual_tuning.json,
+        //      which overrides the C++ default on EVERY mission load) the
+        //      probe alone drives `lit` to the [0,1] clamp on 30.7% (0.55) /
+        //      33.5% (0.60) of the normal sphere in all three channels, WITH
+        //      MISSION LIGHTING SET TO ZERO. Every pre-clamp knob on this
+        //      surface -- MC2_STATIC_PROP_AMBIENT_V1 above,
+        //      MC2_PROP_BASE_LIGHT_DIR above, the TERRAIN-DECAL-FILL floor in
+        //      the frag -- is bounded by that, and several shipped "fixes"
+        //      were arithmetically inert because of it
+        //      (.claude/LIGHTING-HEADROOM-AUDIT.md sections 3-4).
+        //
+        //  (b) ITS DIRECTIONAL LOBE IS FIXED IN MODEL/STUFF SPACE AND IS
+        //      NEVER ROTATED TO THE MISSION SUN. The coefficients are one
+        //      constant table projected from ONE day-sky HDRI with that
+        //      HDRI's own sun baked in, shared by all 24 missions
+        //      (RenderCore/IblShRegistry.h: kIblShSets[] has a single entry
+        //      and kMissionShMap[] is empty), and nothing here rotates them:
+        //      evalShL2 is fed the raw Stuff-space normal. The L1 band
+        //      (L11 1.966, L1-1 0.587, L10 0.012) puts the bright axis at
+        //      Stuff +X, ~0 deg azimuth, with a 7.7:1 swing between +X
+        //      (4.62) and -X (0.60) -- while the actual sun this shader uses
+        //      for its diffuse term is u_terrainSunMC2, which is per-mission
+        //      and unrelated. So on any mission whose sun is not near Stuff
+        //      +X this probe is putting its brightest ambient on a side of
+        //      the building the sun is NOT on. That is a candidate mechanism
+        //      for the standing user complaint "this building face should be
+        //      in shadow, the light is from behind" -- one that no amount of
+        //      tuning on the knobs above can cancel, because they are all
+        //      bounded by (a).
+        //      NOT YET FIXED, deliberately: the correct repairs (rotate the
+        //      SH about world-up to the mission sun azimuth, or drop the
+        //      probe's L1/L2 bands and keep the isotropic L00 term) both
+        //      change the default render on every mission, so they need a
+        //      gate with an argued default and an A/B the user grades. The
+        //      pose to grade it on is mc2_10 night compound_lightaway: its
+        //      OFF-vs-OFF noise floor is 0.000% and MC2_PROP_BASE_LIGHT_DIR
+        //      already moved 20.3% of its pixels there, so it is proven
+        //      non-saturated and sensitive to exactly this class of change
+        //      (.claude/BUILDING-FACE-POSE-1-STATUS.md sections 2-3).
         if (u_iblShStrength > 0.0) {
             vec3 ibl = evalShL2(normalize(worldNormal));
             lit += ibl * u_iblShStrength;
