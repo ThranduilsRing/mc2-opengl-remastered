@@ -10,7 +10,11 @@ makes the pack reproducible:
   * the GATE INVENTORY table (section 0) is rebuilt FROM SOURCE at render time
     by parsing RenderCore/RendererFeatureRegistry.h, so the published defaults
     can never drift from the compiled ones.  Gate defaults are deliberately
-    NOT stored in the manifest.
+    NOT stored in the manifest.  A registry that does not parse CLEANLY and
+    COMPLETELY aborts the build (exit 2, page not written) -- see
+    parse_registry().  A partial parse used to warn on stderr and publish
+    anyway, which is the worst available outcome on the one page the user
+    reads: sourced-looking defaults that were never sourced.
   * every reviewable artifact (image, prose block, table row, section) carries a
     STABLE ANCHOR ID derived from manifest content -- never from DOM order -- so
     the in-page annotation layer (see release_assets_src/annotate/) can survive
@@ -47,16 +51,35 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 # RendererFeatureRegistry.h parsing
 # ---------------------------------------------------------------------------
 
+# Whitespace-or-comment gap between two structural tokens of a registry row.
+# Applied ONLY between tokens -- never inside a string literal, whose contents
+# the surrounding subpattern consumes atomically -- so a "//" or "/*" occurring
+# inside a doc string can never be mistaken for a comment.  This is deliberately
+# NOT a whole-file comment stripper: those get the string boundaries wrong, and
+# this repo already carries several broken copies of that idea.
+_GAP = r"(?:\s|//[^\n]*\n|/\*(?:[^*]|\*(?!/))*\*/)*"
+
 _ENTRY_RE = re.compile(
-    r"\{\s*"
-    r'"(?P<feature>MC2_[A-Z0-9_]+)"\s*,\s*'
-    r'(?P<env>"(?:[^"\\]|\\.)*"|nullptr)\s*,\s*'
-    r"EnvVarKind::(?P<kind>\w+)\s*,\s*"
-    r"(?P<default>true|false)\s*,\s*"
-    r'(?P<doc>"(?:[^"\\]|\\.)*"(?:\s*"(?:[^"\\]|\\.)*")*)\s*,?\s*'
-    r"\}",
+    r"\{" + _GAP
+    + r'"(?P<feature>MC2_[A-Z0-9_]+)"' + _GAP + "," + _GAP
+    + r'(?P<env>"(?:[^"\\]|\\.)*"|nullptr)' + _GAP + "," + _GAP
+    + r"EnvVarKind::(?P<kind>\w+)" + _GAP + "," + _GAP
+    + r"(?P<default>true|false)" + _GAP + "," + _GAP
+    + r'(?P<doc>"(?:[^"\\]|\\.)*"(?:' + _GAP + r'"(?:[^"\\]|\\.)*")*)' + _GAP + r",?" + _GAP
+    + r"\}",
     re.S,
 )
+
+# INDEPENDENT denominator: how many rows the header DECLARES.  Deliberately
+# scanned over the whole file rather than over the extracted table bodies, so
+# it does not inherit _table_body()'s brace-counting assumptions -- if a stray
+# brace inside a doc string ever truncated a body, the two numbers diverge and
+# the mismatch is caught instead of shrinking both sides together.
+_ROW_OPENER_RE = re.compile(r'\{\s*"(MC2_[A-Z0-9_]+)"\s*,')
+
+
+class RegistryParseError(Exception):
+    """The gate registry did not parse cleanly -- refuse to publish."""
 
 
 def _unquote(lit: str) -> str:
@@ -72,10 +95,18 @@ def _unquote(lit: str) -> str:
     )
 
 
-def _table_body(text: str, name: str) -> str:
+def _table_body(text: str, name: str) -> tuple:
+    """-> (body, status) where status is 'ok' | 'missing' | 'unclosed'.
+
+    'unclosed' means the array opened but its matching '}' was never reached --
+    i.e. the text ran out mid-table.  That is what a TRUNCATED or mid-write read
+    of the header looks like, and the caller must treat it as a hard error: the
+    rows past the cut are simply absent, with nothing in the returned body to
+    say so.
+    """
     m = re.search(r"EnvVarDesc\s+%s\s*\[\s*\]\s*=\s*\{" % re.escape(name), text)
     if not m:
-        return ""
+        return "", "missing"
     depth, i = 1, m.end()
     while depth and i < len(text):
         if text[i] == "{":
@@ -83,20 +114,60 @@ def _table_body(text: str, name: str) -> str:
         elif text[i] == "}":
             depth -= 1
         i += 1
-    return text[m.end(): i - 1]
+    if depth:
+        return text[m.end(): i], "unclosed"
+    return text[m.end(): i - 1], "ok"
 
 
 def parse_registry(header_path: str) -> dict:
-    """Return {ENV_VAR: {featureId, envVar, kind, defaultOn, doc, table}}."""
-    with open(header_path, encoding="utf-8", errors="replace") as fh:
-        text = fh.read()
+    """Return {ENV_VAR: {featureId, envVar, kind, defaultOn, doc, table}}.
+
+    Raises RegistryParseError rather than returning a partial result.  This
+    table IS the published gate inventory (section 0); a run that parses a
+    fraction of it and exits 0 publishes a page whose defaults look sourced
+    and are not.  Observed once for real: a torn read during a concurrent
+    lane's write yielded 10 entries of 359, a WARNING on stderr, exit 0, and a
+    perfectly well-formed page in which 13 of the 39 gates the pack names lost
+    their compiled default -- one of them rendering the red claim "GHOST --
+    this gate does nothing" about a gate that is registered and works.
+
+    Three structural invariants, all self-referential (no pinned counts, no
+    floors, nothing that goes stale):
+      1. both arrays must be present,
+      2. both must be brace-CLOSED -- a truncated read is not a small registry,
+      3. every row the file DECLARES must actually parse, and no two rows may
+         collide on the same published key.
+    A legitimate change that adds or deletes gates moves both sides of (3)
+    together and passes; only a parse that lost rows fails.
+    """
+    # strict, not errors="replace": U+FFFD substituted into a gate NAME would
+    # drop that row from the parse AND from the declared-row count in step (3),
+    # hiding itself from the very check meant to catch it.  A header that does
+    # not decode is not the source we think we are reading -- refuse.
+    try:
+        with open(header_path, encoding="utf-8", errors="strict") as fh:
+            text = fh.read()
+    except UnicodeDecodeError as exc:
+        raise RegistryParseError(
+            "%s is not valid UTF-8 (%s) -- refusing to publish a gate table "
+            "parsed from undecodable bytes" % (header_path, exc)) from exc
+
+    declared = [m.group(1) for m in _ROW_OPENER_RE.finditer(text)]
 
     reg: dict = {}
+    parsed: list = []
     for table in ("kFeatureTable", "kAuxEnvVars"):
-        body = _table_body(text, table)
-        if not body:
-            print("WARNING: table %s not found in %s" % (table, header_path), file=sys.stderr)
-            continue
+        body, status = _table_body(text, table)
+        if status == "missing":
+            raise RegistryParseError(
+                "table %s not found in %s -- the header is truncated, renamed "
+                "or unreadable; refusing to publish a partial gate table"
+                % (table, header_path))
+        if status == "unclosed":
+            raise RegistryParseError(
+                "table %s in %s opens but never closes -- the file is "
+                "truncated (read %d of %d chars); refusing to publish"
+                % (table, header_path, len(body), len(text)))
         for m in _ENTRY_RE.finditer(body):
             env = m.group("env")
             entry = {
@@ -107,8 +178,28 @@ def parse_registry(header_path: str) -> dict:
                 "doc": _unquote(m.group("doc")),
                 "table": table,
             }
+            parsed.append(entry)
             key = entry["envVar"] or entry["featureId"]
-            reg.setdefault(key, entry)
+            if key in reg:
+                raise RegistryParseError(
+                    "two registry rows publish the same key %r (%s in %s, and "
+                    "%s in %s) -- the page would show one of two conflicting "
+                    "defaults with no way to tell which"
+                    % (key, reg[key]["featureId"], reg[key]["table"],
+                       entry["featureId"], table))
+            reg[key] = entry
+
+    if len(parsed) != len(declared):
+        got = set(x["featureId"] for x in parsed)
+        lost = [d for d in declared if d not in got]
+        raise RegistryParseError(
+            "%s declares %d gate rows but only %d parsed -- %d row(s) were "
+            "silently skipped: %s%s.  A row is skipped when it does not match "
+            "the entry grammar (a stray token between fields, an unterminated "
+            "string) or when the file was read mid-write.  Refusing to publish "
+            "a gate table that is missing rows the source declares."
+            % (header_path, len(declared), len(parsed), len(declared) - len(parsed),
+               ", ".join(lost[:8]), " ..." if len(lost) > 8 else ""))
     return reg
 
 
@@ -785,6 +876,100 @@ def do_check(manifest: dict, pack_dir: str) -> int:
 
 
 # ---------------------------------------------------------------------------
+# SELF-TEST for the fail-loud registry guard
+# ---------------------------------------------------------------------------
+#
+# The guard's whole value is that it FIRES.  A guard nothing exercises rots
+# silently -- and a self-test built on a hand-written fixture rots the same way,
+# because the fixture stops resembling the file it stands for.  So this corrupts
+# the REAL RenderCore/RendererFeatureRegistry.h (in a temp copy, never in place)
+# four ways and requires a refusal from each.  If someone deletes an invariant,
+# its arm goes green-with-no-error and the test fails.
+
+def selftest_registry_guard(registry_path: str) -> int:
+    import tempfile
+
+    orig = open(registry_path, "rb").read()
+    txt = orig.decode("utf-8")
+
+    # A row that is present in kAuxEnvVars today; the arms below need a real
+    # anchor rather than a synthetic one, so a registry edit that removes it
+    # breaks the test loudly instead of quietly weakening it.
+    anchor = '    {\n        "MC2_TUNE_LIGHT_POOL_MAX"'
+    if anchor not in txt:
+        print("SELF-TEST INCONCLUSIVE: anchor row not in %s -- pick another and "
+              "re-verify the arms" % registry_path, file=sys.stderr)
+        return 1
+    cut = txt.index(anchor)
+    grammar_break = txt.replace(
+        "EnvVarKind::Trace,\n        false,\n        \"LIGHT-POOL-CAP-1:",
+        "EnvVarKind::Trace,\n        0,\n        false,\n        \"LIGHT-POOL-CAP-1:", 1)
+
+    arms = [
+        ("torn read (prefix of the file)", orig[:24000], "opens but never closes"),
+        ("undecodable byte inside a gate name",
+         orig.replace(b'"MC2_NIGHT_FOG_DIM"', b'"MC2_NIGHT_F\xffG_DIM"', 1),
+         "not valid UTF-8"),
+        ("one row silently skipped by the grammar",
+         grammar_break.encode("utf-8"), "were silently skipped"),
+        ("truncated at a row boundary inside the second table",
+         txt[:cut].encode("utf-8"), "opens but never closes"),
+    ]
+
+    failures = 0
+    tmpdir = tempfile.mkdtemp(prefix="mc2_regguard_")
+    tmp = os.path.join(tmpdir, "RendererFeatureRegistry.h")
+    try:
+        # the uncorrupted control: must parse, and must reconcile row-for-row
+        with open(tmp, "wb") as fh:
+            fh.write(orig)
+        try:
+            reg = parse_registry(tmp)
+        except RegistryParseError as exc:
+            print("  FAIL  clean registry was REFUSED: %s" % exc)
+            failures += 1
+        else:
+            declared = len(_ROW_OPENER_RE.findall(txt))
+            ok = len(reg) == declared
+            print("  %s  clean registry parses: %d entries, %d declared"
+                  % ("OK  " if ok else "FAIL", len(reg), declared))
+            failures += 0 if ok else 1
+
+        if grammar_break == txt:
+            print("  FAIL  grammar-break arm did not modify anything -- BLIND")
+            failures += 1
+
+        for label, blob, expect in arms:
+            with open(tmp, "wb") as fh:
+                fh.write(blob)
+            try:
+                got = parse_registry(tmp)
+            except RegistryParseError as exc:
+                if expect in str(exc):
+                    print("  OK    refused: %-52s" % label)
+                else:
+                    print("  FAIL  refused %s but for the wrong reason: %s" % (label, exc))
+                    failures += 1
+            else:
+                print("  FAIL  ACCEPTED %s -- %d entries published from a corrupt "
+                      "registry" % (label, len(got)))
+                failures += 1
+    finally:
+        try:
+            os.remove(tmp)
+            os.rmdir(tmpdir)
+        except OSError:
+            pass
+
+    if failures:
+        print("SELF-TEST FAIL: %d arm(s) did not behave" % failures)
+        return 1
+    print("SELF-TEST PASS: the registry guard refuses a torn read, an "
+          "undecodable byte, a skipped row and a mid-table truncation")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
@@ -800,6 +985,10 @@ def main(argv=None) -> int:
     ap.add_argument("--dump-anchors", metavar="PATH",
                     help="write the stable anchor-id table as JSON and exit "
                          "(no rendering; used by the id-stability test)")
+    ap.add_argument("--selftest", action="store_true",
+                    help="prove the registry fail-loud guard FIRES: corrupt a "
+                         "copy of the real registry four ways and require a "
+                         "refusal from each (no rendering, nothing written)")
     ap.add_argument("--no-annotate", action="store_true",
                     help="render without the annotation layer (diff/regression aid)")
     args = ap.parse_args(argv)
@@ -809,6 +998,9 @@ def main(argv=None) -> int:
 
     pack_dir = args.pack_dir or os.path.join(REPO_ROOT, manifest["pack_dir"])
     registry = args.registry or os.path.join(REPO_ROOT, manifest["registry_header"])
+
+    if args.selftest:
+        return selftest_registry_guard(registry)
 
     if args.check:
         return do_check(manifest, pack_dir)
@@ -824,7 +1016,17 @@ def main(argv=None) -> int:
               % (args.dump_anchors, len(anchors), len({a["rid"] for a in anchors})))
         return 0
 
-    reg = parse_registry(registry)
+    # Parse BEFORE anything is written.  A failure here must leave whatever
+    # page is already on disk untouched: a stale-but-true page beats a fresh
+    # one whose gate defaults are wrong.
+    try:
+        reg = parse_registry(registry)
+    except RegistryParseError as exc:
+        print("ERROR: gate registry parse failed -- page NOT written.\n"
+              "       %s" % exc, file=sys.stderr)
+        print("       (%s)" % os.path.relpath(registry, REPO_ROOT), file=sys.stderr)
+        return 2
+
     readers = build_reader_index(manifest, reg, REPO_ROOT)
     ghosts = sorted(g for g, r in readers.items() if r["status"] == "ghost")
     unres = sorted(g for g, r in readers.items() if r["status"] == "unresolved")
@@ -834,7 +1036,8 @@ def main(argv=None) -> int:
         os.makedirs(out_dir, exist_ok=True)
     with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(html)
-    print("wrote %s (%d bytes, %d sections, %d gate entries from %s)"
+    print("wrote %s (%d bytes, %d sections, %d gate entries from %s "
+          "-- every row the source declares was parsed)"
           % (args.out, len(html.encode("utf-8")), len(manifest["sections"]),
              len(reg), os.path.relpath(registry, REPO_ROOT)))
     print("reader-source defaults resolved for %d gate(s) with no registry entry"

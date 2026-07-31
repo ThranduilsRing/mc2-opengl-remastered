@@ -909,6 +909,19 @@ run_check "provenance_gate_selftest"    "py -3 scripts/provenance_gate.py --self
 run_check "review_anchor_stability"          "py -3 scripts/check-review-anchor-stability.py --quiet"
 run_check "review_anchor_stability_selftest" "py -3 scripts/check-review-anchor-stability.py --self-test"
 
+# The same page's GATE INVENTORY is rebuilt from RenderCore/RendererFeatureRegistry.h
+# at render time. That parse used to warn on stderr and publish anyway: one
+# regeneration on 2026-07-30 parsed 10 rows of 359 from a torn read, exited 0,
+# and wrote a well-formed page in which 13 of the 39 gates the pack names lost
+# their compiled default -- one rendering the red claim "GHOST: this gate does
+# nothing" about a gate that is registered and works. parse_registry() now
+# refuses (exit 2, page not written) on a missing table, an unclosed table, an
+# undecodable byte, a duplicate key, or any row the source declares that did not
+# parse. This arm proves the guard FIRES: it corrupts a COPY OF THE REAL header
+# four ways and requires a refusal from each, so the guard cannot go blind on a
+# fixture that stopped resembling the file it stands for. Offline, read-only.
+run_check "review_pack_registry_guard" "py -3 scripts/build_review_pack.py --selftest"
+
 # SIM-IDENTITY-HASH-1: the refuse-to-grade gate splits mover fields VISUAL vs
 # NON-VISUAL in two independent places (C++ digestMoverVisual, Python
 # VISUAL_FIELDS). If they drift, the gate misgrades in the DANGEROUS direction:
