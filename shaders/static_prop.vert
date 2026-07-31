@@ -787,6 +787,16 @@ void main() {
         //     run-noise were both excluded byte-exactly). The algebra below is
         //     monotone-darkening; the FRAME is not. Do not re-state the strong
         //     claim without re-measuring mc2_05.
+        //     ★ POINTER RESTORED 2026-07-31 (REMEDIATION-LAND-1). The text this
+        //     correction replaced ended "...composes safely with
+        //     MC2_STATIC_PROP_IBL_NIGHT_SCALE", and that was this file's ONLY
+        //     mention of the night scaling. Deleting it left the saturation
+        //     arithmetic in property 3 below with nothing pointing at the term
+        //     that halves its premise, which is how the day-only bound got
+        //     stated as unconditional. The composition claim itself is NOT
+        //     reinstated -- it rode on the "never brightens" overreach above --
+        //     but the cross-reference is, because a reader tuning this knob at
+        //     night must know the probe beside it is being night-scaled.
         //  2. PRESERVES AUTHORED VARIATION. A MULTIPLY on the existing terms,
         //     not a replacement or tone remap -- deliberately not the
         //     tone-flattening rejected elsewhere ("after is WAY worse").
@@ -807,6 +817,28 @@ void main() {
         //     with mission lighting set to ZERO. Restricted to the ndl<=0
         //     hemisphere the immovable share measures 44-53% on mc2_01/04/07/
         //     11/14/22/24 (.claude/LIGHTING-HEADROOM-AUDIT.md section 3 #6).
+        //     ★★ THOSE NUMBERS ARE DAYTIME-ONLY, AND THE BOUND IS EMPTY AT
+        //     NIGHT (correction 2026-07-31, REMEDIATION-LAND-1). They were
+        //     computed against the raw data/visual_tuning.json strength, but
+        //     that is NOT what reaches u_iblShStrength. The upload goes through
+        //     iblShStrengthNightScaled() (gos_static_prop_batcher.cpp:1129,
+        //     feeding :7031/:8251/:9585), which applies IBL-NIGHT-SCALE-1:
+        //         strength *= 1 - (1 - floor) * nightFactor,  floor = 0.25
+        //     (MC2_STATIC_PROP_IBL_NIGHT_SCALE, DEFAULT-ON). At full night the
+        //     effective strength is 0.55*0.25 = 0.1375, and the probe's own
+        //     maximum irradiance is 4.896, so its largest possible contribution
+        //     is 4.896 * 0.1375 = 0.673 -- BELOW the clamp. Recomputed over the
+        //     sphere at every shipped strength:
+        //       0.55 -> eff 0.1375, saturated 0.0%   (day: 30.7% / 33.5%)
+        //       0.60 -> eff 0.1500, saturated 0.0%   (day: 33.5% / 36.0%)
+        //       0.65 -> eff 0.1625, saturated 0.0%   (day: 36.0% / 38.2%)
+        //     The set of immovable fragments is EMPTY at full night; it only
+        //     becomes non-empty below nightFactor 0.838 (0.55) / 0.879 (0.60) /
+        //     0.914 (0.65). This matters because every pose these notes
+        //     nominate for grading -- mc2_10 night compound_lightaway, mc2_05
+        //     night -- is a NIGHT pose, where the stated ceiling does not exist.
+        //     Do not cite the 30.7% figure as a reason a knob cannot work on a
+        //     night map; on a DAY map it stands.
         //     THE GATE IS NOT DEAD -- the complement moves, and it was shown
         //     moving on the user's own mc2_10 night compound: 20.3% of pixels,
         //     walls -20..27%, roofs ~9%, sun-facing faces 0-5%, terrain and
@@ -881,7 +913,17 @@ void main() {
         // lines below: at the shipped staticPropIblStrength that probe ALONE
         // clamps 30.7% (0.55) / 33.5% (0.60) of the normal sphere with mission
         // lighting set to zero (derivation in the PROP-BASE-LIGHT-DIR-1 note
-        // above). So the lever for a flat-reading map is the probe strength in
+        // above) -- BY DAY. Those two figures are 0.0% and 0.0% at full night,
+        // because the probe's uploaded strength is night-scaled to a 0.25 floor
+        // first (IBL-NIGHT-SCALE-1, see the ★★ correction in that same note).
+        // mc2_05 and mc2_23, the two maps this term is MOST effective on above,
+        // both run at nightFactor EXACTLY 1.0 -- mclib/camera.cpp:2338-2348
+        // sets lightAltitude = lightPitch (or 180-pitch above 90) and takes
+        // `< NIGHT_LIGHT_PITCH (10)` -> nightFactor = 1.0, which mc2_05 (270 ->
+        // -90) and mc2_23 (9) both satisfy, as do mc2_10/19/21. So on them the
+        // probe imposes no ceiling at all and the +36.2% / +21.3% figures are
+        // not headroom-limited. So the
+        // lever for a flat-reading map is the probe strength in
         // data/visual_tuning.json (DOWN, which un-pins the clamp and makes
         // every other knob start working), NOT more strength here. If a future
         // slice wants a fill that survives on the pinned maps, the shape that
@@ -919,6 +961,24 @@ void main() {
         //      the frag -- is bounded by that, and several shipped "fixes"
         //      were arithmetically inert because of it
         //      (.claude/LIGHTING-HEADROOM-AUDIT.md sections 3-4).
+        //      ★★ BUT ONLY BY DAY (correction 2026-07-31, REMEDIATION-LAND-1).
+        //      "IT IS BIG" is a statement about u_iblShStrength, and what
+        //      arrives in that uniform is not the visual_tuning.json number --
+        //      it is iblShStrengthNightScaled() (gos_static_prop_batcher.cpp
+        //      :1129 -> :7031/:8251/:9585), which applies IBL-NIGHT-SCALE-1's
+        //      `strength *= 1 - (1 - 0.25) * nightFactor` (DEFAULT-ON gate
+        //      MC2_STATIC_PROP_IBL_NIGHT_SCALE). At nightFactor 1.0 the
+        //      effective strengths are 0.1375 / 0.1500 / 0.1625, and since the
+        //      probe's own maximum is 4.896 its largest contribution is 0.796
+        //      -- under the clamp. The saturated share is then 0.0%, 0.0% and
+        //      0.0%: the bound above does not merely shrink at night, IT
+        //      BECOMES EMPTY, and every mission with a full night factor
+        //      (mc2_05/10/19/21/23, all at nightFactor exactly 1.0 by
+        //      mclib/camera.cpp:2338-2348) has no probe-imposed ceiling at all.
+        //      The transition is at nightFactor 0.838 (0.55) / 0.879 (0.60) /
+        //      0.914 (0.65). Cite this bound for DAY maps only; on a night map
+        //      "the probe already clamps it" is not a reason a knob is inert,
+        //      and treating it as one is how a knob gets wrongly written off.
         //
         //  (b) ITS DIRECTIONAL LOBE IS FIXED IN MODEL/STUFF SPACE AND IS
         //      NEVER ROTATED TO THE MISSION SUN. The coefficients are one

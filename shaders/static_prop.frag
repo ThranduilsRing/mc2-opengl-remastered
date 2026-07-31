@@ -425,6 +425,15 @@ void main() {
     //     already saturated, and the default-ON SH-IBL probe saturates 30.7%
     //     of the normal sphere by itself at the shipped strength 0.55. So v2
     //     is live, but only on the unsaturated remainder.
+    //     ★★ THAT 30.7% IS A DAYTIME FIGURE (correction 2026-07-31,
+    //     REMEDIATION-LAND-1). u_iblShStrength is uploaded through
+    //     iblShStrengthNightScaled() (gos_static_prop_batcher.cpp:1129), which
+    //     applies IBL-NIGHT-SCALE-1's `strength *= 1 - (1 - 0.25)*nightFactor`
+    //     -- DEFAULT-ON gate MC2_STATIC_PROP_IBL_NIGHT_SCALE. At nightFactor
+    //     1.0 the effective strength is 0.55*0.25 = 0.1375, and 0.1375 * the
+    //     probe's 4.896 maximum is 0.673, under the clamp: the probe saturates
+    //     0.0% of the sphere and the "unsaturated remainder" is the WHOLE
+    //     surface. See the ★★ block in static_prop.vert for the full table.
     //   - the kFlagDecalFill producer sits behind the DEFAULT-OFF opt-in
     //     MC2_TERRAIN_DECAL (mclib/bdactor.cpp useCliffWallFrame), so on a
     //     default launch this whole block runs for zero fragments. The v1

@@ -761,6 +761,43 @@ _CLAIM_RE = re.compile(
 _COND_RE = re.compile(
     r"\b(under|when(?:ever)?|wherever|unless|if|while|once|pending|until|"
     r"would|was|used to|previously|no longer|should)\b", re.I)
+#: NEGATED CLAIMS (INCAPABLE-BATCH-1 repair, 2026-07-31). `_CLAIM_RE` reads the
+#: DENIAL of a default as an ASSERTION of it, which is not a near-miss -- it
+#: reports the exact opposite of what the line says. The live instance:
+#:
+#:     //      MC2_TERRAIN_DECAL is enabled, not a shipped default-on value.
+#:
+#: was reported as "states default ON but the reader implements default OFF"
+#: while both the comment and the reader (mclib/bdactor.cpp:4827) say OFF. Two
+#: line-granularity effects compound there: the TRUE claim two lines up ("the
+#: DEFAULT-OFF opt-in gate" / "MC2_TERRAIN_DECAL") is split across a line break
+#: so neither line both names the var and states the default, and the qualifier
+#: that would have tripped `_COND_RE` ("used once") is on the PRECEDING line.
+#:
+#: SCOPE IS TIGHT ON PURPOSE, and the width was measured rather than guessed. A
+#: bare "is there a negation token earlier on the line" test fires on 5 of the
+#: 412 attributable claims in the tree and FOUR of those are false skips, where
+#: the negation belongs to an unrelated noun phrase and the default claim beside
+#: it is honest and currently AGREES:
+#:     gos_static_prop_batcher.h:254  "nullptr = no snap-cull (default OFF)"
+#:     docs/tier1_env_vars.md:442     "(no UV seams). Default **OFF**"
+#:     docs/tier1_env_vars.md:120     "not umbrella members) ... default-OFF"
+#:     code/mission.cpp:4075          "NOT fopen). Gate ... (default OFF)"
+#: Widening the rule to swallow those would trade one false POSITIVE for four
+#: lost checks -- the mirror image of the 18-hit proximity rule rejected above.
+#: So a negation only disarms a claim when it directly governs the claim's own
+#: noun phrase: nothing between the negation and the word "default" except up to
+#: three plain words. Every false skip above is separated from its claim by
+#: punctuation that ends the phrase -- ")", ".", ",", ";" -- and so is untouched.
+#: Measured effect of the rule as written: exactly one claim skipped tree-wide.
+#:
+#: A denial is DISCARDED rather than inverted. "not default-on" does imply OFF
+#: for a boolean, but this file's standing rule is that an idiom it cannot read
+#: with confidence is skipped, not guessed at (see implemented_default), and
+#: double negatives ("is not default off") would make the inversion wrong. The
+#: positive claim is the one that gets checked; write that instead.
+_NEG_RE = re.compile(
+    r"\b(?:not|never|nor|no)\s+(?:[A-Za-z][A-Za-z-]*\s+){0,3}$", re.I)
 _COMMENT_LINE_RE = re.compile(r"^\s*(?://|\*|/\*)")
 
 
@@ -781,6 +818,9 @@ def comment_claims(lines, path, prose=False):
         if not a:
             continue
         if _COND_RE.search(ln[:a.start()]) or _COND_RE.search(ln[a.end():]):
+            continue
+        # A DENIAL of the default is not an assertion of it. See _NEG_RE.
+        if _NEG_RE.search(ln[:a.start()]):
             continue
         out.append({"var": names.pop(), "claim": a.group(1).upper(),
                     "path": path, "line": i, "text": ln.strip()[:160]})
@@ -1252,6 +1292,13 @@ bool orGuard() {
 // conditional claim. Both were real false-positive shapes in the live tree.
 // MC2_ST_HONEST_OFF and MC2_ST_LIAR both default ON in that configuration.
 // MC2_ST_HONEST_OFF is default-ON under the umbrella gate.
+// NEGATED CLAIM (INCAPABLE-BATCH-1 repair). MC2_ST_HONEST_OFF's reader defaults
+// OFF, and the line below DENIES ON rather than asserting it. Before _NEG_RE it
+// was read as an assertion of ON and reported as a contradiction -- the exact
+// inverse of what the line says, and the shape that took
+// gos_static_prop_batcher.cpp:453 red. It must stay unattributed, so the
+// comment_claims count assertion below is still 1.
+// MC2_ST_HONEST_OFF is the strength for the enabled case, not a shipped default-on value.
 '''
 
 
@@ -1397,6 +1444,21 @@ def _selftest():
     check("a CONDITIONAL default claim is not treated as an assertion",
           stats["comment_claims"] == 1,
           f"claims={claims}")
+
+    # 7c-bis. NEGATION (INCAPABLE-BATCH-1 repair). Both directions are asserted,
+    #     because this rule fails in two ways and only one of them is loud. Read
+    #     the _NEG_RE block for the measurement that fixed the window at "up to
+    #     three plain words, no punctuation".
+    neg = comment_claims(
+        ["// MC2_ST_HONEST_OFF is the fill strength, not a shipped default-on value.",
+         "// MC2_ST_HONEST_OFF never had a default-on arm.",
+         "// nullptr = no snap-cull for MC2_ST_HONEST_OFF (default OFF).",
+         "// (no UV seams) for MC2_ST_HONEST_OFF. Default **OFF**."],
+        "selftest_neg.cpp")
+    check("a DENIED default claim is not attributed as an assertion of it",
+          not any(c["line"] in (1, 2) for c in neg), f"neg={neg}")
+    check("a negation in an UNRELATED phrase still leaves the claim checked",
+          {c["line"] for c in neg} == {3, 4}, f"neg={neg}")
 
     # 7d. The tier1 doc is prose, not comment-marked, so it needs prose=True.
     #     Shape copied verbatim from the real docs/tier1_env_vars.md line for

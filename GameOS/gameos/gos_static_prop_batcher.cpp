@@ -447,10 +447,17 @@ int gos_lightBillboardFacingMode() {
 //      shaders/static_prop.frag next to the c.rgb block.
 //   2. "Default 0.20" reads as default-ON and is NOT. Bit 3 is only ever set
 //      inside `if (useCliffWallFrame)` (mclib/bdactor.cpp), which requires
-//      s_terrainDecal == true, i.e. the DEFAULT-OFF opt-in gate
-//      MC2_TERRAIN_DECAL. On a default launch ZERO fragments carry the flag,
-//      so this 0.20 reaches nothing. It is the fill strength used once
-//      MC2_TERRAIN_DECAL is enabled, not a shipped default-on value.
+//      s_terrainDecal == true -- and that gate is an opt-in:
+//      MC2_TERRAIN_DECAL is default OFF (reader mclib/bdactor.cpp:4827).
+//      On a default launch ZERO fragments carry the flag, so this 0.20
+//      reaches nothing; it is the fill strength for the opted-in case.
+//      (Phrasing note, 2026-07-31: this sentence used to end "...not a
+//      shipped default-on value", which check-gate-default-agreement.py
+//      read as an ASSERTION that the gate defaults ON and reported as a
+//      contradiction -- the opposite of what the line said. The checker's
+//      negation blind spot is fixed there (_NEG_RE); the line is also
+//      restated positively here so the claim is machine-CHECKED and agrees,
+//      rather than merely skipped.)
 float g_terrainDecalFill = []() -> float {
     const char* v = std::getenv("MC2_TERRAIN_DECAL_FILL");
     if (!v || !v[0]) return 0.20f;
