@@ -6,9 +6,12 @@
 #   cmake --build build64-h-class_light_band_harness --config RelWithDebInfo
 #
 # Links NO production .cpp, NO engine, NO GL, NO Stuff. The only production
-# artefact it #includes is RenderCore/IblShCoeffs.h, which is a header-only
-# constexpr float table with an explicit "no GL, no game-side includes"
-# firewall comment. Everything else (shader arithmetic, the stock tgl.cpp
+# artefacts it #includes are RenderCore/IblShCoeffs.h and (Stage F)
+# RenderCore/IblShRegistry.h -- both header-only constexpr tables carrying an
+# explicit "no GL, no game-side includes" firewall comment. Stage F reads the
+# registry directly so that "kMissionShMap is empty" is asserted against the
+# TABLE rather than against a comment about it. Everything else (shader
+# arithmetic, the stock tgl.cpp
 # kernel, the Stuff matrix math) is PORTED with the source file:line recorded
 # beside each expression, exactly as tools/object_light_row_harness does.
 

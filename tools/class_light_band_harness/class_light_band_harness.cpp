@@ -68,6 +68,7 @@
 
 #include "contract_harness.h"
 #include "RenderCore/IblShCoeffs.h"     // header-only constexpr, no GL, no engine
+#include "RenderCore/IblShRegistry.h"   // ditto -- Stage F reads kMissionShMap itself
 
 #include <algorithm>
 #include <cmath>
@@ -481,6 +482,193 @@ static MissionLight missionLight(const Mission& m)
 static double propIbl(const V3& nStuff, double strength = kIblStrengthDefault)
 {
     return evalShL2(norm(nStuff), 0) * strength;
+}
+
+//-----------------------------------------------------------------------------
+// 2c. IBL-PROBE-ROTATION-1 -- the probe's own aim, and the rotation that
+//     would fix it.
+//
+// The SH-L2 probe is projected from ONE day-sky HDRI with that HDRI's own sun
+// baked in (RenderCore/IblShCoeffs.h banner: "Source HDRI:
+// data/hdr/DaySkyHDRI063B_4K.exr"). Three sites were read to confirm nothing
+// rotates it to the mission sun:
+//   bake   tools/ibl/project_sh.py:88-94  -- plain equirect projection,
+//          phi = (x+0.5)/W*2pi - pi. No azimuth parameter exists.
+//   upload GameOS/gameos/gos_static_prop_batcher.cpp:7026-7031 (coalesce) and
+//          :8246-8251 (legacy) -- glUniform3fv straight off
+//          &s_currentShSet->coeffs[0][0]. No transform.
+//   shader shaders/static_prop.vert:951-953 -- evalShL2(normalize(worldNormal))
+//          where worldNormal (:652) is a_normal * mat3(inst.modelMatrix), i.e.
+//          the prop's own placement rotation and nothing else.
+//
+// CONTRAST, and this is the load-bearing evidence that the omission is an
+// oversight rather than a design choice: the VISIBLE skybox drawn from the SAME
+// HDRI *is* sun-synced. gos_postprocess.cpp:5205-5218 scans the EXR for its
+// baked sun azimuth (gos_hdri.cpp scanHdriSunAzGL) and sets
+// skyYaw = hdriBakedSunAz_ - sunAzGL so the HDRI's sun lands on the mission sun.
+// The probe derived from that sky is the one consumer that skips the step.
+//
+// THE BRIGHT AXIS IS ANALYTIC, not a numeric search. The L1 band of an SH
+// expansion IS the first directional moment of the radiance, so the probe's
+// bright axis is just normalize(L11, L1-1, L10) under the shader's binding
+// (static_prop.vert:288-290 maps L11->n.x, L1-1->n.y, L10->n.z). No HDRI is
+// needed at runtime or here.
+static V3 iblBrightAxisStuff(int channel)
+{
+    const auto& C = RenderCore::kIblShCoeffs;
+    return norm(v3(C[3][channel], C[1][channel], C[2][channel]));
+}
+
+// Stuff-frame azimuth: Stuff is Y-up, so the horizontal plane is x-z.
+static double stuffAzimuthDeg(const V3& v)
+{
+    return std::atan2(v.z, v.x) / kDeg2Rad;
+}
+
+static double wrap180(double deg)
+{
+    double d = std::fmod(deg + 180.0, 360.0);
+    if (d < 0.0) d += 360.0;
+    return d - 180.0;
+}
+
+// Rotate a direction about the Stuff +Y (up) axis by +t, i.e. azimuth += t.
+static V3 rotAboutStuffY(const V3& n, double tRad)
+{
+    const double c = std::cos(tRad), s = std::sin(tRad);
+    return v3(n.x * c - n.z * s, n.y, n.x * s + n.z * c);
+}
+
+// Rotate the SH FUNCTION about Stuff +Y by +t, returning new coefficients.
+//
+// A rotation about the basis POLE is the closed-form case -- no Wigner
+// matrices. Grouping the shader evaluator's terms by their (x,z) angular
+// dependence with x = s*cos(a), z = s*sin(a):
+//   m=0 (invariant): L00 [0], L1-1 [1] (the pole term), L20 [6]
+//   m=1 (cos a, sin a) pairs: (L11 [3], L10 [2]) and (L2-2 [4], L2-1 [5])
+//   m=2 (cos 2a, sin 2a) pair: (L22 [8], L21 [7])
+//     -- because c1*L22*(x^2-z^2) = c1*L22*s^2*cos2a and
+//        2*c1*L21*(x*z)          = c1*L21*s^2*sin2a.
+// Substituting a -> a - t rotates the function by +t and mixes each pair by
+// (A,B) -> (A cos mt - B sin mt, A sin mt + B cos mt).
+// test_sh_y_rotation_equals_rotating_the_normal proves this against the
+// brute-force reference to 1e-12, which is what makes it safe to implement
+// CPU-side at the upload site instead of per-vertex in the shader.
+struct ShSet9 { double c[9][3]; };
+
+static ShSet9 shippedShSet()
+{
+    ShSet9 out{};
+    for (int i = 0; i < 9; ++i)
+        for (int ch = 0; ch < 3; ++ch)
+            out.c[i][ch] = RenderCore::kIblShCoeffs[i][ch];
+    return out;
+}
+
+static ShSet9 rotateShAboutY(const ShSet9& in, double tRad)
+{
+    ShSet9 o = in;
+    const double c1t = std::cos(tRad),       s1t = std::sin(tRad);
+    const double c2t = std::cos(2.0 * tRad), s2t = std::sin(2.0 * tRad);
+    for (int ch = 0; ch < 3; ++ch) {
+        const double a3 = in.c[3][ch], b2 = in.c[2][ch];   // m=1: (L11, L10)
+        o.c[3][ch] = a3 * c1t - b2 * s1t;
+        o.c[2][ch] = a3 * s1t + b2 * c1t;
+        const double a4 = in.c[4][ch], b5 = in.c[5][ch];   // m=1: (L2-2, L2-1)
+        o.c[4][ch] = a4 * c1t - b5 * s1t;
+        o.c[5][ch] = a4 * s1t + b5 * c1t;
+        const double a8 = in.c[8][ch], b7 = in.c[7][ch];   // m=2: (L22, L21)
+        o.c[8][ch] = a8 * c2t - b7 * s2t;
+        o.c[7][ch] = a8 * s2t + b7 * c2t;
+    }
+    return o;
+}
+
+// evalShL2 against an arbitrary coefficient set (the shipped one is the
+// default path above; this is the same expression, parameterised).
+static double evalShL2Set(const ShSet9& S, const V3& n, int channel)
+{
+    const double c1 = 0.429043, c2 = 0.511664, c3 = 0.743125,
+                 c4 = 0.886227, c5 = 0.247708;
+    const double sh0 = S.c[0][channel], sh1 = S.c[1][channel], sh2 = S.c[2][channel],
+                 sh3 = S.c[3][channel], sh4 = S.c[4][channel], sh5 = S.c[5][channel],
+                 sh6 = S.c[6][channel], sh7 = S.c[7][channel], sh8 = S.c[8][channel];
+    return c1 * sh8 * (n.x * n.x - n.z * n.z)
+         + c3 * sh6 * (n.y * n.y)
+         + c4 * sh0
+         - c5 * sh6
+         + 2.0 * c1 * sh4 * (n.x * n.y)
+         + 2.0 * c1 * sh5 * (n.y * n.z)
+         + 2.0 * c1 * sh7 * (n.x * n.z)
+         + 2.0 * c2 * sh3 * n.x
+         + 2.0 * c2 * sh1 * n.y
+         + 2.0 * c2 * sh2 * n.z;
+}
+
+// The mission sun expressed in the Stuff frame the probe is evaluated in.
+// swapStuffToMC2 is self-inverse ((x,y,z)->(-x,z,y) applied twice is identity),
+// so the same helper converts back.
+static V3 missionSunStuff(const Mission& m)
+{
+    return swapStuffToMC2(terrainSunMC2(m.pitch, m.yaw));
+}
+
+// The rotation that would aim the probe's bright axis at this mission's sun.
+static double sunAlignRotationRad(const Mission& m)
+{
+    const double aSun   = stuffAzimuthDeg(missionSunStuff(m));
+    const double aProbe = stuffAzimuthDeg(iblBrightAxisStuff(0));
+    return wrap180(aSun - aProbe) * kDeg2Rad;
+}
+
+// Signed azimuth error, degrees, between the probe's bright axis and the sun.
+static double probeVsSunAzErrorDeg(const Mission& m)
+{
+    return wrap180(stuffAzimuthDeg(missionSunStuff(m))
+                 - stuffAzimuthDeg(iblBrightAxisStuff(0)));
+}
+
+// Sweep every vertical-wall azimuth and report how much a sun-align rotation
+// would actually move the FINAL CLAMPED prop multiplier. This is the
+// saturation-trap filter: a mission where the answer is ~0 cannot grade the
+// change no matter how badly its probe is aimed.
+struct RotSweep {
+    double movedFrac;   // fraction of wall azimuths moving > 1/255
+    double meanAbs;     // mean |delta| on the clamped multiplier
+    double maxDown;     // most negative delta
+    double maxUp;       // most positive delta
+    double unsatFrac;   // fraction of wall azimuths NOT clamped before the change
+};
+
+static RotSweep rotationSweep(const Mission& m, int samples = 720)
+{
+    const MissionLight L = missionLight(m);
+    const double st  = iblStrengthShipped(m.name);
+    const double t   = sunAlignRotationRad(m);
+    const ShSet9 base = shippedShSet();
+    const ShSet9 rot  = rotateShAboutY(base, t);
+    RotSweep s{};
+    int moved = 0, unsat = 0;
+    double acc = 0.0;
+    for (int k = 0; k < samples; ++k) {
+        const double az = 2.0 * 3.14159265358979323846 * k / samples;
+        // A vertical wall in the MC2 frame, then into Stuff for the probe.
+        const V3 nMC2   = v3(std::cos(az), std::sin(az), 0.0);
+        const V3 nStuff = swapStuffToMC2(nMC2);
+        const double ndl = std::max(0.0, dot(nMC2, L.terrainSun));
+        const double before = propMul(0.0, L.A, L.S, ndl, evalShL2Set(base, nStuff, 0) * st);
+        const double after  = propMul(0.0, L.A, L.S, ndl, evalShL2Set(rot,  nStuff, 0) * st);
+        const double d = after - before;
+        if (std::fabs(d) > 1.0 / 255.0) ++moved;
+        if (before < 0.999) ++unsat;
+        acc += std::fabs(d);
+        s.maxDown = std::min(s.maxDown, d);
+        s.maxUp   = std::max(s.maxUp,   d);
+    }
+    s.movedFrac = (double)moved / samples;
+    s.meanAbs   = acc / samples;
+    s.unsatFrac = (double)unsat / samples;
+    return s;
 }
 
 //=============================================================================
@@ -1923,6 +2111,261 @@ static bool print_stage_c_table(TestCtx&)
 }
 
 //=============================================================================
+// STAGE F TESTS -- IBL-PROBE-ROTATION-1
+//
+// The claim handed to this lane, verbatim: "The SH-IBL ambient probe is never
+// rotated to the mission sun." Each specific is pinned below against source,
+// including the two that were stated imprecisely.
+//=============================================================================
+
+// F1. The registry holds exactly ONE coefficient set, and the mission map is
+// FUNCTIONALLY empty -- but NOT literally empty, which matters because the
+// count is 1, not 0, and a reader that trusts "empty" would mis-size a loop.
+// RenderCore/IblShRegistry.h:51-55 holds one {nullptr, nullptr} placeholder.
+static bool test_mission_sh_map_is_functionally_but_not_literally_empty(TestCtx& t)
+{
+    CH_CHECK(t, RenderCore::kIblShSetCount == 1);
+    CH_CHECK(t, std::string(RenderCore::kIblShSets[0].name) == "default");
+    // NOT zero -- one null placeholder row.
+    CH_CHECK(t, RenderCore::kMissionShMapCount == 1);
+    CH_CHECK(t, RenderCore::kMissionShMap[0].missionName == nullptr);
+    CH_CHECK(t, RenderCore::kMissionShMap[0].shSetName  == nullptr);
+    // Every shipping mission therefore resolves to the same coefficients.
+    for (int i = 0; i < kNumMissions; ++i) {
+        const RenderCore::IblShSet& s = RenderCore::lookupShSet(kMissions[i].name);
+        CH_CHECK(t, std::string(s.name) == "default");
+        CH_CHECK(t, s.coeffs == &RenderCore::kIblShCoeffs[0]);
+    }
+    return t.failures == 0;
+}
+
+// F2. The bright axis is pinned at Stuff +X. The ANALYTIC L1 axis and a
+// brute-force argmax over the sphere must agree in azimuth.
+static bool test_probe_bright_axis_is_pinned_at_stuff_plus_x(TestCtx& t)
+{
+    const V3 u = iblBrightAxisStuff(0);
+    CH_CHECK(t, std::fabs(stuffAzimuthDeg(u)) < 0.5);          // +X, ~0 deg
+    CH_CHECK(t, u.x > 0.95);
+    CH_CHECK(t, std::fabs(std::asin(u.y) / kDeg2Rad - 16.62) < 0.05);  // elevated
+    // ...and all three channels agree, so this is not one channel's quirk.
+    for (int ch = 0; ch < 3; ++ch)
+        CH_CHECK(t, std::fabs(stuffAzimuthDeg(iblBrightAxisStuff(ch))) < 0.5);
+    // Brute-force argmax lands on the same azimuth.
+    double bestV = -1e30; V3 bestN = v3(0, 0, 0);
+    forEachNormal(96, [&](const V3& n) {
+        const double v = evalShL2(n, 0);
+        if (v > bestV) { bestV = v; bestN = n; }
+    });
+    CH_CHECK(t, std::fabs(wrap180(stuffAzimuthDeg(bestN) - stuffAzimuthDeg(u))) < 5.0);
+    CH_CHECK(t, bestV > 4.85 && bestV < 4.90);                 // 4.894
+    return t.failures == 0;
+}
+
+// F3. The "7.71:1 swing" figure is the +X vs -X PAIR, not the swing across the
+// sphere -- that is larger (21.0:1). Both are pinned so neither number can be
+// quoted loosely again.
+static bool test_the_7_71_ratio_is_the_x_pair_not_the_sphere_swing(TestCtx& t)
+{
+    const double px = evalShL2(v3( 1, 0, 0), 0);
+    const double mx = evalShL2(v3(-1, 0, 0), 0);
+    CH_CHECK(t, std::fabs(px - 4.6242) < 1e-3);
+    CH_CHECK(t, std::fabs(mx - 0.5997) < 1e-3);
+    CH_CHECK(t, std::fabs(px / mx - 7.710) < 0.01);            // the quoted 7.71
+    double lo = 1e30, hi = -1e30;
+    forEachNormal(96, [&](const V3& n) {
+        const double v = evalShL2(n, 0);
+        lo = std::min(lo, v); hi = std::max(hi, v);
+    });
+    CH_CHECK(t, hi / lo > 20.0);                               // 21.05 -- BIGGER
+    CH_CHECK(t, hi / lo > px / mx);
+    return t.failures == 0;
+}
+
+// F4. The probe's bright axis misses the mission sun on essentially every
+// mission. Median absolute azimuth error > 90 degrees.
+static bool test_probe_bright_axis_misses_the_sun_on_every_mission(TestCtx& t)
+{
+    std::vector<double> errs;
+    for (int i = 0; i < kNumMissions; ++i)
+        errs.push_back(std::fabs(probeVsSunAzErrorDeg(kMissions[i])));
+    std::sort(errs.begin(), errs.end());
+    const double median = errs[kNumMissions / 2];
+    CH_CHECK(t, median > 90.0);                                // 106.2
+    CH_CHECK(t, errs.back() > 175.0);                          // mc2_14, 176.7
+    // Only three missions are within 20 degrees of aligned.
+    int near = 0;
+    for (double e : errs) if (e <= 20.0) ++near;
+    CH_CHECK(t, near == 3);                                    // mc2_16/20/03
+    return t.failures == 0;
+}
+
+// F5. THE VISUAL DEFECT, stated as an inequality: on most missions the probe
+// puts MORE ambient on the wall facing AWAY from the sun than on the wall
+// facing it. That is the "light is coming from behind" complaint in arithmetic.
+static bool test_probe_is_brighter_on_the_shadowed_wall_on_most_missions(TestCtx& t)
+{
+    int wrongWay = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const V3 sunStuff = missionSunStuff(kMissions[i]);
+        // horizontal wall normals in Stuff: toward the sun azimuth, and away
+        const V3 toward = norm(v3(sunStuff.x, 0.0, sunStuff.z));
+        const V3 away   = v3(-toward.x, 0.0, -toward.z);
+        if (evalShL2(toward, 0) < evalShL2(away, 0)) ++wrongWay;
+    }
+    CH_CHECK(t, wrongWay == 17);                               // 17 of 24
+    return t.failures == 0;
+}
+
+// F6. THE IMPLEMENTATION-ENABLING TEST. Rotating the nine COEFFICIENTS about
+// the basis pole is exactly equivalent to counter-rotating the NORMAL. This is
+// what lets a fix live CPU-side at the upload site (zero per-vertex cost, no
+// shader edit) instead of adding a sincos to every static-prop vertex.
+static bool test_sh_y_rotation_equals_rotating_the_normal(TestCtx& t)
+{
+    const ShSet9 base = shippedShSet();
+    const double angles[] = { 0.0, 0.3, -1.1, 2.7, 3.14159, -2.0, 1.5707963 };
+    double worst = 0.0;
+    for (double tRad : angles) {
+        const ShSet9 rot = rotateShAboutY(base, tRad);
+        forEachNormal(48, [&](const V3& n) {
+            for (int ch = 0; ch < 3; ++ch) {
+                const double lhs = evalShL2Set(rot, n, ch);
+                const double rhs = evalShL2Set(base, rotAboutStuffY(n, -tRad), ch);
+                worst = std::max(worst, std::fabs(lhs - rhs));
+            }
+        });
+    }
+    CH_CHECK(t, worst < 1e-12);
+    // Zero rotation is the identity on every coefficient (byte-identical path).
+    const ShSet9 id = rotateShAboutY(base, 0.0);
+    for (int i = 0; i < 9; ++i)
+        for (int ch = 0; ch < 3; ++ch)
+            CH_CHECK(t, id.c[i][ch] == base.c[i][ch]);
+    return t.failures == 0;
+}
+
+// F7. After the sun-align rotation the probe's bright axis lands ON the sun
+// azimuth, on all 24 missions. This is the fix's acceptance criterion.
+static bool test_sun_align_rotation_aims_the_probe_at_the_sun(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const ShSet9 rot = rotateShAboutY(shippedShSet(), sunAlignRotationRad(m));
+        // The rotated set's own L1 axis must sit at the sun's azimuth.
+        const V3 axis = norm(v3(rot.c[3][0], rot.c[1][0], rot.c[2][0]));
+        const double err = wrap180(stuffAzimuthDeg(axis)
+                                 - stuffAzimuthDeg(missionSunStuff(m)));
+        CH_CHECK(t, std::fabs(err) < 1e-9);
+        // ...and the total energy is unchanged: a rotation moves light, it
+        // does not create it. The spherical mean is an m=0 quantity.
+        CH_CHECK(t, std::fabs(rot.c[0][0] - RenderCore::kIblShCoeffs[0][0]) < 1e-12);
+        CH_CHECK(t, std::fabs(rot.c[6][0] - RenderCore::kIblShCoeffs[6][0]) < 1e-12);
+    }
+    return t.failures == 0;
+}
+
+// F8. THE SATURATION-TRAP FILTER, and the correction this lane exists to make.
+// shaders/static_prop.vert:946-950 recommends grading this exact class of
+// change on mc2_10. For a probe ROTATION that recommendation is WRONG: mc2_10
+// carries ambient 192/255 AND sun byte 192/255, so 91% of wall azimuths are
+// already clamped and the rotation moves a mean of 0.004 -- one byte. The pose
+// earned its reputation from MC2_PROP_BASE_LIGHT_DIR, which is a MULTIPLICATIVE
+// darkening and therefore pulls pixels DOWN out of saturation; a rotation
+// mostly swaps one clamped state for another. Different term shape, different
+// trap.
+static bool test_mc2_10_is_a_saturation_trap_for_probe_rotation(TestCtx& t)
+{
+    const Mission* m10 = nullptr; const Mission* m22 = nullptr;
+    const Mission* m17 = nullptr; const Mission* m24 = nullptr;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const std::string n(kMissions[i].name);
+        if (n == "mc2_10") m10 = &kMissions[i];
+        if (n == "mc2_22") m22 = &kMissions[i];
+        if (n == "mc2_17") m17 = &kMissions[i];
+        if (n == "mc2_24") m24 = &kMissions[i];
+    }
+    CH_CHECK(t, m10 && m22 && m17 && m24);
+    if (!(m10 && m22 && m17 && m24)) return false;
+
+    const RotSweep s10 = rotationSweep(*m10);
+    const RotSweep s22 = rotationSweep(*m22);
+    const RotSweep s17 = rotationSweep(*m17);
+    const RotSweep s24 = rotationSweep(*m24);
+
+    // The two traps. Both are ambient-192 missions.
+    CH_CHECK(t, s10.meanAbs   < 0.01);      // 0.0037
+    CH_CHECK(t, s10.unsatFrac < 0.10);      // 8.6% unclamped
+    CH_CHECK(t, s22.meanAbs   < 0.02);      // 0.0123
+    // The usable tier1 poses move 40x-60x more than mc2_10.
+    CH_CHECK(t, s17.meanAbs > 0.15);        // 0.1807
+    CH_CHECK(t, s24.meanAbs > 0.20);        // 0.2305
+    CH_CHECK(t, s17.meanAbs > 40.0 * s10.meanAbs);
+    CH_CHECK(t, s24.meanAbs > 40.0 * s10.meanAbs);
+    // mc2_17 keeps the most unsaturated surface of the tier1 set.
+    CH_CHECK(t, s17.unsatFrac > 0.50);      // 54.6%
+    return t.failures == 0;
+}
+
+// F9. Perturbation sentinel for Stage F's constants.
+static bool test_sentinel_ibl_probe_axis_constants(TestCtx& t)
+{
+    // The L1 band as shipped (RenderCore/IblShCoeffs.h rows 1..3, R channel).
+    // Tolerance 1e-6, not 1e-8: the table is `float`, so promoting to double
+    // carries up to ~2.4e-7 of rounding at these magnitudes. 1e-8 fails on the
+    // UNMODIFIED table -- caught on the first run of this sentinel.
+    CH_CHECK(t, std::fabs(RenderCore::kIblShCoeffs[3][0] - 1.966354845) < 1e-6);
+    CH_CHECK(t, std::fabs(RenderCore::kIblShCoeffs[1][0] - 0.5869951003) < 1e-6);
+    CH_CHECK(t, std::fabs(RenderCore::kIblShCoeffs[2][0] - 0.01179062044) < 1e-6);
+    // The derived aim, in both frames.
+    CH_CHECK(t, std::fabs(stuffAzimuthDeg(iblBrightAxisStuff(0)) - 0.3435) < 1e-3);
+    const V3 mc2 = swapStuffToMC2(iblBrightAxisStuff(0));
+    CH_CHECK(t, std::fabs(std::atan2(mc2.y, mc2.x) / kDeg2Rad - 179.656) < 1e-2);
+    // Two per-mission errors, one near-aligned and one near-opposite.
+    CH_CHECK(t, std::fabs(std::fabs(probeVsSunAzErrorDeg(kMissions[15])) - 7.66) < 0.05);
+    CH_CHECK(t, std::fabs(std::fabs(probeVsSunAzErrorDeg(kMissions[13])) - 176.66) < 0.05);
+    return t.failures == 0;
+}
+
+static bool print_stage_f_probe_aim(TestCtx&)
+{
+    const V3 u = iblBrightAxisStuff(0);
+    const V3 uM = swapStuffToMC2(u);
+    std::fprintf(stderr,
+        "\n=== STAGE F: SH-IBL probe aim vs the mission sun ===\n"
+        "probe bright axis: Stuff az %+.3f deg, elev %+.3f deg  ->  MC2 az %+.3f deg\n"
+        "one set for all 24 missions (kIblShSetCount=%zu, kMissionShMapCount=%zu, "
+        "all-null)\n"
+        "+X %.4f  -X %.4f  ratio %.3f:1   sphere swing 21.05:1\n\n"
+        "%-8s %8s %8s | %8s %8s %8s %8s | %s\n",
+        stuffAzimuthDeg(u), std::asin(u.y) / kDeg2Rad,
+        std::atan2(uM.y, uM.x) / kDeg2Rad,
+        RenderCore::kIblShSetCount, RenderCore::kMissionShMapCount,
+        evalShL2(v3(1,0,0),0), evalShL2(v3(-1,0,0),0),
+        evalShL2(v3(1,0,0),0) / evalShL2(v3(-1,0,0),0),
+        "mission", "sunAzErr", "iblRatio", "moved%", "meanAbs", "maxDn", "unsat%",
+        "A/B verdict");
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const V3 sunStuff = missionSunStuff(m);
+        const V3 toward = norm(v3(sunStuff.x, 0.0, sunStuff.z));
+        const V3 away   = v3(-toward.x, 0.0, -toward.z);
+        const double ratio = evalShL2(toward, 0) / evalShL2(away, 0);
+        const RotSweep s = rotationSweep(m);
+        const char* verdict = (s.meanAbs < 0.02) ? "TRAP - do not use"
+                            : (s.meanAbs > 0.15) ? "GOOD"
+                                                 : "weak";
+        std::fprintf(stderr, "%-8s %+8.2f %8.3f | %8.1f %8.4f %+8.3f %8.1f | %s\n",
+            m.name, probeVsSunAzErrorDeg(m), ratio,
+            100.0 * s.movedFrac, s.meanAbs, s.maxDown, 100.0 * s.unsatFrac,
+            verdict);
+    }
+    std::fprintf(stderr,
+        "\niblRatio < 1 means the probe is BRIGHTER on the wall facing away from\n"
+        "the sun. That is 17 of the 24 shipping missions.\n");
+    return true;
+}
+
+//=============================================================================
 int main(int argc, char** argv)
 {
     Harness h("class_light_band_harness");
@@ -2000,7 +2443,26 @@ int main(int argc, char** argv)
     h.add("shipped_ibl_strength_is_not_the_cpp_literal",
           test_shipped_ibl_strength_is_not_the_cpp_literal);
 
+    // Stage F -- IBL-PROBE-ROTATION-1
+    h.add("mission_sh_map_is_functionally_but_not_literally_empty",
+          test_mission_sh_map_is_functionally_but_not_literally_empty);
+    h.add("probe_bright_axis_is_pinned_at_stuff_plus_x",
+          test_probe_bright_axis_is_pinned_at_stuff_plus_x);
+    h.add("the_7_71_ratio_is_the_x_pair_not_the_sphere_swing",
+          test_the_7_71_ratio_is_the_x_pair_not_the_sphere_swing);
+    h.add("probe_bright_axis_misses_the_sun_on_every_mission",
+          test_probe_bright_axis_misses_the_sun_on_every_mission);
+    h.add("probe_is_brighter_on_the_shadowed_wall_on_most_missions",
+          test_probe_is_brighter_on_the_shadowed_wall_on_most_missions);
+    h.add("sh_y_rotation_equals_rotating_the_normal",
+          test_sh_y_rotation_equals_rotating_the_normal);
+    h.add("sun_align_rotation_aims_the_probe_at_the_sun",
+          test_sun_align_rotation_aims_the_probe_at_the_sun);
+    h.add("mc2_10_is_a_saturation_trap_for_probe_rotation",
+          test_mc2_10_is_a_saturation_trap_for_probe_rotation);
+
     // Perturbation sentinels
+    h.add("sentinel_ibl_probe_axis_constants",          test_sentinel_ibl_probe_axis_constants);
     h.add("sentinel_tree_constants",                   test_sentinel_tree_constants);
     h.add("sentinel_fix_constants",                    test_sentinel_fix_constants);
     h.add("sentinel_terrain_constants",                test_sentinel_terrain_constants);
@@ -2015,6 +2477,7 @@ int main(int argc, char** argv)
     h.add("print_stage_b_frames", print_stage_b_frames, false);
     h.add("print_stage_c_table",  print_stage_c_table,  false);
     h.add("print_stage_e_tree_table", print_stage_e_tree_table, false);
+    h.add("print_stage_f_probe_aim",  print_stage_f_probe_aim,  false);
 
     return h.run(argc, argv);
 }
