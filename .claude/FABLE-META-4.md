@@ -105,6 +105,32 @@ closed: the check built to stop unverifiable checks is itself keyed to the
 wrong source of truth. It is still a good check — it caught the real condition
 within hours, unprompted. It just pointed at the wrong ledger.
 
+> ### ADDENDUM, 03:22 — the false-green fired while this file was being written
+>
+> Between the measurement above and the commit, another lane staged the script
+> into the shared index. Re-run, **zero commits later**:
+>
+> ```
+> $ git ls-files -s -- scripts/check-input-capture-visibility.py
+> 100644 e1213c72c...          # now present in the INDEX
+> $ py -3 scripts/check-contract-coverage.py
+> [contract-coverage] OK: every check script is wired or explicitly manual
+> ```
+>
+> The red cleared **without a single commit** — the shared index mtime moved
+> from 02:17:57 to 03:22:05 and that was the whole change. That is the
+> false-green direction of this finding, demonstrated live rather than argued:
+> `git add` alone satisfied the check whose entire purpose is to guarantee
+> other people have the file. Had the script *not* been in HEAD, the check
+> would now be green on a repo where it does not exist.
+>
+> Two consequences for the rest of this document. (a) Contracts should now
+> read 131/6 as reported — the 129/8 I measured was real at 02:50 and the
+> delta was never a code change. (b) **§1 is NOT resolved.** Only that one
+> path was staged; `GameOS/gameos/gos_render.cpp` in the shared index is still
+> blob `8dfc9a2fc` = `ffebf5e87^`, so the staged revert of the C++ half of the
+> cursor fix remains armed. `git reset` is still minute one.
+
 ---
 
 ## 3. THE TWO DEFAULT-ON RISKS
