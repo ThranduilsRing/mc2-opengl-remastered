@@ -1395,7 +1395,7 @@
    "blocks": [
     {
      "type": "what",
-     "html": "There are no pixels in this section. It is here because it explains why a page full of confident numbers kept turning out to be wrong. <b>Five separate automated checks were reporting green while asserting things that were false</b> &mdash; and a checker that lies is worse than no checker, because it converts <i>unknown</i> into a false <i>verified</i>. The board went from <b>137 rows (131 passing, 6 failing)</b> to <b>143 rows (142 passing, 1 failing)</b>, and the six reds had six different causes, only one of which was the code under test."
+     "html": "There are no pixels in this section. It is here because it explains why a page full of confident numbers kept turning out to be wrong. <b>Five separate automated checks were reporting green while asserting things that were false</b> &mdash; and a checker that lies is worse than no checker, because it converts <i>unknown</i> into a false <i>verified</i>. The board went from <b>137 rows</b> to <b>143</b>, and from <b>six failing to one</b>. The six reds had six different causes, only one of which was the code under test."
     },
     {
      "type": "h3",
@@ -1691,7 +1691,7 @@
        },
        {
         "tag": "td",
-        "html": "<b>131 was the number of rows <i>passing</i>, not the number of rows.</b> The board was <b>137 rows: 131 passing, 6 failing</b>. It is now <b>143 rows: 142 passing, 1 failing</b>. Recorded here even though you never saw the wrong version, because the mistake is the same shape as several larger ones on this page &mdash; a number carried one step too far from the place it was measured."
+        "html": "<b>131 was a number of rows <i>passing</i>, not a number of rows.</b> The board was <b>137 rows</b> and is now <b>143</b>, and it went from <b>six failing to one</b>. Recorded here even though you never saw the wrong version, because the mistake is the same shape as several larger ones on this page &mdash; a number carried one step too far from the place it was measured. <span style=\"font-size:11px;color:#9aa3ad\">The pass/fail split in particular moved twice inside one session, so it only means anything with a timestamp attached.</span>"
        }
       ]
      ]
