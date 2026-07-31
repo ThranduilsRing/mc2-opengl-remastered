@@ -767,6 +767,233 @@ static bool test_comparator_detects_injected_divergence(TestCtx& t)
     return t.failures == 0;
 }
 
+//=============================================================================
+// PROP-BAKE-TIME-1 — the TIME half of PROP-BAKE-ORDER-VS-TIME-1, settled here.
+//
+// test_row_is_independent_of_bake_time (above) proves the PURE FUNCTION is
+// stateless: the same Query in gives the same 3600 bytes out no matter when or
+// after how many other rows it runs. That is NOT the claim "bake time cannot
+// matter", and the two must not be confused. The engine's INPUT is not
+// time-invariant, and these tests measure the input, not the function.
+//
+// HOW Camera::ambient* REACHES THE ROW (reader source, A:/Games/mc2-main):
+//   mclib/camera.cpp:2418-2420   Camera::update()  : lightRGB = (ambientRed<<16)
+//   mclib/camera.cpp:2597-2599   Camera::render()  |  +(ambientGreen<<8)+ambientBlue
+//   code/gamecam.cpp:263-265     GameCamera::render|  ; setLightColor(1, lightRGB)
+// So one publisher, three sites, and a change in Camera::ambientRed IS a change
+// in the AMBIENT light's aRGB — exactly the LightInput field these tests vary.
+//
+// WHY THAT VALUE MOVES DURING A MISSION. Enumerated at source, the writers of
+// Camera::ambientRed are:
+//   mclib/camera.cpp:286/:423  Camera::init from the mission .fit          (once)
+//   mclib/camera.cpp:2100      updateDaylight                (see note below)
+//   code/weather.cpp:362       ambientRed = dayAmbientRed / rainLightLevel (raining)
+//   code/weather.cpp:380/:443  ambientRed = dayAmbientRed        (identity restore)
+//   code/mission.cpp:1997      KillAmbientLight -> 0xFF   (needs -killambient)
+// updateDaylight's whole body is inside `if (day2NightTransitionTime > 0)`
+// (camera.cpp:1877) AND its only live call site is Camera::activate()
+// (camera.cpp:2818-2824), which reaches it only when `ready && active` — false
+// on a cold mission start. The per-frame call site is commented out
+// (camera.cpp:2238). So on a default launch the ONLY runtime mutator left is
+// WEATHER, and it only moves the value when the mission authors rain.
+//
+// WHY THE MOVE IS FROZEN INTO THE PROP. mclib/txmmgr.cpp:1663-1666 states the
+// bake's design invariant: static bldg/tree actors have a "mission-constant
+// per-actor light". A per-recipe bake is taken once and re-gathered exactly
+// once more, 8 frames after mission_ready (LIGHTBAKE-REBAKE-ON-READY-1,
+// mclib/bdactor.cpp:3232-3261). On a mission that authors rain that invariant
+// is FALSE and the frozen row keeps an ambient the mission stops rendering with.
+//=============================================================================
+
+// Camera::ambientRed is `unsigned char` (mclib/camera.h), so weather's float
+// quotient TRUNCATES on store. Reduced from code/weather.cpp:260-450 to its
+// only effect on the ambient:
+//     rainLevel <= 0           -> ambient = dayAmbient        (:443, the else arm)
+//     rainLevel  > 0, rll <= 1 -> ambient = dayAmbient        (:380)
+//     rainLevel  > 0, rll  > 1 -> ambient = dayAmbient / rll  (:362)
+static float absf32(float v) { return v < 0.0f ? -v : v; }
+
+static unsigned char weatherAmbientByte(unsigned char dayAmbient,
+                                        float rainLevel, float rainLightLevel)
+{
+    if (rainLevel      <= 0.0f) return dayAmbient;
+    if (rainLightLevel <= 1.0f) return dayAmbient;
+    return (unsigned char)(float(dayAmbient) / rainLightLevel);
+}
+
+// Build a Building row whose ONLY varying input is the scene ambient byte.
+static void rowAtAmbientByte(unsigned char amb, olr::Row* out)
+{
+    auto lights = makeWorldLights();          // slot 0 sun, slot 1 ambient, 3 pool
+    lights[1].aRGB = 0xFF000000u | (uint32_t(amb) << 16)
+                                 | (uint32_t(amb) << 8)
+                                 |  uint32_t(amb);
+    olr::Query q = buildingQuery(lights);     // ambient slot is NOT policy-touched
+    pureRow(q, out);
+}
+
+// A bake at ambient state A and a bake at ambient state B are different rows,
+// and the difference is confined to the ambient slot's colour, one byte-step
+// per 1/255 of the shader's orientation-free `ambientTerm`
+// (shaders/static_prop.vert:718-722 sums every AMBIENT slot; :823 adds it to
+// `lit` at coefficient 1.0, so 1/255 of row = 1/255 of output before albedo).
+static bool test_ambient_state_changes_the_baked_row(TestCtx& t)
+{
+    // Distinct MEASURED values, not invented ones: 192 is mc2_10's authored
+    // AmbientRed/Green/Blue and 63 is the byte weather leaves at its authored
+    // StartingRainLevel (see the mission test below). PROP-RECIPE-BAKE-1
+    // measured exactly this pair in the field as 0.7529 / 0.2471.
+    const unsigned char kA = 192;
+    const unsigned char kB = 63;
+
+    olr::Row rowA{}, rowB{};
+    rowAtAmbientByte(kA, &rowA);
+    rowAtAmbientByte(kB, &rowB);
+
+    // 1. The rows differ at all. This is the whole TIME claim.
+    CH_CHECK(t, !rowsEqual(rowA, rowB));
+
+    // 2. The difference is in lightColor, nowhere else.
+    CH_CHECK(t, firstDiff(rowA, rowB).find("lightColor") != std::string::npos);
+
+    // 3. Quantified, in the units the shader adds: exactly (192-63)/255 per
+    //    channel on the ambient slot (row slot 1 — sun compacts to 0).
+    for (int c = 0; c < 3; ++c) {
+        CH_CHECK(t, rowA.lightColor[1][c] == float(kA) / 255.0f);
+        CH_CHECK(t, rowB.lightColor[1][c] == float(kB) / 255.0f);
+        CH_CHECK(t, (rowA.lightColor[1][c] - rowB.lightColor[1][c])
+                        == float(kA - kB) / 255.0f);
+    }
+
+    // 4. The SUN slot is untouched by an ambient move — so a reader cannot
+    //    misattribute this delta to the per-actor terrain recolour.
+    for (int c = 0; c < 3; ++c)
+        CH_CHECK(t, rowA.lightColor[0][c] == rowB.lightColor[0][c]);
+
+    // 5. BLINDNESS GUARDS. The comparator must say EQUAL when the ambient does
+    //    not move (else "rows differ" would be vacuous), and must still see a
+    //    single-byte move (else the resolution claim in 3 is unearned).
+    {
+        olr::Row same1{}, same2{}, off1{};
+        rowAtAmbientByte(kB, &same1);
+        rowAtAmbientByte(kB, &same2);
+        rowAtAmbientByte((unsigned char)(kB + 1), &off1);
+        CH_CHECK(t,  rowsEqual(same1, same2));
+        CH_CHECK(t, !rowsEqual(same1, off1));
+    }
+    return t.failures == 0;
+}
+
+// The mission that produced the field measurement, reconstructed from its own
+// authored bytes. mc2_10.fit [Cameras]: AmbientRed/Green/Blue = 192,
+// DayAmbient* = 192, DayToNightTime = -1, DayLightPitch = 180; [Weather]:
+// MaxRainDrops = 500, StartingRainLevel = 3.0, ChanceOfRain = 100.
+// ChanceOfRain 100 makes invRainChance = 100-100 = 0 at code/weather.cpp:238,
+// so the `!= 0.0f` guard at :239 can never fire and rainTrend never flips back:
+// mc2_10 is a PERMANENT storm that ramps rainLevel from 3.0 to the 4.0 cap
+// (:245-246) and never recovers.
+static bool test_mc2_10_storm_ambient_is_not_mission_constant(TestCtx& t)
+{
+    const unsigned char kDayAmbient = 192;   // mc2_10.fit uc AmbientRed = 192
+    const float         kStartRain  = 3.0f;  // mc2_10.fit f StartingRainLevel
+    const float         kRainCap    = 4.0f;  // code/weather.cpp:245-246 clamp
+
+    // STATE P — frame 1, BEFORE the mission's first Weather::update.
+    // code/mission.cpp orders eye->update() at :1151, weather->update() at
+    // :1189, ObjectManager->update() (which drives every appearance bake) at
+    // :1239. So the ambient the FIRST bake reads was published by Camera::update
+    // one stage before the weather that modifies it — the authored 192, a value
+    // the mission never renders a frame with.
+    const unsigned char P = kDayAmbient;
+
+    // STATE R — the first post-weather publish. rainLightLevel starts equal to
+    // rainLevel (weather.cpp:176) and then chases it upward (:271-275), so it
+    // leaves 3.0 immediately. 192/rll lands on byte 63 for rll in (3.0, 3.0476].
+    CH_CHECK(t, weatherAmbientByte(kDayAmbient, kStartRain, 3.001f) == 63);
+    CH_CHECK(t, weatherAmbientByte(kDayAmbient, kStartRain, 3.02f)  == 63);
+    CH_CHECK(t, weatherAmbientByte(kDayAmbient, kStartRain, 3.04f)  == 63);
+    const unsigned char R = weatherAmbientByte(kDayAmbient, kStartRain, 3.02f);
+
+    // STATE S — the settled storm, rainLevel pinned at the 4.0 cap.
+    CH_CHECK(t, weatherAmbientByte(kDayAmbient, kRainCap, kRainCap) == 48);
+    const unsigned char S = weatherAmbientByte(kDayAmbient, kRainCap, kRainCap);
+
+    // THE CLOSED LOOP. PROP-RECIPE-BAKE-1 measured the per-instance ambient
+    // split on mc2_10 as bright 0.7529 / dim 0.2471 (= 0x3F) and could not say
+    // which of ORDER or TIME produced it. Both constants fall out of this
+    // mission's own authored data plus the publish ordering above: P/255 and
+    // R/255 to the last bit. Nothing about bake ORDER is required.
+    olr::Row rowP{}, rowR{}, rowS{};
+    rowAtAmbientByte(P, &rowP);
+    rowAtAmbientByte(R, &rowR);
+    rowAtAmbientByte(S, &rowS);
+    CH_CHECK(t, rowP.lightColor[1][0] == 192.0f / 255.0f);   // 0.7529411…
+    CH_CHECK(t, rowR.lightColor[1][0] ==  63.0f / 255.0f);   // 0.2470588…
+    CH_CHECK(t, rowS.lightColor[1][0] ==  48.0f / 255.0f);   // where the mission settles
+
+    // Three bake moments, three DIFFERENT permanent rows on one mission.
+    CH_CHECK(t, !rowsEqual(rowP, rowR));
+    CH_CHECK(t, !rowsEqual(rowR, rowS));
+    CH_CHECK(t, !rowsEqual(rowP, rowS));
+
+    // MAGNITUDE, and its SIGN — which is what makes this a clean negative for
+    // the standing "props render too dark" report. The freeze leaves a prop
+    // BRIGHTER than the live scene, never darker: a frame-1 prop is stuck
+    // 144/255 above the settled ambient, a post-rebake prop 15/255 above it.
+    // (Difference of two separately-rounded quotients is not bit-equal to the
+    // quotient of the difference — this assertion was written == first and the
+    // harness caught it. Tolerance is 1/4 of one 8-bit step, far tighter than
+    // any claim made from it.)
+    const float kQuarterStep = 0.25f / 255.0f;
+    CH_CHECK(t, absf32((rowP.lightColor[1][0] - rowS.lightColor[1][0])
+                       - 144.0f / 255.0f) < kQuarterStep);
+    CH_CHECK(t, absf32((rowR.lightColor[1][0] - rowS.lightColor[1][0])
+                       -  15.0f / 255.0f) < kQuarterStep);
+    CH_CHECK(t, rowP.lightColor[1][0] > rowS.lightColor[1][0]);
+    CH_CHECK(t, rowR.lightColor[1][0] > rowS.lightColor[1][0]);
+    return t.failures == 0;
+}
+
+// The scope bound, and the blindness guard for the test above. 45 of the 46
+// stock missions that author a [Cameras] block leave rainLevel at 0 (only
+// mc2_10 authors live rain: mc2_19 sets StartingRainLevel 3.0 but MaxRainDrops
+// 0, and code/weather.cpp:174 turns weatherActive OFF when maxDrops == 0). On
+// those missions weather's ambient write is an IDENTITY assignment, so
+// Camera::ambient* is constant from Camera::init to mission end and NO bake
+// moment can produce a divergent row. If this test ever goes red the scope
+// claim has changed; if it can never go red, the test above is a tautology.
+static bool test_non_rainy_missions_are_immune_to_bake_time(TestCtx& t)
+{
+    // Authored ambients actually present in the stock set, so the immunity is
+    // not demonstrated on one hand-picked value.
+    const unsigned char kAuthored[] = { 192, 128, 106, 95, 74, 31 };
+
+    for (unsigned char day : kAuthored) {
+        // Same three moments as the storm test, with rainLevel = 0.
+        const unsigned char P = day;                              // pre-weather
+        const unsigned char R = weatherAmbientByte(day, 0.0f, 3.02f);
+        const unsigned char S = weatherAmbientByte(day, 0.0f, 4.0f);
+        CH_CHECK(t, R == day);
+        CH_CHECK(t, S == day);
+
+        olr::Row rowP{}, rowR{}, rowS{};
+        rowAtAmbientByte(P, &rowP);
+        rowAtAmbientByte(R, &rowR);
+        rowAtAmbientByte(S, &rowS);
+        CH_CHECK(t, rowsEqual(rowP, rowR));
+        CH_CHECK(t, rowsEqual(rowR, rowS));
+
+        // INJECTION: give this mission the rain it does not author and the same
+        // three moments must stop agreeing. Proves the immunity above is decided
+        // by the mission data, not by the fixture being incapable of differing.
+        const unsigned char injR = weatherAmbientByte(day, 3.0f, 3.02f);
+        olr::Row injRow{};
+        rowAtAmbientByte(injR, &injRow);
+        CH_CHECK(t, !rowsEqual(rowP, injRow));
+    }
+    return t.failures == 0;
+}
+
 int main(int argc, char** argv)
 {
     Harness h("object_light_row_harness");
@@ -794,5 +1021,12 @@ int main(int argc, char** argv)
     h.add("determinism",                         test_determinism);
     h.add("empty_and_null_light_lists",          test_empty_and_null_light_lists);
     h.add("comparator_detects_injected_divergence", test_comparator_detects_injected_divergence);
+    // PROP-BAKE-TIME-1 (appended — never inserted; test order is the report order)
+    h.add("ambient_state_changes_the_baked_row",
+          test_ambient_state_changes_the_baked_row);
+    h.add("mc2_10_storm_ambient_is_not_mission_constant",
+          test_mc2_10_storm_ambient_is_not_mission_constant);
+    h.add("non_rainy_missions_are_immune_to_bake_time",
+          test_non_rainy_missions_are_immune_to_bake_time);
     return h.run(argc, argv);
 }

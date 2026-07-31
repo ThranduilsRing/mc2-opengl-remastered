@@ -3215,6 +3215,114 @@ namespace mc2_lightslot_trace {
 // until GATE-HYGIENE-CLOSE-1 added it to kAuxEnvVars, docs/tier1_env_vars.md
 // and run_smoke.py's passthrough allowlist. NOTE: MC2_DIAGF
 // is additionally gated on MC2_DIAG_VERBOSE=1 -- without it this emits nothing.
+//
+// ★★ PROP-BAKE-TIME-1 (2026-07-30) -- THE TIME HYPOTHESIS IS CONFIRMED, AND THE
+// MUTATOR IS WEATHER. Both field constants are now derived, to the bit, from
+// mc2_10's own authored bytes. This closes PROP-BAKE-ORDER-VS-TIME-1: ORDER was
+// refuted above, TIME is confirmed here, and no third hypothesis is needed.
+//
+//   * mc2_10.fit [Cameras] `uc AmbientRed/Green/Blue = 192` and [Weather]
+//     `f StartingRainLevel = 3.0`, `l ChanceOfRain = 100`, `ul MaxRainDrops = 500`
+//     (verified in mc2srcdata-fresh/missions/mc2_10.fit, which md5-matches
+//     tools/mc2data/stock_missions.md5).
+//   * BRIGHT 0.7529 == 192/255 EXACTLY == the authored ambient with NO weather
+//     division. Camera::update() publishes setLightColor(1, ambient) at
+//     camera.cpp:2418-2420 and mission.cpp orders eye->update() (:1151) BEFORE
+//     weather->update() (:1189) BEFORE ObjectManager->update() (:1239, every
+//     appearance bake). So the frame-1 bake reads an ambient published one stage
+//     ahead of the weather that modifies it -- a value the mission never renders
+//     a frame with.
+//   * DIM 0.2471 == 63/255 EXACTLY == trunc(192 / rainLightLevel) for
+//     rainLightLevel in (3.0, 3.0476] -- i.e. weather.cpp:362 one tick past
+//     mc2_10's authored StartingRainLevel. Camera::ambientRed is `unsigned char`,
+//     so the quotient truncates.
+//   * ChanceOfRain 100 makes invRainChance 0 at weather.cpp:238, so the `!= 0.0f`
+//     guard at :239 never fires and rainTrend never flips: mc2_10 is a permanent
+//     storm that ramps rainLevel to the 4.0 cap (:245-246) and stays there. The
+//     LIVE ambient therefore SETTLES at 192/4 = 48/255,
+//     while the frozen rows keep 63/255 (post-rebake) or 192/255 (frame 1).
+//
+// DIRECTION, and why this is NOT the standing "props render too dark" report.
+// Scoped precisely to the shader's orientation-free ambientTerm
+// (static_prop.vert:718-722 sums it, :823 adds it at coefficient 1.0): the
+// freeze leaves that term ABOVE the live scene's, never below -- +15/255
+// post-rebake, +144/255 for a frame-1 recipe. Fixing it DARKENS props on
+// mc2_10. This says nothing about the sun slot or the final pixel, only about
+// the one term this lane measured.
+//
+// SCOPE: one mission. Enumerated at source, the writers of Camera::ambientRed are
+// camera.cpp:286/:423 (init, once), camera.cpp:2100 (updateDaylight),
+// weather.cpp:362/:380/:443, and mission.cpp:1997 (-killambient only). Of those:
+//   - camera.cpp:2100 is UNREACHABLE in a mission. Correcting the bullet above:
+//     the gate is not "missions with no DayToNightTime" -- all 46 stock missions
+//     that have a [Cameras] block AUTHOR the key (43 with a value <= 0), so the
+//     readIdFloat fallback is dead data. The real reason is dispatch:
+//     updateDaylight's per-frame call site is commented out (camera.cpp:2238) and
+//     its only other caller is Camera::activate() (camera.cpp:2818-2824) -- which
+//     `eye` never reaches, because activate() is virtual (camera.h:1285),
+//     `eye = new GameCamera` (mission.cpp:5108), and GameCamera::activate
+//     (gamecam.cpp:1024) fully overrides it without chaining, with its own
+//     updateDaylight(true) commented out at gamecam.cpp:1060. All three game-side
+//     callers (mechcmd2.cpp:1847, logistics.cpp:875, saveload.cpp:1654) dispatch
+//     there. Only Camera::setDaylightFraction (the MC2_UI_COMMAND_FILE driver)
+//     can still reach it.
+//   - weather's write is an IDENTITY assignment when rainLevel == 0 (:443).
+//   Leaving WEATHER as the only default-launch mutator, and mc2_10 as the only
+//   stock mission that can ever rain. Scanned across the whole stock corpus,
+//   mc2_10 is the ONLY .fit with MaxRainDrops > 0 and a non-zero
+//   StartingRainLevel/ChanceOfRain (mc2_19 authors StartingRainLevel 3.0 but
+//   MaxRainDrops 0, and weather.cpp:174 clears weatherActive when maxDrops == 0).
+//   And rain cannot start spontaneously either: Weather's ctor seeds
+//   rainTrend = +1, rainFactor = 0 (weather.h:101-102), so with rainLevel 0 the
+//   only branch that can arm rain -- `(rainLevel <= 1.5f) && (rainTrend < 0.0f)`
+//   at weather.cpp:221 -- is unreachable and rainLevel stays pinned at 0.
+//   On the other 45 missions Camera::ambient* is constant from Camera::init to
+//   mission end, so NO bake moment can produce a divergent row there.
+//
+// AND THE INVALIDATION CANNOT REACH MOST PROPS ANYWAY -- this is independent of
+// weather and is the harder half. Every live caller of
+// mc2CacheOrBakeStaticGpuLight() sits inside an update(): BldgAppearance::update
+// at :4214/:4290 and TreeAppearance::update at :7248/:7323 (the gpuEligible and
+// full-bake arms of each). The only other callers are the default-OFF
+// prewarmStaticLightBake pair (:5086 bldg, :8069 tree). The touch() family never
+// calls it: BldgAppearance touch/touchSerialCommit reach only
+// ResubmitCachedGpuLightData() (:5196, :5432) and TreeAppearance only (:7589,
+// :7684) -- and that function (mclib/msl.cpp:2127) re-submits the leaf's
+// ALREADY-CACHED lightData_. It never re-gathers from eye->getWorldLights() and
+// never consults s_bakedStaticLight. MC2_STATIC_UPDATE_SKIP defaults TRUE
+// (terrobj.cpp:96), so once a prop's IsStaticNow() holds, terrobj.cpp routes it
+// to touch() for the rest of the mission. A prop that went static before
+// mission_ready+8 therefore keeps its FIRST-EVER row forever: clearing the cache
+// map is a no-op for it, because nothing will ever ask the map again.
+// So the honest answer to "is the bake ever redone?" is: only for props still on
+// the update() path at the instant of the single invalidation.
+// WHAT IS STILL UNKNOWN: which props end up in which cohort. The 28/132 and 2/8
+// partitions cannot be derived offline -- they depend on per-class routing
+// (buildings vs terrain objects) and on when each IsStaticNow() first holds.
+// The [BAKEORD v1] probe below already logs `frame=` and `postInvalidate=` per
+// bake, which is exactly the discriminator; it needs one gated run, not more
+// reading. Do not promote a guess about the partition to fact here.
+//
+// EXECUTABLE PROOF (no launch, no GL, no engine link):
+//   tools/object_light_row_harness ::ambient_state_changes_the_baked_row
+//                                  ::mc2_10_storm_ambient_is_not_mission_constant
+//                                  ::non_rainy_missions_are_immune_to_bake_time
+// The third is the scope bound AND the blindness guard: it holds the same three
+// bake moments against six real authored ambients at rainLevel 0 and requires
+// byte-identical rows, then injects the rain those missions do not author and
+// requires the rows to stop agreeing. Both regressions were injected into this
+// tree and observed RED before the tests were kept.
+//
+// THE FIX, DESIGNED BUT DELIBERATELY NOT SHIPPED. The seam already exists:
+// mc2StaticLightEnvironmentGeneration (bdactor.cpp:2767) returns a constant 0
+// and is already consulted by the STABLE_LIGHT_SKIP eligibility test. Deriving
+// it from the published scene lighting (Camera::ambient{Red,Green,Blue} +
+// light{Red,Green,Blue}) and invalidating the bake cache on change repairs the
+// invariant txmmgr.cpp:1663 asserts, and self-quiesces: those are 8-bit values,
+// so a full storm ramp costs ~16 re-bakes and a non-rainy mission costs zero.
+// It is NOT flipped here because its only visible effect on stock data is to
+// darken props on mc2_10, which is the opposite direction to the user's standing
+// report. That is a user call, not an agent call.
 static bool s_lightBakeRebakeDone = false;
 
 static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,

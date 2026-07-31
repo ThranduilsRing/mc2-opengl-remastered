@@ -33,19 +33,27 @@
 // already set to nightLight*.
 //
 // PRECISION ABOUT WHEN THAT BITES, because it is worth being exact rather than
-// alarming: the fold only happens if updateDaylight() actually runs, and its one
-// live call site is Camera::activate() (camera.cpp:2765-2770), which early-exits
-// into it ONLY when `ready && active`. On a cold mission start
-// (mechcmd2.cpp:1847 calls activate() before the first update()) `active` is
-// still false, updateDaylight() is skipped, lightPitch stays 270, and
-// Camera::update() computes lightAltitude = 180-270 = -90 -> isNight = true. So
-// on that path the runtime signals are CORRECT. They become wrong on any later
-// activate() taken with the camera already ready+active -- e.g. saveload.cpp:1654
-// after loading a save. In other words a runtime-signal gate on mc2_05 is not
-// reliably wrong, it is UNRELIABLY right: correct on a fresh start, silently
-// full-ON after a load. That is worse than a consistent bug and is exactly the
-// class of thing a visual capture would not catch.
-// The authored pitch is 270 on both paths, so this gate does not care.
+// alarming: the fold only happens if updateDaylight() actually runs, and IT
+// NEVER DOES during a mission. CORRECTED 2026-07-30 (PROP-BAKE-TIME-1) -- this
+// paragraph previously said the fold was merely skipped on a cold start and
+// "becomes wrong on any later activate() taken with the camera already
+// ready+active -- e.g. saveload.cpp:1654 after loading a save". That is not
+// right, and the `ready && active` early-exit is not the reason. activate() is
+// VIRTUAL (mclib/camera.h:1285), the in-mission camera is a GameCamera
+// (code/mission.cpp:5108 `eye = new GameCamera`), and GameCamera::activate
+// (code/gamecam.cpp:1024) fully overrides the base without chaining to it -- its
+// own updateDaylight(true) is commented out at gamecam.cpp:1060. All three
+// game-side callers (mechcmd2.cpp:1847, logistics.cpp:875, saveload.cpp:1654)
+// dispatch there, and the per-frame call site is commented out too
+// (camera.cpp:2238). So lightPitch keeps its authored value on EVERY path
+// including post-load, Camera::update() computes lightAltitude = 180-270 = -90
+// -> isNight = true, and the runtime signals are consistently CORRECT rather
+// than unreliably right. The only surviving caller of updateDaylight() is
+// Camera::setDaylightFraction (the MC2_UI_COMMAND_FILE sun driver), which is not
+// a default-launch path.
+// The authored pitch is 270 regardless, so this gate does not care either way --
+// which is why the correction changes no behaviour here, only what a reader may
+// safely cite from this file.
 //
 // (Root cause of the fold leaking out at all: Camera::update()'s guard
 // `if (day2NightTransitionTime <= 0.0f)` is commented out at camera.cpp:2192-

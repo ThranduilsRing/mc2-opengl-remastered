@@ -1664,7 +1664,19 @@ namespace {
     // Static bdactor bldg/tree actors have a mission-constant per-actor
     // light (position-derived getTerrainLight + frozen sun/nightFactor;
     // no dynamic emitters -- lighting_is_mission_load_static_no_dynamic_
-    // emitters.md). Lazily bake the post-decompose TG_HWLightsData once
+    // emitters.md).
+    // ★ PROP-BAKE-TIME-1 (2026-07-30): that invariant is TRUE on 45 of the 46
+    // stock missions and FALSE on mc2_10, which authors live rain. Weather
+    // rewrites Camera::ambient*/light* every frame as dayAmbient/rainLightLevel
+    // (code/weather.cpp:362) and mc2_10's storm ramps rainLightLevel 3.0 -> 4.0,
+    // so its published ambient walks 63/255 -> 48/255 across the mission while
+    // every baked row stays frozen at whatever it read. Proven offline by
+    // tools/object_light_row_harness ::mc2_10_storm_ambient_is_not_mission_constant
+    // (and bounded by ::non_rainy_missions_are_immune_to_bake_time); full
+    // derivation and the designed-but-unshipped repair are in the PROP-BAKE-TIME-1
+    // block above mc2CacheOrBakeStaticGpuLight in mclib/bdactor.cpp. Do not cite
+    // the sentence above as unconditional.
+    // Lazily bake the post-decompose TG_HWLightsData once
     // (keyed by monotonic-never-reused registry recipeIndex) then re-emit
     // the constant into a per-frame slot WITHOUT the per-frame
     // GatherLights+decompose+template recompute (the retired CPU zone).
