@@ -50,157 +50,29 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 # ---------------------------------------------------------------------------
 # RendererFeatureRegistry.h parsing
 # ---------------------------------------------------------------------------
+#
+# REGISTRY-PARSER-TRUTH-1 (2026-07-31): the parser this file used to carry
+# privately now lives in scripts/registry_parse.py, unchanged, because two OTHER
+# tools carried their own private copies of the same grammar and both were wrong
+# -- tools/repo_intel/env_index.py at 359 of 360 rows (which made the gate_status
+# MCP tool answer `registered: false, verdict: OK` about a registered gate while
+# citing the registry line it had failed to parse), and
+# scripts/flag-registry-auto-gen.py at 248 of 360, whose output is the TRACKED
+# docs/flags.auto.yaml and asserted `registered: no` about 73 registered gates.
+# One implementation, one set of invariants; see that module's header for the
+# three measured row-drop causes and why the invariants are self-referential.
+#
+# selftest_registry_guard() below still corrupts the REAL header four ways and
+# requires a refusal from each, so the shared parser is exercised from here.
 
-# Whitespace-or-comment gap between two structural tokens of a registry row.
-# Applied ONLY between tokens -- never inside a string literal, whose contents
-# the surrounding subpattern consumes atomically -- so a "//" or "/*" occurring
-# inside a doc string can never be mistaken for a comment.  This is deliberately
-# NOT a whole-file comment stripper: those get the string boundaries wrong, and
-# this repo already carries several broken copies of that idea.
-_GAP = r"(?:\s|//[^\n]*\n|/\*(?:[^*]|\*(?!/))*\*/)*"
-
-_ENTRY_RE = re.compile(
-    r"\{" + _GAP
-    + r'"(?P<feature>MC2_[A-Z0-9_]+)"' + _GAP + "," + _GAP
-    + r'(?P<env>"(?:[^"\\]|\\.)*"|nullptr)' + _GAP + "," + _GAP
-    + r"EnvVarKind::(?P<kind>\w+)" + _GAP + "," + _GAP
-    + r"(?P<default>true|false)" + _GAP + "," + _GAP
-    + r'(?P<doc>"(?:[^"\\]|\\.)*"(?:' + _GAP + r'"(?:[^"\\]|\\.)*")*)' + _GAP + r",?" + _GAP
-    + r"\}",
-    re.S,
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from registry_parse import (          # noqa: E402
+    ENTRY_RE as _ENTRY_RE,
+    ROW_OPENER_RE as _ROW_OPENER_RE,
+    RegistryParseError,
+    parse_registry,
 )
 
-# INDEPENDENT denominator: how many rows the header DECLARES.  Deliberately
-# scanned over the whole file rather than over the extracted table bodies, so
-# it does not inherit _table_body()'s brace-counting assumptions -- if a stray
-# brace inside a doc string ever truncated a body, the two numbers diverge and
-# the mismatch is caught instead of shrinking both sides together.
-_ROW_OPENER_RE = re.compile(r'\{\s*"(MC2_[A-Z0-9_]+)"\s*,')
-
-
-class RegistryParseError(Exception):
-    """The gate registry did not parse cleanly -- refuse to publish."""
-
-
-def _unquote(lit: str) -> str:
-    """Join and unescape one or more adjacent C string literals."""
-    parts = re.findall(r'"((?:[^"\\]|\\.)*)"', lit)
-    s = "".join(parts)
-    return (
-        s.replace("\\\\", "\x00")
-        .replace('\\"', '"')
-        .replace("\\n", "\n")
-        .replace("\\t", "\t")
-        .replace("\x00", "\\")
-    )
-
-
-def _table_body(text: str, name: str) -> tuple:
-    """-> (body, status) where status is 'ok' | 'missing' | 'unclosed'.
-
-    'unclosed' means the array opened but its matching '}' was never reached --
-    i.e. the text ran out mid-table.  That is what a TRUNCATED or mid-write read
-    of the header looks like, and the caller must treat it as a hard error: the
-    rows past the cut are simply absent, with nothing in the returned body to
-    say so.
-    """
-    m = re.search(r"EnvVarDesc\s+%s\s*\[\s*\]\s*=\s*\{" % re.escape(name), text)
-    if not m:
-        return "", "missing"
-    depth, i = 1, m.end()
-    while depth and i < len(text):
-        if text[i] == "{":
-            depth += 1
-        elif text[i] == "}":
-            depth -= 1
-        i += 1
-    if depth:
-        return text[m.end(): i], "unclosed"
-    return text[m.end(): i - 1], "ok"
-
-
-def parse_registry(header_path: str) -> dict:
-    """Return {ENV_VAR: {featureId, envVar, kind, defaultOn, doc, table}}.
-
-    Raises RegistryParseError rather than returning a partial result.  This
-    table IS the published gate inventory (section 0); a run that parses a
-    fraction of it and exits 0 publishes a page whose defaults look sourced
-    and are not.  Observed once for real: a torn read during a concurrent
-    lane's write yielded 10 entries of 359, a WARNING on stderr, exit 0, and a
-    perfectly well-formed page in which 13 of the 39 gates the pack names lost
-    their compiled default -- one of them rendering the red claim "GHOST --
-    this gate does nothing" about a gate that is registered and works.
-
-    Three structural invariants, all self-referential (no pinned counts, no
-    floors, nothing that goes stale):
-      1. both arrays must be present,
-      2. both must be brace-CLOSED -- a truncated read is not a small registry,
-      3. every row the file DECLARES must actually parse, and no two rows may
-         collide on the same published key.
-    A legitimate change that adds or deletes gates moves both sides of (3)
-    together and passes; only a parse that lost rows fails.
-    """
-    # strict, not errors="replace": U+FFFD substituted into a gate NAME would
-    # drop that row from the parse AND from the declared-row count in step (3),
-    # hiding itself from the very check meant to catch it.  A header that does
-    # not decode is not the source we think we are reading -- refuse.
-    try:
-        with open(header_path, encoding="utf-8", errors="strict") as fh:
-            text = fh.read()
-    except UnicodeDecodeError as exc:
-        raise RegistryParseError(
-            "%s is not valid UTF-8 (%s) -- refusing to publish a gate table "
-            "parsed from undecodable bytes" % (header_path, exc)) from exc
-
-    declared = [m.group(1) for m in _ROW_OPENER_RE.finditer(text)]
-
-    reg: dict = {}
-    parsed: list = []
-    for table in ("kFeatureTable", "kAuxEnvVars"):
-        body, status = _table_body(text, table)
-        if status == "missing":
-            raise RegistryParseError(
-                "table %s not found in %s -- the header is truncated, renamed "
-                "or unreadable; refusing to publish a partial gate table"
-                % (table, header_path))
-        if status == "unclosed":
-            raise RegistryParseError(
-                "table %s in %s opens but never closes -- the file is "
-                "truncated (read %d of %d chars); refusing to publish"
-                % (table, header_path, len(body), len(text)))
-        for m in _ENTRY_RE.finditer(body):
-            env = m.group("env")
-            entry = {
-                "featureId": m.group("feature"),
-                "envVar": None if env == "nullptr" else _unquote(env),
-                "kind": m.group("kind"),
-                "defaultOn": m.group("default") == "true",
-                "doc": _unquote(m.group("doc")),
-                "table": table,
-            }
-            parsed.append(entry)
-            key = entry["envVar"] or entry["featureId"]
-            if key in reg:
-                raise RegistryParseError(
-                    "two registry rows publish the same key %r (%s in %s, and "
-                    "%s in %s) -- the page would show one of two conflicting "
-                    "defaults with no way to tell which"
-                    % (key, reg[key]["featureId"], reg[key]["table"],
-                       entry["featureId"], table))
-            reg[key] = entry
-
-    if len(parsed) != len(declared):
-        got = set(x["featureId"] for x in parsed)
-        lost = [d for d in declared if d not in got]
-        raise RegistryParseError(
-            "%s declares %d gate rows but only %d parsed -- %d row(s) were "
-            "silently skipped: %s%s.  A row is skipped when it does not match "
-            "the entry grammar (a stray token between fields, an unterminated "
-            "string) or when the file was read mid-write.  Refusing to publish "
-            "a gate table that is missing rows the source declares."
-            % (header_path, len(declared), len(parsed), len(declared) - len(parsed),
-               ", ".join(lost[:8]), " ..." if len(lost) > 8 else ""))
-    return reg
 
 
 # ---------------------------------------------------------------------------

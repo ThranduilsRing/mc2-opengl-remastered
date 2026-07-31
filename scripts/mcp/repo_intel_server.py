@@ -689,6 +689,10 @@ def gate_status(var: str) -> str:
     Call BEFORE relying on a gate in a smoke run and AFTER adding a new gate.
 
     Flags returned (each maps to an observed failure class):
+      REGISTRY_UNPARSED — the registry header did not parse COMPLETELY. Then
+                      `registered` is the STRING "UNKNOWN" (not false) and
+                      verdict is "UNDETERMINED". Do not record an
+                      UNREGISTERED or dead-gate finding off this answer.
       ENV_UNDRIVEABLE — smoke_lib/runner.py really does discard this var's
                       ambient value (FORCED_ENV / POPPED_ENV): an A/B arm
                       that sets it never ran.
@@ -699,6 +703,14 @@ def gate_status(var: str) -> str:
       UNDOCUMENTED  — no docs/tier1_env_vars.md entry.
       GHOST         — registered/documented but no code reader found.
 
+    `registered` IS TRI-STATE: true / false / "UNKNOWN". Until
+    REGISTRY-PARSER-TRUTH-1 (2026-07-31) this tool's parser dropped any registry
+    row carrying an inline comment between two fields, and answered
+    `registered: false, verdict: "OK", flags: []` about MC2_LIGHTING_DEBUG_VIEW
+    -- a correctly registered gate -- while its own reader list cited the
+    registry line it had failed to parse. Treat "UNKNOWN" as "I could not tell",
+    never as "no".
+
     ABSENCE FROM THE PASSTHROUGH TUPLE IS NOT A DROP. The runner builds the
     child env from os.environ.copy(), so ambient MC2_* reach mc2.exe whether
     or not the tuple names them (~100 registered gates are in that gap). Do
@@ -707,10 +719,12 @@ def gate_status(var: str) -> str:
     scripts/check-smoke-env-inheritance.py. Until ENV-DROP-CLOSE-1 this tool
     asserted the opposite and real evidence was thrown away on its word.
 
-    Returns JSON: {var, verdict OK|GAPS, flags, default, registered,
-    registry_entry, tier1_documented, smoke_allowlisted, smoke_env_inherited,
-    smoke_env_forced, smoke_env_popped, smoke_env_soft_default,
-    registry_check_allowlisted, reader_count, readers, parse_notes}.
+    Returns JSON: {var, verdict OK|GAPS|UNDETERMINED, flags, default,
+    default_source, registered (true|false|"UNKNOWN"), registry_parse_ok,
+    registry_parse_error, registry_entry, tier1_documented, smoke_allowlisted,
+    smoke_env_inherited, smoke_env_forced, smoke_env_popped,
+    smoke_env_soft_default, registry_check_allowlisted, reader_count, readers,
+    parse_notes}.
     """
     root = _repo()
     return _j(gstat.gate_status(root, var))
