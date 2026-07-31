@@ -44,9 +44,13 @@ Exit 0 = pass, 1 = violation, 2 = selftest failure.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checklib  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -87,10 +91,23 @@ EXEMPT: dict[str, str] = {
 
 
 def _strip_comments(text: str) -> str:
-    """Remove // and /* */ comments so a mention in prose never satisfies the rule."""
-    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
-    text = re.sub(r"//[^\n]*", " ", text)
-    return text
+    """Remove // and /* */ comments so a mention in prose never satisfies the rule.
+
+    STRIPPER-AUDIT-1 (2026-07-31): delegated to the shared lexer. The two
+    stateless regexes this replaced could not see a `/*` sitting inside a `//`
+    comment -- notably the stock `//*****` banner, where `//` + `*` IS a `/*` --
+    and so opened a phantom block running to the next `*/` anywhere in the file.
+
+    MEASURED exposure for THIS checker specifically: low but non-zero and
+    latent. Only files whose RAW text carries the needle reach the stripper, and
+    today that is 10 files, of which one (mclib/bdactor.cpp, 225 hidden code
+    lines) is affected -- and it is EXEMPT below, and its needle lines fall
+    outside the hidden span. So the bug changes no verdict today. It arms itself
+    the moment a `getCachedGpuLightIndex()` read lands after a banner comment in
+    any scanned TU, at which point this rule would go quietly green on a real
+    unguarded read. Repointed on that basis, not on a live failure.
+    """
+    return checklib.strip_comments(text)
 
 
 def scan(repo: Path) -> list[tuple[str, list[int]]]:

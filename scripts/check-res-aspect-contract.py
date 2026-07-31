@@ -118,7 +118,17 @@ def rule_a(ctx: Ctx) -> list[str]:
     files = (ctx.list_files([d for d in RULE_A_DIRS if d != "shaders"], CODE_EXTS)
              + ctx.list_files(["shaders"], SHADER_EXTS))
     for rel in files:
-        text = checklib.strip_comments(ctx.read(rel))
+        raw = ctx.read(rel)
+        # Pre-filter on the RAW text before paying for the comment lexer.
+        # EXACT, not an approximation: stripping only ever DELETES characters,
+        # so a token absent from the raw text cannot appear after stripping.
+        # (STRIPPER-AUDIT-1: checklib.strip_comments is now a real per-character
+        # lexer rather than two regexes; without this the whole-tree walks in
+        # RULE A / RULE B took res_aspect_selftest 1.28s -> 12.24s, past the
+        # 5s-per-check budget this suite promises.)
+        if not TOKEN_RE.search(raw):
+            continue
+        text = checklib.strip_comments(raw)
         for lineno, line in enumerate(text.splitlines(), start=1):
             if TOKEN_RE.search(line):
                 problems.append(
@@ -134,7 +144,10 @@ def rule_a(ctx: Ctx) -> list[str]:
 def current_counts(ctx: Ctx) -> dict[str, int]:
     counts: dict[str, int] = {}
     for rel in ctx.list_files(RULE_B_DIRS, CODE_EXTS):
-        text = checklib.strip_comments(ctx.read(rel))
+        raw = ctx.read(rel)
+        if not TOKEN_RE.search(raw):   # exact pre-filter, see rule_a()
+            continue
+        text = checklib.strip_comments(raw)
         n = len(TOKEN_RE.findall(text))
         if n > 0:
             counts[rel] = n

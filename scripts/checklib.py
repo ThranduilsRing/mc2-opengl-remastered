@@ -26,6 +26,7 @@ Exit convention (check-combat-soak.py:20-22):
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import re
@@ -76,47 +77,54 @@ def iter_source_files(rel_dirs: Iterable[str],
 # Comment stripping + whitespace normalization
 # ---------------------------------------------------------------------------
 
-_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
-_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
-
-
 def strip_comments(text: str) -> str:
-    """Remove /* */ and // comments, preserving line structure (newlines
-    inside block comments are kept so line numbers stay stable).
+    """Remove /* */ and // comments, preserving line structure.
 
-    Lexically naive by design (string literals containing comment markers
-    are rare in this codebase's checker scopes); good enough for the
-    grep-tier contract checks, same bar as the .sh checkers.
+    This is now a thin alias for `strip_comments_lexed`. The name is kept
+    because it is the one every caller already imports; repointing the body was
+    cheaper and safer than repointing the call sites one at a time.
 
-    THAT CLAIM IS FALSE ON AT LEAST ONE REAL FILE, MEASURED (CONTRACT-GREEN-1,
-    2026-07-31). It is not string literals that break it -- it is `/*` inside a
-    `//` comment, which this function has no state to notice. Prose comments in
-    this repo quote shell and git one-liners, and one of them contains `/*`:
+    WHY IT WAS REPOINTED (STRIPPER-AUDIT-1, 2026-07-31). The body used to be two
+    stateless regexes -- block comments first, then line comments -- which has no
+    state with which to notice a `/*` sitting INSIDE a `//` comment. Such a `/*`
+    opens a phantom block that the regex runs forward to the next `*/` ANYWHERE
+    in the file, deleting all the real code in between.
 
-        GameOS/gameos/gameos_graphics.cpp:2929  // ... `git log -S'/*'` ...
+    The trigger is not exotic. The dominant source is the stock MechCommander
+    banner comment, of which this tree has thousands:
 
-    The unmatched `/*` opens a block comment that runs to the next `*/`
-    ANYWHERE in the file -- here 2304 lines later, at an inline
-    `/* invariant: shadow path always on */` on line 5233. The regex deletes
-    everything between: 4167 of the file's 10504 non-blank lines, 40% of the
-    largest TU in the engine, including real code such as
+        //****************************************************************
 
-        gameos_graphics.cpp:5184  const char* tessEnv = getenv("MC2_TERRAIN_TESS");
+    `//` followed by `*` IS the two-character sequence `/*` at offset 1. MEASURED
+    over GameOS/ code/ mclib/ editor/ tools/: 73 files carry at least one phantom
+    block, hiding 34,385 lines of real code. Worst cases:
 
-    Any rule that greps `strip_comments(<that file>)` is silently blind over
-    that span. 17 checkers call this function; auditing and repointing each is
-    out of this lane's scope, so the fix here is additive: use
-    `strip_comments_lexed` below for any NEW rule, and for any existing rule
-    whose blind spot is shown to matter. This docstring is the ledger entry --
-    do not delete it while the naive body is still live.
+        code/objmgr.cpp                     2913 code lines hidden (547..4478)
+        mclib/move.cpp                      2470
+        code/logisticsdata.cpp              2114
+        GameOS/gameos/gos_mech_batcher.cpp  1904
+        GameOS/gameos/gameos_graphics.cpp   1491 (2929..5233)
+
+    The gameos_graphics.cpp span opens on a `shaders/*'` glob quoted in prose at
+    :2929 and closes on an inline `/* invariant ... */` at :5233, swallowing
+    `getenv("MC2_TERRAIN_TESS")` at :5184 -- a line a rule was specifically
+    trying to see.
+
+    PERFORMANCE. The lexer is a per-character Python loop, ~35x the cost of the
+    regexes (0.019s -> 0.667s over the 5 MB GameOS+RenderCore set). Two mitigations,
+    both mandatory for any caller that walks a whole tree:
+      1. results are memoized below, so re-stripping the same file is free;
+      2. callers must pre-filter on the RAW text before calling. That is EXACT,
+         not an approximation: stripping only ever DELETES characters, so a token
+         absent from the raw text cannot appear after stripping. See
+         check-split-path-contracts.py rule3_predicate() for the reference shape.
+    Slowness is not cosmetic here -- this aggregator's own header records that a
+    suite too slow to run before a commit is how checks go dark.
     """
-    def _block(m: re.Match) -> str:
-        return "\n" * m.group(0).count("\n")
-    text = _BLOCK_COMMENT_RE.sub(_block, text)
-    text = _LINE_COMMENT_RE.sub("", text)
-    return text
+    return strip_comments_lexed(text)
 
 
+@functools.lru_cache(maxsize=128)
 def strip_comments_lexed(text: str) -> str:
     """Correct C/C++ comment stripping: a single left-to-right scan that
     tracks string and character literals, so a comment marker inside a
@@ -134,6 +142,10 @@ def strip_comments_lexed(text: str) -> str:
       * a backslash-continued `//` comment ends at the first newline.
     Both are noisier-than-correct in the safe direction only for comments;
     neither can hide code the way the naive version does.
+
+    Memoized (pure function of its argument): a checker that strips the same
+    file under several rules pays the per-character scan once. Callers that walk
+    a whole tree must ALSO pre-filter on the raw text -- see strip_comments().
     """
     out = []
     i = 0

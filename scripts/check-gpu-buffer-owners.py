@@ -35,6 +35,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checklib  # noqa: E402
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 REGISTRY_H   = os.path.join(REPO_ROOT, "RenderCore", "RenderResourceRegistry.h")
@@ -146,9 +149,31 @@ def parse_tostring_cases():
 
 
 def strip_comments(s):
-    s = re.sub(r"/\*.*?\*/", "", s, flags=re.DOTALL)
-    s = re.sub(r"//.*$", "", s, flags=re.MULTILINE)
-    return s
+    """Correct C/C++ comment stripping, delegated to the shared lexer.
+
+    STRIPPER-AUDIT-1 (2026-07-31): this used to be the same two stateless
+    regexes checklib.strip_comments carried -- block comments first, then line
+    comments -- which cannot see that a `/*` sits INSIDE a `//` comment and so
+    opens a phantom block running to the next `*/` anywhere in the file. The
+    trigger is the stock MechCommander `//*****...` banner: `//` followed by `*`
+    IS a `/*`. MEASURED over this checker's own SCAN_DIRS: 4 of 102 scanned TUs
+    were affected, hiding 4,360 lines of real code --
+    gos_mech_batcher.cpp (1904), gameos_graphics.cpp (1491),
+    gos_terrain_lod_chunk.cpp (964) -- i.e. precisely the GPU-buffer-heavy
+    translation units this gate exists to police.
+
+    WHAT WAS ACTUALLY AT RISK, having tested rather than assumed: NOT rules 1-3.
+    owner_sites() runs OWNER_DECL over the RAW text and only strips the small
+    inner-brace slice, so construction sites were always visible. The exposed
+    consumer is ssbo_ubo_names_by_file(), which whole-file-strips to collect
+    glBindBufferBase TARGETS. A glBindBufferBase inside a phantom span was
+    invisible, so its buffer was never recognised as an SSBO/UBO, so the
+    "un-owned SSBO/UBO with no // TIER2-EXCLUDED tag" rule skipped it entirely --
+    a genuinely unowned GPU buffer passing as an out-of-scope VBO. That is the
+    hole this repoint closes; the first draft of this comment claimed rules 1-3
+    and an injection test disproved it.
+    """
+    return checklib.strip_comments(s)
 
 
 def owner_sites():
@@ -242,15 +267,21 @@ def bound_ssbo_ubo_vars():
                 continue
             path = os.path.join(d, fn)
             rel = os.path.relpath(path, REPO_ROOT).replace(os.sep, "/")
-            text = strip_comments(read(path))
-            names = set()
+            raw = read(path)
+            # Pre-filter on the RAW text before paying for the lexer. EXACT, not
+            # an approximation: stripping only ever DELETES characters, so a
+            # token absent from the raw text cannot appear after stripping.
+            # (STRIPPER-AUDIT-1 -- keeps this row at its pre-lexer cost.)
+            by_file[rel] = names = set()
+            if not BIND_BASE.search(raw):
+                continue
+            text = strip_comments(raw)
             for m in BIND_BASE.finditer(text):
                 expr = m.group(1).strip()
                 expr = CAST_PREFIX.sub("", expr)  # drop one cast/paren wrapper
                 bm = BARE_IDENT.match(expr)
                 if bm:
                     names.add(bm.group(1))
-            by_file[rel] = names
     return by_file
 
 

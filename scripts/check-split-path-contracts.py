@@ -367,6 +367,11 @@ def rule1_color(ctx: Ctx) -> list[str]:
 
     for rel in ctx.list_shader_files((".frag",)):
         text = ctx.read(rel)
+        # Exact raw pre-filter before the comment lexer (STRIPPER-AUDIT-1 made
+        # strip_comments a per-character scan). Stripping only ever DELETES, so
+        # a declaration absent from the raw text cannot appear after stripping.
+        if not _COLOR_DECL_RE.search(text):
+            continue
         if not _COLOR_DECL_RE.search(strip_comments(text)):
             continue
         conv, reads = _classify_fs(text)

@@ -46,6 +46,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checklib  # noqa: E402
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # bare glColorMask( OR glColorMaski(  (allow whitespace after the name, before the paren)
@@ -201,28 +204,32 @@ def mode_b():
     for path in walk_source():
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as f:
-                lines = f.readlines()
+                raw_text = f.read()
         except OSError:
             continue
-        in_block = False
         hits = []
-        for i, raw in enumerate(lines, 1):
-            line = raw
-            # crude multi-line /* */ tracking
-            if in_block:
-                end = line.find("*/")
-                if end == -1:
-                    continue
-                line = line[end + 2:]
-                in_block = False
-            # strip single-line comments first
-            scan = strip_comments(line)
-            # detect an unterminated block-comment opener for the NEXT line
-            open_idx = line.rfind("/*")
-            close_idx = line.rfind("*/")
-            if open_idx != -1 and close_idx < open_idx:
-                in_block = True
-                scan = strip_comments(line[:open_idx])
+        # STRIPPER-AUDIT-1 (2026-07-31): comment-strip the WHOLE FILE with the
+        # shared lexer instead of the hand-rolled per-line block tracker that
+        # used to live here. That tracker computed its opener index on the RAW
+        # line (`line.rfind("/*")`) AFTER stripping `//` into `scan`, so a stock
+        # MechCommander banner --
+        #     //****************************************************************
+        # -- armed in_block (`//` followed by `*` IS a `/*` at offset 1) and the
+        # scanner then skipped every following line until some unrelated `*/`.
+        # MEASURED across GameOS/ code/ mclib/ editor/: 264 files affected,
+        # 67,983 lines of real code skipped, hiding 10 genuine raw glColorMask call
+        # sites from this backlog listing -- including gameos_graphics.cpp:3987 glColorMask(GL_TRUE x4).
+        # Mode B is advisory (always exit 0) and no gate consumes its numbers
+        # today, so no verdict was wrong; what was wrong was the AUDIT, and this
+        # file's own footer promises "v2 will add per-file count ceilings".
+        # Freezing a ratchet onto an undercount is how a guard is born blind.
+        # The lexer preserves line structure exactly, so line numbers are
+        # unchanged. Pre-filter on the RAW text first -- EXACT, not an
+        # approximation, since stripping only ever DELETES characters.
+        if not COLORMASK_RE.search(raw_text):
+            continue
+        for i, scan in enumerate(
+                checklib.strip_comments(raw_text).splitlines(), 1):
             for m in COLORMASK_RE.finditer(scan):
                 kind = ("glColorMaski"
                         if scan[m.start():m.start() + len("glColorMaski")] == "glColorMaski"

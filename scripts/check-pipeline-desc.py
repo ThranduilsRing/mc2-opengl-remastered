@@ -38,6 +38,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checklib  # noqa: E402
+
 # The full declarative field set of RenderCore::PipelineDesc, in struct order.
 # Each non-Invalid registry row MUST initialize exactly these (a missing field
 # is the planted-failure gate). colorAttachments is one field (a {a,b,c} brace).
@@ -82,9 +85,17 @@ def read(p):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)   # block comments
-    text = re.sub(r"//[^\n]*", "", text)                # line comments
-    return text
+    """Correct C/C++ comment stripping, delegated to the shared lexer.
+
+    STRIPPER-AUDIT-1 (2026-07-31): repointed off the two stateless regexes that
+    cannot notice a `/*` inside a `//` comment (the `//*****` banner idiom being
+    the dominant trigger in this tree). MEASURED exposure for THIS checker:
+    ZERO -- none of its three scanned files (RenderCore/PipelineRegistry.{h,cpp},
+    RenderCore/RenderPassContract.h) currently carries a phantom block. Migrated
+    for uniformity so the next banner comment added to the registry cannot
+    silently blank the enum/row parse; not because a verdict was wrong today.
+    """
+    return checklib.strip_comments(text)
 
 
 def split_top_level(s):

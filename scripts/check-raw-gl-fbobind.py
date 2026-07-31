@@ -42,6 +42,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import checklib  # noqa: E402
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # bare glBindFramebuffer(  (allow whitespace after the name, before the paren)
@@ -214,26 +217,34 @@ def mode_b():
     for path in walk_source():
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as f:
-                lines = f.readlines()
+                raw_text = f.read()
         except OSError:
             continue
         rel = os.path.relpath(path, REPO_ROOT).replace(os.sep, "/")
-        in_block = False
         hits = []
-        for i, raw in enumerate(lines, 1):
-            line = raw
-            if in_block:
-                end = line.find("*/")
-                if end == -1:
-                    continue
-                line = line[end + 2:]
-                in_block = False
-            scan = strip_comments(line)
-            open_idx = line.rfind("/*")
-            close_idx = line.rfind("*/")
-            if open_idx != -1 and close_idx < open_idx:
-                in_block = True
-                scan = strip_comments(line[:open_idx])
+        # STRIPPER-AUDIT-1 (2026-07-31): comment-strip the WHOLE FILE with the
+        # shared lexer instead of the hand-rolled per-line block tracker that
+        # used to live here. That tracker computed its opener index on the RAW
+        # line (`line.rfind("/*")`) AFTER stripping `//` into `scan`, so a stock
+        # MechCommander banner --
+        #     //****************************************************************
+        # -- armed in_block (`//` followed by `*` IS a `/*` at offset 1) and the
+        # scanner then skipped every following line until some unrelated `*/`.
+        # MEASURED across GameOS/ code/ mclib/ editor/: 264 files affected,
+        # 67,983 lines of real code skipped. This axis is the lucky one -- 0 of
+        # its glBindFramebuffer sites currently sit in a phantom span, so its
+        # backlog total is unchanged. Its four siblings hide 10/10/13/15 real
+        # sites. Fixed here anyway: the difference between the axes is where the
+        # banner comments happen to fall, which is not a property anyone is
+        # maintaining. The lexer preserves line structure exactly, so line
+        # numbers are unchanged. Pre-filter on the RAW text first -- EXACT, not
+        # an approximation, since stripping only ever DELETES characters.
+        if not BIND_RE.search(raw_text):
+            continue
+        raw_lines = raw_text.splitlines()
+        for i, scan in enumerate(
+                checklib.strip_comments(raw_text).splitlines(), 1):
+            raw = raw_lines[i - 1] if i <= len(raw_lines) else ""
             if BIND_RE.search(scan):
                 hits.append((i, classify(rel, scan, raw)))
         if hits:
