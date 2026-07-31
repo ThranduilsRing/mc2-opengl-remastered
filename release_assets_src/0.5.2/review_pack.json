@@ -7185,6 +7185,10 @@
     {
      "type": "note",
      "html": "<b>What this section does NOT claim.</b> Nothing here was built and nothing was launched. Every statement above is derived from diffs, C++ readers and the registry, read at the current tip. The one pixel-changing row (21a) is unverified for exactly the same reason as the other four at the top of this page, and no amount of further source reading will change that &mdash; the remaining questions are questions about pixels."
+    },
+    {
+     "type": "note",
+     "html": "<b>The exact range this section covers, and why that matters.</b> &sect;21 was written against <code>4ecbd92e..bc51fb4f</code> &mdash; 44 commits. <b><code>claude/nifty-mendeleev</code> is a shared branch and it kept moving while this page was being built:</b> seven more commits landed during that window alone. A bare commit count on a live branch is exactly the kind of fact that rots silently, which is the failure class this whole session has been about, so the range is pinned here rather than implied. <b>Of the seven that landed after the cut, one is worth naming:</b> <code>a591bbf5</code> (ZERO-LIGHT-ROW-1) adds a <b>fail-loud invariant for static-prop light rows</b> (<code>mclib/static_light_row_guard.h</code>, <code>gos_static_prop_registry.cpp</code>) &mdash; that is the same subsystem as the dark-props complaint, so check it before assuming &sect;21 is complete. The other six are tooling: <code>ed0934aa</code> (stock-data verification for the per-mission <code>--pak</code> path), <code>c961dded</code> / <code>47ddad15</code> / <code>07875ea0</code> (unwired-checks follow-ups), <code>d2cbb9d2</code> (a meta note reframing dark props as a between-class band). <b>To see what has landed since, ask git rather than trusting this page:</b> <code>git log --oneline bc51fb4f..HEAD</code>."
     }
    ]
   },
