@@ -32,13 +32,36 @@ if [[ "${1:-}" == "--verbose" ]]; then VERBOSE=1; fi
 # ---------------------------------------------------------------------------
 # Step 1: extract registered var names from the header
 # ---------------------------------------------------------------------------
-# Greps all "MC2_[A-Z_]+" string literals in the header (both tables +
-# any comments that happen to quote a var name).
+# Greps all "MC2_[A-Z_]+" string literals in the header (both tables).
+#
+# GATE-PARITY-CLOSE-1: COMMENTS ARE STRIPPED FIRST, and that is the whole point.
+# This used to grep the RAW header, so -- as the old comment here cheerfully
+# admitted -- "any comments that happen to quote a var name" counted as a
+# registration. That is the same defect class that let two contract rules ship
+# green earlier today while satisfied by an identifier sitting in a comment: a
+# CI gate whose evidence is prose is not a gate.
+#
+# INJECTION-PROVEN, not argued: deleting the real kAuxEnvVars entry for
+# MC2_TREE_DIAG_TRACE while leaving `// prose mention only: "MC2_TREE_DIAG_TRACE"`
+# in a comment left this script exiting 0. With the strip it exits 1 and names
+# the var.
+#
+# ZERO BLAST RADIUS, measured before changing anything: raw grep, comment-stripped
+# grep, and strict one-field-per-line extraction all yield exactly 623 names on
+# this header today, so no currently-registered var depends on a prose mention.
+# The awk pass removes /* ... */ (including multi-line) and // to end of line.
 
 REGISTERED=()
 while IFS= read -r name; do
     REGISTERED+=("$name")
-done < <(grep -oE '"MC2_[A-Z0-9_]+"' "$HEADER" | tr -d '"' | sort -u)
+done < <(awk '
+    { line = $0
+      gsub(/\/\*[^*]*\*\//, "", line)
+      if (inblk) { if (match(line, /\*\//)) { line = substr(line, RSTART + 2); inblk = 0 } else next }
+      if (match(line, /\/\*/))  { line = substr(line, 1, RSTART - 1); inblk = 1 }
+      sub(/\/\/.*/, "", line)
+      print line }' "$HEADER" \
+    | grep -oE '"MC2_[A-Z0-9_]+"' | tr -d '"' | sort -u)
 
 if [[ $VERBOSE -eq 1 ]]; then
     echo "=== Registered (${#REGISTERED[@]}) ==="
@@ -351,7 +374,12 @@ ALLOWLIST=(
     MC2_TOBJ_COST_SPLIT         # feature -- promote-to-registry
     MC2_TOBJ_PARITY             # parity
     MC2_TRACE_EXIT              # infra
-    MC2_TREE_DIAG_TRACE         # trace
+# MC2_TREE_DIAG_TRACE -- REMOVED by GATE-PARITY-CLOSE-1: now a real
+# RendererFeatureRegistry.h entry (kAuxEnvVars, Trace, defaultOn=false).
+# Being accounted for ONLY by this allowlist is what kept it out of the
+# run_smoke.py passthrough allowlist and out of docs/tier1_env_vars.md for
+# the whole life of the gate -- an allowlist line silences the registry
+# check without ever putting the var in front of the doc/allowlist checks.
     MC2_TREE_REG_TRACE          # trace
     MC2_VERTEX_PROJECT_FAST     # feature -- promote-to-registry
     MC2_VERTEX_PROJECT_PARITY   # parity

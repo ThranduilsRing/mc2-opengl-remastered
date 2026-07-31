@@ -2015,6 +2015,16 @@ def main():
                             # disagreement probe for inView unconflation.
                             "MC2_INVIEW_CONFLATION_TRACE",
                             "MC2_GPUPROPS_TRACE",
+                            # TREE-DIAG-REGISTER-1 (GATE-PARITY-CLOSE-1): the
+                            # "black billboard square" diagnostic in
+                            # gos_static_prop_batcher.cpp:115. PRESENCE-gated
+                            # (`getenv(...) != nullptr`), so MC2_TREE_DIAG_TRACE=0
+                            # ENABLES it -- unset is the only OFF. Without this
+                            # line Popen drops the var and a smoke run asked to
+                            # turn the diagnostic ON silently produces no
+                            # [TREE_DIAG] lines at all, which reads as "the bug
+                            # did not reproduce" rather than "the trace never ran".
+                            "MC2_TREE_DIAG_TRACE",
                             "MC2_MECH_RESTORE_TRACE",
                             # Phase 1 — terrain lighting GPU compute
                             "MC2_TERRAIN_LIGHTING_GPU",

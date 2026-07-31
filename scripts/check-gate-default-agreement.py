@@ -1117,6 +1117,10 @@ static constexpr EnvVarDesc kFeatureTable[] = {
       "two getenv()s hoisted before either classification" },
     { "MC2_FEATURE_ST_ORGUARD",    "MC2_ST_ORGUARD",    EnvVarKind::Feature, false,
       "if (!v || v[0] != '1') return false" },
+    { "MC2_FEATURE_ST_TRISPLIT",   "MC2_ST_TRISPLIT",   EnvVarKind::Feature, true,
+      "GATE-PARITY-CLOSE-1: ON + OFF + UNREADABLE readers -- a CONTRADICTION "
+      "that also happens to have an unreadable sibling. Must be reported as "
+      "READER_CONFLICT, not downgraded to UNCLASSIFIABLE." },
 };
 '''
 
@@ -1178,6 +1182,26 @@ bool mixedA() {
 }
 bool mixedB() {
     const char* v = getenv("MC2_ST_MIXED");
+    return v ? someUnknownHelper(v) : fallbackFromConfigFile();
+}
+// GATE-PARITY-CLOSE-1 fixture: a REAL contradiction (ON vs OFF) that ALSO has a
+// third, unreadable reader. Historically analyse()'s UNKNOWN branch ran before
+// the conflict branch, so this shape was reported as "idiom not recognised"
+// rather than "these two readers contradict each other" -- the weaker finding,
+// naming the wrong file, and leaving the actual disagreement unstated. The
+// {ON,OFF,UNKNOWN} shape had NO fixture until this one: re-introducing the old
+// `drop any var with 2+ distinct verdicts` behaviour left the whole selftest
+// green, which is how the defect survived its own regression suite.
+bool triSplitA() {
+    const char* v = getenv("MC2_ST_TRISPLIT");
+    return !(v && v[0] == '0');
+}
+bool triSplitB() {
+    const char* v = getenv("MC2_ST_TRISPLIT");
+    return v && v[0] == '1';
+}
+bool triSplitC() {
+    const char* v = getenv("MC2_ST_TRISPLIT");
     return v ? someUnknownHelper(v) : fallbackFromConfigFile();
 }
 bool inverted() {
@@ -1297,6 +1321,21 @@ def _selftest():
     check("one classified + one unclassifiable reader is NOT a conflict",
           by_var.get("MC2_ST_MIXED", {}).get("kind") != "READER_CONFLICT",
           str(by_var.get("MC2_ST_MIXED")))
+
+    # 4d. GATE-PARITY-CLOSE-1 -- THE SHAPE THAT HAD NO FIXTURE AT ALL.
+    #     A genuine ON-vs-OFF contradiction that ALSO carries an unreadable third
+    #     reader. Both 4b and 4c are two-reader cases, so neither pins the
+    #     ORDERING between the conflict branch and the UNKNOWN branch, and neither
+    #     pins that the verdict set is intersected with {ON,OFF} rather than
+    #     counted. Re-introducing the historical "drop any var with 2+ distinct
+    #     verdicts" rule leaves EVERY other assertion in this file green -- proven
+    #     by injecting exactly that into the live tree. Asserting the KIND (not
+    #     merely "something was reported") is the point: UNCLASSIFIABLE also
+    #     fails the run, so a bare exit-code check cannot tell the strong finding
+    #     from the weak one that names the wrong file and never says "disagree".
+    check("a conflict WITH an unreadable third reader is still a CONFLICT",
+          by_var.get("MC2_ST_TRISPLIT", {}).get("kind") == "READER_CONFLICT",
+          str(by_var.get("MC2_ST_TRISPLIT")))
 
     # 5. THE ANTI-THEATRE CASE. Two contract rules added earlier the same day
     #    passed their own self-tests while satisfied by an identifier sitting in

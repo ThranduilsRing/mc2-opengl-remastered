@@ -3740,6 +3740,33 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VERIFIED IN THIS LANE: engine launches are hard-blocked here; the flip below is a "
         "reader-default correction on the VK guard only and does not change any GL pixel."
     },
+    // ── TREE-DIAG-REGISTER-1 (closed by GATE-PARITY-CLOSE-1) ───────────────
+    // Lives in kAuxEnvVars and NOT in kFeatureTable: kFeatureTable is indexed
+    // by RendererFeature (see the static_assert on COUNT), so appending there
+    // means minting an enum value for a var that gates no render path. This
+    // one only prints.
+    {
+        "MC2_TREE_DIAG_TRACE",
+        "MC2_TREE_DIAG_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "[DEFAULT-OFF, but the OFF token is UNSET, not '0'.] Diagnostic (2026-05-05) for the "
+        "\"black billboard square\" static-prop bug. Prints up to 8 lines from each of "
+        "GpuStaticPropBatcher::submit() (dynamic register/replay) and submitCachedInstance() "
+        "(static recipe replay), formatting every GpuStaticPropInstance field identically so a "
+        "side-by-side grep diff pinpoints which baked field is stale on the static replay. "
+        "READER: GameOS/gameos/gos_static_prop_batcher.cpp:115, "
+        "`(getenv(\"MC2_TREE_DIAG_TRACE\") != nullptr)`. THAT IDIOM IS PRESENCE-ONLY, so "
+        "MC2_TREE_DIAG_TRACE=0 ENABLES the trace -- the same trap called out for "
+        "MC2_BRIDGE_MOVER_STATE above. Do not document it as an `=0` killswitch and do not "
+        "\"harmonize\" the reader without checking the callers. WHY IT IS REGISTERED NOW: it "
+        "was engine-read but absent from BOTH the run_smoke passthrough allowlist and "
+        "docs/tier1_env_vars.md, and was accounted for only by check-env-registry.sh's "
+        "ALLOWLIST -- so a smoke run asked to turn the diagnostic ON had the var dropped at "
+        "Popen and produced no [TREE_DIAG] lines, which reads as \"the bug did not reproduce\" "
+        "rather than \"the trace never ran\" (ENV_DROP). Observation only: no render, gameplay "
+        "or sim state changes, so ON vs OFF is pixel-identical.",
+    },
 };
 
 // ---------------------------------------------------------------------------

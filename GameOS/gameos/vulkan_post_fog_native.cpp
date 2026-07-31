@@ -519,8 +519,24 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
 } // namespace
 
 // ---------------------------------------------------------------------------
-// vkPostFogNativeEnabled(): envTriState OPT-IN, default-OFF (new-rung pattern —
-// unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit 0 forces OFF).
+// vkPostFogNativeEnabled(): UMBRELLA-ARMED subGate, NOT an opt-in.
+//
+// GATE-PARITY-CLOSE-1: this block used to read "envTriState OPT-IN, default-OFF
+// (new-rung pattern — unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit
+// 0 forces OFF)". That is the opposite of what the line below does, and had been
+// since VK-FIELD-ENV-CONTENT-STACK-ARM-1 swapped envTriState() for subGate().
+// mc2vkgate::subGate() (vk_shared_gbuffer_gate.h:95) resolves explicit "1"/"0"
+// first and otherwise returns umbrellaOn() — so unset does NOT mean OFF, it
+// means "whatever MC2_VK_SHARED_GBUFFER says", which is the precise clause the
+// old comment denied. Actual resolution:
+//   MC2_VK_POST_FOG_NATIVE=1        -> ON   (explicit wins)
+//   MC2_VK_POST_FOG_NATIVE=0        -> OFF  (explicit wins)
+//   unset + MC2_VK_SHARED_GBUFFER=1 -> ON   <-- the arm the old comment denied
+//   unset + umbrella unset/!=1      -> OFF  (default launch; also OFF once
+//                                            g_mc2VkSessionForcedGL is set)
+// Consequence for anyone reading this to size a change: the SKYBOX-FOG-EXCLUDE
+// parity guard below is reachable on an unset MC2_VK_POST_FOG_NATIVE, so it is
+// load-bearing under the umbrella and not just under an explicit debug flag.
 // ---------------------------------------------------------------------------
 bool gosPostProcess::vkPostFogNativeEnabled()
 {
