@@ -247,6 +247,40 @@ static double evalShL2(const V3& n, int channel)
 // nFactor <= 0).
 static const double kIblStrengthDefault = 0.5;
 
+// TREE-SUN-RESTORE-1 CORRECTION -- 0.5f IS THE C++ LITERAL, NOT WHAT SHIPS.
+//
+// g_iblShStrength is OVERWRITTEN at every mission load by the per-mission
+// visual-tuning profile, which is UNGATED (there is no enable env; the only
+// env is a path override) and IS shipped:
+//   code/mission.cpp:3874             visualTuning_applyProfile(missionScriptName)
+//                                     -- unconditional, every mission load
+//   GameOS/gameos/visual_tuning_profile.cpp:294-333
+//                                     applies "defaults" then the per-mission
+//                                     block; :169-174 writes g_iblShStrength
+//                                     whenever MC2_STATIC_PROP_IBL_SH_STRENGTH
+//                                     is UNSET -- i.e. on a default launch.
+//   scripts/deploy_payload.py:118     ships data/visual_tuning.json
+//
+// data/visual_tuning.json (read verbatim):
+//   defaults.staticPropIblStrength            = 0.55
+//   missions.mc2_01.staticPropIblStrength     = 0.6
+//   missions.mc2_03.staticPropIblStrength     = 0.55
+//   missions.mc2_10.staticPropIblStrength     = 0.6
+//   missions.mc2_24.staticPropIblStrength     = 0.6
+//
+// So the SHIPPED default is 0.55, and 0.60 on three of the 24. Setting
+// MC2_STATIC_PROP_IBL_SH_STRENGTH is what makes 0.5 (or anything else) apply
+// -- the env var SUPPRESSES the profile rather than layering on it.
+static const double kIblStrengthShippedDefault = 0.55;
+
+static double iblStrengthShipped(const char* missionName)
+{
+    const std::string m(missionName);
+    if (m == "mc2_01" || m == "mc2_10" || m == "mc2_24") return 0.60;
+    if (m == "mc2_03") return 0.55;   // explicit, equals the default
+    return kIblStrengthShippedDefault;
+}
+
 //=============================================================================
 // 3. THE FIVE LIT-MULTIPLIER MODELS (Stage A)
 //
@@ -314,6 +348,67 @@ static double propMulPreClamp(double seed, double A, double S, double ndl, doubl
 static double propMul(double seed, double A, double S, double ndl, double ibl)
 {
     return clampd(propMulPreClamp(seed, A, S, ndl, ibl), 0.0, 1.0);
+}
+
+//=============================================================================
+// 3b. THE TREE MODEL (Stage E -- TREE-SUN-RESTORE-1)
+//
+// A tree is NOT a prop with the same row. TreeAppearance::update mutates the
+// world light list around its own bake, and the mutation is STOCK -- it is
+// present verbatim in the original source drop (commit 305ad8746, 2016-09-19,
+// mclib/bdactor.cpp:4113-4122 of that tree). HEAD preserves it:
+//
+//   mclib/bdactor.cpp:7252-7258  lightIntensity = land->getTerrainLight(pos);
+//                                lightRGB = (eye->getLightRed(lightIntensity),
+//                                            ...Green..., ...Blue...)
+//   mclib/bdactor.cpp:7304-7305  eye->setLightColor(1, lightRGB);   <- AMBIENT
+//                                eye->setLightIntensity(1, 1.0);       slot is
+//                                                       RECOLOURED to the byte
+//                                                       getLightRed() returns,
+//                                                       i.e. to S, NOT to A.
+//   mclib/bdactor.cpp:7317-7318  eye->getWorldLight(0)->active = false;  <- SUN
+//   mclib/bdactor.cpp:7450       light->active = true;              <- RESTORED
+//   mclib/bdactor.cpp:7457       eye->setLightColor(1, oldRGB);     <- RESTORED
+//
+// mclib/camera.cpp:489 worldLights[0]->init(TG_LIGHT_INFINITE)  == the sun
+// mclib/camera.cpp:516 worldLights[1]->init(TG_LIGHT_AMBIENT)   == the ambient
+//
+// So the deactivation is a SCOPED BRACKET, not a deletion: for the duration of
+// the tree's own light-row bake the row contains exactly one active light, an
+// AMBIENT whose colour is the terrain-sampled sun+ambient byte S.
+//
+// CONSUMER SIDE. mclib/txmmgr.cpp:2879 filters the row on `->active`, so the
+// sun never enters. shaders/static_prop.vert:715-728 then decomposes the row:
+// AMBIENT accumulates into ambientTerm, the first INFINITE would set sunColor.
+// A tree row has no INFINITE, so sunColor == vec3(0) IDENTICALLY.
+//   static_prop.vert:823  lit = (seed + ambientTerm) * propDirFactor
+//                                                     + sunColor * ndl;
+// with propDirFactor == 1.0 for a tree on BOTH counts: MC2_PROP_BASE_LIGHT_DIR
+// defaults to 0.0f (gos_static_prop_batcher.cpp:786) AND :800 excludes
+// kFlagIsAlphaTest geometry, which trees are.
+//   static_prop.vert:838  lit += ambient_v1 * u_ambientV1Strength -- OFF by
+//                                default (gos_static_prop_batcher.cpp:757-759,
+//                                opt-in idiom), exact no-op.
+//   static_prop.vert:848  if (u_iblShStrength > 0.0) lit += evalShL2(n)*strength
+//                                DEFAULT-ON at 0.5 (:1008-1013 killswitch idiom
+//                                + :325-333 strength).
+//
+// Hence the two models below. The ONLY difference between the tree stock MC2
+// drew and the tree HEAD draws is the SH-IBL addend -- a port-era term.
+//=============================================================================
+
+// What stock MC2 rendered: seed + S, clamped. NORMAL-INDEPENDENT by
+// construction -- there is no `n` in the expression at all.
+static double treeMulStock(double seed, double S)
+{
+    return clampd(seed + S, 0.0, 1.0);
+}
+
+// What HEAD renders: the same, plus the default-ON SH-IBL probe. This is the
+// only normal-dependent term a tree has.
+static double treeMulHead(double seed, double S, double ibl)
+{
+    return clampd(seed + S + ibl, 0.0, 1.0);
 }
 
 //=============================================================================
@@ -1415,8 +1510,254 @@ static bool test_sentinel_fix_constants(TestCtx& t)
 }
 
 //=============================================================================
+// STAGE E TESTS -- TREE-SUN-RESTORE-1
+//
+// The question these settle: DID STOCK MC2 LIGHT ITS TREES, AND WITH WHAT?
+// The answer is executable, offline, and does not require launching anything.
+//=============================================================================
+
+// E1. Stock lit its trees with a single AMBIENT whose colour is the FULL
+// terrain-sampled sun byte S -- not with the mission ambient A, and not with
+// nothing. The recolour at bdactor.cpp:7304 is a genuine substitution: on every
+// daylight mission the tree's ambient slot is STRICTLY BRIGHTER than the
+// mission ambient the props get.
+static bool test_stock_lit_trees_with_the_sun_byte_not_the_mission_ambient(TestCtx& t)
+{
+    int brighter = 0, equal = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        // The tree's ambient slot is S; a prop's is A.
+        if (L.S > L.A + 1e-9)      ++brighter;
+        else if (std::fabs(L.S - L.A) < 1e-9) ++equal;
+        CH_CHECK(t, L.S >= L.A - 1e-9);   // never DIMMER than the prop ambient
+    }
+    // The night/dusk missions with the sun below the horizon (intensity <= 0)
+    // fall back to `ambientByte` exactly (camera.cpp:4486-4489), so S == A there
+    // and the tree is ambient-lit like everything else. Everywhere else the
+    // tree is lit by the sun's own colour, delivered through the ambient slot.
+    CH_CHECK(t, brighter + equal == kNumMissions);
+    CH_CHECK(t, brighter >= 20);   // the overwhelming majority are daylight
+    return t.failures == 0;
+}
+
+// E2. Stock's tree multiplier is NORMAL-INDEPENDENT. This is the property the
+// sun deactivation buys, and it is the defining fact about a stock tree: it has
+// no lit side and no shadow side. Verified by evaluating over the sphere.
+static bool test_stock_tree_multiplier_is_normal_independent(TestCtx& t)
+{
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        double lo = 2.0, hi = -1.0;
+        forEachNormal(kSphereN, [&](const V3& n) {
+            (void)n;                       // the point: `n` cannot enter
+            const double m = treeMulStock(0.0, L.S);
+            if (m < lo) lo = m;
+            if (m > hi) hi = m;
+        });
+        CH_CHECK(t, std::fabs(hi - lo) < 1e-12);
+    }
+    return t.failures == 0;
+}
+
+// E3. Stock trees were NOT pinned on most missions. This is the load-bearing
+// measurement: the inherited claim is that a tree is "the texture to the LSB"
+// because there is no lighting term. At stock the term exists (it is S) and it
+// is strictly below the clamp on most maps -- so stock trees DID respond to
+// time of day and to terrain shadowing, just not to surface normal.
+static bool test_stock_trees_are_mostly_UNsaturated(TestCtx& t)
+{
+    int pinned = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        if (treeMulStock(0.0, L.S) >= 1.0 - 1e-9) ++pinned;
+    }
+    // S = clamp(lightByte*I + ambientByte, 0, 255)/255 saturates only where the
+    // authored sun+ambient already exceeds 255 at the flat-ground sample. That
+    // is ONE mission: mc2_22 (lightR 255, ambR 192 -> 255*0.503 + 192 = 320).
+    // Stock's tree band runs 0.1647 (mc2_05) .. 1.0000 (mc2_22) -- a 6.1x
+    // spread. Stock trees were emphatically NOT "the texture to the LSB".
+    CH_CHECK(t, pinned < kNumMissions / 2);
+    CH_CHECK(t, pinned == 1);   // exact; a data or camera-math change breaks this
+    return t.failures == 0;
+}
+
+// E4. THE PORT-ERA CHANGE. HEAD adds the default-ON SH-IBL probe on top, and
+// that addend is what drives the tree into the clamp. Count the missions the
+// port newly pins that stock left free.
+static bool test_head_ibl_pins_trees_that_stock_left_free(TestCtx& t)
+{
+    int stockPinned = 0, headPinnedAllNormals = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        const bool sp = treeMulStock(0.0, L.S) >= 1.0 - 1e-9;
+        if (sp) ++stockPinned;
+
+        const double str = iblStrengthShipped(kMissions[i].name);
+        bool allPinned = true;
+        forEachNormal(kSphereN, [&](const V3& n) {
+            if (treeMulHead(0.0, L.S, propIbl(n, str)) < 1.0 - 1e-9) allPinned = false;
+        });
+        if (allPinned) ++headPinnedAllNormals;
+    }
+    // The port pins strictly MORE missions than stock did. The direction is the
+    // whole finding: the modern build has LESS tree lighting variation than
+    // stock, not more.
+    CH_CHECK(t, headPinnedAllNormals > stockPinned);
+    CH_CHECK(t, stockPinned == 1);            // mc2_22 only
+    CH_CHECK(t, headPinnedAllNormals == 5);   // + mc2_01, 04, 07, 24
+    return t.failures == 0;
+}
+
+// E5. MC2_PROP_SHADOW_RECEIVE consequence. It modulates sunColor*ndl only, and
+// a tree row's sunColor is identically vec3(0) (static_prop.vert:715-728 finds
+// no INFINITE entry). So ANY shadow factor in [0,1] leaves the tree unchanged.
+// This holds at stock AND at HEAD, and it would STOP holding the moment a sun
+// entered the row.
+static bool test_prop_shadow_receive_is_an_exact_no_op_on_trees(TestCtx& t)
+{
+    const double kTreeSunColor = 0.0;          // static_prop.vert:716 init, never written
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        for (int s = 0; s <= 10; ++s) {
+            const double shadow = s / 10.0;    // full shadow .. full light
+            for (int k = 0; k <= 10; ++k) {
+                const double ndl = k / 10.0;
+                // lit = (seed + ambientTerm) + sunColor*ndl*shadow
+                const double withShadow =
+                    clampd(0.0 + L.S + kTreeSunColor * ndl * shadow, 0.0, 1.0);
+                CH_CHECK(t, std::fabs(withShadow - treeMulStock(0.0, L.S)) < 1e-12);
+            }
+        }
+    }
+    return t.failures == 0;
+}
+
+// E6. If a sun WERE restored to the tree row, the change would be invisible on
+// exactly the missions whose ambient slot already saturates -- the same
+// saturation trap MC2_SUN_AXIS_FIX hit. Name the missions where an A/B could
+// actually show something, and assert the trap is real.
+static bool test_restoring_a_sun_would_be_invisible_where_S_saturates(TestCtx& t)
+{
+    int invisible = 0, visible = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        // Hypothetical restore: lit = seed + S + S*ndl (the sun colour byte is
+        // the same S; camera.cpp:4473 feeds both).
+        double maxDelta = 0.0;
+        const double str = iblStrengthShipped(kMissions[i].name);
+        forEachNormal(kSphereN, [&](const V3& n) {
+            const double ndl = std::max(dot(norm(n), L.terrainSun), 0.0);
+            const double ibl = propIbl(n, str);
+            const double head = treeMulHead(0.0, L.S, ibl);
+            const double rest = clampd(0.0 + L.S + L.S * ndl + ibl, 0.0, 1.0);
+            maxDelta = std::max(maxDelta, std::fabs(rest - head));
+        });
+        if (maxDelta < 1e-9) ++invisible; else ++visible;
+    }
+    // The trap is real. The five invisible missions are EXACTLY the five the
+    // default-ON IBL already drove to 1.0 at every normal -- mc2_01, mc2_04,
+    // mc2_07, mc2_22, mc2_24 -- which is precisely the set an inherited audit
+    // reported as "exactly 1.000". Reproduced here from mission data + ported
+    // camera math, independently of that audit.
+    CH_CHECK(t, invisible > 0);
+    CH_CHECK(t, invisible + visible == kNumMissions);
+    CH_CHECK(t, invisible == 5);
+    return t.failures == 0;
+}
+
+// E6b. THE SHIPPED IBL STRENGTH IS NOT THE C++ LITERAL. Pin the gap so the
+// next lane that reads gos_static_prop_batcher.cpp:325-333 and concludes "the
+// default is 0.5" is contradicted by a red test. On a DEFAULT launch (no
+// MC2_STATIC_PROP_IBL_SH_STRENGTH set) the profile at
+// visual_tuning_profile.cpp:169-174 overwrites g_iblShStrength with the
+// data/visual_tuning.json value on EVERY mission load.
+static bool test_shipped_ibl_strength_is_not_the_cpp_literal(TestCtx& t)
+{
+    CH_CHECK(t, std::fabs(kIblStrengthDefault - 0.5) < 1e-12);          // the literal
+    CH_CHECK(t, std::fabs(kIblStrengthShippedDefault - 0.55) < 1e-12);  // what ships
+    CH_CHECK(t, kIblStrengthShippedDefault > kIblStrengthDefault);
+    // The three missions with a per-mission override are strictly higher again.
+    CH_CHECK(t, std::fabs(iblStrengthShipped("mc2_01") - 0.60) < 1e-12);
+    CH_CHECK(t, std::fabs(iblStrengthShipped("mc2_10") - 0.60) < 1e-12);
+    CH_CHECK(t, std::fabs(iblStrengthShipped("mc2_24") - 0.60) < 1e-12);
+    CH_CHECK(t, std::fabs(iblStrengthShipped("mc2_03") - 0.55) < 1e-12);
+    CH_CHECK(t, std::fabs(iblStrengthShipped("mc2_22") - 0.55) < 1e-12);  // falls to default
+    // CONSEQUENCE: every tree number computed at 0.5 UNDERSTATES the real
+    // saturation. The direction of the error matters more than its size.
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        const double str = iblStrengthShipped(kMissions[i].name);
+        const V3 n = norm(v3(0.3, 0.8, 0.5));
+        CH_CHECK(t, treeMulHead(0.0, L.S, propIbl(n, str)) >=
+                    treeMulHead(0.0, L.S, propIbl(n, kIblStrengthDefault)) - 1e-12);
+    }
+    return t.failures == 0;
+}
+
+// E7. Perturbation sentinel for the tree constants.
+static bool test_sentinel_tree_constants(TestCtx& t)
+{
+    // No sun in the row -> the sun term is absent, not merely small.
+    CH_CHECK(t, treeMulStock(0.0, 0.5) == 0.5);
+    // The clamp is stock (tgl.cpp:2460-2467) and it is at 1.0.
+    CH_CHECK(t, treeMulStock(0.0, 2.0) == 1.0);
+    CH_CHECK(t, treeMulStock(0.6, 0.6) == 1.0);
+    // HEAD adds the IBL addend at kIblStrengthDefault; if that default moved to
+    // 0.0 this test turns red (the two models would collapse into one).
+    CH_CHECK(t, treeMulHead(0.0, 0.1, propIbl(v3(0,1,0))) >
+                treeMulStock(0.0, 0.1));
+    CH_CHECK(t, std::fabs(kIblStrengthDefault - 0.5) < 1e-12);
+    return t.failures == 0;
+}
+
+//=============================================================================
 // REPORT PRINTERS (not in the default suite; --test <name> to run)
 //=============================================================================
+
+// TREE-SUN-RESTORE-1: the per-mission stock-vs-HEAD tree table.
+static bool print_stage_e_tree_table(TestCtx&)
+{
+    std::fprintf(stderr,
+        "\n=== STAGE E: TREE stock-vs-HEAD, per mission ===\n"
+        "  stock = clamp(S, 0, 1)                 (bdactor.cpp:7304 + :7317-7318)\n"
+        "  head  = clamp(S + evalShL2(n)*str,0,1) (static_prop.vert:848, default-ON)\n"
+        "  Sflat = getLightByte(lightR, ambR, terrainSun.z)/255\n\n"
+        "  IBL strength = SHIPPED per-mission value (data/visual_tuning.json),\n"
+        "  NOT the 0.5f C++ literal.\n\n"
+        "  mission    str    A      S    stockMul  stockPin  headMin  headMax  headPin  ibl-eaten\n"
+        "  -------- ----- ------ ------ --------- --------- -------- -------- -------- ---------\n");
+
+    int stockPinned = 0, headPinned = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const MissionLight L = missionLight(kMissions[i]);
+        const double sm = treeMulStock(0.0, L.S);
+        const double str = iblStrengthShipped(kMissions[i].name);
+        double lo = 2.0, hi = -1.0, eatenMax = 0.0;
+        forEachNormal(kSphereN, [&](const V3& n) {
+            const double ibl = propIbl(n, str);
+            const double hm  = treeMulHead(0.0, L.S, ibl);
+            if (hm < lo) lo = hm;
+            if (hm > hi) hi = hm;
+            // how much of the IBL addend the clamp threw away
+            eatenMax = std::max(eatenMax, (L.S + ibl) - hm);
+        });
+        const bool sp = sm >= 1.0 - 1e-9;
+        const bool hp = lo >= 1.0 - 1e-9;
+        if (sp) ++stockPinned;
+        if (hp) ++headPinned;
+        std::fprintf(stderr,
+            "  %-8s %5.2f %6.4f %6.4f %9.4f %9s %8.4f %8.4f %8s %9.4f\n",
+            kMissions[i].name, str, L.A, L.S, sm, sp ? "PINNED" : "-",
+            lo, hi, hp ? "PINNED" : "-", eatenMax);
+    }
+    std::fprintf(stderr,
+        "\n  stock pinned: %d / %d      HEAD pinned (all normals): %d / %d\n"
+        "  => the port's default-ON SH-IBL pins %d missions stock left free.\n\n",
+        stockPinned, kNumMissions, headPinned, kNumMissions,
+        headPinned - stockPinned);
+    return true;
+}
+
 static bool print_stage_d_delta(TestCtx&)
 {
     std::fprintf(stderr,
@@ -1599,7 +1940,22 @@ int main(int argc, char** argv)
           test_fix_b_unifies_terrain_sun_with_the_object_row);
     h.add("fix_b_also_moves_the_sun_colour_byte",      test_fix_b_also_moves_the_sun_colour_byte);
 
+    // Stage E -- TREE-SUN-RESTORE-1
+    h.add("stock_lit_trees_with_the_sun_byte_not_the_mission_ambient",
+          test_stock_lit_trees_with_the_sun_byte_not_the_mission_ambient);
+    h.add("stock_tree_multiplier_is_normal_independent",
+          test_stock_tree_multiplier_is_normal_independent);
+    h.add("stock_trees_are_mostly_UNsaturated",        test_stock_trees_are_mostly_UNsaturated);
+    h.add("head_ibl_pins_trees_that_stock_left_free",  test_head_ibl_pins_trees_that_stock_left_free);
+    h.add("prop_shadow_receive_is_an_exact_no_op_on_trees",
+          test_prop_shadow_receive_is_an_exact_no_op_on_trees);
+    h.add("restoring_a_sun_would_be_invisible_where_S_saturates",
+          test_restoring_a_sun_would_be_invisible_where_S_saturates);
+    h.add("shipped_ibl_strength_is_not_the_cpp_literal",
+          test_shipped_ibl_strength_is_not_the_cpp_literal);
+
     // Perturbation sentinels
+    h.add("sentinel_tree_constants",                   test_sentinel_tree_constants);
     h.add("sentinel_fix_constants",                    test_sentinel_fix_constants);
     h.add("sentinel_terrain_constants",                test_sentinel_terrain_constants);
     h.add("sentinel_mech_floor",                       test_sentinel_mech_floor);
@@ -1612,6 +1968,7 @@ int main(int argc, char** argv)
     h.add("print_stage_a_matrix", print_stage_a_matrix, false);
     h.add("print_stage_b_frames", print_stage_b_frames, false);
     h.add("print_stage_c_table",  print_stage_c_table,  false);
+    h.add("print_stage_e_tree_table", print_stage_e_tree_table, false);
 
     return h.run(argc, argv);
 }
