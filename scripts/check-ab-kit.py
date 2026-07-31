@@ -9,8 +9,18 @@ the gate set named in the filename.
 Also flags the two failure modes that produced this lane:
   * a blank `set VAR=` (deletes the variable, hands the gate to the JSON)
   * a gate named in the filename that the file does not actually set
+
+Finally asserts the OTHER half of the read-me's claim -- that every arm shares
+one BYTE-IDENTICAL common block. The effective-value replay above is blind to a
+violation of that half: every gate appears TWICE in an arm (a common default
+line, plus an override below for most arms), so a substitution that rewrites
+BOTH copies leaves every effective value correct while the bytes diverge. That
+is not hypothetical -- it is how an injected arm was once restored, and this
+checker passed it; only an external sha256 manifest caught the difference.
 """
+import difflib
 import glob
+import hashlib
 import os
 import re
 import sys
@@ -61,6 +71,97 @@ if base_blanks:
     if unexpected:
         print(f"  !! UNEXPECTED blank set: {unexpected}")
 print(f"  launcher_env.json keys a blank would hand back: {len(JSON_KEYS)}")
+
+# ---------------------------------------------------------------------------
+# THE COMMON BLOCK IS BYTE-IDENTICAL -- checked, not asserted.
+#
+# The region is taken FROM THE FILES, not from the read-me's prose. Two
+# anchors, both lines the arms actually contain, neither invented here:
+#
+#   START  `cd /d "%~dp0"` -- the first EXECUTABLE line, and unique in every
+#          arm. Everything above it is that arm's own header docblock, which
+#          legitimately differs (mission, traps, what a positive result is).
+#   END    the arm's own banner line `REM  ####...`, which reads "THE ONLY
+#          LINE(S) THIS ARM CHANGES FROM AB-0 -- BELOW HERE". Everything from
+#          there down is the arm's override and prompt, which legitimately
+#          differs. (AB-0 and AB-6a spell the same banner "#### This arm
+#          overrides nothing. It IS the baseline. ####" -- same prefix.)
+#
+# So the region is exactly the intersection of "below the per-arm prose" and
+# "above the per-arm override": the shared preamble, and nothing that any arm
+# is entitled to change. As shipped that is 67 lines / 4108 bytes, identical
+# across all nine.
+#
+# Compared as RAW BYTES including CRLF -- on a .bat a line-ending flip is a
+# real difference, and normalising it away would reintroduce the blindness
+# this check exists to remove.
+# ---------------------------------------------------------------------------
+CD_ANCHOR = b'cd /d "%~dp0"'
+OVERRIDE_BANNER = b"REM  ####"
+BLOCK_BANNER = b"REM  COMMON BLOCK -- byte-identical in every AB-*.bat in this folder."
+
+
+def common_block(path):
+    """Raw bytes of the shared preamble. Returns (block, error_or_None).
+
+    Every failure to LOCATE the region is a hard error, never a silent skip:
+    a checker that quietly passes a file it could not parse is the report-
+    wearing-a-gate's-colour failure this kit already refuses elsewhere.
+    """
+    lines = open(path, "rb").read().split(b"\n")
+    starts = [i for i, l in enumerate(lines) if l.rstrip(b"\r") == CD_ANCHOR]
+    ends = [i for i, l in enumerate(lines) if l.startswith(OVERRIDE_BANNER)]
+    if len(starts) != 1:
+        return None, (f"expected exactly one `{CD_ANCHOR.decode()}` line, "
+                      f"found {len(starts)}")
+    if not ends:
+        return None, ("no `REM  ####` override banner -- nothing separates the "
+                      "shared preamble from this arm's own lines")
+    if ends[0] < starts[0]:
+        return None, "override banner appears ABOVE the `cd /d` anchor"
+    block = b"\n".join(lines[starts[0]:ends[0]])
+    if BLOCK_BANNER not in block:
+        return None, "extracted region does not contain the COMMON BLOCK banner"
+    return block, None
+
+
+BLOCK_FAIL = 0
+blocks = {}
+for f in files:
+    blk, err = common_block(f)
+    if err:
+        BLOCK_FAIL += 1
+        print(f"FAIL {os.path.basename(f)}: common block not locatable -- {err}")
+    else:
+        blocks[f] = blk
+
+ref = blocks.get(base_path)
+if ref is None:
+    BLOCK_FAIL += 1
+    print("FAIL: no common block in the AB-0 baseline -- nothing to compare to")
+else:
+    ref_lines = ref.count(b"\n") + 1
+    print(f"COMMON BLOCK sha256 {hashlib.sha256(ref).hexdigest()} "
+          f"({len(ref)} bytes, {ref_lines} lines, "
+          f"from {os.path.basename(base_path)})")
+    ref_txt = [l.rstrip("\r") for l in ref.decode("ascii", "replace").split("\n")]
+    for f in files:
+        blk = blocks.get(f)
+        if blk is None or blk == ref:
+            continue
+        BLOCK_FAIL += 1
+        print(f"FAIL {os.path.basename(f)}: common block is NOT byte-identical "
+              f"to {os.path.basename(base_path)} "
+              f"(sha256 {hashlib.sha256(blk).hexdigest()}, {len(blk)} bytes)")
+        blk_txt = [l.rstrip("\r") for l in blk.decode("ascii", "replace").split("\n")]
+        if blk_txt == ref_txt:
+            print("       text matches -- the difference is line endings or "
+                  "trailing whitespace. Compare the raw bytes.")
+        else:
+            for line in difflib.unified_diff(
+                    ref_txt, blk_txt, fromfile=os.path.basename(base_path),
+                    tofile=os.path.basename(f), lineterm="", n=1):
+                print("       " + line)
 
 FAIL = 0
 for f in files:
@@ -139,4 +240,6 @@ for f in files:
 
 print()
 print(f"{len(files)} arms checked, {FAIL} failing")
-sys.exit(1 if FAIL else 0)
+print(f"common block: {len(files) - BLOCK_FAIL}/{len(files)} arms byte-identical, "
+      f"{BLOCK_FAIL} failing")
+sys.exit(1 if (FAIL or BLOCK_FAIL) else 0)
