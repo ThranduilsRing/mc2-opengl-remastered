@@ -1144,7 +1144,16 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 					FILE* sf = fopen(slPath, "rb");
 					if (!sf)
 					{
-						MC2_DIAGF("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
+						// FAIL-LOUD (DEPLOY-CURRENT-1): this was MC2_DIAGF, which only
+						// prints under MC2_DIAG_VERBOSE. MC2_TERRAIN_SHORELINE is
+						// default-ON, so on a STOCK launch a missing sidecar produced
+						// no output at all and the gate silently no-opped -- the four
+						// sibling loaders in this file (CONTROLMAP / OVERLAY_V2 /
+						// VISUAL_HEIGHT / VISUAL_DAMP) all use raw printf, and every
+						// one of them is default-OFF. The only loader a default launch
+						// actually reaches was the only silent one. Raw printf now, so
+						// "gate on but doing nothing" is visible without opting in.
+						printf("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
 						       " -- pure elevation bands, no mask modulator\n", slPath);
 						fflush(stdout);
 					}
@@ -1156,7 +1165,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 						if (sFileSize <= 0)
 						{
 							fclose(sf);
-							MC2_DIAGF("[TERRAIN_SHORELINE v1] EMPTY FILE path=%s\n", slPath);
+							printf("[TERRAIN_SHORELINE v1] EMPTY FILE path=%s\n", slPath);
 							fflush(stdout);
 						}
 						else
@@ -1166,7 +1175,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 							fclose(sf);
 							if (rd != (size_t)sFileSize)
 							{
-								MC2_DIAGF("[TERRAIN_SHORELINE v1] READ FAIL path=%s read=%zu want=%ld\n",
+								printf("[TERRAIN_SHORELINE v1] READ FAIL path=%s read=%zu want=%ld\n",
 								       slPath, rd, sFileSize);
 								fflush(stdout);
 							}
@@ -1177,7 +1186,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 									pngBytes.data(), (int)sFileSize, &sw, &sh);
 								if (!srgba)
 								{
-									MC2_DIAGF("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path=%s\n", slPath);
+									printf("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path=%s\n", slPath);
 									fflush(stdout);
 								}
 								else
