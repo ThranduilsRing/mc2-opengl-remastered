@@ -1820,6 +1820,18 @@ def main():
                             # Popen drops it and the gate-ON smoke silently
                             # runs gate-OFF.
                             "MC2_LIGHT_POS_COLUMN_FIX",
+                            # LIGHT-ROW-PURE-1 -- object light-ROW PRODUCTION
+                            # delegated to the pure object_light_row::
+                            # BuildObjectLightRow, default OFF (killswitch
+                            # inverted: =1 opts in). Must be allowlisted or
+                            # Popen drops it and the gate-ON verification smoke
+                            # silently runs gate-OFF -- which is the whole
+                            # evidence this gate is waiting on.
+                            "MC2_LIGHT_ROW_PURE",
+                            # LIGHT-ROW-PURE-1 -- runs BOTH row producers on the
+                            # same frame and memcmps them. Pure observation,
+                            # default OFF. Allowlisted for the same reason.
+                            "MC2_LIGHT_ROW_PURE_VERIFY",
                             # LIGHT-POS-COMBAT-1 -- session-long per-light-type
                             # census of the uploaded light rows (source
                             # translation [3]/[7]/[11] vs uploaded position

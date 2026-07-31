@@ -21,6 +21,7 @@
 #include"tex_resolve_table.h"
 #include "diagnostic_trace.h"
 #include "cone_glow.h"   // LIGHT-CONE-MODELS-1: FlushFrame at renderLists top
+#include "object_light_row.h"  // LIGHT-ROW-PURE-1: the pure row producer
 
 #ifndef TGAINFO_H
 #include"tgainfo.h"
@@ -196,6 +197,42 @@ static bool          s_lightClampFixtureYelled = false;
 // distance-from-origin instead of distance-from-lamp. Requires re-measurement
 // at vehicle-adjacent night poses, not at the old fixtures.
 static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOn("MC2_LIGHT_POS_COLUMN_FIX");
+
+// MC2_LIGHT_ROW_PURE (default OFF — see WHY OFF below) — LIGHT-ROW-PURE-1,
+// ARCH-LIGHTING slice 1.
+// Object light-ROW PRODUCTION is delegated to the one pure function
+// object_light_row::BuildObjectLightRow (mclib/object_light_row.h): the row
+// that ships is built from an EXPLICIT query (light list + declared per-class
+// policy) instead of being a by-product of the mutate-gather-restore dance.
+// =0 restores the legacy in-place packing loop below, byte-for-byte.
+//
+// WHY DEFAULT-OFF, and what would justify flipping it:
+// tools/object_light_row_harness proves the ALGORITHM byte-identical — that a
+// declared policy reproduces the mutation it replaces, across every class,
+// light count 0..42, hole position and env combination. It CANNOT prove the
+// engine-coupled half: flattenLight() below, which turns a TG_Light plus a
+// Stuff::LinearMatrix4D into a LightInput, has no offline test because the
+// harness deliberately links no engine. If that adapter mis-copies a matrix or
+// a forward vector, the pure row diverges from the legacy one and default-ON
+// would ship it unobserved. Game launches are blocked, so in-engine identity is
+// UNPROVEN, and an unproven default is exactly the "documented default lie"
+// class this repo keeps finding. Flip to default-ON when one run with
+// MC2_LIGHT_ROW_PURE=1 MC2_LIGHT_ROW_PURE_VERIFY=1 reports
+// checked>0 mismatched=0 across tier1 — that is the missing evidence, and
+// nothing else is.
+static const bool    s_lightRowPure           = lightClampEnvFlagDefaultOff("MC2_LIGHT_ROW_PURE");
+
+// MC2_LIGHT_ROW_PURE_VERIFY (default OFF) — the in-engine half of the proof.
+// Runs BOTH producers on the SAME frame and memcmps the 3600-byte rows: the
+// legacy loop (which reads the globally MUTATED light list) against the pure
+// function (which reads the same list plus the class's DECLARED policy). Equal
+// rows mean the declaration matches what the class actually did to the world;
+// a mismatch means a class's published policy has drifted from its mutation,
+// which is exactly the divergence this slice exists to make impossible to ship
+// silently. Observation only — never changes which row is used.
+static const bool    s_lightRowPureVerify     = lightClampEnvFlagDefaultOff("MC2_LIGHT_ROW_PURE_VERIFY");
+static unsigned long s_lightRowPureChecked    = 0;
+static unsigned long s_lightRowPureMismatch   = 0;
 
 // MC2_LIGHT_ROW_CENSUS (default OFF) — LIGHT-POS-COMBAT-1. Pure observation.
 //
@@ -2473,6 +2510,279 @@ public:
 
 };
 
+//-----------------------------------------------------------------------------
+// LIGHT-ROW-PURE-1 — ARCH-LIGHTING slice 1. See mclib/object_light_row.h for
+// the design; this is the engine-coupled adapter and nothing else.
+//
+// LOCKSTEP: object_light_row::Row mirrors TG_HWLightsData field for field. If
+// either side gains a member, these fire at compile time rather than shipping a
+// row whose bytes the GPU reads differently than the harness compares.
+//-----------------------------------------------------------------------------
+namespace {
+
+namespace olr = object_light_row;
+
+static_assert(sizeof(olr::Row) == sizeof(TG_HWLightsData),
+              "object_light_row::Row must match TG_HWLightsData size");
+static_assert(offsetof(olr::Row, lightToWorld) == offsetof(TG_HWLightsData, lightToWorld),
+              "lightToWorld offset drift");
+static_assert(offsetof(olr::Row, lightDir)     == offsetof(TG_HWLightsData, lightDir),
+              "lightDir offset drift");
+static_assert(offsetof(olr::Row, lightColor)   == offsetof(TG_HWLightsData, lightColor),
+              "lightColor offset drift");
+static_assert(offsetof(olr::Row, lightFalloff) == offsetof(TG_HWLightsData, lightFalloff),
+              "lightFalloff offset drift");
+static_assert(offsetof(olr::Row, numLights_)   == offsetof(TG_HWLightsData, numLights_),
+              "numLights_ offset drift");
+static_assert(offsetof(olr::Row, pad)          == offsetof(TG_HWLightsData, pad),
+              "pad offset drift");
+static_assert(olr::kMaxLights == MAX_HW_LIGHTS_IN_WORLD, "ABI light-count drift");
+
+// The mirrored type ids must equal the real enum, or the packed lightDir[3]
+// discriminator the shaders switch on would silently mean something else.
+static_assert((uint32_t)olr::kTypeNone     == (uint32_t)TG_LIGHT_NONE,     "type drift");
+static_assert((uint32_t)olr::kTypeAmbient  == (uint32_t)TG_LIGHT_AMBIENT,  "type drift");
+static_assert((uint32_t)olr::kTypeInfinite == (uint32_t)TG_LIGHT_INFINITE, "type drift");
+static_assert((uint32_t)olr::kTypeInfiniteWithFalloff ==
+              (uint32_t)TG_LIGHT_INFINITEWITHFALLOFF, "type drift");
+static_assert((uint32_t)olr::kTypePoint    == (uint32_t)TG_LIGHT_POINT,    "type drift");
+static_assert((uint32_t)olr::kTypeSpot     == (uint32_t)TG_LIGHT_SPOT,     "type drift");
+static_assert((uint32_t)olr::kTypeTerrain  == (uint32_t)TG_LIGHT_TERRAIN,  "type drift");
+
+// The policy the appearance class currently being updated has DECLARED. It is
+// published immediately alongside the legacy mutation and cleared after, so it
+// describes exactly one class's row.
+//
+// WHY THE MUTATIONS ARE STILL THERE (do not "finish the job" without redoing
+// the census): a reader census over this tree found the shared-list mutations
+// are load-bearing for a consumer the row diff CANNOT see —
+// TG_Shape::MultiTransformShape, the CPU per-vertex lighting kernel
+// (mclib/tgl.cpp:2189-2192), reads the same TG_Light objects' active/GetaRGB
+// and runs INSIDE the tree's sun-off window (mclib/bdactor.cpp:7139, and
+// :7103 under dual-emit). It is live in this build: useVertexLighting is true
+// (mclib/terrain.cpp:353) and Environment.Renderer is 0, not 3
+// (code/mechcmd2.cpp:2974). Deleting the mutations would therefore change baked
+// vertex colours — listOfColors / listOfTriangles[].aRGBLight — while every
+// gathered row stayed byte-identical. That is the one failure mode a row-memcmp
+// is structurally blind to, so the mutations stay and the policy is published
+// as a DECLARATION of them. Because a recolour publishes the same aRGB the
+// mutation wrote and a disable publishes the same active=false, applying the
+// policy on top of the already-mutated list is idempotent — which is what makes
+// MC2_LIGHT_ROW_PURE_VERIFY a continuous check that the declaration still
+// matches reality.
+struct PublishedPolicy {
+	bool                 valid = false;
+	olr::ClassPolicy     cls   = olr::kClassNone;
+	bool                 sunRecolour = false;
+	uint32_t             sunARGB     = 0;
+	bool                 sunDisabled = false;
+	bool                 ambRecolour = false;
+	uint32_t             ambARGB     = 0;
+	float                worldPos[3] = {0.0f, 0.0f, 0.0f};
+	float                terrainSample = 1.0f;
+};
+// thread_local for the same FRAME-JOBS-2 reason as the scratch buffer below,
+// and because it fails in the safe direction: if a future worker thread runs
+// the gather without having published, it simply sees no policy and does a raw
+// gather of the (still-mutated) list -- which is byte-identical to the legacy
+// row. A shared static could instead be read half-written and produce a wrong
+// one.
+static thread_local PublishedPolicy s_publishedPolicy;
+
+// Flatten one TG_Light exactly as the legacy gather reads it.
+inline void flattenLight(const TG_LightPtr src, olr::LightInput& dst)
+{
+	dst.type   = (uint32_t)src->lightType;
+	dst.active = (src->active != 0);
+	dst.aRGB   = (uint32_t)src->GetaRGB();
+
+	// Same AMBIENT->Identity substitution as the legacy path.
+	Stuff::LinearMatrix4D light2world;
+	if (TG_LIGHT_AMBIENT != src->lightType)
+		light2world = src->lightToWorld;
+	else
+		light2world = Stuff::LinearMatrix4D::Identity;
+
+	memcpy(dst.l2w, (const float*)light2world, 12 * sizeof(float));
+
+	Stuff::UnitVector3D uVec;
+	light2world.GetLocalForwardInWorld(&uVec);
+	dst.fwd[0] = uVec.x;
+	dst.fwd[1] = uVec.y;
+	dst.fwd[2] = uVec.z;
+
+	dst.falloff[0] = src->closeDistance;
+	dst.falloff[1] = src->farDistance;
+	dst.falloff[2] = src->oneOverDistance;
+}
+
+// Resolve the declared policy's target lights BY ROLE rather than by array
+// index. The classes mutate worldLights[0] (the sun) and worldLights[1] (the
+// ambient) — allocated as TG_LIGHT_INFINITE and TG_LIGHT_AMBIENT at
+// mclib/camera.cpp:488/515 — but they GATHER against activeLights[], a
+// separately compacted view (mclib/camera.cpp:2635-2668). Role resolution is
+// correct under any compaction order; an index would silently target the wrong
+// light the day a TG_LIGHT_TERRAIN sorts ahead of the sun.
+inline int32_t findFirstOfType(const olr::LightInput* lights, uint32_t n, uint32_t type)
+{
+	for (uint32_t i = 0; i < n; ++i)
+		if (lights[i].type == type)
+			return (int32_t)i;
+	return -1;
+}
+
+// Build the explicit query from the current global light list plus whatever
+// policy the class published. This is the ONE place the globals are read.
+inline bool buildQueryFromGlobals(std::vector<olr::LightInput>& scratch, olr::Query& q)
+{
+	const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
+	const DWORD        numLights    = TG_Shape::s_numLights;
+
+	scratch.clear();
+	if (listOfLights) {
+		scratch.reserve(numLights);
+		for (DWORD i = 0; i < numLights; ++i) {
+			olr::LightInput li{};
+			if (listOfLights[i] != NULL) {
+				flattenLight(listOfLights[i], li);
+			} else {
+				li.active = false;   // NULL entries are skipped by both packers
+				li.type   = (uint32_t)TG_LIGHT_NONE;
+			}
+			scratch.push_back(li);
+		}
+	}
+
+	q.lights       = scratch.empty() ? nullptr : scratch.data();
+	q.numLights    = (uint32_t)scratch.size();
+	q.posColumnFix = s_lightPosColumnFix;
+	q.clampFixture = s_lightClampFixture;
+
+	const PublishedPolicy& p = s_publishedPolicy;
+	if (!p.valid)
+		return false;
+
+	q.policy             = p.cls;
+	q.terrainLightSample = p.terrainSample;
+	q.worldPos[0] = p.worldPos[0];
+	q.worldPos[1] = p.worldPos[1];
+	q.worldPos[2] = p.worldPos[2];
+
+	if (p.sunRecolour || p.sunDisabled) {
+		q.sunSlot.index         = findFirstOfType(q.lights, q.numLights, TG_LIGHT_INFINITE);
+		q.sunSlot.recolour      = p.sunRecolour;
+		q.sunSlot.aRGB          = p.sunARGB;
+		q.sunSlot.forceInactive = p.sunDisabled;
+	}
+	if (p.ambRecolour) {
+		q.ambientSlot.index    = findFirstOfType(q.lights, q.numLights, TG_LIGHT_AMBIENT);
+		q.ambientSlot.recolour = p.ambRecolour;
+		q.ambientSlot.aRGB     = p.ambARGB;
+	}
+	return true;
+}
+
+// Substitute the pure row for the legacy one (gate ON), and/or compare them
+// (verify ON). Called once at the tail of GatherLightsParameters, after the
+// legacy loop and every in-loop diagnostic has run untouched.
+void applyPureObjectLightRow(TG_HWLightsData* lights)
+{
+	// A published policy is consumed by exactly ONE gather and then dropped.
+	// This is deliberately the safe failure direction: a class whose policy is
+	// missed falls back to a raw gather of the (still-mutated) list, which is
+	// byte-identical to the legacy row; whereas a policy left standing could be
+	// applied to some unrelated object's gather and produce a wrong row. Single
+	// -shot consumption makes the second case unreachable — and it is the same
+	// stale-global hazard this slice exists to remove, so it must not be
+	// reintroduced by the mechanism that removes it.
+	struct ConsumePolicy {
+		~ConsumePolicy() { s_publishedPolicy.valid = false; }
+	} _consume;
+
+	if (!s_lightRowPure && !s_lightRowPureVerify)
+		return;                     // NEGATIVE CONTROL: not one row byte changed
+
+	// thread_local, not a plain static: this file already carries FRAME-JOBS-2
+	// preconditions (s_lightDataMapMu, atomic shadow counters) because worker
+	// threads are expected to reach this code. The surrounding per-call
+	// diagnostic counters are plain statics and race benignly on an int; a
+	// shared std::vector would not -- concurrent clear()/push_back() is heap
+	// corruption, not a skewed tally. Per-thread scratch costs one buffer.
+	static thread_local std::vector<olr::LightInput> scratch;
+	olr::Query q;
+	buildQueryFromGlobals(scratch, q);
+
+	// Seed from the legacy row so the deliberately-untouched tail slots and
+	// pad[] compare equal — the packer writes only [0, numLights).
+	olr::Row pure;
+	memcpy(&pure, lights, sizeof(pure));
+	olr::BuildObjectLightRow(q, &pure);
+
+	if (s_lightRowPureVerify) {
+		++s_lightRowPureChecked;
+		if (memcmp(&pure, lights, sizeof(pure)) != 0) {
+			++s_lightRowPureMismatch;
+			// SAMPLE-CAP 8: only the first 8 mismatches print in full. The
+			// running totals in the periodic summary below are the census; these
+			// lines are a sample and say so, so a truncated stream can never be
+			// mistaken for "only 8 rows ever diverged".
+			if (s_lightRowPureMismatch <= 8) {
+				std::fprintf(stderr,
+					"[LIGHT_ROW_PURE] MISMATCH #%lu (sample=first-8 of an uncapped "
+					"count; see the periodic summary for the total) class=%u "
+					"legacyLights=%d pureLights=%d "
+					"(declared policy does not reproduce the mutation)\n",
+					s_lightRowPureMismatch, (unsigned)q.policy,
+					lights->numLights_, pure.numLights_);
+				std::fflush(stderr);
+			}
+		}
+		if ((s_lightRowPureChecked % 5000) == 0) {
+			std::fprintf(stderr,
+				"[LIGHT_ROW_PURE] verify: checked=%lu mismatched=%lu\n",
+				s_lightRowPureChecked, s_lightRowPureMismatch);
+			std::fflush(stderr);
+		}
+	}
+
+	if (s_lightRowPure)
+		memcpy(lights, &pure, sizeof(pure));
+}
+
+} // anonymous namespace
+
+//-----------------------------------------------------------------------------
+// LIGHT-ROW-PURE-1 public policy declaration API (declared in txmmgr.h).
+// An appearance class publishes the policy it is about to apply, immediately
+// beside the legacy mutation, and clears it when its gather is done. Publishing
+// is inert by itself: it changes no light, no row and no pixel unless
+// MC2_LIGHT_ROW_PURE is on, and even then it reproduces the mutation exactly.
+//-----------------------------------------------------------------------------
+void mc2PublishObjectLightPolicy(uint32_t classPolicy,
+                                 bool sunRecolour, uint32_t sunARGB,
+                                 bool sunDisabled,
+                                 bool ambientRecolour, uint32_t ambientARGB,
+                                 float posX, float posY, float posZ,
+                                 float terrainSample)
+{
+	s_publishedPolicy.valid         = true;
+	s_publishedPolicy.cls           = (olr::ClassPolicy)classPolicy;
+	s_publishedPolicy.sunRecolour   = sunRecolour;
+	s_publishedPolicy.sunARGB       = sunARGB;
+	s_publishedPolicy.sunDisabled   = sunDisabled;
+	s_publishedPolicy.ambRecolour   = ambientRecolour;
+	s_publishedPolicy.ambARGB       = ambientARGB;
+	s_publishedPolicy.worldPos[0]   = posX;
+	s_publishedPolicy.worldPos[1]   = posY;
+	s_publishedPolicy.worldPos[2]   = posZ;
+	s_publishedPolicy.terrainSample = terrainSample;
+}
+
+void mc2ClearObjectLightPolicy(void)
+{
+	s_publishedPolicy = PublishedPolicy();
+}
+
 void GatherLightsParameters(TG_HWLightsData* lights)
 {
 	gosASSERT(lights);
@@ -2799,6 +3109,13 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 		s_spotDiagPackInactSum  = 0;
 		s_spotDiagPackPointSum  = 0;
 	}
+
+	// LIGHT-ROW-PURE-1 — the row that actually ships. Placed at the TAIL, after
+	// the legacy loop and every in-loop diagnostic above has run untouched, so
+	// this slice cannot regress instrumentation (debug_instrumentation_rule:
+	// demote-not-delete) and so MC2_LIGHT_ROW_PURE=0 is a byte-exact revert to
+	// the loop above. With both gates off this is a single predictable branch.
+	applyPureObjectLightRow(lights);
 }
 
 //----------------------------------------------------------------------

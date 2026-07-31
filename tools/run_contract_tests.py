@@ -44,6 +44,7 @@ REGISTERED_HARNESSES = [
     "timing_math_harness",
     "job_system_harness",
     "terrain_daylight_harness",
+    "object_light_row_harness",
 ]
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

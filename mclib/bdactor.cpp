@@ -3990,6 +3990,17 @@ long BldgAppearance::update (bool animate)
 	{
 		bldgShape->SetUseShadow(false);
 
+		// LIGHT-ROW-PURE-1: declare the policy the mutation at :3918 applied
+		// (sun-slot recolour with the latched terrain-light sample). Inert
+		// unless MC2_LIGHT_ROW_PURE / _VERIFY is on; reproduces that mutation
+		// exactly, and lets the verify gate prove the declaration still matches.
+		mc2PublishObjectLightPolicy(/*kClassBuilding*/1,
+		                            /*sunRecolour*/true, (uint32_t)lightRGB,
+		                            /*sunDisabled*/false,
+		                            /*ambientRecolour*/false, 0u,
+		                            position.x, position.y, position.z,
+		                            /*terrainSample*/1.0f);
+
 		bldgShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
 		// Branch lives INSIDE the existing inView||g_useGpuStaticProps cull
@@ -7043,6 +7054,22 @@ long TreeAppearance::update (bool animate)
 
 		TG_LightPtr light = eye->getWorldLight(0);
 		light->active = false;
+
+		// LIGHT-ROW-PURE-1: declare BOTH tree mutations — the ambient-slot
+		// recolour at :7031 and the sun deactivation immediately above. This is
+		// the policy PROP-BAKE-ORDER-VS-TIME-1 turns on: with the sun filtered
+		// out of the row, the AMBIENT becomes row slot 0 and
+		// decomposeFirstActiveLightColor overwrites it instead of the sun.
+		// Declaring it makes that a property of ONE query rather than of a
+		// global window other classes can bake inside. The mutations above
+		// STAY -- mclib/tgl.cpp:2189's CPU vertex kernel reads them inside this
+		// window and a row memcmp cannot see that; see mclib/txmmgr.cpp.
+		mc2PublishObjectLightPolicy(/*kClassTree*/2,
+		                            /*sunRecolour*/false, 0u,
+		                            /*sunDisabled*/true,
+		                            /*ambientRecolour*/true, (uint32_t)lightRGB,
+		                            position.x, position.y, position.z,
+		                            /*terrainSample*/1.0f);
 
 		treeShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
