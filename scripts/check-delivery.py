@@ -90,9 +90,17 @@ USAGE
   py -3 scripts/check-delivery.py --fix VEHICLE-AMBIENT-FLOOR-1
   py -3 scripts/check-delivery.py --gate MC2_SSAO_ENABLE     # ad-hoc, no manifest
   py -3 scripts/check-delivery.py --install mc2-win64-v0.4
+  py -3 scripts/check-delivery.py --list-installs      # scope + every label
+  py -3 scripts/check-delivery.py --nominate mc2-win64-v0.4    # ONE install
   py -3 scripts/check-delivery.py --contract           # repo-integrity only (CI)
   py -3 scripts/check-delivery.py --selftest           # injected-regression proof
   py -3 scripts/check-delivery.py --json
+
+EVERY GRADING RUN STATES ITS SCOPE (roots, depth, exclusions, rejections,
+install count, label count) before the first table, and --json carries the same
+under "scope". Two prior sweeps of this disk each published a bare total for
+about half its engine binaries with no stated scope, and each was read as a
+whole-disk figure. A total without a scope is not a measurement.
 
 EXIT CODES
   0  the queried fix(es) would be seen on at least one install, and no lie found
@@ -165,33 +173,41 @@ EXE_NAME = "mc2" + ".exe"
 #
 # Hence a GLOB rather than four more literals: `A:/Games/MC2-OpenGL-*` matches
 # the dated-sibling convention that is actually in use, so tomorrow's cut is
-# graded without an edit. find_installs() globs each pattern, so a wildcard root
-# composes with all three shapes; verified it picks up exactly those four and
-# does NOT reach the nested <install>/data/mc2-win64-v0.4 copies (three levels
-# down, same documented shape as the Remastered one below).
+# graded without an edit. find_installs() expands each root pattern, so a
+# wildcard root composes with every depth pattern.
 #
 # WHAT THIS DOES NOT FIX, STATED PLAINLY: the pass bar is "at least ONE install
 # shows the fix", so adding installs can only make the row easier to pass. The
-# row can now go green off a single fresh directory while the install carrying
-# the PRODUCT name still has none of the nine. That is a weak assertion and it
-# is not what "would the user see it?" means -- the user launches one install,
-# not the union of twenty-three. Nominating the graded install is the real fix
-# and is a USER decision (which directory is the one that counts?), so it is
-# filed, not silently taken here.
+# row can go green off a single fresh directory while the install carrying the
+# PRODUCT name still has none of the nine. That is a weak assertion and it is
+# not what "would the user see it?" means -- the user launches one install, not
+# the union of twenty-eight. --nominate now makes the strict bar available
+# (grade THIS install, not any of them); WHICH install is nominated remains a
+# user decision and no default is taken here.
 #
-# STILL UNSCANNED AFTER THIS CHANGE, NAMED SO IT IS A KNOWN GAP RATHER THAN AN
-# UNKNOWN ONE -- of the 30 binaries the sweep found, these 6 are not graded:
+# THE FOUR-NESTED-COPIES GAP IS CLOSED (CONTRACT-TRUTH-2, 2026-07-31). The
+# paragraph that stood here filed the <install>/data/mc2-win64-v0.4 copies as a
+# known gap on the grounds that reaching them needed "a speculative <root>/*/*/
+# glob that would also sweep arbitrary subdirectories". Two things were wrong
+# with that. There were FIVE, not four -- CURSORFIX-2026-07-31 was cut after the
+# paragraph was written, which is the same way this list went stale twice
+# already. And the glob is not speculative: measured, <root>/*/*/ adds exactly
+# those five under the default roots and nothing else. What it WOULD sweep, if
+# a root were pointed at a source worktree, is build output -- so find_installs
+# rejects disqualifying path segments by name (see NON_INSTALL_SEGMENTS) and
+# reports every rejection in its scope block. A known gap in the one tool that
+# answers "which installs would show this?" is still a root that cannot report
+# NO; it reports nothing, and nothing reads as fine.
+#
+# STILL UNSCANNED, NAMED SO IT IS A KNOWN GAP RATHER THAN AN UNKNOWN ONE:
 #   * A:/Games/Carver5-feasibility  and  A:/Games/test -- both verified
 #     banner-absent (no build-fingerprint), so not attributable engine builds
 #     this repo produced. They would grade "?" on every axis: noise, not answer.
-#   * FOUR nested <install>/data/mc2-win64-v0.4 copies -- under "MC2 OpenGL
-#     Remastered" and under each of the three MC2-OpenGL-* installs. All four
-#     are the same 10410496-byte 2026-06-14 build, fingerprint eca37ed3, built
-#     from a DIRTY tree. Two levels below their root, so no pattern here reaches
-#     them without a speculative <root>/*/*/ glob that would also sweep
-#     arbitrary subdirectories. Grade explicitly with --install-root if it ever
-#     matters.
-# Re-check with --install-root if any of that changes.
+#   * every <worktree>/build64/RelWithDebInfo/<engine> (16 on this disk) --
+#     compiler output, deliberately excluded, and now excluded BY RULE with the
+#     rejection counted in the scope block rather than by not looking.
+# Re-check with --install-root if any of that changes; --list-installs prints
+# the scope block plus every discovered label without grading anything.
 DEFAULT_INSTALL_ROOTS = [
     "A:/Games/mc2-opengl",
     "A:/Games/MC2 OpenGL Remastered",
@@ -652,30 +668,214 @@ def read_default_at(sha: str | None, var: str) -> dict:
 # ---------------------------------------------------------------------------
 # Installs
 # ---------------------------------------------------------------------------
-def find_installs(roots) -> list[dict]:
+# DIRECTORY NAMES THAT ARE NEVER AN INSTALL, whatever binary they contain.
+#
+# This list is the price of searching two levels down (below). A build tree
+# holds a real, freshly-linked engine binary at <worktree>/build64/
+# RelWithDebInfo/, which is EXACTLY the shape <root>/*/*/ matches -- so pointing
+# --install-root at a source worktree would otherwise grade a compiler output as
+# something a user launches. It is not: it has no deployed data tree beside it,
+# so every data axis would report MISSING and the row would be noise wearing a
+# verdict. Measured on this disk (CONTRACT-TRUTH-2, 2026-07-31): of 46 engine
+# binaries under A:/, 16 are build outputs of exactly this shape.
+#
+# Matching is on any path segment BELOW the root, lowercased, so a root that is
+# itself named "build" is still honoured -- you asked for it explicitly.
+NON_INSTALL_SEGMENTS = {
+    "build", "build64", "debug", "release", "relwithdebinfo", "minsizerel",
+    "cmakefiles", "x64", "win32", ".git", "node_modules", "__pycache__",
+    "$recycle.bin", "system volume information",
+}
+
+
+def _rejected_segment(root_dir: str, exe_dir: str) -> str | None:
+    """The first below-root path segment that disqualifies exe_dir, or None."""
+    rel = os.path.relpath(exe_dir, root_dir)
+    if rel == os.curdir:
+        return None
+    for seg in rel.replace("\\", "/").split("/"):
+        if seg.lower() in NON_INSTALL_SEGMENTS:
+            return seg
+    return None
+
+
+def _label_for(root_dir: str, exe_dir: str, root_is_install: bool) -> str:
+    """A STABLE, path-derived label. See the uniqueness note in find_installs."""
+    rel = os.path.relpath(exe_dir, root_dir).replace("\\", "/")
+    base = os.path.basename(root_dir.rstrip("/\\")) or root_dir
+    if rel == ".":
+        return base
+    # When the root is ITSELF an install, its nested copies must carry the
+    # root's name or every root's <root>/data/mc2-win64-v0.4 collapses onto
+    # every other root's. When the root is a plain container of installs, the
+    # relative path alone is already unique within it, and using it verbatim
+    # keeps every pre-existing label byte-identical.
+    return f"{base}/{rel}" if root_is_install else rel
+
+
+def find_installs(roots, scope: dict | None = None) -> list[dict]:
+    """Every engine install under `roots`, one row per binary, uniquely labelled.
+
+    TWO DEFECTS FIXED HERE (CONTRACT-TRUTH-2, reported by DELIVERY-REGRADE-1).
+
+    1. IT COULD NOT REACH TWO LEVELS DOWN. The patterns were <root>/,
+       <root>/*/ and <root>/releases/*/ -- depth 1 plus one hard-coded depth-2
+       special case. FIVE installs on this disk sit at <root>/data/
+       mc2-win64-v0.4/ and were invisible to a default run: one under
+       "MC2 OpenGL Remastered" and one under each of the four MC2-OpenGL-*
+       cuts. The comment that replaced this one KNEW about them -- it named
+       four of the five and filed them as a known gap -- but a known gap in a
+       tool whose entire purpose is "which installs would show this fix?" is
+       still an install root that cannot report NO. It reports nothing, and
+       nothing reads as fine. <root>/*/*/ reaches them; the segment blacklist
+       above is what keeps that from also sweeping in build output.
+
+       DEPTH IS BOUNDED AT 2 AND THE SEARCH IS NOT RECURSIVE. os.walk from an
+       explicit root would find every build64/RelWithDebInfo/<engine> under it
+       (15 of them under A:/Games), and "grade everything you can see" is how
+       the tool ends up asserting things about directories nobody launches.
+
+    2. ITS LABELS WERE NOT UNIQUE. The label was basename(dirname(exe)) with
+       ONE special case ("releases/" prefix). That happened to be collision-free
+       on the 23 rows it could see, so nothing had failed yet -- but the five
+       installs fix 1 adds are ALL named mc2-win64-v0.4, and so is a sixth at
+       A:/Games/mc2-opengl/mc2-win64-v0.4. Six rows, one label. The human table
+       prints six lines that look like contradictory verdicts for one install,
+       and a per-label table built from --json silently merges them into one:
+       DELIVERY-REGRADE-1 published exactly that table mid-lane before catching
+       it. Fixing discovery without fixing labels would have SHIPPED that bug.
+
+       The label is now derived from the path relative to the root that found
+       it, qualified by the root's own name when the root is itself an install.
+       That is a function of the PATH ALONE -- not of what else happens to be on
+       disk -- so a label means the same install from one run to the next, which
+       is the property a nominated-install gate needs. All 23 pre-existing
+       labels are unchanged by construction (a plain container root yields the
+       relative path, which for depth-1 installs IS the old basename, and for
+       releases/* IS the old special case, now general rather than hard-coded).
+
+       Uniqueness is then ENFORCED rather than argued: colliding labels are
+       escalated to full paths and the collision is recorded in the scope block.
+       Two distinct roots could still produce one label (two containers each
+       holding an "mc2-win64-v0.4"); this is the backstop for that.
+
+    `scope` is filled in with what was and was not searched, so a caller can
+    print it. A sweep that does not state its scope is how two prior sweeps of
+    this disk each published a bare total for half the binaries on it.
+    """
     seen, out = set(), []
-    for root in roots:
-        # `root` ITSELF may be an install dir, not just a parent of them. The
-        # first version matched only <root>/*/ and <root>/releases/*/, so
+    root_dirs, unmatched, rejected = [], [], []
+    for pattern in roots:
+        hits = sorted(d for d in _glob.glob(pattern) if os.path.isdir(d))
+        if not hits:
+            unmatched.append(pattern)
+            continue
+        root_dirs += [(pattern, os.path.abspath(d).replace("\\", "/"))
+                      for d in hits]
+
+    for pattern, root in root_dirs:
+        root_is_install = os.path.isfile(os.path.join(root, EXE_NAME))
+        # `root` ITSELF may be an install dir, not just a parent of them.
         # "A:/Games/MC2 OpenGL Remastered/<engine>" -- an install that IS its
-        # own root -- was unreachable no matter what root you passed: naming it
+        # own root -- was unreachable when only <root>/*/ was matched: naming it
         # found nothing, and naming its parent swept in every unrelated folder
-        # under A:/Games. Three patterns, so a root can be either shape.
+        # under A:/Games. Depth 0, 1 and 2, so a root can be any of the shapes
+        # actually in use on this disk.
         pats = [os.path.join(root, EXE_NAME),
                 os.path.join(root, "*", EXE_NAME),
-                os.path.join(root, "releases", "*", EXE_NAME)]
+                os.path.join(root, "*", "*", EXE_NAME)]
         for pat in pats:
             for exe in sorted(_glob.glob(pat)):
                 exe = os.path.abspath(exe)
                 if exe in seen:
                     continue
-                seen.add(exe)
                 d = os.path.dirname(exe)
-                label = os.path.basename(d)
-                if os.path.basename(os.path.dirname(d)) == "releases":
-                    label = "releases/" + label
-                out.append({"label": label, "exe": exe, "deploy": d})
+                bad = _rejected_segment(root, d)
+                if bad is not None:
+                    rejected.append((exe, bad))
+                    continue
+                seen.add(exe)
+                out.append({"label": _label_for(root, d, root_is_install),
+                            "exe": exe, "deploy": d, "root": root})
+
+    # Uniqueness backstop. A label that names two binaries is a merged row.
+    by_label: dict[str, list[dict]] = {}
+    for i in out:
+        by_label.setdefault(i["label"], []).append(i)
+    collisions = []
+    for label, group in by_label.items():
+        if len(group) > 1:
+            collisions.append((label, [g["exe"] for g in group]))
+            for g in group:
+                g["label"] = g["deploy"].replace("\\", "/")
+
+    if scope is not None:
+        scope.update({
+            "root_patterns": list(roots),
+            "root_dirs": [d for _p, d in root_dirs],
+            "roots_by_pattern": {p: [d for q, d in root_dirs if q == p]
+                                 for p in roots},
+            "unmatched_root_patterns": unmatched,
+            "patterns_per_root": ["<root>/" + EXE_NAME,
+                                  "<root>/*/" + EXE_NAME,
+                                  "<root>/*/*/" + EXE_NAME],
+            "max_depth": 2,
+            "recursive": False,
+            "excluded_segments": sorted(NON_INSTALL_SEGMENTS),
+            "rejected_as_non_install": [{"exe": e, "segment": s}
+                                        for e, s in sorted(rejected)],
+            "label_collisions_resolved": collisions,
+            "installs_found": len(out),
+            "distinct_labels": len({i["label"] for i in out}),
+        })
     return out
+
+
+def print_scope(scope: dict, out=sys.stdout) -> None:
+    """State the scope, every run. A sweep whose scope is unstated reads as
+    whole-disk to the next person; two sweeps of this disk each published a
+    bare total covering half its engine binaries."""
+    print(f"\n{'-' * 118}", file=out)
+    print("SCOPE OF THIS RUN -- what was searched, and what was not", file=out)
+    print(f"{'-' * 118}", file=out)
+    print(f"  root patterns ({len(scope['root_patterns'])}) resolved to "
+          f"{len(scope['root_dirs'])} director{'y' if len(scope['root_dirs']) == 1 else 'ies'}:",
+          file=out)
+    for p in scope["root_patterns"]:
+        dirs = scope.get("roots_by_pattern", {}).get(p, [])
+        if len(dirs) == 1 and dirs[0].rstrip("/") == p.replace("\\", "/").rstrip("/"):
+            print(f"    {p}", file=out)
+        else:
+            print(f"    {p}  ->  {len(dirs)} dir(s)", file=out)
+            for d in dirs:
+                print(f"        {d}", file=out)
+    for p in scope["unmatched_root_patterns"]:
+        print(f"    !! {p}  -- MATCHED NOTHING. A root that does not exist "
+              f"reports no installs, and no installs reads as fine.", file=out)
+    print(f"  per root: {', '.join(scope['patterns_per_root'])}   "
+          f"(depth <= {scope['max_depth']}, NOT recursive)", file=out)
+    rej = scope["rejected_as_non_install"]
+    print(f"  {len(rej)} candidate binar{'y' if len(rej) == 1 else 'ies'} "
+          f"matched a pattern and {'was' if len(rej) == 1 else 'were'} "
+          f"REJECTED as build output (disqualifying path segment):", file=out)
+    for r in rej[:10]:
+        print(f"    {r['exe']}   [{r['segment']}]", file=out)
+    for label, paths in scope["label_collisions_resolved"]:
+        print(f"  label collision resolved to full paths: {label} -> "
+              f"{len(paths)} binaries", file=out)
+    print(f"  RESULT: {scope['installs_found']} install(s), "
+          f"{scope['distinct_labels']} distinct label(s) -- these must be "
+          f"equal, or rows merge.", file=out)
+    print("  THIS IS NOT A WHOLE-DISK SWEEP. Engine binaries outside these "
+          "roots are not", file=out)
+    print("  graded and are not counted -- including every "
+          "<worktree>/build64/RelWithDebInfo/", file=out)
+    print("  build output, which is a compiler artifact with no deployed data "
+          "tree beside it,", file=out)
+    print("  not something a user launches. Pass --install-root to widen this; "
+          "read any total", file=out)
+    print("  below as 'of the installs named here', never as 'of the "
+          "binaries on this disk'.", file=out)
 
 
 def load_install(inst: dict) -> dict:
@@ -948,7 +1148,7 @@ def synth_fix(var: str) -> dict:
             "note": "ad-hoc query: data requirements undeclared."}
 
 
-def report(fixes, installs, out=sys.stdout, want_json=False):
+def report(fixes, installs, out=sys.stdout, want_json=False, scope=None):
     cache = {}
     results = []
     integrity_errs = []
@@ -966,6 +1166,13 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
                 historical.append(f"{fix['id']} @ {inst['label']} "
                                   f"({(inst['fp'].get('sha12') or '?')}): {d}")
             rows.append({"install": inst["label"],
+                         # THE UNIQUE KEY, emitted on every row on purpose.
+                         # A consumer that groups by "install" is grouping by a
+                         # display label; DELIVERY-REGRADE-1 built a table that
+                         # way and merged six installs into one line. `exe` is
+                         # one binary, always, whatever the label says.
+                         "exe": inst["exe"].replace("\\", "/"),
+                         "deploy": inst["deploy"].replace("\\", "/"),
                          "sha": (inst["fp"].get("sha12")
                                  if inst["fp"].get("present")
                                  else "NO-FINGERPRINT"),
@@ -976,7 +1183,8 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
         results.append({"fix": fix, "rows": rows})
 
     if want_json:
-        json.dump({"results": [{"id": r["fix"]["id"],
+        json.dump({"scope": scope or {},
+                   "results": [{"id": r["fix"]["id"],
                                 "commit": r["fix"]["commit"],
                                 "gate": r["fix"].get("gate"),
                                 "rows": [{k: v for k, v in row.items()}
@@ -988,7 +1196,15 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
         out.write("\n")
         return results, integrity_errs
 
-    W = 38
+    if scope:
+        print_scope(scope, out=out)
+
+    # THE COLUMN MUST NOT UNDO THE LABELS. Labels were just made unique; a
+    # fixed 38-char column that truncates them would merge the rows again on
+    # screen, which is the same bug wearing a different hat. Width follows the
+    # longest label, and the rule lines follow the width.
+    W = max(38, max((len(i["label"]) for i in installs), default=38))
+    RULE = W + 76
     summary = []
     for r in results:
         fix, rows = r["fix"], r["rows"]
@@ -996,15 +1212,15 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
         if fix.get("gate"):
             head_default = read_default_at(WORKING_TREE,
                                           fix["gate"])["default"] or "?"
-        print(f"\n{'=' * 118}", file=out)
+        print(f"\n{'=' * RULE}", file=out)
         print(f"FIX  {fix['id']}", file=out)
         print(f"     commit {fix['commit']}   gate "
               f"{fix.get('gate') or '(ungated)'}   "
               f"reader default at the tip: {head_default}", file=out)
-        print(f"{'=' * 118}", file=out)
+        print(f"{'=' * RULE}", file=out)
         print(f"  {'install':{W}} {'built-from':19} {'code':4} {'dflt':4} "
               f"{'data':4}  would I see it if I launched?", file=out)
-        print(f"  {'-' * 114}", file=out)
+        print(f"  {'-' * (RULE - 4)}", file=out)
         seen_ct = 0
         for row in rows:
             if row["verdict"] == "WOULD SEE IT":
@@ -1013,11 +1229,11 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
             why = row["why"]
             if len(why) > 56:
                 why = why[:53] + "..."
-            print(f"  {row['install'][:W]:{W}} {sha:19} "
+            print(f"  {row['install']:{W}} {sha:19} "
                   f"{row['code']['state']:4} {row['default']['value'][:4]:4} "
                   f"{row['data']['state']:4}  {row['verdict']}: {why}",
                   file=out)
-        print(f"  {'-' * 114}", file=out)
+        print(f"  {'-' * (RULE - 4)}", file=out)
         print(f"  ANSWER: {seen_ct} of {len(rows)} installs on disk would show "
               f"{fix['id']}.", file=out)
         summary.append((fix["id"], seen_ct, len(rows)))
@@ -1058,10 +1274,10 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
                       file=out)
 
     if len(summary) > 1:
-        print(f"\n{'=' * 118}", file=out)
+        print(f"\n{'=' * RULE}", file=out)
         print("DELIVERY SUMMARY -- would the user see it if they launched?",
               file=out)
-        print(f"{'=' * 118}", file=out)
+        print(f"{'=' * RULE}", file=out)
         for fid, n, tot in summary:
             flag = "  <-- DELIVERED NOWHERE" if n == 0 else ""
             print(f"  {fid:{W}} {n:>3} / {tot} installs{flag}", file=out)
@@ -1074,12 +1290,12 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
             print(f"    * {e}", file=out)
 
     if integrity_errs:
-        print(f"\n{'!' * 118}", file=out)
+        print(f"\n{'!' * RULE}", file=out)
         print("INTEGRITY FAILURES -- something in the tree is lying RIGHT NOW:",
               file=out)
         for e in sorted(set(integrity_errs)):
             print(f"  * {e}", file=out)
-        print(f"{'!' * 118}", file=out)
+        print(f"{'!' * RULE}", file=out)
     return results, integrity_errs
 
 
@@ -1105,12 +1321,65 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
 # entire reason the script exists -- was reachable only by a human typing it.
 #
 # The gap is now PER FIX. One fix delivered nowhere fails the run.
-def delivery_gaps(results, adhoc: bool = False) -> list[tuple[str, str]]:
-    """-> [(fix id, why)] for every fix no install on disk would show."""
+def resolve_nominated(installs, label: str) -> dict:
+    """The ONE install a nomination names. Ambiguity and absence both fail.
+
+    This is the consumer that makes label uniqueness load-bearing rather than
+    cosmetic. Under the old labelling a nomination of "mc2-win64-v0.4" named
+    SIX binaries with different fingerprints and different verdicts, and any
+    tool that resolved it by picking the first would have produced a gate whose
+    answer depended on directory iteration order.
+    """
+    hits = [i for i in installs if i["label"] == label]
+    if len(hits) == 1:
+        return hits[0]
+    # Exit 2, not 1: this is not "the fix did not reach the user", it is "the
+    # question could not be asked". Collapsing the two is how a broken gate
+    # reads as a failing one and gets waved through as expected-red.
+    if not hits:
+        near = [i["label"] for i in installs
+                if label.lower() in i["label"].lower()][:5]
+        print(f"NOMINATION UNRESOLVABLE: no install labelled {label!r}.",
+              file=sys.stderr)
+        if near:
+            print(f"  did you mean: {', '.join(near)}", file=sys.stderr)
+        print("  A nominated install the tool cannot find is a gate that "
+              "cannot work. --list-installs shows every label.",
+              file=sys.stderr)
+        raise SystemExit(2)
+    print(f"NOMINATION AMBIGUOUS: {label!r} names {len(hits)} binaries:",
+          file=sys.stderr)
+    for h in hits:
+        print(f"    {h['exe']}", file=sys.stderr)
+    print("  Refusing to pick one. A gate whose verdict depends on which of "
+          "several binaries a label happened to resolve to is not a gate.",
+          file=sys.stderr)
+    raise SystemExit(2)
+
+
+def delivery_gaps(results, adhoc: bool = False,
+                  nominated: str | None = None) -> list[tuple[str, str]]:
+    """-> [(fix id, why)] for every fix no install on disk would show.
+
+    With `nominated`, the bar is that ONE install rather than "any of them".
+    That is a strictly HARDER bar and it is the only thing here that offsets
+    the loosening described in find_installs: more installs can only make an
+    any-of-them bar easier to clear.
+    """
     gaps = []
     for res in results:
         rows = res["rows"]
         if not rows:
+            continue
+        if nominated is not None:
+            rows = [r for r in rows if r["install"] == nominated]
+            if not rows:
+                continue
+            if rows[0]["verdict"] == "WOULD SEE IT":
+                continue
+            gaps.append((res["fix"]["id"],
+                         f"the NOMINATED install {nominated} would not show "
+                         f"it -- {rows[0]['why']}"))
             continue
         if any(r["verdict"] == "WOULD SEE IT" for r in rows):
             continue
@@ -1402,6 +1671,116 @@ def selftest() -> int:
     ck("INJECTED float arm mismatch is caught",
        expect_mismatch("0.35", "0.5") is not None)
 
+    # 5d. INSTALL DISCOVERY AND LABELLING (CONTRACT-TRUTH-2). Both regressions
+    #     are built as real directory trees, not mocked, because both were
+    #     invisible to every fixture this script already had: the tool graded
+    #     23 installs on a disk that held 28, and its labels merged six of them
+    #     onto one row.
+    with tempfile.TemporaryDirectory() as td:
+        def touch(*parts):
+            p = os.path.join(td, *parts)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            open(p, "wb").write(b"x")
+            return p
+
+        # An install AT the root, one a level down, one TWO levels down (the
+        # <root>/data/<install>/ shape that was unreachable), a releases/ one,
+        # and a build tree that must NOT be discovered.
+        touch("rootinst", EXE_NAME)
+        touch("rootinst", "data", "mc2-win64-v0.4", EXE_NAME)
+        touch("container", "mc2-win64-v0.4", EXE_NAME)
+        touch("container", "releases", "mc2-win64-v0.5.1", EXE_NAME)
+        # A SOURCE WORKTREE, the exact shape <root>/*/*/ would otherwise sweep
+        # in: a real, freshly-linked binary two levels down with no deployed
+        # data tree beside it. 15 of these exist under A:/Games.
+        touch("worktree", "build64", "RelWithDebInfo", EXE_NAME)
+
+        sc = {}
+        got = find_installs([os.path.join(td, "rootinst"),
+                             os.path.join(td, "container"),
+                             os.path.join(td, "worktree")], scope=sc)
+        labels = sorted(i["label"] for i in got)
+        ck("INJECTED two-levels-down install is discovered",
+           any(i["exe"].endswith(os.path.join("data", "mc2-win64-v0.4",
+                                              EXE_NAME)) for i in got),
+           "a <root>/data/<install>/ copy was invisible -- five of them were "
+           "on this disk, and an install root that is not scanned cannot "
+           "report NO, it reports nothing, and nothing reads as fine")
+        ck("root that is ITSELF an install is still discovered",
+           "rootinst" in labels)
+        ck("depth-1 and releases/ installs are still discovered",
+           "mc2-win64-v0.4" in labels
+           and "releases/mc2-win64-v0.5.1" in labels,
+           "widening discovery narrowed it")
+        ck("NEGATIVE CONTROL: a build tree is NOT an install",
+           not any("build64" in i["exe"] for i in got)
+           and len(sc["rejected_as_non_install"]) == 1,
+           "reaching two levels down swept a compiler output into the graded "
+           "set -- it has no deployed data beside it and every data axis "
+           "would report MISSING")
+        ck("INJECTED colliding basenames get DISTINCT labels",
+           len(labels) == len(set(labels)) == 4,
+           f"two installs both named mc2-win64-v0.4 merged onto one row: "
+           f"{labels}")
+        ck("the merged pair is separated by ROOT, not by an index",
+           "rootinst/data/mc2-win64-v0.4" in labels
+           and "mc2-win64-v0.4" in labels,
+           "labels must be a function of the path alone, so a nomination "
+           "means the same install from one run to the next")
+        ck("scope states what it searched and what it rejected",
+           sc["max_depth"] == 2 and sc["recursive"] is False
+           and sc["installs_found"] == 4 and sc["distinct_labels"] == 4)
+        ck("a root pattern that matches nothing is REPORTED, not silent",
+           find_installs([os.path.join(td, "nope")], scope=(s2 := {})) == []
+           and s2["unmatched_root_patterns"] == [os.path.join(td, "nope")],
+           "a root that does not exist reports no installs, and no installs "
+           "reads as fine")
+
+        # The uniqueness BACKSTOP: two container roots each holding the same
+        # basename produce the same relative path, so the rule alone is not
+        # enough and the escalation must fire.
+        touch("container2", "mc2-win64-v0.4", EXE_NAME)
+        sc2 = {}
+        got2 = find_installs([os.path.join(td, "container"),
+                              os.path.join(td, "container2")], scope=sc2)
+        l2 = [i["label"] for i in got2]
+        ck("INJECTED cross-root label collision is escalated, not merged",
+           len(set(l2)) == len(l2) and bool(sc2["label_collisions_resolved"]),
+           f"the backstop did not fire: {l2}")
+
+        # Nomination: the consumer that makes uniqueness load-bearing.
+        ck("a nomination resolving to exactly one install is accepted",
+           resolve_nominated(got, "rootinst/data/mc2-win64-v0.4")["label"]
+           == "rootinst/data/mc2-win64-v0.4")
+        try:
+            resolve_nominated(got, "mc2-win64-v0.4-that-is-not-here")
+            ok = False
+        except SystemExit as e:
+            ok = e.code == 2
+        ck("INJECTED unresolvable nomination FAILS LOUDLY, as exit 2",
+           ok, "a nominated install the tool cannot find would have become a "
+               "gate that silently graded something else -- and exit 1 would "
+               "have read as 'the fix did not land' rather than 'the question "
+               "could not be asked'")
+        try:
+            resolve_nominated(got2, "mc2-win64-v0.4")
+            amb = False
+        except SystemExit as e:
+            amb = e.code == 2
+        ck("INJECTED ambiguous nomination is REFUSED, not arbitrated",
+           amb, "a label naming several binaries was silently resolved to one "
+                "of them, so the gate's verdict depended on iteration order")
+        ck("nominating restricts the pass bar to that install",
+           [g[0] for g in delivery_gaps(
+               [{"fix": {"id": "A"},
+                 "rows": [{"install": "x", "verdict": "WOULD SEE IT",
+                           "why": ""},
+                          {"install": "y", "verdict": "NO", "why": "off"}]}],
+               nominated="y")] == ["A"],
+           "the nominated install said NO but the run passed off another "
+           "install's YES -- which is the 'any of twenty-eight' bar wearing a "
+           "nomination")
+
     # 6. Manifest integrity: a needle the named commit does not contain.
     bogus = {"id": "bogus", "commit": "HEAD", "gate": None,
              "code_evidence": [{"path": "README.md",
@@ -1439,6 +1818,15 @@ def main(argv=None) -> int:
                                       "this glob")
     ap.add_argument("--install-root", action="append",
                     default=None, help="where installs live (repeatable)")
+    ap.add_argument("--list-installs", action="store_true",
+                    help="print the scope block and every discovered install "
+                         "label with its binary path, then exit")
+    ap.add_argument("--nominate", metavar="LABEL",
+                    help="grade the run against ONE install: the pass bar "
+                         "becomes 'this install shows the fix' instead of "
+                         "'some install does'. Fails if the label does not "
+                         "resolve to exactly one binary. No default -- which "
+                         "install counts is a user decision.")
     ap.add_argument("--contract", action="store_true",
                     help="repo-integrity only: no install grading, exit 2 on "
                          "any manifest/reader/registry lie")
@@ -1500,25 +1888,56 @@ def main(argv=None) -> int:
         return 0
 
     roots = args.install_root or DEFAULT_INSTALL_ROOTS
-    installs = [load_install(i) for i in find_installs(roots)]
+    scope: dict = {}
+    found = find_installs(roots, scope=scope)
+
+    if args.list_installs:
+        print_scope(scope)
+        print()
+        for i in sorted(found, key=lambda x: x["label"]):
+            print(f"  {i['label']:52} {i['exe']}")
+        # Same rule as the grading path: a listing that found nothing has
+        # answered nothing, and exiting 0 on it is how "no installs" reads as
+        # fine. The scope block above says WHY it found nothing.
+        return 0 if found else 2
+
+    installs = [load_install(i) for i in found]
     if args.install:
         installs = [i for i in installs
                     if fnmatch.fnmatch(i["label"], args.install)]
+        scope["installs_found"] = len(installs)
+        scope["distinct_labels"] = len({i["label"] for i in installs})
+        scope["filtered_by"] = args.install
+    # UNCHANGED BAR, STATED SO IT IS NOT MISTAKEN FOR ONE. Zero installs is
+    # still exit 2, not exit 0: a run that graded nothing has answered nothing.
+    # Widening discovery does make this easier to clear -- see find_installs.
     if not installs:
         print(f"no engine installs found under {', '.join(roots)}",
               file=sys.stderr)
         return 2
 
-    results, integrity = report(fixes, installs, want_json=args.json)
+    nominated = None
+    if args.nominate:
+        nominated = resolve_nominated(installs, args.nominate)["label"]
+
+    results, integrity = report(fixes, installs, want_json=args.json,
+                                scope=scope)
 
     if integrity:
         return 2
 
-    gaps = delivery_gaps(results, adhoc=bool(args.gate))
+    if nominated and not args.json:
+        print(f"\nNOMINATED INSTALL: {nominated}\n  The pass bar for this run "
+              f"is THIS install alone, not 'any of {len(installs)}'.",
+              file=sys.stdout)
+
+    gaps = delivery_gaps(results, adhoc=bool(args.gate), nominated=nominated)
     if gaps:
         print(f"\n{'!' * 118}", file=sys.stderr)
-        print("DELIVERY FAILURE -- the user would not see these fixes on ANY "
-              "install on this disk:", file=sys.stderr)
+        print("DELIVERY FAILURE -- the user would not see these fixes "
+              + (f"on the NOMINATED install {nominated}:" if nominated
+                 else "on ANY install in the scope printed above:"),
+              file=sys.stderr)
         for fid, why in gaps:
             print(f"  * {fid}: {why}", file=sys.stderr)
         print("Correct code that reaches no install is not delivered. Rebuild "
