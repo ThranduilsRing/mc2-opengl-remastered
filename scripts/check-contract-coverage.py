@@ -102,6 +102,31 @@ INDEX, so `git add` alone could satisfy it. See tracked_files().
       once written, is TRUE -- which matters because a reproduction command
       nobody can run is worse than no trailer at all.
 
+KNOWN LIMIT -- arm (b) IS ONE LEVEL DEEP (RED-ROWS-CLOSE-2, 2026-07-31)
+----------------------------------------------------------------------
+Arm (b) asks "does a runner invoke this script?". It cannot ask "and is that
+runner itself ever driven?", so a check can be fully accounted-for here and
+still never execute anywhere. Measured instance, the reason this note exists:
+
+  scripts/check-shader-schema.sh was credited as "driven by another runner"
+  because CMakeLists.txt:830 defines a REAL add_custom_target(shader_schema)
+  whose COMMAND genuinely invokes it -- an invocation, not a mention, so this
+  file was behaving exactly as designed. But that target carries no ALL, so no
+  build, no script and no gate ever requested it. The check was dark from birth
+  and had gone red on a genuine C++/GLSL layout desync with nobody watching.
+
+That check is now WIRED into check-contracts.sh, so this specific hole is shut;
+the CLASS is not. Anything reachable only via an opt-in cmake custom target, an
+unreferenced make phony, or a helper function no caller calls will read as
+covered here.
+
+NOT FIXED BLIND, deliberately: closing it means deciding whether a cmake target
+counts as a runner only when something drives it (ALL, a dependency edge, or a
+script naming `--target <name>`), and that adjudication belongs with whoever
+owns the cmake targets -- there are custom targets here that are SUPPOSED to be
+manual. TRIGGER for arm (g): a census of add_custom_target COMMANDs that invoke
+scripts/check-*, graded against whether anything drives each target.
+
 Run with --selftest to prove all seven arms still fire.
 """
 import ast

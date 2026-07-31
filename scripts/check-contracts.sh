@@ -20,8 +20,29 @@
 #   * Idempotent and read-only
 #
 # Excluded (too heavy for this aggregator):
-#   check-shader-schema.sh   -- requires glslangValidator + compiled goldens
 #   check-debug-state-json.py -- requires a live engine JSON snapshot
+#
+# RED-ROWS-CLOSE-2 (2026-07-31): check-shader-schema.sh USED to be excluded here,
+# by this comment, on the stated grounds that it "requires glslangValidator +
+# compiled goldens". BOTH CLAUSES WERE FALSE and it is now wired below as
+# `shader_schema`. Measured: tools/shader_schema/validate.py contains no
+# subprocess/glslang/spirv-cross call of any kind (it is pure stdlib), and the
+# 82 shader_reflect goldens it reads are TRACKED, COMMITTED files, not build
+# output. It runs in ~0.3s -- inside this file's own ~5s promise.
+#
+# The cost of that wrong sentence: the check was red and unwatched, on a REAL
+# C++/GLSL desync (GpuMechInstance bytes 56/60 renamed in gos_mech_batcher.h with
+# offsetof static_asserts, while shaders/mech.vert still called them _pad2/_pad3).
+# Note the shape -- a prose comment was the ONLY thing excluding it, which is the
+# mention-is-not-a-caller pattern check-contract-coverage.py exists to refuse.
+# Coverage did not catch it, and is not at fault: CMakeLists.txt:830 defines a
+# real add_custom_target(shader_schema) whose COMMAND genuinely invokes the
+# script, so arm (b) credited it as "driven by another runner" -- correctly, by
+# its own rules. But that target carries no ALL, so no build, script or gate ever
+# asks for it. Coverage's arm (b) is ONE LEVEL: it asks "does a runner invoke
+# this?", never "is that runner itself ever driven?". A check can therefore be
+# accounted-for and still be transitively dark. See the coverage TODO in
+# scripts/check-contract-coverage.py.
 #
 # check-vulkan-bindings.py IS wired below (vulkan_bindings + vulkan_bindings_selftest).
 #   Per-pipeline classifier (BINDING-CHECKER-PER-PIPELINE-CLASSIFIER-1): it ERRORs
@@ -722,6 +743,19 @@ run_check "no_raw_gl_from_game"    "sh scripts/check-no-raw-gl-from-game.sh"
 run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
 run_check "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
 run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
+# CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
+# rc_* helpers. It says nothing about whether the helpers' own documentation is
+# true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the
+# alpha-test class as a value no shader has ever emitted -- contradicting the
+# helper ten lines above it AND the rationale block twenty lines above it -- and
+# the same stale constant had been copied into shaders/shadow_screen.frag. A
+# constant duplicated between a comment and code, where only the code is
+# checked, drifts silently. This row derives the class table from the EMITTED
+# literals (GL helper bodies + the VK shader's inlined copy), cross-checks it
+# against the reader bands, and fails when prose in the contract file set names
+# a prop-band value that nothing emits.
+run_check "render_contract_alpha_classes"          "py -3 scripts/check-render-contract-alpha-classes.py"
+run_check "render_contract_alpha_classes_selftest" "py -3 scripts/check-render-contract-alpha-classes.py --selftest"
 run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
 run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
@@ -805,6 +839,15 @@ run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quie
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
+# RED-ROWS-CLOSE-2 (2026-07-31): the C++/GLSL struct ABI gate, wired at last --
+# see the header for why the comment that excluded it was wrong on both clauses.
+# It asserts that every field with an offsetof static_assert on the C++ side
+# exists in the GLSL struct AT THE SAME std430 OFFSET. That is the one desync no
+# other shader row can see: binding_slots/spirv_* grade bindings and artifacts,
+# material_gpu_mirror grades a different struct, and a layout skew inside a
+# matching-size struct is invisible to all of them while the shader silently
+# reads the wrong words.
+run_check "shader_schema"          "bash scripts/check-shader-schema.sh --quiet"
 run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
 # VERIFY-INTEGRITY-3: bookmark poses must be able to SHOW what they grade.
 # A pose framing empty terrain does not fail an A/B -- it PASSES both arms and
