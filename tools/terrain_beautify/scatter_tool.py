@@ -65,7 +65,8 @@ import pak_append  # noqa: E402
 # STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
-    StockDataError, add_missions_dir_arg, resolve_from_args,
+    StockDataError, add_allow_nonstock_arg, add_missions_dir_arg,
+    resolve_from_args, verify_pak_from_args,
 )
 
 # --- reserved objTypeNums (user ruling #4) -----------------------------------
@@ -565,6 +566,14 @@ def cmd_plan(args) -> int:
 
 
 def cmd_cook(args) -> int:
+    # STOCK-DATA-TRUTH-2: `plan` resolves + verifies a missions DIR; `cook` takes
+    # a raw --pak and did not. Scatter reads the terrain object list, which
+    # differs between the shipped mission.fst and the Carver5 tree (mc2_04/05/06/11).
+    try:
+        verify_pak_from_args(args, args.pak)
+    except StockDataError as e:
+        print(f"[scatter] cook refused: {e}", file=sys.stderr)
+        return 1
     try:
         stats = cook_scatter(Path(args.pak), Path(args.manifest), Path(args.out),
                               args.prop_verified, args.allow_unverified_prop)
@@ -579,6 +588,11 @@ def cmd_cook(args) -> int:
 
 
 def cmd_revert(args) -> int:
+    try:
+        verify_pak_from_args(args, args.pak)
+    except StockDataError as e:
+        print(f"[scatter] revert refused: {e}", file=sys.stderr)
+        return 1
     stats = revert_scatter(Path(args.pak), Path(args.out))
     print(f"[scatter] revert: removed={stats['removed']} remaining={stats['remaining']} "
           f"-> {stats['out_pak']}")
@@ -607,7 +621,11 @@ def main(argv=None) -> int:
     p_plan.set_defaults(func=cmd_plan)
 
     p_cook = sub.add_parser("cook", help="append manifest placements into a NEW .pak (hash-gated)")
-    p_cook.add_argument("--pak", required=True)
+    p_cook.add_argument("--pak", required=True,
+                         help="mission .pak. Byte-verified against the shipped mission.fst "
+                         "digest (tools/mc2data/stock_missions.md5) when it names a "
+                         "shipped mission; refused on mismatch unless --allow-nonstock.")
+    add_allow_nonstock_arg(p_cook)
     p_cook.add_argument("--manifest", required=True)
     p_cook.add_argument("--out", required=True)
     p_cook.add_argument("--prop-verified", action="store_true",
@@ -617,7 +635,11 @@ def main(argv=None) -> int:
     p_cook.set_defaults(func=cmd_cook)
 
     p_revert = sub.add_parser("revert", help="strip reserved-objTypeNum scatter records -> new .pak")
-    p_revert.add_argument("--pak", required=True)
+    p_revert.add_argument("--pak", required=True,
+                           help="mission .pak. Byte-verified against the shipped mission.fst "
+                         "digest (tools/mc2data/stock_missions.md5) when it names a "
+                         "shipped mission; refused on mismatch unless --allow-nonstock.")
+    add_allow_nonstock_arg(p_revert)
     p_revert.add_argument("--out", required=True)
     p_revert.set_defaults(func=cmd_revert)
 

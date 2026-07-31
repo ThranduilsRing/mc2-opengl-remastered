@@ -393,6 +393,163 @@ def verify_dir(directory: Path,
 
 
 # ---------------------------------------------------------------------------
+# Per-mission verification, for the raw `--pak` entry points
+# ---------------------------------------------------------------------------
+# STOCK-DATA-TRUTH-2. `resolve_missions_dir` above serves tools that take a
+# DIRECTORY and pick missions out of it. A second family of tools takes ONE
+# `--pak` path (cook_shoreline `cook`, overlay_extract, control_map_tool,
+# cook_markings, scatter_tool `cook`/`revert`) and had no provenance check at
+# all -- `--pak` is `required=True`, and STOCK-DATA-TRUTH-1 read requiredness
+# as sufficient. `cb4cd5ef` then disproved that for `all-missions` ("requiredness
+# only forces a value to be typed; it says nothing about whether the value is
+# right") but applied the fix only to the directory sibling. This closes the
+# per-mission half with the same argument.
+#
+# THE RULE, and why it is not simply "refuse anything unverified":
+#
+#   stem IS a shipped mission name (mc2_17.pak) and bytes MATCH  -> proceed, banner
+#   stem IS a shipped mission name and bytes DIFFER              -> HARD ERROR
+#   stem is NOT a shipped mission name (mymap.pak)               -> proceed, banner
+#
+# The masquerade case -- row 2 -- is the actual defect: the Carver5 tree's files
+# carry the SAME NAMES as the shipped ones, so a wrong `--pak` reads as right at
+# every glance. Measured 2026-07-30: all 24 `mc2_01..24` `.pak` AND `.fit` differ
+# from the shipped `mission.fst`. That is now unmissable.
+#
+# Row 3 proceeds ON PURPOSE. Authoring a custom map is a first-class use of these
+# tools, and every synthetic test fixture in the tree is a non-stock NAME
+# (`synth_island.pak`, `wet_map.pak`, `synthetic_scatter.pak`). Refusing row 3
+# would put `--allow-nonstock` on ~20 test invocations, and a flag that appears
+# on twenty routine call sites is one people copy into real recipes without
+# reading -- which is how the wrong path got into
+# `.claude/SHORELINE-BATCH-COOK-1.md` in the first place. Keeping the opt-out
+# RARE is what keeps it meaningful. Row 3 is never silent: it prints a NON-STOCK
+# banner, so the corpus is always stated, which is the property that was missing.
+
+
+@dataclass
+class PakProvenance:
+    """What a single `--pak` argument turned out to be."""
+
+    pak: Path
+    stem: str
+    kind: str  # "stock" | "divergent" | "custom" | "absent"
+    checked: tuple[str, ...] = ()
+    mismatches: tuple[str, ...] = ()
+
+    @property
+    def is_stock(self) -> bool:
+        return self.kind == "stock"
+
+    def banner(self) -> str:
+        if self.kind == "stock":
+            return (f"[stock-missions] {self.pak.name}  STOCK "
+                    f"({', '.join(self.checked)} match the shipped mission.fst)")
+        if self.kind == "custom":
+            return (f"[stock-missions] {self.pak.name}  NON-STOCK -- "
+                    f"'{self.stem}' is not a mission in the shipped mission.fst; "
+                    f"results describe custom data, not stock terrain")
+        if self.kind == "divergent":
+            return (f"[stock-missions] !! {self.pak.name} !!  '{self.stem}' IS a "
+                    f"shipped mission, but {len(self.mismatches)} file(s) DIFFER "
+                    f"from the shipped mission.fst -- results do NOT describe "
+                    f"stock terrain")
+        return f"[stock-missions] {self.pak}  (absent)"
+
+
+def stock_mission_stems(manifest: Optional[dict[str, str]] = None
+                        ) -> frozenset[str]:
+    """Every mission stem the shipped `mission.fst` actually contains."""
+    man = manifest if manifest is not None else load_manifest()
+    return frozenset(k.rpartition(".")[0] for k in man
+                     if "/" not in k and k.rsplit(".", 1)[-1] in ("pak", "fit"))
+
+
+def verify_pak(pak: str | Path,
+               *,
+               fit: Optional[str | Path] = None,
+               allow_nonstock: bool = False,
+               quiet: bool = False,
+               manifest_path: Path = MANIFEST_PATH) -> PakProvenance:
+    """State the provenance of ONE mission `.pak` (and its `.fit`).
+
+    Raises StockDataError when the pak claims a shipped mission's name but does
+    not carry its bytes, unless `allow_nonstock`. Never silent: every other
+    outcome prints a banner naming the corpus on stderr.
+    """
+    p = Path(pak)
+    stem = p.stem.lower()
+    if os.environ.get(ENV_ALLOW_NONSTOCK) == "1":
+        allow_nonstock = True
+
+    if not p.is_file():
+        # Let the caller's own "no such file" error be the one the user sees.
+        return PakProvenance(pak=p, stem=stem, kind="absent")
+
+    man = load_manifest(manifest_path)
+    if stem not in stock_mission_stems(man):
+        res = PakProvenance(pak=p, stem=stem, kind="custom")
+        if not quiet:
+            print(res.banner(), file=sys.stderr)
+        return res
+
+    # A shipped mission NAME -- the bytes now have to earn it.
+    bad: list[str] = []
+    checked: list[str] = []
+    f = Path(fit) if fit else p.with_suffix(".fit")
+    for path, key in ((p, f"{stem}.pak"), (f, f"{stem}.fit")):
+        if key not in man:
+            continue
+        if not path.is_file():
+            if key.endswith(".pak"):
+                bad.append(f"{key}: ABSENT")
+            continue
+        got = _md5(path)
+        checked.append(key)
+        if got != man[key]:
+            bad.append(f"{key}: DIFFERS (have {got[:12]}, shipped {man[key][:12]})")
+
+    if not bad:
+        res = PakProvenance(pak=p, stem=stem, kind="stock", checked=tuple(checked))
+        if not quiet:
+            print(res.banner(), file=sys.stderr)
+        return res
+
+    res = PakProvenance(pak=p, stem=stem, kind="divergent",
+                        checked=tuple(checked), mismatches=tuple(bad))
+    if allow_nonstock:
+        bar = "!" * 78
+        print(f"\n{bar}\n{res.banner()}", file=sys.stderr)
+        for b in res.mismatches:
+            print(f"    {b}", file=sys.stderr)
+        print("  proceeding because --allow-nonstock was given.\n"
+              f"{bar}\n", file=sys.stderr)
+        return res
+    raise StockDataError(
+        f"--pak {p} claims shipped mission '{stem}', but does NOT carry its "
+        f"bytes.\n"
+        + "\n".join(f"    {b}" for b in bad) + "\n"
+        f"  Analysis of this data does NOT describe stock terrain.\n"
+        f"  Pass --allow-nonstock if that is deliberate (modded/custom map), or "
+        f"point --pak at data that matches the shipped mission.fst.")
+
+
+def add_allow_nonstock_arg(ap) -> None:
+    """`--allow-nonstock` for a parser whose corpus arrives as a raw `--pak`."""
+    ap.add_argument("--allow-nonstock", action="store_true",
+                    help="proceed when --pak names a shipped mission but does "
+                         "NOT carry its bytes (modded/custom maps). Prints a "
+                         "loud banner; results do not describe stock terrain.")
+
+
+def verify_pak_from_args(args, pak, *, fit=None, quiet: bool = False
+                         ) -> PakProvenance:
+    return verify_pak(pak, fit=fit,
+                      allow_nonstock=bool(getattr(args, "allow_nonstock", False)),
+                      quiet=quiet)
+
+
+# ---------------------------------------------------------------------------
 # Resolution
 # ---------------------------------------------------------------------------
 

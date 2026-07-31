@@ -63,8 +63,20 @@ subcommand therefore **defaults `--supersample 8`**.
 > The two-tool pipeline (bake → cook) is driven by a throwaway orchestrator
 > (scratchpad, uncommitted); the durable, tested deliverable is the cook tool's
 > `all-missions` mode. To reproduce the mask cook alone against existing bakes:
-> `cook_shoreline.py all-missions --missions-dir A:/Games/Carver5-feasibility/data/missions
-> --beauty-root staging/SHORELINE-BATCH-1/data/missions --out-root <dir> --census <json>`.
+> `cook_shoreline.py all-missions --beauty-root staging/SHORELINE-BATCH-1/data/missions
+> --out-root <dir> --census <json>`.
+>
+> **CORPUS (corrected 2026-07-30, STOCK-DATA-TRUTH-2).** This recipe previously
+> read `--missions-dir A:/Games/Carver5-feasibility/data/missions`. That tree is
+> NOT the shipped mission data — measured against the deployed `mission.fst` it
+> differs on all 24 campaign maps, `.pak` and `.fit`. Omit `--missions-dir` and
+> let the verified resolver find the stock corpus (`tools/mc2data/stock_missions.py`);
+> pass it only to name a specific tree, which is then byte-verified and REFUSED on
+> mismatch. This mask cook happens to be corpus-invariant — it reads only the
+> heightfield and `[Water].Elevation`, both bit-identical between the two trees, and
+> the cooked masks are byte-identical either way (verified) — but the recipe was the
+> copy-paste vector that put the wrong path into other lanes, so it does not get to
+> keep naming the wrong tree on the grounds that it got away with it.
 
 ## Deploy wiring (finding, NOT changed)
 

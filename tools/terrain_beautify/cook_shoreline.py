@@ -112,7 +112,10 @@ from mission_terrain_analyzer import (  # noqa: E402
 
 # STOCK-DATA-TRUTH-1: verify the batch-cook corpus. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
-from stock_missions import StockDataError, resolve_missions_dir  # noqa: E402
+from stock_missions import (  # noqa: E402
+    StockDataError, add_allow_nonstock_arg, resolve_missions_dir,
+    verify_pak_from_args,
+)
 
 WORLD_UNITS_PER_VERTEX = 128.0
 
@@ -278,6 +281,15 @@ def cook_one(pak: Path, out_path: Path, *, fit: Path | None = None,
 
 
 def cmd_cook(args) -> int:
+    # STOCK-DATA-TRUTH-2: `all-missions` verifies its corpus (cb4cd5ef); this
+    # per-mission sibling did not, and it is the mode that produced the
+    # committed mc2_17 masks. Same argument, other half of the tool.
+    try:
+        verify_pak_from_args(args, args.pak,
+                             fit=args.fit if args.fit else None)
+    except StockDataError as e:
+        print(f"[cook] ERROR {e}", file=sys.stderr)
+        return 4
     r = cook_one(
         Path(args.pak), Path(args.out),
         fit=Path(args.fit) if args.fit else None,
@@ -481,7 +493,12 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("cook", help="cook a signed-EDT wet/foam RGBA mask + bounds from a stock mission")
-    p.add_argument("--pak", required=True)
+    p.add_argument("--pak", required=True,
+                   help="mission .pak. Byte-verified against the shipped "
+                        "mission.fst digest (tools/mc2data/stock_missions.md5) "
+                        "when it names a shipped mission; refused on mismatch "
+                        "unless --allow-nonstock.")
+    add_allow_nonstock_arg(p)
     p.add_argument("--fit", help="override .fit path (default: <pak-stem>.fit)")
     p.add_argument("--visual-height", help="override hi-res .r32 path "
                    "(default: <pak-stem>.beauty/visual_height_4x.r32 next to the pak, "

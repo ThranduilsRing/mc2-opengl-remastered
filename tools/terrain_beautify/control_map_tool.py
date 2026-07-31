@@ -68,6 +68,14 @@ from mission_terrain_analyzer import (  # noqa: E402
     VALID_GRID_SIDES, WORLD_UNITS_PER_VERTEX,
 )
 
+# STOCK-DATA-TRUTH-2: material classification reads textureData + terrainType,
+# both of which differ between the shipped mission.fst and the Carver5 tree.
+# Its corpus is load-bearing.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_allow_nonstock_arg, verify_pak_from_args,
+)
+
 # Mirrors mclib/terrain.cpp terrainTypeToMaterial lambda EXACTLY (search
 # "MUST mirror gos_terrain_indirect.cpp terrainTypeToMaterialLocal" in
 # terrain.cpp ~line 806). Material index: 0=Rock 1=Grass 2=Dirt 3=Concrete.
@@ -261,6 +269,11 @@ def cmd_generate(args) -> int:
     if not pak.is_file():
         print(f"[generate] ERROR pak not found: {pak}", file=sys.stderr)
         return 4
+    try:
+        verify_pak_from_args(args, pak)
+    except StockDataError as e:
+        print(f"[generate] ERROR {e}", file=sys.stderr)
+        return 4
     packets = read_packets(pak)
     md = locate_mapdata(packets)
     if md is None:
@@ -307,6 +320,11 @@ def cmd_generate_from_height(args) -> int:
         pak = Path(args.pak)
         if not pak.is_file():
             print(f"[generate-from-height] ERROR pak not found: {pak}", file=sys.stderr)
+            return 4
+        try:
+            verify_pak_from_args(args, pak)
+        except StockDataError as e:
+            print(f"[generate-from-height] ERROR {e}", file=sys.stderr)
             return 4
         packets = read_packets(pak)
         md = locate_mapdata(packets)
@@ -439,6 +457,11 @@ def cmd_validate(args) -> int:
         if not pak.is_file():
             print(f"[validate] FAIL pak not found: {pak}")
             return 1
+        try:
+            verify_pak_from_args(args, pak)
+        except StockDataError as e:
+            print(f"[validate] FAIL {e}")
+            return 1
         packets = read_packets(pak)
         md = locate_mapdata(packets)
         if md is None:
@@ -539,7 +562,11 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("generate", help="classify stock mission terrainType -> RGBA control map (authoring seed)")
-    p.add_argument("--pak", required=True)
+    p.add_argument("--pak", required=True,
+                   help="mission .pak. Byte-verified against the shipped mission.fst "
+                        "digest (tools/mc2data/stock_missions.md5) when it names a "
+                        "shipped mission; refused on mismatch unless --allow-nonstock.")
+    add_allow_nonstock_arg(p)
     p.add_argument("--out", required=True)
     p.set_defaults(func=cmd_generate)
 
@@ -548,7 +575,9 @@ def main() -> int:
                              "into an RGBA control map (slope+altitude, area-avg downsample)")
     src = p.add_mutually_exclusive_group(required=True)
     src.add_argument("--r32", help="single-channel float32 Gaea raw export (or PNG/TIFF/EXR)")
-    src.add_argument("--pak", help="mission .pak fallback (uses coarse float elevation, no hi-res source)")
+    src.add_argument("--pak", help="mission .pak fallback (uses coarse float elevation, no hi-res source). "
+                                   "Byte-verified when it names a shipped mission.")
+    add_allow_nonstock_arg(p)
     p.add_argument("--res", type=int, help="r32 resolution (required with --r32, e.g. 512)")
     p.add_argument("--side", type=int, required=True, help="output vertex resolution, e.g. 120")
     p.add_argument("--size", type=float, default=0.0,
@@ -581,7 +610,9 @@ def main() -> int:
 
     p = sub.add_parser("validate", help="size/format/weight-sum checks")
     p.add_argument("--png", required=True)
-    p.add_argument("--pak", help="mission pak to confirm expected side against")
+    p.add_argument("--pak", help="mission pak to confirm expected side against. "
+                                "Byte-verified when it names a shipped mission.")
+    add_allow_nonstock_arg(p)
     p.add_argument("--side", type=int, help="expected side if no --pak available")
     p.set_defaults(func=cmd_validate)
 

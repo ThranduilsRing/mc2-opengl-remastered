@@ -160,6 +160,44 @@ CORPUS_DIR_FLAGS = {
     "compbas", "effects",
 }
 
+# ---------------------------------------------------------------------------
+# A1d (STOCK-DATA-TRUTH-2) -- per-mission `--pak` entry points.
+#
+# The flag rules above police DEFAULTS. They cannot see the second family of
+# sites: a tool whose corpus arrives as a REQUIRED `--pak`. Nothing is defaulted,
+# so nothing is flagged, and STOCK-DATA-TRUTH-1 read that as safe. `cb4cd5ef`
+# disproved it for the directory case -- requiredness forces a value to be TYPED,
+# it says nothing about whether the value is RIGHT -- but fixed only that half.
+# Every function that reads `args.pak` must therefore actually CALL the verifier.
+#
+# Checked by AST, on the CALL, deliberately: this lane's brief records checks
+# that passed while blind because they were satisfied by an identifier sitting in
+# a comment. A substring search for "verify_pak" over the file would be exactly
+# that failure. The rule here is "a Call node inside the same function body".
+#
+# Exemptions carry a REASON and are policed for staleness below, same as
+# PATH_EXEMPTIONS: an exemption whose file no longer reads `args.pak` is dead and
+# must be deleted rather than left as a standing blind spot.
+PAK_VERIFY_EXEMPTIONS: dict[str, str] = {
+    "tools/pak_append.py":
+        "generic packet-level pak byte editor (append/replace). It edits "
+        "whatever archive it is handed and makes no claim about stock terrain; "
+        "its callers verify (scatter_tool cook verifies, then calls in). A "
+        "stock-ness gate here would block the legitimate act of editing a "
+        "non-stock pak, which is the tool's entire purpose.",
+    "tools/pak_dump.py":
+        "read-only pak inspector (list/dump/find-fit). Reports the raw packet "
+        "structure of whatever it is given and derives no terrain verdict, so "
+        "there is no number for a wrong corpus to make wrong. Pointing it at "
+        "non-stock data is a normal debugging act.",
+    "tools/terrain_beautify/mission_sidecar.py":
+        "already gated STRICTER than this check: apply_sidecar/verify_roundtrip "
+        "refuse unless the pak's sha256 equals the sidecar's recorded baseHash, "
+        "which pins one exact archive rather than merely the stock corpus. "
+        "DATA-PROVENANCE-CLOSE-1 additionally records a `provenance` block "
+        "naming how that pak was proven.",
+}
+
 
 def _rel(p: Path) -> str:
     try:
@@ -255,6 +293,41 @@ def scan_file(path: Path, rel_override: str | None = None) -> list[str]:
     return found
 
 
+def _pak_reader_funcs(path: Path) -> list[tuple[str, bool]]:
+    """[(function name, calls a verify_pak* function)] for every function in
+    `path` whose body reads `args.pak`.
+
+    AST only. The "verified" half looks for a Call NODE whose callee name
+    contains `verify_pak` -- not for the text `verify_pak` in the file -- so an
+    import, a mention in a docstring, or a commented-out call does not satisfy
+    it. That distinction is the whole point of the check.
+    """
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8-sig", errors="replace"))
+    except (SyntaxError, ValueError):
+        return []
+    out: list[tuple[str, bool]] = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        reads = any(isinstance(n, ast.Attribute) and n.attr == "pak"
+                    and isinstance(n.value, ast.Name) and n.value.id == "args"
+                    for n in ast.walk(fn))
+        if not reads:
+            continue
+        verified = False
+        for c in ast.walk(fn):
+            if not isinstance(c, ast.Call):
+                continue
+            name = (c.func.id if isinstance(c.func, ast.Name)
+                    else c.func.attr if isinstance(c.func, ast.Attribute) else "")
+            if "verify_pak" in name:
+                verified = True
+                break
+        out.append((fn.name, verified))
+    return out
+
+
 def static_scan() -> list[str]:
     findings: list[str] = []
     for r in SCAN_ROOTS:
@@ -308,6 +381,39 @@ def static_scan() -> list[str]:
                 findings.append(
                     f"PATH_EXEMPTIONS[{rel}] exempts {lit!r}, which no longer "
                     f"appears in the file -- delete the stale exemption")
+
+    # A1d -- every function reading `args.pak` must CALL the verifier.
+    seen_pak_readers: set[str] = set()
+    for r in ("tools", "scripts"):
+        base = ROOT / r
+        if not base.is_dir():
+            continue
+        for p in sorted(base.rglob("*.py")):
+            rel = _rel(p)
+            if "__pycache__" in rel:
+                continue
+            for fname, verified in _pak_reader_funcs(p):
+                seen_pak_readers.add(rel)
+                if verified or rel in PAK_VERIFY_EXEMPTIONS:
+                    continue
+                findings.append(
+                    f"{rel}: {fname}() reads args.pak but never calls "
+                    f"verify_pak/verify_pak_from_args -- a raw --pak is an "
+                    f"UNVERIFIED corpus (STOCK-DATA-TRUTH-2). Wire the verifier, "
+                    f"or add a PAK_VERIFY_EXEMPTIONS entry stating why the "
+                    f"corpus cannot matter here")
+
+    for rel, why in sorted(PAK_VERIFY_EXEMPTIONS.items()):
+        if not (ROOT / rel).is_file():
+            findings.append(f"PAK_VERIFY_EXEMPTIONS names a missing file: {rel}")
+        elif rel not in seen_pak_readers:
+            findings.append(
+                f"PAK_VERIFY_EXEMPTIONS[{rel}] no longer reads args.pak -- "
+                f"delete the stale exemption")
+        elif len(why.strip()) < 60:
+            findings.append(
+                f"PAK_VERIFY_EXEMPTIONS[{rel}] reason is too short to be a "
+                f"reason (state why a wrong corpus cannot change its output)")
     return findings
 
 

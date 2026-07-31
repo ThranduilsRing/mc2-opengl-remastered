@@ -77,6 +77,14 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_water_elevation,
 )
 
+# STOCK-DATA-TRUTH-2: this tool reads textureData, which is one of the fields
+# that DIFFERS between the shipped mission.fst and the Carver5 tree (measured:
+# 115367 vertices across the 24 campaign maps). Its corpus is load-bearing.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_allow_nonstock_arg, verify_pak_from_args,
+)
+
 WORLD_UNITS_PER_VERTEX = 128.0
 
 # Mirrors mclib/terrain.cpp terrainTypeToMaterial lambda / control_map_tool.py
@@ -149,6 +157,11 @@ def cmd_extract(args) -> int:
     pak = Path(args.pak)
     if not pak.is_file():
         print(f"[extract] ERROR pak not found: {pak}", file=sys.stderr)
+        return 4
+    try:
+        verify_pak_from_args(args, pak)
+    except StockDataError as e:
+        print(f"[extract] ERROR {e}", file=sys.stderr)
         return 4
     packets = read_packets(pak)
     md = locate_mapdata(packets)
@@ -312,7 +325,12 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("extract", help="classify stock mission concrete terrainType -> RGBA overlay sidecar + bounds")
-    p.add_argument("--pak", required=True)
+    p.add_argument("--pak", required=True,
+                   help="mission .pak. Byte-verified against the shipped "
+                        "mission.fst digest (tools/mc2data/stock_missions.md5) "
+                        "when it names a shipped mission; refused on mismatch "
+                        "unless --allow-nonstock.")
+    add_allow_nonstock_arg(p)
     p.add_argument("--out", required=True)
     p.add_argument("--supersample", type=int, default=1,
                     help="texels per vertex-cell per axis (default 1 = legacy-fill resolution)")
