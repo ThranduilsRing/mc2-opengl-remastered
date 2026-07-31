@@ -1611,6 +1611,14 @@ def main():
                             "MC2_WATER_SHORE_FEATHER",
                             "MC2_WATER_SHORE_MEANDER",
                             "MC2_WATER_SHORE_MEANDER_FREQ",
+                            # WATER-SUN-SPEC-2 -- Blinn-Phong sun glint on the
+                            # water plane (default OFF, value is an intensity).
+                            # Its predecessor WATER-SUN-SPEC-1 shipped with the
+                            # shader half reverted and the uniform never
+                            # declared, so it was a no-op at every value; this
+                            # passthrough is what lets a gate-ON smoke prove the
+                            # repair actually reaches the shader.
+                            "MC2_WATER_SHINE",
                             # EDGE-LIGHT-BILLBOARD-CULL-1 (MASTER-FAIL #8):
                             # render beacon/runway edge-light glow cards
                             # two-sided so they don't backface-cull toward
@@ -1702,7 +1710,8 @@ def main():
                             "MC2_RUNWAY_TONE_TARGET",
                             # RUNWAY-APRON-TONE-2: cement lighting participation.
                             "MC2_CEMENT_LIT",
-                            "MC2_CEMENT_EDGE_CURVE",
+                            # MC2_CEMENT_EDGE_CURVE was here; the gate was
+                            # deleted 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3).
                             "MC2_CEMENT_RAMP_WORD",
                             # CEMENT-ATLAS-CELL-2: the two concrete-only arms
                             # (A = tone-normalise the concrete family,
@@ -1732,6 +1741,12 @@ def main():
                             # run is secretly the "on" build is how this whole
                             # family of measurements goes wrong.
                             "MC2_TERRAIN_AMBIENT_FLOOR",
+                            # TERRAIN-AMBIENT-FLOOR-NIGHT-1: default-OFF floor
+                            # under that daylight gate. Its whole purpose is an
+                            # A/B on the five maps the day gate zeroes, so the
+                            # "on" arm being silently dropped here would make the
+                            # measurement report a no-op that is not real.
+                            "MC2_TERRAIN_AMBIENT_FLOOR_NIGHT",
                             "MC2_TERRAIN_AMBIENT_FLOOR_TRACE",
                             "MC2_CEMENT_ATLAS_DUMP",
                             "MC2_CEMENT_ATLAS_MAGENTA_KEY",
@@ -2891,6 +2906,21 @@ def main():
                             # "verified via smoke" claim for this gate: the A/B
                             # was never shown to have driven the two arms apart.
                             "MC2_LEGACY_LIT_MC2_FRAME",
+                            # VEHICLE-NIGHT-LIT-2: default-OFF opt-in that adds
+                            # the missing else-branch clearing the GV
+                            # SetLightsOut latch (mclib/gvactor.cpp:3100-3117).
+                            # LIGHTING-INCAPABLE-BATCH-2: the latch is NOT
+                            # shader-side -- TG_Shape::MultiTransformShape bakes
+                            # it into the aRGBLight vertex attribute
+                            # (tgl.cpp:1926/:2129 -> :2481/:2776) and that kernel
+                            # is live (useVertexLighting=true terrain.cpp:353,
+                            # Environment.Renderer=0 mechcmd2.cpp:2974). So the
+                            # gate DOES move pixels, and every A/B that set it
+                            # while it was missing from this list graded OFF
+                            # against OFF -- which is why it was mis-filed as
+                            # "arithmetically incapable" in
+                            # .claude/LIGHTING-HEADROOM-AUDIT.md section 3 entry 9.
+                            "MC2_GV_LIGHTSOUT_CLEAR",
                             # VEHICLE-LIGHTING-PATH-1: default-ON killswitch for
                             # the GVAppearance CacheGpuLightData() call that
                             # finally populates the vehicle light row. Must be
@@ -2921,6 +2951,18 @@ def main():
                             # an A/B that could not DRIVE it would grade the
                             # whole world OFF against OFF.
                             "MC2_SUN_ELEVATION_FIX",
+                            # CPU-PHONG-RETIRE-1: default-ON killswitch that
+                            # retires the orphaned CPU Phong term in
+                            # MapData::terrainElevation() (mclib/mapdata.cpp).
+                            # This one moves GAMEPLAY elevation -- grounding,
+                            # pathfinding and collision -- by up to 12.7-18.9 wu
+                            # (~3.8 m) on curved ground, so the "=0" revert arm
+                            # is the only way to grade a suspected regression.
+                            # It was read by code but absent from this allowlist,
+                            # so a smoke setting =0 silently ran the default ON
+                            # path and graded ON against ON -- the ENV_DROP class
+                            # (same defect as MC2_VEHICLE_AMBIENT_FLOOR above).
+                            "MC2_CPU_PHONG_RETIRE",
                             # QUIET-DEFAULT-BUILD-1: MC2_DIAG_VERBOSE restores
                             # the ~380 developer diagnostic call sites that a
                             # default build now keeps quiet. Allowlisted so the
