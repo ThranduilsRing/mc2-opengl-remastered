@@ -179,12 +179,56 @@ struct EnvVarDef {
 //   - Default-ON vars where toggling is rarely useful interactively
 static const EnvVarDef k_envVars[] = {
     // --- Rendering ---
-    { "MC2_SHADOW_CSM",              "Cascaded shadow maps (CSM)",           true,  "1",    "Rendering" },
-    { "MC2_CLOUD_SHADOW",            "Cloud shadows (default ON)",            true,  "1",    "Rendering" },
+    // LAUNCHER-OFFVAL-2: reader gos_postprocess.cpp:57
+    // `!(v && v[0] == '0' && v[1] == '\0')` -- DEFAULT ON, and exactly "0" is the
+    // only kill token. Sole reader in the tree: every shader-define injection site
+    // (gameos_graphics.cpp:509/5503, gos_terrain_lod_chunk.cpp:1233,
+    // gos_postprocess.cpp:906/918) tests mc2ShadowCsmEnabled() rather than
+    // re-reading the env, so "0" kills the C++ path and the #define together and
+    // cannot desync them. offVal="0" is therefore mandatory and safe.
+    { "MC2_SHADOW_CSM",              "Cascaded shadow maps (CSM; ON)",       true,  "1",    "Rendering", "0" },
+    // NO offVal -- and the old label was FALSE. Reader gos_postprocess.cpp:501:
+    //     if (!v || !v[0]) return false;            // default OFF
+    //     return !(v[0] == '0' && v[1] == '\0');
+    // This gate is DEFAULT OFF, so unchecked == unset == off already; "0" would be
+    // redundant, not wrong. The label used to read "default ON", which is a
+    // surviving copy of the exact lie ENV-DROP-CLOSE-1 (2026-07-30) deleted from
+    // gos_postprocess.cpp:497 -- that comment notes it "would have had anyone
+    // A/B-ing '=0 versus unset' grading OFF against OFF". defaultVal "1" below is
+    // NOT the engine default; see the LAUNCHER-PREFERS-ON block further down.
+    { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering" },
     { "MC2_SHADOW_BOUNDED_NEAR_FIT", "Crisp near shadows",                    true,  "",     "Rendering" },
     { "MC2_PROP_SHADOW_RECEIVE",     "Building self/prop-on-prop shadows",    true,  "",     "Rendering" },
-    { "MC2_STATIC_PROP_PBR_V1",      "Static prop PBR specular",              true,  "1",    "Rendering" },
-    { "MC2_STATIC_PROP_AMBIENT_V1",  "Static prop hemisphere ambient",        true,  "1",    "Rendering" },
+    // === LAUNCHER-PREFERS-ON (LAUNCHER-OFFVAL-2 verdict: BUG, not curation) =====
+    // These two rows -- plus MC2_CLOUD_SHADOW above and MC2_WATER_SKYTINT below --
+    // declare defaultVal "1" while the ENGINE reader is DEFAULT-OFF:
+    //   MC2_STATIC_PROP_PBR_V1      gos_static_prop_batcher.cpp:1161
+    //                               `v != nullptr && v[0] != '0' && v[0] != '\0'`
+    //   MC2_STATIC_PROP_AMBIENT_V1  gos_static_prop_batcher.cpp:828 (same idiom)
+    // RendererFeatureRegistry.h agrees -- both entries declare `false`.
+    //
+    // THE CONSEQUENCE: DoLaunch applies EVERY row of this table unconditionally
+    // (the k_envVarCount loop around the SetEnvironmentVariableA calls); the user
+    // need never open the Options dialog for it to fire. So a LAUNCHER launch runs
+    // these features ON while a SHELL / batch-file launch runs them OFF. An A/B
+    // graded through the launcher is not the same build environment as one graded
+    // from a .bat, and neither arm is labelled with which set it got.
+    //
+    // WHY BUG AND NOT DELIBERATE CURATION: (1) the MC2_CLOUD_SHADOW row literally
+    // labelled a default-OFF gate "default ON" -- curation does not require a false
+    // label, and that specific false claim is one ENV-DROP-CLOSE-1 had already had
+    // to delete from the engine source; (2) every genuinely deliberate choice in
+    // this table is commented (the offVal rows, the default-OFF opt-in block below)
+    // and these four carried no rationale at all -- silence is the signature of
+    // drift; (3) for MC2_WATER_SKYTINT the override is not even a preference, it
+    // SUPPRESSES per-mission art direction (see that row).
+    //
+    // DELIBERATELY NOT FIXED HERE: flipping these four to defaultVal "" changes what
+    // every default launcher launch looks like. That is a user-graded default flip
+    // in this repo, not a lane's unilateral call. The labels now state the truth, so
+    // the dialog stops lying while that decision is pending.
+    { "MC2_STATIC_PROP_PBR_V1",      "Static prop PBR specular (engine OFF; launcher ON)",      true, "1", "Rendering" },
+    { "MC2_STATIC_PROP_AMBIENT_V1",  "Static prop hemisphere ambient (engine OFF; launcher ON)", true, "1", "Rendering" },
     // offVal="0": this is the TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md).
     // Reader is gos_static_prop_batcher.cpp:1066 `!(v && v[0]=='0')` -- default ON,
     // "0" is the kill token -- so unchecking MUST emit "0". Without offVal the box
@@ -198,10 +242,32 @@ static const EnvVarDef k_envVars[] = {
     { "MC2_WIDTH",                   "Window width (blank = options.cfg)",     false, "",    "Display"   },
     { "MC2_HEIGHT",                  "Window height (blank = options.cfg)",    false, "",    "Display"   },
     // --- Terrain ---
-    { "MC2_TERRAIN_LOD_CHUNK",       "Chunk terrain LOD renderer (default ON)", true, "1",   "Terrain"   },
-    { "MC2_COLORMAP_KTX2",           "BC7 KTX2 colormap atlas (default ON)",  true,  "1",    "Terrain"   },
+    // Reader mclib/terrain.cpp:147
+    // `off = (v && v[0] == '0' && v[1] == '\0'); return !off;` -- DEFAULT ON, and
+    // exactly "0" is the kill token. Sole reader: terrain.h:79 records that the old
+    // scattered getenv("MC2_TERRAIN_LOD_CHUNK") presence checks were consolidated
+    // behind mc2TerrainLodChunkEnabled() precisely so they could not drift, and a
+    // whole-tree census confirms no presence-test copy survives. offVal="0" safe.
+    { "MC2_TERRAIN_LOD_CHUNK",       "Chunk terrain LOD renderer (ON)",       true,  "1",    "Terrain", "0" },
+    // Reader mclib/terrtxm2.cpp:203 `!v || v[0] != '0'` -- DEFAULT ON, "0" kills
+    // (leading-'0' test, so the exact token "0" this row emits disables it). Sole
+    // reader. offVal="0" mandatory: unsetting alone left the atlas on its ON default.
+    { "MC2_COLORMAP_KTX2",           "BC7 KTX2 colormap atlas (ON)",          true,  "1",    "Terrain", "0" },
     // --- Water / VFX ---
-    { "MC2_WATER_SKYTINT",           "Water sky tint",                        true,  "1",    "Water/VFX" },
+    // NO offVal, and adding one would be ACTIVELY WRONG. Primary reader
+    // gameos_graphics.cpp:2867 `(v && v[0] && v[0] != '0') ? 0.15f : 0.0f` --
+    // DEFAULT OFF, so unchecked == unset == off and an offVal is unnecessary.
+    // But a SECOND reader, visual_tuning_profile.cpp:182, is a pure PRESENCE test:
+    //     if (!envIsSet("MC2_WATER_SKYTINT")) { gos_SetWaterSkyTintStrength(val); }
+    // with envIsSet(name) == `v && v[0] != '\0'` (visual_tuning_profile.cpp:151).
+    // It suppresses the per-mission waterSkyTintStrength from data/visual_tuning.json
+    // whenever the var is set to ANYTHING -- "0" included. So here "0" is NOT
+    // equivalent to unset: it would silently switch off per-mission water art
+    // direction that unsetting leaves intact. Same hazard class as
+    // MC2_TREE_DIAG_TRACE, where "=0" enables. Do not add offVal to this row.
+    // defaultVal "1" is the LAUNCHER-PREFERS-ON bug documented above, and this is
+    // its worst instance: it trips that presence test on every launcher launch.
+    { "MC2_WATER_SKYTINT",           "Water sky tint (engine OFF; launcher ON)", true, "1",  "Water/VFX" },
     { "MC2_WATER_REFLECTION",        "Water SH-L2 sky reflection",            true,  "",     "Water/VFX" },
     { "MC2_VFX_SOFT_PARTICLES",      "Soft particles (depth-fade)",           true,  "",     "Water/VFX" },
     { "MC2_VFX_LIT_PARTICLES",       "Lit particles",                         true,  "",     "Water/VFX" },
