@@ -223,6 +223,16 @@ run_check_tri() {
 # Checks
 # ---------------------------------------------------------------------------
 run_check "env_registry"           "sh scripts/check-env-registry.sh"
+# TREE-CONSOLIDATE-1 (2026-07-30): env_registry's answer is only as good as its
+# comment stripper, and the stripper is the part that silently broke. A registry
+# description that quoted a shell glob put a block-comment opener inside a string
+# literal; the regex stripper read it as a real comment open, found no close, and
+# discarded the header from that line to EOF -- so every gate registered below it
+# reported UNREGISTERED and env_registry went red for two gates that were in fact
+# registered correctly. Injection-proven both ways before and after the fix.
+# The selftest pins the stripper against a fixture, so a future "simplification"
+# of it fails here instead of silently unregistering half the header.
+run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)

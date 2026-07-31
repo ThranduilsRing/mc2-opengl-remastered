@@ -27,7 +27,103 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKTREE="$(cd "$SCRIPT_DIR/.." && pwd)"
 HEADER="$WORKTREE/RenderCore/RendererFeatureRegistry.h"
 VERBOSE=0
-if [[ "${1:-}" == "--verbose" ]]; then VERBOSE=1; fi
+SELFTEST=0
+case "${1:-}" in
+    --verbose)  VERBOSE=1 ;;
+    --selftest) SELFTEST=1 ;;
+esac
+
+# ---------------------------------------------------------------------------
+# strip_cxx_comments -- remove C/C++ comments from stdin, STRING-AWARE.
+# ---------------------------------------------------------------------------
+# TREE-CONSOLIDATE-1, 2026-07-30. The predecessor was five regex lines that knew
+# nothing about string literals, so a block-comment opener sitting INSIDE a
+# quoted description silently disarmed the whole gate. That is not hypothetical:
+# a WATER-SUN-SPEC-2 registry row quoted the shell pathspec 'shaders/<star>' in
+# its description text. The stripper read the slash-star as a comment open,
+# found no close anywhere after it, and swallowed the header from that line to
+# EOF -- so EVERY gate registered below that row read as UNREGISTERED. Measured
+# on the working tree the day it landed: 634 names raw, 630 after stripping,
+# 4 lost, and the four lost ones (the IBL-ROTATION-LAND-1 rows) were real
+# registrations.
+#
+# That is the SAME defect class the strip was introduced to close, one level up:
+# the old note directly below asserted the strip had zero blast radius because
+# raw and stripped agreed "today". Agreement on one snapshot is not a property.
+# `--selftest` now pins the behaviour with a fixture instead of an anecdote.
+#
+# The walker tracks three states -- in-string, in-block-comment, neither --
+# and handles backslash escapes so `\"` does not end a literal. `//` inside a
+# string is preserved (URLs), which the old `sub(/\/\/.*/, "", line)` also got
+# wrong. String state deliberately does NOT span lines: this header has no
+# unterminated literals, and not spanning means one malformed line cannot eat
+# the rest of the file -- the exact failure being fixed. An unterminated BLOCK
+# comment is a hard error (exit 2), not a silent truncation.
+strip_cxx_comments() {
+    awk '
+    { line = $0; out = ""; i = 1; n = length(line)
+      while (i <= n) {
+        c = substr(line, i, 1)
+        if (inblk) {
+          if (c == "*" && substr(line, i+1, 1) == "/") { inblk = 0; i += 2 } else { i++ }
+          continue
+        }
+        if (instr) {
+          if (c == "\\") { out = out c substr(line, i+1, 1); i += 2; continue }
+          if (c == "\"") { instr = 0 }
+          out = out c; i++; continue
+        }
+        if (c == "\"") { instr = 1; out = out c; i++; continue }
+        if (c == "/" && substr(line, i+1, 1) == "*") { inblk = 1; i += 2; continue }
+        if (c == "/" && substr(line, i+1, 1) == "/") { break }
+        out = out c; i++
+      }
+      instr = 0
+      print out }
+    END { if (inblk) {
+            print "check-env-registry: UNTERMINATED BLOCK COMMENT in header" > "/dev/stderr"
+            exit 2 } }'
+}
+
+extract_registered() { strip_cxx_comments | grep -oE '"MC2_[A-Z0-9_]+"' | tr -d '"' | sort -u; }
+
+# ---------------------------------------------------------------------------
+# --selftest: prove the stripper on a fixture, not on the live header.
+# ---------------------------------------------------------------------------
+# Three properties, each of which has actually been violated in this repo:
+#   1. comment-only mentions are NOT counted   (the bug the strip was added for)
+#   2. a comment opener inside a string literal does NOT swallow the file
+#      (the bug the strip itself introduced -- rows AFTER it must survive)
+#   3. real registrations are counted exactly once
+if [[ $SELFTEST -eq 1 ]]; then
+    fixture="$(mktemp)"; trap 'rm -f "$fixture"' EXIT
+    # Written with printf so this file never itself contains the poison sequence.
+    { echo 'static constexpr EnvVarDesc kFeatureTable[] = {'
+      echo '    { "MC2_SELFTEST_REAL_ONE", EnvVarKind::Feature, false, "desc" },'
+      echo '    // prose mention only: "MC2_SELFTEST_COMMENT_SLASHSLASH"'
+      printf '    %s block prose: "MC2_SELFTEST_COMMENT_BLOCK" %s\n' '/*' '*/'
+      printf '    %s multi-line\n       "MC2_SELFTEST_COMMENT_MULTILINE"\n    %s\n' '/*' '*/'
+      printf '    { "MC2_SELFTEST_REAL_TWO", EnvVarKind::Feature, false,\n'
+      printf '      "git log -- %sshaders/%s%s returns zero commits. " },\n' "'" '*' "'"
+      echo '    { "MC2_SELFTEST_REAL_AFTER_POISON", EnvVarKind::Feature, false, "d" },'
+      echo '};'
+    } > "$fixture"
+
+    got="$(extract_registered < "$fixture" | tr '\n' ' ')"
+    want="MC2_SELFTEST_REAL_AFTER_POISON MC2_SELFTEST_REAL_ONE MC2_SELFTEST_REAL_TWO "
+    if [[ "$got" != "$want" ]]; then
+        echo "FAIL: check-env-registry.sh comment stripper is wrong."
+        echo "  want: $want"
+        echo "  got:  $got"
+        [[ "$got" != *MC2_SELFTEST_REAL_AFTER_POISON* ]] && \
+          echo "  -> a comment opener inside a STRING LITERAL swallowed the rest of the file."
+        [[ "$got" == *COMMENT_* ]] && \
+          echo "  -> a name mentioned only in a COMMENT was counted as registered."
+        exit 1
+    fi
+    echo "check-env-registry --selftest: OK (3 real, 3 comment-only correctly dropped)"
+    exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # Step 1: extract registered var names from the header
@@ -46,22 +142,19 @@ if [[ "${1:-}" == "--verbose" ]]; then VERBOSE=1; fi
 # in a comment left this script exiting 0. With the strip it exits 1 and names
 # the var.
 #
-# ZERO BLAST RADIUS, measured before changing anything: raw grep, comment-stripped
-# grep, and strict one-field-per-line extraction all yield exactly 623 names on
-# this header today, so no currently-registered var depends on a prose mention.
-# The awk pass removes /* ... */ (including multi-line) and // to end of line.
+# BLAST RADIUS. The original note here claimed "zero", on the evidence that raw
+# and stripped both yielded 623 names on the header that day. TREE-CONSOLIDATE-1
+# re-measured on 2026-07-30 with the string-aware stripper: raw 634, stripped
+# 634, identical SETS, and the string-aware and old strippers also agree
+# name-for-name on the last clean committed header. So still zero -- but that is
+# now a re-measurable claim backed by `--selftest`, not a one-off observation.
+# The stripping itself lives in strip_cxx_comments() above; see the note there
+# for why a regex-only stripper was not good enough.
 
 REGISTERED=()
 while IFS= read -r name; do
     REGISTERED+=("$name")
-done < <(awk '
-    { line = $0
-      gsub(/\/\*[^*]*\*\//, "", line)
-      if (inblk) { if (match(line, /\*\//)) { line = substr(line, RSTART + 2); inblk = 0 } else next }
-      if (match(line, /\/\*/))  { line = substr(line, 1, RSTART - 1); inblk = 1 }
-      sub(/\/\/.*/, "", line)
-      print line }' "$HEADER" \
-    | grep -oE '"MC2_[A-Z0-9_]+"' | tr -d '"' | sort -u)
+done < <(extract_registered < "$HEADER")
 
 if [[ $VERBOSE -eq 1 ]]; then
     echo "=== Registered (${#REGISTERED[@]}) ==="
@@ -843,7 +936,6 @@ ALLOWLIST=(
     MC2_WATER_GPU_FULL_RECIPE_CULL    # feature -- water GPU full-recipe cull gate
     MC2_WATER_HDRI_LOD                # override -- water HDRI LOD override
     MC2_WATER_NO_DEPTH_WRITE          # feature -- water no-depth-write gate
-    MC2_WATER_SHINE                   # feature -- water shine gate
     MC2_WATER_THINRING_TRACE          # trace
 
     # --- batch 8 (ENV-DROP sweep 2026-07-07: recent slices that skipped registration) ---
