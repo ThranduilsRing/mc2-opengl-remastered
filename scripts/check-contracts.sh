@@ -425,6 +425,28 @@ run_check "deploy_data_parity"     "py -3 scripts/check-deploy-data-parity.py --
 # checking its default at all.
 run_check "delivery_manifest"      "py -3 scripts/check-delivery.py --contract --quiet"
 run_check "delivery_selftest"      "py -3 scripts/check-delivery.py --selftest"
+# DELIVERY-CLOSE-1: THE GRADING HALF, WIRED. Until now the two rows above were
+# the only wirings, and neither one ever looks at an install -- --contract is
+# repo integrity and --selftest is fixtures. The half of the script that answers
+# the actual question ("would the user see this if he launched?") was reachable
+# only by a human typing it, and could not have failed anything if they had:
+# its exit code was ONE `any` spanning every fix AND every install, so a run in
+# which two fixes printed "<-- DELIVERED NOWHERE" still exited 0 because two
+# other fixes landed somewhere. Measured on this disk: 4 of 9 fixes at 0/18
+# installs, exit code 0. A gate that cannot return non-zero is a report.
+#
+# The gap is now per fix, and this row consumes it. THIS ROW IS EXPECTED RED
+# UNTIL A BUILD AT THE TIP IS DEPLOYED: the newest engine binary on this disk
+# was built at 09:53, and the afternoon's user-facing fixes (terrain ambient
+# floor, the runway art guard, the vehicle ambient floor) are in no install at
+# all. That is the finding, not a flaw in the row -- red here means "correct
+# code that the user cannot reach", which is the one thing nothing else on this
+# board measures. It goes green by deploying, not by editing this line.
+#
+# Deliberately NOT run_check_tri: that runner is for findings that are
+# IRREPARABLE, and it fails closed on a ledger entry that pins a repairable one.
+# A missing deploy is the most repairable finding there is.
+run_check "delivery_installs"      "py -3 scripts/check-delivery.py --quiet"
 run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
 run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
