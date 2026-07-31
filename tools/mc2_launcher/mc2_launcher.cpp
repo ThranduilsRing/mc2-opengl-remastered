@@ -161,6 +161,16 @@ struct EnvVarDef {
     bool        isBool;      // true = checkbox; false = static+edit
     const char* defaultVal;  // shown in edit / initial check state; "" = unset by default
     const char* section;     // section header (grouped in dialog)
+    // KILLSWITCH-CHECKBOX-1: what an UNCHECKED bool emits.
+    //   NULL (the default for every row that omits it) -> the variable is UNSET,
+    //   which is the historical behaviour and is correct ONLY for default-OFF
+    //   opt-ins, where unset == off.
+    //   "0"        -> the variable is set to "0".
+    // This field exists because unsetting a DEFAULT-ON killswitch does not turn
+    // it off -- the engine just falls back to its ON default, so the checkbox
+    // was a no-op in the off direction. Any row whose gate is default-ON must
+    // set offVal="0" or its checkbox silently cannot disable anything.
+    const char* offVal;
 };
 
 // Curated interactive list.  Excludes:
@@ -175,7 +185,13 @@ static const EnvVarDef k_envVars[] = {
     { "MC2_PROP_SHADOW_RECEIVE",     "Building self/prop-on-prop shadows",    true,  "",     "Rendering" },
     { "MC2_STATIC_PROP_PBR_V1",      "Static prop PBR specular",              true,  "1",    "Rendering" },
     { "MC2_STATIC_PROP_AMBIENT_V1",  "Static prop hemisphere ambient",        true,  "1",    "Rendering" },
-    { "MC2_STATIC_PROP_IBL_SH",      "Static prop SH-L2 IBL ambient (ON)",    true,  "1",    "Rendering" },
+    // offVal="0": this is the TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md).
+    // Reader is gos_static_prop_batcher.cpp:1066 `!(v && v[0]=='0')` -- default ON,
+    // "0" is the kill token -- so unchecking MUST emit "0". Without offVal the box
+    // only unset it and the engine stayed ON, which is exactly the bug
+    // KILLSWITCH-CHECKBOX-1 fixes. The other default-ON rows in this table still
+    // carry that bug and are listed in that commit message.
+    { "MC2_STATIC_PROP_IBL_SH",      "Static prop SH-L2 IBL ambient (ON)",    true,  "1",    "Rendering", "0" },
     // --- Display ---
     { "MC2_FORCE_43",                "Force 4:3 aspect (pillarbox widescreen)", true, "",    "Display"   },
     { "MC2_WINDOWED",                "Windowed mode",                          true,  "",    "Display"   },
@@ -195,6 +211,35 @@ static const EnvVarDef k_envVars[] = {
     // --- Shadow tuning (value vars) ---
     // NOTE: MC2_SHADOW_MAP_SIZE moved to Graphics Options dialog (shadow quality radios).
     { "MC2_SHADOW_CSM_R0",           "CSM near cascade radius WU (def 512)",  false, "512",  "Shadow Tuning" },
+    // --- Lighting / Grounding A-B (2026-07-30 / 07-31) ---
+    // The gates the README in the install root asks for a human verdict on.
+    // Read that file before flipping these.
+    //
+    // DEFAULT-OFF opt-ins: unchecked == unset == the shipped expression
+    // bit-for-bit, so offVal stays NULL.
+    { "MC2_SUN_AXIS_FIX",            "Sun axis fix (mech/vehicle diffuse)",   true,  "",     "Lighting A/B" },
+    { "MC2_SUN_ELEVATION_FIX",       "Sun elevation fix (whole world)",       true,  "",     "Lighting A/B" },
+    // IBL-ROTATION-LAND-1 (f16b49e9): aims the SH-IBL prop ambient probe at the
+    // mission sun. Default-OFF opt-in; reader gos_static_prop_batcher.cpp:1264
+    // `(v && v[0] && v[0] != '0')`, so unset == off and offVal stays NULL.
+    { "MC2_STATIC_PROP_IBL_SUN_ROTATE", "Aim prop IBL probe at the sun",      true,  "",     "Lighting A/B" },
+    // Companion VALUE var (not a checkbox): the probe's irradiance floor.
+    // Reader default is 0.45; "0" gives the bare rotation with no floor.
+    { "MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "  ^ probe floor (def 0.45, 0=bare)", false, "0.45", "Lighting A/B" },
+    // DEFAULT-ON killswitches -- these are already active on a normal launch.
+    // offVal="0" is mandatory: unchecking must EMIT "0", because merely unsetting
+    // it leaves the engine on its ON default and the box would do nothing.
+    //
+    // MC2_SHORELINE_LEGACY_SUPPRESS's default was flipped OFF -> ON by
+    // LEGACY-SHORELINE-MISAIM-1 (6340e052, 2026-07-31). Its row was written for
+    // the pre-flip default and kept the opt-in shape (defaultVal "", offVal
+    // NULL), which after the flip renders the box UNTICKED while the feature is
+    // ON and makes ticking-then-unticking a no-op -- the KILLSWITCH-CHECKBOX-1
+    // defect all over again. Reader gos_terrain_lod_chunk.cpp:4056 is
+    // `!(v && v[0] == '0')`: default ON, "0" the only kill token.
+    { "MC2_SHORELINE_LEGACY_SUPPRESS","Suppress legacy shoreline post pass (ON)", true, "1", "Lighting A/B", "0" },
+    // Reader mclib/mapdata.cpp:2452 `!v || v[0] != '0'`: default ON, "0" reverts.
+    { "MC2_CPU_PHONG_RETIRE",        "CPU Phong retire (grounding; ON)",      true,  "1",    "Lighting A/B", "0" },
     // --- Cheats (interactive play) ---
     { "MC2_CHEAT_INFINITE_MONEY",    "Infinite Money",                        true,  "",     "Cheats" },
     { "MC2_CHEAT_SALVAGE_ALL",       "Salvage Everything",                    true,  "",     "Cheats" },
@@ -204,8 +249,14 @@ static const EnvVarDef k_envVars[] = {
 };
 static const int k_envVarCount = (int)(sizeof(k_envVars) / sizeof(k_envVars[0]));
 
-// In-memory state: for bool vars "1" = set / "" = unset; for value vars: the text or "".
-static char s_envVarValues[32][256];  // [k_envVarCount][MAX_VAL]
+// In-memory state: for bool vars "1" = set / offVal (or "" = unset) when
+// unchecked; for value vars: the text or "".
+static char s_envVarValues[48][256];  // [>= k_envVarCount][MAX_VAL]
+// This array is indexed by every loop that walks k_envVars. It was sized 32
+// against a 25-row table, i.e. 7 rows from a silent out-of-bounds write on the
+// next batch of additions. Fail the BUILD instead of corrupting memory.
+static_assert(k_envVarCount <= (int)(sizeof(s_envVarValues) / sizeof(s_envVarValues[0])),
+              "k_envVars has more rows than s_envVarValues can hold -- grow s_envVarValues");
 
 // Path to launcher_env.json.
 static char s_envJsonPath[MAX_PATH];
@@ -847,7 +898,12 @@ static void OptionsDialogReadControls(HWND hwnd) {
         if (!hCtrl) continue;
         if (k_envVars[i].isBool) {
             bool checked = (SendMessageA(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
-            _snprintf(s_envVarValues[i], sizeof(s_envVarValues[i]), "%s", checked ? "1" : "");
+            // KILLSWITCH-CHECKBOX-1: an unchecked box emits offVal when the row
+            // declares one ("0" for default-ON killswitches), otherwise "" which
+            // DoLaunch turns into an explicit unset. Without this a default-ON
+            // gate could never be switched off from the GUI.
+            const char* off = k_envVars[i].offVal ? k_envVars[i].offVal : "";
+            _snprintf(s_envVarValues[i], sizeof(s_envVarValues[i]), "%s", checked ? "1" : off);
         } else {
             GetWindowTextA(hCtrl, s_envVarValues[i], (int)sizeof(s_envVarValues[i]));
         }
