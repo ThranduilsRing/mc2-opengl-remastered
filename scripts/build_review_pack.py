@@ -301,6 +301,22 @@ def _plain(html: str, limit: int = 160) -> str:
     s = (s.replace("&mdash;", "--").replace("&ndash;", "-").replace("&amp;", "&")
           .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
           .replace("&rarr;", "->").replace("&nbsp;", " "))
+    # The eight above were the entities this pack used when the reader was
+    # written.  Every other entity in the manifest reached the EXPORTED label
+    # undecoded -- a lane reading feedback got literal "&ldquo;" in the one
+    # string that is supposed to be human-readable.  Measured over the current
+    # manifest, the undecoded set was: ldquo/rdquo (246), times (67), sect (64),
+    # rsquo (47), middot (18), bull (14), #9888 (13), hellip (12), minus (9),
+    # asymp (7), #9940 (5).  Decoded to ASCII, not to the glyph, so an exported
+    # label stays safe on a cp1252 console -- the same class of crash 07349d10
+    # had to fix in mission_smooth.
+    s = (s.replace("&ldquo;", '"').replace("&rdquo;", '"')
+          .replace("&lsquo;", "'").replace("&rsquo;", "'")
+          .replace("&hellip;", "...").replace("&times;", "x")
+          .replace("&sect;", "section ").replace("&middot;", "-")
+          .replace("&bull;", "*").replace("&minus;", "-")
+          .replace("&asymp;", "~").replace("&#9888;", "(!)")
+          .replace("&#9940;", "(X)"))
     s = _WS_RE.sub(" ", s).strip()
     return s[:limit]
 
