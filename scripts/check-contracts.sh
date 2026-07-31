@@ -320,6 +320,14 @@ run_check "golden_coverage_selftest" "py -3 scripts/check-golden-coverage.py --s
 # refuses a two-run set, a duplicated run, a degenerate crop and an unstable region.
 run_check "bless_selftest"           "py -3 tools/visual_verify/bless_selftest.py"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
+# DOCTEST-COUNT-LOCK-ARM-1: the doctest suite in tests/unit/ is not executed by
+# anything in this file (or by any CI -- there is none), so its hand-pinned count
+# assertions are unarmed: test_rendercore.cpp sat at `== 46` while the real
+# RendererFeature::COUNT was 61, for fifteen appends. These two rows compare the
+# pinned numbers against the headers statically, which needs no compiler and so
+# can live in this ~5s-per-check aggregator. They do NOT restore test execution.
+run_check "doctest_count_locks"    "py -3 scripts/check-doctest-count-locks.py --quiet"
+run_check "doctest_count_selftest" "py -3 scripts/check-doctest-count-locks.py --self-test"
 run_check "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
 run_check "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
 run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet"
