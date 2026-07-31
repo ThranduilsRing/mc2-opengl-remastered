@@ -159,12 +159,24 @@ BIAS_APPLICATION_PINS = [
 
 TESS_TOKENS_RE = re.compile(
     r"RendererFeature::TerrainTessellation|MC2_TERRAIN_TESS\b")
+# CONTRACT-GREEN-1 (2026-07-31): entries are graded, not asserted. Each one below
+# was measured to still shelter a hit in CODE (comments lexed out); the two that
+# sheltered nothing were REMOVED in the same commit rather than left as decor --
+# a file on this list is exempt whether or not the reason still holds, so a dead
+# entry is a standing permission slip for a consumption nobody has written yet:
+#   GameOS/include/gameos.hpp            0 hits raw, 0 in code   -- removed
+#   GameOS/gameos/gos_mech_killswitch.h  0 hits raw, 0 in code   -- removed
+# Both are back in scope now; a real token added to either is a finding again.
 TESS_TOKEN_ALLOWLIST = {
-    "RenderCore/RendererFeatureRegistry.h",      # enum + kFeatureTable entry
-    "GameOS/gameos/gameos_graphics.cpp",         # material-load consumer + predicates
-    "GameOS/include/gameos.hpp",                 # predicate decls/comments
-    "GameOS/gameos/gos_mech_killswitch.h",       # comments
-    "tests/unit/test_rendercore.cpp",            # registry unit tests
+    # 5 code hits: enum TerrainTessellation = 3 + the kFeatureTable row.
+    "RenderCore/RendererFeatureRegistry.h",
+    # 2 code hits: the material-load kill-switch read (getenv, :5184) and the
+    # printf naming it. This TU also DEFINES gos_IsTerrainTessellationActive()
+    # (:10124) -- it is the chokepoint every other TU is told to consume, so it
+    # is the one place the raw token belongs.
+    "GameOS/gameos/gameos_graphics.cpp",
+    # 2 code hits: registry unit tests assert the enum/table by name.
+    "tests/unit/test_rendercore.cpp",
 }
 TESS_SCAN_DIRS = ["code", "gui", "mclib", "GameOS", "RenderCore", "RenderWorld",
                   "GameAdapters", "editor", "netlib", "HostServices",
@@ -509,12 +521,33 @@ def rule2_depth(ctx: Ctx) -> list[str]:
 
 
 def rule3_predicate(ctx: Ctx) -> list[str]:
+    """A game TU must CONSUME the predicate, not the raw tess token.
+
+    Scanned over code with comments lexed out (CONTRACT-GREEN-1, 2026-07-31).
+    This rule used to match the raw file text, so PROSE naming the kill-switch
+    was a violation. It went red on mclib/mapdata.cpp:2445, whose only sin was
+    a comment that documents the shape it copied:
+
+        // Default-ON killswitch (MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape):
+
+    A comment cannot consume a predicate, so that was never the thing the rule
+    exists to stop; and the two ways of clearing it without touching the rule
+    were both worse -- reword accurate documentation to dodge a grep, or
+    allowlist the whole of mapdata.cpp and lose the rule over a 5000-line TU.
+
+    NOT `checklib.strip_comments`, deliberately: that one is regex-based and a
+    `/*` inside a `//` comment makes it delete 2304 lines of gameos_graphics.cpp
+    including the real getenv this rule most wants to see (see its docstring).
+    Stripping with it would have traded one blind spot for a far bigger one.
+    strip_comments_lexed preserves newlines, so the offsets below still map to
+    source line numbers.
+    """
     problems = []
     for rel in ctx.list_code_files():
         if rel in TESS_TOKEN_ALLOWLIST:
             continue
         try:
-            text = ctx.read(rel)
+            text = checklib.strip_comments_lexed(ctx.read(rel))
         except OSError:
             continue
         m = TESS_TOKENS_RE.search(text)
@@ -666,21 +699,58 @@ def self_test() -> int:
         "#include <cstdlib>\nbool f(){return getenv(\"MC2_TERRAIN_TESS\");}\n"
     }), True)))
 
+    # RULE3 ANTI-REGRESSION (CONTRACT-GREEN-1). The comment-blind fix is only
+    # safe while the stripper is a real lexer. checklib.strip_comments -- the
+    # obvious thing to reach for -- treats the `/*` inside a `//` comment as a
+    # block-comment opener and deletes everything to the next `*/`, which on
+    # gameos_graphics.cpp is 2304 lines of live code. This fixture reproduces
+    # that shape exactly: prose quoting `/*`, then a REAL consumption, then an
+    # inline block comment that closes the phantom. Swap the lexer back for the
+    # regex stripper and this arm reports NOT DETECTED.
+    failures.append(("RULE3 token behind /*-in-//", run_all(Ctx({
+        "code/selftest_blindspan.cpp":
+        "// prose quoting a shell one-liner: git log -S'/*' -- x\n"
+        "#include <cstdlib>\n"
+        "bool f(){return getenv(\"MC2_TERRAIN_TESS\");}\n"
+        "int g(){ return 1 /* closes the phantom block */; }\n"
+    }), True)))
+
     # RULE4: a pair member edited without re-stamping.
     t = checklib.read_text("shaders/edge_fog.frag") + "\n// drift\n"
     failures.append(("RULE4 stamp drift",
                      run_all(Ctx({"shaders/edge_fog.frag": t}), True)))
 
+    # --- arms that must NOT fire -------------------------------------------
+    # A rule that cannot be made quiet by legitimate code is only half a spec.
+    # RULE3 grades CODE; prose naming the kill-switch is documentation, and
+    # mclib/mapdata.cpp:2445 is the live example that made this row red for a
+    # day. Pinned in BOTH directions so a future "just grep the raw text"
+    # simplification cannot pass the suite.
+    negatives = []
+    negatives.append(("RULE3 comment-only mention is not a consumption",
+                      run_all(Ctx({
+                          "code/selftest_comment_only.cpp":
+                          "// Default-ON killswitch (MC2_TERRAIN_TESS shape):\n"
+                          "// unset = on. RendererFeature::TerrainTessellation\n"
+                          "int f(){return 0;}\n"
+                      }), True)))
+
     bad = [name for name, rc in failures if rc == EXIT_OK]
+    bad += [name for name, rc in negatives if rc != EXIT_OK]
     for name, rc in failures:
         print("  self-test %-28s %s" % (name,
               "detected (rc=%d)" % rc if rc != EXIT_OK else "NOT DETECTED"))
+    for name, rc in negatives:
+        print("  self-test %-28s %s" % (name[:28],
+              "correctly quiet" if rc == EXIT_OK
+              else "FALSE POSITIVE (rc=%d)" % rc))
     if bad:
-        print("split-path-contracts --self-test: FAIL (undetected: %s)"
+        print("split-path-contracts --self-test: FAIL (wrong verdict: %s)"
               % ", ".join(bad), file=sys.stderr)
         return EXIT_VIOLATION
     print("split-path-contracts --self-test: PASS (green on tree, red on all "
-          "5 synthetic violations)")
+          "%d synthetic violations, quiet on %d legitimate shape(s))"
+          % (len(failures), len(negatives)))
     return EXIT_OK
 
 

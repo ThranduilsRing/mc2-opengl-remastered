@@ -87,12 +87,92 @@ def strip_comments(text: str) -> str:
     Lexically naive by design (string literals containing comment markers
     are rare in this codebase's checker scopes); good enough for the
     grep-tier contract checks, same bar as the .sh checkers.
+
+    THAT CLAIM IS FALSE ON AT LEAST ONE REAL FILE, MEASURED (CONTRACT-GREEN-1,
+    2026-07-31). It is not string literals that break it -- it is `/*` inside a
+    `//` comment, which this function has no state to notice. Prose comments in
+    this repo quote shell and git one-liners, and one of them contains `/*`:
+
+        GameOS/gameos/gameos_graphics.cpp:2929  // ... `git log -S'/*'` ...
+
+    The unmatched `/*` opens a block comment that runs to the next `*/`
+    ANYWHERE in the file -- here 2304 lines later, at an inline
+    `/* invariant: shadow path always on */` on line 5233. The regex deletes
+    everything between: 4167 of the file's 10504 non-blank lines, 40% of the
+    largest TU in the engine, including real code such as
+
+        gameos_graphics.cpp:5184  const char* tessEnv = getenv("MC2_TERRAIN_TESS");
+
+    Any rule that greps `strip_comments(<that file>)` is silently blind over
+    that span. 17 checkers call this function; auditing and repointing each is
+    out of this lane's scope, so the fix here is additive: use
+    `strip_comments_lexed` below for any NEW rule, and for any existing rule
+    whose blind spot is shown to matter. This docstring is the ledger entry --
+    do not delete it while the naive body is still live.
     """
     def _block(m: re.Match) -> str:
         return "\n" * m.group(0).count("\n")
     text = _BLOCK_COMMENT_RE.sub(_block, text)
     text = _LINE_COMMENT_RE.sub("", text)
     return text
+
+
+def strip_comments_lexed(text: str) -> str:
+    """Correct C/C++ comment stripping: a single left-to-right scan that
+    tracks string and character literals, so a comment marker inside a
+    literal is not a comment and a `/*` inside a `//` comment is not an
+    opener. Line structure is preserved exactly (every newline in the input
+    appears in the output at the same index-in-line-order), so a caller can
+    still map an offset back to a line number.
+
+    This is what `strip_comments` was documented to be. Prefer it whenever the
+    scanned text is real C/C++ rather than GLSL; the cost is one pass.
+
+    Known and deliberate limits (none present in the scanned trees today):
+      * raw string literals R"delim( ... )delim" are treated as ordinary
+        strings, so a `//` inside one is stripped;
+      * a backslash-continued `//` comment ends at the first newline.
+    Both are noisier-than-correct in the safe direction only for comments;
+    neither can hide code the way the naive version does.
+    """
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if c == "/" and nxt == "/":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue                      # the newline is emitted next loop
+        if c == "/" and nxt == "*":
+            i += 2
+            while i < n:
+                if text[i] == "*" and i + 1 < n and text[i + 1] == "/":
+                    i += 2
+                    break
+                if text[i] == "\n":
+                    out.append("\n")      # keep line numbering stable
+                i += 1
+            continue
+        if c in ('"', "'"):
+            quote = c
+            out.append(c)
+            i += 1
+            while i < n:
+                if text[i] == "\\" and i + 1 < n:
+                    out.append(text[i:i + 2])
+                    i += 2
+                    continue
+                out.append(text[i])
+                if text[i] == quote:
+                    i += 1
+                    break
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
 
 
 def normalize_ws(s: str) -> str:
