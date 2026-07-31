@@ -142,21 +142,60 @@ EXE_NAME = "mc2" + ".exe"
 # nothing reads as fine. Roots are therefore listed explicitly and a new one is
 # a deliberate edit, not a silent default.
 #
+# AND IT WENT STALE AGAIN, THE SAME WAY, WITHIN TWO DAYS (CONTRACT-GREEN-1,
+# 2026-07-31). A fresh sweep found 30 engine binaries where the last one found
+# 22, and 11 were outside these patterns. Four of them are not scratch at all --
+# they are dated top-level installs with full deployed data trees, and they are
+# the FOUR NEWEST BINARIES ON THE DISK:
+#
+#   A:/Games/MC2-OpenGL-CURRENT-2026-07-30    e1bdb7af697d
+#   A:/Games/MC2-OpenGL-AB-SUNAXIS-2026-07-30 dab061529977
+#   A:/Games/MC2-OpenGL-TIP-2026-07-31        e4ce37d91162
+#   A:/Games/MC2-OpenGL-CURSORFIX-2026-07-31  3d7f9d7871f7
+#
+# Every one of them delivers ALL NINE manifest fixes -- code in the binary,
+# default ON, data present, 9/9 on each. Meanwhile this gate was reporting four
+# of those nine as DELIVERED NOWHERE and had been red on that basis for hours,
+# which is not a conservative error: it is the tool asserting a falsehood in the
+# direction that makes people stop reading it. The failure is exactly the one
+# this comment block already warned about -- an install root that is not scanned
+# reports nothing, and nothing reads as fine -- so the warning was right and the
+# LIST was the part that could not keep up, because it is hand-maintained and the
+# installs are named after the day they were cut.
+#
+# Hence a GLOB rather than four more literals: `A:/Games/MC2-OpenGL-*` matches
+# the dated-sibling convention that is actually in use, so tomorrow's cut is
+# graded without an edit. find_installs() globs each pattern, so a wildcard root
+# composes with all three shapes; verified it picks up exactly those four and
+# does NOT reach the nested <install>/data/mc2-win64-v0.4 copies (three levels
+# down, same documented shape as the Remastered one below).
+#
+# WHAT THIS DOES NOT FIX, STATED PLAINLY: the pass bar is "at least ONE install
+# shows the fix", so adding installs can only make the row easier to pass. The
+# row can now go green off a single fresh directory while the install carrying
+# the PRODUCT name still has none of the nine. That is a weak assertion and it
+# is not what "would the user see it?" means -- the user launches one install,
+# not the union of twenty-three. Nominating the graded install is the real fix
+# and is a USER decision (which directory is the one that counts?), so it is
+# filed, not silently taken here.
+#
 # STILL UNSCANNED AFTER THIS CHANGE, NAMED SO IT IS A KNOWN GAP RATHER THAN AN
-# UNKNOWN ONE -- the sweep found 22 engine binaries, these 3 are not among the
-# 19 graded:
+# UNKNOWN ONE -- of the 30 binaries the sweep found, these 6 are not graded:
 #   * A:/Games/Carver5-feasibility  and  A:/Games/test -- both verified
 #     banner-absent (no build-fingerprint), so not attributable engine builds
 #     this repo produced. They would grade "?" on every axis: noise, not answer.
-#   * A:/Games/MC2 OpenGL Remastered/data/mc2-win64-v0.4 -- fingerprint
-#     eca37ed3 (2026-06-14) and built from a DIRTY tree. Two levels below its
-#     root, so no pattern here reaches it without a speculative <root>/*/*/
-#     glob that would also sweep arbitrary subdirectories. Grade it explicitly
-#     with --install-root when it matters.
+#   * FOUR nested <install>/data/mc2-win64-v0.4 copies -- under "MC2 OpenGL
+#     Remastered" and under each of the three MC2-OpenGL-* installs. All four
+#     are the same 10410496-byte 2026-06-14 build, fingerprint eca37ed3, built
+#     from a DIRTY tree. Two levels below their root, so no pattern here reaches
+#     them without a speculative <root>/*/*/ glob that would also sweep
+#     arbitrary subdirectories. Grade explicitly with --install-root if it ever
+#     matters.
 # Re-check with --install-root if any of that changes.
 DEFAULT_INSTALL_ROOTS = [
     "A:/Games/mc2-opengl",
     "A:/Games/MC2 OpenGL Remastered",
+    "A:/Games/MC2-OpenGL-*",
 ]
 
 REGISTRY_REL = "RenderCore/RendererFeatureRegistry.h"
