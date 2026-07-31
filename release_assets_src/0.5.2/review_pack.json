@@ -334,7 +334,7 @@
         "already ON &mdash; run <code>AB-4-PHONG-RETIRE-OFF-legacy.bat</code> to see the <b>old</b> behaviour",
         "<b>Curved terrain</b> &mdash; ridges, saddles, hillsides. <b>Turrets on sloped ground</b> is the named case.",
         "<b>Flat ground, and grid vertices</b><br><span style='font-size:11px;color:#9aa3ad'>the retired term is identically zero there &mdash; a flat plateau shows nothing however long you stare</span>",
-        "<b>The riskiest thing on disk.</b> It moves the gameplay elevation that objects are grounded on and that <b>pathfinding and collision</b> use, on every map: mean 0.58&ndash;1.35 wu, p99 3.8&ndash;6.4, <b>max 12.7&ndash;18.9 wu &asymp; 3.8 m</b>, on 19&ndash;49% of sampled positions. A good result is &ldquo;it looks the same&rdquo; or &ldquo;the turrets sit right now&rdquo;. <b style='color:#f0a0a0'>Flag immediately</b> anything catching on terrain, walking through ground, or stuck pathing. <b>Revert is <code>MC2_CPU_PHONG_RETIRE=0</code>.</b> Never run, no smoke, no human eyes."
+        "<b>The riskiest thing on disk.</b> It moves the gameplay elevation that objects are grounded on and that <b>pathfinding and collision</b> use, on every map: mean 0.58&ndash;1.35 wu, p99 3.8&ndash;6.4, <b>max 12.7&ndash;18.9 wu</b> (1 wu = 0.2 m, so <b>up to ~3.8 m</b>), moving <b>19&ndash;49% of sampled positions by more than 1 wu</b>. A good result is &ldquo;it looks the same&rdquo; or &ldquo;the turrets sit right now&rdquo;. <b style='color:#f0a0a0'>Flag immediately</b> anything catching on terrain, walking through ground, or stuck pathing. <b>Revert is <code>MC2_CPU_PHONG_RETIRE=0</code>.</b> Never run, no smoke, no human eyes."
        ]
       },
       {
