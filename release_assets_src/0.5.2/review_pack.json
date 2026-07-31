@@ -1363,7 +1363,7 @@
         "<code>AB-3-IBL-SUN-ROTATE-on.bat</code><br>vs <code>AB-0</code><br><span style=\"font-size:11px;color:#9aa3ad\">&#9733; <b style=\"color:#a0f0a0\">NEWLY GRADABLE</b> &mdash; the first install that contains this variable at all. <code>AB-4</code> is the bare arm (probe floor 0.45&rarr;0); compare it against <b>AB-3</b>, not AB-0.</span>",
         "<b>mc2_17</b> or <b>mc2_24</b><br><span style=\"font-size:11px;color:#9aa3ad\">mc2_17 has the most unclamped headroom in tier 1 (mean |&Delta;| 0.181, 54.6% unclamped); mc2_24 the largest move, 0.231</span>",
         "<b>mc2_10, mc2_22</b> and <b>mc2_05</b><br><span style=\"font-size:11px;color:#9aa3ad\">mc2_10/mc2_22 have ~91% of wall azimuths already clamped &mdash; the rotation moves about one byte (0.0037 and 0.0123). mc2_05&rsquo;s sun is below the horizon, where &ldquo;aim at the sun&rdquo; is not a well-posed request. <b>Every install except CURSORFIX and TIP is also a trap</b> &mdash; the variable name is absent from their string tables, so setting it is a silent no-op.</span>",
-        "The SH-IBL probe that lights every static prop is <b>never rotated to the mission sun</b> today &mdash; it is baked once on a fixed bright axis, and on <b>17 of 24 missions</b> that leaves a building <i>brighter on the wall facing away from the sun</i> (median aim error 106&deg;; worst is mc2_14 at 177&deg;, almost exactly backwards). A pass looks like the lit wall and the sun finally agreeing. <b>This is the strongest unlooked-at finding of the session</b>, and it has still never been seen render."
+        "The SH-IBL probe that lights every static prop is <b>never rotated to the mission sun</b> today &mdash; it is baked once on a fixed bright axis, and on <b>17 of 24 missions</b> that leaves a building <i>brighter on the wall facing away from the sun</i> &mdash; median aim error <b>106.2&deg;</b>, worst <b>mc2_14 at 176.7&deg;</b>, almost exactly backwards. <span style=\"font-size:11px;color:#9aa3ad\">These are not loose figures: all four are pinned as assertions in a tracked, buildable contract harness &mdash; <code>tools/class_light_band_harness&hellip;:2215</code> <code>CH_CHECK(t, wrongWay == 17)</code>, plus the median, the worst value and the worst mission by name. If any of them drifts, a registered board row goes red.</span> A pass looks like the lit wall and the sun finally agreeing. <b>This is the strongest unlooked-at finding of the session</b>, and it has still never been seen render."
        ]
       },
       {
@@ -1975,6 +1975,16 @@
         "tag": "td",
         "html": "<b>Eleven.</b> Re-counted for this build against the tracked record rather than inherited: all twelve introducing commits verified as ancestors of HEAD, and all eight of the changes that carry a gate verified <code>defaultOn=true</code> in <code>RendererFeatureRegistry.h</code>. <b style=\"color:#f0d890\">Weakest number on this page</b>, and stated so on purpose: there is <b>no tracked list</b> of &ldquo;default-ON changes this session&rdquo; &mdash; the count is maintained by hand, which is exactly how it drifted to ten. It should become a file."
        }
+      ],
+      [
+       {
+        "tag": "td",
+        "html": "&ldquo;<b>Building LOD swaps</b> are the leading explanation for prop pop &mdash; and the likely path for the mc2_03 black quads and the sunk turrets too.&rdquo;<br><span style=\"font-size:11px;color:#9aa3ad\">reasoned from repeatedly, all session</span>"
+       },
+       {
+        "tag": "td",
+        "html": "<b style=\"color:#f0a0a0\">IT CANNOT FIRE. Building LOD is pinned to 0.</b> <code>mclib/bdactor.cpp:4665</code> states it outright &mdash; <i>&ldquo;pinned to 0: every <code>currentLOD</code> write in this file assigns 0&rdquo;</i> &mdash; and <code>:5594-5596</code> actively resets it (<code>if (currentLOD) { currentLOD = 0; }</code>); <code>:6527</code> does the same for <code>activeLOD</code>. <b>Every chain of reasoning that routed through an LOD swap is void.</b><br><b style=\"color:#c0a0f0\">RETRACTED &mdash; and the memory file asserting the mechanism is stale and should not be trusted until corrected.</b> Worth noting <i>how</i> it survived so long: it lived in a memory file, and <b>memory files are covered by no contract</b>. <span style=\"font-size:11px;color:#9aa3ad\">Restored to this page by its own adversarial self-review: an earlier pass cut it on the false ground that it was duplicated elsewhere. It was not &mdash; it appeared nowhere else. Re-verified from the C++ before being put back.</span>"
+       }
       ]
      ]
     },
@@ -2076,7 +2086,7 @@
       [
        {
         "tag": "td",
-        "html": "&sect;20i (&ldquo;root causes that MOVED&rdquo;) &mdash; heading, intro and a five-row table. Every live entry in it is either a row of the corrections table in &sect;6 or a queue row in &sect;2; it was a third copy."
+        "html": "&sect;20i (&ldquo;root causes that MOVED&rdquo;) &mdash; heading, intro and its table. <b style=\"color:#f0d890\">This drop was partly wrong and has been partly undone.</b> Three of its four rows were genuinely a third copy of &sect;6 or &sect;2. The fourth &mdash; the <b>LOD-swap retraction</b> &mdash; was not duplicated anywhere, and cutting it would have quietly deleted the session's most useful negative result. It is restored as the last row of the corrections table above."
        }
       ],
       [
