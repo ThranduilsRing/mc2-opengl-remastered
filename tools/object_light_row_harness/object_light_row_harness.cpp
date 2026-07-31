@@ -314,12 +314,24 @@ static bool test_row_is_independent_of_bake_time(TestCtx& t)
 }
 
 // The mechanism itself, asserted directly: under the tree policy the sun is
-// absent from the row, so the AMBIENT light becomes row slot 0 — which is what
-// makes decomposeFirstActiveLightColor (txmmgr.cpp:1443) overwrite the ambient
-// instead of the sun and collapse the term ~3x. Under the building policy the
-// sun IS row slot 0. The point is not that this is fixed here (it is a look the
-// user has ratified); it is that the divergence is now a DECLARED policy on one
-// query rather than a global window with a lifetime.
+// absent from the row, so the AMBIENT light becomes row slot 0. Under the
+// building policy the sun IS row slot 0.
+//
+// PROP-BAKE-SUNWINDOW-1 CORRECTION: this comment used to continue "...— which
+// is what makes decomposeFirstActiveLightColor (txmmgr.cpp) overwrite the
+// ambient instead of the sun and collapse the term ~3x". That step is FALSE and
+// was never modelled here, so nothing caught it. The gather COMPACTS (num_lights
+// advances only inside the active branch, mclib/txmmgr.cpp:2837/:2983), so with
+// the sun filtered out row slot 0 already holds the AMBIENT's colour — and
+// decompose writes that same light's colour back into slot 0. It is a byte
+// no-op, not a collapse. Proven below by
+// test_decompose_slot0_is_a_noop_after_gather.
+//
+// What the tree policy really does to the row is remove the sun from it
+// (numLights_ 4 -> 3, no INFINITE slot). That is the whole difference, and it
+// is a look the user has ratified for foliage. The point of this file is that
+// the divergence is now a DECLARED policy on one query rather than a global
+// window with a lifetime.
 static bool test_tree_policy_removes_sun_from_row(TestCtx& t)
 {
     auto lights = makeWorldLights(2);
@@ -335,6 +347,206 @@ static bool test_tree_policy_removes_sun_from_row(TestCtx& t)
     pureRow(buildingQuery(lights), &bldg);
     CH_CHECK(t, bldg.numLights_ == 4);
     CH_CHECK(t, bldg.lightDir[0][3] == (float)olr::kTypeInfinite);
+    return t.failures == 0;
+}
+
+//=============================================================================
+// PROP-BAKE-SUNWINDOW-1 — the slot-0 "clobber" step, modelled and FALSIFIED.
+//
+// Three source files (mclib/bdactor.cpp's [BAKEORD v1] block,
+// mclib/object_light_row.h's header, and this harness) asserted the same causal
+// step in prose and NOTHING executed it:
+//
+//   "with the sun filtered out of the row the AMBIENT becomes row slot 0, and
+//    decomposeFirstActiveLightColor unconditionally overwrites lightColor[0] —
+//    that is the ~3x ambient collapse"
+//
+// The overwrite is real; the collapse is not. Both the gather and decompose
+// select THE SAME light (the first ACTIVE one) off THE SAME list, so decompose
+// writes back the bytes the gather just wrote. The model below is a faithful
+// transcription of mclib/txmmgr.cpp:1480-1496 and the tests run it, so the claim
+// is now executed rather than narrated.
+//=============================================================================
+
+// The effective state of one source light AFTER the class policy is applied —
+// i.e. exactly what the legacy code left in the shared global list, which is
+// what the real decompose reads. (applyLegacyMutations proves these agree; this
+// is the same substitution expressed per-light so decompose can be modelled
+// without materialising a mutated vector.)
+static void effectiveLight(const olr::Query& q, uint32_t i,
+                           bool* activeOut, uint32_t* aRGBOut)
+{
+    const olr::LightInput& L = q.lights[i];
+    bool     a = L.active;
+    uint32_t c = L.aRGB;
+    if (q.sunSlot.index == (int32_t)i) {
+        if (q.sunSlot.forceInactive) a = false;
+        if (q.sunSlot.recolour)      c = q.sunSlot.aRGB;
+    }
+    if (q.ambientSlot.index == (int32_t)i) {
+        if (q.ambientSlot.forceInactive) a = false;
+        if (q.ambientSlot.recolour)      c = q.ambientSlot.aRGB;
+    }
+    *activeOut = a;
+    *aRGBOut   = c;
+}
+
+// Faithful model of mclib/txmmgr.cpp:1480 decomposeFirstActiveLightColor().
+// Returns 0 when it found a light (and patched slot 0), 0xFFFFFFFF when it did
+// not — the same two return values the original uses to drive `perActor`.
+// `colorXor` exists only for the blindness proof: 0 is the faithful model.
+static uint32_t modelDecomposeFirstActiveLightColor(const olr::Query& q,
+                                                    olr::Row* row,
+                                                    uint32_t colorXor = 0u)
+{
+    for (uint32_t i = 0; i < q.numLights; ++i) {
+        if (!q.lights) break;
+        bool a = false; uint32_t startLight = 0;
+        effectiveLight(q, i, &a, &startLight);
+        if (!a) continue;
+        startLight ^= colorXor;
+        row->lightColor[0][0] = ((startLight >> 16) & 0x000000ffu) / 255.0f;
+        row->lightColor[0][1] = ((startLight >>  8) & 0x000000ffu) / 255.0f;
+        row->lightColor[0][2] = ((startLight      ) & 0x000000ffu) / 255.0f;
+        row->lightColor[0][3] = 1.0f;
+        return 0;
+    }
+    return 0xFFFFFFFFu;
+}
+
+// THE FALSIFICATION. For every class policy, every light count, and every
+// single-inactive-light hole (which is precisely what the tree's sun-off window
+// makes of the list), gather-then-decompose is byte-identical to gather.
+//
+// Blindness guards, because four checks shipped this week that passed their own
+// selftests while seeing nothing:
+//   - assert decompose actually FOUND a light (returned 0, not the sentinel),
+//   - assert the row is non-empty,
+//   - and re-run the comparator against a one-bit-perturbed decompose and
+//     require it to FAIL. A comparator that cannot see that is not evidence.
+static bool test_decompose_slot0_is_a_noop_after_gather(TestCtx& t)
+{
+    for (unsigned pool = 0; pool <= 8; ++pool) {
+        auto lights = makeWorldLights(pool);
+        const uint32_t n = (uint32_t)lights.size();
+
+        for (uint32_t hole = 0; hole <= n; ++hole) {      // hole == n => no hole
+            auto v = lights;
+            if (hole < n) v[hole].active = false;
+
+            olr::Query qs[5] = {
+                buildingQuery(v),
+                treeQuery(v),
+                moverQuery(v, olr::kClassMech),
+                moverQuery(v, olr::kClassVehicle),
+                moverQuery(v, olr::kClassGenericProp),
+            };
+
+            for (int k = 0; k < 5; ++k) {
+                const olr::Query& q = qs[k];
+                olr::Row gathered{};
+                pureRow(q, &gathered);
+
+                olr::Row decomposed = gathered;
+                const uint32_t rv = modelDecomposeFirstActiveLightColor(q, &decomposed);
+
+                if (gathered.numLights_ == 0) {
+                    // Degenerate only if every light was filtered; then decompose
+                    // must report the sentinel and touch nothing.
+                    CH_CHECK(t, rv == 0xFFFFFFFFu);
+                    CH_CHECK(t, rowsEqual(gathered, decomposed));
+                    continue;
+                }
+
+                // Guard 1+2: the check is looking at a populated row and the
+                // modelled decompose really ran.
+                CH_CHECK(t, rv == 0u);
+
+                if (!rowsEqual(gathered, decomposed)) {
+                    t.fail(std::string("decompose CHANGED the row: policy=") +
+                           std::to_string((int)q.policy) +
+                           " pool=" + std::to_string(pool) +
+                           " hole=" + std::to_string(hole) + " " +
+                           firstDiff(gathered, decomposed));
+                    return false;
+                }
+
+                // Guard 3: prove the comparator can see a divergence here.
+                olr::Row perturbed = gathered;
+                modelDecomposeFirstActiveLightColor(q, &perturbed, 0x00000001u);
+                CH_CHECK(t, !rowsEqual(gathered, perturbed));
+            }
+        }
+    }
+    return t.failures == 0;
+}
+
+// THE RESIDUAL HAZARD, pinned. Slot 0 CAN be clobbered — but only if the row
+// being decomposed was gathered under a DIFFERENT light-list state than the one
+// decompose reads. In production that is reachable at exactly one place:
+// mclib/txmmgr.cpp:2086, where a cached per-frame scene-light TEMPLATE is copied
+// into the caller's row and then patched. What keeps it unreachable is
+// sceneLightTemplateKey (mclib/txmmgr.cpp:1512) hashing EVERY light's `active`
+// bit and every non-actor light's aRGB, so two rows sharing a key necessarily
+// compact identically and slot 0 means the same light in both.
+//
+// This test builds the forbidden pairing deliberately and asserts it WOULD
+// collapse the ambient ~3x, which is the honest form of the mechanism the three
+// prose comments got wrong: it is a template-key invariant, not a bake-order
+// window. If someone ever drops `active` from that key, this test says what
+// breaks.
+static bool test_decompose_clobbers_slot0_only_across_a_light_state_change(TestCtx& t)
+{
+    auto lights = makeWorldLights(2);
+
+    // The two constants PROP-RECIPE-BAKE-1 actually measured on mc2_10:
+    // BRIGHT = 192/255 = 0.7529, DIM = 63/255 = 0.2471. Using them makes the
+    // asserted damage literally the reported 3x, and keeps the two states
+    // distinct — an earlier draft of this test gave both classes the SAME
+    // terrain sample and the "clobber" then produced identical bytes, i.e. the
+    // fixture, not the mechanism, decided the verdict.
+    const uint32_t kBrightRGB = 0xFFC0C0C0u;   // 0.7529
+    const uint32_t kDimRGB    = 0xFF3F3F3Fu;   // 0.2471
+
+    // State A — sun ACTIVE (a building bake): row slot 0 is the SUN.
+    olr::Query qA = buildingQuery(lights);
+    qA.sunSlot.aRGB = kBrightRGB;
+    olr::Row rowA{};
+    pureRow(qA, &rowA);
+    CH_CHECK(t, rowA.lightDir[0][3] == (float)olr::kTypeInfinite);
+    CH_CHECK(t, rowA.lightColor[0][0] == 192.0f / 255.0f);
+
+    // State B — sun DISABLED (inside a tree's window): first active is AMBIENT.
+    olr::Query qB = treeQuery(lights);
+    qB.ambientSlot.aRGB = kDimRGB;
+
+    // The forbidden pairing: a row gathered in state A, decomposed in state B.
+    olr::Row crossed = rowA;
+    const uint32_t rv = modelDecomposeFirstActiveLightColor(qB, &crossed);
+    CH_CHECK(t, rv == 0u);
+    CH_CHECK(t, !rowsEqual(rowA, crossed));
+    // ...and the damage is exactly "the ambient's colour replaced the sun's",
+    // 0.7529 -> 0.2471, the 3x the field report describes.
+    CH_CHECK(t, crossed.lightColor[0][0] == 63.0f / 255.0f);
+    CH_CHECK(t, crossed.lightDir[0][3] == (float)olr::kTypeInfinite);   // still typed sun
+
+    // The guard that makes it unreachable, asserted as a property: the two
+    // states differ in an `active` bit, which sceneLightTemplateKey hashes, so
+    // they cannot share a template.
+    bool activeMaskDiffers = false;
+    for (uint32_t i = 0; i < (uint32_t)lights.size(); ++i) {
+        bool aA = false, aB = false; uint32_t cA = 0, cB = 0;
+        effectiveLight(qA, i, &aA, &cA);
+        effectiveLight(qB, i, &aB, &cB);
+        if (aA != aB) { activeMaskDiffers = true; break; }
+    }
+    CH_CHECK(t, activeMaskDiffers);
+
+    // Same-state decompose on the same row: no-op. (The contrast that makes the
+    // line above meaningful rather than decorative.)
+    olr::Row sameState = rowA;
+    modelDecomposeFirstActiveLightColor(qA, &sameState);
+    CH_CHECK(t, rowsEqual(rowA, sameState));
     return t.failures == 0;
 }
 
@@ -569,6 +781,10 @@ int main(int argc, char** argv)
     h.add("row_is_independent_of_bake_order",    test_row_is_independent_of_bake_order);
     h.add("row_is_independent_of_bake_time",     test_row_is_independent_of_bake_time);
     h.add("tree_policy_removes_sun_from_row",    test_tree_policy_removes_sun_from_row);
+    h.add("decompose_slot0_is_a_noop_after_gather",
+          test_decompose_slot0_is_a_noop_after_gather);
+    h.add("decompose_clobbers_slot0_only_across_a_light_state_change",
+          test_decompose_clobbers_slot0_only_across_a_light_state_change);
     h.add("recolour_lands_in_the_declared_slot", test_recolour_lands_in_the_declared_slot);
     h.add("pos_column_fix",                      test_pos_column_fix);
     h.add("abi_cap_is_never_exceeded",           test_abi_cap_is_never_exceeded);

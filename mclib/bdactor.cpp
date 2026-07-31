@@ -3146,6 +3146,60 @@ namespace mc2_lightslot_trace {
 // all. Both hypotheses predict per-instance within-type variation, so the
 // outcome table alone cannot separate them.
 //
+// ★ PROP-BAKE-SUNWINDOW-1 (2026-07-30) -- THE ORDER HYPOTHESIS IS REFUTED AT
+// SOURCE. Do not build a fix on it; three files had copied it forward as fact.
+// Two independent links fail:
+//   (1) NOTHING ELSE CAN BAKE INSIDE THE WINDOW. `getWorldLight(0)->active =
+//       false` occurs at exactly ONE site repo-wide (:7110; mech3d.cpp:4133 is a
+//       per-actor pointLight, not the sun) and is restored at :7242 in the same
+//       function. Between them there is no early return (the only `return` in
+//       TreeAppearance::update between :7096 and :7251 is the tail `return
+//       TRUE`) and no call that touches another actor -- only this tree's own
+//       SetLightList / TransformMultiShape* / mc2CacheOrBakeStaticGpuLight. And
+//       appearance updates are serial on a default launch (MC2_FRAME_JOBS is
+//       default-OFF), so no worker thread can bake against the mutated global
+//       either. The window is global in TYPE, confined in EXTENT.
+//   (2) THE "COLLAPSE" STEP IS A NO-OP. GatherLightsParameters COMPACTS --
+//       num_lights advances only inside the `active` branch (txmmgr.cpp:2835,
+//       ++ at :2983) -- so with the sun filtered out row slot 0 already holds
+//       the AMBIENT, and decomposeFirstActiveLightColor (txmmgr.cpp:1480) picks
+//       the first ACTIVE light off the SAME list and writes those same bytes
+//       back. Proven by execution, not prose:
+//       tools/object_light_row_harness ::decompose_slot0_is_a_noop_after_gather
+//       (every class policy x light count x inactive-light hole), which FAILS
+//       when the compaction is removed from the model.
+// A tree bake therefore yields nL=1 (ambient only, no INFINITE) -- the intended
+// foliage look -- and that is ALL the window does. It does not dim any
+// neighbouring prop, so the BRIGHT/DIM split above is NOT explained by it, and
+// the competing bake-TIME hypothesis is the one left standing.
+//
+// WHERE THE NEXT LANE SHOULD LOOK (leads, verified as SOURCE FACTS; the
+// mechanism itself is NOT proven -- do not repeat this file's mistake of
+// promoting a plausible chain to fact):
+//   * The AMBIENT the DIM term reports has exactly ONE per-frame producer:
+//     `eye->setLightColor(1, (ambientRed<<16)|(ambientGreen<<8)|ambientBlue)`,
+//     gamecam.cpp:263-265, inside GameCamera::render(), re-evaluated every
+//     frame from Camera::ambientRed/Green/Blue.
+//   * Camera::ambientRed IS mutated during a mission: weather.cpp:362 divides
+//     it by rainLightLevel while raining and :380/:443 restore it; and
+//     Camera::updateDaylight writes it at camera.cpp:2100 from the sun pitch --
+//     though that body is entirely inside `if (day2NightTransitionTime > 0)`
+//     (camera.cpp:1877) and missions with no DayToNightTime park that at -1, so
+//     it does not run on every mission. CHECK PER MISSION before assuming it.
+//   * A per-recipe bake freezes whatever value was live, permanently
+//     (mc2StaticLightEnvironmentGeneration is a constant 0), and the only
+//     invalidation is the single LIGHTBAKE-REBAKE-ON-READY-1 pass above. So any
+//     recipe first rendered while the ambient differed keeps that ambient for
+//     the mission -- which is exactly a per-instance, within-type, frozen,
+//     zoom-invariant split.
+//   * mission.cpp:1993-2032 also swings the ambient to 0xFFFFFF, but only under
+//     `KillAmbientLight`, which is false unless the `-killambient` command-line
+//     switch is passed (mechcmd2.cpp:143/:2899) -- NOT a default-launch factor.
+//
+// The `sunActive=` field below therefore no longer discriminates anything; it is
+// kept because a NON-tree bake reading sunActive=0 would falsify (1) and that is
+// worth continuing to watch for.
+//
 // This probe therefore logs BOTH discriminators at every bake, or it would
 // confirm whichever hypothesis it was pointed at:
 //   ord=            monotonic bake ordinal      -> ORDER

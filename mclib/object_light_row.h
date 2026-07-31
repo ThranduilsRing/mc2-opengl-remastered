@@ -24,18 +24,47 @@
 // (Query::sunSlot / Query::ambientSlot), applied per-light inside the gather
 // loop, mutating nothing. No window exists, so nothing can bake inside one.
 //
-// WHY THAT CLOSES PROP-BAKE-ORDER-VS-TIME-1 STRUCTURALLY (mclib/bdactor.cpp
-// :3134-3156): that defect is unresolved because bake ORDER and bake TIME are
-// indistinguishable after the fact — the evidence is a per-instance 3x split in
-// the ambient term (0.7529 bright vs 0.2471 dim) and both hypotheses predict it.
-// The mechanism is exact and worth stating, because it is what this file
-// removes: GatherLightsParameters skips inactive lights, so inside the tree's
-// sun-off window the sun never lands in the row at all and the AMBIENT light
-// becomes row slot 0; decomposeFirstActiveLightColor (mclib/txmmgr.cpp:1443)
-// then unconditionally overwrites lightColor[0] with the first-active light's
-// colour — the ambient — instead of the sun. The per-recipe LIGHTBAKE freezes
-// the result. A pure function takes order and time as explicit inputs, so the
-// hazard cannot exist rather than being diagnosed.
+// WHAT THIS DOES AND DOES NOT SAY ABOUT PROP-BAKE-ORDER-VS-TIME-1
+// (mclib/bdactor.cpp:3134-3156). That defect is unresolved because bake ORDER
+// and bake TIME are indistinguishable after the fact — the evidence is a
+// per-instance 3x split in the ambient term (0.7529 bright vs 0.2471 dim) and
+// both hypotheses predict it.
+//
+// ★ PROP-BAKE-SUNWINDOW-1 CORRECTION (2026-07-30). An earlier revision of this
+// comment stated the ORDER mechanism as fact: "GatherLightsParameters skips
+// inactive lights, so inside the tree's sun-off window the AMBIENT becomes row
+// slot 0; decomposeFirstActiveLightColor then unconditionally overwrites
+// lightColor[0] ... that is the 3x collapse". The first half is true; the
+// conclusion is FALSE, and it was copied onward into two other files and into a
+// fix brief before anyone executed it. Verified at source:
+//   * The gather DOES compact — num_lights advances only inside the
+//     `active` branch (mclib/txmmgr.cpp:2835 and the ++ at :2983). So with the
+//     sun filtered out, row slot 0 ALREADY holds the ambient.
+//   * decomposeFirstActiveLightColor (mclib/txmmgr.cpp:1480) selects the FIRST
+//     ACTIVE light off THE SAME list the gather read, so it writes back the
+//     bytes the gather just wrote. It is a byte NO-OP, not a collapse.
+//     Executed, not narrated: tools/object_light_row_harness
+//     ::decompose_slot0_is_a_noop_after_gather, over every class policy x light
+//     count x inactive-light hole, with an injection proof (removing the
+//     compaction above makes it fail).
+//   * The tree window is also lexically CONFINED: `active=false`
+//     (bdactor.cpp:7110) and `active=true` (:7242) sit in one function with no
+//     early return between them and no other actor's bake inside, and appearance
+//     updates are serial by default (MC2_FRAME_JOBS is default-OFF). No non-tree
+//     prop can bake inside it.
+// The real effect of the tree policy on a row is simply that the SUN IS ABSENT
+// (numLights_ drops by one, no INFINITE slot) — which for foliage is the
+// intended stock look.
+//
+// Slot 0 IS clobberable, but only across a light-state change: a row gathered in
+// one state and decomposed in another (mclib/txmmgr.cpp:2086, the per-frame
+// template copy). sceneLightTemplateKey (:1512) is what forbids that, by hashing
+// every light's `active` bit and every non-actor light's aRGB. That invariant is
+// pinned by ::decompose_clobbers_slot0_only_across_a_light_state_change.
+//
+// What this file contributes is still real and still worth having: a pure
+// function takes order and time as explicit inputs, so no window with a lifetime
+// exists to reason about at all.
 //
 // DEPENDENCY-FREE BY CONSTRUCTION
 // -------------------------------
