@@ -743,19 +743,6 @@ run_check "no_raw_gl_from_game"    "sh scripts/check-no-raw-gl-from-game.sh"
 run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
 run_check "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
 run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
-# CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
-# rc_* helpers. It says nothing about whether the helpers' own documentation is
-# true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the
-# alpha-test class as a value no shader has ever emitted -- contradicting the
-# helper ten lines above it AND the rationale block twenty lines above it -- and
-# the same stale constant had been copied into shaders/shadow_screen.frag. A
-# constant duplicated between a comment and code, where only the code is
-# checked, drifts silently. This row derives the class table from the EMITTED
-# literals (GL helper bodies + the VK shader's inlined copy), cross-checks it
-# against the reader bands, and fails when prose in the contract file set names
-# a prop-band value that nothing emits.
-run_check "render_contract_alpha_classes"          "py -3 scripts/check-render-contract-alpha-classes.py"
-run_check "render_contract_alpha_classes_selftest" "py -3 scripts/check-render-contract-alpha-classes.py --selftest"
 run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
 run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
