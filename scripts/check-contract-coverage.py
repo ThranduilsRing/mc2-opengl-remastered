@@ -88,9 +88,11 @@ notice. See scripts/unregistered-harness-debt.txt for the ratchet.
 Run with --selftest to prove all six arms still fire.
 """
 import ast
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -310,7 +312,22 @@ def parse_manual(text):
 
 
 def tracked_files():
-    r = subprocess.run(["git", "ls-files", "scripts/"],
+    """Script basenames present in HEAD.
+
+    META4-CLOSE-1: this was `git ls-files scripts/`, which reads the INDEX.
+    That is the wrong ledger and it failed in the dangerous direction. Arm (c)
+    asks "would every clone of this commit have the file?" -- only HEAD can
+    answer that. `git add` puts a path in the index of ONE working tree and
+    ships nothing, so the buggy form let a lane clear the check by staging,
+    with zero commits. It fired live on 2026-07-31 03:22: the arm (c) red for
+    check-input-capture-visibility.py cleared when another lane staged the
+    file, shared-index mtime 02:17:57 -> 03:22:05 being the entire change.
+    Had the script not also happened to be in HEAD, the tree would have gone
+    green on a commit where it genuinely did not exist.
+
+    ls-tree is also immune to GIT_INDEX_FILE, so a lane committing through a
+    private index (the house convention) grades against the same truth."""
+    r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD", "scripts/"],
                        cwd=ROOT, capture_output=True, text=True)
     return {Path(p).name for p in r.stdout.splitlines()}
 
@@ -417,7 +434,11 @@ def externally_called(checks):
     A mention is not a caller. See the module docstring: crediting a bare
     substring is what kept nine dead checks green.
     """
-    r = subprocess.run(["git", "ls-files"], cwd=ROOT,
+    # META4-CLOSE-1: HEAD, not the index -- same reason as tracked_files().
+    # An UNCOMMITTED caller credits a check as "driven by another runner" in
+    # this working tree only; every clone still gets a dark check. Staging a
+    # caller must not be able to clear arm (a) either.
+    r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD"], cwd=ROOT,
                        capture_output=True, text=True)
     surfaces = [p for p in r.stdout.splitlines()
                 if (p.endswith(CALLER_EXTS) or Path(p).name in ("CMakeLists.txt", "Makefile"))
@@ -637,6 +658,53 @@ def selftest():
     grade("stale debt row",
           harness_problems([], _real_reg, "long_gone_harness # reason\n"),
           "stale row")
+
+    # --- THE LEDGER ITSELF: HEAD, never the index (META4-CLOSE-1) -----------
+    # tracked_files() must answer "would every clone of this commit have the
+    # file?". `git ls-files` answered "did somebody run git add in THIS working
+    # tree?" instead -- satisfiable with zero commits, and it fired live on
+    # 2026-07-31 in both directions: a staged revert made the checker call a
+    # COMMITTED script untracked (false red), then another lane's `git add`
+    # cleared it (green by staging).
+    #
+    # This grades the PROPERTY, not the spelling: it drives the real function
+    # against a throwaway index in the exact staged-revert state and demands
+    # the verdict not move. Any future rewrite that reintroduces an index read
+    # fails here even if it never types the words "ls-files".
+    _victim_path = next((p for p in subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "HEAD", "scripts/"],
+        cwd=ROOT, capture_output=True, text=True).stdout.splitlines()
+        if Path(p).name in tracked), None)
+    if not _victim_path:
+        print("[selftest] FAIL  ledger probe -> HEAD lists no scripts/ file to "
+              "probe with", file=sys.stderr)
+        ok = False
+    else:
+        with tempfile.TemporaryDirectory() as _td:
+            _idx = str(Path(_td) / "probe.index")
+            _env = dict(os.environ, GIT_INDEX_FILE=_idx)
+            subprocess.run(["git", "read-tree", "HEAD"], cwd=ROOT, env=_env,
+                           capture_output=True, text=True)
+            # the staged-revert state: committed file, absent from the index
+            subprocess.run(["git", "rm", "--cached", "-q", "--", _victim_path],
+                           cwd=ROOT, env=_env, capture_output=True, text=True)
+            _saved = os.environ.get("GIT_INDEX_FILE")
+            os.environ["GIT_INDEX_FILE"] = _idx
+            try:
+                _seen = tracked_files()
+            finally:
+                if _saved is None:
+                    os.environ.pop("GIT_INDEX_FILE", None)
+                else:
+                    os.environ["GIT_INDEX_FILE"] = _saved
+        if Path(_victim_path).name in _seen:
+            print("[selftest]   ok  ledger is HEAD -> a staged removal cannot "
+                  "hide a committed script")
+        else:
+            print("[selftest] FAIL  ledger is the INDEX -> `git add` / `git rm "
+                  "--cached` moves this check's verdict with ZERO commits",
+                  file=sys.stderr)
+            ok = False
 
     # arm (d): THE REAL REGRESSION, re-injected verbatim. This is the exact
     # line that shipped in af4f79c8 -- a second label running the identical
