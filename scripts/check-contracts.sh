@@ -5,7 +5,11 @@
 #
 # Usage:
 #   bash scripts/check-contracts.sh           # run from worktree root
-#   bash scripts/check-contracts.sh --quiet   # suppress individual script output
+#   bash scripts/check-contracts.sh --quiet   # PASSING rows print nothing; a
+#                                             # FAILING row still says why
+#
+# Env:
+#   CONTRACTS_FAIL_TAIL=N   lines of a failing check's output to show (default 40)
 #
 # What counts as "cheap":
 #   * Pure grep/awk over source files (no build required)
@@ -40,6 +44,8 @@ for arg in "$@"; do
             echo "Usage: bash $0 [--quiet]"
             echo "  Runs cheap source-level contract checks and prints a PASS/FAIL table."
             echo "  Exits 0 if all pass, nonzero if any fail."
+            echo "  --quiet silences PASSING rows only; a FAILING row always states why."
+            echo "  CONTRACTS_FAIL_TAIL=N caps a failing row's output (default 40 lines)."
             exit 0
             ;;
         *) echo "Unknown argument: $arg" >&2; exit 1 ;;
@@ -54,9 +60,14 @@ FAIL_COUNT=0
 KNOWN_COUNT=0
 
 # Arrays to collect results for the summary table.
+# STRICTLY PARALLEL, all four of them. Anything that appends to NAMES must
+# append to the other three in the same breath or every row after it renders
+# another row's number (see _register_row, which used to append to NAMES and
+# RESULTS only and shifted SECS for the whole rest of the board).
 NAMES=()
 RESULTS=()
 SECS=()
+REASONS=()
 
 # ---------------------------------------------------------------------------
 # PER-CHECK WALL TIME (UNWIRED-CHECKS-CLOSE-1, 2026-07-30)
@@ -116,11 +127,111 @@ _register_row() {   # 0 = ok to run, 1 = duplicate (already reported)
         FAIL_COUNT=$((FAIL_COUNT + 1))
         NAMES+=("DUPLICATE-ROW:$label")
         RESULTS+=("FAIL")
+        SECS+=(0)
+        REASONS+=("$why -- this is a bug in check-contracts.sh, not in the check")
         return 1
     fi
     SEEN_LABELS="${SEEN_LABELS}<${label}>"
     SEEN_CMDS="${SEEN_CMDS}<${cmd}>"
     return 0
+}
+
+# ---------------------------------------------------------------------------
+# FAIL REASONS (FAIL-REASON-1, 2026-07-31)
+# ---------------------------------------------------------------------------
+# TRISTATE-WIRE-1 gave the ONE tri-state row the ability to say why it is red.
+# The other 142 rows run through run_check, which sent its command's output to
+# /dev/null under --quiet and so could not say anything at all: a failing row
+# could only ever render as a bare `FAIL <---`.
+#
+# That discard was NOT careless. `--quiet` is documented at the top of this file
+# as "suppress individual script output", and it was written when this board had
+# EIGHT rows (241f22dff, 2026-05-28). At eight rows the honest answer to "why?"
+# was "re-run it without --quiet", which cost seconds. At 143 rows and ~340s it
+# costs six minutes, so nobody does it -- and a red row with no reason becomes
+# wallpaper. capture_provenance was walked past by lane after lane as
+# "known-red, not mine" precisely because the board never said why; when
+# somebody finally read it, three of its five findings needed a USER decision
+# and two were already pinned. That was one redirect away the entire time.
+#
+# So the volume argument is honoured exactly where it is true and nowhere else:
+#   * a PASSING row still prints NOTHING under --quiet. A green board is
+#     byte-for-byte as quiet as before. Added output is proportional to the
+#     number of RED rows and to nothing else.
+#   * a FAILING row gets a one-line reason ON its row in the table, plus a
+#     bounded block printed AFTER the table -- beside the summary the reader is
+#     already looking at, not 130 rows up in the scrollback.
+#   * a chatty failure is windowed (head + tail) and the elision names the full
+#     log plus the exact one-line command to re-run just that check, so nobody
+#     has to spend 340s to see the rest.
+#
+# The failure mode of a fix like this is burying the one red row under pages of
+# noise from a chatty one -- the same wallpaper problem wearing a new hat. It is
+# prevented structurally, not by taste: green rows emit nothing, every block is
+# capped at CONTRACTS_FAIL_TAIL lines, and all of it sits BELOW the table.
+FAIL_TAIL_LINES="${CONTRACTS_FAIL_TAIL:-40}"
+FAIL_HEAD_LINES=8
+FAIL_LABELS=()
+FAIL_BLOCKS=()
+FAILLOG_DIR=""
+
+# One line, chosen to be the most explanatory thing the check said. This is a
+# heuristic and says so: the bounded block below the table always carries the
+# rest, so a bad guess costs a glance, never the diagnosis.
+_reason_digest() {          # $1 = captured output, $2 = rc  -> one line on stdout
+    local out="$1" rc="$2" line=""
+    if printf '%s\n' "$out" | grep -q '^Traceback'; then
+        # A CRASHED checker. "Traceback (most recent call last):" is not the
+        # reason; the exception on the last line is.
+        line="$(printf '%s\n' "$out" | grep -vE '^[[:space:]]*$' | tail -n 1)" || true
+    else
+        line="$(printf '%s\n' "$out" \
+            | grep -m1 -E '(^|[^[:alnum:]_])(FAIL|ERROR|VIOLATION|MISMATCH|Traceback)')" || true
+        if [ -z "$line" ]; then
+            line="$(printf '%s\n' "$out" | grep -vE '^[[:space:]]*$' | tail -n 1)" || true
+        fi
+    fi
+    line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    if [ -z "$line" ]; then
+        # Not a cosmetic case. A check that fails and says NOTHING is a defect in
+        # that check, and this line is the only place anyone would ever see it.
+        line="(exit $rc and printed nothing -- this check fails without saying why)"
+    fi
+    if [ "${#line}" -gt 100 ]; then line="${line:0:97}..."; fi
+    printf '%s' "$line"
+}
+
+_record_failure() {         # $1 label, $2 cmd, $3 captured output, $4 rc
+    local label="$1" cmd="$2" out="$3" rc="$4"
+    local n block rerun logpath=""
+    rerun="re-run just this row:  (cd \"$WORKTREE_ROOT\" && $cmd)"
+    n="$(printf '%s\n' "$out" | grep -c '')" || true
+    [ -n "$n" ] || n=0
+    if [ -z "$out" ]; then
+        block="(the check exited $rc and printed nothing at all -- there is no
+reason to read here because it never gave one. That is a defect in the
+check, not a mystery about the tree.)
+$rerun"
+    elif [ "$n" -le "$FAIL_TAIL_LINES" ]; then
+        block="$out
+$rerun"
+    else
+        # Truncation gets a pointer, or it is just a different way of hiding the
+        # answer. The log is written outside the worktree so it cannot pollute
+        # the tree the other checks scan.
+        if [ -z "$FAILLOG_DIR" ]; then
+            FAILLOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/contracts-fail-XXXXXX")"
+        fi
+        logpath="$FAILLOG_DIR/${label}.log"
+        printf '%s\n' "$out" > "$logpath"
+        block="$(printf '%s\n' "$out" | head -n "$FAIL_HEAD_LINES")
+... $((n - FAIL_TAIL_LINES)) of $n lines elided (raise with CONTRACTS_FAIL_TAIL=N) ...
+... full output: $logpath
+$(printf '%s\n' "$out" | tail -n "$((FAIL_TAIL_LINES - FAIL_HEAD_LINES))")
+$rerun"
+    fi
+    FAIL_LABELS+=("$label")
+    FAIL_BLOCKS+=("$block")
 }
 
 run_check() {
@@ -129,33 +240,34 @@ run_check() {
 
     _register_row "$label" "$cmd" || return 0
 
-    local t0 t1
+    local t0 t1 out rc
+    # Header BEFORE the run, as before, so a non-quiet reader still sees which
+    # check is in flight while a 97s row grinds. The only thing that changed for
+    # that reader is that the body is captured and printed a moment later
+    # instead of streamed -- the same bytes, plus a reason the table can carry.
+    if [ "$QUIET" -ne 1 ]; then echo "--- $label ---"; fi
     t0="$(_now_ms)"
-    if [ "$QUIET" -eq 1 ]; then
-        if (cd "$WORKTREE_ROOT" && eval "$cmd" > /dev/null 2>&1); then
-            PASS_COUNT=$((PASS_COUNT + 1))
-            NAMES+=("$label")
-            RESULTS+=("PASS")
-        else
-            FAIL_COUNT=$((FAIL_COUNT + 1))
-            NAMES+=("$label")
-            RESULTS+=("FAIL")
-        fi
-    else
-        echo "--- $label ---"
-        if (cd "$WORKTREE_ROOT" && eval "$cmd"); then
-            PASS_COUNT=$((PASS_COUNT + 1))
-            NAMES+=("$label")
-            RESULTS+=("PASS")
-        else
-            FAIL_COUNT=$((FAIL_COUNT + 1))
-            NAMES+=("$label")
-            RESULTS+=("FAIL")
-        fi
-        echo ""
-    fi
+    out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
     t1="$(_now_ms)"
     SECS+=("$((t1 - t0))")
+
+    NAMES+=("$label")
+    if [ "$rc" -eq 0 ]; then
+        PASS_COUNT=$((PASS_COUNT + 1))
+        RESULTS+=("PASS")
+        REASONS+=("")
+    else
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        RESULTS+=("FAIL")
+        REASONS+=("$(_reason_digest "$out" "$rc")")
+        _record_failure "$label" "$cmd" "$out" "$rc"
+    fi
+
+    if [ "$QUIET" -ne 1 ]; then
+        if [ -n "$out" ]; then printf '%s\n' "$out"; fi
+        echo ""
+    fi
+    return 0
 }
 
 # ---------------------------------------------------------------------------
@@ -211,12 +323,16 @@ run_check_tri() {
     if [ "$rc" -eq 0 ]; then
         PASS_COUNT=$((PASS_COUNT + 1))
         RESULTS+=("PASS")
+        REASONS+=("")
     elif [ "$rc" -eq 3 ]; then
         KNOWN_COUNT=$((KNOWN_COUNT + 1))
         RESULTS+=("KNOWN")
+        REASONS+=("")
     else
         FAIL_COUNT=$((FAIL_COUNT + 1))
         RESULTS+=("FAIL")
+        REASONS+=("$(_reason_digest "$out" "$rc")")
+        _record_failure "$label" "$cmd" "$out" "$rc"
     fi
 
     if [ "$QUIET" -eq 1 ]; then
@@ -242,9 +358,17 @@ run_check_tri() {
             # mechanism next to it was the only thing that ever explained itself.
             # Printing is strictly additive: it cannot pass a check that failed,
             # and it cannot change any count.
-            echo "--- $label (FAIL, rc=$rc) ---"
-            printf '%s\n' "$out"
-            echo ""
+            #
+            # FAIL-REASON-1 (2026-07-31) kept that guarantee and MOVED where it
+            # lands. run_check can now explain itself too, so there are 143 rows
+            # that might need to; if this one printed HERE and those printed
+            # after the table, the board would grow two different idioms for the
+            # same thing, which is how this file gets bitten. Both runners now
+            # hand the reason to _record_failure and it is rendered below the
+            # summary -- the digest is on this row IN the table, so it is more
+            # visible than it was here, not less. KNOWN keeps printing inline
+            # above, untouched: it is the amber contract and it is two lines.
+            :
         fi
     else
         echo "--- $label ---"
@@ -914,6 +1038,12 @@ for i in "${!NAMES[@]}"; do
         printf "  %-40s %8ss  KNOWN (correct failure, ledger-pinned)%s\n" "$label" "$secs" "$mark"
     else
         printf "  %-40s %8ss  FAIL  <---%s\n" "$label" "$secs" "$mark"
+        # FAIL-REASON-1: the row itself says what went wrong, so triage --
+        # "act on this" vs "understood, awaiting a decision" -- costs a glance
+        # and not a 340s re-run.
+        if [ -n "${REASONS[$i]:-}" ]; then
+            printf "        why> %s\n" "${REASONS[$i]}"
+        fi
     fi
 done
 echo "---------------------------------------------------------------------"
@@ -928,6 +1058,20 @@ if [ "${#OVER_BUDGET[@]}" -gt 0 ]; then
         printf "      %-38s %ss\n" "${e%%|*}" "${e##*|}"
     done
     echo "  (measured, not enforced -- see the PER-CHECK WALL TIME note above)"
+fi
+# FAIL-REASON-1: detail for the red rows, BELOW the table on purpose. A reason
+# printed 130 rows up in the scrollback is a reason nobody reads, and that is
+# the whole defect this closes. Volume here is proportional to the number of RED
+# rows -- a green board adds not one byte.
+if [ "${#FAIL_LABELS[@]}" -gt 0 ]; then
+    echo ""
+    echo "  WHY THE FAILING ROW(S) FAILED"
+    echo "  ---------------------------------------------------------------------"
+    for i in "${!FAIL_LABELS[@]}"; do
+        echo "  --- ${FAIL_LABELS[$i]} ---"
+        printf '%s\n' "${FAIL_BLOCKS[$i]}" | sed 's/^/    /'
+        echo ""
+    done
 fi
 if [ "$KNOWN_COUNT" -gt 0 ]; then
     echo ""
