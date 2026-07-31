@@ -465,6 +465,27 @@ or screenshotted. Do not report this gate as verified-looking-correct.
 8. **"dirty=False verified from the exe's embedded fingerprint"** when the lane actually
    ran `deploy_status()` or read the generated header — say which route. Only
    `scripts/exe_fingerprint.py` against the exe is the strong claim.
+9. **"56,395 of 72,153 objects (78%) move"**, **"96.5% of trees move"**, **"±2.4 m
+   world-wide"**, and **"his first launch will look like the world shifted"** — ALL
+   WRONG (retracted 2026-07-31, RESNAP-INVERSION-1). `scripts/object_burial_audit.py`
+   had its elevation model **backwards** until `632122f7d`: it hard-coded zero change
+   for the re-snapping classes and applied the delta to the frozen-Z ones, on the false
+   premise that the **drawn** ground was Phong-smoothed before `a75339bb0`. It was not —
+   that commit changed **gameplay** elevation only. The `±11.8379 wu` these claims rested
+   on is the TREE row's *authored-vs-Phong agreement* column, **not a movement**. Say
+   instead: *6,155 of 72,153 objects (8.5%) change apparent burial — 6,094 BUILDING and
+   61 GATE, zero trees/turrets/terrain objects — 3,272 down, 2,883 up, max 13.3948 wu
+   (2.674 m) on a bridge.* Re-derived from the fixed tool and independently recomputed
+   from the raw per-object CSV.
+10. **"the CPU-Phong retire is a candidate explanation for sunk TURRET-class objects"** —
+   INVERTED. TURRET keeps its authored Z, so `a75339bb0` changes it by **exactly zero**
+   (now pinned by NEGATIVE CONTROL 9 in the audit's `--selftest`). The retire moves the
+   re-snapping BUILDING/GATE population and nothing else.
+11. **"the committed `object_burial_by_kind_2026-07-31.csv` corroborates 11.8379"** —
+   it did not. That CSV was itself output of the inverted model, so the two artifacts
+   agreeing proved only that the same bug ran twice. **Agreement between two derived
+   artifacts is not corroboration when both derive from the same broken step.** The CSV
+   has been regenerated under the corrected model.
 
 ## Safe to repeat
 
@@ -472,6 +493,15 @@ or screenshotted. Do not report this gate as verified-looking-correct.
   to **1.97e-6 wu** — fully reproducible via `scripts/object_burial_audit.py` (`6d9360046`).
 - The fleet-wide version: across **72,153 stock objects on 37 maps**, authored Z matches
   the Phong-retired elevation to **0.0001 wu**, vs up to **13.39 wu** against legacy Phong.
+  (This is an **agreement** test, not a movement claim — the distinction is what
+  retraction 9 above is about. It was correct then and is correct now.)
+- What `a75339bb0` actually moves: **6,155 of 72,153** placed objects (**8.5%**), all of
+  them **BUILDING (6,094)** or **GATE (61)**; **TREE, TURRET and TERRAINOBJECT change by
+  exactly zero**. 3,272 settle down, 2,883 rise up, max **13.3948 wu (2.674 m)** on a
+  bridge (`mc2_m03 #1266`).
+- The burial that was real and worth telling him about: **`L_LightWall`, 43 instances on
+  mc2_03**, sat up to **6.23 wu (1.24 m)** underground — **26.9%** of the wall's own
+  23.16 wu (4.62 m) height — and `a75339bb0` fixed it **default-ON**.
 - mc2_17 staircase **0.260** vs an **analytic 0.222** isotropic floor; **mc2_10 is 0.737**.
 - `MC2_STATIC_PROP_IBL_SUN_ROTATE` is gradable **only** on `MC2-OpenGL-TIP-2026-07-31`,
   and has never been looked at.

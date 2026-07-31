@@ -1306,8 +1306,16 @@ def _summarise(all_rows, sel, top):
 
     moved = [r for r in all_rows
              if r["burial_change_wu"] != "" and abs(r["burial_change_wu"]) > 1e-6]
+    # RESNAP-INVERSION-1 label fix (2026-07-31).  632122f7d corrected
+    # burial_change() but left THIS label reading "non-re-snapping classes
+    # only" -- the old, inverted model.  Anyone pasting this output into a
+    # status doc would have re-seeded the exact error the commit fixed, and
+    # that is precisely how the wrong figures reached the review pack the
+    # first time.  The movers are the RE-SNAPPING classes; everything else
+    # changes by exactly zero (see burial_change's docstring).
     print(f"\nobjects whose APPARENT burial moves when a75339bb0 lands "
-          f"(non-re-snapping classes only): {len(moved)}")
+          f"(re-snapping classes only -- {', '.join(sorted(RESNAP_CLASSES))}; "
+          f"every other class changes by exactly 0): {len(moved)}")
     if moved:
         deeper = [r for r in moved if r["burial_change_wu"] > 0]
         shallow = [r for r in moved if r["burial_change_wu"] < 0]
@@ -1315,7 +1323,9 @@ def _summarise(all_rows, sel, top):
               f"rises UP (was sunk): {len(shallow)}")
         print("   In BOTH directions the post-retire value is exactly the "
               "geometric burial -mesh_min_up,\n"
-              "   because authored_z == ground_plain for every object above. "
+              "   because the re-snap assigns base_z = ground_plain after the "
+              "retire (bldng.cpp:829,\n"
+              "   gate.cpp:361) -- NOT because authored_z equals anything. "
               "The move is a correction,\n"
               "   not a new error -- but it IS user-visible relative to the "
               "immediately preceding build.")
