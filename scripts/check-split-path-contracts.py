@@ -547,9 +547,21 @@ def rule3_predicate(ctx: Ctx) -> list[str]:
         if rel in TESS_TOKEN_ALLOWLIST:
             continue
         try:
-            text = checklib.strip_comments_lexed(ctx.read(rel))
+            raw = ctx.read(rel)
         except OSError:
             continue
+        # Pre-filter on the RAW text before paying for the lexer. Exact, not an
+        # approximation: lexing only ever DELETES characters, so a token present
+        # after lexing was necessarily present before. Skipping the ~99.9% of
+        # files that never mention the token at all keeps this rule at its
+        # pre-lexer cost -- the lexer is a per-character Python loop, and
+        # applying it to every TU took the row 0.49s -> 3.44s, which matters
+        # because this aggregator's own header records that the two slowest
+        # rows are 60% of a 6-minute suite and that a suite too slow to run
+        # before a commit is how checks go dark.
+        if not TESS_TOKENS_RE.search(raw):
+            continue
+        text = checklib.strip_comments_lexed(raw)
         m = TESS_TOKENS_RE.search(text)
         if m:
             lineno = text[:m.start()].count("\n") + 1
