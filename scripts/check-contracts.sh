@@ -393,6 +393,51 @@ run_check "env_registry"           "sh scripts/check-env-registry.sh"
 run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
 
 # ---------------------------------------------------------------------------
+# REGISTRY-PARSER-TRUTH-1 (2026-07-31)
+# ---------------------------------------------------------------------------
+# env_registry above proves which gate NAMES appear in the header. It says
+# nothing about whether the tools that parse the header's ROWS can actually read
+# them -- and three of them could not. Measured on 399b2218f, against 360
+# declared rows:
+#
+#   scripts/build_review_pack.py       10 of 359 under a torn read, exit 0
+#                                      (fixed by PACK-FAILLOUD-1)
+#   tools/repo_intel/env_index.py      359 of 360 -- so the gate_status MCP tool
+#                                      answered `registered: false, verdict: OK,
+#                                      flags: []` about MC2_LIGHTING_DEBUG_VIEW,
+#                                      a REGISTERED gate, while its own reader
+#                                      list cited the registry line it had
+#                                      failed to parse
+#   scripts/flag-registry-auto-gen.py  248 of 360 -- and its output is the
+#                                      TRACKED docs/flags.auto.yaml, which
+#                                      asserted `registered: no` about 73 gates
+#                                      that are registered
+#
+# All three now share scripts/registry_parse.py. Causes of the 112 lost rows:
+# 99 adjacent string literals in the doc, 12 a trailing comma after it, 1 an
+# inline comment between fields -- all legal C++ the header actually uses.
+#
+# The TOLERANCE half is the half nothing was testing, and it is the half that
+# broke: a refusal-only guard cannot catch a grammar narrowed back into dropping
+# legal rows. registry_parser_selftest proves, against the LIVE header, that each
+# construct still occurs AND still parses (INCONCLUSIVE, not PASS, if the header
+# stops using one), then proves refusal on a row the grammar cannot see.
+run_check "registry_parser_selftest" "py -3 scripts/registry_parse.py --selftest"
+# The generator half: a refusal must become exit 2 with the previous file left
+# alone. A generator that writes a partial parse turns a silent parser bug into a
+# durable, quotable falsehood in a tracked document.
+run_check "flag_registry_generator_selftest" "py -3 scripts/flag-registry-auto-gen.py --selftest"
+# And the committed artifact itself. This script existed since the generator
+# landed and was never wired, which is why a 2026-07-23 flags.auto.yaml survived
+# to 2026-07-31 asserting `registered: no` about 73 registered gates. Wired
+# --strict: advisory-by-default was the setting that let it rot.
+#
+# NOTE it would NOT have caught the lie on its own -- it regenerates with the
+# same parser and diffs, so a wrong-but-stable generator reads as "up to date".
+# It catches staleness; registry_parser_selftest catches wrongness. Both.
+run_check "flag_registry_drift"    "sh scripts/check-flag-registry-drift.sh --strict"
+
+# ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)
 # ---------------------------------------------------------------------------
 # check-env-registry.sh above proves a gate is REGISTERED. It has never proved

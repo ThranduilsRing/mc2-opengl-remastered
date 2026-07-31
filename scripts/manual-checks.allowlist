@@ -29,7 +29,15 @@ check-ambient-guard.py: Reads latest_render_state.json from a live engine run (M
 check-debug-state-json.py: Requires a live engine JSON snapshot. Already named as an explicit exclusion in the check-contracts.sh header; this row makes that exclusion machine-readable instead of a comment.
 
 # --- blocked on a clean tree ----------------------------------------------
-check-flag-registry-drift.sh: Reports REAL drift right now (docs/flags.auto.yaml says 195 registry entries / 960 swept flags; a live regen says 242 / 1024) -- but it is report-only: without --strict it prints the whole diff and still exits 0, which is why nobody noticed. It cannot simply be wired --strict yet, because the fix is to regenerate docs/flags.auto.yaml and the generator sweeps the WORKING TREE, where RenderCore/RendererFeatureRegistry.h and docs/tier1_env_vars.md are currently sibling-hot with uncommitted gates. Regenerating now would bake another lane's unlanded work into a committed doc. TRIGGER: once those two files are committed, run `py -3 scripts/flag-registry-auto-gen.py --out docs/flags.auto.yaml` and wire this as `sh scripts/check-flag-registry-drift.sh --strict`.
+# check-flag-registry-drift.sh: RETIRED FROM THIS LIST by REGISTRY-PARSER-TRUTH-1
+# (2026-07-31). Its stated TRIGGER -- "once those two files are committed,
+# regenerate docs/flags.auto.yaml and wire this as --strict" -- is exactly what
+# that lane did, so the row is now wired --strict in check-contracts.sh. Its
+# drift numbers were also right and are worth keeping as the record: the
+# committed YAML claimed 195 registry entries against a header that declares 360.
+# What the row could NOT have told anyone is that the generator itself was
+# parsing 248 of those 360, so a regeneration alone would have replaced a stale
+# falsehood with a fresh one; the parser had to be fixed first.
 check-brain-opord.py: Runs a mission headless against a staged mod and asserts runtime BRAIN_* traces. Requires --exe plus a staged carver_probe mod; also blocked outright while game launches are hard-blocked.
 check_vk_nointerop_log.py: Grades a Vulkan no-interop smoke LOG supplied as a positional argument. Branch-specific (claude/vk-interop-bridge-1) and log-dependent.
 
