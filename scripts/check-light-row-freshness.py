@@ -76,12 +76,21 @@ EXEMPT: dict[str, str] = {
         "GameOS/gameos/gos_static_prop_registry.cpp flush() -- compares "
         "getCachedFrame() against the current frame at :1051 and suppresses the "
         "draw when stale. Handing an index onward to a checker is not trusting it.",
-    # mclib/mech3d.cpp was exempt here until MECH-LIGHTROW-FRESHNESS-1 repaired
-    # it (gate MC2_MECH_LIGHT_FRESHNESS, default-ON). The GPU-mech submit path
-    # now reads getCachedFrame() and DECLINES the submit on a stale stamp,
-    # routing the mech to the CPU MLR draw it already falls back to. The
-    # exemption is deleted rather than reworded so this file stops advertising
-    # an open defect that is closed.
+    # mclib/mech3d.cpp was exempt here until MECH-LIGHTROW-FRESHNESS-1 made the
+    # GPU-mech submit path read getCachedFrame() (gate MC2_MECH_LIGHT_FRESHNESS,
+    # default-ON). The exemption is deleted rather than reworded so this file
+    # stops advertising an open defect that is closed.
+    #
+    # MECH-DECLINE-FIX-1 amendment: that slice originally DECLINED the submit on
+    # a stale stamp, on the stated ground that the mech would still be drawn by
+    # the CPU MLR fallback. That ground was false -- inside the submit block's
+    # own enclosing gate (g_useGpuMechs && !previewContext) mechShape has been
+    # transformed by _HierarchyOnly, so TG_Shape::Render returns at the
+    # lastTurnTransformed guard (mclib/tgl.cpp:3190) without drawing, and the
+    # decline made the mech VANISH. The site now RECORDS the stale stamp and
+    # submits anyway (plus a bounds clamp). What this checker requires is
+    # unchanged and still satisfied: the consumer references the freshness
+    # stamp. The rule is "does not trust the index blindly", not "declines".
 }
 
 

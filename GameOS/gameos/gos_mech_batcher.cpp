@@ -51,6 +51,12 @@
 // function body. Avoids a new header.
 extern "C" uint64_t consumeAndResetMlrMechDraws();
 
+// MECH-DECLINE-FIX-1: same shape, same reason -- file-scope forward declaration
+// of the light-row freshness counters, defined in mclib/mech3d.cpp. Consumed on
+// the always-on per-mission summary in onMapUnload().
+extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
+                                                    uint64_t* oobOut);
+
 // APPLY-STATE-MECHOPAQUE-1: cross-TU apply-state counter bump (defined in
 // gos_postprocess.cpp). Bumps the same g_applyStatePasses aggregate used by the
 // PostProcess apply-state islands + the TerrainDecal/TerrainOverlay/StaticProp
@@ -1040,6 +1046,25 @@ void GpuMechBatcher::onMapUnload() {
         "[MECHBATCHER v1] event=mech_id_summary gpu_mech_id_writes=%llu\n",
         (unsigned long long)s_gpuMechIdWritesThisMission);
     s_gpuMechIdWritesThisMission = 0;
+
+    // MECH-DECLINE-FIX-1: always-on per-mission light-row freshness summary.
+    // These counters previously existed ONLY inside their own once-per-mech-type
+    // stderr line in mech3d.cpp, so a count that started or grew after that first
+    // line was unobservable and "check the counter on your first launch" was not
+    // executable. This is the always-on per-mission line, adjacent to the two
+    // above, that a supervised run actually sees.
+    // stale=0 means the freshness gate is INERT (the expected steady-state
+    // result -- reset/stamp/check share one g_mc2FrameCounter epoch). Non-zero
+    // means Mech3DAppearance::update() is not running at render cadence for some
+    // actor, and the repair is to re-stamp at update() time. oob MUST read zero;
+    // it is an invariant assertion, and a non-zero value means a clamped index.
+    {
+        uint64_t staleRows = 0, oobRows = 0;
+        consumeAndResetMechLightRowCounters(&staleRows, &oobRows);
+        MC2_DIAGFE(stderr,
+            "[MECHBATCHER v1] event=stale_light_row_summary stale=%llu oob=%llu\n",
+            (unsigned long long)staleRows, (unsigned long long)oobRows);
+    }
     for (uint32_t i = 0; i < MECH_RING_FRAMES; ++i) {
         if (s_fence[i]) {
             glClientWaitSync(s_fence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);

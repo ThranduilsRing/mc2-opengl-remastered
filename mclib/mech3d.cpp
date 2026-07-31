@@ -103,11 +103,29 @@ static bool mechLightFreshnessEnabled() {
 
 // MECH-LIGHTROW-FRESHNESS-1 counters. These are the UNCAPPED truth; the stderr
 // lines below are capped/one-shot, so nobody should ever count log lines.
-// s_mechStaleLightRowDeclines is the instrument that decides whether this gate
+// s_mechStaleLightRowStale is the instrument that decides whether this gate
 // is inert or load-bearing: zero in steady state means the mech submit path
 // never actually holds a stale stamp, and the gate is inert rather than wrong.
-static uint64_t s_mechStaleLightRowDeclines = 0;
+//
+// MECH-DECLINE-FIX-1: renamed from s_mechStaleLightRowDeclines. Nothing is
+// declined any more (see the submit site) -- the counter records DETECTIONS.
+static uint64_t s_mechStaleLightRowStale    = 0;
 static uint64_t s_mechLightRowOutOfRange    = 0;
+
+// MECH-DECLINE-FIX-1: per-mission consume accessor so the always-on
+// [MECHBATCHER v1] onMapUnload summary can surface these totals. Mirrors the
+// consumeAndResetMlrMechDraws() pattern directly above -- same TU-crossing
+// shape, same per-mission reset semantics. Without this the counters were
+// readable ONLY from their own once-per-mech-type stderr line, which means a
+// count that starts or grows after that first line was unobservable, and the
+// advice "check the counter on your first launch" was unexecutable.
+extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
+                                                    uint64_t* oobOut) {
+    if (staleOut) *staleOut = s_mechStaleLightRowStale;
+    if (oobOut)   *oobOut   = s_mechLightRowOutOfRange;
+    s_mechStaleLightRowStale = 0;
+    s_mechLightRowOutOfRange = 0;
+}
 
 // MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the
 // Mech3DAppearance::render() effect sites. Default OFF, zero behavior change.
@@ -3188,42 +3206,79 @@ long Mech3DAppearance::render (long depthFixup)
 				// zeroes. The pre-slice fallback was `= 0` -- a REAL slot, not a
 				// sentinel -- which is exactly what made the failure silent.
 				//
-				// WHY THIS PATH DECLINES rather than re-gathering or dropping.
-				// The static-prop fix chose between two bad options; the mech
-				// path has a THIRD that neither sibling had. Declining the GPU
-				// submit here does NOT drop the mech: gpuMechSubmitted stays
-				// false and the CPU MLR path draws it at :3227-3233
-				// (mechShape->Render(true)), which lights each leaf from its own
-				// lightData_ (mclib/tgl.cpp:3508) and never consults the shared
-				// slot table at all. So the three candidate repairs grade:
-				//   re-gather -> a current-frame row, but
-				//        GatherGpuObjectLightDataOnly rebuilds from the
-				//        TG_Shape::s_listOfLights statics the LAST-TRANSFORMED
-				//        shape set (the very Stage 2.D.2 timing bug this cache
-				//        exists to dodge) -> possibly MISTINTED.
-				//   drop      -> the mech VANISHES. Unacceptable for the actors
-				//        the player aims at and is shot by, and the staleness
-				//        shapes here are PERSISTENT rather than one-frame (a held
-				//        Ctrl+R doTransformMath toggle, mechcmd2.cpp:2295, or
-				//        Alt+D debug-draw, gameosmain.cpp:1816, skip game logic
-				//        every frame while render keeps running), so it would not
-				//        blink -- it would stay gone.
-				//   decline   -> the mech draws, with its OWN lighting, one frame
-				//        stale at worst. Strictly better than both.
-				// The fallback is not new code: it is the same branch already
-				// taken on every killswitch-off, not-finalized, late-registration
-				// and shader-init-fail submit -- i.e. the whole of MC2_GPU_MECHS=0
-				// mode. Its only cost is that one mech misses the GPU batch for
-				// one frame.
+				// WHY THIS PATH NO LONGER DECLINES -- MECH-DECLINE-FIX-1.
 				//
-				// HONEST LIMIT ON THE EVIDENCE: engine launches are hard-blocked
-				// in this lane, so the stale read is established from source and
-				// from the three sibling consumers that guard against it, NOT
-				// from an observed frame. s_mechStaleLightRowDeclines is the
-				// instrument that settles it on the first run.
+				// db221dcc2 shipped a DECLINE here on the stated ground that
+				// "declining leaves gpuMechSubmitted false and the CPU MLR path
+				// draws the mech at mechShape->Render(true)". THAT IS FALSE IN
+				// THE CONFIGURATION WHERE THE DECLINE CAN FIRE, and the proof is
+				// the enclosing gate of this very block:
+				//
+				//     if (g_useGpuMechs && !mechGpuCullSkip && g_drawMechs
+				//         && !previewContext)                     <-- :3142
+				//
+				// Both surviving terms are exactly the conditions under which
+				// updateGeometry picks a FAST-TRANSFORM variant for mechShape
+				// (:4567-4576): previewContext forces the full TransformMultiShape,
+				// and !g_useGpuMechs falls to the full transform in the else arm.
+				// So whenever we are inside this block, mechShape was transformed
+				// by _HierarchyOnly (the default: MC2_GPU_MECHS and
+				// MC2_GPU_MECH_LEAF_SKIP are both envFlagDefaultOn,
+				// gos_mech_batcher.cpp:134/:214, and the modern shadow path is
+				// active) or by _PositionsOnly. _HierarchyOnly delegates to
+				// TransformMultiShape_BuildRecipe (msl.cpp:2003), which sets
+				// s_buildRecipeOnly, and msl.cpp:1910 then does `continue` BEFORE
+				// the per-leaf dispatch -- so TG_Shape::MultiTransformShape never
+				// runs, `lastTurnTransformed` is never advanced (its only writers
+				// are tgl.cpp:1911/:1972/:2984, all inside the skipped per-leaf
+				// dispatchers, plus Touch() at :4352 which is called on building
+				// and tree shapes only, never on mechShape), and TG_Shape::Render
+				// returns at the staleness guard tgl.cpp:3190 without drawing.
+				//
+				// The engine already documents this twice, in-tree:
+				//   :4560-4563 "The GPU fast-transform variants (_PositionsOnly /
+				//        _HierarchyOnly) leave listOfVertices stale, so
+				//        TG_Shape::Render early-returns and the preview goes blank."
+				//   :3117-3124 (MECH-CULL-CPU-FIX) "we skipped the GPU submit and
+				//        fell back to the CPU mechShape->Render() path, WHICH DOES
+				//        NOT ACTUALLY DRAW while GPU mech batching owns rendering
+				//        -> the mech vanished for that frame -> center-screen
+				//        flicker."
+				// That second one is an OBSERVED runtime bug this file already
+				// fixed once. Declining here reintroduced it.
+				//
+				// AND THE DECLINE WAS WORST IN ITS OWN TARGET CASE. It cannot fire
+				// in steady state: Mission::update() calls clearArrays() ->
+				// resetLightData() (mission.cpp:1146), then CacheGpuLightData()
+				// stamps cachedFrame_ = g_mc2FrameCounter (:5793, ungated by cull),
+				// then draw_screen() runs this check -- and g_mc2FrameCounter is
+				// only incremented AFTER draw_screen (gameosmain.cpp:2207). Reset,
+				// stamp and check therefore all sit in one counter epoch and the
+				// stamp always matches. The stamp can only go stale when
+				// Mech3DAppearance::update() does not run at render cadence, i.e.
+				// the Alt+D / Ctrl+R debug toggles the original rationale named --
+				// but those skip Mission::update() itself, so resetLightData() does
+				// not run either, the light table is NOT rebased, and the "stale"
+				// index still names its own correct row. Pre-fix those frames
+				// rendered CORRECTLY; post-fix they declined and the mech vanished.
+				//
+				// SO: keep the detection, drop the diversion. The freshness verdict
+				// is now RECORDED and reported (per-mission, always-on, via
+				// consumeAndResetMechLightRowCounters) and the submit proceeds with
+				// the same index the pre-slice read resolved. If the counter comes
+				// back non-zero on a supervised run, the right repair is the one
+				// the original slice itself named -- re-stamp the row at update()
+				// time -- not a render-time decline onto a path that does not draw.
+				//
+				// The range check SURVIVES, because mech.vert:229/:292 index light[]
+				// with no bounds check and an out-of-range read is undefined. But it
+				// now CLAMPS to slot 0 instead of declining: clamping is the
+				// pre-slice substitute (a defined, in-range row -- the static/baked
+				// prefix under LIGHTBAKE), and unlike declining it still draws. An
+				// invisible mech is a worse outcome than a mistinted one for the
+				// actors the player aims at and is shot by.
 				// ----------------------------------------------------------
 				const uint32_t cachedLI = mechShape->getCachedGpuLightIndex();
-				bool declineForLightRow = false;
 				if (!mechLightFreshnessEnabled()) {
 					// Pre-slice behaviour, bit-for-bit.
 					desc.lightDataIndex = (cachedLI == 0xFFFFFFFFu) ? 0u : cachedLI;
@@ -3231,36 +3286,33 @@ long Mech3DAppearance::render (long depthFixup)
 					const uint32_t cachedFR = mechShape->getCachedFrame();
 					const bool cacheSet   = (cachedLI != 0xFFFFFFFFu);
 					const bool cacheFresh = (cachedFR == g_mc2FrameCounter);
+					// Same index the pre-slice read resolved. The freshness
+					// verdict below RECORDS; it never diverts the submit.
+					uint32_t resolvedLI = cacheSet ? cachedLI : 0u;
 					if (!cacheSet || !cacheFresh) {
-						// Stale stamp or never cached (spawn frame). Decline the
-						// GPU submit; the CPU MLR path below draws this mech.
-						declineForLightRow = true;
-						++s_mechStaleLightRowDeclines;
+						++s_mechStaleLightRowStale;
 						// FAIL-LOUD: one line per distinct mech type, uncapped
 						// counter inline. Silence is what let this ship.
 						static std::set<const void*> s_loggedStaleMechTypes;
 						if (s_loggedStaleMechTypes.insert((const void*)mechType).second) {
 							fprintf(stderr,
-								"[LIGHTROW_FRESHNESS v1] event=mech_stale_row_declined "
+								"[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected "
 								"mechType=%p lod=%d staleIndex=%u cachedFrame=%u "
-								"currentFrame=%u declines_so_far=%llu "
-								"(prior-frame light slot rejected; mech falls back to "
-								"the CPU MLR draw -- see MECH-LIGHTROW-FRESHNESS-1)\n",
+								"currentFrame=%u stale_so_far=%llu "
+								"(prior-frame light slot; submit PROCEEDS with it -- "
+								"declining would not draw, see MECH-DECLINE-FIX-1)\n",
 								(void*)mechType, (int)currentLOD, cachedLI, cachedFR,
 								(unsigned)g_mc2FrameCounter,
-								(unsigned long long)s_mechStaleLightRowDeclines);
+								(unsigned long long)s_mechStaleLightRowStale);
 							fflush(stderr);
 						}
-					} else if (mcTextureManager &&
-					           cachedLI >= mcTextureManager->getLightStructCount()) {
-						// RANGE CHECK. mech.vert indexes light[] unchecked, so an
-						// index >= the live row count is an out-of-bounds SSBO
-						// read. A fresh row is always in range by construction:
-						// this arm is an INVARIANT ASSERTION and must read zero.
-						// It is deliberately NOT repaired by clamping -- clamping
-						// would re-introduce the silent wrong-row substitution
-						// this slice removes.
-						declineForLightRow = true;
+					}
+					// RANGE CHECK, now applied to the resolved index on EVERY
+					// path (stale included -- a stale index is exactly the one
+					// most likely to be out of range after a rebase). Clamps
+					// rather than declines; see the block comment above.
+					if (mcTextureManager &&
+					    resolvedLI >= mcTextureManager->getLightStructCount()) {
 						++s_mechLightRowOutOfRange;
 						static bool s_loggedMechOob = false;
 						if (!s_loggedMechOob) {
@@ -3269,15 +3321,15 @@ long Mech3DAppearance::render (long depthFixup)
 								"[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range "
 								"mechType=%p index=%u liveRowCount=%u currentFrame=%u "
 								"(INVARIANT BREAK -- shader would read light[] out of "
-								"bounds; mech falls back to the CPU MLR draw)\n",
-								(void*)mechType, cachedLI,
+								"bounds; CLAMPED to slot 0)\n",
+								(void*)mechType, resolvedLI,
 								mcTextureManager->getLightStructCount(),
 								(unsigned)g_mc2FrameCounter);
 							fflush(stderr);
 						}
-					} else {
-						desc.lightDataIndex = cachedLI;
+						resolvedLI = 0u;
 					}
+					desc.lightDataIndex = resolvedLI;
 				}
 				// Slice B+ (2026-05-09): per-actor lightsOut from object
 				// status. CPU path at mech3d.cpp:3154 sets
@@ -3328,15 +3380,19 @@ long Mech3DAppearance::render (long depthFixup)
 					desc.visualFlags = vs.flags;
 				}
 
-				// MECH-LIGHTROW-FRESHNESS-1: a rejected light row skips the
-				// submit entirely (gpuMechSubmitted stays false), which routes
-				// this mech to the CPU MLR draw at :3227-3233 below. Recorded
-				// under its OWN reason so it can never be mistaken for a shader
-				// or registration failure in the [MECHBATCHER v1] summary.
-				if (declineForLightRow) {
-					GpuMechBatcher::instance().recordCpuFallback(
-						GpuMechFallbackReason::StaleLightRow);
-				} else {
+				// MECH-DECLINE-FIX-1: the light-row freshness verdict no longer
+				// gates this submit. db221dcc2 skipped it on a stale row and
+				// recorded GpuMechFallbackReason::StaleLightRow, on the false
+				// premise that the CPU MLR draw below would pick the mech up;
+				// inside this block that draw provably does not draw (see the
+				// block comment at the lightDataIndex resolve above). The
+				// StaleLightRow reason is therefore no longer recorded -- it can
+				// never be a *fallback*, because nothing falls back. The enum
+				// member is retained so the reason numbering, kFallbackNames and
+				// the kGpuMechFallbackReasonCount static_assert stay stable; the
+				// stale-row signal now rides the always-on per-mission
+				// [MECHBATCHER v1] event=stale_light_row_summary line instead.
+				{
 					gpuMechSubmitted = GpuMechBatcher::instance().submitActor(desc);
 					// Only count as a fallback if the GPU path was nominally
 					// enabled at this point. submitActor returns false on
