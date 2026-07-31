@@ -1,6 +1,7 @@
 #include "gos_static_prop_registry.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../../mclib/txmmgr.h"  // 2026-05-05: peekLightSlotNumLights/getLightStructCount for flush trace
+#include "../../mclib/static_light_row_guard.h"  // ZERO-LIGHT-ROW-1: shared light-index validity contract
 #include "../../mclib/appear.h"   // Task 6: Appearance* for registerStaticProp()
 #include "../../mclib/apprtype.h"  // AppearanceType::name (inspector shapeName capture)
 #include "gpu_cull_substrate.h"  // C1b GPU authority flip: substrate_appendStaticPropRecord
@@ -1166,14 +1167,105 @@ void flush() {
         // sibling's update/touch ran last. Per-actor capture decouples them.
         // Without the env flag, behavior is byte-identical to the historical
         // path.
+        // ZERO-LIGHT-ROW-1: resolution now lives in mclib/static_light_row_guard.h
+        // so the contract harness compiles the SAME function this flush runs.
+        // Semantics are unchanged from the inline ternary this replaces.
         const uint32_t freshLightIdx =
-            (s_perInstanceLight && rng.lightDataIndex != 0xFFFFFFFFu)
-                ? rng.lightDataIndex
-                : rng.multi->getCachedGpuLightIndex();
+            static_light_row::resolve(s_perInstanceLight,
+                                      rng.lightDataIndex,
+                                      rng.multi->getCachedGpuLightIndex());
         // [LIGHTBAKE-PROOF v1] prove the resolved per-instance index is permanent
         // (stable across frames) + in the static prefix [0..S). No-op unless
         // MC2_LIGHTBAKE_STABILITY is set.
         mc2LightBakeStabilityObserve(static_cast<int32_t>(regIdx), freshLightIdx);
+        // ── [STATIC_LIGHT_ROW v1] ZERO-LIGHT-ROW-1 fail-loud invariant ──────────
+        // WHY HERE: this is the LAST line that owns the light-row index before it
+        // becomes GPU state. Both flush branches derive from freshLightIdx — the
+        // legacy per-leaf path stamps it verbatim (`inst.lightDataIndex =
+        // freshLightIdx`, ~:1300) and the cached path is only taken when it
+        // provably equals the stamped recipe value (`useCachedBlob`, ~:1262). So
+        // one test here covers every creation route upstream, whichever hole
+        // produced the bad value.
+        //
+        // WHAT WAS MISSING: three lines below, `useCachedBlob` already tests
+        // `freshLightIdx != 0xFFFFFFFFu`. The code therefore KNOWS the "no value"
+        // sentinel can be live at this point — and uses that knowledge only to
+        // pick a BRANCH, never to reject. The legacy branch it falls into then
+        // writes the sentinel straight into inst.lightDataIndex unguarded, and
+        // static_prop.vert does `light[int(inst.lightDataIndex)]` → int(-1) →
+        // out-of-bounds SSBO read → an all-zero row on every driver that
+        // implements robust buffer access. A row of zeros is not a lighting
+        // result; it is a missing value wearing the costume of a computed one,
+        // and every layer between here and the framebuffer treated it as data.
+        //
+        // WHY A COUNTER AND NOT AN ASSERT: there is measured evidence that stock
+        // data already reaches a never-baked-slot state — [STATIC_LIGHT_ZERO v1]
+        // reports a rock-steady zeroLightSlots=35 across 5100 frames of mc2_10
+        // (scratch/ppp1/capA/mc2_10_capture.log). A default-ON hard assert would
+        // therefore abort a STOCK mission on load: a far worse regression than
+        // the defect. A default-ON visible marker would likewise repaint stock
+        // props for a condition not yet proven illegitimate. So: default-ON,
+        // zero pixels changed, one loud line the existing capture rails already
+        // collect — LOUD without being DANGEROUS. Promote to assert/marker only
+        // once a run proves the count is 0 on stock.
+        //
+        // peekLightSlot() is the tree's own classifier and needs no new gate:
+        //   numLights <  0  → index outside the uploaded table (OOB → zero row)
+        //   numLights == 0  → in range, but an empty row (reads as zero light)
+        // Cost: one bounds-check + two loads per visible RANGE per frame (not
+        // per leaf); ranges are O(100s). Nothing is allocated and nothing logs
+        // after the first offending range.
+        {
+            static uint64_t s_zlr_sentinel   = 0;   // freshLightIdx == UINT32_MAX
+            static uint64_t s_zlr_outOfRange = 0;   // index past the uploaded table
+            static uint64_t s_zlr_emptyRow   = 0;   // slot present, numLights == 0
+            static uint64_t s_zlr_instances  = 0;   // leaves shipped with a bad row
+            static bool     s_zlr_firstShown = false;
+
+            // peekLightSlot returns numLights == -1 for an index past the
+            // uploaded table, which is exactly classify()'s out-of-range input.
+            int zlrNumLights = -1;
+            if (mcTextureManager && freshLightIdx != static_light_row::kNoLightIndex)
+                zlrNumLights = mcTextureManager->peekLightSlot(freshLightIdx).numLights;
+            const static_light_row::Class zlrClass =
+                static_light_row::classify(freshLightIdx, zlrNumLights);
+            switch (zlrClass) {
+                case static_light_row::kSentinel:   ++s_zlr_sentinel;   break;
+                case static_light_row::kOutOfRange: ++s_zlr_outOfRange; break;
+                case static_light_row::kEmptyRow:   ++s_zlr_emptyRow;   break;
+                default: break;
+            }
+            if (zlrClass != static_light_row::kHealthy) {
+                s_zlr_instances += rng.count;
+                if (!s_zlr_firstShown) {
+                    s_zlr_firstShown = true;
+                    fprintf(stderr,
+                        "[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu "
+                        "class=%s regIdx=%u typeID=%u leaves=%u lightIdx=%u "
+                        "numLights=%d tableCount=%u rngLightIdx=%u multiCache=%u\n",
+                        static_light_row::className(zlrClass),
+                        regIdx, s_recipes[rng.first].typeID, rng.count, freshLightIdx,
+                        zlrNumLights,
+                        mcTextureManager ? mcTextureManager->getLightStructCount() : 0u,
+                        rng.lightDataIndex, rng.multi->getCachedGpuLightIndex());
+                    fflush(stderr);
+                }
+            }
+            // Periodic census on the same cadence as the other flush summaries so
+            // a run that never trips the first-hit line still reports a clean 0.
+            if ((s_diag_flush_calls % 300) == 0) {
+                fprintf(stderr,
+                    "[STATIC_LIGHT_ROW v1] event=census frame=%llu sentinel=%llu "
+                    "out_of_range=%llu empty_row=%llu bad_leaves=%llu\n",
+                    (unsigned long long)s_diag_flush_calls,
+                    (unsigned long long)s_zlr_sentinel,
+                    (unsigned long long)s_zlr_outOfRange,
+                    (unsigned long long)s_zlr_emptyRow,
+                    (unsigned long long)s_zlr_instances);
+                fflush(stderr);
+            }
+        }
+        // ── end [STATIC_LIGHT_ROW v1] ──────────────────────────────────────────
         // 2026-05-05 black-billboard diagnostic: report numLights at the cached
         // slot. If numLights==0 here, calc_light returns base_light only — for
         // tree leaves with aRGBLight=0xFF000000 + BaseVertexColor=0, that's black.

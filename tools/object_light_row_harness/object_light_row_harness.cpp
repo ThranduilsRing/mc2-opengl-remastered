@@ -22,6 +22,7 @@
 
 #include "contract_harness.h"
 #include "object_light_row.h"
+#include "static_light_row_guard.h"   // ZERO-LIGHT-ROW-1: the shipped light-index contract
 
 #include <string>
 #include <vector>
@@ -994,6 +995,146 @@ static bool test_non_rainy_missions_are_immune_to_bake_time(TestCtx& t)
     return t.failures == 0;
 }
 
+//=============================================================================
+// ZERO-LIGHT-ROW-1 — the light-INDEX validity contract.
+//
+// Everything above proves the CONTENT of a row is right. These prove the prop
+// is pointed at a row at all. They exercise mclib/static_light_row_guard.h,
+// which is the SAME header gos_static_prop_registry.cpp's flush() compiles --
+// not a re-implementation of it. Remove the guard from the shipped header and
+// these go red; that is the whole point of putting it in a header.
+//=============================================================================
+
+namespace slr = static_light_row;
+
+// The resolution rule the flush actually runs. The load-bearing property is the
+// FALLBACK: a sentinel per-actor index silently becomes the shared per-multi
+// cache, so an actor whose own light capture failed is lit by whichever SIBLING
+// wrote that cache last. It looks computed. It is inherited.
+static bool test_light_index_resolution_falls_back_on_sentinel(TestCtx& t)
+{
+    const uint32_t kS = slr::kNoLightIndex;
+
+    // per-instance ON + a real per-actor index -> the per-actor index wins.
+    CH_CHECK(t, slr::resolve(true, 7u, 99u) == 7u);
+    // per-instance ON + sentinel per-actor -> falls back to the shared cache.
+    CH_CHECK(t, slr::resolve(true, kS, 99u) == 99u);
+    // per-instance OFF -> always the shared cache (the historical path).
+    CH_CHECK(t, slr::resolve(false, 7u, 99u) == 99u);
+    // BOTH sentinel -> the sentinel survives resolution and reaches the caller.
+    // This is the state that ships 0xFFFFFFFF into inst.lightDataIndex, and it
+    // is why a check after resolve() (not inside it) is the necessary one.
+    CH_CHECK(t, slr::resolve(true, kS, kS) == kS);
+    CH_CHECK(t, slr::resolve(false, kS, kS) == kS);
+    return t.failures == 0;
+}
+
+// The classifier: every way a resolved index fails to name a real row.
+static bool test_zero_light_row_is_classified_not_silently_shaded(TestCtx& t)
+{
+    const int kOutOfRange = -1;   // MC_TextureManager::peekLightSlot's "-1 if out of range"
+
+    // Healthy: in-range slot carrying at least one light.
+    CH_CHECK(t, slr::classify(12u, 1) == slr::kHealthy);
+    CH_CHECK(t, slr::classify(0u,  4) == slr::kHealthy);
+    CH_CHECK(t, !slr::isZeroRow(12u, 1));
+
+    // (1) Sentinel -> int(-1) in GLSL -> OOB SSBO read -> zeros.
+    CH_CHECK(t, slr::classify(slr::kNoLightIndex, 3) == slr::kSentinel);
+    CH_CHECK(t, slr::isZeroRow(slr::kNoLightIndex, 3));
+    // The sentinel must win even when the caller reports a plausible slot: an
+    // index of 0xFFFFFFFF is never addressable, so numLights is meaningless.
+    CH_CHECK(t, slr::classify(slr::kNoLightIndex, kOutOfRange) == slr::kSentinel);
+
+    // (2) In-range-looking index past the uploaded table -> OOB read -> zeros.
+    CH_CHECK(t, slr::classify(4096u, kOutOfRange) == slr::kOutOfRange);
+    CH_CHECK(t, slr::isZeroRow(4096u, kOutOfRange));
+
+    // (3) Addressable slot that was never baked -> numLights == 0 -> the prop is
+    // shaded by base_light alone, which is black for a tree leaf whose
+    // aRGBLight is 0xFF000000. This is the measured zeroLightSlots population.
+    CH_CHECK(t, slr::classify(31u, 0) == slr::kEmptyRow);
+    CH_CHECK(t, slr::isZeroRow(31u, 0));
+
+    // Class names are what the shipped [STATIC_LIGHT_ROW v1] line prints.
+    CH_CHECK(t, std::string(slr::className(slr::kSentinel))   == "sentinel");
+    CH_CHECK(t, std::string(slr::className(slr::kOutOfRange)) == "out_of_range");
+    CH_CHECK(t, std::string(slr::className(slr::kEmptyRow))   == "empty_row");
+    CH_CHECK(t, std::string(slr::className(slr::kHealthy))    == "healthy");
+    return t.failures == 0;
+}
+
+// BLINDNESS GUARD. The two tests above would still pass if classify() were
+// hard-wired to return kHealthy for everything -- no, they would not, but a
+// WEAKENED classify (e.g. one that only tested the sentinel and let a
+// never-baked slot through) would pass a test suite that only ever fed it
+// sentinels. So: drive the REAL end-to-end path -- resolve() then classify() --
+// across the full cross-product of the three inputs that decide it, and require
+// that the set of (input -> zero row) verdicts is exactly the set we expect.
+// If any single branch of the shipped guard is deleted, one cell flips and this
+// fails. Then INJECT the regression that motivated the check (a flush that
+// ships whatever resolve() returned, unchecked) and require the injected model
+// to disagree with the guarded one -- proving the guard is load-bearing rather
+// than decorative.
+static bool test_guard_catches_every_zero_row_route(TestCtx& t)
+{
+    const uint32_t kS   = slr::kNoLightIndex;
+    const uint32_t kGood = 5u, kPast = 9999u;
+    const int kOOR = -1;
+
+    struct Case {
+        bool     perInstance;
+        uint32_t rangeIdx;
+        uint32_t multiIdx;
+        int      numLightsAtResolved;
+        bool     expectZeroRow;
+    };
+    const Case cases[] = {
+        // healthy: per-actor index names a baked slot
+        { true,  kGood, kGood, 2, false },
+        // healthy: fallback to a baked sibling slot (WRONG light, but not zero --
+        // this is the aliasing bug, and it is deliberately NOT what this guard
+        // reports; conflating the two is how the last four lanes lost the thread)
+        { true,  kS,    kGood, 2, false },
+        // per-instance OFF, shared cache baked -> healthy
+        { false, kGood, kGood, 2, false },
+        // BOTH sentinel -> sentinel ships -> zero row
+        { true,  kS,    kS,    3, true  },
+        { false, kS,    kS,    3, true  },
+        // per-actor index points past the uploaded table -> zero row
+        { true,  kPast, kGood, kOOR, true },
+        // fallback lands on an unbaked sibling slot -> zero row
+        { true,  kS,    kGood, 0, true },
+        // per-instance OFF and the shared cache is the sentinel -> zero row
+        { false, kGood, kS,    2, true },
+    };
+
+    unsigned zeroRows = 0;
+    for (const Case& c : cases) {
+        const uint32_t resolved = slr::resolve(c.perInstance, c.rangeIdx, c.multiIdx);
+        const bool bad = slr::isZeroRow(resolved, c.numLightsAtResolved);
+        CH_CHECK(t, bad == c.expectZeroRow);
+        if (bad) ++zeroRows;
+    }
+    // Exactly five of the eight routes are zero rows. A guard that silently
+    // stopped testing one condition would land here with a different count.
+    CH_CHECK(t, zeroRows == 5u);
+
+    // INJECTION: the pre-fix flush -- resolve() and ship it, no validity test.
+    // Model it as "every resolved index is assumed healthy" and require it to
+    // DISAGREE with the guard on at least one real route. If the guard were a
+    // no-op, these two would agree everywhere and this assertion fails.
+    unsigned disagreements = 0;
+    for (const Case& c : cases) {
+        const uint32_t resolved = slr::resolve(c.perInstance, c.rangeIdx, c.multiIdx);
+        const bool unchecked_ships_it = true;            // the regression: no test at all
+        const bool guard_rejects_it   = slr::isZeroRow(resolved, c.numLightsAtResolved);
+        if (unchecked_ships_it && guard_rejects_it) ++disagreements;
+    }
+    CH_CHECK(t, disagreements == 5u);
+    return t.failures == 0;
+}
+
 int main(int argc, char** argv)
 {
     Harness h("object_light_row_harness");
@@ -1028,5 +1169,12 @@ int main(int argc, char** argv)
           test_mc2_10_storm_ambient_is_not_mission_constant);
     h.add("non_rainy_missions_are_immune_to_bake_time",
           test_non_rainy_missions_are_immune_to_bake_time);
+    // ZERO-LIGHT-ROW-1 (appended — never inserted; test order is the report order)
+    h.add("light_index_resolution_falls_back_on_sentinel",
+          test_light_index_resolution_falls_back_on_sentinel);
+    h.add("zero_light_row_is_classified_not_silently_shaded",
+          test_zero_light_row_is_classified_not_silently_shaded);
+    h.add("guard_catches_every_zero_row_route",
+          test_guard_catches_every_zero_row_route);
     return h.run(argc, argv);
 }
