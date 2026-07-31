@@ -90,6 +90,16 @@ Both of the audit's most dramatic pinning claims were attacked and **both fell**
    | Clamp ceiling eats the change (the actual thesis) | 2 | `V-AMBIENT-STATIC-1` lands pre-clamp; +0.4% on mc2_22 |
    | Premise false — the thing being fixed does not exist in the data | 1 | `MC2_RUNWAY_TONE_MATCH`: dark_cells = 0 on stock atlases |
 
+   > **CORRECTION 2026-07-31 (LIGHTING-INCAPABLE-BATCH-2).** "Fifteen" and the
+   > *"Uniform / flag never reaches the shader at all"* row are **both overcounted by
+   > two.** Entries **8 (`MC2_LEGACY_LIT_MC2_FRAME`) and 9 (`MC2_GV_LIGHTSOUT_CLEAR`)
+   > are retracted** — both flags do reach live shading at HEAD. That row's surviving
+   > member is `MC2_WATER_SHINE` alone (count **1**, not 3), and the survivor total is
+   > **13**, not 15. The audit's own thesis is unharmed — if anything it sharpens, since
+   > the retracted pair failed by a **sixth** mode the table does not list:
+   > **the finding was stale, not the fix.** Entry 8's premise was killed by a commit
+   > that is an ancestor of this audit's own synthesis HEAD.
+
 **The most alarming single finding is not a ceiling.** It is
 `MC2_TERRAIN_AMBIENT_FLOOR` / TERRAIN-AMBIENT-FLOOR-2 (`96ffc35d`, default-ON at 0.35):
 its day gate is **exactly 0.0000** on mc2_05, mc2_10, mc2_19, mc2_21 and mc2_23
@@ -109,6 +119,22 @@ needed**, not by a saturated renderer.
 
 Only entries that **survived independent refutation**. Each: what it tried, why it could
 not have worked.
+
+> ### ⚠ POST-AUDIT VERIFICATION IS IN PROGRESS — DO NOT DELETE A GATE ON THIS LIST WITHOUT RE-VERIFYING IT FIRST
+>
+> "Survived one refutation" is not "proven". A per-batch re-verification sweep against
+> HEAD started 2026-07-31. **Entries 8 and 9 have already been RETRACTED** — see the
+> inline blocks below. Entry 8 in particular names a gate that is **default-ON and
+> correctness-critical**, and deleting it on this list's authority would ship
+> confidently-wrong vehicle lighting.
+>
+> **The systematic defect this list has, and that a reader must correct for:** the
+> synthesis pinned its citations at `a75339bb0` but several findings were *derived* on
+> older trees, and at least one — entry 8 — was **invalidated by a commit that is an
+> ancestor of the synthesis HEAD itself** (`5c04048c9`, landed 14 h 21 m earlier).
+> Past-tense evidence ("the row **was** all-zero") got filed under a present-tense
+> "cannot work" heading. **Before acting on any entry here, re-read its readers at
+> HEAD and check `git log` for a later slice that moved the premise.**
 
 ### Trees / static props
 
@@ -178,6 +204,36 @@ not have worked.
 ### Vehicles
 
 8. **`b01a7a96` — VEHICLE-NIGHT-LIT-1 / `MC2_LEGACY_LIT_MC2_FRAME`.**
+   > ## ⛔ RETRACTED 2026-07-31 (LIGHTING-INCAPABLE-BATCH-2). **THIS ENTRY IS FALSE AT HEAD, AND ACTING ON IT WOULD BREAK THE GAME.**
+   > This gate is **DEFAULT-ON** and is a **correctness requirement** of the
+   > `gvactor.cpp` gather. **Do not delete it. Do not demote it. Do not "clean it up
+   > as inert."** The source says so in three places
+   > (`mclib/txmmgr.cpp:2381-2384`, `RendererFeatureRegistry.h:699`,
+   > `docs/tier1_env_vars.md:410`) and this entry contradicts all three.
+   >
+   > **Why the original text was true and then stopped being true.** The whole
+   > refutation rests on one clause — *"the vehicle row **was** all-zero"* — written
+   > in the past tense and then filed under a present-tense "cannot work" list.
+   > `VEHICLE-LIGHTING-PATH-1` (`5c04048c9`, **2026-07-30 08:34:43 -0500**) populates
+   > that row. This audit was synthesised at `a75339bb0`, **2026-07-30 22:57:51 -0500**
+   > — **14 h 21 m later, with the fix already an ancestor of its own HEAD**
+   > (`git merge-base --is-ancestor 5c04048c9 a75339bb0` → true).
+   >
+   > **The chain that is live at HEAD, every link read from the C++/GLSL that runs:**
+   > 1. `mclib/gvactor.cpp:125` — `s_vehicleLitPath = gvEnvFlagDefaultOn("MC2_VEHICLE_LIT_PATH")`, **default ON** (`:110-116`).
+   > 2. `mclib/gvactor.cpp:2316-2317` — `if (s_vehicleLitPath) gvShape->CacheGpuLightDataAllLeaves();`
+   > 3. `mclib/msl.cpp:2062-2064` — guard `if (!g_useGpuObjects && !g_useGpuMechs) return;` **passes**: `g_useGpuObjects = true` (`gos_static_prop_batcher.cpp:59`), `g_useGpuMechs = envFlagDefaultOn("MC2_GPU_MECHS")` (`gos_mech_batcher.cpp:134`, default ON).
+   > 4. `mclib/msl.cpp:2075` → `TG_Shape::GatherGpuObjectLightDataOnly()` (`tgl.cpp:3123-3127`) → `addLightDataStructureWithPerActorColor(&lightData_)`.
+   > 5. `mclib/txmmgr.cpp:2062+` — **that function calls `GatherLightsParameters` itself** (`:2081` on the no-per-actor-light path; `:2088` into the template, then `*light_data = it->second.data` at `:2096`). **`lightData_` is filled.** The original entry checked only the two `GatherLightsParameters` call sites inside `tgl.cpp` (`:1898`, `:2869`, both genuinely behind `bShadersDrawPathEnabled == false`) and missed this third one, which is the one the live path uses.
+   > 6. ⇒ `numLights.x != 0`, so the `lighting.hglsl:277-282` early-return **does not fire** and `normal` / `vertex_world_pos` / `light_dir` **are** read.
+   > 7. `mclib/txmmgr.cpp:2404-2411` — reader is **default-ON**; `u_legacyLitMc2Frame = 1` selects the MC2-frame feed at `shaders/gos_tex_vertex_lighted.vert:197-207`.
+   >
+   > **Verdict: NOT INCAPABLE. Headroom is not 1.000x; the frame is load-bearing.**
+   > `gate_status` → `verdict OK`, default ON, registered, documented, smoke-allowlisted.
+   > `da3a5b78`'s self-disproof was correct **for the tree it was measured on** and is
+   > now obsolete: the gate was *unreachable*, never *wrong*.
+
+   *Original text, retained for the record:*
    *Tried:* feed `calc_light` MC2-frame normals/positions.
    *Could not work:* `calc_light`'s `numLights == 0` early-return
    (`shaders/include/lighting.hglsl:277-282`) fires **before** `normal`,
@@ -188,6 +244,45 @@ not have worked.
    Self-documented as disproven at `da3a5b78`.
 
 9. **`7c059585` — VEHICLE-NIGHT-LIT-2 / `MC2_GV_LIGHTSOUT_CLEAR`.**
+   > ## ⛔ RETRACTED 2026-07-31 (LIGHTING-INCAPABLE-BATCH-2). **Both stated reasons are wrong. The latch has three live consumers.**
+   >
+   > **(a) is true but not load-bearing.** `shaders/gos_tex_vertex_lighted.vert:175-176`
+   > does pass the literal `false` for `get_base_light`'s `lightsOut`. That proves only
+   > that the *shader* does not re-apply the latch — because **the CPU already baked it
+   > into the `aRGBLight` vertex attribute the shader consumes.**
+   >
+   > **(b) is false, and it is backwards.** `drawOldWay` is `false`
+   > (`mclib/tgl.cpp:193`), so `if (drawOldWay)` at `:3289` is the **dead** arm. The
+   > **`else` at `:3385-3426` is the LIVE arm**, and it is the one that calls
+   > `mcTextureManager->addVertices(...)`. `gVertex[i].argb = tri.aRGBLight[i]` is set
+   > at `:3268-3271`, **above** the `if/else`, so it reaches both.
+   >
+   > **The primary consumer the entry missed entirely:** `TG_Shape::MultiTransformShape`
+   > (`tgl.cpp:1868`) reads `lightsOut` at **`:1926`** (forces `isNight = false`,
+   > `nightFactor = 0`) and at **`:2129`** (`if (!lightsOut)` suppresses the per-vertex
+   > `startVLight` colour), then writes `listOfVertices[j].argb` at **`:2481`** and
+   > `listOfTriangles[j].aRGBLight[i]` at **`:2776`**. That kernel is **live in this
+   > build**: `useVertexLighting = true` (`mclib/terrain.cpp:353`) and
+   > `Environment.Renderer = 0`, not 3 (`code/mechcmd2.cpp:2974`) — which is exactly
+   > what this repo's own `RendererFeatureRegistry.h:774` (LIGHT-ROW-PURE-1) already
+   > certifies in writing. Vehicles reach it via `gvactor.cpp:2690`
+   > `gvShape->TransformMultiShape(...)` → `msl.cpp:1930`.
+   >
+   > **Third consumer:** `tgl.cpp:3227` in `TG_Shape::Render` — `lightsOut` forces
+   > `isNight = false`, which makes the `isSpotlight` early-return at `:3229-3231` fire
+   > and suppresses a vehicle's searchlight-cone geometry.
+   >
+   > **Verdict: NOT INCAPABLE.** The shipped `docs/tier1_env_vars.md:411` description
+   > — *"latent-correctness fix; **not** the cause of the reported all-vehicles-dark-at-night
+   > defect"* — was and remains accurate. "Latent" ≠ "impossible", and this entry
+   > promoted the former into the latter.
+   >
+   > **Why it had never been measured, now fixed:** `MC2_GV_LIGHTSOUT_CLEAR` was
+   > **absent from the smoke passthrough allowlist** (`gate_status` → `ENV_DROP_RISK`;
+   > parked in `scripts/registered-gate-passthrough-debt.txt`), so every A/B that set
+   > `=1` had it dropped at `Popen` and graded OFF against OFF. Closed by this lane.
+
+   *Original text, retained for the record:*
    *Tried:* clear a stuck lights-out latch on ground vehicles.
    *Could not work,* for two independent reasons: (a)
    `shaders/gos_tex_vertex_lighted.vert:176-177` passes the **literal `false`** for
@@ -201,6 +296,29 @@ not have worked.
     them — worst visible face unchanged on 20 of 24 missions, roof deltas two-sided
     (+2.03x mc2_03, but 0.731x mc2_12). A correctness fix, not a brightness fix. The
     commit's own Stage D reaches the same conclusion.
+    > **CONFIRMED, with one scope correction (LIGHTING-INCAPABLE-BATCH-2, 2026-07-31).**
+    > The arithmetic stands and the gate is healthy: readers `mclib/txmmgr.cpp:2438-2440`
+    > and `GameOS/gameos/gos_mech_batcher.cpp:2465-2468`, both in the canonical
+    > DEFAULT-OFF opt-in idiom `(v && v[0] && v[0] != '0')`; `gate_status` → `verdict OK`,
+    > registered, documented, smoke-allowlisted.
+    >
+    > **But "sold as a brightness improvement" is no longer true of HEAD, and the entry
+    > should not be read as an open action item.** `RendererFeatureRegistry.h:794` and
+    > `docs/tier1_env_vars.md:1395` already state this entry's own conclusion verbatim —
+    > *"it is NOT MONOTONE, so it cannot be justified as 'the user wanted brighter
+    > mechs'"* — already name **mc2_10 and mc2_22 as the zero-delta saturated pair**, and
+    > already give a flip criterion pointing at **unsaturated** missions (mc2_03, mc2_13,
+    > mc2_19 at 97.0% of the normal sphere). That is the anti-saturation recipe
+    > discipline, already applied. **Nothing to delete, nothing to repair.**
+    >
+    > **Scope correction — the blast radius widened after this row was written.** The
+    > vehicle half of `MC2_SUN_AXIS_FIX` is applied *only* on the
+    > `u_legacyLitMc2Frame == 1` branch (`gos_tex_vertex_lighted.vert:197-207`). When
+    > SUN-AXIS-FIX-1 shipped, `MC2_LEGACY_LIT_MC2_FRAME` was default-**OFF**, so
+    > `MC2_SUN_AXIS_FIX=1` moved **mechs only**. `VEHICLE-LIGHTING-PATH-1` (`5c04048c9`)
+    > flipped it default-**ON**, so `=1` now moves **mechs *and* ground vehicles**. Any
+    > A/B graded against the original per-mission table is measuring a wider change than
+    > that table covers. Re-measure the vehicle class before flipping the default.
 
 ### Terrain and cement
 
