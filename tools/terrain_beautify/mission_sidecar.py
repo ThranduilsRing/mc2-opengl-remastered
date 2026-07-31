@@ -80,7 +80,19 @@ def _z_up_normal(elev: np.ndarray, r: int, c: int) -> tuple[float, float, float]
 
 # --- sidecar package I/O -----------------------------------------------------
 def write_sidecar(out_dir: Path, mission: str, pak_path: Path,
-                  delta: np.ndarray, note: str = "") -> Path:
+                  delta: np.ndarray, note: str = "",
+                  provenance: dict | None = None) -> Path:
+    """Write a beauty sidecar package.
+
+    `provenance` (DATA-PROVENANCE-CLOSE-1) records WHICH mission data the cook
+    read and how that was proven -- `source_pak` alone is a machine path, which
+    says nothing about whether those bytes are the ones the engine ships. The
+    two sidecars committed before this lane (mc2_01, mc2_24) recorded
+    `A:\\Games\\Carver5-feasibility\\...`, and their `baseHash` was that tree's
+    pak. Since `apply_sidecar` REFUSES on a baseHash mismatch, they could not
+    be applied to the shipped pak at all -- a functional defect, not just a
+    provenance note. Omitted -> the key is absent, so old sidecars still read.
+    """
     side = delta.shape[0]
     if delta.shape != (side, side):
         raise ValueError(f"delta must be square, got {delta.shape}")
@@ -101,6 +113,8 @@ def write_sidecar(out_dir: Path, mission: str, pak_path: Path,
         "max_abs_delta_wu": float(np.abs(delta).max()) if delta.size else 0.0,
         "note": note,
     }
+    if provenance:
+        meta["provenance"] = provenance
     (beauty / "sidecar.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return beauty
 

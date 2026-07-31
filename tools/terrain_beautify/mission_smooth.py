@@ -36,7 +36,7 @@ from mission_terrain_analyzer import (  # noqa: E402
 # STOCK-DATA-TRUTH-1: no hard-coded mission dir. See tools/mc2data/stock_missions.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
-    StockDataError, add_missions_dir_arg, resolve_from_args,
+    StockDataError, add_missions_dir_arg, manifest_header, resolve_from_args,
 )
 import mission_sidecar as sidecar  # noqa: E402
 
@@ -105,7 +105,8 @@ def main() -> int:
     args = ap.parse_args()
 
     try:
-        missions_dir = resolve_from_args(args, missions=[args.mission]).dir
+        resolved = resolve_from_args(args, missions=[args.mission])
+        missions_dir = resolved.dir
     except StockDataError as e:
         print(f"[smooth] ERROR {e}", file=sys.stderr)
         return 2
@@ -134,7 +135,20 @@ def main() -> int:
 
     note = (f"B3 smooth: max_delta={args.max_delta} passes={args.passes} "
             f"ugly_pct={args.ugly_percentile}")
-    beauty = sidecar.write_sidecar(Path(args.out), args.mission, pak, delta, note=note)
+    # Record WHICH mission data this was cooked from and how it was proven --
+    # `source_pak` is a machine path and says nothing about whether those bytes
+    # are the ones the engine ships. `mission_fst_md5` is the load-bearing
+    # field: it names the authority, not a directory on somebody's disk.
+    hdr = manifest_header()
+    prov = {
+        "stock_verified": bool(resolved.verified),
+        "resolver_label": resolved.label,
+        "manifest": "tools/mc2data/stock_missions.md5",
+        "mission_fst_md5": hdr.get("fst_md5", ""),
+        "source_fst": hdr.get("source_fst", ""),
+    }
+    beauty = sidecar.write_sidecar(Path(args.out), args.mission, pak, delta,
+                                   note=note, provenance=prov)
 
     # B7c protected-zone overlay: per-cell protection level for the editor to draw.
     #   2 = structural hard (road/runway/bridge overlays + building footprints,
