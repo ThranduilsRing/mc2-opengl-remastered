@@ -304,19 +304,31 @@ uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 
 // is the "runway is grey here and black there" the user reports. 1.0 = cement
 // obeys the same light as the terrain it sits on.
 uniform float u_cementLit;
-// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): EXPONENT of the cement lighting
-// exemption ramp. Default 1.0 == stock LINEAR == bit-identical.
-// Measured on mc2_23 (the only stock NIGHT mission): terrain luma ~13, concrete
-// interior ~60, but the smoothstep(2,3,v_terrainType) transition ramp sits at
-// ~14-22 -- a 15-20px DARK RING tracing every pad, 15-25 luma BELOW the plain
-// terrain->concrete midpoint. Cause: the lighting exemption (normalLight 0.35 ->
-// 1.0, a ~2.9x jump at night) ramps in LINEARLY across a full 128wu tile while the
-// albedo has already gone cement-toned on sqrt(pureConcrete).
-// 0.5 matches the albedo's own curve; below 0.5 sharpens further and collapses the
-// ring toward the pad edge. pow(0,x)==0 and pow(1,x)==1, so the user-approved
-// binary CEMENT-HARD-EDGE-1 marching-squares path and cementHit interiors are
-// untouched at EVERY value -- this uniform can only move the feathered ramp.
-uniform float u_cementEdgeCurve;
+// CEMENT-EDGE-CURVE-1 / u_cementEdgeCurve / MC2_CEMENT_EDGE_CURVE: DELETED
+// 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). Do not reintroduce it without
+// reading this paragraph; it was re-derived independently three times.
+// It was the EXPONENT E of the cement lighting-exemption ramp,
+// `cementLightBlend = pow(pureConcrete, E)`, shipped at E = 1.0.
+//   * At its SHIPPED DEFAULT it was the identity -- zero pixels, every mission.
+//   * At EVERY other value it was still a no-op on every runway, road and pad
+//     INTERIOR pixel, because `pureConcrete` there is either 0 (no cement word)
+//     or exactly 1 (forced by `if (cementHit) pureConcrete = 1.0;` below), and
+//     0 and 1 are FIXED POINTS of pow(x,E) for all E. Its entire authority was
+//     the one-tile smoothstep(2,3,v_terrainType) feather band.
+//   * Inside that band its own status measurement was 4-5/255, and sweeping E
+//     to 0.10 moved the target ring only -18.1 -> -15.0 luma while WORSENING
+//     the beacons_mid pose.
+//   * Its stated purpose was refuted by its own lane: the ring is an ALBEDO-
+//     SOURCE discontinuity (the band has no cement word, so `base` stays the
+//     dark baked colormap while the pad interior draws the cement atlas), and
+//     no lighting curve can close an albedo gap. MC2_CEMENT_RAMP_WORD is the
+//     measured cure and is still here.
+// The expression collapses to `clamp(pureConcrete, 0.0, 1.0)`, which is what
+// E = 1.0 always meant. NOTE, precisely: pow(x, 1.0) is exp2(1.0*log2(x)) on
+// most drivers and is NOT specified bit-exact, so this removal is numerically
+// EQUAL-OR-MORE-EXACT rather than provably byte-identical. It also deletes a
+// real hazard the old code had to guard by hand: an unbound uniform defaults to
+// GL 0.0, and pow(x, 0) == 1.0 would have flat-lit the ENTIRE terrain.
 
 // CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD, default 0 = stock/bit-identical).
 // The MEASURED cure for the dark ring around concrete pads. The one-tile
@@ -1873,21 +1885,38 @@ void main() {
     // Cement lighting. Stock (u_cementLit == 0.0) forces the fully flat-lit slab
     // and is bit-identical to the historical `mix(normalLight, 1.0, pureConcrete)`.
     // RUNWAY-APRON-TONE-2: at u_cementLit == 1.0 cement keeps the terrain's own
-    // normalLight, so apron (cement atlas) and runway (baked colormap) share one
-    // lighting term and stop reading as two unrelated materials.
+    // normalLight instead of the flat 1.0.
+    //
+    // WHAT MC2_CEMENT_LIT CAN AND CANNOT DO -- corrected 2026-07-30
+    // (LIGHTING-INCAPABLE-BATCH-3), because this comment used to claim it makes
+    // "apron and runway share one lighting term", and it does not:
+    //   (a) IT CANNOT REACH THE RUNWAY AT STOCK. The blend below is
+    //       `pureConcrete`, which is 0 on unclassified runway/road tiles by
+    //       construction (58% of mc2_10's paved-overlay tiles, 81% of mc2_03's,
+    //       and 100% of the runway at the user's mc2_10 @204937 pose). The
+    //       originating lane captured that runway BIT-IDENTICAL across all four
+    //       strengths (66.51 L at t = 0, 0.35, 0.6, 1.0). The one branch that
+    //       does reach those tiles is the `pavedOverlayFlat` branch below, and
+    //       that requires MC2_PAVED_OVERLAY_CLASS=1 -- default 0, see the
+    //       correction at the flatLitShare block.
+    //   (b) ON THE CEMENT IT DOES REACH, IT IS MONOTONICALLY DARKENING. It can
+    //       only move the multiplier between `normalLight` and 1.0, and pads and
+    //       aprons are FLAT (N = +Z), so normalLight = mix(0.35, 1.20, L.z).
+    //       mclib/camera.cpp builds lightDirection with UNIT-LENGTH xy and
+    //       normalizes AFTER (the default arm; MC2_SUN_ELEVATION_FIX is
+    //       default-OFF), which caps L.z at 1/sqrt(2), so flat-ground
+    //       normalLight <= 0.35 + 0.85/sqrt(2) = 0.95104 < 1.0 for EVERY
+    //       possible authored sun pitch. Raising u_cementLit can therefore only
+    //       lower a flat cement fragment. The lane's advertised "24% gap
+    //       closure" on mc2_10 was achieved entirely by DIMMING the apron
+    //       (90.43 -> 84.63) while the runway did not move at all.
+    // Keep it default 0.0. It is a legitimate knob for "cement obeys terrain
+    // light" once classification coverage is fixed; it is not a brightener and
+    // it is not a runway fix.
     float cementLight = mix(1.0, normalLight, u_cementLit);
-    // CEMENT-EDGE-CURVE-1: match the lighting exemption's curve to the albedo's.
-    // u_cementEdgeCurve==0 -> pureConcrete (stock, bit-identical); ==1 -> the
-    // concreteColorBlend=sqrt(pureConcrete) curve the albedo at line ~1535 uses.
-    // u_cementEdgeCurve is the EXPONENT of that ramp: 1.0 = stock linear
-    // (bit-identical); 0.5 = the sqrt() curve the albedo already uses (curves
-    // matched); below 0.5 = progressively sharper, collapsing the dark ring toward
-    // the pad edge. pow(0,x)==0 and pow(1,x)==1, so the binary CEMENT-HARD-EDGE-1
-    // marching-squares path and cementHit interiors are untouched at every value.
-    // max() guards the uninitialised-uniform case: GL defaults a float uniform to
-    // 0.0, and pow(x, 0) == 1.0 would flat-light the ENTIRE terrain.
-    float cementLightBlend = pow(clamp(pureConcrete, 0.0, 1.0),
-                                 max(u_cementEdgeCurve, 0.05));
+    // CEMENT-EDGE-CURVE-1's pow() exponent was deleted here 2026-07-30; see the
+    // u_cementEdgeCurve retirement note in the uniform block above for why.
+    float cementLightBlend = clamp(pureConcrete, 0.0, 1.0);
     normalLight = mix(normalLight, cementLight, cementLightBlend);
     // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting
     // exemption cement receives, while leaving its baked colormap albedo alone.
@@ -1910,25 +1939,42 @@ void main() {
     // `pureConcrete` alone and was rejected for lifting flat-lit PAVEMENT:
     // PAVED-OVERLAY-CLASS-1 runway/road tiles are flat-lit by the branch three
     // lines above and carry pureConcrete == 0 BY CONSTRUCTION (no cement word,
-    // no concrete terrain type), so pureConcrete can never see them. That gate
-    // is live at stock settings -- gos_terrain_indirect.cpp
-    // PavedOverlayClassMode() returns 1 when unset, whatever the stale comment
-    // above it says.
+    // no concrete terrain type), so pureConcrete can never see them.
+    //
+    // CORRECTED 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). This comment previously
+    // asserted "that gate is live at stock settings -- PavedOverlayClassMode()
+    // returns 1 when unset, whatever the stale comment above it says." THAT IS
+    // FALSE AND WAS FALSE WHEN WRITTEN. The reader at
+    // GameOS/gameos/gos_terrain_indirect.cpp PavedOverlayClassMode() opens with
+    // `if (!v || !v[0]) return 0;` -- CONCRETE-DELIVER-2 reverted the default to
+    // 0 before this file was written. Consequences, stated so no later reader
+    // re-derives them from the wrong premise:
+    //   * bit 22 (kCementPavedFlatBit) is never baked at stock, so
+    //     `pavedOverlayFlat` is FALSE on every fragment of every default launch
+    //     and BOTH branches that test it are dead code at stock;
+    //   * the pavement half of this mask therefore does nothing unless the user
+    //     sets MC2_PAVED_OVERLAY_CLASS=1 -- which is still the right design, and
+    //     is why the branch stays;
+    //   * there is NO pixel difference either way at stock (both arms of the
+    //     `if` reduce to flatLitShare == cementLightBlend * (1 - u_cementLit)),
+    //     so this is a rationale correction, not a behaviour change.
     //
     // Two refinements over a plain max(pureConcrete, pavedOverlayFlat):
-    //   * cementLightBlend, not pureConcrete, so the mask follows the SAME
-    //     pow(pureConcrete, u_cementEdgeCurve) ramp the lighting exemption uses.
-    //     A mask on the raw linear ramp would disagree with the lighting ramp
-    //     inside the one-tile transition band and paint a new soft ring exactly
-    //     where this project's longest-running complaint (dark outlines around
-    //     concrete pads) already lives.
+    //   * cementLightBlend, not a separately-computed ramp, so the mask is the
+    //     SAME expression the lighting exemption used one block above and cannot
+    //     drift from it. A mask on a different ramp would disagree with the
+    //     lighting ramp inside the one-tile transition band and paint a new soft
+    //     ring exactly where this project's longest-running complaint (dark
+    //     outlines around concrete pads) already lives. (Until 2026-07-30 that
+    //     shared expression carried the CEMENT-EDGE-CURVE-1 exponent; deleting
+    //     the exponent kept the sharing, which was the only load-bearing part.)
     //   * (1 - u_cementLit), because MC2_CEMENT_LIT is the knob that GIVES
     //     cement and pavement the terrain's own normalLight back. At
     //     MC2_CEMENT_LIT=1 nothing is flat-lit, so nothing is exempt -- exempting
     //     it anyway would leave concrete as the only terrain-lit surface with no
     //     ambient and make it DARKER than the ground around it.
-    // At stock (u_cementLit 0, u_cementEdgeCurve 1) this is numerically
-    // identical to max(pureConcrete, pavedOverlayFlat ? 1 : 0).
+    // At stock (u_cementLit 0) this is numerically identical to
+    // max(pureConcrete, pavedOverlayFlat ? 1 : 0).
     // u_cementLit unset defaults to GL's 0.0 => share 1.0 => masks MORE, the
     // safe direction.
     float flatLitShare = clamp(cementLightBlend * (1.0 - u_cementLit), 0.0, 1.0);
@@ -2124,6 +2170,25 @@ void main() {
     // Hemisphere ambient fill (TERRAIN-LIGHTING-1/2) — added AFTER shadow so sky/
     // ground bounce still lights shadowed terrain. Env-gated OFF by default
     // (terrainLightingV1Strength=0 -> skipped, byte-safe). Matches gos_terrain.frag.
+    //
+    // WHAT MC2_TERRAIN_LIGHTING_V1/V2 CANNOT DO, recorded here 2026-07-30
+    // (LIGHTING-INCAPABLE-BATCH-3) because it keeps getting proposed as the cure
+    // for the pad-vs-ground contrast complaint and it structurally is not:
+    //   * hemiContrib is an ABSOLUTE additive term. It is NOT scaled by
+    //     baseColor, so it lifts dark and bright ground by the same number of
+    //     nits and flattens the map's albedo variation toward grey.
+    //   * It is NOT masked by flatLitShare -- `lit += hemiContrib` below runs on
+    //     every terrain fragment INCLUDING cement (pureConcrete == 1). Measured
+    //     +21-26% on pads. So it moves terrain's ABSOLUTE value but cannot move
+    //     the terrain-to-cement RELATIONSHIP, which is the thing being
+    //     complained about.
+    // That pair is exactly why TERRAIN-AMBIENT-FLOOR-2 below exists as a
+    // separate, albedo-scaled, flatLitShare-masked term rather than as a default
+    // flip of this one. Turning V1 on is still a legitimate "the whole map is
+    // too dark" knob; it is not a pad:ground ratio knob. If you want it to
+    // become one, the edit is a `* (1.0 - flatLitShare)` on hemiContrib -- but
+    // that silently changes what V1 means for anyone already using it, and its
+    // measured +21-26% pad lift is currently documented as a known property.
     vec3 hemiContrib = vec3(0.0);   // LIGHTING-DEBUG-VIEWS: captured for ambient channel
     if (terrainLightingV1Strength > 0.0) {
         const vec3 hemiSkyTint    = vec3(0.55, 0.62, 0.75);
@@ -2441,6 +2506,24 @@ void main() {
         // already-dark ground). Dark/rock shores are excluded by
         // shoreAffinity (ruling #3: nothing beats wrongness there).
         // u_shorelineStrength scales overall intensity (art/runtime knob).
+        //
+        // DO NOT TRY TO MAKE THIS BAND "POP" BY CHANGING TERRAIN LIGHTING.
+        // Recorded 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3); derived twice.
+        // `wetSand` is vec3(1.16,1.06,0.78) * (litLuma * 0.90) -- it is built
+        // FROM `lit`. So `mix(lit, wetSand, w)` is HOMOGENEOUS OF DEGREE 1 in
+        // `lit`: scale terrain lighting by k and both the band and the ground it
+        // sits on scale by exactly k, leaving their CONTRAST RATIO invariant.
+        // Brighter terrain gives a brighter wet band and precisely zero extra
+        // visibility. Narrow scope, stated honestly: this holds for the wet
+        // lobe's chroma, and only where `brightGround` (below) has saturated --
+        // brightGround = smoothstep(0.08,0.26,litLuma) is itself lighting-driven,
+        // so on a dark beach lighting still moves how MUCH wet band appears.
+        // It does NOT extend to the foam lobe below, which mixes toward a
+        // CONSTANT vec3(0.92) and therefore is not homogeneous -- see there.
+        // The real limit on this band is geometric, not photometric: slopeAtten
+        // above is EXACTLY 0 on 87.9% of mc2_23's shoreline vertices, 79.9% of
+        // mc2_03's and 66.5% of mc2_22's, and no lighting change can lift a
+        // multiplicative zero. Widen the slope window or fix the shore geometry.
         if (slWet > 0.001 && cementHit == false && slopeAtten > 0.0 && shoreAffinity > 0.001) {
             float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - pureConcrete) * slopeAtten
                          * shoreAffinity * u_shorelineStrength;
@@ -2466,6 +2549,18 @@ void main() {
             // V4-STYLE (user verdict C): hue-NEUTRAL desaturated white. The old
             // (0.90,0.93,0.92) carried a faint green cast that read teal when
             // composited near the water tint; foam must not shift hue.
+            //
+            // THIS LOBE, UNLIKE THE WET LOBE ABOVE, *IS* LIGHTING-SENSITIVE, and
+            // it is the one place at the waterline where a lighting change buys
+            // something (LIGHTING-INCAPABLE-BATCH-3, 2026-07-30). vec3(0.92) is a
+            // CONSTANT -- it is not built from `lit` -- so mix(lit, 0.92, F) is
+            // NOT homogeneous: foam contrast is F*(0.92 - lit) and moves under
+            // any uniform lighting change (measured 1.24x typical beach, 1.74x
+            // bright, 6.53x dark beach). Two consequences worth knowing before
+            // touching terrain lighting near water: (1) `F` itself scales with
+            // brightGround, so lighting drives foam AMOUNT as well as contrast,
+            // compounding; (2) past lit == 0.92 the sign flips and the foam
+            // inverts into a DARK rim. Default-ON at full strength.
             lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - pureConcrete));
         }
     }

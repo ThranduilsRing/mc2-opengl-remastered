@@ -750,7 +750,6 @@ static GLint    s_locMoverContactShadow  = -1;  // MOVER-CONTACT-SHADOW-1: u_mov
 static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
 static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
 static GLint    s_locCementLit           = -1;  // RUNWAY-APRON-TONE-2: u_cementLit (0..1)
-static GLint    s_locCementEdgeCurve     = -1;  // CEMENT-EDGE-CURVE-1: u_cementEdgeCurve (0..1)
 static GLint    s_locCementRampWord      = -1;  // CEMENT-WORD-RAMP-1: u_cementRampWord (0/1)
 static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
 static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
@@ -1295,7 +1294,6 @@ void gos_TerrainLodChunk_Init()
             s_locPadGlow      = glGetUniformLocation(s_terrainProgram, "u_padGlow");       // PAD-AREA-GLOW-1
             s_locPadGlowSpill = glGetUniformLocation(s_terrainProgram, "u_padGlowSpill");  // PAD-AREA-GLOW-1
             s_locCementLit    = glGetUniformLocation(s_terrainProgram, "u_cementLit");     // RUNWAY-APRON-TONE-2
-            s_locCementEdgeCurve = glGetUniformLocation(s_terrainProgram, "u_cementEdgeCurve"); // CEMENT-EDGE-CURVE-1
             s_locCementRampWord  = glGetUniformLocation(s_terrainProgram, "u_cementRampWord");  // CEMENT-WORD-RAMP-1
             s_locDiag         = glGetUniformLocation(s_terrainProgram, "u_diag");
             s_locLightDebugView = glGetUniformLocation(s_terrainProgram, "u_lightingDebugView"); // LIGHTING-DEBUG-VIEWS-1A-CHUNK
@@ -2366,8 +2364,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // flat-lit slab, so the default upload is a no-op by value.
         if (s_locCementLit >= 0)
             glUniform1f(s_locCementLit, gos_TerrainCementLit());
-        if (s_locCementEdgeCurve >= 0)
-            glUniform1f(s_locCementEdgeCurve, gos_TerrainCementEdgeCurve());
         if (s_locCementRampWord >= 0)
             glUniform1i(s_locCementRampWord, gos_TerrainCementRampWord());   // CEMENT-WORD-RAMP-1
         // NIGHT-LIGHT-POOLS-1 (gate MC2_TERRAIN_LIGHT_POOLS, DEFAULT ON): bind
@@ -2880,26 +2876,105 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // as well) and documented a one-gate revert that left half the change
         // running. Bounded 0..2; junk/NaN clamps to 0. Resolved once at start.
         {
-            static const char* s_ambEnv = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
+            // ONE getenv. This used to carry a second, bare
+            // `static const char* s_ambEnv = getenv("MC2_TERRAIN_AMBIENT_FLOOR");`
+            // purely so the trace could echo the raw string, and that bare
+            // capture -- a getenv with no idiom attached -- was the sole reason
+            // check-gate-default-agreement.py reported this DEFAULT-ON gate as
+            // UNCLASSIFIABLE (also called out in scripts/check-delivery.py's
+            // notes as "ships default 0.35 and classified UNKNOWN"). The raw
+            // string is now reported as a set/unset flag recorded by the
+            // resolving lambda, so the single remaining reader is the ordinary
+            // numeric-tunable form and the checker stops flagging it.
+            // Removed 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). Behaviour is
+            // unchanged: s_ambEnv was never read for anything but the trace line.
+            static bool s_ambEnvSet = false;
             static const float s_amb    = []() {
                 const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
                 if (!e || !e[0]) return 0.35f;          // DEFAULT-ON
+                s_ambEnvSet = true;
                 float v = (float)atof(e);
                 if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
                 if (v > 2.0f)     v = 2.0f;
                 return v;
             }();
             if (s_locAmbientFloor >= 0) glUniform1f(s_locAmbientFloor, s_amb);
+            // ── TERRAIN-AMBIENT-FLOOR-NIGHT-1 (MC2_TERRAIN_AMBIENT_FLOOR_NIGHT,
+            //    DEFAULT 0.0 = OFF = byte-identical) ────────────────────────────
+            //
+            // WHY THIS EXISTS. TERRAIN-AMBIENT-FLOOR-2 shipped DEFAULT-ON to cure
+            // "terrain is too dark", and its daylight gate is EXACTLY 0.0000 on
+            // mc2_05, mc2_10, mc2_19, mc2_21 and mc2_23 -- which are precisely
+            // the five lowest-multiplier (0.3670-0.4814), highest-floor-pin
+            // (14.3-100% of fragments at diffuse == 0.02) maps in the game. The
+            // shipped cure for dark terrain is switched off on exactly the five
+            // maps where terrain is darkest, and those frames are byte-identical
+            // to before it landed. Verified here at source, not inherited:
+            // terrain_daylight.h uses kNightFullDeg = 10, and the authored
+            // LightDirPitch values in mc2-srcdata/missions are 270 / 180 / 0 /
+            // 270 / 9, folding to altitudes -1 / 0 / 0 / -1 / 9, all <= 10.
+            //
+            // WHAT THIS IS. A FLOOR under the daylight gate, not a second gate
+            // and not a night-only branch: the uploaded value becomes
+            // max(dayGate, floor). Consequences that made this the chosen shape:
+            //   * default 0.0 -> max(dayGate, 0) == dayGate -> byte-identical on
+            //     every mission, which is the whole revert;
+            //   * monotone, so there is no discontinuity at the dusk band edge
+            //     (a mission at gate 0.2 with floor 0.3 lands on 0.3, not on a
+            //     step from 0.001 to 0.3);
+            //   * it composes with MC2_TERRAIN_AMBIENT_FLOOR rather than
+            //     duplicating it -- the strength stays one number, this is the
+            //     fraction of it night maps are allowed.
+            //
+            // WHY DEFAULT OFF, AND IT MUST STAY OFF UNTIL THE USER GRADES IT.
+            // The predecessor slice (TERRAIN-AMBIENT-FLOOR-1) was rejected at
+            // merge review for lifting mc2_10's ground +59.1% through a fade that
+            // could not fade out, and the user has explicitly PRAISED how mc2_05
+            // currently looks. A night lift on these five maps is a taste call
+            // this lane is not entitled to make, and it is not a regression fix.
+            //
+            // WHERE AN A/B ACTUALLY SHOWS SOMETHING (saturation checked first, so
+            // this is not a recipe pointing at a mission where nothing can move):
+            // the ambient term is ADDITIVE, so the normalLight floor pin does not
+            // block it, and terrain's measured headroom to clip on these maps is
+            // 9.07x (mc2_10) to 20.83x (mc2_21) -- nothing saturates. Grade
+            // mc2_05 and mc2_10 from a ground-level pose that has both bare
+            // terrain and a concrete pad in frame, 0 vs 0.30. EXPECT: bare
+            // terrain up, pads 0.00% (flatLitShare exempts them), i.e. the
+            // pad:ground ratio closes from the terrain side only.
+            // ONE getenv, deliberately. The sibling gate above uses a second,
+            // bare `static const char* = getenv(...)` purely so its trace can
+            // echo the raw string, and that bare capture is exactly why
+            // check-gate-default-agreement.py reports MC2_TERRAIN_AMBIENT_FLOOR
+            // as UNCLASSIFIABLE: a getenv with no idiom on it is an unreadable
+            // reader. Here the raw-string need is met by a set/unset flag the
+            // resolving lambda records, so this gate presents a single reader
+            // whose unset branch (`if (!e || !e[0]) return 0.0f;`) is the
+            // canonical explicit DEFAULT-OFF form.
+            static bool s_nightEnvSet = false;
+            static const float s_nightGateFloor = []() {
+                const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT");
+                if (!e || !e[0]) return 0.0f;           // DEFAULT-OFF
+                s_nightEnvSet = true;
+                float v = (float)atof(e);
+                if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
+                if (v > 1.0f)     v = 1.0f;
+                return v;
+            }();
             // Daylight level, computed by terrain_daylight.h from the AUTHORED sun
             // pitch min the engine night state and pushed per frame by gamecam.cpp.
             // 0 on every night mission in the shipping data -> the block is skipped
-            // there -> night is byte-identical.
-            const float dayGate = gos_GetTerrainDaylightLevel();
+            // there -> night is byte-identical (unless the floor above arms it).
+            const float rawDayGate = gos_GetTerrainDaylightLevel();
+            const float dayGate    = (rawDayGate > s_nightGateFloor) ? rawDayGate
+                                                                    : s_nightGateFloor;
             if (s_locAmbientDayGate >= 0) glUniform1f(s_locAmbientDayGate, dayGate);
             // MC2_TERRAIN_AMBIENT_FLOOR_TRACE: one line, first upload. Prints the
             // resolved floor, the day gate actually uploaded, and both raw inputs,
             // so "did the gate engage on this mission and why" is answerable from
-            // a log instead of from a capture diff.
+            // a log instead of from a capture diff. raw_dayGate is printed
+            // alongside the uploaded gate so the night floor's effect is visible
+            // rather than inferred.
             static bool s_traced = false;
             if (!s_traced && getenv("MC2_TERRAIN_AMBIENT_FLOOR_TRACE")) {
                 s_traced = true;
@@ -2908,9 +2983,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 float lx = 0.0f, ly = 0.0f, lz = 0.0f;
                 gos_GetTerrainLightDir(&lx, &ly, &lz);
                 fprintf(stderr,
-                        "[TERRAIN_AMBIENT_FLOOR v2] floor=%.3f dayGate=%.4f env=%s "
+                        "[TERRAIN_AMBIENT_FLOOR v2] floor=%.3f dayGate=%.4f "
+                        "raw_dayGate=%.4f night_floor=%.4f night_env_set=%d "
+                        "floor_env_set=%d "
                         "runtime_isNight=%d runtime_nightFactor=%.3f runtime_lightDirZ=%.4f\n",
-                        s_amb, dayGate, s_ambEnv ? s_ambEnv : "(unset)",
+                        s_amb, dayGate, rawDayGate, s_nightGateFloor,
+                        s_nightEnvSet ? 1 : 0, s_ambEnvSet ? 1 : 0,
                         isNight ? 1 : 0, nf, lz);
                 fflush(stderr);
             }
@@ -4091,22 +4169,18 @@ float gos_TerrainCementLit()
     return s_v;
 }
 
-// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE): EXPONENT of the cement lighting
-// exemption ramp, clamped to [0.05, 1.0]. 1.0 = stock LINEAR = bit-identical;
-// 0.5 = the sqrt() curve the cement ALBEDO already uses; below 0.5 sharpens and
-// collapses the measured night dark-ring around concrete pads.
-float gos_TerrainCementEdgeCurve()
-{
-    static const float s_v = []() {
-        const char* s = std::getenv("MC2_CEMENT_EDGE_CURVE");
-        if (!s || !s[0]) return 1.0f;          // stock LINEAR ramp == bit-identical
-        float v = (float)std::atof(s);
-        if (v < 0.05f) v = 0.05f;              // near-step, but never pow(x, 0)
-        if (v > 1.0f)  v = 1.0f;
-        return v;
-    }();
-    return s_v;
-}
+// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE) was here. DELETED 2026-07-30
+// (LIGHTING-INCAPABLE-BATCH-3). Reader, uniform, registry row, smoke-allowlist
+// entry and docs row all removed together, so nothing is left claiming a gate
+// that no longer exists. Rationale, kept because it is the useful part:
+// the gate was the exponent E of `cementLightBlend = pow(pureConcrete, E)`,
+// shipped at E = 1.0 (the identity, so zero pixels moved at stock), and at any
+// other value it still could not touch a runway, road or pad-interior pixel --
+// pureConcrete is 0 or exactly 1 there, both fixed points of pow(x,E). Inside
+// the one-tile feather band, the only place it had authority, its own status
+// measured 4-5/255 and an E sweep to 0.10 moved the target ring only
+// -18.1 -> -15.0 luma while worsening beacons_mid. The dark ring is an
+// ALBEDO-source discontinuity; MC2_CEMENT_RAMP_WORD below is the measured cure.
 
 // CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD): default OFF. When ON, the
 // terrainType ramp band (0 < pureConcrete < 1, one tile wide, NO cement word of
