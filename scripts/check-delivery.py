@@ -304,20 +304,63 @@ _CALLEE_BEFORE = re.compile(r"([A-Za-z_]\w*)\s*(?:::\s*)?$")
 # MC2_PAVED_OVERLAY_CLASS's retracted default-ON lived in exactly this blind
 # spot on 5 installs. Only the unambiguous forms are matched; anything else is
 # UNKNOWN, which can never grade as delivered.
+#
+# TWO BLIND SPOTS OF THE FIRST VERSION, both found by pointing this tool at a
+# real gate rather than at its own fixtures (DELIVERY-CLOSE-1):
+#
+#   * THE POINTER NAME WAS HARD-CODED to `v`. Every rule literally spelled `v`,
+#     so a reader that happened to name its getenv result anything else was
+#     invisible. gos_terrain_lod_chunk.cpp:2884 names it `e`.
+#   * THE DEFAULT HAD TO BE AN INTEGER. `return 0.35f;` matched nothing, so
+#     MC2_TERRAIN_AMBIENT_FLOOR -- shipped default-ON in this session, and one
+#     of the five user-facing fixes this lane was asked to grade -- classified
+#     UNKNOWN and could never grade as delivered no matter what any install
+#     contained. A float gate is still a shipped default.
+#
+# The identifier is now CAPTURED and BACK-REFERENCED, so `!a || !b[0]` is still
+# correctly refused: the two spellings must be the same variable.
+_ID = r"(?P<id>[A-Za-z_]\w*)"
+_NUM = r"(?P<num>-?\d+(?:\.\d+)?)[fFuUlL]*"
 _NUM_RULES = [
-    re.compile(r"if\s*\(\s*!\s*v\s*\|\|\s*!\s*v\s*\[\s*0\s*\]\s*\)\s*return\s+"
-               r"(-?\d+)\s*;"),
-    re.compile(r"if\s*\(\s*!\s*v\s*\|\|\s*!\s*\*\s*v\s*\)\s*return\s+(-?\d+)\s*;"),
-    re.compile(r"if\s*\(\s*!\s*v\s*\)\s*return\s+(-?\d+)\s*;"),
-    re.compile(r"if\s*\(\s*v\s*==\s*(?:nullptr|NULL|0)\s*\)\s*return\s+"
-               r"(-?\d+)\s*;"),
-    re.compile(r"\bv\s*\?\s*(?:ato[il]|std\s*::\s*sto[il])\s*\(\s*v\s*\)"
-               r"\s*:\s*(-?\d+)"),
+    re.compile(r"if\s*\(\s*!\s*" + _ID + r"\s*\|\|\s*!\s*(?P=id)\s*\[\s*0\s*\]"
+               r"\s*\)\s*return\s+" + _NUM + r"\s*;"),
+    re.compile(r"if\s*\(\s*!\s*" + _ID + r"\s*\|\|\s*!\s*\*\s*(?P=id)\s*\)"
+               r"\s*return\s+" + _NUM + r"\s*;"),
+    re.compile(r"if\s*\(\s*!\s*" + _ID + r"\s*\)\s*return\s+" + _NUM + r"\s*;"),
+    re.compile(r"if\s*\(\s*" + _ID + r"\s*==\s*(?:nullptr|NULL|0)\s*\)\s*"
+               r"return\s+" + _NUM + r"\s*;"),
+    re.compile(r"\b" + _ID + r"\s*\?\s*(?:ato[ilf]|std\s*::\s*sto[ilfd])"
+               r"\s*\(\s*(?P=id)\s*\)\s*:\s*" + _NUM),
 ]
 
 
+_NUMERIC_LITERAL = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def canon_num(text: str) -> str | None:
+    """'0.35f' -> '0.35', '00' -> '0', '0.0' -> '0'. None when not numeric.
+
+    Canonical so that two readers spelling the SAME default differently ('0'
+    and '0.0') are not reported as disagreeing with each other, while genuinely
+    different values still are.
+    """
+    if text is None:
+        return None
+    t = text.strip().rstrip("fFuUlL")
+    if not _NUMERIC_LITERAL.fullmatch(t):
+        return None
+    f = float(t)
+    return str(int(f)) if f == int(f) else ("%g" % f)
+
+
 def is_on(value: str | None) -> bool | None:
-    """'ON'/'1'/'2' -> True, 'OFF'/'0' -> False, anything else -> None."""
+    """'ON'/'1'/'2'/'0.35' -> True, 'OFF'/'0'/'0.0' -> False, else None.
+
+    Floats are on/off by NONZERO, exactly as the shader is: the terrain ambient
+    floor uploads its value straight into a uniform where 0.0 is the documented
+    byte-identical revert, so "is this gate on" is "is this value nonzero" for
+    a float reader just as much as for an int one.
+    """
     if value is None:
         return None
     v = value.strip().upper()
@@ -325,8 +368,9 @@ def is_on(value: str | None) -> bool | None:
         return True
     if v == "OFF":
         return False
-    if re.fullmatch(r"-?\d+", v):
-        return v not in ("0", "-0")
+    c = canon_num(v)
+    if c is not None:
+        return c not in ("0", "-0")
     return None
 
 
@@ -346,20 +390,59 @@ def expect_mismatch(actual: str | None, expect: str | None) -> str | None:
     if a != e:
         return (f"reader defaults {actual} but the manifest claims {expect} "
                 f"-- one of them is a lie")
-    if re.fullmatch(r"-?\d+", actual.strip()) and \
-            re.fullmatch(r"-?\d+", expect.strip()) and \
-            actual.strip() != expect.strip():
+    ca, ce = canon_num(actual), canon_num(expect)
+    if ca is not None and ce is not None and ca != ce:
         return (f"reader defaults to {actual} but the manifest claims "
                 f"{expect} -- same on/off sense, different arm")
     return None
 
 
-def classify_numeric(block: str):
+def _binds_of(flat: str, var: str) -> set[str]:
+    """Names this block assigns `getenv("var")` to. Empty = bare presence test."""
+    rx = re.compile(r"([A-Za-z_]\w*)\s*=\s*(?:std\s*::\s*)?getenv\s*\(\s*"
+                    + '"' + re.escape(var) + '"' + r"\s*\)")
+    return {m.group(1) for m in rx.finditer(flat)}
+
+
+def classify_numeric(block: str, var: str | None = None):
+    """The numeric default `var` falls back to in `block`, or None.
+
+    THE NUMERIC MATCH MUST BE BOUND TO THIS GATE'S OWN VARIABLE.
+    ------------------------------------------------------------
+    Caught by pointing the generalised rules at the real tree rather than at a
+    fixture (DELIVERY-CLOSE-1). gos_terrain_lod_chunk.cpp reads TWO gates in one
+    enclosing block:
+
+        static const char* s_ambEnv = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
+        static const float s_amb    = []() {
+            const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
+            if (!e || !e[0]) return 0.35f;              <-- the FLOOR's default
+            ...
+        }();
+        ...
+        if (!s_traced && getenv("MC2_TERRAIN_AMBIENT_FLOOR_TRACE")) { ... }
+
+    gda.enclosing_block() hands back that whole block for BOTH getenv sites, so
+    an unbound regex sweep reported MC2_TERRAIN_AMBIENT_FLOOR_TRACE -- a bare
+    presence test with no numeric default at all -- as "defaults 0.35", and then
+    as "REGISTRY LIES" against its honest defaultOn=false. That is a
+    tool-manufactured lie of exactly the kind this script exists to catch, and
+    it would have been a NEW one.
+
+    So: a numeric idiom counts only when its variable is one this block actually
+    assigned `getenv("<var>")` to. A gate whose value is never bound to a name
+    is a presence test, which has no numeric default -- None, i.e. UNKNOWN,
+    which can never grade as delivered.
+    """
     flat = re.sub(r"\s+", " ", block)
+    bound = _binds_of(flat, var) if var is not None else None
+    if bound is not None and not bound:
+        return None
     for rx in _NUM_RULES:
-        m = rx.search(flat)
-        if m:
-            return m.group(1)
+        for m in rx.finditer(flat):
+            if bound is not None and m.group("id") not in bound:
+                continue
+            return canon_num(m.group("num"))
     return None
 
 
@@ -442,7 +525,7 @@ def read_default_at(sha: str | None, var: str) -> dict:
             blk = gda.enclosing_block(body, m.end())
             seg = body[blk[0]:blk[1]] if blk else body[m.start():
                                                        m.start() + 400]
-            n = classify_numeric(seg)
+            n = classify_numeric(seg, var)
             if n is not None:
                 line = body.count("\n", 0, m.start()) + 1
                 found.setdefault(n, []).append(f"{p}:{line} numeric default")
@@ -920,6 +1003,58 @@ def report(fixes, installs, out=sys.stdout, want_json=False):
 
 
 # ---------------------------------------------------------------------------
+# THE EXIT CODE -- the half that made this tool decorative
+# ---------------------------------------------------------------------------
+# DELIVERY-CLOSE-1. The first version computed
+#
+#     delivered = any(any(row is WOULD SEE IT for row in fix.rows)
+#                     for fix in results)
+#     return 0 if delivered else 1
+#
+# -- ONE `any` spanning every fix AND every install. So a run in which four
+# fixes were graded and TWO of them printed "<-- DELIVERED NOWHERE" in the
+# summary block still exited 0, because two OTHER fixes happened to land
+# somewhere. Measured on this disk before the fix: VEHICLE-AMBIENT-FLOOR-1 0/18,
+# CONCRETE-DELIVER-2-RETRACTION 0/18, exit code 0.
+#
+# A tool that answers "would the user see this?" and cannot return non-zero when
+# the answer is no is a report, not a gate. Nothing consumed the report: the
+# only two wirings in check-contracts.sh were --contract (integrity, never
+# touches an install) and --selftest (fixtures), so the grading half -- the
+# entire reason the script exists -- was reachable only by a human typing it.
+#
+# The gap is now PER FIX. One fix delivered nowhere fails the run.
+def delivery_gaps(results, adhoc: bool = False) -> list[tuple[str, str]]:
+    """-> [(fix id, why)] for every fix no install on disk would show."""
+    gaps = []
+    for res in results:
+        rows = res["rows"]
+        if not rows:
+            continue
+        if any(r["verdict"] == "WOULD SEE IT" for r in rows):
+            continue
+        ungraded = [r for r in rows if r["verdict"] == "?"]
+        # AD-HOC (--gate) MODE IS EXEMPT ONLY FROM TOTAL IGNORANCE, never from a
+        # real NO. synth_fix() deliberately declares no `data` key, so every row
+        # of an ad-hoc query is structurally "?" -- failing on that would make
+        # --gate always exit 1 and teach everyone to ignore the code. But an
+        # ad-hoc query that produced an actual NO (code absent, default OFF) has
+        # found a genuine delivery gap and still fails.
+        if adhoc and len(ungraded) == len(rows):
+            continue
+        if len(ungraded) == len(rows):
+            gaps.append((res["fix"]["id"],
+                         f"NOT GRADED ANYWHERE -- all {len(rows)} installs came "
+                         f"back unknown, and unknown is never a pass"))
+        else:
+            why = next((r["why"] for r in rows if r["verdict"] == "NO"), "")
+            gaps.append((res["fix"]["id"],
+                         f"0 of {len(rows)} installs would show it"
+                         + (f" -- e.g. {why}" if why else "")))
+    return gaps
+
+
+# ---------------------------------------------------------------------------
 # Self-test: injected regressions, each of which MUST be caught
 # ---------------------------------------------------------------------------
 _SELF_REG = '''
@@ -975,7 +1110,7 @@ def _classify_pair(reg_text, src_text, var):
             for m in re.finditer(r'getenv\s*\(\s*"' + re.escape(var) + r'"',
                                  body):
                 blk = gda.enclosing_block(body, m.end())
-                n = classify_numeric(body[blk[0]:blk[1]] if blk else body)
+                n = classify_numeric(body[blk[0]:blk[1]] if blk else body, var)
                 if n is not None:
                     break
         kind, dflt = ("numeric", n) if n is not None else (None, None)
@@ -1123,6 +1258,69 @@ def selftest() -> int:
            "zero .beauty sidecars graded as data present -- the shipped "
            "v0.5.2 shape")
 
+    # 5b. THE EXIT CODE ITSELF. The shape that made this tool decorative: a run
+    #     where SOME fix delivers and another delivers NOWHERE must still fail.
+    def _res(fid, verdicts):
+        return {"fix": {"id": fid},
+                "rows": [{"verdict": v, "why": "x"} for v in verdicts]}
+
+    ck("a fix delivered nowhere is a GAP",
+       [g[0] for g in delivery_gaps([_res("A", ["NO", "NO"])])] == ["A"])
+    ck("INJECTED mixed run (one fix lands, another delivers NOWHERE) fails",
+       [g[0] for g in delivery_gaps([_res("A", ["WOULD SEE IT"]),
+                                     _res("B", ["NO", "NO"])])] == ["B"],
+       "the original `any` across ALL fixes let a delivered fix mask an "
+       "undelivered one -- 2 of 4 fixes were 0/18 and the run exited 0")
+    ck("a fix delivered on ONE install of many is not a gap",
+       delivery_gaps([_res("A", ["NO", "WOULD SEE IT", "NO"])]) == [])
+    ck("NOT GRADED ANYWHERE is a gap (unknown is never a pass)",
+       [g[0] for g in delivery_gaps([_res("A", ["?", "?"])])] == ["A"])
+    ck("ad-hoc --gate mode is exempt from TOTAL ignorance only",
+       delivery_gaps([_res("A", ["?", "?"])], adhoc=True) == [])
+    ck("ad-hoc --gate mode still fails on a real NO",
+       [g[0] for g in delivery_gaps([_res("A", ["?", "NO"])],
+                                    adhoc=True)] == ["A"],
+       "an ad-hoc query that proved the code is absent was let through")
+
+    # 5c. NUMERIC READER BLIND SPOTS, both found by pointing the tool at a real
+    #     gate rather than at a fixture built to its own shape.
+    ck("INJECTED float default is classified (was UNKNOWN -> ungradeable)",
+       classify_numeric('const char* e = getenv("X"); '
+                        'if (!e || !e[0]) return 0.35f;', "X") == "0.35",
+       "MC2_TERRAIN_AMBIENT_FLOOR ships default 0.35 and classified UNKNOWN, "
+       "so it could never grade as delivered on any install")
+    ck("INJECTED non-'v' pointer name is classified",
+       classify_numeric('const char* envStr = getenv("X"); '
+                        'if (!envStr) return 2;', "X") == "2",
+       "every rule hard-coded the pointer name `v`")
+    ck("a MISMATCHED pointer pair is still refused",
+       classify_numeric('const char* a = getenv("X"); '
+                        'if (!a || !b[0]) return 7;', "X") is None,
+       "the back-reference did not hold: two different variables were "
+       "accepted as one null-check idiom")
+    # THE REAL FALSE POSITIVE the generalised rules produced on first contact
+    # with the tree, reproduced verbatim in shape: two gates in ONE enclosing
+    # block, one of them a bare presence test. gda.enclosing_block() hands the
+    # whole block to both, so an unbound sweep credits the neighbour's default.
+    _two_gates = ('static const char* s_ambEnv = getenv("MC2_X"); '
+                  'const char* e = getenv("MC2_X"); '
+                  'if (!e || !e[0]) return 0.35f; '
+                  'if (!s_traced && getenv("MC2_X_TRACE")) { trace(); }')
+    ck("the gate that OWNS the default still classifies in a shared block",
+       classify_numeric(_two_gates, "MC2_X") == "0.35")
+    ck("INJECTED neighbour-default theft (bare presence test in the same "
+       "block) is refused",
+       classify_numeric(_two_gates, "MC2_X_TRACE") is None,
+       "a presence-test gate was credited with the neighbouring gate's float "
+       "default and then reported as REGISTRY LIES -- a lie manufactured by "
+       "the checker itself")
+    ck("float 0.0 reads as OFF", is_on("0.0") is False)
+    ck("float 0.35 reads as ON", is_on("0.35") is True)
+    ck("'0' and '0.0' are the same shipped default",
+       expect_mismatch("0.0", "0") is None)
+    ck("INJECTED float arm mismatch is caught",
+       expect_mismatch("0.35", "0.5") is not None)
+
     # 6. Manifest integrity: a needle the named commit does not contain.
     bogus = {"id": "bogus", "commit": "HEAD", "gate": None,
              "code_evidence": [{"path": "README.md",
@@ -1234,9 +1432,20 @@ def main(argv=None) -> int:
 
     if integrity:
         return 2
-    delivered = any(any(r["verdict"] == "WOULD SEE IT" for r in res["rows"])
-                    for res in results)
-    return 0 if delivered else 1
+
+    gaps = delivery_gaps(results, adhoc=bool(args.gate))
+    if gaps:
+        print(f"\n{'!' * 118}", file=sys.stderr)
+        print("DELIVERY FAILURE -- the user would not see these fixes on ANY "
+              "install on this disk:", file=sys.stderr)
+        for fid, why in gaps:
+            print(f"  * {fid}: {why}", file=sys.stderr)
+        print("Correct code that reaches no install is not delivered. Rebuild "
+              "and redeploy at the tip, install the data the gate reads, or "
+              "retract the manifest entry.", file=sys.stderr)
+        print(f"{'!' * 118}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
