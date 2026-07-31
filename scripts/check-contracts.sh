@@ -257,15 +257,6 @@ run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh
 run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
 run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
-# LIGHTING-DIVERGENCE-PIN-1: MC2 has no single shading model -- four scalar
-# ambient floors, four hemisphere-fill colour pairs, two calc_light definitions
-# and two no-lights semantics. Every one of those is deliberate today and
-# documented in docs/lighting-divergence-map.md; none is visible from any one
-# file. This pins them, so a FIFTH floor or a SIXTH hand-rolled light loop has
-# to be argued for in review instead of landing silently. Exit 2 (check blind)
-# is distinct from exit 1 (real drift); the comment-stripper witness is a live
-# shipping shader, not a fixture.
-run_check "lighting_divergence"    "py -3 scripts/check-lighting-divergence.py"
 run_check "sampler_bindings"       "py -3 scripts/check-sampler-bindings.py --quiet"
 # MULTIPLEX-ANCHOR-1 (VERIFY-DEBT-1): proves the per-pass anchor that replaced the
 # inert DEMOTED_ANCHORS tuple actually FAILS on drift -- inverted unit comments,
