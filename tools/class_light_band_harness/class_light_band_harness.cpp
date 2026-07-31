@@ -2711,7 +2711,52 @@ static bool test_rotation_does_not_create_a_new_darkest_wall(TestCtx& t)
     return t.failures == 0;
 }
 
-// G10. Perturbation sentinel for Stage G's own constants.
+// G10. THE SEMANTIC SIGN CHECK -- deliberately independent of every line of
+// algebra above. G1 checks the shipped ANGLE against another derivation of the
+// angle; both could share a convention error and agree. This one asks the only
+// question a viewer cares about, in terms no rotation formula appears in:
+//
+//   after the fix, is the wall FACING the sun brighter than the wall facing AWAY?
+//
+// Stage F's F5 measured the shipped build getting that backwards on 17 of 24
+// missions. If the rotation went the wrong way -- the failure mode that would
+// look entirely plausible on screen -- this inverts instead of repairing, and no
+// amount of self-consistent algebra would hide it.
+static bool test_after_the_fix_the_sunward_wall_is_the_bright_one(TestCtx& t)
+{
+    int wrongWayBefore = 0, wrongWayAfter = 0;
+    for (int i = 0; i < kNumMissions; ++i) {
+        const Mission& m = kMissions[i];
+        const V3 sunStuff = missionSunStuff(m);
+        const V3 toward = norm(v3(sunStuff.x, 0.0, sunStuff.z));
+        const V3 away   = v3(-toward.x, 0.0, -toward.z);
+
+        if (evalShL2Set(shippedShSet(), toward, 0)
+              < evalShL2Set(shippedShSet(), away, 0)) ++wrongWayBefore;
+
+        const ShSet9 fix = shippedUploadSet(m, kShippedSunRotateFloor);
+        const double lit  = evalShL2Set(fix, toward, 0);
+        const double dark = evalShL2Set(fix, away,   0);
+        if (lit < dark) ++wrongWayAfter;
+        CH_CHECK(t, lit > dark);
+        // ...and the sunward wall is not merely brighter, it is the BRIGHTEST
+        // horizontal direction there is: the rotation put the peak ON the sun
+        // azimuth, not merely on the correct side of the building.
+        double bestAz = 0.0, bestV = -1e30;
+        for (int k = 0; k < 720; ++k) {
+            const double a = 2.0 * 3.14159265358979323846 * k / 720;
+            const V3 n = v3(std::cos(a), 0.0, std::sin(a));
+            const double v = evalShL2Set(fix, n, 0);
+            if (v > bestV) { bestV = v; bestAz = a / kDeg2Rad; }
+        }
+        CH_CHECK(t, std::fabs(wrap180(bestAz - stuffAzimuthDeg(toward))) < 1.0);
+    }
+    CH_CHECK(t, wrongWayBefore == 17);   // the shipped defect, restated
+    CH_CHECK(t, wrongWayAfter  == 0);    // ...gone on every mission
+    return t.failures == 0;
+}
+
+// G11. Perturbation sentinel for Stage G's own constants.
 static bool test_sentinel_ibl_sun_rotate_constants(TestCtx& t)
 {
     CH_CHECK(t, kShippedSunRotateFloor == 0.45);
@@ -2889,6 +2934,8 @@ int main(int argc, char** argv)
     h.add("floor_env_reader_junk_contract",         test_floor_env_reader_junk_contract);
     h.add("rotation_does_not_create_a_new_darkest_wall",
           test_rotation_does_not_create_a_new_darkest_wall);
+    h.add("after_the_fix_the_sunward_wall_is_the_bright_one",
+          test_after_the_fix_the_sunward_wall_is_the_bright_one);
 
     // Perturbation sentinels
     h.add("sentinel_ibl_probe_axis_constants",          test_sentinel_ibl_probe_axis_constants);
