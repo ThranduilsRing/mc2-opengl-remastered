@@ -29,15 +29,7 @@ check-ambient-guard.py: Reads latest_render_state.json from a live engine run (M
 check-debug-state-json.py: Requires a live engine JSON snapshot. Already named as an explicit exclusion in the check-contracts.sh header; this row makes that exclusion machine-readable instead of a comment.
 
 # --- blocked on a clean tree ----------------------------------------------
-# check-flag-registry-drift.sh: RETIRED FROM THIS LIST by REGISTRY-PARSER-TRUTH-1
-# (2026-07-31). Its stated TRIGGER -- "once those two files are committed,
-# regenerate docs/flags.auto.yaml and wire this as --strict" -- is exactly what
-# that lane did, so the row is now wired --strict in check-contracts.sh. Its
-# drift numbers were also right and are worth keeping as the record: the
-# committed YAML claimed 195 registry entries against a header that declares 360.
-# What the row could NOT have told anyone is that the generator itself was
-# parsing 248 of those 360, so a regeneration alone would have replaced a stale
-# falsehood with a fresh one; the parser had to be fixed first.
+check-flag-registry-drift.sh: STAYS ADVISORY, and the reason is now measured rather than provisional (REGISTRY-PARSER-TRUTH-1, 2026-07-31). This row used to say "TRIGGER: once RendererFeatureRegistry.h and tier1_env_vars.md are committed, regenerate and wire --strict". That was tried, and --strict is the wrong wiring for TWO reasons the old note could not have known. (1) IT CANNOT CATCH THE CLASS OF BUG THAT MATTERED: it regenerates flags.auto.yaml with the same generator and diffs, so while that generator was parsing 248 of the header's 360 rows this check read "up to date" the whole time -- a wrong-but-stable generator is invisible to a self-diff. The 73 false `registered: no` verdicts sat in the tracked file from 2026-07-23 with this script present and silent. (2) IT IS NOT STABLE ON A SHARED WORKTREE: it sweeps the WORKING TREE for getenv() sites and records `file:line`, so any other lane's uncommitted C++ edit that shifts a line number makes it red -- observed going red within minutes of being wired, from unrelated edits in gos_terrain_lod_chunk.cpp and mech3d.cpp. A permanently-red row teaches everyone to skip red. The claim that actually needed guarding is now wired as `flag_registry_truth` (scripts/check-flag-registry-truth.py), which grades HEAD's registry against the committed doc -- both committed artifacts, so it is immune to any lane's in-flight work and goes red only when the doc is genuinely wrong. Keep this one advisory for the broader byte-level drift it does report well.
 check-brain-opord.py: Runs a mission headless against a staged mod and asserts runtime BRAIN_* traces. Requires --exe plus a staged carver_probe mod; also blocked outright while game launches are hard-blocked.
 check_vk_nointerop_log.py: Grades a Vulkan no-interop smoke LOG supplied as a positional argument. Branch-specific (claude/vk-interop-bridge-1) and log-dependent.
 

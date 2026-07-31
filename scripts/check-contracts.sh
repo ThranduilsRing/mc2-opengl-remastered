@@ -651,15 +651,22 @@ run_check "registry_parser_selftest" "py -3 scripts/registry_parse.py --selftest
 # alone. A generator that writes a partial parse turns a silent parser bug into a
 # durable, quotable falsehood in a tracked document.
 run_check "flag_registry_generator_selftest" "py -3 scripts/flag-registry-auto-gen.py --selftest"
-# And the committed artifact itself. This script existed since the generator
-# landed and was never wired, which is why a 2026-07-23 flags.auto.yaml survived
-# to 2026-07-31 asserting `registered: no` about 73 registered gates. Wired
-# --strict: advisory-by-default was the setting that let it rot.
+# And the committed artifact itself: docs/flags.auto.yaml is TRACKED, and it
+# asserted `registered: no` about 73 registered gates from 2026-07-23 until this
+# lane. Both sides of this grade are committed artifacts -- HEAD's registry
+# against the committed doc -- so it answers "would every clone of this commit
+# see agreement?", the same question check-contract-coverage.py asks when it
+# grades HEAD rather than the index.
 #
-# NOTE it would NOT have caught the lie on its own -- it regenerates with the
-# same parser and diffs, so a wrong-but-stable generator reads as "up to date".
-# It catches staleness; registry_parser_selftest catches wrongness. Both.
-run_check "flag_registry_drift"    "sh scripts/check-flag-registry-drift.sh --strict"
+# NOT check-flag-registry-drift.sh, which stays advisory (see
+# scripts/manual-checks.allowlist). Two reasons, both measured here: it
+# regenerates with the SAME parser and diffs, so a wrong-but-stable generator
+# reads as "up to date" -- it could never have caught this class; and it records
+# getenv `file:line` swept from the WORKING TREE, so any lane's uncommitted C++
+# edit that shifts a line makes it red. On this worktree that was red within
+# minutes, and a row that is red every day teaches everyone to skip red.
+run_check "flag_registry_truth"    "py -3 scripts/check-flag-registry-truth.py --quiet"
+run_check "flag_registry_truth_selftest" "py -3 scripts/check-flag-registry-truth.py --selftest"
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)

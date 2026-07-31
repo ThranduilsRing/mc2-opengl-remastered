@@ -41,6 +41,7 @@ Usage: py -3 scripts/flag-registry-auto-gen.py [--out PATH]
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -310,8 +311,40 @@ def selftest():
     return 0
 
 
+def warn_if_registry_unlanded():
+    """Say so when the working-tree registry differs from HEAD's.
+
+    This generator sweeps the WORKING TREE, and its output is TRACKED. On a
+    shared worktree that means a regeneration can publish another lane's
+    uncommitted gate rows into a committed document -- which is precisely why
+    scripts/check-flag-registry-drift.sh was parked as advisory rather than
+    wired. Observed for real on 2026-07-31: a lane had MC2_MECH_LIGHT_FRESHNESS
+    added and uncommitted while this lane was regenerating.
+
+    A warning, not a refusal: regenerating alongside your OWN uncommitted
+    registry change is legitimate, as long as both land in the same commit.
+    scripts/check-flag-registry-truth.py grades the committed doc against HEAD,
+    so an unlanded row shows up there as a disagreement until it is committed.
+    """
+    try:
+        r = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", REGISTRY_HEADER],
+                           cwd=REPO_ROOT, capture_output=True,
+                           stdin=subprocess.DEVNULL, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return
+    if r.returncode == 1:
+        sys.stderr.write(
+            "WARNING: %s differs from HEAD. This generator reads the WORKING\n"
+            "  TREE, so the output will describe gate rows that are not committed.\n"
+            "  That is fine only if the registry change and this file land in the\n"
+            "  SAME commit; otherwise you are publishing another lane's unlanded\n"
+            "  work into a tracked document.\n" % REGISTRY_HEADER)
+
+
 def main_generate(out_path, header_path=None):
     """Generate to out_path. Returns 0 on success, 2 on a refused registry."""
+    if header_path is None:
+        warn_if_registry_unlanded()
     try:
         registry_entries = parse_registry(header_path)
     except RegistryParseError as exc:
