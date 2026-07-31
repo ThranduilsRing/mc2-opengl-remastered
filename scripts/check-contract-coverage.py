@@ -78,7 +78,14 @@ docstring. A guard whose evidence is a sentence is not a guard.
       and then subprocess.run()s it) while docstrings and comments never do.
 
 Exit 0 = every check accounted for. 1 = at least one unaccounted.
-Run with --selftest to prove all five arms still fire.
+Arm (e) (TREE-CONSOLIDATE-1, 2026-07-31) extends the scope past scripts/. A
+contract HARNESS at tools/<name>_harness/ that is absent from
+REGISTERED_HARNESSES is never built and never run -- a dark check that looks
+exactly like a passing one -- and until this arm existed the whole file
+contained zero occurrences of the word "harness", so it structurally could not
+notice. See scripts/unregistered-harness-debt.txt for the ratchet.
+
+Run with --selftest to prove all six arms still fire.
 """
 import ast
 import re
@@ -100,6 +107,127 @@ NOT_A_CHECK = {
 CHECK_RE = re.compile(r"^check[-_].*\.(py|sh)$")
 # Matches the script path inside a run_check / run_check_tri row.
 ROW_RE = re.compile(r"""run_check(?:_tri)?\s+"[^"]+"\s+"([^"]+)""")
+
+# --- arm (e): HARNESSES -----------------------------------------------------
+# TREE-CONSOLIDATE-1 (2026-07-31). Until this arm existed, this checker had
+# ZERO mentions of the word "harness" and scoped only over
+# scripts/check-*.{py,sh}. Contract harnesses live at tools/<name>_harness/ and
+# are registered in ONE place -- REGISTERED_HARNESSES in
+# tools/run_contract_tests.py (tools/build_contract_harnesses.py derives its set
+# from that list, deliberately, to avoid a second registry). A harness
+# directory that is absent from that list is never built and never run: a dark
+# check, indistinguishable from a passing one.
+#
+# That is not hypothetical. tools/class_light_band_harness (70 tests, the
+# "17 of 24 missions light the wall facing away from the sun" measurement and
+# the SH-IBL probe sign-flip guard) shipped unregistered on the same day as its
+# two siblings, which were registered. This checker structurally could not
+# notice, which is why registering that one instance was not the fix.
+#
+# The debt file is a TWO-WAY ratchet, exactly like
+# scripts/registered-gate-passthrough-debt.txt:
+#   * an unregistered harness dir NOT in the debt file  -> FAIL (new dark check)
+#   * a debt entry that IS now registered               -> FAIL (delete the line,
+#     so debt can only shrink and a silent re-add is impossible)
+#   * a debt entry whose directory is gone              -> FAIL (stale row)
+RUNNER = ROOT / "tools" / "run_contract_tests.py"
+HARNESS_DEBT = SCRIPTS / "unregistered-harness-debt.txt"
+
+
+def discover_harness_dirs():
+    """tools/*_harness/ directories that are BUILDABLE C++ harnesses.
+
+    Keyed on CMakeLists.txt because that is what makes a directory something
+    build_contract_harnesses.py could build. Python harnesses are registered
+    separately (PY_HARNESSES, by path) and have no CMakeLists, so they are not
+    in scope here; neither is tools/contract_harness_common, a shared include
+    directory with no build of its own.
+    """
+    tools = ROOT / "tools"
+    if not tools.is_dir():
+        return []
+    return sorted(
+        p.name for p in tools.iterdir()
+        if p.is_dir() and p.name.endswith("_harness")
+        and (p / "CMakeLists.txt").is_file()
+    )
+
+
+def registered_harnesses(runner_text=None):
+    """REGISTERED_HARNESSES + the directory names behind PY_HARNESSES.
+
+    Parsed with ast rather than imported: this checker must not execute the
+    runner, and a parse cannot be defeated by an import-time side effect.
+    """
+    if runner_text is None:
+        runner_text = RUNNER.read_text(encoding="utf-8", errors="replace")
+    out = set()
+    try:
+        tree = ast.parse(runner_text)
+    except SyntaxError:
+        return out
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        names = [t.id for t in node.targets if isinstance(t, ast.Name)]
+        if not ({"REGISTERED_HARNESSES", "PY_HARNESSES"} & set(names)):
+            continue
+        if not isinstance(node.value, (ast.List, ast.Tuple)):
+            continue
+        for elt in node.value.elts:
+            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                v = elt.value
+                # PY_HARNESSES holds repo-relative paths; key on the directory.
+                out.add(v.split("/")[1] if v.startswith("tools/") else v)
+    return out
+
+
+def parse_harness_debt(text):
+    """{name: reason}. Blank lines and full-line # comments ignored."""
+    out = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        name, _, reason = line.partition("#")
+        out[name.strip()] = reason.strip()
+    return out
+
+
+def harness_problems(harness_dirs=None, registered=None, debt_text=None):
+    if harness_dirs is None:
+        harness_dirs = discover_harness_dirs()
+    if registered is None:
+        registered = registered_harnesses()
+    if debt_text is None:
+        debt_text = (HARNESS_DEBT.read_text(encoding="utf-8", errors="replace")
+                     if HARNESS_DEBT.exists() else "")
+    debt = parse_harness_debt(debt_text)
+    problems = []
+    for name in harness_dirs:
+        if name in registered:
+            if name in debt:
+                problems.append(
+                    f"{name}: in {HARNESS_DEBT.name} AND registered in "
+                    f"run_contract_tests.py -- the debt is paid; delete the row "
+                    f"so it cannot silently go dark again")
+            continue
+        if name not in debt:
+            problems.append(
+                f"tools/{name}/ is a buildable contract harness that is NOT in "
+                f"REGISTERED_HARNESSES (tools/run_contract_tests.py), so it is "
+                f"never built and never run -- a dark check. Register it, or "
+                f"add a row to scripts/{HARNESS_DEBT.name} stating why not")
+        elif not debt[name]:
+            problems.append(
+                f"{name}: in {HARNESS_DEBT.name} with NO reason -- an "
+                f"unexplained exemption is how a check goes dark")
+    for name in debt:
+        if name not in harness_dirs:
+            problems.append(
+                f"{HARNESS_DEBT.name} names {name}, which is not a buildable "
+                f"harness directory under tools/ -- stale row, delete it")
+    return problems
 
 
 def discover_checks():
@@ -386,6 +514,9 @@ def run(aggregator_text=None, manual_text=None, checks=None, tracked=None,
     # --- arm (d): no row registered twice, by label OR by command -----------
     problems.extend(duplicate_rows(aggregator_text))
 
+    # --- arm (e): no contract HARNESS may be unregistered --------------------
+    problems.extend(harness_problems())
+
     # --- stale manual rows --------------------------------------------------
     for name in manual:
         if name not in checks:
@@ -401,6 +532,14 @@ def main():
     print(f"[contract-coverage] {n_checks} check scripts: "
           f"{n_wired} wired in the aggregator, {n_external} driven by another "
           f"runner, {n_manual} manual-with-reason")
+    _hd = discover_harness_dirs()
+    _hr = registered_harnesses()
+    _hdebt = parse_harness_debt(
+        HARNESS_DEBT.read_text(encoding="utf-8", errors="replace")
+        if HARNESS_DEBT.exists() else "")
+    print(f"[contract-coverage] {len(_hd)} buildable contract harnesses: "
+          f"{sum(1 for h in _hd if h in _hr)} registered, "
+          f"{sum(1 for h in _hd if h in _hdebt)} waived-with-reason")
     if problems:
         print(f"\n[contract-coverage] FAIL: {len(problems)} unaccounted:",
               file=sys.stderr)
@@ -469,6 +608,34 @@ def selftest():
     grade("stale manual row",
           run(agg, man + "\ncheck-long-since-deleted.py: some reason\n",
               checks, tracked, head, ext)[0],
+          "stale row")
+
+    # arm (e): THE REAL REGRESSION, re-injected verbatim. tools/
+    # class_light_band_harness -- 70 tests, the "17 of 24 missions light the
+    # wall facing away from the sun" measurement -- shipped absent from
+    # REGISTERED_HARNESSES on the same day both of its siblings were
+    # registered, and this checker structurally could not see it: before
+    # TREE-CONSOLIDATE-1 the whole file contained zero occurrences of the word
+    # "harness". Graded here against the genuine registry text, not a fixture.
+    # (The live-tree version of this proof is in the commit message: the real
+    # tools/run_contract_tests.py was edited to unregister
+    # terrain_daylight_harness, the check went red naming it, and the file was
+    # restored byte-identical by sha256.)
+    _real_reg = registered_harnesses()
+    grade("unregistered harness dir",
+          harness_problems(["class_light_band_harness"],
+                           _real_reg - {"class_light_band_harness"}, ""),
+          "dark check")
+    grade("waived harness with no reason",
+          harness_problems(["some_new_harness"], _real_reg,
+                           "some_new_harness\n"),
+          "NO reason")
+    grade("paid debt not deleted",
+          harness_problems(["class_light_band_harness"], _real_reg,
+                           "class_light_band_harness # stale waiver\n"),
+          "the debt is paid")
+    grade("stale debt row",
+          harness_problems([], _real_reg, "long_gone_harness # reason\n"),
           "stale row")
 
     # arm (d): THE REAL REGRESSION, re-injected verbatim. This is the exact

@@ -45,6 +45,16 @@ REGISTERED_HARNESSES = [
     "job_system_harness",
     "terrain_daylight_harness",
     "object_light_row_harness",
+    # TREE-CONSOLIDATE-1 (2026-07-31): registered late. This is the harness
+    # behind the "17 of 24 missions light the wall facing away from the sun"
+    # measurement and the sign-flip guard on the SH-IBL probe rotation -- 70
+    # tests of pure arithmetic -- and it shipped UNREGISTERED while both of its
+    # same-day siblings directly above were registered. It was therefore never
+    # run by tools/run_contract_tests.py and never built by
+    # tools/build_contract_harnesses.py: a dark check, the third of that class
+    # found on the day the class was closed twice. Verified before registering:
+    # the binary exits 0 with "PASS (70 tests, 0 failures)".
+    "class_light_band_harness",
 ]
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

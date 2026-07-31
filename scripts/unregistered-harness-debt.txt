@@ -1,0 +1,29 @@
+# scripts/unregistered-harness-debt.txt
+#
+# TREE-CONSOLIDATE-1 (2026-07-31). Buildable contract-harness directories under
+# tools/ that are deliberately NOT in REGISTERED_HARNESSES
+# (tools/run_contract_tests.py), one per line, each with a stated reason after
+# a '#'.
+#
+# Enforced by scripts/check-contract-coverage.py arm (e). TWO-WAY RATCHET, the
+# same shape as scripts/registered-gate-passthrough-debt.txt:
+#
+#   * a buildable harness dir absent from BOTH the registry and this file
+#       -> FAIL. That is a dark check: never built, never run, and
+#          indistinguishable from a passing one. This is exactly how
+#          tools/class_light_band_harness -- 70 tests, the "17 of 24 missions
+#          light the wall facing away from the sun" measurement and the SH-IBL
+#          probe sign-flip guard -- shipped unrun on the same day both of its
+#          siblings were registered.
+#   * an entry here that IS now registered  -> FAIL. Delete the row. Debt can
+#          only shrink, and a silent re-add is impossible.
+#   * an entry here whose directory is gone -> FAIL (stale row).
+#
+# A reason is MANDATORY. An unexplained exemption is how a check goes dark, and
+# is the failure mode arm (b) already guards for check scripts.
+#
+# Before adding a row, ask whether the harness could simply be registered.
+# Registration is the default; this file is the exception.
+
+brain_dispatch_harness  # NOT a zero-arg pass/fail contract harness. harness_main.cpp:580 requires --manifest and reads fixtures from tests/fixtures/brain_runtime, so run_contract_tests.py's "invoke with no arguments, trust the exit code" contract does not apply. Registering it as-is would make the suite depend on fixture state. Shape assessed by TREE-CONSOLIDATE-1; its ARITHMETIC was not reviewed.
+mech_import_harness     # NOT a zero-arg pass/fail contract harness. A game-free Assimp inspector/validator (MECH-IMPORT-HARNESS-1A) invoked as `inspect <model.glb>` / `validate <model.glb>`; it needs a model path and has no self-contained test corpus. Shape assessed by TREE-CONSOLIDATE-1; its arithmetic was not reviewed.
