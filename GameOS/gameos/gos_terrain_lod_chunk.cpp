@@ -3392,14 +3392,19 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // wet/foam band is active, suppress the legacy screen-space
         // runShoreline() pass so the seam isn't brightened twice.
         //
-        // SHORELINE-GLOW-1: the suppression is now correctly REACHABLE (the
-        // accessor no longer disagrees with the draw path) but is held behind
-        // its own opt-in, because turning it on is a visible change this lane
-        // could not grade. Unset -> false every frame -> runShoreline() behaves
-        // exactly as it does today (byte-identical stock).
+        // LEGACY-SHORELINE-MISAIM-1: the AND with IsShorelineMaskActive() (i.e.
+        // with MC2_TERRAIN_SHORELINE) is REMOVED. It encoded "don't brighten the
+        // seam twice", but the legacy pass provably cannot reach a water pixel
+        // on this path (see gos_TerrainShorelineLegacySuppressOn's block), so
+        // there is no second brightening of the seam to avoid -- there is an
+        // animated foam rim on prop silhouettes, and turning the V3 band off
+        // must not bring it back. Suppression is now solely its own gate,
+        // default ON. This call site stays inside the LOD-chunk draw ON PURPOSE:
+        // the legacy terrain path (MC2_TERRAIN_LOD_CHUNK=0) never reaches it, so
+        // that path keeps the pass, which is the one configuration where the
+        // 0.15-0.35 classifier actually matches water.
         pp->setShorelineSuppressedByTerrainMask(
-            gos_TerrainLodChunk_IsShorelineMaskActive()
-            && gos_TerrainShorelineLegacySuppressOn());
+            gos_TerrainShorelineLegacySuppressOn());
     }
     RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LODChunk);  // TERRAIN-PATH-TELEMETRY-1
 
@@ -3934,19 +3939,44 @@ bool gos_TerrainShorelineGateOn()
 }
 
 // SHORELINE-GLOW-1 -- does the V3 band actually SUPPRESS the legacy screen pass?
+// LEGACY-SHORELINE-MISAIM-1 (2026-07-31) -- DEFAULT FLIPPED OFF -> ON.
 //
-// Separated from the gate above because the two questions have different
-// evidence behind them. That the readers must agree is settled. That the
-// legacy pass should stop running is a VISIBLE change this lane could not
-// grade (engine launches are blocked), so it is opt-in and stock is unchanged.
-// See docs/tier1_env_vars.md for what that pass actually touches today -- it is
-// not what every previous note about it claimed.
-// Default OFF; `MC2_SHORELINE_LEGACY_SUPPRESS=1` opts in.
+// SHORELINE-GLOW-1 left this opt-in because it could not GRADE the visible
+// change. That was the right call for a pass whose effect was unknown. It is
+// no longer unknown, and the thing being graded is not shoreline foam:
+//
+//   shaders/shoreline.frag:22 selects its pixels with
+//       isWater = (GBuffer1.a > 0.15 && GBuffer1.a < 0.35)
+//   and on the default LOD-chunk renderer stack NO WATER PIXEL CAN SATISFY IT.
+//   Water writes alpha 0.0 (rc_gbuffer1_screenShadowEligible, three sites in
+//   gos_terrain_water_mdi.frag), terrain writes 1.0
+//   (rc_gbuffer1_shadowHandled_flatUp), and the MRT1 clear is 0.0. A census of
+//   every fragment shader that writes attachment 1 leaves exactly two things
+//   inside (0.15, 0.35): static props at 0.25 and alpha-test lattice props at
+//   0.1875. So the pass has NOT been painting foam on water. It has been
+//   painting an ANIMATED fbm foam brighten (up to 1.4x multiplicative, scrolled
+//   by `time` and pulsed by a sin()) onto BUILDING AND FENCE SILHOUETTES within
+//   ~6 screen texels of terrain, on every default frame, on every mission.
+//
+// The only shader that ever wrote a continuous ~0.25 there was the LEGACY
+// terrain renderer (gos_terrain.frag rc_gbuffer1_legacyTerrainMaterialAlpha),
+// superseded by the LOD-chunk cutover on 2026-06-09. That is why the
+// suppression is still driven from the LOD-chunk draw path and nowhere else:
+// under MC2_TERRAIN_LOD_CHUNK=0 the setter is never called, the pass keeps
+// running, and on THAT path it still does the job it was written for.
+//
+// Cost of the flip, stated plainly because it is a real cost: prop silhouettes
+// adjacent to terrain lose up to 1.4x of edge brightness while a dark-props
+// report is open. What they lose with it is a shimmer that moves on a static
+// building, which no grading pass would have kept.
+//
+// Default ON (canonical killswitch); `MC2_SHORELINE_LEGACY_SUPPRESS=0` restores
+// the legacy pass exactly as it shipped.
 bool gos_TerrainShorelineLegacySuppressOn()
 {
     static const bool s_on = []() {
         const char* v = std::getenv("MC2_SHORELINE_LEGACY_SUPPRESS");
-        return (v && v[0] == '1');
+        return !(v && v[0] == '0');
     }();
     return s_on;
 }
