@@ -47,9 +47,34 @@ struct RenderContext {
 
 static void apply_mouse_grab(SDL_Window* window, bool grabbed)
 {
-    // SMOKE-NO-CURSOR-STEAL-1: under automation never clamp/grab the pointer.
-    // Force the released state once so a pre-existing clip cannot survive.
-    if (gos_CursorControlSuppressed()) {
+    // CURSOR-GRAB-FIX-1 -- THE CHOKEPOINT.
+    //
+    // Every path that can arm the grab funnels through here:
+    //   create_window()            -> set_mouse_grab(true)      [startup]
+    //   SDL_WINDOWEVENT_FOCUS_GAINED -> set_mouse_grab(true)    [gameosmain]
+    //   SDL_WINDOWEVENT_MOVED / RESIZED / SIZE_CHANGED -> refresh_mouse_grab()
+    //   resize_window() / set_window_fullscreen() -> refresh_mouse_grab()
+    // so guarding HERE closes all of them at once and, critically, keeps them
+    // closed: the guard is re-evaluated on every single call, which is what the
+    // FOCUS_GAINED re-arm defeats in any startup-only fix. The state variable
+    // g_mouse_grabbed records the engine's INTENT, never the decision -- so if a
+    // window legitimately becomes visible again, the next refresh re-applies.
+    //
+    // SMOKE-NO-CURSOR-STEAL-1 gated only on gos_CursorControlSuppressed(), which
+    // an MC2_WINDOW_OFFSCREEN run does not set. The result was a shown window at
+    // (-32000,-32000) with the user's physical cursor clipped to it. Forcing the
+    // RELEASED state (rather than returning early) is deliberate: it also undoes
+    // a clip that a previous, unguarded build left behind.
+    const char* forbidReason = nullptr;
+    if (grabbed && gos_CursorCaptureForbidden(window, &forbidReason)) {
+        static const char* s_lastReason = nullptr;
+        if (forbidReason != s_lastReason) {
+            s_lastReason = forbidReason;
+            printf("[CURSOR_GUARD] mouse grab REFUSED (%s) -- the window is not "
+                   "visible to the user, so it may not capture the pointer.\n",
+                   forbidReason ? forbidReason : "?");
+            fflush(stdout);
+        }
         grabbed = false;
     }
 
@@ -104,6 +129,22 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
         bottom_right.y,
     };
 
+    // CURSOR-GRAB-FIX-1 FAILSAFE -- deliberately independent of every gate
+    // above. No env var, no SDL flag, no caller intent participates: if the
+    // rectangle we are about to confine the user's PHYSICAL pointer to sits on
+    // no monitor, the user could not move the mouse back to his own desktop.
+    // That outcome is never acceptable, whatever code path asked for it, so this
+    // refuses on geometry alone. It is the backstop for a future path that
+    // reaches here without consulting gos_CursorCaptureForbidden().
+    if (MonitorFromRect(&clip_rect, MONITOR_DEFAULTTONULL) == NULL) {
+        log_error("[CURSOR_GUARD] refusing ClipCursor to a rect on no monitor "
+                  "(%ld,%ld)-(%ld,%ld) -- releasing instead.\n",
+                  (long)clip_rect.left, (long)clip_rect.top,
+                  (long)clip_rect.right, (long)clip_rect.bottom);
+        ClipCursor(NULL);
+        return;
+    }
+
     if (!ClipCursor(&clip_rect)) {
         log_error("ClipCursor apply failed: %lu\n", (unsigned long)GetLastError());
     }
@@ -157,12 +198,12 @@ static const int kOffscreenWindowY = -32000;
 
 bool window_offscreen_requested()
 {
-    static int s_cached = -1;
-    if (s_cached < 0) {
-        const char* e = getenv("MC2_WINDOW_OFFSCREEN");
-        s_cached = (e && e[0] && e[0] != '0') ? 1 : 0;
-    }
-    return s_cached != 0;
+    // CURSOR-GRAB-FIX-1: delegates to the one parse of MC2_WINDOW_OFFSCREEN
+    // (gameos_input.cpp), which the cursor-capture policy also reads. Two
+    // independent parses of the same variable is how "offscreen" and "may not
+    // take the cursor" drifted apart in the first place -- the window went off
+    // the desktop and the pointer went with it.
+    return gos_WindowOffscreenRequested();
 }
 
 static void apply_offscreen_position(SDL_Window* w)
@@ -170,6 +211,52 @@ static void apply_offscreen_position(SDL_Window* w)
     if (!w || !window_offscreen_requested())
         return;
     SDL_SetWindowPosition(w, kOffscreenWindowX, kOffscreenWindowY);
+}
+
+// CURSOR-GRAB-FIX-1 (adversarial pass): the two ways an unattended window could
+// still take input AFTER the grab chokepoint was closed.
+//
+//   1. WS_EX_NOACTIVATE. SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN governs only
+//      the ShowWindow at creation. It does nothing about LATER activation --
+//      the offscreen window still carried a taskbar button and an Alt-Tab
+//      entry, so one Alt-Tab and the user's KEYSTROKES went into the engine.
+//      WS_EX_NOACTIVATE makes the window refuse activation for its whole life
+//      and, per MSDN, keeps it off the taskbar. The window still receives and
+//      paints messages, which is all an offscreen render source needs.
+//
+//   2. SDL_HINT_MOUSE_AUTO_CAPTURE (default ON) makes SDL call Win32
+//      SetCapture() while a mouse button is held over the window -- a capture
+//      path that never consults our grab state. Unreachable in practice for a
+//      window at (-32000,-32000) because the user cannot click on it, but
+//      "unreachable in practice" is exactly the reasoning that shipped the bug
+//      being fixed here, so it is turned off explicitly instead.
+//
+// Applied ONLY when the run already declared itself unattended, so a normal
+// interactive launch is byte-identical to before.
+static void apply_unattended_window_styles(SDL_Window* window)
+{
+    if (!window || !gos_UnattendedRunRequested())
+        return;
+
+    SDL_SetHint(SDL_HINT_MOUSE_AUTO_CAPTURE, "0");
+
+#ifdef PLATFORM_WINDOWS
+    SDL_SysWMinfo wm_info;
+    SDL_VERSION(&wm_info.version);
+    if (SDL_GetWindowWMInfo(window, &wm_info) != SDL_TRUE)
+        return;
+    if (wm_info.subsystem != SDL_SYSWM_WINDOWS || !wm_info.info.win.window)
+        return;
+
+    HWND hwnd = wm_info.info.win.window;
+    LONG_PTR ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE,
+                     ex | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+    printf("[CURSOR_GUARD] unattended run -- window marked WS_EX_NOACTIVATE "
+           "(cannot be activated, no taskbar/Alt-Tab entry) and SDL mouse "
+           "auto-capture disabled.\n");
+    fflush(stdout);
+#endif
 }
 
 void enforce_window_offscreen(RenderWindowHandle rw_handle)
@@ -401,7 +488,11 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // -- the user keeps typing in whatever window was already active.
         // SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN is honored by the Windows
         // backend (ShowWindow SW_SHOWNOACTIVATE); harmless no-op elsewhere.
-        if (gos_CursorControlSuppressed() || window_offscreen_requested()) {
+        // CURSOR-GRAB-FIX-1: this condition WAS spelled out longhand here and
+        // nowhere else; gos_UnattendedRunRequested() is the same two intents
+        // under one name, shared with the cursor-capture policy so activation
+        // and capture cannot disagree about whether a run is unattended.
+        if (gos_UnattendedRunRequested()) {
             SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, "1");
         }
 
@@ -454,6 +545,10 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // window; this closes the gap so the first mapped frame is already off
         // the visible desktop.
         apply_offscreen_position(window);
+        // CURSOR-GRAB-FIX-1: mark the window non-activating BEFORE it is ever
+        // mapped, so there is no interval in which an unattended window could
+        // be Alt-Tabbed to and eat the user's keystrokes.
+        apply_unattended_window_styles(window);
         SDL_ShowWindow(window);
         apply_offscreen_position(window);
         if (window_offscreen_requested() && getenv("MC2_RES_DIAG")) {
@@ -482,6 +577,13 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     rw->height_ = height;
 
     g_sdl_window = window;
+    // CURSOR-GRAB-FIX-1: still requested unconditionally -- this records the
+    // engine's INTENT to grab, which is correct for an ordinary interactive
+    // launch. apply_mouse_grab() decides whether it is ALLOWED, and refuses when
+    // the window is not user-visible. The decision deliberately does not live
+    // here: a per-call-site guard would have to be repeated at the FOCUS_GAINED
+    // re-arm and at all four refresh_mouse_grab() sites, and the next one added
+    // would be missed. See apply_mouse_grab().
     set_mouse_grab(true);
 
     return rw;

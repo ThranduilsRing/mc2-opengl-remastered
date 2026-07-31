@@ -34,6 +34,12 @@ extern "C" void crashbundle_trigger_test_crash(void) {
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "shell32.lib")
 
+// CURSOR-GRAB-FIX-1. Canonical declaration lives in GameOS/gameos/gos_render.h
+// (defined in gameos_input.cpp). Forward-declared rather than included so the
+// crash-handler TU does not pull in SDL. A rename on the far side is a LINK
+// error here, not a silent miss.
+bool gos_UnattendedRunRequested();
+
 // ---------------------------------------------------------------------------
 // Ring buffer
 // ---------------------------------------------------------------------------
@@ -58,6 +64,12 @@ static struct {
     int abl_reg_trace;
     int ff_trace;
     int crash_fast_exit; // headless: skip the modal crash dialog + terminate now
+    // CURSOR-GRAB-FIX-1: this run has no user watching it (MC2_NO_CURSOR_GRAB /
+    // MC2_SMOKE_MODE / MC2_WINDOW_OFFSCREEN). Resolved ONCE at init, in normal
+    // program state, so the crash path only reads an int -- this file's own rule
+    // is to avoid malloc/new/fprintf inside the SEH filter, and getenv() with a
+    // function-local static guard is not something to do in a corrupted process.
+    int unattended;
     int initialized;
     char exe_dir[MAX_PATH];
 } g_cfg = {0};
@@ -497,6 +509,21 @@ static void show_crash_dialog(const char* crash_txt_path,
                               const WCHAR* folder_path_w,
                               const char* folder_path_a)
 {
+    // CURSOR-GRAB-FIX-1: a window nobody is watching must not seize the user's
+    // attention either. dlg_proc() below forces this dialog HWND_TOPMOST and
+    // centres it on the primary display, and DialogBoxIndirectParamW is MODAL --
+    // so an unattended run that crashed used to plant a focus-stealing,
+    // input-eating box in the middle of whatever the user was doing, and hang
+    // there until he clicked it. Second, independent guard: the call site also
+    // takes the fast-exit branch (crashbundle_init sets crash_fast_exit for an
+    // unattended run), and either one alone is sufficient.
+    if (g_cfg.unattended) {
+        static const char kMsg[] = "[CRASH] dialog suppressed (unattended run)\n";
+        fwrite(kMsg, 1, sizeof(kMsg) - 1, stderr);
+        fflush(stderr);
+        return;
+    }
+
     dialog_crash_txt_path = crash_txt_path;
     dialog_folder_path    = folder_path_w;
 
@@ -656,6 +683,14 @@ extern "C" void crashbundle_init(void)
     // under the crash-soak; also settable directly.
     read_env_flag("MC2_CRASH_FAST_EXIT",      &g_cfg.crash_fast_exit);
     { int soak = 0; read_env_flag("MC2_SOAK_AUTOWIN", &soak); if (soak) g_cfg.crash_fast_exit = 1; }
+
+    // CURSOR-GRAB-FIX-1: an unattended run implies fast-exit. Declared here
+    // rather than by adding another read_env_flag() line per variable so this
+    // file agrees with the engine's ONE definition of "no user is watching"
+    // (gos_render.h / gameos_input.cpp) instead of re-deriving it and drifting.
+    g_cfg.unattended = gos_UnattendedRunRequested() ? 1 : 0;
+    if (g_cfg.unattended)
+        g_cfg.crash_fast_exit = 1;
 
     char exe_path[MAX_PATH];
     DWORD got = GetModuleFileNameA(NULL, exe_path, MAX_PATH);

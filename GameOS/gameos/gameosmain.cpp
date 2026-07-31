@@ -552,6 +552,15 @@ static void process_events( void ) {
                 // leftmost column of the adjacent monitor without losing
                 // focus). Re-asserting once focus is actually confirmed
                 // makes the clamp stick.
+                //
+                // CURSOR-GRAB-FIX-1: this re-arm is what made every previous
+                // one-shot suppression useless -- an offscreen window still
+                // receives FOCUS_GAINED and re-clipped the user's pointer to a
+                // rect at (-32000,-32000). It stays unconditional on purpose:
+                // graphics::apply_mouse_grab() re-evaluates
+                // gos_CursorCaptureForbidden() on EVERY call, so the refusal
+                // survives arbitrarily many focus events. Do not add a second
+                // copy of the policy here.
                 graphics::set_mouse_grab(true);
                 g_focus_lost = false;
                 break;

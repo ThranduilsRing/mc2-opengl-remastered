@@ -13,6 +13,43 @@
 // editor shell (which replaces gos_render.cpp) links too.
 bool gos_CursorControlSuppressed();
 
+// CURSOR-GRAB-FIX-1 -----------------------------------------------------------
+// THE RULE: a window that is not visible to the user must never capture the
+// user's input. No grab, no clip, no warp, no foreground activation -- and it
+// must STAY that way across focus events, not just at startup.
+//
+// gos_CursorControlSuppressed() above expresses only ONE of the two intents that
+// mean "unattended", so keying cursor policy on it alone shipped a real bug:
+// MC2_WINDOW_OFFSCREEN=1 without MC2_NO_CURSOR_GRAB parked the window at
+// (-32000,-32000), SHOWED it, and then clipped the user's physical pointer to a
+// rectangle on no monitor. The functions below are the single answer to "may
+// this process take the pointer?", and they are keyed on BOTH intent and ACTUAL
+// visibility -- intent cannot see a window that became invisible some other way.
+// All are defined in gameos_input.cpp so the MFC editor shell (which replaces
+// gos_render.cpp wholesale) links too.
+
+// True when MC2_WINDOW_OFFSCREEN is set. The one parse of that variable in the
+// engine; graphics::window_offscreen_requested() delegates here.
+bool gos_WindowOffscreenRequested();
+
+// True when this process was started to run WITHOUT a user watching it: either
+// cursor control is suppressed or the window is parked offscreen. Use for
+// anything that would take the user's attention (modal dialogs, foreground
+// activation), not just the pointer.
+bool gos_UnattendedRunRequested();
+
+// True only when `window` actually occupies pixels a user could be looking at:
+// non-null, not HIDDEN, not MINIMIZED, non-degenerate, and intersecting at
+// least one display's bounds. Evaluated live -- never cached -- because
+// visibility changes at runtime and a startup-only answer is what let the
+// FOCUS_GAINED re-arm defeat the previous fix.
+bool gos_WindowUserVisible(SDL_Window* window);
+
+// THE chokepoint predicate. True when this process must not grab, clip, confine
+// or warp the OS pointer. `reason` (optional) receives a static string naming
+// which condition fired, for one-shot diagnostics.
+bool gos_CursorCaptureForbidden(SDL_Window* window, const char** reason);
+
 namespace graphics {
 
 struct RenderWindow;

@@ -2,6 +2,10 @@
 
 #include <SDL2/SDL.h> // can avoid inluding this here if move MouseInfo struct to separate file
 #include "gos_input.h"
+// CURSOR-GRAB-FIX-1: the cursor-capture policy declared there is DEFINED here,
+// so include it -- a declaration this TU cannot see is a signature mismatch the
+// compiler would never catch.
+#include "gos_render.h"
 #include "utils/vec.h"
 
 #include<string.h>
@@ -39,6 +43,90 @@ bool gos_CursorControlSuppressed()
         }
     }
     return s_state == 1;
+}
+
+// CURSOR-GRAB-FIX-1 -----------------------------------------------------------
+// See the block comment in gos_render.h for the rule and the field bug.
+//
+// WHY THESE LIVE HERE, next to gos_CursorControlSuppressed(): this TU is in both
+// the game and the editor build (the editor drops gos_render.cpp only), and none
+// of this needs the render context -- just env and SDL window state. Keeping the
+// whole policy in one place is deliberate: the previous shape had the offscreen
+// decision in gos_render.cpp and the cursor decision here, and nothing made the
+// two agree.
+
+bool gos_WindowOffscreenRequested()
+{
+    // Cached: the variable is read many times per second on the grab path and
+    // cannot change within a process. Same "set and not '0'" polarity as the
+    // original graphics::window_offscreen_requested(), which now delegates here
+    // so there is exactly ONE parse of MC2_WINDOW_OFFSCREEN in the engine.
+    static int s_state = -1;
+    if (s_state < 0) {
+        const char* e = std::getenv("MC2_WINDOW_OFFSCREEN");
+        s_state = (e && e[0] && e[0] != '0') ? 1 : 0;
+    }
+    return s_state == 1;
+}
+
+bool gos_UnattendedRunRequested()
+{
+    return gos_CursorControlSuppressed() || gos_WindowOffscreenRequested();
+}
+
+bool gos_WindowUserVisible(SDL_Window* window)
+{
+    if (!window)
+        return false;
+
+    const Uint32 flags = SDL_GetWindowFlags(window);
+    if (flags & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED))
+        return false;
+
+    int wx = 0, wy = 0, ww = 0, wh = 0;
+    SDL_GetWindowPosition(window, &wx, &wy);
+    SDL_GetWindowSize(window, &ww, &wh);
+    if (ww <= 0 || wh <= 0)
+        return false;
+
+    const int numDisplays = SDL_GetNumVideoDisplays();
+    if (numDisplays <= 0) {
+        // Cannot enumerate displays -> cannot prove invisibility. Answer
+        // "visible" so an SDL hiccup never silently disables the grab for a
+        // player who IS looking at the window. The intent gates in
+        // gos_CursorCaptureForbidden() and the on-no-monitor ClipCursor
+        // failsafe in gos_render.cpp both still hold in that case.
+        return true;
+    }
+
+    const SDL_Rect winRect = { wx, wy, ww, wh };
+    for (int i = 0; i < numDisplays; ++i) {
+        SDL_Rect bounds;
+        if (SDL_GetDisplayBounds(i, &bounds) != 0)
+            continue;
+        if (SDL_HasIntersection(&winRect, &bounds) == SDL_TRUE)
+            return true;
+    }
+    // The window is mapped but lands on no display -- e.g. parked at
+    // (-32000,-32000) by MC2_WINDOW_OFFSCREEN. Nobody can see it, so nobody
+    // consented to it owning the pointer.
+    return false;
+}
+
+bool gos_CursorCaptureForbidden(SDL_Window* window, const char** reason)
+{
+    const char* why = nullptr;
+    if (gos_CursorControlSuppressed())
+        why = "MC2_NO_CURSOR_GRAB / MC2_SMOKE_MODE";
+    else if (gos_WindowOffscreenRequested())
+        why = "MC2_WINDOW_OFFSCREEN";
+    else if (!window)
+        why = "no window";
+    else if (!gos_WindowUserVisible(window))
+        why = "window is hidden, minimized or on no display";
+    if (reason)
+        *reason = why;
+    return why != nullptr;
 }
 
 // MC2_VK_PICK_PROBE test hook: inject a synthetic raw SDL mouse point (window-
@@ -177,8 +265,12 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
 {
-    // SMOKE-NO-CURSOR-STEAL-1: never warp the OS pointer under automation.
-    if(gos_CursorControlSuppressed())
+    // SMOKE-NO-CURSOR-STEAL-1 + CURSOR-GRAB-FIX-1: never warp the OS pointer
+    // under automation OR when the window is not user-visible. A warp is the
+    // same theft as a clip -- the tutorial guiFrozen path recenters the pointer
+    // EVERY FRAME -- and the old gos_CursorControlSuppressed()-only test let it
+    // through for an MC2_WINDOW_OFFSCREEN run.
+    if(gos_CursorCaptureForbidden(g_sdl_window, nullptr))
         return;
     if(g_sdl_window) {
         // XPosition/YPosition arrive as normalized 0..1 coordinates — the

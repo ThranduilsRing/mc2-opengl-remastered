@@ -349,6 +349,16 @@ run_check "visual_compare"         "py -3 scripts/visual_compare.py --self-test"
 # engine, an env policy that STRIPS the windowing vars before they reach the
 # child (how the capture path silently regressed), and raw focus/cursor Win32.
 run_check "background_launch"      "py -3 scripts/check-background-launch.py --quiet"
+# CURSOR-GRAB-FIX-1: the ENGINE-side half of the same policy. background_launch
+# above guards the harness (Python) side, and it was fully green while the exe it
+# launched clipped the user's physical pointer to a rect at (-32000,-32000):
+# MC2_WINDOW_OFFSCREEN=1 shows the window offscreen, and apply_mouse_grab() gated
+# only on gos_CursorControlSuppressed(), which that variable does not set. So a
+# clean harness delivered the right env to an engine that ignored it. This check
+# asserts, in C++, that no input-capturing call is reachable when the window is
+# not user-visible -- and its --selftest re-injects that exact regression.
+run_check "input_capture_visibility"          "py -3 scripts/check-input-capture-visibility.py --quiet"
+run_check "input_capture_visibility_selftest" "py -3 scripts/check-input-capture-visibility.py --selftest"
 run_check "bookmark_honesty"       "py -3 scripts/check-visual-bookmark-honesty.py"
 # QUIET-DEFAULT-BUILD-1: a DEFAULT build must not grow new unconditional
 # diagnostic output -- that log is what a real user sees on a normal launch.
