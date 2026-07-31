@@ -3,9 +3,10 @@
 
 WHY THIS EXISTS, WHICH IS THE WHOLE POINT.
 
-tests/unit/test_rendercore.cpp:344 pins a number:
+tests/unit/test_rendercore.cpp pins a number (63 as of db221dcc2; the value is
+illustrative here and is DERIVED everywhere it is load-bearing -- see _mutate):
 
-    CHECK(static_cast<int>(RendererFeature::COUNT) == 62);
+    CHECK(static_cast<int>(RendererFeature::COUNT) == 63);
 
 That assertion is correct today and it is completely unarmed. Between 2026-07-16
 and 2026-07-31 the lock read `== 46` while RendererFeature::COUNT was 61 --
@@ -192,46 +193,115 @@ def run_all(quiet: bool = False, vfs: dict | None = None) -> int:
     return EXIT_OK
 
 
+class _ArmBlind(Exception):
+    """An injection that changed nothing. See _mutate."""
+
+
+def _mutate(text: str, old: str, new: str, arm: str) -> str:
+    """Apply one injection and PROVE it landed.
+
+    SELFTEST-WITNESS-DERIVE-1 (2026-07-31). A selftest arm whose anchor does not
+    match does not fail -- it silently grades the UNMODIFIED tree. The tree is
+    green, so a must-fire arm renders `quiet **WRONG**` (right verdict, useless
+    reason: indistinguishable from "the checker is broken") and a MUST-NOT-FIRE
+    arm renders a FALSE `OK`, because "did not fire" is exactly what it wanted.
+
+    Measured on 5efd553e0: arms 1/2/3/5 pinned the literal `== 62` while the
+    tree had moved to 63 in db221dcc2 -- a LEGITIMATE append (MechLightFreshness)
+    that correctly bumped the header COUNT and the doctest pin in the same
+    commit, and had no way to know a third file also encoded that number. Three
+    arms went blind and the decoy arm went falsely green. The value has moved
+    six times in recent history (58->59->60->61->62->63), so a literal here is
+    not a risk, it is a countdown.
+
+    Hence: no arm carries a literal count any more -- every anchor is derived
+    from the tree below -- and an injection that still matches nothing is a
+    HARNESS ERROR, never a result.
+    """
+    out = text.replace(old, new)
+    if out == text:
+        raise _ArmBlind(
+            "arm %s: injection matched nothing. The anchor %r does not occur in "
+            "the tree, so this arm graded the unmodified file and its verdict "
+            "is meaningless. Derive the anchor from the source instead of "
+            "pinning it." % (arm, old))
+    return out
+
+
+def _derive(pattern: str, what: str) -> int:
+    """The number the tree pins RIGHT NOW, via the same anchor run_all uses."""
+    got, err = _find_one(TEST_RENDERCORE, pattern)
+    if err:
+        raise _ArmBlind("cannot derive %s: %s" % (what, err))
+    return got[0]
+
+
 def self_test() -> int:
     """Green on the real tree; red on each injected drift, one arm per lock."""
     if run_all(quiet=True) != EXIT_OK:
         print("--self-test: FAIL (not green on the current tree)", file=sys.stderr)
         return EXIT_VIOLATION
 
-    arms = []
-
-    # Arm 1: the exact historical regression -- roll the doctest number back to
-    # the stale 46 and require this checker to catch what the unrun binary did not.
     t = checklib.read_text(TEST_RENDERCORE)
-    arms.append(("stale RendererFeature::COUNT lock (the real 46-vs-61 drift)",
-                 {TEST_RENDERCORE: t.replace(
-                     "RendererFeature::COUNT) == 62", "RendererFeature::COUNT) == 46")}))
+    h_rel = "RenderCore/RendererFeatureRegistry.h"
+    h = checklib.read_text(h_rel)
 
-    # Arm 2: an append to the source with no matching doctest bump.
-    h = checklib.read_text("RenderCore/RendererFeatureRegistry.h")
-    arms.append(("source appended without bumping the lock",
-                 {"RenderCore/RendererFeatureRegistry.h":
-                  h.replace("    COUNT                    = 62,",
-                            "    SomeNewFeature           = 62,\n"
-                            "    COUNT                    = 63,")}))
+    try:
+        # DERIVED, never pinned -- see _mutate for what pinning cost.
+        cur = _derive(LOCKS[0][2], "the live RendererFeature::COUNT pin")
+        sib = _derive(SIBLING_LOCKS[1][3], "the live kFramePassOrderCount pin")
 
-    # Arm 3: a pin whose anchor vanished must FAIL, never silently skip.
-    arms.append(("doctest assertion deleted (anchor vanished)",
-                 {TEST_RENDERCORE: t.replace(
-                     "CHECK(static_cast<int>(RendererFeature::COUNT) == 62);", "")}))
+        t_check = "CHECK(static_cast<int>(RendererFeature::COUNT) == %d);" % cur
+        # The historical drift really was 46; keep that number when it is still
+        # a genuine change, so the arm reads as the regression it re-enacts.
+        stale = 46 if cur != 46 else 45
 
-    # Arm 4: sibling doctest numbers drifting apart from each other.
-    arms.append(("sibling count locks disagree",
-                 {TEST_RENDERCORE: t.replace("kFramePassOrderCount == 11",
-                                             "kFramePassOrderCount == 12")}))
+        # The header's COUNT line, matched as written (column alignment varies).
+        hm = re.search(r"(?m)^([ \t]*)COUNT[ \t]*=[ \t]*%d[ \t]*,[ \t]*$" % cur, h)
+        if hm is None:
+            raise _ArmBlind(
+                "cannot locate the COUNT enumerator for %d in %s -- the header "
+                "side of arm 2 has no anchor" % (cur, h_rel))
 
-    # Arm 5: MUST NOT FIRE -- a number that appears only in a comment must not
-    # satisfy or break a lock (proves the comment-strip is load-bearing here).
-    arms.append(("MUST-NOT-FIRE: number mentioned only in prose",
-                 {TEST_RENDERCORE: t.replace(
-                     "CHECK(static_cast<int>(RendererFeature::COUNT) == 62);",
-                     "// CHECK(static_cast<int>(RendererFeature::COUNT) == 46);\n"
-                     "    CHECK(static_cast<int>(RendererFeature::COUNT) == 62);")}))
+        arms = [
+            # Arm 1: the exact historical regression -- roll the doctest number
+            # back and require this checker to catch what the unrun binary did not.
+            ("stale RendererFeature::COUNT lock (the real %d-vs-%d drift)" % (stale, cur),
+             {TEST_RENDERCORE: _mutate(
+                 t, "RendererFeature::COUNT) == %d" % cur,
+                 "RendererFeature::COUNT) == %d" % stale, "1")}),
+
+            # Arm 2: an append to the source with no matching doctest bump.
+            ("source appended without bumping the lock",
+             {h_rel: _mutate(
+                 h, hm.group(0),
+                 "%sSomeNewFeature = %d,\n%sCOUNT = %d,"
+                 % (hm.group(1), cur, hm.group(1), cur + 1), "2")}),
+
+            # Arm 3: a pin whose anchor vanished must FAIL, never silently skip.
+            ("doctest assertion deleted (anchor vanished)",
+             {TEST_RENDERCORE: _mutate(t, t_check, "", "3")}),
+
+            # Arm 4: sibling doctest numbers drifting apart from each other.
+            ("sibling count locks disagree",
+             {TEST_RENDERCORE: _mutate(
+                 t, "kFramePassOrderCount == %d" % sib,
+                 "kFramePassOrderCount == %d" % (sib + 1), "4")}),
+
+            # Arm 5: MUST NOT FIRE -- a number that appears only in a comment must
+            # not satisfy or break a lock (proves the comment-strip is load-bearing
+            # here). This is the arm that graded a FALSE OK while blind.
+            ("MUST-NOT-FIRE: number mentioned only in prose",
+             {TEST_RENDERCORE: _mutate(
+                 t, t_check,
+                 "// CHECK(static_cast<int>(RendererFeature::COUNT) == %d);\n"
+                 "    %s" % (stale, t_check), "5")}),
+        ]
+    except _ArmBlind as e:
+        # Loud, and NOT a pass. This is the state the arms used to enter silently.
+        print("--self-test: FAIL (a selftest arm went blind)", file=sys.stderr)
+        print("    %s" % e, file=sys.stderr)
+        return EXIT_VIOLATION
 
     ok = True
     for i, (label, vfs) in enumerate(arms, 1):
