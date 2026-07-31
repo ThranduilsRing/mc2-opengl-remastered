@@ -343,7 +343,7 @@ ALLOWLIST=(
     MC2_TERRAIN_CONTROLMAP_FILE # override -- explicit control-map path override
     MC2_TERRAIN_MATERIAL_LIB    # feature -- TERRAIN-MATERIAL-LIB-1 data-defined terrain material layers (default OFF)
     MC2_TERRAIN_MATERIAL_LIB_FILE  # override -- explicit terrain_materials.json path override
-    MC2_TERRAIN_SHORELINE       # feature -- TERRAIN-SHORELINE-V3 elevation-placed wetness/foam band (default OFF)
+    MC2_TERRAIN_SHORELINE       # feature -- TERRAIN-SHORELINE-V3 elevation-placed wetness/foam band (default ON; said OFF here until SHORELINE-GLOW-1, same stale-claim shape as the MC2_SKYBOX_FOG_EXCLUDE note above -- and this file is not swept by check-gate-default-agreement.py, so nothing compared it to a reader)
     MC2_TERRAIN_SHORELINE_FILE  # override -- explicit shoreline mask (optional modulator) path override
     MC2_TERRAIN_SHORELINE_STRENGTH   # override -- wet/damp darken intensity multiplier [0,2]
     MC2_TERRAIN_SHORELINE_FOAM       # override -- foam rim intensity multiplier [0,2]

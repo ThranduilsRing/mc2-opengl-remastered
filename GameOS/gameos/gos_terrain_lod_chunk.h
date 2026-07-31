@@ -42,7 +42,8 @@ constexpr int TERRAIN_OVERLAY_SIDECAR_TEXUNIT = 1;
 // Bounds-aware RGBA8 (R=signed dist, G=wet, B=foam, A=valid), sampled by WORLD
 // XY (same u_*Bounds pattern as control-map/overlay-V2) -- see
 // gos_TerrainLodChunk_UploadShorelineMask. Gate MC2_TERRAIN_SHORELINE, default
-// OFF. As of V3 the band's PLACEMENT comes from elevation
+// ON (flipped by SHORELINE-SMOOTHING-REVISIT-1; this line said OFF until
+// SHORELINE-GLOW-1). As of V3 the band's PLACEMENT comes from elevation
 // (v_worldPos.z vs u_waterElevation), not this mask -- the mask is now an
 // OPTIONAL modulator (wide-beach falloff / basin exclusion) applied on top;
 // upload only called when a mask sidecar was found at mission load, but the
@@ -193,11 +194,26 @@ const float* gos_TerrainLodChunk_ShorelineMaskBounds();
 // mask is only an optional modulator). Consumed by gos_postprocess.cpp to
 // suppress the legacy screen-space runShoreline() pass while the terrain-side
 // band is active (recon landmine #6: "double-shore" -- both must not
-// brighten the seam at once). false (default, gate off) -> runShoreline()
-// behaves exactly as before (byte-identical). Function name kept for
-// caller-site stability even though the semantics widened past "mask
-// uploaded" to "gate on".
+// brighten the seam at once). Function name kept for caller-site stability
+// even though the semantics widened past "mask uploaded" to "gate on".
+//
+// SHORELINE-GLOW-1: this used to resolve MC2_TERRAIN_SHORELINE with its OWN
+// presence test, which stayed default-OFF through the SHORELINE-SMOOTHING-
+// REVISIT-1 flip, so it returned false on a stock launch and the suppression
+// it feeds could never fire. It now returns gos_TerrainShorelineGateOn().
 bool gos_TerrainLodChunk_IsShorelineMaskActive();
+
+// SHORELINE-GLOW-1: the single resolution of the V3 shoreline gate for the
+// whole engine. Every consumer must call this rather than reading the
+// environment again -- three independent reads is exactly how the default
+// flip above lost one of them. Default ON.
+bool gos_TerrainShorelineGateOn();
+
+// SHORELINE-GLOW-1: opt-in for actually SUPPRESSING the legacy screen-space
+// runShoreline() pass when the V3 band is active. Held separate from the gate
+// above because it is a visible change no capture has graded yet; unset leaves
+// the legacy pass running exactly as the shipped build does. Default OFF.
+bool gos_TerrainShorelineLegacySuppressOn();
 
 // Patch a dirty block's heightfield rows after terrain edit.
 // rowData: float[(quadCountY+1)*(quadCountX+1)] row-major.

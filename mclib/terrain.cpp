@@ -1094,9 +1094,9 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 				}
 			}
 
-			// TERRAIN-SHORELINE-V3: terrain-side wet/foam band. Gate
-			// MC2_TERRAIN_SHORELINE default OFF (mirrors MC2_TERRAIN_OVERLAY_V2's
-			// read pattern above). As of V3 the band's PLACEMENT is computed in
+			// TERRAIN-SHORELINE-V3: terrain-side wet/foam band. The gate is
+			// default ON (SHORELINE-SMOOTHING-REVISIT-1); this comment claimed
+			// OFF until SHORELINE-GLOW-1. As of V3 the band's PLACEMENT is computed in
 			// the frag from ELEVATION (v_worldPos.z vs u_waterElevation) and
 			// needs no sidecar at all -- gate ON alone is enough to show
 			// full elevation bands. This load block is now OPTIONAL: when
@@ -1114,12 +1114,12 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// MC2_TERRAIN_SHORELINE_FILE overrides the sidecar path
 			// (precedent: MC2_TERRAIN_OVERLAY_V2_FILE above).
 			{
-				static const bool s_shorelineGate = []() {
-					// SHORELINE-SMOOTHING-REVISIT-1: default ON (matches the
-					// two reads in gos_terrain_lod_chunk.cpp; =0 killswitch).
-					const char* v = getenv("MC2_TERRAIN_SHORELINE");
-					return !(v && v[0] == '0');
-				}();
+				// SHORELINE-GLOW-1: was a THIRD independent read of the same
+				// variable, whose comment asserted it "matches the two reads in
+				// gos_terrain_lod_chunk.cpp" -- and one of those two did not
+				// match. Routed through the single shared accessor so the claim
+				// is now true by construction instead of by inspection.
+				const bool s_shorelineGate = gos_TerrainShorelineGateOn();
 				if (s_shorelineGate)
 				{
 					char slPath[600];

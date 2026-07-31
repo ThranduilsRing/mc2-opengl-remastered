@@ -1597,6 +1597,11 @@ def main():
                             # does nothing.
                             "MC2_TERRAIN_SHORELINE",
                             "MC2_TERRAIN_SHORELINE_FILE",
+                            # SHORELINE-GLOW-1 -- opt in to the V3 band actually
+                            # suppressing the legacy screen-space runShoreline()
+                            # pass (default OFF). Without this passthrough the
+                            # A/B below runs OFF against OFF.
+                            "MC2_SHORELINE_LEGACY_SUPPRESS",
                             # SHORELINE-STAIRCASE-1 (MASTER-FAIL #1): water-edge
                             # shore-band feather floor in world units (default
                             # OFF). Widens the FS shore smoothstep + beach-ring

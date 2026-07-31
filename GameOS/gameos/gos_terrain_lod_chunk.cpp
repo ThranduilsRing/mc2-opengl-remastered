@@ -67,6 +67,10 @@ inline float tglc_envStrength(const char* name, float def) {
 }
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
 const bool  kTglcForceColor        = []() { return std::getenv("MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR") != nullptr; }();
+// SHORELINE-GLOW-1: the two shoreline accessors are deliberately NOT in this
+// anonymous namespace -- mclib/terrain.cpp calls gos_TerrainShorelineGateOn()
+// too, so it needs external linkage. Defined at global scope further down,
+// next to gos_TerrainLodChunk_IsShorelineMaskActive(); declared in the header.
 const int   kTglcDiag              = []() { const char* v = std::getenv("MC2_TERRAIN_LOD_CHUNK_DIAG"); return v ? std::atoi(v) : 0; }();
 const bool  kTglcCementDiagConnect = []() { return tglc_envOn("MC2_TERRAIN_CEMENT_DIAG_CONNECT"); }();
 // CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
@@ -2650,15 +2654,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // identical (no band; legacy screen runShoreline() stays active per its
     // own gate).
     {
-        static const bool s_shorelineGateOn = []() {
-            // SHORELINE-SMOOTHING-REVISIT-1: default flipped ON. The elevation-
-            // placed V3 band (fbm edge jitter, optional mask modulator) replaces
-            // the legacy screen-space runShoreline() glow, which traced the raw
-            // tile-quantized water-mesh edge and amplified the staircase at
-            // night. Killswitch: MC2_TERRAIN_SHORELINE=0 (restores legacy glow).
-            const char* v = std::getenv("MC2_TERRAIN_SHORELINE");
-            return !(v && v[0] == '0');
-        }();
+        // SHORELINE-SMOOTHING-REVISIT-1: default flipped ON. The elevation-
+        // placed V3 band (fbm edge jitter, optional mask modulator) is what
+        // draws the shoreline now. SHORELINE-GLOW-1: resolved through the one
+        // shared TU accessor, so this read and the suppression accessor below
+        // can no longer drift apart.
+        const bool s_shorelineGateOn = gos_TerrainShorelineGateOn();
         const bool shorelineMaskReady = (s_shorelineMaskTex != 0);
         if (s_locUseShorelineMask >= 0)
             glUniform1i(s_locUseShorelineMask, s_shorelineGateOn ? 1 : 0);
@@ -3389,10 +3390,16 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         pp->markTerrainDrawn();
         // TERRAIN-SHORELINE-MASK-1 (recon landmine #6): when the terrain-side
         // wet/foam band is active, suppress the legacy screen-space
-        // runShoreline() pass so the seam isn't brightened twice. Mask
-        // inactive (gate off / no sidecar) -> setShorelineSuppressedByTerrainMask(false)
-        // every frame -> runShoreline() behaves exactly as before (byte-identical).
-        pp->setShorelineSuppressedByTerrainMask(gos_TerrainLodChunk_IsShorelineMaskActive());
+        // runShoreline() pass so the seam isn't brightened twice.
+        //
+        // SHORELINE-GLOW-1: the suppression is now correctly REACHABLE (the
+        // accessor no longer disagrees with the draw path) but is held behind
+        // its own opt-in, because turning it on is a visible change this lane
+        // could not grade. Unset -> false every frame -> runShoreline() behaves
+        // exactly as it does today (byte-identical stock).
+        pp->setShorelineSuppressedByTerrainMask(
+            gos_TerrainLodChunk_IsShorelineMaskActive()
+            && gos_TerrainShorelineLegacySuppressOn());
     }
     RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LODChunk);  // TERRAIN-PATH-TELEMETRY-1
 
@@ -3899,11 +3906,49 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
 // caller-site stability; semantics widened from "mask uploaded" to "gate on".
 bool gos_TerrainLodChunk_IsShorelineMaskActive()
 {
-    static const bool s_shorelineGateOn = []() {
+    // SHORELINE-GLOW-1: was an INDEPENDENT presence test here, left behind when
+    // SHORELINE-SMOOTHING-REVISIT-1 flipped the default. Now the one shared
+    // accessor, so this answers the same thing the draw path does.
+    return gos_TerrainShorelineGateOn();
+}
+
+// SHORELINE-GLOW-1 -- ONE resolution of the V3 shoreline gate, engine-wide.
+//
+// This gate used to be resolved by THREE independent getenv() reads: the
+// draw-path read above, the accessor above that, and mclib/terrain.cpp's
+// sidecar-load read. SHORELINE-SMOOTHING-REVISIT-1 flipped the default ON and
+// updated two of them; gos_TerrainLodChunk_IsShorelineMaskActive() kept the
+// pre-flip presence test `(v && v[0] && v[0] != '0')`. One unset environment
+// therefore answered ON where the band is drawn and OFF where the legacy
+// screen pass is suppressed, so the suppression could never fire on a stock
+// launch. Resolving the gate exactly once makes that drift structurally
+// impossible rather than merely fixed. Default ON; `MC2_TERRAIN_SHORELINE=0`
+// turns the terrain-side band off.
+bool gos_TerrainShorelineGateOn()
+{
+    static const bool s_on = []() {
         const char* v = std::getenv("MC2_TERRAIN_SHORELINE");
-        return (v && v[0] && v[0] != '0');
+        return !(v && v[0] == '0');
     }();
-    return s_shorelineGateOn;
+    return s_on;
+}
+
+// SHORELINE-GLOW-1 -- does the V3 band actually SUPPRESS the legacy screen pass?
+//
+// Separated from the gate above because the two questions have different
+// evidence behind them. That the readers must agree is settled. That the
+// legacy pass should stop running is a VISIBLE change this lane could not
+// grade (engine launches are blocked), so it is opt-in and stock is unchanged.
+// See docs/tier1_env_vars.md for what that pass actually touches today -- it is
+// not what every previous note about it claimed.
+// Default OFF; `MC2_SHORELINE_LEGACY_SUPPRESS=1` opts in.
+bool gos_TerrainShorelineLegacySuppressOn()
+{
+    static const bool s_on = []() {
+        const char* v = std::getenv("MC2_SHORELINE_LEGACY_SUPPRESS");
+        return (v && v[0] == '1');
+    }();
+    return s_on;
 }
 
 // Step 5c: per-vertex cement word upload (valid bit | atlas layer index). Built by
