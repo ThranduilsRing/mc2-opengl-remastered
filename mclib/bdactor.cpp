@@ -4030,7 +4030,8 @@ long BldgAppearance::update (bool animate)
 		// (runway light strips are exactly that case).
 		//
 		// Owner predicate mirrors the spotlight one above (visible, not
-		// lights-out); night gating + the MC2_LIGHT_REALISM default-OFF gate
+		// lights-out); night gating + the MC2_LIGHT_REALISM gate (default ON
+		// since CONE-SPILL-POLICY-1; =0 reverts)
 		// live inside QueueBeaconGlow. No TG_Light slots are consumed — see
 		// the cone_glow.h contract note.
 		if (eye && eye->isNight && visible && !forceLightsOut)

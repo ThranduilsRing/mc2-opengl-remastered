@@ -177,8 +177,7 @@ int pool_policy()
 {
     static const int s = []() {
         const char* v = std::getenv("MC2_CONE_POOL_POLICY");
-        if (v && v[0] == '0') return 0;   // legacy unconditional
-        return 1;                          // default: new policy
+        return !(v && v[0] == '0');   // default ON (policy 1); '0' = legacy
     }();
     return s;
 }

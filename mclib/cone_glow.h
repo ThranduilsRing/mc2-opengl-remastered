@@ -118,7 +118,8 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
 // real lamps. This rides the same additive MC2_ISSPOTLGT batch as the cone
 // glow (queued here, flushed by FlushFrame), so it costs no light slots.
 //
-// Gated on MC2_LIGHT_REALISM (default OFF -> no-op). Call from the owner's
+// Gated on MC2_LIGHT_REALISM (default ON since CONE-SPILL-POLICY-1; =0
+// reverts -> no-op). Call from the owner's
 // update path AFTER TransformMultiShape, same contract as QueueConeGlow.
 void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor);
 

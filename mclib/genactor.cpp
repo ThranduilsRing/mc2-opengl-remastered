@@ -1173,7 +1173,8 @@ long GenericAppearance::update (bool animate)
 		// NOT BldgAppearance children — a [BEACON_DIAG v1] sweep of every
 		// building shape at mc2_10 found billboards=0 across the board. Queue
 		// the soft colored ground disc here too; the classification, gating
-		// (MC2_LIGHT_REALISM, default OFF) and night check all live inside
+		// (MC2_LIGHT_REALISM, default ON since CONE-SPILL-POLICY-1; =0
+		// reverts) and night check all live inside
 		// QueueBeaconGlow, so this is a no-op for every non-beacon prop.
 		if (eye && eye->isNight)
 			mc2_cone_glow::QueueBeaconGlow(genShape, eye->getNightFactor());
