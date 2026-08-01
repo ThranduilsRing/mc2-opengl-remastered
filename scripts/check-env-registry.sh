@@ -911,7 +911,7 @@ ALLOWLIST=(
     MC2_LIGHT_CONE_DIAG               # trace -- CONE-AIM-DIAG-1: =1 dumps per-node apex/aim + cone-queue events (throttled)
     MC2_LIGHT_CONE_AIM_FLIP           # probe -- CONE-AIM-FLIP-1: =1 negates the computed cone aim (wrong-side A/B probe, default OFF)
     MC2_LIGHT_POOL_DUMP               # trace -- GHOST-LIGHT-DUMP-1: =1 dumps packed light-pool entries w/ slot+owner every 240 frames
-    MC2_LIGHT_REALISM                 # feature -- LIGHT-REALISM-1: =1 enables feathered translucent cones + emitter-continuous pool falloff (default OFF)
+    MC2_LIGHT_REALISM                 # feature -- LIGHT-REALISM-1: feathered translucent cones + emitter-continuous pool falloff (DEFAULT ON since CONE-SPILL-POLICY-1; =0 reverts)
     MC2_LIGHT_REALISM_CONE_OPACITY    # override -- LIGHT-REALISM-1: cone peak-alpha scale (default 0.55, clamp [0,4]); lower = more transparent
     MC2_LIGHT_REALISM_CONE_FEATHER    # override -- LIGHT-REALISM-1: screen-space silhouette feather exponent (default 1.5, clamp [0,8]; 0 = no feather)
     MC2_LIGHT_REALISM_POOL_SPILL      # override -- LIGHT-REALISM-1: pool farDistance scale so the pool reaches back to its emitter (default 1.6, clamp [0.25,4])
@@ -921,7 +921,9 @@ ALLOWLIST=(
     MC2_LIGHT_REALISM_BEACON_RADIUS   # override -- LIGHT-REALISM-1: beacon ground-glow disc radius in world units (default 28, clamp [1,200])
     MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP  # killswitch -- GHOST-CONE-RECIPE-SKIP-1: =0 restores baking SpotLight_ cone meshes into static recipes (opaque tan wedges)
     MC2_LIGHT_POOL_OBJ_SCALE          # override -- POOL-CONSUMERS-1: object-side pool intensity scale (default 0.7, clamp [0,2])
-    MC2_WATER_SHORE_MASK              # killswitch -- WATER-SHORE-MASK-1: =0 restores tile-staircase water shore band (no mask feather)
+    MC2_WATER_SHORE_MASK              # killswitch -- WATER-SHORE-MASK-1: =0 forces shore mode 0 (legacy per-vertex ramp; the wide/degenerate fade at mc2_17, NOT a staircase restore -- WATER-SHORE-EDGE-1 doc fix)
+    MC2_WATER_SHORE_MODE              # feature -- WATER-SHORE-EDGE-1: water shore edge mode 0=legacy ramp 1=mask feather 2=per-fragment hi-res height (default 2; data-absent falls back 2->1->0)
+    MC2_WATER_SHORE_FEATHER_WU        # override -- WATER-SHORE-EDGE-1: mode-2 feather half-width K in world units (default 7; ramp spans -K..+K/2 about the waterline)
     MC2_SHADOW_MIN_SUN_ALT            # override -- SHADOW-SUN-ALT-CLAMP-1: min shadow sun altitude degrees (default 15, 0 disables)
     MC2_SHADOW_DIST_FADE              # override -- SHADOW-DIST-FADE-1: dynamic-shadow dissolve ray distance wu (default 80, 0 = killswitch)
     MC2_SHADOW_DIST_FADE_MAX          # override -- SHADOW-DONUT-FIX-1: max fade opacity [0,1] (default 0.65; 1 = old full erase)

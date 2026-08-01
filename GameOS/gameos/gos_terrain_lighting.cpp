@@ -1214,7 +1214,10 @@ void PackAndDispatch() {
         // sweep + check-env-registry see the readers.
         static const bool s_lightRealism = []() {
             const char* v = std::getenv("MC2_LIGHT_REALISM");
-            return (v && v[0] == '1');   // default OFF
+            // CONE-SPILL-POLICY-1: default ON (user-approved variant B; free
+            // with MC2_LIGHT_GRID=1 per PERF-HARNESS-TRUTH-1). =0 reverts.
+            // Keep in lockstep with mclib/cone_glow.cpp realism_enabled().
+            return !(v && v[0] == '0');
         }();
         static const float s_lightRealismPoolSpill = []() {
             const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_SPILL");

@@ -382,13 +382,16 @@ bool cone_geom_hidden_by_alpha(unsigned alphaValue)
 // Fix (2) is a straight opacity scalar on top of MC2_LIGHT_CONE_GLOW_ALPHA,
 // plus a smoother (squared) axial falloff instead of the linear 1 -> 0.15 ramp.
 //
-// Gate OFF (default) -> every path below is skipped -> byte-identical.
+// CONE-SPILL-POLICY-1 (2026-08-01): DEFAULT FLIPPED ON. Variant B (POOL_SPILL
+// 2.2, POOL_CORE 0.0, CONE_OPACITY 0.40) is user-approved, and the cost was
+// measured FREE with the default light grid (PERF-HARNESS-TRUTH-1: p50
+// 6.405ms ON vs 6.454ms OFF at the busy mc2_10 night pose, 4K). =0 reverts.
 
 bool realism_enabled()
 {
     static const bool s = []() {
         const char* v = std::getenv("MC2_LIGHT_REALISM");
-        return (v && v[0] == '1');   // default OFF
+        return !(v && v[0] == '0');   // default ON (user-approved variant B)
     }();
     return s;
 }
