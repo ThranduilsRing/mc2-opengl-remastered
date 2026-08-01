@@ -107,6 +107,18 @@ def main() -> int:
                     help="engine firstOverlay TXM index; hi-words below it are "
                          "treated as no-overlay (default 0 = any non-0xffff)")
     ap.add_argument("--json", help="write per-tile verdict grid JSON here")
+    ap.add_argument("--tint-report", metavar="r0,c0,r1,c1",
+                    help="CEMENT-EDGE-TINT-1 grading aid: census the region's "
+                         "else-branch art tiles (SKIP-overlay + SKIP-noncorner "
+                         "= fragments terrain_overlay.frag renders WITHOUT "
+                         "albedo adoption) and print the predicted per-channel "
+                         "capture ratio post/pre fix. Absolute mean RGB needs "
+                         "the runtime-stitched decal texels (not in the pak), "
+                         "so the gradable offline target is the RATIO: the fix "
+                         "removes the vec3(0.82,0.80,0.76) multiply, so art "
+                         "pixels brighten by exactly 1/that = "
+                         "(1.2195, 1.2500, 1.3158); adjacent SOLID/ADOPT "
+                         "cement pixels are unchanged (ratio 1.0).")
     args = ap.parse_args()
 
     res = resolve_from_args(args, missions=[args.mission])
@@ -137,6 +149,26 @@ def main() -> int:
         for r in range(r0, min(r1, side - 1)):
             print("  r%03d %s" % (r, "".join(GLYPH[grid[r][c]]
                                              for c in range(c0, min(c1, side - 1)))))
+
+    if args.tint_report:
+        r0, c0, r1, c1 = (int(v) for v in args.tint_report.split(","))
+        reg: Counter = Counter()
+        for r in range(r0, min(r1, side - 1)):
+            for c in range(c0, min(c1, side - 1)):
+                reg[grid[r][c]] += 1
+        art = reg["SKIP-overlay"] + reg["SKIP-noncorner"]
+        total = sum(reg.values())
+        print("tint-report [%d:%d, %d:%d]  (CEMENT-EDGE-TINT-1)" % (r0, r1, c0, c1))
+        for k in ("SOLID", "ADOPT", "SKIP-overlay", "SKIP-noncorner", "."):
+            print("  %-15s %d" % (k, reg[k]))
+        print("  else-branch art tiles (tint-affected): %d / %d region tiles"
+              % (art, total))
+        print("  predicted capture ratio post/pre on art pixels (a>0.5): "
+              "R x1.2195  G x1.2500  B x1.3158   (= 1 / (0.82, 0.80, 0.76))")
+        print("  predicted ratio on SOLID/ADOPT cement pixels: x1.0 (unchanged)")
+        print("  NOTE: engine bit-31 coverage of SKIP-noncorner tiles needs "
+              "MC2_CEMENT_ALPHA_ATLAS=1 (default OFF); tint removal covers "
+              "them regardless (keyed on the adopt gate, not the word).")
 
     if args.json:
         with open(args.json, "w") as f:

@@ -347,20 +347,24 @@ void main()
         // dropped here: that ~18-20% tint IS the user's "weird colored edge".
         c.rgb = overlayCementAlbedo(ovCw, WorldPos.xy);
     } else {
-        // CEMENT-EDGE-TINT-1: on a cement-classified tile the non-adopt branch
-        // is the ARTGUARD path (bit 24 = authored road/transition art) whose
-        // contract is "keep its albedo, reconcile LIGHTING only". Re-tinting
-        // the protected texels with the hardcoded border darkening broke that
-        // contract and produced the measured grey edge slabs on the mc2_24
-        // apron (slab/interior ratio 0.827/0.810/0.772 == the constant below).
-        // Render the authored texel untinted. Non-cement fragments keep the
-        // original intentional border darkening. Killswitch: ovCementTile can
-        // only be true when u_overlayCementAdopt != 0, so
-        // MC2_OVERLAY_CEMENT_ADOPT=0 restores byte-identical stock (tint
-        // everywhere) — no new gate needed.
-        if (!ovCementTile)
-            tex_color.rgb *= vec3(0.82, 0.80, 0.76);
-        c.rgb = tex_color.rgb;
+        // CEMENT-EDGE-TINT-1: the non-adopt branch is the ARTGUARD path
+        // (bit 24 = authored road/transition art, contract "keep its albedo,
+        // reconcile LIGHTING only") PLUS every art tile that bakes NO cement
+        // word at all — the MISSING-RUNWAY-1 cement-ALPHA class (mc2_10/mc2_23
+        // runways: no cement corner, so word==0 unless the default-OFF
+        // MC2_CEMENT_ALPHA_ATLAS rescue runs). Stock composited the raw decal
+        // texel with NO tint; the hardcoded vec3(0.82,0.80,0.76) border
+        // darkening is a modernization-era addition (overlay rewrite era) and
+        // is the measured grey edge slab on the mc2_24 apron (slab/interior
+        // ratio 0.827/0.810/0.772 == the constant) AND the wrong-coloured
+        // runway surface. Gating on ovCementTile alone misses the word==0
+        // runway tiles, so the drop is keyed on the adopt gate itself:
+        // MC2_OVERLAY_CEMENT_ADOPT=0 restores the tint everywhere (full
+        // revert), default ON renders every authored texel untinted — the
+        // stock compositing.
+        c.rgb = (u_overlayCementAdopt != 0)
+                    ? tex_color.rgb
+                    : tex_color.rgb * vec3(0.82, 0.80, 0.76);
         // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
         // albedo (cement transition tint — raw/unburned art).
         c.rgb *= u_missionFlatLight;
