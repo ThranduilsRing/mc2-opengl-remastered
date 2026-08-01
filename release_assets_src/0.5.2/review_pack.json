@@ -5,7 +5,7 @@
  "title": "MC2 v0.5.2 Fix Review",
  "h1": "MC2 v0.5.2 &mdash; Fix Review",
  "lede": "<b>Two decisions are waiting on you, and they are the first two things on this page.</b> Everything after them is ordered so you can stop whenever you are tired without missing anything that blocks work. <b>&sect;1 is which install to launch</b> &mdash; and the delivery question it forces. <b>&sect;2 is the launcher default flip.</b> &sect;3 is the one supervised launch that would close four open questions at once; &sect;4 is the A/B queue, where <b>every row now names both the mission to use and the missions that are mathematically incapable of showing the change</b>. <span style=\"font-size:12px;color:#9aa3ad\">This build is shorter than the last one on purpose: <b>One whole section and 12 blocks net came out</b> (manifest &minus;6.8%) &mdash; and that is after adding two decisions, a rewritten A/B table, a board breakdown and five corrections, so a good deal more prose was cut than the net figure shows. Nothing with a picture in it was cut. The full list of what went and why is at the end of &sect;6 &mdash; a pack you finish beats a complete one you abandon.</span>",
- "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install &mdash; DECISION</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\"><b style=\"color:#f0a0a0\">2. Decisions waiting on you</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">3. The one supervised launch</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">4. The A/B queue (mission + traps)</b></a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since the last build</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">6. Corrections &amp; what was cut</a> &nbsp;|&nbsp; <a href=\"#readfirst\">7. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">8. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">The pictures &rarr;</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a><br><span style=\"font-size:12px;color:#9aa3ad\"><b>A note on the numbers, because they collide and always have.</b> The eight sections above are numbered <b>1&ndash;8</b>; the picture sections below them keep their original <i>fix</i> numbers, which also start at 1 and run to 12, then 19 and 20. So &ldquo;&sect;2&rdquo; is the decision queue up here and the runway/cement blend down there. Where this page says <b>&sect;5.1</b>, <b>&sect;5.3</b>, <b>&sect;5.4</b> or <b>&sect;20e</b> it always means the numbered section above; a bare &sect; with a fix name next to it means the picture section.</span>",
+ "toc_html": "<b>Jump to:</b> <a href=\"#install\"><b style=\"color:#f0a0a0\">1. Which install &mdash; DECISION</b></a> &nbsp;|&nbsp; <a href=\"#open_gates\"><b style=\"color:#f0a0a0\">2. Decisions waiting on you</b></a> &nbsp;|&nbsp; <a href=\"#one_launch\"><b style=\"color:#f0d890\">3. The one supervised launch</b></a> &nbsp;|&nbsp; <a href=\"#ab_queue\"><b style=\"color:#a0f0a0\">4. The A/B queue (mission + traps)</b></a> &nbsp;|&nbsp; <a href=\"#since_0731\"><b style=\"color:#78b0f0\">5. New since the last build</b></a> &nbsp;|&nbsp; <a href=\"#fix_verification_0801\"><b style=\"color:#a0f0a0\">13. 2026-08-01 fix verification</b></a> &nbsp;|&nbsp; <a href=\"#corrections\">6. Corrections &amp; what was cut</a> &nbsp;|&nbsp; <a href=\"#readfirst\">7. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">8. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#01_shoreline\">The pictures &rarr;</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a><br><span style=\"font-size:12px;color:#9aa3ad\"><b>A note on the numbers, because they collide and always have.</b> The eight sections above are numbered <b>1&ndash;8</b>; the picture sections below them keep their original <i>fix</i> numbers, which also start at 1 and run to 12, then 19 and 20. So &ldquo;&sect;2&rdquo; is the decision queue up here and the runway/cement blend down there. Where this page says <b>&sect;5.1</b>, <b>&sect;5.3</b>, <b>&sect;5.4</b> or <b>&sect;20e</b> it always means the numbered section above; a bare &sect; with a fix name next to it means the picture section.</span>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
   {
@@ -1803,6 +1803,205 @@
     {
      "type": "what",
      "html": "<code>capture_provenance</code> fails on five findings, and <b>three of them need a decision from you</b>. They cannot be acknowledged away: the remedy is to re-bless the golden captures from runs that record which binary produced them, and that needs actual capturing, which needs a launch. <b>It is a user decision wearing a red light, and it should stay red until you make it.</b>"
+    }
+   ]
+  },
+  {
+   "id": "fix_verification_0801",
+   "anchor": "#fix_verification_0801",
+   "heading": "13. 2026-08-01 fix verification &mdash; supervised A/B run (agent-executed, user-authorized)",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "Full AB-0&hellip;AB-6 queue executed 2026-08-01 against the REVIEWFIX install (exe <code>de670d27331f</code>, kit A:/Games/MC2-OpenGL-REVIEWFIX-2026-08-01), via the deterministic engine bookmark-capture harness (<code>scripts/run_visual_capture.py</code>, fixed timestep, seed 0xC0FFEE, FBO readback, 3840x2160). Every arm reproduces its AB-*.bat gate set through <code>--env-declare</code> on a scrubbed environment; all 16 launches ran sequentially, all captures byte-deterministic (engine <code>deterministic=true</code> on every pose). Full capture tree + manifests: <code>A:/Games/mc2-main/scratch/ab0801/</code>."
+    },
+    {
+     "type": "meta",
+     "rows": [
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Binary"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<code>de670d27331f</code> (clean, exe-embedded fingerprint, verified in every capture manifest)"
+       }
+      ],
+      [
+       {
+        "tag": "th",
+        "attrs": "",
+        "html": "Verdict"
+       },
+       {
+        "tag": "td",
+        "attrs": "",
+        "html": "<b>Shore PASS &middot; cement/runway PASS (numbers match prediction) &middot; cone pools PASS &middot; light realism PASS &middot; VIS-SEM predicate VERIFIED LIVE &middot; OBJBATCHER freshness counters all 0.</b>"
+       }
+      ]
+     ],
+     "attrs": "class=\"meta\""
+    },
+    {
+     "type": "h3",
+     "html": "13a. Shoreline staircase (queue #1, MC2_WATER_SHORE_MODE)"
+    },
+    {
+     "type": "note",
+     "html": "Hash A/B on mc2_17 <code>shelf_center/southwest/east_wide</code>: AB-1 (mode 1, the mask feather) reproduces the FINAL-2026-07-31 exe's default frames <b>bit-exactly</b> (sha256 match at all 3 poses) &mdash; mode 1 IS the shipped staircase look. The new default (mode 2) changes 2 of 3 poses (0.96% px at east, 11.8% at southwest) and the sawtooth edge is gone: the water/land transition follows the shelf smoothly. Surprise worth recording: AB-2 (mode 0, legacy ramp) is <b>byte-identical to mode 2</b> at all three poses &mdash; at K=7wu the per-fragment height term never bites below the legacy ramp here; the staircase cure at these poses is the retirement of the mask feather. Offline predictor agreement (scratch/user0801/shore_predict): mode 1 = 41.0% of contour in runs &gt;6wu (the staircase), mode 0 = 12.7%, mode 2 = 9.7% (best)."
+    },
+    {
+     "type": "pl",
+     "html": "mc2_17 shelf_east_wide crop &mdash; mode 1 sawtooth (BEFORE) vs default mode 2 (AFTER)"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (legacy arm)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/01_shore_east_BEFORE_mode1.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/01_shore_east_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "mc2_17 shelf_southwest_wide crop"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (legacy arm)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/02_shore_sw_BEFORE_mode1.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/02_shore_sw_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "13b. Concrete tint / runway blend (queue #2, MC2_OVERLAY_CEMENT_ADOPT)"
+    },
+    {
+     "type": "note",
+     "html": "<code>measure_tile_boundary.py</code> at the previously measured mc2_24 <code>base_wide</code> boundaries: AB-0 slab/interior luma ratio <b>1.010 / 1.015</b> (tile break erased, control 1.003); AB-3 (adopt OFF) <b>0.834 / 0.878</b> (break restored, &Delta;luma &minus;23.7 / &minus;16.6). Prediction was ~1.0 vs ~0.82/0.80 &mdash; match. mc2_10 <code>runway_wide</code> per-channel ratio AB-0/AB-3 over the runway band: <b>1.272 / 1.267 / 1.306</b> vs predicted 1.22 / 1.25 / 1.32 &mdash; match. Controls (<code>control_no_pavement</code>) byte-identical between arms on both missions."
+    },
+    {
+     "type": "pl",
+     "html": "mc2_24 apron boundary crop"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (legacy arm)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/03_cement_mc2_24_BEFORE_adopt0.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/04_cement_mc2_24_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "mc2_10 runway band crop"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (legacy arm)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/05_runway_mc2_10_BEFORE_adopt0.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/06_runway_mc2_10_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "13c. Cone pools + light realism (queue items, MC2_CONE_POOL_POLICY / MC2_LIGHT_REALISM)"
+    },
+    {
+     "type": "note",
+     "html": "mc2_23 (night, the mission that actually has the fixtures): CONE_POOL_POLICY=0 moves 27% of pixels at <code>beacons_ground/mid</code>, 1.3&ndash;2.0% at the overviews, 0.000% at <code>runway_ground/mid</code>. Visually (beacons_mid): policy 0 detaches a large soft pool from the searchlight foot and spills it across the road; policy 1 (default) keeps the pool anchored under the beam. mc2_10 building-face poses are pool-free (byte-identical between arms &mdash; expected, they frame walls). At the ghost-wedge pose <code>saved_212019</code> the two policies are also byte-identical &mdash; no pool in that framing. LIGHT_REALISM=0 (AB-5) vs default on mc2_10 night: 21&ndash;46% of pixels move; legacy is a tight hard-edged bright patch, default a broad soft falloff across the lit plane."
+    },
+    {
+     "type": "pl",
+     "html": "mc2_23 beacons_mid &mdash; policy 0 (BEFORE) vs default policy 1 (AFTER)"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (legacy arm)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/07_cones_mc2_23_BEFORE_policy0.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/08_cones_mc2_23_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "mc2_10 night lit plane crop &mdash; realism 0 (BEFORE) vs default (AFTER)"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (legacy arm)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/09_lightrealism_BEFORE_realism0.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/10_lightrealism_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "h3",
+     "html": "13d. AB-6 visibility-semantics trace + OBJBATCHER counters"
+    },
+    {
+     "type": "note",
+     "html": "<b>MC2_VIS_SEMANTICS is present and live in this binary</b> &mdash; the &sect;0a &ldquo;in no deployed exe&rdquo; caveat is now closed. Trace run at the 07 ghost-wedge pose (<code>saved_212019</code>) + the 08 compound close poses (mc2_10, 2358 <code>[VIS-SEM v1]</code> samples): hidden enemies (meshAlpha 0, sensorLevel 0; 14 mechs + 14 vehicles) show <b>emitsLight=0 and meshDrawn=0 on every sample</b> &mdash; the position-leak predicate is fixed (shipped-parked behaviour emitted for all of them). A shutdown enemy mech (status 5, alpha 255) draws but does not emit; fading contacts (partial alpha) draw and emit. <b>Zero samples emit while undrawn</b>, so any residual wedge-with-no-emitter sighting at these poses is a render-recipe matter (the ghost-cone-recipe-skip fix), not a visibility-semantics leak. Log: <code>scratch/ab0801/AB6_mc2_10_sightings/mc2_10_capture.log</code>. <i>Note: the H1&ndash;H6 hypothesis labels referenced by the run request were not found anywhere in-tree; the per-actor states above are reported raw instead.</i><br><br><b>OBJBATCHER freshness (standing ask, HANDOFF &sect;6.4):</b> defaults + MC2_DIAG_VERBOSE=1, mc2_10, 6029 frames: <code>stale_light_rows_regathered=0 stale_light_rows_unresolvable=0 light_rows_out_of_range=0</code> &mdash; all clean (fallback_rate 0.0007, reg census trustworthy=yes)."
     }
    ]
   },
