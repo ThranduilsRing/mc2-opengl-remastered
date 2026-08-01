@@ -347,7 +347,20 @@ void main()
         // dropped here: that ~18-20% tint IS the user's "weird colored edge".
         c.rgb = overlayCementAlbedo(ovCw, WorldPos.xy);
     } else {
-        c.rgb = tex_color.rgb * vec3(0.82, 0.80, 0.76);
+        // CEMENT-EDGE-TINT-1: on a cement-classified tile the non-adopt branch
+        // is the ARTGUARD path (bit 24 = authored road/transition art) whose
+        // contract is "keep its albedo, reconcile LIGHTING only". Re-tinting
+        // the protected texels with the hardcoded border darkening broke that
+        // contract and produced the measured grey edge slabs on the mc2_24
+        // apron (slab/interior ratio 0.827/0.810/0.772 == the constant below).
+        // Render the authored texel untinted. Non-cement fragments keep the
+        // original intentional border darkening. Killswitch: ovCementTile can
+        // only be true when u_overlayCementAdopt != 0, so
+        // MC2_OVERLAY_CEMENT_ADOPT=0 restores byte-identical stock (tint
+        // everywhere) — no new gate needed.
+        if (!ovCementTile)
+            tex_color.rgb *= vec3(0.82, 0.80, 0.76);
+        c.rgb = tex_color.rgb;
         // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
         // albedo (cement transition tint — raw/unburned art).
         c.rgb *= u_missionFlatLight;
