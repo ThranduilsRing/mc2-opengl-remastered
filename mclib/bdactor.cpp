@@ -3892,13 +3892,52 @@ long BldgAppearance::update (bool animate)
 					// change can be A/B graded on ONE attributable exe.
 					if (!mc2_cone_glow::spill_coupling_enabled())
 					{
-						float oldSpill = spill;
-						if (oldSpill > 200.0f) oldSpill = 200.0f;
-						childPos.x += aimW.x * oldSpill;
-						childPos.y += aimW.y * oldSpill;
-						childPos.z += aimW.z * oldSpill;
-						if (land)
-							childPos.z = land->getTerrainElevation(childPos);
+						// CONE-SPILL-POLICY-1: the DEFAULT path is no longer
+						// unconditional. Policy 1 (default):
+						//  (a) upward beam (aim.z above a small threshold;
+						//      MC2 world is z-up -- the mc2_23 beacons aim
+						//      exactly (0,0,1)) -> the beam lights the SKY,
+						//      so NO ground pool. The legacy snap-z planted
+						//      a pool at the beacon's own base.
+						//  (b) otherwise: true beam/terrain intersection over
+						//      an EXTENDED reach k*coneLen (authored coneLen
+						//      is a visual extent, not a physical reach --
+						//      the near-horizontal mc2_10 tower beams drop
+						//      only ~15u over their authored length, so
+						//      requiring a hit within coneLen deleted 7/9
+						//      pools, see CONE-SPILL-GRADE-1). Hit -> pool AT
+						//      the intersection; miss within k*coneLen -> no
+						//      pool. Constants validated offline by
+						//      scripts/predict_cone_pools.py (mc2_10 6/6
+						//      non-up fixtures KEPT, mc2_23 beacons 0 pools).
+						// MC2_CONE_POOL_POLICY=0 = legacy unconditional
+						// far-end + snap-z (exact pre-slice behaviour).
+						if (mc2_cone_glow::pool_policy() == 0)
+						{
+							float oldSpill = spill;
+							if (oldSpill > 200.0f) oldSpill = 200.0f;
+							childPos.x += aimW.x * oldSpill;
+							childPos.y += aimW.y * oldSpill;
+							childPos.z += aimW.z * oldSpill;
+							if (land)
+								childPos.z = land->getTerrainElevation(childPos);
+						}
+						else
+						{
+							const float kUpThresh = 0.15f;
+							if (aimW.z > kUpThresh)
+								coneMissedGround = true;   // sky beam: no pool
+							else
+							{
+								const float reach =
+									spill * mc2_cone_glow::pool_reach_scale();
+								Stuff::Vector3D poolHit;
+								if (mc2ConeGroundHit(childPos, aimW, reach, poolHit))
+									childPos = poolHit;
+								else
+									coneMissedGround = true;
+							}
+						}
 					}
 					else if (got)
 						childPos = hit;

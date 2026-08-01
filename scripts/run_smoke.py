@@ -1672,6 +1672,12 @@ def main():
                             # OFF arm of an A/B capture actually reaches the
                             # child instead of silently running the default.
                             "MC2_CONE_SPILL_COUPLING",
+                            # CONE-SPILL-POLICY-1: default-path pool policy
+                            # (0=legacy unconditional, 1=up-reject + extended
+                            # -reach intersection) + reach multiplier. Must
+                            # reach the child so a policy A/B is real.
+                            "MC2_CONE_POOL_POLICY",
+                            "MC2_CONE_POOL_REACH",
                             # SPOTLIGHT-DIRECTION-1: building spotlight
                             # direction/lightToWorld coordinate-space fix. Must
                             # reach the child or the ON arm of an A/B night

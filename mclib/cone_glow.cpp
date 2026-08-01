@@ -157,6 +157,43 @@ bool spill_coupling_enabled()
     return s;
 }
 
+// CONE-SPILL-POLICY-1 -- pool placement policy for the DEFAULT path (the arm
+// taken when MC2_CONE_SPILL_COUPLING is OFF). The legacy placement is
+// UNCONDITIONAL: apex + aim*min(coneLen*spill,200), z snapped to terrain --
+// which drops a ground pool at the base of the mc2_23 straight-up beacons
+// (aim=(0,0,1)) whose beams never touch the ground at all. The failed
+// CONE-SPILL-COUPLING-1 fix over-rejected in the other direction because it
+// required a hit within the AUTHORED cone length, which is a visual extent,
+// not a physical reach (7/9 mc2_10 pools deleted -- see CONE-SPILL-GRADE-1).
+// Policy 1 (default) does both correctly:
+//   * aim.z > small up-threshold -> beam points at the sky -> NO pool;
+//   * otherwise march the ray over an EXTENDED reach k*coneLen (k =
+//     MC2_CONE_POOL_REACH, default 4); hit -> pool AT the intersection,
+//     miss within the extended reach -> no pool.
+// Validated offline by scripts/predict_cone_pools.py against the mc2_10 /
+// mc2_23 fixture inventories before shipping. MC2_CONE_POOL_POLICY=0 is the
+// killswitch back to the legacy unconditional placement.
+int pool_policy()
+{
+    static const int s = []() {
+        const char* v = std::getenv("MC2_CONE_POOL_POLICY");
+        if (v && v[0] == '0') return 0;   // legacy unconditional
+        return 1;                          // default: new policy
+    }();
+    return s;
+}
+
+float pool_reach_scale()
+{
+    static const float s = []() {
+        const char* v = std::getenv("MC2_CONE_POOL_REACH");
+        float f = 4.0f;
+        if (v && v[0]) f = (float)std::atof(v);
+        return clampf(f, 1.0f, 16.0f);
+    }();
+    return s;
+}
+
 // SPOTLIGHT-DIRECTION-1. Two coordinate-space defects at the building
 // spotlight registration site (mclib/bdactor.cpp):
 //

@@ -54,6 +54,16 @@ bool glow_enabled();        // MC2_LIGHT_CONE_GLOW
 // no miss rejection. Exists so the ungated default-behaviour change shipped by
 // c1f98b45 can be A/B graded on a single attributable exe.
 bool spill_coupling_enabled();  // MC2_CONE_SPILL_COUPLING
+// CONE-SPILL-POLICY-1: pool-placement policy on the DEFAULT path (i.e. when
+// MC2_CONE_SPILL_COUPLING stays OFF). 1 (default) = upward beams (aim.z above
+// a small threshold) emit NO ground pool, and downward/near-horizontal beams
+// place the pool at the true beam/terrain intersection searched over an
+// EXTENDED reach of pool_reach_scale()*coneLen (the authored cone length is a
+// visual extent, not a physical reach -- see CONE-SPILL-GRADE-1); a miss
+// within that extended reach suppresses the pool. 0 = legacy unconditional
+// far-end + snap-z placement (killswitch, exact pre-CONE-SPILL-POLICY-1).
+int  pool_policy();          // MC2_CONE_POOL_POLICY (0=legacy, 1=default)
+float pool_reach_scale();    // MC2_CONE_POOL_REACH (k, default 4, clamp 1..16)
 // SPOTLIGHT-DIRECTION-1: sets the building spotlight's TG_Light::direction
 // (which is a light-spot POSITION for POINT/SPOT, tgl.h:213) and builds its
 // lightToWorld from the swizzled Stuff-space position, matching the sibling

@@ -2389,6 +2389,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES and is now DEFAULT-OFF on measured evidence (on mc2_10 it suppressed 7 of 9 building spotlight ground pools while moving the other 2 by only 7 world units; the 200u clamp never fired). '1' -> building/guard-tower spotlight ground pools are placed at the TRUE beam/terrain intersection found by marching the ray (mc2ConeGroundHit), the arbitrary 200.0f spill clamp is gone, and a beam that never meets ground within its own length or leaves the map emits NO pool. '0' -> restores the exact pre-c1f98b45 placement (apex + aim*spill, 200.0f clamp, z snapped to getTerrainElevation, no miss rejection). Exists so the change can be A/B graded on one attributable exe. Resolved once at process start.",
     },
     {
+        "MC2_FEATURE_CONE_POOL_POLICY",
+        "MC2_CONE_POOL_POLICY",
+        EnvVarKind::Feature,
+        true,
+        "CONE-SPILL-POLICY-1: pool-placement policy for building/beacon spotlight ground pools on the DEFAULT path (MC2_CONE_SPILL_COUPLING OFF). '1' (DEFAULT) -> (a) a beam aimed UP (aim.z > 0.15; the mc2_23 beacons aim exactly (0,0,1)) emits NO ground pool -- it lights the sky, and the legacy snap-z placement planted a pool at the beacon's own base; (b) a downward/near-horizontal beam places its pool at the TRUE beam/terrain intersection (mc2ConeGroundHit) searched over an EXTENDED reach of MC2_CONE_POOL_REACH * coneLen -- the authored cone length is a visual extent, not a physical reach (requiring a hit within it deleted 7 of 9 mc2_10 pools, CONE-SPILL-GRADE-1) -- and a miss within the extended reach suppresses the pool. '0' -> legacy unconditional far-end + snap-z placement with the 200u clamp (killswitch, exact pre-slice behaviour). Constants validated offline by scripts/predict_cone_pools.py. Resolved once at process start.",
+    },
+    {
+        "MC2_TUNE_CONE_POOL_REACH",
+        "MC2_CONE_POOL_REACH",
+        EnvVarKind::Trace,
+        false,
+        "CONE-SPILL-POLICY-1: reach multiplier k for the extended beam/terrain intersection search (reach = k * authored coneLen * MC2_LIGHT_CONE_SPILL). Default 4, clamped [1,16]. k=4 keeps every non-upward mc2_10 tower fixture's pool (their near-horizontal beams drop ~15u over the authored length from ~17u apexes, so they need ~1.2-4x the authored length to meet ground) while still rejecting beams that genuinely land nowhere. Only read when MC2_CONE_POOL_POLICY=1 (the default policy). Tuned against scripts/predict_cone_pools.py.",
+    },
+    {
         "MC2_FULLBAKE_DIAG",
         "MC2_FULLBAKE_DIAG",
         EnvVarKind::Trace,
