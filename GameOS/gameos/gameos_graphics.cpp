@@ -3403,14 +3403,22 @@ void gosRenderer::renderWaterFastPath(
         // (0/1 base/detail, 2 refl RT, 3 HDRI). Killswitch
         // MC2_WATER_SHORE_MASK=0 or no sidecar -> u_hasShoreMask=0 ->
         // byte-identical.
+        // WATER-SHORE-EDGE-1: mode selection is resolved ONCE engine-wide by
+        // gos_WaterShoreMode() (0=legacy ramp, 1=mask feather, 2=per-fragment
+        // signed height vs the hi-res visual_height_4x sidecar; default 2).
+        // Mode 2 with no height sidecar falls back to mode-1 behaviour in the
+        // FS; mode >=1 with no mask sidecar falls back to legacy. Texture
+        // units: 0/1 base/detail, 2 refl RT, 3 HDRI, 4 shore mask,
+        // 5 shore height (R32F).
         {
-            static const bool s_shoreMaskGate = []() {
-                const char* v = getenv("MC2_WATER_SHORE_MASK");
-                return !(v && v[0] == '0');   // default ON
-            }();
             extern unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
             extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
-            const GLuint slTex = s_shoreMaskGate
+            extern int          gos_WaterShoreMode();
+            extern unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
+            extern const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
+            const int shoreMode = gos_WaterShoreMode();
+            setMI("u_shoreMode", shoreMode);
+            const GLuint slTex = (shoreMode >= 1)
                 ? (GLuint)gos_TerrainLodChunk_ShorelineMaskTex() : 0u;
             setMI("u_hasShoreMask", slTex != 0 ? 1 : 0);
             if (slTex != 0) {
@@ -3420,6 +3428,25 @@ void gosRenderer::renderWaterFastPath(
                 glBindTexture(GL_TEXTURE_2D, slTex);
                 glActiveTexture(GL_TEXTURE0);
             }
+            const GLuint shTex = (shoreMode == 2)
+                ? (GLuint)gos_TerrainLodChunk_WaterShoreHeightTex() : 0u;
+            setMI("u_hasShoreHeight", shTex != 0 ? 1 : 0);
+            if (shTex != 0) {
+                setMVec4("u_shoreHeightBounds", gos_TerrainLodChunk_WaterShoreHeightBounds());
+                setMI("u_shoreHeightTex", 5);
+                glActiveTexture(GL_TEXTURE0 + 5);
+                glBindTexture(GL_TEXTURE_2D, shTex);
+                glActiveTexture(GL_TEXTURE0);
+            }
+            // K: feather half-width in world units (shore ramp spans -K..+K/2
+            // about the height zero-crossing). Tunable via
+            // MC2_WATER_SHORE_FEATHER_WU; default 7.
+            static const float s_shoreFeatherWu = []() {
+                const char* s = getenv("MC2_WATER_SHORE_FEATHER_WU");
+                float v = s ? (float)atof(s) : 0.0f;
+                return v > 0.0f ? v : 7.0f;
+            }();
+            setMF("u_shoreFeatherWu", s_shoreFeatherWu);
         }
         setMF         ("waterElevation",  waterElevation);
         setMF         ("alphaDepth",      alphaDepth);

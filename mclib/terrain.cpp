@@ -1120,7 +1120,12 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 				// match. Routed through the single shared accessor so the claim
 				// is now true by construction instead of by inspection.
 				const bool s_shorelineGate = gos_TerrainShorelineGateOn();
-				if (s_shorelineGate)
+				// WATER-SHORE-EDGE-1 (decouple): the WATER shader's mask feather
+				// (modes 1/2 fallback) consumes this same sidecar, so load it
+				// whenever the water shore mode wants it, independent of the
+				// TERRAIN band toggle (MC2_TERRAIN_SHORELINE). Previously
+				// MC2_TERRAIN_SHORELINE=0 silently killed the water feather too.
+				if (s_shorelineGate || gos_WaterShoreMode() >= 1)
 				{
 					char slPath[600];
 					if (const char* ov = getenv("MC2_TERRAIN_SHORELINE_FILE"))
@@ -1223,6 +1228,95 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 									fflush(stdout);
 									ControlMapPng_FreePixels(srgba);
 								}
+							}
+						}
+					}
+				}
+			}
+
+			// WATER-SHORE-EDGE-1: per-fragment water shore edge (mode 2, the
+			// default -- gos_WaterShoreMode()). Loads the SAME hi-res
+			// visual_height_4x.r32 sidecar the chunk-mesh displacement uses
+			// (V x V floats, V=(mapSide-1)*4+1) and uploads it as an R32F
+			// GL_LINEAR texture so the water FS computes a continuous signed
+			// crossing (u_waterElevation - h) instead of the per-vertex coarse
+			// WaterThickness ramp (whose iso-line degenerates onto the 128wu
+			// tile lattice) or the ~8wu-stepped cooked mask contour. Sidecar
+			// absent -> no upload -> draw path falls back to mode-1 (mask)
+			// behaviour, unchanged pixels. Independent of both
+			// MC2_TERRAIN_SHORELINE and MC2_TERRAIN_VISUAL_HEIGHT.
+			{
+				const int wsMapSide = (int)realVerticesMapSide;
+				if (gos_WaterShoreMode() == 2 && wsMapSide > 1)
+				{
+					const int WV = (wsMapSide - 1) * 4 + 1;
+					char wsPath[600];
+					if (const char* ov = getenv("MC2_TERRAIN_VISUAL_HEIGHT_FILE"))
+					{
+						strncpy(wsPath, ov, sizeof(wsPath) - 1);
+						wsPath[sizeof(wsPath) - 1] = '\0';
+					}
+					else
+					{
+						const char* nm = terrainName ? terrainName : "";
+						const char* bs = strrchr(nm, '\\');
+						const char* fs = strrchr(nm, '/');
+						const char* slash = (fs > bs) ? fs : bs;
+						char stem[160];
+						strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
+						stem[sizeof(stem) - 1] = '\0';
+						if (char* dot = strrchr(stem, '.')) *dot = '\0';
+						snprintf(wsPath, sizeof(wsPath),
+						         "data/missions/%s.beauty/visual_height_4x.r32", stem);
+					}
+					FILE* wf = fopen(wsPath, "rb");  // path-audit: loose-only
+					if (!wf)
+					{
+						printf("[WATER_SHORE_EDGE v1] hi-res height NOT FOUND path=%s "
+						       "(mode 2 requested) -- water shore falls back to mask mode\n",
+						       wsPath);
+						fflush(stdout);
+					}
+					else
+					{
+						fseek(wf, 0, SEEK_END);
+						long wsz = ftell(wf);
+						fseek(wf, 0, SEEK_SET);
+						const size_t wsWant = (size_t)WV * (size_t)WV * sizeof(float);
+						if ((size_t)wsz != wsWant)
+						{
+							printf("[WATER_SHORE_EDGE v1] SIZE MISMATCH path=%s got=%ld "
+							       "want=%zu (V=%d mapSide=%d) -- ignored\n",
+							       wsPath, wsz, wsWant, WV, wsMapSide);
+							fflush(stdout);
+							fclose(wf);
+						}
+						else
+						{
+							std::vector<float> wsh((size_t)WV * (size_t)WV);
+							size_t rd = fread(wsh.data(), sizeof(float), wsh.size(), wf);
+							fclose(wf);
+							if (rd != wsh.size())
+							{
+								printf("[WATER_SHORE_EDGE v1] READ FAIL path=%s read=%zu want=%zu\n",
+								       wsPath, rd, wsh.size());
+								fflush(stdout);
+							}
+							else
+							{
+								// Bounds contract (see gos_terrain_lod_chunk.h):
+								// topLeft = world position of fine vertex (0,0)
+								// = (-halfMap, +halfMap); size = GRID SPAN
+								// = (V-1) * (worldUnitsPerVertex/4)
+								// = (mapSide-1) * worldUnitsPerVertex. Shader
+								// half-texel remap puts texel centres on verts.
+								const float wsHalf = Terrain::worldUnitsMapSide * 0.5f;
+								const float wsSpan = (float)(wsMapSide - 1) * Terrain::worldUnitsPerVertex;
+								gos_TerrainLodChunk_UploadWaterShoreHeight(
+									wsh.data(), WV, WV, -wsHalf, wsHalf, wsSpan, wsSpan);
+								printf("[WATER_SHORE_EDGE v1] LOADED path=%s V=%d span=%.1fwu\n",
+								       wsPath, WV, wsSpan);
+								fflush(stdout);
 							}
 						}
 					}

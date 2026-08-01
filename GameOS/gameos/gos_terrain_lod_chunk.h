@@ -188,6 +188,35 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
 unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
 const float* gos_TerrainLodChunk_ShorelineMaskBounds();
 
+// WATER-SHORE-EDGE-1: per-fragment signed-height water shore edge.
+//
+// gos_WaterShoreMode() — ONE resolution of the water shore-edge mode for the
+// whole engine (same single-read discipline as gos_TerrainShorelineGateOn):
+//   0 = legacy per-vertex WaterThickness ramp only (pre-WATER-SHORE-MASK-1)
+//   1 = mask feather (WATER-SHORE-MASK-1 shipped behaviour)
+//   2 = per-fragment signed height vs the hi-res visual_height_4x.r32 sidecar
+//       (DEFAULT; falls back to mode-1 behaviour when the sidecar is absent,
+//       and to mode 0 when the mask is also absent — unchanged pixels).
+// Driven by MC2_WATER_SHORE_MODE (0/1/2). Back-compat: MC2_WATER_SHORE_MASK=0
+// still means mode 0 (full legacy killswitch) when MC2_WATER_SHORE_MODE is
+// unset.
+int gos_WaterShoreMode();
+
+// WATER-SHORE-EDGE-1: upload the hi-res VISUAL heightfield (the same
+// visual_height_4x.r32 bake the chunk-mesh displacement consumes, V x V floats,
+// V=(mapSide-1)*4+1) as an R32F GL_LINEAR texture so the water FS can compute
+// a continuous signed height crossing (u_waterElevation - h) per fragment.
+// worldBounds convention: topLeftX = MIN world X of vertex (0,0), topLeftY =
+// MAX world Y, sizeX/sizeY = the GRID SPAN ((V-1) * fine spacing) — the shader
+// does the half-texel remap so texel centres land exactly on grid vertices.
+// Called only by mclib/terrain.cpp when mode 2 is requested and the sidecar
+// loaded; never called -> tex stays 0 -> mode-1 fallback.
+void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int h,
+                                                 float boundsTopLeftX, float boundsTopLeftY,
+                                                 float boundsSizeX, float boundsSizeY);
+unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
+const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
+
 // TERRAIN-SHORELINE-V3: true whenever the elevation-based shoreline band is
 // active (MC2_TERRAIN_SHORELINE gate ON) -- a mask sidecar is NO LONGER
 // required (V3 places the band by v_worldPos.z vs u_waterElevation; a loaded

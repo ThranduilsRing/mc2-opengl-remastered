@@ -77,6 +77,27 @@ uniform float u_shoreMeanderFreq;   // cycles per world unit
 uniform sampler2D  u_shoreMask;
 uniform int        u_hasShoreMask;
 uniform PREC vec4  u_shoreMaskBounds;   // topLeftX, topLeftY(=maxY), sizeX, sizeY (wu)
+// WATER-SHORE-EDGE-1 (MC2_WATER_SHORE_MODE): per-fragment signed-height shore
+// edge. Both the legacy ramp (per-vertex coarse WaterThickness, iso-line
+// degenerates to the 128wu tile lattice) and the mode-1 mask feather (cooked
+// contour steps ~8wu) quantize the waterline. Mode 2 instead samples the
+// hi-res 4x visual heightfield (R32F GL_LINEAR -> continuous bilinear zero-
+// crossing) and feathers on shoreDist = waterElevation - h(WorldPos.xy):
+//   shore = smoothstep(-K, K*0.5, shoreDist), K = u_shoreFeatherWu (wu),
+// min()'d with the depth term (can only soften, never extend water onto land).
+// u_shoreMode: 0 = legacy ramp only, 1 = mask feather (shipped
+// WATER-SHORE-MASK-1), 2 = per-fragment height (default). Missing height
+// sidecar -> u_hasShoreHeight==0 -> mode-1 behaviour; missing mask too ->
+// legacy (unchanged pixels).
+// u_shoreHeightBounds: topLeftX, topLeftY(=maxY), spanX, spanY (wu) where span
+// = (V-1) grid intervals; the half-texel remap below puts texel centres
+// exactly on fine-grid vertices.
+uniform int        u_shoreMode;
+uniform sampler2D  u_shoreHeightTex;
+uniform int        u_hasShoreHeight;
+uniform PREC vec4  u_shoreHeightBounds;
+uniform PREC float u_shoreFeatherWu;
+uniform float      waterElevation;      // Terrain::waterElevation (same value as VS)
 uniform int u_waterDebugMode;     // WATER-DEBUG-VIEWS-1: fragment/material-space debug.
                                   // 0=Final 1=Tint 2=Alpha 3=Normal 4=Depth 5=Shore 6=Lighting
                                   // 7=SHReflect 8=RTsample 9=ReflectBlend 10=Aniso(aspect probe).
@@ -273,7 +294,29 @@ void main(void)
         // contour distance (see uniform block comment). min() with the
         // depth-driven term: deep water keeps full alpha, and the mask can
         // only SOFTEN the edge, never extend water onto dry land beyond it.
-        if (u_hasShoreMask != 0) {
+        // WATER-SHORE-EDGE-1: resolve the EFFECTIVE mode with data-driven
+        // fallback (2 -> 1 when the height sidecar is absent; 1 -> 0 when the
+        // mask is absent), so missing data always degrades to shipped pixels.
+        int shoreModeEff = u_shoreMode;
+        if (shoreModeEff == 2 && u_hasShoreHeight == 0) shoreModeEff = 1;
+        if (shoreModeEff == 1 && u_hasShoreMask   == 0) shoreModeEff = 0;
+        if (shoreModeEff == 2) {
+            // Per-fragment signed height vs the hi-res bilinear heightfield.
+            PREC vec2 hn;
+            hn.x = (WorldPos.x - u_shoreHeightBounds.x) / max(u_shoreHeightBounds.z, 1e-5);
+            hn.y = (u_shoreHeightBounds.y - WorldPos.y) / max(u_shoreHeightBounds.w, 1e-5);
+            if (hn.x >= 0.0 && hn.x <= 1.0 && hn.y >= 0.0 && hn.y <= 1.0) {
+                // Half-texel remap: hn spans (V-1) grid intervals; texel
+                // centres must land on grid vertices.
+                PREC vec2 ts = vec2(textureSize(u_shoreHeightTex, 0));
+                PREC vec2 huv = (hn * (ts - 1.0) + 0.5) / ts;
+                PREC float hTerr = texture(u_shoreHeightTex, huv).r;
+                PREC float shoreDist = waterElevation - hTerr;   // + = underwater
+                PREC float K = max(u_shoreFeatherWu, 0.5);
+                PREC float shoreH = smoothstep(-K, K * 0.5, shoreDist);
+                shore = min(shore, shoreH);
+            }
+        } else if (shoreModeEff == 1) {
             PREC vec2 slUV;
             slUV.x = (WorldPos.x - u_shoreMaskBounds.x) / max(u_shoreMaskBounds.z, 1e-5);
             slUV.y = (u_shoreMaskBounds.y - WorldPos.y) / max(u_shoreMaskBounds.w, 1e-5);
@@ -286,6 +329,7 @@ void main(void)
                 }
             }
         }
+        // shoreModeEff == 0: legacy per-vertex ramp only (no extra term).
         if (shore <= 0.0) discard;            // kill tiles too far above waterline
 
         PREC vec3  vertexLightRGB = Color.bgra.rgb;  // VS packs .bgra; un-swizzle (camera-indep)

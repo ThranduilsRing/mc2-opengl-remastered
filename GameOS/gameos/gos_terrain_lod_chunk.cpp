@@ -516,6 +516,14 @@ static float  s_shorelineBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topL
 unsigned int gos_TerrainLodChunk_ShorelineMaskTex()     { return s_shorelineMaskTex; }
 const float* gos_TerrainLodChunk_ShorelineMaskBounds()  { return s_shorelineBounds; }
 
+// WATER-SHORE-EDGE-1: hi-res R32F visual-height texture for the water FS
+// per-fragment shore crossing. Same single-owner pattern as the mask above.
+static GLuint s_waterShoreHeightTex       = 0;
+static float  s_waterShoreHeightBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+unsigned int gos_TerrainLodChunk_WaterShoreHeightTex()    { return s_waterShoreHeightTex; }
+const float* gos_TerrainLodChunk_WaterShoreHeightBounds() { return s_waterShoreHeightBounds; }
+
 // ---------------------------------------------------------------------------
 // TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB albedo GL_TEXTURE_2D_ARRAY
 // (rock/grass/dirt/concrete/snow/cliff, layer order = MAT_LAYER_* 0..5) loaded
@@ -3991,6 +3999,82 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
             (unsigned)s_shorelineMaskTex, w, h, (size_t)w * (size_t)h * 4u,
             boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
     fflush(stderr);
+}
+
+// WATER-SHORE-EDGE-1: upload the hi-res visual heightfield as R32F GL_LINEAR /
+// CLAMP_TO_EDGE (see header for the bounds/half-texel contract). Mirrors
+// gos_TerrainLodChunk_UploadShorelineMask's save/restore discipline.
+void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int h,
+                                                 float boundsTopLeftX, float boundsTopLeftY,
+                                                 float boundsSizeX, float boundsSizeY)
+{
+    if (!heights || w <= 0 || h <= 0)
+        return;
+
+    if (s_waterShoreHeightTex == 0)
+        // TEX-CLASS: asset-pool -- water shore hi-res height sidecar (mission-lifetime content)
+        glGenTextures(1, &s_waterShoreHeightTex);
+    if (s_waterShoreHeightTex == 0)
+    {
+        MC2_DIAGFE(stderr, "[WATER_SHORE_EDGE v1] glGenTextures failed\n");
+        fflush(stderr);
+        return;
+    }
+
+    GLint prevActive = GL_TEXTURE0;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &prevActive);
+    GLint prev2D = 0;
+    glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev2D);
+
+    GLint prevUnpack = 4;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &prevUnpack);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    glBindTexture(GL_TEXTURE_2D, s_waterShoreHeightTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, w, h, 0, GL_RED, GL_FLOAT, heights);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, prevUnpack);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prev2D);
+    glActiveTexture((GLenum)prevActive);
+
+    s_waterShoreHeightBounds[0] = boundsTopLeftX;
+    s_waterShoreHeightBounds[1] = boundsTopLeftY;
+    s_waterShoreHeightBounds[2] = boundsSizeX;
+    s_waterShoreHeightBounds[3] = boundsSizeY;
+
+    MC2_DIAGFE(stderr, "[WATER_SHORE_EDGE v1] uploaded handle=%u w=%d h=%d "
+            "bounds=(%.1f,%.1f,%.1f,%.1f)\n",
+            (unsigned)s_waterShoreHeightTex, w, h,
+            boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
+    fflush(stderr);
+}
+
+// WATER-SHORE-EDGE-1: single engine-wide resolution of the water shore-edge
+// mode (see header). Same lazy-once idiom as gos_TerrainShorelineGateOn so the
+// loader (mclib/terrain.cpp) and the draw path (gameos_graphics.cpp) can never
+// disagree about what mode a stock launch runs.
+int gos_WaterShoreMode()
+{
+    static const int s_mode = []() {
+        if (const char* m = std::getenv("MC2_WATER_SHORE_MODE"))
+        {
+            if (m[0] == '0' && m[1] == '\0') return 0;
+            if (m[0] == '1' && m[1] == '\0') return 1;
+            if (m[0] == '2' && m[1] == '\0') return 2;
+            // unparseable -> fall through to default resolution
+        }
+        // Back-compat killswitch: MC2_WATER_SHORE_MASK=0 predates the mode
+        // gate and meant "full legacy ramp"; keep that meaning.
+        const char* v = std::getenv("MC2_WATER_SHORE_MASK");
+        if (v && v[0] == '0') return 0;
+        return 2;   // default: per-fragment signed height
+    }();
+    return s_mode;
 }
 
 // TERRAIN-SHORELINE-V3: true whenever the elevation-based shoreline band is
