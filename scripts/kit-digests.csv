@@ -4,8 +4,8 @@
 # cover. Graded by scripts/check-deploy-coherence.py; see that
 # file's KIT-COHERENCE-1 docstring for why this lives here and
 # not in the install.
-# blessed_from: A:\Games\MC2-OpenGL-FINAL-2026-07-31
-# blessed_head: d730c3622ad98e093d162aac7b9b7fa728923108
+# blessed_from: A:\Games\MC2-OpenGL-REVIEWFIX-2026-08-01
+# blessed_head: de670d27331f89d3385b9c8a86aa0c62fc71fa0f
 #
 # The globs below are the arm's SCOPE: a file matching one of
 # them that has no row is reported as unpinned, so a tenth arm
@@ -15,16 +15,14 @@
 #glob READ-ME-FIRST.md
 #glob verify-ab-kit.py
 relpath,sha256,bytes,source
-AB-0-DEFAULT-baseline.bat,36db35e6030d4eb9fd2b4c4ec1f3afc808c1fb56882b1e3130fbd62d1666f1a1,5424,
-AB-1-CPU_PHONG_RETIRE-0-legacy-object-seating.bat,7b2a9738dfcb0379bff667ecf918312f31a05685c455524d5efa730c1ceccdf8,6713,
-AB-2-SHORELINE_LEGACY_SUPPRESS-0-legacy-prop-rim.bat,3ef78d8fab01cc4e30b3fab7baf35c561bf8bf946aab43d0730c59dbc35a81a7,6739,
-AB-3-SUN_AXIS_FIX-1-mech-vehicle-diffuse.bat,2d8178b8f1cb78ab36b04e6ceb02b83722eaad78def0a6bdc719b2052d7f34b5,6505,
-AB-4-SUN_ELEVATION_FIX-1-world-sun-and-shadows.bat,ed11b497701d72e46e2be767a0abc66dc1f04316423495a9bd35eea20891d777,6699,
-AB-5-STATIC_PROP_IBL_SUN_ROTATE-1-prop-probe-aim.bat,013ad81f5c4db4945a1cdd68090a09ff98067e6d55fef9d3ce0d487251c5dd66,6532,
-AB-6a-STATIC_PROP_LIGHT_FRESHNESS-1-counter-read.bat,b0d38325a1962ca663bf9e76494eaf1dcd84a51fe632e2e43af18d9ecc98c05e,6949,
-AB-6b-STATIC_PROP_LIGHT_FRESHNESS-0-legacy-stale-row.bat,ee2e1f6faa6f83641ea994dfdf871340550a95f11e8445beb74c43a9baf4be3d,6752,
-AB-7-LAUNCHER-FOUR-1-what-the-launcher-adds.bat,e64872aff0a3b7f05805ceaa5e6714a1e632511576579f6a997bf3e10c651d6f,6810,
+AB-0-DEFAULT-baseline.bat,aa4df44b689110f70897f8c4cff2604bdd4124a136a746e598b3edadcf702d43,7488,
+AB-1-WATER_SHORE_MODE-1-shore-column-blend.bat,6b0ac880bbc166353c2d47312c92281c788c652751f4a119d2e13d9abfde394b,7592,
+AB-2-WATER_SHORE_MODE-0-shore-legacy-ramp.bat,d250184aaea52d4260ccea30d937b8e9c5ca94672be2ebb477c3fff7312275d8,7226,
+AB-3-OVERLAY_CEMENT_ADOPT-0-legacy-cement-tint.bat,518d3a119a323a735e256f7b3b23622870a39bbc953d0da5104238e53a08a2a5,7569,
+AB-4-CONE_POOL_POLICY-0-legacy-light-pools.bat,3bdc8a94fc452c4b14d17ffef2b5e00e4a76e09722943bac5cb7cfff49232589,7768,
+AB-5-LIGHT_REALISM-0-legacy-cone-look.bat,0d5981e6ef705efe2c879ed888511bbac90ccdd7291305745e53049a46c15f9b,7438,
+AB-6-VIS_SEMANTICS_TRACE-1-invisible-actor-trace.bat,ec88c1b9c1d80edf454acdeb0d285166094ab874de4f17903423d316c62e4c73,7729,
 CURSOR-1-normal-launch.bat,8ff37f4bcb5b3ba53c05783bd89e090887774b937f6781876b2da5b0e88a2584,2304,
 CURSOR-2-offscreen-alone.bat,6f906e77fcc8ff3e36eee2a5bb2736a5dc9dede7b80d48b3c94a7d42158f1221,4860,
-READ-ME-FIRST.md,b68beb2612602529c43431bf42dfb25167db0f9bf903fef0f6fc50afac3ec8c3,16670,
+READ-ME-FIRST.md,5a15c64b9688d463395a5f3bf4665630ab6f6e0a8a995595b9da22bb1c030c2c,5750,
 verify-ab-kit.py,d726abad8768114dbdd022f7c9f141343fafd378a98c86d36968770950d7cafa,10981,scripts/check-ab-kit.py
