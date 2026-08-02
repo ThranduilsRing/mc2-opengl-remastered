@@ -946,9 +946,15 @@ static bool CementTransitionFallbackEnabled() {
 // the user-approved CEMENT-HARD-EDGE-1 crisp transitions are not disturbed.
 // Default OFF => not one atlas texel and not one cement word changes.
 static bool CementAlphaAtlasEnabled() {
+    // RUNWAY-CLOSE-1 (2026-08-02): DEFAULT ON. Measured at the user's mc2_10
+    // saved_204907 bookmark (exe 30c18df1): rescued swath px 15 -> 6506, their
+    // luma 32.4 (bare dirt) -> 54.7 = the historical on-concrete runway value
+    // (65.0-65.7 at runway_wide), i.e. the user criterion "the color they are
+    // on top of concrete". Control pose byte-identical. MC2_CEMENT_ALPHA_ATLAS=0
+    // restores the drop (bare-dirt gaps + pale word==0 runway).
     static const bool s = []() {
         const char* v = getenv("MC2_CEMENT_ALPHA_ATLAS");
-        return v && v[0] && v[0] != '0';
+        return !(v && v[0] == '0');   // default ON
     }();
     return s;
 }
