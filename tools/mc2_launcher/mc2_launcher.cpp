@@ -267,7 +267,11 @@ static const EnvVarDef k_envVars[] = {
     // MC2_TREE_DIAG_TRACE, where "=0" enables. Do not add offVal to this row.
     // defaultVal "1" is the LAUNCHER-PREFERS-ON bug documented above, and this is
     // its worst instance: it trips that presence test on every launcher launch.
-    { "MC2_WATER_SKYTINT",           "Water sky tint (engine OFF; launcher ON)", true, "1",  "Water/VFX" },
+    // 2026-08-02 USER DIRECTIVE ("just turn it off"): defaultVal flipped "1" -> ""
+    // so the launcher no longer trips the presence test on every launch and the
+    // per-mission waterSkyTintStrength from data/visual_tuning.json applies again.
+    // OFF here MUST mean UNSET (never "0") -- see presence-test note above.
+    { "MC2_WATER_SKYTINT",           "Water sky tint override (suppresses per-mission art; leave OFF)", true, "",  "Water/VFX" },
     { "MC2_WATER_REFLECTION",        "Water SH-L2 sky reflection",            true,  "",     "Water/VFX" },
     { "MC2_VFX_SOFT_PARTICLES",      "Soft particles (depth-fade)",           true,  "",     "Water/VFX" },
     { "MC2_VFX_LIT_PARTICLES",       "Lit particles",                         true,  "",     "Water/VFX" },
