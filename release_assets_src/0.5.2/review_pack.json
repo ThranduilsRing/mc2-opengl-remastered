@@ -666,6 +666,98 @@
     {
      "type": "note",
      "html": "<b>MC2_VIS_SEMANTICS is present and live in this binary</b> &mdash; the &sect;0a &ldquo;in no deployed exe&rdquo; caveat is now closed. Trace run at the 07 ghost-wedge pose (<code>saved_212019</code>) + the 08 compound close poses (mc2_10, 2358 <code>[VIS-SEM v1]</code> samples): hidden enemies (meshAlpha 0, sensorLevel 0; 14 mechs + 14 vehicles) show <b>emitsLight=0 and meshDrawn=0 on every sample</b> &mdash; the position-leak predicate is fixed (shipped-parked behaviour emitted for all of them). A shutdown enemy mech (status 5, alpha 255) draws but does not emit; fading contacts (partial alpha) draw and emit. <b>Zero samples emit while undrawn</b>, so any residual wedge-with-no-emitter sighting at these poses is a render-recipe matter (the ghost-cone-recipe-skip fix), not a visibility-semantics leak. Log: <code>scratch/ab0801/AB6_mc2_10_sightings/mc2_10_capture.log</code>. <i>Note: the H1&ndash;H6 hypothesis labels referenced by the run request were not found anywhere in-tree; the per-actor states above are reported raw instead.</i><br><br><b>OBJBATCHER freshness (standing ask, HANDOFF &sect;6.4):</b> defaults + MC2_DIAG_VERBOSE=1, mc2_10, 6029 frames: <code>stale_light_rows_regathered=0 stale_light_rows_unresolvable=0 light_rows_out_of_range=0</code> &mdash; all clean (fallback_rate 0.0007, reg census trustworthy=yes)."
+    },
+    {
+     "type": "h3",
+     "html": "13d. REOPENED runway colour + missing swaths &mdash; CLOSED by MC2_CEMENT_ALPHA_ATLAS default-ON (RUNWAY-CLOSE-1, 2026-08-02, exe <code>99e9c46d43a3</code>)"
+    },
+    {
+     "type": "note",
+     "html": "Your re-grade: <i>&ldquo;there is no difference here to me. also missing the rest of the runway&rdquo;</i>. Root cause of both: 87% of mc2_10's transition pavement tiles (278/320) bake <b>no cement word</b> &mdash; the runway class is cement-ALPHA art with no solid-cement corner, so the engine dropped it (bare dirt / pale word==0 strip). The fix admits those tiles' own alpha art cells into the cement atlas (<code>MC2_CEMENT_ALPHA_ATLAS</code>, now <b>default ON</b>): the missing swaths draw, and the runway lands in the SAME lighting family as the apron. Measured at your <code>saved_204907</code> bookmark: rescued swath pixels <b>15 &rarr; 6506</b>, their luma <b>32.4 (bare dirt) &rarr; 54.7</b> &mdash; matching the on-concrete runway's measured 65.0&ndash;65.7, i.e. <b>the colour it is on top of concrete (dark)</b>, which is your stated criterion. Control pose (no pavement) byte-identical. Kill-switch: <code>MC2_CEMENT_ALPHA_ATLAS=0</code>. Also measured and REJECTED: the flat-light exemption arm (<code>MC2_OVERLAY_ART_FLATLIGHT=0</code>) brightens ALL paved art &times;1.33 away from the apron (apron-relative ratio 0.628 &rarr; 0.402 worse) and would be a &times;6 road glow on mc2_05 night &mdash; it stays off."
+    },
+    {
+     "type": "pl",
+     "html": "mc2_10 @ your bookmark saved_204907 &mdash; pale/broken runway (BEFORE) vs dark continuous asphalt (AFTER, new default)"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE (alpha-atlas OFF = old default)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/11_runway_204907_BEFORE_alpha0.png"
+      },
+      {
+       "caption": "AFTER (0.5.2 new default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/12_runway_204907_AFTER_default.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "Full-res runway band crops, same pose"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE crop &mdash; the pale strip + gaps",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/11_runway_204907_BEFORE_alpha0_crop.png"
+      },
+      {
+       "caption": "AFTER crop &mdash; dark asphalt, markings, edge lights",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/12_runway_204907_AFTER_default_crop.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "Classification diag (DIAG=32768): red = solid cement, green = transition, CYAN = newly rescued own-alpha pavement; black = unclassified"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE &mdash; runway unclassified (15 cyan px)",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/13_runway_204907_classdiag_BEFORE.png"
+      },
+      {
+       "caption": "AFTER &mdash; 6506 cyan px + 9.4k more green",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/14_runway_204907_classdiag_AFTER.png"
+      }
+     ]
+    },
+    {
+     "type": "pl",
+     "html": "runway_wide continuity pose (fog wash between the two frames is launch-phase cloud state, not the fix; rescued tiles 45.5 &rarr; 90.3 luma here)"
+    },
+    {
+     "type": "figures",
+     "layout": "ba",
+     "pair": true,
+     "items": [
+      {
+       "caption": "BEFORE",
+       "role": "BEFORE",
+       "src": "13_fix_verification_0801/15_runway_wide_BEFORE_alpha0.png"
+      },
+      {
+       "caption": "AFTER (new default)",
+       "role": "AFTER",
+       "src": "13_fix_verification_0801/16_runway_wide_AFTER_default.png"
+      }
+     ]
     }
    ]
   },
@@ -1326,7 +1418,7 @@
    "blocks": [
     {
      "type": "what",
-     "html": "RE-DONE after user rejection. The pad/runway concrete now stays crisp out to its own edge, and the blend is made by <b>growing concrete OUTWARD</b> a full tile into the bare terrain with a soft outer margin — more concrete, not less."
+     "html": "RE-DONE after user rejection. The pad/runway concrete now stays crisp out to its own edge, and the blend is made by <b>growing concrete OUTWARD</b> a full tile into the bare terrain with a soft outer margin \u00e2\u20ac\u201d more concrete, not less."
     },
     {
      "type": "meta",
@@ -1372,11 +1464,11 @@
     },
     {
      "type": "note",
-     "html": "<b>What changed and why.</b> Revision 1 (<code>bc29eea8</code>/<code>d6cc4d9e</code>) feathered cement OUT toward terrain <i>inside</i> the pad tile, which eroded the apron and read as a blurry dirty edge — user verdict: &quot;gate on is worse; the answer is usually MORE concrete, not less&quot;. Revision 2 (<code>8e59de64</code>/<code>3c6aad71</code>) inverts the direction: solid cement is full and crisp again, and the neighbouring bare-terrain tile blends cement inward from the shared edge (alpha 1.0 at the seam, falling to 0 one tile out). Measured at the same pose: <b>rev-1 = 5958 px changed, mean luminance <span style=\"color:#c66\">-6.55</span>, only 25% brighter (concrete removed)</b>; <b>rev-2 = 536 px changed, mean luminance <span style=\"color:#6c6\">+2.75</span>, 69% brighter (concrete added)</b>. Verify-by-exaggeration (reach 1.5 tiles) scales cleanly to 2068 px / <b>+61.7</b> luminance / 99.7% brighter, confirming the block only ever adds concrete."
+     "html": "<b>What changed and why.</b> Revision 1 (<code>bc29eea8</code>/<code>d6cc4d9e</code>) feathered cement OUT toward terrain <i>inside</i> the pad tile, which eroded the apron and read as a blurry dirty edge \u00e2\u20ac\u201d user verdict: &quot;gate on is worse; the answer is usually MORE concrete, not less&quot;. Revision 2 (<code>8e59de64</code>/<code>3c6aad71</code>) inverts the direction: solid cement is full and crisp again, and the neighbouring bare-terrain tile blends cement inward from the shared edge (alpha 1.0 at the seam, falling to 0 one tile out). Measured at the same pose: <b>rev-1 = 5958 px changed, mean luminance <span style=\"color:#c66\">-6.55</span>, only 25% brighter (concrete removed)</b>; <b>rev-2 = 536 px changed, mean luminance <span style=\"color:#6c6\">+2.75</span>, 69% brighter (concrete added)</b>. Verify-by-exaggeration (reach 1.5 tiles) scales cleanly to 2068 px / <b>+61.7</b> luminance / 99.7% brighter, confirming the block only ever adds concrete."
     },
     {
      "type": "note",
-     "html": "<b>HONEST FLAG — magnitude, not direction.</b> The direction is now correct and the erosion is gone, but on <i>this</i> map the shipped effect is close to imperceptible: mc2_01's apron perimeter is authored <i>transition</i> art (the deliberate crisp CEMENT-HARD-EDGE-1 outline, which this gate does not touch by design), so only <b>4 tiles</b> map-wide qualify as solid-cement-abutting-bare-terrain, and they sit distant and at a grazing angle. The BEFORE/AFTER pair below will look nearly identical at gameplay zoom — that is the truth of it, not a capture failure. A map whose runways are authored as solid cement is still needed to grade the look properly. Reach is a one-constant taste knob (currently 1.0 tile)."
+     "html": "<b>HONEST FLAG \u00e2\u20ac\u201d magnitude, not direction.</b> The direction is now correct and the erosion is gone, but on <i>this</i> map the shipped effect is close to imperceptible: mc2_01's apron perimeter is authored <i>transition</i> art (the deliberate crisp CEMENT-HARD-EDGE-1 outline, which this gate does not touch by design), so only <b>4 tiles</b> map-wide qualify as solid-cement-abutting-bare-terrain, and they sit distant and at a grazing angle. The BEFORE/AFTER pair below will look nearly identical at gameplay zoom \u00e2\u20ac\u201d that is the truth of it, not a capture failure. A map whose runways are authored as solid cement is still needed to grade the look properly. Reach is a one-constant taste knob (currently 1.0 tile)."
     },
     {
      "type": "pl",
@@ -1393,7 +1485,7 @@
        "src": "02_runway/02a_runway_BEFORE.png"
       },
       {
-       "caption": "AFTER (gate ON — rev-2 dilation)",
+       "caption": "AFTER (gate ON \u00e2\u20ac\u201d rev-2 dilation)",
        "role": "AFTER",
        "src": "02_runway/02a_runway_AFTER.png"
       }
@@ -1401,7 +1493,7 @@
     },
     {
      "type": "pl",
-     "html": "REJECTED revision 1 at the same rect (the erosion the user vetoed) — kept for comparison"
+     "html": "REJECTED revision 1 at the same rect (the erosion the user vetoed) \u00e2\u20ac\u201d kept for comparison"
     },
     {
      "type": "figures",
@@ -1417,7 +1509,7 @@
     },
     {
      "type": "pl",
-     "html": "Mechanism reference — exaggerated reach (1.5 tiles, over-grown on purpose)"
+     "html": "Mechanism reference \u00e2\u20ac\u201d exaggerated reach (1.5 tiles, over-grown on purpose)"
     },
     {
      "type": "figures",
@@ -1433,7 +1525,7 @@
     },
     {
      "type": "pl",
-     "html": "Revision-1 diff heatmap (stale — kept only to show where rev-1 acted)"
+     "html": "Revision-1 diff heatmap (stale \u00e2\u20ac\u201d kept only to show where rev-1 acted)"
     },
     {
      "type": "figures",
@@ -1502,19 +1594,19 @@
     },
     {
      "type": "note",
-     "html": "<b>Why mc2_05 was used before, and what changed.</b> The original capture fell back to mc2_05 because every saved mc2_10 night bookmark (212019, 205952, 204907, 204611, 212140) is a distant OVERVIEW — 212019 frames only guard towers, and none put a mech at readable size. Rather than settle for that again, this recapture reads the player lance start straight out of <code>data/missions/mc2_10.fit</code> (<code>CommanderID=0</code>, PositionX/Y = -4842.7, -5525.3) and composes a new bookmark pose there at low altitude (rot 150, proj 20, alt 900). That frames a mech large, at night, on mc2_10, standing in its own light pool — exactly the missing shot. The pose is saved as <code>saved_bookmarks/mc2_10_lance_close.json</code> in the capture install."
+     "html": "<b>Why mc2_05 was used before, and what changed.</b> The original capture fell back to mc2_05 because every saved mc2_10 night bookmark (212019, 205952, 204907, 204611, 212140) is a distant OVERVIEW \u00e2\u20ac\u201d 212019 frames only guard towers, and none put a mech at readable size. Rather than settle for that again, this recapture reads the player lance start straight out of <code>data/missions/mc2_10.fit</code> (<code>CommanderID=0</code>, PositionX/Y = -4842.7, -5525.3) and composes a new bookmark pose there at low altitude (rot 150, proj 20, alt 900). That frames a mech large, at night, on mc2_10, standing in its own light pool \u00e2\u20ac\u201d exactly the missing shot. The pose is saved as <code>saved_bookmarks/mc2_10_lance_close.json</code> in the capture install."
     },
     {
      "type": "note",
-     "html": "<b>Measured (full-zoom crop below, gate OFF vs ON=0.7):</b> 44.6% of the crop changes, <b>71% of changed pixels get DARKER</b>, mean luminance -3.10, max delta 223 — the bright mover glow disc is carved into a ring and a real contact patch appears under the body. Cross-launch noise floor for this pose measured at 16 px / max delta 3, so the signal is ~40,000x the noise."
+     "html": "<b>Measured (full-zoom crop below, gate OFF vs ON=0.7):</b> 44.6% of the crop changes, <b>71% of changed pixels get DARKER</b>, mean luminance -3.10, max delta 223 \u00e2\u20ac\u201d the bright mover glow disc is carved into a ring and a real contact patch appears under the body. Cross-launch noise floor for this pose measured at 16 px / max delta 3, so the signal is ~40,000x the noise."
     },
     {
      "type": "note",
-     "html": "<b>HONEST FLAGS.</b> (1) The mech idly rotates its torso between launches, so the two arms do not pose-match above the waist; the crop below is deliberately framed on the <b>legs and ground</b>, which are pixel-stable, because the fix is a terrain effect and the torso is irrelevant to it. Two ON captures differed by 819k px purely from that torso animation — do not read the mech body in these frames, read the ground. (2) <b>No vehicle could be framed.</b> The UI command channel (<code>MC2_UI_COMMAND_FILE</code>) exposes only <code>toggle_pause</code> / <code>press pause.*</code> / <code>press dialog.*</code> / <code>debugview</code> / <code>screenshot</code> — there are no select/order/camera verbs in this build, so a vehicle cannot be driven into frame headlessly, and mc2_10's vehicles are off-map staged until objective-gated. The ground-vehicle case remains carried by the code-path argument (vehicles are tagged <code>Gv</code> and already sit in the mover set) rather than by a pixel crop."
+     "html": "<b>HONEST FLAGS.</b> (1) The mech idly rotates its torso between launches, so the two arms do not pose-match above the waist; the crop below is deliberately framed on the <b>legs and ground</b>, which are pixel-stable, because the fix is a terrain effect and the torso is irrelevant to it. Two ON captures differed by 819k px purely from that torso animation \u00e2\u20ac\u201d do not read the mech body in these frames, read the ground. (2) <b>No vehicle could be framed.</b> The UI command channel (<code>MC2_UI_COMMAND_FILE</code>) exposes only <code>toggle_pause</code> / <code>press pause.*</code> / <code>press dialog.*</code> / <code>debugview</code> / <code>screenshot</code> \u00e2\u20ac\u201d there are no select/order/camera verbs in this build, so a vehicle cannot be driven into frame headlessly, and mc2_10's vehicles are off-map staged until objective-gated. The ground-vehicle case remains carried by the code-path argument (vehicles are tagged <code>Gv</code> and already sit in the mover set) rather than by a pixel crop."
     },
     {
      "type": "pl",
-     "html": "Mech contact shadow — legs + ground, full-zoom 1:1 (mc2_10 night, composed lance pose)"
+     "html": "Mech contact shadow \u00e2\u20ac\u201d legs + ground, full-zoom 1:1 (mc2_10 night, composed lance pose)"
     },
     {
      "type": "figures",
@@ -1773,7 +1865,7 @@
        {
         "tag": "td",
         "attrs": "",
-        "html": "EXISTING — read-only copy from mc2-deferred-1 batch8c capture + golden-rebless before/after at mc2_10_212019."
+        "html": "EXISTING \u00e2\u20ac\u201d read-only copy from mc2-deferred-1 batch8c capture + golden-rebless before/after at mc2_10_212019."
        }
       ]
      ],
@@ -1833,7 +1925,7 @@
    "blocks": [
     {
      "type": "what",
-     "html": "User report (mc2_10 night): a building&#x27;s light-facing parts are <b>FULLY lit</b> and its away-facing parts dark, but <b>nothing accounts for occlusion by the building&#x27;s own geometry</b> — a wall behind a taller wing, a recessed courtyard, an inset doorway or the underside of an overhang all render full-bright."
+     "html": "User report (mc2_10 night): a building&#x27;s light-facing parts are <b>FULLY lit</b> and its away-facing parts dark, but <b>nothing accounts for occlusion by the building&#x27;s own geometry</b> \u00e2\u20ac\u201d a wall behind a taller wing, a recessed courtyard, an inset doorway or the underside of an overhang all render full-bright."
     },
     {
      "type": "meta",
@@ -1879,15 +1971,15 @@
     },
     {
      "type": "note",
-     "html": "<b>NO CODE CHANGE WAS NEEDED — and none was made.</b> Both mechanisms were already shipped and simply switched off. Root cause is three stacked things: (1) <code>static_prop.frag</code> writes the <code>a=0.25</code> &quot;no self shadow&quot; GBuffer class and <code>shadow_screen.frag</code> <i>deliberately</i> skips the dynamic cascade for it (&quot;CPU never self-shadowed buildings&quot;); (2) the baked base light is a <b>per-LEAF constant</b> (<code>GetARGBHighlight()</code>, one scalar per <code>TG_Shape</code>), so it adds no intra-surface variation, and <code>calc_light</code> has <b>no occlusion term at all</b>; (3) what is left is a pure per-face <code>max(N&middot;L,0)</code> — precisely &quot;fully lit or dark, nothing between&quot;. Props <b>already cast</b> into the CSM cascades, so no caster-set widening was required and the alpha-card foliage exclusion was never touched."
+     "html": "<b>NO CODE CHANGE WAS NEEDED \u00e2\u20ac\u201d and none was made.</b> Both mechanisms were already shipped and simply switched off. Root cause is three stacked things: (1) <code>static_prop.frag</code> writes the <code>a=0.25</code> &quot;no self shadow&quot; GBuffer class and <code>shadow_screen.frag</code> <i>deliberately</i> skips the dynamic cascade for it (&quot;CPU never self-shadowed buildings&quot;); (2) the baked base light is a <b>per-LEAF constant</b> (<code>GetARGBHighlight()</code>, one scalar per <code>TG_Shape</code>), so it adds no intra-surface variation, and <code>calc_light</code> has <b>no occlusion term at all</b>; (3) what is left is a pure per-face <code>max(N&middot;L,0)</code> \u00e2\u20ac\u201d precisely &quot;fully lit or dark, nothing between&quot;. Props <b>already cast</b> into the CSM cascades, so no caster-set widening was required and the alpha-card foliage exclusion was never touched."
     },
     {
      "type": "note",
-     "html": "<b>Why BOTH gates.</b> <code>MC2_PROP_SHADOW_RECEIVE</code> opts props back into the dynamic cascade — that gives <b>coarse</b> wing-on-wing shadow, but the cascades are map-sized and cannot resolve a doorway reveal. <code>MC2_SSAO</code> adds the <b>fine</b> contact term (recesses, inside corners, undersides) using depth + GBuffer normals props already write. Measured on mc2_01 day: RECEIVE alone changes 0.25-0.73% of pixels and <b>100% of them get DARKER, zero brighter</b> (a pure occlusion term can only darken — animation or a lighting bug could not be one-sided); adding SSAO multiplies coverage <b>20-60x</b> (to 1.5-14.7%) while staying ~99% darker."
+     "html": "<b>Why BOTH gates.</b> <code>MC2_PROP_SHADOW_RECEIVE</code> opts props back into the dynamic cascade \u00e2\u20ac\u201d that gives <b>coarse</b> wing-on-wing shadow, but the cascades are map-sized and cannot resolve a doorway reveal. <code>MC2_SSAO</code> adds the <b>fine</b> contact term (recesses, inside corners, undersides) using depth + GBuffer normals props already write. Measured on mc2_01 day: RECEIVE alone changes 0.25-0.73% of pixels and <b>100% of them get DARKER, zero brighter</b> (a pure occlusion term can only darken \u00e2\u20ac\u201d animation or a lighting bug could not be one-sided); adding SSAO multiplies coverage <b>20-60x</b> (to 1.5-14.7%) while staying ~99% darker."
     },
     {
      "type": "pl",
-     "html": "Night building, mc2_10 composed close pose — OFF (top) vs BOTH gates ON (bottom). Look at the penthouse/roof-deck junction, under the parapet lip, the recessed window bays, the inside corner where the near wing meets the rear block, and the garage doorway."
+     "html": "Night building, mc2_10 composed close pose \u00e2\u20ac\u201d OFF (top) vs BOTH gates ON (bottom). Look at the penthouse/roof-deck junction, under the parapet lip, the recessed window bays, the inside corner where the near wing meets the rear block, and the garage doorway."
     },
     {
      "type": "figures",
@@ -1903,7 +1995,7 @@
     },
     {
      "type": "pl",
-     "html": "Night compound walls + domes — OFF (top) vs RECEIVE only (bottom): dome flanks, the crevice between adjacent domes, and buttress slopes darken."
+     "html": "Night compound walls + domes \u00e2\u20ac\u201d OFF (top) vs RECEIVE only (bottom): dome flanks, the crevice between adjacent domes, and buttress slopes darken."
     },
     {
      "type": "figures",
@@ -1940,11 +2032,11 @@
     },
     {
      "type": "note",
-     "html": "<b>HONEST FLAG — the night pixel diff is NOT trustworthy and was not relied on.</b> At mc2_10 night the sibling LIGHT-REALISM-1 sweeping-searchlight animation contaminates cross-launch comparison: pose <code>compound_mid</code> shows 6.66% of pixels changed of which <b>5.19% get BRIGHTER</b> — that is animation, not this gate. The night verdict above is therefore <b>categorical</b> (a named recess that was flat is now visibly darker), and the clean quantitative pass is the day table, whose zero-brighter distribution independently corroborates the mechanism. Also: all six saved mc2_10 night bookmarks are distant overviews (alt 4954-6045) that cannot resolve intra-building occlusion, so four close poses were composed over the tower/compound complex and archived alongside these images. Verify-by-exaggeration was done by <b>stacking the two gates</b> — neither exposes a strength knob (the 0.4 shadow floor is hard-coded) and the shadow-classification debug view is key-toggled only, unreachable headless."
+     "html": "<b>HONEST FLAG \u00e2\u20ac\u201d the night pixel diff is NOT trustworthy and was not relied on.</b> At mc2_10 night the sibling LIGHT-REALISM-1 sweeping-searchlight animation contaminates cross-launch comparison: pose <code>compound_mid</code> shows 6.66% of pixels changed of which <b>5.19% get BRIGHTER</b> \u00e2\u20ac\u201d that is animation, not this gate. The night verdict above is therefore <b>categorical</b> (a named recess that was flat is now visibly darker), and the clean quantitative pass is the day table, whose zero-brighter distribution independently corroborates the mechanism. Also: all six saved mc2_10 night bookmarks are distant overviews (alt 4954-6045) that cannot resolve intra-building occlusion, so four close poses were composed over the tower/compound complex and archived alongside these images. Verify-by-exaggeration was done by <b>stacking the two gates</b> \u00e2\u20ac\u201d neither exposes a strength knob (the 0.4 shadow floor is hard-coded) and the shadow-classification debug view is key-toggled only, unreachable headless."
     },
     {
      "type": "note",
-     "html": "<b>RESIDUAL — this is why neither gate should default ON yet.</b> Alpha-test lattice props <b>self-shadow as solid slabs</b>: the shadow depth pass has <b>no alpha discard</b>, so a chain-link fence writes a <i>solid</i> depth slab into the cascades and then, with RECEIVE ON, samples that slab and darkens <b>uniformly across the whole lattice</b> (image below — it is the single densest diff region on the day poses). Foliage is protected from this by <code>setRecipeNoShadow</code>; fences and railings are not foliage and are not excluded. The clean fix needs a distinct GBuffer1.a class for alpha-test props so they can be excluded from <i>receive</i> — that edits the render-contract mask encoding shared with <code>shadow_screen.frag</code>, too wide to land unverified, so it is logged as follow-up <code>PROP-ALPHA-SHADOW-CLASS-1</code> rather than guessed at here. The cheap alternative (marking alpha-test recipes <code>noShadow</code>) is wrong — it would also stop fences casting onto terrain."
+     "html": "<b>RESIDUAL \u00e2\u20ac\u201d this is why neither gate should default ON yet.</b> Alpha-test lattice props <b>self-shadow as solid slabs</b>: the shadow depth pass has <b>no alpha discard</b>, so a chain-link fence writes a <i>solid</i> depth slab into the cascades and then, with RECEIVE ON, samples that slab and darkens <b>uniformly across the whole lattice</b> (image below \u00e2\u20ac\u201d it is the single densest diff region on the day poses). Foliage is protected from this by <code>setRecipeNoShadow</code>; fences and railings are not foliage and are not excluded. The clean fix needs a distinct GBuffer1.a class for alpha-test props so they can be excluded from <i>receive</i> \u00e2\u20ac\u201d that edits the render-contract mask encoding shared with <code>shadow_screen.frag</code>, too wide to land unverified, so it is logged as follow-up <code>PROP-ALPHA-SHADOW-CLASS-1</code> rather than guessed at here. The cheap alternative (marking alpha-test recipes <code>noShadow</code>) is wrong \u00e2\u20ac\u201d it would also stop fences casting onto terrain."
     },
     {
      "type": "pl",
@@ -2619,7 +2711,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_01_saved_205644 / horizon_waterline <span class=\"sev sev-med\">med</span> — WATER-GRAZE-REFL grazing reflection"
+     "html": "mc2_01_saved_205644 / horizon_waterline <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL grazing reflection"
     },
     {
      "type": "figures",
@@ -2640,7 +2732,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_01_saved_205644 / shore_central <span class=\"sev sev-med\">med</span> — WATER-GRAZE-REFL grazing reflection"
+     "html": "mc2_01_saved_205644 / shore_central <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL grazing reflection"
     },
     {
      "type": "figures",
@@ -2661,7 +2753,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_01_saved_205644 / shore_botright <span class=\"sev sev-med\">med</span> — WATER-GRAZE-REFL grazing reflection"
+     "html": "mc2_01_saved_205644 / shore_botright <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL grazing reflection"
     },
     {
      "type": "figures",
@@ -2682,7 +2774,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_01_saved_205644 / tree_shadows_palm <span class=\"sev sev-high\">high</span> — SHADOW-FADE-RAMP0/ALT-SCALE softer seamless shadow"
+     "html": "mc2_01_saved_205644 / tree_shadows_palm <span class=\"sev sev-high\">high</span> \u00e2\u20ac\u201d SHADOW-FADE-RAMP0/ALT-SCALE softer seamless shadow"
     },
     {
      "type": "figures",
@@ -2703,7 +2795,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_10_saved_204611 / horizon_white_billboards <span class=\"sev sev-high\">high</span> — two-sided glow cards"
+     "html": "mc2_10_saved_204611 / horizon_white_billboards <span class=\"sev sev-high\">high</span> \u00e2\u20ac\u201d two-sided glow cards"
     },
     {
      "type": "figures",
@@ -2724,7 +2816,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_10_saved_204611 / far_water_surface <span class=\"sev sev-med\">med</span> — WATER-GRAZE-REFL"
+     "html": "mc2_10_saved_204611 / far_water_surface <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL"
     },
     {
      "type": "figures",
@@ -2745,7 +2837,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_10_saved_204753 / light_clusters_census <span class=\"sev sev-med\">med</span> — two-sided glow + ghost-cone-skip"
+     "html": "mc2_10_saved_204753 / light_clusters_census <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d two-sided glow + ghost-cone-skip"
     },
     {
      "type": "figures",
@@ -2766,7 +2858,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_10_saved_204753 / runway_edge_lights <span class=\"sev sev-med\">med</span> — two-sided glow + ghost-cone-skip"
+     "html": "mc2_10_saved_204753 / runway_edge_lights <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d two-sided glow + ghost-cone-skip"
     },
     {
      "type": "figures",
@@ -2787,7 +2879,7 @@
     },
     {
      "type": "pl",
-     "html": "mc2_10_saved_204753 / lamp_cones <span class=\"sev sev-med\">med</span> — two-sided glow + ghost-cone-skip"
+     "html": "mc2_10_saved_204753 / lamp_cones <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d two-sided glow + ghost-cone-skip"
     },
     {
      "type": "figures",
