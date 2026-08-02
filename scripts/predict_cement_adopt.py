@@ -119,6 +119,29 @@ def main() -> int:
                          "pixels brighten by exactly 1/that = "
                          "(1.2195, 1.2500, 1.3158); adjacent SOLID/ADOPT "
                          "cement pixels are unchanged (ratio 1.0).")
+    ap.add_argument("--alpha-atlas-report", action="store_true",
+                    help="CEMENT-ALPHA-LAND-1 (RUNWAY-CLOSE-1): model the "
+                         "own-alpha admission. Every SKIP-noncorner tile (the "
+                         "MISSING-RUNWAY-1 class: cement transition slot with "
+                         "no solid-cement corner => engine bakes NO word => "
+                         "bare dirt) gets a word pointing at its OWN slot's "
+                         "appended alpha cell, so predicted residual dropped "
+                         "tiles under MC2_CEMENT_ALPHA_ATLAS=1 is ZERO by "
+                         "construction (the rescue is keyed on exactly the "
+                         "drop condition, gos_terrain_indirect.cpp:1736-1745).")
+    ap.add_argument("--flatlight-report", action="store_true",
+                    help="RUNWAY-CLOSE-1 a1 model: read the mission .fit "
+                         "lighting block and replicate Camera::getLight*( "
+                         "flatIntensity=sin(LightDirPitch)) -> the "
+                         "u_missionFlatLight upload (gamecam.cpp:459-465, "
+                         "camera.cpp:4473). Prints the predicted runway/apron "
+                         "ratio change from a full MC2_OVERLAY_ART_FLATLIGHT=0 "
+                         "exemption. HONEST MODEL NOTE: the chunk cement apron "
+                         "ALSO multiplies u_missionFlatLight "
+                         "(terrain_lod_chunk.frag:999), so the exemption moves "
+                         "overlay art AWAY from the apron by 1/flatLight, not "
+                         "toward it; ratio 1.0 here would require the apron "
+                         "to be full-brightness, which it is not.")
     args = ap.parse_args()
 
     res = resolve_from_args(args, missions=[args.mission])
@@ -169,6 +192,60 @@ def main() -> int:
         print("  NOTE: engine bit-31 coverage of SKIP-noncorner tiles needs "
               "MC2_CEMENT_ALPHA_ATLAS=1 (default OFF); tint removal covers "
               "them regardless (keyed on the adopt gate, not the word).")
+
+    if args.alpha_atlas_report:
+        # Engine analogue: [CEMENT_TRANSITION_DROP v1] dropped_no_layer.
+        # Offline analogue: SKIP-noncorner (cement transition slot, no solid
+        # cement corner => cemCorner() finds no donor layer => word==0).
+        dropped = counts["SKIP-noncorner"]
+        trans = counts["ADOPT"] + counts["SKIP-overlay"] + counts["SKIP-noncorner"]
+        pct = (100.0 * dropped / trans) if trans else 0.0
+        print("alpha-atlas-report (CEMENT-ALPHA-LAND-1 own-alpha admission)")
+        print("  transition-class tiles:        %d" % trans)
+        print("  corner-model dropped (word==0): %d  (%.1f%% of transition class)"
+              % (dropped, pct))
+        print("  MODEL LIMIT: the engine drops a tile when the corner TYPE maps "
+              "to no SOLID (cement && !alpha) catalog SLOT; slot flags are not "
+              "in the pak vertex stream, so this corner-TYPE model UNDER-detects "
+              "drops (engine census mc2_10 278/320=87%, mc2_24 266/778=34% via "
+              "[CEMENT_TRANSITION_DROP v1] -- that line is the authoritative "
+              "BEFORE number and prints in every run, gate on or off).")
+        print("  predicted dropped, gate ON:    0 BY CONSTRUCTION -- the rescue "
+              "branch (gos_terrain_indirect.cpp:1736-1745) fires on exactly the "
+              "drop condition: every dropped tile's OWN slot gets an appended "
+              "alpha cell + bit23|bit30|bit31 word. Verify at runtime via "
+              "alpha_rescued == dropped_no_layer.")
+
+    if args.flatlight_report:
+        import math, re
+        fit = Path(res.dir) / (args.mission + ".fit")
+        txt = fit.read_text(errors="replace")
+        def key(name, default=None, conv=float):
+            m = re.search(r"^\s*(?:uc|f|l|ul)\s+%s\s*=\s*([-0-9.]+)" % name,
+                          txt, re.M)
+            return conv(m.group(1)) if m else default
+        lr, lg, lb = key("LightRed", 255), key("LightGreen", 255), key("LightBlue", 255)
+        ar, ag, ab = key("AmbientRed", 0), key("AmbientGreen", 0), key("AmbientBlue", 0)
+        pitch = key("LightDirPitch", 90.0)
+        lz = math.sin(math.radians(pitch))
+        def chan(l, a):
+            if lz > 0.0:
+                return min(255.0, l * lz + a) / 255.0
+            return a / 255.0                        # camera.cpp:4488 ambient branch
+        fl = (chan(lr, ar), chan(lg, ag), chan(lb, ab))
+        print("flatlight-report (%s)" % fit.name)
+        print("  LightRGB=(%g,%g,%g) AmbientRGB=(%g,%g,%g) LightDirPitch=%g "
+              "-> lightDir.z=%.4f" % (lr, lg, lb, ar, ag, ab, pitch, lz))
+        print("  u_missionFlatLight = (%.4f, %.4f, %.4f)" % fl)
+        print("  a1 full-exemption multiplier on overlay art = 1/flatLight = "
+              "(%.3f, %.3f, %.3f)" % tuple(1.0 / max(c, 1e-6) for c in fl))
+        print("  predicted runway/apron ratio under MC2_OVERLAY_ART_FLATLIGHT=0:")
+        print("    if apron were full-brightness (brief's model): 1.000 (converges)")
+        print("    with apron * flatLight (code-true, chunk :999): %.3f/%.3f/%.3f "
+              "(OVERSHOOTS by 1/flatLight)"
+              % tuple(1.0 / max(c, 1e-6) for c in fl))
+        print("  parity route without overshoot: MC2_CEMENT_ALPHA_ATLAS=1 "
+              "(own-alpha word -> identical atlas*flatLight family)")
 
     if args.json:
         with open(args.json, "w") as f:

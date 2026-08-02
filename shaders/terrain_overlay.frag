@@ -56,6 +56,16 @@ uniform int u_pathTint;  // MC2_SHADER_PATH_TINT: 1 = solid signature colour (de
 // byte-identical. Killswitch MC2_CEMENT_MISSION_LIGHT=0 force-uploads (1,1,1).
 // Uploaded by uploadOverlayUniforms_ (all binders of this frag route there).
 uniform PREC vec3      u_missionFlatLight;
+// RUNWAY-CLOSE-1 (MC2_OVERLAY_ART_FLATLIGHT, default 1 = stock): 0 uploads
+// u_overlayArtFlatExempt = 1.0, which EXEMPTS the non-adopt (authored road /
+// runway art) else-branch from the CEMENT-NIGHT-LIGHT-1 u_missionFlatLight
+// multiply. A/B arm for the reopened "runway is the wrong color" item.
+// NOTE (measured, do not re-derive): the chunk cement apron ALSO multiplies
+// u_missionFlatLight (terrain_lod_chunk.frag:999), so on mc2_10
+// (flatLight = 192/255 grey, LightDirPitch 180 -> ambient branch) full
+// exemption OVERBRIGHTENS art by ~1.33x relative to the apron. It exists to
+// measure that, not to be presumed correct.
+uniform PREC float     u_overlayArtFlatExempt;
 
 // NIGHT-LIGHT-POOLS-2b (gate MC2_TERRAIN_LIGHT_POOLS, shared with the chunk
 // terrain): road/runway/cement decals take the same additive light-pool term
@@ -367,7 +377,9 @@ void main()
                     : tex_color.rgb * vec3(0.82, 0.80, 0.76);
         // CEMENT-NIGHT-LIGHT-1: apply the mission flat-pad light to the composed
         // albedo (cement transition tint — raw/unburned art).
-        c.rgb *= u_missionFlatLight;
+        // RUNWAY-CLOSE-1: u_overlayArtFlatExempt = 0.0 (default) keeps the
+        // stock multiply; 1.0 lifts the flat-pad light off authored art only.
+        c.rgb *= mix(u_missionFlatLight, vec3(1.0), u_overlayArtFlatExempt);
     }
 
     // Discard transparent pixels — cement transitions are binary-alpha tiles.

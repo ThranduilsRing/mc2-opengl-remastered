@@ -1767,6 +1767,9 @@ def main():
                             # lighting exemption. Must be allowlisted or Popen
                             # drops it and a gate-ON run silently measures OFF.
                             "MC2_PAVED_OVERLAY_CLASS",
+                            # RUNWAY-CLOSE-1: overlay-art flat-light exemption
+                            # A/B arm (default 1 = stock multiply).
+                            "MC2_OVERLAY_ART_FLATLIGHT",
                             # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
                             # probe (observe-only). Prints [SHORELINE_PROBE v1]
                             # with u_waterElevation vs coarse terrain z-range vs

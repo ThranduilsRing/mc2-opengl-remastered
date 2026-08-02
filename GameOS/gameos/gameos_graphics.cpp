@@ -2632,6 +2632,9 @@ class gosRenderer {
             // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
             // decal.frag does not declare it -> stays -1 -> skipped).
             GLint missionFlatLight                   = -1;  // vec3
+            // RUNWAY-CLOSE-1: MC2_OVERLAY_ART_FLATLIGHT=0 exempts authored art
+            // from the flat-pad light (A/B arm; default 0.0 = stock multiply).
+            GLint overlayArtFlatExempt               = -1;  // float
             // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (terrain_overlay.vert,
             // declared on BOTH overlayProg_ and decalProg_ — shared VS).
             GLint overlayBiasLegacy                  = -1;  // int
@@ -5590,6 +5593,8 @@ void gosRenderer::init() {
         locs.terrainCliffShadowFloor = glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
         // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only).
         locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
+        // RUNWAY-CLOSE-1: flat-light exemption A/B arm (overlayProg_ only).
+        locs.overlayArtFlatExempt = glGetUniformLocation(shp, "u_overlayArtFlatExempt");
         // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (shared VS, both programs).
         locs.overlayBiasLegacy = glGetUniformLocation(shp, "u_overlayBiasLegacy");
         // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (overlayProg_ only).
@@ -10878,6 +10883,17 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     if (L.missionFlatLight >= 0) {
         const vec4& fl = terrain_mission_flat_light_;
         glUniform3f(L.missionFlatLight, fl.x, fl.y, fl.z);
+    }
+    // RUNWAY-CLOSE-1: MC2_OVERLAY_ART_FLATLIGHT — 1/unset (default) = stock
+    // (upload 0.0 => the frag's mix() collapses to the plain u_missionFlatLight
+    // multiply); 0 = exempt authored art from the flat-pad light (upload 1.0).
+    // Boot-cached (Debug Instrumentation Rule).
+    if (L.overlayArtFlatExempt >= 0) {
+        static const float s_artFlatExempt = [] {
+            const char* v = getenv("MC2_OVERLAY_ART_FLATLIGHT");
+            return (v && v[0] == '0') ? 1.0f : 0.0f;
+        }();
+        glUniform1f(L.overlayArtFlatExempt, s_artFlatExempt);
     }
     // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
     if (L.overlayBiasLegacy >= 0)
