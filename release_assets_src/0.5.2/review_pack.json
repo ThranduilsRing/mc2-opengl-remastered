@@ -2,811 +2,171 @@
  "schema": "mc2-review-pack/1",
  "pack_dir": "release_assets/0.5.2/REVIEW",
  "registry_header": "RenderCore/RendererFeatureRegistry.h",
- "title": "MC2 v0.5.2 Fix Review",
- "h1": "MC2 v0.5.2 &mdash; Fix Review",
- "lede": "<b>Two decisions are waiting on you, and they are the first two things on this page.</b> Everything after them is ordered so you can stop whenever you are tired without missing anything that blocks work. <b>&sect;1 is which install to launch</b> &mdash; and the delivery question it forces. <b>&sect;2 is the launcher default flip.</b> &sect;3 is the one supervised launch that would close four open questions at once; &sect;4 is the A/B queue, where <b>every row now names both the mission to use and the missions that are mathematically incapable of showing the change</b>. <span style=\"font-size:12px;color:#9aa3ad\">This build is shorter than the last one on purpose: <b>One whole section and 12 blocks net came out</b> (manifest &minus;6.8%) &mdash; and that is after adding two decisions, a rewritten A/B table, a board breakdown and five corrections, so a good deal more prose was cut than the net figure shows. Nothing with a picture in it was cut. The full list of what went and why is at the end of &sect;6 &mdash; a pack you finish beats a complete one you abandon.</span>",
- "toc_html": "<b>Jump to:</b> <a href=\"#open_gates\"><b style=\"color:#f0a0a0\">2. Decisions waiting on you</b></a> &nbsp;|&nbsp; <a href=\"#fix_verification_0801\"><b style=\"color:#a0f0a0\">13. 2026-08-01 fix verification</b></a> &nbsp;|&nbsp; <a href=\"#bookmark_sweep_0802\"><b style=\"color:#a0f0a0\">14. 2026-08-02 bookmark sweep</b></a> &nbsp;|&nbsp; <a href=\"#readfirst\">7. Default-ON, unseen</a> &nbsp;|&nbsp; <a href=\"#gates\">8. Gate inventory</a> &nbsp;|&nbsp; <a href=\"#02_runway\">The pictures &rarr;</a> &nbsp;|&nbsp; <a href=\"#golden\">Golden re-bless</a><br><span style=\"font-size:12px;color:#9aa3ad\">Pruned 2026-08-02 at your direction: the install-decision section, the superseded shoreline/feather and ARM A/B/C concrete sections, the pre-verification launch/AB-queue/corrections archaeology. The raw history of every removed section is in git (<code>release_assets_src/0.5.2/review_pack.json</code>). Picture sections keep their original fix numbers, so numbering is sparse on purpose.</span>",
+ "title": "MC2 v0.5.2 Review \u2014 fresh page 2026-08-03",
+ "h1": "MC2 v0.5.2 &mdash; fresh review page (2026-08-03)",
+ "lede": "<b>Everything on this page is NEW &mdash; nothing you have already graded is repeated.</b> All 137 poses (every bookmark in every per-mission JSON, plus all 10 of your saved camera poses) re-captured 2026-08-03 on the new default-ON alpha-atlas exe (<code>99e9c46d43a3</code>), 3840&times;2160, shipped defaults. The previous pack (everything you graded through 2026-08-02) lives in git history of <code>release_assets_src/0.5.2/review_pack.json</code>.",
+ "toc_html": "<b>Jump to:</b> <a href=\"#changelog_0803\">1. Changelog</a> &nbsp;|&nbsp; <a href=\"#open_items_0802\"><b style=\"color:#f0a0a0\">2. Your open items</b></a> &nbsp;|&nbsp; <a href=\"#gallery_gaea_peaks_01\">gaea_peaks_01</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_01\">mc2_01</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_03\">mc2_03</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_05\">mc2_05</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_10\">mc2_10</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_17\">mc2_17</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_23\">mc2_23</a> &nbsp;|&nbsp; <a href=\"#gallery_mc2_24\">mc2_24</a>",
  "style": ":root{--bg:#14161a;--card:#1e2127;--fg:#e6e8eb;--mut:#9aa3ad;--acc:#5c96c2;--line:#2c313a}\n*{box-sizing:border-box}\nbody,.wrap{margin:0}\n.wrap{max-width:1400px;margin:0 auto;padding:24px;font:15px/1.55 system-ui,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}\nh1{font-size:28px;margin:0 0 6px}\n.lede{color:var(--mut);max-width:900px}\n.toc{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:16px 0 28px;font-size:14px}\n.toc a{color:var(--acc);text-decoration:none;margin-right:6px}\n.toc a:hover{text-decoration:underline}\nsection{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 26px}\nh2{font-size:21px;margin:0 0 10px;border-bottom:1px solid var(--line);padding-bottom:8px}\n.what{margin:0 0 12px;max-width:1000px}\ntable.meta{border-collapse:collapse;margin:0 0 10px;font-size:14px}\ntable.meta th{text-align:right;color:var(--mut);font-weight:600;padding:2px 10px 2px 0;vertical-align:top;white-space:nowrap}\ntable.meta td{padding:2px 0}\ncode{background:#0e1013;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:#d7e3ee}\n.note{background:#241f14;border-left:3px solid #b8892b;padding:8px 12px;border-radius:4px;color:#e8dcc0;font-size:14px;margin:10px 0}\n.pl{font-weight:600;margin:18px 0 6px;color:#cfd6dd}\n.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n.single{max-width:100%}\nfigure{margin:0}\nfigcaption{font-size:12px;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}\nimg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#000}\na img:hover{border-color:var(--acc)}\n.sev{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.03em}\n.sev-high{background:#4a2020;color:#f0a0a0}\n.sev-med{background:#40381c;color:#e0c878}\n@media(max-width:720px){.ba{grid-template-columns:1fr}}",
  "sections": [
   {
-   "id": "open_gates",
-   "heading": "2. Decisions waiting on you &mdash; the whole queue, in one place",
+   "id": "changelog_0803",
+   "heading": "1. What changed since your last export (2026-08-02 evening)",
    "blocks": [
     {
-     "type": "h3",
-     "html": "<b style=\"color:#f0a0a0\">DECISION 2</b> &nbsp;Four features are ON that the engine leaves OFF. Which way do you want them?"
-    },
-    {
-     "type": "note",
-     "html": "<b>The situation.</b> Four gates are engine-default-<b>OFF</b>, and both routes onto your screen turn them <b>ON</b>: the launcher declares <code>defaultVal&nbsp;&quot;1&quot;</code> for them and applies it unconditionally, and every install on disk carries a <code>launcher_env.json</code> holding the same four, which the <i>engine</i> applies to any variable you have not set yourself. So in practice <b>you have never seen these four off</b>, and nothing was labelled to tell you."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "html": "Gate"
-       },
-       {
-        "tag": "th",
-        "html": "Engine reader says"
-       },
-       {
-        "tag": "th",
-        "html": "Launcher declares"
-       },
-       {
-        "tag": "th",
-        "html": "Why it matters"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>MC2_STATIC_PROP_PBR_V1</code>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gos_static_prop_batcher.cpp:1161; registry agrees</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b style=\"color:#f0d890\">ON</b>"
-       },
-       {
-        "tag": "td",
-        "html": "Prop specular. Changes how every building reads."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>MC2_STATIC_PROP_AMBIENT_V1</code>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gos_static_prop_batcher.cpp:828; registry agrees</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b style=\"color:#f0d890\">ON</b>"
-       },
-       {
-        "tag": "td",
-        "html": "Prop hemisphere ambient. Sits directly on your &ldquo;props look dark&rdquo; report."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>MC2_CLOUD_SHADOW</code>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gos_postprocess.cpp:502-503, <code>if (!v || !v[0]) return false;</code></span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b style=\"color:#f0d890\">ON</b>"
-       },
-       {
-        "tag": "td",
-        "html": "Its row also <i>labelled</i> the gate &ldquo;default ON&rdquo; &mdash; a copy of the exact false claim that had to be deleted from the engine source. The label is now corrected."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<code>MC2_WATER_SKYTINT</code>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>OFF</b><br><span style=\"font-size:11px;color:#9aa3ad\">gameos_graphics.cpp:2867</span>"
-       },
-       {
-        "tag": "td",
-        "html": "<b style=\"color:#f0d890\">ON</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<b style=\"color:#f0a0a0\">The worst of the four.</b> A second reader (<code>visual_tuning_profile.cpp:182</code>) is a pure <i>presence</i> test, so setting the variable to <b>anything &mdash; &ldquo;0&rdquo; included &mdash; suppresses the per-mission water art direction</b> from <code>data/visual_tuning.json</code>. Every launcher launch trips it."
-       }
-      ]
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">Correction &mdash; this page told you an hour ago that &ldquo;a launcher launch runs these four ON while a shell or batch launch runs them OFF&rdquo;. That is wrong, and I wrote it.</b> I took it from the comment in <code>mc2_launcher.cpp</code>, which is also wrong. The <code>.bat</code> route sets <code>MC2_NO_LAUNCHER=1</code>, and that is precisely the branch on which the engine reads <code>launcher_env.json</code> itself (<code>gameosmain.cpp:1091</code>). <b>Both routes give you the four ON.</b> The only ways to get them off are to set them to <code>0</code> yourself, or to set <code>MC2_LAUNCHER_ENV_JSON=0</code>."
-    },
-    {
-     "type": "h3",
-     "html": "2a. &nbsp;The one that is a defect, not a preference"
-    },
-    {
-     "type": "note",
-     "html": "<b><code>MC2_WATER_SKYTINT</code> should be decided on its own, and it is not a taste call.</b> A second reader (<code>visual_tuning_profile.cpp:182</code>) is a pure <i>presence</i> test: <code>if (!envIsSet(&quot;MC2_WATER_SKYTINT&quot;))</code>. So the variable being set to <b>anything &mdash; including <code>&quot;0&quot;</code> &mdash; suppresses the per-mission <code>waterSkyTintStrength</code></b> that <code>data/visual_tuning.json</code> authors. Turning it &ldquo;off&rdquo; by writing <code>0</code> does not restore the authored art; it silences it. <b>This one wants to be unset, not zeroed</b>, and bundling it with three preference questions &mdash; as this page did an hour ago &mdash; forces you to answer a bug and three matters of taste with a single yes."
-    },
-    {
-     "type": "h3",
-     "html": "2b. &nbsp;The three that are genuine judgement calls"
-    },
-    {
      "type": "what",
-     "html": "<code>MC2_STATIC_PROP_PBR_V1</code>, <code>MC2_STATIC_PROP_AMBIENT_V1</code> and <code>MC2_CLOUD_SHADOW</code> are preferences. There are <b>three</b> ways to settle them, not the two this page offered:"
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "html": "Option"
-       },
-       {
-        "tag": "th",
-        "html": "What it means"
-       },
-       {
-        "tag": "th",
-        "html": "What it costs"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>(a) Make the launcher agree with the engine</b><br><span style=\"font-size:11px;color:#9aa3ad\">flip <code>defaultVal</code> to unset</span>"
-       },
-       {
-        "tag": "td",
-        "html": "You decide these three are <i>not</i> wanted by default. Launcher, shell and engine finally say the same thing."
-       },
-       {
-        "tag": "td",
-        "html": "<b style=\"color:#f0a0a0\">It does not heal a single install you already have.</b> <code>LoadEnvJson</code> seeds from <code>defaultVal</code> and then overwrites from the on-disk JSON (<code>mc2_launcher.cpp:805-836</code>), so every existing <code>launcher_env.json</code> keeps its <code>&quot;1&quot;</code>. The flip only affects a fresh install with no JSON. Fixing what is on your disk is a separate, manual step."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>(b) Make the engine agree with the launcher</b><br><span style=\"font-size:11px;color:#9aa3ad\">flip the ENGINE defaults ON</span>"
-       },
-       {
-        "tag": "td",
-        "html": "You decide these three <i>are</i> wanted &mdash; which is what you have actually been playing with all along. The launcher stops being a lie by becoming right."
-       },
-       {
-        "tag": "td",
-        "html": "A real default-behaviour change for anyone who is not you, and it needs the same eyes-on grading as any default flip. <b>This option was missing when the decision was put to you</b>, which made the choice look narrower than it is."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>(c) Keep the split, now that it is labelled</b>"
-       },
-       {
-        "tag": "td",
-        "html": "Treat the launcher as a deliberate preset. The rows now read <code>(engine OFF; launcher ON)</code> instead of claiming the engine default."
-       },
-       {
-        "tag": "td",
-        "html": "Cheapest and already true. But <code>AB-0</code> keeps not being a default frame, so every absolute judgement on this page needs the <code>MC2_LAUNCHER_ENV_JSON=0</code> caveat forever."
-       }
-      ]
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>Nothing has been flipped either way.</b> The labels were corrected so the dialog stops asserting a false default; the decision itself was left open, and it is genuinely yours. <span style=\"font-size:11px;color:#9aa3ad\">Until this page, <b>the decision existed only inside a commit message</b> &mdash; no page, dialog or README named it, so there was no route by which you could have known you were being asked. That is the part worth fixing regardless of which option you pick.</span>"
-    },
-    {
-     "type": "h3",
-     "html": "The rest of the queue"
-    },
-    {
-     "type": "what",
-     "html": "<b>This is the only part of this page that blocks work.</b> Everything below is waiting on a decision, not on effort. Each row has its evidence already gathered and linked; none of them needs another lane first. This queue used to live at &sect;20e, roughly 95% of the way down a 600&nbsp;KB page, which is a good way to make sure it never gets answered &mdash; it has been moved here and merged with the four decisions that were already at the top. <b>Decision 11 is the one that unblocks the most: saying yes to it closes four other open questions and is the precondition for re-capturing every stale picture on this page.</b>"
-    },
-    {
-     "type": "note",
-     "html": "<b>About the numbering.</b> Rows <b>1&ndash;11</b> keep the numbers they were given in &sect;20e so that every reference to &ldquo;decision 11&rdquo; elsewhere on this page and in the status docs still points at the same thing. <b>8 and 10 are missing on purpose</b> &mdash; both closed during the session and are listed as resolved at &sect;20e. Rows <b>A&ndash;C</b> are the decisions that were already at the top of this page before the queue was merged into it."
-    },
-    {
-     "type": "meta",
-     "attrs": " style=\"font-size:13px\"",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "#"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Decision"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "What you would be deciding"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Why it is yours / what moved"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>1</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Shoreline: DISPLACEMENT, FACETING, or the third thing?</b><br><span style=\"color:#f0d890\">still a one-word answer &mdash; but the question has changed since it was first written</span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Look at the mc2_17 waterline and say which you are seeing. <b>(a) DISPLACEMENT</b> &mdash; the edge is in the <i>wrong place</i>, cutting across land or sea. <b>(b) FACETING</b> &mdash; the edge is in the <i>right place</i> but built from visible straight risers instead of a curve. <b>(c) A GLOW TRACING THE TILE GRID</b> &mdash; the edge itself is fine, but something bright is drawn along it in steps, worst at night. <br><b>You can answer (a) vs (b) from the two plots in &sect;20a without launching anything:</b> they draw the stock waterline against the 128&nbsp;wu tile lattice for both maps. On <b>mc2_17</b> the stock line is a smooth sinuous curve that crosses tile boundaries freely; on <b>mc2_10</b> it is a right-angle staircase locked to the lattice. If what you see on mc2_17 looks like the mc2_10 plot, that is displacement and the offline data is wrong about the map. Caveat stated plainly: <b>those are offline contour plots of the shipping heightfield, not rendered frames</b> &mdash; no rendered engine frame of mc2_17 water exists anywhere on disk."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Two corrections since this row was written, and the second one is a live lead.</b><br><b>(1) The arithmetic that used to appear here is withdrawn.</b> This row previously said &ldquo;the arithmetic says (b): a 128&nbsp;wu tile projects to ~147&nbsp;px at the intro camera and you measured risers of 138&ndash;148&nbsp;px&rdquo;. That px pair has <b>no derivation anywhere in the repo</b> &mdash; no script, no measurement JSON, no status doc &mdash; and an identical &ldquo;137&ndash;148px&rdquo; string does exist, in <code>tools/visual_verify/regions/mc2_10_saved_204523.json</code>, describing <b>mc2_10 at a top-down pose</b>. It was most likely re-attributed to mc2_17. A number that may belong to the other map must not be allowed to pick your answer, so it has been removed rather than repeated.<br><b>(2) A default-ON candidate cause that all six shoreline lanes missed.</b> <code>MC2_TERRAIN_SHORELINE</code> has <b>three readers and they disagree</b>: <code>gos_terrain_lod_chunk.cpp:2659</code> and <code>mclib/terrain.cpp:1120</code> both read <code>!(v &amp;&amp; v[0]=='0')</code> &rarr; default <b>ON</b>, while <code>gos_TerrainLodChunk_IsShorelineMaskActive()</code> at <code>gos_terrain_lod_chunk.cpp:3903</code> reads <code>(v &amp;&amp; v[0] &amp;&amp; v[0]!='0')</code> &rarr; default <b>OFF</b>. That third reader is the one that suppresses the legacy screen-space <code>runShoreline()</code> pass (<code>gos_postprocess.cpp:3404</code>). Because it is false on an unset environment, <b>the suppression never fires and the legacy glow runs on every stock frame with water</b>, alongside the V3 band it was supposed to replace. The engine&rsquo;s own comment at <code>:2659</code> says that legacy pass &ldquo;traced the raw tile-quantized water-mesh edge and amplified the staircase at night&rdquo;. Chain re-verified end to end for this page. If your answer is (c), that is where the fix is, and it is a one-line change."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "2"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Runway colour: authorise a THIRD approach?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Flat lighting is measured as unable to close the gap &mdash; the runway is <b>bit-identical across all four strength arms</b>. What is left is an <b>albedo</b> change, the class you rejected twice as &ldquo;WAY worse&rdquo;. The proposal would be a <b>narrower, concrete-only</b> albedo arm. <b>Yes, no, or close the item.</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Only you can say whether a third attempt at a twice-rejected class of change is worth a lane, or whether the runway gap is acceptable and this closes. <b>Unchanged by the day&rsquo;s work</b> &mdash; but note that <code>886dd319</code>&rsquo;s widened art guard now <i>protects</i> cement-alpha runway art from repaint, so the baseline you would be judging against has shifted."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "5"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Promote or retire <code>v0.5.2-baseline-PROPOSED</code></b><br><span style='color:#9aa3ad'><br><span style=\"font-size:12px;color:#9aa3ad\">supersedes and absorbs the older duplicate that used to sit in the top section</span></span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "40 golden files, currently <b>untracked on disk, awaiting your decision</b>. Promote, retire, or leave."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The evidence against promoting has grown: <b>11 of 39</b> blessed regions are ones the next baseline <b>refused as run-to-run unstable</b> (noise floors up to 25.18%). <b style=\"color:#f0a0a0\">AND THE LANDMINE IS STILL ARMED.</b> Branch <code>claude/disk-guard-1</code> still carries commit <code>4ab0241f</code>, which <b>ADDS all 40 files</b>; it is <b>NOT merged</b>, and merging or squashing it re-tracks the set behind your back. It was dodged on 07-30 by <b>cherry-picking two commits off that branch by hand</b> &mdash; a manual dodge, not a fix. Worse: <b>the contract written in response to that near-miss does not check the thing it was created to check</b>. <code>check-golden-coverage.py</code> never calls git &mdash; it only reads directories on disk &mdash; so committing the 40 files leaves the suite at exactly <b>96/2</b>. <b>The rule is a comment, not a check.</b> Whatever you decide, that branch needs defusing. <b>Absorbed from the duplicate row this replaces:</b> it also <b>fails 32 of 39 regions</b> against the current build &mdash; real content drift from ~70 commits of night-lighting work, not noise &mdash; and GOLDEN-REBLESS-2 recommends against promotion. <b>Re-measured today:</b> 40 files, 28.1&nbsp;MiB, <b>zero tracked</b>, not gitignored. Four status docs now say retire."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "7"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Which install do you consider canonical?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Two ambiguities.</b> <b>(a)</b> Two on-disk trees are both named <code>0.4d-rc1</code> &mdash; one under <code>mc2-opengl/</code>, one under <code>mc2-opengl/releases/</code>, each with its own binary. <b>(b)</b> Which tree is <i>the</i> install you play and grade against."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>releases/</code> is user-gated, so no tool may pick. The duplicate name is worse than a missing one because <b>nothing errors</b>. <b style=\"color:#f0d890\">New and directly relevant to every screenshot you have graded:</b> the install at <code>A:/Games/MC2 OpenGL Remastered</code> has a binary dated <b>2026-07-05</b>, embeds <code>85aaaa4f57b1</code>, and <b>carries no deploy manifest at all</b>. It contains <b>none</b> of the last three weeks of work. Meanwhile four <code>mc2-opengl/mc2-win64-*</code> lanes were refreshed on 07-30 with <b>since-withdrawn</b> code. <b>Right now there is no install that represents the branch.</b>"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "9"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Re-cut v0.5.2 with beauty sidecars?</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The shipped release contains <b>zero</b> <code>.beauty</code> sidecars (&sect;20d). Gates now prevent it recurring, but <b>the release has not been re-cut</b>."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">This one got worse, and the contract row that covers it is green while it is broken.</b> The registered <code>beauty_sidecars</code> row runs only the two machine-independent halves and PASSES. The <b>unregistered</b> live audit <code>--all-lanes</code> exits non-zero: <b><code>0.4c</code> missing=10, <code>0.4d-rc1</code> missing=10, <code>0.5.1</code> missing=10</b>, plus drift on <code>0.4</code> &mdash; re-run and confirmed for this update. Among the missing are <code>mc2_17</code> and <code>mc2_24</code> <code>shoreline_mask.png</code>, and <b><code>MC2_WATER_SHORE_MASK</code> is default-ON and a complete no-op without them</b>. So three shipped trees have a default-ON water feature silently doing nothing."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "11"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0d890\">NEW &mdash; authorise ONE supervised session with isolated launches?</b><br><span style='color:#9aa3ad'>the single highest-value thing you can say yes to</span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "One session, you present, launches confined to an isolated desktop, with you able to stop it. <b>Four open questions close in that one session</b>, and none of them can close without it: <br>&bull; <b>List the buildings on <code>mc2_03</code></b> &mdash; settles which prop is producing the black quads and whether it is the animating class predicted. <br>&bull; <b>The shadow-caster A/B</b> &mdash; turn the full-registry caster feed off and see whether the black outlines go with it. This is a <b>one-frame yes/no</b>. <br>&bull; <b>The frozen-mover vehicle-vs-mech comparison</b> &mdash; grades <code>VEHICLE-LIGHTING-PATH-1</code> in both directions, <b>including the untested night direction</b>, using the <code>freeze_movers</code> verb that landed for exactly this. <br>&bull; <b>A sun-altitude sweep</b> &mdash; grades the terrain ambient floor and its day gate across the whole range in one pass instead of one mission at a time."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Launches are now mechanically blocked</b> (a <code>PreToolUse</code> hook), because prompt-level rules were violated repeatedly and your cursor was stolen five times. The block is correct and is not being worked around. <b>But it is now the binding constraint on the whole project:</b> every pixel-changing change on this page is UNVERIFIED for this reason and no amount of source reading will change that. <b>The one thing that would settle the largest number of open questions per unit of your time is this session.</b> If the answer is no, the honest consequence is that items 1, 2, 10 and most of &sect;20b stay open indefinitely."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>A</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Grade the pool-spill constant</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Compare <code>MC2_LIGHT_REALISM_POOL_SPILL</code> at <b>1.3 vs 2.2</b> across the blowout, continuity and cone poses."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "You approved 2.2 as &ldquo;variant B&rdquo; <i>and</i> complained about the blown-out pool. Those two facts conflict and only you can settle it. 1.3 keeps the cone and beacon wins whole and cuts blowout from 8.29% to 1.27%; if you accept it, the whole flip becomes a one-constant change with evidence already in hand."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>B</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Grade the fixture glow</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_STATIC_PROP_FIXTURE_GLOW=3</code>, mission <b>mc2_23</b>, at <b>ground level over the runway</b>. Do those read as runway lights?"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "It must be mc2_23, not mc2_10 &mdash; <b>mc2_10 has zero runway lights authored</b>, which is what five earlier lanes were unknowingly grading against. mc2_23 has 112. If they read correctly, this gate should flip default-ON."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>C</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Tag, push, upload</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The v0.5.2 cut."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Nothing in this session was ever pushed. All commits are local to <code>claude/nifty-mendeleev</code>."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "html": "<b>3&middot;4&middot;6</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>Three housekeeping decisions, folded into one row</b>"
-       },
-       {
-        "tag": "td",
-        "html": "<b>(3)</b> Two capture manifests are <b>zero bytes</b> &mdash; <code>scratch/mc203air/21_late3600_rep/</code> and <code>&hellip;/30_texhandoff/</code>. Delete them or recapture. <b>(4)</b> <b>117</b> further manifests are stamped <code>UNVERIFIABLE-EXE-REPLACED</code> &mdash; the binary they measured has been rebuilt. Stamp them provenance-unknowable, or leave the row red. <b>(6)</b> The Recycle Bin holds <b>38.41&nbsp;GB across 143,630 files</b> on <code>A:</code> and a further <b>18.78&nbsp;GB</b> on <code>C:</code> &mdash; <b>57.19&nbsp;GB</b> total."
-       },
-       {
-        "tag": "td",
-        "html": "All three are irreversible-or-costly actions, which is why no agent will take them, and none of them changes a pixel. <b>They are why <code>capture_provenance</code> is the one correctly-red row on the board</b> (&sect;5.4). Answering (3) and (4) turns it green; answering (6) frees the largest reclaimable object on the disk."
-       }
-      ]
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>Re-measured for this update, not quoted.</b> Every number in the queue above was checked again against the tree and the disk today. Five moved or were wrong:<br>&bull; <b>Recycle Bin</b> &mdash; <code>A:</code> holds <b>38.41&nbsp;GB across 143,630 files</b>, which matches what this page already said. But <code>C:</code> holds a further <b>18.78&nbsp;GB</b> that was never counted: the real total is <b>57.19&nbsp;GB</b>. Free space today is A: 141.9&nbsp;GB, C: 61.2&nbsp;GB.<br>&bull; <b><code>v0.5.2-baseline-PROPOSED</code></b> &mdash; confirmed <b>40 files, 28.1&nbsp;MiB, zero of them tracked</b>, not gitignored, mtime 29 Jul. Its untracked state is a deliberate contract state, registered as <code>PENDING_SETS</code> in <code>scripts/check-golden-coverage.py</code>. Four separate status docs now recommend <b>retire, not promote</b>.<br>&bull; <b>The two zero-byte manifests</b> &mdash; still zero bytes. They are at <code>scratch/mc203air/21_late3600_rep/</code> and <code>scratch/mc203air/30_texhandoff/</code> (not under <code>release_assets/</code>, if you go looking). Both are pinned as class <b>IRREPARABLE</b> in <code>scripts/provenance-known-failures.json</code>: truncated by the ENOSPC incident, bytes unrecoverable. Separately there are <b>three</b> zero-byte <code>.game.log</code> files under <code>release_assets/</code> from a different, already-fixed cause.<br>&bull; <b>The <code>GOLDEN-UNATTRIBUTABLE</code> stamp &mdash; a correction.</b> Three goldens carry it, but only <b>two are tracked</b> (<code>baseline-5ef261f4</code>, <code>v0.5.1-baseline</code>); the third is the untracked PROPOSED set above. The stamp is emitted at check time by <code>scripts/check-capture-provenance.py</code> and is written into no file. All three fail for the same reason: they name their exe by <b>path plus mtime only</b>, and <i>&ldquo;a path plus an mtime is not an identity: overwrite that file and this artifact becomes permanently unattributable.&rdquo;</i><br>&bull; <b>Decision 11 has machinery now, and it is a single point of failure.</b> <code>scripts/smoke_lib/isolation.py</code> exists (32&nbsp;KB) and is wired into <code>smoke_lib/nofocus.py</code>. It does not ask the engine to behave &mdash; it puts the process on a private Windows station and desktop so <code>ClipCursor</code>, <code>SetCursorPos</code> and <code>SendInput</code> return access-denied, and it <b>fails closed</b>: if isolation cannot be established the launch aborts, with no fallback to your desktop. <b>But it is UNTRACKED in git and has never been proven in a live run</b> &mdash; a clean checkout loses it, and the hook stays armed until it is proven. Committing it is the cheapest possible precondition for decision 11."
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#f0d890\">DEFAULT-LAUNCH REALITY &mdash; what you actually get if you launch and change nothing.</b> The single most important question about every fix below is whether a player still sees the defect on a default launch. Read this as the honest answer. <b>Active by default, so the fix is really in your hands:</b> <code>MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN</code> and <code>MC2_SHADOW_GUARD_CLAMPED_SUN</code> (terrain sun shadows restored &mdash; the shadow buffer was 70% saturated white before), <code>MC2_STATIC_PROP_IBL_NIGHT_SCALE</code> (night white-clipping on building faces cut 19&times;), <code>MC2_STATIC_PROP_FIXTURE_LIGHTS</code>, and <code>MC2_LIGHT_GRID</code> (perf). The <b>mc2_01 load crash is also fixed unconditionally</b> &mdash; it is not behind any gate. <b>Default-OFF, so you WILL still see the defect:</b> the runway/apron tone mismatch (<code>MC2_PAVED_OVERLAY_CLASS</code>), dull runway and beacon fixtures (<code>MC2_STATIC_PROP_FIXTURE_GLOW</code>), flat building faces (<code>MC2_PROP_BASE_LIGHT_DIR</code>), absent contact shadows (<code>MC2_SSAO</code>, <code>MC2_PROP_SHADOW_RECEIVE</code>), and the night light look (<code>MC2_LIGHT_REALISM</code>). <b>Two of those are default-OFF deliberately and must stay that way</b>: <code>MC2_CONE_SPILL_COUPLING</code> is regressive (it deletes 7 of 9 night light pools) and <code>MC2_SSAO</code> is latent-broken rather than merely unused (no blur pass exists). In short: <b>the crash and the shadow and night-clipping fixes ship; most of the look work does not, and is waiting on the gradings above.</b>"
-    },
-    {
-     "type": "note",
-     "html": "<b>Staleness, stated plainly.</b> Every image on this page is <b>one executable old</b> &mdash; they remain REVIEW-ALLPOSES-1's clean-fingerprint set. No lane since has been able to re-capture: the shared worktree was held dirty by parallel lanes, a foreign smoke lease was live on the deploy path, and the disk is too tight to spend on a capture pass. <b>The prose and gate defaults below are current; the pictures are not.</b> Re-capture is the first thing to do once the tree settles and the disk is freed."
+     "html": "<b>Three things, all already graded or decided &mdash; no images to re-review here.</b> (1) The runway/apron alpha-atlas fix (<code>MC2_CEMENT_ALPHA_ATLAS</code>) is now <b>default-ON</b> in the engine (<code>99e9c46d4</code>) &mdash; you graded the result &ldquo;much better overall&rdquo; in \u00a713d, so those before/afters are retired. (2) Installs are consolidated per your note (&ldquo;just delete all the old installs, and pick one&rdquo;) &mdash; the one install is <code>A:/Games/MC2-OpenGL-REVIEWFIX-2026-08-01</code>, and every capture on this page is from it, fingerprint <code>99e9c46d43a3</code>, shipped defaults, no gate overrides. (3) <code>MC2_WATER_SKYTINT</code>: per your &ldquo;just turn it off&rdquo; it is unset/off. Everything you graded before this page is in git history (<code>release_assets_src/0.5.2/review_pack.json</code> before commit &mdash; see <code>git log</code>); nothing old is repeated below."
     }
    ]
   },
   {
-   "id": "fix_verification_0801",
-   "anchor": "#fix_verification_0801",
-   "heading": "13. 2026-08-01 fix verification &mdash; supervised A/B run (agent-executed, user-authorized)",
+   "id": "open_items_0802",
+   "heading": "2. Open items from your 2026-08-02 evening feedback",
    "blocks": [
     {
      "type": "what",
-     "html": "Full AB-0&hellip;AB-6 queue executed 2026-08-01 against the REVIEWFIX install (exe <code>de670d27331f</code>, kit A:/Games/MC2-OpenGL-REVIEWFIX-2026-08-01), via the deterministic engine bookmark-capture harness (<code>scripts/run_visual_capture.py</code>, fixed timestep, seed 0xC0FFEE, FBO readback, 3840x2160). Every arm reproduces its AB-*.bat gate set through <code>--env-declare</code> on a scrubbed environment; all 16 launches ran sequentially, all captures byte-deterministic (engine <code>deterministic=true</code> on every pose). Full capture tree + manifests: <code>A:/Games/mc2-main/scratch/ab0801/</code>."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Binary"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>de670d27331f</code> (clean, exe-embedded fingerprint, verified in every capture manifest)"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Verdict"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Shore PASS &middot; cement/runway PASS (numbers match prediction) &middot; cone pools PASS &middot; light realism PASS &middot; VIS-SEM predicate VERIFIED LIVE &middot; OBJBATCHER freshness counters all 0.</b>"
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "h3",
-     "html": "13a. Shoreline staircase (queue #1, MC2_WATER_SHORE_MODE)"
-    },
-    {
-     "type": "note",
-     "html": "Hash A/B on mc2_17 <code>shelf_center/southwest/east_wide</code>: AB-1 (mode 1, the mask feather) reproduces the FINAL-2026-07-31 exe's default frames <b>bit-exactly</b> (sha256 match at all 3 poses) &mdash; mode 1 IS the shipped staircase look. The new default (mode 2) changes 2 of 3 poses (0.96% px at east, 11.8% at southwest) and the sawtooth edge is gone: the water/land transition follows the shelf smoothly. Surprise worth recording: AB-2 (mode 0, legacy ramp) is <b>byte-identical to mode 2</b> at all three poses &mdash; at K=7wu the per-fragment height term never bites below the legacy ramp here; the staircase cure at these poses is the retirement of the mask feather. Offline predictor agreement (scratch/user0801/shore_predict): mode 1 = 41.0% of contour in runs &gt;6wu (the staircase), mode 0 = 12.7%, mode 2 = 9.7% (best)."
+     "html": "<b>Your six new complaints from the 2026-08-02 evening export, verbatim, each with the matching re-capture from the new exhaustive sweep (current defaults, new exe).</b> These are the work queue; none are fixed yet."
     },
     {
      "type": "pl",
-     "html": "mc2_17 shelf_east_wide crop &mdash; mode 1 sawtooth (BEFORE) vs default mode 2 (AFTER)"
+     "html": "<b>Open item 1: Road on concrete should be darker (mc2_10 runway)</b> &mdash; status: <b>OPEN</b><br><i>Your words:</i> &ldquo;much better overall. the road on the concrete should be darker, though. like the runway/road color on mc2_01.&rdquo;"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (legacy arm)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/01_shore_east_BEFORE_mode1.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/01_shore_east_AFTER_default.png"
+       "caption": "mc2_10 runway area, new capture (saved_204753) \u2014 road-on-concrete tone for reference",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204753.png"
       }
      ]
     },
     {
      "type": "pl",
-     "html": "mc2_17 shelf_southwest_wide crop"
+     "html": "<b>Open item 2: Missing runway tile (mc2_10, your region crop)</b> &mdash; status: <b>OPEN</b><br><i>Your words:</i> &ldquo;still missing this runway tile&rdquo;"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (legacy arm)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/02_shore_sw_BEFORE_mode1.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/02_shore_sw_AFTER_default.png"
-      }
-     ]
-    },
-    {
-     "type": "h3",
-     "html": "13b. Concrete tint / runway blend (queue #2, MC2_OVERLAY_CEMENT_ADOPT)"
-    },
-    {
-     "type": "note",
-     "html": "<code>measure_tile_boundary.py</code> at the previously measured mc2_24 <code>base_wide</code> boundaries: AB-0 slab/interior luma ratio <b>1.010 / 1.015</b> (tile break erased, control 1.003); AB-3 (adopt OFF) <b>0.834 / 0.878</b> (break restored, &Delta;luma &minus;23.7 / &minus;16.6). Prediction was ~1.0 vs ~0.82/0.80 &mdash; match. mc2_10 <code>runway_wide</code> per-channel ratio AB-0/AB-3 over the runway band: <b>1.272 / 1.267 / 1.306</b> vs predicted 1.22 / 1.25 / 1.32 &mdash; match. Controls (<code>control_no_pavement</code>) byte-identical between arms on both missions."
-    },
-    {
-     "type": "pl",
-     "html": "mc2_24 apron boundary crop"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (legacy arm)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/03_cement_mc2_24_BEFORE_adopt0.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/04_cement_mc2_24_AFTER_default.png"
+       "caption": "mc2_10 runway, new capture \u2014 the tile you boxed on 16_runway_wide is still the open gap",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204753.png"
       }
      ]
     },
     {
      "type": "pl",
-     "html": "mc2_10 runway band crop"
+     "html": "<b>Open item 3: Road miscolored on dirt (mc2_01 saved_205644)</b> &mdash; status: <b>OPEN</b><br><i>Your words:</i> &ldquo;the road is still miscolored when it is on dirt instead of concrete&rdquo;"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (legacy arm)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/05_runway_mc2_10_BEFORE_adopt0.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/06_runway_mc2_10_AFTER_default.png"
+       "caption": "Your boxed region, re-cropped from the NEW mc2_01 saved_205644 capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/crops/mc2_01_205644_dirtroad.png"
       }
      ]
     },
     {
-     "type": "h3",
-     "html": "13c. Cone pools + light realism (queue items, MC2_CONE_POOL_POLICY / MC2_LIGHT_REALISM)"
-    },
-    {
-     "type": "note",
-     "html": "mc2_23 (night, the mission that actually has the fixtures): CONE_POOL_POLICY=0 moves 27% of pixels at <code>beacons_ground/mid</code>, 1.3&ndash;2.0% at the overviews, 0.000% at <code>runway_ground/mid</code>. Visually (beacons_mid): policy 0 detaches a large soft pool from the searchlight foot and spills it across the road; policy 1 (default) keeps the pool anchored under the beam. mc2_10 building-face poses are pool-free (byte-identical between arms &mdash; expected, they frame walls). At the ghost-wedge pose <code>saved_212019</code> the two policies are also byte-identical &mdash; no pool in that framing. LIGHT_REALISM=0 (AB-5) vs default on mc2_10 night: 21&ndash;46% of pixels move; legacy is a tight hard-edged bright patch, default a broad soft falloff across the lit plane."
-    },
-    {
-     "type": "pl",
-     "html": "mc2_23 beacons_mid &mdash; policy 0 (BEFORE) vs default policy 1 (AFTER)"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (legacy arm)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/07_cones_mc2_23_BEFORE_policy0.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/08_cones_mc2_23_AFTER_default.png"
+       "caption": "Full frame \u2014 mc2_01 saved_205644, new capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_goldenpose__saved_205644.png"
       }
      ]
     },
     {
      "type": "pl",
-     "html": "mc2_10 night lit plane crop &mdash; realism 0 (BEFORE) vs default (AFTER)"
+     "html": "<b>Open item 4: Background beyond the map too bright (mc2_05 saved_205843)</b> &mdash; status: <b>OPEN</b><br><i>Your words:</i> &ldquo;this looks much better overall. only issues - the 'background' beyond the map is way too bright&rdquo;"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (legacy arm)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/09_lightrealism_BEFORE_realism0.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/10_lightrealism_AFTER_default.png"
-      }
-     ]
-    },
-    {
-     "type": "h3",
-     "html": "13d. AB-6 visibility-semantics trace + OBJBATCHER counters"
-    },
-    {
-     "type": "note",
-     "html": "<b>MC2_VIS_SEMANTICS is present and live in this binary</b> &mdash; the &sect;0a &ldquo;in no deployed exe&rdquo; caveat is now closed. Trace run at the 07 ghost-wedge pose (<code>saved_212019</code>) + the 08 compound close poses (mc2_10, 2358 <code>[VIS-SEM v1]</code> samples): hidden enemies (meshAlpha 0, sensorLevel 0; 14 mechs + 14 vehicles) show <b>emitsLight=0 and meshDrawn=0 on every sample</b> &mdash; the position-leak predicate is fixed (shipped-parked behaviour emitted for all of them). A shutdown enemy mech (status 5, alpha 255) draws but does not emit; fading contacts (partial alpha) draw and emit. <b>Zero samples emit while undrawn</b>, so any residual wedge-with-no-emitter sighting at these poses is a render-recipe matter (the ghost-cone-recipe-skip fix), not a visibility-semantics leak. Log: <code>scratch/ab0801/AB6_mc2_10_sightings/mc2_10_capture.log</code>. <i>Note: the H1&ndash;H6 hypothesis labels referenced by the run request were not found anywhere in-tree; the per-actor states above are reported raw instead.</i><br><br><b>OBJBATCHER freshness (standing ask, HANDOFF &sect;6.4):</b> defaults + MC2_DIAG_VERBOSE=1, mc2_10, 6029 frames: <code>stale_light_rows_regathered=0 stale_light_rows_unresolvable=0 light_rows_out_of_range=0</code> &mdash; all clean (fallback_rate 0.0007, reg census trustworthy=yes)."
-    },
-    {
-     "type": "h3",
-     "html": "13d. REOPENED runway colour + missing swaths &mdash; CLOSED by MC2_CEMENT_ALPHA_ATLAS default-ON (RUNWAY-CLOSE-1, 2026-08-02, exe <code>99e9c46d43a3</code>)"
-    },
-    {
-     "type": "note",
-     "html": "Your re-grade: <i>&ldquo;there is no difference here to me. also missing the rest of the runway&rdquo;</i>. Root cause of both: 87% of mc2_10's transition pavement tiles (278/320) bake <b>no cement word</b> &mdash; the runway class is cement-ALPHA art with no solid-cement corner, so the engine dropped it (bare dirt / pale word==0 strip). The fix admits those tiles' own alpha art cells into the cement atlas (<code>MC2_CEMENT_ALPHA_ATLAS</code>, now <b>default ON</b>): the missing swaths draw, and the runway lands in the SAME lighting family as the apron. Measured at your <code>saved_204907</code> bookmark: rescued swath pixels <b>15 &rarr; 6506</b>, their luma <b>32.4 (bare dirt) &rarr; 54.7</b> &mdash; matching the on-concrete runway's measured 65.0&ndash;65.7, i.e. <b>the colour it is on top of concrete (dark)</b>, which is your stated criterion. Control pose (no pavement) byte-identical. Kill-switch: <code>MC2_CEMENT_ALPHA_ATLAS=0</code>. Also measured and REJECTED: the flat-light exemption arm (<code>MC2_OVERLAY_ART_FLATLIGHT=0</code>) brightens ALL paved art &times;1.33 away from the apron (apron-relative ratio 0.628 &rarr; 0.402 worse) and would be a &times;6 road glow on mc2_05 night &mdash; it stays off."
-    },
-    {
-     "type": "pl",
-     "html": "mc2_10 @ your bookmark saved_204907 &mdash; pale/broken runway (BEFORE) vs dark continuous asphalt (AFTER, new default)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (alpha-atlas OFF = old default)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/11_runway_204907_BEFORE_alpha0.png"
-      },
-      {
-       "caption": "AFTER (0.5.2 new default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/12_runway_204907_AFTER_default.png"
+       "caption": "mc2_05 saved_205843, new capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_goldenpose__saved_205843.png"
       }
      ]
     },
     {
      "type": "pl",
-     "html": "Full-res runway band crops, same pose"
+     "html": "<b>Open item 5: Stair stepping (mc2_10 saved_204523)</b> &mdash; status: <b>OPEN</b><br><i>Your words:</i> &ldquo;this stair stepping is ugly&rdquo;"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE crop &mdash; the pale strip + gaps",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/11_runway_204907_BEFORE_alpha0_crop.png"
-      },
+       "caption": "Your boxed region, re-cropped from the NEW mc2_10 saved_204523 capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/crops/mc2_10_204523_stairstep.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
       {
-       "caption": "AFTER crop &mdash; dark asphalt, markings, edge lights",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/12_runway_204907_AFTER_default_crop.png"
+       "caption": "Full frame \u2014 mc2_10 saved_204523, new capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204523.png"
       }
      ]
     },
     {
      "type": "pl",
-     "html": "Classification diag (DIAG=32768): red = solid cement, green = transition, CYAN = newly rescued own-alpha pavement; black = unclassified"
+     "html": "<b>Open item 6: Too-dark vehicles (mc2_10 saved_212019)</b> &mdash; status: <b>OPEN</b><br><i>Your words:</i> &ldquo;this still has too-dark vehicles&rdquo;"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE &mdash; runway unclassified (15 cyan px)",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/13_runway_204907_classdiag_BEFORE.png"
-      },
-      {
-       "caption": "AFTER &mdash; 6506 cyan px + 9.4k more green",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/14_runway_204907_classdiag_AFTER.png"
+       "caption": "Your boxed region (vehicles), re-cropped from the NEW mc2_10 saved_212019 capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/crops/mc2_10_212019_vehicles.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "runway_wide continuity pose (fog wash between the two frames is launch-phase cloud state, not the fix; rescued tiles 45.5 &rarr; 90.3 luma here)"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE",
-       "role": "BEFORE",
-       "src": "13_fix_verification_0801/15_runway_wide_BEFORE_alpha0.png"
-      },
-      {
-       "caption": "AFTER (new default)",
-       "role": "AFTER",
-       "src": "13_fix_verification_0801/16_runway_wide_AFTER_default.png"
+       "caption": "Full frame \u2014 mc2_10 saved_212019, new capture",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_212019.png"
       }
      ]
     }
    ]
   },
   {
-   "id": "bookmark_sweep_0802",
-   "heading": "14. 2026-08-02 bookmark sweep &mdash; every saved bookmark on current defaults",
+   "id": "gallery_gaea_peaks_01",
+   "heading": "3. Exhaustive bookmark gallery \u2014 gaea_peaks_01",
    "blocks": [
     {
      "type": "what",
-     "html": "<b>Every in-game camera bookmark you have ever saved, re-shot on the current everything-fixed defaults.</b> All 10 of your <i>Save Camera Bookmark</i> poses (2 on mc2_01/mc2_05, 8 on mc2_10), captured 2026-08-02 from the REVIEWFIX install (<code>de670d273</code>) with <b>no gate overrides</b> &mdash; this is exactly what a default launch renders today, at 3840&times;2160. One launch per mission, deterministic fixed-clock, all 10 present, none nondeterministic."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "html": "Binary"
-       },
-       {
-        "tag": "td",
-        "html": "<code>A:/Games/MC2-OpenGL-REVIEWFIX-2026-08-01/mc2.exe</code> &mdash; embedded fingerprint <code>de670d273</code>, clean"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "html": "Gates"
-       },
-       {
-        "tag": "td",
-        "html": "NONE set &mdash; shipped defaults only (ambient MC2_* scrubbed by the harness)"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "html": "Capture"
-       },
-       {
-        "tag": "td",
-        "html": "3840&times;2160, trigger frame 120, settle 30, fixed timestep, seed 0xC0FFEE; manifests in <code>scratch/user0802_sweep/</code>"
-       }
-      ]
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "saved_205644 &mdash; mc2_01"
+     "html": "<b>Every bookmark on gaea_peaks_01, current defaults, one launch, deterministic.</b> 6 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
@@ -814,686 +174,81 @@
      "pair": false,
      "items": [
       {
-       "caption": "mc2_01 / saved_205644 &mdash; 2026-08-02 current defaults",
+       "caption": "gaea_peaks_01 \u2014 gaea_peaks_01.json / highangle_wide",
        "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_01_saved_205644.png"
+       "src": "15_user0803_sweep/gaea_peaks_01/gaea_peaks_01_base__highangle_wide.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "saved_205843 &mdash; mc2_05"
-    },
-    {
      "type": "figures",
      "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "mc2_05 / saved_205843 &mdash; 2026-08-02 current defaults",
+       "caption": "gaea_peaks_01 \u2014 gaea_peaks_01.json / overview_center",
        "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_05_saved_205843.png"
+       "src": "15_user0803_sweep/gaea_peaks_01/gaea_peaks_01_base__overview_center.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "saved_204523 &mdash; mc2_10"
-    },
-    {
      "type": "figures",
      "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "mc2_10 / saved_204523 &mdash; 2026-08-02 current defaults",
+       "caption": "gaea_peaks_01 \u2014 gaea_peaks_01.json / ridge_lowangle",
        "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_204523.png"
+       "src": "15_user0803_sweep/gaea_peaks_01/gaea_peaks_01_base__ridge_lowangle.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "saved_204611 &mdash; mc2_10"
-    },
-    {
      "type": "figures",
      "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "mc2_10 / saved_204611 &mdash; 2026-08-02 current defaults",
+       "caption": "gaea_peaks_01 \u2014 gaea_peaks_01.json / sky_y135",
        "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_204611.png"
+       "src": "15_user0803_sweep/gaea_peaks_01/gaea_peaks_01_base__sky_y135.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "saved_204753 &mdash; mc2_10"
-    },
-    {
      "type": "figures",
      "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "mc2_10 / saved_204753 &mdash; 2026-08-02 current defaults",
+       "caption": "gaea_peaks_01 \u2014 gaea_peaks_01.json / sky_y225",
        "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_204753.png"
+       "src": "15_user0803_sweep/gaea_peaks_01/gaea_peaks_01_base__sky_y225.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "saved_204907 &mdash; mc2_10"
-    },
-    {
      "type": "figures",
      "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "mc2_10 / saved_204907 &mdash; 2026-08-02 current defaults",
+       "caption": "gaea_peaks_01 \u2014 gaea_peaks_01.json / sky_y45",
        "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_204907.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "saved_205952 &mdash; mc2_10"
-    },
-    {
-     "type": "figures",
-     "layout": "single",
-     "pair": false,
-     "items": [
-      {
-       "caption": "mc2_10 / saved_205952 &mdash; 2026-08-02 current defaults",
-       "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_205952.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "saved_212019 &mdash; mc2_10"
-    },
-    {
-     "type": "figures",
-     "layout": "single",
-     "pair": false,
-     "items": [
-      {
-       "caption": "mc2_10 / saved_212019 &mdash; 2026-08-02 current defaults",
-       "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_212019.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "saved_212140 &mdash; mc2_10"
-    },
-    {
-     "type": "figures",
-     "layout": "single",
-     "pair": false,
-     "items": [
-      {
-       "caption": "mc2_10 / saved_212140 &mdash; 2026-08-02 current defaults",
-       "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_212140.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "saved_212258 &mdash; mc2_10"
-    },
-    {
-     "type": "figures",
-     "layout": "single",
-     "pair": false,
-     "items": [
-      {
-       "caption": "mc2_10 / saved_212258 &mdash; 2026-08-02 current defaults",
-       "role": "SINGLE",
-       "src": "14_bookmark_sweep_0802/mc2_10_saved_212258.png"
+       "src": "15_user0803_sweep/gaea_peaks_01/gaea_peaks_01_base__sky_y45.png"
       }
      ]
     }
    ]
   },
   {
-   "id": "readfirst",
-   "heading": "7. The default-ON changes nobody has looked at",
-   "blocks": [
-    {
-     "type": "note",
-     "html": "<b>It is <b>eleven</b> now, not five.</b> This section was written when five changes shipped default-ON. Six more have landed since: the sidecar loader fix (<code>e1bdb7af6</code>); the <b>CPU Phong retirement</b> (<code>a75339bb0</code> &mdash; <code>MC2_CPU_PHONG_RETIRE</code>, reader <code>mclib/mapdata.cpp:2452-2453</code>, &sect;5.3); the <b>legacy shoreline foam suppression</b> (<code>6340e0523</code> &mdash; <code>MC2_SHORELINE_LEGACY_SUPPRESS</code>, reader <code>gos_terrain_lod_chunk.cpp:4056-4057</code>, default flipped OFF&rarr;ON by that commit); the <b>cursor-capture fix</b> (<code>ffebf5e87</code>, ungated, &sect;5.1); the <b>static-prop light-row freshness</b> fix (<code>480ceaafa</code>); and, landed today, the <b>mech light-row freshness</b> fix (<code>db221dcc2</code> &mdash; <code>MC2_MECH_LIGHT_FRESHNESS</code>). <b>The sentence that matters is unchanged: not one of the eleven has ever been seen running.</b> <b style=\"color:#a0f0a0\">All eleven are now in one binary for the first time</b> &mdash; <code>MC2-OpenGL-FINAL-2026-07-31</code>, built from <code>a896727f6e69</code>. The last three (<code>ffebf5e87</code>+<code>c5a42e808</code>, <code>480ceaafa</code>, <code>db221dcc2</code>) reached no install before it, which is why this page previously said even the one it named could not show them to you.<br><br><b>On the newest one, stated the way its own author stated it.</b> The mech path was reading a cached light-slot index and testing only the &ldquo;no slot&rdquo; sentinel &mdash; never the frame stamp &mdash; while those slots are rebased every frame, so an index minted on one frame could name another actor&rsquo;s row on the next and shade the mech with zeroes. Three sibling consumers already guarded against exactly this; the mech path was the last that did not. <b>But he was explicit that in steady state the gate is probably inert</b>, and that what he has is evidence the stale read <i>can</i> happen, not that it <i>does</i>. It ships ON because declining one mech one frame of GPU batching costs nothing (the CPU path draws it anyway with its own lighting), not because anyone has seen it fire. <b style=\"color:#f0a0a0\">And the shipped form of it was wrong &mdash; corrected in <code>a896727f6</code>, the commit this install was built from.</b> Declining did not fall back to the CPU path; in the only configuration where the decline could fire, the CPU path <b>does not draw</b>, so the mech vanished for that frame &mdash; a bug the same file had already fixed once, ~100 lines above, and recorded as observed. It also could not fire in steady state at all. The fix keeps the detection and drops the diversion. The counter survives, renamed and surfaced on an always-on per-mission <code>[MECHBATCHER v1] event=stale_light_row_summary</code> line, because in its old form it printed once per mech type and a count that grew afterwards was unreadable. <b>See &sect;4 for the full account.</b>"
-    },
-    {
-     "type": "h3",
-     "html": "The five default-ON changes nobody has looked at"
-    },
-    {
-     "type": "what",
-     "html": "These ship <b>active on a default launch</b> &mdash; no environment variable, no opt-in &mdash; and not one of them has been seen by a human or by a capture. They are also the direct answers to complaints you made in your own words, which is why they are worth your eyes before anything else on this page. Every default below was resolved from the C++ reader or the registry when this page was rendered, not copied from a commit message."
-    },
-    {
-     "type": "meta",
-     "attrs": " style=\"font-size:13px\"",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Change"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "What you would be looking for"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Gate &amp; default"
-       },
-       {
-        "tag": "th",
-        "attrs": " style=\"text-align:left\"",
-        "html": "Picture?"
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Vehicle light gather</b><br><code>5c04048c</code> <code>ccb713ae</code>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Your complaint 3 &mdash; <i>&ldquo;that is just wrong&hellip; it is the lighting path&rdquo;</i>. Ground vehicles were the <b>only</b> object class that never filled in its lighting data before drawing, so the shader took a &ldquo;no lights here&rdquo; shortcut and drew them at full raw texture brightness &mdash; completely unlit. They now populate a per-object light row like everything else. <b>Direction matters and it cuts both ways: brighter in daylight, noticeably DARKER at night.</b> The night direction is the one most likely to read as a regression, so look at <b>vehicles at night beside mechs</b> first."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_VEHICLE_LIT_PATH</code><br><b>ON</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">NO</b> &mdash; &sect;11 is the pre-fix arc and its verdict is NOT FIXED. The two A/B crops in &sect;20a are <i>withdrawn</i>: they differ because the scene moved, not because the gate did anything."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Vehicle ambient floor + clamp</b><br><code>e3310409</code><br><b style=\"color:#f0d890\">NEW &mdash; landed after this page was last built</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The follow-on to the row above: vehicles get <code>mech.vert</code>&rsquo;s ambient floor (<code>max(base_light, 0.35)</code>) and its 0..1 clamp, so a truck and a mech standing side by side finally compute the <i>same</i> brightness formula from the same data. Look at <b>vehicles in shadow or facing away from a light</b> &mdash; still solid black silhouettes?"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_VEHICLE_AMBIENT_FLOOR</code><br><b>ON</b><br><span style=\"color:#9aa3ad\">reader <code>mclib/txmmgr.cpp:2474</code></span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">NO</b> &mdash; nothing on disk, and no capture matrix has ever been written for it. Landed after every picture in this pack."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Concrete adopt &mdash; and its partial withdrawal</b><br><code>a8ea9be5</code> (merge)"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Your complaint 1 &mdash; <i>&ldquo;the transition tiles should just use the same concrete texture&rdquo;</i>. The adopt itself is ON and predates this merge. <b>Read the direction carefully: what this merge changes versus the previous tip is mostly a REVERT</b> &mdash; it puts <code>MC2_PAVED_OVERLAY_CLASS</code> back to OFF. It also adds a half-texel atlas inset (a wrong-coloured fringe ran along every tile border) and widens the art guard from 9 overlay ids to all 17. Look at the <b>edge where apron meets runway</b>, and at <b>dirt roads and bridge decks on a cement base</b>."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_OVERLAY_CEMENT_ADOPT</code><br><b>ON</b><br><span style=\"color:#f0a0a0\">see the withdrawal note above &mdash; no install has this</span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Partly &mdash; &sect;12 (25 Jul) and &sect;19 (28 Jul) are both <b>older than this commit</b> (30 Jul), so neither can show it."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Runway art guard widened</b><br><code>886dd319</code>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "The guard that stops the concrete repaint eating baked runway markings. <code>TileIsRoadArt()</code> replaced a narrow <code>&amp;Overlays</code>-id test and now also catches art painted as cement-<i>alpha</i> with no overlay id at all &mdash; which is how mc2_10&rsquo;s roads and airbase runway were still being repainted, measured at <b>+46.8&nbsp;L over 23% of the runway frame</b>. Look for <b>runway centreline stripes and numbers washed out or repainted</b>."
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "no separate gate &mdash; rides the adopt path inside <code>if (OverlayCementAdoptEnabled() &amp;&amp; Terrain::mapData)</code><br><b>ON</b>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">NO</b> &mdash; nothing named for the art guard at a matching date. No daylight mc2_10 runway pose is documented for it either."
-       }
-      ],
-      [
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>Terrain ambient floor v2</b><br><code>ea7ef347</code> (merge)"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>The biggest default pixel change of the whole session.</b> Albedo-scaled ambient floor at 0.35 on terrain that is not flat-lit. Daylight ground away from the concrete pads was reading near-black and now gets a lift; the pads deliberately do not move, so the pad-vs-dirt gap narrows. Look at <b>shaded ground in daylight</b> &mdash; too flat? too milky? about right?"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_TERRAIN_AMBIENT_FLOOR</code><br><b>ON</b> (0.35)<br><span style=\"color:#9aa3ad\">plus a <b>day gate</b>: exactly 0.0 on mc2_05/10/19/21/23, 1.0 on mc2_01/03/24</span>"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">NO.</b> Pick a <b>day</b> mission &mdash; on the five night missions it is byte-identical, so grading it there proves nothing. The nearest on-disk set (<code>scratch/terraindark1/</code>) is the <b>rejected predecessor</b>: its deployed shader has no <code>u_terrainAmbientDayGate</code> at all."
-       }
-      ]
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>Why &ldquo;unverified&rdquo; is the honest word and not an excuse.</b> Two of these five are pushing in opposite directions on the same pixels &mdash; the terrain ambient floor lifts shadowed ground, the concrete retraction takes a lighting change back off &mdash; and they partly cancel. Nobody can say from source reading which one wins on your screen. That is not a gap in the reasoning; it is the definition of a thing that needs an eye on it."
-    }
-   ]
-  },
-  {
-   "id": "gates",
-   "anchor": "#gates",
-   "heading": "8. Gate inventory &mdash; every gate this session added or changed",
+   "id": "gallery_mc2_01",
+   "heading": "4. Exhaustive bookmark gallery \u2014 mc2_01",
    "blocks": [
     {
      "type": "what",
-     "html": "<b>REBUILT 2026-07-25 (lane AUDIT-TRUTH-1).</b> Every default in this table was re-read from the <b>C++ reader source</b> on branch <code>claude/nifty-mendeleev</code>. The previous version of this table was <b>wrong in the dangerous direction</b>: it listed <code>MC2_LIGHT_MOVER_VIS_GATE</code> and <code>MC2_LIGHT_CONE_VIS_GATE</code> as default-<b>ON</b> when commit <code>89f0ed4f</code> had <b>parked them default-OFF</b>. Do not grade this release against any status doc &mdash; docs and source disagreed repeatedly this session, including on which light-realism variant ships. Full per-gate registry / docs / smoke-allowlist state: <code>.claude/SESSION-GATE-INVENTORY-2026-07-24.md</code>."
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">&#9888; Read this before the table.</b> A gate that is default-OFF is <b>not delivered</b> &mdash; you will not see its effect by launching the game normally. Most of this session's work sits behind default-OFF gates. The &ldquo;Default&rdquo; column, not the &ldquo;What it fixes&rdquo; column, is what you actually have today."
-    },
-    {
-     "type": "h3",
-     "html": "0a. Gates that ship default-ON (what a normal launch actually executes)"
-    },
-    {
-     "type": "gate_table",
-     "headers": [
-      "Gate",
-      "What it does",
-      "Default (from source)",
-      "Status"
-     ],
-     "default_col": 2,
-     "rows": [
-      {
-       "gate": "MC2_VIS_SEMANTICS",
-       "cells": [
-        "<code>MC2_VIS_SEMANTICS</code>",
-        "Rewritten mover/cone light-emission visibility predicate (successor to the two parked VIS gates)",
-        "<b>UNVERIFIED.</b> Default-ON, source-only, zero captures, no status doc. A binary string-grep of every deployed exe finds it in <b>none of them</b> &mdash; the post-commit rebuild failed to compile and the old binary was redeployed. <b>Needs a user decision and an actual build.</b>"
-       ]
-      },
-      {
-       "gate": "MC2_LETTERBOX_OPAQUE",
-       "cells": [
-        "<code>MC2_LETTERBOX_OPAQUE</code>",
-        "Letterbox bars stay opaque black through the cinematic swoop-in",
-        "Likely yes (cosmetic). Unregistered, undocumented, <b>not smoke-allowlisted</b>."
-       ]
-      },
-      {
-       "gate": "MC2_CEMENT_MISSION_LIGHT",
-       "cells": [
-        "<code>MC2_CEMENT_MISSION_LIGHT</code>",
-        "Killswitch-only: cement obeys mission light at night (cures bright night concrete)",
-        "<b>Genuinely done.</b> Unset = active; all five shader multiply sites intact."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_CULL_RADIUS",
-       "cells": [
-        "<code>MC2_LIGHT_CULL_RADIUS</code>",
-        "Mover lights survive frame-exit (pre-cull freshness path)",
-        "<b>Genuinely done</b>, structurally sound. Never A/B&rsquo;d live at the failing condition."
-       ]
-      },
-      {
-       "gate": "MC2_SHADOW_ALT_SCALE",
-       "cells": [
-        "<code>MC2_SHADOW_ALT_SCALE</code>",
-        "Shadow sun-state calibration &mdash; crisp day shadows",
-        "<b>Genuinely done.</b> Verified at the reported day pose on a clean build."
-       ]
-      },
-      {
-       "gate": "MC2_SHADOW_FADE_RAMP0",
-       "cells": [
-        "<code>MC2_SHADOW_FADE_RAMP0</code>",
-        "Companion ramp; preserves the night shadow dissolve",
-        "<b>Genuinely done</b> (ships with ALT_SCALE)."
-       ]
-      }
-     ],
-     "attrs": "class=\"meta\" style=\"width:100%;border-collapse:collapse\""
-    },
-    {
-     "type": "h3",
-     "html": "0c. Gates that are default-OFF &mdash; i.e. NOT delivered"
-    },
-    {
-     "type": "note",
-     "html": "Each of these has real, working code you cannot reach without setting an env var."
-    },
-    {
-     "type": "gate_table",
-     "headers": [
-      "Gate",
-      "What it fixes",
-      "Default",
-      "Promote?"
-     ],
-     "default_col": 2,
-     "rows": [
-      {
-       "gate": "MC2_NIGHT_FOG_DIM (+_SCALE)",
-       "cells": [
-        "<code>MC2_NIGHT_FOG_DIM (+_SCALE)</code>",
-        "Night-dims edge/OOB fog &mdash; the black-band root cause",
-        "<b>Strong candidate</b>, but <b>structurally cannot be flipped</b>: there is no night auto-detect, so forcing it on would dim day missions too."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_REALISM (+6 tunables)",
-       "cells": [
-        "<code>MC2_LIGHT_REALISM (+6 tunables)</code>",
-        "Feathered translucent cones + continuous light pools (&sect;10)",
-        "<b>Hold &mdash; your call.</b> &minus;34% avg FPS at the busy night pose (79.9&rarr;52.8). Constants are now your approved variant B. Unblocks ~6 reported items."
-       ]
-      },
-      {
-       "gate": "MC2_STATIC_PROP_NIGHT_TAGS",
-       "cells": [
-        "<code>MC2_STATIC_PROP_NIGHT_TAGS</code>",
-        "The only lever that makes runway/beacon lights actually emit",
-        "<b>Blast radius stated:</b> every night-tagged prop relights, building windows included. Needs a night A/B at airbase range <i>and</i> overview altitude first."
-       ]
-      },
-      {
-       "gate": "MC2_CEMENT_ALPHA_ATLAS",
-       "cells": [
-        "<code>MC2_CEMENT_ALPHA_ATLAS</code>",
-        "Structural cure for the transition-tile cement drop",
-        "The only lever that closes the <b>87% (mc2_10) / 34% (mc2_24)</b> transition-tile drop the always-on census prints every mission load."
-       ]
-      },
-      {
-       "gate": "MC2_CEMENT_TRANSITION_FALLBACK",
-       "cells": [
-        "<code>MC2_CEMENT_TRANSITION_FALLBACK</code>",
-        "Fills dropped road/transition cement tiles from a baked neighbour",
-        "Candidate &mdash; ~12% partial by its own admission."
-       ]
-      },
-      {
-       "gate": "MC2_CEMENT_LIT",
-       "cells": [
-        "<code>MC2_CEMENT_LIT</code>",
-        "0..1 share of terrain lighting that cement obeys (runway tone split)",
-        "<b>ON arm NEVER CAPTURED</b> &mdash; blocked when parallel lanes dirtied the worktree. No grade exists."
-       ]
-      },
-      {
-       "gate": "MC2_CEMENT_ATLAS_MAGENTA_KEY",
-       "cells": [
-        "<code>MC2_CEMENT_ATLAS_MAGENTA_KEY</code>",
-        "Colour-keys magenta out of solid cement atlas cells",
-        "Candidate."
-       ]
-      },
-      {
-       "gate": "MC2_RUNWAY_EDGE_BLEND",
-       "cells": [
-        "<code>MC2_RUNWAY_EDGE_BLEND</code>",
-        "<b>rev-2:</b> dilates concrete <i>outward</i> to soften the pad edge (&sect;2)",
-        "Candidate. <b>rev-1 (erosion) was rejected by you</b> (&ldquo;the answer is usually MORE concrete, not less&rdquo;); rev-2 grows the footprint instead."
-       ]
-      },
-      {
-       "gate": "MC2_RUNWAY_TONE_MATCH",
-       "cells": [
-        "<code>MC2_RUNWAY_TONE_MATCH</code>",
-        "Wide-gain cross-map cement tone normalisation",
-        "<b style=\"color:#f0a0a0\">REJECTED</b> &mdash; inherits the TONE_MATCH verdict, <i>and</i> census-proven inert on stock maps (<code>dark_cells=0</code>)."
-       ]
-      },
-      {
-       "gate": "MC2_MOVER_CONTACT_SHADOW",
-       "cells": [
-        "<code>MC2_MOVER_CONTACT_SHADOW</code>",
-        "Altitude-faded contact shadow under movers / helos (&sect;3)",
-        "Pick a strength (author suggests 0.7) or leave 0.0. Uniform 0 collapses the whole block, so nothing renders today. Helo arm <b>never observed at a pose containing a helo</b>."
-       ]
-      },
-      {
-       "gate": "MC2_PROP_SHADOW_RECEIVE",
-       "cells": [
-        "<code>MC2_PROP_SHADOW_RECEIVE</code>",
-        "Props receive the dynamic CSM cascade (&sect;8)",
-        "<b>Hold</b> &mdash; alpha-test lattice residual (fences shadow as solid slabs). Note its &ldquo;fix commit&rdquo; <code>1f7f81de</code> is <b>docs-only, zero source</b>."
-       ]
-      },
-      {
-       "gate": "MC2_SSAO",
-       "cells": [
-        "<code>MC2_SSAO</code>",
-        "Half-res SSAO grounding pass (&sect;8)",
-        "Hold &mdash; perf cost + broad visual drift."
-       ]
-      },
-      {
-       "gate": "MC2_FAR_BACKDROP_LIT",
-       "cells": [
-        "<code>MC2_FAR_BACKDROP_LIT</code>",
-        "Night-shades far/impostor prop LODs",
-        "Candidate."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_BILLBOARD_FACING",
-       "cells": [
-        "<code>MC2_LIGHT_BILLBOARD_FACING</code>",
-        "Camera-facing glow cards on the GPU batcher path",
-        "Hold &mdash; not user-verified."
-       ]
-      },
-      {
-       "gate": "MC2_LIGHT_POOL_MAX",
-       "cells": [
-        "<code>MC2_LIGHT_POOL_MAX</code>",
-        "Pool-light cap 64 &rarr; 256 (&sect;10)",
-        "<b>Already effective</b> &mdash; the 256 cap is compiled in unconditionally; the env var only overrides it."
-       ]
-      },
-      {
-       "gate": "MC2_LEGACY_LIT_MC2_FRAME",
-       "cells": [
-        "<code>MC2_LEGACY_LIT_MC2_FRAME</code>",
-        "MC2-frame feed for the legacy lit shader (&sect;11)",
-        "<b>Hold &mdash; hypothesis DISPROVEN</b> by its own follow-up. Not smoke-allowlisted, so any &ldquo;smoke-verified&rdquo; claim is void."
-       ]
-      },
-      {
-       "gate": "MC2_GV_LIGHTSOUT_CLEAR",
-       "cells": [
-        "<code>MC2_GV_LIGHTSOUT_CLEAR</code>",
-        "Clears the GV lightsOut latch on repair/recycle",
-        "Candidate &mdash; narrow latch fix, but its own commit message says it is <b>NOT the cause</b>. Not smoke-allowlisted."
-       ]
-      },
-      {
-       "gate": "MC2_WATER_SHORE_FEATHER",
-       "cells": [
-        "<code>MC2_WATER_SHORE_FEATHER</code>",
-        "<i>Superseded by MEANDER</i>",
-        "<b>No &mdash; leave OFF, superseded.</b>"
-       ]
-      },
-      {
-       "gate": "MC2_FORCE_ALL_VISIBLE",
-       "cells": [
-        "<code>MC2_FORCE_ALL_VISIBLE</code>",
-        "Marks all units visible for automated runs",
-        "<b style=\"color:#f0a0a0\">Harness hazard.</b> <code>scripts/smoke_lib/runner.py</code> now <code>setdefault</code>s this to 1 for <b>every</b> harness run, and the visibility predicates short-circuit under it &mdash; so future smoke captures are structurally incapable of showing the ghost-cone / invisible-mover bug class."
-       ]
-      },
-      {
-       "gate": "MC2_NO_CURSOR_GRAB",
-       "cells": [
-        "<code>MC2_NO_CURSOR_GRAB</code>",
-        "Suppresses OS cursor grab for automation",
-        "<b>Keep OFF for players</b> &mdash; harness-only, intentional."
-       ]
-      },
-      {
-       "gate": "MC2_TERRAIN_LOD_CHUNK_DIAG",
-       "cells": [
-        "<code>MC2_TERRAIN_LOD_CHUNK_DIAG</code>",
-        "Terrain frag-viz diagnostics (bitmask; new bit 524288 = pavement-gap census)",
-        "<b>Keep OFF &mdash; intentional registered diag</b>, zero-cost at 0. Do not remove."
-       ]
-      },
-      {
-       "gate": "MC2_ROAD_PBR",
-       "cells": [
-        "<code>MC2_ROAD_PBR</code>",
-        "&mdash;",
-        "Physically deleted (<code>b2b39d5b</code>, &minus;364 lines). Setting it does nothing. Docs still mention it."
-       ]
-      }
-     ],
-     "attrs": "class=\"meta\" style=\"width:100%;border-collapse:collapse\""
-    },
-    {
-     "type": "note",
-     "html": "<b>Hygiene flags.</b> (1) Twelve of these vars have <b>no RendererFeatureRegistry entry at all</b>, so any registry-derived status table cannot be reporting their real defaults. (2) Four gates are <b>not smoke-allowlisted</b> &mdash; <code>run_smoke.py</code> drops them from the child env, so any gate-ON smoke of them silently ran gate-OFF; treat &ldquo;verified via smoke&rdquo; claims for <code>MC2_LEGACY_LIT_MC2_FRAME</code> and <code>MC2_GV_LIGHTSOUT_CLEAR</code> as <b>invalid</b>. (3) Seven <code>MC2_LIGHT_REALISM_*</code> / <code>..._MEANDER_FREQ</code> tunables ship with no registry entry. (4) <code>MC2_LIGHT_REALISM</code> and <code>MC2_NIGHT_FOG_DIM</code> match <code>'1'</code> <b>exactly</b> &mdash; <code>=2</code>, <code>=on</code> or <code>=true</code> all read as OFF."
-    },
-    {
-     "type": "note",
-     "html": "<b>Environment contamination.</b> <code>HKCU:\\Environment</code> on this machine carries <code>MC2_STATIC_POP_SPLIT</code>, <code>MC2_GPU_CULL_STATIC_FROZEN_RECORDS</code> and <code>MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE</code>. These are <b>presence-keyed</b> (the value is irrelevant), so every launch &mdash; including a double-click from Explorer &mdash; inherits three experimental default-OFF paths forced ON. Clear them before grading anything on this page."
-    }
-   ]
-  },
-  {
-   "id": "02_runway",
-   "anchor": "#02_runway",
-   "heading": "2. Runway / cement edge blend",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "RE-DONE after user rejection. The pad/runway concrete now stays crisp out to its own edge, and the blend is made by <b>growing concrete OUTWARD</b> a full tile into the bare terrain with a soft outer margin \u00e2\u20ac\u201d more concrete, not less."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_RUNWAY_EDGE_BLEND</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "ON for maps with solid-cement runways; default OFF = byte-identical."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "RE-CAPTURED 2026-07-24 at the same mc2_01 day apron pose, 3840x2160 full-zoom, exe <code>3c6aad71</code>. Direction proven by a 3-way (OFF / rejected rev-1 / new rev-2) plus verify-by-exaggeration."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b>What changed and why.</b> Revision 1 (<code>bc29eea8</code>/<code>d6cc4d9e</code>) feathered cement OUT toward terrain <i>inside</i> the pad tile, which eroded the apron and read as a blurry dirty edge \u00e2\u20ac\u201d user verdict: &quot;gate on is worse; the answer is usually MORE concrete, not less&quot;. Revision 2 (<code>8e59de64</code>/<code>3c6aad71</code>) inverts the direction: solid cement is full and crisp again, and the neighbouring bare-terrain tile blends cement inward from the shared edge (alpha 1.0 at the seam, falling to 0 one tile out). Measured at the same pose: <b>rev-1 = 5958 px changed, mean luminance <span style=\"color:#c66\">-6.55</span>, only 25% brighter (concrete removed)</b>; <b>rev-2 = 536 px changed, mean luminance <span style=\"color:#6c6\">+2.75</span>, 69% brighter (concrete added)</b>. Verify-by-exaggeration (reach 1.5 tiles) scales cleanly to 2068 px / <b>+61.7</b> luminance / 99.7% brighter, confirming the block only ever adds concrete."
-    },
-    {
-     "type": "note",
-     "html": "<b>HONEST FLAG \u00e2\u20ac\u201d magnitude, not direction.</b> The direction is now correct and the erosion is gone, but on <i>this</i> map the shipped effect is close to imperceptible: mc2_01's apron perimeter is authored <i>transition</i> art (the deliberate crisp CEMENT-HARD-EDGE-1 outline, which this gate does not touch by design), so only <b>4 tiles</b> map-wide qualify as solid-cement-abutting-bare-terrain, and they sit distant and at a grazing angle. The BEFORE/AFTER pair below will look nearly identical at gameplay zoom \u00e2\u20ac\u201d that is the truth of it, not a capture failure. A map whose runways are authored as solid cement is still needed to grade the look properly. Reach is a one-constant taste knob (currently 1.0 tile)."
-    },
-    {
-     "type": "pl",
-     "html": "Runway / apron edge (mc2_01 day, full-zoom 1:1 crop)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (gate OFF)",
-       "role": "BEFORE",
-       "src": "02_runway/02a_runway_BEFORE.png"
-      },
-      {
-       "caption": "AFTER (gate ON \u00e2\u20ac\u201d rev-2 dilation)",
-       "role": "AFTER",
-       "src": "02_runway/02a_runway_AFTER.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "REJECTED revision 1 at the same rect (the erosion the user vetoed) \u00e2\u20ac\u201d kept for comparison"
+     "html": "<b>Every bookmark on mc2_01, current defaults, one launch, deterministic.</b> 47 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
@@ -1501,15 +256,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01_banding_slopes.json / interior_slope",
        "role": "SINGLE",
-       "src": "02_runway/02c_runway_REV1_REJECTED.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_banding_slopes__interior_slope.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "Mechanism reference \u00e2\u20ac\u201d exaggerated reach (1.5 tiles, over-grown on purpose)"
     },
     {
      "type": "figures",
@@ -1517,15 +268,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01_banding_slopes.json / interior_slope2",
        "role": "SINGLE",
-       "src": "02_runway/02d_runway_MECHANISM_EXAGGERATED.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_banding_slopes__interior_slope2.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "Revision-1 diff heatmap (stale \u00e2\u20ac\u201d kept only to show where rev-1 acted)"
     },
     {
      "type": "figures",
@@ -1533,278 +280,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01_banding_slopes.json / island_slope_low",
        "role": "SINGLE",
-       "src": "02_runway/02b_runway_DIFF.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_banding_slopes__island_slope_low.png"
       }
      ]
-    }
-   ]
-  },
-  {
-   "id": "03_mech_night_shadow",
-   "anchor": "#03_mech_night_shadow",
-   "heading": "3. Mech night contact shadow (inverted-shadow fix)",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "Carves the over-bright mover light-pool disc under a mech into a ring and adds a real darkened contact patch, so the mech no longer floodlights the ground it stands on at night."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_MOVER_CONTACT_SHADOW=0.7</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "ON at ~0.7; default 0.0 = byte-identical."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "RE-CAPTURED 2026-07-24 on <b>mc2_10</b> (the map the user asked for) at a purpose-composed close night pose over the player lance start, 3840x2160 full-zoom, exe <code>3c6aad71</code>. Supersedes the earlier mc2_05 distant-mech crops."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b>Why mc2_05 was used before, and what changed.</b> The original capture fell back to mc2_05 because every saved mc2_10 night bookmark (212019, 205952, 204907, 204611, 212140) is a distant OVERVIEW \u00e2\u20ac\u201d 212019 frames only guard towers, and none put a mech at readable size. Rather than settle for that again, this recapture reads the player lance start straight out of <code>data/missions/mc2_10.fit</code> (<code>CommanderID=0</code>, PositionX/Y = -4842.7, -5525.3) and composes a new bookmark pose there at low altitude (rot 150, proj 20, alt 900). That frames a mech large, at night, on mc2_10, standing in its own light pool \u00e2\u20ac\u201d exactly the missing shot. The pose is saved as <code>saved_bookmarks/mc2_10_lance_close.json</code> in the capture install."
-    },
-    {
-     "type": "note",
-     "html": "<b>Measured (full-zoom crop below, gate OFF vs ON=0.7):</b> 44.6% of the crop changes, <b>71% of changed pixels get DARKER</b>, mean luminance -3.10, max delta 223 \u00e2\u20ac\u201d the bright mover glow disc is carved into a ring and a real contact patch appears under the body. Cross-launch noise floor for this pose measured at 16 px / max delta 3, so the signal is ~40,000x the noise."
-    },
-    {
-     "type": "note",
-     "html": "<b>HONEST FLAGS.</b> (1) The mech idly rotates its torso between launches, so the two arms do not pose-match above the waist; the crop below is deliberately framed on the <b>legs and ground</b>, which are pixel-stable, because the fix is a terrain effect and the torso is irrelevant to it. Two ON captures differed by 819k px purely from that torso animation \u00e2\u20ac\u201d do not read the mech body in these frames, read the ground. (2) <b>No vehicle could be framed.</b> The UI command channel (<code>MC2_UI_COMMAND_FILE</code>) exposes only <code>toggle_pause</code> / <code>press pause.*</code> / <code>press dialog.*</code> / <code>debugview</code> / <code>screenshot</code> \u00e2\u20ac\u201d there are no select/order/camera verbs in this build, so a vehicle cannot be driven into frame headlessly, and mc2_10's vehicles are off-map staged until objective-gated. The ground-vehicle case remains carried by the code-path argument (vehicles are tagged <code>Gv</code> and already sit in the mover set) rather than by a pixel crop."
-    },
-    {
-     "type": "pl",
-     "html": "Mech contact shadow \u00e2\u20ac\u201d legs + ground, full-zoom 1:1 (mc2_10 night, composed lance pose)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (gate OFF)",
-       "role": "BEFORE",
-       "src": "03_mech_night_shadow/03a_mech_shadow_BEFORE.png"
-      },
-      {
-       "caption": "AFTER (gate ON)",
-       "role": "AFTER",
-       "src": "03_mech_night_shadow/03a_mech_shadow_AFTER.png"
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "id": "04_water_graze",
-   "anchor": "#04_water_graze",
-   "heading": "4. Water grazing reflection",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "At grazing/horizon camera angles, pulls the water reflection toward the authored sky tint instead of mirroring a dark clear-sky sample, so far water brightens toward the sky."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>Always-on (escape: MC2_WATER_REFLECTION=0)</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Ship as-is; killswitch MC2_WATER_REFLECTION=0 disables the whole reflection block."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "EXISTING evidence (mc2_10 grazing lake, before=old reflection vs after; +18% luminance, sky-blue shift)."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "GL MDI path only (VK fail-softs to GL). Byte-identical for top-down/near water; scales with grazing angle."
-    },
-    {
-     "type": "pl",
-     "html": "Grazing lake (mc2_10_205952)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (gate OFF)",
-       "role": "BEFORE",
-       "src": "04_water_graze/04a_graze_BEFORE.png"
-      },
-      {
-       "caption": "AFTER (gate ON)",
-       "role": "AFTER",
-       "src": "04_water_graze/04a_graze_AFTER.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "Lake band (tight crop)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (gate OFF)",
-       "role": "BEFORE",
-       "src": "04_water_graze/04b_lake_BEFORE.png"
-      },
-      {
-       "caption": "AFTER (gate ON)",
-       "role": "AFTER",
-       "src": "04_water_graze/04b_lake_AFTER.png"
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "id": "05_night_fog_dim",
-   "anchor": "#05_night_fog_dim",
-   "heading": "5. Night fog dim (black-band / white horizon void fix)",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "Scales the hard-coded bright-grey edge/OOB fog cloud-bank color to the measured night-sky shade, so a night map no longer floats in a bright white-grey fog void."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_NIGHT_FOG_DIM=1 (+ MC2_NIGHT_FOG_DIM_SCALE=0.35)</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "ON for night maps at scale 0.35; default OFF = byte-identical."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "EXISTING evidence (RenderDoc-attributed; night pose mc2_10_205952 gate OFF vs ON, horizon band crop)."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "Manual killswitch (no auto night-detect): enable for night maps only. Attribution confirmed via RenderDoc scene-FBO pixel-history."
-    },
-    {
-     "type": "pl",
-     "html": "Horizon fog band (mc2_10_205952)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (gate OFF)",
-       "role": "BEFORE",
-       "src": "05_night_fog_dim/05a_nightfog_BEFORE.png"
-      },
-      {
-       "caption": "AFTER (gate ON)",
-       "role": "AFTER",
-       "src": "05_night_fog_dim/05a_nightfog_AFTER.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "Full-frame side-by-side composite (OFF | ON)"
     },
     {
      "type": "figures",
@@ -1812,93 +292,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01_banding_slopes.json / island_slope_mid",
        "role": "SINGLE",
-       "src": "05_night_fog_dim/05b_nightfog_cmp.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_banding_slopes__island_slope_mid.png"
       }
      ]
-    }
-   ]
-  },
-  {
-   "id": "07_cone_lamp_guard",
-   "anchor": "#07_cone_lamp_guard",
-   "heading": "7. Cone / lamp guard (ghost light wedge)",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "Ghost-cone recipe skip removes stray light cone/wedge geometry drawing over roads at night."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>(ghost-cone-recipe-skip, wave-3 default-ON)</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Keep ON; review the wedge-over-road crop."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "EXISTING \u00e2\u20ac\u201d read-only copy from mc2-deferred-1 batch8c capture + golden-rebless before/after at mc2_10_212019."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "BEFORE = v0.5.1 golden, AFTER = v0.5.2 proposed default."
-    },
-    {
-     "type": "pl",
-     "html": "ghost_wedge_over_road (mc2_10_212019)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (gate OFF)",
-       "role": "BEFORE",
-       "src": "07_cone_lamp_guard/07a_wedge_BEFORE.png"
-      },
-      {
-       "caption": "AFTER (gate ON)",
-       "role": "AFTER",
-       "src": "07_cone_lamp_guard/07a_wedge_AFTER.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "batch8c wedge crop (read-only copy, mc2_10_212019)"
     },
     {
      "type": "figures",
@@ -1906,80 +304,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01.json / cliff_side_on",
        "role": "SINGLE",
-       "src": "07_cone_lamp_guard/07b_wedge_batch8c.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__cliff_side_on.png"
       }
      ]
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; <code>c1f98b45</code> was regressive and is now default-OFF.</b> The cone/pool coupling shipped without a gate of its own, riding an unregistered, undocumented, default-ON <code>MC2_LIGHT_CONE_NODES</code>. Graded numerically it <b>deletes 7 of the 9 night ground light pools on mc2_10</b> (<code>POOLS_KEPT</code> 9/9 &rarr; 2/9), in exchange for moving the two survivors by 7 world units and removing a 200.0f clamp that fires <b>0 times out of 9</b>. The cause is that stock fixtures are authored near-horizontal &mdash; 14.9 units of drop over a 167.8-unit beam &mdash; so the ray/terrain intersection almost never lands on ground, and the miss-rejection wrongly treats buildings (absent from the heightfield) and border terrain as misses. It is now behind <code>MC2_CONE_SPILL_COUPLING</code>, <b>default OFF</b>, and should not be revived without fixing the miss test. <i>(CONE-SPILL-GRADE-1.)</i>"
-    }
-   ]
-  },
-  {
-   "id": "08_prop_self_shadow",
-   "anchor": "#08_prop_self_shadow",
-   "heading": "8. Static prop self-shadowing (buildings read flat / cardboard)",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "User report (mc2_10 night): a building&#x27;s light-facing parts are <b>FULLY lit</b> and its away-facing parts dark, but <b>nothing accounts for occlusion by the building&#x27;s own geometry</b> \u00e2\u20ac\u201d a wall behind a taller wing, a recessed courtyard, an inset doorway or the underside of an overhang all render full-bright."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_PROP_SHADOW_RECEIVE=1</code> <b>+</b> <code>MC2_SSAO=1</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Both ON together for the look; <b>do NOT default either ON yet</b> (see residual). Both default OFF = byte-identical."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "NEW 2026-07-25. Deterministic 3840x2160 engine captures, exe <code>16c2244a</code>. Day = clean quantitative; night = categorical (see caveat)."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b>NO CODE CHANGE WAS NEEDED \u00e2\u20ac\u201d and none was made.</b> Both mechanisms were already shipped and simply switched off. Root cause is three stacked things: (1) <code>static_prop.frag</code> writes the <code>a=0.25</code> &quot;no self shadow&quot; GBuffer class and <code>shadow_screen.frag</code> <i>deliberately</i> skips the dynamic cascade for it (&quot;CPU never self-shadowed buildings&quot;); (2) the baked base light is a <b>per-LEAF constant</b> (<code>GetARGBHighlight()</code>, one scalar per <code>TG_Shape</code>), so it adds no intra-surface variation, and <code>calc_light</code> has <b>no occlusion term at all</b>; (3) what is left is a pure per-face <code>max(N&middot;L,0)</code> \u00e2\u20ac\u201d precisely &quot;fully lit or dark, nothing between&quot;. Props <b>already cast</b> into the CSM cascades, so no caster-set widening was required and the alpha-card foliage exclusion was never touched."
-    },
-    {
-     "type": "note",
-     "html": "<b>Why BOTH gates.</b> <code>MC2_PROP_SHADOW_RECEIVE</code> opts props back into the dynamic cascade \u00e2\u20ac\u201d that gives <b>coarse</b> wing-on-wing shadow, but the cascades are map-sized and cannot resolve a doorway reveal. <code>MC2_SSAO</code> adds the <b>fine</b> contact term (recesses, inside corners, undersides) using depth + GBuffer normals props already write. Measured on mc2_01 day: RECEIVE alone changes 0.25-0.73% of pixels and <b>100% of them get DARKER, zero brighter</b> (a pure occlusion term can only darken \u00e2\u20ac\u201d animation or a lighting bug could not be one-sided); adding SSAO multiplies coverage <b>20-60x</b> (to 1.5-14.7%) while staying ~99% darker."
-    },
-    {
-     "type": "pl",
-     "html": "Night building, mc2_10 composed close pose \u00e2\u20ac\u201d OFF (top) vs BOTH gates ON (bottom). Look at the penthouse/roof-deck junction, under the parapet lip, the recessed window bays, the inside corner where the near wing meets the rear block, and the garage doorway."
     },
     {
      "type": "figures",
@@ -1987,15 +316,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01.json / cliff_wall_sideon",
        "role": "SINGLE",
-       "src": "08_prop_self_shadow/01_night_building_OFF_vs_ON.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__cliff_wall_sideon.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "Night compound walls + domes \u00e2\u20ac\u201d OFF (top) vs RECEIVE only (bottom): dome flanks, the crevice between adjacent domes, and buttress slopes darken."
     },
     {
      "type": "figures",
@@ -2003,44 +328,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01.json / cross_map_view",
        "role": "SINGLE",
-       "src": "08_prop_self_shadow/02_night_compound_OFF_vs_receive.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__cross_map_view.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "Day quantitative pose (mc2_01 airport, full frame)"
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (both gates OFF)",
-       "role": "BEFORE",
-       "src": "08_prop_self_shadow/03_day_mid_OFF.png"
-      },
-      {
-       "caption": "AFTER (RECEIVE + SSAO)",
-       "role": "AFTER",
-       "src": "08_prop_self_shadow/04_day_mid_BOTH_ON.png"
-      }
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>HONEST FLAG \u00e2\u20ac\u201d the night pixel diff is NOT trustworthy and was not relied on.</b> At mc2_10 night the sibling LIGHT-REALISM-1 sweeping-searchlight animation contaminates cross-launch comparison: pose <code>compound_mid</code> shows 6.66% of pixels changed of which <b>5.19% get BRIGHTER</b> \u00e2\u20ac\u201d that is animation, not this gate. The night verdict above is therefore <b>categorical</b> (a named recess that was flat is now visibly darker), and the clean quantitative pass is the day table, whose zero-brighter distribution independently corroborates the mechanism. Also: all six saved mc2_10 night bookmarks are distant overviews (alt 4954-6045) that cannot resolve intra-building occlusion, so four close poses were composed over the tower/compound complex and archived alongside these images. Verify-by-exaggeration was done by <b>stacking the two gates</b> \u00e2\u20ac\u201d neither exposes a strength knob (the 0.4 shadow floor is hard-coded) and the shadow-classification debug view is key-toggled only, unreachable headless."
-    },
-    {
-     "type": "note",
-     "html": "<b>RESIDUAL \u00e2\u20ac\u201d this is why neither gate should default ON yet.</b> Alpha-test lattice props <b>self-shadow as solid slabs</b>: the shadow depth pass has <b>no alpha discard</b>, so a chain-link fence writes a <i>solid</i> depth slab into the cascades and then, with RECEIVE ON, samples that slab and darkens <b>uniformly across the whole lattice</b> (image below \u00e2\u20ac\u201d it is the single densest diff region on the day poses). Foliage is protected from this by <code>setRecipeNoShadow</code>; fences and railings are not foliage and are not excluded. The clean fix needs a distinct GBuffer1.a class for alpha-test props so they can be excluded from <i>receive</i> \u00e2\u20ac\u201d that edits the render-contract mask encoding shared with <code>shadow_screen.frag</code>, too wide to land unverified, so it is logged as follow-up <code>PROP-ALPHA-SHADOW-CLASS-1</code> rather than guessed at here. The cheap alternative (marking alpha-test recipes <code>noShadow</code>) is wrong \u00e2\u20ac\u201d it would also stop fences casting onto terrain."
-    },
-    {
-     "type": "pl",
-     "html": "Residual: chain-link fence darkening uniformly under RECEIVE (OFF | ON | diff x3)"
     },
     {
      "type": "figures",
@@ -2048,109 +340,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01.json / edge_fog_boundary_south",
        "role": "SINGLE",
-       "src": "08_prop_self_shadow/05_caveat_fence_slab_shadow.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__edge_fog_boundary_south.png"
       }
      ]
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; prop self-shadow CANNOT fix the building-face complaint, and <code>MC2_SSAO</code> is broken rather than merely off.</b> Three corrections to this section. <b>(1)</b> A face turned away from the sun already has <b><code>ndl = 0</code></b>; a shadow term multiplying zero changes nothing, so <code>MC2_PROP_SHADOW_RECEIVE</code> is architecturally incapable of addressing it &mdash; measured, it moves 0.005-0.183% of pixels and only on props like aircraft. <b>(2)</b> The follow-up premise that <code>base_light</code> was the culprit is <b>falsified</b>: a gate built on it was byte-identical at strength 1.0, which multiplies the seed by zero &mdash; <b><code>base_light</code> is effectively ZERO on these props, day and night</b>. The term that actually lights them is <b><code>ambientTerm</code></b>, the orientation-free per-actor object-light ambient; that is the real cure site. <b>(3) <code>MC2_SSAO</code> is latent-broken, not off</b>: the AO buffer is white (mean 254.99/255) because <code>aoRadius_</code> is <b>3.0 world units against a 42.67 wu map cell</b> &mdash; 2% of one cell &mdash; and <b>there is no blur pass at all</b>, only a 4-tap box over &plusmn;0.5 of a half-res texel, which cannot denoise a 16-sample stochastic kernel. Raising the radius alone therefore trades no-occlusion for visible dither. The 20-60&times; coverage figure quoted above should not be relied on. <i>(SHADOW-DECISIONS-1, SSAO-RETUNE-1, PROP-BASE-LIGHT-DIR-1.)</i>"
-    }
-   ]
-  },
-  {
-   "id": "09_runway_marker_lights",
-   "anchor": "#09_runway_marker_lights",
-   "heading": "9. Runway marker lights &mdash; REGRESSION FIX (user: &quot;atrociously hideous&quot;)",
-   "blocks": [
-    {
-     "type": "what",
-     "html": "<b>This section undoes a default that shipped earlier the same session.</b> User verdict: <i>&quot;whatever the hell it is doing with the runway marker lights is atrociously hideous, it needs to stop.&quot;</i> At night map-overview altitude the runway/taxiway fixtures rendered as stark white/red/green hard-edged blocks strung across the dark valley &mdash; bright, floating without context, and <b>at their worst precisely where they should have faded out</b>."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gate"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_LIGHT_BILLBOARD_FACING</code> &mdash; default flipped <b>ON &rarr; OFF</b>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>OFF (as landed)</b>. Unset or <code>=0</code> = stock, byte-identical &mdash; this is the clean way to disable the modern marker-light treatment entirely. <code>=1</code> = opt-in capped treatment. <code>=2</code> = exaggerate."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "NEW. Deterministic captures at <b>3840x2160</b> (the user's own resolution), mc2_10 night, <code>MC2_TERRAIN_LIGHT_POOLS=0</code>, four altitudes, three configs."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b>Root cause.</b> The min-screen-size clamp added by <code>f412423e</code> was <code>max(1.0, kLbMinNdc / sil)</code> with <b>no upper bound</b>. <code>sil</code> falls off as 1/distance, so <code>k</code> grew without limit and pinned every fixture to a <b>constant</b> hard-edged bright block at <i>every</i> camera distance. Holding a constant screen size was the clamp's literal intent &mdash; correct at playable RTS range, which is what made the lights visible at grazing angles &mdash; but past that range several hundred regularly-spaced fixtures simply never shrink. Regular spacing + constant size = the dashes. A secondary error compounded it ~1.5x: <code>kLbRefRadius</code> was the authored <i>top-cap</i> radius (0.8), but the rigid billboard maps local Z (the 2.85-unit post axis) onto <code>toCam</code>, so the post foreshortens and the viewer actually sees the local XY cross-section (<code>runwaylight.ase</code> extents 2.015 x 2.326, radius ~1.2). The clamp was sizing against a feature that is never on screen."
-    },
-    {
-     "type": "note",
-     "html": "<b>Fix.</b> <code>clamp(kLbMinNdc/sil, 1.0, kLbMaxScale)</code> with <code>kLbMaxScale = 2.5</code> and the corrected reference radius &mdash; the legitimate win survives (fixtures still rasterise at playable range) but they resume normal 1/distance shrink and go sub-pixel at overview on their own. <b>Plus</b> the gate is now default-OFF so stock is what ships."
-    },
-    {
-     "type": "note",
-     "html": "<b>Measured</b> (changed px, <code>|d|&gt;8</code>, BEFORE vs opt-in): overview <b>549 px in a 136 x 13 horizontal band, 95% of them darker</b>, max delta 240 &mdash; that band <i>is</i> the streak. Oblique airbase 9019 px; near-top-down 1817 px. <b>Close ground-level: 0 px, max delta 0 &mdash; byte-identical</b>, proving the cap is inactive at close range and gameplay-zoom appearance is untouched."
-    },
-    {
-     "type": "note",
-     "html": "<b>Goldens are unaffected.</b> <code>v0.5.2-baseline-PROPOSED</code> was blessed at <code>16c2244a</code>, which <i>predates</i> this gate entirely, so the goldens encode the gate-absent state &mdash; the default-OFF flip keeps them valid and <b>no re-bless is needed</b> for this change."
-    },
-    {
-     "type": "pl",
-     "html": "(a) THE COMPLAINT &mdash; map-overview altitude, whole valley in frame (mc2_10_205952, alt 6045). 1:1 crop, brightened 2.2x for night legibility."
-    },
-    {
-     "type": "figures",
-     "layout": "ba",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE (uncapped &mdash; what the user saw)",
-       "role": "BEFORE",
-       "src": "09_runway_marker_lights/09a_overview_BEFORE_uncapped.png"
-      },
-      {
-       "caption": "AFTER (capped, gate=1)",
-       "role": "AFTER",
-       "src": "09_runway_marker_lights/09a_overview_AFTER_capped_optin.png"
-      }
-     ]
-    },
-    {
-     "type": "pl",
-     "html": "(a) same pose, shipping default (gate OFF = stock)"
     },
     {
      "type": "figures",
@@ -2158,15 +352,11 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01.json / edge_fog_corner_southwest",
        "role": "SINGLE",
-       "src": "09_runway_marker_lights/09a_overview_AFTER_default_OFF.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__edge_fog_corner_southwest.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "(a) delta heatmap &mdash; the 136 x 13 px band of removed blocks"
     },
     {
      "type": "figures",
@@ -2174,727 +364,1521 @@
      "pair": false,
      "items": [
       {
-       "caption": "",
+       "caption": "mc2_01 \u2014 mc2_01.json / oblique_fog",
        "role": "SINGLE",
-       "src": "09_runway_marker_lights/09a_overview_DELTA.png"
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__oblique_fog.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "(b) mid-altitude airbase, oblique (mc2_10_204907, alt 5620) &mdash; oversized cyan apron markers and orange taxiway cones shrink to small glows while staying readable"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (uncapped)",
-       "role": "BEFORE",
-       "src": "09_runway_marker_lights/09b_airbase_oblique_BEFORE_uncapped.png"
-      },
-      {
-       "caption": "AFTER (capped, gate=1)",
-       "role": "AFTER",
-       "src": "09_runway_marker_lights/09b_airbase_oblique_AFTER_capped_optin.png"
+       "caption": "mc2_01 \u2014 mc2_01.json / oblique_horizon",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__oblique_horizon.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "(c) mid-altitude airbase, near-top-down (mc2_10_204753, alt 5433)"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (uncapped)",
-       "role": "BEFORE",
-       "src": "09_runway_marker_lights/09c_airbase_topdown_BEFORE_uncapped.png"
-      },
-      {
-       "caption": "AFTER (capped, gate=1)",
-       "role": "AFTER",
-       "src": "09_runway_marker_lights/09c_airbase_topdown_AFTER_capped_optin.png"
+       "caption": "mc2_01 \u2014 mc2_01.json / pyramid_islands_topdown",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__pyramid_islands_topdown.png"
       }
      ]
-    },
-    {
-     "type": "pl",
-     "html": "(d) close ground-level (mc2_10_204937, alt 1257) &mdash; opt-in is BYTE-IDENTICAL here (0 px changed); the cap is inactive at close range by design"
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "BEFORE (uncapped)",
-       "role": "BEFORE",
-       "src": "09_runway_marker_lights/09d_close_ground_BEFORE_uncapped.png"
-      },
-      {
-       "caption": "AFTER (capped, gate=1) &mdash; identical",
-       "role": "AFTER",
-       "src": "09_runway_marker_lights/09d_close_ground_AFTER_capped_optin.png"
+       "caption": "mc2_01 \u2014 mc2_01.json / runway_overview",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_base__runway_overview.png"
       }
      ]
     },
     {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; nothing was ever missing.</b> The premise that runway-light props were being culled or lost is <b>refuted by runtime receipt</b>: placement-to-render agreement is <i>exact</i> on mc2_01, mc2_10 and mc2_23. <b>mc2_10 simply has no runway lights authored</b> &mdash; it places 32 red / 12 green / 16 blue beacons and zero runway lights. Campaign-wide there are <b>365 runway lights</b>: <b>mc2_23 has 112</b> at full night and <b>mc2_01 has 56</b> in daylight. <b>Five prior lanes verified fixture work on the one map that has none of the fixture in question</b>, which is why the work kept appearing to do nothing. On maps that do have them, the lights are drawn but read as dull amber cones because emission is clamped at 1.0 and then multiplied by a dark lens albedo &mdash; a brightness ceiling on present geometry. Grade this on <b>mc2_23</b>, never mc2_10. <i>(RUNWAY-LIGHT-MISSING-1, FIXTURE-GLOW-1.)</i>"
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_building_faces.json / control_no_buildings",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_building_faces__control_no_buildings.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_building_faces.json / hangar_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_building_faces__hangar_lightaway.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_building_faces.json / quonset_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_building_faces__quonset_lightaway.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_building_faces.json / quonset_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_building_faces__quonset_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_buildings.json / airport_bldgs_close",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_buildings__airport_bldgs_close.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_buildings.json / airport_bldgs_low",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_buildings__airport_bldgs_low.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_buildings.json / airport_bldgs_mid",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_buildings__airport_bldgs_mid.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_combat.json / enemy_cluster_low",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_combat__enemy_cluster_low.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_combat.json / enemy_cluster_mid",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_combat__enemy_cluster_mid.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_combat.json / player_werewolf",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_combat__player_werewolf.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_concrete_verdict.json / conc_apron_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_concrete_verdict__conc_apron_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_concrete_verdict.json / conc_north_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_concrete_verdict__conc_north_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_concrete_verdict.json / control_no_pavement",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_concrete_verdict__control_no_pavement.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 saved pose / saved_205644",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_goldenpose__saved_205644.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_runway_lights.json / day_runway_ground",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_runway_lights__day_runway_ground.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_runway_lights.json / day_runway_mid",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_runway_lights__day_runway_mid.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_runway_lights.json / day_runway_overview",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_runway_lights__day_runway_overview.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_shoreline.json / beach_north_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_shoreline__beach_north_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_shoreline.json / beach_west_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_shoreline__beach_west_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_sunclamp_control.json / control_across_azimuth",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_sunclamp_control__control_across_azimuth.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_sunclamp_control.json / control_center_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_sunclamp_control__control_center_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_sunclamp_control.json / control_relief_ne",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_sunclamp_control__control_relief_ne.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_near.json / lodfade_midband",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_near__lodfade_midband.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_near.json / near_land_low",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_near__near_land_low.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_near.json / near_land_off",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_near__near_land_off.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_seams.json / band_band_seam_far",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_seams__band_band_seam_far.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_seams.json / lod0_band_seam_close",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_seams__lod0_band_seam_close.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_seams.json / map_edge_skirt_closeup",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_seams__map_edge_skirt_closeup.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_solid.json / terrain_solid_land_high",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_solid__terrain_solid_land_high.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_solid.json / terrain_solid_land_low",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_solid__terrain_solid_land_low.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_terrain_solid.json / terrain_solid_land_mid",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_terrain_solid__terrain_solid_land_mid.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_water.json / water_oblique_low",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_water__water_oblique_low.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_water.json / water_overview_high",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_water__water_overview_high.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_01 \u2014 mc2_01_werewolf.json / werewolf_fire",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_01/mc2_01_werewolf__werewolf_fire.png"
+      }
+     ]
     }
    ]
   },
   {
-   "id": "10_light_realism",
-   "anchor": "#10_light_realism",
-   "heading": "10. Light realism &mdash; night light look + <span class=\"sev sev-high\">pool starvation BUG</span>",
+   "id": "gallery_mc2_03",
+   "heading": "5. Exhaustive bookmark gallery \u2014 mc2_03",
    "blocks": [
     {
      "type": "what",
-     "html": "Addresses the mc2_10 night rejection: opaque hard-edged light cones, ground pools in \"random spots\" disconnected from their emitter, beacons emitting no light, and identical fixtures where one lights the ground and one does not."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gates"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_LIGHT_POOL_MAX</code> (bug fix) and <code>MC2_LIGHT_REALISM</code> (look, default OFF)"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Commits"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>45058613</code>, <code>db625a12</code>, <code>cea05a2d</code>, <code>5213d257</code>, status <code>5d1d8e5c</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "Pool cap: keep the raised cap. Look: <b>ON_A_conservative</b> if adopting at all."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b>One of these is a BUG FIX, not a taste item.</b> The terrain pool-light cap was hardcoded <b>64</b>. mc2_10 wants <b>142</b>, so <b>78 fixtures (55%) were silently dropped</b>, and whether a lamp lit the ground depended on its order in an internal list. That is the \"light cone doesn't radiate any light\" frame. Cap raised to <b>256</b>."
-    },
-    {
-     "type": "note",
-     "html": "<b>COST &mdash; read before approving:</b> lighting all 142 fixtures costs <b>+6.1 ms p50 / &minus;34% avg FPS</b> at the busiest night pose. The driver is the per-fragment light loop, not storage. <code>MC2_LIGHT_POOL_MAX=64</code> restores the old speed and the old bug; ~160 is a middle setting. A clustered/tiled assignment follow-up would buy most of it back."
-    },
-    {
-     "type": "pl",
-     "html": "Full frame &mdash; airbase pose (beacons, apron, runway lights)"
+     "html": "<b>Every bookmark on mc2_03, current defaults, one launch, deterministic.</b> 18 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
-     "layout": "ba",
+     "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "OFF (shipped look)",
+       "caption": "mc2_03 \u2014 mc2_03_building_faces.json / civstore_lightaway",
        "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__FULL__OFF.png"
-      },
-      {
-       "caption": "ON_A conservative (recommended)",
-       "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__FULL__ON_A_conservative.png"
-      },
-      {
-       "caption": "ON_B stronger",
-       "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__FULL__ON_B_stronger.png"
+       "src": "15_user0803_sweep/mc2_03/mc2_03_building_faces__civstore_lightaway.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "Lamp cones &mdash; grade the feather here"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
+     "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "OFF",
+       "caption": "mc2_03 \u2014 mc2_03_building_faces.json / control_no_buildings",
        "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__lamp_cones__OFF.png"
-      },
-      {
-       "caption": "ON_A conservative",
-       "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__lamp_cones__ON_A_conservative.png"
-      },
-      {
-       "caption": "ON_B stronger",
-       "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__lamp_cones__ON_B_stronger.png"
+       "src": "15_user0803_sweep/mc2_03/mc2_03_building_faces__control_no_buildings.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "Light-cluster census &mdash; the pool-starvation evidence"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
+     "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "OFF",
+       "caption": "mc2_03 \u2014 mc2_03_building_faces.json / industrial_lightaway",
        "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__light_clusters_census__OFF.png"
-      },
-      {
-       "caption": "ON_A conservative",
-       "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__light_clusters_census__ON_A_conservative.png"
-      },
-      {
-       "caption": "ON_B stronger",
-       "role": "SINGLE",
-       "src": "light_realism_1/mc2_10_saved_204753__light_clusters_census__ON_B_stronger.png"
+       "src": "15_user0803_sweep/mc2_03/mc2_03_building_faces__industrial_lightaway.png"
       }
      ]
     },
     {
-     "type": "what",
-     "html": "Full detail and per-region metrics: <code>light_realism_1/README.md</code>, <code>metrics.json</code>."
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_building_faces.json / industrial_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_building_faces__industrial_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_building_faces.json / sam_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_building_faces__sam_lightaway.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_building_faces.json / sam_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_building_faces__sam_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_concrete_verdict.json / conc_center_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_concrete_verdict__conc_center_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_concrete_verdict.json / conc_north_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_concrete_verdict__conc_north_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_concrete_verdict.json / control_no_pavement",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_concrete_verdict__control_no_pavement.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_0_0_0",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_0_0_0.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_1_-2600_-2600",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_1_-2600_-2600.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_2_2600_-2600",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_2_2600_-2600.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_3_-2600_2600",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_3_-2600_2600.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_4_2600_2600",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_4_2600_2600.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_5_0_-2600",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_5_0_-2600.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_6_0_2600",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_6_0_2600.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_7_-2600_0",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_7_-2600_0.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_03 \u2014 mc2_03_scout.json / scout_8_2600_0",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_03/mc2_03_scout__scout_8_2600_0.png"
+      }
+     ]
     }
    ]
   },
   {
-   "id": "11_vehicle_night_lit",
-   "anchor": "#11_vehicle_night_lit",
-   "heading": "11. Vehicle night lighting &mdash; <span class=\"sev sev-high\">NOT FIXED</span> (hypothesis disproven)",
+   "id": "gallery_mc2_05",
+   "heading": "6. Exhaustive bookmark gallery \u2014 mc2_05",
    "blocks": [
     {
      "type": "what",
-     "html": "Report: mc2_10 night compound &mdash; three trucks render near-black while the mech, buildings, fences, guard towers and terrain in the <b>same</b> light pool are correctly lit, including a truck sitting inside a guard-tower's ground cone."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gates"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_LEGACY_LIT_MC2_FRAME</code> and <code>MC2_GV_LIGHTSOUT_CLEAR</code> &mdash; both default OFF"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Commits"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>b01a7a96</code>, <code>7c059585</code>; status <code>da3a5b78</code>, <code>19a09cb9</code>"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Verdict"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b>The reported bug is NOT fixed.</b> Nothing here changes stock output."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b>Included for honesty, not for approval.</b> The lead hypothesis &mdash; that <code>gos_tex_vertex_lighted.vert</code> fed <code>calc_light</code> Stuff-frame position/normal while <code>ObjectLights</code> rows are MC2-frame &mdash; was <b>disproven by the magenta exaggeration probe</b> below. That frame mismatch is a real latent bug and was fixed anyway behind <code>MC2_LEGACY_LIT_MC2_FRAME</code> (default OFF, byte-identical), but it is not the cause of the dark trucks. A second real latent bug (an unbalanced ground-vehicle <code>SetLightsOut</code> latch) shipped as <code>MC2_GV_LIGHTSOUT_CLEAR</code>, also default OFF."
-    },
-    {
-     "type": "note",
-     "html": "<b>Neither gate is smoke-allowlisted</b>, so <code>run_smoke.py</code> drops them from the child env &mdash; any \"verified via smoke\" claim for either is invalid. See the <a href=\"#gates\">gate inventory</a>."
-    },
-    {
-     "type": "pl",
-     "html": "Read the EXAG probe first &mdash; the decisive shot"
+     "html": "<b>Every bookmark on mc2_05, current defaults, one launch, deterministic.</b> 10 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
-     "layout": "ba",
+     "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "EXAG magenta probe (decisive)",
+       "caption": "mc2_05 \u2014 mc2_05_building_faces.json / control_no_buildings",
        "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_204753__compound__EXAG_magenta_probe.png"
-      },
-      {
-       "caption": "compound, gate OFF",
-       "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_204753__compound__OFF.png"
-      },
-      {
-       "caption": "compound, gate ON",
-       "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_204753__compound__ON.png"
+       "src": "15_user0803_sweep/mc2_05/mc2_05_building_faces__control_no_buildings.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "Full frames, both poses"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
+     "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "204753 OFF",
+       "caption": "mc2_05 \u2014 mc2_05_building_faces.json / east_compound_lightfacing",
        "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_204753__full__OFF.png"
-      },
-      {
-       "caption": "204753 ON",
-       "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_204753__full__ON.png"
-      },
-      {
-       "caption": "212019 OFF",
-       "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_212019__full__OFF.png"
-      },
-      {
-       "caption": "212019 ON",
-       "role": "SINGLE",
-       "src": "vehicle_night_lit_1/mc2_10_saved_212019__full__ON.png"
+       "src": "15_user0803_sweep/mc2_05/mc2_05_building_faces__east_compound_lightfacing.png"
       }
      ]
     },
     {
-     "type": "what",
-     "html": "Full writeup: <code>vehicle_night_lit_1/README.md</code>, <code>VEHICLE-NIGHT-LIT-2-STATUS.md</code>."
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_building_faces.json / refinery_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_building_faces__refinery_lightaway.png"
+      }
+     ]
     },
     {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; this whole section is aimed at the wrong subject and the wrong cause.</b> Two findings retire the thread. <b>First, the objects are not vehicles.</b> They are <b>static props</b>, and the lanes that chased them through the vehicle lighting path were in the wrong subsystem. <b style=\"color:#f0a0a0\">Second &mdash; RETRACTED.</b> This section previously asserted that <b>&ldquo;the cause is albedo, not lighting&rdquo;</b> and that the <b>&ldquo;truck texture is ~3.3&times; darker than the building texture&rdquo;</b>. <b>You refuted that from the actual textures</b> (&ldquo;they are not [darker]. I can view the actual textures. it is the lighting path.&rdquo;) and you are right. The 3.3&times; figure was a <b>region-MEAN artifact</b> &mdash; it averaged whole capture rectangles, and a truck fills only a small fraction of its rect (surrounded by dark ground) while a building fills its own, manufacturing a ~3&times; gap from normal textures. The masked re-measurement was never taken by that lane. <b>Taken now</b>, directly on the source art: <code>tgl/128/trucksprop.tga</code>, masked to opaque texels, has mean luminance <b>85.9</b> &mdash; the median across the entire 787-texture <code>tgl/128</code> corpus is <b>86.2</b>, putting the truck at the <b>49th percentile, dead average</b>. Tower/building textures measure 101-121, a ratio of only <b>~1.2-1.4&times;</b>, nowhere near 3.3&times;. <b>Caveat, recorded so this is not rediscovered and reopened:</b> <code>tgl/128/truck.tga</code> <i>does</i> measure dark (37.2, 16th percentile) &mdash; but that is the <b>MOBILE VEHICLE</b> asset, <b>not</b> the static prop in this complaint (<code>trucksprop.tga</code>), and it is not evidence for the retracted claim. <b>The albedo explanation is withdrawn. The cause is in the lighting path and this defect is OPEN.</b> The raw observation that <code>MC2_LIGHTING_DEBUG_VIEW=sun</code> shows every static prop black at night (buildings included, truck sun term 49.0 vs building 16.0) still stands as data. Current untested candidate: <code>fogLightSet</code> is a one-shot per-actor latch (<code>mclib/bdactor.cpp:3654-3699</code>), so a prop that first updated while the terrain light table was unpopulated keeps a stale dark value forever. <i>(See <code>.claude/DARK-PROP-LIGHTING-6-STATUS.md</code>.)</i> <b>Five lanes chased this and it is still not pinned.</b> <i>(PROP-LIGHT-CLASS-4, NIGHT-AMBIENT-BALANCE-1.)</i>"
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_building_faces.json / refinery_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_building_faces__refinery_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_concrete_verdict.json / conc_east_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_concrete_verdict__conc_east_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_concrete_verdict.json / conc_west_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_concrete_verdict__conc_west_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_concrete_verdict.json / control_no_pavement",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_concrete_verdict__control_no_pavement.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 saved pose / saved_205843",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_goldenpose__saved_205843.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_shoreline.json / pool_northeast_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_shoreline__pool_northeast_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_05 \u2014 mc2_05_shoreline.json / pool_southwest_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_05/mc2_05_shoreline__pool_southwest_wide.png"
+      }
+     ]
     }
    ]
   },
   {
-   "id": "12_mc2_24_cement",
-   "anchor": "#12_mc2_24_cement",
-   "heading": "12. mc2_24 airbase concrete &mdash; patchwork, missing road swaths, and the runway/apron tone split",
+   "id": "gallery_mc2_10",
+   "heading": "7. Exhaustive bookmark gallery \u2014 mc2_10",
    "blocks": [
     {
      "type": "what",
-     "html": "<b>What changed.</b> Adds the mc2_24 evidence that previously lived only in a lane status doc, plus the measurement that re-diagnoses the runway/apron tone complaint on mc2_10. Three separate defects on airbase paving: concrete <b>patchwork</b> (adjacent apron tiles at different authored tone), <b>missing road swaths</b> (stretches of road/runway simply not drawn), and the <b>runway/apron tone split</b> (one runway changing tone along its own length)."
-    },
-    {
-     "type": "meta",
-     "rows": [
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Gates"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<code>MC2_CEMENT_TONE_MATCH</code>, <code>MC2_CEMENT_TRANSITION_FALLBACK</code>, <code>MC2_CEMENT_LIT</code> &mdash; all default <b>OFF</b>, all byte-identical when off"
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Recommended"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "<b style=\"color:#f0a0a0\">&#9888; CORRECTED 2026-07-25 &mdash; <code>MC2_CEMENT_TONE_MATCH</code> is REJECTED, not recommended.</b> This row previously read &ldquo;<code>MC2_CEMENT_TONE_MATCH=1</code> (cures the patchwork)&rdquo;. You graded the (a) BEFORE/AFTER pair below and your verdict was <i>&ldquo;sigh. after is WAY worse.&rdquo;</i> &mdash; the ON arm flattens the apron into a uniform pale wash and destroys the legible material variation. It <b>stays default OFF</b> and is not a promotion candidate. The same verdict extends to <code>MC2_RUNWAY_TONE_MATCH</code> (same lever, wider gain), which is additionally census-proven inert on stock maps. <code>MC2_CEMENT_TRANSITION_FALLBACK</code> <b>stays OFF</b> &mdash; it is an honest partial, see below. <code>MC2_CEMENT_LIT</code> <b>unverified</b> &mdash; landed but not yet captured, see the caveat."
-       }
-      ],
-      [
-       {
-        "tag": "th",
-        "attrs": "",
-        "html": "Evidence"
-       },
-       {
-        "tag": "td",
-        "attrs": "",
-        "html": "NEW. Deterministic 3840x2160 captures at the user's own bookmarks (<code>mc2_24 saved_192316</code>, <code>mc2_10 saved_204937</code>), from the clean-fingerprint exe at <code>608dea4d</code> (<code>MC2_BUILD_GIT_DIRTY 0</code>), deployed with <code>--require-clean</code>, manifest <code>src_commit 608dea4d</code> with no <code>-dirty</code> suffix. Overviews are half-res for page weight; every <i>crop</i> is full-resolution."
-       }
-      ]
-     ],
-     "attrs": "class=\"meta\""
-    },
-    {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">(a) Concrete patchwork &mdash; REJECTED ARM, KEPT FOR THE RECORD ONLY.</b> The A/B below is the pair you graded &ldquo;WAY worse&rdquo;. It is retained as evidence of what was tried and refused, <b>not</b> as a recommendation. Read the &ldquo;AFTER&rdquo; panel as the rejected outcome. The patchwork it targets remains <b>unfixed</b>. The cement catalog packs concrete from several authored families at materially different base tone, and cement is <b>flat-lit by design</b> (<code>terrain_lod_chunk.frag</code> forces <code>normalLight = mix(normalLight, 1.0, pureConcrete)</code>), so no shared lighting term unifies them and the raw tone difference shows at full contrast with straight tile-boundary seams. <code>MC2_CEMENT_TONE_MATCH</code> normalises each cell's <code>[P50,P90]</code> concrete band to the atlas median per channel. Measured on this map: <code>cells=110 adjusted=96 ref_rgb=149.0,146.4,138.4</code>; between-family luminance stddev <b>9.03 &rarr; 3.95</b>."
+     "html": "<b>Every bookmark on mc2_10, current defaults, one launch, deterministic.</b> 27 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
-     "layout": "pair",
-     "pair": true,
-     "items": [
-      {
-       "caption": "BEFORE &mdash; gates OFF. Apron reads as tan-vs-grey slab blocks with a darker transition ring around the pad.",
-       "role": "BEFORE",
-       "src": "12_mc2_24_cement/01_off_crop.png"
-      },
-      {
-       "caption": "<b style=\"color:#f0a0a0\">REJECTED ARM</b> &mdash; <code>MC2_CEMENT_TONE_MATCH=1</code>. Originally captioned &ldquo;pad, border and shoulder read as one continuous concrete&rdquo;. <b>Your verdict: &ldquo;after is WAY worse.&rdquo;</b> The authored material variation (the darker transition ring around the pad) is flattened into a uniform pale wash. Gate stays OFF.",
-       "role": "AFTER",
-       "src": "12_mc2_24_cement/02_tone_match_on_crop.png"
-      }
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>(b) Missing road swaths &mdash; honest partial.</b> <code>PopulateRecipeCementWords</code> bakes a cement word for a TRANSITION tile only when a corner <code>terrainType</code> resolves to a SOLID cement layer <i>and</i> a corner mask derives. A road crossing open ground satisfies neither, bakes <b>no word</b>, and falls back to the bare baked colormap. Census on this map: <code>transition_baked=512 dropped_no_layer=266</code> &mdash; <b>266 of 778 transition tiles (34%) draw no paving at all</b>. <code>MC2_CEMENT_TRANSITION_FALLBACK</code> lets a dropped tile adopt an orthogonally adjacent tile's layer, but <b>recovers only 33 of 266 (12%)</b>, because dropped tiles form contiguous runs so there is usually no neighbour carrying a word to borrow from. <b>Do not read this as &quot;roads fixed&quot;</b> &mdash; it stays default OFF. The real fix is upstream: admit alpha/transition cement slots into the catalog atlas (drop the <code>isAlpha</code> skip in <code>BuildCementCatalogAtlas</code>, give each transition slot its own layer, honour cell alpha in the frag). That is a genuine slice and is <b>not landed</b>."
-    },
-    {
-     "type": "figures",
-     "layout": "pair",
-     "pair": true,
-     "items": [
-      {
-       "caption": "Tone-match only &mdash; road gaps still present.",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/02_tone_match_on_crop.png"
-      },
-      {
-       "caption": "+ <code>MC2_CEMENT_TRANSITION_FALLBACK=1</code> &mdash; <code>repaired=33</code> of 266. Adds paving, does not close the defect.",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/03_tone_match_plus_fallback_crop.png"
-      }
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>(c) The runway/apron tone split &mdash; re-diagnosed, and it is NOT an art-tone problem.</b> User verdict on mc2_10: <i>&quot;I don't understand why the runway under the plane is grey when it is black on top of the concrete.&quot;</i> A new always-on census <code>[CEMENT_CELL_TONE v1]</code> reports every catalog cell's concrete-band tone. On <b>mc2_10</b>: <code>cells=19 usable=19 median_lum=147.2 dark_cells=0</code>. On <b>mc2_24</b>: <code>cells=110 usable=110 median_lum=146.3 dark_cells=0</code>. <b>Neither map has a dark asphalt family at all</b> &mdash; so no atlas-side tone fix can reach that runway, and the original &quot;normalise the asphalt family to the concrete family&quot; theory is <b>disproven</b>."
-    },
-    {
-     "type": "note",
-     "html": "The class view settles it. Sampled luminance in the mc2_10 beauty frame: apron concrete <b>145.1&ndash;171.3</b>, runway under the parked aircraft <b>65.0</b>, bare terrain <b>54.3</b>. The runway sits at <i>terrain</i> brightness because it <i>is</i> terrain: the diag shows it uncoloured, i.e. <b>baked colormap only, never cement-classified</b>, drawn through the full lighting term &mdash; while the apron beside it is cement-atlas art that is <b>lighting-exempt by construction</b>. Two sources, one of them ignoring the scene light. That single mechanism explains all three of the user's observations in that frame: the tone change along one runway, the missing pavement (same dropped-transition census: <code>dropped_no_layer=278</code> of 320 on mc2_10 &mdash; <b>87%</b>), and the mismatched edge strip where colormap meets cement."
-    },
-    {
-     "type": "figures",
-     "layout": "pair",
-     "pair": true,
-     "items": [
-      {
-       "caption": "mc2_10 @ 204937, gates OFF &mdash; the defect as the user sees it: pale apron, dark runway, broken pavement.",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/04_mc2_10_204937_off_crop.png"
-      },
-      {
-       "caption": "<code>MC2_TERRAIN_LOD_CHUNK_DIAG=32768</code> &mdash; red = solid cement atlas, green = transition. The whole runway is <b>uncoloured</b>: baked colormap only.",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/05_mc2_10_204937_class_diag_crop.png"
-      }
-     ]
-    },
-    {
-     "type": "note",
-     "html": "<b>Full frames for &sect;12 (added 2026-07-25).</b> The five 1920&times;1080 full frames behind the crops above were on disk but linked from nowhere &mdash; which violated this pack's own rule that the verdict shot is a full frame, not a crop. All five are wired below. Judge the arms here; use the crops only to inspect detail."
-    },
-    {
-     "type": "figures",
-     "layout": "pair",
-     "pair": true,
-     "items": [
-      {
-       "caption": "FULL FRAME &mdash; mc2_24 airbase, all gates OFF. <b>This is what you have today.</b>",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/01_off.png"
-      },
-      {
-       "caption": "FULL FRAME &mdash; <code>MC2_CEMENT_TONE_MATCH=1</code>. <b style=\"color:#f0a0a0\">REJECTED ARM</b> (&ldquo;WAY worse&rdquo;).",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/02_tone_match_on.png"
-      }
-     ]
-    },
-    {
-     "type": "figures",
-     "layout": "pair",
-     "pair": true,
-     "items": [
-      {
-       "caption": "FULL FRAME &mdash; tone-match <i>plus</i> <code>MC2_CEMENT_TRANSITION_FALLBACK=1</code> (<code>repaired=33</code> of 266). Inherits the rejection of the tone-match arm.",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/03_tone_match_plus_fallback.png"
-      },
-      {
-       "caption": "FULL FRAME &mdash; mc2_10 @ bookmark 204937, gates OFF. The cross-map check: pale apron, dark runway, broken pavement. <b>Current shipped behaviour.</b>",
-       "role": "SINGLE",
-       "src": "12_mc2_24_cement/04_mc2_10_204937_off.png"
-      }
-     ]
-    },
-    {
-     "type": "figures",
-     "layout": "pair",
+     "layout": "single",
      "pair": false,
      "items": [
       {
-       "caption": "FULL FRAME &mdash; <code>MC2_TERRAIN_LOD_CHUNK_DIAG=32768</code> terrain-class view at the same pose. Red = solid cement atlas, green = transition, uncoloured = baked colormap only.",
+       "caption": "mc2_10 \u2014 mc2_10_building_faces.json / compound_lightaway",
        "role": "SINGLE",
-       "src": "12_mc2_24_cement/05_mc2_10_204937_class_diag.png"
+       "src": "15_user0803_sweep/mc2_10/mc2_10_building_faces__compound_lightaway.png"
       }
      ]
     },
     {
-     "type": "note",
-     "html": "<b>&#9888; Caveat on the class-diag as an instrument.</b> A tile carrying a paved <code>&amp;Overlays</code> id (PAVED_ROAD, RUNWAY, &hellip;) laid over a <b>non-cement base</b> is never cement-classified at all: it never reaches the transition branch and increments no drop counter, so it is <b>absent from the drop denominator entirely</b>. The class view still colours some of those tiles, so it can read as &ldquo;classified&rdquo; where the census says nothing was baked. Your annotation on this pose was correct and the instrument was partly misleading you. The always-on <code>[CEMENT_TRANSITION_DROP v1]</code> census plus the new opt-in <code>[CEMENT_PAVEMENT_GAP v1]</code> census (<code>MC2_TERRAIN_LOD_CHUNK_DIAG=524288</code>) together give the true numerator and denominator. No classifier predicate change exists on any branch &mdash; that lane was cancelled."
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_building_faces.json / compound_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_building_faces__compound_lightfacing.png"
+      }
+     ]
     },
     {
-     "type": "note",
-     "html": "<b>Fix landed for (c), not yet verified.</b> <code>MC2_CEMENT_LIT</code> (0..1, default 0.0) lerps cement back into the terrain's own lighting term, so apron and colormap-runway share one light and hold a consistent relationship under sun, dusk and night. At 0.0 the expression collapses to the historical flat-lit slab and is bit-identical to stock. <b>Caveat, recorded honestly: the ON arm has NOT been captured.</b> Parallel lanes committed into the shared worktree mid-session, so a clean-fingerprint build of that commit could not be produced and it was not deployed. The diagnosis above is fully evidenced from the clean <code>608dea4d</code> exe; the cure is not. It needs a quiet worktree before it can be recommended."
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_building_faces.json / control_no_buildings",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_building_faces__control_no_buildings.png"
+      }
+     ]
     },
     {
-     "type": "note",
-     "html": "<b style=\"color:#f0a0a0\">&#9888; REVIEW-LANES-LOG-2 CORRECTION &mdash; <code>MC2_CEMENT_LIT</code> is NOT the fix for (c).</b> The note above says the ON arm was never captured. It has been captured since, and the result is a <b>clean negative</b>: the runway's luma is <b>bit-identical at 66.51 across the OFF / 0.35 / 0.6 / 1.0 arms</b>. The lever sits behind <code>pureConcrete</code> and <b>cannot reach overlay pavement at all</b>. It closes only ~24% of the night tone gap on mc2_10, and <b>in daylight it WIDENS the gap</b> (mc2_24 concrete +16.38 &rarr; +17.71 with the gate ON). The real defect is <b>classification, not lighting</b> &mdash; the runway is 100% unclassified, apron slabs 56-69%. The successor lever is <code>MC2_PAVED_OVERLAY_CLASS</code>, which closes the classification gap 100% on all five maps; note that even it cannot close the residual <i>tone</i> gap, because what remains after flat-lighting both is pure albedo. <i>(ROAD-OVERLAY-LIGHT-1, PAVED-OVERLAY-CLASS-1.)</i>"
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_building_faces.json / settlement_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_building_faces__settlement_lightaway.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_building_faces.json / settlement_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_building_faces__settlement_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_cand.json / cand_mid_a",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_cand__cand_mid_a.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_cand.json / cand_mid_b",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_cand__cand_mid_b.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_cand.json / cand_rw_a",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_cand__cand_rw_a.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_cand.json / cand_rw_b",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_cand__cand_rw_b.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_cand.json / cand_rw_c",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_cand__cand_rw_c.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_concrete_verdict.json / conc_west_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_concrete_verdict__conc_west_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_concrete_verdict.json / control_no_pavement",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_concrete_verdict__control_no_pavement.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_concrete_verdict.json / runway_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_concrete_verdict__runway_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_204523",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204523.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_204611",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204611.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_204753",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204753.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_204907",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_204907.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_205952",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_205952.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_212019",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_212019.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_212140",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_212140.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 saved pose / saved_212258",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_goldenpose__saved_212258.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_sunclamp.json / sunclamp_across_azimuth",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_sunclamp__sunclamp_across_azimuth.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_sunclamp.json / sunclamp_center_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_sunclamp__sunclamp_center_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_sunclamp.json / sunclamp_relief_ne",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_sunclamp__sunclamp_relief_ne.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_water.json / shore_south_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_water__shore_south_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_water.json / shore_southeast_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_water__shore_southeast_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_10 \u2014 mc2_10_water.json / shore_west_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_10/mc2_10_water__shore_west_wide.png"
+      }
+     ]
     }
    ]
   },
   {
-   "id": "golden",
-   "anchor": "#golden",
-   "heading": "Reference &mdash; golden re-bless, v0.5.1 vs v0.5.2-PROPOSED (9 drifted regions) <span style=\"font-size:13px;color:#9aa3ad\">(the evidence behind decision 5)</span>",
+   "id": "gallery_mc2_17",
+   "heading": "8. Exhaustive bookmark gallery \u2014 mc2_17",
    "blocks": [
     {
      "type": "what",
-     "html": "These 9 golden regions drifted because two session fixes ship <b>default-ON</b> (two-sided beacon cards, water grazing reflection) plus wave-3 shadow/ghost-cone fixes. All verified intended, no regression. Approve to promote <code>tests/visual/goldens/v0.5.2-baseline-PROPOSED</code> over the v0.5.1 backup."
-    },
-    {
-     "type": "pl",
-     "html": "mc2_01_saved_205644 / horizon_waterline <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL grazing reflection"
+     "html": "<b>Every bookmark on mc2_17, current defaults, one launch, deterministic.</b> 5 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_01_saved_205644__horizon_waterline__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_01_saved_205644__horizon_waterline__NEW_v0.5.2.png"
+       "caption": "mc2_17 \u2014 mc2_17_terrain_near.json / land_near",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_17/mc2_17_terrain_near__land_near.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_01_saved_205644 / shore_central <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL grazing reflection"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_01_saved_205644__shore_central__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_01_saved_205644__shore_central__NEW_v0.5.2.png"
+       "caption": "mc2_17 \u2014 mc2_17_terrain_near.json / water_near",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_17/mc2_17_terrain_near__water_near.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_01_saved_205644 / shore_botright <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL grazing reflection"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_01_saved_205644__shore_botright__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_01_saved_205644__shore_botright__NEW_v0.5.2.png"
+       "caption": "mc2_17 \u2014 mc2_17_water_wide.json / shelf_center_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_17/mc2_17_water_wide__shelf_center_wide.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_01_saved_205644 / tree_shadows_palm <span class=\"sev sev-high\">high</span> \u00e2\u20ac\u201d SHADOW-FADE-RAMP0/ALT-SCALE softer seamless shadow"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_01_saved_205644__tree_shadows_palm__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_01_saved_205644__tree_shadows_palm__NEW_v0.5.2.png"
+       "caption": "mc2_17 \u2014 mc2_17_water_wide.json / shelf_east_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_17/mc2_17_water_wide__shelf_east_wide.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_10_saved_204611 / horizon_white_billboards <span class=\"sev sev-high\">high</span> \u00e2\u20ac\u201d two-sided glow cards"
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_17 \u2014 mc2_17_water_wide.json / shelf_southwest_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_17/mc2_17_water_wide__shelf_southwest_wide.png"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gallery_mc2_23",
+   "heading": "9. Exhaustive bookmark gallery \u2014 mc2_23",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "<b>Every bookmark on mc2_23, current defaults, one launch, deterministic.</b> 9 poses. Caption = bookmark file / bookmark name."
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_10_saved_204611__horizon_white_billboards__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_10_saved_204611__horizon_white_billboards__NEW_v0.5.2.png"
+       "caption": "mc2_23 \u2014 mc2_23_concrete_verdict.json / apron_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_concrete_verdict__apron_wide.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_10_saved_204611 / far_water_surface <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d WATER-GRAZE-REFL"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_10_saved_204611__far_water_surface__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_10_saved_204611__far_water_surface__NEW_v0.5.2.png"
+       "caption": "mc2_23 \u2014 mc2_23_concrete_verdict.json / control_no_pavement",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_concrete_verdict__control_no_pavement.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_10_saved_204753 / light_clusters_census <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d two-sided glow + ghost-cone-skip"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_10_saved_204753__light_clusters_census__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_10_saved_204753__light_clusters_census__NEW_v0.5.2.png"
+       "caption": "mc2_23 \u2014 mc2_23_concrete_verdict.json / runway_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_concrete_verdict__runway_wide.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_10_saved_204753 / runway_edge_lights <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d two-sided glow + ghost-cone-skip"
-    },
-    {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_10_saved_204753__runway_edge_lights__OLD_v0.5.1.png"
-      },
-      {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_10_saved_204753__runway_edge_lights__NEW_v0.5.2.png"
+       "caption": "mc2_23 \u2014 mc2_23_runway_lights.json / beacons_ground",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_runway_lights__beacons_ground.png"
       }
      ]
     },
     {
-     "type": "pl",
-     "html": "mc2_10_saved_204753 / lamp_cones <span class=\"sev sev-med\">med</span> \u00e2\u20ac\u201d two-sided glow + ghost-cone-skip"
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_23 \u2014 mc2_23_runway_lights.json / beacons_mid",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_runway_lights__beacons_mid.png"
+      }
+     ]
     },
     {
      "type": "figures",
-     "layout": "ba",
-     "pair": true,
+     "layout": "single",
+     "pair": false,
      "items": [
       {
-       "caption": "OLD (v0.5.1 golden)",
-       "role": "BEFORE",
-       "src": "golden_rebless/mc2_10_saved_204753__lamp_cones__OLD_v0.5.1.png"
-      },
+       "caption": "mc2_23 \u2014 mc2_23_runway_lights.json / both_fields_overview",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_runway_lights__both_fields_overview.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
       {
-       "caption": "NEW (v0.5.2 proposed)",
-       "role": "AFTER",
-       "src": "golden_rebless/mc2_10_saved_204753__lamp_cones__NEW_v0.5.2.png"
+       "caption": "mc2_23 \u2014 mc2_23_runway_lights.json / runway_ground",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_runway_lights__runway_ground.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_23 \u2014 mc2_23_runway_lights.json / runway_mid",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_runway_lights__runway_mid.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_23 \u2014 mc2_23_runway_lights.json / runway_overview",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_23/mc2_23_runway_lights__runway_overview.png"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gallery_mc2_24",
+   "heading": "10. Exhaustive bookmark gallery \u2014 mc2_24",
+   "blocks": [
+    {
+     "type": "what",
+     "html": "<b>Every bookmark on mc2_24, current defaults, one launch, deterministic.</b> 15 poses. Caption = bookmark file / bookmark name."
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_building_faces.json / control_no_buildings",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_building_faces__control_no_buildings.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_building_faces.json / fortress_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_building_faces__fortress_lightaway.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_building_faces.json / industrial_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_building_faces__industrial_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_building_faces.json / palace_lightaway",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_building_faces__palace_lightaway.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_building_faces.json / palace_lightfacing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_building_faces__palace_lightfacing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_concrete_verdict.json / base_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_concrete_verdict__base_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_concrete_verdict.json / control_no_pavement",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_concrete_verdict__control_no_pavement.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_concrete_verdict.json / road_wide",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_concrete_verdict__road_wide.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_pom_closeup.json / pom_close_rot225",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_pom_closeup__pom_close_rot225.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_pom_closeup.json / pom_close_rot45",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_pom_closeup__pom_close_rot45.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_pom_closeup.json / pom_close_rot45_graze",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_pom_closeup__pom_close_rot45_graze.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_shadow_jump500.json / jump_target",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_shadow_jump500__jump_target.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_shadow_jump500.json / landing",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_shadow_jump500__landing.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_terrain_near.json / base_near",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_terrain_near__base_near.png"
+      }
+     ]
+    },
+    {
+     "type": "figures",
+     "layout": "single",
+     "pair": false,
+     "items": [
+      {
+       "caption": "mc2_24 \u2014 mc2_24_terrain_near.json / water_near",
+       "role": "SINGLE",
+       "src": "15_user0803_sweep/mc2_24/mc2_24_terrain_near__water_near.png"
       }
      ]
     }
