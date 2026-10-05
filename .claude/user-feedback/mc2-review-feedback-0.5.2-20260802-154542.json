@@ -1,0 +1,786 @@
+{
+ "schema": "mc2.review.feedback/1",
+ "pack": {
+  "id": "0.5.2",
+  "title": "MC2 v0.5.2 Fix Review",
+  "anchor_schema": "mc2.review.anchor/1",
+  "anchors": 586,
+  "images": 138
+ },
+ "exported_utc": "2026-08-02T15:45:42Z",
+ "page_url": "file:///A:/Games/mc2-main/release_assets/0.5.2/REVIEW/INDEX.html",
+ "counts": {
+  "annotations": 34,
+  "regions": 10,
+  "verdicts": {
+   "good": 6,
+   "bad": 3,
+   "notit": 5,
+   "known": 0,
+   "none": 20
+  },
+  "changed": 0,
+  "orphaned": 0
+ },
+ "annotations": [
+  {
+   "id": "mrow/open_gates/c72d16e2b38c",
+   "kind": "row",
+   "verdict": "notit",
+   "comment": "a - the water edge is receded away from land and 'floats' on mc2_17 as it doesn't connect to the land. and it stair steps. basically whatever thing that the feathering tried to do made it go to a world tile level on/off\n",
+   "regions": [],
+   "anchor": {
+    "section_id": "open_gates",
+    "section_heading": "2. Decisions waiting on you — the whole queue, in one place",
+    "heading": "The rest of the queue",
+    "label": "1: Shoreline: DISPLACEMENT, FACETING, or the third thing? still a one-word answer -- but the question has changed since it was first written | Look at the mc2_17 waterline and say which you are seeing. (a) DISPLACEMENT -- the edge is in the wrong place , cutting across land or sea. (b) FACETING -- the edge is in the right place but built fro | Two corrections since this row was written, and the second one is a live lead. (1) The arithmetic that used to appear here is withdrawn. This row previously said \"the arithmetic says (b): a 128 wu til",
+    "src": null,
+    "caption": null,
+    "text": "1 Shoreline: DISPLACEMENT, FACETING, or the third thing?still a one-word answer — but the question has changed since it was first written Look at the mc2_17 waterline and say which you are seeing. (a) DISPLACEMENT — the edge is in the wrong place, cutting across land or sea. (b) FACETING — the edge is in the right place but built from visible straight risers instead of a curve. (c) A GLOW TRACING THE TILE GRID — the edge itself is fine, but something bright is drawn along it in steps, worst at night. You can answer (a) vs (b) from the two plots in §20a without launching anything: they draw the",
+    "digest": "fc7faf41bddfb9bf"
+   },
+   "created_utc": "2026-08-01T01:28:46Z",
+   "updated_utc": "2026-08-01T01:29:48Z",
+   "status": "ok"
+  },
+  {
+   "id": "mrow/open_gates/25be7d16cadd",
+   "kind": "row",
+   "verdict": "notit",
+   "comment": "I don't care about 'canonical installs' and this line of inquiry is a bit ridiculous in my mind. obviously the releases that we have cut and put on github are moreso canonical, but this is development work \n",
+   "regions": [],
+   "anchor": {
+    "section_id": "open_gates",
+    "section_heading": "2. Decisions waiting on you — the whole queue, in one place",
+    "heading": "The rest of the queue",
+    "label": "7: Which install do you consider canonical? | Two ambiguities. (a) Two on-disk trees are both named 0.4d-rc1 -- one under mc2-opengl/ , one under mc2-opengl/releases/ , each with its own binary. (b) Which tree is the install you play and grade ag | releases/ is user-gated, so no tool may pick. The duplicate name is worse than a missing one because nothing errors . New and directly relevant to every screenshot you have graded: the install at A:/G",
+    "src": null,
+    "caption": null,
+    "text": "7 Which install do you consider canonical? Two ambiguities. (a) Two on-disk trees are both named 0.4d-rc1 — one under mc2-opengl/, one under mc2-opengl/releases/, each with its own binary. (b) Which tree is the install you play and grade against. releases/ is user-gated, so no tool may pick. The duplicate name is worse than a missing one because nothing errors. New and directly relevant to every screenshot you have graded: the install at A:/Games/MC2 OpenGL Remastered has a binary dated 2026-07-05, embeds 85aaaa4f57b1, and carries no deploy manifest at all. It contains none of the last three w",
+    "digest": "3df0856990ee06a1"
+   },
+   "created_utc": "2026-08-01T01:30:13Z",
+   "updated_utc": "2026-08-01T01:31:08Z",
+   "status": "ok"
+  },
+  {
+   "id": "mrow/open_gates/73e95f1fd8f2",
+   "kind": "row",
+   "verdict": null,
+   "comment": "after 10 pm cst you can just run it. I only don't want my cursor stolen while I am actively working or playing another game. run as many as you like at night\n",
+   "regions": [],
+   "anchor": {
+    "section_id": "open_gates",
+    "section_heading": "2. Decisions waiting on you — the whole queue, in one place",
+    "heading": "The rest of the queue",
+    "label": "11: NEW -- authorise ONE supervised session with isolated launches? the single highest-value thing you can say yes to | One session, you present, launches confined to an isolated desktop, with you able to stop it. Four open questions close in that one session , and none of them can close without it: * List the building | Launches are now mechanically blocked (a PreToolUse hook), because prompt-level rules were violated repeatedly and your cursor was stolen five times. The block is correct and is not being worked aroun",
+    "src": null,
+    "caption": null,
+    "text": "11 NEW — authorise ONE supervised session with isolated launches?the single highest-value thing you can say yes to One session, you present, launches confined to an isolated desktop, with you able to stop it. Four open questions close in that one session, and none of them can close without it: • List the buildings on mc2_03 — settles which prop is producing the black quads and whether it is the animating class predicted. • The shadow-caster A/B — turn the full-registry caster feed off and see whether the black outlines go with it. This is a one-frame yes/no. • The frozen-mover vehicle-vs-mech ",
+    "digest": "29b147000072a4aa"
+   },
+   "created_utc": "2026-08-01T01:31:40Z",
+   "updated_utc": "2026-08-01T01:32:33Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/01_shoreline/01_shoreline/01e_mc2_10_landmass_meander45_lower_taste.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "the upper left here still staircases too much, the other is a bit better imo",
+   "regions": [],
+   "anchor": {
+    "section_id": "01_shoreline",
+    "section_heading": "1. Shoreline meander (water outline staircase) — SUPERSEDES the feather attempt",
+    "heading": null,
+    "label": "Lower taste point (meander 45) -- upper-left square corners survive; why 75 was chosen",
+    "src": "01_shoreline/01e_mc2_10_landmass_meander45_lower_taste.png",
+    "caption": "Lower taste point (meander 45) — upper-left square corners survive; why 75 was chosen",
+    "text": null,
+    "digest": "477766df5c634d5f"
+   },
+   "created_utc": "2026-08-01T01:35:25Z",
+   "updated_utc": "2026-08-01T01:35:44Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/03_mech_night_shadow/03_mech_night_shadow/03a_mech_shadow_AFTER.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "no, this is taken from an install that does not hav emech lights enabled and is invalid",
+   "regions": [],
+   "anchor": {
+    "section_id": "03_mech_night_shadow",
+    "section_heading": "3. Mech night contact shadow (inverted-shadow fix)",
+    "heading": null,
+    "label": "AFTER (gate ON)",
+    "src": "03_mech_night_shadow/03a_mech_shadow_AFTER.png",
+    "caption": "AFTER (gate ON)",
+    "text": null,
+    "digest": "e86a7a038d423670"
+   },
+   "created_utc": "2026-08-01T01:36:34Z",
+   "updated_utc": "2026-08-01T01:36:53Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/04_water_graze/04_water_graze/04b_lake_BEFORE.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "I think before looks better here",
+   "regions": [],
+   "anchor": {
+    "section_id": "04_water_graze",
+    "section_heading": "4. Water grazing reflection",
+    "heading": null,
+    "label": "BEFORE (gate OFF)",
+    "src": "04_water_graze/04b_lake_BEFORE.png",
+    "caption": "BEFORE (gate OFF)",
+    "text": null,
+    "digest": "08b387c8f9492ccc"
+   },
+   "created_utc": "2026-08-01T01:37:17Z",
+   "updated_utc": "2026-08-01T01:37:30Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/04_water_graze/04_water_graze/04a_graze_BEFORE.png",
+   "kind": "image",
+   "verdict": "notit",
+   "comment": "this is the edge skirt.....",
+   "regions": [],
+   "anchor": {
+    "section_id": "04_water_graze",
+    "section_heading": "4. Water grazing reflection",
+    "heading": null,
+    "label": "BEFORE (gate OFF)",
+    "src": "04_water_graze/04a_graze_BEFORE.png",
+    "caption": "BEFORE (gate OFF)",
+    "text": null,
+    "digest": "5d90610d87ab1725"
+   },
+   "created_utc": "2026-08-01T01:37:35Z",
+   "updated_utc": "2026-08-01T01:37:45Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/07_cone_lamp_guard/07_cone_lamp_guard/07b_wedge_batch8c.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.719,
+     "y": 0.695,
+     "w": 0.281,
+     "h": 0.305,
+     "note": "this is a floating cone..... the mech is not visible  but the light is"
+    }
+   ],
+   "anchor": {
+    "section_id": "07_cone_lamp_guard",
+    "section_heading": "7. Cone / lamp guard (ghost light wedge)",
+    "heading": null,
+    "label": "07b_wedge_batch8c.png",
+    "src": "07_cone_lamp_guard/07b_wedge_batch8c.png",
+    "caption": null,
+    "text": null,
+    "digest": "ac5d30d35bb7a263"
+   },
+   "created_utc": "2026-08-01T01:38:24Z",
+   "updated_utc": "2026-08-01T01:38:53Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/08_prop_self_shadow/08_prop_self_shadow/01_night_building_OFF_vs_ON.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.0116,
+     "y": 0.0931,
+     "w": 0.3031,
+     "h": 0.2048,
+     "note": "the light hits the ground and has no spill still...."
+    }
+   ],
+   "anchor": {
+    "section_id": "08_prop_self_shadow",
+    "section_heading": "8. Static prop self-shadowing (buildings read flat / cardboard)",
+    "heading": null,
+    "label": "01_night_building_OFF_vs_ON.png",
+    "src": "08_prop_self_shadow/01_night_building_OFF_vs_ON.png",
+    "caption": null,
+    "text": null,
+    "digest": "9a6d7cf5e18ff55c"
+   },
+   "created_utc": "2026-08-01T01:39:14Z",
+   "updated_utc": "2026-08-01T01:39:31Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/08_prop_self_shadow/08_prop_self_shadow/02_night_compound_OFF_vs_receive.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.4457,
+     "y": 0.3891,
+     "w": 0.1967,
+     "h": 0.1107,
+     "note": "another invisible vehicle"
+    }
+   ],
+   "anchor": {
+    "section_id": "08_prop_self_shadow",
+    "section_heading": "8. Static prop self-shadowing (buildings read flat / cardboard)",
+    "heading": null,
+    "label": "02_night_compound_OFF_vs_receive.png",
+    "src": "08_prop_self_shadow/02_night_compound_OFF_vs_receive.png",
+    "caption": null,
+    "text": null,
+    "digest": "cafc89a37f95e21e"
+   },
+   "created_utc": "2026-08-01T01:39:49Z",
+   "updated_utc": "2026-08-01T01:39:58Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/09_runway_marker_lights/09_runway_marker_lights/09a_overview_AFTER_capped_optin.png",
+   "kind": "image",
+   "verdict": "good",
+   "comment": "",
+   "regions": [],
+   "anchor": {
+    "section_id": "09_runway_marker_lights",
+    "section_heading": "9. Runway marker lights — REGRESSION FIX (user: \"atrociously hideous\")",
+    "heading": null,
+    "label": "AFTER (capped, gate=1)",
+    "src": "09_runway_marker_lights/09a_overview_AFTER_capped_optin.png",
+    "caption": "AFTER (capped, gate=1)",
+    "text": null,
+    "digest": "e0e132acd0421521"
+   },
+   "created_utc": "2026-08-01T01:40:16Z",
+   "updated_utc": "2026-08-01T01:40:16Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/09_runway_marker_lights/09_runway_marker_lights/09c_airbase_topdown_AFTER_capped_optin.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "lights are good. the runway is the wrong color",
+   "regions": [],
+   "anchor": {
+    "section_id": "09_runway_marker_lights",
+    "section_heading": "9. Runway marker lights — REGRESSION FIX (user: \"atrociously hideous\")",
+    "heading": null,
+    "label": "AFTER (capped, gate=1)",
+    "src": "09_runway_marker_lights/09c_airbase_topdown_AFTER_capped_optin.png",
+    "caption": "AFTER (capped, gate=1)",
+    "text": null,
+    "digest": "f87847cf09d6f4b6"
+   },
+   "created_utc": "2026-08-01T01:40:26Z",
+   "updated_utc": "2026-08-01T01:40:41Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/09_runway_marker_lights/09_runway_marker_lights/09d_close_ground_AFTER_capped_optin.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.1285,
+     "y": 0.417,
+     "w": 0.2755,
+     "h": 0.389,
+     "note": "this transition area is wrong color"
+    }
+   ],
+   "anchor": {
+    "section_id": "09_runway_marker_lights",
+    "section_heading": "9. Runway marker lights — REGRESSION FIX (user: \"atrociously hideous\")",
+    "heading": null,
+    "label": "AFTER (capped, gate=1) -- identical",
+    "src": "09_runway_marker_lights/09d_close_ground_AFTER_capped_optin.png",
+    "caption": "AFTER (capped, gate=1) — identical",
+    "text": null,
+    "digest": "73b9335ba1f67bc6"
+   },
+   "created_utc": "2026-08-01T01:40:44Z",
+   "updated_utc": "2026-08-01T01:40:56Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/12_mc2_24_cement/12_mc2_24_cement/01_off_crop.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.0737,
+     "y": 0.424,
+     "w": 0.2832,
+     "h": 0.3828,
+     "note": "transition area is wrong color"
+    }
+   ],
+   "anchor": {
+    "section_id": "12_mc2_24_cement",
+    "section_heading": "12. mc2_24 airbase concrete — patchwork, missing road swaths, and the runway/apron tone split",
+    "heading": null,
+    "label": "BEFORE -- gates OFF. Apron reads as tan-vs-grey slab blocks with a darker transition ring around the pad.",
+    "src": "12_mc2_24_cement/01_off_crop.png",
+    "caption": "BEFORE — gates OFF. Apron reads as tan-vs-grey slab blocks with a darker transition ring around the pad.",
+    "text": null,
+    "digest": "1fd1baaeb59b573c"
+   },
+   "created_utc": "2026-08-01T01:42:18Z",
+   "updated_utc": "2026-08-01T01:42:39Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/12_mc2_24_cement/12_mc2_24_cement/05_mc2_10_204937_class_diag_crop.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0,
+     "y": 0.0572,
+     "w": 0.2229,
+     "h": 0.3456,
+     "note": "the issue is there areas that are NOT highlighted, not the ones that are"
+    }
+   ],
+   "anchor": {
+    "section_id": "12_mc2_24_cement",
+    "section_heading": "12. mc2_24 airbase concrete — patchwork, missing road swaths, and the runway/apron tone split",
+    "heading": null,
+    "label": "MC2_TERRAIN_LOD_CHUNK_DIAG=32768 -- red = solid cement atlas, green = transition. The whole runway is uncoloured : baked colormap only.",
+    "src": "12_mc2_24_cement/05_mc2_10_204937_class_diag_crop.png",
+    "caption": "MC2_TERRAIN_LOD_CHUNK_DIAG=32768 — red = solid cement atlas, green = transition. The whole runway is uncoloured: baked colormap only.",
+    "text": null,
+    "digest": "c5d07fe8f86a0007"
+   },
+   "created_utc": "2026-08-01T01:42:56Z",
+   "updated_utc": "2026-08-01T01:43:13Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/19_cement_concrete/19_cement_concrete/mc2_24_industrial_lightfacing_armB.png",
+   "kind": "image",
+   "verdict": "notit",
+   "comment": "this is just adding the roads everywhere",
+   "regions": [],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "mc2_24 — DAY airbase apron, the richest concrete atlas (110 cells)",
+    "label": "ARM B -- one canonical concrete cell",
+    "src": "19_cement_concrete/mc2_24_industrial_lightfacing_armB.png",
+    "caption": "ARM B — one canonical concrete cell",
+    "text": null,
+    "digest": "11b9225bf1398701"
+   },
+   "created_utc": "2026-08-01T01:43:48Z",
+   "updated_utc": "2026-08-01T01:44:29Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/19_cement_concrete/19_cement_concrete/mc2_24_industrial_lightfacing_off.png",
+   "kind": "image",
+   "verdict": "good",
+   "comment": "default is best here",
+   "regions": [],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "mc2_24 — DAY airbase apron, the richest concrete atlas (110 cells)",
+    "label": "OFF (default / shipped)",
+    "src": "19_cement_concrete/mc2_24_industrial_lightfacing_off.png",
+    "caption": "OFF (default / shipped)",
+    "text": null,
+    "digest": "456227a944b26741"
+   },
+   "created_utc": "2026-08-01T01:44:32Z",
+   "updated_utc": "2026-08-01T01:44:40Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/19_cement_concrete/19_cement_concrete/mc2_24_water_near_off.png",
+   "kind": "image",
+   "verdict": "notit",
+   "comment": "these are literally dirt",
+   "regions": [],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "mc2_24 — DAY airbase apron, the richest concrete atlas (110 cells)",
+    "label": "OFF (default / shipped)",
+    "src": "19_cement_concrete/mc2_24_water_near_off.png",
+    "caption": "OFF (default / shipped)",
+    "text": null,
+    "digest": "95bf81c5ecb010b2"
+   },
+   "created_utc": "2026-08-01T01:45:00Z",
+   "updated_utc": "2026-08-01T01:45:15Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/19_cement_concrete/19_cement_concrete/mc2_23_beacons_mid_off.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.2329,
+     "y": 0.0355,
+     "w": 0.2794,
+     "h": 0.435,
+     "note": "these cones do not interect the ground and don't need a spill like thjis"
+    },
+    {
+     "x": 0.0132,
+     "y": 0.3822,
+     "w": 0.1814,
+     "h": 0.5153,
+     "note": "this is another case of terrible transition shading"
+    }
+   ],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "mc2_23 — NIGHT runway, the reference map for this complaint (floor 0.0000%)",
+    "label": "OFF (default / shipped)",
+    "src": "19_cement_concrete/mc2_23_beacons_mid_off.png",
+    "caption": "OFF (default / shipped)",
+    "text": null,
+    "digest": "208d49b333b93f59"
+   },
+   "created_utc": "2026-08-01T01:45:23Z",
+   "updated_utc": "2026-08-01T01:46:01Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/19_cement_concrete/19_cement_concrete/mc2_23_runway_ground_armB.png",
+   "kind": "image",
+   "verdict": "bad",
+   "comment": "",
+   "regions": [],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "mc2_23 — NIGHT runway, the reference map for this complaint (floor 0.0000%)",
+    "label": "ARM B -- one canonical concrete cell",
+    "src": "19_cement_concrete/mc2_23_runway_ground_armB.png",
+    "caption": "ARM B — one canonical concrete cell",
+    "text": null,
+    "digest": "0698595e28e9d8f9"
+   },
+   "created_utc": "2026-08-01T01:46:33Z",
+   "updated_utc": "2026-08-01T01:46:33Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/19_cement_concrete/19_cement_concrete/mc2_23_runway_ground_armB_crop.png",
+   "kind": "image",
+   "verdict": "bad",
+   "comment": "",
+   "regions": [],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "mc2_23 — NIGHT runway, the reference map for this complaint (floor 0.0000%)",
+    "label": "ARM B -- same detail (2x)",
+    "src": "19_cement_concrete/mc2_23_runway_ground_armB_crop.png",
+    "caption": "ARM B — same detail (2×)",
+    "text": null,
+    "digest": "808f85c03d85e1cf"
+   },
+   "created_utc": "2026-08-01T01:46:40Z",
+   "updated_utc": "2026-08-01T01:46:40Z",
+   "status": "ok"
+  },
+  {
+   "id": "txt/19_cement_concrete/4dc85cb1939b",
+   "kind": "text",
+   "verdict": null,
+   "comment": "wrong, please do not correct me. the edge tiles obviously have a different concrete tone",
+   "regions": [],
+   "anchor": {
+    "section_id": "19_cement_concrete",
+    "section_heading": "Concrete tone — ARM A vs ARM B vs ARM C (your choice). Trimmed for this update to the two measurement-valid missions (mc2_24 day apron, mc2_23 night runway) plus what ARM C does. The mc2_01 / mc2_03 / mc2_05 pose groups and the ARM B-vs-B+C block were cut: they repeat the same choice with more pictures.",
+    "heading": "ARM C — what the “dark regions” actually are",
+    "label": "note: The reframe this forces -- there is no concrete tone problem. Measured with the road texels excluded, the concrete background is already one colour on every map",
+    "src": null,
+    "caption": null,
+    "text": "The reframe this forces — there is no concrete tone problem. Measured with the road texels excluded, the concrete background is already one colour on every map: mc2_24 144.7–149.5 (spread 4.7 luma, std 0.89), mc2_05 3.2, mc2_03 2.4, mc2_10 2.0. mc2_23 and mc2_01 show a ~43-luma span driven entirely by two and one cells, and those cells are wide highway pieces — not concrete.What makes concrete “magically become a different color” inside a cell is a road: background L≈147 against asphalt L≈82, a ~65-luma hard-edged step. That is exactly the class you scoped out — “obviously runways, roads, othe",
+    "digest": "d158516744d002bd"
+   },
+   "created_utc": "2026-08-01T01:47:08Z",
+   "updated_utc": "2026-08-01T01:47:42Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/20_session_0730/20_session_0730/shoreline_mc2_17_intro.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "this is the single best graph you have created in 4 months on this project. the issue I believe, and I wrote this elsewhere, is that what is actually happening for the stair step I am talking about, it snaps to the world tiles, rather than following the authored edges. so none of these lines represent the visual reality, it is just snapped to the nearest tile edge",
+   "regions": [],
+   "anchor": {
+    "section_id": "20_session_0730",
+    "section_heading": "Session 2026-07-29/30 — your complaints, the three unfixed defects, and the root causes that moved. Trimmed: the instrument post-mortems, the infrastructure log, the 53-commit table and the adversarial-review write-ups were cut — none of them can support a verdict from you.",
+    "heading": "20a. Your four complaints — honest status",
+    "label": "mc2_17 intro view -- the map the complaint is about. Blue lines are the 128 wu terrain tile lattice. The stock waterline (black) is a smooth sinuous curve that ",
+    "src": "20_session_0730/shoreline_mc2_17_intro.png",
+    "caption": "mc2_17 intro view — the map the complaint is about. Blue lines are the 128 wu terrain tile lattice. The stock waterline (black) is a smooth sinuous curve that ignores the lattice. The proposed cure (orange) is glued to it. Staircase index 0.260 vs an isotropic floor of 0.222.",
+    "text": null,
+    "digest": "54663991a6eb7f44"
+   },
+   "created_utc": "2026-08-01T01:49:21Z",
+   "updated_utc": "2026-08-01T01:50:53Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/20_session_0730/20_session_0730/vehicle_ab_turret_aim.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "we'll call this fixed, but one lane had this also messed up. and that is a fake radar not a turret. ",
+   "regions": [],
+   "anchor": {
+    "section_id": "20_session_0730",
+    "section_heading": "Session 2026-07-29/30 — your complaints, the three unfixed defects, and the root causes that moved. Trimmed: the instrument post-mortems, the infrastructure log, the 53-commit table and the adversarial-review write-ups were cut — none of them can support a verdict from you.",
+    "heading": "20a. Your four complaints — honest status",
+    "label": "mc2_03 close -- the difference is a turret barrel at a different aim angle . The earlier “+14.8 / +18.8 luma brighter” readings came from pixels like these and ",
+    "src": "20_session_0730/vehicle_ab_turret_aim.png",
+    "caption": "mc2_03 close — the difference is a turret barrel at a different aim angle. The earlier “+14.8 / +18.8 luma brighter” readings came from pixels like these and are withdrawn.",
+    "text": null,
+    "digest": "081faa7728c17b04"
+   },
+   "created_utc": "2026-08-01T01:51:11Z",
+   "updated_utc": "2026-08-01T01:51:35Z",
+   "status": "ok"
+  },
+  {
+   "id": "mrow/install/ab739e52ca75",
+   "kind": "row",
+   "verdict": null,
+   "comment": "\". Every complaint you filed this month was filed against this binary.\"\n\noff to a terrible start, as this is incomprehensibly incorrect ",
+   "regions": [],
+   "anchor": {
+    "section_id": "install",
+    "section_heading": "1. START HERE — which install to launch, and the delivery decision it forces",
+    "heading": "The installs on this machine, by embedded fingerprint",
+    "label": "MC2 OpenGL Remastered/ the one on your Start menu: 85aaaa4f57b1 claude/nifty-mendeleev | 2026-07-05 | Nothing. Do not grade against it. 25 days and ~1,100 commits behind. Every complaint you filed this month was filed against this binary.",
+    "src": null,
+    "caption": null,
+    "text": "MC2 OpenGL Remastered/the one on your Start menu 85aaaa4f57b1claude/nifty-mendeleev 2026-07-05 Nothing. Do not grade against it. 25 days and ~1,100 commits behind. Every complaint you filed this month was filed against this binary.",
+    "digest": "b4b53b2d10cf9b66"
+   },
+   "created_utc": "2026-08-02T15:29:51Z",
+   "updated_utc": "2026-08-02T15:30:26Z",
+   "status": "ok"
+  },
+  {
+   "id": "mrow/install/69624a03a62c",
+   "kind": "row",
+   "verdict": "bad",
+   "comment": "this whole thing is dumb. just delete all the old installs, and pick one, and go with it. all fixes should be on all installs, because why would they not be?????",
+   "regions": [],
+   "anchor": {
+    "section_id": "install",
+    "section_heading": "1. START HERE — which install to launch, and the delivery decision it forces",
+    "heading": "DECISION 1 Which install should the delivery gate grade?",
+    "label": "(a) Nominate the product install A:/Games/MC2 OpenGL Remastered: \" Would the person who double-clicks the Start-menu icon see this fix? \" That is the honest reading of the words delivered , and it is the question you actually ask when you launch by habit. | The row goes red the moment you set it, and stays red until a build is promoted into that directory. Nine reds, today. Every board run is a failing board run until you do a promotion you have not agre",
+    "src": null,
+    "caption": null,
+    "text": "(a) Nominate the product installA:/Games/MC2 OpenGL Remastered “Would the person who double-clicks the Start-menu icon see this fix?” That is the honest reading of the words delivered, and it is the question you actually ask when you launch by habit. The row goes red the moment you set it, and stays red until a build is promoted into that directory. Nine reds, today. Every board run is a failing board run until you do a promotion you have not agreed to do.",
+    "digest": "d9c3b564eedf5571"
+   },
+   "created_utc": "2026-08-02T15:31:15Z",
+   "updated_utc": "2026-08-02T15:31:49Z",
+   "status": "ok"
+  },
+  {
+   "id": "txt/open_gates/f2cedaf82b15",
+   "kind": "text",
+   "verdict": null,
+   "comment": "just turn it off",
+   "regions": [],
+   "anchor": {
+    "section_id": "open_gates",
+    "section_heading": "2. Decisions waiting on you — the whole queue, in one place",
+    "heading": "2a. The one that is a defect, not a preference",
+    "label": "note: MC2_WATER_SKYTINT should be decided on its own, and it is not a taste call. A second reader ( visual_tuning_profile.cpp:182 ) is a pure presence test: if (!envI",
+    "src": null,
+    "caption": null,
+    "text": "MC2_WATER_SKYTINT should be decided on its own, and it is not a taste call. A second reader (visual_tuning_profile.cpp:182) is a pure presence test: if (!envIsSet(\"MC2_WATER_SKYTINT\")). So the variable being set to anything — including \"0\" — suppresses the per-mission waterSkyTintStrength that data/visual_tuning.json authors. Turning it “off” by writing 0 does not restore the authored art; it silences it. This one wants to be unset, not zeroed, and bundling it with three preference questions — as this page did an hour ago — forces you to answer a bug and three matters of taste with a single ye",
+    "digest": "3cb5e51cdc1c0cb3"
+   },
+   "created_utc": "2026-08-02T15:34:01Z",
+   "updated_utc": "2026-08-02T15:34:06Z",
+   "status": "ok"
+  },
+  {
+   "id": "mrow/open_gates/bfbd3483cefe",
+   "kind": "row",
+   "verdict": null,
+   "comment": "I don't understand where you get these narratives from. you are just inventing things. I have ONLY been watching smoke tests for a month plus. ",
+   "regions": [],
+   "anchor": {
+    "section_id": "open_gates",
+    "section_heading": "2. Decisions waiting on you — the whole queue, in one place",
+    "heading": "2b. The three that are genuine judgement calls",
+    "label": "(b) Make the engine agree with the launcher flip the ENGINE defaults ON: You decide these three are wanted -- which is what you have actually been playing with all along. The launcher stops being a lie by becoming right. | A real default-behaviour change for anyone who is not you, and it needs the same eyes-on grading as any default flip. This option was missing when the decision was put to you , which made the choice l",
+    "src": null,
+    "caption": null,
+    "text": "(b) Make the engine agree with the launcherflip the ENGINE defaults ON You decide these three are wanted — which is what you have actually been playing with all along. The launcher stops being a lie by becoming right. A real default-behaviour change for anyone who is not you, and it needs the same eyes-on grading as any default flip. This option was missing when the decision was put to you, which made the choice look narrower than it is.",
+    "digest": "ab41ab21e239201a"
+   },
+   "created_utc": "2026-08-02T15:34:37Z",
+   "updated_utc": "2026-08-02T15:35:36Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/fix_verification_0801/13_fix_verification_0801/01_shore_east_AFTER_default.png",
+   "kind": "image",
+   "verdict": "good",
+   "comment": "",
+   "regions": [],
+   "anchor": {
+    "section_id": "fix_verification_0801",
+    "section_heading": "13. 2026-08-01 fix verification — supervised A/B run (agent-executed, user-authorized)",
+    "heading": "13a. Shoreline staircase (queue #1, MC2_WATER_SHORE_MODE)",
+    "label": "AFTER (0.5.2 default)",
+    "src": "13_fix_verification_0801/01_shore_east_AFTER_default.png",
+    "caption": "AFTER (0.5.2 default)",
+    "text": null,
+    "digest": "3e54c16f99697321"
+   },
+   "created_utc": "2026-08-02T15:36:04Z",
+   "updated_utc": "2026-08-02T15:36:04Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/fix_verification_0801/13_fix_verification_0801/02_shore_sw_AFTER_default.png",
+   "kind": "image",
+   "verdict": "good",
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.0032,
+     "y": 0.0975,
+     "w": 0.4488,
+     "h": 0.5565,
+     "note": "this hard line is still not perfect (should be soft) but its ok for now"
+    }
+   ],
+   "anchor": {
+    "section_id": "fix_verification_0801",
+    "section_heading": "13. 2026-08-01 fix verification — supervised A/B run (agent-executed, user-authorized)",
+    "heading": "13a. Shoreline staircase (queue #1, MC2_WATER_SHORE_MODE)",
+    "label": "AFTER (0.5.2 default)",
+    "src": "13_fix_verification_0801/02_shore_sw_AFTER_default.png",
+    "caption": "AFTER (0.5.2 default)",
+    "text": null,
+    "digest": "3cb68bd327f7dcb3"
+   },
+   "created_utc": "2026-08-02T15:36:11Z",
+   "updated_utc": "2026-08-02T15:36:33Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/fix_verification_0801/13_fix_verification_0801/08_cones_mc2_23_AFTER_default.png",
+   "kind": "image",
+   "verdict": "good",
+   "comment": "",
+   "regions": [],
+   "anchor": {
+    "section_id": "fix_verification_0801",
+    "section_heading": "13. 2026-08-01 fix verification — supervised A/B run (agent-executed, user-authorized)",
+    "heading": "13c. Cone pools + light realism (queue items, MC2_CONE_POOL_POLICY / MC2_LIGHT_REALISM)",
+    "label": "AFTER (0.5.2 default)",
+    "src": "13_fix_verification_0801/08_cones_mc2_23_AFTER_default.png",
+    "caption": "AFTER (0.5.2 default)",
+    "text": null,
+    "digest": "1071eaa33c00d76d"
+   },
+   "created_utc": "2026-08-02T15:37:49Z",
+   "updated_utc": "2026-08-02T15:37:49Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/fix_verification_0801/13_fix_verification_0801/04_cement_mc2_24_AFTER_default.png",
+   "kind": "image",
+   "verdict": "good",
+   "comment": "this is still missing the rest of the road but yes the tint is fixed",
+   "regions": [],
+   "anchor": {
+    "section_id": "fix_verification_0801",
+    "section_heading": "13. 2026-08-01 fix verification — supervised A/B run (agent-executed, user-authorized)",
+    "heading": "13b. Concrete tint / runway blend (queue #2, MC2_OVERLAY_CEMENT_ADOPT)",
+    "label": "AFTER (0.5.2 default)",
+    "src": "13_fix_verification_0801/04_cement_mc2_24_AFTER_default.png",
+    "caption": "AFTER (0.5.2 default)",
+    "text": null,
+    "digest": "27a073fab08940f8"
+   },
+   "created_utc": "2026-08-02T15:43:50Z",
+   "updated_utc": "2026-08-02T15:44:17Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/fix_verification_0801/13_fix_verification_0801/06_runway_mc2_10_AFTER_default.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "there is no difference here to me. also missing the rest of the runway",
+   "regions": [],
+   "anchor": {
+    "section_id": "fix_verification_0801",
+    "section_heading": "13. 2026-08-01 fix verification — supervised A/B run (agent-executed, user-authorized)",
+    "heading": "13b. Concrete tint / runway blend (queue #2, MC2_OVERLAY_CEMENT_ADOPT)",
+    "label": "AFTER (0.5.2 default)",
+    "src": "13_fix_verification_0801/06_runway_mc2_10_AFTER_default.png",
+    "caption": "AFTER (0.5.2 default)",
+    "text": null,
+    "digest": "ec4098495cf856a6"
+   },
+   "created_utc": "2026-08-02T15:44:53Z",
+   "updated_utc": "2026-08-02T15:45:23Z",
+   "status": "ok"
+  },
+  {
+   "id": "img/fix_verification_0801/13_fix_verification_0801/07_cones_mc2_23_BEFORE_policy0.png",
+   "kind": "image",
+   "verdict": null,
+   "comment": "",
+   "regions": [
+    {
+     "x": 0.6983,
+     "y": 0.1171,
+     "w": 0.2383,
+     "h": 0.2197,
+     "note": "still has the concrete tint issue"
+    }
+   ],
+   "anchor": {
+    "section_id": "fix_verification_0801",
+    "section_heading": "13. 2026-08-01 fix verification — supervised A/B run (agent-executed, user-authorized)",
+    "heading": "13c. Cone pools + light realism (queue items, MC2_CONE_POOL_POLICY / MC2_LIGHT_REALISM)",
+    "label": "BEFORE (legacy arm)",
+    "src": "13_fix_verification_0801/07_cones_mc2_23_BEFORE_policy0.png",
+    "caption": "BEFORE (legacy arm)",
+    "text": null,
+    "digest": "32324a4951a48368"
+   },
+   "created_utc": "2026-08-02T15:45:27Z",
+   "updated_utc": "2026-08-02T15:45:37Z",
+   "status": "ok"
+  }
+ ]
+}

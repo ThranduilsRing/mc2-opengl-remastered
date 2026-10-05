@@ -182,3 +182,18 @@ data/hdr/*_16k.ktx2
 # scratch/ is the untracked per-lane workbench (FABLE-DEBLOAT-1: two one-shots
 # were committed by accident and untracked in a4bd0ffa; keep it out of the index)
 /scratch/
+
+# Local scratch / large local reference data (2026-10-05 cleanup; kept on disk, not versioned)
+/run/
+/dev_shell_out/
+/graphify-out/
+imgui.ini
+/.claude/archive-2026-07-05/
+tests/visual/baselines/
+tests/visual/goldens/
+tests/visual/bookmarks/
+tests/visual/macro_on/
+tests/visual/macro_off/
+tests/visual/*.png
+tests/terrain/gaea/
+tests/terrain/workbench/
