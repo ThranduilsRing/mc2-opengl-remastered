@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.0.0"
-registry_entry_count: 369
-registry_env_flag_count: 368
-sweep_flag_count: 1041
-flag_count: 1104
+registry_entry_count: 362
+registry_env_flag_count: 361
+sweep_flag_count: 1037
+flag_count: 1097
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -850,7 +850,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:4511
+      - GameOS/gameos/gos_terrain_indirect.cpp:4222
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -978,7 +978,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "DEFAULT ON since RUNWAY-CLOSE-1 (2026-08-02), measured at the user's mc2_10 saved_204907 bookmark, exe 30c18df1: rescued swath pixels 15 -> 6506, rescued luma 32.4 (bare dirt) -> 54.7, matching the..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:956
+      - GameOS/gameos/gos_terrain_indirect.cpp:929
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -989,7 +989,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so cell art can be inspected directly -- which cells actually carry painted markings is an empirical question about the ART, not on..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:2866
+      - GameOS/gameos/gos_terrain_indirect.cpp:2577
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1000,7 +1000,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid), which -- unlike the keyed transition path (..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:896
+      - GameOS/gameos/gos_terrain_indirect.cpp:869
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1020,7 +1020,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-ATLAS-CELL-2 ARM B: point every plain-concrete tile at ONE canonical concrete cell, so an apron cannot change colour tile to tile at all. Where ARM A equalises each cell's tone while keeping..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1325
+      - GameOS/gameos/gos_terrain_indirect.cpp:1243
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1031,7 +1031,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-ATLAS-CELL-2 ARM A: tone-normalise ONLY the actual-concrete atlas cells. USER SCOPE RULING 2026-07-28: \"by all concrete I mean only the actual concrete ... obviously runways, roads, other ov..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1314
+      - GameOS/gameos/gos_terrain_indirect.cpp:1232
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1072,18 +1072,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete treatment (ARM A tone, ARM B canon, and the c..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1300
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_CEMENT_TONE_MATCH
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_CEMENT_TONE_MATCH
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "REJECTED BY USER 2026-07-25 (CEMENT-ALPHA-LAND-1, grading the REVIEW section 12(a) mc2_24 before/after pair): \"sigh. after is WAY worse.\" The ON arm flattens the apron into a uniform pale wash -- i..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:880
+      - GameOS/gameos/gos_terrain_indirect.cpp:1218
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1094,7 +1083,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24). PopulateRecipeCementWords only bakes a cement word for a TRANSITION tile (isCement && isAlpha) w..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:916
+      - GameOS/gameos/gos_terrain_indirect.cpp:889
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1165,7 +1154,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload. The default indirect terrain path (thin vert, no TES) does no geometry displacement,..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:2092
+      - GameOS/gameos/gos_terrain_indirect.cpp:2010
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -1377,7 +1366,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:11236
       - GameOS/gameos/gameos_graphics.cpp:11236
-      - GameOS/gameos/gos_terrain_indirect.cpp:5770
+      - GameOS/gameos/gos_terrain_indirect.cpp:5481
     referenced_at_more: 1
     registered: no
     in_smoke_passthrough: no
@@ -1419,7 +1408,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5092
+      - GameOS/gameos/gos_terrain_indirect.cpp:4803
       - mclib/quad.cpp:2677
       - mclib/terrain.cpp:3572
     registered: no
@@ -2963,16 +2952,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_HUD_IMGUI_PAUSE
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_HUD_IMGUI_PAUSE
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "IN-MISSION-HUD-IMGUI-SCOPE-1 slice B: render the in-mission PauseWindow as an ImGui panel (code/pausewindow.cpp + code/hudimguipanel.cpp) laid out inside gos_ComputeHudCanvasBox; button clicks disp..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_HUD_IMGUI_TABS
     default: off
     kind: Feature
@@ -4312,7 +4291,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:6304
+      - GameOS/gameos/gos_terrain_indirect.cpp:6015
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4462,7 +4441,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5040
+      - GameOS/gameos/gos_terrain_indirect.cpp:4751
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4706,7 +4685,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay adopts the cement atlas + flat light on c..."
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:10958
-      - GameOS/gameos/gos_terrain_indirect.cpp:1049
+      - GameOS/gameos/gos_terrain_indirect.cpp:1022
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4886,7 +4865,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "DEFAULT 0 (OFF). CONCRETE-DELIVER-1 promoted this to default 1; CONCRETE-DELIVER-2 REVERTED that. The promotion rested on the ROAD-OVERLAY-LIGHT-1 attribution ('closing the paved-classification gap..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1068
+      - GameOS/gameos/gos_terrain_indirect.cpp:1041
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5580,7 +5559,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5338
+      - GameOS/gameos/gos_terrain_indirect.cpp:5049
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5589,8 +5568,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:4397
-      - GameOS/gameos/gos_terrain_indirect.cpp:3528
-      - GameOS/gameos/gos_terrain_indirect.cpp:4590
+      - GameOS/gameos/gos_terrain_indirect.cpp:3239
+      - GameOS/gameos/gos_terrain_indirect.cpp:4301
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5610,40 +5589,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 = DILATION: cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain with no authored transition art. REV-1 (..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1507
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_RUNWAY_TONE_MATCH
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_RUNWAY_TONE_MATCH
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "REJECTED BY EXTENSION 2026-07-25 (CEMENT-ALPHA-LAND-1): the user rejected MC2_CEMENT_TONE_MATCH's ON arm outright (\"after is WAY worse\" -- authored material variation flattened into a pale wash), a..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1147
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_RUNWAY_TONE_STRENGTH
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_RUNWAY_TONE_STRENGTH
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "RUNWAY-APRON-TONE-2 taste dial, 0..1 (default 1.0). Lerps the per-channel gain of MC2_RUNWAY_TONE_MATCH toward 1.0, so 0 = no change and 1 = land exactly on the target tone. No effect unless MC2_RU..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1156
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_RUNWAY_TONE_TARGET
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_RUNWAY_TONE_TARGET
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "RUNWAY-APRON-TONE-2 absolute cross-map target tone, \"r,g,b\" in 0..255. When set, every map's cement catalog is normalised to this same tone, which is what makes runways read identically across miss..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1169
+      - GameOS/gameos/gos_terrain_indirect.cpp:1425
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7623,7 +7569,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:3692
+      - GameOS/gameos/gos_terrain_indirect.cpp:3403
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7673,7 +7619,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_terrain_indirect.cpp:131
-      - GameOS/gameos/gos_terrain_indirect.cpp:1904
+      - GameOS/gameos/gos_terrain_indirect.cpp:1822
       - GameOS/gameos/gos_terrain_indirect.cpp:608
     registered: no
     in_smoke_passthrough: yes
@@ -7773,7 +7719,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:1662
+      - GameOS/gameos/gos_terrain_indirect.cpp:1580
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:75
     registered: no
     in_smoke_passthrough: yes
@@ -7991,7 +7937,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-OVERLAY-V2-DECAL-SUPPRESS-1: in the static decal bake, skip legacy runway/road/cement decals for tiles fully inside the armed OVERLAY_V2 sidecar bounds (avoids double-draw). Default-ON but ..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:6395
+      - GameOS/gameos/gos_terrain_indirect.cpp:6106
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8256,7 +8202,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:6176
+      - GameOS/gameos/gos_terrain_indirect.cpp:5887
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9844,26 +9790,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_EDGE_FOG_ISLAND
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VULKAN_EDGE_FOG_ISLAND
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VULKAN-CONTRACT-MANIFEST-ARC Layer 3: native Vulkan edge-fog island (GameOS/gameos/vulkan_edge_fog_island.cpp) — GL depth/color readback bridged into a Vulkan compute pass, pixel-parity-proven vs t..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_POSTPROCESS_SUBGRAPH
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VULKAN_POSTPROCESS_SUBGRAPH
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VULKAN-CONTRACT-MANIFEST-ARC Layer 4: native Vulkan postprocess subgraph (GameOS/gameos/vulkan_postprocess_subgraph.cpp) fusing fog passes into one render pass / two draws, Vulkan-owned intermediat..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_PROBE
     default: unknown
     declared_in: null
@@ -10057,7 +9983,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:2913
       - GameOS/gameos/gameos_graphics.cpp:2921
-      - GameOS/gameos/gos_terrain_indirect.cpp:5491
+      - GameOS/gameos/gos_terrain_indirect.cpp:5202
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -10065,7 +9991,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5596
+      - GameOS/gameos/gos_terrain_indirect.cpp:5307
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no

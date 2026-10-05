@@ -2678,13 +2678,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6), REVISION 2 = DILATION: cure the hard full-tile stairstep cliff where a SOLID cement pad/runway tile abuts BARE terrain with no authored transition art. REV-1 (erosion; ramped cement->terrain INSIDE the pad tile over its outer half tile) was USER-REJECTED -- it dissolved the apron edge into a blurry rim; user verdict on the mc2_01 day apron A/B: 'gate on is worse. the answer is usually MORE concrete, not less.' Superseded by 8e59de64, reach widened 0.5->1.0 tile by 3c6aad71. SHIPPED MECHANISM: PopulateRecipeCementWords (gos_terrain_indirect.cpp) packs a 4-neighbour open-border mask into cementWord bits 19:16 for solid cement boundary tiles (neighbours carrying ANY valid cement word -- solid OR transition -- count as cement, so authored transition edges are left to the legacy blend). terrain_lod_chunk.frag (the LIVE path) then works on the BARE-TERRAIN tile: solid cement keeps crisp FULL replacement to its own boundary (no erosion), and where a neighbouring solid cement tile's mask flags this side open, that cement is blended over the terrain at full strength at the shared edge falling to zero ONE tile out (alpha exactly 1.0 at the seam, so it is continuous with the crisp tile). Net: the concrete footprint GROWS with a soft outer margin instead of shrinking. gos_terrain.frag (indirect path) had the rev-1 erosion REMOVED and is plain full replacement as in stock -- it is per-quad off a thin record with no neighbour access, so it cannot host the dilation. DEFAULT OFF: no mask bits are written, so no neighbour is ever flagged open and the dilate block is a no-op == byte-identical stock. Baked once per mission load; zero per-frame cost."
     },
     // MC2-03-CEMENT-PINK-1: cement catalog atlas post-processing (build-time, CPU).
-    {
-        "MC2_FEATURE_CEMENT_TONE_MATCH",
-        "MC2_CEMENT_TONE_MATCH",
-        EnvVarKind::Feature,
-        false,
-        "REJECTED BY USER 2026-07-25 (CEMENT-ALPHA-LAND-1, grading the REVIEW section 12(a) mc2_24 before/after pair): \"sigh. after is WAY worse.\" The ON arm flattens the apron into a uniform pale wash -- it destroys the legible material variation (the darker transition ring around the pad, the tonal separation between apron slabs, roads and shoulders) and reads worse than the patchwork it was meant to cure. KEEP DEFAULT OFF; do not build further work on top of it. Atlas-tone normalisation is the wrong lever for the tone problem -- MC2_CEMENT_LIT (share one lighting term rather than flatten authored tone) is the live candidate. Original rationale follows. CEMENT-ATLAS-TONE-MATCH-1 (MC2-03-CEMENT-PINK-1): cure the concrete PATCHWORK on airbase aprons/runways (mc2_24, mc2_03). The cement catalog packs concrete art from multiple authored families whose base tone differs materially (measured mc2_24: (134,130,120) warm tan vs (100,100,100) neutral grey). Cement fragments are FLAT-LIT by design (terrain_lod_chunk.frag forces normalLight=1.0 where pureConcrete=1), so no shared lighting term unifies them and the raw per-cell tone difference is exposed at full contrast with straight tile-boundary seams. BuildCementCatalogAtlas normalises every cell's CONCRETE-BAND colour (the [P50,P90] luminance window, which excludes dark asphalt/markings and highlights) to the component-wise MEDIAN across cells, per channel so brightness AND tint match, with per-channel gain clamped to [0.70,1.40]. Per-cell detail (slab lines, cracks, road markings) is untouched. DEFAULT OFF: the atlas buffer is left byte-identical. Runs once per mission load; zero per-frame cost."
-    },
     // CEMENT-INTRACELL-1 (ARM C): make the concrete arms obey the user's own
     // scope ruling by detecting the BAKED ROAD ART inside solid cement cells.
     {
@@ -2734,27 +2727,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius. Any float, clamped [0.1,64.0] to match gos_SetSsaoRadius; unset keeps the built-in default (24.0). WHY IT EXISTS: SSAO-BLUR-1 changed two coupled things -- it added the bilateral denoise pass AND raised aoRadius 3.0 -> 24.0 -- but shipped a killswitch for only the first. MC2_SSAO_BLUR=0 therefore claimed to \"restore the pre-SSAO-BLUR-1 two-draw chain\" while silently retaining the 8x radius, producing radius-24-without-denoise: a configuration that has never shipped and is precisely the speckle-on-flat-unoccluded-faces failure SSAO-RETUNE-1 documented. The radius change had no revert of its own; this is it. WHY THE RADIUS IS NOT SLAVED TO MC2_SSAO_BLUR: the stated purpose of that gate is to A/B the BLUR on one exe, and flipping the radius alongside it makes that a two-variable change. Worse, 3.0 is STRUCTURALLY DEAD -- one map cell is 42.67 wu (worldUnitsPerVertex 128 / MAPCELL_DIM 3) and the baked 16-tap kernel is not unit-normalised (mean |v| 0.289), so radius 3 lands the mean tap 0.87 wu from centre (sub-pixel, every tap reading the same depth texel) while rangeCheck = smoothstep(0,1,aoRadius/dist) independently zeroes any occluder past 3 wu; measured 0.0000% of AO-buffer pixels below 250/255, i.e. occlusion identically zero. Auto-reverting to 3.0 would silently switch AO OFF for anyone setting MC2_SSAO_BLUR=0 -- a worse failure than the one being fixed. Instead the known-bad pairing (blur off + retuned radius + no explicit override) emits a loud [SSAO v1] WARNING naming both ways out. MC2_SSAO is default-OFF, so this changes no default launch; the radius also remains adjustable at runtime via ImGui and the per-mission visual-tuning-profile `aoRadius` key."
     },
     // RUNWAY-APRON-TONE-2: cross-map absolute runway/apron tone normalisation.
-    {
-        "MC2_FEATURE_RUNWAY_TONE_MATCH",
-        "MC2_RUNWAY_TONE_MATCH",
-        EnvVarKind::Feature,
-        false,
-        "REJECTED BY EXTENSION 2026-07-25 (CEMENT-ALPHA-LAND-1): the user rejected MC2_CEMENT_TONE_MATCH's ON arm outright (\"after is WAY worse\" -- authored material variation flattened into a pale wash), and this gate is the same lever with a wider gain, so it inherits the verdict. It is ALSO inert on stock maps: the [CEMENT_CELL_TONE v1] census measures dark_cells=0 on mc2_10 (19/19 cells) and mc2_24 (110/110), i.e. there is no dark asphalt family for it to correct -- the premise below is disproven. KEEP DEFAULT OFF. Retained only because the wide-gain path plus the MC2_RUNWAY_TONE_TARGET cross-map mechanism is the right tool IF a third-party or mod map genuinely packs a dark family, which the census will say. Original (disproven) rationale follows. RUNWAY-APRON-TONE-2 (user report, mc2_10 close ground pose): the runway renders as a dark asphalt band against a pale concrete apron, and differs map to map. CEMENT-ATLAS-TONE-MATCH-1 could not close this because it clamps its per-channel gain to [0.70,1.40]: an asphalt-DOMINANT cell has its whole [P50,P90] band inside the asphalt (runway0000 band mean ~53), so reaching a ~123..149 concrete reference needs 2.3x-2.8x and the clamp caps it at +40%. This pass re-measures every cement cell's concrete band AFTER the tone-match pass and pulls it onto an ABSOLUTE cross-map target with a wide [0.35,4.0] gain, so the runway lands on the same colour on every mission rather than merely closer to its own map's median. Highlights (lane markings, painted numbers) pass through a soft knee (linear to 190, asymptotic to 255) so they stay distinct instead of clipping flat. Target defaults to the map's UPPER-cluster band median (the concrete apron tone, not a median dragged down by asphalt cells) and is overridable with MC2_RUNWAY_TONE_TARGET=\"r,g,b\"; MC2_RUNWAY_TONE_STRENGTH (0..1, default 1) is the taste dial. DEFAULT OFF: the atlas buffer is left byte-identical. Once per mission load, zero per-frame cost. The [CEMENT_CELL_TONE v1] per-cell census prints regardless of the gate."
-    },
-    {
-        "MC2_FEATURE_RUNWAY_TONE_STRENGTH",
-        "MC2_RUNWAY_TONE_STRENGTH",
-        EnvVarKind::Feature,
-        false,
-        "RUNWAY-APRON-TONE-2 taste dial, 0..1 (default 1.0). Lerps the per-channel gain of MC2_RUNWAY_TONE_MATCH toward 1.0, so 0 = no change and 1 = land exactly on the target tone. No effect unless MC2_RUNWAY_TONE_MATCH is on."
-    },
-    {
-        "MC2_FEATURE_RUNWAY_TONE_TARGET",
-        "MC2_RUNWAY_TONE_TARGET",
-        EnvVarKind::Feature,
-        false,
-        "RUNWAY-APRON-TONE-2 absolute cross-map target tone, \"r,g,b\" in 0..255. When set, every map's cement catalog is normalised to this same tone, which is what makes runways read identically across missions. Unset => each map uses its own upper-cluster band median (the concrete apron tone). No effect unless MC2_RUNWAY_TONE_MATCH is on."
-    },
     {
         "MC2_FEATURE_CEMENT_LIT",
         "MC2_CEMENT_LIT",
@@ -3542,20 +3514,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp). Default-ON (perf); =0 restores the legacy always-walk behavior."
     },
     {
-        "MC2_FEATURE_VULKAN_EDGE_FOG_ISLAND",
-        "MC2_VULKAN_EDGE_FOG_ISLAND",
-        EnvVarKind::Feature,
-        false,
-        "VULKAN-CONTRACT-MANIFEST-ARC Layer 3: native Vulkan edge-fog island (GameOS/gameos/vulkan_edge_fog_island.cpp) — GL depth/color readback bridged into a Vulkan compute pass, pixel-parity-proven vs the GL path. Default-OFF, presence-gated (=1 enables); requires the Vulkan probe device to be viable (falls back to GL otherwise). See MEMORY handoff HANDOFF_2026_07_01_vulkan_lib_track."
-    },
-    {
-        "MC2_FEATURE_VULKAN_POSTPROCESS_SUBGRAPH",
-        "MC2_VULKAN_POSTPROCESS_SUBGRAPH",
-        EnvVarKind::Feature,
-        false,
-        "VULKAN-CONTRACT-MANIFEST-ARC Layer 4: native Vulkan postprocess subgraph (GameOS/gameos/vulkan_postprocess_subgraph.cpp) fusing fog passes into one render pass / two draws, Vulkan-owned intermediate target. Default-OFF, presence-gated (=1 enables). See MEMORY handoff HANDOFF_2026_07_01_vulkan_lib_track."
-    },
-    {
         "MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT",
         "MC2_VULKAN_SWAPCHAIN_PRESENT",
         EnvVarKind::Feature,
@@ -3568,13 +3526,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice A: data-first HUD readability. At the single font-resolve choke point (gui/afont.cpp aFont::loadFont) substitute the next-size-up retail D3F atlas for the worst-offender in-mission HUD fonts (help/objectives/info-window/components/vehicle-tab/pause/hotkey overlay); also brightens the disabled vehicle-tab label color (code/controlgui.cpp renderVehicleTab, stock 0xff7f7f7f gray-on-dark). No layout/hit-test change. Default-OFF => byte-identical."
-    },
-    {
-        "MC2_FEATURE_HUD_IMGUI_PAUSE",
-        "MC2_HUD_IMGUI_PAUSE",
-        EnvVarKind::Feature,
-        false,
-        "IN-MISSION-HUD-IMGUI-SCOPE-1 slice B: render the in-mission PauseWindow as an ImGui panel (code/pausewindow.cpp + code/hudimguipanel.cpp) laid out inside gos_ComputeHudCanvasBox; button clicks dispatch to the existing PauseWindow::handleClick. Pin-to-legacy: any failure (ImGui not initialized, Begin fails) permanently falls back to the legacy render for the session. Default-OFF => byte-identical legacy pause window."
     },
     {
         "MC2_FEATURE_HUD_IMGUI_TABS",
