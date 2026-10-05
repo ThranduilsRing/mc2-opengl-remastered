@@ -1481,15 +1481,11 @@ void gosPostProcess::createFBOs(int w, int h)
             GLint sceneFmt = 0;  // sceneColorTex_ is still bound to GL_TEXTURE_2D here
             glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &sceneFmt);
             GLboolean fbSrgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
-            const char* hdr   = getenv("MC2_HDR_POST");
-            const char* tm    = getenv("MC2_TONEMAP_ACES");
-            const char* bloom = getenv("MC2_BLOOM");
             fprintf(stderr,
                 "[LINEAR_AUDIT] event=color_pipeline_probe framebuffer_srgb=%d "
                 "scene_color_internalformat=0x%04X (0x881A=GL_RGBA16F) "
-                "hdr_post=%s tonemap_aces=%s bloom=%s verdict=%s\n",
+                "verdict=%s\n",
                 (int)fbSrgb, (unsigned)sceneFmt,
-                hdr ? hdr : "(unset/off)", tm ? tm : "(unset/off)", bloom ? bloom : "(unset/off)",
                 (fbSrgb == GL_FALSE)
                   ? "GAMMA_SPACE_MATH:no_FRAMEBUFFER_SRGB->shader_lighting_in_sRGB_space->linear_correctness_required_before_PBR"
                   : "FRAMEBUFFER_SRGB_ON:GL_auto_encodes->verify_shader_inputs_decoded_to_linear");

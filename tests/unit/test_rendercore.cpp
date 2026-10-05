@@ -369,9 +369,6 @@ TEST_CASE("RendererFeatureRegistry Track V post/grounding gates are registered d
     // this guardrail trips on accidental flips and forces explicit review.
     struct Row { RendererFeature f; const char* env; };
     const Row trackV[] = {
-        { RendererFeature::HdrPost,     "MC2_HDR_POST" },
-        { RendererFeature::Bloom,       "MC2_BLOOM" },
-        { RendererFeature::TonemapAces, "MC2_TONEMAP_ACES" },
         { RendererFeature::Ssao,        "MC2_SSAO" },
     };
     for (const Row& r : trackV) {

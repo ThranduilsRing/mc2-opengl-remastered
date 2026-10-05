@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.0.0"
-registry_entry_count: 362
-registry_env_flag_count: 361
-sweep_flag_count: 1037
-flag_count: 1097
+registry_entry_count: 359
+registry_env_flag_count: 358
+sweep_flag_count: 1034
+flag_count: 1094
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -319,17 +319,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_BLOOM
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_BLOOM
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "[REMOVED 2026-06-22 DEAD-POST-FX-CLEANUP-1: bloom deleted as wrong-for-RTS; this env var now has NO effect. Entry retained to preserve registry indices.] BLOOM-MVP-1 (Track V): threshold + half-res..."
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1486
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_BOOKMARK_SAVE_DIR
     default: unknown
     declared_in: null
@@ -514,7 +503,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2313
+      - GameOS/gameos/gos_postprocess.cpp:2309
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -522,7 +511,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2299
+      - GameOS/gameos/gos_postprocess.cpp:2295
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -530,7 +519,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2305
+      - GameOS/gameos/gos_postprocess.cpp:2301
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1111,7 +1100,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3322
+      - GameOS/gameos/gos_postprocess.cpp:3318
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1272,7 +1261,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6177
+      - GameOS/gameos/gos_postprocess.cpp:6173
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1288,9 +1277,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6195
-      - GameOS/gameos/gos_postprocess.cpp:7028
-      - GameOS/gameos/gos_postprocess.cpp:7049
+      - GameOS/gameos/gos_postprocess.cpp:6191
+      - GameOS/gameos/gos_postprocess.cpp:7024
+      - GameOS/gameos/gos_postprocess.cpp:7045
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2065,7 +2054,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp). Default-OFF = legacy direct call order, byte-ident..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:7148
+      - GameOS/gameos/gos_postprocess.cpp:7144
       - mclib/render_contract.cpp:1450
     registered: yes
     in_smoke_passthrough: yes
@@ -2864,9 +2853,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5194
-      - GameOS/gameos/gos_postprocess.cpp:5196
-      - GameOS/gameos/gos_postprocess.cpp:5487
+      - GameOS/gameos/gos_postprocess.cpp:5190
+      - GameOS/gameos/gos_postprocess.cpp:5192
+      - GameOS/gameos/gos_postprocess.cpp:5483
     referenced_at_more: 3
     registered: no
     in_smoke_passthrough: no
@@ -2875,7 +2864,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5191
+      - GameOS/gameos/gos_postprocess.cpp:5187
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2883,9 +2872,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5199
-      - GameOS/gameos/gos_postprocess.cpp:5492
-      - GameOS/gameos/gos_postprocess.cpp:5678
+      - GameOS/gameos/gos_postprocess.cpp:5195
+      - GameOS/gameos/gos_postprocess.cpp:5488
+      - GameOS/gameos/gos_postprocess.cpp:5674
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2893,23 +2882,12 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5184
-      - GameOS/gameos/gos_postprocess.cpp:5484
-      - GameOS/gameos/gos_postprocess.cpp:5670
+      - GameOS/gameos/gos_postprocess.cpp:5180
+      - GameOS/gameos/gos_postprocess.cpp:5480
+      - GameOS/gameos/gos_postprocess.cpp:5666
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_HDR_POST
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_HDR_POST
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "[REMOVED 2026-06-22 DEAD-POST-FX-CLEANUP-1: HDR-post stack (bloom/ACES) deleted as wrong-for-RTS; this env var now has NO effect. Entry retained to preserve registry indices.] HDR-POST-SCAFFOLD-1 (..."
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1484
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_HEARTBEAT
     default: unknown
     declared_in: null
@@ -4645,7 +4623,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:4777
+      - GameOS/gameos/gos_postprocess.cpp:4773
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5004,9 +4982,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3845
-      - GameOS/gameos/gos_postprocess.cpp:4010
-      - GameOS/gameos/gos_postprocess.cpp:4246
+      - GameOS/gameos/gos_postprocess.cpp:3841
+      - GameOS/gameos/gos_postprocess.cpp:4006
+      - GameOS/gameos/gos_postprocess.cpp:4242
     referenced_at_more: 1
     registered: no
     in_smoke_passthrough: yes
@@ -5358,8 +5336,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g. scene FBO bind) through the GLBackend seam instead of direct GL. Default-OFF = direct GL, byte-identical; ON exercises the same GL call throug..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3587
-      - GameOS/gameos/gos_postprocess.cpp:4725
+      - GameOS/gameos/gos_postprocess.cpp:3583
+      - GameOS/gameos/gos_postprocess.cpp:4721
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5367,7 +5345,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3702
+      - GameOS/gameos/gos_postprocess.cpp:3698
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5540,7 +5518,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2436
+      - GameOS/gameos/gos_postprocess.cpp:2432
       - GameOS/gameos/gos_render.cpp:528
       - GameOS/gameos/gos_render.cpp:562
     registered: no
@@ -5727,7 +5705,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS, default 2500wu) for higher texel density. **D..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6818
+      - GameOS/gameos/gos_postprocess.cpp:6814
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5738,7 +5716,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR). Only consulted when MC2_SHADOW_BOUNDED_NEAR_FIT=1. Resolved once at process start."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6823
+      - GameOS/gameos/gos_postprocess.cpp:6819
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5927,7 +5905,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6675
+      - GameOS/gameos/gos_postprocess.cpp:6671
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5935,7 +5913,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6792
+      - GameOS/gameos/gos_postprocess.cpp:6788
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5946,8 +5924,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp, texel WU, ortho WxH, depth). Default-off; =1..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6791
-      - GameOS/gameos/gos_postprocess.cpp:6852
+      - GameOS/gameos/gos_postprocess.cpp:6787
+      - GameOS/gameos/gos_postprocess.cpp:6848
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6002,7 +5980,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude, gos_postprocess.cpp). Default 15; 0 or negative disables..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6034
+      - GameOS/gameos/gos_postprocess.cpp:6030
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6035,8 +6013,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6064
-      - GameOS/gameos/gos_postprocess.cpp:6628
+      - GameOS/gameos/gos_postprocess.cpp:6060
+      - GameOS/gameos/gos_postprocess.cpp:6624
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8382,17 +8360,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_TONEMAP_ACES
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_TONEMAP_ACES
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "[REMOVED 2026-06-22 DEAD-POST-FX-CLEANUP-1: ACES tonemap deleted as wrong-for-RTS; this env var now has NO effect. Entry retained to preserve registry indices.] TONEMAP-ACES-MVP-1 (Track V): ACES-i..."
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1485
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_TONEMAP_V2
     default: off
     kind: Feature
@@ -9082,7 +9049,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:4528
+      - GameOS/gameos/gos_postprocess.cpp:4524
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9803,7 +9770,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/engine_present_vk.cpp:353
-      - GameOS/gameos/gos_postprocess.cpp:4414
+      - GameOS/gameos/gos_postprocess.cpp:4410
       - GameOS/gameos/vulkan_backend_skeleton.cpp:7602
     referenced_at_more: 10
     registered: no

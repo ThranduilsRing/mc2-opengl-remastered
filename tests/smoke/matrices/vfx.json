@@ -17,15 +17,6 @@
       }
     },
     {
-      "id": "post_stack",
-      "description": "Post stack only (HDR + bloom + ACES tonemap), no VFX-payoff gates. Isolates the post contribution so payoff entries can be compared against it.",
-      "env": {
-        "MC2_HDR_POST": "1",
-        "MC2_BLOOM": "1",
-        "MC2_TONEMAP_ACES": "1"
-      }
-    },
-    {
       "id": "soft_particles",
       "description": "VFX-SOFT-PARTICLES-MVP-1: depth-fade alpha particles at scene intersections (MC2_VFX_SOFT_PARTICLES=1). Look for soft smoke/dust where it meets terrain/mechs instead of hard billboard edges.",
       "env": {
@@ -40,23 +31,11 @@
       }
     },
     {
-      "id": "bloom_vfx",
-      "description": "VFX-BLOOM-PARTICIPATION-1: HDR+bloom with additive VFX pushed over the bright-pass threshold (MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS=2.0). Muzzle flashes / PPC / explosions should glow.",
-      "env": {
-        "MC2_HDR_POST": "1",
-        "MC2_BLOOM": "1",
-        "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS": "2.0"
-      }
-    },
-    {
       "id": "payoff_full",
-      "description": "Full VFX-payoff stack: soft + lit particles + HDR + bloom + tonemap. The headline 'after' shot for the opus.",
+      "description": "Full VFX-payoff stack: soft + lit particles.",
       "env": {
         "MC2_VFX_SOFT_PARTICLES": "1",
-        "MC2_VFX_LIT_PARTICLES": "1",
-        "MC2_HDR_POST": "1",
-        "MC2_BLOOM": "1",
-        "MC2_TONEMAP_ACES": "1"
+        "MC2_VFX_LIT_PARTICLES": "1"
       }
     },
     {

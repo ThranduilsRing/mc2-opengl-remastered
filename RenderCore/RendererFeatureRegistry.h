@@ -157,61 +157,58 @@ enum class RendererFeature : int {
     // TRACKV-POST-GROUNDING-MVP: experimental visual post-process + grounding
     // gates. ALL default-OFF (enforced by the Track-V guardrail unit test).
     // Promotion to default-ON is a deliberate edit here AND in that test.
-    HdrPost                  = 30,  // MC2_HDR_POST
-    Bloom                    = 31,  // MC2_BLOOM
-    TonemapAces              = 32,  // MC2_TONEMAP_ACES
-    Ssao                     = 33,  // MC2_SSAO
+    Ssao                     = 30,  // MC2_SSAO
     // TRACKV-VFX-PAYOFF-OPUS-1: VFX visual-payoff gates. Both default-OFF
     // (enforced by the Track-V VFX payoff guardrail unit test). Promotion to
     // default-ON is a deliberate edit here AND in that test.
-    VfxSoftParticles         = 34,  // MC2_VFX_SOFT_PARTICLES
-    VfxLitParticles          = 35,  // MC2_VFX_LIT_PARTICLES
+    VfxSoftParticles         = 31,  // MC2_VFX_SOFT_PARTICLES
+    VfxLitParticles          = 32,  // MC2_VFX_LIT_PARTICLES
     // VIEWMODE-POSTPROCESS-PRESENTATION-1: view-mode presentation framework.
-    ViewmodeFramework        = 36,  // MC2_VIEWMODE_FRAMEWORK
+    ViewmodeFramework        = 33,  // MC2_VIEWMODE_FRAMEWORK
     // TRACKRV-HZB-VISIBILITY-OPUS-1: gated reverse-Z Hi-Z depth pyramid build
     // from MainDepth (custom MIN reduction, ceil mip ladder). Default-OFF;
     // diagnostic substrate only -- NO culling/draw suppression. See
     // docs/hzb-depth-convention.md + docs/hzb-visibility-mvp.md.
-    HzbBuild                 = 37,  // MC2_HZB_BUILD
+    HzbBuild                 = 34,  // MC2_HZB_BUILD
     // TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe.
     // Default-OFF; requires MC2_HZB_BUILD. Computes would-cull/would-keep +
     // pyramid-integrity counters from HZB readback. NEVER suppresses a draw.
-    HzbProbe                 = 38,  // MC2_HZB_PROBE
+    HzbProbe                 = 35,  // MC2_HZB_PROBE
     // COMPRESSION-BC7-STATICPROP-1: BC7-compressed KTX2 static-prop texture
     // arrays through the existing static-prop KTX path. Default-OFF; requires
     // MC2_MATERIAL_KTX. All-or-nothing + uniform-dim per array (see batcher).
-    StaticPropBc7            = 39,  // MC2_STATICPROP_BC7
+    StaticPropBc7            = 36,  // MC2_STATICPROP_BC7
     // TEXMGR-COMPRESSED-UPLOAD-1: load a BC7 .ktx2 sidecar for a data/textures
     // texture (mech/vehicle/building/prop/UI/decal — via MC_TextureManager) and
     // upload it with glCompressedTexImage2D, single-level. Default-OFF; requires
     // GLEW_ARB_texture_compression_bptc. NOT static-prop arrays / terrain splat.
-    TexmgrCompressedUpload   = 40,  // MC2_TEXMGR_COMPRESSED_UPLOAD
+    TexmgrCompressedUpload   = 37,  // MC2_TEXMGR_COMPRESSED_UPLOAD
     // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha immediately after
     // BuildColormapAtlas uploads to GPU. The indirect path (default-ON) has no
     // geometry displacement (thin vert, no TES), so the CPU elevation's null-guard
     // at mapdata.cpp:2435 becomes the correct state. Default-ON; kill-switch =0.
-    ColormapCpuRetire        = 41,  // MC2_COLORMAP_CPU_RETIRE
+    ColormapCpuRetire        = 38,  // MC2_COLORMAP_CPU_RETIRE
     // COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas.
     // Falls back to RGBA8 when sidecar absent or BPTC cap missing. Default-ON.
-    ColormapKtx2             = 42,  // MC2_COLORMAP_KTX2
+    ColormapKtx2             = 39,  // MC2_COLORMAP_KTX2
     // TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch.
     // Default-OFF = new/optimized intro render path active; ON = legacy path forced.
-    MissionIntroLegacyRender = 43,  // MC2_MISSION_INTRO_LEGACY_RENDER
+    MissionIntroLegacyRender = 40,  // MC2_MISSION_INTRO_LEGACY_RENDER
     // TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.
     // Default-OFF = new/optimized setupTextures path active; ON = legacy path forced.
-    SetupTexturesLegacyForce = 44,  // MC2_SETUPTEXTURES_LEGACY_FORCE
+    SetupTexturesLegacyForce = 41,  // MC2_SETUPTEXTURES_LEGACY_FORCE
     // TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system. When ON, cliff-wall
     // decoration types (e.g. "MarbleCliff") are submitted to the static-prop
     // batcher with an explicit CLIFF_WALL face-frame mat4 (up=world vertical,
     // facing=outward cliff normal, tangent=contour) + small outward offset,
     // instead of the yaw-only building recipe. Default-OFF -> byte-identical.
-    TerrainDecal             = 45,  // MC2_TERRAIN_DECAL
+    TerrainDecal             = 42,  // MC2_TERRAIN_DECAL
     // FAR-BACKDROP-LIT: night-shade substitution for far/impostor static-prop
     // LODs (static_prop.vert). Far LODs skip the per-vertex night bake so their
     // base_light is a frozen day/black value -> fullbright/black at night; when
     // ON the shader fades the stale seed toward the mission night object-light
     // ambient across the LOD impostor distance. Default-OFF -> byte-identical.
-    FarBackdropLit           = 46,  // MC2_FAR_BACKDROP_LIT
+    FarBackdropLit           = 43,  // MC2_FAR_BACKDROP_LIT
     // NIGHT-FOG-DIM: the edge-fog "cloud bank" (edge_fog.frag) + OOB fog paint a
     // hardcoded bright-grey u_fogColor ({0.80,0.81,0.83}) at the map horizon,
     // never dimmed for the mission's night lighting. On a night map (mc2_10) the
@@ -219,44 +216,44 @@ enum class RendererFeature : int {
     // ON, runEdgeFog/executor scale the fog color toward the measured night sky
     // shade before upload so the horizon band matches the dark HDRI sky it sits
     // against. Default-OFF -> uploads the unscaled constant -> byte-identical.
-    NightFogDim              = 47,  // MC2_NIGHT_FOG_DIM
+    NightFogDim              = 44,  // MC2_NIGHT_FOG_DIM
     // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
     // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
     // It fed calc_light Stuff-frame position + normal while the ObjectLights
     // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
-    LegacyLitMc2Frame        = 48,  // MC2_LEGACY_LIT_MC2_FRAME
+    LegacyLitMc2Frame        = 45,  // MC2_LEGACY_LIT_MC2_FRAME
     // VEHICLE-NIGHT-LIT-2: restore the missing else-branch that clears a ground
     // vehicle's lightsOut flag when it is no longer DESTROYED/DISABLED, matching
     // the mech path. Default-OFF -> legacy one-way latch -> byte-identical.
-    GvLightsOutClear         = 49,  // MC2_GV_LIGHTSOUT_CLEAR
+    GvLightsOutClear         = 46,  // MC2_GV_LIGHTSOUT_CLEAR
     // SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop
     // LODs (lod >= 1) in the dynamic-prop shadow replay. The exclusion's original
     // "shadow depth pass has no alpha discard" rationale has been false since
     // b8f764b6. Default-OFF -> caster set byte-identical.
-    PropLodShadowCast        = 50,  // MC2_PROP_LOD_SHADOW_CAST
-    PropBaseLightDir         = 51,  // MC2_PROP_BASE_LIGHT_DIR
-    PropFoliageAlphaFlag     = 52,  // MC2_PROP_FOLIAGE_ALPHAFLAG
-    LightPosColumnFix        = 53,  // MC2_LIGHT_POS_COLUMN_FIX
+    PropLodShadowCast        = 47,  // MC2_PROP_LOD_SHADOW_CAST
+    PropBaseLightDir         = 48,  // MC2_PROP_BASE_LIGHT_DIR
+    PropFoliageAlphaFlag     = 49,  // MC2_PROP_FOLIAGE_ALPHAFLAG
+    LightPosColumnFix        = 50,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
     // submitMultiShape, so its lightData_ stayed all-zero and calc_light
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
-    VehicleLitPath           = 54,  // MC2_VEHICLE_LIT_PATH
+    VehicleLitPath           = 51,  // MC2_VEHICLE_LIT_PATH
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
     // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
     // lighting model, closing the two-shader seam that made concrete a
     // patchwork -- including the in-shader distance fog the overlay applies
     // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 55,  // MC2_OVERLAY_CEMENT_ADOPT
+    OverlayCementAdopt       = 52,  // MC2_OVERLAY_CEMENT_ADOPT
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 56,  // MC2_VEHICLE_AMBIENT_FLOOR
+    VehicleAmbientFloor      = 53,  // MC2_VEHICLE_AMBIENT_FLOOR
     // LIGHT-ROW-PURE-1 (ARCH-LIGHTING slice 1): object light-ROW PRODUCTION
     // delegated to the pure object_light_row::BuildObjectLightRow, driven by an
     // explicit query + declared per-class policy instead of the shared-light-
@@ -266,7 +263,7 @@ enum class RendererFeature : int {
     // Its companion diagnostic MC2_LIGHT_ROW_PURE_VERIFY is a Trace var and
     // lives in kAuxEnvVars, which is deliberately NOT indexed by
     // RendererFeature.
-    LightRowPure             = 57,  // MC2_LIGHT_ROW_PURE
+    LightRowPure             = 54,  // MC2_LIGHT_ROW_PURE
     // SHORELINE-GLOW-1: opt in to letting the active V3 terrain shoreline band
     // actually SUPPRESS the legacy screen-space runShoreline() post pass. The
     // suppression has existed since TERRAIN-SHORELINE-MASK-1 but was
@@ -277,7 +274,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    ShorelineLegacySuppress  = 58,  // MC2_SHORELINE_LEGACY_SUPPRESS
+    ShorelineLegacySuppress  = 55,  // MC2_SHORELINE_LEGACY_SUPPRESS
     // SUN-AXIS-FIX-1: ObjectLights.light_dir is a STUFF-frame vector, but the
     // DIFFUSE consumers of calc_light dot it against MC2-frame normals. The one
     // consumer that swaps first (mech.vert:279, specular) is the correct one.
@@ -286,7 +283,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunAxisFix               = 59,  // MC2_SUN_AXIS_FIX
+    SunAxisFix               = 56,  // MC2_SUN_AXIS_FIX
     // SUN-ELEVATION-FIX-1: Camera::lightDirection normalizes a unit-horizontal
     // plus sin(pitch), so its elevation is atan(sin(pitch)) rather than the
     // authored pitch. Large blast radius (terrain, props, SHADOW direction, and
@@ -295,7 +292,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunElevationFix          = 60,  // MC2_SUN_ELEVATION_FIX
+    SunElevationFix          = 57,  // MC2_SUN_ELEVATION_FIX
     // LIGHTROW-FRESHNESS-1: the DYNAMIC static-prop submit path checks the
     // per-frame stamp on TG_MultiShape::cachedFrame_ before trusting
     // cachedGpuLightIndex_, and re-gathers instead of reusing a prior-frame
@@ -305,7 +302,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    StaticPropLightFreshness = 61,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
+    StaticPropLightFreshness = 58,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
     // MECH-LIGHTROW-FRESHNESS-1: the GPU-mech submit path checks the per-frame
     // stamp on TG_MultiShape::cachedFrame_ before trusting cachedGpuLightIndex_,
     // and DECLINES the GPU submit (routing the mech to the existing CPU MLR
@@ -315,12 +312,12 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    MechLightFreshness       = 62,  // MC2_MECH_LIGHT_FRESHNESS
+    MechLightFreshness       = 59,  // MC2_MECH_LIGHT_FRESHNESS
     // RUNWAY-CLOSE-1: A/B arm — MC2_OVERLAY_ART_FLATLIGHT=0 exempts the
     // terrain_overlay.frag authored-art else-branch from u_missionFlatLight.
     // Default-ON (=stock multiply); appended LAST to match kFeatureTable.
-    OverlayArtFlatlight      = 63,  // MC2_OVERLAY_ART_FLATLIGHT
-    COUNT                    = 64,
+    OverlayArtFlatlight      = 60,  // MC2_OVERLAY_ART_FLATLIGHT
+    COUNT                    = 61,
 };
 
 // ---------------------------------------------------------------------------
@@ -569,30 +566,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO capacity) for the CardCloud GPU sim buffer. Requires MC2_VFX_GPU_SIM_CARDCLOUD=1. Default-OFF. BUFFER-1 is a CPU-side plumbing check (no GPU readback, no stalls); real CPU-vs-GPU parity (maxPosError, age divergence) arrives in COMPUTE-1 once the buffer is integrated on GPU."
-    },
-    // HdrPost
-    {
-        "MC2_FEATURE_HDR_POST",
-        "MC2_HDR_POST",
-        EnvVarKind::Feature,
-        false,
-        "[REMOVED 2026-06-22 DEAD-POST-FX-CLEANUP-1: HDR-post stack (bloom/ACES) deleted as wrong-for-RTS; this env var now has NO effect. Entry retained to preserve registry indices.] HDR-POST-SCAFFOLD-1 (Track V): master gate for the HDR post-process stack on the existing RGBA16F scene FBO (gosPostProcess). Default-OFF; =1 enables. The scene color attachment is ALREADY RGBA16F, so this gate does not change buffer formats; it only enables exposure + ACES tonemap + bloom application from env/profile. When OFF, postprocess members keep their legacy defaults (exposure 1.0, tonemap/bloom off) -> byte-identical to pre-Track-V output (the unconditional sunset grade in postprocess.frag is preserved either way). Visual-only; no geometry/depth/objectId/UI change. Bloom + tonemap are independently gated (MC2_BLOOM / MC2_TONEMAP_ACES) and are inert unless this master gate is ON."
-    },
-    // Bloom
-    {
-        "MC2_FEATURE_BLOOM",
-        "MC2_BLOOM",
-        EnvVarKind::Feature,
-        false,
-        "[REMOVED 2026-06-22 DEAD-POST-FX-CLEANUP-1: bloom deleted as wrong-for-RTS; this env var now has NO effect. Entry retained to preserve registry indices.] BLOOM-MVP-1 (Track V): threshold + half-res ping-pong bloom on the HDR scene (gosPostProcess::runBloom, already present). Default-OFF; =1 enables (sets bloomEnabled_). Auto-depends on MC2_HDR_POST (no effect unless the HDR post stack is ON). Conservative defaults threshold 0.6 / intensity 0.3; ImGui-tunable and per-mission profile fields bloomThreshold / bloomIntensity. When OFF, bloomEnabled_ stays false -> composite skips the bloom add -> byte-identical. UI/HUD are composited after endScene, so they never receive bloom."
-    },
-    // TonemapAces
-    {
-        "MC2_FEATURE_TONEMAP_ACES",
-        "MC2_TONEMAP_ACES",
-        EnvVarKind::Feature,
-        false,
-        "[REMOVED 2026-06-22 DEAD-POST-FX-CLEANUP-1: ACES tonemap deleted as wrong-for-RTS; this env var now has NO effect. Entry retained to preserve registry indices.] TONEMAP-ACES-MVP-1 (Track V): ACES-ish filmic tonemap curve in the composite shader (postprocess.frag ACESFilm, already present). Default-OFF; =1 enables (sets tonemapEnabled_). Auto-depends on MC2_HDR_POST. Exposure tunable via gos_SetExposure / profile 'exposure'. When OFF, the enableTonemap uniform = 0 -> composite passes color*exposure through unchanged -> byte-identical (exposure default 1.0). UI is composited after endScene so there is no double-tonemap of HUD/ImGui."
     },
     // Ssao
     {
