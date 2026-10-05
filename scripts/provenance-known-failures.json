@@ -39,26 +39,5 @@
     "3. State why no tool can repair it, and what the human remedy is.",
     "4. Set an expiry. An acknowledgement with no expiry is a permanent suppression."
   ],
-  "entries": [
-    {
-      "id": "EMPTY-MANIFEST:scratch/mc203air/21_late3600_rep/mc2_03_capture_manifest.json",
-      "class": "IRREPARABLE",
-      "why_irreparable": "Zero bytes. The manifest names no exe, no digest and no fingerprint, so there is nothing for any tool to reconcile against any binary -- unlike a legacy manifest, which at least names a path that can be re-read while the file survives. Truncated by the ENOSPC incident; the bytes are not recoverable.",
-      "evidence": "st_size == 0, re-checked on every run by check_manifest()",
-      "remedy": "Delete scratch/mc203air/21_late3600_rep/ or recapture the arm. Deleting evidence and spending a capture are both USER decisions, not a tool's.",
-      "acknowledged_utc": "2026-07-30",
-      "acknowledged_by": "GOLDEN-PROVENANCE-TRUTH-1 lane (pending USER confirmation)",
-      "expires_utc": "2026-10-31"
-    },
-    {
-      "id": "EMPTY-MANIFEST:scratch/mc203air/30_texhandoff/mc2_03_capture_manifest.json",
-      "class": "IRREPARABLE",
-      "why_irreparable": "Zero bytes; same ENOSPC truncation as the entry above. No exe, no digest, no fingerprint -- nothing to reconcile.",
-      "evidence": "st_size == 0, re-checked on every run by check_manifest()",
-      "remedy": "Delete scratch/mc203air/30_texhandoff/ or recapture the arm. USER decision.",
-      "acknowledged_utc": "2026-07-30",
-      "acknowledged_by": "GOLDEN-PROVENANCE-TRUTH-1 lane (pending USER confirmation)",
-      "expires_utc": "2026-10-31"
-    }
-  ]
+  "entries": []
 }
