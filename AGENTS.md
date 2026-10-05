@@ -1,59 +1,23 @@
-# AGENTS.md — harness guide for non-Claude agents (Codex, etc.)
+# AGENTS.md — guide for non-Claude agents (Codex, etc.)
 
-**Read [CLAUDE.md](CLAUDE.md) in this directory FIRST — it is canonical for paths,
-build, deploy, smoke, architecture, and rules.** This file only translates the
-parts of CLAUDE.md that assume Claude Code machinery you don't have, and lists
-the deterministic tools that replace it. Do not re-derive procedure that exists
-here; do not invent alternatives to the canonical commands.
+**Read [CLAUDE.md](CLAUDE.md) first — it is canonical.** This file only maps
+Claude-specific machinery to plain commands.
 
-## Where you are
-
-- Canonical source worktree: `A:/Games/mc2-main/`
-  (branch `claude/nifty-mendeleev`; `main` is kept pointed at its tip).
-- The ROOT repo checkout (`A:/Games/mc2-opengl-src/`) is a coordination shell —
-  its `build64/` is STALE; do not build or edit there.
-- Other `A:/Games/mc2-*` directories are parallel lane worktrees owned by other
-  sessions. Stay out unless your task names one.
-- Verify before editing: `git -C <worktree> branch --show-current` must match
-  what your task expects. Never share a worktree with another concurrent agent.
-
-## Translations (CLAUDE.md says → you do)
+- Work only in `A:/Games/mc2-main` (branch `claude/nifty-mendeleev`). ONE lane: never run
+  alongside another coding agent. The root checkout `A:/Games/mc2-opengl-src` is stale.
+- Local commits only; never push.
 
 | CLAUDE.md says | You do |
 |---|---|
-| use `/mc2-build` skill | `py -3 tools/build_quiet.py --target mc2` (wraps the canonical VS CMake invocation; errors + warning-count + exit only). Full CMake path if you need it is in CLAUDE.md. |
-| MCP `preflight()` / repo-intel tools | `py -3 tools/repo_intel/repo_query.py preflight --expect-branch <branch> --expect-root <abs-worktree>` (same verdicts, CLI). |
-| MCP render-state tools | read `debug_state/latest_render_state.json` in the install dir after running with `MC2_DEBUG_STATE_DUMP=1`. |
-| smoke gate (canonical command) | copy it VERBATIM from CLAUDE.md. Never `--kill-existing`, never `--with-menu-canary`, duration ≤ 30. Or use `witness_smoke.py` below, which wraps it correctly. |
-| deploy via `deploy_payload.py` | same — it is a plain script. Never manual copies; shaders AND `data/defs/` ship in lockstep with the exe (deploy does this; do not deploy an exe any other way). |
+| build | `py -3 tools/build_quiet.py --target mc2` |
+| deploy | `py -3 scripts/deploy_payload.py --target game` (commit first) |
+| smoke | copy the command from CLAUDE.md verbatim, or `py -3 tools/witness_smoke.py --install <dir> --mission mc2_01 --expect "<regex>"` |
+| repo state | `py -3 tools/repo_intel/repo_query.py preflight --expect-branch claude/nifty-mendeleev --expect-root A:/Games/mc2-main` |
+| render state | read `debug_state/latest_render_state.json` in the install after running with `MC2_DEBUG_STATE_DUMP=1` |
 
-## Deterministic toolbelt (prefer these over improvising)
+Other tools: `tools/menu_oracle.py` (needs the user's visible desktop), `tools/list_free_ordinals.py`
+(free compbas ordinals), `tools/mc2x_import/fst.py` (FST extraction), `scripts/run_smoke.py`.
 
-Documented in `docs/disciplines.md` § "Agent-efficiency tools":
-
-- `py -3 tools/build_quiet.py --target mc2` — quiet build verdict.
-- `py -3 tools/witness_smoke.py --install <dir> [--deploy] --mission mc2_01 --expect "<regex>" [--forbid "<regex>"]` — deploy+smoke+log-grep → single PASS/FAIL.
-- `py -3 tools/menu_oracle.py --exe <mc2.exe> --env MC2_NO_LAUNCHER=1` — is the main menu visibly rendering (JSON verdict). Sparse text menus can read mean<1 while visible. **USER-PRESENT ONLY (NOFOCUS-FINISH-1):** it grabs the DESKTOP COMPOSITE via `ImageGrab`, so it needs the window on the visible desktop and now aborts with `DesktopOccupancyRefused` unless `MC2_HARNESS_ALLOW_FOREGROUND=1`. In an agent session that abort is the correct answer — without it the oracle would have graded the user's wallpaper. Same applies to the other 7 files in `check-background-launch.COMPOSITE_CAPTURE_FILES` (`capture_baseline.py`, `quick_shot.py`, `quick_sweep.py`, `smoke_with_screenshots.py`, `water_visual_diff.py`, `camera_sweep_smoke.py`, `game_auto.py`). The agent-runnable capture path is the engine readback: `run_visual_capture.py` / `mech_shot.py` / `mechbay_preview_harness.py`.
-- `py -3 tools/list_free_ordinals.py --compbas <csv-or-install-dir>` — free compbas equipment ordinals per install.
-- `tools/mc2x_import/fst.py` — FST archive extraction (engine-faithful LZW + zlib).
-- `py -3 tools/repo_intel/repo_query.py slice-preflight --slice NAME --symbols "a,b" --paths p1 --base SHA` — MANDATORY before coding a recon-derived fix; `verdict=STOP` means re-recon, do not code.
-
-## Hard rules (subset of CLAUDE.md that agents most often break)
-
-- RelWithDebInfo only. Full relink on class-layout changes.
-- Every feature behind an `MC2_*` env gate, default OFF, gate-OFF byte-identical to stock.
-- Offline doctest suite first: `cmake -S tests/unit -B build64-tests -G "Visual Studio 17 2022" -A x64`, build target `mc2_tests`, run `build64-tests/RelWithDebInfo/mc2_tests.exe` — must be 0 failed before engine work lands.
-- Deploy lanes are owned. Ask/check before using any install dir; `A:/Games/mc2-opengl/mc2-win64-v0.4` is the user's personal install — read-only.
-- No pushes. Local commits only, `Co-Authored-By` trailer per repo convention.
-- Mod file changes in an install need `mods/<id>/.modindex-cache` deleted (or rely on the mtime signature, post `59f16541`).
-
-Unfamiliar term (nifty, lane, slice, gate, chip, etc.)? See [docs/GLOSSARY.md](docs/GLOSSARY.md).
-
-## Memory / docs map
-
-Session memory lives at `C:/Users/Joe/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md`
-(read-only useful context; INDEX-*.md sub-indexes per topic). Repo docs topic tree is in CLAUDE.md.
-
-<!-- sync-check: derived from CLAUDE.md; scripts/check-agents-md.sh verifies the
-     pointer contract. If CLAUDE.md gains/renames canonical commands, update the
-     Translations table here. Keep this file under 100 lines. -->
+Rules: RelWithDebInfo only. Features ship default-ON or not at all (gates are temporary kill-switches).
+Offline checks (`scripts/check-contracts.sh`, doctest tier) green before engine changes land.
+Mod installs in `A:/Games/mc2-opengl/` must keep working.

@@ -1,72 +1,58 @@
-# MC2 OpenGL — mc2-main (canonical worktree, branch claude/nifty-mendeleev)
+# MC2 OpenGL/Vulkan — mc2-main (canonical, branch `claude/nifty-mendeleev`)
 
-MC2 OpenGL port: tessellated terrain, PBR splatting, shadow maps, post-processing. Active branch `claude/nifty-mendeleev` (0.4 gpu-driven-rendering arc merged 2026-05-18). Root `terrain-pbr-mod` = STALE.
+MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR terrain, shadows, ImGui UI, mod support.
 
-## Mandatory preflight (run before any edit)
+## Operating mode (reset 2026-10-05 — read this first)
 
-```powershell
-py -3 tools\repo_intel\repo_query.py preflight --expect-branch <branch> --expect-root <absolute-worktree-root>
-```
+- **ONE lane.** All work happens here in `A:/Games/mc2-main`. No parallel worktrees, no parallel coding agents. Sessions may *launch* from `A:/Games/mc2-opengl-src` (root, stale) — never build or commit there.
+- **Basics over process.** Every new rule, check or doc must replace one. A check red on nifty for more than a week gets fixed or deleted.
+- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates. (Cleanup of the ~149 legacy default-OFF gates is in progress.)
+- **Vulkan is the destination backend.** GL becomes removable once VK is complete.
+- **Mods must keep working:** MC2X-CVE-G, MC2X-REAP3, Exodus, MagicExpansion, MechCommanderOmnitech, MCO-Carver5 (installs in `A:/Games/mc2-opengl/`).
+- **Commit locally only.** Never push, open PRs, or upload unless the user explicitly says so.
+- **Offline verification first** (below); launch the game only when an offline check can't answer the question.
 
-- `branch_ok=false` or `root_ok=false`: **stop immediately**. Do not switch branches, stash, or repair.
-- `safe_to_touch=false`: report the PRECHECK line and elevated dirty files, wait for explicit direction.
-- Never share a physical worktree between parallel agents. A separate branch is not sufficient isolation.
-- **Recon-derived fix slice?** Also run `repo_query.py slice-preflight --base <ref> --slice <NAME> --paths <files> --symbols <syms>` first. `verdict=STOP` (symbol changed on base..nifty) → re-recon, do NOT code. Mandatory for shared-recon-queue work. See `docs/disciplines.md`.
-- **★ SUBAGENT BOOKEND REVIEWS (standing user rule, mandatory).** Every dispatched subagent runs a **META REVIEW before starting** (read gate defaults from READER SOURCE, check what a DEFAULT LAUNCH executes, check for `-dirty` evidence / orphaned work / live lane claims / superseding commits, and **spot-check the brief's own premises** — report corrections, don't build on a wrong foundation) and an **ADVERSARIAL SELF-REVIEW before reporting done** (chiefly: *would the user see this on a default launch?* — a fix behind an unapproved default-OFF gate is **NOT delivered**; plus gate registered + smoke-allowlisted, clean-fingerprint md5-verified build, gate string actually present in the deployed binary, verified where the defect can manifest, no user approval regressed, and state residual risk + what you did NOT do). Full checklist: `docs/disciplines.md`.
-- **★ STANDING CAPTURE RULE (visual grading).** The verdict shot is a **FULL-FRAME wide view at normal gameplay altitude**; crops are detail only. ≥3 distinct locations per map including a **control area the fix should not touch**; **day AND night**; across **mc2_01/mc2_03/mc2_10/mc2_24**. See `docs/visual-verify.md`.
+## Paths
 
-Lane → root map (illustrative — ground truth is `git worktree list`): canonical (branch claude/nifty-mendeleev)=`A:/Games/mc2-main` · other lanes live under `A:/Games/mc2-opengl-src/.claude/worktrees/<name>`
-
-## Topic tree
-
-`docs/README.md` — docs index (start here) · `docs/critical_inline_rules.md` — emoji ban, build/deploy, shaders/GL, discipline · `docs/tier1_env_vars.md` — MC2_* knobs + gate-adding checklist · `docs/known_issues.md` · `docs/active_campaigns.md` — in-flight ledger · `docs/renderworld_arc_status.md` — M1–M6 steady-state ledger (arc closed 2026-05-24; GameAdapters seams remain live) · `docs/disciplines.md` — review/dispatch protocol · `docs/cxx17-coding-rules.md` · `docs/asset-pipeline.md` — canonical asset inventory · `docs/GLOSSARY.md` — jargon (nifty, lane, slice, …) · `~/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md` (maintainer machine only) → INDEX-{RENDERING,SHADERS,TERRAIN,MECH,BUILD-DEPLOY,MISSION-DATA,SMOKE-TEST,PROCESS}.md
-
-## Orientation
-
-- Project direction: `.planning/PROJECT.md` · Codebase maps: `.planning/codebase/ARCHITECTURE.md`
-- Advisor routing: `.claude/agents/DOMAINS.md` (12 subagents) · Skills: `.claude/skills/`
-- Steering: `A:/Games/mc2-opengl-src/.claude/STEERING.md` (transient — created on demand by `steer.sh`, deleted on ack; `sh .claude/steer.sh "..."` blocks next action)
-- MCP-first: `get_render_health()` → `get_latest_smoke_report()` → `get_diagnostic_events(tag,50)`. Requires engine running with `MC2_DEBUG_STATE_DUMP=1`.
-
-## Key paths
-
-- Source: `A:/Games/mc2-main/`
-- Build: `A:/Games/mc2-main/build64/` — root `build64/` is STALE
-- Deploy: `A:/Games/mc2-opengl/mc2-win64-v0.4/` — user's personal install; agents deploy to a leased lane, not here
+- Source + build: `A:/Games/mc2-main/` → `build64/RelWithDebInfo/mc2.exe`
+- Dev install (deploy target): `A:/Games/mc2-opengl/mc2-win64-v0.4/` · Golden: `mc2-win64-v0.4c/` (don't overwrite)
+- Archive of old lanes, installs, worktrees, ledgers, plans: `E:/mc2-archive-2026-10/` (also git history)
 - CMake: `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
 
-## Codex build/deploy rails
+## Commit → build → deploy → verify
 
-- Build only with `/mc2-build`: explicit VS CMake, `--build build64 --config RelWithDebInfo --target mc2`.
-- Deploy only with `scripts/deploy_payload.py` + explicit `--source-root --build-dir --exe-name`.
-- Smoke only with `scripts/run_smoke.py`, `--keep-logs`, duration `<=30`, no `--kill-existing`.
-- Never: direct MSBuild, random CMake, stamp touching, symlinks, manual release copies.
-
-## Smoke gate
-
-**Canonical invocation (verbatim; subagents must copy-paste):**
-
-```powershell
-$env:MC2_DEBUG_STATE_DUMP="1"; $env:MC2_DIAGNOSTIC_TRACE_FILE="debug_state/diagnostic_trace.jsonl"; $env:MC2_DIAG_TAGS="CONFIG,BUILD,DEVICE"; py -3 A:\Games\mc2-main\scripts\run_smoke.py --tier tier1 --duration 30 --keep-logs
+```bash
+# build (RelWithDebInfo only; fresh tree: py -3 scripts/bootstrap_worktree_build.py --build)
+"$CMAKE" --build build64 --config RelWithDebInfo --target mc2 mc2_launcher
+# deploy (sha256-verified; exe fingerprint embeds git sha, so COMMIT FIRST)
+py -3 scripts/deploy_payload.py --target game
 ```
 
-`tier1` = mc2_01/03/10/17/24, 30s each. Inner-loop: `--mission mc2_01 --mission mc2_24`. Exit 0 = pass.
+Offline checks (no game launch) — run these first, all should be green:
 
-**Which exe gets smoked, and why `PASS` alone is not evidence.** With no `--exe`/`--deploy`, the runner AUTO-SELECTS a deploy lane (least-recently-used). That auto-selection smoked another lane's stale exe for eight separate lanes, whose results had to be redone. Two things now make the canonical command above safe to copy-paste — rely on them, and quote them:
-- The runner compares the exe's `[BUILD_FINGERPRINT v1]` sha against this worktree's HEAD and **fails the run on a mismatch** (`DEPLOY_FINGERPRINT`, fatal by default since `e01e8ac1`; opt out with `MC2_SMOKE_REQUIRE_FINGERPRINT=0` only when deliberately smoking an external prebuilt exe). So deploy your build BEFORE smoking, or the run fails rather than lying.
-- Quote the `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD` line as your evidence, not the `PASS (5/5)` line. Exit 0 without that line is not attributable to a binary.
+```bash
+bash scripts/check-contracts.sh                       # ~150 static contract rows
+py -3 tools/build_contract_harnesses.py --run --unit  # C++ harnesses + doctest tier
+py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
+```
 
-To pin a specific lane instead: `--deploy <name>` where name is one of `0.4` / `0.4c` / `0.4d-rc1` / `0.5.0` / `0.5.1` / `0.5-testing` (the table in `scripts/smoke_lib/deploy_lease.py`; an unknown name is a hard error, not a fall-through), or `--exe <dir>/mc2.exe` for a path outside that table. `0.4c` holds the blessed golden baseline — do not overwrite it casually.
+Smoke (launches the game off-screen, ~3 min):
 
-## Profiling
+```bash
+MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs --deploy 0.4
+```
 
-Tracy (`TRACY_ENABLE`). **100ns floor** — no per-element/per-vertex zones in hot loops. AMD RGP via Radeon Developer Panel.
+`tier1` = mc2_01/03/10/17/24. Evidence is the `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD` line plus 5/5 PASS. Don't set `MC2_DIAGNOSTIC_TRACE_FILE` (the runner owns it and refuses the run).
 
-## Memory & CLAUDE.md discipline
+## Where things are
 
-- No session narratives in CLAUDE.md. Root CLAUDE.md = thin pointer only (`scripts/check-claude-md-pointer.sh`).
-- New finding → memory file + INDEX-TOPIC.md. Keep under 100 lines; growth → extract to `docs/`.
+- `docs/README.md` — docs index · `docs/tier1_env_vars.md` — `MC2_*` knobs · `docs/known_issues.md` · `docs/cxx17-coding-rules.md` · `docs/GLOSSARY.md`
+- Registry of gates: `RenderCore/RendererFeatureRegistry.h` (generated view: `docs/flags.auto.yaml`)
+- Design docs still live: `docs/superpowers/strategy/` (mod VFS, data ownership)
+- Memory (maintainer machine): `~/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md`
 
-## graphify
+## Code rules
 
-Graph at `graphify-out/`. Use `graphify query/path/explain` before raw grep. `graphify update .` after code changes.
+- C++17, MSVC RelWithDebInfo. Full relink after class-layout changes.
+- Tracy zones: 100ns floor, none in per-element hot loops.
+- No emoji in code or logs.
