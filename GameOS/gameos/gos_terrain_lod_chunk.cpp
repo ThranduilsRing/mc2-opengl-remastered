@@ -3969,8 +3969,8 @@ int gos_WaterShoreMode()
         // Back-compat killswitch: MC2_WATER_SHORE_MASK=0 predates the mode
         // gate and meant "full legacy ramp"; keep that meaning.
         const char* v = std::getenv("MC2_WATER_SHORE_MASK");
-        if (v && v[0] == '0') return 0;
-        return 2;   // default: per-fragment signed height
+        const bool shoreMaskOn = !(v && v[0] == '0');  // default ON
+        return shoreMaskOn ? 2 : 0;   // default: per-fragment signed height
     }();
     return s_mode;
 }

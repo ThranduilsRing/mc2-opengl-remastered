@@ -388,7 +388,7 @@ def test_real_repo_pin_is_parseable_and_nonempty():
     """
     rows, globs, blessed_from = checker._load_kit_digests(SCRIPTS.parent)
     assert rows is not None, "scripts/kit-digests.csv is missing"
-    assert len(rows) >= 13
+    assert len(rows) >= 1  # nonempty; do not pin a count that changes on every re-bless
     assert globs and all(g.strip() for g in globs)
     assert blessed_from, "pin records no blessed_from -- deletion would be N/A"
     for r in rows:

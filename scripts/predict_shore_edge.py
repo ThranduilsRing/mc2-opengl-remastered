@@ -44,8 +44,10 @@ import numpy as np
 from PIL import Image
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LANE_04 = "A:/Games/mc2-opengl/mc2-win64-v0.4/data/missions"
-SRCDATA_MISSIONS = "A:/Games/mc2-srcdata/missions"
+sys.path.insert(0, os.path.join(REPO, "tools", "mc2data"))
+from stock_missions import add_missions_dir_arg, resolve_from_args  # noqa: E402
+
+SRCDATA_MISSIONS = None  # set in main() by the verified resolver
 
 WORLD_MIN = -7680.0
 WORLD_SIZE = 15360.0
@@ -56,7 +58,6 @@ WORLD_SIZE = 15360.0
 def find_height(stem, override=None):
     cands = [override] if override else [
         os.path.join(REPO, "tests/terrain/beautify", stem + ".beauty", "visual_height_4x.r32"),
-        os.path.join(LANE_04, stem + ".beauty", "visual_height_4x.r32"),
     ]
     for c in cands:
         if c and os.path.isfile(c):
@@ -67,7 +68,6 @@ def find_height(stem, override=None):
 def find_mask(stem, override=None):
     cands = [override] if override else [
         os.path.join(REPO, "tests/terrain/beautify", stem, "shoreline_mask.png"),
-        os.path.join(LANE_04, stem + ".beauty", "shoreline_mask.png"),
     ]
     for c in cands:
         if c and os.path.isfile(c):
@@ -370,7 +370,10 @@ def main():
     ap.add_argument("--height", help="override visual_height_4x.r32 path")
     ap.add_argument("--mask", help="override shoreline_mask.png path")
     ap.add_argument("--out", default=os.path.join(REPO, "scratch/user0801/shore_predict"))
+    add_missions_dir_arg(ap)
     args = ap.parse_args()
+    global SRCDATA_MISSIONS
+    SRCDATA_MISSIONS = str(resolve_from_args(args, missions=[args.mission]).dir)
 
     modes = [int(m) for m in args.modes.split(",")]
     os.makedirs(args.out, exist_ok=True)

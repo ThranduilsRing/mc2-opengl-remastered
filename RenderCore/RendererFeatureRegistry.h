@@ -2849,6 +2849,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         false,
         "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:1402-1405, MAT_LAYER_PAINTED_CONC: dN += pureConcrete * matNormalBoost.w * fwC * (cN.rgb*2-1)) by zeroing matNormalBoost.w (nb[3]) at the uniform upload in gos_terrain_lod_chunk.cpp. DEFAULT OFF = the 'original overlay' concrete the user graded and approved in the mc2-win64-v0.3 install -- that install ships WITHOUT data/terrain_layers/, so matNormalArray never loads and the concrete relief never appears; this gate reproduces that look in installs that DO ship the layers, WITHOUT deleting assets or freezing a stale binary. Shader untouched; rock/grass/dirt detail normals (nb[0..2]) and the cement albedo/atlas path are unaffected. '=1' restores the relief treatment. Cost: loses close-up concrete surface relief on runways/aprons -- the flat authored colormap tone is what ships."
     },
+    // WATER-SHORE-MASK-1 (3c864eac): shipped default-ON but was never registered.
+    {
+        "MC2_FEATURE_WATER_SHORE_MASK",
+        "MC2_WATER_SHORE_MASK",
+        EnvVarKind::Feature,
+        true,
+        "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge. DEFAULT ON; =0 disables (falls back to the legacy ramp). Silently inert when the sidecar is not installed."
+    },
     // SHORELINE-GEOMETRY-1 / WATER-MEANDER-CLAMP-1: shore meander is DEFAULT OFF (0).
     {
         "MC2_FEATURE_WATER_SHORE_MEANDER",

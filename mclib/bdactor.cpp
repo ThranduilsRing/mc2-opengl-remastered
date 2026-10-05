@@ -5621,12 +5621,13 @@ void BldgAppearance::touchSerialCommit()
 // cannot live only inside this function's early-return.
 static bool bldgStaticShadowRebakeGatesActive()
 {
+	static const char* s_bldgShadowEnv = getenv("MC2_STATIC_PROP_BUILDING_SHADOW");
 	static const bool s_bldgStaticShadowActive =
-		(getenv("MC2_STATIC_PROP_BUILDING_SHADOW") != nullptr &&
-		 getenv("MC2_STATIC_PROP_BUILDING_SHADOW")[0] != '0');
+		(s_bldgShadowEnv != nullptr && s_bldgShadowEnv[0] != '0');
+
+	static const char* s_rebakeEnv = getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE");
 	static const bool s_rebakeOnDestroy =
-		!(getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE") != nullptr &&
-		  getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE")[0] == '0');
+		!(s_rebakeEnv != nullptr && s_rebakeEnv[0] == '0');
 	return s_bldgStaticShadowActive && s_rebakeOnDestroy;
 }
 

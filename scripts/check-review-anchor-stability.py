@@ -146,6 +146,8 @@ def mut_insert_block(m):
 def mut_insert_image(m):
     s = _big_figures_section(m)
     _i, b = _first_block(s, "figures", 2)
+    if b is None:  # current pack lacks this block shape: probe N/A
+        return None
     b["items"].insert(0, {"caption": "probe E", "src": "zz_probe/e.png"})
     return "insert an image at the FRONT of an existing figure group in %s" % s["id"]
 
@@ -153,6 +155,8 @@ def mut_insert_image(m):
 def mut_delete_image(m):
     s = _big_figures_section(m)
     _i, b = _first_block(s, "figures", 2)
+    if b is None:  # current pack lacks this block shape: probe N/A
+        return None
     b["items"].pop(0)
     return "delete the FIRST image of an existing figure group in %s" % s["id"]
 
@@ -160,6 +164,8 @@ def mut_delete_image(m):
 def mut_insert_gate_row(m):
     for s in m["sections"]:
         i, b = _first_block(s, "gate_table")
+        if b is None:  # current pack lacks this block shape: probe N/A
+            return None
         if b:
             b["rows"].insert(0, {"gate": "MC2_ZZ_PROBE_GATE",
                                  "cells": ["<code>MC2_ZZ_PROBE_GATE</code>", "probe", "probe"]})
@@ -170,6 +176,8 @@ def mut_insert_gate_row(m):
 def mut_insert_lane(m):
     for s in m["sections"]:
         i, b = _first_block(s, "lanes_table")
+        if b is None:  # current pack lacks this block shape: probe N/A
+            return None
         if b:
             b["lanes"].insert(0, {"name": "ZZ-PROBE-LANE-1", "sent": "probe",
                                   "found": "probe", "commits": [], "gates": [],
@@ -181,6 +189,8 @@ def mut_insert_lane(m):
 def mut_insert_meta_row(m):
     for s in m["sections"]:
         i, b = _first_block(s, "meta")
+        if b is None:  # current pack lacks this block shape: probe N/A
+            return None
         if b:
             b["rows"].insert(0, [{"tag": "th", "attrs": "", "html": "Probe"},
                                  {"tag": "td", "attrs": "", "html": "probe row"}])

@@ -10891,7 +10891,8 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     if (L.overlayArtFlatExempt >= 0) {
         static const float s_artFlatExempt = [] {
             const char* v = getenv("MC2_OVERLAY_ART_FLATLIGHT");
-            return (v && v[0] == '0') ? 1.0f : 0.0f;
+            const bool flatLightOn = !(v && v[0] == '0');  // default ON
+            return flatLightOn ? 0.0f : 1.0f;
         }();
         glUniform1f(L.overlayArtFlatExempt, s_artFlatExempt);
     }

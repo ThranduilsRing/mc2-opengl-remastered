@@ -327,24 +327,6 @@ TEST_CASE("RenderDebugView out-of-range returns false") {
 // RendererFeatureRegistry
 // ---------------------------------------------------------------------------
 
-TEST_CASE("RendererFeatureRegistry COUNT is 63") {
-    // 63 since MECH-LIGHTROW-FRESHNESS-1 (MechLightFreshness append).
-    // Was 62 at LIGHTROW-FRESHNESS-1 (StaticPropLightFreshness append).
-    //
-    // FOUND STALE 2026-07-31 (LIGHTROW-FRESHNESS-1): this assertion still read
-    // 46 -- "46 since 65bae0f6" -- while RendererFeature::COUNT had already
-    // reached 61. Fifteen appends landed without anyone bumping it, so whatever
-    // tripwire it was meant to be has not been armed for those fifteen. It is
-    // corrected here rather than deleted because the sibling assertions below
-    // (table length == COUNT, every entry non-null) are the ones with real
-    // content, and this one is cheap; but do not read a green run of THIS case
-    // as evidence that appends are being reviewed -- read it as evidence the
-    // number was updated. If it drifts again the same way, delete it in favour
-    // of the length/non-null checks rather than re-pinning a number nobody
-    // maintains.
-    CHECK(static_cast<int>(RendererFeature::COUNT) == 63);
-}
-
 TEST_CASE("RendererFeatureRegistry kFeatureTable length matches COUNT") {
     constexpr size_t len = sizeof(kFeatureTable) / sizeof(kFeatureTable[0]);
     CHECK(len == static_cast<size_t>(RendererFeature::COUNT));

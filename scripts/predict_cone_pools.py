@@ -45,6 +45,9 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools" / "mc2data"))
+from stock_missions import add_missions_dir_arg, resolve_from_args  # noqa: E402
+
 # --- PacketFile (mclib/packet.h) --------------------------------------------
 PACKET_MAGIC = 0xFEEDFACE
 TYPE_SHIFT = 29
@@ -372,7 +375,9 @@ def march(hf: Heightfield, apex, aim, reach: float):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--missions", nargs="+", default=["mc2_10", "mc2_23"])
-    ap.add_argument("--srcdata", default="A:/Games/mc2-srcdata")
+    ap.add_argument("--srcdata", default=None,
+                    help="mc2-srcdata root; default: parent of the verified stock missions dir")
+    add_missions_dir_arg(ap)
     ap.add_argument("--k", type=float, default=4.0,
                     help="extended-reach multiplier (MC2_CONE_POOL_REACH)")
     ap.add_argument("--up-thresh", type=float, default=0.15)
@@ -381,7 +386,7 @@ def main():
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
-    src = Path(args.srcdata)
+    src = Path(args.srcdata) if args.srcdata else resolve_from_args(args, missions=args.missions).dir.parent
     obj2 = read_packets(src / "objects" / "object2.pak")
     obj2_dec = {}
 
