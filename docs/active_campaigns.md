@@ -8,6 +8,33 @@
 |---|---|---|---|
 | ROAD-PBR-ABANDON-1 | `bd7e64f8` + dead-code follow-up | SHIPPED | USER RULING 2026-07-18: stock road overlays unconditional; MC2_ROAD_PBR retired (no effect), asphalt/gravel shader branches + host plumbing + TGA loaders deleted. Supersedes ROAD-PBR-OPTIN-1/FAILSOFT-1 below. |
 
+## 2026-07-16 — GEOMORPH-NEXT-SLICES-1 Slice 3: CLIPMAP-BRIDGE — DOC+TEST ONLY
+
+Per `.claude/GEOMORPH-NEXT-SLICES.md` §"Slice 3 — CLIPMAP-BRIDGE" (deliberately
+scoped as a hand-off artifact, not a clipmap implementation). Shipped:
+
+- **`docs/terrain-clipmap-bridge.md`** — maps `TERRAIN-LOD-GEOMORPH-1`'s
+  existing bake-mip levels (`MIP_STRIDES = (2,4,5,10,20)`) 1:1 onto future
+  clipmap ring levels, states the integer-coincidence invariant (bake grid =
+  uniform 4x supersample; every renderer-visited coarse index lands on an
+  exact bake-array index, at any LOD stride/block origin, for any level —
+  proven against the real engine loader formula in `mclib/terrain.cpp`'s
+  staleness guard), and maps `computeMorphFactor`'s per-block `m` onto a
+  clipmap transition region. No engine/shader/gate change.
+- **`tools/terrain_beautify/test_visual_heightfield_clipmap_bridge.py`** — 59
+  cases (56 pass, 3 skip where a mips sidecar predates the mips feature)
+  pinning the index-coincidence invariant: synthetic-fixture proofs of the
+  grid-sizing law + engine corner-index formula + full-resolution mip
+  addressability + SSBO blob layout, plus real-bake byte-size self-consistency
+  across all 24 committed `tests/terrain/beautify/*.beauty/` sidecars.
+- **Bake-status audit** (the board's other ask): before this slice only
+  `mc2_01`/`mc2_17`/`mc2_24` (+ 2 dev maps) had a `visual_height_4x.r32`
+  sidecar; the other 21 campaign maps had none. Ran the bake tool's default
+  (boring-bilinear, corner-pinned, no `--reauth`) recipe for all 21 —
+  `tests/terrain/beautify/` now has all 24 campaign maps baked. Per-biome
+  `--reauth` tuning deliberately NOT done here (separate B4-gated ruling; see
+  `docs/terrain-clipmap-bridge.md` §7 for the full accounting).
+
 ## 2026-07-07 — SHIPPED-LEDGER BACKFILL (handoff audit) — arcs in git but previously missing here
 
 | Slice | Commit(s) | Status | Notes |

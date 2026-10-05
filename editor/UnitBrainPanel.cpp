@@ -28,6 +28,8 @@
 #include "brain_missionfit_oporbd.h"  // parseMissionFitBrains (declarative Brain{} blocks)
 // The parser TU (code/brain_missionfit_oporbd.cpp) is compiled into EditRel via
 // EDITOR_BRIDGE_SOURCES in editor/CMakeLists.txt (same as gameplay_pick.cpp).
+#include "MissionFitBrainSource.h"  // shared mission.fit Brain{} cache (also feeds
+                                     // Unit::importPatrolFromBrainIfNeeded, EditorObjects.cpp)
 
 #include <cstdio>
 #include <cstring>
@@ -151,87 +153,9 @@ const char* loadBrainText( const char* brainName )
 }
 
 // --- Declarative Brain (mission.fit) -----------------------------------------
-// READ-ONLY: parse the CURRENT mission.fit's inline Brain{} blocks and match the
-// selected unit to one by spawn position. Cached by fit-path string so we only
-// re-read+parse when the constructed mission.fit path changes (not every frame).
-MissionFitBrain s_brains[128];
-int             s_brainCount = 0;
-char            s_lastPath[512] = { 0 };
-
-// Re-read + re-parse mission.fit only when the path differs from last time.
-// Returns false (and clears the cache) when there is no current map.
-bool refreshMissionFitBrains()
-{
-	const char* mapName = EditorData::getMapName();
-	if ( !mapName || !mapName[0] )
-	{
-		s_brainCount = 0;
-		s_lastPath[0] = 0;
-		return false;
-	}
-
-	// getMapName() returns the FULL loaded .pak path (e.g. "...\mc2_24\mc2_24.pak"); the mission
-	// .fit sits next to it. Swap the trailing ".pak" -> ".fit" (mirrors EditorData camFileName
-	// Replace). Do NOT prepend missionPath — mapName is already an absolute path.
-	char pathBuf[512];
-	strncpy( pathBuf, mapName, sizeof( pathBuf ) - 1 );
-	pathBuf[sizeof( pathBuf ) - 1] = 0;
-	size_t plen = strlen( pathBuf );
-	if ( plen >= 4 && 0 == _stricmp( pathBuf + plen - 4, ".pak" ) )
-		strcpy( pathBuf + plen - 4, ".fit" );             // mc2_24.pak -> mc2_24.fit
-	else if ( plen + 4 < sizeof( pathBuf ) )
-		strcpy( pathBuf + plen, ".fit" );                 // no .pak ext: just append
-	const char* path = pathBuf;
-
-	if ( 0 == strcmp( s_lastPath, path ) )
-		return true;   // already parsed this fit
-
-	strncpy( s_lastPath, path, sizeof( s_lastPath ) - 1 );
-	s_lastPath[sizeof( s_lastPath ) - 1] = 0;
-	s_brainCount = 0;
-
-	File f;
-	if ( NO_ERR != f.open( path ) )
-		return true;   // no fit on disk yet (count stays 0)
-
-	long sz = f.getLength();
-	if ( sz > 0 )
-	{
-		char* buf = (char*)malloc( sz + 1 );
-		if ( buf )
-		{
-			f.read( (MemoryPtr)buf, sz );
-			buf[sz] = 0;
-			s_brainCount = parseMissionFitBrains( buf, s_brains, 128 );
-			free( buf );
-		}
-	}
-	return true;
-}
-
-// Match a unit's world (x,y) to the nearest declarative brain within tolerance.
-// Returns nullptr if none qualifies.
-const MissionFitBrain* matchBrainForPos( float ux, float uy )
-{
-	const float kTol = 50.0f;
-	const MissionFitBrain* best = nullptr;
-	float bestD2 = kTol * kTol;
-	for ( int i = 0; i < s_brainCount; ++i )
-	{
-		const MissionFitBrain& b = s_brains[i];
-		if ( b.posX <= -1e8f )
-			continue;
-		float dx = b.posX - ux;
-		float dy = b.posY - uy;
-		float d2 = dx * dx + dy * dy;
-		if ( d2 <= bestD2 )
-		{
-			bestD2 = d2;
-			best = &b;
-		}
-	}
-	return best;
-}
+// READ-ONLY display; the parse/cache/position-match live in MissionFitBrainSource
+// (shared with Unit::importPatrolFromBrainIfNeeded, editor/EditorObjects.cpp, so the
+// panel and the waypoint importer never disagree about which brain matches a unit).
 
 // Render one OPORD slot (read-only). No-ops if the slot is absent.
 void drawOpordSlot( const char* label, const MissionFitOpordSlot& s )
@@ -398,23 +322,25 @@ void UnitBrainPanel::Draw()
 		}
 		else
 		{
-			refreshMissionFitBrains();
+			MissionFitBrainSource::Refresh();
 			const Stuff::Vector3D& p = obj->getPosition();
+			const int brainCount = MissionFitBrainSource::BrainCount();
 
 			// Diagnostics (collapsed): the path we read, how many brains parsed, the selected
 			// unit's world pos, and the NEAREST brain (uncapped) so a "no match" / coordinate
 			// mismatch can be debugged without a rebuild.
 			if (ImGui::TreeNode("debug"))
 			{
-				ImGui::TextDisabled("fit: %s", s_lastPath[0] ? s_lastPath : "(none)");
-				ImGui::TextDisabled("brains: %d   unit pos: (%.1f, %.1f)", s_brainCount, (float)p.x, (float)p.y);
+				const char* lastPath = MissionFitBrainSource::LastFitPath();
+				ImGui::TextDisabled("fit: %s", (lastPath && lastPath[0]) ? lastPath : "(none)");
+				ImGui::TextDisabled("brains: %d   unit pos: (%.1f, %.1f)", brainCount, (float)p.x, (float)p.y);
 				const MissionFitBrain* nb = nullptr; float nd2 = 1e30f;
-				for (int i = 0; i < s_brainCount; ++i)
+				for (int i = 0; i < brainCount; ++i)
 				{
-					const MissionFitBrain& bb = s_brains[i];
-					if (bb.posX <= -1e8f) continue;
-					float dx = bb.posX - (float)p.x, dy = bb.posY - (float)p.y, d2 = dx * dx + dy * dy;
-					if (d2 < nd2) { nd2 = d2; nb = &bb; }
+					const MissionFitBrain* bb = MissionFitBrainSource::BrainAt(i);
+					if (!bb || bb->posX <= -1e8f) continue;
+					float dx = bb->posX - (float)p.x, dy = bb->posY - (float)p.y, d2 = dx * dx + dy * dy;
+					if (d2 < nd2) { nd2 = d2; nb = bb; }
 				}
 				if (nb)
 					ImGui::TextDisabled("nearest: W%d (%.1f,%.1f) dist=%.1f",
@@ -422,7 +348,7 @@ void UnitBrainPanel::Draw()
 				ImGui::TreePop();
 			}
 
-			const MissionFitBrain* b = matchBrainForPos((float)p.x, (float)p.y);
+			const MissionFitBrain* b = MissionFitBrainSource::MatchForPos((float)p.x, (float)p.y);
 			if (!b)
 			{
 				ImGui::TextDisabled("No declarative brain matches this unit (or mission.fit has none).");

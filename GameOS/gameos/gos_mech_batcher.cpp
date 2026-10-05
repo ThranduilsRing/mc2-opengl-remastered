@@ -44,6 +44,7 @@
 #include <unordered_map>
 #include <array>
 #include <cmath>
+#include <optional>            // GLSTATE-GUARD-ADOPTION-3: deferred-destruct SSBO guards in flush()
 
 // M2.5 (external-review C1): file-scope forward declaration of the
 // MLR-side per-mission counter getter, defined in mclib/mech3d.cpp.
@@ -2320,9 +2321,21 @@ void GpuMechBatcher::flush() {
         }
     }
 
-    // Mech-1: save binding 2 before Step 6 mutates it
-    GLint prevSsbo2 = 0;
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 2, &prevSsbo2);
+    // Mech-1: save binding 2 before Step 6 mutates it.
+    // GLSTATE-GUARD-ADOPTION-3 (glstate-guard-epilogue-recon-1.md Site 1 — "the
+    // one genuinely clean, behavior-preserving win"): restore-previous SSBO
+    // binding via GlScopedSsboBinding, replacing the hand-rolled prevSsbo2
+    // save (was here) + restore (was after the draw loop). The recon requires
+    // this guard to close BEFORE the function's trailing
+    // gos_InvalidateRenderStateCache() call, which is earlier than this
+    // function's natural end — so it is wrapped in std::optional and
+    // .reset() explicitly at the original manual-restore point instead of a
+    // ~430-line lexical block (avoids re-scoping every local declared in
+    // between). Render-state (program/VAO/buffers/samplers/depth/blend/cull)
+    // stays fully manual per the recon's recommendation — only SSBO 0/1/2
+    // convert in this slice.
+    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo2;
+    guardSsbo2.emplace(2);
 
     // Step 6: Bind SSBOs (whole per-frame slices; shader indexes via u_instanceBase).
     gpuBindSsboRange(0, s_instanceSsbo,
@@ -2362,8 +2375,14 @@ void GpuMechBatcher::flush() {
     GLint     prevElemBuf;     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
     GLint     prevActiveTex;   glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevActiveTex);
     GLint     prevSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler);
-    GLint     prevSsbo0     = 0; glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &prevSsbo0);
-    GLint     prevSsbo1     = 0; glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 1, &prevSsbo1);
+    // GLSTATE-GUARD-ADOPTION-3: SSBO 0/1 restore-previous, same pattern as
+    // guardSsbo2 above (captured here, AFTER Step 6 already rebound slots 0/1
+    // to s_instanceSsbo/s_boneSsbo — matching the exact pre-conversion capture
+    // point/semantics unchanged, not "fixed").
+    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo0;
+    guardSsbo0.emplace(0);
+    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo1;
+    guardSsbo1.emplace(1);
     glActiveTexture(GL_TEXTURE0);
     GLint     prevTexUnit0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0);
     // Slice C2 + PBR-LAYERED-1: save PBR detail sampler units 1-4.
@@ -2798,9 +2817,13 @@ void GpuMechBatcher::flush() {
     }
 
     // Restore prior state in reverse order of save.
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, (GLuint)prevSsbo0);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, (GLuint)prevSsbo1);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, (GLuint)prevSsbo2);
+    // GLSTATE-GUARD-ADOPTION-3: SSBO 0/1/2 restore via guard .reset() (runs the
+    // dtor immediately, same glBindBufferBase(slot, prev) it replaces) — MUST
+    // fire before gos_InvalidateRenderStateCache() below (recon requirement);
+    // relative order between slots is immaterial (independent binding points).
+    guardSsbo0.reset();
+    guardSsbo1.reset();
+    guardSsbo2.reset();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, (GLuint)prevTexUnit0);
     // Slice C2 + PBR-LAYERED-1: restore PBR detail sampler units 1-4.

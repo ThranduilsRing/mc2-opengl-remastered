@@ -510,6 +510,8 @@ ALLOWLIST=(
     # --- batch 1 (legacy registry sweep, A-C): trace/feature/override/infra ---
     MC2_ABL_ARG_GUARD                 # feature -- ABL VM arg-count guard (behavior-affecting safety check)
     MC2_ABL_ARG_GUARD_REPRO           # infra -- repro/test harness for arg guard
+    MC2_ABL_COMPILE_FATAL             # feature -- default-ON fail-loud guard for partial ABL bytecode
+    MC2_ABL_COMPILE_FATAL_REPRO       # infra -- malformed-module negative fixture path
     MC2_ABL_CORE_TRACE                # trace
     MC2_ABL_RUNTIME_SOFTFAIL          # feature -- ABL runtime softfail behavior toggle
     MC2_ABL_SKIP_ERRORED_MODULES      # feature -- skip-errored-module behavior toggle

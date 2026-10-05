@@ -92,6 +92,8 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::WaterRecipeBuf:       return "WaterRecipeBuf";
         case RenderResourceId::WaterHeaderBuf:       return "WaterHeaderBuf";
         case RenderResourceId::WaterIndirectCmdBuf:  return "WaterIndirectCmdBuf";
+        case RenderResourceId::ShadowCsmNearArray:   return "ShadowCsmNearArray";
+        case RenderResourceId::ShadowCsmFullMap:     return "ShadowCsmFullMap";
         case RenderResourceId::Count:                return "Count";
     }
     return "unknown";

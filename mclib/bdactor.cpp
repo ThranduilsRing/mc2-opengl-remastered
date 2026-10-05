@@ -1682,11 +1682,59 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	}
 }
 
+// STATIC-BLDG-SHADOW-REBAKE-1: forward decl -- defined near
+// BldgAppearance::invalidateStaticRegistration() further down this file (its
+// comment there has the full rationale); needed here because the REAL
+// in-game combat-destroy event is this function's OBJECT_STATUS_DESTROYED
+// transition, which runs long before that definition in file order.
+static void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
+                                                  const char* reason);
+static bool bldgStaticShadowRebakeGatesActive();
+
 //-----------------------------------------------------------------------------
 void BldgAppearance::setObjStatus (long oStatus)
 {
 	if (status != oStatus)
 	{
+		// STATIC-BLDG-SHADOW-REBAKE-1: this is the REAL mid-mission "building
+		// destroyed" event (combat damage reaching the threshold ->
+		// Building::setDamage -> here). Only OBJECT_STATUS_DESTROYED, not
+		// OBJECT_STATUS_DISABLED (disabled is a reversible non-destroy state
+		// -- e.g. a powered-down building -- and should keep its shadow).
+		//
+		// MEASURED (2026-07-16, MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_
+		// DESTROY_AT_FRAME repro on mc2_24): re-arming the shadow latch alone
+		// and relying on the ordinary shape-swap auto-detection (a LATER
+		// touch()/update() noticing staticReg.shape != bldgShape and calling
+		// invalidateStaticRegistration() + re-registering) is too slow -- the
+		// rebake this trigger causes fires on the VERY NEXT FRAME, before
+		// that lazy detection has run, so the first replay still baked the
+		// stale pre-destruction shadow (inst count unchanged: 299 -> 299).
+		// Fix: tombstone the static registration SYNCHRONOUSLY here (the same
+		// invalidateStaticRegistration() the lazy path would eventually call)
+		// so the registry is already correct by the time the rebake reads it.
+		// Safe/idempotent: invalidateStaticRegistration() is already called
+		// unconditionally from many shape-swap sites regardless of the
+		// shadow gate; clearing staticReg here just means the NEXT touch()
+		// takes the ordinary fresh-registration path (registered==false) for
+		// the new rubble shape instead of the shape-swap path -- same
+		// eventual outcome, no double-invalidate risk (the guard inside is
+		// `if (staticReg.registered ...)`).
+		//
+		// GATED (byte-identical when off): only take the synchronous path
+		// when the rebake would actually fire -- gates() checked BEFORE
+		// invalidateStaticRegistration() runs, not just inside the trigger
+		// helper, so a mission that never opted into
+		// MC2_STATIC_PROP_BUILDING_SHADOW keeps the exact original timing
+		// (lazy shape-swap detection on a later touch()/update(), unchanged).
+		if (oStatus == OBJECT_STATUS_DESTROYED && bldgStaticShadowRebakeGatesActive()) {
+			const bool    wasRegistered   = staticReg.registered;
+			const int32_t prevRecipeIndex = staticReg.recipeIndex;
+			invalidateStaticRegistration();
+			bldgTriggerStaticShadowRebakeIfArmed(wasRegistered, prevRecipeIndex,
+			                                      "setObjStatus_destroyed");
+		}
+
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))
 		{
 			if (appearType->bldgDmgShape)
@@ -5544,6 +5592,60 @@ void BldgAppearance::touchSerialCommit()
 	// NOTE: bldgShape->Touch() is in touchWorkerPrepass() (verified lock-free)
 }
 
+// STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow
+// latch (mclib/txmmgr.cpp gos_StaticLightMatrixBuilt()) so the static shadow
+// (terrain + buildings) replays fresh next frame without a since-destroyed
+// building (docs/known_issues.md "Static building shadow goes stale on
+// destroy"). Called from the two places a building's static registration
+// actually becomes stale mid-mission-relevant: (1) BldgAppearance::setObjStatus
+// transitioning to OBJECT_STATUS_DESTROYED -- the REAL in-game combat-destroy
+// event (swaps to appearType->bldgDmgShape; a later touch()/update() detects
+// the staticReg.shape mismatch and re-registers the rubble recipe through the
+// ordinary shape-swap path, but that generic re-registration does NOT itself
+// trigger a shadow rebake, hence this dedicated hook); and (2)
+// BldgAppearance::destroy() -- mission-end/pool-recycle teardown, cheap
+// insurance for the case a registered building never went through (1) first.
+// Only worth the rebake cost (a full-map static shadow replay,
+// ZoneScopedN("Shadow.StaticFullMapBuild") in txmmgr.cpp) when (a) this
+// building actually had a static registration, AND (b) the building
+// static-shadow map is actually active -- MC2_STATIC_PROP_BUILDING_SHADOW is
+// default OFF, and the unconditional terrain-only static build must NOT be
+// forced to redundantly re-run (wasted GPU work, zero visual change) on
+// missions that never opted into building-in-static-map at all.
+// MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE is a dedicated kill-switch (default
+// ON, independent of the parent gate) for this specific rebake trigger, in
+// case it proves too expensive on destruction-heavy missions.
+// Gate check split out so callers can decide whether to ALSO do the
+// synchronous invalidateStaticRegistration() dance (see setObjStatus) --
+// that call must byte-identically NOT happen when the gates are off, so it
+// cannot live only inside this function's early-return.
+static bool bldgStaticShadowRebakeGatesActive()
+{
+	static const bool s_bldgStaticShadowActive =
+		(getenv("MC2_STATIC_PROP_BUILDING_SHADOW") != nullptr &&
+		 getenv("MC2_STATIC_PROP_BUILDING_SHADOW")[0] != '0');
+	static const bool s_rebakeOnDestroy =
+		!(getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE") != nullptr &&
+		  getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE")[0] == '0');
+	return s_bldgStaticShadowActive && s_rebakeOnDestroy;
+}
+
+static void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
+                                                  const char* reason)
+{
+	if (!wasRegistered || !bldgStaticShadowRebakeGatesActive()) return;
+	static const bool s_rebakeTrace =
+		(getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE") != nullptr &&
+		 getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE")[0] == '2');
+	gos_ResetStaticLightMatrix();
+	if (s_rebakeTrace) {
+		fprintf(stderr,
+			"[SHADOW_STATIC_BLDG_REBAKE v1] event=%s recipeIndex=%d\n",
+			reason, recipeIndex);
+		fflush(stderr);
+	}
+}
+
 void BldgAppearance::invalidateStaticRegistration()
 {
 	if (staticReg.registered && staticReg.recipeIndex >= 0)
@@ -5554,9 +5656,19 @@ void BldgAppearance::invalidateStaticRegistration()
 //-----------------------------------------------------------------------------
 void BldgAppearance::destroy (void)
 {
+	// Capture BEFORE invalidateStaticRegistration() clears staticReg below.
+	const bool    wasStaticRegistered   = staticReg.registered;
+	const int32_t prevStaticRecipeIndex = staticReg.recipeIndex;
+
 	// Stage 3.D: NULL the registry's RecipeRange::multi pointer before
 	// bldgShape is freed below. Mirrors TreeAppearance::destroy ordering.
 	invalidateStaticRegistration();
+
+	// STATIC-BLDG-SHADOW-REBAKE-1: cheap insurance -- see the helper's
+	// comment. In practice combat-destroyed buildings are already re-armed
+	// earlier via setObjStatus(OBJECT_STATUS_DESTROYED); this covers the
+	// mission-end/pool-recycle path.
+	bldgTriggerStaticShadowRebakeIfArmed(wasStaticRegistered, prevStaticRecipeIndex, "appearance_destroy");
 
 	if ( bldgShape )
 	{

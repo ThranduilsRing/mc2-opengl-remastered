@@ -459,3 +459,22 @@ int parseMissionFitBrains(const char* text, MissionFitBrain* out, int maxOut) {
     }
     return count;
 }
+
+// BRAIN-PATROL-VIEWER-BRIDGE-1: see brain_missionfit_oporbd.h for the shared-consumer rationale.
+const MissionFitBrain* matchBrainForPos(const MissionFitBrain* brains, int brainCount,
+                                         float ux, float uy, float tol) {
+    const MissionFitBrain* best = nullptr;
+    float bestD2 = tol * tol;
+    for (int i = 0; i < brainCount; ++i) {
+        const MissionFitBrain& b = brains[i];
+        if (b.posX <= -1e8f) continue;          // no spawn position parsed for this brain
+        float dx = b.posX - ux;
+        float dy = b.posY - uy;
+        float d2 = dx * dx + dy * dy;
+        if (d2 <= bestD2) {
+            bestD2 = d2;
+            best = &b;
+        }
+    }
+    return best;
+}

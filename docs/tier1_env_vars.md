@@ -53,6 +53,12 @@
 - `MC2_SOAK_WIN_AFTER_SEC=5.0` — scenario-time seconds before auto-win fires (default 5.0). Only consulted when `MC2_SOAK_AUTOWIN` is set.
 - `MC2_SOAK_SALVAGE_TRADEMOVER=1` — ISSUE-42a repro fixture. With `MC2_SOAK_AUTOWIN` + `MC2_SOAK_KILL_ENEMY`, runs the REAL mid-mission salvage-craft flow (recover / setStatus(SHUTDOWN,force) / tradeMover / orderPowerUp — the exact missiongui.cpp VTOL sequence) on ONE disabled enemy mech at 80% of the win timer, so the Phase-3 `[SOAK] salvage-in-loadbay` check verifies `LogisticsData::setMissionCompleted`'s recovered-mech carry-over branch instead of the Phase-2 `addMechToInventory` shortcut. Emits `[SOAK] salvage-trademover name=… variant=… pilot=…`. Pair with `MC2_LOG_LOGISTICS_FLOW=1` + `MC2_DIAG_TAGS=LOGISTICS` for the per-unit cull/resolve/mech_lost JSONL trail. Default OFF = byte-identical.
 
+## ABL compile safety
+
+- `MC2_ABL_COMPILE_FATAL` — **default ON** fail-loud guard. If ABL preprocessing reports syntax errors, logs `[ABL_COMPILE_FATAL]` with file/error count and exits before partial bytecode can execute and corrupt `codeSegmentPtr`. Set exactly `=0` only to reproduce legacy execute-anyway behavior.
+- `MC2_ABL_COMPILE_FATAL_REPRO=<absolute-path>` — negative-test hook. During ABL initialization, preprocesses the supplied malformed fixture; expected result with default settings is an attributable `[ABL_COMPILE_FATAL]` refusal before mission load.
+- `MC2_ABL_SKIP_ERRORED_MODULES=1` — playability escape hatch: permits mission load but skips execution of every module with compile errors. Takes precedence over compile-fatal so bad third-party brains remain contained rather than crashing the VM.
+
 ## Feature gates (RendererFeatureRegistry.h kFeatureTable)
 
 - `MC2_COLORMAP_KTX2` — BC7 KTX2 atlas. Default **ON**. Kill=`=0`. Bake: `py -3 scripts/bake_colormap_ktx2.py`.
@@ -225,6 +231,8 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 - `MC2_SHADOW_BOUNDED_NEAR_RADIUS=2500` — bounded near-fit radius in wu. Default 2500.
 - `MC2_SHADOW_FRUSTUM_DIAG=1` — per-frame coverage probe. Read-only.
 - `MC2_STATIC_PROP_BUILDING_SHADOW=1` — replay all buildings into world-fixed static shadow map. Default **OFF**. `=2` adds trace.
+- `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` — STATIC-BLDG-SHADOW-REBAKE-1: on building destroy (primarily `BldgAppearance::setObjStatus` -> `OBJECT_STATUS_DESTROYED`, the real combat-destroy event; also `BldgAppearance::destroy` as insurance), re-arm the one-shot static-shadow latch so the world-fixed map replays without the destroyed building instead of keeping a stale shadow until reload. Only fires when the destroyed building held a registration AND `MC2_STATIC_PROP_BUILDING_SHADOW` is active. Default **ON** (independent kill-switch). `=0` disables the rebake trigger only; `=2` adds a per-destroy trace line.
+- `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME=<N>` — deterministic repro hook (test-only): at frame N, inflict lethal damage on the first live building via the real `Building::setDamage` API to drive the rebake trigger above for before/after capture proofs. Unset = no-op.
 - `MC2_SHADOW_DYNAMIC_PROP_CASTERS` — feed dynamic caster pass from registry. Default **ON**. Kill=`=0`.
 - `MC2_SHADOW_ROBUST_BASIS` — light-basis singularity guard + AABB corner-scarcity fallback (SHADOW-ROBUST-BASIS-1). Default **ON**. `=0` restores legacy (byte-identical for normal suns; can go singular).
 - `MC2_SHADOW_STATIC_BANDFIX` — STATIC-SHADOW-BANDING-1: raises the static-shadow LOD tap floor in `gos_terrain.frag` (16/8/4 → 16/12/8) so shadow.hglsl's gradient-adaptive PCF doesn't undersample its Poisson disk at the wide radius used on flat terrain (root cause of the reported grass/rolling-terrain shadow banding — NOT a map-resolution or depth-precision issue). Default **ON** (2026-07-18, field bug: shadow banding persisted in shipped default config). Kill=`=0` (byte-identical legacy).

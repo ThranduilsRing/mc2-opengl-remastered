@@ -547,6 +547,18 @@ profile = true;
 	if (ProfileABL)
 		ABL_OpenProfileLog();
 
+	// ASAN-3-ABL-COMPILE-FATAL-1 negative fixture hook. Tests supply an
+	// absolute path to a deliberately malformed standalone ABL module; normal
+	// runs do no extra preprocessing. The expected default-ON guard exits from
+	// ABLi_preProcess with an attributable [ABL_COMPILE_FATAL] line.
+	if (const char* reproPath = getenv("MC2_ABL_COMPILE_FATAL_REPRO")) {
+		long reproErrors = 0;
+		long reproLines = 0;
+		fprintf(stderr, "[ABL_COMPILE_FATAL_REPRO] file=%s\n", reproPath);
+		fflush(stderr);
+		ABLi_preProcess(reproPath, &reproErrors, &reproLines);
+	}
+
 #ifdef TEST_ABLFILE
 	ABLFile* aFile = new ABLFile;
 	aFile->create("ablFile.txt");
@@ -789,6 +801,39 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	// it underflows the ABL VM stack -> READ AV (ablxexpr.cpp:501 execExpression). The gate
 	// in ABLModule::execute() skips such modules when MC2_ABL_SKIP_ERRORED_MODULES is set.
 	ModuleRegistry[NumModulesRegistered].compileErrorCount = errorCount;
+
+	// ASAN-3-ABL-COMPILE-FATAL-1 (docs/asan-follow-ups.md #3): a module that failed
+	// to compile has partial/garbage bytecode; the VM trusts its own tables, so
+	// execution later derefs a corrupt codeSegmentPtr (getCodeToken, confirmed on
+	// Exodus / Magic's-patch content: pointers like 0x127f00000001). HARD-FAIL the
+	// load NOW with a clean, attributable error instead of crashing later in an
+	// unrelated subsystem. Single choke point: every mission-init compile path
+	// (mission script, warrior brains, logistics, saveload, environment) funnels
+	// through ABLi_preProcess. Escape hatches (both leave the crash class dead or
+	// contained): MC2_ABL_SKIP_ERRORED_MODULES=1 loads the mission and skips the
+	// errored brains (DarkRain-style content); MC2_ABL_COMPILE_FATAL=0 restores the
+	// full legacy execute-anyway roulette. Stock content compiles clean -> this
+	// branch never fires on tier1 (zero behavior change).
+	{
+		static const bool s_compileFatal = []() {
+			const char* v = getenv("MC2_ABL_COMPILE_FATAL");
+			return !(v && v[0] == '0' && v[1] == '\0');   // DEFAULT ON; only "0" disables
+		}();
+		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
+			char fatalMsg[512];
+			snprintf(fatalMsg, sizeof(fatalMsg),
+				"[ABL_COMPILE_FATAL] file=%s syntaxErrors=%ld -- refusing to load a module that "
+				"failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). "
+				"Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute "
+				"errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).",
+				ModuleRegistry[NumModulesRegistered].fileName, errorCount);
+			fprintf(stderr, "%s\n", fatalMsg);
+			fflush(stderr);
+			printf("%s\n", fatalMsg);
+			fflush(stdout);
+			exit(1);
+		}
+	}
 
 	NumModulesRegistered++;
 

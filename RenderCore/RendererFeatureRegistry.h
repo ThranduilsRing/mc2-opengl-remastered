@@ -1377,6 +1377,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "play under MC2_SMOKE_MODE and the video panel is capturable headless. "
         "Default unset -> smoke-mode skip preserved, byte-identical."
     },
+    {
+        "MC2_ABL_COMPILE_FATAL",
+        "MC2_ABL_COMPILE_FATAL",
+        EnvVarKind::Feature,
+        true,
+        "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics."
+    },
+    {
+        "MC2_ABL_COMPILE_FATAL_REPRO",
+        "MC2_ABL_COMPILE_FATAL_REPRO",
+        EnvVarKind::Trace,
+        false,
+        "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior."
+    },
     // TERRAIN-DECAL-SLICE-0B: live placement knobs for the CLIFF_WALL mesh-decal
     // (mclib/bdactor.cpp registerStatic). Read once at process start; all default
     // to Slice-0A behavior -> byte-identical when unset. Only consulted when
@@ -2462,6 +2476,20 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Trace,
         false,
         "EDGE-LIGHT-EMISSION-1: scales the NIGHT EMISSION DELTA only (night base_light minus day base_light), never the underlying lighting maths, so 0.0 is exactly the pre-fix render and 1.0 is exact stock. Only meaningful when MC2_STATIC_PROP_NIGHT_TAGS is nonzero. Unset -> 1.0 (or 4.0 under mode 2). Clamped [0,16]. Resolved once at process start."
+    },
+    {
+        "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE",
+        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
+        EnvVarKind::Feature,
+        true,
+        "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed -- primarily BldgAppearance::setObjStatus transitioning to OBJECT_STATUS_DESTROYED (the real in-game combat-destroy event), with BldgAppearance::destroy (mission-end/pool-recycle) as cheap insurance -- so txmmgr's static-shadow build block (terrain + buildings) replays next frame WITHOUT the destroyed building instead of keeping its stale baked shadow until mission reload (docs/known_issues.md). Only fires when (a) the destroyed building actually held a static-prop registration and (b) MC2_STATIC_PROP_BUILDING_SHADOW is active -- inert (and costs nothing) on missions that never opted into the parent feature, since the unconditional terrain-only static build must not be forced to redundantly replay. Default ON (independent kill-switch for the parent feature); =0 disables the rebake trigger only; =2 adds a one-line [SHADOW_STATIC_BLDG_REBAKE v1] trace per destroy."
+    },
+    {
+        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
+        "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
+        EnvVarKind::Trace,
+        false,
+        "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers). At the given frame, inflict lethal damage on the first live building via the real Building::setDamage gameplay API (same effect as a weapon hit reaching the damage threshold), driving it through setObjStatus(OBJECT_STATUS_DESTROYED) and the shadow-rebake trigger above, for before/after capture proofs. Unset = no-op."
     },
     {
         "MC2_TUNE_FAR_BACKDROP_LIT_NEAR",

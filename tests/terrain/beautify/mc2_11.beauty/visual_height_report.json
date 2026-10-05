@@ -1,0 +1,73 @@
+{
+  "mission": "mc2_11",
+  "coarse_side": 120,
+  "factor": 4,
+  "visual_side": 477,
+  "world_units_per_vertex_coarse": 128.0,
+  "world_units_per_vertex_visual": 32.0,
+  "corner_pinned": true,
+  "max_corner_error_wu": 0.0,
+  "reshape": null,
+  "reauth": null,
+  "elevation_wu": {
+    "min": -200.0,
+    "max": 500.0
+  },
+  "visual_delta_wu": {
+    "max_abs": 158.41232109069824,
+    "mean_abs": 4.9726667911437366
+  },
+  "visual_height_file": "visual_height_4x.r32",
+  "visual_height_sha256": "ca71fede87fb7f22cdccec4caf407bb97ba95652a5101f05c0eb28d118576f33",
+  "visual_damp_file": null,
+  "max_mips": {
+    "file": "visual_height_mips.r32",
+    "strides": [
+      2,
+      4,
+      5,
+      10,
+      20
+    ],
+    "grid_side": 120,
+    "built_from_sha256": "ca71fede87fb7f22cdccec4caf407bb97ba95652a5101f05c0eb28d118576f33",
+    "self_check": {
+      "violations": 0,
+      "worst_deficit_wu": 0.0,
+      "levels": 5
+    },
+    "levels": [
+      {
+        "stride": 2,
+        "window_fine": 9,
+        "max_lift_wu": 285.3080520629883,
+        "mean_lift_wu": 23.21302975418667
+      },
+      {
+        "stride": 4,
+        "window_fine": 17,
+        "max_lift_wu": 358.29383850097656,
+        "mean_lift_wu": 42.43752088646094
+      },
+      {
+        "stride": 5,
+        "window_fine": 21,
+        "max_lift_wu": 388.98104095458984,
+        "mean_lift_wu": 49.79108261550673
+      },
+      {
+        "stride": 10,
+        "window_fine": 41,
+        "max_lift_wu": 533.505126953125,
+        "mean_lift_wu": 87.61709770139721
+      },
+      {
+        "stride": 20,
+        "window_fine": 81,
+        "max_lift_wu": 584.4769287109375,
+        "mean_lift_wu": 144.17453064775302
+      }
+    ]
+  },
+  "note": "boring bilinear bake; corners exact; render-only (gameplay heightfield untouched)."
+}

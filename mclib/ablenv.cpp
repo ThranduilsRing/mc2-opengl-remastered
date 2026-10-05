@@ -797,7 +797,10 @@ int ABLModule::getStateHandle (void) {
 // (MCO: stack underflow -> READ@0x4 in execExpression) is now prevented by a per-site
 // underflow guard in ablxexpr.cpp, so the module no longer needs skipping. This gate stays
 // OFF by default (opt-in MC2_ABL_SKIP_ERRORED_MODULES=1) as a last-resort escape hatch only.
-static bool ablSkipErroredModulesEnabled (void) {
+// ASAN-3-ABL-COMPILE-FATAL-1: no longer static — ABLi_preProcess (ablrtn.cpp)
+// consults the same gate so the load-time compile-error fatal defers to the
+// opt-in skip-errored-modules playability mode (decl in abl.h).
+bool ablSkipErroredModulesEnabled (void) {
 	static const bool s_on = (getenv("MC2_ABL_SKIP_ERRORED_MODULES") != NULL);
 	return s_on;
 }

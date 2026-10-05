@@ -71,6 +71,7 @@ set(SOURCES ${SOURCES}
     pipeline_binder.cpp
     GLBackend.cpp
     view_uniforms_gl.cpp
+    gpu_buffer_gl.cpp
     debug_state_dump.cpp
     dbg_asset_globals.cpp
     diagnostic_trace.cpp

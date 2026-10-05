@@ -6349,6 +6349,28 @@ void gosPostProcess::initDynamicShadows()
         glClearDepth(0.0f);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+        // SHADOW-VRAM-ACCOUNT-1: register the near-cascade array (observe-only
+        // metadata; never read by the draw path). Makes the per-cascade shadow
+        // VRAM split (13365011) auditable from the debug-state dump: default =
+        // (csmCount-1) layers x 8192^2 x Depth24 here + the separate 4096^2
+        // full-map row below (dummy R8 color attachments not accounted).
+        {
+            RenderCore::RenderResourceDesc d;
+            d.id        = RenderCore::RenderResourceId::ShadowCsmNearArray;
+            d.kind      = RenderCore::RenderResourceKind::Texture2DArray;
+            d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;
+            d.format    = RenderCore::RenderResourceFormat::Depth24;
+            d.debugName = "ShadowCsmNearArray";
+            d.width     = static_cast<uint32_t>(dynShadowMapSize_);
+            d.height    = static_cast<uint32_t>(dynShadowMapSize_);
+            d.layers    = static_cast<uint32_t>(arrayLayers);
+            d.glName    = static_cast<uint32_t>(dynShadowArrayTex_);
+            d.sizeBytes = static_cast<uint64_t>(dynShadowMapSize_) * static_cast<uint64_t>(dynShadowMapSize_)
+                          * 4u * static_cast<uint64_t>(arrayLayers);
+            d.valid     = true;
+            RenderCore::registerOrUpdateRenderResource(d);
+        }
+
         // === Per-cascade shadow resolution: separate full-map (last) cascade ===
         // The last cascade (csmCount_-1) renders into this lower-res 2D depth
         // texture. Same sampler param set as the array (COMPARE_REF_TO_TEXTURE /
@@ -6399,6 +6421,23 @@ void gosPostProcess::initDynamicShadows()
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
 
+        // SHADOW-VRAM-ACCOUNT-1: register the far/full-map cascade (observe-only;
+        // 4096^2 default, == dynShadowMapSize_ when MC2_SHADOW_FULLMAP_SEPARATE=0).
+        {
+            RenderCore::RenderResourceDesc d;
+            d.id        = RenderCore::RenderResourceId::ShadowCsmFullMap;
+            d.kind      = RenderCore::RenderResourceKind::Texture2D;
+            d.lifetime  = RenderCore::RenderResourceLifetime::Persistent;
+            d.format    = RenderCore::RenderResourceFormat::Depth24;
+            d.debugName = "ShadowCsmFullMap";
+            d.width     = static_cast<uint32_t>(dynamicFullMapSize_);
+            d.height    = static_cast<uint32_t>(dynamicFullMapSize_);
+            d.glName    = static_cast<uint32_t>(dynamicFullMapTex_);
+            d.sizeBytes = static_cast<uint64_t>(dynamicFullMapSize_) * static_cast<uint64_t>(dynamicFullMapSize_) * 4u;
+            d.valid     = true;
+            RenderCore::registerOrUpdateRenderResource(d);
+        }
+
         // Cascade matrices start as identity so an early sample is a no-op.
         for (int i = 0; i < kMaxCsmCascades; ++i) {
             dynamicCascadeMatrices_[i*16 + 0]  = 1.0f;
@@ -6427,6 +6466,12 @@ void gosPostProcess::destroyDynamicShadows()
 
     RenderCore::RenderResourceDesc invalid;
     invalid.id = RenderCore::RenderResourceId::ShadowDynamicMap;
+    RenderCore::registerOrUpdateRenderResource(invalid);
+
+    // SHADOW-VRAM-ACCOUNT-1: mark the two CSM accounting rows unavailable too.
+    invalid.id = RenderCore::RenderResourceId::ShadowCsmNearArray;
+    RenderCore::registerOrUpdateRenderResource(invalid);
+    invalid.id = RenderCore::RenderResourceId::ShadowCsmFullMap;
     RenderCore::registerOrUpdateRenderResource(invalid);
 }
 

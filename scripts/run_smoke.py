@@ -1539,6 +1539,9 @@ def main():
                             # GLSTATE slice 1: SSBO slot save/restore trace.
                             "MC2_GLSTATEGUARD_LOG",
                             "MC2_STATIC_PROP_BUILDING_SHADOW",
+                            # STATIC-BLDG-SHADOW-REBAKE-1: rebake-on-destroy kill-switch/trace.
+                            "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
+                            "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME",
                             "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
                             "MC2_SHADOW_BOUNDED_NEAR_FIT",
                             "MC2_SHADOW_BOUNDED_NEAR_RADIUS",
@@ -1945,6 +1948,9 @@ def main():
                             # ABL-BAD-NATIVE-ARG-REPRO-1 gates — must be allowlisted so
                             # the repro hook and guard fire when set by the caller.
                             "MC2_ABL_ARG_GUARD",
+                            "MC2_ABL_COMPILE_FATAL",
+                            "MC2_ABL_COMPILE_FATAL_REPRO",
+                            "MC2_ABL_SKIP_ERRORED_MODULES",
                             "MC2_ABL_RUNTIME_SOFTFAIL",
                             "MC2_ABL_ARG_GUARD_REPRO",
                             # MCO magic* AI behavior trace (code/ablmc2.cpp magicAiLog):

@@ -55,6 +55,7 @@ REGISTERED_HARNESSES = [
     # found on the day the class was closed twice. Verified before registering:
     # the binary exits 0 with "PASS (70 tests, 0 failures)".
     "class_light_band_harness",
+    "glstate_guard_harness",
 ]
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -145,7 +146,8 @@ def main():
     build_dirs = args.build_dir or [
         "build64-contract", "build64-shader", "build64-renderstate",
         "build64-objmgr", "build64-ibl", "build64-iconatlas", "build64-rptable",
-        "build64-logcsv", "build64-camfr", "build64-texname", "build64-harness"]
+        "build64-logcsv", "build64-camfr", "build64-texname", "build64-harness",
+        "build64-glstateguard", "build64-h-glstate_guard_harness"]
 
     results = []
     missing = []

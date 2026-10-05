@@ -11,7 +11,7 @@
 #include "pipeline_binder.h"                     // applyPipeline(TerrainSolid)
 #include "../../mclib/render_contract.h"  // [RENDER_PASS v1] noteRenderPass
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-TERRAIN-SSBO-1: TerrainHeightSsbo
-#include "../../RenderCore/GpuBufferOwner.h"  // TERRAIN-LODCHUNK-SSBO-OWNER-1: type/cement owner records
+#include "../../RenderCore/GpuBuffer.h"  // GPU-BUFFER-TIER0-LODCHUNK-RAII-1: owning RAII buffers (was GpuBufferOwner identity records)
 #include "../../RenderCore/KtxLoader.h"  // TERRAIN-MATERIAL-TEXTURES-1: BC7 KTX2 albedo layer load
 #include "gos_profiler.h"  // CLIFF-TESS-PERF: Tracy ZoneScopedN for the near-field tess mirror+draw
 #include "gos_terrain_lighting.h"  // NIGHT-LIGHT-POOLS-1: per-frame light-pool SSBO accessors
@@ -21,6 +21,7 @@
 #include <cstring>
 
 #include <optional>
+#include <utility>  // std::move (GPU-BUFFER-TIER0-LODCHUNK-RAII-1: move-only patch buffers)
 #include <vector>
 #include <map>
 
@@ -379,31 +380,30 @@ namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 // Static SSBO state — all GL objects live here, never in mclib/.
 // ---------------------------------------------------------------------------
 
-// TERRAIN-HEIGHT-SSBO-OWNER-1: the LOD-chunk height SSBO (last raw GLuint in the
-// live LOD-chunk terrain renderer) is narrowed behind a GpuBufferOwner identity
-// record (logical id + lifetime + debug name + GLuint value), mirroring the
-// type/cement siblings. GL calls happen at the same sites with the same
-// args/order/flags/slots; the raw handle is reached only via owner.backendHandle.
-// Lifetime Mission: (re-)uploaded per mission load via glBufferData.
-static RenderCore::GpuBufferOwner s_heightSsbo{  // backend handle; 0 = not yet allocated
+// GPU-BUFFER-TIER0-LODCHUNK-RAII-1: the five lod-chunk SSBOs graduate from
+// GpuBufferOwner identity records to owning RenderCore::GpuBuffer RAII values
+// (the "LATER slice" flagged in GpuBufferOwner.h:15). The wrapper's ops mirror
+// the raw GL calls 1:1 (same args/order/flags/slots -- see gpu_buffer_gl.cpp),
+// so each converted site issues the identical GL command stream; what moves
+// into the class is create/destroy pairing, the registry upsert/invalidate,
+// and the gated KHR_debug label. Lifetime Mission: (re-)uploaded per mission
+// load via glBufferData.
+static RenderCore::GpuBuffer s_heightSsbo{  // GL handle; name() 0 = not yet allocated
     RenderCore::RenderResourceId::TerrainHeightSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainHeightSsbo",
-    0u};
-// TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: the 4x visual heightfield SSBO (binding 26)
-// is narrowed behind a GpuBufferOwner identity record (logical id + lifetime +
-// debug name + GLuint value), mirroring the height/type/cement siblings. GL calls
-// happen at the same sites with the same args/order/flags/slot; the raw handle is
-// reached only via owner.backendHandle. Lifetime Mission: uploaded per mission load via
+    RenderCore::GpuBufferKind::Storage};
+// TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1 (now RAII, see block above): the 4x visual
+// heightfield SSBO (binding 26). Lifetime Mission: uploaded per mission load via
 // glBufferData. CREATE is gated upstream (mclib/terrain.cpp: MC2_TERRAIN_VISUAL_HEIGHT
 // / _DISPLACE + a visual_height_4x.r32 bake) — when the gate is off / no bake ships,
-// the upload entry is never called, glName stays 0, and nothing registers
+// the upload entry is never called, name() stays 0, and nothing registers
 // (passthrough byte-identical). No stock bake ships → create path is offline-only.
-static RenderCore::GpuBufferOwner s_visualHeightSsbo{ // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x visual heightfield (binding 26)
+static RenderCore::GpuBuffer s_visualHeightSsbo{ // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x visual heightfield (binding 26)
     RenderCore::RenderResourceId::TerrainVisualHeightSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainVisualHeightSsbo",
-    0u};
+    RenderCore::GpuBufferKind::Storage};
 static int    s_visualSide       = 0; // V = (mapSide-1)*4+1, fine grid side (0 = bake not loaded)
 // TERRAIN-LOD-GEOMORPH-1: float count of the max-mip levels APPENDED to the
 // binding-26 SSBO after the V*V fine bake (5 levels x mapSide^2, strides
@@ -425,11 +425,11 @@ static bool               s_shorelineProbeDone = false;
 // mover stamps min-combined on the CPU and re-uploaded (side^2 floats — tiny).
 // CREATE gated upstream like the visual-height SSBO (displace gate + sidecar);
 // glName 0 => never bound, u_visualDampOn stays 0 (passthrough).
-static RenderCore::GpuBufferOwner s_visualDampSsbo{
+static RenderCore::GpuBuffer s_visualDampSsbo{
     RenderCore::RenderResourceId::TerrainVisualDampSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainVisualDampSsbo",
-    0u};
+    RenderCore::GpuBufferKind::Storage};
 static int s_visualDampSide = 0;                 // == mapSide when loaded
 static std::vector<float> s_visualDampStatic;    // load-time (buildings)
 static std::vector<float> s_visualDampCombined;  // static + mover stamps
@@ -464,21 +464,19 @@ struct TerrainGlFallbackAudit {
     int skirtEdges = 0;
 };
 #endif
-// TERRAIN-LODCHUNK-SSBO-OWNER-1: the LOD-chunk type/cement SSBOs are no longer
-// bare GLuints. Each is narrowed behind a GpuBufferOwner identity record (logical
-// id + lifetime + debug name + GLuint value). GL calls still happen at the same
-// sites with the same args/order/flags/slots; the raw handle is reached only via
-// owner.backendHandle. Lifetime Mission: (re-)uploaded per mission load via glBufferData.
-static RenderCore::GpuBufferOwner s_typeSsbo{   // Step 5b: per-vertex terrainType SSBO (binding 24)
+// TERRAIN-LODCHUNK-SSBO-OWNER-1 (now RAII, see block above): the LOD-chunk
+// type/cement SSBOs. Lifetime Mission: (re-)uploaded per mission load via
+// glBufferData.
+static RenderCore::GpuBuffer s_typeSsbo{   // Step 5b: per-vertex terrainType SSBO (binding 24)
     RenderCore::RenderResourceId::TerrainTypeSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainTypeSsbo",
-    0u};
-static RenderCore::GpuBufferOwner s_cementSsbo{ // Step 5c: per-vertex cement word SSBO (binding 25)
+    RenderCore::GpuBufferKind::Storage};
+static RenderCore::GpuBuffer s_cementSsbo{ // Step 5c: per-vertex cement word SSBO (binding 25)
     RenderCore::RenderResourceId::TerrainCementSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainCementSsbo",
-    0u};
+    RenderCore::GpuBufferKind::Storage};
 static int    s_mapSide    = 0;   // mapSide stored at last UploadHeightFull
 static float  s_halfMap    = 0.0f;// (mapSide * 128.0 * 0.5)
 
@@ -980,15 +978,24 @@ extern void   gos_GetNightState(bool* isNight, float* nightFactor);
 // IBO contains uint16_t triangle indices.
 // ---------------------------------------------------------------------------
 
+// GPU-BUFFER-TIER0-LODCHUNK-RAII-1: the four per-patch buffers are owning
+// RenderCore::GpuBuffer values (move-only) instead of bare GLuints. Untracked
+// (no RenderResourceId): VBO/IBO are out of registry scope by design (per-draw
+// rebind vertex/index data, not owned frame-graph resources) -- the RAII win
+// here is create/delete pairing (cache clear frees GL, no hand-rolled loop).
 struct PatchShape {
-    GLuint vbo;          // main patch: int16_t[2] (lx, ly) per vertex
-    GLuint ibo;          // main patch: uint16_t triangle indices
-    int    vertexCount;
-    int    indexCount;
-    GLuint skirtVbo;     // Phase 6: int16_t[4] (lx, ly, isSkirt, _pad) per skirt vertex
-    GLuint skirtIbo;     // Phase 6: uint16_t triangle indices for skirts
-    int    skirtVertexCount;
-    int    skirtIndexCount;
+    RenderCore::GpuBuffer vbo =      // main patch: int16_t[2] (lx, ly) per vertex
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchVbo");
+    RenderCore::GpuBuffer ibo =      // main patch: uint16_t triangle indices
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchIbo");
+    int    vertexCount = 0;
+    int    indexCount = 0;
+    RenderCore::GpuBuffer skirtVbo = // Phase 6: int16_t[4] (lx, ly, isSkirt, _pad) per skirt vertex
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchSkirtVbo");
+    RenderCore::GpuBuffer skirtIbo = // Phase 6: uint16_t triangle indices for skirts
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchSkirtIbo");
+    int    skirtVertexCount = 0;
+    int    skirtIndexCount = 0;
     // Phase 10.2b: per-edge index ranges into skirtIbo (build order N,S,W,E) so
     // the driver can draw ONLY the edges whose neighbour LOD differs (per-block
     // edge mask) instead of all four. Offsets/counts are in INDEX units.
@@ -1105,20 +1112,18 @@ static const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
     ps.vertexCount = (int)verts.size();
     ps.indexCount  = (int)indices.size();
 
-    glGenBuffers(1, &ps.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, ps.vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 (GLsizeiptr)(verts.size() * sizeof(LocalVertex)),
-                 verts.data(), GL_STATIC_DRAW);
+    ps.vbo.create();
+    ps.vbo.bind();
+    ps.vbo.bufferData((intptr_t)(verts.size() * sizeof(LocalVertex)),
+                      verts.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
-    glGenBuffers(1, &ps.ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ps.ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 (GLsizeiptr)(indices.size() * sizeof(uint16_t)),
-                 indices.data(), GL_STATIC_DRAW);
+    ps.ibo.create();
+    ps.ibo.bind();
+    ps.ibo.bufferData((intptr_t)(indices.size() * sizeof(uint16_t)),
+                      indices.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    ps.vbo.unbind();  // GL_ARRAY_BUFFER -> 0
+    ps.ibo.unbind();  // GL_ELEMENT_ARRAY_BUFFER -> 0
 
     // -----------------------------------------------------------------------
     // Phase 6: Build skirt geometry — four edge strips, each a quad-strip.
@@ -1167,22 +1172,20 @@ static const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
     ps.skirtVertexCount = (int)skirtVerts.size();
     ps.skirtIndexCount  = (int)skirtIdx.size();
 
-    glGenBuffers(1, &ps.skirtVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, ps.skirtVbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 (GLsizeiptr)(skirtVerts.size() * sizeof(SkirtVertex)),
-                 skirtVerts.data(), GL_STATIC_DRAW);
+    ps.skirtVbo.create();
+    ps.skirtVbo.bind();
+    ps.skirtVbo.bufferData((intptr_t)(skirtVerts.size() * sizeof(SkirtVertex)),
+                           skirtVerts.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
-    glGenBuffers(1, &ps.skirtIbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ps.skirtIbo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 (GLsizeiptr)(skirtIdx.size() * sizeof(uint16_t)),
-                 skirtIdx.data(), GL_STATIC_DRAW);
+    ps.skirtIbo.create();
+    ps.skirtIbo.bind();
+    ps.skirtIbo.bufferData((intptr_t)(skirtIdx.size() * sizeof(uint16_t)),
+                           skirtIdx.data(), RenderCore::GpuBufferUsage::StaticDraw);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    ps.skirtVbo.unbind();  // GL_ARRAY_BUFFER -> 0
+    ps.skirtIbo.unbind();  // GL_ELEMENT_ARRAY_BUFFER -> 0
 
-    s_patchCache[key] = ps;
+    s_patchCache[key] = std::move(ps);  // GpuBuffer members are move-only RAII
     return s_patchCache.at(key);
 }
 
@@ -1198,27 +1201,17 @@ static GLuint s_patchVao = 0;
 
 void gos_TerrainLodChunk_Init()
 {
-    if (s_heightSsbo.backendHandle != 0)
+    if (s_heightSsbo.created())
         return; // idempotent
 
-    {
-        GLuint heightBuf = 0;
-        glGenBuffers(1, &heightBuf);
-        s_heightSsbo.backendHandle = static_cast<uint32_t>(heightBuf);
-    }
-    if (s_heightSsbo.backendHandle == 0)
+    if (!s_heightSsbo.create())
     {
         fprintf(stderr, "[TerrainLodChunk] glGenBuffers failed for height SSBO\n");
         fflush(stderr);
         return;
     }
-    {
-        GLuint typeBuf = 0, cementBuf = 0;
-        glGenBuffers(1, &typeBuf);   // Step 5b: terrainType SSBO (concrete)
-        glGenBuffers(1, &cementBuf); // Step 5c: cement word SSBO
-        s_typeSsbo.backendHandle   = static_cast<uint32_t>(typeBuf);
-        s_cementSsbo.backendHandle = static_cast<uint32_t>(cementBuf);
-    }
+    s_typeSsbo.create();   // Step 5b: terrainType SSBO (concrete)
+    s_cementSsbo.create(); // Step 5c: cement word SSBO
 
     // Shader program (Phase 4) — load unconditionally; SubmitDrawCommands gates
     // on the env var so no pixels change unless MC2_TERRAIN_LOD_CHUNK=1.
@@ -1442,13 +1435,8 @@ void gos_TerrainLodChunk_Init()
 
 void gos_TerrainLodChunk_Destroy()
 {
-    // Free patch cache VBOs/IBOs (main + Phase 6 skirt).
-    for (auto& kv : s_patchCache) {
-        glDeleteBuffers(1, &kv.second.vbo);
-        glDeleteBuffers(1, &kv.second.ibo);
-        glDeleteBuffers(1, &kv.second.skirtVbo);
-        glDeleteBuffers(1, &kv.second.skirtIbo);
-    }
+    // Free patch cache VBOs/IBOs (main + Phase 6 skirt). RAII: clearing the
+    // cache runs each GpuBuffer dtor -> glDeleteBuffers (was a hand loop).
     s_patchCache.clear();
 
     if (s_patchVao != 0) {
@@ -1506,68 +1494,26 @@ void gos_TerrainLodChunk_Destroy()
         s_shorelineMaskTex = 0;
     }
 
-    if (s_visualHeightSsbo.backendHandle != 0)
-    {
-        GLuint visualBuf = static_cast<GLuint>(s_visualHeightSsbo.backendHandle);
-        glDeleteBuffers(1, &visualBuf);
-        s_visualHeightSsbo.backendHandle = 0;
+    // GPU-BUFFER-TIER0-LODCHUNK-RAII-1: GpuBuffer::destroy() = glDeleteBuffers
+    // + registry-invalidate (the hand-copied "mark slot unavailable" blocks
+    // moved into the class). Safe no-ops when never created.
+    if (s_visualHeightSsbo.created())
         s_visualMipFloats = 0;   // TERRAIN-LOD-GEOMORPH-1
-
-        // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: mark the slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = RenderCore::RenderResourceId::TerrainVisualHeightSsbo;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
+    s_visualHeightSsbo.destroy();
     // TERRAIN-REAUTH-UNPIN-1 Half B: free the damp SSBO + CPU copies on teardown.
-    if (s_visualDampSsbo.backendHandle != 0)
-    {
-        GLuint dampBuf = static_cast<GLuint>(s_visualDampSsbo.backendHandle);
-        glDeleteBuffers(1, &dampBuf);
-        s_visualDampSsbo.backendHandle = 0;
-
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = RenderCore::RenderResourceId::TerrainVisualDampSsbo;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
+    s_visualDampSsbo.destroy();
     s_visualDampSide = 0;
     s_visualDampStatic.clear();
     s_visualDampCombined.clear();
     s_visualDampHadMovers = false;
-    if (s_heightSsbo.backendHandle != 0)
+    if (s_heightSsbo.created())
     {
-        GLuint heightBuf = static_cast<GLuint>(s_heightSsbo.backendHandle);
-        glDeleteBuffers(1, &heightBuf);
-        s_heightSsbo.backendHandle = 0;
         s_mapSide    = 0;
         s_halfMap    = 0.0f;
-
-        // REGISTRY-TERRAIN-SSBO-1: mark the slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = RenderCore::RenderResourceId::TerrainHeightSsbo;
-        RenderCore::registerOrUpdateRenderResource(invalid);
     }
-    if (s_typeSsbo.backendHandle != 0)
-    {
-        GLuint typeBuf = static_cast<GLuint>(s_typeSsbo.backendHandle);
-        glDeleteBuffers(1, &typeBuf);
-        s_typeSsbo.backendHandle = 0;
-
-        // TERRAIN-LODCHUNK-SSBO-OWNER-1: mark the slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = RenderCore::RenderResourceId::TerrainTypeSsbo;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
-    if (s_cementSsbo.backendHandle != 0)
-    {
-        GLuint cementBuf = static_cast<GLuint>(s_cementSsbo.backendHandle);
-        glDeleteBuffers(1, &cementBuf);
-        s_cementSsbo.backendHandle = 0;
-
-        // TERRAIN-LODCHUNK-SSBO-OWNER-1: mark the slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = RenderCore::RenderResourceId::TerrainCementSsbo;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
+    s_heightSsbo.destroy();
+    s_typeSsbo.destroy();
+    s_cementSsbo.destroy();
 }
 
 // ---------------------------------------------------------------------------
@@ -1764,13 +1710,13 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
 {
     if (!out) return 0;
     if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
-    if (s_heightSsbo.backendHandle == 0 || s_mapSide <= 0) return 0;
+    if (!s_heightSsbo.created() || s_mapSide <= 0) return 0;
     out->patches    = s_vkTerrainPatches.data();
     out->patchCount = (uint32_t)s_vkTerrainPatches.size();
     std::memcpy(out->worldToClipGL, s_vkTerrainMvp, sizeof(out->worldToClipGL));
     out->mapSide       = s_mapSide;
     out->halfMap       = s_halfMap;
-    out->glHeightSsbo  = static_cast<uint32_t>(s_heightSsbo.backendHandle);
+    out->glHeightSsbo  = s_heightSsbo.name();
     out->heightBytes   = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(float);
     out->heightVersion = g_terrainHeightVersion;
     // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
@@ -1784,7 +1730,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // SSBO + the cement uniforms the GL LOD-chunk frag reads. useCement mirrors the GL
     // gate (gos_terrain_lod_chunk.cpp:1122-1124): atlas ready AND cement SSBO live.
     const bool cementReady = gos_terrain_indirect_isCementAtlasReady();
-    const bool cementLive  = cementReady && s_cementSsbo.backendHandle != 0;
+    const bool cementLive  = cementReady && s_cementSsbo.created();
     out->glCementAtlasTex   = static_cast<uint32_t>(gos_terrain_indirect_getCementAtlasGLTex());
     out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
     out->cementWUPT         = 128.0f;  // Terrain::worldUnitsPerVertex (GL uploads 128.0)
@@ -1795,7 +1741,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         if (const char* e = getenv("MC2_TERRAIN_CEMENT_DIAG_CONNECT")) diagOn = (e[0] && e[0] != '0') ? 1 : 0;
         out->cementDiagConnect = diagOn;
     }
-    out->glCementSsbo       = static_cast<uint32_t>(s_cementSsbo.backendHandle);
+    out->glCementSsbo       = s_cementSsbo.name();
     out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
     out->cementVersion      = g_terrainCementVersion;
 
@@ -1809,8 +1755,8 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->visualSide          = 0;
     out->visualDisplaceFar   = 0.0f;
     if (mc2_vk_terrain_visualdisplace_far_enabled() && terrainVisualDisplaceGateOn()
-        && s_visualHeightSsbo.backendHandle != 0 && s_visualSide > 0) {
-        out->glVisualHeightSsbo  = static_cast<uint32_t>(s_visualHeightSsbo.backendHandle);
+        && s_visualHeightSsbo.created() && s_visualSide > 0) {
+        out->glVisualHeightSsbo  = s_visualHeightSsbo.name();
         out->visualHeightBytes   = (uint64_t)s_visualSide * (uint64_t)s_visualSide * sizeof(float);
         out->visualHeightVersion = g_terrainVisualHeightVersion;
         out->visualSide          = s_visualSide;
@@ -2076,7 +2022,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     int                       count)
 {
     if (count == 0) return;
-    if (s_terrainProgram == 0 || s_heightSsbo.backendHandle == 0) return;
+    if (s_terrainProgram == 0 || !s_heightSsbo.created()) return;
     if (s_patchVao == 0) return;
 
     // CLIFF-TESS-PERF: reset the once/frame full-mirror guard. This entrypoint is
@@ -2202,13 +2148,13 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // is inverted and the opaque heightfield is rendered double-sided.)
 
     // Bind height SSBO (stays bound for all patches this frame).
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_heightSsbo.backendHandle));
+    s_heightSsbo.bindBase(TERRAIN_HEIGHT_SSBO_BINDING);
     // Step 5b: terrainType SSBO (concrete). 0 if never uploaded -> vert reads 0.
-    if (s_typeSsbo.backendHandle != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_TYPE_SSBO_BINDING, static_cast<GLuint>(s_typeSsbo.backendHandle));
+    if (s_typeSsbo.created())
+        s_typeSsbo.bindBase(TERRAIN_TYPE_SSBO_BINDING);
     // Step 5c: cement word SSBO.
-    if (s_cementSsbo.backendHandle != 0)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_CEMENT_SSBO_BINDING, static_cast<GLuint>(s_cementSsbo.backendHandle));
+    if (s_cementSsbo.created())
+        s_cementSsbo.bindBase(TERRAIN_CEMENT_SSBO_BINDING);
 
     // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: resolve geometry-displacement activation once
     // per frame. Active = MC2_TERRAIN_VISUAL_DISPLACE on AND the 4x bake loaded.
@@ -2222,9 +2168,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         return v && v[0] && v[0] != '0';
     }();
 #endif
-    const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.backendHandle != 0 && s_visualSide > 0;
+    const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.created() && s_visualSide > 0;
     if (visualDisplaceActive)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_HEIGHT_SSBO_BINDING, static_cast<GLuint>(s_visualHeightSsbo.backendHandle));
+        s_visualHeightSsbo.bindBase(TERRAIN_VISUAL_HEIGHT_SSBO_BINDING);
     if (s_locVisualSide >= 0)
         glUniform1i(s_locVisualSide, s_visualSide);
     // TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement fade. Active only
@@ -2236,10 +2182,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         return !(v && v[0] == '0');   // default ON (unset/other => on)
     }();
     const bool visualDampActive = visualDisplaceActive && s_visualDampGate
-                                  && s_visualDampSsbo.backendHandle != 0
+                                  && s_visualDampSsbo.created()
                                   && s_visualDampSide == s_mapSide;
     if (visualDampActive)
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_DAMP_SSBO_BINDING, static_cast<GLuint>(s_visualDampSsbo.backendHandle));
+        s_visualDampSsbo.bindBase(TERRAIN_VISUAL_DAMP_SSBO_BINDING);
     if (s_locVisualDampOn >= 0)
         glUniform1i(s_locVisualDampOn, visualDampActive ? 1 : 0);
     // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: far-band displacement fade, 0..1, default 1
@@ -2528,7 +2474,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     {
         bool cementReady = gos_terrain_indirect_isCementAtlasReady();
         if (s_locUseCement >= 0)
-            glUniform1i(s_locUseCement, (cementReady && s_cementSsbo.backendHandle != 0) ? 1 : 0);
+            glUniform1i(s_locUseCement, (cementReady && s_cementSsbo.created()) ? 1 : 0);
         // CEMENT-DIAG-CONNECT-1: env gate MC2_TERRAIN_CEMENT_DIAG_CONNECT, default OFF
         // -> uploads 0 -> frag diagonal-fill block skipped (byte-identical).
         // REDUNDANT-PASS-HUNT-1: env resolved once (kTglcCementDiagConnect).
@@ -3348,11 +3294,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
 
         // Attrib 0: ivec2 localOffset. Attrib 1 (isSkirt) left disabled -> reads as 0.
         glDisableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, patch.vbo);
+        patch.vbo.bind();
         glEnableVertexAttribArray(0);
         glVertexAttribIPointer(0, 2, GL_SHORT, (GLsizei)(2 * sizeof(int16_t)), (const void*)0);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, patch.ibo);
+        patch.ibo.bind();
 
         // SLICE 3a: near-field (LOD0 == lodStep 1) chunks draw as GL_PATCHES
         // through the tess variant program when the gate is ON and the program
@@ -3403,13 +3349,13 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 // (GL_CULL_FACE already disabled for the whole draw — see top.)
                 // Attrib 0: lx, ly (first 2 int16_t of SkirtVertex, stride=8).
                 // Attrib 1: isSkirt (third int16_t of SkirtVertex, offset=4).
-                glBindBuffer(GL_ARRAY_BUFFER, patch.skirtVbo);
+                patch.skirtVbo.bind();
                 glEnableVertexAttribArray(0);
                 glVertexAttribIPointer(0, 2, GL_SHORT, (GLsizei)(4 * sizeof(int16_t)), (const void*)0);
                 glEnableVertexAttribArray(1);
                 glVertexAttribIPointer(1, 1, GL_SHORT, (GLsizei)(4 * sizeof(int16_t)), (const void*)(2 * sizeof(int16_t)));
 
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, patch.skirtIbo);
+                patch.skirtIbo.bind();
                 // Phase 10.2b: draw ONLY the edges flagged in the per-block mask
                 // (bit 0=N,1=S,2=W,3=E). No mask array -> all four (back-compat).
                 const unsigned int mask = skirtEdgeMasks ? skirtEdgeMasks[i] : 0xFu;
@@ -3588,7 +3534,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
 
 void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 {
-    if (s_heightSsbo.backendHandle == 0)
+    if (!s_heightSsbo.created())
     {
         fprintf(stderr, "[TerrainLodChunk] UploadHeightFull called before Init\n");
         fflush(stderr);
@@ -3599,11 +3545,11 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
 
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
 
-    const GLuint heightBuf = static_cast<GLuint>(s_heightSsbo.backendHandle);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, heightBuf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, elevations, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_HEIGHT_SSBO_BINDING, heightBuf);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    s_heightSsbo.bind();
+    s_heightSsbo.bufferData((intptr_t)bytes, elevations,
+                            RenderCore::GpuBufferUsage::DynamicDraw);
+    s_heightSsbo.bindBase(TERRAIN_HEIGHT_SSBO_BINDING);
+    s_heightSsbo.unbind();
 
     s_mapSide = mapSide;
     s_halfMap = (float)mapSide * 128.0f * 0.5f;
@@ -3622,26 +3568,15 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     // REGISTRY-TERRAIN-SSBO-1: register the live height SSBO (observe-only metadata;
     // never read by the draw path). Registered here (not at Init) because the byte
     // size is only known once the full heightfield is uploaded.
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::TerrainHeightSsbo;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load (heightfield upload)
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = s_heightSsbo.debugName;
-        d.glName    = static_cast<GLuint>(s_heightSsbo.backendHandle);
-        d.sizeBytes = static_cast<uint64_t>(bytes);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
+    s_heightSsbo.registerNow(static_cast<uint64_t>(bytes));
 
 #ifdef _DEBUG
     // First-frame readback verify: confirm that the GPU round-trips the first
     // float correctly. glGetBufferSubData is available on all desktop GL >=3.1.
     float firstSample = 0.0f;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_heightSsbo.backendHandle));
+    s_heightSsbo.bind();
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float), &firstSample);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    s_heightSsbo.unbind();
     if (firstSample != elevations[0])
     {
         fprintf(stderr,
@@ -3660,12 +3595,9 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
 {
     if (!visualHeights || V <= 0)
         return;
-    if (s_visualHeightSsbo.backendHandle == 0)
+    if (!s_visualHeightSsbo.created())
     {
-        GLuint local = 0;
-        glGenBuffers(1, &local);
-        s_visualHeightSsbo.backendHandle = static_cast<uint32_t>(local);
-        if (s_visualHeightSsbo.backendHandle == 0)
+        if (!s_visualHeightSsbo.create())
         {
             fprintf(stderr, "[VISUAL_HEIGHT v1] glGenBuffers failed\n");
             fflush(stderr);
@@ -3679,12 +3611,13 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     GLsizeiptr fineBytes = (GLsizeiptr)V * (GLsizeiptr)V * (GLsizeiptr)sizeof(float);
     GLsizeiptr mipBytes  = (GLsizeiptr)mipFloats * (GLsizeiptr)sizeof(float);
     GLsizeiptr bytes     = fineBytes + mipBytes;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualHeightSsbo.backendHandle));
-    glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, nullptr, GL_STATIC_DRAW);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, fineBytes, visualHeights);
+    s_visualHeightSsbo.bind();
+    s_visualHeightSsbo.bufferData((intptr_t)bytes, nullptr,
+                                  RenderCore::GpuBufferUsage::StaticDraw);
+    s_visualHeightSsbo.bufferSubData(0, (intptr_t)fineBytes, visualHeights);
     if (mipBytes > 0)
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, fineBytes, mipBytes, mipMaxes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        s_visualHeightSsbo.bufferSubData((intptr_t)fineBytes, (intptr_t)mipBytes, mipMaxes);
+    s_visualHeightSsbo.unbind();
     s_visualSide      = V;   // remembered for the displaced draw (u_visualSide)
     s_visualMipFloats = (int)mipFloats;
 
@@ -3702,18 +3635,7 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: register the live visual-height SSBO
     // (observe-only metadata; never read by the draw path). Reached here only when
     // the upstream gate (MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + bake) called us.
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::TerrainVisualHeightSsbo;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = s_visualHeightSsbo.debugName;
-        d.glName    = static_cast<GLuint>(s_visualHeightSsbo.backendHandle);
-        d.sizeBytes = static_cast<uint64_t>(bytes);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
+    s_visualHeightSsbo.registerNow(static_cast<uint64_t>(bytes));
     // Bound to base 26 in the draw only when displacement is active.
     fprintf(stderr, "[VISUAL_HEIGHT v1] SSBO uploaded binding=%u V=%d bytes=%lld first=%.3f "
             "geomorphMips=%s(%d floats)\n",
@@ -3734,12 +3656,9 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
     s_visualDampCombined = s_visualDampStatic;
     s_visualDampSide = side;
     s_visualDampHadMovers = false;
-    if (s_visualDampSsbo.backendHandle == 0)
+    if (!s_visualDampSsbo.created())
     {
-        GLuint local = 0;
-        glGenBuffers(1, &local);
-        s_visualDampSsbo.backendHandle = static_cast<uint32_t>(local);
-        if (s_visualDampSsbo.backendHandle == 0)
+        if (!s_visualDampSsbo.create())
         {
             fprintf(stderr, "[VISUAL_DAMP v1] glGenBuffers failed\n");
             fflush(stderr);
@@ -3747,21 +3666,11 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
         }
     }
     const GLsizeiptr bytes = (GLsizeiptr)(count * sizeof(float));
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualDampSsbo.backendHandle));
-    glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, s_visualDampCombined.data(), GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::TerrainVisualDampSsbo;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Mission;
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = s_visualDampSsbo.debugName;
-        d.glName    = static_cast<GLuint>(s_visualDampSsbo.backendHandle);
-        d.sizeBytes = static_cast<uint64_t>(bytes);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
+    s_visualDampSsbo.bind();
+    s_visualDampSsbo.bufferData((intptr_t)bytes, s_visualDampCombined.data(),
+                                RenderCore::GpuBufferUsage::DynamicDraw);
+    s_visualDampSsbo.unbind();
+    s_visualDampSsbo.registerNow(static_cast<uint64_t>(bytes));
     fprintf(stderr, "[VISUAL_DAMP v1] SSBO uploaded binding=%u side=%d bytes=%lld\n",
             TERRAIN_VISUAL_DAMP_SSBO_BINDING, side, (long long)bytes);
     fflush(stderr);
@@ -3777,7 +3686,7 @@ bool gos_TerrainLodChunk_VisualDampWanted()
         const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE");
         return !(v && v[0] == '0');
     }();
-    return s_displaceGate && s_dampGate && s_visualDampSsbo.backendHandle != 0
+    return s_displaceGate && s_dampGate && s_visualDampSsbo.created()
            && s_visualDampSide > 0 && !s_visualDampStatic.empty();
 }
 
@@ -3788,7 +3697,7 @@ bool gos_TerrainLodChunk_VisualDampWanted()
 void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
                                                 float radiusCells, float innerCells)
 {
-    if (s_visualDampSsbo.backendHandle == 0 || s_visualDampSide <= 0 || s_visualDampStatic.empty())
+    if (!s_visualDampSsbo.created() || s_visualDampSide <= 0 || s_visualDampStatic.empty())
         return;
     if (count <= 0 && !s_visualDampHadMovers)
         return;   // steady state: static map already on the GPU
@@ -3818,41 +3727,30 @@ void gos_TerrainLodChunk_UpdateVisualDampMovers(const float* cellXY, int count,
             }
     }
     s_visualDampHadMovers = (count > 0);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_visualDampSsbo.backendHandle));
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                    (GLsizeiptr)(s_visualDampCombined.size() * sizeof(float)),
+    s_visualDampSsbo.bind();
+    s_visualDampSsbo.bufferSubData(0,
+                    (intptr_t)(s_visualDampCombined.size() * sizeof(float)),
                     s_visualDampCombined.data());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    s_visualDampSsbo.unbind();
 }
 
 // Step 5b: per-vertex terrainType upload (parallel to the heightfield). Used by
 // the chunk frag's concrete material/colour selection (pureConcrete).
 void gos_TerrainLodChunk_UploadTerrainTypeFull(const float* types, int mapSide)
 {
-    if (s_typeSsbo.backendHandle == 0 || !types || mapSide <= 0)
+    if (!s_typeSsbo.created() || !types || mapSide <= 0)
         return;
     GLsizeiptr bytes = (GLsizeiptr)mapSide * mapSide * sizeof(float);
-    const GLuint typeBuf = static_cast<GLuint>(s_typeSsbo.backendHandle);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, typeBuf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, types, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_TYPE_SSBO_BINDING, typeBuf);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    s_typeSsbo.bind();
+    s_typeSsbo.bufferData((intptr_t)bytes, types,
+                          RenderCore::GpuBufferUsage::DynamicDraw);
+    s_typeSsbo.bindBase(TERRAIN_TYPE_SSBO_BINDING);
+    s_typeSsbo.unbind();
 
     // TERRAIN-LODCHUNK-SSBO-OWNER-1: register the live type SSBO (observe-only
     // metadata; never read by the draw path). Registered here (not at Init)
     // because the byte size is only known once the type data is uploaded.
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = s_typeSsbo.id;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = s_typeSsbo.lifetime;
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = s_typeSsbo.debugName;
-        d.glName    = static_cast<GLuint>(s_typeSsbo.backendHandle);
-        d.sizeBytes = static_cast<uint64_t>(bytes);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
+    s_typeSsbo.registerNow(static_cast<uint64_t>(bytes));
 }
 
 // TERRAIN-CONTROLMAP-SAMPLE-1: upload the authored RGBA control map as a plain
@@ -4201,14 +4099,14 @@ bool gos_TerrainShorelineLegacySuppressOn()
 // gos_terrain_indirect after the cement catalog atlas is ready (PopulateRecipeCementWords).
 void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int count, int mapSide)
 {
-    if (s_cementSsbo.backendHandle == 0 || !words || count <= 0 || mapSide <= 0)
+    if (!s_cementSsbo.created() || !words || count <= 0 || mapSide <= 0)
         return;
     GLsizeiptr bytes = (GLsizeiptr)count * sizeof(unsigned int);
-    const GLuint cementBuf = static_cast<GLuint>(s_cementSsbo.backendHandle);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, cementBuf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, bytes, words, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_CEMENT_SSBO_BINDING, cementBuf);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    s_cementSsbo.bind();
+    s_cementSsbo.bufferData((intptr_t)bytes, words,
+                            RenderCore::GpuBufferUsage::DynamicDraw);
+    s_cementSsbo.bindBase(TERRAIN_CEMENT_SSBO_BINDING);
+    s_cementSsbo.unbind();
 
 #ifdef MC2_VULKAN_ISLAND
     // VK-P10 CEMENT/ROAD sub-slice: the cement-word field changed -> bump the snapshot
@@ -4219,18 +4117,7 @@ void gos_TerrainLodChunk_UploadCementWordsFull(const unsigned int* words, int co
     // TERRAIN-LODCHUNK-SSBO-OWNER-1: register the live cement SSBO. Conditional by
     // construction -- this upload only runs when cement words actually exist, so
     // the cement slot is registered only when the buffer carries real data.
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = s_cementSsbo.id;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = s_cementSsbo.lifetime;
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = s_cementSsbo.debugName;
-        d.glName    = static_cast<GLuint>(s_cementSsbo.backendHandle);
-        d.sizeBytes = static_cast<uint64_t>(bytes);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
+    s_cementSsbo.registerNow(static_cast<uint64_t>(bytes));
 }
 
 // ---------------------------------------------------------------------------
@@ -4245,10 +4132,10 @@ void gos_TerrainLodChunk_UploadHeightPatch(
     int quadCountX, int quadCountY,
     int mapSide)
 {
-    if (s_heightSsbo.backendHandle == 0 || !rowData || mapSide <= 0)
+    if (!s_heightSsbo.created() || !rowData || mapSide <= 0)
         return;
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_heightSsbo.backendHandle));
+    s_heightSsbo.bind();
 
     for (int row = 0; row <= quadCountY; ++row)
     {
@@ -4256,10 +4143,10 @@ void gos_TerrainLodChunk_UploadHeightPatch(
         GLintptr   dstOffset = (GLintptr)dstIdx * sizeof(float);
         GLsizeiptr bytes     = (GLsizeiptr)(quadCountX + 1) * sizeof(float);
         const float* src     = rowData + row * (quadCountX + 1);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, dstOffset, bytes, src);
+        s_heightSsbo.bufferSubData((intptr_t)dstOffset, (intptr_t)bytes, src);
     }
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    s_heightSsbo.unbind();
 }
 
 // PAD-AREA-GLOW-1: chunk cement-grid geometry for the overlay/decal uploader

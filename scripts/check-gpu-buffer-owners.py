@@ -113,8 +113,12 @@ BARE_IDENT  = re.compile(r"^([A-Za-z_]\w*)\s*\)*\s*$")
 TIER2_TAG = re.compile(r"//\s*TIER2-EXCLUDED:\s*([A-Za-z0-9_-]+)")
 
 # `RenderCore::GpuBufferOwner   s_name{` (var-decl construction, not a typedef/include/comment).
+# GPU-BUFFER-TIER0-LODCHUNK-RAII-1: ALSO matches the owning `RenderCore::GpuBuffer
+# s_name{...}` RAII sites (RenderCore/GpuBuffer.h) -- their positional identity
+# args deliberately mirror the GpuBufferOwner order (id, lifetime, debugName, ...),
+# so the same arg[0..2] invariants apply to both site families.
 OWNER_DECL = re.compile(
-    r"(?:RenderCore::)?GpuBufferOwner\s+[A-Za-z_]\w*\s*\{", re.M)
+    r"(?:RenderCore::)?GpuBuffer(?:Owner)?\s+[A-Za-z_]\w*\s*\{", re.M)
 
 
 def read(path):

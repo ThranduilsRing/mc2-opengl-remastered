@@ -27,6 +27,7 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_vfx_island.h"  // VK-FIELD-VFX-1: VK translucent particle pass
 #endif
+#include "gl_state_guard.h"      // GLSTATE-GUARD-ADOPTION-4: mc2gl::GlScoped* epilogue guards
 
 #include <cstdio>
 #include <cstdlib>   // std::getenv, std::atoi (MC2_VFX_DEBUG_MODE)
@@ -564,21 +565,21 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
         }
     }
 
-    // ── State save (mirror gos_particle_bridge_flush) ──────────────────
-    GLint savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
-    GLint savedVAO       = 0; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
-    GLint savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB, &savedSrcRGB);
-    GLint savedDstRGB    = 0; glGetIntegerv(GL_BLEND_DST_RGB, &savedDstRGB);
-    GLboolean savedBlend = glIsEnabled(GL_BLEND);
-    GLboolean savedDepthTest = glIsEnabled(GL_DEPTH_TEST);
-    GLint savedDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &savedDepthFunc);
-    GLint savedDepthMask = 0; glGetIntegerv(GL_DEPTH_WRITEMASK, &savedDepthMask);
-    GLint savedSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &savedSampler);
-    GLint savedActiveTex = 0; glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTex);
-    GLint savedTex2D0    = 0;
-    glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex2D0);
-    GLboolean savedCullFace = glIsEnabled(GL_CULL_FACE);
+    // ── State save (GLSTATE-GUARD-ADOPTION-4: RAII, replaces the hand-rolled
+    // save/restore + trailing manual invalidate; declaration order = reverse
+    // of the old restore order, invalidate guard first so it fires last; the
+    // GlScopedTextureUnit ctor also leaves GL_TEXTURE0 active, matching the
+    // old explicit glActiveTexture(GL_TEXTURE0) here) ────────────────────
+    mc2gl::GlScopedRenderStateInvalidate stateResync;
+    mc2gl::GlScopedVertexArray  guardVao;
+    mc2gl::GlScopedProgram      guardProgram;
+    mc2gl::GlScopedCapability   guardBlend(GL_BLEND);
+    mc2gl::GlScopedBlendFunc    guardBlendFunc;
+    mc2gl::GlScopedCapability   guardDepthTest(GL_DEPTH_TEST);
+    mc2gl::GlScopedDepthState   guardDepth;
+    mc2gl::GlScopedSampler      guardSampler0(0);
+    mc2gl::GlScopedTextureUnit  guardTexUnit0(0);
+    mc2gl::GlScopedCapability   guardCullFace(GL_CULL_FACE);
 
     // ── Bind VAO + IBO (trap #4: AMD drops draws on VAO=0) ─────────────
     glBindVertexArray(s_tubeVao);
@@ -642,27 +643,16 @@ extern "C" void gos_tube_ribbon_flush(const float*          positions,
     glDrawElements(GL_TRIANGLES, (GLsizei)numIndices, GL_UNSIGNED_SHORT, (const void*)0);
 
     // ── Unbind SSBO slots (mirror billboard flush hygiene) ─────────────
+    // (bind-then-zero HYGIENE, not save/restore — deliberately NOT converted
+    // to restore-previous guards, per the epilogue recon: a restore-previous
+    // guard here would change semantics, the C1B-SSBO-CLEANUP class.)
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 14, 0u);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, 0u);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 16, 0u);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    // ── Restore state ──────────────────────────────────────────────────
-    if (savedCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex2D0);
-    glBindSampler(0, (GLuint)savedSampler);
-    if (savedActiveTex != GL_TEXTURE0) glActiveTexture((GLenum)savedActiveTex);
-    glDepthMask((GLboolean)savedDepthMask);
-    glDepthFunc((GLenum)savedDepthFunc);
-    if (!savedDepthTest) glDisable(GL_DEPTH_TEST);
-    glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
-    if (!savedBlend) glDisable(GL_BLEND);
-    glUseProgram((GLuint)savedProgram);
-    glBindVertexArray((GLuint)savedVAO);
-
-    extern void __stdcall gos_InvalidateRenderStateCache();
-    gos_InvalidateRenderStateCache();
+    // State restore + cache invalidate: RAII scope exit (guards at the top).
 }
 
 // ── TUBE-DEFERRED-FLUSH-1: per-frame ribbon queue ─────────────────────────
@@ -737,21 +727,18 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
     // regression that re-adds a scratch alloc shows up non-zero).
     if (tubeUploadStatsEnabled()) s_tubeStats = TubeUploadStats{};
 
-    // ── State save (same set as the immediate flush) ───────────────────
-    GLint savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
-    GLint savedVAO       = 0; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
-    GLint savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB, &savedSrcRGB);
-    GLint savedDstRGB    = 0; glGetIntegerv(GL_BLEND_DST_RGB, &savedDstRGB);
-    GLboolean savedBlend    = glIsEnabled(GL_BLEND);
-    GLboolean savedDepthTest = glIsEnabled(GL_DEPTH_TEST);
-    GLint savedDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &savedDepthFunc);
-    GLint savedDepthMask = 0; glGetIntegerv(GL_DEPTH_WRITEMASK, &savedDepthMask);
-    GLint savedSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &savedSampler);
-    GLint savedActiveTex = 0; glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTex);
-    GLint savedTex2D0    = 0;
-    glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex2D0);
-    GLboolean savedCullFace = glIsEnabled(GL_CULL_FACE);
+    // ── State save (GLSTATE-GUARD-ADOPTION-4: RAII, same set as the
+    // immediate flush; see the immediate flush for the ordering rationale) ──
+    mc2gl::GlScopedRenderStateInvalidate stateResync;
+    mc2gl::GlScopedVertexArray  guardVao;
+    mc2gl::GlScopedProgram      guardProgram;
+    mc2gl::GlScopedCapability   guardBlend(GL_BLEND);
+    mc2gl::GlScopedBlendFunc    guardBlendFunc;
+    mc2gl::GlScopedCapability   guardDepthTest(GL_DEPTH_TEST);
+    mc2gl::GlScopedDepthState   guardDepth;
+    mc2gl::GlScopedSampler      guardSampler0(0);
+    mc2gl::GlScopedTextureUnit  guardTexUnit0(0);
+    mc2gl::GlScopedCapability   guardCullFace(GL_CULL_FACE);
 
     // ── Bind VAO (trap #4: AMD drops draws on VAO=0) ───────────────────
     glBindVertexArray(s_tubeVao);
@@ -783,13 +770,10 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
     // drawBufs=3 at draw time. Force a single COLOR_ATTACHMENT0 draw buffer for
     // the ribbon draws (tubes are transparent VFX — they must not write normal
     // or objectId anyway), restore the full MRT list after.
-    GLenum savedDrawBufs[8];
-    int    nSavedDrawBufs = 0;
-    for (int i = 0; i < 8; ++i) {
-        GLint d = GL_NONE; glGetIntegerv(GL_DRAW_BUFFER0 + i, &d);
-        savedDrawBufs[i] = (GLenum)d;
-        if (d != GL_NONE) nSavedDrawBufs = i + 1;
-    }
+    // (GLSTATE-GUARD-ADOPTION-4: declared AFTER the state guards above, so it
+    // destructs FIRST — the MRT list is restored before the state restores,
+    // exactly like the old manual epilogue.)
+    mc2gl::GlScopedDrawBuffers guardDrawBufs;
     {
         const GLenum single[1] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, single);
@@ -898,35 +882,23 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         glGetQueryObjectuiv(s_tubeCoverageQuery, GL_QUERY_RESULT, &covSamples);
         std::fprintf(stderr,
             "[VFX_ORACLE_TUBE coverage] ribbons=%u samples=%u fbo=%d sceneDrawBufs=%d\n",
-            (unsigned)s_ribbonQueue.size(), covSamples, (int)covFbo, nSavedDrawBufs);
+            (unsigned)s_ribbonQueue.size(), covSamples, (int)covFbo,
+            guardDrawBufs.savedCount());
         std::fflush(stderr);
     }
 
     // ── Unbind SSBO/IBO slots ──────────────────────────────────────────
+    // (bind-then-zero HYGIENE, not save/restore — deliberately NOT converted
+    // to restore-previous guards, per the epilogue recon: a restore-previous
+    // guard here would change semantics, the C1B-SSBO-CLEANUP class.)
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 14, 0u);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, 0u);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 16, 0u);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    // MRT FIX: restore the scene's full MRT draw-buffer list.
-    if (nSavedDrawBufs > 0) glDrawBuffers(nSavedDrawBufs, savedDrawBufs);
-
-    // ── Restore state ──────────────────────────────────────────────────
-    if (savedCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex2D0);
-    glBindSampler(0, (GLuint)savedSampler);
-    if (savedActiveTex != GL_TEXTURE0) glActiveTexture((GLenum)savedActiveTex);
-    glDepthMask((GLboolean)savedDepthMask);
-    glDepthFunc((GLenum)savedDepthFunc);
-    if (!savedDepthTest) glDisable(GL_DEPTH_TEST);
-    glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
-    if (!savedBlend) glDisable(GL_BLEND);
-    glUseProgram((GLuint)savedProgram);
-    glBindVertexArray((GLuint)savedVAO);
-
-    extern void __stdcall gos_InvalidateRenderStateCache();
-    gos_InvalidateRenderStateCache();
+    // State restore (MRT list, cull/tex/sampler/depth/blend/program/VAO) +
+    // cache invalidate: RAII scope exit (guards declared at function top).
 
     // VK-OPT-1: per-frame upload/alloc summary (gated). Prints total bytes
     // pushed to the GPU + per-record scratch allocs so the redundancy is
@@ -1080,22 +1052,29 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
 
     ensureSsboCapacity((GLsizei)count);
 
-    // ── State save (trap #4 VAO, sampler, blend, depth, program) ──────
-    GLint savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
-    GLint savedVAO       = 0; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &savedVAO);
-    GLint savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB, &savedSrcRGB);
-    GLint savedDstRGB    = 0; glGetIntegerv(GL_BLEND_DST_RGB, &savedDstRGB);
-    GLboolean savedBlend = glIsEnabled(GL_BLEND);
-    GLboolean savedDepthTest = glIsEnabled(GL_DEPTH_TEST);
-    GLint savedDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &savedDepthFunc);
-    GLint savedDepthMask = 0; glGetIntegerv(GL_DEPTH_WRITEMASK, &savedDepthMask);
-    GLint savedSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &savedSampler);
-    GLint savedActiveTex = 0; glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActiveTex);
-    GLint savedTex2D0    = 0;
-    glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex2D0);
+    // ── State save (GLSTATE-GUARD-ADOPTION-4: RAII for the top block; see
+    // gos_tube_ribbon_flush for the declaration-order rationale — invalidate
+    // guard first so it destructs LAST. CULL stays fully manual — VFX-CARD-
+    // CULL-1 re-asserts cull-off a SECOND time below, after the soft-particle
+    // depth-copy sub-pass runs (copySceneDepthForParticles re-enables
+    // GL_CULL_FACE as a side effect); a restore-previous guard set once here
+    // would not re-assert -> reintroduces the spinning explosion-card flicker
+    // bug (glstate-guard-epilogue-recon-1.md Site 4 trap). The two soft/
+    // distortion texture-unit saves (unit 1/2, below) also stay manual: they
+    // are conditional mid-function resource binds, not part of this top-
+    // block/bottom-block epilogue shape.) ──────────────────────────────────
+    mc2gl::GlScopedRenderStateInvalidate stateResync;
+    mc2gl::GlScopedVertexArray  guardVao;
+    mc2gl::GlScopedProgram      guardProgram;
+    mc2gl::GlScopedCapability   guardBlend(GL_BLEND);
+    mc2gl::GlScopedBlendFunc    guardBlendFunc;
+    mc2gl::GlScopedCapability   guardDepthTest(GL_DEPTH_TEST);
+    mc2gl::GlScopedDepthState   guardDepth;
+    mc2gl::GlScopedSampler      guardSampler0(0);
+    mc2gl::GlScopedTextureUnit  guardTexUnit0(0);
     // P0-2 cull state: bridge must disable GL_CULL_FACE for the draw because
     // the particle shader is double-sided. Restore the caller's state after.
+    // (Manual — see the cull-trap note above.)
     GLboolean savedCullFace = glIsEnabled(GL_CULL_FACE);
     glDisable(GL_CULL_FACE);
 
@@ -1391,6 +1370,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, gpu_cull::READBACK_SSBO_BINDING, 0u);
 
     // ── Restore state ────────────────────────────────────────────────
+    // (Manual — cull double-assert trap, see the top-block note.)
     if (savedCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
     // VFX-SOFT-PARTICLES-MVP-1: restore unit-1 binding used for the depth copy
     // (active texture is GL_TEXTURE0 here — the draw loop binds on unit 0).
@@ -1406,29 +1386,19 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex2D2);
         glActiveTexture(GL_TEXTURE0);
     }
-    glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex2D0);
-    glBindSampler(0, (GLuint)savedSampler);
-    if (savedActiveTex != GL_TEXTURE0) glActiveTexture((GLenum)savedActiveTex);
-    glDepthMask((GLboolean)savedDepthMask);
-    glDepthFunc((GLenum)savedDepthFunc);
-    if (!savedDepthTest) glDisable(GL_DEPTH_TEST);
-    glBlendFunc((GLenum)savedSrcRGB, (GLenum)savedDstRGB);
-    if (!savedBlend) glDisable(GL_BLEND);
-    glUseProgram((GLuint)savedProgram);
-    glBindVertexArray((GLuint)savedVAO);
 
     // VFX-CACHE-SYNC-1: this pass set blend/cull/depth/program/sampler via raw
-    // GL calls that bypass the gos render-state CACHE. Even though we restore
-    // actual GL state above, the cache may now disagree with GL (incomplete
-    // restore of separate-alpha blend, or a sub-pass like
-    // copySceneDepthForParticles mutating cached state), so the next
-    // gos_SetRenderState(sameValue) would be a skipped no-op and leave the wrong
-    // blend/cull on subsequent legacy/MLR draws (e.g. explosion DebrisCloud/Shape
-    // cards drawn after this bridge) -> intermittent state-driven flicker.
-    // Force the cache to re-sync. Cost: a few extra state calls on the next
-    // draw, once per frame — same guard the mech batcher uses (gos_mech_batcher.cpp).
-    extern void __stdcall gos_InvalidateRenderStateCache();
-    gos_InvalidateRenderStateCache();
+    // GL calls that bypass the gos render-state CACHE. Even though the guards
+    // above (unit 0 tex/sampler, depth, blend, program, VAO) restore actual GL
+    // state, the cache may now disagree with GL (incomplete restore of
+    // separate-alpha blend, or a sub-pass like copySceneDepthForParticles
+    // mutating cached state), so the next gos_SetRenderState(sameValue) would
+    // be a skipped no-op and leave the wrong blend/cull on subsequent legacy/
+    // MLR draws (e.g. explosion DebrisCloud/Shape cards drawn after this
+    // bridge) -> intermittent state-driven flicker. Force the cache to
+    // re-sync via GlScopedRenderStateInvalidate (declared FIRST in the top
+    // block, so it destructs LAST — after every other guard has restored,
+    // firing exactly where the old explicit call ran).
 }
 
 // VFX-SPINE-0: read-only accessors for the Object Inspector. Pure getters
