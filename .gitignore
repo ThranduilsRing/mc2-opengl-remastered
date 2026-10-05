@@ -190,7 +190,6 @@ data/hdr/*_16k.ktx2
 imgui.ini
 /.claude/archive-2026-07-05/
 tests/visual/baselines/
-tests/visual/goldens/
 tests/visual/bookmarks/
 tests/visual/macro_on/
 tests/visual/macro_off/

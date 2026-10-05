@@ -315,6 +315,7 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
 
     members = []
     refused = []
+    subjects = {}  # (bookmark, region) -> region manifest `check` text
     total_bytes = 0
     _frame_res: set = set()
 
@@ -364,6 +365,9 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
         bm_dir = to_dir / bm
         for reg in doc["regions"]:
             rid = reg["id"]
+            # check-golden-coverage requires every refused hole to say what it
+            # protected; the region manifest's `check` text is that statement.
+            subjects[(bm, rid)] = reg.get("check") or rid
             thr = reg.get("thresholds") or DEFAULT_THRESHOLDS
             try:
                 crops = [regionlib.crop_region_png(b, reg["rect"]) for b in pngs]
@@ -452,7 +456,10 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS) -> dic
         "n_regions": len(members),
         "n_refused": len(refused),
         "total_crop_bytes": total_bytes,
-        "refused": refused,
+        "refused": [dict(h, subject_protected=h.get("subject_protected")
+                         or subjects.get((h["bookmark"], h["region"]))
+                         or "whole pose " + h["bookmark"])
+                    for h in refused],
         "members": members,
     }
 

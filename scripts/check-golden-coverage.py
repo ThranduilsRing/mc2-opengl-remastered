@@ -68,12 +68,7 @@ REQUIRED_HOLE_KEYS = ("bookmark", "region", "rule", "reason", "subject_protected
 # The degenerate mc2_10_saved_204907/distant_ridge_base crop that motivated
 # DEGENERATE-CROP-REFUSAL-1 is present in several sets. Removing a region from a
 # set is a decision on the record, so it is waived-and-surfaced, not edited here.
-LEGACY_WAIVERS = {
-    "v0.5.1-baseline": (
-        "shipped release baseline (39 regions, blessed before the three-run "
-        "all-pairs and degeneracy rules existed). Carries the degenerate "
-        "distant_ridge_base crop. Historical artifact -- do not rewrite."),
-}
+LEGACY_WAIVERS = {}
 
 # ---------------------------------------------------------------------------
 # Pending user decision (PENDING-SET-STATE-1)
@@ -97,14 +92,7 @@ LEGACY_WAIVERS = {
 #
 # Findings in a present pending set are WARNed, not FAILed, for the same reason
 # a waiver is: editing a set a human is about to promote is the human's call.
-PENDING_SETS = {
-    "v0.5.2-baseline-PROPOSED": (
-        "USER-GATED: the set awaiting promotion to release golden. Deliberately "
-        "untracked -- do NOT commit, delete, or promote it. It carries the "
-        "degenerate distant_ridge_base crop (severity `critical`, un-failable) "
-        "and blesses all 11 regions later refused for instability. RAISE BOTH "
-        "AT THE PROMOTION GATE."),
-}
+PENDING_SETS = {}
 
 # ---------------------------------------------------------------------------
 # "Deliberately untracked" is a claim about GIT, so ASK GIT (PENDING-UNTRACKED-1)
@@ -189,6 +177,18 @@ RETIRED_SETS = {
         "r1-v-r2 and r1-v-r3 but never r2-v-r3 -- the pair on which it later "
         "measured 5.16% movement. (4) Its 10 vendored poses survive: 5ef261f4 "
         "carries all 10, verified byte-identical."),
+    "baseline-5ef261f4": (
+        "Retired by the 2026-10-05 reset: blessed against an exe now archived to "
+        "E:/mc2-archive-2026-10/installs, so unattributable; superseded by "
+        "reset-50331d5. Copy at E:/mc2-archive-2026-10/goldens."),
+    "v0.5.1-baseline": (
+        "Retired by the 2026-10-05 reset: v0.5.1 release install archived to E:; "
+        "carried the degenerate distant_ridge_base crop. Superseded by "
+        "reset-50331d5. Copy at E:/mc2-archive-2026-10/goldens."),
+    "v0.5.2-baseline-PROPOSED": (
+        "Retired by the 2026-10-05 reset without promotion: blessed the 11 regions "
+        "later refused as unstable plus the degenerate crop; its install is "
+        "archived. Superseded by reset-50331d5. Copy at E:/mc2-archive-2026-10/goldens."),
 }
 
 

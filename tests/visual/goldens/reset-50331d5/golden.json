@@ -1,0 +1,1117 @@
+{
+  "kind": "visual-verify-golden",
+  "schema_v": 3,
+  "golden_id": "reset-50331d5",
+  "blessed_at": "2026-10-05T22:06:10Z",
+  "source_capture": "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r1\\capture_run.json",
+  "source_captures": [
+    "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r1\\capture_run.json",
+    "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r2\\capture_run.json",
+    "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r3\\capture_run.json"
+  ],
+  "install": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4",
+  "exe": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mc2.exe",
+  "exe_mtime": "2026-10-05T20:12:01Z",
+  "exe_sha256": "abc77a094176f75e32fad8408d830c675b12c6707980b937270004f2fbe8df33",
+  "frame": 431,
+  "deterministic_clock": true,
+  "n_regions": 24,
+  "n_refused": 15,
+  "total_crop_bytes": 16212070,
+  "refused": [
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "cement_pads_dark",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: changed_pct 5.8807% > 2.5%; r2/r3: changed_pct 7.5537% > 2.5%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 5.8807,
+        "r1_vs_r3_changed_pct": 1.7898,
+        "r2_vs_r3_changed_pct": 7.5537,
+        "worst_changed_pct": 7.5537,
+        "worst_pair": "r2/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Cement pads/runway strip stay DARK (pad mean ~[12,15,14], not floodlit). Night-correct."
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "light_pools_feathered",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: changed_pct 35.988% > 3.0%; r1/r3: changed_pct 29.1265% > 3.0%; r2/r3: mean_delta 5.9537 > 4.5; changed_pct 34.266% > 3.0%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 35.988,
+        "r1_vs_r3_changed_pct": 29.1265,
+        "r2_vs_r3_changed_pct": 34.266,
+        "worst_changed_pct": 35.988,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Glow pools soft/feathered, no hard-edged discs/eggs/washes; every glow has a visible emitter (no ghost lights)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "horizon_white_billboards",
+      "severity": "high",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 5.1439 > 3.0; changed_pct 15.9356% > 1.5%; r1/r3: changed_pct 6.5705% > 1.5%; r2/r3: mean_delta 5.4888 > 3.0; changed_pct 15.6155% > 1.5%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 15.9356,
+        "r1_vs_r3_changed_pct": 6.5705,
+        "r2_vs_r3_changed_pct": 15.6155,
+        "worst_changed_pct": 15.9356,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "HEADLINE FAIL: distant LOD tree impostors render fullbright PURE WHITE (peak RGB ~255,255,253) against night terrain (~50,49,43) and sky (~127) \u2014 un-hazed silhouette cutouts. LOD/billboard crossfade flashes fullbright before resolving. Single most eye-catching defect."
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "far_water_surface",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 6.2338 > 4.5; changed_pct 26.9222% > 3.0%; r1/r3: changed_pct 25.1745% > 3.0%; r2/r3: mean_delta 8.3376 > 4.5; changed_pct 26.8915% > 3.0%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 26.9222,
+        "r1_vs_r3_changed_pct": 25.1745,
+        "r2_vs_r3_changed_pct": 26.8915,
+        "worst_changed_pct": 26.9222,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Teal far water; no z-fight shimmer or hard tonal banding. Mild alpha-dither stipple on the bright fog-blend horizon band is expected (minor)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "light_clusters_census",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 4.896 > 4.0; changed_pct 38.7833% > 2.5%; r1/r3: mean_delta 6.5102 > 4.0; changed_pct 40.3891% > 2.5%; r2/r3: mean_delta 6.6973 > 4.0; changed_pct 41.2824% > 2.5%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 38.7833,
+        "r1_vs_r3_changed_pct": 40.3891,
+        "r2_vs_r3_changed_pct": 41.2824,
+        "worst_changed_pct": 41.2824,
+        "worst_pair": "r2/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Airbase lit-cluster census (hangar/cooling compound, command tower + fuel domes, walled barracks, tank farm, quonset + cooling tower, striped-roof pads). All should stay lit and consistent with angle B (204907)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "runway_edge_lights",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 4.9644 > 4.5; changed_pct 39.2913% > 3.0%; r1/r3: mean_delta 8.0509 > 4.5; changed_pct 42.6258% > 3.0%; r2/r3: mean_delta 5.7097 > 4.5; changed_pct 37.0874% > 3.0%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 39.2913,
+        "r1_vs_r3_changed_pct": 42.6258,
+        "r2_vs_r3_changed_pct": 37.0874,
+        "worst_changed_pct": 42.6258,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Runway/taxiway flat inlaid slabs, crisp flat edge (not elevation cliff), soft AO seam; green/red/amber edge-light sprites line the strips. NOTE edge-light sprites are camera-angle-dependent (vanish near top-down)."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "pad_outline_fence",
+      "severity": "low",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: changed_pct 4.6147% > 3.5%; r1/r3: changed_pct 4.6164% > 3.5%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 4.6147,
+        "r1_vs_r3_changed_pct": 4.6164,
+        "r2_vs_r3_changed_pct": 0.9822,
+        "worst_changed_pct": 4.6164,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Stippled/noisy white outline around tank-farm/pad = chain-link perimeter fence alpha-tested texture (legit asset, not a render bug). Reads slightly noisy under light pool."
+    },
+    {
+      "bookmark": "mc2_10_saved_204753",
+      "region": "lamp_cones",
+      "severity": "low",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 8.0388 > 4.5; changed_pct 73.8183% > 3.0%; r1/r3: mean_delta 14.9275 > 4.5; changed_pct 80.635% > 3.0%; struct_delta 14.8831 > 11.0; r2/r3: mean_delta 11.2426 > 4.5; changed_pct 70.802% > 3.0%; struct_delta 11.1236 > 11.0",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 73.8183,
+        "r1_vs_r3_changed_pct": 80.635,
+        "r2_vs_r3_changed_pct": 70.802,
+        "worst_changed_pct": 80.635,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Light pools feather smoothly to dark; lamp-post ground cones anchored at each fixture base; rooftop beacon wedge traces to source. No ghost lights."
+    },
+    {
+      "bookmark": "mc2_10_saved_204907",
+      "region": "distant_ridge_base",
+      "reason": "degenerate crop: only 1 unique colour(s) (floor 8) -- luma mean 0.0, 167 bytes. A flat crop cannot fail a diff, so blessing it manufactures coverage. Re-author the region rect to frame real geometry, or drop the region.",
+      "severity": "critical",
+      "stats": {
+        "unique_colors": 1,
+        "luma_mean": 0.0,
+        "luma_stddev": 0.0,
+        "pixels": 30000,
+        "bytes": 167
+      },
+      "rule": "DEGENERATE-CROP-REFUSAL-1",
+      "subject_protected": "Distant ridge-top base must be LIT (buildings, warm interiors, road, tower). On nifty this is correct; on deferred-sweep it regressed to PURE BLACK (max=0). Historically all-dark-at-angle-B symptom \u2014 key regression sentinel."
+    },
+    {
+      "bookmark": "mc2_10_saved_204907",
+      "region": "spotlight_towers",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 8.5521 > 4.5; changed_pct 33.29% > 3.0%; r1/r3: mean_delta 13.7149 > 4.5; changed_pct 48.9672% > 3.0%; struct_delta 13.0239 > 11.0; r2/r3: mean_delta 12.1212 > 4.5; changed_pct 45.6788% > 3.0%; struct_delta 11.679 > 11.0",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 33.29,
+        "r1_vs_r3_changed_pct": 48.9672,
+        "r2_vs_r3_changed_pct": 45.6788,
+        "worst_changed_pct": 48.9672,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Near stepped tower casts two symmetric warm fans, apex at fixture widening to ground (anchor correct); standalone hillside pedestal tower visible/lit."
+    },
+    {
+      "bookmark": "mc2_10_saved_204907",
+      "region": "near_base_lighting",
+      "severity": "low",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r3: changed_pct 8.2793% > 3.0%; r2/r3: changed_pct 8.2793% > 3.0%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 8.2793,
+        "r2_vs_r3_changed_pct": 8.2793,
+        "worst_changed_pct": 8.2793,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Near base: pools feathered, every glow sourced to a building/tower, no ghosts. Warm interiors (nifty) vs cooler/dimmer (deferred) = build tone difference."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "runway_pad_edges_blend",
+      "severity": "high",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: changed_pct 15.7347% > 2.5%; r1/r3: changed_pct 15.4601% > 2.5%; r2/r3: changed_pct 20.7399% > 2.5%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 15.7347,
+        "r1_vs_r3_changed_pct": 15.4601,
+        "r2_vs_r3_changed_pct": 20.7399,
+        "worst_changed_pct": 20.7399,
+        "worst_pair": "r2/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "HEADLINE FAIL: asphalt/cement meets terrain as a HARD, blocky, stairstepped tile boundary with only a 1px stochastic dither \u2014 no transition/blend. Matches user complaint 'doesn't blend'. Fix target."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "runway_grid_complete",
+      "severity": "medium",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: changed_pct 22.8701% > 3.0%; r1/r3: changed_pct 17.0149% > 3.0%; r2/r3: mean_delta 4.5503 > 4.5; changed_pct 25.2785% > 3.0%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 22.8701,
+        "r1_vs_r3_changed_pct": 17.0149,
+        "r2_vs_r3_changed_pct": 25.2785,
+        "worst_changed_pct": 25.2785,
+        "worst_pair": "r2/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Full interconnected runway grid (2 parallel horizontals + 1 vertical crossing); every terminus has threshold number + piano-key bar + end marker; no missing segments at ends or intersections."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "cement_tile_seams",
+      "severity": "low",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 6.6078 > 5.0; changed_pct 41.4474% > 3.5%; r1/r3: changed_pct 4.9757% > 3.5%; r2/r3: mean_delta 6.369 > 5.0; changed_pct 40.2643% > 3.5%",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 41.4474,
+        "r1_vs_r3_changed_pct": 4.9757,
+        "r2_vs_r3_changed_pct": 40.2643,
+        "worst_changed_pct": 41.4474,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Pad interior shows hard straight tonal seams (warm compound floor vs cooler apron/taxiway L-block) \u2014 reads as a material/style switch. Low severity, cosmetic."
+    },
+    {
+      "bookmark": "mc2_10_saved_212258",
+      "region": "light_pools_sourcing",
+      "severity": "low",
+      "reason": "unstable: run-to-run noise already exceeds the thresholds verify.py grades candidates against, so every future verify would be a coin flip. r1/r2: mean_delta 11.1927 > 4.5; changed_pct 56.9946% > 3.0%; r1/r3: changed_pct 17.5934% > 3.0%; r2/r3: mean_delta 11.504 > 4.5; changed_pct 56.1713% > 3.0%; struct_delta 11.2125 > 11.0",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 56.9946,
+        "r1_vs_r3_changed_pct": 17.5934,
+        "r2_vs_r3_changed_pct": 56.1713,
+        "worst_changed_pct": 56.9946,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "rule": "THREE-RUN-ALL-PAIRS-1",
+      "subject_protected": "Pools soft/warm/non-saturated, no hard discs. NOTE two large central compound floor-pools have no visible lamp fixture (sourceless floodlight glow); edge-marker dots present but non-glowing (deferred feature)."
+    }
+  ],
+  "members": [
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "horizon_waterline",
+      "path": "mc2_01_saved_205644/horizon_waterline.png",
+      "size": "3072x216",
+      "sha256": "207fba7d4394535ebdd86445c51d9497a79324ca661771c2af8cab3fab9789d5",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Far water meets distant land with a natural waterline; NO unnatural dark band across open water/sky. Distant-land silhouette may show mild tile-stepping (marginal, watch).",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 48282,
+        "luma_mean": 100.5569,
+        "luma_stddev": 27.7648,
+        "pixels": 663552,
+        "bytes": 895757
+      }
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "shore_left",
+      "path": "mc2_01_saved_205644/shore_left.png",
+      "size": "1152x519",
+      "sha256": "8cd8d99c4e2f499807b0ec8d93e31db496cc9d90d89f283e9aff0913846e269b",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Smooth curved waterline with soft teal shallow blend; no tile-staircase, no white sliver.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 4577,
+        "luma_mean": 115.1927,
+        "luma_stddev": 10.3041,
+        "pixels": 597888,
+        "bytes": 637266
+      }
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "shore_central",
+      "path": "mc2_01_saved_205644/shore_central.png",
+      "size": "1152x518",
+      "sha256": "df8d76175d5e06ad0a5a8c08cc2dc429d4d052d6e2df2d7a397d22c3f3ad17c3",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Central shore segment: smooth waterline, no staircase/white sliver, no z-fight shimmer.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 10626,
+        "luma_mean": 100.7089,
+        "luma_stddev": 14.3,
+        "pixels": 596736,
+        "bytes": 702149
+      }
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "shore_botright",
+      "path": "mc2_01_saved_205644/shore_botright.png",
+      "size": "1267x561",
+      "sha256": "1474ceff878c777c81952ddf3ddbf0bbab9ec1fa527a5064df5bbce1b2e74024",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.0,
+        "struct": 12.0
+      },
+      "check": "Bottom-right shore: smooth curved waterline; watch for screen-door dither stipple bleeding onto sand.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 5309,
+        "luma_mean": 46.1103,
+        "luma_stddev": 31.2123,
+        "pixels": 710787,
+        "bytes": 403641
+      }
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "tree_shadows_palm",
+      "path": "mc2_01_saved_205644/tree_shadows_palm.png",
+      "size": "1229x691",
+      "sha256": "3bde9f90460f2f48fa36a2789adc5317a6f494d1e8a203d71b307077b7eedc68",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 6.0,
+        "changed_pct": 4.0,
+        "struct": 14.0
+      },
+      "check": "KNOWN FAIL: palm shadows render as screen-door dithered stipple blotches (diffuse dark-pixel cloud, no solid core) cast down-left. Should be crisp/short. Regression watch = does it get worse/better.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 12129,
+        "luma_mean": 77.0601,
+        "luma_stddev": 28.8268,
+        "pixels": 849239,
+        "bytes": 819720
+      }
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "pad_edge",
+      "path": "mc2_01_saved_205644/pad_edge.png",
+      "size": "1229x476",
+      "sha256": "cf14f1c75bf5edeb5cb7f5a8ad2c0f46a6c9d9ec6bf106020f49c0bbadd0fc51",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.0,
+        "struct": 12.0
+      },
+      "check": "Pad edge is a clean straight diagonal, outline continuous; road/runway meets apron continuously; no cement tile-seam grid on the pad interior.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 6677,
+        "luma_mean": 115.765,
+        "luma_stddev": 10.6675,
+        "pixels": 585004,
+        "bytes": 665508
+      }
+    },
+    {
+      "bookmark": "mc2_01_saved_205644",
+      "region": "mech_drop_shadows",
+      "path": "mc2_01_saved_205644/mech_drop_shadows.png",
+      "size": "999x475",
+      "sha256": "c9e12c18d12e3e587376799d39bfab82d78e4719ca56d329447af6c506c02887",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 6.0,
+        "changed_pct": 4.0,
+        "struct": 14.0
+      },
+      "check": "Mech drop shadows: coherent, correctly placed, solid dark core; soft edge falls off via the same screen-door dither (marginal). No steps, no detached blotch.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 1.1521,
+        "r1_vs_r3_changed_pct": 1.2271,
+        "r2_vs_r3_changed_pct": 1.1799,
+        "worst_changed_pct": 1.2271,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 8109,
+        "luma_mean": 102.1303,
+        "luma_stddev": 12.8389,
+        "pixels": 474525,
+        "bytes": 585979
+      }
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "mech_night_shadow_fan",
+      "path": "mc2_05_saved_205843/mech_night_shadow_fan.png",
+      "size": "1075x605",
+      "sha256": "56b1e61f89212450a4f51162f2b140de7335c3a7595877991bbf25119d70316c",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.0,
+        "struct": 12.0
+      },
+      "check": "KNOWN FAIL: mech ground shadow renders as a light-grey triangular FAN ~2x BRIGHTER than the night terrain it sits on (fan ~[22,24,18] vs terrain ~[9,11,11]). Should darken, not lighten.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0017,
+        "r1_vs_r3_changed_pct": 1.836,
+        "r2_vs_r3_changed_pct": 1.5311,
+        "worst_changed_pct": 1.836,
+        "worst_pair": "r1/r3",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 1124,
+        "luma_mean": 28.7152,
+        "luma_stddev": 40.3074,
+        "pixels": 650375,
+        "bytes": 279004
+      }
+    },
+    {
+      "bookmark": "mc2_05_saved_205843",
+      "region": "shoreline_dark_water",
+      "path": "mc2_05_saved_205843/shoreline_dark_water.png",
+      "size": "1536x605",
+      "sha256": "3c463dc0dffc3f3d5ab9f16f183086c79495abd68c470288d02299714691d7d9",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Dark water, lamp-lit causeway; perimeter-wall lamps sourced. No orphan glow.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 1451,
+        "luma_mean": 68.2108,
+        "luma_stddev": 64.6354,
+        "pixels": 929280,
+        "bytes": 350034
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "shore_upperright_inlet",
+      "path": "mc2_10_saved_204523/shore_upperright_inlet.png",
+      "size": "200x290",
+      "sha256": "dcbeffa8063d57b3648a5aef235136c07e68d63c92951e03251896b373e6dd06",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 2.5,
+        "changed_pct": 1.0,
+        "struct": 6.0
+      },
+      "check": "HEADLINE FAIL: water outline snaps to terrain tile grid \u2014 one giant ~137-148px axis-aligned step, dead-vertical risers (x varies <=3px over 138px). Fix = subdivide/displace the water-edge isoline. Worst offender.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 763,
+        "luma_mean": 36.9884,
+        "luma_stddev": 24.6876,
+        "pixels": 58000,
+        "bytes": 17260
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "shore_right_landmass",
+      "path": "mc2_10_saved_204523/shore_right_landmass.png",
+      "size": "1344x972",
+      "sha256": "c4d11d5f9992c730f3ca3086b3d6d11ac42ff4fea2f65d2e2188f957d41df1bb",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 2.5,
+        "changed_pct": 1.0,
+        "struct": 6.0
+      },
+      "check": "Right land-mass shore: repeated 90-degree tile steps; far-right kite has crisp straight angular edges meeting at hard vertices.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 9122,
+        "luma_mean": 34.748,
+        "luma_stddev": 16.4443,
+        "pixels": 1306368,
+        "bytes": 1196954
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "compound_light_wedges",
+      "path": "mc2_10_saved_204523/compound_light_wedges.png",
+      "size": "960x540",
+      "sha256": "5122609ac443c43e4a1fe800d8d821a7e5170e2c9e91325cbf18735ca3b4dd42",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Lit compound pool coherent + centered; directional yellow wedge/kite light-decal quads persist as hard-edged flat translucent polygons (anchored at fixtures, cosmetic).",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.077,
+        "r1_vs_r3_changed_pct": 0.0735,
+        "r2_vs_r3_changed_pct": 0.077,
+        "worst_changed_pct": 0.077,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 22550,
+        "luma_mean": 78.8378,
+        "luma_stddev": 26.6672,
+        "pixels": 518400,
+        "bytes": 654113
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_204523",
+      "region": "ghost_light_right",
+      "path": "mc2_10_saved_204523/ghost_light_right.png",
+      "size": "360x300",
+      "sha256": "1e0b6fd13970674faa7a2e84c82aa588da2b2d40c0450df49031df1e994353cf",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "PASS (identified): isolated glow is a real lit building prop (bunker/turret + tree + soft ground pool), NOT a stray light. Watch it stays a legit prop.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 2445,
+        "luma_mean": 34.7071,
+        "luma_stddev": 10.2282,
+        "pixels": 108000,
+        "bytes": 70637
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "near_shore_peninsula",
+      "path": "mc2_10_saved_204611/near_shore_peninsula.png",
+      "size": "1536x540",
+      "sha256": "ea774979de184a0e441630b424cc2ead56e15bef97c75054410b002dc92c98da",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "Base peninsula waterline smooth; no staircase outline, sliver, or glow ring.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 1644,
+        "luma_mean": 21.0142,
+        "luma_stddev": 3.9133,
+        "pixels": 829440,
+        "bytes": 562604
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_204611",
+      "region": "night_base_lighting",
+      "path": "mc2_10_saved_204611/night_base_lighting.png",
+      "size": "1344x648",
+      "sha256": "d4dab3a03c892af32ef6a3f0b45c2ac0c3483c3817535d9a669da8f5f5bafc6c",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Coherent night base: warm building interiors, spotlight pools, runway/perimeter lights; sources visible and sanely placed.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 568,
+        "luma_mean": 22.7184,
+        "luma_stddev": 5.5738,
+        "pixels": 870912,
+        "bytes": 598605
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_205952",
+      "region": "distant_terrain_horizon_band",
+      "path": "mc2_10_saved_205952/distant_terrain_horizon_band.png",
+      "size": "3400x200",
+      "sha256": "61f1e50e69157817e08e39fa298a056e86517e994378421cd1518170ed49185a",
+      "severity": "critical",
+      "thresholds": {
+        "mean_delta": 3.0,
+        "changed_pct": 1.5,
+        "struct": 8.0
+      },
+      "check": "SENTINEL: distant terrain below the horizon must render graded terrain + trees + soft fog skirt (nifty). On deferred-sweep it collapses to PURE BLACK below a razor-hard horizontal seam at screen-y~=323 (black-px count 153186 vs 553). Do not ship a build where this region goes black.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0157,
+        "r1_vs_r3_changed_pct": 0.0157,
+        "r2_vs_r3_changed_pct": 0.0072,
+        "worst_changed_pct": 0.0157,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 10130,
+        "luma_mean": 69.3841,
+        "luma_stddev": 59.5895,
+        "pixels": 680000,
+        "bytes": 492499
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_205952",
+      "region": "water_shore_grazing",
+      "path": "mc2_10_saved_205952/water_shore_grazing.png",
+      "size": "1920x216",
+      "sha256": "648485cdfb06d8c4e5d223327b6a6f25556fbee04048f991d90abd69c910ba42",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "KNOWN WEAKNESS: at grazing/horizon angle the water collapses to a flat dull blue sheet \u2014 no shore gradient, and (despite WATER_SKYTINT) it does NOT reflect the bright dusk overcast. Watch for regression/improvement. RE-AIMED 2026-07-24: the old rect (y 0.42 h 0.25) covered the pale off-map slab, not the lake, so it read ~0 delta and passed regardless of water state (missed master-FAIL #9). Lake band measured on the blessed frame: water y 0.30-0.39, x 0.10-0.60.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.2515,
+        "r1_vs_r3_changed_pct": 0.155,
+        "r2_vs_r3_changed_pct": 0.2358,
+        "worst_changed_pct": 0.2515,
+        "worst_pair": "r1/r2",
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 7850,
+        "luma_mean": 38.7837,
+        "luma_stddev": 25.3155,
+        "pixels": 414720,
+        "bytes": 352000
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_205952",
+      "region": "map_edge_skirt",
+      "path": "mc2_10_saved_205952/map_edge_skirt.png",
+      "size": "3456x604",
+      "sha256": "29eaa61ae7092dd9051515441b81b19d14ca24a61e956372583098344b49abff",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "KNOWN class: pale blue-grey skirt/slab wraps the front corner (terrain feathers into a smooth extruded wall). Prominent purely due to corner framing; identical across builds. Not a new artifact.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 590,
+        "luma_mean": 166.0607,
+        "luma_stddev": 22.6888,
+        "pixels": 2087424,
+        "bytes": 232849
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_212019",
+      "region": "ghost_wedge_over_road",
+      "path": "mc2_10_saved_212019/ghost_wedge_over_road.png",
+      "size": "768x475",
+      "sha256": "dfadf472618743c86f1255ebd1fad6937c27472594446accccd56557e65de36d",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 4.0,
+        "changed_pct": 2.5,
+        "struct": 10.0
+      },
+      "check": "HEADLINE FAIL: bright solid OPAQUE tan/cream 3D wedge (folded-plane mesh: lit top facet + shadowed bottom facet) floats in mid-air above the road between the two foreground guard towers \u2014 no support, no caster, empty terrain below. Root cause = searchlight light-cone rendering as opaque geometry.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 5885,
+        "luma_mean": 38.6245,
+        "luma_stddev": 15.6356,
+        "pixels": 364800,
+        "bytes": 384155
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_212019",
+      "region": "searchlight_cones_compound",
+      "path": "mc2_10_saved_212019/searchlight_cones_compound.png",
+      "size": "1536x648",
+      "sha256": "c2916076c962c8f0acf52b462c86aed8df442dcfb1d3a02f79211911c4a3630c",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Compound guard-tower searchlights show the same bug at smaller scale: a little opaque tan wedge at each housing instead of a translucent additive cone.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 28461,
+        "luma_mean": 60.0352,
+        "luma_stddev": 53.9921,
+        "pixels": 995328,
+        "bytes": 1100099
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_212019",
+      "region": "light_pools_road",
+      "path": "mc2_10_saved_212019/light_pools_road.png",
+      "size": "1536x648",
+      "sha256": "438cb7b7f338c89320475318b5c0e6de886b0c51185ff9f99086be961e763f2f",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 4.5,
+        "changed_pct": 3.0,
+        "struct": 11.0
+      },
+      "check": "Ground pools around tower bases + along the road: soft/feathered radial falloff, no hard discs, no saturation clipping. Real searchlight beam (if framed) traces back to its tower.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 15418,
+        "luma_mean": 48.882,
+        "luma_stddev": 16.7765,
+        "pixels": 995328,
+        "bytes": 965620
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_212140",
+      "region": "tree_shadows_directional",
+      "path": "mc2_10_saved_212140/tree_shadows_directional.png",
+      "size": "1728x864",
+      "sha256": "734e0dd41b83aba1ab43761befba07c574983c15f07626060c5eb140d08f09bd",
+      "severity": "high",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Tree shadows must read as intentional directional long shadows from a low sun: PARALLEL (not fanning from a point), crisp/dark at trunk-contact, continuously softening toward the far end. No donut/hollow-center, no hard near/far seam, no ordered dither-step. Length ~2-3x tree height, consistent frame-wide. Currently PASS.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 9736,
+        "luma_mean": 57.3087,
+        "luma_stddev": 34.5844,
+        "pixels": 1492992,
+        "bytes": 2065876
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_212140",
+      "region": "snow_shadow_crossings",
+      "path": "mc2_10_saved_212140/snow_shadow_crossings.png",
+      "size": "1344x648",
+      "sha256": "371dca2f9997ce6b42414fec9a33408c51eda24b6da74729e4f2d92a380b2e1a",
+      "severity": "medium",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "High-albedo snow is the harshest test: tree-base shadows landing on snow stay crisp at contact and fade smoothly; the contrast must NOT expose streak/banding/hard edge.",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 7072,
+        "luma_mean": 45.8514,
+        "luma_stddev": 38.0041,
+        "pixels": 870912,
+        "bytes": 944808
+      }
+    },
+    {
+      "bookmark": "mc2_10_saved_212140",
+      "region": "snow_terrain_seams",
+      "path": "mc2_10_saved_212140/snow_terrain_seams.png",
+      "size": "1344x756",
+      "sha256": "dbd22cdecde3abbba43d5c884651692144df2b873c4c9ff8ae4e5819ebea4d7e",
+      "severity": "low",
+      "thresholds": {
+        "mean_delta": 5.0,
+        "changed_pct": 3.5,
+        "struct": 12.0
+      },
+      "check": "Snow renders as smooth wind-ripple texture with soft fog gradients \u2014 no stair-step luminance banding, no straight tile-seam lines. Scattered dark ovals = terrain microrelief/rocks (not casterless shadows).",
+      "reproducibility": {
+        "r1_vs_r2_changed_pct": 0.0,
+        "r1_vs_r3_changed_pct": 0.0,
+        "r2_vs_r3_changed_pct": 0.0,
+        "worst_changed_pct": 0.0,
+        "worst_pair": null,
+        "pairs_graded": 3,
+        "runs": 3
+      },
+      "crop_stats": {
+        "unique_colors": 5499,
+        "luma_mean": 49.7263,
+        "luma_stddev": 27.0584,
+        "pixels": 1016064,
+        "bytes": 1234933
+      }
+    }
+  ],
+  "identity": {
+    "schema": "mc2-manifest/1",
+    "generator": "visual_verify_bless",
+    "generated_utc": "2026-10-05T22:06:10Z",
+    "host": "DESKTOP-P1N69B5",
+    "binary_provenance": {
+      "commit": "50331d530e1c",
+      "commit_source": "exe-embedded-build-fingerprint",
+      "available": true,
+      "dirty": false,
+      "dirty_describes": "uncommitted TRACKED modifications in the worktree the BINARY was compiled from, at compile time",
+      "branch": "claude/nifty-mendeleev",
+      "built_utc": "2026-10-05T15:11:51",
+      "built_from_worktree": "A:/Games/mc2-main",
+      "method": "pe-string-scan/v1",
+      "verdict": "SOURCE-HEAD-MISMATCH",
+      "source_head_matches_binary": false,
+      "source_head_commit": "42bcfc336d263e1f505530b6a59bfda6bddaaaa5",
+      "note": "Read out of the binary's own compiled-in build fingerprint (.rdata string literals stamped by cmake/GenerateBuildFingerprint.cmake). This is the only commit in this manifest that describes the code that ran."
+    },
+    "source_worktree_head_at_capture": {
+      "commit": "42bcfc336d263e1f505530b6a59bfda6bddaaaa5",
+      "commit_short": "42bcfc336d26",
+      "branch": "claude/nifty-mendeleev",
+      "dirty": true,
+      "describe": "vulkan-swapchain-present-2026-07-01-1546-g42bcfc336-dirty",
+      "worktree": "A:\\Games\\mc2-main",
+      "describes": "source_worktree_head_at_capture",
+      "describes_binary": false,
+      "dirty_describes": "'dirty' here = uncommitted TRACKED modifications in the SOURCE WORKTREE at capture time. It says nothing about whether the measured binary was built from a clean tree; that is identity.binary_provenance.dirty.",
+      "note": "SOURCE WORKTREE HEAD at the moment this artifact was written. It does NOT describe the binary that was measured -- the tool's worktree and the worktree that compiled the exe are frequently different lanes. For the commit that was actually exercised, read identity.binary_provenance."
+    },
+    "git": {
+      "commit": "42bcfc336d263e1f505530b6a59bfda6bddaaaa5",
+      "commit_short": "42bcfc336d26",
+      "branch": "claude/nifty-mendeleev",
+      "dirty": true,
+      "describe": "vulkan-swapchain-present-2026-07-01-1546-g42bcfc336-dirty",
+      "worktree": "A:\\Games\\mc2-main",
+      "describes": "source_worktree_head_at_capture",
+      "describes_binary": false,
+      "dirty_describes": "'dirty' here = uncommitted TRACKED modifications in the SOURCE WORKTREE at capture time. It says nothing about whether the measured binary was built from a clean tree; that is identity.binary_provenance.dirty.",
+      "note": "SOURCE WORKTREE HEAD at the moment this artifact was written. It does NOT describe the binary that was measured -- the tool's worktree and the worktree that compiled the exe are frequently different lanes. For the commit that was actually exercised, read identity.binary_provenance."
+    },
+    "exe": {
+      "path": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mc2.exe",
+      "sha256": "abc77a094176f75e32fad8408d830c675b12c6707980b937270004f2fbe8df33",
+      "mtime_iso": "2026-10-05T20:12:01Z",
+      "size_bytes": 12560384,
+      "embedded_fingerprint": {
+        "present": true,
+        "sha": "50331d530e1c",
+        "sha12": "50331d530e1c",
+        "dirty": false,
+        "branch": "claude/nifty-mendeleev",
+        "built": "2026-10-05T15:11:51",
+        "src": "A:/Games/mc2-main",
+        "method": "pe-string-scan/v1",
+        "exe_sha256_at_scan": "abc77a094176f75e32fad8408d830c675b12c6707980b937270004f2fbe8df33"
+      }
+    },
+    "deploy_target": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4",
+    "env_delta": {},
+    "zip_set": null,
+    "binary_identity_established": {
+      "level": "VERIFIED-LIVE",
+      "checked_by": "scripts/provenance_gate.py (GOLDEN-PROVENANCE-TRUTH-1)",
+      "runs_agree_on_binary": true,
+      "detail": "binary still on disk byte-identical; live re-read of its own stamp agrees: commit 50331d530e1c (branch claude/nifty-mendeleev, dirty=False)."
+    },
+    "binary_corroboration": {
+      "emitted_by": "tools/visual_verify/bless.py (PROVENANCE-FORGERY-CLOSE-1)",
+      "witnesses": [
+        {
+          "path": "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r1\\capture_run.json",
+          "artifact_sha256": "44bd75b00e281c6fc84d7055cc6c4efcce223236b9ee41a3f9f96418384a0dee",
+          "records_exe_sha256": "abc77a094176f75e32fad8408d830c675b12c6707980b937270004f2fbe8df33",
+          "kind": "source-capture-manifest"
+        },
+        {
+          "path": "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r2\\capture_run.json",
+          "artifact_sha256": "9ff5b8f3249fd2c2345efbac91a73c84c526bc3dee0c04d7f76f432d062aae8c",
+          "records_exe_sha256": "abc77a094176f75e32fad8408d830c675b12c6707980b937270004f2fbe8df33",
+          "kind": "source-capture-manifest"
+        },
+        {
+          "path": "A:\\Games\\mc2-main\\tests\\visual\\captures\\reset-50331d5-r3\\capture_run.json",
+          "artifact_sha256": "272d4a970aa1064a6e7a384c9a7784a8ef677d2d3c8e237437fa8da6462a25e3",
+          "records_exe_sha256": "abc77a094176f75e32fad8408d830c675b12c6707980b937270004f2fbe8df33",
+          "kind": "source-capture-manifest"
+        }
+      ],
+      "note": "Independent artifacts that record the SAME exe digest as identity.exe.sha256. Consumed by provenance_gate.establish() as W-ARTIFACT: each must still exist, still hash to `artifact_sha256`, and still name that digest. They are a convenience, not the only arm -- if these capture trees are pruned, W-REPO-COMMIT still corroborates from the git object database, which outlives every install."
+    }
+  },
+  "source_worktree_head_at_bless": {
+    "commit": "e75200987ef84a50924c775057a5846894dc4bf0",
+    "branch": "claude/nifty-mendeleev",
+    "dirty": false,
+    "worktree": "A:\\Games\\mc2-main",
+    "describes": "source_worktree_head_at_bless",
+    "describes_binary": false,
+    "dirty_describes": "'dirty' here = uncommitted TRACKED modifications in the SOURCE WORKTREE at capture time. It says nothing about whether the measured binary was built from a clean tree; that is identity.binary_provenance.dirty.",
+    "note": "SOURCE WORKTREE HEAD of whoever ran bless.py. It does NOT describe the binary that rendered these crops -- the blessing worktree and the worktree that compiled the exe are routinely different lanes, and blessing can happen days after capture. For the commit that was actually exercised, read identity.binary_provenance.commit. This block exists only to find the lane that made the blessing decision."
+  },
+  "provenance_emitted_by": "tools/visual_verify/bless.py (PROVENANCE-EMIT-1)",
+  "capture_env": {
+    "resolution": "3840x2160",
+    "runs": 3,
+    "min_runs_rule": 3,
+    "trigger_frame": 431,
+    "settle": 30,
+    "deterministic_clock": true,
+    "effective_mc2_env": []
+  },
+  "gate_state": {
+    "source": "capture manifests",
+    "effective_mc2_env": []
+  }
+}

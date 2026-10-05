@@ -97,3 +97,16 @@ is worse than an honest hole.
 for all 10** (`cmp` on each). No tracked file outside `.claude/` status docs and
 the two `golden.json` provenance strings referenced the set; the only other hits
 are untracked `scratch/` capture artifacts.
+
+## 2026-10-05 reset: `baseline-5ef261f4`, `v0.5.1-baseline`, `v0.5.2-baseline-PROPOSED`
+
+All three were blessed against installs that were archived to
+`E:/mc2-archive-2026-10/installs` in the scope-creep reset, so their binaries
+are no longer attributable. `v0.5.2-baseline-PROPOSED` was never promoted (it
+blessed the 11 regions later refused as unstable plus the degenerate
+`distant_ridge_base` crop). Copies of all three: `E:/mc2-archive-2026-10/goldens`.
+
+Replacement: `reset-50331d5` -- 3 deterministic runs of the same 13 poses on
+exe `50331d530e1c` (dev lane), 24 regions blessed, 11 refused as unstable
+(night lights / lamp cones / runway lights on mc2_10 flicker run-to-run) and the
+degenerate crop refused.
