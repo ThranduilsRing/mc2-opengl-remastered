@@ -71,10 +71,8 @@ LANE_LOCK_TTL_SECS = 3600
 
 # Canonical GOOD deploy dirs, preference order (used for free-dir suggestion).
 GOOD_DIRS: list[tuple[str, str]] = [
+    # 2026-10-05 reset: single dev lane (0.4c is the golden, not a deploy target).
     ("0.4",         r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
-    ("0.4d-rc1",    r"A:/Games/mc2-opengl/mc2-win64-v0.4d-rc1"),
-    ("0.5-testing", r"A:/Games/mc2-opengl/releases/0.5 testing/mc2-win64-v0.5.0"),
-    ("0.3",         r"A:/Games/mc2-opengl/mc2-win64-v0.3"),
 ]
 
 # KNOWN-BAD trees. basename (casefolded) -> reason. mc2-win64-0.4c is the broken

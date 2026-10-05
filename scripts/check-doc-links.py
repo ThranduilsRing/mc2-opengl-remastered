@@ -55,6 +55,18 @@ ADVISORY_STEM_PATTERNS = ("-recon", "-plan", "_plan", "-spec", "_spec",
 ADVISORY_STEM_PREFIXES = ("HANDOFF-", "SCOPE-", "handoff-")
 
 
+# 2026-10-05 reset: these trees were archived to E:/mc2-archive-2026-10/docs
+# (also recoverable from git history). A live doc pointing INTO them is a
+# historical citation, not a broken link.
+ARCHIVED_TARGET_MARKERS = ("superpowers/", "audit-lanes", "docs/archive/",
+                           ".claude/")
+
+
+def archived_target(target):
+    t = target.replace("\\", "/")
+    return any(m in t for m in ARCHIVED_TARGET_MARKERS)
+
+
 def is_archived(relpath):
     rel = relpath.replace("\\", "/")
     parts = rel.split("/")
@@ -114,7 +126,7 @@ def check_file(relpath):
                 target = target.split("#", 1)[0]
                 if not target or "*" in target or "<" in target:
                     continue
-                if not resolve(target, containing_dir):
+                if not resolve(target, containing_dir) and not archived_target(target):
                     broken_links.append((lineno, m.group(1)))
             if in_fence:
                 continue
@@ -126,7 +138,7 @@ def check_file(relpath):
                     continue
                 if "*" in tok or "<" in tok or "/." in tok:
                     continue  # compound shorthand like `x.vert/.frag`
-                if not resolve(tok, containing_dir):
+                if not resolve(tok, containing_dir) and not archived_target(tok):
                     broken_paths.append((lineno, m.group(1)))
     return broken_links, broken_paths
 

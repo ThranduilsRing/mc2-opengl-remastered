@@ -112,8 +112,6 @@ LANES = [
     # releases/ is USER-GATED (see scripts/check-deploy-lane-parity.py), so this
     # gate must not demand writes there.
     ("0.4c", r"A:/Games/mc2-opengl/mc2-win64-v0.4c", False),
-    ("0.4d-rc1", r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1", False),
-    ("0.5.1", r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.1", False),
 ]
 
 MISSION_RE = re.compile(r"^[A-Za-z0-9_]+$")

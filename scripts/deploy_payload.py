@@ -1212,9 +1212,6 @@ DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
     "mc2-win64-v0.4c",
     "mc2-win64-0.4c",
-    "mc2-win64-abl-validate",
-    "mc2-win64-v0.3",
-    "mc2-win64-v0.4d-rc1",  # unit-profile arc lane (user ruling 2026-07-05; off v0.3)
 }
 
 

@@ -51,12 +51,10 @@ _WRITE_RETRY_SLEEP = 0.05  # seconds
 # Canonical deploy folders in preference order.
 # (name -> absolute path string)
 DEPLOY_FOLDERS: list[tuple[str, str]] = [
+    # 2026-10-05 reset: one dev lane + the golden. Older lanes archived to
+    # E:/mc2-archive-2026-10/installs.
     ("0.4",         r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
     ("0.4c",        r"A:/Games/mc2-opengl/mc2-win64-v0.4c"),
-    ("0.4d-rc1",    r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1"),
-    ("0.5.0",       r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"),
-    ("0.5.1",       r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.1"),  # v0.5.1 release lane (MERGE-WAVE-2)
-    ("0.5-testing", r"A:/Games/mc2-opengl/releases/0.5 testing/mc2-win64-v0.5.0"),
 ]
 
 _NAME_TO_PATH: dict[str, str] = {name: path for name, path in DEPLOY_FOLDERS}
