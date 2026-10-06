@@ -161,6 +161,8 @@ SMALL_WINDOW_ENV = {
 #: backstop for exes built before this change.
 OFFSCREEN_ENV = {
     "MC2_WINDOW_OFFSCREEN": "1",
+    # Agent launches are SILENT: SDL dummy audio driver (user is at the desk).
+    "SDL_AUDIODRIVER": "dummy",
 }
 
 

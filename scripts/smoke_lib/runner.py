@@ -99,6 +99,8 @@ FORCED_ENV: dict = {
     # so a perf run still measures real throughput. Pixel-neutral: the GL
     # drawable keeps its full size.
     "MC2_WINDOW_OFFSCREEN": "1",
+    # Agent launches are SILENT: SDL dummy audio driver (user is at the desk).
+    "SDL_AUDIODRIVER": "dummy",
 }
 
 SOFT_ENV: dict = {
