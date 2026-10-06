@@ -1314,9 +1314,8 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 								const float wsSpan = (float)(wsMapSide - 1) * Terrain::worldUnitsPerVertex;
 								gos_TerrainLodChunk_UploadWaterShoreHeight(
 									wsh.data(), WV, WV, -wsHalf, wsHalf, wsSpan, wsSpan);
-								printf("[WATER_SHORE_EDGE v1] LOADED path=%s V=%d span=%.1fwu\n",
-								       wsPath, WV, wsSpan);
-								fflush(stdout);
+								MC2_DIAGF("[WATER_SHORE_EDGE v1] LOADED path=%s V=%d span=%.1fwu\n",
+								          wsPath, WV, wsSpan);
 							}
 						}
 					}

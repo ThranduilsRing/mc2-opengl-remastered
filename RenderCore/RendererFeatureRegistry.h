@@ -1594,8 +1594,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FEATURE_RENDER_BACKEND",
         "MC2_RENDER_BACKEND",
         EnvVarKind::Feature,
-        false,
-        "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan "
+        true,
+        "[2026-10-05 DEFAULT FLIP: unset now selects vulkan on Vulkan-enabled builds; =gl opts out.] VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan "
         "(default gl; unset/unrecognized -> gl, coercion logged). Read ONCE and "
         "memoized by mc2::renderBackend() (GameOS/gameos/render_backend_select.*). "
         "DISTINCT from MC2_RENDER_BACKEND_IFACE (a per-region postprocess interface "
@@ -1773,8 +1773,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FEATURE_VK_SHARED_GBUFFER",
         "MC2_VK_SHARED_GBUFFER",
         EnvVarKind::Feature,
-        false,
-        "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that "
+        true,
+        "[2026-10-05 DEFAULT FLIP: umbrella DEFAULT ON whenever the backend is Vulkan; =0 opts out.] VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that "
         "arms the whole VK shared-GBuffer scene path at once — when ON, every member "
         "sub-gate DEFAULTS to ON: MC2_VK_SHARED_SCENE_DEPTH, MC2_VK_PROP_COLOR_TIER1, "
         "MC2_VK_PROP_MATERIAL, MC2_VK_TERRAIN_TIER1, MC2_VK_TERRAIN_LIGHTING, "

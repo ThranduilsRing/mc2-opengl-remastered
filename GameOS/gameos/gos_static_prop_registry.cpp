@@ -1253,7 +1253,9 @@ void flush() {
             }
             // Periodic census on the same cadence as the other flush summaries so
             // a run that never trips the first-hit line still reports a clean 0.
-            if ((s_diag_flush_calls % 300) == 0) {
+            // 2026-10-05: census only once something has been counted (default build stays quiet).
+            if ((s_diag_flush_calls % 300) == 0 &&
+                (s_zlr_sentinel | s_zlr_outOfRange | s_zlr_emptyRow | s_zlr_instances) != 0) {
                 fprintf(stderr,
                     "[STATIC_LIGHT_ROW v1] event=census frame=%llu sentinel=%llu "
                     "out_of_range=%llu empty_row=%llu bad_leaves=%llu\n",

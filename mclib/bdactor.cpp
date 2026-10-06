@@ -2289,7 +2289,7 @@ long BldgAppearance::render (long depthFixup)
 						static_light_row::guardCorrectionWouldChangeBehaviour(gfd)
 						&& !s_gf_reported;
 					if (gfFirstMixed) s_gf_reported = true;
-					if (gfFirstMixed || (s_gf_total % 200000ull) == 0ull) {
+					if (gfFirstMixed || ((s_gf_total % 200000ull) == 0ull && s_gf_agree != s_gf_total)) {  // 2026-10-05: census only when a divergence exists
 						fprintf(stderr,
 							"[GUARD_FORWARD v1] event=%s class=bldg total=%llu agree=%llu "
 							"differ_both_valid=%llu forwarded_sentinel_only=%llu "
@@ -7089,7 +7089,7 @@ long TreeAppearance::render (long depthFixup)
 						static_light_row::guardCorrectionWouldChangeBehaviour(gfd)
 						&& !s_gf_reported;
 					if (gfFirstMixed) s_gf_reported = true;
-					if (gfFirstMixed || (s_gf_total % 200000ull) == 0ull) {
+					if (gfFirstMixed || ((s_gf_total % 200000ull) == 0ull && s_gf_agree != s_gf_total)) {  // 2026-10-05: census only when a divergence exists
 						fprintf(stderr,
 							"[GUARD_FORWARD v1] event=%s class=tree total=%llu agree=%llu "
 							"differ_both_valid=%llu forwarded_sentinel_only=%llu "

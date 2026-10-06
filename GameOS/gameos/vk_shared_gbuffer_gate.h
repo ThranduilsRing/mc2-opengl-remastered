@@ -86,7 +86,16 @@ inline int envTriState(const char* name)
 // overrides still win in subGate()/directChainGate() — those are debug knobs.
 inline bool umbrellaOn()
 {
-    static const bool s_on = (envTriState("MC2_VK_SHARED_GBUFFER") == 1);
+    // 2026-10-05 VK DEFAULT FLIP: the umbrella is DEFAULT ON (explicit "0" opts
+    // out) whenever the backend resolves to Vulkan -- which is now the default
+    // (render_backend_select.cpp). Mirrors that resolution inline (this header
+    // stays dependency-free): only an explicit MC2_RENDER_BACKEND=gl|GL disarms.
+    static const bool s_on = []() {
+        if (envTriState("MC2_VK_SHARED_GBUFFER") == 0) return false;
+        const char* be = std::getenv("MC2_RENDER_BACKEND");
+        const bool explicitGl = be && (std::strcmp(be, "gl") == 0 || std::strcmp(be, "GL") == 0);
+        return !explicitGl;
+    }();
     return s_on && !g_mc2VkSessionForcedGL;
 }
 

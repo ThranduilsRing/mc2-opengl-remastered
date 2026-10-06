@@ -13,7 +13,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:9944
+      - GameOS/gameos/gameos_graphics.cpp:9934
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -997,7 +997,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11000
+      - GameOS/gameos/gameos_graphics.cpp:10990
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:79
     registered: no
     in_smoke_passthrough: no
@@ -1039,7 +1039,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10512
+      - GameOS/gameos/gameos_graphics.cpp:10502
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1353,8 +1353,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11236
-      - GameOS/gameos/gameos_graphics.cpp:11236
+      - GameOS/gameos/gameos_graphics.cpp:11226
+      - GameOS/gameos/gameos_graphics.cpp:11226
       - GameOS/gameos/gos_terrain_indirect.cpp:5481
     referenced_at_more: 1
     registered: no
@@ -2019,7 +2019,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10228
+      - GameOS/gameos/gameos_graphics.cpp:10218
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3392,7 +3392,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1). Single light plateaus ~0.80, stacked lights approach 1.0 asy..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11054
+      - GameOS/gameos/gameos_graphics.cpp:11044
       - GameOS/gameos/gos_terrain_lighting.cpp:667
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:113
     registered: yes
@@ -3429,7 +3429,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11024
+      - GameOS/gameos/gameos_graphics.cpp:11014
       - GameOS/gameos/gos_terrain_lighting.cpp:651
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:91
     registered: no
@@ -3447,7 +3447,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11036
+      - GameOS/gameos/gameos_graphics.cpp:11026
       - GameOS/gameos/gos_terrain_lighting.cpp:663
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:107
     registered: no
@@ -3457,7 +3457,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11030
+      - GameOS/gameos/gameos_graphics.cpp:11020
       - GameOS/gameos/gos_terrain_lighting.cpp:657
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:99
     registered: no
@@ -3483,7 +3483,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11018
+      - GameOS/gameos/gameos_graphics.cpp:11008
       - GameOS/gameos/gos_terrain_lighting.cpp:647
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:85
     registered: no
@@ -4599,7 +4599,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10239
+      - GameOS/gameos/gameos_graphics.cpp:10229
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4643,7 +4643,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me'). Default 1/unset = stock: the terrain_overlay.frag else-bra..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10893
+      - GameOS/gameos/gameos_graphics.cpp:10883
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4662,7 +4662,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay adopts the cement atlas + flat light on c..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10958
+      - GameOS/gameos/gameos_graphics.cpp:10948
       - GameOS/gameos/gos_terrain_indirect.cpp:1022
     registered: yes
     in_smoke_passthrough: yes
@@ -4674,7 +4674,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal layer and the cement terrain stop disagreein..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10935
+      - GameOS/gameos/gameos_graphics.cpp:10925
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5023,7 +5023,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10054
+      - GameOS/gameos/gameos_graphics.cpp:10044
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5117,7 +5117,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:9795
+      - GameOS/gameos/gameos_graphics.cpp:9785
       - GameOS/gameos/gos_mech_batcher.cpp:102
       - GameOS/gameos/gos_static_prop_batcher.cpp:97
     registered: no
@@ -5318,13 +5318,14 @@ flags:
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_RENDER_BACKEND
-    default: off
+    default: on
     kind: Feature
     feature_id: MC2_FEATURE_RENDER_BACKEND
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged). Read ONCE and memoized by mc2::renderBackend() (GameOS/gameos/render_..."
+    doc: "[2026-10-05 DEFAULT FLIP: unset now selects vulkan on Vulkan-enabled builds; =gl opts out.] VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized ->..."
     referenced_at:
       - GameOS/gameos/render_backend_select.cpp:30
+      - GameOS/gameos/vk_shared_gbuffer_gate.h:95
       - code/missiongui.cpp:3445
     registered: yes
     in_smoke_passthrough: yes
@@ -7659,7 +7660,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consume..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11014
+      - GameOS/gameos/gameos_graphics.cpp:11004
       - GameOS/gameos/gos_terrain_lighting.cpp:637
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:2333
     registered: yes
@@ -9463,11 +9464,11 @@ flags:
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
   - name: MC2_VK_SHARED_GBUFFER
-    default: off
+    default: on
     kind: Feature
     feature_id: MC2_FEATURE_VK_SHARED_GBUFFER
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that arms the whole VK shared-GBuffer scene path at once — when ON, every member sub-gate DEFAULTS to ON: MC2_VK_SHARED_SCE..."
+    doc: "[2026-10-05 DEFAULT FLIP: umbrella DEFAULT ON whenever the backend is Vulkan; =0 opts out.] VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that arms the whole VK shared-G..."
     referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
