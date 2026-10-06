@@ -29,13 +29,8 @@ bool s_forceGL = false;
 RenderBackend resolveOnce() {
     const char* env = std::getenv("MC2_RENDER_BACKEND");
     if (env == nullptr || env[0] == '\0') {
-#ifdef MC2_VULKAN
-        // 2026-10-05 VK DEFAULT FLIP: unset -> Vulkan on Vulkan-enabled builds.
-        // Fail-soft to GL is unchanged (forceGLFallback) when no VK device/context.
-        return RenderBackend::Vulkan;
-#else
+        // Unset -> GL. Silent (this is the default, byte-identical path).
         return RenderBackend::GL;
-#endif
     }
     if (std::strcmp(env, "gl") == 0 || std::strcmp(env, "GL") == 0) {
         return RenderBackend::GL;

@@ -307,7 +307,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:5642
-      - GameOS/gameos/gos_static_prop_registry.cpp:1500
+      - GameOS/gameos/gos_static_prop_registry.cpp:1502
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -315,7 +315,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:4023
+      - mclib/terrain.cpp:4022
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1399,7 +1399,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_terrain_indirect.cpp:4803
       - mclib/quad.cpp:2677
-      - mclib/terrain.cpp:3572
+      - mclib/terrain.cpp:3571
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1871,7 +1871,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:4295
+      - mclib/terrain.cpp:4294
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2250,7 +2250,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3843
+      - mclib/terrain.cpp:3842
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2532,7 +2532,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp:1765
+      - GameOS/gameos/gos_static_prop_registry.cpp:1767
       - mclib/bdactor.cpp:5176
       - mclib/bdactor.cpp:8272
     registered: no
@@ -2562,7 +2562,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Static-prop light-bake observation gate, default OFF. Drives TWO diagnostics off one env var: (1) [STATIC_LIGHT_ZERO v1] in gos_static_prop_registry.cpp -- every ~300 registry flushes, counts alive..."
     referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp:1764
+      - GameOS/gameos/gos_static_prop_registry.cpp:1766
       - mclib/bdactor.cpp:3499
     registered: yes
     in_smoke_passthrough: no
@@ -2786,7 +2786,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp:1740
+      - GameOS/gameos/gos_static_prop_registry.cpp:1742
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3794,7 +3794,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:4108
+      - mclib/terrain.cpp:4107
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3802,7 +3802,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2470
+      - mclib/terrain.cpp:2469
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4288,7 +4288,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch. Default-OFF = new/optimized intro render path active; ON (=1) forces legacy path. Diagnostic default-OFF; no behavioral change when ..."
     referenced_at:
-      - mclib/terrain.cpp:3485
+      - mclib/terrain.cpp:3484
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5190,7 +5190,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:4277
+      - mclib/terrain.cpp:4276
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5262,7 +5262,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp:1826
+      - GameOS/gameos/gos_static_prop_registry.cpp:1828
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5286,7 +5286,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp:1545
+      - GameOS/gameos/gos_static_prop_registry.cpp:1547
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5318,14 +5318,13 @@ flags:
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_RENDER_BACKEND
-    default: on
+    default: off
     kind: Feature
     feature_id: MC2_FEATURE_RENDER_BACKEND
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "[2026-10-05 DEFAULT FLIP: unset now selects vulkan on Vulkan-enabled builds; =gl opts out.] VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized ->..."
+    doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged). Read ONCE and memoized by mc2::renderBackend() (GameOS/gameos/render_..."
     referenced_at:
       - GameOS/gameos/render_backend_select.cpp:30
-      - GameOS/gameos/vk_shared_gbuffer_gate.h:95
       - code/missiongui.cpp:3445
     registered: yes
     in_smoke_passthrough: yes
@@ -5449,8 +5448,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameosmain.cpp:1218
-      - mclib/terrain.cpp:3474
-      - mclib/terrain.cpp:3678
+      - mclib/terrain.cpp:3473
+      - mclib/terrain.cpp:3677
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6047,7 +6046,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2926
+      - mclib/terrain.cpp:2925
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6537,7 +6536,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:5624
-      - GameOS/gameos/gos_static_prop_registry.cpp:1476
+      - GameOS/gameos/gos_static_prop_registry.cpp:1478
       - GameOS/gameos/gos_static_prop_registry.cpp:433
     registered: no
     in_smoke_passthrough: yes
@@ -6556,7 +6555,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_registry.cpp:1022
-      - GameOS/gameos/gos_static_prop_registry.cpp:1362
+      - GameOS/gameos/gos_static_prop_registry.cpp:1364
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7213,7 +7212,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2946
+      - mclib/terrain.cpp:2945
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7389,7 +7388,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3930
+      - mclib/terrain.cpp:3929
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7690,7 +7689,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2705
+      - mclib/terrain.cpp:2704
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7731,7 +7730,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2665
+      - mclib/terrain.cpp:2664
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7739,7 +7738,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2464
+      - mclib/terrain.cpp:2463
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7747,7 +7746,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2854
+      - mclib/terrain.cpp:2853
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7755,7 +7754,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2868
+      - mclib/terrain.cpp:2867
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7763,7 +7762,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:2902
+      - mclib/terrain.cpp:2901
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7874,7 +7873,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3284
+      - mclib/terrain.cpp:3283
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8214,7 +8213,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:2181
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:3686
-      - mclib/terrain.cpp:1569
+      - mclib/terrain.cpp:1568
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8233,7 +8232,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp). Default-OFF = no load, no SSBO, byte-identical; =1 (or MC2_..."
     referenced_at:
-      - mclib/terrain.cpp:1335
+      - mclib/terrain.cpp:1334
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8242,7 +8241,7 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/terrain.cpp:1254
-      - mclib/terrain.cpp:1344
+      - mclib/terrain.cpp:1343
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9464,11 +9463,11 @@ flags:
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
   - name: MC2_VK_SHARED_GBUFFER
-    default: on
+    default: off
     kind: Feature
     feature_id: MC2_FEATURE_VK_SHARED_GBUFFER
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "[2026-10-05 DEFAULT FLIP: umbrella DEFAULT ON whenever the backend is Vulkan; =0 opts out.] VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that arms the whole VK shared-G..."
+    doc: "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF. THE UMBRELLA that arms the whole VK shared-GBuffer scene path at once — when ON, every member sub-gate DEFAULTS to ON: MC2_VK_SHARED_SCE..."
     referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
@@ -9719,7 +9718,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3942
+      - mclib/terrain.cpp:3941
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9735,7 +9734,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3943
+      - mclib/terrain.cpp:3942
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9834,8 +9833,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3523
-      - mclib/terrain.cpp:3690
+      - mclib/terrain.cpp:3522
+      - mclib/terrain.cpp:3689
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9883,7 +9882,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3494
+      - mclib/terrain.cpp:3493
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9975,7 +9974,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:4246
+      - mclib/terrain.cpp:4245
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9983,7 +9982,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/terrain.cpp:3544
+      - mclib/terrain.cpp:3543
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -10069,7 +10068,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_terrain_water_stream.cpp:262
-      - mclib/terrain.cpp:3729
+      - mclib/terrain.cpp:3728
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
