@@ -117,7 +117,7 @@ option(MC2_RNG_TRACE "Compile the gos_rand RNG diagnostic trace (DETERMINISTIC-R
 # normal build completely unaffected + no Vulkan dependency. When ON, we
 # find_package(Vulkan) (the SDK loader/headers), link it into gameos, and
 # compile GameOS/gameos/vulkan_backend_skeleton.cpp under -DMC2_VULKAN.
-option(MC2_VULKAN "Compile the Vulkan bootstrap skeleton (VULKAN-BACKEND-SKELETON-1)" OFF)
+option(MC2_VULKAN "Compile the Vulkan backend (2026-10-05: default ON; Vulkan is the target backend)" ON)
 if(MC2_VULKAN)
     find_package(Vulkan REQUIRED)
     message(STATUS "MC2_VULKAN=ON -- Vulkan found: ${Vulkan_LIBRARY} (include ${Vulkan_INCLUDE_DIR})")
@@ -126,7 +126,7 @@ endif()
 # MC2_VULKAN_ISLAND: compile Vulkan-owned render-region implementations into
 # gameos. Default OFF -> byte-identical non-island build. Requires MC2_VULKAN=ON
 # (volk + VMA + headers); each runtime path remains separately gated/fail-soft.
-option(MC2_VULKAN_ISLAND "Compile Vulkan-owned render regions into gameos" OFF)
+option(MC2_VULKAN_ISLAND "Compile Vulkan-owned render regions into gameos (default ON)" ON)
 if(MC2_VULKAN_ISLAND AND NOT MC2_VULKAN)
     message(FATAL_ERROR "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON (volk/VMA/Vulkan headers).")
 endif()
