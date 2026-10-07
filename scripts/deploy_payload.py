@@ -1187,7 +1187,7 @@ def verify_only(target_dir, strict):
 # positional target / --build-dir / --exe-name always override.
 #   game   -> live game install   A:/Games/mc2-opengl/mc2-win64-v0.4, mc2.exe,
 #             build64/RelWithDebInfo
-#   editor -> live editor install A:/Games/mc2-opengl/mc2-win64-0.4c,
+#   editor -> live editor install A:/Games/mc2-opengl/mc2-win64-v0.4 (dev install; 2026-10-05 reset),
 #             "Mission Editor.exe", build64/out/editor/RelWithDebInfo (EditRel)
 TARGET_PRESETS = {
     "game": {
@@ -1196,7 +1196,7 @@ TARGET_PRESETS = {
         "build_subdir": os.path.join("build64", "RelWithDebInfo"),
     },
     "editor": {
-        "target_dir": "A:/Games/mc2-opengl/mc2-win64-0.4c",
+        "target_dir": "A:/Games/mc2-opengl/mc2-win64-v0.4",
         "exe_name": "Mission Editor.exe",
         "build_subdir": os.path.join("build64", "out", "editor", "RelWithDebInfo"),
     },
@@ -1220,7 +1220,7 @@ def main():
         description=__doc__.splitlines()[0],
         epilog="Presets: --target game   = A:/Games/mc2-opengl/mc2-win64-v0.4 "
                "(mc2.exe, build64/RelWithDebInfo); "
-               "--target editor = A:/Games/mc2-opengl/mc2-win64-0.4c "
+               "--target editor = A:/Games/mc2-opengl/mc2-win64-v0.4 "
                "(\"Mission Editor.exe\", build64/out/editor/RelWithDebInfo). "
                "Explicit target dir / --build-dir / --exe-name override preset "
                "defaults.")
@@ -1230,7 +1230,7 @@ def main():
                     "--target preset is given (and then overrides the preset dir)")
     ap.add_argument("--target", choices=sorted(TARGET_PRESETS),
                     help="canned target preset: 'game' (v0.4, mc2.exe) or "
-                    "'editor' (0.4c, Mission Editor.exe, EditRel build dir). "
+                    "'editor' (dev v0.4, Mission Editor.exe, EditRel build dir). "
                     "Sets defaults only; explicit flags still override.")
     ap.add_argument("--source-root", default=repo_root(),
                     help="source worktree root (default: this script's repo)")
