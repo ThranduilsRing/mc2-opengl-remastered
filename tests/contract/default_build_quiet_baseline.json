@@ -40,6 +40,14 @@
     "TIMING v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py TIMING_RE parses event=/elapsed_ms= for load-phase timing."
+    },
+    "TERRAIN_SHORELINE v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (DEPLOY-CURRENT-1, mclib/terrain.cpp): only the sidecar NOT FOUND / load-failure lines print by default; LOADED is MC2_DIAGF. Prints once per mission load on maps without a cooked shoreline mask."
+    },
+    "WATER_SHORE_EDGE v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (mclib/terrain.cpp): default shore mode 2 silently degrades to mask mode when visual_height_4x.r32 is missing from the install; NOT FOUND/size/read failures print once per mission load. LOADED is MC2_DIAGF (2026-10-07)."
     }
   }
 }
