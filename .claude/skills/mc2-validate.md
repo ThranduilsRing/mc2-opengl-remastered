@@ -15,7 +15,7 @@ Build and deploy first using `/mc2-build-deploy`.
 
 1. **Run validation**:
 ```bash
-cd "A:/Games/mc2-opengl/mc2-win64-v0.2" && ./mc2.exe --validate --frames 60 --log validate.json --screenshot validate.tga 2>validate_stderr.txt
+cd "A:/Games/mc2-opengl/mc2-win64-v0.4" && ./mc2.exe --validate --frames 60 --log validate.json --screenshot validate.tga 2>validate_stderr.txt
 ```
 
 2. **Check exit code**: `$?` should be 0 for success.

@@ -9,34 +9,18 @@ Reviews a plan/spec/design doc with explicit instructions to BREAK it.
 
 ## Execution mode
 
-**Default: run as a subagent.** Unless the user explicitly says "run inline", spawn a subagent.
-Grep output and intermediate symbol tables are expensive context — keep them out of the main session.
+**Default: run inline** in the current session (ONE lane, no fan-out). Only spawn a subagent or
+Haiku grep workers if the user explicitly asks. Keep grep output terse to protect context.
 
-### Model routing
+The mechanical steps that could be offloaded on request:
 
-**Sonnet (orchestrator)** — one Sonnet subagent:
-- Reads the plan and extracts the symbol list, relationship claims, and cross-cutting primitives
-- Evaluates load-bearing constraint checklist (§6), lifecycle checks (§7), partial-landing hazard (§8)
-- Classifies all grep results returned by Haiku workers
-- Writes the final findings and verdict
-
-**Haiku (parallel grep workers)** — Sonnet spawns up to three Haiku workers in parallel after
-extracting targets from the plan:
-
-| Haiku worker | Covers |
+| Step | Covers |
 |---|---|
-| Symbol worker | Step 2: grep every cited struct, function, signature, env flag, member field against source |
-| Relationship worker | Step 3: grep both sides of every "interacts with / retires" claim |
-| Census worker | Step 9: exhaustive grep for all writers of any cross-cutting primitive the plan changes |
+| Symbol check (Step 2) | grep every cited struct, function, signature, env flag, member field against source |
+| Relationship check (Step 3) | grep both sides of every "interacts with / retires" claim |
+| Census (Step 9) | exhaustive grep for all writers of any cross-cutting primitive the plan changes |
 
-Sonnet provides each worker the exact symbol list / search targets — workers grep and return raw
-hits with file:line. Sonnet classifies hits as "matches claim / divergent / not found."
-
-### When to skip model routing
-
-- User says "run inline" → execute all steps in current session, no subagents
-- Plan is small (< 15 lines, no cross-cutting change) → Sonnet inline, no Haiku workers
-- You are already a subagent → execute inline, do not nest further.
+Classify hits as "matches claim / divergent / not found."
 
 ## Relationship to mc2-render-spine-advisor
 

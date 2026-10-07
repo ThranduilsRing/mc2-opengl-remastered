@@ -9,22 +9,10 @@ A graybeard graphics engineer does not reach for the local patch.
 
 ## Execution mode
 
-**Default: run as a subagent.** Unless the user explicitly says "run inline", spawn a Sonnet
-subagent to execute this skill. The ruling is reasoning-heavy — no grep phase by default — so
-a single Sonnet call is the right model. Keeps the five-question ruling and its intermediate
-reasoning out of the main session context.
-
-No Haiku workers during reasoning: all five questions require thought, not pattern search.
-Exception: once the Sonnet subagent reaches a subsystem-pin conclusion — "this is not a particle
-bug, it is a texture-binding bug; this is not a water bug, it is a reverse-Z convention leak" —
-it may structure a targeted grep task and spawn one Haiku worker to validate that hypothesis
-with source evidence. The reasoning comes first; the grep confirms it. Haiku does not drive
-the conclusion.
-
-### When to skip subagent
-
-- User says "run inline" → execute in current session
-- You are already a subagent → execute inline, do not nest further.
+**Default: run inline.** The ruling is reasoning-heavy (no grep phase by default). Only spawn a
+subagent if the user explicitly asks. Once a subsystem-pin conclusion is reached ("this is not a
+particle bug, it is a texture-binding bug"), confirm it with a targeted grep yourself. The
+reasoning comes first; the grep confirms it.
 
 ## Stance
 

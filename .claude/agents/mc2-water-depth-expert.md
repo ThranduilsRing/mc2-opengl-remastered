@@ -123,7 +123,7 @@ Before answering any question, read these in order:
   per-caller arg.
 - **Zero depth-fudge regresses the shoreline:** the LEQUAL scar block
   (`gos_terrain_water_fast.vert` ~:328-364) documents water must sit
-  strictly behind terrain or the coast z-fights (the v0.3 staircase). Any
+  strictly behind terrain or the coast z-fights (the earlier staircase artifact). Any
   "drop the fudge" must keep ONE non-zero shared constant.
 - **non-MDI water bind (`gameos_graphics.cpp` ~:2153) is NOT dead** - it
   is the shared pre-amble bind, live whenever `mdiValid` is false.

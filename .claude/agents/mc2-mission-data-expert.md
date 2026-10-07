@@ -60,7 +60,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **`mc2srcdata/` is a git submodule.** It contains game data and the legacy build_scripts; the engine reads from it but does not own its layout. Modifying anything inside `mc2srcdata/` is a separate-repo operation.
 
-- **options.cfg drifts on non-800x600 desktops.** Opening the options dialog (even just to change audio) re-saves `options.cfg` and can write a non-800x600 `ResolutionX/ResolutionY` (observed 4096x2160 on 4K). The engine UI canvas is authored against 800x600 and self-scales; any other value here breaks HUD scale, aspect ratio, and video positioning in-mission. Diagnostic: `grep -i resolution A:/Games/mc2-opengl/mc2-win64-v0.3/options.cfg` must read 800/600. Fix candidates in `options_cfg_resolution_drift.md`.
+- **options.cfg drifts on non-800x600 desktops.** Opening the options dialog (even just to change audio) re-saves `options.cfg` and can write a non-800x600 `ResolutionX/ResolutionY` (observed 4096x2160 on 4K). The engine UI canvas is authored against 800x600 and self-scales; any other value here breaks HUD scale, aspect ratio, and video positioning in-mission. Diagnostic: `grep -i resolution A:/Games/mc2-opengl/mc2-win64-v0.4/options.cfg` must read 800/600. Fix candidates in `options_cfg_resolution_drift.md`.
 
 - **`mcTextureManager->update()` is the cache-eviction site** at around `mission.cpp:509` (grep `mcTextureManager->update` for current line). It evicts and re-loads textures per frame. The PAUSE/UNPAUSE diagnostic exploits this: if a render bug clears on pause and re-appears on unpause, it's eviction without `objectManager->update` re-cache. UPDATE_SKIP=1's `touch()` doesn't re-cache.
 </core_knowledge>
@@ -103,7 +103,7 @@ Starting points for grep. Citations were accurate on 2026-05-14 - grep the liste
 - `code/InitializeGameEngine.cpp` or similar - the init sequence (grep `InitializeGameEngine` in `code/` to locate)
 - `mc2srcdata/build_scripts/` - GNU make recipes for stock FST/PAK production (submodule; separate repo)
 - `upscale_*.py`, `pack_mat_normal.py` (repo root) - Python upscaler pipeline
-- `A:/Games/mc2-opengl/mc2-win64-v0.3/options.cfg` - deployed options file; check ResolutionX/Y here
+- `A:/Games/mc2-opengl/mc2-win64-v0.4/options.cfg` - deployed options file; check ResolutionX/Y here
 - `.planning/codebase/INTEGRATIONS.md` - file format inventory, asset pipeline (worktree, 2026-05-14)
 - `.planning/codebase/STRUCTURE.md` - directory map (worktree, 2026-05-14)
 </file_locations>

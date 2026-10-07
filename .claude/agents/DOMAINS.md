@@ -120,7 +120,6 @@ Patterns the audit flagged as workflow-skill-shaped. None built yet; flagged for
 - **mc2-parity-soak-check** - "is this slice ready for default-on flip?" recurring check
 - **mc2-tier1-smoke-triage** - parse smoke artifacts, find the failure mode
 - **mc2-render-doc-update** - workflow wrapper around the synthesizer-and-notes loop
-- **mc2-killswitch-audit** - env-var inventory and mech killswitch matrix audit
 
 Plus: **amd-shader-reviewer is currently in `.claude/agents/` but reads as skill-shaped** (48 lines, no advisor body sections, narrow procedural review task). Pending move to `.claude/skills/` (see "Pending decisions").
 

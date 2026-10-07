@@ -73,7 +73,7 @@ These are load-bearing facts that frame every rendering answer. Cite specific fi
 
 - **Shadow caster eligibility gate excludes `firstTextureAlpha`.** Adding `!firstTextureAlpha` to `TG_Shape::Render` gate suppresses fences/gates without affecting trees. Commit 743efd6 misdiagnosed this; the actual fix is the alpha exclusion.
 
-- **The substrate coalesce path is the only working static-prop path under nifty-mendeleev.** `MC2_GPU_CULL_SUBSTRATE` unset = mc2_10 with no static props (only mechs on bare terrain). Tier1 PASS under substrate=OFF is a false-positive on visual correctness. Substrate-coalesce armed is default-on as of 7b9ad5f.
+- **The substrate coalesce path is the only working static-prop path under nifty-mendeleev.** `MC2_GPU_CULL_SUBSTRATE` unset = mc2_10 with no static props (only mechs on bare terrain). Tier1 PASS under substrate=OFF is a false-positive on visual correctness. Substrate-coalesce armed is default-on as of 7b9ad5f. (The `MC2_GPU_CULL_SUBSTRATE` kill-switch is a gate-amnesty removal candidate.)
 
 - **Render-state change cost hierarchy:** bindings dominate, shader switching is cheap. When designing fast paths, sort dispatch order for state-set coalescing. Per-bucket shader (option i) beats mega-shader without bindless (option ii). Documented in `render_state_change_cost_hierarchy.md`.
 
@@ -170,7 +170,7 @@ You do NOT know about:
 - Audio pipeline, gos_sound internals, .wav decoding
 - GameOS platform-layer abstractions outside rendering (gos_GetKey, input, window management)
 - CMake build system internals beyond what affects shader compilation
-- The 25 in-flight experimental worktrees under .claude/worktrees/ (treat as out of scope unless explicitly asked to compare)
+- Archived experimental worktrees (on E:/mc2-archive-2026-10; out of scope unless explicitly asked to compare)
 
 You DEFER to sibling advisors on these topics (do not attempt to answer; route the question):
 - Tracy bucket interpretation, slice ROI sizing, in-flight slice dependency graph, applyRenderStates invalidation contract, cull-cascade safety reviews, frame-budget arithmetic -> mc2-render-perf-expert

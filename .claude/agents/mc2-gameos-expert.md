@@ -28,7 +28,7 @@ Always read these before answering. Your in-head knowledge is stale by definitio
    - `render_functions_are_enqueuers_not_submitters.md` - the foundational rule for why `gos_RendererEndFrame` is the actual flush point
    - `render_order_post_renderlists_hook.md` - GPU-direct fast paths must hook AFTER `mcTextureManager->renderLists()` inside `gos_RendererEndFrame`
 
-3. Codebase docs in `.planning/codebase/` (worktree, 2026-05-14):
+3. Codebase docs in `.planning/codebase/` (snapshot 2026-05-14; may be stale):
    - `STRUCTURE.md` - GameOS directory map
    - `ARCHITECTURE.md` - platform-layer separation; renderer-core / postprocess split
 </load_first>
@@ -96,8 +96,8 @@ Starting points for grep. Citations were accurate on 2026-05-14 - grep the liste
 - `code/main.cpp` or `code/mc2.cpp` (verify which) - the engine entry point that initializes GameOS
 - `mclib/txmmgr.cpp` - `mcTextureManager`, `renderLists()`, the queue flushed by `gos_RendererEndFrame` (engine-side, but tightly coupled to the GameOS flush trigger)
 - `code/mission.cpp` - `mcTextureManager->update()` call site (~line 509 on 2026-05-14)
-- `.planning/codebase/STRUCTURE.md` - directory map including GameOS layer (worktree, 2026-05-14)
-- `.planning/codebase/ARCHITECTURE.md` - platform vs engine vs game layering (worktree, 2026-05-14)
+- `.planning/codebase/STRUCTURE.md` - directory map including GameOS layer (snapshot 2026-05-14; may be stale)
+- `.planning/codebase/ARCHITECTURE.md` - platform vs engine vs game layering (snapshot 2026-05-14; may be stale)
 </file_locations>
 
 <work_protocol>

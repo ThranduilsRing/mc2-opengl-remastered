@@ -12,42 +12,17 @@ are invisible to symbol-grep because the symbols exist — they're just used wit
 
 ## Execution mode
 
-**Default: run as a subagent.** Unless the user explicitly says "run inline" or "run in context",
-spawn a subagent to execute this skill. This protects the main session's context window from grep
-output and intermediate reasoning.
+**Default: run inline** in the current session (ONE lane, no parallel agents). Only spawn a
+subagent if the user explicitly asks. Keep output terse -- fragments, technical terms exact.
 
-**Invoke caveman skill immediately** when this subagent starts. Use `full` intensity. All output
-terse — fragments, no filler, technical terms exact. Haiku workers also operate terse; they return
-raw grep hits only, no prose. Caveman stays active for the full subagent run.
+### Mechanical scans (do these yourself with grep)
 
-### Model routing
-
-The advisor uses two model tiers to minimize token cost:
-
-**Sonnet (orchestrator)** — spawn one Sonnet subagent to:
-- Read and classify the plan (Step 0 table)
-- Evaluate lifetime / authority / cardinality / seam correctness (§2–§4, §9–§15)
-- Synthesize the final verdict and findings
-
-**Haiku (parallel search workers)** — the Sonnet orchestrator spawns Haiku subagents in parallel for
-mechanical lookups that don't require reasoning. Recommended splits:
-
-| Haiku task | Checks |
+| Scan | Checks |
 |---|---|
 | Env gate scan | Grep `#ifdef MC2_` vs `getenv("MC2_` patterns in new code; confirm each new var appears in `docs/tier1_env_vars.md` |
 | Header / seam scan | Grep new `#include` lines; flag engine headers in game-side files; flag includes not at file top |
 | Naming / field scan | Grep new field names for known semantic overloads (`objectIndex`, `typeId`, `alphaClass`, `pipelineId`, `glProgramName`, `packetCount`) |
-| RenderWorld firewall scan | Grep new code for: forbidden headers/symbols in SCOPE_DIRS files; raw `gl*()` calls in `code/` or `mclib/`; `layout(location=2)` in VFX shaders; `Handle::index()` / `Handle::generation()` used outside `RenderCore/`; handle bases ≥ `0x100000`; `glReadPixels` calls bypassing `lookupAtPixel` |
-
-The Sonnet orchestrator provides each Haiku worker the specific file paths and search targets derived
-from reading the plan, so Haiku workers do not need to reason — they grep and return hits.
-Haiku results feed back to Sonnet for verdict synthesis.
-
-### When to skip model routing
-
-- User says "run inline" → execute all checks in current session, no subagents
-- Plan is trivial (< 10 lines, single field addition) → Sonnet inline, no Haiku workers needed
-- You are already a subagent → execute inline (do not nest further)
+| RenderWorld firewall scan | Grep new code for: forbidden headers/symbols in SCOPE_DIRS files; raw `gl*()` calls in `code/` or `mclib/`; `layout(location=2)` in VFX shaders; `Handle::index()` / `Handle::generation()` used outside `RenderCore/`; handle bases >= `0x100000`; `glReadPixels` calls bypassing `lookupAtPixel` |
 
 ## When to use
 
