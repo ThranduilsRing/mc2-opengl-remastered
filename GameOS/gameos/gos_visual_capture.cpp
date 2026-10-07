@@ -388,8 +388,7 @@ void capture_to(const std::string& dir, const std::string& base,
         g_vkReq.pending = true;
         g_vkReq.png = png;
         g_vkReq.w = w; g_vkReq.h = h;
-        fprintf(stderr, "[VISUAL_CAPTURE v1] VK readback requested %s (%dx%d)
-",
+        fprintf(stderr, "[VISUAL_CAPTURE v1] VK readback requested %s (%dx%d)\n",
                 png.c_str(), w, h);
         return;
     }
@@ -933,8 +932,7 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
     if (!rgba || w == 0 || h == 0) return;
     if ((int)w != g_vkReq.w || (int)h != g_vkReq.h)
         fprintf(stderr, "[VISUAL_CAPTURE v1] WARN VK present %ux%u != requested %dx%d "
-                "(PNG uses present size)
-", w, h, g_vkReq.w, g_vkReq.h);
+                "(PNG uses present size)\n", w, h, g_vkReq.w, g_vkReq.h);
     // sharedImg rows are bottom-up (GL orientation); PNG wants top-down.
     std::vector<unsigned char> rgb((size_t)w * h * 3);
     for (unsigned y = 0; y < h; ++y) {
@@ -947,8 +945,7 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
         }
     }
     if (write_png_rgb(g_vkReq.png.c_str(), (int)w, (int)h, rgb)) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%ux%u) src=vk_present
-",
+        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%ux%u) src=vk_present\n",
                 g_vkReq.png.c_str(), w, h);
         fflush(stderr);
     }
