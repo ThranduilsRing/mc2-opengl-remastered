@@ -60,6 +60,7 @@
 #include <vector>
 #include <algorithm>
 
+#include "render_backend_select.h"
 #include "build_fingerprint.h"  // [BUILD_FINGERPRINT v1] identity macros (generated dir)
 
 // Game Camera global `eye` + hard-set API (setPosition/setRotation). Use the
@@ -272,6 +273,10 @@ float g_renderedProj = 0.0f;
 float g_renderedRot  = 0.0f;
 float g_renderedAlt  = 0.0f;
 
+struct VkCaptureReq { bool pending = false; std::string png; int w = 0, h = 0; };
+VkCaptureReq g_vkReq;
+const char* g_readbackSource = "gl_fbo";   // VK-VISUAL-CAPTURE-1: sidecar "readback_source"
+
 void write_sidecar(const std::string& jsonPath, const std::string& mission,
                    const std::string& label, unsigned int frame,
                    int w, int h, long triggerFrame, bool deterministic) {
@@ -313,6 +318,7 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     json_escape(SmokeMode::state().profile, esc); buf += esc; buf += "\",\n";
     snprintf(num, sizeof(num), "  \"width\": %d,\n", w); buf += num;
     snprintf(num, sizeof(num), "  \"height\": %d,\n", h); buf += num;
+    buf += "  \"readback_source\": \""; buf += g_readbackSource; buf += "\",\n";
     // VK-FIRST-BOOKMARK-POSE-1: record the ACTUAL camera pose the JUST-RENDERED
     // frame used (stashed at the rendered_pose_matches point, BEFORE the per-settle
     // re-apply -- so it reflects what update()+render produced, not the value we
@@ -371,10 +377,25 @@ void capture_to(const std::string& dir, const std::string& base,
                 const std::string& mission, const std::string& label,
                 unsigned int frame, int w, int h,
                 long triggerFrame, bool deterministic) {
-    std::vector<unsigned char> rgb;
-    if (!read_scene_rgb(w, h, rgb)) return;
     std::string png = dir + "/" + base + ".png";
     std::string js  = dir + "/" + base + ".json";
+    if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+        // VK-VISUAL-CAPTURE-1: defer the PNG to this frame's VK present
+        // readback (vkCaptureDeliver). Sidecar now: it snapshots per-frame
+        // globals (rendered pose) that the next bookmark would overwrite.
+        g_readbackSource = "vk_present";
+        write_sidecar(js, mission, label, frame, w, h, triggerFrame, deterministic);
+        g_vkReq.pending = true;
+        g_vkReq.png = png;
+        g_vkReq.w = w; g_vkReq.h = h;
+        fprintf(stderr, "[VISUAL_CAPTURE v1] VK readback requested %s (%dx%d)
+",
+                png.c_str(), w, h);
+        return;
+    }
+    g_readbackSource = "gl_fbo";
+    std::vector<unsigned char> rgb;
+    if (!read_scene_rgb(w, h, rgb)) return;
     if (write_png_rgb(png.c_str(), w, h, rgb)) {
         write_sidecar(js, mission, label, frame, w, h,
                       triggerFrame, deterministic);
@@ -897,6 +918,39 @@ void cameraParkTick(unsigned int frame)
         eye->freezeScriptedCameraForCapture();
         fprintf(stderr, "[CAMERA_PARK v1] frame=%u pos=%.0f,%.0f rot=%.0f proj=%.0f alt=%.0f\n",
                 frame, pv[0], pv[1], pv[2], pv[3], pv[4]);
+    }
+}
+
+}}  // namespace gos::visual_capture
+
+namespace gos { namespace visual_capture {
+
+bool vkCapturePending() { return g_vkReq.pending; }
+
+void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba) {
+    if (!g_vkReq.pending) return;
+    g_vkReq.pending = false;
+    if (!rgba || w == 0 || h == 0) return;
+    if ((int)w != g_vkReq.w || (int)h != g_vkReq.h)
+        fprintf(stderr, "[VISUAL_CAPTURE v1] WARN VK present %ux%u != requested %dx%d "
+                "(PNG uses present size)
+", w, h, g_vkReq.w, g_vkReq.h);
+    // sharedImg rows are bottom-up (GL orientation); PNG wants top-down.
+    std::vector<unsigned char> rgb((size_t)w * h * 3);
+    for (unsigned y = 0; y < h; ++y) {
+        const unsigned char* src = rgba + (size_t)(h - 1 - y) * w * 4;
+        unsigned char* dst = rgb.data() + (size_t)y * w * 3;
+        for (unsigned x = 0; x < w; ++x) {
+            dst[x * 3 + 0] = src[x * 4 + 0];
+            dst[x * 3 + 1] = src[x * 4 + 1];
+            dst[x * 3 + 2] = src[x * 4 + 2];
+        }
+    }
+    if (write_png_rgb(g_vkReq.png.c_str(), (int)w, (int)h, rgb)) {
+        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%ux%u) src=vk_present
+",
+                g_vkReq.png.c_str(), w, h);
+        fflush(stderr);
     }
 }
 

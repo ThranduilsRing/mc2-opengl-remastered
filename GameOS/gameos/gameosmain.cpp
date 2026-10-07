@@ -2482,7 +2482,14 @@ int main(int argc, char** argv)
                 GLuint vcFbo = ppVc ? ppVc->getSceneFBO() : 0;
                 int vcW = ppVc ? ppVc->getWidth()  : 0;
                 int vcH = ppVc ? ppVc->getHeight() : 0;
-                if (vcFbo && vcW > 0 && vcH > 0) {
+                if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) {
+                    // VK-VISUAL-CAPTURE-1: GL scene FBO is not the shown image;
+                    // capture_to() queues a VK present readback instead.
+                    int vkW = 0, vkH = 0;
+                    graphics::get_drawable_size(win, &vkW, &vkH);
+                    if (vkW > 0 && vkH > 0)
+                        gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vkW, vkH);
+                } else if (vcFbo && vcW > 0 && vcH > 0) {
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, vcFbo);
                     glReadBuffer(GL_COLOR_ATTACHMENT0);
                     gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vcW, vcH);
@@ -2592,8 +2599,9 @@ int main(int argc, char** argv)
                              g_mc2FrameCounter >= firePin &&
                              g_mc2FrameCounter < firePin + 600);
                         const bool verify =
-                            (getenv("MC2_VK_PRESENT_VERIFY") != nullptr) &&
-                            inVerifyWindow && (g_mc2FrameCounter % 60 == 0);
+                            ((getenv("MC2_VK_PRESENT_VERIFY") != nullptr) &&
+                             inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||
+                            gos::visual_capture::vkCapturePending();   // VK-VISUAL-CAPTURE-1
                         if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {
                             vkPresented = true;
                             static unsigned long s_vkHealthCadence = 0;

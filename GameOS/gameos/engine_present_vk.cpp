@@ -14,6 +14,7 @@
 // otherwise so the GL shipping build never sees a Vulkan symbol.
 
 #include "engine_present_vk.h"
+#include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -2621,6 +2622,9 @@ void EnginePresentVk::verifyReadbackContent() {
             }
         }
     }
+    // VK-VISUAL-CAPTURE-1: hand the presented image to a pending visual capture.
+    if (gos::visual_capture::vkCapturePending())
+        gos::visual_capture::vkCaptureDeliver(rw, rh, px);
     vkUnmapMemory(s.dev, s.readbackMem);
 
     health_.prev_readback_checksum = health_.last_readback_checksum;

@@ -55,6 +55,7 @@ _THIS = Path(__file__).resolve()
 ROOT = _THIS.parents[2]  # repo root (tools/visual_verify/capture.py -> up 2)
 sys.path.insert(0, str(ROOT / "scripts"))
 import run_visual_capture as rvc  # noqa: E402  (the hardened launcher we build on)
+import mc2_env_pin as env_pin  # noqa: E402  (CAPTURE-ENV-PIN-1 declared-env parsing)
 import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
 
 
@@ -103,7 +104,7 @@ def _running_mc2_from(install: Path) -> "list[tuple[int, str]]":
 def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
                   frame: int, settle: int, duration: int,
                   det_clock: bool, show_window: bool,
-                  logf) -> dict:
+                  logf, declared_env: "dict | None" = None) -> dict:
     exe = install / "mc2.exe"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -136,6 +137,7 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             duration=duration,
             deterministic_clock=det_clock,
             show_window=show_window,
+            declared_env=declared_env,
         )
         dt = time.time() - t0
         # Pick the PRIMARY pose PNG (the non-dup one) for grading.
@@ -183,6 +185,7 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
         "settle": settle,
         "duration": duration,
         "deterministic_clock": det_clock,
+        "declared_env": declared_env or {},
         "poses": poses,
         "n_captured": sum(1 for p in poses if p["primary_png"]),
         "n_requested": len(bookmark_files),
@@ -222,6 +225,12 @@ def main(argv=None) -> int:
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="disable the deterministic clock (captures NOT byte-stable)")
     ap.add_argument("--show-window", action="store_true")
+    ap.add_argument("--env-declare", "--env", dest="env_declare", action="append",
+                    default=[], metavar="MC2_KEY=VALUE",
+                    help="VK-VISUAL-CAPTURE-1: opt a MC2_* var into the capture "
+                         "environment (repeatable), e.g. --env "
+                         "MC2_RENDER_BACKEND=vulkan --env MC2_VK_SHARED_GBUFFER=1. "
+                         "Same CAPTURE-ENV-PIN-1 mechanism as run_visual_capture.")
     ap.add_argument("--allow-running", action="store_true",
                     help="skip the pre-flight refusal when an mc2.exe from the "
                          "target install is already running (NOT recommended)")
@@ -274,10 +283,17 @@ def main(argv=None) -> int:
     atexit.register(rvc._restore_cursor)
     atexit.register(rvc._reap_active)
 
+    try:
+        declared_env = env_pin.parse_declarations(args.env_declare)
+    except ValueError as e:
+        print(f"[vv-capture] ERROR {e}", file=sys.stderr)
+        return 4
+
     manifest = capture_sweep(
         install, files, out_dir,
         frame=args.frame, settle=args.settle, duration=args.duration,
-        det_clock=not args.no_fixed_clock, show_window=args.show_window, logf=logf)
+        det_clock=not args.no_fixed_clock, show_window=args.show_window, logf=logf,
+        declared_env=declared_env or None)
     logf.close()
 
     print(f"\n[vv-capture] captured {manifest['n_captured']}/{manifest['n_requested']} "
