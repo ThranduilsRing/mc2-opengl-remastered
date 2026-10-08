@@ -186,6 +186,7 @@ ALLOWLIST=(
     MC2_VFX_TUBE_UPLOAD_STATS   # trace
     MC2_VISUAL_CAPTURE_EXIT_AFTER  # fixture -- visual capture exit-after frame
     MC2_VISUAL_CAPTURE_CLEAN       # fixture -- visual capture: suppress HUD/letterbox/bars on GL+VK
+    MC2_VISUAL_CAPTURE_POST        # fixture -- GL visual capture reads composited back buffer (post-grade) to match VK present capture
     MC2_VK_COMPOSITE_PRESENT    # vk-diag/override (vk-interop wave)
     MC2_VK_CSM_BISECT           # vk-diag
     MC2_VK_CSM_COPYMODE         # vk-diag/override

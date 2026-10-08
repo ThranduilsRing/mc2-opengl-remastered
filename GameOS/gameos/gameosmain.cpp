@@ -2491,8 +2491,18 @@ int main(int argc, char** argv)
                     if (vkW > 0 && vkH > 0)
                         gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vkW, vkH);
                 } else if (vcFbo && vcW > 0 && vcH > 0) {
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, vcFbo);
-                    glReadBuffer(GL_COLOR_ATTACHMENT0);
+                    // VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical)
+                    // reads the composited back buffer (post exposure/sunset grade, what the
+                    // player sees) instead of the pre-composite scene FBO, so GL captures
+                    // are comparable with VK captures (which read the presented image).
+                    static const bool s_vcPost = []{ const char* e = getenv("MC2_VISUAL_CAPTURE_POST"); return e && e[0] && e[0] != '0'; }();
+                    if (s_vcPost) {
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                        glReadBuffer(GL_BACK);
+                    } else {
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, vcFbo);
+                        glReadBuffer(GL_COLOR_ATTACHMENT0);
+                    }
                     gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vcW, vcH);
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                 }
