@@ -39,7 +39,7 @@ void main() {
     WorldPos = a_worldPos;
     Texcoord = a_uv;
     FogValue = a_fog;
-    Color    = a_color.zyxw;                 // Color = colorIn.bgra
+    Color    = a_color.bgra;                 // Color = colorIn.bgra (VBO bytes are B,G,R,A)
 
     vec4 clip4 = uT.worldToClipGL * vec4(a_worldPos, 1.0);
     if (pc.biasLegacy != 0)

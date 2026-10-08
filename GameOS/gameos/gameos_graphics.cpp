@@ -11171,7 +11171,8 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
     }
     static const float s_artFlatExempt = [] {
         const char* v = getenv("MC2_OVERLAY_ART_FLATLIGHT");
-        return (v && v[0] == '0') ? 1.0f : 0.0f;       // default ON (flat light) => exempt 0
+        const bool flatLightOn = !(v && v[0] == '0');  // default ON
+        return flatLightOn ? 0.0f : 1.0f;              // (same idiom as uploadOverlayUniforms_)
     }();
     out->artFlatExempt = s_artFlatExempt;
     gosPostProcess* pp = getGosPostProcess();

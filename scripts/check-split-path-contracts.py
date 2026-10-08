@@ -95,6 +95,11 @@ FS_CONVENTIONS = {
     "shaders/decal.frag":                 "fs-raw",
     # terrain_overlay.frag declares Color but no active read remains.
     "shaders/terrain_overlay.frag":       "fs-dead",
+    # VK-PARITY-OVERLAY-1: VK ports of terrain_overlay.frag / decal.frag. The shared VK VS
+    # (include/terrain_overlay_vs.glsl) pre-swizzles (Color = a_color.bgra); decal FS reads raw,
+    # overlay FS declares Color but (like its GL source) has no active read.
+    "shaders/vulkan/terrain_decal_tier1.frag":   "fs-raw",
+    "shaders/vulkan/terrain_overlay_tier1.frag": "fs-dead",
     # gos_text.frag: active read is Foreground; the Color read is commented out.
     "shaders/gos_text.frag":              "fs-dead",
 }
@@ -282,6 +287,14 @@ ISLANDS = {
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/ssao_apply.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
+    "shaders/vulkan/terrain_overlay_tier1.vert":
+        "native VK tier-1 island (VK-PARITY-OVERLAY-1): the GL world-space overlay draw groups (mission-static cement/pad/runway/road overlay bake + decals) flushed into the VK-discarded GL scene FBO and were invisible under VK. Structural port of shaders/terrain_overlay.{vert,frag} / decal.frag into the shared-GBuffer co-write pipeline sharing the terrain island descriptor set, NOT a text-lockstep sibling. Parity is enforced at runtime pixel level (GL/VK capture pair tests/visual/captures/parOV-*), not by RULE4 hash lockstep.",
+    "shaders/vulkan/terrain_overlay_tier1.frag":
+        "native VK tier-1 island (VK-PARITY-OVERLAY-1): the GL world-space overlay draw groups (mission-static cement/pad/runway/road overlay bake + decals) flushed into the VK-discarded GL scene FBO and were invisible under VK. Structural port of shaders/terrain_overlay.{vert,frag} / decal.frag into the shared-GBuffer co-write pipeline sharing the terrain island descriptor set, NOT a text-lockstep sibling. Parity is enforced at runtime pixel level (GL/VK capture pair tests/visual/captures/parOV-*), not by RULE4 hash lockstep.",
+    "shaders/vulkan/terrain_decal_tier1.vert":
+        "native VK tier-1 island (VK-PARITY-OVERLAY-1): the GL world-space overlay draw groups (mission-static cement/pad/runway/road overlay bake + decals) flushed into the VK-discarded GL scene FBO and were invisible under VK. Structural port of shaders/terrain_overlay.{vert,frag} / decal.frag into the shared-GBuffer co-write pipeline sharing the terrain island descriptor set, NOT a text-lockstep sibling. Parity is enforced at runtime pixel level (GL/VK capture pair tests/visual/captures/parOV-*), not by RULE4 hash lockstep.",
+    "shaders/vulkan/terrain_decal_tier1.frag":
+        "native VK tier-1 island (VK-PARITY-OVERLAY-1): the GL world-space overlay draw groups (mission-static cement/pad/runway/road overlay bake + decals) flushed into the VK-discarded GL scene FBO and were invisible under VK. Structural port of shaders/terrain_overlay.{vert,frag} / decal.frag into the shared-GBuffer co-write pipeline sharing the terrain island descriptor set, NOT a text-lockstep sibling. Parity is enforced at runtime pixel level (GL/VK capture pair tests/visual/captures/parOV-*), not by RULE4 hash lockstep.",
     "shaders/vulkan/terrain_tier1.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/terrain_tier1.frag":

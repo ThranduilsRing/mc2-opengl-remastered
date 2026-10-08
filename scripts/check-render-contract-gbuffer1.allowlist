@@ -94,6 +94,15 @@ shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
 # early-outs do the same (terrain_lod_chunk.frag:920 etc.).
 shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(0.5,0.5,1.0,1.0);
 
+# TERRAIN OVERLAY / DECAL (VK-PARITY-OVERLAY-1). (0.5, 0.5, 1.0, 1.0) ==
+# rc_gbuffer1_shadowHandled_flatUp() (render_contract.hglsl:122-124), exactly what the GL
+# producers write at every attachment-1 site: terrain_overlay.frag (the "four sites" noted at
+# render_contract.hglsl:121 + the main write) and decal.frag. Both handle their own shadow
+# in-shader, hence a = 1.0 (shadow_screen skips them). The decal pipeline REPLACES MRT1
+# (GL: SRC_ALPHA of this a=1 value == replace), the overlay pipeline is opaque.
+shaders/vulkan/terrain_overlay_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+shaders/vulkan/terrain_decal_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
+
 # TERRAIN SKIRT. Same flatUp value, same reason as the terrain main pass; the
 # skirt is the same surface class and shares terrain's in-shader shadow.
 shaders/vulkan/terrain_tier1_skirt.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
