@@ -246,6 +246,8 @@ void mc2_render_backend_shadow_region_health(
 
 // Teardown (called from gameosmain.cpp before the shared device is destroyed).
 void mc2_vk_shadow_island_destroy();
+// Map boundary: drop VK-owned caster geometry (re-uploaded on next map).
+void mc2_vk_shadow_island_invalidate_geometry();
 
 #ifdef __cplusplus
 }

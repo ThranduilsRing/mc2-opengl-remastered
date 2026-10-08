@@ -28,6 +28,9 @@
 #include "gpu_cull_record.h"             // 2026-05-10: GpuActorRecord, Cat_StaticProp
 #include "../../mclib/terrain.h"         // C1b temporal-superset: Terrain::worldToBlockIdx()
 #include "../../mclib/render_contract.h" // [RENDER_PASS v1] noteRenderPass
+#ifdef MC2_VULKAN_ISLAND
+extern "C" void mc2_vk_shadow_island_invalidate_geometry();  // vulkan_shadow_island_live.cpp
+#endif
 #include "../../RenderCore/top_level_pass_executor.h" // APPLY-STATE-STATICPROP-1: findTopLevelStateDesc
 #include "../../RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
 #include "../../RenderCore/frame_executor.h"          // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
@@ -2967,6 +2970,9 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_stagingIbo.clear();
     s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
     s_sharedIboBytes = 0;
+#ifdef MC2_VULKAN_ISLAND
+    mc2_vk_shadow_island_invalidate_geometry();
+#endif
     s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
     s_typeAlphaClass.clear();
     s_failedTypes.clear();

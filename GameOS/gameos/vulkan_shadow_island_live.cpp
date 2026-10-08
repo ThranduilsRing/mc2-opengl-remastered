@@ -800,11 +800,21 @@ bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
     return true;
 }
 
+void release_geometry(ShadowIsland* s) {
+    if (s->vbo || s->ibo) { if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device); }
+    if (s->vbo) { vmaDestroyBuffer(s->allocator, s->vbo, s->vboAlloc); s->vbo = VK_NULL_HANDLE; s->vboAlloc = VK_NULL_HANDLE; }
+    if (s->ibo) { vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc); s->ibo = VK_NULL_HANDLE; s->iboAlloc = VK_NULL_HANDLE; }
+    s->geomUploaded = false;
+    s->packets.clear();
+    s->typeRuns.clear();
+}
+
 // Copy the shared static-prop VBO/IBO into VK-owned buffers ONCE per map (P8a
 // feed (B): VK owns a copy — simplest working feed). Also caches the per-type
 // packet ranges. Returns false if the geometry feed is unavailable this frame.
 bool upload_geometry_once(ShadowIsland* s) {
     if (s->geomUploaded) return true;
+    release_geometry(s);   // drop any half-built buffers from a failed earlier attempt
     Mc2ShadowGeomFeed feed{};
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
@@ -822,19 +832,23 @@ bool upload_geometry_once(ShadowIsland* s) {
       if (vmaMapMemory(s->allocator, s->vboAlloc, &p) == VK_SUCCESS) {
           scratch.resize((size_t)feed.vboBytes);
           glBindBuffer(GL_ARRAY_BUFFER, feed.glVbo);
+          while (glGetError() != GL_NO_ERROR) {}
           glGetBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)feed.vboBytes, scratch.data());
+          { GLenum ge = glGetError(); if (ge != GL_NO_ERROR) vlog("glGetBufferSubData(vbo) readback GL error 0x%x.", (unsigned)ge); }
           glBindBuffer(GL_ARRAY_BUFFER, 0);
           std::memcpy(p, scratch.data(), (size_t)feed.vboBytes);
-          vmaUnmapMemory(s->allocator, s->vboAlloc);
+          vmaFlushAllocation(s->allocator, s->vboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->vboAlloc);
       } }
     { void* p = nullptr;
       if (vmaMapMemory(s->allocator, s->iboAlloc, &p) == VK_SUCCESS) {
           scratch.resize((size_t)feed.iboBytes);
           glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, feed.glIbo);
+          while (glGetError() != GL_NO_ERROR) {}
           glGetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (GLsizeiptr)feed.iboBytes, scratch.data());
+          { GLenum ge = glGetError(); if (ge != GL_NO_ERROR) vlog("glGetBufferSubData(ibo) readback GL error 0x%x.", (unsigned)ge); }
           glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
           std::memcpy(p, scratch.data(), (size_t)feed.iboBytes);
-          vmaUnmapMemory(s->allocator, s->iboAlloc);
+          vmaFlushAllocation(s->allocator, s->iboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->iboAlloc);
       } }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
@@ -1096,7 +1110,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, instances, (size_t)instBytes);
-            vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }
     }
     g_health.instRecords = instanceCount;
@@ -1114,7 +1128,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
         u.instBase = 0;
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
-            std::memcpy(p, &u, sizeof(u)); vmaUnmapMemory(s->allocator, s->uboAlloc);
+            std::memcpy(p, &u, sizeof(u)); vmaFlushAllocation(s->allocator, s->uboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->uboAlloc);
         }
     }
     g_health.stageInstUs = usSince(tStage0);
@@ -1158,7 +1172,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
             GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
-            vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Shadow.SortRestage
@@ -1302,7 +1316,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
             GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
-            vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }
     }
     {
@@ -1313,7 +1327,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u));
-            vmaUnmapMemory(s->allocator, s->uboAlloc);
+            vmaFlushAllocation(s->allocator, s->uboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->uboAlloc);
         }
     }
 
@@ -1429,7 +1443,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
             GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
-            vmaUnmapMemory(s->allocator, s->instAlloc);
+            vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }
     }
     {
@@ -1440,7 +1454,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->uboAlloc, &p) == VK_SUCCESS) {
             std::memcpy(p, &u, sizeof(u));
-            vmaUnmapMemory(s->allocator, s->uboAlloc);
+            vmaFlushAllocation(s->allocator, s->uboAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->uboAlloc);
         }
     }
 
@@ -1467,7 +1481,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport vp{0.0f, (float)size, (float)size, -(float)size, 0.0f, 1.0f};
+    // Same (non-flipped) convention as the dyn / full-map passes: the GL consumer
+    // (shadow.hglsl csmSampleLayer vs csmSampleFullMap) uses identical projCoords.xy
+    // for the array and the 2D full-map, so a Y-flipped array mirrors the cascade.
+    VkViewport vp{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {(uint32_t)size, (uint32_t)size}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
@@ -1650,6 +1667,14 @@ extern "C" void mc2_render_backend_shadow_region_health(
     if (stageInstUs)      *stageInstUs      = g_health.stageInstUs;
     if (drawUs)           *drawUs           = g_health.drawUs;
     if (totalUs)          *totalUs          = g_health.totalUs;
+}
+
+// Static-prop feed invalidated (map unload/load): drop VK-owned caster geometry so the
+// next map re-uploads instead of drawing stale/freed vertex data.
+extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
+    if (!g_island) return;
+    release_geometry(g_island);
+    vlog("caster geometry invalidated (map boundary).");
 }
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
