@@ -29,7 +29,6 @@ Kept required contrib:
 - stb
 - pugixml
 - openddlparser
-- zip
 - poly2tri
 - clipper
 - earcut-hpp
@@ -43,7 +42,7 @@ Removed:
 - packaging/
 - most doc/scripts payload
 - unused AssetLib importer directories
-- large unused contrib payloads such as googletest, draco, tinyusdz, meshlab, android-cmake
+- large unused contrib payloads such as googletest, draco, zip, android-cmake, tinyusdz/meshlab patch dirs (3MF export / USD / meshlab patches unused; zip was only referenced by the 3MF exporter, which is disabled)
 
 Verified in sandbox:
 - CMake configure succeeds on Linux with:
