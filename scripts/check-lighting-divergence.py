@@ -298,6 +298,9 @@ BASELINE = {
         ("shaders/shadow_screen.frag", "mix:shadow", "0.4->1.0"),
         ("shaders/terrain_lod_chunk.frag", "mix:shadow", "0.55->1.0"),
         ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
+        # VK-PARITY-SHADOW-1: lsvk_calcShadow + lsvk_calcDynamicShadowLegacy, line-for-line ports of GL calcShadow/calcDynamicShadow (INTENTIONAL: parity).
+        ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
+        ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/screen_shadow_csm.frag", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/screen_shadow_static.frag", "mix:shadow", "0.4->1.0"),
         # VK-PARITY-TERRAIN-1: same 0.55 terrain ambient-occlusion floor as the GL terrain frag (INTENTIONAL: parity).

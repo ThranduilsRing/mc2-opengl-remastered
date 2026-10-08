@@ -142,6 +142,12 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float padGlowG;                               // off 676
     float padGlowB;                               // off 680
     float padGlowSpill;                           // off 684
+    // VK-PARITY-SHADOW-1: SHADOW-DIST-FADE-1 series + TERRAIN-SHADOW-GUARD-1 + BANDFIX_V2 knobs
+    // (same values GL injects as MC2_SHADOW_* #defines; producer mc2ShadowFadeKnobs()).
+    float shadowDistFadeWu;                       // off 688: 0 -> fade block off
+    float shadowDistFadeMax;                      // off 692
+    float shadowMinSunSin;                        // off 696: 0 -> sun clamp identity
+    int   shadowKnobFlags;                        // off 700: b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -453,56 +459,20 @@ const vec2 mv_poissonDisk[16] = vec2[](
     vec2( 0.19984126,  0.78641367), vec2( 0.14383161, -0.14100790)
 );
 
-float mv_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int numTaps) {
-    float slope = max(1.0 - NdotL, 0.0);
-    float texelBias = 1.5 * uT.csmCascadeTexelWorld[layer] / max(uT.csmDepthSpan, 1.0);
-    float bias = max(0.0012 * slope, 0.0004) + texelBias;
-    float currentDepth = projCoords.z - bias;
-
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
-    float ca = cos(angle), sa = sin(angle);
-    mat2 rot = mat2(ca, sa, -sa, ca);
-
-    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
-    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
-    float adaptiveScale = mix(2.4, 0.8, hardness);
-
-    vec2 texelSize = 1.0 / vec2(textureSize(u_dynamicShadowArray, 0).xy);
-    float radius = max(uT.shadowSoftness, 0.5) * adaptiveScale;
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * mv_poissonDisk[i] * radius * texelSize;
-        shadow += texture(u_dynamicShadowArray, vec4(projCoords.xy + offset, float(layer), currentDepth));
-    }
-    shadow /= float(taps);
-    return shadow;
+// VK-PARITY-SHADOW-1: bodies moved to lighting_shadow_vk.glsl (lsvk_csmSample*), the
+// line-for-line GL csmSampleLayer/FullMap port incl. dist-fade; these bind the UBO knobs.
+LsvkShadowKnobs mv_shadowKnobs() {
+    return LsvkShadowKnobs(uT.shadowDistFadeWu, uT.shadowDistFadeMax, uT.shadowMinSunSin, uT.shadowKnobFlags);
 }
-
-float mv_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps) {
-    float slope = max(1.0 - NdotL, 0.0);
-    float texelBias = 1.5 * uT.csmFullMapTexelWorld / max(uT.csmDepthSpan, 1.0);
-    float bias = max(0.0012 * slope, 0.0004) + texelBias;
-    float currentDepth = projCoords.z - bias;
-
-    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
-    float ca = cos(angle), sa = sin(angle);
-    mat2 rot = mat2(ca, sa, -sa, ca);
-
-    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
-    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
-    float adaptiveScale = mix(2.4, 0.8, hardness);
-
-    vec2 texelSize = 1.0 / vec2(textureSize(u_dynamicFullMapShadow, 0));
-    float radius = max(uT.shadowSoftness, 0.5) * adaptiveScale;
-    float shadow = 0.0;
-    int taps = clamp(numTaps, 1, 16);
-    for (int i = 0; i < taps; i++) {
-        vec2 offset = rot * mv_poissonDisk[i] * radius * texelSize;
-        shadow += texture(u_dynamicFullMapShadow, vec3(projCoords.xy + offset, currentDepth));
-    }
-    shadow /= float(taps);
-    return shadow;
+float mv_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, float sunAltSin, int numTaps) {
+    return lsvk_csmSampleLayer(projCoords, layer, worldPos, NdotL, sunAltSin, numTaps,
+                               u_dynamicShadowArray, uT.csmCascadeTexelWorld[layer],
+                               uT.csmDepthSpan, uT.shadowSoftness, mv_shadowKnobs());
+}
+float mv_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, float sunAltSin, int numTaps) {
+    return lsvk_csmSampleFullMap(projCoords, worldPos, NdotL, sunAltSin, numTaps,
+                                 u_dynamicFullMapShadow, uT.csmFullMapTexelWorld,
+                                 uT.csmDepthSpan, uT.shadowSoftness, mv_shadowKnobs());
 }
 
 bool mv_csmProject(vec3 worldPos, int layer, out vec3 projCoords) {
@@ -518,7 +488,7 @@ bool mv_csmProject(vec3 worldPos, int layer, out vec3 projCoords) {
 // calcDynamicShadow (near-cascade path). Mirrors GL calcDynamicShadow's early-outs
 // (enableDynamicShadows/NdotL) via the caller (see main()); this is just the cascade
 // loop, verbatim-diffed against shadow.hglsl's PORT-BEGIN/END:calcDynamicShadowCsm block.
-float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, int numTaps) {
+float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, float sunAltSin, int numTaps) {
     int count = clamp(uT.csmCount, 1, MC2_VK_SHADOW_CSM_MAX);
 
     //PORT-BEGIN:calcDynamicShadowCsm
@@ -527,8 +497,8 @@ float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, int numTaps) {
         if (!mv_csmProject(worldPos, c, pc)) continue;
 
         float vis = (c == count - 1)
-                  ? mv_csmSampleFullMap(pc, worldPos, NdotL, numTaps)
-                  : mv_csmSampleLayer(pc, c, worldPos, NdotL, numTaps);
+                  ? mv_csmSampleFullMap(pc, worldPos, NdotL, sunAltSin, numTaps)
+                  : mv_csmSampleLayer(pc, c, worldPos, NdotL, sunAltSin, numTaps);
 
         if (c + 1 < count) {
             vec2 d = min(pc.xy, 1.0 - pc.xy);
@@ -538,8 +508,8 @@ float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, int numTaps) {
                 vec3 pc2;
                 if (mv_csmProject(worldPos, c + 1, pc2)) {
                     float vis2 = (c + 1 == count - 1)
-                               ? mv_csmSampleFullMap(pc2, worldPos, NdotL, numTaps)
-                               : mv_csmSampleLayer(pc2, c + 1, worldPos, NdotL, numTaps);
+                               ? mv_csmSampleFullMap(pc2, worldPos, NdotL, sunAltSin, numTaps)
+                               : mv_csmSampleLayer(pc2, c + 1, worldPos, NdotL, sunAltSin, numTaps);
                     float t = smoothstep(0.0, band, edge);
                     vis = mix(vis2, vis, t);
                 }
@@ -750,26 +720,31 @@ void main() {
         // GL callers pass shadowN = flat-up (0,0,1), NOT the perturbed N. computeBakedShadow
         // is a VERBATIM match of the legacy calcDynamicShadow body (adaptiveScale 2.4->0.8,
         // mix(0.4,1.0,shadow)); the GL static calcShadow uses the same PCF core here too.
-        const vec3 shadowN = vec3(0.0, 0.0, 1.0);
+        // VK-PARITY-SHADOW-1: GL (STATIC-SHADOW-BANDING-2, default ON) feeds the MACRO slope
+        // normal as shadowN; calcShadow normal-offsets by it then resets to flat-up for
+        // guard+bias, calcDynamicShadow uses it for NdotL. Flag off -> legacy flat-up.
+        // (Skirt strips: GL keeps flat-up there; VK shares this frag, residual noted.)
+        LsvkShadowKnobs shKnobs = mv_shadowKnobs();
+        vec3 shadowN = vec3(0.0, 0.0, 1.0);
+        if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = mv_smoothTerrainNormal(v_worldPos.xy);
         float staticS = 1.0;
         if (uT.enableShadows != 0) {
-            staticS = computeBakedShadow(v_worldPos, shadowN, lightDir,
-                                         u_staticShadow, uT.staticLightSpaceMatrix,
-                                         uT.shadowSoftness, 16);
+            staticS = lsvk_calcShadow(v_worldPos, shadowN, lightDir,
+                                      u_staticShadow, uT.staticLightSpaceMatrix,
+                                      uT.shadowSoftness, 16, shKnobs);
         }
-        // VK-TERRAIN-CSM-NEAR-1: when the near-cascade-array path is armed+valid this
-        // frame (uT.csmEnabled), use the ported cascade-select (mirrors GL sampling the
-        // near cascade up close instead of the coarse full-map wash). Falls back to the
-        // legacy single dynamic map otherwise (unchanged; MC2_VK_TERRAIN_CSM_FULLMAP_
-        // EXPERIMENTAL escape hatch is untouched — it feeds enableDynShadows, not csmEnabled).
+        // VK-TERRAIN-CSM-NEAR-1: near-cascade-array path when armed+valid (uT.csmEnabled),
+        // else the legacy single dynamic map. Both now carry the GL dist-fade + clamped sun.
         float dynS = 1.0;
         if (uT.csmEnabled != 0) {
-            float NdotLdyn = max(dot(shadowN, lightDir), 0.0);
-            dynS = (NdotLdyn < 0.05) ? 1.0 : mv_calcDynamicShadowCsm(v_worldPos, NdotLdyn, 8);
+            vec3 shSun = lsvk_shadowSun(lightDir, shKnobs);         // TERRAIN-SHADOW-GUARD-1
+            float NdotLdyn = max(dot(shadowN, shSun), 0.0);
+            dynS = (NdotLdyn < 0.05) ? 1.0
+                 : mv_calcDynamicShadowCsm(v_worldPos, NdotLdyn, clamp(shSun.z, 0.0, 1.0), 8);
         } else if (uT.enableDynShadows != 0) {
-            dynS = computeBakedShadow(v_worldPos, shadowN, lightDir,
-                                      u_dynamicShadow, uT.dynamicLightSpaceMatrix,
-                                      uT.shadowSoftness, 8);
+            dynS = lsvk_calcDynamicShadowLegacy(v_worldPos, shadowN, lightDir,
+                                                u_dynamicShadow, uT.dynamicLightSpaceMatrix,
+                                                uT.shadowSoftness, 8, shKnobs);
         }
         float shadow = min(staticS, dynS);
         shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only

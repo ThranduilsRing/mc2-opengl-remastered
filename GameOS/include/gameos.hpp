@@ -2433,6 +2433,13 @@ int   mc2WaterBiasLegacy();               // MC2_WATER_BIAS_LEGACY (WATER-BIAS-L
 // Every terrain-family shader-prefix site MUST append mc2TerrainShadowSunDefine()
 // -- same chokepoint rule as the BANDFIX helpers above.
 bool  mc2TerrainShadowGuardClampedSun();
+// VK-PARITY-SHADOW-1: the shadow.hglsl knob set the terrain GL program bakes in as #defines
+// (MC2_SHADOW_DIST_FADE_WU/_MAX_F/_CONT_F/_RAMP0_F/_ALT_SCALE_F, MC2_SHADOW_MIN_SUN_SIN,
+// MC2_SHADOW_STATIC_BANDFIX_V2), snapped to the SAME printf precision so the Vulkan terrain
+// UBO carries bit-identical values. flags: b0 FADE_CONT, b1 FADE_RAMP0, b2 ALT_SCALE, b3 BANDFIX_V2.
+// distFadeWu==0 => fade block off; minSunSin==0 => clamp identity.
+struct Mc2ShadowFadeKnobs { float distFadeWu; float distFadeMax; float minSunSin; int flags; };
+Mc2ShadowFadeKnobs mc2ShadowFadeKnobs();
 std::string mc2TerrainShadowSunDefine();  // "" when off => shader byte-identical
 float mc2ShadowMinSunAltDeg();            // MC2_SHADOW_MIN_SUN_ALT, default 15 deg
 // MC2_SHADER_PATH_TINT: debug-only. 1 = each candidate ground shader outputs a

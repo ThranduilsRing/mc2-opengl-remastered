@@ -299,6 +299,32 @@ std::string mc2TerrainShadowSunDefine() {
     return std::string(buf);
 }
 
+// VK-PARITY-SHADOW-1: single producer of the terrain shadow knob set (see gameos.hpp).
+// Values are round-tripped through the SAME printf formats the #define injection uses
+// (%.1f wu, %.2f max, %.8f sin) so GL (compile-time literal) and VK (UBO float) agree.
+Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
+    Mc2ShadowFadeKnobs k{};
+    char buf[64];
+    if (mc2ShadowDistFadeWu() > 0.0f) {
+        snprintf(buf, sizeof(buf), "%.1f", (double)mc2ShadowDistFadeWu());
+        k.distFadeWu = (float)atof(buf);
+        snprintf(buf, sizeof(buf), "%.2f", (double)mc2ShadowDistFadeMax());
+        k.distFadeMax = (float)atof(buf);
+        k.flags |= mc2ShadowFadeCont()  ? 1 : 0;
+        k.flags |= mc2ShadowFadeRamp0() ? 2 : 0;
+        k.flags |= mc2ShadowAltScale()  ? 4 : 0;
+    }
+    if (mc2TerrainShadowGuardClampedSun()) {
+        const float deg = mc2ShadowMinSunAltDeg();
+        if (deg > 0.0f) {
+            snprintf(buf, sizeof(buf), "%.8f", (double)sinf(deg * 0.01745329252f));
+            k.minSunSin = (float)atof(buf);
+        }
+    }
+    if (mc2ShadowStaticBandFixV2Enabled()) k.flags |= 8;
+    return k;
+}
+
 // WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
 // Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error
 // ~ linear in distance, kills the far-field water-over-ridge z-fight).

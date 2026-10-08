@@ -1992,6 +1992,14 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
                                   &out->lightPoolCompress, &out->moverContactShadow);
         gos_TerrainPadGlowRGB(out->padGlow);
         out->padGlowSpill = gos_TerrainPadGlowSpillWu();
+        // VK-PARITY-SHADOW-1: the SAME knobs GL bakes into the terrain program as defines.
+        {
+            const Mc2ShadowFadeKnobs sk = mc2ShadowFadeKnobs();
+            out->shadowDistFadeWu  = sk.distFadeWu;
+            out->shadowDistFadeMax = sk.distFadeMax;
+            out->shadowMinSunSin   = sk.minSunSin;
+            out->shadowKnobFlags   = sk.flags;
+        }
     }
 
     // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing

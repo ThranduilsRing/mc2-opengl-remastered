@@ -158,4 +158,240 @@ float computeBakedShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     return mix(0.4, 1.0, shadow);
 }
 
+// =============================================================================
+// VK-PARITY-SHADOW-1 (gap #4) -- GL shadow.hglsl calcShadow / calcDynamicShadow
+// (+ csmSampleLayer / csmSampleFullMap) sampling math INCLUDING the post-merge
+// series: TERRAIN-SHADOW-GUARD-1 clamped-sun, STATIC-SHADOW-BANDING-2 (V2)
+// normal-offset receiver, SHADOW-DIST-FADE-1 + FADE-CONT + RAMP0 + DONUT-FIX +
+// ALT-SCALE. The pure-math pieces (clamp / gains / fade curve / ladder jitter)
+// are the SHARED shaders/include/shadow_fade_model.hglsl that GL shadow.hglsl
+// also includes; the structure below is a line-for-line port of the GL bodies
+// with the GL compile-time macros replaced by LsvkShadowKnobs (fed from the same
+// C++ producer GL injects its #defines from -- mc2ShadowFadeKnobs()).
+// The pre-existing computeBakedShadow() above is left untouched (legacy callers).
+// =============================================================================
+#include "../../include/shadow_fade_model.hglsl"
+
+struct LsvkShadowKnobs {
+    float distFadeWu;   // MC2_SHADOW_DIST_FADE_WU (0 -> whole fade block folds away)
+    float distFadeMax;  // MC2_SHADOW_DIST_FADE_MAX_F
+    float minSunSin;    // MC2_SHADOW_MIN_SUN_SIN (0 -> clamp is the identity)
+    int   flags;        // bit0 FADE_CONT, bit1 FADE_RAMP0, bit2 ALT_SCALE, bit3 BANDFIX_V2
+};
+#define LSVK_KNOB_FADE_CONT  1
+#define LSVK_KNOB_FADE_RAMP0 2
+#define LSVK_KNOB_ALT_SCALE  4
+#define LSVK_KNOB_BANDFIX_V2 8
+
+// TERRAIN-SHADOW-GUARD-1: the sun the shadow MATRICES were built from.
+vec3 lsvk_shadowSun(vec3 lightDir, LsvkShadowKnobs k)
+{
+    return mc2ShadowClampSunAltitudeP(lightDir, k.minSunSin);
+}
+
+// SHADOW-DIST-FADE-1 / FADE-CONT / DONUT-FIX: max-over-4-probes occluder-distance
+// estimate (dNorm ~ occluder ray distance / fade distance). 2D compare sampler.
+float lsvk_occluderDist2D(sampler2DShadow smap, vec2 xy, mat2 rot, vec2 searchR,
+                          float refDepth, float fadeNdc, float angle, bool cont)
+{
+    float occP = 0.0;
+    float jit  = mc2ShadowLadderJitter(angle);
+    int nSteps = cont ? 8 : 4;
+    for (int p = 0; p < 4; ++p) {
+        vec2 uv = xy + rot * lsvk_poissonDisk[p] * searchR;
+        float o = 0.0;
+        for (int q = 0; q < nSteps; ++q) {
+            float stepN = cont ? mc2ShadowLadderStepN(q, jit) : 0.25 * float(q + 1);
+            o += 1.0 - texture(smap, vec3(uv, refDepth - fadeNdc * stepN));
+        }
+        occP = max(occP, o / float(nSteps));
+    }
+    return occP;
+}
+// Same, array-layer sampler.
+float lsvk_occluderDistArray(sampler2DArrayShadow smap, vec2 xy, float layer, mat2 rot,
+                             vec2 searchR, float refDepth, float fadeNdc, float angle, bool cont)
+{
+    float occP = 0.0;
+    float jit  = mc2ShadowLadderJitter(angle);
+    int nSteps = cont ? 8 : 4;
+    for (int p = 0; p < 4; ++p) {
+        vec2 uv = xy + rot * lsvk_poissonDisk[p] * searchR;
+        float o = 0.0;
+        for (int q = 0; q < nSteps; ++q) {
+            float stepN = cont ? mc2ShadowLadderStepN(q, jit) : 0.25 * float(q + 1);
+            o += 1.0 - texture(smap, vec4(uv, layer, refDepth - fadeNdc * stepN));
+        }
+        occP = max(occP, o / float(nSteps));
+    }
+    return occP;
+}
+
+// radius/distFade from dNorm (SHADOW-ALT-SCALE-1 + RAMP0).
+void lsvk_applyFadeModel(float dNorm, float sunAltSin, LsvkShadowKnobs k,
+                         inout float radius, out float distFade)
+{
+    vec2 fg = mc2ShadowFadeGainsP(sunAltSin, k.distFadeMax, (k.flags & LSVK_KNOB_ALT_SCALE) != 0);
+    radius *= 1.0 + fg.x * dNorm;
+    distFade = mc2ShadowDistFadeCurveP(dNorm, fg.y, (k.flags & LSVK_KNOB_FADE_RAMP0) != 0);
+}
+
+// --- GL calcShadow (STATIC map; no fade). ------------------------------------
+float lsvk_calcShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
+                      sampler2DShadow shadowMap, mat4 lightSpaceMatrix,
+                      float shadowSoftness, int numTaps, LsvkShadowKnobs k)
+{
+    lightDir = lsvk_shadowSun(lightDir, k);
+    if ((k.flags & LSVK_KNOB_BANDFIX_V2) != 0) {
+        // STATIC-SHADOW-BANDING-2 normal-offset receiver, then flat-up reset for guard+bias.
+        float invR = length(vec3(lightSpaceMatrix[0][0], lightSpaceMatrix[1][0], lightSpaceMatrix[2][0]));
+        float texelWorld = (invR > 1e-8) ? 2.0 / (invR * float(textureSize(shadowMap, 0).x)) : 0.0;
+        worldPos += normal * texelWorld;
+        normal = vec3(0.0, 0.0, 1.0);
+    }
+    vec4 lsPos = lightSpaceMatrix * vec4(worldPos, 1.0);
+    vec3 projCoords = lsPos.xyz / lsPos.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    if (projCoords.z > 1.0 || projCoords.z < 0.0) return 1.0;
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    if (NdotL < 0.05) return 1.0;
+    float bias = max(0.005 * (1.0 - NdotL), 0.002);
+    float currentDepth = projCoords.z - bias;
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+    float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
+        shadow += texture(shadowMap, vec3(projCoords.xy + offset, currentDepth));
+    }
+    shadow /= float(taps);
+    return mix(0.4, 1.0, shadow);
+}
+
+// --- GL calcDynamicShadow, legacy single-map variant (fade included). --------
+float lsvk_calcDynamicShadowLegacy(vec3 worldPos, vec3 normal, vec3 lightDir,
+                                   sampler2DShadow dynMap, mat4 dynLightSpace,
+                                   float shadowSoftness, int numTaps, LsvkShadowKnobs k)
+{
+    lightDir = lsvk_shadowSun(lightDir, k);
+    vec4 lsPos = dynLightSpace * vec4(worldPos, 1.0);
+    vec3 projCoords = lsPos.xyz / lsPos.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    if (projCoords.z > 1.0 || projCoords.z < 0.0) return 1.0;
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    if (NdotL < 0.05) return 1.0;
+    float bias = max(0.005 * (1.0 - NdotL), 0.002);
+    float currentDepth = projCoords.z - bias;
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+    vec2 texelSize = 1.0 / vec2(textureSize(dynMap, 0));
+    float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+    float distFade = 0.0;
+    if (k.distFadeWu > 0.0) {
+        float invSpan = length(vec3(dynLightSpace[0][2], dynLightSpace[1][2], dynLightSpace[2][2]));
+        if (invSpan > 1e-8) {
+            float fadeNdc = k.distFadeWu * invSpan;
+            vec2 searchR = radius * 3.0 * texelSize;
+            float dNorm = lsvk_occluderDist2D(dynMap, projCoords.xy, rot, searchR, currentDepth,
+                                              fadeNdc, angle, (k.flags & LSVK_KNOB_FADE_CONT) != 0);
+            lsvk_applyFadeModel(dNorm, clamp(lightDir.z, 0.0, 1.0), k, radius, distFade);
+        }
+    }
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
+        shadow += texture(dynMap, vec3(projCoords.xy + offset, currentDepth));
+    }
+    shadow /= float(taps);
+    shadow = mix(shadow, 1.0, distFade);
+    return mix(0.4, 1.0, shadow);
+}
+
+// --- GL csmSampleLayer (array layer; returns visibility incl. fade). ---------
+float lsvk_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, float sunAltSin,
+                          int numTaps, sampler2DArrayShadow arr, float cascadeTexelWorld,
+                          float depthSpan, float shadowSoftness, LsvkShadowKnobs k)
+{
+    float slope = max(1.0 - NdotL, 0.0);
+    float texelBias = 1.5 * cascadeTexelWorld / max(depthSpan, 1.0);
+    float bias = max(0.0012 * slope, 0.0004) + texelBias;
+    float currentDepth = projCoords.z - bias;
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+    vec2 texelSize = 1.0 / vec2(textureSize(arr, 0).xy);
+    float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+    float distFade = 0.0;
+    if (k.distFadeWu > 0.0) {
+        float fadeNdc = k.distFadeWu / max(depthSpan, 1.0);
+        vec2 searchR = radius * 3.0 * texelSize;
+        float dNorm = lsvk_occluderDistArray(arr, projCoords.xy, float(layer), rot, searchR,
+                                             currentDepth, fadeNdc, angle,
+                                             (k.flags & LSVK_KNOB_FADE_CONT) != 0);
+        lsvk_applyFadeModel(dNorm, sunAltSin, k, radius, distFade);
+    }
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
+        shadow += texture(arr, vec4(projCoords.xy + offset, float(layer), currentDepth));
+    }
+    shadow /= float(taps);
+    return mix(shadow, 1.0, distFade);
+}
+
+// --- GL csmSampleFullMap (separate lower-res 2D catch-all cascade). ----------
+float lsvk_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, float sunAltSin,
+                            int numTaps, sampler2DShadow fullMap, float texelWorld,
+                            float depthSpan, float shadowSoftness, LsvkShadowKnobs k)
+{
+    float slope = max(1.0 - NdotL, 0.0);
+    float texelBias = 1.5 * texelWorld / max(depthSpan, 1.0);
+    float bias = max(0.0012 * slope, 0.0004) + texelBias;
+    float currentDepth = projCoords.z - bias;
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+    vec2 texelSize = 1.0 / vec2(textureSize(fullMap, 0).xy);
+    float radius = max(shadowSoftness, 0.5) * adaptiveScale;
+    float distFade = 0.0;
+    if (k.distFadeWu > 0.0) {
+        float fadeNdc = k.distFadeWu / max(depthSpan, 1.0);
+        vec2 searchR = radius * 3.0 * texelSize;
+        float dNorm = lsvk_occluderDist2D(fullMap, projCoords.xy, rot, searchR, currentDepth,
+                                          fadeNdc, angle, (k.flags & LSVK_KNOB_FADE_CONT) != 0);
+        lsvk_applyFadeModel(dNorm, sunAltSin, k, radius, distFade);
+    }
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * lsvk_poissonDisk[i] * radius * texelSize;
+        shadow += texture(fullMap, vec3(projCoords.xy + offset, currentDepth));
+    }
+    shadow /= float(taps);
+    return mix(shadow, 1.0, distFade);
+}
+
 #endif // LIGHTING_SHADOW_VK_GLSL

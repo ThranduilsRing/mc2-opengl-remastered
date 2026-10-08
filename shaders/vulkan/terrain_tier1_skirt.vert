@@ -96,6 +96,10 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float padGlowG; // off 676
     float padGlowB; // off 680
     float padGlowSpill; // off 684
+    float shadowDistFadeWu; // off 688
+    float shadowDistFadeMax; // off 692
+    float shadowMinSunSin; // off 696
+    int   shadowKnobFlags; // off 700
 } uT;
 
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {

@@ -1,6 +1,10 @@
 #ifndef __SHADOW_HGLSL__
 #define __SHADOW_HGLSL__
 
+// VK-PARITY-SHADOW-1: the clamp/gain/fade-curve math lives in one pure-math include
+// shared with the Vulkan terrain shaders (parameters instead of macros).
+#include <shadow_fade_model.hglsl>
+
 uniform sampler2DShadow shadowMap;
 uniform mat4 lightSpaceMatrix;
 uniform int enableShadows;
@@ -47,13 +51,7 @@ uniform float shadowSoftness;  // penumbra radius in texels, default 2.5
 // C++ mirror operates on the negated (light->scene) vector; signs cancel.
 vec3 mc2ShadowClampSunAltitude(vec3 d)
 {
-    const float minUp = float(MC2_SHADOW_MIN_SUN_SIN);
-    if (minUp <= 0.0) return d;          // killswitch / non-injecting site
-    if (d.z >= minUp) return d;          // healthy sun: untouched
-    float horiz = length(d.xy);
-    float ch = sqrt(max(1.0 - minUp * minUp, 0.0));
-    vec2 xy = (horiz > 1e-6) ? (d.xy / horiz * ch) : vec2(ch, 0.0);
-    return vec3(xy, minUp);
+    return mc2ShadowClampSunAltitudeP(d, float(MC2_SHADOW_MIN_SUN_SIN));
 }
 
 #ifndef MC2_SHADOW_DIST_FADE_WU
@@ -109,21 +107,12 @@ const float kShadowDistFadeMax = float(MC2_SHADOW_DIST_FADE_MAX_F);
 // series). Returns vec2(radiusGain, fadeMaxEff) for this pixel's sun.
 vec2 shadowFadeGains(float sunAltSin)
 {
-#if MC2_SHADOW_ALT_SCALE_F != 0
-    float soft = 1.0 - smoothstep(0.21, 0.57, clamp(sunAltSin, 0.0, 1.0));
-    return vec2(mix(1.0, 4.0, soft), kShadowDistFadeMax * mix(0.25, 1.0, soft));
-#else
-    return vec2(4.0, kShadowDistFadeMax);
-#endif
+    return mc2ShadowFadeGainsP(sunAltSin, kShadowDistFadeMax, MC2_SHADOW_ALT_SCALE_F != 0);
 }
 // Opacity fade from the occluder-distance estimate (dNorm in [0,1]).
 float shadowDistFadeCurve(float dNorm, float fadeMaxEff)
 {
-#if MC2_SHADOW_FADE_RAMP0_F != 0
-    return fadeMaxEff * dNorm * dNorm;                  // continuous from contact
-#else
-    return fadeMaxEff * smoothstep(0.45, 1.0, dNorm);   // legacy windowed onset
-#endif
+    return mc2ShadowDistFadeCurveP(dNorm, fadeMaxEff, MC2_SHADOW_FADE_RAMP0_F != 0);
 }
 
 // 16-sample Poisson disk (well-distributed points in unit circle)

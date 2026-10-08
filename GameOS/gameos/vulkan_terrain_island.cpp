@@ -426,7 +426,13 @@ struct TerrainFrameUBO {
     float   padGlowG;                // off 676
     float   padGlowB;                // off 680
     float   padGlowSpill;            // off 684
-    int32_t _pad[84];                // off 688..1023: remaining pad
+    // VK-PARITY-SHADOW-1: SHADOW-DIST-FADE-1 series + TERRAIN-SHADOW-GUARD-1 + BANDFIX_V2
+    // (LOCKSTEP with terrain_tier1{,_skirt}.{vert,frag}); producer mc2ShadowFadeKnobs().
+    float   shadowDistFadeWu;        // off 688
+    float   shadowDistFadeMax;       // off 692
+    float   shadowMinSunSin;         // off 696
+    int32_t shadowKnobFlags;         // off 700: b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
+    int32_t _pad[80];                // off 704..1023: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
@@ -2792,6 +2798,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.padGlowG            = feed.padGlow[1];
                 u.padGlowB            = feed.padGlow[2];
                 u.padGlowSpill        = feed.padGlowSpill;
+                // VK-PARITY-SHADOW-1: same knob values GL injects as MC2_SHADOW_* defines.
+                u.shadowDistFadeWu    = feed.shadowDistFadeWu;
+                u.shadowDistFadeMax   = feed.shadowDistFadeMax;
+                u.shadowMinSunSin     = feed.shadowMinSunSin;
+                u.shadowKnobFlags     = feed.shadowKnobFlags;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
