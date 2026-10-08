@@ -3862,3 +3862,30 @@ Captures: `tests/visual/captures/parF2-{gl-pre,gl-post,vk}`, montages in `parF2-
 Full-frame MAD vs VK (pre -> post): units 6.36->4.54, mc2_01 12.30->10.28, mc2_10_saved 13.83->11.64.
 Residual (real scene differences, not tint): VK sky/horizon is cool grey-blue vs GL warm beige;
 VK is 3-5% (day) / 17-20% (night mc2_10) darker; VK trees darker, hard alpha edges.
+
+---
+
+## 2026-10-08 — VK-PARITY-F3: sky / fog / water / terrain-albedo / detail-normal brightness gaps closed
+
+GL vs VK (post-composite, `capture.py --clean`, mc2_01_saved_205644 / mc2_10_saved_212258 / mc2_10_saved_204611,
+3840x2160). Full-frame MAD vs GL, before -> after: mc2_01 10.28 -> ~1.5, mc2_10 night top-down 11.96 -> ~3.4
+(GL-vs-GL rerun noise floor on that pose is 4.27: pool lights/units move run to run), mc2_10 ground-level 7.39 -> ~1.5.
+Captures `tests/visual/captures/parF3-{gl,vk-before,vk-after}`, montages `parF3-montage/`.
+
+Root causes (all VK-only; GL byte-identical, gates off => dead code):
+1. **Sky**: NO VK HDRI sky pass existed (terrain island clears color0 to flat 0.55/0.62/0.72; the GL sky draw hits a
+   discarded buffer). New `vulkan_sky_island.{h,cpp}` + `shaders/vulkan/hdri_sky.{vert,frag}`: fullscreen z=0 triangle,
+   GEQUAL no-write, copy-once HDRI import, run right after the terrain island; `renderHdriSkybox` submits matrices/yaw.
+   Gotcha: GL uploads these matrix arrays with transpose=GL_TRUE (row-major) -> transpose in the VK shader.
+2. **Fog**: `runVkPostFogNative` declined whenever SKYBOX-FOG-EXCLUDE (default ON) and the GL fallback writes a discarded
+   buffer, so VK had NO edge/OOB fog. The stencil exclusion only tags elevation>0.22 sky, where FOG-HORIZON-CLAMP-1
+   (default ON, 5deg) is already zero -> ported the clamp into `edge_fog.frag`/`fog_oob.frag`, decline only if clamp OFF.
+3. **Water 16-26% dark**: missing WATER-GRAZE-REFL-1 (max(waveLOD,fres), nzGrad*waveLOD, graze tint pull), hard-coded 3/4
+   aspect correction (GL feeds real frustum aspect -> 1.0), WATER-EDGE-FEATHER-1, sky tint (f8/f9 UBO).
+4. **Terrain albedo**: GL baseColor pipeline absent (legacy material tint, cliff desaturate, world breakup noise, snow dampen).
+5. **Terrain night/RTS darkness (~15%)**: `MC2_VK_TERRAIN_LODFADE` was umbrella-armed (docs said explicit-only); the GL chunk
+   shader has no distance detail fade, so VK lost all detail-normal relief beyond ~4000wu (N.x mean +0.07 vs GL +0.53).
+   Verified with GL `MC2_LIGHTING_DEBUG_VIEW=normal` (+`MC2_TERRAIN_LOD_CHUNK_DIAG=32` = macro only == VK) and new VK
+   `MC2_VK_TERRAIN_CSM_DEBUG=6/7/8` (albedo/sun diffuse/normal).
+Remaining: pose-2 night light-pool/unit placement differs run to run (GL too); props/mechs/HUD-free object residuals
+(base+props region MAD ~6 on mc2_01); water pose-2 varies by run.
