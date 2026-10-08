@@ -7698,6 +7698,22 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
 
     gosASSERT((num_indices % 3) == 0);
 
+    // VK-FIELD-VFX-8: MLR's indexed tri-list path (SortData::DrawTriIndexedList ->
+    // gos_RenderIndexedArray) never honoured gos_State_IsHUD, so gosFX effect geometry
+    // flushed inside the gamecam clipper RenderNow scope (IsHUD set under MC2_VK_VFX)
+    // rasterized into the GL scene buffer the VK present discards
+    // (scene.gosfx_clipper lost-draw samples). Expand to a plain triangle list and
+    // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
+    // Only when IsHUD is set AND the VFX sub-gate is armed (VK) -> GL byte-identical.
+    if (renderStates_[gos_State_IsHUD] && num_indices > 0 && mc2vkgate::subGate("MC2_VK_VFX")) {
+        std::vector<gos_VERTEX> expanded;
+        expanded.reserve((size_t)num_indices);
+        for (int i = 0; i < num_indices; ++i)
+            expanded.push_back(vertices[indices[i]]);
+        drawTris(expanded.data(), (int)expanded.size());
+        return;
+    }
+
     if(beforeDrawCall()) return;
 
     bool not_enough_vertices = indexed_tris_->getNumVertices() + num_vertices > indexed_tris_->getVertexCapacity();
