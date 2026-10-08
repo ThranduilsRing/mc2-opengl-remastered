@@ -40,6 +40,10 @@ layout(set = 0, binding = 1, std140) uniform FogOobParams {
     vec3  u_fogColor;
     float u_fogOpacity;
     float u_time;
+    // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (default ON in GL). @84/88/92.
+    int   u_horizonClampEnabled;
+    float u_horizonFadeStartSin;
+    float u_horizonFadeEndSin;
 };
 
 // ---- 3D value noise (IDENTICAL to the GL fog_oob.frag) ----
@@ -79,11 +83,17 @@ void main()
     vec4 pFar  = invViewProj * vec4(ndc, 0.0, 1.0);
     vec3 worldDir = normalize(pFar.xyz / pFar.w - pNear.xyz / pNear.w);
 
-    // worldDir.z < 0 = sky. Clouds at horizon (z~0) and fill the void below.
-    if (worldDir.z < -0.22) { outFog = vec4(0.0); return; }
-
-    // Fade in from just-above-horizon. No fade-out below — fill the full void.
-    float skyFade = smoothstep(-0.22, -0.01, worldDir.z);
+    // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (verbatim from shaders/fog_oob.frag).
+    float skyFade;
+    if (u_horizonClampEnabled != 0) {
+        float elevSin = -worldDir.z;
+        if (elevSin >= u_horizonFadeEndSin) { outFog = vec4(0.0); return; }
+        skyFade = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
+    } else {
+        // Legacy: worldDir.z < 0 = sky. Fade in from just-above-horizon.
+        if (worldDir.z < -0.22) { outFog = vec4(0.0); return; }
+        skyFade = smoothstep(-0.22, -0.01, worldDir.z);
+    }
 
     // Slow horizontal drift for cloud animation. Shift worldDir in XY plane.
     vec3 p3 = worldDir * 4.5 + vec3(u_time * 0.008, u_time * 0.002, 0.0);

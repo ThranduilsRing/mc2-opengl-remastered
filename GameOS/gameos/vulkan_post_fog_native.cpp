@@ -148,16 +148,22 @@ struct EdgeFogParams {
     float u_fogHeight;         // off 88
     float u_fogMax;            // off 92
     float u_waterElevation;    // off 96
+    int   u_horizonClampEnabled;   // off 100 (VK-PARITY-F3: FOG-HORIZON-CLAMP-1)
+    float u_horizonFadeStartSin;   // off 104
+    float u_horizonFadeEndSin;     // off 108
 };
-static_assert(sizeof(EdgeFogParams) == 100, "EdgeFogParams std140 offsets drifted");
+static_assert(sizeof(EdgeFogParams) == 112, "EdgeFogParams std140 offsets drifted");
 
 struct FogOobParams {
     float invViewProj[16];     // off 0
     float u_fogColor[3];       // off 64
     float u_fogOpacity;        // off 76
     float u_time;              // off 80
+    int   u_horizonClampEnabled;   // off 84 (VK-PARITY-F3: FOG-HORIZON-CLAMP-1)
+    float u_horizonFadeStartSin;   // off 88
+    float u_horizonFadeEndSin;     // off 92
 };
-static_assert(sizeof(FogOobParams) == 84, "FogOobParams std140 offsets drifted");
+static_assert(sizeof(FogOobParams) == 96, "FogOobParams std140 offsets drifted");
 
 } // namespace
 
@@ -610,7 +616,16 @@ bool gosPostProcess::runVkPostFogNative()
     // the divergence the guard exists to prevent. GL is the authority; there is now
     // one reader for this gate and both the region-iface guard
     // (gos_postprocess.cpp runFogRegionVulkanBackend) and this one call it.
-    if (gos_SkyboxFogExcludeEnabled()) return false;
+    //
+    // VK-PARITY-F3: this decline made native fog NEVER run under the default gates, and
+    // the GL fallback pass writes the discarded GL scene buffer under the VK umbrella, so
+    // VK had NO distance/horizon/OOB fog at all (VK-PARITY-GAPS #8). The stencil exclusion
+    // only ever tags sky with elevation > 0.22 (hdri_skybox_stencil_tag.frag), and with
+    // FOG-HORIZON-CLAMP-1 (default ON, ported into the VK fog shaders) both fog passes are
+    // already exactly zero above fogHorizonFadeEnd (5 deg), so the exclusion is a no-op and
+    // the stencil path is not needed. Only the clamp-OFF legacy band (fog survives to ~12.7
+    // deg, where stencil exclusion would matter) still declines.
+    if (gos_SkyboxFogExcludeEnabled() && !fogHorizonClampEnabled_) return false;
 
     if (width_ <= 0 || height_ <= 0) return false;
 
@@ -649,6 +664,9 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_fogHeight = edgeFogHeight_;
         p.u_fogMax = edgeFogMax_;
         p.u_waterElevation = waterElevation_;
+        p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
+        p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
+        p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
         void* m = nullptr;
         if (vmaMapMemory(s->allocator, s->edgeUboAlloc, &m) == VK_SUCCESS) {
             std::memcpy(m, &p, sizeof(p));
@@ -662,6 +680,9 @@ bool gosPostProcess::runVkPostFogNative()
         p.u_fogColor[1] = oobFogColor_[1];
         p.u_fogColor[2] = oobFogColor_[2];
         p.u_fogOpacity  = oobFogOpacity_;
+        p.u_horizonClampEnabled = fogHorizonClampEnabled_ ? 1 : 0;
+        p.u_horizonFadeStartSin = fogHorizonFadeStartSin_;
+        p.u_horizonFadeEndSin   = fogHorizonFadeEndSin_;
         p.u_time = SmokeMode::fixedTimestepEnabled()
                      ? (float)SmokeMode::fixedClockSeconds()
                      : (float)SDL_GetTicks() / 1000.0f;

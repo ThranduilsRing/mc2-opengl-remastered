@@ -31,6 +31,7 @@ layout(set = 0, binding = 0) uniform sampler2D depthTex;
 //   u_fogHeight      @ 88
 //   u_fogMax         @ 92
 //   u_waterElevation @ 96
+//   u_horizonClampEnabled @100, u_horizonFadeStartSin @104, u_horizonFadeEndSin @108
 // column_major (std140 default): the CPU packs invViewProj as the SAME 16 raw floats
 // the GL path uploads (glUniformMatrix4fv GL_FALSE). inverseViewProj_ is column-major
 // on the CPU (index=col*4+row), so GL_FALSE => GLSL reads it column-major => mul_colmajor
@@ -48,6 +49,10 @@ layout(set = 0, binding = 1, std140) uniform EdgeFogParams {
     float u_fogHeight;
     float u_fogMax;
     float u_waterElevation;
+    // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (default ON in GL). @100/104/108.
+    int   u_horizonClampEnabled;
+    float u_horizonFadeStartSin;
+    float u_horizonFadeEndSin;
 };
 
 void main()
@@ -82,6 +87,16 @@ void main()
     float innerRamp   = smoothstep(u_fogStart, 0.0, distFromEdge);
     float outsideFill = step(0.0, -distFromEdge);
 
-    float fogFactor = clamp(max(innerRamp, outsideFill) * heightFade * u_fogMax, 0.0, 1.0);
+    // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (verbatim from shaders/edge_fog.frag). Full fog
+    // at/below the horizon, fading to zero across [startSin,endSin], so the cloud bank
+    // never bleeds into the sky. clamp==0 -> factor 1.0 (previous behaviour).
+    float horizonFactor = 1.0;
+    if (u_horizonClampEnabled != 0) {
+        float elevSin = -normalize(wFar - wNear).z;
+        horizonFactor = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
+    }
+
+    float fogFactor = clamp(max(innerRamp, outsideFill) * heightFade * u_fogMax, 0.0, 1.0)
+                      * horizonFactor;
     outFog = vec4(u_fogColor, fogFactor);
 }
