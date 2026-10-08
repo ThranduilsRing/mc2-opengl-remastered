@@ -655,8 +655,7 @@ void lostEmit(bool final_)
         ++groups;
         if (kv.second > 0) line += " " + kv.first + "=" + std::to_string(kv.second);
     }
-    std::fprintf(stderr, "[VK_GL_LOST_DRAWS v1] frame=%llu final=%d%s total_groups=%u
-",
+    std::fprintf(stderr, "[VK_GL_LOST_DRAWS v1] frame=%llu final=%d%s total_groups=%u\n",
                  s_lostFrame, final_ ? 1 : 0, line.c_str(), groups);
     std::fflush(stderr);
 }
