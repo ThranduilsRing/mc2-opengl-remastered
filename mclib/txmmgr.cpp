@@ -78,6 +78,7 @@
 #include "../GameOS/gameos/vulkan_shadow_island_live.h"  // VK-P8a SHADOW-INTEROP: producer call
 #include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
 #include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
+#include "../GameOS/gameos/vulkan_legacy_shape_island.h"  // VK-PARITY-F1: legacy MLR solid loop VK owner
 #endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
@@ -869,6 +870,11 @@ void MC_TextureManager::flush (bool justTextures)
 			fflush(stdout);
 		}
 		peakUsedTextures = 0;
+#ifdef MC2_VULKAN_ISLAND
+		// VK-PARITY-F1: texture node indices are reused by the next mission; drop the
+		// legacy-shape island's copy-once texture cache.
+		mc2_vk_legacy_shape_island_reset();
+#endif
 
 		// [TXMMGR_TEXTURE_AUDIT v1] pre-flush census (slot occupancy before free).
 		long auditTotalUsed = 0, auditNeverflush = 0, auditFlushable = 0;
@@ -3220,6 +3226,45 @@ void MC_TextureManager::renderLists (void)
 	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
 	mc2_cone_glow::FlushFrame();
 	static bool bSkip = true; // used across preamble and Render.3DObjects
+#ifdef MC2_VULKAN_ISLAND
+	// VK-PARITY-F1: ground vehicles (and every other TG_Shape on the CPU-transformed
+	// gos_VERTEX path) are flushed by the legacy masterVertexNodes loops below (solid,
+	// blob-shadow, alpha, additive effects / spotlight cones). Under the VK umbrella the
+	// native VK composite is the sole present producer, so those GL draws would land in a
+	// DISCARDED GL backbuffer and the objects would vanish. When the VK legacy-shape island
+	// is armed, each loop queues its nodes for the island (run right after the loop group)
+	// instead of drawing them here. Gate off (default GL) -> vkLegacyOn == false -> every
+	// loop is byte-identical.
+	const bool vkLegacyOn = (mc2_vk_legacy_shape_island_enabled() != 0);
+	auto vkLegacySubmitNode = [this](long i, uint32_t pass, uint32_t alphaTest) {
+		DWORD totalVertices = masterVertexNodes[i].numVertices;
+		if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
+			totalVertices = (DWORD)(masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices);
+		if (totalVertices)
+		{
+			Mc2LegacyMlrDraw d{};
+			d.vertices = masterVertexNodes[i].vertices;
+			d.vertexCount = totalVertices;
+			d.texNode = (uint32_t)masterVertexNodes[i].textureIndex;
+			const DWORD gosTex = tex_resolve(masterVertexNodes[i].textureIndex);
+			d.gosTexHandle = (gosTex == 0xffffffffu) ? 0u : (uint32_t)gosTex;
+			d.pass = pass;
+			d.alphaTest = alphaTest;
+			mc2_vk_legacy_shape_submit(&d);
+		}
+		masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+	};
+	auto vkLegacyRun = [this]() {
+		// fog_color_ is what gosRenderer would have latched from gos_State_Fog (set in the
+		// renderLists preamble: eye->fogColor when fog is on, else 0). The additive loops
+		// clear fog themselves (the island ADD pass ignores this).
+		Mc2LegacyMlrFrame ff{};
+		const vec4 fcv = uint32_to_vec4(useFog ? (uint32_t)eye->fogColor : 0u);
+		ff.fogColor[0] = fcv.x; ff.fogColor[1] = fcv.y; ff.fogColor[2] = fcv.z; ff.fogColor[3] = fcv.w;
+		if (gosPostProcess* ppVkLeg = getGosPostProcess())
+			(void)mc2_vk_legacy_shape_island_run(ppVkLeg->getWidth(), ppVkLeg->getHeight(), &ff);
+	};
+#endif
 	{
 	ZoneScopedN("RenderLists.Preamble");
 	rlcost::Span _rl(rlcost::kPreamble);
@@ -4148,6 +4193,15 @@ void MC_TextureManager::renderLists (void)
 						totalVertices = masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices;
 					}
 
+#ifdef MC2_VULKAN_ISLAND
+					if (vkLegacyOn)
+					{
+						// VK-PARITY-F1: hand this node's CPU-lit gos_VERTEX triangle list to the
+						// VK legacy-shape island (drawn after the loop) instead of GL.
+						vkLegacySubmitNode(i, MC2_LEGACY_PASS_SOLID, 0);
+						continue;
+					}
+#endif
 					// LEGACY-MLR-DELETE-1: dead (terrain skipped above); non-terrain nodes never have terrain extras.
 					gos_SetTerrainBatchExtras(NULL, 0);
 
@@ -4180,6 +4234,10 @@ void MC_TextureManager::renderLists (void)
 					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
 				}
 			}
+#ifdef MC2_VULKAN_ISLAND
+		if (vkLegacyOn)
+			vkLegacyRun();   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
+#endif
 		// Emit one [BUCKET_CENSUS v1] line per frame (env-gated). Runs
 		// after flush() has populated the modern-side stats and after
 		// either branch has reset the legacy ring; legacy_eligible was
@@ -4659,6 +4717,9 @@ void MC_TextureManager::renderLists (void)
 				(masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
 				(masterVertexNodes[i].vertices))
 			{
+#ifdef MC2_VULKAN_ISLAND
+				if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_SHADOW, 0); continue; }   // VK-PARITY-F1
+#endif
 				DWORD totalVertices = masterVertexNodes[i].numVertices;
 				if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
 				{
@@ -4696,6 +4757,10 @@ void MC_TextureManager::renderLists (void)
 			}
 		}
 	}
+#ifdef MC2_VULKAN_ISLAND
+	if (vkLegacyOn)
+		vkLegacyRun();   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
+#endif
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Blobs);
 	} // end RenderLists.ShadowBlobs
 
@@ -4727,6 +4792,9 @@ void MC_TextureManager::renderLists (void)
                     (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
                     (masterVertexNodes[i].vertices))
             {
+#ifdef MC2_VULKAN_ISLAND
+                if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_ALPHA, (uint32_t)states); continue; }   // VK-PARITY-F1
+#endif
                 DWORD totalVertices = masterVertexNodes[i].numVertices;
                 if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
                 {
@@ -4807,6 +4875,9 @@ void MC_TextureManager::renderLists (void)
 		if ((masterVertexNodes[i].flags & MC2_ISEFFECTS) &&
 			(masterVertexNodes[i].vertices))
 		{
+#ifdef MC2_VULKAN_ISLAND
+			if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0); continue; }   // VK-PARITY-F1
+#endif
 			DWORD totalVertices = masterVertexNodes[i].numVertices;
 			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
 			{
@@ -4854,6 +4925,9 @@ void MC_TextureManager::renderLists (void)
 		if ((masterVertexNodes[i].flags & MC2_ISSPOTLGT) &&
 			(masterVertexNodes[i].vertices))
 		{
+#ifdef MC2_VULKAN_ISLAND
+			if (vkLegacyOn) { vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0); continue; }   // VK-PARITY-F1
+#endif
 			DWORD totalVertices = masterVertexNodes[i].numVertices;
 			if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
 			{
@@ -4891,6 +4965,10 @@ void MC_TextureManager::renderLists (void)
 		}
 	}
 	
+#ifdef MC2_VULKAN_ISLAND
+	if (vkLegacyOn)
+		vkLegacyRun();   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
+#endif
 	gos_SetRenderState( gos_State_ZWrite, 0);
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState( gos_State_Perspective, 1);

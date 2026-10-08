@@ -3807,3 +3807,44 @@ session C: scratchpad — disk A: was at ~99 MB free; numbers preserved here.)
 - tier1 umbrella smoke: skipped under the disk-A pressure + the change being
   VK-island-gated (GL default path never calls acquire); flag for the next
   routine smoke pass.
+
+---
+
+## 2026-10-08 — VK-PARITY-F1: ground vehicles were INVISIBLE under VK; new legacy-MLR island owns them
+
+**Question (parity-gap row 10 "UNVERIFIED"):** are ground vehicles drawn under
+`MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1`? **Verdict: NO — they vanished.**
+Evidence (same `MC2_VISUAL_BOOKMARK_CAPTURE` pose, mc2_10, `spawn clone` + 3x `spawn vehicle`,
+fixed timestep): GL shows 2 APCs + headlight cones beside the mech; VK shows the mech and trees
+but NO vehicle and NO cone. Images: `tests/visual/captures/parF1-units-{gl,vk}/vc/` (before = commit
+parent; after = this commit; scenario `tools/scenarios/vk_vehicle_probe.json`, bookmark
+`tests/visual/bookmarks/mc2_10_units_probe.json`).
+
+**Root cause (corrects the brief's premise).** Vehicles do NOT take the `gos_tex_vertex_lighted`
+HW-vertex-node path (`bShadersDrawPathEnabled=false`: `addRenderShape` is entered with
+`hardwareVertexData==NULL` and drops the shape; the Render.3DObjects HW loop sees
+`nextAvailableHardwareVertexNode==0` in BOTH backends — measured). `TG_Shape::Render` CPU-transforms
+and CPU-lights their triangles into **`gos_VERTEX` arrays** (`masterVertexNodes`, one per texture)
+that `mcTextureManager::renderLists` flushes with `gos_RenderIndexedArray(gos_VERTEX*)` ->
+`gosRenderer::drawIndexedTris` -> the basic `gos_tex_vertex` material, into the GL scene FBO. Under
+the umbrella the VK composite is the sole present producer, so that draw lands in a discarded GL
+buffer (the all-or-nothing invariant of 2026-07-11). The same legacy loops also own the blended
+vehicle/object layers: blob shadows (ISSHADOWS), non-terrain alpha nodes, additive ISEFFECTS and the
+ISSPOTLGT headlight cones. (Compass/HUD nodes stay GL; trees/buildings/props/mechs are on the GPU
+batchers and were already VK-owned.)
+
+**Fix.** New `GameOS/gameos/vulkan_legacy_shape_island.{h,cpp}` + `shaders/vulkan/legacy_shape_tier1.{vert,frag}`
+(+ `mc2_vulkan_shaders` basename). `renderLists` (mclib/txmmgr.cpp) queues each legacy node
+(`vkLegacySubmitNode`) instead of the GL draw and runs the island after the solid loop, the blob-shadow
+block and the alpha/effects/spotlight group (`vkLegacyRun`). The island memcpy's the node's
+pre-transformed `gos_VERTEX` array into a per-parity host-visible VK vertex buffer and co-writes it into the
+shared GBuffer (LOAD color0/normal/depth, 4 pipelines: SOLID opaque+depth-write GEQUAL, ALPHA, SHADOW
+(GREATER), ADD (OneOne, fog off); blended passes mask MRT1). Shader = verbatim port of `gos_tex_vertex`
+(`clip = (projection_ * xyz) / rhw`, `Color.bgra * tex`, vertex-fog mix). Textures: copy-once
+`glGetTexImage`, keyed on the mcTextureManager node, dropped on `MC_TextureManager::flush` (mission unload).
+**No new env var**: armed exactly when the mech island is (`MC2_VK_MECH_TIER1`+`MC2_VK_SHARED_SCENE_DEPTH`
+umbrella members). Gate off => `vkLegacyOn==false` => all legacy loops byte-identical GL.
+
+**Remaining:** night light-pool term and per-shape clamp sampler are not applicable to this path (vertex
+colour is CPU-lit; wrap sampler used); MC2_ISCOMPASS/HUD nodes still GL-only; `spawn infantry` in the
+gameplay driver kills the engine (exit 1) on both backends — pre-existing, not investigated.

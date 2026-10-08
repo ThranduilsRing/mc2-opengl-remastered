@@ -1,0 +1,43 @@
+{
+  "_doc": [
+    "VK-PARITY-F1: spawn a mech, ground vehicles and infantry side by side at the mc2_10 baseline pose and capture, to prove every unit class shows under a backend (run once with default GL, once with MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1 in the runner env)."
+  ],
+  "mission": "mc2_10",
+  "env": {
+    "MC2_TEST_SPAWN": "1",
+    "MC2_WIDTH": "1280",
+    "MC2_HEIGHT": "720",
+    "MC2_VISUAL_CAPTURE_CLEAN": "1",
+    "MC2_VISUAL_BOOKMARK_CAPTURE": "A:/Games/mc2-main/tests/visual/bookmarks/mc2_10_units_probe.json",
+    "MC2_VISUAL_CAPTURE_FRAME": "600",
+    "MC2_VISUAL_SETTLE": "30"
+  },
+  "boot_timeout": 300,
+  "duration": 420,
+  "settle": 1.2,
+  "steps": [
+    {
+      "cmd": "mission_status"
+    },
+    {
+      "cmd": "spawn clone -4750 -5250",
+      "expect": "ok"
+    },
+    {
+      "cmd": "spawn vehicle -4650 -5250",
+      "expect": "ok"
+    },
+    {
+      "cmd": "spawn vehicle -4650 -5200",
+      "expect": "ok"
+    },
+    {
+      "cmd": "spawn vehicle -4700 -5300",
+      "expect": "ok"
+    },
+    {
+      "at_frame": 900
+    }
+  ],
+  "captures": []
+}

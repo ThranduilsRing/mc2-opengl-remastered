@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_10",
+  "_note": "VK-PARITY-F1 unit-class probe; use with tools/scenarios/vk_vehicle_probe.json (spawns a mech + 3 ground vehicles near -4700,-5250).",
+  "bookmarks": [
+    { "name": "units_a", "pos": [-4700.0, -5250.0, 0.0], "rot": 45.0, "proj": 30.0, "alt": 350.0 },
+    { "name": "units_b", "pos": [-4700.0, -5250.0, 0.0], "rot": 135.0, "proj": 30.0, "alt": 250.0 }
+  ]
+}

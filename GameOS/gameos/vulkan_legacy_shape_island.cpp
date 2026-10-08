@@ -1,0 +1,738 @@
+// vulkan_legacy_shape_island.cpp -- VK-PARITY-F1: VK owner of the legacy MLR
+// solid-object vertex loop (ground vehicles etc.). See the header for the why;
+// structure = vulkan_mech_island.cpp's shared-GBuffer co-write path (LOAD-preserve
+// MRT0 color + MRT1 normal + shared D32S8 depth, GEQUAL reverse-Z, no composite,
+// parity-fenced submit) with a much simpler feed:
+//   * geometry: the node's CPU gos_VERTEX array (pre-transformed screen-space,
+//     CPU-lit) is memcpy'd each frame into a per-parity host-visible vertex buffer;
+//   * textures: copy-once glGetTexImage import keyed on the mcTextureManager node;
+//   * no lights / no instancing: vertex colour is already CPU-lit.
+// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
+
+#ifdef MC2_VULKAN_ISLAND
+
+#ifndef VK_USE_PLATFORM_WIN32_KHR
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
+#include <volk.h>
+#include <GL/glew.h>
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include <vk_mem_alloc.h>
+
+#include "vk_image_resource.h"
+#include "vulkan_context.h"
+#include "vulkan_legacy_shape_island.h"
+#include "vk_shared_gbuffer_gate.h"
+#define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
+#include "vulkan_shared_scene_color.h"
+#define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
+#include "vulkan_shared_scene_depth.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cstdarg>
+#include <cstdint>
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <tracy/Tracy.hpp>
+
+uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // defined in gameos_graphics.cpp
+const float* gos_GetProj2ScreenMat4();             // gosRenderer::projection_ (row-major, GL_TRUE)
+
+namespace {
+
+struct Health {
+    unsigned long attempted = 0, usedVulkan = 0, nodesDrawn = 0, vertsDrawn = 0, texUploads = 0;
+    char fallbackReason[128] = {0};
+};
+Health g_health;
+
+void setFallback(const char* r) {
+    std::strncpy(g_health.fallbackReason, r ? r : "", sizeof(g_health.fallbackReason) - 1);
+    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = 0;
+}
+
+void vlog(const char* fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    std::fprintf(stderr, "[VK_LEGACY_SHAPE] ");
+    std::vfprintf(stderr, fmt, ap);
+    std::fprintf(stderr, "\n");
+    std::fflush(stderr);
+    va_end(ap);
+}
+
+// Armed exactly when the mech island is (the other half of object content).
+bool gateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
+        const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
+        state = (on && dep) ? 1 : 0;
+    }
+    return state == 1;
+}
+
+std::string spv_dir() {
+    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
+    std::string d = (env && *env) ? env : "shaders/vulkan";
+    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
+    return d;
+}
+
+VkShaderModule load_spv(VkDevice device, const std::string& path) {
+    std::FILE* f = std::fopen(path.c_str(), "rb");
+    if (!f) { vlog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
+    std::fseek(f, 0, SEEK_END);
+    long len = std::ftell(f);
+    std::fseek(f, 0, SEEK_SET);
+    if (len <= 0 || (len % 4) != 0) { vlog("spv '%s' bad size %ld.", path.c_str(), len); std::fclose(f); return VK_NULL_HANDLE; }
+    std::vector<uint32_t> code(static_cast<size_t>(len) / 4);
+    size_t got = std::fread(code.data(), 1, static_cast<size_t>(len), f);
+    std::fclose(f);
+    if (got != static_cast<size_t>(len)) { vlog("spv short read '%s'.", path.c_str()); return VK_NULL_HANDLE; }
+    VkShaderModuleCreateInfo smci{};
+    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    smci.codeSize = static_cast<size_t>(len);
+    smci.pCode = code.data();
+    VkShaderModule mod = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(device, &smci, nullptr, &mod) != VK_SUCCESS) {
+        vlog("vkCreateShaderModule('%s') failed.", path.c_str()); return VK_NULL_HANDLE;
+    }
+    return mod;
+}
+
+// std140 per-frame UBO (LOCKSTEP with legacy_shape_tier1.{vert,frag} LegacyFrameUBO).
+struct LegacyFrameUBO {
+    float proj[16];      // gos_GetProj2ScreenMat4(): 4 consecutive rows (row-major)
+    float fogColor[4];
+};
+static_assert(sizeof(LegacyFrameUBO) == 80, "LegacyFrameUBO std140 lockstep");
+
+const uint32_t kVertexStride = 32;       // gos_VERTEX: x,y,z,rhw, argb, frgb, u, v
+const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
+
+struct TexEntry {
+    VkImage img = VK_NULL_HANDLE; VmaAllocation alloc = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
+    VkDescriptorSet set[2] = {};
+};
+
+struct Island {
+    bool inited = false, disabled = false;
+    int  w = 0, h = 0;
+    VkInstance instance = VK_NULL_HANDLE; VkPhysicalDevice phys = VK_NULL_HANDLE;
+    VkDevice device = VK_NULL_HANDLE; uint32_t gfxFamily = UINT32_MAX;
+    VkQueue queue = VK_NULL_HANDLE; VmaAllocator allocator = VK_NULL_HANDLE;
+
+    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE;
+    VkPipeline pipes[MC2_LEGACY_PASS_COUNT] = {}; VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    struct VkImageResource* colorRes = nullptr;
+    struct VkImageResource* normalRes = nullptr;
+    struct VkImageResource* depthRes = nullptr;
+
+    VkDescriptorSetLayout dsl = VK_NULL_HANDLE; VkDescriptorPool pool = VK_NULL_HANDLE;
+    VkSampler samp = VK_NULL_HANDLE;
+    VkBuffer ubo[2] = {}; VmaAllocation uboAlloc[2] = {};
+    VkBuffer vtx[2] = {}; VmaAllocation vtxAlloc[2] = {}; VkDeviceSize vtxCap[2] = {};
+
+    TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
+    std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
+
+    VkCommandPool cpool = VK_NULL_HANDLE;
+    VkCommandBuffer cbuf[2] = {};
+};
+
+Island* g_island = nullptr;
+bool g_sessionDeclined = false;
+int  g_initReachedBuild = 0;
+std::vector<Mc2LegacyMlrDraw> g_pending;
+
+bool make_buffer(Island* s, VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer* buf,
+                 VmaAllocation* alloc, bool hostVisible) {
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = size ? size : 16; bci.usage = usage;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO;
+    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+    if (vmaCreateBuffer(s->allocator, &bci, &aci, buf, alloc, nullptr) != VK_SUCCESS) {
+        vlog("vmaCreateBuffer failed."); return false;
+    }
+    return true;
+}
+
+bool upload_host(Island* s, VmaAllocation a, const void* data, size_t bytes) {
+    void* p = nullptr;
+    if (vmaMapMemory(s->allocator, a, &p) != VK_SUCCESS) return false;
+    std::memcpy(p, data, bytes);
+    vmaUnmapMemory(s->allocator, a);
+    return true;
+}
+
+void destroy_tex(Island* s, TexEntry& t) {
+    if (t.view) vkDestroyImageView(s->device, t.view, nullptr);
+    if (t.img)  vmaDestroyImage(s->allocator, t.img, t.alloc);
+    t = TexEntry{};
+}
+
+// --- one-shot command helpers (copy-once texture import) --------------------
+VkCommandBuffer cp_begin(Island* s) {
+    VkCommandBufferAllocateInfo cbi{};
+    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
+    VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cb, &bi);
+    return cb;
+}
+void cp_end(Island* s, VkCommandBuffer cb) {
+    vkEndCommandBuffer(cb);
+    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    VkFence f = VK_NULL_HANDLE;
+    VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    if (vkCreateFence(s->device, &fci, nullptr, &f) != VK_SUCCESS) f = VK_NULL_HANDLE;
+    vkQueueSubmit(s->queue, 1, &si, f);
+    if (f != VK_NULL_HANDLE) {
+        vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull * 1000 * 1000 * 1000);
+        vkDestroyFence(s->device, f, nullptr);
+    } else {
+        vkQueueWaitIdle(s->queue);
+    }
+    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+}
+
+bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    if (!upload_host(s, stgAlloc, bytes, (size_t)byteCount)) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+    ici.extent = {w, h, 1}; ici.mipLevels = 1; ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
+        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
+    }
+    VkCommandBuffer cb = cp_begin(s);
+    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+    VkImageMemoryBarrier bar{};
+    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = e.img;
+    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    VkBufferImageCopy r{};
+    r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    r.imageExtent = {w, h, 1};
+    vkCmdCopyBufferToImage(cb, stg, e.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
+    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &bar);
+    cp_end(s, cb);
+    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
+
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = e.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    return vkCreateImageView(s->device, &vci, nullptr, &e.view) == VK_SUCCESS;
+}
+
+// Per-parity descriptor set for one texture: 0 = frame UBO, 1 = albedo.
+bool alloc_tex_sets(Island* s, TexEntry& t) {
+    VkDescriptorSetLayout layouts[2] = {s->dsl, s->dsl};
+    VkDescriptorSetAllocateInfo dsai{};
+    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    dsai.descriptorPool = s->pool; dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+    if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
+    for (uint32_t par = 0; par < 2; ++par) {
+        VkDescriptorBufferInfo ui{ s->ubo[par], 0, VK_WHOLE_SIZE };
+        VkDescriptorImageInfo ii{};
+        ii.sampler = s->samp; ii.imageView = t.view; ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkWriteDescriptorSet w[2]{};
+        w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 0;
+        w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w[0].pBufferInfo = &ui;
+        w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = t.set[par]; w[1].dstBinding = 1;
+        w[1].descriptorCount = 1; w[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[1].pImageInfo = &ii;
+        vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+    }
+    return true;
+}
+
+// Resolve (importing copy-once on first sight) the texture entry for a node.
+// Called BEFORE recording (GL calls); never inside the VK command buffer.
+TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
+    if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
+    auto it = s->texs.find(texNode);
+    if (it != s->texs.end()) return &it->second;
+    if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
+    const uint32_t glTex = gos_GetGLTextureId(gosHandle);
+    if (glTex == 0) return &s->dummyTex;    // not resident yet; retry next frame
+
+    GLint prevTex = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
+    GLint w = 0, h = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) {
+        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+        return &s->dummyTex;
+    }
+    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+
+    TexEntry t;
+    if (!upload_image(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
+        !alloc_tex_sets(s, t)) {
+        destroy_tex(s, t);
+        return &s->dummyTex;
+    }
+    ++g_health.texUploads;
+    auto ins = s->texs.emplace(texNode, t);
+    vlog("texture cached: node=%u glTex=%u %dx%d (%zu/%u).", texNode, glTex, (int)w, (int)h,
+         s->texs.size(), kMaxTextures);
+    return &ins.first->second;
+}
+
+void destroy_island(Island* s) {
+    if (!s) return;
+    VkDevice d = s->device;
+    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    for (int k = 0; k < MC2_LEGACY_PASS_COUNT; ++k)
+        if (s->pipes[k]) vkDestroyPipeline(d, s->pipes[k], nullptr);
+    if (s->vert)    vkDestroyShaderModule(d, s->vert, nullptr);
+    if (s->frag)    vkDestroyShaderModule(d, s->frag, nullptr);
+    if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
+    if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
+    if (s->playout) vkDestroyPipelineLayout(d, s->playout, nullptr);
+    for (auto& kv : s->texs) destroy_tex(s, kv.second);
+    s->texs.clear();
+    destroy_tex(s, s->dummyTex);
+    if (s->pool)  vkDestroyDescriptorPool(d, s->pool, nullptr);   // frees the sets
+    if (s->dsl)   vkDestroyDescriptorSetLayout(d, s->dsl, nullptr);
+    for (int i = 0; i < 2; ++i) {
+        if (s->ubo[i]) vmaDestroyBuffer(s->allocator, s->ubo[i], s->uboAlloc[i]);
+        if (s->vtx[i]) vmaDestroyBuffer(s->allocator, s->vtx[i], s->vtxAlloc[i]);
+    }
+    if (s->samp)  vkDestroySampler(d, s->samp, nullptr);
+    if (s->cpool) vkDestroyCommandPool(d, s->cpool, nullptr);
+}
+
+bool init_island(Island* s, int w, int h) {
+    s->w = w; s->h = h;
+    ++g_health.attempted;
+    g_initReachedBuild = 0;
+
+    if (!mc2vk::ensureEngineVulkanContext()) { setFallback("engine_vk_context_birth_failed"); return false; }
+    mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (!ctx.valid()) { setFallback("engine_vk_context_not_valid"); return false; }
+    s->instance  = ctx.instance();
+    s->phys      = ctx.physicalDevice();
+    s->device    = ctx.device();
+    s->queue     = ctx.graphicsQueue();
+    s->gfxFamily = ctx.graphicsFamily();
+    s->allocator = ctx.allocator();
+    if (s->device == VK_NULL_HANDLE || s->allocator == VK_NULL_HANDLE) { setFallback("engine_vk_device_or_allocator_null"); return false; }
+
+    s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
+    s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+    s->depthRes  = mc2SharedSceneDepthGetResource();
+    if (!s->colorRes || !s->normalRes || !s->depthRes) { setFallback("shared_gbuffer_not_ready"); return false; }
+    g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
+
+    for (int i = 0; i < 2; ++i) {
+        if (!make_buffer(s, sizeof(LegacyFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &s->ubo[i], &s->uboAlloc[i], true)) return false;
+        s->vtxCap[i] = 256 * 1024;
+        if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true)) return false;
+    }
+
+    {   // command pool + per-parity command buffers
+        VkCommandPoolCreateInfo cpi{};
+        cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cpi.queueFamilyIndex = s->gfxFamily;
+        if (vkCreateCommandPool(s->device, &cpi, nullptr, &s->cpool) != VK_SUCCESS) { setFallback("cmdpool_failed"); return false; }
+        VkCommandBufferAllocateInfo cbi{};
+        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
+        if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
+    }
+
+    {   // sampler (REPEAT / LINEAR, no mips -- the FS uses textureLod(..., 0))
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        if (vkCreateSampler(s->device, &sci, nullptr, &s->samp) != VK_SUCCESS) { setFallback("sampler_failed"); return false; }
+    }
+
+    {   // render pass + framebuffer: LOAD color0/normal/depth (same as the mech island)
+        VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->colorRes);
+        VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
+        VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
+        VkAttachmentDescription att[3]{};
+        att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[2].format = depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference colorRefs[2] = {
+            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
+        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.pDepthStencilAttachment = &depthRef;
+
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
+        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
+
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 2; rpci.pDependencies = deps;
+        if (vkCreateRenderPass(s->device, &rpci, nullptr, &s->rpass) != VK_SUCCESS) { setFallback("renderpass_failed"); return false; }
+        VkImageView fbViews[3] = { colorRes->view, normalRes->view, depthRes->view };
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = s->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        if (vkCreateFramebuffer(s->device, &fci, nullptr, &s->fb) != VK_SUCCESS) { setFallback("framebuffer_failed"); return false; }
+    }
+
+    {   // descriptor layout + pool, dummy white texture
+        VkDescriptorSetLayoutBinding b[2]{};
+        b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 2; lci.pBindings = b;
+        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) { setFallback("dsl_failed"); return false; }
+        const uint32_t N = kMaxTextures + 1;   // + dummy
+        VkDescriptorPoolSize sizes[2]{};
+        sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[0].descriptorCount = 2 * N;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[1].descriptorCount = 2 * N;
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = 2 * N; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->pool) != VK_SUCCESS) { setFallback("pool_failed"); return false; }
+
+        const uint8_t px[4] = {255, 255, 255, 255};
+        if (!upload_image(s, s->dummyTex, 1, 1, px, sizeof(px)) || !alloc_tex_sets(s, s->dummyTex)) {
+            setFallback("dummy_tex_failed"); return false;
+        }
+    }
+
+    {   // pipeline
+        s->vert = load_spv(s->device, spv_dir() + "legacy_shape_tier1.vert.spv");
+        s->frag = load_spv(s->device, spv_dir() + "legacy_shape_tier1.frag.spv");
+        if (s->vert == VK_NULL_HANDLE || s->frag == VK_NULL_HANDLE) { setFallback("spv_load_failed"); return false; }
+
+        VkPushConstantRange pcr{};
+        pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = 4;
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
+        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->playout) != VK_SUCCESS) { setFallback("playout_failed"); return false; }
+
+        // gos_VERTEX (32B): pos vec4 (x,y,z,rhw)@0, argb u8x4 unorm@16, frgb u8x4 unorm@20, uv vec2@24.
+        VkVertexInputBindingDescription vib{};
+        vib.binding = 0; vib.stride = kVertexStride; vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputAttributeDescription via[4]{};
+        via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32A32_SFLOAT; via[0].offset = 0;
+        via[1].location = 1; via[1].binding = 0; via[1].format = VK_FORMAT_R8G8B8A8_UNORM;      via[1].offset = 16;
+        via[2].location = 2; via[2].binding = 0; via[2].format = VK_FORMAT_R8G8B8A8_UNORM;      via[2].offset = 20;
+        via[3].location = 3; via[3].binding = 0; via[3].format = VK_FORMAT_R32G32_SFLOAT;       via[3].offset = 24;
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
+        vin.vertexAttributeDescriptionCount = 4; vin.pVertexAttributeDescriptions = via;
+
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.scissorCount = 1;
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert; stages[0].pName = "main";
+        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag; stages[1].pName = "main";
+
+        // One pipeline per legacy loop (gosRenderer state each loop sets in renderLists):
+        //   SOLID : OneZero (no blend), depth write, ZCompare 1 = GEQUAL  (reverse-Z)
+        //   ALPHA : AlphaInvAlpha,      no write,    GEQUAL
+        //   SHADOW: AlphaInvAlpha,      no write,    ZCompare 2 = GREATER
+        //   ADD   : OneOne,             no write,    GEQUAL
+        // Blended passes mask MRT1 (GBuffer normal) off so they never smear the normal buffer.
+        for (int k = 0; k < MC2_LEGACY_PASS_COUNT; ++k) {
+            VkPipelineDepthStencilStateCreateInfo ds{};
+            ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            ds.depthTestEnable = VK_TRUE;
+            ds.depthWriteEnable = (k == MC2_LEGACY_PASS_SOLID) ? VK_TRUE : VK_FALSE;
+            ds.depthCompareOp = (k == MC2_LEGACY_PASS_SHADOW) ? VK_COMPARE_OP_GREATER
+                                                              : VK_COMPARE_OP_GREATER_OR_EQUAL;
+            VkPipelineColorBlendAttachmentState cba[2]{};
+            const VkColorComponentFlags all = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            cba[0].colorWriteMask = all;
+            cba[1].colorWriteMask = (k == MC2_LEGACY_PASS_SOLID) ? all : 0;
+            if (k == MC2_LEGACY_PASS_ALPHA || k == MC2_LEGACY_PASS_SHADOW) {
+                cba[0].blendEnable = VK_TRUE;
+                cba[0].srcColorBlendFactor = cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                cba[0].colorBlendOp = cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+            } else if (k == MC2_LEGACY_PASS_ADD) {
+                cba[0].blendEnable = VK_TRUE;
+                cba[0].srcColorBlendFactor = cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                cba[0].colorBlendOp = cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+            }
+            VkPipelineColorBlendStateCreateInfo cb{};
+            cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            cb.attachmentCount = 2; cb.pAttachments = cba;
+            VkGraphicsPipelineCreateInfo gp{};
+            gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            gp.stageCount = 2; gp.pStages = stages;
+            gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+            gp.pViewportState = &vps; gp.pRasterizationState = &rs;
+            gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
+            gp.pDynamicState = &dsci;
+            gp.layout = s->playout; gp.renderPass = s->rpass; gp.subpass = 0;
+            if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->pipes[k]) != VK_SUCCESS) {
+                setFallback("pipeline_failed"); return false;
+            }
+        }
+    }
+
+    s->inited = true;
+    setFallback("");
+    vlog("island initialized %dx%d (legacy MLR solid loop -> shared color(MRT0)+normal(MRT1)+depth; GEQUAL reverse-Z).", w, h);
+    return true;
+}
+
+} // namespace
+
+// ===========================================================================
+// PUBLIC ENTRY POINTS.
+// ===========================================================================
+
+extern "C" int mc2_vk_legacy_shape_island_enabled() {
+    return (gateRequested() && !g_sessionDeclined) ? 1 : 0;
+}
+
+extern "C" void mc2_vk_legacy_shape_submit(const Mc2LegacyMlrDraw* d) {
+    if (d && d->vertices && d->vertexCount >= 3) g_pending.push_back(*d);
+}
+
+extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFrame* frame) {
+    ZoneScopedN("VK-legacy-shape-island");
+    // Always consume the queue (even on failure) so it can never grow across frames.
+    std::vector<Mc2LegacyMlrDraw> draws;
+    draws.swap(g_pending);
+    if (!gateRequested() || g_sessionDeclined || !frame) return 0;
+    if (draws.empty() || w <= 0 || h <= 0) return 0;
+
+    if (g_island && (g_island->w != w || g_island->h != h)) {
+        destroy_island(g_island); delete g_island; g_island = nullptr;
+    }
+    if (!g_island) {
+        g_island = new Island();
+        if (!init_island(g_island, w, h)) {
+            const bool permanent = (g_initReachedBuild != 0);
+            destroy_island(g_island); delete g_island; g_island = nullptr;
+            if (permanent) {
+                g_sessionDeclined = true;
+                vlog("boot-level decline: permanent init failure (%s) -- legacy shapes will not draw under VK.",
+                     g_health.fallbackReason);
+            } else {
+                static bool s_logged = false;
+                if (!s_logged) { vlog("init not ready (%s) -- will retry.", g_health.fallbackReason); s_logged = true; }
+            }
+            return 0;
+        }
+    }
+    Island* s = g_island;
+    if (s->disabled || !s->inited) return 0;
+
+    // Resolve textures (GL calls) BEFORE recording; total the vertex bytes.
+    struct Resolved { TexEntry* t; const Mc2LegacyMlrDraw* d; VkDeviceSize byteOff; };
+    std::vector<Resolved> list;
+    list.reserve(draws.size());
+    VkDeviceSize totalBytes = 0;
+    for (const Mc2LegacyMlrDraw& d : draws) {
+        TexEntry* t = get_tex(s, d.texNode, d.gosTexHandle);
+        list.push_back({t ? t : &s->dummyTex, &d, totalBytes});
+        totalBytes += (VkDeviceSize)d.vertexCount * kVertexStride;
+    }
+
+    // Grow both parity vertex buffers BEFORE beginFrame (growth after it could strand the fence).
+    for (uint32_t i = 0; i < 2; ++i) {
+        if (totalBytes > s->vtxCap[i]) {
+            vkDeviceWaitIdle(s->device);
+            vmaDestroyBuffer(s->allocator, s->vtx[i], s->vtxAlloc[i]);
+            s->vtx[i] = VK_NULL_HANDLE;
+            s->vtxCap[i] = totalBytes + totalBytes / 2;
+            if (!make_buffer(s, s->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vtx[i], &s->vtxAlloc[i], true)) {
+                s->disabled = true; setFallback("vtx_grow_failed"); return 0;
+            }
+        }
+    }
+
+    VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
+    const uint32_t par = fsC.parity & 1u;
+
+    {   // per-frame vertex stream + UBO
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->vtxAlloc[par], &p) != VK_SUCCESS) { setFallback("map_failed"); s->disabled = true; return 0; }
+        for (const Resolved& r : list)
+            std::memcpy((uint8_t*)p + r.byteOff, r.d->vertices, (size_t)r.d->vertexCount * kVertexStride);
+        vmaUnmapMemory(s->allocator, s->vtxAlloc[par]);
+
+        LegacyFrameUBO u{};
+        const float* proj = gos_GetProj2ScreenMat4();
+        if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
+        for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
+        upload_host(s, s->uboAlloc[par], &u, sizeof(u));
+    }
+
+    VkCommandBuffer cb = s->cbuf[par];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+    VkDeviceSize zeroOff = 0;
+    uint32_t boundPass = 0xffffffffu;
+    vkCmdBindVertexBuffers(cb, 0, 1, &s->vtx[par], &zeroOff);
+
+    VkDescriptorSet boundSet = VK_NULL_HANDLE;
+    unsigned long drawn = 0, verts = 0;
+    for (const Resolved& r : list) {
+        VkDescriptorSet set = r.t->set[par];
+        if (set != boundSet) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &set, 0, nullptr);
+            boundSet = set;
+        }
+        const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : (uint32_t)MC2_LEGACY_PASS_SOLID;
+        if (pass != boundPass) {
+            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass]);
+            boundPass = pass;
+        }
+        // FS flags: bit0 alpha test, bit1 fog off (additive loops clear gos_State_Fog), bit2 opaque alpha.
+        const uint32_t pflags = (r.d->alphaTest ? 1u : 0u) |
+                                (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
+                                (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
+        vkCmdPushConstants(cb, s->playout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
+        vkCmdDraw(cb, r.d->vertexCount, 1, (uint32_t)(r.byteOff / kVertexStride), 0);
+        ++drawn; verts += r.d->vertexCount;
+    }
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    { ZoneScopedN("VKIsl.Legacy.Submit");
+      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+
+    g_health.nodesDrawn += drawn;
+    g_health.vertsDrawn += verts;
+    ++g_health.usedVulkan;
+    static bool s_firstOk = false;
+    if (!s_firstOk) {
+        vlog("first legacy-shape co-write: nodes=%lu verts=%lu textures=%zu.", drawn, verts, s->texs.size());
+        s_firstOk = true;
+    }
+    return 1;
+}
+
+extern "C" void mc2_vk_legacy_shape_island_reset() {
+    g_pending.clear();
+    Island* s = g_island;
+    if (!s || !s->inited) return;
+    // Texture node indices are reused by the next mission: drop the copy-once cache.
+    vkDeviceWaitIdle(s->device);
+    for (auto& kv : s->texs) destroy_tex(s, kv.second);
+    s->texs.clear();
+    // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
+    if (s->pool) vkResetDescriptorPool(s->device, s->pool, 0);
+    s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;
+    if (!alloc_tex_sets(s, s->dummyTex)) { s->disabled = true; vlog("reset: dummy sets failed -- island disabled."); }
+    vlog("texture cache reset on mission unload.");
+}
+
+extern "C" void mc2_vk_legacy_shape_island_destroy() {
+    vlog("used_vulkan=%lu nodes_drawn=%lu verts_drawn=%lu tex_uploads=%lu fallback_reason=\"%s\"",
+         g_health.usedVulkan, g_health.nodesDrawn, g_health.vertsDrawn, g_health.texUploads,
+         g_health.fallbackReason);
+    if (!g_island) return;
+    destroy_island(g_island);
+    delete g_island; g_island = nullptr;
+}
+
+#endif // MC2_VULKAN_ISLAND
