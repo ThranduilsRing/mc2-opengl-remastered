@@ -975,6 +975,7 @@ extern void   gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
 // TERRAIN-AMBIENT-FLOOR-2: daylight level (gameos_graphics.cpp), pushed by
 // gamecam.cpp from terrain_daylight.h. Night state is the TRACE input only.
 extern float  gos_GetTerrainDaylightLevel();
+float gos_TerrainSnowBrightnessDampen();   // VK-PARITY-F3 (defined below)
 extern void   gos_GetNightState(bool* isNight, float* nightFactor);
 
 // ---------------------------------------------------------------------------
@@ -1966,8 +1967,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             out->tintConcrete[k] = tc[k]; out->tintSnow[k] = tsn[k];
         }
         out->tintStrengthScale = gos_GetTerrainTintStrengthScale();
-        static const float s_vkSnowDampen = [](){ const char* v = getenv("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN"); return v ? (float)atof(v) : 0.78f; }();
-        out->snowBrightnessDampen = s_vkSnowDampen;
+        out->snowBrightnessDampen = gos_TerrainSnowBrightnessDampen();
     }
     {
         float fr = 1.f, fg = 1.f, fb = 1.f;
@@ -2825,8 +2825,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (s_locTintStrengthScale >= 0) glUniform1f(s_locTintStrengthScale, tss);
         // Snow brightness dampen: <1 darkens detected snow. Default 0.78 (visibly
         // turned down); MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN overrides.
-        static const float s_snowDampen = [](){ const char* v = getenv("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN"); return v ? (float)atof(v) : 0.78f; }();
-        if (s_locSnowBrightnessDampen >= 0) glUniform1f(s_locSnowBrightnessDampen, s_snowDampen);
+        if (s_locSnowBrightnessDampen >= 0) glUniform1f(s_locSnowBrightnessDampen, gos_TerrainSnowBrightnessDampen());
         // TERRAIN-CONTROLMAP-ALBEDO-1: default member 0.0f -> uploaded verbatim
         // -> frag's mix(x,1.0,0.0)==x (byte-identical) when gate is OFF.
         if (s_locControlAlbedoStrength >= 0)
@@ -4249,6 +4248,13 @@ float gos_TerrainPadGlowStrength()
 // uniforms and the VK terrain island read the SAME resolved values (one getenv
 // each). Semantics unchanged: floor default 0.35 (unset), clamped 0..2, NaN->0;
 // night floor default 0.0, clamped 0..1.
+// VK-PARITY-F3: single reader for the snow brightness dampen (default 0.78;
+// MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN overrides), shared by the GL uniform upload and the VK feed.
+float gos_TerrainSnowBrightnessDampen()
+{
+    static const float s_v = [](){ const char* v = getenv("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN"); return v ? (float)atof(v) : 0.78f; }();
+    return s_v;
+}
 static bool s_ambEnvSetFlag = false;
 float gos_TerrainAmbientFloor()
 {
