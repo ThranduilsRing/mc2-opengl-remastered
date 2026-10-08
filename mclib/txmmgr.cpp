@@ -3958,6 +3958,17 @@ void MC_TextureManager::renderLists (void)
 						        csmN, nCasters);
 						fflush(stderr);
 					}
+#ifdef MC2_VULKAN_ISLAND
+					// MC2_VK_SHADOW_MATRIX_DIAG (Trace, default OFF = one cached-bool test).
+					if (mc2_vk_shadow_matrix_diag_enabled()) {
+						mc2_vk_shadow_matrix_diag_tick(
+							ppCsm->getDynamicLightSpaceMatrix(), ppCsm->getDynamicShadowMapSize(),
+							ppCsm->getDynamicShadowTextureRaw(),
+							ppCsm->getDynamicCascadeMatrices(), csmN, ppCsm->getDynamicShadowMapSize(),
+							ppCsm->getDynamicShadowArrayTexture(), ppCsm->getDynamicFullMapTexture(),
+							ppCsm->getDynamicFullMapSize(), ppCsm->getDynamicFullMapTexelWorld());
+					}
+#endif
 				}
 			}
 		}

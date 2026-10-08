@@ -2611,6 +2611,26 @@ static void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.csmCascadeTexelWorld[2] = feed.csmCascadeTexelWorld[2];
     u.csmCascadeTexelWorld[3] = 0.0f;
     u.csmFullMapTexelWorld = feed.csmFullMapTexelWorld;
+    if (mc2_vk_shadow_matrix_diag_enabled() && mc2_vk_shadow_matrix_diag_take_terrain_arm()) {
+        // MC2_VK_SHADOW_MATRIX_DIAG: exactly what terrain_tier1.frag samples with (std140 default
+        // column-major mat4, no row_major qualifier; raw memcpy of the GL arrays).
+        auto pm = [](const char* tag, const float* m, int n) {
+            std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] %s = [", tag);
+            for (int i = 0; i < n; ++i) std::fprintf(stderr, "%s%.6g", i ? "," : "", m[i]);
+            std::fprintf(stderr, "]\n");
+        };
+        std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled=%d csmCount=%d enableDynShadows=%d csmDepthSpan=%.6g csmFullMapTexelWorld=%.6g csmCascadeTexelWorld=%.6g,%.6g,%.6g feed.csmArraySize=%d feed.csmFullMapSize=%d feed.dynShadowSize=%d\n",
+                     (int)u.csmEnabled, (int)u.csmCount, (int)u.enableDynShadows, u.csmDepthSpan,
+                     u.csmFullMapTexelWorld, u.csmCascadeTexelWorld[0], u.csmCascadeTexelWorld[1],
+                     u.csmCascadeTexelWorld[2], (int)feed.csmArraySize, (int)feed.csmFullMapSize,
+                     (int)feed.dynamicShadowSize);
+        pm("TERRAIN UBO dynamicLightSpaceMatrix", u.dynamicLightSpaceMatrix, 16);
+        for (int i = 0; i < 3; ++i) {
+            char tg[64]; std::snprintf(tg, sizeof(tg), "TERRAIN UBO csmCascadeMatrices[%d]", i);
+            pm(tg, u.csmCascadeMatrices + i * 16, 16);
+        }
+        std::fflush(stderr);
+    }
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
     // visualMode (0 or 2, from the GL capture site) is only honored when the
     // bake snapshot is live AND the side is sane -- else forced 0 (VS draws

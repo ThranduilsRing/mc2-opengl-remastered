@@ -56,6 +56,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdarg>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -852,6 +853,158 @@ bool upload_geometry_once(ShadowIsland* s) {
     return true;
 }
 
+// ===========================================================================
+// MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF). Evidence-only: matrices as
+// received by the island per map, GL/VK depth readbacks -> normalized gray PNG.
+// ===========================================================================
+bool diagOn() {
+    static const bool on = []{
+        const char* v = std::getenv("MC2_VK_SHADOW_MATRIX_DIAG");
+        return v && v[0] && v[0] != '0';
+    }();
+    return on;
+}
+struct DiagRecv { bool have = false; int size = 0; int layers = 0; float m[16] = {0}; };
+DiagRecv g_diagDyn, g_diagFull, g_diagArr[4];
+bool g_diagTerrainArm = false;
+void diagRecordDyn(int size, const float* m) {
+    if (!diagOn()) return;
+    g_diagDyn.have = true; g_diagDyn.size = size; std::memcpy(g_diagDyn.m, m, 64);
+}
+void diagRecordFull(int size, const float* m) {
+    if (!diagOn()) return;
+    g_diagFull.have = true; g_diagFull.size = size; std::memcpy(g_diagFull.m, m, 64);
+}
+void diagRecordArr(int size, int layers, int layer, const float* m) {
+    if (!diagOn() || layer < 0 || layer >= 4) return;
+    g_diagArr[layer].have = true; g_diagArr[layer].size = size; g_diagArr[layer].layers = layers;
+    std::memcpy(g_diagArr[layer].m, m, 64);
+}
+void diagPrintMat(const char* tag, const float* m, int n = 16) {
+    char buf[1024]; int o = 0;
+    for (int i = 0; i < n; ++i) o += std::snprintf(buf + o, sizeof(buf) - o, "%s%.6g", i ? "," : "", m[i]);
+    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] %s = [%s]\n", tag, buf);
+}
+uint32_t diagCrc(const unsigned char* p, size_t n, uint32_t crc) {
+    static uint32_t table[256]; static bool init = false;
+    if (!init) { for (uint32_t i = 0; i < 256; ++i) { uint32_t c = i;
+        for (int k = 0; k < 8; ++k) c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+        table[i] = c; } init = true; }
+    crc ^= 0xFFFFFFFFu;
+    for (size_t i = 0; i < n; ++i) crc = table[(crc ^ p[i]) & 0xFF] ^ (crc >> 8);
+    return crc ^ 0xFFFFFFFFu;
+}
+void diagBe32(std::vector<unsigned char>& o, uint32_t v) {
+    o.push_back((unsigned char)(v >> 24)); o.push_back((unsigned char)(v >> 16));
+    o.push_back((unsigned char)(v >> 8));  o.push_back((unsigned char)v);
+}
+void diagChunk(std::vector<unsigned char>& o, const char tag[4], const unsigned char* d, size_t n) {
+    diagBe32(o, (uint32_t)n); size_t st = o.size(); o.insert(o.end(), tag, tag + 4);
+    if (n) o.insert(o.end(), d, d + n);
+    diagBe32(o, diagCrc(o.data() + st, 4 + n, 0));
+}
+bool diagWriteGrayPng(const char* path, int w, int h, const std::vector<unsigned char>& g) {
+    std::vector<unsigned char> z; z.push_back(0x78); z.push_back(0x01);
+    const size_t rowB = 1 + (size_t)w, total = rowB * (size_t)h;
+    uint32_t a = 1, b = 0; size_t off = 0;
+    std::vector<unsigned char> blk;
+    while (off < total) {
+        size_t n = std::min<size_t>(65535, total - off);
+        blk.resize(n);
+        for (size_t i = 0; i < n; ++i) {
+            size_t pos = off + i, y = pos / rowB, x = pos % rowB;
+            blk[i] = x == 0 ? 0 : g[y * (size_t)w + (x - 1)];
+            a = (a + blk[i]) % 65521; b = (b + a) % 65521;
+        }
+        bool last = off + n >= total;
+        z.push_back(last ? 1 : 0);
+        z.push_back((unsigned char)(n & 0xFF)); z.push_back((unsigned char)(n >> 8));
+        z.push_back((unsigned char)(~n & 0xFF)); z.push_back((unsigned char)((~n >> 8) & 0xFF));
+        z.insert(z.end(), blk.begin(), blk.end());
+        off += n;
+    }
+    diagBe32(z, (b << 16) | a);
+    std::vector<unsigned char> out; const unsigned char sig[8] = {137,80,78,71,13,10,26,10};
+    out.insert(out.end(), sig, sig + 8);
+    unsigned char ih[13] = {0};
+    ih[0]=(unsigned char)(w>>24); ih[1]=(unsigned char)(w>>16); ih[2]=(unsigned char)(w>>8); ih[3]=(unsigned char)w;
+    ih[4]=(unsigned char)(h>>24); ih[5]=(unsigned char)(h>>16); ih[6]=(unsigned char)(h>>8); ih[7]=(unsigned char)h;
+    ih[8] = 8; ih[9] = 0;
+    diagChunk(out, "IHDR", ih, 13); diagChunk(out, "IDAT", z.data(), z.size()); diagChunk(out, "IEND", nullptr, 0);
+    FILE* f = std::fopen(path, "wb"); if (!f) return false;
+    std::fwrite(out.data(), 1, out.size(), f); std::fclose(f); return true;
+}
+// Normalize [min,max] -> gray, log stats, write PNG. Depth 1.0 = cleared background.
+// Row 0 of the buffer = texture row 0 (v=0) for BOTH GL and VK readbacks (no flip applied).
+void diagDumpDepth(const char* mapName, const char* side, const std::vector<float>& d, int dim) {
+    if (d.empty()) { std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] dump map=%s side=%s EMPTY\n", mapName, side); return; }
+    float mn = 1e30f, mx = -1e30f; size_t covered = 0; int x0 = dim, y0 = dim, x1 = -1, y1 = -1;
+    for (size_t i = 0; i < d.size(); ++i) {
+        float v = d[i]; if (v < mn) mn = v; if (v > mx) mx = v;
+        if (v < 0.9999f) { ++covered; int x = (int)(i % dim), y = (int)(i / dim);
+            if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] dump map=%s side=%s dim=%d min=%.6f max=%.6f covered(<0.9999)=%zu (%.4f%%) bbox=[%d,%d]-[%d,%d]\n",
+                 mapName, side, dim, mn, mx, covered, 100.0 * (double)covered / (double)d.size(), x0, y0, x1, y1);
+    std::vector<unsigned char> g(d.size());
+    const float span = (mx > mn) ? (mx - mn) : 1.0f;
+    for (size_t i = 0; i < d.size(); ++i) g[i] = (unsigned char)std::lround(255.0f * (d[i] - mn) / span);
+    char path[128]; std::snprintf(path, sizeof(path), "vk_shadowdiag_%s_%s.png", mapName, side);
+    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, diagWriteGrayPng(path, dim, dim, g) ? 1 : 0);
+    std::fflush(stderr);
+}
+// One-shot GL readback (DSA only, no binding changes). layer<0 => plain 2D.
+void diagGlRead(GLuint tex, int dim, int layer, std::vector<float>& out) {
+    out.clear(); if (!tex || dim <= 0 || !glGetTextureSubImage) return;
+    while (glGetError() != GL_NO_ERROR) {}
+    GLint pb = 0; glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pb);
+    if (pb) glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    out.resize((size_t)dim * dim);
+    glGetTextureSubImage(tex, 0, 0, 0, layer < 0 ? 0 : layer, dim, dim, 1, GL_DEPTH_COMPONENT, GL_FLOAT,
+                         (GLsizei)(out.size() * sizeof(float)), out.data());
+    if (glGetError() != GL_NO_ERROR) { out.clear(); }
+    if (pb) glBindBuffer(GL_PIXEL_PACK_BUFFER, (GLuint)pb);
+}
+// One-shot VK readback of a D32 image layer (layout READ_ONLY_OPTIMAL in/out).
+void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vector<float>& out) {
+    out.clear(); if (!s || !img || dim <= 0 || s->cpool == VK_NULL_HANDLE) return;
+    const VkDeviceSize bytes = (VkDeviceSize)dim * dim * 4;
+    VkBuffer buf = VK_NULL_HANDLE; VmaAllocation al = VK_NULL_HANDLE;
+    if (!make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &buf, &al, true)) return;
+    VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    cai.commandPool = s->cpool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
+    VkCommandBuffer cb = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, buf, al); return; }
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cb, &bi);
+    VkImageMemoryBarrier br{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    br.srcQueueFamilyIndex = br.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; br.image = img;
+    br.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, layer, 1};
+    br.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; br.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    br.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; br.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
+    VkBufferImageCopy rg{}; rg.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, layer, 1};
+    rg.imageExtent = {(uint32_t)dim, (uint32_t)dim, 1};
+    vkCmdCopyImageToBuffer(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1, &rg);
+    br.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; br.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    br.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT; br.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
+    vkEndCommandBuffer(cb);
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    if (vkQueueSubmit(s->queue, 1, &si, VK_NULL_HANDLE) == VK_SUCCESS) {
+        vkQueueWaitIdle(s->queue);
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, al, &p) == VK_SUCCESS) {
+            vmaInvalidateAllocation(s->allocator, al, 0, VK_WHOLE_SIZE);
+            out.resize((size_t)dim * dim); std::memcpy(out.data(), p, (size_t)bytes);
+            vmaUnmapMemory(s->allocator, al);
+        }
+    }
+    vkFreeCommandBuffers(s->device, s->cpool, 1, &cb);
+    vmaDestroyBuffer(s->allocator, buf, al);
+}
+
 } // namespace
 
 // ===========================================================================
@@ -955,6 +1108,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // vkCmdDraw firstInstance offsets gl_InstanceIndex, so instBase stays 0 and each
     // run passes firstInstance=runStart. Upload lightSpace + instBase=0 once. ----
     {
+        diagRecordDyn(size, lightSpace16);
         ShadowFrameUBO u{};
         std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
         u.instBase = 0;
@@ -1152,6 +1306,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         }
     }
     {
+        diagRecordFull(size, lightSpace16);
         ShadowFrameUBO u{};
         std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
         u.instBase = 0;
@@ -1278,6 +1433,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         }
     }
     {
+        diagRecordArr(size, layers, layerIndex, lightSpace16);
         ShadowFrameUBO u{};
         std::memcpy(u.lightSpaceMatrix, lightSpace16, sizeof(u.lightSpaceMatrix));
         u.instBase = 0;
@@ -1415,6 +1571,53 @@ extern "C" void* mc2_vk_shadow_island_get_csm_array_image() {
 }
 extern "C" int mc2_vk_shadow_island_csm_array_ready() {
     return (g_island && g_csmArrayReadyThisFrame) ? 1 : 0;
+}
+
+// MC2_VK_SHADOW_MATRIX_DIAG public entries.
+// Matrix qualifiers (all verified by grep: NO row_major/column_major anywhere in the shadow-related VK
+// shaders): shadow_prop.vert ShadowFrameUBO std140 default (column-major) mat4 lightSpaceMatrix fed RAW
+// (same as GL's glUniformMatrix4fv GL_FALSE); terrain_tier1.frag UBO dynamicLightSpaceMatrix /
+// csmCascadeMatrices[3] std140 default column-major, fed RAW memcpy of the same GL arrays.
+extern "C" int mc2_vk_shadow_matrix_diag_enabled() { return diagOn() ? 1 : 0; }
+extern "C" int mc2_vk_shadow_matrix_diag_take_terrain_arm() {
+    if (!g_diagTerrainArm) return 0;
+    g_diagTerrainArm = false; return 1;
+}
+extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
+                                               const float* glCascMats, int csmN, int arrSize,
+                                               unsigned glArrTex, unsigned glFullTex, int fullSize,
+                                               float fullTexelWorld) {
+    if (!diagOn()) return;
+    static int s_tick = 0; ++s_tick;
+    if (s_tick != 600 && s_tick != 1200) return;
+    const bool dump = (s_tick == 600);
+    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] ==== tick=%d csmN=%d dynSize=%d arrSize=%d fullSize=%d fullTexelWorld=%.6g (all mats: 16 floats raw memory order, GLSL column-major load) ====\n",
+                 s_tick, csmN, dynSize, arrSize, fullSize, fullTexelWorld);
+    if (glDynMat) diagPrintMat("GL dynamic(getDynamicLightSpaceMatrix@tick)", glDynMat);
+    for (int i = 0; glCascMats && i < csmN && i < 4; ++i) {
+        char tg[96]; std::snprintf(tg, sizeof(tg), "GL cascade[%d]%s", i, i == csmN - 1 ? " (=full-map)" : "");
+        diagPrintMat(tg, glCascMats + i * 16);
+    }
+    if (g_diagDyn.have)  { char tg[64]; std::snprintf(tg, sizeof(tg), "VK island recv dyn size=%d", g_diagDyn.size); diagPrintMat(tg, g_diagDyn.m); }
+    if (g_diagFull.have) { char tg[64]; std::snprintf(tg, sizeof(tg), "VK island recv fullmap size=%d", g_diagFull.size); diagPrintMat(tg, g_diagFull.m); }
+    for (int i = 0; i < 4; ++i) if (g_diagArr[i].have) {
+        char tg[80]; std::snprintf(tg, sizeof(tg), "VK island recv arrayLayer[%d] size=%d layers=%d", i, g_diagArr[i].size, g_diagArr[i].layers);
+        diagPrintMat(tg, g_diagArr[i].m);
+    }
+    g_diagTerrainArm = true;   // terrain island prints its UBO sampling matrices next
+    if (dump && g_island && g_island->inited) {
+        ShadowIsland* s = g_island; std::vector<float> d;
+        diagGlRead(glDynTex, dynSize, -1, d);       diagDumpDepth("dyn", "gl", d, dynSize);
+        diagGlRead(glArrTex, arrSize, 0, d);        diagDumpDepth("csm0", "gl", d, arrSize);
+        diagGlRead(glFullTex, fullSize, -1, d);     diagDumpDepth("full", "gl", d, fullSize);
+        if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image, 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
+        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not ready this frame\n");
+        if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg, 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
+        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not ready this frame\n");
+        if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image, 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
+        else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not ready this frame\n");
+    }
+    std::fflush(stderr);
 }
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).

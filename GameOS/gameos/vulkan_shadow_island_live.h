@@ -221,6 +221,18 @@ void* mc2_vk_shadow_island_get_csm_array_view();
 void* mc2_vk_shadow_island_get_csm_array_image();
 int   mc2_vk_shadow_island_csm_array_ready();
 
+// MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF = zero cost): one-shot matrix/depth-map
+// evidence for the GL-vs-VK shadow producer/consumer comparison. enabled() is a cached getenv.
+int  mc2_vk_shadow_matrix_diag_enabled();
+// Called once per frame after the dynamic+CSM caster passes (txmmgr.cpp). Logs
+// [VK_SHADOW_MATRIX v1] at tick 600 and 1200; dumps GL+VK depth PNGs at tick 600.
+void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize, unsigned glDynTex,
+                                    const float* glCascMats, int csmN, int arrSize,
+                                    unsigned glArrTex, unsigned glFullTex, int fullSize,
+                                    float fullTexelWorld);
+// Terrain island: returns 1 exactly once after a tick armed a log (consumes the latch).
+int  mc2_vk_shadow_matrix_diag_take_terrain_arm();
+
 // Health accessor (mirrors mc2_render_backend_water_region_health).
 void mc2_render_backend_shadow_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,

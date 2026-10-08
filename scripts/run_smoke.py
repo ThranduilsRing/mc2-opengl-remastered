@@ -1397,6 +1397,7 @@ def main():
                             # ISSUE-17 fire-refusal instrumentation (default OFF;
                             # nofire/firegate events on the COMBAT diag tag).
                             "MC2_FIRE_DECISION_TRACE",
+                            "MC2_VK_SHADOW_MATRIX_DIAG",
                             # ISSUE-10 / SAVE-LOAD-AIFREEZE: per-tick runBrain
                             # decision-state stderr trace (default OFF).
                             "MC2_BRAIN_FREEZE_TRACE",

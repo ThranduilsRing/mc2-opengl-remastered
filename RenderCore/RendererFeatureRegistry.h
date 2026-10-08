@@ -3589,6 +3589,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (orderAttackObject, COMMANDER origin — the only origin that installs the tac order and thus the aim) at the nearest live enemy mech, re-issued as targets die (2 s global throttle). Pair with MC2_DIAG_TAGS=COMBAT to capture the hit-location distribution (\"loc\" field) for MC2_CALLED_SHOT_FIX A/B. Default OFF = byte-identical."
     },
     {
+        "MC2_TRACE_VK_SHADOW_MATRIX_DIAG",
+        "MC2_VK_SHADOW_MATRIX_DIAG",
+        EnvVarKind::Trace,
+        false,
+        "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp). At shadow-pass tick 600 and 1200 logs [VK_SHADOW_MATRIX v1] lines: GL dynamic + CSM cascade matrices, the matrices the VK island received per map, and the UBO matrices the VK terrain shader samples with (16 floats, raw memory order, plus map sizes). At tick 600 also dumps vk_shadowdiag_<dyn|csm0|full>_<gl|vk>.png (normalized grayscale depth) into the working directory. Diagnostic only; no behavior change."
+    },
+    {
         "MC2_TRACE_FIRE_DECISION",
         "MC2_FIRE_DECISION_TRACE",
         EnvVarKind::Trace,
