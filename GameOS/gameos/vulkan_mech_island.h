@@ -117,19 +117,6 @@ struct Mc2MechFrameFeed {
     float        poolObjScale;
 };
 
-// VK shadow island mech-caster feed: previous frame's instance + bone snapshot and
-// run list (same data GpuMechBatcher::flushShadow draws), plus the CPU geometry
-// bytes and a generation counter that changes whenever the geometry is rebuilt.
-struct Mc2MechShadowFeed {
-    const void* instances64; uint32_t instanceCount;
-    const void* bones64;     uint32_t boneCount;
-    const Mc2MechDrawRun* runs; uint32_t runCount;
-    const void* vboCpu; uint64_t vboBytes;
-    const void* iboCpu; uint64_t iboBytes;
-    uint32_t    geomGen;
-};
-int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out);
-
 // Filled by gos_mech_batcher.cpp. Return 0 when geometry/gate not ready.
 int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out);
 int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out);

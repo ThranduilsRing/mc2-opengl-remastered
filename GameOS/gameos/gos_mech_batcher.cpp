@@ -186,7 +186,6 @@ static bool                         s_vkMechFrameReady        = false;
 // s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
 // Refreshed by uploadMechGeometryVbo(); cleared with the staging on map load.
 static std::vector<uint8_t>         s_vkVboNativeCopy;
-static uint32_t                     s_vkVboNativeGen = 0;   // bumped on every VBO rebuild (shadow feed)
 #endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).
@@ -1721,7 +1720,7 @@ static void uploadMechGeometryVbo() {
     // island's only geometry source. Copy-once per map / normals rebuild; the copy
     // exists only under the VK backend (s_vkMechGateOn), never in the pure-GL product.
     if (s_vkMechGateOn)
-        { s_vkVboNativeCopy = work; ++s_vkVboNativeGen; }
+        s_vkVboNativeCopy = work;
 #endif
 
     // Vertex attribute setup — 48-byte GpuMechVertex, 7 attributes.
@@ -3056,24 +3055,6 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if ((uint64_t)s_vkVboNativeCopy.size() == vboBytes)
         out->vboCpu = s_vkVboNativeCopy.data();
     out->iboCpu = s_stagingIbo.data();   // uploaded verbatim to s_sharedIbo
-    return 1;
-}
-
-extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
-    if (!out || !s_vkMechGateOn) return 0;
-    // Same guards as GpuMechBatcher::flushShadow (kill-switch + readiness).
-    static const bool s_shadowEnabled = !(getenv("MC2_SHADOW_ENABLE") != nullptr &&
-                                          getenv("MC2_SHADOW_ENABLE")[0] == '0');
-    if (!s_shadowEnabled) return 0;
-    if (!g_useGpuMechs || !s_geometryFinalized || s_programLoadFailed) return 0;
-    if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty() || s_vkMechBoneSnapshot.empty()) return 0;
-    if (s_vkVboNativeCopy.empty() || s_stagingIbo.empty()) return 0;
-    out->instances64 = s_vkMechInstSnapshot.data(); out->instanceCount = (uint32_t)s_vkMechInstSnapshot.size();
-    out->bones64     = s_vkMechBoneSnapshot.data(); out->boneCount     = (uint32_t)s_vkMechBoneSnapshot.size();
-    out->runs        = s_vkMechRunSnapshot.data();  out->runCount      = (uint32_t)s_vkMechRunSnapshot.size();
-    out->vboCpu = s_vkVboNativeCopy.data(); out->vboBytes = (uint64_t)s_vkVboNativeCopy.size();
-    out->iboCpu = s_stagingIbo.data();      out->iboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
-    out->geomGen = s_vkVboNativeGen;
     return 1;
 }
 

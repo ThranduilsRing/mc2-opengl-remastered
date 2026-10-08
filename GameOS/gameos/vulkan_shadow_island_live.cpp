@@ -48,7 +48,6 @@
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
-#include "vulkan_mech_island.h"   // Mc2MechDrawRun / Mc2MechShadowFeed
 #include "vk_shared_gbuffer_gate.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -123,18 +122,30 @@ void vlog(const char* fmt, ...) {
 }
 
 bool shadowInteropGateRequested() {
-    // Umbrella member (default ON under MC2_VK_SHARED_GBUFFER=1; explicit =0 disables).
-    return mc2vkgate::subGate("MC2_VK_SHADOW_INTEROP");
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_SHADOW_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
 }
 
 bool csmFullMapInteropGateRequested() {
-    // Umbrella member (default ON under MC2_VK_SHARED_GBUFFER=1; explicit =0 disables).
-    return mc2vkgate::subGate("MC2_VK_CSM_FULLMAP_INTEROP");
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_CSM_FULLMAP_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
 }
 
 bool csmArrayInteropGateRequested() {
-    // Umbrella member (default ON under MC2_VK_SHARED_GBUFFER=1; explicit =0 disables).
-    return mc2vkgate::subGate("MC2_VK_CSM_ARRAY_INTEROP");
+    static int state = -1;
+    if (state == -1) {
+        const char* e = std::getenv("MC2_VK_CSM_ARRAY_INTEROP");
+        state = (e && e[0] == '1') ? 1 : 0;
+    }
+    return state == 1;
 }
 
 // VK-RUNG8 item-4: MC2_VK_SHADOW_DIRECT_CHAIN is RETIRED. The GL<->VK semaphore-handoff
@@ -287,22 +298,6 @@ struct ShadowIsland {
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
     bool descNeedsRewrite = true;
-
-    // ---- Mech casters (skinned, instanced; mirrors GpuMechBatcher::flushShadow) ----
-    bool          mechInitTried = false;
-    bool          mechPipeOk = false;
-    VkBuffer      mVbo = VK_NULL_HANDLE; VmaAllocation mVboAlloc = VK_NULL_HANDLE;
-    VkBuffer      mIbo = VK_NULL_HANDLE; VmaAllocation mIboAlloc = VK_NULL_HANDLE;
-    uint64_t      mVboBytes = 0, mIboBytes = 0;
-    uint32_t      mGeomGen = 0xFFFFFFFFu;
-    VkBuffer      mInstBuf = VK_NULL_HANDLE; VmaAllocation mInstAlloc = VK_NULL_HANDLE; VkDeviceSize mInstCap = 0;
-    VkBuffer      mBoneBuf = VK_NULL_HANDLE; VmaAllocation mBoneAlloc = VK_NULL_HANDLE; VkDeviceSize mBoneCap = 0;
-    VkDescriptorSetLayout mDsl = VK_NULL_HANDLE;
-    VkDescriptorPool mPool = VK_NULL_HANDLE;
-    VkDescriptorSet  mSet = VK_NULL_HANDLE;
-    VkPipelineLayout mPlayout = VK_NULL_HANDLE;
-    VkPipeline       mPipe = VK_NULL_HANDLE;
-    VkShaderModule   mVert = VK_NULL_HANDLE, mFrag = VK_NULL_HANDLE;
 };
 
 ShadowIsland* g_island = nullptr;
@@ -390,16 +385,6 @@ void destroy_island(ShadowIsland* s) {
     if (s->ibo)     vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc);
     if (s->instBuf) vmaDestroyBuffer(s->allocator, s->instBuf, s->instAlloc);
     if (s->ubo)     vmaDestroyBuffer(s->allocator, s->ubo, s->uboAlloc);
-    if (s->mPipe)    vkDestroyPipeline(d, s->mPipe, nullptr);
-    if (s->mPlayout) vkDestroyPipelineLayout(d, s->mPlayout, nullptr);
-    if (s->mVert)    vkDestroyShaderModule(d, s->mVert, nullptr);
-    if (s->mFrag)    vkDestroyShaderModule(d, s->mFrag, nullptr);
-    if (s->mDsl)     vkDestroyDescriptorSetLayout(d, s->mDsl, nullptr);
-    if (s->mPool)    vkDestroyDescriptorPool(d, s->mPool, nullptr);
-    if (s->mVbo)     vmaDestroyBuffer(s->allocator, s->mVbo, s->mVboAlloc);
-    if (s->mIbo)     vmaDestroyBuffer(s->allocator, s->mIbo, s->mIboAlloc);
-    if (s->mInstBuf) vmaDestroyBuffer(s->allocator, s->mInstBuf, s->mInstAlloc);
-    if (s->mBoneBuf) vmaDestroyBuffer(s->allocator, s->mBoneBuf, s->mBoneAlloc);
     if (s->cpool)   vkDestroyCommandPool(d, s->cpool, nullptr);
     // instance/phys/device/queue/allocator are BORROWED — never destroyed here.
 }
@@ -867,188 +852,6 @@ bool upload_geometry_once(ShadowIsland* s) {
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// MECH CASTERS. Mirrors GpuMechBatcher::flushShadow: previous frame's instance +
-// bone-palette snapshot (CPU copies, no GL readback) drawn skinned+instanced with
-// the same light-space matrix as the prop casters, in the SAME render pass.
-// ---------------------------------------------------------------------------
-struct MechStage {
-    const Mc2MechDrawRun* runs = nullptr;
-    uint32_t runCount = 0;
-    bool ok = false;
-};
-
-bool ensure_mech_buf(ShadowIsland* s, VkBuffer* buf, VmaAllocation* alloc, VkDeviceSize* cap,
-                     VkDeviceSize bytes, uint32_t binding) {
-    if (*buf != VK_NULL_HANDLE && bytes <= *cap) return true;
-    if (*buf != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(s->device);
-        vmaDestroyBuffer(s->allocator, *buf, *alloc);
-        *buf = VK_NULL_HANDLE;
-    }
-    const VkDeviceSize c = bytes + bytes / 2 + 4096;
-    if (!make_buffer(s, c, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, buf, alloc, true)) return false;
-    *cap = c;
-    VkDescriptorBufferInfo bi{ *buf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w{};
-    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = s->mSet;
-    w.dstBinding = binding; w.descriptorCount = 1;
-    w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w.pBufferInfo = &bi;
-    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
-    return true;
-}
-
-bool build_mech_pipeline(ShadowIsland* s) {
-    s->mVert = load_spv(s->device, spv_dir() + "shadow_mech.vert.spv");
-    s->mFrag = load_spv(s->device, spv_dir() + "shadow_mech.frag.spv");
-    if (s->mVert == VK_NULL_HANDLE || s->mFrag == VK_NULL_HANDLE) return false;
-
-    VkDescriptorSetLayoutBinding b[3]{};
-    b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    VkDescriptorSetLayoutCreateInfo lci{};
-    lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    lci.bindingCount = 3; lci.pBindings = b;
-    if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->mDsl) != VK_SUCCESS) return false;
-    VkDescriptorPoolSize sizes[2]{};
-    sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 1;
-    sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 2;
-    VkDescriptorPoolCreateInfo pci{};
-    pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
-    if (vkCreateDescriptorPool(s->device, &pci, nullptr, &s->mPool) != VK_SUCCESS) return false;
-    VkDescriptorSetAllocateInfo dsai{};
-    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = s->mPool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &s->mDsl;
-    if (vkAllocateDescriptorSets(s->device, &dsai, &s->mSet) != VK_SUCCESS) return false;
-    {
-        VkDescriptorBufferInfo ui{ s->ubo, 0, VK_WHOLE_SIZE };
-        VkWriteDescriptorSet w{};
-        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = s->mSet;
-        w.dstBinding = 0; w.descriptorCount = 1;
-        w.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w.pBufferInfo = &ui;
-        vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
-    }
-    VkPipelineLayoutCreateInfo plci{};
-    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    plci.setLayoutCount = 1; plci.pSetLayouts = &s->mDsl;
-    if (vkCreatePipelineLayout(s->device, &plci, nullptr, &s->mPlayout) != VK_SUCCESS) return false;
-
-    VkVertexInputBindingDescription vib{};
-    vib.binding = 0; vib.stride = 48; vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;   // GpuMechVertex
-    VkVertexInputAttributeDescription via[3]{};
-    via[0] = {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0};
-    via[1] = {3, 0, VK_FORMAT_R8G8B8A8_UINT,    32};
-    via[2] = {4, 0, VK_FORMAT_R8G8B8A8_UNORM,   36};
-    VkPipelineVertexInputStateCreateInfo vin{};
-    vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
-    vin.vertexAttributeDescriptionCount = 3; vin.pVertexAttributeDescriptions = via;
-    VkPipelineInputAssemblyStateCreateInfo ia{};
-    ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    VkPipelineViewportStateCreateInfo vps{};
-    vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vps.viewportCount = 1; vps.scissorCount = 1;
-    VkPipelineRasterizationStateCreateInfo rs{};
-    rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
-    rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.depthBiasEnable = VK_TRUE; rs.lineWidth = 1.0f;
-    VkPipelineMultisampleStateCreateInfo ms{};
-    ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkPipelineDepthStencilStateCreateInfo ds{};
-    ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    ds.depthTestEnable = VK_TRUE; ds.depthWriteEnable = VK_TRUE; ds.depthCompareOp = VK_COMPARE_OP_LESS;
-    VkPipelineColorBlendStateCreateInfo cbs{};
-    cbs.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    VkDynamicState dyn[3] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
-    VkPipelineDynamicStateCreateInfo dsci{};
-    dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dsci.dynamicStateCount = 3; dsci.pDynamicStates = dyn;
-    VkPipelineShaderStageCreateInfo stages[2]{};
-    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->mVert; stages[0].pName = "main";
-    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->mFrag; stages[1].pName = "main";
-    VkGraphicsPipelineCreateInfo gp{};
-    gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    gp.stageCount = 2; gp.pStages = stages;
-    gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
-    gp.pViewportState = &vps; gp.pRasterizationState = &rs;
-    gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cbs;
-    gp.pDynamicState = &dsci;
-    gp.layout = s->mPlayout; gp.renderPass = s->rpass; gp.subpass = 0;
-    return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &s->mPipe) == VK_SUCCESS;
-}
-
-bool upload_mech_geometry(ShadowIsland* s, const Mc2MechShadowFeed& f) {
-    if (s->mGeomGen == f.geomGen && s->mVbo && s->mIbo) return true;
-    vkDeviceWaitIdle(s->device);
-    if (s->mVbo) { vmaDestroyBuffer(s->allocator, s->mVbo, s->mVboAlloc); s->mVbo = VK_NULL_HANDLE; }
-    if (s->mIbo) { vmaDestroyBuffer(s->allocator, s->mIbo, s->mIboAlloc); s->mIbo = VK_NULL_HANDLE; }
-    if (!make_buffer(s, f.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->mVbo, &s->mVboAlloc, true)) return false;
-    if (!make_buffer(s, f.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->mIbo, &s->mIboAlloc, true)) return false;
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->mVboAlloc, &p) != VK_SUCCESS) return false;
-    std::memcpy(p, f.vboCpu, (size_t)f.vboBytes); vmaUnmapMemory(s->allocator, s->mVboAlloc);
-    if (vmaMapMemory(s->allocator, s->mIboAlloc, &p) != VK_SUCCESS) return false;
-    std::memcpy(p, f.iboCpu, (size_t)f.iboBytes); vmaUnmapMemory(s->allocator, s->mIboAlloc);
-    s->mVboBytes = f.vboBytes; s->mIboBytes = f.iboBytes; s->mGeomGen = f.geomGen;
-    vlog("mech caster geometry uploaded: vbo=%llu B ibo=%llu B.",
-         (unsigned long long)f.vboBytes, (unsigned long long)f.iboBytes);
-    return true;
-}
-
-// Stage last frame's mech instances + bone palette into VK SSBOs. Never fatal: any
-// failure just means no mech casters this call (props still render).
-MechStage stage_mech_casters(ShadowIsland* s) {
-    MechStage out;
-    if (s->mechInitTried && !s->mechPipeOk) return out;
-    Mc2MechShadowFeed f{};
-    if (!mc2_mech_island_get_shadow_feed(&f)) return out;
-    if (!s->mechInitTried) {
-        s->mechInitTried = true;
-        s->mechPipeOk = build_mech_pipeline(s);
-        vlog("mech caster pipeline %s.", s->mechPipeOk ? "built" : "FAILED (props-only casters)");
-        if (!s->mechPipeOk) return out;
-    }
-    if (!upload_mech_geometry(s, f)) return out;
-    if (!ensure_mech_buf(s, &s->mInstBuf, &s->mInstAlloc, &s->mInstCap, (VkDeviceSize)f.instanceCount * 64u, 1)) return out;
-    if (!ensure_mech_buf(s, &s->mBoneBuf, &s->mBoneAlloc, &s->mBoneCap, (VkDeviceSize)f.boneCount * 64u, 2)) return out;
-    void* p = nullptr;
-    if (vmaMapMemory(s->allocator, s->mInstAlloc, &p) != VK_SUCCESS) return out;
-    std::memcpy(p, f.instances64, (size_t)f.instanceCount * 64u); vmaUnmapMemory(s->allocator, s->mInstAlloc);
-    if (vmaMapMemory(s->allocator, s->mBoneAlloc, &p) != VK_SUCCESS) return out;
-    std::memcpy(p, f.bones64, (size_t)f.boneCount * 64u); vmaUnmapMemory(s->allocator, s->mBoneAlloc);
-    out.runs = f.runs; out.runCount = f.runCount; out.ok = true;
-    static bool s_logged = false;
-    if (!s_logged) { s_logged = true;
-        vlog("first mech casters staged: instances=%u bones=%u runs=%u.", f.instanceCount, f.boneCount, f.runCount); }
-    return out;
-}
-
-// Record the mech caster draws into an already-begun depth pass (viewport/scissor/bias
-// already set by the caller). Called after the prop draws, before vkCmdEndRenderPass.
-void record_mech_casters(ShadowIsland* s, VkCommandBuffer cb, const MechStage& m) {
-    if (!m.ok || m.runCount == 0) return;
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->mPipe);
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->mPlayout, 0, 1, &s->mSet, 0, nullptr);
-    VkDeviceSize off = 0;
-    vkCmdBindVertexBuffers(cb, 0, 1, &s->mVbo, &off);
-    vkCmdBindIndexBuffer(cb, s->mIbo, 0, VK_INDEX_TYPE_UINT32);
-    for (uint32_t r = 0; r < m.runCount; ++r) {
-        const Mc2MechDrawRun& run = m.runs[r];
-        if (run.instanceCount == 0 || run.indexCount == 0) continue;
-        vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex,
-                         run.baseVertex, /*firstInstance*/ run.instanceBase);
-    }
-}
-
 } // namespace
 
 // ===========================================================================
@@ -1209,7 +1012,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // ---- 5) Record: depth-only render pass, per-type instanced caster draws. ----
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zShadowRec, "VKIsl.Shadow.RecordSubmit", true);   // VK-ISLAND-TRACY-1: record+submit+inline wait (to fn return)
-    const MechStage mechCasters = stage_mech_casters(s);
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1267,7 +1069,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     }
     g_health.typeRuns = typeRuns;
 
-    record_mech_casters(s, cb, mechCasters);
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
@@ -1363,7 +1164,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
 
     VkFrameSync fs = vkImageResourceBeginFrame(&s->csmFullMapResource);
     VkCommandBuffer cb = s->cbuf[fs.parity & 1u];
-    const MechStage mechCasters = stage_mech_casters(s);
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1413,7 +1213,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
         }
         i = j;
     }
-    record_mech_casters(s, cb, mechCasters);
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
 
@@ -1495,7 +1294,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
       } }
     vkResetFences(s->device, 1, &s->csmArrayFence);
     VkCommandBuffer cb = s->cbuf[layer & 1u];
-    const MechStage mechCasters = stage_mech_casters(s);
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1545,7 +1343,6 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
         }
         i = j;
     }
-    record_mech_casters(s, cb, mechCasters);
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_array_record_failed"); s->disabled = true; return 0; }
 
