@@ -129,3 +129,10 @@ shaders/vulkan/vfx_particle.frag::o_normal = vec4(0.0);
 # matching the GL producer gos_terrain_water_mdi.frag:551, so even if the mask
 # were opened the constant would still be contract-correct.
 shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
+
+# VK-PARITY-F1 LEGACY SHAPE (ground vehicles etc.). Ports shaders/gos_tex_vertex.frag
+# whose GL write is rc_gbuffer1_screenShadowEligible(vec3(0,0,1)) = vec4(0.5,0.5,1.0,0.0)
+# (render_contract.hglsl:27-29, gos_tex_vertex.frag:`GBuffer1 = rc_gbuffer1_screenShadowEligible`).
+# The SOLID pipeline writes it; the ALPHA/SHADOW/ADD pipelines set cba[1].colorWriteMask = 0
+# (vulkan_legacy_shape_island.cpp) so blended passes never touch MRT1.
+shaders/vulkan/legacy_shape_tier1.frag::oGBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
