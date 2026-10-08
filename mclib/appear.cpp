@@ -38,6 +38,7 @@
 
 #include <gameos.hpp>
 #include "vk_shared_gbuffer_gate.h"   // VK-FIELD-SELECT-1: umbrella detection
+#include "gos_visual_capture.h"       // VISUAL-CAPTURE-CLEAN-1
 
 extern bool useFog;
 
@@ -290,6 +291,7 @@ void Appearance::drawSelectBox (DWORD color)
 //---------------------------------------------------------------------------
 void Appearance::drawSelectBrackets (DWORD color)
 {
+	if (gos::visual_capture::cleanFrame()) return;   // VISUAL-CAPTURE-CLEAN-1
 	VkHudRouteScope			_hudRoute;   // VK-FIELD-SELECT-1: survive the VK umbrella
 	float					offsets = 5.0 * eye->getScaleFactor();
 	Stuff::Vector4D			pos1;
@@ -512,6 +514,7 @@ void Appearance::drawIcon( unsigned long bmpHandle, unsigned long bmpWidth,
 //---------------------------------------------------------------------------
 void Appearance::drawBars (void)
 {
+	if (gos::visual_capture::cleanFrame()) return;   // VISUAL-CAPTURE-CLEAN-1
 	VkHudRouteScope	_hudRoute;   // VK-FIELD-SELECT-1: survive the VK umbrella
 	//-----------------------------------------
 	// Change to GOS DrawQuad code for HWare!!
