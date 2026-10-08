@@ -139,6 +139,7 @@ uint elevAlphaBandByte(float elev) {
     return uint(a);
 }
 
+uniform int u_shoreFlat;
 void main() {
     // Pull per-draw data from the WaterPerCmd SSBO using gl_DrawIDARB
     // (ARB-suffixed name; gl_DrawID is core only in GLSL 4.6).
@@ -201,7 +202,8 @@ void main() {
     // corners don't pull the bilinear quad surface up through the cliff face.
     WaterThickness = waterElevation - velev;   // no clamp; negative = above waterline
     float shoreBlendVS = max(alphaDepth, 1.0);
-    float wz = (WaterThickness >= 0.0)
+    float wz = (u_shoreFlat != 0) ? (waveOurCos(waterBits) + waterElevation)
+             : (WaterThickness >= 0.0)
                ? waveOurCos(waterBits) + waterElevation          // below water: animated flat surface
                : min(velev, waterElevation + shoreBlendVS);      // above water: terrain surface, capped
     vec3 worldPos = vec3(vxy, wz);

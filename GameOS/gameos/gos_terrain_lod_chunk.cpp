@@ -4028,6 +4028,7 @@ int gos_WaterShoreMode()
             if (m[0] == '0' && m[1] == '\0') return 0;
             if (m[0] == '1' && m[1] == '\0') return 1;
             if (m[0] == '2' && m[1] == '\0') return 2;
+            if (m[0] == '3' && m[1] == '\0') return 3;   // GL-only smooth-shore prototype
             // unparseable -> fall through to default resolution
         }
         // Back-compat killswitch: MC2_WATER_SHORE_MASK=0 predates the mode

@@ -3474,7 +3474,7 @@ void gosRenderer::renderWaterFastPath(
                 glBindTexture(GL_TEXTURE_2D, slTex);
                 glActiveTexture(GL_TEXTURE0);
             }
-            const GLuint shTex = (shoreMode == 2)
+            const GLuint shTex = (shoreMode >= 2)
                 ? (GLuint)gos_TerrainLodChunk_WaterShoreHeightTex() : 0u;
             setMI("u_hasShoreHeight", shTex != 0 ? 1 : 0);
             if (shTex != 0) {
@@ -3488,6 +3488,7 @@ void gosRenderer::renderWaterFastPath(
             // about the height zero-crossing). Tunable via
             // MC2_WATER_SHORE_FEATHER_WU; default 7.
             setMF("u_shoreFeatherWu", mc2WaterShoreFeatherWu());
+            setMI("u_shoreFlat", (shoreMode == 3 && shTex != 0) ? 1 : 0);
         }
         setMF         ("waterElevation",  waterElevation);
         setMF         ("alphaDepth",      alphaDepth);
@@ -3760,7 +3761,7 @@ void gosRenderer::renderWaterFastPath(
                     extern int          gos_WaterShoreMode();
                     extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
                     extern const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
-                    fsP.f4[0] = (float)gos_WaterShoreMode();     // u_shoreMode
+                    fsP.f4[0] = (float)(gos_WaterShoreMode() > 2 ? 2 : gos_WaterShoreMode());     // u_shoreMode
                     fsP.f4[3] = mc2WaterShoreFeatherWu();        // u_shoreFeatherWu
                     memcpy(fsP.f5, gos_TerrainLodChunk_WaterShoreHeightBounds(), 4*sizeof(float)); // u_shoreHeightBounds
                     memcpy(fsP.f6, gos_TerrainLodChunk_ShorelineMaskBounds(),    4*sizeof(float)); // u_shoreMaskBounds

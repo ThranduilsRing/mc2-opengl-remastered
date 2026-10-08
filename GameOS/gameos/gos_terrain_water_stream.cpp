@@ -15,6 +15,7 @@
 // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
 
 #include "gos_terrain_water_stream.h"
+extern int gos_WaterShoreMode();
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"   // GPU-SYNC-CONTRACT: SSBO bind-offset alignment helper
 
@@ -158,7 +159,17 @@ float EffShoreExt(float baseAlphaDepth) {
     // amplitude ShoreMeanderWu(), so the waterline can rise by at most that
     // much locally; without this widening the landward excursions would be
     // clipped to the stock tile boundary and re-expose the step.
-    return base + ShoreMeanderWu();
+    float ext = base + ShoreMeanderWu();
+    // MC2_WATER_SHORE_MODE=3 (GL prototype): widen admission so geometry exists
+    // beyond the true sidecar contour for the per-pixel discard to carve.
+    if (gos_WaterShoreMode() == 3) {
+        static const float s_extra = []() {
+            const char* v = std::getenv("MC2_WATER_SHORE3_EXTRA_WU");
+            return v ? (float)atof(v) : 60.0f;
+        }();
+        ext += s_extra;
+    }
+    return ext;
 }
 
 namespace {

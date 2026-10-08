@@ -16,12 +16,50 @@
 // NOTE: bare float/vec types only -- no PREC qualifier (highp is a no-op in
 // desktop GL; VK declares the same).
 
+// Catmull-Rom bicubic over the R32F height grid (texel centres == grid verts).
+float wse_catmull(float t, float p0, float p1, float p2, float p3)
+{
+    return 0.5 * ((2.0 * p1) + (-p0 + p2) * t
+                + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+                + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t);
+}
+float wse_bicubicHeight(sampler2D tex, vec2 hn)
+{
+    ivec2 ts = textureSize(tex, 0);
+    vec2 p = hn * vec2(ts - ivec2(1));
+    ivec2 i = ivec2(floor(p));
+    vec2 f = p - vec2(i);
+    float col[4];
+    for (int y = 0; y < 4; ++y) {
+        int yy = clamp(i.y - 1 + y, 0, ts.y - 1);
+        float r[4];
+        for (int x = 0; x < 4; ++x) {
+            int xx = clamp(i.x - 1 + x, 0, ts.x - 1);
+            r[x] = texelFetch(tex, ivec2(xx, yy), 0).r;
+        }
+        col[y] = wse_catmull(f.x, r[0], r[1], r[2], r[3]);
+    }
+    return wse_catmull(f.y, col[0], col[1], col[2], col[3]);
+}
+
 float wse_shoreFeather(float shore, int shoreMode, int hasHeight, int hasMask,
                        sampler2D heightTex, sampler2D maskTex,
                        vec4 hB, vec4 mB, float featherWu,
                        vec2 worldXY, float waterElev)
 {
     int shoreModeEff = shoreMode;
+    if (shoreModeEff == 3 && hasHeight == 0) shoreModeEff = 2;   // sidecar missing -> mode 2 (-> 1 -> 0)
+    if (shoreModeEff == 3) {
+        vec2 hn3;
+        hn3.x = (worldXY.x - hB.x) / max(hB.z, 1e-5);
+        hn3.y = (hB.y - worldXY.y) / max(hB.w, 1e-5);
+        if (hn3.x >= 0.0 && hn3.x <= 1.0 && hn3.y >= 0.0 && hn3.y <= 1.0) {
+            float thick = waterElev - wse_bicubicHeight(heightTex, hn3);
+            if (thick <= -0.01) return 0.0;
+            return smoothstep(0.0, max(featherWu, 0.5), thick);
+        }
+        return shore;
+    }
     if (shoreModeEff == 2 && hasHeight == 0) shoreModeEff = 1;
     if (shoreModeEff == 1 && hasMask   == 0) shoreModeEff = 0;
     if (shoreModeEff == 2) {

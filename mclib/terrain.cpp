@@ -1247,7 +1247,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// MC2_TERRAIN_SHORELINE and MC2_TERRAIN_VISUAL_HEIGHT.
 			{
 				const int wsMapSide = (int)realVerticesMapSide;
-				if (gos_WaterShoreMode() == 2 && wsMapSide > 1)
+				if (gos_WaterShoreMode() >= 2 && wsMapSide > 1)
 				{
 					const int WV = (wsMapSide - 1) * 4 + 1;
 					char wsPath[600];
