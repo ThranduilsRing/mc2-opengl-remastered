@@ -14,6 +14,7 @@
 #include"mclib.h"
 #include "gos_crashbundle.h"
 #include "gos_smoke.h"            // S9D fixed-timestep deterministic smoke clock
+#include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (hard_reset)
 #include "sim_identity.h"         // SIM-IDENTITY-HASH-1 per-sim-frame world hash
 #define CB_PRINTF(fmt, ...) do { \
@@ -1998,7 +1999,7 @@ long Mission::render (void)
 			eye->ambientGreen = 0xFF;
 			eye->ambientBlue = 0xFF;
 		}
-		{ ZoneScopedN("Camera.UpdateRenderers eye.render"); eye->render(); }
+		{ ZoneScopedN("Camera.UpdateRenderers eye.render"); GosGlLostDrawsScope _lostSc_("scene.eye_render"); eye->render(); }
 		{ ZoneScopedN("Camera.UpdateRenderers clearCellDebugs"); GameMap->clearCellDebugs(0); }
 
 		//-----------------------------------------------------
@@ -2015,13 +2016,13 @@ long Mission::render (void)
 
 		gos_SetRenderState( gos_State_Fog, 0);
 
-		{ ZoneScopedN("Camera.UpdateRenderers FloatHelp.renderAll"); FloatHelp::renderAll(); }
+		{ ZoneScopedN("Camera.UpdateRenderers FloatHelp.renderAll"); GosGlLostDrawsScope _lostSc_("hud.floathelp"); FloatHelp::renderAll(); }
 
 		currentFloatHelp = 0;
 
 		if (missionInterface)
 		{
-			ZoneScopedN("Camera.UpdateRenderers missionInterface.render");
+			ZoneScopedN("Camera.UpdateRenderers missionInterface.render"); GosGlLostDrawsScope _lostSc_("hud.mission_interface");
 			missionInterface->render();
 		}
 

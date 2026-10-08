@@ -77,6 +77,7 @@ namespace gos_terrain_indirect { void RenderWaterReflectionPass(); }
 #include "../RenderCore/SceneLighting.h"  // SCENE-LIGHTING-STATE-1 canonical mirror
 #include "../GameOS/gameos/utils/terrain_daylight.h"  // TERRAIN-AMBIENT-FLOOR-2 daylight gate (pure)
 #include "../GameOS/gameos/vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-6: gosFX flush IsHUD route
+#include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
 extern float g_iblShStrength;             // static-prop SH ambient slider (gos_static_prop_batcher.cpp)
 
 //---------------------------------------------------------------------------
@@ -499,7 +500,7 @@ void GameCamera::render (void)
 
 		if (Environment.Renderer != 3)
 		{
-			ZoneScopedN("GameCamera::render sky");
+			ZoneScopedN("GameCamera::render sky"); GosGlLostDrawsScope _lostSc_("scene.sky");
 			if (GameAdapters::Sky::isHdriReady()) {
 				// Both matrices column-major; LinearMatrix4D is 12-float affine
 				// and Matrix4D is 16-float full 4x4 — renderHdri only
@@ -515,7 +516,7 @@ void GameCamera::render (void)
 		}
 
 		{
-			ZoneScopedN("GameCamera::render terrain");
+			ZoneScopedN("GameCamera::render terrain"); GosGlLostDrawsScope _lostSc_("scene.terrain_render");
 			GameAdapters::StaticProp::frameBegin();  // Stage 3.C: reset live-instance list
 			land->render();								//render the Terrain
 		}
@@ -526,18 +527,18 @@ void GameCamera::render (void)
 			// blobs land first (under) in the shared un-depth-sorted TerrainDecal
 			// batch -- footprints/craters composite on top of the contact disc,
 			// not the other way around (recon landmine 2). Gate-off: no-op.
-			ZoneScopedN("GameCamera::render groundContactBlobs");
+			ZoneScopedN("GameCamera::render groundContactBlobs"); GosGlLostDrawsScope _lostSc_("scene.decals_cpu");
 			renderGroundContactBlobs();
 		}
 
 		if (Environment.Renderer != 3)
 		{
-			ZoneScopedN("GameCamera::render craters");
+			ZoneScopedN("GameCamera::render craters"); GosGlLostDrawsScope _lostSc_("scene.decals_cpu");
 			craterManager->render();					//render the craters and footprints
 		}
 
 		{
-			ZoneScopedN("GameCamera::render objects");
+			ZoneScopedN("GameCamera::render objects"); GosGlLostDrawsScope _lostSc_("scene.objects_render");
 			// F3 CPU projection cost-baseline: mark we are inside the render
 			// loop so eventdriven projectZ attribution can distinguish
 			// render-time calls from AI/picking/input calls.
@@ -546,19 +547,19 @@ void GameCamera::render (void)
 		}
 
 		{
-			ZoneScopedN("GameCamera::render water");
+			ZoneScopedN("GameCamera::render water"); GosGlLostDrawsScope _lostSc_("scene.water_render");
 			land->renderWater();						//Draw Water Last!
 		}
 
 		if (useShadows && Environment.Renderer != 3)
 		{
-			ZoneScopedN("GameCamera::render shadows");
+			ZoneScopedN("GameCamera::render shadows"); GosGlLostDrawsScope _lostSc_("scene.shadows_render");
 			ObjectManager->renderShadows(true, true, true);
 		}
 
 		if (mission && mission->missionInterface)
 		{
-			ZoneScopedN("GameCamera::render drawVTOL");
+			ZoneScopedN("GameCamera::render drawVTOL"); GosGlLostDrawsScope _lostSc_("scene.vtol");
 			mission->missionInterface->drawVTOL();
 		}
 
@@ -566,7 +567,7 @@ void GameCamera::render (void)
 		{
 			if (compass && (turn > 3) && drawCompass)
 			{
-				ZoneScopedN("GameCamera::render compass");
+				ZoneScopedN("GameCamera::render compass"); GosGlLostDrawsScope _lostSc_("scene.compass");
 				compass->render(-1);		//Force this to zBuffer in front of everything
 			}
 		}
@@ -577,11 +578,11 @@ void GameCamera::render (void)
 		// is fully drawn before post-process; after shadow pass so shadows resolve.
 		// Mirrors the water fast path pattern (below renderLists) but uses depth
 		// written by chunk draws instead of needing an already-populated depth buf.
-		Terrain::flushDrawCommands();
+		{ GosGlLostDrawsScope _lostSc_("scene.terrain_chunk_flush"); Terrain::flushDrawCommands(); }
 
 		if (!drawOldWay)
 		{
-			ZoneScopedN("GameCamera::render textureManagerRenderLists");
+			ZoneScopedN("GameCamera::render textureManagerRenderLists"); GosGlLostDrawsScope _lostSc_("scene.render_lists");
 			mcTextureManager->renderLists();			//This sends triangles down to the card.  All "rendering" to this point has been setting up tri lists
 			endFrameTexResolve();              // close the per-frame window — clears frameActive,
 			                                   // accumulates resolved-count, emits 600-frame summary
@@ -591,14 +592,14 @@ void GameCamera::render (void)
 			// reflection RT with mirrored terrain. After renderLists (main SOLID
 			// draw done, atlases warm) and BEFORE water so C2 can sample it.
 			// No-op unless MC2_WATER_REFLECTION_RT=1. Restores terrain MVP itself.
-			gos_terrain_indirect::RenderWaterReflectionPass();
+			{ GosGlLostDrawsScope _lostSc_("scene.water_reflection"); gos_terrain_indirect::RenderWaterReflectionPass(); }
 
 			// Stage 2 of renderWater architectural slice (CPU→GPU offload).
 			// MUST run after renderLists so terrain has flushed before we
 			// alpha-blend water on top. No-op when MC2_RENDER_WATER_FASTPATH
 			// is unset; legacy water already drained inside renderLists().
 			if (land) {
-				ZoneScopedN("GameCamera::render waterFastPath");
+				ZoneScopedN("GameCamera::render waterFastPath"); GosGlLostDrawsScope _lostSc_("scene.water_fastpath");
 				land->renderWaterFastPath();
 				// VFX-CACHE-SYNC-1: the water fast path sets blend/cull/depth via
 				// raw GL that bypasses the gos render-state cache; re-sync so the
@@ -610,7 +611,7 @@ void GameCamera::render (void)
 			// (MC2_VEGETATION_CARDS=1). After renderLists+water, before particles.
 			// Matrix sourced inside flush via gos_GetTerrainMVPMat4() (terrain-chunk space).
 			{
-				ZoneScopedN("GameCamera::render vegetationFlush");
+				ZoneScopedN("GameCamera::render vegetationFlush"); GosGlLostDrawsScope _lostSc_("scene.vegetation");
 				float lx = 0.0f, ly = 0.0f, lz = 1.0f;
 				gos_GetTerrainLightDir(&lx, &ly, &lz);
 				const float terrainLightDir_4f[4] = { lx, ly, lz, 0.0f };
@@ -636,7 +637,7 @@ void GameCamera::render (void)
 			// that real gosFX producers call BeginGroup+Emit via the
 			// SpawnCard*/SpawnCardCloud paths.
 			{
-				ZoneScopedN("GameCamera::render particlesFlush");
+				ZoneScopedN("GameCamera::render particlesFlush"); GosGlLostDrawsScope _lostSc_("scene.particles");
 
 				// B2 P1: publish current camera basis to particle bridge before flush.
 				// cameraOrigin is the camera's world transform (LinearMatrix4D);
@@ -694,7 +695,7 @@ void GameCamera::render (void)
 		}
 
 		{
-			ZoneScopedN("GameCamera::render clipperRenderNow");
+			ZoneScopedN("GameCamera::render clipperRenderNow"); GosGlLostDrawsScope _lostSc_("scene.gosfx_clipper");
 			// F3 CPU projection cost-baseline: mlr_total bucket — RenderNow
 			// scope (joined with the StartDraw scope above into mlr_total).
 			::mc2_cpu_proj_cost::Scope _f3_mlr_rendernow_scope(
@@ -745,14 +746,14 @@ void GameCamera::render (void)
 
 		if (useNonWeaponEffects)
 		{
-			ZoneScopedN("GameCamera::render weather");
+			ZoneScopedN("GameCamera::render weather"); GosGlLostDrawsScope _lostSc_("scene.weather");
 			weather->render();				//Draw the weather
 		}
 
 		// DebugRenderer world primitives -- depth-tested, before post-process.
 		// No-op when MC2_DEBUG_RENDERER is unset.
 		{
-			ZoneScopedN("GameCamera::render debugRendererFlushWorldPrims");
+			ZoneScopedN("GameCamera::render debugRendererFlushWorldPrims"); GosGlLostDrawsScope _lostSc_("scene.debug_prims");
 #ifdef MC2_IMGUI
 			EditorInspector::flushDebugHighlight();  // IMG-INSPECT-3: queue highlight prims same-frame
 #endif

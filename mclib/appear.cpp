@@ -39,6 +39,7 @@
 #include <gameos.hpp>
 #include "vk_shared_gbuffer_gate.h"   // VK-FIELD-SELECT-1: umbrella detection
 #include "gos_visual_capture.h"       // VISUAL-CAPTURE-CLEAN-1
+#include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
 
 extern bool useFog;
 
@@ -146,6 +147,7 @@ void Appearance::drawPilotName(char *text, unsigned long color )
 //---------------------------------------------------------------------------
 void Appearance::drawSelectBox (DWORD color)
 {
+	GosGlLostDrawsScope _lostSc_("scene.select_box");
 	Stuff::Vector4D				ul, br, pos1, pos2;
 	float						offsets;
 
@@ -291,6 +293,7 @@ void Appearance::drawSelectBox (DWORD color)
 //---------------------------------------------------------------------------
 void Appearance::drawSelectBrackets (DWORD color)
 {
+	GosGlLostDrawsScope _lostSc_("scene.select_brackets");
 	if (gos::visual_capture::cleanFrame()) return;   // VISUAL-CAPTURE-CLEAN-1
 	VkHudRouteScope			_hudRoute;   // VK-FIELD-SELECT-1: survive the VK umbrella
 	float					offsets = 5.0 * eye->getScaleFactor();
@@ -514,6 +517,7 @@ void Appearance::drawIcon( unsigned long bmpHandle, unsigned long bmpWidth,
 //---------------------------------------------------------------------------
 void Appearance::drawBars (void)
 {
+	GosGlLostDrawsScope _lostSc_("scene.health_bars");
 	if (gos::visual_capture::cleanFrame()) return;   // VISUAL-CAPTURE-CLEAN-1
 	VkHudRouteScope	_hudRoute;   // VK-FIELD-SELECT-1: survive the VK umbrella
 	//-----------------------------------------

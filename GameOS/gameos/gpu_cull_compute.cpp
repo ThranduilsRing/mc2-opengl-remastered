@@ -23,6 +23,7 @@
 #include "gl_state_guard.h"               // GlStateGuard slice 1: mc2gl::GlScopedSsboBinding
 #include "gos_render_pass_timer.h"        // [RENDER_PASS_TIME v1] nesting guard (QueryActive)
 #include "gos_gpu_sync.h"
+#include "gos_postprocess.h"               // GosGlLostDrawsScope (VK-GL-LOST-DRAWS sub-tags)
 
 #include <GL/glew.h>
 #include <gameos.hpp>                     // STOP()
@@ -875,7 +876,7 @@ void compute_dispatch() {
     // C2 frame begin: non-blocking tryConsume of last frame's readback.
     // Must be called BEFORE the compute shader is dispatched.
     if (readback_isEnabled()) {
-        TracyGpuZone("Cull.Readback");
+        TracyGpuZone("Cull.Readback"); GosGlLostDrawsScope _lost_("gpusp.cull.readback");
         readback_tryConsume();
     }
 
@@ -1120,7 +1121,7 @@ void compute_dispatch() {
             if (locBC >= 0)
                 glUniform1i(locBC, s_blockVisBuf ? (int)s_blockCount : 0);
         }
-        { TracyGpuZone("Cull.CullShader"); glDispatchCompute(cullGroups, 1, 1); }
+        { TracyGpuZone("Cull.CullShader"); GosGlLostDrawsScope _lost_("gpusp.cull.cull_shader"); glDispatchCompute(cullGroups, 1, 1); }
         glUseProgram(0);
 
         // 3. Barrier: SSBO writes (visibleIds, perBucketCount, actorVisBits) ready.
@@ -1290,7 +1291,7 @@ void compute_dispatch() {
             const uint32_t patchInvocations =
                 perPacketPatch ? pktCmdCount : s_bucketCount;
             const uint32_t patchGroups = (patchInvocations + 63u) / 64u;
-            { TracyGpuZone("Cull.PatchShader"); glDispatchCompute(patchGroups, 1, 1); }
+            { TracyGpuZone("Cull.PatchShader"); GosGlLostDrawsScope _lost_("gpusp.cull.patch_shader"); glDispatchCompute(patchGroups, 1, 1); }
             glUseProgram(0);
 
             batcher_unbindBaseInstanceByCmdSsboForPatch();  // restore slot 16

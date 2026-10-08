@@ -8801,12 +8801,12 @@ void gos_RendererBeginFrame() {
     // reset per-frame bucket accumulators. No-op when env OFF.
     ::mc2_cpu_proj_cost::init_from_env();
     ::mc2_cpu_proj_cost::frame_begin();
-    g_gos_renderer->beginFrame();
+    { GosGlLostDrawsScope _lostSc_("scene.renderer_beginframe"); g_gos_renderer->beginFrame(); }
 }
 
 void gos_RendererEndFrame() {
     gosASSERT(g_gos_renderer);
-    g_gos_renderer->endFrame();
+    { GosGlLostDrawsScope _lostSc_("scene.renderer_endframe"); g_gos_renderer->endFrame(); }
     // F3 CPU projection cost-baseline: commit per-frame samples; print
     // window stats every 500 frames. No-op when env OFF.
     ::mc2_cpu_proj_cost::frame_end();

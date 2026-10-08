@@ -29,6 +29,7 @@
 #endif
 #include "tacticaloverview.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
 #include"terrain_runtime.h"   // TERRAIN-RUNTIME-CONSUMER-WATER-1
 
 // M1.6 + M2.6: IsStaticPropPickEnabled, lookupAtPixel, setLastGameplayPick,
@@ -6677,7 +6678,7 @@ void MissionInterfaceManager::render (void)
 	}
 
 	gos_SetRenderState( gos_State_IsHUD, 1 );
-	controlGui.render( isPaused() && !isPausedWithoutMenu() );
+	{ GosGlLostDrawsScope _lostSc_("hud.control_gui_tacmap"); controlGui.render( isPaused() && !isPausedWithoutMenu() ); }
 	gos_SetRenderState( gos_State_IsHUD, 0 );
 
   /* 	if ( scenarioTime  < 7.0 )
