@@ -86,13 +86,17 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None):
             print(f"[ab] {bm}: missing png (gl={pg} vk={pv})")
             continue
         a, b = load(pg), load(pv)
+        size_mismatch = None
         if a.size != b.size:
+            size_mismatch = {"gl": list(a.size), "vk": list(b.size)}
+            print(f"[ab] WARNING {bm}: image size mismatch GL={a.size} VK={b.size}; resizing VK (metrics unreliable)", flush=True)
             b = b.resize(a.size, Image.LANCZOS)
         A, B = np.asarray(a).astype(np.int16), np.asarray(b).astype(np.int16)
         D = np.abs(A - B)
         row = {"bookmark": bm, "size": list(a.size),
                "mad": float(D.mean()),
                "pct_diff_gt24": float((D.max(axis=2) > THRESH).mean() * 100),
+               "size_mismatch": size_mismatch,
                "crops": []}
         bd = out / bm
         bd.mkdir(exist_ok=True)

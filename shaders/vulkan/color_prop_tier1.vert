@@ -221,7 +221,7 @@ void main() {
     // GL static_prop.vert:~730: ALPHA_TEST (tree cards/foliage) instances are two-sided,
     // so ndl uses abs(); solid props use max(.,0). The alpha-ON packet group IS the
     // ALPHA_TEST class (same test the FS uses). Without this, back-facing cards read dark.
-    bool alphaTestPacket = (uFrame.materialReadyOn != 0) && (uPacket.packetLayerOn >= 0);
+    bool alphaTestPacket = (inst.flags & 4u) != 0u;   // per-instance flag bit-2, same as GL
     float ndlRaw = dot(nMC2, L);
     float ndl    = alphaTestPacket ? abs(ndlRaw) : max(ndlRaw, 0.0);
 

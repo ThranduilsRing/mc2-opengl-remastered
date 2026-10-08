@@ -1548,6 +1548,7 @@ static std::vector<int32_t> s_typeAlphaClass;
 // Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
 //   flush(frame N) snapshots -> extraction(frame N+1) reads -> 0 on frame 1.
 static std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
+static bool s_reinjectedThisFrame = false;  // item-4 once-per-frame guard
 // STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (binding 5),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime + debug
 // name + GLuint value). GL calls happen at the same sites with the same
@@ -9059,6 +9060,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     gos_object_parity::PickNextSampleIfReady();
 
     s_bucketsByType.clear();
+    s_reinjectedThisFrame = false;
     s_lastUploadedSlot = 0xFFFFFFFFu;  // reset for next frame
 
     // RENDER_STATES v1: this path mutates GL_TEXTURE_WRAP_S/T (lines 1700-1701
@@ -9882,6 +9884,12 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
 // GL flush() is skipped in that case).
 //
+// CURRENT BEHAVIOUR (supersedes the history below): per type the feed is the
+// persistent-store block FIRST, then this frame's dynamic submits from
+// s_bucketsByType (excluding the reinjPos/reinjCount range copied from the store);
+// mc2_color_prop_island_end_frame() performs flush()'s end-of-frame bookkeeping.
+// The 'persistent store only' text below describes the original fix, kept for context.
+//
 // VK-PROP-COVERAGE FIX (source correction): originally this read s_bucketsByType.
 // That map is a per-FRAME accumulator whose ONLY per-frame clear lives inside
 // GpuStaticPropBatcher::flush() (line ~7661) — which is SKIPPED when the island owns
@@ -9910,6 +9918,7 @@ extern "C" void mc2_color_prop_island_end_frame() {
     // Mirror flush()'s end-of-frame bookkeeping (see flush(): s_bucketsByType.clear
     // + s_lastUploadedSlot reset + prev-frame per-type instance count snapshot).
     s_bucketsByType.clear();
+    s_reinjectedThisFrame = false;
     s_lastUploadedSlot = 0xFFFFFFFFu;
     s_typeInstanceCountPrevFrame.clear();
     for (const auto& kv : s_typeRanges)
@@ -10347,6 +10356,12 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
     // be merged into the dynamic bucket (else they double-draw). s_bucketsByType
     // becomes dynamic-only.
     if (staticPopSplitArmed()) return;
+    // reinjPos/reinjCount (VK color feed) assume ONE reinject per frame; flag cleared at frame end.
+    { static bool s_warned = false;
+      if (s_reinjectedThisFrame && !s_warned) { s_warned = true;
+          fprintf(stderr, "[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid
+"); }
+      s_reinjectedThisFrame = true; }
     for (auto& kv : s_persistentStaticStore) {
         const auto& block = kv.second;
         if (block.empty()) continue;
