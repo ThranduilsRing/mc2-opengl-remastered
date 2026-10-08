@@ -3848,3 +3848,17 @@ umbrella members). Gate off => `vkLegacyOn==false` => all legacy loops byte-iden
 **Remaining:** night light-pool term and per-shape clamp sampler are not applicable to this path (vertex
 colour is CPU-lit; wrap sampler used); MC2_ISCOMPASS/HUD nodes still GL-only; `spawn infantry` in the
 gameplay driver kills the engine (exit 1) on both backends — pre-existing, not investigated.
+
+---
+
+## 2026-10-08 — VK-PARITY-F2: "warm cast" was a CAPTURE asymmetry, not a VK render bug
+
+GL `postprocess.frag` and VK `shaders/vulkan/postprocess*.frag` apply the identical unconditional
+sunset grade + exposure (verified line-by-line; same push-constant values). The GL visual capture
+read the PRE-composite scene FBO (no grade) while VK captures read the PRESENTED image (graded), so
+VK looked ~x1.05/0.94 R/B warmer in every capture pair. Fix = capture-side only: new
+`MC2_VISUAL_CAPTURE_POST=1` (GL, default OFF byte-identical) reads the composited back buffer.
+Captures: `tests/visual/captures/parF2-{gl-pre,gl-post,vk}`, montages in `parF2-montage/`.
+Full-frame MAD vs VK (pre -> post): units 6.36->4.54, mc2_01 12.30->10.28, mc2_10_saved 13.83->11.64.
+Residual (real scene differences, not tint): VK sky/horizon is cool grey-blue vs GL warm beige;
+VK is 3-5% (day) / 17-20% (night mc2_10) darker; VK trees darker, hard alpha edges.
