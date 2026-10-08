@@ -30,6 +30,7 @@
 #include "../../mclib/render_contract.h" // [RENDER_PASS v1] noteRenderPass
 #ifdef MC2_VULKAN_ISLAND
 extern "C" void mc2_vk_shadow_island_invalidate_geometry();  // vulkan_shadow_island_live.cpp
+extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color_prop_island.cpp
 #endif
 #include "../../RenderCore/top_level_pass_executor.h" // APPLY-STATE-STATICPROP-1: findTopLevelStateDesc
 #include "../../RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
@@ -2977,6 +2978,7 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_sharedIboBytes = 0;
 #ifdef MC2_VULKAN_ISLAND
     mc2_vk_shadow_island_invalidate_geometry();
+    mc2_vk_color_prop_island_invalidate_geometry();   // map change: drop map-1 VBO/IBO
 #endif
     s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
     s_typeAlphaClass.clear();
@@ -9905,7 +9907,13 @@ extern "C" uint32_t mc2_static_prop_vertex_stride(void) { return (uint32_t)kVert
 // Called by txmmgr once per frame at the point where the GL flush() is skipped because
 // the VK color island handled the frame (flush() owns the clear on the GL path).
 extern "C" void mc2_color_prop_island_end_frame() {
+    // Mirror flush()'s end-of-frame bookkeeping (see flush(): s_bucketsByType.clear
+    // + s_lastUploadedSlot reset + prev-frame per-type instance count snapshot).
     s_bucketsByType.clear();
+    s_lastUploadedSlot = 0xFFFFFFFFu;
+    s_typeInstanceCountPrevFrame.clear();
+    for (const auto& kv : s_typeRanges)
+        s_typeInstanceCountPrevFrame[kv.first] = kv.second.instanceCount;
 }
 
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {

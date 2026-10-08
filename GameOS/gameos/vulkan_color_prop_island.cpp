@@ -1342,6 +1342,17 @@ bool upload_geometry_once(ColorPropIsland* s) {
 }
 
 // currently-bound draw FBO (MainColor at flush() time). Reused water-island shape.
+extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
+    ColorPropIsland* s = g_island;
+    if (!s) return;
+    if (s->device != VK_NULL_HANDLE) vkDeviceWaitIdle(s->device);
+    if (s->vbo) { vmaDestroyBuffer(s->allocator, s->vbo, s->vboAlloc); s->vbo = VK_NULL_HANDLE; s->vboAlloc = nullptr; }
+    if (s->ibo) { vmaDestroyBuffer(s->allocator, s->ibo, s->iboAlloc); s->ibo = VK_NULL_HANDLE; s->iboAlloc = nullptr; }
+    s->geomUploaded = false;
+    s->packets.clear();
+    s->typeRuns.clear();
+}
+
 extern "C" int mc2_vk_color_prop_island_enabled() {
     // Either tier armed => the caller skips the GL prop color flush and calls run().
     return propColorTier1Requested() ? 1 : 0;

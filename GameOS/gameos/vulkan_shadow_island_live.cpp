@@ -1483,10 +1483,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    // Same (non-flipped) convention as the dyn / full-map passes: the GL consumer
-    // (shadow.hglsl csmSampleLayer vs csmSampleFullMap) uses identical projCoords.xy
-    // for the array and the 2D full-map, so a Y-flipped array mirrors the cascade.
-    VkViewport vp{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f};
+    // CSM array pass uses a FLIPPED viewport {0,size,size,-size}. Restored per
+    // 8184a1af8, MEASURED correct (VK-RUNG8-LADDER-1.md: flipped array matched GL
+    // 0.000% on mc2_01_buildings); be477332e wrongly un-flipped it. Live consumer:
+    // shaders/vulkan/screen_shadow_csm.frag. (dyn / full-map passes stay non-flipped.)
+    VkViewport vp{0.0f, (float)size, (float)size, -(float)size, 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {(uint32_t)size, (uint32_t)size}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
