@@ -1016,10 +1016,13 @@ bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSi
     return true;
 }
 
+void ovl_destroy(TerrainIsland* s);   // VK-PARITY-OVERLAY-1 (defined with the overlay block below)
+
 void destroy_island(TerrainIsland* s) {
     if (!s) return;
     VkDevice d = s->device;
     if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    ovl_destroy(s);   // VK-PARITY-OVERLAY-1: overlay objects depend on s->dsl / shared views
     for (auto& kv : s->patchCache) {
         if (kv.second.vbo) vmaDestroyBuffer(s->allocator, kv.second.vbo, kv.second.vboAlloc);
         if (kv.second.ibo) vmaDestroyBuffer(s->allocator, kv.second.ibo, kv.second.iboAlloc);
@@ -2491,6 +2494,172 @@ extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
     return ensure_island_ready(w, h) ? 1 : 0;
 }
 
+// VK-PARITY-TERRAIN-2: stage this frame's light pool + grid into slot [par] (same
+// per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
+// staging failure degrades to "no pools" (numPoolLights=0), never a hole.
+// (Factored out of mc2_vk_terrain_island_run for VK-PARITY-OVERLAY-1 reuse.)
+static void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed& feed,
+                             int32_t& vkPoolLights, int32_t& vkGridDim) {
+    {
+        ZoneScopedN("VKIsl.Terrain.LightPoolStage");
+        auto stage = [&](int k, const void* src, VkDeviceSize bytes) -> bool {
+            if (!src || bytes == 0) return true;
+            if (!ensure_lightpool_capacity(s, par, k, bytes)) return false;
+            void* dst = nullptr;
+            if (vmaMapMemory(s->allocator, s->lpAlloc[par][k], &dst) != VK_SUCCESS) return false;
+            std::memcpy(dst, src, (size_t)bytes);
+            vmaUnmapMemory(s->allocator, s->lpAlloc[par][k]);
+            vmaFlushAllocation(s->allocator, s->lpAlloc[par][k], 0, VK_WHOLE_SIZE);
+            return true;
+        };
+        if (vkPoolLights > 0 && feed.poolLights) {
+            if (!stage(0, feed.poolLights, (VkDeviceSize)vkPoolLights * 48u)) vkPoolLights = 0;
+        } else {
+            vkPoolLights = 0;
+        }
+        if (vkPoolLights > 0 && vkGridDim > 0 && feed.lightGridHeader && feed.lightGridIndices &&
+            feed.lightGridHeaderWords >= (uint32_t)vkGridDim * (uint32_t)vkGridDim * 2u) {
+            if (!stage(1, feed.lightGridHeader,  (VkDeviceSize)feed.lightGridHeaderWords * 4u) ||
+                !stage(2, feed.lightGridIndices, (VkDeviceSize)feed.lightGridIndexWords  * 4u))
+                vkGridDim = 0;   // linear loop over the staged pool (exact, slower)
+        } else {
+            vkGridDim = 0;
+        }
+    }
+}
+
+// Fill one TerrainFrameUBO slot from the frame feed + one patch record (shared MVP /
+// lighting / shadow knobs; per-patch blockOrigin/lod fields). Factored out of
+// mc2_vk_terrain_island_run for VK-PARITY-OVERLAY-1 reuse (the overlay pass fills slot 0).
+static void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
+                           const Mc2TerrainTier1Patch& patch,
+                           int32_t vkPoolLights, int32_t vkGridDim, TerrainFrameUBO& u) {
+    std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
+    u.mapSide      = feed.mapSide;
+    u.halfMap      = feed.halfMap;
+    u.blockOriginX = patch.blockOriginX;
+    u.blockOriginY = patch.blockOriginY;
+    u.atlasTopLeftX          = feed.atlasTopLeftX;
+    u.atlasTopLeftY          = feed.atlasTopLeftY;
+    u.atlasOneOverWorldUnits = feed.atlasOneOverWorldUnits;
+    u.colormapReady          = s->colormapReady ? 1 : 0;
+    // CEMENT: only enable the FS cement branch when the GL gate is on AND both
+    // the VK cement atlas image and the cement-word snapshot are live (fail-soft
+    // if only one of them is ready -> colormap base, no hole).
+    u.useCement         = (feed.useCement && s->cementReady && s->cementWordsReady) ? 1 : 0;
+    u.cementGridSide    = feed.cementGridSide;
+    u.cementWUPT        = feed.cementWUPT;
+    u.useTransitionMask = feed.useTransitionMask;
+    u.cementDiagConnect = feed.cementDiagConnect;
+    // VK-TERRAIN-LIGHTING: sun dir + static light-space matrix + toggles. The
+    // shadow is only sampled when the gate is on AND a real GL map was copied
+    // this frame (s->shadowReady) — else enableShadows=0 -> lit-only, no hole.
+    u.terrainLightDir[0] = feed.terrainLightDir[0];
+    u.terrainLightDir[1] = feed.terrainLightDir[1];
+    u.terrainLightDir[2] = feed.terrainLightDir[2];
+    u.terrainLightDir[3] = 0.0f;
+    std::memcpy(u.staticLightSpaceMatrix, feed.staticLightSpaceMatrix,
+                sizeof(u.staticLightSpaceMatrix));
+    u.lightingEnabled = feed.lightingEnabled ? 1 : 0;
+    u.enableShadows   = (feed.lightingEnabled && feed.shadowsEnabled && s->shadowReady) ? 1 : 0;
+    u.shadowSoftness  = feed.shadowSoftness;
+    // VK-TERRAIN-DETAIL: normal perturbation. detailReady is only 1 once the GL
+    // matNormalArray actually imported (else the FS uses the macro-slope-only
+    // normal — still a big win over flat-up, and never a hole).
+    u.detailEnabled  = (feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
+    u.detailReady    = s->matNormalReady ? 1 : 0;
+    u.nfhStrength    = feed.nfhStrength;
+    u.detailTiling   = feed.detailTiling;
+    u.detailStrength = feed.detailStrength;
+    // VK-TERRAIN-DYNSHADOW: enable only when the sub-gate is on AND a real GL
+    // dynamic map was copied this frame (s->dynShadowReady). Else 0 -> no
+    // dynamic shadow term (byte-identical to the pre-dynshadow frame).
+    u.enableDynShadows = (feed.lightingEnabled && feed.dynShadowsEnabled && s->dynShadowReady) ? 1 : 0;
+    std::memcpy(u.dynamicLightSpaceMatrix, feed.dynamicLightSpaceMatrix,
+                sizeof(u.dynamicLightSpaceMatrix));
+    // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
+    // being enabled (fading an already-off detail term is a no-op).
+    u.cameraPosMC2[0] = feed.cameraPosMC2[0];
+    u.cameraPosMC2[1] = feed.cameraPosMC2[1];
+    u.cameraPosMC2[2] = feed.cameraPosMC2[2];
+    u.cameraPosMC2[3] = 0.0f;
+    u.lodFadeEnabled  = (u.detailEnabled && feed.lodFadeEnabled) ? 1 : 0;
+    // VK-TERRAIN-SKIRT (rung 4): per-patch skirt pull-down depth (0 = this
+    // patch's skirt sub-gate was off at capture, or GL reported no skirt for
+    // this block -- island draws no skirt strips for it, see the draw loop).
+    u.skirtDepth = patch.skirtDepth;
+    // VK-TERRAIN-CSM-NEAR-1: enable only when the gate armed AND both the near
+    // array + full-map copies succeeded this frame (s->csmArrayReady/
+    // csmFullMapReady). Else 0 -> frag falls back to the legacy single-map
+    // dynamic-shadow path (u.enableDynShadows above), never a hole.
+    u.csmEnabled = (feed.lightingEnabled && feed.csmEnabled
+                    && s->csmArrayReady && s->csmFullMapReady) ? 1 : 0;
+    u.csmCount     = feed.csmCount;
+    u.csmDepthSpan = feed.csmDepthSpan;
+    // CSM-BLACKOUT-RECON-1: one-shot debug viz, env-gated (no perf/behavior
+    // impact when unset). See MC2_VK_TERRAIN_CSM_DEBUG in mc2vkgate.
+    {
+        static const int dbgMode = [](){
+            const char* v = getenv("MC2_VK_TERRAIN_CSM_DEBUG");
+            return v ? atoi(v) : 0;
+        }();
+        u.csmDebugMode = dbgMode;
+    }
+    std::memcpy(u.csmCascadeMatrices, feed.csmCascadeMatrices, sizeof(u.csmCascadeMatrices));
+    u.csmCascadeTexelWorld[0] = feed.csmCascadeTexelWorld[0];
+    u.csmCascadeTexelWorld[1] = feed.csmCascadeTexelWorld[1];
+    u.csmCascadeTexelWorld[2] = feed.csmCascadeTexelWorld[2];
+    u.csmCascadeTexelWorld[3] = 0.0f;
+    u.csmFullMapTexelWorld = feed.csmFullMapTexelWorld;
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
+    // visualMode (0 or 2, from the GL capture site) is only honored when the
+    // bake snapshot is live AND the side is sane -- else forced 0 (VS draws
+    // undisplaced; fail-soft, never a hole).
+    u.visualSide        = feed.visualSide;
+    u.visualDisplaceFar = feed.visualDisplaceFar;
+    u.visualMode        = (patch.visualMode == 2
+                           && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
+    u.edgeStitch        = (int32_t)patch.edgeStitch;
+    u.quadCountX        = patch.quadCountX;
+    u.quadCountY        = patch.quadCountY;
+    // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
+    u.ambientFloor      = feed.ambientFloor;
+    u.ambientDayGate    = feed.ambientDayGate;
+    u.missionFlatR      = feed.missionFlatLight[0];
+    u.missionFlatG      = feed.missionFlatLight[1];
+    u.missionFlatB      = feed.missionFlatLight[2];
+    // VK-PARITY-TERRAIN-2: pool/grid/pad-glow knobs from the shared producers.
+    u.numPoolLights       = vkPoolLights;
+    u.lightGridDim        = vkGridDim;
+    u.lightGridMinX       = feed.lightGridMin[0];
+    u.lightGridMinY       = feed.lightGridMin[1];
+    u.lightGridInvCellX   = feed.lightGridInvCell[0];
+    u.lightGridInvCellY   = feed.lightGridInvCell[1];
+    u.lightPoolSoft       = feed.lightPoolSoft;
+    u.lightPoolMoverDim   = feed.lightPoolMoverDim;
+    u.lightPoolMoverScale = feed.lightPoolMoverScale;
+    u.lightPoolMoverMax   = feed.lightPoolMoverMax;
+    u.lightPoolCompress   = feed.lightPoolCompress;
+    u.moverContactShadow  = feed.moverContactShadow;
+    u.padGlowR            = feed.padGlow[0];
+    u.padGlowG            = feed.padGlow[1];
+    u.padGlowB            = feed.padGlow[2];
+    u.padGlowSpill        = feed.padGlowSpill;
+    // VK-PARITY-SHADOW-1: same knob values GL injects as MC2_SHADOW_* defines.
+    u.shadowDistFadeWu    = feed.shadowDistFadeWu;
+    u.shadowDistFadeMax   = feed.shadowDistFadeMax;
+    u.shadowMinSunSin     = feed.shadowMinSunSin;
+    u.shadowKnobFlags     = feed.shadowKnobFlags;
+    // VK-PARITY-F3: legacy material tint (GL default-ON) from the shared producers.
+    std::memcpy(u.tintRock,     feed.tintRock,     sizeof(u.tintRock));
+    std::memcpy(u.tintGrass,    feed.tintGrass,    sizeof(u.tintGrass));
+    std::memcpy(u.tintDirt,     feed.tintDirt,     sizeof(u.tintDirt));
+    std::memcpy(u.tintConcrete, feed.tintConcrete, sizeof(u.tintConcrete));
+    std::memcpy(u.tintSnow,     feed.tintSnow,     sizeof(u.tintSnow));
+    u.tintStrengthScale    = feed.tintStrengthScale;
+    u.snowBrightnessDampen = feed.snowBrightnessDampen;
+}
+
 extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (!terrainTier1Requested()) return 0;
@@ -2662,32 +2831,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // staging failure degrades to "no pools" (numPoolLights=0), never a hole.
     int32_t vkPoolLights = feed.numPoolLights;
     int32_t vkGridDim    = feed.lightGridDim;
-    {
-        ZoneScopedN("VKIsl.Terrain.LightPoolStage");
-        auto stage = [&](int k, const void* src, VkDeviceSize bytes) -> bool {
-            if (!src || bytes == 0) return true;
-            if (!ensure_lightpool_capacity(s, par, k, bytes)) return false;
-            void* dst = nullptr;
-            if (vmaMapMemory(s->allocator, s->lpAlloc[par][k], &dst) != VK_SUCCESS) return false;
-            std::memcpy(dst, src, (size_t)bytes);
-            vmaUnmapMemory(s->allocator, s->lpAlloc[par][k]);
-            vmaFlushAllocation(s->allocator, s->lpAlloc[par][k], 0, VK_WHOLE_SIZE);
-            return true;
-        };
-        if (vkPoolLights > 0 && feed.poolLights) {
-            if (!stage(0, feed.poolLights, (VkDeviceSize)vkPoolLights * 48u)) vkPoolLights = 0;
-        } else {
-            vkPoolLights = 0;
-        }
-        if (vkPoolLights > 0 && vkGridDim > 0 && feed.lightGridHeader && feed.lightGridIndices &&
-            feed.lightGridHeaderWords >= (uint32_t)vkGridDim * (uint32_t)vkGridDim * 2u) {
-            if (!stage(1, feed.lightGridHeader,  (VkDeviceSize)feed.lightGridHeaderWords * 4u) ||
-                !stage(2, feed.lightGridIndices, (VkDeviceSize)feed.lightGridIndexWords  * 4u))
-                vkGridDim = 0;   // linear loop over the staged pool (exact, slower)
-        } else {
-            vkGridDim = 0;
-        }
-    }
+    stage_light_pool(s, par, feed, vkPoolLights, vkGridDim);
     {
         ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
         void* p = nullptr;
@@ -2695,130 +2839,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
             TerrainFrameUBO* slots = reinterpret_cast<TerrainFrameUBO*>(p);
             for (uint32_t i = 0; i < patchCount; ++i) {
                 TerrainFrameUBO u{};
-                std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
-                u.mapSide      = feed.mapSide;
-                u.halfMap      = feed.halfMap;
-                u.blockOriginX = feed.patches[i].blockOriginX;
-                u.blockOriginY = feed.patches[i].blockOriginY;
-                u.atlasTopLeftX          = feed.atlasTopLeftX;
-                u.atlasTopLeftY          = feed.atlasTopLeftY;
-                u.atlasOneOverWorldUnits = feed.atlasOneOverWorldUnits;
-                u.colormapReady          = s->colormapReady ? 1 : 0;
-                // CEMENT: only enable the FS cement branch when the GL gate is on AND both
-                // the VK cement atlas image and the cement-word snapshot are live (fail-soft
-                // if only one of them is ready -> colormap base, no hole).
-                u.useCement         = (feed.useCement && s->cementReady && s->cementWordsReady) ? 1 : 0;
-                u.cementGridSide    = feed.cementGridSide;
-                u.cementWUPT        = feed.cementWUPT;
-                u.useTransitionMask = feed.useTransitionMask;
-                u.cementDiagConnect = feed.cementDiagConnect;
-                // VK-TERRAIN-LIGHTING: sun dir + static light-space matrix + toggles. The
-                // shadow is only sampled when the gate is on AND a real GL map was copied
-                // this frame (s->shadowReady) — else enableShadows=0 -> lit-only, no hole.
-                u.terrainLightDir[0] = feed.terrainLightDir[0];
-                u.terrainLightDir[1] = feed.terrainLightDir[1];
-                u.terrainLightDir[2] = feed.terrainLightDir[2];
-                u.terrainLightDir[3] = 0.0f;
-                std::memcpy(u.staticLightSpaceMatrix, feed.staticLightSpaceMatrix,
-                            sizeof(u.staticLightSpaceMatrix));
-                u.lightingEnabled = feed.lightingEnabled ? 1 : 0;
-                u.enableShadows   = (feed.lightingEnabled && feed.shadowsEnabled && s->shadowReady) ? 1 : 0;
-                u.shadowSoftness  = feed.shadowSoftness;
-                // VK-TERRAIN-DETAIL: normal perturbation. detailReady is only 1 once the GL
-                // matNormalArray actually imported (else the FS uses the macro-slope-only
-                // normal — still a big win over flat-up, and never a hole).
-                u.detailEnabled  = (feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;
-                u.detailReady    = s->matNormalReady ? 1 : 0;
-                u.nfhStrength    = feed.nfhStrength;
-                u.detailTiling   = feed.detailTiling;
-                u.detailStrength = feed.detailStrength;
-                // VK-TERRAIN-DYNSHADOW: enable only when the sub-gate is on AND a real GL
-                // dynamic map was copied this frame (s->dynShadowReady). Else 0 -> no
-                // dynamic shadow term (byte-identical to the pre-dynshadow frame).
-                u.enableDynShadows = (feed.lightingEnabled && feed.dynShadowsEnabled && s->dynShadowReady) ? 1 : 0;
-                std::memcpy(u.dynamicLightSpaceMatrix, feed.dynamicLightSpaceMatrix,
-                            sizeof(u.dynamicLightSpaceMatrix));
-                // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
-                // being enabled (fading an already-off detail term is a no-op).
-                u.cameraPosMC2[0] = feed.cameraPosMC2[0];
-                u.cameraPosMC2[1] = feed.cameraPosMC2[1];
-                u.cameraPosMC2[2] = feed.cameraPosMC2[2];
-                u.cameraPosMC2[3] = 0.0f;
-                u.lodFadeEnabled  = (u.detailEnabled && feed.lodFadeEnabled) ? 1 : 0;
-                // VK-TERRAIN-SKIRT (rung 4): per-patch skirt pull-down depth (0 = this
-                // patch's skirt sub-gate was off at capture, or GL reported no skirt for
-                // this block -- island draws no skirt strips for it, see the draw loop).
-                u.skirtDepth = feed.patches[i].skirtDepth;
-                // VK-TERRAIN-CSM-NEAR-1: enable only when the gate armed AND both the near
-                // array + full-map copies succeeded this frame (s->csmArrayReady/
-                // csmFullMapReady). Else 0 -> frag falls back to the legacy single-map
-                // dynamic-shadow path (u.enableDynShadows above), never a hole.
-                u.csmEnabled = (feed.lightingEnabled && feed.csmEnabled
-                                && s->csmArrayReady && s->csmFullMapReady) ? 1 : 0;
-                u.csmCount     = feed.csmCount;
-                u.csmDepthSpan = feed.csmDepthSpan;
-                // CSM-BLACKOUT-RECON-1: one-shot debug viz, env-gated (no perf/behavior
-                // impact when unset). See MC2_VK_TERRAIN_CSM_DEBUG in mc2vkgate.
-                {
-                    static const int dbgMode = [](){
-                        const char* v = getenv("MC2_VK_TERRAIN_CSM_DEBUG");
-                        return v ? atoi(v) : 0;
-                    }();
-                    u.csmDebugMode = dbgMode;
-                }
-                std::memcpy(u.csmCascadeMatrices, feed.csmCascadeMatrices, sizeof(u.csmCascadeMatrices));
-                u.csmCascadeTexelWorld[0] = feed.csmCascadeTexelWorld[0];
-                u.csmCascadeTexelWorld[1] = feed.csmCascadeTexelWorld[1];
-                u.csmCascadeTexelWorld[2] = feed.csmCascadeTexelWorld[2];
-                u.csmCascadeTexelWorld[3] = 0.0f;
-                u.csmFullMapTexelWorld = feed.csmFullMapTexelWorld;
-                // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
-                // visualMode (0 or 2, from the GL capture site) is only honored when the
-                // bake snapshot is live AND the side is sane -- else forced 0 (VS draws
-                // undisplaced; fail-soft, never a hole).
-                u.visualSide        = feed.visualSide;
-                u.visualDisplaceFar = feed.visualDisplaceFar;
-                u.visualMode        = (feed.patches[i].visualMode == 2
-                                       && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
-                u.edgeStitch        = (int32_t)feed.patches[i].edgeStitch;
-                u.quadCountX        = feed.patches[i].quadCountX;
-                u.quadCountY        = feed.patches[i].quadCountY;
-                // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
-                u.ambientFloor      = feed.ambientFloor;
-                u.ambientDayGate    = feed.ambientDayGate;
-                u.missionFlatR      = feed.missionFlatLight[0];
-                u.missionFlatG      = feed.missionFlatLight[1];
-                u.missionFlatB      = feed.missionFlatLight[2];
-                // VK-PARITY-TERRAIN-2: pool/grid/pad-glow knobs from the shared producers.
-                u.numPoolLights       = vkPoolLights;
-                u.lightGridDim        = vkGridDim;
-                u.lightGridMinX       = feed.lightGridMin[0];
-                u.lightGridMinY       = feed.lightGridMin[1];
-                u.lightGridInvCellX   = feed.lightGridInvCell[0];
-                u.lightGridInvCellY   = feed.lightGridInvCell[1];
-                u.lightPoolSoft       = feed.lightPoolSoft;
-                u.lightPoolMoverDim   = feed.lightPoolMoverDim;
-                u.lightPoolMoverScale = feed.lightPoolMoverScale;
-                u.lightPoolMoverMax   = feed.lightPoolMoverMax;
-                u.lightPoolCompress   = feed.lightPoolCompress;
-                u.moverContactShadow  = feed.moverContactShadow;
-                u.padGlowR            = feed.padGlow[0];
-                u.padGlowG            = feed.padGlow[1];
-                u.padGlowB            = feed.padGlow[2];
-                u.padGlowSpill        = feed.padGlowSpill;
-                // VK-PARITY-SHADOW-1: same knob values GL injects as MC2_SHADOW_* defines.
-                u.shadowDistFadeWu    = feed.shadowDistFadeWu;
-                u.shadowDistFadeMax   = feed.shadowDistFadeMax;
-                u.shadowMinSunSin     = feed.shadowMinSunSin;
-                u.shadowKnobFlags     = feed.shadowKnobFlags;
-                // VK-PARITY-F3: legacy material tint (GL default-ON) from the shared producers.
-                std::memcpy(u.tintRock,     feed.tintRock,     sizeof(u.tintRock));
-                std::memcpy(u.tintGrass,    feed.tintGrass,    sizeof(u.tintGrass));
-                std::memcpy(u.tintDirt,     feed.tintDirt,     sizeof(u.tintDirt));
-                std::memcpy(u.tintConcrete, feed.tintConcrete, sizeof(u.tintConcrete));
-                std::memcpy(u.tintSnow,     feed.tintSnow,     sizeof(u.tintSnow));
-                u.tintStrengthScale    = feed.tintStrengthScale;
-                u.snowBrightnessDampen = feed.snowBrightnessDampen;
+                fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
@@ -3006,6 +3027,617 @@ extern "C" void mc2_render_backend_terrain_region_health(
     if (stageUs)          *stageUs          = g_health.stageUs;
     if (drawUs)           *drawUs           = g_health.drawUs;
     if (totalUs)          *totalUs          = g_health.totalUs;
+}
+
+// ===========================================================================
+// VK-PARITY-OVERLAY-1: VK owner of the two GL world-space overlay draw groups that
+// renderLists flushes into the (VK-discarded) GL scene buffer:
+//   kind 0  overlays.terrain_overlays_static  (gos_terrain_indirect::DrawDecalStatic: the
+//           mission-static cement / pad / runway / road authored-art overlay bake, plus the
+//           legacy per-frame gos_DrawTerrainOverlays batch) -> terrain_overlay.frag port
+//   kind 1  overlays.decals  (gos_DrawDecals: craters, footprints, contact blobs, dynamic
+//           decals)                                                -> decal.frag port
+// The GL draws are replaced (when the terrain island is armed) by queueing their vertex
+// data here; mc2_vk_overlay_run (called right after Render.Decals in renderLists) draws the
+// queue into the SHARED scene GBuffer (LOAD color0 + normal + depth, GEQUAL reverse-Z) with
+// the terrain island's own set 0 (UBO slot 0 + cement/pool/shadow bindings), so overlays are
+// lit by exactly the inputs the terrain beneath them used. Textures are copy-once mip'd
+// imports of the GL textures, keyed on the gos texture handle.
+// ===========================================================================
+uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // gameos_graphics.cpp
+
+namespace {
+
+struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}
+    float   fogColor[4];             // off 0
+    float   artFlatExempt;           // off 16
+    float   mapHalfExtent;           // off 20
+    int32_t biasLegacy;              // off 24
+    int32_t cementAdopt;             // off 28
+    int32_t seamFix;                 // off 32
+    int32_t _pad[3];                 // off 36..47
+};
+static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
+
+struct OvlTex {
+    VkImage img = VK_NULL_HANDLE; VmaAllocation alloc = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+    uint32_t glTex = 0;              // GL texture name this import came from
+};
+
+struct OvlPending {
+    uint32_t kind = 0;               // 0 = terrain overlay (cement/road art), 1 = decal
+    bool     isStatic = false;       // persistent bake (verts stay owned by the caller)
+    uint64_t version = 0;            // static bake version
+    const uint8_t* staticPtr = nullptr;
+    std::vector<uint8_t> verts;      // per-frame copy (28B WorldOverlayVert each)
+    uint32_t vertCount = 0;
+    std::vector<Mc2VkOverlayDraw> draws;
+};
+
+struct OvlState {
+    TerrainIsland* owner = nullptr;
+    int w = 0, h = 0;
+    bool inited = false, disabled = false;
+    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE;
+    VkShaderModule vert[2] = {}, frag[2] = {};
+    VkPipeline pipe[2] = {};
+    VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout texDsl = VK_NULL_HANDLE; VkDescriptorPool texPool = VK_NULL_HANDLE;
+    VkSampler samp = VK_NULL_HANDLE;
+    VkBuffer vtx[2] = {}; VmaAllocation vtxAlloc[2] = {}; VkDeviceSize vtxCap[2] = {0, 0};
+    VkBuffer stat = VK_NULL_HANDLE; VmaAllocation statAlloc = VK_NULL_HANDLE;
+    VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
+    VkCommandBuffer cbuf[2] = {};
+    OvlTex dummy;
+    std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
+};
+OvlState* g_ovl = nullptr;
+bool g_ovlDeclined = false;
+std::vector<OvlPending> g_ovlPending;
+const uint32_t kOvlMaxTex = 480;
+const uint32_t kOvlVertStride = 28;   // WorldOverlayVert
+
+void ovl_destroy_tex(TerrainIsland* s, OvlTex& t) {
+    if (t.view) vkDestroyImageView(s->device, t.view, nullptr);
+    if (t.img)  vmaDestroyImage(s->allocator, t.img, t.alloc);
+    t = OvlTex{};
+}
+
+void ovl_destroy(TerrainIsland* s) {
+    OvlState* o = g_ovl;
+    if (!o || o->owner != s) return;
+    VkDevice d = s->device;
+    if (d != VK_NULL_HANDLE) vkDeviceWaitIdle(d);
+    for (int k = 0; k < 2; ++k) {
+        if (o->pipe[k]) vkDestroyPipeline(d, o->pipe[k], nullptr);
+        if (o->vert[k]) vkDestroyShaderModule(d, o->vert[k], nullptr);
+        if (o->frag[k]) vkDestroyShaderModule(d, o->frag[k], nullptr);
+        if (o->vtx[k])  vmaDestroyBuffer(s->allocator, o->vtx[k], o->vtxAlloc[k]);
+    }
+    if (o->stat)    vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc);
+    if (o->fb)      vkDestroyFramebuffer(d, o->fb, nullptr);
+    if (o->rpass)   vkDestroyRenderPass(d, o->rpass, nullptr);
+    if (o->playout) vkDestroyPipelineLayout(d, o->playout, nullptr);
+    for (auto& kv : o->texs) ovl_destroy_tex(s, kv.second);
+    ovl_destroy_tex(s, o->dummy);
+    if (o->texPool) vkDestroyDescriptorPool(d, o->texPool, nullptr);
+    if (o->texDsl)  vkDestroyDescriptorSetLayout(d, o->texDsl, nullptr);
+    if (o->samp)    vkDestroySampler(d, o->samp, nullptr);
+    delete o;
+    g_ovl = nullptr;
+}
+
+bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t) {
+    VkDescriptorSetAllocateInfo dsai{};
+    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    dsai.descriptorPool = o->texPool; dsai.descriptorSetCount = 1; dsai.pSetLayouts = &o->texDsl;
+    if (vkAllocateDescriptorSets(s->device, &dsai, &t.set) != VK_SUCCESS) { t.set = VK_NULL_HANDLE; return false; }
+    VkDescriptorImageInfo ii{};
+    ii.sampler = o->samp; ii.imageView = t.view; ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet w{};
+    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = t.set; w.dstBinding = 0;
+    w.descriptorCount = 1; w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &ii;
+    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+    return true;
+}
+
+// RGBA8 sampled image with a full blit-generated mip chain (copy-once import).
+bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount) {
+    uint32_t mips = 1;
+    { uint32_t m = (w > h) ? w : h; while (m > 1) { m >>= 1; ++mips; } }
+    VkBuffer stg = VK_NULL_HANDLE; VmaAllocation stgAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &stg, &stgAlloc, true)) return false;
+    { void* p = nullptr;
+      if (vmaMapMemory(s->allocator, stgAlloc, &p) != VK_SUCCESS) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+      std::memcpy(p, bytes, (size_t)byteCount); vmaUnmapMemory(s->allocator, stgAlloc); }
+
+    VkImageCreateInfo ici{};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D; ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+    ici.extent = {w, h, 1}; ici.mipLevels = mips; ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT; ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ici, &aci, &e.img, &e.alloc, nullptr) != VK_SUCCESS) {
+        vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false;
+    }
+    VkCommandBuffer cb = begin_oneshot(s);
+    if (cb == VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, stg, stgAlloc); return false; }
+
+    auto barrier = [&](uint32_t baseMip, uint32_t count, VkImageLayout oldL, VkImageLayout newL,
+                       VkAccessFlags srcA, VkAccessFlags dstA, VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
+        VkImageMemoryBarrier b{};
+        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.oldLayout = oldL; b.newLayout = newL;
+        b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.image = e.img;
+        b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, baseMip, count, 0, 1};
+        b.srcAccessMask = srcA; b.dstAccessMask = dstA;
+        vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
+    };
+    barrier(0, mips, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    VkBufferImageCopy rgn{};
+    rgn.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    rgn.imageExtent = {w, h, 1};
+    vkCmdCopyBufferToImage(cb, stg, e.img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &rgn);
+    int32_t mw = (int32_t)w, mh = (int32_t)h;
+    for (uint32_t i = 1; i < mips; ++i) {
+        barrier(i - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        const int32_t nw = (mw > 1) ? mw / 2 : 1, nh = (mh > 1) ? mh / 2 : 1;
+        VkImageBlit blit{};
+        blit.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i - 1, 0, 1};
+        blit.srcOffsets[1] = {mw, mh, 1};
+        blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
+        blit.dstOffsets[1] = {nw, nh, 1};
+        vkCmdBlitImage(cb, e.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, e.img,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+        mw = nw; mh = nh;
+    }
+    if (mips > 1)
+        barrier(0, mips - 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    barrier(mips - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    end_oneshot(s, cb);
+    vmaDestroyBuffer(s->allocator, stg, stgAlloc);
+
+    VkImageViewCreateInfo vci{};
+    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vci.image = e.img; vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
+    return vkCreateImageView(s->device, &vci, nullptr, &e.view) == VK_SUCCESS;
+}
+
+// Resolve (importing copy-once on first sight) the texture for a gos handle. nullptr = not
+// resident / cannot import (caller skips the draw this frame). 0 / 0xffffffff = untextured.
+OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
+    if (gosHandle == 0 || gosHandle == 0xffffffffu) return &o->dummy;
+    const uint32_t glTex = gos_GetGLTextureId(gosHandle);
+    if (glTex == 0) return nullptr;
+    auto it = o->texs.find(gosHandle);
+    if (it != o->texs.end()) {
+        if (it->second.glTex == glTex) return &it->second;
+        // The GL texture behind this handle changed (reloaded): re-import.
+        vkDeviceWaitIdle(s->device);
+        ovl_destroy_tex(s, it->second);
+        o->texs.erase(it);
+        // (the old descriptor set leaks in the pool until the next mission reset; rare)
+    }
+    if (o->texs.size() >= kOvlMaxTex) return nullptr;
+
+    GLint prevTex = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
+    GLint w = 0, h = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) {
+        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+        return nullptr;
+    }
+    std::vector<uint8_t> blob((size_t)w * (size_t)h * 4u);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
+    glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+
+    OvlTex t;
+    t.glTex = glTex;
+    if (!ovl_upload_tex(s, t, (uint32_t)w, (uint32_t)h, blob.data(), (VkDeviceSize)blob.size()) ||
+        !ovl_alloc_tex_set(s, o, t)) {
+        ovl_destroy_tex(s, t);
+        return nullptr;
+    }
+    vlog("[VK_TERRAIN_OVERLAY] texture cached: handle=%u glTex=%u %dx%d (%zu/%u).",
+         gosHandle, glTex, (int)w, (int)h, o->texs.size() + 1, kOvlMaxTex);
+    return &o->texs.emplace(gosHandle, t).first->second;
+}
+
+bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
+    o->owner = s; o->w = w; o->h = h;
+    VkImageResource* colorRes  = s->colorRes;
+    VkImageResource* normalRes = s->normalRes;
+    VkImageResource* depthRes  = s->depthRes;
+    if (!colorRes || !normalRes || !depthRes) return false;
+
+    {   // LOAD-preserve render pass + framebuffer over the 3 shared views (same as legacy island)
+        VkAttachmentDescription att[3]{};
+        att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        att[2].format = depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        VkAttachmentReference colorRefs[2] = {
+            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
+        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
+        sub.pDepthStencilAttachment = &depthRef;
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
+        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
+        VkRenderPassCreateInfo rpci{};
+        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpci.attachmentCount = 3; rpci.pAttachments = att;
+        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 2; rpci.pDependencies = deps;
+        if (vkCreateRenderPass(s->device, &rpci, nullptr, &o->rpass) != VK_SUCCESS) return false;
+        VkImageView fbViews[3] = { colorRes->view, normalRes->view, depthRes->view };
+        VkFramebufferCreateInfo fci{};
+        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fci.renderPass = o->rpass; fci.attachmentCount = 3; fci.pAttachments = fbViews;
+        fci.width = (uint32_t)w; fci.height = (uint32_t)h; fci.layers = 1;
+        if (vkCreateFramebuffer(s->device, &fci, nullptr, &o->fb) != VK_SUCCESS) return false;
+    }
+
+    {   // texture set layout / pool / sampler / dummy white
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.minLod = 0.0f; sci.maxLod = 16.0f;
+        if (vkCreateSampler(s->device, &sci, nullptr, &o->samp) != VK_SUCCESS) return false;
+        VkDescriptorSetLayoutBinding b{};
+        b.binding = 0; b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b.descriptorCount = 1; b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo lci{};
+        lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        lci.bindingCount = 1; lci.pBindings = &b;
+        if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &o->texDsl) != VK_SUCCESS) return false;
+        VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kOvlMaxTex + 2};
+        VkDescriptorPoolCreateInfo pci{};
+        pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pci.maxSets = kOvlMaxTex + 2; pci.poolSizeCount = 1; pci.pPoolSizes = &ps;
+        if (vkCreateDescriptorPool(s->device, &pci, nullptr, &o->texPool) != VK_SUCCESS) return false;
+        const uint8_t px[4] = {255, 255, 255, 255};
+        if (!ovl_upload_tex(s, o->dummy, 1, 1, px, sizeof(px)) || !ovl_alloc_tex_set(s, o, o->dummy)) return false;
+    }
+
+    {   // command buffers (own pair, from the island's pool)
+        VkCommandBufferAllocateInfo cbi{};
+        cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cbi.commandPool = s->cpool; cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 2;
+        if (vkAllocateCommandBuffers(s->device, &cbi, o->cbuf) != VK_SUCCESS) return false;
+    }
+
+    {   // pipelines
+        const char* vn[2] = {"terrain_overlay_tier1.vert.spv", "terrain_decal_tier1.vert.spv"};
+        const char* fn[2] = {"terrain_overlay_tier1.frag.spv", "terrain_decal_tier1.frag.spv"};
+        for (int k = 0; k < 2; ++k) {
+            o->vert[k] = load_spv(s->device, spv_dir() + vn[k]);
+            o->frag[k] = load_spv(s->device, spv_dir() + fn[k]);
+            if (o->vert[k] == VK_NULL_HANDLE || o->frag[k] == VK_NULL_HANDLE) return false;
+        }
+        VkDescriptorSetLayout sets[2] = { s->dsl, o->texDsl };
+        VkPushConstantRange pcr{};
+        pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = sizeof(OvlPC);
+        VkPipelineLayoutCreateInfo plci{};
+        plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        plci.setLayoutCount = 2; plci.pSetLayouts = sets;
+        plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
+        if (vkCreatePipelineLayout(s->device, &plci, nullptr, &o->playout) != VK_SUCCESS) return false;
+
+        // WorldOverlayVert (28B): pos vec3@0, uv vec2@12, fog float@20, argb u8x4 unorm@24.
+        VkVertexInputBindingDescription vib{};
+        vib.binding = 0; vib.stride = kOvlVertStride; vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputAttributeDescription via[4]{};
+        via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
+        via[1].location = 1; via[1].binding = 0; via[1].format = VK_FORMAT_R32G32_SFLOAT;    via[1].offset = 12;
+        via[2].location = 2; via[2].binding = 0; via[2].format = VK_FORMAT_R32_SFLOAT;       via[2].offset = 20;
+        via[3].location = 3; via[3].binding = 0; via[3].format = VK_FORMAT_R8G8B8A8_UNORM;   via[3].offset = 24;
+        VkPipelineVertexInputStateCreateInfo vin{};
+        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
+        vin.vertexAttributeDescriptionCount = 4; vin.pVertexAttributeDescriptions = via;
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        VkPipelineViewportStateCreateInfo vps{};
+        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vps.viewportCount = 1; vps.scissorCount = 1;
+        VkPipelineRasterizationStateCreateInfo rs{};
+        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; rs.lineWidth = 1.0f;
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dsci{};
+        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
+        const VkColorComponentFlags all = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        for (int k = 0; k < 2; ++k) {
+            // kind 0 (TerrainOverlay row): opaque, depth test + WRITE, GEQUAL.
+            // kind 1 (TerrainDecal row):  SRC_ALPHA/ONE_MINUS_SRC_ALPHA on MRT0, depth test, NO write, GEQUAL.
+            // MRT1 is replaced (GL: shadowHandled value with alpha 1 => SRC_ALPHA blend == replace).
+            VkPipelineDepthStencilStateCreateInfo ds{};
+            ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            ds.depthTestEnable = VK_TRUE;
+            ds.depthWriteEnable = (k == 0) ? VK_TRUE : VK_FALSE;
+            ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+            VkPipelineColorBlendAttachmentState cba[2]{};
+            cba[0].colorWriteMask = all; cba[1].colorWriteMask = all;
+            if (k == 1) {
+                cba[0].blendEnable = VK_TRUE;
+                cba[0].srcColorBlendFactor = cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+                cba[0].dstColorBlendFactor = cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                cba[0].colorBlendOp = cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
+            }
+            VkPipelineColorBlendStateCreateInfo cb{};
+            cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            cb.attachmentCount = 2; cb.pAttachments = cba;
+            VkPipelineShaderStageCreateInfo stages[2]{};
+            stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = o->vert[k]; stages[0].pName = "main";
+            stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = o->frag[k]; stages[1].pName = "main";
+            VkGraphicsPipelineCreateInfo gp{};
+            gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            gp.stageCount = 2; gp.pStages = stages;
+            gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+            gp.pViewportState = &vps; gp.pRasterizationState = &rs;
+            gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
+            gp.pDynamicState = &dsci;
+            gp.layout = o->playout; gp.renderPass = o->rpass; gp.subpass = 0;
+            if (vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, &o->pipe[k]) != VK_SUCCESS) return false;
+        }
+    }
+    for (int i = 0; i < 2; ++i) {
+        o->vtxCap[i] = 256 * 1024;
+        if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true)) return false;
+    }
+    o->inited = true;
+    vlog("[VK_TERRAIN_OVERLAY] island initialized %dx%d (cement/road overlays + decals -> shared GBuffer; GEQUAL reverse-Z).", w, h);
+    return true;
+}
+
+}  // namespace
+
+extern "C" int mc2_vk_overlay_enabled() {
+    return (terrainTier1Requested() && !g_terrainSessionDeclined && !g_ovlDeclined) ? 1 : 0;
+}
+
+extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t vertCount,
+                                      const Mc2VkOverlayDraw* draws, uint32_t drawCount, uint64_t staticVersion) {
+    if (!verts || vertCount == 0 || !draws || drawCount == 0) return;
+    OvlPending p;
+    p.kind = (kind != 0) ? 1u : 0u;
+    p.vertCount = vertCount;
+    p.draws.assign(draws, draws + drawCount);
+    if (staticVersion != 0) {
+        p.isStatic = true; p.version = staticVersion;
+        p.staticPtr = static_cast<const uint8_t*>(verts);
+    } else {
+        p.verts.assign(static_cast<const uint8_t*>(verts),
+                       static_cast<const uint8_t*>(verts) + (size_t)vertCount * kOvlVertStride);
+    }
+    g_ovlPending.push_back(std::move(p));
+}
+
+extern "C" int mc2_vk_overlay_run(int w, int h) {
+    ZoneScopedN("VK-terrain-overlay");
+    std::vector<OvlPending> pending;
+    pending.swap(g_ovlPending);                       // always consume
+    if (pending.empty() || !mc2_vk_overlay_enabled() || w <= 0 || h <= 0) return 0;
+    TerrainIsland* s = g_island;
+    if (!s || !s->inited || s->disabled) return 0;    // terrain island not up: nothing to share state with
+
+    if (g_ovl && g_ovl->owner == s && (g_ovl->w != w || g_ovl->h != h)) ovl_destroy(s);
+    if (!g_ovl) {
+        g_ovl = new OvlState();
+        if (!ovl_init(s, g_ovl, w, h)) {
+            vlog("[VK_TERRAIN_OVERLAY] init failed -- overlays/decals will not draw under VK (permanent for this session).");
+            g_ovlDeclined = true;
+            ovl_destroy(s);
+            return 0;
+        }
+    }
+    OvlState* o = g_ovl;
+    if (o->disabled) return 0;
+
+    Mc2TerrainTier1Feed feed{};
+    if (!mc2_terrain_tier1_get_frame_feed(&feed) || !feed.patches || feed.patchCount == 0) return 0;
+
+    // ---- resolve textures (GL calls) and size the vertex streams BEFORE recording ----
+    struct Item { uint32_t first; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: bit0 decal, bit1 static stream
+    std::vector<Item> items;
+    VkDeviceSize dynBytes = 0;
+    for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += (VkDeviceSize)p.vertCount * kOvlVertStride;
+
+    // Persistent static bake: (re)upload when its version changes (device-idle: rare, mission load).
+    for (const OvlPending& p : pending) {
+        if (!p.isStatic) continue;
+        const VkDeviceSize bytes = (VkDeviceSize)p.vertCount * kOvlVertStride;
+        if (o->statVersion == p.version && o->stat != VK_NULL_HANDLE && bytes <= o->statCap) continue;
+        vkDeviceWaitIdle(s->device);
+        if (o->stat != VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc); o->stat = VK_NULL_HANDLE; }
+        o->statCap = bytes + 256;
+        if (!make_buffer(s, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->stat, &o->statAlloc, true)) {
+            o->disabled = true; return 0;
+        }
+        void* dst = nullptr;
+        if (vmaMapMemory(s->allocator, o->statAlloc, &dst) != VK_SUCCESS) { o->disabled = true; return 0; }
+        std::memcpy(dst, p.staticPtr, (size_t)bytes);
+        vmaUnmapMemory(s->allocator, o->statAlloc);
+        o->statVersion = p.version;
+    }
+    for (int i = 0; i < 2; ++i) {
+        if (dynBytes > o->vtxCap[i]) {
+            vkDeviceWaitIdle(s->device);
+            vmaDestroyBuffer(s->allocator, o->vtx[i], o->vtxAlloc[i]);
+            o->vtx[i] = VK_NULL_HANDLE;
+            o->vtxCap[i] = dynBytes + dynBytes / 2;
+            if (!make_buffer(s, o->vtxCap[i], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &o->vtx[i], &o->vtxAlloc[i], true)) {
+                o->disabled = true; return 0;
+            }
+        }
+    }
+    // Draw list in submission order; dynamic verts packed back to back.
+    VkDeviceSize dynOff = 0;
+    std::vector<std::pair<const OvlPending*, uint32_t>> dynRuns;   // (pending, first vertex in the dyn stream)
+    for (const OvlPending& p : pending) {
+        uint32_t base = 0;
+        if (!p.isStatic) { base = (uint32_t)(dynOff / kOvlVertStride); dynRuns.push_back({&p, base}); dynOff += (VkDeviceSize)p.vertCount * kOvlVertStride; }
+        for (const Mc2VkOverlayDraw& d : p.draws) {
+            if (d.vertCount == 0 || d.firstVert + d.vertCount > p.vertCount) continue;
+            OvlTex* t = ovl_get_tex(s, o, d.texHandle);
+            if (!t) continue;                               // texture not resident yet: skip this frame
+            items.push_back({ base + d.firstVert, d.vertCount, p.kind | (p.isStatic ? 2u : 0u), t });
+        }
+    }
+    if (items.empty()) return 0;
+
+    Mc2VkOverlayFrame fr{};
+    mc2_vk_overlay_fill_frame(&fr);
+
+    // ---- sync: same shared parity-slot fence discipline as the other islands ----
+    VkImageResource* colorRes = s->colorRes;
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Overlay.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
+    const uint32_t par = fsC.parity & 1u;
+
+    if (!ensure_ubo_capacity(s, par, sizeof(TerrainFrameUBO))) { o->disabled = true; return 0; }
+    int32_t vkPoolLights = feed.numPoolLights;
+    int32_t vkGridDim    = feed.lightGridDim;
+    stage_light_pool(s, par, feed, vkPoolLights, vkGridDim);
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->uboAlloc[par], &p) != VK_SUCCESS) { o->disabled = true; return 0; }
+        TerrainFrameUBO u{};
+        fill_frame_ubo(s, feed, feed.patches[0], vkPoolLights, vkGridDim, u);
+        std::memcpy(p, &u, sizeof(u));
+        vmaUnmapMemory(s->allocator, s->uboAlloc[par]);
+    }
+    if (!dynRuns.empty()) {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, o->vtxAlloc[par], &p) != VK_SUCCESS) { o->disabled = true; return 0; }
+        for (const auto& r : dynRuns)
+            std::memcpy((uint8_t*)p + (size_t)r.second * kOvlVertStride, r.first->verts.data(),
+                        (size_t)r.first->vertCount * kOvlVertStride);
+        vmaUnmapMemory(s->allocator, o->vtxAlloc[par]);
+    }
+
+    VkCommandBuffer cb = o->cbuf[par];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { o->disabled = true; return 0; }
+    VkRenderPassBeginInfo rbi{};
+    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rbi.renderPass = o->rpass; rbi.framebuffer = o->fb;
+    rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+
+    OvlPC pc{};
+    for (int k = 0; k < 4; ++k) pc.fogColor[k] = fr.fogColor[k];
+    pc.artFlatExempt = fr.artFlatExempt; pc.mapHalfExtent = fr.mapHalfExtent;
+    pc.biasLegacy = fr.biasLegacy; pc.cementAdopt = fr.cementAdopt; pc.seamFix = fr.seamFix;
+    vkCmdPushConstants(cb, o->playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+    const uint32_t dynOffset0 = 0;
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout, 0, 1, &s->set[par], 1, &dynOffset0);
+
+    int boundKind = -1; int boundStatic = -1; VkDescriptorSet boundTex = VK_NULL_HANDLE;
+    unsigned long drawn[2] = {0, 0}, verts = 0;
+    for (const Item& it : items) {
+        const int kind = (int)(it.kind & 1u);
+        const int isStat = (it.kind & 2u) ? 1 : 0;
+        if (kind != boundKind) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind]); boundKind = kind; }
+        if (isStat != boundStatic) {
+            VkBuffer vb = isStat ? o->stat : o->vtx[par];
+            VkDeviceSize zero = 0;
+            vkCmdBindVertexBuffers(cb, 0, 1, &vb, &zero);
+            boundStatic = isStat;
+        }
+        if (it.tex->set != boundTex) {
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout, 1, 1, &it.tex->set, 0, nullptr);
+            boundTex = it.tex->set;
+        }
+        vkCmdDraw(cb, it.count, 1, it.first, 0);
+        ++drawn[kind]; verts += it.count;
+    }
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { o->disabled = true; return 0; }
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    { ZoneScopedN("VKIsl.Overlay.Submit");
+      if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { o->disabled = true; return 0; } }
+
+    static bool s_firstOk = false;
+    static unsigned long s_frames = 0;
+    ++s_frames;
+    if (!s_firstOk) {
+        vlog("[VK_TERRAIN_OVERLAY] first overlay co-write: overlay_draws=%lu decal_draws=%lu verts=%lu textures=%zu.",
+             drawn[0], drawn[1], verts, o->texs.size());
+        s_firstOk = true;
+    }
+    return 1;
+}
+
+extern "C" void mc2_vk_overlay_reset() {
+    g_ovlPending.clear();
+    OvlState* o = g_ovl;
+    TerrainIsland* s = g_island;
+    if (!o || !s || o->owner != s || !o->inited) return;
+    // gos texture handles are reused by the next mission: drop the copy-once cache + static bake.
+    vkDeviceWaitIdle(s->device);
+    for (auto& kv : o->texs) ovl_destroy_tex(s, kv.second);
+    o->texs.clear();
+    if (o->stat != VK_NULL_HANDLE) { vmaDestroyBuffer(s->allocator, o->stat, o->statAlloc); o->stat = VK_NULL_HANDLE; }
+    o->statCap = 0; o->statVersion = UINT64_MAX;
+    if (o->texPool) vkResetDescriptorPool(s->device, o->texPool, 0);
+    o->dummy.set = VK_NULL_HANDLE;
+    if (!ovl_alloc_tex_set(s, o, o->dummy)) { o->disabled = true; vlog("[VK_TERRAIN_OVERLAY] reset: dummy set failed -- disabled."); }
+    vlog("[VK_TERRAIN_OVERLAY] texture cache + static bake reset on mission unload.");
 }
 
 extern "C" void mc2_vk_terrain_island_destroy() {

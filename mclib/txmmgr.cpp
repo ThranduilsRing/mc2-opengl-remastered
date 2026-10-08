@@ -79,6 +79,7 @@
 #include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
 #include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"  // VK-PARITY-F1: legacy MLR solid loop VK owner
+#include "../GameOS/gameos/vulkan_terrain_island.h"        // VK-PARITY-OVERLAY-1: overlay/decal VK owner
 #endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "../GameOS/gameos/render_snapshot.h"  // getLastRenderSnapshot() for snap-cull (v2.3)
@@ -874,6 +875,7 @@ void MC_TextureManager::flush (bool justTextures)
 		// VK-PARITY-F1: texture node indices are reused by the next mission; drop the
 		// legacy-shape island's copy-once texture cache.
 		mc2_vk_legacy_shape_island_reset();
+		mc2_vk_overlay_reset();   // VK-PARITY-OVERLAY-1: gos texture handles are reused too
 #endif
 
 		// [TXMMGR_TEXTURE_AUDIT v1] pre-flush census (slot occupancy before free).
@@ -4530,6 +4532,16 @@ void MC_TextureManager::renderLists (void)
 		DynDecal::gatherToDecalBatch(frameLength);
 		gos_DrawDecals();
 	}
+#ifdef MC2_VULKAN_ISLAND
+	// VK-PARITY-OVERLAY-1: the static cement/road overlay bake and the decal batch were queued
+	// (not GL-drawn) when the terrain island is armed; draw them into the shared GBuffer now,
+	// in the same slot (after terrain/objects, before the old overlays).
+	if (mc2_vk_overlay_enabled())
+	{
+		if (gosPostProcess* ppVkOv = getGosPostProcess())
+			(void)mc2_vk_overlay_run(ppVkOv->getWidth(), ppVkOv->getHeight());
+	}
+#endif
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Overlays);
 	if (rlcost::s_enabled) rlcost::s_ns[rlcost::kOverlays] += rlcost::nowNs() - _rlOv0;
 	// ── End new world-space overlay batches ───────────────────────────────────

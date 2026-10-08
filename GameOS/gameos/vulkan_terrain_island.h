@@ -279,6 +279,45 @@ void mc2_render_backend_terrain_region_health(
     unsigned long* forbiddenGetTexImage, unsigned long* forbiddenReadPixels,
     double* stageUs, double* drawUs, double* totalUs);
 
+// ===========================================================================
+// VK-PARITY-OVERLAY-1: VK owner of the GL world-space overlay draw groups that
+// mcTextureManager::renderLists flushes after the terrain / objects:
+//   kind 0  terrain overlays (mission-static cement/pad/runway/road art bake from
+//           gos_terrain_indirect::DrawDecalStatic, + the legacy per-frame batch)
+//   kind 1  decals (craters, footprints, contact blobs, dynamic decals)
+// When mc2_vk_overlay_enabled() the GL producers (gosRenderer::drawTerrainOverlays /
+// drawDecals / drawDecalStaticBatch) queue their WorldOverlayVert data here INSTEAD of
+// drawing into the (VK-discarded) GL scene FBO; renderLists then calls mc2_vk_overlay_run
+// right after Render.Decals, which draws the queue into the shared scene GBuffer with the
+// terrain island's own lighting/shadow/cement resources. Gate off => GL byte-identical.
+// ===========================================================================
+struct Mc2VkOverlayDraw {          // layout-matches GosDecalStaticDraw / OverlayBatchEntry_
+    uint32_t texHandle;            // gos texture handle (0 / 0xffffffff = untextured)
+    uint32_t firstVert;
+    uint32_t vertCount;
+};
+struct Mc2VkOverlayFrame {         // GL-side per-frame overlay inputs (gameos_graphics.cpp)
+    float   fogColor[4];           // gosRenderer fog_color_ (decal vertex-fog mix)
+    float   artFlatExempt;         // MC2_OVERLAY_ART_FLATLIGHT arm (0 = stock)
+    float   mapHalfExtent;         // pp->getMapHalfExtent()
+    int32_t biasLegacy;            // MC2_OVERLAY_BIAS_LEGACY
+    int32_t cementAdopt;           // MC2_OVERLAY_CEMENT_ADOPT (default 1)
+    int32_t seamFix;               // MC2_CEMENT_ATLAS_SEAM_FIX (default 1)
+};
+// True when the terrain island is armed (MC2_VK_TERRAIN_TIER1 family) and not declined.
+int  mc2_vk_overlay_enabled();
+// Queue one batch of WorldOverlayVert (28B each). staticVersion != 0: persistent bake -
+// `verts` must stay valid through the frame and is uploaded once per version; 0: per-frame
+// batch, the data is copied.
+void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t vertCount,
+                           const Mc2VkOverlayDraw* draws, uint32_t drawCount, uint64_t staticVersion);
+// Per-frame entry (GL thread, right after Render.Decals). Draws + clears the queue.
+int  mc2_vk_overlay_run(int w, int h);
+// Mission unload: drop the copy-once texture cache + static bake.
+void mc2_vk_overlay_reset();
+// Provided by gameos_graphics.cpp.
+void mc2_vk_overlay_fill_frame(struct Mc2VkOverlayFrame* out);
+
 // Teardown (called from gameosmain.cpp before the shared device is destroyed).
 void mc2_vk_terrain_island_destroy();
 

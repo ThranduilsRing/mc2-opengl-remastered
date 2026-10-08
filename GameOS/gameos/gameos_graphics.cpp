@@ -94,6 +94,9 @@ namespace gosFX { void DiagFrameTick(); }
 #include "engine_present_vk.h"
 #endif
 #include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_terrain_island.h"    // VK-PARITY-OVERLAY-1: overlay/decal VK owner queue
+#endif
 
 class gosRenderer;
 class gosFont;
@@ -11155,6 +11158,32 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     glActiveTexture(GL_TEXTURE0);
 }
 
+#ifdef MC2_VULKAN_ISLAND
+// VK-PARITY-OVERLAY-1: GL-side per-frame inputs of the overlay/decal shaders that the VK
+// owner (vulkan_terrain_island.cpp) cannot read itself. Same values uploadOverlayUniforms_ gives GL.
+extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
+{
+    if (!out) return;
+    *out = Mc2VkOverlayFrame{};
+    if (g_gos_renderer) {
+        const vec4& fc = g_gos_renderer->getFogColor();
+        out->fogColor[0] = fc.x; out->fogColor[1] = fc.y; out->fogColor[2] = fc.z; out->fogColor[3] = fc.w;
+    }
+    static const float s_artFlatExempt = [] {
+        const char* v = getenv("MC2_OVERLAY_ART_FLATLIGHT");
+        return (v && v[0] == '0') ? 1.0f : 0.0f;       // default ON (flat light) => exempt 0
+    }();
+    out->artFlatExempt = s_artFlatExempt;
+    gosPostProcess* pp = getGosPostProcess();
+    out->mapHalfExtent = pp ? pp->getMapHalfExtent() : 0.0f;
+    out->biasLegacy = mc2OverlayBiasLegacy();
+    static const int s_cementAdopt = [] { const char* v = getenv("MC2_OVERLAY_CEMENT_ADOPT"); return (v && v[0] == '0') ? 0 : 1; }();
+    static const int s_seamFix     = [] { const char* v = getenv("MC2_CEMENT_ATLAS_SEAM_FIX"); return (v && v[0] == '0') ? 0 : 1; }();
+    out->cementAdopt = s_cementAdopt;
+    out->seamFix = s_seamFix;
+}
+#endif
+
 // Draw the terrain overlay batch (alpha cement perimeter tiles).
 // Render state: opaque, depth-write ON, depth-test LEQUAL (same as solid terrain).
 // MRT: terrain_overlay.frag writes GBuffer1.alpha=1 → shadow_screen skips these pixels.
@@ -11167,6 +11196,21 @@ void gosRenderer::drawTerrainOverlays()
         terrainOverlayBatch_.draws.clear();
         return;
     }
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-PARITY-OVERLAY-1: under the VK umbrella the GL scene FBO is discarded; hand the batch
+    // to the VK overlay owner (drawn right after Render.Decals) instead. Gate off => unchanged.
+    if (mc2_vk_overlay_enabled()) {
+        static_assert(sizeof(OverlayBatchEntry_) == sizeof(Mc2VkOverlayDraw),
+                      "OverlayBatchEntry_ must layout-match Mc2VkOverlayDraw");
+        mc2_vk_overlay_submit(0u, terrainOverlayBatch_.verts.data(), (uint32_t)terrainOverlayBatch_.verts.size(),
+                              reinterpret_cast<const Mc2VkOverlayDraw*>(terrainOverlayBatch_.draws.data()),
+                              (uint32_t)terrainOverlayBatch_.draws.size(), 0);
+        terrainOverlayBatch_.verts.clear();
+        terrainOverlayBatch_.draws.clear();
+        return;
+    }
+#endif
 
     // SAME-ORDER-EXECUTOR-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
     // No-op when gate unset (byte-identical). PIN INVARIANT: additive only — no GL state change,
@@ -11429,6 +11473,18 @@ void gosRenderer::drawDecals()
         decalBatch_.draws.clear();
         return;
     }
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-PARITY-OVERLAY-1: see drawTerrainOverlays. Decal pass -> VK kind 1.
+    if (mc2_vk_overlay_enabled()) {
+        mc2_vk_overlay_submit(1u, decalBatch_.verts.data(), (uint32_t)decalBatch_.verts.size(),
+                              reinterpret_cast<const Mc2VkOverlayDraw*>(decalBatch_.draws.data()),
+                              (uint32_t)decalBatch_.draws.size(), 0);
+        decalBatch_.verts.clear();
+        decalBatch_.draws.clear();
+        return;
+    }
+#endif
 
     // SAME-ORDER-EXECUTOR-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
     // No-op when gate unset (byte-identical). PIN INVARIANT: additive only — no GL state change,
