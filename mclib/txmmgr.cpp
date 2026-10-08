@@ -4279,7 +4279,7 @@ void MC_TextureManager::renderLists (void)
 			// [SPFLUSH_COST_SPLIT v1] baseinstance_upload span (nifty) wrapped in
 			// the GpuSP.PrepBaseInstance Tracy zone (override branch).
 			{
-				ZoneScopedN("GpuSP.PrepBaseInstance");
+				ZoneScopedN("GpuSP.PrepBaseInstance"); GosGlLostDrawsScope _lost_("gpusp.prep_base_instance");
 				const unsigned long long _t_bi0 = s_spflushTxmEnabled ? __rdtsc() : 0ULL;
 				batcher_prepareBaseInstanceTable();
 				if (s_spflushTxmEnabled) s_spflush_baseinstance_upload_cyc += __rdtsc() - _t_bi0;
@@ -4299,10 +4299,10 @@ void MC_TextureManager::renderLists (void)
 			// cull-record prefix now that baseInstanceForType is valid (set by
 			// batcher_prepareBaseInstanceTable above) and before compute_dispatch
 			// consumes the records. No-op on clean frames / unless the gate is set.
-			GpuStaticPropRegistry::buildStaticPrefixGolden();
+			{ GosGlLostDrawsScope _lost_("gpusp.static_prefix"); GpuStaticPropRegistry::buildStaticPrefixGolden(); }
 
 			if (gpu_cull::compute_isEnabled()) {
-				ZoneScopedN("GpuSP.CullDispatch");
+				ZoneScopedN("GpuSP.CullDispatch"); GosGlLostDrawsScope _lost_("gpusp.cull_dispatch");
 				TracyGpuZone("GpuSP.CullDispatch");
 				gpu_cull::compute_dispatch();
 			}
