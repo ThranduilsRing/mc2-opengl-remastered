@@ -687,6 +687,11 @@ struct PerTypeBucket {
     uint32_t dbgStatic  = 0;
     uint32_t dbgDynamic = 0;
     uint8_t  dbgFirst   = 0;   // 0=none, 1=static-first, 2=dynamic-first
+    // VK color feed: range of `instances` that reinjectPersistentStatic() bulk-copied
+    // from the persistent store this frame. The VK feed already flattens the store,
+    // so it skips this range and appends only the per-frame dynamic remainder.
+    uint32_t reinjPos   = 0;
+    uint32_t reinjCount = 0;
 };
 std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 
@@ -9895,26 +9900,47 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // feeding it directly gives the island the SAME prop set GL flush() draws — trees,
 // tents, misc props included — without the accumulation hazard. Read-only: does NOT
 // mutate any batcher state. Output is a reused static scratch vector.
+// Called by txmmgr once per frame at the point where the GL flush() is skipped because
+// the VK color island handled the frame (flush() owns the clear on the GL path).
+extern "C" void mc2_color_prop_island_end_frame() {
+    s_bucketsByType.clear();
+}
+
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
-    if (s_persistentStaticStore.empty()) return 0;
-
     static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
     s_colorFeedFlat.clear();
 
     // Grouped by typeID for correct per-type geometry addressing (the island issues
     // one type-run per contiguous typeID block via firstInstance). Deterministic
     // ordering (ascending typeID) so the flattening is stable frame-to-frame.
+    // Per type: persistent-store block first, then this frame's DYNAMIC submits
+    // (buildings failing isStaticEligible etc.) from s_bucketsByType, excluding the
+    // range reinjectPersistentStatic() copied from the store (else double-draw).
+    // Read point: inside the island run, which txmmgr calls after renderLists() has
+    // issued all submits and the registry reinject for the frame.
     std::vector<uint32_t> typeIds;
-    typeIds.reserve(s_persistentStaticStore.size());
+    typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& kv : s_persistentStaticStore) typeIds.push_back(kv.first);
+    for (const auto& kv : s_bucketsByType) typeIds.push_back(kv.first);
     std::sort(typeIds.begin(), typeIds.end());
+    typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
     for (uint32_t tid : typeIds) {
         auto it = s_persistentStaticStore.find(tid);
-        if (it == s_persistentStaticStore.end()) continue;
-        const std::vector<GpuStaticPropInstance>& insts = it->second;
-        s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
+        if (it != s_persistentStaticStore.end()) {
+            const std::vector<GpuStaticPropInstance>& insts = it->second;
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
+        }
+        auto bt = s_bucketsByType.find(tid);
+        if (bt != s_bucketsByType.end()) {
+            const PerTypeBucket& b = bt->second;
+            const uint32_t n  = (uint32_t)b.instances.size();
+            const uint32_t rp = std::min(b.reinjPos, n);
+            const uint32_t re = std::min(rp + b.reinjCount, n);
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.begin() + rp);
+            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin() + re, b.instances.end());
+        }
     }
     if (s_colorFeedFlat.empty()) return 0;
 
@@ -10315,6 +10341,8 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
         const auto& block = kv.second;
         if (block.empty()) continue;
         PerTypeBucket& bucket = s_bucketsByType[kv.first];
+        bucket.reinjPos   = (uint32_t)bucket.instances.size();
+        bucket.reinjCount = (uint32_t)block.size();
         bucket.instances.insert(bucket.instances.end(), block.begin(), block.end());  // bulk
         if (s_bucketOrderTrace) { if (!bucket.dbgFirst) bucket.dbgFirst = 1; bucket.dbgStatic += (uint32_t)block.size(); }
     }

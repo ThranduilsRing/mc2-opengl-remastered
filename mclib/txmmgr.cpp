@@ -4408,7 +4408,11 @@ void MC_TextureManager::renderLists (void)
 							ppVkClr->getWidth(), ppVkClr->getHeight()));
 					}
 				}
-				if (!vkPropColorHandled)
+				if (vkPropColorHandled) {
+					// flush() (sole per-frame bucket clear) was skipped: clear here so
+					// dynamic submits do not accumulate across island frames.
+					mc2_color_prop_island_end_frame();
+				} else
 					GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
 #else
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());

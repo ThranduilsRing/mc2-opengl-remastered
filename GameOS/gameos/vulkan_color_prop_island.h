@@ -34,6 +34,8 @@ int mc2_vk_color_prop_island_enabled();
 // Returns 1 if the VK color pass rendered this frame; 0 = fell back
 // (caller must then run the GL flush() so props still draw).
 int mc2_vk_color_prop_island_run(int w, int h);
+// Clears the static-prop batcher per-frame buckets (GL flush() is skipped when the island runs).
+void mc2_color_prop_island_end_frame(void);
 
 // Health accessor (mirrors mc2_render_backend_shadow_region_health).
 void mc2_render_backend_color_prop_region_health(
