@@ -4,16 +4,16 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.0.0"
-registry_entry_count: 359
-registry_env_flag_count: 358
-sweep_flag_count: 1034
-flag_count: 1094
+registry_entry_count: 360
+registry_env_flag_count: 359
+sweep_flag_count: 1037
+flag_count: 1097
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:9934
+      - GameOS/gameos/gameos_graphics.cpp:10033
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -61,8 +61,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:3821
-      - code/mission.cpp:3821
+      - code/mission.cpp:3822
+      - code/mission.cpp:3822
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -323,7 +323,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:1499
+      - code/gamecam.cpp:1501
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -331,7 +331,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:1131
+      - code/gamecam.cpp:1133
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -389,7 +389,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "PAUSE-IMGUI-SLICE-0: =N auto-toggles the in-mission pause menu ONCE at frame >= N (MissionInterfaceManager::update). Headless agents cannot press ESC/P, so this is the boot-to-pause fixture for cap..."
     referenced_at:
-      - code/missiongui.cpp:2787
+      - code/missiongui.cpp:2788
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -408,7 +408,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:2840
+      - code/missiongui.cpp:2841
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -416,7 +416,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:2836
+      - code/missiongui.cpp:2837
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -495,7 +495,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:975
+      - GameOS/gameos/gos_postprocess.cpp:1086
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -503,7 +503,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2309
+      - GameOS/gameos/gos_postprocess.cpp:2421
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -511,7 +511,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2295
+      - GameOS/gameos/gos_postprocess.cpp:2407
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -519,7 +519,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2301
+      - GameOS/gameos/gos_postprocess.cpp:2413
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -550,7 +550,7 @@ flags:
     referenced_at:
       - code/brain_special_dispatch.cpp:177
       - code/brain_special_dispatch.cpp:3188
-      - code/mission.cpp:4359
+      - code/mission.cpp:4360
     referenced_at_more: 2
     registered: yes
     in_smoke_passthrough: yes
@@ -575,8 +575,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:4360
-      - code/mission.cpp:4360
+      - code/mission.cpp:4361
+      - code/mission.cpp:4361
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -586,7 +586,7 @@ flags:
     referenced_at:
       - code/brain_special_dispatch.cpp:3186
       - code/brain_special_dispatch.cpp:94
-      - code/mission.cpp:4361
+      - code/mission.cpp:4362
     referenced_at_more: 1
     registered: no
     in_smoke_passthrough: yes
@@ -664,9 +664,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:3862
       - code/mission.cpp:3863
-      - code/mission.cpp:4013
+      - code/mission.cpp:3864
+      - code/mission.cpp:4014
     referenced_at_more: 3
     registered: no
     in_smoke_passthrough: no
@@ -685,8 +685,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:4078
-      - code/mission.cpp:4078
+      - code/mission.cpp:4079
+      - code/mission.cpp:4079
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -713,8 +713,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TechBrain declarative-brain runtime master gate (warrior.cpp). Default-OFF; =1 enables. Companion MC2_BRAIN_RUNTIME_APPLY gates whether resolved intents are actually applied."
     referenced_at:
-      - code/mission.cpp:4223
-      - code/mission.cpp:4223
+      - code/mission.cpp:4224
+      - code/mission.cpp:4224
       - code/warrior.cpp:153
     referenced_at_more: 1
     registered: yes
@@ -736,7 +736,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:4267
+      - code/mission.cpp:4268
       - code/warrior.cpp:163
     registered: no
     in_smoke_passthrough: yes
@@ -770,7 +770,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:4390
+      - code/mission.cpp:4391
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -805,8 +805,8 @@ flags:
     declared_in: null
     referenced_at:
       - code/brain_special_dispatch.cpp:92
-      - code/mission.cpp:4362
-      - code/mission.cpp:4362
+      - code/mission.cpp:4363
+      - code/mission.cpp:4363
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -814,7 +814,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:547
+      - code/mission.cpp:548
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -822,7 +822,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:544
+      - code/mission.cpp:545
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -831,7 +831,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_terrain_patch_stream.cpp:315
-      - mclib/txmmgr.cpp:4010
+      - mclib/txmmgr.cpp:4068
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -839,7 +839,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:4222
+      - GameOS/gameos/gos_terrain_indirect.cpp:4225
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -875,7 +875,7 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/tgl.cpp:3148
-      - mclib/txmmgr.cpp:2495
+      - mclib/txmmgr.cpp:2503
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -921,7 +921,7 @@ flags:
     doc: "TRACKV-CI-GATE-RESTORE-1: camera movement diagnostic readback probe. WARNING: triggers GPU pipeline stall + glGetNamedBufferSubData readback — diagnostic default-OFF only. =1 enables per-frame came..."
     referenced_at:
       - GameOS/gameos/gpu_cull_compute.cpp:899
-      - mclib/txmmgr.cpp:4256
+      - mclib/txmmgr.cpp:4331
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -932,7 +932,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it against scripted writers (freezeScripted..."
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:875
+      - GameOS/gameos/gos_visual_capture.cpp:895
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -997,8 +997,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10990
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:79
+      - GameOS/gameos/gameos_graphics.cpp:11089
+      - GameOS/gameos/gameos_graphics.cpp:11198
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:80
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -1031,7 +1032,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully flat-lit slab (terrain_lod_chunk.frag his..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4187
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4348
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1039,7 +1040,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10502
+      - GameOS/gameos/gameos_graphics.cpp:10601
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1050,7 +1051,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway (\"concrete shouldn't magically become a different ..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4220
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4381
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1100,7 +1101,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3318
+      - GameOS/gameos/gos_postprocess.cpp:3431
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1108,7 +1109,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:502
+      - GameOS/gameos/gos_postprocess.cpp:505
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1233,7 +1234,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:4376
+      - code/missiongui.cpp:4377
       - code/objmgr.cpp:4018
     registered: no
     in_smoke_passthrough: no
@@ -1261,7 +1262,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6173
+      - GameOS/gameos/gos_postprocess.cpp:6312
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1277,9 +1278,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6191
-      - GameOS/gameos/gos_postprocess.cpp:7024
-      - GameOS/gameos/gos_postprocess.cpp:7045
+      - GameOS/gameos/gos_postprocess.cpp:6330
+      - GameOS/gameos/gos_postprocess.cpp:7163
+      - GameOS/gameos/gos_postprocess.cpp:7184
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1292,7 +1293,7 @@ flags:
     referenced_at:
       - GameOS/gameos/debug_state_dump.cpp:1220
       - GameOS/gameos/debug_state_dump.cpp:1251
-      - GameOS/gameos/gameosmain.cpp:1050
+      - GameOS/gameos/gameosmain.cpp:1052
     referenced_at_more: 1
     registered: yes
     in_smoke_passthrough: yes
@@ -1334,7 +1335,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo 4=overdraw-proxy 5=world-normals 6=chunk/LOD-tint. Fans out throu..."
     referenced_at:
-      - code/missiongui.cpp:2811
+      - code/missiongui.cpp:2812
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1345,7 +1346,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update). For each view v in 1..6: at frame start+(v-1)*(settle+2) sets ..."
     referenced_at:
-      - code/missiongui.cpp:2873
+      - code/missiongui.cpp:2874
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1353,9 +1354,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11226
-      - GameOS/gameos/gameos_graphics.cpp:11226
-      - GameOS/gameos/gos_terrain_indirect.cpp:5481
+      - GameOS/gameos/gameos_graphics.cpp:11367
+      - GameOS/gameos/gameos_graphics.cpp:11367
+      - GameOS/gameos/gos_terrain_indirect.cpp:5484
     referenced_at_more: 1
     registered: no
     in_smoke_passthrough: no
@@ -1364,7 +1365,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:4889
+      - code/mission.cpp:4890
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1381,7 +1382,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:2696
+      - code/mission.cpp:2697
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1397,7 +1398,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:4803
+      - GameOS/gameos/gos_terrain_indirect.cpp:4806
       - mclib/quad.cpp:2677
       - mclib/terrain.cpp:3571
     registered: no
@@ -1407,7 +1408,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1214
+      - GameOS/gameos/gameosmain.cpp:1216
       - code/gameobj.cpp:106
     registered: no
     in_smoke_passthrough: yes
@@ -1420,8 +1421,8 @@ flags:
     doc: "Route all randomness (incl. paths that bypass gos_rand) through a single seeded deterministic RNG stream for reproducible runs / capture parity. Default-OFF: stock RNG behavior."
     referenced_at:
       - GameOS/gameos/gameos.cpp:290
-      - code/mechcmd2.cpp:1060
-      - code/mission.cpp:2955
+      - code/mechcmd2.cpp:1061
+      - code/mission.cpp:2956
     referenced_at_more: 1
     registered: yes
     in_smoke_passthrough: yes
@@ -1431,7 +1432,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_dev_shell.cpp:59
-      - code/missiongui.cpp:1210
+      - code/missiongui.cpp:1211
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -1487,7 +1488,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1334
+      - GameOS/gameos/gameosmain.cpp:1336
       - GuiRuntime/GraphicsOptionsWindow.cpp:1476
       - mclib/mlr/mlr_gate.cpp:37
     registered: no
@@ -1497,7 +1498,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1026
+      - GameOS/gameos/gameosmain.cpp:1028
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1521,7 +1522,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1877
+      - GameOS/gameos/gameosmain.cpp:1879
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -1555,7 +1556,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1888
+      - GameOS/gameos/gameosmain.cpp:1890
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1564,7 +1565,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/draw_packet_emitter.cpp:53
-      - GameOS/gameos/gameosmain.cpp:1931
+      - GameOS/gameos/gameosmain.cpp:1933
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1584,7 +1585,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1143
+      - GameOS/gameos/gos_postprocess.cpp:1254
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1592,7 +1593,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1147
+      - GameOS/gameos/gos_postprocess.cpp:1258
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1600,7 +1601,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1148
+      - GameOS/gameos/gos_postprocess.cpp:1259
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1608,7 +1609,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1146
+      - GameOS/gameos/gos_postprocess.cpp:1257
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1904,8 +1905,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a COMMANDER-origin unaimed ATTACK_TO_DESTRO..."
     referenced_at:
-      - code/mission.cpp:738
       - code/mission.cpp:739
+      - code/mission.cpp:740
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -1916,7 +1917,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TRACKV-CI-GATE-RESTORE-1: GPU pipeline flush probe via glFinish. WARNING: triggers GPU pipeline stall — diagnostic default-OFF only. =1 enables glFinish at the probe site to measure GPU-complete la..."
     referenced_at:
-      - mclib/txmmgr.cpp:3542
+      - mclib/txmmgr.cpp:3589
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1924,7 +1925,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:3224
+      - code/missiongui.cpp:3225
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1935,7 +1936,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess). Default-ON; kill-switch MC2_FOG_HORIZON_CLAMP=0 restores the previous fog."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1176
+      - GameOS/gameos/gos_postprocess.cpp:1287
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1946,7 +1947,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation). Tuning param; only consulted under MC2_FOG_HORIZON_CLAMP."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1180
+      - GameOS/gameos/gos_postprocess.cpp:1291
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1957,7 +1958,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation). Tuning param; only consulted under MC2_FOG_HORIZON_CLAMP."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1178
+      - GameOS/gameos/gos_postprocess.cpp:1289
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1965,7 +1966,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:9209
+      - GameOS/gameos/gameos_graphics.cpp:9308
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2002,7 +2003,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1772
+      - GameOS/gameos/gameosmain.cpp:1774
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2010,8 +2011,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2703
-      - code/mechcmd2.cpp:2412
+      - GameOS/gameos/gameosmain.cpp:2723
+      - code/mechcmd2.cpp:2413
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2019,7 +2020,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10218
+      - GameOS/gameos/gameos_graphics.cpp:10317
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2054,7 +2055,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp). Default-OFF = legacy direct call order, byte-ident..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:7144
+      - GameOS/gameos/gos_postprocess.cpp:7283
       - mclib/render_contract.cpp:1450
     registered: yes
     in_smoke_passthrough: yes
@@ -2063,7 +2064,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:4308
+      - mclib/txmmgr.cpp:4383
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2140,7 +2141,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on [frame]' verb is the same latch). Frozen mover..."
     referenced_at:
-      - code/missiongui.cpp:927
+      - code/missiongui.cpp:928
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2159,7 +2160,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1072
+      - GameOS/gameos/gos_postprocess.cpp:1183
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2167,7 +2168,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1078
+      - GameOS/gameos/gos_postprocess.cpp:1189
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2175,7 +2176,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1079
+      - GameOS/gameos/gos_postprocess.cpp:1190
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2183,7 +2184,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1077
+      - GameOS/gameos/gos_postprocess.cpp:1188
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2213,7 +2214,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary). Default-OFF; when unset, code/mechcmd2.cpp skips the overlay entirely and the loaded mc2..."
     referenced_at:
-      - code/mechcmd2.cpp:1743
+      - code/mechcmd2.cpp:1744
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2272,7 +2273,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via mc2gl::GlScopedCapability + GlScopedDepthState). ..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:41
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:42
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2314,7 +2315,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1695
+      - GameOS/gameos/gameosmain.cpp:1697
       - GameOS/gameos/gos_render.cpp:375
       - GameOS/gameos/gos_render.cpp:696
     referenced_at_more: 2
@@ -2325,7 +2326,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1002
+      - GameOS/gameos/gameosmain.cpp:1004
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2333,7 +2334,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1216
+      - GameOS/gameos/gameosmain.cpp:1218
       - GameOS/gameos/gos_validate.cpp:151
     registered: no
     in_smoke_passthrough: no
@@ -2391,7 +2392,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "GPU-BUFFER-WRAPPER-TIER0-HUD-1: every ~300 frames list the live HUD ring buffers ([GPUBUF v1] residency tag/kind/frames/vbBytes/ibBytes/liveFences). Diagnostic only; default-OFF."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:781
+      - GameOS/gameos/gameos_graphics.cpp:811
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2402,7 +2403,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "GPU-BUFFER-WRAPPER-TIER0-HUD-1: route the fixed-capacity gosMesh HUD/2D meshes (gameos_graphics.cpp draw/drawIndexed) through a 3-frame persistent-coherent FENCED ring (utils/gpu_ring_buffer.h) ins..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:773
+      - GameOS/gameos/gameos_graphics.cpp:803
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2413,7 +2414,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "GPU-BUFFER-WRAPPER-TIER0-HUD-1 NEGATIVE TEST: deterministically advance the HUD ring twice (beginFrame without an intervening endFrame) so the one-endFrame-per-beginFrame / fence-per-frame invarian..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:777
+      - GameOS/gameos/gameos_graphics.cpp:807
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2437,8 +2438,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1260
-      - GameOS/gameos/gameosmain.cpp:1260
+      - GameOS/gameos/gameosmain.cpp:1262
+      - GameOS/gameos/gameosmain.cpp:1262
       - GameOS/gameos/gpu_cull_parity.cpp:10
     referenced_at_more: 1
     registered: no
@@ -2571,7 +2572,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1258
+      - GameOS/gameos/gameosmain.cpp:1260
       - GameOS/gameos/gpu_cull_substrate.cpp:88
     registered: no
     in_smoke_passthrough: yes
@@ -2652,7 +2653,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:658
+      - code/missiongui.cpp:659
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2660,7 +2661,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:642
+      - code/missiongui.cpp:643
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2668,7 +2669,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:647
+      - code/missiongui.cpp:648
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2679,7 +2680,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "[RETIRED] GPU mech batcher (gos_mech_batcher). Superseded by RenderWorld::registerMech. No new getenv consumers."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:141
+      - GameOS/gameos/gos_mech_batcher.cpp:142
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2690,7 +2691,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU fallback/AI/updateGeometry still run). Defa..."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:200
+      - GameOS/gameos/gos_mech_batcher.cpp:201
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2701,7 +2702,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs. Default-ON kill-switch (envFlagDefaultOn); =0 opts out to the pre-slice transform path."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:208
+      - GameOS/gameos/gos_mech_batcher.cpp:209
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2712,7 +2713,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected. Default-ON kill-switch (envFlagDefaultOn); =0 opts out."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:221
+      - GameOS/gameos/gos_mech_batcher.cpp:222
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2723,7 +2724,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite. Default-ON kill-switch (envFlagDefaultOn); =0 opts out."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:212
+      - GameOS/gameos/gos_mech_batcher.cpp:213
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2734,7 +2735,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher). Superseded by RenderWorld::upsertStaticProp."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1228
+      - GameOS/gameos/gameosmain.cpp:1230
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2845,7 +2846,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:865
+      - GameOS/gameos/gos_postprocess.cpp:976
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2853,10 +2854,10 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5190
-      - GameOS/gameos/gos_postprocess.cpp:5192
-      - GameOS/gameos/gos_postprocess.cpp:5483
-    referenced_at_more: 3
+      - GameOS/gameos/gos_postprocess.cpp:5232
+      - GameOS/gameos/gos_postprocess.cpp:5329
+      - GameOS/gameos/gos_postprocess.cpp:5331
+    referenced_at_more: 4
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2864,7 +2865,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5187
+      - GameOS/gameos/gos_postprocess.cpp:5326
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2872,9 +2873,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5195
-      - GameOS/gameos/gos_postprocess.cpp:5488
-      - GameOS/gameos/gos_postprocess.cpp:5674
+      - GameOS/gameos/gos_postprocess.cpp:5334
+      - GameOS/gameos/gos_postprocess.cpp:5627
+      - GameOS/gameos/gos_postprocess.cpp:5813
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2882,9 +2883,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:5180
-      - GameOS/gameos/gos_postprocess.cpp:5480
-      - GameOS/gameos/gos_postprocess.cpp:5666
+      - GameOS/gameos/gos_postprocess.cpp:5319
+      - GameOS/gameos/gos_postprocess.cpp:5619
+      - GameOS/gameos/gos_postprocess.cpp:5805
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2892,8 +2893,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1049
-      - GameOS/gameos/gameosmain.cpp:2674
+      - GameOS/gameos/gameosmain.cpp:1051
+      - GameOS/gameos/gameosmain.cpp:2694
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2901,8 +2902,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1439
-      - GameOS/gameos/gameosmain.cpp:658
+      - GameOS/gameos/gameosmain.cpp:1441
+      - GameOS/gameos/gameosmain.cpp:660
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2956,7 +2957,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:8197
+      - GameOS/gameos/gameos_graphics.cpp:8296
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2977,7 +2978,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: build a reverse-Z Hi-Z depth pyramid from MainDepth each frame via a custom fragment MIN-reduction pass (hzb_reduce.frag), GL_R32F, ceil mip ladder down to 1x1 (NOT g..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:831
+      - GameOS/gameos/gos_postprocess.cpp:942
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -2985,7 +2986,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:1215
+      - code/gamecam.cpp:1217
       - mclib/camera.cpp:3320
     registered: no
     in_smoke_passthrough: no
@@ -2994,7 +2995,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:1247
+      - code/gamecam.cpp:1249
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3005,7 +3006,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe. Default-OFF; requires MC2_HZB_BUILD. After the pyramid is built, reads back a parent HZB level and its child level and (a) verifi..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1207
+      - GameOS/gameos/gos_postprocess.cpp:1318
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3013,8 +3014,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:1171
-      - code/gamecam.cpp:1452
+      - code/gamecam.cpp:1173
+      - code/gamecam.cpp:1454
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3037,7 +3038,7 @@ flags:
     doc: "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl. ControlGui sub-phases (pauseWnd/btnHover/rosterScan/moverState/ta..."
     referenced_at:
       - code/controlgui.cpp:68
-      - code/missiongui.cpp:571
+      - code/missiongui.cpp:572
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3102,8 +3103,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1046
-      - GameOS/gameos/gameosmain.cpp:1092
+      - GameOS/gameos/gameosmain.cpp:1048
+      - GameOS/gameos/gameosmain.cpp:1094
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3111,7 +3112,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1093
+      - GameOS/gameos/gameosmain.cpp:1095
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3130,7 +3131,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts. THIS GATE IS A CORRECTNESS REQUIREMENT OF THE gvactor.cpp CacheGpuLightData() CALL, NOT AN OPTIONAL ENHANCEMENT -- do ..."
     referenced_at:
-      - mclib/txmmgr.cpp:2405
+      - mclib/txmmgr.cpp:2413
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3149,7 +3150,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Cinematic letterbox bars are drawn OPAQUE black; only their EXTENT animates. Default-ON killswitch: =0 restores the legacy alpha ramp verbatim. Read once at code/gamecam.cpp:841 (getenv-seeded stat..."
     referenced_at:
-      - code/gamecam.cpp:859
+      - code/gamecam.cpp:861
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3157,7 +3158,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:1708
+      - mclib/txmmgr.cpp:1716
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3168,7 +3169,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: baked permanent light record == gathered transient record byte/hash parity. Logs [LIGHTBAKE-PROOF v1] event=parity match=1 (capped 32). Default-off; no behav..."
     referenced_at:
-      - mclib/txmmgr.cpp:2267
+      - mclib/txmmgr.cpp:2275
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3190,7 +3191,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof. Logs [LIGHTBAKE-PROOF v1] event=first / UNSTABLE (capped 32). Default-off; no behavior change."
     referenced_at:
-      - mclib/txmmgr.cpp:1784
+      - mclib/txmmgr.cpp:1792
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3198,7 +3199,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:1655
+      - mclib/txmmgr.cpp:1663
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3217,7 +3218,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs. String-valued: off|albedo|normal|sun|ambient|shadow|final|overbright|lightcount|lightindex ..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7206
+      - GameOS/gameos/gameos_graphics.cpp:7281
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3225,7 +3226,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1477
+      - GameOS/gameos/gos_postprocess.cpp:1589
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3250,7 +3251,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics_light_ssbo.cpp:105
-      - GameOS/gameos/gos_mech_batcher.cpp:780
+      - GameOS/gameos/gos_mech_batcher.cpp:799
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3351,7 +3352,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:2051
+      - mclib/txmmgr.cpp:2059
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3392,9 +3393,9 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1). Single light plateaus ~0.80, stacked lights approach 1.0 asy..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11044
-      - GameOS/gameos/gos_terrain_lighting.cpp:667
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:113
+      - GameOS/gameos/gameos_graphics.cpp:11143
+      - GameOS/gameos/gos_terrain_lighting.cpp:693
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:114
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3402,7 +3403,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:1244
+      - GameOS/gameos/gos_terrain_lighting.cpp:1288
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3413,7 +3414,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHT-POOL-CAP-1: per-mission slot count of the terrain light pool (gos_terrain_lighting.cpp mission_init). Default 256, raised from the callers' 64 because mc2_10 genuinely registers 142 fixtures ..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:815
+      - GameOS/gameos/gos_terrain_lighting.cpp:859
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3429,9 +3430,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11014
-      - GameOS/gameos/gos_terrain_lighting.cpp:651
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:91
+      - GameOS/gameos/gameos_graphics.cpp:11113
+      - GameOS/gameos/gos_terrain_lighting.cpp:677
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:92
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3447,9 +3448,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11026
-      - GameOS/gameos/gos_terrain_lighting.cpp:663
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:107
+      - GameOS/gameos/gameos_graphics.cpp:11125
+      - GameOS/gameos/gos_terrain_lighting.cpp:689
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:108
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3457,9 +3458,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11020
-      - GameOS/gameos/gos_terrain_lighting.cpp:657
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:99
+      - GameOS/gameos/gameos_graphics.cpp:11119
+      - GameOS/gameos/gos_terrain_lighting.cpp:683
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:100
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3467,7 +3468,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:641
+      - GameOS/gameos/gos_terrain_lighting.cpp:667
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3475,7 +3476,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:675
+      - GameOS/gameos/gos_terrain_lighting.cpp:701
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3483,9 +3484,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11008
-      - GameOS/gameos/gos_terrain_lighting.cpp:647
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:85
+      - GameOS/gameos/gameos_graphics.cpp:11107
+      - GameOS/gameos/gos_terrain_lighting.cpp:673
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:86
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3493,7 +3494,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:1187
+      - GameOS/gameos/gos_terrain_lighting.cpp:1231
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3525,7 +3526,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape. Widens each pool light's ground falloff (MC2_LIGHT_REALISM_POOL_SPILL, default 2.2 = user-approved variant B) with a soft core (MC2_LI..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:1216
+      - GameOS/gameos/gos_terrain_lighting.cpp:1260
       - mclib/cone_glow.cpp:392
     registered: yes
     in_smoke_passthrough: yes
@@ -3566,7 +3567,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:1231
+      - GameOS/gameos/gos_terrain_lighting.cpp:1275
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3574,7 +3575,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp:1223
+      - GameOS/gameos/gos_terrain_lighting.cpp:1267
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3635,7 +3636,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see MC2_LOAD_RACE_TRACE). Unset -> falls back to the c..."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2366
+      - GameOS/gameos/gameosmain.cpp:2368
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3651,7 +3652,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2302
+      - GameOS/gameos/gameosmain.cpp:2304
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3670,9 +3671,9 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Master stdout log gate (gameosmain.cpp, right after setvbuf). stdout is unbuffered, so per-mission telemetry printf flushes synchronously and causes 400ms+ console hitches when stdout is connected...."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1050
-      - GameOS/gameos/gameosmain.cpp:1143
-      - GameOS/gameos/gameosmain.cpp:1174
+      - GameOS/gameos/gameosmain.cpp:1052
+      - GameOS/gameos/gameosmain.cpp:1145
+      - GameOS/gameos/gameosmain.cpp:1176
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3750,9 +3751,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:6391
-      - GameOS/gameos/gameos_graphics.cpp:8207
-      - GameOS/gameos/gameos_graphics.cpp:8256
+      - GameOS/gameos/gameos_graphics.cpp:6466
+      - GameOS/gameos/gameos_graphics.cpp:8306
+      - GameOS/gameos/gameos_graphics.cpp:8355
     referenced_at_more: 23
     registered: no
     in_smoke_passthrough: no
@@ -3810,7 +3811,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:6125
+      - code/missiongui.cpp:6126
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3826,7 +3827,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2780
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2853
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3837,9 +3838,9 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "GPU material table upload/bind/compare for static props (default-ON as of v5, 2026-05-26). Set =0 to disable."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1320
+      - GameOS/gameos/gameosmain.cpp:1322
       - GameOS/gameos/gos_materials.cpp:46
-      - GameOS/gameos/gos_mech_batcher.cpp:665
+      - GameOS/gameos/gos_mech_batcher.cpp:684
     referenced_at_more: 1
     registered: yes
     in_smoke_passthrough: yes
@@ -3851,7 +3852,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26). Set =0 to fall back to texArrayLayer. Requires MC2_MATERIAL_GPU."
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1322
+      - GameOS/gameos/gameosmain.cpp:1324
       - GameOS/gameos/gos_static_prop_batcher.cpp:821
     registered: yes
     in_smoke_passthrough: yes
@@ -3880,7 +3881,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:302
+      - GameOS/gameos/gos_mech_batcher.cpp:303
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3888,7 +3889,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:306
+      - GameOS/gameos/gos_mech_batcher.cpp:307
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3904,7 +3905,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:363
+      - GameOS/gameos/gos_mech_batcher.cpp:364
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -3912,8 +3913,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2034
-      - GameOS/gameos/vulkan_mech_island.cpp:973
+      - GameOS/gameos/gos_mech_batcher.cpp:2053
+      - GameOS/gameos/vulkan_mech_island.cpp:1042
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3921,7 +3922,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2536
+      - GameOS/gameos/gos_mech_batcher.cpp:2560
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3929,7 +3930,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:346
+      - GameOS/gameos/gos_mech_batcher.cpp:347
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3937,7 +3938,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:353
+      - GameOS/gameos/gos_mech_batcher.cpp:354
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3945,7 +3946,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:339
+      - GameOS/gameos/gos_mech_batcher.cpp:340
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3953,7 +3954,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:416
+      - GameOS/gameos/gos_mech_batcher.cpp:417
       - GuiRuntime/GraphicsOptionsWindow.cpp:1839
     registered: no
     in_smoke_passthrough: no
@@ -4061,7 +4062,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2038
+      - GameOS/gameos/gos_mech_batcher.cpp:2057
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4077,7 +4078,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:332
+      - GameOS/gameos/gos_mech_batcher.cpp:333
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4094,7 +4095,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:1421
+      - GameOS/gameos/gos_mech_batcher.cpp:1440
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4102,7 +4103,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:274
+      - GameOS/gameos/gos_mech_batcher.cpp:275
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4110,7 +4111,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:281
+      - GameOS/gameos/gos_mech_batcher.cpp:282
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4166,8 +4167,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:1375
-      - GameOS/gameos/gos_mech_batcher.cpp:1858
+      - GameOS/gameos/gos_mech_batcher.cpp:1394
+      - GameOS/gameos/gos_mech_batcher.cpp:1877
       - code/saveload.cpp:1456
     referenced_at_more: 6
     registered: no
@@ -4201,7 +4202,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:322
+      - GameOS/gameos/gos_mech_batcher.cpp:323
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4209,7 +4210,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:318
+      - GameOS/gameos/gos_mech_batcher.cpp:319
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4218,8 +4219,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_materials.cpp:475
-      - GameOS/gameos/gos_mech_batcher.cpp:2070
-      - GameOS/gameos/gos_mech_batcher.cpp:2451
+      - GameOS/gameos/gos_mech_batcher.cpp:2089
+      - GameOS/gameos/gos_mech_batcher.cpp:2470
     referenced_at_more: 4
     registered: no
     in_smoke_passthrough: no
@@ -4228,7 +4229,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2750
+      - GameOS/gameos/gos_mech_batcher.cpp:2780
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4236,7 +4237,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:249
+      - GameOS/gameos/gos_mech_batcher.cpp:250
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4244,7 +4245,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:255
+      - GameOS/gameos/gos_mech_batcher.cpp:256
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4261,7 +4262,7 @@ flags:
     declared_in: null
     referenced_at:
       - code/controlgui.cpp:68
-      - code/missiongui.cpp:571
+      - code/missiongui.cpp:572
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4269,7 +4270,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:6015
+      - GameOS/gameos/gos_terrain_indirect.cpp:6027
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4277,7 +4278,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:3406
+      - code/mission.cpp:3407
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4296,7 +4297,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:495
+      - code/mission.cpp:496
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4383,7 +4384,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:121
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:122
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4419,7 +4420,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:4751
+      - GameOS/gameos/gos_terrain_indirect.cpp:4754
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4427,7 +4428,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:1169
+      - code/mission.cpp:1170
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4449,7 +4450,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG cloud-bank pass (edge_fog.frag, eid 7158) paint..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1158
+      - GameOS/gameos/gos_postprocess.cpp:1269
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4460,7 +4461,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "BACKDROP-BLIT-ATTRIB-1: multiplier applied per-channel to the edge-fog + OOB fog color when MC2_NIGHT_FOG_DIM=1. 1.0 = no change; 0.35 (default) drops the bright-grey {0.80,0.81,0.83} cloud bank to..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1160
+      - GameOS/gameos/gos_postprocess.cpp:1271
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4479,8 +4480,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1048
-      - GameOS/gameos/gameosmain.cpp:1091
+      - GameOS/gameos/gameosmain.cpp:1050
+      - GameOS/gameos/gameosmain.cpp:1093
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4504,7 +4505,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1196
+      - GameOS/gameos/gameosmain.cpp:1198
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4550,7 +4551,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_object_parity.cpp:66
       - mclib/tgl.cpp:151
-      - mclib/txmmgr.cpp:2838
+      - mclib/txmmgr.cpp:2846
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4583,7 +4584,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_object_recon_tracy.cpp:95
-      - mclib/txmmgr.cpp:1579
+      - mclib/txmmgr.cpp:1587
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4599,7 +4600,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10229
+      - GameOS/gameos/gameos_graphics.cpp:10328
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4607,7 +4608,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1124
+      - GameOS/gameos/gos_postprocess.cpp:1235
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4615,7 +4616,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1127
+      - GameOS/gameos/gos_postprocess.cpp:1238
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4623,7 +4624,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:4773
+      - GameOS/gameos/gos_postprocess.cpp:4887
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4643,7 +4644,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me'). Default 1/unset = stock: the terrain_overlay.frag else-bra..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10883
+      - GameOS/gameos/gameos_graphics.cpp:10982
+      - GameOS/gameos/gameos_graphics.cpp:11189
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4651,7 +4653,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:324
+      - GameOS/gameos/gameos_graphics.cpp:354
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4662,7 +4664,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay adopts the cement atlas + flat light on c..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10948
+      - GameOS/gameos/gameos_graphics.cpp:11047
+      - GameOS/gameos/gameos_graphics.cpp:11197
       - GameOS/gameos/gos_terrain_indirect.cpp:1022
     registered: yes
     in_smoke_passthrough: yes
@@ -4674,7 +4677,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal layer and the cement terrain stop disagreein..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10925
+      - GameOS/gameos/gameos_graphics.cpp:11024
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4682,7 +4685,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7340
+      - GameOS/gameos/gameos_graphics.cpp:7415
       - GameOS/gameos/gameos_graphics_texture.cpp:179
     registered: no
     in_smoke_passthrough: no
@@ -4691,7 +4694,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:1227
+      - GameOS/gameos/gameos_graphics.cpp:1257
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -4710,7 +4713,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4172
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4236
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4718,7 +4721,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4229
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4390
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -4742,7 +4745,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2775
+      - GameOS/gameos/gameos_graphics.cpp:2805
       - GameOS/gameos/gos_terrain_patch_stream.cpp:47
     registered: no
     in_smoke_passthrough: no
@@ -4851,7 +4854,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:393
+      - GameOS/gameos/gos_mech_batcher.cpp:394
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4859,7 +4862,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:375
+      - GameOS/gameos/gos_mech_batcher.cpp:376
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4867,7 +4870,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:387
+      - GameOS/gameos/gos_mech_batcher.cpp:388
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4875,7 +4878,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:381
+      - GameOS/gameos/gos_mech_batcher.cpp:382
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4883,7 +4886,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2449
+      - GameOS/gameos/gos_mech_batcher.cpp:2468
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4891,7 +4894,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:406
+      - GameOS/gameos/gos_mech_batcher.cpp:407
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4899,7 +4902,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:410
+      - GameOS/gameos/gos_mech_batcher.cpp:411
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4907,7 +4910,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:400
+      - GameOS/gameos/gos_mech_batcher.cpp:401
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4982,9 +4985,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3841
-      - GameOS/gameos/gos_postprocess.cpp:4006
-      - GameOS/gameos/gos_postprocess.cpp:4242
+      - GameOS/gameos/gos_postprocess.cpp:3954
+      - GameOS/gameos/gos_postprocess.cpp:4119
+      - GameOS/gameos/gos_postprocess.cpp:4355
     referenced_at_more: 1
     registered: no
     in_smoke_passthrough: yes
@@ -4996,7 +4999,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI). Default-OFF -> u_casEnabled=0 -> byte-identical."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1090
+      - GameOS/gameos/gos_postprocess.cpp:1201
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5007,7 +5010,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5). Only consulted when MC2_POST_CAS is armed."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1093
+      - GameOS/gameos/gos_postprocess.cpp:1204
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5015,7 +5018,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2512
+      - GameOS/gameos/gameosmain.cpp:2531
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5023,7 +5026,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:10044
+      - GameOS/gameos/gameos_graphics.cpp:10143
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5047,7 +5050,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:981
+      - GameOS/gameos/gos_postprocess.cpp:1092
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5117,8 +5120,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:9785
-      - GameOS/gameos/gos_mech_batcher.cpp:102
+      - GameOS/gameos/gameos_graphics.cpp:9884
+      - GameOS/gameos/gos_mech_batcher.cpp:103
       - GameOS/gameos/gos_static_prop_batcher.cpp:97
     registered: no
     in_smoke_passthrough: no
@@ -5174,7 +5177,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already carry the full prop caster set via the Dy..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:445
+      - GameOS/gameos/gos_postprocess.cpp:448
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5297,7 +5300,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TXMMGR-PERF-EASYWINS-1: coarse per-phase CPU cost split of MC_TextureManager::renderLists() (mclib/txmmgr.cpp). Emits one [RENDERLISTS_COST v1] stderr summary every 60 frames with per-frame mean us..."
     referenced_at:
-      - mclib/txmmgr.cpp:339
+      - mclib/txmmgr.cpp:341
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5305,7 +5308,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:5776
+      - GameOS/gameos/gameos_graphics.cpp:5851
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5313,7 +5316,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:5819
+      - GameOS/gameos/gameos_graphics.cpp:5894
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5325,7 +5328,7 @@ flags:
     doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged). Read ONCE and memoized by mc2::renderBackend() (GameOS/gameos/render_..."
     referenced_at:
       - GameOS/gameos/render_backend_select.cpp:30
-      - code/missiongui.cpp:3445
+      - code/missiongui.cpp:3446
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5336,8 +5339,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g. scene FBO bind) through the GLBackend seam instead of direct GL. Default-OFF = direct GL, byte-identical; ON exercises the same GL call throug..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3583
-      - GameOS/gameos/gos_postprocess.cpp:4721
+      - GameOS/gameos/gos_postprocess.cpp:3696
+      - GameOS/gameos/gos_postprocess.cpp:4835
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5345,7 +5348,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:3698
+      - GameOS/gameos/gos_postprocess.cpp:3811
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5362,7 +5365,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:779
+      - GameOS/gameos/gameosmain.cpp:781
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5438,7 +5441,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1952
+      - GameOS/gameos/gameosmain.cpp:1954
       - GameOS/gameos/render_snapshot.cpp:673
     registered: no
     in_smoke_passthrough: yes
@@ -5447,7 +5450,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1218
+      - GameOS/gameos/gameosmain.cpp:1220
       - mclib/terrain.cpp:3473
       - mclib/terrain.cpp:3677
     registered: no
@@ -5457,7 +5460,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3168
+      - GameOS/gameos/gameos_graphics.cpp:3211
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5465,7 +5468,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1219
+      - GameOS/gameos/gameosmain.cpp:1221
       - GameOS/gameos/gos_terrain_water_stream.cpp:1048
     registered: no
     in_smoke_passthrough: yes
@@ -5518,7 +5521,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:2432
+      - GameOS/gameos/gos_postprocess.cpp:2545
       - GameOS/gameos/gos_render.cpp:528
       - GameOS/gameos/gos_render.cpp:562
     registered: no
@@ -5528,7 +5531,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1262
+      - GameOS/gameos/gameosmain.cpp:1264
       - mclib/camera.cpp:3124
     registered: no
     in_smoke_passthrough: yes
@@ -5537,7 +5540,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5049
+      - GameOS/gameos/gos_terrain_indirect.cpp:5052
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5545,9 +5548,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:4397
-      - GameOS/gameos/gos_terrain_indirect.cpp:3239
-      - GameOS/gameos/gos_terrain_indirect.cpp:4301
+      - GameOS/gameos/gameos_graphics.cpp:4472
+      - GameOS/gameos/gos_terrain_indirect.cpp:3242
+      - GameOS/gameos/gos_terrain_indirect.cpp:4304
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5555,8 +5558,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mechcmd2.cpp:1064
-      - code/mission.cpp:2959
+      - code/mechcmd2.cpp:1065
+      - code/mission.cpp:2960
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5575,7 +5578,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:93
+      - code/gamecam.cpp:95
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5583,7 +5586,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:92
+      - code/gamecam.cpp:94
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5591,9 +5594,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2225
-      - GameOS/gameos/gameosmain.cpp:2226
-      - GameOS/gameos/gameosmain.cpp:2303
+      - GameOS/gameos/gameosmain.cpp:2227
+      - GameOS/gameos/gameosmain.cpp:2228
+      - GameOS/gameos/gameosmain.cpp:2305
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5601,7 +5604,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2224
+      - GameOS/gameos/gameosmain.cpp:2226
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5609,7 +5612,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2239
+      - GameOS/gameos/gameosmain.cpp:2241
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5654,8 +5657,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:6044
-      - GameOS/gameos/gameosmain.cpp:1261
+      - GameOS/gameos/gameos_graphics.cpp:6119
+      - GameOS/gameos/gameosmain.cpp:1263
       - GameOS/gameos/utils/shader_builder.cpp:422
     registered: no
     in_smoke_passthrough: no
@@ -5664,7 +5667,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:68
+      - GameOS/gameos/gos_postprocess.cpp:71
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5694,7 +5697,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:400
+      - GameOS/gameos/gos_postprocess.cpp:403
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5705,7 +5708,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS, default 2500wu) for higher texel density. **D..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6814
+      - GameOS/gameos/gos_postprocess.cpp:6953
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5716,7 +5719,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR). Only consulted when MC2_SHADOW_BOUNDED_NEAR_FIT=1. Resolved once at process start."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6819
+      - GameOS/gameos/gos_postprocess.cpp:6958
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5727,7 +5730,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1): reuse the Shadow.CasterCull result (mclib/txmmgr.cpp DynamicShadowPass) across frames when BOTH the static-prop registry generation and the 16-f..."
     referenced_at:
-      - mclib/txmmgr.cpp:3728
+      - mclib/txmmgr.cpp:3775
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5735,7 +5738,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:3734
+      - mclib/txmmgr.cpp:3781
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5743,7 +5746,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:1250
+      - GameOS/gameos/gos_mech_batcher.cpp:1269
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5751,7 +5754,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:3711
+      - mclib/txmmgr.cpp:3758
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5762,7 +5765,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36). Default-ON; =0 opts out to the legacy single dynamic shadow map path. See docs/tier1_env..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:57
+      - GameOS/gameos/gos_postprocess.cpp:60
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5770,7 +5773,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:235
+      - GameOS/gameos/gos_postprocess.cpp:238
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5778,7 +5781,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:247
+      - GameOS/gameos/gos_postprocess.cpp:250
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5786,7 +5789,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:305
+      - GameOS/gameos/gos_postprocess.cpp:308
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5794,7 +5797,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:314
+      - GameOS/gameos/gos_postprocess.cpp:317
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5802,7 +5805,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:326
+      - GameOS/gameos/gos_postprocess.cpp:329
       - GameOS/gameos/vulkan_post_screenfx_native.cpp:133
     registered: no
     in_smoke_passthrough: no
@@ -5811,7 +5814,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:3739
+      - mclib/txmmgr.cpp:3786
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5822,7 +5825,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui. Default unset/0/off = overlay OFF (byte-identical). Values: off|0=OFF, static|1=STATIC (world-fixed 2048^2 depth), dynamic|2..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1219
+      - GameOS/gameos/gos_postprocess.cpp:1330
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5838,7 +5841,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:343
+      - GameOS/gameos/gos_postprocess.cpp:346
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5846,7 +5849,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:358
+      - GameOS/gameos/gos_postprocess.cpp:361
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5858,8 +5861,8 @@ flags:
     doc: "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead of the camera-visible s_typeRanges set, wh..."
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:9792
-      - mclib/txmmgr.cpp:3649
-      - mclib/txmmgr.cpp:3650
+      - mclib/txmmgr.cpp:3696
+      - mclib/txmmgr.cpp:3697
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5867,7 +5870,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:3675
+      - mclib/txmmgr.cpp:3722
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5878,8 +5881,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow). **DEFAULT ON; kill-switch MC2_SHADOW_ENABLE=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which..."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:1149
-      - GameOS/gameos/gos_mech_batcher.cpp:1150
+      - GameOS/gameos/gos_mech_batcher.cpp:1168
+      - GameOS/gameos/gos_mech_batcher.cpp:1169
       - GameOS/gameos/gos_static_prop_batcher.cpp:9275
     referenced_at_more: 1
     registered: yes
@@ -5889,7 +5892,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:374
+      - GameOS/gameos/gos_postprocess.cpp:377
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5897,7 +5900,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:387
+      - GameOS/gameos/gos_postprocess.cpp:390
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5905,7 +5908,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6671
+      - GameOS/gameos/gos_postprocess.cpp:6810
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -5913,7 +5916,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6788
+      - GameOS/gameos/gos_postprocess.cpp:6927
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5924,8 +5927,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp, texel WU, ortho WxH, depth). Default-off; =1..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6787
-      - GameOS/gameos/gos_postprocess.cpp:6848
+      - GameOS/gameos/gos_postprocess.cpp:6926
+      - GameOS/gameos/gos_postprocess.cpp:6987
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5933,7 +5936,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:279
+      - GameOS/gameos/gos_postprocess.cpp:282
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5941,7 +5944,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:291
+      - GameOS/gameos/gos_postprocess.cpp:294
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5952,7 +5955,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built from. gameos_graphics.cpp:10197 passes -..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:485
+      - GameOS/gameos/gos_postprocess.cpp:488
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5960,7 +5963,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:261
+      - GameOS/gameos/gos_postprocess.cpp:264
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -5968,7 +5971,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:428
+      - GameOS/gameos/gos_postprocess.cpp:431
       - GameOS/gameos/vulkan_post_screenfx_native.cpp:819
     registered: no
     in_smoke_passthrough: no
@@ -5980,7 +5983,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude, gos_postprocess.cpp). Default 15; 0 or negative disables..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6030
+      - GameOS/gameos/gos_postprocess.cpp:6169
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5988,7 +5991,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:412
+      - GameOS/gameos/gos_postprocess.cpp:415
       - GameOS/gameos/vulkan_post_screenfx_native.cpp:812
     registered: no
     in_smoke_passthrough: no
@@ -6013,8 +6016,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:6060
-      - GameOS/gameos/gos_postprocess.cpp:6624
+      - GameOS/gameos/gos_postprocess.cpp:6199
+      - GameOS/gameos/gos_postprocess.cpp:6763
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6022,7 +6025,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:6546
+      - GameOS/gameos/gameos_graphics.cpp:6621
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6030,7 +6033,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:232
+      - GameOS/gameos/gameos_graphics.cpp:236
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6038,7 +6041,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:259
+      - GameOS/gameos/gameos_graphics.cpp:263
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6065,7 +6068,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31). SHORELINE-GLOW-1's 'WHY OPT-IN' argument below is preserved verbatim and is now ANSWERED, not deleted, so the reversal can be j..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4092
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4156
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6082,7 +6085,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:150
+      - code/mission.cpp:151
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6120,7 +6123,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:99
+      - code/mission.cpp:100
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6155,8 +6158,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SKYBOX-FOG-EXCLUDE-1/2. DEFAULT-ON (SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1); MC2_SKYBOX_FOG_EXCLUDE=0 is the single complete revert to the legacy OFF path. WHAT IT DOES: on HDRI missions the skybox color ..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:578
-      - GameOS/gameos/gos_postprocess.cpp:586
+      - GameOS/gameos/gos_postprocess.cpp:581
+      - GameOS/gameos/gos_postprocess.cpp:589
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6201,7 +6204,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gameos_input.cpp:116
       - GameOS/gameos/gameos_input.cpp:42
-      - GameOS/gameos/gameosmain.cpp:1049
+      - GameOS/gameos/gameosmain.cpp:1051
     referenced_at_more: 2
     registered: no
     in_smoke_passthrough: yes
@@ -6218,7 +6221,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1048
+      - GameOS/gameos/gameosmain.cpp:1050
       - GameOS/gameos/gos_smoke.cpp:61
     registered: no
     in_smoke_passthrough: yes
@@ -6230,7 +6233,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation). Extracts ExtractedMechPacket[] from RenderSnapshot. Default-off; =1 enables."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2937
+      - GameOS/gameos/gos_mech_batcher.cpp:2967
       - GameOS/gameos/render_snapshot.cpp:245
     registered: yes
     in_smoke_passthrough: yes
@@ -6263,8 +6266,8 @@ flags:
     declared_in: null
     referenced_at:
       - code/logistics.cpp:177
-      - code/mission.cpp:4041
-      - code/mission.cpp:675
+      - code/mission.cpp:4042
+      - code/mission.cpp:676
     referenced_at_more: 3
     registered: no
     in_smoke_passthrough: no
@@ -6289,7 +6292,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:688
+      - code/mission.cpp:689
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6305,7 +6308,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:714
+      - code/mission.cpp:715
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6316,7 +6319,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "ISSUE-42a repro fixture (code/mission.cpp soak harness): with MC2_SOAK_AUTOWIN + MC2_SOAK_KILL_ENEMY, exercises the REAL mid-mission salvage-craft flow (recover/setStatus(SHUTDOWN)/tradeMover/order..."
     referenced_at:
-      - code/mission.cpp:705
+      - code/mission.cpp:706
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6332,7 +6335,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:677
+      - code/mission.cpp:678
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6362,7 +6365,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:648
+      - GameOS/gameos/gos_mech_batcher.cpp:667
       - GameOS/gameos/gos_static_prop_batcher.cpp:136
     registered: no
     in_smoke_passthrough: no
@@ -6407,7 +6410,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "SSAO-GTAO-LITE-MVP-1 (Track V): lightweight half-res screen-space ambient-occlusion grounding pass (gosPostProcess::runSSAO) reusing the scene depth + GBuffer1 world normals + inverseViewProj alrea..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:991
+      - GameOS/gameos/gos_postprocess.cpp:1102
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6418,7 +6421,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass (shaders/ssao_blur.frag; H into a scratch half-res target ..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:997
+      - GameOS/gameos/gos_postprocess.cpp:1108
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6429,7 +6432,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight. Clamped [0.001,1.0]; unset keeps the built-in default. Env is read once at init and OVE..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1040
+      - GameOS/gameos/gos_postprocess.cpp:1151
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6440,7 +6443,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead of multiplying, so the raw occlusion can b..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:993
+      - GameOS/gameos/gos_postprocess.cpp:1104
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6451,7 +6454,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius. Any float, clamped [0.1,64.0] to match gos_SetSsaoRadius; unset keeps the built-in default..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1031
+      - GameOS/gameos/gos_postprocess.cpp:1142
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6467,7 +6470,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:371
+      - GameOS/gameos/gos_mech_batcher.cpp:372
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6566,7 +6569,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead of the whole LightsData SSBO every frame. ..."
     referenced_at:
-      - mclib/txmmgr.cpp:1769
+      - mclib/txmmgr.cpp:1777
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -6602,7 +6605,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1362
+      - GameOS/gameos/gameosmain.cpp:1364
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -6615,7 +6618,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:9584
       - mclib/bdactor.cpp:5624
-      - mclib/txmmgr.cpp:3492
+      - mclib/txmmgr.cpp:3539
     referenced_at_more: 4
     registered: yes
     in_smoke_passthrough: yes
@@ -6726,7 +6729,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:153
       - GameOS/gameos/gos_static_prop_registry.cpp:62
-      - mclib/txmmgr.cpp:300
+      - mclib/txmmgr.cpp:302
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7079,8 +7082,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_AXIS_FIX=1 enables; unset/0 is the shipped expression bit-for-bit. WHY OFF DESPITE BEING A CORRECTNESS FIX -- the argument, not a shrug: (a) engine launches are hard-b..."
     referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp:2515
-      - mclib/txmmgr.cpp:2439
+      - GameOS/gameos/gos_mech_batcher.cpp:2539
+      - mclib/txmmgr.cpp:2447
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7110,7 +7113,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush (gamecam.cpp). Default-OFF; byte-identical when u..."
     referenced_at:
-      - code/gamecam.cpp:765
+      - code/gamecam.cpp:767
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7126,7 +7129,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:1365
+      - code/gamecam.cpp:1367
       - code/tacticaloverview.cpp:82
     registered: no
     in_smoke_passthrough: no
@@ -7143,8 +7146,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:4288
-      - code/mission.cpp:4288
+      - code/mission.cpp:4289
+      - code/mission.cpp:4289
       - code/warrior.cpp:2350
     registered: no
     in_smoke_passthrough: no
@@ -7161,7 +7164,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:5317
+      - code/missiongui.cpp:5318
       - code/mover.cpp:3352
     registered: no
     in_smoke_passthrough: yes
@@ -7181,8 +7184,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag. DEFAULT 0.35 = ON; MC2_TERRAIN_AMBIENT_FLOOR=0 is the SINGLE, COMPLETE revert and is byte-identical. TH..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2834
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2847
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2907
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4262
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7193,7 +7196,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor). DEFAULT 0.0 = OFF = byte-identical on every mission (max(dayG..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2910
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4277
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7204,7 +7207,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY UPLOADED, the raw env string, and the three r..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2933
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2992
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7220,7 +7223,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1741
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1748
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7231,7 +7234,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-CLIFF-DEBUG: bounded debug-viz for the LOD-chunk terrain cliff material path (u_cliffDebug in terrain_lod_chunk.frag). Confirms whether the MC2_TERRAIN_CLIFF_TRIPLANAR / MC2_TERRAIN_CLIFF_P..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:150
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:151
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7242,7 +7245,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path. 3a = plumbing (GL_PATCHES + pass-through TCS/TES, NO displacement, output-preserving). Default-OFF stays GL_TRIANGLES, byte-ide..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:183
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:184
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7253,7 +7256,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build). Only consumed when MC2_TERRAIN_CLIFF_DISPLACE=1."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:187
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:188
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7301,8 +7304,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7118
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2807
+      - GameOS/gameos/gameos_graphics.cpp:7193
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2880
       - GuiRuntime/GraphicsOptionsWindow.cpp:677
     registered: no
     in_smoke_passthrough: no
@@ -7334,7 +7337,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:14..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:922
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:928
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7380,7 +7383,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:4033
+      - mclib/txmmgr.cpp:4091
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7399,8 +7402,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x). Default unset = mode 0 (off, byte-identical to legacy output). Vi..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7321
-      - GameOS/gameos/gameos_graphics.cpp:7502
+      - GameOS/gameos/gameos_graphics.cpp:7396
+      - GameOS/gameos/gameos_graphics.cpp:7577
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7510,8 +7513,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7284
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:943
+      - GameOS/gameos/gameos_graphics.cpp:7359
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:949
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7519,7 +7522,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:163
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:164
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7547,7 +7550,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:3403
+      - GameOS/gameos/gos_terrain_indirect.cpp:3406
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7633,8 +7636,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain. Default-OFF; =1 enables. When OFF, terrainLightingV1Strength uploads 0.0 and gos_terrain.frag skips the additive branch..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7090
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2800
+      - GameOS/gameos/gameos_graphics.cpp:7165
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2873
       - GuiRuntime/GraphicsOptionsWindow.cpp:612
     registered: yes
     in_smoke_passthrough: no
@@ -7646,8 +7649,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill. Default-OFF; =1 enables. When OFF, terrainLightingV2ShadowFillFloor uploads 1.0 → the shader expression ..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7103
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2801
+      - GameOS/gameos/gameos_graphics.cpp:7178
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2874
       - GuiRuntime/GraphicsOptionsWindow.cpp:642
     registered: yes
     in_smoke_passthrough: no
@@ -7659,9 +7662,9 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consume..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:11004
-      - GameOS/gameos/gos_terrain_lighting.cpp:637
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2333
+      - GameOS/gameos/gameos_graphics.cpp:11103
+      - GameOS/gameos/gos_terrain_lighting.cpp:663
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4303
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7669,7 +7672,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1018
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1025
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7698,7 +7701,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_terrain_indirect.cpp:1580
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:75
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:76
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7714,7 +7717,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:70
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:71
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7770,7 +7773,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2097
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2183
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7778,7 +7781,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2215
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2301
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7828,7 +7831,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:4558
+      - GameOS/gameos/gameos_graphics.cpp:4633
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7836,7 +7839,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:334
+      - GameOS/gameos/gameos_graphics.cpp:364
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7865,7 +7868,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1). 0 = legacy tinted colormap, 1 = full textured composite. Wins over the JSON matAlbedoStrength key; unset/NaN fa..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2556
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2630
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7884,7 +7887,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield). Defau..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7075
+      - GameOS/gameos/gameos_graphics.cpp:7150
       - GuiRuntime/GraphicsOptionsWindow.cpp:560
     registered: yes
     in_smoke_passthrough: no
@@ -7893,7 +7896,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:211
+      - GameOS/gameos/gameos_graphics.cpp:215
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7915,7 +7918,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-OVERLAY-V2-DECAL-SUPPRESS-1: in the static decal bake, skip legacy runway/road/cement decals for tiles fully inside the armed OVERLAY_V2 sidecar bounds (avoids double-draw). Default-ON but ..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:6106
+      - GameOS/gameos/gos_terrain_indirect.cpp:6118
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -7945,7 +7948,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-CHUNK-POM-1: real per-fragment tangent-space view-vector POM on the LOD-chunk terrain (rock/grass detail layers). Default-OFF = legacy faux constant viewDirTS(0.15,0.85,0.15) march runs VER..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3009
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3068
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7956,7 +7959,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500). Beyond FAR the march is skipped entirely (strength 0 early-out). Clamped to > NEAR (NEAR+1 floor). NaN/non-positi..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3032
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3091
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7967,7 +7970,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band start in world units (default 1500; 1 tile = 384 wu). Camera ground distance + 0.7*altitude boost (dead-frag LOD semantics); full POM strength insid..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3026
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3085
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7978,7 +7981,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-CHUNK-POM-1 knob: POM march scale override (float > 0). Default unset = gos_GetTerrainPOMScale() (0.02). Only consumed when MC2_TERRAIN_POM=1; gate-OFF upload is the stock line regardless. ..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3013
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3072
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -7989,7 +7992,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-CHUNK-POM-1 knob: max POM march layers, accepted 4..16 (else default 16; hard compile-constant cap 16). min layers = min(value,8). More layers at grazing view (oracle orientation, mix(max,m..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3018
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3077
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8040,7 +8043,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-SHADOW-GUARD-1: the TERRAIN-side twin of SHADOW-SUNCLAMP-1, and the one that actually moves world pixels. shadow.hglsl's back-face guard (`float NdotL = max(dot(normal, lightDir), 0.0); if ..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:278
+      - GameOS/gameos/gameos_graphics.cpp:282
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8048,7 +8051,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4008
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4072
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8056,7 +8059,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2699
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2773
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8072,7 +8075,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2654
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2728
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8080,7 +8083,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2684
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2758
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8088,7 +8091,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2683
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2757
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8096,7 +8099,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1532
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1539
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8104,7 +8107,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2647
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2721
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8112,7 +8115,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2677
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2751
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8120,7 +8123,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2676
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2750
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8128,11 +8131,11 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2245
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2754
+      - GameOS/gameos/gameos_graphics.cpp:2275
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4255
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
+    documented_in_tier1_env_vars: yes
   - name: MC2_TERRAIN_SOLID_NARROW
     default: unknown
     declared_in: null
@@ -8172,7 +8175,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TCS/TES terrain tessellation (gameos_graphics.cpp). Default-ON kill-switch (ISSUE-34): MC2_TERRAIN_TESS=0 skips the gos_terrain material load (same engine state as a TCS/TES compile failure) for he..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:5214
+      - GameOS/gameos/gameos_graphics.cpp:5289
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8180,7 +8183,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5887
+      - GameOS/gameos/gos_terrain_indirect.cpp:5899
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8188,9 +8191,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1688
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2167
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3682
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1695
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2253
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3744
     referenced_at_more: 2
     registered: no
     in_smoke_passthrough: yes
@@ -8199,8 +8202,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1696
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2198
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1703
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2284
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8211,8 +8214,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units sit on the visually-displaced surface. Def..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2181
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3686
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2267
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3748
       - mclib/terrain.cpp:1568
     registered: yes
     in_smoke_passthrough: no
@@ -8221,7 +8224,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/mission.cpp:1276
+      - code/mission.cpp:1277
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8252,8 +8255,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel. 'spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]' runs mission->addMover (the same r..."
     referenced_at:
-      - code/missiongui.cpp:2399
-      - code/missiongui.cpp:2663
+      - code/missiongui.cpp:2400
+      - code/missiongui.cpp:2664
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8264,7 +8267,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TEXMGR-COMPRESSED-UPLOAD-1: teach MC_TextureManager to load a BC7 .ktx2 sidecar (same path/stem as the source data/textures texture, extension -> .ktx2) and upload it via glCompressedTexImage2D in ..."
     referenced_at:
-      - mclib/txmmgr.cpp:5794
+      - mclib/txmmgr.cpp:5899
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8283,7 +8286,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:5213
+      - mclib/txmmgr.cpp:5318
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8301,7 +8304,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_registry.cpp:239
       - mclib/msl.cpp:1226
-      - mclib/txmmgr.cpp:135
+      - mclib/txmmgr.cpp:137
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8317,7 +8320,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1213
+      - GameOS/gameos/gameosmain.cpp:1215
       - mclib/tgl.cpp:4172
     registered: no
     in_smoke_passthrough: no
@@ -8337,7 +8340,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:7477
+      - GameOS/gameos/gameos_graphics.cpp:7552
       - GameOS/gameos/gos_terrain_patch_stream.cpp:71
       - mclib/quad.cpp:1467
     registered: no
@@ -8367,9 +8370,9 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag). 0/unset=OFF (byte-identical no-op branch), 1/agx=AgX (Sobotka minimal), 2/hable=Uncharted2 filmi..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1109
-      - GameOS/gameos/gos_postprocess.cpp:1115
-      - GameOS/gameos/gos_postprocess.cpp:1115
+      - GameOS/gameos/gos_postprocess.cpp:1220
+      - GameOS/gameos/gos_postprocess.cpp:1226
+      - GameOS/gameos/gos_postprocess.cpp:1226
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8464,7 +8467,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:415
+      - mclib/txmmgr.cpp:417
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8472,7 +8475,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - mclib/txmmgr.cpp:456
+      - mclib/txmmgr.cpp:458
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8507,7 +8510,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands. UI verbs: toggle_pause, press pause.<BTN> (P..."
     referenced_at:
-      - code/missiongui.cpp:1083
+      - code/missiongui.cpp:1084
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8603,7 +8606,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:8391
+      - GameOS/gameos/gameos_graphics.cpp:8490
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8633,7 +8636,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gamecam.cpp:401
+      - code/gamecam.cpp:403
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8676,7 +8679,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON. Completes VEHICLE-LIGHTING-PATH-1 by giving the legacy lit vehicle path (shaders/gos_tex_vertex_lighted.vert) the TWO terms mech.vert has and it never did: the ..."
     referenced_at:
-      - mclib/txmmgr.cpp:2474
+      - mclib/txmmgr.cpp:2482
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8702,7 +8705,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1220
+      - GameOS/gameos/gameosmain.cpp:1222
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8710,7 +8713,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1221
+      - GameOS/gameos/gameosmain.cpp:1223
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8896,7 +8899,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the postprocess composite pass. Default-OFF; w..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1239
+      - GameOS/gameos/gos_postprocess.cpp:1350
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8907,7 +8910,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5). Only affects the LowLight(5) composite branch. Resolved once at gos_postprocess init; ImGui slider o..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1266
+      - GameOS/gameos/gos_postprocess.cpp:1377
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8918,7 +8921,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor). Only affects the LowLight(5) composite branch. Resolved once at gos_postprocess init."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1271
+      - GameOS/gameos/gos_postprocess.cpp:1382
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8929,7 +8932,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: seeds the startup presentation mode (matches RenderCore::ViewMode). Numeric 0..5 or name visual|objectid|tactical|thermal|infrared|lowlight. Only consulted when..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:1246
+      - GameOS/gameos/gos_postprocess.cpp:1357
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8942,7 +8945,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:1184
       - GameOS/gameos/gos_static_prop_batcher.cpp:2027
-      - code/gamecam.cpp:346
+      - code/gamecam.cpp:348
     referenced_at_more: 1
     registered: yes
     in_smoke_passthrough: yes
@@ -8951,18 +8954,26 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:542
+      - GameOS/gameos/gos_visual_capture.cpp:562
       - GameOS/gameos/vk_feed_dump.h:58
       - GameOS/gameos/vulkan_color_prop_island.cpp:1670
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_VISUAL_CAPTURE_CLEAN
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/gos_visual_capture.cpp:929
+    registered: no
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_VISUAL_CAPTURE_DIR
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:530
-      - GameOS/gameos/gos_visual_capture.cpp:546
+      - GameOS/gameos/gos_visual_capture.cpp:550
+      - GameOS/gameos/gos_visual_capture.cpp:566
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -8970,7 +8981,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:791
+      - GameOS/gameos/gos_visual_capture.cpp:811
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -8978,8 +8989,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:528
-      - GameOS/gameos/gos_visual_capture.cpp:551
+      - GameOS/gameos/gos_visual_capture.cpp:548
+      - GameOS/gameos/gos_visual_capture.cpp:571
       - GameOS/gameos/vk_feed_dump.h:59
     registered: no
     in_smoke_passthrough: yes
@@ -8991,9 +9002,17 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE. With MC2_FX_FORCE_SPAWN + MC2_VISUAL_CAPTURE_FRAME/_DIR (smoke mode), the engine visual capture triggers at the fixture-armed fire frame (g_m..."
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:705
+      - GameOS/gameos/gos_visual_capture.cpp:725
       - code/warrior.cpp:5568
     registered: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: yes
+  - name: MC2_VISUAL_CAPTURE_POST
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/gameosmain.cpp:2499
+    registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
   - name: MC2_VISUAL_DIFF_CAPTURE
@@ -9025,7 +9044,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_visual_capture.cpp:544
+      - GameOS/gameos/gos_visual_capture.cpp:564
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9049,7 +9068,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:4524
+      - GameOS/gameos/gos_postprocess.cpp:4638
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9060,7 +9079,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF. Companion to MC2_VK_SHADOW_INTEROP that re-renders the near CSM cascades into layers of a VK-owned D32 2D array on the shared Vulkan device, t..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:145
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:146
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9087,7 +9106,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF. Companion to MC2_VK_SHADOW_INTEROP that re-renders the CSM catch-all/full-map cascade into a separate exportable D32 image on the shared Vul..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:136
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:137
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9132,7 +9151,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:8441
+      - GameOS/gameos/gameos_graphics.cpp:8540
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9220,7 +9239,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:307
+      - GameOS/gameos/engine_present_vk.cpp:308
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9231,7 +9250,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "BUG-A pick regression fence: default-OFF. When set, MissionInterfaceManager::update (code/missiongui.cpp) runs ONCE post-settle a deterministic mouse->pick coordinate proof: it simulates a 2x HiDPI..."
     referenced_at:
-      - code/missiongui.cpp:3442
+      - code/missiongui.cpp:3443
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9252,8 +9271,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-FIELD-VFX-3: frame pin for MC2_VK_PRESENT_DUMP_PPM. Default unset (overwrite-latest each verify tick). =N captures once at the FIRST verify tick with g_mc2FrameCounter >= N. gameosmain extends t..."
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:2589
-      - GameOS/gameos/gameosmain.cpp:2574
+      - GameOS/gameos/engine_present_vk.cpp:2590
+      - GameOS/gameos/gameosmain.cpp:2593
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -9264,8 +9283,8 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-FIELD-VFX-5: dynamic fire-event pin for MC2_VK_PRESENT_DUMP_PPM. Default unset. When set (with MC2_FX_FORCE_SPAWN=loop), the fixture's FIRST volley arms the capture ~0.5s (30 frames) after itsel..."
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:2594
-      - GameOS/gameos/gameosmain.cpp:2583
+      - GameOS/gameos/engine_present_vk.cpp:2595
+      - GameOS/gameos/gameosmain.cpp:2602
       - code/warrior.cpp:5567
     registered: yes
     in_smoke_passthrough: no
@@ -9277,7 +9296,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-FIELD-ORACLE-1: headless present-pixel oracle. Default-OFF. Path of a PPM (P6) file; EnginePresentVk::verifyReadbackContent dumps the FULL composited present image (sharedImg, the RGBA8 backbuff..."
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:2580
+      - GameOS/gameos/engine_present_vk.cpp:2581
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -9288,7 +9307,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK present-tail deletion-readiness canary. Default-OFF. On nonzero-surface frames, aborts if the present path would use copy-1, consume a non-VK-owned present image, or signal the GL->VK handoff in..."
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:337
+      - GameOS/gameos/engine_present_vk.cpp:338
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9299,7 +9318,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK present-tail ownership gate. Default-OFF. With the strict native present stack armed, EnginePresentVk allocates the shared present image as a VK-only RGBA8 target instead of an exportable GL mem..."
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:329
+      - GameOS/gameos/engine_present_vk.cpp:330
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9307,7 +9326,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:325
+      - GameOS/gameos/engine_present_vk.cpp:326
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9325,7 +9344,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:2595
+      - GameOS/gameos/gameosmain.cpp:2614
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9418,7 +9437,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK final-gate diagnostic: wraps the sceneFBO producer phase in a GL_ANY_SAMPLES_PASSED query and logs [VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=... so resource-strict work can prove whether any G..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:598
+      - GameOS/gameos/gos_postprocess.cpp:601
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9429,7 +9448,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK final-gate diagnostic: wraps only the legacy GL runScreenShadow fullscreen draw in GL_ANY_SAMPLES_PASSED and logs [VK_SCREENSHADOW_GL_CANARY v1]. Used after terrain GL fallback reaches zero to p..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:607
+      - GameOS/gameos/gos_postprocess.cpp:718
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9437,7 +9456,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/missiongui.cpp:2930
+      - code/missiongui.cpp:2931
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9458,7 +9477,18 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF. Renders the DYNAMIC static-prop shadow-caster depth in Vulkan (the SECOND VK geometry region and the FIRST VK-PRODUCES-DEPTH region -- water w..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:127
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:128
+    registered: yes
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: yes
+  - name: MC2_VK_SHADOW_MATRIX_DIAG
+    default: off
+    kind: Trace
+    feature_id: MC2_TRACE_VK_SHADOW_MATRIX_DIAG
+    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
+    doc: "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp). At shadow-pass tick 600 and 1200 logs [VK_SHADOW_MATRIX v1] lines: GL dynamic + CSM casc..."
+    referenced_at:
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:862
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9489,7 +9519,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK shared-scene deletion-readiness canary. Default-OFF. When =1, any fallback from a requested VK-backed shared scene color/depth/normal/objectId slot to the plain GL allocation logs [VK_SHARED_SCE..."
     referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp:158
+      - GameOS/gameos/gos_postprocess.cpp:161
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9507,8 +9537,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1961
-      - GameOS/gameos/vulkan_terrain_island.cpp:2434
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:2047
+      - GameOS/gameos/vulkan_terrain_island.cpp:2724
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9519,7 +9549,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active). When MC2_SHADOW_CSM is ON (launcher default) the single-map dynshadow pa..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1852
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1859
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9527,15 +9557,15 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:2631
+      - GameOS/gameos/vulkan_terrain_island.cpp:2603
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
+    documented_in_tier1_env_vars: yes
   - name: MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1853
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:1860
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -9586,7 +9616,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1). Each frame re-reads the GL height SSBO (binding 23) and FNV-1a-checksums it, comparing against the checksum ..."
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:1441
+      - GameOS/gameos/vulkan_terrain_island.cpp:1545
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9597,7 +9627,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT). Deliberately XOR-corrupts the stored height snapshot checksum once after the first snapshot ..."
     referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp:1453
+      - GameOS/gameos/vulkan_terrain_island.cpp:1557
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9676,7 +9706,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_ entry instead of one entry PER TRIANGLE. MLR..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:6367
+      - GameOS/gameos/gameos_graphics.cpp:6442
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9687,9 +9717,9 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace. Default-OFF. When set, WeaponBolt::render (code/weaponbolt.cpp) prints [VK_VFX_TRACE] lines per bolt/beam with the render path taken (IMMEDIATE ..."
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:1562
-      - GameOS/gameos/engine_present_vk.cpp:1562
       - GameOS/gameos/engine_present_vk.cpp:1563
+      - GameOS/gameos/engine_present_vk.cpp:1563
+      - GameOS/gameos/engine_present_vk.cpp:1564
     referenced_at_more: 4
     registered: yes
     in_smoke_passthrough: no
@@ -9701,7 +9731,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_WATER_TIER1 plus MC2_VK_MECH_DIRECT_CHAIN. When ON, the water island treats the shared scene color0/normal/..."
     referenced_at:
-      - GameOS/gameos/vulkan_water_island.cpp:175
+      - GameOS/gameos/vulkan_water_island.cpp:180
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9709,8 +9739,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3664
-      - GameOS/gameos/vulkan_water_island.cpp:146
+      - GameOS/gameos/gameos_graphics.cpp:3702
+      - GameOS/gameos/vulkan_water_island.cpp:151
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9742,7 +9772,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:424
+      - GameOS/gameos/engine_present_vk.cpp:425
       - GameOS/gameos/gos_render.cpp:628
       - editor/EditorGosRender.cpp:836
     referenced_at_more: 1
@@ -9769,10 +9799,10 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/engine_present_vk.cpp:353
-      - GameOS/gameos/gos_postprocess.cpp:4410
+      - GameOS/gameos/engine_present_vk.cpp:354
+      - GameOS/gameos/gos_postprocess.cpp:4523
       - GameOS/gameos/vulkan_backend_skeleton.cpp:7602
-    referenced_at_more: 10
+    referenced_at_more: 12
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9825,7 +9855,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:310
+      - GameOS/gameos/gameos_graphics.cpp:340
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9842,7 +9872,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2829
+      - GameOS/gameos/gameos_graphics.cpp:2859
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -9858,7 +9888,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3485
+      - GameOS/gameos/gameos_graphics.cpp:3523
+      - GameOS/gameos/gameos_graphics.cpp:3774
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9866,7 +9897,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3489
+      - GameOS/gameos/gameos_graphics.cpp:3527
+      - GameOS/gameos/gameos_graphics.cpp:3778
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9907,7 +9939,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3020
+      - GameOS/gameos/gameos_graphics.cpp:3063
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9915,7 +9947,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3024
+      - GameOS/gameos/gameos_graphics.cpp:3067
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9931,7 +9963,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3284
+      - GameOS/gameos/gameos_graphics.cpp:3327
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9939,8 +9971,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2888
-      - GameOS/gameos/gameos_graphics.cpp:2901
+      - GameOS/gameos/gameos_graphics.cpp:2918
+      - GameOS/gameos/gameos_graphics.cpp:2931
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -9948,9 +9980,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2913
-      - GameOS/gameos/gameos_graphics.cpp:2921
-      - GameOS/gameos/gos_terrain_indirect.cpp:5202
+      - GameOS/gameos/gameos_graphics.cpp:2943
+      - GameOS/gameos/gameos_graphics.cpp:2951
+      - GameOS/gameos/gos_terrain_indirect.cpp:5205
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9958,7 +9990,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp:5307
+      - GameOS/gameos/gos_terrain_indirect.cpp:5310
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9993,7 +10025,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "[DEFAULT-OFF OPT-IN. Value is an INTENSITY, not a boolean: unset or '0' => 0.0 = exact no-op; any other value is parsed with atof() and used verbatim, with a non-numeric truthy string falling back ..."
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2952
+      - GameOS/gameos/gameos_graphics.cpp:2982
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -10009,7 +10041,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:3448
+      - GameOS/gameos/gameos_graphics.cpp:3048
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -10020,7 +10052,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge. DEFAULT ON; =0 disables (falls back to the legacy ramp). Silently i..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3971
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4035
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -10050,7 +10082,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp:3962
+      - GameOS/gameos/gos_terrain_lod_chunk.cpp:4026
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -10058,7 +10090,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:2870
+      - GameOS/gameos/gameos_graphics.cpp:2900
       - GuiRuntime/GraphicsOptionsWindow.cpp:956
     registered: no
     in_smoke_passthrough: no
@@ -10092,8 +10124,8 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp:1438
-      - GameOS/gameos/gameosmain.cpp:656
+      - GameOS/gameos/gameosmain.cpp:1440
+      - GameOS/gameos/gameosmain.cpp:658
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -10101,9 +10133,9 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp:9174
-      - GameOS/gameos/gameosmain.cpp:1543
-      - GameOS/gameos/gameosmain.cpp:660
+      - GameOS/gameos/gameos_graphics.cpp:9273
+      - GameOS/gameos/gameosmain.cpp:1545
+      - GameOS/gameos/gameosmain.cpp:662
     referenced_at_more: 4
     registered: no
     in_smoke_passthrough: yes
@@ -10134,7 +10166,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant. When =1 AND the ViewUniforms UBO worldToClipGL diverges from the legacy terrain MVP (ma..."
     referenced_at:
-      - code/gamecam.cpp:376
+      - code/gamecam.cpp:378
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
