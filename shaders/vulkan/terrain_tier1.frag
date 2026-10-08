@@ -123,6 +123,25 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float missionFlatR;                           // off 612: gos_GetTerrainMissionFlatLight() (GL u_missionFlatLight)
     float missionFlatG;                           // off 616
     float missionFlatB;                           // off 620
+    // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 + LIGHT-CLUSTER-PERF-1 grid +
+    // MOVER-CONTACT-SHADOW-1 + PAD-AREA-GLOW-1 knobs. Same C++ producers/values as the
+    // GL u_numPoolLights/u_lightGrid*/u_lightPool*/u_moverContactShadow/u_padGlow* uniforms.
+    int   numPoolLights;                          // off 624: 0 -> pool loop skipped
+    int   lightGridDim;                           // off 628: 0 -> linear loop
+    float lightGridMinX;                          // off 632
+    float lightGridMinY;                          // off 636
+    float lightGridInvCellX;                      // off 640
+    float lightGridInvCellY;                      // off 644
+    int   lightPoolSoft;                          // off 648
+    float lightPoolMoverDim;                      // off 652
+    float lightPoolMoverScale;                    // off 656
+    int   lightPoolMoverMax;                      // off 660
+    int   lightPoolCompress;                      // off 664
+    float moverContactShadow;                     // off 668
+    float padGlowR;                               // off 672: premultiplied (strength*warm*nightFactor)
+    float padGlowG;                               // off 676
+    float padGlowB;                               // off 680
+    float padGlowSpill;                           // off 684
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -376,6 +395,32 @@ layout(set = 0, binding = 3) uniform sampler2D u_cementAtlas;
 layout(set = 0, binding = 4, std430) readonly buffer TerrainCementBuf {
     uint cementWordsF[];
 } uC;
+
+// VK-PARITY-TERRAIN-2: the GL terrain light pool (GL binding 28) + world-XY light grid
+// (GL bindings 29/30). Per-parity host-visible copies of the SAME CPU arrays the GL
+// producer (gos_terrain_lighting.cpp PackAndDispatch / BuildAndUploadLightGrid) uploads
+// each frame. Member names match the GL frag so the shared include body compiles as-is.
+struct PoolLight {
+    vec3  position;        // MC2 world (same frame as v_worldPos)
+    uint  lightType;       // 1=point 2=spot 3=terrain, 0=skip
+    vec3  color;           // R/G/B normalized 0..1
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;         // >0.5 = mover-attached (producer flag)
+    float _plPad2;
+};
+layout(set = 0, binding = 11, std430) readonly buffer TerrainLightPoolVK {
+    PoolLight poolLights[];
+};
+layout(set = 0, binding = 12, std430) readonly buffer TerrainLightGridHeaderVK {
+    uvec2 lightGridCells[];   // {firstIndex, count} per cell, row-major y*dim + x
+};
+layout(set = 0, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
+    uint  lightGridIndices[];
+};
+#define TLP_CEMENT_WORD(i) uC.cementWordsF[i]
+#include "../include/terrain_light_pool.hglsl"
 // VK-TERRAIN-LIGHTING: the STATIC sun shadow map, a VK-owned per-frame copy of the GL
 // static shadow depth texture (gos_postprocess getShadowTexture()) into a D32 depth-
 // COMPARE image. HW LINEAR compare, compareOp=LESS_OR_EQUAL, CLAMP_TO_BORDER white=1.0
@@ -730,6 +775,25 @@ void main() {
         shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = base * normalLight * shadow;
 
+        // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
+        // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
+        // :2056-2066), ADDITIVE after the shadow multiply. Cone spill / LIGHT-REALISM
+        // reshape is baked into the pool by the shared CPU producer.
+        float moverContact = 0.0;
+        if (uT.numPoolLights > 0) {
+            lit += tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
+                                        uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
+                                        vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
+                                        uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
+                                        uT.lightPoolMoverMax, uT.lightPoolCompress,
+                                        uT.moverContactShadow, moverContact);
+        }
+        // PAD-AREA-GLOW-1 (terrain_lod_chunk.frag:2075-2076). useCement gates the read of
+        // the cement-word SSBO (dummy 16B until the snapshot lands).
+        vec3 padGlow = vec3(uT.padGlowR, uT.padGlowG, uT.padGlowB);
+        if (dot(padGlow, padGlow) > 0.0 && uT.useCement != 0)
+            lit += padGlow * tlp_padGlowMask(v_worldPos.xy, uT.halfMap, uT.mapSide, uT.padGlowSpill);
+
         // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2, verbatim from
         // terrain_lod_chunk.frag:2267-2277. baseColor == base here (VK has no material
         // tint); flatLitShare == pureConcrete at stock u_cementLit=0 (the GL expression
@@ -745,6 +809,11 @@ void main() {
                             * uT.ambientDayGate * (1.0 - flatLitShare);
             lit += ambTerm;
         }
+
+        // MOVER-CONTACT-SHADOW-1 (terrain_lod_chunk.frag:2287-2288): contact-AO on the
+        // fully composited lighting. moverContact==0 unless MC2_MOVER_CONTACT_SHADOW>0.
+        if (moverContact > 0.0)
+            lit *= (1.0 - 0.55 * moverContact);
 
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
         // Bypasses the normal composite entirely so each channel can be inspected in

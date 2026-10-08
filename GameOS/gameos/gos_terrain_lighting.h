@@ -147,6 +147,26 @@ struct LightGridParams {
 };
 bool GetLightGridParams(LightGridParams& out);
 
+// VK-PARITY-TERRAIN-2: CPU-side views of the SAME arrays this frame's
+// PackAndDispatch uploaded into the GL pool SSBO (binding 28) and the grid
+// SSBOs (29/30), so the VK terrain island can upload byte-identical copies
+// into its own storage buffers. Pointers stay valid until the next
+// PackAndDispatch / mission_shutdown.
+// GetLightPoolCpu: returns the packed pool (count = GetLightPoolLightCount()),
+// nullptr when not initialized.
+const GpuTerrainLight* GetLightPoolCpu(uint32_t* outCount);
+// GetLightGridCpu: false whenever GetLightGridParams() would be false.
+struct LightGridCpu {
+    uint32_t        dim;
+    float           minXY[2];
+    float           invCell[2];
+    const uint32_t* header;       // 2 * dim * dim words ({first,count} per cell)
+    uint32_t        headerWords;
+    const uint32_t* indices;
+    uint32_t        indexWords;
+};
+bool GetLightGridCpu(LightGridCpu& out);
+
 // POOL-CONSUMERS-1 (batch-6 item 6): bind the pool SSBO at binding 28 and
 // upload the shared pool uniforms (u_numPoolLights + soft/dim/scale/blend/
 // compress knobs, lockstep with the terrain-chunk consumer constants) onto

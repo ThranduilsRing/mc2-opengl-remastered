@@ -408,7 +408,25 @@ struct TerrainFrameUBO {
     float   missionFlatR;            // off 612
     float   missionFlatG;            // off 616
     float   missionFlatB;            // off 620
-    int32_t _pad[100];               // off 624..1023: remaining pad
+    // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 + LIGHT-CLUSTER-PERF-1 + MOVER-CONTACT-
+    // SHADOW-1 + PAD-AREA-GLOW-1 (LOCKSTEP with terrain_tier1{,_skirt}.{vert,frag}).
+    int32_t numPoolLights;           // off 624
+    int32_t lightGridDim;            // off 628
+    float   lightGridMinX;           // off 632
+    float   lightGridMinY;           // off 636
+    float   lightGridInvCellX;       // off 640
+    float   lightGridInvCellY;       // off 644
+    int32_t lightPoolSoft;           // off 648
+    float   lightPoolMoverDim;       // off 652
+    float   lightPoolMoverScale;     // off 656
+    int32_t lightPoolMoverMax;       // off 660
+    int32_t lightPoolCompress;       // off 664
+    float   moverContactShadow;      // off 668
+    float   padGlowR;                // off 672
+    float   padGlowG;                // off 676
+    float   padGlowB;                // off 680
+    float   padGlowSpill;            // off 684
+    int32_t _pad[84];                // off 688..1023: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
@@ -605,6 +623,16 @@ struct TerrainIsland {
     VkBuffer      ubo[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VmaAllocation uboAlloc[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkDeviceSize  uboCapBytes[2] = {0, 0};
+
+    // VK-PARITY-TERRAIN-2: per-parity host-visible copies of the GL terrain light pool
+    // (GL binding 28 -> VK binding 11), light-grid header (29 -> 12) and index list
+    // (30 -> 13). [par][k], k = 0 pool / 1 header / 2 indices. Rewritten each frame from
+    // the SAME CPU arrays the GL producer uploads each frame (pool <= 12 KB, header 32 KB
+    // at the default 64x64 grid, indices = stamped count); staged [par] after the slot
+    // fence like the UBO. Grow-only (device-idle on regrow, rare).
+    VkBuffer      lpBuf[2][3]   = {};
+    VmaAllocation lpAlloc[2][3] = {};
+    VkDeviceSize  lpCap[2][3]   = {};
 
     std::unordered_map<uint32_t, PatchMesh> patchCache;
     std::unordered_map<uint32_t, SkirtMesh> skirtCache;  // VK-TERRAIN-SKIRT (rung 4)
@@ -807,7 +835,7 @@ void write_descriptors(TerrainIsland* s) {
     // binding 3 = cement combined-image-sampler (dummy/real); binding 4 = cement-word SSBO.
     VkDescriptorBufferInfo uboInfo{ s->ubo[i], 0, sizeof(TerrainFrameUBO) }; // range = one slot
     VkDescriptorBufferInfo hInfo{ s->heightBuf, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[11]{};
+    VkWriteDescriptorSet w[14]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 0; w[n].descriptorCount = 1;
@@ -908,6 +936,16 @@ void write_descriptors(TerrainIsland* s) {
         w[n].dstBinding = 10; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &vhBuf; ++n;
     }
+    // VK-PARITY-TERRAIN-2: bindings 11/12/13 light pool / grid header / grid indices
+    // (per-parity buffers; always valid once created, uT.numPoolLights gates use).
+    VkDescriptorBufferInfo lpInfo[3]{};
+    for (int k = 0; k < 3; ++k) {
+        if (s->lpBuf[i][k] == VK_NULL_HANDLE) continue;
+        lpInfo[k].buffer = s->lpBuf[i][k]; lpInfo[k].offset = 0; lpInfo[k].range = VK_WHOLE_SIZE;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+        w[n].dstBinding = 11 + k; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &lpInfo[k]; ++n;
+    }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     }   // per-parity set loop
 }
@@ -945,6 +983,25 @@ bool ensure_ubo_capacity(TerrainIsland* s, uint32_t par, VkDeviceSize bytes) {
     return true;
 }
 
+// VK-PARITY-TERRAIN-2: grow slot `par`'s light buffer k (0 pool, 1 grid header,
+// 2 grid indices). Same grow discipline as ensure_ubo_capacity (device idle, rewrite
+// both sets). Initial sizes cover the defaults (256-light cap, 64x64 grid) so the
+// regrow path only runs for MC2_LIGHT_GRID_DIM overrides / unusually dense stamps.
+bool ensure_lightpool_capacity(TerrainIsland* s, uint32_t par, int k, VkDeviceSize bytes) {
+    if (s->lpBuf[par][k] != VK_NULL_HANDLE && bytes <= s->lpCap[par][k]) return true;
+    if (s->lpBuf[par][k] != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(s->device);
+        vmaDestroyBuffer(s->allocator, s->lpBuf[par][k], s->lpAlloc[par][k]);
+        s->lpBuf[par][k] = VK_NULL_HANDLE;
+    }
+    VkDeviceSize cap = bytes + bytes / 2 + 256;
+    if (!make_buffer(s, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->lpBuf[par][k], &s->lpAlloc[par][k], true))
+        return false;
+    s->lpCap[par][k] = cap;
+    write_descriptors(s);
+    return true;
+}
+
 void destroy_island(TerrainIsland* s) {
     if (!s) return;
     VkDevice d = s->device;
@@ -975,6 +1032,9 @@ void destroy_island(TerrainIsland* s) {
     if (s->visualHeightBuf) vmaDestroyBuffer(s->allocator, s->visualHeightBuf, s->visualHeightAlloc);
     for (int i = 0; i < 2; ++i)   // VK-TERRAIN-FENCE-DEFER-1: per-parity UBO pair
         if (s->ubo[i]) vmaDestroyBuffer(s->allocator, s->ubo[i], s->uboAlloc[i]);
+    for (int i = 0; i < 2; ++i)   // VK-PARITY-TERRAIN-2: per-parity light pool/grid buffers
+        for (int k = 0; k < 3; ++k)
+            if (s->lpBuf[i][k]) vmaDestroyBuffer(s->allocator, s->lpBuf[i][k], s->lpAlloc[i][k]);
     if (s->colormapSamp) vkDestroySampler(d, s->colormapSamp, nullptr);
     if (s->colormapView) vkDestroyImageView(d, s->colormapView, nullptr);
     if (s->colormapImg)  vmaDestroyImage(s->allocator, s->colormapImg, s->colormapAlloc);
@@ -1204,9 +1264,25 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // csmEnabled=0 -> falls back to the legacy single-map path, no hole).
     if (!ensure_dummy_csm(s)) { setFallback("csm_dummy_failed"); return false; }
 
+    // VK-PARITY-TERRAIN-2: initial light pool / grid buffers (both parities) so bindings
+    // 11-13 are valid descriptors from frame 1. Sizes: 256 x 48B pool, 64x64 x uvec2 header,
+    // 16K index words; grown on demand by ensure_lightpool_capacity.
+    {
+        const VkDeviceSize initBytes[3] = { 256u * 48u, 64u * 64u * 8u, 16384u * 4u };
+        for (int i = 0; i < 2; ++i)
+            for (int k = 0; k < 3; ++k)
+                if (s->lpBuf[i][k] == VK_NULL_HANDLE) {
+                    if (!make_buffer(s, initBytes[k], VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                     &s->lpBuf[i][k], &s->lpAlloc[i][k], true)) {
+                        setFallback("lightpool_ssbo_failed"); return false;
+                    }
+                    s->lpCap[i][k] = initBytes[k];
+                }
+    }
+
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[11]{};
+        VkDescriptorSetLayoutBinding b[14]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -1241,16 +1317,21 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // both main + skirt verts read it for the mode-2 Z-swap).
         b[10].binding = 10; b[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        // VK-PARITY-TERRAIN-2: bindings 11/12/13 = light pool / grid header / grid index SSBOs (FS).
+        for (int k = 11; k <= 13; ++k) {
+            b[k].binding = (uint32_t)k; b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[k].descriptorCount = 1; b[k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 11; lci.pBindings = b;
+        lci.bindingCount = 14; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-TERRAIN-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;  sizes[0].descriptorCount = 2;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 6;  // (height + cement + visual-height) x2
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 12; // (height + cement + visual-height + pool + grid hdr + grid idx) x2
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 14; // (colormap + cement + static shadow + matNormalArray + dyn shadow + csm array + csm fullmap) x2
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -2561,6 +2642,38 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     const uint32_t patchCount = feed.patchCount;
     const VkDeviceSize needUbo = (VkDeviceSize)patchCount * sizeof(TerrainFrameUBO);
     if (!ensure_ubo_capacity(s, par, needUbo)) { s->disabled = true; return 0; }
+
+    // VK-PARITY-TERRAIN-2: stage this frame's light pool + grid into slot [par] (same
+    // per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
+    // staging failure degrades to "no pools" (numPoolLights=0), never a hole.
+    int32_t vkPoolLights = feed.numPoolLights;
+    int32_t vkGridDim    = feed.lightGridDim;
+    {
+        ZoneScopedN("VKIsl.Terrain.LightPoolStage");
+        auto stage = [&](int k, const void* src, VkDeviceSize bytes) -> bool {
+            if (!src || bytes == 0) return true;
+            if (!ensure_lightpool_capacity(s, par, k, bytes)) return false;
+            void* dst = nullptr;
+            if (vmaMapMemory(s->allocator, s->lpAlloc[par][k], &dst) != VK_SUCCESS) return false;
+            std::memcpy(dst, src, (size_t)bytes);
+            vmaUnmapMemory(s->allocator, s->lpAlloc[par][k]);
+            vmaFlushAllocation(s->allocator, s->lpAlloc[par][k], 0, VK_WHOLE_SIZE);
+            return true;
+        };
+        if (vkPoolLights > 0 && feed.poolLights) {
+            if (!stage(0, feed.poolLights, (VkDeviceSize)vkPoolLights * 48u)) vkPoolLights = 0;
+        } else {
+            vkPoolLights = 0;
+        }
+        if (vkPoolLights > 0 && vkGridDim > 0 && feed.lightGridHeader && feed.lightGridIndices &&
+            feed.lightGridHeaderWords >= (uint32_t)vkGridDim * (uint32_t)vkGridDim * 2u) {
+            if (!stage(1, feed.lightGridHeader,  (VkDeviceSize)feed.lightGridHeaderWords * 4u) ||
+                !stage(2, feed.lightGridIndices, (VkDeviceSize)feed.lightGridIndexWords  * 4u))
+                vkGridDim = 0;   // linear loop over the staged pool (exact, slower)
+        } else {
+            vkGridDim = 0;
+        }
+    }
     {
         ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
         void* p = nullptr;
@@ -2662,6 +2775,23 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.missionFlatR      = feed.missionFlatLight[0];
                 u.missionFlatG      = feed.missionFlatLight[1];
                 u.missionFlatB      = feed.missionFlatLight[2];
+                // VK-PARITY-TERRAIN-2: pool/grid/pad-glow knobs from the shared producers.
+                u.numPoolLights       = vkPoolLights;
+                u.lightGridDim        = vkGridDim;
+                u.lightGridMinX       = feed.lightGridMin[0];
+                u.lightGridMinY       = feed.lightGridMin[1];
+                u.lightGridInvCellX   = feed.lightGridInvCell[0];
+                u.lightGridInvCellY   = feed.lightGridInvCell[1];
+                u.lightPoolSoft       = feed.lightPoolSoft;
+                u.lightPoolMoverDim   = feed.lightPoolMoverDim;
+                u.lightPoolMoverScale = feed.lightPoolMoverScale;
+                u.lightPoolMoverMax   = feed.lightPoolMoverMax;
+                u.lightPoolCompress   = feed.lightPoolCompress;
+                u.moverContactShadow  = feed.moverContactShadow;
+                u.padGlowR            = feed.padGlow[0];
+                u.padGlowG            = feed.padGlow[1];
+                u.padGlowB            = feed.padGlow[2];
+                u.padGlowSpill        = feed.padGlowSpill;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc[par]);

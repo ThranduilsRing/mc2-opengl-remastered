@@ -172,6 +172,27 @@ struct Mc2TerrainTier1Feed {
     float                       ambientFloor;
     float                       ambientDayGate;
     float                       missionFlatLight[3];
+    // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 + LIGHT-CLUSTER-PERF-1 + PAD-AREA-GLOW-1.
+    // poolLights points at numPoolLights packed 48B GpuTerrainLight records (the CPU copy
+    // of GL binding 28); lightGridHeader/Indices are the CPU copies of GL bindings 29/30
+    // (null + lightGridDim=0 => linear loop). Pointers valid for this frame only.
+    int32_t                     numPoolLights;          // 0 => pool loop skipped
+    const void*                 poolLights;             // GpuTerrainLight[numPoolLights] (48B std430)
+    int32_t                     lightGridDim;           // 0 => grid off
+    float                       lightGridMin[2];
+    float                       lightGridInvCell[2];
+    const uint32_t*             lightGridHeader;        // 2*dim*dim words
+    uint32_t                    lightGridHeaderWords;
+    const uint32_t*             lightGridIndices;
+    uint32_t                    lightGridIndexWords;
+    int32_t                     lightPoolSoft;
+    float                       lightPoolMoverDim;
+    float                       lightPoolMoverScale;
+    int32_t                     lightPoolMoverMax;
+    int32_t                     lightPoolCompress;
+    float                       moverContactShadow;
+    float                       padGlow[3];             // premultiplied (GL u_padGlow)
+    float                       padGlowSpill;
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

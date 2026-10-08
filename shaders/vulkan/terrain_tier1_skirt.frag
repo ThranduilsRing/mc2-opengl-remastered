@@ -102,6 +102,53 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     // at the lodNear computation site below for the verbatim formula.
     vec4  cameraPosMC2;     // off 320: gos_terrain.frag's `cameraPos` (Stuff/MLR space)
     int   lodFadeEnabled;   // off 336: MC2_VK_TERRAIN_LODFADE gate (0 -> lodNear==1.0 always)
+    float skirtDepth;       // off 340: VK-TERRAIN-SKIRT (read by the skirt vert only)
+    // VK-TERRAIN-CSM-NEAR-1 sub-slice: near-cascade-array dynamic shadow. Ports GL's
+    // calcDynamicShadow cascade-select VERBATIM (shadow.hglsl:191-238). LOCKSTEP with
+    // vulkan_terrain_island.cpp TerrainFrameUBO (slot grew 512->1024B for this).
+#define MC2_VK_SHADOW_CSM_MAX 3
+    int   _csmPad0;                              // off 344
+    int   _csmPad1;                               // off 348
+    int   csmEnabled;                             // off 352: near-cascade path armed+valid this frame
+    int   csmCount;                               // off 356: 1..MC2_VK_SHADOW_CSM_MAX
+    float csmDepthSpan;                           // off 360
+    int   csmDebugMode;                            // off 364: CSM-BLACKOUT-RECON-1 one-shot viz (0=off)
+    mat4  csmCascadeMatrices[3];                  // off 368 (MC2_VK_SHADOW_CSM_MAX; literal for check_ubo_layout.py's regex)
+    vec4  csmCascadeTexelWorld;                   // off 560 (xyz used, w pad)
+    float csmFullMapTexelWorld;                   // off 576
+    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2 Z-swap params (read by
+    // the two VS stages only; declared here for the std140 LOCKSTEP + layout check).
+    int   visualSide;                             // off 580: fine bake side V (0 = not snapshotted)
+    float visualDisplaceFar;                      // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
+    int   visualMode;                             // off 588: 0 = no displace, 2 = far-band Z-swap
+    int   edgeStitch;                             // off 592: packed N/S/W/E coarser-neighbor stride bytes
+    int   quadCountX;                             // off 596: max local offset X for edge tests
+    int   quadCountY;                             // off 600: max local offset Y for edge tests
+    // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2 + CEMENT-NIGHT-LIGHT-1 (scalars: no std140 vec3 pitfalls)
+    float ambientFloor;                           // off 604: gos_TerrainAmbientFloor() (GL u_terrainAmbientFloor)
+    float ambientDayGate;                         // off 608: gos_TerrainAmbientDayGate() (GL u_terrainAmbientDayGate)
+    float missionFlatR;                           // off 612: gos_GetTerrainMissionFlatLight() (GL u_missionFlatLight)
+    float missionFlatG;                           // off 616
+    float missionFlatB;                           // off 620
+    // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 + LIGHT-CLUSTER-PERF-1 grid +
+    // MOVER-CONTACT-SHADOW-1 + PAD-AREA-GLOW-1 knobs. Same C++ producers/values as the
+    // GL u_numPoolLights/u_lightGrid*/u_lightPool*/u_moverContactShadow/u_padGlow* uniforms.
+    int   numPoolLights;                          // off 624: 0 -> pool loop skipped
+    int   lightGridDim;                           // off 628: 0 -> linear loop
+    float lightGridMinX;                          // off 632
+    float lightGridMinY;                          // off 636
+    float lightGridInvCellX;                      // off 640
+    float lightGridInvCellY;                      // off 644
+    int   lightPoolSoft;                          // off 648
+    float lightPoolMoverDim;                      // off 652
+    float lightPoolMoverScale;                    // off 656
+    int   lightPoolMoverMax;                      // off 660
+    int   lightPoolCompress;                      // off 664
+    float moverContactShadow;                     // off 668
+    float padGlowR;                               // off 672: premultiplied (strength*warm*nightFactor)
+    float padGlowG;                               // off 676
+    float padGlowB;                               // off 680
+    float padGlowSpill;                           // off 684
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -267,6 +314,7 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w) {
 // .x=east,.y=north,.z=elevation), plus a zoom-out altitude boost.
 const float LODFADE_NEAR      = 4000.0;
 const float LODFADE_NEAR_FADE = 4500.0;
+//PORT-BEGIN:lodNear
 float mv_computeLodNear(vec2 worldXY, float worldZ) {
     if (uT.lodFadeEnabled == 0) return 1.0;   // gate off -> byte-identical (no fade)
     vec2  camGround = vec2(-uT.cameraPosMC2.x, uT.cameraPosMC2.z);
@@ -275,6 +323,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
     float camDist    = hDist + altBoost;
     return 1.0 - smoothstep(LODFADE_NEAR, LODFADE_NEAR_FADE, camDist);
 }
+//PORT-END:lodNear
 
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
@@ -353,6 +402,32 @@ layout(set = 0, binding = 3) uniform sampler2D u_cementAtlas;
 layout(set = 0, binding = 4, std430) readonly buffer TerrainCementBuf {
     uint cementWordsF[];
 } uC;
+
+// VK-PARITY-TERRAIN-2: the GL terrain light pool (GL binding 28) + world-XY light grid
+// (GL bindings 29/30). Per-parity host-visible copies of the SAME CPU arrays the GL
+// producer (gos_terrain_lighting.cpp PackAndDispatch / BuildAndUploadLightGrid) uploads
+// each frame. Member names match the GL frag so the shared include body compiles as-is.
+struct PoolLight {
+    vec3  position;        // MC2 world (same frame as v_worldPos)
+    uint  lightType;       // 1=point 2=spot 3=terrain, 0=skip
+    vec3  color;           // R/G/B normalized 0..1
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;         // >0.5 = mover-attached (producer flag)
+    float _plPad2;
+};
+layout(set = 0, binding = 11, std430) readonly buffer TerrainLightPoolVK {
+    PoolLight poolLights[];
+};
+layout(set = 0, binding = 12, std430) readonly buffer TerrainLightGridHeaderVK {
+    uvec2 lightGridCells[];   // {firstIndex, count} per cell, row-major y*dim + x
+};
+layout(set = 0, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
+    uint  lightGridIndices[];
+};
+#define TLP_CEMENT_WORD(i) uC.cementWordsF[i]
+#include "../include/terrain_light_pool.hglsl"
 // VK-TERRAIN-LIGHTING: the STATIC sun shadow map, a VK-owned per-frame copy of the GL
 // static shadow depth texture (gos_postprocess getShadowTexture()) into a D32 depth-
 // COMPARE image. HW LINEAR compare, compareOp=LESS_OR_EQUAL, CLAMP_TO_BORDER white=1.0
@@ -364,6 +439,126 @@ layout(set = 0, binding = 5) uniform sampler2DShadow u_staticShadow;
 // single-map path). Same D32 depth-COMPARE format/sampler as static. Always a valid
 // descriptor (1x1 dummy until imported); uT.enableDynShadows gates the sample.
 layout(set = 0, binding = 7) uniform sampler2DShadow u_dynamicShadow;
+// VK-TERRAIN-CSM-NEAR-1: near-cascade array (D32 depth-COMPARE, VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+// layers = csmCount-1) + the separate lower-res full-map catch-all cascade (last cascade).
+// Both always valid descriptors (1x1/1x1x1 dummies until imported); uT.csmEnabled gates use.
+layout(set = 0, binding = 8) uniform sampler2DArrayShadow u_dynamicShadowArray;
+layout(set = 0, binding = 9) uniform sampler2DShadow u_dynamicFullMapShadow;
+
+// VK-TERRAIN-CSM-NEAR-1: verbatim port of GL's csmSampleLayer/csmSampleFullMap/csmProject/
+// calcDynamicShadow cascade-select (shadow.hglsl). Same Poisson-16 disk, gradient-adaptive
+// PCF, slope+texel bias, and cascade-select+overlap-blend math; only the uniform NAMES
+// differ (uT.csm* / u_dynamicShadowArray / u_dynamicFullMapShadow vs GL's dynamic*).
+const vec2 mv_poissonDisk[16] = vec2[](
+    vec2(-0.94201624, -0.39906216), vec2( 0.94558609, -0.76890725),
+    vec2(-0.09418410, -0.92938870), vec2( 0.34495938,  0.29387760),
+    vec2(-0.91588581,  0.45771432), vec2(-0.81544232, -0.87912464),
+    vec2(-0.38277543,  0.27676845), vec2( 0.97484398,  0.75648379),
+    vec2( 0.44323325, -0.97511554), vec2( 0.53742981, -0.47373420),
+    vec2(-0.26496911, -0.41893023), vec2( 0.79197514,  0.19090188),
+    vec2(-0.24188840,  0.99706507), vec2(-0.81409955,  0.91437590),
+    vec2( 0.19984126,  0.78641367), vec2( 0.14383161, -0.14100790)
+);
+
+float mv_csmSampleLayer(vec3 projCoords, int layer, vec3 worldPos, float NdotL, int numTaps) {
+    float slope = max(1.0 - NdotL, 0.0);
+    float texelBias = 1.5 * uT.csmCascadeTexelWorld[layer] / max(uT.csmDepthSpan, 1.0);
+    float bias = max(0.0012 * slope, 0.0004) + texelBias;
+    float currentDepth = projCoords.z - bias;
+
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_dynamicShadowArray, 0).xy);
+    float radius = max(uT.shadowSoftness, 0.5) * adaptiveScale;
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * mv_poissonDisk[i] * radius * texelSize;
+        shadow += texture(u_dynamicShadowArray, vec4(projCoords.xy + offset, float(layer), currentDepth));
+    }
+    shadow /= float(taps);
+    return shadow;
+}
+
+float mv_csmSampleFullMap(vec3 projCoords, vec3 worldPos, float NdotL, int numTaps) {
+    float slope = max(1.0 - NdotL, 0.0);
+    float texelBias = 1.5 * uT.csmFullMapTexelWorld / max(uT.csmDepthSpan, 1.0);
+    float bias = max(0.0012 * slope, 0.0004) + texelBias;
+    float currentDepth = projCoords.z - bias;
+
+    float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    float ca = cos(angle), sa = sin(angle);
+    mat2 rot = mat2(ca, sa, -sa, ca);
+
+    float depthGradient = length(vec2(dFdx(projCoords.z), dFdy(projCoords.z)));
+    float hardness = clamp(depthGradient * 180.0, 0.0, 1.0);
+    float adaptiveScale = mix(2.4, 0.8, hardness);
+
+    vec2 texelSize = 1.0 / vec2(textureSize(u_dynamicFullMapShadow, 0));
+    float radius = max(uT.shadowSoftness, 0.5) * adaptiveScale;
+    float shadow = 0.0;
+    int taps = clamp(numTaps, 1, 16);
+    for (int i = 0; i < taps; i++) {
+        vec2 offset = rot * mv_poissonDisk[i] * radius * texelSize;
+        shadow += texture(u_dynamicFullMapShadow, vec3(projCoords.xy + offset, currentDepth));
+    }
+    shadow /= float(taps);
+    return shadow;
+}
+
+bool mv_csmProject(vec3 worldPos, int layer, out vec3 projCoords) {
+    mat4 M = uT.csmCascadeMatrices[layer];
+    vec4 lsPos = M * vec4(worldPos, 1.0);
+    projCoords = lsPos.xyz / lsPos.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    if (projCoords.z > 1.0 || projCoords.z < 0.0) return false;
+    if (projCoords.xy != clamp(projCoords.xy, 0.0, 1.0)) return false;
+    return true;
+}
+
+// calcDynamicShadow (near-cascade path). Mirrors GL calcDynamicShadow's early-outs
+// (enableDynamicShadows/NdotL) via the caller (see main()); this is just the cascade
+// loop, verbatim-diffed against shadow.hglsl's PORT-BEGIN/END:calcDynamicShadowCsm block.
+float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, int numTaps) {
+    int count = clamp(uT.csmCount, 1, MC2_VK_SHADOW_CSM_MAX);
+
+    //PORT-BEGIN:calcDynamicShadowCsm
+    for (int c = 0; c < count; ++c) {
+        vec3 pc;
+        if (!mv_csmProject(worldPos, c, pc)) continue;
+
+        float vis = (c == count - 1)
+                  ? mv_csmSampleFullMap(pc, worldPos, NdotL, numTaps)
+                  : mv_csmSampleLayer(pc, c, worldPos, NdotL, numTaps);
+
+        if (c + 1 < count) {
+            vec2 d = min(pc.xy, 1.0 - pc.xy);
+            float edge = min(d.x, d.y);
+            const float band = 0.06;
+            if (edge < band) {
+                vec3 pc2;
+                if (mv_csmProject(worldPos, c + 1, pc2)) {
+                    float vis2 = (c + 1 == count - 1)
+                               ? mv_csmSampleFullMap(pc2, worldPos, NdotL, numTaps)
+                               : mv_csmSampleLayer(pc2, c + 1, worldPos, NdotL, numTaps);
+                    float t = smoothstep(0.0, band, edge);
+                    vis = mix(vis2, vis, t);
+                }
+            }
+        }
+
+        return mix(0.4, 1.0, vis);
+    }
+
+    return 1.0;
+    //PORT-END:calcDynamicShadowCsm
+}
 
 void main() {
     vec3 base;
@@ -418,8 +613,15 @@ void main() {
             int  cRow = int(cLayerIdx) / cGridSide;
             vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
-            vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb;
-            if (isTransition) {
+            vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
+            // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
+            // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
+            bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
+            if (isTransition && cementOwnAlpha) {
+                float cOwnA = texture(u_cementAtlas, cAtlasUV).a;
+                base = mix(base, cementColor, cOwnA);
+                if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
+            } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
                     bool nXm = false, nXp = false, nYm = false, nYp = false;
                     bool nXmYm = false, nXpYm = false, nXpYp = false, nXmYp = false;
@@ -502,7 +704,7 @@ void main() {
                     int  dCol = int(dLayerIdx) % dGridSide;
                     int  dRow = int(dLayerIdx) / dGridSide;
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
-                    base = texture(u_cementAtlas, dAtlasUV).rgb;
+                    base = texture(u_cementAtlas, dAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
                 }
             }
@@ -526,6 +728,7 @@ void main() {
         // baseN = height-derived macro slope (always live via the bound height SSBO);
         // dN    = weighted material detail normal (only when the array imported).
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
+        vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);  // macro slope (height SSBO)
             vec3 dN    = vec3(0.0);
@@ -540,6 +743,7 @@ void main() {
             vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
                              + dN.xy * uT.detailStrength, 1.0);
             N = normalize(pert);
+            dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         vec3 lightDir = uT.terrainLightDir.xyz;
 
@@ -560,8 +764,16 @@ void main() {
                                          u_staticShadow, uT.staticLightSpaceMatrix,
                                          uT.shadowSoftness, 16);
         }
+        // VK-TERRAIN-CSM-NEAR-1: when the near-cascade-array path is armed+valid this
+        // frame (uT.csmEnabled), use the ported cascade-select (mirrors GL sampling the
+        // near cascade up close instead of the coarse full-map wash). Falls back to the
+        // legacy single dynamic map otherwise (unchanged; MC2_VK_TERRAIN_CSM_FULLMAP_
+        // EXPERIMENTAL escape hatch is untouched — it feeds enableDynShadows, not csmEnabled).
         float dynS = 1.0;
-        if (uT.enableDynShadows != 0) {
+        if (uT.csmEnabled != 0) {
+            float NdotLdyn = max(dot(shadowN, lightDir), 0.0);
+            dynS = (NdotLdyn < 0.05) ? 1.0 : mv_calcDynamicShadowCsm(v_worldPos, NdotLdyn, 8);
+        } else if (uT.enableDynShadows != 0) {
             dynS = computeBakedShadow(v_worldPos, shadowN, lightDir,
                                       u_dynamicShadow, uT.dynamicLightSpaceMatrix,
                                       uT.shadowSoftness, 8);
@@ -569,6 +781,58 @@ void main() {
         float shadow = min(staticS, dynS);
         shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = base * normalLight * shadow;
+
+        // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
+        // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
+        // :2056-2066), ADDITIVE after the shadow multiply. Cone spill / LIGHT-REALISM
+        // reshape is baked into the pool by the shared CPU producer.
+        float moverContact = 0.0;
+        if (uT.numPoolLights > 0) {
+            lit += tlp_terrainPoolLight(v_worldPos, uT.numPoolLights,
+                                        uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
+                                        vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
+                                        uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
+                                        uT.lightPoolMoverMax, uT.lightPoolCompress,
+                                        uT.moverContactShadow, moverContact);
+        }
+        // PAD-AREA-GLOW-1 (terrain_lod_chunk.frag:2075-2076). useCement gates the read of
+        // the cement-word SSBO (dummy 16B until the snapshot lands).
+        vec3 padGlow = vec3(uT.padGlowR, uT.padGlowG, uT.padGlowB);
+        if (dot(padGlow, padGlow) > 0.0 && uT.useCement != 0)
+            lit += padGlow * tlp_padGlowMask(v_worldPos.xy, uT.halfMap, uT.mapSide, uT.padGlowSpill);
+
+        // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2, verbatim from
+        // terrain_lod_chunk.frag:2267-2277. baseColor == base here (VK has no material
+        // tint); flatLitShare == pureConcrete at stock u_cementLit=0 (the GL expression
+        // cementLightBlend*(1-u_cementLit)). Floor/gate come from the same C++ producer.
+        if (uT.ambientFloor > 0.0 && uT.ambientDayGate > 0.0) {
+            float skyF   = N.z * 0.5 + 0.5;
+            vec3  ambSky = vec3(0.55, 0.62, 0.75);
+            vec3  ambGnd = vec3(0.34, 0.30, 0.24);
+            vec3  ambCol = mix(ambGnd, ambSky, skyF);
+            float ambShadow = mix(0.55, 1.0, shadow);
+            float flatLitShare = pureConcrete ? 1.0 : 0.0;
+            vec3  ambTerm   = base * ambCol * uT.ambientFloor * ambShadow
+                            * uT.ambientDayGate * (1.0 - flatLitShare);
+            lit += ambTerm;
+        }
+
+        // MOVER-CONTACT-SHADOW-1 (terrain_lod_chunk.frag:2287-2288): contact-AO on the
+        // fully composited lighting. moverContact==0 unless MC2_MOVER_CONTACT_SHADOW>0.
+        if (moverContact > 0.0)
+            lit *= (1.0 - 0.55 * moverContact);
+
+        // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
+        // Bypasses the normal composite entirely so each channel can be inspected in
+        // isolation on a live capture. No effect when uT.csmDebugMode==0.
+        if (uT.csmDebugMode == 1)      { fragColor = vec4(vec3(normalLight), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 2) { fragColor = vec4(lightDir * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 3) { fragColor = vec4(vec3(staticS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 4) { fragColor = vec4(vec3(dynS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 5) { fragColor = vec4(vec3(shadow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 6) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 7) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
     }
 
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)

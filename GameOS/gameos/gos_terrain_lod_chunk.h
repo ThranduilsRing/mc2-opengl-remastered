@@ -271,6 +271,11 @@ bool  gos_TerrainAmbientFloorEnvSet();
 float gos_TerrainAmbientNightFloor();
 bool  gos_TerrainAmbientNightFloorEnvSet();
 float gos_TerrainAmbientDayGate();
+// VK-PARITY-TERRAIN-2: shared NIGHT-LIGHT-POOLS / PAD-AREA-GLOW-1 producers (GL uniforms + VK island).
+int   gos_TerrainLightPoolCount();
+void  gos_TerrainPadGlowRGB(float out[3]);
+void  gos_TerrainLightPoolKnobs(int* soft, float* moverDim, float* moverScale,
+                                int* moverMax, int* compress, float* contactShadow);
 // CEMENT-EDGE-CURVE-1 / gos_TerrainCementEdgeCurve() / MC2_CEMENT_EDGE_CURVE:
 // DELETED 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). It shipped at the identity
 // exponent (1.0) and, at every other value, was a no-op on every runway, road

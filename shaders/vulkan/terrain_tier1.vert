@@ -91,6 +91,22 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float missionFlatR;        // off 612
     float missionFlatG;        // off 616
     float missionFlatB;        // off 620
+    int   numPoolLights; // off 624 (VK-PARITY-TERRAIN-2; frag-only)
+    int   lightGridDim; // off 628
+    float lightGridMinX; // off 632
+    float lightGridMinY; // off 636
+    float lightGridInvCellX; // off 640
+    float lightGridInvCellY; // off 644
+    int   lightPoolSoft; // off 648
+    float lightPoolMoverDim; // off 652
+    float lightPoolMoverScale; // off 656
+    int   lightPoolMoverMax; // off 660
+    int   lightPoolCompress; // off 664
+    float moverContactShadow; // off 668
+    float padGlowR; // off 672
+    float padGlowG; // off 676
+    float padGlowB; // off 680
+    float padGlowSpill; // off 684
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).

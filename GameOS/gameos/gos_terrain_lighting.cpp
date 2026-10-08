@@ -631,6 +631,30 @@ bool GetLightGridParams(LightGridParams& out) {
     return true;
 }
 
+// VK-PARITY-TERRAIN-2: CPU views of the arrays uploaded above (see header).
+const GpuTerrainLight* GetLightPoolCpu(uint32_t* outCount) {
+    if (outCount) *outCount = s_initialized ? s_lastNumLights : 0u;
+    if (!s_initialized || s_lightBuf.empty()) return nullptr;
+    return s_lightBuf.data();
+}
+
+bool GetLightGridCpu(LightGridCpu& out) {
+    if (!s_initialized || s_lightGridDim == 0 ||
+        s_lightGridHeader.backendHandle == 0 || s_lightGridIndex.backendHandle == 0 ||
+        s_gridHeader.empty() || s_gridIndices.empty())
+        return false;
+    out.dim         = s_lightGridDim;
+    out.minXY[0]    = s_lightGridMin[0];
+    out.minXY[1]    = s_lightGridMin[1];
+    out.invCell[0]  = s_lightGridInvCell[0];
+    out.invCell[1]  = s_lightGridInvCell[1];
+    out.header      = s_gridHeader.data();
+    out.headerWords = static_cast<uint32_t>(s_gridHeader.size());
+    out.indices     = s_gridIndices.data();
+    out.indexWords  = static_cast<uint32_t>(s_gridIndices.size());
+    return true;
+}
+
 // POOL-CONSUMERS-1 (batch-6 item 6): shared object-consumer upload. See header.
 void UploadObjectLightPoolUniforms(unsigned int program) {
     static const bool s_umbrella = []() {

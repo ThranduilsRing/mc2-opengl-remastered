@@ -352,6 +352,12 @@ if(MC2_VULKAN)
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth shadow_debug_overlay water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
+    # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
+    # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
+    # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
+    file(GLOB MC2_VK_SHADER_INCLUDES
+        "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
+        "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
         foreach(_stage vert frag)
@@ -361,14 +367,14 @@ if(MC2_VULKAN)
                 add_custom_command(
                     OUTPUT "${_spv}"
                     COMMAND "${MC2_GLSLANG_VALIDATOR}" -V "${_src}" -o "${_spv}"
-                    DEPENDS "${_src}"
+                    DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslang): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
             else()
                 add_custom_command(
                     OUTPUT "${_spv}"
                     COMMAND "${MC2_GLSLC}" "${_src}" -o "${_spv}"
-                    DEPENDS "${_src}"
+                    DEPENDS "${_src}" ${MC2_VK_SHADER_INCLUDES}
                     COMMENT "SPIR-V (glslc): ${_base}.${_stage} -> ${_spv}"
                     VERBATIM)
             endif()

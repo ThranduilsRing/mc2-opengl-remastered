@@ -350,24 +350,12 @@ uniform int u_cementRampWord;
 // tile neighborhood — spill is clamped < 128 wu = one tile, so ring-1 is
 // sufficient). Grid convention matches the cement branch in main():
 // gx grows +worldX, gy grows -worldY, 128 wu tiles.
+// VK-PARITY-TERRAIN-2: body lives in the shared include (also compiled into the
+// VK terrain tier-1 frags) so both backends run the identical mask + pool loop.
+#define TLP_CEMENT_WORD(i) cementWordsF[i]
+#include <include/terrain_light_pool.hglsl>
 float padGlowMask(vec2 wp) {
-    vec2 g = vec2((wp.x + u_halfMap) / 128.0, (u_halfMap - wp.y) / 128.0);
-    int cx = clamp(int(floor(g.x)), 0, u_mapSide - 1);
-    int cy = clamp(int(floor(g.y)), 0, u_mapSide - 1);
-    float m = 0.0;
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dx = -1; dx <= 1; ++dx) {
-            int nx = cx + dx, ny = cy + dy;
-            if (nx < 0 || ny < 0 || nx >= u_mapSide || ny >= u_mapSide) continue;
-            if ((cementWordsF[nx + ny * u_mapSide] & 0x80000000u) == 0u) continue;
-            vec2 rMin = vec2(float(nx), float(ny));
-            vec2 dv = max(max(rMin - g, g - (rMin + 1.0)), vec2(0.0));
-            float distWu = length(dv) * 128.0;
-            m = max(m, 1.0 - smoothstep(0.0, max(u_padGlowSpill, 1.0), distWu));
-            if (m >= 1.0) return 1.0;
-        }
-    }
-    return m;
+    return tlp_padGlowMask(wp, u_halfMap, u_mapSide, u_padGlowSpill);
 }
 
 layout(location = 0) out vec4 fragColor;
@@ -2068,95 +2056,14 @@ void main() {
     // taps. u_numPoolLights==0 -> block skipped -> byte-identical.
     float moverContact = 0.0;   // MOVER-CONTACT-SHADOW-1: strongest under-body AO
     if (u_numPoolLights > 0) {
-        vec3 pool      = vec3(0.0);
-        vec3 poolMover = vec3(0.0);   // NIGHT-LIGHT-POOLS-4: max-combined mover glows
-        // LIGHT-CLUSTER-PERF-1: narrow the iteration range to this fragment's grid
-        // cell. Grid off (u_lightGridDim==0) -> [0, u_numPoolLights) with direct
-        // indexing, i.e. the original linear loop, byte-for-byte. Fragment outside
-        // the grid bbox -> empty range (it is outside every light's circle, so the
-        // linear loop would have summed exactly zero anyway).
-        int  lgLo = 0;
-        int  lgHi = u_numPoolLights;
-        bool lgIndexed = false;
-        if (u_lightGridDim > 0) {
-            ivec2 c = ivec2(floor((v_worldPos.xy - u_lightGridMin) * u_lightGridInvCell));
-            if (c.x >= 0 && c.y >= 0 && c.x < u_lightGridDim && c.y < u_lightGridDim) {
-                uvec2 cell = lightGridCells[c.y * u_lightGridDim + c.x];
-                lgLo = int(cell.x);
-                lgHi = int(cell.x + cell.y);
-            } else {
-                lgLo = 0;
-                lgHi = 0;
-            }
-            lgIndexed = true;
-        }
-        for (int k = lgLo; k < lgHi; ++k) {
-            int i = lgIndexed ? int(lightGridIndices[k]) : k;
-            if (poolLights[i].lightType == 0u) continue;
-            vec3  vtl = v_worldPos - poolLights[i].position;
-            float len = sqrt(dot(vtl, vtl));   // GetApproximateLength (non-ASM = sqrt)
-            bool  mover = poolLights[i]._plPad1 > 0.5;
-            float farD  = poolLights[i].farDistance;
-            float nearD = poolLights[i].closeDistance;
-            float ooD   = poolLights[i].oneOverDistance;
-            // NIGHT-LIGHT-POOLS-4: shrink mover pool radii (scale=1 -> legacy).
-            if (mover && u_lightPoolMoverScale < 0.999) {
-                float s = max(u_lightPoolMoverScale, 0.05);
-                farD *= s; nearD *= s; ooD /= s;
-            }
-            if (len >= farD) continue;
-            float falloff = (len <= nearD)
-                          ? 1.0
-                          : (farD - len) * ooD;
-            // NIGHT-LIGHT-POOLS-2: soft tail (smoothstep) kills the stamped-
-            // disc edge; gate-off = exact legacy linear ramp above.
-            if (u_lightPoolSoft != 0) {
-                float t = clamp(falloff, 0.0, 1.0);
-                falloff = t * t * (3.0 - 2.0 * t);
-            }
-            vec3 plCol = poolLights[i].color;
-            if (mover) {
-                // Mover-attached light (producer pad flag): dim vs buildings.
-                plCol *= u_lightPoolMoverDim;
-                // MOVER-CONTACT-SHADOW-1: carve the bright center of this mover's
-                // glow into a ring (the mech occludes its own down-spill) and
-                // record a contact-AO darkening under the body. Contact radius
-                // tracks the pool's close distance (its footprint). 0 => no-op.
-                if (u_moverContactShadow > 0.0) {
-                    float cr   = max(nearD, 1.0);
-                    float ring = smoothstep(0.0, cr, len);   // 0 under body -> 1 at edge
-                    falloff     *= mix(1.0, ring, u_moverContactShadow);
-                    // CONTACT-SHADOW-ALLTYPES-1: altitude fade. The mover pool light
-                    // rides the actor's SLCircle node — at ~ground for mechs/vehicles
-                    // (|vtl.z| small) but at flight altitude for helicopters (mech3d
-                    // isHelicopter=isAirborne, still tagged Mech, so already a mover).
-                    // Without this, a hovering helo glues a full-strength dark contact
-                    // disc to the ground beneath it. Fade the contact-AO by the light's
-                    // height above the ground fragment (|vtl.z|): ground movers keep
-                    // full strength (altFade~1 -> unchanged, prior verification holds);
-                    // an airborne helo keeps only a soft faded blob at its ground point.
-                    // Pure shader math over data already in the pool SSBO — no new
-                    // uniform/env var, and gated inside u_moverContactShadow>0 so
-                    // default-OFF stays byte-identical.
-                    float altFade = 1.0 - 0.8 * smoothstep(20.0, 70.0, abs(vtl.z));
-                    moverContact = max(moverContact, (1.0 - ring) * u_moverContactShadow * altFade);
-                }
-                // NIGHT-LIGHT-POOLS-4: overlapping mover pools take the MAX
-                // instead of stacking (5-mech union stays a set of glows).
-                if (u_lightPoolMoverMax != 0) {
-                    poolMover = max(poolMover, plCol * falloff);
-                    continue;
-                }
-            }
-            pool += plCol * falloff;
-        }
-        pool += poolMover;
-        // NIGHT-LIGHT-POOLS-3: soft-compress the accumulated sum (see uniform
-        // block comment). Gate-off = legacy hard clamp.
-        if (u_lightPoolCompress != 0)
-            lit += vec3(1.0) - exp(-1.6 * pool);
-        else
-            lit += min(pool, vec3(1.0));
+        // VK-PARITY-TERRAIN-2: loop body moved VERBATIM into the shared include
+        // include/terrain_light_pool.hglsl (tlp_terrainPoolLight), compiled into
+        // both this frag and the VK terrain tier-1 frags.
+        lit += tlp_terrainPoolLight(v_worldPos, u_numPoolLights,
+                                    u_lightGridDim, u_lightGridMin, u_lightGridInvCell,
+                                    u_lightPoolSoft, u_lightPoolMoverDim, u_lightPoolMoverScale,
+                                    u_lightPoolMoverMax, u_lightPoolCompress,
+                                    u_moverContactShadow, moverContact);
     }
 
     // PAD-AREA-GLOW-1: mild uniform night lift on cement pads + a feathered

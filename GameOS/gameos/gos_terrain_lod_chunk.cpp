@@ -1954,6 +1954,46 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->missionFlatLight[0] = fr; out->missionFlatLight[1] = fg; out->missionFlatLight[2] = fb;
     }
 
+    // VK-PARITY-TERRAIN-2: night light pools + light grid + pad-area glow, from the
+    // SAME producers the GL upload uses. The pool/grid ARRAYS are the CPU copies of
+    // what PackAndDispatch uploaded into GL bindings 28/29/30 this frame (cone-spill /
+    // LIGHT-REALISM reshape, vis gate and mover flag already applied there).
+    {
+        out->numPoolLights = gos_TerrainLightPoolCount();
+        out->poolLights    = nullptr;
+        out->lightGridDim  = 0;
+        out->lightGridMin[0] = out->lightGridMin[1] = 0.0f;
+        out->lightGridInvCell[0] = out->lightGridInvCell[1] = 0.0f;
+        out->lightGridHeader = nullptr; out->lightGridHeaderWords = 0;
+        out->lightGridIndices = nullptr; out->lightGridIndexWords = 0;
+        if (out->numPoolLights > 0) {
+            uint32_t n = 0;
+            const gos_terrain_lighting::GpuTerrainLight* pl = gos_terrain_lighting::GetLightPoolCpu(&n);
+            if (!pl || n == 0) {
+                out->numPoolLights = 0;
+            } else {
+                out->poolLights = pl;   // numPoolLights (<= n, capped 256) entries are read
+                gos_terrain_lighting::LightGridCpu lg{};
+                if (gos_terrain_lighting::GetLightGridCpu(lg)) {
+                    out->lightGridDim        = static_cast<int32_t>(lg.dim);
+                    out->lightGridMin[0]     = lg.minXY[0];
+                    out->lightGridMin[1]     = lg.minXY[1];
+                    out->lightGridInvCell[0] = lg.invCell[0];
+                    out->lightGridInvCell[1] = lg.invCell[1];
+                    out->lightGridHeader      = lg.header;
+                    out->lightGridHeaderWords = lg.headerWords;
+                    out->lightGridIndices     = lg.indices;
+                    out->lightGridIndexWords  = lg.indexWords;
+                }
+            }
+        }
+        gos_TerrainLightPoolKnobs(&out->lightPoolSoft, &out->lightPoolMoverDim,
+                                  &out->lightPoolMoverScale, &out->lightPoolMoverMax,
+                                  &out->lightPoolCompress, &out->moverContactShadow);
+        gos_TerrainPadGlowRGB(out->padGlow);
+        out->padGlowSpill = gos_TerrainPadGlowSpillWu();
+    }
+
     // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing
     // the VK LOD0-vs-GL-band color seam (GL gos_terrain.frag lodNear, :322-328,616-736).
     // Gate MC2_VK_TERRAIN_LODFADE requires detailEnabled (fading a feature that's already
@@ -2311,16 +2351,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // u_padGlow = exact (0,0,0) -> byte-identical. Warm color matches the
         // building SpotLight_ register tint direction (0xffe8c870-ish).
         if (s_locPadGlow >= 0) {
-            float fr = 1.f, fg = 1.f, fb = 1.f;
-            gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
-            float flMax = fr;                     // (std::max unusable: windows.h max macro)
-            if (fg > flMax) flMax = fg;
-            if (fb > flMax) flMax = fb;
-            float nf = 1.0f - flMax;
-            if (nf < 0.0f) nf = 0.0f;
-            if (nf > 1.0f) nf = 1.0f;
-            const float s = gos_TerrainPadGlowStrength() * nf;
-            glUniform3f(s_locPadGlow, s * 1.00f, s * 0.88f, s * 0.70f);
+            // VK-PARITY-TERRAIN-2: premultiply moved verbatim into the shared
+            // producer gos_TerrainPadGlowRGB() (VK terrain island reads it too).
+            float pg[3];
+            gos_TerrainPadGlowRGB(pg);
+            glUniform3f(s_locPadGlow, pg[0], pg[1], pg[2]);
             if (s_locPadGlowSpill >= 0)
                 glUniform1f(s_locPadGlowSpill, gos_TerrainPadGlowSpillWu());
         }
@@ -2339,20 +2374,13 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // -> u_numPoolLights force-uploads 0 -> the frag loop is never entered
         // -> byte-identical output (the killswitch contract).
         {
-            static const bool s_lightPoolsGate = [] {
-                const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
-                return !(v && v[0] == '0');   // default ON; =0 reverts byte-identical
-            }();
-            int poolCount = 0;
-            if (s_lightPoolsGate) {
-                const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
-                const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
-                if (poolSsbo != 0 && n > 0) {
-                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
-                                     TERRAIN_LIGHT_POOL_SSBO_BINDING, poolSsbo);
-                    poolCount = static_cast<int>(n > 256u ? 256u : n);
-                }
-            }
+            // VK-PARITY-TERRAIN-2: gate + 256 cap now resolved by the shared
+            // producer gos_TerrainLightPoolCount() (VK terrain island reads it too).
+            const int poolCount = gos_TerrainLightPoolCount();
+            if (poolCount > 0)
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                 TERRAIN_LIGHT_POOL_SSBO_BINDING,
+                                 gos_terrain_lighting::GetLightPoolSsbo());
             if (s_locNumPoolLights >= 0)
                 glUniform1i(s_locNumPoolLights, poolCount);
             // LIGHT-CLUSTER-PERF-1: bind this frame's world-space XY light grid so
@@ -4216,6 +4244,53 @@ float gos_TerrainAmbientDayGate()
     const float raw = gos_GetTerrainDaylightLevel();
     const float nf  = gos_TerrainAmbientNightFloor();
     return (raw > nf) ? raw : nf;
+}
+
+// VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1 pool count actually consumed by the
+// terrain frag this frame (GL u_numPoolLights / VK uT.numPoolLights). Moved verbatim
+// out of the GL upload: gate MC2_TERRAIN_LIGHT_POOLS (default ON; =0 -> 0), pool
+// SSBO must exist, capped at 256.
+int gos_TerrainLightPoolCount()
+{
+    static const bool s_lightPoolsGate = [] {
+        const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
+        return !(v && v[0] == '0');   // default ON; =0 reverts byte-identical
+    }();
+    if (!s_lightPoolsGate) return 0;
+    const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
+    const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
+    if (poolSsbo == 0 || n == 0) return 0;
+    return static_cast<int>(n > 256u ? 256u : n);
+}
+
+// VK-PARITY-TERRAIN-2: PAD-AREA-GLOW-1 premultiplied rgb (GL u_padGlow), moved
+// verbatim out of the GL upload. nightFactor = 1 - brightest mission flat-light
+// channel: day missions -> exact (0,0,0).
+void gos_TerrainPadGlowRGB(float out[3])
+{
+    float fr = 1.f, fg = 1.f, fb = 1.f;
+    gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
+    float flMax = fr;                     // (std::max unusable: windows.h max macro)
+    if (fg > flMax) flMax = fg;
+    if (fb > flMax) flMax = fb;
+    float nf = 1.0f - flMax;
+    if (nf < 0.0f) nf = 0.0f;
+    if (nf > 1.0f) nf = 1.0f;
+    const float s = gos_TerrainPadGlowStrength() * nf;
+    out[0] = s * 1.00f; out[1] = s * 0.88f; out[2] = s * 0.70f;
+}
+
+// VK-PARITY-TERRAIN-2: the NIGHT-LIGHT-POOLS-2..4 / MOVER-CONTACT-SHADOW-1 knob
+// constants (anonymous-namespace kTglc*) for the VK island.
+void gos_TerrainLightPoolKnobs(int* soft, float* moverDim, float* moverScale,
+                               int* moverMax, int* compress, float* contactShadow)
+{
+    if (soft)          *soft          = kTglcLightPoolSoft ? 1 : 0;
+    if (moverDim)      *moverDim      = kTglcLightPoolMoverDim;
+    if (moverScale)    *moverScale    = kTglcLightPoolMoverRadius;
+    if (moverMax)      *moverMax      = kTglcLightPoolMoverMax ? 1 : 0;
+    if (compress)      *compress      = kTglcLightPoolCompress ? 1 : 0;
+    if (contactShadow) *contactShadow = kTglcMoverContactShadow;
 }
 
 // RUNWAY-APRON-TONE-2 (MC2_CEMENT_LIT): 0..1 share of the terrain lighting term
