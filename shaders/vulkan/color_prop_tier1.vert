@@ -30,6 +30,7 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     vec4  iblSh[9];         // RenderCore SH-L2 coeffs (.w pad each)
     float iblShStrength;    // 0.0 = feature off (env/mission gate) -> evalShL2 skipped
     int   lightingReady;    // 1 = LightsData SSBO copied this frame -> ambientTerm real
+    int   glassDither;      // 1 = Bayer-dither alpha-test (GL u_glassDither); read by FS
 } uFrame;
 
 // VK-PROP-AMBIENT-IBL-1: LightsData SSBO (binding 4), verbatim mirror of
@@ -217,7 +218,12 @@ void main() {
     // Stuff-space normal to MC2 world as normalize(vec3(-n.x, n.z, n.y)).
     vec3  nMC2   = normalize(vec3(-worldNormalStuff.x, worldNormalStuff.z, worldNormalStuff.y));
     vec3  L      = normalize(uFrame.terrainSunMC2.xyz);
-    float ndl    = max(dot(nMC2, L), 0.0);
+    // GL static_prop.vert:~730: ALPHA_TEST (tree cards/foliage) instances are two-sided,
+    // so ndl uses abs(); solid props use max(.,0). The alpha-ON packet group IS the
+    // ALPHA_TEST class (same test the FS uses). Without this, back-facing cards read dark.
+    bool alphaTestPacket = (uFrame.materialReadyOn != 0) && (uPacket.packetLayerOn >= 0);
+    float ndlRaw = dot(nMC2, L);
+    float ndl    = alphaTestPacket ? abs(ndlRaw) : max(ndlRaw, 0.0);
 
     // AMBIENT: the GL LOD-chunk-parity prop look (launcher defaults) folds THREE
     // ambient-ish terms into v_argb that the island cannot feed byte-exact (ObjectLights

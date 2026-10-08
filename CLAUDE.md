@@ -49,7 +49,16 @@ MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke
 - `docs/README.md` — docs index · `docs/tier1_env_vars.md` — `MC2_*` knobs · `docs/known_issues.md` · `docs/cxx17-coding-rules.md` · `docs/GLOSSARY.md`
 - Registry of gates: `RenderCore/RendererFeatureRegistry.h` (generated view: `docs/flags.auto.yaml`)
 - Design docs still live: `docs/superpowers/strategy/` (mod VFS, data ownership)
-- Memory (maintainer machine): `~/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md`
+- Memory (maintainer machine): `~/.claude/projects/A--Games-mc2-opengl-src/memory/MEMORY.md` — before domain work, read MEMORY.md's "Must-read per domain" list and the matching `INDEX-*.md`; past root causes live there.
+
+## Repo intel tools (use before grepping blind)
+
+- `py -3 tools/repo_intel/repo_query.py preflight` — session-start sanity check
+- `py -3 tools/repo_intel/repo_query.py env --domain <shadow|terrain|...>` / `env --all` — which `MC2_*` vars exist, defaults, read sites
+- `py -3 tools/repo_intel/repo_query.py binding --conflicts` / `binding <N>` — shader/GL binding-slot index
+- `tools/repo_intel/grep_tool.py` — `grep_source()` / `symbol_lookup()` (import; lexical, not AST)
+- `tools/repo_intel/gate_status.py`, `dead_gate_scan.py` — gate defaults / dead-gate candidates (gate amnesty)
+- Subagent briefs: name the relevant memory files + these tools up front.
 
 ## Code rules
 

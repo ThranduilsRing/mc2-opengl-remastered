@@ -63,6 +63,11 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
     int   materialReady;   // 1 = sample alpha-OFF albedo array + apply vertex-baked vArgb
     int   materialReadyOn; // 1 = sample alpha-ON albedo array (alpha-test discard)
     vec4  terrainSunMC2;    // surface->sun (MC2 world); .w pad
+    // Tail mirrors color_prop_tier1.vert / vulkan_color_prop_island.cpp byte-for-byte.
+    vec4  iblSh[9];
+    float iblShStrength;
+    int   lightingReady;
+    int   glassDither;      // 1 = GL u_glassDither (MC2_SP_GLASS_DITHER, default ON)
 } uFrame;
 
 // VK-P11 STATIC-PROP MATERIAL: alpha-OFF albedo GL_TEXTURE_2D_ARRAY (copy-once import).
@@ -129,7 +134,19 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = clamp(lodOn, 0.0, 1.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
-        if (texc.a < 0.5) discard;
+        if (uFrame.glassDither != 0) {
+            // BUILDING-GLASS-1 parity: GL static_prop.frag:290-306 Bayer 4x4 ordered
+            // dither (thresholds (index+0.5)/16, gl_FragCoord-based) so partial-alpha
+            // leaf/edge texels stipple instead of hard-cutting at 0.5.
+            const float kBayer4[16] = float[16](
+                 0.5/16.0,  8.5/16.0,  2.5/16.0, 10.5/16.0,
+                12.5/16.0,  4.5/16.0, 14.5/16.0,  6.5/16.0,
+                 3.5/16.0, 11.5/16.0,  1.5/16.0,  9.5/16.0,
+                15.5/16.0,  7.5/16.0, 13.5/16.0,  5.5/16.0);
+            int bx = int(gl_FragCoord.x) & 3;
+            int by = int(gl_FragCoord.y) & 3;
+            if (texc.a < kBayer4[by * 4 + bx]) discard;
+        } else if (texc.a < 0.5) discard;
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't

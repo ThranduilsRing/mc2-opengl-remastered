@@ -234,7 +234,8 @@ struct ColorFrameUBO {
     float   iblSh[9][4];       // RenderCore SH-L2 coeffs, .w pad each      (off 96..236)
     float   iblShStrength;     // g_iblShStrength (0.0 = feature off)       (off 240)
     int32_t lightingReady;     // 1 = LightsData copied -> ambientTerm real (off 244)
-    float   _pad[2];           // pad to 16B multiple                       (off 248..256)
+    int32_t glassDither;       // 1 = Bayer alpha-test dither (GL parity)   (off 248)
+    float   _pad[1];           // pad to 16B multiple                       (off 252..256)
 };
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
@@ -1580,6 +1581,13 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             u.iblShStrength = 0.0f;
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
+        {   // GL parity: MC2_SP_GLASS_DITHER (default ON; =0 -> legacy binary a<0.5 discard).
+            static const int s_glassDither = []() {
+                const char* v = std::getenv("MC2_SP_GLASS_DITHER");
+                return (v && v[0] == '0') ? 0 : 1;
+            }();
+            u.glassDither = s_glassDither;
+        }
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
         // lighting terms so we can tell fed-real from fail-soft-constant. If
         // lightingReady==0, the VS ambientTerm falls back to a hemisphere constant
