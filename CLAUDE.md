@@ -58,6 +58,7 @@ MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke
 - `py -3 tools/repo_intel/repo_query.py binding --conflicts` / `binding <N>` — shader/GL binding-slot index
 - `tools/repo_intel/grep_tool.py` — `grep_source()` / `symbol_lookup()` (import; lexical, not AST)
 - `tools/repo_intel/gate_status.py`, `dead_gate_scan.py` — gate defaults / dead-gate candidates (gate amnesty)
+- `py -3 tools/visual_verify/ab.py --bookmarks a,b [--crop x0,y0,x1,y1] [--env K=V]` — GL vs VK capture + montage/crops/diff heatmap + MAD table (`--compare-only GL_DIR VK_DIR` reuses captures). Always A/B a day AND a night map (mc2_01_saved_205644, mc2_10_saved_204523). MAD is NOT a pass signal: mc2_10 with every building missing scored MAD 0.62 — look at the montage.
 - Subagent briefs: name the relevant memory files + these tools up front.
 
 ## Code rules
