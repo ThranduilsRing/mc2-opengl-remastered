@@ -932,4 +932,23 @@ void gos_SetSkyNumber(int skyNumber);
 // excluded. Do not add a second reader; add a call to this.
 bool gos_SkyboxFogExcludeEnabled();
 
+// VK-GL-LOST-DRAWS-1: per-draw-group GL_SAMPLES_PASSED diagnostic (env
+// MC2_VK_SCENE_GL_PRODUCER_QUERY=1 AND MC2_RENDER_BACKEND=vulkan; otherwise the
+// flag below stays false and every scope is one predicted-false branch).
+// Any tag that reports samples>0 rasterizes into the GL scene buffer that the
+// Vulkan backend discards => that layer is invisible under VK.
+// Logs [VK_GL_LOST_DRAWS v1] every 300 frames and at shutdown.
+extern bool g_gosGlLostDrawsOn;
+void gos_GlLostDrawsPush(const char* tag);
+void gos_GlLostDrawsPop();
+struct GosGlLostDrawsScope {
+    bool on_;
+    explicit GosGlLostDrawsScope(const char* tag) : on_(g_gosGlLostDrawsOn) {
+        if (on_) gos_GlLostDrawsPush(tag);
+    }
+    ~GosGlLostDrawsScope() { if (on_) gos_GlLostDrawsPop(); }
+    GosGlLostDrawsScope(const GosGlLostDrawsScope&) = delete;
+    GosGlLostDrawsScope& operator=(const GosGlLostDrawsScope&) = delete;
+};
+
 #endif // GOS_POSTPROCESS_H

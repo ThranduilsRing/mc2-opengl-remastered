@@ -42,6 +42,8 @@
 #include <cstring>
 #include <cmath>
 #include <vector>
+#include <map>
+#include <string>
 #include <cstdlib>
 #include <SDL2/SDL.h>
 #include "../../RenderCore/frame_executor.h"  // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
@@ -600,6 +602,115 @@ static bool sceneGlProducerQueryEnabled()
         return v && v[0] == '1';
     }();
     return s_on;
+}
+
+// ---------------------------------------------------------------------------
+// VK-GL-LOST-DRAWS-1: per-group GL_SAMPLES_PASSED queries over the scene FBO
+// phase. Tag stack segments the frame: Push/Pop end the running query and begin
+// one for the (new) top tag, so each segment counts only its own draws. Results
+// are read 4 frames later (ring) so there is no pipeline stall.
+// ---------------------------------------------------------------------------
+bool g_gosGlLostDrawsOn = false;
+namespace {
+struct LostSeg { const char* tag; GLuint q; };
+constexpr int kLostRing = 4;
+std::vector<LostSeg> s_lostSegs[kLostRing];
+std::vector<GLuint> s_lostFreeQ;
+std::vector<const char*> s_lostStack;
+std::map<std::string, unsigned long long> s_lostTotals;
+GLuint s_lostCur = 0;
+unsigned long long s_lostFrame = 0;
+bool s_lostFrameActive = false;
+bool s_lostDestroyed = false;
+
+void lostEndCur()
+{
+    if (s_lostCur) { glEndQuery(GL_SAMPLES_PASSED); s_lostCur = 0; }
+}
+void lostBeginCur()
+{
+    if (s_lostStack.empty()) return;
+    GLuint q;
+    if (!s_lostFreeQ.empty()) { q = s_lostFreeQ.back(); s_lostFreeQ.pop_back(); }
+    else glGenQueries(1, &q);
+    glBeginQuery(GL_SAMPLES_PASSED, q);
+    s_lostSegs[s_lostFrame % kLostRing].push_back({ s_lostStack.back(), q });
+    s_lostCur = q;
+}
+void lostResolveSlot(int slot)
+{
+    for (const LostSeg& s : s_lostSegs[slot]) {
+        GLuint n = 0;
+        glGetQueryObjectuiv(s.q, GL_QUERY_RESULT, &n);
+        s_lostTotals[s.tag] += n;
+        s_lostFreeQ.push_back(s.q);
+    }
+    s_lostSegs[slot].clear();
+}
+void lostEmit(bool final_)
+{
+    std::string line;
+    unsigned groups = 0;
+    for (const auto& kv : s_lostTotals) {
+        ++groups;
+        if (kv.second > 0) line += " " + kv.first + "=" + std::to_string(kv.second);
+    }
+    std::fprintf(stderr, "[VK_GL_LOST_DRAWS v1] frame=%llu final=%d%s total_groups=%u
+",
+                 s_lostFrame, final_ ? 1 : 0, line.c_str(), groups);
+    std::fflush(stderr);
+}
+bool lostWanted()
+{
+    static const bool s_on = sceneGlProducerQueryEnabled()
+        && mc2::renderBackend() == mc2::RenderBackend::Vulkan;
+    return s_on;
+}
+void lostFrameBegin()
+{
+    if (!lostWanted() || s_lostDestroyed) return;
+    g_gosGlLostDrawsOn = true;
+    lostResolveSlot((int)(s_lostFrame % kLostRing));
+    s_lostFrameActive = true;
+    s_lostStack.clear();
+    s_lostStack.push_back("scene_other");
+    lostBeginCur();
+}
+void lostFrameEnd()
+{
+    if (!s_lostFrameActive) return;
+    lostEndCur();
+    s_lostStack.clear();
+    s_lostFrameActive = false;
+    ++s_lostFrame;
+    if (s_lostFrame % 300 == 0) lostEmit(false);
+}
+void lostShutdown()
+{
+    if (s_lostDestroyed || !g_gosGlLostDrawsOn) return;
+    s_lostDestroyed = true;
+    g_gosGlLostDrawsOn = false;
+    if (s_lostFrameActive) lostFrameEnd();
+    for (int i = 0; i < kLostRing; ++i) lostResolveSlot(i);
+    lostEmit(true);
+    if (!s_lostFreeQ.empty()) glDeleteQueries((GLsizei)s_lostFreeQ.size(), s_lostFreeQ.data());
+    s_lostFreeQ.clear();
+}
+} // namespace
+
+void gos_GlLostDrawsPush(const char* tag)
+{
+    if (!s_lostFrameActive) return;
+    lostEndCur();
+    s_lostStack.push_back(tag);
+    lostBeginCur();
+}
+void gos_GlLostDrawsPop()
+{
+    if (!s_lostFrameActive || s_lostStack.size() <= 1) return;
+    lostEndCur();
+    s_lostStack.pop_back();
+    lostBeginCur();
 }
 
 static bool screenShadowGlCanaryEnabled()
@@ -1287,6 +1398,7 @@ void gosPostProcess::destroy()
 {
     if (!initialized_)
         return;
+    lostShutdown();
 
     destroyFBOs();
     destroyFullscreenQuad();
@@ -2381,6 +2493,7 @@ void gosPostProcess::beginScene()
     sceneHasTerrain_ = false;  // reset each frame; set by markTerrainDrawn()
 
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
+    lostFrameBegin();
     if (sceneGlProducerQueryEnabled() && sceneGlProducerQuery_ == 0)
         glGenQueries(1, &sceneGlProducerQuery_);
     if (sceneGlProducerQuery_ != 0 && !sceneGlProducerQueryActive_) {
@@ -4499,6 +4612,7 @@ void gosPostProcess::endScene()
     if (!initialized_)
         return;
 
+    lostFrameEnd();
     if (sceneGlProducerQueryActive_) {
         glEndQuery(GL_ANY_SAMPLES_PASSED);
         GLuint anySamples = 0;

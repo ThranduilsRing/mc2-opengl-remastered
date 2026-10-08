@@ -364,8 +364,8 @@ static inline unsigned long long nowNs() {
 
 // Lexical phase span. Zero-cost (two branch-predicted tests) when disabled.
 struct Span {
-    int p; unsigned long long t0;
-    explicit Span(int phase) : p(phase), t0(s_enabled ? nowNs() : 0ULL) {}
+    int p; unsigned long long t0; GosGlLostDrawsScope lost_;
+    explicit Span(int phase) : p(phase), t0(s_enabled ? nowNs() : 0ULL), lost_(kName[phase]) {}
     ~Span() { if (s_enabled) s_ns[p] += nowNs() - t0; }
 };
 
@@ -4473,7 +4473,7 @@ void MC_TextureManager::renderLists (void)
 	const unsigned long long _rlOv0 = rlcost::s_enabled ? rlcost::nowNs() : 0ULL;
 	gos_render_pass_timer::Begin(gos_render_pass_timer::Pass_Overlays);
 	{
-		ZoneScopedN("Render.TerrainMask.Solid");
+		ZoneScopedN("Render.TerrainMask.Solid"); GosGlLostDrawsScope _lost_("overlays.mask_solid");
 		TracyGpuZone("Render.TerrainMask.Solid");
 		if (gos_terrain_mask_dispatch::IsMaskDispatchReady()
 		 && gos_terrain_mask_dispatch::IsFrameMaskSolidArmed()) {
@@ -4486,7 +4486,7 @@ void MC_TextureManager::renderLists (void)
 	// craterManager->render().  They set their own GL state and restore it.
 	// Render order matches design: terrain → cement overlays → decals → (old overlays).
 	{
-		ZoneScopedN("Render.TerrainOverlays");
+		ZoneScopedN("Render.TerrainOverlays"); GosGlLostDrawsScope _lost_("overlays.terrain_overlays");
 		TracyGpuZone("Render.TerrainOverlays");
 		gos_DrawTerrainOverlays();
 	}
@@ -4499,7 +4499,7 @@ void MC_TextureManager::renderLists (void)
 	// after Render.TerrainOverlays so the static cement composites in the
 	// same slot the per-frame batch used (before mines/decals/old overlays).
 	{
-		ZoneScopedN("Render.TerrainOverlaysStatic");
+		ZoneScopedN("Render.TerrainOverlaysStatic"); GosGlLostDrawsScope _lost_("overlays.terrain_overlays_static");
 		TracyGpuZone("Render.TerrainOverlaysStatic");
 		if (gos_terrain_indirect::IsFrameOverlayArmed()) {
 			gos_terrain_indirect::DrawDecalStatic();
@@ -4511,14 +4511,14 @@ void MC_TextureManager::renderLists (void)
 	// Default-off: IsFrameMineArmed() returns false unless
 	// MC2_TERRAIN_INDIRECT_MINE=1 AND the texture-array has been built.
 	{
-		ZoneScopedN("Render.TerrainMines");
+		ZoneScopedN("Render.TerrainMines"); GosGlLostDrawsScope _lost_("overlays.terrain_mines");
 		TracyGpuZone("Render.TerrainMines");
 		if (gos_terrain_indirect::IsFrameMineArmed()) {
 			gos_terrain_indirect::DrawMineStatic();
 		}
 	}
 	{
-		ZoneScopedN("Render.Decals");
+		ZoneScopedN("Render.Decals"); GosGlLostDrawsScope _lost_("overlays.decals");
 		TracyGpuZone("Render.Decals");
 		// MC2_DYNAMIC_DECALS: push dynamic impact decals into the batch before flushing.
 		// Gate-off: gatherToDecalBatch() is a no-op; gate-on: pushes faded quads.
@@ -4531,7 +4531,7 @@ void MC_TextureManager::renderLists (void)
 	// ── End new world-space overlay batches ───────────────────────────────────
 
 	{
-		ZoneScopedN("Render.Overlays");
+		ZoneScopedN("Render.Overlays"); GosGlLostDrawsScope _lost_("overlays.overlays_old");
 		TracyGpuZone("Render.Overlays");
 	if (Environment.Renderer == 3)
 	{
