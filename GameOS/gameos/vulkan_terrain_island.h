@@ -198,6 +198,15 @@ struct Mc2TerrainTier1Feed {
     float                       shadowDistFadeMax;
     float                       shadowMinSunSin;
     int32_t                     shadowKnobFlags;   // b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
+    // VK-PARITY-F3: GL default-ON legacy material tint (same producers as the GL
+    // tint*/tintStrengthScale/snowBrightnessDampen uniforms).
+    float                       tintRock[3];
+    float                       tintGrass[3];
+    float                       tintDirt[3];
+    float                       tintConcrete[3];
+    float                       tintSnow[3];
+    float                       tintStrengthScale;
+    float                       snowBrightnessDampen;
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

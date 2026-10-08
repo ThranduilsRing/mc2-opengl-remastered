@@ -31,6 +31,10 @@
 // identity (base only), byte-identical to the pre-lighting colormap+cement frame.
 #extension GL_GOOGLE_include_directive : require
 #include "include/lighting_shadow_vk.glsl"
+#ifndef PREC
+#define PREC highp
+#endif
+#include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -148,6 +152,15 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float shadowDistFadeMax;                      // off 692
     float shadowMinSunSin;                        // off 696: 0 -> sun clamp identity
     int   shadowKnobFlags;                        // off 700: b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
+    // VK-PARITY-F3: GL default-ON legacy material tint (TERRAIN-TINT-UI-1) + snow dampen.
+    // Same producers as the GL tint*/tintStrengthScale/snowBrightnessDampen uniforms.
+    float tintRockR; float tintRockG; float tintRockB;          // off 704
+    float tintGrassR; float tintGrassG; float tintGrassB;       // off 716
+    float tintDirtR; float tintDirtG; float tintDirtB;          // off 728
+    float tintConcreteR; float tintConcreteG; float tintConcreteB;  // off 740
+    float tintSnowR; float tintSnowG; float tintSnowB;          // off 752
+    float tintStrengthScale;                                    // off 764
+    float snowBrightnessDampen;                                 // off 768
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -680,6 +693,47 @@ void main() {
     // shadowN. Gate uT.lightingEnabled==0 -> lit==base (identity) -> byte-identical to
     // the pre-lighting frame. DEFERRED vs GL: detail-normal/POM/macro-variation relief,
     // the DYNAMIC (mech/building) shadow, and hemisphere ambient fill.
+    // VK-PARITY-F3: GL baseColor pipeline (terrain_lod_chunk.frag:1546-1565,1628,1636-1663,
+    // 1838-1845) -- default-ON in GL, previously absent here so VK terrain albedo was the raw
+    // colormap (darker and less blue than GL on shaded/grassy ground, day and night):
+    //   materialTint blend (tintStrength = mix(0.18..0.50 by luma, 0.85, snow) * scale),
+    //   restore authored cement tone, cliff desaturate+darken toward rock on steep MACRO slope,
+    //   world-space break-up noise (0.78..1.18), snow brightness dampen.
+    // Overlay-sidecar coverage is 0 in VK (sidecar not fed), matching GL when OVERLAY_V2 is off.
+    vec3 baseColor = base;
+    float F3pc = pureConcrete ? 1.0 : 0.0;
+    {
+        vec4 f3W; float f3Snow;
+        mv_weights(base, f3W, f3Snow);
+        f3W = mix(f3W, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
+        f3Snow *= (1.0 - F3pc);
+        vec3 materialTint = vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB) * f3W.x
+                          + vec3(uT.tintGrassR, uT.tintGrassG, uT.tintGrassB) * f3W.y
+                          + vec3(uT.tintDirtR, uT.tintDirtG, uT.tintDirtB) * f3W.z
+                          + vec3(uT.tintConcreteR, uT.tintConcreteG, uT.tintConcreteB) * f3W.w
+                          + vec3(uT.tintSnowR, uT.tintSnowG, uT.tintSnowB) * f3Snow;
+        float colLum    = dot(base, vec3(0.299, 0.587, 0.114));
+        float tintBase  = mix(0.18, 0.50, smoothstep(0.1, 0.6, colLum));
+        float tintStr   = mix(tintBase, 0.85, f3Snow) * uT.tintStrengthScale;
+        baseColor = mix(base, materialTint, tintStr);
+        // Cement: restore the authored colormap tone (concreteColorBlend = sqrt(pureConcrete)).
+        baseColor = mix(baseColor, base, sqrt(clamp(F3pc, 0.0, 1.0)));
+        // Cliff: desaturate + darken toward rock on steep MACRO slope (un-perturbed).
+        float macroNzF3 = mv_smoothTerrainNormal(v_worldPos.xy).z;
+        float cliffBlend = smoothstep(0.85, 0.55, abs(macroNzF3));
+        if (cliffBlend > 0.01) {
+            float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
+            vec3  cliffColor = mix(vec3(luma), vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB), 0.6) * 0.8;
+            baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - F3pc));
+        }
+        // World-space two-octave break-up noise (non-snow, non-concrete).
+        float lowFreq  = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
+        float highFreq = fbm(v_worldPos.xy * 0.018,  2) * 0.5 + 0.5;
+        float breakup  = mix(0.78, 1.18, mix(lowFreq, highFreq, 0.55));
+        baseColor *= mix(1.0, breakup, (1.0 - f3Snow) * (1.0 - F3pc));
+        baseColor *= mix(1.0, uT.snowBrightnessDampen, f3Snow);
+    }
+
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
         // VK-TERRAIN-DETAIL: perturb the terrain normal like GL (terrain_lod_chunk.frag
@@ -748,7 +802,7 @@ void main() {
         }
         float shadow = min(staticS, dynS);
         shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
-        lit = base * normalLight * shadow;
+        lit = baseColor * normalLight * shadow;
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
@@ -780,7 +834,7 @@ void main() {
             vec3  ambCol = mix(ambGnd, ambSky, skyF);
             float ambShadow = mix(0.55, 1.0, shadow);
             float flatLitShare = pureConcrete ? 1.0 : 0.0;
-            vec3  ambTerm   = base * ambCol * uT.ambientFloor * ambShadow
+            vec3  ambTerm   = baseColor * ambCol * uT.ambientFloor * ambShadow
                             * uT.ambientDayGate * (1.0 - flatLitShare);
             lit += ambTerm;
         }
@@ -798,6 +852,9 @@ void main() {
         else if (uT.csmDebugMode == 3) { fragColor = vec4(vec3(staticS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 4) { fragColor = vec4(vec3(dynS), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 5) { fragColor = vec4(vec3(shadow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 6) { fragColor = vec4(baseColor, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // VK-PARITY-F3: albedo (GL MC2_LIGHTING_DEBUG_VIEW=40)
+        else if (uT.csmDebugMode == 7) { fragColor = vec4(vec3(clamp(dot(N, lightDir), 0.02, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // sun N.L diffuse (GL MC2_LIGHTING_DEBUG_VIEW=sun)
+        else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (uT.csmDebugMode == 6) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 7) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }

@@ -432,7 +432,15 @@ struct TerrainFrameUBO {
     float   shadowDistFadeMax;       // off 692
     float   shadowMinSunSin;         // off 696
     int32_t shadowKnobFlags;         // off 700: b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
-    int32_t _pad[80];                // off 704..1023: remaining pad
+    // VK-PARITY-F3 (LOCKSTEP with terrain_tier1{,_skirt}.frag): legacy material tint + snow dampen.
+    float   tintRock[3];             // off 704
+    float   tintGrass[3];            // off 716
+    float   tintDirt[3];             // off 728
+    float   tintConcrete[3];         // off 740
+    float   tintSnow[3];             // off 752
+    float   tintStrengthScale;       // off 764
+    float   snowBrightnessDampen;    // off 768
+    int32_t _pad[63];                // off 772..1023: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
@@ -2803,6 +2811,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.shadowDistFadeMax   = feed.shadowDistFadeMax;
                 u.shadowMinSunSin     = feed.shadowMinSunSin;
                 u.shadowKnobFlags     = feed.shadowKnobFlags;
+                // VK-PARITY-F3: legacy material tint (GL default-ON) from the shared producers.
+                std::memcpy(u.tintRock,     feed.tintRock,     sizeof(u.tintRock));
+                std::memcpy(u.tintGrass,    feed.tintGrass,    sizeof(u.tintGrass));
+                std::memcpy(u.tintDirt,     feed.tintDirt,     sizeof(u.tintDirt));
+                std::memcpy(u.tintConcrete, feed.tintConcrete, sizeof(u.tintConcrete));
+                std::memcpy(u.tintSnow,     feed.tintSnow,     sizeof(u.tintSnow));
+                u.tintStrengthScale    = feed.tintStrengthScale;
+                u.snowBrightnessDampen = feed.snowBrightnessDampen;
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc[par]);

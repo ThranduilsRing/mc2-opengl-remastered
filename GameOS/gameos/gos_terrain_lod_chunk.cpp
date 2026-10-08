@@ -1954,6 +1954,21 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // the GL uniform upload uses (gos_TerrainAmbientFloor/DayGate, gos_GetTerrainMissionFlatLight).
     out->ambientFloor   = gos_TerrainAmbientFloor();
     out->ambientDayGate = gos_TerrainAmbientDayGate();
+    // VK-PARITY-F3: legacy material tint producers (same values as the GL upload below).
+    {
+        float tr[3]={0.36f,0.37f,0.40f}; gos_GetTerrainTintRock(&tr[0],&tr[1],&tr[2]);
+        float tg[3]={0.35f,0.42f,0.25f}; gos_GetTerrainTintGrass(&tg[0],&tg[1],&tg[2]);
+        float td[3]={0.48f,0.42f,0.33f}; gos_GetTerrainTintDirt(&td[0],&td[1],&td[2]);
+        float tc[3]={0.55f,0.53f,0.50f}; gos_GetTerrainTintConcrete(&tc[0],&tc[1],&tc[2]);
+        float tsn[3]={0.75f,0.78f,0.84f}; gos_GetTerrainTintSnow(&tsn[0],&tsn[1],&tsn[2]);
+        for (int k = 0; k < 3; ++k) {
+            out->tintRock[k] = tr[k]; out->tintGrass[k] = tg[k]; out->tintDirt[k] = td[k];
+            out->tintConcrete[k] = tc[k]; out->tintSnow[k] = tsn[k];
+        }
+        out->tintStrengthScale = gos_GetTerrainTintStrengthScale();
+        static const float s_vkSnowDampen = [](){ const char* v = getenv("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN"); return v ? (float)atof(v) : 0.78f; }();
+        out->snowBrightnessDampen = s_vkSnowDampen;
+    }
     {
         float fr = 1.f, fg = 1.f, fb = 1.f;
         gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
@@ -2015,7 +2030,14 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     {
         int lodFadeOn = 0;
         if (out->detailEnabled)
-            lodFadeOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LODFADE") ? 1 : 0;
+            // VK-PARITY-F3: DEFAULT OFF even under the umbrella (explicit =1 still arms it).
+            // The GL chunk terrain (the shipped renderer, terrain_lod_chunk.frag) has NO
+            // camera-distance detail fade -- only the legacy gos_terrain.frag did -- so the
+            // umbrella-armed fade removed ALL detail-normal relief beyond ~4000wu (every
+            // high/RTS camera), leaving VK terrain flat-lit: measured N.x mean +0.07 vs GL
+            // +0.53 (parF3 mc2_10 night), ~15% darker bare ground. All LOD bands are VK-drawn
+            // by the same shader, so there is no LOD0-vs-band seam to close.
+            lodFadeOn = (mc2vkgate::envTriState("MC2_VK_TERRAIN_LODFADE") == 1) ? 1 : 0;
         out->lodFadeEnabled = lodFadeOn;
         // VK-FLIP oracle-visible gate-state proof: one-shot diagnostic line so a smoke
         // capture can confirm lodFadeEnabled's resolved value without a debugger attach.
