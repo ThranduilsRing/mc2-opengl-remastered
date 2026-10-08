@@ -221,7 +221,14 @@ def main(argv=None) -> int:
                     help="deterministic trigger frame (default 431, the frame the "
                          "verification fleet graded at)")
     ap.add_argument("--settle", type=int, default=30)
-    ap.add_argument("--duration", type=int, default=45)
+    ap.add_argument("--duration", type=int, default=150,
+                    help="per-bookmark wall-clock budget in seconds (default 150; "
+                         "45 never reached the trigger frame on a slow machine)")
+    ap.add_argument("--clean", action="store_true",
+                    help="VISUAL-CAPTURE-CLEAN-1: declare MC2_VISUAL_CAPTURE_CLEAN=1 "
+                         "(suppress HUD + movie-mode letterbox/fade on BOTH backends) "
+                         "so GL and VK captures are pixel-comparable. Default OFF "
+                         "keeps GL captures byte-identical to before.")
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="disable the deterministic clock (captures NOT byte-stable)")
     ap.add_argument("--show-window", action="store_true")
@@ -283,6 +290,8 @@ def main(argv=None) -> int:
     atexit.register(rvc._restore_cursor)
     atexit.register(rvc._reap_active)
 
+    if args.clean:
+        args.env_declare.append("MC2_VISUAL_CAPTURE_CLEAN=1")
     try:
         declared_env = env_pin.parse_declarations(args.env_declare)
     except ValueError as e:

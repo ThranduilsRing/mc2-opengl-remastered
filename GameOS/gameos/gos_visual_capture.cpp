@@ -924,6 +924,14 @@ void cameraParkTick(unsigned int frame)
 
 namespace gos { namespace visual_capture {
 
+bool cleanFrame() {
+    static const bool s_clean = []{
+        const char* e = getenv("MC2_VISUAL_CAPTURE_CLEAN");
+        return e && e[0] != ' ' && e[0] != '0';
+    }();
+    return s_clean;
+}
+
 bool vkCapturePending() { return g_vkReq.pending; }
 
 void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba) {

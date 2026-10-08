@@ -585,7 +585,7 @@ def main() -> int:
                     help="output dir (default tests/visual/captures/<mission>)")
     ap.add_argument("--trigger-frame", type=int, default=120)
     ap.add_argument("--settle", type=int, default=30)
-    ap.add_argument("--duration", type=int, default=45)
+    ap.add_argument("--duration", type=int, default=150)
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="DISABLE MC2_SMOKE_FIXED_TIMESTEP (captures will NOT be "
                          "byte-stable across runs; use only for eyeball checks)")

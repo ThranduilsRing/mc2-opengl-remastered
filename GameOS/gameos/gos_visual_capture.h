@@ -44,6 +44,13 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH);
 // avoid resolving the scene FBO at all on the unset hot path.
 bool active();
 
+// VISUAL-CAPTURE-CLEAN-1: MC2_VISUAL_CAPTURE_CLEAN=1 (explicit, default OFF) makes
+// GL and VK captures of one bookmark comparable: the HUD/UI batch flush and the
+// movie-mode letterbox/fade quads are suppressed on BOTH backends. Without it GL
+// reads the scene FBO (no HUD, but WITH in-scene letterbox bars) while VK reads
+// the presented image (HUD included, letterbox not drawn). Env cached once.
+bool cleanFrame();
+
 // CAMERA-PARK-1 (ported from vk branch 4b69ef78): MC2_CAMERA_PARK=
 // "x,y,rot,proj,alt[@frame]" hard-sets the live camera pose once at
 // frame >= @frame (default 300) and pins it against scripted writers

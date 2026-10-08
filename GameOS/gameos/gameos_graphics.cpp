@@ -49,6 +49,7 @@
 #include "gos_gpu_sync.h"
 #include "gos_validate.h"  // drainGLErrors (Tier-1 instr §4)
 #include "gl_state_guard.h"  // GlScopedTextureUnit (GLSTATE-TEXTURE-UNIT0-RESTORE-1)
+#include "gos_visual_capture.h"   // VISUAL-CAPTURE-CLEAN-1
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
 #include "../../mclib/cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline
 #include "../../mclib/camera_frustum_math.h"  // CAMERA-FRUSTUM-HARNESS-1 pure rect/frustum math
@@ -8143,6 +8144,14 @@ static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
 void gosRenderer::flushHUDBatch()
 {
     if (hudBatch_.empty()) {
+        hudFlushed_ = true;
+        return;
+    }
+
+    // VISUAL-CAPTURE-CLEAN-1: explicit capture flag (default OFF) drops the whole
+    // HUD/UI batch on both backends so GL/VK A/B captures are HUD-free.
+    if (gos::visual_capture::cleanFrame()) {
+        hudBatch_.clear();
         hudFlushed_ = true;
         return;
     }
