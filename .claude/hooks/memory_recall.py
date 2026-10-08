@@ -35,8 +35,11 @@ def describe(path):
 
 def main():
     try:
-        prompt = json.load(sys.stdin).get("prompt", "")
+        d = json.load(sys.stdin)
+        prompt = (d.get("prompt") or "") if isinstance(d, dict) else ""
     except Exception:
+        return
+    if not isinstance(prompt, str):
         return
     q = words(prompt)
     if len(q) < 2 or not os.path.isdir(MEM_DIR):
