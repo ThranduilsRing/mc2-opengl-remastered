@@ -265,6 +265,12 @@ float gos_TerrainPadGlowStrength();
 float gos_TerrainPadGlowSpillWu();
 // RUNWAY-APRON-TONE-2: cement lighting participation, 0..1 (MC2_CEMENT_LIT).
 float gos_TerrainCementLit();
+// VK-PARITY-TERRAIN-1: shared TERRAIN-AMBIENT-FLOOR-2 producers (GL uniform + VK island).
+float gos_TerrainAmbientFloor();
+bool  gos_TerrainAmbientFloorEnvSet();
+float gos_TerrainAmbientNightFloor();
+bool  gos_TerrainAmbientNightFloorEnvSet();
+float gos_TerrainAmbientDayGate();
 // CEMENT-EDGE-CURVE-1 / gos_TerrainCementEdgeCurve() / MC2_CEMENT_EDGE_CURVE:
 // DELETED 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). It shipped at the identity
 // exponent (1.0) and, at every other value, was a no-op on every runway, road

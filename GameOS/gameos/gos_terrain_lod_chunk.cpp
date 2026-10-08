@@ -1944,6 +1944,16 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->detailStrength = 1.0f;   // detailNormalStrength.x (terrain_detail_strength_)
     }
 
+    // VK-PARITY-TERRAIN-1: ambient floor + mission flat light from the SAME producers
+    // the GL uniform upload uses (gos_TerrainAmbientFloor/DayGate, gos_GetTerrainMissionFlatLight).
+    out->ambientFloor   = gos_TerrainAmbientFloor();
+    out->ambientDayGate = gos_TerrainAmbientDayGate();
+    {
+        float fr = 1.f, fg = 1.f, fb = 1.f;
+        gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
+        out->missionFlatLight[0] = fr; out->missionFlatLight[1] = fg; out->missionFlatLight[2] = fb;
+    }
+
     // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing
     // the VK LOD0-vs-GL-band color seam (GL gos_terrain.frag lodNear, :322-328,616-736).
     // Gate MC2_VK_TERRAIN_LODFADE requires detailEnabled (fading a feature that's already
@@ -2842,16 +2852,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // numeric-tunable form and the checker stops flagging it.
             // Removed 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). Behaviour is
             // unchanged: s_ambEnv was never read for anything but the trace line.
-            static bool s_ambEnvSet = false;
-            static const float s_amb    = []() {
-                const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR");
-                if (!e || !e[0]) return 0.35f;          // DEFAULT-ON
-                s_ambEnvSet = true;
-                float v = (float)atof(e);
-                if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
-                if (v > 2.0f)     v = 2.0f;
-                return v;
-            }();
+            // VK-PARITY: the env read + clamp now lives in gos_TerrainAmbientFloor()
+            // (below, same file) so the VK terrain island shares ONE producer.
+            const float s_amb = gos_TerrainAmbientFloor();
+            const bool  s_ambEnvSet = gos_TerrainAmbientFloorEnvSet();
             if (s_locAmbientFloor >= 0) glUniform1f(s_locAmbientFloor, s_amb);
             // ── TERRAIN-AMBIENT-FLOOR-NIGHT-1 (MC2_TERRAIN_AMBIENT_FLOOR_NIGHT,
             //    DEFAULT 0.0 = OFF = byte-identical) ────────────────────────────
@@ -2905,16 +2909,8 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // resolving lambda records, so this gate presents a single reader
             // whose unset branch (`if (!e || !e[0]) return 0.0f;`) is the
             // canonical explicit DEFAULT-OFF form.
-            static bool s_nightEnvSet = false;
-            static const float s_nightGateFloor = []() {
-                const char* e = getenv("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT");
-                if (!e || !e[0]) return 0.0f;           // DEFAULT-OFF
-                s_nightEnvSet = true;
-                float v = (float)atof(e);
-                if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
-                if (v > 1.0f)     v = 1.0f;
-                return v;
-            }();
+            const float s_nightGateFloor = gos_TerrainAmbientNightFloor();   // VK-PARITY shared producer
+            const bool  s_nightEnvSet    = gos_TerrainAmbientNightFloorEnvSet();
             // Daylight level, computed by terrain_daylight.h from the AUTHORED sun
             // pitch min the engine night state and pushed per frame by gamecam.cpp.
             // 0 on every night mission in the shipping data -> the block is skipped
@@ -4177,6 +4173,49 @@ float gos_TerrainPadGlowStrength()
         return v;
     }();
     return s_v;
+}
+
+// VK-PARITY-TERRAIN-1: shared producers for TERRAIN-AMBIENT-FLOOR-2 /
+// -NIGHT-1. Moved verbatim out of the per-frame uniform upload so the GL frag
+// uniforms and the VK terrain island read the SAME resolved values (one getenv
+// each). Semantics unchanged: floor default 0.35 (unset), clamped 0..2, NaN->0;
+// night floor default 0.0, clamped 0..1.
+static bool s_ambEnvSetFlag = false;
+float gos_TerrainAmbientFloor()
+{
+    static const float s_v = []() {
+        const char* e = std::getenv("MC2_TERRAIN_AMBIENT_FLOOR");
+        if (!e || !e[0]) return 0.35f;          // DEFAULT-ON
+        s_ambEnvSetFlag = true;
+        float v = (float)std::atof(e);
+        if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
+        if (v > 2.0f)     v = 2.0f;
+        return v;
+    }();
+    return s_v;
+}
+bool gos_TerrainAmbientFloorEnvSet() { (void)gos_TerrainAmbientFloor(); return s_ambEnvSetFlag; }
+static bool s_nightEnvSetFlag = false;
+float gos_TerrainAmbientNightFloor()
+{
+    static const float s_v = []() {
+        const char* e = std::getenv("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT");
+        if (!e || !e[0]) return 0.0f;           // DEFAULT-OFF
+        s_nightEnvSetFlag = true;
+        float v = (float)atof(e);
+        if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
+        if (v > 1.0f)     v = 1.0f;
+        return v;
+    }();
+    return s_v;
+}
+bool gos_TerrainAmbientNightFloorEnvSet() { (void)gos_TerrainAmbientNightFloor(); return s_nightEnvSetFlag; }
+// Daylight gate actually uploaded: max(daylight level, night floor).
+float gos_TerrainAmbientDayGate()
+{
+    const float raw = gos_GetTerrainDaylightLevel();
+    const float nf  = gos_TerrainAmbientNightFloor();
+    return (raw > nf) ? raw : nf;
 }
 
 // RUNWAY-APRON-TONE-2 (MC2_CEMENT_LIT): 0..1 share of the terrain lighting term

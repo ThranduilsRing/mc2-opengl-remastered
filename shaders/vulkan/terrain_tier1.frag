@@ -117,6 +117,12 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   edgeStitch;                             // off 592: packed N/S/W/E coarser-neighbor stride bytes
     int   quadCountX;                             // off 596: max local offset X for edge tests
     int   quadCountY;                             // off 600: max local offset Y for edge tests
+    // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2 + CEMENT-NIGHT-LIGHT-1 (scalars: no std140 vec3 pitfalls)
+    float ambientFloor;                           // off 604: gos_TerrainAmbientFloor() (GL u_terrainAmbientFloor)
+    float ambientDayGate;                         // off 608: gos_TerrainAmbientDayGate() (GL u_terrainAmbientDayGate)
+    float missionFlatR;                           // off 612: gos_GetTerrainMissionFlatLight() (GL u_missionFlatLight)
+    float missionFlatG;                           // off 616
+    float missionFlatB;                           // off 620
 } uT;
 
 // VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
@@ -555,8 +561,15 @@ void main() {
             int  cRow = int(cLayerIdx) / cGridSide;
             vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cTileUV) / float(cGridSide);
-            vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb;
-            if (isTransition) {
+            vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
+            // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
+            // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
+            bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
+            if (isTransition && cementOwnAlpha) {
+                float cOwnA = texture(u_cementAtlas, cAtlasUV).a;
+                base = mix(base, cementColor, cOwnA);
+                if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
+            } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
                     bool nXm = false, nXp = false, nYm = false, nYp = false;
                     bool nXmYm = false, nXpYm = false, nXpYp = false, nXmYp = false;
@@ -639,7 +652,7 @@ void main() {
                     int  dCol = int(dLayerIdx) % dGridSide;
                     int  dRow = int(dLayerIdx) / dGridSide;
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dTileUV) / float(dGridSide);
-                    base = texture(u_cementAtlas, dAtlasUV).rgb;
+                    base = texture(u_cementAtlas, dAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
                 }
             }
@@ -716,6 +729,22 @@ void main() {
         float shadow = min(staticS, dynS);
         shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = base * normalLight * shadow;
+
+        // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2, verbatim from
+        // terrain_lod_chunk.frag:2267-2277. baseColor == base here (VK has no material
+        // tint); flatLitShare == pureConcrete at stock u_cementLit=0 (the GL expression
+        // cementLightBlend*(1-u_cementLit)). Floor/gate come from the same C++ producer.
+        if (uT.ambientFloor > 0.0 && uT.ambientDayGate > 0.0) {
+            float skyF   = N.z * 0.5 + 0.5;
+            vec3  ambSky = vec3(0.55, 0.62, 0.75);
+            vec3  ambGnd = vec3(0.34, 0.30, 0.24);
+            vec3  ambCol = mix(ambGnd, ambSky, skyF);
+            float ambShadow = mix(0.55, 1.0, shadow);
+            float flatLitShare = pureConcrete ? 1.0 : 0.0;
+            vec3  ambTerm   = base * ambCol * uT.ambientFloor * ambShadow
+                            * uT.ambientDayGate * (1.0 - flatLitShare);
+            lit += ambTerm;
+        }
 
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
         // Bypasses the normal composite entirely so each channel can be inspected in

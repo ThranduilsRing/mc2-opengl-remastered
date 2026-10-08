@@ -277,6 +277,9 @@ BASELINE = {
         ("shaders/terrain_overlay.frag", "hemiSkyTint", "0.55,0.62,0.75"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientGround", "0.14,0.13,0.11"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientSky", "0.00,0.02,0.08"),
+        # VK-PARITY-TERRAIN-1: verbatim port of terrain_lod_chunk.frag's TERRAIN-AMBIENT-FLOOR-2 pair (INTENTIONAL: parity).
+        ("shaders/vulkan/terrain_tier1.frag", "ambGnd", "0.34,0.30,0.24"),
+        ("shaders/vulkan/terrain_tier1.frag", "ambSky", "0.55,0.62,0.75"),
     ],
     # Unnamed inline floors. THREE different answers to "how dark may a fully
     # shadowed fragment get": 0.4 (the shared shadow kernel and its four VK
@@ -294,6 +297,8 @@ BASELINE = {
         ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/screen_shadow_csm.frag", "mix:shadow", "0.4->1.0"),
         ("shaders/vulkan/screen_shadow_static.frag", "mix:shadow", "0.4->1.0"),
+        # VK-PARITY-TERRAIN-1: same 0.55 terrain ambient-occlusion floor as the GL terrain frag (INTENTIONAL: parity).
+        ("shaders/vulkan/terrain_tier1.frag", "mix:shadow", "0.55->1.0"),
     ],
     # Which TG_LIGHT_* symbols each shader mentions in CODE. This is the
     # light-type support matrix: static_prop.vert names only AMBIENT/INFINITE/

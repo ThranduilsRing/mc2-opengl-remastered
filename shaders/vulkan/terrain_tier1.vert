@@ -86,6 +86,11 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   edgeStitch;          // off 592: packed N/S/W/E coarser-neighbor stride bytes
     int   quadCountX;          // off 596: max local offset X for edge tests
     int   quadCountY;          // off 600: max local offset Y for edge tests
+    float ambientFloor;        // off 604 (VK-PARITY-TERRAIN-1; frag-only)
+    float ambientDayGate;      // off 608
+    float missionFlatR;        // off 612
+    float missionFlatG;        // off 616
+    float missionFlatB;        // off 620
 } uT;
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).

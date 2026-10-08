@@ -402,7 +402,13 @@ struct TerrainFrameUBO {
     int32_t edgeStitch;              // off 592: VK-TERRAIN-EDGE-STITCH-1 packed N/S/W/E stride bytes
     int32_t quadCountX;              // off 596: max local offset X for edge tests
     int32_t quadCountY;              // off 600: max local offset Y for edge tests
-    int32_t _pad[105];               // off 604..1023: remaining pad
+    // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2 + CEMENT-NIGHT-LIGHT-1 (LOCKSTEP with frag/verts).
+    float   ambientFloor;            // off 604
+    float   ambientDayGate;          // off 608
+    float   missionFlatR;            // off 612
+    float   missionFlatG;            // off 616
+    float   missionFlatB;            // off 620
+    int32_t _pad[100];               // off 624..1023: remaining pad
 };
 static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
@@ -2650,6 +2656,12 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                 u.edgeStitch        = (int32_t)feed.patches[i].edgeStitch;
                 u.quadCountX        = feed.patches[i].quadCountX;
                 u.quadCountY        = feed.patches[i].quadCountY;
+                // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
+                u.ambientFloor      = feed.ambientFloor;
+                u.ambientDayGate    = feed.ambientDayGate;
+                u.missionFlatR      = feed.missionFlatLight[0];
+                u.missionFlatG      = feed.missionFlatLight[1];
+                u.missionFlatB      = feed.missionFlatLight[2];
                 slots[i] = u;
             }
             vmaUnmapMemory(s->allocator, s->uboAlloc[par]);

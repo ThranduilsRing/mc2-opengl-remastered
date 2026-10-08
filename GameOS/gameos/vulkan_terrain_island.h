@@ -167,6 +167,11 @@ struct Mc2TerrainTier1Feed {
     uint64_t                    visualHeightVersion;   // bumps on UploadVisualHeightFull (snapshot key)
     int32_t                     visualSide;            // V = (mapSide-1)*4+1 (0 = bake not loaded)
     float                       visualDisplaceFar;     // MC2_TERRAIN_VISUAL_DISPLACE_FAR fade, 0..1 (GL default 1)
+    // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2 (floor, daylight gate) and
+    // CEMENT-NIGHT-LIGHT-1 (mission flat light rgb) -- same producers GL uploads.
+    float                       ambientFloor;
+    float                       ambientDayGate;
+    float                       missionFlatLight[3];
 };
 
 // Provided BY the GL terrain path (gos_terrain_lod_chunk.cpp). The island calls this

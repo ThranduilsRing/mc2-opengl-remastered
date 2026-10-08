@@ -75,6 +75,11 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     int   edgeStitch;          // off 592
     int   quadCountX;          // off 596
     int   quadCountY;          // off 600
+    float ambientFloor;        // off 604 (VK-PARITY-TERRAIN-1; frag-only)
+    float ambientDayGate;      // off 608
+    float missionFlatR;        // off 612
+    float missionFlatG;        // off 616
+    float missionFlatB;        // off 620
 } uT;
 
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
