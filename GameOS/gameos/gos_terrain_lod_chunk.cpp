@@ -27,6 +27,7 @@
 
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
+#include "vulkan_sky_island.h"       // VK-PARITY-F3: HDRI sky behind the terrain prefix
 #include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_feed_dump.h"            // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 #endif
@@ -3546,6 +3547,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     if (s_vkTerrainEnabled) {
         if (gosPostProcess* ppVk = getGosPostProcess()) {
             const int ran = mc2_vk_terrain_island_run(ppVk->getWidth(), ppVk->getHeight());
+            // VK-PARITY-F3: the terrain pass just cleared color0 to the flat sky colour;
+            // fill the untouched (depth==far) pixels with the HDRI sky GL would have drawn.
+            if (ran) (void)mc2_vk_sky_island_run(ppVk->getWidth(), ppVk->getHeight());
             if (s_vkTerrainActive && s_vkTerrainFeedValid && ran == 0) {
                 // We SKIPPED LOD0 this frame but VK failed to co-write -> this frame has a
                 // 1-frame LOD0 gap. Loud one-shot; the island latched disabled so ready

@@ -30,6 +30,7 @@
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)
 #include "vulkan_shared_scene_color.h"  // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL (gated)
 #include "vulkan_shadow_island_live.h"  // VK CSM direct shadow debug overlay view
+#include "vulkan_sky_island.h"         // VK-PARITY-F3: HDRI sky VK owner
 #endif
 #include "render_backend_select.h"      // VK-P14b: mc2::renderBackend() (GL-safe, no VK dep)
 #ifdef MC2_VULKAN
@@ -5104,6 +5105,31 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         viewMat[1], viewMat[5], viewMat[9],
         viewMat[2], viewMat[6], viewMat[10]
     };
+
+#ifdef MC2_VULKAN_ISLAND
+    // VK-PARITY-F3: under the VK umbrella the VK terrain island is the native first owner
+    // and the presented image is VK-composited, so a GL draw here lands in a discarded
+    // buffer (VK showed the flat 0.55/0.62/0.72 clear instead of this HDRI sky). Hand the
+    // exact same inputs (inverse projection, inverse view rotation, sun-sync yaw, GL HDRI
+    // tex id) to the VK sky island, which draws the identical equirect lookup behind the
+    // terrain, and skip the GL draw. Gate off -> this block is dead and GL is unchanged.
+    if (mc2_vk_sky_island_enabled()) {
+        // Sun-sync yaw: LOCKSTEP with the GL path below (manual trim + baked-sun align).
+        static const float s_vkAzOffsetRad = []() {
+            const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
+            return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
+        }();
+        float vkSkyYaw = s_vkAzOffsetRad;
+        if (hdriBakedSunValid_) {
+            float lx = 0.0f, ly = 0.0f, lz = 0.0f;
+            gos_GetTerrainLightDir(&lx, &ly, &lz);
+            vkSkyYaw += hdriBakedSunAz_ - atan2f(ly, -lx);
+        }
+        skyYaw_ = vkSkyYaw;  // WATER-HDRI-REFL-1: cache for the water shader uniform (same as GL path)
+        mc2_vk_sky_submit(invProjArray, invViewRot, vkSkyYaw, (unsigned int)hdriTex_);
+        return;
+    }
+#endif
 
     // Query runtime cap on color attachments so save/mask/restore
     // adapts to whichever buffers are bound (ObjectID attachment 2
