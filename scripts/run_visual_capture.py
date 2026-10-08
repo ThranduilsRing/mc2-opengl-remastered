@@ -179,7 +179,7 @@ def park_cursor_center() -> None:
         return
     _save_cursor()  # WATER-VISUAL-GATE-1: snapshot once before the first park
     try:
-        outcome = park_cursor_if_edge()
+        outcome = park_cursor_if_edge(engine_suppressed=True)  # child always runs MC2_SMOKE_MODE=1
     except Exception as e:
         print(f"[viscap] WARN park cursor: {e}", file=sys.stderr)
         return

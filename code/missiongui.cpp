@@ -6956,7 +6956,7 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 	// The OS cursor sits wherever the user left it (often a screen corner),
 	// which would drive the camera differently each run and torpedo
 	// same-config visual-diff determinism.
-	if (!cameraClicked && !isPaused() && !VisualDiff::isCaptureEnabled()) // sebi: only scoll if not paused
+	if (!cameraClicked && !isPaused() && !VisualDiff::isCaptureEnabled() && !SmokeMode::state().enabled) // sebi: only scoll if not paused
 	{
 		if ( mouseX <= (screenScrollLeft))
 			scrollLeft();

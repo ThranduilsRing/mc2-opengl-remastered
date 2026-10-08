@@ -578,7 +578,7 @@ def cursor_is_edge_safe(pos: Optional[Point] = None) -> Optional[bool]:
     return (b < x < w - b) and (b < y < h - b)
 
 
-def park_cursor_if_edge(reason: str = "") -> str:
+def park_cursor_if_edge(reason: str = "", engine_suppressed: bool = False) -> str:
     """Park the pointer at screen centre ONLY if it could drive edge-scroll.
 
     Returns one of: "inert" (no desktop / non-Windows), "disabled"
@@ -592,6 +592,10 @@ def park_cursor_if_edge(reason: str = "") -> str:
     global _PARK_ORIGIN, _PARK_ORIGIN_SAVED
     if os.environ.get("MC2_CURSOR_NO_PARK") == "1":
         return "disabled"
+    # Engine skips edge-scroll under MC2_SMOKE_MODE=1 too; callers that set it only in
+    # the child env (run_visual_capture) pass engine_suppressed=True.
+    if engine_suppressed or os.environ.get("MC2_SMOKE_MODE") == "1":
+        return "engine-suppressed"
     u = _user32()
     if u is None:
         return "inert"
