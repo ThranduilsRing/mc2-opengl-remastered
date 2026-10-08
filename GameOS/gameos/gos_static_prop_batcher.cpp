@@ -9900,6 +9900,8 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // feeding it directly gives the island the SAME prop set GL flush() draws — trees,
 // tents, misc props included — without the accumulation hazard. Read-only: does NOT
 // mutate any batcher state. Output is a reused static scratch vector.
+extern "C" uint32_t mc2_static_prop_vertex_stride(void) { return (uint32_t)kVertexStride; }
+
 // Called by txmmgr once per frame at the point where the GL flush() is skipped because
 // the VK color island handled the frame (flush() owns the clear on the GL path).
 extern "C" void mc2_color_prop_island_end_frame() {

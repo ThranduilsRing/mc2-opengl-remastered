@@ -564,7 +564,7 @@ bool init_island(ShadowIsland* s, int size) {
         }
 
         VkVertexInputBindingDescription vib{};
-        vib.binding = 0; vib.stride = s->vertexStride ? s->vertexStride : sizeof(float) * 3;
+        vib.binding = 0; vib.stride = mc2_static_prop_vertex_stride();  // pipeline is baked before geometry upload: s->vertexStride is still 0 here
         vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription via{};
         via.location = 0; via.binding = 0; via.format = VK_FORMAT_R32G32B32_SFLOAT; via.offset = 0;
@@ -820,6 +820,8 @@ bool upload_geometry_once(ShadowIsland* s) {
     if (feed.vboBytes == 0 || feed.iboBytes == 0 || feed.glVbo == 0 || feed.glIbo == 0) return false;
 
     s->vertexStride = feed.vertexStride;
+    if (feed.vertexStride != mc2_static_prop_vertex_stride())
+        vlog("ERROR: feed vertexStride %u != pipeline stride %u (shadow geometry will explode).", feed.vertexStride, mc2_static_prop_vertex_stride());
 
     if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;
     if (!make_buffer(s, feed.iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  &s->ibo, &s->iboAlloc, true)) return false;

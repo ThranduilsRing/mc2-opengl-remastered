@@ -73,6 +73,8 @@ struct Mc2ColorPropFeed {
     float       objectDepthBias;   // reverse-Z surface bias (== OBJECT_DEPTH_BIAS)
 };
 int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out);
+// Batcher's real packed vertex stride (kVertexStride); valid before geometry upload.
+uint32_t mc2_static_prop_vertex_stride(void);
 
 // VK-P11 STATIC-PROP MATERIAL (MC2_VK_PROP_MATERIAL) — copy-once material feed.
 // Hands the color island the GL name of the alpha-OFF albedo GL_TEXTURE_2D_ARRAY
