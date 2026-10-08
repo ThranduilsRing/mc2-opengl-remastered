@@ -21,7 +21,7 @@ layout(location = 1) in vec3  a_normal;
 layout(location = 2) in vec2  a_uv;
 layout(location = 3) in uvec4 a_boneIndices;  // u8x4 -> uvec4
 layout(location = 4) in vec4  a_boneWeights;  // u8x4 normalized -> [0,1]
-layout(location = 5) in vec2  a_tangentOct;   // s16x2 normalized (unused)
+layout(location = 5) in vec2  a_tangentOct;   // s16x2 normalized (NORMALS-1 tangent)
 layout(location = 6) in uint  a_aRGBLight;    // BGRA packed (unused)
 
 layout(set = 0, binding = 0, std140) uniform MechFrameUBO {
@@ -31,6 +31,15 @@ layout(set = 0, binding = 0, std140) uniform MechFrameUBO {
     int   lightingReady;   // 1 = calc_light valid (LightsData copied); else flat white
     int   _pad1;
     vec4  fogColorRGB;     // g_scene.fogColor.rgb (.a unused)
+    // VK-PARITY-MECH-1 FS shading block (VS ignores; layout lockstep with the FS +
+    // vulkan_mech_island.cpp MechFrameUBO).
+    vec4  cameraWorldPos;
+    vec4  shadeA;
+    vec4  shadeB;
+    vec4  shadeC;
+    vec4  poolF;
+    ivec4 poolI;
+    ivec4 miscI;
 } uFrame;
 
 // GpuMechInstance mirror (64B; LOCKSTEP with gos_mech_batcher.h:35).
@@ -139,6 +148,13 @@ layout(location = 1) out vec3 vNormalGL;   // MC2/GL-world normal (swapped), for
 layout(location = 2) out vec3 vLitColor;   // per-vertex Lambert lit color (v_litColor.rgb)
 layout(location = 3) out vec4 vHighlight;  // inst.aRGBHighlight forwarded to FS
 layout(location = 4) out vec4 vFog;        // .rgb=g_scene fog color, .a=per-actor haze
+// VK-PARITY-MECH-1: the mech.vert MC2_USE_VIEW_UNIFORMS + MC2_IMPORTED_MECH_MATERIAL
+// varyings (both compiled into the GL default variant).
+layout(location = 5) out vec3 vWorldPos;            // worldMC2 (== GL v_worldPos)
+layout(location = 6) flat out vec3 vMechSunDirGL;   // light_dir.xyz Stuff->GL swapped
+layout(location = 7) flat out int  vMechSunFound;
+layout(location = 8) out vec3 vTangentGL;           // NORMALS-1 world tangent
+layout(location = 9) flat out uint vImportedMech;   // renderFlags >> 3 & 7
 
 void main() {
     GpuMechInstance inst = uInst.instances[gl_InstanceIndex];
@@ -183,4 +199,38 @@ void main() {
     vLitColor = baseLight;
     vHighlight = inst.aRGBHighlight;
     vFog      = vec4(uFrame.fogColorRGB.rgb, inst.fogRGB.a);
+
+    // VK-PARITY-MECH-1: port of mech.vert's imported-mech marker + octahedral
+    // tangent decode (MC2_IMPORTED_MECH_MATERIAL) and the specular sun finder
+    // (MC2_USE_VIEW_UNIFORMS) -- verbatim, same SSBO bytes.
+    vImportedMech = (inst.renderFlags >> 3) & 7u;
+    {
+        vec2 te = a_tangentOct;                                  // s16-normalized [-1,1]
+        vec3 tLocal = vec3(te.xy, 1.0 - abs(te.x) - abs(te.y));
+        if (tLocal.z < 0.0)
+            tLocal.xy = (1.0 - abs(tLocal.yx)) *
+                        vec2(tLocal.x >= 0.0 ? 1.0 : -1.0, tLocal.y >= 0.0 ? 1.0 : -1.0);
+        tLocal = normalize(tLocal);
+        vec3 tStuff = mat3(boneT) * tLocal;
+        vec3 tGL    = vec3(-tStuff.x, tStuff.z, tStuff.y);       // same swap as worldNormal
+        tGL = tGL - worldNormal * dot(worldNormal, tGL);
+        float tLen = length(tGL);
+        vTangentGL = (tLen > 1e-5) ? (tGL / tLen) : vec3(0.0);
+    }
+    vWorldPos     = worldMC2;
+    vMechSunDirGL = vec3(0.0);
+    vMechSunFound = 0;
+    if (uFrame.lightingReady != 0) {
+        ObjectLights ld_spec = uLights.light[int(inst.lightDataIndex)];
+        int n_spec = min(ld_spec.numLights.x, MAX_LIGHTS_IN_WORLD);
+        for (int i = 0; i < n_spec; ++i) {
+            int lt = int(ld_spec.light_dir[i].w);
+            if (lt == TG_LIGHT_INFINITE || lt == TG_LIGHT_INFINITEWITHFALLOFF) {
+                vec3 sdStuff  = ld_spec.light_dir[i].xyz;
+                vMechSunDirGL = vec3(-sdStuff.x, sdStuff.z, sdStuff.y);
+                vMechSunFound = 1;
+                break;
+            }
+        }
+    }
 }

@@ -49,6 +49,8 @@ struct Mc2MechDrawRun {
     uint32_t instanceCount;
     uint32_t materialFlags; // bit0: ALPHA_TEST
     uint32_t slot0GlTex;    // LIVE GL_TEXTURE_2D id for this run's paint scheme (0=none)
+    uint32_t aoGlTex;       // VK-PARITY-MECH-1: GL unit-6 AO map id (AO-1; 0=none)
+    uint32_t normalGlTex;   // VK-PARITY-MECH-1: GL unit-7 normal map id (NORMALS-1; 0=none)
 };
 
 // Copy-ONCE geometry feed: the shared mech VBO/IBO GL names + 48B stride.
@@ -90,6 +92,29 @@ struct Mc2MechFrameFeed {
     // the verification-only FEED-AUDIT byte-compare.
     const void*  lightDataCpu;       // TG_HWLightsData[count] (3600B each) or null
     uint64_t     lightDataCpuBytes;  // count * 3600
+    // VK-PARITY-MECH-1: default mech FS shading inputs, from the SAME producers the
+    // GL flush uploads (gpuMechShadingParams / GetObjectLightPoolParams / the
+    // RenderCore main-view cameraWorldPos that feeds the GL ViewUniforms UBO).
+    float        cameraWorldPos[4];  // GL world (ViewUniforms.cameraWorldPos)
+    float        ambientStrength;    // MECH-AMBIENT-1 (effective)
+    float        specularStrength;   // MECH-SPECULAR-V1 (effective)
+    float        metalRoughness;
+    float        glassRoughness;
+    float        glassLumaThresh;
+    float        glassMaxChanThresh;
+    int32_t      specDebugMask;
+    float        importedGamma;
+    float        importedAlbedoScale;
+    float        aoStrength;
+    float        normalStrength;
+    int32_t      numPoolLights;      // object pools (0 = off / none)
+    const void*  poolLights48;       // GpuTerrainLight[numPoolLights] (48B each) or null
+    int32_t      poolSoft;
+    float        poolMoverDim;
+    float        poolMoverScale;
+    int32_t      poolMoverMax;
+    int32_t      poolCompress;
+    float        poolObjScale;
 };
 
 // Filled by gos_mech_batcher.cpp. Return 0 when geometry/gate not ready.

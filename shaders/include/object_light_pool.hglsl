@@ -1,0 +1,68 @@
+#ifndef __OBJECT_LIGHT_POOL_HGLSL__
+#define __OBJECT_LIGHT_POOL_HGLSL__
+
+// VK-PARITY-MECH-1: object-side night light-pool walk (POOL-CONSUMERS-1), shared
+// VERBATIM by the GL object shaders (via light_pools.hglsl::calcLightPools ->
+// static_prop.frag / mech.frag / gos_tex_vertex_lighted.frag) and the VK tier-1
+// mech FS (shaders/vulkan/mech_tier1.frag). One body, two backends.
+//
+// The INCLUDER must declare, before including this file:
+//   struct PoolLight { ... }   (48B std430, lockstep with gos_terrain_lighting.h
+//                               GpuTerrainLight)
+//   poolLights[]               GL binding 28 / VK mech set0 binding 5
+// All knobs arrive as parameters (GL passes its uniforms, VK its UBO fields; both
+// from gos_terrain_lighting::GetObjectLightPoolParams), so this include declares
+// no uniforms and no bindings.
+//
+// NOTE: bare float/vec types only -- no PREC qualifier.
+
+// Additive pool light reaching worldPosMC2 (MC2/Stuff frame). Mirrors the
+// terrain_lod_chunk.frag loop exactly (soft tail, mover dim/scale/max-blend,
+// tone compression), then applies the object-side scale.
+vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
+                         float moverDim, float moverScale, int moverMax,
+                         int poolCompress, float objScale)
+{
+    if (numPoolLights <= 0) return vec3(0.0);
+    vec3 pool      = vec3(0.0);
+    vec3 poolMover = vec3(0.0);
+    for (int i = 0; i < numPoolLights; ++i) {
+        if (poolLights[i].lightType == 0u) continue;
+        vec3  vtl = worldPosMC2 - poolLights[i].position;
+        float len = sqrt(dot(vtl, vtl));
+        bool  mover = poolLights[i]._plPad1 > 0.5;
+        float farD  = poolLights[i].farDistance;
+        float nearD = poolLights[i].closeDistance;
+        float ooD   = poolLights[i].oneOverDistance;
+        if (mover && moverScale < 0.999) {
+            float s = max(moverScale, 0.05);
+            farD *= s; nearD *= s; ooD /= s;
+        }
+        if (len >= farD) continue;
+        float falloff = (len <= nearD)
+                      ? 1.0
+                      : (farD - len) * ooD;
+        if (poolSoft != 0) {
+            float t = clamp(falloff, 0.0, 1.0);
+            falloff = t * t * (3.0 - 2.0 * t);
+        }
+        vec3 plCol = poolLights[i].color;
+        if (mover) {
+            plCol *= moverDim;
+            if (moverMax != 0) {
+                poolMover = max(poolMover, plCol * falloff);
+                continue;
+            }
+        }
+        pool += plCol * falloff;
+    }
+    pool += poolMover;
+    vec3 outPool;
+    if (poolCompress != 0)
+        outPool = vec3(1.0) - exp(-1.6 * pool);
+    else
+        outPool = min(pool, vec3(1.0));
+    return outPool * objScale;
+}
+
+#endif // __OBJECT_LIGHT_POOL_HGLSL__

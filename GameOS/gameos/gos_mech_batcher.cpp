@@ -27,6 +27,7 @@
 #include "utils/shader_builder.h"
 #include "gos_postprocess.h"           // getGosPostProcess()->getDynamicLightSpaceMatrix()
 #include "gos_terrain_lighting.h"      // POOL-CONSUMERS-1: UploadObjectLightPoolUniforms
+#include "view_uniforms_gl.h"          // VK-PARITY-MECH-1: RenderCore::getCurrentView (cameraWorldPos)
 #include "../../mclib/txmmgr.h"       // mcTextureManager->get_gosTextureHandle (live resolve)
 #include "../../mclib/terrain_depth_bias.h"  // VK-P14 MECH: OBJECT_DEPTH_BIAS feed
 #ifdef MC2_VULKAN_ISLAND
@@ -451,6 +452,24 @@ float g_importedMechGamma       = 1.0f;
 float g_importedMechAlbedoScale = 1.1f;
 float g_importedMechAoStrength  = 0.5f;   // AO-1: imported-mech AO multiply strength
 float g_importedMechNormalStrength = 1.0f; // NORMALS-1: imported-mech normal-map strength
+
+// VK-PARITY-MECH-1: shared producer of the default mech shading knobs (see header).
+void gpuMechShadingParams(GpuMechShadingParams* o) {
+    if (!o) return;
+    o->ambientStrength     = s_mechAmbientV1 ? s_mechAmbientStrength : 0.0f;
+    o->specularStrength    = (s_mechSpecularV1 && s_mechViewUniforms)
+                                 ? s_mechSpecularStrength : 0.0f;
+    o->metalRoughness      = s_mechMetalRoughness;
+    o->glassRoughness      = s_mechGlassRoughness;
+    o->glassLumaThresh     = s_mechGlassLumaThresh;
+    o->glassMaxChanThresh  = s_mechGlassMaxChanThresh;
+    o->specDebugMask       = s_mechSpecDebugMask ? 1 : 0;
+    o->importedGamma       = g_importedMechGamma;
+    o->importedAlbedoScale = g_importedMechAlbedoScale;
+    o->aoStrength          = g_importedMechAoStrength;
+    o->normalStrength      = g_importedMechNormalStrength;
+}
+
 static GLint s_loc_u_importedGamma           = -1;
 static GLint s_loc_u_importedAlbedoScale     = -1;
 static GLint s_loc_u_mechAoTex               = -1;   // AO-1: AO sampler (unit 6)
@@ -2482,16 +2501,21 @@ void GpuMechBatcher::flush() {
         if (s_loc_u_pbrPaintOrmTex    >= 0) glUniform1i(s_loc_u_pbrPaintOrmTex,    4);
     }
 
+    // VK-PARITY-MECH-1: default shading knobs from the shared producer (the VK
+    // mech island's frame feed reads the same function). Values unchanged.
+    GpuMechShadingParams shp{};
+    gpuMechShadingParams(&shp);
+
     // Static uniforms.
     glUniform1i(s_loc_u_tex,      0);
     glUniform1f(s_loc_u_fogValue, 1.0f);
     // BT2018-MECH-MATERIAL-GAMMA-1/TUNING-1: imported-mech albedo knobs (live ImGui).
-    if (s_loc_u_importedGamma       >= 0) glUniform1f(s_loc_u_importedGamma,       g_importedMechGamma);
-    if (s_loc_u_importedAlbedoScale >= 0) glUniform1f(s_loc_u_importedAlbedoScale, g_importedMechAlbedoScale);
+    if (s_loc_u_importedGamma       >= 0) glUniform1f(s_loc_u_importedGamma,       shp.importedGamma);
+    if (s_loc_u_importedAlbedoScale >= 0) glUniform1f(s_loc_u_importedAlbedoScale, shp.importedAlbedoScale);
     if (s_loc_u_mechAoTex           >= 0) glUniform1i(s_loc_u_mechAoTex,           6);  // AO-1: unit 6
-    if (s_loc_u_aoStrength          >= 0) glUniform1f(s_loc_u_aoStrength,          g_importedMechAoStrength);
+    if (s_loc_u_aoStrength          >= 0) glUniform1f(s_loc_u_aoStrength,          shp.aoStrength);
     if (s_loc_u_mechNormalTex       >= 0) glUniform1i(s_loc_u_mechNormalTex,       7);  // NORMALS-1: unit 7
-    if (s_loc_u_normalStrength      >= 0) glUniform1f(s_loc_u_normalStrength,      g_importedMechNormalStrength);
+    if (s_loc_u_normalStrength      >= 0) glUniform1f(s_loc_u_normalStrength,      shp.normalStrength);
     // Slice B1: lighting mode 0 = Slice A flat-white passthrough,
     // 1 = calc_light() per-vertex. Set per-flush from killswitch.
     if (s_loc_u_lightingMode >= 0)
@@ -2541,27 +2565,24 @@ void GpuMechBatcher::flush() {
     // MECH-AMBIENT-1: hemisphere ambient fill strength. Uploads 0.0 when the
     // gate is OFF -> exact no-op (byte-identical default path).
     if (s_loc_u_mechAmbientV1Strength >= 0)
-        glUniform1f(s_loc_u_mechAmbientV1Strength,
-                    s_mechAmbientV1 ? s_mechAmbientStrength : 0.0f);
+        glUniform1f(s_loc_u_mechAmbientV1Strength, shp.ambientStrength);
     // MECH-SPECULAR-V1: upload all 6 specular uniforms. Strength is 0.0 when
     // the gate is off -> exact no-op. The roughness/threshold uniforms are
     // uploaded unconditionally; they are inert when strength is 0. All 6 locs
     // are -1 on non-viewuniforms variants (glUniform* with loc -1 is a no-op
     // per GL spec), so the guards are redundant but kept for clarity.
     if (s_loc_u_mechSpecularV1Strength >= 0)
-        glUniform1f(s_loc_u_mechSpecularV1Strength,
-                    (s_mechSpecularV1 && s_mechViewUniforms)
-                        ? s_mechSpecularStrength : 0.0f);
+        glUniform1f(s_loc_u_mechSpecularV1Strength, shp.specularStrength);
     if (s_loc_u_mechMetalRoughness >= 0)
-        glUniform1f(s_loc_u_mechMetalRoughness, s_mechMetalRoughness);
+        glUniform1f(s_loc_u_mechMetalRoughness, shp.metalRoughness);
     if (s_loc_u_mechGlassRoughness >= 0)
-        glUniform1f(s_loc_u_mechGlassRoughness, s_mechGlassRoughness);
+        glUniform1f(s_loc_u_mechGlassRoughness, shp.glassRoughness);
     if (s_loc_u_mechGlassLumaThresh >= 0)
-        glUniform1f(s_loc_u_mechGlassLumaThresh, s_mechGlassLumaThresh);
+        glUniform1f(s_loc_u_mechGlassLumaThresh, shp.glassLumaThresh);
     if (s_loc_u_mechGlassMaxChanThresh >= 0)
-        glUniform1f(s_loc_u_mechGlassMaxChanThresh, s_mechGlassMaxChanThresh);
+        glUniform1f(s_loc_u_mechGlassMaxChanThresh, shp.glassMaxChanThresh);
     if (s_loc_u_mechSpecDebugMask >= 0)
-        glUniform1i(s_loc_u_mechSpecDebugMask, s_mechSpecDebugMask ? 1 : 0);
+        glUniform1i(s_loc_u_mechSpecDebugMask, shp.specDebugMask);
     if (s_loc_u_mechBackFillStrength >= 0)
         glUniform1f(s_loc_u_mechBackFillStrength, s_mechBackFillStrength);
     // Slice C1: StandardLit GGX gate (mutable via ImGui / batcher_setStandardLitEnabled).
@@ -2711,6 +2732,15 @@ void GpuMechBatcher::flush() {
             run.instanceCount = dc.instanceCount;
             run.materialFlags = dc.materialFlags;
             run.slot0GlTex    = glTexId;   // LIVE per-actor paint scheme this frame
+            // VK-PARITY-MECH-1: per-type AO / normal maps (same resolve as units 6/7 below).
+            {
+                const DWORD aoGos = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
+                    ? mcTextureManager->get_gosTextureHandle(dc.aoTexHandle) : 0u;
+                run.aoGlTex = aoGos ? gos_GetGLTextureId((uint32_t)aoGos) : 0u;
+                const DWORD nrmGos = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
+                    ? mcTextureManager->get_gosTextureHandle(dc.normalTexHandle) : 0u;
+                run.normalGlTex = nrmGos ? gos_GetGLTextureId((uint32_t)nrmGos) : 0u;
+            }
             s_vkMechRunSnapshot.push_back(run);
         }
 #endif
@@ -3070,6 +3100,34 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     if (mcTextureManager) {
         out->lightDataCpu      = mcTextureManager->getLightDataPtr();
         out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    }
+    // VK-PARITY-MECH-1: default mech FS shading inputs from the GL producers.
+    {
+        const RenderCore::ViewUniforms& vu = RenderCore::getCurrentView().viewUniforms;
+        for (int k = 0; k < 4; ++k) out->cameraWorldPos[k] = vu.cameraWorldPos[k];
+        GpuMechShadingParams shp{};
+        gpuMechShadingParams(&shp);
+        out->ambientStrength     = shp.ambientStrength;
+        out->specularStrength    = shp.specularStrength;
+        out->metalRoughness      = shp.metalRoughness;
+        out->glassRoughness      = shp.glassRoughness;
+        out->glassLumaThresh     = shp.glassLumaThresh;
+        out->glassMaxChanThresh  = shp.glassMaxChanThresh;
+        out->specDebugMask       = shp.specDebugMask;
+        out->importedGamma       = shp.importedGamma;
+        out->importedAlbedoScale = shp.importedAlbedoScale;
+        out->aoStrength          = shp.aoStrength;
+        out->normalStrength      = shp.normalStrength;
+        gos_terrain_lighting::ObjectLightPoolParams pp{};
+        gos_terrain_lighting::GetObjectLightPoolParams(&pp);
+        out->numPoolLights  = pp.pool ? pp.count : 0;
+        out->poolLights48   = pp.pool;
+        out->poolSoft       = pp.soft;
+        out->poolMoverDim   = pp.moverDim;
+        out->poolMoverScale = pp.moverScale;
+        out->poolMoverMax   = pp.moverMax;
+        out->poolCompress   = pp.compress;
+        out->poolObjScale   = pp.objScale;
     }
 
     // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (see

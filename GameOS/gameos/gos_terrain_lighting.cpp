@@ -656,7 +656,9 @@ bool GetLightGridCpu(LightGridCpu& out) {
 }
 
 // POOL-CONSUMERS-1 (batch-6 item 6): shared object-consumer upload. See header.
-void UploadObjectLightPoolUniforms(unsigned int program) {
+// VK-PARITY-MECH-1: shared object-pool producer (GL upload + VK mech island).
+void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
+    if (!out) return;
     static const bool s_umbrella = []() {
         const char* v = std::getenv("MC2_TERRAIN_LIGHT_POOLS");
         return !(v && v[0] == '0');
@@ -703,18 +705,36 @@ void UploadObjectLightPoolUniforms(unsigned int program) {
         return f;
     }();
 
-    const GLint locN = glGetUniformLocation(program, "u_numPoolLights");
-    if (locN < 0) return;   // program has no pool block compiled in
-
-    int poolCount = 0;
+    out->count      = 0;
+    out->pool       = nullptr;
+    out->soft       = s_poolSoft ? 1 : 0;
+    out->moverDim   = s_poolMoverDim;
+    out->moverScale = s_poolMoverRadius;
+    out->moverMax   = s_poolMoverMax ? 1 : 0;
+    out->compress   = s_poolCompress ? 1 : 0;
+    out->objScale   = s_objScale;
     if (s_umbrella && s_objects && s_objScale > 0.0f) {
         const GLuint   ssbo = GetLightPoolSsbo();
         const uint32_t n    = GetLightPoolLightCount();
         if (ssbo != 0 && n > 0) {
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 28u, ssbo);
-            poolCount = static_cast<int>(n > 256u ? 256u : n);
+            out->count = static_cast<int>(n > 256u ? 256u : n);
+            uint32_t cpuN = 0;
+            out->pool = GetLightPoolCpu(&cpuN);
+            if (!out->pool || cpuN < static_cast<uint32_t>(out->count))
+                out->pool = nullptr;   // GL still has its SSBO; VK declines pools
         }
     }
+}
+
+void UploadObjectLightPoolUniforms(unsigned int program) {
+    const GLint locN = glGetUniformLocation(program, "u_numPoolLights");
+    if (locN < 0) return;   // program has no pool block compiled in
+
+    ObjectLightPoolParams pp{};
+    GetObjectLightPoolParams(&pp);
+    const int poolCount = pp.count;
+    if (poolCount > 0)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 28u, GetLightPoolSsbo());
     glUniform1i(locN, poolCount);
     if (poolCount == 0) return;
     const GLint locSoft     = glGetUniformLocation(program, "u_lightPoolSoft");
@@ -723,12 +743,12 @@ void UploadObjectLightPoolUniforms(unsigned int program) {
     const GLint locMax      = glGetUniformLocation(program, "u_lightPoolMoverMax");
     const GLint locCompress = glGetUniformLocation(program, "u_lightPoolCompress");
     const GLint locObjScale = glGetUniformLocation(program, "u_lightPoolObjScale");
-    if (locSoft >= 0)     glUniform1i(locSoft, s_poolSoft ? 1 : 0);
-    if (locDim >= 0)      glUniform1f(locDim, s_poolMoverDim);
-    if (locScale >= 0)    glUniform1f(locScale, s_poolMoverRadius);
-    if (locMax >= 0)      glUniform1i(locMax, s_poolMoverMax ? 1 : 0);
-    if (locCompress >= 0) glUniform1i(locCompress, s_poolCompress ? 1 : 0);
-    if (locObjScale >= 0) glUniform1f(locObjScale, s_objScale);
+    if (locSoft >= 0)     glUniform1i(locSoft, pp.soft);
+    if (locDim >= 0)      glUniform1f(locDim, pp.moverDim);
+    if (locScale >= 0)    glUniform1f(locScale, pp.moverScale);
+    if (locMax >= 0)      glUniform1i(locMax, pp.moverMax);
+    if (locCompress >= 0) glUniform1i(locCompress, pp.compress);
+    if (locObjScale >= 0) glUniform1f(locObjScale, pp.objScale);
 }
 
 // ---------------------------------------------------------------------------

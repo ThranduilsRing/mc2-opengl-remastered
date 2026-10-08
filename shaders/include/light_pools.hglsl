@@ -43,48 +43,15 @@ uniform float u_lightPoolObjScale;
 // Additive pool light reaching worldPosMC2 (MC2/Stuff frame). Mirrors the
 // terrain_lod_chunk.frag loop exactly (soft tail, mover dim/scale/max-blend,
 // tone compression), then applies the object-side scale.
+// VK-PARITY-MECH-1: the loop body lives in object_light_pool.hglsl, shared with
+// the VK tier-1 mech FS (same SSBO contents, knobs from the same producer).
+#include <object_light_pool.hglsl>
 vec3 calcLightPools(vec3 worldPosMC2)
 {
-    if (u_numPoolLights <= 0) return vec3(0.0);
-    vec3 pool      = vec3(0.0);
-    vec3 poolMover = vec3(0.0);
-    for (int i = 0; i < u_numPoolLights; ++i) {
-        if (poolLights[i].lightType == 0u) continue;
-        vec3  vtl = worldPosMC2 - poolLights[i].position;
-        float len = sqrt(dot(vtl, vtl));
-        bool  mover = poolLights[i]._plPad1 > 0.5;
-        float farD  = poolLights[i].farDistance;
-        float nearD = poolLights[i].closeDistance;
-        float ooD   = poolLights[i].oneOverDistance;
-        if (mover && u_lightPoolMoverScale < 0.999) {
-            float s = max(u_lightPoolMoverScale, 0.05);
-            farD *= s; nearD *= s; ooD /= s;
-        }
-        if (len >= farD) continue;
-        float falloff = (len <= nearD)
-                      ? 1.0
-                      : (farD - len) * ooD;
-        if (u_lightPoolSoft != 0) {
-            float t = clamp(falloff, 0.0, 1.0);
-            falloff = t * t * (3.0 - 2.0 * t);
-        }
-        vec3 plCol = poolLights[i].color;
-        if (mover) {
-            plCol *= u_lightPoolMoverDim;
-            if (u_lightPoolMoverMax != 0) {
-                poolMover = max(poolMover, plCol * falloff);
-                continue;
-            }
-        }
-        pool += plCol * falloff;
-    }
-    pool += poolMover;
-    vec3 outPool;
-    if (u_lightPoolCompress != 0)
-        outPool = vec3(1.0) - exp(-1.6 * pool);
-    else
-        outPool = min(pool, vec3(1.0));
-    return outPool * u_lightPoolObjScale;
+    return olp_objectPoolLight(worldPosMC2, u_numPoolLights, u_lightPoolSoft,
+                               u_lightPoolMoverDim, u_lightPoolMoverScale,
+                               u_lightPoolMoverMax, u_lightPoolCompress,
+                               u_lightPoolObjScale);
 }
 
 #endif // __LIGHT_POOLS_HGLSL__

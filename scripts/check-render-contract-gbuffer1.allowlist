@@ -75,7 +75,9 @@ shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(vNormalStuff) *
 # Matches the GL producer mech.frag:428 `rc_gbuffer1_screenShadowEligible(N_gbuf)`.
 # Class is unconditional on both backends -- mechs have no second class -- so there
 # is no per-fragment selection to get wrong here.
-shaders/vulkan/mech_tier1.frag::oGBuffer1 = vec4(normalize(vNormalGL) * 0.5 + 0.5, 0.0);
+# VK-PARITY-MECH-1: N is now the shading normal Nshade (== GL N_gbuf with
+# StandardLit off: the geometric normal, normal-mapped for imported mechs).
+shaders/vulkan/mech_tier1.frag::oGBuffer1 = vec4(Nshade * 0.5 + 0.5, 0.0);
 
 # TERRAIN, main pass. (0.5, 0.5, 1.0, 1.0) == rc_gbuffer1_shadowHandled_flatUp()
 # (render_contract.hglsl:95-97). Matches the GL producer this island ports,

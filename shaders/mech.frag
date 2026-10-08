@@ -21,6 +21,9 @@
 // (a truck's own headlight pool lights the truck; building pools light mechs
 // walking through). u_numPoolLights=0 when gated off -> byte-identical.
 #include <include/light_pools.hglsl>
+// VK-PARITY-MECH-1: default mech shading terms (imported gamma/AO/normal map,
+// hemisphere ambient, Blinn sun sheen) shared with shaders/vulkan/mech_tier1.frag.
+#include <include/mech_shading.hglsl>
 
 // [RENDER_CONTRACT]
 //   Pass:           Mech
@@ -185,8 +188,7 @@ void main() {
     // sRGB->linear ONCE, imported mechs only (renderFlags bit 3). Stock mechs:
     // v_importedMech == 0 -> byte-identical no-op. Alpha already handled above.
     if (v_importedMech != 0u) {
-        tex_color.rgb = pow(tex_color.rgb, vec3(u_importedGamma));
-        tex_color.rgb *= u_importedAlbedoScale;
+        tex_color.rgb = msh_importedAlbedo(tex_color.rgb, u_importedGamma, u_importedAlbedoScale);
     }
 #endif
 
@@ -199,7 +201,7 @@ void main() {
     // (white/no-op fallback = bit clear). textureLod(...,0) avoids AMD mip strict-fail.
     if ((v_importedMech & 2u) != 0u) {
         float ao = textureLod(u_mechAoTex, v_uv, 0.0).r;
-        c.rgb *= mix(1.0, ao, u_aoStrength);
+        c.rgb *= msh_aoFactor(ao, u_aoStrength);
     }
 #endif
 
@@ -212,11 +214,8 @@ void main() {
     vec3 Nshade = normalize(v_normal);
 #ifdef MC2_IMPORTED_MECH_MATERIAL
     if ((v_importedMech & 4u) != 0u && dot(v_tangentGL, v_tangentGL) > 1e-8) {
-        vec3 T  = normalize(v_tangentGL - Nshade * dot(Nshade, v_tangentGL));
-        vec3 B  = cross(Nshade, T);                          // w = +1
-        vec3 nt = textureLod(u_mechNormalTex, v_uv, 0.0).xyz * 2.0 - 1.0;  // BC7 XYZ
-        vec3 Nmap = normalize(mat3(T, B, Nshade) * nt);
-        Nshade = normalize(mix(Nshade, Nmap, u_normalStrength));
+        Nshade = msh_normalMapped(Nshade, v_tangentGL,
+                                  textureLod(u_mechNormalTex, v_uv, 0.0).xyz, u_normalStrength);
     }
 #endif
     // MECH-AMBIENT-1 (gated): conservative hemisphere ambient FILL. Lifts
@@ -225,13 +224,8 @@ void main() {
     // up-component (worldMC2 y = up). Multiplied by albedo so it tints with the
     // mech's own colour. u_mechAmbientV1Strength == 0.0 -> exact no-op
     // (byte-identical default path). Added before fog so it hazes consistently.
-    {
-        vec3  Nw    = Nshade;   // NORMALS-1: normal-mapped for imported mechs, else v_normal
-        float upAmt = 0.5 + 0.5 * Nw.y;                       // 0 = down, 1 = up
-        vec3  hemi  = mix(vec3(0.20, 0.18, 0.16),             // ground (warm/dark)
-                          vec3(0.55, 0.60, 0.70), upAmt);     // sky (cool)
-        c.rgb += tex_color.rgb * hemi * u_mechAmbientV1Strength;
-    }
+    // NORMALS-1: Nshade = normal-mapped for imported mechs, else v_normal.
+    c.rgb += msh_hemiAmbient(tex_color.rgb, Nshade, u_mechAmbientV1Strength);
     // MECH-SPECULAR-V1 (gated): conservative Blinn specular metal sheen + optional
     // glass/cockpit heuristic (dark-pixel classification). Added AFTER the ambient
     // term so the specular contribution is not swallowed by ambient, and BEFORE
@@ -250,9 +244,7 @@ void main() {
     if (u_mechSpecularV1Strength > 0.0 && v_mechSunFound != 0) {
         // Glass/cockpit heuristic: classify DARK pixels only (no hue/blue detection).
         // A pixel is "glass" if both luminance AND max channel are below threshold.
-        float luma    = dot(tex_color.rgb, vec3(0.299, 0.587, 0.114));
-        float maxChan = max(max(tex_color.r, tex_color.g), tex_color.b);
-        bool  isGlass = (luma < u_mechGlassLumaThresh) && (maxChan < u_mechGlassMaxChanThresh);
+        bool  isGlass = msh_isGlass(tex_color.rgb, u_mechGlassLumaThresh, u_mechGlassMaxChanThresh);
 
         if (u_mechSpecDebugMask != 0) {
             // Cockpit-mask visualization: green = glass-classified, grey = metal.
@@ -261,27 +253,13 @@ void main() {
             // u_debugMode != 0 — the debug-mode chain runs after this block.
             c = vec4(isGlass ? vec3(0.0, 1.0, 0.0) : vec3(0.15), 1.0);
         } else {
-            // Blinn specular. N, V, L all in GL world space.
-            // roughness -> Blinn power: shininess = 2/a^2 - 2 (Phong<->GGX mapping).
-            // Clamped to [1, 2048] so extreme roughness gives a broad diffuse-like
-            // lobe rather than a degenerate or negative exponent.
-            float rough     = isGlass ? u_mechGlassRoughness : u_mechMetalRoughness;
-            float specMul   = isGlass ? 1.6 : 1.0;  // glass cockpit slightly hotter (modest)
-            vec3  N = Nshade;       // NORMALS-1: normal-mapped (imported) else v_normal; GL space
-            vec3  V = normalize(u_cameraWorldPos.xyz - v_worldPos);  // GL space
+            // Blinn specular (shared msh_blinnSpecular). N, V, L all in GL world space.
             // v_mechSunDirGL is the NEGATED surface->sun direction (lighting.hglsl
-            // convention: light_dir.xyz = -(surface->sun)); negate to recover L.
-            vec3  L = normalize(-v_mechSunDirGL);                    // surface->sun, GL space
-            vec3  H = normalize(L + V);
-            float NdotL     = max(dot(N, L), 0.0);
-            float NdotH     = max(dot(N, H), 0.0);
-            float a         = max(rough, 0.04);
-            float shininess = clamp(2.0 / (a * a) - 2.0, 1.0, 2048.0);
-            // NdotL gate avoids backface specular (physically correct: no highlight
-            // when surface faces away from the light).
-            float spec = pow(NdotH, shininess) * NdotL;
-            // Additive white highlight — not albedo-tinted — reads as a metal glint.
-            c.rgb += spec * u_mechSpecularV1Strength * specMul;
+            // convention); the helper negates to recover L. NdotL-gated, additive white.
+            vec3  V = normalize(u_cameraWorldPos.xyz - v_worldPos);  // GL space
+            c.rgb += msh_blinnSpecular(Nshade, V, v_mechSunDirGL, isGlass,
+                                       u_mechMetalRoughness, u_mechGlassRoughness,
+                                       u_mechSpecularV1Strength);
         }
     }
 #endif  // MC2_USE_VIEW_UNIFORMS

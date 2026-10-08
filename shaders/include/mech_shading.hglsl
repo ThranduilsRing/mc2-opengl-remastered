@@ -1,0 +1,86 @@
+#ifndef __MECH_SHADING_HGLSL__
+#define __MECH_SHADING_HGLSL__
+
+// VK-PARITY-MECH-1: the GL DEFAULT mech per-fragment shading terms, shared
+// VERBATIM by the GL mech FS (shaders/mech.frag) and the VK tier-1 mech FS
+// (shaders/vulkan/mech_tier1.frag). One body, two backends: the math cannot drift.
+//
+// Covers (all default-ON in GL unless noted; knob values come from ONE C++
+// producer, gpuMechShadingParams() in gos_mech_batcher.cpp, which both the GL
+// uniform upload and the VK frame feed read):
+//   BT2018-MECH-MATERIAL-GAMMA-1   imported-skin gamma + albedo scale
+//   AO-1                           imported-mech AO map multiply
+//   BT2018-MECH-MATERIAL-NORMALS-1 imported-mech tangent-space normal map
+//   MECH-AMBIENT-1                 hemisphere ambient fill
+//   MECH-SPECULAR-V1               Blinn sun sheen + dark-pixel glass heuristic
+// NOT here: StandardLit GGX (MC2_STANDARD_LIT_V1, default OFF) stays GL-only.
+//
+// Pure functions: the include declares no uniforms, no bindings, no varyings.
+// NOTE: bare float/vec types only -- no PREC qualifier (highp is a no-op in
+// desktop GL; VK declares the same).
+
+// GAMMA-1: imported BT skins are sRGB-authored; decode by a tunable exponent
+// then lift. Caller applies only for imported mechs (renderFlags bit 3).
+vec3 msh_importedAlbedo(vec3 rgb, float gamma, float albedoScale)
+{
+    rgb = pow(rgb, vec3(gamma));
+    rgb *= albedoScale;
+    return rgb;
+}
+
+// AO-1: multiplier for the lit color. strength 0 = no-op, 1 = full AO.
+float msh_aoFactor(float ao, float strength)
+{
+    return mix(1.0, ao, strength);
+}
+
+// NORMALS-1: perturb the geometric normal N (normalized) by a tangent-space
+// normal-map sample (raw texel .xyz in [0,1]). T = world tangent (non-degenerate;
+// caller checks). Bitangent = cross(N,T), handedness w=+1.
+vec3 msh_normalMapped(vec3 N, vec3 tangent, vec3 texel, float strength)
+{
+    vec3 T  = normalize(tangent - N * dot(N, tangent));
+    vec3 B  = cross(N, T);                          // w = +1
+    vec3 nt = texel * 2.0 - 1.0;                    // BC7 XYZ
+    vec3 Nmap = normalize(mat3(T, B, N) * nt);
+    return normalize(mix(N, Nmap, strength));
+}
+
+// MECH-AMBIENT-1: hemisphere fill keyed on the world normal's up component
+// (GL world y = up), albedo-tinted. strength 0 = exact no-op.
+vec3 msh_hemiAmbient(vec3 albedo, vec3 Nw, float strength)
+{
+    float upAmt = 0.5 + 0.5 * Nw.y;                       // 0 = down, 1 = up
+    vec3  hemi  = mix(vec3(0.20, 0.18, 0.16),             // ground (warm/dark)
+                      vec3(0.55, 0.60, 0.70), upAmt);     // sky (cool)
+    return albedo * hemi * strength;
+}
+
+// MECH-SPECULAR-V1: dark-pixel glass/cockpit classification (no hue test).
+bool msh_isGlass(vec3 albedo, float lumaThresh, float maxChanThresh)
+{
+    float luma    = dot(albedo, vec3(0.299, 0.587, 0.114));
+    float maxChan = max(max(albedo.r, albedo.g), albedo.b);
+    return (luma < lumaThresh) && (maxChan < maxChanThresh);
+}
+
+// MECH-SPECULAR-V1: additive white Blinn highlight (scalar, added to rgb).
+// N, V GL world space; negSunDir = light_dir.xyz Stuff->GL swapped (the NEGATED
+// surface->sun direction, lighting.hglsl convention). roughness -> Blinn power
+// via shininess = 2/a^2 - 2, clamped [1,2048]. NdotL gate = no backface spec.
+float msh_blinnSpecular(vec3 N, vec3 V, vec3 negSunDir, bool isGlass,
+                        float metalRoughness, float glassRoughness, float strength)
+{
+    float rough     = isGlass ? glassRoughness : metalRoughness;
+    float specMul   = isGlass ? 1.6 : 1.0;  // glass cockpit slightly hotter (modest)
+    vec3  L = normalize(-negSunDir);        // surface->sun
+    vec3  H = normalize(L + V);
+    float NdotL     = max(dot(N, L), 0.0);
+    float NdotH     = max(dot(N, H), 0.0);
+    float a         = max(rough, 0.04);
+    float shininess = clamp(2.0 / (a * a) - 2.0, 1.0, 2048.0);
+    float spec = pow(NdotH, shininess) * NdotL;
+    return spec * strength * specMul;
+}
+
+#endif // __MECH_SHADING_HGLSL__

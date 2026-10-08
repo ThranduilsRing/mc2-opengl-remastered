@@ -177,4 +177,20 @@ bool GetLightGridCpu(LightGridCpu& out);
 // (MC2_LIGHT_POOL_OBJECTS) is off, or no lights are packed this frame.
 void UploadObjectLightPoolUniforms(unsigned int program);
 
+// VK-PARITY-MECH-1: the ONE producer of the object-side pool count + knobs that
+// UploadObjectLightPoolUniforms uploads (GL) and the VK mech island stages into
+// its frame UBO. count = 0 when gated off / no pool this frame. `pool` points at
+// the CPU copy of the binding-28 array (GetLightPoolCpu), nullptr when count==0.
+struct ObjectLightPoolParams {
+    int   count;
+    int   soft;
+    float moverDim;
+    float moverScale;
+    int   moverMax;
+    int   compress;
+    float objScale;
+    const GpuTerrainLight* pool;
+};
+void GetObjectLightPoolParams(ObjectLightPoolParams* out);
+
 } // namespace gos_terrain_lighting

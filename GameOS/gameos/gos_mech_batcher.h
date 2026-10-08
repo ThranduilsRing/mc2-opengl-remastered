@@ -229,6 +229,25 @@ public:
 // gos_mech_batcher.cpp includes render_snapshot.h directly.
 // ---------------------------------------------------------------------------
 
+// VK-PARITY-MECH-1: the ONE producer of the default mech per-fragment shading
+// knobs (shaders/include/mech_shading.hglsl). The GL uniform upload in flush()
+// and the VK mech island frame feed both read it, so GL and VK cannot disagree.
+// Values are the EFFECTIVE ones (gate-off terms already folded to 0).
+struct GpuMechShadingParams {
+    float ambientStrength;     // MECH-AMBIENT-1 (0 when MC2_MECH_AMBIENT_V1=0)
+    float specularStrength;    // MECH-SPECULAR-V1 (0 when gate off / no ViewUniforms)
+    float metalRoughness;
+    float glassRoughness;
+    float glassLumaThresh;
+    float glassMaxChanThresh;
+    int   specDebugMask;       // ImGui cockpit-mask view
+    float importedGamma;       // BT2018-MECH-MATERIAL-GAMMA-1
+    float importedAlbedoScale;
+    float aoStrength;          // AO-1
+    float normalStrength;      // NORMALS-1
+};
+void gpuMechShadingParams(GpuMechShadingParams* out);
+
 // Forward declarations so this header compiles without render_snapshot.h.
 struct ExtractedMechPacket;
 struct RenderSnapshot;
