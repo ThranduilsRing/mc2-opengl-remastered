@@ -14,6 +14,7 @@
 
 #include <include/render_contract.hglsl>
 #include <include/edge_haze.hglsl>   // WATER-EDGE-FEATHER-1: edgeHazeAmount + EDGE_HAZE_SKY
+#include <include/water_shore_edge.hglsl>   // VK-PARITY-WATER-SHORE-1: shared GL/VK shore feather
 
 in PREC vec4 Color;
 in PREC vec2 Texcoord;
@@ -297,39 +298,10 @@ void main(void)
         // WATER-SHORE-EDGE-1: resolve the EFFECTIVE mode with data-driven
         // fallback (2 -> 1 when the height sidecar is absent; 1 -> 0 when the
         // mask is absent), so missing data always degrades to shipped pixels.
-        int shoreModeEff = u_shoreMode;
-        if (shoreModeEff == 2 && u_hasShoreHeight == 0) shoreModeEff = 1;
-        if (shoreModeEff == 1 && u_hasShoreMask   == 0) shoreModeEff = 0;
-        if (shoreModeEff == 2) {
-            // Per-fragment signed height vs the hi-res bilinear heightfield.
-            PREC vec2 hn;
-            hn.x = (WorldPos.x - u_shoreHeightBounds.x) / max(u_shoreHeightBounds.z, 1e-5);
-            hn.y = (u_shoreHeightBounds.y - WorldPos.y) / max(u_shoreHeightBounds.w, 1e-5);
-            if (hn.x >= 0.0 && hn.x <= 1.0 && hn.y >= 0.0 && hn.y <= 1.0) {
-                // Half-texel remap: hn spans (V-1) grid intervals; texel
-                // centres must land on grid vertices.
-                PREC vec2 ts = vec2(textureSize(u_shoreHeightTex, 0));
-                PREC vec2 huv = (hn * (ts - 1.0) + 0.5) / ts;
-                PREC float hTerr = texture(u_shoreHeightTex, huv).r;
-                PREC float shoreDist = waterElevation - hTerr;   // + = underwater
-                PREC float K = max(u_shoreFeatherWu, 0.5);
-                PREC float shoreH = smoothstep(-K, K * 0.5, shoreDist);
-                shore = min(shore, shoreH);
-            }
-        } else if (shoreModeEff == 1) {
-            PREC vec2 slUV;
-            slUV.x = (WorldPos.x - u_shoreMaskBounds.x) / max(u_shoreMaskBounds.z, 1e-5);
-            slUV.y = (u_shoreMaskBounds.y - WorldPos.y) / max(u_shoreMaskBounds.w, 1e-5);
-            if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
-                PREC vec4 sl = texture(u_shoreMask, slUV);
-                if (sl.a > 0.5) {
-                    PREC float maskDistWu = (sl.r - 0.5) * 256.0;   // +land / -water
-                    PREC float shoreM = 1.0 - smoothstep(-12.0, 6.0, maskDistWu);
-                    shore = min(shore, shoreM);
-                }
-            }
-        }
-        // shoreModeEff == 0: legacy per-vertex ramp only (no extra term).
+        shore = wse_shoreFeather(shore, u_shoreMode, u_hasShoreHeight, u_hasShoreMask,
+                                 u_shoreHeightTex, u_shoreMask, u_shoreHeightBounds,
+                                 u_shoreMaskBounds, u_shoreFeatherWu, WorldPos.xy,
+                                 waterElevation);
         if (shore <= 0.0) discard;            // kill tiles too far above waterline
 
         PREC vec3  vertexLightRGB = Color.bgra.rgb;  // VS packs .bgra; un-swizzle (camera-indep)

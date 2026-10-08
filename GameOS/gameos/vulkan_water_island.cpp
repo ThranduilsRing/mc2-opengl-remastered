@@ -69,6 +69,11 @@
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the SSAO island's) — read by debug_state_dump.cpp.
 // ---------------------------------------------------------------------------
+// VK-PARITY-WATER-SHORE-1: shore data producers (gos_terrain_lod_chunk.cpp, C++ linkage).
+unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
+unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
+unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration();
+
 namespace {
 
 struct WaterIslandHealth {
@@ -225,6 +230,11 @@ struct WaterFsParams {
     float f3[4];             // off 64  screenW, screenH, pad, pad (u_waterScreenSize)
     float DEEP_COLOR[4];     // off 80
     float SHALLOW_COLOR[4];  // off 96
+    // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1) -- LOCKSTEP with water_geom.frag.
+    float f4[4];             // off 112 u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu
+    float f5[4];             // off 128 u_shoreHeightBounds
+    float f6[4];             // off 144 u_shoreMaskBounds
+    float f7[4];             // off 160 waterElevation, pad x3
 };
 
 // The persistent island state.
@@ -285,6 +295,19 @@ struct WaterIsland {
     bool          hdriAttempted    = false;   // import tried once (success or fail)
     unsigned int  hdriGlTexId      = 0;       // GL tex id the import came from
 
+    // VK-PARITY-WATER-SHORE-1: copy-once imports of the GL water-shore textures
+    // (binding 3 = R32F hi-res visual height, binding 4 = RGBA8 shoreline mask).
+    // Re-imported only when gos_TerrainLodChunk_WaterShoreDataGeneration() changes
+    // (new mission). A 1x1 dummy keeps the statically-used binding valid when the
+    // GL texture is absent; has*=false makes the FS degrade 2 -> 1 -> 0 like GL.
+    VkImage       shHImage = VK_NULL_HANDLE; VmaAllocation shHAlloc = VK_NULL_HANDLE;
+    VkImageView   shHView  = VK_NULL_HANDLE;
+    VkImage       shMImage = VK_NULL_HANDLE; VmaAllocation shMAlloc = VK_NULL_HANDLE;
+    VkImageView   shMView  = VK_NULL_HANDLE;
+    bool          shHReal = false, shMReal = false;   // real data imported (not dummy)
+    bool          shoreAttempted = false;
+    unsigned int  shoreGen = 0;
+
     VkRenderPass      rpass  = VK_NULL_HANDLE;
     VkFramebuffer     fb     = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsl = VK_NULL_HANDLE;
@@ -314,6 +337,10 @@ void destroy_island(WaterIsland* s) {
     if (s->pool)    vkDestroyDescriptorPool(d, s->pool, nullptr);
     if (s->fb)      vkDestroyFramebuffer(d, s->fb, nullptr);
     if (s->rpass)   vkDestroyRenderPass(d, s->rpass, nullptr);
+    if (s->shHView)  vkDestroyImageView(d, s->shHView, nullptr);
+    if (s->shHImage) vmaDestroyImage(s->allocator, s->shHImage, s->shHAlloc);
+    if (s->shMView)  vkDestroyImageView(d, s->shMView, nullptr);
+    if (s->shMImage) vmaDestroyImage(s->allocator, s->shMImage, s->shMAlloc);
     if (s->hdriSampler) vkDestroySampler(d, s->hdriSampler, nullptr);
     if (s->hdriView)   vkDestroyImageView(d, s->hdriView, nullptr);
     if (s->hdriImage)  vmaDestroyImage(s->allocator, s->hdriImage, s->hdriAlloc);
@@ -385,6 +412,21 @@ void write_descriptors(WaterIsland* s) {
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
         vkUpdateDescriptorSets(s->device, 4, w, 0, nullptr);
+        // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
+        if (s->shHView != VK_NULL_HANDLE && s->shMView != VK_NULL_HANDLE &&
+            s->hdriSampler != VK_NULL_HANDLE) {
+            VkDescriptorImageInfo shInfo[2] = {
+                { s->hdriSampler, s->shHView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+                { s->hdriSampler, s->shMView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+            VkWriteDescriptorSet ws[2]{};
+            for (int k = 0; k < 2; ++k) {
+                ws[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; ws[k].dstSet = s->set[i];
+                ws[k].dstBinding = 3 + k; ws[k].descriptorCount = 1;
+                ws[k].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                ws[k].pImageInfo = &shInfo[k];
+            }
+            vkUpdateDescriptorSets(s->device, 2, ws, 0, nullptr);
+        }
     }
 }
 
@@ -632,6 +674,124 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     return true;
 }
 
+// VK-PARITY-WATER-SHORE-1: copy-once import of one GL shore texture (R32F height
+// or RGBA8 mask) into a sampled VK image. Mirrors ensure_hdri's pattern (GL
+// read-back on the render thread's current context, one staging upload). When
+// glTex is 0 (or the read fails) a 1x1 zero dummy is created instead and
+// *real is false. Caller device-idles beforehand.
+bool import_shore_tex(WaterIsland* s, unsigned int glTex, bool isFloat,
+                      VkImage* img, VmaAllocation* alloc, VkImageView* view, bool* real) {
+    const VkFormat fmt = isFloat ? VK_FORMAT_R32_SFLOAT : VK_FORMAT_R8G8B8A8_UNORM;
+    const size_t bpp = 4;
+    std::vector<unsigned char> bytes;
+    int w = 1, h = 1;
+    *real = false;
+    if (glTex != 0) {
+        GLint prevTex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
+        GLint prevPack = 4; glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)glTex);
+        GLint w0 = 0, h0 = 0, ifmt = 0;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &w0);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h0);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
+        const GLint wantFmt = isFloat ? GL_R32F : GL_RGBA8;
+        if (w0 > 0 && h0 > 0 && ifmt == wantFmt) {
+            bytes.resize((size_t)w0 * (size_t)h0 * bpp);
+            if (isFloat) glGetTexImage(GL_TEXTURE_2D, 0, GL_RED,  GL_FLOAT,         bytes.data());
+            else         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes.data());
+            if (glGetError() == GL_NO_ERROR) { w = w0; h = h0; *real = true; }
+        }
+        glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
+        glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
+    }
+    if (!*real) { w = 1; h = 1; bytes.assign(bpp, 0); }
+
+    if (*view)  { vkDestroyImageView(s->device, *view, nullptr); *view = VK_NULL_HANDLE; }
+    if (*img)   { vmaDestroyImage(s->allocator, *img, *alloc); *img = VK_NULL_HANDLE; }
+    VkImageCreateInfo ii{};
+    ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
+    ii.extent = {(uint32_t)w, (uint32_t)h, 1};
+    ii.mipLevels = 1; ii.arrayLayers = 1;
+    ii.samples = VK_SAMPLE_COUNT_1_BIT; ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ii.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    ii.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VmaAllocationCreateInfo aci{}; aci.usage = VMA_MEMORY_USAGE_AUTO;
+    if (vmaCreateImage(s->allocator, &ii, &aci, img, alloc, nullptr) != VK_SUCCESS) {
+        vlog("shore: vmaCreateImage failed."); return false;
+    }
+    VkImageViewCreateInfo vi{};
+    vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vi.image = *img; vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
+    vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    if (vkCreateImageView(s->device, &vi, nullptr, view) != VK_SUCCESS) {
+        vlog("shore: vkCreateImageView failed."); return false;
+    }
+    VkBuffer staging = VK_NULL_HANDLE; VmaAllocation stagingAlloc = VK_NULL_HANDLE;
+    if (!make_buffer(s, (VkDeviceSize)bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &staging, &stagingAlloc)) return false;
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, stagingAlloc, &p) != VK_SUCCESS) {
+            vmaDestroyBuffer(s->allocator, staging, stagingAlloc); return false;
+        }
+        std::memcpy(p, bytes.data(), bytes.size());
+        vmaUnmapMemory(s->allocator, stagingAlloc);
+    }
+    const VkImage dst = *img;
+    const bool ok = submit_once(s, [&](VkCommandBuffer cb) {
+        VkImageMemoryBarrier bar{};
+        bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        bar.image = dst;
+        bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+        VkBufferImageCopy c{};
+        c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        c.imageExtent = {(uint32_t)w, (uint32_t)h, 1};
+        vkCmdCopyBufferToImage(cb, staging, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &c);
+        bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &bar);
+    });
+    vmaDestroyBuffer(s->allocator, staging, stagingAlloc);
+    if (!ok) { vlog("shore: upload submit failed."); return false; }
+    return true;
+}
+
+// (Re)import both shore textures when the GL-side data generation changes.
+// Requires hdriSampler (created by ensure_hdri) -- shared linear/clamp sampler.
+bool ensure_shore(WaterIsland* s) {
+    const unsigned int gen = gos_TerrainLodChunk_WaterShoreDataGeneration();
+    if (s->shoreAttempted && s->shoreGen == gen) return true;
+    s->shoreAttempted = true;
+    s->shoreGen = gen;
+    vkDeviceWaitIdle(s->device);
+    // R32_SFLOAT linear filtering is an optional format feature; without it the
+    // height sidecar is treated as absent (FS degrades 2 -> 1, same as a missing
+    // sidecar on GL).
+    VkFormatProperties fp{};
+    vkGetPhysicalDeviceFormatProperties(s->phys, VK_FORMAT_R32_SFLOAT, &fp);
+    const bool r32Linear = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
+    if (!r32Linear) vlog("shore: R32_SFLOAT lacks linear filtering -- height shore disabled (mode-1 fallback).");
+    const unsigned int hTex = r32Linear ? gos_TerrainLodChunk_WaterShoreHeightTex() : 0u;
+    if (!import_shore_tex(s, hTex, true,  &s->shHImage, &s->shHAlloc, &s->shHView, &s->shHReal)) return false;
+    if (!import_shore_tex(s, gos_TerrainLodChunk_ShorelineMaskTex(), false,
+                          &s->shMImage, &s->shMAlloc, &s->shMView, &s->shMReal)) return false;
+    write_descriptors(s);
+    vlog("shore import: height=%s mask=%s gen=%u (copy-once, zero per-frame cost).",
+         s->shHReal ? "REAL" : "DUMMY", s->shMReal ? "REAL" : "DUMMY", gen);
+    return true;
+}
+
 // One-time init: borrow the shared device, build the exportable color seam,
 // gbuffer1 + depth images, recipe/thin/UBO buffers, render pass, pipeline.
 bool init_island(WaterIsland* s, int w, int h) {
@@ -788,7 +948,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
-        VkDescriptorSetLayoutBinding b[5]{};
+        VkDescriptorSetLayoutBinding b[7]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -800,9 +960,14 @@ bool init_island(WaterIsland* s, int w, int h) {
         // RUNG-6.5: HDRI equirect (copy-once import), FS-only.
         b[4].binding = 2; b[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // VK-PARITY-WATER-SHORE-1: shore height (3) + shore mask (4), FS-only.
+        for (int k = 0; k < 2; ++k) {
+            b[5 + k].binding = 3 + k; b[5 + k].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            b[5 + k].descriptorCount = 1; b[5 + k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 5; lci.pBindings = b;
+        lci.bindingCount = 7; lci.pBindings = b;
         if (vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl) != VK_SUCCESS) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -810,7 +975,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[0].descriptorCount = 4;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 2;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
@@ -1049,6 +1214,11 @@ extern "C" int mc2_vk_water_island_run(
         setFallback("hdri_binding_setup_failed"); s->disabled = true; return 0;
     }
 
+    // VK-PARITY-WATER-SHORE-1: shore height/mask copy-once import (binding 3/4).
+    if (!ensure_shore(s)) {
+        setFallback("shore_binding_setup_failed"); s->disabled = true; return 0;
+    }
+
     // Snapshot forbidden COLOR counters (prove none fire on the interop path).
     const unsigned long f0a = g_forbidden.vkCmdCopyBufferToImage;
     const unsigned long f0b = g_forbidden.vkCmdCopyImageToBuffer;
@@ -1112,11 +1282,20 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(p, vsParams, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc[par]);
         }
         if (vmaMapMemory(s->allocator, s->fsUboAlloc[par], &p) == VK_SUCCESS) {
-            std::memcpy(p, fsParams, sizeof(WaterFsParams));
+            WaterFsParams fsLocal;
+            std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
             // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
             // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
             // takes the SH-L2 fallback — same semantics as GL !isHdriReady().
-            if (!s->hdriRealImported) ((float*)p)[15] = -1.0f;
+            if (!s->hdriRealImported) fsLocal.f2[3] = -1.0f;
+            // VK-PARITY-WATER-SHORE-1: GL sets u_hasShoreHeight = (mode==2 && tex)
+            // and u_hasShoreMask = (mode>=1 && tex); the island owns the textures.
+            {
+                const int shMode = (int)(fsLocal.f4[0] + 0.5f);
+                fsLocal.f4[1] = (shMode == 2 && s->shHReal) ? 1.0f : 0.0f;
+                fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
+            }
+            std::memcpy(p, &fsLocal, sizeof(WaterFsParams));
             vmaUnmapMemory(s->allocator, s->fsUboAlloc[par]);
         }
     }

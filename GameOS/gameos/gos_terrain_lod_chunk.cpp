@@ -520,6 +520,11 @@ static GLuint s_waterShoreHeightTex       = 0;
 static float  s_waterShoreHeightBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 unsigned int gos_TerrainLodChunk_WaterShoreHeightTex()    { return s_waterShoreHeightTex; }
+// VK-PARITY-WATER-SHORE-1: bumped by every shore-data (mask / height) upload so
+// the VK water island can re-import its copies of these GL textures when a new
+// mission replaces the contents behind the SAME GL texture ids. GL never reads it.
+static unsigned s_waterShoreDataGen = 0;
+unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration() { return s_waterShoreDataGen; }
 const float* gos_TerrainLodChunk_WaterShoreHeightBounds() { return s_waterShoreHeightBounds; }
 
 // ---------------------------------------------------------------------------
@@ -3919,6 +3924,7 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
     glBindTexture(GL_TEXTURE_2D, (GLuint)prev2D);
     glActiveTexture((GLenum)prevActive);
 
+    ++s_waterShoreDataGen;   // VK-PARITY-WATER-SHORE-1
     s_shorelineBounds[0] = boundsTopLeftX;
     s_shorelineBounds[1] = boundsTopLeftY;
     s_shorelineBounds[2] = boundsSizeX;
@@ -3972,6 +3978,7 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
     glBindTexture(GL_TEXTURE_2D, (GLuint)prev2D);
     glActiveTexture((GLenum)prevActive);
 
+    ++s_waterShoreDataGen;   // VK-PARITY-WATER-SHORE-1
     s_waterShoreHeightBounds[0] = boundsTopLeftX;
     s_waterShoreHeightBounds[1] = boundsTopLeftY;
     s_waterShoreHeightBounds[2] = boundsSizeX;

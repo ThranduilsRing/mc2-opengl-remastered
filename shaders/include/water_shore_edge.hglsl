@@ -1,0 +1,60 @@
+#ifndef __WATER_SHORE_EDGE_HGLSL__
+#define __WATER_SHORE_EDGE_HGLSL__
+
+// VK-PARITY-WATER-SHORE-1: WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1 shore-alpha
+// feather, shared VERBATIM by the GL water FS (shaders/gos_terrain_water_mdi.frag)
+// and the VK water FS (shaders/vulkan/water_geom.frag). One body, two backends.
+//
+// Modes (resolved once engine-wide by gos_WaterShoreMode()):
+//   0 = legacy per-vertex ramp only, 1 = smoothed shoreline-mask feather,
+//   2 = per-fragment signed-height feather vs the hi-res visual_height_4x
+//       sidecar (default). Missing data degrades 2 -> 1 -> 0 (has* flags).
+// heightTex: R32F, sampled with the half-texel remap so texel centres land on
+// grid vertices. maskTex: RGBA8 (R = signed dist, 0.5 = waterline, A = valid).
+// hB/mB: topLeftX, topLeftY(=maxY), spanX, spanY in world units.
+//
+// NOTE: bare float/vec types only -- no PREC qualifier (highp is a no-op in
+// desktop GL; VK declares the same).
+
+float wse_shoreFeather(float shore, int shoreMode, int hasHeight, int hasMask,
+                       sampler2D heightTex, sampler2D maskTex,
+                       vec4 hB, vec4 mB, float featherWu,
+                       vec2 worldXY, float waterElev)
+{
+    int shoreModeEff = shoreMode;
+    if (shoreModeEff == 2 && hasHeight == 0) shoreModeEff = 1;
+    if (shoreModeEff == 1 && hasMask   == 0) shoreModeEff = 0;
+    if (shoreModeEff == 2) {
+        // Per-fragment signed height vs the hi-res bilinear heightfield.
+        vec2 hn;
+        hn.x = (worldXY.x - hB.x) / max(hB.z, 1e-5);
+        hn.y = (hB.y - worldXY.y) / max(hB.w, 1e-5);
+        if (hn.x >= 0.0 && hn.x <= 1.0 && hn.y >= 0.0 && hn.y <= 1.0) {
+            // Half-texel remap: hn spans (V-1) grid intervals; texel
+            // centres must land on grid vertices.
+            vec2 ts = vec2(textureSize(heightTex, 0));
+            vec2 huv = (hn * (ts - 1.0) + 0.5) / ts;
+            float hTerr = texture(heightTex, huv).r;
+            float shoreDist = waterElev - hTerr;   // + = underwater
+            float K = max(featherWu, 0.5);
+            float shoreH = smoothstep(-K, K * 0.5, shoreDist);
+            shore = min(shore, shoreH);
+        }
+    } else if (shoreModeEff == 1) {
+        vec2 slUV;
+        slUV.x = (worldXY.x - mB.x) / max(mB.z, 1e-5);
+        slUV.y = (mB.y - worldXY.y) / max(mB.w, 1e-5);
+        if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+            vec4 sl = texture(maskTex, slUV);
+            if (sl.a > 0.5) {
+                float maskDistWu = (sl.r - 0.5) * 256.0;   // +land / -water
+                float shoreM = 1.0 - smoothstep(-12.0, 6.0, maskDistWu);
+                shore = min(shore, shoreM);
+            }
+        }
+    }
+    // shoreModeEff == 0: legacy per-vertex ramp only (no extra term).
+    return shore;
+}
+
+#endif

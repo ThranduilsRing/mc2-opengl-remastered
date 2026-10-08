@@ -13,6 +13,7 @@
 // GBuffer1 = rc_gbuffer1_screenShadowEligible(vec3(0,0,1)) = vec4(0.5,0.5,1.0,0.0)
 // -- value inlined (render_contract.hglsl) so the VK shader needs no GL include.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 #define PREC highp
 
 layout(location = 0) in PREC vec4  Color;
@@ -33,6 +34,11 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f3;              // (screenW, screenH, _pad, _pad)  -- u_waterScreenSize
     vec4 DEEP_COLOR;      // .xyz
     vec4 SHALLOW_COLOR;   // .xyz
+    // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
+    vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
+    vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
+    vec4 f6;              // u_shoreMaskBounds   (topLeftX, topLeftY, sizeX, sizeY)
+    vec4 f7;              // (waterElevation, pad, pad, pad)
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -40,6 +46,12 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
 // fallback). Sampled only when u_waterHdriLod >= 0 (island patches it to -1
 // when the import is unavailable -> SH-L2 fallback, matching GL semantics).
 layout(set = 0, binding = 2) uniform sampler2D u_hdri;
+
+// VK-PARITY-WATER-SHORE-1: copy-once imports of the GL shore textures (same CPU
+// data the GL water FS samples): R32F hi-res visual height, RGBA8 shoreline mask.
+layout(set = 0, binding = 3) uniform sampler2D u_shoreHeightTex;
+layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
+#include "../include/water_shore_edge.hglsl"
 
 // Global aliases (assigned in main) so the ported GL blocks below stay
 // TEXTUALLY VERBATIM (GL declares these as uniforms at global scope).
@@ -158,6 +170,10 @@ void main(void)
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
+    // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
+    shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
+                             u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
+                             WorldPos.xy, F.f7.x);
     if (shore <= 0.0) discard;
 
     PREC vec3  vertexLightRGB = Color.bgra.rgb;

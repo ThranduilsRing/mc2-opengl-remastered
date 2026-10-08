@@ -3036,6 +3036,19 @@ extern "C" int mc2_vk_water_island_run(
     unsigned int hdriGlTex);
 #endif
 
+// WATER-SHORE-EDGE-1 feather half-width K (world units), shared by the GL MDI
+// bind block and the VK water island fsParams pack (VK-PARITY-WATER-SHORE-1) so
+// the two paths cannot drift. MC2_WATER_SHORE_FEATHER_WU overrides; default 7.
+static float mc2WaterShoreFeatherWu()
+{
+    static const float s_shoreFeatherWu = []() {
+        const char* s = getenv("MC2_WATER_SHORE_FEATHER_WU");
+        float v = s ? (float)atof(s) : 0.0f;
+        return v > 0.0f ? v : 7.0f;
+    }();
+    return s_shoreFeatherWu;
+}
+
 // WATER-HDRI-REFL-PERF-1 LOD default, shared by the GL MDI bind block and the
 // VK water island fsParams pack (RUNG-6.5) so the two paths cannot drift.
 // MC2_WATER_HDRI_LOD (float) overrides; else MC2_WATER_HDRI_REFL_FULL=1 -> 1.0,
@@ -3471,12 +3484,7 @@ void gosRenderer::renderWaterFastPath(
             // K: feather half-width in world units (shore ramp spans -K..+K/2
             // about the height zero-crossing). Tunable via
             // MC2_WATER_SHORE_FEATHER_WU; default 7.
-            static const float s_shoreFeatherWu = []() {
-                const char* s = getenv("MC2_WATER_SHORE_FEATHER_WU");
-                float v = s ? (float)atof(s) : 0.0f;
-                return v > 0.0f ? v : 7.0f;
-            }();
-            setMF("u_shoreFeatherWu", s_shoreFeatherWu);
+            setMF("u_shoreFeatherWu", mc2WaterShoreFeatherWu());
         }
         setMF         ("waterElevation",  waterElevation);
         setMF         ("alphaDepth",      alphaDepth);
@@ -3706,7 +3714,7 @@ void gosRenderer::renderWaterFastPath(
             if (vkThinCount > 0 && vkThinPtr && vkRecipes && vkRecipeN > 0 && ppVk) {
                 // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
                 struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
-                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4]; } fsP{};
+                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4],f4[4],f5[4],f6[4],f7[4]; } fsP{};
                 memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
                 vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
                 vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;
@@ -3741,6 +3749,20 @@ void gosRenderer::renderWaterFastPath(
                 }
                 memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
                 memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));
+                // VK-PARITY-WATER-SHORE-1: WATER-SHORE-EDGE-1 inputs, same producers
+                // as the GL bind block (gos_WaterShoreMode / accessor bounds / K).
+                // f4.y/f4.z (hasHeight / hasMask) are set by the island, which owns
+                // the VK copies of the GL shore textures.
+                {
+                    extern int          gos_WaterShoreMode();
+                    extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
+                    extern const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
+                    fsP.f4[0] = (float)gos_WaterShoreMode();     // u_shoreMode
+                    fsP.f4[3] = mc2WaterShoreFeatherWu();        // u_shoreFeatherWu
+                    memcpy(fsP.f5, gos_TerrainLodChunk_WaterShoreHeightBounds(), 4*sizeof(float)); // u_shoreHeightBounds
+                    memcpy(fsP.f6, gos_TerrainLodChunk_ShorelineMaskBounds(),    4*sizeof(float)); // u_shoreMaskBounds
+                    fsP.f7[0] = waterElevation;                  // waterElevation
+                }
                 vkWaterHandled = (1 == mc2_vk_water_island_run(
                     (unsigned int)ppVk->getSceneColorTexture(),
                     (unsigned int)ppVk->getSceneDepthTexture(),
