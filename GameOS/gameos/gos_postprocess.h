@@ -937,7 +937,9 @@ bool gos_SkyboxFogExcludeEnabled();
 // flag below stays false and every scope is one predicted-false branch).
 // Any tag that reports samples>0 rasterizes into the GL scene buffer that the
 // Vulkan backend discards => that layer is invisible under VK.
-// Logs [VK_GL_LOST_DRAWS v1] every 300 frames and at shutdown.
+// A nullptr tag suspends measurement for the scope (use for COMPUTE-ONLY spans: on this
+// driver a SAMPLES_PASSED segment with no raster returns garbage ~1e12 -- see txmmgr.cpp
+// GpuSP.CullDispatch). Logs [VK_GL_LOST_DRAWS v1] every 300 frames and at shutdown.
 extern bool g_gosGlLostDrawsOn;
 void gos_GlLostDrawsPush(const char* tag);
 void gos_GlLostDrawsPop();

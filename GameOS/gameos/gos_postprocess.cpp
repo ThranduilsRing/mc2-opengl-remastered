@@ -629,7 +629,7 @@ void lostEndCur()
 }
 void lostBeginCur()
 {
-    if (s_lostStack.empty()) return;
+    if (s_lostStack.empty() || !s_lostStack.back()) return;   // nullptr tag = no-query (compute-only) span
     GLuint q;
     if (!s_lostFreeQ.empty()) { q = s_lostFreeQ.back(); s_lostFreeQ.pop_back(); }
     else glGenQueries(1, &q);

@@ -4302,7 +4302,11 @@ void MC_TextureManager::renderLists (void)
 			{ GosGlLostDrawsScope _lost_("gpusp.static_prefix"); GpuStaticPropRegistry::buildStaticPrefixGolden(); }
 
 			if (gpu_cull::compute_isEnabled()) {
-				ZoneScopedN("GpuSP.CullDispatch"); GosGlLostDrawsScope _lost_("gpusp.cull_dispatch");
+				ZoneScopedN("GpuSP.CullDispatch"); GosGlLostDrawsScope _lost_(nullptr);
+				// VK-GL-LOST-DRAWS: nullptr tag = unmeasured. compute_dispatch() is compute-only (no raster); a
+				// GL_SAMPLES_PASSED segment holding only compute + barriers returns a garbage
+				// ~1e12 on this driver (begin snapshot never taken) and mis-attributes the frame's
+				// real draws to it. Suspend the query for it.
 				TracyGpuZone("GpuSP.CullDispatch");
 				gpu_cull::compute_dispatch();
 			}
