@@ -927,7 +927,7 @@ namespace gos { namespace visual_capture {
 bool cleanFrame() {
     static const bool s_clean = []{
         const char* e = getenv("MC2_VISUAL_CAPTURE_CLEAN");
-        return e && e[0] != ' ' && e[0] != '0';
+        return e && e[0] != 0 && e[0] != '0';
     }();
     return s_clean;
 }
