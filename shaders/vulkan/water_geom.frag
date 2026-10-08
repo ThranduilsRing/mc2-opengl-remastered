@@ -39,6 +39,9 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
     vec4 f6;              // u_shoreMaskBounds   (topLeftX, topLeftY, sizeX, sizeY)
     vec4 f7;              // (waterElevation, pad, pad, pad)
+    // VK-PARITY-F3 (water brightness): GL-default features missing in VK.
+    vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
+    vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -52,6 +55,7 @@ layout(set = 0, binding = 2) uniform sampler2D u_hdri;
 layout(set = 0, binding = 3) uniform sampler2D u_shoreHeightTex;
 layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 #include "../include/water_shore_edge.hglsl"
+#include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 
 // Global aliases (assigned in main) so the ported GL blocks below stay
 // TEXTUALLY VERBATIM (GL declares these as uniforms at global scope).
@@ -73,6 +77,10 @@ const float WAVE_FADE_FAR  = 40000.0;
 const float REFL_F0         = 0.02;   // Schlick base reflectance (water ~0.02)
 const float REFL_MAX        = 0.55;   // WATER-REFL-DEFAULT-ON: raised from 0.30 for visible shiny
 const float REFL_WAVE_SLOPE = 0.05;   // fBm-gradient -> wave-normal slope (0.02-0.10)
+// WATER-GRAZE-REFL-1 (VERBATIM from gos_terrain_water_mdi.frag): bias the reflected colour
+// toward the authored sky/horizon tint at grazing angles.
+const float GRAZE_SKY_PULL  = 0.70;
+const float GRAZE_SKY_EXP   = 4.0;
 
 //PORT-BEGIN:waterSkyShCoeffs
 const vec3 kWaterSkySh[9] = vec3[9](
@@ -184,7 +192,8 @@ void main(void)
     PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz);
     col += glint * GLINT_GAIN * waveLOD * GLINT_TINT;
     //PORT-END:waterBaseColor
-    // sky-tint OFF (strength 0 default) -> no-op (GL: u_waterSkyTintStrength=0 -> mix returns col).
+    // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
+    col = mix(col, F.f9.xyz, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
     // Verbatim port of the GL reflection block (gos_terrain_water_mdi.frag), minus:
@@ -200,8 +209,12 @@ void main(void)
         PREC vec3  reflectCol = col;
         PREC float reflMix    = 0.0;
         //PORT-BEGIN:waterReflSetup
-        float _ac = (u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0)) * (3.0 / 4.0);
-        PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0);
+        // WATER-ASPECT-CORRECT-1/2: frustum aspect fed from GL (== viewport aspect by default,
+        // so _ac is a 1.0 no-op; the old hard-coded *3/4 over-corrected 16:9 by 1.33x).
+        float vpAspect = u_waterScreenSize.x / max(u_waterScreenSize.y, 1.0);
+        float _ac = vpAspect / max(F.f9.w, 0.0001);
+        // WATER-GRAZE-REFL-1: fade the wave-normal perturbation by waveLOD.
+        PREC vec2  nzGrad     = clamp(vec2(dFdx(nz) * _ac, dFdy(nz)), -2.0, 2.0) * waveLOD;
         PREC vec3  waveNormal = normalize(vec3(nzGrad * REFL_WAVE_SLOPE, 1.0));
         PREC vec3  vdir       = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
         PREC vec3  rdir       = reflect(-vdir, waveNormal);           // MC2 Z-up
@@ -211,12 +224,16 @@ void main(void)
         } else {
             skyReflCol = clamp(waterEvalSkySh(skyDir) * (1.0 / 3.14159265), 0.0, 2.0);
         }
+        // WATER-GRAZE-REFL-1: bias toward the authored sky/horizon tint at grazing angles.
+        PREC float grazeW = pow(1.0 - max(vdir.z, 0.0), GRAZE_SKY_EXP);
+        skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW);
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         // (terrain-RT contact sub-block skipped here — see header note above)
         //PORT-BEGIN:waterReflMix
         PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(vdir.z, 0.0), 5.0);
-        reflMix = clamp(fres * u_waterReflStrength * waveLOD, 0.0, REFL_MAX);
+        // WATER-GRAZE-REFL-1: grazing fragments keep full reflection at distance.
+        reflMix = clamp(fres * u_waterReflStrength * max(waveLOD, fres), 0.0, REFL_MAX);
         col = mix(col, reflectCol, reflMix);   // reflMix==0 at SH strength 0 -> no-op
         //PORT-END:waterReflMix
     }
@@ -225,7 +242,12 @@ void main(void)
         col = mix(F.fog_color.rgb, col, FogValue);
 
     PREC float waterA = shore * WATER_MAX_ALPHA;
-    // edge-feather OFF (default) -> skipped.
+    // WATER-EDGE-FEATHER-1 (default ON in GL): tint + dissolve the map-edge rim.
+    if (F.f8.x != 0.0 && F.f8.z > 0.0) {
+        float h = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);
+        col    = mix(col, EDGE_HAZE_SKY, h);
+        waterA *= (1.0 - h);
+    }
     // COMPOSITE-STAGE PARITY: emit PREMULTIPLIED alpha (col*a, a) into the transparent
     // water-only target (pipeline blend ONE / ONE_MINUS_SRC_ALPHA). GL then premult-over-
     // composites onto MainColor (GL_ONE / GL_ONE_MINUS_SRC_ALPHA) == GL's native one-stage

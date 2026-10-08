@@ -235,6 +235,9 @@ struct WaterFsParams {
     float f5[4];             // off 128 u_shoreHeightBounds
     float f6[4];             // off 144 u_shoreMaskBounds
     float f7[4];             // off 160 waterElevation, pad x3
+    // VK-PARITY-F3: LOCKSTEP with water_geom.frag f8/f9.
+    float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
+    float f9[4];             // off 192 skyTintColor.xyz, projAspect
 };
 
 // The persistent island state.

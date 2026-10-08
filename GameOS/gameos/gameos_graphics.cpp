@@ -3714,7 +3714,7 @@ void gosRenderer::renderWaterFastPath(
             if (vkThinCount > 0 && vkThinPtr && vkRecipes && vkRecipeN > 0 && ppVk) {
                 // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
                 struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
-                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4],f4[4],f5[4],f6[4],f7[4]; } fsP{};
+                struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4],f4[4],f5[4],f6[4],f7[4],f8[4],f9[4]; } fsP{};
                 memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
                 vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
                 vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;
@@ -3762,6 +3762,29 @@ void gosRenderer::renderWaterFastPath(
                     memcpy(fsP.f5, gos_TerrainLodChunk_WaterShoreHeightBounds(), 4*sizeof(float)); // u_shoreHeightBounds
                     memcpy(fsP.f6, gos_TerrainLodChunk_ShorelineMaskBounds(),    4*sizeof(float)); // u_shoreMaskBounds
                     fsP.f7[0] = waterElevation;                  // waterElevation
+                }
+                // VK-PARITY-F3: GL-default water features the VK FS lacked, same producers as
+                // the GL MDI bind block (edge feather killswitch/strength, map half extent,
+                // authored sky tint, frustum aspect).
+                {
+                    static const int s_vkWEdgeFeather = []() {
+                        const char* e = getenv("MC2_WATER_EDGE_FEATHER");
+                        return (e && e[0] == '0') ? 0 : 1;
+                    }();
+                    static const float s_vkWEdgeFeatherStr = []() {
+                        const char* sv = getenv("MC2_WATER_EDGE_FEATHER_STRENGTH");
+                        float v = (sv ? (float)atof(sv) : 0.0f);
+                        return v > 0.0f ? v : 1.0f;
+                    }();
+                    extern bool g_cameraProjAspectNative;
+                    const float vkVpAspect = ppVk->getHeight() > 0
+                        ? (float)ppVk->getWidth() / (float)ppVk->getHeight() : (4.0f / 3.0f);
+                    fsP.f8[0] = (float)s_vkWEdgeFeather;
+                    fsP.f8[1] = s_vkWEdgeFeatherStr;
+                    fsP.f8[2] = ppVk->getMapHalfExtent();
+                    fsP.f8[3] = gos_GetWaterSkyTintStrength();
+                    memcpy(fsP.f9, g_waterSkyTintColor, 3*sizeof(float));
+                    fsP.f9[3] = g_cameraProjAspectNative ? vkVpAspect : (4.0f / 3.0f);
                 }
                 vkWaterHandled = (1 == mc2_vk_water_island_run(
                     (unsigned int)ppVk->getSceneColorTexture(),
