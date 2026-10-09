@@ -181,7 +181,7 @@ def main() -> int:
         declared.append("MC2_CURSOR_NO_PARK")
     for key in declared:
         cmd.extend(["--env-declare", f"{key}={env.get(key, '')}"])
-    return subprocess.call(cmd, cwd=str(root), env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return subprocess.call(cmd, cwd=str(root), env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
 
 
 if __name__ == "__main__":

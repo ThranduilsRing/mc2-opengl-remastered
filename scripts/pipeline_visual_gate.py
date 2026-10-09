@@ -125,7 +125,7 @@ def _capture(exe: str, prof: dict, out_dir: Path, runs: int, warmup: int,
     print(f"[gate] {'DRY-RUN ' if dry_run else ''}capture: {' '.join(cmd)}")
     if dry_run:
         return 0
-    return subprocess.run(cmd, env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode
+    return subprocess.run(cmd, env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
 
 
 def _row_drew(out_dir: Path, row: str) -> int:

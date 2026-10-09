@@ -337,7 +337,7 @@ def check_free_space_for_payload(items, target):
         r = subprocess.run(
             [sys.executable, guard, "--path", target,
              "--need-bytes", str(need), "--label", "deploy payload"],
-            timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            timeout=60, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
         rc = r.returncode
     except Exception as e:  # noqa: BLE001
         fail(f"disk guard could not run ({e}) — refusing to deploy UNGUARDED. "
@@ -430,7 +430,7 @@ def check_hardlink_isolation(items, target):
                 [sys.executable, guard, "--target", target,
                  "--payload-list", listfile, "--quiet",
                  "--label", "deploy payload"],
-                timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                timeout=120, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
             rc = r.returncode
         except Exception as e:  # noqa: BLE001
             fail(f"hardlink-isolation guard could not run ({e}) — refusing to "

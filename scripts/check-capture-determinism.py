@@ -213,7 +213,7 @@ def do_run(exe, mission, bookmarks, outdir, runs, duration, settle):
     if bookmarks:
         cmd += ["--bookmarks", str(bookmarks)]
     print(f"[capdet] capturing: {' '.join(cmd)}")
-    subprocess.run(cmd, check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    subprocess.run(cmd, check=False, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
 
 
 def selftest() -> int:
