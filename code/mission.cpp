@@ -2694,13 +2694,6 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	// discriminator (NOT name/weight). Does not strip or reject the vehicle.
 	if (mMech->getObjectClass() != BATTLEMECH)
 	{
-		static const bool s_deployKindTrace = (getenv("MC2_DEPLOY_KIND_TRACE") != nullptr);
-		if (s_deployKindTrace)
-		{
-			printf("[DEPLOY] non-BattleMech deployable class=%d fielded without mech reset (file=%s)\n",
-				(int)mMech->getObjectClass(), mechData ? mechData->getFileName() : "?");
-			fflush(stdout);
-		}
 		return moverHandle;
 	}
 

@@ -1872,14 +1872,9 @@ bool mc2GetBakedStaticLight(int32_t recipeIndex, TG_HWLightsData& out)
 // [LIGHTBRIDGE-BAKED-PROBE-1] Presence-only probe — avoids 1792B struct copy
 // when the callee (EmitBakedGpuLightData) only needs the key (recipeIndex).
 // Use this in touch()/touchSerialCommit() hot paths instead of mc2GetBakedStaticLight.
-std::atomic<int>       g_bakedProbeCalls{0};
-std::atomic<int>       g_bakedCopyCalls{0};
-std::atomic<long long> g_bakedCopyBytes{0};
-
 bool mc2IsBakedStaticLightPresent(int32_t recipeIndex)
 {
     if (recipeIndex < 0) return false;
-    g_bakedProbeCalls.fetch_add(1, std::memory_order_relaxed);
     return s_bakedStaticLight.count(recipeIndex) != 0;
 }
 
@@ -2047,23 +2042,6 @@ uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
     uint32_t rv = lightDataStructuresCount;
     lightDataStructuresCount++;
     s_lightDataDedupMap.emplace(hash, rv);  // O(1) avg insert
-
-    // PERF DIAGNOSTIC 2026-05-06: log table growth periodically. 1 line per
-    // 256 new entries. DEMOTED 2026-05-17 to env-gated (its own "demote
-    // once the regression is closed" instruction): the dedup-growth
-    // regression is closed (D2 + SSBO + static-bake shipped); it was
-    // emitting ~6k lines/run and polluting frame-time captures.
-    // Capability kept (debug_instrumentation_rule: demote-not-delete) --
-    // set MC2_LIGHT_DEDUP_TRACE=1 to re-enable.
-    static const bool s_lightDedupTrace =
-        (std::getenv("MC2_LIGHT_DEDUP_TRACE") != nullptr);
-    if (s_lightDedupTrace && (lightDataStructuresCount & 0xFF) == 0) {
-        printf("[LIGHT_DEDUP v1] count=%u capacity=%u memcmp_per_call_bytes_max=%zu\n",
-               lightDataStructuresCount,
-               lightDataStructuresCapacity,
-               (size_t)lightDataStructuresCount * sizeof(TG_HWLightsData));
-        fflush(stdout);
-    }
     return rv;
 }
 

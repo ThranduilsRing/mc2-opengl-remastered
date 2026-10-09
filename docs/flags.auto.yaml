@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 363
 registry_env_flag_count: 362
-sweep_flag_count: 1039
-flag_count: 1099
+sweep_flag_count: 1029
+flag_count: 1089
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -142,22 +142,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_ANIMATED_PROP_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/bdactor.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_ANIM_ADVANCE_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/mech3d.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_ANIM_CADENCE_FIX
     default: on
     kind: Feature
@@ -579,14 +563,6 @@ flags:
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_BRAIN_ENGAGE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - code/brain_special_dispatch.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_BRAIN_ENGAGE_TRACE
     default: unknown
     declared_in: null
     referenced_at:
@@ -1344,14 +1320,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_DEPLOY_KIND_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - code/mission.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_DEPTHBIAS_CALIB
     default: unknown
     declared_in: null
@@ -1880,14 +1848,6 @@ flags:
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_FL_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - code/missiongui.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_FOG_HORIZON_CLAMP
     default: on
     kind: Feature
@@ -2040,14 +2000,6 @@ flags:
     declared_in: null
     referenced_at:
       - code/job_system.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_FRAME_JOBS_PATHB_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - code/objmgr.cpp
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3145,14 +3097,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_LIGHTBRIDGE_COMMIT_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - code/objmgr.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_LIGHTING_DEBUG_VIEW
     default: off
     kind: Feature
@@ -3288,14 +3232,6 @@ flags:
       - mclib/camera.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_LIGHT_DEDUP_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/txmmgr.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_LIGHT_GRID
     default: on
@@ -3597,14 +3533,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_LODBUG_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/bdactor.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_LOG
     default: off
     kind: Trace
@@ -7101,14 +7029,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_CAM_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/terrain.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
     default: unknown
     declared_in: null

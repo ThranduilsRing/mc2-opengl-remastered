@@ -2468,11 +2468,8 @@ def main():
                             "MC2_FRAME_JOBS_TOUCH_DIAG",
                             # FRAME-JOBS-2F: touch-entry unification stamp diagnostics.
                             "MC2_FRAME_JOBS_TOUCH_DIAG",
-                            # FRAME-JOBS-2G: Path B terrain-loop touch cost diag.
-                            "MC2_FRAME_JOBS_PATHB_DIAG",
                             # FRAME-JOBS stable-light skip gate.
                             "MC2_LIGHTBRIDGE_STABLE_SKIP",
-                            "MC2_LIGHTBRIDGE_COMMIT_TRACE",
                             # STABLE-LIGHT-SKIP-BROADEN-1 (framebudget lane): broaden
                             # the LBSS resubmit-skip to the legacy touch() Path-B
                             # variants (live path in stock config). Requires

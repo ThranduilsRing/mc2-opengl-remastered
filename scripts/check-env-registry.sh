@@ -300,13 +300,11 @@ ALLOWLIST=(
     MC2_LEGACY_INSTANCE_POOLS   # override -- dev testing (revert pool-skip)
     MC2_MISSION_CYCLE_TEST      # fixture -- TEAM-COMMANDER-OWNERSHIP-1 in-process reset probe (default OFF)
     MC2_LIGHT_COST_SPLIT        # feature -- promote-to-registry
-    MC2_LIGHT_DEDUP_TRACE       # trace
     MC2_LIGHTBAKE               # feature -- promote-to-registry
     MC2_LIGHTBRIDGE             # feature -- promote-to-registry
     MC2_LIGHTSSBO_TRACE         # trace
     MC2_LIGHTSLOT_TRACE         # trace -- TREE-OVERRIDE-LOD light-slot cardinality gate
     MC2_LIGHTING_SHADOW_PREDICATE_MODE  # feature -- promote-to-registry
-    MC2_LODBUG_TRACE            # trace
     MC2_MECH_AMBIENT_V1         # feature -- promote-to-registry
     MC2_MECH_AMBIENT_V1_STRENGTH # feature -- promote-to-registry
     MC2_MECH_BATCHER_STATS      # trace
@@ -520,8 +518,6 @@ ALLOWLIST=(
     MC2_ABL_VM_FACTS                  # trace
     MC2_ACTIVE_MOD                    # override -- active mod selection override
     MC2_AMBIENT_ASSERT_FATAL          # infra -- legacy alias for contract assert
-    MC2_ANIMATED_PROP_PROBE           # trace
-    MC2_ANIM_ADVANCE_TRACE            # trace
     MC2_ANIM_CADENCE_GUARD            # feature -- companion guard to cadence fix
     MC2_ASSIMP_IMPORT                 # feature -- Assimp mesh import path toggle
     MC2_ASSIMP_PAUSE_GATE             # override -- import debug pause gate
@@ -540,7 +536,6 @@ ALLOWLIST=(
     MC2_BRAIN_DISPATCH_FSM_TODO       # feature -- brain-dispatch FSM-todo gate
     MC2_BRAIN_DISPATCH_VAR            # feature -- brain-dispatch var gate
     MC2_BRAIN_ENGAGE                  # feature -- brain engage gate
-    MC2_BRAIN_ENGAGE_TRACE            # trace
     MC2_BRAIN_FIXED_TICK              # feature -- brain fixed-tick gate
     MC2_BRAIN_FIXED_TICK_HZ           # override -- brain fixed-tick Hz override
     MC2_BRAIN_FIXED_TICK_TRACE        # trace
@@ -570,7 +565,6 @@ ALLOWLIST=(
     MC2_CLOUD_SHADOW                  # feature -- cloud shadow gate
     MC2_COLLISION_FACTS               # trace
     MC2_CURSOR_TARGET_TRACE           # trace
-    MC2_DEPLOY_KIND_TRACE             # trace
     MC2_DETERMINISTIC_RNG             # feature -- deterministic RNG mode (test/soak repeatability)
     MC2_DIAGNOSTIC_TRACE_FILE         # infra -- diagnostic JSONL trace file path (documented tier1)
     MC2_DIAG_TAGS                     # infra -- diagnostic trace tag filter (documented tier1)
@@ -598,7 +592,6 @@ ALLOWLIST=(
     MC2_EDITOR_WATCHDOG               # infra -- editor watchdog toggle
     MC2_ENGINE_XL                     # override -- dev testing (engine XL cheat)
     MC2_FASTPATH_DROP_LOG             # trace
-    MC2_FL_TRACE                      # trace
     MC2_FORCE_TXM_REGEN               # override -- force texture regen
     MC2_FRAMECTX_MISMATCH_FATAL       # infra -- fatal-assert opt-in for frame-context mismatch
     MC2_FRAMEGRAPH_AMBIENT_FATAL      # infra -- fatal-assert opt-in (legacy alias)
@@ -607,7 +600,6 @@ ALLOWLIST=(
     MC2_FRAMEGRAPH_REORDER_SPMECH     # feature -- framegraph StaticProp/Mech reorder gate (REJECTED candidate, default-OFF permanently)
     MC2_FRAME_JOBS                    # feature -- frame-jobs master gate
     MC2_FRAME_JOBS_BATCH              # override -- frame-jobs batch size override
-    MC2_FRAME_JOBS_PATHB_DIAG         # trace
     MC2_FRAME_JOBS_TOUCH              # feature -- frame-jobs touch gate
     MC2_FRAME_JOBS_TRACE              # trace
     MC2_FRAME_JOBS_WORKERS            # override -- frame-jobs worker count override
@@ -646,7 +638,6 @@ ALLOWLIST=(
     MC2_LAUNCHED                      # infra -- launcher-provenance flag (documented tier1 companion)
     MC2_LAUNCHER_ENV_JSON             # infra -- =0 kill-switch for the MC2_NO_LAUNCHER launcher_env.json read (gameosmain LAUNCHER_ENV v1)
     MC2_LOG_DECORATE                  # infra -- logging facade: =1 prefixes free-form lines with [level cat] (mc2log.cpp init)
-    MC2_LIGHTBRIDGE_COMMIT_TRACE      # trace
     MC2_LIGHTING_DEBUG_VIEW           # trace
     MC2_LIGHTING_LINEAR_AUDIT         # trace
     MC2_LOAD_RACE_TRACE               # trace -- mission-load residency-race one-shot diagnostics
@@ -805,7 +796,6 @@ ALLOWLIST=(
     MC2_TACTIC_WEIGHTS                # feature -- brain tactic-weights gate
     MC2_TACTIC_WEIGHTS_B              # feature -- brain tactic-weights-B gate
     MC2_TARGETING_GUARD               # feature -- targeting guard gate
-    MC2_TERRAIN_CAM_DIAG              # trace
     MC2_TERRAIN_CEMENT_DIAG_CONNECT   # trace
     MC2_TERRAIN_CLIFF_POM             # feature -- terrain cliff triplanar POM gate
     MC2_TERRAIN_CLIFF_POM_DEPTH       # override -- terrain cliff POM depth tuning

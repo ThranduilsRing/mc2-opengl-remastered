@@ -3216,34 +3216,6 @@ void MissionInterfaceManager::update (void)
 					userInput->clearMouseWheelDelta();
 				}
 
-			// MC2_FL_TRACE=1: per-drag-frame coord audit. Round-trips the
-			// unprojected world point back through the render projection; if
-			// rx,ry != fmx,fmy the unproject/render matrix or pixel spaces
-			// disagree (split-brain), if they match but the line looks wrong
-			// the mouse coords themselves are off.
-			{
-				static const bool s_flTrace = ( getenv( "MC2_FL_TRACE" ) != NULL );
-				if ( s_flTrace )
-				{
-					ModernClipResult rr = eye->projectModernClipGL( w );
-					float vmx, vmy, vax, vay;
-					gos_GetViewport( &vmx, &vmy, &vax, &vay );
-					float rx = 0.0f, ry = 0.0f;
-					if ( rr.clip.w > 0.0001f )
-					{
-						rx = vax + ( rr.clip.x / rr.clip.w * 0.5f + 0.5f ) * vmx;
-						ry = vay + ( 1.0f - ( rr.clip.y / rr.clip.w * 0.5f + 0.5f ) ) * vmy;
-					}
-					fprintf( stderr, "[FLTRACE] mouse=(%ld,%ld) raw01=(%.4f,%.4f) world=(%.1f,%.1f,%.1f) reproj=(%.1f,%.1f) vp=(%.0f,%.0f,%.0f,%.0f) env=(%ld,%ld)\n",
-						fmx, fmy,
-						userInput->realMouseX() / ( vmx > 1.0f ? vmx : 1.0f ),
-						userInput->realMouseY() / ( vmy > 1.0f ? vmy : 1.0f ),
-						w.x, w.y, w.z, rx, ry, vmx, vmy, vax, vay,
-						(long)Environment.screenWidth, (long)Environment.screenHeight );
-					fflush( stderr );
-				}
-			}
-
 			if ( userInput->leftMouseReleased() )
 			{
 				// Accidental click guard: tiny line = cancel, no orders.

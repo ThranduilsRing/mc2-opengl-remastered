@@ -2743,18 +2743,6 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 					       worker_us / std::max(1, worker_submitted),
 					       commit_us / std::max(1, serial_commits));
 				}
-				// [LIGHTBRIDGE-BAKED-PROBE-1] per-frame probe/copy counters
-				static bool s_lightbridgeTrace = (std::getenv("MC2_LIGHTBRIDGE_COMMIT_TRACE") != nullptr);
-				if (s_lightbridgeTrace && (g_mc2FrameCounter % 300 == 0)) {
-					extern std::atomic<int>       g_bakedProbeCalls;
-					extern std::atomic<int>       g_bakedCopyCalls;
-					extern std::atomic<long long> g_bakedCopyBytes;
-					printf("LIGHTBRIDGE_COMMIT: baked_probe_calls=%d baked_copy_calls=%d baked_copy_bytes=%lld\n",
-					       g_bakedProbeCalls.load(std::memory_order_relaxed),
-					       g_bakedCopyCalls.load(std::memory_order_relaxed),
-					       g_bakedCopyBytes.load(std::memory_order_relaxed));
-					std::fflush(stdout);
-				}
 			}
 			// ── end FRAME-JOBS-2D pre-pass ───────────────────────────────────────────────
 		}
@@ -2762,38 +2750,6 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 
 		ZoneScopedN("GameLogic.Units.TerrainObjects");
 		gomcost::Span _gomStaticTouch(gomcost::kStaticTouch); // [GOM_UPDATE_COST v1]
-		// ── FRAME-JOBS-2G: Path B terrain-loop touch cost instrumentation ────────────
-		// Gate: MC2_FRAME_JOBS_PATHB_DIAG=1. Diagnostic-only; zero behavior change.
-		// Times the outer terrain block loop and classifies appearance types per candidate.
-		static const bool s_pathBDiag = !!std::getenv("MC2_FRAME_JOBS_PATHB_DIAG");
-		static bool s_pathBDiagBanner = false;
-		if (!s_pathBDiagBanner) {
-			s_pathBDiagBanner = true;
-			const char* pathbEnv = std::getenv("MC2_FRAME_JOBS_PATHB_DIAG");
-			MC2_DIAGF("[FRAME_JOBS_PATHB v1] event=startup gate_var=%s diag=%d\n",
-			       pathbEnv ? pathbEnv : "(null)", s_pathBDiag ? 1 : 0);
-			std::fflush(stdout);
-		}
-		static int64_t s_pathB_candidates    = 0;
-		static int64_t s_pathB_touch_calls   = 0;
-		static int64_t s_pathB_skipped       = 0;   // stamp match → touch() will early-return
-		static int64_t s_pathB_ran_nosplit   = 0;   // no stamp → touch() will run
-		static int64_t s_pathB_total_us      = 0;
-		static int64_t s_pathB_bldg_calls    = 0;
-		static int64_t s_pathB_tree_calls    = 0;
-		static int64_t s_pathB_other_calls   = 0;
-		static int64_t s_pathB_diag_frame    = -1;
-		// Per-frame local accumulators (reset each frame)
-		int64_t pathB_candidates    = 0;
-		int64_t pathB_touch_calls   = 0;
-		int64_t pathB_skipped       = 0;
-		int64_t pathB_ran_nosplit   = 0;
-		int64_t pathB_bldg_calls    = 0;
-		int64_t pathB_tree_calls    = 0;
-		int64_t pathB_other_calls   = 0;
-		std::chrono::high_resolution_clock::time_point _pathB_t0;
-		if (s_pathBDiag) _pathB_t0 = std::chrono::high_resolution_clock::now();
-		// ── end FRAME-JOBS-2G preamble ────────────────────────────────────────────────
 		long specialBuildingsUpdated = 0;
 		long gatesUpdated = 0;
 		long activeBlocksVisited = 0;
@@ -2941,25 +2897,6 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 						ObjectTypePtr objType = obj->getObjectType();
 						AppearancePtr appearance = obj->getAppearance();
 
-						// FRAME-JOBS-2G: Path B per-candidate classification
-						if (s_pathBDiag && appearance) {
-							++pathB_candidates;
-							++pathB_touch_calls;
-							auto* __pathB_bldg = dynamic_cast<BldgAppearance*>(appearance);
-							auto* __pathB_tree = dynamic_cast<TreeAppearance*>(appearance);
-							bool __pathB_will_skip = false;
-							if (__pathB_bldg) {
-								__pathB_will_skip = (__pathB_bldg->touchSerialCommitFrame == g_mc2FrameCounter);
-								++pathB_bldg_calls;
-							} else if (__pathB_tree) {
-								__pathB_will_skip = (__pathB_tree->touchSerialCommitFrame == g_mc2FrameCounter);
-								++pathB_tree_calls;
-							} else {
-								++pathB_other_calls;
-							}
-							if (__pathB_will_skip) ++pathB_skipped;
-							else ++pathB_ran_nosplit;
-						}
 						const bool isJustCreated = obj->getFlag(OBJECT_FLAG_JUSTCREATED);
 						const bool isFalling = obj->getFlag(OBJECT_FLAG_FALLING);
 						const char* typeName = (objType && objType->getAppearanceTypeName()) ? objType->getAppearanceTypeName() : "<null>";
@@ -3256,52 +3193,6 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 				}
 			}
 		}
-
-		// ── FRAME-JOBS-2G: Path B timer stop + per-300-frame print ──────────────────
-		if (s_pathBDiag) {
-			auto _pathB_t1 = std::chrono::high_resolution_clock::now();
-			int64_t frame_us = (int64_t)std::chrono::duration<double, std::micro>(_pathB_t1 - _pathB_t0).count();
-			s_pathB_candidates  += pathB_candidates;
-			s_pathB_touch_calls += pathB_touch_calls;
-			s_pathB_skipped     += pathB_skipped;
-			s_pathB_ran_nosplit += pathB_ran_nosplit;
-			s_pathB_total_us    += frame_us;
-			s_pathB_bldg_calls  += pathB_bldg_calls;
-			s_pathB_tree_calls  += pathB_tree_calls;
-			s_pathB_other_calls += pathB_other_calls;
-			const int64_t curDiagFrame = (int64_t)g_mc2FrameCounter;
-			if (curDiagFrame != s_pathB_diag_frame) {
-				s_pathB_diag_frame = curDiagFrame;
-				if (curDiagFrame > 0 && (curDiagFrame % 300) == 0) {
-					double avg_us = (s_pathB_touch_calls > 0)
-						? (double)s_pathB_total_us / (double)s_pathB_touch_calls
-						: 0.0;
-					printf("FRAME_JOBS_PATHB: candidates=%lld touch_calls=%lld"
-					       " skipped=%lld ran_nosplit=%lld total_us=%lld"
-					       " avg_us_per_call=%.2f bldg=%lld tree=%lld other=%lld\n",
-					       (long long)s_pathB_candidates,
-					       (long long)s_pathB_touch_calls,
-					       (long long)s_pathB_skipped,
-					       (long long)s_pathB_ran_nosplit,
-					       (long long)s_pathB_total_us,
-					       avg_us,
-					       (long long)s_pathB_bldg_calls,
-					       (long long)s_pathB_tree_calls,
-					       (long long)s_pathB_other_calls);
-					std::fflush(stdout);
-					// Reset window accumulators
-					s_pathB_candidates  = 0;
-					s_pathB_touch_calls = 0;
-					s_pathB_skipped     = 0;
-					s_pathB_ran_nosplit = 0;
-					s_pathB_total_us    = 0;
-					s_pathB_bldg_calls  = 0;
-					s_pathB_tree_calls  = 0;
-					s_pathB_other_calls = 0;
-				}
-			}
-		}
-		// ── end FRAME-JOBS-2G ────────────────────────────────────────────────────────
 
 		// MC2_GOM_RECON: emit object type classification
 		if (MC2_GOM_RECON_ENABLED()) {

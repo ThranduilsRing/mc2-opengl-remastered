@@ -2008,13 +2008,6 @@ bool tickEngageNearest(MechWarrior* warrior, MechBrainRuntime* runtime, int wid)
             runtime->helpTargetWID = 0;                 // target gone; stop helping
     }
 
-    // Throttled diagnostic (MC2_BRAIN_ENGAGE_TRACE=1): detected-contact count + nearest distance.
-    if (std::getenv("MC2_BRAIN_ENGAGE_TRACE") && (getBrainTickIndex() % 64u) == 0u) {
-        std::fprintf(stderr, "[BRAIN_ENGAGE_EVAL] wid=%d teamContacts=%ld tcNear=%.0f tgt=%lu\n",
-                     wid, teamContacts, tcNear, tgtWID);
-        std::fflush(stderr);
-    }
-
     if (tgtWID == 0) {
         // No enemy in range — disengage so patrol/idle resumes next tick.
         if (runtime->engageTargetWID != 0) {

@@ -1068,26 +1068,6 @@ void BldgAppearanceType::init (const char * fileName)
 							fflush(stderr);
 						}
 					}
-					if (getenv("MC2_ANIMATED_PROP_PROBE"))
-					{
-						int ns = bldgRenderShape->GetNumShapes();
-						fprintf(stderr, "[PROBE] '%s': %d node(s) loaded\n", bldgBaseName, ns);
-						for (int _pi = 0; _pi < ns; ++_pi)
-							fprintf(stderr, "[PROBE]   node[%d] = '%s'\n", _pi, bldgRenderShape->GetNodeId(_pi));
-						if (rotationalNodeId[0] && S_stricmp(rotationalNodeId, "NONE") != 0)
-						{
-							// Type-level scan (no instance yet): checks if GLB has the expected node.
-							bool found = false;
-							for (int _qi = 0; _qi < ns; ++_qi)
-							{
-								if (S_stricmp(bldgRenderShape->GetNodeId(_qi), rotationalNodeId) == 0)
-								{ found = true; break; }
-							}
-							fprintf(stderr, "[PROBE] '%s': AnimationNodeId='%s' %s in loaded GLB\n",
-							        bldgBaseName, rotationalNodeId, found ? "FOUND" : "NOT FOUND");
-						}
-						fflush(stderr);
-					}
 				}
 			}
 			catch (...)
@@ -2464,36 +2444,6 @@ long BldgAppearance::render (long depthFixup)
 				bldgShape->Render(false,0.00001f);
 			if (buildingPbrOverrideActive)
 				TG_ClearRenderShapePbrOverride();
-		}
-
-		// LODBUG probe — post-swap submit observation.  When the actor's
-		// bldgShape pointer changed since the last render() call for this
-		// actor, log the submit outcome.  Almost all shape-pointer changes
-		// are LOD swaps (recalcBounds:1437/1450 reassigns bldgShape via
-		// CreateFrom); damage swaps would also trigger but are rare during
-		// 30s passive smoke.  Off by default — env-gated.  Tracks state via
-		// a static unordered_map keyed on the actor pointer so we don't
-		// touch the BldgAppearance class layout.
-		{
-			static const bool s_lodBugTrace =
-				(getenv("MC2_LODBUG_TRACE") != nullptr);
-			if (s_lodBugTrace) {
-				static std::unordered_map<BldgAppearance*, TG_MultiShape*>
-					s_prevShape;
-				auto it = s_prevShape.find(this);
-				TG_MultiShape* prev =
-					(it != s_prevShape.end()) ? it->second : nullptr;
-				if (prev && prev != bldgShape) {
-					printf("[LODBUG v1] event=post_swap_render actor=%p "
-					       "prevShape=%p newShape=%p currentLOD=%u "
-					       "inView=%d submittedToGpu=%d\n",
-					       (void*)this, (void*)prev, (void*)bldgShape,
-					       (unsigned)currentLOD, (int)inView,
-					       (int)submittedToGpu);
-					fflush(stdout);
-				}
-				s_prevShape[this] = bldgShape;
-			}
 		}
 
 		if (selected & DRAW_BARS)
@@ -4976,8 +4926,7 @@ void BldgAppearance::registerStatic() {
 		if (!child->IsShapeNode()) { ++diag_skip_helper; continue; }
 		// CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every
 		// static-prop recipe leaf's real node name + flags. cone_glow's diag emits a
-		// node INDEX only, and MC2_ANIMATED_PROP_PROBE fires ONLY inside the PBR-override
-		// block (misses every non-override building), so before this there was no
+		// node INDEX only, so before this there was no
 		// build-free way to learn a static-prop leaf's NAME. That gap blocked the
 		// batch-7/8 "which leaf draws the 212019 searchlight wedge" question for two
 		// sessions. Answer (this dump, mc2_10): the wedge is the standalone `Spotlight`

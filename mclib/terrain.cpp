@@ -2928,34 +2928,6 @@ long Terrain::update (void)
 			}
 		}
 
-		// Camera-isolation diagnostic (MC2_TERRAIN_CAM_DIAG=1). Throttled per-frame
-		// log of camera position + a frustum-plane checksum + cmd count. KEY TEST:
-		// rotate IN PLACE (fixed position/zoom). If camPos is unchanged but cmds or
-		// planeHash swing wildly between "good" and "bad" angles, the defect is the
-		// frustum cull / camera-convention (angle-sensitive), NOT LOD distance.
-		// LOD is distance-based and must not change much under pure yaw.
-		{
-			static const bool s_camDiag = (getenv("MC2_TERRAIN_CAM_DIAG") != nullptr);
-			if (s_camDiag)
-			{
-				// FNV-1a over the 24 cached frustum-plane floats.
-				uint32_t planeHash = 2166136261u;
-				const unsigned char* pb = (const unsigned char*)planes;
-				for (size_t i = 0; i < sizeof(float) * 6 * 4; ++i)
-					planeHash = (planeHash ^ pb[i]) * 16777619u;
-				static unsigned long s_camDiagFrame = 0;
-				++s_camDiagFrame;
-				if (s_camDiagFrame <= 5 || (s_camDiagFrame % 15) == 0)
-				{
-					printf("[TerrainCamDiag] frame=%lu camPos=(%.1f,%.1f,%.1f) "
-						   "cmds=%d planeHash=%08x\n",
-						   s_camDiagFrame, camOriginLod.x, camOriginLod.y, camOriginLod.z,
-						   s_cmdCount, planeHash);
-					fflush(stdout);
-				}
-			}
-		}
-
 		// Block-set-change diagnostic: log which (bx,by) blocks are visible whenever
 		// the visible set changes. Fires on change only — no noise when camera is still.
 		// Bitmask: bit = by*terrainChunkSide + bx (25 blocks, fits uint32_t).
