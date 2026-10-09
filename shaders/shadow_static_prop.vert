@@ -16,17 +16,10 @@ layout(location=0) in vec3 a_position;
 layout(location=2) in vec2 a_uv;
 out vec2 v_uv;
 
-// LOCKSTEP: must match C++ GpuStaticPropInstance (gos_static_prop_batcher.h, 112B, static_assert'd) AND static_prop.vert. Keep full 112-byte layout even though only modelMatrix is read here.
-struct Instance {
-    mat4  modelMatrix;
-    uint  typeID;
-    uint  firstColorOffset;
-    uint  flags;
-    uint  lightDataIndex;
-    vec4  aRGBHighlight;
-    vec4  fogRGB;
-};
-layout(std430, binding=0) readonly buffer Instances { Instance i[]; } instances_;
+// Per-instance record (112B): generated from RenderCore/gpu_abi/GpuStaticPropInstance.h.
+// Only modelMatrix is read here.
+#include <include/gpu_abi_static_prop_instance.gen.hglsl>
+layout(std430, binding=0) readonly buffer Instances { GpuStaticPropInstance i[]; } instances_;
 
 uniform mat4 lightSpaceMatrix;
 // SSBO-BIND-ALIGN: the caller now binds the WHOLE instance buffer at offset 0
@@ -38,7 +31,7 @@ uniform mat4 lightSpaceMatrix;
 uniform int u_instBase;
 
 void main() {
-    Instance inst = instances_.i[u_instBase + gl_InstanceID];
+    GpuStaticPropInstance inst = instances_.i[u_instBase + gl_InstanceID];
     vec4 worldStuff = vec4(a_position, 1.0) * inst.modelMatrix;
     vec3 worldMC2 = vec3(-worldStuff.x, worldStuff.z, worldStuff.y);
     gl_Position = lightSpaceMatrix * vec4(worldMC2, 1.0);

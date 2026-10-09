@@ -22,32 +22,11 @@ namespace RenderCore { struct StaticPropTypeDesc; }
 // state trace in gameos_graphics.cpp.
 void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
 
-// Per-instance shader-visible struct.
-// Layout mirror of the GLSL std430 struct in shaders/static_prop.vert.
-// CHANGING THIS STRUCT REQUIRES CHANGING THE SHADER IN LOCKSTEP.
-struct alignas(16) GpuStaticPropInstance {
-    float    modelMatrix[16];   // shape-to-world, row-major (uploaded GL_FALSE)
-    uint32_t typeID;
-    uint32_t firstColorOffset;  // into per-frame color SSBO
-    uint32_t flags;             // bit 0: lightsOut, bit 1: isWindow, bit 2: isSpotlight
-    uint32_t lightDataIndex;    // Slice 2: index into the per-frame light-data
-                                // UBO populated by mcTextureManager->addLightDataStructure().
-                                // Stage 2.A repurposes the prior _pad0 slot at offset 76;
-                                // Stage 2.C wires the writer in submitMultiShape.
-    float    aRGBHighlight[4];
-    float    fogRGB[4];
-};
-
-// Layout: 64 (mat4) + 16 (4 x uint32) + 16 (vec4) + 16 (vec4) = 112 bytes.
-static_assert(sizeof(GpuStaticPropInstance) == 112,
-              "GpuStaticPropInstance size must match std430 GLSL struct");
-static_assert(offsetof(GpuStaticPropInstance, modelMatrix)      ==  0, "modelMatrix offset");
-static_assert(offsetof(GpuStaticPropInstance, typeID)           == 64, "typeID offset");
-static_assert(offsetof(GpuStaticPropInstance, firstColorOffset) == 68, "firstColorOffset offset");
-static_assert(offsetof(GpuStaticPropInstance, flags)            == 72, "flags offset");
-static_assert(offsetof(GpuStaticPropInstance, lightDataIndex)   == 76, "lightDataIndex offset");
-static_assert(offsetof(GpuStaticPropInstance, aRGBHighlight)    == 80, "aRGBHighlight offset");
-static_assert(offsetof(GpuStaticPropInstance, fogRGB)           == 96, "fogRGB offset");
+// Per-instance shader-visible struct: GpuStaticPropInstance (112 B, std430).
+// SINGLE SOURCE OF TRUTH is RenderCore/gpu_abi/GpuStaticPropInstance.h; the
+// shader-side struct is generated into shaders/include/gpu_abi_static_prop_instance.gen.hglsl
+// (tools/gpu_abi_gen.py --write). Do not re-declare it.
+#include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 
 // Substrate-coalesce per-draw entry (plan v3.8 Step 2.5).
 // Layout mirror of the GLSL std430 struct in the coalesce static_prop variant.

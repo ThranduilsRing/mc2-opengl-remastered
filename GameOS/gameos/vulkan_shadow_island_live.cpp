@@ -45,6 +45,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
+#include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"
@@ -200,19 +201,6 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return mod;
 }
 
-// GpuStaticPropInstance mirror (112B, LOCKSTEP with gos_static_prop_batcher.h AND
-// shaders/vulkan/shadow_prop.vert). We only READ modelMatrix in the VS, but the
-// full stride must match so the memcpy'd POD indexes correctly.
-struct GpuStaticPropInstanceMirror {
-    float    modelMatrix[16];  // off 0
-    uint32_t typeID;           // off 64
-    uint32_t firstColorOffset; // off 68
-    uint32_t flags;            // off 72
-    uint32_t lightDataIndex;   // off 76
-    float    aRGBHighlight[4]; // off 80
-    float    fogRGB[4];        // off 96
-};                             // 112 bytes
-static_assert(sizeof(GpuStaticPropInstanceMirror) == 112, "instance mirror must be 112B");
 
 // std140 per-frame UBO (LOCKSTEP with shadow_prop.vert ShadowFrameUBO).
 struct ShadowFrameUBO {
@@ -1108,7 +1096,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
 
     const clk::time_point tStage0 = clk::now();
     // ---- 1) Upload the per-frame caster instances (CPU-staged; no GL buffer crosses). ----
-    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
     if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
     {
         ZoneScopedN("VKIsl.Shadow.Feed");   // VK-ISLAND-TRACY-1: caster instance staging
@@ -1162,8 +1150,8 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     // the GL path sorts a COPY too (drawDynamicPropShadows builds `sorted`), so the
     // depth result is order-independent (depth-LESS, deterministic). We sort indices
     // here to group by type for the correct per-type geometry. ----
-    const GpuStaticPropInstanceMirror* insts =
-        reinterpret_cast<const GpuStaticPropInstanceMirror*>(instances);
+    const GpuStaticPropInstance* insts =
+        reinterpret_cast<const GpuStaticPropInstance*>(instances);
     std::vector<uint32_t> order(instanceCount);
     {
     ZoneScopedN("VKIsl.Shadow.SortRestage");   // VK-ISLAND-TRACY-1: typeID sort + sorted re-stage
@@ -1175,7 +1163,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
-            GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
+            GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
             vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }
@@ -1307,10 +1295,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
     if (!ensure_csm_fullmap_target(s, size)) return 0;
 
-    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
     if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
-    const GpuStaticPropInstanceMirror* insts =
-        reinterpret_cast<const GpuStaticPropInstanceMirror*>(instances);
+    const GpuStaticPropInstance* insts =
+        reinterpret_cast<const GpuStaticPropInstance*>(instances);
     std::vector<uint32_t> order(instanceCount);
     for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
     std::sort(order.begin(), order.end(),
@@ -1318,7 +1306,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
-            GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
+            GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
             vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }
@@ -1433,10 +1421,10 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
     if (!ensure_csm_array_target(s, size, layerCount)) return 0;
 
-    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
     if (!ensure_inst_capacity(s, instBytes)) { s->disabled = true; return 0; }
-    const GpuStaticPropInstanceMirror* insts =
-        reinterpret_cast<const GpuStaticPropInstanceMirror*>(instances);
+    const GpuStaticPropInstance* insts =
+        reinterpret_cast<const GpuStaticPropInstance*>(instances);
     std::vector<uint32_t> order(instanceCount);
     for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
     std::sort(order.begin(), order.end(),
@@ -1444,7 +1432,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->instAlloc, &p) == VK_SUCCESS) {
-            GpuStaticPropInstanceMirror* dst = reinterpret_cast<GpuStaticPropInstanceMirror*>(p);
+            GpuStaticPropInstance* dst = reinterpret_cast<GpuStaticPropInstance*>(p);
             for (uint32_t k = 0; k < instanceCount; ++k) dst[k] = insts[order[k]];
             vmaFlushAllocation(s->allocator, s->instAlloc, 0, VK_WHOLE_SIZE); vmaUnmapMemory(s->allocator, s->instAlloc);
         }

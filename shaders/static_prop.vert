@@ -20,6 +20,7 @@
 #define MC2_STATIC_PROP_LIGHTING
 #include <include/lighting.hglsl>
 #include <include/terrain_depth_bias.hglsl>
+#include <include/gpu_abi_static_prop_instance.gen.hglsl>
 
 layout(location = 0) in vec3  a_position;
 layout(location = 1) in vec3  a_normal;
@@ -30,19 +31,8 @@ layout(location = 3) in uint  a_localVertexID;
 // Decoded by get_base_light() against the per-type magic colors below.
 layout(location = 4) in uint  a_aRGBLight;
 
-struct Instance {
-    mat4  modelMatrix;
-    uint  typeID;
-    uint  firstColorOffset;
-    uint  flags;
-    // Slice 2 (object-offload) — Stage 2.A renamed _pad0 → lightDataIndex
-    // on the C++ side at offset 76; mirror the rename here for clarity.
-    // Stage 2.C.2 reads it to index the LightsData[32] UBO (binding 0)
-    // for calc_light below.
-    uint  lightDataIndex;
-    vec4  aRGBHighlight;
-    vec4  fogRGB;
-};
+// Per-instance record: generated from RenderCore/gpu_abi/GpuStaticPropInstance.h
+// (include above); lightDataIndex indexes the LightsData[32] UBO (binding 0) for calc_light.
 
 // Slice 2 (object-offload) — Stage 2.C.2: per-type hot-color SSBO. Built
 // once at finalizeGeometry() from TG_TypeShape::hotPinkRGB / hotYellowRGB /
@@ -53,7 +43,7 @@ struct PerTypeData {
     vec4 hotGreenRGB;
 };
 
-layout(std430, binding = 0) readonly buffer Instances { Instance     i[]; } instances_;
+layout(std430, binding = 0) readonly buffer Instances { GpuStaticPropInstance i[]; } instances_;
 layout(std430, binding = 1) readonly buffer Colors    { uint         c[]; } colors_;
 layout(std430, binding = 2) readonly buffer PerType   { PerTypeData  t[]; } perType_;
 // Slice 2 (object-offload) — Stage 2.D.1: parity readback harness output.
@@ -360,10 +350,10 @@ void main() {
     // and are NOT defined under the extension.
     // Plan v3.8 Step 8.2 — v_drawID forwarding to fragment.
 #ifdef MC2_COALESCE
-    Instance inst = instances_.i[gl_BaseInstanceARB + gl_InstanceID];
+    GpuStaticPropInstance inst = instances_.i[gl_BaseInstanceARB + gl_InstanceID];
     v_drawID      = uint(gl_DrawIDARB);
 #else
-    Instance inst = instances_.i[gl_InstanceID];
+    GpuStaticPropInstance inst = instances_.i[gl_InstanceID];
     v_drawID      = 0u;
 #endif
     // modelMatrix from SSBO std430 default col-major: GLSL sees the same

@@ -25,6 +25,7 @@
 // already y-down/z[0,1]; gl_Position here is the light-space clip position and the
 // depth written is gl_Position.z/w, matching GL calcShadow's stored convention.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 // Shared static-prop VBO: position at location 0 (kVertexStride, offset 0). The
 // GL path also forwards a_uv at location 2 for the foliage alpha-test program;
@@ -47,21 +48,13 @@ layout(set = 0, binding = 0, std140) uniform ShadowFrameUBO {
 // (112B, alignas(16)).
 // Only modelMatrix is read (the shadow VS ignores the rest), but the FULL 112-byte
 // layout is kept so gl_InstanceIndex strides match the memcpy'd POD exactly.
-struct Instance {
-    mat4  modelMatrix;       // off 0   (row-major floats; GL_FALSE upload == column-major GLSL load)
-    uint  typeID;            // off 64
-    uint  firstColorOffset;  // off 68
-    uint  flags;             // off 72
-    uint  lightDataIndex;    // off 76
-    vec4  aRGBHighlight;     // off 80
-    vec4  fogRGB;            // off 96
-};
+#include "../include/gpu_abi_static_prop_instance.gen.hglsl"
 layout(set = 0, binding = 1, std430) readonly buffer Instances {
-    Instance i[];
+    GpuStaticPropInstance i[];
 } uInstances;
 
 void main() {
-    Instance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
+    GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 worldStuff = vec4(a_position, 1.0) * inst.modelMatrix;
     // Stuff -> MC2 frame swizzle — identical to the GL VS.

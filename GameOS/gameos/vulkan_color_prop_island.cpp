@@ -26,6 +26,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
+#include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "vk_image_resource.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vulkan_context.h"
@@ -201,19 +202,6 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return mod;
 }
 
-// GpuStaticPropInstance mirror (112B, LOCKSTEP with gos_static_prop_batcher.h AND
-// shaders/vulkan/color_prop_tier1.vert). We READ modelMatrix in the VS; the full stride
-// must match so the memcpy'd POD indexes correctly.
-struct GpuStaticPropInstanceMirror {
-    float    modelMatrix[16];  // off 0
-    uint32_t typeID;           // off 64
-    uint32_t firstColorOffset; // off 68
-    uint32_t flags;            // off 72
-    uint32_t lightDataIndex;   // off 76
-    float    aRGBHighlight[4]; // off 80
-    float    fogRGB[4];        // off 96
-};                             // 112 bytes
-static_assert(sizeof(GpuStaticPropInstanceMirror) == 112, "instance mirror must be 112B");
 
 // std140 per-frame UBO (LOCKSTEP with color_prop_tier1.vert / color_prop_tier1.frag
 // ColorFrameUBO). VK-P11 STATIC-PROP MATERIAL extends the shared prop UBO with the
@@ -545,8 +533,8 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
     // Real per-instance lightDataIndex values actually used this
     // frame (first few real props), instead of a blind 0..7 scan.
     {
-        const GpuStaticPropInstanceMirror* insts =
-            reinterpret_cast<const GpuStaticPropInstanceMirror*>(feed.instances112);
+        const GpuStaticPropInstance* insts =
+            reinterpret_cast<const GpuStaticPropInstance*>(feed.instances112);
         std::fprintf(stderr, "[PROP_LIGHT_VERTEX_PROBE v1] real inst.lightDataIndex sample: ");
         for (uint32_t ii = 0; ii < feed.count && ii < 12; ++ii) {
             std::fprintf(stderr, "[%u]=%u typeID=%u ", ii, insts[ii].lightDataIndex, insts[ii].typeID);
@@ -1556,7 +1544,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const clk::time_point tStage0 = clk::now();
     // ---- 1) Upload the per-frame color instances into slot `par` (grouped by typeID). ----
     const uint32_t instanceCount = feed.count;
-    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstanceMirror);
+    const VkDeviceSize instBytes = (VkDeviceSize)instanceCount * sizeof(GpuStaticPropInstance);
     if (!ensure_inst_capacity(s, par, instBytes)) { s->disabled = true; return 0; }
     {
         ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
@@ -1639,8 +1627,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // to avoid an extra scope around the two vmaMap blocks).
 
     // The feed is already grouped by ascending typeID; build contiguous type-runs.
-    const GpuStaticPropInstanceMirror* insts =
-        reinterpret_cast<const GpuStaticPropInstanceMirror*>(feed.instances112);
+    const GpuStaticPropInstance* insts =
+        reinterpret_cast<const GpuStaticPropInstance*>(feed.instances112);
 
     // ===================================================================
     // TIER-1 co-write: props rendered IN-PLACE into the SHARED scene color(MRT0)+

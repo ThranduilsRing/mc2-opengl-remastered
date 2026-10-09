@@ -10,6 +10,7 @@
 // the GL PBR block swaps for lighting). We therefore forward a_normal WITHOUT the
 // vec3(-x, z, y) swizzle, exactly like static_prop.vert forwards v_normal.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
@@ -97,17 +98,9 @@ layout(push_constant) uniform PacketLayerPC {
     float packetUvScaleY;
 } uPacket;
 
-struct Instance {
-    mat4  modelMatrix;       // off 0
-    uint  typeID;            // off 64
-    uint  firstColorOffset;  // off 68
-    uint  flags;             // off 72
-    uint  lightDataIndex;    // off 76
-    vec4  aRGBHighlight;     // off 80
-    vec4  fogRGB;            // off 96
-};
+#include "../include/gpu_abi_static_prop_instance.gen.hglsl"
 layout(set = 0, binding = 1, std430) readonly buffer Instances {
-    Instance i[];
+    GpuStaticPropInstance i[];
 } uInstances;
 
 // VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer (int; -1 = no
@@ -130,7 +123,7 @@ flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1
 flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 
 void main() {
-    Instance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
+    GpuStaticPropInstance inst = uInstances.i[uFrame.instBase + gl_InstanceIndex];
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 world_stuff = vec4(a_position, 1.0) * inst.modelMatrix;
     // POSITION: Stuff -> MC2 frame swizzle — identical to the GL VS.

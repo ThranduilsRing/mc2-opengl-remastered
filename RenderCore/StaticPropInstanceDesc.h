@@ -19,34 +19,12 @@
 
 #include <cstdint>
 #include <cstddef>
+#include "gpu_abi/GpuStaticPropInstance.h"
 
 namespace RenderCore {
 
-// Field-for-field mirror of GameOS/gameos/gos_static_prop_batcher.h:15
-// GpuStaticPropInstance. KEEP IN LOCKSTEP. Any change here requires a
-// matching change on the engine side (and vice versa); the seam
-// static_asserts will catch drift at compile time.
-struct alignas(16) StaticPropInstanceDesc {
-    float    modelMatrix[16];   // shape-to-world, row-major
-    uint32_t typeID;
-    uint32_t firstColorOffset;
-    uint32_t flags;
-    uint32_t lightDataIndex;
-    float    aRGBHighlight[4];
-    float    fogRGB[4];
-};
-
-// Local compile-time invariants. The cross-seam asserts in the adapter
-// and legacy-backend TUs will additionally verify size matches the
-// engine-side struct.
-static_assert(sizeof(StaticPropInstanceDesc) == 112,
-              "StaticPropInstanceDesc must match GpuStaticPropInstance layout");
-static_assert(offsetof(StaticPropInstanceDesc, modelMatrix)      ==  0, "modelMatrix offset");
-static_assert(offsetof(StaticPropInstanceDesc, typeID)           == 64, "typeID offset");
-static_assert(offsetof(StaticPropInstanceDesc, firstColorOffset) == 68, "firstColorOffset offset");
-static_assert(offsetof(StaticPropInstanceDesc, flags)            == 72, "flags offset");
-static_assert(offsetof(StaticPropInstanceDesc, lightDataIndex)   == 76, "lightDataIndex offset");
-static_assert(offsetof(StaticPropInstanceDesc, aRGBHighlight)    == 80, "aRGBHighlight offset");
-static_assert(offsetof(StaticPropInstanceDesc, fogRGB)           == 96, "fogRGB offset");
+// Alias of the single-source GPU record (RenderCore/gpu_abi/GpuStaticPropInstance.h,
+// generated layout asserts). No longer a hand-kept mirror: there is one struct.
+using StaticPropInstanceDesc = ::GpuStaticPropInstance;
 
 } // namespace RenderCore
