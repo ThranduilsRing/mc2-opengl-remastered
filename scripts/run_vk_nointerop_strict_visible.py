@@ -176,7 +176,10 @@ def main() -> int:
             f.write(f"{key}={env.get(key, '')}\n")
     # The capture scrubs undeclared ambient MC2_* vars, so every proof gate must be
     # declared or the run silently measures the default (GL) configuration.
-    for key in [*gates, "MC2_VISUAL_CAPTURE_EXIT_AFTER"]:
+    declared = [*gates, "MC2_VISUAL_CAPTURE_EXIT_AFTER"]
+    if "MC2_CURSOR_NO_PARK" in env:
+        declared.append("MC2_CURSOR_NO_PARK")
+    for key in declared:
         cmd.extend(["--env-declare", f"{key}={env.get(key, '')}"])
     return subprocess.call(cmd, cwd=str(root), env=env)
 
