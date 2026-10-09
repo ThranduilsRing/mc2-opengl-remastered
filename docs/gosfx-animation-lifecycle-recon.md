@@ -49,7 +49,7 @@
 ### CPU-vs-GPU (current)
 - **CPU:** ALL curve eval, physics integration, billboard matrix, vertex transform.
 - **GPU:** vertex-buffer storage (MLR cloud objs), rasterize/blend only.
-- **Render bridge:** `MC2_VFX_ORACLE_RENDER` default-ON (`batcher.cpp:130`) — oracle harvests live CPU sim each frame → GPU billboards. 5 classes routed (`spawn.cpp:81-105`): CardCloud, ShardCloud, Card (confirmed), PointCloud (partial), Tube (routed but render falls back CPU-MLR — billboard gave "ladder" artifact).
+- **Render bridge:** `MC2_VFX_ORACLE_RENDER` default-OFF (`batcher.cpp:137-141`; opt-in `=1`) — oracle harvests live CPU sim each frame → GPU billboards. 5 classes routed (`spawn.cpp:81-105`): CardCloud, ShardCloud, Card (confirmed), PointCloud (partial), Tube (routed but render falls back CPU-MLR — billboard gave "ladder" artifact).
 - GPU **compute sim**: CardCloud only, compare-only, default-OFF (`cardcloud_sim.comp` = age+pos only, no curves). Not a render consumer.
 
 ---

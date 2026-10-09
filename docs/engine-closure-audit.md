@@ -31,7 +31,7 @@ registry.
 | 2 | Terrain | red | red | yellow (passive recorder) | green | none |
 | 3 | MechOpaque | red | red | green (extraction default-off) | green | green (`MC2_SNAPSHOT_MECH_EXTRACT=0`) |
 | 4 | Shadow | red | red | red | green (read-only) | none beyond `MC2_SHADOW_ENABLE` master |
-| 5 | VFX | red | red | red (object-ID prohibited) | green (read-only) | `MC2_GPU_PARTICLES=0` master |
+| 5 | VFX | red | red | red (object-ID prohibited) | green (read-only) | `MC2_GPU_PARTICLES` master (default OFF; `=1` enables GPU) |
 
 Source: `RenderCore/RenderPassContract.h:71-125` (axes 1-3 and kill-switch);
 `GuiRuntime/EditorInspector.cpp:771,804,835,898` (inspector visibility).
@@ -199,7 +199,7 @@ descriptor docs.
 | MaterialGpu shader sample | `MC2_MATERIAL_GPU_SAMPLE=0` | Frag falls back to `texArrayLayer` (`RendererFeatureRegistry.h:209-212`). | v7 flip |
 | StaticProp registry | `MC2_STATIC_PROP_REGISTRY=0` | Bypasses registry (editor edit-time use, EditorMFC.cpp; `RendererFeatureRegistry.h:217-220`). | editor consumer present |
 | Shadow master | `MC2_SHADOW_ENABLE=0` (default) | No shadow pre-pass or PCF sampling (`RendererFeatureRegistry.h:170`). | always-off by default; inspector reports state |
-| GPU particles master | `MC2_GPU_PARTICLES=0` | Legacy CPU FX only (`EditorInspector.cpp:842-843`). | inspector live read-out |
+| GPU particles master | `MC2_GPU_PARTICLES` unset/`0` (default OFF) | Legacy CPU FX only (`EditorInspector.cpp:842-843`). | inspector live read-out |
 
 The four lanes other than StaticProp lack a *lane-scoped* kill-switch in the
 RenderPassContract (`killSwitchEnv = nullptr`), reflecting that those lanes
@@ -257,7 +257,7 @@ and known. "Red" = not yet on the migration path.
 | Terrain | red (`RenderPassContract.h:86`) | green-desc, yellow-impl (`:83-91`) | green (`EditorInspector.cpp:771`) | yellow — passive recorder; explicitly *not in ok gate* (`render_snapshot.h:127`, `:240-243`) | none (no kill-switch — but tessellation always-on, no flag-gated revert) |
 | MechOpaque | red (`RenderPassContract.h:96`) | green-desc, yellow-impl (`:93-103`) | green (`EditorInspector.cpp:628,672`) | green when gated (`render_snapshot.h:151-164`, mech mismatches in ok-v4) | green (`MC2_SNAPSHOT_MECH_EXTRACT=0` is default-off) |
 | Shadow | red (`RenderPassContract.h:108`) | yellow-desc (`:104-113`); inspector states `PipelineDesc: legacy` (`EditorInspector.cpp:829`) | green (`EditorInspector.cpp:804`) | red (no snapshot rows for shadow casters) | partial — `MC2_SHADOW_ENABLE=0` master only |
-| VFX | red (`RenderPassContract.h:120`) | yellow-desc (`:115-124`); object-ID prohibited | green (`EditorInspector.cpp:835`) | red (no VFX rows; per-kind counts `n/a`, `EditorInspector.cpp:884-890`) | partial — `MC2_GPU_PARTICLES=0` master only |
+| VFX | red (`RenderPassContract.h:120`) | yellow-desc (`:115-124`); object-ID prohibited | green (`EditorInspector.cpp:835`) | red (no VFX rows; per-kind counts `n/a`, `EditorInspector.cpp:884-890`) | partial — `MC2_GPU_PARTICLES` master only (default OFF) |
 
 **Closure condition recap:** *every active render path is view-owned,
 pass-described, inspectable, validated, and has a rollback/debug path.*

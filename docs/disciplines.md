@@ -4,9 +4,15 @@ Extracted from CLAUDE.md 2026-05-24. These are the procedural disciplines that
 govern HOW work is done — when to spawn subagents, when to ask for adversarial
 review, when META-FIX is required, when to grep-verify.
 
+## Operating mode: single lane
+
+All work happens in one checkout, `A:/Games/mc2-main`, on branch
+`claude/nifty-mendeleev`. There are no lanes, lane leases, or per-lane worktrees.
+`docs/archive/dev-velocity.md` describes the retired multi-lane system; do not follow it.
+
 ## Subagent bookend-review discipline (STANDING USER RULE, 2026-07-25)
 
-**Every dispatched subagent is bookended by two mandatory reviews.** No lane may
+**Every dispatched subagent is bookended by two mandatory reviews.** No subagent may
 report work as done / good / fixed without the closing one.
 
 *Justification (one line):* the 2026-07-25 adversarial audit found ~35 of ~50
@@ -22,10 +28,9 @@ Verify the state you are inheriting. Do **not** trust the brief or prior status 
       repeatedly disagreed with source.
 - [ ] Check what a **DEFAULT LAUNCH** actually executes, vs what is merely committed.
 - [ ] Check whether prior "verified" evidence came from `-dirty` / unattributable builds.
-- [ ] Check the worktree for orphaned/uncommitted work and live lane claims
-      (`preflight`, `list_lanes`, `check_conflict`).
+- [ ] Check the working tree for orphaned/uncommitted work.
 - [ ] Check whether a later commit already **superseded or regressed** the task.
-- [ ] **Spot-check the brief's own premises.** Four consecutive lanes inherited a
+- [ ] **Spot-check the brief's own premises.** Four consecutive subagent runs inherited a
       false premise ("vehicles are the odd one out on the legacy path") because
       nobody re-verified it. **Report corrections rather than silently building on
       a wrong foundation.**
@@ -112,7 +117,7 @@ py -3 tools\repo_intel\repo_query.py slice-preflight ^
 - `verdict=STOP` (a target symbol changed on `base..nifty`) → **do not write code**;
   re-recon against current HEAD first. The bug may already be fixed (this gate
   encodes the lesson from the duplicated watchID / fit-parse / icon-divisor
-  re-recons — a parallel lane had already landed the fix).
+  re-recons — another session had already landed the fix).
 - `verdict=WARN` (slice name already in log / stale base / dirty overlap) → review
   before proceeding.
 - **Mandatory** for shared-recon-queue work; advisory (still useful) for ordinary
@@ -123,20 +128,12 @@ py -3 tools\repo_intel\repo_query.py slice-preflight ^
 ## repo-intel MCP commands (token-cut / faster-findings)
 
 Added 2026-06-27 (`7b0448fa`). All additive; MCP tools go live after a server
-restart, CLI works immediately. Aimed at parallel multi-session work on the
-shared multi-lane dirty tree.
+restart, CLI works immediately. Aimed at faster, cheaper repo queries.
 
 - **`preflight` / `dirty` now digest by default** — preflight no longer dumps the
   full ~239-file dirty list (mostly `tests/visual/baselines/*.png`); it returns
   `class_counts` + only the elevated (non-safe-class) files. MCP `dirty(full=True)`
   or CLI `repo_query.py dirty` (no flag = full) restores the complete list.
-- **`commit-plan`** — lane attribution for the multiplexed dirty tree. Flags dirty
-  files whose added `MC2_*`/identifier tokens belong to a **different** slice's
-  `.claude/*.md` doc, so you stage only your slice. CLI:
-  `repo_query.py commit-plan --slice <NAME> [--base <ref>] [--paths f1 f2 ...]`;
-  MCP `repo.commit_plan(slice=, paths=, base=)`. Heuristic/advisory — verify before
-  staging. (Catches e.g. a foreign `MC2_OBJECT_POLY_OFFSET` hunk interleaved in a
-  static-prop file.) Pairs with selective `git apply --cached` to commit clean.
 - **`repo.diag_tag(tag, log=, last_n=, log_path=)`** (`mc2-render-state`) — greps the
   latest editor/game stderr for a printf diag tag prefix (e.g. `EDITOR_STATIC_PRIME`,
   `BLDG_CMD_DIAG`) and returns only matching lines + any `SUMMARY` line. The

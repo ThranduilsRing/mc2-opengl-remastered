@@ -125,11 +125,10 @@ bool Batcher::is_log_enabled() {
 }
 
 // VFX-ORIGINAL-RECORD-ABI-1 (Phase 1): CPU-oracle render gate.
-// VFX-WEAPON-FX-RESTORE-OPUS-1: flipped to default-ON for release.
+// Default OFF (reverted to CPU/MLR; the VFX-WEAPON-FX-RESTORE-OPUS-1 default-ON was reverted).
 // When ON, a migrated class's Draw harvests the CPU sim's live per-particle
 // arrays and renders them via the GPU billboard path.
-// Kill-switch: MC2_VFX_ORACLE_RENDER=0  (logs reason=kill_switch)
-// Force-ON:   MC2_VFX_ORACLE_RENDER=1  (explicit opt-in, same as default)
+// Opt-in: MC2_VFX_ORACLE_RENDER=1  (only '1' enables; unset or 0 = OFF)
 // Read once, process-lifetime.
 bool Batcher::is_oracle_render_enabled() {
     static bool s_init = false;

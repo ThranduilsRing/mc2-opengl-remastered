@@ -1,5 +1,7 @@
 # VFX Oracle Coverage Matrix
 
+> STATUS: all GPU oracle paths are default-OFF since 4ad31a9e. The tables and notes below describe the opt-in path (`MC2_VFX_ORACLE_RENDER=1`, inside `MC2_GPU_PARTICLES=1`), not the default.
+
 Last updated: 2026-05-31 (VFX-WEAPON-FX-RESTORE-OPUS-1 complete — MLR re-enabled, Tube→MLR, weapon FX restored)
 
 Branch: `claude/nifty-mendeleev` HEAD `9dfff4a9`
@@ -8,10 +10,10 @@ Branch: `claude/nifty-mendeleev` HEAD `9dfff4a9`
 
 | Class / Effect family | Final route | Gate / default | Reason | Validation status |
 |---|---|---|---|---|
-| CardCloud (388 specs) — dust, smoke, fireball, AC/Gauss trails, foot-poofs, mech-smoke, VTOL | **GPU_ORACLE** (oracle → GPU batcher; MLR suppressed at oracle exit via Effect::Draw) | `MC2_VFX_ORACLE_RENDER` default-ON | Full oracle validated; oracle exit uses Effect::Draw to prevent MLR double-draw | CONFIRMED: tier1 5/5 + interactive |
-| ShardCloud (24 specs) — sparks, debris fragments | **GPU_ORACLE** (same pattern as CardCloud) | `MC2_VFX_ORACLE_RENDER` default-ON | Full oracle validated | CONFIRMED: tier1 5/5 |
-| Card (136 specs) — muzzle flares, hit flashes, bolt lozenge | **GPU_ORACLE** (same pattern) | `MC2_VFX_ORACLE_RENDER` default-ON | Full oracle validated; lozenge alpha=1 visible | CONFIRMED: tier1 5/5 |
-| PointCloud (2 specs) — MG muzzle dot | **GPU_ORACLE** (same pattern) | `MC2_VFX_ORACLE_RENDER` default-ON | Oracle path wired; 0 births in passive smoke | PARTIAL: oracle fires; visual needs interactive MG session |
+| CardCloud (388 specs) — dust, smoke, fireball, AC/Gauss trails, foot-poofs, mech-smoke, VTOL | **GPU_ORACLE** (oracle → GPU batcher; MLR suppressed at oracle exit via Effect::Draw) | `MC2_VFX_ORACLE_RENDER` default-OFF (opt-in `=1`) | Full oracle validated; oracle exit uses Effect::Draw to prevent MLR double-draw | CONFIRMED: tier1 5/5 + interactive |
+| ShardCloud (24 specs) — sparks, debris fragments | **GPU_ORACLE** (same pattern as CardCloud) | `MC2_VFX_ORACLE_RENDER` default-OFF (opt-in `=1`) | Full oracle validated | CONFIRMED: tier1 5/5 |
+| Card (136 specs) — muzzle flares, hit flashes, bolt lozenge | **GPU_ORACLE** (same pattern) | `MC2_VFX_ORACLE_RENDER` default-OFF (opt-in `=1`) | Full oracle validated; lozenge alpha=1 visible | CONFIRMED: tier1 5/5 |
+| PointCloud (2 specs) — MG muzzle dot | **GPU_ORACLE** (same pattern) | `MC2_VFX_ORACLE_RENDER` default-OFF (opt-in `=1`) | Oracle path wired; 0 births in passive smoke | PARTIAL: oracle fires; visual needs interactive MG session |
 | EffectCloud (39 specs) — composite container | **GPU_ORACLE** (delegates to children) | N/A | Container only; children handle their own routes | CONFIRMED: children validated |
 | Tube (31 specs) — missile smoke, PPC trail, FX_FlameTrail, FX_SmokeTrail | **CPU_MLR** (oracle disabled `if(false&&...)`; falls through to MLR swept-mesh) | `MC2_DISABLE_GOSFX=0` default (MLR enabled) | Billboard-per-profile oracle caused "ladder/fence" artifact. MLR swept-mesh is the original correct visual. | CONFIRMED: missile smoke + PPC trail visible and correct |
 | ShapeCloud (9 specs) — explosion mesh swarms | **CPU_MLR** (DrawScalableShape now enabled via `kDefaultDisabled=false`) | `MC2_DISABLE_GOSFX=0` default | MLR gate re-enabled 2026-05-31; no longer invisible | NEWLY VISIBLE: visual quality not yet interactively validated |
@@ -34,7 +36,7 @@ Branch: `claude/nifty-mendeleev` HEAD `9dfff4a9`
 
 **Kill-switches for this release:**
 - `MC2_DISABLE_GOSFX=1` — disables all gosFX MLR draws (Tube/Shape/ShapeCloud/DebrisCloud invisible)
-- `MC2_VFX_ORACLE_RENDER=0` — disables oracle for CardCloud/ShardCloud/Card/PointCloud (falls back to placeholder Spawn)
+- `MC2_VFX_ORACLE_RENDER=1` — opts in to oracle for CardCloud/ShardCloud/Card/PointCloud (default OFF: unset or `0` falls back to placeholder Spawn)
 - `MC2_GPU_PARTICLES=0` — disables entire GPU particle batcher
 
 **Future GPU work (post-release):**
@@ -64,7 +66,7 @@ via aligned 4-byte ClassID scan.
 
 ## Gate summary
 
-- `MC2_VFX_ORACLE_RENDER` — **default-ON** since VFX-WEAPON-FX-RESTORE-OPUS-1. Kill-switch: `MC2_VFX_ORACLE_RENDER=0`. Enables oracle render for all migrated classes (inside `MC2_GPU_PARTICLES=1` check). Logs `[VFX_ROUTE v1] oracle_render=on reason=default_on` on startup.
+- `MC2_VFX_ORACLE_RENDER` — **default-OFF** (reverted from the VFX-WEAPON-FX-RESTORE-OPUS-1 default-ON). Opt-in: `MC2_VFX_ORACLE_RENDER=1`. Enables oracle render for all migrated classes (inside `MC2_GPU_PARTICLES=1` check). Logs `[VFX_ROUTE v1] oracle_render=off reason=default_off` on startup (`reason=opt_in` when `=1`).
 - `MC2_GPU_PARTICLES_LOG=1` enables `[VFX_ORACLE v1]` per-class stderr output.
 - `MC2_VFX_DEBUG_MODE=5` enables age heatmap (blue=newborn, green=mid-life, red=dying) — VFX-SHADER-AGE-FADE-PARITY-1.
 - `MC2_TUNE_VFX_AGE_FADE=<0..1>` enables soft death fade for oracle particles in final 30% of life — VFX-SHADER-AGE-FADE-PARITY-1.

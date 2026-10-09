@@ -1,3 +1,6 @@
+> **ARCHIVED 2026-10-09: describes the retired multi-lane workflow.**
+> Historical reference only; do not follow. Work is single-lane in A:/Games/mc2-main on claude/nifty-mendeleev.
+
 # Dev velocity: standing up agent lanes fast (DEV-VELOCITY-LANES-1)
 
 One-pager: how to spawn a new engine lane (worktree + 3rdparty + warm build)
