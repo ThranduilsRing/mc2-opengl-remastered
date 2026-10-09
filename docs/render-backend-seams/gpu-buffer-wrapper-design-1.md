@@ -272,7 +272,7 @@ mc2_01/03/10/17/24), one subsystem at a time. Lowest-risk-first.
 
 Gate per slice: dual-run where feasible (old vs wrapper path, compare draw output),
 tier1 5/5 unset + gate-on, then default-on. The Tier-2 conversions should ride an
-MC2_GPUBUF_RING gate and soak before the planned flip to default-ON (reader default is currently OFF), because a regression there =
+MC2_GPUBUF_RING gate and soak before the planned flip to enabled-by-default (reader default is currently OFF), because a regression there =
 invisible/garbled mechs or props (the exact failure class in gos_gpu_sync.h:8-12).
 
 ## 5. Diagnostics / residency hook

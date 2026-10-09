@@ -95,7 +95,7 @@ GPU batchers (`GpuMechBatcher`, static-prop batcher, any future one) assume a **
 2. **MVP snapshot freshness:** any out-of-band `renderLists()` call (SimpleCamera does one per render) must first refresh every matrix the flush/cull consumes — the stale-GameCamera mis-cull in the intro pan is the precedent (`simplecamera.cpp` GPU-CULL-SIMPLECAM-1 comment).
 3. **No mid-frame second flush assumption:** batchers may not assume exactly one flush per frame. SimpleCamera renders mean N+1 flushes; per-frame buffers must tolerate it (or the preview path must not feed them — preferred, per rule 1).
 4. **State block ownership:** the batcher's flush sets ALL GL state it needs (depth func/mask, blend, cull) — terrain-chunk transparency saga (`f375e0ba`) is the canonical lesson; previews leave arbitrary state behind.
-5. **Default-on checklist item:** "preview-scope guard present + trace event (`MC2_MECH_PREVIEW_TRACE`-style) + SimpleCamera smoke" before any new batcher ships default-on.
+5. **Ship-enabled checklist item:** "preview-scope guard present + trace event (`MC2_MECH_PREVIEW_TRACE`-style) + SimpleCamera smoke" before any new batcher ships enabled.
 6. **Standalone tools never link a batcher.** Asset Viewer links no `eye`, no `mcTextureManager`, no TGL pools, no batcher (v1 §3 anti-coupling, re-affirmed).
 
 Generalize `MechPreviewRenderScope` → `PreviewRenderScope` (one counter, all batchers) when the second batcher needs it — slice S2.

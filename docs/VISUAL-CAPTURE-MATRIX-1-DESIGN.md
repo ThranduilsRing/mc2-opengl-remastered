@@ -62,7 +62,7 @@ set in the parent shell or in a matrix JSON `env` block:
 
 **VFX**
 - `MC2_GPU_PARTICLES` -- GPU particle batcher gate (0=legacy gosFX only, 1=GPU bridge)
-- `MC2_DISABLE_GOSFX` -- gosFX CPU sim gate (0=legacy on, 1=legacy off; default-ON since A2)
+- `MC2_DISABLE_GOSFX` -- gosFX CPU sim gate (0=legacy on, 1=legacy off; gosFX on when unset, since A2)
 - `MC2_FX_TRACE` -- neutral FX invocation counter (default-OFF)
 
 **Shadows**

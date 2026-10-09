@@ -141,7 +141,7 @@ where soak proof was logged.
 | StaticPropIndirect | `MC2_GPU_OBJECTS` | off | [Retired] (`:139`) | no | superseded by `RenderWorld::upsertStaticProp` |
 | ObjectIdBuffer | `MC2_OBJECT_ID_BUFFER` | off | shipped opt-in (`:146-148`) | yes (required for pick consumers) | M1.5 substrate |
 | TerrainTessellation | (none) | always-on (`:152-156`) | shipped default-on, no env | no | always-on |
-| ReverseZ | (none) | always-on (`:160-164`) | shipped default-on, no env | no | always-on (trace = `MC2_REVERSE_Z_TRACE`, default OFF) |
+| ReverseZ | (none) | always-on (`:160-164`) | shipped always-on, no env | no | always-on (trace = `MC2_REVERSE_Z_TRACE`, default OFF) |
 | ShadowMaps | `MC2_SHADOW_ENABLE` | on (`:170-172`) | shipped default-on (`=0` kills) | yes (master) | last referenced in shadow inspector `EditorInspector.cpp:804-830` |
 | ImGui | `MC2_IMGUI` | on (`GuiRuntime/GuiRuntime.cpp:88`) | default ON | n/a | editor uses |
 | ImGuiInspector | `MC2_IMGUI_INSPECTOR` | off (`:185-188`) | shipped opt-in | n/a | editor / debug |
