@@ -53,6 +53,7 @@ PARENT = textwrap.dedent("""
 def _run_parent(mode: str, detached: bool) -> subprocess.CompletedProcess:
     """Run PARENT as a pipe-attached process, with or without a console."""
     flags = DETACHED_PROCESS if detached else 0
+    # background-launch: allow test must spawn a consoled parent to reproduce the lost-output case
     return subprocess.run([sys.executable, "-c", PARENT, mode],
                           capture_output=True, text=True, creationflags=flags, timeout=60)
 
