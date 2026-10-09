@@ -41,32 +41,9 @@ layout(location=4) in vec4  a_boneWeights;   // GL_UNSIGNED_BYTE normalized; Sli
 layout(location=5) in vec2  a_tangentOct;    // GL_SHORT normalized; zero-fill for stock
 layout(location=6) in uint  a_aRGBLight;     // TG_TypeVertex::aRGBLight, BGRA packed
 
-// Per-instance SSBO (binding 0).
-// M2.5: 64 bytes (was 48). MUST mirror C++ GpuMechInstance at
-// GameOS/gameos/gos_mech_batcher.h:35. Trailing _padN slots keep the
-// std430 layout explicit so M3+ field adds (terrain chunk, VFX) take
-// named slots rather than silently consuming pad bytes.
-struct GpuMechInstance {
-    uint  typeLodRecordIndex;
-    uint  baseBoneOffset;
-    uint  lightDataIndex;
-    uint  renderFlags;
-    vec4  aRGBHighlight;
-    vec4  fogRGB;
-    uint  objectIdRaw;
-    uint  materialIdx;   // 52  -- was _pad1; reserved for MaterialGpu Mech-2
-    // SCHEMA-MECHINSTANCE-NAMES-1 (2026-07-31): renamed in place to mirror
-    // GpuMechInstance (gos_mech_batcher.h:55-56), which renamed _pad2/_pad3 in
-    // GAMEADAPTERS-VISUAL-STATE-BRIDGE-1 and added offsetof static_asserts for
-    // both -- while this struct still called them padding. Layout is UNCHANGED:
-    // std430 float and uint are both size 4 / align 4, so the offsets stay 56
-    // and 60 and the stride stays 64. No stage reads either field yet; the CPU
-    // does WRITE them, which is exactly why they must not keep reading as spare
-    // padding somebody could reuse. `float` (not uint) matches what the CPU
-    // stores, so the first reader gets the right interpretation for free.
-    float visualDamage01;  // 56  -- was _pad2; [0,1] composite damage
-    uint  visualFlags;     // 60  -- was _pad3; RenderCore::MechVisualFlagBits
-};
+// Per-instance SSBO (binding 0). The 64 B record is generated from
+// RenderCore/gpu_abi/GpuMechInstance.h; do not re-declare it here.
+#include <include/gpu_abi_mech_instance.gen.hglsl>
 layout(std430, binding=0) readonly buffer InstanceBuffer {
     GpuMechInstance instances[];
 };

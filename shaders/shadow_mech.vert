@@ -6,16 +6,10 @@ layout(location=0) in vec3 a_position;
 layout(location=3) in uvec4 a_boneIndices;
 layout(location=4) in vec4 a_boneWeights;
 
-// MUST match the full 64-byte std430 layout of the C++ GpuMechInstance
-// (gos_mech_batcher.h) AND mech.vert. A truncated struct here (was 48 bytes)
-// strides instances[] wrong -> every bucket with instanceBase>0 reads a
-// shifted record -> garbage baseBoneOffset -> those mech parts collapse out of
-// the shadow depth (present parts sharp, same parts missing every frame).
-struct GpuMechInstance {
-    uint typeLodRecordIndex; uint baseBoneOffset; uint lightDataIndex; uint renderFlags;
-    vec4 aRGBHighlight; vec4 fogRGB;
-    uint objectIdRaw; uint materialIdx; uint _pad2; uint _pad3;
-};
+// Per-instance record (64B): generated from RenderCore/gpu_abi/GpuMechInstance.h.
+// A shader-side copy with the wrong stride shifts every record at instanceBase > 0
+// (garbage bone offsets, mech parts missing from the shadow depth).
+#include <include/gpu_abi_mech_instance.gen.hglsl>
 struct GpuMechBone { vec4 row0, row1, row2, row3; };
 layout(std430, binding=0) readonly buffer InstanceBuffer { GpuMechInstance instances[]; };
 layout(std430, binding=1) readonly buffer BoneBuffer { GpuMechBone bones[]; };

@@ -39,6 +39,9 @@ STRUCTS = [
     ("RenderCore/gpu_abi/GpuStaticPropInstance.h",
      "RenderCore/gpu_abi/GpuStaticPropInstance.layout.gen.h",
      "shaders/include/gpu_abi_static_prop_instance.gen.hglsl"),
+    ("RenderCore/gpu_abi/GpuMechInstance.h",
+     "RenderCore/gpu_abi/GpuMechInstance.layout.gen.h",
+     "shaders/include/gpu_abi_mech_instance.gen.hglsl"),
     # VK-only uniform block: lives beside the other VK includes (shaders/vulkan/include),
     # outside the GL/VK-shared shaders/include that the GL shader lints scan.
     ("RenderCore/gpu_abi/GpuTerrainFrameUBO.h",
@@ -276,6 +279,43 @@ def generate_all(root):
     return results
 
 
+_SHADER_EXTS = (".vert", ".frag", ".comp", ".geom", ".glsl", ".hglsl")
+
+
+# Deliberate prefix declarations: the overlay/decal vertex stages read only the leading
+# worldToClipGL mat4 of the terrain block, whose offset 0 is pinned by the generated
+# offsetof assert, so a one-member prefix block cannot stride-drift.
+_REDECL_ALLOW = {("shaders/vulkan/include/terrain_overlay_vs.glsl", "TerrainFrameUBO")}
+
+
+def find_redeclarations(root, results):
+    """Shader files (other than the generated ones) that re-declare a generated GLSL
+    struct or block. A private copy is an independent stride contract that nothing
+    checks -- the class of bug behind the 48-vs-64 byte shadow_mech.vert record."""
+    generated = {rel for rel, _ in results}
+    pats = []
+    for src, _, _ in STRUCTS:
+        with open(os.path.join(root, src), "r", encoding="utf-8", newline="") as f:
+            info = parse_source(f.read().replace("\r\n", "\n"), src)
+        kw = r"uniform\s+" if info["block"] else r"struct\s+"
+        pats.append((info["glsl"], re.compile(r"\b" + kw + info["glsl"] + r"\s*\{")))
+    bad = []
+    for dirpath, dirnames, files in os.walk(os.path.join(root, "shaders")):
+        dirnames[:] = [d for d in dirnames if d != "spv"]
+        for fn in files:
+            if not fn.endswith(_SHADER_EXTS):
+                continue
+            path = os.path.join(dirpath, fn)
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
+            if rel in generated:
+                continue
+            text = re.sub(r"//[^\n]*", "", _read(path) or "")
+            for name, pat in pats:
+                if pat.search(text) and (rel, name) not in _REDECL_ALLOW:
+                    bad.append((rel, name))
+    return sorted(bad)
+
+
 def _read(path):
     try:
         with open(path, "r", encoding="utf-8", newline="") as f:
@@ -311,6 +351,10 @@ def main(argv=None):
                       "py -3 tools/gpu_abi_gen.py --write" % rel, file=sys.stderr)
                 bad += 1
     if a.check:
+        for rel, name in find_redeclarations(a.root, results):
+            print("gpu_abi_gen: REDECLARED: %s declares %s; include the generated "
+                  "GLSL instead" % (rel, name), file=sys.stderr)
+            bad += 1
         if bad:
             return 1
         print("gpu_abi_gen: %d generated files match their sources" % len(results))

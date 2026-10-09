@@ -200,3 +200,31 @@ def test_check_detects_drift_in_every_registered_output(tmp_path, idx):
         with open(os.path.join(root, rel), "a", encoding="utf-8", newline="") as f:
             f.write("// tampered\n")
     assert g.main(["--check", "--root", root]) == 1
+
+
+def test_mech_instance_record_is_64_bytes_with_pinned_offsets():
+    entry = [s for s in g.STRUCTS if s[0].endswith("GpuMechInstance.h")]
+    assert entry, "GpuMechInstance must be a gpu_abi struct"
+    with open(os.path.join(ROOT, entry[0][0]), encoding="utf-8") as f:
+        info = g.parse_source(f.read(), "mech")
+    o, al, sz = g.struct_offsets(info["fields"], "std430")
+    assert (al, sz) == (16, 64)
+    assert [x[1] for x in o] == [0, 4, 8, 12, 16, 32, 48, 52, 56, 60]
+
+
+def test_shader_redeclaring_a_generated_struct_is_rejected(tmp_path):
+    root = _tmp_root(tmp_path)
+    shader = tmp_path / "shaders" / "shadow_mech.vert"
+    shader.parent.mkdir(parents=True, exist_ok=True)
+    # The historical bug: a private 48-byte copy of the 64-byte record.
+    shader.write_text("struct GpuMechInstance { uint a; vec4 b; vec4 c; };\n", encoding="utf-8")
+    assert g.main(["--check", "--root", root]) == 1
+
+
+def test_shader_including_the_generated_struct_passes(tmp_path):
+    root = _tmp_root(tmp_path)
+    shader = tmp_path / "shaders" / "shadow_mech.vert"
+    shader.parent.mkdir(parents=True, exist_ok=True)
+    shader.write_text("#include <include/gpu_abi_mech_instance.gen.hglsl>\n"
+                      "// struct GpuMechInstance { stale comment }\n", encoding="utf-8")
+    assert g.main(["--check", "--root", root]) == 0

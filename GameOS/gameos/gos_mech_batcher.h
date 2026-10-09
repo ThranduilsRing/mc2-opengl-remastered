@@ -30,44 +30,10 @@ static_assert(offsetof(GpuMechVertex, boneWeights) == 36, "boneWeights offset");
 static_assert(offsetof(GpuMechVertex, tangentOct)  == 40, "tangentOct offset");
 static_assert(offsetof(GpuMechVertex, aRGBLight)   == 44, "aRGBLight offset");
 
-// Per-instance GPU record — std430, 64 bytes (M2.5: was 48 bytes).
-// CHANGING THIS STRUCT REQUIRES CHANGING mech.vert IN LOCKSTEP.
-struct alignas(16) GpuMechInstance {
-    uint32_t typeLodRecordIndex;  // resolved Mech3DAppearanceType × LOD record index
-    uint32_t baseBoneOffset;      // index into per-frame bone SSBO for this actor's nodes
-    uint32_t lightDataIndex;      // into LightsData UBO (Slice B1; 0 in Slice A)
-    uint32_t renderFlags;         // bit 0: ALPHA_TEST, bit 1: lightsOut, bit 2: isHighlighted
-    float    aRGBHighlight[4];    // forwarded to FS as v_highlightColor
-    float    fogRGB[4];           // forwarded to FS as v_fogRGB
-    // M2.5: RenderObjectHandle.raw() emitted by mech.frag as
-    //   layout(location=2) out uint v_objectId
-    // under #ifdef MC2_OBJECT_ID_BUFFER. 0 = Handle::invalid()
-    // (clear-value match -- background read by lookupAtPixel).
-    uint32_t objectIdRaw;         // 48
-    // Per Q2 resolved: generic _padN names; only the consumed slot is
-    // named. Future slices (M3 terrain chunk, M4 VFX) rename in place.
-    // Mech-1: _pad1 renamed to materialIdx (byte 52). Stride unchanged.
-    uint32_t materialIdx;         // 52  -- index into s_mechMaterialTable; 0 = not assigned
-    // GAMEADAPTERS-VISUAL-STATE-BRIDGE-1: per-mech visual state for ViewMode
-    // consumers (Thermal etc.). Filled from GpuMechSubmitDesc; no shader reads
-    // these yet (Slice 1), so the 64B layout and mech.vert are unchanged ->
-    // byte-identical output. heat01 has NO slot (USEHEAT compiled out, always 0).
-    float    visualDamage01;      // 56  -- [0,1] composite damage (was _pad2)
-    uint32_t visualFlags;         // 60  -- RenderCore::MechVisualFlagBits (was _pad3)
-};
-// Layout: 16 (4 × uint32) + 16 (vec4) + 16 (vec4) + 16 (uint32 + 3*pad) = 64 bytes.
-static_assert(sizeof(GpuMechInstance) == 64,
-              "GpuMechInstance size must match std430 GLSL struct");
-static_assert(offsetof(GpuMechInstance, typeLodRecordIndex) ==  0);
-static_assert(offsetof(GpuMechInstance, baseBoneOffset)     ==  4);
-static_assert(offsetof(GpuMechInstance, lightDataIndex)     ==  8);
-static_assert(offsetof(GpuMechInstance, renderFlags)        == 12);
-static_assert(offsetof(GpuMechInstance, aRGBHighlight)      == 16);
-static_assert(offsetof(GpuMechInstance, fogRGB)             == 32);
-static_assert(offsetof(GpuMechInstance, objectIdRaw)        == 48);
-static_assert(offsetof(GpuMechInstance, materialIdx)        == 52, "materialIdx offset");
-static_assert(offsetof(GpuMechInstance, visualDamage01)     == 56, "visualDamage01 offset");
-static_assert(offsetof(GpuMechInstance, visualFlags)        == 60, "visualFlags offset");
+// Per-instance GPU record (64 B, std430). SINGLE SOURCE OF TRUTH is
+// RenderCore/gpu_abi/GpuMechInstance.h; its generated asserts and the shaders
+// (via the generated .hglsl) are derived from it.
+#include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 
 // Bone matrix: 4 explicit rows to avoid GLSL column-major confusion.
 // Upload rows as row0..row3; GLSL mat4(row0,row1,row2,row3) fills COLUMNS from

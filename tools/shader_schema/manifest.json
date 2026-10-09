@@ -18,9 +18,9 @@
     {
       "name": "GpuMechInstance",
       "kind": "ssbo_struct",
-      "cppHeader": "GameOS/gameos/gos_mech_batcher.h",
+      "cppHeader": "RenderCore/gpu_abi/GpuMechInstance.layout.gen.h",
       "cppType": "GpuMechInstance",
-      "glslSource": "shaders/mech.vert",
+      "glslSource": "shaders/include/gpu_abi_mech_instance.gen.hglsl",
       "glslType": "GpuMechInstance",
       "expectedSize": 64,
       "goldenShader": "shaders/mech.vert",

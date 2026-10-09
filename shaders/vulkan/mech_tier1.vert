@@ -15,6 +15,7 @@
 // mat4(row0..row3) fills GLSL COLUMNS => boneT is the TRANSPOSE of the Stuff
 // matrix and boneT * vec4(pos,1) is row-vector math. Do NOT "fix" the transpose.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 layout(location = 0) in vec3  a_position;
 layout(location = 1) in vec3  a_normal;
@@ -42,19 +43,9 @@ layout(set = 0, binding = 0, std140) uniform MechFrameUBO {
     ivec4 miscI;
 } uFrame;
 
-// GpuMechInstance mirror (64B; LOCKSTEP with gos_mech_batcher.h:35).
-struct GpuMechInstance {
-    uint  typeLodRecordIndex;
-    uint  baseBoneOffset;
-    uint  lightDataIndex;
-    uint  renderFlags;
-    vec4  aRGBHighlight;
-    vec4  fogRGB;          // .a = per-actor haze factor (mech.vert:244)
-    uint  objectIdRaw;
-    uint  materialIdx;
-    uint  _pad2;
-    uint  _pad3;
-};
+// Per-instance record (64B): generated from RenderCore/gpu_abi/GpuMechInstance.h.
+// fogRGB.a is the per-actor haze factor.
+#include "../include/gpu_abi_mech_instance.gen.hglsl"
 layout(set = 0, binding = 1, std430) readonly buffer InstanceBuffer {
     GpuMechInstance instances[];
 } uInst;
