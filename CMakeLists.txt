@@ -410,7 +410,7 @@ set(SOURCES
     "code/ablmc2_orders.cpp"
     "code/ablmc2_queries.cpp"
     "code/ablmc2_roster.cpp"
-    "code/ablmc2_runtime.cpp"
+    "code/ablmc2_repro.cpp"
     "code/ablmc2_state.cpp"
     "code/gamecam.cpp"
     "code/mission.cpp"

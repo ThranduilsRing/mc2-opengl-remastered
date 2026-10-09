@@ -20,6 +20,252 @@ UserHeapPtr				AblStackHeap = NULL;
 UserHeapPtr				AblCodeHeap = NULL;
 UserHeapPtr				AblSymbolHeap = NULL;
 
+void* ablSystemMallocCallback (unsigned long memSize) {
+
+	return(systemHeap->Malloc(memSize));
+}
+
+void* ablStackMallocCallback (unsigned long memSize) {
+
+	if (!AblSymbolHeap)
+		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
+	return(AblStackHeap->Malloc(memSize));
+}
+
+void* ablCodeMallocCallback (unsigned long memSize) {
+
+	if (!AblCodeHeap)
+		Fatal(0, " ablCodeFreeCallback: NULL heap ");
+	return(AblCodeHeap->Malloc(memSize));
+}
+
+void* ablSymbolMallocCallback (unsigned long memSize) {
+
+	if (!AblSymbolHeap)
+		Fatal(0, " ablSymbolMallocCallback: NULL heap ");
+	return(AblSymbolHeap->Malloc(memSize));
+}
+
+void ablSystemFreeCallback (void* memBlock) {
+
+	systemHeap->Free(memBlock);
+}
+
+void ablStackFreeCallback (void* memBlock) {
+
+	if (!AblStackHeap)
+		Fatal(0, " ablStackFreeCallback: NULL heap ");
+	AblStackHeap->Free(memBlock);
+}
+
+void ablCodeFreeCallback (void* memBlock) {
+
+	if (!AblCodeHeap)
+		Fatal(0, " ablCodeFreeCallback: NULL heap ");
+	AblCodeHeap->Free(memBlock);
+}
+
+void ablSymbolFreeCallback (void* memBlock) {
+
+	if (!AblSymbolHeap)
+		Fatal(0, " ablSymbolFreeCallback: NULL heap ");
+	AblSymbolHeap->Free(memBlock);
+}
+
+long ablFileCreateCB (void** file, const char* fName) {
+
+	*file = new File;
+	if (*file == NULL)
+		Fatal(0, " unable to create ABL file");
+	if (((FilePtr)*file)->create(fName) != NO_ERR) {
+		char s[256];
+		sprintf(s, " ABL.ablFileOpenCB: unable to create file [%s] ", fName);
+		Fatal(0, s);
+	}
+	return(NO_ERR);
+}
+
+long ablFileOpenCB (void** file, const char* fName) {
+
+	*file = new File;
+	if (*file == NULL)
+		Fatal(0, " unable to create ABL file");
+
+	//Filenames MUST be all lowercase or Hash won't find 'em!
+    char* tmpstr = strdup(fName);
+	CharLower(tmpstr);
+	if (((FilePtr)*file)->open(tmpstr) != NO_ERR)
+		STOP((" unable to open ABL File %s",fName));
+    free(tmpstr);
+	return(NO_ERR);
+}
+
+long ablFileCloseCB (void** file) {
+
+	((FilePtr)*file)->close();
+
+	delete (FilePtr)*file;
+	*file = NULL;
+
+	return(0);
+}
+
+bool ablFileEofCB (void* file) {
+
+	return(((FilePtr)file)->eof());
+
+}
+
+long ablFileReadCB (void* file, unsigned char* buffer, long length) {
+
+	return(((FilePtr)file)->read(buffer, length));
+}
+
+int32_t ablFileReadIntCB (void* file) {
+
+	return(((FilePtr)file)->readInt());
+}
+
+long ablFileReadLongCB (void* file) {
+
+	return(((FilePtr)file)->readLong());
+}
+
+long ablFileReadStringCB (void* file, unsigned char* buffer) {
+
+	return(((FilePtr)file)->readString(buffer));
+}
+
+long ablFileReadLineExCB (void* file, unsigned char* buffer, long maxLength) {
+
+	return(((FilePtr)file)->readLineEx(buffer, maxLength));
+}
+
+long ablFileWriteCB (void* file, unsigned char* buffer, long length) {
+
+	return(((FilePtr)file)->write(buffer, length));
+}
+
+long ablFileWriteByteCB (void* file, unsigned char byte) {
+
+	return(((FilePtr)file)->writeByte(byte));
+}
+
+long ablFileWriteIntCB (void* file, int32_t value) {
+
+	return(((FilePtr)file)->writeInt(value));
+}
+
+long ablFileWriteLongCB (void* file, long value) {
+
+	return(((FilePtr)file)->writeLong(value));
+}
+
+long ablFileWriteStringCB (void* file, const char* buffer) {
+
+	return(((FilePtr)file)->writeString(buffer));
+}
+
+void ablDebuggerPrintCallback (const char* s) {
+
+	//ABLDebuggerOut->print(s);
+	char msg[1024];
+	sprintf(msg, "%s\n", s);
+	SPEW((0,msg));
+}
+
+void ablDebugPrintCallback (const char* s) {
+
+	DEBUGWINS_print(s, 0);
+}
+
+void ablSeedRandom (unsigned long seed) {
+
+	gos_srand(seed);
+}
+
+void ablFatalCallback (long code, const char* s) {
+
+	// Rate-limit per-message spam (e.g. unimplemented ABL extensions firing
+	// on every script tick). Fixed C array -- no heap, no STL.
+	static const int kSlots    = 16;
+	static const int kMaxPrints = 5;
+	struct AblMsgSlot { unsigned int hash; int count; };
+	static AblMsgSlot slots[kSlots];
+	static int  slotCount = 0;
+	static bool tableFull = false;
+
+	// djb2-lite over first 64 chars.
+	unsigned int h = 5381u;
+	const char* p = s ? s : "";
+	for (int i = 0; *p && i < 64; ++p, ++i)
+		h = h * 33u ^ (unsigned char)*p;
+
+	for (int i = 0; i < slotCount; ++i) {
+		if (slots[i].hash == h) {
+			if (++slots[i].count <= kMaxPrints)
+				STOP((s));
+			else if (slots[i].count == kMaxPrints + 1)
+				STOP(("[ABL] suppressing further identical errors (hash %08x): %s", h, s));
+			return;
+		}
+	}
+
+	if (slotCount < kSlots) {
+		slots[slotCount++] = { h, 1 };
+		STOP((s));
+	} else if (!tableFull) {
+		tableFull = true;
+		STOP(("[ABL] fatal callback: %d unique errors tracked; further distinct messages suppressed", kSlots));
+	}
+}
+
+extern GameObjectPtr LastCoreAttackTarget;
+
+void ablEndlessStateCallback (UserFile* log) {
+
+	char s[256];
+	sprintf(s, "Mover = %s (%d)", CurWarrior->getVehicle()->getName(), CurWarrior->getVehicle()->getPartId());
+	log->write(s);
+	sprintf(s, "     Status = %d", CurWarrior->getVehicle()->getStatus());
+	log->write(s);
+	sprintf(s, "     NumWeapons = %d", CurWarrior->getVehicle()->numWeapons);
+	log->write(s);
+	sprintf(s, "     NumFunctionalWeapons = %d", CurWarrior->getVehicle()->numFunctionalWeapons);
+	log->write(s);
+	sprintf(s, "     TacOrder = ");
+	CurWarrior->getCurTacOrder()->debugString(CurWarrior, &s[16]);
+	log->write(s);
+	log->write(" ");
+	if (LastCoreAttackTarget) {
+		sprintf(s, "Target = %s (%d)", LastCoreAttackTarget->getName(), LastCoreAttackTarget->getPartId());
+		log->write(s);
+		Stuff::Vector3D pos;
+		pos = LastCoreAttackTarget->getPosition();
+		sprintf(s, "Target Position = (%.3f, %.3f, %.3f) [%d, %d]",
+			pos.x, pos.y, pos.z,
+			LastCoreAttackTarget->cellPositionRow,
+			LastCoreAttackTarget->cellPositionCol);
+		log->write(s);
+		sprintf(s, "     Status = %d", LastCoreAttackTarget->getStatus());
+		log->write(s);
+		if (LastCoreAttackTarget->isMover()) {
+			MoverPtr mover = (MoverPtr)LastCoreAttackTarget;
+			sprintf(s, "     NumWeapons = %d", mover->numWeapons);
+			log->write(s);
+			sprintf(s, "     NumFunctionalWeapons = %d", mover->numFunctionalWeapons);
+			log->write(s);
+			sprintf(s, "     TacOrder = ");
+			mover->getPilot()->getCurTacOrder()->debugString(CurWarrior, &s[16]);
+			log->write(s);
+		}
+		}
+	else {
+		sprintf(s, "Target = NULL");
+		log->write(s);
+	}
+}
+
 static void logAblFunctionTableCapacity (void)
 {
 	char _cbbuf[128];

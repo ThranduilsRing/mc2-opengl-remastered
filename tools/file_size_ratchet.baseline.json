@@ -34,7 +34,6 @@
   "GuiRuntime/EditorInspector.cpp": 1659,
   "GuiRuntime/GraphicsOptionsWindow.cpp": 2249,
   "RenderCore/RendererFeatureRegistry.h": 4052,
-  "code/ablmc2.cpp": 6727,
   "code/artlry.cpp": 1843,
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 3307,
@@ -113,7 +112,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "1dd468eed",
+ "head": "dcf60b87f",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -152,9 +151,9 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 278,
-   "files_over_1500": 34,
-   "files_over_3000": 13,
+   "files": 287,
+   "files_over_1500": 33,
+   "files_over_3000": 12,
    "max_lines": 9979
   },
   "editor": {
@@ -232,10 +231,6 @@
    "lines": 6878
   },
   {
-   "file": "code/ablmc2.cpp",
-   "lines": 6727
-  },
-  {
    "file": "GameOS/gameos/gos_terrain_indirect.cpp",
    "lines": 6301
   },
@@ -306,12 +301,16 @@
   {
    "file": "code/logisticsdata.cpp",
    "lines": 3442
+  },
+  {
+   "file": "GameOS/gameos/gos_mech_batcher.cpp",
+   "lines": 3414
   }
  ],
  "total": {
-  "files": 1583,
-  "files_over_1500": 99,
-  "files_over_3000": 35,
+  "files": 1592,
+  "files_over_1500": 98,
+  "files_over_3000": 34,
   "max_lines": 11658
  },
  "version": 1
