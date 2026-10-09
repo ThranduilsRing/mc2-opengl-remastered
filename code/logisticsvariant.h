@@ -183,7 +183,7 @@ protected:
 		int				getMaxHeat() const;
 		LogisticsVariant& operator=( const LogisticsVariant&  );
 
-		bool			operator==( const LogisticsVariant& src );
+		bool			operator==( const LogisticsVariant& src ) const;
 		const EString&		getFileName(){ return chassis->fileName; }
 
 		long			save( FitIniFile& file, long counter );

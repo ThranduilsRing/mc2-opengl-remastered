@@ -371,7 +371,7 @@ LogisticsVariant& LogisticsVariant::operator=( const LogisticsVariant& src )
 	return *this;
 }
 
-bool LogisticsVariant::operator==( const LogisticsVariant& src )
+bool LogisticsVariant::operator==( const LogisticsVariant& src ) const
 {
 		if ( chassis->chassisNameID != src.chassis->chassisNameID )
 			return 0;
