@@ -299,31 +299,6 @@ if(ENABLE_ASSIMP_IMPORTER)
     message(STATUS "ENABLE_ASSIMP_IMPORTER=ON — vendored Assimp at 3rdparty/assimp/ (FBX + GLTF, static, debug-info stripped: ASSIMP-PDB-SLIM-1)")
 endif()
 
-# ---------------------------------------------------------------------------
-# Offline asset-pipeline probe host tools (ASSIMP-IMPORTER-PHASE-0 +).
-# Isolated subdir so link deps stay minimal — these tools link ONLY
-# assimp::assimp, never mclib / gameos / SDL2 / GLEW. Placed AFTER the assimp
-# add_subdirectory so assimp::assimp is visible. A later slice extends the
-# subdir with meshopt_lod_probe.
-# ---------------------------------------------------------------------------
-option(ENABLE_ASSET_CPP_PROBES "Build offline asset probe host tools (assimp_probe, meshopt_lod_probe)" OFF)
-if(ENABLE_ASSET_CPP_PROBES)
-    if(NOT ENABLE_ASSIMP_IMPORTER)
-        message(FATAL_ERROR "ENABLE_ASSET_CPP_PROBES=ON requires ENABLE_ASSIMP_IMPORTER=ON (assimp_probe links assimp::assimp).")
-    endif()
-    # meshoptimizer (vendored, unwired at runtime) is brought in ONLY for the
-    # offline meshopt_lod_probe tool (MESHOPT-LOD-PROBE-1). Demo + gltfpack are
-    # already OFF by default in its CMakeLists; force them OFF explicitly so the
-    # only target produced is the static `meshoptimizer` lib. EXCLUDE_FROM_ALL:
-    # never built unless the probe exe (or a runtime target) links it.
-    set(MESHOPT_BUILD_DEMO        OFF CACHE BOOL "" FORCE)
-    set(MESHOPT_BUILD_GLTFPACK    OFF CACHE BOOL "" FORCE)
-    set(MESHOPT_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    add_subdirectory(3rdparty/meshoptimizer "${CMAKE_BINARY_DIR}/out/3rdparty/meshoptimizer" EXCLUDE_FROM_ALL)
-    add_subdirectory(tools/cpp_probes "${CMAKE_BINARY_DIR}/out/tools/cpp_probes")
-    message(STATUS "ENABLE_ASSET_CPP_PROBES=ON — building offline host tools in tools/cpp_probes/")
-endif()
-
 # Source/execution charset UTF-8 for first-party code only: set after the vendored subdirectories
 # above, since assimp passes its own /source-charset (the two switches are mutually exclusive).
 if(MSVC)
@@ -365,12 +340,8 @@ if(MSVC)
 endif()
 add_subdirectory("GuiRuntime")
 include(cmake/Mc2NarrowingErrors.cmake)  # per-target /we for narrowing codes; after all lib targets exist
-# Standalone ImGui UI Editor.
-# Guarded so source snapshots that carry only changelog/version files do
-# not break configure, while full local UI Editor trees produce ui_editor.vcxproj.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ui_editor/CMakeLists.txt")
-    add_subdirectory("./ui_editor" "./out/ui_editor")
-endif()
+# Standalone ImGui UI Editor: configured always, built only on request (`ninja ui_editor`).
+add_subdirectory("./ui_editor" "./out/ui_editor" EXCLUDE_FROM_ALL)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/asset_viewer/CMakeLists.txt")
     add_subdirectory("./tools/asset_viewer" "./out/tools/asset_viewer")
 endif()
@@ -764,30 +735,6 @@ if(Python3_FOUND)
     )
     if(TARGET shader_validate)
         add_dependencies(shader_reflect shader_validate)
-    endif()
-endif()
-
-# ---------------------------------------------------------------------------
-# NS3 boundary-enforcement instrument (design C: drop gameos_main).
-# Links engine libs ONLY (not gameos_main, not gui, not any code/) with
-# /WHOLEARCHIVE so every engine object is forced in. The unresolved-symbol
-# set is the complete mclib/engine -> code boundary (the NS3 metric).
-# Default OFF so it never blocks the normal mc2 build.
-# Spec: docs/superpowers/specs/2026-05-18-mclib-standalone-boundary-enforcement-spec.md
-option(MC2_BUILD_ENGINE_STANDALONE "NS3: link engine libs without code/ (boundary-enforcement instrument)" OFF)
-if(MC2_BUILD_ENGINE_STANDALONE)
-    add_executable(mclib_standalone tools/engine_standalone_stub.cpp)
-    target_link_libraries(mclib_standalone
-        mclib gosfx mlr stuff gameos windows
-        ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL)
-    if(MSVC)
-        target_link_options(mclib_standalone PRIVATE
-            /WHOLEARCHIVE:mclib
-            /WHOLEARCHIVE:gosfx
-            /WHOLEARCHIVE:mlr
-            /WHOLEARCHIVE:stuff
-            /WHOLEARCHIVE:gameos
-            /WHOLEARCHIVE:windows)
     endif()
 endif()
 
