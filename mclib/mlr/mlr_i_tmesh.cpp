@@ -73,7 +73,7 @@ MLR_I_TMesh::MLR_I_TMesh(
 	Check_Pointer(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
 
-	numOfTriangles = index.GetLength()/3;
+	numOfTriangles = static_cast<int>(index.GetLength())/3;
 
 	facePlanes.SetLength(numOfTriangles);
 	testList.SetLength(numOfTriangles);

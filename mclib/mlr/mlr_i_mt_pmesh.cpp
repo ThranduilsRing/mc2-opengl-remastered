@@ -317,7 +317,7 @@ void
 	Verify(pass>=0 && pass<passes);
 
 	*data = multiTexCoords[pass]->GetData();
-	*dataSize = multiTexCoords[pass]->GetLength();
+	*dataSize = static_cast<int>(multiTexCoords[pass]->GetLength());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -371,7 +371,7 @@ MLRShape*
 	Register_Object(ret);
 
 	int i, j, k;
-	int nrOfPasses = states->GetLength();
+	int nrOfPasses = static_cast<int>(states->GetLength());
 	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
 	Point3D v[3];
 

@@ -134,7 +134,7 @@ void
 	numGOSIndices = -1;
 
 	visibleIndexedVerticesKey = false;
-	int i, len = visibleIndexedVertices.GetLength();
+	int i, len = static_cast<int>(visibleIndexedVertices.GetLength());
 
 	for(i=0;i<len;i++)
 	{
@@ -208,7 +208,7 @@ void
 	Check_Object(this); 
 
 	*index_array = index.GetData();
-	*index_count = index.GetLength();
+	*index_count = static_cast<int>(index.GetLength());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -218,7 +218,7 @@ void
 {
 	Check_Object(this);
 
-	int i, len = coords.GetLength();
+	int i, len = static_cast<int>(coords.GetLength());
 
 	for(i=0;i<len;i++)
 	{

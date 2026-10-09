@@ -270,7 +270,7 @@ void
 {
 	Check_Object(this); 
 	*data = lengths.GetData();
-	*len = lengths.GetLength();
+	*len = static_cast<int>(lengths.GetLength());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -314,7 +314,7 @@ void
 	Check_Object(this);
 
 	*data = coords.GetData();
-	*dataSize = coords.GetLength();
+	*dataSize = static_cast<int>(coords.GetLength());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -343,7 +343,7 @@ void
 {
 	Check_Object(this); 
 	*data = texCoords.GetData();
-	*dataSize = texCoords.GetLength();
+	*dataSize = static_cast<int>(texCoords.GetLength());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -353,7 +353,7 @@ void
 {
 	Check_Object(this);
 
-	int i, len = coords.GetLength();
+	int i, len = static_cast<int>(coords.GetLength());
 
 	for(i=0;i<len;i++)
 	{
