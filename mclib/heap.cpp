@@ -223,7 +223,7 @@ long HeapManager::commitHeap (unsigned long commitSize)
 		// If this was a UserHeap,
 		// the UserHeap class will
 		// do its own unwind.
-		unsigned long currentEbp = 0;
+		uintptr_t currentEbp = 0;
 		unsigned long prevEbp = 0;
 		unsigned long retAddr = 0;
 
@@ -242,8 +242,8 @@ long HeapManager::commitHeap (unsigned long commitSize)
             :
         );
 #endif
-		prevEbp = *((unsigned long *)currentEbp);
-		retAddr = *((unsigned long *)(currentEbp+4));
+		prevEbp = *reinterpret_cast<unsigned long *>(currentEbp);
+		retAddr = *reinterpret_cast<unsigned long *>(currentEbp + 4);
 		whoMadeMe = retAddr;
 
 		return NO_ERR;
@@ -269,7 +269,7 @@ long HeapManager::decommitHeap (unsigned long decommitSize)
 	unsigned long decommitAddress = decommitSize;
 	committedSize -= decommitAddress;
 
-	result = VirtualFree((void *)committedSize,decommitSize,MEM_DECOMMIT);
+	result = VirtualFree(reinterpret_cast<void *>(static_cast<uintptr_t>(committedSize)),decommitSize,MEM_DECOMMIT);
 	if (result == FALSE)
 		result = GetLastError();
 
