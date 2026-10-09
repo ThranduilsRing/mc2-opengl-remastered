@@ -33,6 +33,7 @@ endif()
 
 add_library(mc2_tglloader STATIC
     engine_stubs.cpp
+    asset_viewer_game_stubs.cpp
     TglMeshLoader.cpp
     # --- mclib TUs (geometry loader closure) ---
     "${CMAKE_SOURCE_DIR}/mclib/msl.cpp"
