@@ -4,9 +4,9 @@
   "Custom[00000001]": 6,
   "Custom[10001011]": 5,
   "DefOnLead0": 1,
-  "Exact1": 48,
-  "Is01": 9,
-  "Lead0": 186,
+  "Exact1": 47,
+  "Is01": 2,
+  "Lead0": 177,
   "Lead0Kill": 202,
   "Lead0P": 64,
   "Lead1": 127,
@@ -25,13 +25,13 @@
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 516,
+  "Presence": 494,
   "Std(def=off)": 16,
   "Std(def=on)": 10,
   "Str[dflt,dflt]": 3,
   "Str[null,null]": 1,
   "Str[null,pass]": 1,
-  "Tri(inherit)": 54
+  "Tri(inherit)": 48
  },
  "conflict_gates": [
   "MC2_BOOT_TO_BAY",
@@ -56,17 +56,10 @@
   "MC2_STATIC_PROP_TRACE",
   "MC2_STATIC_UPDATE_SKIP",
   "MC2_TERRAIN_DETAIL_MACRO_STRENGTH",
-  "MC2_TERRAIN_LIGHTING_V1",
-  "MC2_TERRAIN_LIGHTING_V2",
   "MC2_TERRAIN_MATERIAL_LIB",
   "MC2_TERRAIN_MATERIAL_TEXTURES",
   "MC2_TEXMGR_KTX_PRIMARY",
   "MC2_UI_DEFS_TRACE",
-  "MC2_VK_MECH_DIRECT_CHAIN",
-  "MC2_VK_POST_FOG_DIRECT_CHAIN",
-  "MC2_VK_POST_HZB_DIRECT_CHAIN",
-  "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
-  "MC2_VK_POST_SSAO_DIRECT_CHAIN",
   "MC2_VK_PROP_DIRECT_CHAIN",
   "MC2_VK_TERRAIN_CSM",
   "MC2_VK_VFX",
@@ -78,9 +71,9 @@
    "all_readers": [
     "GameOS/gameos/gos_mech_batcher.cpp:1167 (Lead0Kill)",
     "GameOS/gameos/gos_mech_batcher.cpp:1168 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9290 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9291 (Lead0Kill)",
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:759 (Exact1)"
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9258 (Lead0Kill)",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9259 (Lead0Kill)",
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 (Exact1)"
    ],
    "gate": "MC2_SHADOW_ENABLE",
    "in_conflict": true,
@@ -93,23 +86,23 @@
      "verdict": "confirmed"
     },
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:9259",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
      "class": "Lead0Kill",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/vulkan_post_screenfx_native.cpp:759",
+     "actual": "GameOS/gameos/vulkan_post_screenfx_native.cpp:749",
      "claim": "GameOS/gameos/vulkan_post_screenfx_native.cpp:759",
      "class": "Exact1",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     }
    ]
   },
   {
    "all_readers": [
-    "GameOS/gameos/gameosmain.cpp:1340 (Lead0Kill)",
-    "GuiRuntime/GraphicsOptionsWindow.cpp:1477 (Presence)",
+    "GameOS/gameos/gameosmain.cpp:1337 (Lead0Kill)",
+    "GuiRuntime/GraphicsOptionsWindow.cpp:1383 (Presence)",
     "mclib/mlr/mlr_gate.cpp:37 (Lead1)"
    ],
    "gate": "MC2_DISABLE_GOSFX",
@@ -123,99 +116,91 @@
      "verdict": "confirmed"
     },
     {
-     "actual": "GameOS/gameos/gameosmain.cpp:1340",
+     "actual": "GameOS/gameos/gameosmain.cpp:1337",
      "claim": "GameOS/gameos/gameosmain.cpp:1340",
      "class": "Lead0Kill",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     },
     {
-     "actual": "GuiRuntime/GraphicsOptionsWindow.cpp:1477",
+     "actual": "GuiRuntime/GraphicsOptionsWindow.cpp:1383",
      "claim": "GuiRuntime/GraphicsOptionsWindow.cpp:1477",
      "class": "Presence",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     }
    ]
   },
   {
-   "all_readers": [
-    "GameOS/gameos/gameos_graphics.cpp:7175 (Lead0)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872 (Presence)",
-    "GuiRuntime/GraphicsOptionsWindow.cpp:613 (Lead0)"
-   ],
+   "all_readers": [],
    "gate": "MC2_TERRAIN_LIGHTING_V1",
-   "in_conflict": true,
+   "in_conflict": false,
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gameos_graphics.cpp:7175",
+     "actual": "",
      "claim": "GameOS/gameos/gameos_graphics.cpp:7175",
-     "class": "Lead0",
-     "verdict": "confirmed"
+     "class": "",
+     "verdict": "not-found"
     },
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872",
+     "actual": "",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872",
-     "class": "Presence",
-     "verdict": "confirmed"
+     "class": "",
+     "verdict": "not-found"
     },
     {
-     "actual": "GuiRuntime/GraphicsOptionsWindow.cpp:613",
+     "actual": "",
      "claim": "GuiRuntime/GraphicsOptionsWindow.cpp:613",
-     "class": "Lead0",
-     "verdict": "confirmed"
+     "class": "",
+     "verdict": "not-found"
     }
    ]
   },
   {
-   "all_readers": [
-    "GameOS/gameos/gameos_graphics.cpp:7188 (Lead0)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873 (Presence)",
-    "GuiRuntime/GraphicsOptionsWindow.cpp:643 (Lead0)"
-   ],
+   "all_readers": [],
    "gate": "MC2_TERRAIN_LIGHTING_V2",
-   "in_conflict": true,
+   "in_conflict": false,
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gameos_graphics.cpp:7188",
+     "actual": "",
      "claim": "GameOS/gameos/gameos_graphics.cpp:7188",
-     "class": "Lead0",
-     "verdict": "confirmed"
+     "class": "",
+     "verdict": "not-found"
     },
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873",
+     "actual": "",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873",
-     "class": "Presence",
-     "verdict": "confirmed"
+     "class": "",
+     "verdict": "not-found"
     },
     {
-     "actual": "GuiRuntime/GraphicsOptionsWindow.cpp:643",
+     "actual": "",
      "claim": "GuiRuntime/GraphicsOptionsWindow.cpp:643",
-     "class": "Lead0",
-     "verdict": "confirmed"
+     "class": "",
+     "verdict": "not-found"
     }
    ]
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858 (Lead1)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900 (Tri(inherit))"
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 (Lead1)",
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 (Tri(inherit))"
    ],
    "gate": "MC2_VK_TERRAIN_CSM",
    "in_conflict": true,
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858",
+     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858",
-     "class": "Lead1",
-     "verdict": "confirmed"
+     "class": "Tri(inherit)",
+     "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900",
+     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900",
      "class": "Tri(inherit)",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     }
    ]
   },
@@ -237,40 +222,40 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_lighting.cpp:276 (Num(atol,raw))"
+    "GameOS/gameos/gos_terrain_lighting.cpp:269 (Num(atol,raw))"
    ],
    "gate": "MC2_LIGHT_GRID_DIM",
    "in_conflict": false,
    "note": "one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default)",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:276",
+     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:269",
      "claim": "GameOS/gameos/gos_terrain_lighting.cpp:276",
      "class": "Num(atol,raw)",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     }
    ]
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_lighting.cpp:859 (Num(atol,raw))"
+    "GameOS/gameos/gos_terrain_lighting.cpp:852 (Num(atol,raw))"
    ],
    "gate": "MC2_LIGHT_POOL_MAX",
    "in_conflict": false,
    "note": "one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default)",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:859",
+     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:852",
      "claim": "GameOS/gameos/gos_terrain_lighting.cpp:859",
      "class": "Num(atol,raw)",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     }
    ]
   },
   {
    "all_readers": [
     "GameOS/gameos/debug_state_dump.cpp:488 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:247 (Lead0Kill)",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:240 (Lead0Kill)",
     "editor/EditorMFC.cpp:188 (Presence)"
    ],
    "gate": "MC2_SNAPSHOT_STATIC_PROP_BUILD",
@@ -278,16 +263,16 @@
    "note": "the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:247",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:246",
      "class": "Lead0Kill",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:247",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:247",
      "class": "Lead0Kill",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     }
    ]
   },
@@ -408,7 +393,8 @@
    "set_in": [
     "scripts/mechbay_preview_harness.py",
     "scripts/resolve_campaign_config.py",
-    "scripts/sweep_campaign.py"
+    "scripts/sweep_campaign.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -564,7 +550,8 @@
    "reader_sites": 2,
    "registry": null,
    "set_in": [
-    "scripts/mechbay_preview_harness.py"
+    "scripts/mechbay_preview_harness.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -667,7 +654,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "tests/smoke/matrices/viewmode.json"
+    "tests/smoke/matrices/viewmode.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -728,8 +716,8 @@
      },
      "class": "Presence",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1053",
-      "GameOS/gameos/vulkan_swapchain_present.cpp:72"
+      "GameOS/gameos/gameosmain.cpp:1050",
+      "GameOS/gameos/vulkan_swapchain_present.cpp:54"
      ]
     }
    ],
@@ -757,8 +745,8 @@
        "GameOS/gameos/debug_state_dump.cpp:1251"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1053",
-       "GameOS/gameos/vulkan_swapchain_present.cpp:72"
+       "GameOS/gameos/gameosmain.cpp:1050",
+       "GameOS/gameos/vulkan_swapchain_present.cpp:54"
       ]
      },
      "probe": "E"
@@ -779,8 +767,8 @@
        "GameOS/gameos/debug_state_dump.cpp:1251"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1053",
-       "GameOS/gameos/vulkan_swapchain_present.cpp:72"
+       "GameOS/gameos/gameosmain.cpp:1050",
+       "GameOS/gameos/vulkan_swapchain_present.cpp:54"
       ]
      },
      "probe": "Z"
@@ -811,6 +799,7 @@
     "scripts/slice_gate.py",
     "scripts/sweep_campaign.py",
     "scripts/verify_executor_slice.py",
+    "tools/gate_table.seed.json",
     "tools/perf_snapshot.py"
    ],
    "sites": [
@@ -856,7 +845,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
-     "line": 1053,
+     "line": 1050,
      "vector": [
       "off",
       "on",
@@ -874,7 +863,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vulkan_swapchain_present.cpp",
      "inverted": false,
-     "line": 72,
+     "line": 54,
      "vector": [
       "off",
       "on",
@@ -950,6 +939,7 @@
     "tools/debug_view_sweep.py",
     "tools/dev_shell/mc2_cmd.py",
     "tools/dev_shell/watch.py",
+    "tools/gate_table.seed.json",
     "tools/scenario_runner.py"
    ],
    "sites": [
@@ -1001,7 +991,7 @@
      },
      "class": "Lead0Kill (inverted use)",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1340"
+      "GameOS/gameos/gameosmain.cpp:1337"
      ]
     },
     {
@@ -1022,7 +1012,7 @@
      },
      "class": "Presence",
      "sites": [
-      "GuiRuntime/GraphicsOptionsWindow.cpp:1477"
+      "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
      ]
     }
    ],
@@ -1051,11 +1041,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GuiRuntime/GraphicsOptionsWindow.cpp:1477",
+       "GuiRuntime/GraphicsOptionsWindow.cpp:1383",
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1340"
+       "GameOS/gameos/gameosmain.cpp:1337"
       ]
      },
      "probe": "U"
@@ -1076,8 +1066,8 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1340",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:1477"
+       "GameOS/gameos/gameosmain.cpp:1337",
+       "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
      "probe": "E"
@@ -1095,11 +1085,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameosmain.cpp:1340",
+       "GameOS/gameos/gameosmain.cpp:1337",
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GuiRuntime/GraphicsOptionsWindow.cpp:1477"
+       "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
      "probe": "Z"
@@ -1120,8 +1110,8 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1340",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:1477"
+       "GameOS/gameos/gameosmain.cpp:1337",
+       "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
      "probe": "F"
@@ -1142,8 +1132,8 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1340",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:1477"
+       "GameOS/gameos/gameosmain.cpp:1337",
+       "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
      "probe": "X"
@@ -1164,8 +1154,8 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1340",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:1477"
+       "GameOS/gameos/gameosmain.cpp:1337",
+       "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
      "probe": "X25"
@@ -1181,7 +1171,8 @@
    "registry": null,
    "set_in": [
     "scripts/check-mlr-leaves-gated.sh",
-    "scripts/run_smoke.py"
+    "scripts/run_smoke.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -1190,7 +1181,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": true,
-     "line": 1340,
+     "line": 1337,
      "vector": [
       "on",
       "on",
@@ -1208,7 +1199,7 @@
      "family": "bool",
      "file": "GuiRuntime/GraphicsOptionsWindow.cpp",
      "inverted": false,
-     "line": 1477,
+     "line": 1383,
      "vector": [
       "off",
       "on",
@@ -1366,7 +1357,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "scripts/pipeline_visual_gate.py"
+    "scripts/pipeline_visual_gate.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -1574,7 +1566,8 @@
    },
    "set_in": [
     "scripts/pipeline_visual_gate.py",
-    "tests/smoke/matrices/vfx.json"
+    "tests/smoke/matrices/vfx.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -1624,9 +1617,9 @@
      "class": "Lead0Kill",
      "sites": [
       "GameOS/gameos/debug_state_dump.cpp:489",
-      "GameOS/gameos/gameosmain.cpp:1326",
+      "GameOS/gameos/gameosmain.cpp:1323",
       "GameOS/gameos/gos_materials.cpp:46",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:821"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:814"
      ]
     },
     {
@@ -1665,9 +1658,9 @@
       ],
       "on": [
        "GameOS/gameos/debug_state_dump.cpp:489",
-       "GameOS/gameos/gameosmain.cpp:1326",
+       "GameOS/gameos/gameosmain.cpp:1323",
        "GameOS/gameos/gos_materials.cpp:46",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:821"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:814"
       ]
      },
      "probe": "U"
@@ -1713,7 +1706,8 @@
     "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p00.json",
     "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p50.json",
     "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_off.json",
-    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_v1.json"
+    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_v1.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -1740,7 +1734,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
-     "line": 1326,
+     "line": 1323,
      "vector": [
       "on",
       "on",
@@ -1794,7 +1788,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 821,
+     "line": 814,
      "vector": [
       "on",
       "on",
@@ -1875,6 +1869,7 @@
     "scripts/run_smoke.py",
     "scripts/sweep_campaign.py",
     "tools/bt2018_import/build_bt2018_mod.py",
+    "tools/gate_table.seed.json",
     "tools/mco_import/build_mco_compat.py"
    ],
    "sites": [
@@ -1976,7 +1971,8 @@
    "registry": null,
    "set_in": [
     "scripts/run_smoke.py",
-    "tests/telemetry/tag-registry.json"
+    "tests/telemetry/tag-registry.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -2027,7 +2023,7 @@
      },
      "class": "Exact1",
      "sites": [
-      "GameOS/gameos/gameos_graphics.cpp:6129"
+      "GameOS/gameos/gameos_graphics.cpp:6068"
      ]
     },
     {
@@ -2048,13 +2044,13 @@
      },
      "class": "Presence",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1267"
+      "GameOS/gameos/gameosmain.cpp:1264"
      ]
     }
    ],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "no",
+   "default_visible": "yes",
    "disagree_inputs": [
     "E",
     "Z",
@@ -2077,11 +2073,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:6129",
+       "GameOS/gameos/gameos_graphics.cpp:6068",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1267"
+       "GameOS/gameos/gameosmain.cpp:1264"
       ]
      },
      "probe": "E"
@@ -2099,11 +2095,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:6129",
+       "GameOS/gameos/gameos_graphics.cpp:6068",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1267"
+       "GameOS/gameos/gameosmain.cpp:1264"
       ]
      },
      "probe": "Z"
@@ -2121,11 +2117,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:6129",
+       "GameOS/gameos/gameos_graphics.cpp:6068",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1267"
+       "GameOS/gameos/gameosmain.cpp:1264"
       ]
      },
      "probe": "F"
@@ -2143,11 +2139,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:6129",
+       "GameOS/gameos/gameos_graphics.cpp:6068",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1267"
+       "GameOS/gameos/gameosmain.cpp:1264"
       ]
      },
      "probe": "X"
@@ -2165,10 +2161,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:6129"
+       "GameOS/gameos/gameos_graphics.cpp:6068"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1267",
+       "GameOS/gameos/gameosmain.cpp:1264",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ]
      },
@@ -2187,11 +2183,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:6129",
+       "GameOS/gameos/gameos_graphics.cpp:6068",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1267"
+       "GameOS/gameos/gameosmain.cpp:1264"
       ]
      },
      "probe": "X25"
@@ -2205,7 +2201,9 @@
    "proposed_rule": "Std(unset=off)",
    "reader_sites": 3,
    "registry": null,
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -2213,7 +2211,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameos_graphics.cpp",
      "inverted": false,
-     "line": 6129,
+     "line": 6068,
      "vector": [
       "off",
       "off",
@@ -2231,7 +2229,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
-     "line": 1267,
+     "line": 1264,
      "vector": [
       "off",
       "on",
@@ -2289,7 +2287,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9807"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2310,7 +2308,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9807"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2331,7 +2329,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9807"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2352,7 +2350,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9807"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2373,7 +2371,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9807"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2394,7 +2392,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9807"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2416,7 +2414,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "tests/smoke/matrices/shadow.json"
+    "tests/smoke/matrices/shadow.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -2425,7 +2424,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9807,
+     "line": 9775,
      "vector": [
       "off",
       "off",
@@ -2487,7 +2486,7 @@
      },
      "class": "Exact1",
      "sites": [
-      "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+      "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
      ]
     },
     {
@@ -2498,14 +2497,14 @@
      "sites": [
       "GameOS/gameos/gos_mech_batcher.cpp:1167",
       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+      "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
      ]
     }
    ],
    "conflict": true,
    "contradicts_registry": [
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:759 Exact1"
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Exact1"
    ],
    "default_visible": "yes",
    "disagree_inputs": [
@@ -2529,13 +2528,13 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
       ],
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
       ]
      },
      "probe": "U"
@@ -2552,13 +2551,13 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
       ],
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
       ]
      },
      "probe": "E"
@@ -2575,13 +2574,13 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
       ],
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
       ]
      },
      "probe": "F"
@@ -2598,13 +2597,13 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
       ],
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
       ]
      },
      "probe": "X"
@@ -2621,13 +2620,13 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
       ],
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
       ]
      },
      "probe": "X10"
@@ -2644,13 +2643,13 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:759"
+       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
       ],
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9291"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
       ]
      },
      "probe": "X25"
@@ -2669,7 +2668,8 @@
    },
    "set_in": [
     "scripts/run_vk_nointerop_strict_visible.py",
-    "tests/smoke/matrices/shadow.json"
+    "tests/smoke/matrices/shadow.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -2714,7 +2714,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9290,
+     "line": 9258,
      "vector": [
       "on",
       "on",
@@ -2732,7 +2732,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9291,
+     "line": 9259,
      "vector": [
       "on",
       "on",
@@ -2750,7 +2750,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vulkan_post_screenfx_native.cpp",
      "inverted": false,
-     "line": 759,
+     "line": 749,
      "vector": [
       "off",
       "off",
@@ -2782,7 +2782,7 @@
      },
      "class": "Lead1",
      "sites": [
-      "GameOS/gameos/gos_mech_batcher.cpp:2966",
+      "GameOS/gameos/gos_mech_batcher.cpp:2958",
       "GameOS/gameos/render_snapshot.cpp:245"
      ]
     }
@@ -2808,7 +2808,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_mech_batcher.cpp:2966",
+       "GameOS/gameos/gos_mech_batcher.cpp:2958",
        "GameOS/gameos/render_snapshot.cpp:245"
       ],
       "on": [
@@ -2829,7 +2829,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_mech_batcher.cpp:2966",
+       "GameOS/gameos/gos_mech_batcher.cpp:2958",
        "GameOS/gameos/render_snapshot.cpp:245"
       ],
       "on": [
@@ -2850,7 +2850,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_mech_batcher.cpp:2966",
+       "GameOS/gameos/gos_mech_batcher.cpp:2958",
        "GameOS/gameos/render_snapshot.cpp:245"
       ],
       "on": [
@@ -2873,7 +2873,8 @@
    },
    "set_in": [
     "scripts/capture_baseline.py",
-    "scripts/run_smoke.py"
+    "scripts/run_smoke.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -2900,7 +2901,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_mech_batcher.cpp",
      "inverted": false,
-     "line": 2966,
+     "line": 2958,
      "vector": [
       "off",
       "off",
@@ -2941,7 +2942,7 @@
      "class": "Lead0Kill",
      "sites": [
       "GameOS/gameos/debug_state_dump.cpp:488",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:247"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:240"
      ]
     },
     {
@@ -2980,7 +2981,7 @@
       ],
       "on": [
        "GameOS/gameos/debug_state_dump.cpp:488",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:247"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:240"
       ]
      },
      "probe": "U"
@@ -2998,7 +2999,7 @@
      "outcomes": {
       "off": [
        "GameOS/gameos/debug_state_dump.cpp:488",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:247"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:240"
       ],
       "on": [
        "editor/EditorMFC.cpp:188"
@@ -3046,7 +3047,8 @@
     "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p00.json",
     "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p50.json",
     "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_off.json",
-    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_v1.json"
+    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_v1.json",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -3073,7 +3075,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 247,
+     "line": 240,
      "vector": [
       "on",
       "on",
@@ -3109,7 +3111,7 @@
    "behaviour_delta": [],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "doc-only",
+   "default_visible": "yes",
    "disagree_inputs": [
     "O",
     "X(\"10\")"
@@ -3167,7 +3169,9 @@
     "default_on": false,
     "kind": "Trace"
    },
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -3211,7 +3215,7 @@
    "behaviour_delta": [],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "doc-only",
+   "default_visible": "yes",
    "disagree_inputs": [
     "E",
     "F",
@@ -3233,11 +3237,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9599",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5573",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -3259,11 +3263,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9599",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5573",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -3285,11 +3289,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9599",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5573",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -3311,11 +3315,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9599",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5573",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -3337,11 +3341,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9599",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5573",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -3362,7 +3366,9 @@
     "default_on": false,
     "kind": "Feature"
    },
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -3370,7 +3376,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9599,
+     "line": 9567,
      "vector": [
       "off",
       "off",
@@ -3388,7 +3394,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5573,
+     "line": 5562,
      "vector": [
       "off",
       "on",
@@ -3496,7 +3502,7 @@
    "behaviour_delta": [],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "no",
+   "default_visible": "yes",
    "disagree_inputs": [
     "U",
     "E",
@@ -3518,11 +3524,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5588",
-       "mclib/bdactor.cpp:5589"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5577"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "U"
@@ -3539,11 +3545,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5588",
-       "mclib/bdactor.cpp:5589"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5577"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "E"
@@ -3560,11 +3566,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5588",
-       "mclib/bdactor.cpp:5589"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5577"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "F"
@@ -3581,11 +3587,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5588",
-       "mclib/bdactor.cpp:5589"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5577"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "O"
@@ -3602,11 +3608,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5588",
-       "mclib/bdactor.cpp:5589"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5577"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "X"
@@ -3623,11 +3629,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5588",
-       "mclib/bdactor.cpp:5589"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5577"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "X10"
@@ -3644,7 +3650,9 @@
     "default_on": true,
     "kind": "Feature"
    },
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -3652,26 +3660,26 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
+     "line": 5566,
+     "vector": [
+      "on",
+      "on",
+      "off",
+      "on",
+      "on",
+      "on",
+      "on",
+      "on"
+     ]
+    },
+    {
+     "callee": "getenv",
+     "class": "Custom[00000001]",
+     "family": "bool",
+     "file": "mclib/bdactor.cpp",
+     "inverted": false,
      "line": 5577,
      "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Custom[00000001]",
-     "family": "bool",
-     "file": "mclib/bdactor.cpp",
-     "inverted": false,
-     "line": 5588,
-     "vector": [
       "off",
       "off",
       "off",
@@ -3688,7 +3696,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5589,
+     "line": 5578,
      "vector": [
       "off",
       "off",
@@ -3712,7 +3720,7 @@
      },
      "class": "Presence",
      "sites": [
-      "GameOS/gameos/gos_static_prop_batcher.cpp:5919"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
      ]
     },
     {
@@ -3725,7 +3733,7 @@
    ],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "no",
+   "default_visible": "yes",
    "disagree_inputs": [
     "E",
     "Z",
@@ -3747,7 +3755,7 @@
        "GameOS/gameos/gos_static_prop_registry.cpp:138"
       ],
       "on": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:5919"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
       ]
      },
      "probe": "E"
@@ -3767,7 +3775,7 @@
        "GameOS/gameos/gos_static_prop_registry.cpp:138"
       ],
       "on": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:5919"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
       ]
      },
      "probe": "Z"
@@ -3787,7 +3795,7 @@
        "GameOS/gameos/gos_static_prop_registry.cpp:138"
       ],
       "on": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:5919"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
       ]
      },
      "probe": "F"
@@ -3801,7 +3809,9 @@
    "proposed_rule": "Std(unset=off)",
    "reader_sites": 2,
    "registry": null,
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -3809,7 +3819,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 5919,
+     "line": 5897,
      "vector": [
       "off",
       "on",
@@ -3856,14 +3866,14 @@
      "changes": {},
      "class": "Std(def=on)",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1262",
+      "GameOS/gameos/gameosmain.cpp:1259",
       "code/terrobj.cpp:96"
      ]
     }
    ],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "no",
+   "default_visible": "yes",
    "disagree_inputs": [
     "F"
    ],
@@ -3880,7 +3890,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameosmain.cpp:1262",
+       "GameOS/gameos/gameosmain.cpp:1259",
        "code/terrobj.cpp:96"
       ],
       "on": [
@@ -3901,7 +3911,9 @@
     "default_on": true,
     "kind": "Feature"
    },
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "suParseBool",
@@ -3909,7 +3921,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
-     "line": 1262,
+     "line": 1259,
      "vector": [
       "on",
       "on",
@@ -3963,7 +3975,7 @@
    "behaviour_delta": [],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "no",
+   "default_visible": "yes",
    "disagree_inputs": [
     "U",
     "E"
@@ -3981,10 +3993,10 @@
      "family": "num",
      "outcomes": {
       "0": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:956"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:929"
       ],
       "0.35": [
-       "GameOS/gameos/gameos_graphics.cpp:7380"
+       "GameOS/gameos/gameos_graphics.cpp:7269"
       ]
      },
      "probe": "U"
@@ -4001,10 +4013,10 @@
      "family": "num",
      "outcomes": {
       "0": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:956"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:929"
       ],
       "0.35": [
-       "GameOS/gameos/gameos_graphics.cpp:7380"
+       "GameOS/gameos/gameos_graphics.cpp:7269"
       ]
      },
      "probe": "E"
@@ -4018,7 +4030,9 @@
    "proposed_rule": "Int/Float row: whole-string parse, out-of-range falls back to the one default",
    "reader_sites": 2,
    "registry": null,
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "envF",
@@ -4026,7 +4040,7 @@
      "family": "num",
      "file": "GameOS/gameos/gameos_graphics.cpp",
      "inverted": false,
-     "line": 7380,
+     "line": 7269,
      "vector": [
       "0.35",
       "0.35",
@@ -4044,7 +4058,7 @@
      "family": "num",
      "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
      "inverted": false,
-     "line": 956,
+     "line": 929,
      "vector": [
       "0",
       "0",
@@ -4054,298 +4068,6 @@
       "0",
       "10",
       "2.5"
-     ]
-    }
-   ]
-  },
-  "MC2_TERRAIN_LIGHTING_V1": {
-   "behaviour_delta": [
-    {
-     "changes": {
-      "F": "on->off"
-     },
-     "class": "Lead0",
-     "sites": [
-      "GameOS/gameos/gameos_graphics.cpp:7175",
-      "GuiRuntime/GraphicsOptionsWindow.cpp:613"
-     ]
-    },
-    {
-     "changes": {
-      "E": "on->off",
-      "F": "on->off",
-      "Z": "on->off"
-     },
-     "class": "Presence",
-     "sites": [
-      "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872"
-     ]
-    }
-   ],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "E",
-    "Z"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Lead0"
-      ],
-      "on": [
-       "Presence"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7175",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:613"
-      ],
-      "on": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Lead0"
-      ],
-      "on": [
-       "Presence"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7175",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:613"
-      ],
-      "on": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872"
-      ]
-     },
-     "probe": "Z"
-    }
-   ],
-   "families": {
-    "bool": 3
-   },
-   "kill_style_name": false,
-   "proposal_basis": "registry defaultOn=false",
-   "proposed_rule": "Std(unset=off)",
-   "reader_sites": 3,
-   "registry": {
-    "default_on": false,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "tests/smoke/matrices/terrain.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "Lead0",
-     "family": "bool",
-     "file": "GameOS/gameos/gameos_graphics.cpp",
-     "inverted": false,
-     "line": 7175,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Presence",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
-     "inverted": false,
-     "line": 2872,
-     "vector": [
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0",
-     "family": "bool",
-     "file": "GuiRuntime/GraphicsOptionsWindow.cpp",
-     "inverted": false,
-     "line": 613,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    }
-   ]
-  },
-  "MC2_TERRAIN_LIGHTING_V2": {
-   "behaviour_delta": [
-    {
-     "changes": {
-      "F": "on->off"
-     },
-     "class": "Lead0",
-     "sites": [
-      "GameOS/gameos/gameos_graphics.cpp:7188",
-      "GuiRuntime/GraphicsOptionsWindow.cpp:643"
-     ]
-    },
-    {
-     "changes": {
-      "E": "on->off",
-      "F": "on->off",
-      "Z": "on->off"
-     },
-     "class": "Presence",
-     "sites": [
-      "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873"
-     ]
-    }
-   ],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "E",
-    "Z"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Lead0"
-      ],
-      "on": [
-       "Presence"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7188",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:643"
-      ],
-      "on": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Lead0"
-      ],
-      "on": [
-       "Presence"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7188",
-       "GuiRuntime/GraphicsOptionsWindow.cpp:643"
-      ],
-      "on": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873"
-      ]
-     },
-     "probe": "Z"
-    }
-   ],
-   "families": {
-    "bool": 3
-   },
-   "kill_style_name": false,
-   "proposal_basis": "registry defaultOn=false",
-   "proposed_rule": "Std(unset=off)",
-   "reader_sites": 3,
-   "registry": {
-    "default_on": false,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "tests/smoke/matrices/terrain.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "Lead0",
-     "family": "bool",
-     "file": "GameOS/gameos/gameos_graphics.cpp",
-     "inverted": false,
-     "line": 7188,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Presence",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
-     "inverted": false,
-     "line": 2873,
-     "vector": [
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0",
-     "family": "bool",
-     "file": "GuiRuntime/GraphicsOptionsWindow.cpp",
-     "inverted": false,
-     "line": 643,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
      ]
     }
    ]
@@ -4374,7 +4096,7 @@
    ],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "no",
+   "default_visible": "yes",
    "disagree_inputs": [
     "Z"
    ],
@@ -4408,7 +4130,9 @@
    "proposed_rule": "Std(unset=off)",
    "reader_sites": 2,
    "registry": null,
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -4512,7 +4236,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "scripts/deploy_payload.py"
+    "scripts/deploy_payload.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -4579,7 +4304,7 @@
      },
      "class": "Lead0Kill",
      "sites": [
-      "mclib/bdactor.cpp:188",
+      "mclib/bdactor.cpp:178",
       "mclib/gvactor.cpp:143",
       "mclib/mech3d.cpp:186"
      ]
@@ -4608,7 +4333,7 @@
        "mclib/txmmgr.cpp:5394"
       ],
       "on": [
-       "mclib/bdactor.cpp:188",
+       "mclib/bdactor.cpp:178",
        "mclib/gvactor.cpp:143",
        "mclib/mech3d.cpp:186"
       ]
@@ -4630,7 +4355,7 @@
        "mclib/txmmgr.cpp:5394"
       ],
       "on": [
-       "mclib/bdactor.cpp:188",
+       "mclib/bdactor.cpp:178",
        "mclib/gvactor.cpp:143",
        "mclib/mech3d.cpp:186"
       ]
@@ -4648,7 +4373,8 @@
    "reader_sites": 4,
    "registry": null,
    "set_in": [
-    "tools/fst_repack_drop.py"
+    "tools/fst_repack_drop.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -4657,7 +4383,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 188,
+     "line": 178,
      "vector": [
       "on",
       "on",
@@ -4746,7 +4472,7 @@
    ],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "doc-only",
+   "default_visible": "yes",
    "disagree_inputs": [
     "F"
    ],
@@ -4780,7 +4506,9 @@
    "proposed_rule": "Std(unset=off)",
    "reader_sites": 2,
    "registry": null,
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -4820,1064 +4548,6 @@
     }
    ]
   },
-  "MC2_VK_MECH_DIRECT_CHAIN": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "Z",
-    "F",
-    "X",
-    "X(\"10\")",
-    "X(\"2.5\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Tri(inherit)"
-      ],
-      "on": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "on": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "Z"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "X10"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:157"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_mech_island.cpp:142"
-      ]
-     },
-     "probe": "X25"
-    }
-   ],
-   "families": {
-    "bool": 3
-   },
-   "kill_style_name": false,
-   "proposal_basis": "umbrella inheritance",
-   "proposed_rule": "Tri row: exact \"1\"/\"0\" wins, else inherit the umbrella gate (owner decision: which readers inherit)",
-   "reader_sites": 3,
-   "registry": {
-    "default_on": false,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
-   ],
-   "sites": [
-    {
-     "callee": "directChainGate",
-     "class": "Tri(inherit)",
-     "family": "bool",
-     "file": "GameOS/gameos/engine_present_vk.cpp",
-     "inverted": false,
-     "line": 299,
-     "vector": [
-      "inh",
-      "inh",
-      "off",
-      "inh",
-      "on",
-      "inh",
-      "inh",
-      "inh"
-     ]
-    },
-    {
-     "callee": "directChainGate",
-     "class": "Tri(inherit)",
-     "family": "bool",
-     "file": "GameOS/gameos/vk_shared_gbuffer_gate.h",
-     "inverted": false,
-     "line": 157,
-     "vector": [
-      "inh",
-      "inh",
-      "off",
-      "inh",
-      "on",
-      "inh",
-      "inh",
-      "inh"
-     ]
-    },
-    {
-     "callee": "envTriState",
-     "class": "Is01",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_mech_island.cpp",
-     "inverted": false,
-     "line": 142,
-     "vector": [
-      "off",
-      "off",
-      "on",
-      "off",
-      "on",
-      "off",
-      "off",
-      "off"
-     ]
-    }
-   ]
-  },
-  "MC2_VK_POST_FOG_DIRECT_CHAIN": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "Z",
-    "F",
-    "X",
-    "X(\"10\")",
-    "X(\"2.5\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Tri(inherit)"
-      ],
-      "on": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "on": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "Z"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "X10"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:150"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_fog_native.cpp:573"
-      ]
-     },
-     "probe": "X25"
-    }
-   ],
-   "families": {
-    "bool": 2
-   },
-   "kill_style_name": false,
-   "proposal_basis": "umbrella inheritance",
-   "proposed_rule": "Tri row: exact \"1\"/\"0\" wins, else inherit the umbrella gate (owner decision: which readers inherit)",
-   "reader_sites": 2,
-   "registry": null,
-   "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
-   ],
-   "sites": [
-    {
-     "callee": "directChainGate",
-     "class": "Tri(inherit)",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_postprocess.cpp",
-     "inverted": false,
-     "line": 150,
-     "vector": [
-      "inh",
-      "inh",
-      "off",
-      "inh",
-      "on",
-      "inh",
-      "inh",
-      "inh"
-     ]
-    },
-    {
-     "callee": "envTriState",
-     "class": "Is01",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_post_fog_native.cpp",
-     "inverted": false,
-     "line": 573,
-     "vector": [
-      "off",
-      "off",
-      "on",
-      "off",
-      "on",
-      "off",
-      "off",
-      "off"
-     ]
-    }
-   ]
-  },
-  "MC2_VK_POST_HZB_DIRECT_CHAIN": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "Z",
-    "F",
-    "X",
-    "X(\"10\")",
-    "X(\"2.5\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Tri(inherit)"
-      ],
-      "on": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "on": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "Z"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "X10"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:153"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_hzb_native.cpp:618"
-      ]
-     },
-     "probe": "X25"
-    }
-   ],
-   "families": {
-    "bool": 2
-   },
-   "kill_style_name": false,
-   "proposal_basis": "umbrella inheritance",
-   "proposed_rule": "Tri row: exact \"1\"/\"0\" wins, else inherit the umbrella gate (owner decision: which readers inherit)",
-   "reader_sites": 2,
-   "registry": null,
-   "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
-   ],
-   "sites": [
-    {
-     "callee": "directChainGate",
-     "class": "Tri(inherit)",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_postprocess.cpp",
-     "inverted": false,
-     "line": 153,
-     "vector": [
-      "inh",
-      "inh",
-      "off",
-      "inh",
-      "on",
-      "inh",
-      "inh",
-      "inh"
-     ]
-    },
-    {
-     "callee": "envTriState",
-     "class": "Is01",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_post_hzb_native.cpp",
-     "inverted": false,
-     "line": 618,
-     "vector": [
-      "off",
-      "off",
-      "on",
-      "off",
-      "on",
-      "off",
-      "off",
-      "off"
-     ]
-    }
-   ]
-  },
-  "MC2_VK_POST_SCREENFX_DIRECT_CHAIN": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "Z",
-    "F",
-    "X",
-    "X(\"10\")",
-    "X(\"2.5\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Tri(inherit)"
-      ],
-      "on": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "on": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "Z"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "X10"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:152"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:737"
-      ]
-     },
-     "probe": "X25"
-    }
-   ],
-   "families": {
-    "bool": 2
-   },
-   "kill_style_name": false,
-   "proposal_basis": "umbrella inheritance",
-   "proposed_rule": "Tri row: exact \"1\"/\"0\" wins, else inherit the umbrella gate (owner decision: which readers inherit)",
-   "reader_sites": 2,
-   "registry": null,
-   "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
-   ],
-   "sites": [
-    {
-     "callee": "directChainGate",
-     "class": "Tri(inherit)",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_postprocess.cpp",
-     "inverted": false,
-     "line": 152,
-     "vector": [
-      "inh",
-      "inh",
-      "off",
-      "inh",
-      "on",
-      "inh",
-      "inh",
-      "inh"
-     ]
-    },
-    {
-     "callee": "envTriState",
-     "class": "Is01",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_post_screenfx_native.cpp",
-     "inverted": false,
-     "line": 737,
-     "vector": [
-      "off",
-      "off",
-      "on",
-      "off",
-      "on",
-      "off",
-      "off",
-      "off"
-     ]
-    }
-   ]
-  },
-  "MC2_VK_POST_SSAO_DIRECT_CHAIN": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "Z",
-    "F",
-    "X",
-    "X(\"10\")",
-    "X(\"2.5\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Tri(inherit)"
-      ],
-      "on": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "on": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "Z"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "X10"
-    },
-    {
-     "classes": {
-      "inh": [
-       "Tri(inherit)"
-      ],
-      "off": [
-       "Is01"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "inh": [
-       "GameOS/gameos/gos_postprocess.cpp:151"
-      ],
-      "off": [
-       "GameOS/gameos/vulkan_post_ssao_native.cpp:691"
-      ]
-     },
-     "probe": "X25"
-    }
-   ],
-   "families": {
-    "bool": 2
-   },
-   "kill_style_name": false,
-   "proposal_basis": "umbrella inheritance",
-   "proposed_rule": "Tri row: exact \"1\"/\"0\" wins, else inherit the umbrella gate (owner decision: which readers inherit)",
-   "reader_sites": 2,
-   "registry": null,
-   "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
-   ],
-   "sites": [
-    {
-     "callee": "directChainGate",
-     "class": "Tri(inherit)",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_postprocess.cpp",
-     "inverted": false,
-     "line": 151,
-     "vector": [
-      "inh",
-      "inh",
-      "off",
-      "inh",
-      "on",
-      "inh",
-      "inh",
-      "inh"
-     ]
-    },
-    {
-     "callee": "envTriState",
-     "class": "Is01",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_post_ssao_native.cpp",
-     "inverted": false,
-     "line": 691,
-     "vector": [
-      "off",
-      "off",
-      "on",
-      "off",
-      "on",
-      "off",
-      "off",
-      "off"
-     ]
-    }
-   ]
-  },
   "MC2_VK_PROP_DIRECT_CHAIN": {
    "behaviour_delta": [],
    "conflict": true,
@@ -5905,8 +4575,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "off": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -5926,8 +4596,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "off": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -5947,8 +4617,8 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -5968,8 +4638,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -5989,8 +4659,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -6010,8 +4680,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -6031,8 +4701,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:298",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:156"
+       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -6053,7 +4723,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
+    "scripts/run_vk_nointerop_strict_visible.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -6062,7 +4733,7 @@
      "family": "bool",
      "file": "GameOS/gameos/engine_present_vk.cpp",
      "inverted": false,
-     "line": 298,
+     "line": 297,
      "vector": [
       "inh",
       "inh",
@@ -6080,7 +4751,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vk_shared_gbuffer_gate.h",
      "inverted": false,
-     "line": 156,
+     "line": 144,
      "vector": [
       "inh",
       "inh",
@@ -6116,7 +4787,7 @@
    "behaviour_delta": [],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "doc-only",
+   "default_visible": "yes",
    "disagree_inputs": [
     "U",
     "E",
@@ -6138,10 +4809,10 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765"
       ],
       "off": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723"
       ]
      },
      "probe": "U"
@@ -6158,10 +4829,10 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765"
       ],
       "off": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723"
       ]
      },
      "probe": "E"
@@ -6178,10 +4849,10 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765"
       ],
       "off": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723"
       ]
      },
      "probe": "F"
@@ -6198,10 +4869,10 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765"
       ],
       "off": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723"
       ]
      },
      "probe": "X"
@@ -6218,10 +4889,10 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765"
       ],
       "on": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723"
       ]
      },
      "probe": "X10"
@@ -6238,10 +4909,10 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765"
       ],
       "off": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858"
+       "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723"
       ]
      },
      "probe": "X25"
@@ -6258,7 +4929,9 @@
     "default_on": false,
     "kind": "Feature"
    },
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "getenv",
@@ -6266,7 +4939,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
      "inverted": false,
-     "line": 1858,
+     "line": 1723,
      "vector": [
       "off",
       "off",
@@ -6284,7 +4957,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
      "inverted": false,
-     "line": 1900,
+     "line": 1765,
      "vector": [
       "inh",
       "inh",
@@ -6324,7 +4997,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gameos_graphics.cpp:8546",
+       "GameOS/gameos/gameos_graphics.cpp:8419",
        "GameOS/gameos/vulkan_vfx_island.cpp:434",
        "code/gamecam.cpp:732",
        "code/gamecam.cpp:843",
@@ -6333,7 +5006,7 @@
        "code/weaponbolt.cpp:71"
       ],
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7718"
+       "GameOS/gameos/gameos_graphics.cpp:7591"
       ]
      },
      "probe": "U"
@@ -6350,7 +5023,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gameos_graphics.cpp:8546",
+       "GameOS/gameos/gameos_graphics.cpp:8419",
        "GameOS/gameos/vulkan_vfx_island.cpp:434",
        "code/gamecam.cpp:732",
        "code/gamecam.cpp:843",
@@ -6359,7 +5032,7 @@
        "code/weaponbolt.cpp:71"
       ],
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7718"
+       "GameOS/gameos/gameos_graphics.cpp:7591"
       ]
      },
      "probe": "E"
@@ -6376,7 +5049,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gameos_graphics.cpp:8546",
+       "GameOS/gameos/gameos_graphics.cpp:8419",
        "GameOS/gameos/vulkan_vfx_island.cpp:434",
        "code/gamecam.cpp:732",
        "code/gamecam.cpp:843",
@@ -6385,7 +5058,7 @@
        "code/weaponbolt.cpp:71"
       ],
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7718"
+       "GameOS/gameos/gameos_graphics.cpp:7591"
       ]
      },
      "probe": "F"
@@ -6402,7 +5075,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gameos_graphics.cpp:8546",
+       "GameOS/gameos/gameos_graphics.cpp:8419",
        "GameOS/gameos/vulkan_vfx_island.cpp:434",
        "code/gamecam.cpp:732",
        "code/gamecam.cpp:843",
@@ -6411,7 +5084,7 @@
        "code/weaponbolt.cpp:71"
       ],
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7718"
+       "GameOS/gameos/gameos_graphics.cpp:7591"
       ]
      },
      "probe": "X"
@@ -6428,7 +5101,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gameos_graphics.cpp:8546",
+       "GameOS/gameos/gameos_graphics.cpp:8419",
        "GameOS/gameos/vulkan_vfx_island.cpp:434",
        "code/gamecam.cpp:732",
        "code/gamecam.cpp:843",
@@ -6437,7 +5110,7 @@
        "code/weaponbolt.cpp:71"
       ],
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7718"
+       "GameOS/gameos/gameos_graphics.cpp:7591"
       ]
      },
      "probe": "X10"
@@ -6454,7 +5127,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/gameos_graphics.cpp:8546",
+       "GameOS/gameos/gameos_graphics.cpp:8419",
        "GameOS/gameos/vulkan_vfx_island.cpp:434",
        "code/gamecam.cpp:732",
        "code/gamecam.cpp:843",
@@ -6463,7 +5136,7 @@
        "code/weaponbolt.cpp:71"
       ],
       "off": [
-       "GameOS/gameos/gameos_graphics.cpp:7718"
+       "GameOS/gameos/gameos_graphics.cpp:7591"
       ]
      },
      "probe": "X25"
@@ -6481,7 +5154,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "scripts/run_smoke.py"
+    "scripts/run_smoke.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -6490,7 +5164,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameos_graphics.cpp",
      "inverted": true,
-     "line": 7718,
+     "line": 7591,
      "vector": [
       "off",
       "off",
@@ -6508,7 +5182,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameos_graphics.cpp",
      "inverted": false,
-     "line": 8546,
+     "line": 8419,
      "vector": [
       "inh",
       "inh",
@@ -6657,8 +5331,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "off": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6678,8 +5352,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "off": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6699,8 +5373,8 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6720,8 +5394,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6741,8 +5415,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6762,8 +5436,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6783,8 +5457,8 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:301",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:159"
+       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -6805,7 +5479,8 @@
     "kind": "Feature"
    },
    "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py"
+    "scripts/run_vk_nointerop_strict_visible.py",
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -6814,7 +5489,7 @@
      "family": "bool",
      "file": "GameOS/gameos/engine_present_vk.cpp",
      "inverted": false,
-     "line": 301,
+     "line": 299,
      "vector": [
       "inh",
       "inh",
@@ -6832,7 +5507,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vk_shared_gbuffer_gate.h",
      "inverted": false,
-     "line": 159,
+     "line": 146,
      "vector": [
       "inh",
       "inh",
@@ -6872,7 +5547,7 @@
      },
      "class": "Lead0",
      "sites": [
-      "GuiRuntime/GraphicsOptionsWindow.cpp:957"
+      "GuiRuntime/GraphicsOptionsWindow.cpp:863"
      ]
     },
     {
@@ -6882,13 +5557,13 @@
      },
      "class": "NonEmpty (inverted use)",
      "sites": [
-      "GameOS/gameos/visual_tuning_profile.cpp:182"
+      "GameOS/gameos/visual_tuning_profile.cpp:175"
      ]
     }
    ],
    "conflict": true,
    "contradicts_registry": [],
-   "default_visible": "doc-only",
+   "default_visible": "yes",
    "disagree_inputs": [
     "Z"
    ],
@@ -6905,10 +5580,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GuiRuntime/GraphicsOptionsWindow.cpp:957"
+       "GuiRuntime/GraphicsOptionsWindow.cpp:863"
       ],
       "on": [
-       "GameOS/gameos/visual_tuning_profile.cpp:182"
+       "GameOS/gameos/visual_tuning_profile.cpp:175"
       ]
      },
      "probe": "Z"
@@ -6922,7 +5597,9 @@
    "proposed_rule": "Std(unset=off)",
    "reader_sites": 2,
    "registry": null,
-   "set_in": [],
+   "set_in": [
+    "tools/gate_table.seed.json"
+   ],
    "sites": [
     {
      "callee": "envIsSet",
@@ -6930,7 +5607,7 @@
      "family": "bool",
      "file": "GameOS/gameos/visual_tuning_profile.cpp",
      "inverted": true,
-     "line": 182,
+     "line": 175,
      "vector": [
       "off",
       "off",
@@ -6948,7 +5625,7 @@
      "family": "bool",
      "file": "GuiRuntime/GraphicsOptionsWindow.cpp",
      "inverted": false,
-     "line": 957,
+     "line": 863,
      "vector": [
       "off",
       "off",
@@ -6985,25 +5662,25 @@
   "editor",
   "gui"
  ],
- "source": "commit 9be34ba81",
+ "source": "commit d6715fad2",
  "totals": {
-  "conflict_gates": 38,
-  "gates_with_literal": 1165,
-  "gates_with_reader": 1154,
-  "literal_occurrences": 1753,
+  "conflict_gates": 31,
+  "gates_with_literal": 1133,
+  "gates_with_reader": 1123,
+  "literal_occurrences": 1703,
   "non_call_literals": 43,
-  "nonreader_sites": 15,
-  "read_sites": 1710,
-  "reader_sites": 1615,
-  "token_sites": 55,
-  "unclassified_sites": 25
+  "nonreader_sites": 14,
+  "read_sites": 1660,
+  "reader_sites": 1570,
+  "token_sites": 53,
+  "unclassified_sites": 23
  },
  "unclassified": [
   {
    "callee": "getenv",
    "file": "GameOS/gameos/engine_present_vk.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 354,
+   "line": 352,
    "why": "unclassified:opaque"
   },
   {
@@ -7024,21 +5701,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/visual_tuning_profile.cpp",
    "gate": "MC2_VISUAL_TUNING_FILE",
-   "line": 308,
-   "why": "unclassified:opaque"
-  },
-  {
-   "callee": "getenv",
-   "file": "GameOS/gameos/vulkan_backend_skeleton.cpp",
-   "gate": "MC2_VULKAN_CACHE_DIR",
-   "line": 308,
-   "why": "unclassified:opaque"
-  },
-  {
-   "callee": "getenv",
-   "file": "GameOS/gameos/vulkan_backend_skeleton.cpp",
-   "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 7602,
+   "line": 301,
    "why": "unclassified:opaque"
   },
   {
@@ -7059,14 +5722,14 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_mech_island.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 194,
+   "line": 184,
    "why": "unclassified:opaque"
   },
   {
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_post_fog_native.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 114,
+   "line": 112,
    "why": "unclassified:opaque"
   },
   {
@@ -7094,7 +5757,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_shadow_island_live.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 176,
+   "line": 159,
    "why": "unclassified:opaque"
   },
   {
@@ -7108,7 +5771,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_terrain_island.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 299,
+   "line": 262,
    "why": "unclassified:opaque"
   },
   {
@@ -7143,7 +5806,7 @@
    "callee": "getenv",
    "file": "code/mission.cpp",
    "gate": "MC2_BRAIN_SPECIAL_FIT",
-   "line": 4384,
+   "line": 4376,
    "why": "unclassified:opaque"
   },
   {
@@ -7157,21 +5820,21 @@
    "callee": "getenv",
    "file": "mclib/bdactor.cpp",
    "gate": "MC2_GLTF_AXIS",
-   "line": 407,
+   "line": 396,
    "why": "unclassified:opaque"
   },
   {
    "callee": "getenv",
    "file": "mclib/bdactor.cpp",
    "gate": "MC2_GLTF_YAW_DEG",
-   "line": 408,
+   "line": 397,
    "why": "unclassified:opaque"
   },
   {
    "callee": "getenv",
    "file": "mclib/terrain.cpp",
    "gate": "MC2_RENDER_WATER_FASTPATH",
-   "line": 3438,
+   "line": 3437,
    "why": "unclassified:opaque"
   }
  ],

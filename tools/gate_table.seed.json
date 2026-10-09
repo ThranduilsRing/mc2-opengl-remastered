@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1152,
+ "count": 1150,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -3975,7 +3975,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:72",
+     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:54",
      "idiom": "Presence"
     }
    ],
@@ -5340,7 +5340,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "editor/EditorData.cpp:62",
+     "at": "editor/EditorData.cpp:63",
      "idiom": "Presence"
     },
     {
@@ -7104,11 +7104,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:375",
+     "at": "GameOS/gameos/gos_render.cpp:372",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:696",
+     "at": "GameOS/gameos/gos_render.cpp:686",
      "idiom": "Presence"
     },
     {
@@ -14453,6 +14453,32 @@
    "retireVerdict": ""
   },
   {
+   "name": "MC2_NO_ACTIVATE",
+   "kind": "Bool",
+   "default": false,
+   "rule": "Lead0",
+   "owner": "editor",
+   "retireBy": "",
+   "doc": "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus.",
+   "readers": [
+    {
+     "at": "editor/EditorMFC.cpp:465",
+     "idiom": "Lead0"
+    }
+   ],
+   "conflict": false,
+   "registered": true,
+   "registryDefault": false,
+   "seedDefaultSource": "registry",
+   "harnessValues": [],
+   "numericRange": null,
+   "readerDefault": false,
+   "defaultDisagreement": "",
+   "registryKind": "Trace",
+   "featureId": "MC2_TRACE_NO_ACTIVATE",
+   "retireVerdict": ""
+  },
+  {
    "name": "MC2_NO_CURSOR_GRAB",
    "kind": "Bool",
    "default": false,
@@ -14958,7 +14984,7 @@
    "doc": "Hide the OS cursor.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:576",
+     "at": "GameOS/gameos/gos_render.cpp:573",
      "idiom": "Presence"
     },
     {
@@ -17854,11 +17880,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:528",
+     "at": "GameOS/gameos/gos_render.cpp:525",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:562",
+     "at": "GameOS/gameos/gos_render.cpp:559",
      "idiom": "Presence"
     }
    ],
@@ -31634,7 +31660,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:628",
+     "at": "GameOS/gameos/gos_render.cpp:625",
      "idiom": "Lead1"
     },
     {
@@ -31644,58 +31670,6 @@
     {
      "at": "editor/EditorGosRender.cpp:885",
      "idiom": "Lead1"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VULKAN_CACHE_DIR",
-   "kind": "Bool",
-   "default": null,
-   "rule": "Std",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:308",
-     "idiom": "Unclassified"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VULKAN_PROBE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7594",
-     "idiom": "Token/State"
     }
    ],
    "conflict": false,
@@ -31726,10 +31700,6 @@
     {
      "at": "GameOS/gameos/gos_postprocess.cpp:4498",
      "idiom": "NonReader"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7602",
-     "idiom": "Unclassified"
     },
     {
      "at": "GameOS/gameos/vulkan_color_prop_island.cpp:179",
@@ -31793,36 +31763,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VULKAN_SWAPCHAIN_PRESENT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7617",
-     "idiom": "Presence"
-    },
-    {
-     "at": "tools/vulkan_shader_probe_main.cpp:55",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN",
    "kind": "Bool",
    "default": false,
@@ -31832,7 +31772,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:94",
+     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:76",
      "idiom": "Presence"
     }
    ],
@@ -31858,15 +31798,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:92",
-     "idiom": "Token/State"
-    },
-    {
      "at": "GameOS/gameos/vulkan_context.cpp:81",
      "idiom": "Token/State"
     },
     {
-     "at": "GameOS/gameos/vulkan_present_object.cpp:47",
+     "at": "GameOS/gameos/vulkan_present_object.cpp:43",
      "idiom": "Token/State"
     },
     {
@@ -32950,15 +32886,15 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:481",
+     "at": "GameOS/gameos/gos_render.cpp:478",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:531",
+     "at": "GameOS/gameos/gos_render.cpp:528",
      "idiom": "NonReader"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:532",
+     "at": "GameOS/gameos/gos_render.cpp:529",
      "idiom": "NonReader"
     }
    ],
@@ -32981,12 +32917,16 @@
    "kind": "Bool",
    "default": false,
    "rule": "Lead0",
-   "owner": "gameos",
+   "owner": "unclassified",
    "retireBy": "",
    "doc": "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area at ANY point in its lifetime.",
    "readers": [
     {
      "at": "GameOS/gameos/gameos_input.cpp:66",
+     "idiom": "Lead0"
+    },
+    {
+     "at": "editor/EditorMFC.cpp:466",
      "idiom": "Lead0"
     }
    ],
@@ -33014,7 +32954,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:482",
+     "at": "GameOS/gameos/gos_render.cpp:479",
      "idiom": "Lead0Kill"
     }
    ],

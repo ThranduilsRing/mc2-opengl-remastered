@@ -48,20 +48,20 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 123,
-   "LG06": 609,
+   "LG06": 580,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2731,
-   "LG10": 79,
-   "LG11": 118,
-   "LG12a": 630,
+   "LG09": 2297,
+   "LG10": 78,
+   "LG11": 108,
+   "LG12a": 617,
    "LG12b": 115,
    "LG13": 383,
    "LG14": 67,
    "LG15": 0,
-   "LG16": 8,
+   "LG16": 7,
    "LG17": 81,
-   "LG18": 12
+   "LG18": 11
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -148,7 +148,7 @@
    "LG18": 0
   },
   "code": {
-   "LG01": 1857,
+   "LG01": 1856,
    "LG02": 232,
    "LG03": 978,
    "LG04": 21,
@@ -156,10 +156,10 @@
    "LG06": 466,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2526,
+   "LG09": 2513,
    "LG10": 22,
    "LG11": 101,
-   "LG12a": 224,
+   "LG12a": 220,
    "LG12b": 799,
    "LG13": 1203,
    "LG14": 137,
@@ -176,12 +176,12 @@
    "LG05": 143,
    "LG06": 735,
    "LG07": 0,
-   "LG08": 76,
-   "LG09": 2598,
+   "LG08": 75,
+   "LG09": 2586,
    "LG10": 36,
    "LG11": 69,
-   "LG12a": 594,
-   "LG12b": 586,
+   "LG12a": 588,
+   "LG12b": 585,
    "LG13": 1312,
    "LG14": 128,
    "LG15": 0,
@@ -311,10 +311,10 @@
    "LG03": 37,
    "LG04": 2,
    "LG05": 13,
-   "LG06": 57,
+   "LG06": 54,
    "LG08": 4,
    "LG09": 240,
-   "LG10": 6,
+   "LG10": 5,
    "LG11": 1,
    "LG12a": 59,
    "LG12b": 19,
@@ -516,9 +516,9 @@
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 22,
    "LG08": 1,
-   "LG09": 129,
+   "LG09": 127,
    "LG10": 15,
-   "LG12a": 59,
+   "LG12a": 54,
    "LG12b": 4
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -581,10 +581,10 @@
    "LG05": 7,
    "LG06": 5,
    "LG08": 76,
-   "LG09": 170,
+   "LG09": 168,
    "LG10": 11,
    "LG11": 2,
-   "LG12a": 14,
+   "LG12a": 13,
    "LG12b": 1,
    "LG13": 1,
    "LG18": 6
@@ -598,8 +598,8 @@
    "LG05": 14,
    "LG06": 1,
    "LG08": 46,
-   "LG09": 44,
-   "LG12a": 29,
+   "LG09": 43,
+   "LG12a": 28,
    "LG12b": 1
   },
   "GameOS/gameos/gos_static_prop_registry.h": {
@@ -615,7 +615,7 @@
    "LG08": 6,
    "LG09": 221,
    "LG10": 4,
-   "LG12a": 44,
+   "LG12a": 43,
    "LG12b": 2,
    "LG16": 1
   },
@@ -628,7 +628,7 @@
    "LG05": 4,
    "LG06": 4,
    "LG08": 1,
-   "LG09": 25,
+   "LG09": 21,
    "LG10": 4,
    "LG12a": 3,
    "LG16": 1
@@ -641,10 +641,10 @@
    "LG05": 2,
    "LG06": 8,
    "LG08": 1,
-   "LG09": 97,
+   "LG09": 82,
    "LG10": 8,
    "LG11": 1,
-   "LG12a": 37,
+   "LG12a": 35,
    "LG12b": 6,
    "LG17": 2
   },
@@ -652,8 +652,8 @@
    "LG17": 2
   },
   "GameOS/gameos/gos_terrain_mask_dispatch.cpp": {
-   "LG09": 12,
-   "LG12a": 4
+   "LG09": 9,
+   "LG12a": 1
   },
   "GameOS/gameos/gos_terrain_mask_dispatch.h": {
    "LG02": 1
@@ -965,15 +965,8 @@
   "GameOS/gameos/vma_impl.cpp": {
    "LG13": 2
   },
-  "GameOS/gameos/vulkan_backend_skeleton.cpp": {
-   "LG06": 14,
-   "LG09": 398,
-   "LG11": 10,
-   "LG16": 1,
-   "LG18": 1
-  },
   "GameOS/gameos/vulkan_backend_skeleton.h": {
-   "LG06": 13
+   "LG06": 1
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG03": 4,
@@ -1047,10 +1040,6 @@
   "GameOS/gameos/vulkan_present_object.h": {
    "LG06": 1
   },
-  "GameOS/gameos/vulkan_shadow_island.cpp": {
-   "LG06": 1,
-   "LG09": 4
-  },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
    "LG03": 4,
    "LG06": 6,
@@ -1080,12 +1069,14 @@
    "LG11": 1,
    "LG13": 2
   },
-  "GameOS/gameos/vulkan_swapchain_present.cpp": {
-   "LG06": 5
+  "GameOS/gameos/vulkan_spv_loader.cpp": {
+   "LG06": 2
   },
-  "GameOS/gameos/vulkan_swapchain_probe.cpp": {
-   "LG06": 1,
-   "LG09": 5
+  "GameOS/gameos/vulkan_spv_loader.h": {
+   "LG06": 1
+  },
+  "GameOS/gameos/vulkan_swapchain_present.cpp": {
+   "LG06": 4
   },
   "GameOS/gameos/vulkan_terrain_island.cpp": {
    "LG03": 6,
@@ -2248,9 +2239,9 @@
    "LG04": 2,
    "LG05": 1,
    "LG06": 6,
-   "LG09": 92,
+   "LG09": 91,
    "LG10": 3,
-   "LG12a": 22,
+   "LG12a": 21,
    "LG12b": 13,
    "LG13": 4,
    "LG14": 2
@@ -2296,13 +2287,13 @@
    "LG13": 3
   },
   "code/missiongui.cpp": {
-   "LG01": 91,
+   "LG01": 90,
    "LG03": 16,
    "LG05": 4,
    "LG06": 4,
-   "LG09": 194,
+   "LG09": 193,
    "LG11": 3,
-   "LG12a": 11,
+   "LG12a": 10,
    "LG12b": 72,
    "LG13": 20,
    "LG14": 1
@@ -2500,8 +2491,8 @@
    "LG05": 4,
    "LG06": 3,
    "LG08": 7,
-   "LG09": 133,
-   "LG12a": 16,
+   "LG09": 122,
+   "LG12a": 14,
    "LG12b": 8,
    "LG13": 11,
    "LG14": 1
@@ -3020,11 +3011,11 @@
    "LG03": 51,
    "LG05": 6,
    "LG06": 20,
-   "LG08": 4,
-   "LG09": 126,
+   "LG08": 3,
+   "LG09": 123,
    "LG10": 3,
    "LG11": 2,
-   "LG12a": 54,
+   "LG12a": 50,
    "LG12b": 18,
    "LG13": 4
   },
@@ -3603,7 +3594,7 @@
    "LG01": 33,
    "LG05": 2,
    "LG06": 1,
-   "LG09": 31,
+   "LG09": 28,
    "LG12a": 4,
    "LG12b": 20,
    "LG17": 1
@@ -3683,10 +3674,10 @@
    "LG05": 4,
    "LG06": 4,
    "LG08": 2,
-   "LG09": 87,
+   "LG09": 85,
    "LG10": 1,
    "LG12a": 11,
-   "LG12b": 25,
+   "LG12b": 24,
    "LG13": 16,
    "LG14": 1
   },
@@ -4002,7 +3993,7 @@
    "LG01": 1,
    "LG02": 3,
    "LG03": 1,
-   "LG09": 3
+   "LG09": 2
   },
   "mclib/mlr/mlrprimitiveclipping.hpp": {
    "LG03": 1,
@@ -4017,8 +4008,7 @@
    "LG05": 1
   },
   "mclib/mlr/mlrshape.hpp": {
-   "LG03": 1,
-   "LG09": 1
+   "LG03": 1
   },
   "mclib/mlr/mlrsortbyorder.cpp": {
    "LG01": 10,
@@ -4819,10 +4809,10 @@
    "LG03": 16,
    "LG05": 1,
    "LG06": 5,
-   "LG09": 149,
+   "LG09": 148,
    "LG10": 3,
    "LG11": 9,
-   "LG12a": 67,
+   "LG12a": 66,
    "LG12b": 11,
    "LG13": 4,
    "LG14": 1,
@@ -4945,9 +4935,9 @@
    "LG05": 8,
    "LG06": 11,
    "LG08": 11,
-   "LG09": 105,
+   "LG09": 104,
    "LG11": 2,
-   "LG12a": 27,
+   "LG12a": 26,
    "LG12b": 11,
    "LG13": 2,
    "LG14": 1,
@@ -5042,7 +5032,7 @@
    "LG13": 31
   }
  },
- "head": "059733997",
+ "head": "d6715fad2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

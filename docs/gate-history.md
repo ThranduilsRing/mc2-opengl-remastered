@@ -770,6 +770,12 @@ BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene F
 
 BACKDROP-BLIT-ATTRIB-1: multiplier applied per-channel to the edge-fog + OOB fog color when MC2_NIGHT_FOG_DIM=1. 1.0 = no change; 0.35 (default) drops the bright-grey {0.80,0.81,0.83} cloud bank to ~{0.28,0.28,0.29}, matching the measured mc2_10 night HDRI-sky value in the same scene FBO; 0.0 = black fog (verify-by-exaggeration lower bound). Only meaningful when MC2_NIGHT_FOG_DIM=1. Unset/empty -> default 0.35. Resolved once at process start.
 
+## MC2_NO_ACTIVATE
+
+> historical registry text; defaults here are NOT current (see `tools/gate_table.seed.json`)
+
+Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus. Equivalent to MC2_WINDOW_OFFSCREEN for the editor, which honors both. DEFAULT OFF: unset is the interactive maximized launch. Name to be standardized with the launcher audit.
+
 ## MC2_NO_CURSOR_GRAB
 
 > historical registry text; defaults here are NOT current (see `tools/gate_table.seed.json`)
@@ -2065,12 +2071,6 @@ VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace. Default-OFF. When set, Weap
 > historical registry text; defaults here are NOT current (see `tools/gate_table.seed.json`)
 
 VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_WATER_TIER1. When ON, the water island treats the shared scene color0/normal/depth images as already Vulkan-owned by terrain+prop+mech and skips its GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting its submit fence before the next island. Used with MC2_VK_NO_GL_INTEROP_STRICT to advance the final Metal-gate canary beyond water.
-
-## MC2_VULKAN_SWAPCHAIN_PRESENT
-
-> historical registry text; defaults here are NOT current (see `tools/gate_table.seed.json`)
-
-VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=1 enables); validation-clean core+sync per L5 proof. See MEMORY handoff HANDOFF_2026_07_01_vulkan_lib_track.
 
 ## MC2_WATER_SHINE
 
