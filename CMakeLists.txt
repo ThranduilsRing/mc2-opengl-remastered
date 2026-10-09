@@ -9,10 +9,15 @@ project(mc2)
 # makes mc2.exe uniformly C++17. See docs/superpowers/explorations/
 # 2026-05-24-cxx17-upgrade-recon.md.
 # Single source of truth for the language standard (17 or 23; Linux gcc stays 17 until deferred work).
-set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (17|20|23); default 23 = MSVC /std:c++latest")
+set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (17|20|23); default 23 = MSVC /std:c++23preview")
 set(CMAKE_CXX_STANDARD ${MC2_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# CMake maps C++23 to /std:c++latest on MSVC (C++26 draft + unstable STL); pin the stable preview switch instead.
+if(MSVC AND MC2_CXX_STANDARD EQUAL 23)
+    set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++23preview")
+    set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++23preview")
+endif()
 
 include(CMakeToolsHelpers OPTIONAL)
 
