@@ -8,7 +8,10 @@
 
 namespace mc2terrain {
 
-enum : uint8_t { kMatRock = 0, kMatGrass = 1, kMatDirt = 2, kMatConcrete = 3 };
+inline constexpr uint8_t kMatRock = 0;
+inline constexpr uint8_t kMatGrass = 1;
+inline constexpr uint8_t kMatDirt = 2;
+inline constexpr uint8_t kMatConcrete = 3;
 
 constexpr uint8_t terrainTypeToMaterial(uint32_t terrainType) noexcept {
     switch (terrainType) {

@@ -860,7 +860,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// terrainTypeToMaterialLocal / quad.cpp terrainTypeToMaterial. The chunk
 			// frag does smoothstep(2,3,material) for concrete, so uploading the raw
 			// index (0-20) would mark most terrain as concrete.
-			auto terrainTypeToMaterial = [](DWORD t) -> float { return (float)mc2terrain::terrainTypeToMaterial((uint32_t)t); };
+			auto terrainTypeToMaterial = [](DWORD t) -> float { return static_cast<float>(mc2terrain::terrainTypeToMaterial(static_cast<uint32_t>(t))); };
 			for (int i = 0; i < n; ++i)
 			{
 				elev[i]  = blks[i].elevation;
@@ -4917,7 +4917,7 @@ void Terrain::refreshTerrainTypeSSBO()
 	const PostcompVertex* blks = mapData->getBlocks();
 	// MUST mirror the load-time mapping (terrain.cpp ttype[] loop) and the
 	// duplicated terrainTypeToMaterial in quad.cpp / gos_terrain_indirect.cpp.
-	auto terrainTypeToMaterial = [](DWORD t) -> float { return (float)mc2terrain::terrainTypeToMaterial((uint32_t)t); };
+	auto terrainTypeToMaterial = [](DWORD t) -> float { return static_cast<float>(mc2terrain::terrainTypeToMaterial(static_cast<uint32_t>(t))); };
 	for (int i = 0; i < n; ++i)
 		ttype[i] = terrainTypeToMaterial(blks[i].terrainType);
 	gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), (int)realVerticesMapSide);

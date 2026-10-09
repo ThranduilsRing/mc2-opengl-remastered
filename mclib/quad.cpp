@@ -301,7 +301,7 @@ static const bool s_shapeCEnabled = ([] {
 // single-sourced in terrain_material.h.
 static BYTE terrainTypeToMaterial(DWORD terrainType)
 {
-    return mc2terrain::terrainTypeToMaterial((uint32_t)terrainType);
+    return mc2terrain::terrainTypeToMaterial(static_cast<uint32_t>(terrainType));
 }
 
 //---------------------------------------------------------------------------
