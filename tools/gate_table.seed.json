@@ -18905,10 +18905,10 @@
     },
     {
      "at": "GameOS/gameos/vulkan_post_screenfx_native.cpp:749",
-     "idiom": "Exact1"
+     "idiom": "Lead0Kill"
     }
    ],
-   "conflict": true,
+   "conflict": false,
    "registered": true,
    "registryDefault": true,
    "seedDefaultSource": "registry",
@@ -18917,7 +18917,7 @@
    ],
    "numericRange": null,
    "readerDefault": true,
-   "defaultDisagreement": "readers disagree on unset: off x1, on x4",
+   "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_SHADOW_MAPS",
    "retireVerdict": ""
@@ -19154,7 +19154,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/vulkan_post_screenfx_native.cpp:808",
+     "at": "GameOS/gameos/vulkan_post_screenfx_native.cpp:809",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -19214,7 +19214,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/vulkan_post_screenfx_native.cpp:801",
+     "at": "GameOS/gameos/vulkan_post_screenfx_native.cpp:802",
      "idiom": "Num(atof,raw)"
     }
    ],

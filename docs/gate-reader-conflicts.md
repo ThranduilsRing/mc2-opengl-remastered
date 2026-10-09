@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 06a6ec1cd.
+Scanned: commit 11be577ff.
 
 | Measure | Count |
 |---|---|
@@ -19,7 +19,7 @@ Scanned: commit 06a6ec1cd.
 | reader sites comparing a token no probe hits (not comparable) | 55 |
 | sites where the probe decides nothing (prints, paths) | 14 |
 | sites the tool could not classify | 25 |
-| **gates with conflicting readers** | 30 |
+| **gates with conflicting readers** | 29 |
 
 ## Design section 4: confirmed or corrected
 
@@ -27,9 +27,9 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 
 | Gate | Reader-vs-reader conflict | Design claim | Verdict | Actual reader | Class | Note |
 |---|---|---|---|---|---|---|
-| MC2_SHADOW_ENABLE | yes | `GameOS/gameos/gos_mech_batcher.cpp:1167` | confirmed | `GameOS/gameos/gos_mech_batcher.cpp:1167` | Lead0Kill |  |
+| MC2_SHADOW_ENABLE | **no** | `GameOS/gameos/gos_mech_batcher.cpp:1167` | confirmed | `GameOS/gameos/gos_mech_batcher.cpp:1167` | Lead0Kill |  |
 |  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:9290` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:9258` | Lead0Kill |  |
-|  |  | `GameOS/gameos/vulkan_post_screenfx_native.cpp:759` | corrected | `GameOS/gameos/vulkan_post_screenfx_native.cpp:749` | Exact1 |  |
+|  |  | `GameOS/gameos/vulkan_post_screenfx_native.cpp:759` | corrected | `GameOS/gameos/vulkan_post_screenfx_native.cpp:749` | Lead0Kill |  |
 | MC2_DISABLE_GOSFX | yes | `mclib/mlr/mlr_gate.cpp:37` | confirmed | `mclib/mlr/mlr_gate.cpp:37` | Lead1 |  |
 |  |  | `GameOS/gameos/gameosmain.cpp:1340` | corrected | `GameOS/gameos/gameosmain.cpp:1338` | Lead0Kill |  |
 |  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | corrected | `GuiRuntime/GraphicsOptionsWindow.cpp:1383` | Presence |  |
@@ -52,7 +52,6 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | `MC2_VK_VFX` | `GameOS/gameos/gameos_graphics.cpp:7591` Exact1 (inv)<br>`GameOS/gameos/gameos_graphics.cpp:8419` Tri(inherit)<br>`GameOS/gameos/vulkan_vfx_island.cpp:434` Tri(inherit)<br>`code/gamecam.cpp:732` Tri(inherit)<br>`code/gamecam.cpp:843` Tri(inherit)<br>`code/gamecam.cpp:967` Tri(inherit)<br>... +2 more | U: inh vs off; E: inh vs off; F: inh vs off; X: inh vs off; X10: inh vs off; X25: inh vs off | yes (scripts/run_smoke.py, tools/gate_table.seed.json) | Tri row: exact "1"/"0" wins, else inherit the umbrella gate (owner decision: which readers inherit) -- umbrella inheritance | n/a (owner decision) |
 | `MC2_STATIC_PROP_BUILDING_SHADOW` | `GameOS/gameos/gos_static_prop_batcher.cpp:9566` Custom[00000001]<br>`mclib/bdactor.cpp:5562` Lead0P<br>`mclib/txmmgr.cpp:3517` Lead0P<br>`mclib/txmmgr.cpp:3518` Lead0P<br>`mclib/txmmgr.cpp:3521` Partial[D,off,off,off,off,off,off,on]<br>`mclib/txmmgr.cpp:3659` Lead0P<br>... +1 more | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_BOOT_TO_BAY` | `code/controlgui.cpp:4627` Presence (inv)<br>`code/logistics.cpp:970` Presence (inv)<br>`code/mainmenu.cpp:441` NonEmpty (inv)<br>`code/mainmenu.cpp:467` Presence (inv)<br>`code/missionbegin.cpp:232` NonEmpty | E: off vs on | yes (scripts/mechbay_preview_harness.py, scripts/resolve_campaign_config.py, +2) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 5 off) | NonEmpty x1: Z on->off, F on->off<br>NonEmpty (inverted use) x1: Z on->off, F on->off<br>Presence (inverted use) x3: E on->off, Z on->off, F on->off |
-| `MC2_SHADOW_ENABLE` | `GameOS/gameos/gos_mech_batcher.cpp:1167` Lead0Kill<br>`GameOS/gameos/gos_mech_batcher.cpp:1168` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9257` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9258` Lead0Kill<br>`GameOS/gameos/vulkan_post_screenfx_native.cpp:749` Exact1 | U: off vs on; E: off vs on; F: off vs on; X: off vs on; X10: off vs on; X25: off vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tests/smoke/matrices/shadow.json, +1) | Std(unset=on) -- registry defaultOn=true [CONTRADICTS REGISTRY: GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Exact1] | Exact1 x1: U off->on, E off->on, X off->on, X10 off->on, X25 off->on<br>Lead0Kill x4: F on->off |
 | `MC2_DEBUG_STATE_DUMP` | `GameOS/gameos/debug_state_dump.cpp:1220` Lead0<br>`GameOS/gameos/debug_state_dump.cpp:1251` Lead0<br>`GameOS/gameos/gameosmain.cpp:1050` Presence<br>`GameOS/gameos/vulkan_swapchain_present.cpp:72` Presence | E: off vs on; Z: off vs on | yes (scripts/capture_baseline.py, scripts/check-brain-opord.py, +12) | Std(unset=off) -- registry defaultOn=false | Lead0 x2: F on->off<br>Presence x2: E on->off, Z on->off, F on->off |
 | `MC2_TEXMGR_KTX_PRIMARY` | `mclib/bdactor.cpp:178` Lead0Kill<br>`mclib/gvactor.cpp:143` Lead0Kill<br>`mclib/mech3d.cpp:186` Lead0Kill<br>`mclib/txmmgr.cpp:5394` Num(atoi,raw) | F: off vs on; X: off vs on | yes (tools/fst_repack_drop.py, tools/gate_table.seed.json) | Std(unset=on) -- unregistered; unset outcome taken from the majority of readers (3 on / 0 off) | Lead0Kill x3: F on->off |
 | `MC2_DISABLE_GOSFX` | `GameOS/gameos/gameosmain.cpp:1338` Lead0Kill (inv)<br>`GuiRuntime/GraphicsOptionsWindow.cpp:1383` Presence<br>`mclib/mlr/mlr_gate.cpp:37` Lead1 | U: off vs on; E: off vs on; Z: off vs on; F: off vs on; X: off vs on; X25: off vs on | yes (scripts/check-mlr-leaves-gated.sh, scripts/run_smoke.py, +1) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (1 on / 2 off) [name implies a kill flag: check complements are intentional] | Lead0Kill (inverted use) x1: U on->off, E on->off, F on->off<br>Lead1 x1: X off->on, X25 off->on<br>Presence x1: E on->off, Z on->off, F on->off |
@@ -85,14 +84,14 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | Class | Reader sites |
 |---|---|
 | Presence | 495 |
-| Lead0Kill | 203 |
+| Lead0Kill | 204 |
 | Lead0 | 175 |
 | Num(atof,raw) | 157 |
 | Lead1 | 127 |
 | Lead0P | 63 |
 | AtoiNZ | 61 |
 | Tri(inherit) | 48 |
-| Exact1 | 47 |
+| Exact1 | 46 |
 | Num(atoi,raw) | 45 |
 | NonEmpty | 42 |
 | Num(atol,raw) | 23 |

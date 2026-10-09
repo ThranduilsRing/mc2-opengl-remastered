@@ -4,10 +4,10 @@
   "Custom[00000001]": 6,
   "Custom[10001011]": 5,
   "DefOnLead0": 1,
-  "Exact1": 47,
+  "Exact1": 46,
   "Is01": 2,
   "Lead0": 175,
-  "Lead0Kill": 203,
+  "Lead0Kill": 204,
   "Lead0P": 63,
   "Lead1": 127,
   "NonEmpty": 42,
@@ -46,7 +46,6 @@
   "MC2_RENDER_CONTRACT_ASSERT",
   "MC2_SHADER_HOT_RELOAD",
   "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
-  "MC2_SHADOW_ENABLE",
   "MC2_SNAPSHOT_MECH_EXTRACT",
   "MC2_SNAPSHOT_STATIC_PROP_BUILD",
   "MC2_SPOTLIGHT_DIRECTION_FIX",
@@ -72,10 +71,10 @@
     "GameOS/gameos/gos_mech_batcher.cpp:1168 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9257 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9258 (Lead0Kill)",
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 (Exact1)"
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 (Lead0Kill)"
    ],
    "gate": "MC2_SHADOW_ENABLE",
-   "in_conflict": true,
+   "in_conflict": false,
    "note": "",
    "sites": [
     {
@@ -93,7 +92,7 @@
     {
      "actual": "GameOS/gameos/vulkan_post_screenfx_native.cpp:749",
      "claim": "GameOS/gameos/vulkan_post_screenfx_native.cpp:759",
-     "class": "Exact1",
+     "class": "Lead0Kill",
      "verdict": "corrected"
     }
    ]
@@ -2222,296 +2221,6 @@
       "on",
       "on",
       "on"
-     ]
-    }
-   ]
-  },
-  "MC2_SHADOW_ENABLE": {
-   "behaviour_delta": [
-    {
-     "changes": {
-      "E": "off->on",
-      "U": "off->on",
-      "X": "off->on",
-      "X10": "off->on",
-      "X25": "off->on"
-     },
-     "class": "Exact1",
-     "sites": [
-      "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-     ]
-    },
-    {
-     "changes": {
-      "F": "on->off"
-     },
-     "class": "Lead0Kill",
-     "sites": [
-      "GameOS/gameos/gos_mech_batcher.cpp:1167",
-      "GameOS/gameos/gos_mech_batcher.cpp:1168",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-     ]
-    }
-   ],
-   "conflict": true,
-   "contradicts_registry": [
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Exact1"
-   ],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "F",
-    "X",
-    "X(\"10\")",
-    "X(\"2.5\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Exact1"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-      ],
-      "on": [
-       "GameOS/gameos/gos_mech_batcher.cpp:1167",
-       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "off": [
-       "Exact1"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-      ],
-      "on": [
-       "GameOS/gameos/gos_mech_batcher.cpp:1167",
-       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Exact1"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-      ],
-      "on": [
-       "GameOS/gameos/gos_mech_batcher.cpp:1167",
-       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "off": [
-       "Exact1"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-      ],
-      "on": [
-       "GameOS/gameos/gos_mech_batcher.cpp:1167",
-       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "off": [
-       "Exact1"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-      ],
-      "on": [
-       "GameOS/gameos/gos_mech_batcher.cpp:1167",
-       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-      ]
-     },
-     "probe": "X10"
-    },
-    {
-     "classes": {
-      "off": [
-       "Exact1"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/vulkan_post_screenfx_native.cpp:749"
-      ],
-      "on": [
-       "GameOS/gameos/gos_mech_batcher.cpp:1167",
-       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
-      ]
-     },
-     "probe": "X25"
-    }
-   ],
-   "families": {
-    "bool": 5
-   },
-   "kill_style_name": false,
-   "proposal_basis": "registry defaultOn=true",
-   "proposed_rule": "Std(unset=on)",
-   "reader_sites": 5,
-   "registry": {
-    "default_on": true,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "scripts/run_vk_nointerop_strict_visible.py",
-    "tests/smoke/matrices/shadow.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_mech_batcher.cpp",
-     "inverted": false,
-     "line": 1167,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_mech_batcher.cpp",
-     "inverted": false,
-     "line": 1168,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-     "inverted": false,
-     "line": 9257,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-     "inverted": false,
-     "line": 9258,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "envTriState",
-     "class": "Exact1",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_post_screenfx_native.cpp",
-     "inverted": false,
-     "line": 749,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "on",
-      "off",
-      "off",
-      "off"
      ]
     }
    ]
@@ -5390,9 +5099,9 @@
   "editor",
   "gui"
  ],
- "source": "commit 06a6ec1cd",
+ "source": "commit 11be577ff",
  "totals": {
-  "conflict_gates": 30,
+  "conflict_gates": 29,
   "gates_with_literal": 1135,
   "gates_with_reader": 1124,
   "literal_occurrences": 1706,
