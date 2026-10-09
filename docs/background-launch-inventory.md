@@ -19,7 +19,7 @@ non-activating by default -- see `scripts/smoke_lib/nofocus.py`.
 | `scripts/run_editor_smoke.py` | 142 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 363 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 193 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 327 | `subprocess.Popen` | offscreen |
+| `scripts/run_visual_capture.py` | 341 | `subprocess.Popen` | offscreen |
 | `scripts/run_vk_field_check.py` | 229 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 271 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_with_screenshots.py` | 165 | `nofocus.spawn` | desktop-composite |

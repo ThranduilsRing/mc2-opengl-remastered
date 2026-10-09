@@ -645,6 +645,7 @@ ALLOWLIST=(
     MC2_JUMPJETS_ALL                  # override -- dev cheat (all jumpjets)
     MC2_LAUNCHED                      # infra -- launcher-provenance flag (documented tier1 companion)
     MC2_LAUNCHER_ENV_JSON             # infra -- =0 kill-switch for the MC2_NO_LAUNCHER launcher_env.json read (gameosmain LAUNCHER_ENV v1)
+    MC2_LOG_DECORATE                  # infra -- logging facade: =1 prefixes free-form lines with [level cat] (mc2log.cpp init)
     MC2_LIGHTBRIDGE_COMMIT_TRACE      # trace
     MC2_LIGHTING_DEBUG_VIEW           # trace
     MC2_LIGHTING_LINEAR_AUDIT         # trace
