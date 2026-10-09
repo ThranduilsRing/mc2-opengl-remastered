@@ -140,6 +140,7 @@ uint elevAlphaBandByte(float elev) {
 }
 
 uniform int u_shoreFlat;
+uniform float u_shoreDepthK;
 void main() {
     // Pull per-draw data from the WaterPerCmd SSBO using gl_DrawIDARB
     // (ARB-suffixed name; gl_DrawID is core only in GLSL 4.6).
@@ -293,6 +294,7 @@ void main() {
         clip.z += WATER_DEPTH_FUDGE_FAST * clip.w;
     else
         clip.z += WATER_DEPTH_FUDGE_FAST_REL * clip.z;
+    if (u_shoreFlat != 0) clip.z += u_shoreDepthK * clip.z;   // mode 3: depth-only lift
     gl_Position = clip;
 
 }

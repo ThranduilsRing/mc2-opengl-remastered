@@ -3490,8 +3490,10 @@ void gosRenderer::renderWaterFastPath(
             setMF("u_shoreFeatherWu", mc2WaterShoreFeatherWu());
             setMI("u_shoreFlat", (shoreMode == 3 && shTex != 0) ? 1 : 0);
             if (shoreMode == 3) {
-                static const int s_diag = []() { const char* v = std::getenv("MC2_WATER_SHORE3_DIAG"); return v ? atoi(v) : 0; }();
-                if (s_diag == 1) glDepthFunc(GL_ALWAYS);
+                // Depth-only lift of the flat plane (see vert): terrain triangles poking above
+                // the plane where the bicubic says water must not occlude the water.
+                static const float s_k = []() { const char* v = std::getenv("MC2_WATER_SHORE3_DEPTH_K"); return v ? (float)atof(v) : 0.03f; }();
+                setMF("u_shoreDepthK", s_k);
             }
         }
         setMF         ("waterElevation",  waterElevation);
