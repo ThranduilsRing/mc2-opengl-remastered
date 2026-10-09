@@ -106,6 +106,20 @@ def test_run_fault_shader_error():
     assert not r.verdict.passed
 
 
+def test_run_fault_shader_error_gl_prop():
+    r = _run_fault("shader_error_gl_prop")
+    assert r.summary.shader_errors >= 2
+    assert r.verdict.buckets == ["shader_error"]
+    assert not r.verdict.passed
+
+
+def test_run_fault_shader_error_vk():
+    r = _run_fault("shader_error_vk")
+    assert r.summary.shader_errors >= 1
+    assert r.verdict.buckets == ["shader_error"]
+    assert not r.verdict.passed
+
+
 def test_run_fault_missing_file():
     r = _run_fault("missing_file")
     assert r.summary.missing_files >= 1

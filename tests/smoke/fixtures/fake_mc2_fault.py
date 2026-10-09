@@ -99,6 +99,19 @@ if f == "shader_error":
     play_ok()
     sys.exit(0)
 
+# ---- shader_error_gl_prop: the real GL compile-failure log shape ------------
+if f == "shader_error_gl_prop":
+    emit("[SHADER ERROR] CompileShader: ERROR: 0:12: 'foo' : undeclared identifier")
+    emit("[GPUPROPS] failed to compile/link static_prop shader pair — GPU path disabled")
+    play_ok()
+    sys.exit(0)
+
+# ---- shader_error_vk: VK pipeline creation failure --------------------------
+if f == "shader_error_vk":
+    emit("[VK_COLOR_PROP] TIER-1 vkCreateGraphicsPipelines failed.")
+    play_ok()
+    sys.exit(0)
+
 # ---- missing_file: pass run + a missing-required-file line ------------------
 if f == "missing_file":
     emit("Missing file: data/tgl/critical.fst")

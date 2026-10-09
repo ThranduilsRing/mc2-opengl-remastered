@@ -29,6 +29,17 @@ SHADER_ERROR_PATTERNS = (
     re.compile(r"Shader filename:.*failed to load shader", re.I),
     re.compile(r"shader.*compile.*fail", re.I),
     re.compile(r"GLSL link.*failed", re.I),
+    # GL: shader_builder.cpp CompileShader/LinkProgram log "[SHADER ERROR] ..."
+    # (the pattern above missed "CompileShader: ERROR: ...": a static_prop.frag
+    # compile failure once passed tier1 5/5 with every static prop missing).
+    re.compile(r"\[SHADER ERROR\]"),
+    re.compile(r"shader_builder\.cpp\(\d+\)\s*:\s*ERROR", re.I),
+    re.compile(r"\[GPUPROPS\] failed to compile"),
+    # VK islands: pipeline / shader-module creation failure (fail-soft in the
+    # engine, so the run would otherwise pass with the island silently off).
+    re.compile(r"vkCreate(GraphicsPipelines|ComputePipelines|ShaderModule)\b.*failed", re.I),
+    re.compile(r"fallback_reason=\"?\w*pipeline\w*fail\w*", re.I),
+    re.compile(r"\bpipeline(_create)?_failed\b", re.I),
 )
 MISSING_FILE_PATTERNS = (
     re.compile(r"cannot open.*required", re.I),
