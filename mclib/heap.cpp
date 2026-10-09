@@ -32,6 +32,7 @@
 
 #include"platform_str.h" 
 #include <ctype.h> // toupper
+#include <bit>
 
 // NS3 boundary: the engine system allocator belongs to the heap subsystem
 // (this TU), not to whatever game/tool main links it. extern'd for all
@@ -223,7 +224,7 @@ long HeapManager::commitHeap (unsigned long commitSize)
 		// If this was a UserHeap,
 		// the UserHeap class will
 		// do its own unwind.
-		unsigned long currentEbp = 0;
+		uintptr_t currentEbp = 0;
 		unsigned long prevEbp = 0;
 		unsigned long retAddr = 0;
 
@@ -242,8 +243,8 @@ long HeapManager::commitHeap (unsigned long commitSize)
             :
         );
 #endif
-		prevEbp = *((unsigned long *)currentEbp);
-		retAddr = *((unsigned long *)(currentEbp+4));
+		prevEbp = *std::bit_cast<unsigned long *>(currentEbp);
+		retAddr = *std::bit_cast<unsigned long *>(currentEbp + 4);
 		whoMadeMe = retAddr;
 
 		return NO_ERR;
@@ -269,7 +270,7 @@ long HeapManager::decommitHeap (unsigned long decommitSize)
 	unsigned long decommitAddress = decommitSize;
 	committedSize -= decommitAddress;
 
-	result = VirtualFree((void *)committedSize,decommitSize,MEM_DECOMMIT);
+	result = VirtualFree(reinterpret_cast<void *>(static_cast<uintptr_t>(committedSize)),decommitSize,MEM_DECOMMIT);
 	if (result == FALSE)
 		result = GetLastError();
 

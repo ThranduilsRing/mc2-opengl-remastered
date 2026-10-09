@@ -217,7 +217,7 @@ void
 	MLR_I_PMesh::GetSubprimitiveLengths (unsigned char **data, int *l)
 {
 	Check_Object(this);
-	*l = lengths.GetLength();
+	*l = static_cast<int>(lengths.GetLength());
 	*data = lengths.GetData();
 }
 
@@ -255,7 +255,7 @@ int
 	Check_Object(this);
 
 	int i, numPrimitives = GetNumPrimitives();
-	int ret = 0, len = lengths.GetLength();
+	int ret = 0, len = static_cast<int>(lengths.GetLength());
 	unsigned char *iPtr;
 	Plane *p;
 
@@ -316,7 +316,7 @@ int
 	Check_Object(this);
 	Verify(index.GetLength() > 0);
 
-	int ret, i, j, k, stride, len = lengths.GetLength();
+	int ret, i, j, k, stride, len = static_cast<int>(lengths.GetLength());
 
 	Verify(index.GetLength() > 0);
 	
@@ -357,7 +357,7 @@ void
 	Start_Timer(Transform_Time);
 
 	Verify(index.GetLength() > 0);
-	int i, len = coords.GetLength();
+	int i, len = static_cast<int>(coords.GetLength());
 
 	if(visibleIndexedVerticesKey == false)
 	{
@@ -553,7 +553,7 @@ void
 	}
 
 	unsigned short stride;
-	int i, j, k, len = lengths.GetLength();
+	int i, j, k, len = static_cast<int>(lengths.GetLength());
 	LinearMatrix4D matrix = LinearMatrix4D::Identity;
 	Point3D lightPosInShape, hitPoint;
 	UnitVector3D up, left, forward;

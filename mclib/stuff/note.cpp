@@ -176,9 +176,9 @@ void
 		sscanf(
 			contents,
 			"%f %f %f",
-			&value->yaw,
-			&value->pitch,
-			&value->roll
+			&value->yaw.angle,
+			&value->pitch.angle,
+			&value->roll.angle
 		);
 	if (count != 3)
 	{
@@ -235,9 +235,9 @@ void
 		sscanf(
 			contents,
 			"%f %f %f",
-			&ypr.yaw,
-			&ypr.pitch,
-			&ypr.roll
+			&ypr.yaw.angle,
+			&ypr.pitch.angle,
+			&ypr.roll.angle
 		);
 	if (count != 3)
 	{

@@ -33,7 +33,7 @@ void
 		Verify(normals.GetLength() == colors.GetLength());
 		Verify(coords.GetLength() == colors.GetLength());
 
-		int i, k, len = colors.GetLength();
+		int i, k, len = static_cast<int>(colors.GetLength());
 
 		MLRVertexData vertexData;
 

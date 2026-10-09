@@ -14,7 +14,14 @@
 // GL-free — matches this loader's self-contained design. We only use BC7.
 // Define the implementation in THIS translation unit (it is the sole consumer).
 #define BCDEC_IMPLEMENTATION
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)  // vendored decoder: bit-math int->uint8 stores, not ours to rewrite
+#endif
 #include "bcdec.h"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 namespace RenderCore {
 

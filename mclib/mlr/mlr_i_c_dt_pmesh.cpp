@@ -82,7 +82,7 @@ MLR_I_C_DT_PMesh::MLR_I_C_DT_PMesh(
 
 			MemoryStreamIO_Read(stream, &smallColors);
 		
-			int i, len = smallColors.GetLength();
+			int i, len = static_cast<int>(smallColors.GetLength());
 
 			colors.SetLength(len);
 
@@ -160,7 +160,7 @@ void
 	MemoryStreamIO_Write(stream, &colors);
 #else
 	Stuff::DynamicArrayOf<DWORD> smallColors;
-	int i, len = colors.GetLength();
+	int i, len = static_cast<int>(colors.GetLength());
 
 	const Stuff::RGBAColor *data = colors.GetData();
 
@@ -218,7 +218,7 @@ void
 {
 	Check_Object(this); 
 	*data = colors.GetData();
-	*dataSize = colors.GetLength();
+	*dataSize = static_cast<int>(colors.GetLength());
 }
 
 //
@@ -235,7 +235,7 @@ void
 	Check_Object(this);
 	// original color is lost !!!;
 
-	int k, len = colors.GetLength();
+	int k, len = static_cast<int>(colors.GetLength());
 
 #if COLOR_AS_DWORD
 	DWORD argb = GOSCopyColor(paintMe);

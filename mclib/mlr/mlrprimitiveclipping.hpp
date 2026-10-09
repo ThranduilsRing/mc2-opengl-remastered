@@ -39,7 +39,7 @@ void
 		}
 	}
 
-	int i, j, k, len = lengths.GetLength();
+	int i, j, k, len = static_cast<int>(lengths.GetLength());
 
 #ifdef I_SAY_YES_TO_DUAL_TEXTURES
 	int tex2count = 0;
@@ -311,7 +311,7 @@ int
 
 	unsigned short l, stride;
 	int i, j, k, ret = 0;
-	int len = lengths.GetLength();
+	int len = static_cast<int>(lengths.GetLength());
 
 	Verify(len == testList.GetLength());
 	Verify(clippingFlags.GetClippingState() != 0);
@@ -1334,7 +1334,7 @@ int
 	gos_indices = vt->GetActualIndexPool(db);
 	numGOSIndices = 0;
 
-	k = visibleIndexedVertices.GetLength();
+	k = static_cast<int>(visibleIndexedVertices.GetLength());
 
 	for(j=0,stride=0;j<k;j++)
 	{

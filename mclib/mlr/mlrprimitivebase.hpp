@@ -284,7 +284,7 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const;
 
-		virtual int
+		virtual size_t
 			GetSize()
 		{ 
 			Check_Object(this);
@@ -293,7 +293,7 @@ namespace MidLevelRenderer {
 			ret += texCoords.GetSize();
 			ret += lengths.GetSize();
 
-			return (int)ret;
+			return ret;
 		}
 
 		void

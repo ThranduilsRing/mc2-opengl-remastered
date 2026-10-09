@@ -144,7 +144,7 @@ MLR_Terrain2::MLR_Terrain2(
 	char texRoot[1024], name[1024];
 
 	int len;
-	if((len = strlen(texName)) > 0)
+	if((len = static_cast<int>(strlen(texName))) > 0)
 	{
 		Verify(len>8);
 		int i, d = texName[len-6] - '0';

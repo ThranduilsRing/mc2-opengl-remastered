@@ -186,7 +186,7 @@ void
 {
 	Check_Object(this); 
 	*data = normals.GetData();
-	*dataSize = normals.GetLength();
+	*dataSize = static_cast<int>(normals.GetLength());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,7 +236,7 @@ void
 	}
 #endif
 
-	int k, len = litColors.GetLength();
+	int k, len = static_cast<int>(litColors.GetLength());
 
 #if COLOR_AS_DWORD
 	DWORD argb = GOSCopyColor(paintMe);

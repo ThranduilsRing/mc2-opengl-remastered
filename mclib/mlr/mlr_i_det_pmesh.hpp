@@ -180,11 +180,11 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const;
 
-	virtual int
+	virtual size_t
 			GetSize()
 		{ 
 			Check_Object(this);
-			int ret = MLR_I_PMesh::GetSize();
+			size_t ret = MLR_I_PMesh::GetSize();
 
 			return ret;
 		}

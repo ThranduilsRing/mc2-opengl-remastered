@@ -155,11 +155,11 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const
 				{};
-		virtual int
+		virtual size_t
 			GetSize()
 		{
 			Check_Object(this); 
-			int ret = (int)allPrimitives.GetSize();
+			size_t ret = static_cast<size_t>(allPrimitives.GetSize());
 
 			return ret;
 		}
