@@ -3489,6 +3489,10 @@ void gosRenderer::renderWaterFastPath(
             // MC2_WATER_SHORE_FEATHER_WU; default 7.
             setMF("u_shoreFeatherWu", mc2WaterShoreFeatherWu());
             setMI("u_shoreFlat", (shoreMode == 3 && shTex != 0) ? 1 : 0);
+            if (shoreMode == 3) {
+                static const int s_diag = []() { const char* v = std::getenv("MC2_WATER_SHORE3_DIAG"); return v ? atoi(v) : 0; }();
+                if (s_diag == 1) glDepthFunc(GL_ALWAYS);
+            }
         }
         setMF         ("waterElevation",  waterElevation);
         setMF         ("alphaDepth",      alphaDepth);
