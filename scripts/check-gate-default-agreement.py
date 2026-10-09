@@ -389,7 +389,7 @@ VALUE_READ_RE = re.compile(
 # that WRITES the variable. Both mention the var without deciding its default,
 # and counting them would let a logging line outvote the real reader.
 NON_READER_RE = re.compile(
-    r"\bf?printf\s*\(|\bvlog\s*\(|\bstd::cerr\b|\bstd::cout\b|"
+    r"\bf?printf\s*\(|\bvlog\s*\(|\bMC2_(?:EVENT|LOG)\w*\s*\(|\bstd::cerr\b|\bstd::cout\b|"
     r"\b_putenv(?:_s)?\s*\(|\bsetenv\s*\(|\bSetEnvironmentVariable"
 )
 
