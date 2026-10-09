@@ -3,13 +3,13 @@ cmake_minimum_required (VERSION 3.10)
 cmake_policy(SET CMP0072 NEW) # cmake --help-policy CMP0072
 project(mc2)
 
-# C++17 baseline for the whole project (CXX17-1 flip 2026-05-24).
+# C++ standard: single cache var MC2_CXX_STANDARD below (default 23 since 2026-10-09; was 17 per CXX17-1 flip 2026-05-24).
 # RenderCore/RenderWorld/GameAdapters/tests already require cxx_std_17 via
 # target_compile_features; flipping the root removes the C++14/17 mix and
 # makes mc2.exe uniformly C++17. See docs/superpowers/explorations/
 # 2026-05-24-cxx17-upgrade-recon.md.
 # Single source of truth for the language standard (17 or 23; Linux gcc stays 17 until deferred work).
-set(MC2_CXX_STANDARD 17 CACHE STRING "C++ standard for all project targets (17|20|23)")
+set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (17|20|23); default 23 = MSVC /std:c++latest")
 set(CMAKE_CXX_STANDARD ${MC2_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
