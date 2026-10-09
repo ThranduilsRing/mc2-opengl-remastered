@@ -18,100 +18,13 @@
 // via interop; see vulkan_terrain_island.cpp). The GL shader used std430 binding 23
 // — the value read is identical (float[mapSide*mapSide], row-major).
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 // Attribute 0: ivec2 localOffset (int16 lx,ly), integer format (mirrors the GL VAO
 // glVertexAttribIPointer(0, 2, GL_SHORT, stride=4, 0)). VK feeds R16G16_SINT.
 layout(location = 0) in ivec2 localOffset;
 
-layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
-    mat4  worldToClipGL;   // gos_GetTerrainMVPMat4() / dispatch MVP — GL_FALSE (col-major load)
-    int   mapSide;
-    float halfMap;
-    // Per-patch placement (updated per LOD0 patch draw via dynamic UBO offset).
-    int   blockOriginX;
-    int   blockOriginY;
-    // COLORMAP-BASE sub-slice: atlas-UV params (used by the FS; declared here to
-    // keep the std140 UBO layout LOCKSTEP with terrain_tier1.frag).
-    float atlasTopLeftX;
-    float atlasTopLeftY;
-    float atlasOneOverWorldUnits;
-    int   colormapReady;
-    // CEMENT/ROAD sub-slice: cement uniforms (used by the FS; declared here to keep the
-    // std140 UBO layout LOCKSTEP with terrain_tier1.frag).
-    int   useCement;
-    int   cementGridSide;
-    float cementWUPT;
-    int   useTransitionMask;
-    int   cementDiagConnect;
-    // VK-TERRAIN-LIGHTING sub-slice (used by the FS; declared here to keep the std140
-    // UBO layout LOCKSTEP with terrain_tier1.frag).
-    int   _lightPad0;
-    int   _lightPad1;
-    int   _lightPad2;
-    vec4  terrainLightDir;
-    mat4  staticLightSpaceMatrix;
-    int   lightingEnabled;
-    int   enableShadows;
-    float shadowSoftness;
-    int   _lightPad3;
-    // VK-TERRAIN-DETAIL sub-slice (used by the FS; declared here to keep the std140
-    // UBO layout LOCKSTEP with terrain_tier1.frag).
-    int   detailEnabled;
-    int   detailReady;
-    float nfhStrength;
-    float detailTiling;
-    float detailStrength;
-    // Tail fields (declared to keep std140 offsets LOCKSTEP with the C++ mirror and
-    // terrain_tier1.frag; the VS only reads the visual* trio below).
-    int   enableDynShadows;
-    int   _dynPad0;
-    int   _dynPad1;
-    mat4  dynamicLightSpaceMatrix;
-    vec4  cameraPosMC2;
-    int   lodFadeEnabled;
-    float skirtDepth;
-    int   _csmPad0;
-    int   _csmPad1;
-    int   csmEnabled;
-    int   csmCount;
-    float csmDepthSpan;
-    int   csmDebugMode;
-    mat4  csmCascadeMatrices[3];
-    vec4  csmCascadeTexelWorld;
-    float csmFullMapTexelWorld;
-    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2 Z-swap params.
-    int   visualSide;          // off 580: fine bake side V (0 = not snapshotted)
-    float visualDisplaceFar;   // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
-    int   visualMode;          // off 588: 0 = no displace, 2 = far-band Z-swap
-    int   edgeStitch;          // off 592: packed N/S/W/E coarser-neighbor stride bytes
-    int   quadCountX;          // off 596: max local offset X for edge tests
-    int   quadCountY;          // off 600: max local offset Y for edge tests
-    float ambientFloor;        // off 604 (VK-PARITY-TERRAIN-1; frag-only)
-    float ambientDayGate;      // off 608
-    float missionFlatR;        // off 612
-    float missionFlatG;        // off 616
-    float missionFlatB;        // off 620
-    int   numPoolLights; // off 624 (VK-PARITY-TERRAIN-2; frag-only)
-    int   lightGridDim; // off 628
-    float lightGridMinX; // off 632
-    float lightGridMinY; // off 636
-    float lightGridInvCellX; // off 640
-    float lightGridInvCellY; // off 644
-    int   lightPoolSoft; // off 648
-    float lightPoolMoverDim; // off 652
-    float lightPoolMoverScale; // off 656
-    int   lightPoolMoverMax; // off 660
-    int   lightPoolCompress; // off 664
-    float moverContactShadow; // off 668
-    float padGlowR; // off 672
-    float padGlowG; // off 676
-    float padGlowB; // off 680
-    float padGlowSpill; // off 684
-    float shadowDistFadeWu; // off 688
-    float shadowDistFadeMax; // off 692
-    float shadowMinSunSin; // off 696
-    int   shadowKnobFlags; // off 700
-} uT;
+#include "include/terrain_frame_ubo_vk.glsl"
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {

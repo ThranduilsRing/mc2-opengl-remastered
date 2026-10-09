@@ -103,7 +103,7 @@ REGISTRY = [
     Port("skirtVertMath", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1_skirt.vert",
          rename=[UT_TO_U]),
     # The VK caller passes sunAltSin in (clamp(shSun.z,0,1)); GL derives it inline.
-    Port("calcDynamicShadowCsm", "shaders/include/shadow.hglsl", "shaders/vulkan/terrain_tier1.frag",
+    Port("calcDynamicShadowCsm", "shaders/include/shadow.hglsl", "shaders/vulkan/include/terrain_frame_vk.glsl",
          rename=[MV_PREFIX],
          gl_drop=[r"^float sunAltSin = clamp\(lightDir\.z, 0\.0, 1\.0\);"]),
     # visualDisplaceFar is NOT registered: it has VK markers (terrain_tier1.vert,

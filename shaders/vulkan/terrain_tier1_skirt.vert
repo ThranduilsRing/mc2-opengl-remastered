@@ -15,92 +15,12 @@
 //   attr0 = ivec2(lx, ly)     (R16G16_SINT, offset 0)
 //   attr1 = int  isSkirtFlag  (R16_SINT,    offset 4)
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
 layout(location = 0) in ivec2 localOffset;
 layout(location = 1) in int   isSkirtFlag;
 
-layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
-    mat4  worldToClipGL;
-    int   mapSide;
-    float halfMap;
-    int   blockOriginX;
-    int   blockOriginY;
-    float atlasTopLeftX;
-    float atlasTopLeftY;
-    float atlasOneOverWorldUnits;
-    int   colormapReady;
-    int   useCement;
-    int   cementGridSide;
-    float cementWUPT;
-    int   useTransitionMask;
-    int   cementDiagConnect;
-    int   _lightPad0;
-    int   _lightPad1;
-    int   _lightPad2;
-    vec4  terrainLightDir;
-    mat4  staticLightSpaceMatrix;
-    int   lightingEnabled;
-    int   enableShadows;
-    float shadowSoftness;
-    int   _lightPad3;
-    int   detailEnabled;
-    int   detailReady;
-    float nfhStrength;
-    float detailTiling;
-    float detailStrength;
-    int   enableDynShadows;
-    int   _dynPad0;
-    int   _dynPad1;
-    mat4  dynamicLightSpaceMatrix;
-    vec4  cameraPosMC2;
-    int   lodFadeEnabled;
-    // VK-TERRAIN-SKIRT: skirt pull-down depth, packed into the existing pad tail
-    // (was _pad[43], off 340..511) so the 512B dynamic-alignment slot does NOT grow.
-    // LOCKSTEP with vulkan_terrain_island.cpp TerrainFrameUBO.skirtDepth.
-    float skirtDepth;   // off 340
-    // Tail fields (LOCKSTEP with terrain_tier1.vert / .frag; skirt VS reads visual* only).
-    int   _csmPad0;
-    int   _csmPad1;
-    int   csmEnabled;
-    int   csmCount;
-    float csmDepthSpan;
-    int   csmDebugMode;
-    mat4  csmCascadeMatrices[3];
-    vec4  csmCascadeTexelWorld;
-    float csmFullMapTexelWorld;
-    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band mode-2 Z-swap params.
-    int   visualSide;          // off 580
-    float visualDisplaceFar;   // off 584
-    int   visualMode;          // off 588
-    int   edgeStitch;          // off 592
-    int   quadCountX;          // off 596
-    int   quadCountY;          // off 600
-    float ambientFloor;        // off 604 (VK-PARITY-TERRAIN-1; frag-only)
-    float ambientDayGate;      // off 608
-    float missionFlatR;        // off 612
-    float missionFlatG;        // off 616
-    float missionFlatB;        // off 620
-    int   numPoolLights; // off 624 (VK-PARITY-TERRAIN-2; frag-only)
-    int   lightGridDim; // off 628
-    float lightGridMinX; // off 632
-    float lightGridMinY; // off 636
-    float lightGridInvCellX; // off 640
-    float lightGridInvCellY; // off 644
-    int   lightPoolSoft; // off 648
-    float lightPoolMoverDim; // off 652
-    float lightPoolMoverScale; // off 656
-    int   lightPoolMoverMax; // off 660
-    int   lightPoolCompress; // off 664
-    float moverContactShadow; // off 668
-    float padGlowR; // off 672
-    float padGlowG; // off 676
-    float padGlowB; // off 680
-    float padGlowSpill; // off 684
-    float shadowDistFadeWu; // off 688
-    float shadowDistFadeMax; // off 692
-    float shadowMinSunSin; // off 696
-    int   shadowKnobFlags; // off 700
-} uT;
+#include "include/terrain_frame_ubo_vk.glsl"
 
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
     float heights[];

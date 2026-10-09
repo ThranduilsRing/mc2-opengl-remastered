@@ -57,6 +57,12 @@ VBO_CONTRACT = {
     "mech_tier1.vert": "mc2_mech_vertex_stride",
 }
 
+# Baked SPIR-V names that have no source file of their own: GameOS/gameos/CMakeLists.txt
+# (MC2_VK_SHADER_SRC_ALIAS_*) bakes them from another shader, so they reflect identically.
+SPV_ALIASES = {
+    "terrain_tier1_skirt.frag": "terrain_tier1.frag",
+}
+
 # ---------------------------------------------------------------------------
 # VkFormat tables: name -> (class, components, bytes)
 # ---------------------------------------------------------------------------
@@ -350,6 +356,9 @@ def compile_all(shader_dir, sdk, tmp):
                 out[base] = info
             else:
                 errs[base] = err
+    for alias, real in SPV_ALIASES.items():
+        if real in out:
+            out[alias] = out[real]
     return (out, errs), None
 
 

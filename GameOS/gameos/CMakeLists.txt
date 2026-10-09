@@ -350,14 +350,19 @@ if(MC2_VULKAN)
     # the instance + bone-palette SSBOs + 2-output GBuffer FS with a=0.0). SPIR-V loaded
     # at runtime by vulkan_mech_island.cpp via load_spv(spv_dir()+"mech_tier1.*.spv").
     # VK-TERRAIN-SKIRT (rung 4): bake terrain_tier1_skirt.{vert,frag} (skirt-strip VS
-    # applying the u_skirtDepth pull-down + a byte-identical copy of terrain_tier1.frag,
-    # since GL uses the same frag program for skirts as the main patch). SPIR-V loaded
-    # at runtime by vulkan_terrain_island.cpp via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
+    # applying the u_skirtDepth pull-down; the frag is baked from terrain_tier1.frag
+    # itself -- see MC2_VK_SHADER_SRC_ALIAS -- since GL uses the same frag program for
+    # skirts as the main patch). SPIR-V loaded at runtime by vulkan_terrain_island.cpp
+    # via load_spv(spv_dir()+"terrain_tier1_skirt.*.spv").
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth shadow_debug_overlay water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
+    # Output stages that bake from another basename's source: the skirt pipeline needs its
+    # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
+    # check-vk-pipeline-layout.py carries the same alias.
+    set(MC2_VK_SHADER_SRC_ALIAS_terrain_tier1_skirt_frag terrain_tier1)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
@@ -367,7 +372,11 @@ if(MC2_VULKAN)
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
         foreach(_stage vert frag)
-            set(_src "${MC2_VK_SHADER_SRC_DIR}/${_base}.${_stage}")
+            set(_src_base "${_base}")
+            if(DEFINED MC2_VK_SHADER_SRC_ALIAS_${_base}_${_stage})
+                set(_src_base "${MC2_VK_SHADER_SRC_ALIAS_${_base}_${_stage}}")
+            endif()
+            set(_src "${MC2_VK_SHADER_SRC_DIR}/${_src_base}.${_stage}")
             set(_spv "${MC2_VK_SPV_OUT_DIR}/${_base}.${_stage}.spv")
             if(MC2_GLSLANG_VALIDATOR)
                 add_custom_command(
