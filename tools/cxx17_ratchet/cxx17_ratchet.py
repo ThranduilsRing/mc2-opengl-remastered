@@ -2,8 +2,7 @@
 """cxx17_ratchet - monotonic "legacy idiom" counter for the C++17 strangler-fig migration.
 
 Counts C++98/03-era idioms per top-level owned directory with fast regex heuristics
-(comments and string literals are blanked first). The counts may only go DOWN:
-`--check` fails if any idiom count in any directory is higher than baseline.json.
+(comments and string literals are blanked first). The counts may only go DOWN.
 
   py -3 tools/cxx17_ratchet/cxx17_ratchet.py --report            # table per dir (+ --by-file N, --depth 2)
   py -3 tools/cxx17_ratchet/cxx17_ratchet.py --write-baseline    # (re)write baseline.json
@@ -11,7 +10,16 @@ Counts C++98/03-era idioms per top-level owned directory with fast regex heurist
   py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check --tighten   # on success, lower the baseline to current
   py -3 tools/cxx17_ratchet/cxx17_ratchet.py --selftest
 
-Exit: 0 ok, 1 an idiom count increased, 2 usage/baseline error.
+Source of truth (all modes): the COMMITTED tree (HEAD) by default, so other agents' uncommitted
+work never blocks you.  --staged scans the index (pre-commit hook); --worktree scans the dirty tree.
+
+Gate rule (decision: "strict totals, per-dir warning"): per idiom, the REPO TOTAL may not exceed
+baseline.json -- that fails.  A per-directory increase while the idiom's total did not rise (code
+moved between dirs, e.g. code/ -> mclib/ by rename) is only a WARNING.  Trade-off: a new legacy site
+can hide behind a decrease elsewhere in another dir; use --report --depth 2 / per-file counts in
+baseline.json in review.  (Rename-aware per-dir exemption via `git diff -M` was rejected: fragile.)
+
+Exit: 0 ok, 1 an idiom total increased, 2 usage/baseline error.
 These are HEURISTICS (grep-grade, not a parser): the goal is a stable, cheap monotonic
 metric, not exact truth. A false positive is fine as long as it is stable.
 Stdlib only; ~10 s for the whole repo.
@@ -43,17 +51,21 @@ IDIOMS = {
     "LG02": ("typedef", "using alias"),
     "LG03": ("raw new/delete", "std::unique_ptr / make_unique / containers"),
     "LG04": ("manual tagged union / switch on type|kind member", "std::variant + std::visit"),
-    "LG05": ("bool+out-param / -1,nullptr sentinel return", "std::optional<T>"),
+    "LG05": ("bool+out-param / -1,nullptr sentinel return", "std::optional<T> (not-found) / std::expected<T,E> (error)"),
     "LG06": ("const char* / const std::string& read-only param", "std::string_view"),
-    "LG07": ("enable_if / tag-dispatch type switching", "if constexpr"),
+    "LG07": ("enable_if / tag-dispatch type switching", "concepts / requires (+ if constexpr)"),
     "LG08": (".first/.second pair access", "structured bindings"),
     "LG09": ("C-style cast", "static_cast / reinterpret_cast / bit_cast"),
     "LG10": ("manual min/max clamp chain", "std::clamp"),
     "LG11": ("Win32/CRT path API or '\\' path concat", "std::filesystem"),
-    "LG12": ("printf-family logging", "std::format logging facade (C++20)"),
+    "LG12a": ("printf/fprintf/puts/OutputDebugString/SPEW logging", "logging facade (std::print/format + source_location)"),
+    "LG12b": ("sprintf/snprintf/vsprintf buffer formatting", "std::format_to / std::format"),
     "LG13": ("#define constant", "inline constexpr"),
-    "LG14": ("unscoped enum", "enum class"),
+    "LG14": ("unscoped enum", "enum class + using enum + std::to_underlying"),
     "LG15": ("auto_ptr/bind1st/ptr_fun/register/throw() spec", "removed-in-17 / deprecated facilities"),
+    "LG16": ("manual multi-dim index math [y*w+x] / T** grids", "std::mdspan"),
+    "LG17": ("pointer+count parameter pair (T* p, size_t n)", "std::span"),
+    "LG18": ("type punning (reinterpret_cast<float*>, union, memcpy bits)", "std::bit_cast"),
 }
 IDS = list(IDIOMS)
 
@@ -113,8 +125,22 @@ R_WIN_PATH = re.compile(r"\b(?:PathCombine\w*|PathAppend\w*|PathFileExists\w*|Pa
                         r"GetFileAttributes\w*|GetModuleFileName\w*|GetFullPathName\w*|_splitpath\w*|_makepath\w*|_fullpath|"
                         r"_mkdir|_chdir|_getcwd|_rmdir|DeleteFile[AW]?|CopyFile[AW]?|MoveFile\w*|RemoveDirectory[AW]?|_access|_stat\w*)\s*\(")
 R_PATH_CAT = re.compile(r"""'\\\\'|"\\\\"|%s\\\\|\\\\%s|"[\\/]"\s*\+|\+\s*"[\\/]|\bstrcat\s*\([^;]*"[\\/]""")
-R_PRINTF = re.compile(r"(?<![\w:.>])_?(?:[fsvw]|sn|vsn|st|snw|vsnw)?printf(?:_s|_l)?\s*\(|\bOutputDebugString\w*\s*\(|"
-                      r"\bwsprintf\w*\s*\(")
+R_LOG = re.compile(r"(?<![\w:.>])_?(?:[fv]|vf)?printf(?:_s|_l)?\s*\(|(?<![\w:.>])_?f?puts\s*\(|"
+                   r"\bOutputDebugString\w*\s*\(|\bSPEW\w*\s*\(")
+R_FMTBUF = re.compile(r"(?<![\w:.>])_?(?:s|sn|vs|vsn|sw|vsw|snw|vsnw|st)printf(?:_s|_l)?\s*\(|\bwsprintf\w*\s*\(")
+_IDX = r"[A-Za-z_]\w*(?:\s*(?:\.|->)\s*[A-Za-z_]\w*)?"
+R_MDIDX = re.compile(r"\[\s*(?:\(\s*" + _IDX + r"\s*\*\s*" + _IDX + r"\s*\+\s*" + _IDX + r"\s*\)|" + _IDX +
+                     r")\s*\*\s*" + _IDX + r"\s*\+\s*" + _IDX + r"\s*\]")
+R_PTRGRID = re.compile(r"(?<![\w:])new\s+[A-Za-z_][\w:]*\s*\*\s*\[")
+_CNT = r"(?:n|count|len|length|num|size|n[A-Z]\w*|num[A-Z_]\w*|\w*(?:Count|Len|Length))"
+R_PTRCNT = re.compile(r"(?<!\w)(?!void\b)[A-Za-z_][\w:]*\s*\*\s*(?:const\s+)?\w+\s*,\s*(?:const\s+)?"
+                      r"(?:std::size_t|size_t|int|unsigned(?:\s+int)?|long|uint32_t|uint64_t|DWORD|ULONG)\s+" + _CNT + r"\s*[,)]")
+_PUNT = r"(?:float|double|u?int(?:16|32|64)_t|DWORD|ULONG|unsigned(?:\s+(?:int|long))?)"
+R_PUN = re.compile(r"reinterpret_cast\s*<\s*(?:const\s+)?" + _PUNT + r"\s*\*\s*>|"
+                   r"\*\s*\(\s*(?:const\s+)?" + _PUNT + r"\s*\*\s*\)\s*&|"
+                   r"\bmemcpy\s*\(\s*&\s*\w+\s*,\s*&\s*\w+\s*,\s*sizeof\s*\(\s*(?:float|double|u?int(?:32|64)_t|DWORD)\s*\)\s*\)")
+R_FLOATTOK = re.compile(r"\b(?:float|double)\b")
+R_INTTOK = re.compile(r"\b(?:u?int(?:32|64)_t|DWORD|ULONG|unsigned(?:\s+(?:int|long))?|int|long)\b")
 R_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)(?!\()\s+(.+?)\s*$")
 R_DEFVAL = re.compile(r"""^(?:[-+~(]|\d|0[xX]|\.\d|['"]|L["']|\w+\s*[-+*/|<]\s*[\w(])""")
 R_ENUM = re.compile(r"\benum\b(?!\s+(?:class|struct)\b)\s*(?:\w+\s*)?(?::\s*[\w ]+)?\s*(?:\{|$)")
@@ -228,9 +254,11 @@ def scan_text(text: str, path: str = "") -> dict:
         # LG11 (strings kept)
         if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and not pp and "#include" not in c):
             hits["LG11"].append(ln)
-        # LG12
-        if R_PRINTF.search(b):
-            hits["LG12"].append(ln)
+        # LG12a (logging) / LG12b (buffer formatting)
+        if R_LOG.search(b):
+            hits["LG12a"].append(ln)
+        if R_FMTBUF.search(b):
+            hits["LG12b"].append(ln)
         # LG13
         m = R_DEFINE.match(b)
         if m and not m.group(1).endswith(("_H", "_H_", "_HPP", "__")) and R_DEFVAL.match(m.group(2)):
@@ -241,6 +269,28 @@ def scan_text(text: str, path: str = "") -> dict:
         # LG15
         if R_LEGACY.search(b):
             hits["LG15"].append(ln)
+        # LG16 (conservative: identifier*identifier+identifier inside [], new T*[n])
+        if not pp and (R_MDIDX.search(b) or R_PTRGRID.search(b)):
+            hits["LG16"].append(ln)
+        # LG17 (only inside an open parameter list)
+        if not pp and "(" in b:
+            for m in R_PTRCNT.finditer(b):
+                pre = b[:m.start()]
+                if pre.count("(") > pre.count(")"):
+                    hits["LG17"].append(ln)
+                    break
+        # LG18
+        if not pp and R_PUN.search(b):
+            hits["LG18"].append(ln)
+        elif not pp and R_UNION.search(b):
+            body = []
+            for k in range(i, min(n, i + 8)):
+                body.append(bl[k])
+                if "}" in bl[k]:
+                    break
+            body = "\n".join(body)
+            if R_FLOATTOK.search(body) and R_INTTOK.search(body):
+                hits["LG18"].append(ln)
     # LG10 if-pair clamps: v<lo ... v>hi on the same var within 4 lines -> one hit
     used = set()
     for j, (l1, v1, o1) in enumerate(clamp_pending):
@@ -258,7 +308,15 @@ def scan_text(text: str, path: str = "") -> dict:
 
 
 # ---------------------------------------------------------------- driver
+def _wanted(rel, dirs):
+    parts = rel.split("/")
+    if parts[0] not in dirs or not rel.endswith(EXTS):
+        return False
+    return not any(x in EXCLUDE_PARTS or x.startswith("build") for x in parts[:-1])
+
+
 def list_files(dirs):
+    """Working-tree files (--worktree mode)."""
     out = []
     for d in dirs:
         base = os.path.join(ROOT, d)
@@ -270,25 +328,62 @@ def list_files(dirs):
     return sorted(out)
 
 
+def _git(args, inp=None):
+    return subprocess.run(["git"] + args, cwd=ROOT, input=inp, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, check=True).stdout
+
+
+def git_blobs(dirs, mode):
+    """{rel: bytes} of the committed tree ('head') or the index ('staged')."""
+    if mode == "staged":
+        names = _git(["ls-files", "-z", "--"] + list(dirs)).split(b"\0")
+        spec = lambda r: ":" + r                      # noqa: E731
+    else:
+        names = _git(["ls-tree", "-r", "-z", "--name-only", "HEAD", "--"] + list(dirs)).split(b"\0")
+        spec = lambda r: "HEAD:" + r                  # noqa: E731
+    rels = sorted(n.decode("utf-8", "replace") for n in names if n)
+    rels = [r for r in rels if _wanted(r, dirs)]
+    raw = _git(["cat-file", "--batch"], "".join(spec(r) + "\n" for r in rels).encode("utf-8"))
+    out, pos = {}, 0
+    for r in rels:
+        eol = raw.index(b"\n", pos)
+        hdr = raw[pos:eol].split()
+        pos = eol + 1
+        if len(hdr) == 3 and hdr[1] == b"blob":
+            size = int(hdr[2])
+            out[r] = raw[pos:pos + size]
+            pos += size + 1
+    return out
+
+
+def _scan_item(item):
+    rel, data = item
+    return rel, scan_text(data.decode("latin-1"), rel)
+
+
 def _scan_file(rel):
     try:
         with open(os.path.join(ROOT, rel), "rb") as fh:
-            text = fh.read().decode("latin-1")
+            data = fh.read()
     except OSError:
         return rel, {}
-    return rel, scan_text(text, rel)
+    return _scan_item((rel, data))
 
 
-def scan_repo(dirs, jobs=0):
-    files = list_files(dirs)
+def scan_repo(dirs, jobs=0, source="head"):
+    """source: 'head' (committed tree, default), 'staged' (index) or 'worktree' (dirty tree)."""
     res = {}
-    if jobs == 1 or len(files) < 50:
-        for f in files:
-            k, v = _scan_file(f)
+    if source == "worktree":
+        items, fn = list_files(dirs), _scan_file
+    else:
+        items, fn = list(git_blobs(dirs, source).items()), _scan_item
+    if jobs == 1 or len(items) < 50:
+        for it in items:
+            k, v = fn(it)
             res[k] = v
     else:
         with ProcessPoolExecutor(max_workers=jobs or min(8, os.cpu_count() or 4)) as ex:
-            for k, v in ex.map(_scan_file, files, chunksize=16):
+            for k, v in ex.map(fn, items, chunksize=16):
                 res[k] = v
     return res
 
@@ -350,46 +445,51 @@ def load_baseline(path=BASELINE):
 
 
 def make_baseline(res, dirs):
-    return {"version": 1, "head": git_head(), "dirs": dirs,
+    return {"version": 2, "head": git_head(), "dirs": dirs,
             "idioms": {k: v[0] for k, v in IDIOMS.items()},
             "counts": aggregate(res), "files": per_file_counts(res)}
 
 
-def check(res, base, samples=5, out=sys.stdout):
+def check(res, base, samples=5, out=sys.stdout, use_git_diff=False):
+    """Strict per-idiom REPO TOTALS (fail); per-dir increases with a flat/lower total only warn."""
     cur = aggregate(res)
-    bad = []
+    zero = dict.fromkeys(IDS, 0)
+    tot_c = {i: sum(r.get(i, 0) for r in cur.values()) for i in IDS}
+    tot_b = {i: sum(r.get(i, 0) for r in base["counts"].values()) for i in IDS}
+    bad = [(i, tot_b[i], tot_c[i]) for i in IDS if tot_c[i] > tot_b[i]]
+    warn = []
     for d in sorted(set(cur) | set(base["counts"])):
-        c = cur.get(d, dict.fromkeys(IDS, 0))
-        b = base["counts"].get(d, dict.fromkeys(IDS, 0))
+        c, b = cur.get(d, zero), base["counts"].get(d, zero)
         for i in IDS:
-            if c.get(i, 0) > b.get(i, 0):
-                bad.append((d, i, b.get(i, 0), c.get(i, 0)))
-    improved = sum(max(0, base["counts"].get(d, {}).get(i, 0) - cur.get(d, {}).get(i, 0))
-                   for d in base["counts"] for i in IDS)
+            if c.get(i, 0) > b.get(i, 0) and tot_c[i] <= tot_b[i]:
+                warn.append((d, i, b.get(i, 0), c.get(i, 0)))
+    for d, i, b, c in warn:
+        print("  warn: %s %s rose %d -> %d but the repo total did not (moved code?)" % (d, i, b, c), file=out)
+    improved = sum(max(0, tot_b[i] - tot_c[i]) for i in IDS)
     if not bad:
-        print("cxx17_ratchet: OK (no idiom increased; %d fewer legacy sites than baseline)" % improved, file=out)
+        print("cxx17_ratchet: OK (no idiom total increased; %d fewer legacy sites than baseline)" % improved, file=out)
         return 0
-    print("cxx17_ratchet: FAIL - %d idiom count(s) increased vs baseline (%s):" % (len(bad), base.get("head", "?")), file=out)
+    print("cxx17_ratchet: FAIL - %d idiom total(s) increased vs baseline (%s):" % (len(bad), base.get("head", "?")), file=out)
     bf = base.get("files", {})
-    for d, i, b, c in bad:
-        print("  %s %-14s %s: %d -> %d (+%d)  [%s -> %s]" % (i, "", d, b, c, c - b, IDIOMS[i][0], IDIOMS[i][1]), file=out)
+    for i, b, c in bad:
+        print("  %s total: %d -> %d (+%d)  [%s -> %s]" % (i, b, c, c - b, IDIOMS[i][0], IDIOMS[i][1]), file=out)
         shown = 0
-        for rel in sorted(res):
-            if not (rel == d or rel.startswith(d + "/")):
+        for d in sorted(cur):
+            if cur[d].get(i, 0) <= base["counts"].get(d, zero).get(i, 0):
                 continue
-            lines = res[rel].get(i, [])
-            if len(lines) <= bf.get(rel, {}).get(i, 0):
-                continue
-            adds = added_lines(rel)
-            cand = [l for l in lines if adds is None or l in adds] or lines
-            for l in cand[:max(1, samples - shown)]:
-                print("      %s:%d" % (rel, l), file=out)
-                shown += 1
-                if shown >= samples:
-                    break
-            if shown >= samples:
-                break
-    print("Use the modern replacement, or (if the legacy form is unavoidable) pay it down elsewhere in the same dir.", file=out)
+            print("    %s: %d -> %d" % (d, base["counts"].get(d, zero).get(i, 0), cur[d][i]), file=out)
+            for rel in sorted(res):
+                if not (rel == d or rel.startswith(d + "/")) or shown >= samples:
+                    continue
+                lines = res[rel].get(i, [])
+                if len(lines) <= bf.get(rel, {}).get(i, 0):
+                    continue
+                adds = added_lines(rel) if use_git_diff else None
+                cand = [l for l in lines if adds is None or l in adds] or lines
+                for l in cand[:max(1, samples - shown)]:
+                    print("      %s:%d" % (rel, l), file=out)
+                    shown += 1
+    print("Use the modern replacement, or (if the legacy form is unavoidable) pay it down elsewhere.", file=out)
     return 1
 
 
@@ -413,12 +513,16 @@ def main(argv=None):
     ap.add_argument("--by-file", type=int, default=0, metavar="N", help="report: top N files per idiom")
     ap.add_argument("--samples", type=int, default=5, help="check: file:line samples per increase")
     ap.add_argument("--tighten", action="store_true", help="check: on success rewrite baseline lower")
+    src = ap.add_mutually_exclusive_group()
+    src.add_argument("--worktree", action="store_true", help="scan the dirty working tree (default: committed HEAD)")
+    src.add_argument("--staged", action="store_true", help="scan the git index (pre-commit use)")
     ap.add_argument("--baseline", default=BASELINE)
     ap.add_argument("--jobs", type=int, default=0)
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
     dirs = a.dirs or DEFAULT_DIRS
+    source = "worktree" if a.worktree else "staged" if a.staged else "head"
     if a.check:
         if not os.path.exists(a.baseline):
             print("cxx17_ratchet: no baseline at %s (run --write-baseline)" % a.baseline, file=sys.stderr)
@@ -426,8 +530,8 @@ def main(argv=None):
         base = load_baseline(a.baseline)
         if not a.dirs:
             dirs = base.get("dirs", dirs)
-        res = scan_repo(dirs, a.jobs)
-        rc = check(res, base, a.samples)
+        res = scan_repo(dirs, a.jobs, source)
+        rc = check(res, base, a.samples, use_git_diff=(source == "worktree"))
         if rc == 0 and a.tighten:
             nb = make_baseline(res, dirs)
             with open(a.baseline, "w", encoding="utf-8", newline="\n") as fh:
@@ -435,15 +539,15 @@ def main(argv=None):
                 fh.write("\n")
             print("cxx17_ratchet: baseline tightened")
         return rc
-    res = scan_repo(dirs, a.jobs)
+    res = scan_repo(dirs, a.jobs, source)
     if a.write_baseline:
         nb = make_baseline(res, dirs)
         with open(a.baseline, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(nb, fh, indent=1, sort_keys=True)
             fh.write("\n")
-        print_table(nb["counts"], "baseline written: %s (head %s, %d files)" % (a.baseline, nb["head"], len(res)))
+        print_table(nb["counts"], "baseline written: %s (head %s, %s, %d files)" % (a.baseline, nb["head"], source, len(res)))
         return 0
-    print_table(aggregate(res, a.depth), "cxx17_ratchet report (%d files)" % len(res))
+    print_table(aggregate(res, a.depth), "cxx17_ratchet report (%d files, %s)" % (len(res), source))
     if a.by_file:
         for i in IDS:
             rows = sorted(((len(h.get(i, [])), r) for r, h in res.items() if h.get(i)), reverse=True)[:a.by_file]
