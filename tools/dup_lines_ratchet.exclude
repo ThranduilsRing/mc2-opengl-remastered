@@ -1,0 +1,6 @@
+# tools/dup_lines_ratchet.exclude -- paths the duplicated-line ratchet must not scan.
+# One glob per line (fnmatch against the repo-relative path; '*' crosses '/').
+# A trailing '/' excludes a whole directory; a pattern without '/' matches file names only.
+# Built in already: 3rdparty/, shaders/spv/, *.gen.h, *.gen.hglsl, linguist-generated paths.
+# Add vendored or machine-written sources here with a reason; do NOT add first-party
+# copy-paste to hide it -- that is exactly what the ratchet exists to surface.

@@ -899,6 +899,11 @@ run_check "golden_coverage_selftest" "py -3 scripts/check-golden-coverage.py --s
 run_check "bless_selftest"           "py -3 tools/visual_verify/bless_selftest.py"
 run_check "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
 run_check "cxx17_ratchet_selftest"   "py -3 tools/cxx17_ratchet/test_cxx17_ratchet.py"
+# D8 (opus-consistency-review): copy-paste is the recurring GL<->VK drift source -- a fix
+# lands in one copy and the twin keeps the bug. Duplicated-line count (runs of >= 8 normalized
+# lines occurring twice) per owned dir may only fall. Scans the COMMITTED tree, so another
+# agent's dirty working tree cannot flap it. Selftest lives in scripts/tests (scripts_tests row).
+run_check "dup_lines_ratchet"        "py -3 tools/dup_lines_ratchet.py --check"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py
