@@ -67,17 +67,22 @@ def test_build_models_json_entry_structure():
         "maple1.glb": "data/model_overrides/cooked/maple1_lod0.glb",
         "maple2.glb": "data/model_overrides/cooked/maple1_lod1.glb",
     }
-    entries = build_models_json([family], cooked_glb_paths)
+    # Engine schema {"overrides":[...]} since 7bc81a867 (2026-06-12): the old
+    # bare list with appearanceName/lods[].distance+source was silently dropped
+    # by mclib/model_override_registry.cpp parseManifest. LOD0 is the top-level
+    # `source`; lods[] carries only LOD1+ with an integer ascending `lod`.
+    entries = build_models_json([family], cooked_glb_paths)["overrides"]
     assert len(entries) == 1
     e = entries[0]
+    assert e["type"] == "model"
     assert e["class"] == "tree"
-    assert e["appearanceName"] == "maple1"
     assert e["replaces"] == "tree:maple1"
-    assert len(e["lods"]) == 2
-    assert e["lods"][0]["distance"] == 0
-    assert e["lods"][1]["distance"] == 600
-    assert "source" in e["lods"][0]
-    assert "source" in e["lods"][1]
+    assert e["scale"] == 1.0
+    assert e["source"] == "data/model_overrides/cooked/maple1_lod0.glb"
+    assert len(e["lods"]) == 1
+    assert e["lods"][0]["lod"] == 1
+    assert e["lods"][0]["distance"] == 600
+    assert e["lods"][0]["source"] == "data/model_overrides/cooked/maple1_lod1.glb"
 
 
 def test_family_run_does_not_clobber_full_models_json():
@@ -86,6 +91,6 @@ def test_family_run_does_not_clobber_full_models_json():
     include entries for families not passed in.
     """
     maple_only = [f for f in ASSET_FAMILIES if f["name"] == "maple"]
-    entries = build_models_json(maple_only, {})
+    entries = build_models_json(maple_only, {})["overrides"]  # engine schema (7bc81a867)
     assert len(entries) == 1
     assert entries[0]["replaces"] == "tree:maple1"
