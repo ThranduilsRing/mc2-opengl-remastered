@@ -133,18 +133,8 @@ bool mechPerfGateRequested() {
     return state == 1;
 }
 
-// VK-RUNG8 item-4: MC2_VK_MECH_DIRECT_CHAIN is RETIRED. The GL<->VK semaphore-handoff
-// (hybrid) co-write path was deleted; the mech island now ALWAYS renders direct-chain
-// (terrain left the shared GBuffer Vulkan-owned). The env name is still parsed + noted
-// deprecated below so old command lines don't hit unknown-var behavior; explicitly
-// setting it just prints a one-line deprecation note. This predicate now == the mech gate.
-[[maybe_unused]] static const bool s_mechDirectChainDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_MECH_DIRECT_CHAIN") != -1)
-        std::fprintf(stderr, "[VK_MECH] MC2_VK_MECH_DIRECT_CHAIN is deprecated and now a "
-                             "no-op: mech Tier-1 co-write is always direct-chain "
-                             "(GL/VK semaphore handoff deleted).\n");
-    return true;
-}();
+// The mech island always renders direct-chain (terrain leaves the shared GBuffer
+// Vulkan-owned); there is no GL<->VK semaphore-handoff co-write path.
 
 // MC2_VK_MECH_MATERIAL (follow-on): copy-once single 2D albedo for the covered
 // stock mech type. DEFERRED general case = per-frame slot0 handle -> VK-descriptor

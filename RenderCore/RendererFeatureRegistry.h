@@ -2105,24 +2105,12 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_VK_VFX_COALESCE=0 restores the legacy one-record-per-triangle path."
     },
     {
-        "MC2_FEATURE_VK_MECH_DIRECT_CHAIN",
-        "MC2_VK_MECH_DIRECT_CHAIN",
-        EnvVarKind::Feature,
-        false,
-        "VK-MECH-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
-        "MC2_VK_MECH_TIER1 plus MC2_VK_PROP_DIRECT_CHAIN. When ON, the mech island treats "
-        "the shared scene color0/normal/depth images as already Vulkan-owned by terrain+prop "
-        "and skips its GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting its "
-        "submit fence before the next island. Used with MC2_VK_NO_GL_INTEROP_STRICT to advance "
-        "the final Metal-gate canary beyond mechs."
-    },
-    {
         "MC2_FEATURE_VK_WATER_DIRECT_CHAIN",
         "MC2_VK_WATER_DIRECT_CHAIN",
         EnvVarKind::Feature,
         false,
         "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
-        "MC2_VK_WATER_TIER1 plus MC2_VK_MECH_DIRECT_CHAIN. When ON, the water island treats "
+        "MC2_VK_WATER_TIER1. When ON, the water island treats "
         "the shared scene color0/normal/depth images as already Vulkan-owned by terrain+prop+mech "
         "and skips its GL->VK/VK->GL interop semaphore handoff, while still CPU-waiting its submit "
         "fence before the next island. Used with MC2_VK_NO_GL_INTEROP_STRICT to advance the final "

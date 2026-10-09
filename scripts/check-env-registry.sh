@@ -1020,17 +1020,13 @@ ALLOWLIST=(
     MC2_VK_MECH_FEED_AUDIT                    # trace -- read via mc2vkgate::envTriState in vulkan_mech_island.cpp
     MC2_VK_MECH_FEED_NATIVE                   # feature -- read via mc2vkgate::envTriState in gos_mech_batcher.cpp
     MC2_VK_POST_COMPOSITE                     # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
-    MC2_VK_POST_FOG_DIRECT_CHAIN              # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_fog_native.cpp
     MC2_VK_POST_FOG_NATIVE                    # feature -- read via mc2vkgate::subGate in vulkan_post_fog_native.cpp
     MC2_VK_POST_HZB                           # feature -- read via mc2vkgate::envTriState in vulkan_post_hzb_native.cpp
-    MC2_VK_POST_HZB_DIRECT_CHAIN              # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_hzb_native.cpp
     MC2_VK_POST_SCREENFX                      # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SCREENFX_CLOUD                # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
-    MC2_VK_POST_SCREENFX_DIRECT_CHAIN         # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SCREENFX_SHADOW               # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SCREENFX_SHORELINE            # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SSAO                          # feature -- read via mc2vkgate::envTriState in vulkan_post_ssao_native.cpp
-    MC2_VK_POST_SSAO_DIRECT_CHAIN             # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_ssao_native.cpp
     MC2_VK_PRESENT_DIRECT_FBO                 # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
     MC2_VK_TERRAIN_ALL_LODS                   # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp
     MC2_VK_TERRAIN_SKIRTS                     # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp

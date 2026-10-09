@@ -2624,7 +2624,6 @@ def main():
                             # VK-MECH-DIRECT-CHAIN: deletion-readiness proof gate
                             # that keeps shared GBuffer ownership on Vulkan after
                             # terrain+prop and skips mech interop semaphores.
-                            "MC2_VK_MECH_DIRECT_CHAIN",
                             # VK-WATER-DIRECT-CHAIN: deletion-readiness proof gate
                             # that keeps shared GBuffer ownership on Vulkan after
                             # terrain+prop+mech and skips water interop semaphores.
@@ -2828,10 +2827,6 @@ def main():
                             "MC2_VK_IMGUI",
                             "MC2_HZB_BUILD",
                             "MC2_HZB_PROBE",
-                            "MC2_VK_POST_HZB_DIRECT_CHAIN",
-                            "MC2_VK_POST_FOG_DIRECT_CHAIN",
-                            "MC2_VK_POST_SSAO_DIRECT_CHAIN",
-                            "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
                             "MC2_VK_POST_SCREENFX_SHADOW",
                             "MC2_SHADOW_ENABLE",
                             "MC2_SHADOW_CSM",

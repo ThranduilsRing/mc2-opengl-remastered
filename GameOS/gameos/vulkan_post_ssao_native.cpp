@@ -93,7 +93,7 @@ void vlog(const char* fmt, ...) {
 struct PostSsaoNativeHealth {
     int  runtimeGate   = 0;   // MC2_VK_POST_SSAO resolved ON
     int  substrateLive = 0;   // shared color0 + normal + depth present at init
-    int  directChain   = 0;   // MC2_VK_POST_SSAO_DIRECT_CHAIN resolved ON
+    int  directChain   = 0;   // direct-chain engaged
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames both passes actually rendered via VK
     unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
@@ -684,16 +684,8 @@ bool gosPostProcess::vkPostSsaoNativeEnabled()
     return state == 1;
 }
 
-// VK-RUNG8 item-4: native SSAO runs ONLY in direct-chain, engaged when upstream left the shared
-// GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream is not direct-chain, native
-// SSAO declines and the GL SSAO pass runs. The env name MC2_VK_POST_SSAO_DIRECT_CHAIN is still parsed + noted deprecated.
-[[maybe_unused]] static const bool s_postSsaoDirectChainDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") != -1)
-        std::fprintf(stderr, "[VK_POST_SSAO] MC2_VK_POST_SSAO_DIRECT_CHAIN is deprecated and "
-                             "now a no-op: native SSAO is always direct-chain (GL/VK handoff "
-                             "deleted); it engages only when upstream is direct-chain.\n");
-    return true;
-}();
+// Native SSAO runs only in direct-chain, engaged when upstream left the shared GBuffer
+// Vulkan-owned (postDirectChainUpstreamOn); otherwise it declines and the GL SSAO pass runs.
 static bool vkPostSsaoDirectChainEnabled()
 {
     static int state = -1;

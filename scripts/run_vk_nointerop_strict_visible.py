@@ -42,7 +42,6 @@ STRICT_ENV = {
     "MC2_VK_TERRAIN_VISUALDISPLACE_FAR": "1",
     "MC2_VK_PROP_DIRECT_CHAIN": "1",
     "MC2_VK_MECH_FEED_NATIVE": "1",
-    "MC2_VK_MECH_DIRECT_CHAIN": "1",
     "MC2_VK_WATER_TIER1": "1",
     "MC2_VK_WATER_DIRECT_CHAIN": "1",
     "MC2_VK_OBJECTID_DIRECT_CHAIN": "1",
@@ -53,16 +52,12 @@ STRICT_ENV = {
     "MC2_VK_CSM_FULLMAP_INTEROP": "1",
     "MC2_VK_STATIC_SHADOW_MAP": "0",
     "MC2_VK_POST_FOG_NATIVE": "1",
-    "MC2_VK_POST_FOG_DIRECT_CHAIN": "1",
     "MC2_SSAO": "1",
     "MC2_VK_POST_SSAO": "1",
-    "MC2_VK_POST_SSAO_DIRECT_CHAIN": "1",
     "MC2_VK_POST_SCREENFX": "1",
     "MC2_VK_POST_SCREENFX_SHADOW": "1",
-    "MC2_VK_POST_SCREENFX_DIRECT_CHAIN": "1",
     "MC2_HZB_BUILD": "1",
     "MC2_VK_POST_HZB": "1",
-    "MC2_VK_POST_HZB_DIRECT_CHAIN": "1",
     "MC2_VK_NO_GL_INTEROP_STRICT": "1",
     # H4: arm the GL draw / screen-shadow canaries so the checker can REQUIRE them
     # present with draws=0 / any_samples=0 (proves the GL scene-draw and screen-shadow
@@ -82,12 +77,7 @@ STRICT_ENV = {
 # default member (view-mode-only canary) and is retained.
 DIRECT_CHAIN_GATES = (
     "MC2_VK_PROP_DIRECT_CHAIN",
-    "MC2_VK_MECH_DIRECT_CHAIN",
     "MC2_VK_WATER_DIRECT_CHAIN",
-    "MC2_VK_POST_FOG_DIRECT_CHAIN",
-    "MC2_VK_POST_SSAO_DIRECT_CHAIN",
-    "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
-    "MC2_VK_POST_HZB_DIRECT_CHAIN",
     "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
 )
 
@@ -186,7 +176,7 @@ def main() -> int:
             f.write(f"{key}={env.get(key, '')}\n")
     # The capture scrubs undeclared ambient MC2_* vars, so every proof gate must be
     # declared or the run silently measures the default (GL) configuration.
-    for key in gates:
+    for key in [*gates, "MC2_VISUAL_CAPTURE_EXIT_AFTER"]:
         cmd.extend(["--env-declare", f"{key}={env.get(key, '')}"])
     return subprocess.call(cmd, cwd=str(root), env=env)
 
