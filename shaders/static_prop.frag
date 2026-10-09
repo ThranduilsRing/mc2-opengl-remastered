@@ -10,12 +10,12 @@
 
 // POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for props
 // (binding 28, u_numPoolLights=0 when gated off -> byte-identical). MUST stay
-// OUTSIDE the #include <include/prop_dither.hglsl>   // M4: shared Bayer alpha dither (VK color_prop_tier1.frag too)
-#ifdef MC2_COALESCE region below -- the legacy (non-coalesce)
+// OUTSIDE the #ifdef MC2_COALESCE region below -- the legacy (non-coalesce)
 // variant compiles this file too, and the pool block in main() is
 // unconditional (2026-07-22 regression: include placed inside the coalesce
 // guard broke the legacy program -> ALL props CPU-fallback/no meshes).
 #include <include/light_pools.hglsl>
+#include <include/prop_dither.hglsl>   // shared Bayer alpha dither (also VK color_prop_tier1.frag)
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
 // V-MATERIAL-PBR-3: per-fragment PBR specular consumes u_cameraWorldPos to
