@@ -1282,7 +1282,12 @@ extern "C" int mc2_vk_water_island_run(
     {
         void* p = nullptr;
         if (vmaMapMemory(s->allocator, s->vsUboAlloc[par], &p) == VK_SUCCESS) {
-            std::memcpy(p, vsParams, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc[par]);
+            WaterVsParams vsLocal;
+            std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
+            // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
+            // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
+            vsLocal.p3[1] = (((int)(((const WaterFsParams*)fsParams)->f4[0] + 0.5f) == 3) && s->shHReal) ? 1.0f : 0.0f;
+            std::memcpy(p, &vsLocal, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc[par]);
         }
         if (vmaMapMemory(s->allocator, s->fsUboAlloc[par], &p) == VK_SUCCESS) {
             WaterFsParams fsLocal;
@@ -1295,7 +1300,7 @@ extern "C" int mc2_vk_water_island_run(
             // and u_hasShoreMask = (mode>=1 && tex); the island owns the textures.
             {
                 const int shMode = (int)(fsLocal.f4[0] + 0.5f);
-                fsLocal.f4[1] = (shMode == 2 && s->shHReal) ? 1.0f : 0.0f;
+                fsLocal.f4[1] = (shMode >= 2 && s->shHReal) ? 1.0f : 0.0f;
                 fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
             }
             std::memcpy(p, &fsLocal, sizeof(WaterFsParams));

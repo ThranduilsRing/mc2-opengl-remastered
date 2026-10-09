@@ -54,7 +54,7 @@ layout(set = 0, binding = 0, std140) uniform WaterVsParams {
     vec4  p0;   // (waterElevation, alphaDepth, mapTopLeftX, mapTopLeftY)
     vec4  p1;   // (frameCos, maxMinUV, uvScale, uvOffsetX)
     vec4  p2;   // (uvOffsetY, waterDepthFudgeFast, alphaEdgeByte, alphaMiddleByte)
-    vec4  p3;   // (alphaDeepByte, _pad, _pad, _pad)
+    vec4  p3;   // (alphaDeepByte, shoreFlat (mode 3 flat plane, 0/1), shoreDepthK, _pad)
 } U;
 
 // Output varyings -> water_geom.frag (base-layer subset of gos_terrain_water_mdi.frag).
@@ -148,7 +148,11 @@ void main() {
     WaterThickness = waterElevation - velev;   // negative = above waterline
     float shoreBlendVS = max(alphaDepth, 1.0);
     float waveCos = ((waterBits & 0x80u) != 0u) ? -frameCos : frameCos;
-    float wz = (WaterThickness >= 0.0)
+    // Shore mode 3 (U.p3.y != 0): flat animated plane everywhere; the FS carves the
+    // shoreline from the bicubic sidecar. Mirrors gos_terrain_water_fast_mdi.vert u_shoreFlat.
+    const bool shoreFlat = (U.p3.y != 0.0);
+    float wz = shoreFlat ? (waveCos + waterElevation)
+             : (WaterThickness >= 0.0)
                ? waveCos + waterElevation
                : min(velev, waterElevation + shoreBlendVS);
     vec3 worldPos = vec3(vxy, wz);
@@ -197,5 +201,6 @@ void main() {
     // GL clip emit + water reverse-Z depth bias (pre-divide). SAME as GL VS.
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
     clip.z   += fudge * clip.w;
+    if (shoreFlat) clip.z += U.p3.z * clip.z;   // mode 3: depth-only lift (u_shoreDepthK)
     gl_Position = clip;
 }

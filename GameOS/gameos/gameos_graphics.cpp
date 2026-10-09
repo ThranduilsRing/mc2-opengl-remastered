@@ -3052,6 +3052,13 @@ static float mc2WaterShoreFeatherWu()
     return s_shoreFeatherWu;
 }
 
+// Shore mode 3 depth-only lift K (fraction of clip.z). Shared by GL uniform + VK UBO.
+static float mc2WaterShore3DepthK()
+{
+    static const float s_k = []() { const char* v = getenv("MC2_WATER_SHORE3_DEPTH_K"); return v ? (float)atof(v) : 0.03f; }();
+    return s_k;
+}
+
 // WATER-HDRI-REFL-PERF-1 LOD default, shared by the GL MDI bind block and the
 // VK water island fsParams pack (RUNG-6.5) so the two paths cannot drift.
 // MC2_WATER_HDRI_LOD (float) overrides; else MC2_WATER_HDRI_REFL_FULL=1 -> 1.0,
@@ -3492,8 +3499,7 @@ void gosRenderer::renderWaterFastPath(
             if (shoreMode == 3) {
                 // Depth-only lift of the flat plane (see vert): terrain triangles poking above
                 // the plane where the bicubic says water must not occlude the water.
-                static const float s_k = []() { const char* v = std::getenv("MC2_WATER_SHORE3_DEPTH_K"); return v ? (float)atof(v) : 0.03f; }();
-                setMF("u_shoreDepthK", s_k);
+                setMF("u_shoreDepthK", mc2WaterShore3DepthK());
             }
         }
         setMF         ("waterElevation",  waterElevation);
@@ -3734,6 +3740,7 @@ void gosRenderer::renderWaterFastPath(
                 vsP.p2[0]=cloudOffsetY; vsP.p2[1]=0.00025f;
                 vsP.p2[2]=(float)alphaEdgeByte; vsP.p2[3]=(float)alphaMiddleByte;
                 vsP.p3[0]=(float)alphaDeepByte;
+                vsP.p3[2]=mc2WaterShore3DepthK();   // shore mode 3 depth lift K (p3[1] flat flag set by the VK island)
                 {
                     const vec4 waterFog = uint32_to_vec4(renderStates_[gos_State_Fog]);
                     memcpy(fsP.fog, &waterFog, 4*sizeof(float));
@@ -3767,7 +3774,7 @@ void gosRenderer::renderWaterFastPath(
                     extern int          gos_WaterShoreMode();
                     extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
                     extern const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
-                    fsP.f4[0] = (float)(gos_WaterShoreMode() > 2 ? 2 : gos_WaterShoreMode());     // u_shoreMode
+                    fsP.f4[0] = (float)gos_WaterShoreMode();     // u_shoreMode
                     fsP.f4[3] = mc2WaterShoreFeatherWu();        // u_shoreFeatherWu
                     memcpy(fsP.f5, gos_TerrainLodChunk_WaterShoreHeightBounds(), 4*sizeof(float)); // u_shoreHeightBounds
                     memcpy(fsP.f6, gos_TerrainLodChunk_ShorelineMaskBounds(),    4*sizeof(float)); // u_shoreMaskBounds
