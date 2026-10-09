@@ -390,6 +390,7 @@ endif()
 add_subdirectory("./GameOS/src" "./out/windows")
 add_subdirectory("3rdparty/imgui")
 add_subdirectory("GuiRuntime")
+include(cmake/Mc2NarrowingErrors.cmake)  # per-target /we for narrowing codes; after all lib targets exist
 # Standalone ImGui UI Editor.
 # Guarded so source snapshots that carry only changelog/version files do
 # not break configure, while full local UI Editor trees produce ui_editor.vcxproj.
