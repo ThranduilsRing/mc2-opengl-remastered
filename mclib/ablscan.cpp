@@ -324,7 +324,7 @@ long (*ABLFile::writeStringCB) (void* file, const char* buffer) = NULL;
 
 void* ABLFile::operator new (size_t ourSize) {
 
-	void* result = ABLSystemMallocCallback(ourSize);
+	void* result = ABLSystemMallocCallback(static_cast<unsigned long>(ourSize));
 	return(result);
 }
 
@@ -359,7 +359,7 @@ void ABLFile::destroy (void) {
 long ABLFile::create (const char* fName) {
 
 	if (fName) {
-		fileName = (char*)ABLSystemMallocCallback(strlen(fName)+1);
+		fileName = (char*)ABLSystemMallocCallback(static_cast<unsigned long>(strlen(fName)+1));
 		strcpy(fileName,fName);
 		return(createCB(&file, fileName));
 	}
@@ -371,7 +371,7 @@ long ABLFile::create (const char* fName) {
 long ABLFile::open (const char* fName) {
 
 	if (fName) {
-		fileName = (char*)ABLSystemMallocCallback(strlen(fName)+1);
+		fileName = (char*)ABLSystemMallocCallback(static_cast<unsigned long>(strlen(fName)+1));
 		strcpy(fileName,fName);
 		return(openCB(&file, fileName));
 	}
@@ -499,7 +499,7 @@ inline CharCodeType calcCharCode (long ch) {
 
 long isReservedWord (void) 
 {
-	long wordLength = strlen(wordString);
+	long wordLength = static_cast<long>(strlen(wordString));
 	if ((wordLength >= MINLEN_RESERVED_WORD) && (wordLength <= MAXLEN_RESERVED_WORD) && reservedWordTable[wordLength])
 	{
 		for (ReservedWord* rwPtr = reservedWordTable[wordLength]; rwPtr->string != NULL; rwPtr++)
@@ -675,7 +675,7 @@ void languageDirective (void) {
 			//---------------------------------------
 			// What's the current module's directory?
 			char fullPath[255];
-			long curChar = strlen(SourceFiles[0]);
+			long curChar = static_cast<long>(strlen(SourceFiles[0]));
 #ifdef LINUX_BUILD
             const char path_separator = '/';
 #else
@@ -854,8 +854,8 @@ void downShiftWord (void) {
 	char* wp = wordString;
 	char* tp = tokenString;
 
-	long checkLengthWord = strlen(wordString);
-	long checkLengthToken = strlen(tokenString);
+	long checkLengthWord = static_cast<long>(strlen(wordString));
+	long checkLengthToken = static_cast<long>(strlen(tokenString));
 
 	if ((checkLengthWord >= MAXLEN_TOKENSTRING) || (checkLengthToken >= MAXLEN_TOKENSTRING))
 		ABL_Fatal(-1," Boy did Glenn screw the pooch here!! ");
