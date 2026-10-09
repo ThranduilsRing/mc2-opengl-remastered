@@ -41,7 +41,6 @@ KNOWN = {
     "package.json": dict(legacy_ok=True, species="mod package"),
     "cook.json": dict(legacy_ok=True, species="cook sidecar"),
     "set.json": dict(legacy_ok=False, species="golden set record"),
-    "golden-sets.json": dict(legacy_ok=True, species="golden-sets registry"),
     "release_install_report.json": dict(legacy_ok=False, species="release install report"),
 }
 SUFFIX_KNOWN = {

@@ -188,7 +188,7 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 
 **SHIPPED (S11-S20 proof machine):**
 - S12 unified manifest schema `ee4a583f` (`scripts/manifest_schema.py` + checker + tests + cockpit adoption)
-- S9/S13 pixel gate `8461e3e0` (`scripts/run_visual.py` capture/compare/verify, byte-hash, refuses non-blessed) + **Baseline-A v2 `7e997e8f` (all 5 tier1, 15 golden frames, coherent off `1f0419ac`)**
+- S9/S13 pixel gate `8461e3e0` (run_visual.py (retired 2026-10-09) capture/compare/verify, byte-hash, refuses non-blessed) + **Baseline-A v2 `7e997e8f` (all 5 tier1, 15 golden frames, coherent off `1f0419ac`)**
 - S11/S15 `c9421306` (release-install report w/ S12 identity; residency slim report sha+keep/drop/fail/unknown)
 - S14 render-pass reader `0017bb2b` (`scripts/render_pass_report.py` + --compare)
 - S20 GlStateGuard slice 2 `783406a8` (RAII depth/blend/cull on terrain chunk draw, A/B pixel-neutral)

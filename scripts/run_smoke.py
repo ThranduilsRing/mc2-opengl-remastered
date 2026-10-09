@@ -3364,7 +3364,7 @@ def main():
                 passed = False
         else:
             _vline = ("[visual-advisory] no visual compare on record "
-                      "(run scripts/run_visual.py compare to populate)")
+                      "(scripts/run_visual.py is retired; nothing writes this report)")
         print(_vline, file=sys.stderr)
         with open(artifact_dir / "report.md", "a", encoding="utf-8") as _rf:
             _rf.write("\n" + _vline + "\n")

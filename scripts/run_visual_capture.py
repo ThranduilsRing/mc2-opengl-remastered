@@ -99,8 +99,9 @@ BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
                 if os.environ.get("MC2_VISUAL_BOOKMARK_DIR")
                 else ROOT / "tests" / "visual" / "bookmarks")
 DEFAULT_OUT = ROOT / "tests" / "visual" / "captures"
-GOLDENS_DIR = ROOT / "tests" / "visual" / "baselines"
-GOLDEN_SETS_REGISTRY = ROOT / "tests" / "visual" / "golden-sets.json"
+# Candidate golden sets land beside the blessed ones; the legacy
+# tests/visual/golden-sets.json registry (and scripts/run_visual.py) are retired.
+GOLDENS_DIR = ROOT / "tests" / "visual" / "goldens"
 
 
 def _safe_name(name: str) -> str:
@@ -533,11 +534,11 @@ def materialize_candidate(set_name: str, last_run: dict, per: dict,
                           exe: Path, n_runs: int, n_warmup: int,
                           allow_partial: bool = False) -> Path:
     """Copy the (stabilized) last run's PNGs+sidecars into the golden set dir
-    and register the set in tests/visual/golden-sets.json as status=candidate.
+    and write its set.json with status=candidate.
 
-    Per visual-regression-lab-architecture.md §3: a set is captured as
-    'candidate', reviewed by a human walking the gallery, then 'blessed' by a
-    COMMIT to golden-sets.json. This writes the candidate; the human blesses.
+    A set is captured as 'candidate', reviewed by a human walking the gallery,
+    then 'blessed' by a COMMIT flipping set.json status. This writes the
+    candidate; the human blesses.
 
     allow_partial: include only bookmarks that were byte-stable across the
     compared runs; record the rest as `excluded_unstable` (a small-but-real
@@ -584,7 +585,7 @@ def materialize_candidate(set_name: str, last_run: dict, per: dict,
     )
     set_record = {
         "set_id": set_name,
-        "status": "candidate",          # human blesses via a golden-sets.json commit
+        "status": "candidate",          # human blesses via a set.json commit
         "blessed_commit": None,
         "supersedes": None,
         "mission": last_run["mission"],
@@ -604,20 +605,6 @@ def materialize_candidate(set_name: str, last_run: dict, per: dict,
     (set_dir / "set.json").write_text(json.dumps(set_record, indent=2) + "\n",
                                       encoding="utf-8")
 
-    # Upsert into the registry (append-only; never delete a prior set).
-    registry = {}
-    if GOLDEN_SETS_REGISTRY.exists():
-        try:
-            registry = json.loads(GOLDEN_SETS_REGISTRY.read_text(encoding="utf-8"))
-        except Exception:
-            registry = {}
-    registry.setdefault("schema_v", 1)
-    sets = registry.setdefault("sets", {})
-    sets[set_name] = {k: set_record[k] for k in
-                      ("set_id", "status", "blessed_commit", "supersedes",
-                       "mission", "path", "stabilization", "identity")}
-    GOLDEN_SETS_REGISTRY.write_text(json.dumps(registry, indent=2) + "\n",
-                                    encoding="utf-8")
     return set_dir
 
 
@@ -657,8 +644,8 @@ def main() -> int:
     ap.add_argument("--candidate-set", default=None,
                     help="on stability PASS, materialize the last run as a "
                          "golden set with this id (e.g. baselineA-rc1) under "
-                         "tests/visual/baselines/<id>/ and register it in "
-                         "tests/visual/golden-sets.json as status=candidate.")
+                         "tests/visual/goldens/<id>/ with status=candidate in "
+                         "its set.json.")
     ap.add_argument("--allow-partial", action="store_true",
                     help="materialize the STABLE bookmark subset even if some "
                          "bookmarks drift (the drifters are recorded as "
@@ -770,12 +757,12 @@ def main() -> int:
             kind = ("FULL" if all_stable
                     else f"PARTIAL ({n_stable}/{len(per)} stable)")
             print(f"[viscap] candidate set written ({kind}): {set_dir}")
-            print(f"[viscap] registry: {GOLDEN_SETS_REGISTRY} (status=candidate)")
+            print(f"[viscap] set record: {set_dir / 'set.json'} (status=candidate)")
             if not all_stable:
                 drifters = [n for n, v in per.items() if not v['stable']]
                 print(f"[viscap] excluded_unstable: {drifters} "
                       "(known v2 items -- need engine streaming-freeze)")
-            print("[viscap] BLESS = a human commit to golden-sets.json flipping "
+            print("[viscap] BLESS = a human commit to set.json flipping "
                   "status->blessed with blessed_commit set.")
         else:
             print("[viscap] candidate NOT materialized (stability/fire gate "
