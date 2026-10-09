@@ -2743,7 +2743,7 @@ flags:
     default: off
     kind: Feature
     feature_id: MC2_GPU_PARTICLES
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
+    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env). Default-OFF: unset routes FX through the legacy CPU/MLR path (reverted to CPU default after GPU FX looked broke..."
     referenced_at:
       - mclib/gosfx/effect.cpp:45

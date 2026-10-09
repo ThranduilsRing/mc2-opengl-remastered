@@ -551,14 +551,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         false,
         "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md). Default-OFF; =1 enables. Target classes = CardCloud + ShardCloud (PointCloud was the original pick but births 0 particles in stock tier1; CardCloud ~30 live and ShardCloud ~25 live are the populated classes — confirmed by probe). When OFF, CardCloud::Draw runs the existing placeholder Spawn() path byte-identically. When ON, CardCloud::Draw HARVESTS the CPU gosFX sim's live per-particle data (per-particle m_localTranslation + m_scale + m_halfX/Y and m_P_color[i] — already advanced this frame by ParticleCloud::Execute/CardCloud::AnimateParticle) and emits one GPU billboard per LIVE particle (m_age<1): position = m_localToParent*parentToWorld * m_localTranslation; color = m_P_color[i]; size = scale*sqrt(halfX^2+halfY^2). Reuses the placeholder's texture/blend group. CPU sim stays AUTHORITATIVE (no sim change, no bypass); legacy MLR DrawEffect stays skipped (no dual-draw). ShardCloud (1316) is covered the same way (center=m_localTranslation, color=m_P_color[i*3] per-vertex, size=scale*m_radius). CardCloud + ShardCloud ONLY — PointCloud/Card/Tube/trails untouched. NO GPU-sim, NO emission/lifetime/timing change, NO object-ID write, NO shader/ABI change. Deferred to the ABI-extension follow-up: per-particle rotation (m_localRotation), CardCloud aspect, ShardCloud triangle shape (m_angle), per-particle UV frame. Parity diagnostic [VFX_ORACLE v1] FIRST_HARVEST + 240-call summary under MC2_GPU_PARTICLES_LOG=1. Parity-bridge/oracle stage, NOT the final architecture (end-state = GPU sim + CPU-sim deletion per class)."
     },
-    // MC2_GPU_PARTICLES (master GPU-particle path; read in mclib/particles/batcher.cpp initialize_env)
-    {
-        "MC2_GPU_PARTICLES",
-        "MC2_GPU_PARTICLES",
-        EnvVarKind::Feature,
-        false,
-        "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env). Default-OFF: unset routes FX through the legacy CPU/MLR path (reverted to CPU default after GPU FX looked broken); =1 opts in to GPU billboards, =0 is explicit OFF. Several VFX gates (soft/lit particles, oracle render, age sample) have no effect when this is OFF.",
-    },
     // VfxGpuSimCardCloud
     {
         "MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD",
@@ -849,6 +841,14 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    // MC2_GPU_PARTICLES (master GPU-particle path; lives in kAuxEnvVars: kFeatureTable is indexed by RendererFeature; read in mclib/particles/batcher.cpp initialize_env)
+    {
+        "MC2_GPU_PARTICLES",
+        "MC2_GPU_PARTICLES",
+        EnvVarKind::Feature,
+        false,
+        "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env). Default-OFF: unset routes FX through the legacy CPU/MLR path (reverted to CPU default after GPU FX looked broken); =1 opts in to GPU billboards, =0 is explicit OFF. Several VFX gates (soft/lit particles, oracle render, age sample) have no effect when this is OFF.",
+    },
     // -- WATER-SHORE-MODE-3 tuning knobs (GL prototype) ----------------------
     {
         "MC2_TUNE_WATER_SHORE3_EXTRA_WU",
