@@ -56,7 +56,7 @@ CMake targets: `mc2` (the game), `mc2_launcher`, libs `mclib`, `gui`, `rendercor
 | Vehicles/legacy | `ShapeRenderer` in `renderLists()` | `vulkan_legacy_shape_island.cpp` |
 | FX/particles | `gos_particle_bridge.cpp`, `gos_cardcloud_sim.cpp` | `vulkan_vfx_island.cpp` |
 | Post | `gos_postprocess.cpp`, `gos_postprocess_blur.cpp` | `vulkan_post_{fog,hzb,screenfx,ssao}_native.cpp` |
-| Present | SDL GL swap | `engine_present_vk.cpp`, `vulkan_swapchain_present.cpp`, `vulkan_present_object.cpp` |
+| Present | SDL GL swap | `engine_present_vk.cpp` |
 
 Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_shared_scene_depth.cpp` and
 `vk_shared_light_feed.cpp`, and are fed by GL-side "feeds" (e.g. `mc2_terrain_tier1_get_frame_feed`).

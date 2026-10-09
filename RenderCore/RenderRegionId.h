@@ -27,7 +27,6 @@ enum class RenderRegionId {
     PostprocessFog = 0,   // fused EdgeFog + OOB fog composite
     PostprocessSSAO = 1,  // half-res AO occlusion + multiplicative apply (VK-REGION-SSAO-1)
     PostprocessHzb = 2,   // reverse-Z Hi-Z depth-pyramid reduce chain (VK-REGION-HZB-1)
-    CompositePresent = 3, // composite/backbuffer present scaffold (L6.6-COMPOSITE-PRESENT-SCAFFOLD)
     ShadowDepth = 4,      // depth-only instanced shadow-caster producer (VK-REGION-SHADOW-1)
 };
 
@@ -45,7 +44,6 @@ inline const char* region_id_to_string(RenderRegionId id) {
         case RenderRegionId::PostprocessFog:  return "PostprocessFog";
         case RenderRegionId::PostprocessSSAO: return "PostprocessSSAO";
         case RenderRegionId::PostprocessHzb:  return "PostprocessHzb";
-        case RenderRegionId::CompositePresent: return "CompositePresent";
         case RenderRegionId::ShadowDepth:      return "ShadowDepth";
     }
     return "Unknown";
@@ -99,11 +97,6 @@ struct RegionOutput {
     const char* fallbackReason = "";   // "" when no fallback
     int glPassesRun = 0;               // GL fog passes executed (0 or 2)
     int vkDraws     = 0;               // Vulkan fog draws executed (0 or 2)
-    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: additive. True iff a backend acquired +
-    // presented a swapchain image this call (CompositePresent region). Inert for
-    // every other region. Never implies the GL game window changed ownership —
-    // the scaffold presents to a SEPARATE Vulkan window.
-    bool presented  = false;
 };
 
 // GL-FREE resolver interface. A backend impl calls resolve() to turn a
@@ -169,25 +162,6 @@ struct PostprocessHzbRegionContext {
     int mipCount = 0;   // ceil-ladder level count (hzbMipCount_)
     // Translation service: RenderResourceId -> concrete backend handle. GL-free
     // interface (see below). Owned by the caller; must outlive the runRegion call.
-    const struct IResourceResolver* resolver = nullptr;
-};
-
-// BACKEND-NEUTRAL region context for the CompositePresent scaffold
-// (L6.6-COMPOSITE-PRESENT-SCAFFOLD). color names the composited MainColor to be
-// presented; the backend resolves it to a concrete handle via `resolver`.
-//
-// ★ HARD RULE (supervisor ruling): the swapchain image is BACKEND-INTERNAL and
-// NEVER appears in this neutral context — do NOT add a VkImage here, and do NOT
-// widen IResourceResolver::resolve() to return a VkImage. The scaffold presents
-// to a SEPARATE Vulkan window (like the L5 probe); the GL game window keeps
-// owning the real game present path, untouched. Full game-window Vulkan present
-// is BLOCKED on L7 shared-image interop / ownership migration (ledgered wall).
-struct CompositePresentRegionContext {
-    RenderResourceId color = RenderResourceId::MainColor;
-    int width  = 0;
-    int height = 0;
-    // Translation service: RenderResourceId -> concrete backend handle. GL-free
-    // interface (see above). Owned by the caller; must outlive the runRegion call.
     const struct IResourceResolver* resolver = nullptr;
 };
 

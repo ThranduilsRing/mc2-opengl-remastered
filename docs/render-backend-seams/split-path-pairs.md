@@ -58,8 +58,6 @@ The stamp is a claim that parity was RE-VERIFIED.
 
 | File | Reason |
 |---|---|
-| `shaders/vulkan/fullscreen.vert` | VK swapchain fullscreen triangle; GL uses its own fullscreen path — no GL sibling |
-| `shaders/vulkan/fullscreen.frag` | VK swapchain blit FS — no GL sibling |
 | `shaders/vulkan/edge_fog.vert` | VK fullscreen-triangle VS; the GL edge_fog pass has no dedicated `.vert` |
 | `shaders/vulkan/fog_oob.vert` | VK fullscreen-triangle VS; the GL fog_oob pass has no dedicated `.vert` |
 

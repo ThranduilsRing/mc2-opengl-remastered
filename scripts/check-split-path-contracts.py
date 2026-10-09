@@ -201,8 +201,6 @@ PAIRS = {
                              "shaders/shadow_terrain.vert"],
 }
 ISLANDS = {
-    "shaders/vulkan/fullscreen.vert": "VK swapchain fullscreen triangle; GL uses its own fullscreen path (no GL sibling)",
-    "shaders/vulkan/fullscreen.frag": "VK swapchain blit FS; GL uses its own fullscreen path (no GL sibling)",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
     # --- MERGE-WAVE-2 reconcile (2026-07-22): native VK tier-1 islands that landed

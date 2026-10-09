@@ -18,7 +18,6 @@
   "water_geom": {"gl": ["gos_terrain_water_mdi", "gos_terrain_water_fast_mdi", "gos_terrain_water_fast"], "why": "water_geom.frag header: port of gos_terrain_water_mdi.frag; .vert ports gos_terrain_water_fast_mdi.vert"}
  },
  "no_gl_twin": {
-  "fullscreen": "VK swapchain fullscreen triangle/blit; GL uses its own present path",
   "hud_color": "native VK HUD pipeline; GL HUD goes through gos_vertex",
   "hud_tex": "native VK HUD pipeline; GL HUD goes through gos_tex_vertex"
  }

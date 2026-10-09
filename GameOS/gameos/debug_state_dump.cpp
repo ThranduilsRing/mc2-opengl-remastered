@@ -85,12 +85,6 @@ extern "C" void mc2_render_backend_hzb_region_health(
     const char** lastFallbackReason, int* lastGlPassesRun, int* lastVkDraws,
     unsigned long* routedFrames);
 
-// L6.6-COMPOSITE-PRESENT-SCAFFOLD: CompositePresent region-selection health.
-extern "C" void mc2_render_backend_composite_present_region_health(
-    int* ifaceGateOn, const char** requestedBackend, int* lastImpl,
-    const char** lastFallbackReason, int* lastPresented, int* lastPresentFrames,
-    int* lastResizeCount, int* lastValidationErrors, unsigned long* routedFrames);
-
 #ifdef MC2_VULKAN_ISLAND
 // VK-POST-FOG-NATIVE-1 (rung 8.1): native fog pair health snapshot (defined in
 // GameOS/gameos/vulkan_post_fog_native.cpp, same #ifdef MC2_VULKAN_ISLAND).
@@ -1165,40 +1159,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"gl_passes_run\": " << glPasses << ",\n";
         s << "    \"vk_draws\": " << vkDraws << ",\n";
         s << "    \"routed_frames\": " << routed << "\n";
-        s << "  }\n";
-    }
-    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: CompositePresent region-selection health.
-    // ALWAYS emitted (accessor exists on every build). region_impl==VulkanSubgraph
-    // means the persistent present object presented to its OWN separate Vulkan
-    // window -- NEVER the GL game window (ledgered wall: full game-window present
-    // is L7 interop). present_frames/resize_count/validation_errors record the
-    // scaffold's tally from the last routed run.
-    {
-        int gateOn = 0, impl = 0, presented = 0, presentFrames = 0;
-        int resizeCount = 0, validationErrors = 0;
-        const char* reqBackend = "gl";
-        const char* fbReason = "";
-        unsigned long routed = 0;
-        mc2_render_backend_composite_present_region_health(
-            &gateOn, &reqBackend, &impl, &fbReason, &presented, &presentFrames,
-            &resizeCount, &validationErrors, &routed);
-        const char* implStr =
-            impl == 1 ? "GLInline" :
-            impl == 2 ? "VulkanSubgraph" :
-            impl == 3 ? "FallbackGL" : "None";
-        s << "  ,\n";
-        s << "  \"render_backend_composite_present_region\": {\n";
-        s << "    \"region_id\": \"CompositePresent\",\n";
-        s << "    \"iface_gate_on\": " << gateOn << ",\n";
-        s << "    \"requested_backend\": \"" << jsonEscape(reqBackend) << "\",\n";
-        s << "    \"region_impl\": \"" << implStr << "\",\n";
-        s << "    \"fallback_reason\": \"" << jsonEscape(fbReason) << "\",\n";
-        s << "    \"presented\": " << presented << ",\n";
-        s << "    \"present_frames\": " << presentFrames << ",\n";
-        s << "    \"resize_count\": " << resizeCount << ",\n";
-        s << "    \"validation_errors\": " << validationErrors << ",\n";
-        s << "    \"routed_frames\": " << routed << ",\n";
-        s << "    \"note\": \"separate vk window; GL game window untouched; full game-window present BLOCKED on L7 interop\"\n";
         s << "  }\n";
     }
     s << "}\n";

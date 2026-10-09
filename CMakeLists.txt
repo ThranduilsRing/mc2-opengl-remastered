@@ -540,7 +540,7 @@ add_custom_target(build_fingerprint
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 add_dependencies(mc2 build_fingerprint)
 # VULKAN-EDGE-FOG-ISLAND-2a: ensure the SPIR-V shaders (edge_fog.{vert,frag}.spv,
-# fullscreen.*) are baked when building the mc2 target directly (mc2_vulkan_shaders
+# etc.) are baked when building the mc2 target directly (mc2_vulkan_shaders
 # is an ALL target, but --target mc2 does not pull ALL). Only exists under MC2_VULKAN.
 if(MC2_VULKAN_ISLAND AND TARGET mc2_vulkan_shaders)
     add_dependencies(mc2 mc2_vulkan_shaders)

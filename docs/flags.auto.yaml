@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 354
 registry_env_flag_count: 353
-sweep_flag_count: 1004
-flag_count: 1060
+sweep_flag_count: 1002
+flag_count: 1058
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -1230,7 +1230,6 @@ flags:
     referenced_at:
       - GameOS/gameos/debug_state_dump.cpp
       - GameOS/gameos/gameosmain.cpp
-      - GameOS/gameos/vulkan_swapchain_present.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8666,14 +8665,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_VK_COMPOSITE_PRESENT
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_VK_CSM_ARRAY_INTEROP
     default: off
     kind: Feature
@@ -9338,26 +9329,17 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/engine_present_vk.cpp
-      - GameOS/gameos/gos_postprocess.cpp
       - GameOS/gameos/vulkan_color_prop_island.cpp
-    referenced_at_more: 11
+      - GameOS/gameos/vulkan_legacy_shape_island.cpp
+    referenced_at_more: 10
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_swapchain_present.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_VULKAN_VALIDATION
     default: unknown
     declared_in: null
     referenced_at:
       - GameOS/gameos/vulkan_context.cpp
-      - GameOS/gameos/vulkan_present_object.cpp
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes

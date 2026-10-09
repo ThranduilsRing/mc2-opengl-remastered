@@ -403,17 +403,6 @@ public:
     // GL handle resolver for the HZB region context (depth / pyramid-level-0).
     unsigned int resolveHzbRegionResource(RenderCore::RenderResourceId id) const;
 
-    // L6.6-COMPOSITE-PRESENT-SCAFFOLD (fourth region through runRegion). Builds
-    // the neutral CompositePresent context and routes it; the Vulkan backend
-    // drives the PERSISTENT present object to present to its OWN separate Vulkan
-    // window (GL game window UNTOUCHED). Opt-in via MC2_VK_COMPOSITE_PRESENT (the
-    // scaffold spawns a window, so it must NOT run every frame). Default-OFF ->
-    // GL game window byte/behavior-identical. Full game-window Vulkan present is
-    // BLOCKED on L7 interop (ledgered).
-    void runCompositePresentRegionThroughBackend();
-    // GL handle resolver for the CompositePresent region context (MainColor).
-    unsigned int resolveCompositePresentRegionResource(RenderCore::RenderResourceId id) const;
-
     // GL handle resolver for the SSAO region context (depth/normal/color/
     // occlusion -> concrete GL texture names). Defined as a tiny adaptor in
     // the .cpp, same shape as resolveRegionResource() for fog.
@@ -603,13 +592,6 @@ public:
     bool  runHzbRegionVulkanBackend(const RenderCore::PostprocessHzbRegionContext& ctx,
                                      RenderCore::RegionOutput* out);
 
-    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: Vulkan impl of the CompositePresent region.
-    // Drives the persistent mc2vk::VulkanPresentObject (own separate window) --
-    // NEVER the GL game window. Fail-soft: returns false on init/acquire failure
-    // (no crash). out->presented reflects a successful acquire+present.
-    bool  runCompositePresentRegionVulkanBackend(
-              const RenderCore::CompositePresentRegionContext& ctx,
-              RenderCore::RegionOutput* out);
 #endif
 
     // OOB-FOG-1: fullscreen fog over out-of-bounds far-plane pixels.

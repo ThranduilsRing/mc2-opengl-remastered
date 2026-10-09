@@ -58,19 +58,7 @@ struct IRenderBackend {
         return false;
     }
 
-    // L6.6-COMPOSITE-PRESENT-SCAFFOLD: fourth region overload (ruling R3 —
-    // overload per region context type). Default impl declines. A Vulkan backend
-    // that owns the persistent present object presents ctx.color to a SEPARATE
-    // Vulkan window (never the GL game window) and sets out->presented; any GL
-    // backend declines (returns false) — there is no GL present-to-a-second-window
-    // path, and the GL game present stays untouched.
-    virtual bool runRegion(RenderRegionId /*id*/,
-                           const CompositePresentRegionContext& /*ctx*/,
-                           RegionOutput* /*out*/) {
-        return false;
-    }
-
-    // VK-REGION-SHADOW-1: fifth region overload (ruling R3 — overload per region
+    // VK-REGION-SHADOW-1: region overload (ruling R3 — overload per region
     // context type). The FIRST GEOMETRY region: a depth-only instanced shadow-caster
     // producer that WRITES a shadow map (single or CSM 2D_ARRAY) from the per-frame
     // instance ring named in the context. Default impl declines. A Vulkan backend

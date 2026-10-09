@@ -101,15 +101,8 @@ set(SOURCES ${SOURCES}
 
 # Vulkan sources compile only when MC2_VULKAN=ON; when OFF no Vulkan headers/loader are pulled in.
 if(MC2_VULKAN)
-    list(APPEND SOURCES vulkan_spv_loader.cpp)
-    # CompositePresent test scaffold driver (own window + swapchain). Same MC2_VULKAN gate.
-    list(APPEND SOURCES vulkan_swapchain_present.cpp)
-    # The PERSISTENT present object (reusable acquire/present/resize + per-image semaphores).
-    # Same MC2_VULKAN gate (NOT _ISLAND).
-    list(APPEND SOURCES vulkan_present_object.cpp)
     # VK-P13-SELECTOR-1 / T2: the standalone SHARED engine Vulkan context
-    # (instance/device/queue/VMA owned HERE, not in the present object). Same
-    # MC2_VULKAN gate as the present object; entirely #ifdef MC2_VULKAN.
+    # (instance/device/queue/VMA owned HERE). Entirely #ifdef MC2_VULKAN.
     list(APPEND SOURCES vulkan_context.cpp)
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap/VkBootstrap.cpp")
     # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU (header-only lib).
@@ -339,7 +332,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce shadow_debug_overlay water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob ssao ssao_apply hzb_reduce shadow_debug_overlay water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.

@@ -2848,8 +2848,6 @@ def main():
                             # layer never loads, so validation_errors stays 0 by
                             # omission rather than by being genuinely clean.
                             "MC2_VULKAN_VALIDATION",
-                            # CompositePresent scaffold: _HIDDEN makes its separate window headless for CI.
-                            "MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN",
                             # TERRAIN-VISUAL-HEIGHT-CONSUMER-1: visual-height
                             # displacement gate (default-OFF; loader also
                             # accepts MC2_TERRAIN_VISUAL_HEIGHT for load-only).
