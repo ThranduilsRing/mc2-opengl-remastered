@@ -114,7 +114,7 @@ struct GpuDrivenBucketHeader {
 // type at gos_terrain_indirect.cpp DrawArraysIndirectCommand (16 B, 4 GLuints).
 // Step 2 of VPL retirement: primary compute writes cmds[0].count directly via
 // atomicAdd, replacing the cmd-patch dispatch that translates visibleCount→count.
-// Bound at slot 8 when MC2_SOLID_CMD_PATCH_RETIRE=1 (parity arm in commit 2a;
+// Bound at slot 8 (no such gate; parity arm in commit 2a;
 // default-on after flip in commit 2b).
 // ---------------------------------------------------------------------------
 struct DrawArraysIndirectCommand {

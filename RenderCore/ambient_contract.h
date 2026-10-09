@@ -43,7 +43,7 @@ enum class ViewportKind : uint8_t { Inherit = 0, MainScene, ShadowMap };
 // *** depthWrite IS a clean per-pass axis: declared ON for shadow+opaque, the runtime
 //     probe confirmed dwMiss=0 across ~9.8k samples. Kept + verified.
 //
-// *** blend is NOT a per-pass axis in THIS engine: the runtime probe (MC2_AMBIENT_PROBE)
+// *** blend is NOT a per-pass axis in THIS engine: the runtime probe (MC2_AMBIENT_PROBE; no such gate)
 //     proved GL_BLEND is GLOBALLY ENABLED (live bl=On) even during opaque passes -- MC2
 //     leaves blend enabled and controls via the blend FUNC, not the enable. The textbook
 //     "opaque => blend OFF" was wrong here (5881/9804 false mismatches when declared Off).

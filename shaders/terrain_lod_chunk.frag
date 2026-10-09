@@ -1902,8 +1902,8 @@ void main() {
     // light" once classification coverage is fixed; it is not a brightener and
     // it is not a runway fix.
     float cementLight = mix(1.0, normalLight, u_cementLit);
-    // CEMENT-EDGE-CURVE-1's pow() exponent was deleted here 2026-07-30; see the
-    // u_cementEdgeCurve retirement note in the uniform block above for why.
+    // No pow() edge-curve exponent here; see the
+    // u_cementEdgeCurve note in the uniform block above for why.
     float cementLightBlend = clamp(pureConcrete, 0.0, 1.0);
     normalLight = mix(normalLight, cementLight, cementLightBlend);
     // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting

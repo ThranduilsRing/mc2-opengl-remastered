@@ -357,8 +357,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
     s->sNormalRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->sDepthRes   = mc2SharedSceneDepthGetResource();
     // VK-RUNG8 item-4/6: direct-chain only. Only the shared VkImageResources are required.
-    // The static-shadow import substrate was retired (item-6): static-only screen-shadow
-    // declines to GL below.
+    // Static-only screen-shadow declines to GL below.
     if (!s->sColorRes || !s->sNormalRes || !s->sDepthRes) {
         setFallback("shared_gbuffer_not_ready"); return false;
     }

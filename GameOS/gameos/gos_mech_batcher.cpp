@@ -192,9 +192,8 @@ static std::vector<uint8_t>         s_vkVboNativeCopy;
 // See gos_mech_killswitch.h. Zero during tactical/world rendering.
 int g_mechPreviewRenderDepth = 0;
 
-// MECH-KILLSWITCH-LIGHTING-RETIRE-1: MC2_GPU_MECH_LIGHTING retired to constant
-// (default-ON; the low-UBO hardware guard was removed by [LIGHTSSBO v1] below, so
-// no runtime writer survived). u_lightingMode fed constant 1. See gos_mech_killswitch.h.
+// MECH-KILLSWITCH-LIGHTING-RETIRE-1: u_lightingMode is fed constant 1
+// (VS-side lighting always on; default-ON). See gos_mech_killswitch.h.
 
 // Slice C1: render-only mech GPU cull. Requires g_useGpuMechs=true.
 // Opt-out: MC2_GPU_MECH_CULL=0

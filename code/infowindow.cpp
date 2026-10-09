@@ -20,7 +20,7 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include<cstdlib>           // INFO-IMGUI-SLICE-1: getenv
 #include<cstdint>           // INFO-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
-// IN-MISSION-HUD-IMGUI-SCOPE-1 slice D (MC2_HUD_IMGUI_INFOWINDOW)
+// IN-MISSION-HUD-IMGUI-SCOPE-1 slice D (no such gate)
 #include"hudimguipanel.h"
 #include"infowindowmodel.h"
 #include "imgui.h"

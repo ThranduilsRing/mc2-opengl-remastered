@@ -3949,7 +3949,6 @@ void Terrain::geometry (void)
 	// F6 T2: mode flag moved to mc2_terrain_admission::isModern()
 	// (terrain_admission_mode.h) shared with quad.cpp setupTextures sites.
 	// Cache populated below; quad.cpp reads via eye->getCachedFrustumPlanes().
-	// Env: MC2_TERRAIN_ADMISSION_MODERN=1 flips to Modern.
 	// Reference: docs/observations/2026-05-22-terrain-admission-hotpath-recon.md
 	const bool s_admissionModern = mc2_terrain_admission::isModern();
 	static bool s_admissionModeLogged = false;

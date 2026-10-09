@@ -165,10 +165,9 @@ bool mechLightingRequested() {
     return state == 1;
 }
 
-// VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE (rung-7 opt-in) is RETIRED. The native
-// CPU geometry + LightsData feed is now unconditional under the VK mech island (the GL
-// glGetBufferSubData readback fallback was deleted). The env name is still parsed +
-// noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
+// VK-RUNG8 item-9: the native
+// CPU geometry + LightsData feed is unconditional under the VK mech island.
+// The env name MC2_VK_MECH_FEED_NATIVE is still parsed + noted as deprecated in gos_mech_batcher.cpp; there is no per-frame gate to query here.
 
 // VK-MECH-FEED-AUDIT-1: verification-only (default-OFF, safety-gate class like
 // MC2_VK_TERRAIN_HEIGHT_AUDIT). With the native feed armed, ALSO read the GL

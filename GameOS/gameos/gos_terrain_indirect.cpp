@@ -2428,8 +2428,7 @@ void BuildCementCatalogAtlas() {
         fflush(stdout);
     }
 
-    // Solid (non-alpha) cement cells. The CEMENT-ATLAS-TONE-MATCH-1 and
-    // RUNWAY-APRON-TONE-2 passes were deleted 2026-10-05 (user-rejected 2026-07-25).
+    // Solid (non-alpha) cement cells.
     const int NT = nSolidCells;
 
     // ---- CEMENT-ATLAS-CELL-2: concrete-family classification + the two arms.

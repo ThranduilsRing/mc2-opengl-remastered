@@ -780,8 +780,8 @@ def _selftest() -> int:
         binp.write_bytes(_synthetic_binary(SYN_B, "other",
                                            "2026-07-30T00:00:00", "A:/z", False))
 
-        # ...with NO witness. This used to be RECORDED-AT-MINT and gradeable on
-        # the strength of the file agreeing with itself. It is the same shape as
+        # ...with NO witness. A file agreeing with itself proves nothing:
+        # it is the same shape as
         # the forgery: nothing outside the record backs any of it.
         e = establish(doc(good), "replaced-unwitnessed")
         chk("binary replaced, NO witness -> UNCORROBORATED (refused)",

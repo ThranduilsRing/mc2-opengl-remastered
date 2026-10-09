@@ -18,7 +18,7 @@
 // and BEFORE the consumer (copy/draw/dispatch).
 //
 // v1 SCOPE: only the edges actually used are mapped -- no overgeneralization.
-// A runtime producer/consumer assert tracker (MC2_GPU_SYNC_ASSERT) is a deliberate
+// A runtime producer/consumer assert tracker (no such gate) is a deliberate
 // deferred v2. Optional once-per-tag debug log via MC2_GPU_SYNC_TRACE=1.
 
 enum class GpuProducer {

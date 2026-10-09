@@ -5972,8 +5972,7 @@ void gosPostProcess::initShadows()
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO_);
 
     // TEX-CLASS: render-target -- STATIC shadow map depth (FBO attach)
-    // VK-RUNG8 item-6: the VK static-shadow import substrate was RETIRED; the static
-    // shadow map is always the plain-GL GL_DEPTH_COMPONENT24 allocation now.
+    // The static shadow map is always the plain-GL GL_DEPTH_COMPONENT24 allocation.
 #ifdef MC2_VULKAN_ISLAND
     mc2VkStaticShadowMapDeprecationNote();
 #endif

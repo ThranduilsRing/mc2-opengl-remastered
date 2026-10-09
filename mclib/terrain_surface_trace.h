@@ -12,7 +12,7 @@
 // the SAME commit as their behavior change (debug_instrumentation_rule.md:
 // instrumentation ships with the rework, not as a follow-up).
 //
-// Idiom: matches the canonical MC2_DEBUG_SHADOW_COLLECT / [REVERSE_Z v1]
+// Idiom: matches the canonical [REVERSE_Z v1]
 // pattern -- a file-scope-cached getenv() bool + a do/while(0) macro guard.
 // Gate MC2_TERRAIN_SURFACE_TRACE is DEFAULT-OFF (silent unless the env var is
 // set). It is SEPARATE from the MC2_TERRAIN_SURFACE path-select kill-switch

@@ -40,7 +40,7 @@ class PauseWindow
 		void update();
 		void render();
 
-		// NOTE (MERGE-WAVE-1): nifty slice-B pause panel (MC2_HUD_IMGUI_PAUSE,
+		// NOTE (MERGE-WAVE-1): nifty slice-B pause panel (no such gate;
 		// usingImGui) superseded by ui-phase1 PAUSE-IMGUI slices below.
 
 		void init( FitIniFile& file );

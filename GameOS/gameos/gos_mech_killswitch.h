@@ -119,8 +119,7 @@ extern bool g_useGpuMechShadowFastTransform;
 //
 // Independent of g_useGpuMechs / fast-transform / shadow-skip / state-strip
 // flags for bisect granularity. Requires g_useGpuMechs=true AND
-// gos_IsTerrainTessellationActive() to take effect. NOT compatible with
-// MC2_MECH_GPU_PARITY=1 — disable LEAF_SKIP if running parity diagnostic.
+// gos_IsTerrainTessellationActive() to take effect.
 extern bool g_useGpuMechLeafSkip;
 
 // MECH-KILLSWITCH-SENSORSKIP-RETIRE-1 (2026-06-23): the former

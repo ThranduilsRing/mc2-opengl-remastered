@@ -674,9 +674,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     if (!ok) { vlog("hdri: upload submit failed."); return false; }
 
     s->hdriRealImported = haveReal;
-    // VK-WATER-FENCE-DEFER-1: the descriptor update below used to be safe because
-    // the previous frame's fence was waited INLINE (no cbuf using the set could be
-    // pending). With the deferred retire, a prior water submit may still be in
+    // VK-WATER-FENCE-DEFER-1: with the deferred retire, a prior water submit may still be in
     // flight — device-idle first (rare: at most twice per island, dummy -> real).
     vkDeviceWaitIdle(s->device);
     write_descriptors(s);   // binding 2 now valid

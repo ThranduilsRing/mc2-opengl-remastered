@@ -596,9 +596,8 @@ public:
     struct VkPostHzbNative;             // defined in vulkan_post_hzb_native.cpp
     VkPostHzbNative* vkPostHzbNative_ = nullptr;
 
-    // Retained region-interface entry points. The old private-device SSAO/HZB
-    // islands were retired after native rung-8 ports took ownership; these
-    // methods now delegate to the shared-engine native implementations.
+    // Retained region-interface entry points;
+    // these methods delegate to the shared-engine native implementations.
     bool  runSSAORegionVulkanBackend(const RenderCore::PostprocessSSAORegionContext& ctx,
                                       RenderCore::RegionOutput* out);
     bool  runHzbRegionVulkanBackend(const RenderCore::PostprocessHzbRegionContext& ctx,

@@ -155,9 +155,8 @@ bool VulkanContext::init(bool wantPresent) {
     std::vector<const char*> layers;
     std::vector<const char*> instExts;
 
-    // VK-RUNG8-ITEM3: the interop instance caps (VK_KHR_external_memory/semaphore_
-    // capabilities + get_physical_device_properties_2) were REMOVED with the interop
-    // family. get_physical_device_properties_2 is VK 1.1 core anyway (apiVersion 1.1).
+    // No interop instance caps are requested.
+    // get_physical_device_properties_2 is VK 1.1 core anyway (apiVersion 1.1).
 
     // VK-P13 T3: surface instance extensions so the shared device can create a
     // VkSurfaceKHR for the hidden present window (SDL_Vulkan_CreateSurface needs

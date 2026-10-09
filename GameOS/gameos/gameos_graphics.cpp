@@ -2786,10 +2786,6 @@ void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
 // gos_terrain_bridge_applyVertexDeclaration deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
 // callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
-// gos_terrain_bridge_endVertexDeclaration and gos_terrain_bridge_end deleted by
-// TERRAIN-BRIDGE-BODY-DELETE-1: these were called only from TerrainPatchStream::flush(),
-// which was retired in PATCHSTREAM-THIN-RETIRE-1 (026e7276).
-
 unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
     if (!g_gos_renderer) return 0;
     if (gosHandle == 0u || gosHandle == INVALID_TEXTURE_ID) return 0;
@@ -8864,11 +8860,6 @@ void gos_RendererRebindVAO() {
 // Return 0 when the renderer does not exist yet (callers treat 0 as "no-op").
 int gosRendererLogicalWidth()  { return g_gos_renderer ? g_gos_renderer->getWidth()  : 0; }
 int gosRendererLogicalHeight() { return g_gos_renderer ? g_gos_renderer->getHeight() : 0; }
-
-// ROAD-PBR-ABANDON-1: gos_TerrainRoadMaterialReady() (the PBR road-material
-// readiness check) was deleted here — the PBR/normal-layer road path is
-// permanently retired (USER RULING 2026-07-18) and decal emission bakes the
-// stock argb unconditionally, so it had no callers left.
 
 void gos_RendererHandleEvents() {
     gosASSERT(g_gos_renderer);

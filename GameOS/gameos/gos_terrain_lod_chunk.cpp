@@ -454,9 +454,8 @@ struct TerrainGlFallbackAudit {
     int band = 0;
     int displace = 0;
     int edgeStitch = 0;   // patches that FELL to GL because of edge-stitch (now 0 by
-                          // construction: VK-TERRAIN-EDGE-STITCH-1 / commit 0aae0337
-                          // removed the edgeStitch[i]==0 capture-predicate exclusion,
-                          // so stitched patches are VK-captured, not GL-fallback).
+                          // construction:
+                          // stitched patches are VK-captured, not GL-fallback).
     int capturedStitched = 0; // of `captured`, how many carried a nonzero edgeStitch mask
                               // -- direct proof stitched patches are VK-owned (>0 expected
                               // on any map with LOD-band boundaries; the edgeStitch counter

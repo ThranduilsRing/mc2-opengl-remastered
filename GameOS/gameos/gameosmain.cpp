@@ -1265,7 +1265,7 @@ int main(int argc, char** argv)
         // PR-0: dormant [TERRAIN_SURFACE v1] lifecycle channel gate. Trace-only,
         // default-OFF, separate from the MC2_TERRAIN_SURFACE path-select switch.
         const bool tSurfTrc   = mc2_terrain_surface_trace::enabled();
-        // T3.1: (E) SpotLight_ -> real illumination env gate deleted. The
+        // T3.1: (E) SpotLight_ -> real illumination. The
         // new TG_Light registration path is the unconditional production
         // behavior. MC2_SPOTLIGHT_REAL_TRACE counters remain (Debug
         // Instrumentation Rule: demote, don't delete) for future diagnostics.

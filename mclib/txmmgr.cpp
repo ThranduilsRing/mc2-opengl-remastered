@@ -2126,7 +2126,7 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
         if (sit != s_lightSlotByActorKey.end() &&
             sit->second.tmpl == key && sit->second.actorARGB == actorARGB) {
             ++s_lightSlotActorKeyHits;  // [LIGHTSLOT v1] per-actor-color slot-cache hit
-            return sit->second.slot;   // retired: no FNV, no memcmp
+            return sit->second.slot;   // no FNV, no memcmp
         }
         const uint32_t slot = addLightDataStructure(light_data);
         s_lightSlotByActorKey[combined] =

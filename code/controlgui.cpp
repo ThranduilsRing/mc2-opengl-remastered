@@ -1016,10 +1016,6 @@ static void renderWeaponView( Camera* eye )
 	gos_SetHudScaleExempt( prevExempt );
 }
 
-// (Removed: blue friendly chevrons. They only ever marked the player's OWN
-// commanded mechs, and at normal zoom — both unwanted. Friendlies already read
-// via selection brackets up close and force-group icons in the F6 overview.)
-
 // Formation line (MC2_TACMAP_FORMATION_LINE): RENDER ONLY — ghost line, slot
 // pips, armed cursor hint. Input/state advance + order issuance live in
 // MissionInterfaceManager::update (missiongui.cpp), BEFORE the world mouse
@@ -2280,7 +2276,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 		guiFont.getSize() );
 	if ( bDrawTotal )
 	{
-		/*these used to be declared as unsigned, but mixing signed and unsigned values
+		/*kept signed: mixing signed and unsigned values
 		in arithmetic expressions can be bad news if any intermediate result is negative */
 		long width, height;
 		long descWidth;

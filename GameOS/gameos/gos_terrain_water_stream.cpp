@@ -110,7 +110,7 @@ float EffAlphaDepth(float baseAlphaDepth) {
 // when it exceeds the field it perturbs everywhere; it punches holes in open water.
 //
 // Two rescues were implemented and MEASURED, and both rejected:
-//   1. Clamp horizontal reach (the deferred MC2_WATER_SHORE_MEANDER_MAXDIST).
+//   1. Clamp horizontal reach (deferred; no gate).
 //      Reduces water loss monotonically (-11.2 -> -2.5 at D=24, -1.3 at D=12) but
 //      is SELF-DEFEATING: it scales the perturbation by |grad(thickness)|, and the
 //      staircase it must cure lives precisely where |grad| is small, so it

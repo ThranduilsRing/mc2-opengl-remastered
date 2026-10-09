@@ -673,7 +673,7 @@ void renderPassTelemetryFrameTick() {
 
 // FRAME-GRAPH-AMBIENT-RUNTIME-1: defined below; called here at the most-covered pass
 // seam (noteRenderPass fires for every pass owner every frame, independent of the
-// telemetry gate below). Self-gated on MC2_AMBIENT_PROBE.
+// telemetry gate below).
 void ambientProbeAtPassBegin(RenderCore::RenderPassId id);
 
 // ---- FRAME-GRAPH-EXECUTOR-DRYRUN-1: per-frame observe-and-diff recorder ------
@@ -1250,7 +1250,7 @@ extern "C" unsigned long mc2_ui_pass_ambient_samples()   { return g_uiAmbientSam
 extern "C" unsigned long mc2_ui_pass_ambient_mismatches() { return g_uiAmbientMismatchCount; }
 
 void beginPass(RenderCore::RenderPassId id) {
-    ambientProbeAtPassBegin(id);   // self-gated (MC2_AMBIENT_PROBE); runs before order gate
+    ambientProbeAtPassBegin(id);   // runs before order gate
     if (!s_frame.orderEnabled) return;
     const RenderCore::RenderPassContract* c = findPassContract(id);
     if (!c) return;

@@ -684,10 +684,9 @@ bool gosPostProcess::vkPostSsaoNativeEnabled()
     return state == 1;
 }
 
-// VK-RUNG8 item-4: MC2_VK_POST_SSAO_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm was
-// deleted; native SSAO now runs ONLY in direct-chain, engaged when upstream left the shared
+// VK-RUNG8 item-4: native SSAO runs ONLY in direct-chain, engaged when upstream left the shared
 // GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream is not direct-chain, native
-// SSAO declines and the GL SSAO pass runs. The env name is still parsed + noted deprecated.
+// SSAO declines and the GL SSAO pass runs. The env name MC2_VK_POST_SSAO_DIRECT_CHAIN is still parsed + noted deprecated.
 [[maybe_unused]] static const bool s_postSsaoDirectChainDeprecated = [] {
     if (mc2vkgate::envTriState("MC2_VK_POST_SSAO_DIRECT_CHAIN") != -1)
         std::fprintf(stderr, "[VK_POST_SSAO] MC2_VK_POST_SSAO_DIRECT_CHAIN is deprecated and "

@@ -255,7 +255,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")
 
     # CAPTURE-ENV-PIN-1: do NOT inherit the ambient MC2_* environment.
-    # This used to be os.environ.copy(), which silently rode every stray gate in
+    # os.environ.copy() would silently ride every stray gate in
     # the operator's shell into the captured frame -- unrecorded. See
     # scripts/mc2_env_pin.py for the incident that motivated this.
     harness_sets = {

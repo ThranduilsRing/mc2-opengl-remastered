@@ -59,8 +59,7 @@ struct VkImageResource {
 // They remain in the struct as the shared all-island ABI.
 struct VkFrameSync { VkFence fence; VkSemaphore signal; VkSemaphore vk2gl; uint32_t parity; };
 
-// Raw-allocated (dedicated) NON-exportable VK image. VK-RUNG8-ITEM2 removed the
-// exportable path; every surviving caller is VK-only. The semaphores are plain binary.
+// Raw-allocated (dedicated) NON-exportable VK image. Every caller is VK-only. The semaphores are plain binary.
 // Returns false fail-soft on any error (nothing to clean up on the caller side; the
 // partial resource is torn down internally before returning false).
 bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice phys,

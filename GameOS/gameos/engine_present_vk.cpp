@@ -116,8 +116,8 @@ struct EnginePresentVk::Impl {
     // time before either cbuf is reset.
     VkCommandBuffer compositeCbuf   = VK_NULL_HANDLE;
     bool            compositePending = false;
-    // VK-PRESENT-SINGLESUBMIT-1: the CSM shadow-debug overlay (opt-in debug) used to
-    // be its own submit between composite and present; it is now STASHED here and
+    // VK-PRESENT-SINGLESUBMIT-1: the CSM shadow-debug overlay (opt-in debug) is
+    // STASHED here and
     // recorded into the tail cbuf so it stays ordered after the composite (which no
     // longer executes before present records) and joins the single submit.
     VkImageView     pendingShadowDebugView = VK_NULL_HANDLE;

@@ -2048,7 +2048,7 @@ bool BldgAppearance::recalcBounds (void)
 			float clip_distance = fabs(1.0f / objectCenter.y);
 
 			//Is vertex on Screen OR close enough to screen that its triangle MAY be visible?
-			// WE have removed the atans here by simply taking the tan of the angle we want above.
+			// Uses the tan of the angle we want above (no atans needed here).
 			float object_angle = fabs(objectCenter.z) * clip_distance;
 			float extent_angle = bldgShape->GetExtentRadius() / distanceToEye;
 			if (object_angle > (vClipConstant + extent_angle))
@@ -6968,7 +6968,7 @@ bool TreeAppearance::recalcBounds (void)
 			float clip_distance = fabs(1.0f / objectCenter.y);
 
 			//Is vertex on Screen OR close enough to screen that its triangle MAY be visible?
-			// WE have removed the atans here by simply taking the tan of the angle we want above.
+			// Uses the tan of the angle we want above (no atans needed here).
 			float object_angle = fabs(objectCenter.z) * clip_distance;
 			float extent_angle = treeShape->GetExtentRadius() / distanceToEye;
 			if (object_angle > (vClipConstant + extent_angle))

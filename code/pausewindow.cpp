@@ -22,7 +22,7 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include"txmmgr.h"          // PAUSE-IMGUI-SLICE-2: mcTextureManager (baked frame load)
 #include<cstdint>           // PAUSE-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
-// NOTE (MERGE-WAVE-1): nifty slice-B pause panel (MC2_HUD_IMGUI_PAUSE) superseded
+// NOTE (MERGE-WAVE-1): nifty slice-B pause panel (no such gate) superseded
 // by ui-phase1 PAUSE-IMGUI slices (field-tested). hudimguipanel.h retained for tab registry.
 #include"hudimguipanel.h"
 #include "imgui.h"

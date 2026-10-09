@@ -369,7 +369,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"offending_pass\": " << static_cast<unsigned>(fg.offendingPass) << ",\n";
         s << "    \"missing_resource\": " << static_cast<unsigned>(fg.missingResource) << ",\n";
         s << "    \"unknown_pass\": "; b(s, fg.unknownPass); s << ",\n";
-        // Runtime ambient cross-check (default-OFF probe MC2_AMBIENT_PROBE). 0 when the
+        // Runtime ambient cross-check (MC2_AMBIENT_PROBE; no such gate). 0 when the
         // probe is disabled or live GL ambient state matched the declared ledger.
         s << "    \"ambient_probe_mismatches\": " << mc2_ambient_mismatch_count() << ",\n";
         // Declared passes actually sampled by the probe. 0 = probe disabled OR never

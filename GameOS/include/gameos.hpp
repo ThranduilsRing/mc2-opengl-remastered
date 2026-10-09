@@ -2364,8 +2364,7 @@ uint64_t gos_GetStaticShadowGeneration();
 // shadow (Terrain::destroy -> rebuild next mission vs frozen prior one).
 void gos_ResetStaticLightMatrix();
 // CP-1: per-mission-init companion re-prime (mission.cpp chokepoint). Body
-// is now just the static-light-matrix reset - the gos_*ShadowRebuild* one-
-// shot trigger it used to also fire was RETIRED (see note below); coexists
+// is just the static-light-matrix reset; coexists
 // idempotently with the Terrain::destroy gos_ResetStaticLightMatrix path.
 void gos_ResetStaticShadowPriming();
 // Returns true if the shadow prepass actually activated (shadows enabled +

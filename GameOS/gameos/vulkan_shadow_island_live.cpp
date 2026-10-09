@@ -1245,8 +1245,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // ---- 6) Submit (VK-RUNG8 item-4: direct-chain only). The GL<->VK semaphore-handoff
-    // arm (vk2gl signal + glInteropWaitFromVk) was deleted; the submit signals/waits no
+    // ---- 6) Submit (VK-RUNG8 item-4: direct-chain only). The submit signals/waits no
     // GL<->VK semaphores. VK produces the depth (GL never wrote it), the fence below
     // orders CPU access, and the same-frame VkImageView is exposed to native consumers.
     VkSubmitInfo si{};
@@ -1390,8 +1389,7 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
     vkCmdEndRenderPass(cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("csm_fullmap_record_failed"); s->disabled = true; return 0; }
 
-    // item-4: direct-chain only. The GL<->VK semaphore-handoff arm (vk2gl signal +
-    // glInteropWaitFromVk) was deleted; the submit signals/waits no GL<->VK semaphores.
+    // item-4: direct-chain only. The submit signals/waits no GL<->VK semaphores.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;

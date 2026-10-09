@@ -611,10 +611,9 @@ bool gosPostProcess::vkPostHzbNativeEnabled()
     return state == 1;
 }
 
-// VK-RUNG8 item-4: MC2_VK_POST_HZB_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm was
-// deleted; native HZB now runs ONLY in direct-chain, engaged when upstream left the shared
+// VK-RUNG8 item-4: native HZB runs ONLY in direct-chain, engaged when upstream left the shared
 // GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream is not direct-chain, native
-// HZB declines and the GL HZB pass runs. The env name is still parsed + noted deprecated.
+// HZB declines and the GL HZB pass runs. The env name MC2_VK_POST_HZB_DIRECT_CHAIN is still parsed + noted deprecated.
 [[maybe_unused]] static const bool s_postHzbDirectChainDeprecated = [] {
     if (mc2vkgate::envTriState("MC2_VK_POST_HZB_DIRECT_CHAIN") != -1)
         std::fprintf(stderr, "[VK_POST_HZB] MC2_VK_POST_HZB_DIRECT_CHAIN is deprecated and "

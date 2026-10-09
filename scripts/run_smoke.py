@@ -1718,8 +1718,6 @@ def main():
                             # apron tone normalisation + its two tunables.
                             # RUNWAY-APRON-TONE-2: cement lighting participation.
                             "MC2_CEMENT_LIT",
-                            # MC2_CEMENT_EDGE_CURVE was here; the gate was
-                            # deleted 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3).
                             "MC2_CEMENT_RAMP_WORD",
                             # CEMENT-ATLAS-CELL-2: the two concrete-only arms
                             # (A = tone-normalise the concrete family,

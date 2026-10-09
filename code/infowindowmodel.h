@@ -2,7 +2,7 @@
 #define INFOWINDOWMODEL_H
 /*************************************************************************************************\
 infowindowmodel.h : pure component-list aggregation for the in-mission info window
-                    (IN-MISSION-HUD-IMGUI-SCOPE-1 slice D, MC2_HUD_IMGUI_INFOWINDOW).
+                    (IN-MISSION-HUD-IMGUI-SCOPE-1 slice D, no such gate).
 
 Extracted from the weapon-dedupe loop inside InfoWindow::drawScrollingStuff so the
 ImGui panel and the offline unit tests share one implementation. The LEGACY draw
