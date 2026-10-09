@@ -148,7 +148,7 @@
    "LG18": 0
   },
   "code": {
-   "LG01": 1838,
+   "LG01": 1835,
    "LG02": 232,
    "LG03": 978,
    "LG04": 21,
@@ -1355,15 +1355,57 @@
    "LG12b": 2
   },
   "code/ablmc2.cpp": {
-   "LG01": 202,
-   "LG03": 11,
-   "LG04": 2,
-   "LG06": 9,
-   "LG09": 116,
-   "LG12a": 17,
-   "LG12b": 37,
+   "LG01": 163,
+   "LG03": 9,
+   "LG06": 6,
+   "LG09": 17,
+   "LG12a": 1,
+   "LG12b": 15,
+   "LG17": 3
+  },
+  "code/ablmc2_camera.cpp": {
+   "LG01": 5,
+   "LG03": 1,
+   "LG09": 3,
    "LG13": 1,
-   "LG17": 5
+   "LG17": 2
+  },
+  "code/ablmc2_internal.h": {
+   "LG01": 2,
+   "LG06": 2,
+   "LG09": 2,
+   "LG12a": 1
+  },
+  "code/ablmc2_misc.cpp": {
+   "LG01": 2,
+   "LG09": 9
+  },
+  "code/ablmc2_objects.cpp": {
+   "LG01": 5
+  },
+  "code/ablmc2_orders.cpp": {
+   "LG01": 6,
+   "LG09": 6
+  },
+  "code/ablmc2_queries.cpp": {
+   "LG01": 4,
+   "LG09": 21
+  },
+  "code/ablmc2_repro.cpp": {
+   "LG09": 4,
+   "LG12a": 15
+  },
+  "code/ablmc2_roster.cpp": {
+   "LG01": 1,
+   "LG04": 2,
+   "LG06": 1,
+   "LG09": 35,
+   "LG12b": 22
+  },
+  "code/ablmc2_state.cpp": {
+   "LG01": 11,
+   "LG03": 1,
+   "LG09": 19
   },
   "code/action_anim_tag.h": {
    "LG05": 1,
@@ -5006,7 +5048,7 @@
    "LG13": 31
   }
  },
- "head": "43d26d7c0",
+ "head": "b96cd1d3e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
