@@ -187,6 +187,12 @@ You will NOT:
 You will treat your in-head knowledge as STALE by default. The MEMORY.md index is the source of truth; if it disagrees with what you remember, MEMORY.md wins.
 </limits>
 
+
+## Vulkan backend (GL is the runtime default; VK is the destination)
+- Vulkan islands: `GameOS/gameos/vulkan_*_island*.cpp` (sky, terrain, water, mech, vfx, color-prop, legacy-shape, shadow). The live VK shadow island is `vulkan_shadow_island_live.cpp`; `vulkan_shadow_island.cpp` is probe-only.
+- Shaders: `shaders/vulkan/*.spv` (SPIR-V). GL/VK parity is checked with the A/B tool `tools/visual_verify/ab.py`.
+- Offline gates: `scripts/check-vk-pipeline-layout.py` (pipeline layout vs SPIR-V) and `tools/gpu_abi_gen.py` / `RenderCore/gpu_abi/` for single-source GPU structs.
+
 <cross_references>
 Related advisor agents (build these as needed; cross-reference even if they do not yet exist):
 - **mc2-shader-expert** - GLSL 4.30 specifics, UBO/SSBO layouts, sampler state, depth fudge, compile-time gotchas; defer when the question is shader-internal rather than pipeline-shape

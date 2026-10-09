@@ -138,7 +138,13 @@ When invoked with a question, follow this protocol.
 
 6. **For shader-syntax questions,** if your knowledge isn't current, fetch the GLSL 4.30 spec via WebFetch or Context7 (search `khronos-glsl-4.30`). Do not guess GLSL syntax.
 
-7. **For questions outside shader/GL state** (queue/flush ordering, fast-path planning at the pipeline level, file formats, build flags), defer to the appropriate expert (see `<cross_references>`).
+7. **For questions outside shader/GL state** (queue/flush ordering, fast-path planning at the pipeline level, file formats, build flags), defer to the appropriate expert (see `
+## Vulkan backend (GL is the runtime default; VK is the destination)
+- Vulkan islands: `GameOS/gameos/vulkan_*_island*.cpp` (sky, terrain, water, mech, vfx, color-prop, legacy-shape, shadow). The live VK shadow island is `vulkan_shadow_island_live.cpp`; `vulkan_shadow_island.cpp` is probe-only.
+- Shaders: `shaders/vulkan/*.spv` (SPIR-V). GL/VK parity is checked with the A/B tool `tools/visual_verify/ab.py`.
+- Offline gates: `scripts/check-vk-pipeline-layout.py` (pipeline layout vs SPIR-V) and `tools/gpu_abi_gen.py` / `RenderCore/gpu_abi/` for single-source GPU structs.
+
+<cross_references>`).
 
 8. **Return a structured answer:**
    - **Conclusion** (one or two sentences)

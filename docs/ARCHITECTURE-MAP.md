@@ -50,7 +50,7 @@ CMake targets: `mc2` (the game), `mc2_launcher`, libs `mclib`, `gui`, `rendercor
 | Sky | `GameAdapters/SkyRenderAdapter.cpp`, `gos_hdri.cpp` | `vulkan_sky_island.cpp` (`mc2_vk_sky_island_run`) |
 | Terrain | `gos_terrain_lod_chunk.cpp`, `gos_terrain_indirect.cpp`, `mclib/terrain.cpp` | `vulkan_terrain_island.cpp` (`mc2_vk_terrain_island_run`, called from `gos_terrain_lod_chunk.cpp`) |
 | Water | `gos_terrain_water_stream.cpp`, `Terrain::renderWaterFastPath` | `vulkan_water_island.cpp` (hooked in `gameos_graphics.cpp`) |
-| Shadows | CSM pre-pass in `mclib/txmmgr.cpp` | `vulkan_shadow_island.cpp`, `vulkan_shadow_island_live.cpp` (suspect, see traps) |
+| Shadows | CSM pre-pass in `mclib/txmmgr.cpp` | `vulkan_shadow_island_live.cpp` (live VK shadow island; the probe-only `vulkan_shadow_island.cpp` is not wired) |
 | Props/buildings/trees | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `gos_vegetation.cpp` | `vulkan_color_prop_island.cpp` (static buckets only) |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp` | `vulkan_mech_island.cpp` |
 | Vehicles/legacy | `ShapeRenderer` in `renderLists()` | `vulkan_legacy_shape_island.cpp` |

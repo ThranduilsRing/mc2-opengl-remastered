@@ -28,7 +28,7 @@ Before answering any question, read these in order:
    - `render_state_change_cost_hierarchy.md` - bindings dominate, shader switching is cheap.
    - `brainstorm_code_grounding_lesson.md` - citation-decay rate + grep-at-write-time discipline.
 
-4. Repo CLAUDE.md sections: "Critical Rules", "Profiling", "Review discipline", "Documentation discipline" - the methodology is partly codified there.
+4. Repo CLAUDE.md "Code rules" section (Tracy 100 ns floor, full relink) - the methodology is only partly codified there.
 
 5. The asker's Tracy capture / smoke log if they provided one. Methodology answers without runtime data are abstract; ground them when possible.
 </load_first>
@@ -48,7 +48,7 @@ Methodology and invariants. Specific bucket-map numbers and in-flight slice stat
 
 - **The 1.29 ms `Camera.UpdateRenderers` "wrapper self-time" mystery (resolved 2026-05-08) is the canonical lesson** that opaque "self-time" can hide outside the parent's body in adjacent `BeginFrame`/`EndFrame` calls. The actual cost was `gosRenderer::endFrame`'s shader hot-reload sweep firing every frame because `last_check_time` was never reassigned (latent bug under intended 500 ms cadence). Fix: gate behind `MC2_SHADER_HOT_RELOAD=1` + the `last_check_time` reassignment. **Methodology rule: always sub-zone the parent's `Begin/End` calls before assuming wrapper self-time is real wrapper work.**
 
-- **Full relink before deploy is load-bearing** (CLAUDE.md Critical Rules). CMake's incremental build can leak stale linkage when headers change inline functions / templates / static state. Use `cmake --build ... --clean-first` OR delete the exe + the changed `.obj` before rebuild on any load-bearing function change. Deploy is `cp -f` per file + `diff -q`; never `cp -r`.
+- **Full relink before deploy is load-bearing** (CLAUDE.md "Code rules"). CMake's incremental build can leak stale linkage when headers change inline functions / templates / static state. Use `cmake --build ... --clean-first` OR delete the exe + the changed `.obj` before rebuild on any load-bearing function change. Deploy via `scripts/deploy_payload.py --target game`; never manual `cp -f` or `cp -r`.
 
 - **Adversarial review catches caller-side coverage gaps the implementation author misses.** Pattern: any change that introduces a new "all callers must X" contract REQUIRES adversarial review specifically scrutinizing caller-side coverage. The applyRenderStates cache shipped with 6 invalidation sites the agent claimed correct; review found 4 ADDITIONAL caller-side gaps (gos_static_prop_batcher::flush, drawTerrainOverlays, drawDecals, and a documentation gap). Origin: `memory/brainstorm_code_grounding_lesson.md` + `.claude/skills/adversarial-plan-review.md`.
 

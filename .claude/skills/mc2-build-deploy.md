@@ -19,4 +19,4 @@ py -3 A:/Games/mc2-main/scripts/deploy_payload.py --target game
    The only deploy target is `A:/Games/mc2-opengl/mc2-win64-v0.4`. The golden `mc2-win64-v0.4c` must never be deployed to. See `/mc2-deploy` for details.
 5. **Staleness check anytime** (read-only): `py -3 A:/Games/mc2-main/scripts/deploy_payload.py --target game --verify-only`
 
-(No editor deploy line: the `--target editor` preset in `deploy_payload.py` defaults to the golden 0.4c, so it is not documented here.)
+Editor deploy (same sanctioned script): `py -3 A:/Games/mc2-main/scripts/deploy_payload.py --target editor`. It deploys to the dev install `mc2-win64-v0.4`, never the golden `mc2-win64-v0.4c`.

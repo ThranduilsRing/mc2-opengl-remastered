@@ -1,8 +1,13 @@
-# C++17 Coding Rules
+# C++ Coding Rules (C++23)
+
+> **Standard: C++23** (default since commit `9493e60bf`; `MC2_CXX_STANDARD=23`, MSVC `/std:c++latest`).
+> The file name and the sections below date from the C++17 flip (CXX17-1, 2026-05-24). They are kept as the
+> C++ coding rules for C++23 under the owner-approved modernization override. Mentions of C++17 in the body
+> describe feature origin or flip history, not the current standard.
 
 ## 1. Purpose
 
-This document defines which C++17 features the MC2 OpenGL codebase
+This document defines which C++ features (C++17 and later, currently C++23) the MC2 OpenGL codebase
 allows, which need extra care, and which are off-limits for now. It is
 forward-looking: it does not audit existing code; it sets expectations
 for every future contributor (and every future agent) touching this
@@ -11,16 +16,16 @@ tree.
 The codebase has been MSVC C++14 implicit for most of its life. A small
 C++17 island (RenderCore, RenderWorld, GameAdapters, the unit-test
 tree) coexisted with C++14 legacy until the CXX17-1 flip. From that
-point forward, the project is uniformly C++17. This document exists so
+point forward, the project is uniformly C++17, now C++23. This document exists so
 that the unification does not become an excuse for indiscriminate
 modernization.
 
 ## 2. Status
 
--   **Project standard:** C++17 (`CMAKE_CXX_STANDARD 17`,
-    `CMAKE_CXX_STANDARD_REQUIRED ON`, `CMAKE_CXX_EXTENSIONS OFF`).
--   **Flip date:** 2026-05-24.
--   **Flip commit:** `5c03835` (CXX17-1 -- root CMakeLists.txt sets
+-   **Project standard:** C++23 (`MC2_CXX_STANDARD=23`, default since
+    `9493e60bf`; MSVC `/std:c++latest`).
+-   **C++17 flip date (history):** 2026-05-24.
+-   **C++17 flip commit (history):** `5c03835` (CXX17-1 -- root CMakeLists.txt sets
     project-wide C++17; three modules previously on `cxx_std_17`
     PUBLIC declarations become redundant-but-load-bearing min-version
     contracts).
@@ -36,18 +41,17 @@ modernization.
 > purpose, with measurable wins.**
 
 A language-mode flip does not authorize a feature spree. CLAUDE.md
-"Critical inline rules" already says: *don't touch what you don't have
+"Code rules" already says: *don't touch what you don't have
 to (every touch has blast radius); when you must, bring it to modern
-standard.* The C++17 flip does not change that calculus.
+standard.* Neither the C++17 flip nor the move to C++23 changes that calculus.
 
 Concrete corollaries:
 
--   Do not open a slice titled "modernize X with C++17". Open a slice
-    that fixes a bug or reduces measurable debt, and *if* a C++17
-    feature is the cleanest local tool for that fix, use it.
+-   Do not open a slice titled "modernize X with C++23". Open a slice
+    that fixes a bug or reduces measurable debt, and *if* a modern feature is the cleanest local tool for that fix, use it.
 -   Standalone cleanup slices still need a blocking or debt
     justification (per `memory/minimal_touch_modern_when_touched.md`).
-    "It's nicer C++17" is not a justification.
+    "It's nicer C++23" is not a justification.
 -   The render path is hot and carefully audited. Modernization for its
     own sake there is a regression risk with no upside. Default
     answer: **leave the runtime renderer alone unless you are already
@@ -207,8 +211,7 @@ Caveats:
     `path.string()` -> UTF-8 round-trip can mangle non-ASCII paths.
     If you are reading a path from the OS, prefer `path.u8string()`.
 -   The runtime engine itself uses the in-tree path conventions
-    (`PATH_SEPARATOR` is `/`; see CLAUDE.md "Path separator"
-    pointer). Do not mix `std::filesystem::path` with the in-tree
+    (`PATH_SEPARATOR` is `/`). Do not mix `std::filesystem::path` with the in-tree
     string-based path APIs in the same function -- pick one.
 
 Allowed in offline tools (`data_tools/`, `tools/shader_reflect/`,
@@ -325,7 +328,7 @@ slice.
 
 ## 8. Decision flow
 
-When you are about to write a C++17 feature in a runtime TU, walk
+When you are about to write a C++17-or-later feature in a runtime TU, walk
 this checklist:
 
 1.  **Is this in a hot path?** (per-frame, per-instance, per-pixel,
@@ -419,17 +422,15 @@ the "missing" case handled by a generation check.
 
 ## 10. Cross-references
 
--   `CLAUDE.md` -- "Critical inline rules" (includes the one-line
-    pointer to this doc) and "Active campaigns" (CXX17-1 SHIPPED
-    entry).
+-   `CLAUDE.md` -- "Code rules" section (pointer to this doc).
 -   `docs/renderworld_migration_guide.md` -- the RenderWorld
-    contributor onboarding doc; the C++17 rules cross-reference is in
+    contributor onboarding doc; the C++ rules cross-reference is in
     the §15 cheat sheet area.
 -   `docs/superpowers/explorations/2026-05-24-cxx17-upgrade-recon.md`
     -- the audit that preceded the CXX17-1 flip; covers the toolchain,
     per-target standard inventory, and the "features that already
     work" survey.
 -   `memory/minimal_touch_modern_when_touched.md` -- the underlying
-    discipline this doc operationalizes for C++17 specifically.
+    discipline this doc operationalizes for the C++ standard specifically.
 -   `.claude/skills/greybeard.md` -- META-FIX vs PATCH discipline;
     applies to any "let's modernize this" proposal.

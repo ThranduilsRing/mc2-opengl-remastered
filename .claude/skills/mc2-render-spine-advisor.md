@@ -231,7 +231,7 @@ Findings:
 - Engine module *implementation* headers (`gos_static_prop_batcher.h`, `mech3d.h`, `tgl.h`, etc.) are forbidden in game-side code; route through GameAdapters. `RenderCore` POD/handle headers (`RenderCore/Handle.h`, `RenderCore/DrawPacket.h`, `RenderCore/PipelineRegistry.h`) are allowed when the plan explicitly names the seam being crossed.
 - Prefer forward declarations in headers.
 - `GameOS/` fast paths are outside the firewall script's `SCOPE_DIRS`; any plan routing through `GameOS/` requires manual include review.
-- No C++20-only types (concepts, `std::span` without backport, ranges) — project baseline is C++17.
+- Baseline is C++23 (see `docs/cxx17-coding-rules.md`, owner-approved modernization override). C++20/23 features are allowed where they are the clean tool; keep the hot-path discipline.
 
 ### 9. Handle / enum / registry discipline
 

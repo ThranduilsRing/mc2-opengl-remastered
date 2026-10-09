@@ -49,7 +49,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **Link libraries**: `winmm ws2_32 dbghelp psapi user32 shell32`. `ws2_32` is for Tracy's Windows socket backend; **there is NO multiplayer transport code in the engine** (the MP UI screens in `code/mp*.cpp` are stubs).
 
-- **Tracy is always compiled in** (`TRACY_ENABLE`). GPU zones use GL timer queries. The 100 ns instrumentation floor is documented in CLAUDE.md - per-element / per-vertex / per-call zones in hot loops are forbidden.
+- **Tracy is always compiled in** (`TRACY_ENABLE`). GPU zones use GL timer queries. The 100 ns instrumentation floor is in CLAUDE.md "Code rules" - per-element / per-vertex / per-call zones in hot loops are forbidden.
 
 - **ASan path is available in this tree.** Requires the MSVC ASan runtime DLL on PATH. Detect via grep `_SANITIZE` or `ASAN_OPTIONS` in `CMakeLists.txt`. ASan changes link order and disables some optimizations - perf comparisons with/without ASan are not meaningful.
 
@@ -61,7 +61,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **The asset pipeline is bimodal** (per `INTEGRATIONS.md`): GNU `make` drives `mc2srcdata/build_scripts/` for stock FST/PAK production using `aseconv` / `makefst` / `makersp` / `mpak` / `text_tool`; a parallel Python ESRGAN/StableSR pipeline produces optional 4x loose-file TGA overrides. Engine consumes both, stock authoritative.
 
-- **Deploy is `cp -f` per file + `diff -q`, never `cp -r`.** `cp -r` silently fails on Windows/MSYS2 (documented at the top of CLAUDE.md). The deploy skill `/mc2-deploy` enforces this.
+- **Deploy only via `py -3 scripts/deploy_payload.py --target game`** (sha256-verified, writes the manifest). Never manual `cp -f` or `cp -r`; `cp -r` silently fails on Windows/MSYS2. The `/mc2-deploy` skill wraps this script.
 </core_knowledge>
 
 <known_pitfalls>
@@ -73,7 +73,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **Incremental build leaking stale linkage:** the deployed binary executes a different function body than the source file you're reading. Cause: header change to an inline / template / static-state function without full relink. Fix: delete the executable + changed `.obj`, or `--clean-first`. Cheap insurance.
 
-- **`cp -r` to deploy:** silently fails on MSYS2/Windows. Use the deploy skill or `cp -f` per file + `diff -q`.
+- **Manual deploy:** `cp -r` silently fails on MSYS2/Windows, and manual `cp -f` bypasses the manifest and fingerprint. Use `scripts/deploy_payload.py`.
 
 - **Editing vcproj:** wasted work. The vcproj is vestigial; CMake is authoritative.
 
@@ -81,7 +81,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **ASan-enabled build perf compared to non-ASan as if equivalent:** not meaningful. ASan changes link order, disables optimizations, and adds shadow memory. Perf gates must compare same-flavor builds.
 
-- **Tracy GPU zones in sub-100 ns work:** measures the instrumentation, not the function. Documented in CLAUDE.md "Profiling" section. Per-pass coarse zones only.
+- **Tracy GPU zones in sub-100 ns work:** measures the instrumentation, not the function. Documented in CLAUDE.md "Code rules" (Tracy 100 ns floor). Per-pass coarse zones only.
 
 - **Multiplayer "fix it" requests:** there is no MP transport to fix. `code/mp*.cpp` and `multplyr.cpp` are UI-only stubs - no `WSAStartup`, no `socket`, no `connect/listen/bind`. The original DirectPlay was never reimplemented. Any MP work is a from-scratch transport implementation.
 

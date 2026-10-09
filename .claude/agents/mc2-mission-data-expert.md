@@ -82,7 +82,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **Save game referencing a render-cache slot:** breaks if cache evicts or modernization re-shapes the cache. Save game format must not depend on render caches; the rule is documented in `stock_install_must_remain_playable.md`.
 
-- **Overlaying Magic's Unofficial Expansion `data/` directory onto a stock install via `robocopy /E`:** deploys oversized icon atlases that scramble mechicon. Use exclusion or move-aside; see CLAUDE.md "Do NOT upscale these atlases."
+- **Overlaying Magic's Unofficial Expansion `data/` directory onto a stock install via `robocopy /E`:** deploys oversized icon atlases that scramble mechicon. Use exclusion or move-aside; see the atlas no-upscale guard in `scripts/check-asset-scale-callers.sh`.
 
 - **Opening the options dialog on a non-800x600 desktop:** writes bad ResolutionX/Y. Pre-flight: grep options.cfg before launch to confirm 800/600.
 
@@ -132,7 +132,7 @@ When invoked with a question, follow this protocol.
 
 6. **For asset-modernization questions,** apply the stock-must-be-playable rule: missing modern data must degrade to stock-compatible generation. If the proposal would crash without modern data, reject and recommend a generation fallback.
 
-7. **For atlas / icon questions involving `mechicon.cpp`,** consult the "Do NOT upscale these atlases" list in CLAUDE.md. Pre-commit guard is `sh scripts/check-asset-scale-callers.sh`.
+7. **For atlas / icon questions involving `mechicon.cpp`,** the no-upscale atlas rule is enforced by the pre-commit guard `sh scripts/check-asset-scale-callers.sh`.
 
 8. **For runtime "render is wrong but only sometimes" questions that touch asset caching,** recommend the PAUSE/UNPAUSE diagnostic and defer the render-pipeline part to `mc2-render-expert`.
 

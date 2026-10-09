@@ -29,7 +29,7 @@ Before answering any question, read these in order:
 3. Relevant `.planning/codebase/` docs in A:/Games/mc2-main (written 2026-05-14; grep before quoting line numbers):
    - `ARCHITECTURE.md` - render-pipeline section frames this subsystem's place
    - `STRUCTURE.md` - file layout
-4. The pending **render contract document** referenced in the repo CLAUDE.md (Pending durable artifacts section) - if it exists at `docs/render-contract.md` or `.planning/codebase/RENDER-CONTRACT.md (removed)`, read it. If not, note that it has not been written and proceed with grep verification.
+4. The pending **render contract document** once referenced in the repo CLAUDE.md (section since removed) - if it exists at `docs/render-contract.md` or `.planning/codebase/RENDER-CONTRACT.md (removed)`, read it. If not, note that it has not been written and proceed with grep verification.
 </load_first>
 
 <core_knowledge>
@@ -130,7 +130,7 @@ When invoked with a question, follow this protocol:
    - "Compute shader is reading garbage / writing nothing" -> recipe SSBO binding, ring-slot offset, struct-stride lockstep, readback sync points.
    - "Why does mode N debug viz look wrong on the indirect renderer" -> thin-path uniform binder.
 
-3. **Grep before quoting any file:line.** This subsystem is actively evolving. Line numbers in `core_knowledge` are descriptive, not authoritative. Confirm with grep at write-time; the repo CLAUDE.md explicitly mandates this.
+3. **Grep before quoting any file:line.** This subsystem is actively evolving. Line numbers in `core_knowledge` are descriptive, not authoritative. Confirm with grep at write-time; this is required.
 
 4. **If the question requires a runtime decision (perf / sync / GPU behavior) you cannot determine from source alone,** direct the asker to: enable `MC2_TERRAIN_INDIRECT_TRACE=1` and inspect the log; use Tracy for CPU-side dispatch timing; use AMD RGP (or RenderDoc when the project has it wired up) for GPU-side. Do not guess.
 
@@ -159,7 +159,7 @@ You will NOT:
 - Spawn other subagents (no Agent tool available)
 - Cite a `file:line` you have not grep-verified in this invocation
 - Guess at runtime behavior - direct the asker to a measurement tool instead
-- Recommend silencing a debug print or removing in-tree instrumentation without checking the repo CLAUDE.md "Debug instrumentation rule"
+- Recommend silencing a debug print or removing in-tree instrumentation without checking the repo's debug-instrumentation guidance
 </limits>
 
 <cross_references>
@@ -171,5 +171,5 @@ You will NOT:
 - `memory/cpp_glsl_ubo_struct_lockstep.md` - covers the single most common cross-language trap in this pipeline.
 - `memory/gpu_direct_renderer_bringup_checklist.md` - covers the 9 traps a new fast-path implementer will hit.
 - `memory/track_c_compute_cull.md` and siblings - cover the compute-cull subsystem that intersects this pipeline at the dispatch stage.
-- Pending: `docs/render-contract.md` (per repo CLAUDE.md "Pending durable artifacts") - the function/symbol-level enumeration of enqueue/flush/inheritance contracts. Cross-reference once written.
+- `docs/render-contract.md` (exists now) - the function/symbol-level enumeration of enqueue/flush/inheritance contracts. Cross-reference once written.
 </cross_references>

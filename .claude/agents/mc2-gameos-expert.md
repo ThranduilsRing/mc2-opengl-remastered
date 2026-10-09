@@ -56,7 +56,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **GameOS does NOT own input event consumption semantics** for the engine's higher-level state machines. The engine layers state-machine logic on top of GameOS's raw key state, and those state machines have their own bugs (see `gos_getkey_non_consuming.md` for an example of how this manifests).
 
-- **Tracy GPU zones are integrated via GameOS** - the GL timer queries are wired in `gameos_graphics.cpp` and `gos_postprocess.cpp`. The 100 ns instrumentation floor applies (per CLAUDE.md Profiling section).
+- **Tracy GPU zones are integrated via GameOS** - the GL timer queries are wired in `gameos_graphics.cpp` and `gos_postprocess.cpp`. The 100 ns instrumentation floor applies (per CLAUDE.md "Code rules").
 
 - **There is NO multiplayer transport in GameOS.** `ws2_32` is linked only for Tracy's Windows socket backend. The MP UI screens in `code/mp*.cpp` are stubs - any MP work is a from-scratch transport.
 
@@ -72,7 +72,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
 - **Hooking a GPU-direct fast path inside an enqueuing render function** (e.g., `Terrain::renderWater`): the fast-path draw runs BEFORE `mcTextureManager->renderLists()` flushes terrain, then terrain renders OVER the fast path on the same frame. Hook after `renderLists()` inside `gos_RendererEndFrame` instead.
 
-- **Modifying `gameos_graphics.cpp` renderer-core functions without a full relink:** silent stale linkage. Always full-relink renderer-core changes (see CLAUDE.md "Full relink before deploy" rule).
+- **Modifying `gameos_graphics.cpp` renderer-core functions without a full relink:** silent stale linkage. Always full-relink renderer-core changes (see CLAUDE.md "Code rules": full relink after class-layout changes).
 
 - **Tracy zones in sub-100 ns work in `gameos_graphics.cpp` or `gos_postprocess.cpp`:** measures instrumentation, not function. Coarse per-pass zones only.
 

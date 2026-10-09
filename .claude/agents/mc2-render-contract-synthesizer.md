@@ -219,6 +219,12 @@ Common ways this synthesis goes wrong - watch for them:
 - **Touching the implementation registry** (`mclib/render_contract.{cpp,h}` and the .hglsl). These are code; you don't modify code. The audit found a naming collision between the design doc and the implementation registry - this is a USER decision (merge them? rename one? keep separate but cross-reference?) that you must FLAG, not resolve.
 </failure_modes>
 
+
+## Vulkan backend (GL is the runtime default; VK is the destination)
+- Vulkan islands: `GameOS/gameos/vulkan_*_island*.cpp` (sky, terrain, water, mech, vfx, color-prop, legacy-shape, shadow). The live VK shadow island is `vulkan_shadow_island_live.cpp`; `vulkan_shadow_island.cpp` is probe-only.
+- Shaders: `shaders/vulkan/*.spv` (SPIR-V). GL/VK parity is checked with the A/B tool `tools/visual_verify/ab.py`.
+- Offline gates: `scripts/check-vk-pipeline-layout.py` (pipeline layout vs SPIR-V) and `tools/gpu_abi_gen.py` / `RenderCore/gpu_abi/` for single-source GPU structs.
+
 <cross_references>
 - **mc2-render-expert** - read-side advisor on the same topic. When a user asks a render question, that's the expert. When they ask to UPDATE the render contract, that's you. The two never overlap.
 - **mc2-shader-expert** - GLSL-internal questions; shader compile and uniform mechanics. Out of contract scope; you may read its docs to understand shader-side claims but you do not arbitrate shader-internal issues.

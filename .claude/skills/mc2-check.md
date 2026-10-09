@@ -17,7 +17,7 @@ Verify whether the deployed runtime files match the `A:/Games/mc2-main` source. 
    - Compare timestamps: `A:/Games/mc2-main/build64/RelWithDebInfo/mc2.exe` vs `A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe`
    - Report if source is newer (needs deploy) or if they match
 
-2. **Check ALL shaders**: For every `*.vert`, `*.frag`, `*.tesc`, `*.tese` in `A:/Games/mc2-main/shaders/` and `A:/Games/mc2-main/shaders/include/`:
+2. **Check ALL shaders**: For every `*.vert`, `*.frag`, `*.tesc`, `*.tese`, `*.comp` in `A:/Games/mc2-main/shaders/` and `A:/Games/mc2-main/shaders/include/`, plus every `*.spv` under `A:/Games/mc2-main/shaders/vulkan/` (compare each against its deployed copy):
    - `diff -q` against deployed version
    - Report files that differ (need deploying)
    - Report files in source but missing from deploy (new, need copying)
@@ -27,6 +27,8 @@ Verify whether the deployed runtime files match the `A:/Games/mc2-main` source. 
    - "All up to date" if everything matches
    - List of files that need deploying if any are stale
    - **Warn loudly about stale deploy-only files** — these cause the worst bugs (wrong shaders from old branches)
+
+The canonical read-only check is also `py -3 A:/Games/mc2-main/scripts/deploy_payload.py --target game --verify-only`; prefer it when in doubt.
 
 ## When to Use
 - Before testing: "are my changes deployed?"
