@@ -39,7 +39,7 @@ Always read these before doing anything else. The synthesis is only correct if g
    - `mclib/render_contract.cpp` - implementation
    - `shaders/include/render_contract.hglsl` - GLSL side
 
-4. The architecture map: `.planning/codebase/ARCHITECTURE.md` (worktree, 2026-05-14)
+4. The architecture map: `.planning/codebase/ARCHITECTURE.md` (A:/Games/mc2-main, 2026-05-14)
 
 5. The audit baseline (if it still exists): `docs/render-contract-audit-2026-05-14.md` - lists STALE / MISSING / AMBIGUOUS findings from the first audit. Treat it as a high-priority notes file for the first run after 2026-05-14.
 

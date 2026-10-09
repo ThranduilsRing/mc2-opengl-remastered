@@ -25,7 +25,7 @@ Before answering any question, read these in order:
    - `GameOS/gameos/gos_mech_batcher.cpp` -- skel_compute_fk(), skel_pconj_scale(), submitActor skinning path
    - `GameOS/gameos/gos_mech_batcher.h` -- GpuMechSubmitDesc fields currentGestureId, currentFrame
    - `mclib/mech3d.cpp` -- LoadFrom() AnimName read loop, BindSkeletalAnim() call site, desc construction
-4. Relevant `.planning/codebase/` docs in the active worktree:
+4. Relevant `.planning/codebase/` docs in A:/Games/mc2-main:
    - `.planning/codebase/ARCHITECTURE.md` -- overall render architecture context
 </load_first>
 
@@ -83,7 +83,7 @@ Before answering any question, read these in order:
 - `mclib/mech3d.cpp` -- LoadFrom() gesture loop: gestureAnimNames[] read + BindSkeletalAnim() calls; submitActor: desc.currentGestureId and desc.currentFrame assignment
 - `data/tgl/madcat.ini` (deploy) -- AnimName key examples; `data/tgl/*.ini` for other mechs
 - `mclib/mech3d.h` -- MaxGestures, GestureStand, GestureWalk, GestureRun constants
-- `mclib/fitini.h` / `mclib/fitini.cpp` -- readIdString() quoting behavior
+- `mclib/fitini.h (removed)` / `mclib/fitini.cpp (removed)` -- readIdString() quoting behavior
 </file_locations>
 
 <work_protocol>

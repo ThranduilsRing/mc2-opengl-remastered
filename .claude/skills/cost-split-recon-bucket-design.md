@@ -32,7 +32,7 @@ Both mechanisms can coexist on the same code: a Tracy zone for visual profiling 
 
 If you want simultaneous Tracy GUI visibility for the same sub-tasks, ALSO add `ZoneScopedN("subtask name")` macros at the same call sites. Tracy will then show the sub-task breakdown in its frame timeline AND the CostSplit summary line will appear in the smoke log.
 
-The methodology was derived from the Phase 1 Slice 0 recon (commit `4fa7a9a`, 8 buckets inside `Terrain::geometry quadSetupTextures`) and the post-Phase-1 followups that closed the "missing 8ms" gap with VisibilityCheck + SetupTotal + CacheResident additions. See `docs/superpowers/specs/2026-05-10-quadsetuptextures-gpu-compute-port-design.md` for the full applied example.
+The methodology was derived from the Phase 1 Slice 0 recon (commit `4fa7a9a`, 8 buckets inside `Terrain::geometry quadSetupTextures`) and the post-Phase-1 followups that closed the "missing 8ms" gap with VisibilityCheck + SetupTotal + CacheResident additions. See `docs/superpowers/specs/2026-05-10-quadsetuptextures-gpu-compute-port-design.md (removed)` for the full applied example.
 
 ## When to use
 
@@ -96,7 +96,7 @@ The classification gates the next step (timer vs counter choice).
 
 ### Step 4 — Choose timer vs counter
 
-**Tracy 100ns floor rule** (worktree CLAUDE.md): never time work that's <100ns per call inside a hot loop — the instrumentation IS the cost.
+**Tracy 100ns floor rule** (repo CLAUDE.md): never time work that's <100ns per call inside a hot loop — the instrumentation IS the cost.
 
 | Per-call cost | Tool |
 |---|---|
@@ -143,7 +143,7 @@ If a bucket has 14K calls/frame × 100ns = 1.4 ms of pure instrumentation. With 
 - Sampling (instrument every Nth call, extrapolate)
 - Per-frame totals only (one outer timer + per-bucket counters; multiply counter × known-per-call-cost from a microbench)
 
-The Phase D dispatch prompt at `docs/superpowers/plans/progress/2026-05-11-phase-d-quadsetuptextures-residual-prompt.md` documents this trade-off explicitly.
+The Phase D dispatch prompt at `docs/superpowers/plans/progress/2026-05-11-phase-d-quadsetuptextures-residual-prompt.md (removed)` documents this trade-off explicitly.
 
 ## Existing infrastructure to reuse
 

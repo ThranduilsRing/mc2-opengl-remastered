@@ -1,7 +1,7 @@
 # tools/asset_cook — Track G offline static-prop cook
 
 The cooked-asset contract + validator. Slice `TRACKG-OFFLINE-GLB-COOK-MANIFEST-1`.
-Plan: `docs/superpowers/plans/2026-06-04-trackg-offline-glb-cook-manifest-plan.md`.
+Plan: `docs/superpowers/plans/2026-06-04-trackg-offline-glb-cook-manifest-plan.md` (file not present in tree).
 
 **G3a DONE:** the manifest contract (data before behavior).
 **G1 DONE:** offline GLB staging — `trackg_cook.py stage` computes geometry in the runtime

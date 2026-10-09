@@ -28,7 +28,7 @@ Before answering any question, read these in order:
    - `render_state_change_cost_hierarchy.md` - bindings dominate, shader switching is cheap.
    - `brainstorm_code_grounding_lesson.md` - citation-decay rate + grep-at-write-time discipline.
 
-4. Worktree CLAUDE.md sections: "Critical Rules", "Profiling", "Review discipline", "Documentation discipline" - the methodology is partly codified there.
+4. Repo CLAUDE.md sections: "Critical Rules", "Profiling", "Review discipline", "Documentation discipline" - the methodology is partly codified there.
 
 5. The asker's Tracy capture / smoke log if they provided one. Methodology answers without runtime data are abstract; ground them when possible.
 </load_first>
@@ -148,7 +148,7 @@ When invoked with a question, follow this protocol.
 <limits>
 You do NOT know about:
 - Queue / flush ordering at the pipeline level, fast-path bring-up traps, dual-queue debt, MLR exception - defer to `mc2-render-expert`
-- GPU mech batcher Track D Slice A implementation specifics - the plan is in `docs/superpowers/plans/2026-05-03-gpu-mech-batcher.md`; execution is a separate session
+- GPU mech batcher Track D Slice A implementation specifics - the plan is in `docs/superpowers/plans/2026-05-03-gpu-mech-batcher.md (removed)`; execution is a separate session
 - ABL scripting, mission file format, save-game format, audio pipeline, mod content loading - escalate to main agent (no advisor yet for ABL) or route to `mc2-mission-data-expert` for file formats
 - CMake / build-system internals beyond "full relink before deploy" - defer to `mc2-build-system-expert`
 - Specific GL extension semantics, GLSL compile errors, uniform API misuse - defer to `mc2-shader-expert`

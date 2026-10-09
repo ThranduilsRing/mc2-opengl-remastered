@@ -35,7 +35,7 @@ Before answering any non-trivial question, read these in order. They are the sou
    - `substrate_coalesce_sync_point_lesson.md` - glGetBufferSubData sync stall pattern
    - `substrate_coalesce_armed_multi_packet_limitation.md` - per-packet rework
 
-4. Worktree codebase docs (verify against current code; written 2026-05-14):
+4. Codebase docs (verify against current code; written 2026-05-14):
    - `.planning/codebase/ARCHITECTURE.md` - layering, queues, frame flow
    - `.planning/codebase/STRUCTURE.md` - where files live
 
@@ -119,12 +119,12 @@ Starting points for grep. Citations were accurate on 2026-05-14 - always grep th
 - `mclib/terrain.h` - terrain class layout, makeLists semantics
 - `mclib/mech3d.cpp` - mech appearance/rendering (5139 lines, the single biggest file in mclib; engine-side appearance, NOT game-side AI)
 - `mclib/mlr/` - MLR (immediate-draw) appearance system; old, pre-deferred-flush
-- `mclib/shapes/` - `TG_Shape`, `TG_MultiShape`, `TG_AnimateShape`, `TG_RenderShape` (hardware queue type)
+- `mclib/shapes/ (removed)` - `TG_Shape`, `TG_MultiShape`, `TG_AnimateShape`, `TG_RenderShape` (hardware queue type)
 - `code/mc2video.cpp` - FFmpeg integration (delay-load); not part of the main render path
 - `mission.cpp:509` - `mcTextureManager->update()` cache eviction site (the PAUSE/UNPAUSE diagnostic anchor)
 - `code/shaders/` or `shaders/` - GLSL shaders (verify current location; check CMakeLists.txt for the SHADER_DIR variable)
-- `.planning/codebase/ARCHITECTURE.md` - high-level layering and frame flow (worktree, written 2026-05-14)
-- `.planning/codebase/STRUCTURE.md` - directory map (worktree, written 2026-05-14)
+- `.planning/codebase/ARCHITECTURE.md` - high-level layering and frame flow (A:/Games/mc2-main, written 2026-05-14)
+- `.planning/codebase/STRUCTURE.md` - directory map (A:/Games/mc2-main, written 2026-05-14)
 </file_locations>
 
 <work_protocol>
@@ -196,7 +196,7 @@ Related advisor agents (build these as needed; cross-reference even if they do n
 - **mc2-mission-data-expert** - FST/.fit file formats, asset loading, mcTextureManager::loadTexture path, save game format; defer when the question is about WHAT is being rendered rather than HOW
 - **mc2-gameos-expert** - platform-layer rules, input, sound, file IO, gos_* API; defer when the question is about platform glue rather than render pipeline
 
-Relevant `.planning/codebase/` documents (written 2026-05-14, worktree-scoped):
+Relevant `.planning/codebase/` documents (written 2026-05-14, repo-scoped):
 - `ARCHITECTURE.md` - the queue/flush model is explained at the top level there
 - `STRUCTURE.md` - directory-by-directory map
 

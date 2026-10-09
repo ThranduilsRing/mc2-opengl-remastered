@@ -1,6 +1,6 @@
 # VULKAN-NEXT-SLICES — executable rung specs for the L6→L8 ladder (opus handoff)
 
-Companion to `.claude/VULKAN-BACKEND-L6-LADDER-1.md` (the ratified ladder — read it first;
+Companion to `.claude/VULKAN-BACKEND-L6-LADDER-1.md (removed)` (the ratified ladder — read it first;
 this doc turns each REMAINING rung into an executable spec). Worktree
 `A:/Games/mc2-vulkan-backend`, branch `claude/vulkan-backend-l6`. Written 2026-07-02 after
 wave-3 (ladder §5a amendment `d67eba92`, L6.1 backendHandle rename `34ade1ee`, SSAO
@@ -203,7 +203,7 @@ pending that ruling** — but the plumbing/math is now proven sound.
 ### UPDATE 2026-07-02 (session 2 — instrumented, quiet-lane, LM8 bracketed)
 
 **Root cause of the GROSS corruption (raw AO ≈0.08 / center-X): the island ran on
-frames it should have SKIPPED.** `MC2_VK_SSAO_DUMP_INPUTS=1` (new, default-OFF)
+frames it should have SKIPPED.** `MC2_VK_SSAO_DUMP_INPUTS (gate since removed)=1` (new, default-OFF)
 proved it: on the island's FIRST executed frame the depth readback is ALL-ZERO and
 `inverseViewProj_`/`viewProj_` are ALL-ZERO — because those matrices are populated
 ONLY by `setTerrainMVP()` during terrain draw, and are zero-initialized otherwise.
@@ -395,7 +395,7 @@ reference is REUSABLE as the fixture oracle.
 - `GameOS/gameos/gos_postprocess.cpp` — extract `runHzbRegionGL()` (pure code-move of the
   1698-1770 loop), route via `runHzbRegionThroughBackend()` (copy the SSAO selector block),
   health `render_backend_hzb_region`.
-- `GameOS/gameos/vulkan_hzb_island.cpp` — NEW island TU. Port hzb_reduce per §5a (1 sampler
+- `GameOS/gameos/vulkan_hzb_island.cpp (removed)` — NEW island TU. Port hzb_reduce per §5a (1 sampler
   → binding 0, params UBO @1). Per-mip chain: ONE VkImage with N mip levels + N framebuffer
   views is the natural Vulkan shape, with a per-mip `VkImageMemoryBarrier`
   (COLOR_ATTACHMENT_WRITE → SHADER_READ, mip k before mip k+1 draws — barrier plan B13);

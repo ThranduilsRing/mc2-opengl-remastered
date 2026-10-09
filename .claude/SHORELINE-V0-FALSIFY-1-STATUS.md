@@ -71,7 +71,7 @@ differs there:
 
 I therefore extracted the paks/fits **out of the deployed `mission.fst`** and
 ran everything on those. Confirmed byte-identical across lanes `0.4`, `0.4c` and
-`0.5.1` (`.claude/shoreline-v0-falsify-1/fst_probe.py`). Note mc2-srcdata's
+`0.5.1` (`.claude/shoreline-v0-falsify-1/fst_probe.py (removed)`). Note mc2-srcdata's
 working `mc2_01.pak` is locally modified and does **not** ship — using it would
 have silently graded a different map.
 
@@ -172,7 +172,7 @@ of magnitude smaller than the design assumed.
 
 ### Why more kernel does not rescue it
 
-Sweeping the footprint (`.claude/shoreline-v0-falsify-1/sweep.json`) shows the
+Sweeping the footprint (`.claude/shoreline-v0-falsify-1/sweep.json (removed)`) shows the
 clamp, not the kernel, is binding. On mc2_17 at `k=1`:
 
 | footprint radius | median disp | tanh saturation | staircase index |
@@ -243,7 +243,7 @@ remove.
 
 Ruled out already, by other lanes and by me:
 
-- `MC2_WATER_SHORE_MASK` (default-**ON**): `.claude/WATER-MC2-17-1-STATUS.md`
+- `MC2_WATER_SHORE_MASK` (default-**ON**): `.claude/WATER-MC2-17-1-STATUS.md (removed)`
   proves it **byte-identically inert on mc2_17** — mask on/off and
   `MC2_TERRAIN_SHORELINE=0` all give the same frame hash.
 - `MC2_WATER_SHORE_MEANDER`: default reverted to **0** in `67b25f47`, so the

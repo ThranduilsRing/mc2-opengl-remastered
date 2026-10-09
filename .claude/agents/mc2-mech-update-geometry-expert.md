@@ -31,12 +31,12 @@ Before answering any question, read these in order:
    - `mclib/msl.cpp` - `TG_MultiShape::TransformMultiShape` and its three wrappers (`_PositionsOnly`, `_BuildRecipe`, `_HierarchyOnly`). The `s_multiShapePositionsOnly` and `s_buildRecipeOnly` file-static flags. The per-shape loop with conditional per-leaf dispatch. CacheGpuLightData / ResubmitCachedGpuLightData.
    - `mclib/msl.h` - TG_TypeMultiShape (public maxBox/minBox/extentRadius for type-level bounds). TG_MultiShape declarations.
    - `mclib/tgl.cpp` - TG_Shape (the per-leaf). MultiTransformShape and MultiTransformShape_PositionsOnly (per-leaf bodies). Pool allocations. Per-vertex screen projection. Per-face backface cull. RenderShadows (hardcodes gVertex.argb = 0x3f000000). MultiTransformShadows.
-   - `mclib/tglpp.cpp` - TG_Shape::PerPolySelect (null-check + lastTurnTransformed gate + per-triangle hit-test). The per-leaf state contract source.
+   - `mclib/tglpp.cpp (removed)` - TG_Shape::PerPolySelect (null-check + lastTurnTransformed gate + per-triangle hit-test). The per-leaf state contract source.
    - `GameOS/gameos/gos_mech_batcher.cpp` - GpuMechBatcher (Slice A). submitActor reads listOfShapes[i].shapeToWorld for bone matrices. envFlagDefaultOn helper. All 10 killswitch global defs.
    - `GameOS/gameos/gos_mech_killswitch.h` - 10 extern bools. The DEFAULT-ON FLIP banner block.
    - `shaders/mech.vert` - GPU mech VS. Branches on `u_lightingMode` (B1) and `u_skinningMode` (C2) uniforms.
    - `code/objmgr.cpp` - findMoverByMouse (rect-only test for movers); findObjectByMouse multi-arg (per-poly path for non-movers); findObjectByMouse 1-arg dispatcher (4x findMoverByMouse first, then fallback).
-4. Relevant `.planning/codebase/` docs in the active worktree:
+4. Relevant `.planning/codebase/` docs in A:/Games/mc2-main:
    - `.planning/codebase/ARCHITECTURE.md` - overall render architecture context (verify against current date; written 2026-05-14).
 </load_first>
 
@@ -91,7 +91,7 @@ Before answering any question, read these in order:
 
 - **Current semantics: `env-not-set` means ON** (default-on since 2026-05-11). `MC2_GPU_MECH_<FLAG>=1` is redundant; use `X=0` only to opt out. These killswitches are temporary and slated for removal (gate amnesty).
 
-- **Vehicles (gvactor.cpp) mirror mech patterns but with two critical differences.** Same sensor render gate (gvactor.cpp:2329), same tessellation early-return in renderShadows (gvactor.cpp:2068). Sensor-skip and shadow-skip patterns transfer cleanly. But: no GpuVehicleBatcher equivalent of Slice A -- `gvShape->Render(true)` at gvactor.cpp:2131 IS a live consumer of per-leaf state. **D-leaf-skip and body fast-transform DO NOT transfer to vehicles.** Vehicles use `sensorCircleShape` (not `sensorSquareShape`) -- same role, different name. If a question asks about applying the campaign's patterns to vehicles, point at the handoff at `docs/superpowers/plans/progress/2026-05-09-handoff-vehicle-sensor-shadow-skip.md`.
+- **Vehicles (gvactor.cpp) mirror mech patterns but with two critical differences.** Same sensor render gate (gvactor.cpp:2329), same tessellation early-return in renderShadows (gvactor.cpp:2068). Sensor-skip and shadow-skip patterns transfer cleanly. But: no GpuVehicleBatcher equivalent of Slice A -- `gvShape->Render(true)` at gvactor.cpp:2131 IS a live consumer of per-leaf state. **D-leaf-skip and body fast-transform DO NOT transfer to vehicles.** Vehicles use `sensorCircleShape` (not `sensorSquareShape`) -- same role, different name. If a question asks about applying the campaign's patterns to vehicles, point at the handoff at `docs/superpowers/plans/progress/2026-05-09-handoff-vehicle-sensor-shadow-skip.md (removed)`.
 
 - **Line numbers in mech3d.cpp and msl.cpp drifted significantly during the campaign.** The D-gpu-pose-instrument slice added 8 Tracy sub-zones with explicit `{ ZoneScopedN(...); ... }` wrapping blocks. Then leaf-skip-v2, shadow-skip, shadow-state-strip, and sensor-skip each added conditional wrappers. Don't trust line numbers in pre-2026-05-09 docs or memory files. **Always re-grep before citing.**
 </known_pitfalls>
@@ -108,7 +108,7 @@ Before answering any question, read these in order:
 - `shaders/mech.vert` - GPU mech VS with calc_light (B1) and weighted skinning (C2) branches gated on `u_lightingMode` / `u_skinningMode` uniforms.
 - `code/objmgr.cpp` - `findMoverByMouse` (rect-only test for movers; around 2468-2566 with `// Movers are NOT per poly!!` comment at 2506). `findObjectByMouse` multi-arg (per-poly path for trees/buildings; around 2404-2464). `findObjectByMouse` 1-arg public dispatcher (4x findMoverByMouse first, then fallback to multi-arg with full list; around 2591-2620). `findTerrainObjectByMouse` (around 2570).
 - `docs/superpowers/plans/progress/2026-05-09-handoff-vehicle-sensor-shadow-skip.md` - handoff for porting sensor-skip + shadow-skip to vehicles (gvactor.cpp).
-- `docs/superpowers/plans/progress/2026-05-11-handoff-mech-skinning-import-phase1.md` - handoff for Track D Phase 1 (Assimp skin cluster import). Cross-references the existing vertex format's boneIdx[4]/weights[4] slots reserved by Slice C2.
+- `docs/superpowers/plans/progress/2026-05-11-handoff-mech-skinning-import-phase1.md (removed)` - handoff for Track D Phase 1 (Assimp skin cluster import). Cross-references the existing vertex format's boneIdx[4]/weights[4] slots reserved by Slice C2.
 </file_locations>
 
 <work_protocol>

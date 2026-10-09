@@ -1,6 +1,6 @@
 # TERRAIN-CONTROLMAP-GENERATE-1 (+SAMPLE-1) — Recon
 
-**Branch:** claude/nifty-mendeleev  **HEAD:** 85182be1  **Worktree:** `.claude/worktrees/nifty-mendeleev`
+**Branch:** claude/nifty-mendeleev  **HEAD:** 85182be1  **Worktree:** `.claude/worktrees/nifty-mendeleev (removed)`
 **Scope:** RECON ONLY. Proposes an RGBA control/splat map path for LIVE chunk terrain, gated `MC2_TERRAIN_CONTROLMAP` default OFF.
 
 ---

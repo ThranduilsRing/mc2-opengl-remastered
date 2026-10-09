@@ -32,7 +32,7 @@ Always read these before answering. Your in-head knowledge is stale by definitio
    - `mc2_path_separator_linux_build.md` - PATH_SEPARATOR is `/`; never hardcode `\\` against `_WIN32`
    - `pause_unpause_diagnostic_for_static_render_bugs.md` - `mcTextureManager->update()` cache eviction at `mission.cpp` around line 509; related to texture-handle lifecycle
 
-3. Codebase docs in `.planning/codebase/` (worktree, 2026-05-14):
+3. Codebase docs in `.planning/codebase/` (A:/Games/mc2-main, 2026-05-14):
    - `INTEGRATIONS.md` - file formats consumed, asset pipeline bimodality, stock-vs-modern coexistence
    - `STRUCTURE.md` - directory map; `mc2srcdata/` submodule note
 </load_first>
@@ -93,19 +93,19 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 Starting points for grep. Citations were accurate on 2026-05-14 - grep the listed symbol before quoting line.
 
 - `mclib/file.cpp` and `mclib/file.h` - `File::open`, `File::seek`, FST/PAK reading; grep `S_strlwr` and `elfHash` for the normalization site
-- `mclib/fst.h` / `mclib/fst.cpp` - FST archive format, header layout, hash table
+- `mclib/fst.h (removed)` / `mclib/fst.cpp (removed)` - FST archive format, header layout, hash table
 - `mclib/txmmgr.cpp` - texture manager; `mcTextureManager->update()` cache eviction; `loadTexture` path
 - `code/mission.cpp` - mission load sequencing; the `mcTextureManager->update()` call site (~line 509 on 2026-05-14; grep `mcTextureManager->update` for current location)
 - `code/mc2save.cpp` / `code/mc2load.cpp` - save game serialize / deserialize (grep file names to confirm exact paths)
 - `code/mechicon.cpp` - hardcoded `unitIconX/Y`, atlas blit math; the "do not upscale" canary
 - `GameOS/gameos/gameos_sound.cpp` - WAV decoding; around line 297 for the AUDIO_U8 / S8 question
-- `mclib/widget.cpp` and friends - widget load order; relate to `InitializeGameEngine`
+- `mclib/widget.cpp (removed)` and friends - widget load order; relate to `InitializeGameEngine`
 - `code/InitializeGameEngine.cpp` or similar - the init sequence (grep `InitializeGameEngine` in `code/` to locate)
 - `mc2srcdata/build_scripts/` - GNU make recipes for stock FST/PAK production (submodule; separate repo)
 - `upscale_*.py`, `pack_mat_normal.py` (repo root) - Python upscaler pipeline
 - `A:/Games/mc2-opengl/mc2-win64-v0.4/options.cfg` - deployed options file; check ResolutionX/Y here
-- `.planning/codebase/INTEGRATIONS.md` - file format inventory, asset pipeline (worktree, 2026-05-14)
-- `.planning/codebase/STRUCTURE.md` - directory map (worktree, 2026-05-14)
+- `.planning/codebase/INTEGRATIONS.md` - file format inventory, asset pipeline (A:/Games/mc2-main, 2026-05-14)
+- `.planning/codebase/STRUCTURE.md` - directory map (A:/Games/mc2-main, 2026-05-14)
 </file_locations>
 
 <work_protocol>
@@ -175,5 +175,5 @@ Memory categories most relevant: "Load-bearing" section (FST normalization, path
 Reference docs:
 - `.planning/codebase/INTEGRATIONS.md` - file format inventory, asset pipeline detail
 - `.planning/codebase/STRUCTURE.md` - directory map including mc2srcdata submodule note
-- `docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md` - asset-scale system design
+- `docs/superpowers/specs/2026-04-23-asset-scale-aware-rendering-design.md (removed)` - asset-scale system design
 </cross_references>

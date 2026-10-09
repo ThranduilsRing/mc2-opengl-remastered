@@ -2,7 +2,7 @@
 
 **Lane:** BUILD — worktree `A:/Games/mc2-techscript`, branch `claude/techscript-gap`, base `c18618c4`.
 **Mission:** close the gap between the engine's BrainSpecial runtime and Methuselas's TechScript v1.5 spec — implement the spec as written wherever sane.
-**Inputs:** `A:/Games/mc2-controlmap-sample-1/.claude/BRAIN-DISCUSSION-18-INTEGRATE-1.md` (gap recon), `docs/MODDER-REPORT-techscript-brainspecial.md`, `docs/render-backend-seams/brain-arc-implementation-roadmap.md`, `code/brain_special_dispatch.{cpp,h}`, `code/mech_brain_runtime.h`, `tools/brain_dispatch_harness/`.
+**Inputs:** `A:/Games/mc2-controlmap-sample-1/.claude/BRAIN-DISCUSSION-18-INTEGRATE-1.md (removed)` (gap recon), `docs/MODDER-REPORT-techscript-brainspecial.md`, `docs/render-backend-seams/brain-arc-implementation-roadmap.md`, `code/brain_special_dispatch.{cpp,h}`, `code/mech_brain_runtime.h`, `tools/brain_dispatch_harness/`.
 
 **Standing engine rulings honored (not re-litigated):**
 1. Deterministic 7-tier task queue (`brain_task_queue.h`, key `(tier, frame_ms, seq, warrior)`) over an instruction-pointer VM with arbitrary `GOTO`.

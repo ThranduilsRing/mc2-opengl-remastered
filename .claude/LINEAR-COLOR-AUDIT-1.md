@@ -44,7 +44,7 @@ Net: multiply/add of gamma-encoded colors is mathematically wrong (darkening/ove
 3. Keep ORM linear (already correct).
 4. Only then: PBR specular / IBL / tonemap-on become meaningful.
 
-These are mutually dependent: enabling encode without decode (or vice-versa) double-darkens/double-brightens. Must land together behind one gate (e.g. future `MC2_LIGHTING_LINEAR=1`), measured against Baseline-A.
+These are mutually dependent: enabling encode without decode (or vice-versa) double-darkens/double-brightens. Must land together behind one gate (e.g. future `MC2_LIGHTING_LINEAR (gate since removed)=1`), measured against Baseline-A.
 
 ## Boundaries held
 Logging-only this slice. No `GL_FRAMEBUFFER_SRGB` enable, no decode/encode, no shader math change, no default change. tier1 unaffected (probe gated + one-shot).

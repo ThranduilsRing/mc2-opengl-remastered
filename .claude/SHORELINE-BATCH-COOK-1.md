@@ -1,6 +1,6 @@
 # SHORELINE-BATCH-COOK-1 — batch shoreline masks + merged bakes for all water missions
 
-Slice 1 of `.claude/SHORELINE-FOG-NEXT-SLICES.md`. Every water-bearing stock
+Slice 1 of `.claude/SHORELINE-FOG-NEXT-SLICES.md (removed)`. Every water-bearing stock
 mission gets a `shoreline_mask.png` sidecar (so wide-beach falloff / basin
 exclusion works everywhere, not just hand-cooked mc2_17) plus the merged
 re-authored visual bake (`visual_height_4x` + max-mips + object damp) it is

@@ -251,7 +251,7 @@ build dir and ~1 GB of disk.
    static props — measure on the mc2_01 buildings poses, which show the defect.
 3. **SSAO needs a radius sweep, not a default decision.** `aoRadius_ = 3.0` is
    almost certainly wrong for MC2's world scale. Add `MC2_SSAO_RADIUS` /
-   `MC2_SSAO_STRENGTH` env overrides (there are none today) and re-run the
+   `MC2_SSAO_STRENGTH (gate since removed)` env overrides (there are none today) and re-run the
    `MC2_SSAO_DEBUG` AO-buffer capture in §3 — that one capture is a 30-second
    decisive test for any candidate radius.
 4. **Task B**: author a bookmark with far-LOD foliage in frame before revisiting

@@ -208,7 +208,7 @@ the pre-remap converter.
 STOCK vs HD GLBs headlessly from 3 orbit angles into a labeled side-by-side
 PNG. EEVEE neutral rig — silhouette/topology comparison only, NOT MC2
 shaders. The engine-faithful path is a follow-up: an asset_viewer
-`--render-glb-to-png` mode reusing the existing `--smoke-backend-a-render`
+`--render-glb-to-png` mode (planned, not implemented) reusing the existing `--smoke-backend-a-render`
 offscreen pathway.
 
 ## Follow-ons (from .claude/BLENDER-CAPABILITY-SURVEY-1.md)

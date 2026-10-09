@@ -206,7 +206,7 @@ typeRuns=48 tex=262 (GL samples the VK-produced D32 via calcShadow).` validation
   shadow-bearing views — `ridge_lowangle` (shadow_cascade) c836122619637700 and `highangle_wide`
   (static_prop_pbr, shadow-RECEIVING prop pixels) 9f068e5c2063d5cf. Byte-exact = zero shadow
   divergence (no bias/acne/peter-pan floor needed; better than the water ±1-LSB precedent).
-- CONSUMPTION PROVEN (throwaway gate `MC2_VK_SHADOW_INTEROP_PROVE`, since removed): with the GL
+- CONSUMPTION PROVEN (throwaway gate `MC2_VK_SHADOW_INTEROP_PROVE (gate since removed)`, since removed): with the GL
   caster draw SKIPPED so GL's own dynamic map = cleared depth=1.0 (no shadows), the two
   shadow-bearing bookmarks STILL rendered byte-identical to the GL baseline — the shadows come
   ENTIRELY from the VK-produced D32. GL provably CONSUMES tex 262 at the three forward bind sites

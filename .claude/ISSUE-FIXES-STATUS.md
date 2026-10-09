@@ -81,7 +81,7 @@ instrumentation surfaced two REAL pre-existing silent asset failures):**
       jaegermech true-positive lines, advisory-downgraded by the manifest
       override. APPEAR_AUDIT missing=0 x4 + missing=2 on mc2_24 (both
       jaegermech instances).
-- [x] A SABOTAGE leg (scratch build at `60450449`-dirty, MC2_COH_SABOTAGE
+- [x] A SABOTAGE leg (scratch build at `60450449`-dirty, MC2_COH_SABOTAGE (gate since removed)
       env-gated snippet forcing the #50 pre-fix signature, both scratch
       edits reverted after): mc2_08 + MC2_MOVER_COHERENCE_AUDIT=1 →
       `[MOVER_COHERENCE] VIOLATION rule=I5 part=513 name=Atlas

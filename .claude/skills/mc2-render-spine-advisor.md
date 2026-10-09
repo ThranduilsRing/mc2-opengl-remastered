@@ -455,7 +455,7 @@ Examples of this failing:
 | Authority mismatch | CPU candidate vs GPU SSBO compared directly | Add CPU-authoritative accessor or defer |
 | Seam mismatch | Internal batcher object passed to game side | Use `batcher_*` free accessor |
 | Diagnostic becoming behavior | Compare slice sets GL state | Zero GL mutation in diagnostic path |
-| Env gate confusion | `#ifdef MC2_VERBOSE` for runtime env var | `getenv("MC2_VERBOSE")` at runtime |
+| Env gate confusion | `#ifdef MC2_VERBOSE (gate since removed)` for runtime env var | `getenv("MC2_VERBOSE")` at runtime |
 | Release config drift | `cmake --config Release` | Always `RelWithDebInfo` |
 | Semantic overload | `objectIndex` stored in `typeId` field | Rename + separate lifetimes |
 | Error handling mismatch | `assert` in release diagnostic | `if (!x) { ++failures; return sentinel; }` |

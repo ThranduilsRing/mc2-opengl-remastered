@@ -2,7 +2,7 @@
 
 Branch `claude/deferred-sweep-1`, worktree A:/Games/mc2-deferred-1.
 Deploy lane `A:/Games/mc2-opengl/releases/mc2-win64-deferred-test`.
-Evidence: `.claude/captures/batch8c/` (full-res crops, never thumbnails).
+Evidence: `.claude/captures/batch8c/ (removed)` (full-res crops, never thumbnails).
 
 Two agents worked this branch concurrently this session:
 - **THIS agent (batch-8C)** landed Item C (`7c43e469`) and independently
@@ -24,7 +24,7 @@ DO-NOT-WIDEN invariant guard.
 ### What it is (ground truth, no more guessing)
 `MC2_CONE_LEAF_DUMP=1` (new default-OFF diagnostic, allowlisted) dumps every
 static-prop recipe leaf's node name + flags at `BldgAppearance::registerStatic`.
-mc2_10 census (`.claude/captures/batch8c/C_leafdump/`):
+mc2_10 census (`.claude/captures/batch8c/C_leafdump/ (removed)`):
 
 - The standalone **`Spotlight` prop** has leaves `L_SpotLight` / `L_SpotRotar` /
   `L_SpotBattery` — **all `isSpot=0`**. `GetIsSpotlight()` keys on the exact
@@ -36,7 +36,7 @@ mc2_10 census (`.claude/captures/batch8c/C_leafdump/`):
   `Spotlight_SensorCon` (S_HQ), `Spotlight_TurretCon` (S_TurretControl).
 
 So GHOST-CONE-RECIPE-SKIP-1 (09dafc9f/ae2b4811) already leaves `L_SpotLight`
-alone. Its wrong **cream** look (visible at `.claude/captures/batch8c/crop_wedge_212019.png`)
+alone. Its wrong **cream** look (visible at `.claude/captures/batch8c/crop_wedge_212019.png (removed)`)
 is the SAME unlit-static-prop root as Item A/B (unlit geometry showing raw art
 colour), NOT a reason to skip a real prop.
 
@@ -57,9 +57,9 @@ is confirmed legit and provably not skipped; a future regression is guarded.
 ## Item A — far-backdrop night black band (CRITICAL) — peer fix `73755184` VERIFIED **INEFFECTIVE**
 
 Full-res A/B at mc2_10 saved_205952, **both runs on the peer's fix exe
-`737551841c8b`**, `MC2_BACKDROP_NIGHT_LIGHT` default-ON vs `=0`:
+`737551841c8b`**, `MC2_BACKDROP_NIGHT_LIGHT (gate since removed)` default-ON vs `=0`:
 
-- `.claude/captures/batch8c/crop_bandAB_ON.png` vs `crop_bandAB_OFF.png`:
+- `.claude/captures/batch8c/crop_bandAB_ON.png (removed)` vs `crop_bandAB_OFF.png`:
   **the horizon ridge stays PURE BLACK with the fix ON** — visually identical.
 - Black-ridge region (y280-420): near-black share 29.84% ON vs 29.71% OFF;
   pixels that are pure black with the fix OFF are lifted to mean **0.31/255**
@@ -107,7 +107,7 @@ Fix is unified with the Item A textured-impostor-lighting slice above.
 ---
 
 ## Housekeeping
-- Temporary `gosvtx_bt_probe` (MC2_GOSVTX_BT) in gameos_graphics.cpp: **removed**
+- Temporary `gosvtx_bt_probe` (MC2_GOSVTX_BT (gate since removed)) in gameos_graphics.cpp: **removed**
   (reverted the file to HEAD; the probe's submitter question was already answered
   in batch-8B).
 - Deploy lane carries `737551841c8b` (peer's combined exe) — the branch (my

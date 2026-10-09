@@ -38,7 +38,7 @@ Before answering any question, read these in order:
      minimap-only consumer.
    - `rule0_applies_to_reviewer_proposed_fixes_too.md` - grep-verify a
      reviewer's proposed fix like any spec claim.
-3. In the active worktree `docs/superpowers/specs/`:
+3. In A:/Games/mc2-main `docs/superpowers/specs/`:
    - `2026-05-18-AUTHORITATIVE-zfight-matrix-share-design.md` (read
      Section 11 - authoritative) + `2026-05-18-WATER-ZFIGHT-HANDOFF.md`
    - `2026-05-18-SCOPING-reversed-z-float-depth-modernization.md`

@@ -1,7 +1,7 @@
 # EQUIPMENT-MASTERID-USAGE-RECON-1 — 8-bit/ordinal assumptions before widening
 
 Read-only recon before the equipment registry/widen engine slices. Verdict: **facade is safe/additive NOW; widen is deferrable until content >254 live rows.**
-★ Line refs read against canonical worktree `.claude/worktrees/unit-profile-seam/`; mc2-repo-intel indexes nifty-mendeleev (~150–200 line drift in mech.cpp) — re-grep anchors before editing.
+★ Line refs read against canonical worktree `.claude/worktrees/unit-profile-seam/ (removed)`; mc2-repo-intel indexes nifty-mendeleev (~150–200 line drift in mech.cpp) — re-grep anchors before editing.
 
 ## The two 8-bit id spaces (the actual cap)
 - `InventoryItem::masterID` = **`unsigned char`** (`code/mover.h:415`) — the runtime loadout component id.

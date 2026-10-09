@@ -88,4 +88,4 @@ py -3 -m pytest tools/unit_converter -q
 
 Covers parser, mech/vehicle extraction, emit format (asserted against the exact
 engine loader tokens), a parse round-trip, and determinism (byte-stable emit +
-PYTHONHASHSEED-subprocess guard, mirroring `tools/campaign_gen`).
+PYTHONHASHSEED-subprocess guard, mirroring the former `tools/campaign_gen`, no longer in tree).

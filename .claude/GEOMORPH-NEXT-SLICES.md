@@ -2,7 +2,7 @@
 
 Successor planning notes after TERRAIN-LOD-GEOMORPH-1 (branch `claude/geomorph-1`,
 rungs b/a/c = `66cdff48`/`2f0e90a8`/`4f179450`, rung d fix+oracle = `191b6b74`).
-Read `.claude/TERRAIN-LOD-GEOMORPH-RECON-1.md` first; this file only carries what
+Read `.claude/TERRAIN-LOD-GEOMORPH-RECON-1.md (removed)` first; this file only carries what
 the recon could not know.
 
 ## Shipped state (facts a successor must not re-derive)

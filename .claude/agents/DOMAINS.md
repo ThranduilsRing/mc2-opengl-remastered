@@ -153,7 +153,7 @@ Concerns that span multiple advisors and should NOT be isolated into their own d
 ## Executed decisions (resolved 2026-05-14, executed 2026-05-14)
 
 1. **mc2-render-perf-expert split: DONE.** Methodology content kept in `.claude/agents/mc2-render-perf-expert.md` (rewritten to methodology-only); snapshot content moved to `docs/render-perf-snapshot.md`. Methodology advisor's `<load_first>` reads the snapshot every invocation. Snapshot doc has a "Last refreshed" header for deliberate refresh discipline.
-2. **amd-shader-reviewer reclassification: DONE.** Converted from agent to skill. File at `.claude/skills/mc2-amd-shader-review.md` (matches the `mc2-*` skill naming convention). Old `.claude/agents/amd-shader-reviewer.md` removed. `mc2-shader-expert`'s `<cross_references>` now points at the skill.
+2. **amd-shader-reviewer reclassification: DONE.** Converted from agent to skill. File at `.claude/skills/mc2-amd-shader-review.md` (matches the `mc2-*` skill naming convention). Old `.claude/agents/amd-shader-reviewer.md (removed)` removed. `mc2-shader-expert`'s `<cross_references>` now points at the skill.
 3. **mc2-render-expert <-> mc2-render-perf-expert routing sharpening: DONE.** Render-expert has explicit `<cross_references>` entries and a `DEFER` section in `<limits>` for Tracy/perf questions. Render-perf-expert has matching entries pointing the other way.
 4. **mc2-render-expert <-> mc2-terrain-indirect-expert cross-reference: DONE.** Render-expert now lists terrain-indirect-expert in both `<cross_references>` and the `<limits>` DEFER section.
 

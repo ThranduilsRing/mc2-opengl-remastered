@@ -1,6 +1,6 @@
 # WEAPON-DEFINITION arc — scoping (read-only recon)
 
-**Status:** RECON + SCOPING only. No code, no `mc2srcdata` changes. Mirrors the shape of the UNIT-PROFILE / `UnitDefinition` arc (`docs/superpowers/plans/2026-07-01-unit-profile-arc-roadmap.md`). Goal: move MC2 weapons/components from **positional/index representation** to a data-driven, BT2018-familiar `WeaponDefinition` so a modder adds a weapon as easily as a unit.
+**Status:** RECON + SCOPING only. No code, no `mc2srcdata` changes. Mirrors the shape of the UNIT-PROFILE / `UnitDefinition` arc (`docs/superpowers/plans/2026-07-01-unit-profile-arc-roadmap.md (removed)`). Goal: move MC2 weapons/components from **positional/index representation** to a data-driven, BT2018-familiar `WeaponDefinition` so a modder adds a weapon as easily as a unit.
 
 **★ STOCK ASSETS ONLY** in every claim about MC2 data — base `mc2srcdata` only (never MCO/MC2X/BT2018/mods). BT2018 is cited purely as the modder-familiar *format reference*.
 
@@ -113,7 +113,7 @@ A modder-facing `WeaponDefinition` that *references* facets/vocabularies (not on
 
 ## 4. Proposed slice sequence (mirrors the unit arc; each = gated + legacy-fallback + stock-parity)
 
-Gate: everything new behind **`MC2_WEAPON_DEFINITION_DATA`** (default OFF; gate-OFF = byte-parity). Offline-first: pure logic into `tests/unit/` doctest before engine glue. Standard SLICE-DISPATCH CONTRACT (unit roadmap §114-122) applies verbatim.
+Gate: everything new behind **`MC2_WEAPON_DEFINITION_DATA (gate since removed)`** (default OFF; gate-OFF = byte-parity). Offline-first: pure logic into `tests/unit/` doctest before engine glue. Standard SLICE-DISPATCH CONTRACT (unit roadmap §114-122) applies verbatim.
 
 **Phase 0 — WEAPONDEF-OFFLINE-HARNESS-1.** Extend `tests/unit/` (standalone `build64-tests`, GL/IO-free) with a `WeaponDefinition` POD + `weaponDefValidate()` red/green cases *before* any engine touch. Reuse `hardpoint.h` `WeaponTag`/`hardpointAcceptsWeapon` directly.
 
@@ -125,7 +125,7 @@ Gate: everything new behind **`MC2_WEAPON_DEFINITION_DATA`** (default OFF; gate-
 6. **AMMO-CATEGORY-LINK-1** — named `ammoCategory` string replaces `ammoMasterId`/`WEAPON_AMMO_OFFSET` arithmetic; legacy index fallback when unset.
 7. **LEGACY-WEAPON-CONVERTER-1** — offline tool (extend `tools/unit_converter/`) reading stock `compbas.csv` → emit sidecar `generated/weapons/core/<weapon>.fit` `WeaponDefinition` files. Do NOT change runtime source of truth. Run validator on output.
 8. **WEAPONDEF-SHADOW-COMPARE-1** — for every stock weapon row, diff legacy-`MasterComponent` runtime data vs generated `WeaponDefinition` across all facets (damage/heat/recycle/range/ammo/flags/category/crit-grid/icon/FX). Acceptance: stock component count matches · all generated defs validate · semantic diff zero (or waived) · mission + logistics smoke parity clean. Extend `tools/unit_converter/shadow_compare.py`.
-9. **Source gate `MC2_WEAPON_DEFINITION_SOURCE=legacy|generated`** — default **legacy**; flip only when shadow-compare is boring. Middle state (allowed earlier): **new mod weapons use native `WeaponDefinition` while stock stays legacy/synthesized.**
+9. **Source gate `MC2_WEAPON_DEFINITION_SOURCE (gate since removed)=legacy|generated`** — default **legacy**; flip only when shadow-compare is boring. Middle state (allowed earlier): **new mod weapons use native `WeaponDefinition` while stock stays legacy/synthesized.**
 10. **WEAPON-MODLINT-1** — add weapon validation to `tools/mc2_modlint/` (`mc2_modlint --weapon mods/x/weapons/y.fit` → modder-term errors) — reuse the CLI/report framework wholesale.
 
 Cross-cutting later: **HARDPOINT-ENFORCEMENT-1** (make typed hardpoints actually *restrict* mounting; gated, after def format authoritative — never enforce on legacy stock loadouts), and folding weapon defs into the top-level `UnitDefinition` package (loadout items reference `WeaponDefId`, not `masterID`).

@@ -19,7 +19,7 @@ If the question is general GLSL syntax, uniform API, or UBO/SSBO layout, defer t
 ## Inputs
 
 A list of GLSL files (`.vert`, `.frag`, `.tesc`, `.tese`, `.geom`, `.comp`) to review. Either:
-- An explicit list (`shaders/gos_terrain.frag shaders/water.vert`)
+- An explicit list (`shaders/gos_terrain.frag shaders/water.vert (removed)`)
 - "All recently modified shaders" (use `git diff --name-only` + filter to shader extensions)
 - "All shaders" (use `find shaders/ -name '*.vert' -o -name '*.frag' ...`)
 
@@ -55,12 +55,12 @@ Read `docs/amd-driver-rules.md` for the canonical list. Then check each shader a
 
 [PASS] shaders/gos_terrain.frag - no violations
 
-[FAIL] shaders/example.vert:12
+[FAIL] shaders/example.vert (removed):12
   Rule: Attribute 0 must be active
   Found: layout(location = 1) in vec3 position;  (no location 0 attribute)
   Fix: Add layout(location = 0) in vec4 unused; and read it: float _dummy = unused.x;
 
-[FAIL] shaders/sky.frag:1
+[FAIL] shaders/sky.frag (removed):1
   Rule: No #version directive in shader file
   Found: #version 430 core
   Fix: Remove the line. makeProgram() prepends the version string.

@@ -39,7 +39,7 @@ Always read these before answering. Your in-head knowledge is stale by definitio
 <core_knowledge>
 Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 
-- **Build flavor is RelWithDebInfo, always.** `cmake --build build64 --config RelWithDebInfo --target mc2`. Release crashes with `GL_INVALID_ENUM` on first frame (the canonical symptom of skipping the right flavor); Debug builds are not actively maintained. RelWithDebInfo has Tracy symbols available and matches the smoke-gate reference.
+- **Build flavor is RelWithDebInfo, always.** `cmake --build build64 --config RelWithDebInfo --target mc2`. Release crashes with `GL_INVALID_ENUM` on first frame (unverified 2026-10) (the canonical symptom of skipping the right flavor); Debug builds are not actively maintained. RelWithDebInfo has Tracy symbols available and matches the smoke-gate reference.
 
 - **`-DLINUX_BUILD` is defined globally on Windows** (CMakeLists.txt around line 55 on 2026-05-14; grep `LINUX_BUILD` for current location). This makes the engine treat itself as a Linux-style portable build even on native Windows. The path separator is `/` everywhere; never hardcode `\\` against `_WIN32` (silent crash at mission_load_start - documented in `mc2_path_separator_linux_build.md`).
 
@@ -65,7 +65,7 @@ Load-bearing facts. Cite file:line during invocation only after grep-verifying.
 </core_knowledge>
 
 <known_pitfalls>
-- **Skipping `--config RelWithDebInfo`:** Release crash on first frame with `GL_INVALID_ENUM`. Always include the flag.
+- **Skipping `--config RelWithDebInfo`:** Release crash on first frame with `GL_INVALID_ENUM`. (unverified 2026-10) Always include the flag.
 
 - **FFmpeg major-version bump touched only in one place:** build succeeds, runtime silently has no video. Touch BOTH `FindFFmpegLGPL.cmake` AND the `/DELAYLOAD:*` link flags. Grep `avcodec-` to find every site.
 
@@ -97,7 +97,7 @@ Starting points for grep. Citations were accurate on 2026-05-14 - grep before qu
 - `code/mc2video.cpp` - FFmpeg delay-load failure hook (grep `DelayLoadFailureHook` or `__pfnDliFailureHook`)
 - `build64/` - CMake-generated build dir; `RelWithDebInfo/mc2.exe` is the output; CMakeCache.txt is the cache
 - `mc2srcdata/build_scripts/` - GNU make recipes for stock FST/PAK; `aseconv`, `makefst`, `makersp`, `mpak`, `text_tool` invocations
-- `upscale_*.py`, `pack_mat_normal.py` (repo root) - Python ESRGAN/StableSR asset pipeline scripts; produce optional 4x loose-file TGAs
+- `upscale_*.py` (removed), `pack_mat_normal.py` (removed; was repo root) - Python ESRGAN/StableSR asset pipeline scripts; produce optional 4x loose-file TGAs
 - `.github/workflows/` - CI workflows if present (verify path)
 - `.planning/codebase/STACK.md` - languages, build, link libraries (snapshot 2026-05-14)
 - `.planning/codebase/INTEGRATIONS.md` - FFmpeg detail, asset pipeline bimodality (snapshot 2026-05-14)

@@ -63,7 +63,7 @@ Needs: buildings.csv row (whole-file shadow — high conflict surface), new `<me
 ## 4. RISK LADDER (gated slices, smallest first; all stock-byte-identical gate-OFF)
 
 ### S1 — EQUIP-ENABLE-WIRE-1 (enabled→purchase)
-Gate `MC2_EQUIPMENT_ENABLED_WIRE` (register in gate docs). Files: `code/logisticsdata.cpp` (1 hook in updateAvailability), `code/equipment_registry.h` (query helper). Proof: offline doctest on the pure filter; in-mission witness = mechlab shows a stock default-off weapon (registry-enabled) purchasable; gate-OFF diff = none. Hazards: none on save/MP (availability is recomputed, not persisted as ids); watch `available[255]` bound (assert id<255).
+Gate `MC2_EQUIPMENT_ENABLED_WIRE (gate since removed)` (register in gate docs). Files: `code/logisticsdata.cpp` (1 hook in updateAvailability), `code/equipment_registry.h` (query helper). Proof: offline doctest on the pure filter; in-mission witness = mechlab shows a stock default-off weapon (registry-enabled) purchasable; gate-OFF diff = none. Hazards: none on save/MP (availability is recomputed, not persisted as ids); watch `available[255]` bound (assert id<255).
 
 ### S2 — EQUIP-ADD-FILL-1 (new equipment on a free ordinal)
 Gate `MC2_EQUIPMENT_ADD` (+ requires SOURCE=generated). Files:
@@ -84,7 +84,7 @@ Gate `MC2_EQUIPMENT_ADD` (+ requires SOURCE=generated). Files:
 Gate shared w/ S2. Files: `gui/infowindow.cpp:630/649/795` (+ any IDS_COMP siblings), route name/abbrev via registry-with-legacy-fallback; `cmponent.cpp` name fill from def. Proof: offline unit test of resolver; witness = new weapon shows real name in info window + mechlab. Hazards: this is E4-list site 7 done early — UI-only, zero format risk; keep legacy path byte-identical when id has no registry entry.
 
 ### S4 — UNIT-VARIANT-ADD-1
-Gate `MC2_UNIT_VARIANT_ADD`. Files: `code/logisticsdata.cpp` (post-initVariants synthesis from generated unit defs) OR data-only v0 (example mod shadowing one `<mech>.csv` + purchase.fit — zero code, ship as EXAMPLE-MODS follow-on first). Proof: offline = modlint variant fixture; witness = new variant in mech bay list, purchasable, drops into mission via logistics. Hazards: variant component refs are uchar (fine ≤254); save recovery for mod variants already exists (`:1174`); VariantNumber in mission .fits = row-index coupling (document: appended variants only, never insert).
+Gate `MC2_UNIT_VARIANT_ADD (gate since removed)`. Files: `code/logisticsdata.cpp` (post-initVariants synthesis from generated unit defs) OR data-only v0 (example mod shadowing one `<mech>.csv` + purchase.fit — zero code, ship as EXAMPLE-MODS follow-on first). Proof: offline = modlint variant fixture; witness = new variant in mech bay list, purchasable, drops into mission via logistics. Hazards: variant component refs are uchar (fine ≤254); save recovery for mod variants already exists (`:1174`); VariantNumber in mission .fits = row-index coupling (document: appended variants only, never insert).
 
 **S4 SHIPPED (data-only v0, 2026-07-05, branch `claude/unit-variant-add-1`).** Recon claim RE-VERIFIED offline, TRUE:
 - Enumeration is OPEN-ENDED: `initVariants` `while (NO_ERR == readString(23+97n, col 2))` (`logisticsdata.cpp:565-575`) — no cap, no count field anywhere; the FIRST empty name cell terminates the walk (CSVFile empty cell = read failure, `csvfile.cpp:112-125`). buildings.csv row → chassis CSV path; whole-file mod shadow of `data/objects/<mech>.csv` is the ADD seam.

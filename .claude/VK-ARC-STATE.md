@@ -976,7 +976,7 @@ exactly ONE content serial per frame (handle 275 = the pilot PORTRAIT video, re-
 once per ~10 frames; the "handle 275 cycles serials 2..9 in a single frame" claim was
 a misread of a 400-line DRAW_DUMP that spans ~5 frames — the draw dump reads serial at
 FLUSH time so it structurally shows one serial per handle per frame regardless). A full
-mirror-content dump (`MC2_VK_HUD_MIRROR_DUMP`) of every HUD texture proved they are all
+mirror-content dump (`MC2_VK_HUD_MIRROR_DUMP (gate since removed)`) of every HUD texture proved they are all
 byte-clean (font atlas 227, pilot portraits 233/281, icon atlases 254/285, panels) — so
 there was never any texture-content corruption for the (handle,serial) key to fix.
 
@@ -1298,7 +1298,7 @@ verified: gates native HUD/ImGui tail), `MC2_VK_SHADOW_INTEROP` /
 `MC2_VK_CSM_ARRAY_INTEROP` / `MC2_VK_CSM_FULLMAP_INTEROP` (feed the surviving direct CSM
 producers), `MC2_VK_PRESENT_DIRECT_FBO` / `MC2_VK_POST_COMPOSITE` (live arming),
 `MC2_VK_PRESENT_NATIVE_STRICT` / `MC2_VK_SHARED_SCENE_STRICT` /
-`MC2_VK_NO_GL_INTEROP[_RESOURCE]_STRICT` (Metal-gate canaries).
+`MC2_VK_NO_GL_INTEROP (gate since removed)[_RESOURCE]_STRICT` (Metal-gate canaries).
 
 ### ★ ITEM-6 DECISION BRIEF (for the USER)
 
@@ -1365,11 +1365,11 @@ solely by the native VK composite (+ native HUD/ImGui in the tail hook).
   drop deprecated `MC2_VK_PRESENT_NO_GL_IMPORT=1` env requirement. Invariant present==copy1_skip
   ==gl_handoff_skip && copy1_blit==0 preserved (counters increment structurally).
 - **Verification** (clean deployed `e09eee3e320b`): resource-strict visible proof **VERDICT
-  PASS** (`.claude/vk-item8-proof-final/`): 11/11 deterministic bookmarks, all H1 forbidden 0
+  PASS** (`.claude/vk-item8-proof-final/ (removed)`): 11/11 deterministic bookmarks, all H1 forbidden 0
   incl. glInteropSignal/Wait/glInteropViewCreate/vkImageResourceCreate(exportable), VK-only
   receipt present, islands terrain/prop 1022 / mech 957 / water 1022 forbidden_*=0,
   present/copy1_skip/gl_handoff_skip/composite/imgui=900, copy1_blit=0, provenance sha match.
-  Resize exercise (`.claude/vk-item8-resize2/`): `resize_count=3 resize_recreate_ok=3
+  Resize exercise (`.claude/vk-item8-resize2/ (removed)`): `resize_count=3 resize_recreate_ok=3
   retries=0 failsoft=0`, VK present active, 0 NATIVE_WINDOW_IN_USE/DEVICE_LOST/crash,
   validation_errors=0. GL control gates-off `--verify`: 10/11 STABLE, lone `cross_map_view`
   DRIFT = documented GL pose nondeterminism. Canonical tier1 5/5 PASS both states +0 destroys
@@ -1411,11 +1411,11 @@ near-array (binding 8) + full-map (binding 9) `VkImageView`s are the only CSM pr
   serves the dynamic single-map fallback + checker trip-wire).
 - **Verification** (clean deployed `9e80f139cc27`): resource-strict visible proof
   `check_vk_nointerop_log.py --expect-sha 9e80f139cc27` **VERDICT PASS**
-  (`.claude/vk-item7-csm-proof/`): 11/11 deterministic bookmarks incl. `ridge_lowangle`
+  (`.claude/vk-item7-csm-proof/ (removed)`): 11/11 deterministic bookmarks incl. `ridge_lowangle`
   (shadow_cascade), all H1 forbidden 0 incl. `PERFRAME_READBACK`, all islands
   `forbidden_getTexImage=0`, ownership terrain 1022 / prop 1022 / mech 957 / water 1022,
   VK-only substrate, terrain `stage_us=2.3`, present counters 900/900 copy1_blit=0,
-  provenance dirty=False sha match. CSM direct receipts (`.claude/vk-item7-copystats/`,
+  provenance dirty=False sha match. CSM direct receipts (`.claude/vk-item7-copystats/ (removed)`,
   `MC2_VK_TERRAIN_COPY_STATS=1`): `copies_ms=0.0004 csmArrayReady=1 csmArrayDirect=1
   csmFullMapReady=1 csmFullMapDirect=1`; shadow island `CSM array target 8192x8192
   layers=2 (direct binding 8)` + `CSM full-map 4096x4096 (direct binding 9)`. Canonical
@@ -1459,11 +1459,11 @@ half is deleted and the former `vkOnlyNoGlView` path is the ONLY path.
   `(VK-only depth)` when the shared scene is armed.
 - **Verification** (all at clean deployed `12fe7c4b85b3`): resource-strict visible proof
   `check_vk_nointerop_log.py --resource-strict --expect-sha 12fe7c4b85b3` **VERDICT
-  PASS** (`.claude/vk-item5-proof-final2/`): 11/11 deterministic bookmarks, all H1
+  PASS** (`.claude/vk-item5-proof-final2/ (removed)`): 11/11 deterministic bookmarks, all H1
   forbidden 0 (incl. deleted GL-import receipts), all islands `forbidden_*=0`, ownership
   terrain 1022 / prop 1022 / mech 957 / water 1022, VK-only substrate receipts present,
   present/copy1_skip/gl_handoff_skip/composite/imgui = 900, copy1_blit=0. Override check
-  (`.claude/vk-item5-override2/`): both deprecation notes printed, **zero** strict aborts
+  (`.claude/vk-item5-override2/ (removed)`): both deprecation notes printed, **zero** strict aborts
   (`=0` is inert — hybrid arm gone). GL control gates-off `--verify` byte pair: 10/11
   STABLE, lone `cross_map_view` DRIFT = documented pre-existing GL pose nondeterminism.
   Canonical tier1 5/5 PASS both states +0 destroys (GL, and
@@ -1511,14 +1511,14 @@ prop/water guard restore `c2c21682` + terrain `741b9e4f`).
   target (the dropped GL-view requirement only ever declined the deleted arm).
 - **Verification** (all at clean deployed `741b9e4faffb`): strict proof
   `check_vk_nointerop_log.py --expect-sha 741b9e4faffb` **VERDICT PASS**
-  (`.claude/vk-item4-terrain-proof/`): 11/11 deterministic bookmarks, all H1 forbidden
+  (`.claude/vk-item4-terrain-proof/ (removed)`): 11/11 deterministic bookmarks, all H1 forbidden
   strings 0, all islands `forbidden_*=0` AND ownership `used_vulkan>0` (terrain 1022 /
   prop 1022 / mech 957 / water 1022), terrain `interop_active=0 vk2gl_sem=0 stage_us=3.3
   fallback_reason=""`, present counters 900/900 with `copy1_blit=0`. Override check
-  (`.claude/vk-item4-terrain-override/`, explicit `=0` + `MC2_VK_TERRAIN_GL_FALLBACK_
+  (`.claude/vk-item4-terrain-override/ (removed)`, explicit `=0` + `MC2_VK_TERRAIN_GL_FALLBACK_
   AUDIT=1`): deprecation note printed, island STILL native (`used_vulkan=1022`, zero
   strict aborts), audit steady `gl_fallback=0 edge_stitch=0 captured_stitch=3` —
-  captured_stitch UNCHANGED vs the pre-deletion `.claude/edgestitch-audit/` receipt.
+  captured_stitch UNCHANGED vs the pre-deletion `.claude/edgestitch-audit/ (removed)` receipt.
   GL control gates-off `--verify` byte pair: 10/11 STABLE; lone `cross_map_view` DRIFT =
   documented pre-existing GL pose nondeterminism (identical to the a0cba0c4 control).
   Canonical tier1 5/5 PASS both states +0 destroys (GL, and
@@ -1565,7 +1565,7 @@ captured WITH edge-stitch already VK-owned — they are NOT an edge-stitch-owner
 signal. This session de-staled all three comments so the phantom can't recur.
 
 **Live proof (`64affd28`, deployed 0.4c, strict-visible sweep +
-`MC2_VK_TERRAIN_GL_FALLBACK_AUDIT=1`, `.claude/edgestitch-audit/strict/`):**
+`MC2_VK_TERRAIN_GL_FALLBACK_AUDIT=1`, `.claude/edgestitch-audit/strict/ (removed)`):**
 `[VK_TERRAIN_GL_FALLBACK_AUDIT v1] total=15 captured=15 gl_fallback=0 edge_stitch=0
 captured_stitch=3` — zero patches fall to GL for edge-stitch, and 3 CAPTURED
 patches carry a nonzero stitch mask (direct proof stitched geometry is VK-owned).
@@ -1632,7 +1632,7 @@ back-compat accepts the explicit gate). The `MC2_VK_*_INTEROP` ENABLE gates
 Under the umbrella the delete is behaviorally INERT (directChain already defaulted true →
 `useGpuVk2Gl` was already false → the deleted branches never executed under strict).
 Functional strict-visible proof (dirty `c2c21682+`, `--minimal-promotion`,
-`.claude/vk-item4-shadow-func-check/`): 11/11 deterministic bookmarks, shadow health
+`.claude/vk-item4-shadow-func-check/ (removed)`): 11/11 deterministic bookmarks, shadow health
 `used_vulkan=4088 used_interop=0 interop_active=0 vk2gl_sem=0 direct_chain=1
 fallback_reason="" forbidden_*=0`; `check_vk_nointerop_log.py --no-resource-strict`
 **VERDICT PASS** (all islands ok, ownership ok, H3/H4/H5/H6 ok). Clean `--expect-sha` proof
@@ -1669,7 +1669,7 @@ mech gate but resolves ON under the umbrella — left as-is, mirroring the `a0cb
 that did not touch it; only an explicit =0 debug override would gate posts.)
 
 **PARITY / OWNERSHIP PROOF (Step 2), `guardfix` @ `1ea7bc8a dirty=1`, mc2_01 strict-visible
-`--resource-strict --minimal-promotion` (`.claude/ownership-fix/guardfix-mc2_01/`).** Island
+`--resource-strict --minimal-promotion` (`.claude/ownership-fix/guardfix-mc2_01/ (removed)`).** Island
 receipts — the ownership gap is CLOSED:
 - **prop `used_vulkan` 0 → 1022** `used_interop=0 interop_active=0 forbidden_*=0 fallback_reason=""`
   inst_records=1008 type_runs=80 geom_verts=23628 vk_draws=1.
@@ -1757,12 +1757,12 @@ readiness gates, ONE receipt; transient keeps fail-hard-retry). Pure-GL path unt
 
 Verification at `bc923366 dirty=0`: strict no-interop proof **VERDICT PASS**
 (`check_vk_nointerop_log.py --expect-sha bc923366`, minimal umbrella env via
-`--minimal-promotion`, `.claude/vk-item4-proof-minimal-r2/`): all H1 forbidden interop
+`--minimal-promotion`, `.claude/vk-item4-proof-minimal-r2/ (removed)`): all H1 forbidden interop
 strings 0, all island `forbidden_*`/`depthin_*` 0, present_frames=900, terrain stage_us=9.7,
 provenance dirty:false + sha match. Umbrella receipts: mech `used_vulkan=957 fallback=""`,
 fog/ssao/screenfx/hzb `attempted==used_vulkan`, `direct_chain=1 used_interop=0 fallback=""`.
 Override: `MC2_VK_POST_HZB_DIRECT_CHAIN=0` → deprecation note + HZB stays
-`direct_chain=1 used_interop=0`, **zero** strict aborts (`.claude/vk-item4-override-hzb/`).
+`direct_chain=1 used_interop=0`, **zero** strict aborts (`.claude/vk-item4-override-hzb/ (removed)`).
 GL control (`--verify`, gates-off): 10/11 bookmarks byte-STABLE; the lone `cross_map_view`
 DRIFT is a pre-existing GL pose nondeterminism unreachable by the VK-island edits. Canonical
 tier1 **5/5 PASS both states** (GL `2026-07-10T20-37-43`, VK umbrella `2026-07-10T20-41-27`,
@@ -1833,10 +1833,10 @@ note. Pure-GL product path untouched (all edits `#ifdef MC2_VULKAN_ISLAND` /
 
 Verification at clean deployed `66f5c3e92076` (dirty=0, lane `mc2-win64-0.4c`):
 strict no-interop proof re-run PASS both modes (handoff-strict
-`.claude/vk-nointerop-item9-proof/` and resource-strict
-`.claude/vk-nointerop-item9-proof-rstrict2/`, hardened checker `--expect-sha`,
+`.claude/vk-nointerop-item9-proof/ (removed)` and resource-strict
+`.claude/vk-nointerop-item9-proof-rstrict2/ (removed)`, hardened checker `--expect-sha`,
 `[VK_MECH_TIER1] used_vulkan>0 forbidden_*=0 fallback_reason=""`); default-umbrella
-FEED-AUDIT `.claude/vk-item9-umbrella-audit/` shows `source=cpu-native` (was
+FEED-AUDIT `.claude/vk-item9-umbrella-audit/ (removed)` shows `source=cpu-native` (was
 gl-readback) with geometry + lights `mismatch=0` byte-identical, 122 mechs native;
 canonical tier1 5/5 PASS both states (+0 destroys). First resource-strict attempt
 hit the known intermittent swapchain `NATIVE_WINDOW_IN_USE` flake (present_frames=0
@@ -1846,7 +1846,7 @@ decline), then items 5/2/1 (`gl_interop_view.cpp` family).
 
 ## 2026-07-10 — VK-NOINTEROP-STRICT-REVIEW: proof regenerated, prior proof invalidated
 
-The checked-in no-interop proof (`.claude/vk-nointerop-resource-strict-review-current/`,
+The checked-in no-interop proof (`.claude/vk-nointerop-resource-strict-review-current/ (removed)`,
 untracked, built dirty at `a7e3e5af`, 7 commits behind) was a **realized false-pass**:
 `check_vk_nointerop_log.py` exited 0 while the 126 ms/frame 8192² glGetTexImage CSM
 readback was active (later killed by `62707331`). Adversarial review found the checker
@@ -1878,8 +1878,8 @@ window, clean-exit after sweep). Two independent runs both **VERDICT PASS** (exi
 all 5 island health lines present with `forbidden_*`/`depthin_*` == 0, zero PERFRAME_READBACK
 markers, terrain `stage_us`=7.4µs, canary GL-skip invariant (`gl_handoff_skip_frames`==
 `present_frames`==900, `copy1_blit_frames`==0), provenance dirty:false + sha match. Artifacts
-(untracked, matching the prior dir): `.claude/vk-nointerop-proof-7a5bf1fa/{run1,run2}/`.
-Prior proof archived to `.claude/vk-nointerop-proof-archive-a7e3e5af/` (invalidated, not deleted).
+(untracked, matching the prior dir): `.claude/vk-nointerop-proof-7a5bf1fa/ (removed){run1,run2}/`.
+Prior proof archived to `.claude/vk-nointerop-proof-archive-a7e3e5af/ (removed)` (invalidated, not deleted).
 
 Regen surfaced (and fixed) two real residuals the OLD dead-counter checker masked: a 2-frame
 terrain warmup CSM GL readback (`forbidden_getTexImage`=2, now fail-soft under strict) and a
@@ -1901,7 +1901,7 @@ render passes with 3 stamps (pass-start / draws-start / pass-end). Emits a
 `[VK_TERRAIN_ISLAND]`/`[VK_MECH_TIER1] GPU_TIMESTAMPS ...` line at island teardown.
 Gate OFF = zero query commands, byte-identical.
 
-Strict-native measured breakdown (800x600, EMA; full table in `.claude/VK-OPT-BACKLOG.md`):
+Strict-native measured breakdown (800x600, EMA; full table in `.claude/VK-OPT-BACKLOG.md (removed)`):
 - **terrain = GPU FRAGMENT-bound** — gpu_draw 1026µs (mc2_01) / 817µs (mc2_24) =
   67-73% of cpu_draw_us; setup 5µs negligible; ~2ns/px, scales to ≈4400µs at 1080p
   (matches the reported baseline). Vertex/bind cost is trivial (20-32 patches).
@@ -1914,7 +1914,7 @@ static 16 taps, POM early-exit break all = GL) so there is no parity-safe fragme
 reduction — a cut would violate the parity mandate; GL pays the same cost
 (features-not-perf, not a regression). Verification: two strict-native visible
 captures gate-ON, 11/11 deterministic bookmarks each, no validation errors / strict
-abort / crash; `.claude/vk-drawperf/mc2_01/` + `.claude/vk-drawperf/mc2_24/`.
+abort / crash; `.claude/vk-drawperf/mc2_01/ (removed)` + `.claude/vk-drawperf/mc2_24/ (removed)`.
 Honest next lever = per-island submit/fence-wait serialization (structural, deferred).
 
 ## 2026-07-10 — VK-SWAPCHAIN-RESIZE-HARDEN-1 (LATEST — closes the NATIVE_WINDOW_IN_USE follow-up)
@@ -1938,7 +1938,7 @@ Verification (deploy `A:/Games/mc2-opengl/mc2-win64-0.4c`):
   non-strict VK present): `resize_count=8 resize_recreate_ok=8
   resize_recreate_retries=0 resize_recreate_failsoft=0`, **0 NATIVE_WINDOW_IN_USE**,
   `present_frames=4501`, `fallback_reason=""`. Scene rendered across every resize.
-- **Strict no-interop visible** (`.claude/vk-resize-harden-strict-proof/`): 11/11
+- **Strict no-interop visible** (`.claude/vk-resize-harden-strict-proof/ (removed)`): 11/11
   bookmarks present + deterministic; `check_vk_nointerop_log.py` **PASS** (all
   forbidden strings 0, `present_frames/copy1_skip/gl_handoff_skip/composite_vk/
   imgui_vk = 4200`, `copy1_blit=0`, env receipts present); new receipts emit in
@@ -2003,7 +2003,7 @@ smoke, visual, and RenderDoc harnesses. Do not rely on default deploy/visual
 lanes (`v0.4`, `v0.4d-rc1`, or non-v-prefixed `0.4c` paths).
 Rung-8 sub-ladder: `.claude/VK-RUNG8-LADDER-1.md` (8.1-8.7w shipped). Visible
 strict proof for the full native final tail lives at
-`.claude/vk-present-native-strict-visible-clean/`: 3/3 deterministic
+`.claude/vk-present-native-strict-visible-clean/ (removed)`: 3/3 deterministic
 `mc2_01_buildings` bookmarks, `present_frames=2700`, `copy1_blit_frames=0`,
 `gl_handoff_skip_frames=2700`, `composite_vk_frames=2700`,
 `imgui_vk_frames=2700`, `fallback_reason=""`. Next work is not 8.4/8.5 replay;
@@ -2028,25 +2028,25 @@ production `glInteropSignalToVk`/`glInteropWaitFromVk` call, while
 `MC2_HZB_BUILD=1`, `MC2_VK_POST_HZB=1`, `MC2_VK_POST_HZB_DIRECT_CHAIN=1`,
 `MC2_VK_POST_COMPOSITE_DIRECT_CHAIN=1` now make a visible `mc2_01` full
 bookmark sweep pass with the handoff strict canary armed:
-`.claude/vk-nointerop-strict-visible-shadow-direct-clean-final/`, 11/11
+`.claude/vk-nointerop-strict-visible-shadow-direct-clean-final/ (removed)`, 11/11
 deterministic. Log shows `sha=53311e5aced3 dirty=0`,
 `MC2_VK_SHADOW_DIRECT_CHAIN=1 -- VK shadow products stay VK-owned; GL
 semaphore wait is skipped`, first VK shadow/CSM products, present
 `composite_vk_frames=6600 gl_handoff_skip_frames=6600`, and zero occurrences
 of `[VK_NO_GL_INTEROP_STRICT]`, `glInteropSignalToVk`, or
 `glInteropWaitFromVk`. Detailed post-health receipt is in the immediately prior
-dirty proof `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/`
+dirty proof `.claude/vk-nointerop-strict-visible-shadow-direct-dirty-receipts/ (removed)`
 with screenfx `shadow_frames=6629 direct_chain=1 used_interop=0` and
 HZB/fog/SSAO/water/prop all `used_interop=0`.
 Follow-up 8.7ad dirty proof
-`.claude/vk-nointerop-strict-visible-static-off-dirty/` forced
+`.claude/vk-nointerop-strict-visible-static-off-dirty/ (removed)` forced
 `MC2_VK_STATIC_SHADOW_MAP=0`; it still passed 11/11 deterministic bookmarks
 with no `VK_SHARED_STATIC_SHADOW` log lines and screenfx
 `shadow_frames=4687 direct_chain=1 used_interop=0 fallback_reason=""`. This
 removes the static-shadow export/import from the strict stack; resource-strict
 still fails earlier at shared scene color/depth/present.
 Follow-up 8.7ae harness proof
-`.claude/vk-nointerop-strict-visible-ui-tail-long-dirty/` added native UI tail
+`.claude/vk-nointerop-strict-visible-ui-tail-long-dirty/ (removed)` added native UI tail
 gates to the strict stack: `MC2_VK_HUD=1`, `MC2_VK_HUD_COLOR_PROOF=1`,
 `MC2_VK_HUD_SKIP_GL=1`, and `MC2_VK_IMGUI=1`. It passed 11/11 deterministic
 bookmarks on clean deployed binary `sha=d5faad0feb69 dirty=0`; final present
@@ -2056,12 +2056,12 @@ receipt reached `present_frames=8100`, `copy1_skip_frames=8100`,
 `hud_vk_textured_draws_last=69`, `imgui_vk_frames=8100`,
 `fallback_reason=""`, with `[VK_HUD_SKIP v1] ... reason="native_full_coverage"`
 and no `[VK_NO_GL_INTEROP_STRICT]` abort.
-Follow-up 8.7af present no-import proof (commit `3339ca20`) added `MC2_VK_PRESENT_NO_GL_IMPORT=1`: EnginePresentVk allocates the present target as VK-only/non-exportable when the strict native final-tail stack is armed, and `gosPostProcess::endScene()` uses a VK-only direct-present sentinel instead of a GL FBO. Clean proof `.claude/vk-nointerop-strict-visible-present-noimport-clean-final/` passed 11/11 deterministic `mc2_01` bookmarks on deployed binary `sha=3339ca203cb6 dirty=0`; final present receipt reached `present_frames=6300`, `copy1_blit_frames=0`, `copy1_skip_frames=6300`, `gl_handoff_skip_frames=6300`, `tail_hook_frames=6300`, `composite_vk_frames=6300`, `hud_vk_consumed_frames=5523`, `hud_vk_textured_draws_last=69`, `imgui_vk_frames=6300`, `fallback_reason=""`. Absence check: zero `[VK_NO_GL_INTEROP_STRICT]`, zero `glInteropSignalToVk`, zero `glInteropWaitFromVk`, zero `VK_SHARED_STATIC_SHADOW`, zero present resize/copy fallback strings. This removes the present-specific GL memory import; remaining resource-strict blockers are shared scene color/depth/object-id and other earlier-scene export/import substrates.
+Follow-up 8.7af present no-import proof (commit `3339ca20`) added `MC2_VK_PRESENT_NO_GL_IMPORT=1`: EnginePresentVk allocates the present target as VK-only/non-exportable when the strict native final-tail stack is armed, and `gosPostProcess::endScene()` uses a VK-only direct-present sentinel instead of a GL FBO. Clean proof `.claude/vk-nointerop-strict-visible-present-noimport-clean-final/ (removed)` passed 11/11 deterministic `mc2_01` bookmarks on deployed binary `sha=3339ca203cb6 dirty=0`; final present receipt reached `present_frames=6300`, `copy1_blit_frames=0`, `copy1_skip_frames=6300`, `gl_handoff_skip_frames=6300`, `tail_hook_frames=6300`, `composite_vk_frames=6300`, `hud_vk_consumed_frames=5523`, `hud_vk_textured_draws_last=69`, `imgui_vk_frames=6300`, `fallback_reason=""`. Absence check: zero `[VK_NO_GL_INTEROP_STRICT]`, zero `glInteropSignalToVk`, zero `glInteropWaitFromVk`, zero `VK_SHARED_STATIC_SHADOW`, zero present resize/copy fallback strings. This removes the present-specific GL memory import; remaining resource-strict blockers are shared scene color/depth/object-id and other earlier-scene export/import substrates.
 Follow-up 8.7ag strict harness hardening (commit `53a38a95`) added the shipped
 max-native geometry/feed gates to `run_vk_nointerop_strict_visible.py`:
 `MC2_VK_TERRAIN_ALL_LODS=1`, `MC2_VK_TERRAIN_SKIRTS=1`,
 `MC2_VK_TERRAIN_VISUALDISPLACE_FAR=1`, and `MC2_VK_MECH_FEED_NATIVE=1`.
-Clean proof `.claude/vk-nointerop-strict-visible-maxnative-harness-dirty/`
+Clean proof `.claude/vk-nointerop-strict-visible-maxnative-harness-dirty/ (removed)`
 used deployed binary `sha=3339ca203cb6 dirty=0`, passed 11/11 deterministic
 `mc2_01` bookmarks, and kept final present at `present_frames=6300`,
 `copy1_blit_frames=0`, `gl_handoff_skip_frames=6300`,
@@ -2074,7 +2074,7 @@ queries around `gosRenderer::drawTerrainOverlays()`,
 `drawDecalStaticBatch()`, and `drawDecals()` with
 `MC2_VK_TERRAIN_OVERLAY_GL_CANARY=1`, `MC2_VK_DECAL_STATIC_GL_CANARY=1`, and
 `MC2_VK_TERRAIN_DECAL_GL_CANARY=1`. Dirty proof
-`.claude/vk-scene-draw-canaries-strict-dirty-rerun/` passed 11/11
+`.claude/vk-scene-draw-canaries-strict-dirty-rerun/ (removed)` passed 11/11
 deterministic `mc2_01` bookmarks on deployed binary `sha=7a02638532cc
 dirty=1`; final present receipt reached `present_frames=6300`,
 `copy1_blit_frames=0`, `copy1_skip_frames=6300`,
@@ -2094,7 +2094,7 @@ Follow-up 8.7ah fog direct-resource init (commit `42cedc66`) made
 mode. This does not remove the shared depth/color export/import substrate yet,
 but it removes a false GL-wrapper dependency from the first honest direct
 consumer. Clean proof
-`.claude/vk-nointerop-strict-visible-fog-direct-resource-clean-rerun/` passed
+`.claude/vk-nointerop-strict-visible-fog-direct-resource-clean-rerun/ (removed)` passed
 11/11 deterministic `mc2_01` bookmarks on deployed binary `sha=42cedc661baf
 dirty=0`; fog health reached `attempted=6503`, `used_vulkan=6503`,
 `direct_chain=1`, `used_interop=0`, `gl_skipped=13006`,
@@ -2110,7 +2110,7 @@ Follow-up 8.7ai post direct-resource init (commit `8d721188`) applied the same
 direct-chain readiness rule to SSAO and screenfx: `vulkan_post_ssao_native.cpp`
 and `vulkan_post_screenfx_native.cpp` require shared `VkImageResource` handles
 under their direct-chain gates, while GL views remain mandatory only for handoff
-mode. Clean proof `.claude/vk-nointerop-strict-visible-post-direct-resource-clean/`
+mode. Clean proof `.claude/vk-nointerop-strict-visible-post-direct-resource-clean/ (removed)`
 passed 11/11 deterministic `mc2_01` bookmarks on deployed binary
 `sha=8d7211888a2c dirty=0`; SSAO health reached `attempted=6493`,
 `used_vulkan=6493`, `direct_chain=1`, `used_interop=0`,
@@ -2126,7 +2126,7 @@ reached `present_frames=6300`, `copy1_blit_frames=0`,
 `VK_SHARED_STATIC_SHADOW`, zero present resize/copy fallback strings.
 Follow-up 8.7aj scene-producer audit added `MC2_VK_SCENE_GL_PRODUCER_QUERY`
 and `MC2_VK_TERRAIN_GL_FALLBACK_AUDIT`. Dirty proof
-`.claude/vk-terrain-gl-fallback-audit-strict-dirty/` passed 11/11 deterministic
+`.claude/vk-terrain-gl-fallback-audit-strict-dirty/ (removed)` passed 11/11 deterministic
 `mc2_01` bookmarks, kept no-interop strict absence at zero, and proved the live
 terrain GL residue was entirely edge-stitch fallback: steady audit lines had
 `inactive=0 band=0 displace=0 other=0` with `edge_stitch=3..4`; the scene query
@@ -2135,7 +2135,7 @@ Follow-up 8.7ak terrain edge-stitch ownership ports the GL coarse stitch and
 mode-2 stitched-bake vertex math into `terrain_tier1.vert` and
 `terrain_tier1_skirt.vert`, adds packed `edgeStitch` plus `quadCountX/Y` to the
 terrain VK patch UBO tail, and removes edge-stitch from the GL fallback
-predicate. Dirty proof `.claude/vk-terrain-edge-stitch-strict-dirty/` passed
+predicate. Dirty proof `.claude/vk-terrain-edge-stitch-strict-dirty/ (removed)` passed
 11/11 deterministic bookmarks with final present `present_frames=6300`,
 `copy1_blit_frames=0`, `gl_handoff_skip_frames=6300`,
 `composite_vk_frames=6300`, `hud_vk_consumed_frames=5525`,
@@ -2145,13 +2145,13 @@ rasterizes through GL under the max-native strict stack. The scene producer quer
 still reports `any_samples=1`, so the next ownership slice is a non-terrain
 sceneFBO writer canary/port (likely overlays, decals, or another direct world
 draw), not resource-strict deletion yet.
-Clean proof `.claude/vk-terrain-edge-stitch-strict-clean/` reran the same gate
+Clean proof `.claude/vk-terrain-edge-stitch-strict-clean/ (removed)` reran the same gate
 on `sha=0aae033779b9 dirty=0` and preserved the same result: 11/11
 deterministic, terrain `gl_fallback=0` through frame 6300, no strict interop, and
 final present `present_frames=6300`, `copy1_blit_frames=0`,
 `gl_handoff_skip_frames=6300`, `composite_vk_frames=6300`,
 `hud_vk_consumed_frames=5600`, `imgui_vk_frames=6300`, `fallback_reason=""`.
-Follow-up scoped canary `.claude/vk-screenshadow-gl-canary-strict-dirty/`
+Follow-up scoped canary `.claude/vk-screenshadow-gl-canary-strict-dirty/ (removed)`
 proved the broad `MC2_VK_SCENE_GL_PRODUCER_QUERY` is over-broad: it spans GL
 shadow-map rendering, so `any_samples=1` is not by itself evidence of a
 sceneFBO producer. The scoped `MC2_VK_SCREENSHADOW_GL_CANARY=1` wrapper around
@@ -2160,11 +2160,11 @@ while native screenfx health reported `shadow_frames=3245`, `gl_skipped=6490`,
 `direct_chain=1`, `used_interop=0`, `fallback_reason=""`. Next producer search
 must use scoped per-pass canaries, not the broad beginScene/endScene query.
 Final exact-binary regression after reviewer fixes:
-`.claude/vk-nointerop-strict-visible-final-smoke/`, engine smoke PASS,
+`.claude/vk-nointerop-strict-visible-final-smoke/ (removed)`, engine smoke PASS,
 7 deterministic bookmarks before duration, `composite_vk_frames=300`,
 `gl_handoff_skip_frames=300`, `VK_WATER_TIER1 used_interop=0`, no strict abort.
 LowLight alternate composite mode is also strict-clean at
-`.claude/vk-nointerop-strict-visible-lowlight/` (`MC2_VIEW_MODE=lowlight`,
+`.claude/vk-nointerop-strict-visible-lowlight/ (removed)` (`MC2_VIEW_MODE=lowlight`,
 engine smoke PASS, `composite_vk_frames=300`, no strict abort). ObjectIdDebug
 strict is green under `MC2_VK_OBJECTID_DIRECT_CHAIN=1`; it is a deletion canary,
 not a pixel-parity port for native ObjectId MRT2 writes. Next direct-chain work
@@ -2208,7 +2208,7 @@ Harness/code fixes during recovery:
   cloud proof was impossible because Popen dropped the gate. Corrected docs to
   match code: `MC2_CLOUD_SHADOW=1` is default-OFF.
 
-Evidence (`.claude/vk-post-screenfx/`):
+Evidence (`.claude/vk-post-screenfx/ (removed)`):
 - Build: `build64_island` Vulkan target PASS; shader target PASS; deployed to
   `A:/Games/mc2-opengl/mc2-win64-0.4c` with explicit `--exe` lane.
 - Offline: `check_ubo_layout.py --pair screenfx_cloud` PASS; `--pair
@@ -2269,7 +2269,7 @@ uploads, scene-color pull/preload + blended-color readback/writeback
 (island forbidden_* counters showed 2497 each per 2497-frame run,
 total_us ~15281/frame vs native render_us 300-680).
 
-Evidence (`.claude/vk-post-ssao/` -- ssao_oracle.py + cap/*; MC2_SSAO=1 in ALL
+Evidence (`.claude/vk-post-ssao/ (removed)` -- ssao_oracle.py + cap/*; MC2_SSAO=1 in ALL
 configs; stock AO tunables are near-invisible at RTS poses, so parity was also
 proven under a boosted tuning profile `visual_tuning_aoboost.json`
 (aoRadius 24 / aoStrength 2.0 via MC2_VISUAL_TUNING_FILE) where the GL AO
@@ -2326,7 +2326,7 @@ readback + staging upload ("P5" finally closed), 2x per-frame
 `glCopyImageSubData` color round-trips, and the subgraph's PRIVATE
 VkInstance/VkDevice (which is provably UNUSABLE under `MC2_RENDER_BACKEND=vulkan`:
 R2 interlock coerces its interop OFF and the readback-mode run CRASHED in
-present swapchain rebuild — captured in `.claude/vk-post-fog/cap/vk_subgraph/`).
+present swapchain rebuild — captured in `.claude/vk-post-fog/cap/vk_subgraph/ (removed)`).
 
 Evidence (`.claude/vk-post-fog/` — fog_oracle.py + cap/*):
 - Offline trio: check_vk_shaders 34/34, check_ubo_layout 5/5 OK, glsl_port_diff
@@ -2451,7 +2451,7 @@ VERBATIM into `shaders/vulkan/water_geom.frag`: SH-L2 sky coeffs + waterEvalHdri
   (bar <=0.6 met). Single-variable execution proof: vk_water vs
   vk_water_refloff (MC2_WATER_REFLECTION=0) = 9.35/ch cov 99% — the ported
   block demonstrably executes and honors the GL gate. Artifacts:
-  `.claude/vk-water-tier1/cap/` (rung-6 baselines preserved in `cap_rung6/`),
+  `.claude/vk-water-tier1/cap/ (removed)` (rung-6 baselines preserved in `cap_rung6/`),
   driver `run_65.py`, analyzer `mad_65.py`.
 - Smoke: tier1 5/5 PASS both states (gates-OFF and full VK_BASE+WATER_TIER1),
   +0 destroy-delta all missions, worktree run_smoke vs 0.4c exe.
@@ -2542,14 +2542,14 @@ visualMode in Mc2TerrainTier1Patch, feed-dump displacedPatches field.
 - Residuals/deferred: mode-1 LOD0 port (L slice); stitched-patch ownership;
   0.4c lane ships NO visual_height_4x.r32 bakes (only v0.4 does) — live tests
   used MC2_TERRAIN_VISUAL_HEIGHT_FILE override; feed-dump readyToDump gating
-  under sweeps; artifacts `.claude/vk-visdisp-far/`.
+  under sweeps; artifacts `.claude/vk-visdisp-far/ (removed)`.
 
 ## Gate inventory (umbrella + sub-gates)
 
 - Umbrella: `MC2_VK_SHARED_GBUFFER=1` arms the family; explicit per-gate env
   overrides (`MC2_VK_TERRAIN_TIER1`, `MC2_VK_TERRAIN_ALL_LODS`,
   `MC2_VK_TERRAIN_SKIRTS`, `MC2_VK_TERRAIN_LIGHTING`, `MC2_VK_TERRAIN_DYNSHADOW`,
-  `MC2_VK_TERRAIN_DETAIL`, `MC2_VK_TERRAIN_LODFADE`, `MC2_VK_PROP_TIER1`,
+  `MC2_VK_TERRAIN_DETAIL`, `MC2_VK_TERRAIN_LODFADE`, `MC2_VK_PROP_TIER1 (gate since removed)`,
   `MC2_VK_MECH_TIER1`, ...) win when explicitly set 0/1.
 - All default-OFF; umbrella-ON verified live this session (see FPS table below).
 
@@ -2629,7 +2629,7 @@ before ending the session. Keep this file under ~60 lines.
 
 Standing rule: every fix verifies under the FULL launcher field env
 (`tracy-vk-compare.bat` + `MC2_STATICPROP_TEX_TIER=512`), not gate-isolated.
-Oracle: `.claude/mech-parity/field_oracle.py` (field GL/VK bookmark sweep). NOTE:
+Oracle: `.claude/mech-parity/field_oracle.py (removed)` (field GL/VK bookmark sweep). NOTE:
 capture window MUST be visible (`wShowWindow=4`), NOT minimized(7) — minimized =
 zero surface extent = VK present fail-softs to GL and silently invalidates the
 run. Islands (terrain/shadow/prop/mech) still render under present-fail-soft, so
@@ -2690,7 +2690,7 @@ composited pixels remain a valid VK oracle.
   self-diff clean, terrain island actively co-writing, no CSM-attributable
   wash); the loud field numbers trace to two PRE-EXISTING unrelated bugs
   (FAR-BAND BLACK, GL mech-load-at-this-pose) that predate/are independent of
-  this commit. Full artifacts: `.claude/mech-parity/csm_near_field/`.**
+  this commit. Full artifacts: `.claude/mech-parity/csm_near_field/ (removed)`.**
 - **BUG 4 (mech screen-space freeze on pan) FIXED** — feed now uses live
   gos_GetMechFixBMVPMat4() not the flush-time snapshot. Static-capture cannot
   pan; verified by code-trace + no static regression. USER RE-TEST on live pan.
@@ -2729,7 +2729,7 @@ composited pixels remain a valid VK oracle.
   time DYNSHADOW was armed, REGARDLESS of the CSM sub-gate's own value — a
   real, provable gating bug, now FIXED (added the missing `csmNearGate` check).
   Verified: bare-umbrella-minus-explicit-CSM-off now renders terrain correctly
-  (`.claude/mech-parity/csm_near_field/farband_realfix/vk_umbrella_csmoff/`).
+  (`.claude/mech-parity/csm_near_field/farband_realfix/vk_umbrella_csmoff/ (removed)`).
   **HOWEVER** the FIELD launcher recipe (and bare umbrella with no overrides)
   legitimately ARMS both DYNSHADOW and CSM together (by design), and the
   overview_center/oblique_horizon black-out STILL reproduces in that
@@ -2755,8 +2755,8 @@ composited pixels remain a valid VK oracle.
   one-shot stderr dump inside `terrain_tier1.frag` (or add a
   MC2_VK_TERRAIN_CSM_DEBUG viz mode) to see whether lightDir/normalLight or the
   CSM sample itself is the zero. Artifacts:
-  `.claude/mech-parity/csm_near_field/farband_realfix/`,
-  `.claude/mech-parity/csm_near_field/oobfog_isolate/` (bisection captures).
+  `.claude/mech-parity/csm_near_field/farband_realfix/ (removed)`,
+  `.claude/mech-parity/csm_near_field/oobfog_isolate/ (removed)` (bisection captures).
 
 - **CSM-BLACKOUT-RECON-1 (this session) — BLOCKED on a broken deploy lane,
   root cause NOT isolated live.** Coordinator's UBO-write-collision hypothesis
@@ -2781,7 +2781,7 @@ composited pixels remain a valid VK oracle.
   `[VK_PRESENT] init: vkCreateSwapchainKHR failed. fail-soft.` ->
   `[RENDER_BACKEND] fail-soft: forcing GL for the session` — the whole run
   silently became a GL capture, invalidating all screenshots taken (the
-  earlier "reproduction" in `.claude/mech-parity/csm_near_field/blackout_debug/`
+  earlier "reproduction" in `.claude/mech-parity/csm_near_field/blackout_debug/ (removed)`
   is GL, not VK; disregard those PNGs). `mcp__mc2-repo-intel__deploy_status`
   on `A:/Games/mc2-opengl/mc2-win64-0.4c` independently confirms
   `verdict=BROKEN-TREE`: "0.4c is a BROKEN tree (stock + modified exe both
@@ -2811,7 +2811,7 @@ composited pixels remain a valid VK oracle.
   vkCreateSwapchainKHR failure was environmental, as suspected). Full
   MC2_VK_TERRAIN_CSM_DEBUG=0..5 ladder run at all mc2_01 bookmarks, every run
   with a used_vulkan receipt (488–496; GL control used_vulkan=0):
-  `.claude/mech-parity/csm_near_field/blackout_debug/vk_dbg{0..5}/` + `gl_ref/`.
+  `.claude/mech-parity/csm_near_field/blackout_debug/vk_dbg (removed){0..5}/` + `gl_ref/`.
   FINDINGS: (1) the debug branch executes correctly on VK (achromatic grays →
   UBO wiring at off 364 GOOD); (2) NO term collapses — at the oblique_horizon
   "black band": normalLight=0.70, lightDir sane, staticS=0.67, dynS=1.00
@@ -2855,7 +2855,7 @@ perimeter fence + runway, the user's scene class). GL ('off' set) vs VK
 capture: **GL** vk_color_prop used_vulkan=0 (correct GL label); **VK**
 used_vulkan=400–411, vk_draws=1, interop_active=1, vk2gl_sem_active=1,
 inst_records=1006, type_runs=78, geom_verts=23628 (correct VK label — pixels
-ARE VK, no fail-soft). Artifacts: `.claude/adjudication/{gl,vk_probe}/`,
+ARE VK, no fail-soft). Artifacts: `.claude/adjudication/ (removed){gl,vk_probe}/`,
 `crop_{hangar,fence}_{gl,vk}.png`, `rdc/` (.rdc + XML), `vk_probe/packets.csv`.
 
 **RenderDoc finding (contamination class 3, DIRECTLY OBSERVED):** a
@@ -2928,7 +2928,7 @@ oracle artifacts.
 Instrumentation left in tree, all env-gated default-off: `MC2_VK_PROP_PACKET_DUMP`
 (per-packet draw params CSV), `MC2_VK_PROP_LIGHT_PROBE` (UBO lighting engagement),
 `[ADJUDICATION_POSE v1]` one-shot pose dump in gos_visual_capture.cpp. Airport
-bookmark authored at `.claude/adjudication/airport_bookmark.json` (c_rot110 frames
+bookmark authored at `.claude/adjudication/airport_bookmark.json (removed)` (c_rot110 frames
 both bugs). Artifacts under `.claude/adjudication/`.
 
 ## ADJUDICATION-1 FOLLOW-UP (2026-07-06, this session)
@@ -3147,7 +3147,7 @@ Follow-up evidence gathered on 2026-07-08:
 - `8fd4bea5` added `scripts/renderdoc_capture.py --exe` so Tier-5 captures can
   target the exact 0.4c lane instead of the hardcoded v0.4 deploy. RenderDoc 1.7
   proof under the same direct-FBO Vulkan env produced
-  `.claude/vk-present-direct-visible/rdoc/direct_fbo_frame181.rdc`; engine hook
+  `.claude/vk-present-direct-visible/rdoc/direct_fbo_frame181.rdc (removed)`; engine hook
   logged `api_resolved`, `trigger_capture local_frame=180`, and
   `capture_complete local_frame=182`.
 
@@ -3178,7 +3178,7 @@ std140 params block at binding 2.
 
 Verification:
 - `cmake --build build64_island --target mc2_vulkan_shaders --config RelWithDebInfo`
-  PASS; emitted `build64_island/shaders/vulkan/postprocess.vert.spv` and
+  PASS; emitted `build64_island/shaders/vulkan/postprocess.vert.spv (removed)` and
   `postprocess.frag.spv`.
 - `spirv-val` PASS for both SPIR-V files.
 - Full `mc2` RelWithDebInfo build PASS (only pre-existing C4267/LNK4199 warnings).
@@ -3282,7 +3282,7 @@ Verification:
   `run_visual_capture.py --show-window --mission mc2_01 --bookmarks tests/visual/bookmarks/mc2_01.json`
   with `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_IMGUI=1`
   wrote 11/11 deterministic bookmark PNGs under
-  `.claude/vk-imgui-decline-visible-armed/`.
+  `.claude/vk-imgui-decline-visible-armed/ (removed)`.
   Present path stayed live (`present_frames=6301`, `validation_errors=0`,
   `readback_changed=1`, `fallback_reason=""`) while ImGui emitted
   `[VK_IMGUI] requested=1 used_vulkan=0 ... fallback_reason="tail_handoff_not_split"`.
@@ -3307,7 +3307,7 @@ Verification:
 - Visible-window proof:
   `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1`
   with `run_visual_capture.py --show-window --mission mc2_01 --bookmarks tests/visual/bookmarks/mc2_01.json`
-  wrote 11/11 deterministic bookmark PNGs under `.claude/vk-present-tail-hook/`.
+  wrote 11/11 deterministic bookmark PNGs under `.claude/vk-present-tail-hook/ (removed)`.
 - `[VK_PRESENT]` final health:
   `present_frames=6301`, `direct_fbo_requests=6301`, `direct_fbo_grants=6301`,
   `copy1_blit_frames=0`, `copy1_skip_frames=6301`, `tail_hook_frames=6301`,
@@ -3348,14 +3348,14 @@ Verification:
 - Clean visible proof:
   `MC2_RENDER_BACKEND=vulkan MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_PRESENT_VERIFY=1 MC2_VK_PRESENT_TAIL_HOOK=1 MC2_VK_IMGUI=1`
   with `run_visual_capture.py --show-window --mission mc2_01 --bookmarks tests/visual/bookmarks/mc2_01.json`
-  wrote 11/11 deterministic bookmark PNGs under `.claude/vk-imgui-native-clean/`.
+  wrote 11/11 deterministic bookmark PNGs under `.claude/vk-imgui-native-clean/ (removed)`.
 - Proof lines:
   `[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=""`;
   final `[VK_PRESENT]` had `present_frames=6301`, `tail_hook_frames=6301`,
   `imgui_vk_ready=1`, `imgui_vk_frames=6301`, `copy1_blit_frames=0`,
   `copy1_skip_frames=6301`, `validation_errors=0`, `fallback_reason=""`.
 - Shutdown-clean: no `Crash`, no `Forgot to shutdown Renderer backend`, no
-  `[imgui-error]` in `.claude/vk-imgui-native-clean/mc2_01_capture.log`.
+  `[imgui-error]` in `.claude/vk-imgui-native-clean/mc2_01_capture.log (removed)`.
 - Visual delta vs the 8.6d tail-hook baseline: 9/11 byte-identical; only the
   known tiny unstable views differed (`cross_map_view`, `ridge_lowangle`).
 
@@ -3385,14 +3385,14 @@ bar is stricter than current code:
   MC2_VK_PRESENT_DIRECT_FBO=1 MC2_VK_POST_COMPOSITE=1`, Visual mode with FXAA
   off and a full drawable viewport now samples shared scene color0 in VK and
   writes the shared present image. Visible proof:
-  `.claude/vk-post-composite-native-first-2/`, 11/11 deterministic `mc2_01`
+  `.claude/vk-post-composite-native-first-2/ (removed)`, 11/11 deterministic `mc2_01`
   bookmarks, `[VK_PRESENT] composite_vk_frames=300`, `copy1_blit_frames=0`,
   `fallback_reason=""`; minimized smoke `tests/smoke/artifacts/2026-07-08T15-02-41`
   PASS 2/2, +0 destroys. Remaining composite branches still fall back to GL:
   FORCE-43/OOB-letterbox and viewmode/object-id/debug paths.
 - 8.5c native composite FXAA is landed. The native Visual composite now ports
   the existing GL FXAA filter and tunables. Visible proof:
-  `.claude/vk-post-composite-fxaa-native/`, `MC2_FXAA=1`, 11/11 deterministic
+  `.claude/vk-post-composite-fxaa-native/ (removed)`, `MC2_FXAA=1`, 11/11 deterministic
   `mc2_01` bookmarks, `[FXAA v1] enabled=1`, `[VK_PRESENT]
   composite_vk_frames=300`, `copy1_blit_frames=0`, `fallback_reason=""`.
   Minimized smoke with `MC2_FXAA=1` forwarded:
@@ -3400,14 +3400,14 @@ bar is stricter than current code:
 - 8.5d native composite FORCE-43 is landed. The native Visual composite now
   clears the shared present image black in VK and draws into the caller-supplied
   pillarbox viewport. Visible proof:
-  `.claude/vk-post-composite-force43-native/`, `MC2_FORCE_43=1`, 11/11
+  `.claude/vk-post-composite-force43-native/ (removed)`, `MC2_FORCE_43=1`, 11/11
   deterministic `mc2_01` bookmarks, `[VK_PRESENT] composite_vk_frames=300`,
   `copy1_blit_frames=0`, `fallback_reason=""`. Minimized smoke with
   `MC2_FORCE_43=1` forwarded: `tests/smoke/artifacts/2026-07-08T15-16-01`,
   PASS 2/2, +0 destroys.
 - 8.5e native composite LowLight is landed. LowLight/NightVision mode 5 runs in
   the native composite using the same gain/tint math; no object-ID texture is
-  needed. Visible proof: `.claude/vk-post-composite-lowlight-native/`,
+  needed. Visible proof: `.claude/vk-post-composite-lowlight-native/ (removed)`,
   `MC2_VIEWMODE_FRAMEWORK=1 MC2_VIEW_MODE=5`, 11/11 deterministic `mc2_01`
   bookmarks, `[VIEWMODE v1] framework=1 initialMode=5`, `[VK_PRESENT]
   composite_vk_frames=300`, `copy1_blit_frames=0`, `fallback_reason=""`.
@@ -3417,8 +3417,8 @@ bar is stricter than current code:
   substrate now has `MC2_SHARED_SCENE_OBJECT_ID`, backed by `VK_FORMAT_R32_UINT`
   imported to `GL_R32UI`; native composite binds it as a `usampler2D` for mode 1
   and mode 3. Visible proofs:
-  `.claude/vk-post-composite-objectid-native/` and
-  `.claude/vk-post-composite-thermal-native/`, each 11/11 deterministic
+  `.claude/vk-post-composite-objectid-native/ (removed)` and
+  `.claude/vk-post-composite-thermal-native/ (removed)`, each 11/11 deterministic
   `mc2_01` bookmarks, `[VK_SHARED_SCENE_COLOR] objectId(MRT2) active: VK R32UI
   ... imported to GL_R32UI`, `[VK_PRESENT] composite_vk_frames=300`,
   `copy1_blit_frames=0`, `fallback_reason=""`. Minimized Thermal smoke:
@@ -3483,7 +3483,7 @@ Current tail status:
   `MC2_VK_OBJECTID_DIRECT_CHAIN=1` skips the native composite's objectId MRT2
   interop handoff when the full composite direct-chain stack is armed. Correct
   Vulkan proof (after discarding a non-Vulkan `build64` false positive):
-  `.claude/vk-nointerop-strict-visible-objectid-direct-clean/`, 11/11
+  `.claude/vk-nointerop-strict-visible-objectid-direct-clean/ (removed)`, 11/11
   deterministic `mc2_01` bookmarks with `MC2_OBJECT_ID_BUFFER=1`,
   `MC2_VIEW_MODE=objectid`, `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows
   `sha=d890a2f2f1f0 dirty=0`, objectId VK `R32UI`, all
@@ -3491,7 +3491,7 @@ Current tail status:
   `gl_handoff_skip_frames=300`, smoke PASS, and no strict abort. This is a
   deletion-readiness canary, not a full objectId MRT2 parity port.
 - Native fog direct-chain strict canary is green:
-  `.claude/vk-nointerop-strict-visible-postfog-direct-clean/`, 11/11
+  `.claude/vk-nointerop-strict-visible-postfog-direct-clean/ (removed)`, 11/11
   deterministic `mc2_01` bookmarks, Vulkan backend selected, fog initialized on
   the shared engine context, `sha=35c56c4c362d dirty=0`,
   `VK_POST_FOG_NATIVE [HEALTH] attempted=662 used_vulkan=662 direct_chain=1
@@ -3500,7 +3500,7 @@ Current tail status:
   `used_interop=0`, no fail-soft GL fallback and no `[VK_NO_GL_INTEROP_STRICT]`
   abort.
 - Native SSAO direct-chain strict canary is green:
-  `.claude/vk-nointerop-strict-visible-postssao-direct-dirty-ssaoon/`, 11/11
+  `.claude/vk-nointerop-strict-visible-postssao-direct-dirty-ssaoon/ (removed)`, 11/11
   deterministic `mc2_01` bookmarks with `MC2_SSAO=1`,
   `MC2_VK_POST_SSAO=1`, `MC2_VK_POST_SSAO_DIRECT_CHAIN=1`,
   `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows `SSAO v1 enabled=1 debug=0`,
@@ -3512,7 +3512,7 @@ Current tail status:
   the first SSAO strict attempt without `MC2_SSAO=1` was only a crash regression
   (`attempted=0`) and is not the execution proof.
 - Native screenfx + HZB direct-chain strict canary is green:
-  `.claude/vk-nointerop-strict-visible-postscreenfx-hzb-direct-dirty-cleanrun/`,
+  `.claude/vk-nointerop-strict-visible-postscreenfx-hzb-direct-dirty-cleanrun/ (removed)`,
   11/11 deterministic `mc2_01` bookmarks with screenfx, SSAO, fog, HZB, and
   native present all armed under `MC2_VK_NO_GL_INTEROP_STRICT=1`; log shows
   `VK_PRESENT composite_vk_frames=600 gl_handoff_skip_frames=600`, screenfx
@@ -3554,7 +3554,7 @@ Verification:
   `tests/smoke/artifacts/2026-07-08T15-38-51`, PASS 1/1, +0 destroys. As
   expected, present surface was zero extent, so queue counters stayed 0 there.
 - Visible bookmark run:
-  `.claude/vk-hud-queue-visible/`, 10/11 deterministic captures before the
+  `.claude/vk-hud-queue-visible/ (removed)`, 10/11 deterministic captures before the
   duration window ended. Runtime proof line: `[VK_PRESENT] created=1 ...
   tail_hook_frames=1 ... hud_vk_queued_frames=1 hud_vk_consumed_frames=1
   hud_vk_draws_last=85 imgui_vk_ready=1 imgui_vk_frames=1 ... fallback_reason=""`.
@@ -3573,7 +3573,7 @@ Mech final proof: mc2_24 inline vs deferred reduced average fence wait
 171.1→14.2 µs and island total 664.0→448.9 µs; both PASS +0. Sync validation
 PASS with 0 hazards/errors. Final full VK-umbrella tier1 PASS 5/5 +0 at
 `tests/smoke/artifacts/2026-07-16T12-44-48/`. See
-`.claude/VK-PERF-3-PROGRESS.md` for all receipts and earlier island results.
+`.claude/VK-PERF-3-PROGRESS.md (removed)` for all receipts and earlier island results.
 
 ## 2026-07-18 — user live Tracy session (post-VK-PERF-3 field data)
 
@@ -3615,7 +3615,7 @@ py -3 tools/tracy_capture_compare.py compare gl_before.tracy gl_after.tracy \
 - SAFETY: aborts if any mc2.exe is already running (user may be playing);
   kills only its own spawned PIDs.
 - VK island timings have NO Tracy zones — use [VK_*_PERF] receipts via
-  .claude/fence-defer/measure.py for those.
+  .claude/fence-defer/measure.py (removed) for those.
 - Smoke-tested 2026-07-18: live 20 s GL capture on mc2_01 (9.3 MB trace) +
   compare vs Tracy/startup4-17-26.tracy. Note: old saved traces predate the
   SwapWindow.SDL rename (zone was "SwapWindow").
@@ -3635,7 +3635,7 @@ tools/tracy_capture_compare.py (541502d0 + verify-flag fix), MC2_CAMERA_PARK
   take VK past GL.
 - CAUTION: MC2_VK_PRESENT_VERIFY=1 (the tracy-vk-capture.bat env) costs ~25%
   FPS — never leave it on for perf measurement (harness no longer sets it).
-- Traces: .claude/tracy-harness/{gl_edge,vk_edge,vk_edge2}.tracy.
+- Traces: .claude/tracy-harness/ (removed){gl_edge,vk_edge,vk_edge2}.tracy.
 - VK islands still have ZERO Tracy zones — island-internal attribution needs
   zones added before any deeper slicing.
 
@@ -3681,7 +3681,7 @@ the 2026-07-18 re-task session.
 
 Commits: `8833cdc5` (VKIsl.* zones), `3c1ceb32` (latent build break fix),
 harness vk-arm redefinition (this docs commit). Deployed 0.4c at `3c1ceb32`
-(clean fingerprint). Traces: `.claude/tracy-harness/vk_mc210_zoned{,_umb,_noshadow}.tracy`
+(clean fingerprint). Traces: `.claude/tracy-harness/vk_mc210_zoned (removed){,_umb,_noshadow}.tracy`
 (15 s runs, mc2_10 corner park, uncapped, fixed-timestep off).
 
 ### Zones added (all CPU, TRACY_ENABLE builds, ~50 ns each when disconnected)

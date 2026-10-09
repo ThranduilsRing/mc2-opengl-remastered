@@ -1,6 +1,6 @@
 # PRESENTATION-LOADOUT-STRANGLER-RECON-1 — current state + Phase-2 strangler seams
 
-Recon by 3 domain experts (mech-import, skeletal-anim, mission-data) for Phase 2 of the unit-model arc. Read alongside `.claude/UNIT-DATA-MODEL-RECON-1.md` (stat/classification data + jump-gate) and the arc roadmap `docs/superpowers/plans/2026-07-01-unit-profile-arc-roadmap.md`.
+Recon by 3 domain experts (mech-import, skeletal-anim, mission-data) for Phase 2 of the unit-model arc. Read alongside `.claude/UNIT-DATA-MODEL-RECON-1.md (removed)` (stat/classification data + jump-gate) and the arc roadmap `docs/superpowers/plans/2026-07-01-unit-profile-arc-roadmap.md (removed)`.
 ★ Line refs from recon were read partly against the ROOT tree (stale) — re-confirm anchors in the canonical `nifty-mendeleev` worktree before editing. Architecture is identical.
 
 ## Why modding is painful today — three systemic diseases
