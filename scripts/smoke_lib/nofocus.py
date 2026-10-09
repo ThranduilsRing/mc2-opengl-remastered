@@ -143,6 +143,11 @@ NOFOCUS_ENV = {
     # menu canary pops it) therefore spawned the launcher window. MC2_NO_LAUNCHER
     # is the long-shipped escape, so it works on already-deployed exes.
     "MC2_NO_LAUNCHER": "1",
+    # MC2_NO_LAUNCHER makes the engine read launcher_env.json next to the exe and
+    # apply its MC2_* keys (shadow size, FPS cap, PBR, cheats...), so a harness run
+    # would stop measuring the default configuration. MC2_LAUNCHER_ENV_JSON=0 is the
+    # engine's kill-switch for that read; it must always travel with MC2_NO_LAUNCHER.
+    "MC2_LAUNCHER_ENV_JSON": "0",
 }
 
 #: Window SIZE. MC2_WINDOWED alone still opens a window the size of
