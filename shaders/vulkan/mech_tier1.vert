@@ -62,7 +62,8 @@ layout(set = 0, binding = 2, std430) readonly buffer BoneBuffer {
 // WIDEN-STAGE0-1 cap). Copied per-frame from the GL SSBO (binding 20). std430 ==
 // the GL side's std430 LightsData; byte-identical layout (mat4/vec4-array+ivec4).
 // ---------------------------------------------------------------------------
-#define MAX_LIGHTS_IN_WORLD 32
+#include "../include/gpu_abi_object_lights.gen.hglsl"
+#define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
 #define TG_LIGHT_AMBIENT              0
 #define TG_LIGHT_INFINITE            1
 #define TG_LIGHT_INFINITEWITHFALLOFF 2
@@ -71,13 +72,6 @@ layout(set = 0, binding = 2, std430) readonly buffer BoneBuffer {
 #define TG_LIGHT_TERRAIN             5
 #define Stuff_SMALL 1e-4
 
-struct ObjectLights {
-    mat4 light_to_world[MAX_LIGHTS_IN_WORLD];
-    vec4 light_dir[MAX_LIGHTS_IN_WORLD];
-    vec4 light_color[MAX_LIGHTS_IN_WORLD];
-    vec4 light_falloff[MAX_LIGHTS_IN_WORLD];
-    ivec4 numLights;
-};
 layout(set = 0, binding = 4, std430) readonly buffer LightsData {
     ObjectLights light[];
 } uLights;

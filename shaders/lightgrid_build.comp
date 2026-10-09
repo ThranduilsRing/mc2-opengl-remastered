@@ -24,10 +24,11 @@
 #define LIGHTGRID_STAGE 1
 #endif
 
-// Hard light cap (lockstep with shaders/include/lighting.hglsl MAX_LIGHTS_IN_WORLD
-// and the C++ side). LIGHT-ABI-WIDEN-STAGE0-1 widened the per-object ABI 16->32;
-// this binding-20 reader mirror MUST agree with the record stride (LG_ObjectLights
-// inner-array size) or the sphere-build reads garbage. Runtime population still 16.
+// Hard light cap, injected by gos_lightgrid_build.cpp from the single-source GPU
+// record (RenderCore/gpu_abi/GpuObjectLights.h). The binding-20 reader mirror below
+// MUST agree with the record stride (LG_ObjectLights inner-array size) or the
+// sphere-build reads garbage; tools/gpu_abi_gen.py --check compares the mirror with
+// the generated ObjectLights struct. Runtime population still 16.
 #ifndef LIGHTGRID_MAX_LIGHTS
 #define LIGHTGRID_MAX_LIGHTS 32
 #endif
@@ -56,9 +57,10 @@ struct MC2LightCullSphere {
 // sphere buffer first." This is that build, on the GPU.
 // ===========================================================================
 
-// ObjectLights mirror (read-only). Kept byte-identical to lighting.hglsl's
-// ObjectLights so binding 20 reads correctly -- but written fresh here, no
-// #include of the shading header (this pass is shading-independent).
+// ObjectLights mirror (read-only). This shader is loaded as raw text (no #include),
+// so it carries its own copy of the generated ObjectLights struct, verified by
+// tools/gpu_abi_gen.py --check; no #include of the shading header (this pass is
+// shading-independent).
 struct LG_ObjectLights {
     mat4 light_to_world[LIGHTGRID_MAX_LIGHTS];
     vec4 light_dir[LIGHTGRID_MAX_LIGHTS];     // w = type

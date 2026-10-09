@@ -154,7 +154,7 @@ struct Mc2ColorPropLightFeed {
     // GL SSBO name/size fields with the audit-gated readback they existed for
     // (MC2_VK_PROP_FEED_AUDIT banked a clean run: 3000 frames, mismatches=0).
     const void*  lightDataCpu;      // TG_HWLightsData[count] (3600B each) or null
-    uint64_t     lightDataCpuBytes; // count * 3600
+    uint64_t     lightDataCpuBytes; // count * sizeof(GpuObjectLights)
     float        iblSh[9][3];       // RenderCore::kIblShCoeffs (or current mission's set)
     float        iblShStrength;     // g_iblShStrength if s_iblShEnabled else 0.0
 };

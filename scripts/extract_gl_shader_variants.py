@@ -265,7 +265,8 @@ class World:
                 self.files[p] = None
         self.consts = {}
         self._consts_loaded = False
-        self.constfiles = list((ROOT / "mclib").glob("*.h")) + list(GAMEOS.rglob("*.h"))
+        self.constfiles = (list((ROOT / "mclib").glob("*.h")) + list(GAMEOS.rglob("*.h"))
+                           + list((ROOT / "RenderCore" / "gpu_abi").glob("*.h")))
 
     def src(self, p: Path) -> Src:
         if self.files.get(p) is None:
@@ -275,6 +276,9 @@ class World:
     def const_int(self, name: str):
         if not self._consts_loaded:
             rx = re.compile(r"\b([A-Za-z_]\w*)\s*=\s*(\d+)u?\s*[,;}]")
+            # NAME = OTHER_NAME: constants derived from a single-source header constant.
+            alias_rx = re.compile(r"\b([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*[,;}]")
+            aliases = {}
             for p in self.constfiles:
                 try:
                     t = strip_comments(p.read_text(encoding="utf-8", errors="replace"))
@@ -282,6 +286,12 @@ class World:
                     continue
                 for m in rx.finditer(t):
                     self.consts.setdefault(m.group(1), int(m.group(2)))
+                for m in alias_rx.finditer(t):
+                    aliases.setdefault(m.group(1), m.group(2))
+            for _ in range(3):
+                for k, v in aliases.items():
+                    if k not in self.consts and v in self.consts:
+                        self.consts[k] = self.consts[v]
             self._consts_loaded = True
         return self.consts.get(name)
 

@@ -2867,7 +2867,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define LIGHTGRID_STAGE 0\n#define LIGHTGRID_MAX_LIGHTS 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:120",
+   "source": "GameOS/gameos/gos_lightgrid_build.cpp:116",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
    }
@@ -2883,7 +2883,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define LIGHTGRID_STAGE 1\n#define LIGHTGRID_MAX_LIGHTS 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:120",
+   "source": "GameOS/gameos/gos_lightgrid_build.cpp:116",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
    }

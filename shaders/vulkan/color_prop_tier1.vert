@@ -41,15 +41,9 @@ layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
 // the AMBIENT-type sum here (matches static_prop.vert:414-429's ambientTerm scan) --
 // NOT the full calc_light dispatch; sun color/direction stay the island's existing
 // kSunColor/terrainSunMC2 approximation (out of scope for this fix).
-#define MAX_LIGHTS_IN_WORLD 32
+#include "../include/gpu_abi_object_lights.gen.hglsl"
+#define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
 #define TG_LIGHT_AMBIENT 0
-struct ObjectLights {
-    mat4  light_to_world[MAX_LIGHTS_IN_WORLD];
-    vec4  light_dir[MAX_LIGHTS_IN_WORLD];     // w = light type
-    vec4  light_color[MAX_LIGHTS_IN_WORLD];
-    vec4  light_falloff[MAX_LIGHTS_IN_WORLD];
-    ivec4 numLights;
-};
 layout(set = 0, binding = 4, std430) readonly buffer LightsData {
     ObjectLights light[];
 } lightsData_;

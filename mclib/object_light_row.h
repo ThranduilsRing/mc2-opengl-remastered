@@ -75,9 +75,9 @@
 // blocked. The engine-coupled part (TG_Light / Stuff::LinearMatrix4D ->
 // LightInput) is a flat adapter in mclib/txmmgr.cpp and nothing else.
 //
-// LOCKSTEP: Row mirrors TG_HWLightsData (mclib/tgl.h:331). txmmgr.cpp
-// static_asserts size AND every member offset both ways — see kRowLockstep
-// there. Do not add fields to either side alone.
+// LOCKSTEP: Row IS the GPU record (RenderCore/gpu_abi/GpuObjectLights.h) that
+// TG_HWLightsData derives from; txmmgr.cpp still asserts the two agree. Do not
+// add fields to either side alone.
 //-----------------------------------------------------------------------------
 #ifndef MCLIB_OBJECT_LIGHT_ROW_H
 #define MCLIB_OBJECT_LIGHT_ROW_H
@@ -85,11 +85,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "../RenderCore/gpu_abi/GpuObjectLights.h"
+
 namespace object_light_row {
 
-// ABI cap, lockstep with MAX_HW_LIGHTS_IN_WORLD (mclib/tgl.h:309) and the
-// ObjectLights SSBO in shaders/include/lighting.hglsl.
-enum : uint32_t { kMaxLights = 32 };
+// ABI cap, derived from the single-source GPU record (RenderCore/gpu_abi/
+// GpuObjectLights.h), which also generates the ObjectLights struct in the shaders.
+enum : uint32_t { kMaxLights = kGpuObjectLightsMax };
 
 // Light type ids, lockstep with the TG_LIGHT_* enum (mclib/tgl.h). Mirrored
 // rather than included so this header stays engine-free; txmmgr.cpp
@@ -178,19 +180,11 @@ struct Query {
 };
 
 //-----------------------------------------------------------------------------
-// Byte-identical mirror of TG_HWLightsData (mclib/tgl.h:331), 3600 B at N=32.
+// The row type is the single-source GPU record itself (TG_HWLightsData derives from
+// the same struct), so its size and every member offset are asserted by the
+// generated layout header rather than mirrored here.
 //-----------------------------------------------------------------------------
-struct Row {
-	float   lightToWorld[kMaxLights][16];
-	float   lightDir[kMaxLights][4];
-	float   lightColor[kMaxLights][4];
-	float   lightFalloff[kMaxLights][4];
-	int32_t numLights_;
-	int32_t pad[3];
-};
-
-static_assert(sizeof(Row) == 3600,
-              "object_light_row::Row must be 3600 B (N=32) — lockstep with TG_HWLightsData");
+using Row = GpuObjectLights;
 
 //-----------------------------------------------------------------------------
 // BuildObjectLightRow — THE pure function.

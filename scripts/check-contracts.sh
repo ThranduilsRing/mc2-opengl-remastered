@@ -866,7 +866,8 @@ run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
 run_check "destroy_invariant"      "sh scripts/check-destroy-invariant.sh"
 run_check "render_contract_gbuf1"  "sh scripts/check-render-contract-gbuffer1.sh"
 run_check "binding_slots"          "py -3 scripts/check-binding-slots.py --quiet"
-run_check "light_abi_lockstep"     "py -3 scripts/check-light-abi-lockstep.py --quiet"
+# light_abi_lockstep retired: the per-object light cap and record stride are derived from
+# RenderCore/gpu_abi/GpuObjectLights.h and verified by the gpu_abi row below.
 run_check "light_loop_numlights"   "py -3 scripts/check-light-loop-numlights-bound.py --quiet"
 # LIGHTROW-FRESHNESS-1. cachedGpuLightIndex_ names a light slot that is rebased
 # every frame; reading it without its cachedFrame_ stamp draws the actor against

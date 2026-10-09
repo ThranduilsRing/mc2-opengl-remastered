@@ -27,6 +27,7 @@
 #include <vk_mem_alloc.h>
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
+#include "../../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 #include "vk_image_resource.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vulkan_context.h"
@@ -493,34 +494,27 @@ void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
     static bool s_vtx_dumped = false;
     if (s_vtx_dumped) return;
     s_vtx_dumped = true;
-    struct ObjLightsMirror {
-        float light_to_world[32][16];
-        float light_dir[32][4];
-        float light_color[32][4];
-        float light_falloff[32][4];
-        int32_t numLights[4];
-    };
-    const size_t stride = sizeof(ObjLightsMirror);
+    const size_t stride = sizeof(GpuObjectLights);
     const size_t maxEntries = (size_t)lbytes / stride;
     auto scanEntry = [&](size_t idx) {
         if (idx >= maxEntries) return;
-        const ObjLightsMirror* ld = (const ObjLightsMirror*)(base + idx * stride);
+        const GpuObjectLights* ld = (const GpuObjectLights*)(base + idx * stride);
         float ambient[3] = {0, 0, 0};
         float sunColor[3] = {0, 0, 0};
         bool sunFound = false;
-        int n = ld->numLights[0];
+        int n = ld->numLights_;
         if (n > 32) n = 32;
         if (n < 0) n = 0;
         for (int i = 0; i < n; ++i) {
-            int lt = (int)ld->light_dir[i][3];
+            int lt = (int)ld->lightDir[i][3];
             if (lt == 0) { // TG_LIGHT_AMBIENT
-                ambient[0] += ld->light_color[i][0];
-                ambient[1] += ld->light_color[i][1];
-                ambient[2] += ld->light_color[i][2];
+                ambient[0] += ld->lightColor[i][0];
+                ambient[1] += ld->lightColor[i][1];
+                ambient[2] += ld->lightColor[i][2];
             } else if (!sunFound && (lt == 1 || lt == 2)) {
-                sunColor[0] = ld->light_color[i][0];
-                sunColor[1] = ld->light_color[i][1];
-                sunColor[2] = ld->light_color[i][2];
+                sunColor[0] = ld->lightColor[i][0];
+                sunColor[1] = ld->lightColor[i][1];
+                sunColor[2] = ld->lightColor[i][2];
                 sunFound = true;
             }
         }
@@ -1113,8 +1107,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // VK-PROP-AMBIENT-IBL-1: light buffers must exist BEFORE write_descriptors below
         // (binding4 needs a valid buffer object). Dummy-sized (grow on first real copy).
         if (lightBinding) {
-            if (!ensure_light_capacity(s, 0, 3600)) { setFallback("light_buf_failed"); return false; }
-            if (!ensure_light_capacity(s, 1, 3600)) { setFallback("light_buf_failed"); return false; }
+            if (!ensure_light_capacity(s, 0, sizeof(GpuObjectLights))) { setFallback("light_buf_failed"); return false; }
+            if (!ensure_light_capacity(s, 1, sizeof(GpuObjectLights))) { setFallback("light_buf_failed"); return false; }
         }
         write_descriptors(s);
     }

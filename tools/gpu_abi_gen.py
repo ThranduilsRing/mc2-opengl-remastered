@@ -42,11 +42,22 @@ STRUCTS = [
     ("RenderCore/gpu_abi/GpuMechInstance.h",
      "RenderCore/gpu_abi/GpuMechInstance.layout.gen.h",
      "shaders/include/gpu_abi_mech_instance.gen.hglsl"),
+    ("RenderCore/gpu_abi/GpuObjectLights.h",
+     "RenderCore/gpu_abi/GpuObjectLights.layout.gen.h",
+     "shaders/include/gpu_abi_object_lights.gen.hglsl"),
     # VK-only uniform block: lives beside the other VK includes (shaders/vulkan/include),
     # outside the GL/VK-shared shaders/include that the GL shader lints scan.
     ("RenderCore/gpu_abi/GpuTerrainFrameUBO.h",
      "RenderCore/gpu_abi/GpuTerrainFrameUBO.layout.gen.h",
      "shaders/vulkan/include/terrain_frame_ubo_vk.glsl"),
+]
+
+
+# Shaders that cannot #include the generated struct (the engine loads them as raw text)
+# and so carry a private, differently named mirror: (shader, mirror struct, GLSL struct
+# it mirrors). --check parses the mirror and compares it with the generated member list.
+MIRRORS = [
+    ("shaders/lightgrid_build.comp", "LG_ObjectLights", "ObjectLights"),
 ]
 
 
@@ -129,9 +140,12 @@ def struct_offsets(fields, rules):
 _CPP_SCALAR = {"float": "float", "int32_t": "int", "uint32_t": "uint"}
 _ANNOT_ARR = {"@mat4": ("mat4", 16), "@vec4": ("vec4", 4),
               "@vec3": ("vec3", 3), "@vec2": ("vec2", 2)}
-_ANNOT_BLOCK = ("@mat4xN", "@rgb", "@cpp_only")
+_ANNOT_BLOCK = ("@rgb", "@cpp_only")
+# Valid in plain structs and blocks alike.
+_ANNOT_ANY = ("@mat4xN", "@vec4xN", "@ivec4tail", "@fold")
 _FIELD_RE = re.compile(
-    r"^\s*(float|int32_t|uint32_t)\s+(\w+)(?:\[(\d+)\])?\s*;\s*(?://\s*(.*))?$")
+    r"^\s*(float|int32_t|uint32_t)\s+(\w+)(?:\[(\w+)\])?(?:\[(\w+)\])?\s*;\s*(?://\s*(.*))?$")
+_CONST_RE = re.compile(r"^\s*(?:static\s+|inline\s+)*constexpr\s+\w+\s+(\w+)\s*=\s*(\d+)\s*;", re.M)
 
 
 def parse_source(text, label):
@@ -143,8 +157,10 @@ def parse_source(text, label):
     block = opts.get("block")
     if block and (rules != "std140" or "set" not in opts or "binding" not in opts):
         raise AbiError("%s: block= needs std140 plus set= and binding=" % label)
-    if set(opts) - {"block", "set", "binding", "slot"}:
+    if set(opts) - {"block", "set", "binding", "slot", "cpp_align"}:
         raise AbiError("%s: unknown @gpu option(s) %s" % (label, sorted(opts)))
+    if opts.get("cpp_align", "any") != "any":
+        raise AbiError("%s: cpp_align= only accepts 'any'" % label)
     sm = re.compile(r"struct\s+(?:alignas\((\d+)\)\s+)?(\w+)\s*\{").search(text, m.end())
     if not sm:
         raise AbiError("%s: no struct after @gpu annotation" % label)
@@ -152,7 +168,20 @@ def parse_source(text, label):
     cpp_name = sm.group(2)
     end = text.index("};", sm.end())
     body = text[sm.end():end]
-    fields, cpp_fields = [], []   # cpp_fields: (cpp name, first GLSL member name | None)
+    # Array dimensions may name a constexpr integer declared earlier in the header, so the
+    # cap is written once and shared with C++ code that sizes loops from it.
+    consts = {k: int(v) for k, v in _CONST_RE.findall(text[:m.start()])}
+
+    def dim(tok, what):
+        if tok is None:
+            return None
+        if tok.isdigit():
+            return int(tok)
+        if tok in consts:
+            return consts[tok]
+        raise AbiError("%s: unknown array dimension %r on %s" % (label, tok, what))
+
+    fields, cpp_fields = [], []   # cpp_fields: (cpp name, first GLSL member | None, byte delta)
     for raw in body.splitlines():
         line = raw.strip()
         if not line or line.startswith("//"):
@@ -160,29 +189,63 @@ def parse_source(text, label):
         fm = _FIELD_RE.match(raw)
         if not fm:
             raise AbiError("%s: unsupported member line: %r" % (label, raw))
-        ctype, name, count, comment = fm.group(1), fm.group(2), fm.group(3), fm.group(4)
-        annot = None
+        ctype, name, comment = fm.group(1), fm.group(2), fm.group(5)
+        count, count2 = dim(fm.group(3), name), dim(fm.group(4), name)
+        annot, rename = None, None
         if comment:
-            first = comment.split()[0] if comment.split() else ""
-            if first.startswith("@"):
-                annot = first
-                if annot not in _ANNOT_ARR and not (block and annot in _ANNOT_BLOCK):
+            toks = comment.split()
+            if toks and toks[0].startswith("@"):
+                annot = toks[0]
+                if annot not in _ANNOT_ARR and annot not in _ANNOT_ANY \
+                        and not (block and annot in _ANNOT_BLOCK):
                     raise AbiError("%s: unknown annotation %s on %s" % (label, annot, name))
+            for t in toks[:3]:
+                rm = re.match(r"glsl=(\w+)", t)
+                if rm:
+                    rename = rm.group(1)
+        gname = rename or name   # GLSL member name (rename= keeps shader-side snake_case)
         base = _CPP_SCALAR[ctype]
         if annot == "@cpp_only":
-            cpp_fields.append((name, None))
+            cpp_fields.append((name, None, 0))
             continue
         if annot == "@rgb":
-            if ctype != "float" or count != "3":
+            if ctype != "float" or count != 3 or count2 is not None:
                 raise AbiError("%s: @rgb needs float[3] (%s)" % (label, name))
             fields += [(name + c, "float") for c in "RGB"]
-            cpp_fields.append((name, name + "R"))
+            cpp_fields.append((name, name + "R", 0))
             continue
+        if annot == "@mat4xN" and count2 is not None:
+            if ctype != "float" or count2 != 16:
+                raise AbiError("%s: @mat4xN needs float[N][16] (%s)" % (label, name))
+            fields.append((gname, ("arr", "mat4", count)))
+            cpp_fields.append((name, gname, 0))
+            continue
+        if annot == "@vec4xN":
+            if ctype != "float" or count2 != 4:
+                raise AbiError("%s: @vec4xN needs float[N][4] (%s)" % (label, name))
+            fields.append((gname, ("arr", "vec4", count)))
+            cpp_fields.append((name, gname, 0))
+            continue
+        if count2 is not None:
+            raise AbiError("%s: 2-D array %s needs @mat4xN or @vec4xN" % (label, name))
         if annot == "@mat4xN":
-            if ctype != "float" or count is None or int(count) % 16:
+            if ctype != "float" or count is None or count % 16:
                 raise AbiError("%s: @mat4xN needs float[16*N] (%s)" % (label, name))
-            fields.append((name, ("arr", "mat4", int(count) // 16)))
-            cpp_fields.append((name, name))
+            fields.append((gname, ("arr", "mat4", count // 16)))
+            cpp_fields.append((name, gname, 0))
+            continue
+        if annot == "@ivec4tail":
+            # A scalar that opens a GLSL ivec4; the next member (@fold) is its 3 pad lanes.
+            if ctype != "int32_t" or count is not None:
+                raise AbiError("%s: @ivec4tail needs a scalar int32_t (%s)" % (label, name))
+            fields.append((gname, "ivec4"))
+            cpp_fields.append((name, gname, 0))
+            continue
+        if annot == "@fold":
+            if ctype != "int32_t" or count != 3 or not fields or fields[-1][1] != "ivec4":
+                raise AbiError("%s: @fold needs int32_t[3] right after an @ivec4tail (%s)"
+                               % (label, name))
+            cpp_fields.append((name, fields[-1][0], 4))
             continue
         if count is None:
             if annot:
@@ -192,19 +255,20 @@ def parse_source(text, label):
             if ctype != "float":
                 raise AbiError("%s: %s needs float[N] (%s)" % (label, annot, name))
             gtype, want = _ANNOT_ARR[annot]
-            if int(count) != want:
+            if count != want:
                 raise AbiError("%s: %s expects float[%d], %s is [%s]"
                                % (label, annot, want, name, count))
         else:
-            if int(count) < 2:
+            if count < 2:
                 raise AbiError("%s: array %s too small" % (label, name))
-            gtype = ("arr", base, int(count))
-        fields.append((name, gtype))
-        cpp_fields.append((name, name))
+            gtype = ("arr", base, count)
+        fields.append((gname, gtype))
+        cpp_fields.append((name, gname, 0))
     if not fields:
         raise AbiError("%s: empty struct" % label)
     return {"rules": rules, "glsl": glsl_name, "cpp": cpp_name,
-            "cpp_align": cpp_align, "fields": fields, "cpp_fields": cpp_fields,
+            "cpp_align": cpp_align, "cpp_align_any": opts.get("cpp_align") == "any",
+            "fields": fields, "cpp_fields": cpp_fields,
             "block": block, "set": opts.get("set"), "binding": opts.get("binding"),
             "slot": int(opts["slot"]) if "slot" in opts else None}
 
@@ -231,7 +295,7 @@ def build(info, src_rel, glsl_rel):
     slot = info["slot"] if info["slot"] is not None else size
     if slot < size:
         raise AbiError("%s: slot=%d smaller than %s size %d" % (info["cpp"], slot, info["rules"], size))
-    if sum(1 for _, g in info["cpp_fields"] if g is None) > 1:
+    if sum(1 for _, g, _d in info["cpp_fields"] if g is None) > 1:
         raise AbiError("%s: at most one @cpp_only tail member" % info["cpp"])
     name, g = info["cpp"], info["glsl"]
     src_name = os.path.basename(src_rel)
@@ -241,29 +305,29 @@ def build(info, src_rel, glsl_rel):
            "#pragma once", "",
            "static_assert(std::is_trivially_copyable<%s>::value, \"%s must be trivially copyable\");" % (name, name),
            "static_assert(sizeof(%s) == %d, \"%s size must match %s GLSL struct\");" % (name, slot, name, info["rules"])]
-    if not block or info["cpp_align"] is not None:
+    if (not block and not info["cpp_align_any"]) or info["cpp_align"] is not None:
         lay.append("static_assert(alignof(%s) == %d, \"%s alignment\");" % (name, align, name))
-    for cname, gname in info["cpp_fields"]:
-        o = end if gname is None else off_of[gname]
+    for cname, gname, delta in info["cpp_fields"]:
+        o = end if gname is None else off_of[gname] + delta
         lay.append("static_assert(offsetof(%s, %s) == %d, \"%s offset\");" % (name, cname, o, cname))
     lay.append("")
     gl = ["// GENERATED by tools/gpu_abi_gen.py from %s -- DO NOT EDIT." % src_rel,
           "// Regenerate: py -3 tools/gpu_abi_gen.py --write   Verify: --check"]
+    # Array lengths as constants, so shader loops bound to an array member cannot be
+    # hand-copied and drift from the length declared in the C++ struct.
+    len_defs = ["#define GPU_ABI_%s_%s_LEN %d" % (g.upper(), fname.upper(), ft[2])
+                for fname, ft in info["fields"] if not isinstance(ft, str)]
     if block:
         gl += ["// %s rules, %d bytes (C++ slot %d). Declares the whole uniform block." % (info["rules"], size, slot),
                "#ifndef GPU_ABI_%s_GEN_GLSL" % g.upper(),
                "#define GPU_ABI_%s_GEN_GLSL" % g.upper()]
-        # Array lengths as constants, so shader loops bound to a matrix array cannot be
-        # hand-copied and drift from the array length declared in the C++ struct.
-        for fname, ft in info["fields"]:
-            if not isinstance(ft, str):
-                gl.append("#define GPU_ABI_%s_%s_LEN %d" % (g.upper(), fname.upper(), ft[2]))
+        gl += len_defs
         gl += ["layout(set = %s, binding = %s, std140) uniform %s {" % (info["set"], info["binding"], g)]
     else:
         gl += ["// %s rules, %d bytes. Include from the shader; the shader keeps its own" % (info["rules"], size),
                "// `layout(...) buffer` wrapper (GL and VK binding syntax differ).",
                "#ifndef GPU_ABI_%s_GEN_HGLSL" % g.upper(),
-               "#define GPU_ABI_%s_GEN_HGLSL" % g.upper(),
+               "#define GPU_ABI_%s_GEN_HGLSL" % g.upper()] + len_defs + [
                "struct %s {" % g]
     for fname, ft in info["fields"]:
         ts, suffix = glsl_type_str(ft)
@@ -282,6 +346,43 @@ def generate_all(root):
         results.append((lay_rel, out["layout"]))
         results.append((glsl_rel, out["glsl"]))
     return results
+
+
+def verify_mirrors(root):
+    """Problems (strings) where a raw-loaded shader's private mirror struct differs from
+    the generated struct it mirrors, in member name, type or array length."""
+    problems = []
+    for shader, mirror, target in MIRRORS:
+        want = None
+        for src, _, _ in STRUCTS:
+            with open(os.path.join(root, src), "r", encoding="utf-8", newline="") as f:
+                info = parse_source(f.read().replace("\r\n", "\n"), src)
+            if info["glsl"] == target:
+                want = [(n, glsl_type_str(t)[0], glsl_type_str(t)[1]) for n, t in info["fields"]]
+        if want is None:
+            problems.append("%s: mirror target %s is not a generated struct" % (shader, target))
+            continue
+        text = re.sub(r"//[^\n]*", "", _read(os.path.join(root, shader)) or "")
+        defs = {k: v for k, v in re.findall(r"^\s*#\s*define\s+(\w+)\s+(\d+)", text, re.M)}
+        m = re.search(r"\bstruct\s+" + mirror + r"\s*\{([^}]*)\}", text)
+        if not m:
+            problems.append("%s: mirror struct %s not found" % (shader, mirror))
+            continue
+        got = []
+        for line in m.group(1).split(";"):
+            fm = re.fullmatch(r"\s*(\w+)\s+(\w+)\s*(?:\[\s*(\w+)\s*\])?\s*", line)
+            if not fm:
+                if line.strip():
+                    problems.append("%s: cannot parse mirror member %r" % (shader, line.strip()))
+                continue
+            dim = fm.group(3)
+            if dim is not None:
+                dim = defs.get(dim, dim)
+            got.append((fm.group(2), fm.group(1), "" if dim is None else "[%s]" % dim))
+        if got != want:
+            problems.append("%s: %s differs from generated %s (mirror %s, generated %s)"
+                            % (shader, mirror, target, got, want))
+    return problems
 
 
 _SHADER_EXTS = (".vert", ".frag", ".comp", ".geom", ".glsl", ".hglsl")
@@ -359,6 +460,9 @@ def main(argv=None):
         for rel, name in find_redeclarations(a.root, results):
             print("gpu_abi_gen: REDECLARED: %s declares %s; include the generated "
                   "GLSL instead" % (rel, name), file=sys.stderr)
+            bad += 1
+        for msg in verify_mirrors(a.root):
+            print("gpu_abi_gen: MIRROR: %s" % msg, file=sys.stderr)
             bad += 1
         if bad:
             return 1

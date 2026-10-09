@@ -20,35 +20,20 @@
 #define 	TG_LIGHT_POINT					3
 #define		TG_LIGHT_SPOT					4
 #define		TG_LIGHT_TERRAIN				5
-// LIGHT-ABI-WIDEN-STAGE0-1: per-OBJECT GPU ABI cap (record inner-array size).
-// Widened 16->32 as a pure ABI widening; runtime population stays clamped at 16
-// (mclib/txmmgr.cpp GatherLightsParameters). LOCKSTEP set (all 5 must agree —
-// see scripts/check-light-abi-lockstep.py and docs/LIGHT-ABI-WIDEN-STAGE0-1.md):
-//   1. this line                              (per-object GPU ABI cap)
-//   2. mclib/tgl.h MAX_HW_LIGHTS_IN_WORLD     (C++ ABI cap)
-//   3. mclib/tgl.h sizeof(TG_HWLightsData) static_assert (== 3600)
-//   4. GameOS/gameos/gameos_graphics.cpp kLightRecordStride (== 3600)
-//   5. shaders/lightgrid_build.comp LIGHTGRID_MAX_LIGHTS
+// LIGHT-ABI-WIDEN-STAGE0-1: per-OBJECT GPU ABI cap (record inner-array size),
+// derived from the generated ObjectLights struct, whose single source is
+// RenderCore/gpu_abi/GpuObjectLights.h (C++ cap, record stride and every shader
+// mirror come from that one declaration). Runtime population stays clamped at 16
+// (mclib/txmmgr.cpp GatherLightsParameters).
 // NOTE (TRAP): this is NOT tgl.h's MAX_LIGHTS_IN_WORLD (=1024 global pool).
-#define MAX_LIGHTS_IN_WORLD 32
+#include <gpu_abi_object_lights.gen.hglsl>
+#define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
 
 #define Stuff_SMALL                         1e-4
 
-// Slice 2 (object-offload) — Stage 2.C: ObjectLights extended with
-// per-light falloff distances. light_falloff.x = closeDistance,
-// .y = farDistance, .z = oneOverDistance, .w unused. C++ side is
-// TG_HWLightsData with float lightFalloff[16][4] in identical
-// position (post-lightColor, pre-numLights). MUST stay byte-for-byte
-// lockstep with the C++ struct (mc2_24 regression 2026-05-02 was
-// caused by extending one side without the other; see commit cdcdb7d
-// scope rule).
-struct ObjectLights {
-    mat4 light_to_world[MAX_LIGHTS_IN_WORLD];
-    vec4 light_dir[MAX_LIGHTS_IN_WORLD];     // w - light type
-    vec4 light_color[MAX_LIGHTS_IN_WORLD];
-    vec4 light_falloff[MAX_LIGHTS_IN_WORLD]; // x=close, y=far, z=oneOver, w=unused
-    ivec4 numLights;
-};
+// ObjectLights (per-object light record, generated above): light_falloff.x =
+// closeDistance, .y = farDistance, .z = oneOverDistance, .w unused; light_dir.w is
+// the light type; numLights.x is the active count.
 
 // [LIGHTSSBO v1] 2026-05-17: was `std140 uniform { ObjectLights
 // light[64]; }` at binding LIGHT_DATA_ATTACHMENT_SLOT(0). Converted to a
@@ -57,7 +42,7 @@ struct ObjectLights {
 // silent corruption). std430==std140 byte-layout for ObjectLights because
 // every member is mat4/vec4-array + ivec4 tail (no scalar/vec2/vec3) —
 // bit-identical, pure qualifier change; this holds ONLY if the
-// ObjectLights/TG_HWLightsData struct is NOT edited in the same change
+// ObjectLights/GpuObjectLights record is NOT edited in the same change
 // (cpp_glsl_ubo_struct_lockstep.md). Binding 20 (UBO/SSBO namespaces are
 // separate; slot 0 is the instance SSBO in static_prop/mech .vert).
 layout (binding = LIGHT_DATA_SSBO_BINDING, std430) buffer LightsData

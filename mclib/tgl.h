@@ -23,6 +23,7 @@
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
+#include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 
 //-------------------------------------------------------------------------------
 // Structs used by layer.
@@ -301,53 +302,30 @@ typedef struct _TG_Light
 
 typedef  TG_Light *TG_LightPtr;
 
-// LIGHT-ABI-WIDEN-STAGE0-1: C++ per-object GPU ABI cap. Widened 16->32 in
-// lockstep with shaders/include/lighting.hglsl MAX_LIGHTS_IN_WORLD. This is the
-// record inner-array size, NOT a runtime clamp — runtime population stays 16
-// (txmmgr.cpp GatherLightsParameters hardcodes 16). DIFFERENT from this header's
-// MAX_LIGHTS_IN_WORLD (=1024, the global scene light pool — do not conflate).
-#define MAX_HW_LIGHTS_IN_WORLD	32
+// LIGHT-ABI-WIDEN-STAGE0-1: C++ per-object GPU ABI cap, derived from the single-source
+// record in RenderCore/gpu_abi/GpuObjectLights.h (its generated asserts and
+// lighting.hglsl's ObjectLights come from the same declaration). This is the record
+// inner-array size, NOT a runtime clamp -- runtime population stays 16 (txmmgr.cpp
+// GatherLightsParameters hardcodes 16). DIFFERENT from this header's
+// MAX_LIGHTS_IN_WORLD (=1024, the global scene light pool -- do not conflate).
+#define MAX_HW_LIGHTS_IN_WORLD	((int)kGpuObjectLightsMax)
 
-// Slice 2 (object-offload) — Stage 2.C: TG_HWLightsData extended with
-// per-light falloff distances. lightFalloff[i] = (closeDistance,
-// farDistance, oneOverDistance, _unused). MUST stay byte-for-byte
-// lockstep with the GLSL `ObjectLights` struct in
-// shaders/include/lighting.hglsl (`vec4 light_falloff[16]`).
-//
-// Layout (std140-equivalent) — LIGHT-ABI-WIDEN-STAGE0-1 widened N=16->32:
-//   lightToWorld[32][16] : offset    0,   2048 B
-//   lightDir[32][4]      : offset 2048,    512 B
-//   lightColor[32][4]    : offset 2560,    512 B
-//   lightFalloff[32][4]  : offset 3072,    512 B   (Stage 2.C field)
-//   numLights_           : offset 3584,      4 B
-//   pad[3]               : offset 3588,     12 B
-//   total                                   3600 B per ObjectLights
-//   (size = N*112 + 16; N=32 -> 3600)
-//
-// Schema-version note: the prior 1552-byte layout (without lightFalloff)
-// is the "Stage-2.A scope rule" reference layout; cdcdb7d shipped without
-// extending it. mc2_24 regression 2026-05-02 was caused by extending
-// the C++ side without the matching GLSL change; Stage 2.C lands both.
-struct TG_HWLightsData {
-	float lightToWorld[MAX_HW_LIGHTS_IN_WORLD][16];
-	float lightDir[MAX_HW_LIGHTS_IN_WORLD][4];
-	float lightColor[MAX_HW_LIGHTS_IN_WORLD][4];
-	float lightFalloff[MAX_HW_LIGHTS_IN_WORLD][4];
-    int numLights_;
-    int pad[3];
-
-    TG_HWLightsData():numLights_(0)
+// Slice 2 (object-offload) -- Stage 2.C: per-object GPU light record, including the
+// per-light falloff distances (lightFalloff[i] = closeDistance, farDistance,
+// oneOverDistance, unused). The layout (std430, N*112 + 16 bytes per record) lives in
+// GpuObjectLights; this wrapper only adds the zero-initialising constructor. The mc2_24
+// regression of 2026-05-02 came from extending the C++ side without the matching GLSL
+// change, which is exactly what the shared declaration now rules out.
+struct TG_HWLightsData : GpuObjectLights {
+	TG_HWLightsData()
     {
-		memset(lightToWorld, 0, sizeof(lightToWorld));
-		memset(lightDir, 0, sizeof(lightDir));
-		memset(lightColor, 0, sizeof(lightColor));
-		memset(lightFalloff, 0, sizeof(lightFalloff));
+		memset(static_cast<GpuObjectLights*>(this), 0, sizeof(GpuObjectLights));
         pad[0] = pad[1] = pad[2] = 13;
     }
 };
 
-// LOCKSTEP with lighting.hglsl ObjectLights SSBO (3600B, N=32); int pad[3] absorbs the GLSL ivec4 numLights tail — do not insert fields before the tail without updating both sides.
-static_assert(sizeof(TG_HWLightsData) == 3600, "TG_HWLightsData must be 3600 B (N=32) — lockstep with lighting.hglsl ObjectLights");
+static_assert(sizeof(TG_HWLightsData) == sizeof(GpuObjectLights),
+              "TG_HWLightsData must add no members to the shared GPU record");
 
 typedef TG_HWLightsData* TG_HWLightsDataPtr;
 

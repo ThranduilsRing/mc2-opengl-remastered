@@ -91,7 +91,7 @@ struct Mc2MechFrameFeed {
     // SSBO readback fallback was deleted. lightDataGlSsbo/Bytes above remain only for
     // the verification-only FEED-AUDIT byte-compare.
     const void*  lightDataCpu;       // TG_HWLightsData[count] (3600B each) or null
-    uint64_t     lightDataCpuBytes;  // count * 3600
+    uint64_t     lightDataCpuBytes;  // count * sizeof(GpuObjectLights)
     // VK-PARITY-MECH-1: default mech FS shading inputs, from the SAME producers the
     // GL flush uploads (gpuMechShadingParams / GetObjectLightPoolParams / the
     // RenderCore main-view cameraWorldPos that feeds the GL ViewUniforms UBO).

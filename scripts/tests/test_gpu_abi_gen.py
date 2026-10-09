@@ -83,6 +83,10 @@ def _tmp_root(tmp_path):
             dst = tmp_path / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(os.path.join(ROOT, rel), dst)
+    for shader, _, _ in g.MIRRORS:
+        dst = tmp_path / shader
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(os.path.join(ROOT, shader), dst)
     return str(tmp_path)
 
 
@@ -241,3 +245,80 @@ def test_terrain_cascade_bound_derives_from_the_generated_array_length():
     with open(path, encoding="utf-8") as f:
         text = f.read()
     assert "#define MC2_VK_SHADOW_CSM_MAX GPU_ABI_TERRAINFRAMEUBO_CSMCASCADEMATRICES_LEN" in text
+
+
+# --- arrays of mat4/vec4, GLSL renames, ivec4 tails, raw-shader mirrors ----------
+
+ARR_SRC = """\
+constexpr uint32_t kN = 4;
+
+// @gpu std430 glsl=Lights cpp_align=any
+struct Rec {
+    float   toWorld[kN][16];   // @mat4xN glsl=to_world
+    float   dirs[kN][4];       // @vec4xN glsl=dirs_out; w = type
+    int32_t count_;            // @ivec4tail glsl=count
+    int32_t pad[3];            // @fold
+};
+"""
+
+
+def _build_arr(text=ARR_SRC):
+    info = g.parse_source(text, "t")
+    return info, g.build(info, "t.h", "t.glsl")
+
+
+def test_array_members_resolve_named_constants_and_rename_for_glsl():
+    info, out = _build_arr()
+    offs_, al, sz = g.struct_offsets(info["fields"], "std430")
+    assert [n for n, _ in offs_] == ["to_world", "dirs_out", "count"]
+    assert [o for _, o in offs_] == [0, 256, 320] and (al, sz) == (16, 336)
+    assert "    mat4  to_world[4];  // off 0" in out["glsl"]
+    assert "    ivec4 count;  // off 320" in out["glsl"]
+    assert "#define GPU_ABI_LIGHTS_TO_WORLD_LEN 4" in out["glsl"]
+
+
+def test_ivec4_tail_pad_lanes_get_their_own_cpp_offsets():
+    _, out = _build_arr()
+    lay = out["layout"]
+    assert "offsetof(Rec, count_) == 320" in lay
+    assert "offsetof(Rec, pad) == 324" in lay          # pad[3] is lanes 1..3 of the ivec4
+    assert "sizeof(Rec) == 336" in lay
+    assert "alignof" not in lay                         # cpp_align=any
+
+
+@pytest.mark.parametrize("old,new", [
+    ("float   toWorld[kN][16];   // @mat4xN glsl=to_world",
+     "float   toWorld[kN][12];   // @mat4xN glsl=to_world"),
+    ("float   dirs[kN][4];       // @vec4xN glsl=dirs_out; w = type",
+     "float   dirs[kN][4];       // glsl=dirs_out"),                      # 2-D without annotation
+    ("float   toWorld[kN][16];", "float   toWorld[kUnknown][16];"),
+    ("int32_t pad[3];            // @fold", "int32_t pad[2];            // @fold"),
+    ("int32_t count_;            // @ivec4tail glsl=count",
+     "float   count_;            // @ivec4tail glsl=count"),
+])
+def test_array_annotation_errors(old, new):
+    assert old in ARR_SRC
+    with pytest.raises(g.AbiError):
+        _build_arr(ARR_SRC.replace(old, new))
+
+
+def test_object_lights_record_matches_the_historical_abi():
+    entry = [s for s in g.STRUCTS if s[0].endswith("GpuObjectLights.h")]
+    assert entry, "GpuObjectLights must be a gpu_abi struct"
+    with open(os.path.join(ROOT, entry[0][0]), encoding="utf-8") as f:
+        info = g.parse_source(f.read(), "lights")
+    o, al, sz = g.struct_offsets(info["fields"], "std430")
+    assert sz == 3600                                  # N*112 + 16 at N=32
+    assert [x[1] for x in o] == [0, 2048, 2560, 3072, 3584]
+    assert [x[0] for x in o] == ["light_to_world", "light_dir", "light_color",
+                                 "light_falloff", "numLights"]
+
+
+def test_raw_shader_mirror_drift_is_rejected(tmp_path):
+    root = _tmp_root(tmp_path)
+    comp = tmp_path / "shaders" / "lightgrid_build.comp"
+    assert g.main(["--check", "--root", root]) == 0
+    text = comp.read_text(encoding="utf-8")
+    comp.write_text(text.replace("#define LIGHTGRID_MAX_LIGHTS 32", "#define LIGHTGRID_MAX_LIGHTS 16"),
+                    encoding="utf-8")
+    assert g.main(["--check", "--root", root]) == 1      # stale array length in the mirror
