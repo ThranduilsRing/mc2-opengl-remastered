@@ -32,8 +32,6 @@ profile value is skipped and the env var value remains authoritative.
   "defaults": {
     "exposure":                   1.0,
     "shadowSoftness":             0.9,
-    "terrainLightingV1Strength":  1.0,
-    "terrainLightingV2Floor":     0.3,
     "staticPropIblStrength":      0.5,
     "waterSkyTintStrength":       0.0,
     "vfxBrightness":              1.0,
@@ -56,8 +54,6 @@ Invalid values: clamped to safe range where applicable.
 |-----|------|-------|---------------------|-------|
 | `exposure` | float | ≥0 | — | HDR composite exposure multiplier |
 | `shadowSoftness` | float | 0–1 | — | Shadow PCF softness |
-| `terrainLightingV1Strength` | float | 0–2 | — | Hemi ambient lighting strength |
-| `terrainLightingV2Floor` | float | 0–1 | — | Shadow-aware fill floor level |
 | `staticPropIblStrength` | float | 0–3 | `MC2_STATIC_PROP_IBL_SH_STRENGTH` | IBL SH contribution |
 | `waterSkyTintStrength` | float | ≥0 | `MC2_WATER_SKYTINT` | Sky horizon tint on water |
 | `vfxBrightness` | float | 0–8 | `MC2_TUNE_VFX_BRIGHTNESS` | Particle overall brightness |
@@ -158,7 +154,7 @@ shadow black-crush at RTS camera distance), a small IBL/exposure dial per
 mission's dominant lighting mood, and mech ambient fill consistent with the
 terrain floor bump — all data-only, no code changes, no gate flips.
 
-**Global `defaults` change:** `terrainLightingV2Floor` 0.3 -> 0.32 and
+**Global `defaults` change:** `terrainLightingV2Floor` (since retired; installs that still carry it ignore it) 0.3 -> 0.32 and
 `staticPropIblStrength` 0.5 -> 0.55. Small baseline lift so *every* mission
 without an explicit override (not just the 6 curated ones) gets a touch less
 crush in fully-shadowed terrain and a touch more prop IBL fill — the two
@@ -167,7 +163,7 @@ cheapest, safest global levers per the proposal's "calibrate" framing.
 Per-mission intent (all values additive tweaks off the new defaults; keys not
 listed for a mission fall back to `defaults`):
 
-| Mission | `terrainLightingV2Floor` | `shadowSoftness` | `staticPropIblStrength` | `mechAmbientStrength` | `exposure` | Why |
+| Mission | `terrainLightingV2Floor` (retired) | `shadowSoftness` | `staticPropIblStrength` | `mechAmbientStrength` | `exposure` | Why |
 |---|---|---|---|---|---|---|
 | `mc2_01` | 0.36 | 1.1 | 0.6 | 0.24 | (default 1.0) | Dense-forest mission (see `run_smoke.py` instance-count note) — canopy casts heavy terrain shadow; floor lift keeps undergrowth readable, softness+IBL bump lift the shadowed forest floor without flattening it. |
 | `mc2_03` | 0.34 | 1.0 | 0.55 | 0.22 | (default 1.0) | Mildest bump of the set — used as the "restrained" reference point between the unlifted baseline and the more dramatic missions. |

@@ -1792,10 +1792,6 @@ class gosRenderer {
         }
         void  setTerrainNormalsFromHeightStrength(float s) { terrain_nfh_strength_ = s; }
         float getTerrainNormalsFromHeightStrength() const  { return terrain_nfh_strength_; }
-        void  setTerrainLightingV1Strength(float s) { terrain_lighting_v1_strength_ = s; }
-        float getTerrainLightingV1Strength() const  { return terrain_lighting_v1_strength_; }
-        void  setTerrainLightingV2Floor(float f) { terrain_lighting_v2_floor_ = f; }
-        float getTerrainLightingV2Floor() const  { return terrain_lighting_v2_floor_; }
         void  setTerrainCliffShadowFloor(float f) { terrain_cliff_shadow_floor_ = f; }
         float getTerrainCliffShadowFloor() const  { return terrain_cliff_shadow_floor_; }
 
@@ -2291,24 +2287,9 @@ class gosRenderer {
         float terrain_mat_ao_[4]        = { 1.0f, 1.0f, 1.0f, 1.0f };
         // POM-PERLAYER-HEIGHT-1 (rock/grass/dirt/concrete; neutral = 1.0).
         float terrain_mat_height_[4]    = { 1.0f, 1.0f, 1.0f, 1.0f };
-        // TERRAIN-TUNING-UI-1: per-frame multiplier on the additive height-
-        // derived normal term in gos_terrain.frag. 1.0 = full slope tilt
-        // (current behavior; byte-equivalent to pre-slice). 0.0 = no slope
-        // contribution. Slider range 0..1.5.
+        // Per-frame multiplier on the macro-slope tilt of the chunk terrain normal.
+        // 1.0 = full slope tilt, 0.0 = no slope contribution. Slider range 0..1.5.
         float terrain_nfh_strength_ = 1.0f;
-        // TERRAIN-LIGHTING-1: hemisphere ambient strength. Authoritative
-        // gate is MC2_TERRAIN_LIGHTING_V1 — when gate OFF the upload site
-        // force-zeroes the uniform so the shader branch short-circuits
-        // (byte-equivalent to pre-slice). Member is ImGui-tunable when
-        // gate is ON.
-        float terrain_lighting_v1_strength_ = 1.0f;
-        // TERRAIN-LIGHTING-2: shadow-aware fill floor for the V1 hemisphere
-        // ambient. Slider 0..1; default 0.3 (member value used when env
-        // gate MC2_TERRAIN_LIGHTING_V2 is ON). 1.0 = pure V1 behavior (no
-        // shadow modulation); 0.0 = hemi follows shadow exactly. When the
-        // V2 gate is OFF the upload site forces the uploaded value to 1.0
-        // so V1 behavior is preserved (byte-equivalent to pre-slice).
-        float terrain_lighting_v2_floor_ = 0.3f;
         // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
         // Slider 0..0.6; default 0.0 = byte-identical (no-op). Effective only when
         // env gate MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set to a non-zero float.
@@ -2349,13 +2330,6 @@ class gosRenderer {
             // TERRAIN-NORMALS-FROM-HEIGHT-1
             GLint terrainHeightTex = -1;             // sampler2D, unit 11 (R32F)
             GLint terrainHeightParams = -1;          // vec4 (gridSide, 1/wuPerVertex, topLeftX, topLeftY)
-            GLint useTerrainNormalsFromHeight = -1;  // 0=off, 1=on
-            // TERRAIN-TUNING-UI-1
-            GLint terrainNormalsFromHeightStrength = -1; // float 0..1.5
-            // TERRAIN-LIGHTING-1
-            GLint terrainLightingV1Strength = -1; // float, 0=off; effective only when env gate ON
-            // TERRAIN-LIGHTING-2
-            GLint terrainLightingV2ShadowFillFloor = -1; // float, 1=V1 (no shadow influence)
             // CLIFF SHADOW FLOOR: lifts steep faces off near-black; 0=byte-identical
             GLint terrainCliffShadowFloor = -1;
             // TERRAIN-MATERIAL-LIB-1
@@ -2404,13 +2378,6 @@ class gosRenderer {
             // TERRAIN-NORMALS-FROM-HEIGHT-1
             GLint terrainHeightTex = -1;
             GLint terrainHeightParams = -1;
-            GLint useTerrainNormalsFromHeight = -1;
-            // TERRAIN-TUNING-UI-1
-            GLint terrainNormalsFromHeightStrength = -1;
-            // TERRAIN-LIGHTING-1
-            GLint terrainLightingV1Strength = -1;
-            // TERRAIN-LIGHTING-2
-            GLint terrainLightingV2ShadowFillFloor = -1;
             // CLIFF SHADOW FLOOR
             GLint terrainCliffShadowFloor = -1;
             // TERRAIN-MATERIAL-LIB-1: shares gosRenderer members with the chunk
@@ -2503,16 +2470,6 @@ class gosRenderer {
             // TERRAIN-NORMALS-FROM-HEIGHT-1
             terrainLocs_.terrainHeightTex             = glGetUniformLocation(shp, "terrainHeightTex");
             terrainLocs_.terrainHeightParams          = glGetUniformLocation(shp, "terrainHeightParams");
-            terrainLocs_.useTerrainNormalsFromHeight  = glGetUniformLocation(shp, "useTerrainNormalsFromHeight");
-            // TERRAIN-TUNING-UI-1
-            terrainLocs_.terrainNormalsFromHeightStrength =
-                glGetUniformLocation(shp, "terrainNormalsFromHeightStrength");
-            // TERRAIN-LIGHTING-1
-            terrainLocs_.terrainLightingV1Strength =
-                glGetUniformLocation(shp, "terrainLightingV1Strength");
-            // TERRAIN-LIGHTING-2
-            terrainLocs_.terrainLightingV2ShadowFillFloor =
-                glGetUniformLocation(shp, "terrainLightingV2ShadowFillFloor");
             terrainLocs_.terrainCliffShadowFloor =
                 glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
             // TERRAIN-MATERIAL-LIB-1
@@ -2578,16 +2535,6 @@ class gosRenderer {
             // TERRAIN-NORMALS-FROM-HEIGHT-1
             thinTerrainLocs_.terrainHeightTex             = glGetUniformLocation(shp, "terrainHeightTex");
             thinTerrainLocs_.terrainHeightParams          = glGetUniformLocation(shp, "terrainHeightParams");
-            thinTerrainLocs_.useTerrainNormalsFromHeight  = glGetUniformLocation(shp, "useTerrainNormalsFromHeight");
-            // TERRAIN-TUNING-UI-1
-            thinTerrainLocs_.terrainNormalsFromHeightStrength =
-                glGetUniformLocation(shp, "terrainNormalsFromHeightStrength");
-            // TERRAIN-LIGHTING-1
-            thinTerrainLocs_.terrainLightingV1Strength =
-                glGetUniformLocation(shp, "terrainLightingV1Strength");
-            // TERRAIN-LIGHTING-2
-            thinTerrainLocs_.terrainLightingV2ShadowFillFloor =
-                glGetUniformLocation(shp, "terrainLightingV2ShadowFillFloor");
             thinTerrainLocs_.terrainCliffShadowFloor =
                 glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
             // TERRAIN-CONTROLMAP-ALBEDO-1: stays -1 until gos_terrain_thin's frag
@@ -2653,10 +2600,6 @@ class gosRenderer {
             // the helper skips them (no behavioral change to decal path).
             GLint terrainHeightTex                   = -1;
             GLint terrainHeightParams                = -1;
-            GLint useTerrainNormalsFromHeight        = -1;
-            GLint terrainNormalsFromHeightStrength   = -1;
-            GLint terrainLightingV1Strength          = -1;
-            GLint terrainLightingV2ShadowFillFloor   = -1;
             // CLIFF SHADOW FLOOR
             GLint terrainCliffShadowFloor            = -1;
             // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
@@ -5671,10 +5614,6 @@ void gosRenderer::init() {
         // upload time skips negative locs unconditionally.
         locs.terrainHeightTex                 = glGetUniformLocation(shp, "terrainHeightTex");
         locs.terrainHeightParams              = glGetUniformLocation(shp, "terrainHeightParams");
-        locs.useTerrainNormalsFromHeight      = glGetUniformLocation(shp, "useTerrainNormalsFromHeight");
-        locs.terrainNormalsFromHeightStrength = glGetUniformLocation(shp, "terrainNormalsFromHeightStrength");
-        locs.terrainLightingV1Strength        = glGetUniformLocation(shp, "terrainLightingV1Strength");
-        locs.terrainLightingV2ShadowFillFloor = glGetUniformLocation(shp, "terrainLightingV2ShadowFillFloor");
         locs.terrainCliffShadowFloor = glGetUniformLocation(shp, "u_terrainCliffShadowFloor");
         // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only).
         locs.missionFlatLight = glGetUniformLocation(shp, "u_missionFlatLight");
@@ -7119,22 +7058,12 @@ void gosRenderer::endDynamicShadowPass() {
     drainGLErrors("shadow_dynamic");
 }
 
-// TERRAIN-NORMALS-FROM-HEIGHT-1: shared helper called from each of the three
-// terrain uniform-upload sites below. Binds the per-mission R32F height
-// texture to unit 11, pushes the worldspace mapping params, and reads the
-// MC2_TERRAIN_NORMALS_FROM_HEIGHT env gate every frame so toggling it does
-// not require a restart. When the texture handle is zero (no mission, or
-// pre-upload), the gate is forced OFF so the shader branch stays in its
-// no-op path even if the env var is set. Caller is responsible for restoring
+// Shared helper called from each of the three terrain uniform-upload sites below.
+// Binds the per-mission R32F height texture to unit 11, pushes the worldspace
+// mapping params and the cliff shadow floor. Caller is responsible for restoring
 // the active texture unit afterwards (existing sites already do glActiveTexture
 // (GL_TEXTURE0) immediately after this helper).
 static void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
-                                         GLint gateLoc, GLint strengthLoc,
-                                         float strength,
-                                         GLint lightingV1StrengthLoc,
-                                         float lightingV1Strength,
-                                         GLint lightingV2FloorLoc,
-                                         float lightingV2Floor,
                                          GLint cliffShadowFloorLoc,
                                          float cliffShadowFloor)
 {
@@ -7154,46 +7083,6 @@ static void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
             gos_terrainHeightMapTopLeftY(),
         };
         glUniform4fv(paramsLoc, 1, p);
-    }
-    int gateOn = 0;
-    if (htex != 0) {
-        if (const char* e = getenv("MC2_TERRAIN_NORMALS_FROM_HEIGHT")) {
-            gateOn = (e[0] && e[0] != '0') ? 1 : 0;
-        }
-    }
-    if (gateLoc >= 0) glUniform1i(gateLoc, gateOn);
-    // TERRAIN-TUNING-UI-1: per-frame strength multiplier on the additive
-    // height-derived normal term. Always uploaded — at strength=1.0 the
-    // shader expression collapses to the pre-slice byte-equivalent path.
-    if (strengthLoc >= 0) glUniform1f(strengthLoc, strength);
-    // TERRAIN-LIGHTING-1: hemisphere ambient strength. Env gate
-    // MC2_TERRAIN_LIGHTING_V1 is authoritative — when unset/=0 the
-    // uploaded value is force-zeroed and the shader branch short-
-    // circuits to a no-op. When ON, the member value (ImGui-tunable)
-    // is uploaded.
-    float effectiveLightingStrength = 0.0f;
-    if (const char* e = getenv("MC2_TERRAIN_LIGHTING_V1")) {
-        if (e[0] && e[0] != '0') effectiveLightingStrength = lightingV1Strength;
-    }
-    if (lightingV1StrengthLoc >= 0) {
-        glUniform1f(lightingV1StrengthLoc, effectiveLightingStrength);
-    }
-    // TERRAIN-LIGHTING-2: shadow-aware hemisphere fill floor. Env gate
-    // MC2_TERRAIN_LIGHTING_V2 is authoritative. When OFF we force-upload
-    // 1.0 so the shader expression `mix(floor, 1.0, shadow)` collapses to
-    // 1.0 (no shadow modulation) → V1 behavior preserved. When ON we
-    // upload the member value (default 0.3, ImGui-tunable 0..1). Always
-    // bounded so the shader never sees an out-of-range floor.
-    float effectiveV2Floor = 1.0f;
-    if (const char* e = getenv("MC2_TERRAIN_LIGHTING_V2")) {
-        if (e[0] && e[0] != '0') {
-            effectiveV2Floor = lightingV2Floor;
-            if (effectiveV2Floor < 0.0f) effectiveV2Floor = 0.0f;
-            if (effectiveV2Floor > 1.0f) effectiveV2Floor = 1.0f;
-        }
-    }
-    if (lightingV2FloorLoc >= 0) {
-        glUniform1f(lightingV2FloorLoc, effectiveV2Floor);
     }
     // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
     // Env gate MC2_TERRAIN_CLIFF_SHADOW_FLOOR is authoritative — unset/=0 forces
@@ -7506,15 +7395,7 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
             }
         }
     }
-    // TERRAIN-NORMALS-FROM-HEIGHT-1
     bindTerrainHeightTexUniforms(tl.terrainHeightTex, tl.terrainHeightParams,
-                                 tl.useTerrainNormalsFromHeight,
-                                 tl.terrainNormalsFromHeightStrength,
-                                 terrain_nfh_strength_,
-                                 tl.terrainLightingV1Strength,
-                                 terrain_lighting_v1_strength_,
-                                 tl.terrainLightingV2ShadowFillFloor,
-                                 terrain_lighting_v2_floor_,
                                  tl.terrainCliffShadowFloor,
                                  terrain_cliff_shadow_floor_);
     glActiveTexture(GL_TEXTURE0);
@@ -7648,15 +7529,7 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
             }
         }
     }
-    // TERRAIN-NORMALS-FROM-HEIGHT-1
     bindTerrainHeightTexUniforms(tl.terrainHeightTex, tl.terrainHeightParams,
-                                 tl.useTerrainNormalsFromHeight,
-                                 tl.terrainNormalsFromHeightStrength,
-                                 terrain_nfh_strength_,
-                                 tl.terrainLightingV1Strength,
-                                 terrain_lighting_v1_strength_,
-                                 tl.terrainLightingV2ShadowFillFloor,
-                                 terrain_lighting_v2_floor_,
                                  tl.terrainCliffShadowFloor,
                                  terrain_cliff_shadow_floor_);
     glActiveTexture(GL_TEXTURE0);
@@ -10785,20 +10658,6 @@ void gos_SetTerrainNormalsFromHeightStrength(float s) {
 float gos_GetTerrainNormalsFromHeightStrength() {
     return g_gos_renderer ? g_gos_renderer->getTerrainNormalsFromHeightStrength() : 1.0f;
 }
-// TERRAIN-LIGHTING-1
-void gos_SetTerrainLightingV1Strength(float s) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainLightingV1Strength(s);
-}
-float gos_GetTerrainLightingV1Strength() {
-    return g_gos_renderer ? g_gos_renderer->getTerrainLightingV1Strength() : 1.0f;
-}
-// TERRAIN-LIGHTING-2
-void gos_SetTerrainLightingV2Floor(float f) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainLightingV2Floor(f);
-}
-float gos_GetTerrainLightingV2Floor() {
-    return g_gos_renderer ? g_gos_renderer->getTerrainLightingV2Floor() : 0.3f;
-}
 // CLIFF SHADOW FLOOR
 void gos_SetTerrainCliffShadowFloor(float f) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCliffShadowFloor(f);
@@ -11146,23 +11005,12 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
 
     setupOverlayShadowsForShp(shp);
 
-    // TERRAIN-DECAL-LIGHTING-1a: extend the same terrain lighting stack
-    // (NFH height tex, V1 hemi, V2 shadow-fill floor) to the cement
-    // overlay program so transitions no longer form a lighting seam
-    // against lit terrain. Helper handles env-gate force-zero semantics
-    // identically to the main terrain path; locs that are -1 (decal
-    // program, no uniforms declared) get skipped. After binding we
-    // restore active texture unit 0 because the helper leaves unit 11
-    // bound — overlay per-draw glBindTexture targets unit 0.
+    // Same height-texture/cliff-floor stack for the cement overlay program; locs that
+    // are -1 (decal program, no uniforms declared) get skipped. After binding we
+    // restore active texture unit 0 because the helper leaves unit 11 bound —
+    // overlay per-draw glBindTexture targets unit 0.
     bindTerrainHeightTexUniforms(L.terrainHeightTex,
                                  L.terrainHeightParams,
-                                 L.useTerrainNormalsFromHeight,
-                                 L.terrainNormalsFromHeightStrength,
-                                 terrain_nfh_strength_,
-                                 L.terrainLightingV1Strength,
-                                 terrain_lighting_v1_strength_,
-                                 L.terrainLightingV2ShadowFillFloor,
-                                 terrain_lighting_v2_floor_,
                                  L.terrainCliffShadowFloor,
                                  terrain_cliff_shadow_floor_);
 

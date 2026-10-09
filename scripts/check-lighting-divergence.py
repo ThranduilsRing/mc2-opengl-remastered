@@ -5,7 +5,7 @@ WHAT THIS PINS, AND WHY IT EXISTS
 ---------------------------------
 MC2 has no single shading model. Each renderable class reached its lighting by
 a different route and at a different time, so the engine currently carries
-FIVE named scalar ambient floors, FOUR hemisphere sky/ground fill pairs, FIVE
+FIVE named scalar ambient floors, THREE hemisphere sky/ground fill pairs, FIVE
 distinct unnamed inline floors, TWO definitions of the "shared" calc_light
 kernel, and TWO answers to "what does calc_light return when the actor has no
 lights".
@@ -260,21 +260,15 @@ BASELINE = {
         ("shaders/vulkan/mech_tier1.vert", "kAmbientFloor", "0.35"),
         ("shaders/vulkan/water_geom.frag", "SKY_AMBIENT", "0.18"),
     ],
-    # Hemisphere / bounce fills. FOUR independent sky/ground pairs. The three
-    # terrain files agree on 0.32,0.28,0.22 / 0.55,0.62,0.75; static_prop.vert
-    # and vulkan/color_prop_tier1.vert -- nominally the SAME renderable class on
-    # two backends -- do not agree with each other or with terrain.
+    # Hemisphere / bounce fills. THREE independent sky/ground pairs: terrain,
+    # static_prop.vert, and vulkan/color_prop_tier1.vert -- the last two nominally
+    # the SAME renderable class on two backends -- which do not agree with each
+    # other or with terrain.
     "ambient_fill_vec3": [
-        ("shaders/gos_terrain.frag", "hemiGroundTint", "0.32,0.28,0.22"),
-        ("shaders/gos_terrain.frag", "hemiSkyTint", "0.55,0.62,0.75"),
         ("shaders/static_prop.vert", "kAmbientV1Ground", "0.10,0.09,0.07"),
         ("shaders/static_prop.vert", "kAmbientV1Sky", "0.20,0.22,0.28"),
         ("shaders/terrain_lod_chunk.frag", "ambGnd", "0.34,0.30,0.24"),
         ("shaders/terrain_lod_chunk.frag", "ambSky", "0.55,0.62,0.75"),
-        ("shaders/terrain_lod_chunk.frag", "hemiGroundTint", "0.32,0.28,0.22"),
-        ("shaders/terrain_lod_chunk.frag", "hemiSkyTint", "0.55,0.62,0.75"),
-        ("shaders/terrain_overlay.frag", "hemiGroundTint", "0.32,0.28,0.22"),
-        ("shaders/terrain_overlay.frag", "hemiSkyTint", "0.55,0.62,0.75"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientGround", "0.14,0.13,0.11"),
         ("shaders/vulkan/color_prop_tier1.vert", "kAmbientSky", "0.00,0.02,0.08"),
         # VK-PARITY-TERRAIN-1: verbatim port of terrain_lod_chunk.frag's TERRAIN-AMBIENT-FLOOR-2 pair (INTENTIONAL: parity).

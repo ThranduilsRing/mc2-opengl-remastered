@@ -17,7 +17,7 @@
           "matrix_stride": null,
           "name": "thinRecsFrag",
           "offset": 0,
-          "type": "_1515"
+          "type": "_1825"
         }
       ],
       "name": "ThinRecordBufFrag"
@@ -80,169 +80,218 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "useAtlasColormap",
+          "name": "u_pathTint",
           "offset": 192,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "atlasMapTopLeftX",
+          "name": "useAtlasColormap",
           "offset": 196,
-          "type": "float"
+          "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "atlasMapTopLeftY",
+          "name": "atlasMapTopLeftX",
           "offset": 200,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "atlasOneOverWorldUnits",
+          "name": "atlasMapTopLeftY",
           "offset": 204,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "useCementAtlas",
+          "name": "atlasOneOverWorldUnits",
           "offset": 208,
-          "type": "int"
+          "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "atlasCementGridSide",
+          "name": "useCementAtlas",
           "offset": 212,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "atlasCementWorldUnitsPerTile",
+          "name": "atlasCementGridSide",
           "offset": 216,
+          "type": "int"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "atlasCementWorldUnitsPerTile",
+          "offset": 220,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "detailNormalStrength",
+          "name": "u_useTransitionMask",
           "offset": 224,
-          "type": "vec4"
+          "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "fog_color",
+          "name": "detailNormalStrength",
           "offset": 240,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "pomParams",
+          "name": "fog_color",
           "offset": 256,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "cameraPos",
+          "name": "pomParams",
           "offset": 272,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "terrainWorldScale",
+          "name": "cameraPos",
           "offset": 288,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "terrainViewDir",
+          "name": "terrainWorldScale",
           "offset": 304,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "tessDebug",
+          "name": "terrainViewDir",
           "offset": 320,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "time",
+          "name": "tessDebug",
           "offset": 336,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "time",
+          "offset": 352,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "mapHalfExtent",
-          "offset": 340,
+          "offset": 356,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "g_terrainMaterialProfile",
-          "offset": 344,
+          "offset": 360,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "matNormalBoost",
-          "offset": 352,
+          "offset": 368,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "tintStrengthScale",
-          "offset": 368,
-          "type": "float"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "terrainHeightParams",
+          "name": "matTiling",
           "offset": 384,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "useTerrainNormalsFromHeight",
+          "name": "matTilingSnow",
           "offset": 400,
-          "type": "int"
-        },
-        {
-          "array_stride": null,
-          "matrix_stride": null,
-          "name": "terrainNormalsFromHeightStrength",
-          "offset": 404,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "terrainLightingV1Strength",
-          "offset": 408,
+          "name": "terrainClassGrass",
+          "offset": 416,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "terrainClassDirt",
+          "offset": 432,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintRock",
+          "offset": 448,
+          "type": "vec3"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintGrass",
+          "offset": 464,
+          "type": "vec3"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintDirt",
+          "offset": 480,
+          "type": "vec3"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "tintStrengthScale",
+          "offset": 492,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "terrainLightingV2ShadowFillFloor",
-          "offset": 412,
+          "name": "snowBrightnessDampen",
+          "offset": 496,
+          "type": "float"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "terrainHeightParams",
+          "offset": 512,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_terrainCliffShadowFloor",
+          "offset": 528,
           "type": "float"
         }
       ],

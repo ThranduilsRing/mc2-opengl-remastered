@@ -1,6 +1,6 @@
 {
   "matrix_id": "terrain",
-  "description": "Terrain normals-from-height and lighting variants.",
+  "description": "Terrain default and height-normal debug view.",
   "default_missions": ["mc2_01", "mc2_24"],
   "default_duration": 15,
   "entries": [
@@ -10,19 +10,9 @@
       "env": {}
     },
     {
-      "id": "terrain_nfh_v1_v2",
-      "description": "Normals-from-height + lighting V1 + V2 shadow modulation all ON.",
-      "env": {
-        "MC2_TERRAIN_NORMALS_FROM_HEIGHT": "1",
-        "MC2_TERRAIN_LIGHTING_V1": "1",
-        "MC2_TERRAIN_LIGHTING_V2": "1"
-      }
-    },
-    {
       "id": "terrain_debug_mode_10",
-      "description": "Debug mode 10: height-derived normals visualized as RGB. Normals-from-height gate must be ON.",
+      "description": "Debug mode 10: height-derived normals visualized as RGB.",
       "env": {
-        "MC2_TERRAIN_NORMALS_FROM_HEIGHT": "1",
         "MC2_TERRAIN_DEBUG_MODE": "10"
       }
     }

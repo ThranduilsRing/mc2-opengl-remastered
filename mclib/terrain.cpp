@@ -771,12 +771,11 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 
 		mapTopLeft3d.z = mapData->getTopLeftElevation();
 
-		// TERRAIN-NORMALS-FROM-HEIGHT-1: upload an R32F height texture from
-		// the now-resident heightfield so the terrain fragment shader can
-		// derive macroscopic surface normals when MC2_TERRAIN_NORMALS_FROM_HEIGHT
-		// is set. Visual-only; gameplay height (getTerrainElevation) remains
-		// authoritative. sizeof(PostcompVertex) = 32 with float elevation at
-		// byte 12 (mclib/vertex.h:32-60).
+		// Upload an R32F height texture from the now-resident heightfield so the legacy
+		// terrain fragment shader can derive macroscopic surface normals (debug mode 10
+		// and the shadow-normal path). Visual-only; gameplay height
+		// (getTerrainElevation) remains authoritative. sizeof(PostcompVertex) = 32 with
+		// float elevation at byte 12.
 		if (mapData->getBlocks()) {
 			gos_uploadTerrainHeightTex(
 				(int)realVerticesMapSide,

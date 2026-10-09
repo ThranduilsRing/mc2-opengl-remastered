@@ -9,9 +9,7 @@
 // (0.5,0.5,1,1) into the shared scene GBuffer, binary-alpha (discard a < 0.5), opaque.
 // Shares the terrain island's set 0 (UBO slot 0 + cement/pool/shadow bindings) via
 // include/terrain_frame_vk.glsl so the lighting inputs are the terrain's own.
-// NOT ported (GL default-OFF env gates, TERRAIN-DECAL-LIGHTING-1a): the V1 hemisphere
-// additive / height-normal path (MC2_TERRAIN_LIGHTING_V1, MC2_TERRAIN_NORMALS_FROM_HEIGHT)
-// and the surfaceDebugMode / pathTint debug viz.
+// NOT ported: the surfaceDebugMode / pathTint debug viz.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #ifndef PREC

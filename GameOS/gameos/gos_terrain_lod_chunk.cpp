@@ -54,7 +54,7 @@ static bool glStateGuardTerrainEnabled() {
 // can change mid-process, so resolving them per frame is pure redundant recompute.
 // These resolvers cache the SAME values once at first use — byte-identical result,
 // matching the established `static const ... = [](){...}()` pattern already used
-// throughout this file (e.g. s_v1Env/s_v2Env). The per-frame block reads these
+// throughout this file. The per-frame block reads these
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
 namespace {
 inline bool tglc_envOn(const char* name) {
@@ -825,9 +825,7 @@ static GLint    s_locMatRoughness   = -1;
 static GLint    s_locMatAO          = -1;
 static GLint    s_locMatHeight      = -1;  // POM-PERLAYER-HEIGHT-1
 static GLint    s_locUseMaterialLib = -1;
-// Remaining legacy tunables (env gates replicated in the upload so default==legacy).
-extern float gos_GetTerrainLightingV1Strength();
-extern float gos_GetTerrainLightingV2Floor();
+// Remaining legacy tunables.
 extern float gos_GetTerrainCliffShadowFloor();  // CLIFF SHADOW FLOOR
 extern float gos_GetTerrainNormalsFromHeightStrength();
 extern float gos_GetTerrainPOMScale();
@@ -836,8 +834,6 @@ extern float gos_GetTerrainPOMScale();
 // pattern in this file (ruling R5).
 extern void  gos_GetTerrainCameraPos(float*, float*, float*);
 extern int   g_terrainMaterialProfile;   // global; 0 = legacy
-static GLint s_locLightingV1     = -1;
-static GLint s_locLightingV2     = -1;
 static GLint s_locCliffShadowFloor = -1;  // CLIFF SHADOW FLOOR
 static GLint s_locAmbientFloor     = -1;  // TERRAIN-AMBIENT-FLOOR-2
 static GLint s_locAmbientDayGate   = -1;  // TERRAIN-AMBIENT-FLOOR-2
@@ -906,20 +902,6 @@ static GLint s_locTransitionMaskArray = -1;
 static GLint s_locUseTransitionMask   = -1;
 static constexpr GLint kChunkTexUnitTransitionMask = 11;
 extern void  gos_GetTerrainMatNormalBoost(float*, float*, float*, float*);
-
-// CONCRETE-DETAIL-NORMAL-1: killswitch-shaped gate for the concrete detail
-// normal (terrain_lod_chunk.frag's MAT_LAYER_PAINTED_CONC branch). DEFAULT OFF
-// so every install renders the "original overlay" concrete the user approved in
-// mc2-win64-v0.3; "=1" restores the relief treatment. Evaluated once (static),
-// matching the terrainNormalArrayEnabled()/mc2ShadowStaticBandFixEnabled()
-// pattern in gameos_graphics.cpp. See the consumer at the matNormalBoost upload.
-static bool mc2TerrainConcreteDetailNormalEnabled() {
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_TERRAIN_CONCRETE_DETAIL_NORMAL");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
-    return enabled;
-}
 extern void  gos_GetTerrainClassGrass(float*, float*, float*, float*);
 extern void  gos_GetTerrainClassDirt(float*, float*, float*, float*);
 extern float gos_GetTerrainDetailTiling();
@@ -1335,8 +1317,6 @@ void gos_TerrainLodChunk_Init()
             s_locMatAO          = glGetUniformLocation(s_terrainProgram, "matAO");
             s_locMatHeight      = glGetUniformLocation(s_terrainProgram, "matHeight");  // POM-PERLAYER-HEIGHT-1
             s_locUseMaterialLib = glGetUniformLocation(s_terrainProgram, "u_useMaterialLib");
-            s_locLightingV1  = glGetUniformLocation(s_terrainProgram, "terrainLightingV1Strength");
-            s_locLightingV2  = glGetUniformLocation(s_terrainProgram, "terrainLightingV2ShadowFillFloor");
             s_locCliffShadowFloor = glGetUniformLocation(s_terrainProgram, "u_terrainCliffShadowFloor");
             s_locAmbientFloor     = glGetUniformLocation(s_terrainProgram, "u_terrainAmbientFloor");   // TERRAIN-AMBIENT-FLOOR-2
             s_locAmbientDayGate   = glGetUniformLocation(s_terrainProgram, "u_terrainAmbientDayGate"); // TERRAIN-AMBIENT-FLOOR-2
@@ -2669,22 +2649,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     {
         float mt[5] = {3,2,1,6,1};  gos_GetTerrainMatTiling(&mt[0], &mt[1], &mt[2], &mt[3], &mt[4]);
         float nb[4] = {0.9f,1.1f,1.1f,2.5f}; gos_GetTerrainMatNormalBoost(&nb[0], &nb[1], &nb[2], &nb[3]);
-        // CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: "I have decided I
-        // don't like the detail normal for concrete" — they graded the
-        // mc2-win64-v0.3 install, which ships WITHOUT data/terrain_layers/, so
-        // matNormalArray never loads and the concrete relief never appears.
-        // That "original overlay" look is the approved reference).
-        //
-        // nb[3] is matNormalBoost.w — the ONLY scale on the concrete branch in
-        // terrain_lod_chunk.frag:1402-1405 (`dN += pureConcrete *
-        // matNormalBoost.w * fwC * (cN.rgb*2-1)`). Zeroing it makes that branch
-        // contribute exactly vec3(0), reproducing the v0.3 look in installs that
-        // DO ship the layers, without touching the shader, the other materials
-        // (rock/grass/dirt keep nb[0..2]), or the cement albedo/atlas path.
-        //
-        // DEFAULT OFF = original overlay = what the user approved.
-        // MC2_TERRAIN_CONCRETE_DETAIL_NORMAL=1 restores the relief treatment.
-        if (!mc2TerrainConcreteDetailNormalEnabled()) nb[3] = 0.0f;
+        // The concrete detail normal is permanently off (user ruling 2026-07-26): nb[3]
+        // is matNormalBoost.w, the only scale on the concrete branch in
+        // terrain_lod_chunk.frag, so zeroing it makes that branch contribute exactly
+        // vec3(0) without touching the other materials or the cement albedo path.
+        nb[3] = 0.0f;
         float cg[4] = {-0.02f,0.06f,0.22f,0.40f}; gos_GetTerrainClassGrass(&cg[0], &cg[1], &cg[2], &cg[3]);
         float cd[4] = {-0.02f,0.06f,0.22f,0.45f}; gos_GetTerrainClassDirt(&cd[0], &cd[1], &cd[2], &cd[3]);
         float dt = gos_GetTerrainDetailTiling();
@@ -2735,14 +2704,9 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             if (s_locUseMaterialLib >= 0) glUniform1i(s_locUseMaterialLib, matLibOn ? 1 : 0);
         }
 
-        // Remaining tunables. Hemisphere V1/V2 are env-gated OFF by default (match
-        // legacy: force-zeroed unless MC2_TERRAIN_LIGHTING_V1/V2 set). NFH strength
-        // scales the chunk's always-on smooth normal (default 1.0 = no change). POM
-        // = legacy scale (default 0.02). Material profile = global int (0=legacy).
-        static const bool s_v1Env = (getenv("MC2_TERRAIN_LIGHTING_V1") != nullptr);
-        static const bool s_v2Env = (getenv("MC2_TERRAIN_LIGHTING_V2") != nullptr);
-        if (s_locLightingV1  >= 0) glUniform1f(s_locLightingV1,  s_v1Env ? gos_GetTerrainLightingV1Strength() : 0.0f);
-        if (s_locLightingV2  >= 0) glUniform1f(s_locLightingV2,  s_v2Env ? gos_GetTerrainLightingV2Floor()    : 1.0f);
+        // Remaining tunables. NFH strength scales the chunk's always-on smooth normal
+        // (default 1.0 = no change). POM = legacy scale (default 0.02). Material
+        // profile = global int (0=legacy).
         // CLIFF SHADOW FLOOR: env-gated. Unset/=0 uploads 0.0 (shader no-op,
         // byte-identical). Non-zero uploads the member value (ImGui-tunable), 0..1.
         {
@@ -2757,8 +2721,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
         // ── TERRAIN-AMBIENT-FLOOR-2 (MC2_TERRAIN_AMBIENT_FLOOR) — DEFAULT-ON at 0.35 ──
         //
-        // Terrain receives NO ambient term at all: the hemisphere fill two
-        // uniforms above is default-OFF (MC2_TERRAIN_LIGHTING_V1), so terrain is
+        // Terrain receives no other ambient term, so it is
         // exactly `baseColor * normalLight * shadow`, while static props standing
         // on it get ambient through SH-IBL. That is what bottoms out daylight
         // ground on mc2_03 beside the (correctly, user-ratified) flat-lit pads.

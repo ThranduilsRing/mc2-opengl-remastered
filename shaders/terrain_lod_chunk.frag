@@ -436,11 +436,8 @@ uniform sampler2DArray u_matAlbedoArray;
 uniform int   u_useMatAlbedo;       // 0 = legacy tint path verbatim
 uniform float u_matAlbedoStrength;  // 0..1 mix toward textured composite
 
-// Remaining legacy tunables (copied with legacy defaults; driver replicates the
-// env gates so default == legacy default). cellBombParams is a DEAD uniform in
-// legacy (no shader consumer) -> not wired.
-uniform float terrainLightingV1Strength;       // hemisphere ambient; 0 = off (env-gated default off)
-uniform float terrainLightingV2ShadowFillFloor;// shadow-aware fill floor; 1 = no influence
+// Remaining legacy tunables (copied with legacy defaults). cellBombParams is a DEAD
+// uniform in legacy (no shader consumer) -> not wired.
 uniform float u_terrainCliffShadowFloor;// CLIFF SHADOW FLOOR: lifts steep faces off near-black; 0 = byte-identical
 uniform float u_terrainAmbientFloor;   // TERRAIN-AMBIENT-FLOOR-2: terrain-only albedo-scaled ambient; 0 = byte-identical
 uniform float u_terrainAmbientDayGate; // TERRAIN-AMBIENT-FLOOR-2: daylight level 0..1 (terrain_daylight.h); 0 = byte-identical
@@ -2046,100 +2043,27 @@ void main() {
     if (dot(u_padGlow, u_padGlow) > 0.0)
         lit += u_padGlow * padGlowMask(v_worldPos.xy);
 
-    // Hemisphere ambient fill (TERRAIN-LIGHTING-1/2) — added AFTER shadow so sky/
-    // ground bounce still lights shadowed terrain. Env-gated OFF by default
-    // (terrainLightingV1Strength=0 -> skipped, byte-safe). Matches gos_terrain.frag.
-    //
-    // WHAT MC2_TERRAIN_LIGHTING_V1/V2 CANNOT DO, recorded here 2026-07-30
-    // (LIGHTING-INCAPABLE-BATCH-3) because it keeps getting proposed as the cure
-    // for the pad-vs-ground contrast complaint and it structurally is not:
-    //   * hemiContrib is an ABSOLUTE additive term. It is NOT scaled by
-    //     baseColor, so it lifts dark and bright ground by the same number of
-    //     nits and flattens the map's albedo variation toward grey.
-    //   * It is NOT masked by flatLitShare -- `lit += hemiContrib` below runs on
-    //     every terrain fragment INCLUDING cement (pureConcrete == 1). Measured
-    //     +21-26% on pads. So it moves terrain's ABSOLUTE value but cannot move
-    //     the terrain-to-cement RELATIONSHIP, which is the thing being
-    //     complained about.
-    // That pair is exactly why TERRAIN-AMBIENT-FLOOR-2 below exists as a
-    // separate, albedo-scaled, flatLitShare-masked term rather than as a default
-    // flip of this one. Turning V1 on is still a legitimate "the whole map is
-    // too dark" knob; it is not a pad:ground ratio knob. If you want it to
-    // become one, the edit is a `* (1.0 - flatLitShare)` on hemiContrib -- but
-    // that silently changes what V1 means for anyone already using it, and its
-    // measured +21-26% pad lift is currently documented as a known property.
-    vec3 hemiContrib = vec3(0.0);   // LIGHTING-DEBUG-VIEWS: captured for ambient channel
-    if (terrainLightingV1Strength > 0.0) {
-        const vec3 hemiSkyTint    = vec3(0.55, 0.62, 0.75);
-        const vec3 hemiGroundTint = vec3(0.32, 0.28, 0.22);
-        float skyFactor    = N.z * 0.5 + 0.5;
-        vec3  hemiFill     = mix(hemiGroundTint, hemiSkyTint, skyFactor);
-        float hemiAmount   = terrainLightingV1Strength * (1.0 - 0.5 * snowWeight);
-        float hemiShadowMix = mix(terrainLightingV2ShadowFillFloor, 1.0, shadow);
-        hemiContrib = hemiFill * hemiAmount * 0.25 * hemiShadowMix;
-        lit += hemiContrib;
-    }
+    // Ambient accumulator for the lighting debug view; the ambient floor below adds to it.
+    vec3 hemiContrib = vec3(0.0);
 
     // ── TERRAIN-AMBIENT-FLOOR-2 (gate MC2_TERRAIN_AMBIENT_FLOOR, default 0.35 = ON) ──
     //
-    // THE DEFECT. On mc2_03 in broad daylight the terrain OUTSIDE the concrete
-    // pads reads near-black while the pads are correctly lit. Terrain here is
-    // exactly `baseColor * normalLight * shadow`: a pure product, with NO
-    // ADDITIVE TERM UNDER IT. The one such term terrain has, the hemisphere fill
-    // directly above, is default-OFF (MC2_TERRAIN_LIGHTING_V1), so `hemiContrib`
-    // is literally vec3(0) at stock. Static props standing on that same ground
-    // DO receive an additive ambient (their SH-IBL path).
+    // Terrain is `baseColor * normalLight * shadow`: a pure product with no additive
+    // term under it, so in broad daylight ground outside the concrete pads reads
+    // near-black while the (flat-lit) pads are correctly lit. This adds an
+    // albedo-scaled ambient, `baseColor * ambCol * floor`: dark ground stays
+    // proportionally dark and up-facing ground gains more than cliff faces (N.z
+    // hemisphere shaping), so albedo variation and relief survive. An absolute,
+    // albedo-independent additive fill was rejected because it washes the map toward
+    // grey and lifts the pads too.
     //
-    // BE PRECISE ABOUT "NO AMBIENT", because the loose version of this claim is
-    // wrong and was inherited: baseColor is NOT raw albedo. The colormap is
-    // pre-burned with the mission light (terrtxm2.cpp burnInShadows ->
-    // eye->getLightRed(lightFactor)), so terrain albedo already carries baked
-    // mission lighting. But that is a MULTIPLICATIVE factor sitting INSIDE
-    // baseColor, not a floor: it cannot stop `normalLight` -- whose floor is
-    // mix(0.35,1.20,0.02) = 0.367 -- from crushing the product. A measurement of
-    // the ambient debug view reading 0.0000 over terrain proves only that
-    // hemiContrib is zero, which is true by construction when V1 is off; it does
-    // NOT by itself prove there is no baked ambient. The defensible statement,
-    // and the one this fix acts on, is that terrain has no additive term at the
-    // RUNTIME lighting stage, so nothing bounds the product from below.
+    // Flat-lit surfaces are exempt: flatLitShare is the fraction of this fragment's
+    // lighting replaced by the flat 1.0, so concrete and pavement are bit-identical
+    // and the pad:ground contrast closes from the terrain side only.
     //
-    // Two ~1.7x factors -- brighter concrete albedo, times the concrete lighting
-    // exemption -- then multiply that unbounded product into the reported ~3x
-    // pad:ground ratio.
-    //
-    // WHY NOT JUST TURN ON MC2_TERRAIN_LIGHTING_V1. Because its term is
-    // `hemiFill * strength * 0.25` -- an ABSOLUTE add, independent of albedo.
-    // That is not an ambient bounce, it is a fog of constant light: it lifts
-    // dark and bright materials by the same number of nits, washing the map
-    // toward flat grey, and it lifts the concrete pads too (measured +21-26% on
-    // pads). The user has ratified flat-lit concrete as correct and praised how
-    // mc2_05 currently looks; inflating pads and flattening albedo are both
-    // disqualifying.
-    //
-    // THE TERM. `baseColor * ambCol * floor` is the rendering equation's actual
-    // ambient form: irradiance times ALBEDO. Consequences that matter here:
-    //   * Dark ground stays proportionally dark; bright ground gains more. The
-    //     map keeps its albedo variation instead of converging to grey.
-    //   * The N.z hemisphere shaping means up-facing ground gains more than
-    //     cliff faces, so terrain RELIEF survives -- at 0.35 the flat-to-away
-    //     lighting ratio compresses only from ~2.3x to ~2.0x.
-    //   * Magnitude: on typical terrain (baseColor ~0.2) this adds ~0.044
-    //     absolute luma, under a third of the ~0.157 that the pre-existing V1
-    //     fill would add at strength 1.0. It is a floor, not a relight.
-    //
-    // FLAT-LIT SURFACES ARE EXEMPT, BOTH PATHS. flatLitShare (built at the
-    // lighting site above from cementLightBlend and pavedOverlayFlat) is the
-    // exact fraction of this fragment's lighting that was replaced by the flat
-    // 1.0. Where it is 1 the fragment is bit-identical. Concrete and pavement
-    // therefore do not move at all, and the contrast closes purely from the
-    // TERRAIN side -- which is the whole requirement.
-    //
-    // DAYLIGHT ONLY. u_terrainAmbientDayGate is computed on the CPU by
-    // terrain_daylight.h from the AUTHORED sun pitch min the engine's runtime
-    // night state, and is 0.000 on every night mission in the shipping data
-    // (mc2_10 pitch 180, mc2_05 / mc2_21 pitch 270, mc2_19 pitch 0, mc2_23
-    // pitch 9) -- proven offline by tools/terrain_daylight_harness, not
-    // inferred. Night missions are byte-identical.
+    // Daylight only: u_terrainAmbientDayGate comes from terrain_daylight.h (authored
+    // sun pitch, not the runtime night state) and is 0 on every night mission, so
+    // night is byte-identical.
     //
     // u_terrainAmbientFloor == 0 -> block skipped -> byte-identical.
     // Uniform-flow branch (both operands are uniforms) -> no UB.

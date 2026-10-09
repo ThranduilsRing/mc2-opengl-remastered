@@ -151,11 +151,9 @@ uniform PREC vec3  tintDirt;   // default (0.48, 0.42, 0.33)
 uniform PREC float tintStrengthScale;  // 0=colormap passthrough, 1=full material tint; default 1.0
 uniform PREC float snowBrightnessDampen;  // <1 darkens detected snow (snowWeight-gated); default 0.78
 
-// TERRAIN-NORMALS-FROM-HEIGHT-1 / TERRAIN-LIGHTING-1/2 uniforms +
-// computeTerrainNormalFromHeight() helper. Shared with terrain_overlay.frag
-// (cement transitions) via this include so the two shaders cannot drift.
-// Default-OFF byte-equivalence is enforced CPU-side by force-zeroing the
-// strength/factor uniforms when the matching env gate is unset.
+// Height-texture uniforms + computeTerrainNormalFromHeight() helper. Shared with
+// terrain_overlay.frag (cement transitions) via this include so the two shaders
+// cannot drift.
 #include <include/terrain_height_normal.hglsl>
 
 // --- Distance LOD thresholds (tunable, in MC2 world units) ---
@@ -487,8 +485,7 @@ void main(void)
     // TERRAIN-NORMALS-FROM-HEIGHT-1: debug mode 10 — visualize the
     // height-derived normal as RGB. terrainHeightParams.x > 0 means the
     // per-mission R32F height texture has been uploaded; black otherwise.
-    // Independent of the useTerrainNormalsFromHeight gate so the upload
-    // path can be diagnosed even with the lighting gate off.
+    // Diagnoses the height-texture upload path.
     if (surfaceDebugMode == 10) {
         PREC vec3 vis = vec3(0.0);
         if (terrainHeightParams.x > 0.5) {
@@ -783,24 +780,6 @@ void main(void)
 
     PREC vec3 N;
     N.xy = detailN.xy * detailNormalStrength.x * detailMul;
-    // TERRAIN-NORMALS-FROM-HEIGHT-1: when the gate is enabled, add the
-    // macroscopic slope (height-derived) into the local-z-up tangent-plane
-    // parametrization the detail normal map writes into. Detail normals
-    // still contribute high-frequency bumps; the new term restores
-    // macroscopic surface tilt that the legacy flat-up base normal omitted.
-    // Default OFF — when useTerrainNormalsFromHeight == 0 this branch is
-    // skipped and the output is byte-identical to the legacy path.
-    if (useTerrainNormalsFromHeight != 0 && terrainHeightParams.x > 0.5) {
-        PREC vec3 hN = computeTerrainNormalFromHeight(WorldPos.xy);
-        // hN is unit-length in (east, north, up). Translate to local Z=up
-        // parametrization N.xy by projecting onto the same plane the detail
-        // normals already use: N.xy += hN.xy / hN.z. Floor hN.z so a near-
-        // cliff sample cannot blow the perturbation to infinity.
-        // TERRAIN-TUNING-UI-1: strength scales the additive term so the
-        // inspector slider can dial macroscopic slope influence 0..1.5
-        // without recompiling. strength=1.0 = pre-slice behavior.
-        N.xy += (hN.xy / max(hN.z, 0.05)) * terrainNormalsFromHeightStrength;
-    }
     // Clamp normal deflection to prevent extreme angles that cause black snow
     // Max deflection of 0.7 means the normal can tilt ~35 degrees max
     N.xy = clamp(N.xy, -0.75, 0.75);
@@ -1001,66 +980,6 @@ void main(void)
     }
 
     c.rgb *= shadow;
-
-    // TERRAIN-LIGHTING-1: hemisphere ambient fill. Added AFTER shadow
-    // multiplication so sky/ground bounce continues to light shadowed
-    // terrain (direct sun is shadowed; ambient is not). Sky/ground
-    // tints are picked to match the existing fog colour (cool blue-
-    // grey) and the rock/dirt material tints already in this shader.
-    // Strength 0 short-circuits to no-op — CPU upload-site force-
-    // zeroes the uniform when env gate MC2_TERRAIN_LIGHTING_V1 is OFF.
-    // TERRAIN-LIGHTING-1/2: hemisphere additive (computed once; consumed
-    // by the main render path AND by debug mode 11 below for inspection).
-    PREC vec3 hemiContrib = vec3(0.0);
-    if (terrainLightingV1Strength > 0.0) {
-        const PREC vec3 hemiSkyTint    = vec3(0.55, 0.62, 0.75);
-        const PREC vec3 hemiGroundTint = vec3(0.32, 0.28, 0.22);
-        // N is the final per-fragment normal (after detail + height-derived
-        // perturbation). N.z ≈ 1 on flat ground → full sky; N.z ≈ 0 on
-        // a cliff face → halfway sky/ground; N.z near -1 (overhangs,
-        // not present in terrain meshes) → full ground.
-        PREC float skyFactor = N.z * 0.5 + 0.5;
-        PREC vec3  hemiFill  = mix(hemiGroundTint, hemiSkyTint, skyFactor);
-        // Snow areas already have aggressive specular sparkle and bright
-        // tint — damp ambient there so we don't blow out snow.
-        PREC float hemiAmount = terrainLightingV1Strength * (1.0 - 0.5 * snowWeight);
-        // TERRAIN-LIGHTING-2: shadow-aware fill modulation. floor=1.0 →
-        // mix collapses to 1.0 → V1 behavior (no shadow influence).
-        // floor<1.0 → hemi contribution scales toward `floor` in fully
-        // shadowed terrain, keeping shadows readable instead of getting
-        // full sky bounce. `shadow` is the existing PCF sun shadow term
-        // (staticShadow * dynShadow) computed a few lines above.
-        PREC float hemiShadowMix = mix(terrainLightingV2ShadowFillFloor, 1.0, shadow);
-        hemiContrib = hemiFill * hemiAmount * 0.25 * hemiShadowMix;
-        c.rgb += hemiContrib;
-    }
-
-    // LIGHTING-DEBUG-VIEWS-1A: mode 43 = ambient/hemisphere fill only (×4 for
-    // visibility, capped). Black when MC2_TERRAIN_LIGHTING_V1 gate is OFF.
-    // Same channel meaning as legacy mode 11; kept under the unified enum id.
-    if (surfaceDebugMode == 43) {
-        gl_FragDepth = gl_FragCoord.z;
-        FragColor = vec4(min(hemiContrib * 4.0, vec3(1.0)), 1.0);
-#ifdef MRT_ENABLED
-        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
-#endif
-        return;
-    }
-
-    // TERRAIN-LIGHTING-2: debug mode 11 — hemi-only contribution. Shows
-    // exactly what the additive term puts on screen for a given fragment
-    // (including the V2 shadow-floor modulation). At V1 strength=0 or
-    // gate=OFF, this returns black. Multiplied ×4 so subtle contributions
-    // remain visible; the cap at 1.0 prevents clamping confusion.
-    if (surfaceDebugMode == 11) {
-        PREC vec3 vis = min(hemiContrib * 4.0, vec3(1.0));
-        gl_FragDepth = gl_FragCoord.z;
-        FragColor = vec4(vis, 1.0);
-#ifdef MRT_ENABLED
-        GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
-#endif
-        return;
-    }
 
     // --- Snow sparkle ---
     // High-frequency hashed micro-glints gated by snow weight, light direction, and shadow.

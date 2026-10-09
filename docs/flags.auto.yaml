@@ -6,7 +6,7 @@
 generator_version: "2.1.0"
 registry_entry_count: 360
 registry_env_flag_count: 359
-sweep_flag_count: 1011
+sweep_flag_count: 1006
 flag_count: 1068
 flags:
   - name: MC2_3DVIEW_DIAG
@@ -4931,11 +4931,10 @@ flags:
     feature_id: MC2_PROP_LOD_SHADOW_CAST
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1). TreeAppearance::registerStatic (mclib/bdactor.cpp) calls GpuStaticPropRegistry::setRecipeNoShadow(regIdx, ..."
-    referenced_at:
-      - mclib/bdactor.cpp
+    referenced_at: []
     registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_PROP_SHADOW_RECEIVE
     default: off
     kind: Feature
@@ -7049,11 +7048,10 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:14..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
+    referenced_at: []
     registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_CONTROLMAP
     default: off
     kind: Feature
@@ -7336,10 +7334,7 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_LIGHTING_V1
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain. Default-OFF; =1 enables. When OFF, terrainLightingV1Strength uploads 0.0 and gos_terrain.frag skips the additive branch..."
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-      - GuiRuntime/GraphicsOptionsWindow.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7349,13 +7344,10 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_LIGHTING_V2
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill. Default-OFF; =1 enables. When OFF, terrainLightingV2ShadowFillFloor uploads 1.0 → the shader expression ..."
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-      - GuiRuntime/GraphicsOptionsWindow.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_LIGHT_POOLS
     default: on
     kind: Feature
@@ -7577,12 +7569,10 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_NORMALS_FROM_HEIGHT
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield). Defau..."
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp
-      - GuiRuntime/GraphicsOptionsWindow.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_NORMAL_ARRAY
     default: unknown
     declared_in: null

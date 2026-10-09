@@ -46,7 +46,6 @@ set in the parent shell or in a matrix JSON `env` block:
 
 **Terrain**
 - `MC2_TERRAIN_DEBUG_MODE` -- integer debug visualizer (10 = height-derived normals as RGB)
-- `MC2_TERRAIN_NORMALS_FROM_HEIGHT` -- normals-from-height gate (0/1)
 - `MC2_TERRAIN_LIGHTING_GPU` -- GPU terrain lighting compute gate (0/1)
 
 **Static props**

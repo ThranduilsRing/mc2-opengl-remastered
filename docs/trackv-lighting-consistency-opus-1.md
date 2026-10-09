@@ -46,8 +46,6 @@ cross-mission consistency. Out of scope for this opus (would be a new feature).
 | Post | Bloom intensity | composite weight | **profile** `bloomIntensity` + ImGui | `gos_postprocess.cpp:81-82,85,114`; `vtp.cpp:178` | `0.15` |
 | Post | SSAO enable | AO pass | env `MC2_SSAO` | `gos_postprocess.cpp:325-326` | OFF |
 | Post | AO radius/strength/bias | SSAO params | **profile** `aoRadius`/`aoStrength`/`aoBias` + ImGui | `gos_postprocess.cpp:89-94,156-158`; `vtp.cpp:181-189` | `3.0`/`0.7`/`0.0025` |
-| Terrain | V1 lighting strength | hemisphere ambient | **profile** `terrainLightingV1Strength` + ImGui, gated by env `MC2_TERRAIN_LIGHTING_V1` | `gameos_graphics.cpp:7745,5349`; `vtp.cpp:147` | `1.0` (gate OFF -> uploads 0) |
-| Terrain | V2 shadow floor | ambient floor in shadow | **profile** `terrainLightingV2Floor` + ImGui, gated by env `MC2_TERRAIN_LIGHTING_V2` | `gameos_graphics.cpp:7752,5362`; `vtp.cpp:150` | `0.3` (gate OFF -> 1.0) |
 | Terrain | Tint strength scale | colormap tint blend | **ImGui-only** | `gameos_graphics.cpp:7731-7736` | `1.0` |
 | Terrain | Normals-from-height strength | slope normal contribution | **ImGui-only** | `gameos_graphics.cpp:7738-7743` | `1.0` |
 | Terrain | Mat normal boost (rock/grass/dirt/concrete) | per-material normal intensity | **ImGui-only** + GLSL fallback | `gameos_graphics.cpp:7724-7730` | `{0.9,1.1,1.1,2.5}` |
@@ -114,8 +112,6 @@ key's *semantics/units* change — defer until then.
 |-------|--------|---------------------|----------|
 | `exposure` | yes | 1.0 | `vtp.cpp:141` |
 | `shadowSoftness` | yes | 0.9 (getter 2.5 fallback) | `vtp.cpp:144` |
-| `terrainLightingV1Strength` | yes (gated) | 1.0 | `vtp.cpp:147` |
-| `terrainLightingV2Floor` | yes (gated) | 0.3 | `vtp.cpp:150` |
 | `staticPropIblStrength` | yes (env-guard) | 0.5 | `vtp.cpp:153` |
 | `waterSkyTintStrength` | yes (env-guard) | 0.0 | `vtp.cpp:158` |
 | `vfxBrightness` | yes (env-guard) | 1.0 | `vtp.cpp:163` |

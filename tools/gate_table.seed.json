@@ -13,7 +13,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10038",
+     "at": "GameOS/gameos/gameos_graphics.cpp:9911",
      "idiom": "Presence"
     }
    ],
@@ -779,7 +779,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2325",
+     "at": "mclib/bdactor.cpp:2315",
      "idiom": "Presence"
     }
    ],
@@ -805,7 +805,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:5060",
+     "at": "mclib/bdactor.cpp:5050",
      "idiom": "Presence"
     }
    ],
@@ -831,7 +831,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:80",
+     "at": "mclib/bdactor.cpp:70",
      "idiom": "Lead0Kill"
     }
    ],
@@ -887,7 +887,7 @@
    "doc": "F6 T1/T2: cache frustum planes once per frame (O(1)) into Camera member.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3986",
+     "at": "mclib/terrain.cpp:3985",
      "idiom": "Presence"
     }
    ],
@@ -2553,7 +2553,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:565",
+     "at": "mclib/bdactor.cpp:555",
      "idiom": "Lead0Kill"
     }
    ],
@@ -2579,7 +2579,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:241",
+     "at": "mclib/bdactor.cpp:231",
      "idiom": "Exact1"
     }
    ],
@@ -2947,11 +2947,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11084",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10943",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11193",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11041",
      "idiom": "Lead0Kill"
     },
     {
@@ -3033,7 +3033,7 @@
    "doc": "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully flat-lit slab (terrain_lod_chunk.frag historically forced normalLight = mix(normalLight, 1.0, pureConcrete)).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4208",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4171",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -3063,7 +3063,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10596",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10469",
      "idiom": "Lead0Kill"
     }
    ],
@@ -3089,7 +3089,7 @@
    "doc": "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway (\"concrete shouldn't magically become a different color\").",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4228",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4191",
      "idiom": "Lead0"
     }
    ],
@@ -3539,7 +3539,7 @@
    "doc": "CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every static-prop recipe leaf's real node name + flags. cone_glow's diag emits a node INDEX only, so before this there was no build-free way to learn a static-prop leaf's NAME.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4938",
+     "at": "mclib/bdactor.cpp:4928",
      "idiom": "Presence"
     }
    ],
@@ -4133,7 +4133,7 @@
    "doc": "[TEMP DECAL_GLPROBE] eager-drain probe \u2014 env MC2_DECAL_GLPROBE=1.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11362",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11210",
      "idiom": "Lead1"
     },
     {
@@ -4257,7 +4257,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/terrain.cpp:3536",
+     "at": "mclib/terrain.cpp:3535",
      "idiom": "Presence"
     }
    ],
@@ -4547,7 +4547,7 @@
      "idiom": "Lead0Kill(inv)"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:1477",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:1383",
      "idiom": "Presence"
     },
     {
@@ -4818,7 +4818,7 @@
    "doc": "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off.",
    "readers": [
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:702",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:608",
      "idiom": "Lead0P"
     },
     {
@@ -5702,7 +5702,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:4258",
+     "at": "mclib/terrain.cpp:4257",
      "idiom": "Lead0P"
     }
    ],
@@ -5929,7 +5929,7 @@
    "doc": "Default-OFF gate (matches the launcher toggle model: checked -> MC2_FORCE_43=1, unchecked -> unset).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:9313",
+     "at": "GameOS/gameos/gameos_graphics.cpp:9186",
      "idiom": "Lead0"
     }
    ],
@@ -5986,7 +5986,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2288",
+     "at": "mclib/bdactor.cpp:2278",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -6012,7 +6012,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7057",
+     "at": "mclib/bdactor.cpp:7047",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -6038,7 +6038,7 @@
    "doc": "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7708",
+     "at": "mclib/bdactor.cpp:7698",
      "idiom": "Num(atof+atoi,raw)"
     }
    ],
@@ -6148,7 +6148,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10322",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10195",
      "idiom": "Presence"
     }
    ],
@@ -6401,7 +6401,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3052",
+     "at": "mclib/bdactor.cpp:3042",
      "idiom": "Std(def=off)"
     }
    ],
@@ -6570,7 +6570,7 @@
    "doc": "SPOTLIGHT-DIRECTION-1 measurement instrument.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:155",
+     "at": "mclib/bdactor.cpp:145",
      "idiom": "Lead1"
     }
    ],
@@ -6902,7 +6902,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3807",
+     "at": "mclib/terrain.cpp:3806",
      "idiom": "Presence"
     }
    ],
@@ -6984,7 +6984,7 @@
      "idiom": "Num(atoi,raw)"
     },
     {
-     "at": "mclib/bdactor.cpp:406",
+     "at": "mclib/bdactor.cpp:396",
      "idiom": "Unclassified"
     }
    ],
@@ -7046,7 +7046,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "mclib/bdactor.cpp:407",
+     "at": "mclib/bdactor.cpp:397",
      "idiom": "Unclassified"
     }
    ],
@@ -7796,11 +7796,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:5124",
+     "at": "mclib/bdactor.cpp:5114",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:8220",
+     "at": "mclib/bdactor.cpp:8185",
      "idiom": "Presence"
     }
    ],
@@ -7890,7 +7890,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:3448",
+     "at": "mclib/bdactor.cpp:3438",
      "idiom": "Presence"
     }
    ],
@@ -9169,7 +9169,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8306",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8179",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -9712,7 +9712,7 @@
    "doc": "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7713",
+     "at": "mclib/bdactor.cpp:7703",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -10008,7 +10008,7 @@
    "doc": "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot freeze a wrong (day-bright) light row for the whole mission.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3404",
+     "at": "mclib/bdactor.cpp:3394",
      "idiom": "Lead0Kill"
     }
    ],
@@ -10086,7 +10086,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2943",
+     "at": "mclib/bdactor.cpp:2933",
      "idiom": "Std(def=off)"
     }
    ],
@@ -10112,7 +10112,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2947",
+     "at": "mclib/bdactor.cpp:2937",
      "idiom": "Std(def=off)"
     }
    ],
@@ -10216,7 +10216,7 @@
    "doc": "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7291",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7180",
      "idiom": "Token/State"
     }
    ],
@@ -10312,7 +10312,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3128",
+     "at": "mclib/bdactor.cpp:3118",
      "idiom": "Presence"
     }
    ],
@@ -10498,11 +10498,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3821",
+     "at": "mclib/bdactor.cpp:3811",
      "idiom": "Lead1"
     },
     {
-     "at": "mclib/bdactor.cpp:3852",
+     "at": "mclib/bdactor.cpp:3842",
      "idiom": "Lead1"
     },
     {
@@ -10806,7 +10806,7 @@
    "doc": "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11138",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10997",
      "idiom": "Lead0Kill"
     },
     {
@@ -10926,7 +10926,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11108",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10967",
      "idiom": "Num(atof,raw)"
     },
     {
@@ -10994,7 +10994,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11120",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10979",
      "idiom": "Lead0Kill"
     },
     {
@@ -11028,7 +11028,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11114",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10973",
      "idiom": "Num(atof,raw)"
     },
     {
@@ -11123,7 +11123,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11102",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10961",
      "idiom": "Lead0Kill"
     },
     {
@@ -12017,15 +12017,15 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:6476",
+     "at": "GameOS/gameos/gameos_graphics.cpp:6415",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8316",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8189",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8365",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8238",
      "idiom": "Presence"
     },
     {
@@ -12253,7 +12253,7 @@
    "doc": "[LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this loop) is the SECOND terrain visibility gate \u2014 independent of the frustum inFrustum set we relaxed via MC2_LOWCAM_TERRAIN_NEAR.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:4071",
+     "at": "mclib/terrain.cpp:4070",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -12279,7 +12279,7 @@
    "doc": "[LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] When set, drop the near plane from the terrain AABB frustum test so near terrain isn't culled at a low/grazing pitch (near plane at NearPlaneDistance=-400).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2462",
+     "at": "mclib/terrain.cpp:2461",
      "idiom": "Lead0Kill"
     }
    ],
@@ -12527,7 +12527,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:219",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:212",
      "idiom": "NonEmpty(inv)"
     }
    ],
@@ -12759,7 +12759,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:1840",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:1746",
      "idiom": "Lead0Kill"
     }
    ],
@@ -13589,7 +13589,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:224",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:217",
      "idiom": "NonEmpty(inv)"
     }
    ],
@@ -13890,7 +13890,7 @@
    "doc": "TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3449",
+     "at": "mclib/terrain.cpp:3448",
      "idiom": "Token/State"
     }
    ],
@@ -14094,39 +14094,39 @@
      "idiom": "Presence"
     },
     {
+     "at": "mclib/bdactor.cpp:800",
+     "idiom": "Presence"
+    },
+    {
      "at": "mclib/bdactor.cpp:810",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:820",
+     "at": "mclib/bdactor.cpp:1009",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:1019",
+     "at": "mclib/bdactor.cpp:2201",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:2211",
+     "at": "mclib/bdactor.cpp:4772",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:4782",
+     "at": "mclib/bdactor.cpp:4817",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:4827",
+     "at": "mclib/bdactor.cpp:6393",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:6403",
+     "at": "mclib/bdactor.cpp:7906",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:7916",
-     "idiom": "Presence"
-    },
-    {
-     "at": "mclib/bdactor.cpp:7940",
+     "at": "mclib/bdactor.cpp:7930",
      "idiom": "Presence"
     }
    ],
@@ -14854,7 +14854,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10333",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10206",
      "idiom": "Presence"
     }
    ],
@@ -14988,11 +14988,11 @@
    "doc": "RUNWAY-CLOSE-1: A/B arm for the REOPENED 'runway is the wrong color' item (user re-grade 2026-08-02: 'there is no difference here to me').",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10977",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10836",
      "idiom": "Lead0Kill(inv)"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11184",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11032",
      "idiom": "Lead0Kill(inv)"
     }
    ],
@@ -15046,11 +15046,11 @@
    "doc": "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay adopts the cement atlas + flat light on cement tiles, or the cement terrain adopts the overlay's shading there').",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11042",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10901",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11192",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11040",
      "idiom": "Lead0Kill"
     },
     {
@@ -15083,7 +15083,7 @@
    "doc": "CEMENT-PATCHY-CAUSE-1: make terrain_overlay.frag apply the SAME concrete lighting exemption terrain_lod_chunk.frag already applies, so the overlay/decal layer and the cement terrain stop disagreeing across the seam where a single paved surface is split between them.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11019",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10878",
      "idiom": "Lead0"
     }
    ],
@@ -15109,7 +15109,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7425",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7314",
      "idiom": "Presence"
     },
     {
@@ -15191,7 +15191,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4096",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4059",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -15221,7 +15221,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4237",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4200",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -15303,7 +15303,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2801",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2744",
      "idiom": "Presence"
     },
     {
@@ -16247,7 +16247,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:10148",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10021",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -16555,7 +16555,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:9889",
+     "at": "GameOS/gameos/gameos_graphics.cpp:9762",
      "idiom": "Custom[10001011]"
     },
     {
@@ -16589,7 +16589,7 @@
    "doc": "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic, mclib/bdactor.cpp) carry its actual documented meaning, kFlagIsAlphaTest, sourced from TG_TypeShape::alphaTestOn via the new TG_Shape::GetIsAlphaTest() seam.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:71",
+     "at": "mclib/bdactor.cpp:61",
      "idiom": "Lead0"
     }
    ],
@@ -16615,7 +16615,7 @@
    "doc": "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs the light the same actor at the same position would sample now (MATCH/STALE).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3617",
+     "at": "mclib/bdactor.cpp:3607",
      "idiom": "Lead0"
     }
    ],
@@ -16641,7 +16641,7 @@
    "doc": "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3626",
+     "at": "mclib/bdactor.cpp:3616",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -16666,23 +16666,18 @@
    "name": "MC2_PROP_LOD_SHADOW_CAST",
    "kind": "Bool",
    "default": false,
-   "rule": "Lead0",
+   "rule": "Std",
    "owner": "props",
    "retireBy": "",
    "doc": "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1).",
-   "readers": [
-    {
-     "at": "mclib/bdactor.cpp:36",
-     "idiom": "Lead0"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_PROP_LOD_SHADOW_CAST",
@@ -16754,7 +16749,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/terrain.cpp:4240",
+     "at": "mclib/terrain.cpp:4239",
      "idiom": "Lead0Kill"
     }
    ],
@@ -17153,7 +17148,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:5861",
+     "at": "GameOS/gameos/gameos_graphics.cpp:5800",
      "idiom": "Exact1"
     }
    ],
@@ -17179,7 +17174,7 @@
    "doc": "Optional diagnostic: print the first 8 mismatch reasons.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:5904",
+     "at": "GameOS/gameos/gameos_graphics.cpp:5843",
      "idiom": "Presence"
     }
    ],
@@ -17549,7 +17544,7 @@
    "doc": "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes. path = override_multidraw (cooked/override geometry, layer-0 route) vs legacy_static.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4819",
+     "at": "mclib/bdactor.cpp:4809",
      "idiom": "Presence"
     }
    ],
@@ -17611,11 +17606,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/terrain.cpp:3438",
+     "at": "mclib/terrain.cpp:3437",
      "idiom": "Unclassified"
     },
     {
-     "at": "mclib/terrain.cpp:3642",
+     "at": "mclib/terrain.cpp:3641",
      "idiom": "Presence"
     }
    ],
@@ -17643,7 +17638,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3214",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3157",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -17947,7 +17942,7 @@
    "doc": "\u2500\u2500 Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:4482",
+     "at": "GameOS/gameos/gameos_graphics.cpp:4425",
      "idiom": "Presence"
     },
     {
@@ -18339,7 +18334,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:6129",
+     "at": "GameOS/gameos/gameos_graphics.cpp:6068",
      "idiom": "Exact1"
     },
     {
@@ -19470,7 +19465,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:6631",
+     "at": "GameOS/gameos/gameos_graphics.cpp:6570",
      "idiom": "Lead0"
     }
    ],
@@ -19550,7 +19545,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2918",
+     "at": "mclib/terrain.cpp:2917",
      "idiom": "Presence"
     }
    ],
@@ -19602,7 +19597,7 @@
    "doc": "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4016",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3979",
      "idiom": "Lead0Kill"
     }
    ],
@@ -20521,7 +20516,7 @@
    "doc": "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at split-path parity checkpoints.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:5341",
+     "at": "GameOS/gameos/gameos_graphics.cpp:5284",
      "idiom": "Lead0"
     }
    ],
@@ -20607,7 +20602,7 @@
    "doc": "T1.15 SpotLight_ illumination diagnostic \u2014 registration probe (bldg class).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:135",
+     "at": "mclib/bdactor.cpp:125",
      "idiom": "Presence"
     },
     {
@@ -20853,11 +20848,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2810",
+     "at": "mclib/bdactor.cpp:2800",
      "idiom": "Std(def=off)"
     },
     {
-     "at": "mclib/bdactor.cpp:2877",
+     "at": "mclib/bdactor.cpp:2867",
      "idiom": "NonReader"
     }
    ],
@@ -20883,7 +20878,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2815",
+     "at": "mclib/bdactor.cpp:2805",
      "idiom": "Std(def=off)"
     }
    ],
@@ -20909,7 +20904,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2964",
+     "at": "mclib/bdactor.cpp:2954",
      "idiom": "Std(def=off)"
     }
    ],
@@ -21049,11 +21044,11 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:4974",
+     "at": "mclib/bdactor.cpp:4964",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:8011",
+     "at": "mclib/bdactor.cpp:8001",
      "idiom": "Lead0Kill"
     }
    ],
@@ -21401,7 +21396,7 @@
      "idiom": "Custom[00000001]"
     },
     {
-     "at": "mclib/bdactor.cpp:5572",
+     "at": "mclib/bdactor.cpp:5562",
      "idiom": "Lead0P"
     },
     {
@@ -21447,15 +21442,15 @@
    "doc": "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed -- primarily BldgAppearance::setObjStatus transitioning to OBJECT_STATUS_DESTROYED (the real in-game combat-destroy event), with BldgAppearance::destroy (mission-end/pool-recycle) as cheap insurance -- so txmmgr's static-shadow build block (terrain + buildings) replays next frame WITHOUT the destroyed building instead of keeping its stale baked shadow until mission reload (docs/known_issues.md).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:5576",
+     "at": "mclib/bdactor.cpp:5566",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:5587",
+     "at": "mclib/bdactor.cpp:5577",
      "idiom": "Custom[00000001]"
     },
     {
-     "at": "mclib/bdactor.cpp:5588",
+     "at": "mclib/bdactor.cpp:5578",
      "idiom": "Custom[00000001]"
     }
    ],
@@ -21837,7 +21832,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:795",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:701",
      "idiom": "Lead0Kill"
     }
    ],
@@ -21899,7 +21894,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:177",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:170",
      "idiom": "NonEmpty(inv)"
     }
    ],
@@ -22195,11 +22190,11 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:821",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:727",
      "idiom": "Lead0"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:849",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:755",
      "idiom": "Lead0"
     }
    ],
@@ -22495,7 +22490,7 @@
    "doc": "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) \u2014 counts touchSerialCommit calls for building/tree appearances ahead of the per-frame static-prop-walk meta-fix.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:98",
+     "at": "mclib/bdactor.cpp:88",
      "idiom": "Presence"
     }
    ],
@@ -22547,7 +22542,7 @@
    "doc": "STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:120",
+     "at": "mclib/bdactor.cpp:110",
      "idiom": "Presence"
     }
    ],
@@ -23129,7 +23124,7 @@
    "doc": "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4122",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4085",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -23161,7 +23156,7 @@
    "doc": "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4137",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4100",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -23190,7 +23185,7 @@
    "doc": "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY UPLOADED, the raw env string, and the three runtime inputs (isNight, nightFactor, terrainLightDir.z).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2861",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2824",
      "idiom": "Presence"
     }
    ],
@@ -23220,7 +23215,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1632",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1612",
      "idiom": "Lead0"
     }
    ],
@@ -23428,15 +23423,15 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7203",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7092",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2749",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2713",
      "idiom": "Lead0"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:678",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:584",
      "idiom": "Lead0"
     }
    ],
@@ -23508,23 +23503,18 @@
    "name": "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
    "kind": "Bool",
    "default": false,
-   "rule": "Exact1",
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete').",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:918",
-     "idiom": "Exact1"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL",
@@ -23540,7 +23530,7 @@
    "doc": "TERRAIN-CONTROLMAP-SAMPLE-1: load an authored per-mission RGBA control-map sidecar (data/missions/<stem>.beauty/control_map.png, vertex-resolution) that replaces the colormap-colour material classifier with authored rock/grass/dirt/concrete weights.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:882",
+     "at": "mclib/terrain.cpp:881",
      "idiom": "Lead0"
     }
    ],
@@ -23624,7 +23614,7 @@
    "doc": "TERRAIN-CONTROLMAP-SAMPLE-1: override the control-map sidecar path (default data/missions/<stem>.beauty/control_map.png).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:889",
+     "at": "mclib/terrain.cpp:888",
      "idiom": "Presence"
     }
    ],
@@ -23702,7 +23692,7 @@
    "doc": "S2.13: MC2_TERRAIN_CULL_WIDE=1 forces the angular sphere cull to admit-all (constants set to 1e9).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3894",
+     "at": "mclib/terrain.cpp:3893",
      "idiom": "Presence"
     }
    ],
@@ -23728,11 +23718,11 @@
    "doc": "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7406",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7295",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7587",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7468",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -23760,7 +23750,7 @@
    "doc": "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4864",
+     "at": "mclib/bdactor.cpp:4854",
      "idiom": "Lead0P"
     }
    ],
@@ -23978,7 +23968,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4894",
+     "at": "mclib/bdactor.cpp:4884",
      "idiom": "Presence"
     }
    ],
@@ -24030,11 +24020,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7369",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7258",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:939",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:921",
      "idiom": "Lead0"
     }
    ],
@@ -24060,7 +24050,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7376",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7265",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -24086,7 +24076,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7375",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7264",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -24112,7 +24102,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:945",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:927",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -24138,11 +24128,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7380",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7269",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:947",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:929",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -24522,33 +24512,18 @@
    "name": "MC2_TERRAIN_LIGHTING_V1",
    "kind": "Bool",
    "default": false,
-   "rule": "Lead0",
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7175",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2742",
-     "idiom": "Presence"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:613",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": true,
+   "readers": [],
+   "conflict": false,
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_TERRAIN_LIGHTING_V1",
@@ -24558,33 +24533,18 @@
    "name": "MC2_TERRAIN_LIGHTING_V2",
    "kind": "Bool",
    "default": false,
-   "rule": "Lead0",
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7188",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2743",
-     "idiom": "Presence"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:643",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": true,
+   "readers": [],
+   "conflict": false,
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_TERRAIN_LIGHTING_V2",
@@ -24600,7 +24560,7 @@
    "doc": "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11098",
+     "at": "GameOS/gameos/gameos_graphics.cpp:10957",
      "idiom": "Lead0Kill"
     },
     {
@@ -24608,7 +24568,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4163",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4126",
      "idiom": "Lead0Kill"
     }
    ],
@@ -24637,7 +24597,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1015",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:997",
      "idiom": "Lead0Kill"
     }
    ],
@@ -24692,7 +24652,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2697",
+     "at": "mclib/terrain.cpp:2696",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -24832,7 +24792,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2657",
+     "at": "mclib/terrain.cpp:2656",
      "idiom": "Presence"
     }
    ],
@@ -24858,7 +24818,7 @@
    "doc": "Diagnostic: one-shot dump of planes + first superchunk AABB + camera pos.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2456",
+     "at": "mclib/terrain.cpp:2455",
      "idiom": "Presence"
     }
    ],
@@ -24884,7 +24844,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2846",
+     "at": "mclib/terrain.cpp:2845",
      "idiom": "Presence"
     }
    ],
@@ -24910,7 +24870,7 @@
    "doc": "Phase 10.2b: PER-EDGE mask.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2860",
+     "at": "mclib/terrain.cpp:2859",
      "idiom": "Presence"
     }
    ],
@@ -24936,7 +24896,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:2894",
+     "at": "mclib/terrain.cpp:2893",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -24962,7 +24922,7 @@
    "doc": "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2067",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2047",
      "idiom": "Presence"
     }
    ],
@@ -24988,7 +24948,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2185",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2165",
      "idiom": "Lead0Kill(inv)"
     }
    ],
@@ -25182,7 +25142,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:4643",
+     "at": "GameOS/gameos/gameos_graphics.cpp:4586",
      "idiom": "Lead0"
     }
    ],
@@ -25298,7 +25258,7 @@
    "doc": "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2514",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2494",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25328,7 +25288,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3248",
+     "at": "mclib/terrain.cpp:3247",
      "idiom": "Presence"
     }
    ],
@@ -25348,29 +25308,18 @@
    "name": "MC2_TERRAIN_NORMALS_FROM_HEIGHT",
    "kind": "Bool",
    "default": false,
-   "rule": "Lead0",
-   "owner": "unclassified",
+   "rule": "Std",
+   "owner": "terrain",
    "retireBy": "",
    "doc": "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7160",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:561",
-     "idiom": "Lead0"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_TERRAIN_NORMALS_FROM_HEIGHT",
@@ -25412,7 +25361,7 @@
    "doc": "TERRAIN-OVERLAY-V2-PARITY-1: composite an authored world-XY-bounded cement/pad/runway overlay sidecar (data/missions/<stem>.beauty/overlay_v2.png, RGB=diffuse A=coverage) over the terrain in the LOD-chunk frag.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:983",
+     "at": "mclib/terrain.cpp:982",
      "idiom": "Lead0"
     }
    ],
@@ -25464,7 +25413,7 @@
    "doc": "TERRAIN-OVERLAY-V2-PARITY-1: override the overlay_v2 sidecar path (default data/missions/<stem>.beauty/overlay_v2.png).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:989",
+     "at": "mclib/terrain.cpp:988",
      "idiom": "Presence"
     }
    ],
@@ -25516,7 +25465,7 @@
    "doc": "TERRAIN-CHUNK-POM-1: real per-fragment tangent-space view-vector POM on the LOD-chunk terrain (rock/grass detail layers).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2937",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2900",
      "idiom": "Lead0"
     }
    ],
@@ -25542,7 +25491,7 @@
    "doc": "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2960",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2923",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25571,7 +25520,7 @@
    "doc": "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band start in world units (default 1500; 1 tile = 384 wu).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2954",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2917",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25601,7 +25550,7 @@
    "doc": "TERRAIN-CHUNK-POM-1 knob: POM march scale override (float > 0).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2941",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2904",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25631,7 +25580,7 @@
    "doc": "TERRAIN-CHUNK-POM-1 knob: max POM march layers, accepted 4..16 (else default 16; hard compile-constant cap 16). min layers = min(value,8).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2946",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2909",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25817,7 +25766,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3932",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3895",
      "idiom": "Lead0Kill"
     }
    ],
@@ -25843,7 +25792,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2656",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2636",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25873,7 +25822,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:1124",
+     "at": "mclib/terrain.cpp:1123",
      "idiom": "Presence"
     }
    ],
@@ -25899,7 +25848,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2611",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2591",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25929,7 +25878,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2641",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2621",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25958,7 +25907,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2640",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2620",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -25987,7 +25936,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2604",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2584",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -26017,7 +25966,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2634",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2614",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -26046,7 +25995,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2633",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2613",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -26127,11 +26076,11 @@
    "doc": "Snow brightness dampen: <1 darkens detected-snow fragments.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2275",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2271",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4115",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:4078",
      "idiom": "Num(atof,raw)"
     },
     {
@@ -26265,7 +26214,7 @@
    "doc": "TCS/TES terrain tessellation (gameos_graphics.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:5299",
+     "at": "GameOS/gameos/gameos_graphics.cpp:5242",
      "idiom": "Lead0Kill(inv)"
     }
    ],
@@ -26317,23 +26266,23 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1579",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1559",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2137",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2117",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3603",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3566",
      "idiom": "Lead0"
     },
     {
-     "at": "mclib/terrain.cpp:1328",
+     "at": "mclib/terrain.cpp:1327",
      "idiom": "Lead0"
     },
     {
-     "at": "mclib/terrain.cpp:1514",
+     "at": "mclib/terrain.cpp:1513",
      "idiom": "Lead0"
     }
    ],
@@ -26359,11 +26308,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1587",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1567",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2168",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2148",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -26393,15 +26342,15 @@
    "doc": "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units sit on the visually-displaced surface.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2151",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2131",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3607",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3570",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/terrain.cpp:1561",
+     "at": "mclib/terrain.cpp:1560",
      "idiom": "Lead0Kill"
     }
    ],
@@ -26457,7 +26406,7 @@
    "doc": "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:1327",
+     "at": "mclib/terrain.cpp:1326",
      "idiom": "Lead0"
     }
    ],
@@ -26483,11 +26432,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:1247",
+     "at": "mclib/terrain.cpp:1246",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/terrain.cpp:1336",
+     "at": "mclib/terrain.cpp:1335",
      "idiom": "Presence"
     }
    ],
@@ -26573,7 +26522,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:188",
+     "at": "mclib/bdactor.cpp:178",
      "idiom": "Lead0Kill"
     },
     {
@@ -26763,7 +26712,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7562",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7443",
      "idiom": "Presence"
     },
     {
@@ -26937,7 +26886,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:8065",
+     "at": "mclib/bdactor.cpp:8055",
      "idiom": "Presence"
     }
    ],
@@ -26993,7 +26942,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:192",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:185",
      "idiom": "NonEmpty(inv)"
     }
    ],
@@ -27075,7 +27024,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:187",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:180",
      "idiom": "NonEmpty(inv)"
     }
    ],
@@ -27105,7 +27054,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:200",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:193",
      "idiom": "NonEmpty(inv)"
     }
    ],
@@ -27529,7 +27478,7 @@
    "doc": "UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry inside the existing PassIdentity::UI RAII scope.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8500",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8373",
      "idiom": "Presence"
     }
    ],
@@ -28992,7 +28941,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:308",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:301",
      "idiom": "Unclassified"
     }
    ],
@@ -29178,7 +29127,7 @@
    "doc": "VK final-gate diagnostic: wraps gosRenderer::drawDecalStaticBatch GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=decal_static_batch.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11444",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11292",
      "idiom": "Token/State"
     }
    ],
@@ -29284,7 +29233,7 @@
    "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image producer -- the GL 2D HUD draws into the DISCARDED GL backbuffer, so under the umbrella an unarmed VK HUD queue means the HUD VANISHES (the field bug; pre-b0b8ae2b the HUD survived only because present fell back to the GL backbuffer).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8194",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8067",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -29340,7 +29289,7 @@
    "doc": "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8550",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8423",
      "idiom": "Presence"
     }
    ],
@@ -29366,7 +29315,7 @@
    "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8205",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8078",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -30861,7 +30810,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1931",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1911",
      "idiom": "Presence"
     },
     {
@@ -30891,11 +30840,11 @@
    "doc": "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1743",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723",
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1785",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -30947,7 +30896,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1744",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1724",
      "idiom": "Lead1"
     }
    ],
@@ -30973,7 +30922,7 @@
    "doc": "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11564",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11412",
      "idiom": "Token/State"
     }
    ],
@@ -31001,7 +30950,7 @@
    "doc": "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1827",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1807",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -31027,7 +30976,7 @@
    "doc": "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1701",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1681",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -31157,7 +31106,7 @@
    "doc": "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1664",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1644",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -31183,7 +31132,7 @@
    "doc": "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1924",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1904",
      "idiom": "Exact1"
     }
    ],
@@ -31209,7 +31158,7 @@
    "doc": "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_overlay_batch.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:11289",
+     "at": "GameOS/gameos/gameos_graphics.cpp:11137",
      "idiom": "Token/State"
     }
    ],
@@ -31353,11 +31302,11 @@
    "doc": "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:7718",
+     "at": "GameOS/gameos/gameos_graphics.cpp:7591",
      "idiom": "Exact1(inv)"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:8546",
+     "at": "GameOS/gameos/gameos_graphics.cpp:8419",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31409,7 +31358,7 @@
    "doc": "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_ entry instead of one entry PER TRIANGLE.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:6452",
+     "at": "GameOS/gameos/gameos_graphics.cpp:6391",
      "idiom": "Lead0Kill(inv)"
     }
    ],
@@ -31535,7 +31484,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3711",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3654",
      "idiom": "Lead1"
     },
     {
@@ -31601,7 +31550,7 @@
    "doc": "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the slim reduce loop below (8c-part-2: the VPL body those probes compared against is deleted, so any relocated self-comparison would be tautological/false-alarm; demote-not- silently-delete per the worktree Debug-instrumentation rule).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3906",
+     "at": "mclib/terrain.cpp:3905",
      "idiom": "Presence"
     }
    ],
@@ -31655,7 +31604,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3907",
+     "at": "mclib/terrain.cpp:3906",
      "idiom": "Presence"
     }
    ],
@@ -32029,11 +31978,11 @@
    "doc": "MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3487",
+     "at": "mclib/terrain.cpp:3486",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/terrain.cpp:3654",
+     "at": "mclib/terrain.cpp:3653",
      "idiom": "Presence"
     }
    ],
@@ -32061,7 +32010,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2855",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2798",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -32113,11 +32062,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3532",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3475",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3784",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3727",
      "idiom": "Lead0Kill"
     }
    ],
@@ -32143,11 +32092,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3536",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3479",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3788",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3731",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -32203,7 +32152,7 @@
    "doc": "S2.15 gate diag: editor fails to arm FAST water path - print once per (mission/state-change) what gate fails.",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3458",
+     "at": "mclib/terrain.cpp:3457",
      "idiom": "Presence"
     }
    ],
@@ -32289,7 +32238,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3066",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3009",
      "idiom": "Num(atof,guarded)"
     }
    ],
@@ -32315,7 +32264,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3070",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3013",
      "idiom": "Lead0"
     }
    ],
@@ -32369,7 +32318,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3330",
+     "at": "GameOS/gameos/gameos_graphics.cpp:3273",
      "idiom": "Presence"
     }
    ],
@@ -32395,11 +32344,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2914",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2857",
      "idiom": "Lead0Kill(inv)"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2927",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2870",
      "idiom": "Lead0Kill"
     }
    ],
@@ -32425,11 +32374,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2939",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2882",
      "idiom": "Token/State"
     },
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2947",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2890",
      "idiom": "Lead0"
     },
     {
@@ -32513,7 +32462,7 @@
    "doc": "S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE per-frame setupTextures loop (NOT per-quad - the per-quad std::chrono COST_SPLIT scopes are observer-effect-poisoned and disqualified; capped FPS is also useless).",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:4209",
+     "at": "mclib/terrain.cpp:4208",
      "idiom": "Presence"
     }
    ],
@@ -32539,7 +32488,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/terrain.cpp:3508",
+     "at": "mclib/terrain.cpp:3507",
      "idiom": "Presence"
     }
    ],
@@ -32565,7 +32514,7 @@
    "doc": "[DEFAULT-OFF OPT-IN.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2978",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2921",
      "idiom": "Lead0"
     }
    ],
@@ -32591,7 +32540,7 @@
    "doc": "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve notches; gos_terrain_water_fast_mdi.vert, uploaded in gameos_graphics.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3054",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2997",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -32673,7 +32622,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:3044",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2987",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -32703,7 +32652,7 @@
    "doc": "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3895",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3858",
      "idiom": "Token/State"
     }
    ],
@@ -32794,7 +32743,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3885",
+     "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:3848",
      "idiom": "Partial[D,D,off,D,on,D,D,D]"
     }
    ],
@@ -32827,15 +32776,15 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:2896",
+     "at": "GameOS/gameos/gameos_graphics.cpp:2839",
      "idiom": "Token/State"
     },
     {
-     "at": "GameOS/gameos/visual_tuning_profile.cpp:182",
+     "at": "GameOS/gameos/visual_tuning_profile.cpp:175",
      "idiom": "NonEmpty(inv)"
     },
     {
-     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:957",
+     "at": "GuiRuntime/GraphicsOptionsWindow.cpp:863",
      "idiom": "Lead0"
     }
    ],
@@ -32865,7 +32814,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/terrain.cpp:3693",
+     "at": "mclib/terrain.cpp:3692",
      "idiom": "Presence"
     }
    ],
@@ -32989,7 +32938,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameos_graphics.cpp:9278",
+     "at": "GameOS/gameos/gameos_graphics.cpp:9151",
      "idiom": "Lead0"
     },
     {

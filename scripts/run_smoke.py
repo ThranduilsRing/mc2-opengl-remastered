@@ -1804,7 +1804,6 @@ def main():
                             # drops them and the gate-ON smoke does nothing.
                             "MC2_TERRAIN_MATERIAL_TEXTURES",
                             "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
-                            "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
                             # TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 -- world-axis
                             # triplanar rock NORMAL + relief on steep cells
                             # (default OFF) + tilt-strength knob. Decoupled from
@@ -1859,11 +1858,6 @@ def main():
                             # shadow_screen.frag (default OFF). Must be allowlisted
                             # or Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_SHADOW_RECEIVE",
-                            # SHADOW-DECISIONS-1 -- re-enable shadow CASTING for
-                            # far/impostor static-prop LODs (lod>=1) in the dynamic
-                            # prop shadow replay (default OFF). Must be allowlisted
-                            # or Popen drops it and the gate-ON smoke does nothing.
-                            "MC2_PROP_LOD_SHADOW_CAST",
                             # FOLIAGE-ALPHAFLAG-1 -- recipe-path per-instance
                             # flags bit 2 carries kFlagIsAlphaTest (from
                             # alphaTestOn) instead of the retired spotlight
