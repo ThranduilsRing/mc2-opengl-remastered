@@ -27,12 +27,6 @@
 #include <utility>
 #include <vector>
 
-#if defined(_MSC_VER)
-#define __declspec(noinline)
-#else
-#define [[gnu::noinline]]
-#endif
-
 namespace mc2::log {
 
 enum class Level : uint8_t { Trace, Debug, Info, Warn, Error, Fatal, Off };
