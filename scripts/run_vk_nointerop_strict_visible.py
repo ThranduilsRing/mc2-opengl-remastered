@@ -184,6 +184,10 @@ def main() -> int:
     with (out_dir / "vk_strict_env.txt").open("w", encoding="utf-8") as f:
         for key in gates:
             f.write(f"{key}={env.get(key, '')}\n")
+    # The capture scrubs undeclared ambient MC2_* vars, so every proof gate must be
+    # declared or the run silently measures the default (GL) configuration.
+    for key in gates:
+        cmd.extend(["--env-declare", f"{key}={env.get(key, '')}"])
     return subprocess.call(cmd, cwd=str(root), env=env)
 
 
