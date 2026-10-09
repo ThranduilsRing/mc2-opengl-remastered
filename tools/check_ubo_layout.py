@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """check_ubo_layout.py — VK-OFFLINE-PROOFS-1 UBO LAYOUT LOCK.
 
-Cross-checks the C++ island UBO mirror structs (vulkan_terrain_island.cpp
-TerrainFrameUBO, vulkan_color_prop_island.cpp ColorFrameUBO, vulkan_mech_island.cpp
-MechFrameUBO — or MechFrameUBO's sibling) against the GLSL std140 uniform block
+Cross-checks the C++ island UBO mirror structs (vulkan_color_prop_island.cpp
+ColorFrameUBO and the other registry rows below) against the GLSL std140 uniform block
 each shader declares, by:
   1. Computing std140 offsets from the GLSL block field list (independent
      recomputation, not trusting the shader's own `// off N` comments).
@@ -29,10 +28,8 @@ import sys
 
 # (label, cpp_file, cpp_struct_name, glsl_file, glsl_block_name)
 REGISTRY = [
-    # The one GLSL declaration of the terrain block; tier1/skirt vert+frag, overlay and decal
-    # all include it, so this single row locks every terrain stage to the C++ struct.
-    ("terrain", "GameOS/gameos/vulkan_terrain_island.cpp", "TerrainFrameUBO",
-     "shaders/vulkan/include/terrain_frame_ubo_vk.glsl", "TerrainFrameUBO"),
+    # The terrain block is not listed: RenderCore/gpu_abi/GpuTerrainFrameUBO.h generates both
+    # the C++ offset asserts and the GLSL block (tools/gpu_abi_gen.py --check).
     ("prop", "GameOS/gameos/vulkan_color_prop_island.cpp", "ColorFrameUBO",
      "shaders/vulkan/color_prop_tier1.frag", "ColorFrameUBO"),
     # RUNG-6.5: water island FS params (grew for the reflection port).

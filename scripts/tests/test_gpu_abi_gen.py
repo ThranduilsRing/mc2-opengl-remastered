@@ -114,3 +114,89 @@ def test_alignas_mismatch_is_rejected(tmp_path):
     with open(src, "w", encoding="utf-8", newline="") as f:
         f.write(text.replace("alignas(16)", "alignas(8)", 1))
     assert g.main(["--check", "--root", root]) == 2
+
+
+# --- std140 uniform blocks --------------------------------------------------
+
+BLOCK_SRC = """\
+// @gpu std140 glsl=Blk block=uB set=1 binding=3 slot=256
+struct Blk {
+    float m[16];        // @mat4
+    int32_t a;
+    float   rgb[3];     // @rgb
+    float   after;
+    float   cascades[32];  // @mat4xN
+    float   v[4];       // @vec4
+    int32_t _pad[4];    // @cpp_only
+};
+"""
+
+
+def _build_block(text=BLOCK_SRC):
+    info = g.parse_source(text, "t")
+    return info, g.build(info, "t.h", "t.glsl")
+
+
+def test_block_packs_rgb_scalars_without_vec3_padding():
+    info, _ = _build_block()
+    offs_, _, _ = g.struct_offsets(info["fields"], "std140")
+    by = dict(offs_)
+    assert [by["a"], by["rgbR"], by["rgbG"], by["rgbB"], by["after"]] == [64, 68, 72, 76, 80]
+    assert by["cascades"] == 96    # mat4 array re-aligns to 16
+    assert by["v"] == 96 + 2 * 64
+
+
+def test_block_emits_uniform_block_and_cpp_asserts():
+    _, out = _build_block()
+    assert "layout(set = 1, binding = 3, std140) uniform Blk {" in out["glsl"]
+    assert "} uB;" in out["glsl"]
+    assert "    mat4  cascades[2];  // off 96" in out["glsl"]
+    assert "    float rgbG;  // off 72" in out["glsl"]
+    assert "_pad" not in out["glsl"]
+    lay = out["layout"]
+    assert "sizeof(Blk) == 256" in lay
+    assert "offsetof(Blk, rgb) == 68" in lay          # C++ name maps to the first scalar
+    assert "offsetof(Blk, _pad) == 240" in lay        # tail pad starts at the std140 end
+    assert "alignof" not in lay                       # C++ alignment is not the std140 one
+
+
+@pytest.mark.parametrize("old,new", [
+    ("// @gpu std140 glsl=Blk block=uB set=1 binding=3 slot=256",
+     "// @gpu std430 glsl=Blk block=uB set=1 binding=3"),                   # block needs std140
+    ("// @gpu std140 glsl=Blk block=uB set=1 binding=3 slot=256",
+     "// @gpu std140 glsl=Blk block=uB binding=3 slot=256"),                # missing set
+    ("// @gpu std140 glsl=Blk block=uB set=1 binding=3 slot=256",
+     "// @gpu std140 glsl=Blk block=uB set=1 binding=3 slot=16"),           # slot < std140 size
+    ("float   rgb[3];     // @rgb", "float   rgb[4];     // @rgb"),
+    ("float   cascades[32];  // @mat4xN", "float   cascades[30];  // @mat4xN"),
+    ("int32_t _pad[4];    // @cpp_only",
+     "int32_t _pad[4];    // @cpp_only\n    int32_t _pad2[4];   // @cpp_only"),
+])
+def test_block_errors(old, new):
+    assert old in BLOCK_SRC
+    with pytest.raises(g.AbiError):
+        _build_block(BLOCK_SRC.replace(old, new))
+
+
+def test_block_annotations_rejected_in_plain_structs():
+    text = "// @gpu std430 glsl=S\nstruct S {\n    float c[3];   // @rgb\n};\n"
+    with pytest.raises(g.AbiError):
+        g.parse_source(text, "t")
+
+
+def test_terrain_ubo_is_registered_with_the_1024_byte_slot():
+    entry = [s for s in g.STRUCTS if s[0].endswith("GpuTerrainFrameUBO.h")]
+    assert entry, "TerrainFrameUBO must be a gpu_abi struct"
+    with open(os.path.join(ROOT, entry[0][0]), encoding="utf-8") as f:
+        info = g.parse_source(f.read(), "terrain")
+    _, _, size = g.struct_offsets(info["fields"], "std140")
+    assert info["slot"] == 1024 and size <= 1024
+
+
+@pytest.mark.parametrize("idx", range(len(g.STRUCTS)))
+def test_check_detects_drift_in_every_registered_output(tmp_path, idx):
+    root = _tmp_root(tmp_path)
+    for rel in g.STRUCTS[idx][1:]:
+        with open(os.path.join(root, rel), "a", encoding="utf-8", newline="") as f:
+            f.write("// tampered\n")
+    assert g.main(["--check", "--root", root]) == 1

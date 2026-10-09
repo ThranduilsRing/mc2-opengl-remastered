@@ -56,6 +56,7 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"  // VK-SHADOW-DIRECT-CONSUME-1: direct dyn-shadow view accessors
+#include "../../RenderCore/gpu_abi/GpuTerrainFrameUBO.h"  // single-source std140 per-patch UBO
 
 #include <cstdio>
 #include <cstdlib>
@@ -322,127 +323,6 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     }
     return mod;
 }
-
-// std140 per-patch UBO (LOCKSTEP with terrain_tier1.vert TerrainFrameUBO). One slot
-// per LOD0 patch, addressed by dynamic offset. Padded to 96B so the UBO stride meets
-// minUniformBufferOffsetAlignment (256 on all target GPUs after rounding).
-struct TerrainFrameUBO {
-    float   worldToClipGL[16]; // off 0
-    int32_t mapSide;           // off 64
-    float   halfMap;           // off 68
-    int32_t blockOriginX;      // off 72
-    int32_t blockOriginY;      // off 76
-    // COLORMAP-BASE sub-slice: atlas-UV reconstruction params (mirror GL
-    // u_atlasTopLeftX/Y + u_atlasOneOverWorldUnits) + colormap-ready flag.
-    float   atlasTopLeftX;          // off 80
-    float   atlasTopLeftY;          // off 84
-    float   atlasOneOverWorldUnits; // off 88
-    int32_t colormapReady;          // off 92
-    // CEMENT/ROAD atlas sub-slice: cement uniforms (mirror the GL LOD-chunk frag's
-    // u_useCement/u_cementGridSide/u_cementWUPT/u_useTransitionMask/u_cementDiagConnect).
-    int32_t useCement;              // off 96
-    int32_t cementGridSide;         // off 100
-    float   cementWUPT;             // off 104
-    int32_t useTransitionMask;      // off 108
-    int32_t cementDiagConnect;      // off 112
-    // VK-TERRAIN-LIGHTING sub-slice. std140: pad to off 128 (vec4 align), then the sun
-    // dir vec4 + the static light-space mat4 + scalar toggles. LOCKSTEP with the frag.
-    int32_t _lightPad0;             // off 116
-    int32_t _lightPad1;             // off 120
-    int32_t _lightPad2;             // off 124
-    float   terrainLightDir[4];     // off 128 (vec4)
-    float   staticLightSpaceMatrix[16]; // off 144 (mat4)
-    int32_t lightingEnabled;        // off 208: MC2_VK_TERRAIN_LIGHTING gate
-    int32_t enableShadows;          // off 212: static shadow map imported+valid this frame
-    float   shadowSoftness;         // off 216: GL default 2.5
-    int32_t _lightPad3;             // off 220
-    // VK-TERRAIN-DETAIL sub-slice: terrain normal perturbation (macro slope + material
-    // detail normal) so grass reads with NdotL relief like GL. LOCKSTEP with the frag.
-    int32_t detailEnabled;          // off 224: MC2_VK_TERRAIN_DETAIL gate (requires lighting)
-    int32_t detailReady;            // off 228: matNormalArray 2D_ARRAY imported+bound
-    float   nfhStrength;            // off 232: terrainNormalsFromHeightStrength (GL default 1.0)
-    float   detailTiling;           // off 236: detailNormalTiling.x (GL default 1.0)
-    float   detailStrength;         // off 240: detailNormalStrength.x (GL default 1.0)
-    // VK-TERRAIN-DYNSHADOW sub-slice: dynamic (building/mech) shadow. LOCKSTEP with frag.
-    // std140: pad the dynamic light-space mat4 to a 16B boundary (off 256).
-    int32_t enableDynShadows;       // off 244: dynamic shadow map imported+valid this frame
-    int32_t _dynPad0;               // off 248
-    int32_t _dynPad1;               // off 252
-    float   dynamicLightSpaceMatrix[16]; // off 256..319 (mat4)
-    // VK-TERRAIN-LODFADE sub-slice: camera world position (Stuff/MLR space) + the
-    // gate toggle, packed into the existing pad tail (was _pad[48], off 320..511) so
-    // the 512B dynamic-alignment slot does NOT grow. LOCKSTEP with terrain_tier1.frag.
-    float   cameraPosMC2[4];        // off 320: gos_GetTerrainCameraPos(), .w pad
-    int32_t lodFadeEnabled;         // off 336
-    // VK-TERRAIN-SKIRT sub-slice (rung 4): skirt pull-down depth, mirrors GL
-    // u_skirtDepth (gos_terrain_lod_chunk.cpp skirtDepths[i]). Read by
-    // terrain_tier1_skirt.vert only (the main-patch vert never reads it — main
-    // patches always draw with skirtDepth conceptually 0, same as GL's "draw main
-    // patch (skirtDepth=0)" comment). Packed into the existing pad tail so the 512B
-    // dynamic-alignment slot does NOT grow. LOCKSTEP with terrain_tier1_skirt.vert.
-    float   skirtDepth;              // off 340
-    // VK-TERRAIN-CSM-NEAR-1 sub-slice: near-cascade-array dynamic shadow (ports GL's
-    // calcDynamicShadow cascade-select VERBATIM). LOCKSTEP with terrain_tier1.frag.
-    // Slot grew 512->1024B to fit N cascade matrices; pad to a 16B boundary first.
-    int32_t _csmPad0;                // off 344
-    int32_t _csmPad1;                // off 348
-    int32_t csmEnabled;              // off 352: MC2_VK_TERRAIN_CSM near-cascade path armed+valid this frame
-    int32_t csmCount;                // off 356: 1..MC2_SHADOW_CSM_MAX (mirrors GL dynamicCsmCount)
-    float   csmDepthSpan;            // off 360: (farP-nearP) of the shared CSM ortho z-row
-    int32_t csmDebugMode;             // off 364: CSM-BLACKOUT-RECON-1 one-shot debug viz (0=off)
-    float   csmCascadeMatrices[16 * 3]; // off 368: dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX] (mat4 x3)
-    float   csmCascadeTexelWorld[4];    // off 560: per-cascade world-texel footprint (vec3 used + pad)
-    float   csmFullMapTexelWorld;    // off 576: dynamicFullMapTexelWorld (separate lower-res full-map tex)
-    // VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): mode-2 far-band Z-swap params, packed
-    // into the pad tail (slot does NOT grow). LOCKSTEP with terrain_tier1.vert /
-    // terrain_tier1_skirt.vert / terrain_tier1.frag.
-    int32_t visualSide;              // off 580: fine bake side V (0 = bake not snapshotted)
-    float   visualDisplaceFar;       // off 584: MC2_TERRAIN_VISUAL_DISPLACE_FAR fade 0..1
-    int32_t visualMode;              // off 588: 0 = no displace, 2 = far-band Z-swap (per patch)
-    int32_t edgeStitch;              // off 592: VK-TERRAIN-EDGE-STITCH-1 packed N/S/W/E stride bytes
-    int32_t quadCountX;              // off 596: max local offset X for edge tests
-    int32_t quadCountY;              // off 600: max local offset Y for edge tests
-    // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2 + CEMENT-NIGHT-LIGHT-1 (LOCKSTEP with frag/verts).
-    float   ambientFloor;            // off 604
-    float   ambientDayGate;          // off 608
-    float   missionFlatR;            // off 612
-    float   missionFlatG;            // off 616
-    float   missionFlatB;            // off 620
-    // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 + LIGHT-CLUSTER-PERF-1 + MOVER-CONTACT-
-    // SHADOW-1 + PAD-AREA-GLOW-1 (LOCKSTEP with terrain_tier1{,_skirt}.{vert,frag}).
-    int32_t numPoolLights;           // off 624
-    int32_t lightGridDim;            // off 628
-    float   lightGridMinX;           // off 632
-    float   lightGridMinY;           // off 636
-    float   lightGridInvCellX;       // off 640
-    float   lightGridInvCellY;       // off 644
-    int32_t lightPoolSoft;           // off 648
-    float   lightPoolMoverDim;       // off 652
-    float   lightPoolMoverScale;     // off 656
-    int32_t lightPoolMoverMax;       // off 660
-    int32_t lightPoolCompress;       // off 664
-    float   moverContactShadow;      // off 668
-    float   padGlowR;                // off 672
-    float   padGlowG;                // off 676
-    float   padGlowB;                // off 680
-    float   padGlowSpill;            // off 684
-    // VK-PARITY-SHADOW-1: SHADOW-DIST-FADE-1 series + TERRAIN-SHADOW-GUARD-1 + BANDFIX_V2
-    // (LOCKSTEP with terrain_tier1{,_skirt}.{vert,frag}); producer mc2ShadowFadeKnobs().
-    float   shadowDistFadeWu;        // off 688
-    float   shadowDistFadeMax;       // off 692
-    float   shadowMinSunSin;         // off 696
-    int32_t shadowKnobFlags;         // off 700: b0 FADE_CONT b1 RAMP0 b2 ALT_SCALE b3 BANDFIX_V2
-    // VK-PARITY-F3 (LOCKSTEP with terrain_tier1{,_skirt}.frag): legacy material tint + snow dampen.
-    float   tintRock[3];             // off 704
-    float   tintGrass[3];            // off 716
-    float   tintDirt[3];             // off 728
-    float   tintConcrete[3];         // off 740
-    float   tintSnow[3];             // off 752
-    float   tintStrengthScale;       // off 764
-    float   snowBrightnessDampen;    // off 768
-    int32_t _pad[63];                // off 772..1023: remaining pad
-};
-static_assert(sizeof(TerrainFrameUBO) == 1024, "UBO slot must be 1024B (dynamic alignment, grew for CSM-NEAR-1)");
 
 // int16 local-offset vertex (mirrors terrain_lod_chunk.cpp LocalVertex { int16 lx,ly }).
 struct LocalVertex { int16_t lx, ly; };

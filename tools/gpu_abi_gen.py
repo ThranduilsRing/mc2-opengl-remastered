@@ -17,6 +17,15 @@ Source subset: `// @gpu std430 glsl=<GlslName>` above `struct [alignas(N)] Name 
 fields are fixed-width scalars (float, int32_t, uint32_t) or float[N]. Arrays
 of float with N in {2,3,4,16} need an annotation in the trailing comment
 (@vec2 / @vec3 / @vec4 / @mat4); a bare float[N] is a GLSL scalar array.
+
+std140 UNIFORM BLOCKS: `// @gpu std140 glsl=<Block> block=<instance> set=<S> binding=<B>
+[slot=<bytes>]` emits the whole `layout(...) uniform` block (not a bare struct), so
+the shader and the C++ POD share one member list. Extra member annotations:
+  @mat4xN   float[16*N]: GLSL mat4[N]
+  @rgb      float[3]: three consecutive GLSL scalars <name>R/<name>G/<name>B (no vec3
+            padding; the following member packs at +12)
+  @cpp_only member exists only in C++ (slot tail padding); not in the GLSL block
+`slot` is the C++ sizeof (dynamic-offset stride), which may exceed the std140 size.
 """
 import argparse
 import os
@@ -30,6 +39,11 @@ STRUCTS = [
     ("RenderCore/gpu_abi/GpuStaticPropInstance.h",
      "RenderCore/gpu_abi/GpuStaticPropInstance.layout.gen.h",
      "shaders/include/gpu_abi_static_prop_instance.gen.hglsl"),
+    # VK-only uniform block: lives beside the other VK includes (shaders/vulkan/include),
+    # outside the GL/VK-shared shaders/include that the GL shader lints scan.
+    ("RenderCore/gpu_abi/GpuTerrainFrameUBO.h",
+     "RenderCore/gpu_abi/GpuTerrainFrameUBO.layout.gen.h",
+     "shaders/vulkan/include/terrain_frame_ubo_vk.glsl"),
 ]
 
 
@@ -112,15 +126,22 @@ def struct_offsets(fields, rules):
 _CPP_SCALAR = {"float": "float", "int32_t": "int", "uint32_t": "uint"}
 _ANNOT_ARR = {"@mat4": ("mat4", 16), "@vec4": ("vec4", 4),
               "@vec3": ("vec3", 3), "@vec2": ("vec2", 2)}
+_ANNOT_BLOCK = ("@mat4xN", "@rgb", "@cpp_only")
 _FIELD_RE = re.compile(
     r"^\s*(float|int32_t|uint32_t)\s+(\w+)(?:\[(\d+)\])?\s*;\s*(?://\s*(.*))?$")
 
 
 def parse_source(text, label):
-    m = re.search(r"^//\s*@gpu\s+(std430|std140)\s+glsl=(\w+)\s*$", text, re.M)
+    m = re.search(r"^//\s*@gpu\s+(std430|std140)\s+glsl=(\w+)((?:\s+\w+=\S+)*)\s*$", text, re.M)
     if not m:
         raise AbiError("%s: missing '// @gpu <rules> glsl=<Name>' annotation" % label)
     rules, glsl_name = m.group(1), m.group(2)
+    opts = dict(kv.split("=", 1) for kv in m.group(3).split())
+    block = opts.get("block")
+    if block and (rules != "std140" or "set" not in opts or "binding" not in opts):
+        raise AbiError("%s: block= needs std140 plus set= and binding=" % label)
+    if set(opts) - {"block", "set", "binding", "slot"}:
+        raise AbiError("%s: unknown @gpu option(s) %s" % (label, sorted(opts)))
     sm = re.compile(r"struct\s+(?:alignas\((\d+)\)\s+)?(\w+)\s*\{").search(text, m.end())
     if not sm:
         raise AbiError("%s: no struct after @gpu annotation" % label)
@@ -128,7 +149,7 @@ def parse_source(text, label):
     cpp_name = sm.group(2)
     end = text.index("};", sm.end())
     body = text[sm.end():end]
-    fields, cpp_fields = [], []
+    fields, cpp_fields = [], []   # cpp_fields: (cpp name, first GLSL member name | None)
     for raw in body.splitlines():
         line = raw.strip()
         if not line or line.startswith("//"):
@@ -142,9 +163,24 @@ def parse_source(text, label):
             first = comment.split()[0] if comment.split() else ""
             if first.startswith("@"):
                 annot = first
-                if annot not in _ANNOT_ARR:
+                if annot not in _ANNOT_ARR and not (block and annot in _ANNOT_BLOCK):
                     raise AbiError("%s: unknown annotation %s on %s" % (label, annot, name))
         base = _CPP_SCALAR[ctype]
+        if annot == "@cpp_only":
+            cpp_fields.append((name, None))
+            continue
+        if annot == "@rgb":
+            if ctype != "float" or count != "3":
+                raise AbiError("%s: @rgb needs float[3] (%s)" % (label, name))
+            fields += [(name + c, "float") for c in "RGB"]
+            cpp_fields.append((name, name + "R"))
+            continue
+        if annot == "@mat4xN":
+            if ctype != "float" or count is None or int(count) % 16:
+                raise AbiError("%s: @mat4xN needs float[16*N] (%s)" % (label, name))
+            fields.append((name, ("arr", "mat4", int(count) // 16)))
+            cpp_fields.append((name, name))
+            continue
         if count is None:
             if annot:
                 raise AbiError("%s: %s on non-array %s" % (label, annot, name))
@@ -161,11 +197,13 @@ def parse_source(text, label):
                 raise AbiError("%s: array %s too small" % (label, name))
             gtype = ("arr", base, int(count))
         fields.append((name, gtype))
-        cpp_fields.append(name)
+        cpp_fields.append((name, name))
     if not fields:
         raise AbiError("%s: empty struct" % label)
     return {"rules": rules, "glsl": glsl_name, "cpp": cpp_name,
-            "cpp_align": cpp_align, "fields": fields}
+            "cpp_align": cpp_align, "fields": fields, "cpp_fields": cpp_fields,
+            "block": block, "set": opts.get("set"), "binding": opts.get("binding"),
+            "slot": int(opts["slot"]) if "slot" in opts else None}
 
 
 def glsl_type_str(t):
@@ -179,11 +217,19 @@ def glsl_type_str(t):
 # ---------------------------------------------------------------------------
 def build(info, src_rel, glsl_rel):
     offs, align, size = struct_offsets(info["fields"], info["rules"])
-    if info["rules"] != "std430":
-        raise AbiError("only std430 SSBO structs are generated (got %s)" % info["rules"])
+    block = info["block"]
+    if info["rules"] != "std430" and not block:
+        raise AbiError("std140 structs are only generated as uniform blocks (block=)")
     if info["cpp_align"] is not None and info["cpp_align"] != align:
         raise AbiError("%s: alignas(%d) != %s alignment %d"
                        % (info["cpp"], info["cpp_align"], info["rules"], align))
+    off_of = dict(offs)
+    end = offs[-1][1] + align_size(info["fields"][-1][1], info["rules"])[1]
+    slot = info["slot"] if info["slot"] is not None else size
+    if slot < size:
+        raise AbiError("%s: slot=%d smaller than %s size %d" % (info["cpp"], slot, info["rules"], size))
+    if sum(1 for _, g in info["cpp_fields"] if g is None) > 1:
+        raise AbiError("%s: at most one @cpp_only tail member" % info["cpp"])
     name, g = info["cpp"], info["glsl"]
     src_name = os.path.basename(src_rel)
     lay = ["// GENERATED by tools/gpu_abi_gen.py from %s -- DO NOT EDIT." % src_name,
@@ -191,23 +237,30 @@ def build(info, src_rel, glsl_rel):
            "// Offsets computed from %s rules, independent of the compiler." % info["rules"],
            "#pragma once", "",
            "static_assert(std::is_trivially_copyable<%s>::value, \"%s must be trivially copyable\");" % (name, name),
-           "static_assert(sizeof(%s) == %d, \"%s size must match %s GLSL struct\");" % (name, size, name, info["rules"]),
-           "static_assert(alignof(%s) == %d, \"%s alignment\");" % (name, align, name)]
-    for fname, o in offs:
-        lay.append("static_assert(offsetof(%s, %s) == %d, \"%s offset\");" % (name, fname, o, fname))
+           "static_assert(sizeof(%s) == %d, \"%s size must match %s GLSL struct\");" % (name, slot, name, info["rules"])]
+    if not block or info["cpp_align"] is not None:
+        lay.append("static_assert(alignof(%s) == %d, \"%s alignment\");" % (name, align, name))
+    for cname, gname in info["cpp_fields"]:
+        o = end if gname is None else off_of[gname]
+        lay.append("static_assert(offsetof(%s, %s) == %d, \"%s offset\");" % (name, cname, o, cname))
     lay.append("")
     gl = ["// GENERATED by tools/gpu_abi_gen.py from %s -- DO NOT EDIT." % src_rel,
-          "// Regenerate: py -3 tools/gpu_abi_gen.py --write   Verify: --check",
-          "// %s rules, %d bytes. Include from the shader; the shader keeps its own" % (info["rules"], size),
-          "// `layout(...) buffer` wrapper (GL and VK binding syntax differ).",
-          "#ifndef GPU_ABI_%s_GEN_HGLSL" % g.upper(),
-          "#define GPU_ABI_%s_GEN_HGLSL" % g.upper(),
-          "struct %s {" % g]
-    off_of = dict(offs)
+          "// Regenerate: py -3 tools/gpu_abi_gen.py --write   Verify: --check"]
+    if block:
+        gl += ["// %s rules, %d bytes (C++ slot %d). Declares the whole uniform block." % (info["rules"], size, slot),
+               "#ifndef GPU_ABI_%s_GEN_GLSL" % g.upper(),
+               "#define GPU_ABI_%s_GEN_GLSL" % g.upper(),
+               "layout(set = %s, binding = %s, std140) uniform %s {" % (info["set"], info["binding"], g)]
+    else:
+        gl += ["// %s rules, %d bytes. Include from the shader; the shader keeps its own" % (info["rules"], size),
+               "// `layout(...) buffer` wrapper (GL and VK binding syntax differ).",
+               "#ifndef GPU_ABI_%s_GEN_HGLSL" % g.upper(),
+               "#define GPU_ABI_%s_GEN_HGLSL" % g.upper(),
+               "struct %s {" % g]
     for fname, ft in info["fields"]:
         ts, suffix = glsl_type_str(ft)
         gl.append("    %-5s %s%s;  // off %d" % (ts, fname, suffix, off_of[fname]))
-    gl += ["};", "#endif", ""]
+    gl += ["} %s;" % block if block else "};", "#endif", ""]
     return {"layout": "\n".join(lay), "glsl": "\n".join(gl)}
 
 
