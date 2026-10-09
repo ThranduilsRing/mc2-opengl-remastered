@@ -16,7 +16,7 @@ Deploy the built exe + PDB + ffmpeg DLLs + all shaders from `A:/Games/mc2-main` 
 py -3 A:/Games/mc2-main/scripts/deploy_payload.py --target game
 ```
 
-The golden `mc2-win64-v0.4c` must NEVER be a deploy target. (The script still has a `--target editor` preset that defaults to 0.4c; do not use it.)
+The golden `mc2-win64-v0.4c` must NEVER be a deploy target. The `--target editor` preset (`Mission Editor.exe`) also deploys to the dev install `mc2-win64-v0.4` (reset 2026-10-05), not 0.4c.
 
 ## What the script guarantees
 
@@ -80,32 +80,18 @@ Use only if `deploy_payload.py` is unavailable. This knowledge is still valid �
 
 ### Steps
 
-1. **Deploy exe + PDB** (PDB carries source paths; Tracy symbols are wrong if it's stale):
+1. **Deploy exe, PDB, DLLs, shaders** (sanctioned command from `BUILD-WIN.md`; run from `A:/Games/mc2-main`, never copy by hand):
 ```bash
-cp -f "A:/Games/mc2-main/build64/RelWithDebInfo/mc2.exe" "A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe"
-cp -f "A:/Games/mc2-main/build64/RelWithDebInfo/mc2.pdb" "A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.pdb"
+py -3 scripts/deploy_payload.py "A:/Games/mc2-opengl/mc2-win64-v0.4" --source-root . --build-dir build64 --exe-name mc2.exe
 ```
 
-2. **Deploy FFmpeg DLLs** (copy each DLL individually using `cp -f`, NEVER `cp -r`):
-```bash
-for dll in avcodec-61.dll avformat-61.dll avutil-59.dll swscale-8.dll swresample-5.dll; do
-    cp -f "A:/Games/mc2-main/build64/RelWithDebInfo/$dll" "A:/Games/mc2-opengl/mc2-win64-v0.4/$dll"
-    diff -q "A:/Games/mc2-main/build64/RelWithDebInfo/$dll" "A:/Games/mc2-opengl/mc2-win64-v0.4/$dll"
-done
-```
-
-3. **Deploy shaders**: Copy EVERY shader file individually using `cp -f` (NEVER `cp -r` — it silently fails to overwrite on Windows/MSYS2):
-   - All `*.vert`, `*.frag`, `*.tesc`, `*.tese` from `A:/Games/mc2-main/shaders/`
-   - All files from `A:/Games/mc2-main/shaders/include/` to deploy `shaders/include/`
-   - Create `shaders/include/` in deploy target if it doesn't exist
-
-4. **Verify ALL deployed files**: Run `diff -q` on every DLL and shader file (source vs deployed). Report:
+2. **Verify ALL deployed files**: Run `diff -q` on every DLL and shader file (source vs deployed). Report:
    - Files that were deployed successfully (match confirmed)
    - **ANY mismatches — flag loudly as errors**
    - Files that exist in source but not in deploy (new files that need copying)
    - Files that exist in deploy but not in source (stale files from old branches)
 
-5. **Write BOTH deploy manifests** (LAST step, after all copies verified).
+3. **Write BOTH deploy manifests** (LAST step, after all copies verified).
    There are two manifest files and both must be refreshed or one goes
    stale behind the other:
    - `.deploy-manifest.json` — advisory coherence manifest (carries git

@@ -154,7 +154,7 @@ Core references:
 - [asset-viewer-backend-a-uvv-check.md](asset-viewer-backend-a-uvv-check.md) - Backend-A UV-V Verification Check (Task 8)
 - [asset-viewer-mech-assembly-inspector.md](asset-viewer-mech-assembly-inspector.md) - Asset Viewer - Mech Assembly Inspector (Recon + Design)
 - [background-launch-inventory.md](background-launch-inventory.md) - Background-launch inventory (generated)
-- [build-parallel-and-tooling.md](build-parallel-and-tooling.md) - Parallel build, smoke, and deploy-dir/worktree map
+- [build-parallel-and-tooling.md](build-parallel-and-tooling.md) - Parallel build, smoke, and deploy-dir/worktree map (STALE: 2026-06 multi-worktree era)
 - [game-auto-tools.md](game-auto-tools.md) - Game Auto Tools
 - [gameplay-driver.md](gameplay-driver.md) - Gameplay driver - driving a running mission from an agent
 - [oracle-dynamic-pipeline-gate.md](oracle-dynamic-pipeline-gate.md) - Oracle Gate - Legacy Dynamic Pipeline (mech/vehicle/turret/effects)

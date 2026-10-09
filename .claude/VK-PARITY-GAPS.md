@@ -1,3 +1,5 @@
+STATUS 2026-10-09: 2026-10-07 recon snapshot, partly superseded. Landed since: trees dither/lighting 7b787f937, dynamic buildings 3c2718773, shadow stride c26b1eb2a, CSM unflip 2fc06b5a9, letterbox 7159006ef, shore mode 3 VK 0e701f763. Current gaps: see memory project-next-tooling-modernization-plan visual-work queue.
+
 # VK vs GL parity gap list (recon, 2026-10-07, read-only)
 
 Baseline: VK umbrella = `MC2_RENDER_BACKEND=vulkan MC2_VK_SHARED_GBUFFER=1`. GL = default path at HEAD.

@@ -1,3 +1,5 @@
+> STALE: 2026-06 multi-worktree era. Verify paths and commands before use.
+
 # Parallel build, smoke, and deploy-dir/worktree map
 
 Ground-truthed 2026-06-30 via `ls -d A:/Games/mc2-opengl/mc2-win64-*` and
