@@ -1,0 +1,28 @@
+{
+ "_comment": "Hand-curated GL<->VK shader twin families for tools/gl_vk_feature_coverage.py. Keys are VK shader STEMS (shaders/vulkan/<stem>.<stage>); 'gl' lists the GL stems (shaders/<stem>.<stage>) the VK family re-implements. Same-name pairs and the _tier1/_native suffix rule are derived automatically and need no entry. 'why' cites the VK header that names its GL source.",
+ "families": {
+  "cloud_shadow": {"gl": ["cloud"], "why": "cloud_shadow.frag header: Vulkan port of shaders/cloud.frag"},
+  "color_prop_tier1": {"gl": ["static_prop", "static_prop_depth"], "why": "gl-vk-duplication.md section 1: static-prop color island"},
+  "hdri_sky": {"gl": ["hdri_skybox"], "why": "hdri_sky.frag header: Vulkan port of shaders/hdri_skybox.frag"},
+  "legacy_shape_tier1": {"gl": ["gos_tex_vertex", "gos_tex_vertex_lighted", "gos_vertex", "gos_vertex_lighted"], "why": "legacy_shape_tier1 header: port of shaders/gos_tex_vertex.*; the other three are the same legacy MLR family"},
+  "postprocess_visual": {"gl": ["postprocess"], "why": "postprocess_visual.frag header: conservative Visual-mode subset of the GL composite"},
+  "screen_shadow_csm": {"gl": ["shadow_screen"], "why": "screen_shadow_csm.frag header: VK CSM port of shaders/shadow_screen.frag"},
+  "screen_shadow_static": {"gl": ["shadow_screen"], "why": "screen_shadow_static.frag header: static-only port of shaders/shadow_screen.frag"},
+  "shadow_debug_overlay": {"gl": ["shadow_debug"], "why": "VK shadow debug overlay for the GL shadow_debug pass"},
+  "shadow_prop": {"gl": ["shadow_static_prop", "shadow_instanced"], "why": "shadow_prop.vert header: reproduces shaders/shadow_static_prop.vert; .frag matches shadow_instanced.frag"},
+  "terrain_decal_tier1": {"gl": ["decal", "terrain_overlay"], "why": "terrain_decal_tier1.frag header: port of shaders/decal.frag; VS shared with terrain_overlay.vert"},
+  "terrain_overlay_tier1": {"gl": ["terrain_overlay"], "why": "terrain_overlay_tier1 header: port of shaders/terrain_overlay.*"},
+  "terrain_tier1": {"gl": ["terrain_lod_chunk", "gos_terrain"], "why": "terrain_tier1.vert header: port of terrain_lod_chunk.vert; terrain_tier1.frag ports gos_terrain.frag (glsl_port_diff lodNear)"},
+  "terrain_tier1_skirt": {"gl": ["terrain_lod_chunk"], "why": "terrain_tier1_skirt.vert header: reproduces terrain_lod_chunk.vert skirt path"},
+  "vfx_particle": {"gl": ["particle_billboard", "vfx_mesh", "tube_ribbon"], "why": "vfx_particle.vert header: port of particle_billboard.vert; vfx_mesh/tube_ribbon are the same VFX island"},
+  "water_geom": {"gl": ["gos_terrain_water_mdi", "gos_terrain_water_fast_mdi", "gos_terrain_water_fast"], "why": "water_geom.frag header: port of gos_terrain_water_mdi.frag; .vert ports gos_terrain_water_fast_mdi.vert"},
+  "water_mvp": {"gl": ["gos_terrain_water_fast_mdi"], "why": "water_mvp.frag header: clip-space oracle for the water fast-path VS"}
+ },
+ "no_gl_twin": {
+  "fullscreen": "VK swapchain fullscreen triangle/blit; GL uses its own present path",
+  "compare_shadow": "depth-compare sampler fixture; the GL consumer is the shadow.hglsl include, not a shader",
+  "csm_array_shadow": "CSM array compare-sampler fixture; the GL consumer is the shadow.hglsl include, not a shader",
+  "hud_color": "native VK HUD pipeline; GL HUD goes through gos_vertex",
+  "hud_tex": "native VK HUD pipeline; GL HUD goes through gos_tex_vertex"
+ }
+}
