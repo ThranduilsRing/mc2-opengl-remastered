@@ -81,6 +81,11 @@ namespace graphics {
     {
         // No-op for the MFC editor shell.
     }
+
+    // gameos_graphics.cpp calls enforce_window_offscreen (NOFOCUS-HARDEN-1, gos_render.cpp).
+    // The editor never runs the off-screen harness window mode: no-ops.
+    bool window_offscreen_requested() { return false; }
+    void enforce_window_offscreen(RenderWindowHandle /*rw*/) {}
 }
 
 

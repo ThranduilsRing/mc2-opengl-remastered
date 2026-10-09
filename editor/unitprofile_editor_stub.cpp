@@ -16,3 +16,29 @@ extern "C" int mc2_unitprofile_collect_witness(UnitProfileWitnessRow* /*out*/, i
 {
     return 0;  // no witness rows in the editor
 }
+
+// ---------------------------------------------------------------------------
+// Further editor-only link stubs: game-layer entry points referenced by the
+// shared gameos_editor.lib / mclib.lib TUs (debug_state_dump, gos_visual_capture,
+// mech3d, gvactor). Real definitions live in code/missiongui.cpp, sim_identity.cpp,
+// unitprofile_fit.cpp (game-only, heavy). All inert; no real logic duplicated.
+// (mc2UnitProfileDataEnabled / theActionExecutorRegistry are linked from their
+// real, light TUs via editor/CMakeLists.txt.)
+// ---------------------------------------------------------------------------
+struct ComponentWitnessRow;
+struct UnitPreviewWitnessRow;
+
+extern "C" {
+int  mc2FreezeMoversActive() { return 0; }
+int  mc2VisualCaptureGetPauseState() { return -1; }  // -1 = no mission interface
+void mc2VisualCaptureSetPaused(int) {}
+void mc2VisualCaptureRestorePauseState(int) {}
+int  mc2SimIdentityWriteJson(char* buf, int cap, double, long)
+{
+    if (buf && cap > 0) buf[0] = '\0';
+    return 0;
+}
+int mc2_component_collect_witness(ComponentWitnessRow*, int) { return 0; }
+int mc2_unitpreview_collect_witness(UnitPreviewWitnessRow*, int) { return 0; }
+const char* mc2_unitpreview_anim_tag_name(int) { return ""; }
+}

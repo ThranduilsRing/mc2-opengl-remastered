@@ -49,6 +49,9 @@ add_executable(EditRel WIN32
     ${EDITOR_SOURCES}
     ${EDITOR_HEADERS}
     ${EDITOR_BRIDGE_SOURCES}
+    # Real, dependency-light game TUs (no stubs needed):
+    "${CMAKE_SOURCE_DIR}/code/action_executor_registry.cpp"  # theActionExecutorRegistry
+    "${CMAKE_SOURCE_DIR}/code/unitprofile.cpp"               # mc2UnitProfileDataEnabled
 )
 
 # MFC setup
