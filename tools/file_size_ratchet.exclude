@@ -1,0 +1,6 @@
+# tools/file_size_ratchet.exclude -- paths the file-size ratchet must not scan.
+# One glob per line (fnmatch against the repo-relative path; '*' crosses '/').
+# A trailing '/' excludes a whole directory; a pattern without '/' matches file names only.
+# Built in already: 3rdparty/, shaders/spv/, *.gen.*, linguist-generated paths, build*/ dirs.
+# Add only machine-written sources that are not named *.gen.* (give a reason); do NOT add
+# a hand-written giant file to hide it -- splitting it is the point of the ratchet.

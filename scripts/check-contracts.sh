@@ -913,6 +913,11 @@ run_check "cxx17_ratchet_selftest"   "py -3 tools/cxx17_ratchet/test_cxx17_ratch
 # lines occurring twice) per owned dir may only fall. Scans the COMMITTED tree, so another
 # agent's dirty working tree cannot flap it. Selftest lives in scripts/tests (scripts_tests row).
 run_check "dup_lines_ratchet"        "py -3 tools/dup_lines_ratchet.py --check"
+# File-size program (ORCHESTRATOR-HANDOFF item 8): oversized files cost agents read context and
+# force whole-TU rebuilds. Per-dir count of files > 1500 / > 3000 lines and the max file length
+# may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
+# lives in scripts/tests (scripts_tests row).
+run_check "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py
