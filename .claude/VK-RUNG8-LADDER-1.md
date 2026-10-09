@@ -454,6 +454,11 @@ no tessellation anywhere in the tail.
   `tests/smoke/artifacts/2026-07-08T18-30-44`; clean post-commit build/deploy
   (`sha=f10a87a2be3c dirty=0`) passed the same CSM-enabled tier1 gate at
   `tests/smoke/artifacts/2026-07-08T18-36-40`.
+- 8.7j SUPERSEDED (2026-10-09): the negative-height (flipped) CSM array viewport
+  conclusion above is wrong. After stride fix c26b1eb2a, the csm0 depth dump of the
+  flipped VK array is Y-mirrored vs GL and the flipped viewport streaks terrain; the
+  array pass now uses non-flipped {0,0,size,size}. The July measurement (8184a1af8)
+  predated the stride fix, so it had compensated for the stride bug.
 - 8.7k - NATIVE CSM SHADOW DEBUG OVERLAY
   (VK-SHADOW-DEBUG-OVERLAY-NATIVE-1). Added a diagnostic-only native overlay
   pass for `MC2_SHADOW_DEBUG_MODE=dynamic` when CSM is active and the shadow

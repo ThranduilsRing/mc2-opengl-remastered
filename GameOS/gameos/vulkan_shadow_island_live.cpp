@@ -1483,14 +1483,11 @@ extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
     rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
-    // CSM array pass uses a FLIPPED viewport {0,size,size,-size}. Restored per
-    // 8184a1af8, MEASURED correct (VK-RUNG8-LADDER-1.md: flipped array matched GL
-    // 0.000% on mc2_01_buildings); be477332e wrongly un-flipped it. Live consumer:
-    // shaders/vulkan/screen_shadow_csm.frag. (dyn / full-map passes stay non-flipped.)
-    // TEMP experiment: MC2_VK_CSM_ARRAY_NOFLIP=1 -> non-flipped {0,0,size,size}.
-    static const bool s_noFlip = []() { const char* v = std::getenv("MC2_VK_CSM_ARRAY_NOFLIP"); return v && v[0]=='1'; }();
-    VkViewport vp = s_noFlip ? VkViewport{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f}
-                             : VkViewport{0.0f, (float)size, (float)size, -(float)size, 0.0f, 1.0f};
+    // CSM array pass uses a NON-flipped viewport {0,0,size,size}. Verified 2026-10-09 by
+    // csm0 depth-dump orientation vs GL after stride fix c26b1eb2a; the 8184a1af8 July
+    // measurement predated the stride fix. A flipped viewport Y-mirrors the depth and
+    // streaks terrain. Live consumer: shaders/vulkan/screen_shadow_csm.frag.
+    VkViewport vp{0.0f, 0.0f, (float)size, (float)size, 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {(uint32_t)size, (uint32_t)size}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
