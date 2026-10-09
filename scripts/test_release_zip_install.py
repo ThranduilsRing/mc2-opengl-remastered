@@ -234,7 +234,7 @@ def run_smoke(exe: Path, mission: str, duration: int) -> int:
         "--exe", str(exe),
     ]
     log(f"smoke: {' '.join(cmd)}")
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return result.returncode
 
 

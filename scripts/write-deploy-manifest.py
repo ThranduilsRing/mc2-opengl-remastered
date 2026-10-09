@@ -31,7 +31,7 @@ def _git(worktree: Path, *args: str) -> str:
     try:
         return subprocess.check_output(
             ["git", "-C", str(worktree), *args],
-            text=True, stderr=subprocess.DEVNULL).strip()
+            text=True, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).strip()
     except Exception:
         return ""
 

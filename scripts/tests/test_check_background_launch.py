@@ -15,7 +15,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "check-background-launch.py"
 
 def _run(*args):
     return subprocess.run([sys.executable, str(SCRIPT), *args],
-                          capture_output=True, text=True, timeout=300)
+                          capture_output=True, text=True, timeout=300, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def test_selftest_catches_each_rule():

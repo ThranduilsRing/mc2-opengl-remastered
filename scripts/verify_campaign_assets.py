@@ -38,7 +38,7 @@ FST = _load_fst()
 
 def resolve(deploy, name):
     out = subprocess.run([sys.executable, str(HERE / "resolve_campaign_config.py"), deploy, name],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     try:
         return json.loads(out.stdout)
     except Exception:

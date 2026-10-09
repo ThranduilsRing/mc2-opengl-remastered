@@ -206,7 +206,7 @@ def git_object_db_available(repo_root: "str | Path" = None) -> bool:
         return _GITDIR_CACHE[root]
     try:
         r = subprocess.run(["git", "-C", root, "rev-parse", "--git-dir"],
-                           capture_output=True, timeout=30)
+                           capture_output=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         avail = (r.returncode == 0)
     except Exception:  # noqa: BLE001 -- git missing entirely
         avail = False
@@ -235,7 +235,7 @@ def repo_has_commit(sha: "str | None", repo_root: "str | Path" = None) -> bool:
         return _COMMIT_CACHE[key]
     try:
         r = subprocess.run(["git", "-C", root, "cat-file", "-e", f"{sha}^{{commit}}"],
-                           capture_output=True, timeout=30)
+                           capture_output=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         found = (r.returncode == 0)
     except Exception:  # noqa: BLE001 -- no git, not a repo: no witness, not a lie
         found = False
@@ -722,7 +722,7 @@ def _selftest() -> int:
         real_commit = None
         try:
             rc = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                capture_output=True, text=True, timeout=30)
+                                capture_output=True, text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if rc.returncode == 0:
                 real_commit = rc.stdout.strip()[:12]
         except Exception:  # noqa: BLE001
