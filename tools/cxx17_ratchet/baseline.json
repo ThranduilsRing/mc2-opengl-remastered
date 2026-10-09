@@ -148,19 +148,19 @@
    "LG18": 0
   },
   "code": {
-   "LG01": 1835,
+   "LG01": 1832,
    "LG02": 232,
-   "LG03": 978,
+   "LG03": 972,
    "LG04": 21,
    "LG05": 202,
    "LG06": 465,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2508,
+   "LG09": 2503,
    "LG10": 22,
    "LG11": 101,
    "LG12a": 220,
-   "LG12b": 798,
+   "LG12b": 797,
    "LG13": 1201,
    "LG14": 137,
    "LG15": 0,
@@ -2354,17 +2354,12 @@
    "LG02": 3
   },
   "code/mover.cpp": {
-   "LG01": 70,
-   "LG03": 16,
-   "LG05": 3,
-   "LG06": 2,
-   "LG09": 82,
-   "LG11": 5,
+   "LG01": 10,
+   "LG03": 2,
+   "LG05": 1,
+   "LG06": 1,
    "LG12a": 1,
-   "LG12b": 119,
-   "LG13": 20,
-   "LG16": 2,
-   "LG17": 3
+   "LG13": 2
   },
   "code/mover.h": {
    "LG01": 7,
@@ -2375,6 +2370,50 @@
    "LG13": 79,
    "LG14": 8,
    "LG17": 3
+  },
+  "code/mover_attack.cpp": {
+   "LG01": 7,
+   "LG09": 10,
+   "LG13": 5
+  },
+  "code/mover_chunks.cpp": {
+   "LG01": 17,
+   "LG09": 4,
+   "LG12b": 10,
+   "LG13": 11
+  },
+  "code/mover_combat.cpp": {
+   "LG01": 19,
+   "LG03": 2,
+   "LG06": 1,
+   "LG09": 17,
+   "LG12b": 2,
+   "LG17": 3
+  },
+  "code/mover_diag.cpp": {
+   "LG01": 6,
+   "LG03": 4,
+   "LG09": 25,
+   "LG11": 5,
+   "LG12b": 105
+  },
+  "code/mover_init.cpp": {
+   "LG01": 4,
+   "LG03": 2,
+   "LG12b": 1
+  },
+  "code/mover_internal.h": {
+   "LG13": 1
+  },
+  "code/mover_misc.cpp": {
+   "LG05": 2,
+   "LG09": 12,
+   "LG16": 2
+  },
+  "code/mover_path.cpp": {
+   "LG01": 4,
+   "LG09": 9,
+   "LG13": 1
   },
   "code/mpconnectiontype.cpp": {
    "LG01": 1,
@@ -5048,7 +5087,7 @@
    "LG13": 31
   }
  },
- "head": "b96cd1d3e",
+ "head": "3b9581785",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
