@@ -10,14 +10,16 @@ structural lane (GlStateGuard, Tube, HZB, IBL/PBR, service-lane) runs its before
 | File | Role |
 |---|---|
 | `scripts/smoke_lib/oracleparse.py` | Render-oracle parser + `judge_oracles` (hard correctness asserts). Separate from `logparse.py` so adding an oracle can't destabilize the tier1 fault gate. |
-| `scripts/oracle_report.py` | CLI: logs dir → per-mission oracle + `[PERF v1]` table, judged vs this budget. `--strict` exits 1 on regression. |
+| `oracle_report.py` (retired 2026-10-09) | Was the CLI: logs dir → per-mission oracle + `[PERF v1]` table, judged vs this budget. No gate or runner called it; recover it from git history if needed. |
 | `docs/perf-budget.json` | Per-mission floors/ceilings. |
 | this doc | Vocabulary, thresholds, classification rules. |
 
 ## Usage
 
+> Retired 2026-10-09: `oracle_report.py` (and `render_pass_report.py`) are deleted; the usage below is historical. `smoke_lib/oracleparse.py` remains.
+
 ```bat
-py -3 scripts/oracle_report.py --logs <artifact_or_log_dir> ^
+py -3 oracle_report.py --logs <artifact_or_log_dir> ^
     --budget docs/perf-budget.json --strict --md report.md --json report.json
 ```
 

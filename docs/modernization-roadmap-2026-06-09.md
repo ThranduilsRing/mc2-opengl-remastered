@@ -18,7 +18,7 @@
 > ### ✅ STATUS FOLD — 2026-06-10 (backlog now legitimately OPEN)
 > - **Terrain closeout:** COMPLETE / verified (above).
 > - **Baseline A:** CAPTURED + committed as **`82add3ca`** (`docs/baseline-A-post-8z.md`). 5/5 tier1, FASTPATH_DROP=0, slimVerts=0, terrain gpu-armed, render oracles clean.
-> - **Oracle + perf-budget harness:** SHIPPED (`scripts/smoke_lib/oracleparse.py`, `scripts/oracle_report.py`, `docs/perf-budget.{md,json}`) — the shared parser/budget vocabulary that makes future runs comparable to Baseline A. OBJBATCHER late-register classified (benign WARN), not panicked.
+> - **Oracle + perf-budget harness:** SHIPPED (`scripts/smoke_lib/oracleparse.py`, oracle_report.py [retired 2026-10-09], `docs/perf-budget.{md,json}`) — the shared parser/budget vocabulary that makes future runs comparable to Baseline A. OBJBATCHER late-register classified (benign WARN), not panicked.
 > - **S2b:** CLOSED — mech bodies already GPU.
 > - **gosFX Tube:** live **residual legacy lane** (A/B validation pending; merge decision deferred — not before harness).
 > - **PertCloud:** DEAD.

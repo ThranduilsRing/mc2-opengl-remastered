@@ -190,7 +190,7 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 - S12 unified manifest schema `ee4a583f` (`scripts/manifest_schema.py` + checker + tests + cockpit adoption)
 - S9/S13 pixel gate `8461e3e0` (run_visual.py (retired 2026-10-09) capture/compare/verify, byte-hash, refuses non-blessed) + **Baseline-A v2 `7e997e8f` (all 5 tier1, 15 golden frames, coherent off `1f0419ac`)**
 - S11/S15 `c9421306` (release-install report w/ S12 identity; residency slim report sha+keep/drop/fail/unknown)
-- S14 render-pass reader `0017bb2b` (`scripts/render_pass_report.py` + --compare)
+- S14 render-pass reader `0017bb2b` (render_pass_report.py + --compare; retired 2026-10-09)
 - S20 GlStateGuard slice 2 `783406a8` (RAII depth/blend/cull on terrain chunk draw, A/B pixel-neutral)
 - S19 FX fixture `1f0419ac` (`MC2_FX_FORCE_SPAWN` mech-fire PPC tubes in MechWarrior::updateActions)
 - RC→nifty reconcile `d69611f1`/`7d087f16`/`77beb69c`/`4855fcf9`/`745a8a5b` (5 fixes incl. dark-water uninit-VRAM); merged engine set + importer `d821018c`/`eca37ed3`

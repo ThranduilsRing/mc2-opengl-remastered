@@ -81,7 +81,7 @@ from stock_missions import (  # noqa: E402
 # FitID/objTypeNum must be appended to this tuple and documented here (do not
 # reuse a hand-placed building's type).
 # TERRAIN-TREE-SCATTER-V0: three dedicated TREE-class scatter clones were
-# added (tools/install_tree_scatter.py) -- "PineScatter1/2/3", FitID/
+# added (by the since-retired install_tree_scatter.py) -- "PineScatter1/2/3", FitID/
 # objTypeNum 1190/1191/1192, reusing stock AppearanceName="Pine1"/"Pine2"/
 # "Pine3" (shapes+icons already fully resolved via tgl.fst/art.fst, no new
 # art). Same rationale as the rock clone: a dedicated objTypeNum per class
