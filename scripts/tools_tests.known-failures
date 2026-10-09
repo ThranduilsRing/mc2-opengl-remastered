@@ -3,4 +3,3 @@
 # The row FAILS if a listed entry starts passing (stale: delete the line) or if
 # anything NOT listed fails. Nobody fixed these when the row was added (2026-10-09);
 # they are pre-existing and pinned so the rest of the tier can regress loudly.
-FAIL tools/repo_intel/test_anti_churn.py::test_deploy_status_known_lane_names :: AssertionError: assert '0.5-testing' in {'0.4': ..., '0.4c': ...}

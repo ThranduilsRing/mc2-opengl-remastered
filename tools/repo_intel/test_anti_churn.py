@@ -413,5 +413,8 @@ def test_deploy_status_missing_dir(tmp_path):
 def test_deploy_status_known_lane_names():
     import deploy_status as ds
     names = ds._lane_names(REPO_ROOT)
+    # Installs were reorganized 2026-10-05 (ONE-lane reset): only the dev lane
+    # (0.4) and the golden lane (0.4c) remain registered; the old release/testing
+    # lanes (e.g. 0.5-testing) were archived off-disk and dropped from the maps.
     assert "0.4" in names
-    assert "0.5-testing" in names
+    assert "0.4c" in names
