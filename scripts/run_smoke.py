@@ -3160,7 +3160,8 @@ def main():
         if _fingerprint is not None:
             try:
                 _fp = _fingerprint.parse_fingerprint(result.stdout_text)
-                _fp_lines, _fp_bad = _fingerprint.check_fingerprint(_fp, _fp_expected_sha)
+                _fp_lines, _fp_bad = _fingerprint.check_fingerprint(
+                    _fp, _fp_expected_sha, repo_root=ROOT)
                 _fp_hard_fail = _fp_hard_fail or _fp_bad
                 for _l in _fp_lines:
                     print(f"[runner] {_l}", file=sys.stderr)
