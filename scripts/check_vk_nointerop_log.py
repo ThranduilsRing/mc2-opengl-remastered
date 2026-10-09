@@ -320,6 +320,12 @@ def check_canaries(text: str) -> bool:
     return failed
 
 
+def env_has(env_text: str, assignment: str) -> bool:
+    """True when `assignment` (NAME=VALUE) is a whole line of the env receipt, so
+    MC2_VK_SHARED_GBUFFER=10 or XMC2_VK_SHARED_GBUFFER=1 do not satisfy it."""
+    return re.search(rf"^{re.escape(assignment)}\s*$", env_text, re.MULTILINE) is not None
+
+
 def check_env(env_text: str, no_resource_strict: bool) -> bool:
     """H5 + base env receipts."""
     failed = False
@@ -327,7 +333,7 @@ def check_env(env_text: str, no_resource_strict: bool) -> bool:
         e for e in REQUIRED_ENV if not e.startswith("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT=")
     ]
     for needle in required_env:
-        present = needle in env_text
+        present = env_has(env_text, needle)
         print(f"env {needle}: {'yes' if present else 'NO'}")
         if not present:
             failed = True
@@ -337,11 +343,44 @@ def check_env(env_text: str, no_resource_strict: bool) -> bool:
     # is always direct-chain-native, so the umbrella being set is the reconciliation.
     interop_on = re.findall(r"^(MC2_VK_\w*INTEROP)=1\s*$", env_text, re.MULTILINE)
     if interop_on:
-        dc = "MC2_VK_SHARED_GBUFFER=1" in env_text
+        dc = env_has(env_text, "MC2_VK_SHARED_GBUFFER=1")
         how = "umbrella-default" if dc else "NONE"
         print(f"env H5: interop names set {interop_on}; "
               f"direct-chain reconciliation: {how} ({'ok' if dc else 'FAIL'})")
         if not dc:
+            failed = True
+    return failed
+
+
+# Native direct-chain islands: each must report it rendered in direct-chain with no
+# GL<->VK interop. The post passes use their [HEALTH] line; the shadow island its
+# [VK_SHADOW_INTEROP] line.
+DIRECT_CHAIN_HEALTH_TAGS = [
+    "[VK_POST_FOG_NATIVE] [HEALTH]",
+    "[VK_POST_SSAO_NATIVE] [HEALTH]",
+    "[VK_POST_SCREENFX_NATIVE] [HEALTH]",
+    "[VK_POST_HZB_NATIVE] [HEALTH]",
+    "[VK_SHADOW_INTEROP]",
+]
+
+
+def check_direct_chain(text: str) -> bool:
+    """Every native post pass and the shadow island report direct_chain=1
+    used_interop=0 used_vulkan>0 (last matching health line wins)."""
+    failed = False
+    lines = text.splitlines()
+    for tag in DIRECT_CHAIN_HEALTH_TAGS:
+        hits = [ln for ln in lines if tag in ln and "direct_chain=" in ln]
+        if not hits:
+            print(f"direct-chain {tag}: MISSING health line (FAIL)")
+            failed = True
+            continue
+        line = hits[-1]
+        dc, interop, used = _u(line, "direct_chain"), _u(line, "used_interop"), _u(line, "used_vulkan")
+        ok = dc == 1 and interop == 0 and used is not None and used > 0
+        print(f"direct-chain {tag}: direct_chain={dc} used_interop={interop} used_vulkan={used} "
+              f"{'ok' if ok else 'FAIL'}")
+        if not ok:
             failed = True
     return failed
 
@@ -451,6 +490,8 @@ def main() -> int:
     failed |= check_islands(text)
     print("== OWNERSHIP: geometry islands used_vulkan > 0 ==")
     failed |= check_ownership(text)
+    print("== native direct-chain islands ==")
+    failed |= check_direct_chain(text)
     print("== VK-RUNG8-ITEM5: shared scene VK-only substrate ==")
     failed |= check_shared_scene_vk_only(text)
     print("== H3 frame consistency ==")
