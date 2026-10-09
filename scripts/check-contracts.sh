@@ -827,6 +827,15 @@ run_check "flag_registry_drift"    "bash scripts/check-flag-registry-drift.sh --
 # scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
 run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
 run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
+# GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's
+# stated default against its readers; this one proves the READERS AGREE WITH EACH OTHER. A typed
+# gate table has one truthiness rule per gate, so every gate whose readers already disagree
+# (`v[0]=='1'` here, `!= nullptr` there) is a behaviour change the migration must resolve, and
+# the design's own list of them was a review sample. tools/gate_conflicts.py executes each
+# reader against eight probe values and ratchets the conflicting-gate count and the count of
+# readers it cannot read. Both may only fall. Scans the COMMITTED tree so another lane's dirty
+# working tree cannot flap it. Idiom tests live in scripts/tests (scripts_tests row).
+run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --check"
 # CPU-GPU-COGATING-1: the check above keeps a gate honest about its OWN default.
 # This one keeps a MIRROR PAIR honest about EACH OTHER. When one quantity is
 # computed twice -- CPU for gameplay, GPU for the picture -- the two halves must

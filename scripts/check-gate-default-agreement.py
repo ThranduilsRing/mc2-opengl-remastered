@@ -169,47 +169,17 @@ ON, OFF, UNKNOWN = "ON", "OFF", "UNCLASSIFIABLE"
 
 
 # ---------------------------------------------------------------------------
-# Comment stripping
+# Source plumbing: shared with tools/gate_conflicts.py via scripts/gate_idioms.py
 # ---------------------------------------------------------------------------
-
-def strip_comments(src):
-    """Remove // and /* */ comments, preserving string literals and byte offsets.
-
-    Offsets are preserved by overwriting comment bytes with spaces (newlines
-    kept) so reported line numbers stay correct. String literals are preserved
-    because env var names live inside them.
-    """
-    out = list(src)
-    i, n = 0, len(src)
-    while i < n:
-        c = src[i]
-        if c == '"' or c == "'":
-            quote = c
-            i += 1
-            while i < n:
-                if src[i] == "\\":
-                    i += 2
-                    continue
-                if src[i] == quote:
-                    i += 1
-                    break
-                i += 1
-            continue
-        if c == "/" and i + 1 < n and src[i + 1] == "/":
-            while i < n and src[i] != "\n":
-                out[i] = " "
-                i += 1
-            continue
-        if c == "/" and i + 1 < n and src[i + 1] == "*":
-            end = src.find("*/", i + 2)
-            end = n if end == -1 else end + 2
-            for j in range(i, end):
-                if out[j] != "\n":
-                    out[j] = " "
-            i = end
-            continue
-        i += 1
-    return "".join(out)
+#
+# Comment stripping, block finding and source enumeration live in ONE place
+# because "what is code and what is a comment" is exactly the kind of fact two
+# copies drift on. strip_comments() keeps byte offsets (comments become spaces)
+# and keeps string literals, which is where env var names live.
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+from gate_idioms import strip_comments, enclosing_block  # noqa: E402,F401
+from gate_idioms import load_sources as _shared_load_sources  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -396,34 +366,6 @@ NON_READER_RE = re.compile(
 
 MAX_BLOCK = 900   # chars; larger than this and we are looking at a whole function
 FALLBACK_TAIL = 400
-
-
-def enclosing_block(text, pos):
-    """Span of the innermost { ... } containing `pos`, or None."""
-    depth, open_at = 0, -1
-    i = pos - 1
-    while i >= 0:
-        c = text[i]
-        if c == "}":
-            depth += 1
-        elif c == "{":
-            if depth == 0:
-                open_at = i
-                break
-            depth -= 1
-        i -= 1
-    if open_at == -1:
-        return None
-    depth, j, n = 0, open_at, len(text)
-    while j < n:
-        if text[j] == "{":
-            depth += 1
-        elif text[j] == "}":
-            depth -= 1
-            if depth == 0:
-                return (open_at, j + 1)
-        j += 1
-    return None
 
 
 def statement_around(text, pos):
@@ -925,29 +867,7 @@ def load_allowlist(path=ALLOWLIST):
 
 def load_sources(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,)):
     scan_dirs = SCAN_DIRS if scan_dirs is None else scan_dirs
-    excl = {os.path.normcase(os.path.abspath(p)) for p in exclude}
-    out = []
-    for d in scan_dirs:
-        base = os.path.join(root, d)
-        if not os.path.isdir(base):
-            continue
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [x for x in dirnames
-                           if x not in (".git", "build64", "third_party", "3rdparty")]
-            for fn in filenames:
-                if not fn.endswith(SCAN_EXTS):
-                    continue
-                full = os.path.join(dirpath, fn)
-                if os.path.normcase(os.path.abspath(full)) in excl:
-                    continue
-                try:
-                    with open(full, "r", encoding="utf-8", errors="replace") as fh:
-                        raw = fh.read()
-                except OSError:
-                    continue
-                out.append((os.path.relpath(full, root).replace("\\", "/"),
-                            strip_comments(raw)))
-    return out
+    return _shared_load_sources(root, scan_dirs, SCAN_EXTS, exclude)
 
 
 def analyse(registry_text, sources, allow, claims=None):
