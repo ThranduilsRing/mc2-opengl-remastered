@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1141,
+ "count": 1137,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -3846,7 +3846,7 @@
    "doc": "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the matrix).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6149",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5939",
      "idiom": "Presence"
     }
    ],
@@ -3898,15 +3898,15 @@
    "doc": "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6167",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5957",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6997",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6787",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:7018",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6808",
      "idiom": "Presence"
     }
    ],
@@ -3927,24 +3927,20 @@
    "kind": "Bool",
    "default": false,
    "rule": "Lead0",
-   "owner": "vk",
+   "owner": "gameos",
    "retireBy": "",
    "doc": "DEBUG-STATE-DUMP-1: write a JSON render-state snapshot to debug_state/latest_render_state.json every 300 frames (and at frame 1).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:1220",
+     "at": "GameOS/gameos/debug_state_dump.cpp:1180",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:1251",
+     "at": "GameOS/gameos/debug_state_dump.cpp:1211",
      "idiom": "Lead0"
     },
     {
      "at": "GameOS/gameos/gameosmain.cpp:1050",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:72",
      "idiom": "Lead0"
     }
    ],
@@ -3972,7 +3968,7 @@
    "doc": "DEBUG-STATE-DUMP-1: override output directory for MC2_DEBUG_STATE_DUMP.",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:227",
+     "at": "GameOS/gameos/debug_state_dump.cpp:221",
      "idiom": "NonEmpty"
     }
    ],
@@ -3998,7 +3994,7 @@
    "doc": "DEBUG-STATE-DUMP-2: enable rolling 8-slot history ring alongside latest_render_state.json.",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:1240",
+     "at": "GameOS/gameos/debug_state_dump.cpp:1200",
      "idiom": "Lead0"
     }
    ],
@@ -5282,7 +5278,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "editor/EditorData.cpp:62",
+     "at": "editor/EditorData.cpp:63",
      "idiom": "Presence"
     },
     {
@@ -6201,7 +6197,7 @@
    "doc": "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:7117",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6907",
      "idiom": "Lead1"
     },
     {
@@ -7046,11 +7042,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:405",
+     "at": "GameOS/gameos/gos_render.cpp:402",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:726",
+     "at": "GameOS/gameos/gos_render.cpp:716",
      "idiom": "Presence"
     },
     {
@@ -8730,31 +8726,31 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5207",
+     "at": "GameOS/gameos/gos_postprocess.cpp:4997",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5303",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5093",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5305",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5095",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5543",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5333",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5545",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5335",
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5687",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5477",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5689",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5479",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -8780,7 +8776,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5300",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5090",
      "idiom": "Lead0P"
     }
    ],
@@ -8806,15 +8802,15 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5293",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5083",
      "idiom": "Lead0P"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5540",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5330",
      "idiom": "Lead0P"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:5684",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5474",
      "idiom": "Lead0P"
     }
    ],
@@ -12299,7 +12295,7 @@
    "doc": "GPU material table upload/bind/compare for static props (default-ON as of v5, 2026-05-26).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:489",
+     "at": "GameOS/gameos/debug_state_dump.cpp:483",
      "idiom": "Lead0Kill"
     },
     {
@@ -12343,7 +12339,7 @@
    "doc": "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:490",
+     "at": "GameOS/gameos/debug_state_dump.cpp:484",
      "idiom": "Lead0Kill"
     },
     {
@@ -14393,6 +14389,32 @@
    "retireVerdict": ""
   },
   {
+   "name": "MC2_NO_ACTIVATE",
+   "kind": "Bool",
+   "default": false,
+   "rule": "Lead0",
+   "owner": "editor",
+   "retireBy": "",
+   "doc": "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus.",
+   "readers": [
+    {
+     "at": "editor/EditorMFC.cpp:456",
+     "idiom": "Lead0"
+    }
+   ],
+   "conflict": false,
+   "registered": true,
+   "registryDefault": false,
+   "seedDefaultSource": "registry",
+   "harnessValues": [],
+   "numericRange": null,
+   "readerDefault": false,
+   "defaultDisagreement": "",
+   "registryKind": "Trace",
+   "featureId": "MC2_TRACE_NO_ACTIVATE",
+   "retireVerdict": ""
+  },
+  {
    "name": "MC2_NO_CURSOR_GRAB",
    "kind": "Bool",
    "default": false,
@@ -14872,7 +14894,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4862",
+     "at": "GameOS/gameos/gos_postprocess.cpp:4652",
      "idiom": "Lead0Kill"
     }
    ],
@@ -14898,7 +14920,7 @@
    "doc": "Hide the OS cursor.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:606",
+     "at": "GameOS/gameos/gos_render.cpp:603",
      "idiom": "Presence"
     },
     {
@@ -15995,10 +16017,6 @@
     {
      "at": "GameOS/gameos/gos_postprocess.cpp:4330",
      "idiom": "Token/State"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4534",
-     "idiom": "Token/State"
     }
    ],
    "conflict": false,
@@ -16664,7 +16682,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:493",
+     "at": "GameOS/gameos/debug_state_dump.cpp:487",
      "idiom": "Lead0Kill"
     },
     {
@@ -17155,7 +17173,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4810",
+     "at": "GameOS/gameos/gos_postprocess.cpp:4600",
      "idiom": "Lead1"
     }
    ],
@@ -17771,11 +17789,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:558",
+     "at": "GameOS/gameos/gos_render.cpp:555",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:592",
+     "at": "GameOS/gameos/gos_render.cpp:589",
      "idiom": "Presence"
     }
    ],
@@ -18362,7 +18380,7 @@
    "doc": "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS, default 2500wu) for higher texel density. **DEFAULT ON; opt out with MC2_SHADOW_BOUNDED_NEAR_FIT=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6787",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6577",
      "idiom": "Lead0Kill"
     }
    ],
@@ -18390,7 +18408,7 @@
    "doc": "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6792",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6582",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -18978,7 +18996,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6647",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6437",
      "idiom": "Lead0Kill"
     }
    ],
@@ -19004,11 +19022,11 @@
    "doc": "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp, texel WU, ortho WxH, depth).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6761",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6551",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6821",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6611",
      "idiom": "Presence"
     }
    ],
@@ -19178,7 +19196,7 @@
    "doc": "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude, gos_postprocess.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6006",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5796",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -19290,11 +19308,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6036",
+     "at": "GameOS/gameos/gos_postprocess.cpp:5826",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_postprocess.cpp:6600",
+     "at": "GameOS/gameos/gos_postprocess.cpp:6390",
      "idiom": "Token/State"
     }
    ],
@@ -19965,7 +19983,7 @@
    "doc": "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:599",
+     "at": "GameOS/gameos/debug_state_dump.cpp:593",
      "idiom": "Lead0"
     },
     {
@@ -20001,7 +20019,7 @@
    "doc": "Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state (gos_static_prop_batcher.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:488",
+     "at": "GameOS/gameos/debug_state_dump.cpp:482",
      "idiom": "Lead0Kill"
     },
     {
@@ -21642,7 +21660,7 @@
    "doc": "V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane (static_prop.vert).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:491",
+     "at": "GameOS/gameos/debug_state_dump.cpp:485",
      "idiom": "Lead0Kill"
     },
     {
@@ -21993,7 +22011,7 @@
    "doc": "V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular on StaticPropOpaque lane (static_prop.frag, inside `#if defined(MC2_USE_VIEW_UNIFORMS)`).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:492",
+     "at": "GameOS/gameos/debug_state_dump.cpp:486",
      "idiom": "Lead0"
     },
     {
@@ -27270,15 +27288,15 @@
    "doc": "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:723",
+     "at": "GameOS/gameos/debug_state_dump.cpp:717",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:759",
+     "at": "GameOS/gameos/debug_state_dump.cpp:753",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:791",
+     "at": "GameOS/gameos/debug_state_dump.cpp:785",
      "idiom": "Lead0"
     },
     {
@@ -27362,7 +27380,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:495",
+     "at": "GameOS/gameos/debug_state_dump.cpp:489",
      "idiom": "Lead0"
     },
     {
@@ -28247,7 +28265,7 @@
    "doc": "ViewUniforms UBO at binding=3.",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:487",
+     "at": "GameOS/gameos/debug_state_dump.cpp:481",
      "idiom": "Lead0Kill"
     },
     {
@@ -28775,32 +28793,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_COMPOSITE_PRESENT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "post",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4613",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_CSM_ARRAY_INTEROP",
    "kind": "Bool",
    "default": false,
@@ -29000,7 +28992,7 @@
    "doc": "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer -- recordPendingHudColorProof() draws NOTHING unless this is on (it clears the queued HUD undrawn otherwise).",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:278",
+     "at": "GameOS/gameos/engine_present_vk.cpp:277",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -29383,7 +29375,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:306",
+     "at": "GameOS/gameos/engine_present_vk.cpp:305",
      "idiom": "Lead1"
     }
    ],
@@ -29437,7 +29429,7 @@
    "doc": "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:286",
+     "at": "GameOS/gameos/engine_present_vk.cpp:285",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -29465,7 +29457,7 @@
    "doc": "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:295",
+     "at": "GameOS/gameos/engine_present_vk.cpp:294",
      "idiom": "Tri(inherit)"
     },
     {
@@ -29689,7 +29681,7 @@
    "doc": "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for a VK-owned scene.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:251",
+     "at": "GameOS/gameos/engine_present_vk.cpp:250",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -29717,7 +29709,7 @@
    "doc": "VK-FIELD-VFX-3: frame pin for MC2_VK_PRESENT_DUMP_PPM.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:2588",
+     "at": "GameOS/gameos/engine_present_vk.cpp:2587",
      "idiom": "Num(strtoul,guarded)"
     },
     {
@@ -29747,7 +29739,7 @@
    "doc": "VK-FIELD-VFX-5: dynamic fire-event pin for MC2_VK_PRESENT_DUMP_PPM.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:2593",
+     "at": "GameOS/gameos/engine_present_vk.cpp:2592",
      "idiom": "Presence"
     },
     {
@@ -29781,7 +29773,7 @@
    "doc": "VK-FIELD-ORACLE-1: headless present-pixel oracle.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:2579",
+     "at": "GameOS/gameos/engine_present_vk.cpp:2578",
      "idiom": "NonReader"
     }
    ],
@@ -29807,7 +29799,7 @@
    "doc": "VK present-tail deletion-readiness canary.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:336",
+     "at": "GameOS/gameos/engine_present_vk.cpp:335",
      "idiom": "Lead1"
     }
    ],
@@ -29835,7 +29827,7 @@
    "doc": "VK present-tail ownership gate.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:328",
+     "at": "GameOS/gameos/engine_present_vk.cpp:327",
      "idiom": "Lead1"
     }
    ],
@@ -29863,7 +29855,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:324",
+     "at": "GameOS/gameos/engine_present_vk.cpp:323",
      "idiom": "Lead1"
     }
    ],
@@ -29891,7 +29883,7 @@
    "doc": "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:263",
+     "at": "GameOS/gameos/engine_present_vk.cpp:262",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -29977,7 +29969,7 @@
    "doc": "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:297",
+     "at": "GameOS/gameos/engine_present_vk.cpp:296",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31091,11 +31083,11 @@
    "doc": "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:1561",
+     "at": "GameOS/gameos/engine_present_vk.cpp:1560",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:1562",
+     "at": "GameOS/gameos/engine_present_vk.cpp:1561",
      "idiom": "Lead0"
     },
     {
@@ -31129,7 +31121,7 @@
    "doc": "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:299",
+     "at": "GameOS/gameos/engine_present_vk.cpp:298",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31217,7 +31209,7 @@
    "doc": "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate.",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:298",
+     "at": "GameOS/gameos/engine_present_vk.cpp:297",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31333,11 +31325,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:423",
+     "at": "GameOS/gameos/engine_present_vk.cpp:422",
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:658",
+     "at": "GameOS/gameos/gos_render.cpp:655",
      "idiom": "Lead1"
     },
     {
@@ -31362,58 +31354,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VULKAN_CACHE_DIR",
-   "kind": "Bool",
-   "default": null,
-   "rule": "Std",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:308",
-     "idiom": "Unclassified"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VULKAN_PROBE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7594",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VULKAN_SPV_DIR",
    "kind": "Bool",
    "default": null,
@@ -31423,15 +31363,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/engine_present_vk.cpp:352",
-     "idiom": "Unclassified"
-    },
-    {
-     "at": "GameOS/gameos/gos_postprocess.cpp:4498",
-     "idiom": "NonReader"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7602",
+     "at": "GameOS/gameos/engine_present_vk.cpp:351",
      "idiom": "Unclassified"
     },
     {
@@ -31496,62 +31428,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VULKAN_SWAPCHAIN_PRESENT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7617",
-     "idiom": "Presence"
-    },
-    {
-     "at": "tools/vulkan_shader_probe_main.cpp:55",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:95",
-     "idiom": "Presence"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VULKAN_VALIDATION",
    "kind": "Bool",
    "default": false,
@@ -31561,15 +31437,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:92",
-     "idiom": "Token/State"
-    },
-    {
      "at": "GameOS/gameos/vulkan_context.cpp:81",
-     "idiom": "Token/State"
-    },
-    {
-     "at": "GameOS/gameos/vulkan_present_object.cpp:47",
      "idiom": "Token/State"
     }
    ],
@@ -31873,7 +31741,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/debug_state_dump.cpp:494",
+     "at": "GameOS/gameos/debug_state_dump.cpp:488",
      "idiom": "Lead0Kill"
     },
     {
@@ -32645,15 +32513,15 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:511",
+     "at": "GameOS/gameos/gos_render.cpp:508",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:561",
+     "at": "GameOS/gameos/gos_render.cpp:558",
      "idiom": "NonReader"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:562",
+     "at": "GameOS/gameos/gos_render.cpp:559",
      "idiom": "NonReader"
     }
    ],
@@ -32676,12 +32544,16 @@
    "kind": "Bool",
    "default": false,
    "rule": "Lead0",
-   "owner": "gameos",
+   "owner": "unclassified",
    "retireBy": "",
    "doc": "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area at ANY point in its lifetime.",
    "readers": [
     {
      "at": "GameOS/gameos/gameos_input.cpp:66",
+     "idiom": "Lead0"
+    },
+    {
+     "at": "editor/EditorMFC.cpp:457",
      "idiom": "Lead0"
     }
    ],
@@ -32709,7 +32581,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:512",
+     "at": "GameOS/gameos/gos_render.cpp:509",
      "idiom": "Lead0Kill"
     }
    ],
