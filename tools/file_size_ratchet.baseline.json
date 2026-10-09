@@ -86,7 +86,7 @@
   "mclib/ewcharstring.cpp": 1636,
   "mclib/file.cpp": 2677,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/gosfx/tube.cpp": 1677,
+  "mclib/gosfx/tube.cpp": 1527,
   "mclib/gvactor.cpp": 3477,
   "mclib/heap.cpp": 2136,
   "mclib/inifile.cpp": 2876,
@@ -110,10 +110,10 @@
   "mclib/tgl.h": 1689,
   "mclib/txmmgr.cpp": 6042,
   "mclib/vfx_translatedraw.cpp": 1742,
-  "mclib/vfxtile.cpp": 3033,
+  "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "58edb7cd1",
+ "head": "cb41e8e1d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -122,7 +122,7 @@
    "max_lines": 536
   },
   "GameOS": {
-   "files": 259,
+   "files": 258,
    "files_over_1500": 18,
    "files_over_3000": 8,
    "max_lines": 11657
@@ -140,7 +140,7 @@
    "max_lines": 136
   },
   "RenderCore": {
-   "files": 55,
+   "files": 54,
    "files_over_1500": 1,
    "files_over_3000": 1,
    "max_lines": 4052
@@ -152,13 +152,13 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 279,
+   "files": 278,
    "files_over_1500": 34,
    "files_over_3000": 13,
    "max_lines": 9979
   },
   "editor": {
-   "files": 207,
+   "files": 206,
    "files_over_1500": 5,
    "files_over_3000": 3,
    "max_lines": 7336
@@ -172,11 +172,11 @@
   "mclib": {
    "files": 571,
    "files_over_1500": 36,
-   "files_over_3000": 11,
+   "files_over_3000": 10,
    "max_lines": 8281
   },
   "shaders": {
-   "files": 173,
+   "files": 171,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 2412
@@ -309,9 +309,9 @@
   }
  ],
  "total": {
-  "files": 1588,
+  "files": 1582,
   "files_over_1500": 99,
-  "files_over_3000": 36,
+  "files_over_3000": 35,
   "max_lines": 11657
  },
  "version": 1
