@@ -42,7 +42,7 @@ enum class PassIdentity : std::uint8_t {
     TerrainBase,        // tessellated heightfield (gos_terrain.frag)
     TerrainOverlay,     // perimeter cement / transitions (terrain_overlay.frag)
     TerrainDecal,       // craters, footprints, scorch marks (decal.frag)
-    Grass,              // GPU grass (gos_grass.frag) — terrain-derived
+    Grass,              // GPU grass (shader retired) — terrain-derived
     Water,              // water surface + detail (intentional projected path)
     OpaqueObject,       // mechs, vehicles, buildings — opaque pass
     AlphaObject,        // same shapes when alpha-tested or alpha-blended

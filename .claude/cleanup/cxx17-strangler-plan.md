@@ -23,7 +23,7 @@ py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check [--tighten]  # exit 1 if any 
 | small seams (RenderWorld, GameAdapters, HostServices, EditorBridge) | 0 | 0 | 0 | 1 | 19 | 23 | 0 | 0 | 25 | 0 | 0 | 6 | 0 | 0 |
 | **TOTAL** | 4971 | 815 | 2668 | 45 | 519 | 1860 | 2 | 366 | 7963 | 141 | 289 | 2704 | 2907 | 334 |
 
-LG15 (auto_ptr/bind1st/register/throw()) = 0. Biggest files: LG01 code/ablmc2.cpp 202; LG03 code/pilotreviewarea.cpp 93; LG09 GameOS/gameos/vulkan_backend_skeleton.cpp 398;
+LG15 (auto_ptr/bind1st/register/throw()) = 0. Biggest files: LG01 code/ablmc2.cpp 202; LG03 code/pilotreviewarea.cpp 93; LG09 GameOS/gameos/vulkan_backend_skeleton.cpp 398 (file deleted by D7 phase 1);
 LG13 mclib/sounds.h 207, code/dobjnum.h 189; LG02/LG14 GameOS/include/gameos.hpp + platform_win*.h (shim headers: consider excluding or accepting).
 Caveats: LG04 counts every `switch(x->...type|kind)` including plain enums (45 sites, ~12 true tagged unions); LG09 includes `(unsigned long)x` printf casts; LG06 includes decls and defs.
 

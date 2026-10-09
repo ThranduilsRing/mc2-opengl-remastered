@@ -1,7 +1,6 @@
 // VK-P8a SHADOW-INTEROP — depth-only INSTANCED static-prop shadow-caster VS.
 // =============================================================================
-// This is the LIVE geometry-region VS (distinct from the shadow_depth.vert
-// fixture scaffold). It reproduces the GL producer shaders/shadow_static_prop.vert
+// This is the LIVE geometry-region VS. It reproduces the GL producer shaders/shadow_static_prop.vert
 // math BIT-FOR-BIT so a VK-produced D32 shadow map matches the GL-produced one:
 //
 //   GL (shadow_static_prop.vert):

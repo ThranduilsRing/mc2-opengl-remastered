@@ -826,27 +826,7 @@
    "set_in": [
     "scripts/pipeline_visual_gate.py",
     "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json",
-    "run/bushwacker_ppc_158/mc2_01_werewolf_fire.json",
-    "run/bushwacker_ppc_162/mc2_01_werewolf_fire.json",
-    "run/ppc_fixed_162/mc2_01_werewolf_fire.json",
-    "run/tube_combat_on/mc2_01_enemy_cluster_low.json",
-    "run/tube_combat_on/mc2_01_enemy_cluster_mid.json",
-    "run/tube_combat_on/mc2_01_player_werewolf.json",
-    "run/tube_cov_on/mc2_01_werewolf_fire.json",
-    "run/tube_legacy_off/mc2_17_highangle_wide.json",
-    "run/tube_legacy_off/mc2_17_overview_center.json",
-    "run/tube_legacy_off/mc2_17_ridge_lowangle.json",
-    "run/tube_oracle_on/mc2_17_highangle_wide.json",
-    "run/tube_oracle_on/mc2_17_overview_center.json",
-    "run/tube_oracle_on/mc2_17_ridge_lowangle.json",
-    "run/ww_f158/mc2_01_werewolf_fire.json",
-    "run/ww_f158_legacy/mc2_01_werewolf_fire.json",
-    "run/ww_f162/mc2_01_werewolf_fire.json",
-    "run/ww_legacy_off/mc2_01_werewolf_fire.json",
-    "run/ww_legacy_off2/mc2_01_werewolf_fire.json",
-    "run/ww_oracle_on/mc2_01_werewolf_fire.json",
-    "run/ww_zoom_on/mc2_01_ww_zoom.json"
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -1851,7 +1831,7 @@
   "editor",
   "gui"
  ],
- "source": "working tree",
+ "source": "commit 1bd28f3db",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1135,

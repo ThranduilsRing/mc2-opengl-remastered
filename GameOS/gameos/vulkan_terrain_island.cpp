@@ -1456,7 +1456,7 @@ bool audit_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 
 // ---------------------------------------------------------------------------
 // COLORMAP-BASE sub-slice: VK-owned copy-once import of the GL colormap atlas.
-// PROVEN pattern (tools/vk_gl_interop_spike/main_sampletex.cpp): read the GL texel
+// Pattern: read the GL texel
 // bytes back on the GL side (RGBA8 -> glGetTexImage(GL_RGBA); BC7 ->
 // glGetCompressedTexImage), stage to a VK buffer, vkCmdCopyBufferToImage into a
 // sampled VK image, LINEAR/CLAMP_TO_EDGE sampler (mip0). Match VK format to the GL
@@ -1930,7 +1930,7 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // ---------------------------------------------------------------------------
 
 // Depth-COMPARE sampler: compareOp=LESS_OR_EQUAL, LINEAR HW PCF, CLAMP_TO_BORDER
-// white=1.0 (out-of-map -> lit). Mirrors GL sampler2DShadow + the compare_shadow spike.
+// white=1.0 (out-of-map -> lit). Mirrors GL sampler2DShadow.
 bool ensure_shadow_sampler(TerrainIsland* s) {
     if (s->shadowSamp != VK_NULL_HANDLE) return true;
     VkSamplerCreateInfo sci{};

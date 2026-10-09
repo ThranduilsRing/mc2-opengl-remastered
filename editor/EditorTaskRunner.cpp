@@ -595,4 +595,62 @@ void RenderImGui()
 
 #endif // MC2_IMGUI
 
+int RunBlockingHidden(const std::string& commandLine, const char* logPath)
+{
+	SECURITY_ATTRIBUTES sa{};
+	sa.nLength        = sizeof(sa);
+	sa.bInheritHandle = TRUE;
+	HANDLE hNul = CreateFileA("NUL", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+	                          &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	HANDLE hLog = INVALID_HANDLE_VALUE;
+	if (logPath && logPath[0])
+	{
+		std::string dir(logPath);
+		const size_t cut = dir.find_last_of("\\/");
+		if (cut != std::string::npos)
+		{
+			dir.resize(cut);
+			CreateDirectoryA(dir.c_str(), NULL);
+		}
+		hLog = CreateFileA(logPath, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+		                   &sa, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hLog != INVALID_HANDLE_VALUE)
+		{
+			const std::string banner = "\r\n=== " + commandLine + " ===\r\n";
+			DWORD wrote = 0;
+			WriteFile(hLog, banner.data(), static_cast<DWORD>(banner.size()), &wrote, NULL);
+		}
+	}
+	HANDLE hOut = (hLog != INVALID_HANDLE_VALUE) ? hLog : hNul;
+
+	STARTUPINFOA si{};
+	si.cb          = sizeof(si);
+	si.dwFlags     = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+	si.wShowWindow = SW_HIDE;
+	si.hStdInput   = hNul;
+	si.hStdOutput  = hOut;
+	si.hStdError   = hOut;
+
+	std::vector<char> cmd(commandLine.begin(), commandLine.end());
+	cmd.push_back('\0');
+
+	PROCESS_INFORMATION pi{};
+	const BOOL ok = CreateProcessA(NULL, cmd.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+	if (hNul != INVALID_HANDLE_VALUE)
+		CloseHandle(hNul);
+	if (hLog != INVALID_HANDLE_VALUE)
+		CloseHandle(hLog);
+	if (!ok)
+		return -1;
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	DWORD code = 0;
+	if (!GetExitCodeProcess(pi.hProcess, &code))
+		code = static_cast<DWORD>(-1);
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+	return static_cast<int>(code);
+}
+
 } // namespace EditorTaskRunner

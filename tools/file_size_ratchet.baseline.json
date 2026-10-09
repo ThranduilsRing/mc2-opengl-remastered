@@ -13,28 +13,27 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2769,
-  "GameOS/gameos/gameos_graphics.cpp": 11819,
-  "GameOS/gameos/gameosmain.cpp": 2854,
-  "GameOS/gameos/gos_mech_batcher.cpp": 3422,
-  "GameOS/gameos/gos_postprocess.cpp": 7724,
-  "GameOS/gameos/gos_static_prop_batcher.cpp": 11229,
-  "GameOS/gameos/gos_static_prop_registry.cpp": 2251,
-  "GameOS/gameos/gos_terrain_indirect.cpp": 6330,
-  "GameOS/gameos/gos_terrain_lighting.cpp": 1773,
-  "GameOS/gameos/gos_terrain_lod_chunk.cpp": 4385,
+  "GameOS/gameos/engine_present_vk.cpp": 2766,
+  "GameOS/gameos/gameos_graphics.cpp": 11657,
+  "GameOS/gameos/gameosmain.cpp": 2851,
+  "GameOS/gameos/gos_mech_batcher.cpp": 3414,
+  "GameOS/gameos/gos_postprocess.cpp": 7349,
+  "GameOS/gameos/gos_static_prop_batcher.cpp": 11196,
+  "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
+  "GameOS/gameos/gos_terrain_indirect.cpp": 6301,
+  "GameOS/gameos/gos_terrain_lighting.cpp": 1760,
+  "GameOS/gameos/gos_terrain_lod_chunk.cpp": 4208,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2479,
   "GameOS/gameos/gpu_cull_compute.cpp": 1558,
   "GameOS/gameos/utils/shader_builder.cpp": 1548,
-  "GameOS/gameos/vulkan_backend_skeleton.cpp": 7640,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1820,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1688,
-  "GameOS/gameos/vulkan_terrain_island.cpp": 3576,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1670,
+  "GameOS/gameos/vulkan_terrain_island.cpp": 3536,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1659,
-  "GuiRuntime/GraphicsOptionsWindow.cpp": 2342,
-  "RenderCore/RendererFeatureRegistry.h": 4148,
+  "GuiRuntime/GraphicsOptionsWindow.cpp": 2248,
+  "RenderCore/RendererFeatureRegistry.h": 4052,
   "code/ablmc2.cpp": 8497,
   "code/artlry.cpp": 1843,
   "code/bldng.cpp": 1704,
@@ -51,7 +50,7 @@
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
   "code/mechlopedia.cpp": 1659,
-  "code/mission.cpp": 5946,
+  "code/mission.cpp": 5938,
   "code/missionbegin.cpp": 2136,
   "code/missiongui.cpp": 9979,
   "code/mover.cpp": 7817,
@@ -70,16 +69,16 @@
   "code/warrior.h": 2171,
   "code/weaponbolt.cpp": 3024,
   "editor/EditorData.cpp": 3537,
-  "editor/EditorInterface.cpp": 7370,
-  "editor/EditorObjectMgr.cpp": 3616,
+  "editor/EditorInterface.cpp": 7336,
+  "editor/EditorObjectMgr.cpp": 3582,
   "editor/Objective.cpp": 2045,
   "editor/ObjectiveDlg.cpp": 1517,
   "gui/UiDefs.cpp": 2901,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1554,
-  "mclib/ablrtn.cpp": 1786,
+  "mclib/ablenv.cpp": 1552,
+  "mclib/ablrtn.cpp": 1780,
   "mclib/assimp_importer.cpp": 1630,
-  "mclib/bdactor.cpp": 8317,
+  "mclib/bdactor.cpp": 8281,
   "mclib/camera.cpp": 4642,
   "mclib/camera.h": 1802,
   "mclib/echarstring.cpp": 1622,
@@ -87,9 +86,9 @@
   "mclib/ewcharstring.cpp": 1636,
   "mclib/file.cpp": 2677,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/gosfx/tube.cpp": 1683,
+  "mclib/gosfx/tube.cpp": 1677,
   "mclib/gvactor.cpp": 3477,
-  "mclib/heap.cpp": 2140,
+  "mclib/heap.cpp": 2136,
   "mclib/inifile.cpp": 2876,
   "mclib/mapdata.cpp": 2635,
   "mclib/mech3d.cpp": 6877,
@@ -104,7 +103,7 @@
   "mclib/quad.cpp": 4261,
   "mclib/render_contract.cpp": 1608,
   "mclib/stuff/rotation.cpp": 1672,
-  "mclib/terrain.cpp": 4935,
+  "mclib/terrain.cpp": 4934,
   "mclib/terrtxm.cpp": 1775,
   "mclib/terrtxm2.cpp": 2791,
   "mclib/tgl.cpp": 4355,
@@ -112,9 +111,9 @@
   "mclib/txmmgr.cpp": 6042,
   "mclib/vfx_translatedraw.cpp": 1742,
   "mclib/vfxtile.cpp": 3033,
-  "shaders/terrain_lod_chunk.frag": 2488
+  "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "a9fd72350",
+ "head": "58edb7cd1",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -123,16 +122,16 @@
    "max_lines": 536
   },
   "GameOS": {
-   "files": 266,
-   "files_over_1500": 19,
-   "files_over_3000": 9,
-   "max_lines": 11819
+   "files": 259,
+   "files_over_1500": 18,
+   "files_over_3000": 8,
+   "max_lines": 11657
   },
   "GuiRuntime": {
    "files": 6,
    "files_over_1500": 2,
    "files_over_3000": 0,
-   "max_lines": 2342
+   "max_lines": 2248
   },
   "HostServices": {
    "files": 3,
@@ -144,13 +143,13 @@
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 1,
-   "max_lines": 4148
+   "max_lines": 4052
   },
   "RenderWorld": {
    "files": 6,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1196
+   "max_lines": 1168
   },
   "code": {
    "files": 279,
@@ -162,7 +161,7 @@
    "files": 207,
    "files_over_1500": 5,
    "files_over_3000": 3,
-   "max_lines": 7370
+   "max_lines": 7336
   },
   "gui": {
    "files": 21,
@@ -174,13 +173,13 @@
    "files": 571,
    "files_over_1500": 36,
    "files_over_3000": 11,
-   "max_lines": 8317
+   "max_lines": 8281
   },
   "shaders": {
-   "files": 183,
+   "files": 173,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2488
+   "max_lines": 2412
   }
  },
  "thresholds": [
@@ -190,11 +189,11 @@
  "top": [
   {
    "file": "GameOS/gameos/gameos_graphics.cpp",
-   "lines": 11819
+   "lines": 11657
   },
   {
    "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-   "lines": 11229
+   "lines": 11196
   },
   {
    "file": "code/missiongui.cpp",
@@ -214,7 +213,7 @@
   },
   {
    "file": "mclib/bdactor.cpp",
-   "lines": 8317
+   "lines": 8281
   },
   {
    "file": "code/mover.cpp",
@@ -222,15 +221,11 @@
   },
   {
    "file": "GameOS/gameos/gos_postprocess.cpp",
-   "lines": 7724
-  },
-  {
-   "file": "GameOS/gameos/vulkan_backend_skeleton.cpp",
-   "lines": 7640
+   "lines": 7349
   },
   {
    "file": "editor/EditorInterface.cpp",
-   "lines": 7370
+   "lines": 7336
   },
   {
    "file": "mclib/move.cpp",
@@ -242,7 +237,7 @@
   },
   {
    "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-   "lines": 6330
+   "lines": 6301
   },
   {
    "file": "mclib/txmmgr.cpp",
@@ -250,7 +245,7 @@
   },
   {
    "file": "code/mission.cpp",
-   "lines": 5946
+   "lines": 5938
   },
   {
    "file": "code/objmgr.cpp",
@@ -266,15 +261,11 @@
   },
   {
    "file": "mclib/terrain.cpp",
-   "lines": 4935
+   "lines": 4934
   },
   {
    "file": "mclib/camera.cpp",
    "lines": 4642
-  },
-  {
-   "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
-   "lines": 4385
   },
   {
    "file": "mclib/tgl.cpp",
@@ -285,8 +276,12 @@
    "lines": 4261
   },
   {
+   "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
+   "lines": 4208
+  },
+  {
    "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 4148
+   "lines": 4052
   },
   {
    "file": "GameOS/include/gameos.hpp",
@@ -294,26 +289,30 @@
   },
   {
    "file": "editor/EditorObjectMgr.cpp",
-   "lines": 3616
-  },
-  {
-   "file": "GameOS/gameos/vulkan_terrain_island.cpp",
-   "lines": 3576
+   "lines": 3582
   },
   {
    "file": "editor/EditorData.cpp",
    "lines": 3537
   },
   {
+   "file": "GameOS/gameos/vulkan_terrain_island.cpp",
+   "lines": 3536
+  },
+  {
    "file": "mclib/gvactor.cpp",
    "lines": 3477
+  },
+  {
+   "file": "code/logisticsdata.cpp",
+   "lines": 3442
   }
  ],
  "total": {
-  "files": 1605,
-  "files_over_1500": 100,
-  "files_over_3000": 37,
-  "max_lines": 11819
+  "files": 1588,
+  "files_over_1500": 99,
+  "files_over_3000": 36,
+  "max_lines": 11657
  },
  "version": 1
 }

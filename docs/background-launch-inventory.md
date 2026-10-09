@@ -27,10 +27,9 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_editor_smoke.py` | 143 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 365 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 195 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 356 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 357 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 272 | `nofocus.spawn` | offscreen |
-| `scripts/run_vulkan_probe.py` | 333 | `subprocess.run` **raw, allowed:** Vulkan shader probe is a headless console test exe, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/smoke_lib/runner.py` | 248 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_with_screenshots.py` | 166 | `nofocus.spawn` | desktop-composite |
 | `scripts/sweep_campaign.py` | 72 | `nofocus.spawn` | offscreen |
@@ -46,7 +45,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 390 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 443 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 36
+Total engine launch sites: 35
 
 ## Shell launchers (RULE 9)
 

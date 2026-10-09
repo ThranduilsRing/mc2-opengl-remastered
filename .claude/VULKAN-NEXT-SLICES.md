@@ -1,3 +1,5 @@
+> HISTORICAL (2026-10-09): the probe fixtures and `scripts/run_vulkan_probe.py` this doc cites were deleted by D7 phase 1 (938ad14b2); recover them from the local tag `archive/vk-probe-fixtures`.
+
 # VULKAN-NEXT-SLICES — executable rung specs for the L6→L8 ladder (opus handoff)
 
 Companion to `.claude/VULKAN-BACKEND-L6-LADDER-1.md (removed)` (the ratified ladder — read it first;

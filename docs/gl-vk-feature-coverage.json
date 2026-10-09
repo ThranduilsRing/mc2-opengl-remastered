@@ -378,18 +378,6 @@
    "gate": "MC2_MECH_BATCHER_STATS",
    "gate_default_on": false,
    "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (1 hop)",
-   "gl_shader": "shaders/gos_grass.geom",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_MECH_BATCHER_STATS",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (1 hop)",
    "gl_shader": "shaders/gos_terrain.tese",
    "kind": "uniform",
    "status": "PORTED",
@@ -726,18 +714,6 @@
    "gate": "MC2_MECH_VIEWUNIFORMS",
    "gate_default_on": true,
    "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (1 hop)",
-   "gl_shader": "shaders/gos_grass.geom",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_MECH_VIEWUNIFORMS",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (1 hop)",
    "gl_shader": "shaders/gos_terrain.tese",
    "kind": "uniform",
    "status": "PORTED",
@@ -979,18 +955,6 @@
    "gate_default_on": false,
    "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (1 hop)",
    "gl_shader": "shaders/building_pbr.vert",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_MECH_VIEWUNIFORMS_DIAG",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (1 hop)",
-   "gl_shader": "shaders/gos_grass.geom",
    "kind": "uniform",
    "status": "NO_TWIN",
    "vk_evidence": "",
@@ -1417,18 +1381,6 @@
    "vk_twin": ""
   },
   {
-   "confidence": "HIGH",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_PROP_FIXB_MVP",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_mech_batcher.cpp (2 hops)",
-   "gl_shader": "shaders/gos_grass.geom",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
    "confidence": "MEDIUM",
    "feature": "u_worldToClipGL",
    "gate": "MC2_PROP_FIXB_MVP",
@@ -1750,7 +1702,7 @@
    "kind": "uniform",
    "status": "NOT_PORTED",
    "vk_evidence": "cpp-only",
-   "vk_twin": "shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*"
+   "vk_twin": "shaders/vulkan/water_geom.*"
   },
   {
    "confidence": "MEDIUM",
@@ -1895,30 +1847,6 @@
    "status": "PORTED",
    "vk_evidence": "exact:terrainLightDir",
    "vk_twin": "shaders/vulkan/terrain_decal_tier1.frag"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "terrainLightDir",
-   "gate": "MC2_SHADOW_CSM",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gameos_graphics.cpp (1 hop)",
-   "gl_shader": "shaders/gos_grass.frag",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_SHADOW_CSM",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gameos_graphics.cpp (1 hop)",
-   "gl_shader": "shaders/gos_grass.geom",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
   },
   {
    "confidence": "MEDIUM",
@@ -2156,9 +2084,9 @@
    "gate_evidence": "GameOS/gameos/gameos_graphics.cpp (1 hop)",
    "gl_shader": "shaders/shadow_depth.vert",
    "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "cpp-only",
-   "vk_twin": "shaders/vulkan/shadow_depth.*"
+   "status": "NO_TWIN",
+   "vk_evidence": "",
+   "vk_twin": ""
   },
   {
    "confidence": "MEDIUM",
@@ -3721,18 +3649,6 @@
    "vk_twin": "shaders/vulkan/fog_oob.frag"
   },
   {
-   "confidence": "HIGH",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_VEG_DEBUG_FORCE_VISIBLE",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_vegetation.cpp (2 hops)",
-   "gl_shader": "shaders/gos_grass.geom",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
    "confidence": "MEDIUM",
    "feature": "u_worldToClipGL",
    "gate": "MC2_VEG_DEBUG_FORCE_VISIBLE",
@@ -4105,18 +4021,6 @@
    "vk_twin": "shaders/vulkan/fog_oob.frag"
   },
   {
-   "confidence": "HIGH",
-   "feature": "u_worldToClipGL",
-   "gate": "MC2_VEG_MAX_DIST",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_vegetation.cpp (2 hops)",
-   "gl_shader": "shaders/gos_grass.geom",
-   "kind": "uniform",
-   "status": "NO_TWIN",
-   "vk_evidence": "",
-   "vk_twin": ""
-  },
-  {
    "confidence": "MEDIUM",
    "feature": "u_worldToClipGL",
    "gate": "MC2_VEG_MAX_DIST",
@@ -4486,7 +4390,7 @@
    "kind": "uniform",
    "status": "NOT_PORTED",
    "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*"
+   "vk_twin": "shaders/vulkan/water_geom.*"
   },
   {
    "confidence": "HIGH",
@@ -4714,7 +4618,7 @@
    "kind": "uniform",
    "status": "NOT_PORTED",
    "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*"
+   "vk_twin": "shaders/vulkan/water_geom.*"
   },
   {
    "confidence": "HIGH",
@@ -4750,7 +4654,7 @@
    "kind": "uniform",
    "status": "NOT_PORTED",
    "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*"
+   "vk_twin": "shaders/vulkan/water_geom.*"
   },
   {
    "confidence": "MEDIUM",
@@ -4858,7 +4762,7 @@
    "kind": "uniform",
    "status": "NOT_PORTED",
    "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*"
+   "vk_twin": "shaders/vulkan/water_geom.*"
   },
   {
    "confidence": "MEDIUM",

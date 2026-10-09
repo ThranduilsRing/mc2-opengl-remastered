@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: working tree.
+Scanned: commit 1bd28f3db.
 
 | Measure | Count |
 |---|---|
@@ -51,7 +51,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | Gate | Reader sites (file:line, class) | Inputs that disagree | Default-visible? | Proposed unified rule | Behaviour delta if unified |
 |---|---|---|---|---|---|
 | `MC2_STATIC_PROP_BUILDING_SHADOW` | `GameOS/gameos/gos_static_prop_batcher.cpp:9568` Custom[00000001]<br>`mclib/bdactor.cpp:5563` Lead0P<br>`mclib/txmmgr.cpp:3517` Lead0P<br>`mclib/txmmgr.cpp:3518` Lead0P<br>`mclib/txmmgr.cpp:3521` Partial[D,off,off,off,off,off,off,on]<br>`mclib/txmmgr.cpp:3659` Lead0P<br>... +1 more | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
-| `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5533` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_g0_ledger.json, +21) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5533` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | `GameOS/gameos/gos_static_prop_batcher.cpp:9776` Custom[00000001]<br>`mclib/txmmgr.cpp:3674` Lead0Kill<br>`mclib/txmmgr.cpp:3675` Lead0Kill | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tests/smoke/matrices/shadow.json, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | `mclib/bdactor.cpp:5567` Lead0Kill<br>`mclib/bdactor.cpp:5578` Custom[00000001]<br>`mclib/bdactor.cpp:5579` Custom[00000001] | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SPOTLIGHT_DIRECTION_FIX` | `mclib/cone_glow.cpp:223` AtoiNZ<br>`mclib/cone_glow.cpp:243` Custom[00000001] | O: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |

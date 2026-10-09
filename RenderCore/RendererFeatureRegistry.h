@@ -977,6 +977,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "one [RES_DIAG] line giving the resolved origin and size."
     },
     {
+        "MC2_TRACE_NO_ACTIVATE",
+        "MC2_NO_ACTIVATE",
+        EnvVarKind::Trace,
+        false,
+        "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and "
+        "non-activating, never taking the foreground or keyboard focus. Equivalent "
+        "to MC2_WINDOW_OFFSCREEN for the editor, which honors both. DEFAULT OFF: "
+        "unset is the interactive maximized launch. Name to be standardized with the "
+        "launcher audit."
+    },
+    {
         "MC2_TRACE_FORCE_ALL_VISIBLE",
         "MC2_FORCE_ALL_VISIBLE",
         EnvVarKind::Trace,
@@ -3396,13 +3407,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         true,
         "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp). Default-ON (perf); =0 restores the legacy always-walk behavior."
-    },
-    {
-        "MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT",
-        "MC2_VULKAN_SWAPCHAIN_PRESENT",
-        EnvVarKind::Feature,
-        false,
-        "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=1 enables); validation-clean core+sync per L5 proof. See MEMORY handoff HANDOFF_2026_07_01_vulkan_lib_track."
     },
     {
         "MC2_FEATURE_HUD_READABILITY_V1",

@@ -50,7 +50,7 @@ Flipping any of these gates ON (CLAUDE.md "features ship ON") changes GL only. P
 - UBO PODs carrying only a `static_assert(sizeof)` (no field check): MechFrameUBO, LegacyFrameUBO, SkyPC, OvlPC, HudTexPush (`engine_present_vk.cpp:628`), ScreenFxShadowStaticParams, HzbLevelParams.
 - `check-vk-pipeline-layout.py` covers descriptor and push-constant *presence/size*, not member offsets. Its default `--cpp` glob is `vulkan_*.cpp`, so `engine_present_vk.cpp` (HUD pipelines) is not linted. A pipeline with no `.spv` name on the line before its binding decl gets no shader comparison (silent). `VBO_CONTRACT` lists 3 shaders.
 
-### A7. [MED] The VK probe fixture is out of date and is mistaken for a live path
+### A7. [MED] (DONE: D7 phase 1, 938ad14b2) The VK probe fixture is out of date and is mistaken for a live path
 `vulkan_backend_skeleton.cpp` (7640 lines, runs only when `MC2_VULKAN_PROBE` is set, `gos_render.cpp:677`) carries stale mirrors:
 - `EdgeFogParams` is 100 B (`:1988`), while the shader and the native path are 112 B (`vulkan_post_fog_native.cpp:142`, horizon clamp added).
 - `FogOobParams` is 84 B (`:2690`) against 96 B.
@@ -161,6 +161,6 @@ The permutation `(-x, z, y)` is hand-written at about 9 GLSL sites and about 8 C
    - Remove `cp -f` deploy text from 2 agents. Fix mc2-build-deploy:22. Retire the mc2-check skill.
    - Strip the about 18 dead CLAUDE.md section citations. Add a VK section (shaders/vulkan, islands, SPIR-V bake, ab.py) to the render and shader agents.
    - Update memory `cpp_glsl_ubo_struct_lockstep` (use gpu_abi) and INDEX-BUILD-DEPLOY:35.
-9. **M: retire the VK probe fixture.** Remove `vulkan_backend_skeleton.cpp` fixtures and `vulkan_shadow_island.cpp`, or quarantine them out of the default build. Remove them from ARCHITECTURE-MAP. This kills the stale EdgeFog/FogOob mirrors and about 4k lines of internal clones.
+9. **M (DONE, D7 phase 1, 938ad14b2): retire the VK probe fixture.** Remove `vulkan_backend_skeleton.cpp` fixtures and `vulkan_shadow_island.cpp`, or quarantine them out of the default build. Remove them from ARCHITECTURE-MAP. This kills the stale EdgeFog/FogOob mirrors and about 4k lines of internal clones.
 10. **S: clone ratchet.** Commit a clone scanner (the scratch one is about 50 lines of Python, normalized line windows) as report plus ratchet: total duplicated lines per dir may only fall. Seeded numbers: shaders 2768, GameOS render C++ 8653.
 11. **L, later:** merge `lighting_shadow_vk.glsl` into `shadow.hglsl` behind `#ifdef MC2_VULKAN` resource decls; one include for the noise copies; GL water fast/mdi vert merge; the `xform.hglsl` swizzle helper and its grep guard.

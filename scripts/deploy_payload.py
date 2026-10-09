@@ -844,7 +844,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # compiles shaders/vulkan/*.{vert,frag} to <build64-root>/shaders/vulkan/*.spv
     # (CMAKE_BINARY_DIR, i.e. the build64 root, NOT the per-config build_dir --
     # same non-standard location as mc2-launcher.exe above). The Vulkan island
-    # loaders (vulkan_*_island.cpp, vulkan_backend_skeleton.cpp) read
+    # loaders (vulkan_*_island.cpp) read
     # MC2_VULKAN_SPV_DIR if set, else default to "shaders/vulkan" relative to
     # the exe's CWD -- so deployed .spv must land at <target>/shaders/vulkan/.
     # Without this, any deployed install hits "cannot open spv" ->

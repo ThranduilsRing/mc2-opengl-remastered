@@ -34,7 +34,7 @@ Gate: per-dir `files_over_1500`, `files_over_3000`, `max_lines` may not rise, an
 | 7 | 8317 | `mclib/bdactor.cpp` |
 | 8 | 7817 | `code/mover.cpp` |
 | 9 | 7724 | `GameOS/gameos/gos_postprocess.cpp` |
-| 10 | 7640 | `GameOS/gameos/vulkan_backend_skeleton.cpp` |
+| 10 | 7640 | `GameOS/gameos/vulkan_backend_skeleton.cpp` (deleted by D7 phase 1, 938ad14b2) |
 | 11 | 7370 | `editor/EditorInterface.cpp` |
 | 12 | 7050 | `mclib/move.cpp` |
 | 13 | 6877 | `mclib/mech3d.cpp` |

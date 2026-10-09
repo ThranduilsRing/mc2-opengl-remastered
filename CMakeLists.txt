@@ -133,11 +133,11 @@ option(MC2_EDITOR_IN_ALL "Include EditRel in the default all build (it recompile
 # so stock builds pay nothing; runtime still requires MC2_DETERMINISTIC_RNG=1 +
 # MC2_DIAG_TAGS=RNG. Turn ON only for determinism-proof builds.
 option(MC2_RNG_TRACE "Compile the gos_rand RNG diagnostic trace (DETERMINISTIC-RNG-1)" OFF)
-# VULKAN-BACKEND-SKELETON-1: compile-gate the Vulkan bootstrap skeleton TU.
+# Compile-gate the Vulkan backend.
 # Default OFF -> zero Vulkan code compiled, zero Vulkan headers/loader required,
 # normal build completely unaffected + no Vulkan dependency. When ON, we
 # find_package(Vulkan) (the SDK loader/headers), link it into gameos, and
-# compile GameOS/gameos/vulkan_backend_skeleton.cpp under -DMC2_VULKAN.
+# compile the Vulkan sources under -DMC2_VULKAN.
 option(MC2_VULKAN "Compile the Vulkan backend (2026-10-05: default ON; Vulkan is the target backend)" ON)
 if(MC2_VULKAN)
     find_package(Vulkan REQUIRED)
@@ -150,64 +150,6 @@ endif()
 option(MC2_VULKAN_ISLAND "Compile Vulkan-owned render regions into gameos (default ON)" ON)
 if(MC2_VULKAN_ISLAND AND NOT MC2_VULKAN)
     message(FATAL_ERROR "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON (volk/VMA/Vulkan headers).")
-endif()
-
-# VULKAN-SHADER-TOOLCHAIN-1: standalone headless probe harness (ON only).
-# Links ONLY the Vulkan loader + the skeleton TU -- no GL/SDL/window/game.
-# Verifies the SPIR-V shader-module load path against the compiled .spv.
-# OFF -> target does not exist.
-if(MC2_VULKAN)
-    # VK-BOOTSTRAP-INTEGRATE-1: the swapchain probe needs a hidden SDL Vulkan
-    # window + surface, so this target now links SDL2. find_package(SDL2) runs
-    # again lower in this file for the main build; calling it here (config mode)
-    # makes the SDL2::SDL2 imported target available at probe-definition time.
-    find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
-    add_executable(vulkan_shader_probe
-        tools/vulkan_shader_probe_main.cpp
-        GameOS/gameos/vulkan_backend_skeleton.cpp
-        # VK-BOOTSTRAP-INTEGRATE-1: swapchain probe TU + vendored vk-bootstrap impl.
-        GameOS/gameos/vulkan_swapchain_probe.cpp
-        # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path.
-        GameOS/gameos/vulkan_swapchain_present.cpp
-        # L6.6-COMPOSITE-PRESENT-SCAFFOLD: persistent present object (extracted).
-        GameOS/gameos/vulkan_present_object.cpp
-        # VK-REGION-SHADOW-1: depth-only instanced shadow-caster pipeline (island;
-        # additive, probe-only -- does NOT touch the GL shadow producer).
-        GameOS/gameos/vulkan_shadow_island.cpp
-        3rdparty/vk_bootstrap/VkBootstrap.cpp
-        # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU.
-        GameOS/gameos/vma_impl.cpp
-        # VULKAN-VOLK-LOADER-1: volk meta-loader (dynamic Vulkan load; no hard
-        # link to vulkan-1.dll). Compiled ONLY here under MC2_VULKAN.
-        3rdparty/volk/volk.c)
-    target_include_directories(vulkan_shader_probe PRIVATE GameOS/gameos
-        # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
-        "${CMAKE_SOURCE_DIR}/3rdparty/vma"
-        # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
-        "${CMAKE_SOURCE_DIR}/3rdparty/volk"
-        # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
-        "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap"
-        # VK-BOOTSTRAP-INTEGRATE-1: SDL2 headers (SDL_vulkan.h) for the probe.
-        "${CMAKE_SOURCE_DIR}/3rdparty/include")
-    target_compile_definitions(vulkan_shader_probe PRIVATE MC2_VULKAN)
-    # VULKAN-VOLK-LOADER-1: link Vulkan HEADERS only -- volk owns runtime
-    # dispatch via LoadLibrary("vulkan-1.dll"), so we must NOT link the loader
-    # import lib (Vulkan::Vulkan). Vulkan::Headers gives include paths with no
-    # link dependency, which is exactly the point of the volk indirection.
-    # VK-BOOTSTRAP-INTEGRATE-1: SDL2 for the hidden Vulkan window/surface.
-    target_link_libraries(vulkan_shader_probe PRIVATE Vulkan::Headers SDL2::SDL2)
-    if(TARGET mc2_vulkan_shaders)
-        add_dependencies(vulkan_shader_probe mc2_vulkan_shaders)
-    endif()
-    # VK-BOOTSTRAP-INTEGRATE-1: the probe dynamically links SDL2, so SDL2.dll
-    # must sit beside vulkan_shader_probe.exe. Copy it post-build (anchored on
-    # the SDL2::SDL2 imported target's own dll location).
-    add_custom_command(TARGET vulkan_shader_probe POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:SDL2::SDL2>"
-            "$<TARGET_FILE_DIR:vulkan_shader_probe>"
-        COMMENT "VK-BOOTSTRAP-INTEGRATE-1: copy SDL2.dll beside vulkan_shader_probe.exe"
-        VERBATIM)
 endif()
 
 if(MC2_ASAN)
@@ -598,7 +540,7 @@ add_custom_target(build_fingerprint
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 add_dependencies(mc2 build_fingerprint)
 # VULKAN-EDGE-FOG-ISLAND-2a: ensure the SPIR-V shaders (edge_fog.{vert,frag}.spv,
-# fullscreen.*) are baked when building the mc2 target directly (mc2_vulkan_shaders
+# etc.) are baked when building the mc2 target directly (mc2_vulkan_shaders
 # is an ALL target, but --target mc2 does not pull ALL). Only exists under MC2_VULKAN.
 if(MC2_VULKAN_ISLAND AND TARGET mc2_vulkan_shaders)
     add_dependencies(mc2 mc2_vulkan_shaders)

@@ -50,13 +50,13 @@ CMake targets: `mc2` (the game), `mc2_launcher`, libs `mclib`, `gui`, `rendercor
 | Sky | `GameAdapters/SkyRenderAdapter.cpp`, `gos_hdri.cpp` | `vulkan_sky_island.cpp` (`mc2_vk_sky_island_run`) |
 | Terrain | `gos_terrain_lod_chunk.cpp`, `gos_terrain_indirect.cpp`, `mclib/terrain.cpp` | `vulkan_terrain_island.cpp` (`mc2_vk_terrain_island_run`, called from `gos_terrain_lod_chunk.cpp`) |
 | Water | `gos_terrain_water_stream.cpp`, `Terrain::renderWaterFastPath` | `vulkan_water_island.cpp` (hooked in `gameos_graphics.cpp`) |
-| Shadows | CSM pre-pass in `mclib/txmmgr.cpp` | `vulkan_shadow_island_live.cpp` (live VK shadow island; the probe-only `vulkan_shadow_island.cpp` is not wired) |
+| Shadows | CSM pre-pass in `mclib/txmmgr.cpp` | `vulkan_shadow_island_live.cpp` (live VK shadow island) |
 | Props/buildings/trees | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `gos_vegetation.cpp` | `vulkan_color_prop_island.cpp` (static buckets only) |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp` | `vulkan_mech_island.cpp` |
 | Vehicles/legacy | `ShapeRenderer` in `renderLists()` | `vulkan_legacy_shape_island.cpp` |
 | FX/particles | `gos_particle_bridge.cpp`, `gos_cardcloud_sim.cpp` | `vulkan_vfx_island.cpp` |
 | Post | `gos_postprocess.cpp`, `gos_postprocess_blur.cpp` | `vulkan_post_{fog,hzb,screenfx,ssao}_native.cpp` |
-| Present | SDL GL swap | `engine_present_vk.cpp`, `vulkan_swapchain_present.cpp`, `vulkan_present_object.cpp` |
+| Present | SDL GL swap | `engine_present_vk.cpp` |
 
 Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_shared_scene_depth.cpp` and
 `vk_shared_light_feed.cpp`, and are fed by GL-side "feeds" (e.g. `mc2_terrain_tier1_get_frame_feed`).
@@ -69,7 +69,7 @@ Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_s
 | Terrain data / textures / lighting | `mclib/terrain.cpp`, `mclib/quad.cpp`, `gos_terrain_lighting.cpp`, `terrain_material_lib.cpp` |
 | Water | `gos_terrain_water_stream.cpp`, `shaders/gos_terrain_water_mdi.frag`, `shaders/gpu_driven_water.comp` |
 | Props / buildings | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `GameAdapters/StaticPropRenderAdapter.cpp`, `code/bldng.cpp` |
-| Trees / foliage | `gos_vegetation.cpp`, `GameAdapters/VegetationAdapter.cpp`, `shaders/gos_grass.frag` |
+| Trees / foliage | `gos_vegetation.cpp`, `GameAdapters/VegetationAdapter.cpp` |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp`, `code/mech.cpp`; memory `INDEX-MECH.md` |
 | Shadows | `mclib/txmmgr.cpp` (pre-pass), `shaders/shadow_depth.vert`, `shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
 | Fog / sky | `shaders/edge_fog.frag`, `shaders/fog_oob.frag`, `shaders/hdri_skybox.frag`, `gos_hdri.cpp`, `SkyRenderAdapter.cpp` |

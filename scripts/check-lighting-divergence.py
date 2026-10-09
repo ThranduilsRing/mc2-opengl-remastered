@@ -133,7 +133,6 @@ RE_VEC3_FILL = re.compile(
 # --- Category B2: UNNAMED inline light floors -------------------------------
 # The named-constant patterns above miss the other half of this codebase's
 # floors, which are written inline with no identifier at all:
-#     mix(0.5, 1.0, NdotL)      gos_grass.frag        -- diffuse floor 0.5
 #     (0.60 + 0.38 * NdotL)     gos_vegetation_card   -- diffuse floor 0.60
 #     mix(0.4, 1.0, shadow)     shadow.hglsl          -- shadow darkness floor
 #     mix(0.55, 1.0, shadow)    terrain_lod_chunk     -- ambient occlusion floor
@@ -279,12 +278,11 @@ BASELINE = {
     ],
     # Unnamed inline floors. THREE different answers to "how dark may a fully
     # shadowed fragment get": 0.4 (the shared shadow kernel and its four VK
-    # re-ports), 0.55 (terrain's ambient occlusion), and per-class diffuse
-    # floors 0.5 (grass) / 0.60 (vegetation cards). shadow.hglsl legitimately
+    # re-ports), 0.55 (terrain's ambient occlusion), and the vegetation-card
+    # diffuse floor 0.60. shadow.hglsl legitimately
     # appears TWICE (:233 and :593) -- the count is part of the pin.
     "inline_light_floor": [
         ("shaders/building_pbr.frag", "add:ao", "0.18+0.22"),
-        ("shaders/gos_grass.frag", "mix:NdotL", "0.5->1.0"),
         ("shaders/gos_vegetation_card.frag", "add:NdotL", "0.60+0.38"),
         ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
         ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),

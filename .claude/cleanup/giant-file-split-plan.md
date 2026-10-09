@@ -47,6 +47,8 @@ All other files in sections 6-17 are mechanical once their `*_internal.h` exists
 
 ## 1. GameOS/gameos/vulkan_backend_skeleton.cpp (7640 lines)
 
+> STRUCK: the file and its 5-way split were removed instead by D7 phase 1 (938ad14b2); the loader pair lives in `vulkan_spv_loader.{h,cpp}`.
+
 The whole file is an env-gated (`MC2_VULKAN_PROBE`) one-shot self-test suite. It is not on the render hot path. Callers of `mc2_vulkan_probe*`: `gos_render.cpp`, `vulkan_present_object.cpp`, `vulkan_swapchain_{present,probe}.cpp`, `tools/vulkan_shader_probe_main.cpp`.
 
 ### Outline
@@ -442,6 +444,8 @@ Amendments to the section 3 proposal:
 First cut: the shadow family 5959-7219 (static + dynamic shadow, ~1260 lines, 13 getenv lines, 1 `MC2_VULKAN_ISLAND` block) as `gos_postprocess_shadow.cpp`, after B2 lands (the `SHADOW_FOCUS_DIAG` term at 6926 sits inside it). Needs `mc2ClampShadowSunAltitude` exported.
 
 ## 13. GameOS/gameos/vulkan_backend_skeleton.cpp (7640 lines): amendments to section 1
+
+> STRUCK: superseded by D7 phase 1 (938ad14b2), which deleted the file.
 Section 1's outline matches HEAD to within 5 lines. Counts: 790 comment lines (20 banner, 6 stale refs); getenv 5 (`MC2_VULKAN_VALIDATION` 92, `MC2_VULKAN_CACHE_DIR` 308, `MC2_VULKAN_PROBE` 7594, `MC2_VULKAN_SPV_DIR` 7602, `MC2_VULKAN_SWAPCHAIN_PRESENT` 7617); Tracy 0; logging through the local `log()` wrapper only; 6 anonymous namespaces (30, 286, 854, 1180, 1649, 6179); `kWaterMvpRaw16`/`kWaterDepthFudgeFast` (6809-6827) are private to the watermvp fixture.
 Corrections and additions:
 1. Section 1 calls the whole file diagnostic. It is not: `mc2_vulkan_load_spv` and `mc2_vulkan_free_shader` (140-186) are production API, used by `vulkan_present_object.cpp` and declared in `vulkan_backend_skeleton.h:33-34`. They must move to an always-built TU (`vulkan_spv_loader.cpp`, about 60 lines), NOT into `vulkan_probe_common`. That file is also the natural home for the D5 de-dup of the 13 hand-copied `spv_dir()`/`load_spv()`/`vlog()` helpers (opus-consistency A8).

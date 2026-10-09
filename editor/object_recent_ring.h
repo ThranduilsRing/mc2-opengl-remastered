@@ -4,7 +4,7 @@
 // (group, indexInGroup). Backs the "Recent" strip of the object companion panel.
 //
 // Dependency-free (std only) so it can be unit-tested standalone without the
-// editor/ImGui link (see tests/object_recent_ring_test.cpp). Behaviour:
+// editor/ImGui link. Behaviour:
 //   * push() moves an existing (group,index) to the front (dedupe), else inserts
 //     at the front; the list is capped at kCap, oldest dropped.
 //   * items() is most-recent-first.

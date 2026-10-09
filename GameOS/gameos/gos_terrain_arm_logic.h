@@ -4,9 +4,9 @@
 // the game and the Mission Editor.
 //
 // These are pure, dependency-free functions so the editor↔game agreement they
-// encode can be unit-tested without a GL context (see tests/gos_terrain_arm_logic_test.cpp).
+// encode can be unit-tested without a GL context.
 // gos_terrain_indirect.cpp calls them from CollectUniqueNodeIds() and
-// ComputePreflight() so the real render path and the test exercise identical logic.
+// ComputePreflight() so the render path and any test exercise identical logic.
 //
 // Background (the bug these prevent regressing): every terrain quad bakes a
 // "node id" into recipe._wp2:

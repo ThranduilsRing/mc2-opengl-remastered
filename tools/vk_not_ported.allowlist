@@ -53,7 +53,7 @@ MC2_TERRAIN_SHORELINE_WET_HEIGHT | shaders/terrain_lod_chunk.frag | uniform u_sh
 MC2_TERRAIN_SHORELINE_WET_RUN | shaders/terrain_lod_chunk.frag | uniform u_shorelineWetHeight: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_SLOPE_BIAS_STRENGTH | shaders/terrain_lod_chunk.frag | uniform rockSlopeBiasStrength: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE | shaders/terrain_lod_chunk.vert | uniform u_visualDampOn: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
-MC2_WATER_SHORE3_DEPTH_K | shaders/gos_terrain_water_fast_mdi.vert | uniform u_shoreDepthK: no such name in the VK twin (shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*) shader, island C++ or gpu_abi
+MC2_WATER_SHORE3_DEPTH_K | shaders/gos_terrain_water_fast_mdi.vert | uniform u_shoreDepthK: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi
 MC2_WATER_SHORE_MEANDER_FREQ | shaders/gos_terrain_water_mdi.frag | Companion of MC2_WATER_SHORE_MEANDER (u_shoreMeanderFreq): the VK water FS has no meander block, so the frequency knob has nothing to drive there. Inert in GL while the amplitude gate is 0.
 
 # --- Default-OFF gates: flipping one ON changes GL only
@@ -84,7 +84,7 @@ MC2_TERRAIN_MACRO_VARIATION | shaders/terrain_lod_chunk.frag | uniform macroVari
 MC2_TERRAIN_POM | shaders/terrain_lod_chunk.frag | uniform pomParams, uniform u_pomView: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_TERRAIN_SLOPE_BIAS | shaders/terrain_lod_chunk.frag | uniform useRockSlopeBias: no such name in the VK twin (shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*) shader, island C++ or gpu_abi
 MC2_WATER_BIAS_LEGACY | shaders/gos_terrain_water_fast.vert | uniform u_waterBiasLegacy: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi
-MC2_WATER_BIAS_LEGACY | shaders/gos_terrain_water_fast_mdi.vert | uniform u_waterBiasLegacy: no such name in the VK twin (shaders/vulkan/water_geom.*, shaders/vulkan/water_mvp.*) shader, island C++ or gpu_abi
+MC2_WATER_BIAS_LEGACY | shaders/gos_terrain_water_fast_mdi.vert | uniform u_waterBiasLegacy: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi
 MC2_WATER_REFLECTION_RT | shaders/gos_terrain_water_mdi.frag | uniform u_waterRtStrength: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi
 MC2_WATER_SHINE | shaders/gos_terrain_water_mdi.frag | uniform u_waterSpecIntensity: no such name in the VK twin (shaders/vulkan/water_geom.*) shader, island C++ or gpu_abi
 MC2_WATER_SHORE_MEANDER | shaders/gos_terrain_water_mdi.frag | VK water_geom.frag has no shore-meander block (u_shoreMeanderWu fbm offset on WaterThickness), so VK shorelines stay straight where GL meanders once the amplitude is non-zero. Pinned as the waterBaseColor debt in tools/glsl_port_diff.allowlist.

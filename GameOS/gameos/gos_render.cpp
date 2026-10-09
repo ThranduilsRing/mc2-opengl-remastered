@@ -12,9 +12,6 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include "utils/logging.h"
-#ifdef MC2_VULKAN
-#include "vulkan_backend_skeleton.h"
-#endif
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = NULL;
@@ -699,13 +696,6 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
                maxTex, maxSSBO, maxTexUnits);
     }
 
-#ifdef MC2_VULKAN
-    // VULKAN-BACKEND-SKELETON-1: one-shot, opt-in Vulkan capability probe.
-    // Runs ONLY if the MC2_VULKAN_PROBE env var is set (default unset -> never
-    // runs). Fail-soft: logs a reason + continues on any Vulkan error. This is
-    // NOT wired into the frame loop and does NOT touch the GL render path.
-    mc2_vulkan_probe_if_env();
-#endif
 
     // Drawable (physical, post-HiDPI) vs logical (window coords) size.
     // Divergence indicates the backbuffer is larger than the window, which

@@ -2837,7 +2837,7 @@
    "key": "hdri_skybox_stencil_tag",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:5397",
+   "source": "GameOS/gameos/gos_postprocess.cpp:5187",
    "stages": {
     "frag": "shaders/hdri_skybox_stencil_tag.frag",
     "vert": "shaders/hdri_skybox.vert"
@@ -3073,7 +3073,7 @@
    "key": "shadow_depth",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:5805",
+   "source": "GameOS/gameos/gos_postprocess.cpp:5595",
    "stages": {
     "frag": "shaders/shadow_depth.frag",
     "vert": "shaders/shadow_depth.vert"

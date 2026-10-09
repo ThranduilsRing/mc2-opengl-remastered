@@ -10,7 +10,8 @@
 //   - MVP: worldToClipGL is a column_major std140 mat4 packed from the SAME 16
 //     raw floats GL uploads (glUniformMatrix4fv GL_FALSE). clip = M*worldPos;
 //     clip.z += WATER_DEPTH_FUDGE_FAST*clip.w (reverse-Z pre-divide). SAME rule
-//     WATER-MVP-ORACLE-1 proved bit-exact (water_mvp.frag). Do NOT row_major, do
+//     WATER-MVP-ORACLE-1 proved bit-exact (commit 4d30d93e5; oracle shader in the
+//     archive/vk-probe-fixtures tag). Do NOT row_major, do
 //     NOT transpose. WATER_DEPTH_FUDGE_FAST=0.00025 passed in via UBO (lockstep).
 //   - BASE LAYER ONLY: the GL FS discards o_isWater==2 (detail/spray), so P9a
 //     renders only the base layer (isWater=1, the old gl_DrawIDARB==0 draw).
