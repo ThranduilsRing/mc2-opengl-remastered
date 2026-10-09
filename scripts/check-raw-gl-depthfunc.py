@@ -75,9 +75,6 @@ ALLOWLIST_PREFIX = (
     "tools/asset_viewer/",
     # GlStateGuard harness: offline test of the guards themselves -- must issue raw GL.
     "tools/glstate_guard_harness/",
-    # standalone GL/VK interop spike binaries (vk-interop-bridge-1 merge):
-    # out-of-engine experiments, not frame-loop code.
-    "tools/vk_gl_interop_spike/",
     "tests/",
 )
 

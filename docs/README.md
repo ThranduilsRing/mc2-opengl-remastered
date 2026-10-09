@@ -159,8 +159,6 @@ Core references:
 - [gameplay-driver.md](gameplay-driver.md) - Gameplay driver - driving a running mission from an agent
 - [oracle-dynamic-pipeline-gate.md](oracle-dynamic-pipeline-gate.md) - Oracle Gate - Legacy Dynamic Pipeline (mech/vehicle/turret/effects)
 - [perf-budget.md](perf-budget.md) - Perf budget + oracle harness
-- [qwen-local-workflow.md](qwen-local-workflow.md) - Local Qwen Workflow
-- [qwen-system-prompts.md](qwen-system-prompts.md) - Qwen System Prompts
 - [review-feedback-schema.md](review-feedback-schema.md) - Review-pack feedback - annotation schema and how a lane consumes it
 - [tactical-presentation-visual-state-capture.md](tactical-presentation-visual-state-capture.md) - Tactical-presentation visual-state capture & validation
 - [verify-primitive.md](verify-primitive.md) - MC2_VERIFY - the live data-contract guard primitive
