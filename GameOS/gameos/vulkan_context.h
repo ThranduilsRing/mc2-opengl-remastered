@@ -4,11 +4,10 @@
 // device/context. This is the durable P13 deliverable.
 //
 // ACCEPTANCE CRITERION (VK-P13-SELECTOR-PLAN §7 T2, point 2): the VkInstance /
-// VkPhysicalDevice / VkDevice / queues are owned HERE, in this shared context --
-// NOT inside VulkanPresentObject. P6/P8/P9/P14 all reuse the SAME device by
-// asking getOrCreateEngineVulkanContext(). VulkanPresentObject (wired later in
-// T3) takes this context as INPUT and must not create its own device for the
-// engine path. A grep for VkDevice ownership must land here.
+// VkPhysicalDevice / VkDevice / queues are owned HERE, in this shared context.
+// Consumers (engine_present_vk and the islands) borrow it by asking
+// getOrCreateEngineVulkanContext() and must not create their own device.
+// A grep for VkDevice ownership must land here.
 //
 // The context is born once at engine init when renderBackend()==Vulkan
 // (gameosmain), fail-soft: any failure logs a reason, leaves the accessor

@@ -284,7 +284,7 @@ if(MC2_VULKAN)
     endif()
 endif()
 
-# VULKAN-SHADER-TOOLCHAIN-1: compile the trivial fullscreen GLSL vert/frag to
+# VULKAN-SHADER-TOOLCHAIN-1: compile the GLSL listed in MC2_VK_SHADER_BASENAMES to
 # SPIR-V at build time -- ONLY when MC2_VULKAN=ON. OFF -> this target/step does
 # not exist (no SDK tool needed, default build byte-identical). Compiler
 # (glslangValidator or glslc) located via find_program from the Vulkan SDK;
@@ -303,7 +303,7 @@ if(MC2_VULKAN)
     set(MC2_VK_SPV_OUT_DIR "${CMAKE_BINARY_DIR}/shaders/vulkan")
     file(MAKE_DIRECTORY "${MC2_VK_SPV_OUT_DIR}")
 
-    # VULKAN-EDGE-FOG-ISLAND-2a: bake edge_fog.{vert,frag} alongside fullscreen.
+    # VULKAN-EDGE-FOG-ISLAND-2a: bake edge_fog.{vert,frag} with the rest of the list.
     # These are only USED when MC2_VULKAN_ISLAND=ON, but baking them under plain
     # MC2_VULKAN is harmless (extra .spv outputs) and keeps the toolchain simple.
     # VULKAN-OOB-FOG-ISLAND-1: bake fog_oob.{vert,frag} alongside edge_fog.
