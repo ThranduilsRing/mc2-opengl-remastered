@@ -1,6 +1,0 @@
-[VK_HUD_MIRROR v1] gpu readback mirror built id=332 32x32
-[VK_HUD_MIRROR v1] gpu readback mirror built id=357 32x32
-[VK_HUD_MIRROR v1] gpu readback mirror built id=366 32x32
-[VK_HUD_MIRROR v1] gpu readback mirror built id=372 32x32
-[VK_HUD_MIRROR v1] gpu readback mirror built id=332 32x32
-[VK_HUD_MIRROR v1] gpu readback mirror built id=357 32x32

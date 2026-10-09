@@ -78,7 +78,7 @@ staticprop overrides (they carry the stock pivot; trees still ground).
 shift); `x,-z,y`+UV `1-v` → geometry right but "backside had front textures" (UV double-flip);
 **`x,-z,y` + UV `none` + ground-off → correct** (user-confirmed, hangar/quonset/dome).
 **Lesson (load-bearing): the extents oracle is mirror/rotation-blind — necessary, not
-sufficient. The screenshot is the real gate.** Evidence in `docs/assets/trackg-r0/`.
+sufficient. The screenshot is the real gate.** Evidence in `docs/assets/trackg-r0/` (archived to E:/mc2-archive-2026-10/docs/claude-evidence-2026-10-09.tar.gz).
 Authoritative round-trip is the C++ `ExportBundle`/`ModelOverrideRegistry` at integration;
 `registry_resolves` is the offline Python mirror. Promotion of `models.generated.json` into
 central `models.json` stays a separate reviewed merge.
@@ -88,7 +88,7 @@ central `models.json` stays a separate reviewed merge.
 legacy_static> pools=<skipped|legacy>`. Read-only, zero behavior change.
 **G-E2E bigbox DONE** (2026-06-04): cooked `cooked/bigbox/bigbox.glb` resolved + imported +
 rendered via the override path on a free v0.4 `--validate` run (gl-clean, exit 0); G5 log +
-case-insensitive accept confirmed live. Evidence: `docs/assets/trackg-r0/restamp_g5_e2e_evidence.txt`.
+case-insensitive accept confirmed live. Evidence: `docs/assets/trackg-r0/restamp_g5_e2e_evidence.txt` (archived to E:/mc2-archive-2026-10/docs/claude-evidence-2026-10-09.tar.gz).
 
 ## Batch — cook the whole stock library
 ```
@@ -98,7 +98,7 @@ cook_all_stock.py --meshdumps <dumpdir> --deploy-root <deploy> --out <lib>
 `cook_all_stock.py` runs glb->stage->assemble in-process per prop, resolving existing
 `data/tgl/<tier>/<name>.ktx2` tiles by sanitized name (no re-cook). Full-set run:
 **2015 cooked, 0 errors — 1629 full textured manifests, 386 untextured geometry-only,
-493 multi-submesh** (`docs/assets/trackg-r0/batch_cook_all_report.json`). Textured glb
+493 multi-submesh** (`docs/assets/trackg-r0/batch_cook_all_report.json`, archived to E:/mc2-archive-2026-10/docs/claude-evidence-2026-10-09.tar.gz). Textured glb
 materials carry the stock texture URI so the override importer binds existing tiles
 (verified live: `[MODOVERRIDE_TEX] a_2civliving.tga -> gosHandle, alpha=1`).
 

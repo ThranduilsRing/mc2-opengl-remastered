@@ -4,7 +4,7 @@
 Path B = stock .tgl -> (workbench --export-tgl-meshdump) -> meshdump.json ->
 tglmeshdump_to_glb (calibrated `-x,-z,y`) -> stage.
 
-CALIBRATED MAPPING (visually confirmed 2026-06-04, see docs/assets/trackg-r0/):
+CALIBRATED MAPPING (visually confirmed 2026-06-04, see docs/assets/trackg-r0/, archived to E:/mc2-archive-2026-10/docs/claude-evidence-2026-10-09.tar.gz):
 the workbench MeshData is GL-space (-sx, sz, sy). The engine renders stock props
 in (-sx, sy, sz). So the cooked glb maps MeshData -> (-mx,-mz,my) and the importer
 axisMap0 yields engine (-sx, sy, sz). Net effect on extents: engine X == stock X,
