@@ -25,7 +25,7 @@
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 494,
+  "Presence": 491,
   "Std(def=off)": 16,
   "Std(def=on)": 10,
   "Str[dflt,dflt]": 3,
@@ -254,7 +254,7 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/debug_state_dump.cpp:488 (Lead0Kill)",
+    "GameOS/gameos/debug_state_dump.cpp:482 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:239 (Lead0Kill)",
     "editor/EditorMFC.cpp:188 (Presence)"
    ],
@@ -704,8 +704,8 @@
      },
      "class": "Lead0",
      "sites": [
-      "GameOS/gameos/debug_state_dump.cpp:1220",
-      "GameOS/gameos/debug_state_dump.cpp:1251"
+      "GameOS/gameos/debug_state_dump.cpp:1180",
+      "GameOS/gameos/debug_state_dump.cpp:1211"
      ]
     },
     {
@@ -716,8 +716,7 @@
      },
      "class": "Presence",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1050",
-      "GameOS/gameos/vulkan_swapchain_present.cpp:54"
+      "GameOS/gameos/gameosmain.cpp:1050"
      ]
     }
    ],
@@ -741,12 +740,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/debug_state_dump.cpp:1220",
-       "GameOS/gameos/debug_state_dump.cpp:1251"
+       "GameOS/gameos/debug_state_dump.cpp:1180",
+       "GameOS/gameos/debug_state_dump.cpp:1211"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1050",
-       "GameOS/gameos/vulkan_swapchain_present.cpp:54"
+       "GameOS/gameos/gameosmain.cpp:1050"
       ]
      },
      "probe": "E"
@@ -763,24 +761,23 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/debug_state_dump.cpp:1220",
-       "GameOS/gameos/debug_state_dump.cpp:1251"
+       "GameOS/gameos/debug_state_dump.cpp:1180",
+       "GameOS/gameos/debug_state_dump.cpp:1211"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1050",
-       "GameOS/gameos/vulkan_swapchain_present.cpp:54"
+       "GameOS/gameos/gameosmain.cpp:1050"
       ]
      },
      "probe": "Z"
     }
    ],
    "families": {
-    "bool": 4
+    "bool": 3
    },
    "kill_style_name": false,
    "proposal_basis": "registry defaultOn=false",
    "proposed_rule": "Std(unset=off)",
-   "reader_sites": 4,
+   "reader_sites": 3,
    "registry": {
     "default_on": false,
     "kind": "Trace"
@@ -808,7 +805,7 @@
      "family": "bool",
      "file": "GameOS/gameos/debug_state_dump.cpp",
      "inverted": false,
-     "line": 1220,
+     "line": 1180,
      "vector": [
       "off",
       "off",
@@ -826,7 +823,7 @@
      "family": "bool",
      "file": "GameOS/gameos/debug_state_dump.cpp",
      "inverted": false,
-     "line": 1251,
+     "line": 1211,
      "vector": [
       "off",
       "off",
@@ -845,24 +842,6 @@
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
      "line": 1050,
-     "vector": [
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Presence",
-     "family": "bool",
-     "file": "GameOS/gameos/vulkan_swapchain_present.cpp",
-     "inverted": false,
-     "line": 54,
      "vector": [
       "off",
       "on",
@@ -1615,7 +1594,7 @@
      },
      "class": "Lead0Kill",
      "sites": [
-      "GameOS/gameos/debug_state_dump.cpp:489",
+      "GameOS/gameos/debug_state_dump.cpp:483",
       "GameOS/gameos/gameosmain.cpp:1323",
       "GameOS/gameos/gos_materials.cpp:46",
       "GameOS/gameos/gos_static_prop_batcher.cpp:813"
@@ -1656,7 +1635,7 @@
        "GameOS/gameos/gos_mech_batcher.cpp:683"
       ],
       "on": [
-       "GameOS/gameos/debug_state_dump.cpp:489",
+       "GameOS/gameos/debug_state_dump.cpp:483",
        "GameOS/gameos/gameosmain.cpp:1323",
        "GameOS/gameos/gos_materials.cpp:46",
        "GameOS/gameos/gos_static_prop_batcher.cpp:813"
@@ -1691,7 +1670,7 @@
      "family": "bool",
      "file": "GameOS/gameos/debug_state_dump.cpp",
      "inverted": false,
-     "line": 489,
+     "line": 483,
      "vector": [
       "on",
       "on",
@@ -2747,7 +2726,7 @@
      },
      "class": "Lead0",
      "sites": [
-      "GameOS/gameos/debug_state_dump.cpp:599"
+      "GameOS/gameos/debug_state_dump.cpp:593"
      ]
     },
     {
@@ -2787,7 +2766,7 @@
        "GameOS/gameos/render_snapshot.cpp:245"
       ],
       "on": [
-       "GameOS/gameos/debug_state_dump.cpp:599"
+       "GameOS/gameos/debug_state_dump.cpp:593"
       ]
      },
      "probe": "F"
@@ -2808,7 +2787,7 @@
        "GameOS/gameos/render_snapshot.cpp:245"
       ],
       "on": [
-       "GameOS/gameos/debug_state_dump.cpp:599"
+       "GameOS/gameos/debug_state_dump.cpp:593"
       ]
      },
      "probe": "X"
@@ -2829,7 +2808,7 @@
        "GameOS/gameos/render_snapshot.cpp:245"
       ],
       "on": [
-       "GameOS/gameos/debug_state_dump.cpp:599"
+       "GameOS/gameos/debug_state_dump.cpp:593"
       ]
      },
      "probe": "X25"
@@ -2858,7 +2837,7 @@
      "family": "bool",
      "file": "GameOS/gameos/debug_state_dump.cpp",
      "inverted": false,
-     "line": 599,
+     "line": 593,
      "vector": [
       "off",
       "off",
@@ -2916,7 +2895,7 @@
      },
      "class": "Lead0Kill",
      "sites": [
-      "GameOS/gameos/debug_state_dump.cpp:488",
+      "GameOS/gameos/debug_state_dump.cpp:482",
       "GameOS/gameos/gos_static_prop_batcher.cpp:239"
      ]
     },
@@ -2955,7 +2934,7 @@
        "editor/EditorMFC.cpp:188"
       ],
       "on": [
-       "GameOS/gameos/debug_state_dump.cpp:488",
+       "GameOS/gameos/debug_state_dump.cpp:482",
        "GameOS/gameos/gos_static_prop_batcher.cpp:239"
       ]
      },
@@ -2973,7 +2952,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/debug_state_dump.cpp:488",
+       "GameOS/gameos/debug_state_dump.cpp:482",
        "GameOS/gameos/gos_static_prop_batcher.cpp:239"
       ],
       "on": [
@@ -3008,7 +2987,7 @@
      "family": "bool",
      "file": "GameOS/gameos/debug_state_dump.cpp",
      "inverted": false,
-     "line": 488,
+     "line": 482,
      "vector": [
       "on",
       "on",
@@ -4526,7 +4505,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "off": [
@@ -4547,7 +4526,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "off": [
@@ -4568,7 +4547,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
@@ -4589,7 +4568,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
@@ -4610,7 +4589,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
@@ -4631,7 +4610,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
@@ -4652,7 +4631,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:297",
+       "GameOS/gameos/engine_present_vk.cpp:296",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
@@ -4684,7 +4663,7 @@
      "family": "bool",
      "file": "GameOS/gameos/engine_present_vk.cpp",
      "inverted": false,
-     "line": 297,
+     "line": 296,
      "vector": [
       "inh",
       "inh",
@@ -5282,7 +5261,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "off": [
@@ -5303,7 +5282,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "off": [
@@ -5324,7 +5303,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
@@ -5345,7 +5324,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
@@ -5366,7 +5345,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
@@ -5387,7 +5366,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
@@ -5408,7 +5387,7 @@
      "family": "bool",
      "outcomes": {
       "inh": [
-       "GameOS/gameos/engine_present_vk.cpp:299",
+       "GameOS/gameos/engine_present_vk.cpp:298",
        "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
@@ -5440,7 +5419,7 @@
      "family": "bool",
      "file": "GameOS/gameos/engine_present_vk.cpp",
      "inverted": false,
-     "line": 299,
+     "line": 298,
      "vector": [
       "inh",
       "inh",
@@ -5613,17 +5592,17 @@
   "editor",
   "gui"
  ],
- "source": "commit 654829e74",
+ "source": "commit 58edb7cd1",
  "totals": {
   "conflict_gates": 31,
-  "gates_with_literal": 1133,
-  "gates_with_reader": 1123,
-  "literal_occurrences": 1703,
+  "gates_with_literal": 1131,
+  "gates_with_reader": 1121,
+  "literal_occurrences": 1697,
   "non_call_literals": 43,
-  "nonreader_sites": 14,
-  "read_sites": 1660,
-  "reader_sites": 1570,
-  "token_sites": 53,
+  "nonreader_sites": 13,
+  "read_sites": 1654,
+  "reader_sites": 1567,
+  "token_sites": 51,
   "unclassified_sites": 23
  },
  "unclassified": [
@@ -5631,7 +5610,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/engine_present_vk.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 352,
+   "line": 351,
    "why": "unclassified:opaque"
   },
   {

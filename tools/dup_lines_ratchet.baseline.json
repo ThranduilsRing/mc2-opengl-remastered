@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 6430,
+  "GameOS": 6285,
   "GuiRuntime": 64,
   "HostServices": 0,
   "RenderCore": 580,
@@ -23,7 +23,7 @@
  ],
  "files": {
   "GameOS/gameos/MC2Strings.cpp": 16,
-  "GameOS/gameos/debug_state_dump.cpp": 123,
+  "GameOS/gameos/debug_state_dump.cpp": 122,
   "GameOS/gameos/engine_present_vk.cpp": 174,
   "GameOS/gameos/engine_present_vk.h": 9,
   "GameOS/gameos/gameos.cpp": 16,
@@ -65,14 +65,12 @@
   "GameOS/gameos/visual_tuning_profile.cpp": 42,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 269,
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
-  "GameOS/gameos/vulkan_context.cpp": 39,
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": 234,
   "GameOS/gameos/vulkan_mech_island.cpp": 317,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 259,
-  "GameOS/gameos/vulkan_post_hzb_native.cpp": 89,
+  "GameOS/gameos/vulkan_post_hzb_native.cpp": 61,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 295,
   "GameOS/gameos/vulkan_post_ssao_native.cpp": 302,
-  "GameOS/gameos/vulkan_present_object.cpp": 77,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 369,
   "GameOS/gameos/vulkan_shadow_island_live.h": 8,
   "GameOS/gameos/vulkan_shared_scene_color.cpp": 8,
@@ -560,8 +558,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "19a8b39ad",
+ "head": "58edb7cd1",
  "n": 8,
- "total": 71508,
+ "total": 71363,
  "version": 1
 }
