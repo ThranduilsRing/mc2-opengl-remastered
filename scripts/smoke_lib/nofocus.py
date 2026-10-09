@@ -143,6 +143,7 @@ NOFOCUS_ENV = {
     # menu canary pops it) therefore spawned the launcher window. MC2_NO_LAUNCHER
     # is the long-shipped escape, so it works on already-deployed exes.
     "MC2_NO_LAUNCHER": "1",
+    "MC2_LAUNCHER_ENV_JSON": "0",
 }
 
 #: Window SIZE. MC2_WINDOWED alone still opens a window the size of
