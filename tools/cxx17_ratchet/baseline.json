@@ -114,7 +114,7 @@
    "LG06": 15,
    "LG07": 0,
    "LG08": 0,
-   "LG09": 38,
+   "LG09": 35,
    "LG10": 0,
    "LG11": 0,
    "LG12a": 2,
@@ -148,7 +148,7 @@
    "LG18": 0
   },
   "code": {
-   "LG01": 1856,
+   "LG01": 1844,
    "LG02": 232,
    "LG03": 978,
    "LG04": 21,
@@ -156,12 +156,12 @@
    "LG06": 466,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2513,
+   "LG09": 2508,
    "LG10": 22,
    "LG11": 101,
    "LG12a": 220,
-   "LG12b": 799,
-   "LG13": 1203,
+   "LG12b": 798,
+   "LG13": 1201,
    "LG14": 137,
    "LG15": 0,
    "LG16": 13,
@@ -169,15 +169,15 @@
    "LG18": 4
   },
   "mclib": {
-   "LG01": 2926,
+   "LG01": 2916,
    "LG02": 316,
-   "LG03": 1389,
+   "LG03": 1325,
    "LG04": 17,
    "LG05": 143,
    "LG06": 735,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2586,
+   "LG09": 2578,
    "LG10": 36,
    "LG11": 69,
    "LG12a": 588,
@@ -1326,9 +1326,6 @@
   "RenderCore/terrain_subpass_contract.h": {
    "LG05": 1
   },
-  "RenderCore/test_bc7_decode.cpp": {
-   "LG09": 3
-  },
   "RenderCore/top_level_pass_executor.h": {
    "LG05": 2
   },
@@ -1371,12 +1368,6 @@
   "code/action_executor_registry.h": {
    "LG08": 2,
    "LG14": 1
-  },
-  "code/actor.cpp": {
-   "LG01": 12,
-   "LG09": 5,
-   "LG12b": 1,
-   "LG13": 2
   },
   "code/actor.h": {
    "LG01": 5,
@@ -3731,8 +3722,8 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-   "LG01": 7,
-   "LG03": 26,
+   "LG01": 6,
+   "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
@@ -3741,8 +3732,8 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-   "LG01": 7,
-   "LG03": 26,
+   "LG01": 6,
+   "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_pmesh.cpp": {
@@ -3751,8 +3742,8 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_tmesh.cpp": {
-   "LG01": 7,
-   "LG03": 26,
+   "LG01": 6,
+   "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_det_pmesh.cpp": {
@@ -3764,8 +3755,8 @@
    "LG01": 1
   },
   "mclib/mlr/mlr_i_det_tmesh.cpp": {
-   "LG01": 8,
-   "LG03": 24,
+   "LG01": 7,
+   "LG03": 15,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_dt_pmesh.cpp": {
@@ -3774,8 +3765,8 @@
    "LG09": 2
   },
   "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-   "LG01": 8,
-   "LG03": 28,
+   "LG01": 6,
+   "LG03": 19,
    "LG09": 2
   },
   "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
@@ -3824,8 +3815,8 @@
    "LG13": 2
   },
   "mclib/mlr/mlr_i_tmesh.cpp": {
-   "LG01": 9,
-   "LG03": 24,
+   "LG01": 8,
+   "LG03": 15,
    "LG09": 4,
    "LG12a": 19,
    "LG13": 2
@@ -3920,9 +3911,9 @@
   "mclib/mlr/mlrloadobj.cpp": {
    "LG01": 1,
    "LG02": 3,
-   "LG03": 21,
+   "LG03": 18,
    "LG06": 1,
-   "LG09": 17,
+   "LG09": 9,
    "LG11": 2,
    "LG12a": 29
   },
@@ -4516,8 +4507,7 @@
    "LG06": 8
   },
   "mclib/stuff/namelist_test.cpp": {
-   "LG01": 4,
-   "LG03": 7,
+   "LG01": 1,
    "LG06": 2,
    "LG12a": 6,
    "LG13": 1
@@ -5012,7 +5002,7 @@
    "LG13": 31
   }
  },
- "head": "58edb7cd1",
+ "head": "3c99bd2ec",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

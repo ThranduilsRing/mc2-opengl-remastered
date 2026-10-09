@@ -80,7 +80,7 @@ The registry is built once when mods are mounted (directory scan + manifest pars
 - **Assimp vendored** at `3rdparty/assimp/`; `ENABLE_ASSIMP_IMPORTER=ON` (`CMakeLists.txt:204`).
 - **Importer** `mclib/assimp_importer.{h,cpp}`: `ImportGeometryFromFile(path, TG_TypeMultiShape*)` (`assimp_importer.h:35`, impl `assimp_importer.cpp:349-413`). Does: `ReadFile` with `aiProcess_Triangulate | aiProcess_GenSmoothNormals`; node-name validation (≤24 chars, unique); per-mesh vertices+normals+triangles+UVs; diffuse material-name extraction with V-flip; coordinate transform (`MC2.x=-src.x, MC2.y=src.z, MC2.z=src.y`); bounding box (`ComputeBoundingBox`, loose, node-center based).
 - **Probe** `LoadFromFile` `.glb→.fbx→.ase` (`msl.cpp:438-479`).
-- **Standalone geometry probe** `tools/cpp_probes/assimp_probe.cpp` emits JSON (`meshCount, vertexCount, indexCount, materialSlotCount, hasNormals, hasTangents, bounds`) — reuse for asset-viewer/validation.
+- **Standalone geometry probe** `tools/cpp_probes/assimp_probe.cpp` (deleted by DI-7; recover from git history) emits JSON (`meshCount, vertexCount, indexCount, materialSlotCount, hasNormals, hasTangents, bounds`) — reuse for asset-viewer/validation.
 - **Manifest schema + validator** already drafted: `docs/asset-manifest-schema.md`, `scripts/check-asset-manifests.py`, `tools/asset_cook/validate_asset_manifest.py`.
 
 ### What is missing / explicitly deferred (MVP scope statement at `assimp_importer.cpp:3-6`)
