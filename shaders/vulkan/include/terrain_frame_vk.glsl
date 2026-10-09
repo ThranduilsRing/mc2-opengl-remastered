@@ -107,7 +107,8 @@ bool mv_csmProject(vec3 worldPos, int layer, out vec3 projCoords) {
 // calcDynamicShadow (near-cascade path). Mirrors GL calcDynamicShadow's early-outs
 // (enableDynamicShadows/NdotL) via the caller (see main()); this is just the cascade
 // loop, verbatim-diffed against shadow.hglsl's PORT-BEGIN/END:calcDynamicShadowCsm block.
-#define MC2_VK_SHADOW_CSM_MAX 3   // array length of uT.csmCascadeMatrices
+// Cascade loop bound: the array length comes from the generated block, never a hand copy.
+#define MC2_VK_SHADOW_CSM_MAX GPU_ABI_TERRAINFRAMEUBO_CSMCASCADEMATRICES_LEN
 float mv_calcDynamicShadowCsm(vec3 worldPos, float NdotL, float sunAltSin, int numTaps) {
     int count = clamp(uT.csmCount, 1, MC2_VK_SHADOW_CSM_MAX);
 

@@ -3,6 +3,7 @@
 // std140 rules, 784 bytes (C++ slot 1024). Declares the whole uniform block.
 #ifndef GPU_ABI_TERRAINFRAMEUBO_GEN_GLSL
 #define GPU_ABI_TERRAINFRAMEUBO_GEN_GLSL
+#define GPU_ABI_TERRAINFRAMEUBO_CSMCASCADEMATRICES_LEN 3
 layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     mat4  worldToClipGL;  // off 0
     int   mapSide;  // off 64

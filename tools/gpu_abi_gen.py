@@ -252,8 +252,13 @@ def build(info, src_rel, glsl_rel):
     if block:
         gl += ["// %s rules, %d bytes (C++ slot %d). Declares the whole uniform block." % (info["rules"], size, slot),
                "#ifndef GPU_ABI_%s_GEN_GLSL" % g.upper(),
-               "#define GPU_ABI_%s_GEN_GLSL" % g.upper(),
-               "layout(set = %s, binding = %s, std140) uniform %s {" % (info["set"], info["binding"], g)]
+               "#define GPU_ABI_%s_GEN_GLSL" % g.upper()]
+        # Array lengths as constants, so shader loops bound to a matrix array cannot be
+        # hand-copied and drift from the array length declared in the C++ struct.
+        for fname, ft in info["fields"]:
+            if not isinstance(ft, str):
+                gl.append("#define GPU_ABI_%s_%s_LEN %d" % (g.upper(), fname.upper(), ft[2]))
+        gl += ["layout(set = %s, binding = %s, std140) uniform %s {" % (info["set"], info["binding"], g)]
     else:
         gl += ["// %s rules, %d bytes. Include from the shader; the shader keeps its own" % (info["rules"], size),
                "// `layout(...) buffer` wrapper (GL and VK binding syntax differ).",

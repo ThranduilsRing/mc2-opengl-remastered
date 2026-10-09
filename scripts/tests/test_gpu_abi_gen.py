@@ -228,3 +228,16 @@ def test_shader_including_the_generated_struct_passes(tmp_path):
     shader.write_text("#include <include/gpu_abi_mech_instance.gen.hglsl>\n"
                       "// struct GpuMechInstance { stale comment }\n", encoding="utf-8")
     assert g.main(["--check", "--root", root]) == 0
+
+
+def test_block_emits_array_length_constants():
+    _, out = _build_block()
+    assert "#define GPU_ABI_BLK_CASCADES_LEN 2" in out["glsl"]
+    assert "GPU_ABI_BLK_M_LEN" not in out["glsl"]   # mat4 / vec4 members are not arrays
+
+
+def test_terrain_cascade_bound_derives_from_the_generated_array_length():
+    path = os.path.join(ROOT, "shaders", "vulkan", "include", "terrain_frame_vk.glsl")
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    assert "#define MC2_VK_SHADOW_CSM_MAX GPU_ABI_TERRAINFRAMEUBO_CSMCASCADEMATRICES_LEN" in text
