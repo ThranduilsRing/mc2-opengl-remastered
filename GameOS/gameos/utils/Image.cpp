@@ -434,7 +434,7 @@ bool Image::loadTGA(FILE* file)
 		size_t fpos = ftell(file);
 		fseek(file, 0, SEEK_END);
 		size_t fsize = ftell(file) - fpos;
-		fseek(file, fpos, SEEK_SET);
+		fseek(file, static_cast<long>(fpos), SEEK_SET);
 
 		readPixels = new unsigned char[fsize];
 		fread(readPixels, fsize, 1, file);
