@@ -93,7 +93,7 @@ ChainOf<Note*>*
 	Note *note;
 	ChainOf<Note*>* chain = new ChainOf<Note*>(NULL);
 	Check_Object(chain);
-	int len = strlen(entryname);
+	int len = static_cast<int>(strlen(entryname));
 	while ((note = notes.ReadAndNext()) != NULL)
 	{
 		Check_Object(note);

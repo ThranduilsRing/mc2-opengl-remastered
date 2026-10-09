@@ -283,11 +283,8 @@ bool
 	Check_Object(&points);
 
 	//
-	//-----------------
-	// Compute the sums
-	//-----------------
 	//
-	unsigned count = points.GetLength();
+	unsigned count = static_cast<unsigned int>(points.GetLength());
 	Verify(count > 1);
 	Point3D sum = Point3D::Identity;
 	Scalar xx = 0.0f;

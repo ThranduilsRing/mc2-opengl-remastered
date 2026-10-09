@@ -487,7 +487,7 @@ void
 	//
 	else
 	{
-		MemoryStream stream(const_cast<char*>(contents+3), strlen(contents)-3);
+		MemoryStream stream(const_cast<char*>(contents+3), static_cast<DWORD>(strlen(contents)-3));
 		NotationFile *parent_file = m_page->GetNotationFile();
 		Check_Object(parent_file);
 		value->m_fileDependencies.AddDependencies(
