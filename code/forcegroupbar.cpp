@@ -21,6 +21,7 @@ ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
 #include"gamecam.h"   // Camera::projectForScreenXY for the overview icon overlay
 #include"warrior.h"   // pilot order state for the squad status indicator
 #include"tacordr.h"
+#include "mc2_dialog.h"
 
 // Squad status: one short word for a mech's current activity, and a rank so a
 // squad card can show the highest-priority member status.
@@ -919,7 +920,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 						while (!fileThere)
 						{
 							openFailed = true;
-							EnterWindowMode();
+							if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 							char data[2048];
 							char msg[1024];
@@ -929,7 +930,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 							cLoadString(IDS_MC2_CDMISSING,msg,1023);
 							cLoadString(IDS_MC2_MISSING_TITLE,title,255);
 							sprintf(data,msg1,(const char*)path,msg);
-							DWORD result = MessageBox(NULL,data,title,MB_OKCANCEL | MB_ICONWARNING);
+							DWORD result = mc2MessageBox(data,title,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 							if (result == IDCANCEL)
 							{
 								ExitGameOS();

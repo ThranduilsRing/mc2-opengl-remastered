@@ -54,7 +54,7 @@ import os
 import sys
 import threading
 import time
-from typing import List, Optional, Set, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 Point = Tuple[int, int]
 
@@ -131,12 +131,55 @@ def set_cursor_pos(pos: Point) -> bool:
         return False
 
 
-def unclip_cursor() -> bool:
-    """ClipCursor(NULL) -- release any clamp rectangle the game installed."""
+def window_rects_for_pids(pids: Iterable[int]) -> List[Tuple[int, int, int, int]]:
+    """Screen rectangles (l,t,r,b) of the visible-or-parked top-level windows owned
+    by `pids`. Empty when there is no desktop or no such window."""
+    u = _user32()
+    wanted = {int(p) for p in pids}
+    if u is None or not wanted:
+        return []
+    rects: List[Tuple[int, int, int, int]] = []
+    enum_proc_t = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+
+    def _each(hwnd, _lparam):
+        pid = ctypes.c_ulong(0)
+        u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value in wanted:
+            r = _RECT()
+            if u.GetWindowRect(hwnd, ctypes.byref(r)):
+                rects.append((int(r.left), int(r.top), int(r.right), int(r.bottom)))
+        return 1
+
+    try:
+        u.EnumWindows(enum_proc_t(_each), 0)
+    except Exception:
+        return []
+    return rects
+
+
+def _rects_overlap(a: Tuple[int, int, int, int], b: Tuple[int, int, int, int]) -> bool:
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def unclip_cursor(owner_pids: Optional[Iterable[int]] = None, *, force: bool = False) -> bool:
+    """ClipCursor(NULL), but only for a clamp that lies on a window of `owner_pids`.
+
+    A bare ClipCursor(NULL) also drops a clamp another application legitimately
+    holds (a game the user is playing), so the default is to release nothing:
+    the active clip must be smaller than the virtual desktop AND overlap a window
+    owned by one of `owner_pids` (our game child). `force=True` is the old
+    unconditional release, for a caller that owns the whole session.
+    """
     u = _user32()
     if u is None:
         return False
     try:
+        if not force:
+            clip = detect_foreign_clip()
+            if clip is None or not owner_pids:
+                return False
+            if not any(_rects_overlap(clip, w) for w in window_rects_for_pids(owner_pids)):
+                return False
         return bool(u.ClipCursor(None))
     except Exception:
         return False
@@ -289,10 +332,17 @@ class CursorGuard:
         # Set when our restores are observed to have no effect -- i.e. some other
         # process is physically holding the pointer and we cannot win.
         self.held_by_other = False
+        # Pids of the game child(ren) this guard defends; only a clamp on one of
+        # their windows is released (see unclip_cursor).
+        self.owner_pids: Set[int] = set()
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._atexit_registered = False
         self._t0 = 0.0
+
+    def set_owner_pid(self, pid: int) -> None:
+        """Register the game child's pid so its clamp can be released."""
+        self.owner_pids.add(int(pid))
 
     # -- lifecycle ---------------------------------------------------------
     def start(self) -> "CursorGuard":
@@ -302,7 +352,6 @@ class CursorGuard:
         # If a foreign process has the cursor clipped, the position we are about
         # to adopt as "the user's" may be a position they cannot currently leave.
         self.preexisting_clip = detect_foreign_clip()
-        unclip_cursor()
 
         pos = get_cursor_pos()
         if pos is None:
@@ -327,8 +376,8 @@ class CursorGuard:
         # process.
         if self.preexisting_clip is not None:
             _warn(f"WARNING: cursor was ALREADY CLIPPED to {self.preexisting_clip} "
-                  f"by another process at guard start; released it with "
-                  f"ClipCursor(NULL).")
+                  f"by another process at guard start; left in place (it is not "
+                  f"this run's window).")
         # Anything running now cannot be our child -- runner.py starts the guard
         # before Popen. We only report; killing a foreign lane's game is never
         # this guard's call.
@@ -366,7 +415,7 @@ class CursorGuard:
     def _restore(self) -> None:
         """Release any clamp and put the pointer back on the anchor. Idempotent."""
         try:
-            unclip_cursor()
+            unclip_cursor(self.owner_pids)
             if self.anchor is not None:
                 set_cursor_pos(self.anchor)
         except Exception:
@@ -406,7 +455,7 @@ class CursorGuard:
             try:
                 # Defeat the clamp every tick: the game may (re)install a
                 # ClipCursor rect at any point during load or play.
-                if unclip_cursor():
+                if unclip_cursor(self.owner_pids):
                     self.unclips += 1
                 pos = get_cursor_pos()
                 if pos is not None and self.anchor is not None:
@@ -634,6 +683,4 @@ def restore_parked_cursor() -> bool:
     global _PARK_ORIGIN_SAVED
     if not _PARK_ORIGIN_SAVED or _PARK_ORIGIN is None:
         return False
-    ok = set_cursor_pos(_PARK_ORIGIN)
-    unclip_cursor()
-    return ok
+    return set_cursor_pos(_PARK_ORIGIN)

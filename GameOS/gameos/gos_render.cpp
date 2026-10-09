@@ -45,6 +45,34 @@ struct RenderContext {
    RenderWindow* render_window_;
 };
 
+#ifdef PLATFORM_WINDOWS
+// True when the active clip rectangle is a real clip (smaller than the virtual
+// desktop) and overlaps this window -- i.e. a clip this process, or an earlier
+// unguarded build of it, left on the pointer.
+static bool ourWindowHoldsClip(SDL_Window* window)
+{
+    if (!window) {
+        return false;
+    }
+    SDL_SysWMinfo wm_info;
+    SDL_VERSION(&wm_info.version);
+    if (SDL_GetWindowWMInfo(window, &wm_info) != SDL_TRUE ||
+        wm_info.subsystem != SDL_SYSWM_WINDOWS || !wm_info.info.win.window) {
+        return false;
+    }
+    RECT clip, win, overlap;
+    if (!GetClipCursor(&clip) || !GetWindowRect(wm_info.info.win.window, &win)) {
+        return false;
+    }
+    const long desktopW = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    const long desktopH = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    if ((clip.right - clip.left) >= desktopW && (clip.bottom - clip.top) >= desktopH) {
+        return false;   // no clip is active
+    }
+    return IntersectRect(&overlap, &clip, &win) != 0;
+}
+#endif
+
 static void apply_mouse_grab(SDL_Window* window, bool grabbed)
 {
     // CURSOR-GRAB-FIX-1 -- THE CHOKEPOINT.
@@ -79,7 +107,9 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     }
 
 #ifdef PLATFORM_WINDOWS
-    if (!grabbed) {
+    // Release only a clip that lies on OUR window: ClipCursor(NULL) would also drop
+    // a clip another application (a game the user is playing) legitimately holds.
+    if (!grabbed && ourWindowHoldsClip(window)) {
         if (!ClipCursor(NULL)) {
             log_error("ClipCursor release failed: %lu\n", (unsigned long)GetLastError());
         }

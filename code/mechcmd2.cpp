@@ -58,6 +58,7 @@
 
 #ifndef GAMELOG_H
 #include"gamelog.h"
+#include "mc2_dialog.h"
 #endif
 
 #ifndef LOGISTICSDIALOG_H
@@ -949,7 +950,7 @@ void __stdcall InitializeGameEngine()
    		char caption[1024];
    		cLoadString(IDS_SWAPFILE_CAPTION,caption,1023);
 
-   		MessageBox(NULL,msg,caption,MB_OK | MB_ICONWARNING);
+   		mc2MessageBox(msg,caption,MB_OK | MB_ICONWARNING,IDOK);
 
    		gos_TerminateApplication();
    		return;
@@ -982,7 +983,7 @@ void __stdcall InitializeGameEngine()
 		char msg[2048];
 		cLoadString(IDS_GAME_HDSPACE_ERROR,title,255);
 		cLoadString(IDS_GAME_HDSPACE_MSG,msg,2047);
-		DWORD result = MessageBox(NULL,msg,title,MB_OKCANCEL | MB_ICONWARNING);
+		DWORD result = mc2MessageBox(msg,title,MB_OKCANCEL | MB_ICONWARNING,IDOK);
 		if (result == IDCANCEL)
 			ExitGameOS();
 	}
@@ -1006,7 +1007,7 @@ void __stdcall InitializeGameEngine()
 			char msg[2048];
 			cLoadString(IDS_GAME_ERROR,title,255);
 			cLoadString(IDS_GAME_VOODOO3,msg,2047);
-			MessageBox(NULL,msg,title,MB_OK | MB_ICONWARNING);
+			mc2MessageBox(msg,title,MB_OK | MB_ICONWARNING,IDOK);
 			ExitGameOS();
 		}
 	}
@@ -1925,7 +1926,7 @@ void __stdcall InitializeGameEngine()
 		cLoadString(IDS_SNIFFER_INIT_MSG,msgBuffer,4095);
 		cLoadString(IDS_SNIFFER_INIT_TITLE,msgTitle,1023);
 
-		MessageBox(NULL,msgBuffer,msgTitle,MB_OK);
+		mc2MessageBox(msgBuffer,msgTitle,MB_OK,IDOK);
 
 		//-------------------------------------------------------------
 		// Find the CDPath in the registry and save it off so I can
@@ -2656,7 +2657,7 @@ void __stdcall DoGameLogic()
 				cLoadString(IDS_SNIFFER_DONE_MSG,msgBuffer,4095);
 				cLoadString(IDS_SNIFFER_INIT_TITLE,msgTitle,1023);
 
-				MessageBox(NULL,msgBuffer,msgTitle,MB_OK);
+				mc2MessageBox(msgBuffer,msgTitle,MB_OK,IDOK);
 
 				gos_TerminateApplication();
 			}

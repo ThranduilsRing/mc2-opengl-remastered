@@ -38,6 +38,7 @@
 #include<string.h>
 #include"platform_str.h"
 #include<gameos.hpp>
+#include "mc2_dialog.h"
 
 MemoryPtr 		LZPacketBuffer = NULL;
 unsigned int	LZPacketBufferSize = 512000;
@@ -171,11 +172,11 @@ long FastFile::open (const char* fName)
 			while (handle == NULL)
 			{
 				openFailed = true;
-				EnterWindowMode();
+				if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 				char data[2048];
 				sprintf(data,FileMissingString,fileName,CDMissingString);
-				DWORD result1 = MessageBox(NULL,data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING);
+				DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 				if (result1 == IDCANCEL)
 				{
 					ExitGameOS();
@@ -508,11 +509,11 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 					while (result != files[fastFileHandle].pfe->size)
 					{
 						openFailed = true;
-						EnterWindowMode();
+						if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 						char data[2048];
 						sprintf(data,FileMissingString,fileName,CDMissingString);
-						DWORD result1 = MessageBox(NULL,data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING);
+						DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 						if (result1 == IDCANCEL)
 						{
 							ExitGameOS();
@@ -723,11 +724,11 @@ long FastFile::readFastRAW (DWORD fastFileHandle, void *bfr, DWORD size)
 			while (result != files[fastFileHandle].pfe->size)
 			{
 				openFailed = true;
-				EnterWindowMode();
+				if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 				char data[2048];
 				sprintf(data,FileMissingString,fileName,CDMissingString);
-				DWORD result1 = MessageBox(NULL,data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING);
+				DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 				if (result1 == IDCANCEL)
 				{
 					ExitGameOS();

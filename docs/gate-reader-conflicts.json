@@ -130,58 +130,6 @@
    ]
   },
   {
-   "all_readers": [],
-   "gate": "MC2_TERRAIN_LIGHTING_V1",
-   "in_conflict": false,
-   "note": "",
-   "sites": [
-    {
-     "actual": "",
-     "claim": "GameOS/gameos/gameos_graphics.cpp:7175",
-     "class": "",
-     "verdict": "not-found"
-    },
-    {
-     "actual": "",
-     "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2872",
-     "class": "",
-     "verdict": "not-found"
-    },
-    {
-     "actual": "",
-     "claim": "GuiRuntime/GraphicsOptionsWindow.cpp:613",
-     "class": "",
-     "verdict": "not-found"
-    }
-   ]
-  },
-  {
-   "all_readers": [],
-   "gate": "MC2_TERRAIN_LIGHTING_V2",
-   "in_conflict": false,
-   "note": "",
-   "sites": [
-    {
-     "actual": "",
-     "claim": "GameOS/gameos/gameos_graphics.cpp:7188",
-     "class": "",
-     "verdict": "not-found"
-    },
-    {
-     "actual": "",
-     "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:2873",
-     "class": "",
-     "verdict": "not-found"
-    },
-    {
-     "actual": "",
-     "claim": "GuiRuntime/GraphicsOptionsWindow.cpp:643",
-     "class": "",
-     "verdict": "not-found"
-    }
-   ]
-  },
-  {
    "all_readers": [
     "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 (Lead1)",
     "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 (Tri(inherit))"
@@ -4527,7 +4475,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "off": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4548,7 +4496,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "off": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4569,7 +4517,7 @@
      "outcomes": {
       "off": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4590,7 +4538,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4611,7 +4559,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4632,7 +4580,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4653,7 +4601,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:297",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:144"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
       ],
       "on": [
        "GameOS/gameos/vulkan_color_prop_island.cpp:159"
@@ -4702,7 +4650,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vk_shared_gbuffer_gate.h",
      "inverted": false,
-     "line": 144,
+     "line": 146,
      "vector": [
       "inh",
       "inh",
@@ -5283,7 +5231,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "off": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5304,7 +5252,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "off": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5325,7 +5273,7 @@
      "outcomes": {
       "off": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5346,7 +5294,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5367,7 +5315,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5388,7 +5336,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5409,7 +5357,7 @@
      "outcomes": {
       "inh": [
        "GameOS/gameos/engine_present_vk.cpp:299",
-       "GameOS/gameos/vk_shared_gbuffer_gate.h:146"
+       "GameOS/gameos/vk_shared_gbuffer_gate.h:148"
       ],
       "on": [
        "GameOS/gameos/vulkan_water_island.cpp:181"
@@ -5458,7 +5406,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vk_shared_gbuffer_gate.h",
      "inverted": false,
-     "line": 146,
+     "line": 148,
      "vector": [
       "inh",
       "inh",
@@ -5613,7 +5561,7 @@
   "editor",
   "gui"
  ],
- "source": "commit ca6975f5b",
+ "source": "commit 9db2a8a19",
  "totals": {
   "conflict_gates": 31,
   "gates_with_literal": 1135,

@@ -357,6 +357,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
                              cwd=str(exe.parent), env=env,
                              show_window=show_window, small_window=False)
         _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
+        _guard.set_owner_pid(proc.pid)
 
         # Poll for all expected PNGs, or process exit, or timeout. Re-park the
         # cursor every iteration so it stays pinned center through the ENTIRE sweep

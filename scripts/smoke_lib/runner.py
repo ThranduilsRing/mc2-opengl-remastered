@@ -248,6 +248,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         proc = nofocus.spawn(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              env=env, text=True, bufsize=1, cwd=exe_dir,
                              show_window=show_window, small_window=False)
+        cursor_guard.set_owner_pid(proc.pid)
     except BaseException:
         cursor_guard.stop()
         raise

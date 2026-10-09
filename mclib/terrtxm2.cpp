@@ -53,6 +53,7 @@
 #include<sys/stat.h>
 #include<cstdio>
 #include<cstdint>		// BURNIN-DISK-JPEG: uint8_t for stb_image pixel buffer
+#include "mc2_dialog.h"
 
 #define COLOR_MAP_HEAP_SIZE				419430400
 #define COLOR_TXM_HEAP_SIZE				16384
@@ -1226,7 +1227,7 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	{
 		char msg[2048];
 		sprintf(msg,"Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!",fileName);
-		MessageBox( NULL, msg, NULL, MBOK );
+		mc2MessageBox( msg, NULL, MBOK, IDOK );
 		return;
 	}
 
@@ -1257,7 +1258,7 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	{
 		char msg[2048];
 		sprintf(msg,"Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!",fileName);
-		MessageBox( NULL, msg, NULL, MBOK );
+		mc2MessageBox( msg, NULL, MBOK, IDOK );
 		return;
 	}
 

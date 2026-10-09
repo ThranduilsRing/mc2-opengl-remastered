@@ -339,7 +339,7 @@
      "idiom": "NonEmpty"
     },
     {
-     "at": "mclib/file.cpp:727",
+     "at": "mclib/file.cpp:728",
      "idiom": "NonEmpty(inv)"
     },
     {
@@ -2635,7 +2635,7 @@
    "doc": "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead.",
    "readers": [
     {
-     "at": "mclib/terrtxm2.cpp:103",
+     "at": "mclib/terrtxm2.cpp:104",
      "idiom": "Token/State"
     }
    ],
@@ -3482,7 +3482,7 @@
    "doc": "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp).",
    "readers": [
     {
-     "at": "mclib/terrtxm2.cpp:203",
+     "at": "mclib/terrtxm2.cpp:204",
      "idiom": "Lead0Kill"
     }
    ],
@@ -4252,7 +4252,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1217",
+     "at": "GameOS/gameos/gameosmain.cpp:1218",
      "idiom": "Presence"
     },
     {
@@ -4290,7 +4290,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "code/mechcmd2.cpp:1061",
+     "at": "code/mechcmd2.cpp:1062",
      "idiom": "Lead0"
     },
     {
@@ -4510,7 +4510,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1337",
+     "at": "GameOS/gameos/gameosmain.cpp:1338",
      "idiom": "Lead0Kill(inv)"
     },
     {
@@ -4624,7 +4624,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1880",
+     "at": "GameOS/gameos/gameosmain.cpp:1881",
      "idiom": "Lead1"
     }
    ],
@@ -4706,7 +4706,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1891",
+     "at": "GameOS/gameos/gameosmain.cpp:1892",
      "idiom": "Lead1"
     }
    ],
@@ -4738,7 +4738,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1934",
+     "at": "GameOS/gameos/gameosmain.cpp:1935",
      "idiom": "Lead1"
     }
    ],
@@ -5680,7 +5680,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/ffile.cpp:538",
+     "at": "mclib/ffile.cpp:539",
      "idiom": "Presence"
     }
    ],
@@ -6036,7 +6036,7 @@
    "doc": "MC2_FPS_CAP: max FPS override.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1775",
+     "at": "GameOS/gameos/gameosmain.cpp:1776",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -6064,11 +6064,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2724",
+     "at": "GameOS/gameos/gameosmain.cpp:2725",
      "idiom": "Presence"
     },
     {
-     "at": "code/mechcmd2.cpp:2413",
+     "at": "code/mechcmd2.cpp:2414",
      "idiom": "Presence"
     }
    ],
@@ -6709,7 +6709,7 @@
    "doc": "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary).",
    "readers": [
     {
-     "at": "code/mechcmd2.cpp:1744",
+     "at": "code/mechcmd2.cpp:1745",
      "idiom": "Presence"
     }
    ],
@@ -7046,15 +7046,15 @@
    "doc": "Install GL debug callback only when MC2_GL_DEBUG is set.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1698",
+     "at": "GameOS/gameos/gameosmain.cpp:1699",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:375",
+     "at": "GameOS/gameos/gos_render.cpp:405",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:696",
+     "at": "GameOS/gameos/gos_render.cpp:726",
      "idiom": "Presence"
     },
     {
@@ -7116,7 +7116,7 @@
    "doc": "GL_ERROR is default-on; the env var suppresses it.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1219",
+     "at": "GameOS/gameos/gameosmain.cpp:1220",
      "idiom": "Presence(inv)"
     },
     {
@@ -7414,7 +7414,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1263",
+     "at": "GameOS/gameos/gameosmain.cpp:1264",
      "idiom": "Lead0P"
     },
     {
@@ -7861,7 +7861,7 @@
    "doc": "Default ON; MC2_GPU_CULL_SUBSTRATE=0 opts out.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1261",
+     "at": "GameOS/gameos/gameosmain.cpp:1262",
      "idiom": "Lead0Kill"
     },
     {
@@ -8372,7 +8372,7 @@
    "doc": "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1231",
+     "at": "GameOS/gameos/gameosmain.cpp:1232",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -8848,7 +8848,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2695",
+     "at": "GameOS/gameos/gameosmain.cpp:2696",
      "idiom": "Presence"
     },
     {
@@ -8884,7 +8884,7 @@
      "idiom": "Num(atoi,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1442",
+     "at": "GameOS/gameos/gameosmain.cpp:1443",
      "idiom": "Num(atoi,guarded)"
     }
    ],
@@ -9630,7 +9630,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "tools/mc2_launcher/mc2_launcher.cpp:2208",
+     "at": "tools/mc2_launcher/mc2_launcher.cpp:2211",
      "idiom": "Num(num,raw)"
     }
    ],
@@ -9738,7 +9738,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1092",
+     "at": "GameOS/gameos/gameosmain.cpp:1093",
      "idiom": "Presence"
     }
    ],
@@ -9766,7 +9766,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1093",
+     "at": "GameOS/gameos/gameosmain.cpp:1094",
      "idiom": "Lead0Kill(inv)"
     }
    ],
@@ -9774,7 +9774,9 @@
    "registered": false,
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
+   "harnessValues": [
+    "0"
+   ],
    "numericRange": null,
    "readerDefault": true,
    "defaultDisagreement": "",
@@ -11545,7 +11547,7 @@
    "doc": "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see MC2_LOAD_RACE_TRACE).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2369",
+     "at": "GameOS/gameos/gameosmain.cpp:2370",
      "idiom": "Presence"
     }
    ],
@@ -11597,7 +11599,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2305",
+     "at": "GameOS/gameos/gameosmain.cpp:2306",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -11627,7 +11629,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1143",
+     "at": "GameOS/gameos/gameosmain.cpp:1144",
      "idiom": "Presence"
     },
     {
@@ -11719,7 +11721,7 @@
    "doc": "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics. =1: level-1 stdout tags ([mod]/[mod-miss]) plus a shutdown summary line '[file-resolve] opens=N misses=M'. =2: level 1 plus a JSONL resolve trace (one record per resolved open: layer in {mod:<id>, base-loose, base-strip, fastfile, cd, MISS}) written to MC2_RESOLVE_TRACE_FILE; fileExists() full-ladder misses also emit MISS records (probe API \u2014 the benign-probe baseline of scripts/check-file-resolve-miss.py absorbs them).",
    "readers": [
     {
-     "at": "mclib/file.cpp:684",
+     "at": "mclib/file.cpp:685",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -11893,15 +11895,15 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/file.cpp:1124",
+     "at": "mclib/file.cpp:1125",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/file.cpp:1132",
+     "at": "mclib/file.cpp:1133",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/file.cpp:1178",
+     "at": "mclib/file.cpp:1179",
      "idiom": "Presence"
     },
     {
@@ -12305,7 +12307,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1323",
+     "at": "GameOS/gameos/gameosmain.cpp:1324",
      "idiom": "Lead0Kill"
     },
     {
@@ -12349,7 +12351,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1325",
+     "at": "GameOS/gameos/gameosmain.cpp:1326",
      "idiom": "Lead0Kill"
     },
     {
@@ -14094,11 +14096,11 @@
    "doc": "Stock campaign: no active mod.",
    "readers": [
     {
-     "at": "mclib/file.cpp:732",
+     "at": "mclib/file.cpp:733",
      "idiom": "NonEmpty"
     },
     {
-     "at": "mclib/file.cpp:782",
+     "at": "mclib/file.cpp:783",
      "idiom": "Presence"
     }
    ],
@@ -14437,7 +14439,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1091",
+     "at": "GameOS/gameos/gameosmain.cpp:1092",
      "idiom": "Presence"
     }
    ],
@@ -14521,7 +14523,7 @@
    "doc": "Optional startup selftest \u2014 hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1199",
+     "at": "GameOS/gameos/gameosmain.cpp:1200",
      "idiom": "Exact1"
     }
    ],
@@ -14900,7 +14902,7 @@
    "doc": "Hide the OS cursor.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:576",
+     "at": "GameOS/gameos/gos_render.cpp:606",
      "idiom": "Presence"
     },
     {
@@ -16163,7 +16165,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2532",
+     "at": "GameOS/gameos/gameosmain.cpp:2533",
      "idiom": "Presence"
     }
    ],
@@ -16910,7 +16912,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/file.cpp:442",
+     "at": "mclib/file.cpp:443",
      "idiom": "Presence(inv)"
     }
    ],
@@ -17491,7 +17493,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1955",
+     "at": "GameOS/gameos/gameosmain.cpp:1956",
      "idiom": "Lead1"
     },
     {
@@ -17523,7 +17525,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1221",
+     "at": "GameOS/gameos/gameosmain.cpp:1222",
      "idiom": "Presence"
     },
     {
@@ -17585,7 +17587,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1222",
+     "at": "GameOS/gameos/gameosmain.cpp:1223",
      "idiom": "Presence"
     },
     {
@@ -17717,7 +17719,7 @@
    "doc": "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative paths resolve against the game CWD = exe dir).",
    "readers": [
     {
-     "at": "mclib/file.cpp:703",
+     "at": "mclib/file.cpp:704",
      "idiom": "NonEmpty"
     }
    ],
@@ -17775,11 +17777,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:528",
+     "at": "GameOS/gameos/gos_render.cpp:558",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:562",
+     "at": "GameOS/gameos/gos_render.cpp:592",
      "idiom": "Presence"
     }
    ],
@@ -17807,7 +17809,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1265",
+     "at": "GameOS/gameos/gameosmain.cpp:1266",
      "idiom": "Presence"
     },
     {
@@ -17897,7 +17899,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mechcmd2.cpp:1065",
+     "at": "code/mechcmd2.cpp:1066",
      "idiom": "Num(strtoul,guarded)"
     },
     {
@@ -18005,15 +18007,15 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2228",
-     "idiom": "Num(atol,raw)"
-    },
-    {
      "at": "GameOS/gameos/gameosmain.cpp:2229",
      "idiom": "Num(atol,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2306",
+     "at": "GameOS/gameos/gameosmain.cpp:2230",
+     "idiom": "Num(atol,raw)"
+    },
+    {
+     "at": "GameOS/gameos/gameosmain.cpp:2307",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -18044,7 +18046,7 @@
    "doc": "Oracle: deterministic backbuffer screenshot at a target frame.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2227",
+     "at": "GameOS/gameos/gameosmain.cpp:2228",
      "idiom": "Presence"
     }
    ],
@@ -18076,7 +18078,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2242",
+     "at": "GameOS/gameos/gameosmain.cpp:2243",
      "idiom": "Token/State"
     }
    ],
@@ -18198,7 +18200,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/terrtxm2.cpp:189",
+     "at": "mclib/terrtxm2.cpp:190",
      "idiom": "Presence(inv)"
     }
    ],
@@ -18228,7 +18230,7 @@
      "idiom": "Exact1"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1264",
+     "at": "GameOS/gameos/gameosmain.cpp:1265",
      "idiom": "Presence"
     },
     {
@@ -19870,7 +19872,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1220",
+     "at": "GameOS/gameos/gameosmain.cpp:1221",
      "idiom": "Presence"
     },
     {
@@ -21197,7 +21199,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1365",
+     "at": "GameOS/gameos/gameosmain.cpp:1366",
      "idiom": "Presence"
     }
    ],
@@ -22474,7 +22476,7 @@
    "doc": "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1259",
+     "at": "GameOS/gameos/gameosmain.cpp:1260",
      "idiom": "Std(def=on)"
     },
     {
@@ -22508,7 +22510,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1257",
+     "at": "GameOS/gameos/gameosmain.cpp:1258",
      "idiom": "Std(def=off)"
     },
     {
@@ -24045,7 +24047,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/terrtxm2.cpp:190",
+     "at": "mclib/terrtxm2.cpp:191",
      "idiom": "Lead0Kill"
     }
    ],
@@ -24127,7 +24129,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/terrtxm2.cpp:192",
+     "at": "mclib/terrtxm2.cpp:193",
      "idiom": "Lead0Kill"
     }
    ],
@@ -26386,7 +26388,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1216",
+     "at": "GameOS/gameos/gameosmain.cpp:1217",
      "idiom": "Presence"
     },
     {
@@ -27578,7 +27580,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1223",
+     "at": "GameOS/gameos/gameosmain.cpp:1224",
      "idiom": "Presence"
     }
    ],
@@ -27604,7 +27606,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1224",
+     "at": "GameOS/gameos/gameosmain.cpp:1225",
      "idiom": "Presence"
     }
    ],
@@ -28480,7 +28482,7 @@
    "doc": "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees) instead of the pre-composite scene FBO, so GL captures are comparable with VK captures (which read the presented image).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2500",
+     "at": "GameOS/gameos/gameosmain.cpp:2501",
      "idiom": "Lead0"
     }
    ],
@@ -29717,7 +29719,7 @@
      "idiom": "Num(strtoul,guarded)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2594",
+     "at": "GameOS/gameos/gameosmain.cpp:2595",
      "idiom": "Num(strtoul,raw)"
     }
    ],
@@ -29747,7 +29749,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2603",
+     "at": "GameOS/gameos/gameosmain.cpp:2604",
      "idiom": "Presence"
     },
     {
@@ -29915,7 +29917,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2615",
+     "at": "GameOS/gameos/gameosmain.cpp:2616",
      "idiom": "Presence"
     }
    ],
@@ -31339,7 +31341,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:628",
+     "at": "GameOS/gameos/gos_render.cpp:658",
      "idiom": "Lead1"
     },
     {
@@ -32595,7 +32597,7 @@
      "idiom": "Num(atoi,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1441",
+     "at": "GameOS/gameos/gameosmain.cpp:1442",
      "idiom": "Num(atoi,guarded)"
     }
    ],
@@ -32643,19 +32645,19 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1546",
+     "at": "GameOS/gameos/gameosmain.cpp:1547",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:481",
+     "at": "GameOS/gameos/gos_render.cpp:511",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:531",
+     "at": "GameOS/gameos/gos_render.cpp:561",
      "idiom": "NonReader"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:532",
+     "at": "GameOS/gameos/gos_render.cpp:562",
      "idiom": "NonReader"
     }
    ],
@@ -32711,7 +32713,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:482",
+     "at": "GameOS/gameos/gos_render.cpp:512",
      "idiom": "Lead0Kill"
     }
    ],

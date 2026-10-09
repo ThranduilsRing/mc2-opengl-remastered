@@ -2164,6 +2164,9 @@ static void DoLaunch(HWND hwnd) {
     // by the launcher and runs the game directly instead of re-spawning us.
     SetEnvironmentVariableA("MC2_LAUNCHED", "1");
 
+    // lpEnvironment is NULL, so the game inherits this process's environment as
+    // modified above, including MC2_NO_CURSOR_GRAB / MC2_WINDOW_OFFSCREEN when the
+    // launcher itself was started with them.
     STARTUPINFOA si = {}; si.cb = sizeof(si);
     PROCESS_INFORMATION pi = {};
     if (!CreateProcessA(mc2Path, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {

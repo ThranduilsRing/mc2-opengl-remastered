@@ -1047,7 +1047,8 @@ int main(int argc, char** argv)
         const bool automation =
             std::getenv("MC2_NO_LAUNCHER")     || std::getenv("MC2_SMOKE_SEED") ||
             std::getenv("MC2_SMOKE_MODE")      || std::getenv("MC2_HEARTBEAT")  ||
-            std::getenv("MC2_DEBUG_STATE_DUMP") || std::getenv("MC2_LOG");
+            std::getenv("MC2_DEBUG_STATE_DUMP") || std::getenv("MC2_LOG") ||
+            gos_WindowOffscreenRequested() || gos_CursorControlSuppressed();
         if (!fromLauncher && !automation) {
             char exePath[MAX_PATH] = {0};
             DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);

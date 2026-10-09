@@ -172,6 +172,7 @@ void StatisticFormat(const char*) {}
 void AddDebuggerMenuItem(const char*, bool(*)(), void(*)(), bool(*)(), DWORD(*)(const char*, DWORD)) {}
 void EnterFullScreenMode() {}
 void EnterWindowMode() {}
+bool gos_NoUserPresentRequested() { return false; }
 void ExitGameOS() {}
 
 // STOP/ErrorHandler family (release no-op; would abort in the engine).

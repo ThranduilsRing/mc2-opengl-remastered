@@ -49,6 +49,7 @@
 
 //#ifndef _MBCS
 #include<gameos.hpp>
+#include "mc2_dialog.h"
 //#else
 //#include<assert.h>
 //#define gosASSERT assert
@@ -1226,11 +1227,11 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 							return 2;
 						}
 
-						EnterWindowMode();
+						if (!gos_NoUserPresentRequested()) EnterWindowMode();
 		
 						char data[2048];
 						sprintf(data,FileMissingString,fileName,CDMissingString);
-						DWORD result1 = MessageBox(NULL,data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING);
+						DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 						if (result1 == IDCANCEL)
 						{
 							ExitGameOS();

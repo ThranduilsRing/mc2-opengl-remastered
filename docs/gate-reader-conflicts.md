@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit ca6975f5b.
+Scanned: commit 9db2a8a19.
 
 | Measure | Count |
 |---|---|
@@ -33,12 +33,6 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | MC2_DISABLE_GOSFX | yes | `mclib/mlr/mlr_gate.cpp:37` | confirmed | `mclib/mlr/mlr_gate.cpp:37` | Lead1 |  |
 |  |  | `GameOS/gameos/gameosmain.cpp:1340` | corrected | `GameOS/gameos/gameosmain.cpp:1337` | Lead0Kill |  |
 |  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | corrected | `GuiRuntime/GraphicsOptionsWindow.cpp:1383` | Presence |  |
-| MC2_TERRAIN_LIGHTING_V1 | **no** | `GameOS/gameos/gameos_graphics.cpp:7175` | not-found | `` |  |  |
-|  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:2872` | not-found | `` |  |  |
-|  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:613` | not-found | `` |  |  |
-| MC2_TERRAIN_LIGHTING_V2 | **no** | `GameOS/gameos/gameos_graphics.cpp:7188` | not-found | `` |  |  |
-|  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:2873` | not-found | `` |  |  |
-|  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:643` | not-found | `` |  |  |
 | MC2_VK_TERRAIN_CSM | yes | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1858` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 |  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1900` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 | MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | confirmed | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | Num(atoi,raw) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
@@ -71,8 +65,8 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | `mclib/bdactor.cpp:5566` Lead0Kill<br>`mclib/bdactor.cpp:5577` Custom[00000001]<br>`mclib/bdactor.cpp:5578` Custom[00000001] | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_STATIC_UPDATE_SKIP` | `GameOS/gameos/gameosmain.cpp:1259` Std(def=on)<br>`code/bldng.cpp:815` Lead0Kill<br>`code/terrobj.cpp:96` Std(def=on) | F: off vs on | yes (tools/gate_table.seed.json) | Std(unset=on) -- registry defaultOn=true [name implies a kill flag: check complements are intentional] | Lead0Kill x1: F on->off |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170` Lead0<br>`GameOS/gameos/terrain_material_lib.cpp:189` NonEmpty<br>`GameOS/gameos/terrain_material_lib.cpp:226` NonEmpty | Z: off vs on | yes (scripts/deploy_payload.py, tools/gate_table.seed.json) | Std(unset=off) -- registry defaultOn=false | Lead0 x1: F on->off<br>NonEmpty x2: Z on->off, F on->off |
-| `MC2_VK_PROP_DIRECT_CHAIN` | `GameOS/gameos/engine_present_vk.cpp:297` Tri(inherit)<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:144` Tri(inherit)<br>`GameOS/gameos/vulkan_color_prop_island.cpp:159` NonEmpty | U: inh vs off; E: inh vs off; Z: off vs on; F: inh vs on; X: inh vs on; X10: inh vs on; X25: inh vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tools/gate_table.seed.json) | Tri row: exact "1"/"0" wins, else inherit the umbrella gate (owner decision: which readers inherit) -- umbrella inheritance | n/a (owner decision) |
-| `MC2_VK_WATER_DIRECT_CHAIN` | `GameOS/gameos/engine_present_vk.cpp:299` Tri(inherit)<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:146` Tri(inherit)<br>`GameOS/gameos/vulkan_water_island.cpp:181` NonEmpty | U: inh vs off; E: inh vs off; Z: off vs on; F: inh vs on; X: inh vs on; X10: inh vs on; X25: inh vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tools/gate_table.seed.json) | Tri row: exact "1"/"0" wins, else inherit the umbrella gate (owner decision: which readers inherit) -- umbrella inheritance | n/a (owner decision) |
+| `MC2_VK_PROP_DIRECT_CHAIN` | `GameOS/gameos/engine_present_vk.cpp:297` Tri(inherit)<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:146` Tri(inherit)<br>`GameOS/gameos/vulkan_color_prop_island.cpp:159` NonEmpty | U: inh vs off; E: inh vs off; Z: off vs on; F: inh vs on; X: inh vs on; X10: inh vs on; X25: inh vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tools/gate_table.seed.json) | Tri row: exact "1"/"0" wins, else inherit the umbrella gate (owner decision: which readers inherit) -- umbrella inheritance | n/a (owner decision) |
+| `MC2_VK_WATER_DIRECT_CHAIN` | `GameOS/gameos/engine_present_vk.cpp:299` Tri(inherit)<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:148` Tri(inherit)<br>`GameOS/gameos/vulkan_water_island.cpp:181` NonEmpty | U: inh vs off; E: inh vs off; Z: off vs on; F: inh vs on; X: inh vs on; X10: inh vs on; X25: inh vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tools/gate_table.seed.json) | Tri row: exact "1"/"0" wins, else inherit the umbrella gate (owner decision: which readers inherit) -- umbrella inheritance | n/a (owner decision) |
 | `MC2_BOOT_TO_SCREEN` | `code/mechlopedia.cpp:319` Presence<br>`code/missionbegin.cpp:236` NonEmpty | E: off vs on | yes (scripts/mechbay_preview_harness.py, tools/gate_table.seed.json) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | NonEmpty x1: Z on->off, F on->off<br>Presence x1: E on->off, Z on->off, F on->off |
 | `MC2_DEBUG_RENDERER` | `GameOS/gameos/debug_renderer.cpp:41` Lead0P<br>`GuiRuntime/EditorInspector.cpp:1273` Lead0 | E: off vs on | yes (tests/smoke/matrices/viewmode.json, tools/gate_table.seed.json) | Std(unset=off) -- registry defaultOn=false | Lead0 x1: F on->off<br>Lead0P x1: E on->off, F on->off |
 | `MC2_DEV_SHELL` | `GameOS/gameos/gos_dev_shell.cpp:59` AtoiNZ<br>`code/missiongui.cpp:1211` Lead1 (inv) | X25: off vs on | yes (tools/debug_view_sweep.py, tools/dev_shell/mc2_cmd.py, +3) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | AtoiNZ x1: X off->on<br>Lead1 (inverted use) x1: X off->on, X25 off->on |
