@@ -681,7 +681,7 @@ static bool     s_spotlightReal_firstHitDraw     = false;
 #include "../../RenderCore/GpuBufferOwner.h"
 static const bool s_mechMaterialGpuEnabled = []() {
     const char* v = getenv("MC2_MATERIAL_GPU");
-    return v != nullptr && (v[0] != '0');
+    return v == nullptr || (v[0] != '0');
 }();
 static std::vector<RenderCore::MaterialGpu>        s_mechMaterialTable;
 static std::unordered_map<uint32_t, uint32_t>      s_mechHandleToMaterialIdx;

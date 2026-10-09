@@ -12316,14 +12316,14 @@
     },
     {
      "at": "GameOS/gameos/gos_mech_batcher.cpp:683",
-     "idiom": "Lead0P"
+     "idiom": "Lead0Kill"
     },
     {
      "at": "GameOS/gameos/gos_static_prop_batcher.cpp:813",
      "idiom": "Lead0Kill"
     }
    ],
-   "conflict": true,
+   "conflict": false,
    "registered": true,
    "registryDefault": true,
    "seedDefaultSource": "registry",
@@ -12332,7 +12332,7 @@
    ],
    "numericRange": null,
    "readerDefault": true,
-   "defaultDisagreement": "readers disagree on unset: off x1, on x4",
+   "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_MATERIAL_GPU",
    "retireVerdict": ""

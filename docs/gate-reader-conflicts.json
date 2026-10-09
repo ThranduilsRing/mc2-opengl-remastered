@@ -7,8 +7,8 @@
   "Exact1": 47,
   "Is01": 2,
   "Lead0": 175,
-  "Lead0Kill": 202,
-  "Lead0P": 64,
+  "Lead0Kill": 203,
+  "Lead0P": 63,
   "Lead1": 127,
   "NonEmpty": 42,
   "Num(atof+atoi,raw)": 1,
@@ -42,7 +42,6 @@
   "MC2_DISABLE_GOSFX",
   "MC2_FX_FORCE_SPAWN",
   "MC2_GPU_PARTICLES",
-  "MC2_MATERIAL_GPU",
   "MC2_MOD_DEPS",
   "MC2_RENDER_CONTRACT_ASSERT",
   "MC2_SHADER_HOT_RELOAD",
@@ -101,7 +100,7 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/gameosmain.cpp:1337 (Lead0Kill)",
+    "GameOS/gameos/gameosmain.cpp:1338 (Lead0Kill)",
     "GuiRuntime/GraphicsOptionsWindow.cpp:1383 (Presence)",
     "mclib/mlr/mlr_gate.cpp:37 (Lead1)"
    ],
@@ -116,7 +115,7 @@
      "verdict": "confirmed"
     },
     {
-     "actual": "GameOS/gameos/gameosmain.cpp:1337",
+     "actual": "GameOS/gameos/gameosmain.cpp:1338",
      "claim": "GameOS/gameos/gameosmain.cpp:1340",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -227,7 +226,7 @@
   {
    "all_readers": [
     "mclib/anim_override_registry.cpp:161 (NonEmpty)",
-    "mclib/file.cpp:727 (NonEmpty)",
+    "mclib/file.cpp:728 (NonEmpty)",
     "mclib/fx_def_registry.cpp:355 (NonEmpty)",
     "mclib/model_override_registry.cpp:203 (NonEmpty)"
    ],
@@ -236,7 +235,7 @@
    "note": "all readers agree (NonEmpty); the hazard is a re-read after _putenv_s, i.e. caching, not truthiness",
    "sites": [
     {
-     "actual": "mclib/file.cpp:727",
+     "actual": "mclib/file.cpp:728",
      "claim": "mclib/file.cpp:727",
      "class": "NonEmpty",
      "verdict": "confirmed"
@@ -938,7 +937,7 @@
      },
      "class": "Lead0Kill (inverted use)",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1337"
+      "GameOS/gameos/gameosmain.cpp:1338"
      ]
     },
     {
@@ -992,7 +991,7 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1337"
+       "GameOS/gameos/gameosmain.cpp:1338"
       ]
      },
      "probe": "U"
@@ -1013,7 +1012,7 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1337",
+       "GameOS/gameos/gameosmain.cpp:1338",
        "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
@@ -1032,7 +1031,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameosmain.cpp:1337",
+       "GameOS/gameos/gameosmain.cpp:1338",
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
@@ -1057,7 +1056,7 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1337",
+       "GameOS/gameos/gameosmain.cpp:1338",
        "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
@@ -1079,7 +1078,7 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1337",
+       "GameOS/gameos/gameosmain.cpp:1338",
        "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
@@ -1101,7 +1100,7 @@
        "mclib/mlr/mlr_gate.cpp:37"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1337",
+       "GameOS/gameos/gameosmain.cpp:1338",
        "GuiRuntime/GraphicsOptionsWindow.cpp:1383"
       ]
      },
@@ -1128,7 +1127,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": true,
-     "line": 1337,
+     "line": 1338,
      "vector": [
       "on",
       "on",
@@ -1555,176 +1554,6 @@
     }
    ]
   },
-  "MC2_MATERIAL_GPU": {
-   "behaviour_delta": [
-    {
-     "changes": {
-      "F": "on->off"
-     },
-     "class": "Lead0Kill",
-     "sites": [
-      "GameOS/gameos/debug_state_dump.cpp:489",
-      "GameOS/gameos/gameosmain.cpp:1323",
-      "GameOS/gameos/gos_materials.cpp:46",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:813"
-     ]
-    },
-    {
-     "changes": {
-      "F": "on->off",
-      "U": "off->on"
-     },
-     "class": "Lead0P",
-     "sites": [
-      "GameOS/gameos/gos_mech_batcher.cpp:683"
-     ]
-    }
-   ],
-   "conflict": true,
-   "contradicts_registry": [
-    "GameOS/gameos/gos_mech_batcher.cpp:683 Lead0P"
-   ],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Lead0P"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_mech_batcher.cpp:683"
-      ],
-      "on": [
-       "GameOS/gameos/debug_state_dump.cpp:489",
-       "GameOS/gameos/gameosmain.cpp:1323",
-       "GameOS/gameos/gos_materials.cpp:46",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:813"
-      ]
-     },
-     "probe": "U"
-    }
-   ],
-   "families": {
-    "bool": 5
-   },
-   "kill_style_name": false,
-   "proposal_basis": "registry defaultOn=true",
-   "proposed_rule": "Std(unset=on)",
-   "reader_sites": 5,
-   "registry": {
-    "default_on": true,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "scripts/capture_baseline.py",
-    "scripts/check-debug-state-json.py",
-    "scripts/gate-defaults-allowlist.txt",
-    "scripts/golden_scene.py",
-    "tests/smoke/matrices/staticprop.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "featureActive",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/debug_state_dump.cpp",
-     "inverted": false,
-     "line": 489,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gameosmain.cpp",
-     "inverted": false,
-     "line": 1323,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_materials.cpp",
-     "inverted": false,
-     "line": 46,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0P",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_mech_batcher.cpp",
-     "inverted": false,
-     "line": 683,
-     "vector": [
-      "off",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-     "inverted": false,
-     "line": 813,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    }
-   ]
-  },
   "MC2_MOD_DEPS": {
    "behaviour_delta": [
     {
@@ -1734,7 +1563,7 @@
      },
      "class": "NonEmpty",
      "sites": [
-      "mclib/file.cpp:732"
+      "mclib/file.cpp:733"
      ]
     },
     {
@@ -1745,7 +1574,7 @@
      },
      "class": "Presence",
      "sites": [
-      "mclib/file.cpp:782"
+      "mclib/file.cpp:783"
      ]
     }
    ],
@@ -1768,10 +1597,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/file.cpp:732"
+       "mclib/file.cpp:733"
       ],
       "on": [
-       "mclib/file.cpp:782"
+       "mclib/file.cpp:783"
       ]
      },
      "probe": "E"
@@ -1802,7 +1631,7 @@
      "family": "bool",
      "file": "mclib/file.cpp",
      "inverted": false,
-     "line": 732,
+     "line": 733,
      "vector": [
       "off",
       "off",
@@ -1820,7 +1649,7 @@
      "family": "bool",
      "file": "mclib/file.cpp",
      "inverted": false,
-     "line": 782,
+     "line": 783,
      "vector": [
       "off",
       "on",
@@ -1967,7 +1796,7 @@
      },
      "class": "Presence",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1264"
+      "GameOS/gameos/gameosmain.cpp:1265"
      ]
     }
    ],
@@ -2000,7 +1829,7 @@
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1264"
+       "GameOS/gameos/gameosmain.cpp:1265"
       ]
      },
      "probe": "E"
@@ -2022,7 +1851,7 @@
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1264"
+       "GameOS/gameos/gameosmain.cpp:1265"
       ]
      },
      "probe": "Z"
@@ -2044,7 +1873,7 @@
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1264"
+       "GameOS/gameos/gameosmain.cpp:1265"
       ]
      },
      "probe": "F"
@@ -2066,7 +1895,7 @@
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1264"
+       "GameOS/gameos/gameosmain.cpp:1265"
       ]
      },
      "probe": "X"
@@ -2087,7 +1916,7 @@
        "GameOS/gameos/gameos_graphics.cpp:6068"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1264",
+       "GameOS/gameos/gameosmain.cpp:1265",
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ]
      },
@@ -2110,7 +1939,7 @@
        "GameOS/gameos/utils/shader_builder.cpp:422"
       ],
       "on": [
-       "GameOS/gameos/gameosmain.cpp:1264"
+       "GameOS/gameos/gameosmain.cpp:1265"
       ]
      },
      "probe": "X25"
@@ -2152,7 +1981,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
-     "line": 1264,
+     "line": 1265,
      "vector": [
       "off",
       "on",
@@ -3765,7 +3594,7 @@
      "changes": {},
      "class": "Std(def=on)",
      "sites": [
-      "GameOS/gameos/gameosmain.cpp:1259",
+      "GameOS/gameos/gameosmain.cpp:1260",
       "code/terrobj.cpp:96"
      ]
     }
@@ -3789,7 +3618,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gameosmain.cpp:1259",
+       "GameOS/gameos/gameosmain.cpp:1260",
        "code/terrobj.cpp:96"
       ],
       "on": [
@@ -3820,7 +3649,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gameosmain.cpp",
      "inverted": false,
-     "line": 1259,
+     "line": 1260,
      "vector": [
       "on",
       "on",
@@ -5561,9 +5390,9 @@
   "editor",
   "gui"
  ],
- "source": "commit 9db2a8a19",
+ "source": "commit 06a6ec1cd",
  "totals": {
-  "conflict_gates": 31,
+  "conflict_gates": 30,
   "gates_with_literal": 1135,
   "gates_with_reader": 1124,
   "literal_occurrences": 1706,
