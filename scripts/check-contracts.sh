@@ -679,7 +679,8 @@ run_check "flag_registry_generator_selftest" "py -3 scripts/flag-registry-auto-g
 # see agreement?", the same question check-contract-coverage.py asks when it
 # grades HEAD rather than the index.
 #
-# NOT check-flag-registry-drift.sh, which stays advisory (see
+# check-flag-registry-drift.sh was advisory until 2026-10-09 (see FLAG-DRIFT-STRICT below;
+# historical reasoning follows)
 # scripts/manual-checks.allowlist). Two reasons, both measured here: it
 # regenerates with the SAME parser and diffs, so a wrong-but-stable generator
 # reads as "up to date" -- it could never have caught this class; and it records
@@ -688,6 +689,10 @@ run_check "flag_registry_generator_selftest" "py -3 scripts/flag-registry-auto-g
 # minutes, and a row that is red every day teaches everyone to skip red.
 run_check "flag_registry_truth"    "py -3 scripts/check-flag-registry-truth.py --quiet"
 run_check "flag_registry_truth_selftest" "py -3 scripts/check-flag-registry-truth.py --selftest"
+# FLAG-DRIFT-STRICT (2026-10-09): generator 2.1.0 records reader FILES only (no :line),
+# so line shifts no longer redden it; strict now catches a forgotten regen after a
+# gate/reader-file change. Generator-correctness is still flag_registry_truth's job.
+run_check "flag_registry_drift"    "bash scripts/check-flag-registry-drift.sh --strict"
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)
