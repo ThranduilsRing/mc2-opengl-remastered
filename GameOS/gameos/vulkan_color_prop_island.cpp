@@ -1173,7 +1173,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // vertex (pos vec3 @0, normal vec3 @12, uv vec2 @24, colorSeed u32 @32,
         // typeAux u32 @36 == 40B), matching the hardcoded attribute offsets below
         // and the feed's stride=40 (asserted post-upload in upload_geometry_once).
-        vib.stride    = 40;
+        vib.stride    = mc2_static_prop_vertex_stride();  // batcher's kVertexStride (pipeline is baked before upload)
         vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription via[5]{};
         via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
@@ -1330,10 +1330,10 @@ bool upload_geometry_once(ColorPropIsland* s) {
     // stride (init_island via[]/vib.stride). If the shared geometry feed ever
     // changes its packed stride, the pipeline's fetch would misalign and props
     // would garble/vanish -- surface it loudly rather than silently.
-    if (feed.vertexStride != 40) {
-        vlog("WARNING: prop geometry stride=%u != pipeline binding stride 40 -- "
+    if (feed.vertexStride != mc2_static_prop_vertex_stride()) {
+        vlog("ERROR: prop geometry stride=%u != pipeline binding stride %u -- "
              "props will misrender; update vib.stride/attributes in init_island.",
-             feed.vertexStride);
+             feed.vertexStride, mc2_static_prop_vertex_stride());
     }
     s->geomUploaded = true;
     vlog("prop geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",

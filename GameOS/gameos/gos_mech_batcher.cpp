@@ -3032,6 +3032,8 @@ uint64_t batcher_getLastFlushSubmitCount() {
 extern "C" void gos_LightDataSsbo_GetInterop(unsigned int* glName, unsigned long long* bytes);
 extern "C" void mc2GetSceneFogColorRGB(float out[3]);
 
+extern "C" uint32_t mc2_mech_vertex_stride(void) { return (uint32_t)sizeof(GpuMechVertex); }
+
 extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
     if (!s_vkMechGateOn || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)

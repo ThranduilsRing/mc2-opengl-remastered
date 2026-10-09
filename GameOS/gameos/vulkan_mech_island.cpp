@@ -870,7 +870,7 @@ bool init_island(MechIsland* s, int w, int h) {
         // loc3 boneIndices uvec4 (u8x4)@32, loc4 boneWeights vec4 (u8x4 normalized)@36,
         // loc5 tangentOct (s16x2 norm)@40, loc6 aRGBLight uint@44.
         VkVertexInputBindingDescription vib{};
-        vib.binding = 0; vib.stride = s->vertexStride ? s->vertexStride : 48;
+        vib.binding = 0; vib.stride = mc2_mech_vertex_stride();  // pipeline is baked before geometry upload (s->vertexStride may be 0)
         vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         VkVertexInputAttributeDescription via[7]{};
         via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
@@ -962,6 +962,8 @@ bool upload_geometry_once(MechIsland* s) {
     // this frame and retry next frame -- do NOT allocate the VK buffers first. This is
     // the explicit fail-hard-with-retry replacement for the old per-frame GL rescue.
     if (!feed.vboCpu || !feed.iboCpu) return false;
+    if (feed.vertexStride != mc2_mech_vertex_stride())
+        vlog("ERROR: mech feed vertexStride %u != pipeline stride %u (mech geometry will explode).", feed.vertexStride, mc2_mech_vertex_stride());
     s->vertexStride = feed.vertexStride;
 
     if (!make_buffer(s, feed.vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s->vbo, &s->vboAlloc, true)) return false;

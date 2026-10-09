@@ -119,6 +119,8 @@ struct Mc2MechFrameFeed {
 
 // Filled by gos_mech_batcher.cpp. Return 0 when geometry/gate not ready.
 int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out);
+// Mech batcher's real packed vertex stride (sizeof(GpuMechVertex)); valid before geometry upload.
+uint32_t mc2_mech_vertex_stride(void);
 int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out);
 
 // True when the mech island wants this frame (gate on + require satisfied). The
