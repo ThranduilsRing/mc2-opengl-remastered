@@ -14,7 +14,7 @@
 #       set is {code/mission.cpp x4, code/mech.cpp x1}. A new writer turns
 #       the repo red until consciously allowlisted with a pairing review.
 #   S1b direct isOnGui member writes — pattern excludes the serializer LHS
-#       (data->isOnGui = ...); allowlist {code/mover.cpp x2 (init + load
+#       (data->isOnGui = ...); allowlist {code/mover*.cpp x2 (init + load
 #       restore), code/mover.h x1, code/gvehicl.h x1}.
 #   S2  write-pairing windows — mech.cpp link-up setOnGUI(true) has
 #       missionInterface->addMover(this) within 10 lines above; mission.cpp
@@ -105,11 +105,11 @@ s1b_member_writes() {
     hits="$(grep -rEn '(^|[^.>[:alnum:]_])isOnGui[[:space:]]*=[^=]' $dirs \
         --include='*.cpp' --include='*.h' 2>/dev/null \
         | strip_comments || true)"
-    movercpp_n="$(printf '%s\n' "$hits" | grep -c 'mover\.cpp:' || true)"
+    movercpp_n="$(printf '%s\n' "$hits" | grep -Ec 'mover(_[a-z]+)?\.cpp:' || true)"
     moverh_n="$(printf '%s\n' "$hits" | grep -c 'mover\.h:' || true)"
     gvh_n="$(printf '%s\n' "$hits" | grep -c 'gvehicl\.h:' || true)"
-    other="$(printf '%s\n' "$hits" | grep -v 'mover\.cpp:\|mover\.h:\|gvehicl\.h:' | grep -v '^$' || true)"
-    [ "$movercpp_n" -eq 2 ] || echo "  S1b: mover.cpp direct isOnGui writes $movercpp_n != 2 (allowlisted: init default + load restore)"
+    other="$(printf '%s\n' "$hits" | grep -Ev 'mover(_[a-z]+)?\.cpp:|mover\.h:|gvehicl\.h:' | grep -v '^$' || true)"
+    [ "$movercpp_n" -eq 2 ] || echo "  S1b: mover*.cpp direct isOnGui writes $movercpp_n != 2 (allowlisted: init default + load restore)"
     [ "$moverh_n" -eq 1 ]   || echo "  S1b: mover.h direct isOnGui writes $moverh_n != 1 (allowlisted: setOnGUI body)"
     [ "$gvh_n" -eq 1 ]      || echo "  S1b: gvehicl.h direct isOnGui writes $gvh_n != 1 (allowlisted: setOnGUI body)"
     if [ -n "$other" ]; then

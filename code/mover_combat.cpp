@@ -1,0 +1,1282 @@
+// Mover: tactical orders, weapon helpers, weapon-fire/critical-hit/radio chunk queues, contacts and weapon queries.
+// Declared in mover.h; shared names in mover_internal.h.
+#include "mover_internal.h"
+
+
+long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool queuePlayerOrder) {
+
+	// TARGETING-CURRENTNESS-GUARD-1 (chokepoint, non-fatal recon — FRAME-CURRENTNESS-GUARDS-1).
+	// EVERY player attack order from every GUI handler funnels through here (the GUI-side
+	// doAttack guard missed orders that route via other handlers). Log EVERY player
+	// attack order — not just anomalies — plus running totals, so a clean run (orders>0,
+	// stale=0) is distinguishable from a no-order run. Signals: stale_wid (the order's
+	// targetWID no longer resolves to a live object = stale/dead target accepted) and
+	// range (target distance from the ordered mover — an absurd range is the "eligible
+	// across the whole map" symptom). Gate MC2_TARGETING_GUARD + MC2_DIAG_TAGS=TARGETING.
+	{
+		static const bool s_tgtGuard = (std::getenv("MC2_TARGETING_GUARD") != nullptr);
+		if (s_tgtGuard &&
+		    tacOrder.origin == ORDER_ORIGIN_PLAYER &&
+		    tacOrder.code == TACTICAL_ORDER_ATTACK_OBJECT &&
+		    mc2_diag::tagEnabled("TARGETING"))
+		{
+			static uint64_t s_tg_orders = 0, s_tg_stale = 0, s_tg_far = 0;
+			++s_tg_orders;
+			GameObjectPtr _tg_tgt = ObjectManager->getByWatchID(tacOrder.targetWID);
+			const bool _tg_stale = (_tg_tgt == nullptr);
+			const float _tg_range = _tg_tgt ? (float)distanceFrom(_tg_tgt->getPosition()) : -1.0f;
+			const bool _tg_far = (_tg_range > 3000.0f);   // far-field hint (whole-map symptom)
+			if (_tg_stale) ++s_tg_stale;
+			if (_tg_far)   ++s_tg_far;
+			char _tg_buf[320];
+			snprintf(_tg_buf, sizeof(_tg_buf),
+			         "{\"site\":\"handleTacticalOrder\",\"order\":%llu,\"targetWID\":%d,"
+			         "\"stale_wid\":%d,\"range\":%.1f,\"far\":%d,"
+			         "\"totals\":{\"orders\":%llu,\"stale\":%llu,\"far\":%llu}}",
+			         (unsigned long long)s_tg_orders, (int)tacOrder.targetWID,
+			         _tg_stale?1:0, _tg_range, _tg_far?1:0,
+			         (unsigned long long)s_tg_orders, (unsigned long long)s_tg_stale,
+			         (unsigned long long)s_tg_far);
+			mc2_diag::writeEvent("TARGETING", 1, 0, _tg_buf);
+		}
+	}
+
+//queuePlayerOrder = true;
+if (queuePlayerOrder)
+	tacOrder.pack(NULL, NULL);
+
+#if 1
+	if (MPlayer && !MPlayer->isServer()) {
+		// Simply for test purposes...
+		tacOrder.pack(NULL, NULL);
+		TacticalOrder tacOrder2;
+		tacOrder2.data[0] = tacOrder.data[0];
+		tacOrder2.data[1] = tacOrder.data[1];
+		tacOrder2.unpack();
+	}
+#endif
+
+	// Any tacorder that gets here IS NOT a lance order...
+	bool processOrder = true;
+	long message = -1;
+	switch (tacOrder.code) {
+		case TACTICAL_ORDER_WAIT:
+			suppressionFire = false;
+			break;
+		case TACTICAL_ORDER_MOVETO_POINT:
+			// If we're part of a selected group, offset our goal
+			// slightly...
+			if (selectionIndex != -1) 
+			{
+				tacOrder.delayedTime = scenarioTime + (selectionIndex * DelayedOrderTime);
+			}
+
+			if (!canMove())
+			{
+				//DO NOT send readio message.  Players will know artillery cannot move.
+				// BUT do not allow order through.  Will cancel out a forceFire command!
+				processOrder = false;
+			}
+			break;
+		case TACTICAL_ORDER_JUMPTO_POINT:
+		case TACTICAL_ORDER_JUMPTO_OBJECT: {
+			// UNIT-PROFILE-SEAM-1: gated rewire of the hidden jump gate (:3256/:3264).
+			bool canJump = mc2UnitProfileDataEnabled()
+				? canPerform(UnitAction::Jump)
+				: (getObjectClass() == BATTLEMECH);
+			GameObjectPtr target = tacOrder.getTarget();
+			if (target && target->isMover() && (target->getTeam() == getTeam()))
+				canJump = false;
+			if (getJumpRange() < distanceFrom(tacOrder.getWayPoint(0)))
+				canJump = false;
+			if (getObjectClass() == BATTLEMECH) {
+				int cellR, cellC;
+				land->worldToCell(tacOrder.getWayPoint(0), cellR, cellC);
+			if (!GameMap->getPassable(cellR, cellC))
+					canJump = false;
+			}
+			if (!canJump) {
+				message = RADIO_ILLEGAL_ORDER;
+				processOrder = false;
+			}
+			//else
+			//	message = RADIO_JUMPTO;
+
+			}
+			// No break here--should fall down below...
+		case TACTICAL_ORDER_MOVETO_OBJECT:
+		case TACTICAL_ORDER_TRAVERSE_PATH:
+		case TACTICAL_ORDER_PATROL_PATH:
+			// Tell everyone we have received the order.
+			if (isDisabled() || !canMove()) {
+				processOrder = false;
+			}
+			break;
+		case TACTICAL_ORDER_ATTACK_OBJECT:
+			//tacOrder.code = TACTICAL_ORDER_ATTACK_POINT;
+			//tacOrder.attackParams.targetPoint = (GameObjectPtr(BaseObjectPtr(tacOrder.target)))->getPosition();
+			//tacOrder.target = NULL;
+			if (tacOrder.attackParams.method == ATTACKMETHOD_DFA) {
+				// Let's just make it a move/jump order, for now...
+				tacOrder.code = TACTICAL_ORDER_JUMPTO_OBJECT;
+				//tacOrder.target = mouseObject;
+				tacOrder.moveParams.wait = false;
+				tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_SLOW;
+				GameObjectPtr target = tacOrder.getTarget();
+				if (target)
+					tacOrder.setWayPoint(0, target->getPosition());
+			}
+			if (tacOrder.attackParams.aimLocation != -1)
+			{
+				message = RADIO_CALLED_SHOT;
+			}
+			break;
+		case TACTICAL_ORDER_POWERUP:
+		case TACTICAL_ORDER_POWERDOWN:
+			//tacOrder.delayedTime = scenarioTime + 5.0;
+			//break;
+		case TACTICAL_ORDER_ESCORT:
+		case TACTICAL_ORDER_FOLLOW:
+		case TACTICAL_ORDER_GUARD:
+		case TACTICAL_ORDER_STOP:
+		case TACTICAL_ORDER_WAYPOINTS_DONE:
+		case TACTICAL_ORDER_EJECT:
+		case TACTICAL_ORDER_HOLD_FIRE:
+		case TACTICAL_ORDER_WITHDRAW:
+		case TACTICAL_ORDER_ATTACK_POINT:
+		case TACTICAL_ORDER_REFIT:
+		case TACTICAL_ORDER_GETFIXED:
+		case TACTICAL_ORDER_CAPTURE:
+		case TACTICAL_ORDER_RECOVER:
+		case TACTICAL_ORDER_LOAD_INTO_CARRIER:
+		case TACTICAL_ORDER_DEPLOY_ELEMENTALS:
+			break;
+		default: {
+			char s[256];
+			sprintf(s, "Mover::handleTacticalOrder->Bad TacOrder Code (%d)", tacOrder.code);
+			Assert(false, tacOrder.code, s);
+			return(1);
+			}
+	}
+
+	if (pilot)
+		pilot->radioMessage(message, true);
+
+	// Acknowledgement of a good order is done when the order
+	// is executed...
+	if (processOrder)
+		switch (tacOrder.origin) {
+			case ORDER_ORIGIN_PLAYER:
+				if (queuePlayerOrder)
+					pilot->addQueuedTacOrder(tacOrder);
+				else {
+//					if (pilot->getNumTacOrdersQueued())
+						//This is a hack to simply trigger the execution of
+						//the queued orders. The current order is ignored (and
+						//is simply used for this trigger)...
+//						pilot->executeTacOrderQueue();
+//					else
+						pilot->setPlayerTacOrder(tacOrder);
+				}
+				break;
+			case ORDER_ORIGIN_COMMANDER:
+				pilot->setGeneralTacOrder(tacOrder);
+				break;
+			case ORDER_ORIGIN_SELF:
+				pilot->setAlarmTacOrder(tacOrder, priority);
+				break;
+		}
+	return(NO_ERR);
+}
+
+void Mover::reduceAntiMissileAmmo (long numAntiMissiles) {
+
+	if (numAntiMissiles > 0)
+		reduceAmmo(MasterComponent::masterList[inventory[antiMissileSystem[0]].masterID].getWeaponAmmoMasterId(), numAntiMissiles);
+}
+
+void Mover::pilotingCheck (unsigned long situation, float modifier) {
+
+	failedPilotingCheck = false;
+}
+
+void Mover::updateDamageTakenRate (void) {
+
+	if (damageRateCheckTime < scenarioTime) {
+		long damageRate = (damageRateTally / DamageRateFrequency);
+		if (damageRate > 10 /*AttitudeEffect[pilot->getAttitude(ORDER_CURRENT)][5]*/)
+			pilot->triggerAlarm(PILOT_ALARM_DAMAGE_TAKEN_RATE, damageRate);
+		damageRateTally = 0;
+		damageRateCheckTime += DamageRateFrequency;
+	}
+}
+
+void Mover::setPilotHandle (long _pilotHandle) {
+
+	if (pilot) {
+		pilot->setVehicle(NULL);
+		pilot = NULL;
+	}
+	pilotHandle = _pilotHandle;
+	if (pilotHandle > 0) {
+		pilot = MechWarrior::warriorList[pilotHandle];
+		pilot->setVehicle((GameObjectPtr)this);
+	}
+}
+
+void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, LogisticsPilot *lPilot) {
+
+	if (pilot) {
+		MechWarrior::freeWarrior(pilot);
+		pilot = NULL;
+	}
+
+	// Loads a new pilot into the pilot manager and then puts it into
+	// this mover. If a pilot already exists in this mover, it is
+	// replaced...
+	MechWarriorPtr pilot = MechWarrior::newWarrior();
+	if (!pilot)
+		STOP(("Too many pilots in this mission!"));
+
+	FullPathFileName pilotFullFileName;
+	pilotFullFileName.init(warriorPath, pilotFileName, ".fit");
+			
+	FitIniFile* pilotFile = new FitIniFile;
+	gosASSERT(pilotFile != NULL);
+		
+	long result = pilotFile->open(pilotFullFileName);
+	gosASSERT(result == NO_ERR);
+	result = pilot->init(pilotFile);
+	gosASSERT(result == NO_ERR);
+			
+	pilotFile->close();
+	delete pilotFile;
+	pilotFile = NULL;
+
+	//Copy logistics data to pilot AFTER loading old data.
+	// ONLY if we overrode the data in logistics!!
+	if (lPilot)
+	{
+		pilot->skills[MWS_GUNNERY] = pilot->skillRank[MWS_GUNNERY] = lPilot->getGunnery();
+		pilot->skills[MWS_PILOTING] = pilot->skillRank[MWS_PILOTING] = lPilot->getPiloting();
+		memcpy(pilot->specialtySkills,lPilot->getSpecialtySkills(),sizeof(bool) * NUM_SPECIALTY_SKILLS);
+		pilot->calcRank();
+	}
+
+	// NOTE: Need to send packet to other players in MP with new pilot and
+	// mover data!
+
+	long numErrors, numLinesProcessed;
+	FullPathFileName brainFullFileName;
+	if (MPlayer) {
+		pilot->setBrainName("pbrain");
+		brainFullFileName.init(warriorPath, "pbrain", ".abl");
+		}
+	else {
+		pilot->setBrainName(brainFileName);
+		brainFullFileName.init(warriorPath, brainFileName, ".abl");
+	}
+		
+	long moduleHandle = ABLi_preProcess(brainFullFileName, &numErrors, &numLinesProcessed);
+	gosASSERT(moduleHandle >= 0);
+	pilot->setBrain(moduleHandle);
+	setPilotHandle(pilot->getIndex());
+}
+
+void Mover::setCommanderId (long _commanderId) {
+
+	if (commanderId > -1)
+		prevCommanderId = commanderId;
+	commanderId = _commanderId;
+}
+
+MoverPtr Mover::getPoint (void) {
+
+#ifdef USE_GROUPS
+	if (group)
+		return(group->getPoint());
+#endif
+	return(NULL);
+}
+
+bool Mover::hasWeaponNode (void)
+{
+
+	if ((lowestWeaponNodeID == -1) || (lowestWeaponNodeID == -2) || (turn < 6))
+	{
+		lowestWeaponNodeID = appearance->getLowestWeaponNode();
+		Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+		lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
+	}
+
+	return (lowestWeaponNodeID != -1);
+}
+
+Stuff::Vector3D Mover::getLOSPosition (void)
+{
+	float jumpLowestNode = 0.0f;
+	if (appearance)
+	{
+		bool oldInView = appearance->canBeSeen();
+		appearance->setInView(true);
+
+		if ((getStatus() == OBJECT_STATUS_NORMAL) &&
+			((appearance->getCurrentGestureId() == 2) || 
+			 (appearance->getCurrentGestureId() == 4) || 
+			 (appearance->getCurrentGestureId() == 7) || !isMech()) && 
+			((lowestWeaponNodeID == -1) || (lowestWeaponNodeID == -2) || (turn < 6)) )
+		{
+			lowestWeaponNodeID = appearance->getLowestWeaponNode();
+			if (lowestWeaponNodeID == -1)
+			{
+				//We must not have ever rendered this guy.  Probably multiplayer.
+				// Update his Geometry.
+				appearance->update();
+
+				lowestWeaponNodeID = appearance->getLowestWeaponNode();
+			}
+
+			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
+		}
+
+		if (appearance->getCurrentGestureId() == 20)
+		{
+			// Gesture 20 is jump; lowestWeaponNodeZ is only refreshed for
+			// gestures 2/4/7, so we recompute every frame here. Pose
+			// oscillation can drop the raw value to/below 0, which then
+			// fails the `> 0.0f` override below and drops the LOS ray to
+			// the stale cached Z (often below terrain) -- every weapon's
+			// lineOfSight test fails that frame. Clamp to the same
+			// shutdown-mech fudge used as the fallback below.
+			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+			float rawZ = nodePos.z - land->getTerrainElevation(nodePos);
+			jumpLowestNode = (rawZ > 15.0f) ? rawZ : 15.0f;
+		}
+
+		if (lowestWeaponNodeZ <= 0.0f)
+		{
+			Stuff::Vector3D nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
+			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
+		}
+
+		appearance->setInView(oldInView);
+	}
+
+	Stuff::Vector3D losPos = position;
+	if (lowestWeaponNodeZ != -9999.9f)
+		losPos.z += lowestWeaponNodeZ;
+	else
+		losPos.z += 15.0f;		  //Fudge in some higher value so shutdown mechs don't just disappear!!
+
+	if (jumpLowestNode > 0.0f)
+	{
+		losPos = position;
+		losPos.z += jumpLowestNode;
+	}
+
+	return (losPos);
+}
+
+long Mover::clearWeaponFireChunks (long which) {
+
+	long numChunks = numWeaponFireChunks[which];
+	numWeaponFireChunks[which] = 0;
+	return(numChunks);
+}
+
+long Mover::addWeaponFireChunk (long which, WeaponFireChunkPtr chunk) {
+
+	if (numWeaponFireChunks[which] == MAX_WEAPONFIRE_CHUNKS)
+		Fatal(0, " Mover::addWeaponFireChunk--Too many weaponfire chunks ");
+
+	chunk->pack(this);
+	WeaponFireChunk testChunk;
+	testChunk.init();
+	testChunk.data = chunk->data;
+	testChunk.unpack(this);
+	if (!chunk->equalTo(&testChunk)) {
+		DebugWeaponFireChunk(chunk, &testChunk, this);
+		Assert(false, 0, " Mover.addWeaponFireChunk: bad weaponfire chunk (save wfchunk.dbg file) ");
+	}
+
+	weaponFireChunks[which][numWeaponFireChunks[which]++] = chunk->data;
+	return(numWeaponFireChunks[which]);
+}
+
+long Mover::addWeaponFireChunks (long which, unsigned long* packedChunkBuffer, long numChunks) {
+
+	if ((numWeaponFireChunks[which] + numChunks) >= MAX_WEAPONFIRE_CHUNKS)
+		Fatal(0, " Mover::addWeaponFireChunks--Too many weaponfire chunks ");
+
+	for (long i = 0; i < numChunks; i++) {
+		weaponFireChunks[which][numWeaponFireChunks[which]++] = packedChunkBuffer[i];
+		// FOR TESTING...
+		WeaponFireChunk chunk;
+		chunk.init();
+		chunk.data = packedChunkBuffer[i];
+		chunk.unpack(this);
+	}
+	return(numWeaponFireChunks[which]);
+}
+
+long Mover::grabWeaponFireChunks (long which, unsigned long* packedChunkBuffer, long maxChunks) {
+
+	long numChunks = numWeaponFireChunks[which];
+	if (numChunks > maxChunks)
+		numChunks = maxChunks;
+	if (numChunks > 0) {
+		for (long i = 0; i < numChunks; i++)
+			packedChunkBuffer[i] = weaponFireChunks[which][i];
+		//memcpy(packedChunkBuffer, weaponFireChunks[which], 4 * numWeaponFireChunks[which]);
+	}
+	numWeaponFireChunks[which] -= numChunks;
+	return(numChunks);
+}
+
+long Mover::updateWeaponFireChunks (long which) {
+
+	for (long i = 0; i < numWeaponFireChunks[which]; i++) {
+		WeaponFireChunk chunk;
+		chunk.init();
+		chunk.data = weaponFireChunks[which][i];
+		chunk.unpack(this);
+
+		// For debugging...
+		CurMoverWeaponFireChunk = chunk;
+
+		static float entryQuadTable[4] = {0.0, 180.0, -90.0, 90.0};
+
+		long weaponIndex = chunk.weaponIndex + numOther;
+		if (!isWeaponIndex(weaponIndex))
+			continue;
+
+		TargetRolo = chunk.targetType;
+		if (chunk.targetType == 0 /*WEAPONFIRECHUNK_TARGET_MOVER*/) {
+			GameObjectPtr target = (GameObjectPtr)MPlayer->moverRoster[chunk.targetId];
+			// Mover targets could be NULL now, since we free them when they're destroyed.
+			if (target)
+				handleWeaponFire(weaponIndex,
+							 target,
+							 NULL,
+							 chunk.hit,
+							 entryQuadTable[chunk.entryAngle],
+							 chunk.numMissiles,
+							 chunk.hitLocation);
+			}
+		else if (chunk.targetType == 1 /*WEAPONFIRECHUNK_TARGET_TERRAIN*/) {
+			GameObjectPtr target = ObjectManager->findByPartId(chunk.targetId);
+			if (target == NULL) {
+				DebugWeaponFireChunk (&chunk, NULL, this);
+				Assert(false, 0, " Mover.updateWeaponFireChunks: NULL Terrain Target (save wfchunk.dbg file) ");
+			}
+			handleWeaponFire(weaponIndex,
+							 target,
+							 NULL,
+							 chunk.hit,
+							 entryQuadTable[chunk.entryAngle],
+							 chunk.numMissiles,
+							 chunk.hitLocation);
+			}
+		else if (chunk.targetType == 2 /*WEAPONFIRECHUNK_TARGET_TRAIN*/) {
+			GameObjectPtr target = ObjectManager->findByPartId(chunk.targetId);
+			if (target == NULL) {
+				DebugWeaponFireChunk (&chunk, NULL, this);
+				Assert(false, 0, " Mover.updateWeaponFireChunks: NULL Special Target (save wfchunk.dbg file) ");
+			}
+			handleWeaponFire(weaponIndex,
+							 target,
+							 NULL,
+							 chunk.hit,
+							 entryQuadTable[chunk.entryAngle],
+							 chunk.numMissiles,
+							 chunk.hitLocation);
+			}
+		else if (chunk.targetType == 3 /*WEAPONFIRECHUNK_TARGET_LOCATION*/) {
+			Stuff::Vector3D targetPoint;
+			targetPoint.x = (float)chunk.targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk.targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+			targetPoint.z = (float)land->getTerrainElevation(targetPoint);
+			handleWeaponFire(weaponIndex, NULL, &targetPoint, chunk.hit, 0.0, chunk.numMissiles, 0);
+			}
+		else
+			Fatal(0, " Mover.updateWeaponFireChunks: bad targetType ");
+	}
+
+	numWeaponFireChunks[which] = 0;
+
+	return(NO_ERR);
+}
+
+long Mover::clearCriticalHitChunks (long which) {
+
+	long numChunks = numCriticalHitChunks[which];
+	numCriticalHitChunks[which] = 0;
+	return(numChunks);
+}
+
+long Mover::addCriticalHitChunk (long which, long bodyLocation, long criticalSpace) {
+
+	if (numCriticalHitChunks[which] == MAX_CRITICALHIT_CHUNKS)
+		Fatal(0, " Mover::addCriticalHitChunk--Too many criticalhit chunks ");
+
+	// Since the "chunk" is so simple, we'll just make it here...
+	unsigned char chunkData = (unsigned char)((bodyLocation << 4) + criticalSpace);
+	criticalHitChunks[which][numCriticalHitChunks[which]++] = chunkData;
+	return(numCriticalHitChunks[which]);
+}
+
+long Mover::addCriticalHitChunks (long which, unsigned char* packedChunkBuffer, long numChunks) {
+
+	if ((numCriticalHitChunks[which] + numChunks) >= MAX_CRITICALHIT_CHUNKS)
+		Fatal(0, " Mover::addCriticalHitChunks--Too many criticalhit chunks ");
+
+	memcpy(&criticalHitChunks[which][numCriticalHitChunks[which]], packedChunkBuffer, numChunks);
+	numCriticalHitChunks[which] += numChunks;
+	return(numCriticalHitChunks[which]);
+}
+
+long Mover::grabCriticalHitChunks (long which, unsigned char* packedChunkBuffer) {
+
+	if (numCriticalHitChunks[which] > 0)
+		memcpy(packedChunkBuffer, criticalHitChunks[which], numCriticalHitChunks[which]);
+	return(numCriticalHitChunks[which]);
+}
+
+long Mover::updateCriticalHitChunks (long which) {
+
+	numCriticalHitChunks[which] = 0;
+
+	return(NO_ERR);
+}
+
+long Mover::clearRadioChunks (long which) {
+
+	long numChunks = numRadioChunks[which];
+	numRadioChunks[which] = 0;
+	return(numChunks);
+}
+
+long Mover::addRadioChunk (long which, unsigned char msg) {
+
+	if (numRadioChunks[which] == MAX_RADIO_CHUNKS)
+		return(numRadioChunks[which]);
+		//Fatal(0, " Mover::addRadioChunk--Too many radio chunks ");
+
+	// Since the "chunk" is so simple, we'll just make it here...
+	radioChunks[which][numRadioChunks[which]++] = msg;
+	return(numRadioChunks[which]);
+}
+
+long Mover::addRadioChunks (long which, unsigned char* packedChunkBuffer, long numChunks) {
+
+//	if ((numRadioChunks[which] + numChunks) >= MAX_RADIO_CHUNKS)
+//		Fatal(0, " Mover::addRadioChunks--Too many radio chunks ");
+	for (long i = 0; i < numChunks; i++)
+		addRadioChunk(which, packedChunkBuffer[i]);
+	//memcpy(&radioChunks[which][numRadioChunks[which]], packedChunkBuffer, numChunks);
+	//numRadioChunks[which] += numChunks;
+	return(numRadioChunks[which]);
+}
+
+long Mover::grabRadioChunks (long which, unsigned char* packedChunkBuffer) {
+
+	if (numRadioChunks[which] > 0)
+		memcpy(packedChunkBuffer, radioChunks[which], numRadioChunks[which]);
+	return(numRadioChunks[which]);
+}
+
+long Mover::updateRadioChunks (long which) {
+
+	if (getCommander() == Commander::home)
+		for (long i = 0; i < numRadioChunks[which]; i++)
+			playMessage((RadioMessageType)radioChunks[which][i]);
+
+	numRadioChunks[which] = 0;
+
+	return(NO_ERR);
+}
+
+void Mover::playMessage (RadioMessageType messageId, bool propogateIfMultiplayer) {
+
+	if (pilot)
+		pilot->radioMessage(messageId, propogateIfMultiplayer);
+}
+
+void Mover::setThreatRating (short rating) {
+
+	threatRating = rating;
+	if (threatRating == -1) {
+		// Calc it...
+		threatRating = calcCV();
+	}
+}
+
+long Mover::getThreatRating (void) {
+
+	if ((scenarioTime - creationTime) < 5.0)
+		return((long)((float)threatRating * newThreatMultiplier));
+	return(threatRating);
+}
+
+bool Mover::enemyRevealed (void)
+{
+	// What is our block and vertex number?
+
+	//NOTE: This function not used Anymore!!
+
+	return(false);
+}
+
+void Mover::setTeleportPosition (Stuff::Vector3D& newPos) {
+
+	teleportPosition = newPos;
+}
+
+long Mover::getInventoryDamage (long itemIndex) {
+
+	if (itemIndex < (numOther + numWeapons + numAmmos))
+		return (MasterComponent::masterList[inventory[itemIndex].masterID].getHealth() - inventory[itemIndex].health);
+	return(0);
+}
+
+float Mover::getVisualRange (void) {
+
+	return(MechWarrior::maxVisualRadius);
+}
+
+void Mover::setChallenger (GameObjectPtr challenger) {
+
+	challengerWID = challenger->getWatchID();
+}
+
+GameObjectPtr Mover::getChallenger (void) {
+
+	// We ASSUME a disabled challenger is as good as none...
+	GameObjectPtr obj = ObjectManager->get(challengerWID);
+	if (obj && obj->isDisabled()) {
+		challengerWID = 0;
+		return(NULL);
+	}
+	return(obj);
+}
+
+long Mover::getContacts (int* contactList, int contactCriteria, int sortType) {
+
+	if (sensorSystem)
+		return(sensorSystem->getTeamContacts(contactList, contactCriteria, sortType));
+	return(0);
+}
+
+long Mover::getContactStatus (long scanningTeamID, bool includingAllies) {
+
+	if (getFlag(OBJECT_FLAG_REMOVED))
+		return(CONTACT_NONE);
+	return(getContactInfo()->getContactStatus(scanningTeamID, true));
+}
+
+float Mover::weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition) {
+
+	long bodyLocation = inventory[weaponIndex].bodyLocation;
+	return(relFacingTo(targetPosition, bodyLocation));
+}
+
+bool Mover::weaponInRange (long weaponIndex, float metersToTarget, float buffer) {
+
+	MasterComponentPtr weapon = &MasterComponent::masterList[inventory[weaponIndex].masterID];
+
+	float minRange = WeaponRanges[weapon->getWeaponRange()][0] - buffer;
+	float maxRange = WeaponRanges[weapon->getWeaponRange()][1] + buffer;
+	if (metersToTarget < minRange)
+		return(false);
+	if (metersToTarget > maxRange)
+		return(false);
+	return(true);
+}
+
+long Mover::getWeaponsReady (int* list, int listSize) {
+
+	// Make sure list is >= the number of ready
+	// weapons!
+
+	long numReady = 0;
+	if (listSize == -1)
+		for (long item = numOther; item < (numOther + numWeapons); item++) {
+			if (isWeaponReady(item)) {
+				if (list)
+					list[numReady++] = item;
+				else
+					numReady++;
+			}
+		}
+	else
+		for (long item = 0; item < listSize; item++) {
+			if (isWeaponReady(list[item])) {
+				if (list)
+					list[numReady++] = list[item];
+				else
+					numReady++;
+			}
+		}
+
+	return(numReady);
+}
+
+long Mover::getWeaponsLocked (int* list, int listSize) {
+
+	// Make sure list is >= the number of locked
+	// weapons!
+
+	GameObjectPtr target = pilot->getCurrentTarget();
+	if (!target)
+		return(-2);
+
+	Stuff::Vector3D targetPosition = target->getPosition();
+
+	long numLocked = 0;
+	float fireArc = getFireArc();
+	if (listSize == -1)
+		for (long item = numOther; item < (numOther + numWeapons); item++) {
+			float relAngle = weaponLocked(item, targetPosition);
+			if ((relAngle >= -fireArc) && (relAngle <= fireArc))
+				list[numLocked++] = item;
+		}
+	else
+		for (long item = 0; item < listSize; item++) {
+			float relAngle = weaponLocked(list[item], targetPosition);
+			if ((relAngle >= -fireArc) && (relAngle <= fireArc))
+				list[numLocked++] = list[item];
+		}
+	return(numLocked);
+}
+
+long Mover::getWeaponsInRange (int* list, int listSize, float fireRangeOrder) {
+
+	// Make sure list is >= the number of locked
+	// weapons!
+	GameObjectPtr target = pilot->getCurrentTarget();
+	if (!target)
+		return(-2);
+
+	float rangeToTarget = distanceFrom(target->getPosition());
+
+	// For now, we always obey the fire range order...
+	#ifdef STUPID_RULES
+	if (rangeToTarget > fireRangeOrder)
+		return(-3);
+	#endif	
+
+	long numInRange = 0;
+	if (listSize == -1) {
+		for (long item = numOther; item < (numOther + numWeapons); item++)
+			if (weaponInRange(item, rangeToTarget, MapCellDiagonal))
+				list[numInRange++] = item;
+		}
+	else {
+		for (long item = 0; item < listSize; item++)
+			if (weaponInRange(list[item], rangeToTarget, MapCellDiagonal))
+				list[numInRange++] = list[item];
+	}
+	return(numInRange);
+}
+
+long Mover::getWeaponShots (long weaponIndex) {
+
+	if (!isWeaponIndex(weaponIndex))
+		return(-1);
+
+	// All ammo, as listed in the Master Component Table, is a fixed index
+	// greater than the weapon itself.
+	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoType())
+		return(ammoTypeTotal[inventory[weaponIndex].ammoIndex].curAmount);
+
+	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
+	return(UNLIMITED_SHOTS);
+}
+
+bool Mover::getWeaponIndirectFire (long weaponIndex)
+{
+	if (!isWeaponIndex(weaponIndex))
+		return(false);
+
+	for (long i=0;i<20;i++)
+	{
+		if (IndirectFireWeapons[i] == inventory[weaponIndex].masterID)
+			return true;
+	}
+			
+	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
+	return(false);
+}
+
+bool Mover::getWeaponAreaEffect (long weaponIndex)
+{
+	if (!isWeaponIndex(weaponIndex))
+		return(false);
+
+	for (long i=0;i<20;i++)
+	{
+		if (AreaEffectWeapons[i] == inventory[weaponIndex].masterID)
+			return true;
+	}
+			
+	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
+	return(false);
+}
+
+float Mover::getWeaponAmmoLevel (long weaponIndex) {
+
+	if (!isWeaponIndex(weaponIndex))
+		return(-1.0);
+
+	return((float)(ammoTypeTotal[inventory[weaponIndex].ammoIndex].curAmount) / (float)(ammoTypeTotal[inventory[weaponIndex].ammoIndex].maxAmount));
+}
+
+bool Mover::getWeaponIsEnergy( long weaponIndex )
+{
+	return MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_ENERGY;
+
+}
+
+void Mover::calcWeaponEffectiveness (bool setMax) {
+
+	long effectiveness = 0;
+	float avgSkill;
+
+	// Record time of our latest calc...
+	lastWeaponEffectivenessCalc = scenarioTime;
+		
+	if (pilot)
+		avgSkill = (float)pilot->getSkill(MWS_GUNNERY) / 50.0;
+	else
+		avgSkill = 1.0;
+
+	//Ammo is NOT part of weapon effectiveness anymore
+	// Per Mike Lee
+	// -fs
+	for (long curWeapon = numOther; curWeapon < (numOther + numWeapons); curWeapon++) {
+		if (setMax || (!inventory[curWeapon].disabled ))
+			effectiveness += inventory[curWeapon].effectiveness * avgSkill;
+	}
+
+	if (setMax)
+		maxWeaponEffectiveness = effectiveness;
+	else 
+	{
+		weaponEffectiveness = effectiveness;
+
+		if (weaponEffectiveness == 0)
+			playMessage(RADIO_WEAPONS_OUT);
+	}
+}
+
+void Mover::calcAmmoTotals (void) 
+{
+	AmmoTally totalList[100];
+	numAmmoTypes = 0;
+	if (numWeapons > 0) 
+	{
+		// We have some ammo in our inventory, so let's count 'em up.
+		// First, make a list of all weapon types we have...
+		for (long i = numOther; i < (numOther + numWeapons); i++) 
+		{
+			long weaponMasterId = inventory[i].masterID;
+			bool newAmmoType = true;
+			for (long curAmmo = 0; curAmmo < (long)numAmmoTypes; curAmmo++)
+			{
+				if (totalList[curAmmo].masterId == (long)MasterComponent::masterList[weaponMasterId].getWeaponAmmoMasterId()) 
+				{
+					newAmmoType = false;
+					break;
+				}
+			}
+			
+			if (newAmmoType) 
+			{
+				totalList[numAmmoTypes].masterId = MasterComponent::masterList[weaponMasterId].getWeaponAmmoMasterId();
+				if (MasterComponent::masterList[weaponMasterId].getWeaponAmmoType()) 
+				{
+					totalList[numAmmoTypes].curAmount = 0;
+					totalList[numAmmoTypes].maxAmount = 0;
+				}
+				else 
+				{
+					totalList[numAmmoTypes].curAmount = UNLIMITED_SHOTS;
+					totalList[numAmmoTypes].maxAmount = UNLIMITED_SHOTS;
+				}
+				numAmmoTypes++;
+			}
+		}
+		
+		// Now, go through all ammo we have and tally 'em...
+		for (int i = numOther + numWeapons; i < (numOther + numWeapons + numAmmos); i++) 
+		{
+			long ammoMasterId = inventory[i].masterID;
+			bool foundAmmoWeapon = false;
+			for (long curAmmo = 0; curAmmo < numAmmoTypes; curAmmo++)
+			{
+				if (totalList[curAmmo].masterId == ammoMasterId) 
+				{
+					foundAmmoWeapon = true;
+					if (useUnlimitedAmmo)
+					{
+						totalList[curAmmo].curAmount = UNLIMITED_SHOTS;
+						totalList[curAmmo].maxAmount = UNLIMITED_SHOTS;
+						break;
+					}
+					else
+					{
+						totalList[curAmmo].curAmount += inventory[i].amount;
+						totalList[curAmmo].maxAmount += inventory[i].amount;
+						break;
+					}
+				}
+			}
+
+			if (!foundAmmoWeapon)
+				STOP(("Mech %s has ammo for a weapon it is not carrying!  Ammo Index is %d",name,ammoMasterId));
+		}
+
+		// Since we now know the totals, create the actual total list for this mover...
+		memcpy(ammoTypeTotal, totalList, sizeof(AmmoTally) * numAmmoTypes);
+	}
+}
+
+long Mover::calcFireRanges (void) {
+
+	lastOptimalRangeCalc = scenarioTime;
+
+	// Calc min and max ranges...
+	maxRange = 0;
+	minRange = 1000000.0;
+	numFunctionalWeapons = 0;
+	for (long curWeapon = numOther; curWeapon < (numOther + numWeapons); curWeapon++) {
+		if (!inventory[curWeapon].disabled && (getWeaponShots(curWeapon) > 0)) {
+			long range = (long)MasterComponent::masterList[inventory[curWeapon].masterID].getWeaponRange();
+			float minWeaponRange = WeaponRanges[range][0];
+			float maxWeaponRange = WeaponRanges[range][1];
+			if (maxWeaponRange > maxRange)
+				maxRange = maxWeaponRange;
+			if (minWeaponRange < minRange)
+				minRange = minWeaponRange;
+			numFunctionalWeapons++;
+		}
+	}
+
+	// Now, calc optimal range...
+	float rangeTotals[NUM_WEAPON_RANGE_TYPES] = {0, 0, 0, 0, 0};
+	for (int curWeapon = numOther; curWeapon < (numOther + numWeapons); curWeapon++) {
+		MasterComponent* weapon = &MasterComponent::masterList[inventory[curWeapon].masterID];
+		if (!inventory[curWeapon].disabled && (getWeaponShots(curWeapon) > 0)) {
+			float damageTimeRating = weapon->getWeaponDamage() / weapon->getWeaponRecycleTime();
+			// Go thru the five range points...
+			for (long i = 0; i < 5; i++)
+				if (OptimalRangePointInRange[i][weapon->getWeaponRange()])
+					rangeTotals[i] += damageTimeRating;
+		}
+	}
+	float lastOptimalRange = optimalRange;
+	if (numFunctionalWeapons == 0) {
+		optimalRange = 0.0;
+		return(optimalRange != lastOptimalRange);
+		}
+	else {
+		sortList->clear();
+		for (long i = 0; i < NUM_WEAPON_RANGE_TYPES; i++) {
+			sortList->setId(i, i);
+			sortList->setValue(i, rangeTotals[i]);
+		}
+		sortList->sort();
+		if (sortList->getValue(0) <= 0.0) {
+			optimalRange = 0.0;
+			return(optimalRange != lastOptimalRange);
+		}
+	}
+
+	long optimalRangeType = sortList->getId(0);
+	if (sortList->getValue(0) == sortList->getValue(1)) {
+		// A tie, so pick one based upon the pre-set range priorities...
+		unsigned char tieFlags = 0;
+		for (long i = 0; i < 5; i++)
+			if (sortList->getValue(i) == sortList->getValue(0))
+				tieFlags |= (1 << sortList->getId(i));
+
+		optimalRangeType = OptimalRangeTieTable[tieFlags];
+		if (optimalRangeType == 255) {
+			optimalRange = 0.0;
+			return(optimalRange != lastOptimalRange);
+		}
+
+	}
+	optimalRange = OptimalRangePoints[optimalRangeType];
+	
+	return(optimalRange != lastOptimalRange);
+}
+
+float Mover::getOrderedFireRange (long* attackRange) {
+
+	long fireRange = pilot->getCurTacOrder()->attackParams.range;
+	if (attackRange)
+		fireRange = *attackRange;
+	float orderedFireRange = -1.0;
+	switch (fireRange) {
+		case FIRERANGE_DEFAULT:
+			orderedFireRange = getOptimalFireRange();
+			break;
+		case FIRERANGE_RAMMING:
+			orderedFireRange = 0.0;
+			break;
+		case FIRERANGE_LONGEST:
+			orderedFireRange = getMaxFireRange();
+			break;
+		case FIRERANGE_OPTIMAL:
+			orderedFireRange = getOptimalFireRange();
+			break;
+		case FIRERANGE_SHORT:
+			orderedFireRange = (WeaponRanges[WEAPON_RANGE_SHORT][1] - WeaponRanges[WEAPON_RANGE_SHORT][0])/2.0;
+			break;
+		case FIRERANGE_MEDIUM:
+			orderedFireRange = (WeaponRanges[WEAPON_RANGE_MEDIUM][1] - WeaponRanges[WEAPON_RANGE_MEDIUM][0])/2.0;
+			break;
+		case FIRERANGE_LONG:
+			orderedFireRange = (WeaponRanges[WEAPON_RANGE_LONG][1] - WeaponRanges[WEAPON_RANGE_LONG][0])/2.0;
+			break;
+	}
+	return(orderedFireRange);
+}
+
+float Mover::getMinFireRange (void) {
+
+	return(minRange);
+}
+
+float Mover::getMaxFireRange (void) {
+
+	return(maxRange);
+}
+
+float Mover::getOptimalFireRange (void) {
+
+	return(optimalRange);
+}
+
+// COMBAT routines
+
+bool Mover::isWeaponIndex (long itemIndex) {
+
+	return((itemIndex >= numOther) && (itemIndex < (numOther + numWeapons)));
+}
+
+bool Mover::isWeaponMissile (long weaponIndex) {
+
+	return(MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE);
+}
+
+bool Mover::isWeaponReady (long weaponIndex) {
+
+	if (inventory[weaponIndex].disabled)
+		return(false);
+	else if (inventory[weaponIndex].readyTime > scenarioTime)
+		return(false);
+	return(true);
+}
+
+void Mover::startWeaponRecycle (long weaponIndex) {
+
+	inventory[weaponIndex].readyTime = scenarioTime +
+									   MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponRecycleTime();
+}
+
+long Mover::tallyAmmo (long ammoMasterId) {
+
+	long tally = 0;
+	long firstAmmo = numOther + numWeapons;
+	for (long item = firstAmmo; item < firstAmmo + numAmmos; item++) {
+		if (inventory[item].masterID == ammoMasterId)
+			tally += inventory[item].amount;
+	}
+
+	return(tally);
+}
+
+bool Mover::needsRefit(void) {
+
+	bool result = false;
+
+	if (!refitBuddyWID && getObjectClass() == BATTLEMECH)
+	{
+		for (long loc=0; loc<numArmorLocations; loc++)
+		{
+			if (loc<numBodyLocations && (loc == MECH_ARMOR_LOCATION_LARM || loc == MECH_ARMOR_LOCATION_RARM) &&
+					body[loc].damageState == IS_DAMAGE_DESTROYED)
+				continue;
+			if ((loc<numBodyLocations && body[loc].curInternalStructure < body[loc].maxInternalStructure) ||
+				(armor[loc].curArmor < armor[loc].maxArmor))
+			{
+				result = true;
+				break;
+			}
+		}
+		if (!result)
+			for (long ammo = 0; ammo < numAmmoTypes; ammo++)
+				if (ammoTypeTotal[ammo].curAmount < ammoTypeTotal[ammo].maxAmount)
+				{
+					result = true;
+					break;
+				}
+	}
+	return result;
+}
+
+long Mover::reduceAmmo (long ammoMasterId, long amount) {
+
+	long amountUsed = amount;
+
+	// Deduct it from the first available ammo critical space...
+	long firstAmmo = numOther + numWeapons;
+	for (long item = firstAmmo; item < firstAmmo + numAmmos; item++) {
+		if (inventory[item].masterID == ammoMasterId) {
+			if (inventory[item].amount > amount) {
+				inventory[item].amount -= amount;
+				break;
+				}
+			else {
+				amount -= inventory[item].amount;
+				inventory[item].amount = 0;
+			}
+        }
+	}
+
+	// Make sure the ammoTypeTotal list, in which we track total ammo for
+	// all of the ammo types this mover uses, is adjusted...
+	for (long ammo = 0; ammo < numAmmoTypes; ammo++) {
+		if (ammoTypeTotal[ammo].masterId == ammoMasterId) {
+			ammoTypeTotal[ammo].curAmount -= amountUsed;
+			if (ammoTypeTotal[ammo].curAmount <= 0) {
+				// Ammo for this weapon type is spent, which may effect
+				// our weapon effectiveness and optimal range...
+				ammoTypeTotal[ammo].curAmount = 0;
+				calcWeaponEffectiveness(false);
+				calcFireRanges();
+				pilot->radioMessage(RADIO_AMMO_OUT);
+			}
+			break;
+		}
+    }
+
+	return(amountUsed);
+}
+
+/*
+long Mover::refillAmmo (long ammoMasterId, long amount) {
+
+	long amountUsed = amount;
+
+	// Deduct it from the first available ammo critical space...
+	long firstAmmo = numOther + numWeapons;
+	for (long item = firstAmmo; item < firstAmmo + numAmmos; item++) {
+		if (inventory[item].masterID == ammoMasterId)
+			if (inventory[item].amount > amount) {
+				inventory[item].amount -= amount;
+				break;
+				}
+			else {
+				amount -= inventory[item].amount;
+				inventory[item].amount = 0;
+			}
+	}
+
+	// Make sure the ammoTypeTotal list, in which we track total ammo for
+	// all of the ammo types this mover uses, is adjusted...
+	for (long ammo = 0; ammo < numAmmoTypes; ammo++)
+		if (ammoTypeTotal[ammo].masterId == ammoMasterId) {
+			ammoTypeTotal[ammo].curAmount -= amountUsed;
+			if (ammoTypeTotal[ammo].curAmount <= 0) {
+				// Ammo for this weapon type is spent, which may effect
+				// our weapon effectiveness and optimal range...
+				ammoTypeTotal[ammo].curAmount = 0;
+				calcLongestRangeWeapon();
+				calcWeaponEffectiveness(false);
+				calcOptimalRange(NULL);
+			}
+			break;
+		}
+
+	return(amountUsed);
+}
+*/
+
+void Mover::deductWeaponShot (long weaponIndex, long ammoAmount) {
+
+	if (ammoAmount > 0)
+		reduceAmmo(MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoMasterId(), ammoAmount);
+}
+
+long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long sortType, bool skillCheck) {
+
+	// Make sure list is >= the number of locked
+	// weapons!
+	GameObjectPtr target = pilot->getCurrentTarget();
+	if (!target)
+		return(-2);
+
+	long aimLocation = -1;
+	if (pilot && pilot->getCurTacOrder()->isCombatOrder())
+		aimLocation = pilot->getCurTacOrder()->attackParams.aimLocation;
+	// BIG ASSUMPTION HERE: That a mech will not have more than 100 weapons.
+	sortList->clear();
+	if (listSize == -1) {
+		for (long item = numOther; item < (numOther + numWeapons); item++) {
+			sortList->setId(item - numOther, item);
+			switch (sortType) {
+				case WEAPONSORT_ATTACKCHANCE:
+					sortList->setValue(item - numOther, calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, NULL));
+					break;
+				default:
+					// Bad Sort Type...
+					return(-3);
+			}
+		}
+		sortList->sort();
+		for (int item = 0; item < numWeapons; item++) {
+			weaponList[item] = sortList->getId(item);
+			valueList[item] = sortList->getValue(item);
+		}
+		}
+	else {
+		for (long item = 0; item < listSize; item++) {
+			sortList->setId(item, weaponList[item]);
+			float sortValue = 0.0;
+			if (weaponList[item] == -1)
+				sortValue = -999.0;
+			else
+				switch (sortType) {
+					case WEAPONSORT_ATTACKCHANCE:
+						sortValue = calcAttackChance(target, aimLocation, scenarioTime, weaponList[item], 0.0, NULL);
+						break;
+					default:
+						// Bad Sort Type...
+						return(-3);
+				}
+			sortList->setValue(item, sortValue);
+		}
+		sortList->sort();
+		for (int item = 0; item < listSize; item++) {
+			weaponList[item] = sortList->getId(item);
+			valueList[item] = sortList->getValue(item);
+		}
+	}
+
+	return(NO_ERR);
+}
+
+bool Mover::hasNonAreaWeapon (void)
+{
+	for (long i=numOther;i<numOther+numWeapons;i++)
+	{
+		if (!getWeaponAreaEffect(i))
+			return true;
+	}
+	
+	return false;
+}

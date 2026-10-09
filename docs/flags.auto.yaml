@@ -848,7 +848,7 @@ flags:
     referenced_at:
       - code/gvehicl.cpp
       - code/mech.cpp
-      - code/mover.cpp
+      - code/mover_attack.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6875,7 +6875,7 @@ flags:
     declared_in: null
     referenced_at:
       - code/missiongui.cpp
-      - code/mover.cpp
+      - code/mover_combat.cpp
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
