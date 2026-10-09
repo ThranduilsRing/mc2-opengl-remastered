@@ -149,6 +149,15 @@ NOT_A_CHECK = {
 }
 
 CHECK_RE = re.compile(r"^check[-_].*\.(py|sh)$")
+
+# Offline provers that live in tools/ rather than scripts/ (D1/D2). They were
+# invisible here because discovery only walked scripts/, so tools/check_ubo_layout.py
+# printed OFFSET MISMATCH for months with nothing running it. Keyed by BASENAME
+# alongside the scripts/ checks, which is safe while no tools/ checker shares a
+# name with a scripts/ one.
+TOOLS = ROOT / "tools"
+TOOLS_CHECK_RE = re.compile(r"^(check_[\w-]+|glsl_port_diff)\.py$")
+TOOLS_ROW_RE = re.compile(r"tools/((?:check_[\w-]+|glsl_port_diff)\.py)")
 # Matches the script path inside a run_check / run_check_tri row.
 ROW_RE = re.compile(r"""run_check(?:_tri)?\s+"[^"]+"\s+"([^"]+)""")
 
@@ -275,17 +284,23 @@ def harness_problems(harness_dirs=None, registered=None, debt_text=None):
 
 
 def discover_checks():
-    return sorted(
+    found = {
         p.name for p in SCRIPTS.iterdir()
         if p.is_file() and CHECK_RE.match(p.name) and p.name not in NOT_A_CHECK
-    )
+    }
+    if TOOLS.is_dir():
+        found |= {p.name for p in TOOLS.iterdir()
+                  if p.is_file() and TOOLS_CHECK_RE.match(p.name)}
+    return sorted(found)
 
 
 def wired_scripts(aggregator_text):
-    """Every scripts/check-*.{py,sh} named in a run_check row."""
+    """Every scripts/check-*.{py,sh} (and tools/ checker) named in a run_check row."""
     out = set()
     for cmd in ROW_RE.findall(aggregator_text):
         for m in re.finditer(r"scripts/(check[-_][\w.-]+\.(?:py|sh))", cmd):
+            out.add(m.group(1))
+        for m in TOOLS_ROW_RE.finditer(cmd):
             out.add(m.group(1))
     return out
 
@@ -299,6 +314,8 @@ def rows_referencing_scripts(aggregator_text):
             continue
         label, cmd = m.group(1), m.group(2)
         for s in re.finditer(r"scripts/([\w.-]+\.(?:py|sh))", cmd):
+            out.append((label, s.group(1)))
+        for s in TOOLS_ROW_RE.finditer(cmd):
             out.append((label, s.group(1)))
     return out
 
@@ -371,7 +388,12 @@ def tracked_files():
     private index (the house convention) grades against the same truth."""
     r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD", "scripts/"],
                        cwd=ROOT, capture_output=True, text=True)
-    return {Path(p).name for p in r.stdout.splitlines()}
+    names = {Path(p).name for p in r.stdout.splitlines()}
+    # tools/ top level only: that is where the TOOLS_CHECK_RE checkers live.
+    t = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "tools/"],
+                       cwd=ROOT, capture_output=True, text=True)
+    names |= {Path(p).name for p in t.stdout.splitlines()}
+    return names
 
 
 def head_aggregator_text():
@@ -729,6 +751,19 @@ def selftest():
     grade("unwired new check",
           run(agg, man, checks + ["check-selftest-phantom.py"], tracked, head, ext)[0],
           "UNWIRED and unaccounted")
+
+    # tools/ checkers: the real regression. check_ubo_layout.py and glsl_port_diff.py sat
+    # in tools/ unwired because discovery only walked scripts/. Un-wire each from the
+    # live aggregator text and prove it is both DISCOVERED and reported UNWIRED.
+    for tool in ("check_ubo_layout.py", "glsl_port_diff.py"):
+        if tool not in checks:
+            print(f"[selftest] FAIL  tools/{tool} is not discovered as a check", file=sys.stderr)
+            ok = False
+            continue
+        grade(f"tools/{tool} un-wired",
+              run(agg.replace("tools/" + tool, "tools/unwired_" + tool), man, checks, tracked,
+                  head, ext)[0],
+              f"{tool}: UNWIRED and unaccounted")
 
     # arm (c): a COMMITTED row naming a script git does not track. Injected
     # into the HEAD text, not the working tree, because that is what arm (c)

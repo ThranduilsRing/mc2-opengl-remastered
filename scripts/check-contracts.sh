@@ -948,6 +948,14 @@ run_check "gpu_abi"                "py -3 tools/gpu_abi_gen.py --check && py -3 
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "vk_pipeline_layout"    "py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider"
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
+# D1/D2 (opus-consistency-review A2): the three tools/ offline provers that used to be
+# orphaned. check_ubo_layout cross-checks 13 C++ UBO mirror structs against their GLSL
+# std140 blocks; glsl_port_diff proves the marked GL->VK shader ports verbatim (post
+# rename map) with the two known VK gaps pinned in tools/glsl_port_diff.allowlist;
+# check_vk_shaders compiles every shaders/vulkan/* file with glslang.
+run_check "vk_ubo_layout"          "py -3 tools/check_ubo_layout.py"
+run_check "glsl_port_diff"         "py -3 tools/glsl_port_diff.py --all"
+run_check "vk_shaders_compile"     "py -3 tools/check_vk_shaders.py"
 # CONTRACT-TRUTH-2: the census above enforces that shaders ROUTE THROUGH the
 # rc_* helpers. It says nothing about whether the helpers' own documentation is
 # true, and it wasn't: shaders/include/render_contract.hglsl:77 stated the

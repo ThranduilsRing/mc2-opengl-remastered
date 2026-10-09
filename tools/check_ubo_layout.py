@@ -81,8 +81,8 @@ STD140_BASE_SIZE = {
 }
 # std140 array/struct rule: base alignment rounds up to 16B multiple. Arrays of
 # scalars/vec2/vec3 also get element stride rounded to 16.
-GLSL_TYPE_RE = re.compile(
-    r"^(mat4|vec4|vec3|vec2|float|int|uint|bool)\s+(\w+)(\[(\d+)\])?\s*;")
+GLSL_DECL_RE = re.compile(r"^(mat4|vec4|vec3|vec2|float|int|uint|bool)\s+(.+)$")
+GLSL_DECLARATOR_RE = re.compile(r"^(\w+)(\[(\d+)\])?$")
 CPP_FIELD_RE = re.compile(
     r"^\s*(float|int32_t|uint32_t|uint64_t)\s+(\w+)(\[(\d+)\])?(\[(\d+)\])?\s*;\s*(//.*)?$")
 CPP_OFFSET_IN_COMMENT_RE = re.compile(r"off\s*(\d+)")
@@ -109,27 +109,36 @@ def parse_glsl_block(path, block_name):
         i += 1
     body = text[start:i - 1]
 
+    # Statement-based, not line-based: a line may declare several members
+    # (`float tintRockR; float tintRockG;`) or a comma list (`float a, b, c;`), and
+    # std140 offsets advance for every one of them.
+    body = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
+    body = re.sub(r"//.*", "", body)
+    body = "\n".join(l for l in body.splitlines() if not l.lstrip().startswith("#"))
     fields = []
     offset = 0
-    for line in body.splitlines():
-        line = line.strip()
-        if not line or line.startswith("//"):
+    for stmt in body.split(";"):
+        stmt = " ".join(stmt.split())
+        if not stmt:
             continue
-        mm = GLSL_TYPE_RE.match(line)
+        mm = GLSL_DECL_RE.match(stmt)
         if not mm:
-            # Unnamed padding fields like "int _lightPad0;" already match; skip
-            # comment-only/blank lines silently; anything else structural is an error.
-            continue
-        typ, name, _, arrcount = mm.groups()
-        align = STD140_BASE_ALIGN[typ]
-        size = STD140_BASE_SIZE[typ]
-        if arrcount:
-            # array element stride rounds up to 16B in std140
-            align = 16
-            size = round_up(size, 16) * int(arrcount)
-        offset = round_up(offset, align)
-        fields.append((name, offset))
-        offset += size
+            raise ValueError(f"UNKNOWN-TYPE/unparsed std140 member {stmt!r} in {block_name} ({path})")
+        typ, declarators = mm.groups()
+        for decl in declarators.split(","):
+            dm = GLSL_DECLARATOR_RE.match(decl.strip())
+            if not dm:
+                raise ValueError(f"unparsed declarator {decl.strip()!r} in {block_name} ({path})")
+            name, _, arrcount = dm.groups()
+            align = STD140_BASE_ALIGN[typ]
+            size = STD140_BASE_SIZE[typ]
+            if arrcount:
+                # array element stride rounds up to 16B in std140
+                align = 16
+                size = round_up(size, 16) * int(arrcount)
+            offset = round_up(offset, align)
+            fields.append((name, offset))
+            offset += size
     return fields
 
 
@@ -166,7 +175,10 @@ def parse_cpp_struct(path, struct_name):
 
 
 def check_pair(label, cpp_file, cpp_struct, glsl_file, glsl_block):
-    glsl_fields = parse_glsl_block(glsl_file, glsl_block)
+    try:
+        glsl_fields = parse_glsl_block(glsl_file, glsl_block)
+    except ValueError as e:
+        return 2, [f"[{label}] {e}"]
     cpp_fields = parse_cpp_struct(cpp_file, cpp_struct)
     if glsl_fields is None:
         return 2, [f"[{label}] GLSL block '{glsl_block}' not found in {glsl_file}"]
