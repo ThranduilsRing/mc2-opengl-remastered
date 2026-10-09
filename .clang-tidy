@@ -1,0 +1,41 @@
+---
+# DROPPED as noise (run ad hoc via --checks=): modernize-redundant-void-arg,
+# misc-include-cleaner, cppcoreguidelines-pro-type-member-init.
+# Curated Pareto set (docs: .claude/cleanup/clang-tidy-pareto.md). Report-only by default;
+# never run repo-wide with -fix. Apply per-touched-TU or in reviewed mechanical batches.
+Checks: >
+  -*,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-using,
+  modernize-use-equals-default,
+  modernize-use-equals-delete,
+  modernize-use-emplace,
+  modernize-loop-convert,
+  readability-container-size-empty,
+  readability-redundant-declaration,
+  readability-redundant-control-flow,
+  readability-redundant-smartptr-get,
+  readability-redundant-string-cstr,
+  readability-redundant-string-init,
+  bugprone-use-after-move,
+  bugprone-suspicious-string-compare,
+  bugprone-macro-parentheses,
+  bugprone-sizeof-expression,
+  bugprone-sizeof-container,
+  bugprone-integer-division,
+  performance-unnecessary-copy-initialization,
+  performance-for-range-copy,
+  performance-move-const-arg
+WarningsAsErrors: ''
+# Owned dirs only; the character class avoids matching 3rdparty/ trees.
+HeaderFilterRegex: '.*[/\\](GameOS|mclib|code|RenderCore|GuiRuntime)[/\\].*'
+ExcludeHeaderFilterRegex: '.*[/\\]3rdparty[/\\].*'
+FormatStyle: none
+CheckOptions:
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+  - key: modernize-use-default-member-init.UseAssignment
+    value: true
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: false
