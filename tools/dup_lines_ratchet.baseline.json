@@ -7,7 +7,7 @@
   "RenderCore": 580,
   "RenderWorld": 0,
   "code": 16111,
-  "mclib": 43510,
+  "mclib": 43513,
   "shaders": 3012
  },
  "dirs": [
@@ -211,7 +211,7 @@
   "mclib/appear.cpp": 118,
   "mclib/appear.h": 28,
   "mclib/apprtype.cpp": 167,
-  "mclib/bdactor.cpp": 1421,
+  "mclib/bdactor.cpp": 1422,
   "mclib/bdactor.h": 52,
   "mclib/bitflag.cpp": 29,
   "mclib/camera.cpp": 278,
@@ -275,7 +275,7 @@
   "mclib/gosfx/spinningcloud.hpp": 38,
   "mclib/gosfx/tube.cpp": 64,
   "mclib/gosfx/tube.hpp": 31,
-  "mclib/gvactor.cpp": 1036,
+  "mclib/gvactor.cpp": 1037,
   "mclib/gvactor.h": 17,
   "mclib/heap.cpp": 369,
   "mclib/inifile.cpp": 1262,
@@ -284,7 +284,7 @@
   "mclib/lzdecomp.cpp": 26,
   "mclib/mapdata.cpp": 468,
   "mclib/mathfunc.cpp": 38,
-  "mclib/mech3d.cpp": 1264,
+  "mclib/mech3d.cpp": 1265,
   "mclib/mech3d.h": 58,
   "mclib/mlr/gosimagepool.cpp": 16,
   "mclib/mlr/gosvertex.hpp": 224,
@@ -554,8 +554,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "cb41e8e1d",
+ "head": "43d26d7c0",
  "n": 8,
- "total": 69562,
+ "total": 69565,
  "version": 1
 }
