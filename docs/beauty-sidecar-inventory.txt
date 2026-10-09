@@ -38,6 +38,7 @@ mc2_08/visual_height_4x.r32
 mc2_08/visual_height_mips.r32
 mc2_09/visual_height_4x.r32
 mc2_09/visual_height_mips.r32
+mc2_10/visual_damp.r32
 mc2_10/visual_height_4x.r32
 mc2_10/visual_height_mips.r32
 mc2_11/visual_height_4x.r32
