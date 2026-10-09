@@ -145,7 +145,6 @@ Core references:
 - [docs/visual-verify.md](visual-verify.md) — `tools/visual_verify/` region-level visual verification: capture every saved camera pose from a build, crop the known artifact regions, diff vs a blessed golden, emit a verdict report + contact sheets (automates the manual verification-fleet loop)
 - [docs/renderdoc-automation.md](renderdoc-automation.md) — `tools/renderdoc/` draw-call attribution: capture a posed frame under RenderDoc, then walk pixel-history to report which draws wrote a screen region (shaders/blend/depth/marker) and dump full pipeline state for one draw — the automation the manual black-band tint-hunt needed (complements the Tier-5 parity hook)
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — branch/PR flow, mandatory build config, the tier-1 smoke gate
-- [LANE_COMPLETION_REPORT.template.md](LANE_COMPLETION_REPORT.template.md) - LANE COMPLETION REPORT
 - [ai-order-triage.md](ai-order-triage.md) - AI order triage playbook (META-FIX design F)
 - [asan-autonomous-run-log.md](asan-autonomous-run-log.md) - ASan Autonomous Run Log - 2026-04-24
 - [asan-follow-ups.md](asan-follow-ups.md) - ASan MVP - Follow-up Findings

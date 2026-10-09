@@ -41,6 +41,13 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import console_child  # noqa: E402
+
+# Every spawn captures its output, so a plain CREATE_NO_WINDOW is safe and
+# keeps the owner rule (no console window from a helper) satisfied.
+CREATE_NO_WINDOW = console_child.CREATE_NO_WINDOW
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LEDGER = os.path.join(ROOT, "scripts", "tools_tests.known-failures")
 
@@ -61,7 +68,8 @@ TIMEOUT_S = 600
 def discover() -> list[str]:
     out = subprocess.run(
         ["git", "ls-files", "*test_*.py", "*_test.py"],
-        cwd=ROOT, capture_output=True, text=True, check=True).stdout
+        cwd=ROOT, capture_output=True, text=True, check=True,
+        creationflags=CREATE_NO_WINDOW).stdout
     mods = []
     for p in out.splitlines():
         base = os.path.basename(p)
@@ -95,12 +103,14 @@ def run_module(mod: str) -> tuple[str, int, list[str], str]:
     """Return (module, rc, failed node ids, tail of output)."""
     try:
         p = subprocess.run(PYTEST + [mod], cwd=ROOT, capture_output=True,
-                           text=True, timeout=TIMEOUT_S)
+                           text=True, timeout=TIMEOUT_S,
+                           creationflags=CREATE_NO_WINDOW)
         text, rc = p.stdout + p.stderr, p.returncode
         if rc == 5:  # nothing collected: script-style test, run it directly
             p = subprocess.run([sys.executable, "-B", mod], cwd=ROOT,
                                capture_output=True, text=True,
-                               timeout=TIMEOUT_S)
+                               timeout=TIMEOUT_S,
+                               creationflags=CREATE_NO_WINDOW)
             text, rc = p.stdout + p.stderr, p.returncode
             if rc != 0:  # report as a module-level failure
                 text += f"\nFAILED {mod} - script exited {rc}"
