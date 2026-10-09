@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1146,
+ "count": 1141,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -3419,37 +3419,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_COLORCOWRITE_NEGCTL",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "tools/vk_gl_interop_spike/main_colorcowrite.cpp:822",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "clear",
-     "compare"
-    ]
-   },
-   "readerDefault": "",
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_COLORMAP_CPU_RETIRE",
    "kind": "Bool",
    "default": true,
@@ -4435,9 +4404,7 @@
    "registered": false,
    "registryDefault": null,
    "seedDefaultSource": "unknown",
-   "harnessValues": [
-    "debug_state/diagnostic_trace.jsonl"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": null,
    "defaultDisagreement": "",
@@ -17977,37 +17944,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_SAMPLETEX_NEGCTL",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "tools/vk_gl_interop_spike/main_sampletex.cpp:679",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "2D_RGBA8_BGRA_order",
-     "rbswap"
-    ]
-   },
-   "readerDefault": "",
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SCENE_LIGHTING_ASSERT",
    "kind": "Bool",
    "default": false,
@@ -18392,37 +18328,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_SHADER_SPIRV_FATAL",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SHADOWCMP_NEGCTL",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "tools/vk_gl_interop_spike/main_shadowcmp.cpp:656",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "cmpflip",
-     "filter"
-    ]
-   },
-   "readerDefault": "",
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
    "retireVerdict": ""
   },
   {
@@ -20428,32 +20333,6 @@
     "style": "compare"
    },
    "readerDefault": 5,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SPIKE_VERBOSE",
-   "kind": "Bool",
-   "default": null,
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "--- 2.",
-   "readers": [
-    {
-     "at": "tools/rendercore_standalone_spike/main.cpp:130",
-     "idiom": "NonReader"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -23462,9 +23341,7 @@
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
    "defaultDisagreement": "",
@@ -23682,9 +23559,7 @@
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
    "defaultDisagreement": "",
@@ -29444,37 +29319,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_NEG_TEST",
-   "kind": "Enum",
-   "default": null,
-   "rule": "Std",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "negative-test mode selection",
-   "readers": [
-    {
-     "at": "tools/vk_present_smoke/main.cpp:698",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "badlayout",
-     "skipblit"
-    ]
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
    "kind": "Bool",
    "default": false,
@@ -30133,7 +29977,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:144",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:146",
      "idiom": "Tri(inherit)"
     },
     {
@@ -30508,7 +30352,7 @@
    "doc": "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF.",
    "readers": [
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:89",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:90",
      "idiom": "Exact1"
     }
    ],
@@ -30517,7 +30361,8 @@
    "registryDefault": false,
    "seedDefaultSource": "registry",
    "harnessValues": [
-    "1"
+    "1",
+    "10"
    ],
    "numericRange": null,
    "readerDefault": false,
@@ -30544,7 +30389,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:131",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:132",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31104,7 +30949,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:131",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:132",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31286,7 +31131,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:146",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:148",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31378,7 +31223,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:145",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:147",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31728,14 +31573,6 @@
     {
      "at": "GameOS/gameos/vulkan_present_object.cpp:47",
      "idiom": "Token/State"
-    },
-    {
-     "at": "tools/vk_hwnd_present_probe/main.cpp:239",
-     "idiom": "Unclassified"
-    },
-    {
-     "at": "tools/vk_present_smoke/main.cpp:237",
-     "idiom": "Unclassified"
     }
    ],
    "conflict": false,
