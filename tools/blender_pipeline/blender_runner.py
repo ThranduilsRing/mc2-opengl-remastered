@@ -94,6 +94,7 @@ def run_blender_script(blender_exe, script_path, args, cwd=None, log_path=None):
     proc = subprocess.run(
         cmd, capture_output=True, text=True, cwd=cwd,
         encoding="utf-8", errors="replace",
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     if log_path:
         try:
@@ -119,5 +120,6 @@ if __name__ == "__main__":
         out = subprocess.run(
             [str(exe), "--background", "--version"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         print(out.stdout.strip().splitlines()[0] if out.stdout else "(no version output)")

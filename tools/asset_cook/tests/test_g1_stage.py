@@ -47,7 +47,7 @@ def main() -> int:
         proc = subprocess.run(
             [sys.executable, str(COOK), "stage", str(FIXTURE), td,
              "--id", "bigbox", "--class", "staticprop", "--appearance", "hangar"],
-            capture_output=True, text=True)
+            capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if proc.returncode != 0:
             print("FAIL stage exited nonzero:\n" + proc.stdout + proc.stderr)
             return 1

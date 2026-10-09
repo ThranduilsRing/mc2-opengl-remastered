@@ -328,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"       cmd: {' '.join(cmd)}")
                 continue
             dst.parent.mkdir(parents=True, exist_ok=True)
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if r.returncode != 0 or not dst.is_file():
                 detail = (r.stderr or r.stdout).strip()[:300]
                 print(f"  FAIL {ref}: cook rc={r.returncode}: {detail}",

@@ -16,14 +16,14 @@ from scripts.smoke_lib import preflight_cache as pc
 
 
 def _git_init_with_commit(root: Path) -> str:
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=root, check=True)
-    subprocess.run(["git", "config", "user.name", "test"], cwd=root, check=True)
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=root, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    subprocess.run(["git", "config", "user.name", "test"], cwd=root, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     (root / "README.txt").write_text("x", encoding="utf-8")
-    subprocess.run(["git", "add", "."], cwd=root, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True)
+    subprocess.run(["git", "add", "."], cwd=root, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root,
-                         capture_output=True, text=True, check=True)
+                         capture_output=True, text=True, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return out.stdout.strip()
 
 
@@ -79,8 +79,8 @@ def test_cache_miss_on_head_change(worktree, deploy_dir, tmp_path):
 
     # New commit changes HEAD -> fingerprint changes -> cache miss.
     (worktree / "file2.txt").write_text("y", encoding="utf-8")
-    subprocess.run(["git", "add", "."], cwd=worktree, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "second"], cwd=worktree, check=True)
+    subprocess.run(["git", "add", "."], cwd=worktree, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    subprocess.run(["git", "commit", "-q", "-m", "second"], cwd=worktree, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     fp2 = pc.compute_fingerprint(deploy_dir, worktree)
     assert fp2 != fp

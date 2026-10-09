@@ -3,7 +3,7 @@
 import subprocess, os, sys, collections, re
 roots = ["code","mclib","GameOS","RenderCore","RenderWorld","GameAdapters","gui","EditorBridge","GuiRuntime","editor","tools/mc2_launcher","tools/asset_viewer","HostServices"]
 ext = {".cpp",".h",".hpp",".c",".inl"}
-files = subprocess.run(["git","ls-files"],capture_output=True,text=True).stdout.split("\n")
+files = subprocess.run(["git","ls-files"],capture_output=True,text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.split("\n")
 out = collections.defaultdict(list); scanned = 0
 for f in files:
     if "3rdparty" in f or not any(f.startswith(r+"/") for r in roots): continue

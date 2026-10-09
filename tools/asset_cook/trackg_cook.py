@@ -419,7 +419,7 @@ def assemble(args) -> int:
     # validate the full manifest against the schema before writing
     mpath.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     rc = subprocess.run([sys.executable, str(Path(__file__).with_name("validate_asset_manifest.py")),
-                         str(mpath)], capture_output=True, text=True)
+                         str(mpath)], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if rc.returncode != 0:
         print("FAIL assemble: assembled manifest failed schema/coherence:\n" + rc.stdout + rc.stderr)
         return 1

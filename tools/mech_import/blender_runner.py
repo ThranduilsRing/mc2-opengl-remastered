@@ -77,7 +77,8 @@ def run_blender_script(
         cmd.append(f"--{k}={v}")
 
     proc = subprocess.run(
-        cmd, capture_output=True, text=True, cwd=cwd, encoding="utf-8", errors="replace"
+        cmd, capture_output=True, text=True, cwd=cwd, encoding="utf-8", errors="replace",
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     if proc.returncode != 0:
         tail = (proc.stdout or "")[-2000:] + "\n--- stderr ---\n" + (proc.stderr or "")[-2000:]
@@ -94,5 +95,6 @@ if __name__ == "__main__":
         out = subprocess.run(
             [str(exe), "--background", "--version"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         print(out.stdout.strip().splitlines()[0] if out.stdout else "(no version output)")

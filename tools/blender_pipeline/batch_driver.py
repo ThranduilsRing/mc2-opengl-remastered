@@ -416,7 +416,7 @@ def _run_stage_extract(stage):
     Path(stage["cmd"][stage["cmd"].index("--out-glb") + 1]).parent.mkdir(
         parents=True, exist_ok=True)
     proc = subprocess.run(stage["cmd"], capture_output=True, text=True,
-                          encoding="utf-8", errors="replace")
+                          encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if proc.returncode != 0:
         raise RuntimeError(f"extract failed:\n{proc.stdout[-1500:]}\n{proc.stderr[-1500:]}")
     return {}

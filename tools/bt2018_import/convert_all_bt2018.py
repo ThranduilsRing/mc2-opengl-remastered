@@ -84,7 +84,7 @@ def convert_one(fbx, btname, args):
     # 1. FBX2glTF (skip if present unless --force)
     if args.force or not os.path.isfile(glb):
         r = subprocess.run([args.fbx2gltf, "-i", fbx, "-o", os.path.join(out_dir, btname), "-b"],
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if not os.path.isfile(glb):
             print(f"[FAIL] {btname}: FBX2glTF produced no glb\n{r.stdout[-400:]}")
             return None

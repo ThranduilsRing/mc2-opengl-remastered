@@ -63,7 +63,7 @@ def main() -> int:
             [sys.executable, str(COOK), "textures", "--staged", str(sp),
              "--texture-dir", str(texdir), "--out-root", str(deploy),
              "--out-json", str(outj), "--tiers", ",".join(map(str, TIERS))],
-            capture_output=True, text=True)
+            capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if proc.returncode != 0:
             print("FAIL textures exited nonzero:\n" + proc.stdout + proc.stderr)
             return 1

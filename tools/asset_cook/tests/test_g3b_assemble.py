@@ -26,7 +26,7 @@ KTX = Path(r"A:/Games/mc2-tools/ktx/ktx.exe")
 
 
 def run(*a) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, *map(str, a)], capture_output=True, text=True)
+    return subprocess.run([sys.executable, *map(str, a)], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def _sig(p: Path):
