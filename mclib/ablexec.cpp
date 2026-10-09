@@ -115,7 +115,7 @@ void crunchToken (void) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		*codeBufferPtr = curToken;
+		*codeBufferPtr = static_cast<char>(curToken);
 		codeBufferPtr++;
 	}
 }
