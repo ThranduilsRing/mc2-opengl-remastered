@@ -1,11 +1,30 @@
 # Logging facade plan (C++23, MSVC 14.44). Design only, nothing built.
 
+## Amendments (adversarial review 2026-10-09)
+Source: `.claude/cleanup/seam-plans-adversarial.md`, "Logging". These override the sections below where they conflict.
+
+- **A1 LG12 split.** LG12a = printf-style logging (fprintf/printf to stdout/stderr, log_info family): the facade target; reaches 0 via MC2_LOG/MC2_EVENT, allow-list only for crash/signal handlers and facade internals. LG12b = sprintf/snprintf/vsnprintf buffer formatting (R_PRINTF, cxx17_ratchet.py:116): migrates to `std::format_to`/`std::format_to_n`, NOT the logger; tracked as its own ratchet line. The 2704 figure is LG12a+LG12b combined; report them separately.
+- **A2 constinit defaults.** Thresholds and event-enable flags are `constinit` with explicit legacy defaults (MC2_LOG-unset semantics). No dynamic initialisation, so logging before `main` (static init, DLLs) is safe. `init()` only overrides.
+- **A3 MC2_LOG parse ordering.** Spec parse runs BEFORE the NUL redirect at gameosmain.cpp:1145-1175; stream liveness is decided from the parsed result. `MC2_LOG=1` keeps legacy meaning exactly (all streams live, all legacy events on). Unset = unchanged NUL redirect. A value containing `:` or `=` is a spec and implies live streams.
+- **A4 runtime format strings.** SPEW-style and data-supplied templates use `std::vformat` inside `try/catch (std::format_error&)`. On error emit the raw template plus a one-line `[LOG FORMAT ERROR]` marker. The facade never throws. Only compile-time literals use `std::format_string`.
+- **A5 brace escaping.** Literals converted from printf that contain `{` or `}` (JSON-ish text) are escaped to `{{` `}}` by the codemod. The codemod flags any unescaped brace.
+- **A6 printf hazards.** `%s` with nullptr goes through `safe(s)` (prints `(null)`). `%ld`/`%lu` are 32-bit on Windows LLP64: map to int32 explicitly, never int64. `%lld` maps to int64. Width/precision variants are covered by the golden harness.
+- **A7 level check before args.** The level/category check is inside the macro (`if (enabled) emit(format(...))`), so disabled sites evaluate neither the format nor their argument expressions. The disabled-path test counts formatting calls and must show zero.
+- **A8 MC2_EVENT byte-identical.** Output is `[TAG vN] ` + body + `\n`, same FILE* per call site (stdout or stderr), same flush points, same ordering against remaining raw printf calls, one fwrite per line. No decoration. Parsers are not changed in phase 1. Regexes at risk, from `scripts/smoke_lib/logparse.py` and `scripts/run_smoke.py`:
+  - `PERF_RE` (`[PERF v1]` strict key order and spacing), `TIMING_RE`, `SUMMARY_RE` (`[SMOKE v1] event=summary result= reason= stage=`), `HEARTBEAT_RE` (`[HEARTBEAT] frames= elapsed_ms=`)
+  - Line-anchored: `^CRASH:`, `^\[CRASHBUNDLE\]`
+  - Bucket regexes: `[SPLIT_PATH_PARITY] ... match=0`, `[MOVER_COHERENCE] VIOLATION|ADVISORY`, `[ASSET_LOAD v1] event=...`, `[APPEAR_AUDIT v1] event=missing`, `[SMOKE v1] event=banner`
+  - Un-bracketed `VEG_SUMMARY instance_count= draw_calls= flush_reason=` (run_smoke.py `_VEG_RE`) and `ORDER_LIVENESS_SUMMARY`
+  - Free-text signatures: `Shader filename:...failed to load shader`, `shader...compile...fail`, `GLSL link...failed`, `vkCreate*...failed`, `pipeline_failed`, `Unable to open Mission File`, `Missing file:`, `cannot open...required`, `STOP(...Mission File`
+  - Any tag whose golden byte test fails stays on legacy printf.
+- **A9 unchanged in phase 1.** `gosASSERT`, `STOP()`, `PAUSE()`, and ErrorHandler are not migrated.
+
 ## 1. Survey (code GameOS mclib RenderWorld RenderCore GuiRuntime GameAdapters HostServices editor tools)
 | Mechanism | Lines | Files |
 |---|---:|---:|
 | fprintf(stderr/stdout) | 1600 | 172 |
 | bare printf( | 789 | 119 |
-| LG12 ratchet total (printf-family) | 2704 (code 1001, mclib 954, GameOS 707, GuiRuntime 34, GameAdapters 6, RenderCore 2) | ~190 |
+| LG12 ratchet total (printf-family), split per A1 into LG12a (logging) and LG12b (buffer formatting) | 2704 combined (code 1001, mclib 954, GameOS 707, GuiRuntime 34, GameAdapters 6, RenderCore 2); LG12a/LG12b split not yet counted | ~190 |
 | SPEW( | 286 | 69 |
 | gosASSERT | 1633 | 138 (assert, not logging: leave) |
 | STOP( | 459 | 121 (fatal; keep) |
@@ -30,8 +49,8 @@ SMOKE v1 (event=summary result= reason= stage=), PERF v1 (strict order and spaci
 Rules the facade guarantees:
 1. Structured lines use a separate entry, never the free-form logger: `MC2_EVENT(Cat, "TAG", N, "k={} k2={:.3f}", ...)`. Tag and version are consteval template args; facade writes exactly `[TAG vN] ` + body + `\n`. Unversioned legacy tags use `MC2_EVENT_NOVER`. No prefix, timestamp, level or category decoration is ever added to event lines. Body format = old printf string transliterated, so key order/spacing is the author's by construction.
 2. Events bypass the level filter. They obey only the category/topic toggle that replaces their legacy gate; default state identical to legacy (always-on stays always-on).
-3. Stream preserved per site (Stream::Err/Out) so the NUL-redirect-when-MC2_LOG-unset still works. One fwrite per line from a thread_local buffer (no interleave tearing; printf was line-atomic too).
-4. printf->format hazards (codemod must flag, golden must cover): %g/%e vs {:g}/{:e}; %5.2f -> {:5.2f}; %x/%08X; %p -> void* cast; %s with nullptr (UB in format; wrap in `safe(s)`); %u/%d signedness; %zu/%lld; char printed as int; %% -> %; locale (std::format is locale-independent, matches "C").
+3. Stream preserved per site (Stream::Err/Out) so the NUL-redirect-when-MC2_LOG-unset still works. One fwrite per line from a thread_local buffer, to the same FILE* as the call site it replaces (no interleave tearing; printf was line-atomic too). See A3, A7, A8.
+4. printf->format hazards (codemod must flag, golden must cover; see A5, A6): %g/%e vs {:g}/{:e}; %5.2f -> {:5.2f}; %x/%08X; %p -> void* cast; %s with nullptr (UB in format; wrap in `safe(s)`); %u/%d signedness; %zu/%lld; char printed as int; %% -> %; locale (std::format is locale-independent, matches "C").
 5. Parsers are NOT changed during migration. Any tag whose golden byte test fails stays on legacy printf. Parser changes (e.g. JSON events) are a separate later change, dual-emit under MC2_LOG_JSON.
 6. Free-text signature lines go through `MC2_LOG_RAW` with legacy text intact; decoration (time/cat) off unless MC2_LOG_DECORATE=1.
 
@@ -49,7 +68,7 @@ enum class Cat : uint8_t { Core, Io, Render, Vk, Gl, Terrain, Water, Mech, Veg, 
                            Ui, Audio, Net, Shader, Perf, Smoke, Assets, Editor, Count };
 enum class Stream : uint8_t { Err, Out };
 
-extern std::atomic<Level> g_threshold[size_t(Cat::Count)];     // parsed from MC2_LOG
+inline constinit std::atomic<Level> g_threshold[size_t(Cat::Count)] = {};  // legacy constexpr default; overridden from MC2_LOG in init() (A2)
 inline bool enabled(Cat c, Level l) noexcept {                  // whole disabled-path cost
   return l >= g_threshold[size_t(c)].load(std::memory_order_relaxed); }
 bool topicEnabled(Cat, std::string_view topic) noexcept;       // "terrain:indirect"
@@ -59,7 +78,7 @@ void write(Cat, Level, Stream, std::string_view line, const std::source_location
 void writeRaw(Stream, std::string_view line_incl_newline) noexcept;   // events, crash path (no alloc)
 bool allowRate(uint64_t siteKey, double perSecond) noexcept;   // per-site token bucket
 bool allowOnce(uint64_t siteKey) noexcept;
-void init();                      // call in gameosmain after the MC2_LOG NUL-redirect decision
+void init();                      // call in gameosmain BEFORE the NUL redirect at gameosmain.cpp:1145-1175 (A3); spec parse decides stream liveness
 void setSpec(std::string_view s); // "render:debug,vk:trace,*:warn"; dev-shell can call at runtime
 
 template <class... A>
@@ -96,7 +115,8 @@ Config grammar: MC2_LOG unset = legacy quiet; `1` = legacy loud (all cats Info +
 | `fprintf(stderr,"plain ...")` | `MC2_LOG(Cat, Info/Warn/Error, ...)` |
 | `if(getenv("MC2_X_TRACE")) fprintf(...)` | `MC2_LOG_TOPIC` / gated `MC2_EVENT`; static getenv removed |
 | per-frame prints | `MC2_LOG_EVERY` / `_ONCE` / `_EVERY_N_FRAMES` |
-| SPEW((group,fmt,...)) | shim forwarding to MC2_LOG(Debug) (group->Cat table), then retire |
+| SPEW((group,fmt,...)) | shim forwarding to MC2_LOG(Debug) (group->Cat table) via vformat in try/catch (A4), then retire |
+| `sprintf/snprintf` into buffers (LG12b) | `std::format_to` / `format_to_n`, NOT MC2_LOG (A1) |
 | utils/logging.h log_* (6 files) | wrappers over mc2::log, then delete header |
 | OutputDebugString (31) | OutputDebugString sink only |
 | mc2_diag::writeEvent | unchanged API; facade bridge sink |
@@ -116,8 +136,8 @@ Only gates that merely print fold in (names ending _TRACE/_DIAG/_PROBE/_DEBUG/_C
 ## 6. Strangler phases
 P0 Freeze: tools/log_tag_census.py (scan C++ for `[TAG vN] key=` literal prefixes + python parser regexes) -> tests/unit/log_tag_baseline.json; add C++ golden harness (follow build64-h-* harness pattern) comparing legacy printf bytes vs MC2_EVENT bytes.
 P1 Facade: add utils/mc2log.{h,cpp}, init() in gameosmain; zero call-site changes; unit tests for spec parser, rate limiter, once, thread-tear.
-P2 Adopt per directory, leaf first: GameOS terrain slice -> other gos_* -> utils -> GuiRuntime/GameAdapters -> mclib -> code. Codemod handles `fprintf(stderr,"lit",...)`; gated traces by hand. Each PR lowers LG12 in tools/cxx17_ratchet/baseline.json for that dir (ratchet only goes down).
-P3 Retire: SPEW shim, logging.h, getenv statics, OutputDebugString sites, DELETE gates; LG12 -> 0 with allow-list for crash/signal handlers and facade internals.
+P2 Adopt per directory, leaf first: GameOS terrain slice -> other gos_* -> utils -> GuiRuntime/GameAdapters -> mclib -> code. Codemod handles `fprintf(stderr,"lit",...)`; gated traces by hand. Each PR lowers LG12a in tools/cxx17_ratchet/baseline.json for that dir (ratchet only goes down). LG12b is tracked separately and is not a facade target.
+P3 Retire: SPEW shim, logging.h, getenv statics, OutputDebugString sites, DELETE gates; LG12a -> 0 with allow-list for crash/signal handlers and facade internals (A1). LG12b is not driven to 0 by this plan.
 P4 Optional: parsers consume JSON (MC2_LOG_JSON dual-emit), alias table removal.
 
 ## 7. First slice
@@ -125,7 +145,8 @@ Pilot: GameOS/gameos/gos_terrain_patch_stream.cpp (14 LG12; gates MC2_PATCH_STRE
 
 ## 8. Verification
 - tools/log_tag_census.py before/after: set of `[TAG vN] key=` prefixes and key order identical (empty diff).
-- C++ golden harness: legacy printf vs MC2_EVENT bytes per parsed tag with edge values (floats, negatives, large ints, empty/null strings).
+- C++ golden harness: legacy printf vs MC2_EVENT bytes per parsed tag with edge values (floats, negatives, large ints, empty/null strings, nullptr %s, %ld/%lld widths, braces). Must pass before any P2 adoption (A8).
+- Disabled path: zero formatting calls and zero argument evaluation when a site is off (A7).
 - Python: feed harness output through scripts/smoke_lib/logparse.py and oracleparse.py (tests/smoke, tests/unit) -> same summaries as legacy.
 - `py -3 tools/cxx17_ratchet/cxx17_ratchet.py` (LG12 down, never up) and tools/cxx17_ratchet/test_cxx17_ratchet.py.
 - tier1 smoke (scripts/run_smoke.py --tier tier1): normalize timings/addresses, compare per-tag line counts old vs new.
