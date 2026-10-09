@@ -1936,7 +1936,7 @@ unsigned long textToLong (char *num)
 	char *hexOffset = num;
 	
 	hexOffset += 2;
-	long numDigits = strlen(hexOffset)-1;
+	long numDigits = static_cast<long>(strlen(hexOffset)-1);
 	long power = 0;
 	
 	for (long count = numDigits;count >= 0;count--,power++)
@@ -1969,7 +1969,7 @@ long longToText (char *result, long num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%08X",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(0);
 
@@ -2025,7 +2025,7 @@ long getStringFromMap (File &mapFile, unsigned long addr, char *result)
 			//-----------------------------------------------
 			// We've found it, print the previous address.
 			strncpy(result,previousAddress,510);
-			return(strlen(result));
+			return static_cast<long>(strlen(result));
 		}
 		
 		strncpy(previousAddress,&(mapFileLine[6]),510);

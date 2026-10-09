@@ -291,7 +291,7 @@ int FitIniFile::textToInt (const char *num)
 	else
 	{
 		hexOffset += 2;
-		int numDigits = strlen(hexOffset)-1;
+		int numDigits = static_cast<int>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -300,7 +300,7 @@ int FitIniFile::textToInt (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<int>(strlen(hexOffset)-1);
 		int power = 0;
 		for (int count = numDigits;count >= 0;count--,power++)
 		{
@@ -342,7 +342,7 @@ long FitIniFile::textToLong (const char *num)
 	else
 	{
 		hexOffset += 2;
-		int numDigits = strlen(hexOffset)-1;
+		int numDigits = static_cast<int>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -351,7 +351,7 @@ long FitIniFile::textToLong (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<int>(strlen(hexOffset)-1);
 		int power = 0;
 		for (int count = numDigits;count >= 0;count--,power++)
 		{
@@ -395,7 +395,7 @@ short FitIniFile::textToShort (const char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -404,7 +404,7 @@ short FitIniFile::textToShort (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -447,7 +447,7 @@ char FitIniFile::textToChar (const char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -456,7 +456,7 @@ char FitIniFile::textToChar (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -498,7 +498,7 @@ unsigned long FitIniFile::textToULong (const char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -507,7 +507,7 @@ unsigned long FitIniFile::textToULong (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -550,7 +550,7 @@ unsigned short FitIniFile::textToUShort (const char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -559,7 +559,7 @@ unsigned short FitIniFile::textToUShort (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -602,7 +602,7 @@ unsigned char FitIniFile::textToUChar (const char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -611,7 +611,7 @@ unsigned char FitIniFile::textToUChar (const char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -657,7 +657,7 @@ long FitIniFile::floatToText (char *result, float num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%.4f",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -673,7 +673,7 @@ long FitIniFile::longToTextDec (char *result, long num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%d",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -689,7 +689,7 @@ long FitIniFile::longToTextHex (char *result, long num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"0x%x",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -705,7 +705,7 @@ long FitIniFile::shortToTextDec (char *result, short num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%d",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -721,7 +721,7 @@ long FitIniFile::shortToTextHex (char *result, short num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"0x%x",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -737,7 +737,7 @@ long FitIniFile::byteToTextDec (char *result, byte num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%d",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -753,7 +753,7 @@ long FitIniFile::byteToTextHex (char *result, byte num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"0x%x",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(BUFFER_TOO_SMALL);
 
@@ -1450,14 +1450,14 @@ long FitIniFile::readIdString (const char *varName, char *result, unsigned long 
 		// strings can span more than one line, make sure there is another equal sign
 		if ( pFirstEqual && !strstr( pFirstEqual+1, "\"" ) ) 
 		{
-			long curLen = strlen( equalSign );
+			long curLen = static_cast<long>(strlen( equalSign ));
 			char tmpLine[2047];
 			do
 			{
 				readLine((MemoryPtr)tmpLine,2047);
 				pFound = strstr( tmpLine, "\"" );
 
-				long addedLen = strlen( tmpLine ) + 1;
+				long addedLen = static_cast<long>(strlen( tmpLine ) + 1);
 				if ( curLen + addedLen < 2048 )
 				{
 					strcat( equalSign, tmpLine );
