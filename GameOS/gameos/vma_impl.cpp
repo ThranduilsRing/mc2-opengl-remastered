@@ -3,8 +3,8 @@
 // ONE TU in the whole program must define VMA_IMPLEMENTATION before including
 // the header; every other user includes vk_mem_alloc.h without that define.
 //
-// Compiled ONLY under MC2_VULKAN (see GameOS/gameos/CMakeLists.txt and the
-// vulkan_shader_probe target in the root CMakeLists). When MC2_VULKAN is OFF
+// Compiled ONLY under MC2_VULKAN (see GameOS/gameos/CMakeLists.txt).
+// When MC2_VULKAN is OFF
 // this TU is not added to any target -> the normal GL build is byte-identical
 // and pulls in neither VMA nor the Vulkan headers.
 

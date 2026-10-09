@@ -100,7 +100,6 @@ Note: this lane's targets (mc2, mc2_launcher) emit 1581 warnings (1534 C4267), f
 | C4996 | mclib/ablenv.cpp | 2 | 2 |
 | C4996 | mclib/ffile.cpp | 2 | 2 |
 | C4005 | GameOS/include/platform_io.h | 1 | 1 |
-| C4244 | GameOS/gameos/vulkan_backend_skeleton.cpp | 1 | 1 |
 | C4244 | mclib/ablexec.cpp | 1 | 1 |
 | C4244 | mclib/ablstmt.cpp | 1 | 1 |
 | C4244 | mclib/stuff/memorystream.cpp | 1 | 1 |
@@ -191,6 +190,6 @@ mclib/*.cpp top level (inifile, csvfile, ffile, ablscan, txmmgr, ewcharstring, f
 | C4838 | 1 | 1 | 1 | 1 |
 | C4996 | 11 | 11 | 11 | 11 |
 
-Remaining C4267/C4244 are all in files owned by lane 1 or excluded from this slice: mclib/txmmgr.cpp (6), code/** (13), GameOS/gameos/gameos_fileio.cpp (2), GameOS/gameos/vulkan_backend_skeleton.cpp (1). EditRel adds no new ones.
+Remaining C4267/C4244 are all in files owned by lane 1 or excluded from this slice: mclib/txmmgr.cpp (6), code/** (13), GameOS/gameos/gameos_fileio.cpp (2). (GameOS/gameos/vulkan_backend_skeleton.cpp, 1 site, was deleted by D7 phase 1.) EditRel adds no new ones.
 
 /we now also covers stuff, gosfx, particles, mclib (all but bdactor/mech3d/txmmgr/terrain.cpp) and GameOS/gameos/utils (per-source, `mc2_narrowing_errors_sources`). Not covered: GameOS/gameos/*.cpp, code/, editor/.

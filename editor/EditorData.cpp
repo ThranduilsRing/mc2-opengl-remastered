@@ -1299,8 +1299,7 @@ bool EditorData::generateMission( int mapSize, int terrain, unsigned long seed )
 		mapName, N, biome, (unsigned long)( seed & 0x7fffffff ) );
 	fclose( rf );
 
-	// Run the python generator (blocking). CWD is the deploy root (run-editor.bat
-	// cd's there); the generator + its deps live in tools\terrain_gen\.
+	// Blocking run of the python generator in tools\terrain_gen\ (CWD is the deploy root).
 	char cmd[1024];
 	sprintf( cmd, "py -3 tools\\terrain_gen\\terrain_gen.py \"%s\" --out terrain_gen_out", recipePath );
 	EditorDataTrace( "generateMission: N=%d biome=%s seed=%lu cmd=%s", N, biome, seed, cmd );

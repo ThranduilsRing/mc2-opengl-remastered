@@ -461,9 +461,10 @@ static DWORD WINAPI s_smoke_thread(LPVOID);   // smoke driver: defined below
 
 bool EditorBackgroundLaunch()
 {
+	// Same truthiness as the engine's window_offscreen_requested(): set and not "0".
 	const char* noActivate = getenv("MC2_NO_ACTIVATE");
 	const char* offscreen  = getenv("MC2_WINDOW_OFFSCREEN");
-	return (noActivate && noActivate[0] == '1') || (offscreen && offscreen[0] == '1');
+	return (noActivate && noActivate[0] && noActivate[0] != '0') || (offscreen && offscreen[0] && offscreen[0] != '0');
 }
 
 BOOL EditorMFCApp::InitInstance()
