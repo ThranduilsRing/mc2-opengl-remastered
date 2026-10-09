@@ -38,11 +38,30 @@ def test_no_pure_black():
     assert dark_pixels / total < 0.01, f"Too many pure-black pixels: {dark_pixels}/{total}"
 
 
-def test_snow_biome_has_bright_pixels():
-    img = _run(biome="snow_mountain", seed=42)
+def _bright_fraction(img):
     arr = np.array(img)
-    bright = np.all(arr > 180, axis=2).sum()
-    assert bright > 0, "Snow mountain should have bright snow pixels"
+    return np.all(arr > 180, axis=2).mean()
+
+
+def test_snow_biome_is_desolate_not_snowfield():
+    # 600a48689 (2026-06-05) retuned snow_mountain to a bleak frozen-rock biome
+    # (snow_line 0.98: snow only on the highest peaks, <=1% of cells), so it
+    # must no longer render as a white snowfield. The old test asserted bright
+    # snow pixels, which predates that tune.
+    assert _bright_fraction(_run(biome="snow_mountain", seed=42)) < 0.01
+
+
+def test_snow_layer_still_renders_when_snow_line_is_low():
+    # Guards the renderer's snow blend itself, now that the preset keeps it off:
+    # an explicit low snow_line (the pre-600a48689 value was 0.52) must paint
+    # bright snow pixels.
+    r = TerrainRecipe(size=60, seed=42, biome="snow_mountain")
+    r.apply_biome()
+    r.materials.snow_line = 0.5
+    h = HeightGenerator().generate(r)
+    masks = MaterialClassifier().classify(h, r)
+    img = BurninRenderer().render(masks, r, BIOMES["snow_mountain"])
+    assert _bright_fraction(img) > 0.05
 
 
 def test_all_biomes_render():

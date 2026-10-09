@@ -45,14 +45,22 @@ def test_json_roundtrip(tmp_path):
 
 def test_apply_biome_overrides_defaults():
     r = TerrainRecipe(size=120, biome="snow_mountain")
+    default_snow_line = r.materials.snow_line
     r.apply_biome()
-    assert r.materials.snow_line < 0.6   # snow_mountain has lower snow line than temperate
+    # 600a48689 (2026-06-05) retuned snow_mountain to a desolate frozen-rock biome:
+    # snow_line 0.52 -> 0.98 so snow only caps the very highest peaks (<=1%). The
+    # old "< 0.6" expectation predates that; what matters here is that the preset
+    # value replaces the dataclass default.
+    assert r.materials.snow_line == BIOMES["snow_mountain"].materials["snow_line"]
+    assert r.materials.snow_line != default_snow_line
 
 
-def test_burnin_resolution_fixed_1280():
-    # MVP: always 1280 for MC2 classic parity
-    for size in (60, 80, 100, 120, 1000):
-        assert TerrainRecipe(size=size).burnin_resolution() == 1280
+def test_burnin_resolution_matches_engine_tiles():
+    # 61dec3872 (2026-06-05): the colormap must be (size/20)*256 px so the engine's
+    # numTexturesAcross (= width/256) equals the map's block count; the old fixed
+    # 1280 rendered half of a 120 map black. The renderer caps/upscales the output.
+    for size, res in ((60, 768), (80, 1024), (100, 1280), (120, 1536), (1000, 12800)):
+        assert TerrainRecipe(size=size).burnin_resolution() == res
 
 
 def test_all_biomes_present():
