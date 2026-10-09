@@ -9,10 +9,15 @@ project(mc2)
 # makes mc2.exe uniformly C++17. See docs/superpowers/explorations/
 # 2026-05-24-cxx17-upgrade-recon.md.
 # Single source of truth for the language standard (17 or 23; Linux gcc stays 17 until deferred work).
-set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (17|20|23); default 23 = MSVC /std:c++latest")
+set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (17|20|23); default 23 = MSVC /std:c++23preview")
 set(CMAKE_CXX_STANDARD ${MC2_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# CMake maps C++23 to /std:c++latest on MSVC (C++26 draft + unstable STL); pin the stable preview switch instead.
+if(MSVC AND MC2_CXX_STANDARD EQUAL 23)
+    set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++23preview")
+    set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++23preview")
+endif()
 
 include(CMakeToolsHelpers OPTIONAL)
 
@@ -83,6 +88,11 @@ if(MSVC AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
     add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:/Zc:inline>")
 endif()
 
+# __cplusplus otherwise reads 199711L on MSVC, which misleads feature-testing headers.
+if(MSVC)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>")
+endif()
+
 # ---------------------------------------------------------------------------
 # MC2_ASAN: parallel dev build with MSVC AddressSanitizer.
 #
@@ -118,6 +128,7 @@ option(MC2_IMGUI "Enable in-game ImGui UI" OFF)
 # Turn OFF for a pure-mc2 build with MC2_IMGUI=OFF (e.g. the Vulkan parity island),
 # which otherwise cannot exist because the editor forces MC2_IMGUI=ON.
 option(MC2_EDITOR "Build the MC2 Mission Editor (Windows-only, requires MC2_IMGUI=ON)" ON)
+option(MC2_EDITOR_IN_ALL "Include EditRel in the default all build (it recompiles gameos a second time)" OFF)
 # DETERMINISTIC-RNG-1: compile-in the per-gos_rand() "RNG" JSONL trace. Default OFF
 # so stock builds pay nothing; runtime still requires MC2_DETERMINISTIC_RNG=1 +
 # MC2_DIAG_TAGS=RNG. Turn ON only for determinism-proof builds.
@@ -371,6 +382,19 @@ if(ENABLE_ASSET_CPP_PROBES)
     message(STATUS "ENABLE_ASSET_CPP_PROBES=ON — building offline host tools in tools/cpp_probes/")
 endif()
 
+# Source/execution charset UTF-8 for first-party code only: set after the vendored subdirectories
+# above, since assimp passes its own /source-charset (the two switches are mutually exclusive).
+if(MSVC)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
+endif()
+
+# STL hardening: out-of-range operator[] on vector/span/string/array and similar become a fast-fail
+# trap instead of silent memory corruption. Optimized config only (the dev tree builds no Debug). Vendored
+# subdirectories above are unaffected, and imgui is bracketed out where it is added.
+if(MSVC)
+    add_compile_definitions("$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
+endif()
+
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
@@ -388,7 +412,15 @@ if(MC2_RNG_TRACE)
 endif()
 
 add_subdirectory("./GameOS/src" "./out/windows")
+if(MSVC)
+    get_directory_property(_defs COMPILE_DEFINITIONS)
+    list(REMOVE_ITEM _defs "$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
+    set_directory_properties(PROPERTIES COMPILE_DEFINITIONS "${_defs}")
+endif()
 add_subdirectory("3rdparty/imgui")
+if(MSVC)
+    add_compile_definitions("$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
+endif()
 add_subdirectory("GuiRuntime")
 include(cmake/Mc2NarrowingErrors.cmake)  # per-target /we for narrowing codes; after all lib targets exist
 # Standalone ImGui UI Editor.
@@ -742,6 +774,13 @@ if(MC2_ASAN)
 endif()
 
 add_subdirectory("./res" "./out/res")
+# The shipped string table (res/libmain.cpp includes test_scripts/res_conv/strings.res.cpp) holds Windows-1252
+# bytes inside string literals; reading it as UTF-8 would corrupt them, so mc2res_64 keeps the ANSI source charset.
+if(MSVC AND TARGET mc2res_64)
+    get_target_property(_res_opts mc2res_64 COMPILE_OPTIONS)
+    list(REMOVE_ITEM _res_opts "$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
+    set_property(TARGET mc2res_64 PROPERTY COMPILE_OPTIONS "${_res_opts}")
+endif()
 add_subdirectory("./data_tools" "./out/data_tools")
 add_subdirectory("./text_tool" "./out/text_tool")
 # TEMP (merge-methuselas throwaway): @Methuselas's Viewer/CMakeLists.txt lists
@@ -759,6 +798,12 @@ add_subdirectory("./text_tool" "./out/text_tool")
 # lets mc2 build MC2_IMGUI=OFF (Vulkan parity island). Default ON = no change.
 if(MC2_EDITOR)
     add_subdirectory("./editor" "./out/editor")
+    # gameos_editor recompiles every gameos source with a different define set (MC2_IMGUI/MC2_RNG_TRACE are
+    # only set on gameos), so the objects cannot be shared. Build the editor on request instead of doubling
+    # the default build; `ninja EditRel` still builds it. MC2_EDITOR_IN_ALL=ON restores the old default.
+    if(NOT MC2_EDITOR_IN_ALL)
+        set_target_properties(EditRel gameos_editor PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    endif()
 endif()
 
 # -----------------------------------------------------------------------

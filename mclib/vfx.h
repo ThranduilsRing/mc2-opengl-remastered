@@ -1,41 +1,41 @@
-//лллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллл
-//лл                                                                        лл
-//лл  VFX.H: C type definitions & API function prototypes                   лл
-//лл                                                                        лл
-//лл  Source compatible with 32-bit 80386 C/C++                             лл
-//лл                                                                        лл
-//лл  V0.10 of 10-Dec-92: Initial version                                   лл
-//лл  V1.01 of 12-May-93: Added VFX_shape_lookaside(), new polygon calls    лл
-//лл                      PCX_draw() returns void                           лл
-//лл  V1.02 of 18-Jun-93: Added rotation/scaling calls                      лл
-//лл                      intervals parameter added to window_fade()        лл
-//лл                      Added VFX_RECT structure                              лл
-//лл  V1.03 of 28-Jul-93: VERTEX2D structure changed to SCRNVERTEX          лл
-//лл                      Fixed-VFX_POINT data types renamed                    лл
-//лл                      Added VFX_bank_reset() call                       лл
-//лл  V1.04 of  4-Sep-93: Indirect function prototypes changed for C++ use  лл
-//лл  V1.05 of 26-Sep-93: Added FLOAT typedef                               лл
-//лл                      VFX_RGB BYTE members changed to UBYTEs                лл
-//лл  V1.06 of 13-Oct-93: Added VFX_pane_refresh(), other new calls         лл
-//лл  V1.07 of 17-Nov-93: Added MetaWare High C support                     лл
-//лл  V1.10 of  3-Dec-93: Modified VFX_pane_refresh(), WINDOW structure     лл
-//лл  V1.15 of 13-Mar-94: Added new VFX.C function prototypes               лл
-//лл                      Added new WINDOW members, PANE_LIST structure     лл
-//лл                                                                        лл
-//лл  Project: 386FX Sound & Light(TM)                                      лл
-//лл   Author: Ken Arnold, John Miles, John Lemberger                       лл
-//лл                                                                        лл
-//лллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллл
-//лл                                                                        лл
-//лл  Copyright (C) 1992-1994 Non-Linear Arts, Inc.                         лл
-//лл                                                                        лл
-//лл  Non-Linear Arts, Inc.                                                 лл
-//лл  3415 Greystone #200                                                   лл
-//лл  Austin, TX 78731                                                      лл
-//лл                                                                        лл
-//лл  (512) 346-9595 / FAX (512) 346-9596 / BBS (512) 454-9990              лл
-//лл                                                                        лл
-//лллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллл
+//============================================================================
+//==                                                                        ==
+//==  VFX.H: C type definitions & API function prototypes                   ==
+//==                                                                        ==
+//==  Source compatible with 32-bit 80386 C/C++                             ==
+//==                                                                        ==
+//==  V0.10 of 10-Dec-92: Initial version                                   ==
+//==  V1.01 of 12-May-93: Added VFX_shape_lookaside(), new polygon calls    ==
+//==                      PCX_draw() returns void                           ==
+//==  V1.02 of 18-Jun-93: Added rotation/scaling calls                      ==
+//==                      intervals parameter added to window_fade()        ==
+//==                      Added VFX_RECT structure                              ==
+//==  V1.03 of 28-Jul-93: VERTEX2D structure changed to SCRNVERTEX          ==
+//==                      Fixed-VFX_POINT data types renamed                    ==
+//==                      Added VFX_bank_reset() call                       ==
+//==  V1.04 of  4-Sep-93: Indirect function prototypes changed for C++ use  ==
+//==  V1.05 of 26-Sep-93: Added FLOAT typedef                               ==
+//==                      VFX_RGB BYTE members changed to UBYTEs                ==
+//==  V1.06 of 13-Oct-93: Added VFX_pane_refresh(), other new calls         ==
+//==  V1.07 of 17-Nov-93: Added MetaWare High C support                     ==
+//==  V1.10 of  3-Dec-93: Modified VFX_pane_refresh(), WINDOW structure     ==
+//==  V1.15 of 13-Mar-94: Added new VFX.C function prototypes               ==
+//==                      Added new WINDOW members, PANE_LIST structure     ==
+//==                                                                        ==
+//==  Project: 386FX Sound & Light(TM)                                      ==
+//==   Author: Ken Arnold, John Miles, John Lemberger                       ==
+//==                                                                        ==
+//============================================================================
+//==                                                                        ==
+//==  Copyright (C) 1992-1994 Non-Linear Arts, Inc.                         ==
+//==                                                                        ==
+//==  Non-Linear Arts, Inc.                                                 ==
+//==  3415 Greystone #200                                                   ==
+//==  Austin, TX 78731                                                      ==
+//==                                                                        ==
+//==  (512) 346-9595 / FAX (512) 346-9596 / BBS (512) 454-9990              ==
+//==                                                                        ==
+//============================================================================
 
 #ifndef VFX_H
 #define VFX_H
