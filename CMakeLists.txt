@@ -88,6 +88,11 @@ if(MSVC AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
     add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:/Zc:inline>")
 endif()
 
+# __cplusplus otherwise reads 199711L on MSVC, which misleads feature-testing headers.
+if(MSVC)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>")
+endif()
+
 # ---------------------------------------------------------------------------
 # MC2_ASAN: parallel dev build with MSVC AddressSanitizer.
 #
