@@ -348,8 +348,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_OBJECT_ID_BUFFER",
         "MC2_OBJECT_ID_BUFFER",
         EnvVarKind::Feature,
-        false,
-        "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5). Default-off; =1 enables."
+        true,
+        "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5). Default-ON; =0 disables (reader: RenderWorld.cpp readObjectIdBufferEnv)."
     },
     // TerrainTessellation
     {
@@ -380,16 +380,16 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_IMGUI",
         "MC2_IMGUI",
         EnvVarKind::Feature,
-        false,
-        "ImGui overlay (GuiRuntime/GuiRuntime.cpp). Default-off; =1 enables. Editor sets this automatically."
+        true,
+        "ImGui overlay (GuiRuntime/GuiRuntime.cpp). Default-ON; =0 disables (reader: GuiRuntime/GuiRuntime.cpp isEnabled())."
     },
     // ImGuiInspector
     {
         "MC2_FEATURE_IMGUI_INSPECTOR",
         "MC2_IMGUI_INSPECTOR",
         EnvVarKind::Feature,
-        false,
-        "ImGui inspector panel (GuiRuntime/EditorInspector.cpp). Default-off; =1 enables. Requires MC2_IMGUI."
+        true,
+        "ImGui inspector panel (GuiRuntime/EditorInspector.cpp). Default-ON; =0 disables (reader: EditorInspector.cpp). Requires MC2_IMGUI."
     },
     // DebugRenderer
     {

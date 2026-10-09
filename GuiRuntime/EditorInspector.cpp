@@ -1271,7 +1271,7 @@ void EditorInspector::drawImGui() {
             static int s_drEnabled = -1;
             if (s_drEnabled < 0) {
                 const char* v = std::getenv("MC2_DEBUG_RENDERER");
-                s_drEnabled = (!v || v[0] != '0') ? 1 : 0;  // default-ON
+                s_drEnabled = (v && v[0] && v[0] != '0') ? 1 : 0;  // default-OFF (matches debug_renderer.cpp envFlagDefaultOff)
             }
             if (!s_drEnabled)
                 ImGui::TextDisabled("Highlight: off (MC2_DEBUG_RENDERER=0)");

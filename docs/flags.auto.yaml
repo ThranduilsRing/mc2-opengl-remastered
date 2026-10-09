@@ -1489,7 +1489,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameosmain.cpp:1336
-      - GuiRuntime/GraphicsOptionsWindow.cpp:1476
+      - GuiRuntime/GraphicsOptionsWindow.cpp:1477
       - mclib/mlr/mlr_gate.cpp:37
     registered: no
     in_smoke_passthrough: yes
@@ -1576,7 +1576,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off. Default-OFF; =1 (or any non-'0' value) enables."
     referenced_at:
-      - GuiRuntime/GraphicsOptionsWindow.cpp:701
+      - GuiRuntime/GraphicsOptionsWindow.cpp:702
       - mclib/dynamic_decal_ring.cpp:42
     registered: yes
     in_smoke_passthrough: no
@@ -2746,7 +2746,6 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env). Default-OFF: unset routes FX through the legacy CPU/MLR path (reverted to CPU default after GPU FX looked broke..."
     referenced_at:
-      - GuiRuntime/GraphicsOptionsWindow.cpp:1903
       - mclib/gosfx/effect.cpp:45
       - mclib/particles/batcher.cpp:80
     registered: yes
@@ -3046,11 +3045,11 @@ flags:
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
   - name: MC2_IMGUI
-    default: off
+    default: on
     kind: Feature
     feature_id: MC2_FEATURE_IMGUI
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "ImGui overlay (GuiRuntime/GuiRuntime.cpp). Default-off; =1 enables. Editor sets this automatically."
+    doc: "ImGui overlay (GuiRuntime/GuiRuntime.cpp). Default-ON; =0 disables (reader: GuiRuntime/GuiRuntime.cpp isEnabled())."
     referenced_at:
       - GuiRuntime/GuiRuntime.cpp:88
     registered: yes
@@ -3065,11 +3064,11 @@ flags:
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_IMGUI_INSPECTOR
-    default: off
+    default: on
     kind: Feature
     feature_id: MC2_FEATURE_IMGUI_INSPECTOR
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "ImGui inspector panel (GuiRuntime/EditorInspector.cpp). Default-off; =1 enables. Requires MC2_IMGUI."
+    doc: "ImGui inspector panel (GuiRuntime/EditorInspector.cpp). Default-ON; =0 disables (reader: EditorInspector.cpp). Requires MC2_IMGUI."
     referenced_at:
       - GuiRuntime/EditorInspector.cpp:111
     registered: yes
@@ -3917,7 +3916,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_mech_batcher.cpp:2053
-      - GameOS/gameos/vulkan_mech_island.cpp:1042
+      - GameOS/gameos/vulkan_mech_island.cpp:1044
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -3958,7 +3957,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_mech_batcher.cpp:417
-      - GuiRuntime/GraphicsOptionsWindow.cpp:1839
+      - GuiRuntime/GraphicsOptionsWindow.cpp:1840
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -4522,11 +4521,11 @@ flags:
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_OBJECT_ID_BUFFER
-    default: off
+    default: on
     kind: Feature
     feature_id: MC2_FEATURE_OBJECT_ID_BUFFER
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5). Default-off; =1 enables."
+    doc: "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5). Default-ON; =0 disables (reader: RenderWorld.cpp readObjectIdBufferEnv)."
     referenced_at:
       - RenderWorld/RenderWorld.cpp:79
     registered: yes
@@ -6403,7 +6402,7 @@ flags:
     doc: "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass). Default-ON; =0 killswitch restores the binary a<0.5 discard (g..."
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:1817
-      - GameOS/gameos/vulkan_color_prop_island.cpp:1597
+      - GameOS/gameos/vulkan_color_prop_island.cpp:1605
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6773,7 +6772,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:1092
       - GuiRuntime/EditorInspector.cpp:726
-      - GuiRuntime/GraphicsOptionsWindow.cpp:794
+      - GuiRuntime/GraphicsOptionsWindow.cpp:795
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6885,7 +6884,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp:1172
       - GuiRuntime/EditorInspector.cpp:751
-      - GuiRuntime/GraphicsOptionsWindow.cpp:820
+      - GuiRuntime/GraphicsOptionsWindow.cpp:821
     referenced_at_more: 1
     registered: yes
     in_smoke_passthrough: yes
@@ -7310,7 +7309,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:7207
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:2880
-      - GuiRuntime/GraphicsOptionsWindow.cpp:677
+      - GuiRuntime/GraphicsOptionsWindow.cpp:678
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7642,7 +7641,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:7179
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:2873
-      - GuiRuntime/GraphicsOptionsWindow.cpp:612
+      - GuiRuntime/GraphicsOptionsWindow.cpp:613
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7655,7 +7654,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:7192
       - GameOS/gameos/gos_terrain_lod_chunk.cpp:2874
-      - GuiRuntime/GraphicsOptionsWindow.cpp:642
+      - GuiRuntime/GraphicsOptionsWindow.cpp:643
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7892,7 +7891,7 @@ flags:
     doc: "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield). Defau..."
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:7164
-      - GuiRuntime/GraphicsOptionsWindow.cpp:560
+      - GuiRuntime/GraphicsOptionsWindow.cpp:561
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -8959,8 +8958,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_visual_capture.cpp:562
-      - GameOS/gameos/vk_feed_dump.h:58
-      - GameOS/gameos/vulkan_color_prop_island.cpp:1689
+      - GameOS/gameos/vk_feed_dump.h:57
+      - GameOS/gameos/vulkan_color_prop_island.cpp:1696
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8995,7 +8994,7 @@ flags:
     referenced_at:
       - GameOS/gameos/gos_visual_capture.cpp:548
       - GameOS/gameos/gos_visual_capture.cpp:571
-      - GameOS/gameos/vk_feed_dump.h:59
+      - GameOS/gameos/vk_feed_dump.h:58
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9083,7 +9082,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-CSM-ARRAY-DIRECT-1: presence-gated =1, default OFF. Companion to MC2_VK_SHADOW_INTEROP that re-renders the near CSM cascades into layers of a VK-owned D32 2D array on the shared Vulkan device, t..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:146
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:147
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9110,7 +9109,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-CSM-FULLMAP-DIRECT-1: presence-gated =1, default OFF. Companion to MC2_VK_SHADOW_INTEROP that re-renders the CSM catch-all/full-map cascade into a separate exportable D32 image on the shared Vul..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:137
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:138
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9128,7 +9127,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vk_feed_dump.h:41
+      - GameOS/gameos/vk_feed_dump.h:40
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9369,7 +9368,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_PROP_COLOR_TIER1 plus MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR. When ON, the prop color island treats the shared s..."
     referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp:154
+      - GameOS/gameos/vulkan_color_prop_island.cpp:156
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9377,7 +9376,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp:1608
+      - GameOS/gameos/vulkan_color_prop_island.cpp:1616
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9385,7 +9384,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp:496
+      - GameOS/gameos/vulkan_color_prop_island.cpp:504
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9414,7 +9413,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp:788
+      - GameOS/gameos/vulkan_color_prop_island.cpp:796
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9422,7 +9421,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp:1686
+      - GameOS/gameos/vulkan_color_prop_island.cpp:1694
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -9430,7 +9429,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp:140
+      - GameOS/gameos/vulkan_color_prop_island.cpp:142
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9481,7 +9480,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-P8a SHADOW-INTEROP: presence-gated =1, default OFF. Renders the DYNAMIC static-prop shadow-caster depth in Vulkan (the SECOND VK geometry region and the FIRST VK-PRODUCES-DEPTH region -- water w..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:128
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:129
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9492,7 +9491,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp). At shadow-pass tick 600 and 1200 logs [VK_SHADOW_MATRIX v1] lines: GL dynamic + CSM casc..."
     referenced_at:
-      - GameOS/gameos/vulkan_shadow_island_live.cpp:878
+      - GameOS/gameos/vulkan_shadow_island_live.cpp:881
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9735,7 +9734,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_WATER_TIER1 plus MC2_VK_MECH_DIRECT_CHAIN. When ON, the water island treats the shared scene color0/normal/..."
     referenced_at:
-      - GameOS/gameos/vulkan_water_island.cpp:180
+      - GameOS/gameos/vulkan_water_island.cpp:181
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9744,7 +9743,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:3715
-      - GameOS/gameos/vulkan_water_island.cpp:151
+      - GameOS/gameos/vulkan_water_island.cpp:152
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -10117,7 +10116,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp:2900
-      - GuiRuntime/GraphicsOptionsWindow.cpp:956
+      - GuiRuntime/GraphicsOptionsWindow.cpp:957
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes

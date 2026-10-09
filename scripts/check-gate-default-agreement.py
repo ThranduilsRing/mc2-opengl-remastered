@@ -130,7 +130,11 @@ ALLOWLIST = os.path.join(SCRIPT_DIR, "gate-defaults-allowlist.txt")
 
 # Where readers live. The registry header itself is excluded: it *names* every
 # var in string literals, so scanning it would find a "reader" for everything.
-SCAN_DIRS = ["GameOS", "mclib", "code", "RenderCore", "editor"]
+SCAN_DIRS = ["GameOS", "mclib", "code", "RenderCore", "editor",
+             # M-registry-truth: these were silently unscanned (MC2_IMGUI reader in
+             # GuiRuntime/GuiRuntime.cpp defaulted ON against a default-OFF registry row).
+             "GuiRuntime", "GameAdapters", "RenderWorld", "gui", "EditorBridge",
+             "HostServices", "Viewer"]
 SCAN_EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 
 # SHADER COMMENTS ARE CLAIM-SCANNED BUT NEVER READER-SCANNED (SHADER-COMMENT-TRUTH-1).
