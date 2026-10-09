@@ -1,5 +1,6 @@
 #include "GraphicsOptionsWindow.h"
 #include "imgui.h"
+#include "../mclib/particles/batcher.h"  // Batcher::is_enabled() (MC2_GPU_PARTICLES reader)
 #include "../mclib/dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS live count
 
 #include "../GameOS/gameos/gos_postprocess.h"
@@ -1900,14 +1901,15 @@ static void drawMechSection() {
 // change. Tuning is invisible when MC2_GPU_PARTICLES=0 (legacy CPU FX) or in
 // scenes with no routed (Card/CardCloud/Point/Shard/Tube) particles.
 static void drawVfxTuningSection() {
-    const char* penv = std::getenv("MC2_GPU_PARTICLES");
-    bool particlesOn = !(penv != nullptr && penv[0] == '0');  // default-ON
+    // Single source of truth: the same reader the batcher uses (default OFF,
+    // opt in with MC2_GPU_PARTICLES=1), not a private re-parse of the env var.
+    const bool particlesOn = mc2::particles::Batcher::is_enabled();
     if (particlesOn) {
         ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-            "GPU particles: ON (MC2_GPU_PARTICLES default ON)");
+            "GPU particles: ON (MC2_GPU_PARTICLES=1)");
     } else {
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
-            "GPU particles: OFF (MC2_GPU_PARTICLES=0 — sliders have no effect)");
+            "GPU particles: OFF (default; set MC2_GPU_PARTICLES=1 — sliders have no effect)");
     }
 
     ImGui::BeginDisabled(!particlesOn);
