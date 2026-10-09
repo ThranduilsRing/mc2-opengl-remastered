@@ -80,7 +80,9 @@ struct EnvVarDesc {
 // Feature enum
 // ---------------------------------------------------------------------------
 // Only Feature-kind and Retired-kind entries appear here (not Trace).
-// Values are stable -- never renumber, only append before COUNT.
+// kFeatureTable is positional: each value is the row's index, so append before
+// COUNT and keep both lists in the same order. Removing an entry renumbers the rest
+// (nothing persists these values; code refers to entries by name).
 // Retired entries stay in the enum so existing code that indexes kFeatureTable
 // by RendererFeature::GpuMechs etc. continues to compile.
 
@@ -103,112 +105,101 @@ enum class RendererFeature : int {
     MaterialKtx         = 12,  // MC2_MATERIAL_KTX
     // v6 DrawPacket+Meta dispatch. MC2_STATIC_PROP_LEGACY_DISPATCH=1 forces legacy fallback (kill-switch).
     StaticPropPacketDispatch = 13,  // MC2_STATIC_PROP_LEGACY_DISPATCH
-    // [Retired] v6 opt-in gate removed in v7.1; setting this var is inert.
-    DrawPacketStaticPropV6   = 14,  // MC2_DRAW_PACKET_STATIC_PROP_V6
     // Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state.
-    RenderSnapshotBuild      = 15,  // MC2_SNAPSHOT_STATIC_PROP_BUILD
+    RenderSnapshotBuild      = 14,  // MC2_SNAPSHOT_STATIC_PROP_BUILD
     // Extraction v2.3: skip prev-frame zero-instance snapshot slots (snap-cull opt-in).
-    SnapCull                 = 16,  // MC2_SNAP_CULL
+    SnapCull                 = 15,  // MC2_SNAP_CULL
     // F1-3A ViewUniforms UBO upload (upload-only; F1-3B adds shader consumption).
-    ViewUniforms             = 17,  // MC2_VIEW_UNIFORMS
+    ViewUniforms             = 16,  // MC2_VIEW_UNIFORMS
     // MECH-EXTRACTION-0: mech snapshot extraction (observe-only).
-    SnapshotMechExtract      = 18,  // MC2_SNAPSHOT_MECH_EXTRACT
+    SnapshotMechExtract      = 17,  // MC2_SNAPSHOT_MECH_EXTRACT
     // V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane.
     // Default-OFF; strength uniform = 0.0 when env unset/0 -> byte-identical
     // to pre-slice output.
-    StaticPropAmbientV1      = 19,  // MC2_STATIC_PROP_AMBIENT_V1
+    StaticPropAmbientV1      = 18,  // MC2_STATIC_PROP_AMBIENT_V1
     // V-MATERIAL-DEBUG-1: per-fragment material debug view (StaticPropOpaque).
     // Default-OFF; 0 = byte-identical to legacy output (shader short-circuit).
-    StaticPropDebugMaterial  = 20,  // MC2_STATIC_PROP_DEBUG_MATERIAL
+    StaticPropDebugMaterial  = 19,  // MC2_STATIC_PROP_DEBUG_MATERIAL
     // V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane.
     // Default-ON; MC2_STATIC_PROP_IBL_SH=0 uploads strength 0.0 so
     // shader `if (u_iblShStrength > 0.0)` short-circuits to byte-identical.
     // ImGui slider (g_iblShStrength) modulates strength when env gate is on;
     // the env var is the authoritative gate.
-    StaticPropIblSh          = 21,  // MC2_STATIC_PROP_IBL_SH
+    StaticPropIblSh          = 20,  // MC2_STATIC_PROP_IBL_SH
     // V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular
     // on StaticPropOpaque lane. Default-OFF; strength uniform = 0.0 when
     // env unset/=0 -> shader `if (u_pbrV1Strength > 0.0)` short-circuits.
     // Uses MaterialGpu roughness/metallic when sampling is active, else
     // fallback metallic=0.0 roughness=0.6; F0 is albedo-tinted for metals.
-    StaticPropPbrV1          = 22,  // MC2_STATIC_PROP_PBR_V1
-    // TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived
-    // from per-mission R32F height texture in gos_terrain.frag. Default-OFF.
-    TerrainNormalsFromHeight = 23,  // MC2_TERRAIN_NORMALS_FROM_HEIGHT
-    // TERRAIN-LIGHTING-1: hemisphere ambient fill on tessellated terrain
-    // using terrain surface normal. Default-OFF.
-    TerrainLightingV1        = 24,  // MC2_TERRAIN_LIGHTING_V1
-    // TERRAIN-LIGHTING-2: shadow-aware modulation of the V1 hemisphere
-    // fill — prevents over-bright shadows. Default-OFF (V1 unmodulated).
-    TerrainLightingV2        = 25,  // MC2_TERRAIN_LIGHTING_V2
+    StaticPropPbrV1          = 21,  // MC2_STATIC_PROP_PBR_V1
     // VFX-AGE-SAMPLE-1: sample GPU-particle spec curves at the effect's real
     // CPU-advanced m_age instead of the fixed 0.5 snapshot. Default-OFF.
-    VfxAgeSample             = 26,  // MC2_VFX_AGE_SAMPLE
+    VfxAgeSample             = 22,  // MC2_VFX_AGE_SAMPLE
     // VFX-ORIGINAL-RECORD-ABI-1 (Phase 1): CPU-oracle render — GPU renders the
     // CPU sim's live per-particle records (CardCloud first; PointCloud births 0
     // in tier1). Default-OFF parity bridge; placeholder byte-identical when off.
-    VfxOracleRender          = 27,  // MC2_VFX_ORACLE_RENDER
+    VfxOracleRender          = 23,  // MC2_VFX_ORACLE_RENDER
     // VFX-GPU-SIM-CARDCLOUD-BUFFER-1: compare-only GPU sim for CardCloud.
     // _CARDCLOUD gathers live CPU state into a persistent GPU sim SSBO
     // (observe-only, no integration/readback/render); _COMPARE emits integrity
     // logs. Default-OFF. Substrate for the eventual GPU-owned sim.
-    VfxGpuSimCardCloud       = 28,  // MC2_VFX_GPU_SIM_CARDCLOUD
-    VfxGpuSimCompare         = 29,  // MC2_VFX_GPU_SIM_COMPARE
+    VfxGpuSimCardCloud       = 24,  // MC2_VFX_GPU_SIM_CARDCLOUD
+    VfxGpuSimCompare         = 25,  // MC2_VFX_GPU_SIM_COMPARE
     // TRACKV-POST-GROUNDING-MVP: experimental visual post-process + grounding
     // gates. ALL default-OFF (enforced by the Track-V guardrail unit test).
     // Promotion to default-ON is a deliberate edit here AND in that test.
-    Ssao                     = 30,  // MC2_SSAO
+    Ssao                     = 26,  // MC2_SSAO
     // TRACKV-VFX-PAYOFF-OPUS-1: VFX visual-payoff gates. Both default-OFF
     // (enforced by the Track-V VFX payoff guardrail unit test). Promotion to
     // default-ON is a deliberate edit here AND in that test.
-    VfxSoftParticles         = 31,  // MC2_VFX_SOFT_PARTICLES
-    VfxLitParticles          = 32,  // MC2_VFX_LIT_PARTICLES
+    VfxSoftParticles         = 27,  // MC2_VFX_SOFT_PARTICLES
+    VfxLitParticles          = 28,  // MC2_VFX_LIT_PARTICLES
     // VIEWMODE-POSTPROCESS-PRESENTATION-1: view-mode presentation framework.
-    ViewmodeFramework        = 33,  // MC2_VIEWMODE_FRAMEWORK
+    ViewmodeFramework        = 29,  // MC2_VIEWMODE_FRAMEWORK
     // TRACKRV-HZB-VISIBILITY-OPUS-1: gated reverse-Z Hi-Z depth pyramid build
     // from MainDepth (custom MIN reduction, ceil mip ladder). Default-OFF;
     // diagnostic substrate only -- NO culling/draw suppression. See
     // docs/hzb-depth-convention.md + docs/hzb-visibility-mvp.md.
-    HzbBuild                 = 34,  // MC2_HZB_BUILD
+    HzbBuild                 = 30,  // MC2_HZB_BUILD
     // TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe.
     // Default-OFF; requires MC2_HZB_BUILD. Computes would-cull/would-keep +
     // pyramid-integrity counters from HZB readback. NEVER suppresses a draw.
-    HzbProbe                 = 35,  // MC2_HZB_PROBE
+    HzbProbe                 = 31,  // MC2_HZB_PROBE
     // COMPRESSION-BC7-STATICPROP-1: BC7-compressed KTX2 static-prop texture
     // arrays through the existing static-prop KTX path. Default-OFF; requires
     // MC2_MATERIAL_KTX. All-or-nothing + uniform-dim per array (see batcher).
-    StaticPropBc7            = 36,  // MC2_STATICPROP_BC7
+    StaticPropBc7            = 32,  // MC2_STATICPROP_BC7
     // TEXMGR-COMPRESSED-UPLOAD-1: load a BC7 .ktx2 sidecar for a data/textures
     // texture (mech/vehicle/building/prop/UI/decal — via MC_TextureManager) and
     // upload it with glCompressedTexImage2D, single-level. Default-OFF; requires
     // GLEW_ARB_texture_compression_bptc. NOT static-prop arrays / terrain splat.
-    TexmgrCompressedUpload   = 37,  // MC2_TEXMGR_COMPRESSED_UPLOAD
+    TexmgrCompressedUpload   = 33,  // MC2_TEXMGR_COMPRESSED_UPLOAD
     // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha immediately after
     // BuildColormapAtlas uploads to GPU. The indirect path (default-ON) has no
     // geometry displacement (thin vert, no TES), so the CPU elevation's null-guard
     // at mapdata.cpp:2435 becomes the correct state. Default-ON; kill-switch =0.
-    ColormapCpuRetire        = 38,  // MC2_COLORMAP_CPU_RETIRE
+    ColormapCpuRetire        = 34,  // MC2_COLORMAP_CPU_RETIRE
     // COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas.
     // Falls back to RGBA8 when sidecar absent or BPTC cap missing. Default-ON.
-    ColormapKtx2             = 39,  // MC2_COLORMAP_KTX2
+    ColormapKtx2             = 35,  // MC2_COLORMAP_KTX2
     // TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch.
     // Default-OFF = new/optimized intro render path active; ON = legacy path forced.
-    MissionIntroLegacyRender = 40,  // MC2_MISSION_INTRO_LEGACY_RENDER
+    MissionIntroLegacyRender = 36,  // MC2_MISSION_INTRO_LEGACY_RENDER
     // TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.
     // Default-OFF = new/optimized setupTextures path active; ON = legacy path forced.
-    SetupTexturesLegacyForce = 41,  // MC2_SETUPTEXTURES_LEGACY_FORCE
+    SetupTexturesLegacyForce = 37,  // MC2_SETUPTEXTURES_LEGACY_FORCE
     // TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system. When ON, cliff-wall
     // decoration types (e.g. "MarbleCliff") are submitted to the static-prop
     // batcher with an explicit CLIFF_WALL face-frame mat4 (up=world vertical,
     // facing=outward cliff normal, tangent=contour) + small outward offset,
     // instead of the yaw-only building recipe. Default-OFF -> byte-identical.
-    TerrainDecal             = 42,  // MC2_TERRAIN_DECAL
+    TerrainDecal             = 38,  // MC2_TERRAIN_DECAL
     // FAR-BACKDROP-LIT: night-shade substitution for far/impostor static-prop
     // LODs (static_prop.vert). Far LODs skip the per-vertex night bake so their
     // base_light is a frozen day/black value -> fullbright/black at night; when
     // ON the shader fades the stale seed toward the mission night object-light
     // ambient across the LOD impostor distance. Default-OFF -> byte-identical.
-    FarBackdropLit           = 43,  // MC2_FAR_BACKDROP_LIT
+    FarBackdropLit           = 39,  // MC2_FAR_BACKDROP_LIT
     // NIGHT-FOG-DIM: the edge-fog "cloud bank" (edge_fog.frag) + OOB fog paint a
     // hardcoded bright-grey u_fogColor ({0.80,0.81,0.83}) at the map horizon,
     // never dimmed for the mission's night lighting. On a night map (mc2_10) the
@@ -216,44 +207,39 @@ enum class RendererFeature : int {
     // ON, runEdgeFog/executor scale the fog color toward the measured night sky
     // shade before upload so the horizon band matches the dark HDRI sky it sits
     // against. Default-OFF -> uploads the unscaled constant -> byte-identical.
-    NightFogDim              = 44,  // MC2_NIGHT_FOG_DIM
+    NightFogDim              = 40,  // MC2_NIGHT_FOG_DIM
     // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
     // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
     // It fed calc_light Stuff-frame position + normal while the ObjectLights
     // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
-    LegacyLitMc2Frame        = 45,  // MC2_LEGACY_LIT_MC2_FRAME
+    LegacyLitMc2Frame        = 41,  // MC2_LEGACY_LIT_MC2_FRAME
     // VEHICLE-NIGHT-LIT-2: restore the missing else-branch that clears a ground
     // vehicle's lightsOut flag when it is no longer DESTROYED/DISABLED, matching
     // the mech path. Default-OFF -> legacy one-way latch -> byte-identical.
-    GvLightsOutClear         = 46,  // MC2_GV_LIGHTSOUT_CLEAR
-    // SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop
-    // LODs (lod >= 1) in the dynamic-prop shadow replay. The exclusion's original
-    // "shadow depth pass has no alpha discard" rationale has been false since
-    // b8f764b6. Default-OFF -> caster set byte-identical.
-    PropLodShadowCast        = 47,  // MC2_PROP_LOD_SHADOW_CAST
-    PropBaseLightDir         = 48,  // MC2_PROP_BASE_LIGHT_DIR
-    PropFoliageAlphaFlag     = 49,  // MC2_PROP_FOLIAGE_ALPHAFLAG
-    LightPosColumnFix        = 50,  // MC2_LIGHT_POS_COLUMN_FIX
+    GvLightsOutClear         = 42,  // MC2_GV_LIGHTSOUT_CLEAR
+    PropBaseLightDir         = 43,  // MC2_PROP_BASE_LIGHT_DIR
+    PropFoliageAlphaFlag     = 44,  // MC2_PROP_FOLIAGE_ALPHAFLAG
+    LightPosColumnFix        = 45,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
     // submitMultiShape, so its lightData_ stayed all-zero and calc_light
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
-    VehicleLitPath           = 51,  // MC2_VEHICLE_LIT_PATH
+    VehicleLitPath           = 46,  // MC2_VEHICLE_LIT_PATH
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
     // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
     // lighting model, closing the two-shader seam that made concrete a
     // patchwork -- including the in-shader distance fog the overlay applies
     // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 52,  // MC2_OVERLAY_CEMENT_ADOPT
+    OverlayCementAdopt       = 47,  // MC2_OVERLAY_CEMENT_ADOPT
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 53,  // MC2_VEHICLE_AMBIENT_FLOOR
+    VehicleAmbientFloor      = 48,  // MC2_VEHICLE_AMBIENT_FLOOR
     // LIGHT-ROW-PURE-1 (ARCH-LIGHTING slice 1): object light-ROW PRODUCTION
     // delegated to the pure object_light_row::BuildObjectLightRow, driven by an
     // explicit query + declared per-class policy instead of the shared-light-
@@ -263,7 +249,7 @@ enum class RendererFeature : int {
     // Its companion diagnostic MC2_LIGHT_ROW_PURE_VERIFY is a Trace var and
     // lives in kAuxEnvVars, which is deliberately NOT indexed by
     // RendererFeature.
-    LightRowPure             = 54,  // MC2_LIGHT_ROW_PURE
+    LightRowPure             = 49,  // MC2_LIGHT_ROW_PURE
     // SHORELINE-GLOW-1: opt in to letting the active V3 terrain shoreline band
     // actually SUPPRESS the legacy screen-space runShoreline() post pass. The
     // suppression has existed since TERRAIN-SHORELINE-MASK-1 but was
@@ -274,7 +260,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    ShorelineLegacySuppress  = 55,  // MC2_SHORELINE_LEGACY_SUPPRESS
+    ShorelineLegacySuppress  = 50,  // MC2_SHORELINE_LEGACY_SUPPRESS
     // SUN-AXIS-FIX-1: ObjectLights.light_dir is a STUFF-frame vector, but the
     // DIFFUSE consumers of calc_light dot it against MC2-frame normals. The one
     // consumer that swaps first (mech.vert:279, specular) is the correct one.
@@ -283,7 +269,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunAxisFix               = 56,  // MC2_SUN_AXIS_FIX
+    SunAxisFix               = 51,  // MC2_SUN_AXIS_FIX
     // SUN-ELEVATION-FIX-1: Camera::lightDirection normalizes a unit-horizontal
     // plus sin(pitch), so its elevation is atan(sin(pitch)) rather than the
     // authored pitch. Large blast radius (terrain, props, SHADOW direction, and
@@ -292,7 +278,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    SunElevationFix          = 57,  // MC2_SUN_ELEVATION_FIX
+    SunElevationFix          = 52,  // MC2_SUN_ELEVATION_FIX
     // LIGHTROW-FRESHNESS-1: the DYNAMIC static-prop submit path checks the
     // per-frame stamp on TG_MultiShape::cachedFrame_ before trusting
     // cachedGpuLightIndex_, and re-gathers instead of reusing a prior-frame
@@ -302,7 +288,7 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    StaticPropLightFreshness = 58,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
+    StaticPropLightFreshness = 53,  // MC2_STATIC_PROP_LIGHT_FRESHNESS
     // MECH-LIGHTROW-FRESHNESS-1: the GPU-mech submit path checks the per-frame
     // stamp on TG_MultiShape::cachedFrame_ before trusting cachedGpuLightIndex_,
     // and DECLINES the GPU submit (routing the mech to the existing CPU MLR
@@ -312,12 +298,12 @@ enum class RendererFeature : int {
     // kFeatureTable[static_cast<int>(...)] lookups in tests/unit/
     // test_rendercore.cpp), so a new entry must be appended in the SAME
     // position in BOTH -- last, matching this value.
-    MechLightFreshness       = 59,  // MC2_MECH_LIGHT_FRESHNESS
+    MechLightFreshness       = 54,  // MC2_MECH_LIGHT_FRESHNESS
     // RUNWAY-CLOSE-1: A/B arm — MC2_OVERLAY_ART_FLATLIGHT=0 exempts the
     // terrain_overlay.frag authored-art else-branch from u_missionFlatLight.
     // Default-ON (=stock multiply); appended LAST to match kFeatureTable.
-    OverlayArtFlatlight      = 60,  // MC2_OVERLAY_ART_FLATLIGHT
-    COUNT                    = 61,
+    OverlayArtFlatlight      = 55,  // MC2_OVERLAY_ART_FLATLIGHT
+    COUNT                    = 56,
 };
 
 // ---------------------------------------------------------------------------
@@ -439,14 +425,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         true,
         "v6 DrawPacket+Meta dispatch (default-ON as of v7). MC2_STATIC_PROP_LEGACY_DISPATCH=1 forces legacy glMultiDrawElementsIndirect fallback. Kill-switch; env var absent = packet path active."
     },
-    // DrawPacketStaticPropV6 [Retired]
-    {
-        "MC2_FEATURE_DRAW_PACKET_STATIC_PROP_V6",
-        "MC2_DRAW_PACKET_STATIC_PROP_V6",
-        EnvVarKind::Retired,
-        false,
-        "[RETIRED] v6 opt-in gate removed in v7.1. Gate plumbing deleted; setting this var has no effect. Kill-switch is MC2_STATIC_PROP_LEGACY_DISPATCH."
-    },
     // RenderSnapshotBuild
     {
         "MC2_FEATURE_RENDER_SNAPSHOT_BUILD",
@@ -510,30 +488,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular on StaticPropOpaque lane (static_prop.frag, inside `#if defined(MC2_USE_VIEW_UNIFORMS)`). Default-OFF; =1 enables. When OFF, u_pbrV1Strength uploads 0.0 -> shader `if (u_pbrV1Strength > 0.0)` short-circuits before any u_cameraWorldPos read. Uses MaterialGpu roughnessFactor/metallicFactor when MC2_MATERIAL_GPU_SAMPLE is active; otherwise falls back to metallic=0.0 and roughness=0.6. F0 is albedo-tinted for metallic materials. Window/hot-pink nodes bypass the PBR branch. Safety interlock: when MC2_VIEW_UNIFORMS=0, CPU force-zeroes strength and the shader compile-guard excludes the block. Sun direction accepts TG_LIGHT_INFINITE and TG_LIGHT_INFINITEWITHFALLOFF. ImGui slider g_pbrV1Strength modulates per-frame strength (default 1.0, range 0..3); env var is authoritative gate. Optional override MC2_STATIC_PROP_PBR_V1_STRENGTH (clamped 0..3) sets the default."
-    },
-    // TerrainNormalsFromHeight
-    {
-        "MC2_FEATURE_TERRAIN_NORMALS_FROM_HEIGHT",
-        "MC2_TERRAIN_NORMALS_FROM_HEIGHT",
-        EnvVarKind::Feature,
-        false,
-        "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield). Default-OFF; =1 enables. When OFF, useTerrainNormalsFromHeight uploads 0 and gos_terrain.frag skips the height-derived perturbation branch entirely → byte-identical legacy output. Visual-only: gameplay height (Terrain::getTerrainElevation) is unchanged; no geometry or vertex position is moved. CPU plumbing: env var read once-per-terrain-uniform-upload (no restart needed). Inspector mini-control in Terrain Pass panel displays current effective state. Debug visualization: MC2_TERRAIN_DEBUG_MODE=10 shows the height-derived normal as RGB (independent of this gate so the upload path can be diagnosed separately). Sampler unit 11. Texture not bound when no mission is loaded."
-    },
-    // TerrainLightingV1
-    {
-        "MC2_FEATURE_TERRAIN_LIGHTING_V1",
-        "MC2_TERRAIN_LIGHTING_V1",
-        EnvVarKind::Feature,
-        false,
-        "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain. Default-OFF; =1 enables. When OFF, terrainLightingV1Strength uploads 0.0 and gos_terrain.frag skips the additive branch → byte-identical legacy output. Adds sky/ground tinted ambient that fills shadowed terrain (added AFTER shadow multiplication so direct sun stays shadowed but bounce light continues). Best paired with MC2_TERRAIN_NORMALS_FROM_HEIGHT=1 — ambient verticality is derived from the final per-fragment normal (sky term scales with N.z). Strength tunable in-engine via Terrain Pass inspector slider (default 1.0); env gate is authoritative on/off. Visual-only; no gameplay, geometry, or collision change."
-    },
-    // TerrainLightingV2
-    {
-        "MC2_FEATURE_TERRAIN_LIGHTING_V2",
-        "MC2_TERRAIN_LIGHTING_V2",
-        EnvVarKind::Feature,
-        false,
-        "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill. Default-OFF; =1 enables. When OFF, terrainLightingV2ShadowFillFloor uploads 1.0 → the shader expression mix(floor, 1.0, shadow) collapses to 1.0 → V1 behavior preserved (byte-equivalent to TERRAIN-LIGHTING-1 alone). When ON, the member floor (default 0.3, ImGui-tunable 0..1 via the Graphics Options Terrain section) scales the hemi additive in shadowed terrain so dark areas stay dark: floor=0.3 = 30% hemi in fully shadowed terrain, 100% in fully lit terrain. floor=0.0 makes hemi follow shadow exactly (lifeless shadows); floor=1.0 = V1 unmodulated. Debug mode MC2_TERRAIN_DEBUG_MODE=11 visualizes the hemi additive contribution as RGB (×4 for visibility). Visual-only; no gameplay, geometry, or collision change. Effective only when MC2_TERRAIN_LIGHTING_V1 is also ON (since the floor multiplies the V1 additive)."
     },
     // VfxAgeSample
     {
@@ -702,14 +656,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         EnvVarKind::Feature,
         false,
         "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or OBJECT_STATUS_DISABLED but has NO else-branch to clear it, unlike the mech path (mech3d.cpp Mech3DAppearance::update sets both arms). The flag is therefore a one-way latch: once a vehicle is disabled its shape can never be lit again, including after the actor slot is recycled for a live vehicle. When ON, the missing else-branch clears lightsOut so the flag tracks status exactly as the mech path does. Default-OFF -> legacy latch preserved -> byte-identical. This is a latent-correctness fix found during VEHICLE-NIGHT-LIT-1 recon; it is NOT the cause of the reported all-vehicles-dark-at-night defect (the reported trucks are intact, never disabled)."
-    },
-    // PropLodShadowCast (SHADOW-DECISIONS-1)
-    {
-        "MC2_PROP_LOD_SHADOW_CAST",
-        "MC2_PROP_LOD_SHADOW_CAST",
-        EnvVarKind::Feature,
-        false,
-        "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1). TreeAppearance::registerStatic (mclib/bdactor.cpp) calls GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true) for every lod != 0, justified by a comment claiming the shadow depth pass has no alpha discard -- so flat foliage cards would write their whole quad as depth and cast rectangular blob shadows. That justification has been FALSE since b8f764b6 (2026-06-16, alpha-test foliage shadow casters): resolvePropShadowProgram (gos_static_prop_batcher.cpp:8461) binds shadow_static_prop_alpha_atlas / shadow_static_prop_alpha, both default-ON, and both run the same tex_color.a < 0.5 discard the color pass does (shaders/shadow_static_prop.frag). lod>=1 recipes carry ALPHA_TEST identically to LOD0 (SetAlphaTest(true) on every imported LOD), and the per-packet atlas sidecars are indexed by global packet index in finalizeGeometry() so far-LOD packets bind valid layers; a missing layer fails SAFE (bindPropShadowAtlasPacket clears ALPHA_TEST -> opaque depth), never a wrong-layer sample. SCOPE: the suppression only ever affected getDynamicPropShadowInstances (gos_static_prop_registry.cpp:1895), the full-registry replay; flushShadow's camera-visible loop has no noShadow filter, so visible LOD1 types already cast. Turning this ON therefore grows the caster set AT DISTANCE -- the candidate cure for missing distant-tree shadows -- at a cost proportional to far-prop count. Default-OFF -> setRecipeNoShadow still called -> caster set byte-identical to the shipped build. Visual-only; no geometry/objectId/UI/gameplay change."
     },
     // PropBaseLightDir (PROP-BASE-LIGHT-DIR-1)
     {
@@ -929,7 +875,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_TERRAIN_AMBIENT_FLOOR",
         EnvVarKind::Feature,
         true,
-        "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag. DEFAULT 0.35 = ON; MC2_TERRAIN_AMBIENT_FLOOR=0 is the SINGLE, COMPLETE revert and is byte-identical. THE DEFECT (user screenshot, mc2_03, broad daylight, NOT a regression): terrain outside the concrete pads reads near-black while the pads are correctly lit. THE MECHANISM: terrain has NO ADDITIVE TERM AT THE RUNTIME LIGHTING STAGE. Its only one, the hemisphere fill, is default-OFF (MC2_TERRAIN_LIGHTING_V1), so terrain is exactly `baseColor * normalLight * shadow` -- a pure product with nothing bounding it from below -- while the static props standing on that same ground DO get an additive ambient through SH-IBL. PRECISION, because the loose form of this claim is wrong and was inherited: baseColor is NOT raw albedo, the colormap is pre-burned with the mission light (terrtxm2.cpp burnInShadows -> eye->getLightRed(lightFactor)), so terrain albedo already carries baked mission lighting -- but that is a MULTIPLICATIVE factor inside baseColor, not a floor, and cannot stop normalLight (floor mix(0.35,1.20,0.02) = 0.367) from crushing the product. An 'ambient debug view reads 0.0000 over terrain' measurement proves only that hemiContrib is zero, which is true by construction when V1 is off. Two roughly-1.7x factors (brighter concrete albedo, times the user-ratified concrete lighting exemption) then multiply that zero floor into the reported ~3x pad:ground ratio. THE TERM: `baseColor * ambCol * floor * mix(0.55,1.0,shadow) * dayGate * (1 - flatLitShare)`. It multiplies baseColor, which is the rendering equation's actual ambient form (irradiance x albedo) and is what keeps dark ground proportionally dark instead of washing the map toward flat grey; the N.z hemisphere shaping keeps terrain RELIEF (the flat-to-away lighting ratio compresses only ~2.3x -> ~2.0x at 0.35). WHY NOT MC2_TERRAIN_LIGHTING_V1 INSTEAD: its term is `hemiFill * strength * 0.25`, an ABSOLUTE add independent of albedo -- it lifts dark and bright materials by the same nits AND lifts the concrete pads (measured +21-26%% on pads). FLAT-LIT SURFACES ARE EXEMPT ON BOTH PATHS: the mask is `flatLitShare`, built at the lighting site from `cementLightBlend * (1-u_cementLit)` maxed with `pavedOverlayFlat * (1-u_cementLit)` -- i.e. literally the fraction of the fragment's lighting that was replaced by the flat 1.0, so the ambient's exemption edge IS the flat-lighting exemption edge and cannot drift from it. Masking on pureConcrete alone (the predecessor) LIFTED user-ratified flat-lit pavement, because PAVED-OVERLAY-CLASS-1 runway/road tiles are flat-lit through a separate branch and carry pureConcrete == 0 by construction. CORRECTION 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3): this justification ORIGINALLY read 'that gate returns 1 when unset (PavedOverlayClassMode()), so it is live at stock.' THAT WAS FALSE WHEN WRITTEN and is false now -- gos_terrain_indirect.cpp PavedOverlayClassMode() opens `if (!v || !v[0]) return 0;` because CONCRETE-DELIVER-2 reverted the default to 0 at 11:15:09 on 2026-07-30, 88 minutes BEFORE TERRAIN-AMBIENT-FLOOR-2 landed. So bit 22 is never baked at stock, pavedOverlayFlat is false on every default-launch fragment, and the pavement half of the flatLitShare mask is reachable ONLY under MC2_PAVED_OVERLAY_CLASS=1. NO PIXEL IMPACT AT STOCK (both arms of the branch reduce to the same expression) -- the design is still right, the stated reason was not. DAYLIGHT ONLY, AND THE GATE IS PROVEN OFFLINE: dayGate comes from GameOS/gameos/utils/terrain_daylight.h, keyed on the AUTHORED sun pitch (Camera::dayLightPitch) min the engine runtime night state, and tools/terrain_daylight_harness executes it against every shipping mission's authored pitch -- 12 tests, no launch, no capture. It is EXACTLY 0.000 on mc2_10 (pitch 180), mc2_05 and mc2_21 (pitch 270), mc2_19 (pitch 0) and mc2_23 (pitch 9), so every night mission is byte-identical. WHY NOT THE OBVIOUS SIGNALS: mission flat light cannot reach zero (camera.cpp:2028-2036 pins the night path to fixed night values by design), which is what made the predecessor lift mc2_10's ground +59.1%%; and the AUTHORED pitch is the right key regardless of what the runtime flags say. CORRECTED 2026-07-30 (TREE-CONSOLIDATE-1): this used to read 'the RUNTIME sun altitude / isNight / nightFactor cannot be trusted either, because camera.cpp:2033 folds a below-horizon authored sun into a mirrored MOON pitch and Camera::update() then re-derives the flags from it -- on mc2_05 the runtime signals report a noon sun overhead on a mission the engine itself just classified as night.' THAT IS FALSE, and it is refuted by the same C++ the claim points at (the correction is also recorded at the transport in GameOS/gameos/gameos_graphics.cpp gos_SetTerrainDaylightLevel, DAYLIGHT-GATE-RECHECK-1). The moon fold is at mclib/camera.cpp:2079-2080, INSIDE Camera::updateDaylight(), and updateDaylight never runs during a mission: GameCamera::activate() overrides the virtual base without chaining and its own call site is commented out (code/gamecam.cpp:1060, `//updateDaylight(true);`). So on mc2_05 lightPitch stays at the authored 270, the derivation in Camera::update() gets altitude -90, and it correctly reports isNight = true, nightFactor = 1. There is no 'noon sun overhead' anywhere. THE DESIGN STILL STANDS, for a sounder reason than the one that was written down: dayLightPitch is written once at load and is never folded or animated, so it stays correct even if that fold is ever revived, whereas the runtime flags are one commented-out line away from being wrong. The gate takes the MIN of authored and runtime, which fails DARK on disagreement. Bounded 0..2; junk/NaN clamps to 0. Trace: MC2_TERRAIN_AMBIENT_FLOOR_TRACE. Visual-only; no gameplay, geometry, collision or UI change. NOT VISUALLY VERIFIED: engine launches are hard-blocked in this lane -- see the capture matrix in docs/tier1_env_vars.md."
+        "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag. DEFAULT 0.35 = ON; MC2_TERRAIN_AMBIENT_FLOOR=0 is the SINGLE, COMPLETE revert and is byte-identical. THE DEFECT (user screenshot, mc2_03, broad daylight, NOT a regression): terrain outside the concrete pads reads near-black while the pads are correctly lit. THE MECHANISM: terrain has NO ADDITIVE TERM AT THE RUNTIME LIGHTING STAGE. Terrain has no other ambient term, so it is exactly `baseColor * normalLight * shadow` -- a pure product with nothing bounding it from below -- while the static props standing on that same ground DO get an additive ambient through SH-IBL. PRECISION, because the loose form of this claim is wrong and was inherited: baseColor is NOT raw albedo, the colormap is pre-burned with the mission light (terrtxm2.cpp burnInShadows -> eye->getLightRed(lightFactor)), so terrain albedo already carries baked mission lighting -- but that is a MULTIPLICATIVE factor inside baseColor, not a floor, and cannot stop normalLight (floor mix(0.35,1.20,0.02) = 0.367) from crushing the product. An 'ambient debug view reads 0.0000 over terrain' measurement proves only that hemiContrib is zero, which is true by construction when V1 is off. Two roughly-1.7x factors (brighter concrete albedo, times the user-ratified concrete lighting exemption) then multiply that zero floor into the reported ~3x pad:ground ratio. THE TERM: `baseColor * ambCol * floor * mix(0.55,1.0,shadow) * dayGate * (1 - flatLitShare)`. It multiplies baseColor, which is the rendering equation's actual ambient form (irradiance x albedo) and is what keeps dark ground proportionally dark instead of washing the map toward flat grey; the N.z hemisphere shaping keeps terrain RELIEF (the flat-to-away lighting ratio compresses only ~2.3x -> ~2.0x at 0.35). WHY NOT AN ABSOLUTE HEMISPHERE FILL: an add of `hemiFill * strength * 0.25` is independent of albedo -- it lifts dark and bright materials by the same nits AND lifts the concrete pads (measured +21-26%% on pads). FLAT-LIT SURFACES ARE EXEMPT ON BOTH PATHS: the mask is `flatLitShare`, built at the lighting site from `cementLightBlend * (1-u_cementLit)` maxed with `pavedOverlayFlat * (1-u_cementLit)` -- i.e. literally the fraction of the fragment's lighting that was replaced by the flat 1.0, so the ambient's exemption edge IS the flat-lighting exemption edge and cannot drift from it. Masking on pureConcrete alone (the predecessor) LIFTED user-ratified flat-lit pavement, because PAVED-OVERLAY-CLASS-1 runway/road tiles are flat-lit through a separate branch and carry pureConcrete == 0 by construction. CORRECTION 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3): this justification ORIGINALLY read 'that gate returns 1 when unset (PavedOverlayClassMode()), so it is live at stock.' THAT WAS FALSE WHEN WRITTEN and is false now -- gos_terrain_indirect.cpp PavedOverlayClassMode() opens `if (!v || !v[0]) return 0;` because CONCRETE-DELIVER-2 reverted the default to 0 at 11:15:09 on 2026-07-30, 88 minutes BEFORE TERRAIN-AMBIENT-FLOOR-2 landed. So bit 22 is never baked at stock, pavedOverlayFlat is false on every default-launch fragment, and the pavement half of the flatLitShare mask is reachable ONLY under MC2_PAVED_OVERLAY_CLASS=1. NO PIXEL IMPACT AT STOCK (both arms of the branch reduce to the same expression) -- the design is still right, the stated reason was not. DAYLIGHT ONLY, AND THE GATE IS PROVEN OFFLINE: dayGate comes from GameOS/gameos/utils/terrain_daylight.h, keyed on the AUTHORED sun pitch (Camera::dayLightPitch) min the engine runtime night state, and tools/terrain_daylight_harness executes it against every shipping mission's authored pitch -- 12 tests, no launch, no capture. It is EXACTLY 0.000 on mc2_10 (pitch 180), mc2_05 and mc2_21 (pitch 270), mc2_19 (pitch 0) and mc2_23 (pitch 9), so every night mission is byte-identical. WHY NOT THE OBVIOUS SIGNALS: mission flat light cannot reach zero (camera.cpp:2028-2036 pins the night path to fixed night values by design), which is what made the predecessor lift mc2_10's ground +59.1%%; and the AUTHORED pitch is the right key regardless of what the runtime flags say. CORRECTED 2026-07-30 (TREE-CONSOLIDATE-1): this used to read 'the RUNTIME sun altitude / isNight / nightFactor cannot be trusted either, because camera.cpp:2033 folds a below-horizon authored sun into a mirrored MOON pitch and Camera::update() then re-derives the flags from it -- on mc2_05 the runtime signals report a noon sun overhead on a mission the engine itself just classified as night.' THAT IS FALSE, and it is refuted by the same C++ the claim points at (the correction is also recorded at the transport in GameOS/gameos/gameos_graphics.cpp gos_SetTerrainDaylightLevel, DAYLIGHT-GATE-RECHECK-1). The moon fold is at mclib/camera.cpp:2079-2080, INSIDE Camera::updateDaylight(), and updateDaylight never runs during a mission: GameCamera::activate() overrides the virtual base without chaining and its own call site is commented out (code/gamecam.cpp:1060, `//updateDaylight(true);`). So on mc2_05 lightPitch stays at the authored 270, the derivation in Camera::update() gets altitude -90, and it correctly reports isNight = true, nightFactor = 1. There is no 'noon sun overhead' anywhere. THE DESIGN STILL STANDS, for a sounder reason than the one that was written down: dayLightPitch is written once at load and is never folded or animated, so it stays correct even if that fold is ever revived, whereas the runtime flags are one commented-out line away from being wrong. The gate takes the MIN of authored and runtime, which fails DARK on disagreement. Bounded 0..2; junk/NaN clamps to 0. Trace: MC2_TERRAIN_AMBIENT_FLOOR_TRACE. Visual-only; no gameplay, geometry, collision or UI change. NOT VISUALLY VERIFIED: engine launches are hard-blocked in this lane -- see the capture matrix in docs/tier1_env_vars.md."
     },
     // ── TERRAIN-AMBIENT-FLOOR-NIGHT-1 ──────────────────────────────────────
     // DEFAULT-OFF companion to the row above. Registered as a Feature (not a
@@ -2758,14 +2704,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from data/terrain_layers/<channel>_albedo.ktx2, GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM -- sampler does the sRGB decode) sampled world-space with the material-lib per-layer tiling (matTiling; rock /3 matches the detail-normal path). matWeights (classifier or control map) + HSV snow select layers; the colormap stays the MACRO tint (2x multiply keeps burn-in shading); steep slopes take the CLIFF layer triplanar (the 'cliffs look like rock' payoff). Mix knob u_matAlbedoStrength: env MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH > JSON matAlbedoStrength (terrain_materials.json; also supports textureRoot + layers.<channel>.albedo path overrides via the TinyJson nested-layers extension) > 0.7 default. Fail-soft: missing/mismatched/non-BC7-sRGB layer files log [TERRAIN_MAT_TEX] and leave the gate visually OFF. VRAM ~32 MiB (6x2048^2 BC7 + mips). Default-OFF byte-identical."
-    },
-    // CONCRETE-DETAIL-NORMAL-1: the concrete detail normal is DEFAULT OFF.
-    {
-        "MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL",
-        "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
-        EnvVarKind::Feature,
-        false,
-        "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:1402-1405, MAT_LAYER_PAINTED_CONC: dN += pureConcrete * matNormalBoost.w * fwC * (cN.rgb*2-1)) by zeroing matNormalBoost.w (nb[3]) at the uniform upload in gos_terrain_lod_chunk.cpp. DEFAULT OFF = the 'original overlay' concrete the user graded and approved in the mc2-win64-v0.3 install -- that install ships WITHOUT data/terrain_layers/, so matNormalArray never loads and the concrete relief never appears; this gate reproduces that look in installs that DO ship the layers, WITHOUT deleting assets or freezing a stale binary. Shader untouched; rock/grass/dirt detail normals (nb[0..2]) and the cement albedo/atlas path are unaffected. '=1' restores the relief treatment. Cost: loses close-up concrete surface relief on runways/aprons -- the flat authored colormap tone is what ships."
     },
     // WATER-SHORE-MASK-1 (3c864eac): shipped default-ON but was never registered.
     {

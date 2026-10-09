@@ -151,7 +151,6 @@ where soak proof was logged.
 | StaticPropRegistry | `MC2_STATIC_PROP_REGISTRY` | on (`:216-220`) | shipped default-on; editor sets `=0` | yes (=0 bypass for edit-time) | EditorMFC.cpp consumer |
 | MaterialKtx | `MC2_MATERIAL_KTX` | off (`:225-228`) | shipped opt-in (Phase 0, RGBA8 only) | n/a | `6a9ecdcc` lands sources |
 | StaticPropPacketDispatch | `MC2_STATIC_PROP_LEGACY_DISPATCH` | **on** (i.e. packet path default-on; env=1 forces legacy) (`:232-236`) | shipped default-on (v7) | **yes** (`=1` reverts to legacy MDI) | v7.1 — `MC2_DRAW_PACKET_STATIC_PROP_V6` retirement |
-| DrawPacketStaticPropV6 | `MC2_DRAW_PACKET_STATIC_PROP_V6` | off (`:241-244`) | [Retired] inert | no | v7.1 |
 | RenderSnapshotBuild | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | **on** (`:247-252`) | shipped default-on (STATIC-PROP-V3-FLIP `2a88a5a8`, 2026-05-27) | **yes** (`=0` reverts to live builder) | `2a88a5a8` post-flip + `10149e11` validate doc |
 | SnapCull | `MC2_SNAP_CULL` | off (`:256-260`) | shipped opt-in | no (collision-incompatible with snapshot build — `RenderSnapshot v3` log) | `066b5b9d` collision-soak |
 | ViewUniforms | `MC2_VIEW_UNIFORMS` | **on** (`:264-268`) | shipped default-on (F1-3D `cf5f67bc`, 2026-05-27) | yes (`=0` → legacy `u_worldToClipGL`) | `cf5f67bc` flip + `3a993be6` byte-identical compare |
