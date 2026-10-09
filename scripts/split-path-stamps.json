@@ -14,6 +14,6 @@
   },
   "water_fast_vs": {
     "shaders/gos_terrain_water_fast.vert": "d3c6cbcef55e1ccebc679b0963a7f70f3b7779b0",
-    "shaders/gos_terrain_water_fast_mdi.vert": "324f48e318ec110fcd8f2f966189f33057b96d6a"
+    "shaders/gos_terrain_water_fast_mdi.vert": "7e639ac3038822c183d16d46cf50e68dd49d7fec"
   }
 }

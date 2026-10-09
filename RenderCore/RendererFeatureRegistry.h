@@ -841,6 +841,21 @@ static_assert(
 // The enforcement script greps BOTH tables for "MC2_" string literals.
 
 static constexpr EnvVarDesc kAuxEnvVars[] = {
+    // -- WATER-SHORE-MODE-3 tuning knobs (GL prototype) ----------------------
+    {
+        "MC2_TUNE_WATER_SHORE3_EXTRA_WU",
+        "MC2_WATER_SHORE3_EXTRA_WU",
+        EnvVarKind::Feature,
+        false,
+        "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the per-pixel discard to carve (gos_terrain_water_stream.cpp). Float, unset => 60. Inert unless shore mode 3 is active.",
+    },
+    {
+        "MC2_TUNE_WATER_SHORE3_DEPTH_K",
+        "MC2_WATER_SHORE3_DEPTH_K",
+        EnvVarKind::Feature,
+        false,
+        "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve notches; gos_terrain_water_fast_mdi.vert, uploaded in gameos_graphics.cpp). Float, unset => 0.03. Inert unless shore mode 3 is active.",
+    },
     // ── LIGHT-ROW-PURE-1 ───────────────────────────────────────────────────
     // The in-engine half of the byte-identity proof for MC2_LIGHT_ROW_PURE.
     // Lives here rather than in kFeatureTable because it is a Trace var and

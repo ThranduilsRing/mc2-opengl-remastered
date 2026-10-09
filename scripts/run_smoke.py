@@ -1615,6 +1615,8 @@ def main():
                             "MC2_WATER_SHORE_FEATHER",
                             "MC2_WATER_SHORE_MEANDER",
                             "MC2_WATER_SHORE_MEANDER_FREQ",
+                            "MC2_WATER_SHORE3_DEPTH_K",
+                            "MC2_WATER_SHORE3_EXTRA_WU",
                             # WATER-SUN-SPEC-2 -- Blinn-Phong sun glint on the
                             # water plane (default OFF, value is an intensity).
                             # Its predecessor WATER-SUN-SPEC-1 shipped with the
