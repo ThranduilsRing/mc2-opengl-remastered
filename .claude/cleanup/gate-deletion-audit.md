@@ -114,3 +114,13 @@ Total: 56 env reads removable now (11 + 13 + 5 + 4 + 11 + 12) out of 1504 in the
 3. Are the `=0` overrides on the MECH and four POST direct-chain gates expendable (B5)?
 4. Is HW tess for cliffs permanently dead (B6)?
 5. Can the renumber of `RendererFeature` (61 to 57) proceed, or should the rows become `MC2_FEATURE_REMOVED_<n>` tombstones?
+
+## Owner rulings (2026-10-09)
+
+1. "Demote, never delete" instrumentation rule is retired. Tier B trace gates with DELETE verdicts are deleted → B1, B2, B3 GO.
+2. `MC2_TERRAIN_AMBIENT_FLOOR_NIGHT`: KEEP (night-parity grading still open). Stays deferred.
+3. VK direct-chain `=0` debug overrides (MECH + FOG/SSAO/SCREENFX/HZB) are expendable → B5 GO.
+4. Cliff hardware tessellation (`MC2_TERRAIN_CLIFF_DISPLACE`, `_MAXTESS`, `terrain_lod_chunk.tesc/.tese`): KEEP for possible later use → removed from B6. B6 = V1, V2, NFH, CONCRETE_DETAIL_NORMAL, PROP_LOD_SHADOW_CAST.
+5. `RendererFeature` enum: RENUMBER (no tombstone rows); `DRAW_PACKET_STATIC_PROP_V6` tombstone goes in the same renumber pass.
+
+Execution order (orchestrator): B0 → B1 → B2 → B3 → B4 → B5 → B6, one builder agent, one commit per batch, check-contracts + smoke-lite per batch, GL+VK day/night A/B viewed by orchestrator for B2/B5/B6. Still deferred: SHADOW_CASTER_DIAG (until seam#2 lands), TEX_HANDOFF_TRACE and TERRAIN_MASK_DISPATCH_TRACE (now DELETE under ruling 1 — fold into B2), VK_PROP_LIGHT_PROBE (until VK prop-lighting parity closes), STABLE_LIGHT_SKIP_DIAG (decide the STABLE_LIGHT_SKIP family first).
