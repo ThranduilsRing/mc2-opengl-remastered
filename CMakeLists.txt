@@ -387,6 +387,13 @@ if(MSVC)
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
 endif()
 
+# STL hardening: out-of-range operator[] on vector/span/string/array and similar become a fast-fail
+# trap instead of silent memory corruption. Optimized config only (the dev tree builds no Debug). Vendored
+# subdirectories above are unaffected, and imgui is bracketed out where it is added.
+if(MSVC)
+    add_compile_definitions("$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
+endif()
+
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
@@ -404,7 +411,15 @@ if(MC2_RNG_TRACE)
 endif()
 
 add_subdirectory("./GameOS/src" "./out/windows")
+if(MSVC)
+    get_directory_property(_defs COMPILE_DEFINITIONS)
+    list(REMOVE_ITEM _defs "$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
+    set_directory_properties(PROPERTIES COMPILE_DEFINITIONS "${_defs}")
+endif()
 add_subdirectory("3rdparty/imgui")
+if(MSVC)
+    add_compile_definitions("$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
+endif()
 add_subdirectory("GuiRuntime")
 include(cmake/Mc2NarrowingErrors.cmake)  # per-target /we for narrowing codes; after all lib targets exist
 # Standalone ImGui UI Editor.
