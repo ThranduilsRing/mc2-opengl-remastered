@@ -116,6 +116,8 @@ USAGE
 import os
 import re
 import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # ---------------------------------------------------------------------------
 # Layout
@@ -750,7 +752,8 @@ def implemented_default(readers):
 
 _VAR_RE = re.compile(r"MC2_[A-Z0-9_]+")
 _CLAIM_RE = re.compile(
-    r"default(?:s|ed)?\s*(?:is\s+|to\s+|=\s*|-|:|\s)\s*\**\s*(on|off)\b", re.I)
+    r"default(?:s|ed)?\s*(?:is\s+|to\s+|=\s*|-|:|\s)\s*\**\s*(on|off)\b"
+    r"|\bdefaults?\s+to\s+`?\**(1|0)\b", re.I)
 #: BACKEND-DEFAULT-PARITY-1 added `whenever`/`wherever`: `\bwhen\b` does not match
 #: `whenever` (the boundary fails on the trailing "ever"), so two genuinely
 #: conditional claims -- "Default ON whenever SSAO itself is on"
@@ -822,7 +825,7 @@ def comment_claims(lines, path, prose=False):
         # A DENIAL of the default is not an assertion of it. See _NEG_RE.
         if _NEG_RE.search(ln[:a.start()]):
             continue
-        out.append({"var": names.pop(), "claim": a.group(1).upper(),
+        out.append({"var": names.pop(), "claim": {"1": "ON", "0": "OFF"}.get(a.group(2) or "", (a.group(1) or "").upper()),
                     "path": path, "line": i, "text": ln.strip()[:160]})
     return out
 
@@ -866,13 +869,25 @@ def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,),
     # exist in the doc -- including MC2_STANDARD_LIT_V1, documented as "Default
     # ON. Kill=`=0`" while gos_mech_batcher.cpp:365 reads
     # `(v != nullptr && v[0] == '1')  // TEMPORARY DEFAULT-OFF`.
-    doc = os.path.join(root, "docs", "tier1_env_vars.md")
-    if os.path.isfile(doc):
+    # DOCS-DEFAULT-CLAIMS-1: sweep ALL prose docs, not just tier1_env_vars.md.
+    # docs/**/*.md (minus docs/archive/, frozen history) and .claude/*.md.
+    # Same one-var-per-line, unconditional-claim rule as above.
+    md_files = []
+    for dirpath, dirnames, filenames in os.walk(os.path.join(root, "docs")):
+        dirnames[:] = [x for x in dirnames if x != "archive"]
+        md_files.extend(os.path.join(dirpath, f) for f in filenames
+                        if f.endswith(".md"))
+    cdir = os.path.join(root, ".claude")
+    if os.path.isdir(cdir):
+        md_files.extend(os.path.join(cdir, f) for f in os.listdir(cdir)
+                        if f.endswith(".md"))
+    for full in sorted(md_files):
         try:
-            with open(doc, "r", encoding="utf-8", errors="replace") as fh:
-                claims.extend(comment_claims(fh.read().splitlines(),
-                                             "docs/tier1_env_vars.md",
-                                             prose=True))
+            with open(full, "r", encoding="utf-8", errors="replace") as fh:
+                claims.extend(comment_claims(
+                    fh.read().splitlines(),
+                    os.path.relpath(full, root).replace("\\", "/"),
+                    prose=True))
         except OSError:
             pass
     return claims

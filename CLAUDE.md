@@ -6,7 +6,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 
 - **ONE lane.** All work happens here in `A:/Games/mc2-main`. No parallel worktrees, no parallel coding agents. Sessions may *launch* from `A:/Games/mc2-opengl-src` (root, stale) — never build or commit there.
 - **Basics over process.** Every new rule, check or doc must replace one. A check red on nifty for more than a week gets fixed or deleted.
-- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates. (Cleanup of the ~149 legacy default-OFF gates is in progress.)
+- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates. (Cleanup of the legacy default-OFF gates is in progress; count them from `docs/flags.auto.yaml`, not from this file.)
 - **Vulkan is the destination backend.** GL becomes removable once VK is complete.
 - **Mods must keep working:** MC2X-CVE-G, MC2X-REAP3, Exodus, MagicExpansion, MechCommanderOmnitech, MCO-Carver5 (installs in `A:/Games/mc2-opengl/`).
 - **Commit locally only.** Never push, open PRs, or upload unless the user explicitly says so.
