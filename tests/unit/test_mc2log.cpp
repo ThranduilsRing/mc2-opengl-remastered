@@ -159,9 +159,9 @@ TEST_CASE("mc2log: MC2_LOG spec parsing") {
         CHECK_FALSE(p.isSpec);
         CHECK(p.errors == 0);
         for (size_t i = 0; i < kCatCount; ++i) CHECK_FALSE(p.levelSet[i]);
-        CHECK(streamsLiveFor(v));
+        CHECK(streamsLiveFor(true));
     }
-    CHECK_FALSE(streamsLiveFor(nullptr));
+    CHECK_FALSE(streamsLiveFor(false));
 
     ParsedSpec p = parseSpec("render:debug, vk=trace ,*:warn");
     CHECK(p.isSpec);

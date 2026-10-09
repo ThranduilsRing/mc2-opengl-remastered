@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <optional>
 
 #ifdef _WIN32
 extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char*);
@@ -37,8 +38,8 @@ std::string_view trim(std::string_view s) {
     while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.remove_suffix(1);
     return s;
 }
-bool ieq(std::string_view a, const char* b) {
-    size_t n = std::strlen(b);
+bool ieq(std::string_view a, std::string_view b) {
+    size_t n = b.size();
     if (a.size() != n) return false;
     for (size_t i = 0; i < n; ++i) {
         char c = a[i];
@@ -47,18 +48,15 @@ bool ieq(std::string_view a, const char* b) {
     }
     return true;
 }
-bool parseLevel(std::string_view s, Level& out) {
+std::optional<Level> parseLevel(std::string_view s) {
     for (size_t i = 0; i < sizeof(kLevelNames) / sizeof(kLevelNames[0]); ++i)
-        if (ieq(s, kLevelNames[i])) { out = Level(i); return true; }
-    return false;
+        if (ieq(s, kLevelNames[i])) return Level(i);
+    return std::nullopt;
 }
-// Returns false on unknown. `*` sets all=true.
-bool parseCat(std::string_view s, Cat& out, bool& all) {
-    all = false;
-    if (s == "*") { all = true; return true; }
+std::optional<Cat> parseCat(std::string_view s) {
     for (size_t i = 0; i < kCatCount; ++i)
-        if (ieq(s, kCatNames[i])) { out = Cat(i); return true; }
-    return false;
+        if (ieq(s, kCatNames[i])) return Cat(i);
+    return std::nullopt;
 }
 
 // ---- rate limiter / once table ----
@@ -70,7 +68,7 @@ constexpr size_t kSlots = 512;
 constexpr size_t kProbe = 8;
 Slot g_slots[kSlots];
 
-Slot* findSlot(uint64_t key) noexcept {
+Slot* claimSlot(uint64_t key) noexcept {
     if (key == 0) key = 1;
     size_t h = size_t((key * 0x9E3779B97F4A7C15ull) >> 40) % kSlots;
     for (size_t p = 0; p < kProbe; ++p) {
@@ -93,7 +91,7 @@ std::atomic<uint64_t> g_frame{0};
 const char* catName(Cat c) noexcept { return size_t(c) < kCatCount ? kCatNames[size_t(c)] : "?"; }
 const char* levelName(Level l) noexcept { return size_t(l) < 7 ? kLevelNames[size_t(l)] : "?"; }
 
-bool streamsLiveFor(const char* v) noexcept { return v != nullptr; }
+bool streamsLiveFor(bool envSet) noexcept { return envSet; }
 
 ParsedSpec parseSpec(std::string_view spec) {
     ParsedSpec r;
@@ -112,10 +110,12 @@ ParsedSpec parseSpec(std::string_view spec) {
             if (sep == std::string_view::npos) { ++r.errors; continue; }
             std::string_view cs = trim(tok.substr(0, sep));
             std::string_view rhs = trim(tok.substr(sep + 1));
-            Cat cat = Cat::Core; bool all = false;
-            if (!parseCat(cs, cat, all) || rhs.empty()) { ++r.errors; continue; }
-            Level lv;
-            if (parseLevel(rhs, lv)) {
+            const bool all = (cs == "*");
+            const std::optional<Cat> parsedCat = all ? std::optional<Cat>(Cat::Core) : parseCat(cs);
+            if (!parsedCat || rhs.empty()) { ++r.errors; continue; }
+            const Cat cat = *parsedCat;
+            if (const std::optional<Level> parsedLv = parseLevel(rhs)) {
+                const Level lv = *parsedLv;
                 auto apply = [&](size_t i) {
                     r.levelSet[i] = true; r.level[i] = lv; r.eventOff[i] = (lv == Level::Off);
                 };
@@ -167,14 +167,20 @@ bool topicEnabled(Cat c, std::string_view topic) noexcept {
     return false;
 }
 
+static std::optional<std::string_view> envView(std::string_view name) noexcept {
+    const std::string key(name);   // getenv needs a NUL-terminated name
+    if (const auto raw = std::getenv(key.c_str())) return std::string_view(raw);
+    return std::nullopt;
+}
+
 bool init() noexcept {
-    const char* v = std::getenv("MC2_LOG");
-    const bool live = streamsLiveFor(v);
+    const std::optional<std::string_view> v = envView("MC2_LOG");
+    const bool live = streamsLiveFor(v.has_value());
     try {
-        if (const char* d = std::getenv("MC2_LOG_DECORATE"))
-            detail::g_decorate.store(d[0] == '1', std::memory_order_relaxed);
+        if (const std::optional<std::string_view> d = envView("MC2_LOG_DECORATE"))
+            detail::g_decorate.store(!d->empty() && (*d)[0] == '1', std::memory_order_relaxed);
         if (v) {
-            ParsedSpec p = parseSpec(v);
+            ParsedSpec p = parseSpec(*v);
             applyParsed(p);
             if (p.errors > 0) {
                 std::string m = "[MC2_LOG] ignored " + std::to_string(p.errors) + " invalid spec token(s)\n";
@@ -223,7 +229,7 @@ void setStreamOverrideForTest(Stream s, std::FILE* f) noexcept {
 
 bool allowRateAt(uint64_t key, double perSecond, int64_t nowNs) noexcept {
     if (!(perSecond > 0.0)) return false;
-    Slot* s = findSlot(key);
+    Slot* s = claimSlot(key);
     if (!s) return true;   // fail open
     const int64_t interval = int64_t(1e9 / perSecond);
     int64_t next = s->next.load(std::memory_order_relaxed);
@@ -240,7 +246,7 @@ bool allowRate(uint64_t key, double perSecond) noexcept {
 }
 
 bool allowOnce(uint64_t key) noexcept {
-    Slot* s = findSlot(key ^ 0xA5A5A5A5DEADBEEFull);
+    Slot* s = claimSlot(key ^ 0xA5A5A5A5DEADBEEFull);
     if (!s) return true;
     int64_t expect = 0;
     return s->next.compare_exchange_strong(expect, 1, std::memory_order_relaxed);

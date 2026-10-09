@@ -38,10 +38,12 @@ enum class Stream : uint8_t { Err, Out, Dbg };
 
 inline constexpr size_t kCatCount = size_t(Cat::Count);
 
-#ifndef MC2_LOG_MIN_LEVEL
-#define MC2_LOG_MIN_LEVEL 0   // CMake may raise this; sites below it become dead code
-#endif
+// CMake may define MC2_LOG_MIN_LEVEL (0..6) to turn sites below it into dead code.
+#ifdef MC2_LOG_MIN_LEVEL
 inline constexpr Level kMinLevel = Level(MC2_LOG_MIN_LEVEL);
+#else
+inline constexpr Level kMinLevel = Level::Trace;
+#endif
 
 // ---- constinit state (A2): legacy defaults, no dynamic initialisation ----------
 namespace detail {
@@ -93,7 +95,7 @@ void setSpec(std::string_view spec);              // parse + apply (runtime / de
 // MC2_LOG_DECORATE; returns true when stdout/stderr must stay live (== MC2_LOG is
 // set to anything, exactly the legacy rule).
 bool init() noexcept;
-bool streamsLiveFor(const char* mc2LogEnvValue) noexcept;   // pure helper (nullptr -> false)
+bool streamsLiveFor(bool mc2LogEnvIsSet) noexcept;   // pure helper: legacy rule, any value = live
 
 // ---- sinks ----------------------------------------------------------------------
 // One fwrite per line.  `line` must include its trailing newline.  No allocation.
@@ -118,12 +120,12 @@ uint64_t frameNumber() noexcept;
 namespace detail {
 inline std::string& tlBuf() { thread_local std::string b; return b; }
 
-inline void reportFormatError(Cat c, Level l, Stream s, std::string_view tmpl, const char* what,
+inline void reportFormatError(Cat c, Level l, Stream s, std::string_view tmpl, std::string_view what,
                               const std::source_location& loc) noexcept {
     try {
         std::string m(tmpl);
         m += "\n[LOG FORMAT ERROR] ";
-        m += what ? what : "?";
+        m += what;
         write(c, l, s, m, loc);
     } catch (...) {}
 }
