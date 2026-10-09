@@ -731,6 +731,33 @@ def find_build_root(build_dir, explicit_root=None):
     return b64
 
 
+def is_single_config(build_dir, b64):
+    """True for a Ninja-style tree: outputs land directly in the build root
+    (no <config> subdir), because there is exactly one config per tree.
+
+    WHY: the VS tree nests everything under a config name (RelWithDebInfo/,
+    mc2.dir/RelWithDebInfo/, out/mc2_launcher/RelWithDebInfo/); Ninja trees
+    (build64-ninja) do not. Detecting the layout from the tree itself keeps
+    both usable without forcing either into the other's directory shape.
+    """
+    if not b64:
+        return False
+    return os.path.isfile(os.path.join(b64, "build.ninja"))
+
+
+def launcher_path(b64, cfg, single_config):
+    base = os.path.join(b64, LAUNCHER_FROM_BUILD64)
+    return os.path.join(base, LAUNCHER_NAME if single_config
+                        else os.path.join(cfg, LAUNCHER_NAME))
+
+
+def mc2_obj_dir(b64, cfg, single_config):
+    """Where the mc2 target's .obj files live (the exe-freshness reference)."""
+    if single_config:
+        return os.path.join(b64, "CMakeFiles", "mc2.dir")
+    return os.path.join(b64, "mc2.dir", cfg)
+
+
 def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     """Mistake E: stale exe deployed because the source exe was not relinked.
 
@@ -738,7 +765,8 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     that compiled objects but did not relink the exe -- or a deploy racing a still-running build --
     leaves the exe OLDER than its objects, so deploy faithfully copies a stale binary (this
     actually happened: a deploy shipped a pre-slice exe ~2.5 KB smaller than the rebuilt one).
-    Compare exe mtime against the newest .obj under build64/mc2.dir/<config>/.
+    Compare exe mtime against the newest .obj under build64/mc2.dir/<config>/
+    (VS) or build64-ninja/CMakeFiles/mc2.dir/ (Ninja).
     """
     if not os.path.isfile(exe_src):
         return
@@ -748,7 +776,7 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
     b64 = find_build_root(build_dir, build64_root)
     if not b64:
         return                                      # non-standard layout; skip the guard
-    objdir = os.path.join(b64, "mc2.dir", cfg)
+    objdir = mc2_obj_dir(b64, cfg, is_single_config(build_dir, b64))
     newest_m, newest_p = 0.0, None
     for root, _dirs, files in os.walk(objdir):
         for f in files:
@@ -795,14 +823,15 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     bd = os.path.abspath(build_dir).rstrip(os.sep)
     cfg = os.path.basename(bd)  # e.g. RelWithDebInfo
     b64 = find_build_root(build_dir, build64_root)
-    launcher_src = (os.path.join(b64, LAUNCHER_FROM_BUILD64, cfg, LAUNCHER_NAME)
+    launcher_src = (launcher_path(b64, cfg, is_single_config(build_dir, b64))
                     if b64 else "")
     if launcher_src and os.path.isfile(launcher_src):
         items.append((launcher_src, LAUNCHER_NAME, "exe"))
     elif require_build:
         fail(f"mc2-launcher.exe not found (looked: {launcher_src or '<no build64 root>'})\n"
              "  Build it as part of the release: cmake --build build64 "
-             "--config RelWithDebInfo --target mc2_launcher")
+             "--config RelWithDebInfo --target mc2_launcher "
+             "(Ninja tree: ninja -C build64-ninja mc2_launcher)")
     else:
         # manifest-only: source build output may be gone; still record the
         # relpath so an existing target copy gets hashed.
@@ -1194,11 +1223,13 @@ TARGET_PRESETS = {
         "target_dir": "A:/Games/mc2-opengl/mc2-win64-v0.4",
         "exe_name": "mc2.exe",
         "build_subdir": os.path.join("build64", "RelWithDebInfo"),
+        "ninja_subdir": "build64-ninja",
     },
     "editor": {
         "target_dir": "A:/Games/mc2-opengl/mc2-win64-v0.4",
         "exe_name": "Mission Editor.exe",
         "build_subdir": os.path.join("build64", "out", "editor", "RelWithDebInfo"),
+        "ninja_subdir": os.path.join("build64-ninja", "out", "editor"),
     },
 }
 
@@ -1240,6 +1271,11 @@ def main():
     ap.add_argument("--exe-name", default=None,
                     help="exe filename (default mc2.exe, or the preset's exe "
                     "with --target)")
+    ap.add_argument("--ninja", action="store_true",
+                    help="use the Ninja single-config dev tree (build64-ninja/, "
+                    "configured by scripts/configure_ninja.py) instead of the VS "
+                    "tree. Equivalent to --build-dir <src>/build64-ninja for "
+                    "--target game. An explicit --build-dir wins.")
     ap.add_argument("--build64-root", default=None,
                     help="explicit build64-family root that holds out/mc2_launcher "
                     "and mc2.dir (e.g. an absolute path to build64_island). Default: "
@@ -1291,6 +1327,8 @@ def main():
     src_root = os.path.abspath(args.source_root)
     default_subdir = (preset["build_subdir"] if preset
                       else os.path.join("build64", "RelWithDebInfo"))
+    if args.ninja:
+        default_subdir = (preset["ninja_subdir"] if preset else "build64-ninja")
     build_dir = args.build_dir or os.path.join(src_root, default_subdir)
     pdb_name = os.path.splitext(exe_name)[0] + ".pdb"
 

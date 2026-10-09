@@ -117,12 +117,15 @@ def ensure_deps(worktree, donor_arg):
         fail(f"after copy, {DONOR_SENTINEL} still missing -- donor incomplete?")
 
 
-def configure(worktree, cmake):
-    br = worktree.replace("\\", "/")
-    tp = f"{br}/3rdparty"
-    args = [
-        cmake, "-S", br, "-B", f"{br}/build64",
-        "-G", "Visual Studio 17 2022", "-A", "x64",
+def cache_args(worktree):
+    """The -D cache vars every configure of this repo needs (any generator).
+
+    Single-sourced here so the VS tree (build64), the Ninja dev tree
+    (build64-ninja) and the clangd analysis tree cannot drift apart: a
+    configure that differs in even one of these silently links different deps.
+    """
+    tp = worktree.replace("\\", "/") + "/3rdparty"
+    return [
         "-DMC2_IMGUI=ON",
         f"-DCMAKE_PREFIX_PATH={tp}/cmake",
         f"-DGLEW_INCLUDE_DIR={tp}/include",
@@ -132,6 +135,12 @@ def configure(worktree, cmake):
         f"-DZLIB_INCLUDE_DIR={tp}/include",
         f"-DZLIB_LIBRARY={tp}/lib/x64/zlib.lib",
     ]
+
+
+def configure(worktree, cmake):
+    br = worktree.replace("\\", "/")
+    args = [cmake, "-S", br, "-B", f"{br}/build64",
+            "-G", "Visual Studio 17 2022", "-A", "x64"] + cache_args(br)
     log("configuring ...")
     r = subprocess.run(args)
     if r.returncode != 0:

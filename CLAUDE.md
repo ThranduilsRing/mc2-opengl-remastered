@@ -14,7 +14,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 
 ## Paths
 
-- Source + build: `A:/Games/mc2-main/` → `build64/RelWithDebInfo/mc2.exe`
+- Source + build: `A:/Games/mc2-main/` → dev build `build64-ninja/mc2.exe` (Ninja); release/fallback `build64/RelWithDebInfo/mc2.exe` (VS)
 - Dev install (deploy target): `A:/Games/mc2-opengl/mc2-win64-v0.4/` · Golden: `mc2-win64-v0.4c/` (don't overwrite)
 - Archive of old lanes, installs, worktrees, ledgers, plans: `E:/mc2-archive-2026-10/` (also git history)
 - CMake: `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
@@ -22,10 +22,12 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 ## Commit → build → deploy → verify
 
 ```bash
-# build (RelWithDebInfo only; fresh tree: py -3 scripts/bootstrap_worktree_build.py --build)
-"$CMAKE" --build build64 --config RelWithDebInfo --target mc2 mc2_launcher
+# dev build = Ninja tree (exact header deps, no stale-binary traps; fresh tree: py -3 scripts/configure_ninja.py)
+py -3 scripts/ninja_build.py
 # deploy (sha256-verified; exe fingerprint embeds git sha, so COMMIT FIRST)
-py -3 scripts/deploy_payload.py --target game
+py -3 scripts/deploy_payload.py --target game --ninja
+# release / fallback = VS tree (fresh tree: py -3 scripts/bootstrap_worktree_build.py --build)
+"$CMAKE" --build build64 --config RelWithDebInfo --target mc2 mc2_launcher   # deploy without --ninja
 ```
 
 Offline checks (no game launch) — run these first, all should be green:

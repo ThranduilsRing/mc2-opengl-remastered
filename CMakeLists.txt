@@ -75,6 +75,14 @@ if(MSVC)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP -DWINDOWS_IGNORE_PACKING_MISMATCH")
 endif()
 
+# MSBuild always passes /Zc:inline (drops unreferenced inline/COMDAT functions at
+# compile time); CMake's Ninja+MSVC command line does not. Without it the Ninja
+# dev tree (build64-ninja) emits ~2x larger objects and linked code that differs
+# from the VS tree, so both trees must carry the same flag. VS already has it.
+if(MSVC AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+    add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:/Zc:inline>")
+endif()
+
 # ---------------------------------------------------------------------------
 # MC2_ASAN: parallel dev build with MSVC AddressSanitizer.
 #
