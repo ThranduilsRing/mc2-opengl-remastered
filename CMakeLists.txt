@@ -8,7 +8,9 @@ project(mc2)
 # target_compile_features; flipping the root removes the C++14/17 mix and
 # makes mc2.exe uniformly C++17. See docs/superpowers/explorations/
 # 2026-05-24-cxx17-upgrade-recon.md.
-set(CMAKE_CXX_STANDARD 17)
+# Single source of truth for the language standard (17 or 23; Linux gcc stays 17 until deferred work).
+set(MC2_CXX_STANDARD 17 CACHE STRING "C++ standard for all project targets (17|20|23)")
+set(CMAKE_CXX_STANDARD ${MC2_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

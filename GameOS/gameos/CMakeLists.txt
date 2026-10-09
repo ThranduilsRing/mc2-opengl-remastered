@@ -410,6 +410,10 @@ if(MC2_VULKAN)
     target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
     target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
+    # engine_present_vk.cpp (shared SOURCES) includes imgui headers; gameos_editor was missing the dirs.
+    target_include_directories(gameos_editor PRIVATE
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
+        "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
 endif()
 # VULKAN-ISLAND-ODR-HARDEN-1: gameos_editor uses the same ${SOURCES} as gameos
 # (incl. gos_postprocess.cpp) and its consumers (editor/*.cpp) include
