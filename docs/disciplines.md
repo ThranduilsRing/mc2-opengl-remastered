@@ -83,7 +83,7 @@ When a commit message or status doc states a **number** for the first time, put
 a trailer in that commit naming the tracked command that produces it:
 
 ```
-MEASURED-BY: py -3 scripts/water_class_flip_audit.py
+MEASURED-BY: py -3 scripts/check-doc-links.py
 ```
 
 Why: 24 of the 160 commits since 2026-07-29 are corrections or retractions of

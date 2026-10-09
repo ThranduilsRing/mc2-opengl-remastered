@@ -45,8 +45,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # mission.fst on ALL 24 campaign maps -- so every audit report this script
 # produced by default graded terrain the engine never loads. There is no
 # baked-in default any more; the resolver proves whatever it uses.
-# scripts/terrain_grounding_audit.py imports the helpers below, so fixing them
-# here fixes both.
+# scripts/predict_cement_adopt.py imports the helpers below, so fixing them
+# here fixes both (the grounding/burial audits that shared them are retired).
 sys.path.insert(0, str(ROOT / "tools" / "mc2data"))
 from stock_missions import (  # noqa: E402
     StockDataError, add_missions_dir_arg, resolve_from_args,

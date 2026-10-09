@@ -29,7 +29,7 @@ files (`git status --porcelain`, a leading `??`), sibling worktrees, sibling *in
 committed on a ref you are not on.
 
 > ### The failure mode caught itself, live, inside this ledger
-> I opened this adjudication at `0d0db03ec`, where `scripts/object_burial_audit.py` and
+> I opened this adjudication at `0d0db03ec`, where `scripts/object_burial_audit.py` and *[archived 2026-10-09 (cleanup(dead) DI-8c deleted the audit script/outputs; last present at 3bedd725e)]*
 > both turret CSVs were **untracked (`??`)**. I graded Dispute 1 **MEASURED BUT
 > UNCOMMITTED** and wrote out the `git add` that would fix it. While I was still working,
 > the originating lane committed all three files as **`6d9360046`**, and the verdict
@@ -89,6 +89,7 @@ heightfield. mc2_03's eleven turrets are one cell of that table, not a special c
 py -3 scripts/object_burial_audit.py --missions mc2_03            # the table
 py -3 scripts/object_burial_audit.py --selftest                   # 8 negative controls
 ```
+> archived 2026-10-09 (cleanup(dead) DI-8c deleted the audit script/outputs; last present at 3bedd725e)
 
 Full-precision 1b (the CSV rounds to 6 dp, which is why it prints `2e-06`, not `1.97e-06`
 — **the rounding is the whole reason 1.97e-6 "appears nowhere"**):
@@ -182,6 +183,7 @@ release_assets/0.5.2/REVIEW/INDEX.html             <- its mirror
 scripts/object_burial_audit.py                     <- measurement tool, names no defect
 tests/terrain/object_burial_*.csv                  <- measurement output, names no defect
 ```
+> archived 2026-10-09 (cleanup(dead) DI-8c deleted the audit script/outputs; last present at 3bedd725e)
 (The last two are now committed at `6d9360046`, but they are *elevation* data — they
 establish the models exist and are not sunk; they say nothing about black quads.)
 
@@ -284,7 +286,7 @@ always says "clean".
 | 4a | *"Trees are the darkest asset class at every shipped colour scheme"* | **MEASURED AND REPRODUCIBLE — but must be RESTATED; as written it is a category error** |
 | 4b | *"'Mechs are the brightest' is not robust — the rank flips on **5 of 10** schemes"* | **UNSUPPORTED. Retract the figure.** |
 
-Tool `tools/albedo_masked_audit.py` is **tracked and committed** (`dcdce66dc`).
+Tool `tools/albedo_masked_audit.py` is **tracked and committed** (`dcdce66dc`). *[archived 2026-10-09 (cleanup(dead) DI-8c deleted the audit script/outputs; last present at 3bedd725e)]*
 
 **4a — the objection is correct, and the tool says so in its own source.** Paint is
 applied only to mech and vehicle: `PAINTED_CLASSES = ("mech", "vehicle")`
@@ -467,7 +469,7 @@ or screenshotted. Do not report this gate as verified-looking-correct.
    `scripts/exe_fingerprint.py` against the exe is the strong claim.
 9. **"56,395 of 72,153 objects (78%) move"**, **"96.5% of trees move"**, **"±2.4 m
    world-wide"**, and **"his first launch will look like the world shifted"** — ALL
-   WRONG (retracted 2026-07-31, RESNAP-INVERSION-1). `scripts/object_burial_audit.py`
+   WRONG (retracted 2026-07-31, RESNAP-INVERSION-1). `scripts/object_burial_audit.py` *[archived 2026-10-09 (cleanup(dead) DI-8c deleted the audit script/outputs; last present at 3bedd725e)]*
    had its elevation model **backwards** until `632122f7d`: it hard-coded zero change
    for the re-snapping classes and applied the delta to the frozen-Z ones, on the false
    premise that the **drawn** ground was Phong-smoothed before `a75339bb0`. It was not —
@@ -490,7 +492,7 @@ or screenshotted. Do not report this gate as verified-looking-correct.
 ## Safe to repeat
 
 - mc2_03 has exactly **11 TURRET-class objects**, sitting on the **gameplay** heightfield
-  to **1.97e-6 wu** — fully reproducible via `scripts/object_burial_audit.py` (`6d9360046`).
+  to **1.97e-6 wu** — fully reproducible via `scripts/object_burial_audit.py` (`6d9360046`). *[archived 2026-10-09 (cleanup(dead) DI-8c deleted the audit script/outputs; last present at 3bedd725e)]*
 - The fleet-wide version: across **72,153 stock objects on 37 maps**, authored Z matches
   the Phong-retired elevation to **0.0001 wu**, vs up to **13.39 wu** against legacy Phong.
   (This is an **agreement** test, not a movement claim — the distinction is what
