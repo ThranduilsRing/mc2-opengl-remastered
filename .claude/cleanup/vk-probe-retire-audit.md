@@ -126,3 +126,83 @@ MOVE-TO-TEST is not viable today: no ICD in unit tests, and no precedent.
   - The new loader is under 1500 lines, so it needs no entry. Run `py -3 tools/file_size_ratchet.py --check --tighten`.
 - **`dup_lines_ratchet.baseline.json`:** the skeleton entry (line 66) is 2878 duplicated lines of 74844, so about -3.8% of the total. `vulkan_shadow_island.cpp`'s internal clones go too; its baseline entry was not measured.
 - **Build time:** removes the double compile of the skeleton and its companions in every full build.
+
+## Phase 2 provenance (2026-10-09) — verdict DELETE; owner rule applied (functionality exists in engine_present_vk; never parked for a bug)
+
+### Provenance: VK composite-present scaffold (`MC2_VK_COMPOSITE_PRESENT`)
+
+#### Recommendation: DELETE (D7 phase 2 is safe)
+
+The scaffold was never switched off for a bug. It was built as a deliberate, permanent test-only skeleton for a feature that later shipped through a different file, `engine_present_vk.cpp`. Neither of your tests for keeping it applies:
+
+- **Functionality exists elsewhere:** the real present path is live, and it covers more than the scaffold ever did.
+- **Post-processing thing parked for a bug:** nothing in the history, docs or memory says that.
+
+Two things to handle when deleting, both below: the extra deletion surface, and one shader-file correction to the audit.
+
+#### Timeline
+
+| Date | SHA | Event |
+|---|---|---|
+| 2026-06-30 | `06946a87b` | `fullscreen.vert/frag` created in VULKAN-SHADER-TOOLCHAIN-1. Described as a "trivial" shader, "Not yet rendered anywhere". |
+| 2026-07-01 | `8241e5916` | VULKAN-SWAPCHAIN-PRESENT-1 (L5). Throwaway probe in `vulkan_swapchain_present.cpp` (914 lines). Opens its own separate SDL Vulkan window, presents 16 frames, tears down. Sync validation caught a shared render-finished semaphore re-signal, fixed with one semaphore per swapchain image. |
+| 2026-07-02 | `94d4cc8eb` | L6.6-lite COMPOSITE-PRESENT-SCAFFOLD, the only commit that ever touched the scaffold files. It extracted the probe into `VulkanPresentObject`. It added the `CompositePresent` region contract in RenderCore, the `gos_postprocess.cpp` test region, and the `MC2_VK_COMPOSITE_PRESENT` gate. |
+| 2026-07-03 | `3e737f565`, `19cf4fb87` | P13 T3/T13b. `engine_present_vk.cpp` presents the real game frame, first on a hidden window and then on the real game window. |
+| 2026-07-08 to 07-16 | (many) | The live path gains native composite, HUD/ImGui tail, resize hardening and single-submit present. |
+| 2026-07-08 | `2b678e537` | Docs-only touch of the gate name ("register imgui gate"). |
+| 2026-07-10/11 | `354f9b6f5`, `60b1ac8ac` | Rung 8 deletes the GL-to-VK handoff and exportable present image, so the "L7 interop wall" no longer exists. |
+| 2026-10-09 | `4a4a72989` | D7 audit proposes phase 2 deletion. `ORCHESTRATOR-HANDOFF.md:47` lists it as "pending answer". |
+
+The scaffold files have not changed since `94d4cc8eb` (2026-07-02). `fullscreen.*` has not changed since 06-30.
+
+#### What the scaffold does
+
+- **Test pattern only.** `acquireAndPresentOneFrame` clears to teal and draws the `fullscreen.*` triangle, which outputs UV as colour. It has its own `inFlight_` fence and a `vkWaitForFences` per frame.
+- **Separate window and device.** It creates its own SDL Vulkan window, instance, surface, device and swapchain. It never touches the game window, FBO-0 or the GL swap.
+- **Run-once call site.** `gos_postprocess.cpp:~4604-4625` runs it once, only under `#ifdef MC2_VULKAN_ISLAND` and when the env var is set. It presents 16 frames with a resize at the midpoint.
+- **MainColor is never sampled.** The code says: "The composited MainColor is NOT sampled here (the fullscreen-triangle test pattern stands in)". The same file says bridging the real game image is "L7 interop, ledgered".
+- **Not a post chain.** It is not a GL-to-VK interop present, and not a VK-rendered post chain.
+
+#### Does `engine_present_vk.cpp` subsume it? YES
+
+- **Live path:** `engine_present_vk.cpp` is 2767 lines. It presents the real composited frame through a swapchain on the real game window. It has native composite/FXAA/lowlight/object-id, HUD and ImGui tail, a single submit, and resize with `oldSwapchain` chaining and bounded retry.
+- **Device ownership:** it borrows the shared engine device from `VulkanContext`. `vulkan_context.h:5-11` says the present object must not own a device on the engine path.
+- **Code relationship:** `engine_present_vk.cpp` shares no code with `VulkanPresentObject`. The only mention is the comment on line 9, "mirrors ... per-image render-semaphore discipline". A grep finds no other user of `VulkanPresentObject` outside the scaffold and the L5 probe.
+- **Own loader and shaders:** `engine_present_vk.cpp` has its own `loadSpv`, and has no references to `fullscreen`. It uses its own composite and blit shaders.
+- **Nothing missing:** the semaphore-per-image fix, OUT_OF_DATE/SUBOPTIMAL rebuild and resize recovery are all in the live path, in hardened form. The scaffold's only unique content is the teal triangle and the 16-frame self-test.
+
+#### Switched off for a bug? NO
+
+- The commit message and `VULKAN-NEXT-SLICES.md:451-480` present it as the intended end state of L6.6-lite. Key phrases:
+  - "build the reusable machinery + contract ONLY"
+  - "banks the present machinery + contract so L7 has something real to plug into"
+- There is no "parked", "reverted", "temporarily off" or bug wording anywhere. The default-off, ISLAND-only gating is by design, to keep the shipping build byte-identical.
+- The only bug mentioned is the L5 semaphore hazard, and it was fixed in 8241e5916 and carried into the live path.
+- **Gate registry text:** `MC2_VK_COMPOSITE_PRESENT` is unregistered. `flags.auto.yaml` has `registered: no`, no doc and no feature id. `gate_table.seed.json` has `doc: ""`, `retireBy: ""` and one reader. `gate-history.md` has no entry. The only statement of intent is the code comment: "opt-in ... must NOT run per-frame".
+- **Open items:** nothing open references it. The present-wait perf item (`opus-modernization-review.md` §4.1, S5) cites `engine_present_vk.cpp:1972`, the `[QWI-WAIT]` log and the `VKIsl.Present.CompositeWait` zone. The scaffold would not be the base for that work; `engine_present_vk.cpp` is.
+
+#### Corrections and extra surface for the delete
+
+1. **`fullscreen.*` is deletable too.** The audit says to keep `fullscreen.*` for `vulkan_present_object`. Phase 2 deletes `vulkan_present_object` (and the skeleton, which also loads `fullscreen.*` at `vulkan_backend_skeleton.cpp:257,509`, goes in phase 1), so nothing then uses it. Two other places mention it:
+   - `scripts/check-split-path-contracts.py:204-205` has allowlist rows for it, to remove.
+   - `tools/vk_interop_transport_test/CMakeLists.txt:63` uses its own `shaders/fullscreen.vert` (a different file), so it is unaffected.
+2. **The audit's list misses the rest of the `CompositePresent` region contract.** If you want it fully gone:
+   - `RenderCore/RenderRegionId.h`: enum value, string case, `CompositePresentRegionContext`, and the `RegionOutput.presented` comment.
+   - `RenderCore/IRenderBackend.h`: the `runRegion` overload.
+   - `gos_postprocess.cpp`: about 28 references, including the GL backend adapter and the extern "C" `mc2_render_backend_composite_present_*` entry points, plus `gos_postprocess.h` (7 refs).
+   - `debug_state_dump.cpp`: 6 refs.
+   - `vulkan_backend_skeleton.h:230+`: the declaration.
+   - **Open question:** whether to remove the contract or leave it as inert additive code.
+3. **Housekeeping:**
+   - Remove the CMake entries in the root `CMakeLists.txt:162` and `GameOS/gameos/CMakeLists.txt` (+4 lines).
+   - Remove the `MC2_VK_COMPOSITE_PRESENT` row from the gate seed and regenerate `flags.auto.yaml`.
+   - Fix `docs/ARCHITECTURE-MAP.md:59`, which still lists `vulkan_swapchain_present.cpp` and `vulkan_present_object.cpp` as present files.
+   - After phase 2, `vulkan_spv_loader.cpp` is unnecessary (the audit already says so).
+   - `MC2_VULKAN_VALIDATION` is also read by `vulkan_context.cpp`, so keep it.
+4. **Resurrection:** the audit's plan to tag `archive/vk-probe-fixtures` before deleting covers this too. The L5 and L6.6 commits (`8241e5916`, `94d4cc8eb`) also survive in git history.
+
+#### Confidence
+
+Provenance is solid for creation and intent: one commit with a detailed message, plus a supervisor-ruling paragraph in `VULKAN-NEXT-SLICES.md`. It is thin for any later discussion, because the scaffold was never touched again and no docs or memory reference it beyond the D7 audit. I found no hint of a parked bug. I did not search the memory `rendering/` and `process/handoffs/` folders beyond one archived handoff hit (`HANDOFF-2026-07-02-session-end.md:74`, a list mention of "L6.6 present").
+
+Orchestrator decision: phase 2 GO including removal of the CompositePresent region contract (RenderRegionId/IRenderBackend/gos_postprocess/debug_state_dump refs) and fullscreen.* — no inert code kept.
