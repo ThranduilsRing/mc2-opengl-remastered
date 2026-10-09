@@ -774,6 +774,8 @@ run_check "golden_coverage_selftest" "py -3 scripts/check-golden-coverage.py --s
 # THREE-RUN-ALL-PAIRS-1 + DEGENERATE-CROP-REFUSAL-1 (VERIFY-DEBT-1): proves bless.py
 # refuses a two-run set, a duplicated run, a degenerate crop and an unstable region.
 run_check "bless_selftest"           "py -3 tools/visual_verify/bless_selftest.py"
+run_check "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
+run_check "cxx17_ratchet_selftest"   "py -3 tools/cxx17_ratchet/test_cxx17_ratchet.py"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py
