@@ -110,16 +110,9 @@ inline bool subGate(const char* name)
 // an explicit per-gate =0 override — it is item-4's deletion target). Precedence is
 // identical to subGate: explicit env "1"/"0" wins; else the umbrella value.
 //
-// The LIVE direct-chain family (keep in lockstep with the strict runner + the
-// ladder doc): MC2_VK_PROP_DIRECT_CHAIN, MC2_VK_WATER_DIRECT_CHAIN,
-// MC2_VK_POST_COMPOSITE_DIRECT_CHAIN.
+// The direct-chain family (keep in lockstep with the strict runner + the ladder doc):
+// MC2_VK_PROP_DIRECT_CHAIN, MC2_VK_WATER_DIRECT_CHAIN, MC2_VK_POST_COMPOSITE_DIRECT_CHAIN.
 // (MC2_VK_OBJECTID_DIRECT_CHAIN is a view-mode-only canary, NOT a default member.)
-// RETIRED to parseable no-ops (item-4 hybrid-arm deletions; explicit set prints a
-// deprecation note): MC2_VK_MECH_DIRECT_CHAIN, MC2_VK_SHADOW_DIRECT_CHAIN,
-// MC2_VK_POST_{FOG,SSAO,SCREENFX,HZB}_DIRECT_CHAIN, and (VK-RUNG8-ITEM4-TERRAIN-
-// DELETE-1) MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR — terrain native first-owner is now
-// unconditional when the terrain Tier-1 island is armed; consumers use
-// terrainNativeFirstOwnerOn() below instead of the retired gate.
 inline bool directChainGate(const char* name)
 {
     const int t = envTriState(name);
@@ -128,14 +121,11 @@ inline bool directChainGate(const char* name)
     return umbrellaOn();
 }
 
-// VK-RUNG8-ITEM4-TERRAIN-DELETE-1: "terrain is the native first owner of the shared
-// scene color0/normal/depth for the frame". This is what the retired
-// MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR gate used to mean; after the terrain island's
-// hybrid GL<->VK semaphore-handoff arm was deleted it is a STRUCTURAL property of
-// the armed terrain Tier-1 island (always CLEAR loadOp on color0/normal/depth, no
-// GL<->VK semaphore handoff), so it is true exactly when the terrain Tier-1 island
-// is armed. Mirrors terrainTier1Requested() in vulkan_terrain_island.cpp (keep in
-// lockstep).
+// "Terrain is the native first owner of the shared scene color0/normal/depth for the
+// frame": a STRUCTURAL property of the armed terrain Tier-1 island (always CLEAR loadOp
+// on color0/normal/depth, no GL<->VK semaphore handoff), so it is true exactly when the
+// terrain Tier-1 island is armed. Mirrors terrainTier1Requested() in
+// vulkan_terrain_island.cpp (keep in lockstep).
 inline bool terrainNativeFirstOwnerOn()
 {
     return subGate("MC2_VK_TERRAIN_TIER1") && subGate("MC2_VK_SHARED_SCENE_DEPTH");
@@ -147,14 +137,11 @@ inline bool terrainNativeFirstOwnerOn()
 inline bool postDirectChainUpstreamOn()
 {
     // Direct-chain members default ON under the umbrella (directChainGate);
-    // MC2_VK_WATER_TIER1 is a normal umbrella sub-gate (subGate). Terrain's term
-    // is the structural first-owner predicate (retired gate; see above). The
-    // deprecated mech gate reference is retained per the a0cba0c4 precedent
-    // (resolves ON under the umbrella; only an explicit =0 debug override gates
-    // posts, mech itself is unconditionally native).
+    // MC2_VK_WATER_TIER1 is a normal umbrella sub-gate (subGate). Terrain's term is
+    // the structural first-owner predicate (see above); mech is unconditionally
+    // native and has no term here.
     return terrainNativeFirstOwnerOn() &&
            directChainGate("MC2_VK_PROP_DIRECT_CHAIN") &&
-           directChainGate("MC2_VK_MECH_DIRECT_CHAIN") &&
            subGate("MC2_VK_WATER_TIER1") &&
            directChainGate("MC2_VK_WATER_DIRECT_CHAIN");
 }

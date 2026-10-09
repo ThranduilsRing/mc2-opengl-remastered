@@ -28,11 +28,9 @@
 // and the caller falls through to the unchanged subgraph/island/GL precedence chain
 // (fail-soft, never crashes, gate-OFF byte-identical).
 //
-// SYNC (water-island tier1 pattern, vulkan_water_island.cpp:1330-1395): per frame
-// BeginFrame on BOTH shared resources. Default mode still uses the GL<->VK handoff
-// semaphores. MC2_VK_POST_FOG_DIRECT_CHAIN=1, guarded by the full upstream native
-// ownership chain, treats color/depth as already Vulkan-owned, skips those
-// handoffs, renders in place, and leaves both resources Vulkan-owned for later
+// SYNC: per frame BeginFrame on BOTH shared resources. Guarded by the full upstream
+// native ownership chain, color/depth are treated as already Vulkan-owned: there is no
+// GL<->VK handoff, fog renders in place and leaves both resources Vulkan-owned for later
 // post/composite work.
 //
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
@@ -89,7 +87,7 @@ void vlog(const char* fmt, ...) {
 struct PostFogNativeHealth {
     int  runtimeGate   = 0;   // MC2_VK_POST_FOG_NATIVE resolved ON
     int  substrateLive = 0;   // shared color0 + depth resources present at init
-    int  directChain   = 0;   // MC2_VK_POST_FOG_DIRECT_CHAIN resolved ON
+    int  directChain   = 0;   // direct-chain engaged
     unsigned long attempted  = 0;  // frames the native path was entered
     unsigned long usedVulkan = 0;  // frames BOTH fogs actually rendered via VK
     unsigned long usedInterop = 0; // frames that used GL<->VK semaphores
@@ -564,18 +562,9 @@ bool gosPostProcess::vkPostFogNativeEnabled()
     return state == 1;
 }
 
-// VK-RUNG8 item-4: MC2_VK_POST_FOG_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm was
-// deleted; native fog now runs ONLY in direct-chain, engaged when the upstream scene
-// producers left the shared GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream
-// is not direct-chain (a degenerate forced-hybrid debug config), native fog declines and
-// the GL fog pass runs. The env name is still parsed + noted deprecated below.
-[[maybe_unused]] static const bool s_postFogDirectChainDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_POST_FOG_DIRECT_CHAIN") != -1)
-        std::fprintf(stderr, "[VK_POST_FOG] MC2_VK_POST_FOG_DIRECT_CHAIN is deprecated and "
-                             "now a no-op: native fog is always direct-chain (GL/VK handoff "
-                             "deleted); it engages only when upstream is direct-chain.\n");
-    return true;
-}();
+// Native fog runs only in direct-chain, engaged when the upstream scene producers left the
+// shared GBuffer Vulkan-owned (postDirectChainUpstreamOn); otherwise it declines and the
+// GL fog pass runs.
 static bool vkPostFogDirectChainEnabled()
 {
     static int state = -1;

@@ -1732,40 +1732,6 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 			m_dragObjStartPos = pHit->appearance() ? pHit->appearance()->position : vector;
 			m_dragLastScreenX = PosX;
 			m_dragLastScreenY = PosY;
-			// One-shot drag coordinate-space diagnostic (MC2_EDITOR_DRAG_TRACE=1).
-			// At grab the cursor is ON the object, so the object's FORWARD-projected
-			// screen pos (projectModernClipGL + gos_GetViewport remap, the correct
-			// world->screen direction) should equal (PosX,PosY) if the mouse coords
-			// and the projection share a pixel space. A ~2x / ~0.5x ratio pins a
-			// client-vs-FBO/screenResolution scale mismatch as the "drag moves ~2x the
-			// cursor" root; a 1:1 match instead implicates the worldToClipGL INVERSE
-			// (X-collapse) used by screenToGroundPlaneApprox. PosX/PosY here are
-			// already RTT-remapped (handleMouseMove); this path is the press handler.
-			{
-				static const bool s_dragTrace = ( getenv("MC2_EDITOR_DRAG_TRACE") != NULL );
-				if ( s_dragTrace && eye && pHit->appearance() )
-				{
-					Stuff::Vector3D wp = pHit->appearance()->position;
-					ModernClipResult r = eye->projectModernClipGL( wp );
-					float vmx = 0.f, vmy = 0.f, vax = 0.f, vay = 0.f;
-					gos_GetViewport( &vmx, &vmy, &vax, &vay );
-					float objSx = -1.f, objSy = -1.f;
-					if ( r.clip.w > 1e-4f )
-					{
-						const float ndcX = r.clip.x / r.clip.w;
-						const float ndcY = r.clip.y / r.clip.w;
-						objSx = vax + (ndcX * 0.5f + 0.5f) * vmx;
-						objSy = vay + (1.0f - (ndcY * 0.5f + 0.5f)) * vmy;
-					}
-					CRect cr; GetClientRect( &cr );
-					fprintf( stderr,
-						"[DragTrace] cursorRemapped=(%d,%d) objScreenGL=(%.1f,%.1f) clipW=%.3f "
-						"vpMul=(%.1f,%.1f) vpAdd=(%.1f,%.1f) client=(%dx%d)\n",
-						PosX, PosY, objSx, objSy, r.clip.w,
-						vmx, vmy, vax, vay, (int)cr.Width(), (int)cr.Height() );
-					fflush( stderr );
-				}
-			}
 			m_pDragAction = new ModifyBuildingAction;
 			// Group drag: if the grabbed object is part of a multi-selection, record
 			// EVERY selected object's start state so the whole group is one undoable
@@ -1865,7 +1831,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 		// screenToTerrainApprox -- inverts worldToClipGL, and that inverse is
 		// distorted (the documented "X-collapse", see Camera::inverseProject): the
 		// dragged prop tracked ~2x the cursor and zig-zagged on a straight drag.
-		// MC2_EDITOR_DRAG_TRACE measurement confirmed the FORWARD projection
+		// Measurement confirmed the FORWARD projection
 		// (projectModernClipGL + gos_GetViewport remap) lands the object exactly
 		// under the cursor with NO coordinate-space scale (client == FBO == viewport,
 		// vpAdd=0), so no mouse-coord normalization is needed. Build dScreen/dWorld by

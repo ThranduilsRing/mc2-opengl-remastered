@@ -1,18 +1,15 @@
 // shaders/include/terrain_height_normal.hglsl
 //
-// TERRAIN-NORMALS-FROM-HEIGHT-1 / TERRAIN-RESAMPLE-1 / TERRAIN-LIGHTING-1/2
-// shared header for the terrain lighting stack.
+// TERRAIN-NORMALS-FROM-HEIGHT-1 / TERRAIN-RESAMPLE-1
+// shared header for the terrain height-texture helpers.
 //
 // Used by:
 //   shaders/gos_terrain.frag         (tessellated terrain main path)
 //   shaders/terrain_overlay.frag     (cement/road transition overlay)
 //
-// Owns the 6 uniforms uploaded by gameos_graphics.cpp::bindTerrainHeightTexUniforms
-// and the per-fragment helper computeTerrainNormalFromHeight() so the two
-// fragment shaders cannot drift apart. CPU side guarantees byte-equivalent
-// default-OFF behaviour by force-zeroing useTerrainNormalsFromHeight (and the
-// strength + V1 + V2 uniforms) when the corresponding env gate is unset; all
-// shader branches that read these uniforms short-circuit at 0.
+// Owns the height-texture uniforms uploaded by
+// gameos_graphics.cpp::bindTerrainHeightTexUniforms and the per-fragment helper
+// computeTerrainNormalFromHeight() so the two fragment shaders cannot drift apart.
 //
 // PREC must be defined by the including fragment shader (see gos_terrain.frag
 // and terrain_overlay.frag — both use `#define PREC highp`).
@@ -29,20 +26,6 @@
 // terrainHeightParams.zw = mapTopLeft3d.xy in world units.
 uniform sampler2D terrainHeightTex;
 uniform PREC vec4 terrainHeightParams;
-uniform int       useTerrainNormalsFromHeight;
-
-// TERRAIN-TUNING-UI-1: live-tunable multiplier on the additive height-derived
-// normal term. Default 1.0 (full slope tilt; byte-equivalent to pre-slice).
-uniform PREC float terrainNormalsFromHeightStrength;
-
-// TERRAIN-LIGHTING-1: hemisphere ambient strength. CPU force-zeroes when env
-// MC2_TERRAIN_LIGHTING_V1 is unset → shader branch short-circuits.
-uniform PREC float terrainLightingV1Strength;
-
-// TERRAIN-LIGHTING-2: shadow-aware fill floor on the V1 hemisphere additive.
-// CPU force-uploads 1.0 when env MC2_TERRAIN_LIGHTING_V2 is unset →
-// mix(floor, 1.0, shadow) collapses to 1.0 → V1 behavior preserved.
-uniform PREC float terrainLightingV2ShadowFillFloor;
 // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black; 0 = byte-identical.
 uniform PREC float u_terrainCliffShadowFloor;
 

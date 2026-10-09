@@ -14,8 +14,6 @@
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
 extern float gos_GetTerrainShadowSoftness();
 extern void  gos_SetTerrainShadowSoftness(float s);
-extern void  gos_SetTerrainLightingV1Strength(float s);
-extern void  gos_SetTerrainLightingV2Floor(float f);
 extern float gos_GetWaterSkyTintStrength();
 extern void  gos_SetWaterSkyTintStrength(float v);
 extern float gos_GetExposure();
@@ -29,8 +27,6 @@ extern "C" float gos_vfx_getBrightness(void);
 extern "C" float gos_vfx_getAdditiveBrightness(void);
 extern "C" void  gos_vfx_setLitStrength(float v);   // VFX-LIT-PARTICLES-MVP-1
 extern "C" float gos_vfx_getLitStrength(void);      // VFX-LIT-PARTICLES-MVP-1
-extern float     gos_GetTerrainLightingV1Strength();
-extern float     gos_GetTerrainLightingV2Floor();
 // Getters for the post-stack keys (reader already had the setters above) so the
 // writer can round-trip the full reader vocabulary (fixes the 8-vs-13 asymmetry).
 extern float gos_GetSsaoRadius();
@@ -160,12 +156,9 @@ static void applyKey(const char* key, float val, int& count) {
     } else if (strcmp(key, "shadowSoftness") == 0) {
         gos_SetTerrainShadowSoftness(val);
         count++;
-    } else if (strcmp(key, "terrainLightingV1Strength") == 0) {
-        gos_SetTerrainLightingV1Strength(val);
-        count++;
-    } else if (strcmp(key, "terrainLightingV2Floor") == 0) {
-        gos_SetTerrainLightingV2Floor(val);
-        count++;
+    } else if (strcmp(key, "terrainLightingV1Strength") == 0 ||
+               strcmp(key, "terrainLightingV2Floor") == 0) {
+        // Retired keys: shipped installs still carry them; ignored silently.
     } else if (strcmp(key, "staticPropIblStrength") == 0) {
         // ★ THIS LINE, NOT THE C++ INITIALISER, IS THE SHIPPED VALUE OF THE
         // SH-IBL PROBE STRENGTH. gos_static_prop_batcher.cpp's 0.5f is only a
@@ -353,8 +346,6 @@ bool visualTuning_saveCurrentToMission() {
     std::map<std::string,float> current;
     current["exposure"]                  = gos_GetExposure();
     current["shadowSoftness"]            = gos_GetTerrainShadowSoftness();
-    current["terrainLightingV1Strength"] = gos_GetTerrainLightingV1Strength();
-    current["terrainLightingV2Floor"]    = gos_GetTerrainLightingV2Floor();
     current["staticPropIblStrength"]     = g_iblShStrength;
     current["waterSkyTintStrength"]      = gos_GetWaterSkyTintStrength();
     current["vfxBrightness"]             = gos_vfx_getBrightness();

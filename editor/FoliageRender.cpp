@@ -226,19 +226,11 @@ void Render( Camera* eye )
 	gos_SetRenderState( gos_State_ZWrite,   0 );
 	// Disable face culling: the terrain/scene pass leaves GL_CULL_FACE enabled, and
 	// these billboard quads wind opposite to the front face, so every quad was
-	// back-face culled -- submitted (draw>0 in the trace) but never rasterized, i.e.
-	// "draw>0 yet invisible". Same class as the water cull-winding bug
-	// (gameos_graphics.cpp ~2910). Overlay draws must not depend on inherited cull
+	// back-face culled -- submitted but never rasterized, i.e.
+	// invisible. Same class as the water cull-winding bug
+	// (gameos_graphics.cpp). Overlay draws must not depend on inherited cull
 	// state; None makes the quad visible regardless of winding.
 	gos_SetRenderState( gos_State_Culling, gos_Cull_None );
-
-	// --- advisory projection/draw counters (Slice 1; MC2_EDITOR_PROJECT_TRACE) ------
-	// No behavior change. Tally where each instance is lost so the foliage failure
-	// mode is finally observable (two blind fixes already missed). See
-	// docs/editor-projection-contract-recon.md.
-	static const bool s_trace = ( getenv( "MC2_EDITOR_PROJECT_TRACE" ) != NULL );
-	int c_total = (int)g_instances.size();
-	int c_projected = 0, c_finite = 0, c_inFront = 0, c_onScreen = 0, c_draw = 0, c_texMissing = 0;
 
 	for ( size_t i = 0; i < g_instances.size(); ++i )
 	{
@@ -255,18 +247,13 @@ void Render( Camera* eye )
 		// appears"). Project for screen.xy only; cull via the near-plane + NaN +
 		// off-screen guards below, which are the real visibility tests.
 		eye->projectForScreenXY( base, sb );
-		++c_projected;                                 // projection call returned
 		const bool finite  = ( sb.x == sb.x ) && ( sb.y == sb.y ) && ( sb.w == sb.w );
 		const bool inFront = ( sb.w > 1e-4f );
 		const bool onScreen = finite &&
 			!( sb.x < -4096.0f || sb.x > (float)Environment.screenWidth  + 4096.0f ||
 			   sb.y < -4096.0f || sb.y > (float)Environment.screenHeight + 4096.0f );
-		if ( finite )   ++c_finite;
-		if ( inFront )  ++c_inFront;
-		if ( onScreen ) ++c_onScreen;
 
-		// Behavior UNCHANGED from before instrumentation: draw only when in front,
-		// finite, and on-screen (same three guards, same order of effect).
+		// Draw only when in front, finite, and on-screen.
 		if ( !inFront )                                 // at/behind near plane
 			continue;
 		if ( !finite )                                 // NaN guard
@@ -286,7 +273,6 @@ void Render( Camera* eye )
 		float w = h * 0.7f;
 
 		DWORD tex = spriteTexFor( in.kind );
-		if ( !tex ) ++c_texMissing;
 		gos_SetRenderState( gos_State_Texture, (int)tex );
 		// Alpha-test only the textured sprites (cuts the billboard's transparent
 		// border); the untextured debug-color fallback must NOT be alpha-tested or
@@ -310,7 +296,7 @@ void Render( Camera* eye )
 		// irrelevant once the quad is inside clip.
 		for ( int k = 0; k < 4; ++k ) { q[k].z = 0.0f; q[k].rhw = 1.0f; q[k].argb = argb; }
 		// Emit as TWO triangles via gos_DrawTriangles, NOT gos_DrawQuads. gos_DrawQuads
-		// is gated behind the global g_disable_quads (gameos_graphics.cpp:7319), which
+		// is gated behind the global g_disable_quads, which
 		// the GAME enables only inside draw_screen but the editor's own frame loop
 		// (EditorGameOS.cpp) never sets false -> every editor gos_DrawQuads silently
 		// no-ops. gos_DrawTriangles has no such gate and is the proven editor-visible
@@ -319,38 +305,6 @@ void Render( Camera* eye )
 		// makes winding moot regardless.
 		gos_VERTEX t[6] = { q[0], q[1], q[2], q[0], q[2], q[3] };
 		gos_DrawTriangles( t, 6 );
-		++c_draw;
-	}
-
-	// Emit the per-frame projection/draw tally when tracing and it changed (so it is
-	// not spammed every frame). One line tells us WHERE the instances die:
-	//   projected==0          -> projection path failed
-	//   on_screen==0          -> viewport/coordinate/camera-matrix mismatch
-	//   draw>0 but invisible  -> render-state / draw-order / compositing
-	//   tex_missing>0,draw>0  -> fallback colored quad path (should be visible)
-	if ( s_trace )
-	{
-		static int s_lastDraw = -2, s_lastOnScreen = -2, s_lastTotal = -2;
-		if ( c_draw != s_lastDraw || c_onScreen != s_lastOnScreen || c_total != s_lastTotal )
-		{
-			s_lastDraw = c_draw; s_lastOnScreen = c_onScreen; s_lastTotal = c_total;
-			const char* mode = getenv( "MC2_SCREENXY_PREDICATE_MODE" );
-			char line[320];
-			sprintf( line,
-				"[EDITOR_PROJECT] caller=foliage total=%d projected=%d finite_xy=%d "
-				"in_front=%d on_screen=%d draw=%d tex_missing=%d screenW=%d screenH=%d mode=%s\n",
-				c_total, c_projected, c_finite, c_inFront, c_onScreen, c_draw, c_texMissing,
-				(int)Environment.screenWidth, (int)Environment.screenHeight,
-				mode ? mode : "Legacy(default)" );
-			OutputDebugStringA( line );
-			// The editor is a WIN32 GUI app with no console -> stdout/stderr go
-			// nowhere. Log to editor-startup.log the same way EditorDataTrace does
-			// (the editor's reliable WIN32 channel, what run-editor / playtest-smoke
-			// already read). The file appearing with this line also proves Render()
-			// runs and s_trace is set.
-			FILE* tf = fopen( "editor-startup.log", "a" );
-			if ( tf ) { fputs( line, tf ); fclose( tf ); }
-		}
 	}
 
 	// Restore the render state we changed so later editor draws (selection quads,

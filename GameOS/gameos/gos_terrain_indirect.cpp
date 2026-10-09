@@ -28,12 +28,10 @@
 // (defined __stdcall in gameos_graphics.cpp; same cache gos_GetTerrainMVPMat4 reads).
 void __stdcall gos_SetTerrainMVP(const float* matrix16);
 
-// [MVP_EARLY v1] MVP-PUBLISH-EARLY-HOIST proof counters. Both are global-scope
-// (defined in gameos_graphics.cpp), so the externs MUST live OUTSIDE namespace
-// gos_terrain_indirect or the linker mangles them as namespace-scoped symbols.
-extern long g_mvpDiagFrame;
+// View-epoch counter. Global-scope (defined in gameos_graphics.cpp), so the
+// extern MUST live OUTSIDE namespace gos_terrain_indirect or the linker mangles
+// it as a namespace-scoped symbol.
 extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content epoch
-extern long g_mvpEarlyPublishSeq;
 
 #include <map>
 #include <vector>
@@ -4728,33 +4726,6 @@ void ComputeDispatch() {
         if (!mvp) { MC2_GL_UseProgram(0); return; }
         glUniformMatrix4fv(g_locSolidMVP, 1, GL_FALSE, mvp);
 
-        // ── [MVP_EARLY v1] MVP-PUBLISH-EARLY-HOIST proof line ──────────────
-        // Gated MC2_MVP_EARLY_TRACE (default OFF), throttled. terrainDispatchSeq
-        // is g_mvpDiagFrame observed HERE (at the compute snapshot's MVP read);
-        // publishSeq is the same counter captured at the early publish in
-        // Mission::update. ACCEPTANCE: with MC2_MVP_PUBLISH_EARLY=1 the early
-        // publish is the LAST set_mvp before this read -> dispatch==publish
-        // (current frame). With it OFF (and indirect armed) the only set_mvp
-        // this frame happens later in the RENDER phase -> dispatch trails the
-        // PRIOR frame's publish -> dispatch==publish-1 (the stale frame). Pure
-        // reads of two extern longs; printf only on the throttled frames.
-        {
-            static const bool s_mvpEarlyTrace =
-                (getenv("MC2_MVP_EARLY_TRACE") != nullptr);
-            if (s_mvpEarlyTrace) {
-                // Both externs are declared global-scope at file top.
-                const long dispatchSeq = ::g_mvpDiagFrame;
-                if (dispatchSeq == 1 || dispatchSeq == 5 ||
-                    dispatchSeq == 30 || (dispatchSeq % 120) == 0) {
-                    fprintf(stderr,
-                        "[MVP_EARLY v1] frame=%ld publishSeq=%ld "
-                        "terrainDispatchSeq=%ld armed=%d\n",
-                        dispatchSeq, g_mvpEarlyPublishSeq, dispatchSeq,
-                        IsFrameSolidArmed() ? 1 : 0);
-                    fflush(stderr);
-                }
-            }
-        }
         // Probe 8: fingerprint the MVP the COMPUTE uploaded (FNV-1a over rotation
         // + translation rows = first 12 floats).  Bridge compares against MVP
         // at draw time via gos_terrain_indirect_getDispatchMvpFp().

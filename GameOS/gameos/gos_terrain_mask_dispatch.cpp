@@ -1,6 +1,6 @@
 // GameOS/gameos/gos_terrain_mask_dispatch.cpp
 //
-// Slice B4 Stage 1a: CPU mask build + SSBO upload. No draw yet.
+// Mask-dispatch terrain path: CPU solid/water mask build, SSBO upload and draw entry points.
 
 #include "gos_terrain_mask_dispatch.h"
 #include "gos_terrain_indirect.h"
@@ -31,18 +31,11 @@ static inline int mc2_ctz_u32(uint32_t v) {
 static inline int mc2_ctz_u32(uint32_t v) { return __builtin_ctz(v); }
 #endif
 
-// Slice B4 Stage 1b — accessors implemented elsewhere.
+// Accessors implemented elsewhere.
 extern "C" unsigned int    gos_terrain_indirect_getRecipeSSBO();
 extern "C" int             gos_terrain_indirect_getRecipeMapSide();
 extern "C" int             gos_terrain_indirect_getRecipeQuadCount();
 extern "C" GLuint          gos_terrain_lighting_getOutputSSBO();
-
-// (Removed dead TERRAIN_DEPTH_FUDGE define 2026-05-16: stale 0.001f with
-// zero consumers since the pz-cull predicate was retired in the VPL Step 4
-// pz-write retirement (pzVisible=true). It was also DESYNCED (0.001 vs the
-// 0.002 everyone else used) and its comment was doubly stale -- a latent
-// trap if a pz-cull were ever re-introduced here. Depth bias is now
-// single-sourced in mclib/terrain_depth_bias.h. VPL-deferred item 10.)
 
 using WaterStream::WaterRecipe;
 
@@ -52,7 +45,6 @@ namespace gos_terrain_mask_dispatch {
 // Module-level state
 // ---------------------------------------------------------------------------
 
-static bool    s_traceOn   = false;  // MC2_TERRAIN_MASK_DISPATCH_TRACE=1
 static bool    s_masterOn  = false;  // MC2_TERRAIN_MASK_DISPATCH != "0" (and set)
 static bool    s_initDone  = false;  // Init() succeeded
 static bool    s_readyThisFrame = false;
@@ -83,21 +75,14 @@ static bool MasterEnabled() {
     return true;
 }
 
-#define MASK_TRACE(fmt, ...) \
-    do { if (s_traceOn) { printf("[MASK_DISPATCH v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
-
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
 bool Init(int32_t mapSide) {
-    s_traceOn = (getenv("MC2_TERRAIN_MASK_DISPATCH_TRACE") != nullptr);
     s_masterOn = MasterEnabled();
 
-    if (!s_masterOn) {
-        MASK_TRACE("event=init_skipped reason=master_disabled");
-        return true;  // not an error; feature is just off
-    }
+    if (!s_masterOn) return true;  // not an error; feature is just off
 
     if (mapSide > kMaxMapSide) {
         fprintf(stderr,
@@ -108,10 +93,7 @@ bool Init(int32_t mapSide) {
         return false;
     }
 
-    if (s_initDone) {
-        MASK_TRACE("event=init_noop reason=already_allocated");
-        return true;
-    }
+    if (s_initDone) return true;
 
     // Allocate CPU shadow buffers at worst-case size
     s_solidMask.assign(kMaskWords, 0u);
@@ -132,8 +114,6 @@ bool Init(int32_t mapSide) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     s_initDone = true;
-    MASK_TRACE("event=init_done mapSide=%d maskWords=%d maskBytes=%lld",
-               (int)mapSide, (int)kMaskWords, (long long)maskBytes);
     return true;
 }
 
@@ -141,7 +121,6 @@ void Reset() {
     if (s_solidMask.size()) std::fill(s_solidMask.begin(), s_solidMask.end(), 0u);
     if (s_waterMask.size()) std::fill(s_waterMask.begin(), s_waterMask.end(), 0u);
     s_readyThisFrame = false;
-    MASK_TRACE("event=reset");
 }
 
 // ---------------------------------------------------------------------------
@@ -187,16 +166,14 @@ void BuildAndUploadMasksForFrame(const TerrainQuadPtr quadList, long numQuads) {
     std::fill(s_solidMask.begin(), s_solidMask.end(), 0u);
     std::fill(s_waterMask.begin(), s_waterMask.end(), 0u);
 
-    int32_t solidSet = 0, waterSet = 0;
-
     for (long qi = 0; qi < numQuads; ++qi) {
         const TerrainQuad& q = quadList[qi];
 
-        // (1) Pointer guards — mirrors gos_terrain_indirect.cpp:1409-1410
+        // (1) Pointer guards (same predicate as the indirect terrain path)
         if (!q.vertices[0] || !q.vertices[1] ||
             !q.vertices[2] || !q.vertices[3]) continue;
 
-        // (2) Map-edge blank-vertex skip — mirrors :1413-1417
+        // (2) Map-edge blank-vertex skip (same predicate as the indirect path)
         const int32_t vn0 = q.vertices[0]->vertexNum;
         if (vn0 < 0 ||
             q.vertices[1]->vertexNum < 0 ||
@@ -206,11 +183,8 @@ void BuildAndUploadMasksForFrame(const TerrainQuadPtr quadList, long numQuads) {
         // Bounds check: vn0 must fit in the mask array
         if (vn0 >= kMaxQuads) continue;
 
-        // (3) pz-cull retired (VPL pz-write retirement, plan Step 4).
-        // GPU mask shader + raster clip handle off-screen rejection; the
-        // CPU mask is conservatively inclusive (over-inclusion is correct
-        // per VPL-plan Step 5 rationale (c)). Was: per-corner q.vertices[c]->pz
-        // four-vertex pz-adj test (the last mask-dispatch VPL dependency).
+        // (3) No CPU pz cull: the GPU mask shader and raster clip reject
+        // off-screen quads, so the CPU mask is conservatively inclusive.
         const bool pzVisible = true;
 
         // --- SOLID mask ---
@@ -224,9 +198,8 @@ void BuildAndUploadMasksForFrame(const TerrainQuadPtr quadList, long numQuads) {
                     tex_resolve(static_cast<DWORD>(q.terrainHandle)));
                 if (th != 0 && th != 0xffffffffu) {
                     // Bit index = vn0 (corner-0 vertexNum = mapY*W+mapX).
-                    // Stage 1b shader must read by vertexNum, NOT quadList slot.
+                    // The mask shader must read by vertexNum, NOT quadList slot.
                     s_solidMask[vn0 >> 5] |= (1u << (vn0 & 31));
-                    ++solidSet;
                 }
             }
         }
@@ -239,7 +212,6 @@ void BuildAndUploadMasksForFrame(const TerrainQuadPtr quadList, long numQuads) {
             if (wrec) {
                 if (q.waterHandle != 0xffffffffu) {
                     s_waterMask[vn0 >> 5] |= (1u << (vn0 & 31));
-                    ++waterSet;
                 }
             }
         }
@@ -257,13 +229,10 @@ void BuildAndUploadMasksForFrame(const TerrainQuadPtr quadList, long numQuads) {
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     s_readyThisFrame = true;
-
-    MASK_TRACE("event=build_done solidSet=%d waterSet=%d numQuads=%ld pzCullRetired=1",
-               solidSet, waterSet, numQuads);
 }
 
 // ---------------------------------------------------------------------------
-// Draw stubs (Stage 1a — real bodies land in Stage 1b/1c)
+// Draw entry points
 // ---------------------------------------------------------------------------
 
 bool DrawMaskSolid() {
@@ -284,12 +253,6 @@ bool DrawMaskSolid() {
 
     const bool ok = gos_terrain_bridge_drawMaskSolid(
         solidSSBO, recipeSSBO, lightSSBO, quadCount, mapSide);
-
-    if (s_traceOn) {
-        printf("[MASK_DISPATCH v1] event=draw_solid ok=%d quadCount=%d mapSide=%d\n",
-               (int)ok, quadCount, mapSide);
-        fflush(stdout);
-    }
 
     return ok;
 }
@@ -313,12 +276,6 @@ bool DrawMaskWater() {
 
     const bool ok = gos_terrain_bridge_drawMaskWater(
         waterMaskSSBO, recipeSSBO, lightSSBO, recipeCount, wElev, fCos);
-
-    if (s_traceOn) {
-        printf("[MASK_DISPATCH v1] event=draw_water ok=%d recipeCount=%d\n",
-               (int)ok, recipeCount);
-        fflush(stdout);
-    }
 
     return ok;
 }

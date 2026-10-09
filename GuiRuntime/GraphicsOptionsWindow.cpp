@@ -36,10 +36,6 @@ void  gos_GetTerrainTintDirt(float* r, float* g, float* b);
 // here now alongside the rest of the terrain tuning stack).
 void  gos_SetTerrainNormalsFromHeightStrength(float s);
 float gos_GetTerrainNormalsFromHeightStrength();
-void  gos_SetTerrainLightingV1Strength(float s);
-float gos_GetTerrainLightingV1Strength();
-void  gos_SetTerrainLightingV2Floor(float f);
-float gos_GetTerrainLightingV2Floor();
 void  gos_SetTerrainCliffShadowFloor(float f);
 float gos_GetTerrainCliffShadowFloor();
 // WATER-TUNING-UI-1 / WATER-DEBUG-VIEWS-1 — MDI water FS accessors (defined in
@@ -185,8 +181,7 @@ static const TerrainMode kTerrainModes[] = {
     // ── Diagnostic modes ──────────────────────────────────────────────────────
     {  8.0f, "Cement Diagnostic", "R = layer valid  |  G = layer index/255  |  B = useCementAtlas==0" },
     {  9.0f, "Thin-Record",       "R = recipeIdx/255  |  G = flags/255  |  B = terrainHandle/255" },
-    { 10.0f, "Height Normal",     "TERRAIN-NORMALS-FROM-HEIGHT-1: derived normal as RGB (centered around 0.5)" },
-    { 11.0f, "Hemi Additive",     "TERRAIN-LIGHTING-2: V1 hemi contribution after V2 modulation (×4 for visibility)" },
+    { 10.0f, "Height Normal",     "height-texture-derived normal as RGB (centered around 0.5)" },
     { -1.0f, "Tess Alive Probe",  "solid red = tessellation frag shader is running" },
 };
 static const int kTerrainModeCount = (int)(sizeof(kTerrainModes) / sizeof(kTerrainModes[0]));
@@ -544,30 +539,10 @@ static void drawTerrainTuningSection() {
         gos_SetTerrainCellBombParams(8.0f, 0.8f, 1.0f);
     }
 
-    // ── Normals-from-Height + Lighting V1 ────────────────────────────────────
-    // Consolidated home for the TERRAIN-NORMALS-FROM-HEIGHT-1 /
-    // TERRAIN-RESAMPLE-1 / TERRAIN-LIGHTING-1 stack. Originally lived in the
-    // Object Inspector "Terrain Pass" panel; moved here so all terrain
-    // tuning is in one window. Env vars MC2_TERRAIN_NORMALS_FROM_HEIGHT and
-    // MC2_TERRAIN_LIGHTING_V1 are authoritative on/off gates — sliders
-    // tune strength only when the env gate is enabled.
-    ImGui::SeparatorText("Normals-from-Height + Lighting V1");
-
-    // Gate status — read env locally; the slider widgets stay enabled even
-    // when the gate is off so the user can pre-arm a strength for the next
-    // mission load.
-    bool nfhGateOn = false;
-    {
-        const char* env = std::getenv("MC2_TERRAIN_NORMALS_FROM_HEIGHT");
-        nfhGateOn = (env && env[0] && env[0] != '0');
-        if (nfhGateOn) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-                "Normals-from-Height: ON  (MC2_TERRAIN_NORMALS_FROM_HEIGHT=%s)", env);
-        } else {
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                "Normals-from-Height: OFF (set MC2_TERRAIN_NORMALS_FROM_HEIGHT=1)");
-        }
-    }
+    // ── Normals-from-Height ──
+    // Consolidated home for the height-texture / resample / strength controls so all
+    // terrain tuning is in one window.
+    ImGui::SeparatorText("Normals-from-Height");
 
     // Height tex source/render readout + live resample combo.
     int srcSide = ::gos_terrainHeightSourceSide();
@@ -598,80 +573,11 @@ static void drawTerrainTuningSection() {
         ::gos_SetTerrainNormalsFromHeightStrength(nfh);
     }
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Multiplier on the additive height-derived normal term.\n"
-                          "1.0 = full slope tilt (default). 0.0 = no slope contribution.\n"
-                          "Only effective when MC2_TERRAIN_NORMALS_FROM_HEIGHT=1.");
+        ImGui::SetTooltip("Scales the macro-slope tilt on the chunk terrain path.\n"
+                          "1.0 = full slope tilt (default). 0.0 = no slope contribution.");
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##tnfh")) ::gos_SetTerrainNormalsFromHeightStrength(1.0f);
-    if (!nfhGateOn) {
-        ImGui::TextDisabled("(NfH strength only takes effect when env gate enabled)");
-    }
-
-    // Lighting V1 (hemisphere ambient) gate status + strength.
-    bool litGateOn = false;
-    {
-        const char* env = std::getenv("MC2_TERRAIN_LIGHTING_V1");
-        litGateOn = (env && env[0] && env[0] != '0');
-        if (litGateOn) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-                "Lighting V1 (hemi ambient): ON");
-        } else {
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                "Lighting V1 (hemi ambient): OFF (set MC2_TERRAIN_LIGHTING_V1=1)");
-        }
-    }
-    float ambient = ::gos_GetTerrainLightingV1Strength();
-    if (ImGui::SliderFloat("Ambient strength##tlv1", &ambient, 0.0f, 2.0f, "%.2f")) {
-        ::gos_SetTerrainLightingV1Strength(ambient);
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Hemisphere sky/ground ambient fill on terrain.\n"
-                          "Added AFTER shadow multiplication — shadowed terrain still receives\n"
-                          "sky bounce, which is intentional. Default 1.0; 0.5 for subtler fill.\n"
-                          "Only effective when MC2_TERRAIN_LIGHTING_V1=1.");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Reset##tlv1")) ::gos_SetTerrainLightingV1Strength(1.0f);
-    if (!litGateOn) {
-        ImGui::TextDisabled("(slider has no effect until env gate enabled)");
-    }
-
-    // TERRAIN-LIGHTING-2: shadow-aware fill floor. Effective only when
-    // both V1 and V2 env gates are ON. floor=1.0 → V1 unmodulated;
-    // floor=0.3 = default; floor=0.0 → hemi follows shadow exactly.
-    bool litV2GateOn = false;
-    {
-        const char* env = std::getenv("MC2_TERRAIN_LIGHTING_V2");
-        litV2GateOn = (env && env[0] && env[0] != '0');
-        if (litV2GateOn) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-                "Lighting V2 (shadow-aware fill): ON");
-        } else {
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                "Lighting V2 (shadow-aware fill): OFF (set MC2_TERRAIN_LIGHTING_V2=1)");
-        }
-    }
-    float v2Floor = ::gos_GetTerrainLightingV2Floor();
-    if (ImGui::SliderFloat("Shadow fill floor##tlv2", &v2Floor, 0.0f, 1.0f, "%.2f")) {
-        ::gos_SetTerrainLightingV2Floor(v2Floor);
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Hemi fill multiplier in fully shadowed terrain.\n"
-                          "1.0 = V1 unmodulated (full hemi in shadows — too bright).\n"
-                          "0.3 = default — 30%% hemi in shadows, 100%% in lit terrain.\n"
-                          "0.0 = hemi follows shadow exactly (lifeless shadows).\n"
-                          "Only effective when both MC2_TERRAIN_LIGHTING_V1=1 AND\n"
-                          "MC2_TERRAIN_LIGHTING_V2=1 are set.");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Reset##tlv2")) ::gos_SetTerrainLightingV2Floor(0.3f);
-    if (!litV2GateOn) {
-        ImGui::TextDisabled("(slider has no effect until MC2_TERRAIN_LIGHTING_V2=1)");
-    } else if (!litGateOn) {
-        // Reviewer-flagged UX gap: V2 ON but V1 OFF leaves the slider live
-        // with no visible effect (V2 only modulates the V1 additive). Make
-        // the combined-dependency explicit.
-        ImGui::TextDisabled("(V2 floor only acts on the V1 hemi term — set MC2_TERRAIN_LIGHTING_V1=1 too)");
-    }
-    ImGui::TextDisabled("Debug Mode 10 = height-normal RGB; Mode 11 = hemi additive ×4");
+    ImGui::TextDisabled("Debug Mode 10 = height-normal RGB");
 
     // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
     {

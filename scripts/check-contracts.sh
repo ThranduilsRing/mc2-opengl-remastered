@@ -827,6 +827,15 @@ run_check "flag_registry_drift"    "bash scripts/check-flag-registry-drift.sh --
 # scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
 run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
 run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
+# GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's
+# stated default against its readers; this one proves the READERS AGREE WITH EACH OTHER. A typed
+# gate table has one truthiness rule per gate, so every gate whose readers already disagree
+# (`v[0]=='1'` here, `!= nullptr` there) is a behaviour change the migration must resolve, and
+# the design's own list of them was a review sample. tools/gate_conflicts.py executes each
+# reader against eight probe values and ratchets the conflicting-gate count and the count of
+# readers it cannot read. Both may only fall. Scans the COMMITTED tree so another lane's dirty
+# working tree cannot flap it. Idiom tests live in scripts/tests (scripts_tests row).
+run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --check"
 # CPU-GPU-COGATING-1: the check above keeps a gate honest about its OWN default.
 # This one keeps a MIRROR PAIR honest about EACH OTHER. When one quantity is
 # computed twice -- CPU for gameplay, GPU for the picture -- the two halves must
@@ -899,6 +908,21 @@ run_check "golden_coverage_selftest" "py -3 scripts/check-golden-coverage.py --s
 run_check "bless_selftest"           "py -3 tools/visual_verify/bless_selftest.py"
 run_check "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check"
 run_check "cxx17_ratchet_selftest"   "py -3 tools/cxx17_ratchet/test_cxx17_ratchet.py"
+# D8 (opus-consistency-review): copy-paste is the recurring GL<->VK drift source -- a fix
+# lands in one copy and the twin keeps the bug. Duplicated-line count (runs of >= 8 normalized
+# lines occurring twice) per owned dir may only fall. Scans the COMMITTED tree, so another
+# agent's dirty working tree cannot flap it. Selftest lives in scripts/tests (scripts_tests row).
+run_check "dup_lines_ratchet"        "py -3 tools/dup_lines_ratchet.py --check"
+# D11 (opus-consistency-review): the MC2->render-space axis swap (x,y,z)->(-x,z,y) is re-typed at
+# ~180 sites (shaders + C++); dup_lines_ratchet cannot see one-line copies. Token-level count may
+# only fall until the typed helper replaces them. HEAD-scanned like the row above. Work queue:
+# docs/axis-conversion-sites.md. Selftest lives in scripts/tests (scripts_tests row).
+run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --check"
+# File-size program (ORCHESTRATOR-HANDOFF item 8): oversized files cost agents read context and
+# force whole-TU rebuilds. Per-dir count of files > 1500 / > 3000 lines and the max file length
+# may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
+# lives in scripts/tests (scripts_tests row).
+run_check "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py

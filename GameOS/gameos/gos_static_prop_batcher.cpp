@@ -113,13 +113,6 @@ static const float* gos_GetObjectFixBMVPMat4() {
     return gos_GetObjectDrawMVP(s_propFixBMvpEnabled());
 }
 
-// MC2_TEX_HANDOFF_TRACE=1 — logs texture handle resolution at register and draw time.
-// Prints once per unique (multiShape,slot) pair at registration, and once per draw type
-// at flush (first flush only). Use to diagnose the GPU-path upscale-texture miss.
-static const bool s_texHandoffTrace = (getenv("MC2_TEX_HANDOFF_TRACE") != nullptr);
-#define TEX_HANDOFF(fmt, ...) \
-    do { if (s_texHandoffTrace) { printf("[TEX_HANDOFF] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
-
 // MC2_TREE_DIAG_TRACE=1 — diagnostic 2026-05-05 for the "black billboard square" bug.
 // Prints up to 8 lines from each of submit() (dynamic register/replay path) and
 // submitCachedInstance() (static recipe replay path), with all GpuStaticPropInstance
@@ -3391,28 +3384,13 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
             }
             // GPU-offloaded actors bypass TransformMultiShape, so the leaf
             // TG_TypeShape::listOfTextures[j].gosTextureHandle is never set by
-            // TMS (msl.cpp:1380). Prime it now from the multi-type's
+            // TMS. Prime it now from the multi-type's
             // mcTextureNodeIndex — the same value TMS would use. This ensures
             // flush()'s draw-time resolve picks up the correct (upscaled) handle
             // instead of the 0xffffffff left by TG_TypeShape::init().
             for (long j = 0; j < numTxms; ++j) {
                 const DWORD nodeIdx = multiShape->GetTextureHandle(j);
                 typeShape->SetTextureHandle(j, nodeIdx);
-                // Session-wide cap on registration-time TEX_HANDOFF prints. Without
-                // this cap the trace fires ~10K times during map load (one per
-                // multiShape × numTxms<4) which floods stdout and can mask later
-                // diagnostics. Matches the flush-time per-type cap of 8 at line
-                // ~1573 (`s_traceCount < 8`). Counter is function-local static
-                // so it resets per process lifetime.
-                static int s_texHandoffRegPrinted = 0;
-                if (s_texHandoffTrace && j < 4 && s_texHandoffRegPrinted < 8) {
-                    const DWORD gosH = (typeShape->listOfTextures && j < typeShape->numTextures)
-                                       ? typeShape->listOfTextures[j].gosTextureHandle
-                                       : 0xdeadbeef;
-                    TEX_HANDOFF("register sample=first8_of_~10k multiShape=%p leaf=%p slot=%ld nodeIdx=0x%08x gosHandle=0x%08x",
-                                (void*)multiShape, (void*)typeShape, j, nodeIdx, gosH);
-                    ++s_texHandoffRegPrinted;
-                }
             }
         }
     }
@@ -8919,16 +8897,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             }
         }
 
-        // Per-type draw-time trace: fires once per type per flush call.
-        static thread_local uint32_t s_traceCount = 0;
-        const bool doTypeTrace = s_texHandoffTrace && (s_traceCount < 8);
-        if (doTypeTrace) ++s_traceCount;
-
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const GpuStaticPropPacket& pkt = s_packets[type.firstPacket + p];
             // Resolve the texture handle at draw time. MC2 mutates
             // TG_TypeShape::listOfTextures[slot].gosTextureHandle each frame
-            // in TransformMultiShape (msl.cpp:1321 via SetTextureHandle),
+            // in TransformMultiShape,
             // so capturing the handle at registration time gives stale
             // (usually zero) reads.
             uint32_t gosHandle = 0;
@@ -8937,11 +8910,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 gosHandle = src->listOfTextures[pkt.textureSlot].gosTextureHandle;
             }
             const uint32_t glTexId = gos_GetGLTextureId(gosHandle);
-            if (doTypeTrace && p < 2) {
-                TEX_HANDOFF("flush  sample=first8types_x_first2pkts typeID=%u pkt=%u slot=%u src=%p gosHandle=0x%08x glTexId=%u numTex=%d",
-                            typeID, p, pkt.textureSlot, (void*)src, gosHandle, glTexId,
-                            src ? src->numTextures : -1);
-            }
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, glTexId);
             // Re-resolve materialFlags at draw time so the textureAlpha flag set during

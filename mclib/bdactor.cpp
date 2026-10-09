@@ -27,16 +27,6 @@
 // file-scope pattern in code/terrobj.cpp:176.
 static bool s_tobjSplitBdOn = (getenv("MC2_TOBJ_COST_SPLIT") != nullptr);
 
-// SHADOW-DECISIONS-1: MC2_PROP_LOD_SHADOW_CAST (default OFF). When 1, far/impostor
-// static-prop LODs (lod >= 1) are NO LONGER excluded from the dynamic-prop shadow
-// replay -- see the full rationale at the setRecipeNoShadow() call site in
-// TreeAppearance::registerStatic(). Default OFF keeps the shipped caster set
-// byte-identical.
-static const bool s_propLodShadowCast = []() {
-	const char* v = getenv("MC2_PROP_LOD_SHADOW_CAST");
-	return v && v[0] && v[0] != '0';
-}();
-
 // FOLIAGE-ALPHAFLAG-1: MC2_PROP_FOLIAGE_ALPHAFLAG (default OFF).
 //
 // THE BUG. Both recipe paths (BldgAppearance/TreeAppearance::registerStatic)
@@ -202,7 +192,6 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #include "cliff_decal_tuning.h"  // TERRAIN-DECAL-SLICE-0C: shared face-frame + live tuning
 #include "gos_mech_killswitch.h"       // g_mechPreviewRenderDepth (component preview-fix)
 #include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 RenderWorld Tasks 8-11
-#include <unordered_map>  // LODBUG probe: tracks per-actor previous bldgShape*
 #include <cstring>
 #include <string>
 #include <fstream>
@@ -8159,36 +8148,11 @@ void TreeAppearance::registerStatic() {
 				// per-LOD bake. The real proof is recordInstance()'s U counter staying flat
 				// across LOD count.
 				mc2_lightslot_trace::recordLodBakeSlot(staticReg[0].lightDataIndex);
-				// SHADOW-FOLIAGE (2026-06, STALE RATIONALE): far/impostor LODs were
-				// excluded from the dynamic-prop shadow replay because "the shadow depth
-				// pass has no alpha discard" -> flat alpha cards would write their whole
-				// quad as depth -> rectangular blob shadows.
-				//
-				// SHADOW-DECISIONS-1 (2026-07-26): that justification has been FALSE since
-				// b8f764b6 (2026-06-16, "alpha-test foliage shadow casters"). The bound
-				// program is resolved by resolvePropShadowProgram()
-				// (gos_static_prop_batcher.cpp:8461) as shadow_static_prop_alpha_atlas ->
-				// shadow_static_prop_alpha -> shadow_static_prop; BOTH alpha variants are
-				// default-ON and BOTH perform the same `tex_color.a < 0.5 -> discard` the
-				// color pass does (shaders/shadow_static_prop.frag). lod>=1 recipes DO
-				// carry ALPHA_TEST (bdactor.cpp SetAlphaTest(true) on every imported LOD,
-				// same call LOD0 gets), and the per-packet atlas sidecars are populated by
-				// global packet index in finalizeGeometry(), so lod>=1 packets bind valid
-				// layers; the degenerate case fails SAFE (bindPropShadowAtlasPacket clears
-				// ALPHA_TEST -> opaque depth), never a wrong-layer sample.
-				//
-				// Scope note: this suppression only ever affected
-				// getDynamicPropShadowInstances() (gos_static_prop_registry.cpp:1895) --
-				// the full-registry replay. flushShadow()'s camera-visible loop has no
-				// noShadow filter, so visible LOD1 types already cast today. Re-enabling
-				// therefore grows the caster set AT DISTANCE (off-screen / far props),
-				// which is exactly where missing distant-tree shadows were reported.
-				//
-				// Gate MC2_PROP_LOD_SHADOW_CAST (default OFF = byte-identical to the
-				// pre-change behaviour). =1 lets far LODs cast again.
-				if (!s_propLodShadowCast) {
-					GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true);
-				}
+				// Far/impostor LODs are excluded from the dynamic-prop shadow replay. The original
+				// rationale (the shadow pass has no alpha discard) no longer holds, but whether
+				// letting them cast is worth the larger caster set is undemonstrated; see
+				// .claude/SHADOW-DECISIONS-1-STATUS.md.
+				GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true);
 			}
 		} else {
 			// M4: LOD unavailable — leave registered=false, continue.

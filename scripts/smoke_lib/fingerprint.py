@@ -18,7 +18,9 @@ scripts/tests/test_fingerprint.py.
 from __future__ import annotations
 
 import re
-from typing import Optional
+import subprocess
+from pathlib import Path
+from typing import Callable, Optional, Sequence
 
 FINGERPRINT_RE = re.compile(
     r"\[BUILD_FINGERPRINT v1\] "
@@ -40,12 +42,83 @@ def parse_fingerprint(log_text: str) -> Optional[dict]:
     return d
 
 
-def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str]):
+# Paths whose change alters the built exe: one shared list read by this module
+# and by cmake/GenerateBuildFingerprint.cmake. Directory entries end with "/".
+BUILD_INPUTS_FILE = Path(__file__).resolve().parents[1] / "build_inputs.txt"
+
+
+def load_build_inputs(path=BUILD_INPUTS_FILE) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return (directory_prefixes, exact_files) from the shared list."""
+    prefixes: list[str] = []
+    files: list[str] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        (prefixes if line.endswith("/") else files).append(line)
+    return tuple(prefixes), tuple(files)
+
+
+BUILD_INPUT_PREFIXES, BUILD_INPUT_FILES = load_build_inputs()
+
+
+def is_build_input(path: str) -> bool:
+    p = path.replace("\\", "/")
+    return p in BUILD_INPUT_FILES or p.startswith(BUILD_INPUT_PREFIXES)
+
+
+def build_inputs_changed(paths: Sequence[str]) -> list[str]:
+    return [p for p in paths if is_build_input(p)]
+
+
+def _git(repo_root, *args) -> Optional[str]:
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(repo_root), *args], text=True,
+            stderr=subprocess.DEVNULL, timeout=30).strip()
+    except Exception:
+        return None
+
+
+def check_ancestor_fingerprint(fp: dict, expected_sha: str, repo_root,
+                               git: Callable = _git):
+    """Accept an exe built at an ancestor of HEAD when nothing since touched a
+    build input. Returns (lines, ok)."""
+    lines: list[str] = []
+    if fp.get("dirty"):
+        lines.append("[DEPLOY_FINGERPRINT] MISMATCH: exe sha="
+                     f"{fp['sha']} is not HEAD and was built from a dirty tree")
+        return lines, False
+    sha = fp["sha"]
+    if git(repo_root, "merge-base", "--is-ancestor", sha, expected_sha) is None:
+        lines.append(f"[DEPLOY_FINGERPRINT] MISMATCH: exe sha={sha} "
+                     f"expected={expected_sha[:12]} (not an ancestor of HEAD)")
+        return lines, False
+    diff = git(repo_root, "diff", "--name-only", f"{sha}..{expected_sha}")
+    if diff is None:
+        lines.append(f"[DEPLOY_FINGERPRINT] MISMATCH: exe sha={sha} "
+                     f"expected={expected_sha[:12]} (git diff failed)")
+        return lines, False
+    bad = build_inputs_changed([l for l in diff.splitlines() if l])
+    if bad:
+        shown = ", ".join(bad[:3]) + (f" (+{len(bad) - 3} more)" if len(bad) > 3 else "")
+        lines.append(f"[DEPLOY_FINGERPRINT] MISMATCH: exe sha={sha} expected="
+                     f"{expected_sha[:12]}; build inputs changed since: {shown}")
+        return lines, False
+    count = git(repo_root, "rev-list", "--count", f"{sha}..{expected_sha}") or "?"
+    lines.append(f"[DEPLOY_FINGERPRINT] OK (ancestor {sha}, {count} doc-only "
+                 "commits since)")
+    return lines, True
+
+
+def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str],
+                      repo_root=None, git: Callable = _git):
     """Compare a parsed fingerprint against the runner worktree HEAD.
 
     Returns (lines, hard_fail). hard_fail is enforced by the caller BY DEFAULT
     (run_smoke clears its PASS verdict); MC2_SMOKE_REQUIRE_FINGERPRINT=0
-    downgrades it to advisory.
+    downgrades it to advisory. With repo_root, an exe built at an ancestor of
+    HEAD passes when no build input changed in between.
     """
     lines: list[str] = []
     if fp is None:
@@ -63,5 +136,10 @@ def check_fingerprint(fp: Optional[dict], expected_sha: Optional[str]):
     if n >= 7 and fp["sha"][:n] == exp[:n]:
         lines.append(f"[DEPLOY_FINGERPRINT] OK: exe sha={fp['sha']} matches worktree HEAD")
         return lines, False
+    if repo_root is not None:
+        anc_lines, ok = check_ancestor_fingerprint(fp, exp, repo_root, git)
+        if ok:
+            return lines + anc_lines, False
+        return lines + anc_lines, True
     lines.append(f"[DEPLOY_FINGERPRINT] MISMATCH: exe sha={fp['sha']} expected={exp[:12]}")
     return lines, True

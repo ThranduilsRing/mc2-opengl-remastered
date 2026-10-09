@@ -82,3 +82,77 @@ def test_check_case_insensitive_sha():
     fp = parse_fingerprint(LOG.replace("0123456789ab", "0123456789AB"))
     lines, hard_fail = check_fingerprint(fp, "0123456789ABCDEF")
     assert not hard_fail
+
+
+# --- ancestor acceptance: exe built at an earlier commit, only non-build files since ---
+
+from scripts.smoke_lib.fingerprint import is_build_input
+
+HEAD = "f" * 40
+
+
+def _fake_git(diff_files, ancestor=True, count="3"):
+    def run(_root, *args):
+        if args[0] == "merge-base":
+            return "" if ancestor else None
+        if args[0] == "diff":
+            return "\n".join(diff_files)
+        if args[0] == "rev-list":
+            return count
+        return None
+    return run
+
+
+def test_ancestor_doc_only_commits_ok():
+    fp = parse_fingerprint(LOG)
+    lines, hard = check_fingerprint(fp, HEAD, repo_root=".",
+                                    git=_fake_git(["docs/a.md", ".claude/x.md", "scripts/run_smoke.py"]))
+    assert not hard
+    assert any(l == "[DEPLOY_FINGERPRINT] OK (ancestor 0123456789ab, 3 doc-only commits since)"
+               for l in lines)
+
+
+def test_ancestor_build_input_changed_fails():
+    fp = parse_fingerprint(LOG)
+    lines, hard = check_fingerprint(fp, HEAD, repo_root=".",
+                                    git=_fake_git(["docs/a.md", "mclib/terrain.cpp"]))
+    assert hard
+    assert any("build inputs changed since: mclib/terrain.cpp" in l for l in lines)
+
+
+def test_ancestor_not_ancestor_fails():
+    fp = parse_fingerprint(LOG)
+    _lines, hard = check_fingerprint(fp, HEAD, repo_root=".",
+                                     git=_fake_git(["docs/a.md"], ancestor=False))
+    assert hard
+
+
+def test_ancestor_dirty_exe_fails():
+    fp = parse_fingerprint(LOG.replace("dirty=0", "dirty=1"))
+    _lines, hard = check_fingerprint(fp, HEAD, repo_root=".", git=_fake_git(["docs/a.md"]))
+    assert hard
+
+
+def test_no_repo_root_keeps_exact_match_only():
+    fp = parse_fingerprint(LOG)
+    _lines, hard = check_fingerprint(fp, HEAD)
+    assert hard
+
+
+def test_build_input_classification():
+    for p in ("CMakeLists.txt", "cmake/Mc2NarrowingErrors.cmake", "shaders/mech.vert",
+              "code/objmgr.cpp", "tools/gpu_abi_gen.py", "tools/mc2_launcher/mc2_launcher.cpp",
+              "RenderCore/KtxLoader.cpp", "3rdparty/vma/x.h", "editor/EditorObjects.cpp"):
+        assert is_build_input(p), p
+    for p in ("docs/x.md", ".claude/cleanup/a.md", "scripts/run_smoke.py", "tools/repo_intel/x.py",
+              "memory/m.md", "README.md", "scripts/gl_shader_variants.json"):
+        assert not is_build_input(p), p
+
+
+def test_shared_build_inputs_file_loads():
+    from scripts.smoke_lib.fingerprint import load_build_inputs
+    prefixes, files = load_build_inputs()
+    assert "code/" in prefixes and "mclib/" in prefixes and "cmake/" in prefixes
+    assert "CMakeLists.txt" in files and "tools/gpu_abi_gen.py" in files
+    assert not any(p.startswith("#") for p in prefixes + files)
+    assert not any(p.startswith(("docs/", ".claude/", "scripts/")) for p in prefixes + files)

@@ -75,13 +75,10 @@ extern "C" unsigned int       mc2_vfx_getRecordsPerFlushMax();
 extern "C" unsigned long long mc2_vfx_getTrailSpawnTotal();
 extern "C" unsigned long long mc2_vfx_getTrailHeadTotal();
 
-// VK-RUNG8-ITEM4-TERRAIN-DELETE-1: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is retired
-// (parseable no-op; deprecation note printed by vulkan_terrain_island.cpp). Terrain
-// native first-owner (the island CLEARs shared color0/normal/depth; GL frame-entry
-// clears + clearGBuffer1 must be skipped) is now a structural property of the armed
-// terrain Tier-1 island: mc2vkgate::terrainNativeFirstOwnerOn(). Under the umbrella
-// this resolves identically to the old gate (ON); an explicit MC2_VK_TERRAIN_TIER1=0
-// (island off, GL owns terrain) now correctly restores the GL clears too.
+// Terrain native first-owner (the island CLEARs shared color0/normal/depth; GL
+// frame-entry clears + clearGBuffer1 must be skipped) is a structural property of the
+// armed terrain Tier-1 island: mc2vkgate::terrainNativeFirstOwnerOn(). An explicit
+// MC2_VK_TERRAIN_TIER1=0 (island off, GL owns terrain) restores the GL clears.
 static bool mc2_vk_terrain_native_prefix_clear_requested()
 {
 #ifdef MC2_VULKAN_ISLAND

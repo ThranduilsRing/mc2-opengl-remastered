@@ -75,14 +75,8 @@ TRACKED_FLAGS = (
     # these in the sidecar a captured terrain frame is not reproducible if a
     # tuning slider or debug-mode value changes between runs.
     "MC2_TERRAIN_DEBUG_MODE",
-    # TERRAIN-NORMALS-FROM-HEIGHT-1: macroscopic-normal-from-height gate.
-    "MC2_TERRAIN_NORMALS_FROM_HEIGHT",
     # TERRAIN-RESAMPLE-1: render-grid resample factor (1/2/4).
     "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
-    # TERRAIN-LIGHTING-1: hemisphere ambient fill gate.
-    "MC2_TERRAIN_LIGHTING_V1",
-    # TERRAIN-LIGHTING-2: shadow-aware fill modulation gate.
-    "MC2_TERRAIN_LIGHTING_V2",
     # MECH-BASELINE-0: mech.frag debug-mode selector (0=Final, 2=Albedo,
     # 3=LightingOnly, 4=Normal) + the snapshot-extract gate that populates
     # the debug-state mech inventory the sidecar embeds.
@@ -113,7 +107,8 @@ TRACKED_FLAGS = (
 
 def kill_existing_mc2() -> None:
     subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   **nofocus.hidden_kwargs())
     time.sleep(1)
 
 
@@ -175,6 +170,7 @@ def git_short_sha() -> str:
         out = subprocess.check_output(
             ["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
             stderr=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         ).decode("ascii").strip()
         return out
     except Exception:

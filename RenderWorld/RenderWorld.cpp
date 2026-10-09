@@ -614,22 +614,6 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
             "[RENDER_WORLD v1] event=upsert_ok recipe=%d handle.index=%u\n",
             r, (unsigned)h.index());
     }
-    // BRIDGE-1 upsert diagnostic: log first 32 registrations under the trace gate.
-    {
-        static const bool s_bridgeTrace = envFlag("MC2_OBJECT_ID_BRIDGE_TRACE");
-        if (s_bridgeTrace) {
-            static std::atomic<int> s_logCount{0};
-            const int n = s_logCount.fetch_add(1, std::memory_order_relaxed);
-            if (n < 32) {
-                std::fprintf(stderr,
-                    "[OBJECT_ID_BRIDGE v1] upsert: recipe=%d handle.index=%u gameObjectId=%u\n",
-                    r, (unsigned)h.index(), gameObjectId);
-            } else if (n == 32) {
-                std::fprintf(stderr,
-                    "[OBJECT_ID_BRIDGE v1] upsert: ... (suppressing further upsert logs)\n");
-            }
-        }
-    }
     return h;
 }
 
@@ -931,18 +915,6 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
     out.pathReasonCode     = rec.pathReasonCode;
     out.gameObjectId       = rec.gameObjectId;
     out.kind               = rec.kind;  // M2.6: kind discriminator
-
-    // BRIDGE-1 diagnostic: log static prop hits with nonzero gameObjectId.
-    // MC2_OBJECT_ID_BRIDGE_TRACE=1 enables; one line per pixel lookup hit.
-    if (rec.kind == RenderObjectKind::StaticProp) {
-        static const bool s_bridgeTrace = envFlag("MC2_OBJECT_ID_BRIDGE_TRACE");
-        if (s_bridgeTrace) {
-            std::fprintf(stderr,
-                "[OBJECT_ID_BRIDGE v1] hit: handle.index=%u generation=%u kind=StaticProp gameObjectId=%u %s\n",
-                h.index(), (unsigned)rec.generation, rec.gameObjectId,
-                rec.gameObjectId != 0u ? "NONZERO_OK" : "ZERO_EDGE_CASE");
-        }
-    }
 
     // Unproject depth sample to world position using the inverse VP stored
     // by the render loop each frame. depthSample==0 means far plane / sky.

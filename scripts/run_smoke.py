@@ -1787,12 +1787,6 @@ def main():
                             # RUNWAY-CLOSE-1: overlay-art flat-light exemption
                             # A/B arm (default 1 = stock multiply).
                             "MC2_OVERLAY_ART_FLATLIGHT",
-                            # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
-                            # probe (observe-only). Prints [SHORELINE_PROBE v1]
-                            # with u_waterElevation vs coarse terrain z-range vs
-                            # fine-minus-coarse band drift at shore cells. Must be
-                            # allowlisted or Popen drops it and the probe is silent.
-                            "MC2_TERRAIN_SHORELINE_PROBE",
                             # TERRAIN-MATERIAL-LIB-1 — data-defined terrain material
                             # tuning (default OFF). Must be allowlisted or Popen
                             # drops it and the gate-ON smoke does nothing.
@@ -1810,7 +1804,6 @@ def main():
                             # drops them and the gate-ON smoke does nothing.
                             "MC2_TERRAIN_MATERIAL_TEXTURES",
                             "MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH",
-                            "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
                             # TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 -- world-axis
                             # triplanar rock NORMAL + relief on steep cells
                             # (default OFF) + tilt-strength knob. Decoupled from
@@ -1865,11 +1858,6 @@ def main():
                             # shadow_screen.frag (default OFF). Must be allowlisted
                             # or Popen drops it and the gate-ON smoke does nothing.
                             "MC2_PROP_SHADOW_RECEIVE",
-                            # SHADOW-DECISIONS-1 -- re-enable shadow CASTING for
-                            # far/impostor static-prop LODs (lod>=1) in the dynamic
-                            # prop shadow replay (default OFF). Must be allowlisted
-                            # or Popen drops it and the gate-ON smoke does nothing.
-                            "MC2_PROP_LOD_SHADOW_CAST",
                             # FOLIAGE-ALPHAFLAG-1 -- recipe-path per-instance
                             # flags bit 2 carries kFlagIsAlphaTest (from
                             # alphaTestOn) instead of the retired spotlight
@@ -2078,7 +2066,6 @@ def main():
                             # Phase 1 — terrain lighting GPU compute
                             "MC2_TERRAIN_LIGHTING_GPU",
                             "MC2_TERRAIN_LIGHTING_PARITY",
-                            "MC2_TERRAIN_LIGHTING_GPU_TRACE",
                             # Track A1 — object admission predicate + trace
                             "MC2_OBJECT_ADMISSION_PREDICATE",
                             "MC2_PROJECTZ_TRACE",
@@ -2581,11 +2568,6 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL shadow path (gate inert).
                             "MC2_VK_SHADOW_INTEROP",
-                            # VK-SHADOW-DIRECT-CHAIN: deletion-readiness proof gate
-                            # that keeps VK shadow/CSM products VK-owned and skips
-                            # the VK->GL semaphore handoff when native consumers are
-                            # armed.
-                            "MC2_VK_SHADOW_DIRECT_CHAIN",
                             # VK-P14 GATE-CONSOLIDATION-1: THE UMBRELLA. =1 arms the
                             # whole shared-GBuffer scene family at once (all sub-gates
                             # below default ON; explicit sub-gate env still overrides).
@@ -2636,7 +2618,6 @@ def main():
                             # VK-MECH-DIRECT-CHAIN: deletion-readiness proof gate
                             # that keeps shared GBuffer ownership on Vulkan after
                             # terrain+prop and skips mech interop semaphores.
-                            "MC2_VK_MECH_DIRECT_CHAIN",
                             # VK-WATER-DIRECT-CHAIN: deletion-readiness proof gate
                             # that keeps shared GBuffer ownership on Vulkan after
                             # terrain+prop+mech and skips water interop semaphores.
@@ -2664,10 +2645,6 @@ def main():
                             "MC2_VK_MECH_FEED_AUDIT",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
-                            # VK-TERRAIN-NATIVE-PREFIX-CLEAR: diagnostic proof gate that
-                            # moves the terrain-prefix scene clear into the VK terrain pass
-                            # and skips terrain's GL interop semaphores. Default-OFF.
-                            "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
                             # VK-TERRAIN-ALL-LODS (rung 3): coarse-band (lodStep>1) capture
                             # extension, requires MC2_VK_TERRAIN_TIER1. Bands only, no
                             # skirts/stitch this rung. Default-OFF.
@@ -2844,15 +2821,10 @@ def main():
                             "MC2_VK_IMGUI",
                             "MC2_HZB_BUILD",
                             "MC2_HZB_PROBE",
-                            "MC2_VK_POST_HZB_DIRECT_CHAIN",
-                            "MC2_VK_POST_FOG_DIRECT_CHAIN",
-                            "MC2_VK_POST_SSAO_DIRECT_CHAIN",
-                            "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
                             "MC2_VK_POST_SCREENFX_SHADOW",
                             "MC2_SHADOW_ENABLE",
                             "MC2_SHADOW_CSM",
                             "MC2_VK_SHADOW_INTEROP",
-                            "MC2_VK_SHADOW_DIRECT_CHAIN",
                             "MC2_VK_CSM_ARRAY_INTEROP",
                             "MC2_VK_CSM_FULLMAP_INTEROP",
                             "MC2_VK_STATIC_SHADOW_MAP",
@@ -3152,7 +3124,8 @@ def main():
         if _fingerprint is not None:
             try:
                 _fp = _fingerprint.parse_fingerprint(result.stdout_text)
-                _fp_lines, _fp_bad = _fingerprint.check_fingerprint(_fp, _fp_expected_sha)
+                _fp_lines, _fp_bad = _fingerprint.check_fingerprint(
+                    _fp, _fp_expected_sha, repo_root=ROOT)
                 _fp_hard_fail = _fp_hard_fail or _fp_bad
                 for _l in _fp_lines:
                     print(f"[runner] {_l}", file=sys.stderr)

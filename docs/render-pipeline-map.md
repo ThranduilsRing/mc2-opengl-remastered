@@ -96,8 +96,8 @@ RENDERED BY: gos_terrain_thin.vert  +  gos_terrain.frag
 - **Caveat:** `Terrain::quadList` is a **camera sliding window** rebuilt every frame — index static
   SSBOs by stable world `vertexNum`, never by quadList slot
   (`memory/terrain_quadlist_is_camera_sliding_window.md`).
-- **Gates:** `MC2_TERRAIN_INDIRECT` (ON), `MC2_COLORMAP_KTX2` (ON), `MC2_TERRAIN_NORMALS_FROM_HEIGHT` (OFF),
-  `MC2_TERRAIN_SOLID_NARROW` (ON), `MC2_TERRAIN_LIGHTING_V1/V2` (OFF).
+- **Gates:** `MC2_TERRAIN_INDIRECT` (ON), `MC2_COLORMAP_KTX2` (ON),
+  `MC2_TERRAIN_SOLID_NARROW` (ON).
 
 ## 2. Water — `terrain water-flags → GPU recipe cull → overlay draw`
 

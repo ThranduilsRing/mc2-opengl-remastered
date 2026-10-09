@@ -54,7 +54,7 @@ static bool glStateGuardTerrainEnabled() {
 // can change mid-process, so resolving them per frame is pure redundant recompute.
 // These resolvers cache the SAME values once at first use — byte-identical result,
 // matching the established `static const ... = [](){...}()` pattern already used
-// throughout this file (e.g. s_v1Env/s_v2Env). The per-frame block reads these
+// throughout this file. The per-frame block reads these
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
 namespace {
 inline bool tglc_envOn(const char* name) {
@@ -411,15 +411,6 @@ static int    s_visualSide       = 0; // V = (mapSide-1)*4+1, fine grid side (0 
 // 2/4/5/10/20). 0 = no mips shipped -> u_geomorphMips uploads 0 -> the vert's
 // coarse-band branch behaves exactly as S2 (legacy layout untouched).
 static int    s_visualMipFloats  = 0;
-// TERRAIN-SHORELINE-V3 (band-vs-drawn-plane probe): retained CPU copies of the
-// coarse (gameplay/water-plane) heightfield and the 4x visual/displaced bake so
-// a one-shot load-time instrument (MC2_TERRAIN_SHORELINE_PROBE) can print the
-// delta between where the shoreline band is PLACED (v_worldPos.z, = fine bake
-// under displacement) and where the water plane actually DRAWS (u_waterElevation
-// on the coarse grid). Populated by the two upload entries below; observe-only.
-static std::vector<float> s_coarseHeightCpu;   // mapSide*mapSide row-major
-static std::vector<float> s_visualHeightCpu;   // V*V row-major (fine bake)
-static bool               s_shorelineProbeDone = false;
 // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp
 // (binding 27). Static half = building footprints from the bake sidecar
 // (visual_damp.r32), uploaded once per mission load; dynamic half = per-frame
@@ -834,9 +825,7 @@ static GLint    s_locMatRoughness   = -1;
 static GLint    s_locMatAO          = -1;
 static GLint    s_locMatHeight      = -1;  // POM-PERLAYER-HEIGHT-1
 static GLint    s_locUseMaterialLib = -1;
-// Remaining legacy tunables (env gates replicated in the upload so default==legacy).
-extern float gos_GetTerrainLightingV1Strength();
-extern float gos_GetTerrainLightingV2Floor();
+// Remaining legacy tunables.
 extern float gos_GetTerrainCliffShadowFloor();  // CLIFF SHADOW FLOOR
 extern float gos_GetTerrainNormalsFromHeightStrength();
 extern float gos_GetTerrainPOMScale();
@@ -845,8 +834,6 @@ extern float gos_GetTerrainPOMScale();
 // pattern in this file (ruling R5).
 extern void  gos_GetTerrainCameraPos(float*, float*, float*);
 extern int   g_terrainMaterialProfile;   // global; 0 = legacy
-static GLint s_locLightingV1     = -1;
-static GLint s_locLightingV2     = -1;
 static GLint s_locCliffShadowFloor = -1;  // CLIFF SHADOW FLOOR
 static GLint s_locAmbientFloor     = -1;  // TERRAIN-AMBIENT-FLOOR-2
 static GLint s_locAmbientDayGate   = -1;  // TERRAIN-AMBIENT-FLOOR-2
@@ -915,20 +902,6 @@ static GLint s_locTransitionMaskArray = -1;
 static GLint s_locUseTransitionMask   = -1;
 static constexpr GLint kChunkTexUnitTransitionMask = 11;
 extern void  gos_GetTerrainMatNormalBoost(float*, float*, float*, float*);
-
-// CONCRETE-DETAIL-NORMAL-1: killswitch-shaped gate for the concrete detail
-// normal (terrain_lod_chunk.frag's MAT_LAYER_PAINTED_CONC branch). DEFAULT OFF
-// so every install renders the "original overlay" concrete the user approved in
-// mc2-win64-v0.3; "=1" restores the relief treatment. Evaluated once (static),
-// matching the terrainNormalArrayEnabled()/mc2ShadowStaticBandFixEnabled()
-// pattern in gameos_graphics.cpp. See the consumer at the matNormalBoost upload.
-static bool mc2TerrainConcreteDetailNormalEnabled() {
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_TERRAIN_CONCRETE_DETAIL_NORMAL");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
-    return enabled;
-}
 extern void  gos_GetTerrainClassGrass(float*, float*, float*, float*);
 extern void  gos_GetTerrainClassDirt(float*, float*, float*, float*);
 extern float gos_GetTerrainDetailTiling();
@@ -1344,8 +1317,6 @@ void gos_TerrainLodChunk_Init()
             s_locMatAO          = glGetUniformLocation(s_terrainProgram, "matAO");
             s_locMatHeight      = glGetUniformLocation(s_terrainProgram, "matHeight");  // POM-PERLAYER-HEIGHT-1
             s_locUseMaterialLib = glGetUniformLocation(s_terrainProgram, "u_useMaterialLib");
-            s_locLightingV1  = glGetUniformLocation(s_terrainProgram, "terrainLightingV1Strength");
-            s_locLightingV2  = glGetUniformLocation(s_terrainProgram, "terrainLightingV2ShadowFillFloor");
             s_locCliffShadowFloor = glGetUniformLocation(s_terrainProgram, "u_terrainCliffShadowFloor");
             s_locAmbientFloor     = glGetUniformLocation(s_terrainProgram, "u_terrainAmbientFloor");   // TERRAIN-AMBIENT-FLOOR-2
             s_locAmbientDayGate   = glGetUniformLocation(s_terrainProgram, "u_terrainAmbientDayGate"); // TERRAIN-AMBIENT-FLOOR-2
@@ -1520,112 +1491,6 @@ void gos_TerrainLodChunk_Destroy()
     s_heightSsbo.destroy();
     s_typeSsbo.destroy();
     s_cementSsbo.destroy();
-}
-
-// ---------------------------------------------------------------------------
-// TERRAIN-SHORELINE-V3 shore-delta probe (MC2_TERRAIN_SHORELINE_PROBE).
-// One-shot, load-time-cheap instrument that answers the exact question behind
-// the V3 band drift: the band is placed at v_worldPos.z - u_waterElevation, but
-// v_worldPos.z is the FINE VISUAL bake under displacement while the water plane
-// DRAWS on the coarse grid at u_waterElevation. This walks the coarse grid, finds
-// cells adjacent to the true (coarse) waterline (a corner below and a corner above
-// u_waterElevation), and reports the mean/max fine-minus-coarse height offset at
-// exactly those shore cells — that offset IS how far up-bank the band drifts.
-// Observe-only; no state mutation; runs once per mission when the gate is set.
-static void gos_TerrainLodChunk_ShorelineProbe(float waterElev)
-{
-    static const bool s_probeGate = []() {
-        const char* v = std::getenv("MC2_TERRAIN_SHORELINE_PROBE");
-        return (v && v[0] && v[0] != '0');
-    }();
-    if (!s_probeGate || s_shorelineProbeDone) return;
-    if (s_coarseHeightCpu.empty() || s_mapSide <= 1) return;
-    s_shorelineProbeDone = true;
-
-    const int   ms   = s_mapSide;
-    const bool  haveFine = (!s_visualHeightCpu.empty() && s_visualSide > 0);
-    const int   V    = s_visualSide;
-    auto coarseAt = [&](int cx, int cy) -> float {
-        cx = cx < 0 ? 0 : (cx > ms - 1 ? ms - 1 : cx);
-        cy = cy < 0 ? 0 : (cy > ms - 1 ? ms - 1 : cy);
-        return s_coarseHeightCpu[(size_t)cx + (size_t)cy * ms];
-    };
-    // Fine bake sampled at the coarse-cell grid point (fx = cx*4), i.e. the exact
-    // vertex the coarse-band displacement (u_visualDisplace==2) writes to.
-    auto fineAt = [&](int cx, int cy) -> float {
-        if (!haveFine) return coarseAt(cx, cy);
-        int fx = cx * 4; if (fx > V - 1) fx = V - 1;
-        int fy = cy * 4; if (fy > V - 1) fy = V - 1;
-        return s_visualHeightCpu[(size_t)fx + (size_t)fy * V];
-    };
-
-    (void)fineAt;
-    // fine sample at ANY fine (fx,fy)
-    auto fineRaw = [&](int fx, int fy) -> float {
-        if (!haveFine) return 0.0f;
-        fx = fx < 0 ? 0 : (fx > V - 1 ? V - 1 : fx);
-        fy = fy < 0 ? 0 : (fy > V - 1 ? V - 1 : fy);
-        return s_visualHeightCpu[(size_t)fx + (size_t)fy * V];
-    };
-    // bilinear coarse surface at a fine (fx,fy) — the height space the water
-    // plane's land intersection lives on (== v_worldPos.z with displace OFF).
-    auto coarseBilinAtFine = [&](int fx, int fy) -> float {
-        float gx = (float)fx * 0.25f, gy = (float)fy * 0.25f;
-        int cx = (int)gx, cy = (int)gy;
-        float tx = gx - (float)cx, ty = gy - (float)cy;
-        float a = coarseAt(cx, cy),   b = coarseAt(cx + 1, cy);
-        float c = coarseAt(cx, cy+1), d = coarseAt(cx + 1, cy + 1);
-        return (a*(1-tx) + b*tx)*(1-ty) + (c*(1-tx) + d*tx)*ty;
-    };
-
-    double coarseZatWaterline = 0.0; long shoreCells = 0;
-    float  coarseMin = 1e30f, coarseMax = -1e30f;
-    // TRUE band drift: over the INTERIOR fine verts of shore quads, how far does
-    // the DISPLACED surface (fineRaw) sit above/below the coarse water-plane
-    // surface (coarseBilinAtFine)? Corner-pin makes this 0 AT coarse corners but
-    // the reshape bows the interior — that bow is the band's up-bank drift.
-    double sumInt = 0.0, maxInt = 0.0; long intCells = 0;
-    double sumSignedAtWL = 0.0; long wlSamples = 0; // signed gap at fine verts near the plane
-    for (int cy = 0; cy < ms - 1; ++cy)
-        for (int cx = 0; cx < ms - 1; ++cx) {
-            float c00 = coarseAt(cx, cy),   c10 = coarseAt(cx + 1, cy);
-            float c01 = coarseAt(cx, cy+1), c11 = coarseAt(cx + 1, cy + 1);
-            float lo = c00, hi = c00;
-            lo = c10 < lo ? c10 : lo; hi = c10 > hi ? c10 : hi;
-            lo = c01 < lo ? c01 : lo; hi = c01 > hi ? c01 : hi;
-            lo = c11 < lo ? c11 : lo; hi = c11 > hi ? c11 : hi;
-            if (lo < coarseMin) coarseMin = lo;
-            if (hi > coarseMax) coarseMax = hi;
-            if (lo <= waterElev && hi >= waterElev) {
-                coarseZatWaterline += (double)c00; ++shoreCells;
-                if (haveFine) {
-                    for (int sy = 0; sy <= 4; ++sy)
-                        for (int sx = 0; sx <= 4; ++sx) {
-                            int fx = cx * 4 + sx, fy = cy * 4 + sy;
-                            double cb  = (double)coarseBilinAtFine(fx, fy);
-                            double gap = (double)fineRaw(fx, fy) - cb;
-                            double ga  = gap < 0 ? -gap : gap;
-                            sumInt += ga; if (ga > maxInt) maxInt = ga; ++intCells;
-                            if (cb >= waterElev - 4.0 && cb <= waterElev + 4.0) {
-                                sumSignedAtWL += gap; ++wlSamples;
-                            }
-                        }
-                }
-            }
-        }
-    const double meanCoarseShoreZ = shoreCells ? coarseZatWaterline / (double)shoreCells : 0.0;
-    const double meanInt   = intCells ? sumInt / (double)intCells : 0.0;
-    const double meanAtWL  = wlSamples ? sumSignedAtWL / (double)wlSamples : 0.0;
-    fprintf(stderr,
-        "[SHORELINE_PROBE v1] u_waterElevation=%.3f (drawn plane Z; band placed at "
-        "v_worldPos.z-this) | coarse terrain z range=[%.2f,%.2f] | shore quads=%ld "
-        "meanCoarseShoreZ=%.3f | INTERIOR band-drift(displaced-fine minus coarse-plane "
-        "surface): mean=%.3fwu max=%.3fwu | signed vertical gap at fine verts on the "
-        "waterline=%.3fwu (n=%ld) | fineBake=%s\n",
-        (double)waterElev, (double)coarseMin, (double)coarseMax, shoreCells,
-        meanCoarseShoreZ, meanInt, maxInt, meanAtWL, wlSamples,
-        haveFine ? "LOADED" : "absent(no displace)");
-    fflush(stderr);
 }
 
 // ---------------------------------------------------------------------------
@@ -2708,7 +2573,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 gosPostProcess* pp = getGosPostProcess();
                 const float we = pp ? pp->getWaterElevation() : 0.0f;
                 glUniform1f(s_locWaterElevation, we);
-                gos_TerrainLodChunk_ShorelineProbe(we);  // one-shot; gated
             }
             if (s_locShaderTime >= 0)
                 glUniform1f(s_locShaderTime, gos_GetShaderClockSeconds());
@@ -2785,22 +2649,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     {
         float mt[5] = {3,2,1,6,1};  gos_GetTerrainMatTiling(&mt[0], &mt[1], &mt[2], &mt[3], &mt[4]);
         float nb[4] = {0.9f,1.1f,1.1f,2.5f}; gos_GetTerrainMatNormalBoost(&nb[0], &nb[1], &nb[2], &nb[3]);
-        // CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: "I have decided I
-        // don't like the detail normal for concrete" — they graded the
-        // mc2-win64-v0.3 install, which ships WITHOUT data/terrain_layers/, so
-        // matNormalArray never loads and the concrete relief never appears.
-        // That "original overlay" look is the approved reference).
-        //
-        // nb[3] is matNormalBoost.w — the ONLY scale on the concrete branch in
-        // terrain_lod_chunk.frag:1402-1405 (`dN += pureConcrete *
-        // matNormalBoost.w * fwC * (cN.rgb*2-1)`). Zeroing it makes that branch
-        // contribute exactly vec3(0), reproducing the v0.3 look in installs that
-        // DO ship the layers, without touching the shader, the other materials
-        // (rock/grass/dirt keep nb[0..2]), or the cement albedo/atlas path.
-        //
-        // DEFAULT OFF = original overlay = what the user approved.
-        // MC2_TERRAIN_CONCRETE_DETAIL_NORMAL=1 restores the relief treatment.
-        if (!mc2TerrainConcreteDetailNormalEnabled()) nb[3] = 0.0f;
+        // The concrete detail normal is permanently off (user ruling 2026-07-26): nb[3]
+        // is matNormalBoost.w, the only scale on the concrete branch in
+        // terrain_lod_chunk.frag, so zeroing it makes that branch contribute exactly
+        // vec3(0) without touching the other materials or the cement albedo path.
+        nb[3] = 0.0f;
         float cg[4] = {-0.02f,0.06f,0.22f,0.40f}; gos_GetTerrainClassGrass(&cg[0], &cg[1], &cg[2], &cg[3]);
         float cd[4] = {-0.02f,0.06f,0.22f,0.45f}; gos_GetTerrainClassDirt(&cd[0], &cd[1], &cd[2], &cd[3]);
         float dt = gos_GetTerrainDetailTiling();
@@ -2849,30 +2702,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             if (s_locMatHeight    >= 0) glUniform4f(s_locMatHeight,    mh[0], mh[1], mh[2], mh[3]);  // POM-PERLAYER-HEIGHT-1
             const bool matLibOn = gos_TerrainMaterialLibEnabled();
             if (s_locUseMaterialLib >= 0) glUniform1i(s_locUseMaterialLib, matLibOn ? 1 : 0);
-            static const bool s_matLibTrace = (getenv("MC2_MATERIALLIB_TRACE") != nullptr);
-            if (s_matLibTrace) {
-                static bool s_matLibLogged = false;
-                if (!s_matLibLogged) {
-                    s_matLibLogged = true;
-                    printf("[MaterialLib] chunk-binder upload useMaterialLib=%d "
-                           "tintConcrete=(%.3f,%.3f,%.3f) tintSnow=(%.3f,%.3f,%.3f) "
-                           "matRoughness=(%.3f,%.3f,%.3f,%.3f) matAO=(%.3f,%.3f,%.3f,%.3f)\n",
-                           matLibOn ? 1 : 0,
-                           tc[0], tc[1], tc[2], tsn[0], tsn[1], tsn[2],
-                           mr[0], mr[1], mr[2], mr[3], ma[0], ma[1], ma[2], ma[3]);
-                    fflush(stdout);
-                }
-            }
         }
 
-        // Remaining tunables. Hemisphere V1/V2 are env-gated OFF by default (match
-        // legacy: force-zeroed unless MC2_TERRAIN_LIGHTING_V1/V2 set). NFH strength
-        // scales the chunk's always-on smooth normal (default 1.0 = no change). POM
-        // = legacy scale (default 0.02). Material profile = global int (0=legacy).
-        static const bool s_v1Env = (getenv("MC2_TERRAIN_LIGHTING_V1") != nullptr);
-        static const bool s_v2Env = (getenv("MC2_TERRAIN_LIGHTING_V2") != nullptr);
-        if (s_locLightingV1  >= 0) glUniform1f(s_locLightingV1,  s_v1Env ? gos_GetTerrainLightingV1Strength() : 0.0f);
-        if (s_locLightingV2  >= 0) glUniform1f(s_locLightingV2,  s_v2Env ? gos_GetTerrainLightingV2Floor()    : 1.0f);
+        // Remaining tunables. NFH strength scales the chunk's always-on smooth normal
+        // (default 1.0 = no change). POM = legacy scale (default 0.02). Material
+        // profile = global int (0=legacy).
         // CLIFF SHADOW FLOOR: env-gated. Unset/=0 uploads 0.0 (shader no-op,
         // byte-identical). Non-zero uploads the member value (ImGui-tunable), 0..1.
         {
@@ -2887,8 +2721,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
         // ── TERRAIN-AMBIENT-FLOOR-2 (MC2_TERRAIN_AMBIENT_FLOOR) — DEFAULT-ON at 0.35 ──
         //
-        // Terrain receives NO ambient term at all: the hemisphere fill two
-        // uniforms above is default-OFF (MC2_TERRAIN_LIGHTING_V1), so terrain is
+        // Terrain receives no other ambient term, so it is
         // exactly `baseColor * normalLight * shadow`, while static props standing
         // on it get ambient through SH-IBL. That is what bottoms out daylight
         // ground on mc2_03 beside the (correctly, user-ratified) flat-lit pads.
@@ -3615,11 +3448,6 @@ void gos_TerrainLodChunk_UploadHeightFull(const float* elevations, int mapSide)
     s_mapSide = mapSide;
     s_halfMap = (float)mapSide * 128.0f * 0.5f;
 
-    // TERRAIN-SHORELINE-V3 probe: retain the coarse (gameplay/water-plane)
-    // heightfield so the one-shot shore-delta instrument can compare it to the
-    // fine bake and u_waterElevation. Cheap (one mapSide² copy at load).
-    s_coarseHeightCpu.assign(elevations, elevations + (size_t)mapSide * (size_t)mapSide);
-    s_shorelineProbeDone = false;
 #ifdef MC2_VULKAN_ISLAND
     // VK-P10 TERRAIN TIER-1: the height field changed -> bump the snapshot key so the
     // VK terrain island re-copies it (glGetBufferSubData map-load) on the next frame.
@@ -3681,11 +3509,6 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     s_visualHeightSsbo.unbind();
     s_visualSide      = V;   // remembered for the displaced draw (u_visualSide)
     s_visualMipFloats = (int)mipFloats;
-
-    // TERRAIN-SHORELINE-V3 probe: retain the fine visual bake (the height the
-    // band is placed against under displacement) for the shore-delta instrument.
-    s_visualHeightCpu.assign(visualHeights, visualHeights + (size_t)V * (size_t)V);
-    s_shorelineProbeDone = false;
 
 #ifdef MC2_VULKAN_ISLAND
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: the visual bake changed -> bump the snapshot key

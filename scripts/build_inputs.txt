@@ -1,0 +1,24 @@
+# Paths whose content determines the built exe, one git pathspec per line.
+# A trailing slash means a directory. Single source of truth for:
+#   - cmake/GenerateBuildFingerprint.cmake (dirty flag = changes under these paths)
+#   - scripts/smoke_lib/fingerprint.py (an exe from an ancestor of HEAD is current
+#     when no commit since touched one of these paths)
+code/
+mclib/
+GameOS/
+RenderCore/
+GuiRuntime/
+RenderWorld/
+GameAdapters/
+HostServices/
+editor/
+gui/
+shaders/
+cmake/
+3rdparty/
+tools/mc2_launcher/
+tools/gpu_abi_gen.py
+CMakeLists.txt
+vcpkg.json
+resource.h
+strings.res.h

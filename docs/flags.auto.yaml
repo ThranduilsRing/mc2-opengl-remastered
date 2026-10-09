@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.1.0"
-registry_entry_count: 363
-registry_env_flag_count: 362
-sweep_flag_count: 1027
-flag_count: 1087
+registry_entry_count: 360
+registry_env_flag_count: 359
+sweep_flag_count: 1004
+flag_count: 1066
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -1044,14 +1044,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_CLOUD_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_CLOUD_SHADOW
     default: unknown
     declared_in: null
@@ -1570,14 +1562,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_EDITOR_DRAG_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/EditorInterface.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_EDITOR_FAR_CLIP
     default: unknown
     declared_in: null
@@ -1626,14 +1610,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_EDITOR_MOVER_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/EditorObjectMgr.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_EDITOR_PANEL_W
     default: unknown
     declared_in: null
@@ -1647,14 +1623,6 @@ flags:
     declared_in: null
     referenced_at:
       - editor/EditorObjectMgr.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_EDITOR_PROJECT_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/FoliageRender.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -1692,7 +1660,7 @@ flags:
     referenced_at_more: 5
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
+    documented_in_tier1_env_vars: yes
   - name: MC2_EDITOR_UI_DEFS
     default: unknown
     declared_in: null
@@ -2688,14 +2656,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_GPU_SCENE_SCALE_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_GPU_SYNC_TRACE
     default: unknown
     declared_in: null
@@ -2764,14 +2724,6 @@ flags:
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_HDRI_SKY_FRAME_FIX
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_HDRI_SKY_STATE_PROBE
     default: unknown
     declared_in: null
     referenced_at:
@@ -3683,14 +3635,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_MATERIALLIB_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_MATERIAL_GPU
     default: on
     kind: Feature
@@ -4270,14 +4214,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_MVP_EARLY_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_MVP_PUBLISH_EARLY
     default: unknown
     declared_in: null
@@ -4370,14 +4306,6 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameosmain.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_OBJECT_ID_BRIDGE_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - RenderWorld/RenderWorld.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4690,14 +4618,6 @@ flags:
       - mclib/move_solvectx.h
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATROL_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/EditorObjects.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_PAVED_OVERLAY_CLASS
     default: off
@@ -5022,11 +4942,10 @@ flags:
     feature_id: MC2_PROP_LOD_SHADOW_CAST
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1). TreeAppearance::registerStatic (mclib/bdactor.cpp) calls GpuStaticPropRegistry::setRecipeNoShadow(regIdx, ..."
-    referenced_at:
-      - mclib/bdactor.cpp
+    referenced_at: []
     registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_PROP_SHADOW_RECEIVE
     default: off
     kind: Feature
@@ -5469,7 +5388,6 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - editor/FoliageRender.cpp
       - mclib/object_admission_predicate.cpp
     registered: no
     in_smoke_passthrough: no
@@ -5590,14 +5508,6 @@ flags:
       - mclib/txmmgr.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_SHADOW_CASTER_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_SHADOW_CASTER_LIGHTBOX_CULL
     default: unknown
@@ -5757,14 +5667,6 @@ flags:
       - GameOS/gameos/gos_postprocess.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_SHADOW_FOCUS_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_SHADOW_FRUSTUM_DIAG
     default: off
@@ -7157,11 +7059,10 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:14..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
+    referenced_at: []
     registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_CONTROLMAP
     default: off
     kind: Feature
@@ -7430,14 +7331,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_LIGHTING_GPU_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_LIGHTING_PARITY
     default: unknown
     declared_in: null
@@ -7452,10 +7345,7 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_LIGHTING_V1
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain. Default-OFF; =1 enables. When OFF, terrainLightingV1Strength uploads 0.0 and gos_terrain.frag skips the additive branch..."
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-      - GuiRuntime/GraphicsOptionsWindow.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -7465,13 +7355,10 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_LIGHTING_V2
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill. Default-OFF; =1 enables. When OFF, terrainLightingV2ShadowFillFloor uploads 1.0 → the shader expression ..."
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-      - GuiRuntime/GraphicsOptionsWindow.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_LIGHT_POOLS
     default: on
     kind: Feature
@@ -7626,14 +7513,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_MASK_DISPATCH_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_mask_dispatch.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_MASK_DISPATCH_WATER
     default: unknown
     declared_in: null
@@ -7701,12 +7580,10 @@ flags:
     feature_id: MC2_FEATURE_TERRAIN_NORMALS_FROM_HEIGHT
     declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
     doc: "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield). Defau..."
-    referenced_at:
-      - GameOS/gameos/gameos_graphics.cpp
-      - GuiRuntime/GraphicsOptionsWindow.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
+    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_NORMAL_ARRAY
     default: unknown
     declared_in: null
@@ -7910,14 +7787,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_SHORELINE_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_SHORELINE_STRENGTH
     default: unknown
     declared_in: null
@@ -8098,14 +7967,6 @@ flags:
       - mclib/txmmgr.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_TEX_HANDOFF_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_static_prop_batcher.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_TEX_LIFECYCLE_TRACE
     default: unknown
@@ -8884,22 +8745,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VK_CSM_BISECT
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VK_CSM_COPYMODE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_CSM_FULLMAP_INTEROP
     default: off
     kind: Feature
@@ -8964,16 +8809,6 @@ flags:
     doc: "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate. Current implementation is observable-decline only: GuiRuntime::Render() logs [VK_IMGUI] requested=1 used_vulkan=0 with fallback..."
     referenced_at:
       - GuiRuntime/GuiRuntime.cpp
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VK_MECH_DIRECT_CHAIN
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VK_MECH_DIRECT_CHAIN
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK-MECH-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_MECH_TIER1 plus MC2_VK_PROP_DIRECT_CHAIN. When ON, the mech island treats the shared scene color0/normal/dep..."
-    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9164,7 +8999,7 @@ flags:
     kind: Feature
     feature_id: MC2_FEATURE_VK_PROP_DIRECT_CHAIN
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_PROP_COLOR_TIER1 plus MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR. When ON, the prop color island treats the shared s..."
+    doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_PROP_COLOR_TIER1. When ON, the prop color island treats the shared scene color0/normal/depth images as alrea..."
     referenced_at:
       - GameOS/gameos/vulkan_color_prop_island.cpp
     registered: yes
@@ -9261,16 +9096,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_VK_SHADOW_DIRECT_CHAIN
-    default: off
-    kind: Trace
-    feature_id: MC2_TRACE_VK_SHADOW_DIRECT_CHAIN
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK shadow deletion-readiness proof gate. Default-OFF. When the VK shadow and CSM producers are armed with same-frame VK consumers, skips the VK->GL semaphore signal/wait and keeps the produced shad..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_SHADOW_INTEROP
     default: off
     kind: Feature
@@ -9452,16 +9277,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VK_TERRAIN_NATIVE_PREFIX_CLEAR
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "DEPRECATED no-op (VK-RUNG8-ITEM4-TERRAIN-DELETE-1). The terrain island's hybrid GL<->VK semaphore-handoff arm (LOAD-preserve renderpass) was DELETED: the armed terrain Tier-1 island is now uncondit..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_TERRAIN_OVERLAY_GL_CANARY
     default: off
     kind: Trace
@@ -9529,7 +9344,7 @@ flags:
     kind: Feature
     feature_id: MC2_FEATURE_VK_WATER_DIRECT_CHAIN
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_WATER_TIER1 plus MC2_VK_MECH_DIRECT_CHAIN. When ON, the water island treats the shared scene color0/normal/..."
+    doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_WATER_TIER1. When ON, the water island treats the shared scene color0/normal/depth images as already Vulkan..."
     referenced_at:
       - GameOS/gameos/vulkan_water_island.cpp
     registered: yes

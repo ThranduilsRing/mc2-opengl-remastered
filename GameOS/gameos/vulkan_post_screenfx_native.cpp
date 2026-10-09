@@ -104,7 +104,7 @@ struct PostScreenFxHealth {
     int  shoreGate     = 0;
     int  shadowGate    = 0;
     int  substrateLive = 0;   // shared color0 + normal + depth present at init
-    int  directChain   = 0;   // MC2_VK_POST_SCREENFX_DIRECT_CHAIN resolved ON
+    int  directChain   = 0;   // direct-chain engaged
     unsigned long attempted   = 0;  // frames the native path was entered
     unsigned long usedVulkan  = 0;  // frames at least one pass rendered via VK
     unsigned long usedInterop = 0;  // frames that used GL<->VK semaphores
@@ -728,19 +728,9 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
     return state == 1;
 }
 
-// VK-RUNG8 item-4: MC2_VK_POST_SCREENFX_DIRECT_CHAIN is RETIRED. The GL<->VK handoff arm
-// was deleted; native screenfx now runs ONLY in direct-chain, engaged when upstream left
-// the shared GBuffer Vulkan-owned (postDirectChainUpstreamOn). If upstream is not direct-
-// chain, native screenfx declines and the GL screenfx passes run. Env name still parsed +
-// noted deprecated.
-[[maybe_unused]] static const bool s_postScreenFxDirectChainDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_DIRECT_CHAIN") != -1)
-        std::fprintf(stderr, "[VK_POST_SCREENFX] MC2_VK_POST_SCREENFX_DIRECT_CHAIN is "
-                             "deprecated and now a no-op: native screenfx is always direct-"
-                             "chain (GL/VK handoff deleted); engages only when upstream is "
-                             "direct-chain.\n");
-    return true;
-}();
+// Native screenfx runs only in direct-chain, engaged when upstream left the shared GBuffer
+// Vulkan-owned (postDirectChainUpstreamOn); otherwise it declines and the GL screenfx
+// passes run.
 static bool vkPostScreenFxDirectChainEnabled()
 {
     static int state = -1;

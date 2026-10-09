@@ -188,8 +188,6 @@ ALLOWLIST=(
     MC2_VISUAL_CAPTURE_CLEAN       # fixture -- visual capture: suppress HUD/letterbox/bars on GL+VK
     MC2_VISUAL_CAPTURE_POST        # fixture -- GL visual capture reads composited back buffer (post-grade) to match VK present capture
     MC2_VK_COMPOSITE_PRESENT    # vk-diag/override (vk-interop wave)
-    MC2_VK_CSM_BISECT           # vk-diag
-    MC2_VK_CSM_COPYMODE         # vk-diag/override
     MC2_VK_FEED_DUMP            # vk-diag -- feed dump
     MC2_VK_GPU_TIMESTAMPS       # vk-diag -- GPU timestamp collection
     MC2_VK_HUD_DRAW_DUMP        # vk-diag
@@ -423,7 +421,6 @@ ALLOWLIST=(
     MC2_TERRAIN_INDIRECT_THINEMIT_TRACE  # trace
     MC2_TERRAIN_INDIRECT_TRACE  # trace
     MC2_TERRAIN_LIGHTING_GPU    # feature -- promote-to-registry
-    MC2_TERRAIN_LIGHTING_GPU_TRACE  # trace
     MC2_TERRAIN_LIGHTING_PARITY # parity
     MC2_GROUND_CONTACT_BLOB     # feature -- GROUND-CONTACT-BLOB-1 contact-darkening disc under movers (default OFF)
 # MC2_SKYBOX_FOG_EXCLUDE -- REMOVED by BACKEND-DEFAULT-PARITY-1: now a real
@@ -451,13 +448,11 @@ ALLOWLIST=(
     MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS  # override -- objfade mover fade radius in wu (default 256)
     MC2_TERRAIN_MASK_DISPATCH   # feature -- promote-to-registry
     MC2_TERRAIN_MASK_DISPATCH_SOLID  # feature -- promote-to-registry
-    MC2_TERRAIN_MASK_DISPATCH_TRACE  # trace
     MC2_TERRAIN_MASK_DISPATCH_WATER  # feature -- promote-to-registry
     MC2_TERRAIN_SOLID_NARROW    # feature -- promote-to-registry
     MC2_TERRAIN_SOLID_WINDOW_PARITY  # parity
     MC2_TERRAIN_SURFACE         # feature -- promote-to-registry
     MC2_TERRAIN_SURFACE_TRACE   # trace
-    MC2_TEX_HANDOFF_TRACE       # trace
     MC2_TEX_LIFECYCLE_TRACE     # trace
     MC2_TEX_LIFECYCLE_TRACE_VERBOSE  # trace
     MC2_THIN_DEBUG              # trace
@@ -561,7 +556,6 @@ ALLOWLIST=(
 
     # --- batch 2 (C-F) ---
     MC2_CHEAT_SALVAGE_ALL             # override -- dev cheat
-    MC2_CLOUD_DIAG                    # trace
     MC2_CLOUD_SHADOW                  # feature -- cloud shadow gate
     MC2_COLLISION_FACTS               # trace
     MC2_CURSOR_TARGET_TRACE           # trace
@@ -576,16 +570,13 @@ ALLOWLIST=(
     MC2_EDITOR_AUTODOCK               # infra -- editor-only UI dock setting
     MC2_EDITOR_BEAUTY_AUTOAPPLY       # infra -- editor-only tool auto-apply
     MC2_EDITOR_DOCK                   # infra -- editor-only UI dock setting
-    MC2_EDITOR_DRAG_TRACE             # trace
     MC2_EDITOR_FAR_CLIP               # override -- editor-only far-clip override
     MC2_EDITOR_FPS_CAP                # infra -- editor-only FPS cap
     MC2_EDITOR_GPU_PICK               # feature -- editor GPU-pick gate
     MC2_EDITOR_GPU_TIMERS             # infra -- editor GPU timer diagnostics
     MC2_EDITOR_MOVER_REFRESH          # override -- editor mover refresh override
-    MC2_EDITOR_MOVER_TRACE            # trace
     MC2_EDITOR_PANEL_W                # infra -- editor-only panel width setting
     MC2_EDITOR_PICK_TRACE             # trace
-    MC2_EDITOR_PROJECT_TRACE          # trace
     MC2_EDITOR_RTT                    # infra -- editor-only RTT setting
     MC2_EDITOR_STATIC_PREWARM_OFF     # override -- editor static prewarm disable
     MC2_EDITOR_STATIC_PRIME_DIAG      # trace
@@ -622,11 +613,9 @@ ALLOWLIST=(
     MC2_GPU_DEBUG_NAMES               # infra -- KHR_debug object labels (documented tier1)
     MC2_GPU_PICK_HOVER                # feature -- GPU pick-hover gate
     MC2_GPU_PICK_HOVER_TRACE          # trace
-    MC2_GPU_SCENE_SCALE_PROBE         # trace
     MC2_GPU_SYNC_TRACE                # trace
     MC2_HDRI_SKY_AZ_OFFSET            # override -- HDRI sky azimuth offset tuning
     MC2_HDRI_SKY_FRAME_FIX            # feature -- HDRI sky frame-fix gate
-    MC2_HDRI_SKY_STATE_PROBE          # trace
     MC2_HDRI_SKY_UV_DEBUG             # trace
     MC2_HITCH_MS                      # override -- hitch trace threshold (documented tier1 companion)
     MC2_HITCH_TRACE                   # trace
@@ -659,7 +648,6 @@ ALLOWLIST=(
     MC2_CAMERA_SMOOTH                 # override -- gameplay camera smoothing time-constant ms (0=legacy)
     MC2_CAMERA_SMOOTH_TRACE           # trace
     MC2_CAM_SMOOTH_TEST               # trace -- synthetic scroll driver for smoothing evidence
-    MC2_MATERIALLIB_TRACE             # trace
     MC2_MDI_SUBMIT_TRACE              # trace
     MC2_MECH_ANIM_ROTATION_ONLY       # feature -- mech anim rotation-only gate
     MC2_MECH_BACK_FILL                # feature -- mech back-fill gate
@@ -689,10 +677,8 @@ ALLOWLIST=(
     MC2_MOUSE_RECON                   # trace
     MC2_MOVE_CHUNK_SHADOW             # feature -- move-recon chunk-shadow alt-enable gate
     MC2_MOVE_PATH_CACHE_SHADOW        # feature -- move-recon path-cache-shadow alt-enable gate
-    MC2_MVP_EARLY_TRACE               # trace
     MC2_MVP_PUBLISH_EARLY             # feature -- MVP-publish-early gate
     MC2_NO_LAUNCHER                   # infra -- launcher-bypass flag (documented tier1 companion)
-    MC2_OBJECT_ID_BRIDGE_TRACE        # trace
     MC2_OBJECT_POLY_OFFSET            # override -- object poly-offset override
     MC2_OBJECT_POLY_OFFSET_FACTOR     # override -- object poly-offset factor override
     MC2_OBJECT_POLY_OFFSET_UNITS      # override -- object poly-offset units override
@@ -707,7 +693,6 @@ ALLOWLIST=(
     MC2_PARTICLE_FLUSH_STALL_TRACE    # trace
     MC2_PATH_JUMP_FAIL_BACKOFF        # feature -- path jump-fail backoff gate
     MC2_PATH_SOLVE_ISOLATED           # feature -- path-solve isolated-context gate
-    MC2_PATROL_TRACE                  # trace
     MC2_PBR_AMBIENT_SPECULAR          # override -- mech PBR ambient-specular tuning
     MC2_PBR_METALLIC_INFLUENCE        # override -- mech PBR metallic tuning
     MC2_PBR_ROUGHNESS_MAX             # override -- mech PBR roughness tuning
@@ -747,12 +732,10 @@ ALLOWLIST=(
     MC2_SCREENSHOT_PATH               # infra -- screenshot capture tool
     MC2_SENSOR_SCAN_FACTS             # trace
     MC2_SHADER_PATH_TINT              # trace
-    MC2_SHADOW_CASTER_DIAG            # trace
     MC2_SHADOW_CSM_COUNT              # override -- CSM cascade-count override
     MC2_SHADOW_CSM_LAMBDA             # override -- CSM lambda tuning
     MC2_SHADOW_CSM_SOFTNESS           # override -- CSM softness tuning
     MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY  # feature -- shadow dynamic-prop dirty-only gate
-    MC2_SHADOW_FOCUS_DIAG             # trace
     MC2_SHADOW_FULLMAP_SEPARATE       # feature -- shadow fullmap-separate gate
     MC2_SHADOW_FULLMAP_SIZE           # override -- shadow fullmap size override
     MC2_SHADOW_MAP_SIZE               # override -- shadow map size override
@@ -825,7 +808,6 @@ ALLOWLIST=(
     MC2_TERRAIN_NORMAL_ARRAY          # feature -- terrain normal-array gate
     MC2_TERRAIN_PICK_PARITY           # parity
     MC2_TERRAIN_PROBE                 # trace
-    MC2_TERRAIN_SHORELINE_PROBE       # trace -- TERRAIN-SHORELINE-V3 shore-delta one-shot probe
     MC2_TERRAIN_RAYCAST_PICK          # feature -- terrain raycast-pick gate
     MC2_TERRAIN_RUNTIME_DECALS        # feature -- terrain-runtime decals gate
     MC2_TERRAIN_RUNTIME_GROUNDING     # feature -- terrain-runtime grounding gate
@@ -1036,17 +1018,13 @@ ALLOWLIST=(
     MC2_VK_MECH_FEED_AUDIT                    # trace -- read via mc2vkgate::envTriState in vulkan_mech_island.cpp
     MC2_VK_MECH_FEED_NATIVE                   # feature -- read via mc2vkgate::envTriState in gos_mech_batcher.cpp
     MC2_VK_POST_COMPOSITE                     # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
-    MC2_VK_POST_FOG_DIRECT_CHAIN              # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_fog_native.cpp
     MC2_VK_POST_FOG_NATIVE                    # feature -- read via mc2vkgate::subGate in vulkan_post_fog_native.cpp
     MC2_VK_POST_HZB                           # feature -- read via mc2vkgate::envTriState in vulkan_post_hzb_native.cpp
-    MC2_VK_POST_HZB_DIRECT_CHAIN              # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_hzb_native.cpp
     MC2_VK_POST_SCREENFX                      # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SCREENFX_CLOUD                # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
-    MC2_VK_POST_SCREENFX_DIRECT_CHAIN         # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SCREENFX_SHADOW               # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SCREENFX_SHORELINE            # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
     MC2_VK_POST_SSAO                          # feature -- read via mc2vkgate::envTriState in vulkan_post_ssao_native.cpp
-    MC2_VK_POST_SSAO_DIRECT_CHAIN             # feature -- read via mc2vkgate::directChainGate,mc2vkgate::envTriState in gos_postprocess.cpp,vulkan_post_ssao_native.cpp
     MC2_VK_PRESENT_DIRECT_FBO                 # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
     MC2_VK_TERRAIN_ALL_LODS                   # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp
     MC2_VK_TERRAIN_SKIRTS                     # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp

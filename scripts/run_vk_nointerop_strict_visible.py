@@ -15,12 +15,11 @@ from pathlib import Path
 # named MC2_VK_*_INTEROP=1 (e.g. MC2_VK_SHADOW_INTEROP, MC2_VK_CSM_ARRAY_INTEROP,
 # MC2_VK_CSM_FULLMAP_INTEROP). Inside THIS no-interop proof they do NOT mean "use a
 # GL<->VK exportable-memory handoff". They arm the VK producer/consumer islands, which
-# are reconciled to the no-interop invariant ONLY by MC2_VK_SHADOW_DIRECT_CHAIN=1: the
-# shadow producer runs VK-native (direct-chain) and the terrain consumer points at its
-# VkImageView directly, so no per-frame GL CSM readback fires (see commit 62707331).
-# The hardened checker enforces this: if any MC2_VK_*_INTEROP=1 is set, it REQUIRES
-# MC2_VK_SHADOW_DIRECT_CHAIN=1 in the exe-confirmed gate_env. Renaming these gates is
-# out of scope for the review; the direct-chain gate is the load-bearing reconciliation.
+# are reconciled to the no-interop invariant by the shadow producer running VK-native
+# (direct-chain) and the terrain consumer pointing at its VkImageView directly, so no
+# per-frame GL CSM readback fires. The hardened checker enforces this: if any
+# MC2_VK_*_INTEROP=1 is set, it REQUIRES the MC2_VK_SHARED_GBUFFER umbrella in the
+# exe-confirmed gate_env.
 STRICT_ENV = {
     "MC2_RENDER_BACKEND": "vulkan",
     "MC2_DEBUG_STATE_DUMP": "1",
@@ -38,34 +37,27 @@ STRICT_ENV = {
     "MC2_VK_HUD_COLOR_PROOF": "1",
     "MC2_VK_HUD_SKIP_GL": "1",
     "MC2_VK_IMGUI": "1",
-    "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR": "1",
     "MC2_VK_TERRAIN_ALL_LODS": "1",
     "MC2_VK_TERRAIN_SKIRTS": "1",
     "MC2_VK_TERRAIN_VISUALDISPLACE_FAR": "1",
     "MC2_VK_PROP_DIRECT_CHAIN": "1",
     "MC2_VK_MECH_FEED_NATIVE": "1",
-    "MC2_VK_MECH_DIRECT_CHAIN": "1",
     "MC2_VK_WATER_TIER1": "1",
     "MC2_VK_WATER_DIRECT_CHAIN": "1",
     "MC2_VK_OBJECTID_DIRECT_CHAIN": "1",
     "MC2_SHADOW_ENABLE": "1",
     "MC2_SHADOW_CSM": "1",
     "MC2_VK_SHADOW_INTEROP": "1",
-    "MC2_VK_SHADOW_DIRECT_CHAIN": "1",
     "MC2_VK_CSM_ARRAY_INTEROP": "1",
     "MC2_VK_CSM_FULLMAP_INTEROP": "1",
     "MC2_VK_STATIC_SHADOW_MAP": "0",
     "MC2_VK_POST_FOG_NATIVE": "1",
-    "MC2_VK_POST_FOG_DIRECT_CHAIN": "1",
     "MC2_SSAO": "1",
     "MC2_VK_POST_SSAO": "1",
-    "MC2_VK_POST_SSAO_DIRECT_CHAIN": "1",
     "MC2_VK_POST_SCREENFX": "1",
     "MC2_VK_POST_SCREENFX_SHADOW": "1",
-    "MC2_VK_POST_SCREENFX_DIRECT_CHAIN": "1",
     "MC2_HZB_BUILD": "1",
     "MC2_VK_POST_HZB": "1",
-    "MC2_VK_POST_HZB_DIRECT_CHAIN": "1",
     "MC2_VK_NO_GL_INTEROP_STRICT": "1",
     # H4: arm the GL draw / screen-shadow canaries so the checker can REQUIRE them
     # present with draws=0 / any_samples=0 (proves the GL scene-draw and screen-shadow
@@ -76,25 +68,17 @@ STRICT_ENV = {
     "MC2_VK_SCREENSHADOW_GL_CANARY": "1",
 }
 
-# VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 (item-4 prerequisite): the 10 direct-chain gates
+# VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 (item-4 prerequisite): the direct-chain gates
 # now default ON under the MC2_VK_SHARED_GBUFFER umbrella. With --minimal-promotion the
 # runner DROPS these from the explicit env so the proof shows the umbrella arming them by
-# default (every island still reports direct_chain=1 used_interop=0). MC2_VK_SHADOW_
-# DIRECT_CHAIN is dropped too; the hardened checker's H5 now reconciles the MC2_VK_*_
-# INTEROP producer names via the umbrella (MC2_VK_SHARED_GBUFFER=1) instead of requiring
-# the explicit direct-chain name in gate_env. MC2_VK_OBJECTID_DIRECT_CHAIN is NOT a
+# default (every island still reports direct_chain=1 used_interop=0). The hardened
+# checker's H5 reconciles the MC2_VK_*_INTEROP producer names via the umbrella
+# (MC2_VK_SHARED_GBUFFER=1). MC2_VK_OBJECTID_DIRECT_CHAIN is NOT a
 # default member (view-mode-only canary) and is retained.
 DIRECT_CHAIN_GATES = (
-    "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
     "MC2_VK_PROP_DIRECT_CHAIN",
-    "MC2_VK_MECH_DIRECT_CHAIN",
     "MC2_VK_WATER_DIRECT_CHAIN",
-    "MC2_VK_POST_FOG_DIRECT_CHAIN",
-    "MC2_VK_POST_SSAO_DIRECT_CHAIN",
-    "MC2_VK_POST_SCREENFX_DIRECT_CHAIN",
-    "MC2_VK_POST_HZB_DIRECT_CHAIN",
     "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
-    "MC2_VK_SHADOW_DIRECT_CHAIN",
 )
 
 
@@ -115,7 +99,7 @@ def main() -> int:
     ap.add_argument("--resource-strict", action="store_true",
                     help="Also abort on exportable Win32 resource creation / GL memory import.")
     ap.add_argument("--minimal-promotion", action="store_true",
-                    help="Drop the 10 direct-chain gates from the explicit env so the run "
+                    help="Drop the direct-chain gates from the explicit env so the run "
                          "proves the MC2_VK_SHARED_GBUFFER umbrella arms them by default.")
     ap.add_argument("--env", action="append", default=[],
                     help="Additional KEY=VALUE environment override. May be passed multiple times.")
@@ -190,6 +174,13 @@ def main() -> int:
     with (out_dir / "vk_strict_env.txt").open("w", encoding="utf-8") as f:
         for key in gates:
             f.write(f"{key}={env.get(key, '')}\n")
+    # The capture scrubs undeclared ambient MC2_* vars, so every proof gate must be
+    # declared or the run silently measures the default (GL) configuration.
+    declared = [*gates, "MC2_VISUAL_CAPTURE_EXIT_AFTER"]
+    if "MC2_CURSOR_NO_PARK" in env:
+        declared.append("MC2_CURSOR_NO_PARK")
+    for key in declared:
+        cmd.extend(["--env-declare", f"{key}={env.get(key, '')}"])
     return subprocess.call(cmd, cwd=str(root), env=env)
 
 

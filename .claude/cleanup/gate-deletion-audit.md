@@ -123,4 +123,6 @@ Total: 56 env reads removable now (11 + 13 + 5 + 4 + 11 + 12) out of 1504 in the
 4. Cliff hardware tessellation (`MC2_TERRAIN_CLIFF_DISPLACE`, `_MAXTESS`, `terrain_lod_chunk.tesc/.tese`): KEEP for possible later use → removed from B6. B6 = V1, V2, NFH, CONCRETE_DETAIL_NORMAL, PROP_LOD_SHADOW_CAST.
 5. `RendererFeature` enum: RENUMBER (no tombstone rows); `DRAW_PACKET_STATIC_PROP_V6` tombstone goes in the same renumber pass.
 
-Execution order (orchestrator): B0 → B1 → B2 → B3 → B4 → B5 → B6, one builder agent, one commit per batch, check-contracts + smoke-lite per batch, GL+VK day/night A/B viewed by orchestrator for B2/B5/B6. Still deferred: SHADOW_CASTER_DIAG (until seam#2 lands), TEX_HANDOFF_TRACE and TERRAIN_MASK_DISPATCH_TRACE (now DELETE under ruling 1 — fold into B2), VK_PROP_LIGHT_PROBE (until VK prop-lighting parity closes), STABLE_LIGHT_SKIP_DIAG (decide the STABLE_LIGHT_SKIP family first).
+Execution order (orchestrator): B0 → B1 → B2 → B3 → B4 → B5 → B6, one builder agent, one commit per batch, check-contracts + smoke-lite per batch, GL+VK day/night A/B viewed by orchestrator for B2/B5/B6. Still deferred: TEX_HANDOFF_TRACE and TERRAIN_MASK_DISPATCH_TRACE (now DELETE under ruling 1 — fold into B2), VK_PROP_LIGHT_PROBE (until VK prop-lighting parity closes), STABLE_LIGHT_SKIP_DIAG (decide the STABLE_LIGHT_SKIP family first).
+
+Update 2026-10-09: SHADOW_CASTER_DIAG was deleted in B2 (the seam#2 header was clean), not deferred.
