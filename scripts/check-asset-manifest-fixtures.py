@@ -37,6 +37,7 @@ def run_validator(path: Path) -> int:
     proc = subprocess.run(
         [sys.executable, str(VALIDATOR), str(path), "--quiet"],
         capture_output=True, text=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     return proc.returncode, proc.stdout + proc.stderr
 

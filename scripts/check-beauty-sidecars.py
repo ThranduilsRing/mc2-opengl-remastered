@@ -230,7 +230,7 @@ def cooked_corpus(repo: str, names: set, cook_root: str = COOK_ROOT,
     if tracked_only:
         try:
             out = subprocess.run(["git", "-C", repo, "ls-files", cook_root],
-                                 capture_output=True, text=True, timeout=60)
+                                 capture_output=True, text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if out.returncode == 0:
                 tracked = {line.strip() for line in out.stdout.splitlines()
                            if line.strip()}

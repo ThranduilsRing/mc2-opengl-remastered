@@ -25,7 +25,7 @@ def main() -> int:
               "skipping offline KTX2 bake probe.")
         return 0
 
-    res = subprocess.run([sys.executable, str(PROBE)])
+    res = subprocess.run([sys.executable, str(PROBE)], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if res.returncode != 0:
         print(f"FAIL check-ktx2-probe: probe exited {res.returncode}",
               file=sys.stderr)

@@ -133,7 +133,7 @@ def git_tracked_under(relpath: str, root: "Path | None" = None) -> "list[str]":
     try:
         cp = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", "--", relpath],
-            capture_output=True, timeout=120)
+            capture_output=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError) as exc:
         raise GitQueryError(f"could not run git: {exc}") from exc
     if cp.returncode != 0:

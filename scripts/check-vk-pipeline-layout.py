@@ -313,7 +313,7 @@ def type_size(types, tname, base_scalar):
 def reflect_shader(glslc, cross, src, outdir, incdir):
     base = os.path.basename(src)
     spv = os.path.join(outdir, base + ".spv")
-    r = subprocess.run([glslc, "-I", incdir, src, "-o", spv], capture_output=True, text=True)
+    r = subprocess.run([glslc, "-I", incdir, src, "-o", spv], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode != 0:
         return base, None, "glslc failed: " + r.stderr.strip().splitlines()[0] if r.stderr.strip() else "glslc failed"
     r = subprocess.run([cross, spv, "--reflect"], capture_output=True, text=True)

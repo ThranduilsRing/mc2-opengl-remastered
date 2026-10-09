@@ -238,7 +238,7 @@ def _load_committed(mod_name: str, filename: str, rev: str = "HEAD"):
     """Load a sibling module from its COMMITTED bytes, not the working copy."""
     import tempfile
     blob = subprocess.check_output(
-        ["git", "-C", WORKTREE, "show", f"{rev}:scripts/{filename}"])
+        ["git", "-C", WORKTREE, "show", f"{rev}:scripts/{filename}"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     tmp = os.path.join(tempfile.gettempdir(), f"_committed_{mod_name}.py")
     with open(tmp, "wb") as f:
         f.write(blob)
@@ -251,7 +251,7 @@ def _load_committed(mod_name: str, filename: str, rev: str = "HEAD"):
 
 def _is_dirty(rel: str) -> bool:
     out = subprocess.run(["git", "-C", WORKTREE, "status", "--porcelain", rel],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return bool(out.stdout.strip())
 
 
@@ -287,7 +287,7 @@ def git(*args, worktree: str = WORKTREE, ok_fail: bool = False):
         return subprocess.check_output(["git", "-C", worktree, *args],
                                        text=True, encoding="utf-8",
                                        errors="replace",
-                                       stderr=subprocess.DEVNULL)
+                                       stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except subprocess.CalledProcessError:
         if ok_fail:
             return None
@@ -305,7 +305,7 @@ def is_ancestor(anc: str, desc: str) -> bool | None:
         return None
     r = subprocess.run(["git", "-C", WORKTREE, "merge-base",
                         "--is-ancestor", anc, desc],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return r.returncode == 0
 
 

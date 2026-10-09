@@ -98,4 +98,4 @@ if bash is None:
 # keeps it off the engine build64/ cache, which this gate has no business
 # configuring.
 cmd = [bash, runner.as_posix(), "--doctest-only"]
-sys.exit(subprocess.call(cmd))
+sys.exit(subprocess.call(cmd, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)))
