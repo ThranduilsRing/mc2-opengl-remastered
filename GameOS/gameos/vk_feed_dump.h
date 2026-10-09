@@ -30,10 +30,9 @@
 #include <cstdlib>
 #include <cstring>
 
-// gos_visual_capture.cpp — sim-frozen-for-sweep predicate (VK-MECH-CAPTURE-
-// DETERMINISM-1). Declared at file scope (NOT inside mc2vkfeeddump) so it
-// resolves to the real global symbol, not a namespace-local one.
-extern "C" int mc2CaptureGaitFreezeActive();
+// sim-frozen-for-sweep predicate (VK-MECH-CAPTURE-DETERMINISM-1): declared in
+// gos_visual_capture.h (single shared declaration, extern "C").
+#include "gos_visual_capture.h"
 
 namespace mc2vkfeeddump {
 

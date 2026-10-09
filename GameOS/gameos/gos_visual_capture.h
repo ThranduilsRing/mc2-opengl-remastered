@@ -69,3 +69,10 @@ bool vkCapturePending();
 void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgbaBottomUp);
 
 }}  // namespace gos::visual_capture
+
+// VK-MECH-CAPTURE-DETERMINISM-1: sim-frozen-for-sweep predicate (nonzero only
+// while a visual-capture sweep has the sim frozen). Defined in
+// gos_visual_capture.cpp with C linkage. Declare it ONLY here (file scope,
+// global namespace) so every user sees the same linkage; a block-scope
+// declaration only gets C linkage by accident of an enclosing extern "C" body.
+extern "C" int mc2CaptureGaitFreezeActive();

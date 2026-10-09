@@ -27,6 +27,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
+#include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vulkan_context.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowGeomFeed + Mc2ColorPropFeed contracts
 #include "vulkan_color_prop_island.h"
@@ -1684,7 +1685,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         {
             static bool s_dumped = false;
             const char* dp = std::getenv("MC2_VK_PROP_PACKET_DUMP");
-            extern int mc2CaptureGaitFreezeActive();
             const bool frozen = mc2CaptureGaitFreezeActive() != 0 ||
                                 std::getenv("MC2_VISUAL_BOOKMARK_CAPTURE") == nullptr;
             if (dp && dp[0] && !s_dumped && frozen) {

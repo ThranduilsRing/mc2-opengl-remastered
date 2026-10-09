@@ -29,7 +29,7 @@ extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVAN
 // VK-MECH-CAPTURE-DETERMINISM-1: capture-mode-only gait-freeze predicate (defined
 // gos_visual_capture.cpp). Returns nonzero only while a visual-capture sweep has
 // the sim frozen; 0 whenever no MC2_VISUAL_* capture is active -> byte-safe live.
-extern "C" int mc2CaptureGaitFreezeActive();
+#include "../GameOS/gameos/gos_visual_capture.h"  // mc2CaptureGaitFreezeActive() (extern "C")
 // FREEZE-MOVERS-1: 0 unless the `freeze_movers` verb / MC2_FREEZE_MOVERS_AT
 // armed it. Kept SEPARATE from mc2CaptureGaitFreezeActive() on purpose: these
 // guards must not change what an existing visual-capture run renders, only
