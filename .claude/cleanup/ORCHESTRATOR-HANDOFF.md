@@ -8,6 +8,8 @@ Owner intent: **pay down most/all tech debt before building features**. No time 
 - Concurrency (owner 2026-10-09): max 4 subagents; one Opus at a time. A SECOND builder lane is allowed: worktree `A:/Games/mc2-lane2` (branch `claude/lane2-*`, own `build64-ninja`, own install `mc2-win64-lane2`), file-disjoint from lane 1; orchestrator merges into nifty.
 - Comment de-bloat as we go: every edited region loses `file:NNN` refs and "how" narration; no separate comment-only sweeps.
 - Parked by owner: `MC2_NO_LAUNCHER` pre-main launcher_env gap (fix + re-golden after G1a). G0 `MC2_SHADOW_ENABLE`: unify toward VK direct-CSM default ON, VK capture viewed.
+- Every C++ commit in any lane: build + harnesses+doctest (`py -3 tools/build_contract_harnesses.py --run --unit`, 638/638) + check-contracts + smoke-lite. Doctest is NOT optional (7cc80c5e3 broke the `mc2_tests` link and nobody ran it).
+- Console children from scripts: `scripts/console_child.py` `child_kwargs()` (adds `CREATE_NO_WINDOW` + forwards stdio only when the parent has no console). A bare `CREATE_NO_WINDOW` on an inheriting-stdio child loses its output under an agent shell (30dd53b06).
 - Model tiers: **Haiku** for mechanical/doc/memory edits (keep each <100k context: one file or small batch, exact file:line + replacement, "don't read beyond listed files"); **Sonnet** for code changes and design; **Opus** only for adversarial reviews.
 - **Questions to the owner go inline, numbered, at the end of the reply. Never use popup (AskUserQuestion) questions.**
 - **Look at captures yourself** before accepting any visual/render change (`tools/visual_verify/ab.py`; day AND night: `mc2_01_saved_205644`, `mc2_10_saved_204523`). MAD is NOT a pass signal.
