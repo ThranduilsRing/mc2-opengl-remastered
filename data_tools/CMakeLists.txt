@@ -2,7 +2,12 @@
 # g_tobjAngularCyc, RunGameplayPickSelfTest) are referenced by the renderer/mclib
 # object files but defined only in code/ TUs the tools don't compile. Provide
 # trivial definitions via a shared stub TU rather than linking the whole game.
-set(DATA_TOOLS_STUBS "data_tools_game_stubs.cpp")
+set(DATA_TOOLS_STUBS
+    "tools_game_stubs.cpp"
+    # Real (light, dependency-free) game TUs linked instead of stubbed:
+    "${CMAKE_SOURCE_DIR}/code/action_executor_registry.cpp"   # theActionExecutorRegistry
+    "${CMAKE_SOURCE_DIR}/code/unitprofile.cpp"                # mc2UnitProfileDataEnabled
+)
 
 set(MAKEFST_SOURCES "makefst.cpp" ${DATA_TOOLS_STUBS})
 set(PAK_SOURCES "pak.cpp" "common.hpp" ${DATA_TOOLS_STUBS})
@@ -10,6 +15,7 @@ set(ASECONV_SOURCES "aseconv.cpp" "common.hpp" ${DATA_TOOLS_STUBS})
 set(MAKERSP_SOURCES "makersp.cpp" ${DATA_TOOLS_STUBS})
 
 add_compile_definitions(DISABLE_GAMEOS_MAIN)
+include_directories("${CMAKE_SOURCE_DIR}/code")
 
 # LINK-CONFIG-FIX: these host tools link the full `gameos` library, which over
 # time grew TUs that reference the renderer libs (MLR / gosFX / RenderWorld /
@@ -29,6 +35,8 @@ set(DATA_TOOLS_ENGINE_LIBS
     mlr
     particles
     fx_trace
+    imgui
+    gui_runtime
     stuff
     gameos
     windows
