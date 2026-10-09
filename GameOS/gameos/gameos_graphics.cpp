@@ -10340,16 +10340,6 @@ void gos_object_mvp_note_stale() {
     }
 }
 
-// [MVP_EARLY v1] MVP-PUBLISH-EARLY-HOIST. Records the g_mvpDiagFrame counter
-// value observed at the gated early world-to-clip publish in Mission::update
-// (code/mission.cpp, right after eye->update()). ComputeDispatch
-// (gos_terrain_indirect.cpp) re-reads g_mvpDiagFrame at its own MVP read and
-// compares against this to prove same-frame currency: with the hoist ON the
-// two are equal (snapshot is current-frame); with it OFF the dispatch read
-// trails by one (the stale previous-frame camera). -1 = no early publish yet
-// this process (gate OFF or pre-mission). Set ONLY by the early publish path.
-long g_mvpEarlyPublishSeq = -1;
-
 // VIEW-EPOCH-DEDUPE-1: semantic VIEW-CONTENT epoch. g_mvpDiagFrame is a raw publish
 // counter that bumps on EVERY gos_SetWorldToClipGL (~2x/frame: the early-publish at
 // mission.cpp + the gamecam publish, usually the SAME camera). The object/mech MVP

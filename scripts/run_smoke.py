@@ -1792,7 +1792,6 @@ def main():
                             # with u_waterElevation vs coarse terrain z-range vs
                             # fine-minus-coarse band drift at shore cells. Must be
                             # allowlisted or Popen drops it and the probe is silent.
-                            "MC2_TERRAIN_SHORELINE_PROBE",
                             # TERRAIN-MATERIAL-LIB-1 — data-defined terrain material
                             # tuning (default OFF). Must be allowlisted or Popen
                             # drops it and the gate-ON smoke does nothing.
@@ -2078,7 +2077,6 @@ def main():
                             # Phase 1 — terrain lighting GPU compute
                             "MC2_TERRAIN_LIGHTING_GPU",
                             "MC2_TERRAIN_LIGHTING_PARITY",
-                            "MC2_TERRAIN_LIGHTING_GPU_TRACE",
                             # Track A1 — object admission predicate + trace
                             "MC2_OBJECT_ADMISSION_PREDICATE",
                             "MC2_PROJECTZ_TRACE",

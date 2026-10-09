@@ -1241,14 +1241,14 @@ void GpuMechBatcher::flushShadow() {
     gpuSyncBarrier(GpuProducer::CpuCoherentWrite, GpuConsumer::InstancedDraw,
                    "mech_instance_bone_shadow");
 
-    int typesDrawn = 0, instDrawn = 0, skipped = 0;
+    int typesDrawn = 0, instDrawn = 0;
     for (const ShadowDrawEntry& dc : s_lastDrawCalls) {
         if (baseLoc >= 0)
             glUniform1i(baseLoc, (int)dc.instanceBase);
 
         // Skip (not break) a truly-stale index so one bad entry post-rebuild
         // does not drop the remaining (valid) draws -> missing parts.
-        if (dc.globalPacketIdx >= s_packets.size()) { ++skipped; continue; }
+        if (dc.globalPacketIdx >= s_packets.size()) continue;
         const GpuMechPacket& pkt = s_packets[dc.globalPacketIdx];
         glDrawElementsInstancedBaseVertex(
             GL_TRIANGLES,
@@ -1264,14 +1264,6 @@ void GpuMechBatcher::flushShadow() {
 
     s_shadowTypesDrawn = typesDrawn;
     s_shadowInstDrawn  = instDrawn;
-
-    static const bool s_casterDiag = (getenv("MC2_SHADOW_CASTER_DIAG") != nullptr);
-    if (s_casterDiag) {
-        std::fprintf(stderr,
-            "[SHADOW_CASTER] drawList=%zu submitted=%d skipped=%d inst=%d packets=%zu slot=%u\n",
-            s_lastDrawCalls.size(), typesDrawn, skipped, instDrawn,
-            s_packets.size(), slot);
-    }
 
     // Restore exactly what we changed (mirrors flush()'s restore bracket)
     // so the cull dispatch + indirect flush() that follow are not poisoned.

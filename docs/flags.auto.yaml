@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 363
 registry_env_flag_count: 362
-sweep_flag_count: 1029
-flag_count: 1089
+sweep_flag_count: 1017
+flag_count: 1077
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -1041,14 +1041,6 @@ flags:
     referenced_at:
       - code/logisticsdata.cpp
       - code/salvagemecharea.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_CLOUD_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -2688,14 +2680,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_GPU_SCENE_SCALE_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_static_prop_registry.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_GPU_SYNC_TRACE
     default: unknown
     declared_in: null
@@ -2764,14 +2748,6 @@ flags:
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_HDRI_SKY_FRAME_FIX
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_HDRI_SKY_STATE_PROBE
     default: unknown
     declared_in: null
     referenced_at:
@@ -3683,14 +3659,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_MATERIALLIB_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_MATERIAL_GPU
     default: on
     kind: Feature
@@ -4270,14 +4238,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_MVP_EARLY_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_indirect.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_MVP_PUBLISH_EARLY
     default: unknown
     declared_in: null
@@ -4359,14 +4319,6 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameosmain.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_OBJECT_ID_BRIDGE_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - RenderWorld/RenderWorld.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -5580,14 +5532,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_SHADOW_CASTER_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_mech_batcher.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_SHADOW_CASTER_LIGHTBOX_CULL
     default: unknown
     declared_in: null
@@ -5746,14 +5690,6 @@ flags:
       - GameOS/gameos/gos_postprocess.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_SHADOW_FOCUS_DIAG
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_postprocess.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_SHADOW_FRUSTUM_DIAG
     default: off
@@ -7419,14 +7355,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_LIGHTING_GPU_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_LIGHTING_PARITY
     default: unknown
     declared_in: null
@@ -7608,14 +7536,6 @@ flags:
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_MASK_DISPATCH_SOLID
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_mask_dispatch.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_MASK_DISPATCH_TRACE
     default: unknown
     declared_in: null
     referenced_at:
@@ -7899,14 +7819,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_SHORELINE_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_SHORELINE_STRENGTH
     default: unknown
     declared_in: null
@@ -8087,14 +7999,6 @@ flags:
       - mclib/txmmgr.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_TEX_HANDOFF_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_static_prop_batcher.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_TEX_LIFECYCLE_TRACE
     default: unknown

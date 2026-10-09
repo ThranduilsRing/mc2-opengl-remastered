@@ -3428,26 +3428,9 @@ void gosPostProcess::runCloudShadow()
     ZoneScopedN("Render.CloudShadow");
     TracyGpuZone("Render.CloudShadow");
 
-    static const bool s_cloudDiag = (getenv("MC2_CLOUD_DIAG") != nullptr);
-    static int s_cloudDiagFrame = 0;
-    const bool cloudDiagNow = s_cloudDiag && ((s_cloudDiagFrame++ % 120) == 0);
-    if (cloudDiagNow)
-        fprintf(stderr, "[CLOUD_DIAG] runCloudShadow called enable=%d hasTerrain=%d progValid=%d\n",
-                (int)enableCloudShadow_, (int)sceneHasTerrain_,
-                (int)(cloudProg_ && cloudProg_->is_valid()));
-
-    if (!enableCloudShadow_) {                     // env/ImGui gate -> skip entirely
-        if (cloudDiagNow) fprintf(stderr, "[CLOUD_DIAG] bail: !enableCloudShadow_\n");
-        return;
-    }
-    if (!sceneHasTerrain_) {
-        if (cloudDiagNow) fprintf(stderr, "[CLOUD_DIAG] bail: !sceneHasTerrain_\n");
-        return;
-    }
-    if (!cloudProg_ || !cloudProg_->is_valid()) {
-        if (cloudDiagNow) fprintf(stderr, "[CLOUD_DIAG] bail: prog invalid\n");
-        return;
-    }
+    if (!enableCloudShadow_) return;               // env/ImGui gate -> skip entirely
+    if (!sceneHasTerrain_) return;
+    if (!cloudProg_ || !cloudProg_->is_valid()) return;
 
     // APPLY-STATE-REDUNDANT-BODY-REMOVE-2: skip the 4 setup calls when the executor
     // already applied them (MC2_FRAMEGRAPH_EXECUTOR ON). Reset one-shot before draw.
@@ -3495,10 +3478,6 @@ void gosPostProcess::runCloudShadow()
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
     glActiveTexture(GL_TEXTURE0);
-
-    if (cloudDiagNow)
-        fprintf(stderr, "[CLOUD_DIAG] cloud pass DREW (fbo=%u blend on)\n",
-                (unsigned)sceneFBO_);
 }
 
 void gosPostProcess::runShoreline()
@@ -5311,7 +5290,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     //     byte-identical baseline). ---
     // MC2_HDRI_SKY_UV_DEBUG : worldDir-gradient diagnostic instead of sample.
     // MC2_HDRI_SKY_AZ_OFFSET: degrees trim added to the sky yaw.
-    // MC2_HDRI_SKY_STATE_PROBE: GL-state save/restore self-check.
     // The sun-sync rotation is only applied when the AZ offset is set OR the
     // baked-sun scan succeeded AND a non-zero offset/sync makes skyYaw != 0;
     // when skyYaw resolves to exactly 0.0 the frag path is byte-identical.
@@ -5331,7 +5309,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
         return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
     }();
-    static const bool  s_stateProbe = (getenv("MC2_HDRI_SKY_STATE_PROBE") != nullptr);
 
     // Compute skyYaw. Auto-sync is always-on when hdriBakedSunValid_:
     // aligns the HDRI baked-sun azimuth to the mission terrain sun.
@@ -5382,15 +5359,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
                 hdriBakedSunAz_, skyYaw);
             std::fflush(stderr);
         }
-    }
-
-    // --- Phase 3: snapshot GL state pre-draw for the probe. ---
-    GLint probeFbo = 0, probeDrawBuf0 = 0;
-    GLboolean probeMask0[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-    if (s_stateProbe) {
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &probeFbo);
-        glGetIntegerv(GL_DRAW_BUFFER0, &probeDrawBuf0);
-        glGetBooleani_v(GL_COLOR_WRITEMASK, 0, probeMask0);
     }
 
     // Bind shader + uniforms + texture.
@@ -5513,49 +5481,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         glStencilMask((GLuint)prevStencilWriteMask);
     }
 
-    // --- Phase 3: GL-state probe (read-only; never calls glDrawBuffers). ---
-    // After the restore block above, every piece of state we touched must match
-    // what we saved. Logs any mismatch; does not mutate state.
-    if (s_stateProbe) {
-        GLboolean curDepthMask = GL_TRUE;
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &curDepthMask);
-        const GLboolean curDepthTest = glIsEnabled(GL_DEPTH_TEST);
-        const GLboolean curBlend     = glIsEnabled(GL_BLEND);
-        const GLboolean curCull      = glIsEnabled(GL_CULL_FACE);
-        GLint curFbo = 0, curDrawBuf0 = 0;
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &curFbo);
-        glGetIntegerv(GL_DRAW_BUFFER0, &curDrawBuf0);
-        GLboolean curMask0[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-        glGetBooleani_v(GL_COLOR_WRITEMASK, 0, curMask0);
-
-        int mismatch = 0;
-        if (curDepthMask != prevDepthMask) mismatch |= 1;
-        if (curDepthTest != prevDepthTest) mismatch |= 2;
-        if (curBlend     != prevBlend)     mismatch |= 4;
-        if (curCull      != prevCull)      mismatch |= 8;
-        if (curFbo       != probeFbo)      mismatch |= 16;
-        if (curDrawBuf0  != probeDrawBuf0) mismatch |= 32;
-        for (int k = 0; k < 4; ++k)
-            if (curMask0[k] != probeMask0[k]) mismatch |= 64;
-
-        if (mismatch != 0) {
-            MC2_DIAGFE(stderr,
-                "[HDRI_SKY v1] state_probe MISMATCH bits=0x%02x "
-                "depthMask(%d->%d) depthTest(%d->%d) blend(%d->%d) cull(%d->%d) "
-                "fbo(%d->%d) drawBuf0(0x%x->0x%x) "
-                "mask0(%d%d%d%d->%d%d%d%d)\n",
-                mismatch,
-                prevDepthMask, curDepthMask, prevDepthTest, curDepthTest,
-                prevBlend, curBlend, prevCull, curCull,
-                probeFbo, curFbo, probeDrawBuf0, curDrawBuf0,
-                probeMask0[0], probeMask0[1], probeMask0[2], probeMask0[3],
-                curMask0[0], curMask0[1], curMask0[2], curMask0[3]);
-        } else {
-            MC2_DIAGFE(stderr, "[HDRI_SKY v1] state_probe ok\n");
-        }
-        std::fflush(stderr);
-    }
-
     // Note: do NOT call glDrawBuffers anywhere in this function.
     // setSceneDrawBuffers owns the FBO draw-buffer array.
 }
@@ -5624,7 +5549,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
         const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
         return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
     }();
-    static const bool  s_stateProbe = (getenv("MC2_HDRI_SKY_STATE_PROBE") != nullptr);
 
     // skyYaw. Default (no offset env) => 0.0 => no rotation. Frame-consistent
     // with the MC2-frame equirect: azimuth = atan2(north, east) = atan2(ly, lx)
@@ -5657,14 +5581,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
                 hdriBakedSunAz_, skyYaw);
             std::fflush(stderr);
         }
-    }
-
-    GLint probeFbo = 0, probeDrawBuf0 = 0;
-    GLboolean probeMask0[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-    if (s_stateProbe) {
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &probeFbo);
-        glGetIntegerv(GL_DRAW_BUFFER0, &probeDrawBuf0);
-        glGetBooleani_v(GL_COLOR_WRITEMASK, 0, probeMask0);
     }
 
     // Bind shader + uniforms + texture (direct-basis path).
@@ -5706,45 +5622,12 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
     if (prevDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (prevBlend)     glEnable(GL_BLEND);      else glDisable(GL_BLEND);
     if (prevCull)      glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
-
-    if (s_stateProbe) {
-        GLboolean curDepthMask = GL_TRUE;
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &curDepthMask);
-        const GLboolean curDepthTest = glIsEnabled(GL_DEPTH_TEST);
-        const GLboolean curBlend     = glIsEnabled(GL_BLEND);
-        const GLboolean curCull      = glIsEnabled(GL_CULL_FACE);
-        GLint curFbo = 0, curDrawBuf0 = 0;
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &curFbo);
-        glGetIntegerv(GL_DRAW_BUFFER0, &curDrawBuf0);
-        GLboolean curMask0[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-        glGetBooleani_v(GL_COLOR_WRITEMASK, 0, curMask0);
-
-        int mismatch = 0;
-        if (curDepthMask != prevDepthMask) mismatch |= 1;
-        if (curDepthTest != prevDepthTest) mismatch |= 2;
-        if (curBlend     != prevBlend)     mismatch |= 4;
-        if (curCull      != prevCull)      mismatch |= 8;
-        if (curFbo       != probeFbo)      mismatch |= 16;
-        if (curDrawBuf0  != probeDrawBuf0) mismatch |= 32;
-        for (int k = 0; k < 4; ++k)
-            if (curMask0[k] != probeMask0[k]) mismatch |= 64;
-
-        if (mismatch != 0) {
-            std::fprintf(stderr,
-                "[HDRI_SKY framefix] state_probe MISMATCH bits=0x%02x\n",
-                mismatch);
-        } else {
-            std::fprintf(stderr, "[HDRI_SKY framefix] state_probe ok\n");
-        }
-        std::fflush(stderr);
-    }
 }
 
 // HDRI-SKY frame fix (MC2_HDRI_SKY_FRAME_FIX ON path, one-proven-matrix).
 // Reconstructs the sky ray by UNPROJECTING NDC through the inverse of
 // worldToClipGL — the EXACT matrix the GPU rasterizes terrain with
-// (= kAxisSwapMC2toGL * worldToCameraMatrix * cameraToClipGL, see
-// mclib/camera.cpp:2839). Because that matrix's leftmost factor is the MC2->GL
+// (= kAxisSwapMC2toGL * worldToCameraMatrix * cameraToClipGL). Because that matrix's leftmost factor is the MC2->GL
 // axis swap, its INVERSE maps clip-space straight back to the raw MC2 world
 // frame (x=east, y=north, z=elevation, Z-up). No camera basis, no FOV, no
 // handedness toggle — the proven engine matrix carries the whole frame.
@@ -5810,7 +5693,6 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
         const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
         return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
     }();
-    static const bool  s_stateProbe = (getenv("MC2_HDRI_SKY_STATE_PROBE") != nullptr);
 
     // skyYaw: auto-sync HDRI sun to terrain light direction when the scan found
     // a baked sun (hdriBakedSunValid_). The raw-MC2-frame equirect uses azimuth
@@ -5844,14 +5726,6 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
                 skyYaw * 57.29577951f);
             std::fflush(stderr);
         }
-    }
-
-    GLint probeFbo = 0, probeDrawBuf0 = 0;
-    GLboolean probeMask0[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-    if (s_stateProbe) {
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &probeFbo);
-        glGetIntegerv(GL_DRAW_BUFFER0, &probeDrawBuf0);
-        glGetBooleani_v(GL_COLOR_WRITEMASK, 0, probeMask0);
     }
 
     // Bind shader + uniforms + texture (inverse-worldToClipGL path).
@@ -5922,38 +5796,6 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
     if (prevDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (prevBlend)     glEnable(GL_BLEND);      else glDisable(GL_BLEND);
     if (prevCull)      glEnable(GL_CULL_FACE);  else glDisable(GL_CULL_FACE);
-
-    if (s_stateProbe) {
-        GLboolean curDepthMask = GL_TRUE;
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &curDepthMask);
-        const GLboolean curDepthTest = glIsEnabled(GL_DEPTH_TEST);
-        const GLboolean curBlend     = glIsEnabled(GL_BLEND);
-        const GLboolean curCull      = glIsEnabled(GL_CULL_FACE);
-        GLint curFbo = 0, curDrawBuf0 = 0;
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &curFbo);
-        glGetIntegerv(GL_DRAW_BUFFER0, &curDrawBuf0);
-        GLboolean curMask0[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-        glGetBooleani_v(GL_COLOR_WRITEMASK, 0, curMask0);
-
-        int mismatch = 0;
-        if (curDepthMask != prevDepthMask) mismatch |= 1;
-        if (curDepthTest != prevDepthTest) mismatch |= 2;
-        if (curBlend     != prevBlend)     mismatch |= 4;
-        if (curCull      != prevCull)      mismatch |= 8;
-        if (curFbo       != probeFbo)      mismatch |= 16;
-        if (curDrawBuf0  != probeDrawBuf0) mismatch |= 32;
-        for (int k = 0; k < 4; ++k)
-            if (curMask0[k] != probeMask0[k]) mismatch |= 64;
-
-        if (mismatch != 0) {
-            std::fprintf(stderr,
-                "[HDRI_SKY invVP] state_probe MISMATCH bits=0x%02x\n",
-                mismatch);
-        } else {
-            std::fprintf(stderr, "[HDRI_SKY invVP] state_probe ok\n");
-        }
-        std::fflush(stderr);
-    }
 }
 
 void gosPostProcess::initShadows()
@@ -6919,11 +6761,8 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
         float fdx = focusWorld[0]-nearC[0], fdy = focusWorld[1]-nearC[1];
         focusDistUsed = sqrtf(fdx*fdx + fdy*fdy);
 
-        // [CSM focus] diag: gate on existing CSM frustum-diag env, else a
-        // dedicated opt-in env. Cheap: only formats/prints when env is set.
-        static const bool s_focusDiag =
-            (getenv("MC2_SHADOW_FRUSTUM_DIAG") != nullptr) ||
-            (getenv("MC2_SHADOW_FOCUS_DIAG")   != nullptr);
+        // [CSM focus] diag: gated on the CSM frustum-diag env.
+        static const bool s_focusDiag = (getenv("MC2_SHADOW_FRUSTUM_DIAG") != nullptr);
         if (s_focusDiag) {
             printf("[CSM focus] src=%s fx=%.1f fy=%.1f fz=%.1f t=%.3f d=%.1f cap=%.1f\n",
                    focusSrc, focusWorld[0], focusWorld[1], focusWorld[2], t, d, cap);

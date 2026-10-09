@@ -49,13 +49,6 @@
 extern DWORD BaseVertexColor;  // defined in code/mechcmd2.cpp / code/logmain.cpp
 extern bool  useFog;           // defined in mclib/terrain.cpp
 
-// ---------------------------------------------------------------------------
-// Env-gated trace (boot-cached per Debug Instrumentation Rule)
-// ---------------------------------------------------------------------------
-static const bool s_trace = (getenv("MC2_TERRAIN_LIGHTING_GPU_TRACE") != nullptr);
-#define TL_TRACE(fmt, ...) \
-    do { if (s_trace) { MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
-
 // Step 7 (VPL retirement): MC2_HAZE_PARITY probe — env-gated default-off.
 // Compares the inline-worldPos hazeFactor formula (CPU-recomputed from
 // v.vx/v.vy/v.elevation + swizzled camera pos + Camera:: constants) against the
@@ -1521,9 +1514,6 @@ void PackAndDispatch() {
 
     glUseProgram(0);
 
-    TL_TRACE("event=dispatch frame=%llu totalVerts=%u dispatchRange=[%u,%u] groups=%u lights=%u",
-             (unsigned long long)s_frameIndex, s_numVertices,
-             dispatchStart, dispatchStart + dispatchCount, numGroups, numLights);
     // First-frame always-on diagnostic — prints once per process to confirm
     // ambient/light values are non-zero and the range-dispatch looks sane.
     if (s_frameIndex <= 1) {
@@ -1623,7 +1613,6 @@ void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads) {
     if (readSlot == RING_FRAMES) {
         // T3: neither slot ready — retain prior DRAM shadow, vertex pool not updated.
         ++s_lightingFallbackConservative;
-        TL_TRACE("event=copy_fallback_conservative frame=%llu", (unsigned long long)s_frameIndex);
     } else {
         // T1 or T2: memcpy BAR staging slot → DRAM shadow (sequential WC read, fast),
         // then scatter DRAM shadow values into vertex pool (DRAM→DRAM, cached, fast).
@@ -1658,14 +1647,12 @@ void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads) {
 
         if (isN2) {
             ++s_lightingFallbackN2;
-            TL_TRACE("event=copy_fallback_n2 frame=%llu slot=%u", (unsigned long long)s_frameIndex, readSlot);
         } else {
             ++s_lightingFallbackN1;
-            TL_TRACE("event=copy_n1 frame=%llu slot=%u", (unsigned long long)s_frameIndex, readSlot);
         }
     }
 
-    // 600-frame fallback summary (mirrors gos_terrain_indirect.cpp:291 cadence).
+    // 600-frame fallback summary.
     if (s_fallbackSummaryFrames % 600 == 0) {
         MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=fallback_summary frames=%llu "
                "n1=%llu n2=%llu conservative=%llu\n",

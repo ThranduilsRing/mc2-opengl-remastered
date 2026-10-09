@@ -1151,20 +1151,17 @@ long Mission::update (void)
 
 		{ ZoneScopedN("GameLogic.Mission.Camera"); MisScope _ms(MS_CAMERA); eye->update(); }
 
-		// [MVP_EARLY v1] MVP-PUBLISH-EARLY-HOIST (gate MC2_MVP_PUBLISH_EARLY,
-		// default ON, =0 reverts). Publish THIS frame's world-to-clip matrix here, right
-		// after eye->update(), so the terrain compute snapshot taken later in
-		// this same UPDATE phase (land->geometry() -> ComputeDispatch reads
-		// gos_GetTerrainMVPMat4) sees the current-frame camera instead of the
-		// previous frame's. The RENDER-phase publish at gamecam.cpp:282 is KEPT
-		// unconditionally; it rewrites the identical matrix this frame so gate
-		// OFF is byte-identical to today and A/B stays clean.
+		// MVP-PUBLISH-EARLY-HOIST (gate MC2_MVP_PUBLISH_EARLY, default ON, =0
+		// reverts). Publish THIS frame's world-to-clip matrix right after
+		// eye->update() so the terrain compute snapshot taken later in this
+		// update phase sees the current-frame camera, not the previous frame's.
+		// The render-phase publish is kept and rewrites the identical matrix,
+		// so gate OFF is byte-identical and A/B stays clean.
 		//
-		// GUARD: mirror the gamecam.cpp:261 render+publish predicate exactly
-		// (eye->active && turn > 1). eye is always the live GameCamera inside
-		// Mission::update (SimpleCamera intro/deploy pans and the editor run
-		// their OWN update/render loops, NOT this one, and self-publish), so
-		// this never clobbers their publish.
+		// Guard mirrors the render-phase publish predicate (eye->active &&
+		// turn > 1). eye is always the live GameCamera here; SimpleCamera
+		// pans and the editor run their own loops and self-publish, so this
+		// never clobbers their publish.
 		{
 			static const bool s_mvpPublishEarly = []() {
 				const char* v = getenv("MC2_MVP_PUBLISH_EARLY");
@@ -1173,11 +1170,6 @@ long Mission::update (void)
 			if (s_mvpPublishEarly && eye && eye->active && turn > 1)
 			{
 				gos_SetWorldToClipGL(eye->worldToClipGL());
-				// Record the publish-seq for ComputeDispatch's [MVP_EARLY v1]
-				// proof line (extern counters in gameos_graphics.cpp).
-				extern long g_mvpDiagFrame;
-				extern long g_mvpEarlyPublishSeq;
-				g_mvpEarlyPublishSeq = g_mvpDiagFrame;
 			}
 		}
 

@@ -1732,37 +1732,12 @@ void flush() {
     s_diag_total_ns += static_cast<uint64_t>(
         std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::steady_clock::now() - _flush_t0).count());
-    // GPU-Scene scale probe (MC2_GPU_SCENE_SCALE_PROBE=1): the total ALIVE
-    // registered static set (what the all-props GPU-Scene model would upload every
-    // frame) vs the per-frame VISIBLE subset (what uploads today). Settles the key
-    // scale unknown for the GPU-Scene cost model. Per-element sizes:
-    // GpuStaticPropInstance=112B (binding 0), GpuActorRecord=64B (binding 8),
-    // light slot ~1808B per ACTOR (binding 20). aliveLeaves = instances; aliveActors
-    // = light slots.
-    static const bool s_gpuSceneScaleProbe = (getenv("MC2_GPU_SCENE_SCALE_PROBE") != nullptr);
-    if (s_gpuSceneScaleProbe && (s_diag_flush_calls % 300) == 0) {
-        uint32_t aliveActors = 0u, aliveLeaves = 0u, maxRangeLeaves = 0u;
-        for (const auto& r : s_recipeRanges) {
-            if (r.count > 0u) {
-                ++aliveActors; aliveLeaves += r.count;
-                if (r.count > maxRangeLeaves) maxRangeLeaves = r.count;
-            }
-        }
-        fprintf(stderr,
-            "[GPU_SCENE_SCALE v1] frame=%llu recipesVec=%zu aliveActors=%u aliveLeaves=%u "
-            "visibleRanges=%zu | uploadAll: instMB=%.2f recMB=%.2f lightMB=%.2f maxLeaves/actor=%u\n",
-            (unsigned long long)s_diag_flush_calls, s_recipes.size(), aliveActors, aliveLeaves,
-            s_liveRangeIndices.size(),
-            aliveLeaves * 112.0 / 1048576.0, aliveLeaves * 64.0 / 1048576.0,
-            aliveActors * 1808.0 / 1048576.0, maxRangeLeaves);
-        fflush(stderr);
-    }
 
     // [G1-STATIC-EAGER-LIGHT v1] Zero-light probe: count alive registered static props
     // whose permanent light slot (lightData_[recipeIndex]) has numLights_=0 (never baked).
     // With MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE set, zeroLightSlots should reach 0 after
     // mission load. Without it, zeroLightSlots counts all props not yet on screen.
-    // Emit every ~300 flushes (matching GPU_SCENE_SCALE cadence). Gate default-OFF.
+    // Emit every ~300 flushes. Gate default-OFF.
     static const bool s_staticLightZeroProbe = (getenv("MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE") != nullptr);
     static const bool s_staticEagerGate      = (getenv("MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE") != nullptr);
     if (s_staticLightZeroProbe && (s_diag_flush_calls % 300) == 0) {
