@@ -407,8 +407,8 @@ not have worked.
     The only shader that ever wrote a continuous ~0.25 there was the **legacy** terrain
     renderer, superseded by the LOD-chunk cutover on 2026-06-09. It **still runs on every
     default frame** (`gos_postprocess.cpp:769` `shorelineEnabled_(true)`,
-    `:4626-4631` unconditional; suppression is opt-in via `MC2_SHORELINE_LEGACY_SUPPRESS`,
-    default false).
+    `:4626-4631` unconditional; suppression is default ON via `MC2_SHORELINE_LEGACY_SUPPRESS`,
+    `=0` restores the pass).
     **Live artifact, not just a dead pass:** the pixels that *do* fall in (0.15, 0.35)
     are **static props (0.25)** and **alpha-test lattice props (0.1875)** — so the pass is
     currently painting an animated up-to-1.4x foam rim on **building and fence

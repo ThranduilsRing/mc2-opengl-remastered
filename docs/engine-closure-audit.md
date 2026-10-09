@@ -142,8 +142,8 @@ where soak proof was logged.
 | ObjectIdBuffer | `MC2_OBJECT_ID_BUFFER` | off | shipped opt-in (`:146-148`) | yes (required for pick consumers) | M1.5 substrate |
 | TerrainTessellation | (none) | always-on (`:152-156`) | shipped default-on, no env | no | always-on |
 | ReverseZ | (none) | always-on (`:160-164`) | shipped default-on, no env | no | always-on (trace = `MC2_REVERSE_Z_TRACE`, default OFF) |
-| ShadowMaps | `MC2_SHADOW_ENABLE` | off (`:170-172`) | shipped opt-in | yes (master) | last referenced in shadow inspector `EditorInspector.cpp:804-830` |
-| ImGui | `MC2_IMGUI` | off (`:178-180`) | shipped opt-in (auto-on in editor) | n/a | editor uses |
+| ShadowMaps | `MC2_SHADOW_ENABLE` | on (`:170-172`) | shipped default-on (`=0` kills) | yes (master) | last referenced in shadow inspector `EditorInspector.cpp:804-830` |
+| ImGui | `MC2_IMGUI` | on (`GuiRuntime/GuiRuntime.cpp:88`) | default ON | n/a | editor uses |
 | ImGuiInspector | `MC2_IMGUI_INSPECTOR` | off (`:185-188`) | shipped opt-in | n/a | editor / debug |
 | DebugRenderer | `MC2_DEBUG_RENDERER` | off (`:193-196`) | shipped opt-in | n/a | terrain-pick highlight |
 | MaterialGpu | `MC2_MATERIAL_GPU` | **on** (`:202-204`) | shipped default-on (v5 flip 2026-05-26) | yes (`=0`) | MaterialGpu Arc Checkpoint HEAD `94b3ffa5` (memory pointer) |
@@ -198,7 +198,7 @@ descriptor docs.
 | MaterialGpu | `MC2_MATERIAL_GPU=0` | Skips upload/bind/compare; sampleOn becomes ineffective (`RendererFeatureRegistry.h:204`). | MaterialGpu Arc Checkpoint memory entry |
 | MaterialGpu shader sample | `MC2_MATERIAL_GPU_SAMPLE=0` | Frag falls back to `texArrayLayer` (`RendererFeatureRegistry.h:209-212`). | v7 flip |
 | StaticProp registry | `MC2_STATIC_PROP_REGISTRY=0` | Bypasses registry (editor edit-time use, EditorMFC.cpp; `RendererFeatureRegistry.h:217-220`). | editor consumer present |
-| Shadow master | `MC2_SHADOW_ENABLE=0` (default) | No shadow pre-pass or PCF sampling (`RendererFeatureRegistry.h:170`). | always-off by default; inspector reports state |
+| Shadow master | `MC2_SHADOW_ENABLE=0` (kill-switch; default ON) | No shadow pre-pass or PCF sampling (`RendererFeatureRegistry.h:170`). | on by default; inspector reports state |
 | GPU particles master | `MC2_GPU_PARTICLES` unset/`0` (default OFF) | Legacy CPU FX only (`EditorInspector.cpp:842-843`). | inspector live read-out |
 
 The four lanes other than StaticProp lack a *lane-scoped* kill-switch in the
