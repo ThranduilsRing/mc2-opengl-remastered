@@ -3509,13 +3509,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp). Default-ON (perf); =0 restores the legacy always-walk behavior."
     },
     {
-        "MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT",
-        "MC2_VULKAN_SWAPCHAIN_PRESENT",
-        EnvVarKind::Feature,
-        false,
-        "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=1 enables); validation-clean core+sync per L5 proof. See MEMORY handoff HANDOFF_2026_07_01_vulkan_lib_track."
-    },
-    {
         "MC2_FEATURE_HUD_READABILITY_V1",
         "MC2_HUD_READABILITY_V1",
         EnvVarKind::Feature,

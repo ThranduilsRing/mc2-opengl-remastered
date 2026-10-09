@@ -99,24 +99,13 @@ set(SOURCES ${SOURCES}
     mc2_hitch_trace.cpp
     )
 
-# VULKAN-BACKEND-SKELETON-1: only compile the skeleton TU when MC2_VULKAN=ON.
-# When OFF the TU is not added -> no Vulkan headers/loader pulled in.
+# Vulkan sources compile only when MC2_VULKAN=ON; when OFF no Vulkan headers/loader are pulled in.
 if(MC2_VULKAN)
-    list(APPEND SOURCES vulkan_backend_skeleton.cpp)
-    # VK-REGION-SHADOW-1: depth-only instanced shadow-caster pipeline builder.
-    # TU is #ifdef MC2_VULKAN (same gate as the skeleton, which calls its
-    # mc2_vulkan_build/destroy_shadow_depth_pipeline symbols from the
-    # shadowdepth fixture). Registration omitted in commit 95095a94 -> link
-    # break; restored here (T-minus-1 build unblock).
-    list(APPEND SOURCES vulkan_shadow_island.cpp)
-    # VK-BOOTSTRAP-INTEGRATE-1: swapchain probe TU + vendored vk-bootstrap impl.
-    list(APPEND SOURCES vulkan_swapchain_probe.cpp)
-    # VULKAN-SWAPCHAIN-PRESENT-1: Layer-5 swapchain PRESENT path (own window +
-    # swapchain, present 16 frames, resize, fail-soft). Same MC2_VULKAN gate.
+    list(APPEND SOURCES vulkan_spv_loader.cpp)
+    # CompositePresent test scaffold driver (own window + swapchain). Same MC2_VULKAN gate.
     list(APPEND SOURCES vulkan_swapchain_present.cpp)
-    # L6.6-COMPOSITE-PRESENT-SCAFFOLD: the PERSISTENT present object extracted
-    # from the L5 probe (reusable acquire/present/resize + per-image semaphores).
-    # Same MC2_VULKAN gate (NOT _ISLAND -- the swapchain-present probe uses it).
+    # The PERSISTENT present object (reusable acquire/present/resize + per-image semaphores).
+    # Same MC2_VULKAN gate (NOT _ISLAND).
     list(APPEND SOURCES vulkan_present_object.cpp)
     # VK-P13-SELECTOR-1 / T2: the standalone SHARED engine Vulkan context
     # (instance/device/queue/VMA owned HERE, not in the present object). Same
@@ -330,13 +319,6 @@ if(MC2_VULKAN)
     # the same fullscreen-triangle construction (separate files only because
     # the bake loop expects one vert per basename).
     # VK-REGION-HZB-1: bake hzb_reduce.{vert,frag} (one program, N level draws).
-    # VK-COMPARE-SAMPLER-FIXTURE-1: bake compare_shadow.{vert,frag} (depth-COMPARE
-    # sampler oracle) + csm_array_shadow.{vert,frag} (2D_ARRAY compare oracle).
-    # VK-REGION-SHADOW-1: bake shadow_depth.{vert,frag} (depth-only INSTANCED
-    # shadow-caster WRITE pipeline -- vert reads the instance ring SSBO).
-    # WATER-MVP-ORACLE-1: bake water_mvp.{vert,frag} (clip-space oracle proving the
-    # water MVP UBO pack + reverse-Z depth fudge reproduces the GL water VS
-    # bit-tight; frag does M*worldPos + fudge, column_major std140 UBO).
     # VK-P9a WATER-INTEROP: bake water_geom.{vert,frag} (procedural water mesh VS +
     # base-layer FS for the first VK GEOMETRY region). SPIR-V loaded at runtime by
     # vulkan_water_island.cpp via load_spv(spv_dir()+"water_geom.*.spv").
@@ -357,7 +339,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce compare_shadow csm_array_shadow shadow_depth shadow_debug_overlay water_mvp water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES fullscreen edge_fog fog_oob ssao ssao_apply hzb_reduce shadow_debug_overlay water_geom shadow_prop color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.

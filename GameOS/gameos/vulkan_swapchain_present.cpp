@@ -1,26 +1,8 @@
-// VULKAN-SWAPCHAIN-PRESENT-1 -- Layer-5 milestone: the engine OWNS a Vulkan
-// swapchain and PRESENTS a controlled frame safely, fail-soft to GL.
-//
-// L6.6-COMPOSITE-PRESENT-SCAFFOLD (2026-07-02): the present MACHINERY that used
-// to live inline here is now the reusable, PERSISTENT mc2vk::VulkanPresentObject
-// (vulkan_present_object.{h,cpp}). This TU now:
-//   (1) DRIVES that object for the 16-frame + mid-loop-resize probe
-//       (mc2_vulkan_probe_swapchain_present) -- the probe still passing is the
-//       regression check that the extraction is faithful (per-image render
-//       semaphores + OUT_OF_DATE/SUBOPTIMAL rebuild preserved VERBATIM); and
-//   (2) exposes mc2_vulkan_composite_present_scaffold() -- the CompositePresent
-//       TEST region's driver: init the persistent object -> present N frames ->
-//       a resize -> destroy, to its OWN separate Vulkan window.
-//
-// NARROW SCOPE (unchanged, supervisor ruling). This TU creates a SEPARATE visible
-// SDL Vulkan window (distinct from the GL window g_sdl_window / RenderWindow::
-// window_) that never shares the GL context. It does NOT migrate the game
-// renderer, does NOT make Vulkan default, does NOT touch the GL swap path /
-// FBO-0, and routes NO game render pass through the swapchain. Full game-window
-// Vulkan present is BLOCKED on L7 shared-image interop / ownership migration
-// (ledgered). Whole TU compiles to nothing unless MC2_VULKAN is defined -> the
-// GL build is byte-identical. Fail-soft at every step (log + return false,
-// never crash -- this is also the no-Vulkan-runtime path).
+// CompositePresent test scaffold: drives the persistent mc2vk::VulkanPresentObject
+// (vulkan_present_object.{h,cpp}) through a present-N-frames + midpoint-resize cycle on its OWN
+// separate Vulkan window. The GL game window, its context and FBO-0 are never touched, and no game
+// render pass goes through this swapchain; the live game present is engine_present_vk.cpp.
+// Compiles to nothing unless MC2_VULKAN is defined. Fail-soft at every step (log + return false).
 
 #include "vulkan_backend_skeleton.h"
 
@@ -127,29 +109,6 @@ bool drive_present(const char* spvDir, uint32_t frames, uint32_t resizeAtFrame,
 
 } // namespace
 
-// VULKAN-SWAPCHAIN-PRESENT-1 (Layer-5 probe). Now drives the persistent object;
-// 16 frames + a mid-loop resize at frame 8. Returns true iff all 16 frames
-// presented VK_SUCCESS with zero validation errors and no fallback.
-bool mc2_vulkan_probe_swapchain_present(const char* spvDir) {
-    mc2vk::PresentHealth health;
-    bool ok = drive_present(spvDir, /*frames=*/16, /*resizeAtFrame=*/8, health);
-
-    sp_log("[VK_SWAPCHAIN_PRESENT_HEALTH] swapchain_available=%d surface_created=%d "
-           "format=%s present_mode=%s image_count=%u extent=%ux%u resize_count=%u "
-           "present_frames=%u fallback_reason=%s validation_errors=%u",
-           health.swapchain_available ? 1 : 0, health.surface_created ? 1 : 0,
-           sp_format_str(health.format), sp_present_mode_str(health.present_mode),
-           health.image_count, health.extent_w, health.extent_h, health.resize_count,
-           health.present_frames,
-           health.fallback_reason.empty() ? "(none)" : health.fallback_reason.c_str(),
-           health.validation_errors);
-    maybe_dump_debug_state(health, "debug_state/vk_swapchain_present_health.txt");
-
-    (void)ok;
-    return (health.present_frames == 16) && health.fallback_reason.empty() &&
-           (health.validation_errors == 0);
-}
-
 // L6.6-COMPOSITE-PRESENT-SCAFFOLD. The CompositePresent TEST region's driver:
 // present `frames` frames (default 16) to its OWN separate Vulkan window via the
 // persistent object, exercising a resize at the midpoint -- proving the
@@ -157,8 +116,7 @@ bool mc2_vulkan_probe_swapchain_present(const char* spvDir) {
 // discipline WITHOUT touching the GL game window. Fail-soft: any init/acquire
 // failure returns false (no crash). *presentFramesOut / *validationErrorsOut
 // receive the tallies for the health snapshot. The composited MainColor is NOT
-// sampled here (the fullscreen-triangle test pattern stands in) -- bridging the
-// real game image is L7 interop, ledgered.
+// sampled here (the fullscreen-triangle test pattern stands in).
 bool mc2_vulkan_composite_present_scaffold(const char* spvDir, uint32_t frames,
                                            uint32_t* presentFramesOut,
                                            uint32_t* resizeCountOut,

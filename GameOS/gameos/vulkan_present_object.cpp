@@ -1,12 +1,8 @@
 // vulkan_present_object.cpp
 //
-// L6.6-COMPOSITE-PRESENT-SCAFFOLD -- implementation of the PERSISTENT Vulkan
-// present object, extracted from the L5 throwaway probe
-// (vulkan_swapchain_present.cpp). The per-image render-semaphore discipline and
-// the OUT_OF_DATE/SUBOPTIMAL rebuild are copied VERBATIM (see SYNC NOTE on
-// SwapchainResources in the header). The probe now DRIVES this object -- see
-// mc2_vulkan_probe_swapchain_present() in vulkan_swapchain_present.cpp -- so the
-// 16-frame present regression is the extraction's fidelity check.
+// Implementation of the PERSISTENT Vulkan present object driven by the CompositePresent test
+// scaffold (vulkan_swapchain_present.cpp). The per-image render-semaphore discipline and the
+// OUT_OF_DATE/SUBOPTIMAL rebuild are described by the SYNC NOTE on SwapchainResources in the header.
 //
 // SCOPE: own SEPARATE Vulkan window; GL game window untouched. Whole TU inert
 // unless MC2_VULKAN is defined -> GL shipping build64 byte-identical.
@@ -15,7 +11,7 @@
 
 #ifdef MC2_VULKAN
 
-#include "vulkan_backend_skeleton.h"   // mc2_vulkan_load_spv / mc2_vulkan_free_shader
+#include "vulkan_spv_loader.h"   // mc2_vulkan_load_spv / mc2_vulkan_free_shader
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>

@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.1.0"
-registry_entry_count: 364
-registry_env_flag_count: 363
-sweep_flag_count: 1030
-flag_count: 1090
+registry_entry_count: 363
+registry_env_flag_count: 362
+sweep_flag_count: 1027
+flag_count: 1087
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -9578,42 +9578,15 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_VULKAN_CACHE_DIR
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_SPV_DIR
     default: unknown
     declared_in: null
     referenced_at:
       - GameOS/gameos/engine_present_vk.cpp
       - GameOS/gameos/gos_postprocess.cpp
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    referenced_at_more: 12
+      - GameOS/gameos/vulkan_color_prop_island.cpp
+    referenced_at_more: 11
     registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_SWAPCHAIN_PRESENT
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=..."
-    referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN
@@ -9628,7 +9601,6 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
       - GameOS/gameos/vulkan_context.cpp
       - GameOS/gameos/vulkan_present_object.cpp
     registered: no

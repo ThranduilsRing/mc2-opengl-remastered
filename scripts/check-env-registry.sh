@@ -859,12 +859,10 @@ ALLOWLIST=(
     MC2_VISUAL_CAPTURE_DIR            # infra -- visual capture tool
     MC2_VISUAL_CAPTURE_FRAME          # infra -- visual capture tool
     MC2_VISUAL_SETTLE                 # infra -- visual capture tool
-    MC2_VULKAN_CACHE_DIR              # infra -- Vulkan-prep pipeline cache dir (documented arc)
     MC2_VULKAN_ISLAND_FORCE_FALLBACK  # override -- Vulkan island force-fallback test knob
     MC2_VULKAN_OOB_FOG_ISLAND         # feature -- Vulkan OOB-fog island gate (documented arc)
     MC2_VULKAN_OOB_FOG_ISLAND_FORCE_FALLBACK  # override -- Vulkan OOB-fog island force-fallback test knob
     MC2_VULKAN_POSTPROCESS_SUBGRAPH_FORCE_FALLBACK  # override -- Vulkan postprocess-subgraph force-fallback test knob
-    MC2_VULKAN_PROBE                  # infra -- Vulkan-prep headless probe (documented arc)
     MC2_VULKAN_SPV_DIR                # infra -- Vulkan-prep SPIR-V dir override (documented arc)
     MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN  # infra -- Vulkan swapchain-present hidden-window test knob
     MC2_VULKAN_VALIDATION             # infra -- Vulkan-prep validation preset (documented arc)
