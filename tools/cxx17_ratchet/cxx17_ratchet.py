@@ -330,7 +330,7 @@ def list_files(dirs):
 
 def _git(args, inp=None):
     return subprocess.run(["git"] + args, cwd=ROOT, input=inp, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, check=True).stdout
+                          stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
 
 
 def git_blobs(dirs, mode):
@@ -404,7 +404,7 @@ def per_file_counts(res):
 def git_head():
     try:
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
-                                       stderr=subprocess.DEVNULL, text=True).strip()
+                                       stderr=subprocess.DEVNULL, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).strip()
     except Exception:
         return ""
 
@@ -429,7 +429,7 @@ def added_lines(rel):
     """{line numbers added vs HEAD} from git diff -U0, or None when git cannot tell."""
     try:
         d = subprocess.check_output(["git", "diff", "-U0", "HEAD", "--", rel], cwd=ROOT,
-                                    stderr=subprocess.DEVNULL, text=True, errors="replace")
+                                    stderr=subprocess.DEVNULL, text=True, errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception:
         return None
     added = set()

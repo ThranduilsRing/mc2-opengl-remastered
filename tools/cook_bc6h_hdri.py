@@ -98,7 +98,7 @@ def run_texconv_bc6h(hdr_path, out_dir, texconv_exe):
         '-m', '1',    # single mip level
         hdr_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if result.returncode != 0:
         print(f"texconv failed (rc={result.returncode}):", file=sys.stderr)
         print(result.stdout, file=sys.stderr)
@@ -294,7 +294,7 @@ def cook(exr_path, ktx2_path, ktx_exe, texconv_exe):
             raw_tmp,
             ktx2_path,
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if result.returncode != 0:
             print(f"ktx.exe error (rc={result.returncode}): {result.stderr}", file=sys.stderr)
             sys.exit(1)
@@ -328,7 +328,7 @@ def main():
     cook(exr_path, ktx2_path, ktx_exe, texconv_exe)
 
     # Run ktx info to verify output
-    result = subprocess.run([ktx_exe, 'info', ktx2_path], capture_output=True, text=True)
+    result = subprocess.run([ktx_exe, 'info', ktx2_path], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     for line in result.stdout.split('\n')[:20]:
         print(line)
 

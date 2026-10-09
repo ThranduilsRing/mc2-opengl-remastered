@@ -212,7 +212,7 @@ def _pid_alive(pid: int) -> bool:
     try:
         out = subprocess.run(
             ["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
-            capture_output=True, text=True, timeout=10)
+            capture_output=True, text=True, timeout=10, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         return str(pid) in out.stdout
     except Exception:
         return False

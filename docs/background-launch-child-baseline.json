@@ -1,26 +1,5 @@
 {
   "scripts/check-raw-gl-depthfunc.py": 1,
   "scripts/check-raw-gl-depthmask.py": 1,
-  "tools/axis_swizzle_ratchet.py": 1,
-  "tools/build_contract_harnesses.py": 6,
-  "tools/build_quiet.py": 1,
-  "tools/check_vk_shaders.py": 1,
-  "tools/comment_tidy/comment_tidy.py": 1,
-  "tools/cook_bc6h_hdri.py": 3,
-  "tools/cxx17_ratchet/cxx17_ratchet.py": 3,
-  "tools/cxx17_ratchet/test_cxx17_ratchet.py": 1,
-  "tools/dup_lines_ratchet.py": 1,
-  "tools/examples/build_modern_tree_pack.py": 2,
-  "tools/file_size_ratchet.py": 1,
-  "tools/gate_conflicts.py": 1,
-  "tools/install_tree_scatter.py": 1,
-  "tools/make_handoff.py": 1,
-  "tools/renderdoc/_rdcommon.py": 1,
-  "tools/run_contract_tests.py": 1,
-  "tools/run_nvidia_readiness_smoke.py": 2,
-  "tools/shader_offline_build/build_variants.py": 2,
-  "tools/shader_reflect/reflect.py": 1,
-  "tools/spawn_lane.py": 2,
-  "tools/test_spawn_lane.py": 8,
-  "tools/witness_smoke.py": 2
+  "tools/gate_conflicts.py": 1
 }

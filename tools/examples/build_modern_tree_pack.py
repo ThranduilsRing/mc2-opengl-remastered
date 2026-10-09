@@ -167,7 +167,7 @@ def build_models_json(families, cooked_glb_paths):
 
 def _run(cmd, label):
     print(f"  [{label}] {' '.join(str(c) for c in cmd)}")
-    result = subprocess.run([str(c) for c in cmd], capture_output=True, text=True)
+    result = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if result.returncode != 0:
         print(f"  FAILED:\n{result.stderr}", file=sys.stderr)
         raise RuntimeError(f"{label} failed (exit {result.returncode})")
@@ -217,7 +217,8 @@ for geom_name, geom in scene.geometry.items():
 """
     result = subprocess.run(
         [sys.executable, "-c", extract_script],
-        capture_output=True, text=True
+        capture_output=True, text=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     if result.returncode != 0:
         print(f"  WARNING: texture extraction issues:\n{result.stderr}", file=sys.stderr)

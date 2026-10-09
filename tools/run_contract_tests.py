@@ -117,7 +117,7 @@ def run_harness(cmd):
     Works for native exes ([exe]) and Python harnesses ([python, script])."""
     try:
         proc = subprocess.run(list(cmd) + ["--json"], capture_output=True,
-                              text=True, timeout=60)
+                              text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as e:  # noqa: BLE001
         return False, {"error": str(e)}
     ok = proc.returncode == 0

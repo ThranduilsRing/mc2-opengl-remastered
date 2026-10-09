@@ -62,7 +62,7 @@ def main():
                "--source-root", args.source_root, "--build-dir", args.build_dir,
                "--exe-name", args.exe_name]
         print("[witness] deploy:", " ".join(cmd), flush=True)
-        rc = subprocess.call(cmd, cwd=str(ROOT))
+        rc = subprocess.call(cmd, cwd=str(ROOT), creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
         if rc != 0:
             print(f"[witness] DEPLOY FAILED rc={rc}")
             return rc
@@ -90,7 +90,7 @@ def main():
         cmd += ["--mission", m]
     print("[witness] smoke:", " ".join(cmd), flush=True)
     proc = subprocess.run(cmd, cwd=str(ROOT), env=env,
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     smoke_rc = proc.returncode
     smoke_out = (proc.stdout or "") + (proc.stderr or "")
 

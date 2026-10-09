@@ -53,7 +53,7 @@ def run_checkers() -> int:
     for c in SEAM_CHECKERS:
         p = ROOT / "scripts" / c
         r = subprocess.run([sys.executable, str(p), "--quiet"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         ok = (r.returncode == 0)
         print(f"  {'PASS' if ok else 'FAIL'}  {c}")
         if not ok:
@@ -76,7 +76,7 @@ def run_functional(exe: str) -> int:
         print(f"    {k}={v}")
     print(f"[nvidia-readiness] launching: {' '.join(cmd)} (exe={exe})")
     env["MC2_SMOKE_EXE"] = exe  # informational; run_smoke takes --exe if supported
-    r = subprocess.run(cmd + (["--exe", exe] if exe else []), env=env)
+    r = subprocess.run(cmd + (["--exe", exe] if exe else []), env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     print("[nvidia-readiness] NOTE: triage any new GL_DEBUG_FATAL stops as EXPECTED-first "
           "(runbook §5); diff the [FRAME_PLAN]/[PIPELINE_BIND]/[MDI_SUBMIT] pass SET vs an "
           "AMD log; bless a NVIDIA golden set (do not force the AMD hash).")

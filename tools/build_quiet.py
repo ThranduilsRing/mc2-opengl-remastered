@@ -48,7 +48,7 @@ def main():
     vcx_rx = re.compile(r"\.vcxproj\s*->\s*")
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, errors="replace")
+                            text=True, errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     for line in proc.stdout:
         line = line.rstrip()
         if err_rx.search(line):

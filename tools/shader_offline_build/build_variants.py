@@ -160,7 +160,7 @@ def _tool_version(exe) -> str:
     if not exe:
         return "not-found"
     try:
-        r = subprocess.run([exe, "--version"], capture_output=True, text=True)
+        r = subprocess.run([exe, "--version"], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         line = (r.stdout or r.stderr).splitlines()
         return line[0].strip() if line else "unknown"
     except Exception:
@@ -242,7 +242,7 @@ def main():
                     r = subprocess.run(
                         [glslang, "-G", "--auto-map-locations", "-S", stage,
                          str(tmp), "-o", str(out)],
-                        capture_output=True, text=True)
+                        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                     if r.returncode != 0 or not out.exists():
                         fails.append(f"{art}: glslang failed: "
                                      f"{(r.stdout + r.stderr).strip()[:300]}")

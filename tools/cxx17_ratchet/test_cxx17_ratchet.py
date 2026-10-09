@@ -145,7 +145,7 @@ class Check(unittest.TestCase):
 
 def _git(cwd, *a):
     return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t"] + list(a), cwd=cwd,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 class CommittedTree(unittest.TestCase):

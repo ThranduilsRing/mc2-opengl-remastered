@@ -338,7 +338,7 @@ def compile_to_spv(
             cmd += ["-G"]
         cmd += [str(tmp), "-o", str(spv_path)]
 
-        proc = subprocess.run(cmd, capture_output=True)
+        proc = subprocess.run(cmd, capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if proc.returncode != 0:
             diag = (_decode(proc.stdout) + _decode(proc.stderr)).strip()
             diag = diag.replace(tmp.name, shader.name).replace(str(tmp), str(shader))
