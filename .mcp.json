@@ -2,16 +2,22 @@
   "mcpServers": {
     "mc2-render-state": {
       "command": "py",
-      "args": ["-3", "scripts/mcp/mc2_render_state_server.py"],
+      "args": [
+        "-3",
+        "scripts/mcp/mc2_render_state_server.py"
+      ],
       "env": {
         "MC2_DEPLOY_DIR": "A:/Games/mc2-opengl/mc2-win64-v0.4"
       }
     },
     "mc2-repo-intel": {
       "command": "py",
-      "args": ["-3", "scripts/mcp/repo_intel_server.py"],
+      "args": [
+        "-3",
+        "scripts/mcp/repo_intel_server.py"
+      ],
       "env": {
-        "REPO_INTEL_ROOT": "A:/Games/mc2-opengl-src/.claude/worktrees/nifty-mendeleev",
+        "REPO_INTEL_ROOT": "A:/Games/mc2-main",
         "MC2_LANE_REGISTRY_PATH": "A:/Games/mc2-opengl-src/.claude/lane_registry.json"
       }
     }
