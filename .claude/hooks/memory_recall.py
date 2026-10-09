@@ -45,23 +45,33 @@ def main():
     if len(q) < 2 or not os.path.isdir(MEM_DIR):
         return
     hits = []
-    for fn in os.listdir(MEM_DIR):
-        if not fn.endswith(".md") or fn == "MEMORY.md":
-            continue
-        path = os.path.join(MEM_DIR, fn)
-        name, desc = describe(path)
-        name_words = words(name.replace("-", " ").replace("_", " "))
-        score = 2 * len(q & name_words) + len(q & words(desc))
-        if fn.startswith("INDEX-"):
-            score -= 1
-        if score >= 2:
-            hits.append((score, fn, desc))
+    # Memories live in topic subdirs (2026-10-09 restructure); archive/ and
+    # _tools/ are never recalled.
+    for root, dirs, files in os.walk(MEM_DIR):
+        dirs[:] = [d for d in dirs if d not in ("archive", "_tools") and not d.startswith(".")]
+        for f in files:
+            if not f.endswith(".md") or f == "MEMORY.md":
+                continue
+            path = os.path.join(root, f)
+            fn = os.path.relpath(path, MEM_DIR).replace("\\", "/")
+            _score(path, fn, q, hits)
     if not hits:
         return
     hits.sort(key=lambda h: -h[0])
     print("Possibly relevant memories (read before acting):")
     for _, fn, desc in hits[:TOP_N]:
         print(f"- {MEM_DIR}/{fn} - {desc[:140].encode('ascii', 'replace').decode()}")
+
+
+def _score(path, fn, q, hits):
+    if True:
+        name, desc = describe(path)
+        name_words = words(name.replace("-", " ").replace("_", " "))
+        score = 2 * len(q & name_words) + len(q & words(desc))
+        if os.path.basename(fn).startswith("INDEX-"):
+            score -= 1
+        if score >= 2:
+            hits.append((score, fn, desc))
 
 
 if __name__ == "__main__":
