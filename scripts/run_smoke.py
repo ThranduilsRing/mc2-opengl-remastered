@@ -2574,11 +2574,6 @@ def main():
                             # in the allowlist Popen drops it and the gate-ON smoke
                             # silently runs the GL shadow path (gate inert).
                             "MC2_VK_SHADOW_INTEROP",
-                            # VK-SHADOW-DIRECT-CHAIN: deletion-readiness proof gate
-                            # that keeps VK shadow/CSM products VK-owned and skips
-                            # the VK->GL semaphore handoff when native consumers are
-                            # armed.
-                            "MC2_VK_SHADOW_DIRECT_CHAIN",
                             # VK-P14 GATE-CONSOLIDATION-1: THE UMBRELLA. =1 arms the
                             # whole shared-GBuffer scene family at once (all sub-gates
                             # below default ON; explicit sub-gate env still overrides).
@@ -2657,10 +2652,6 @@ def main():
                             "MC2_VK_MECH_FEED_AUDIT",
                             # VK terrain in-place shared-GBuffer region + lighting + detail.
                             "MC2_VK_TERRAIN_TIER1",
-                            # VK-TERRAIN-NATIVE-PREFIX-CLEAR: diagnostic proof gate that
-                            # moves the terrain-prefix scene clear into the VK terrain pass
-                            # and skips terrain's GL interop semaphores. Default-OFF.
-                            "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
                             # VK-TERRAIN-ALL-LODS (rung 3): coarse-band (lodStep>1) capture
                             # extension, requires MC2_VK_TERRAIN_TIER1. Bands only, no
                             # skirts/stitch this rung. Default-OFF.
@@ -2845,7 +2836,6 @@ def main():
                             "MC2_SHADOW_ENABLE",
                             "MC2_SHADOW_CSM",
                             "MC2_VK_SHADOW_INTEROP",
-                            "MC2_VK_SHADOW_DIRECT_CHAIN",
                             "MC2_VK_CSM_ARRAY_INTEROP",
                             "MC2_VK_CSM_FULLMAP_INTEROP",
                             "MC2_VK_STATIC_SHADOW_MAP",

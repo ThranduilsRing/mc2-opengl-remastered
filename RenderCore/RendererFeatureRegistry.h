@@ -1778,19 +1778,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "[VK_SHADOW_INTEROP] health. Gate OFF -> GL shadow path byte-identical. P8a = opaque "
         "static props, single map (foliage-alpha + terrain casters = P8b, mechs = P12)."
     },
-    {
-        "MC2_TRACE_VK_SHADOW_DIRECT_CHAIN",
-        "MC2_VK_SHADOW_DIRECT_CHAIN",
-        EnvVarKind::Trace,
-        false,
-        "VK shadow deletion-readiness proof gate. Default-OFF. When the VK shadow "
-        "and CSM producers are armed with same-frame VK consumers, skips the "
-        "VK->GL semaphore signal/wait and keeps the produced shadow images VK-owned. "
-        "The dynamic single-map producer exposes only its direct VkImageView under "
-        "this gate; GL texture-handle fallback remains disabled so no stale GL "
-        "sampling can pass a no-interop proof. Normal shadow interop behavior is "
-        "unchanged when unset."
-    },
     // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
     {
         "MC2_FEATURE_VK_SHARED_GBUFFER",
@@ -1937,7 +1924,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires "
-        "MC2_VK_PROP_COLOR_TIER1 plus MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR. When ON, the prop "
+        "MC2_VK_PROP_COLOR_TIER1. When ON, the prop "
         "color island treats the shared scene color0/normal/depth images as already Vulkan-owned "
         "from the terrain prefix and skips its GL->VK/VK->GL interop semaphore handoff, while "
         "still CPU-waiting its submit fence before the next island. Used with "
@@ -1965,19 +1952,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "so terrain-gated post passes stay live. FAIL-SOFT: shared GBuffer not ready / interop "
         "unavailable -> GL fallback. Surfaced in [VK_TERRAIN_TIER1] health/log. Gate OFF (or island "
         "not compiled) = byte-identical GL LOD-chunk terrain path."
-    },
-    // VK-TERRAIN-NATIVE-PREFIX-CLEAR: RETIRED (VK-RUNG8-ITEM4-TERRAIN-DELETE-1).
-    {
-        "MC2_FEATURE_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
-        "MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR",
-        EnvVarKind::Feature,
-        false,
-        "DEPRECATED no-op (VK-RUNG8-ITEM4-TERRAIN-DELETE-1). The terrain island's hybrid GL<->VK "
-        "semaphore-handoff arm (LOAD-preserve renderpass) was DELETED: the armed terrain Tier-1 island "
-        "is now unconditionally the native first owner of shared scene color0/normal/depth (CLEAR loadOp "
-        "matching the gameplay/menu clear color, clearGBuffer1 sentinel, and reverse-Z far; GL frame-entry "
-        "clears skipped via mc2vkgate::terrainNativeFirstOwnerOn()). Setting this env prints a one-line "
-        "deprecation note and changes nothing; the name stays parseable for old command lines."
     },
     // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
     {

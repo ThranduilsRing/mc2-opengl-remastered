@@ -188,8 +188,6 @@ ALLOWLIST=(
     MC2_VISUAL_CAPTURE_CLEAN       # fixture -- visual capture: suppress HUD/letterbox/bars on GL+VK
     MC2_VISUAL_CAPTURE_POST        # fixture -- GL visual capture reads composited back buffer (post-grade) to match VK present capture
     MC2_VK_COMPOSITE_PRESENT    # vk-diag/override (vk-interop wave)
-    MC2_VK_CSM_BISECT           # vk-diag
-    MC2_VK_CSM_COPYMODE         # vk-diag/override
     MC2_VK_FEED_DUMP            # vk-diag -- feed dump
     MC2_VK_GPU_TIMESTAMPS       # vk-diag -- GPU timestamp collection
     MC2_VK_HUD_DRAW_DUMP        # vk-diag

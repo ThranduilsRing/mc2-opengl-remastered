@@ -151,24 +151,7 @@ bool csmArrayInteropGateRequested() {
     return state == 1;
 }
 
-// VK-RUNG8 item-4: MC2_VK_SHADOW_DIRECT_CHAIN is RETIRED. The GL<->VK semaphore-handoff
-// (hybrid) arm was deleted; the VK shadow island now ALWAYS produces VK-native (direct-
-// chain) depth consumed via the VkImageView accessors (the terrain island + native
-// screenfx). The env name is still parsed so old command lines don't hit unknown-var
-// behavior; explicitly setting it prints a one-line deprecation note (item-9 pattern).
-// VK-RUNG8-ITEM6: the dormant exportable-resource + glInteropViewCreate CREATION branches
-// (former item-5 substrate for the non-CSM screen-shadow config) were DELETED with the
-// static-shadow substrate retirement. The island now allocates only NON-exportable VK depth
-// images consumed via the VkImageView accessors (no GL interop view, no Win32 export).
-[[maybe_unused]] static const bool s_shadowDirectChainDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_SHADOW_DIRECT_CHAIN") != -1)
-        std::fprintf(stderr, "[VK_SHADOW_ISLAND] MC2_VK_SHADOW_DIRECT_CHAIN is deprecated "
-                             "and now a no-op: the VK shadow island always renders direct-"
-                             "chain-native (GL/VK semaphore handoff deleted).\n");
-    return true;
-}();
-
-// Post item-4 the island is unconditionally direct-chain-native. Kept as a named constant
+// The island is unconditionally direct-chain-native. Kept as a named constant
 // documenting that the depth images are non-exportable and consumed via VkImageView only.
 constexpr bool kShadowDirectChain = true;
 
@@ -226,12 +209,11 @@ struct ShadowIsland {
     bool disabled = false;
     bool inited   = false;
     bool useInterop = false;
-    // VK-TERRAIN-STAGING-PERF-1: under MC2_VK_SHADOW_DIRECT_CHAIN the island renders
-    // VK-owned (non-exportable) products for direct VK consumers; useInterop stays
-    // false (no GL view/semaphore machinery) but the producers MUST still run. The
-    // run entry points gate on (useInterop || directChain). Without this, the
-    // resource-strict stack silently fell back to the terrain island's per-frame GL
-    // CSM depth readback (8192^2 x layers glGetTexImage ~= 125 ms/frame).
+    // The island renders VK-owned (non-exportable) products for direct VK consumers;
+    // useInterop stays false (no GL view/semaphore machinery) but the producers MUST
+    // still run. The run entry points gate on (useInterop || directChain). Without
+    // this, the resource-strict stack silently fell back to the terrain island's
+    // per-frame GL CSM depth readback (8192^2 x layers glGetTexImage ~= 125 ms/frame).
     bool directChain = false;
 
     int size = 0;   // square shadow map side (getDynamicShadowMapSize())

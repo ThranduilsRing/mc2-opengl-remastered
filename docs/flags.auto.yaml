@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.1.0"
-registry_entry_count: 363
-registry_env_flag_count: 362
-sweep_flag_count: 1013
-flag_count: 1073
+registry_entry_count: 361
+registry_env_flag_count: 360
+sweep_flag_count: 1011
+flag_count: 1069
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -8744,22 +8744,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_VK_CSM_BISECT
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VK_CSM_COPYMODE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_terrain_island.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_CSM_FULLMAP_INTEROP
     default: off
     kind: Feature
@@ -9024,7 +9008,7 @@ flags:
     kind: Feature
     feature_id: MC2_FEATURE_VK_PROP_DIRECT_CHAIN
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_PROP_COLOR_TIER1 plus MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR. When ON, the prop color island treats the shared s..."
+    doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_PROP_COLOR_TIER1. When ON, the prop color island treats the shared scene color0/normal/depth images as alrea..."
     referenced_at:
       - GameOS/gameos/vulkan_color_prop_island.cpp
     registered: yes
@@ -9121,16 +9105,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_VK_SHADOW_DIRECT_CHAIN
-    default: off
-    kind: Trace
-    feature_id: MC2_TRACE_VK_SHADOW_DIRECT_CHAIN
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VK shadow deletion-readiness proof gate. Default-OFF. When the VK shadow and CSM producers are armed with same-frame VK consumers, skips the VK->GL semaphore signal/wait and keeps the produced shad..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VK_SHADOW_INTEROP
     default: off
     kind: Feature
@@ -9308,16 +9282,6 @@ flags:
     feature_id: MC2_FEATURE_VK_TERRAIN_LODFADE
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL). Ports GL's camera-distance lodNear fade (gos_terrain.frag:322-328,616-736: LOD_NEAR=4000/LOD_NEAR_FADE=4500 smoo..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VK_TERRAIN_NATIVE_PREFIX_CLEAR
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "DEPRECATED no-op (VK-RUNG8-ITEM4-TERRAIN-DELETE-1). The terrain island's hybrid GL<->VK semaphore-handoff arm (LOAD-preserve renderpass) was DELETED: the armed terrain Tier-1 island is now uncondit..."
     referenced_at: []
     registered: yes
     in_smoke_passthrough: yes

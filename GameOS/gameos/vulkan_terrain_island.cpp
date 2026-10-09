@@ -153,26 +153,7 @@ void terrainPerFrameReadback(const char* fn) {
     }
 }
 
-// VK-RUNG8 item-7: the terrain CSM copy-mode (per-frame glGetTexImage depth pull +
-// glCopyImageSubData GL scratch array + staging + vkCmdCopyBufferToImage) was DELETED; the
-// VK shadow island's direct D32 array + full-map views are the only CSM producer now. Its
-// two CSM-BLACKOUT-RECON-1 debug gates are RETIRED to parseable no-ops. They are still
-// parsed so old command lines don't hit unknown-var behavior; explicitly setting either
-// prints a one-line deprecation note (item-9 pattern). NOTE: MC2_VK_CSM_ARRAY_INTEROP /
-// MC2_VK_CSM_FULLMAP_INTEROP are NOT deprecated -- they gate the surviving direct producers.
-[[maybe_unused]] static const bool s_csmCopyModeDeprecated = [] {
-    if (std::getenv("MC2_VK_CSM_COPYMODE"))
-        std::fprintf(stderr, "[VK_TERRAIN_ISLAND] MC2_VK_CSM_COPYMODE is deprecated and now a "
-                             "no-op: the terrain CSM copy-mode was deleted (direct VK shadow "
-                             "views only).\n");
-    if (mc2vkgate::envTriState("MC2_VK_CSM_BISECT") != -1 || std::getenv("MC2_VK_CSM_BISECT"))
-        std::fprintf(stderr, "[VK_TERRAIN_ISLAND] MC2_VK_CSM_BISECT is deprecated and now a "
-                             "no-op: the terrain CSM copy-mode/bisect probes were deleted "
-                             "(direct VK shadow views only).\n");
-    return true;
-}();
-
-// VK-TERRAIN-FENCE-DEFER-1 (cluster-A, water-pilot template 61031785): defer the
+// VK-TERRAIN-FENCE-DEFER-1: defer the
 // island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
 // of waiting the submit fence inline. Default-ON (the per-parity UBO staging +
 // per-parity descriptor sets make it correct by construction);
@@ -210,24 +191,6 @@ bool terrainTier1Requested() {
     }
     return state == 1;
 }
-
-// VK-RUNG8-ITEM4-TERRAIN-DELETE-1: MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is RETIRED to a
-// parseable no-op (item-9 pattern). The terrain island's hybrid GL<->VK semaphore-
-// handoff arm (LOAD-preserve renderpass + glInteropSignalToVk/WaitFromVk + vk2gl
-// signal sems) was DELETED: the armed island is now unconditionally the native first
-// owner of shared scene color0/normal/depth (CLEAR loadOp, no handoff; the fence
-// orders CPU). Explicitly setting the old env prints a one-line deprecation note so
-// old command lines don't silently expect a path that no longer exists. Consumers
-// outside this TU use mc2vkgate::terrainNativeFirstOwnerOn().
-[[maybe_unused]] static const bool s_terrainPrefixClearDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR") != -1) {
-        std::fprintf(stderr, "[VK_TERRAIN_ISLAND] MC2_VK_TERRAIN_NATIVE_PREFIX_CLEAR is "
-                             "deprecated and now a no-op: the armed terrain Tier-1 island is "
-                             "always the native first owner (prefix clear, no GL<->VK "
-                             "semaphore handoff); the hybrid arm was deleted (item-4).\n");
-    }
-    return true;
-}();
 
 float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -2095,13 +2058,10 @@ bool ensure_dummy_csm(TerrainIsland* s) {
     return true;
 }
 
-// VK-RUNG8 item-7 (CSM copy-mode delete): DIRECT-VIEW-ONLY near-cascade array (binding 8)
-// + full-map cascade (binding 9). The VK shadow island renders both cascades natively into
-// VK-owned D32 depth targets (MC2_VK_CSM_ARRAY_INTEROP / MC2_VK_CSM_FULLMAP_INTEROP, under
-// MC2_VK_SHADOW_INTEROP) and terrain binds their VkImageViews directly. The former per-frame
-// GL depth readback (glGetTexImage) + glCopyImageSubData GL scratch array + staging +
-// vkCmdCopyBufferToImage import (the ~200-350 LOC Metal-blocking copy-mode, and its
-// MC2_VK_CSM_COPYMODE / MC2_VK_CSM_BISECT recon gates) was DELETED here.
+// DIRECT-VIEW-ONLY near-cascade array (binding 8) + full-map cascade (binding 9). The VK
+// shadow island renders both cascades natively into VK-owned D32 depth targets
+// (MC2_VK_CSM_ARRAY_INTEROP / MC2_VK_CSM_FULLMAP_INTEROP, under MC2_VK_SHADOW_INTEROP)
+// and terrain binds their VkImageViews directly, with no per-frame GL depth readback.
 //
 // Fail-soft: on ANY decline (csm not built this frame, or the shadow-island direct producer
 // not yet ready during the ~1-2 warmup frames before its first CSM product) this returns
