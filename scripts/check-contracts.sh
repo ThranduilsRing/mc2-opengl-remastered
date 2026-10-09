@@ -822,6 +822,10 @@ run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
 run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --quiet"
 run_check "vulkan_bindings_selftest" "py -3 scripts/check-vulkan-bindings.py --self-test"
 run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quiet"
+# GL-VARIANT-MATRIX-1: every GL program variant the C++ can build (manifest re-extracted
+# from GameOS/gameos and diffed) is assembled like shader_builder and glslang compile+LINKED;
+# also proves it catches the static_prop.frag include-splice regression. ~6s, offline.
+run_check "gl_shader_variants"     "py -3 scripts/check-gl-shader-variants.py --quiet"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 run_check "spirv_reflection"       "py -3 scripts/check-spirv-reflection-contract.py --quiet"
 run_check "shader_package"         "py -3 scripts/check-shader-package.py --quiet"
