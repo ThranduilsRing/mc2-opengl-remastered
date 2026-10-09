@@ -496,7 +496,7 @@ int
 
 	int i, j, k, ret = 0;
 
-	int len = coords.GetLength();
+	int len = static_cast<int>(coords.GetLength());
 
 	if(visibleIndexedVerticesKey == false)
 	{
@@ -1554,7 +1554,7 @@ int
 	gos_indices = vt->GetActualIndexPool(db);
 	numGOSIndices = 0;
 
-	k = visibleIndexedVertices.GetLength();
+	k = static_cast<int>(visibleIndexedVertices.GetLength());
 
 	unsigned short strideIndex;
 	for(j=0,strideIndex=0;j<k;j++)
