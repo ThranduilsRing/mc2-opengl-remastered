@@ -2,7 +2,6 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
-//----------------------------------------------------------------------------------
 // Include Files
 #ifndef ABL_H
 #include"abl.h"
@@ -158,9 +157,7 @@ extern bool 			invulnerableON;		//Used for tutorials so mechs can take damage, b
 void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj);
 void DEBUGWINS_print (const char* s, long window);
 
-//*****************************************************************************
 // MISC AI
-//*****************************************************************************
 
 long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder) {
 
@@ -231,14 +228,11 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 	return(numValidMovers);
 }
 
-//-----------------------------------------------------------------------------
-
 void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefenders, GameObjectPtr* defenders) {
 
 	if ((numDefenders <= 0) || (numAttackers <= 0))
 		return;
 
-	//------------------------------------------------------------------
 	// This assumes the attackers and defenders lists are already sorted
 	// in descending order...
 	float attackRatio[MAX_MOVERS];
@@ -250,7 +244,6 @@ void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefend
 		target[i] = NULL;
 	}
 
-	//-------------------------------------------------------------------------
 	// Calc who they should attack, trying to spread the wealth, so to speak...
 	for (long a = 0; a < numAttackers; a++) {
 		long toughest = numDefenders - 1;
@@ -268,17 +261,13 @@ void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefend
 		target[a] = defenders[toughest];
 	}
 
-	//---------------------------------------------
 	// For now, let's let 'em know their targets...
 	for (int i = 0; i < numAttackers; i++)
 		attackers[i]->getPilot()->triggerAlarm(PILOT_ALARM_ATTACK_ORDER, target[i]->getWatchID());
 }
 
-//-----------------------------------------------------------------------------
-
 GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* attackers, long numDefenders, MoverPtr* defenders) {
 
-	//------------------------------------------------------------------
 	// This assumes the attackers and defenders lists are already sorted
 	// in descending order...
 
@@ -295,7 +284,6 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 		target[i] = NULL;
 	}
 
-	//---------------------------------------------------------------
 	// First, find out who everyone else in our group is attacking...
 	for (long a = 0; a < numAttackers; a++) {
 		GameObjectPtr target = attackers[a]->getPilot()->getCurrentTarget();
@@ -310,7 +298,6 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 	for (int d = 0; d < numDefenders; d++)
 		attackRatio[d] = attackTotal[d] / defenders[d]->getThreatRating();
 
-	//----------------------------------------------
 	// Now, find out who this pilot should attack...
 	long bestTarget = numDefenders - 1;
 	if (numDefenders > 1)
@@ -327,36 +314,26 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 	return(defenders[bestTarget]);
 }
 
-//*****************************************************************************
-
 inline signed int double2long(double _in) {
 
 	_in+=6755399441055744.0;
 	return(*(signed int*)&_in);
 }
 
-//-----------------------------------------------------------------------------
-
 inline bool isObjectId (long partId) {
 
 	return(partId > MAX_UNIT_PART_ID);
 }
-
-//---------------------------------------------------------------------------
 
 inline bool isUnitId (long partId) {
 
 	return((partId >= MIN_UNIT_PART_ID) && (partId <= MAX_UNIT_PART_ID));
 }
 
-//---------------------------------------------------------------------------
-
 inline bool isTeamId (long partId) {
 
 	return((partId >= MIN_TEAM_PART_ID) && (partId <= MAX_TEAM_PART_ID));
 }
-
-//---------------------------------------------------------------------------
 
 GameObjectPtr getObject (long partId, bool existsOnly = false);
 
@@ -375,8 +352,6 @@ inline GameObjectPtr getObject (long partId, bool existsOnly) {
 	return(obj);
 }
 
-//---------------------------------------------------------------------------
-
 inline MechWarriorPtr getWarrior (long warriorIndex) {
 
 	if (warriorIndex == -1)
@@ -385,13 +360,10 @@ inline MechWarriorPtr getWarrior (long warriorIndex) {
 		return(MechWarrior::warriorList[warriorIndex]);
 }
 
-//---------------------------------------------------------------------------
-
 long getMovers (long partId, MoverPtr* list, bool existsOnly = false);
 
 inline long getMovers (long partId, MoverPtr* list, bool existsOnly) {
 
-	//---------------------------------------------------------------------
 	// NOTE: It should be safe to assume that all objects here are movers,
 	// since only movers may be members of a unit/team.
 	// ALSO NOTE: If a group is referenced, we better be in a single-player
@@ -418,21 +390,12 @@ inline long getMovers (long partId, MoverPtr* list, bool existsOnly) {
 	return(numObjects);
 }
 
-//*****************************************************************************
-
 void execGetId (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET ID function:
-	//
 	//		Returns object id of current object.
-	//
 	//		PARAMS:	none
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
 
 	long partID = 0;
 	if (CurObject)
@@ -440,40 +403,22 @@ void execGetId (void) {
 	ABLi_pushInteger(partID);
 }
 
-//***************************************************************************
-
 void execGetTime (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET TIME function:
-	//
 	//		Returns current mission(scenario) time.
-	//
 	//		PARAMS:	none
-	//
 	//		RETURN: real
-	//
-	//-----------------------------------------------------
 
 	ABLi_pushReal(mission->actualTime);
 }
 
-//***************************************************************************
-
 void execGetTimeLeft (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET TIME function:
-	//
 	//		Returns mission(scenario) time left.
-	//
 	//		PARAMS:	none
-	//
 	//		RETURN: real
-	//
-	//-----------------------------------------------------
 
 	if (mission->m_timeLimit > -1)
 		if (mission->m_timeLimit - mission->actualTime > 0)
@@ -484,27 +429,17 @@ void execGetTimeLeft (void) {
 		ABLi_pushReal(-1.0);
 }
 
-//*****************************************************************************
-
 void execSelectObject (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SELECT OBJECT function:
-	//
 	//		Sets the specified object as the Current Object.
 	//		It returns an error code if it fails, else it returns the
 	//		id of the previous current object.
-	//
 	//				integer		object id
-	//
 	//		RETURN: integer		object id or error code (-1 = not an object)
-	//
-	//-----------------------------------------------------
 
 	long objectID = ABLi_peekInteger();
 
-	//---------------------------------------
 	// Remember what the current object is...
 	long curObjectID = 0;
 	if (CurObject)
@@ -519,29 +454,18 @@ void execSelectObject (void) {
 		ABLi_pokeInteger(-1);
 }
 
-//***************************************************************************
-
 void execSelectWarrior (void) {
 
-	//----------------------------------------------------------------------
-	//
 	//	SELECT WARRIOR function:
-	//
 	//		Sets the specified warrior as the Current Pilot. All pilot-assumed
 	//		ABL functions reference the Current Pilot(Warrior).
 	//		It returns an error code if it fails, else it returns the
 	//		warrior id of the previous current pilot.
-	//
 	//				integer				warrior id
-	//
 	//		RETURN: integer				warrior id or error code (-1 = not a pilot)
-	//
-	//----------------------------------------------------------------------
-
 
 	long warriorIndex = ABLi_popInteger();
 
-	//---------------------------------------
 	// Remember who the current warrior is...
 	long curWarriorIndex = 0;
 	if (CurWarrior)
@@ -551,21 +475,12 @@ void execSelectWarrior (void) {
 	ABLi_pushInteger(curWarriorIndex);
 }
 
-//*****************************************************************************
-
 void execGetWarriorStatus (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET WARRIOR STATUS function:
-	//
 	//		Returns the status of the warrior.
-	//
 	//		PARAMS:	integer				warrior id 
-	//
 	//		RETURN: integer				status
-	//
-	//-----------------------------------------------------
 
 	long warriorId = ABLi_peekInteger();
 
@@ -576,25 +491,14 @@ void execGetWarriorStatus (void) {
 		ABLi_pokeInteger(-1);
 }
 
-//*****************************************************************************
-
 void execGetContacts (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET CONTACTS function:
-	//
 	//		Returns a sorted list of all criteria'd contacts for the pilot.
-	//
 	//		PARAMS:	integer[]			contact list
-	//
 	//				integer				contact criteria
-	//
 	//				integer				sort criteria
-	//
 	//		RETURN: integer				result code
-	//
-	//-----------------------------------------------------
 
 	int* contactList = ABLi_popIntegerPtr();
 	int contactCriteria = ABLi_popInteger();
@@ -616,27 +520,17 @@ void execGetContacts (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetEnemyCount (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET ENEMY COUNT function:
-	//
 	//		Returns number of sighted enemies.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//		RETURN: integer				result code
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 
 	long result = -1;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		if ((objectId >= OBJ_ID_FIRST_TEAM) && (objectId <= OBJ_ID_LAST_TEAM)) {
@@ -666,23 +560,14 @@ void execGetEnemyCount (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execSelectContact (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SELECT CONTACT function:
-	//
 	//		Sets the specified contact as the Current Contact. All pilot
 	//		contact-related ABL functions reference the Current Contact.
 	//		The Current Pilot's contact lists are referenced.
-	//
 	//		PARAMS:	integer				contact handle
-	//
 	//		RETURN: integer				error code (1 = not a contact)
-	//
-	//-----------------------------------------------------
 
 	long type = ABLi_popInteger();
 	long id = ABLi_popInteger();
@@ -691,7 +576,6 @@ void execSelectContact (void) {
 	if (CurObject->isMover()) {
 		MoverPtr me = (MoverPtr)CurObject;
 		MoverPtr object = (MoverPtr)ObjectManager->findByPartId(id);
-		//-------------------------------------------------------
 		// Passed an object id, so select it if it's a contact...
 		if (object && object->getTeam() && object->getContactStatus(me->getTeam()->getId(), true) != CONTACT_NONE) {
 			CurContact = object;
@@ -703,8 +587,6 @@ void execSelectContact (void) {
 
 	ABLi_pushInteger(code);
 }
-
-//*****************************************************************************
 
 void execIsContact (void) {
 
@@ -727,21 +609,12 @@ void execIsContact (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execGetContactId (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET CONTACT ID function:
-	//
 	//		Retrieves the current contact's object id number.
-	//
 	//		PARAMS:	none
-	//
 	//		RETURN: integer				contact's object id
-	//
-	//-----------------------------------------------------
 
 	long result = 0;
 	if (CurContact)
@@ -750,21 +623,12 @@ void execGetContactId (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execGetContactStatus (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET CONTACT STATUS function:
-	//
 	//		Retrieves the contact status of the current contact.
-	//
 	//		PARAMS:	@integer			is set to tag state, if any
-	//
 	//		RETURN: integer				contact's status
-	//
-	//-----------------------------------------------------
 
 	int* contactTagged = ABLi_popIntegerPtr();
 
@@ -776,23 +640,13 @@ void execGetContactStatus (void) {
 	ABLi_pushInteger(status);
 }
 
-//*****************************************************************************
-
 void execGetContactRelativePosition (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET CONTACT RELATIVE POSITION function:
-	//
 	//		Retrieves the range and angle to the current contact.
-	//
 	//		PARAMS:	@real				is set to the range (in meters) to contact
-	//
 	//				@real				is set to the angle (in degrees) to contact
-	//
 	//		RETURN: integer				error code
-	//
-	//-----------------------------------------------------
 
 	float* range = ABLi_popRealPtr();
 	float* angle = ABLi_popRealPtr();
@@ -819,8 +673,6 @@ void execGetContactRelativePosition (void) {
 	ABLi_pushInteger(result);
 }
 
-//***************************************************************************
-
 void execSetTarget (void) {
 
 	long attackerId = ABLi_popInteger();
@@ -828,7 +680,6 @@ void execSetTarget (void) {
 
 	GameObjectPtr target = getObject(targetId);
 	if ((attackerId >= MIN_UNIT_PART_ID) && (attackerId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(attackerId, moverList);
@@ -852,15 +703,12 @@ void execSetTarget (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetTarget (void) {
 
 	long objectId = ABLi_popInteger();
 
 	long partID = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		}
@@ -876,8 +724,6 @@ void execGetTarget (void) {
 	}
 	ABLi_pushInteger(partID);
 }
-
-//*****************************************************************************
 
 void execGetWeaponsReady (void) {
 
@@ -897,8 +743,6 @@ void execGetWeaponsReady (void) {
 	ABLi_pushInteger(numWeapons);
 }
 
-//*****************************************************************************
-
 void execGetWeaponsLocked (void) {
 
 	int* weaponList = ABLi_popIntegerPtr();
@@ -916,8 +760,6 @@ void execGetWeaponsLocked (void) {
 
 	ABLi_pushInteger(numWeapons);
 }
-
-//*****************************************************************************
 
 void execGetWeaponsInRange (void) {
 
@@ -938,8 +780,6 @@ void execGetWeaponsInRange (void) {
 	ABLi_pushInteger(numWeapons);
 }
 
-//*****************************************************************************
-
 void execGetWeaponShots (void) {
 
 	long weaponIndex = ABLi_popInteger();
@@ -951,24 +791,14 @@ void execGetWeaponShots (void) {
 	ABLi_pushInteger(numShots);
 }
 
-//*****************************************************************************
-
 void execGetWeaponRanges (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET WEAPON RANGES function:
-	//
 	//		Returns the range in meters for the object's shortest,
 	//		optimal and longest weapon ranges.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real[3]				list to store weapon ranges
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float* rangeList = ABLi_popRealPtr();
@@ -982,8 +812,6 @@ void execGetWeaponRanges (void) {
 	else
 		rangeList[0] = rangeList[1] = rangeList[2] = 0.0;
 }
-
-//*****************************************************************************
 
 void execGetObjectPosition (void) {
 
@@ -1008,89 +836,52 @@ void execGetObjectPosition (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetIntegerMemory (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET MEMORY INTEGER function:
-	//
 	//		Returns current integer value in memory cell of pilot.
-	//
 	//		PARAMS:	integer
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
 
 	long memIndex = ABLi_peekInteger();
 	ABLi_pokeInteger(CurWarrior->getIntegerMemory(memIndex));
 }
 
-//*****************************************************************************
-
 void execGetRealMemory (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET MEMORY REAL function:
-	//
 	//		Returns current real value in memory cell of pilot.
-	//
 	//		PARAMS:	integer
-	//
 	//		RETURN: real
-	//
-	//-----------------------------------------------------
 
 	long memIndex = ABLi_peekInteger();
 	ABLi_pokeReal(CurWarrior->getRealMemory(memIndex));
 }
 
-//*****************************************************************************
-
 void execGetAlarmTriggers (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET ALARM TRIGGERS function:
-	//
 	//		Returns number of triggers for the current combat event handler.
 	//		It also fills the list with all of the trigger ids for this
 	//		frame(call).
-	//
 	//		PARAMS:	integer[]
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
 
 	int* triggerList = ABLi_popIntegerPtr();
 	ABLi_pushInteger(CurWarrior->getEventHistory(CurAlarm, triggerList));
 }
 
-//*****************************************************************************
-
 void execGetChallenger (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET CHALLENGER function:
-	//
 	//		Returns the challenger for the specified object.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//		RETURN: integer				challenger object id
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 
 	long challengerPartID = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		}
@@ -1108,21 +899,12 @@ void execGetChallenger (void) {
 	ABLi_pushInteger(challengerPartID);
 }
 
-//*****************************************************************************
-
 void execGetTimeWithoutOrders (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET TIME WITHOUT ORDERS function:
-	//
 	//		Returns the current pilot's time (in secs) without orders.
-	//
 	//		PARAMS:	none
-	//
 	//		RETURN: real				time (in seconds)
-	//
-	//-----------------------------------------------------
 
 	ABLi_pushReal(0.0);
 	if (CurWarrior) {
@@ -1132,22 +914,13 @@ void execGetTimeWithoutOrders (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetFireRanges (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET FIRE RANGES function:
-	//
 	//		Retrieves the current settings for SHORT, MEDIUM and LONG range,
 	//		as well as MAX WEAPON range
-	//
 	//		PARAMS:	@real[4]			sets the game's current ranges (meters)				
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	float* ranges = ABLi_popRealPtr();
 
@@ -1159,25 +932,14 @@ void execGetFireRanges (void) {
 	ranges[3] = 250.0; //No one should use this in MC2!
 }
 
-//*****************************************************************************
-
 void execGetAttackers (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET ATTACKERS function:
-	//
 	//		Retrieves all objects that have attacked current pilot
 	//		in the last x seconds.
-	//
 	//		PARAMS:	@integer[]			attacker list (make it big!)
-	//
 	//				real				seconds
-	//
 	//		RETURN: integer				num attackers
-	//
-	//-----------------------------------------------------
-
 
 	int* attackers = ABLi_popIntegerPtr();
 	float seconds = ABLi_popReal();
@@ -1194,30 +956,20 @@ void execGetAttackers (void) {
 	ABLi_pushInteger(numAttackers);
 }
 
-//*****************************************************************************
-
 void execGetAttackerInfo (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET ATTACKER INFO function:
-	//
 	//		If the object has attacked the current pilot, it returns the #
 	//		of seconds since the last attack (FUTURE: may return # of hits,
 	//		damage done, etc. thru params). If the object never attacked
 	//		'em, returns -1.0.
-	//
 	//		PARAMS:	integer				attacker id
-	//
 	//		RETURN: real				seconds since last attack
-	//
-	//-----------------------------------------------------
 
 	unsigned long attackerId = ABLi_popInteger();
 
 	float timeSince = 1000000.0;
 	if ((attackerId >= MIN_UNIT_PART_ID) && (attackerId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		}
@@ -1231,23 +983,13 @@ void execGetAttackerInfo (void) {
 	ABLi_pushReal(timeSince);
 }
 
-//*****************************************************************************
-
 void execSetChallenger (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET CHALLENGER function:
-	//
 	//		Sets the challenger for the specified object.
-	//
 	//		PARAMS:	integer				object1
-	//
 	//				integer				object2 (challenger)
-	//
 	//		RETURN: integer				error code
-	//
-	//-----------------------------------------------------
 
 	long victimId = ABLi_popInteger();
 	long challengerId = ABLi_popInteger();
@@ -1255,7 +997,6 @@ void execSetChallenger (void) {
 	long result = NO_ERR;
 	
 	if ((challengerId >= MIN_UNIT_PART_ID) && (challengerId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		result = -1;
@@ -1271,8 +1012,6 @@ void execSetChallenger (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execSetIntegerMemory (void) {
 
 	long memIndex = ABLi_popInteger();
@@ -1280,16 +1019,12 @@ void execSetIntegerMemory (void) {
 	CurWarrior->setIntegerMemory(memIndex, memValue);
 }
 
-//***************************************************************************
-
 void execSetRealMemory (void) {
 
 	long memIndex = ABLi_popInteger();
 	float memValue = ABLi_popReal();
 	CurWarrior->setRealMemory(memIndex, memValue);
 }
-
-//*****************************************************************************
 
 void execHasMoveGoal (void) {
 
@@ -1299,8 +1034,6 @@ void execHasMoveGoal (void) {
 	ABLi_pushBoolean(result);
 }
 
-//*****************************************************************************
-
 void execHasMovePath (void) {
 
 	bool result = false;
@@ -1309,10 +1042,7 @@ void execHasMovePath (void) {
 	ABLi_pushBoolean(result);
 }
 
-//*****************************************************************************
-
 void execSortWeapons (void) {
-
 
 	int* weaponList = ABLi_popIntegerPtr();
 	long listSize = ABLi_popInteger();
@@ -1323,29 +1053,19 @@ void execSortWeapons (void) {
 		((MoverPtr)CurObject)->sortWeapons(weaponList, valueList, listSize, sortType, true);
 }
 
-//*****************************************************************************
-
 void execGetVisualRange (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET VISUAL RANGE function:
-	//
 	//		Returns visual range of the indicated object (taking into
 	//		account the infamous Beagle Probe).
-	//
 	//		PARAMS:	integer				object id
-	//
 	//		RETURN: real				range in meters
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 
 	float range = 0.0;
 	GameObjectPtr object = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		range = -1;
@@ -1358,24 +1078,13 @@ void execGetVisualRange (void) {
 	ABLi_pushReal(range);
 }
 
-//*****************************************************************************
-
 void execGetUnitMates (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET UNIT MATES function:
-	//
 	//		Returns number and list of unit mates of the specified object.
-	//
 	//		PARAMS:	integer			object (unit) id
-	//
 	//				integer[]		object list
-	//
 	//		RETURN: integer			num objects in unit
-	//
-	//-----------------------------------------------------
-
 
 	long objectId = ABLi_popInteger();
 	int* mateList = ABLi_popIntegerPtr();
@@ -1388,7 +1097,6 @@ void execGetUnitMates (void) {
 
 	long numObjs = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
@@ -1410,27 +1118,16 @@ void execGetUnitMates (void) {
 	ABLi_pushInteger(numObjs);		
 }
 
-//*****************************************************************************
-
 void execGetTacOrder(void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET TACORDER:
-	//
 	//		Retrieves the current tactical order for the specified object.
 	//		Also sets the order time and order parameters, which are passed
 	//		as call-by-ref parameters.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				@real				time order was given
-	//
 	//				integer[]			order parameters (size of list varies by order)
-	//
 	//		RETURN: integer				tac order code
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float* time = ABLi_popRealPtr();
@@ -1438,7 +1135,6 @@ void execGetTacOrder(void) {
 	
 	long code = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		}
@@ -1460,27 +1156,16 @@ void execGetTacOrder(void) {
 	ABLi_pushInteger(code);
 }	
 
-//*****************************************************************************
-
 void execGetLastTacOrder(void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET LAST TACORDER:
-	//
 	//		Retrieves the last tactical order for the specified object.
 	//		Also sets the order time and order parameters, which are passed
 	//		as call-by-ref parameters.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				@real				time order was given
-	//
 	//				integer[]			order parameters (size of list varies by order)
-	//
 	//		RETURN: integer				tac order code
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float* time = ABLi_popRealPtr();
@@ -1488,7 +1173,6 @@ void execGetLastTacOrder(void) {
 	
 	long code = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		}
@@ -1504,23 +1188,13 @@ void execGetLastTacOrder(void) {
 	ABLi_pushInteger(code);
 }	
 
-//*****************************************************************************
-
 void execGetObjects (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET OBJECTS function:
-	//
 	//		Returns number and list of unit mates of the specified object.
-	//
 	//		PARAMS:	integer			object criteria
-	//
 	//				integer[]		object list
-	//
 	//		RETURN: integer			num objects in unit
-	//
-	//-----------------------------------------------------
 
 	long criteria = ABLi_popInteger();
 	int* objList = ABLi_popIntegerPtr();
@@ -1658,8 +1332,6 @@ void execGetObjects (void) {
 	ABLi_pushInteger(numObjects);
 }
 
-//*****************************************************************************
-
 void execOrderWait (void) {
 
 	float seconds = ABLi_popReal();
@@ -1675,26 +1347,15 @@ void execOrderWait (void) {
 	ABLi_pokeInteger(result);
 }
 
-//*****************************************************************************
-
 void execOrderMoveTo (void) {
 
-	//-----------------------------------------------------
-	//
 	//	MOVE TO POINT tactical order:
-	//
 	//		Set tactical order to move to specified location, using the
 	//		current attitude orders and other move factors. Returns tacorder
 	//		result code.
-	//
 	//		PARAMS:	real[3]					location
-	//
 	//				boolean					run
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
-
 
 	float* coordList = ABLi_popRealPtr();
 	bool run = ABLi_popBoolean();
@@ -1725,24 +1386,14 @@ void execOrderMoveTo (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execOrderMoveToObject (void) {
 
-	//-----------------------------------------------------
-	//
 	//	MOVE TO OBJECT tactical order:
-	//
 	//		Set tactical order to move to specified object, using the given
 	//		movement parameters (stealth, etc.). Returns error code.
-	//
 	//		PARAMS:	integer		contact id
-	//
 	//				boolean		run
-	//
 	//		RETURN: integer		error code
-	//
-	//-----------------------------------------------------
 
 	unsigned long objectId = ABLi_popInteger();
 	bool run = ABLi_popBoolean();
@@ -1755,7 +1406,6 @@ void execOrderMoveToObject (void) {
 	long result = 1;
 	GameObjectPtr object = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		result = 1;
@@ -1769,23 +1419,13 @@ void execOrderMoveToObject (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execOrderMoveToContact (void) {
 
-	//-----------------------------------------------------
-	//
 	//	MOVE TO CONTACT tactical order:
-	//
 	//		Set tactical order to move to specified contact, using the given
 	//		movement parameters (stealth, etc.). Returns error code.
-	//
 	//		PARAMS:	boolean		run
-	//
 	//		RETURN: integer		error code
-	//
-	//-----------------------------------------------------
-
 
 	bool run = ABLi_popBoolean();
 
@@ -1795,10 +1435,8 @@ void execOrderMoveToContact (void) {
 	}
 
 	long result = TACORDER_FAILURE;
-	//---------------------------------------------------------------
 	// First, get the contact's object ID and its current location...
 	if (CurContact) {
-		//------------------------------------------------------------
 		// Now, set up the tactical order, and pass it to the pilot...
 		result = CurWarrior->orderMoveToObject(false, true, ORDER_ORIGIN_COMMANDER, CurContact, -1, -1, run);
 	}
@@ -1806,22 +1444,13 @@ void execOrderMoveToContact (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execOrderPowerDown (void) {
 
-	//-----------------------------------------------------
-	//
 	//	ORDER POWER DOWN function:
-	//
 	//		Set tactical order to power down.
 	//		Returns tacorder result	code.
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);
@@ -1831,22 +1460,13 @@ void execOrderPowerDown (void) {
 	ABLi_pushInteger(CurWarrior->orderPowerDown(false, TacOrderOrigin));
 }
 
-//*****************************************************************************
-
 void execOrderPowerUp (void) {
 
-	//-----------------------------------------------------
-	//
 	//	ORDER POWER UP function:
-	//
 	//		Set tactical order to power up.
 	//		Returns tacorder result	code.
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
 
 	if (ABLi_getSkipOrder()) {
 		ABLi_pushInteger(1);
@@ -1856,30 +1476,17 @@ void execOrderPowerUp (void) {
 	ABLi_pushInteger(CurWarrior->orderPowerUp(false, TacOrderOrigin));
 }
 
-//*****************************************************************************
-
 void execOrderAttackObject (void) {
 
-	//-----------------------------------------------------
-	//
 	//	ORDER ATTACK OBJECT tactical order:
-	//
 	//		Set tactical order to direct all weapons fire at the specified
 	//		object. Returns an error code.
-	//
 	//		PARAMS:	integer		object id
-	//
 	//				integer		attack type (0 = none, 1 = destroy, 2 = disable)
-	//
 	//				integer		method (0 = ranged, 1 = dfa, 2 = ramming)
-	//
 	//				integer		range (0 = short, 1 = medium, 2 = long)
-	//
 	//				integer		pursue (0 = False, 1 = True)
-	//
 	//		RETURN: integer		error code
-	//
-	//-----------------------------------------------------
 
 	unsigned long objectId = ABLi_popInteger();
 	long attackType = ABLi_popInteger();
@@ -1895,7 +1502,6 @@ void execOrderAttackObject (void) {
 
 		GameObjectPtr object = NULL;
 		if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-			//--------------------------------------------
 			// We have a group.  Act accordingly.
 			// Run through all objects fitting the group.
 			}
@@ -1909,28 +1515,16 @@ void execOrderAttackObject (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execOrderAttackContact (void) {
 
-	//-----------------------------------------------------
-	//
 	//	ORDER ATTACK CONTACT tactical order:
-	//
 	//		Set tactical order to direct all weapons fire at the current
 	//		contact. Returns an error code.
-	//
 	//		PARAMS:	integer		attack type (0 = none, 1 = destroy, 2 = disable)
-	//
 	//				integer		range (0 = short, 1 = medium, 2 = long)
-	//
 	//				integer		method (0 = ranged, 1 = dfa, 2 = ramming)
-	//
 	//				integer		pursue (0 = False, 1 = True)
-	//
 	//		RETURN: integer		error code
-	//
-	//-----------------------------------------------------
 
 	long attackType = ABLi_popInteger();
 	long attackMethod = ABLi_popInteger();
@@ -1950,14 +1544,10 @@ void execOrderAttackContact (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execOrderWithdraw(void) {
 
 	//Makes the object(s) passed in withdraw 
-	//
 	//		PARAMS:	NONE
-	//
 	//		Returns: integer (result)
 
 	ABLi_pushInteger(1);
@@ -1973,14 +1563,10 @@ void execOrderWithdraw(void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execObjectInWithdrawal(void) {
 
 	//Checks the object(s) passed in to see if they are withdrawing
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectId1 = ABLi_popInteger();
@@ -1988,7 +1574,6 @@ void execObjectInWithdrawal(void) {
 	long result = 1;
 	GameObjectPtr object1 = NULL;
 	if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId1, moverList);
@@ -2008,38 +1593,21 @@ void execObjectInWithdrawal(void) {
 	ABLi_pushInteger(result);
 }	
 
-//*****************************************************************************
-
 void execDamageObject (void) {
 
-	//----------------------------------------------------------------------
-	//
 	//	DAMAGE OBJECT function:
-	//
 	//		Directly damages an object as if it were a weapon shot.
 	//		Returns error code.
-	//
 	//		PARAMS:	integer				target object id
-	//
 	//				integer				attacker object id
-	//
 	//				integer				weapon master component id
-	//
 	//				real				damage points
-	//
 	//				integer				hit location
-	//
 	//				real				hit roll
-	//
 	//				real				entry angle
-	//
 	//		RETURN: integer				error code (always returns 0, for now)
-	//
 	//									-1 = bad target
-	//
 	//									-2 = bad attacker
-	//
-	//----------------------------------------------------------------------
 
 	long targetId = ABLi_popInteger();
 	long attackerId = ABLi_popInteger();
@@ -2054,7 +1622,6 @@ void execDamageObject (void) {
 	ABLi_pokeInteger(-1);
 	if (attacker) {
 		if ((targetId >= MIN_UNIT_PART_ID) && (targetId <= MAX_UNIT_PART_ID)) {
-			//--------------------------------------------
 			// We have a group.  Act accordingly.
 			long numObjects = getMovers(targetId, moverList, true);
 			WeaponShotInfo shotInfo;
@@ -2091,36 +1658,23 @@ void execDamageObject (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execSetAttackRadius (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET ATTACK RADIUS tactical order:
-	//
 	//		Sets the range at which the pilot will break off attack from its
 	//		last target. Returns previous attack radius.
-	//
 	//		PARAMS:	real				attack radius in meters
-	//
 	//		RETURN: real				previous attack radius
-	//
-	//-----------------------------------------------------
 
 	float radius = ABLi_peekReal();
 	ABLi_pokeReal(CurWarrior->getAttackRadius());
 	CurWarrior->setAttackRadius(radius);
 }
 
-//*****************************************************************************
-
 void execObjectChangeSides (void) {
 
 	//Object Change Side Function.
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: nothing!
 	
 	long objectId = ABLi_popInteger();
@@ -2128,7 +1682,6 @@ void execObjectChangeSides (void) {
 
 	GameObjectPtr object = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		Fatal(0, " Cannot ABL:ObjectChangeSides for Mover Units ");
@@ -2141,14 +1694,10 @@ void execObjectChangeSides (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execDistanceToObject (void) {
 
 	//Distance to Object From Object Function.
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: (real) distance in meters
 	
 	long objectId1 = ABLi_popInteger();
@@ -2160,7 +1709,6 @@ void execDistanceToObject (void) {
 	if (object2) {
 		Stuff::Vector3D position2 = object2->getPosition();
 		if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
-			//--------------------------------------------
 			// We have a group.  Act accordingly.
 			// Run through all objects fitting the group.
 			float minDistance = 3.4E38f;
@@ -2198,14 +1746,10 @@ void execDistanceToObject (void) {
 	}
 }
 			
-//***************************************************************************
-
 void execDistanceToPosition (void) {
 
 	//Distance to Object From Position Function.
-	//
 	//		PARAMS:	integer, real[3]
-	//
 	//		Returns: (real) distance in meters
 	
 	long objectId = ABLi_popInteger();
@@ -2213,7 +1757,6 @@ void execDistanceToPosition (void) {
 
 	ABLi_pushReal(-1.0);
 
-	//---------------------------------------
 	// For now, we only care about x and y...
 	Stuff::Vector3D position2;
 	position2.Zero();
@@ -2225,7 +1768,6 @@ void execDistanceToPosition (void) {
 		position2.y = coordList[1];
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
@@ -2261,22 +1803,16 @@ void execDistanceToPosition (void) {
 	}
 }
 			
-//*****************************************************************************
-
 void execObjectSuicide (void) {
 
 	//Cause object to destroy itself Function.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: nothing
 	
-	//-----------------
 	long objectId = ABLi_popInteger();
 	
 	GameObjectPtr object1 = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
@@ -2290,14 +1826,10 @@ void execObjectSuicide (void) {
 	}
 }
 			
-//***************************************************************************
-
 void execObjectCreate (void) {
 
 	//Cause object to create itself Function.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: id of object created 
 	
 	long objectId = ABLi_popInteger();
@@ -2314,21 +1846,16 @@ void execObjectCreate (void) {
 	ABLi_pushInteger(result);
 }
 			
-//***************************************************************************
-
 void execObjectExists (void) {
 
 	//test if object exists Function.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer
 	
 	long objectId = ABLi_peekInteger();
 	ABLi_pokeInteger(0);
 
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjs = getMovers(objectId, moverList);
@@ -2344,14 +1871,10 @@ void execObjectExists (void) {
 	}
 }
 			
-//***************************************************************************
-
 void execObjectStatus (void) {
 
 	//returns object's status.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer
 	
 	long objectId = ABLi_popInteger();
@@ -2359,7 +1882,6 @@ void execObjectStatus (void) {
 	long result = -1;
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//-------------------------------------------------------
 		// We have a group.  Act accordingly.
 		// No Group Check of actual status, return -1.
 		// If any unit member is still alive, then the unit is...
@@ -2388,23 +1910,17 @@ void execObjectStatus (void) {
 	ABLi_pushInteger(result);
 }
 			
-//*****************************************************************************
-
 void execObjectStatusCount (void) {
 
 	//return object status count for an object, unit or team.
-	//
 	//		PARAMS:	integer							partId
-	//
 	//				integer[9]						tally list
-	//
 	//		Returns: NONE
 
 	long objectId = ABLi_popInteger();
 	int* tallyList = ABLi_popIntegerPtr();
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// No Group Check of actual status, return -1.
 		if ((objectId >= PlayerLance0) && (objectId < PlayerLance0 + MAX_MOVERGROUPS))
@@ -2429,14 +1945,10 @@ void execObjectStatusCount (void) {
 	}
 }
 			
-//*****************************************************************************
-
 void execObjectVisible (void) {
 
 	//test if object2 is visible from object1
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: integer
 	
 	long objectId1 = ABLi_popInteger();
@@ -2448,7 +1960,6 @@ void execObjectVisible (void) {
 	
 	if (object2) {
 		if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
-			//--------------------------------------------
 			// We have a group.  Act accordingly.
 			// Run through all objects fitting the group.
 			// Can anyone in the group see the object?
@@ -2469,14 +1980,10 @@ void execObjectVisible (void) {
 	ABLi_pushInteger(result);
 }				
 			
-//*****************************************************************************
-
 void execObjectTeam (void) {
 
 	//return what side object plays for Function.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer
 	
 	long objectId = ABLi_popInteger();
@@ -2489,15 +1996,12 @@ void execObjectTeam (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execObjectCommander (void) {
 
 	long objectId = ABLi_peekInteger();
 	ABLi_pokeInteger(-1);
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//-----------------------------------
 		// We have a group.  Act accordingly.
 		}
 	else {
@@ -2507,14 +2011,10 @@ void execObjectCommander (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execObjectClass(void) {
 
 	//return what object class the obj is.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer
 	
 	long objectId = ABLi_popInteger();
@@ -2526,14 +2026,10 @@ void execObjectClass(void) {
 	ABLi_pushInteger(result);
 }
 			
-//*****************************************************************************
-
 void execSetTimer (void) {
 
 	//Creates a timer which counts down from time passed in
-	//
 	//		PARAMS:	integer, real
-	//
 	//		Returns: integer (ID of timer created)
 	
 	short timerNumber = ABLi_popInteger();
@@ -2550,14 +2046,10 @@ void execSetTimer (void) {
 	ABLi_pushInteger(timerNumber);
 }
 			
-//*****************************************************************************
-
 void execCheckTimer (void) {
 
 	//Checks a timer created and return time left
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: real (time left)
 	
 	short timerNumber = ABLi_popInteger();
@@ -2575,36 +2067,22 @@ void execCheckTimer (void) {
 	ABLi_pushReal(timeLeft);
 }
 			
-//*****************************************************************************
-
 void execEndTimer (void) {
 
 	//sets time to zero and destroys timer.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: nothing
 	
 	long timerID = ABLi_popInteger();
 
 // NOT REALLY NECESSARY ANYMORE--since the timers have no callback, they just
 // keep counting down... no harm...
-#if 0
-	if ((timerId < SCENARIOTIMER1) || (timerId > SCENARIOTIMER8))
-		timerId = 0;
-	else
-		application->RemoveTimer(application,timerId);
-#endif
 }
 	
-//*****************************************************************************
-
 void execSetObjectiveTimer (void) {
 
 	//Sets timer of objective passed in.
-	//
 	//		PARAMS:	integer, real
-	//
 	//		Returns: integer (result)
 	
 	long objectiveNum = ABLi_popInteger();
@@ -2613,14 +2091,10 @@ void execSetObjectiveTimer (void) {
 	ABLi_pushInteger(mission->setObjectiveTimer(objectiveNum, duration));
 }
 
-//*****************************************************************************
-
 void execCheckObjectiveTimer (void) {
 
 	//Checks an objective timer passed in and returns time left
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: real (time left)
 	
 	long objectiveNum = ABLi_popInteger();
@@ -2628,14 +2102,10 @@ void execCheckObjectiveTimer (void) {
 	ABLi_pushReal(mission->checkObjectiveTimer(objectiveNum));
 }
 
-//*****************************************************************************
-
 void execSetObjectiveStatus (void) {
 
 	//Sets status of objective passed in.
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: integer (result)
 
 	long objectiveNum = ABLi_popInteger();
@@ -2644,14 +2114,10 @@ void execSetObjectiveStatus (void) {
 	ABLi_pushInteger(mission->setObjectiveStatus(objectiveNum,status));
 }
 
-//*****************************************************************************
-
 void execCheckObjectiveStatus (void) {
 
 	//Checks an objective status passed in and returns it
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (status)
 
 	long objectiveNum = ABLi_popInteger();
@@ -2659,14 +2125,10 @@ void execCheckObjectiveStatus (void) {
 	ABLi_pushInteger(mission->checkObjectiveStatus(objectiveNum));
 }
 
-//*****************************************************************************
-
 void execSetObjectiveType (void) {
 
 	//Sets type of objective passed in.
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: integer (result)
 
 	long objectiveNum = ABLi_popInteger();
@@ -2675,14 +2137,10 @@ void execSetObjectiveType (void) {
 	ABLi_pushInteger(mission->setObjectiveType(objectiveNum,type));
 }
 
-//*****************************************************************************
-
 void execCheckObjectiveType (void) {
 
 	//Checks an objective type passed in and returns it
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (status)
 
 	long objectiveNum = ABLi_popInteger();
@@ -2690,14 +2148,10 @@ void execCheckObjectiveType (void) {
 	ABLi_pushInteger(mission->checkObjectiveType(objectiveNum));
 }
 
-//*****************************************************************************
-
 void execPlayDigitalMusic (void) {
 
 	//Starts playback of Digital music
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long soundNum = ABLi_popInteger();
@@ -2708,28 +2162,20 @@ void execPlayDigitalMusic (void) {
 	ABLi_pushInteger(0);	
 }
 
-//***************************************************************************
-
 void execStopMusic(void) {
 
 	//Stops playback of Digitalmusic
-	//
 	//		PARAMS:	None
-	//
 	//		Returns: None
 
 	if (soundSystem)
 		soundSystem->stopABLMusic();
 }
 
-//*****************************************************************************
-
 void execPlaySoundEffect(void) {
 
 	//Starts playback of Digital sound effect
-	//
 	//		PARAMS:	integer, real
-	//
 	//		Returns: integer (result)
 
 	long soundNum = ABLi_popInteger();
@@ -2739,14 +2185,10 @@ void execPlaySoundEffect(void) {
 	ABLi_pushInteger(0);
 }
 
-//*****************************************************************************
-
 void execPlayVideo(void) {
 
 	//Starts playback of video sequence
-	//
 	//		PARAMS:	integer, real
-	//
 	//		Returns: integer (result)
 
 	char* fileName = ABLi_popCharPtr();
@@ -2756,24 +2198,13 @@ void execPlayVideo(void) {
 	ABLi_pushInteger(0);
 }
 
-//*****************************************************************************
-
 void execSetRadio (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET RADIO function:
-	//
 	//		Turns the radio(s) on or off.
-	//
 	//		PARAMS:	integer					warrior id
-	//
 	//				integer					FALSE = off, TRUE= on
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
-
 
 	long warriorIndex = ABLi_popInteger();
 	bool radioSetting = ABLi_popBoolean();
@@ -2788,14 +2219,10 @@ void execSetRadio (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execPlaySpeech (void) {
 
 	//Starts playback of Digital speech
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: integer (result)
 
 	long warriorIndex = ABLi_popInteger();
@@ -2808,17 +2235,12 @@ void execPlaySpeech (void) {
 	ABLi_pushInteger(0);		
 }
 
-//*****************************************************************************
-
 void execPlayBetty (void) {
 
 	//Starts playback of betty message
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
-	//-----------------------------------------------
 	// Get the ID of the pilot whose speech this is
 	long messageIndex = ABLi_popInteger();
 	long result = soundSystem->playBettySample(messageIndex);
@@ -2826,7 +2248,6 @@ void execPlayBetty (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
 void execGetMissionWon (void)
 {
 	if (Mission::terminationResult != -1)
@@ -2839,52 +2260,44 @@ void execGetMissionWon (void)
 	}
 }
 
-//*****************************************************************************
 void execGetMissionLost (void) 
 {
 	ABLi_pushBoolean((Mission::terminationResult == mis_PLAYER_LOST_BIG) || 
 					(Mission::terminationResult == mis_PLAYER_LOST_SMALL));
 }
 
-//*****************************************************************************
 void execGetObjectiveSuccess (void) 
 {
 	ABLi_pushBoolean(mission->checkObjectiveSuccess());
 }
 
-//*****************************************************************************
 void execGetObjectiveFailed (void) 
 {
 	ABLi_pushBoolean(mission->checkObjectiveFailed());
 }
 
-//*****************************************************************************
 void execGetEnemyDestroyed (void) 
 {
 	ABLi_pushBoolean(enemyDestroyed);
 	enemyDestroyed = false;
 }
 
-//*****************************************************************************
 void execGetFriendlyDestroyed (void) 
 {
 	ABLi_pushBoolean(friendlyDestroyed);
 	friendlyDestroyed = false;
 }
 
-//*****************************************************************************
 void execPlayerInCombat (void) 
 {
 	ABLi_pushBoolean(MechWarrior::anyPlayerInCombat());
 }
 
-//*****************************************************************************
 void execGetSensorsActive (void) 
 {
 	ABLi_pushBoolean(SensorSystemManager::enemyInLOS);
 }
 
-//*****************************************************************************
 void execGetCurrentMusicId (void) 
 {
 	ABLi_pushInteger(soundSystem->getCurrentMusicId());
@@ -2895,28 +2308,21 @@ void execGetMissionTuneId (void)
 	ABLi_pushInteger(mission->getMissionTuneId());
 }
 
-//*****************************************************************************
-
 void execSetObjectActive(void) {
 
 	//Turns on/off the AI for the object(s) passed in
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				boolean				true = on, false = off
-	//
 	//		Returns: integer (result)
 
 	long objectId1 = ABLi_popInteger();
 	bool active = ABLi_peekBoolean();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	GameObjectPtr object1 = NULL;
 	long numActivated = 0;
 
 	if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId1, moverList);
@@ -2943,20 +2349,15 @@ void execSetObjectActive(void) {
 	ABLi_pokeInteger(numActivated);
 }	
 
-//*****************************************************************************
-
 void execObjectTypeID (void) {
 
 	//Returns the objectTypeId for the ObjectNum passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectId1 = ABLi_popInteger();
 	
 	long partID = -1;
-	//---------------------------------
 	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectId1);
 	if (object1)
@@ -2964,14 +2365,10 @@ void execObjectTypeID (void) {
 	ABLi_pushInteger(partID);		
 }	
 
-//*****************************************************************************
-
 void execGetTerrainObjectPartID (void) {
 
 	//Returns the object PartID for a terrain Object
-	//
 	//		PARAMS: integer, integer
-	//
 	//		Returns: integer (result)
 
 	long row = ABLi_popInteger();
@@ -2981,20 +2378,15 @@ void execGetTerrainObjectPartID (void) {
 	pushInteger(partID);
 }	
 
-//*****************************************************************************
-
 void execGetWeaponAmmo (void) {
 
 	//Returns number of rounds left based on objectId and weaponId 
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_popInteger();
 	long weaponNum = ABLi_popInteger();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectNum);
 	
@@ -3004,20 +2396,13 @@ void execGetWeaponAmmo (void) {
 		ABLi_pushInteger(-1);
 }	
 
-//*****************************************************************************
-
 void execInArea (void) {
 
 	//returns TRUE if object/unit/team inside area.
-	//
 	//		PARAMS:	integer				object/unit/team id
-	//
 	//				real[3]				center of area
-	//
 	//				real				radius of area
-	//
 	//				integer				min number to pass (-1 = ALL must be in)
-	//
 	//		RETURN: boolean				yes or no?
 
 	long objectId = ABLi_popInteger();
@@ -3036,7 +2421,6 @@ void execInArea (void) {
 	center.z = areaCenter[2];
 
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		long numObjects = getMovers(objectId, moverList);
 		if (minIn == -1) {
@@ -3085,29 +2469,19 @@ void execInArea (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execObjectRemove (void) {
 
-	//---------------------------------------------------------------------
-	//
 	//	Object Remove
-	//
 	//		Remove the object from the game (COMPLETELY removes).
 	//		Currently only works for Movers.
-	//
 	//		PARAMS:	integer			object id
-	//
 	//		RETURN:	integer			result (0 = success)
-	//
-	//---------------------------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	
 	GameObjectPtr object = getObject(objectId);
 	if (object) {
 		if (object->isMover()) {
-			//-------------------------------------------------------------
 			// If the object we're removing is the CurObject, then we can't
 			// do it until after we finish this object's update!
 			// So, we'll just set the removed flag, and then check it
@@ -3122,8 +2496,6 @@ void execObjectRemove (void) {
 			ABLi_pushInteger(1);
 	}
 }
-
-//*****************************************************************************
 
 void execCreateInfantry (void) {
 
@@ -3162,14 +2534,10 @@ void execCreateInfantry (void) {
 	ABLi_pushInteger(0);
 }
 
-//*****************************************************************************
-
 void execGetSensorsWorking (void) {
 
 	//Returns whether or not sensors are operative for object passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_popInteger();
@@ -3182,20 +2550,15 @@ void execGetSensorsWorking (void) {
 	ABLi_pushInteger(result);
 }	
 
-//*****************************************************************************
-
 void execGetCurrentBRValue (void) {
 
 	//Returns the current BR value for the object passed in.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_popInteger();
 
 	long result = -1;
-	//------------------------------------------------
 	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectNum);
 	if (object1)
@@ -3204,39 +2567,29 @@ void execGetCurrentBRValue (void) {
 	ABLi_pushInteger(result);		
 }	
 
-//*****************************************************************************
-
 void execSetCurrentBRValue (void) {
 
 	//Sets the current BR value for the object passed in.
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: None
 
 	long objectNum = tos->integer;
 	long newBRValue = tos->integer;
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectNum);
 	if (object1)
 		object1->setCurCV(newBRValue);
 }	
 
-//*****************************************************************************
-
 void execGetArmorPts (void) {
 
 	//Returns the current number of armor points remaining on the object passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//---------------------------------
 	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	long armorPts = 0;
@@ -3249,19 +2602,14 @@ void execGetArmorPts (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execGetMaxArmor (void) {
 
 	//Returns the max number of armor points on the object passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//---------------------------------
 	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
@@ -3274,19 +2622,14 @@ void execGetMaxArmor (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execGetPilotID (void) {
 
 	//Returns the pilot ID of the driver of the object passed in.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//---------------------------------
 	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	ABLi_pokeInteger(-1);
@@ -3297,19 +2640,14 @@ void execGetPilotID (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execGetPilotWounds (void) {
 
 	//Returns number of wounds pilot of vehicle has sustained.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: real (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//---------------------------------
 	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	ABLi_pokeReal(0.0);
@@ -3320,20 +2658,15 @@ void execGetPilotWounds (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execSetPilotWounds (void) {
 
 	//Returns number of wounds pilot of vehicle has sustained.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: real (result)
 
 	long objectNum = ABLi_popInteger();
 	long wounds = ABLi_popInteger();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	if (wounds > 6)
 		wounds = 6;
@@ -3346,14 +2679,10 @@ void execSetPilotWounds (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execGetObjectActive (void) {
 
 	//Checks to see if the object(s) passed in are active
-	//
 	//		PARAMS:	integer, real
-	//
 	//		Returns: integer (result)
 
 	long objectId = ABLi_popInteger();
@@ -3361,7 +2690,6 @@ void execGetObjectActive (void) {
 	long result = 0;
 	GameObjectPtr object1 = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
@@ -3380,19 +2708,14 @@ void execGetObjectActive (void) {
 	ABLi_pushInteger(result);
 }	
 
-//***************************************************************************
-
 void execGetObjectDamage (void) {
 
 	//Returns the damage level of the object passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
@@ -3406,19 +2729,14 @@ void execGetObjectDamage (void) {
 	}
 }	
 
-//***************************************************************************
-
 void execGetObjectDmgPts (void) {
 
 	//Returns the damage points of the object passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
@@ -3428,19 +2746,14 @@ void execGetObjectDmgPts (void) {
 	}
 }	
 
-//***************************************************************************
-
 void execGetObjectMaxDmg (void) {
 
 	//Returns the damage level of the object passed in
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: integer (result)
 
 	long objectNum = ABLi_peekInteger();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
@@ -3450,15 +2763,11 @@ void execGetObjectMaxDmg (void) {
 	}
 }	
 
-//***************************************************************************
-
 void execSetObjectDamage (void) {
 
 	//Sets the damage level of the object passed in
 	//Note that the damage can only be given, not taken away!
-	//
 	//		PARAMS:	integer, integer
-	//
 	//		Returns: none
 
 	long objectNum = ABLi_popInteger();
@@ -3466,7 +2775,6 @@ void execSetObjectDamage (void) {
 	if (dmgPercentage > 100)
 		dmgPercentage = 100;
 
-	//---------------------------------
 	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj && (dmgPercentage > 0)) {
@@ -3491,52 +2799,38 @@ void execSetObjectDamage (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execGetGlobalValue (void) {
 
 	//Gets the value stored in global variable specified by passed in number.
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: real (result)
 
 	long variableNum = ABLi_peekInteger();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	ABLi_pokeReal(0.0);
 	if ((variableNum >= 0) && (variableNum < MAX_GLOBAL_MISSION_VALUES))
 		ABLi_pokeReal(globalMissionValues[variableNum]);
 }	
 
-//***************************************************************************
-
 void execSetGlobalValue (void) {
 
 	//Sets the value stored in global variable specified by passed in number.
-	//
 	//		PARAMS:	integer, real
-	//
 	//		Returns: nothing
 
 	long variableNum = ABLi_popInteger();
 	float value = ABLi_popReal();
 
-	//------------------------------------------------
 	// Code to make this work goes here
 	if ((variableNum >= 0) && (variableNum < MAX_GLOBAL_MISSION_VALUES))
 		globalMissionValues[variableNum] = value;
 }	
 
-//***************************************************************************
-
 void execSetObjectivePos (void) {
 
 	//Sets the position for objective passed in.
-	//
 	//		PARAMS:	integer, real, real, real
-	//
 	//		Returns: nothing
 
 	long variableNum = ABLi_popInteger();
@@ -3547,23 +2841,13 @@ void execSetObjectivePos (void) {
 	mission->setObjectivePos(variableNum, X, Y, Z);
 }	
 
-//*****************************************************************************
-
 void execSetSensorRange (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET SENSOR RANGE function:
-	//
 	//		Sets the sensor range of the object.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real				range
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float range = ABLi_popReal();
@@ -3573,23 +2857,13 @@ void execSetSensorRange (void) {
 		obj->setSensorRange(range);
 }	
 
-//***************************************************************************
-
 void execSetTonnage (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET TONNAGE function:
-	//
 	//		Sets the tonnage of the object.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real				tons
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float tonnage = ABLi_popReal();
@@ -3599,23 +2873,13 @@ void execSetTonnage (void) {
 		object->setTonnage(tonnage);
 }	
 
-//*****************************************************************************
-
 void execSetExplosionDamage (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET Explosion Damage function:
-	//
 	//		Sets the Explosion Damage of the object.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real				points of damage
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float dmg = ABLi_popReal();
@@ -3625,23 +2889,13 @@ void execSetExplosionDamage (void) {
 		obj->setExplDmg(dmg);
 }	
 
-//*****************************************************************************
-
 void execSetExplosionRadius (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET Explosion Radius function:
-	//
 	//		Sets the explosion radius of the object.
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real				radius (in Meters)
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float radius = ABLi_popReal();
@@ -3651,25 +2905,14 @@ void execSetExplosionRadius (void) {
 		obj->setExplRad(radius);
 }	
 
-//*****************************************************************************
-
 void execSetSalvage (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET Salvage function:
-	//
 	//		Sets the salvage for a building object.
-	//
 	//		PARAMS:	integer				object id 
-	//
 	//				integer				MasterComponentID of salvage
-	//
 	//				integer				Number of these components
-	//
 	//		RETURN: BOOLEAN				True if function succeeds
-	//
-	//-----------------------------------------------------
 
 	//long objectId = 
 	ABLi_popInteger();
@@ -3700,23 +2943,13 @@ void execSetSalvage (void) {
 #endif
 }	
 
-//*****************************************************************************
-
 void execSetSalvageStatus (void){
 
-	//-----------------------------------------------------
-	//
 	//	SET Salvage function:
-	//
 	//		Sets a mover on or off the salvage list
-	//
 	//		PARAMS:	integer				object id 
-	//
 	//				BOOLEAN				TRUE = on list, FALSE = off
-	//
 	//		RETURN: BOOLEAN				True if function succeeds
-	//
-	//-----------------------------------------------------
 
 	//long objectId = 
 	ABLi_popInteger();
@@ -3734,26 +2967,15 @@ void execSetSalvageStatus (void){
 #endif
 }	
 
-//*****************************************************************************
-
 void execSetAnimation (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SET Animation function:
-	//
 	//		Sets the salvage for a building object.	(Say what?! --jm)
 	//		ALL RIGHT, ALLRIGHT!!!!  Sets the animation State and subState. -fs
-	//
 	//		PARAMS:	integer				object id 
-	//
 	//				integer				Animation State
-	//
 	//				integer				Animation Sub State
-	//
 	//		RETURN: Nothing
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	//long newState = 
@@ -3769,14 +2991,10 @@ void execSetAnimation (void) {
 	}
 }	
 
-//*****************************************************************************
-
 void execSetRevealed (void) {
 
 	//Reveals terrain around point a distance out.
-	//
 	//		PARAMS:	integer, real, real[2]
-	//
 	//		Returns: nothing
 	
 	long teamID = ABLi_popInteger();
@@ -3791,33 +3009,20 @@ void execSetRevealed (void) {
 	if (teamID > -1)
 		land->markRadiusSeen(position2,distance,teamID);
 
-	//------------------------------------------------------------------
 	// This is sloppy, and we need a better way to update their scans...
 	for (long i = 0; i < Team::numTeams; i++)
 		SensorManager->getTeamSensor(i)->scanBattlefield();
 }
 	
-//*****************************************************************************
-
 void execGetSalvage (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GET Salvage function:
-	//
 	//		Returns two list of itemIds and quantities of salvage in an object
-	//
 	//		PARAMS:	integer				building ID
-	//
 	//				integer				number of item in array
-	//
 	//				integer[]			item list
-	//
 	//				integer[]			quantity list
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	long itemCount = ABLi_popInteger();
@@ -3849,23 +3054,13 @@ void execGetSalvage (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execOrderRefit (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Refit function:
-	//
 	//		Current Object starts refiting mover
-	//
 	//		PARAMS:	integer				mover ID
-	//
 	//				integer				order params
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	long refiteeId = ABLi_popInteger();
 	long params = ABLi_popInteger();
@@ -3880,19 +3075,11 @@ void execOrderRefit (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execSetCaptured (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Set Captured function:
-	//
 	//		Sets an objects captured flag to TRUE, and starts the capture display
-	//
 	//		PARAMS:	integer				building ID
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 
@@ -3901,23 +3088,13 @@ void execSetCaptured (void) {
 		object->setCaptured(true);
 }
 
-//*****************************************************************************
-
 void execOrderCapture (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Capture Object function:
-	//
 	//		Sets CurObject to capture object specified by target ID
-	//
 	//		PARAMS:	integer				target ID
-	//
 	//				integer				order params
-	//
 	//		RETURN:	NONE
-	//
-	//-----------------------------------------------------
 
 	long targetId = ABLi_popInteger();
 	long params = ABLi_popInteger();
@@ -3930,21 +3107,12 @@ void execOrderCapture (void) {
 		CurObject->getPilot()->orderCapture(ORDER_ORIGIN_COMMANDER, target, -1, params);
 }
 
-//*****************************************************************************
-
 void execSetCapturable (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Set Capturable function:
-	//
 	//		Sets an objects captureabl flag to captureable.
-	//
 	//		PARAMS:	integer				building ID
-	//
 	//				boolean				captureable
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	//bool captureable = 
@@ -3959,28 +3127,18 @@ void execSetCapturable (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execIsCaptured (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Is Captured function:
-	//
 	//		Returns the number of captured object in the group 
 	//		(0 or 1 if called for a separate object)
-	//
 	//		PARAMS:	integer				object ID
-	//
 	//		RETURN: integer
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_peekInteger();
 
 	long numCaptured = 0;
 	if (isUnitId(objectId)) {
-		//--------------------------------------------
 		// We have a group.  Act accordingly.
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
@@ -3996,23 +3154,13 @@ void execIsCaptured (void) {
 	ABLi_pokeInteger(numCaptured);
 }
 
-//*****************************************************************************
-
 void execIsCapturable (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Is Capturable function:
-	//
 	//		Returns whether or not an object is capturable
-	//
 	//		PARAMS:	integer				object ID
-	//
 	//				integer				capturing team ID
-	//
 	//		RETURN: BOOL
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	long capturingTeamID = ABLi_popInteger();
@@ -4029,23 +3177,14 @@ void execIsCapturable (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execWasEverCapturable (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Was Ever Is Capturable function:
-	//
 	//		Returns whether or not object was ever capturable
 	//			(regardless of whether it's dead, currently captured, etc.)
 	//			Only applies to vehicles!
-	//
 	//		PARAMS:	integer				object ID
-	//
 	//		RETURN: BOOL
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_peekInteger();
 
@@ -4055,21 +3194,12 @@ void execWasEverCapturable (void) {
 		ABLi_pokeBoolean(true);
 }
 
-//*****************************************************************************
-
 void execSetBuildingName (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetBuildingName Function:
-	//
 	//		Sets a building's name
-	//
 	//		PARAMS:	integer				building ID
-	//
 	//				integer				name Resource ID
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	//long newName = 
@@ -4085,34 +3215,19 @@ void execSetBuildingName (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execCallStrike (void) {
 
-	//-----------------------------------------------------
-	//
 	//	CallStrike function:
-	//
 	//		calls an air or artillery strike at the specified location
-	//
 	//		PARAMS:	integer			strike type (248 = big arty, 249 = sm arty, 250 sensor arty,
 	//											 507 = big air strike, 508 = sm air, 509 = sensor air
-	//
 	//				integer			id of target object
-	//
 	//				real			x coord of strike
-	//
 	//				real			y coord of strike
-	//
 	//				real			z coord of strike
-	//
 	//				bool			clan (is this coming from the clan?)
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
-	//---------------------------------------------------------------------
 	// Since artillery strikes are commander(player) based, not team based,
 	// & current missions are coded to assume team based, we'll just
 	// fatal if we're not in a campaign mission. Then, we can decide if
@@ -4140,36 +3255,20 @@ void execCallStrike (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execCallStrikeEx (void) {
 
-	//-----------------------------------------------------
-	//
 	//	CallStrikeEx function:
-	//
 	//		calls an air or artillery strike at the specified location delayed by time
-	//
 	//		PARAMS:	integer			strike type (248 = big arty, 249 = sm arty, 250 sensor arty,
 	//											 507 = big air strike, 508 = sm air, 509 = sensor air
-	//
 	//				integer			id of target object
-	//
 	//				real			x coord of strike
-	//
 	//				real			y coord of strike
-	//
 	//				real			z coord of strike
-	//
 	//				bool			clan (is this coming from the clan?)
-	//
 	//				real			time to impact
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
-	//---------------------------------------------------------------------
 	// Since artillery strikes are commander(player) based, not team based,
 	// & current missions are coded to assume team based, we'll just
 	// fatal if we're not in a campaign mission. Then, we can decide if
@@ -4201,19 +3300,11 @@ void execCallStrikeEx (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execOrderLoadElementals (void) {
 
-	//-----------------------------------------------------
-	//
 	// LoadElementals function:	tells elementals of selected group to load into specified carrier
-	//
 	//		PARAMS:	integer			carrier id
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
 	//long carrierId = 
 	ABLi_popInteger();
@@ -4228,21 +3319,12 @@ void execOrderLoadElementals (void) {
 #endif
 }
 
-//*****************************************************************************
-
 void execOrderDeployElementals (void) {
 
-	//-----------------------------------------------------
-	//
 	// CallStrike function:	tells elemental carrier to deploy any loaded elementals
-	//
 	//		PARAMS:	real[3]			coord of deployment location
-	//
 	//				integer			misc. order params (set to 0, typically)
-	//
 	//		RETURN: nothing
-	//
-	//-----------------------------------------------------
 
 	//long params = 
 	ABLi_popInteger();
@@ -4253,21 +3335,12 @@ void execOrderDeployElementals (void) {
 #endif
 }
 
-//***************************************************************************
-
 void execAddPrisoner (void) {
 
-	//-----------------------------------------------------
-	//
 	// AddPrisoner function:	adds specified prisoner to specified building
-	//
 	//		PARAMS:	integer		building id
-	//
 	//				integer		prisoner id
-	//
 	//		RETURN: 0 if successful
-	//
-	//-----------------------------------------------------
 
 	//long prisonId = 
 	ABLi_popInteger();
@@ -4315,19 +3388,11 @@ void execAddPrisoner (void) {
 #endif
 }
 
-//*****************************************************************************
-
 void execLockGateOpen (void) {
 
-	//-----------------------------------------------------
-	//
 	// LockGateOpen function:	Forces a gate to be Open Forever
-	//
 	//		PARAMS:	integer		gate id
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	//long gateID = 
 	ABLi_popInteger();
@@ -4339,19 +3404,11 @@ void execLockGateOpen (void) {
 #endif
 }
 
-//***************************************************************************
-
 void execLockGateClosed (void) {
 
-	//-----------------------------------------------------
-	//
 	// LockGateOpen function:	Forces a gate to be Closed Forever
-	//
 	//		PARAMS:	integer		gate id
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	//long gateID = 
 	ABLi_popInteger();
@@ -4363,19 +3420,11 @@ void execLockGateClosed (void) {
 #endif
 }
 
-//*****************************************************************************
-
 void execReleaseGateLock (void) {
 
-	//-----------------------------------------------------
-	//
 	// LockGateOpen function:	Releases any lock on a gate.
-	//
 	//		PARAMS:	integer		gate id
-	//
 	//		RETURN: none
-	//
-	//-----------------------------------------------------
 
 	//long gateID = 
 	ABLi_popInteger();
@@ -4387,21 +3436,12 @@ void execReleaseGateLock (void) {
 #endif
 }
 
-//*****************************************************************************
-
 void execIsGateOpen (void) {
 
-	//-----------------------------------------------------
-	//
 	//	IsGateOpen function:
-	//
 	//		Returns whether or not a gate is open
-	//
 	//		PARAMS:	integer				object ID
-	//
 	//		RETURN: BOOL				Open
-	//
-	//-----------------------------------------------------
 
 	//long objectId = ABLi_peekInteger();
 
@@ -4413,29 +3453,16 @@ void execIsGateOpen (void) {
 #endif
 }
 
-//*****************************************************************************
-
 void execGetRelativePositionToPoint (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Get Relative Position To Point function:
-	//
 	//		Calcs a position relative to the given point
-	//
 	//		PARAMS:	real[3]				point
-	//
 	//				real				angle (-180 <= angle <= 180.0, + is left, - is right)
-	//
 	//				real				distance (in meters)
-	//
 	//				integer				flags
-	//
 	//				real[3]				new point
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* pos = ABLi_popRealPtr();
 	float angle = ABLi_popReal();
@@ -4466,29 +3493,16 @@ void execGetRelativePositionToPoint (void) {
 	relPos[2] = newPos.z;
 }
 
-//*****************************************************************************
-
 void execGetRelativePositionToObject (void) {
 
-	//----------------------------------------------------------------------
-	//
 	//	Get Relative Position To Object function:
-	//
 	//		Calcs a position relative to the given object
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real				angle (-180 <= angle <= 180.0, + is left, - is right)
-	//
 	//				real				distance (in meters)
-	//
 	//				integer				flags
-	//
 	//				real[3]				new point
-	//
 	//		RETURN: NONE
-	//
-	//----------------------------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float angle = ABLi_popReal();
@@ -4516,19 +3530,14 @@ void execGetRelativePositionToObject (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetUnitStatus (void) {
 
 	//Returns the current state of the health bar in percent format from 0 to 100
-	//
 	//		PARAMS:	integer
-	//
 	//		Returns: real (result)
 
 	long objectNum = ABLi_popInteger();
 
-	//---------------------------------
 	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	ABLi_pushReal(0.0);
@@ -4536,23 +3545,13 @@ void execGetUnitStatus (void) {
 		ABLi_pokeReal(obj->getStatusRating() * 100.0);
 }	
 
-//*****************************************************************************
-
 void execRepair (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Repair function:
-	//
 	//		Repairs armor and internals. Currently only works on mechs
-	//
 	//		PARAMS:	integer				object id
-	//
 	//				real				points (of armor or structure) to repair
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 	float points = ABLi_popReal();
@@ -4601,25 +3600,15 @@ void execRepair (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetFixed (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Get Fixed function:
-	//
 	//		Sends mech or vehicle to appropriate repair bay
 	//		returns error code if call is illegal
-	//
 	//		PARAMS:	integer				mech or vehicle (fixee) to repair id
-	//
 	//				integer				repair bay id
-	//
 	//				integer				parameters
-	//
 	//		RETURN: integer				error code
-	//
 	//		-1	unknown error
 	//	   *	1	bay is out of repair points (probably means the bay is destroyed)
 	//	   *	2	wrong kind of bay (either sending a vehicle to a mech bay, or mech to vehicle bay)
@@ -4631,7 +3620,6 @@ void execGetFixed (void) {
 	//	   *	8	illegal bay object (either there's no object with that ID, or the object is not a repair bay)
 	//	   *	9	alignment mismatch (bay and fixee are on different sides.)
 	//	* is checked by -fs on 5/5/97
-	//-----------------------------------------------------
 	
 	long fixeeId = ABLi_popInteger();
 	long bayId = ABLi_popInteger();
@@ -4699,14 +3687,10 @@ void execGetFixed (void) {
 	ABLi_pushInteger(result);
 }
 
-//***************************************************************************
-
 void execGetRepairState (void) {
 
 	//Returns the percentage of repairable armor and IS points of the objectId passed in
-	//
 	//		PARAMS: integer
-	//
 	//		Returns: integer (result)
 
 	long objectId = ABLi_peekInteger();
@@ -4743,27 +3727,16 @@ void execGetRepairState (void) {
 	ABLi_pokeInteger(cur / max);
 }
 
-//*****************************************************************************
-
 void execIsTeamTargeting (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Is Team Targeting function:
-	//
 	//		Returns whether anyone of the specified team is currently
 	//		targeting the specified target with the possible exception
 	//		of the one team member (which may be set to 0, if desired).
-	//
 	//		PARAMS:	integer				team id
-	//
 	//				integer				target id
-	//
 	//				integer				except id (may be 0)
-	//
 	//		RETURN: boolean				yes or no
-	//
-	//-----------------------------------------------------
 
 	long teamId = ABLi_popInteger();
 	long targetId = ABLi_popInteger();
@@ -4784,25 +3757,15 @@ void execIsTeamTargeting (void) {
 	ABLi_pushBoolean(targeting);
 }
 
-//*****************************************************************************
-
 void execIsTeamCapturing (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Is Team Capturing function:
-	//
 	//		Returns whether anyone of the specified team is currently
 	//		capturing the specified target with the possible exception
 	//		of the one team member (which may be set to 0, if desired).
-	//
 	//		PARAMS:	integer				team id
-	//
 	//				integer				target id
-	//
 	//		RETURN: boolean				yes or no
-	//
-	//-----------------------------------------------------
 
 	long teamId = ABLi_popInteger();
 	long targetId = ABLi_popInteger();
@@ -4825,15 +3788,12 @@ void execIsTeamCapturing (void) {
 	ABLi_pushBoolean(targeting);
 }
 
-//*****************************************************************************
-
 void execSendMessage (void) {
 
 	CurMultiplayCode = ABLi_popInteger();
 	CurMultiplayParam = ABLi_popInteger();
 
 	if (MPlayer && MPlayer->isServer()) {
-		//------------------------------------
 		// We must be server if we got here...
 		MPlayer->addMissionScriptMessageChunk(CurMultiplayCode, CurMultiplayParam);
 #ifdef DEBUG_MISSION_SCRIPT
@@ -4849,8 +3809,6 @@ void execSendMessage (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetMessage (void) {
 
 	int* messageParam = ABLi_peekIntegerPtr();
@@ -4859,48 +3817,28 @@ void execGetMessage (void) {
 	ABLi_pokeInteger(CurMultiplayCode);
 }
 
-//*****************************************************************************
-
 void execGetHomeTeam (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Get HomeTeam function:
-	//
 	//		Returns id for home team: 500 = IS, 501 = CLAN, 502 = ALLIED
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: integer				hometeam id
-	//
-	//-----------------------------------------------------
 
 	ABLi_pushInteger(Team::home->getId() + MIN_TEAM_PART_ID);
 }
 
-//***************************************************************************
-
 void execIsServer (void) {
 
-	//-----------------------------------------------------
-	//
 	//	Is Server function:
-	//
 	//		Returns TRUE if I'm the server in a multi-player game.
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: boolean				TRUE = yes I am:)
-	//
-	//-----------------------------------------------------
 
 	if (MPlayer && MPlayer->isServer())
 		pushInteger(1);
 	else
 		pushInteger(0);
 }
-
-//*****************************************************************************
 
 void execCalcPartID (void) {
 
@@ -4914,8 +3852,6 @@ void execCalcPartID (void) {
 	ABLi_pushInteger(partId);
 }
 
-//*****************************************************************************
-
 void execSetDebugString (void) {
 
 	long objectId = ABLi_popInteger();
@@ -4927,14 +3863,7 @@ void execSetDebugString (void) {
 		if (pilot)
 			pilot->setDebugString(stringNum, debugString);
 	}
-#if 0
-	ABLi_popInteger();
-	ABLi_popInteger();
-	ABLi_popCharPtr();
-#endif
 }
-
-//*****************************************************************************
 
 void execBreak (void) {
 
@@ -4943,30 +3872,17 @@ void execBreak (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execPathExists (void) {
 
-	//-----------------------------------------------------
-	//
 	//	PATH EXISTS function:
-	//
 	//		Returns number and list of objects of the specified object type.
-	//
 	//		PARAMS:	integer		mover id. if set to 0, assumes a mech-type
-	//
 	//				integer		startCellRow
-	//
 	//				integer		startCellCol
-	//
 	//				integer		goalCellRow
-	//
 	//				integer		goalCellCol
-	//
 	//		RETURN: integer		answer: 0 = no, else number of areas in
 	//										LR path
-	//
-	//-----------------------------------------------------
 
 	int moverID = ABLi_popInteger();
 	int startRow = ABLi_popInteger();
@@ -4974,7 +3890,6 @@ void execPathExists (void) {
 	int goalRow = ABLi_popInteger();
 	int goalCol = ABLi_popInteger();
 
-	//-------------------------------------------------
 	// For now, assumes we mean the ground level (0)...
 	int startArea = GlobalMoveMap[0]->calcArea(startRow, startCol);
 	int goalArea = GlobalMoveMap[0]->calcArea(goalRow, goalCol);
@@ -4983,8 +3898,6 @@ void execPathExists (void) {
 
 	ABLi_pushInteger(areaPathCost);
 }
-
-//*****************************************************************************
 
 void execConvertCoords (void) {
 
@@ -5015,8 +3928,6 @@ void execConvertCoords (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execCoreMoveTo (void) {
 
 	float* location = ABLi_popRealPtr();
@@ -5044,8 +3955,6 @@ void execCoreMoveTo (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execCoreMoveToObject (void) {
 
 	long objectID = ABLi_popInteger();
@@ -5064,8 +3973,6 @@ void execCoreMoveToObject (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execCorePower (void) {
 
 	bool up = ABLi_popBoolean();
@@ -5081,8 +3988,6 @@ void execCorePower (void) {
 
 	ABLi_pushInteger(result);
 }
-
-//*****************************************************************************
 
 void execCoreAttack (void) {
 
@@ -5102,8 +4007,6 @@ void execCoreAttack (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execCoreCapture (void) {
 
 	long objectID = ABLi_popInteger();
@@ -5121,8 +4024,6 @@ void execCoreCapture (void) {
 
 	ABLi_pushInteger(targetID);
 }
-
-//*****************************************************************************
 
 void execCoreScan (void) {
 
@@ -5142,8 +4043,6 @@ void execCoreScan (void) {
 	ABLi_pushInteger(targetID);
 }
 
-//*****************************************************************************
-
 void execCoreControl (void) {
 
 	long objectID = ABLi_popInteger();
@@ -5162,8 +4061,6 @@ void execCoreControl (void) {
 	ABLi_pushInteger(targetID);
 }
 
-//*****************************************************************************
-
 void execCoreEject (void) {
 
 	if (ABLi_getSkipOrder()) {
@@ -5178,19 +4075,11 @@ void execCoreEject (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execSetPilotState (void) {
 
-	//-----------------------------------------------------
-	//
 	// SetPilotState: Sets the current pilot's brain state.
-	//
 	//		PARAMS:	integer		new state ID
-	//
 	//		RETURN: integer		previous state ID
-	//
-	//-----------------------------------------------------
 
 	unsigned long newStateHandle = ABLi_popInteger();
 	
@@ -5206,38 +4095,22 @@ void execSetPilotState (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetPilotState (void) {
 
-	//-----------------------------------------------------
-	//
 	// GetPilotState: Gets the current pilot's brain state.
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: integer		current state ID
-	//
-	//-----------------------------------------------------
 
 	ABLi_pushInteger(CurWarrior->getBrainState());
 }
 
-//*****************************************************************************
-
 void execGetNextPilotEvent (void) {
 
-	//-----------------------------------------------------
-	//
 	// GetNextPilotEvent:	Removes & returns the next queued pilot event.
 	//						Any params for the event are put into the
 	//						integer array passed in.
-	//
 	//		PARAMS:	@integer[3]		parameter list
-	//
 	//		RETURN: integer			event ID
-	//
-	//-----------------------------------------------------
 
 	int* paramList = ABLi_popIntegerPtr();
 	
@@ -5246,28 +4119,16 @@ void execGetNextPilotEvent (void) {
 	ABLi_pushInteger(eventID);
 }
 
-//*****************************************************************************
-
 void execSetTargetPriority (void) {
 
-	//-----------------------------------------------------
-	//
 	// SetTargetPriority:	Sets the target priority specified for the
 	//						current pilot.
-	//
 	//		PARAMS:	integer			target priority index (0 thru ?)
-	//
 	//				integer			target priority type
-	//
 	//				integer			param 1
-	//
 	//				integer			param 2
-	//
 	//				integer			param 3
-	//
 	//		RETURN: integer			error code (0 = OK)
-	//
-	//-----------------------------------------------------
 
 	long index = ABLi_popInteger();
 	long type = ABLi_popInteger();
@@ -5280,21 +4141,12 @@ void execSetTargetPriority (void) {
 	ABLi_pushInteger(err);
 }
 
-//*****************************************************************************
-
 void execSetDebugWindow (void) {
 
-	//-----------------------------------------------------
-	//
 	// SetDebugWindow:	Sets the game object for the specified debug window.
-	//
 	//		PARAMS:	integer			debug window id (0 thru 3)
-	//
 	//				integer			object id
-	//
 	//		RETURN: integer			object id, if set. Else 0.
-	//
-	//-----------------------------------------------------
 
 	long windowIndex = ABLi_popInteger();
 	long objectID = ABLi_popInteger();
@@ -5308,99 +4160,54 @@ void execSetDebugWindow (void) {
 	ABLi_pushInteger(objectID);
 }
 
-//*****************************************************************************
-
 void execSetMovieMode (void) 
 {
-	//-----------------------------------------------------
-	//
 	//	SetMovieMode
-	//
 	//		Changes game to movie playback mode.  GUI disappears, Commands not allowed, Letterbox
-	//
 	//		PARAMS: NONE
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	if (eye)
 		eye->setMovieMode();
 }
 
-//*****************************************************************************
-
 void execEndMovieMode (void) 
 {
-	//-----------------------------------------------------
-	//
 	//	EndMovieMode
-	//
 	//		Changes game to play mode.  GUI reappears, Commands allowed, no Letterbox
-	//
 	//		PARAMS: NONE
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	if (eye)
 		eye->endMovieMode();
 }
 
-//*****************************************************************************
-
 void execGetGeneralAlarm (void) 
 {
-	//-----------------------------------------------------
-	//
 	//	GetGeneralAlarm
-	//
 	//		Returns value of GeneralAlarm set by Perimeter alarms in game
-	//
 	//		PARAMS: NONE
-	//
 	//		RETURN: Integer
-	//
-	//-----------------------------------------------------
 
 	ABLi_pushInteger(GeneralAlarm);
 }
 
-//*****************************************************************************
-
 void execSetGeneralAlarm (void) 
 {
-	//-----------------------------------------------------
-	//
 	//	SetGeneralAlarm
-	//
 	//		sets value of GeneralAlarm for Perimeter alarms in game
-	//
 	//		PARAMS: Integer
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	GeneralAlarm = (ABLi_popInteger() != 0);
 }
 
-//*****************************************************************************
-
 void execFadeToColor (void) 
 {
-	//-----------------------------------------------------
-	//
 	//	FadeToColor
-	//
 	//		Fades entire screen to color read in by the time read in.
-	//
 	//		PARAMS: NONE
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	DWORD fadeColor = ABLi_popInteger();
 	DWORD fadeTime = ABLi_popReal();
@@ -5409,21 +4216,12 @@ void execFadeToColor (void)
 		eye->fadeToColor(fadeColor,fadeTime);
 }
 
-//*****************************************************************************
-
 void execForceMovieEnd (void)
 {
-	//-----------------------------------------------------
-	//
 	// ForceMovieEnd
-	//
 	//		Checks if the player has requested the movie to end.  If so, the script should endMovieMode immediately!!
-	//
 	//		PARAMS: None
-	//
 	//		RETURN: 1 if user asked movie to end.  Zero otherwise
-	//
-	//-----------------------------------------------------
 	DWORD result = 0;
 	if (eye && eye->forceMovieEnd)
 		result = 1;
@@ -5431,21 +4229,12 @@ void execForceMovieEnd (void)
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execGetCameraPosition (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraPosition
-	//
 	//		Sets the value passed in to the camera position.
-	//
 	//		PARAMS:	real[3]				camPos
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camPos = ABLi_popRealPtr();
 
@@ -5463,21 +4252,12 @@ void execGetCameraPosition (void) {
 	camPos[2] = result.z;
 }
 
-//*****************************************************************************
-
 void execSetCameraPosition(void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraPosition 
-	//
 	//		Sets the camera position to the value passed in.
-	//
 	//		PARAMS:	real[3]				camPos
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camPos = ABLi_popRealPtr();
 
@@ -5490,22 +4270,13 @@ void execSetCameraPosition(void) {
 		eye->setPosition(result,false);
 }
 
-//*****************************************************************************
-
 void execSetCameraGoalPosition (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraGoalPosition 
-	//
 	//		Sets the camera position to the value passed in.
-	//
 	//		PARAMS:	real[3]				camPos
 	//				real				time
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camPos = ABLi_popRealPtr();
 	float time = ABLi_popReal();
@@ -5521,21 +4292,12 @@ void execSetCameraGoalPosition (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetCameraGoalPosition (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraGoalPosition
-	//
 	//		Gets the camera position to the value passed in.
-	//
 	//		PARAMS:	real[3]				camPos
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camPos = ABLi_popRealPtr();
 
@@ -5554,21 +4316,12 @@ void execGetCameraGoalPosition (void) {
 	camPos[2] = result.z;
 }
 
-//*****************************************************************************
-
 void execGetCameraRotation (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraRotation
-	//
 	//		Sets the value passed in to the camera Rotation.
-	//
 	//		PARAMS:	real[3]				camRot
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camRot = ABLi_popRealPtr();
 
@@ -5586,21 +4339,12 @@ void execGetCameraRotation (void) {
 	camRot[2] = result.z;
 }
 
-//*****************************************************************************
-
 void execSetCameraRotation (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraRotation 
-	//
 	//		Sets the value passed in to be the camera Rotation.
-	//
 	//		PARAMS:	real[3]				camRot
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camRot = ABLi_popRealPtr();
 
@@ -5614,22 +4358,13 @@ void execSetCameraRotation (void) {
 		eye->setRotation(result);
 }
 
-//*****************************************************************************
-
 void execSetCameraGoalRotation (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraGoalRotation 
-	//
 	//		Sets the camera Rotation to the value passed in.
-	//
 	//		PARAMS:	real[3]				camRot
 	//				real				time
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camRot = ABLi_popRealPtr();
 	float time = ABLi_popReal();
@@ -5645,21 +4380,12 @@ void execSetCameraGoalRotation (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetCameraGoalRotation (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraGoalRotation
-	//
 	//		Gets the camera Rotation into the value passed in.
-	//
 	//		PARAMS:	real[3]				camRot
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camRot = ABLi_popRealPtr();
 
@@ -5678,21 +4404,12 @@ void execGetCameraGoalRotation (void) {
 	camRot[2] = result.z;
 }
 
-//*****************************************************************************
-
 void execGetCameraZoom (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraZoom
-	//
 	//		Gets the camera FOV into the value passed in.
-	//
 	//		PARAMS:	real				camFOV
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float result = 0.0;
    
@@ -5702,21 +4419,12 @@ void execGetCameraZoom (void) {
 	ABLi_pushReal(result);	
 }
 
-//*****************************************************************************
-
 void execSetCameraZoom (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraZoom
-	//
 	//		Sets the camera FOV to the value passed in.
-	//
 	//		PARAMS:	real				camFOV
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float camFOV = ABLi_popReal();
 
@@ -5724,22 +4432,12 @@ void execSetCameraZoom (void) {
 		eye->setFieldOfView(camFOV);
 }
 
-//*****************************************************************************
-
 void execGetCameraGoalZoom (void) {
 
-
-	//-----------------------------------------------------
-	//
 	//	GetCameraGoalZoom
-	//
 	//		Gets the camera FOV into the value passed in.
-	//
 	//		PARAMS:	real				camFOV
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float result = 0.0;
  	if (eye)
@@ -5748,21 +4446,12 @@ void execGetCameraGoalZoom (void) {
 	ABLi_pushReal(result);	
 }
 
-//*****************************************************************************
-
 void execSetCameraGoalZoom (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraGoalZoom
-	//
 	//		Sets the camera FOV to the value passed in.
-	//
 	//		PARAMS:	real				camFOV
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float camFOV = ABLi_popReal();
 	float time = ABLi_popReal();
@@ -5771,21 +4460,12 @@ void execSetCameraGoalZoom (void) {
 		eye->setFieldOfViewGoal(camFOV, time);
 }
 
-//*****************************************************************************
-
 void execSetCameraVelocity (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraVelocity
-	//
 	//		Sets the camera velocity to the value passed in.
-	//
 	//		PARAMS:	real[3]				camVel
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camVel = ABLi_popRealPtr();
 
@@ -5803,21 +4483,12 @@ void execSetCameraVelocity (void) {
 		eye->setVelocity(result);
 }
 
-//*****************************************************************************
-
 void execGetCameraVelocity (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraVelocity
-	//
 	//		gets the camera velocity into the value passed in.
-	//
 	//		PARAMS:	real[3]				camVel
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camVel = ABLi_popRealPtr();
 
@@ -5836,22 +4507,13 @@ void execGetCameraVelocity (void) {
 	camVel[2] = result.z;
 }
 
-//*****************************************************************************
-
 void execSetCameraGoalVelocity (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraGoalVelocity
-	//
 	//		Sets the camera Velocity Goal to the value passed in.
-	//
 	//		PARAMS:	real[3]				camVel
 	//				real				time
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camVel = ABLi_popRealPtr();
 	float time = ABLi_popReal();
@@ -5872,22 +4534,13 @@ void execSetCameraGoalVelocity (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetCameraGoalVelocity (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraGoalVelocity
-	//
 	//		Sets the camera Velocity Goal into the value passed in.
-	//
 	//		PARAMS:	real[3]				camVel
 	//				real				time
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	float* camVel = ABLi_popRealPtr();
 
@@ -5906,21 +4559,12 @@ void execGetCameraGoalVelocity (void) {
 	camVel[2] = result.z;
 }
 
-//*****************************************************************************
-
 void execSetCameraLookObject (void) {
 
-	//-----------------------------------------------------
-	//
 	//	SetCameraLookObject 
-	//
 	//		Sets the camera Look Object
-	//
 	//		PARAMS:	long				objectId
-	//
 	//		RETURN: NONE
-	//
-	//-----------------------------------------------------
 
 	long objectId = ABLi_popInteger();
 
@@ -5928,21 +4572,12 @@ void execSetCameraLookObject (void) {
 		eye->setCameraTargetId(objectId);
 }
 
-//*****************************************************************************
-
 void execGetCameraLookObject (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraGetLookObject
-	//
 	//		Gets the camera FOV into the value passed in.
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: Integer
-	//
-	//-----------------------------------------------------
 
 	long result = 0;
   	if (eye)
@@ -5951,33 +4586,20 @@ void execGetCameraLookObject (void) {
 	ABLi_pushInteger(result);
 }
 
-//*****************************************************************************
-
 void execGetCameraFrameLength (void) {
 
-	//-----------------------------------------------------
-	//
 	//	GetCameraFrameLength
-	//
 	//		Gets the Last Frame's Length
-	//
 	//		PARAMS:	NONE
-	//
 	//		RETURN: real
-	//
-	//-----------------------------------------------------
-
 
 	ABLi_pushReal(frameLength);	
 }
 
-//*****************************************************************************
 void execAnimationCallout (void)
 {
 	// Takes an integer for button num, bool for if its a button, bool for if it should press it, real for time to get there, integer for num flashes.
-	//
 	// Returns a bool.  True if the animation played, false if an animation is running.
-	//
 	
 	long buttonId = ABLi_popInteger();
 	bool isButton = ABLi_popBoolean();
@@ -5992,13 +4614,10 @@ void execAnimationCallout (void)
 
 static char tutorialMessages[MAX_CHAT_COUNT][1024];
 static unsigned char currentMessage = 0;
-//*****************************************************************************
 void execTutorialText (void)
 {
 	//Takes an integer for TextID to send.
-	//
 	// returns nothing.
-   	//
 	
 	long textId = ABLi_popInteger();
 	
@@ -6011,43 +4630,35 @@ void execTutorialText (void)
 		currentMessage = 0;
 }
 
-//*****************************************************************************
 void execGUIIsAOEStyle (void) 
 {
 	//Takes NOTHING
-	//
 	// Returns state of GUI.
 	
 	ABLi_pushBoolean(mission->missionInterface->isAOEStyle());
 }
 
-//*****************************************************************************
 void execSetInvulnerable (void) 
 {
 	//Takes a bool and sets local team invulnerability to the flag passed in.
-	//
 	// Returns NOTHING.
 	
 	bool invulnerableFlag = ABLi_popBoolean();
 	invulnerableON = invulnerableFlag;
 }
 
-//*****************************************************************************
 void execFreezeGUI (void) 
 {
 	//Takes a bool and turns mouse input on or off based on flag passed in.
-	//
 	// Returns NOTHING.
 	
 	bool guiFlag = ABLi_popBoolean();
 	mission->missionInterface->freezeGUI(guiFlag);
 }
 
-//*****************************************************************************
 void execLogisticsScreenId (void)
 {
 	//Takes NOTHING
-	//
 	//Returns ID of logistics Screen we are IN.  Returns -1 if not in logistics or missionBegin is NULL!
 	//singlePlayerScreens[0][1] = pMissionSelectionScreen;		ID 1
 	//singlePlayerScreens[1][1] = pBriefingScreen;				ID 11
@@ -6067,13 +4678,10 @@ void execLogisticsScreenId (void)
 	}
 }
 
-//*****************************************************************************
 void execLogisticsAnimationCallout (void)
 {
 	// Takes an integer for button num, real for time to get there, integer for num flashes.
-	//
 	// Returns a bool.  True if the animation played, false if an animation is running.
-	//
 	
 	long buttonId = ABLi_popInteger();
 	bool isButton = ABLi_popBoolean();
@@ -6091,11 +4699,9 @@ void execLogisticsAnimationCallout (void)
 	}
 }
 
-//*****************************************************************************
 void execLogisticsInCallout (void)
 {
 	//takes NOTHING
-	//
 	// Returns a bool.  True if we are currently animating the mouse to the button area OR no logistics, false if not animating
 
 	if (logistics && logistics->getMissionBegin())
@@ -6108,11 +4714,9 @@ void execLogisticsInCallout (void)
 	}
 }
 
-//*****************************************************************************
 void execInCallout (void)
 {
 	//takes NOTHING
-	//
 	// Returns a bool.  True if we are currently animating the mouse to the button area OR no logistics, false if not animating
 
 	if (mission && mission->missionInterface)
@@ -6125,41 +4729,32 @@ void execInCallout (void)
 	}
 }
 
-//*****************************************************************************
 void execIsPlayingVoiceOver(void)
 {
 	//Takes NOTHING
-	//
 	// Returns a bool,  true if voiceover channel is active, false if not.
 
 	ABLi_pushBoolean(soundSystem->isPlayingVoiceOver());
 }
 
-//*****************************************************************************
 void execStopVoiceOver(void)
 {
 	//Takes NOTHING
-	//
 	// Returns a NOTHING
 
 	soundSystem->stopSupportSample();
 }
 
-//*****************************************************************************
 void execGetLogisticsTime(void)
 {
 	//Takes NOTHING
-	//
 	// Returns a bool,  true if voiceover channel is active, false if not.
 
 	ABLi_pushReal(timeGetTime());
 }
 
-//*****************************************************************************
-
 void execRequestHelp (void) {
 
-	//--------------------------------------------------
 	// Defender is the CurPilot (calling this function).
 
 	long enemyPartID = ABLi_popInteger();
@@ -6202,8 +4797,6 @@ void execRequestHelp (void) {
 	ABLi_pushReal(0.0);
 }
 
-//*****************************************************************************
-
 void execRequestTarget (void) {
 
 	float* center = ABLi_popRealPtr();
@@ -6239,8 +4832,6 @@ void execRequestTarget (void) {
 	}
 }
 
-//*****************************************************************************
-
 #define	MAX_SHELTERS	10
 
 void execRequestShelter (void) {
@@ -6266,7 +4857,6 @@ void execRequestShelter (void) {
 		ABLi_pushInteger(0);
 }
 
-//*****************************************************************************
 // --- Omnitech ABL extensions ---
 // Wrappers for ~40 ABL functions referenced by Omnitech mission-pack scripts
 // (corebrain.abx / pbrain.abl) that were never registered in the baseline
@@ -6274,9 +4864,7 @@ void execRequestShelter (void) {
 // manipulation are functional; GUI support-strike toggles and pilot-file
 // creation are safe stubs (pop all args, push default, log). None of these
 // may crash or leave the ABL stack unbalanced.
-//*****************************************************************************
 
-//---------------------------------------------------------------------------
 // File-scope state for Omnitech extension functions.
 static int   gCampaignGlobalVars[16] = {0};
 static bool  gAblAirStrikeEnabled       = true;
@@ -6285,22 +4873,16 @@ static bool  gAblArtilleryPieceEnabled  = true;
 static bool  gAblRepairTruckEnabled     = true;
 static bool  gAblSalvageCraftEnabled    = true;
 
-//---------------------------------------------------------------------------
-
 static inline void omniTrace (const char* tag) {
 	char s[128];
 	sprintf(s, "[OMNI] %s", tag);
 	DEBUGWINS_print(s, 0);
 }
 
-//***************************************************************************
-
 void execSetTextMsg (void) {
 
 	//Display short text message (Omnitech).
-	//
 	//		PARAMS: integer type, any msg, integer seconds
-	//
 	//		Returns: nothing
 
 	long msgType = ABLi_popInteger();
@@ -6319,14 +4901,10 @@ void execSetTextMsg (void) {
 	DEBUGWINS_print(s, 0);
 }
 
-//***************************************************************************
-
 void execSetLargeMsg (void) {
 
 	//Display long text message (Omnitech).
-	//
 	//		PARAMS: integer type, any msg, integer seconds
-	//
 	//		Returns: nothing
 
 	long msgType = ABLi_popInteger();
@@ -6345,14 +4923,10 @@ void execSetLargeMsg (void) {
 	DEBUGWINS_print(s, 0);
 }
 
-//***************************************************************************
-
 void execSetMissionTune (void) {
 
 	//Change the mission's looping music (Omnitech).
-	//
 	//		PARAMS: integer tuneId
-	//
 	//		Returns: nothing
 
 	long tuneId = ABLi_popInteger();
@@ -6360,29 +4934,21 @@ void execSetMissionTune (void) {
 		soundSystem->playABLDigitalMusic(tuneId);
 }
 
-//***************************************************************************
-
 void execAddResourcePoints (void) {
 
 	//Add resource points to the player's RP pool (Omnitech).
-	//
 	//		PARAMS: integer amount
-	//
 	//		Returns: nothing
 
 	long amt = ABLi_popInteger();
 	if (LogisticsData::instance)
 		LogisticsData::instance->addResourcePoints((int)amt);
 }
-
-//***************************************************************************
 
 void execAddMoney (void) {
 
 	//Alias for addresourcepoints in Omnitech scripts.
-	//
 	//		PARAMS: integer amount
-	//
 	//		Returns: nothing
 
 	long amt = ABLi_popInteger();
@@ -6390,14 +4956,10 @@ void execAddMoney (void) {
 		LogisticsData::instance->addResourcePoints((int)amt);
 }
 
-//***************************************************************************
-
 void execSetTxtBuildingName (void) {
 
 	//Set a building's display name (Omnitech).
-	//
 	//		PARAMS: integer objectId, char* name
-	//
 	//		Returns: nothing
 
 	long objectId = ABLi_popInteger();
@@ -6408,14 +4970,10 @@ void execSetTxtBuildingName (void) {
 		((MoverPtr)obj)->setName(name);
 }
 
-//***************************************************************************
-
 void execAblPrint (void) {
 
 	//Omnitech logging helper. Routes to debug overlay prefixed with file name.
-	//
 	//		PARAMS: char* file, any value
-	//
 	//		Returns: nothing
 
 	char* fileName = ABLi_popCharPtr();
@@ -6441,14 +4999,10 @@ void execAblPrint (void) {
 	DEBUGWINS_print(s, 0);
 }
 
-//***************************************************************************
-
 void execTeleportToPoint (void) {
 
 	//Teleport a mover or object to a world point (Omnitech).
-	//
 	//		PARAMS: integer partId, real[3] position
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6474,14 +5028,10 @@ void execTeleportToPoint (void) {
 	}
 }
 
-//***************************************************************************
-
 void execAddMoverToPlayer (void) {
 
 	//Transfer a mover (or mover-group) to a new team/commander (Omnitech).
-	//
 	//		PARAMS: integer partId, integer teamId, integer cmdrId
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6515,14 +5065,10 @@ void execAddMoverToPlayer (void) {
 	}
 }
 
-//***************************************************************************
-
 void execRemoveMoverFromPlayer (void) {
 
 	//Remove a mover (or mover-group) from a team (Omnitech).
-	//
 	//		PARAMS: integer partId, integer teamId, integer cmdrId
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6549,14 +5095,10 @@ void execRemoveMoverFromPlayer (void) {
 	}
 }
 
-//***************************************************************************
-
 void execSetBrainFixed (void) {
 
 	//Replace a unit's brain script by name (Omnitech). partId -1 = CurObject.
-	//
 	//		PARAMS: integer partId, char* brainName
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6571,15 +5113,11 @@ void execSetBrainFixed (void) {
 			m->getPilot()->setBrainName(brainName);
 	}
 }
-
-//***************************************************************************
 
 void execSetBrainNew (void) {
 
 	//Alias of setbrain (Omnitech).
-	//
 	//		PARAMS: integer partId, char* brainName
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6595,14 +5133,10 @@ void execSetBrainNew (void) {
 	}
 }
 
-//***************************************************************************
-
 void execDestroyMechBodyLocation (void) {
 
 	//Destroy a specific mech body location (Omnitech). Safe stub.
-	//
 	//		PARAMS: integer partId, integer locId
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6611,14 +5145,10 @@ void execDestroyMechBodyLocation (void) {
 	omniTrace("destroymechbodylocation (stub)");
 }
 
-//***************************************************************************
-
 void execDamageMechArmor (void) {
 
 	//Damage armor on a mech (Omnitech). Safe stub.
-	//
 	//		PARAMS: integer partId
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6626,14 +5156,10 @@ void execDamageMechArmor (void) {
 	omniTrace("damagemecharmor (stub)");
 }
 
-//***************************************************************************
-
 void execSetMechGesture (void) {
 
 	//Force a mech gesture (Omnitech).
-	//
 	//		PARAMS: integer partId, integer gestureId
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6644,15 +5170,11 @@ void execSetMechGesture (void) {
 		((BattleMech*)obj)->setGestureStateGoal(gesture);
 }
 
-//***************************************************************************
-
 void execSetUnitForceGroup (void) {
 
 	//Reassign a unit to a force group (Omnitech). Safe stub -- no simple
 	//engine hook and corrupting the commander roster is worse than no-op.
-	//
 	//		PARAMS: integer partId, integer groupId
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -6660,8 +5182,6 @@ void execSetUnitForceGroup (void) {
 	(void)partId; (void)groupId;
 	omniTrace("setunitforcegroup (stub)");
 }
-
-//***************************************************************************
 
 void execToggleAirStrike (void) {
 	gAblAirStrikeEnabled = !gAblAirStrikeEnabled;
@@ -6700,14 +5220,10 @@ void execSetSalvageCraftEnabled (void) {
 	omniTrace("setsalvagecraftenabled");
 }
 
-//***************************************************************************
-
 void execGetTargetRelativePosition (void) {
 
 	//Compute range+angle from CurObject to target (Omnitech).
-	//
 	//		PARAMS: integer targetId, real* rangeOut, real* angleOut
-	//
 	//		Returns: nothing
 
 	long targetId = ABLi_popInteger();
@@ -6733,14 +5249,10 @@ void execGetTargetRelativePosition (void) {
 	if (angleOut) angleOut[0] = angle;
 }
 
-//***************************************************************************
-
 void execGetRelativePositionToTarget (void) {
 
 	//Compute a point between CurObject and target at some distance (Omnitech).
-	//
 	//		PARAMS: integer targetId, real distance, integer flag, real* outPoint
-	//
 	//		Returns: nothing
 
 	long targetId = ABLi_popInteger();
@@ -6779,14 +5291,10 @@ void execGetRelativePositionToTarget (void) {
 	}
 }
 
-//***************************************************************************
-
 void execNewDistanceToPosition (void) {
 
 	//XY-only distance from a unit/object to a world position (Omnitech).
-	//
 	//		PARAMS: integer partId, real[3] pos
-	//
 	//		Returns: real distance (meters)
 
 	long partId = ABLi_popInteger();
@@ -6831,8 +5339,6 @@ void execNewDistanceToPosition (void) {
 	}
 }
 
-//***************************************************************************
-
 static long countMoversWithinRadius (bool friendly, float radius) {
 
 	if (!CurObject)
@@ -6868,14 +5374,10 @@ static long countMoversWithinRadius (bool friendly, float radius) {
 	return count;
 }
 
-//***************************************************************************
-
 void execNumFriendsWithinRadius (void) {
 
 	//Count friendly movers within radius of CurObject (Omnitech).
-	//
 	//		PARAMS: integer partId (ignored, uses CurObject), real radius
-	//
 	//		Returns: integer count
 
 	long partId = ABLi_popInteger();
@@ -6884,14 +5386,10 @@ void execNumFriendsWithinRadius (void) {
 	ABLi_pushInteger((int)countMoversWithinRadius(true, radius));
 }
 
-//***************************************************************************
-
 void execNumEnemiesWithinRadius (void) {
 
 	//Count non-friendly movers within radius of CurObject (Omnitech).
-	//
 	//		PARAMS: integer partId (ignored), real radius
-	//
 	//		Returns: integer count
 
 	long partId = ABLi_popInteger();
@@ -6900,14 +5398,10 @@ void execNumEnemiesWithinRadius (void) {
 	ABLi_pushInteger((int)countMoversWithinRadius(false, radius));
 }
 
-//***************************************************************************
-
 void execHasOrderFromPlayer (void) {
 
 	//Stub -- no reliable hook for player-origin tac orders in this branch.
-	//
 	//		PARAMS: integer partId
-	//
 	//		Returns: bool false
 
 	long partId = ABLi_popInteger();
@@ -6915,27 +5409,19 @@ void execHasOrderFromPlayer (void) {
 	ABLi_pushBoolean(false);
 }
 
-//***************************************************************************
-
 void execIsSelected (void) {
 
 	//Stub -- CurObject selection state not exposed through this shim path.
-	//
 	//		PARAMS: none
-	//
 	//		Returns: bool false
 
 	ABLi_pushBoolean(false);
 }
 
-//***************************************************************************
-
 void execIsRefit (void) {
 
 	//Is CurObject currently refitting?
-	//
 	//		PARAMS: none
-	//
 	//		Returns: bool
 
 	bool result = false;
@@ -6946,14 +5432,10 @@ void execIsRefit (void) {
 	ABLi_pushBoolean(result);
 }
 
-//***************************************************************************
-
 void execNeedsRefit (void) {
 
 	//Does CurObject need refit?
-	//
 	//		PARAMS: none
-	//
 	//		Returns: bool
 
 	bool result = false;
@@ -6964,14 +5446,10 @@ void execNeedsRefit (void) {
 	ABLi_pushBoolean(result);
 }
 
-//***************************************************************************
-
 void execHirePilot (void) {
 
 	//Add a pilot to the roster (Omnitech). Safe stub.
-	//
 	//		PARAMS: char* pilotName
-	//
 	//		Returns: nothing
 
 	char* pilotName = ABLi_popCharPtr();
@@ -6979,16 +5457,12 @@ void execHirePilot (void) {
 	omniTrace("hirepilot (stub)");
 }
 
-//***************************************************************************
-
 void execAddNewPilot (void) {
 
 	//Install a new pilot+brain on an existing mover (Omnitech).
 	//Pilot-file loading is nontrivial; wiring only the brain is the safe
 	//cross-section that keeps AI responsive without corrupting pilot state.
-	//
 	//		PARAMS: integer partId, char* pilotName, char* brainName
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -7005,14 +5479,10 @@ void execAddNewPilot (void) {
 	omniTrace("addnewpilot");
 }
 
-//***************************************************************************
-
 void execAddNewPilotToPlayer (void) {
 
 	//Alias of addnewpilot (Omnitech).
-	//
 	//		PARAMS: integer partId, char* pilotName, char* brainName
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -7029,14 +5499,10 @@ void execAddNewPilotToPlayer (void) {
 	omniTrace("addnewpilottoplayer");
 }
 
-//***************************************************************************
-
 void execAutoRepairWithinRadius (void) {
 
 	//Repair friendlies within radius (Omnitech). Safe stub.
-	//
 	//		PARAMS: integer partId, real radius
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -7045,14 +5511,10 @@ void execAutoRepairWithinRadius (void) {
 	omniTrace("autorepairwithinradius (stub)");
 }
 
-//***************************************************************************
-
 void execScanAreaCapture (void) {
 
 	//Area-scan for capturable objects (Omnitech). Safe stub.
-	//
 	//		PARAMS: real radius
-	//
 	//		Returns: nothing
 
 	float radius = ABLi_popReal();
@@ -7060,14 +5522,10 @@ void execScanAreaCapture (void) {
 	omniTrace("scanareacapture (stub)");
 }
 
-//***************************************************************************
-
 void execScanAreaRepair (void) {
 
 	//Area-scan for repair targets (Omnitech). Safe stub.
-	//
 	//		PARAMS: real radius
-	//
 	//		Returns: nothing
 
 	float radius = ABLi_popReal();
@@ -7075,14 +5533,10 @@ void execScanAreaRepair (void) {
 	omniTrace("scanarearepair (stub)");
 }
 
-//***************************************************************************
-
 void execSetCampaignGlobalVar (void) {
 
 	//Persist a campaign-scoped integer slot (Omnitech).
-	//
 	//		PARAMS: integer index, integer value
-	//
 	//		Returns: nothing
 
 	long idx = ABLi_popInteger();
@@ -7091,14 +5545,10 @@ void execSetCampaignGlobalVar (void) {
 		gCampaignGlobalVars[idx] = (int)val;
 }
 
-//***************************************************************************
-
 void execGetCampaignGlobalVar (void) {
 
 	//Read a campaign-scoped integer slot (Omnitech).
-	//
 	//		PARAMS: integer index
-	//
 	//		Returns: integer value
 
 	long idx = ABLi_popInteger();
@@ -7108,16 +5558,12 @@ void execGetCampaignGlobalVar (void) {
 	ABLi_pushInteger(val);
 }
 
-//***************************************************************************
-
 void execSetFixedBuildingRp (void) {
 
 	//Assign resource-point reward to a fixed building (Omnitech).
 	//RP field is not cleanly exposed in this branch; flag the building
 	//capturable as a functional best-effort and log the rp value.
-	//
 	//		PARAMS: integer partId, integer rp
-	//
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
@@ -7130,14 +5576,10 @@ void execSetFixedBuildingRp (void) {
 	omniTrace("setfixedbuildingrp");
 }
 
-//***************************************************************************
-
 void execGetTimeOfLastStep (void) {
 
 	//Time (scenario seconds) that CurWarrior's last move-order step landed.
-	//
 	//		PARAMS: none
-	//
 	//		Returns: real
 
 	float t = 0.0f;
@@ -7149,114 +5591,48 @@ void execGetTimeOfLastStep (void) {
 	ABLi_pushReal(t);
 }
 
-//***************************************************************************
-
 void execIsCurTacOrderMoveOrder (void) {
 
 	//Stub -- tac-order type not plumbed through this shim.
-	//
 	//		PARAMS: none
-	//
 	//		Returns: bool false
 
 	ABLi_pushBoolean(false);
 }
 
-//***************************************************************************
-
 void execGetCurTacOrderTime (void) {
 
 	//Stub -- tac-order time not plumbed through this shim.
-	//
 	//		PARAMS: none
-	//
 	//		Returns: real 0.0
 
 	ABLi_pushReal(0.0f);
 }
 
-//***************************************************************************
-
 void execClearMoveOrdersOmni (void) {
 
 	//Clear CurWarrior's move-order queue (Omnitech).
-	//
 	//		PARAMS: none
-	//
 	//		Returns: nothing
 
 	if (CurWarrior)
 		CurWarrior->clearMoveOrders();
 }
 
-//*****************************************************************************
 // --- Omnitech ABL extensions, tier-2 ---
-// Names referenced by Carver5O / Omnitech warriorbrain FSMs that cascaded
-// ABL preprocessor errors (Undefined identifier) into uninit FunctionCallbackTable
-// slots. Safe stubs: pop all args, push default on non-void returns, log under
-// MC2_ABL_TRACE. No real semantics — keeps ABL parser and stack balanced so
-// the warriorbrain FSM can execute through these calls.
-//*****************************************************************************
-
-// magicAttack / coreWait / coreGuard / corePatrol stubs preserved (gated out)
-// for the mod profile launcher: stock corebrain.abx defines these as real
-// library routines, so a native registration shadows them and breaks AI.
-// Re-enable ONLY for content packs whose deployed corebrain.abx does not
-// contain these symbols. See docs/observations/2026-04-25-abl-library-shadow-rule.md
-#if 0
-void execMagicAttack (void) {
-	// args: i (target/range param). No return.
-	ABLi_popInteger();
-	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] magicAttack stub", 0);
-}
-#endif
-
-//*****************************************************************************
-
-// magicPatrol / magicGuard / magicEscort: MCO content packs (e.g. MCO-ClanEagle)
-// CALL these from their warriorbrain FSMs but do NOT define them in their
-// corebrain.abx. They MUST be registered natively or the ABL VM hangs on an
-// unresolved symbol at mission start. Bodies issue real tactical orders so the
-// pack's AI patrols/guards/engages instead of sitting inert.
-// magicPatrol / magicGuard / magicEscort: DELIBERATELY NOT defined natively.
-// The real implementations live in the MCO brain library (mco-compat/corebrain.abx,
-// the genuine MechCommander Omnitech 66KB library — NOT the older 41KB generic one),
-// loaded at mission start via MC2_MOD_DEPS=mco-compat. A native ABLi_addFunction
-// registration here would SHADOW those library routines in the global symtable and
-// break MCO proactive AI (the shadow rule — see execMagicAttack / coreGuard above and
-// docs/observations/2026-04-25-abl-library-shadow-rule.md). Gated out: let the library
-// provide magicAttack + magicPatrol/Guard/Escort + corePatrol/Guard/Escort.
-#if 0
-void execMagicPatrol (void) {
-	ABLStackItem dummy;
-	ABLi_popAnything(&dummy);   // PatrolState
-	ABLi_popAnything(&dummy);   // PatrolPath
-}
-
-//*****************************************************************************
-
-void execMagicGuard (void) {
-	ABLStackItem dummy;
-	ABLi_popAnything(&dummy);   // guardPoint
-	ABLi_popInteger();          // scanCriteria
-}
-
-//*****************************************************************************
-
-void execMagicEscort (void) {
-	ABLi_popInteger();          // escort object id
-}
-#endif
-
-//*****************************************************************************
+// Safe stubs for names the Carver5O / Omnitech warriorbrain FSMs call: pop all args and push a
+// default on non-void returns, so the ABL parser and stack stay balanced.
+//
+// magicAttack/Patrol/Guard/Escort and coreWait/Guard/Patrol are deliberately NOT defined natively:
+// the stock and MCO brain libraries (corebrain.abx, mco-compat) define them, and a native
+// ABLi_addFunction registration would shadow those routines in the global symtable and break the AI
+// (docs/observations/2026-04-25-abl-library-shadow-rule.md). Re-enable only for content packs whose
+// deployed corebrain.abx lacks these symbols.
 
 void execSetWillRequestHelp (void) {
 	// args: b. No return. Pilot-level help-request flag; stubbed.
 	ABLi_popBoolean();
-	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] setWillRequestHelp stub", 0);
 }
-
-//*****************************************************************************
 
 void execTDebugString (void) {
 	// args: C (string). No return. Debug print; route to debug window.
@@ -7264,44 +5640,6 @@ void execTDebugString (void) {
 	if (s) DEBUGWINS_print(s, 0);
 }
 
-//*****************************************************************************
-
-// See note above execMagicAttack — these three are gated for the same reason.
-#if 0
-void execCoreWaitOmni (void) {
-	// args: r (seconds). No return. Tac-order style wait; stubbed.
-	ABLi_popReal();
-	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] coreWait stub", 0);
-}
-
-//*****************************************************************************
-
-void execCoreGuardOmni (void) {
-	// args: ?ii (position-custom-type, guardDistance, stateHandle). No return.
-	// Stock MC2 mission scripts universally call this with 3 args; the
-	// previous 2-arg signature failed to parse stock data/missions/warriors/*.abl.
-	ABLStackItem dummy;
-	ABLi_popAnything(&dummy);
-	ABLi_popInteger();
-	ABLi_popInteger();
-	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] coreGuard stub", 0);
-}
-
-//*****************************************************************************
-
-void execCorePatrolOmni (void) {
-	// args: ??i (PatrolState, PatrolPath, stateHandle). No return.
-	// Stock MC2 mission scripts universally call this with 3 args; the
-	// previous 2-arg signature failed to parse stock data/missions/warriors/*.abl.
-	ABLStackItem dummy;
-	ABLi_popAnything(&dummy);
-	ABLi_popAnything(&dummy);
-	ABLi_popInteger();
-	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] corePatrol stub", 0);
-}
-#endif
-
-//*****************************************************************************
 
 void execIsDeadOrFled (void) {
 	// args: i (partID). Returns: b. Conservative: return false (still in play)
@@ -7317,15 +5655,10 @@ void execIsDeadOrFled (void) {
 	ABLi_pushBoolean(deadOrFled);
 }
 
-//*****************************************************************************
-
 void execPrintTeamStatus (void) {
 	// args: i (teamID). No return. Diagnostic; stub.
 	ABLi_popInteger();
-	if (getenv("MC2_ABL_TRACE")) DEBUGWINS_print("[ABL] printTeamStatus stub", 0);
 }
-
-//*****************************************************************************
 
 void execMCPrint (void) {
 
@@ -7368,14 +5701,10 @@ void execMCPrint (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execGetMissionStatus (void) {
 
 	ABLi_pushInteger(mission->getStatus());
 }
-
-//*****************************************************************************
 
 void execAddTriggerArea (void) {
 
@@ -7392,15 +5721,11 @@ void execAddTriggerArea (void) {
 	ABLi_pushInteger(handle);
 }
 
-//*****************************************************************************
-
 void execIsTriggerAreaHit (void) {
 
 	long handle = ABLi_popInteger();
 	ABLi_pushBoolean(Mover::triggerAreaMgr->isHit(handle));
 }
-
-//*****************************************************************************
 
 void execResetTriggerArea (void) {
 
@@ -7408,15 +5733,11 @@ void execResetTriggerArea (void) {
 	Mover::triggerAreaMgr->reset(handle);
 }
 
-//*****************************************************************************
-
 void execRemoveTriggerArea (void) {
 
 	long handle = ABLi_popInteger();
 	Mover::triggerAreaMgr->remove(handle);
 }
-
-//*****************************************************************************
 
 void execGetWeapons (void) {
 
@@ -7458,8 +5779,6 @@ void execGetWeapons (void) {
 	ABLi_pushInteger(numWpns);
 }
 
-//*****************************************************************************
-
 void execGetWeaponsStatus (void) {
 
 	int* weaponList = ABLi_popIntegerPtr();
@@ -7477,8 +5796,6 @@ void execGetWeaponsStatus (void) {
 	}
 	ABLi_pushInteger(status);
 }
-
-//*****************************************************************************
 
 void execSetMoveArea (void) {
 
@@ -7500,15 +5817,11 @@ void execSetMoveArea (void) {
 	}
 }
 
-//*****************************************************************************
-
 void execClearTacOrder (void) {
 
 	if (CurObject)
 		CurObject->getPilot()->clearCurTacOrder();
 }
-
-//*****************************************************************************
 
 void execPlayWave (void) {
 
@@ -7520,8 +5833,6 @@ void execPlayWave (void) {
 	ABLi_pushInteger(0);
 }
 
-//*****************************************************************************
-
 void execSetWillHelp (void) {
 
 	bool willHelp = ABLi_popBoolean();
@@ -7531,8 +5842,6 @@ void execSetWillHelp (void) {
 
 	ABLi_pushInteger(wasHelping);
 }
-
-//*****************************************************************************
 
 void execGetLastScan (void) {
 
@@ -7544,8 +5853,6 @@ void execGetLastScan (void) {
 	ABLi_pushInteger(lastScanTargetID);
 }
 
-//*****************************************************************************
-
 void execGetMapInfo (void) {
 
 	int* mapInfo = ABLi_popIntegerPtr();
@@ -7555,8 +5862,6 @@ void execGetMapInfo (void) {
 	mapInfo[0] = GameMap->getHeight();
 	mapInfo[1] = GameMap->getWidth();
 }
-
-//*****************************************************************************
 
 void execIsOffMap (void) {
 
@@ -7584,8 +5889,6 @@ void execIsOffMap (void) {
 	ABLi_pushBoolean(GameMap->getOffMap(row, col) ? true : false);
 }
 
-//*****************************************************************************
-
 void execSetGoalPlanning (void) {
 
 	bool setting = ABLi_popBoolean();
@@ -7600,8 +5903,6 @@ void execSetGoalPlanning (void) {
 	ABLi_pushBoolean(oldSetting);
 }
 
-//*****************************************************************************
-
 void execSetEject (void) {
 
 	bool setting = ABLi_popBoolean();
@@ -7613,8 +5914,6 @@ void execSetEject (void) {
 	}
 	ABLi_pushBoolean(oldSetting);
 }
-
-//*****************************************************************************
 
 void execSetKeepMoving (void) {
 
@@ -7628,14 +5927,10 @@ void execSetKeepMoving (void) {
 	ABLi_pushBoolean(oldSetting);
 }
 
-//*****************************************************************************
-
 void* ablSystemMallocCallback (unsigned long memSize) {
 
 	return(systemHeap->Malloc(memSize));
 }
-
-//-----------------------------------------------------------------------------
 
 void* ablStackMallocCallback (unsigned long memSize) {
 
@@ -7644,16 +5939,12 @@ void* ablStackMallocCallback (unsigned long memSize) {
 	return(AblStackHeap->Malloc(memSize));
 }
 
-//-----------------------------------------------------------------------------
-
 void* ablCodeMallocCallback (unsigned long memSize) {
 
 	if (!AblCodeHeap)
 		Fatal(0, " ablCodeFreeCallback: NULL heap ");
 	return(AblCodeHeap->Malloc(memSize));
 }
-
-//-----------------------------------------------------------------------------
 
 void* ablSymbolMallocCallback (unsigned long memSize) {
 
@@ -7662,14 +5953,10 @@ void* ablSymbolMallocCallback (unsigned long memSize) {
 	return(AblSymbolHeap->Malloc(memSize));
 }
 
-//-----------------------------------------------------------------------------
-
 void ablSystemFreeCallback (void* memBlock) {
 
 	systemHeap->Free(memBlock);
 }
-
-//-----------------------------------------------------------------------------
 
 void ablStackFreeCallback (void* memBlock) {
 
@@ -7678,8 +5965,6 @@ void ablStackFreeCallback (void* memBlock) {
 	AblStackHeap->Free(memBlock);
 }
 
-//-----------------------------------------------------------------------------
-
 void ablCodeFreeCallback (void* memBlock) {
 
 	if (!AblCodeHeap)
@@ -7687,16 +5972,12 @@ void ablCodeFreeCallback (void* memBlock) {
 	AblCodeHeap->Free(memBlock);
 }
 
-//-----------------------------------------------------------------------------
-
 void ablSymbolFreeCallback (void* memBlock) {
 
 	if (!AblSymbolHeap)
 		Fatal(0, " ablSymbolFreeCallback: NULL heap ");
 	AblSymbolHeap->Free(memBlock);
 }
-
-//*****************************************************************************
 
 long ablFileCreateCB (void** file, const char* fName) {
 
@@ -7710,8 +5991,6 @@ long ablFileCreateCB (void** file, const char* fName) {
 	}
 	return(NO_ERR);
 }
-
-//-----------------------------------------------------------------------------
 
 long ablFileOpenCB (void** file, const char* fName) {
 
@@ -7728,12 +6007,9 @@ long ablFileOpenCB (void** file, const char* fName) {
 	return(NO_ERR);
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileCloseCB (void** file) {
 
 	((FilePtr)*file)->close();
-
 
 	delete (FilePtr)*file;
 	*file = NULL;
@@ -7741,85 +6017,61 @@ long ablFileCloseCB (void** file) {
 	return(0);
 }
 
-//-----------------------------------------------------------------------------
-
 bool ablFileEofCB (void* file) {
 
 	return(((FilePtr)file)->eof());
 
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileReadCB (void* file, unsigned char* buffer, long length) {
 
 	return(((FilePtr)file)->read(buffer, length));
 }
-
-//-----------------------------------------------------------------------------
 
 int32_t ablFileReadIntCB (void* file) {
 
 	return(((FilePtr)file)->readInt());
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileReadLongCB (void* file) {
 
 	return(((FilePtr)file)->readLong());
 }
-
-//-----------------------------------------------------------------------------
 
 long ablFileReadStringCB (void* file, unsigned char* buffer) {
 
 	return(((FilePtr)file)->readString(buffer));
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileReadLineExCB (void* file, unsigned char* buffer, long maxLength) {
 
 	return(((FilePtr)file)->readLineEx(buffer, maxLength));
 }
-
-//-----------------------------------------------------------------------------
 
 long ablFileWriteCB (void* file, unsigned char* buffer, long length) {
 
 	return(((FilePtr)file)->write(buffer, length));
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileWriteByteCB (void* file, unsigned char byte) {
 
 	return(((FilePtr)file)->writeByte(byte));
 }
-
-//-----------------------------------------------------------------------------
 
 long ablFileWriteIntCB (void* file, int32_t value) {
 
 	return(((FilePtr)file)->writeInt(value));
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileWriteLongCB (void* file, long value) {
 
 	return(((FilePtr)file)->writeLong(value));
 }
 
-//-----------------------------------------------------------------------------
-
 long ablFileWriteStringCB (void* file, const char* buffer) {
 
 	return(((FilePtr)file)->writeString(buffer));
 }
-
-//*****************************************************************************
 
 void ablDebuggerPrintCallback (const char* s) {
 
@@ -7829,21 +6081,15 @@ void ablDebuggerPrintCallback (const char* s) {
 	SPEW((0,msg));
 }
 
-//*****************************************************************************
-
 void ablDebugPrintCallback (const char* s) {
 
 	DEBUGWINS_print(s, 0);
 }
 
-//*****************************************************************************
-
 void ablSeedRandom (unsigned long seed) {
 
 	gos_srand(seed);
 }
-
-//*****************************************************************************
 
 void ablFatalCallback (long code, const char* s) {
 
@@ -7880,8 +6126,6 @@ void ablFatalCallback (long code, const char* s) {
 		STOP(("[ABL] fatal callback: %d unique errors tracked; further distinct messages suppressed", kSlots));
 	}
 }
-
-//*****************************************************************************
 
 extern GameObjectPtr LastCoreAttackTarget;
 
@@ -7928,8 +6172,6 @@ void ablEndlessStateCallback (UserFile* log) {
 		log->write(s);
 	}
 }
-
-//*****************************************************************************
 
 static void logAblFunctionTableCapacity (void)
 {
@@ -8272,11 +6514,6 @@ void initABL (void) {
 	// would shadow the library and break MCO proactive AI (same shadow rule as
 	// magicattack/coreguard/corepatrol above).
 	// docs/observations/2026-04-25-abl-library-shadow-rule.md
-#if 0
-	ABLi_addFunction("magicpatrol",          false, "??",  NULL, execMagicPatrol);
-	ABLi_addFunction("magicguard",           false, "?i",  NULL, execMagicGuard);
-	ABLi_addFunction("magicescort",          false, "i",   NULL, execMagicEscort);
-#endif
 	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
 	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
@@ -8346,8 +6583,6 @@ void initABL (void) {
 	logAblFunctionTableCapacity();
 }
 
-//*****************************************************************************
-
 void closeABL (void) {
 
 	ABLi_close();
@@ -8366,9 +6601,7 @@ void closeABL (void) {
 	}
 }
 
-//*****************************************************************************
 // ABL-BAD-NATIVE-ARG-REPRO-1  (gate: MC2_ABL_ARG_GUARD_REPRO=1)
-//
 // VECTOR CHOICE: Direct C++ repro hook (option b).
 //   ABL type-system call path (option a) was ruled out: ABLi_popRealPtr requires
 //   a live bytecode token stream (getCodeToken + getCodeSymTableNodePtr), which
@@ -8376,7 +6609,6 @@ void closeABL (void) {
 //   (option c) would need the full ABL + GameOS link surface (~50 TUs).
 //   This hook is minimal, test-only, calls the EXACT guard check + write site,
 //   and compiles behind a new env gate.
-//
 // NEAR-NULL ANALYSIS:
 //   ABLi_popRealPtr returns:
 //     float* realPtr = (float*)(&((StackItemPtr)tos->address)->real);
@@ -8385,10 +6617,8 @@ void closeABL (void) {
 //   When tos->address == NULL, realPtr == (float*)NULL == exactly 0x0.
 //   The guard "if (s_ablArgGuard && !relPos)" catches this EXACTLY.
 //   There is NO near-null gap: the bogus pointer IS NULL, not offset-from-null.
-//
 // GUARD ON  (MC2_ABL_ARG_GUARD=1):
 //   abl_arg_guard_log fires, [ABL_ARG_GUARD] printed, function returns, no crash.
-//
 // GUARD OFF (MC2_ABL_ARG_GUARD unset):
 //   relPos[0] = 1.0f writes to address 0x0 -> access violation.
 //   We DO execute this write when REPRO=1 and ARG_GUARD is off, to capture
@@ -8494,4 +6724,4 @@ static void runAblArgGuardRepro2A(void) {
     printf("[ABL_REPRO_2A] done\n");
     fflush(stdout);
 }
-
+
