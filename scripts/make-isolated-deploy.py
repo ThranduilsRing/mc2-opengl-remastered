@@ -71,6 +71,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 PREFIX = "[ISO_DEPLOY]"
 SCRIPTS = Path(__file__).resolve().parent
@@ -281,7 +282,7 @@ def check_space(need_bytes: int, target: Path) -> None:
             [sys.executable, str(guard), "--path", str(target),
              "--need-bytes", str(need_bytes),
              "--label", "isolated deploy (copied bytes only)"],
-            timeout=60, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
+            timeout=60, **console_child.child_kwargs()).returncode
     except Exception as e:  # noqa: BLE001
         fail(f"disk guard could not run ({e}) -- refusing to write UNGUARDED. "
              "Set MC2_ISO_SKIP_DISK_GUARD=1 to bypass deliberately.", 2)

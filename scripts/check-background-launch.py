@@ -457,7 +457,7 @@ def _is_hidden_spawn(node: ast.Call, src: str) -> bool:
         ks = ast.get_source_segment(src, kw.value) or ""
         if kw.arg == "creationflags" and re.search(r"NO_WINDOW|DETACHED_PROCESS|0x08000000", ks):
             return True
-        if kw.arg is None and re.search(r"hidden_kwargs|popen_kwargs", ks):
+        if kw.arg is None and re.search(r"hidden_kwargs|popen_kwargs|child_kwargs", ks):
             return True
     return False
 
@@ -933,7 +933,9 @@ _SELFTEST_FILES = {
         "    return subprocess.run([sys.executable, 'x.py'], capture_output=True,\n"
         "                          **nofocus.hidden_kwargs())\n"
         "def go2():\n"
-        "    return subprocess.run(['cmd'], creationflags=subprocess.CREATE_NO_WINDOW)\n"),
+        "    return subprocess.run(['cmd'], creationflags=subprocess.CREATE_NO_WINDOW)\n"
+        "def go3():\n"
+        "    return subprocess.run(['cmd'], **console_child.child_kwargs())\n"),
     # python launcher that merely takes an exe path -> not an engine launch.
     "scripts/py_wrapper.py": (
         "import subprocess, sys\n"
@@ -985,7 +987,7 @@ def selftest() -> int:
         expect(flagged("scripts/mcp/unhidden.py", "CREATE_NO_WINDOW"),
                "console child without a no-window flag FAILS in a strict path")
         expect(not flagged("scripts/mcp/hidden.py"),
-               "hidden_kwargs()/CREATE_NO_WINDOW children pass RULE 10")
+               "hidden_kwargs()/child_kwargs()/CREATE_NO_WINDOW children pass RULE 10")
         expect(not flagged("scripts/py_wrapper.py", "launches the engine"),
                "python wrapper taking an exe path is not an engine launch")
         expect(flagged("launch_bad.bat", "shell launcher"),

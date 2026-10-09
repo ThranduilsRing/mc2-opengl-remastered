@@ -48,6 +48,7 @@ RUN_SMOKE = REPO_ROOT / "scripts" / "run_smoke.py"
 DEFAULT_ZIP_DIR = REPO_ROOT / "release_assets"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import manifest_schema  # noqa: E402  (S12 unified identity block)
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 # ---------------------------------------------------------------------------
 # Assembly spec
@@ -234,7 +235,7 @@ def run_smoke(exe: Path, mission: str, duration: int) -> int:
         "--exe", str(exe),
     ]
     log(f"smoke: {' '.join(cmd)}")
-    result = subprocess.run(cmd, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    result = subprocess.run(cmd, **console_child.child_kwargs())
     return result.returncode
 
 

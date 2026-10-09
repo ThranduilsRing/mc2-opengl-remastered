@@ -12,6 +12,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROBE = REPO_ROOT / "tools" / "asset_probe" / "ktx2_probe.py"
@@ -25,7 +26,7 @@ def main() -> int:
               "skipping offline KTX2 bake probe.")
         return 0
 
-    res = subprocess.run([sys.executable, str(PROBE)], creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    res = subprocess.run([sys.executable, str(PROBE)], **console_child.child_kwargs())
     if res.returncode != 0:
         print(f"FAIL check-ktx2-probe: probe exited {res.returncode}",
               file=sys.stderr)

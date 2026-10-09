@@ -32,6 +32,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parents[1]
 RVC = ROOT / "scripts" / "run_visual_capture.py"
@@ -125,7 +126,7 @@ def _capture(exe: str, prof: dict, out_dir: Path, runs: int, warmup: int,
     print(f"[gate] {'DRY-RUN ' if dry_run else ''}capture: {' '.join(cmd)}")
     if dry_run:
         return 0
-    return subprocess.run(cmd, env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
+    return subprocess.run(cmd, env=env, **console_child.child_kwargs()).returncode
 
 
 def _row_drew(out_dir: Path, row: str) -> int:

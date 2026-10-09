@@ -18,6 +18,7 @@ Usage:
 import subprocess
 import sys
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 REPO = Path(__file__).resolve().parent.parent
 VALIDATOR = REPO / "tools" / "asset_cook" / "validate_asset_manifest.py"
@@ -29,7 +30,7 @@ def _run(manifest: Path, expect_fail: bool) -> bool:
     cmd = [sys.executable, str(VALIDATOR), str(manifest), "--quiet"]
     if expect_fail:
         cmd.append("--expect-fail")
-    return subprocess.run(cmd, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode == 0
+    return subprocess.run(cmd, **console_child.child_kwargs()).returncode == 0
 
 
 def main() -> int:

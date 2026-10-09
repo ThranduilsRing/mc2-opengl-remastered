@@ -22,6 +22,8 @@ import argparse
 import os
 import subprocess
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,7 +78,7 @@ def run_functional(exe: str) -> int:
         print(f"    {k}={v}")
     print(f"[nvidia-readiness] launching: {' '.join(cmd)} (exe={exe})")
     env["MC2_SMOKE_EXE"] = exe  # informational; run_smoke takes --exe if supported
-    r = subprocess.run(cmd + (["--exe", exe] if exe else []), env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    r = subprocess.run(cmd + (["--exe", exe] if exe else []), env=env, **console_child.child_kwargs())
     print("[nvidia-readiness] NOTE: triage any new GL_DEBUG_FATAL stops as EXPECTED-first "
           "(runbook §5); diff the [FRAME_PLAN]/[PIPELINE_BIND]/[MDI_SUBMIT] pass SET vs an "
           "AMD log; bless a NVIDIA golden set (do not force the AMD hash).")

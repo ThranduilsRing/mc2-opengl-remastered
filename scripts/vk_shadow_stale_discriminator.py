@@ -37,6 +37,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,18 +59,18 @@ def run_capture(exe: str, mission: str, out_dir: Path, trigger: int, settle: int
                "--exe", exe, "--mission", mission, "--out-dir", str(out_dir),
                "--duration", str(duration), "--settle", str(settle),
                "--trigger", str(trigger), "--show-window"]
-        return subprocess.call(cmd, cwd=str(ROOT), creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+        return subprocess.call(cmd, cwd=str(ROOT), **console_child.child_kwargs())
     cmd = [sys.executable, str(ROOT / "scripts" / "run_vk_nointerop_strict_visible.py"),
            "--exe", exe, "--mission", mission, "--out-dir", str(out_dir),
            "--duration", str(duration), "--settle", str(settle), "--trigger", str(trigger)]
-    return subprocess.call(cmd, cwd=str(ROOT), creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    return subprocess.call(cmd, cwd=str(ROOT), **console_child.child_kwargs())
 
 
 def diff_dirs(golden: Path, candidate: Path, json_out: Path) -> dict:
     cmd = [sys.executable, str(ROOT / "scripts" / "visual_diff.py"),
            "--golden-dir", str(golden), "--candidate-dir", str(candidate),
            "--json", str(json_out)]
-    subprocess.call(cmd, cwd=str(ROOT), creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    subprocess.call(cmd, cwd=str(ROOT), **console_child.child_kwargs())
     try:
         return json.loads(json_out.read_text(encoding="utf-8"))
     except Exception:

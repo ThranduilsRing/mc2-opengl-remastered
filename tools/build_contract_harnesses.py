@@ -27,6 +27,8 @@ import argparse
 import os
 import subprocess
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(REPO_ROOT, "tools", "run_contract_tests.py")
@@ -92,7 +94,7 @@ def build_and_run_unit_tests(config, run):
     exe = os.path.join(bdir, config, "mc2_tests" + (".exe" if os.name == "nt" else ""))
     if not os.path.isfile(exe):
         exe = os.path.join(bdir, "mc2_tests" + (".exe" if os.name == "nt" else ""))
-    rc = subprocess.run([exe], cwd=REPO_ROOT, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
+    rc = subprocess.run([exe], cwd=REPO_ROOT, **console_child.child_kwargs()).returncode
     return (rc == 0), ("doctest passed" if rc == 0 else f"doctest failed (rc={rc})")
 
 
@@ -154,7 +156,7 @@ def main():
         for bd in build_dirs:
             cmd += ["--build-dir", os.path.basename(bd)]
         print("\n[build-harnesses] running suite...")
-        rc = subprocess.run(cmd, cwd=REPO_ROOT, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
+        rc = subprocess.run(cmd, cwd=REPO_ROOT, **console_child.child_kwargs()).returncode
         return 1 if (failures or rc != 0 or not unit_ok) else 0
 
     return 1 if (failures or not unit_ok) else 0

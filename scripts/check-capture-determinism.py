@@ -79,6 +79,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parents[1]
 # Scanned by the DEFAULT (contract-suite) mode. Deliberately NOT all of
@@ -213,7 +214,7 @@ def do_run(exe, mission, bookmarks, outdir, runs, duration, settle):
     if bookmarks:
         cmd += ["--bookmarks", str(bookmarks)]
     print(f"[capdet] capturing: {' '.join(cmd)}")
-    subprocess.run(cmd, check=False, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    subprocess.run(cmd, check=False, **console_child.child_kwargs())
 
 
 def selftest() -> int:

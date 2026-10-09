@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parent.parent
 runner = ROOT / "scripts" / "run-unit-tests.sh"
@@ -98,4 +99,4 @@ if bash is None:
 # keeps it off the engine build64/ cache, which this gate has no business
 # configuring.
 cmd = [bash, runner.as_posix(), "--doctest-only"]
-sys.exit(subprocess.call(cmd, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)))
+sys.exit(subprocess.call(cmd, **console_child.child_kwargs()))

@@ -48,6 +48,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parent.parent
 RUN_SMOKE = ROOT / "scripts" / "run_smoke.py"
@@ -194,7 +195,7 @@ def main():
                "--exe", str(exe),
                "--keep-logs"]
         print("[golden_scene] launching capture: %s" % " ".join(cmd), file=sys.stderr)
-        rc = subprocess.call(cmd, cwd=str(ROOT), creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+        rc = subprocess.call(cmd, cwd=str(ROOT), **console_child.child_kwargs())
         print("[golden_scene] smoke exit=%d" % rc, file=sys.stderr)
         # rc!=0 is a smoke FAIL, but we still try to build the manifest from
         # whatever the engine dumped (a manifest of a failed capture is useful).

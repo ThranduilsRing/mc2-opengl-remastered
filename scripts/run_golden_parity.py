@@ -97,6 +97,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 GOLDEN_SCENE = SCRIPTS / "golden_scene.py"
 VISUAL_CAPTURE = SCRIPTS / "run_visual_capture.py"
 GOLDEN_COMPARE = SCRIPTS / "golden_compare.py"
@@ -171,7 +172,7 @@ def _run(cmd: list[str], env: dict | None = None, timeout: int = CAP_TIMEOUT_S) 
     Raises on timeout (a hung/crashed capture must abort the harness clearly)."""
     print("[golden_parity] $ %s" % " ".join(cmd), file=sys.stderr)
     try:
-        return subprocess.call(cmd, cwd=str(ROOT), env=env, timeout=timeout, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+        return subprocess.call(cmd, cwd=str(ROOT), env=env, timeout=timeout, **console_child.child_kwargs())
     except subprocess.TimeoutExpired:
         raise RuntimeError("capture TIMED OUT after %ds: %s"
                            % (timeout, " ".join(cmd)))

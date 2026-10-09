@@ -31,6 +31,7 @@ import os
 import shutil
 import subprocess
 import sys
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 CMAKE = ("C:/Program Files (x86)/Microsoft Visual Studio/2022/Common7/IDE/"
          "CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe")
@@ -142,7 +143,7 @@ def configure(worktree, cmake):
     args = [cmake, "-S", br, "-B", f"{br}/build64",
             "-G", "Visual Studio 17 2022", "-A", "x64"] + cache_args(br)
     log("configuring ...")
-    r = subprocess.run(args, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    r = subprocess.run(args, **console_child.child_kwargs())
     if r.returncode != 0:
         fail("cmake configure failed (see output above)")
     log("configure OK -> build64/")
@@ -152,7 +153,7 @@ def build(worktree, cmake):
     args = [cmake, "--build", f"{worktree}/build64",
             "--config", "RelWithDebInfo", "--target", "mc2"]
     log("building mc2 (RelWithDebInfo) ...")
-    r = subprocess.run(args, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    r = subprocess.run(args, **console_child.child_kwargs())
     if r.returncode != 0:
         fail("build failed (see output above)")
     log("build OK -> build64/RelWithDebInfo/mc2.exe")

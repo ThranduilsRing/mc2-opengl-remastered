@@ -26,6 +26,8 @@ import os
 import re
 import subprocess
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,7 +64,7 @@ def main():
                "--source-root", args.source_root, "--build-dir", args.build_dir,
                "--exe-name", args.exe_name]
         print("[witness] deploy:", " ".join(cmd), flush=True)
-        rc = subprocess.call(cmd, cwd=str(ROOT), creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+        rc = subprocess.call(cmd, cwd=str(ROOT), **console_child.child_kwargs())
         if rc != 0:
             print(f"[witness] DEPLOY FAILED rc={rc}")
             return rc

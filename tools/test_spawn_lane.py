@@ -18,6 +18,9 @@ TOOL = Path(__file__).resolve().parent / "spawn_lane.py"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spawn_lane  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import console_child  # noqa: E402
+
 
 # --- unit: path_variants -----------------------------------------------------
 
@@ -74,15 +77,15 @@ def test_rewrite_tree_handles_utf8_and_utf16_and_skips_binary(tmp_path):
 def make_repo(root: Path, warm: bool) -> Path:
     repo = root / "donor"
     repo.mkdir()
-    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, **console_child.child_kwargs())
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"],
-                   check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+                   check=True, **console_child.child_kwargs())
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"],
-                   check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+                   check=True, **console_child.child_kwargs())
     (repo / "hello.txt").write_text("hi\n")
-    subprocess.run(["git", "-C", str(repo), "add", "hello.txt"], check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    subprocess.run(["git", "-C", str(repo), "add", "hello.txt"], check=True, **console_child.child_kwargs())
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "seed"],
-                   check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+                   check=True, **console_child.child_kwargs())
     if warm:
         exe = repo / "build64" / "RelWithDebInfo" / "mc2.exe"
         exe.parent.mkdir(parents=True)

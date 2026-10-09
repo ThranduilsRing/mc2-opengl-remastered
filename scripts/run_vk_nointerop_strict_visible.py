@@ -9,6 +9,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 
 # NAMING NOTE (H5, VK-NOINTEROP-STRICT-REVIEW): several gates below are historically
@@ -181,7 +182,7 @@ def main() -> int:
         declared.append("MC2_CURSOR_NO_PARK")
     for key in declared:
         cmd.extend(["--env-declare", f"{key}={env.get(key, '')}"])
-    return subprocess.call(cmd, cwd=str(root), env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    return subprocess.call(cmd, cwd=str(root), env=env, **console_child.child_kwargs())
 
 
 if __name__ == "__main__":

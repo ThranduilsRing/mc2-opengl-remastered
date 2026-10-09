@@ -48,6 +48,7 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -213,7 +214,7 @@ def run_playtest(missions: List[str], duration: int) -> int:
         cmd += ["--mission", m]
     log("ENGINE-LIVENESS (mod is in isolated sandbox, NOT in the smoke deploy):")
     log("$ " + " ".join(cmd))
-    proc = subprocess.run(cmd, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
+    proc = subprocess.run(cmd, **console_child.child_kwargs())
     return proc.returncode
 
 
