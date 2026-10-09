@@ -87,6 +87,7 @@ set(SOURCES ${SOURCES}
     utils/gl_render_constants.cpp
     utils/Image.cpp
     utils/logging.cpp
+    utils/mc2log.cpp
     utils/shader_builder.cpp
     utils/matrix.cpp
     utils/vec.cpp

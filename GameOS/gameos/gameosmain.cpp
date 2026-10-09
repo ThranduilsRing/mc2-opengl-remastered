@@ -236,6 +236,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "mc2_hitch_trace.h"
 #include "gos_render_pass_timer.h"
 #include "gos_frame_pass_stats.h"   // [FRAME_PASS_STATS v1] collector
+#include "utils/mc2log.h"   // LOGGING-FACADE-P0: mc2::log::init() before the NUL redirect
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
@@ -1173,7 +1174,10 @@ int main(int argc, char** argv)
     // the file independently of stderr), so nothing debuggable is lost.
     // MC2_LOG=1 restores full stdout+stderr for smoke/dev/hitch-catcher
     // (scripts/run_smoke.py, scripts/run_visual_capture.py set it).
-    if (std::getenv("MC2_LOG") == nullptr) {
+    // LOGGING-FACADE-P0 (A3): the facade parses MC2_LOG here, BEFORE the redirect,
+    // and decides stream liveness: set to anything (incl. legacy "1", or a
+    // "cat:level" spec) = live; unset = redirect, exactly as before.
+    if (!mc2::log::init()) {
         FILE* sink = freopen("NUL", "w", stdout);
         (void)sink;  // NUL is always present on Windows; if it failed, the stream
                      // simply stays connected (correct but hitchy) -- never fatal.
