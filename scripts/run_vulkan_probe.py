@@ -63,6 +63,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from smoke_lib import nofocus  # noqa: E402
+
 # Canonical VS-bundled CMake (matches CLAUDE.md). Falls back to PATH if absent.
 CANONICAL_CMAKE = (
     r"C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/"
@@ -141,6 +144,7 @@ def run_cmd(cmd: list[str], cwd: Path, timeout: int | None = None):
             capture_output=True,
             text=True,
             timeout=timeout,
+            **nofocus.hidden_kwargs()
         )
         return proc.returncode, proc.stdout, proc.stderr, None
     except subprocess.TimeoutExpired as exc:
@@ -325,6 +329,7 @@ def main(argv: list[str]) -> int:
     print(f"[run_vulkan_probe] running probe (shader-dir={args.shader_dir}, timeout={PROBE_TIMEOUT_S}s)...")
     print("  $ " + str(exe) + " " + args.shader_dir)
     try:
+        # background-launch: allow Vulkan shader probe is a headless console test exe, not the game; windowless via hidden_kwargs
         proc = subprocess.run(
             [str(exe), args.shader_dir],
             cwd=str(root),
@@ -332,6 +337,7 @@ def main(argv: list[str]) -> int:
             text=True,
             timeout=PROBE_TIMEOUT_S,
             env=env,
+            **nofocus.hidden_kwargs(),
         )
         probe_rc = proc.returncode
         probe_out = proc.stdout or ""

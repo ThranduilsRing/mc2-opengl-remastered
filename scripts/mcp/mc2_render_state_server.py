@@ -27,6 +27,9 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -121,6 +124,7 @@ def _pid_alive(pid: int | None) -> bool | None:
         r = subprocess.run(
             ["tasklist", "/fi", f"PID eq {pid}", "/nh", "/fo", "CSV"],
             capture_output=True, text=True, timeout=3,
+            **nofocus.hidden_kwargs()
         )
         return str(pid) in r.stdout
     except Exception:
@@ -734,6 +738,7 @@ def run_capture_baseline(mission: str = "mc2_01", duration: int = 30) -> str:
             text=True,
             timeout=duration + 120,
             cwd=str(_WORKTREE_DIR),
+            **nofocus.hidden_kwargs()
         )
     except subprocess.TimeoutExpired:
         return f"run_smoke.py timed out after {duration + 120}s."

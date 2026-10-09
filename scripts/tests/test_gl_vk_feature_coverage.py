@@ -18,6 +18,10 @@ import gl_vk_cpp_gates as cg  # noqa: E402
 import gl_vk_feature_coverage as cov  # noqa: E402
 import gl_vk_twins as tw  # noqa: E402
 from gl_vk_source import Source  # noqa: E402
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 GL_FOO = """#version 430
 uniform int   u_fooEnabled;
@@ -323,7 +327,8 @@ def test_numeric_default_going_nonzero_counts_as_a_flip_and_staying_on_does_not(
 def test_flip_check_end_to_end_on_a_throwaway_git_repo(tmp_path):
     def git(*a):
         subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *a], cwd=tmp_path, check=True,
-                       capture_output=True)
+                       capture_output=True,
+                       **nofocus.hidden_kwargs())
     (tmp_path / "tools").mkdir()
     (tmp_path / "tools" / "vk_not_ported.allowlist").write_text(
         "MC2_FLIPME | shaders/foo.frag | VK twin lacks it\n", encoding="utf-8")

@@ -91,6 +91,11 @@ import struct
 import subprocess
 import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+# OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
+from smoke_lib import nofocus  # noqa: E402
 
 # "[f=1234] select all -> ok (5 selected)"
 ACK_RE = re.compile(r"^\[f=(\d+)\]\s*(.*)$")
@@ -109,7 +114,8 @@ def mc2_running_from(install_dir):
     out = subprocess.run(
         ["powershell", "-NoProfile", "-Command",
          "(Get-Process mc2 -ErrorAction SilentlyContinue).Path"],
-        capture_output=True, text=True).stdout
+        capture_output=True, text=True,
+        **nofocus.hidden_kwargs()).stdout
     norm = os.path.normcase(os.path.abspath(install_dir))
     return [p.strip() for p in out.splitlines()
             if p.strip() and os.path.normcase(
@@ -640,7 +646,11 @@ def main():
     log_path = os.path.join(out_dir, "mc2_run.log")
     log = open(log_path, "w")
     print("launching %s --profile stock --mission %s (cwd=%s)" % (exe, mission, install))
-    proc = subprocess.Popen(
+    # nofocus.spawn adds the non-activating STARTUPINFO, MC2_WINDOW_OFFSCREEN
+    # and SDL_AUDIODRIVER=dummy on top of the 640x480/windowed env above. This
+    # runner drives the engine through the UI-command/ack files and reads engine
+    # screenshots, never the desktop composite, so an offscreen window is free.
+    proc = nofocus.spawn(
         [exe, "--profile", "stock", "--mission", mission, "--duration", str(duration)],
         cwd=install, env=env, stdout=log, stderr=subprocess.STDOUT)
     print("spawned pid=%d (only this PID will be killed)" % proc.pid)

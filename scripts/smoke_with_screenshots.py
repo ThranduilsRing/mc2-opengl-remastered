@@ -42,7 +42,8 @@ ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 
 def kill_existing_mc2() -> None:
     subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   **nofocus.hidden_kwargs())
     time.sleep(1)
 
 

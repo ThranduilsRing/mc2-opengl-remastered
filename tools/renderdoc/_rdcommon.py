@@ -107,9 +107,16 @@ def run_worker(job: dict, timeout: float = 180.0,
         except OSError:
             pass
 
+    # OWNER RULE: nothing an agent starts may take focus. qrenderdoc is a Qt GUI
+    # (not the engine), so nofocus.spawn's engine env does not apply -- but its
+    # non-activating, minimized STARTUPINFO does, and costs nothing for a
+    # headless --python worker. Best effort: Qt may still raise its own window.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from smoke_lib import nofocus  # noqa: E402
     proc = subprocess.Popen(cmd, env=env,
                             stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+                            stderr=subprocess.DEVNULL,
+                            **nofocus.popen_kwargs())  # background-launch: allow GUI tool, not the engine
     deadline = time.time() + timeout
     result_json = job["result_json"]
     try:

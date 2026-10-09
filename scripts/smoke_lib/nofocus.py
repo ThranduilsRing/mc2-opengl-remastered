@@ -42,9 +42,15 @@ Or, if you must keep your own Popen call:
 
 ESCAPE HATCH
 ------------
-`MC2_HARNESS_ALLOW_FOREGROUND=1` re-enables foreground/cursor manipulation for
-an interactive, user-present session. It is OFF by default and nothing in the
-tree sets it. `show_window=True` asks for a visible (still non-activating)
+`MC2_HARNESS_ALLOW_FOREGROUND=1` is the user-present opt-in. It permits ONE
+thing: a window that is VISIBLE on the desktop (offscreen=False, for the
+desktop-composite capture harnesses) and a non-activating topmost raise
+(raise_noactivate). It does NOT permit focus, activation, or pointer capture --
+OWNER RULE: an engine launch is ALWAYS background, so even then STARTUPINFO is
+SW_SHOWNOACTIVATE and MC2_NO_CURSOR_GRAB / MC2_WINDOWED are still applied; the
+mouse must stay untouched. It is OFF by default and nothing in the tree sets it.
+
+`show_window=True` asks for a visible (still non-activating)
 window -- used by perf runs, because SW_SHOWMINNOACTIVE makes SDL throttle a
 minimized window to ~100fps and Avg FPS then is not GPU throughput. It does
 NOT ask for the visible DESKTOP: `show_window` and `offscreen` are orthogonal
@@ -72,10 +78,14 @@ __all__ = [
     "apply_env",
     "startupinfo",
     "popen_kwargs",
+    "hidden_kwargs",
+    "CREATE_NO_WINDOW",
+    "DETACHED_PROCESS",
     "spawn",
     "park_window_offscreen",
     "run",
     "set_foreground_window",
+    "raise_noactivate",
     "set_cursor_pos",
 ]
 
@@ -126,6 +136,13 @@ NOFOCUS_ENV = {
     # It is a long-shipped gate, so this works on already-deployed exes with
     # no rebuild.
     "MC2_WINDOWED": "1",
+    # NO-LAUNCHER-WINDOW. gameosmain.cpp main() hands a directly-started mc2.exe
+    # off to mc2-launcher.exe (a visible GUI) unless it sees one of a handful of
+    # "automation" env vars -- and MC2_NO_CURSOR_GRAB / MC2_WINDOW_OFFSCREEN are
+    # NOT among them. A harness that deliberately runs WITHOUT MC2_SMOKE_MODE (the
+    # menu canary pops it) therefore spawned the launcher window. MC2_NO_LAUNCHER
+    # is the long-shipped escape, so it works on already-deployed exes.
+    "MC2_NO_LAUNCHER": "1",
 }
 
 #: Window SIZE. MC2_WINDOWED alone still opens a window the size of
@@ -200,8 +217,14 @@ def apply_env(env: "Optional[dict]" = None, *, small_window: bool = True,
     """
     out = dict(os.environ if env is None else env)
     if allow_foreground():
-        # User-present session: the human asked to see the game, so none of the
-        # hands-off policy applies (and `offscreen` is moot -- nothing below runs).
+        # User-present session: the human asked for the window to be VISIBLE
+        # (so offscreen / small-window do not apply). They did NOT ask for the
+        # game to take focus or the pointer -- OWNER RULE: an engine launch is
+        # ALWAYS background. So the focus/cursor/fullscreen vars still apply;
+        # they are what makes SDL create the window with
+        # SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN and skip ClipCursor/warp.
+        for k, v in NOFOCUS_ENV.items():
+            out.setdefault(k, v)
         return out
     if not offscreen:
         # Refuse BEFORE anything is spawned or established: there is no partial
@@ -232,15 +255,19 @@ def startupinfo(show_window: bool = False):
     """STARTUPINFO that never activates. None on non-win32."""
     if sys.platform != "win32":
         return None
-    if allow_foreground():
-        return None
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     # SW_SHOWMINNOACTIVE(7): minimized, never activated -- the default, because
     # a merely-non-activating visible window (4) still paints over the game the
     # user is playing. show_window=True picks 4 for perf runs, which must not
     # be throttled by SDL's minimized-window sleep, but still never activates.
-    si.wShowWindow = SW_SHOWNOACTIVATE if show_window else SW_SHOWMINNOACTIVE
+    #
+    # A user-present session (MC2_HARNESS_ALLOW_FOREGROUND=1) wants the window
+    # VISIBLE (composite-capture harnesses read desktop pixels), so it gets 4
+    # too -- but it NEVER gets the old `return None` (= SW_SHOWDEFAULT, which
+    # activates). Visible is permitted there; activating is not.
+    si.wShowWindow = (SW_SHOWNOACTIVATE if (show_window or allow_foreground())
+                      else SW_SHOWMINNOACTIVE)
     return si
 
 
@@ -250,6 +277,41 @@ def popen_kwargs(show_window: bool = False, **extra) -> dict:
     si = startupinfo(show_window=show_window)
     if si is not None:
         kw["startupinfo"] = si
+    return kw
+
+
+#: Win32 process-creation flags (winbase.h). CREATE_NO_WINDOW gives a console
+#: child a console with no window; DETACHED_PROCESS gives it none at all.
+CREATE_NO_WINDOW = 0x08000000
+DETACHED_PROCESS = 0x00000008
+
+
+def hidden_kwargs(**extra) -> dict:
+    """Kwargs that keep a CONSOLE child (python, cmd, git, taskkill...) windowless.
+
+    OWNER RULE covers EVERY window, including the console windows of helper
+    processes spawned during a smoke/capture/editor run (a "map generator
+    terminal" popped during an editor smoke). A console-subsystem child launched
+    from a parent that has no console of its own -- an MCP server, a hook, a GUI
+    app, anything started detached -- gets a NEW visible console window.
+
+    CREATE_NO_WINDOW suppresses that window; STARTF_USESHOWWINDOW/SW_HIDE covers
+    children that create their own window anyway. Use ONLY for console tools,
+    never for the game/editor (use spawn()/run(): they need the SDL window, just
+    offscreen and non-activating).
+
+    The child's console is hidden, so inherited stdout/stderr go nowhere:
+    redirect them (capture_output=True / stdout=PIPE / a log file) at the call
+    site. Merged into a call as `subprocess.run(cmd, **nofocus.hidden_kwargs())`.
+    """
+    kw = dict(extra)
+    if sys.platform != "win32":
+        return kw
+    kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
+    si = kw.get("startupinfo") or subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = SW_HIDE
+    kw["startupinfo"] = si
     return kw
 
 
@@ -349,7 +411,7 @@ def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
 
 
 def spawn(argv: Sequence[str], *, show_window: bool = False,
-          offscreen: "Optional[bool]" = None,
+          offscreen: "Optional[bool]" = None, small_window: bool = True,
           env: "Optional[dict]" = None, **kw) -> "subprocess.Popen":
     """subprocess.Popen whose window never occupies visible desktop area.
 
@@ -372,11 +434,17 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     tools/menu_oracle.py:101). `offscreen` therefore defaults to True
     unconditionally; only a desktop-composite capture harness passes False,
     and only a user-present session is granted it (see apply_env).
+
+    `small_window=False` skips the 640x480 MC2_WIDTH/MC2_HEIGHT default for
+    harnesses whose output resolution is graded (golden captures at options.cfg
+    size, perf runs); position is still offscreen, so nothing is on the desktop.
     """
     if offscreen is None:
         offscreen = True
-    proc = subprocess.Popen(list(argv), env=apply_env(env, offscreen=offscreen),
-                            **popen_kwargs(show_window=show_window, **kw))
+    proc = subprocess.Popen(
+        list(argv),
+        env=apply_env(env, small_window=small_window, offscreen=offscreen),
+        **popen_kwargs(show_window=show_window, **kw))
     if offscreen:
         # Backstop for exes predating MC2_WINDOW_OFFSCREEN; a current exe is
         # already offscreen at creation and the poller finds nothing to move.
@@ -385,7 +453,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
 
 
 def run(argv: Sequence[str], *, show_window: bool = False,
-        offscreen: "Optional[bool]" = None,
+        offscreen: "Optional[bool]" = None, small_window: bool = True,
         env: "Optional[dict]" = None, **kw):
     """subprocess.run that cannot steal focus, the cursor, or the desktop.
 
@@ -394,8 +462,10 @@ def run(argv: Sequence[str], *, show_window: bool = False,
     """
     if offscreen is None:
         offscreen = True
-    return subprocess.run(list(argv), env=apply_env(env, offscreen=offscreen),
-                          **popen_kwargs(show_window=show_window, **kw))
+    return subprocess.run(
+        list(argv),
+        env=apply_env(env, small_window=small_window, offscreen=offscreen),
+        **popen_kwargs(show_window=show_window, **kw))
 
 
 # --------------------------------------------------------------------------
@@ -403,17 +473,53 @@ def run(argv: Sequence[str], *, show_window: bool = False,
 # Callers keep their call sites; the calls simply do nothing by default.
 # --------------------------------------------------------------------------
 
-def set_foreground_window(hwnd) -> bool:
-    """No-op unless MC2_HARNESS_ALLOW_FOREGROUND=1. Returns True if applied.
+def raise_noactivate(hwnd) -> bool:
+    """Put `hwnd` ABOVE other windows WITHOUT giving it focus. Returns True if applied.
 
-    Screen capture does NOT require foreground: mss/pyautogui grab the desktop
-    composite, and a non-activated window still renders. Raising the window was
-    always a superstition, and it is what yanked the user out of his game.
+    This is the only z-order operation a desktop-composite capture harness may
+    use (pyautogui / mss / ImageGrab read the composite, so the engine window
+    must be on top of whatever else is on screen). It is
+    SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE):
+
+      * topmost  -> composited above other windows, so the grab sees the game;
+      * NOACTIVATE -> the window never becomes the foreground window, never
+        receives keyboard input, and never takes the thread's capture/focus.
+
+    It does NOT touch the mouse. The pointer must stay wherever the user left
+    it: composite capture needs pixels, not input, and the engine side runs with
+    MC2_NO_CURSOR_GRAB=1 so nothing clips or warps it. A harness that needs to
+    CLICK is an interactive driver (game_auto.py) and is gated separately.
+
+    Granted only in a user-present session (MC2_HARNESS_ALLOW_FOREGROUND=1) --
+    in an agent session the window is offscreen and there is nothing to raise.
     """
     if not allow_foreground() or sys.platform != "win32" or not hwnd:
         return False
     import ctypes
-    return bool(ctypes.windll.user32.SetForegroundWindow(hwnd))
+    import ctypes.wintypes as wt
+    HWND_TOPMOST = wt.HWND(-1)
+    SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 0x0001, 0x0002, 0x0010
+    u32 = ctypes.windll.user32
+    # argtypes are mandatory: without them the HWND is marshalled as c_int and
+    # truncated on 64-bit Python (same footgun as park_window_offscreen).
+    u32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int,
+                                 ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+    u32.SetWindowPos.restype = ctypes.c_bool
+    return bool(u32.SetWindowPos(wt.HWND(int(hwnd)), HWND_TOPMOST, 0, 0, 0, 0,
+                                 SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE))
+
+
+def set_foreground_window(hwnd) -> bool:
+    """Legacy name kept so composite harnesses need no edits. NEVER activates.
+
+    OWNER RULE: no agent-launched window may take focus. This used to call
+    SetForegroundWindow behind the user-present gate; it now delegates to
+    raise_noactivate() (topmost, SWP_NOACTIVATE). Screen capture does not need
+    foreground -- mss/pyautogui grab the composite, and a non-activated topmost
+    window renders and is captured. Raising focus was always a superstition,
+    and it is what yanked the user out of his game.
+    """
+    return raise_noactivate(hwnd)
 
 
 def set_cursor_pos(x: int, y: int, *, restoring: bool = False) -> bool:

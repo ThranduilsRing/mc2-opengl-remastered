@@ -36,6 +36,10 @@ import tempfile
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: the engine is launched through nofocus.run ONLY (background launch).
+from smoke_lib import nofocus  # noqa: E402
+
 # -----------------------------------------------------------------------------
 # Configuration
 # -----------------------------------------------------------------------------
@@ -112,13 +116,18 @@ def run_capture(mission: str, gpu_objects: bool, out_path: Path,
     env["MC2_GPU_OBJECTS"]          = "1" if gpu_objects else "0"
 
     # Cwd matters: mc2.exe loads data/ relative to its install dir.
-    proc = subprocess.run(
+    # OWNER RULE: background launch only. nofocus.run adds the non-activating
+    # STARTUPINFO + windowing env; MC2_VISUAL_DIFF_CAPTURE reads the engine's own
+    # framebuffer, so an offscreen window costs nothing. small_window=False keeps
+    # the diff at options.cfg resolution.
+    proc = nofocus.run(
         [str(MC2_EXE), "--mission", mission, "--duration", str(duration)],
         cwd=str(DEPLOY_DIR),
         env=env,
         capture_output=True,
         text=True,
         timeout=duration + 30,  # wall-clock backstop
+        small_window=False,
     )
 
     # Engine logs via stderr. Tail is useful diagnostic.

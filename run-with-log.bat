@@ -13,6 +13,14 @@ REM every cursor grab, clip and warp — offscreen now implies hands-off-cursor,
 REM which it did not before. The line below also pins MC2_NO_CURSOR_GRAB so the
 REM guarantee does not depend on the exe being new enough to know that.
 
+REM background-launch: allow interactive user launcher. When CLAUDECODE is set (an agent shell) it exports the no-focus env so the engine stays in the background: windowed, parked offscreen, no cursor grab, silent audio.
+if defined CLAUDECODE (
+    set MC2_NO_CURSOR_GRAB=1
+    set MC2_WINDOWED=1
+    set MC2_WINDOW_OFFSCREEN=1
+    set SDL_AUDIODRIVER=dummy
+)
+
 cd /d "%~dp0"
 set MC2_LOG=1
 if defined MC2_WINDOW_OFFSCREEN set MC2_NO_CURSOR_GRAB=1

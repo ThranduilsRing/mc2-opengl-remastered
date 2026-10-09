@@ -36,6 +36,9 @@ import csv
 import subprocess
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 # Allow sibling modules (env_index, etc.) to be imported when running as script
 sys.path.insert(0, str(Path(__file__).parent))
@@ -51,6 +54,7 @@ def git(args, cwd=None, strip=True, timeout=10):
             ["git"] + args,
             capture_output=True, text=True, cwd=cwd, timeout=timeout,
             stdin=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         )
         out = result.stdout.strip() if strip else result.stdout
         return out, result.returncode

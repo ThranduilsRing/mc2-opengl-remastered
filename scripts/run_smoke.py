@@ -224,7 +224,8 @@ def _enum_mc2_processes() -> list[tuple[int, str, str]]:
     try:
         out = subprocess.check_output(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-            text=True, stderr=subprocess.DEVNULL)
+            text=True, stderr=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs())
     except Exception:
         return []
     out = (out or "").strip()
@@ -345,7 +346,8 @@ def _taskkill_mc2(pids: list[int]):
     nuke foreign mc2.exe from a different deploy path)."""
     for pid in pids:
         subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                       stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                       stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                       **nofocus.hidden_kwargs())
 
 
 def _run_menu_canary(exe: Path, script_path: Path, artifact_dir: Path,
@@ -378,6 +380,7 @@ def _run_menu_canary(exe: Path, script_path: Path, artifact_dir: Path,
         text=True,
         capture_output=True,
         cwd=str(ROOT),
+        **nofocus.hidden_kwargs()
     )
     replay_elapsed_s = time.monotonic() - start_wall
     time.sleep(max(0, settle_s))
@@ -782,7 +785,7 @@ def main():
         print(f"[runner] [VERIFY] reconciling deploy target {verify_target} "
               f"(strict={str(strict).lower()})", file=sys.stderr)
         try:
-            _v = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            _v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())
         except Exception as _ve:
             print(f"[runner] [VERIFY] check error: {_ve}", file=sys.stderr)
             return 2
@@ -824,11 +827,13 @@ def main():
     if args.guard:
         try:
             _gsha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                   capture_output=True, text=True, timeout=10)
+                                   capture_output=True, text=True, timeout=10,
+                                   **nofocus.hidden_kwargs())
             _gexp = _gsha.stdout.strip() if _gsha.returncode == 0 else None
             _gbr = subprocess.run(["git", "-C", str(ROOT), "rev-parse",
                                    "--abbrev-ref", "HEAD"],
-                                  capture_output=True, text=True, timeout=10)
+                                  capture_output=True, text=True, timeout=10,
+                                  **nofocus.hidden_kwargs())
             _gbranch = _gbr.stdout.strip() if _gbr.returncode == 0 else None
             _gcmd = [sys.executable,
                      str(ROOT / "scripts" / "check-deploy-target.py"),
@@ -838,7 +843,7 @@ def main():
                 _gcmd += ["--expected-sha", _gexp]
             if _gbranch:
                 _gcmd += ["--branch", _gbranch]
-            _g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60)
+            _g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())
             for _line in ((_g.stdout or "") + (_g.stderr or "")).splitlines():
                 if _line.strip():
                     print(f"[runner] {_line}", file=sys.stderr)
@@ -907,7 +912,8 @@ def main():
             _coh = subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "check-deploy-coherence.py"),
                  str(Path(args.exe).resolve().parent), "--worktree", str(ROOT)],
-                capture_output=True, text=True, timeout=30)
+                capture_output=True, text=True, timeout=30,
+                **nofocus.hidden_kwargs())
             _coh_text = (_coh.stdout or "") + (_coh.stderr or "")
             for _line in _coh_text.splitlines():
                 if _line.strip():
@@ -923,7 +929,8 @@ def main():
         try:
             _bom = subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "check_shader_bom.py")],
-                capture_output=True, text=True, timeout=15)
+                capture_output=True, text=True, timeout=15,
+                **nofocus.hidden_kwargs())
             _bom_text = (_bom.stdout or "") + (_bom.stderr or "")
             _bom_rc = _bom.returncode
             for _line in _bom_text.splitlines():
@@ -1001,7 +1008,8 @@ def main():
             _stale_pid = int(_LOCK_PATH.read_text().strip())
             _tl = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {_stale_pid}", "/NH", "/FO", "CSV"],
-                capture_output=True, text=True).stdout
+                capture_output=True, text=True,
+                **nofocus.hidden_kwargs()).stdout
             # Robust: match the exact PID column (CSV field 1), not a substring of
             # the whole output. The old .count(str(pid)) gave false-positives on
             # PID-substring / PID-reuse, wrongly reporting a DEAD lock as alive and
@@ -1160,7 +1168,8 @@ def main():
         try:
             _fp_expected_sha = subprocess.check_output(
                 ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                text=True, stderr=subprocess.DEVNULL, timeout=15).strip()
+                text=True, stderr=subprocess.DEVNULL, timeout=15,
+                **nofocus.hidden_kwargs()).strip()
         except Exception:
             _fp_expected_sha = None
 

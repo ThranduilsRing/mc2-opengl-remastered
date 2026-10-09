@@ -582,7 +582,7 @@ def park_cursor_if_edge(reason: str = "", engine_suppressed: bool = False) -> st
     """Park the pointer at screen centre ONLY if it could drive edge-scroll.
 
     Returns one of: "inert" (no desktop / non-Windows), "disabled"
-    (MC2_CURSOR_NO_PARK=1), "not-needed" (already edge-safe, pointer untouched),
+    (MC2_CURSOR_NO_PARK=1, or MC2_CURSOR_PARK not set to 1 -- the default), "not-needed" (already edge-safe, pointer untouched),
     "engine-suppressed" (MC2_VISUAL_DIFF_CAPTURE=1 -- the engine already skips
     edge-scroll at missiongui.cpp:5204, so parking is pure theft), or "parked".
 
@@ -591,6 +591,13 @@ def park_cursor_if_edge(reason: str = "", engine_suppressed: bool = False) -> st
     """
     global _PARK_ORIGIN, _PARK_ORIGIN_SAVED
     if os.environ.get("MC2_CURSOR_NO_PARK") == "1":
+        return "disabled"
+    # OWNER RULE: an agent run never moves the user's pointer. Parking is a
+    # SetCursorPos on the user's own cursor, so it is OFF unless a user-present
+    # session explicitly asks (MC2_CURSOR_PARK=1). The only cost is that a
+    # pointer resting in a screen-edge band can edge-scroll a composite capture;
+    # that is reported (below) instead of "fixed" by warping the pointer.
+    if os.environ.get("MC2_CURSOR_PARK") != "1":
         return "disabled"
     # Engine skips edge-scroll under MC2_SMOKE_MODE=1 too; callers that set it only in
     # the child env (run_visual_capture) pass engine_suppressed=True.

@@ -14,6 +14,11 @@ VK-FIRST-BOOKMARK-POSE-1 mitigation: sacrificial duplicate of bookmark #1 first.
 import os, sys, subprocess, time, json
 from pathlib import Path
 
+# OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch:
+# non-activating, offscreen, no cursor grab). These oracles read engine PNGs.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib import nofocus  # noqa: E402
+
 EXE  = Path(r"A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe")
 HERE = Path(__file__).resolve().parent
 SRC  = Path(r"A:/Games/mc2-vk-interop-bridge/tests/visual/bookmarks")
@@ -62,21 +67,18 @@ def run(tag, extra, mission, duration=70, trigger=140, settle=40, feed_dump=None
     env.update(extra)
     if feed_dump:
         env["MC2_VK_FEED_DUMP"] = str(out_dir / feed_dump)
-    si=None
-    if os.name=="nt":
-        si=subprocess.STARTUPINFO(); si.dwFlags|=subprocess.STARTF_USESHOWWINDOW; si.wShowWindow=4
     args=[str(EXE),"--profile","stock","--mission",mission,"--duration",str(duration)]
     log=out_dir/f"{tag}.log"
     vkg={k:v for k,v in env.items() if k.startswith("MC2_VK") or k=="MC2_RENDER_BACKEND"}
     print(f"[mech-feed-oracle] {mission}/{tag} vkgates={vkg}", flush=True)
     with open(log,"w",encoding="utf-8",errors="replace") as lf:
-        p=subprocess.Popen(args,stdout=lf,stderr=subprocess.STDOUT,cwd=str(EXE.parent),env=env,startupinfo=si)
+        p=nofocus.spawn(args,stdout=lf,stderr=subprocess.STDOUT,cwd=str(EXE.parent),env=env,show_window=True,small_window=False)
         deadline=time.time()+duration+60
         while time.time()<deadline:
             if p.poll() is not None: break
             time.sleep(0.5)
         if p.poll() is None:
-            subprocess.run(["taskkill","/PID",str(p.pid),"/T","/F"],capture_output=True)
+            subprocess.run(["taskkill","/PID",str(p.pid),"/T","/F"],capture_output=True, **nofocus.hidden_kwargs())
         try: p.wait(timeout=15)
         except subprocess.TimeoutExpired: p.kill(); p.wait(timeout=10)
     pngs=sorted(out_dir.glob(f"{mission}_*.png"))

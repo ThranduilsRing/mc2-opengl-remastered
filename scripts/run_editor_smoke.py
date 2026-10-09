@@ -82,7 +82,8 @@ def _gen_foliage_json(deploy: Path, instances: bool) -> bool:
     argv = ["py", "-3", str(tg), str(recipe), "--out", str(out), "--generate-foliage"]
     if rules.exists():
         argv += ["--foliage-rules", str(rules)]
-    r = subprocess.run(argv, cwd=str(deploy), capture_output=True, text=True)
+    r = subprocess.run(argv, cwd=str(deploy), capture_output=True, text=True,
+                       **nofocus.hidden_kwargs())
     ok = (r.returncode == 0) and (out / "genmap.foliage.json").exists()
     print(f"  [setup] foliage pre-gen rc={r.returncode} present={ok}")
     return ok

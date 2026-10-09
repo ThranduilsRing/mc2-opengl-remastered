@@ -6,6 +6,14 @@ param(
     [int]$Duration = 30
 )
 
+# background-launch: allow interactive user launcher. When CLAUDECODE is set (an agent shell) it exports the no-focus env so the engine stays in the background: windowed, parked offscreen, no cursor grab, silent audio.
+if ($env:CLAUDECODE) {
+    $env:MC2_NO_CURSOR_GRAB = "1"
+    $env:MC2_WINDOWED = "1"
+    $env:MC2_WINDOW_OFFSCREEN = "1"
+    $env:SDL_AUDIODRIVER = "dummy"
+}
+
 # Set environment variable for GOM recon instrumentation
 $env:MC2_GOM_RECON = "1"
 

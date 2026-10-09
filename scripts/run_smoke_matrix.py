@@ -46,6 +46,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 WORKTREE_ROOT = SCRIPT_DIR.parent
@@ -123,6 +126,7 @@ def run_entry(
 
     env = os.environ.copy()
     env.update(env_overrides)
+    # background-launch: allow streams run_smoke.py output to the caller's console; inherits it (no new window when the parent has one)
     result = subprocess.run(smoke_args, env=env)
     rc = result.returncode
     print(f"[MATRIX] exit:  {rc}  ({'PASS' if rc == 0 else 'FAIL'})")

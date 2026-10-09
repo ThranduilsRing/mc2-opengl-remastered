@@ -51,6 +51,33 @@ only defence that scales is making the two populations declare themselves.
     MC2_WINDOW_OFFSCREEN in real code. This is the rule that catches a
     hand-rolled subprocess.Popen with its own env dict.
 
+OWNER RULE (2026-10-09, after a launch stole focus and the mouse while two lanes
+were smoking and capturing): the game/editor must ALWAYS launch in the
+background. That turns RULE 1 from "has a STARTUPINFO" into "goes through
+nofocus.spawn/run":
+
+  RULE 1 (tightened) -- a raw subprocess.Popen/run/call/check_* of a game or
+    editor exe FAILS, even with a hand-built STARTUPINFO or
+    **nofocus.popen_kwargs(): STARTUPINFO alone does not stop SDL's explicit
+    ShowWindow(SW_SHOW), and a hand-rolled block is exactly how runner.py came
+    to map show_window to SW_SHOW (an ACTIVATING verb). The one escape is an
+    explicit marker on the call (its line, any line of the call, or the line
+    above):
+
+        # background-launch: allow <why this cannot use nofocus>
+
+    The reason is mandatory. Allowed raw launches are listed in the inventory
+    with their reason so they stay visible.
+  RULE 9 -- shell launchers. A tracked .bat/.cmd/.ps1 that runs mc2.exe /
+    Mission Editor.exe / mc2-launcher.exe must carry the same marker (they are
+    interactive user launchers; the marker's reason says how an agent run is
+    kept in the background, e.g. the CLAUDECODE guard).
+
+Detection resolves the launch argv through same-file assignments (`argv = [exe,
+...]`, `cmd = [...]`), so `Popen(argv)` is no longer invisible just because the
+variable is not called `exe_path`. SCAN_DIRS covers scripts/, tools/ (including
+tools/visual_verify), tests/ and .claude/.
+
 RULE 4 and RULE 5 are RESERVED, not missing: `scripts/smoke_lib/isolation.py`
 (DESKTOP-ISOLATION-ENFORCE-1, still uncommitted) already cites them by number
 for desktop-isolation enforcement and the MC2_HARNESS_ALLOW_FOREGROUND ban. Do
@@ -67,15 +94,28 @@ from __future__ import annotations
 
 import argparse
 import ast
-import subprocess
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "docs" / "background-launch-inventory.md"
 
-SCAN_DIRS = ("scripts", "tools", ".claude")
+#: tools/ is scanned recursively, so tools/visual_verify (capture.py, ab.py) is
+#: covered by "tools"; REQUIRED_SCAN_PATHS pins that so a future edit that
+#: narrows SCAN_DIRS to named subdirectories cannot silently drop it.
+SCAN_DIRS = ("scripts", "tools", ".claude", "tests")
+REQUIRED_SCAN_PATHS = ("scripts", "tools/visual_verify", "tests")
+
+#: Opt-out marker for a deliberate raw launch (RULE 1) or shell launcher (RULE 9).
+ALLOW_MARKER = re.compile(r"background-launch:\s*allow\s+(\S.*?)\s*$")
+
+#: Shell launchers that execute an engine exe (RULE 9).
+SHELL_SUFFIXES = (".bat", ".cmd", ".ps1")
+SHELL_ENGINE_EXE = re.compile(
+    r"(mc2|Mission Editor|EditRel|mc2-launcher)\.exe", re.IGNORECASE)
 
 #: The vars that keep an agent run off the user's screen. Any launch path that
 #: can prevent these reaching the child engine is a regression.
@@ -198,35 +238,116 @@ ENGINE_ARGV = re.compile(
     r"\bgame_cmd\b",
     re.IGNORECASE)
 
+#: Looser names for the exe variable. Only counted in a file that also names an
+#: engine exe literally (ENGINE_FILE_MARK): `[exe, "--version"]` in a shader-tool
+#: wrapper is not a game launch, but `[exe, "--profile", ...]` next to
+#: "mc2.exe" is. This is what finally sees scenario_runner.py's `[exe, ...]`.
+ENGINE_ARGV_LOOSE = re.compile(
+    r"\bexe\b|\bMC2_EXE\b|\bEXE\b|\bgame_?exe\b|\bdeploy_exe\b",
+    re.IGNORECASE)
+ENGINE_FILE_MARK = re.compile(
+    r"mc2\.exe|EditRel|Mission Editor\.exe|mc2-launcher|mc2_launcher\.exe",
+    re.IGNORECASE)
 
-def rel(p: Path) -> str:
-    return p.relative_to(ROOT).as_posix()
+#: argv that runs a PYTHON tool (which may itself take an exe path argument) is
+#: not an engine launch; the python tool is what gets checked.
+NOT_ENGINE_ARGV = re.compile(
+    r"taskkill|tasklist|wmic|pgrep|Get-Process|powershell|sys\.executable"
+    r"|[\"']py[\"']\s*,\s*[\"']-3[\"']", re.IGNORECASE)
 
 
-def _tracked_files():
+def rel(p: Path, root: Path = ROOT) -> str:
+    return p.relative_to(root).as_posix()
+
+
+def _tracked_files(root: Path = ROOT):
     """Repo-relative POSIX paths git tracks, or None when git is unavailable."""
     try:
         out = subprocess.check_output(
-            ["git", "-C", str(ROOT), "ls-files"], text=True,
+            ["git", "-C", str(root), "ls-files"], text=True,
             stderr=subprocess.DEVNULL, timeout=30)
     except Exception:
         return None
     return set(out.splitlines())
 
 
-def iter_py():
+def iter_py(root: Path = ROOT, use_git: bool = True):
     # Untracked scratch copies must never enter the committed inventory.
-    tracked = _tracked_files()
+    tracked = _tracked_files(root) if use_git else None
     for d in SCAN_DIRS:
-        base = ROOT / d
+        base = root / d
         if not base.is_dir():
             continue
         for p in sorted(base.rglob("*.py")):
             if "__pycache__" in p.parts or "worktrees" in p.parts:
                 continue
-            if tracked is not None and p.relative_to(ROOT).as_posix() not in tracked:
+            if tracked is not None and p.relative_to(root).as_posix() not in tracked:
                 continue
             yield p
+
+
+def iter_shell(root: Path = ROOT, use_git: bool = True):
+    """Tracked .bat/.cmd/.ps1 launchers (RULE 9). Whole repo, not SCAN_DIRS:
+    the user-facing launchers (run-mc2.bat, run-editor.bat) live at the root."""
+    tracked = _tracked_files(root) if use_git else None
+    if tracked is not None:
+        cands = [root / t for t in sorted(tracked) if t.lower().endswith(SHELL_SUFFIXES)]
+    else:
+        cands = sorted(q for q in root.rglob("*") if q.suffix.lower() in SHELL_SUFFIXES)
+    for p in cands:
+        parts = p.relative_to(root).parts
+        if parts[0] in ("3rdparty", "docs", "build64", "worktrees") or "worktrees" in parts:
+            continue
+        if p.is_file():
+            yield p
+
+
+def allow_reason(lines, node):
+    """The `# background-launch: allow <why>` reason on/above this call, or None."""
+    lo = max(0, node.lineno - 2)                 # the line above the call
+    hi = getattr(node, "end_lineno", node.lineno)
+    for ln in lines[lo:hi]:
+        m = ALLOW_MARKER.search(ln)
+        if m:
+            return m.group(1)
+    return None
+
+
+def assignments(tree: ast.AST, src: str) -> dict:
+    """name -> [source text of every value assigned to it in this file]."""
+    out: dict = {}
+    for node in ast.walk(tree):
+        targets, value = [], None
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
+            targets, value = [node.target], node.value
+        for t in targets:
+            if isinstance(t, ast.Name) and value is not None:
+                out.setdefault(t.id, []).append(ast.get_source_segment(src, value) or "")
+    return out
+
+
+def launch_argv_text(node: ast.Call, src: str, assigns: dict, depth: int = 3) -> str:
+    """Source of the launched argv: first positional arg (or args=), plus the
+    right-hand side of every same-file variable it mentions, `depth` levels deep.
+    """
+    expr = node.args[0] if node.args else next(
+        (k.value for k in node.keywords if k.arg == "args"), None)
+    text = (ast.get_source_segment(src, expr) if expr is not None else "") or ""
+    seen: set = set()
+    frontier = text
+    for _ in range(depth):
+        new = ""
+        for name in set(re.findall(r"[A-Za-z_]\w*", frontier)):
+            if name in assigns and name not in seen:
+                seen.add(name)
+                new += "\n" + "\n".join(assigns[name])
+        if not new:
+            break
+        text += new
+        frontier = new
+    return text
 
 
 def call_name(node: ast.Call) -> str:
@@ -299,9 +420,112 @@ _MISSING = _Sentinel("<missing>")
 _NON_LITERAL = _Sentinel("<non-literal>")
 
 
-def check():
+#: RULE 10 -- console children must be windowless. Files where EVERY unflagged
+#: spawn is a hard FAIL (no baseline): the engine launchers, the smoke library,
+#: and the processes that run with NO console of their own (MCP servers, hooks,
+#: the repo-intel tools they shell out to) -- those are the ones whose children
+#: pop a visible console window.
+STRICT_CHILD_PREFIXES = (
+    "scripts/smoke_lib/", "scripts/mcp/", "tools/repo_intel/", ".claude/hooks/",
+    "tools/visual_verify/",
+)
+STRICT_CHILD_FILES = {
+    "scripts/run_smoke.py", "scripts/run_smoke_asan.py", "scripts/run_smoke_matrix.py",
+    "scripts/run_editor_smoke.py", "scripts/run_editor_playtest_smoke.py",
+    "scripts/run_visual_capture.py", "scripts/mc2_env_pin.py",
+}
+#: Everywhere else the rule is a RATCHET: the count of unflagged spawns per file
+#: may not grow past CHILD_BASELINE (docs/background-launch-child-baseline.json,
+#: regenerated by --write). Burn the baseline down; never up.
+CHILD_BASELINE_PATH = ROOT / "docs" / "background-launch-child-baseline.json"
+
+#: A spawn counts as a console child when its argv names an interpreter, a shell
+#: or an exe. (Everything the scan sees qualifies; this only skips obvious
+#: non-process calls such as str.join helpers mis-named run().)
+CHILD_ARGV = re.compile(
+    r"sys\.executable|[\"'](py|python3?|cmd|powershell|pwsh|bash|sh|git|taskkill|"
+    r"tasklist|wmic)(\.exe)?[\"']|\.exe\b|\bexe\b|_exe\b|\bcmd\b|\bargv\b|\bargs\b|"
+    r"\bbash\b|\bcommand\b", re.IGNORECASE)
+
+CHILD_SPAWN_CALLS = LAUNCH_CALLS + ("os.startfile", "os.popen")
+
+
+def _is_hidden_spawn(node: ast.Call, src: str) -> bool:
+    """True when the call carries a no-window creation flag or the nofocus kwargs."""
+    seg = ast.get_source_segment(src, node) or ""
+    for kw in node.keywords:
+        ks = ast.get_source_segment(src, kw.value) or ""
+        if kw.arg == "creationflags" and re.search(r"NO_WINDOW|DETACHED_PROCESS|0x08000000", ks):
+            return True
+        if kw.arg is None and re.search(r"hidden_kwargs|popen_kwargs", ks):
+            return True
+    return False
+
+
+def argv_variants(node: ast.Call, src: str, assigns: dict) -> list:
+    """The launched argv as separate, fully-expanded texts.
+
+    One variant per value assigned (in this file) to a variable the argv names,
+    each expanded with every assignment of the names IT mentions, three levels
+    deep; plus the direct expression itself. A variable assigned two different
+    argv lists in one file yields two variants, so `cmd = [sys.executable, ...]`
+    cannot launder a different `cmd = [exe, ...]` -- and `cmd = [py, ...]` with
+    `py = sys.executable` is recognised as a python launcher, not an engine one.
+    """
+    expr = node.args[0] if node.args else next(
+        (k.value for k in node.keywords if k.arg == "args"), None)
+    direct = (ast.get_source_segment(src, expr) if expr is not None else "") or ""
+
+    def expand(text: str, depth: int = 3) -> str:
+        seen: set = set()
+        frontier, out = text, text
+        for _ in range(depth):
+            new = ""
+            for name in set(re.findall(r"[A-Za-z_]\w*", frontier)):
+                if name in assigns and name not in seen:
+                    seen.add(name)
+                    new += "\n" + "\n".join(assigns[name])
+            if not new:
+                break
+            out += new
+            frontier = new
+        return out
+
+    variants = [expand(direct)]
+    for name in set(re.findall(r"[A-Za-z_]\w*", direct)):
+        for v1 in assigns.get(name, []):
+            variants.append(expand(v1))
+    return variants
+
+
+def literal_program(node: ast.Call):
+    """The program a literal argv names: a string constant first element
+    ("git", "taskkill"), or "sys.executable". None when the argv is not a
+    literal list or its first element is a variable (then the name decides).
+    A literal non-engine program is never an engine launch, whatever its
+    ARGUMENTS mention -- `git -C <path-with-exe-in-it>` is just git.
+    """
+    expr = node.args[0] if node.args else next(
+        (k.value for k in node.keywords if k.arg == "args"), None)
+    if isinstance(expr, (ast.List, ast.Tuple)) and expr.elts:
+        e0 = expr.elts[0]
+        if isinstance(e0, ast.Constant) and isinstance(e0.value, str):
+            return e0.value
+        if isinstance(e0, ast.Attribute) and call_name(ast.Call(func=e0, args=[], keywords=[])) == "sys.executable":
+            return "sys.executable"
+    return None
+
+
+def check(root: Path = ROOT, use_git: bool = True):
+    """Run every rule. Returns (problems, launches, extras).
+
+    `extras` carries what the inventory renders: allowed raw launches, shell
+    launchers and per-file counts of unflagged console spawns.
+    """
     problems: list[str] = []
     launches: list[tuple[str, int, str]] = []
+    #: (file, line) -> reason, for raw launches carrying the allow marker.
+    allowed_raw: dict = {}
     #: file -> [(Call node, call name)] for every detected engine launch.
     launch_nodes: dict[str, list] = {}
     #: file -> [(lineno, api)] for every desktop-composite grab.
@@ -310,9 +534,13 @@ def check():
     offscreen_false_decls: dict[str, list] = {}
     #: files that put MC2_WINDOW_OFFSCREEN into a child env themselves.
     delivers_offscreen: set[str] = set()
+    #: file -> [lineno] of console-child spawns lacking a no-window flag (RULE 10).
+    unhidden: dict[str, list] = {}
+    #: file -> {lineno: reason} for console spawns carrying the allow marker.
+    allowed_child: dict[str, dict] = {}
 
-    for path in iter_py():
-        r = rel(path)
+    for path in iter_py(root, use_git):
+        r = rel(path, root)
         try:
             src = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -321,6 +549,9 @@ def check():
             tree = ast.parse(src)
         except SyntaxError:
             continue
+        lines = src.splitlines()
+        assigns = assignments(tree, src)
+        names_engine_file = bool(ENGINE_FILE_MARK.search(src))
 
         # ---- RULE 3: raw focus/cursor Win32 outside the policy modules ----
         # AST, not grep: a docstring or a string constant naming the API is not
@@ -345,37 +576,68 @@ def check():
                         f"nofocus.set_cursor_pos(), which are no-ops unless "
                         f"MC2_HARNESS_ALLOW_FOREGROUND=1.")
 
-        # ---- RULE 1: engine launches must be non-activating ----
+        # ---- RULE 1 (tightened) + RULE 10 ----
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             name = call_name(node)
-            if name not in LAUNCH_CALLS and name not in SAFE_LAUNCH_CALLS:
+            safe = name in SAFE_LAUNCH_CALLS
+            if name not in CHILD_SPAWN_CALLS and not safe:
                 continue
             seg = ast.get_source_segment(src, node) or ""
-            # A nofocus.* call is BY DEFINITION an engine launch -- that module
-            # exists for nothing else -- so it needs no argv heuristic.
-            if name not in SAFE_LAUNCH_CALLS and not ENGINE_ARGV.search(seg):
+            variants = argv_variants(node, src, assigns)
+
+            # Is this an ENGINE launch? A nofocus.* call is BY DEFINITION one --
+            # that module exists for nothing else. Otherwise the argv (resolved
+            # through same-file assignments) must name an engine exe, in a variant
+            # that is not itself a python/process-query launcher.
+            is_engine = safe
+            prog = None if safe else literal_program(node)
+            literal_other = prog is not None and not ENGINE_FILE_MARK.search(prog)
+            if not safe and not literal_other:
+                for v in variants:
+                    if NOT_ENGINE_ARGV.search(v):
+                        continue
+                    hay = v if v != variants[0] else v + "\n" + seg
+                    if ENGINE_ARGV.search(hay) or (
+                            names_engine_file and ENGINE_ARGV_LOOSE.search(v)):
+                        is_engine = True
+                        break
+                if is_engine and NOT_ENGINE_ARGV.search(variants[0]):
+                    is_engine = False
+
+            if is_engine:
+                launches.append((r, node.lineno, name))
+                launch_nodes.setdefault(r, []).append((node, name))
+                if not safe and r not in CURSOR_POLICY_FILES:
+                    why = allow_reason(lines, node)
+                    if why:
+                        allowed_raw[(r, node.lineno)] = why
+                    else:
+                        problems.append(
+                            f"{r}:{node.lineno}: raw {name}() launches the engine. "
+                            f"OWNER RULE: the game/editor ALWAYS launches in the "
+                            f"background, which only nofocus.spawn()/nofocus.run() "
+                            f"guarantee (non-activating STARTUPINFO + "
+                            f"MC2_NO_CURSOR_GRAB/WINDOWED/WINDOW_OFFSCREEN + the "
+                            f"offscreen backstop). A hand-built STARTUPINFO or "
+                            f"**popen_kwargs() is not enough. If a raw launch is "
+                            f"truly unavoidable, add `# background-launch: allow "
+                            f"<why>` on or above the call.")
+                continue    # an engine launch is a GUI process: RULE 10 is for console children
+
+            # ---- RULE 10: console children must be windowless ----
+            if safe or r in CURSOR_POLICY_FILES:
                 continue
-            # These name mc2.exe but do not LAUNCH the engine:
-            #   * process queries (taskkill/tasklist/wmic/pgrep/Get-Process)
-            #   * running a PYTHON script that merely takes an exe path arg
-            #     (sys.executable ...) -- e.g. check-deploy-coherence.py
-            if re.search(r"taskkill|tasklist|wmic|pgrep|Get-Process|powershell"
-                         r"|sys\.executable", seg, re.IGNORECASE):
+            if not any(CHILD_ARGV.search(v) for v in variants) and not CHILD_ARGV.search(seg):
                 continue
-            launches.append((r, node.lineno, name))
-            launch_nodes.setdefault(r, []).append((node, name))
-            if name in SAFE_LAUNCH_CALLS or r in CURSOR_POLICY_FILES:
+            if _is_hidden_spawn(node, src):
                 continue
-            kwargs = {k.arg for k in node.keywords if k.arg}
-            splat = any(k.arg is None for k in node.keywords)
-            ok = ("startupinfo" in kwargs or (splat and "nofocus" in seg))
-            if not ok:
-                problems.append(
-                    f"{r}:{node.lineno}: {name}() launches the engine without "
-                    f"a non-activating STARTUPINFO. Use nofocus.spawn()/"
-                    f"nofocus.run(), or pass **nofocus.popen_kwargs().")
+            why = allow_reason(lines, node)
+            if why:
+                allowed_child.setdefault(r, {})[node.lineno] = why
+                continue
+            unhidden.setdefault(r, []).append(node.lineno)
 
         # ---- RULE 2: env policies must not strip the windowing vars ----
         if r in ENV_DENY_BY_DEFAULT or r in ENV_FORCE_POLICIES:
@@ -431,7 +693,7 @@ def check():
             f"MC2_SCREENSHOT_SOURCE=backbuffer), or add it to "
             f"COMPOSITE_CAPTURE_FILES with a reason and pass offscreen=False.")
     for r in sorted(COMPOSITE_CAPTURE_FILES):
-        if not (ROOT / r).is_file():
+        if not (root / r).is_file():
             problems.append(
                 f"{r}: listed in COMPOSITE_CAPTURE_FILES but the file does not "
                 f"exist. Remove the stale entry.")
@@ -476,8 +738,11 @@ def check():
     for r in sorted(launch_files):
         if r in COMPOSITE_CAPTURE_FILES or r in CURSOR_POLICY_FILES:
             continue
-        if any(n in SAFE_LAUNCH_CALLS for _node, n in launch_nodes.get(r, [])):
+        nodes = launch_nodes.get(r, [])
+        if any(n in SAFE_LAUNCH_CALLS for _node, n in nodes):
             continue          # nofocus.spawn/run applies OFFSCREEN_ENV itself
+        if all((r, node.lineno) in allowed_raw for node, _n in nodes):
+            continue          # every raw launch carries an explicit allow marker
         if r in delivers_offscreen:
             continue
         problems.append(
@@ -490,17 +755,80 @@ def check():
             f"-- which cannot fire before the window exists. Apply "
             f"nofocus.OFFSCREEN_ENV to the child env.")
 
-    return problems, launches
+    # ---- RULE 9: shell launchers ----
+    shell_launchers: dict = {}
+    for path in iter_shell(root, use_git):
+        r = rel(path, root)
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        hits = []
+        for i, ln in enumerate(text.splitlines(), 1):
+            st = ln.strip()
+            if not SHELL_ENGINE_EXE.search(st):
+                continue
+            if re.match(r"(?i)(rem\b|::|#|echo\b|write-host\b|copy\b|set\b|if\s+exist\b)", st):
+                continue
+            hits.append(i)
+        if not hits:
+            continue
+        m = None
+        for ln in text.splitlines():
+            m = ALLOW_MARKER.search(ln)
+            if m:
+                break
+        shell_launchers[r] = (hits, m.group(1) if m else None)
+        if not m:
+            problems.append(
+                f"{r}:{hits[0]}: shell launcher runs a game/editor exe with no "
+                f"`background-launch: allow <why>` marker. These are interactive "
+                f"user launchers; the marker's reason must say how an AGENT run is "
+                f"kept in the background (e.g. the CLAUDECODE guard).")
+
+    # ---- RULE 10: console children windowless ----
+    baseline = {}
+    try:
+        import json
+        baseline = json.loads(CHILD_BASELINE_PATH.read_text(encoding="utf-8")) \
+            if root == ROOT and CHILD_BASELINE_PATH.is_file() else {}
+    except Exception:
+        baseline = {}
+    for r, lns in sorted(unhidden.items()):
+        strict = r in STRICT_CHILD_FILES or r.startswith(STRICT_CHILD_PREFIXES) \
+            or r in launch_files
+        allowed_n = baseline.get(r, 0)
+        if strict or len(lns) > allowed_n:
+            shown = ", ".join(str(n) for n in lns[:6])
+            problems.append(
+                f"{r}:{lns[0]}: {len(lns)} child-process spawn(s) without "
+                f"CREATE_NO_WINDOW/DETACHED_PROCESS (lines {shown}"
+                f"{'...' if len(lns) > 6 else ''})"
+                + ("" if strict else f"; baseline allows {allowed_n}")
+                + ". OWNER RULE: no window may appear, including a console "
+                  "window of a helper spawned during a run. Pass "
+                  "**nofocus.hidden_kwargs() (and redirect stdout/stderr), or "
+                  "add `# background-launch: allow <why>`.")
+
+    extras = {"allowed_raw": allowed_raw, "shell": shell_launchers,
+              "unhidden": {k: len(v) for k, v in unhidden.items()},
+              "allowed_child": allowed_child}
+    return problems, launches, extras
 
 
-def render_inventory(launches) -> str:
+def render_inventory(launches, extras=None) -> str:
+    extras = extras or {}
+    allowed_raw = extras.get("allowed_raw", {})
+    shell = extras.get("shell", {})
     lines = [
         "# Background-launch inventory (generated)",
         "",
         "Generated by `scripts/check-background-launch.py --write`. Do not edit by hand.",
         "",
         "Every call site that launches the game/editor engine. All of these must be",
-        "non-activating by default -- see `scripts/smoke_lib/nofocus.py`.",
+        "non-activating by default -- see `scripts/smoke_lib/nofocus.py`. OWNER RULE:",
+        "the game/editor ALWAYS launches in the background; a raw `subprocess` launch",
+        "FAILS the checker unless it carries `# background-launch: allow <why>`.",
         "",
         "| file | line | call | window |",
         "| --- | --- | --- | --- |",
@@ -508,9 +836,26 @@ def render_inventory(launches) -> str:
     composite = set(COMPOSITE_CAPTURE_FILES)
     for r, lineno, name in sorted(launches):
         kind = "desktop-composite" if r in composite else "offscreen"
-        lines.append(f"| `{r}` | {lineno} | `{name}` | {kind} |")
+        call = f"`{name}`"
+        if (r, lineno) in allowed_raw:
+            call += f" **raw, allowed:** {allowed_raw[(r, lineno)]}"
+        lines.append(f"| `{r}` | {lineno} | {call} | {kind} |")
     lines.append("")
     lines.append(f"Total engine launch sites: {len(launches)}")
+    lines.append("")
+    lines.append("## Shell launchers (RULE 9)")
+    lines.append("")
+    lines.append("Interactive user launchers (`.bat`/`.cmd`/`.ps1`). Each must carry a")
+    lines.append("`background-launch: allow <why>` marker saying how an agent run is kept")
+    lines.append("in the background.")
+    lines.append("")
+    lines.append("| file | line | how an agent run stays in the background |")
+    lines.append("| --- | --- | --- |")
+    for r in sorted(shell):
+        hits, why = shell[r]
+        lines.append(f"| `{r}` | {hits[0]} | {why or '**MISSING MARKER**'} |")
+    lines.append("")
+    lines.append(f"Total shell launchers: {len(shell)}")
     lines.append("")
     lines.append("## Desktop-composite capture exceptions (NOFOCUS-FINISH-1)")
     lines.append("")
@@ -518,7 +863,10 @@ def render_inventory(launches) -> str:
     lines.append("`PIL.ImageGrab`) instead of reading the engine's `glReadPixels` FBO, so an")
     lines.append("offscreen window would hand them the user's WALLPAPER. They declare")
     lines.append("`offscreen=False`, which `nofocus.apply_env` grants only in a user-present")
-    lines.append("session (`MC2_HARNESS_ALLOW_FOREGROUND=1`). Porting one to the engine")
+    lines.append("session (`MC2_HARNESS_ALLOW_FOREGROUND=1`). Even then the window is")
+    lines.append("SW_SHOWNOACTIVATE, the engine runs with `MC2_NO_CURSOR_GRAB=1`, and the only")
+    lines.append("z-order change is `nofocus.raise_noactivate` (HWND_TOPMOST + SWP_NOACTIVATE):")
+    lines.append("no focus, and the mouse stays untouched. Porting one to the engine")
     lines.append("readback path retires its entry. Enforced by RULES 6-7.")
     lines.append("")
     lines.append("| file | reason |")
@@ -532,27 +880,154 @@ def render_inventory(launches) -> str:
     return "\n".join(lines)
 
 
+def render_baseline(extras) -> str:
+    import json
+    # Strict files must be at zero, so they never enter the baseline.
+    base = {r: n for r, n in sorted(extras["unhidden"].items())
+            if not (r in STRICT_CHILD_FILES or r.startswith(STRICT_CHILD_PREFIXES))}
+    return json.dumps(base, indent=2, sort_keys=True) + "\n"
+
+
+# --------------------------------------------------------------------------
+# --selftest: prove each rule can FAIL. A checker nobody has watched fail is
+# indistinguishable from one that cannot.
+# --------------------------------------------------------------------------
+_SELFTEST_FILES = {
+    # RULE 1: raw Popen of the engine, variable argv, hand-built STARTUPINFO.
+    "tools/visual_verify/raw_launch.py": (
+        "import subprocess\n"
+        "EXE = 'A:/x/mc2.exe'\n"
+        "def go():\n"
+        "    argv = [EXE, '--mission', 'm']\n"
+        "    si = subprocess.STARTUPINFO()\n"
+        "    return subprocess.Popen(argv, startupinfo=si)\n"),
+    # same, but explicitly allowed with a reason -> must NOT fail RULE 1.
+    "tests/smoke/allowed_launch.py": (
+        "import subprocess\n"
+        "EXE = 'A:/x/mc2.exe'\n"
+        "def go():\n"
+        "    # background-launch: allow selftest fixture, not a real launch\n"
+        "    return subprocess.Popen([EXE, '--mission', 'm'])\n"),
+    # marker without a reason must not count.
+    "tests/smoke/empty_reason.py": (
+        "import subprocess\n"
+        "EXE = 'A:/x/mc2.exe'\n"
+        "def go():\n"
+        "    return subprocess.Popen([EXE])  # background-launch: allow\n"),
+    # the sanctioned path -> clean.
+    "scripts/ok_launch.py": (
+        "from smoke_lib import nofocus\n"
+        "EXE = 'A:/x/mc2.exe'\n"
+        "def go():\n"
+        "    return nofocus.spawn([EXE, '--mission', 'm'])\n"),
+    # RULE 10: console child without the flag, in a strict path.
+    "scripts/mcp/unhidden.py": (
+        "import subprocess, sys\n"
+        "def go():\n"
+        "    return subprocess.run([sys.executable, 'x.py'], capture_output=True)\n"),
+    # RULE 10: flagged -> clean.
+    "scripts/mcp/hidden.py": (
+        "import subprocess, sys\n"
+        "from smoke_lib import nofocus\n"
+        "def go():\n"
+        "    return subprocess.run([sys.executable, 'x.py'], capture_output=True,\n"
+        "                          **nofocus.hidden_kwargs())\n"
+        "def go2():\n"
+        "    return subprocess.run(['cmd'], creationflags=subprocess.CREATE_NO_WINDOW)\n"),
+    # python launcher that merely takes an exe path -> not an engine launch.
+    "scripts/py_wrapper.py": (
+        "import subprocess, sys\n"
+        "def go(exe):\n"
+        "    cmd = [sys.executable, 'run_smoke.py', '--exe', exe]\n"
+        "    return subprocess.run(cmd, capture_output=True,\n"
+        "                          creationflags=subprocess.CREATE_NO_WINDOW)\n"
+        "# mc2.exe\n"),
+    # RULE 9: shell launcher with and without a marker.
+    "launch_bad.bat": "@echo off\nmc2.exe\n",
+    "launch_ok.bat": "@echo off\nREM background-launch: allow selftest fixture\nmc2.exe\n",
+}
+
+
+def selftest() -> int:
+    ok = True
+
+    def expect(cond: bool, msg: str) -> None:
+        nonlocal ok
+        print(("  ok   " if cond else "  FAIL ") + msg)
+        ok = ok and cond
+
+    # SCAN_DIRS must keep covering the trees the owner named.
+    for needed in REQUIRED_SCAN_PATHS:
+        top = needed.split("/")[0]
+        expect(top in SCAN_DIRS, f"SCAN_DIRS covers {needed}")
+
+    with tempfile.TemporaryDirectory(prefix="bglaunch_selftest_") as td:
+        root = Path(td)
+        for relp, body in _SELFTEST_FILES.items():
+            f = root / relp
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(body, encoding="utf-8", newline="\n")
+        problems, launches, _extras = check(root, use_git=False)
+        text = "\n".join(problems)
+
+        def flagged(relp: str, needle: str = "") -> bool:
+            return any(p.startswith(relp) and needle in p for p in problems)
+
+        expect(flagged("tools/visual_verify/raw_launch.py", "raw subprocess.Popen"),
+               "raw Popen(argv=[EXE,...]) in tools/visual_verify FAILS despite STARTUPINFO")
+        expect(not flagged("tests/smoke/allowed_launch.py", "launches the engine"),
+               "raw Popen with `# background-launch: allow <why>` passes RULE 1")
+        expect(flagged("tests/smoke/empty_reason.py", "launches the engine"),
+               "allow marker with no reason does NOT count")
+        expect(not flagged("scripts/ok_launch.py"), "nofocus.spawn is clean")
+        expect(any(r == "tests/smoke/allowed_launch.py" for r, _l, _n in launches),
+               "tests/ is scanned (allowed_launch.py appears in launches)")
+        expect(flagged("scripts/mcp/unhidden.py", "CREATE_NO_WINDOW"),
+               "console child without a no-window flag FAILS in a strict path")
+        expect(not flagged("scripts/mcp/hidden.py"),
+               "hidden_kwargs()/CREATE_NO_WINDOW children pass RULE 10")
+        expect(not flagged("scripts/py_wrapper.py", "launches the engine"),
+               "python wrapper taking an exe path is not an engine launch")
+        expect(flagged("launch_bad.bat", "shell launcher"),
+               ".bat engine launcher without a marker FAILS (RULE 9)")
+        expect(not flagged("launch_ok.bat"), ".bat engine launcher with marker passes")
+        del text
+    print("[background-launch] selftest " + ("PASS" if ok else "FAIL"))
+    return 0 if ok else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--write", action="store_true",
-                    help="regenerate docs/background-launch-inventory.md")
+                    help="regenerate docs/background-launch-inventory.md and the "
+                         "RULE 10 child-spawn baseline")
+    ap.add_argument("--selftest", action="store_true",
+                    help="prove each rule can fail on synthetic input")
     args = ap.parse_args()
 
-    problems, launches = check()
-    content = render_inventory(launches)
+    if args.selftest:
+        return selftest()
+
+    problems, launches, extras = check()
+    content = render_inventory(launches, extras)
+    baseline = render_baseline(extras)
 
     if args.write:
         INVENTORY.parent.mkdir(parents=True, exist_ok=True)
         with open(INVENTORY, "w", encoding="utf-8", newline="\n") as f:
             f.write(content)
+        with open(CHILD_BASELINE_PATH, "w", encoding="utf-8", newline="\n") as f:
+            f.write(baseline)
         print(f"[background-launch] wrote {rel(INVENTORY)} "
-              f"({len(launches)} launch sites)")
-    elif INVENTORY.exists():
-        current = INVENTORY.read_text(encoding="utf-8")
-        if current != content:
-            problems.append(
-                f"{rel(INVENTORY)}: stale. Re-run with --write.")
+              f"({len(launches)} launch sites) and {rel(CHILD_BASELINE_PATH)} "
+              f"({sum(extras['unhidden'].values())} unflagged console spawn(s) "
+              f"in the ratchet)")
+        # --write regenerates the artifacts; re-run the rules against them.
+        problems, launches, extras = check()
+    else:
+        if INVENTORY.exists() and INVENTORY.read_text(encoding="utf-8") != content:
+            problems.append(f"{rel(INVENTORY)}: stale. Re-run with --write.")
 
     if problems:
         print(f"[background-launch] FAIL ({len(problems)} problem(s)):")

@@ -18,6 +18,9 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -31,6 +34,7 @@ def run_capture(install, bookmarks, out, env_extra):
     for e in env_extra:
         cmd += ["--env", e]
     print("[ab] " + " ".join(cmd), flush=True)
+    # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
     rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))
     if rc != 0:
         sys.exit(f"[ab] capture failed rc={rc}: {out}")

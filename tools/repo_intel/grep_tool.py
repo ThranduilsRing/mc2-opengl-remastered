@@ -16,6 +16,10 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Optional
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Default excludes
@@ -115,6 +119,7 @@ def _try_rg(
         r = subprocess.run(
             cmd, capture_output=True, text=True, timeout=15,
             stdin=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
@@ -364,6 +369,7 @@ def symbol_lookup(
                 ["git", "-C", str(root), "grep", "-n", "-F", symbol, in_ref],
                 capture_output=True, text=True, timeout=15,
                 stdin=subprocess.DEVNULL,
+                **nofocus.hidden_kwargs()
             )
             lines = [l for l in r.stdout.splitlines() if l.strip()]
             match_count = len(lines)

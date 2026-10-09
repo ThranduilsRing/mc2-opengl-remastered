@@ -50,6 +50,11 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
+from smoke_lib import nofocus  # noqa: E402
 
 EXIT_OK, EXIT_FAIL, EXIT_HARNESS = 0, 1, 2
 
@@ -102,18 +107,16 @@ def launch(exe: str, mission: str, duration: int, env_extra: dict,
 
     argv = [exe, "--profile", "stock", "--mission", mission,
             "--duration", str(duration + 15)]
-    startupinfo = None
-    if sys.platform == "win32":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 7   # SW_SHOWMINNOACTIVE: no focus steal
     if not quiet:
         print("  [launch] %s %s (%ds + grace)" % (mission,
               " ".join("%s=%s" % kv for kv in sorted(env_extra.items())),
               duration))
-    proc = subprocess.Popen(argv, cwd=exe_dir, env=env, text=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            startupinfo=startupinfo)
+    # nofocus.spawn: non-activating STARTUPINFO + MC2_WINDOWED/NO_CURSOR_GRAB/
+    # WINDOW_OFFSCREEN env + offscreen backstop. small_window=False keeps the
+    # smoke at options.cfg size, as this launch did before.
+    proc = nofocus.spawn(argv, cwd=exe_dir, env=env, text=True,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         small_window=False)
     try:
         stdout, stderr = proc.communicate(timeout=duration + 15 + 90)
     except subprocess.TimeoutExpired:

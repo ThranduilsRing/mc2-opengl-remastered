@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
+
+# OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch:
+# non-activating, offscreen, no cursor grab). These oracles read engine PNGs.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from smoke_lib import nofocus  # noqa: E402
 
 EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe")
 BOOK = Path(r"A:/Games/mc2-vk-interop-bridge/tests/visual/bookmarks/mc2_01_buildings.json")
@@ -36,16 +42,11 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env.update(ENV)
-    si = None
-    if os.name == "nt":
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = 1
     log = OUT / "visible.log"
     args = [str(EXE), "--profile", "stock", "--mission", MISSION, "--duration", "35"]
     with open(log, "w", encoding="utf-8", errors="replace") as lf:
-        p = subprocess.Popen(args, cwd=str(EXE.parent), env=env, stdout=lf,
-                             stderr=subprocess.STDOUT, startupinfo=si)
+        p = nofocus.spawn(args, cwd=str(EXE.parent), env=env, stdout=lf,
+                           stderr=subprocess.STDOUT, show_window=True, small_window=False)
         deadline = time.time() + 90
         while time.time() < deadline and p.poll() is None:
             time.sleep(0.5)

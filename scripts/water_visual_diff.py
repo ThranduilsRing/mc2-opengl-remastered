@@ -32,7 +32,8 @@ COMMON_ENV = {
 def kill_existing():
     try:
         subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True,
+                       **nofocus.hidden_kwargs())
     except Exception:
         pass
     time.sleep(1)

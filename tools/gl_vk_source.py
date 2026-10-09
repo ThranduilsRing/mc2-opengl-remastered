@@ -10,6 +10,11 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,7 +28,7 @@ class Source:
         self._cache = {}
 
     def _git(self, *args):
-        r = subprocess.run(["git", *args], cwd=self.root, capture_output=True)
+        r = subprocess.run(["git", *args], cwd=self.root, capture_output=True, **nofocus.hidden_kwargs())
         if r.returncode != 0:
             raise RuntimeError("git %s failed: %s" % (" ".join(args), r.stderr.decode("utf-8", "replace")))
         return r.stdout
@@ -57,7 +62,8 @@ class Source:
             t = self._mem.get(path)
         elif self.ref:
             r = subprocess.run(["git", "show", "%s:%s" % (self.ref, path)], cwd=self.root,
-                               capture_output=True)
+                               capture_output=True,
+                               **nofocus.hidden_kwargs())
             if r.returncode == 0:
                 t = r.stdout.decode("utf-8", "replace")
         else:
@@ -79,7 +85,8 @@ class Source:
             return
         req = "".join("%s:%s\n" % (self.ref, p) for p in todo).encode()
         r = subprocess.run(["git", "cat-file", "--batch"], cwd=self.root, input=req,
-                           capture_output=True)
+                           capture_output=True,
+                           **nofocus.hidden_kwargs())
         buf, i = r.stdout, 0
         for p in todo:
             nl = buf.index(b"\n", i)

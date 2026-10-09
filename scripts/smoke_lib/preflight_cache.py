@@ -35,6 +35,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
 
 SHADER_GLOBS = ["*.vert", "*.frag", "*.geom", "*.comp", "*.hglsl"]
 CACHE_VERSION = 1
@@ -44,7 +45,8 @@ def _git_head(worktree: Path) -> Optional[str]:
     try:
         out = subprocess.run(
             ["git", "-C", str(worktree), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=10)
+            capture_output=True, text=True, timeout=10,
+            **nofocus.hidden_kwargs())
         return out.stdout.strip() if out.returncode == 0 else None
     except Exception:
         return None
