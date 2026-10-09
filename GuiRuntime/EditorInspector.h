@@ -122,7 +122,7 @@ struct VfxPassSnapshot {
     // Program (raw GL program object id for the billboard shader; 0 until linked).
     uint32_t particleProgramId          = 0;
     // Env-gate state.
-    bool     gpuParticlesEnabled        = false;   // MC2_GPU_PARTICLES (default ON)
+    bool     gpuParticlesEnabled        = false;   // MC2_GPU_PARTICLES (default OFF)
     bool     gpuParticlesLogEnabled     = false;   // MC2_GPU_PARTICLES_LOG
     bool     initFailed                 = false;   // bridge init/compile failed
     bool     cameraSetThisFrame         = false;   // gos_SetActiveCamera fired this frame

@@ -509,8 +509,8 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 		// sim state into the persistent GPU sim SSBO. Independent of the oracle
 		// render gate; gathers + submits ONLY (no integration, no readback, no
 		// render). CPU sim stays authoritative; this does not alter the frame.
-		// Nested under is_enabled() (MC2_GPU_PARTICLES, default ON): if particles
-		// are force-disabled this gather is a no-op. Per-instance submit
+		// Nested under is_enabled() (MC2_GPU_PARTICLES, default OFF): if particles
+		// are disabled (the default) this gather is a no-op. Per-instance submit
 		// (last-writer-wins in the SSBO this slice; per-frame accumulation is
 		// COMPUTE-1). COMPUTE-1 adds the compute integration + readback + parity.
 		if (mc2::particles::Batcher::is_gpu_sim_cardcloud_enabled()

@@ -1360,10 +1360,10 @@ void EditorInspector::drawImGui() {
         // GPU particles enabled status (driven by MC2_GPU_PARTICLES env var).
         if (vs.gpuParticlesEnabled) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-                "GPU particles: enabled (MC2_GPU_PARTICLES default ON)");
+                "GPU particles: enabled (MC2_GPU_PARTICLES=1)");
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
-                "GPU particles: DISABLED (MC2_GPU_PARTICLES=0 — legacy CPU FX only)");
+                "GPU particles: DISABLED (default OFF; set MC2_GPU_PARTICLES=1; legacy CPU FX only)");
         }
         ImGui::Text("Verbose log gate (MC2_GPU_PARTICLES_LOG): %s",
                     vs.gpuParticlesLogEnabled ? "ON" : "off");
