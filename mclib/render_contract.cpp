@@ -136,7 +136,7 @@ constexpr SOC kTerrainDecalOutput{
 constexpr ShadowContract kGrassShadow{
     /*castsStaticShadow*/    false,
     /*castsDynamicShadow*/   false,
-    /*skipsPostScreenShadow*/true,   // gos_grass.frag writes GBuffer1.a = 1.0
+    /*skipsPostScreenShadow*/true,   // the retired grass pass wrote GBuffer1.a = 1.0
 };
 constexpr PassStateContract kGrassState{
     /*requiresDepthTest*/    true,
@@ -550,7 +550,7 @@ RenderCore::RenderPassId toRenderPassId(PassIdentity id) {
         case PassIdentity::TerrainBase:     return R::Terrain;
         case PassIdentity::TerrainOverlay:  return R::TerrainOverlay;
         case PassIdentity::TerrainDecal:    return R::TerrainDecal;
-        case PassIdentity::Grass:           return R::Terrain;          // terrain-derived; gos_grass is dead
+        case PassIdentity::Grass:           return R::Terrain;          // terrain-derived; the GPU grass pass is retired
         case PassIdentity::Water:           return R::Water;
         case PassIdentity::OpaqueObject:    return R::MechOpaque;       // lossy: also vehicles + legacy buildings
         case PassIdentity::AlphaObject:     return R::MechOpaque;       // lossy: alpha-tested/blended objects

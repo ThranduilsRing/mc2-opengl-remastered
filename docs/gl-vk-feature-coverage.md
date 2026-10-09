@@ -9,7 +9,7 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 |---|---|---|---|
 | PORTED | 12 | 138 | 0 |
 | NOT_PORTED | 100 | 53 | 0 |
-| NO_TWIN | 30 | 79 | 0 |
+| NO_TWIN | 27 | 74 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
 
@@ -336,8 +336,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `shaders/box_decal.frag` | `MC2_BOX_DECAL_NORMAL_REJECT`, `MC2_SHADOW_CSM` |
 | `shaders/box_decal.vert` | `MC2_SHADOW_CSM` |
 | `shaders/building_pbr.vert` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
-| `shaders/gos_grass.frag` | `MC2_SHADOW_CSM` |
-| `shaders/gos_grass.geom` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gos_terrain_mask_solid.vert` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gos_terrain_mask_water.vert` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gos_terrain_mine_static.vert` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
