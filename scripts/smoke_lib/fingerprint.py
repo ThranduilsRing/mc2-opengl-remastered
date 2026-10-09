@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from pathlib import Path
 from typing import Callable, Optional, Sequence
 
 FINGERPRINT_RE = re.compile(
@@ -41,18 +42,24 @@ def parse_fingerprint(log_text: str) -> Optional[dict]:
     return d
 
 
-# Paths whose change alters the built exe. A commit range that touches none of
-# these cannot make a prior exe stale, so an exe built at an ancestor of HEAD is
-# still the HEAD exe.
-BUILD_INPUT_PREFIXES = (
-    "code/", "mclib/", "GameOS/", "RenderCore/", "GuiRuntime/", "RenderWorld/",
-    "GameAdapters/", "HostServices/", "editor/", "gui/", "shaders/", "cmake/",
-    "tools/mc2_launcher/", "3rdparty/",
-)
-BUILD_INPUT_FILES = (
-    "CMakeLists.txt", "tools/gpu_abi_gen.py", "vcpkg.json", "resource.h",
-    "strings.res.h",
-)
+# Paths whose change alters the built exe: one shared list read by this module
+# and by cmake/GenerateBuildFingerprint.cmake. Directory entries end with "/".
+BUILD_INPUTS_FILE = Path(__file__).resolve().parents[1] / "build_inputs.txt"
+
+
+def load_build_inputs(path=BUILD_INPUTS_FILE) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return (directory_prefixes, exact_files) from the shared list."""
+    prefixes: list[str] = []
+    files: list[str] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        (prefixes if line.endswith("/") else files).append(line)
+    return tuple(prefixes), tuple(files)
+
+
+BUILD_INPUT_PREFIXES, BUILD_INPUT_FILES = load_build_inputs()
 
 
 def is_build_input(path: str) -> bool:

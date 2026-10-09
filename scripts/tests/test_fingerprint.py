@@ -147,3 +147,12 @@ def test_build_input_classification():
     for p in ("docs/x.md", ".claude/cleanup/a.md", "scripts/run_smoke.py", "tools/repo_intel/x.py",
               "memory/m.md", "README.md", "scripts/gl_shader_variants.json"):
         assert not is_build_input(p), p
+
+
+def test_shared_build_inputs_file_loads():
+    from scripts.smoke_lib.fingerprint import load_build_inputs
+    prefixes, files = load_build_inputs()
+    assert "code/" in prefixes and "mclib/" in prefixes and "cmake/" in prefixes
+    assert "CMakeLists.txt" in files and "tools/gpu_abi_gen.py" in files
+    assert not any(p.startswith("#") for p in prefixes + files)
+    assert not any(p.startswith(("docs/", ".claude/", "scripts/")) for p in prefixes + files)
