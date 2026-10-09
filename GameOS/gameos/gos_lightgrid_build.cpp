@@ -40,12 +40,12 @@ constexpr GLuint kObjectLightsBinding = 20;
 // std430 byte offsets inside the live ObjectLights record, from the single-source
 // GPU record. Used only by the CPU parity reference, which reads the SAME bytes the
 // GPU sphere stage reads.
-constexpr int kOffLightToWorld = (int)offsetof(GpuObjectLights, lightToWorld);  // [N][16] floats
-constexpr int kOffLightDir     = (int)offsetof(GpuObjectLights, lightDir);      // [N][4] floats (.w = type)
-constexpr int kOffLightColor   = (int)offsetof(GpuObjectLights, lightColor);    // [N][4] floats
-constexpr int kOffLightFalloff = (int)offsetof(GpuObjectLights, lightFalloff);  // [N][4] floats (.y = far = radius)
-constexpr int kOffNumLights    = (int)offsetof(GpuObjectLights, numLights_);    // int
-constexpr int kObjectLightsRecordBytes = (int)sizeof(GpuObjectLights);
+constexpr int kOffLightToWorld = static_cast<int>(offsetof(GpuObjectLights, lightToWorld));  // [N][16] floats
+constexpr int kOffLightDir     = static_cast<int>(offsetof(GpuObjectLights, lightDir));      // [N][4] floats (.w = type)
+constexpr int kOffLightColor   = static_cast<int>(offsetof(GpuObjectLights, lightColor));    // [N][4] floats
+constexpr int kOffLightFalloff = static_cast<int>(offsetof(GpuObjectLights, lightFalloff));  // [N][4] floats (.y = far = radius)
+constexpr int kOffNumLights    = static_cast<int>(offsetof(GpuObjectLights, numLights_));    // int
+constexpr int kObjectLightsRecordBytes = static_cast<int>(sizeof(GpuObjectLights));
 
 // Sphere record stride in bytes (std430): vec4 + 4*uint = 16 + 16 = 32.
 constexpr int kSphereStride = 32;

@@ -308,7 +308,7 @@ typedef  TG_Light *TG_LightPtr;
 // inner-array size, NOT a runtime clamp -- runtime population stays 16 (txmmgr.cpp
 // GatherLightsParameters hardcodes 16). DIFFERENT from this header's
 // MAX_LIGHTS_IN_WORLD (=1024, the global scene light pool -- do not conflate).
-#define MAX_HW_LIGHTS_IN_WORLD	((int)kGpuObjectLightsMax)
+#define MAX_HW_LIGHTS_IN_WORLD	static_cast<int>(kGpuObjectLightsMax)
 
 // Slice 2 (object-offload) -- Stage 2.C: per-object GPU light record, including the
 // per-light falloff distances (lightFalloff[i] = closeDistance, farDistance,

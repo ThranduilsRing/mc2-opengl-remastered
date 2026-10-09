@@ -110,7 +110,7 @@ static const bool s_lightSsboTrace =
 // Headroom of +128 records matches the CPU backing grow step
 // (mclib/txmmgr.cpp addLightDataStructure, `lightDataStructuresCapacity + 128`)
 // so the GL grow cadence equals the CPU grow cadence -- both amortized, rare.
-static constexpr GLsizeiptr kLightRecordStride = (GLsizeiptr)sizeof(GpuObjectLights);
+static constexpr GLsizeiptr kLightRecordStride = static_cast<GLsizeiptr>(sizeof(GpuObjectLights));
 static constexpr GLsizeiptr kLightGrowHeadroomRecords = 128;
 
 // LIGHT-PREFIX-GPU-COPY-1 (TXMMGR-PERF-EASYWINS-1): keep a VRAM stash of the
