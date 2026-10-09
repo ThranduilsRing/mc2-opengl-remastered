@@ -572,16 +572,13 @@ ALLOWLIST=(
     MC2_EDITOR_AUTODOCK               # infra -- editor-only UI dock setting
     MC2_EDITOR_BEAUTY_AUTOAPPLY       # infra -- editor-only tool auto-apply
     MC2_EDITOR_DOCK                   # infra -- editor-only UI dock setting
-    MC2_EDITOR_DRAG_TRACE             # trace
     MC2_EDITOR_FAR_CLIP               # override -- editor-only far-clip override
     MC2_EDITOR_FPS_CAP                # infra -- editor-only FPS cap
     MC2_EDITOR_GPU_PICK               # feature -- editor GPU-pick gate
     MC2_EDITOR_GPU_TIMERS             # infra -- editor GPU timer diagnostics
     MC2_EDITOR_MOVER_REFRESH          # override -- editor mover refresh override
-    MC2_EDITOR_MOVER_TRACE            # trace
     MC2_EDITOR_PANEL_W                # infra -- editor-only panel width setting
     MC2_EDITOR_PICK_TRACE             # trace
-    MC2_EDITOR_PROJECT_TRACE          # trace
     MC2_EDITOR_RTT                    # infra -- editor-only RTT setting
     MC2_EDITOR_STATIC_PREWARM_OFF     # override -- editor static prewarm disable
     MC2_EDITOR_STATIC_PRIME_DIAG      # trace
@@ -698,7 +695,6 @@ ALLOWLIST=(
     MC2_PARTICLE_FLUSH_STALL_TRACE    # trace
     MC2_PATH_JUMP_FAIL_BACKOFF        # feature -- path jump-fail backoff gate
     MC2_PATH_SOLVE_ISOLATED           # feature -- path-solve isolated-context gate
-    MC2_PATROL_TRACE                  # trace
     MC2_PBR_AMBIENT_SPECULAR          # override -- mech PBR ambient-specular tuning
     MC2_PBR_METALLIC_INFLUENCE        # override -- mech PBR metallic tuning
     MC2_PBR_ROUGHNESS_MAX             # override -- mech PBR roughness tuning

@@ -361,6 +361,7 @@ Post-item-8 there is NO per-layer GL fallback: if the `MC2_VK_SHARED_GBUFFER` co
 ## EditorBridge
 
 - `MC2_EDITOR_MODE` — activates `EditorBridge` API. Default `0`. Combine with `MC2_OBJECT_ID_BUFFER=1` for GPU pick.
+- `MC2_EDITOR_TRACE=1` — Mission Editor launch/diagnostic trace: writes `editor-startup.log` and logs brain `.abl` opens plus imported patrol waypoints to stderr. Forced on by the editor shell and by `run-editor.bat`.
 
 ## Render-contract assert
 

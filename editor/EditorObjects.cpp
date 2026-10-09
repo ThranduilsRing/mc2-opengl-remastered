@@ -697,7 +697,7 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 	sprintf( path, "%s%s.abl", warriorPath, brainName );
 	File f;
 	long openRc = f.open( path );
-	if ( getenv( "MC2_PATROL_TRACE" ) || getenv( "MC2_EDITOR_TRACE" ) )
+	if ( getenv( "MC2_EDITOR_TRACE" ) )
 	{
 		fprintf( stderr, "[PATROL] open '%s' rc=%ld (warriorPath='%s' brain='%s')\n",
 			path, openRc, warriorPath, brainName );
@@ -850,9 +850,9 @@ void Unit::importPatrolFromBrainIfNeeded()
 		// orderAuthored stays false -> display only; not rewritten on save.
 	}
 
-	// MC2_PATROL_TRACE=1: dump unit position vs first imported waypoint so any
-	// remaining coordinate-frame mismatch can be read off directly.
-	if ( ( getenv( "MC2_PATROL_TRACE" ) || getenv( "MC2_EDITOR_TRACE" ) ) && !wps.empty() && appearance() )
+	// MC2_EDITOR_TRACE: dump unit position vs first imported waypoint so any
+	// coordinate-frame mismatch can be read off directly.
+	if ( getenv( "MC2_EDITOR_TRACE" ) && !wps.empty() && appearance() )
 	{
 		fprintf( stderr, "[PATROL] brain=%s unitPos=(%.0f,%.0f) wp0=(%.0f,%.0f) wpN=%u loop=%d\n",
 			brain.getBrainName(), appearance()->position.x, appearance()->position.y,

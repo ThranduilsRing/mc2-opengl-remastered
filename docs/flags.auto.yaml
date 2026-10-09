@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 363
 registry_env_flag_count: 362
-sweep_flag_count: 1017
-flag_count: 1077
+sweep_flag_count: 1013
+flag_count: 1073
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -1562,14 +1562,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_EDITOR_DRAG_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/EditorInterface.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_EDITOR_FAR_CLIP
     default: unknown
     declared_in: null
@@ -1618,14 +1610,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_EDITOR_MOVER_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/EditorObjectMgr.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_EDITOR_PANEL_W
     default: unknown
     declared_in: null
@@ -1639,14 +1623,6 @@ flags:
     declared_in: null
     referenced_at:
       - editor/EditorObjectMgr.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_EDITOR_PROJECT_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/FoliageRender.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
@@ -4632,14 +4608,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_PATROL_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - editor/EditorObjects.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_PAVED_OVERLAY_CLASS
     default: off
     kind: Feature
@@ -5410,7 +5378,6 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - editor/FoliageRender.cpp
       - mclib/object_admission_predicate.cpp
     registered: no
     in_smoke_passthrough: no
