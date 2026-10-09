@@ -5,6 +5,9 @@ Owner intent: **pay down most/all tech debt before building features**. No time 
 ## Ground rules (owner-set, non-negotiable)
 - Work ONLY in `A:/Games/mc2-main`, branch `claude/nifty-mendeleev`. Local commits only — **never push**.
 - **One agent edits C++/shaders/builds at a time.** Read-only scouts and Python/doc-only agents may run in parallel (they must not touch C++ or build).
+- Concurrency (owner 2026-10-09): max 4 subagents; one Opus at a time. A SECOND builder lane is allowed: worktree `A:/Games/mc2-lane2` (branch `claude/lane2-*`, own `build64-ninja`, own install `mc2-win64-lane2`), file-disjoint from lane 1; orchestrator merges into nifty.
+- Comment de-bloat as we go: every edited region loses `file:NNN` refs and "how" narration; no separate comment-only sweeps.
+- Parked by owner: `MC2_NO_LAUNCHER` pre-main launcher_env gap (fix + re-golden after G1a). G0 `MC2_SHADOW_ENABLE`: unify toward VK direct-CSM default ON, VK capture viewed.
 - Model tiers: **Haiku** for mechanical/doc/memory edits (keep each <100k context: one file or small batch, exact file:line + replacement, "don't read beyond listed files"); **Sonnet** for code changes and design; **Opus** only for adversarial reviews.
 - **Questions to the owner go inline, numbered, at the end of the reply. Never use popup (AskUserQuestion) questions.**
 - **Look at captures yourself** before accepting any visual/render change (`tools/visual_verify/ab.py`; day AND night: `mc2_01_saved_205644`, `mc2_10_saved_204523`). MAD is NOT a pass signal.
