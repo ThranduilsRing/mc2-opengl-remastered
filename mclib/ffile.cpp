@@ -99,7 +99,7 @@ long FastFile::writeVersion(FILE* handle)
 {
 	fseek(handle, 0, SEEK_SET);
 	int version = useLZCompress ? FASTFILE_VERSION_LZ : FASTFILE_VERSION;
-	int result = fwrite(&version, 1, 4, handle);  
+	int result = static_cast<int>(fwrite(&version, 1, 4, handle));  
 	logicalPosition += result;
 
 	if (result != 4)
@@ -114,7 +114,7 @@ long FastFile::writeVersion(FILE* handle)
 long FastFile::writeNumFiles(FILE* handle, int num_files)
 {
 	fseek(handle, 4, SEEK_SET);
-	int result = fwrite(&numFiles, 1, 4, handle);
+	int result = static_cast<int>(fwrite(&numFiles, 1, 4, handle));
 	if (result != 4)
 	{
 		long lastError = errno;
@@ -130,7 +130,7 @@ long FastFile::writeFileEntries(FILE* handle, FILE_HANDLE* files, int num_files,
 	int result  = 0;
 	for (int i=0;i<num_files;i++)
 	{
-		result += fwrite(files[i].pfe, 1, sizeof(FILEENTRY), handle);
+		result += static_cast<int>(fwrite(files[i].pfe, 1, sizeof(FILEENTRY), handle));
 	}
 
 	return result == sizeof(FILEENTRY) * num_files ? NO_ERR : BAD_WRITE_ERR;
@@ -140,7 +140,7 @@ long FastFile::writeFileEntries(FILE* handle, FILE_HANDLE* files, int num_files,
 long FastFile::open (const char* fName)
 {
 	//-------------------------------------------------------------
-	long fNameLength = strlen(fName);
+	long fNameLength = static_cast<long>(strlen(fName));
 	fileName = new char [fNameLength+1];
 
 	if (!fileName)
@@ -206,11 +206,7 @@ long FastFile::open (const char* fName)
 	unsigned long result = 0;
 	unsigned long version = 0;
 
-    // sebi
-	//result = fread((&version),1,sizeof(long),handle);
-    //logicalPosition += sizeof(long);
-	//if (result != sizeof(long))
-	result = fread((&version),1, FASTFILE_VERSION_BYTESIZE,handle);
+	result = static_cast<unsigned long>(fread((&version),1, FASTFILE_VERSION_BYTESIZE,handle));
     logicalPosition += FASTFILE_VERSION_BYTESIZE;
 
 	if (result != FASTFILE_VERSION_BYTESIZE)
@@ -227,7 +223,7 @@ long FastFile::open (const char* fName)
 
 	//---------------------------------------------
 	//-- Second Long is number of filenames present.
-	result = fread((&numFiles),1, 4,handle);
+	result = static_cast<unsigned long>(fread((&numFiles),1, 4,handle));
 
 	logicalPosition += 4;
 
@@ -245,7 +241,7 @@ long FastFile::open (const char* fName)
 		memset(files[i].pfe,0,sizeof(FILEENTRY));
 
 		unsigned long result = 0;
-		result = fread(files[i].pfe,1,sizeof(FILEENTRY),handle);
+		result = static_cast<unsigned long>(fread(files[i].pfe,1,sizeof(FILEENTRY),handle));
 
 		files[i].inuse = FALSE;
 		files[i].pos = 0;
@@ -290,7 +286,7 @@ long FastFile::create(const char* fName, bool compressed)
 		return FILE_ALREADY_OPEN;
 
 	//-------------------------------------------------------------
-	long fNameLength = strlen(fName);
+	long fNameLength = static_cast<long>(strlen(fName));
 	fileName = new char [fNameLength+1];
 
 	if (!fileName) {
@@ -328,7 +324,7 @@ long FastFile::reserve(int num_files)
 
 	if(files) {
 
-		for (int i=0; i<numFiles; i++) {
+		for (DWORD i=0; i<numFiles; i++) {
 			free(files[i].pfe);
 		}
 		free(files);
@@ -341,7 +337,7 @@ long FastFile::reserve(int num_files)
 
 	files = (FILE_HANDLE*)malloc(sizeof(FILE_HANDLE) * numFiles);
 
-	for (long i=0;i<numFiles;i++)
+	for (DWORD i=0;i<numFiles;i++)
 	{
 		files[i].pfe = (FILEENTRY *)calloc(1, sizeof(FILEENTRY));
 		files[i].inuse = FALSE;
@@ -498,10 +494,10 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 			
 			if (LZPacketBuffer)
 			{
-				result = fread(LZPacketBuffer,1,files[fastFileHandle].pfe->size,handle);
+				result = static_cast<long>(fread(LZPacketBuffer,1,files[fastFileHandle].pfe->size,handle));
 				logicalPosition += files[fastFileHandle].pfe->size;
 
-				//sebi: second condition to handle zero-length files
+				// second condition to handle zero-length files
 				if (result != files[fastFileHandle].pfe->size && files[fastFileHandle].pfe->size>0)
 				{
 					if (!Environment.checkCDForFiles)
@@ -524,7 +520,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 						}
 
 						logicalPosition = fseek(handle,files[fastFileHandle].pos + files[fastFileHandle].pfe->offset,SEEK_SET);
-						result = fread(LZPacketBuffer,1,files[fastFileHandle].pfe->size,handle);
+						result = static_cast<long>(fread(LZPacketBuffer,1,files[fastFileHandle].pfe->size,handle));
 						logicalPosition += files[fastFileHandle].pfe->size;
 					}
 		
@@ -574,7 +570,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				else if (useLZCompress)
 				{
 					if (s_ffTrace) { CB_PRINTF("[FF] LZSS %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
-					decompLength = LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize);
+					decompLength = static_cast<unsigned long>(LZDecomp((MemoryPtr)bfr,LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize));
 				}
 				else
 				{
@@ -606,7 +602,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 	if(handle == NULL)
 		return FILE_NOT_OPEN;
 	
-	if (numWrittenFiles >= numFiles)
+	if (static_cast<DWORD>(numWrittenFiles) >= numFiles)
 		return TOO_MANY_CHILDREN;
 
 	const int fastFileHandle = numWrittenFiles;
@@ -654,25 +650,23 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 		if (nbytes != uncompressedSize)
 			STOP(("fast File size changed after compression.  Was %d is now %d", nbytes, uncompressedSize));
 
-		files[fastFileHandle].pfe->size = compressedSize;
+		files[fastFileHandle].pfe->size = static_cast<DWORD>(compressedSize);
 	
-		// write file itself
-		int result = fwrite(LZPacketBuffer, compressedSize, 1, handle);
+		int result = static_cast<int>(fwrite(LZPacketBuffer, compressedSize, 1, handle));
 		if(result != 1)
 			return BAD_WRITE_ERR;
 
 		if(0)
 		{
 			int file = creat("d:/ffile.bin", S_IWRITE);
-			//FILE* file = fopen("d:/ffile.bin", "wb");
-			int result = write(file, LZPacketBuffer, compressedSize);
+			int result = write(file, LZPacketBuffer, static_cast<unsigned int>(compressedSize));
 			_close(file);
 
 			char* fbc = new char[compressedSize];
 			char* fb = new char[nbytes];
 
 			file = _open("d:/ffile.bin", _O_RDONLY | _O_BINARY);
-			result = _read(file, fbc, compressedSize);
+			result = _read(file, fbc, static_cast<unsigned int>(compressedSize));
 			_close(file);
 
 			gosASSERT(memcmp(LZPacketBuffer, fbc, compressedSize) == 0);
@@ -685,8 +679,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 	{
 		files[fastFileHandle].pfe->size = nbytes;
 	
-		// write file itself
-		int result = fwrite(buffer, nbytes, 1, handle);
+		int result = static_cast<int>(fwrite(buffer, nbytes, 1, handle));
 		if(result != 1 && nbytes > 0) // to handle case when input file has zero length
 			return BAD_WRITE_ERR;
 	}
@@ -716,7 +709,7 @@ long FastFile::readFastRAW (DWORD fastFileHandle, void *bfr, DWORD size)
 
 		if (size >= files[fastFileHandle].pfe->size)
 		{
-			result = fread(bfr,1,files[fastFileHandle].pfe->size,handle);
+			result = static_cast<long>(fread(bfr,1,files[fastFileHandle].pfe->size,handle));
 			logicalPosition += files[fastFileHandle].pfe->size;
 		}
 
@@ -742,7 +735,7 @@ long FastFile::readFastRAW (DWORD fastFileHandle, void *bfr, DWORD size)
 				}
 
 				logicalPosition = fseek(handle,files[fastFileHandle].pos + files[fastFileHandle].pfe->offset,SEEK_SET);
-				result = fread(bfr,1,files[fastFileHandle].pfe->size,handle);
+				result = static_cast<long>(fread(bfr,1,files[fastFileHandle].pfe->size,handle));
 				logicalPosition += files[fastFileHandle].pfe->size;
 			}
 

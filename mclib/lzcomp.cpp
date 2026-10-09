@@ -550,7 +550,7 @@ size_t LZCompress (MemoryPtr dest, MemoryPtr src, size_t srcLen)
     size_t out_size = 0;
     do {
 
-        strm.avail_in = len_left >= CHUNK ? CHUNK : len_left;
+        strm.avail_in = static_cast<uInt>(len_left >= CHUNK ? CHUNK : len_left);
         flush = len_left > CHUNK ? Z_NO_FLUSH : Z_FINISH ;
         MemCpy(in, dataptr, strm.avail_in);
         strm.next_in = in;

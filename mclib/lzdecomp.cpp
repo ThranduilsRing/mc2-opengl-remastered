@@ -294,7 +294,7 @@ static size_t LZDecompZlib_(MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t
     size_t out_size = 0;
     MemoryPtr destStart = dest;
     do {
-        strm.avail_in = len_left>CHUNK ? CHUNK : len_left;
+        strm.avail_in = static_cast<uInt>(len_left>CHUNK ? CHUNK : len_left);
         memcpy(in, dataptr, strm.avail_in);
         dataptr += strm.avail_in;
         len_left -= strm.avail_in;
