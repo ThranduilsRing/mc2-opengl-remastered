@@ -27,6 +27,12 @@
 #include <utility>
 #include <vector>
 
+#if defined(_MSC_VER)
+#define __declspec(noinline)
+#else
+#define [[gnu::noinline]]
+#endif
+
 namespace mc2::log {
 
 enum class Level : uint8_t { Trace, Debug, Info, Warn, Error, Fatal, Off };
@@ -56,18 +62,22 @@ inline constinit std::atomic<bool> g_eventOn[kCatCount] = {
 #undef MC2LOG_T3
 #undef MC2LOG_B3
 inline constinit std::atomic<bool> g_decorate{false};
+// false only when MC2_LOG is unset (stdout/stderr go to NUL): everything short-circuits.
+inline constinit std::atomic<bool> g_live{true};
 inline constinit std::atomic<int>  g_topicCount{0};
 static_assert(kCatCount == 19, "update the constinit initialiser lists");
 }  // namespace detail
 
 // Whole disabled-path cost: one relaxed load + compare.
 inline bool enabled(Cat c, Level l) noexcept {
-    return l >= detail::g_threshold[size_t(c)].load(std::memory_order_relaxed);
+    return detail::g_live.load(std::memory_order_relaxed) &&
+           l >= detail::g_threshold[size_t(c)].load(std::memory_order_relaxed);
 }
 // Legacy-gate equivalent for structured events: default on (always-on stays
 // always-on); only a spec "cat:off" turns a category's events off.
 inline bool eventEnabled(Cat c) noexcept {
-    return detail::g_eventOn[size_t(c)].load(std::memory_order_relaxed);
+    return detail::g_live.load(std::memory_order_relaxed) &&
+           detail::g_eventOn[size_t(c)].load(std::memory_order_relaxed);
 }
 bool topicEnabled(Cat c, std::string_view topic) noexcept;   // "terrain=indirect+surface"
 
@@ -131,31 +141,25 @@ inline void reportFormatError(Cat c, Level l, Stream s, std::string_view tmpl, s
 }
 }  // namespace detail
 
+// Non-template out-of-line formatters: all std::vformat machinery lives in mc2log.cpp,
+// call sites only build a format_args (keeps per-site code size small).
+void vlog(Cat c, Level l, Stream s, const std::source_location& loc,
+          std::string_view fmt, std::format_args args) noexcept;
+void vevent(Stream s, std::string_view tag, int ver, std::string_view fmt,
+            std::format_args args) noexcept;
+
 // ---- compile-time-checked free-form API ------------------------------------------
 template <class... A>
 void logFmt(Cat c, Level l, Stream s, const std::source_location& loc,
             std::format_string<A...> f, A&&... a) noexcept {
-    try {
-        std::string& b = detail::tlBuf();
-        b.clear();
-        std::format_to(std::back_inserter(b), f, std::forward<A>(a)...);
-        write(c, l, s, b, loc);
-    } catch (const std::exception& e) {
-        detail::reportFormatError(c, l, s, f.get(), e.what(), loc);
-    } catch (...) {}
+    vlog(c, l, s, loc, f.get(), std::make_format_args(a...));
 }
 
 // ---- runtime format strings (A4): never throws ------------------------------------
 template <class... A>
 void logRuntime(Cat c, Level l, Stream s, const std::source_location& loc,
                 std::string_view tmpl, A&&... a) noexcept {
-    try {
-        std::string& b = detail::tlBuf();
-        b = std::vformat(tmpl, std::make_format_args(a...));
-        write(c, l, s, b, loc);
-    } catch (const std::exception& e) {      // includes std::format_error
-        detail::reportFormatError(c, l, s, tmpl, e.what(), loc);
-    } catch (...) {}
+    vlog(c, l, s, loc, tmpl, std::make_format_args(a...));   // vformat + try/catch inside
 }
 
 // ---- structured events (A8) --------------------------------------------------------
@@ -166,17 +170,7 @@ template <size_t N> struct Lit {
 // Emits "[TAG vVER] " + body + "\n" in ONE writeRaw.  Ver < 0 -> "[TAG] " (unversioned).
 template <Lit Tag, int Ver, class... A>
 void event(Stream s, std::format_string<A...> f, A&&... a) noexcept {
-    try {
-        std::string& b = detail::tlBuf();
-        b.clear();
-        b.push_back('[');
-        b.append(Tag.v);
-        if constexpr (Ver >= 0) { b.append(" v"); b.append(std::to_string(Ver)); }
-        b.append("] ");
-        std::format_to(std::back_inserter(b), f, std::forward<A>(a)...);
-        b.push_back('\n');
-        writeRaw(s, b);
-    } catch (...) {}
+    vevent(s, std::string_view(Tag.v, sizeof(Tag.v) - 1), Ver, f.get(), std::make_format_args(a...));
 }
 
 }  // namespace mc2::log

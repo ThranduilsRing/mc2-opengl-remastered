@@ -176,6 +176,7 @@ static std::optional<std::string_view> envView(std::string_view name) noexcept {
 bool init() noexcept {
     const std::optional<std::string_view> v = envView("MC2_LOG");
     const bool live = streamsLiveFor(v.has_value());
+    detail::g_live.store(live, std::memory_order_relaxed);
     try {
         if (const std::optional<std::string_view> d = envView("MC2_LOG_DECORATE"))
             detail::g_decorate.store(!d->empty() && (*d)[0] == '1', std::memory_order_relaxed);
@@ -220,6 +221,33 @@ void write(Cat c, Level l, Stream s, std::string_view text, const std::source_lo
         line.append(text);
         line.push_back('\n');
         writeRaw(s, line);
+    } catch (...) {}
+}
+
+void vlog(Cat c, Level l, Stream s, const std::source_location& loc,
+          std::string_view fmt, std::format_args args) noexcept {
+    try {
+        std::string& b = detail::tlBuf();
+        b.clear();
+        std::vformat_to(std::back_inserter(b), fmt, args);
+        write(c, l, s, b, loc);
+    } catch (const std::exception& e) {
+        detail::reportFormatError(c, l, s, fmt, e.what(), loc);
+    } catch (...) {}
+}
+
+void vevent(Stream s, std::string_view tag, int ver, std::string_view fmt,
+            std::format_args args) noexcept {
+    try {
+        std::string& b = detail::tlBuf();
+        b.clear();
+        b.push_back('[');
+        b.append(tag);
+        if (ver >= 0) { b.append(" v"); b.append(std::to_string(ver)); }
+        b.append("] ");
+        std::vformat_to(std::back_inserter(b), fmt, args);
+        b.push_back('\n');
+        writeRaw(s, b);
     } catch (...) {}
 }
 
