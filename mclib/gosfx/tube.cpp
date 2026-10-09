@@ -582,12 +582,9 @@ gosFX::Tube::Tube(
 	Verify(gos_GetCurrentHeap() == Heap);
 
 	//
-	//----------------------------------
-	// Figure out how much space we need
-	//----------------------------------
 	//
 	m_profiles.SetLength(spec->m_maxProfileCount);
-	unsigned vertex_count = spec->m_vertices.GetLength();
+	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 	Verify(vertex_count < 8);
 	unsigned index_count = (vertex_count - 1)*6;
 	unsigned size =
@@ -657,13 +654,10 @@ void
 	Check_Pointer(indices);
 
 	//
-	//--------------------------------------
-	// Figure out the parameters of the mesh
-	//--------------------------------------
 	//
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
-	unsigned vertex_count = spec->m_vertices.GetLength();
+	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 	Verify(vertex_count < 8);
 
 	//
@@ -1138,7 +1132,7 @@ bool
 	//------------------------------------------------------------------------
 	//
 	unsigned i;
-	unsigned vertex_count = spec->m_vertices.GetLength();
+	unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 	Verify(vertex_count < 8);
 	unsigned vertex_index = profile_index * vertex_count;
 	if (spec->m_profileType != Specification::e_AlignedRibbon)
@@ -1397,7 +1391,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		Stuff::LinearMatrix4D local_to_world;
 		local_to_world.Multiply(m_localToParent, *info->m_parentToWorld);
 		dInfo.effectToWorld = &local_to_world;
-		unsigned vertex_count = spec->m_vertices.GetLength();
+		unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 		m_vertexCount = m_activeProfileCount * vertex_count;
 		m_triangleCount = 2 * (m_activeProfileCount-1) * (vertex_count-1);
 
@@ -1411,7 +1405,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		{
 			int i = m_headProfile;
 			int vertex = 0;
-			unsigned vertex_count = spec->m_vertices.GetLength();
+			unsigned vertex_count = static_cast<unsigned int>(spec->m_vertices.GetLength());
 			Verify(vertex_count < 8);
 			Stuff::Point3D
 				camera_in_world(info->m_clipper->GetCameraToWorldMatrix());

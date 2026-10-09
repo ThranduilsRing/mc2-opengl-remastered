@@ -58,7 +58,7 @@ gosFX::DebrisCloud__Specification::~DebrisCloud__Specification()
 {
 	Check_Object(this);
 
-	int i, nrOfParticles = debrisPieces.GetLength();
+	int i, nrOfParticles = static_cast<int>(debrisPieces.GetLength());
 
 	for(i=0;i<nrOfParticles;i++)
 	{
@@ -113,7 +113,7 @@ void
 
 	MidLevelRenderer::WriteMLRVersion(stream);
 
-	int i, nrOfParticles = debrisPieces.GetLength();
+	int i, nrOfParticles = static_cast<int>(debrisPieces.GetLength());
 	*stream << nrOfParticles;
 
 	for(i=0;i<nrOfParticles;i++)
@@ -152,7 +152,7 @@ void
 
 	centerOfForce = spec->centerOfForce;			//	Stuff::Point3D
 
-	int i, nrOfParticles = spec->debrisPieces.GetLength();
+	int i, nrOfParticles = static_cast<int>(spec->debrisPieces.GetLength());
 
 	debrisPieces.SetLength(nrOfParticles);
 	debrisPositions.SetLength(nrOfParticles);
@@ -408,7 +408,7 @@ void
 	
 	Verify(debrisPieces.GetLength() == spec->debrisPieces.GetLength());
 
-	int i, numOfParticles = debrisPieces.GetLength();
+	int i, numOfParticles = static_cast<int>(debrisPieces.GetLength());
 	
 	for(i=0;i<numOfParticles;i++)
 	{
@@ -805,7 +805,7 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
 
-	int i, nrOfParticle = debrisPieces.GetLength();
+	int i, nrOfParticle = static_cast<int>(debrisPieces.GetLength());
 
 	for(i=0;i<nrOfParticle;i++)
 	{
