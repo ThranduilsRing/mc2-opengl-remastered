@@ -32,6 +32,7 @@
 
 #include"platform_str.h" 
 #include <ctype.h> // toupper
+#include <bit>
 
 // NS3 boundary: the engine system allocator belongs to the heap subsystem
 // (this TU), not to whatever game/tool main links it. extern'd for all
@@ -242,8 +243,8 @@ long HeapManager::commitHeap (unsigned long commitSize)
             :
         );
 #endif
-		prevEbp = *reinterpret_cast<unsigned long *>(currentEbp);
-		retAddr = *reinterpret_cast<unsigned long *>(currentEbp + 4);
+		prevEbp = *std::bit_cast<unsigned long *>(currentEbp);
+		retAddr = *std::bit_cast<unsigned long *>(currentEbp + 4);
 		whoMadeMe = retAddr;
 
 		return NO_ERR;
