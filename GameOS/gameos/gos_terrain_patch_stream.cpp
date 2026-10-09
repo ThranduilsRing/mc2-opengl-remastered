@@ -1,6 +1,7 @@
 ﻿// GameOS/gameos/gos_terrain_patch_stream.cpp
 #include "gos_terrain_patch_stream.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "utils/mc2log.h"  // LOGGING-FACADE-P1 pilot: MC2_EVENT for structured lines
 #include "gos_terrain_bridge.h"   // gos_terrain_bridge_* free functions (Task 0)
 #include "../../RenderCore/terrain_path_telemetry.h"  // TERRAIN-PATH-TELEMETRY-1
 
@@ -237,9 +238,8 @@ namespace {
             const uint32_t stored = s_bucketHash[idx];
             if (stored == kHashEmpty) {
                 if (s_stagingCount >= kPatchStreamMaxBuckets) {
-                    fprintf(stderr,
-                        "[PATCH_STREAM v1] event=overflow slot=%u kind=bucket_count "
-                        "count=%u cap=%u\n",
+                    MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                        "event=overflow slot={} kind=bucket_count count={} cap={}",
                         s_slot, s_stagingCount, kPatchStreamMaxBuckets);
                     fflush(stderr);
                     s_overflow = true;
@@ -256,9 +256,8 @@ namespace {
         }
         // Table exhausted without finding key — shouldn't happen if
         // kHashTableSize >= 2 × kPatchStreamMaxBuckets (load factor < 0.5).
-        fprintf(stderr,
-            "[PATCH_STREAM v1] event=overflow slot=%u kind=hash_full "
-            "count=%u cap=%u\n",
+        MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+            "event=overflow slot={} kind=hash_full count={} cap={}",
             s_slot, s_stagingCount, kPatchStreamMaxBuckets);
         fflush(stderr);
         s_overflow = true;
@@ -315,9 +314,9 @@ bool TerrainPatchStream::init()
     s_censusOn   = (getenv("MC2_BUCKET_CENSUS") != nullptr);
 
     if (s_censusOn) {
-        fprintf(stderr,
-            "[BUCKET_CENSUS v1] event=startup gated_on=MC2_BUCKET_CENSUS "
-            "killswitch=%d\n", (int)s_killswitch);
+        MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
+            "event=startup gated_on=MC2_BUCKET_CENSUS killswitch={}",
+            (int)s_killswitch);
         fflush(stderr);
     }
 
@@ -327,8 +326,8 @@ bool TerrainPatchStream::init()
     // fallback path without driver stress. Default off; intentional debug
     // instrumentation, leave in tree (memory/debug_instrumentation_rule.md).
     if (getenv("MC2_PATCH_STREAM_FORCE_INIT_FAIL")) {
-        fprintf(stderr,
-            "[PATCH_STREAM v1] event=init_fail reason=force_env\n");
+        MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+            "event=init_fail reason=force_env");
         fflush(stderr);
         s_killswitch = false;
         return true;  // engine continues on legacy
@@ -348,13 +347,13 @@ bool TerrainPatchStream::init()
             (GLsizeiptr)kPatchStreamRecordBytesPerSlot * kPatchStreamRingFrames;
         s_recordBuf = allocPersistentSSBO(recTotal, &s_recordMap);
         if (!s_recordBuf) {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=record_ssbo_fail reason=alloc\n");
+            MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                "event=record_ssbo_fail reason=alloc");
             fflush(stderr);
             // Non-fatal: record path disabled, expanded path continues.
         } else {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=record_ssbo_ok bytes_per_slot=%u slots=%u\n",
+            MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                "event=record_ssbo_ok bytes_per_slot={} slots={}",
                 kPatchStreamRecordBytesPerSlot, kPatchStreamRingFrames);
             fflush(stderr);
         }
@@ -364,12 +363,12 @@ bool TerrainPatchStream::init()
         // Recipe SSBO — single-buffered, GL_MAP_WRITE_BIT | PERSISTENT | COHERENT.
         s_recipeBuf = allocPersistentSSBO((GLsizeiptr)kPatchStreamRecipeBytes, &s_recipeMap);
         if (!s_recipeBuf) {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=recipe_ssbo_fail reason=alloc\n");
+            MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                "event=recipe_ssbo_fail reason=alloc");
             fflush(stderr);
         } else {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=recipe_ssbo_ok bytes=%u max_recipes=%u\n",
+            MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                "event=recipe_ssbo_ok bytes={} max_recipes={}",
                 kPatchStreamRecipeBytes, kPatchStreamMaxRecipesTotal);
             fflush(stderr);
         }
@@ -379,12 +378,12 @@ bool TerrainPatchStream::init()
             (GLsizeiptr)kPatchStreamThinRecordBytesPerSlot * kPatchStreamRingFrames;
         s_thinRecordBuf = allocPersistentSSBO(thinTotal, &s_thinRecordMap);
         if (!s_thinRecordBuf) {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=thin_record_ssbo_fail reason=alloc\n");
+            MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                "event=thin_record_ssbo_fail reason=alloc");
             fflush(stderr);
         } else {
-            fprintf(stderr,
-                "[PATCH_STREAM v1] event=thin_record_ssbo_ok bytes_per_slot=%u slots=%u\n",
+            MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                "event=thin_record_ssbo_ok bytes_per_slot={} slots={}",
                 kPatchStreamThinRecordBytesPerSlot, kPatchStreamRingFrames);
             fflush(stderr);
         }
@@ -460,9 +459,8 @@ void TerrainPatchStream::emitCensus(uint32_t legacyEligible)
     const uint32_t sentinel = s_killswitch ? s_lastCensusSentinel : 0;
     const uint32_t canon    = s_killswitch ? s_lastCensusCanon    : 0;
 
-    fprintf(stderr,
-        "[BUCKET_CENSUS v1] frame=%llu raw=%u unique=%u sentinel=%u "
-        "canon_nosort=%u legacy=%u\n",
+    MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
+        "frame={} raw={} unique={} sentinel={} canon_nosort={} legacy={}",
         (unsigned long long)s_censusFrameId,
         raw, unique, sentinel, canon, legacyEligible);
     fflush(stderr);
@@ -508,13 +506,11 @@ void TerrainPatchStream::emitCensus(uint32_t legacyEligible)
     // 600-frame rolling summary tick.
     if (s_summaryFramesAcc >= 600u) {
         const double inv = 1.0 / (double)s_summaryFramesAcc;
-        fprintf(stderr,
-            "[BUCKET_CENSUS v1] event=summary kind=window frames=%llu "
-            "raw_min=%u raw_avg=%.1f raw_max=%u "
-            "unique_min=%u unique_avg=%.1f unique_max=%u "
-            "canon_min=%u canon_avg=%.1f canon_max=%u "
-            "legacy_min=%u legacy_avg=%.1f legacy_max=%u "
-            "sentinel_avg=%.2f\n",
+        MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
+            "event=summary kind=window frames={} raw_min={} raw_avg={:.1f} "
+            "raw_max={} unique_min={} unique_avg={:.1f} unique_max={} canon_min={} "
+            "canon_avg={:.1f} canon_max={} legacy_min={} legacy_avg={:.1f} "
+            "legacy_max={} sentinel_avg={:.2f}",
             (unsigned long long)s_summaryFramesAcc,
             s_summaryRawMin,    (double)s_summaryRawSum    * inv, s_summaryRawMax,
             s_summaryUniqueMin, (double)s_summaryUniqueSum * inv, s_summaryUniqueMax,
@@ -538,13 +534,10 @@ void TerrainPatchStream::destroy()
 {
     if (s_censusOn && s_runFramesAcc > 0) {
         const double inv = 1.0 / (double)s_runFramesAcc;
-        fprintf(stderr,
-            "[BUCKET_CENSUS v1] event=summary kind=run frames=%llu "
-            "raw_avg=%.1f raw_max=%u "
-            "unique_avg=%.1f unique_max=%u "
-            "canon_avg=%.1f canon_max=%u "
-            "legacy_avg=%.1f legacy_max=%u "
-            "sentinel_avg=%.2f\n",
+        MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
+            "event=summary kind=run frames={} raw_avg={:.1f} raw_max={} "
+            "unique_avg={:.1f} unique_max={} canon_avg={:.1f} canon_max={} "
+            "legacy_avg={:.1f} legacy_max={} sentinel_avg={:.2f}",
             (unsigned long long)s_runFramesAcc,
             (double)s_runRawSum    * inv, s_runRawMax,
             (double)s_runUniqueSum * inv, s_runUniqueMax,
@@ -790,9 +783,9 @@ uint32_t TerrainPatchStream::ensureRecipeForQuad(uint64_t key,
             const TerrainQuadRecipe& cached = base[it->second];
             if (cached.wx0 != recipe.wx0 || cached.wy0 != recipe.wy0 ||
                 cached.wz0 != recipe.wz0 || cached.wx1 != recipe.wx1) {
-                fprintf(stderr,
-                    "[PATCH_STREAM v1] event=recipe_key_collision slot=%u "
-                    "key=0x%llx cached=(%.3f,%.3f) incoming=(%.3f,%.3f)\n",
+                MC2_EVENT(Terrain, "PATCH_STREAM", 1,
+                    "event=recipe_key_collision slot={} key=0x{:x} cached=({:.3f},{:.3f}) "
+                    "incoming=({:.3f},{:.3f})",
                     it->second, (unsigned long long)key,
                     cached.wx0, cached.wy0, recipe.wx0, recipe.wy0);
                 fflush(stderr);
