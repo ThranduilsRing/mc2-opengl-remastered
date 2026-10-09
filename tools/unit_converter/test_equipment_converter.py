@@ -177,7 +177,7 @@ def _run_json(seed):
     env = dict(os.environ, PYTHONHASHSEED=str(seed))
     out = subprocess.check_output(
         [sys.executable, os.path.join(_HERE, "equipment_converter.py"), "--json"],
-        env=env)
+        env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return out
 
 

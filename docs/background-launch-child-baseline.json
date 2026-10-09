@@ -21,18 +21,6 @@
   "tools/shader_offline_build/build_variants.py": 2,
   "tools/shader_reflect/reflect.py": 1,
   "tools/spawn_lane.py": 2,
-  "tools/terrain_beautify/cook_markings.py": 1,
-  "tools/terrain_beautify/test_control_map_tool.py": 1,
-  "tools/terrain_beautify/test_cook_markings.py": 1,
-  "tools/terrain_beautify/test_cook_shoreline.py": 1,
-  "tools/terrain_beautify/test_overlay_extract.py": 1,
-  "tools/terrain_beautify/test_scatter_tool.py": 1,
   "tools/test_spawn_lane.py": 8,
-  "tools/unit_converter/test_equipment_converter.py": 1,
-  "tools/unit_converter/test_roster_batch.py": 2,
-  "tools/unit_converter/test_shadow_compare.py": 3,
-  "tools/unit_converter/test_unit_converter.py": 2,
-  "tools/unit_converter/test_unit_preview.py": 1,
-  "tools/unit_converter/test_weapon_shadow_compare.py": 3,
   "tools/witness_smoke.py": 2
 }

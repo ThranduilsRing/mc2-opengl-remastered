@@ -234,7 +234,7 @@ def test_cli_json_pass_exit0(tmp_path):
     r = subprocess.run(
         [sys.executable, os.path.join(_HERE, "weapon_shadow_compare.py"),
          "--engine-dump", ed, "--converter-report", cr, "--json"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert r.returncode == 0
     out = json.loads(r.stdout)
     assert out["verdict"] == "PASS"
@@ -246,7 +246,7 @@ def test_cli_strict_mismatch_exit1(tmp_path):
     r = subprocess.run(
         [sys.executable, os.path.join(_HERE, "weapon_shadow_compare.py"),
          "--engine-dump", ed, "--converter-report", cr, "--strict"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert r.returncode == 1
 
 
@@ -260,7 +260,7 @@ def test_json_report_hashseed_deterministic(tmp_path):
         r = subprocess.run(
             [sys.executable, os.path.join(_HERE, "weapon_shadow_compare.py"),
              "--engine-dump", ed, "--converter-report", cr, "--json"],
-            capture_output=True, text=True, env=env)
+            capture_output=True, text=True, env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         assert r.returncode == 0
         outs.append(r.stdout)
     assert outs[0] == outs[1]
