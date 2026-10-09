@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""win_poller.py --root-exe NAME [--seconds N] -- CMD... : run CMD while, every 0.25s, enumerating ALL top-level visible
-windows (EnumWindows + IsWindowVisible) whose owning PID is in the process tree rooted at any process named --root-exe
-(descendants found via a Toolhelp snapshot each sample), plus the foreground window. Prints each distinct window once
-with first/last time seen, minimized state and whether it was ever foreground. Exit 3 if any tree window was ever
-non-minimized or foreground, or any non-GUI (console) window appeared."""
+"""Proof tool for background launches: runs a command while sampling, every 0.25s, all visible top-level windows
+of the process tree rooted at --root-exe (EnumWindows) plus the foreground window.
+WHY: GetForegroundWindow alone missed console windows and minimized-but-activated frames; exit 3 flags any of them."""
 import argparse, ctypes, ctypes.wintypes as wt, os, subprocess, sys, threading, time
 u = ctypes.windll.user32; k = ctypes.windll.kernel32
 u.GetForegroundWindow.restype = wt.HWND

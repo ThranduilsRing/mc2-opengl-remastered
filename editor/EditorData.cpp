@@ -1303,11 +1303,11 @@ bool EditorData::generateMission( int mapSize, int terrain, unsigned long seed )
 	char cmd[1024];
 	sprintf( cmd, "py -3 tools\\terrain_gen\\terrain_gen.py \"%s\" --out terrain_gen_out", recipePath );
 	EditorDataTrace( "generateMission: N=%d biome=%s seed=%lu cmd=%s", N, biome, seed, cmd );
-	int rc = EditorTaskRunner::RunBlockingHidden( cmd );
+	int rc = EditorTaskRunner::RunBlockingHidden( cmd, "terrain_gen_out\\terrain_gen.log" );
 	EditorDataTrace( "generateMission: generator rc=%d", rc );
 	if ( rc != 0 )
 	{
-		if (!g_cliSuppressModals) AfxMessageBox( "Terrain generator failed.\n\nNeeds Python 3 on PATH with numpy, Pillow and opensimplex installed\n(pip install -r tools\\terrain_gen\\requirements.txt)." );
+		if (!g_cliSuppressModals) AfxMessageBox( "Terrain generator failed (output: terrain_gen_out\\terrain_gen.log).\n\nNeeds Python 3 on PATH with numpy, Pillow and opensimplex installed\n(pip install -r tools\\terrain_gen\\requirements.txt)." );
 		return false;
 	}
 

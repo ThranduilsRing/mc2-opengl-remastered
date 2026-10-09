@@ -7112,10 +7112,10 @@ void EditorInterface::OnFoliageGenerate()
 		"py -3 tools\\terrain_gen\\terrain_gen.py \"%s\" --out terrain_gen_out "
 		"--generate-foliage --foliage-rules tools\\terrain_gen\\recipes\\foliage_rules_example.json",
 		recipe );
-	int rc = EditorTaskRunner::RunBlockingHidden( cmd );
+	int rc = EditorTaskRunner::RunBlockingHidden( cmd, "terrain_gen_out\\terrain_gen.log" );
 	if ( rc != 0 )
 	{
-		if (!g_cliSuppressModals) AfxMessageBox( "Foliage generation failed.\nNeeds Python 3 + tools\\terrain_gen on the editor's working dir." );
+		if (!g_cliSuppressModals) AfxMessageBox( "Foliage generation failed (output: terrain_gen_out\\terrain_gen.log).\nNeeds Python 3 + tools\\terrain_gen on the editor's working dir." );
 		return;
 	}
 	if ( FoliageRender::Load( "terrain_gen_out\\genmap.foliage.json" ) )

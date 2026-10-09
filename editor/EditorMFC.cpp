@@ -623,6 +623,8 @@ BOOL EditorMFCApp::InitInstance()
 		EarlyTrace("InitInstance: EditorInterface exists after LoadFrame");
 	}
 
+	if (EditorBackgroundLaunch())
+		EarlyTrace("editor: background launch (MC2_NO_ACTIVATE/MC2_WINDOW_OFFSCREEN) -- minimized, no focus");
 	pFrame->ShowWindow(EditorBackgroundLaunch() ? SW_SHOWMINNOACTIVE : SW_MAXIMIZE);
 	pFrame->UpdateWindow();
 	pFrame->DrawMenuBar();
