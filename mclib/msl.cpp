@@ -1208,7 +1208,7 @@ long TG_TypeMultiShape::GetTextureName (DWORD textureNum, char *tName, long name
 	sprintf(basePath,"%s%s",baseName,extension);
 
 	if (nameLength < (strlen(basePath)+1))
-		return(strlen(basePath)+1);
+		return static_cast<long>(strlen(basePath)+1);
 		
 	strcpy(tName,basePath);
 	return(0);

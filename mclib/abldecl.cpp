@@ -301,7 +301,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 			constantIdPtr->typePtr = setType(CharTypePtr);
 			}
 		else {
-			long length = strlen(curLiteral.value.string);
+			long length = static_cast<long>(strlen(curLiteral.value.string));
 			constantIdPtr->defn.info.constant.value.stringPtr = (char*)ABLSymbolMallocCallback(length + 1);
 			if (!constantIdPtr->defn.info.constant.value.stringPtr)
 				ABL_Fatal(0, " ABL: Unable to AblSymbolHeap->malloc array string constant ");

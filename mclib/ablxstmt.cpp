@@ -274,7 +274,7 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
         // arr = "aaa";
         // this will copy size bytes (25) from "aaa", which is effectively only 4 bytes!
         // so this fixes it
-        const int srclen = strlen(src) + 1;
+        const int srclen = static_cast<int>(strlen(src) + 1);
 		long size = targetTypePtr->size;
 		memcpy(dest, src, /*size*/srclen<size?srclen:size);
 		}

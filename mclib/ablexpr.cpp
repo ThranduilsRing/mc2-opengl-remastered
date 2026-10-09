@@ -275,7 +275,7 @@ TypePtr factor (void) {
 			}
 			break;
 		case TKN_STRING: {
-			long length = strlen(curLiteral.value.string);
+			long length = static_cast<long>(strlen(curLiteral.value.string));
 			if (EnterStateSymbol) {
 				SymTableNodePtr stateSymbol = searchSymTableForState(curLiteral.value.string, SymTableDisplay[1]);
 				if (!stateSymbol)

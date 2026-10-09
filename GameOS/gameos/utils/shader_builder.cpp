@@ -389,7 +389,7 @@ bool compile_shader(GLenum shader, const char** strings, size_t count, std::stri
     // poison this compile's return value even if compile itself succeeds.
     while(glGetError() != GL_NO_ERROR) { /* discard */ }
 
-    glShaderSource(shader, count, strings, 0);
+    glShaderSource(shader, static_cast<GLsizei>(count), strings, 0);
     glCompileShader(shader);
 
 	GLenum err = glGetError();

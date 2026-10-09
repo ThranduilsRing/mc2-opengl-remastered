@@ -274,7 +274,7 @@ inline int EWCharString::StrSize( const EWCSChar* p_Str )
 {
 	return ( p_Str == NULL  ? 0 : 
 #ifdef UNICODE 
-	wcslen( p_Str )
+	static_cast<int>(wcslen( p_Str ))
 #else 
 	lstrlen( (const char*)p_Str )
 #endif 
@@ -596,7 +596,7 @@ void EWCharString::Format( const EWCSChar* p_Str, ... )
 		// handle '%' character, but watch out for '%%'
 		if (*p_Tmp != '%' || *(p_Tmp = KSInc(p_Tmp)) == '%')
 		{
-			Max_Len += EWCSCharLen(p_Tmp);
+			Max_Len += static_cast<int>(EWCSCharLen(p_Tmp));
 			continue;
 		}
 
@@ -774,7 +774,7 @@ void EWCharString::Format( const EWCSChar* p_Str, ... )
 			   Item_Len = 6; // "(null)"
 			else
 			{
-			   Item_Len = wcslen(pstrNextArg);
+			   Item_Len = static_cast<int>(wcslen(pstrNextArg));
 			   Item_Len = max(1, Item_Len);
 			}
 			break;
@@ -993,7 +993,7 @@ int EWCharString::Length() const	// number of characters
 {
 
 #ifdef UNICODE
-	return wcslen( m_pBuffer->Data() );
+	return static_cast<int>(wcslen( m_pBuffer->Data() ));
 #else
 	return lstrlen( (char*)m_pBuffer->Data() );
 #endif
@@ -1016,7 +1016,7 @@ int EWCharString::Find( EWCSChar Char, int Start_Index ) const
 	{
 		if ( *p_Tmp == Char )
 		{
-			return p_Tmp - m_pBuffer->Data();
+			return static_cast<int>(p_Tmp - m_pBuffer->Data());
 		}
 		
 		p_Tmp++;
@@ -1038,7 +1038,7 @@ int EWCharString::Find( const EWCharString& Str_To_Find, int Start_Index ) const
 	EWCSChar* p_Tmp = KStrStr( m_pBuffer->Data() + Start_Index, 
 							Str_To_Find.m_pBuffer->Data() );
 
-	return ( p_Tmp ? p_Tmp - m_pBuffer->Data() : INVALID_INDEX );
+	return ( p_Tmp ? static_cast<int>(p_Tmp - m_pBuffer->Data()) : INVALID_INDEX );
 }
 
 /////////////////////////////////////////////////////////////////
@@ -1053,7 +1053,7 @@ int EWCharString::Find( const EWCSChar* p_Str_To_Find, int Start_Index ) const
 	EWCSChar* p_Tmp = KStrStr( m_pBuffer->Data() + Start_Index, 
 							p_Str_To_Find );
 
-	return ( p_Tmp ? p_Tmp - m_pBuffer->Data() : INVALID_INDEX );
+	return ( p_Tmp ? static_cast<int>(p_Tmp - m_pBuffer->Data()) : INVALID_INDEX );
 
 }
 
@@ -1461,7 +1461,7 @@ void EWCharString::Format( const char* p_Str, ... )
 			   Item_Len = 6; // "(null)"
 			else
 			{
-			   Item_Len = wcslen(pstrNextArg);
+			   Item_Len = static_cast<int>(wcslen(pstrNextArg));
 			   Item_Len = max(1, Item_Len);
 			}
 			break;

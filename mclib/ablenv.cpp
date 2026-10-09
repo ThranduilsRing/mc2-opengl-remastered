@@ -217,7 +217,7 @@ void* UserFile::operator new (size_t mySize) {
 
 	void* result = NULL;
 	
-	result = ABLSystemMallocCallback(mySize);
+	result = ABLSystemMallocCallback(static_cast<unsigned long>(mySize));
 	
 	return(result);
 }
@@ -444,7 +444,7 @@ void* ABLModule::operator new (size_t mySize) {
 
 	void* result = NULL;
 	
-	result = ABLSystemMallocCallback(mySize);
+	result = ABLSystemMallocCallback(static_cast<unsigned long>(mySize));
 	
 	return(result);
 }
@@ -1358,9 +1358,7 @@ char* ABLModule::getSourceFile (int fileNumber) {
 char* ABLModule::getSourceDirectory (int fileNumber, char* directory) {
 
 	char* fileName = ModuleRegistry[handle].sourceFiles[fileNumber];
-	int curChar = strlen(fileName);
-    //sebi
-	//while ((curChar > -1) && (fileName[curChar] != '\\'))
+	int curChar = static_cast<int>(strlen(fileName));
 	while ((curChar > -1) && (fileName[curChar] != '\\') && (fileName[curChar] != '/'))
 		curChar--;
 	if (curChar == -1)

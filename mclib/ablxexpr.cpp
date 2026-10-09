@@ -259,7 +259,7 @@ TypePtr execFactor (void) {
 			break;
 		case TKN_STRING: {
 			SymTableNodePtr nodePtr = getCodeSymTableNodePtr();
-			long length = strlen(nodePtr->name);
+			long length = static_cast<long>(strlen(nodePtr->name));
 			if (length > 1) {
 				//-----------------------------------------------------------------------
 				// Remember, the double quotes are on the back and front of the string...

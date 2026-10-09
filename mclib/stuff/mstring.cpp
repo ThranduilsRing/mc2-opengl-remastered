@@ -84,7 +84,7 @@ MStringRepresentation::MStringRepresentation(const char *cstr)
 	}
 	else
 	{
-		stringLength = strlen(cstr);
+		stringLength = static_cast<uint32_t>(strlen(cstr));
 		stringSize = CalculateSize(stringLength);
 
 		stringText = new char [stringSize];
@@ -153,7 +153,7 @@ void
 	}
 	else
 	{
-		stringLength = length;
+		stringLength = static_cast<uint32_t>(length);
 		stringSize = CalculateSize(stringLength);
 		stringText = new char [stringSize];
 		Register_Pointer(stringText);
@@ -225,7 +225,7 @@ MStringRepresentation
 	}
 	else
 	{
-		stringLength = strlen(cstr);
+		stringLength = static_cast<uint32_t>(strlen(cstr));
 		stringSize = CalculateSize(stringLength);
 
 		stringText = new char [stringSize];

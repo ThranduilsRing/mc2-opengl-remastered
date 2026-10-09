@@ -109,7 +109,7 @@ int
 	MemoryStream::ReadChar()
 {
 	Check_Object(this);
-	DWORD bytes_remaining = GetBytesRemaining();
+	DWORD bytes_remaining = static_cast<DWORD>(GetBytesRemaining());
 	if (bytes_remaining > 0)
 	{
 		BYTE byte;
@@ -146,7 +146,7 @@ bool
 
 	Check_Object(FileStreamManager::Instance);
 	const char *eol = "\r\n";
-	DWORD eol_length = strlen(eol);
+	DWORD eol_length = static_cast<DWORD>(strlen(eol));
 
 	while (c != End_Of_Stream && i < max_number_of_bytes)
 	{
@@ -273,7 +273,7 @@ MemoryStream&
 	Verify(number_of_bytes > 0);
 
 	Mem_Copy(GetPointer(), ptr, number_of_bytes, GetBytesRemaining());
-	AdvancePointer(number_of_bytes);
+	AdvancePointer(static_cast<DWORD>(number_of_bytes));
 	return *this;
 }
 
@@ -790,7 +790,7 @@ DynamicMemoryStream::DynamicMemoryStream(DWORD stream_size):
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 DynamicMemoryStream::DynamicMemoryStream(const DynamicMemoryStream &otherStream):
-	MemoryStream(NULL, otherStream.GetSize())
+	MemoryStream(NULL, static_cast<DWORD>(otherStream.GetSize()))
 {
 	Check_Pointer(this);
 	Check_Pointer(&otherStream);
@@ -839,7 +839,7 @@ bool
 {
 	Check_Object(this);
 
-	DWORD current_offset = currentPosition - streamStart;
+	DWORD current_offset = static_cast<DWORD>(currentPosition - streamStart);
 	DWORD new_stream_size = current_offset + count;
 	if (ownsStream && bufferSize - current_offset < count)
 	{
@@ -886,7 +886,7 @@ MemoryStream&
 	);
 	AdvancePointer(number_of_bytes);
 
-	bufferSize = Max(bufferSize, GetBytesUsed());
+	bufferSize = static_cast<DWORD>(Max(bufferSize, GetBytesUsed()));
 	return *this;
 }
 

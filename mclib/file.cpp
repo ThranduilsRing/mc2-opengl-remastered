@@ -1078,7 +1078,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 {
 	gosASSERT( !isOpen() );
 	//-------------------------------------------------------------
-	long fNameLength = strlen(fName);
+	long fNameLength = static_cast<long>(strlen(fName));
 	
 	fileName = (char *)systemHeap->Malloc(fNameLength+1);
 	gosASSERT(fileName != NULL);
@@ -1502,7 +1502,7 @@ long File::createWithCase(const char* fName )
 {
 	gosASSERT( !isOpen() );
 	//-------------------------------------------------------------
-	long fNameLength = strlen(fName);
+	long fNameLength = static_cast<long>(strlen(fName));
 	
 	fileName = (char *)systemHeap->Malloc(fNameLength+1);
 	gosASSERT(fileName != NULL);
@@ -2554,11 +2554,11 @@ long File::write(MemoryPtr buffer, size_t bytes)
 				if ( logicalPosition + bytes > physicalLength )
 					return BAD_WRITE_ERR;
 				memcpy( fileImage + logicalPosition, buffer, bytes );
-				result = bytes;
+				result = static_cast<long>(bytes);
 			}
 			else
 			{
-				result = _write(handle,buffer,bytes);
+				result = _write(handle,buffer,static_cast<unsigned int>(bytes));
 				if (result != bytes)
 				{
 					lastError = errno;

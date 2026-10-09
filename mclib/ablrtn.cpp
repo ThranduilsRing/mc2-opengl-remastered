@@ -742,15 +742,9 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	// Done with the source file, so close it...
 	closeSourceFile();
 
-	//extractSymTable(&SymTableDisplay[0], moduleIdPtr);
-
-	//--------------------------------------------------
-	// Register the new module in the ABL environment...
-	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABLStackMallocCallback(strlen(source_fn) + 1);
+	ModuleRegistry[NumModulesRegistered].fileName = (char*)ABLStackMallocCallback(static_cast<unsigned long>(strlen(source_fn) + 1));
 	if (!ModuleRegistry[NumModulesRegistered].fileName)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc module filename ");
-    // sebi
-	//strcpy(ModuleRegistry[NumModulesRegistered].fileName, strlwr(sourceFileName));
 	strcpy(ModuleRegistry[NumModulesRegistered].fileName, source_fn);
 	ModuleRegistry[NumModulesRegistered].moduleIdPtr = moduleIdPtr;
 
@@ -759,7 +753,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	if (!ModuleRegistry[NumModulesRegistered].sourceFiles)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc sourceFiles ");
 	for (int i = 0; i < NumSourceFiles; i++) {
-		ModuleRegistry[NumModulesRegistered].sourceFiles[i] = (char*)ABLStackMallocCallback(strlen(SourceFiles[i]) + 1);
+		ModuleRegistry[NumModulesRegistered].sourceFiles[i] = (char*)ABLStackMallocCallback(static_cast<unsigned long>(strlen(SourceFiles[i]) + 1));
 		strcpy(ModuleRegistry[NumModulesRegistered].sourceFiles[i], SourceFiles[i]);
 	}
 

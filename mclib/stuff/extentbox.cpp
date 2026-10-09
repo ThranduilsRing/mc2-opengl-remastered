@@ -381,7 +381,7 @@ void
 		max_x = 0,
 		max_y = 0,
 		max_z = 0,
-		count = boxes.GetLength(),
+		count = static_cast<unsigned>(boxes.GetLength()),
 		i;
 	Verify(count > 0);
 	for (i=0; i<count; ++i)

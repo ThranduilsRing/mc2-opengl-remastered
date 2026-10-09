@@ -105,11 +105,8 @@ void
 		}
 
 		//
-		//-------------------
-		// Isolate macro name
-		//-------------------
 		//
-		int len = p-buffer - 2;
+		int len = static_cast<int>(p-buffer - 2);
 		MString macro_name;
 		macro_name.AllocateLength(len+1);
 		char *t = macro_name;
@@ -138,7 +135,7 @@ void
 				new_buf,
 				new_buf_size
 			);
-			len = strlen(new_buf);
+			len = static_cast<int>(strlen(new_buf));
 			new_buf_size -= len;
 			new_buf += len;
 			macro->m_inUse = false;

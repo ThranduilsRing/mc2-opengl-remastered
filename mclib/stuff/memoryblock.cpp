@@ -373,7 +373,7 @@ void
 	//
 	BYTE **deletions = new(blockHeap) BYTE*[deletion_count+1];
 	deletion = deletedRecord;
-	int i=deletion_count-1;
+	int i= static_cast<int>(deletion_count-1);
 	deletions[deletion_count] = reinterpret_cast<BYTE*>(SNAN_NEGATIVE_INT32);
 	deletions[i--] = deletion;
 	deletion = *Cast_Pointer(BYTE**, deletion);
@@ -414,7 +414,7 @@ void
 		//
 		Check_Object(header);
 		i = 0;
-		j = deletion_count - 1;
+		j = static_cast<int>(deletion_count - 1);
 		int m = 0;
 		BYTE *key = Cast_Pointer(BYTE*, header) + sizeof(*header);
 		while (i <= j)
@@ -459,12 +459,12 @@ Real_Block:
 		BYTE **start = &deletions[m];
 		if (header->nextBlock)
 		{
-			i = header->blockSize / recordSize;
+			i = static_cast<int>(header->blockSize / recordSize);
 		}
 		else
 		{
-			i = freeRecord - firstHeaderRecord;
-			i /= recordSize;
+			i = static_cast<int>(freeRecord - firstHeaderRecord);
+			i /= static_cast<int>(recordSize);
 		}
 
 		//
@@ -501,9 +501,9 @@ Real_Block:
 		//-----------------------------------------------------------------------
 		//
 		++end;
-		j =
+		j = static_cast<int>(
 			Cast_Pointer(BYTE*, &deletions[deletion_count])
-			 - Cast_Pointer(BYTE*, end);
+			 - Cast_Pointer(BYTE*, end));
 		deletion_count -= i;
 		if (j>0)
 		{
@@ -746,7 +746,7 @@ void*
 		Check_Object(block);
 		Verify(recordSize);
 		int
-			records = block->blockSize / recordSize;
+			records = static_cast<int>(block->blockSize / recordSize);
 		if (index < records)
 		{
 			return Cast_Pointer(BYTE*, block + 1) + index * recordSize;

@@ -177,3 +177,20 @@ mclib/*.cpp top level (inifile, csvfile, ffile, ablscan, txmmgr, ewcharstring, f
 ## /we coverage
 
 `cmake/Mc2NarrowingErrors.cmake` promotes C4267/C4244/C4477/C4312/C4018 to errors on: mlr, fx_trace, rendercore, renderworld, gameadapters, editorbridge, gui, gui_runtime, windows. Add a target to the call once it reads zero. /we also enables level-4 variants of a code, so a target can be 'zero' under /W3 and still fail on /we (RenderCore needed a push/pop around vendored bcdec.h).
+
+## Slice 2 (lane2 @ 9fcd5701f, mc2 + mc2_launcher, clean build, 741 steps)
+
+| code | baseline | after slice 1 | after slice 2 | unique sites after slice 2 |
+|---|---|---|---|---|
+| C4005 | 1 | 1 | 1 | 1 |
+| C4018 | 3 | 3 | 0 | 0 |
+| C4244 | 22 | 22 | 1 | 1 |
+| C4267 | 1534 | 172 | 20 | 18 |
+| C4312 | 3 | 0 | 0 | 0 |
+| C4477 | 6 | 0 | 0 | 0 |
+| C4838 | 1 | 1 | 1 | 1 |
+| C4996 | 11 | 11 | 11 | 11 |
+
+Remaining C4267/C4244 are all in files owned by lane 1 or excluded from this slice: mclib/txmmgr.cpp (6), code/** (13), GameOS/gameos/gameos_fileio.cpp (2), GameOS/gameos/vulkan_backend_skeleton.cpp (1). EditRel adds no new ones.
+
+/we now also covers stuff, gosfx, particles, mclib (all but bdactor/mech3d/txmmgr/terrain.cpp) and GameOS/gameos/utils (per-source, `mc2_narrowing_errors_sources`). Not covered: GameOS/gameos/*.cpp, code/, editor/.

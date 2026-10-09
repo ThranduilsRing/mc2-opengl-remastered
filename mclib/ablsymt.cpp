@@ -403,13 +403,11 @@ SymTableNodePtr searchSymTableDisplay (const char* name) {
 
 SymTableNodePtr enterSymTable (const char* name, SymTableNodePtr* ptrToNodePtr) {
 
-	//-------------------------------------
-	// First, create the new symbol node...
 	SymTableNodePtr newNode = (SymTableNodePtr)ABLSymbolMallocCallback(sizeof(SymTableNode));
 	if (!newNode)
 		ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc symbol ");
 
-	newNode->name = (char*)ABLSymbolMallocCallback(strlen(name) + 1);
+	newNode->name = (char*)ABLSymbolMallocCallback(static_cast<unsigned long>(strlen(name) + 1));
 	if (!newNode->name)
 		ABL_Fatal(0, " ABL: Unable to AblSymTableHeap->malloc symbol name ");
 	strcpy(newNode->name, name);
@@ -563,7 +561,7 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 
 	FunctionInfoTable[tableIndex].numParams = 0;
 	if (paramList) {
-		FunctionInfoTable[tableIndex].numParams = strlen(paramList);
+		FunctionInfoTable[tableIndex].numParams = static_cast<long>(strlen(paramList));
 		if (FunctionInfoTable[tableIndex].numParams > MAX_FUNCTION_PARAMS)
 			ABL_Fatal(0, " ABL.enterStandardRoutine: Too Many Standard Function Params ");
 		for (long i = 0; i < FunctionInfoTable[tableIndex].numParams; i++)

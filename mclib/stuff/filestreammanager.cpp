@@ -34,7 +34,7 @@ FileDependencies&
 	Check_Object(&dependencies);
 
 	m_fileNameStream.Rewind();
-	int len = dependencies.m_fileNameStream.GetBytesUsed();
+	int len = static_cast<int>(dependencies.m_fileNameStream.GetBytesUsed());
 	if (len)
 	{
 		MemoryStream scanner(
@@ -69,7 +69,7 @@ void
 	//---------------------------------------------------
 	//
 	BYTE *end = Cast_Pointer(BYTE*, m_fileNameStream.GetPointer());
-	int len = m_fileNameStream.GetBytesUsed();
+	int len = static_cast<int>(m_fileNameStream.GetBytesUsed());
 	MemoryStream scanner(end-len, len);
 
 	//
@@ -80,12 +80,12 @@ void
 	while (scanner.GetBytesRemaining() > 0)
 	{
 		const char* old_name = Cast_Pointer(const char*, scanner.GetPointer());
-		int len = strlen(old_name);
+		int len = static_cast<int>(strlen(old_name));
 		if (!S_stricmp(new_file, old_name))
 			return;
 		scanner.AdvancePointer(len+1);
 	}
-	m_fileNameStream.WriteBytes(new_file, strlen(new_file)+1);
+	m_fileNameStream.WriteBytes(new_file, static_cast<DWORD>(strlen(new_file)+1));
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,14 +96,14 @@ void
 	Check_Object(this);
 	Check_Object(dependencies);
 
-	int old_len = m_fileNameStream.GetBytesUsed();
+	int old_len = static_cast<int>(m_fileNameStream.GetBytesUsed());
 
 	dependencies->Rewind();
 	while (dependencies->GetBytesRemaining() > 0)
 	{
 		const char* new_name =
 			Cast_Pointer(const char*, dependencies->GetPointer());
-		int new_len = strlen(new_name);
+		int new_len = static_cast<int>(strlen(new_name));
 
 		//
 		//---------------------------------------------------
@@ -121,7 +121,7 @@ void
 		while (scanner.GetBytesRemaining() > 0)
 		{
 			const char* old_name = Cast_Pointer(const char*, scanner.GetPointer());
-			int len = strlen(old_name);
+			int len = static_cast<int>(strlen(old_name));
 			if (!S_stricmp(old_name, new_name))
 				break;
 			scanner.AdvancePointer(len+1);

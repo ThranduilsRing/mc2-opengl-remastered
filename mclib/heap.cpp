@@ -256,24 +256,19 @@ long HeapManager::commitHeap (unsigned long commitSize)
 //---------------------------------------------------------------------------
 long HeapManager::decommitHeap (unsigned long decommitSize)
 {
-	long result = 0;
-	
-	if (decommitSize == 0)
-		decommitSize = totalSize;
-		
-	if (decommitSize > committedSize)
+	if (decommitSize == 0 || decommitSize > committedSize)
 		decommitSize = committedSize;
 
-	if (decommitSize < committedSize)
-		decommitSize = totalSize;
+	if (decommitSize == 0)
+		return NO_ERR;
 
-	unsigned long decommitAddress = decommitSize;
-	committedSize -= decommitAddress;
+	// The decommitted range is the tail of the committed span: [heap + newCommitted, +decommitSize).
+	unsigned long newCommittedSize = committedSize - decommitSize;
 
-	result = VirtualFree(reinterpret_cast<void *>(static_cast<uintptr_t>(committedSize)),decommitSize,MEM_DECOMMIT);
-	if (result == FALSE)
-		result = GetLastError();
+	if (!VirtualFree(heap + newCommittedSize, decommitSize, MEM_DECOMMIT))
+		return static_cast<long>(GetLastError());
 
+	committedSize = newCommittedSize;
 	return NO_ERR;
 }
 
@@ -1936,7 +1931,7 @@ unsigned long textToLong (char *num)
 	char *hexOffset = num;
 	
 	hexOffset += 2;
-	long numDigits = strlen(hexOffset)-1;
+	long numDigits = static_cast<long>(strlen(hexOffset)-1);
 	long power = 0;
 	
 	for (long count = numDigits;count >= 0;count--,power++)
@@ -1969,7 +1964,7 @@ long longToText (char *result, long num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%08X",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(0);
 
@@ -2025,7 +2020,7 @@ long getStringFromMap (File &mapFile, unsigned long addr, char *result)
 			//-----------------------------------------------
 			// We've found it, print the previous address.
 			strncpy(result,previousAddress,510);
-			return(strlen(result));
+			return static_cast<long>(strlen(result));
 		}
 		
 		strncpy(previousAddress,&(mapFileLine[6]),510);

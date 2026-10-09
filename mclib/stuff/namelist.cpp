@@ -172,7 +172,7 @@ int
 	Check_Pointer(prefix);
 
    const int
-		length = strlen(prefix);
+		length = static_cast<int>(strlen(prefix));
 	Entry
 		*entry = source_list.firstEntry;
 	const char
@@ -441,7 +441,7 @@ MemoryStream&
 	{
 		const char* name = Cast_Pointer(const char*, stream->GetPointer());
 		names->AddEntry(name, NULL);
-		stream->AdvancePointer(strlen(name)+1);
+		stream->AdvancePointer(static_cast<DWORD>(strlen(name)+1));
 	}
 
 	return *stream;

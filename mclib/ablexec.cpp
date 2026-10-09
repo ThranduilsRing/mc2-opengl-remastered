@@ -115,7 +115,7 @@ void crunchToken (void) {
 	if (codeBufferPtr >= (codeBuffer + MaxCodeBufferSize - 100))
 		syntaxError(ABL_ERR_SYNTAX_CODE_SEGMENT_OVERFLOW);
 	else {
-		*codeBufferPtr = curToken;
+		*codeBufferPtr = static_cast<char>(curToken);
 		codeBufferPtr++;
 	}
 }
@@ -263,7 +263,7 @@ void crunchOffset (Address address) {
 
 char* createCodeSegment (long& codeSegmentSize) {
 
-	codeSegmentSize = codeBufferPtr - codeBuffer + 1;
+	codeSegmentSize = static_cast<long>(codeBufferPtr - codeBuffer + 1);
 	// The ABL VM's getCodeToken / execute loop reads exactly one byte past
 	// the last valid opcode before the end-of-segment check fires. On
 	// normal MSVC builds this overread is hidden by heap-allocator slack

@@ -25,19 +25,14 @@ uint32_t vec4_to_uint32(const vec4& v) {
 
 vec4 uint32_to_vec4(uint32_t v) {
 
-	float x = v & 0xff;
-	float y = (v>>8) & 0xff;
-	float z = (v>>16) & 0xff;
-	float w = (v>>24) & 0xff;
+	float x = static_cast<float>(v & 0xff);
+	float y = static_cast<float>((v>>8) & 0xff);
+	float z = static_cast<float>((v>>16) & 0xff);
+	float w = static_cast<float>((v>>24) & 0xff);
 
 	return (1.0f / 255.0f) * vec4(x, y, z, w);
 }
 
-// maybe just 
-// header: extern uint32_t TF_R8
-// cpp: TF_R8 = GL_R8 
-// ?
-//
 const GLint textureFormats[TF_COUNT] = {
     0,
     GL_RED,

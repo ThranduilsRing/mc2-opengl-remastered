@@ -216,7 +216,7 @@ long CSVFile::textToLong (char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -225,7 +225,7 @@ long CSVFile::textToLong (char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -269,7 +269,7 @@ short CSVFile::textToShort (char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -278,7 +278,7 @@ short CSVFile::textToShort (char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -321,7 +321,7 @@ char CSVFile::textToChar (char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -330,7 +330,7 @@ char CSVFile::textToChar (char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -372,7 +372,7 @@ unsigned long CSVFile::textToULong (char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -381,7 +381,7 @@ unsigned long CSVFile::textToULong (char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -424,7 +424,7 @@ unsigned short CSVFile::textToUShort (char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -433,7 +433,7 @@ unsigned short CSVFile::textToUShort (char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -476,7 +476,7 @@ unsigned char CSVFile::textToUChar (char *num)
 	else
 	{
 		hexOffset += 2;
-		long numDigits = strlen(hexOffset)-1;
+		long numDigits = static_cast<long>(strlen(hexOffset)-1);
 		for (int i=0; i<=numDigits; i++)
 		{
 			if (!isalnum(hexOffset[i]) || (isalpha(hexOffset[i]) && toupper(hexOffset[i]) > 'F'))
@@ -485,7 +485,7 @@ unsigned char CSVFile::textToUChar (char *num)
 				break;
 			}
 		}
-		numDigits = strlen(hexOffset)-1;
+		numDigits = static_cast<long>(strlen(hexOffset)-1);
 		long power = 0;
 		for (long count = numDigits;count >= 0;count--,power++)
 		{
@@ -532,7 +532,7 @@ long CSVFile::floatToText (char *result, float num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%.4f",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 
@@ -548,7 +548,7 @@ long CSVFile::longToTextDec (char *result, long num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%d",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 
@@ -564,7 +564,7 @@ long CSVFile::longToTextHex (char *result, long num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"0x%x",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 
@@ -580,7 +580,7 @@ long CSVFile::shortToTextDec (char *result, short num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%d",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 
@@ -596,7 +596,7 @@ long CSVFile::shortToTextHex (char *result, short num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"0x%x",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 
@@ -612,7 +612,7 @@ long CSVFile::byteToTextDec (char *result, byte num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"%d",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 
@@ -628,7 +628,7 @@ long CSVFile::byteToTextHex (char *result, byte num, unsigned long bufLen)
 	char temp[250];
 	sprintf(temp,"0x%x",num);
 
-	unsigned long numLength = strlen(temp);
+	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
 		return(-2);
 

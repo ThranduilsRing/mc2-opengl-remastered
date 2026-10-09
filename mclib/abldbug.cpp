@@ -114,7 +114,7 @@ extern ScrollingTextWindow* ABLDebuggerOut;
 
 void* WatchManager::operator new (size_t mySize) {
 
-	void *result = ABLStackMallocCallback(mySize);
+	void *result = ABLStackMallocCallback(static_cast<unsigned long>(mySize));
 	return(result);
 }
 
@@ -329,7 +329,7 @@ void WatchManager::print (void) {
 
 void* BreakPointManager::operator new (size_t mySize) {
 
-	void *result = ABLStackMallocCallback(mySize);
+	void *result = ABLStackMallocCallback(static_cast<unsigned long>(mySize));
 	return(result);
 }
 
@@ -456,7 +456,7 @@ void BreakPointManager::print (void) {
 
 void* Debugger::operator new (size_t mySize) {
 
-	void *result = ABLStackMallocCallback(mySize);
+	void *result = ABLStackMallocCallback(static_cast<unsigned long>(mySize));
 	return(result);
 }
 

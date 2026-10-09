@@ -733,7 +733,7 @@ void ECharString::Format( const ECSChar* p_Str, ... )
 			   Item_Len = 6;  // "(null)"
 			else
 			{
-			   Item_Len = wcslen(p_Next_Arg);
+			   Item_Len = static_cast<int>(wcslen(p_Next_Arg));
 			   Item_Len = max(1, Item_Len);
 			}
 #else
@@ -772,7 +772,7 @@ void ECharString::Format( const ECSChar* p_Str, ... )
 			   Item_Len = 6; // "(null)"
 			else
 			{
-			   Item_Len = wcslen(pstrNextArg);
+			   Item_Len = static_cast<int>(wcslen(pstrNextArg));
 			   Item_Len = max(1, Item_Len);
 			}
 			break;
@@ -1011,7 +1011,7 @@ int ECharString::Find( ECSChar Char, int Start_Index ) const
 	{
 		if ( *p_Tmp == Char )
 		{
-			return p_Tmp - m_pBuffer->Data();
+			return static_cast<int>(p_Tmp - m_pBuffer->Data());
 		}
 		
 		p_Tmp++;
@@ -1033,7 +1033,7 @@ int ECharString::Find( const ECharString& Str_To_Find, int Start_Index ) const
 	ECSChar* p_Tmp = KStrStr( m_pBuffer->Data() + Start_Index, 
 							Str_To_Find.m_pBuffer->Data() );
 
-	return ( p_Tmp ? p_Tmp - m_pBuffer->Data() : INVALID_INDEX );
+	return ( p_Tmp ? static_cast<int>(p_Tmp - m_pBuffer->Data()) : INVALID_INDEX );
 }
 
 /////////////////////////////////////////////////////////////////
@@ -1048,7 +1048,7 @@ int ECharString::Find( const ECSChar* p_Str_To_Find, int Start_Index ) const
 	ECSChar* p_Tmp = KStrStr( m_pBuffer->Data() + Start_Index, 
 							p_Str_To_Find );
 
-	return ( p_Tmp ? p_Tmp - m_pBuffer->Data() : INVALID_INDEX );
+	return ( p_Tmp ? static_cast<int>(p_Tmp - m_pBuffer->Data()) : INVALID_INDEX );
 
 }
 

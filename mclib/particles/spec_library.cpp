@@ -109,7 +109,7 @@ gosFX::Effect::Specification* SpecLibrary::At(unsigned index)
 
 unsigned SpecLibrary::Count() const
 {
-    return m_effects.GetLength();
+    return static_cast<unsigned int>(m_effects.GetLength());
 }
 
 }  // namespace particles

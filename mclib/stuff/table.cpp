@@ -381,7 +381,7 @@ IteratorPosition
 		Verify(j < numItems);
 		
 		if ((k = CompareValueToTableEntry(value, array[j])) == 0)
-			return j;
+			return static_cast<IteratorPosition>(j);
 		
 		if (k < 0)
 			n = j;

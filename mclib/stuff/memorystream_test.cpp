@@ -465,7 +465,7 @@ bool MultipleBitStreamTest(int total_sections_to_write)
 		
 
 		// one is in the pipe so it doesn't count
-		int stream_bytes_written = bit_stream.GetBytesUsed();
+		int stream_bytes_written = static_cast<int>(bit_stream.GetBytesUsed());
 
 		Test_Assumption(total_bytes_written == stream_bytes_written);
 
@@ -483,11 +483,10 @@ bool MultipleBitStreamTest(int total_sections_to_write)
 		total_bits_read += bit_depth[i];
 
 		int total_bytes_read = (int)(total_bits_read/8.0f);
-		//int total_remainder_bits_read = total_bits_read - (total_bytes_read*8);
 
 
 		// one is in the pipe so it doesn't count
-		int stream_bytes_read = bit_stream.GetBytesUsed() - 1;
+		int stream_bytes_read = static_cast<int>(bit_stream.GetBytesUsed() - 1);
 
 		Test_Assumption(total_bytes_read == stream_bytes_read);
 
