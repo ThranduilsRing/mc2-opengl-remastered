@@ -12,6 +12,7 @@
 #include "stdafx.h"
 #include "EditorData.h"
 #include "MCLib.h"
+#include "EditorTaskRunner.h"
 #include "EditorObjectMgr.h"
 #include "mclibresource.h"
 #include "resource.h"
@@ -1303,7 +1304,7 @@ bool EditorData::generateMission( int mapSize, int terrain, unsigned long seed )
 	char cmd[1024];
 	sprintf( cmd, "py -3 tools\\terrain_gen\\terrain_gen.py \"%s\" --out terrain_gen_out", recipePath );
 	EditorDataTrace( "generateMission: N=%d biome=%s seed=%lu cmd=%s", N, biome, seed, cmd );
-	int rc = system( cmd );
+	int rc = EditorTaskRunner::RunBlockingHidden( cmd );
 	EditorDataTrace( "generateMission: generator rc=%d", rc );
 	if ( rc != 0 )
 	{

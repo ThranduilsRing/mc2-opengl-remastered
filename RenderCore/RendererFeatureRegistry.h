@@ -1031,6 +1031,17 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "one [RES_DIAG] line giving the resolved origin and size."
     },
     {
+        "MC2_TRACE_NO_ACTIVATE",
+        "MC2_NO_ACTIVATE",
+        EnvVarKind::Trace,
+        false,
+        "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and "
+        "non-activating, never taking the foreground or keyboard focus. Equivalent "
+        "to MC2_WINDOW_OFFSCREEN for the editor, which honors both. DEFAULT OFF: "
+        "unset is the interactive maximized launch. Name to be standardized with the "
+        "launcher audit."
+    },
+    {
         "MC2_TRACE_FORCE_ALL_VISIBLE",
         "MC2_FORCE_ALL_VISIBLE",
         EnvVarKind::Trace,

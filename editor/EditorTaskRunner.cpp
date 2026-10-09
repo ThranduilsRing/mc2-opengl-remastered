@@ -595,4 +595,39 @@ void RenderImGui()
 
 #endif // MC2_IMGUI
 
+int RunBlockingHidden(const std::string& commandLine)
+{
+	SECURITY_ATTRIBUTES sa{};
+	sa.nLength        = sizeof(sa);
+	sa.bInheritHandle = TRUE;
+	HANDLE hNul = CreateFileA("NUL", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+	                          &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	STARTUPINFOA si{};
+	si.cb          = sizeof(si);
+	si.dwFlags     = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+	si.wShowWindow = SW_HIDE;
+	si.hStdInput   = hNul;
+	si.hStdOutput  = hNul;
+	si.hStdError   = hNul;
+
+	std::vector<char> cmd(commandLine.begin(), commandLine.end());
+	cmd.push_back('\0');
+
+	PROCESS_INFORMATION pi{};
+	const BOOL ok = CreateProcessA(NULL, cmd.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+	if (hNul != INVALID_HANDLE_VALUE)
+		CloseHandle(hNul);
+	if (!ok)
+		return -1;
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	DWORD code = 0;
+	if (!GetExitCodeProcess(pi.hProcess, &code))
+		code = static_cast<DWORD>(-1);
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+	return static_cast<int>(code);
+}
+
 } // namespace EditorTaskRunner

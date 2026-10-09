@@ -81,6 +81,11 @@ namespace EditorTaskRunner
 	// True while any task is Pending or Running.
 	bool HasActiveTasks();
 
+	// Run a command to completion on the calling thread with no console window and
+	// no stdio. Returns the exit code, or -1 if the process could not be started.
+	// For callers that need the result inline; system() would pop a console.
+	int RunBlockingHidden(const std::string& commandLine);
+
 	// Editor-shutdown failsafe: terminate every still-Running task's child process
 	// (by stored process HANDLE only -- never by image name, so concurrent smoke /
 	// standalone mc2.exe instances are untouched). Call from the editor teardown

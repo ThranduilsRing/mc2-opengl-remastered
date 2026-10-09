@@ -24,6 +24,10 @@
 // InitInstance — before Run() enters the pump — deadlocks or crashes.
 #define WM_APP_INIT_GAMEOS  (WM_APP + 1)
 
+// True for automated launches (MC2_NO_ACTIVATE=1 or MC2_WINDOW_OFFSCREEN=1): the editor must come up
+// without taking the foreground or focus.
+bool EditorBackgroundLaunch();
+
 /////////////////////////////////////////////////////////////////////////////
 // EditorMFCApp:
 // See EditorMFC.cpp for the implementation of this class

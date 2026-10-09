@@ -119,6 +119,10 @@ BOOL MainFrame::PreCreateWindow(CREATESTRUCT& cs)
 	cs.cy = GetSystemMetrics( SM_CYFULLSCREEN );;
 	cs.x = 0;
 	cs.y = 0;
+	// The dialog bar and view created in OnCreate move keyboard focus into the frame, which would
+	// otherwise activate it; a no-activate frame can never become the foreground window.
+	if (EditorBackgroundLaunch())
+		cs.dwExStyle |= WS_EX_NOACTIVATE;
 	return TRUE;
 }
 

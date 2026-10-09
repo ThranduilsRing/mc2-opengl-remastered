@@ -459,6 +459,13 @@ EditorMFCApp theApp;
 
 static DWORD WINAPI s_smoke_thread(LPVOID);   // smoke driver: defined below
 
+bool EditorBackgroundLaunch()
+{
+	const char* noActivate = getenv("MC2_NO_ACTIVATE");
+	const char* offscreen  = getenv("MC2_WINDOW_OFFSCREEN");
+	return (noActivate && noActivate[0] == '1') || (offscreen && offscreen[0] == '1');
+}
+
 BOOL EditorMFCApp::InitInstance()
 {
 	editor_set_default_env_vars();
@@ -606,7 +613,7 @@ BOOL EditorMFCApp::InitInstance()
 		else
 		{
 			EarlyTrace("InitInstance: fallback EditorInterface Create OK");
-			g_editorInterfaceWindow->ShowWindow(SW_MAXIMIZE);
+			g_editorInterfaceWindow->ShowWindow(EditorBackgroundLaunch() ? SW_SHOWNOACTIVATE : SW_MAXIMIZE);
 			g_editorInterfaceWindow->UpdateWindow();
 		}
 	}
@@ -615,7 +622,7 @@ BOOL EditorMFCApp::InitInstance()
 		EarlyTrace("InitInstance: EditorInterface exists after LoadFrame");
 	}
 
-	pFrame->ShowWindow(SW_MAXIMIZE);
+	pFrame->ShowWindow(EditorBackgroundLaunch() ? SW_SHOWMINNOACTIVE : SW_MAXIMIZE);
 	pFrame->UpdateWindow();
 	pFrame->DrawMenuBar();
 
@@ -644,13 +651,12 @@ BOOL EditorMFCApp::InitInstance()
 	m_bPendingInitGameOS  = true;
 	EarlyTrace("InitInstance: InitGameOS deferred to first OnIdle");
 
-	if (editorInterface && editorInterface->GetSafeHwnd())
+	if (!EditorBackgroundLaunch())
 	{
-		editorInterface->SetFocus();
-	}
-	else
-	{
-		pFrame->SetFocus();
+		if (editorInterface && editorInterface->GetSafeHwnd())
+			editorInterface->SetFocus();
+		else
+			pFrame->SetFocus();
 	}
 
 	EarlyTrace("InitInstance: return TRUE");
