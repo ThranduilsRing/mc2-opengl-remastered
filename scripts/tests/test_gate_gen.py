@@ -446,3 +446,13 @@ def test_committed_seed_has_the_documented_shape():
     assert gg.default_disagreements(doc["gates"]) == []
     raw = open(path, "rb").read()
     assert b"\r" not in raw and raw.endswith(b"\n")
+
+
+def test_history_carries_quoted_history_banner_and_per_entry_note():
+    md = gg.render_history(gg.Inputs({}, REGISTRY))
+    # The marker must sit in the head window the default-agreement checker inspects.
+    assert gi.is_quoted_history(md.splitlines())
+    assert md.splitlines()[2] == gi.QUOTED_HISTORY_MARKER
+    assert "defaults here are NOT current" in md
+    # one per-entry note per section
+    assert md.count("> historical registry text;") == md.count("\n## MC2_")

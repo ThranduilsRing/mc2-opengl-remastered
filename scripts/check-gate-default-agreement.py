@@ -179,6 +179,7 @@ ON, OFF, UNKNOWN = "ON", "OFF", "UNCLASSIFIABLE"
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 from gate_idioms import strip_comments, enclosing_block  # noqa: E402,F401
+from gate_idioms import is_quoted_history  # noqa: E402
 from gate_idioms import load_sources as _shared_load_sources  # noqa: E402
 
 
@@ -830,10 +831,16 @@ def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,),
     for full in sorted(md_files):
         try:
             with open(full, "r", encoding="utf-8", errors="replace") as fh:
-                claims.extend(comment_claims(
-                    fh.read().splitlines(),
-                    os.path.relpath(full, root).replace("\\", "/"),
-                    prose=True))
+                md_lines = fh.read().splitlines()
+            # A doc that carries the quoted-history marker (docs/gate-history.md)
+            # reproduces old registry prose verbatim; its default words are
+            # history, not a current claim, so rule 3 does not apply to it.
+            if is_quoted_history(md_lines):
+                continue
+            claims.extend(comment_claims(
+                md_lines,
+                os.path.relpath(full, root).replace("\\", "/"),
+                prose=True))
         except OSError:
             pass
     return claims

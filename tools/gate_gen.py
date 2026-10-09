@@ -917,7 +917,12 @@ def default_disagreements(records):
 
 def render_history(inp):
     """docs/gate-history.md: every registered gate whose registry text runs past one
-    sentence, verbatim."""
+    sentence, verbatim.
+
+    The text is QUOTED HISTORY: it says "Default-off" for gates that have since flipped.
+    The banner/marker (and the per-entry note) tell readers and the default-agreement
+    checker (which skips marker-carrying docs) that those words are not current claims.
+    """
     rows = []
     if inp.registry_text:
         for _key, e in rp.parse_registry_text(inp.registry_text, REGISTRY_REL).items():
@@ -927,6 +932,10 @@ def render_history(inp):
                 rows.append((e["envVar"], e["doc"]))
     rows.sort()
     L = ["# Gate history\n",
+         gi.QUOTED_HISTORY_MARKER + "\n",
+         "> Historical registry text. Defaults and Default-on/off claims below are "
+         "NOT current; the live default of each gate is in `tools/gate_table.seed.json` "
+         "(and the code). The default-agreement checker skips this file.\n",
          "Registry prose for every registered gate whose description runs past one sentence, "
          "copied verbatim from `RenderCore/RendererFeatureRegistry.h`. The typed gate table keeps "
          "a one-line `doc` per row; the rest of the story lives here, one section per gate, so a "
@@ -935,6 +944,8 @@ def render_history(inp):
          "%d gates.\n" % len(rows)]
     for name, text in rows:
         L.append("## %s\n" % name)
+        L.append("> historical registry text; defaults here are NOT current "
+                 "(see `tools/gate_table.seed.json`)\n")
         L.append(text + "\n")
     return "\n".join(L)
 

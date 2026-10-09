@@ -33,6 +33,21 @@ import re
 # Source plumbing (lifted verbatim from check-gate-default-agreement.py)
 # ---------------------------------------------------------------------------
 
+# Quoted-history marker. A generated doc that reproduces OLD registry prose verbatim
+# (docs/gate-history.md) carries this marker in its first lines. The default-agreement
+# checker's doc sweep (rule 3) skips such a file: its "Default-off" sentences are a
+# record of what the registry used to say, and "fixing" them would falsify the history.
+# Both the emitter (tools/gate_gen.py) and the reader (check-gate-default-agreement.py)
+# import this one constant so they cannot drift apart.
+QUOTED_HISTORY_MARKER = "<!-- quoted-history: default claims below are verbatim history, not current -->"
+QUOTED_HISTORY_HEAD_LINES = 12
+
+
+def is_quoted_history(lines):
+    """True when the marker appears in the first QUOTED_HISTORY_HEAD_LINES lines."""
+    return any(QUOTED_HISTORY_MARKER in ln for ln in lines[:QUOTED_HISTORY_HEAD_LINES])
+
+
 SCAN_EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 SKIP_DIRS = (".git", "build64", "third_party", "3rdparty")
 
