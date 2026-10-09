@@ -307,7 +307,7 @@ public:
 
 protected:
 
-	bool save( FitIniFile* file, int WarriorNumber, int controlDataType, char* objectProfile );
+	bool save( FitIniFile* file, int WarriorNumber, int controlDataType, const char* objectProfile );
 
 	Brain brain;
 	bool selfRepairBehaviorEnabled;

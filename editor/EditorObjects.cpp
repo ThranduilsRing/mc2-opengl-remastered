@@ -412,7 +412,7 @@ bool Unit::save( FitIniFile* file, int WarriorNumber )
 		appearance()->teamId == EDITOR_TEAM1 ? "pv20600" : "pv20500" );
 }
 
-bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, char* objectProfile )
+bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const char* objectProfile )
 {
 	// ARM
 	if (mechAsset)
