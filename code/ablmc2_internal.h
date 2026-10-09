@@ -155,9 +155,6 @@ inline long getMovers (long partId, MoverPtr* list, bool existsOnly) {
 }
 
 // Non-exec functions shared across the translation units.
-long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float radius, long teamID, long commanderID, bool getEnemies, bool sortDescending, bool ignoreOrder);
-void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefenders, GameObjectPtr* defenders);
-GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* attackers, long numDefenders, MoverPtr* defenders);
 void execSetWillRequestHelp (void);
 void initABL (void);
 void closeABL (void);
