@@ -57,6 +57,14 @@ REGISTRY = [
      "shaders/vulkan/cloud_shadow.frag", "CloudFxParams"),
     ("screenfx_shore", "GameOS/gameos/vulkan_post_screenfx_native.cpp", "ScreenFxShoreParams",
      "shaders/vulkan/shoreline.frag", "ShorelineFxParams"),
+    # M2 (consistency audit): UBO mirrors that previously had neither static_asserts
+    # nor a registry row.
+    ("watervs", "GameOS/gameos/vulkan_water_island.cpp", "WaterVsParams",
+     "shaders/vulkan/water_geom.vert", "WaterVsParams"),
+    ("vfxvs", "GameOS/gameos/vulkan_vfx_island.cpp", "VfxVsParams",
+     "shaders/vulkan/vfx_particle.vert", "VfxVsParams"),
+    ("shadow_live", "GameOS/gameos/vulkan_shadow_island_live.cpp", "ShadowFrameUBO",
+     "shaders/vulkan/shadow_prop.vert", "ShadowFrameUBO"),
 ]
 
 STD140_BASE_ALIGN = {

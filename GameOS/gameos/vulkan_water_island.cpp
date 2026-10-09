@@ -61,6 +61,7 @@
 #include <cstring>
 #include <cstdarg>
 #include <cstdint>
+#include <cstddef>   // offsetof (M2 layout asserts)
 #include <vector>
 #include <string>
 #include <functional>
@@ -216,12 +217,15 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
 
 // std140 UBO mirrors (LOCKSTEP with water_geom.vert/.frag). ------------------
 struct WaterVsParams {
-    float worldToClipGL[16]; // column_major; SAME raw 16 floats as GL GL_FALSE upload
-    float p0[4];             // waterElevation, alphaDepth, mapTopLeftX, mapTopLeftY
-    float p1[4];             // frameCos, maxMinUV, uvScale, uvOffsetX
-    float p2[4];             // uvOffsetY, fudge, alphaEdgeByte, alphaMiddleByte
-    float p3[4];             // alphaDeepByte, pad, pad, pad
+    float worldToClipGL[16]; // column_major; SAME raw 16 floats as GL GL_FALSE upload  (off 0)
+    float p0[4];             // waterElevation, alphaDepth, mapTopLeftX, mapTopLeftY  (off 64)
+    float p1[4];             // frameCos, maxMinUV, uvScale, uvOffsetX                (off 80)
+    float p2[4];             // uvOffsetY, fudge, alphaEdgeByte, alphaMiddleByte      (off 96)
+    float p3[4];             // alphaDeepByte, shoreFlat, shoreDepthK, pad            (off 112)
 };
+static_assert(sizeof(WaterVsParams) == 128, "WaterVsParams std140 size (water_geom.vert)");
+static_assert(offsetof(WaterVsParams, p0) == 64 && offsetof(WaterVsParams, p1) == 80 &&
+              offsetof(WaterVsParams, p2) == 96 && offsetof(WaterVsParams, p3) == 112, "WaterVsParams offsets");
 struct WaterFsParams {
     float fog_color[4];      // off 0
     float f0[4];             // off 16  time, camX, camY, camZ
@@ -239,6 +243,10 @@ struct WaterFsParams {
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
 };
+static_assert(sizeof(WaterFsParams) == 208, "WaterFsParams std140 size (water_geom.frag)");
+static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) == 64 &&
+              offsetof(WaterFsParams, DEEP_COLOR) == 80 && offsetof(WaterFsParams, f4) == 112 &&
+              offsetof(WaterFsParams, f7) == 160 && offsetof(WaterFsParams, f9) == 192, "WaterFsParams offsets");
 
 // The persistent island state.
 struct WaterIsland {

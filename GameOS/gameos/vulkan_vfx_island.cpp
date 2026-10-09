@@ -44,6 +44,7 @@
 #include <cstring>
 #include <cstdarg>
 #include <cstdint>
+#include <cstddef>   // offsetof (M2 layout asserts)
 #include <string>
 #include <vector>
 
@@ -109,10 +110,12 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
 
 // std140 UBO mirror — LOCKSTEP with vfx_particle.vert (VfxVsParams).
 struct VfxVsParams {
-    float worldToClipGL[16];  // column_major; SAME raw 16 floats as GL GL_FALSE upload
-    float camRight[4];        // xyz + pad
-    float camUp[4];           // xyz + pad
+    float worldToClipGL[16];  // column_major; SAME raw 16 floats as GL GL_FALSE upload   (off 0)
+    float camRight[4];        // xyz + pad   (off 64)
+    float camUp[4];           // xyz + pad   (off 80)
 };
+static_assert(sizeof(VfxVsParams) == 96, "VfxVsParams std140 size (vfx_particle.vert)");
+static_assert(offsetof(VfxVsParams, camRight) == 64 && offsetof(VfxVsParams, camUp) == 80, "VfxVsParams offsets");
 
 struct VfxIsland {
     VkInstance       instance = VK_NULL_HANDLE;

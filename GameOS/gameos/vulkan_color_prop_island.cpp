@@ -43,6 +43,7 @@
 #include <cstring>
 #include <cstdarg>
 #include <cstdint>
+#include <cstddef>   // offsetof (M2 layout asserts)
 #include <vector>
 #include <string>
 #include <chrono>
@@ -238,6 +239,12 @@ struct ColorFrameUBO {
     int32_t glassDither;       // 1 = Bayer alpha-test dither (GL parity)   (off 248)
     float   _pad[1];           // pad to 16B multiple                       (off 252..256)
 };
+static_assert(sizeof(ColorFrameUBO) == 256, "ColorFrameUBO std140 size (color_prop_tier1.frag)");
+static_assert(offsetof(ColorFrameUBO, objectDepthBias) == 64 && offsetof(ColorFrameUBO, instBase) == 68 &&
+              offsetof(ColorFrameUBO, materialReady) == 72 && offsetof(ColorFrameUBO, materialReadyOn) == 76 &&
+              offsetof(ColorFrameUBO, terrainSunMC2) == 80 && offsetof(ColorFrameUBO, iblSh) == 96 &&
+              offsetof(ColorFrameUBO, iblShStrength) == 240 && offsetof(ColorFrameUBO, lightingReady) == 244 &&
+              offsetof(ColorFrameUBO, glassDither) == 248, "ColorFrameUBO field offsets");
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;          // VK-owned (non-exported)

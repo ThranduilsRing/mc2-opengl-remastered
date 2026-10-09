@@ -58,6 +58,7 @@
 #include <cstdarg>
 #include <cmath>
 #include <cstdint>
+#include <cstddef>   // offsetof (M2 layout asserts)
 #include <vector>
 #include <string>
 #include <chrono>
@@ -215,10 +216,12 @@ static_assert(sizeof(GpuStaticPropInstanceMirror) == 112, "instance mirror must 
 
 // std140 per-frame UBO (LOCKSTEP with shadow_prop.vert ShadowFrameUBO).
 struct ShadowFrameUBO {
-    float lightSpaceMatrix[16]; // getDynamicLightSpaceMatrix() — GL_FALSE
-    int32_t instBase;
+    float lightSpaceMatrix[16]; // getDynamicLightSpaceMatrix() — GL_FALSE   (off 0)
+    int32_t instBase;           //                                            (off 64)
     int32_t _pad0, _pad1, _pad2;
 };
+static_assert(sizeof(ShadowFrameUBO) == 80, "ShadowFrameUBO std140 size (shadow_prop.vert)");
+static_assert(offsetof(ShadowFrameUBO, instBase) == 64, "ShadowFrameUBO instBase offset");
 
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;
 
