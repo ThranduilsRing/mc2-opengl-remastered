@@ -1720,9 +1720,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // NO dynamic object shadow under CSM (matches the clean CSM-OFF capture), which is
         // strictly better than the wash until the near-cascade port lands.
         auto csmSubsetOn = []() {
-            const char* v = std::getenv("MC2_VK_TERRAIN_CSM");
+            const bool csmSub = mc2vkgate::subGate("MC2_VK_TERRAIN_CSM");
             const char* x = std::getenv("MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL");
-            return v && v[0] == '1' && x && x[0] == '1';
+            return csmSub && x && x[0] == '1';
         };
         if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
             && mc2ShadowCsmEnabled()

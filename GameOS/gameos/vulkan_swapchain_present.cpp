@@ -69,7 +69,8 @@ const char* sp_present_mode_str(VkPresentModeKHR m) {
 
 // Optional debug_state dump of the health line (best-effort; never fatal).
 void maybe_dump_debug_state(const mc2vk::PresentHealth& h, const char* fname) {
-    if (!std::getenv("MC2_DEBUG_STATE_DUMP")) return;
+    const char* dumpEnv = std::getenv("MC2_DEBUG_STATE_DUMP");
+    if (!(dumpEnv && dumpEnv[0] && dumpEnv[0] != '0')) return;
     std::FILE* f = std::fopen(fname, "w");
     if (!f) return; // debug_state dir may not exist; best-effort only.
     std::fprintf(f,

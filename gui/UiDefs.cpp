@@ -105,7 +105,7 @@ static bool envValueIsFalse(const char* v)
 static bool uiDefsTraceEnabled()
 {
     const char* v = std::getenv("MC2_UI_DEFS_TRACE");
-    return v && v[0] && !envValueIsFalse(v);
+    return v && v[0] && v[0] != '0';
 }
 
 static void uiDefsTrace(const char* fmt, ...)

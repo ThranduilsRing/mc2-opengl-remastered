@@ -725,6 +725,8 @@ void InitModSearchPaths(const char* modsRoot) {
         }
     }
 
+    // MC2_ACTIVE_MOD is re-read here on every mount: the editor's mod picker changes it
+    // with _putenv_s at run time, so no reader may cache it in a static.
     const char* envMod = getenv("MC2_ACTIVE_MOD");
     const bool stockMode = (!envMod || !envMod[0]);
     if (stockMode) {
@@ -780,7 +782,8 @@ void InitModSearchPaths(const char* modsRoot) {
     // separated, highest-priority-first. Appended after any mod.json deps and
     // de-duplicated. This is how the player's "compatibility layer" selection
     // reaches the engine without baking it into a campaign's mod.json.
-    if (const char* envDeps = getenv("MC2_MOD_DEPS")) {
+    const char* envDeps = getenv("MC2_MOD_DEPS");
+    if (envDeps && envDeps[0]) {
         std::string s(envDeps);
         size_t i = 0;
         while (i < s.size()) {

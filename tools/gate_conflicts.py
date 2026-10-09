@@ -58,6 +58,13 @@ REGISTRY = os.path.join("RenderCore", "RendererFeatureRegistry.h")
 OUT_MD = os.path.join("docs", "gate-reader-conflicts.md")
 OUT_JSON = os.path.join("docs", "gate-reader-conflicts.json")
 BASELINE = os.path.join("tools", "gate_conflicts.baseline.json")
+LEDGER = os.path.join("tools", "gate_g0_ledger.json")
+
+#: Ledger statuses that are an owner-recorded outcome, not an open conflict: `enum`
+#: (the readers compare level characters on purpose) and `divergent` (the defaults
+#: differ and the owner has to choose). A conflicting gate with any other status, or
+#: none, is UNRESOLVED and counts against the ratchet.
+LEDGER_ACCEPTED = ("enum", "divergent")
 
 #: Where a gate being SET (rather than read) makes a reader disagreement visible
 #: in routine runs: harness/launcher configs, not source.
@@ -442,7 +449,15 @@ def config_assignments(tree):
 # Build the full report
 # ---------------------------------------------------------------------------
 
-def build_report(tree, scan_dirs=None, with_config=True):
+def load_ledger(tree_root):
+    p = os.path.join(tree_root, LEDGER)
+    if not os.path.isfile(p):
+        return {}
+    with open(p, "r", encoding="utf-8") as fh:
+        return json.load(fh).get("gates", {})
+
+
+def build_report(tree, scan_dirs=None, with_config=True, ledger=None):
     sites, stats = scan_tree(tree, scan_dirs)
     reg = load_registry(tree)
     cfg_sets, cfg_doc = config_assignments(tree) if with_config else ({}, set())
@@ -485,6 +500,19 @@ def build_report(tree, scan_dirs=None, with_config=True):
         gates[gate] = entry
 
     conflicts = sorted(g for g, e in gates.items() if e["conflict"])
+    ledger = ledger or {}
+    unresolved = [g for g in conflicts if ledger.get(g, {}).get("status") not in LEDGER_ACCEPTED]
+    regressed = [g for g in conflicts if ledger.get(g, {}).get("status") == "resolved"]
+    ledger_rows = []
+    for g in sorted(ledger):
+        readers = [s for s in by_gate.get(g, []) if s["status"] in ("reader", "token")]
+        e = ledger[g]
+        ledger_rows.append({
+            "gate": g, "status": e.get("status", ""), "rule": e.get("rule", ""),
+            "delta": e.get("delta", ""), "evidence": e.get("evidence", ""),
+            "in_conflict": g in conflicts,
+            "readers": ["%s:%d %s" % (s["file"], s["line"], s["cls"])
+                        for s in sorted(readers, key=lambda x: (x["file"], x["line"]))]})
     unclassified = [s for s in sites if s["status"].startswith("unclassified")]
     report = {
         "version": 1,
@@ -502,8 +530,12 @@ def build_report(tree, scan_dirs=None, with_config=True):
             "nonreader_sites": status_counts.get("nonreader", 0),
             "unclassified_sites": len(unclassified),
             "conflict_gates": len(conflicts),
+            "unresolved_conflicts": len(unresolved),
         },
         "conflict_gates": conflicts,
+        "unresolved_gates": unresolved,
+        "regressed_gates": regressed,
+        "g0_ledger": ledger_rows,
         "gates": {g: gates[g] for g in conflicts},
         "unclassified": [{"gate": s["gate"], "file": s["file"], "line": s["line"],
                           "callee": s["callee"], "why": s["status"]} for s in unclassified],
@@ -577,7 +609,8 @@ def render_md(rep):
                      ("token_sites", "reader sites comparing a token no probe hits (not comparable)"),
                      ("nonreader_sites", "sites where the probe decides nothing (prints, paths)"),
                      ("unclassified_sites", "sites the tool could not classify"),
-                     ("conflict_gates", "**gates with conflicting readers**")]:
+                     ("conflict_gates", "**gates with conflicting readers**"),
+                     ("unresolved_conflicts", "**of which unresolved** (not ledgered as `enum` or `divergent`)")]:
         w("| %s | %d |" % (label, t[k]))
     w("")
     w("## Design section 4: confirmed or corrected\n")
@@ -622,6 +655,18 @@ def render_md(rep):
             g, "<br>".join(_esc(x) for x in shown), _esc("; ".join(dis)), _esc(dv), _esc(rule),
             "<br>".join(_esc(x) for x in delta) if delta else ("none" if e["behaviour_delta"] else "n/a (owner decision)")))
     w("")
+    w("## G0 resolution ledger\n")
+    w("Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` = owner-intended "
+      "level values, code unchanged; `divergent` = the readers' defaults differ and the owner decides; "
+      "`note` = a single-reader hazard recorded without a code change.\n")
+    w("| Gate | Status | Still conflicting | Readers | Chosen rule | Behaviour delta | Evidence |")
+    w("|---|---|---|---|---|---|---|")
+    for r in rep["g0_ledger"]:
+        shown = r["readers"][:6] + (["... +%d more" % (len(r["readers"]) - 6)] if len(r["readers"]) > 6 else [])
+        w("| `%s` | %s | %s | %s | %s | %s | %s |" % (
+            r["gate"], r["status"], "yes" if r["in_conflict"] else "no",
+            "<br>".join("`%s`" % _esc(x) for x in shown), _esc(r["rule"]), _esc(r["delta"]), _esc(r["evidence"])))
+    w("")
     w("## Reader idiom classes\n")
     w("| Class | Reader sites |\n|---|---|")
     for k, v in rep["class_histogram"].items():
@@ -658,6 +703,7 @@ def baseline_from(rep):
     return {"version": 1,
             "note": "Ratchet for tools/gate_conflicts.py --check: both numbers may only fall.",
             "conflict_gates": rep["conflict_gates"],
+            "unresolved_conflicts": rep["totals"]["unresolved_conflicts"],
             "unclassified_sites": rep["totals"]["unclassified_sites"]}
 
 
@@ -672,6 +718,12 @@ def check(rep, base):
     new = sorted(set(cur) - set(old))
     if new:
         fails.append("gates that were not in conflict are now: " + ", ".join(new))
+    cur_unres = rep["totals"].get("unresolved_conflicts", len(cur))
+    old_unres = base.get("unresolved_conflicts", len(old))
+    if cur_unres > old_unres:
+        fails.append("unresolved conflicts rose: %d (baseline %d)" % (cur_unres, old_unres))
+    for g in rep.get("regressed_gates", []):
+        fails.append("%s was resolved by G0 and its readers disagree again" % g)
     if rep["totals"]["unclassified_sites"] > base["unclassified_sites"]:
         fails.append("unclassified reader sites rose: %d (baseline %d) -- a new idiom the tool "
                      "cannot read" % (rep["totals"]["unclassified_sites"], base["unclassified_sites"]))
@@ -691,7 +743,8 @@ def main(argv=None):
                     help="scan the working tree instead of the committed tree (HEAD)")
     args = ap.parse_args(argv)
 
-    rep = build_report(open_tree(args.root, args.worktree), with_config=not args.check)
+    rep = build_report(open_tree(args.root, args.worktree), with_config=not args.check,
+                       ledger=load_ledger(args.root))
     t = rep["totals"]
 
     if args.write:
@@ -737,6 +790,7 @@ def main(argv=None):
         print("read sites analysed      : %d (reader %d, token %d, nonreader %d, unclassified %d)" % (
             t["read_sites"], t["reader_sites"], t["token_sites"], t["nonreader_sites"], t["unclassified_sites"]))
         print("CONFLICTING GATES        : %d" % t["conflict_gates"])
+        print("  unresolved (not enum/divergent): %d" % t["unresolved_conflicts"])
     return 0
 
 

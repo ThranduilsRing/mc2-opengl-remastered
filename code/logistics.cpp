@@ -967,7 +967,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	// (campaign intro PreVideo e.g. poarintro.bik, mission cutscenes) so the
 	// automated boot reaches the bay/purchase screens deterministically instead
 	// of sitting on the intro for the capture window.
-	if ( std::getenv("MC2_BOOT_TO_BAY") )
+	if ( std::getenv("MC2_BOOT_TO_BAY") && std::getenv("MC2_BOOT_TO_BAY")[0] )
 		return;
 
 	FullPathFileName path;

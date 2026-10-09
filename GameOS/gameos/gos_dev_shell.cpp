@@ -57,7 +57,7 @@ bool shellEnabled()
 {
     static const bool s_on = [] {
         const char* v = getenv("MC2_DEV_SHELL");
-        return v && atoi(v) != 0;
+        return v && v[0] == '1';
     }();
     return s_on;
 }

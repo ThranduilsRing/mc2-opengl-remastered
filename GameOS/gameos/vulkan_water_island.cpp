@@ -170,19 +170,9 @@ bool waterFenceDeferEnabled() {
 // MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
 // terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
 // render in-place without another GL/VK semaphore round trip.
-// VK-RUNG8-ITEM5: MC2_VK_WATER_DIRECT_CHAIN is RETIRED. Water co-write is now
-// unconditionally direct-chain-native (the GL<->VK semaphore-handoff arm + the
-// shared-scene GL-import half are deleted). Parseable no-op: setting it explicitly
-// prints one deprecation note and changes nothing.
+// Water co-write is unconditionally direct-chain-native (the GL<->VK
+// semaphore-handoff arm and the shared-scene GL-import half are deleted).
 bool waterDirectChainRequested() {
-    static bool s_noted = false;
-    if (!s_noted) {
-        s_noted = true;
-        const char* v = std::getenv("MC2_VK_WATER_DIRECT_CHAIN");
-        if (v && v[0])
-            vlog("[VK_WATER_TIER1] MC2_VK_WATER_DIRECT_CHAIN is deprecated "
-                 "(water is unconditionally direct-chain-native); ignoring explicit value.");
-    }
     return true;
 }
 

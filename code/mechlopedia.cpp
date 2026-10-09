@@ -316,12 +316,13 @@ void Mechlopedia::begin()
 	// MC2_BOOT_TO_SCREEN=encyclopedia_<tab> harness sub-target: land on a
 	// specific encyclopedia tab with no clicks (weapons/vehicles/buildings).
 	long bootTab = 0;
-	if ( const char* scr = std::getenv("MC2_BOOT_TO_SCREEN") )
+	const char* bootScr = std::getenv("MC2_BOOT_TO_SCREEN");
+	if ( bootScr && bootScr[0] )
 	{
-		if      ( !S_stricmp(scr, "encyclopedia_vehicles") )  bootTab = ENCYCLO_VEHIC;
-		else if ( !S_stricmp(scr, "encyclopedia_buildings") ) bootTab = ENCYCLO_BUILD;
-		else if ( !S_stricmp(scr, "encyclopedia_weapons") )   bootTab = ENCYCLO_WEAPONS;
-		else if ( !S_stricmp(scr, "encyclopedia_pilots") )    bootTab = ENCYCLO_PILOTS;
+		if      ( !S_stricmp(bootScr, "encyclopedia_vehicles") )  bootTab = ENCYCLO_VEHIC;
+		else if ( !S_stricmp(bootScr, "encyclopedia_buildings") ) bootTab = ENCYCLO_BUILD;
+		else if ( !S_stricmp(bootScr, "encyclopedia_weapons") )   bootTab = ENCYCLO_WEAPONS;
+		else if ( !S_stricmp(bootScr, "encyclopedia_pilots") )    bootTab = ENCYCLO_PILOTS;
 	}
 
 	if ( bootTab )

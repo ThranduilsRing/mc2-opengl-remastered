@@ -172,7 +172,8 @@ static void applyKey(const char* key, float val, int& count) {
             count++;
         }
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
-        if (!envIsSet("MC2_WATER_SKYTINT")) {
+        const char* skyTintEnv = getenv("MC2_WATER_SKYTINT");
+        if (!(skyTintEnv && skyTintEnv[0] && skyTintEnv[0] != '0')) {
             gos_SetWaterSkyTintStrength(val);
             count++;
         }

@@ -359,3 +359,31 @@ def test_committed_baseline_matches_the_tool_format():
     assert isinstance(base["conflict_gates"], list)
     assert base["conflict_gates"] == sorted(base["conflict_gates"])
     assert isinstance(base["unclassified_sites"], int)
+
+
+# ---- G0 ledger -------------------------------------------------------------
+
+def test_ledger_accepts_enum_and_divergent_but_not_resolved_conflicts():
+    rep = _fake_report(["A", "B", "C"], 0)
+    rep["totals"]["unresolved_conflicts"] = 1
+    rep["regressed_gates"] = ["C"]
+    base = {"conflict_gates": ["A", "B", "C"], "unresolved_conflicts": 1, "unclassified_sites": 0}
+    fails = gc.check(rep, base)
+    assert any("C was resolved by G0" in f for f in fails)
+
+
+def test_unresolved_count_may_not_rise():
+    rep = _fake_report(["A"], 0)
+    rep["totals"]["unresolved_conflicts"] = 2
+    base = {"conflict_gates": ["A"], "unresolved_conflicts": 1, "unclassified_sites": 0}
+    assert any("unresolved conflicts rose" in f for f in gc.check(rep, base))
+
+
+def test_committed_ledger_covers_every_baseline_conflict():
+    import json
+    base = gc.load_baseline(ROOT)
+    ledger = json.load(open(os.path.join(ROOT, "tools", "gate_g0_ledger.json"), encoding="utf-8"))["gates"]
+    for g in base["conflict_gates"]:
+        assert ledger.get(g, {}).get("status") in gc.LEDGER_ACCEPTED, g
+    for g, e in ledger.items():
+        assert e["status"] in ("resolved", "enum", "divergent", "note"), g

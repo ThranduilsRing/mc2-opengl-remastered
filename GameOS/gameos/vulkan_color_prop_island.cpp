@@ -148,19 +148,9 @@ bool propPerfGateRequested() {
     return state == 1;
 }
 
-// VK-RUNG8-ITEM5: MC2_VK_PROP_DIRECT_CHAIN is RETIRED. Prop co-write is now
-// unconditionally direct-chain-native (the GL<->VK semaphore-handoff arm + the
-// shared-scene GL-import half are deleted). The gate is a parseable no-op: setting
-// it explicitly prints one deprecation note and changes nothing.
+// Prop co-write is unconditionally direct-chain-native (the GL<->VK
+// semaphore-handoff arm and the shared-scene GL-import half are deleted).
 bool propDirectChainRequested() {
-    static bool s_noted = false;
-    if (!s_noted) {
-        s_noted = true;
-        const char* v = std::getenv("MC2_VK_PROP_DIRECT_CHAIN");
-        if (v && v[0])
-            vlog("[VK_PROP_COLOR_TIER1] MC2_VK_PROP_DIRECT_CHAIN is deprecated "
-                 "(prop is unconditionally direct-chain-native); ignoring explicit value.");
-    }
     return true;
 }
 

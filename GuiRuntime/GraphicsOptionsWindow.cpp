@@ -1380,11 +1380,12 @@ static void drawRenderPassesSection() {
     ImGui::Separator();
     ImGui::TextUnformatted("FX / Particles");
 
-    bool fxDisabled = (getenv("MC2_DISABLE_GOSFX") != nullptr);
+    const char* fxEnv = getenv("MC2_DISABLE_GOSFX");
+    bool fxDisabled = (fxEnv && fxEnv[0] == '1');
     if (fxDisabled) {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "[off]  FX/Particles");
         ImGui::SameLine();
-        ImGui::TextDisabled("MC2_DISABLE_GOSFX set — requires restart to re-enable");
+        ImGui::TextDisabled("MC2_DISABLE_GOSFX=1 — requires restart to re-enable");
     } else {
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "[ON]   FX/Particles");
         ImGui::SameLine();

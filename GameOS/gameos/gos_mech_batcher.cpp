@@ -2956,7 +2956,7 @@ void GpuMechBatcher::flush() {
     // Must run before s_pendingSubmits.clear() so ExtractRenderSnapshot can read this frame's data.
     static const bool s_mechExtractEnabled = [] {
         const char* v = std::getenv("MC2_SNAPSHOT_MECH_EXTRACT");
-        return v && v[0] == '1';
+        return v && v[0] && v[0] != '0';
     }();
     if (s_mechExtractEnabled) {
         s_mechExtractPersist.clear();

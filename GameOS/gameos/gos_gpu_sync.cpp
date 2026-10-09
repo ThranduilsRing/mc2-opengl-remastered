@@ -14,7 +14,7 @@ bool contractAssertEnabled() {
     static int cached = -1;
     if (cached < 0) {
         const char* v = std::getenv("MC2_RENDER_CONTRACT_ASSERT");
-        cached = (v && v[0] != '0') ? 1 : 0;
+        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
     }
     return cached == 1;
 }

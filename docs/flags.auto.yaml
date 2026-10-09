@@ -6,7 +6,7 @@
 generator_version: "2.1.0"
 registry_entry_count: 354
 registry_env_flag_count: 353
-sweep_flag_count: 1006
+sweep_flag_count: 1003
 flag_count: 1062
 flags:
   - name: MC2_3DVIEW_DIAG
@@ -1413,12 +1413,11 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gameosmain.cpp
       - GuiRuntime/GraphicsOptionsWindow.cpp
       - mclib/mlr/mlr_gate.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
+    documented_in_tier1_env_vars: yes
   - name: MC2_DPI_UNAWARE
     default: unknown
     declared_in: null
@@ -5609,8 +5608,8 @@ flags:
     doc: "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow). **DEFAULT ON; kill-switch MC2_SHADOW_ENABLE=0.** GATE-DEFAULT-TRUTH-1 (2026-07-30) corrected this entry, which..."
     referenced_at:
       - GameOS/gameos/gos_mech_batcher.cpp
-      - GameOS/gameos/vulkan_post_screenfx_native.cpp
       - GameOS/gameos/gos_static_prop_batcher.cpp
+      - GameOS/gameos/vulkan_post_screenfx_native.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -5959,7 +5958,6 @@ flags:
     doc: "Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state (gos_static_prop_batcher.cpp). Default-ON as of STATIC-PROP-V3-FLIP (2026-05-27). Kill-switch: =0 forces O..."
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp
-      - editor/EditorMFC.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -6681,9 +6679,10 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_static_prop_batcher.cpp
+      - GameOS/gameos/gos_static_prop_registry.cpp
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
+    documented_in_tier1_env_vars: yes
   - name: MC2_STATIC_PROXY_RECON
     default: off
     kind: Feature
@@ -8930,8 +8929,7 @@ flags:
     feature_id: MC2_FEATURE_VK_PROP_DIRECT_CHAIN
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_PROP_COLOR_TIER1. When ON, the prop color island treats the shared scene color0/normal/depth images as alrea..."
-    referenced_at:
-      - GameOS/gameos/vulkan_color_prop_island.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9104,8 +9102,7 @@ flags:
     feature_id: MC2_FEATURE_VK_TERRAIN_CSM
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active). When MC2_SHADOW_CSM is ON (launcher default) the single-map dynshadow pa..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lod_chunk.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9275,8 +9272,7 @@ flags:
     feature_id: MC2_FEATURE_VK_WATER_DIRECT_CHAIN
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF. Requires MC2_VK_WATER_TIER1. When ON, the water island treats the shared scene color0/normal/depth images as already Vulkan..."
-    referenced_at:
-      - GameOS/gameos/vulkan_water_island.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -9651,6 +9647,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
+      - GameOS/gameos/visual_tuning_profile.cpp
       - GuiRuntime/GraphicsOptionsWindow.cpp
     registered: no
     in_smoke_passthrough: no

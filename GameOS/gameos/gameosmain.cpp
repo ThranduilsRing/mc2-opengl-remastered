@@ -1047,7 +1047,8 @@ int main(int argc, char** argv)
         const bool automation =
             std::getenv("MC2_NO_LAUNCHER")     || std::getenv("MC2_SMOKE_SEED") ||
             std::getenv("MC2_SMOKE_MODE")      || std::getenv("MC2_HEARTBEAT")  ||
-            std::getenv("MC2_DEBUG_STATE_DUMP") || std::getenv("MC2_LOG") ||
+            (std::getenv("MC2_DEBUG_STATE_DUMP") && std::getenv("MC2_DEBUG_STATE_DUMP")[0] && std::getenv("MC2_DEBUG_STATE_DUMP")[0] != '0') ||
+            std::getenv("MC2_LOG") ||
             gos_WindowOffscreenRequested() || gos_CursorControlSuppressed();
         if (!fromLauncher && !automation) {
             char exePath[MAX_PATH] = {0};
@@ -1262,7 +1263,7 @@ int main(int argc, char** argv)
         const char* _gcs = getenv("MC2_GPU_CULL_SUBSTRATE");
         bool gpuCullSubstrate = (_gcs == nullptr || _gcs[0] != '0');
         bool gpuCullParity    = (getenv("MC2_GPU_CULL_AABB_PARITY") != nullptr && getenv("MC2_GPU_CULL_AABB_PARITY")[0] != '0');
-        const bool shrHR      = (getenv("MC2_SHADER_HOT_RELOAD")    != nullptr);
+        const bool shrHR      = (getenv("MC2_SHADER_HOT_RELOAD")    != nullptr && getenv("MC2_SHADER_HOT_RELOAD")[0] == '1');
         const bool revZ       = (getenv("MC2_REVERSE_Z_TRACE")      != nullptr);
         // PR-0: dormant [TERRAIN_SURFACE v1] lifecycle channel gate. Trace-only,
         // default-OFF, separate from the MC2_TERRAIN_SURFACE path-select switch.
@@ -1330,18 +1331,6 @@ int main(int argc, char** argv)
                           "[MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n",
                           (int)matGpuOn, (int)matSampleOn);
             MC2_DIAG_FPUTS(buf, stderr);
-        }
-
-        // [UNIFIED_PROJ v1] Warn when MC2_DISABLE_GOSFX=0 dev-override is active
-        // under unified projection. Default MC2_DISABLE_GOSFX=1 is unaffected.
-        {
-            const char* gosfxEnv = getenv("MC2_DISABLE_GOSFX");
-            if (gosfxEnv != nullptr && strcmp(gosfxEnv, "0") == 0) {
-                fprintf(stderr,
-                    "[UNIFIED_PROJ v1] WARN: MC2_DISABLE_GOSFX=0 active under unified "
-                    "projection. gosFX particles will render incorrectly (MLR clipper "
-                    "uses stale convention). See CLAUDE.md Known Issues.\n");
-            }
         }
 
         // GPU cull record schema selftest.

@@ -4624,7 +4624,7 @@ void ControlGui::playMovie( const char* fileName )
 	// Headless harness: mission-objective briefing videos (CPlayBIK) reach here,
 	// bypassing the MC2_BOOT_TO_BAY gate in Logistics::playFullScreenVideo. Skip
 	// them too so the boot-to-purchase capture is not blocked by standin.bik.
-	if ( std::getenv("MC2_BOOT_TO_BAY") )
+	if ( std::getenv("MC2_BOOT_TO_BAY") && std::getenv("MC2_BOOT_TO_BAY")[0] )
 		return;
 
 	// Apply hiResOffsetX/Y at use time — they were still 0 when

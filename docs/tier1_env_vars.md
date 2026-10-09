@@ -546,6 +546,8 @@ Gates found in source but missing from `scripts/check-env-registry.sh` (now allo
 - `MC2_UI_DEFS_LOADSCREEN=1` / `MC2_UI_DEFS_RESULTS=1` — opt the loadscreen pages / mission-results page back into data/defs UI (both pinned to legacy by default until authored).
 - `MC2_UI_DEFS_IGNORE_PACKAGE_VERSION=1` — bypass the UI defs package version check (modder iteration escape hatch).
 - `MC2_UI_DEFS_TRACE=1` — UI defs resolve/replacement trace (`gui/UiDefs.cpp`, `GuiRuntime/GuiRuntime.cpp`).
+- `MC2_DISABLE_GOSFX=1` — disable the original gosFX/MLR particle leaves (mlr_gate). Default **OFF** (FX enabled); only `=1` disables, and the Graphics Options window shows the state.
+- `MC2_STATIC_PROP_TRACE=1` — static-prop registry trace and the one-shot registered-types dump. Default **OFF**; set, non-empty and not `0` enables.
 - `MC2_FORCE_43=1` — forced 4:3 letterbox composite box (launcher "Force 4:3" toggle; unset = full surface, byte-identical).
 - `MC2_HUD_SCALE=<0.2..1.0>` — HUD scale env seed; the ImGui slider wins after startup.
 - `MC2_PREVIEW_FBO_SCALE=<1..8>` — camera-preview FBO supersample factor (default **4** = 3200x2400).

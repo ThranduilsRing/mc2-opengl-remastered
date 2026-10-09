@@ -147,6 +147,13 @@ static bool envIsSet(const char* name) {
     return v && v[0] != '\0';
 }
 
+// A gate is ON when set, non-empty and not "0" (envIsSet above answers "is a value
+// present", which is what the numeric tunables need).
+static bool envGateOn(const char* name) {
+    const char* v = getenv(name);
+    return v && v[0] && v[0] != '0';
+}
+
 static float getf(const std::map<std::string,float>& m, const char* key, float def) {
     auto it = m.find(key);
     return (it != m.end()) ? it->second : def;
@@ -164,7 +171,7 @@ static float getf(const std::map<std::string,float>& m, const char* key, float d
 // the shipped 0.7 default. Gate OFF -> member stays at its 0.0f C++
 // initializer -> byte-identical.
 static void applyControlAlbedoStrength(const std::map<std::string,float>& v, bool jsonLoaded) {
-    if (!envIsSet("MC2_TERRAIN_CONTROLMAP_ALBEDO")) return;  // gate OFF -> no-op, member stays 0.0f
+    if (!envGateOn("MC2_TERRAIN_CONTROLMAP_ALBEDO")) return;  // gate OFF -> no-op, member stays 0.0f
 
     float strength = jsonLoaded ? getf(v, "controlAlbedoStrength", 0.7f) : 0.7f;
     if (const char* envStrength = getenv("MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH")) {
@@ -186,7 +193,7 @@ static void applyMatAlbedoTextures(const std::map<std::string,float>& v,
                                    const std::map<std::string,std::string>& strs,
                                    const std::map<std::string,std::string>& layerStrs,
                                    bool jsonLoaded) {
-    if (!envIsSet("MC2_TERRAIN_MATERIAL_TEXTURES")) return;  // gate OFF -> no-op
+    if (!envGateOn("MC2_TERRAIN_MATERIAL_TEXTURES")) return;  // gate OFF -> no-op
 
     float strength = -1.0f;  // <0 = no JSON value (binder falls to 0.7 default)
     int pathOverrides = 0;
@@ -221,9 +228,9 @@ static void applyMatAlbedoTextures(const std::map<std::string,float>& v,
 void terrainMaterials_apply(const char* /*missionName*/) {
     const char* pathEnv = getenv("MC2_TERRAIN_MATERIAL_LIB_FILE");
     const char* path = (pathEnv && pathEnv[0]) ? pathEnv : "data/terrain_materials.json";
-    bool materialLibGateOn = envIsSet("MC2_TERRAIN_MATERIAL_LIB");
-    bool controlAlbedoGateOn = envIsSet("MC2_TERRAIN_CONTROLMAP_ALBEDO");
-    bool matTexturesGateOn = envIsSet("MC2_TERRAIN_MATERIAL_TEXTURES");  // TERRAIN-MATERIAL-TEXTURES-1
+    bool materialLibGateOn = envGateOn("MC2_TERRAIN_MATERIAL_LIB");
+    bool controlAlbedoGateOn = envGateOn("MC2_TERRAIN_CONTROLMAP_ALBEDO");
+    bool matTexturesGateOn = envGateOn("MC2_TERRAIN_MATERIAL_TEXTURES");  // TERRAIN-MATERIAL-TEXTURES-1
 
     if (!materialLibGateOn && !controlAlbedoGateOn && !matTexturesGateOn)
         return;  // all gates OFF -> silent no-op

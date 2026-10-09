@@ -6066,7 +6066,7 @@ void gosRenderer::beginFrame()
 static bool gos_ShaderHotReloadEnabled() {
     static const bool s = []() {
         const char* v = getenv("MC2_SHADER_HOT_RELOAD");
-        return v && v[0] == '1' && v[1] == '\0';
+        return v && v[0] == '1';
     }();
     return s;
 }
@@ -7588,7 +7588,8 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // (scene.gosfx_clipper lost-draw samples). Expand to a plain triangle list and
     // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
     // Only when IsHUD is set AND the VFX sub-gate is armed (VK) -> GL byte-identical.
-    if (renderStates_[gos_State_IsHUD] && num_indices > 0 && mc2vkgate::subGate("MC2_VK_VFX")) {
+    const bool vkVfxArmed = mc2vkgate::subGate("MC2_VK_VFX");
+    if (renderStates_[gos_State_IsHUD] && num_indices > 0 && vkVfxArmed) {
         std::vector<gos_VERTEX> expanded;
         expanded.reserve((size_t)num_indices);
         for (int i = 0; i < num_indices; ++i)

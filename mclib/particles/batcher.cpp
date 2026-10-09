@@ -82,11 +82,8 @@ void initialize_env() {
     g_log_value = (vl && vl[0] == '1');
     // REVERTED TO CPU/MLR DEFAULT (user request: GPU FX looked broken). Absent
     // env var → DISABLED (legacy CPU billboards). Opt back into GPU with "1".
-    if (!v) {
-        g_enabled_value = false;  // default OFF -> legacy CPU/MLR FX
-    } else if (v[0] == '1') {
-        g_enabled_value = true;
-    } else {
+    g_enabled_value = (v && v[0] == '1');   // default OFF -> legacy CPU/MLR FX
+    if (v && v[0] != '1') {
         if (v[0] != '0') {
             // Unknown value — warn once if logging enabled.
             if (g_log_value) {

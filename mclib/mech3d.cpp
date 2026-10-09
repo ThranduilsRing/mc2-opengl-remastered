@@ -184,7 +184,8 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 	if (fileExists(tgaPath))
 		return true;
 	const char* v = getenv("MC2_TEXMGR_KTX_PRIMARY");
-	const bool ktxPrimary = (!v || !v[0]) ? true : (v[0] != '0');  // default mode 1
+	const int ktxPrimaryMode = (v && v[0]) ? atoi(v) : 1;   // default mode 1
+	const bool ktxPrimary = (ktxPrimaryMode != 0);
 	if (!ktxPrimary)
 		return false;
 	char ktx[1024];

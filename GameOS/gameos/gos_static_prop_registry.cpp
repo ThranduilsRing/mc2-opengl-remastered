@@ -135,7 +135,7 @@ static bool parseEnvBoolWithDefault(const char* name, bool defaultValue) {
 // when chasing a regression). The MC2_FORCE_DYNAMIC_TREES env in
 // TreeAppearance::render() still works as the per-tree operator escape.
 static const bool s_enabled             = parseEnvBoolWithDefault("MC2_STATIC_PROP_REGISTRY",          true);
-static const bool s_trace               = parseEnvBoolWithDefault("MC2_STATIC_PROP_TRACE",              false);
+static const bool s_trace               = [] { const char* v = getenv("MC2_STATIC_PROP_TRACE"); return v && v[0] && v[0] != '0'; }();
 // Task 9 (Track B): mission-load + late-spawn registration ON by default.
 // Soak started 2026-05-06; all Task 8 parity gates passed.
 // Set MC2_STATIC_PROP_MISSION_LOAD_REG=0 to opt out.

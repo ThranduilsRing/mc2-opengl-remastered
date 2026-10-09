@@ -5893,7 +5893,9 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 // Gated behind MC2_STATIC_PROP_TRACE 2026-05-17: one-shot
                 // but ~600-line load-time dump; demote-not-delete.
                 static const bool s_gpuPropsRegDump =
-                    (getenv("MC2_STATIC_PROP_TRACE") != nullptr);
+                    (getenv("MC2_STATIC_PROP_TRACE") != nullptr &&
+                     getenv("MC2_STATIC_PROP_TRACE")[0] != '\0' &&
+                     getenv("MC2_STATIC_PROP_TRACE")[0] != '0');
                 static bool s_emittedRegisteredDump = false;
                 if (s_gpuPropsRegDump && !s_emittedRegisteredDump) {
                     s_emittedRegisteredDump = true;

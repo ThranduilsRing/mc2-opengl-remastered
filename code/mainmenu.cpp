@@ -464,7 +464,7 @@ void MainMenu::update()
 		// prefix match: "encyclopedia" or "encyclopedia_<tab>" (tab handled in
 		// Mechlopedia::begin)
 		if ( !s_bootToEncycloFired && bootScr && !S_strnicmp(bootScr, "encyclopedia", 12)
-			&& !std::getenv("MC2_BOOT_TO_BAY") && !introMovie )
+			&& !(std::getenv("MC2_BOOT_TO_BAY") && std::getenv("MC2_BOOT_TO_BAY")[0]) && !introMovie )
 		{
 			s_bootToEncycloFired = true;
 			bDrawMechlopedia = true;

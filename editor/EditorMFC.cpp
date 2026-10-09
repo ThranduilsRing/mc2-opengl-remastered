@@ -177,15 +177,6 @@ static void editor_set_default_env_vars()
     if (!getenv("MC2_EDITOR_TRACE"))            _putenv_s("MC2_EDITOR_TRACE",              "1");
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
-
-    // Static props: the GPU static-prop draw defaults to a render-world SNAPSHOT
-    // packet (MC2_SNAPSHOT_STATIC_PROP_BUILD, V3 flip 2026-05-27) and retires the
-    // live builder. The editor does NOT run the game's render-world snapshot
-    // extraction, so its snapshot is EMPTY -> placed objects (and the placement-
-    // cursor preview) never draw, even though they are marked visible via the live
-    // builder. Force the live builder in the editor so per-frame markVisible drives
-    // the draw. (.bat / explicit env still overrides since we only set when unset.)
-    if (!getenv("MC2_SNAPSHOT_STATIC_PROP_BUILD")) _putenv_s("MC2_SNAPSHOT_STATIC_PROP_BUILD", "0");
 }
 
 static void EarlyTrace(const char* msg)

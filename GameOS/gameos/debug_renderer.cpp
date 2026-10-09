@@ -25,13 +25,13 @@ struct DbgVert { float x, y, z, r, g, b, a; };
 static constexpr int kVertCapacity = 65536;
 
 // ---------------------------------------------------------------------------
-// Env helper (default OFF -- absent or "0" = disabled)
+// Env helper (default OFF -- absent, empty or "0" = disabled)
 // MUST be defined before the static bools that call it.
 // ---------------------------------------------------------------------------
 
 static bool envFlagDefaultOff(const char* name) {
     const char* v = getenv(name);
-    return v && !(v[0] == '0' && v[1] == '\0');
+    return v && v[0] && v[0] != '0';
 }
 
 // ---------------------------------------------------------------------------
