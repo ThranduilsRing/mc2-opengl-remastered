@@ -97,11 +97,11 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const;
 
-	virtual int
+	virtual size_t
 			GetSize()
 		{ 
 			Check_Object(this);
-			int ret = MLRPrimitive::GetSize();
+			size_t ret = MLRPrimitive::GetSize();
 			ret += testList.GetSize();
 			ret += facePlanes.GetSize();
 

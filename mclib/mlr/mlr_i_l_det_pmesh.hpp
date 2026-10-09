@@ -110,11 +110,11 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const;
 
-	virtual int
+	virtual size_t
 			GetSize()
 		{ 
 			Check_Object(this);
-			int ret = MLR_I_C_DeT_PMesh::GetSize();
+			size_t ret = MLR_I_C_DeT_PMesh::GetSize();
 			ret += normals.GetSize();
 			ret += litColors.GetSize();
 

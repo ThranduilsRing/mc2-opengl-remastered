@@ -255,11 +255,11 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const;
 
-		virtual int
+		virtual size_t
 			GetSize()
 		{ 
 			Check_Object(this);
-			int ret = 0;
+			size_t ret = 0;
 			ret += coords.GetSize();
 			ret += colors.GetSize();
 			ret += normals.GetSize();
