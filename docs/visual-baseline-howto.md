@@ -77,7 +77,7 @@ Available particle debug modes (mirror of `particle_billboard.frag`
 final frame), `1` Albedo (raw atlas texel), `2` Alpha (final alpha
 grayscale), `3` ParticleKind (hashed color per kind), `4` Overdraw (additive
 proxy). Diagnostic-only; never alters the default mode-0 final rendering.
-`MC2_GPU_PARTICLES` stays default-ON so particles draw.
+`MC2_GPU_PARTICLES` defaults OFF, so particles only draw when it is set to 1.
 
 **Transience caveat (important).** Unlike terrain/static-prop/mech, VFX is
 *not* present in every frame — particles are combat-only and appear

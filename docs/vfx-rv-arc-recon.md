@@ -71,7 +71,7 @@ mc2.fx (binary effect database on disk)
                                                      pointcloud.cpp:478-479, shardcloud.cpp:322-323,
                                                      tube.cpp:1175-1176
 
-  [NEW GPU bridge — render-only, gated MC2_GPU_PARTICLES (default ON)]
+  [NEW GPU bridge — render-only, gated MC2_GPU_PARTICLES (default OFF)]
   mc2::particles::Spawn(spec, parentToWorld, seed)   mclib/particles/spawn.cpp:24
        └─ switch on spec->GetClassID()               spawn.cpp:33-55
             └─ SpawnCard / SpawnCardCloud / SpawnPoint / SpawnShard / SpawnTube
@@ -249,7 +249,7 @@ but is closure-red on every Track-V substrate axis below.
 | PipelineId | 1,2 | none | **none** (`Count_=3`) |
 | debug-state JSON section | `staticPropOpaque{}` | `mech{}` | **none** |
 | ImGui inspector panel | StaticProp | Mech | **YES** "VFX Pass##vfx" (`EditorInspector.cpp:1035-1095`), read-only |
-| env kill-switch | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | `MC2_SNAPSHOT_MECH_EXTRACT` | `MC2_GPU_PARTICLES` (default ON) |
+| env kill-switch | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | `MC2_SNAPSHOT_MECH_EXTRACT` | `MC2_GPU_PARTICLES` (default OFF; =1 enables) |
 | visual baseline / capture preset | staticprop_baseline_01/02 | mech_24, mech_17 | **none** |
 
 ### Existing assets to reuse
@@ -281,8 +281,7 @@ added in slice 2).
 
 ### Default-ON / mismatch findings
 
-- **`MC2_GPU_PARTICLES` default is ON** (verified `batcher.cpp:82`
-  `g_enabled_value = true` when env absent). `effect.cpp:43` is a *diagnostic
+- **`MC2_GPU_PARTICLES` default is OFF** (reader: `GameOS/gameos/gos_particle_bridge.cpp`; the earlier `batcher.cpp:82` citation needs re-verification). `effect.cpp:43` is a *diagnostic
   counter* gate (`==1` only), NOT a render gate — it does not suppress
   producers.
 - **UI/runtime mismatch:** `GuiRuntime/GraphicsOptionsWindow.cpp:99` lists

@@ -133,7 +133,7 @@ defer IBL.
 1. **MECH-VIEWUNIFORMS-1-PRE** (next; no-visual, gated/fallback) — mirror
    static_prop F1-3B. Reflect goldens regen required (Vulkan SDK dependency —
    see risk below).
-2. **MECH-AMBIENT-1** (first visual; `MC2_MECH_AMBIENT_V1` default OFF) — only
+2. **MECH-AMBIENT-1** (first visual; `MC2_MECH_AMBIENT_V1` reader default is ON) — only
    after capture matrix from step 1 confirms the migration is byte-identical,
    and only with separate visual approval.
 3. Defer: MECH-IBL-1, any PBR/normal/damage work (no data source).

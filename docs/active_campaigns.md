@@ -41,7 +41,7 @@ scoped as a hand-off artifact, not a clipmap implementation). Shipped:
 |---|---|---|---|
 | HUD-IMGUI slices A–E | `ccdb1628` `49ef1e3b` `c7928d6d` `4f99d149` `d1811661` `db326915` | SHIPPED | in-mission HUD ImGui port (readability / pause / tabs / info window / tac-map); scope doc `65ab058c`; all gates default-OFF |
 | STATIC-SHADOW-BANDING-1 | `9c31e2bf` | SHIPPED | PCF undersampling banding fix on flat terrain |
-| STATIC-SHADOW-BANDING-2 | `5b0e488e` | SHIPPED | slope-normal bias + normal-offset receiver; gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-OFF, awaiting user field check |
+| STATIC-SHADOW-BANDING-2 | `5b0e488e` | SHIPPED | slope-normal bias + normal-offset receiver; gate `MC2_SHADOW_STATIC_BANDFIX_V2` default-ON, awaiting user field check |
 | ROAD-PBR-OPTIN-1 | `63bb0832` | SHIPPED | legacy road tiles are the default everywhere; PBR roads opt-in |
 | ROAD-PBR-FAILSOFT-1 | `b59cced7` | SHIPPED | legacy road tiles when asphalt/gravel TGAs absent |
 | CLIFF-SHADOW-FLOOR | `52f12f9c` | SHIPPED | gated lift for shadow-side steep faces |
@@ -224,12 +224,12 @@ Tier1 5/5 PASS. Item 8 fires when NVIDIA hardware available.
 - **ViewUniforms UBO** (default-ON): binding=3, kill-switch MC2_VIEW_UNIFORMS=0.
 - **MaterialGpu** (default-ON): MC2_MATERIAL_GPU / MC2_MATERIAL_GPU_SAMPLE.
 - **DrawPacket v7** (default-ON): kill-switch MC2_STATIC_PROP_LEGACY_DISPATCH=1.
-- **DrawPacket v8 — live-builder retired** (merged `96c27c2a`, default-ON): snapshot is sole static-prop draw-packet owner; flush() skips per-flush live build + compare. Kill-switch MC2_STATIC_PROP_LIVE_BUILDER=1. Commit-1 (retire); follow-ups: live-builder DELETE after soak (STATIC-PROP-LIVE-BUILDER-DELETE) + the Extract.SP.Fill dirty-list — **shipped as STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1, see below.** Spec/plan in docs/superpowers/{specs,plans}/2026-06-02-static-prop-snapshot-finish*.
+- **DrawPacket v8 — live-builder retired** (merged `96c27c2a`; live builder is default OFF, i.e. retired by default): snapshot is sole static-prop draw-packet owner; flush() skips per-flush live build + compare. Kill-switch MC2_STATIC_PROP_LIVE_BUILDER=1. Commit-1 (retire); follow-ups: live-builder DELETE after soak (STATIC-PROP-LIVE-BUILDER-DELETE) + the Extract.SP.Fill dirty-list — **shipped as STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1, see below.** Spec/plan in docs/superpowers/{specs,plans}/2026-06-02-static-prop-snapshot-finish*.
 - **Snapshot static-prop Fill dirty-only — SHIPPED + merged `cf654080` (2026-06-04), default-ON** (`STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1`, branch `8a209710..60cb4cf8`): `ExtractRenderSnapshot` skips `Extract.SP.Fill`+`WriteLoop` on clean (regGen+cullVer unchanged) frames and memcpy's cached rows into the snapshot arena → **median 1.68ms→36.7µs (−97%, user Tracy)**. Gate `MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY` (=0 kill-switch). Review chain complete; a material-cache staleness hole (`staticPropCacheTypePrimaryMaterial` bumped no generation, compare-oracle blind) caught + fixed `60cb4cf8`. **Contract: any registry mutation of a snapshot-captured field MUST bump `s_registryGeneration`.** Companion compare gate `MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE`. Greybeard meta-fix debt (registry-owned incremental flat-row store = real end-state) logged in `memory/staticprop_per_frame_cpu_retire_campaign.md`.
 - **GOM.readbackSnapshot eliminated** (SHADOW-COPY-1 `99519cbc`/`00bfc28a`): GPU-cull vis bits shadow-copied to system RAM; killed the per-frame BAR-read stall (360ns now). Kill-switch MC2_GPU_CULL_READBACK=0.
 - **TRACKV CPU quick wins** (merged `26974734`): Probe-6 thin-canary readback gated MC2_THIN_CANARY default-OFF; mech MaterialGpu table persistent + dirty-gated upload; ShapeRenderer material-handle cache. renderLists self-time carve ABANDONED (audit rank-2 stale; the 985µs is static-prop registry/light/shadow = other-session lighting-ownership domain, per-instance light slots U=K). Audit: trackv whole-frame CPU optimization audit (never committed — lived on a pruned worktree).
 - **HZB substrate** (merged 5864882c): depth pyramid built, no culling yet. Next: HZB-STATICPROP-CULL-CONSUMER-0 (default-OFF, 1e-4 margin, discontinuity guard).
-- **Water reflection** (merged 68343329): SH-L2 sky, default-OFF. MC2_WATER_REFLECTION=1.
+- **Water reflection** (merged 68343329): SH-L2 sky, default-ON (reader default; earlier notes said default-OFF).
 - **C++17** (CMAKE_CXX_STANDARD 17 in root CMakeLists).
 
 ## Hitch stability track (H-series)

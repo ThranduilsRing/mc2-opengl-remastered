@@ -38,7 +38,7 @@ The stamp is a claim that parity was RE-VERIFIED.
 
 - **2026-07-30, BACKEND-DEFAULT-PARITY-1 — `edge_fog_frag` + `fog_oob_frag`.**
   Both GL members were re-stamped after a **comment-only** edit (the
-  `MC2_SKYBOX_FOG_EXCLUDE` header block in each said "default OFF" long after
+  `MC2_SKYBOX_FOG_EXCLUDE` header block in each said the then-current default (OFF) long after
   the gate was flipped default-ON; the gate-default checker could not see the
   lie while the var had two contradicting C++ readers). The documented parity
   evidence for these two pairs is a **capture-baseline compare**, and engine
