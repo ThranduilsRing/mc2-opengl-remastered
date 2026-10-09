@@ -367,7 +367,7 @@ _default_jobs() {
 }
 
 # Rows measured slow go first so the pool does not end on a long tail.
-_SLOW_FIRST=" no_raw_gl_from_game include_firewall delivery_installs input_capture_visibility_selftest sampler_bindings scripts_tests "
+_SLOW_FIRST=" no_raw_gl_from_game include_firewall delivery_installs input_capture_visibility_selftest sampler_bindings scripts_tests tools_tests "
 
 _drain_queue() {
     local n="${#Q_LABEL[@]}" i
@@ -1563,6 +1563,27 @@ run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base 
 # is the mechanism that manages a count lock properly if this tier ever needs
 # one.
 run_check "scripts_tests"              "py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider"
+
+# ---------------------------------------------------------------------------
+# TOOLS-TESTS-WIRE-1 (2026-10-09) -- the pytest modules that live NEXT TO their tools
+# ---------------------------------------------------------------------------
+# scripts_tests above covers scripts/tests/ only. Another ~75 test modules sit
+# beside the tools they test (tools/terrain_beautify, tools/unit_converter,
+# tools/blender_pipeline, tests/smoke, tests/terrain_gen, tools/asset_cook, ...)
+# and no gate ran them: dark in exactly the way SCRIPTS-TESTS-WIRE-1 describes.
+# Owner ruling 2026-10-09: they are live tests of live tools, so they run.
+#
+# scripts/run_tools_tests.py discovers them via git ls-files, runs each module in
+# its own process in parallel (read-only: -B, no cacheprovider; script-style
+# modules that pytest cannot collect are run as plain scripts), and reconciles
+# failures against scripts/tools_tests.known-failures. It is run_check_tri on
+# purpose: exit 3 == "every failing test is pinned in the ledger" renders as
+# KNOWN, not PASS. A failure outside the ledger is red; a ledgered test that
+# starts passing is ALSO red (stale ledger -- delete the line), so the ledger can
+# only shrink. Nobody fixed the pinned failures when this row was added.
+# Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
+# (assembles release zips + launches a smoke; not an offline contract).
+run_check_tri "tools_tests"             "py -3 scripts/run_tools_tests.py"
 fi   # end of the real board (skipped under --selftest-render, above)
 if [ "$PARALLEL" -eq 1 ]; then _drain_queue; fi
 
