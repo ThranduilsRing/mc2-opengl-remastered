@@ -256,24 +256,19 @@ long HeapManager::commitHeap (unsigned long commitSize)
 //---------------------------------------------------------------------------
 long HeapManager::decommitHeap (unsigned long decommitSize)
 {
-	long result = 0;
-	
-	if (decommitSize == 0)
-		decommitSize = totalSize;
-		
-	if (decommitSize > committedSize)
+	if (decommitSize == 0 || decommitSize > committedSize)
 		decommitSize = committedSize;
 
-	if (decommitSize < committedSize)
-		decommitSize = totalSize;
+	if (decommitSize == 0)
+		return NO_ERR;
 
-	unsigned long decommitAddress = decommitSize;
-	committedSize -= decommitAddress;
+	// The decommitted range is the tail of the committed span: [heap + newCommitted, +decommitSize).
+	unsigned long newCommittedSize = committedSize - decommitSize;
 
-	result = VirtualFree(reinterpret_cast<void *>(static_cast<uintptr_t>(committedSize)),decommitSize,MEM_DECOMMIT);
-	if (result == FALSE)
-		result = GetLastError();
+	if (!VirtualFree(heap + newCommittedSize, decommitSize, MEM_DECOMMIT))
+		return static_cast<long>(GetLastError());
 
+	committedSize = newCommittedSize;
 	return NO_ERR;
 }
 
