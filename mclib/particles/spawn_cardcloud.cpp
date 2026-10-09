@@ -126,7 +126,8 @@ void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
     // Per-spec probe: gated behind MC2_GPU_PARTICLES_LOG=1 (first occurrence only).
     if (Batcher::is_log_enabled()) {
         static std::unordered_set<std::string> s_probed;
-        std::string specName(spec->m_name ? spec->m_name : "<null>");
+        const char* specNameC = static_cast<const char*>(spec->m_name);
+        std::string specName(specNameC ? specNameC : "<null>");
         if (s_probed.insert(specName).second) {
             std::fprintf(stderr,
                 "[SPAWN_PROBE] spec=%s mlrHandle=%u renderState=0x%08x permMask=0x%08x deltaMask=0x%08x\n",

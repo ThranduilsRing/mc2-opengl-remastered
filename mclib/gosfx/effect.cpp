@@ -810,7 +810,7 @@ void gosFX::Effect::Draw(DrawInfo *info)
 	// fx_trace v1: per-spec-name draw-invocation counter (env-gated, default-off).
 	// Per plan v6 §1: nonzero under A2 default-on (Effect::Draw runs to
 	// completion; only the 4 MLR work-leaves no-op downstream).
-	FX_TRACE_DRAW(m_specification ? m_specification->m_name : "(no_spec)");
+	FX_TRACE_DRAW(m_specification ? static_cast<const char*>(m_specification->m_name) : "(no_spec)");
 
 	//
 	//-------------------------------------
