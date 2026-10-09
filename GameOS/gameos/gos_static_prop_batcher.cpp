@@ -10359,8 +10359,7 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
     // reinjPos/reinjCount (VK color feed) assume ONE reinject per frame; flag cleared at frame end.
     { static bool s_warned = false;
       if (s_reinjectedThisFrame && !s_warned) { s_warned = true;
-          fprintf(stderr, "[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid
-"); }
+          fprintf(stderr, "[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid\n"); }
       s_reinjectedThisFrame = true; }
     for (auto& kv : s_persistentStaticStore) {
         const auto& block = kv.second;
