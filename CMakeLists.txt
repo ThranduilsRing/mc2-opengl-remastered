@@ -381,6 +381,12 @@ if(ENABLE_ASSET_CPP_PROBES)
     message(STATUS "ENABLE_ASSET_CPP_PROBES=ON — building offline host tools in tools/cpp_probes/")
 endif()
 
+# Source/execution charset UTF-8 for first-party code only: set after the vendored subdirectories
+# above, since assimp passes its own /source-charset (the two switches are mutually exclusive).
+if(MSVC)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
+endif()
+
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
@@ -752,6 +758,13 @@ if(MC2_ASAN)
 endif()
 
 add_subdirectory("./res" "./out/res")
+# The shipped string table (res/libmain.cpp includes test_scripts/res_conv/strings.res.cpp) holds Windows-1252
+# bytes inside string literals; reading it as UTF-8 would corrupt them, so mc2res_64 keeps the ANSI source charset.
+if(MSVC AND TARGET mc2res_64)
+    get_target_property(_res_opts mc2res_64 COMPILE_OPTIONS)
+    list(REMOVE_ITEM _res_opts "$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
+    set_property(TARGET mc2res_64 PROPERTY COMPILE_OPTIONS "${_res_opts}")
+endif()
 add_subdirectory("./data_tools" "./out/data_tools")
 add_subdirectory("./text_tool" "./out/text_tool")
 # TEMP (merge-methuselas throwaway): @Methuselas's Viewer/CMakeLists.txt lists
