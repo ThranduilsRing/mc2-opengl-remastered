@@ -136,3 +136,17 @@ Zero-inbound: `docs/military.material_suggestions.json`, `docs/rusty_quonset.mat
 9. Opt-in modder tools `mc2fx`, `mc2fx_preview`, `mc2weapon_gui`: keep or delete with `deploy-mc2fx-tools.sh`?
 10. `ui_editor/` (9 files, 345 KB): not examined; appears only via its CMake EXISTS guard.
 11. `install_tree_scatter.py` and the `oracleparse`/`oracle_report`/`render_pass_report` chain: delete with their only consumers?
+
+## Owner rulings (2026-10-09)
+
+1. Brain cluster (`brain_dispatch_harness`, `brain_missionfit_oporbd_test`, `brain_symbol_resolve_test`, `mech_import_harness`): KEEP.
+2. `tools/cpp_probes` (+ `3rdparty/meshoptimizer`): DELETE (lane 2 does it).
+3. The 76 "dark" pytest modules are LIVE: keep them and ADD a `tools_tests` check-contracts row that runs them.
+4. Multi-lane tooling (`parse-done-reports`, lane template, `test_deploy_lease`, `test_smoke_lane_lock`, `spawn_lane`, `test_spawn_lane`): retire now.
+5. Measurement one-offs + their `tests/terrain/*.csv|md` outputs: DELETE.
+6. `tests/visual/golden-sets.json` + `scripts/run_visual.py`: retire (`GOLDENS_DIR` -> `tests/visual/goldens/`).
+7. Historical arc docs: tarball to `E:/mc2-archive-2026-10/docs/`, delete from repo.
+8. `docs/assets/trackg-r0` + tracked `.claude/` evidence: move to E:, delete from repo.
+9. Modder tools `mc2fx`, `mc2fx_preview`, `mc2weapon_gui` + `deploy-mc2fx-tools.sh`: KEEP.
+10. `ui_editor/`: KEEP (lane 2 sets EXCLUDE_FROM_ALL).
+11. `install_tree_scatter.py` + `oracleparse`/`oracle_report`/`render_pass_report` chain: DELETE with their consumers.
