@@ -280,13 +280,6 @@ int   gos_TerrainLightPoolCount();
 void  gos_TerrainPadGlowRGB(float out[3]);
 void  gos_TerrainLightPoolKnobs(int* soft, float* moverDim, float* moverScale,
                                 int* moverMax, int* compress, float* contactShadow);
-// CEMENT-EDGE-CURVE-1 / gos_TerrainCementEdgeCurve() / MC2_CEMENT_EDGE_CURVE:
-// DELETED 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). It shipped at the identity
-// exponent (1.0) and, at every other value, was a no-op on every runway, road
-// and pad-interior pixel because pureConcrete is 0 or exactly 1 there and both
-// are fixed points of pow(x,E). Its measured authority inside the one-tile
-// feather band was 4-5/255, and its stated purpose (the dark ring around pads)
-// was refuted by its own lane as albedo-side. Use MC2_CEMENT_RAMP_WORD.
 // CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD): 0=off (stock). 1=give the
 // terrainType ramp band an ALBEDO source -- borrow the adjacent pad's cement
 // atlas cell into `base` weighted by sqrt(ramp), so the band stops falling back

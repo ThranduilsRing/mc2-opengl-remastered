@@ -4355,26 +4355,13 @@ float gos_TerrainCementLit()
     return s_v;
 }
 
-// CEMENT-EDGE-CURVE-1 (MC2_CEMENT_EDGE_CURVE) was here. DELETED 2026-07-30
-// (LIGHTING-INCAPABLE-BATCH-3). Reader, uniform, registry row, smoke-allowlist
-// entry and docs row all removed together, so nothing is left claiming a gate
-// that no longer exists. Rationale, kept because it is the useful part:
-// the gate was the exponent E of `cementLightBlend = pow(pureConcrete, E)`,
-// shipped at E = 1.0 (the identity, so zero pixels moved at stock), and at any
-// other value it still could not touch a runway, road or pad-interior pixel --
-// pureConcrete is 0 or exactly 1 there, both fixed points of pow(x,E). Inside
-// the one-tile feather band, the only place it had authority, its own status
-// measured 4-5/255 and an E sweep to 0.10 moved the target ring only
-// -18.1 -> -15.0 luma while worsening beacons_mid. The dark ring is an
-// ALBEDO-source discontinuity; MC2_CEMENT_RAMP_WORD below is the measured cure.
-
 // CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD): default OFF. When ON, the
 // terrainType ramp band (0 < pureConcrete < 1, one tile wide, NO cement word of
 // its own) borrows the adjacent pad's cement atlas cell as its albedo instead of
 // keeping the dark baked colormap. MEASURED root cause of the user's "atrocious
 // outlines": the band is an ALBEDO-source discontinuity, not a lighting one --
-// every prior lighting-side lever (MC2_CEMENT_LIT, the tone-match gates,
-// MC2_CEMENT_EDGE_CURVE) could not close it because base never became cement.
+// every prior lighting-side lever (MC2_CEMENT_LIT, the tone-match gates)
+// could not close it because base never became cement.
 int gos_TerrainCementRampWord()
 {
     static const int s_v = []() {

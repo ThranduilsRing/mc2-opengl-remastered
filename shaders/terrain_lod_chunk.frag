@@ -304,32 +304,6 @@ uniform float u_padGlowSpill;   // feather distance (wu) beyond the pad edge, < 
 // is the "runway is grey here and black there" the user reports. 1.0 = cement
 // obeys the same light as the terrain it sits on.
 uniform float u_cementLit;
-// CEMENT-EDGE-CURVE-1 / u_cementEdgeCurve / MC2_CEMENT_EDGE_CURVE: DELETED
-// 2026-07-30 (LIGHTING-INCAPABLE-BATCH-3). Do not reintroduce it without
-// reading this paragraph; it was re-derived independently three times.
-// It was the EXPONENT E of the cement lighting-exemption ramp,
-// `cementLightBlend = pow(pureConcrete, E)`, shipped at E = 1.0.
-//   * At its SHIPPED DEFAULT it was the identity -- zero pixels, every mission.
-//   * At EVERY other value it was still a no-op on every runway, road and pad
-//     INTERIOR pixel, because `pureConcrete` there is either 0 (no cement word)
-//     or exactly 1 (forced by `if (cementHit) pureConcrete = 1.0;` below), and
-//     0 and 1 are FIXED POINTS of pow(x,E) for all E. Its entire authority was
-//     the one-tile smoothstep(2,3,v_terrainType) feather band.
-//   * Inside that band its own status measurement was 4-5/255, and sweeping E
-//     to 0.10 moved the target ring only -18.1 -> -15.0 luma while WORSENING
-//     the beacons_mid pose.
-//   * Its stated purpose was refuted by its own lane: the ring is an ALBEDO-
-//     SOURCE discontinuity (the band has no cement word, so `base` stays the
-//     dark baked colormap while the pad interior draws the cement atlas), and
-//     no lighting curve can close an albedo gap. MC2_CEMENT_RAMP_WORD is the
-//     measured cure and is still here.
-// The expression collapses to `clamp(pureConcrete, 0.0, 1.0)`, which is what
-// E = 1.0 always meant. NOTE, precisely: pow(x, 1.0) is exp2(1.0*log2(x)) on
-// most drivers and is NOT specified bit-exact, so this removal is numerically
-// EQUAL-OR-MORE-EXACT rather than provably byte-identical. It also deletes a
-// real hazard the old code had to guard by hand: an unbound uniform defaults to
-// GL 0.0, and pow(x, 0) == 1.0 would have flat-lit the ENTIRE terrain.
-
 // CEMENT-WORD-RAMP-1 (MC2_CEMENT_RAMP_WORD, default 0 = stock/bit-identical).
 // The MEASURED cure for the dark ring around concrete pads. The one-tile
 // terrainType ramp band has no cement word, so `base` stays the dark baked
@@ -1902,8 +1876,6 @@ void main() {
     // light" once classification coverage is fixed; it is not a brightener and
     // it is not a runway fix.
     float cementLight = mix(1.0, normalLight, u_cementLit);
-    // No pow() edge-curve exponent here; see the
-    // u_cementEdgeCurve note in the uniform block above for why.
     float cementLightBlend = clamp(pureConcrete, 0.0, 1.0);
     normalLight = mix(normalLight, cementLight, cementLightBlend);
     // PAVED-OVERLAY-CLASS-1 mode 1: give overlay-only pavement the SAME lighting
