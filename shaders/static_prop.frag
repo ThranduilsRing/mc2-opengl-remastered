@@ -10,7 +10,8 @@
 
 // POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption for props
 // (binding 28, u_numPoolLights=0 when gated off -> byte-identical). MUST stay
-// OUTSIDE the #ifdef MC2_COALESCE region below -- the legacy (non-coalesce)
+// OUTSIDE the #include <include/prop_dither.hglsl>   // M4: shared Bayer alpha dither (VK color_prop_tier1.frag too)
+#ifdef MC2_COALESCE region below -- the legacy (non-coalesce)
 // variant compiles this file too, and the pool block in main() is
 // unconditional (2026-07-22 regression: include placed inside the coalesce
 // guard broke the legacy program -> ALL props CPU-fallback/no meshes).
@@ -292,14 +293,7 @@ void main() {
             // BUILDING-GLASS-1: Bayer 4x4 ordered-dither threshold. Values are
             // (index+0.5)/16 so thresholds span (0,1) exclusive — a==0 always
             // discards, a==1 never does (binary fence textures unchanged).
-            const float kBayer4[16] = float[16](
-                 0.5/16.0,  8.5/16.0,  2.5/16.0, 10.5/16.0,
-                12.5/16.0,  4.5/16.0, 14.5/16.0,  6.5/16.0,
-                 3.5/16.0, 11.5/16.0,  1.5/16.0,  9.5/16.0,
-                15.5/16.0,  7.5/16.0, 13.5/16.0,  5.5/16.0);
-            int bx = int(gl_FragCoord.x) & 3;
-            int by = int(gl_FragCoord.y) & 3;
-            if (tex_color.a < kBayer4[by * 4 + bx]) {
+            if (propBayerDitherDiscard(tex_color.a, gl_FragCoord.xy)) {
                 discard;
             }
         } else if (tex_color.a < 0.5) {
