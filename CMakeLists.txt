@@ -128,6 +128,7 @@ option(MC2_IMGUI "Enable in-game ImGui UI" OFF)
 # Turn OFF for a pure-mc2 build with MC2_IMGUI=OFF (e.g. the Vulkan parity island),
 # which otherwise cannot exist because the editor forces MC2_IMGUI=ON.
 option(MC2_EDITOR "Build the MC2 Mission Editor (Windows-only, requires MC2_IMGUI=ON)" ON)
+option(MC2_EDITOR_IN_ALL "Include EditRel in the default all build (it recompiles gameos a second time)" OFF)
 # DETERMINISTIC-RNG-1: compile-in the per-gos_rand() "RNG" JSONL trace. Default OFF
 # so stock builds pay nothing; runtime still requires MC2_DETERMINISTIC_RNG=1 +
 # MC2_DIAG_TAGS=RNG. Turn ON only for determinism-proof builds.
@@ -797,6 +798,12 @@ add_subdirectory("./text_tool" "./out/text_tool")
 # lets mc2 build MC2_IMGUI=OFF (Vulkan parity island). Default ON = no change.
 if(MC2_EDITOR)
     add_subdirectory("./editor" "./out/editor")
+    # gameos_editor recompiles every gameos source with a different define set (MC2_IMGUI/MC2_RNG_TRACE are
+    # only set on gameos), so the objects cannot be shared. Build the editor on request instead of doubling
+    # the default build; `ninja EditRel` still builds it. MC2_EDITOR_IN_ALL=ON restores the old default.
+    if(NOT MC2_EDITOR_IN_ALL)
+        set_target_properties(EditRel gameos_editor PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    endif()
 endif()
 
 # -----------------------------------------------------------------------
