@@ -61,17 +61,28 @@ WORKTREE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Argument parsing
 # ---------------------------------------------------------------------------
 QUIET=0
+# PARALLEL-CONTRACTS-1 (2026-10-09): rows run in a pool by default. --serial or
+# CONTRACTS_JOBS=1 restores the old one-at-a-time behaviour; -jN / --jobs=N sets
+# the pool size. Row names, outputs, table order, counts and the exit code are
+# identical to a serial run; only the wall clock changes.
+JOBS="${CONTRACTS_JOBS:-}"
 SELFTEST=0
 SELFTEST_RENDER=0
 for arg in "$@"; do
     case "$arg" in
         --quiet|-q) QUIET=1 ;;
         --selftest) SELFTEST=1 ;;
+        --serial) JOBS=1 ;;
+        -j[0-9]*) JOBS="${arg#-j}" ;;
+        --jobs=*) JOBS="${arg#--jobs=}" ;;
         # Internal. Registers synthetic rows instead of the real board so the
         # selftest can grade what the REAL runners render. Not for humans.
         --selftest-render) SELFTEST_RENDER=1 ;;
         --help|-h)
-            echo "Usage: bash $0 [--quiet] [--selftest]"
+            echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N]"
+            echo "  Rows run in parallel by default (CONTRACTS_JOBS / -jN size the pool,"
+            echo "  --serial = old behaviour). Rows that build, launch or write shared"
+            echo "  files are detected (_is_serial_row) and run alone after the pool."
             echo "  Runs cheap source-level contract checks and prints a PASS/FAIL table."
             echo "  Exits 0 if all pass, nonzero if any fail."
             echo "  --quiet silences PASSING rows only; a FAILING row always states why."
@@ -87,6 +98,7 @@ done
 # ---------------------------------------------------------------------------
 # Check runner
 # ---------------------------------------------------------------------------
+_WALL_T0="$(date +%s%N 2>/dev/null | cut -c1-13)"
 PASS_COUNT=0
 FAIL_COUNT=0
 KNOWN_COUNT=0
@@ -266,23 +278,33 @@ $rerun"
     FAIL_BLOCKS+=("$block")
 }
 
-run_check() {
-    local label="$1"
-    local cmd="$2"
+# ---------------------------------------------------------------------------
+# PARALLEL EXECUTION (PARALLEL-CONTRACTS-1, 2026-10-09)
+# ---------------------------------------------------------------------------
+# In parallel mode run_check / run_check_tri REGISTER a row (duplicate guard
+# unchanged) and only queue it. _drain_queue executes the queue in a pool,
+# capturing each row's output/rc/ms to files, then replays the results through
+# the same finishing code a serial run uses (_finish_check / _finish_check_tri)
+# IN REGISTRATION ORDER, so the table, per-row blocks, counts and exit code match.
+#
+# SERIAL ROWS: a row whose command builds, launches the game, mutates git, or
+# rewrites tracked/shared files must not overlap anything else. They are detected
+# by command text (_is_serial_row) and run one at a time AFTER the pool drains.
+# On the current board none match; the detector guards the day somebody adds one.
+PARALLEL=0
+Q_LABEL=(); Q_CMD=(); Q_KIND=()
+_is_serial_row() {   # $1 = command
+    case "$1" in
+        *cmake*|*msbuild*|*MSBuild*|*ninja*|*mc2.exe*|*run_smoke*|*run_visual_capture*|*run-smoke*) return 0 ;;
+        *"git add"*|*"git commit"*|*"git checkout"*|*"git stash"*|*"git reset"*|*"git worktree"*) return 0 ;;
+        *" --write"*|*" --regen"*|*" --update"*|*" --bless"*|*" --fix"*|*" --apply"*) return 0 ;;
+    esac
+    return 1
+}
 
-    _register_row "$label" "$cmd" || return 0
-
-    local t0 t1 out rc
-    # Header BEFORE the run, as before, so a non-quiet reader still sees which
-    # check is in flight while a 97s row grinds. The only thing that changed for
-    # that reader is that the body is captured and printed a moment later
-    # instead of streamed -- the same bytes, plus a reason the table can carry.
-    if [ "$QUIET" -ne 1 ]; then echo "--- $label ---"; fi
-    t0="$(_now_ms)"
-    out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
-    t1="$(_now_ms)"
-    SECS+=("$((t1 - t0))")
-
+_finish_check() {   # $1 label $2 cmd $3 out $4 rc $5 ms $6 header-already-printed(0/1)
+    local label="$1" cmd="$2" out="$3" rc="$4"
+    SECS+=("$5")
     NAMES+=("$label")
     if [ "$rc" -eq 0 ]; then
         PASS_COUNT=$((PASS_COUNT + 1))
@@ -296,10 +318,92 @@ run_check() {
     fi
 
     if [ "$QUIET" -ne 1 ]; then
+        if [ "${6:-0}" -ne 1 ]; then echo "--- $label ---"; fi
         if [ -n "$out" ]; then printf '%s\n' "$out"; fi
         echo ""
     fi
+}
+
+run_check() {
+    local label="$1"
+    local cmd="$2"
+
+    _register_row "$label" "$cmd" || return 0
+
+    if [ "$PARALLEL" -eq 1 ]; then
+        Q_LABEL+=("$label"); Q_CMD+=("$cmd"); Q_KIND+=("check")
+        return 0
+    fi
+
+    local t0 t1 out rc
+    # Serial mode: header BEFORE the run so a reader sees which check is in
+    # flight while a slow row grinds.
+    if [ "$QUIET" -ne 1 ]; then echo "--- $label ---"; fi
+    t0="$(_now_ms)"
+    out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
+    t1="$(_now_ms)"
+    _finish_check "$label" "$cmd" "$out" "$rc" "$((t1 - t0))" 1
     return 0
+}
+
+_PAR_DIR=""
+_par_worker() {   # $1 idx
+    local i="$1" t0 t1 out rc
+    t0="$(_now_ms)"
+    out="$( (cd "$WORKTREE_ROOT" && eval "${Q_CMD[$i]}") 2>&1 )" && rc=0 || rc=$?
+    t1="$(_now_ms)"
+    printf '%s' "$out" > "$_PAR_DIR/$i.out"
+    printf '%s' "$((t1 - t0))" > "$_PAR_DIR/$i.ms"
+    printf '%s' "$rc" > "$_PAR_DIR/$i.rc"     # written last: presence == done
+}
+
+# Pool size: CONTRACTS_JOBS / -jN, else min(cores, 16).
+_default_jobs() {
+    local n="${NUMBER_OF_PROCESSORS:-}"
+    [ -n "$n" ] || n="$(nproc 2>/dev/null || echo 4)"
+    [ "$n" -gt 16 ] && n=16
+    [ "$n" -lt 2 ] && n=2
+    printf '%s' "$n"
+}
+
+# Rows measured slow go first so the pool does not end on a long tail.
+_SLOW_FIRST=" no_raw_gl_from_game include_firewall delivery_installs input_capture_visibility_selftest sampler_bindings scripts_tests "
+
+_drain_queue() {
+    local n="${#Q_LABEL[@]}" i
+    [ "$n" -gt 0 ] || return 0
+    _PAR_DIR="$(mktemp -d "${TMPDIR:-/tmp}/contracts-par-XXXXXX")"
+    local -a order_ser=() first=() rest=()
+    for ((i = 0; i < n; i++)); do
+        if _is_serial_row "${Q_CMD[$i]}"; then
+            order_ser+=("$i")
+        elif [[ "$_SLOW_FIRST" == *" ${Q_LABEL[$i]} "* ]]; then
+            first+=("$i")
+        else
+            rest+=("$i")
+        fi
+    done
+    for i in "${first[@]}" "${rest[@]}"; do
+        while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n 2>/dev/null || true; done
+        _par_worker "$i" &
+    done
+    wait
+    for i in "${order_ser[@]}"; do _par_worker "$i"; done
+    # Replay in registration order through the serial finishing code.
+    local out rc ms
+    for ((i = 0; i < n; i++)); do
+        if [ ! -f "$_PAR_DIR/$i.rc" ]; then
+            out="(row produced no result file -- worker died)"; rc=99; ms=0
+        else
+            out="$(cat "$_PAR_DIR/$i.out")"; rc="$(cat "$_PAR_DIR/$i.rc")"; ms="$(cat "$_PAR_DIR/$i.ms")"
+        fi
+        if [ "${Q_KIND[$i]}" = "tri" ]; then
+            _finish_check_tri "${Q_LABEL[$i]}" "${Q_CMD[$i]}" "$out" "$rc" "$ms"
+        else
+            _finish_check "${Q_LABEL[$i]}" "${Q_CMD[$i]}" "$out" "$rc" "$ms"
+        fi
+    done
+    rm -rf "$_PAR_DIR"
 }
 
 # ---------------------------------------------------------------------------
@@ -345,11 +449,22 @@ run_check_tri() {
 
     _register_row "$label" "$cmd" || return 0
 
+    if [ "$PARALLEL" -eq 1 ]; then
+        Q_LABEL+=("$label"); Q_CMD+=("$cmd"); Q_KIND+=("tri")
+        return 0
+    fi
+
     local t0 t1
     t0="$(_now_ms)"
     out="$( (cd "$WORKTREE_ROOT" && eval "$cmd") 2>&1 )" && rc=0 || rc=$?
     t1="$(_now_ms)"
-    SECS+=("$((t1 - t0))")
+    _finish_check_tri "$label" "$cmd" "$out" "$rc" "$((t1 - t0))"
+}
+
+# Shared finishing code for the tri-state runner (serial and parallel replay).
+_finish_check_tri() {   # $1 label $2 cmd $3 out $4 rc $5 ms
+    local label="$1" cmd="$2" out="$3" rc="$4"
+    SECS+=("$5")
 
     NAMES+=("$label")
     if [ "$rc" -eq 0 ]; then
@@ -617,6 +732,8 @@ fi
 if [ "$SELFTEST_RENDER" -eq 1 ]; then
     _selftest_rows
 else
+[ -n "$JOBS" ] || JOBS="$(_default_jobs)"
+if [ "$JOBS" -gt 1 ]; then PARALLEL=1; fi
 # A --selftest child must never re-enter the FULL board. One dropped flag on the
 # fail_reason_selftest row below turns this file into a fork bomb, so it is
 # refused structurally rather than by remembering.
@@ -1409,6 +1526,7 @@ run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base 
 # one.
 run_check "scripts_tests"              "py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider"
 fi   # end of the real board (skipped under --selftest-render, above)
+if [ "$PARALLEL" -eq 1 ]; then _drain_queue; fi
 
 # ---------------------------------------------------------------------------
 # Summary table
@@ -1447,8 +1565,10 @@ done
 echo "---------------------------------------------------------------------"
 printf "  %d passed, %d failed, %d known-correct-failure\n" \
     "$PASS_COUNT" "$FAIL_COUNT" "$KNOWN_COUNT"
-printf "  wall time %d.%02ds across %d rows\n" \
+printf "  summed row time %d.%02ds across %d rows\n" \
     "$((TOTAL_MS / 1000))" "$(((TOTAL_MS % 1000) / 10))" "${#NAMES[@]}"
+_WALL_MS=$(( $(date +%s%N | cut -c1-13) - _WALL_T0 ))
+printf "  wall time %d.%02ds (jobs=%s)\n" "$((_WALL_MS / 1000))" "$(((_WALL_MS % 1000) / 10))" "${JOBS:-1}"
 if [ "${#OVER_BUDGET[@]}" -gt 0 ]; then
     printf "  %d row(s) over the %ss-per-check budget this file promises:\n" \
         "${#OVER_BUDGET[@]}" "$BUDGET_SEC"

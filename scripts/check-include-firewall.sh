@@ -79,84 +79,87 @@ is_comment_line() {
 TMPHITS="$(mktemp 2>/dev/null || echo "/tmp/firewall.$$")"
 trap 'rm -f "$TMPHITS"' EXIT
 
+# PERF (2026-10-09): this used to run ~190 recursive greps and, per HIT, a chain
+# of cut/sed/grep subprocesses plus a re-read of the allowlist (~20 s on Windows,
+# where every spawn costs tens of ms). Now: ONE recursive grep per dir per class
+# builds a candidate cache, and ONE awk per class does the per-header/per-symbol
+# match, allowlist, comment-line and code-body filtering in-process. Semantics
+# are those of the old loops, applied in the same order:
+#   for each dir: for each header (hits in grep -r order) ; for each symbol ;
+#   then for each editor dir: for each editor-forbidden header.
+# A pattern is matched against the CONTENT only (after "path:lineno:"), never
+# the path. Hit filters: allowlisted file -> skip; comment-looking line (body
+# starts with //, /* or * after leading whitespace) -> skip; symbols additionally
+# need the word to survive stripping of "string literals", trailing // comments,
+# RenderResourceLifetime::Mission and an `Mission = <digit>...` enumerator line.
+CACHE="$(mktemp 2>/dev/null || echo "/tmp/firewall-c.$$")"
+OUTV="$(mktemp 2>/dev/null || echo "/tmp/firewall-o.$$")"
+trap 'rm -f "$TMPHITS" "$CACHE" "$OUTV"' EXIT
+
+_alt() { _r=""; for _w in $1; do _r="${_r:+$_r|}$_w"; done; printf '%s' "$_r"; }
+
+# _scan <kind: hdr|sym> <dir> <words> <message-prefix>
+_scan() {
+    if [ "$1" = "hdr" ]; then
+        grep -rnE "include.*($(_alt "$3"))" "$2" > "$CACHE" 2>/dev/null || true
+    else
+        grep -rnwE "$(_alt "$3")" "$2" > "$CACHE" 2>/dev/null || true
+    fi
+    [ -s "$CACHE" ] || return 0
+    awk -v kind="$1" -v words="$3" -v pfx="$4" -v allow="scripts/check-include-firewall.allowlist" '
+        BEGIN {
+            while ((getline a < allow) > 0) { if (a != "" && substr(a,1,1) != "#") ok[a] = 1 }
+            nw = split(words, W, " ")
+        }
+        { if ($0 != "") L[++m] = $0 }
+        END {
+            for (w = 1; w <= nw; w++) {
+                word = W[w]
+                for (k = 1; k <= m; k++) {
+                    line = L[k]
+                    if (!match(line, /^[^:]*:[0-9]+:/)) continue
+                    content = substr(line, RLENGTH + 1)
+                    file = substr(line, 1, index(line, ":") - 1)
+                    if (kind == "hdr") {
+                        if (content !~ ("include.*" word)) continue
+                    } else {
+                        if (content !~ ("(^|[^[:alnum:]_])" word "($|[^[:alnum:]_])")) continue
+                    }
+                    if (file in ok) continue
+                    body = content; sub(/^[[:space:]]+/, "", body)
+                    if (substr(body,1,2) == "//" || substr(body,1,2) == "/*" || substr(body,1,1) == "*") continue
+                    if (kind == "sym") {
+                        cb = content
+                        gsub(/"[^"]*"/, "", cb)
+                        sub(/\/\/.*$/, "", cb)
+                        gsub(/RenderResourceLifetime::Mission/, "", cb)
+                        sub(/^[[:space:]]*Mission[[:space:]]*=[[:space:]]*[0-9].*$/, "", cb)
+                        if (cb !~ ("(^|[^[:alnum:]_])" word "($|[^[:alnum:]_])")) continue
+                        print "VIOLATION: forbidden symbol \047" word "\047 in " line
+                    } else {
+                        print "VIOLATION: " pfx word " in " line
+                    }
+                }
+            }
+        }' "$CACHE" >> "$OUTV"
+}
+
+: > "$OUTV"
 for dir in $SCOPE_DIRS; do
     if [ ! -d "$dir" ]; then continue; fi
-    # Headers
-    for hdr in $FORBIDDEN_HEADERS; do
-        : > "$TMPHITS"
-        grep -rn "include.*${hdr}" "$dir" > "$TMPHITS" 2>/dev/null || true
-        if [ -s "$TMPHITS" ]; then
-            while IFS= read -r line; do
-                [ -z "$line" ] && continue
-                file="$(printf '%s' "$line" | cut -d: -f1)"
-                if allowlisted "$file"; then
-                    continue
-                fi
-                if is_comment_line "$line"; then
-                    continue
-                fi
-                echo "VIOLATION: forbidden include of ${hdr} in ${line}" >&2
-                VIOLATIONS=$((VIOLATIONS+1))
-            done < "$TMPHITS"
-        fi
-    done
-    # Symbols (word-boundary case-sensitive grep)
-    for sym in $FORBIDDEN_SYMBOLS; do
-        : > "$TMPHITS"
-        grep -rwn "${sym}" "$dir" > "$TMPHITS" 2>/dev/null || true
-        if [ -s "$TMPHITS" ]; then
-            while IFS= read -r line; do
-                [ -z "$line" ] && continue
-                file="$(printf '%s' "$line" | cut -d: -f1)"
-                if allowlisted "$file"; then
-                    continue
-                fi
-                if is_comment_line "$line"; then
-                    continue
-                fi
-                # MERGE-WAVE-2 (2026-07-22): symbol coupling only matters in CODE.
-                # Strip double-quoted string literals (registry description
-                # strings) and trailing // comments from the body, then re-check
-                # the word match. Doc-string/trailing-comment mentions of game
-                # symbols are documentation, not includes/decls/signatures.
-                code_body="$(printf '%s' "$line" | sed 's/^[^:]*:[0-9][0-9]*://' | sed 's/"[^"]*"//g' | sed 's|//.*$||' | sed 's/RenderResourceLifetime::Mission//g' | sed 's/^[[:space:]]*Mission[[:space:]]*=[[:space:]]*[0-9].*$//')"
-                # (RenderResourceLifetime::Mission is RenderCore's OWN lifetime
-                # enumerator — an unfortunate name collision with the game's
-                # Mission class, not a boundary breach; the enumerator
-                # definition line in RenderResourceRegistry.h likewise.)
-                if ! printf '%s' "$code_body" | grep -qw "${sym}"; then
-                    continue
-                fi
-                echo "VIOLATION: forbidden symbol '${sym}' in ${line}" >&2
-                VIOLATIONS=$((VIOLATIONS+1))
-            done < "$TMPHITS"
-        fi
-    done
+    _scan hdr "$dir" "$FORBIDDEN_HEADERS" "forbidden include of "
+    _scan sym "$dir" "$FORBIDDEN_SYMBOLS" ""
 done
 
-# EDITOR-BRIDGE-GPU-FIREWALL-1: header-only firewall for editor/.
-# Forbids direct GPU-internal-header includes; game-logic symbols are allowed.
 for dir in $EDITOR_HEADER_ONLY_DIRS; do
     if [ ! -d "$dir" ]; then continue; fi
-    for hdr in $EDITOR_FORBIDDEN_HEADERS; do
-        : > "$TMPHITS"
-        grep -rn "include.*${hdr}" "$dir" > "$TMPHITS" 2>/dev/null || true
-        if [ -s "$TMPHITS" ]; then
-            while IFS= read -r line; do
-                [ -z "$line" ] && continue
-                file="$(printf '%s' "$line" | cut -d: -f1)"
-                if allowlisted "$file"; then
-                    continue
-                fi
-                if is_comment_line "$line"; then
-                    continue
-                fi
-                echo "VIOLATION: editor/ must route GPU access through EditorBridge -- forbidden include of ${hdr} in ${line}" >&2
-                VIOLATIONS=$((VIOLATIONS+1))
-            done < "$TMPHITS"
-        fi
-    done
+    _scan hdr "$dir" "$EDITOR_FORBIDDEN_HEADERS" "editor/ must route GPU access through EditorBridge -- forbidden include of "
 done
+
+if [ -s "$OUTV" ]; then
+    cat "$OUTV" >&2
+    VIOLATIONS=$(grep -c '' "$OUTV")
+fi
 
 if [ "$VIOLATIONS" -gt 0 ]; then
     echo "" >&2

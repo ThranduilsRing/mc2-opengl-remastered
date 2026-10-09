@@ -208,6 +208,20 @@ def _disk_guard_advisory(path, need_gb: float, label: str) -> None:
         print(f"[visual_capture] disk guard skipped ({e})", file=sys.stderr)
 
 
+def _engine_capture_done(log_path: Path, n_expected: int) -> bool:
+    """True if the engine log shows >= n_expected '[VISUAL_CAPTURE ...] wrote'
+    lines, or shows no 'wrote' protocol at all (older RC / VK readback path),
+    in which case file stability alone decides."""
+    try:
+        txt = log_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return True
+    wrote = txt.count("] wrote ")
+    if wrote == 0:
+        return "[VISUAL_CAPTURE" not in txt or "readback requested" in txt
+    return wrote >= n_expected
+
+
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int,
             deterministic_clock: bool, show_window: bool = False,
@@ -343,26 +357,51 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # window (trigger frame + per-bookmark settle) -- a single pre-launch park
     # is not enough if the cursor moves during the run.
     deadline = t0 + duration + 30
+    done_early = False
+    last_sizes = None
     while time.time() < deadline:
         park_cursor_center()
         if all(p.exists() for p in expected_pngs.values()):
-            # Give the engine a beat to finish the last sidecar write.
-            time.sleep(1.0)
-            break
+            # CAPTURE-EARLY-EXIT-1: finished only when every PNG + sidecar
+            # exists, sizes are non-zero and unchanged across two polls, and
+            # (when the engine logs "wrote" lines) it has logged one per PNG.
+            sizes = []
+            for p in expected_pngs.values():
+                try:
+                    sizes.append((p.stat().st_size,
+                                  p.with_suffix(".json").stat().st_size))
+                except OSError:
+                    sizes = None
+                    break
+            if sizes and all(a > 0 and b > 0 for a, b in sizes):
+                if sizes == last_sizes and _engine_capture_done(
+                        log_path, len(expected_pngs)):
+                    done_early = True
+                    break
+            last_sizes = sizes
+        else:
+            last_sizes = None
         if proc.poll() is not None:
             break
         time.sleep(0.5)
 
-    # Drain the process.
+    # Drain the process. After early exit, shut down now (terminate, then kill
+    # after 5 s -- same path as _reap_active); otherwise wait out the budget.
     try:
-        remaining = max(1, (t0 + duration + 15) - time.time())
-        proc.wait(timeout=remaining)
+        if done_early and proc.poll() is None:
+            proc.terminate()
+            proc.wait(timeout=5)
+        else:
+            remaining = max(1, (t0 + duration + 15) - time.time())
+            proc.wait(timeout=remaining)
     except subprocess.TimeoutExpired:
         proc.kill()
         try:
             proc.wait(timeout=10)
         except Exception:
             pass
+    print(f"[viscap] capture {'complete, early exit' if done_early else 'ended'}"
+          f" after {time.time() - t0:.1f}s (budget {duration}s)")
     log_fp.close()
 
     # Collect results per bookmark.

@@ -569,6 +569,13 @@ def main():
                          "path (legacy global-block behavior; default is "
                          "path-aware)")
     ap.add_argument("--duration", type=int)
+    ap.add_argument("--lite", action="store_true",
+                    help="SMOKE-LITE-1 inner-loop profile: mc2_10 (night/urban, "
+                         "heaviest) + mc2_01 (day) at --duration 10 (override "
+                         "with --duration). ALL gates stay on (crash, heartbeat, "
+                         "shader_error, gl_error, deploy fingerprint, ...). "
+                         "Reduced soak coverage: run full --tier tier1 before "
+                         "milestones/landing.")
     ap.add_argument("--profile", default="stock")
     ap.add_argument("--show-window", action="store_true",
                     help="Start mission windows visible instead of minimized; use for FPS/perf runs.")
@@ -630,6 +637,16 @@ def main():
                          "shader tree + HEAD are unchanged since the last "
                          "cached run; the staleness check always runs fresh)")
     args = ap.parse_args()
+    if args.lite:
+        if args.tier or args.mission:
+            ap.error("--lite selects its own missions; it cannot be combined "
+                     "with --tier/--mission")
+        args.mission = ["mc2_10", "mc2_01"]
+        if args.duration is None:
+            args.duration = 10
+        print("[runner] [SMOKE-LITE] mc2_10 + mc2_01 @ "
+              f"{args.duration}s, all gates on. Inner-loop check only; run "
+              "full --tier tier1 before milestones.", file=sys.stderr)
     if args.gl_debug_fatal:
         os.environ["MC2_GL_DEBUG_FATAL"] = "1"
 

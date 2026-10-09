@@ -87,36 +87,36 @@ if [ -z "$SOURCES" ]; then
 fi
 
 : > "$TMPHITS"
-# xargs would be cleaner but we keep this POSIX-portable + per-file loop
-# so the comment-strip + allowlist logic stays readable.
-echo "$SOURCES" | while IFS= read -r src; do
-    [ -z "$src" ] && continue
-    [ -f "$src" ] || continue
-    # Strip trailing `// ...` comments BEFORE applying the violation grep
-    # so that documentation/comment text naming a GL function (e.g.
-    # `// expects glDrawBuffers(...)`) is not flagged. Sed blanks the
-    # comment portion in-place; lines remain in the stream so grep -n
-    # reports the original line numbers. Full-line `//` comments survive
-    # the legacy is_comment_line() filter below as a defense-in-depth net.
-    sed 's|//.*$||' "$src" | grep -nE "$PATTERN" 2>/dev/null | while IFS= read -r match; do
-        [ -z "$match" ] && continue
-        # Prefix with filename so downstream parsing stays uniform.
-        printf '%s:%s\n' "$src" "$match"
-    done
-done > "$TMPHITS"
+# PERF (2026-10-09): was a per-file `sed | grep | while read` shell loop (one
+# process chain per source file, plus an allowlist re-read per hit). Now ONE awk
+# pass over all files. Same semantics, applied in the same order:
+#   1. blank everything from `//` to EOL (line numbers preserved)
+#   2. keep lines matching PATTERN (\b -> start-or-nonword; awk has no \b)
+#   3. drop hits in allowlisted files (exact path match, `#`/blank ignored)
+#   4. drop comment-looking lines (body starts with `//`, `/*` or `*` after
+#      leading whitespace) -- the former is_comment_line()
+# Survivors are emitted as `path:lineno:content` for the reporting loop below.
+# Unreadable / missing files are skipped, as the old `[ -f ]` guard did.
+echo "$SOURCES" | tr '\n' '\0' | xargs -0 awk -v allow="$ALLOWLIST" '
+    BEGIN {
+        if (allow != "") while ((getline a < allow) > 0) { sub(/\r$/, "", a); if (a != "" && substr(a,1,1) != "#") ok[a] = 1 }
+    }
+    FNR == 1 { skip = (FILENAME in ok) }
+    skip { nextfile }
+    {
+        line = $0
+        sub(/\/\/.*$/, "", line)
+        if (match(line, /(^|[^[:alnum:]_])gl[A-Z][a-zA-Z]+[[:space:]]*\(/)) {
+            body = line; sub(/^[[:space:]]+/, "", body)
+            c = substr(body, 1, 1); c2 = substr(body, 1, 2)
+            if (c2 == "//" || c2 == "/*" || c == "*") next
+            printf "%s:%d:%s\n", FILENAME, FNR, line
+        }
+    }' > "$TMPHITS" 2>/dev/null || true
 
 if [ -s "$TMPHITS" ]; then
     while IFS= read -r line; do
         [ -z "$line" ] && continue
-        file="$(printf '%s' "$line" | cut -d: -f1)"
-        if allowlisted "$file"; then
-            continue
-        fi
-        # is_comment_line expects "path:lineno:content"; our $line is
-        # exactly that (we prepended "path:" to grep -n's "lineno:content").
-        if is_comment_line "$line"; then
-            continue
-        fi
         # Extract the matched function token for a tidy message.
         matched="$(printf '%s' "$line" | grep -oE "$PATTERN" | head -1)"
         echo "VIOLATION: raw GL call ${matched} in ${line}" >&2

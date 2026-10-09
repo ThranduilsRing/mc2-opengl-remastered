@@ -31,12 +31,20 @@ py -3 scripts/deploy_payload.py --target game
 Offline checks (no game launch) — run these first, all should be green:
 
 ```bash
-bash scripts/check-contracts.sh                       # ~150 static contract rows
+bash scripts/check-contracts.sh                       # ~157 static contract rows, parallel (~50-90 s); --serial / -jN to override
 py -3 tools/build_contract_harnesses.py --run --unit  # C++ harnesses + doctest tier
 py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
 ```
 
-Smoke (launches the game off-screen, ~3 min):
+Smoke, **default inner-loop check = smoke-lite** (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error + deploy fingerprint; reduced soak coverage):
+
+```bash
+py -3 scripts/run_smoke.py --lite --keep-logs --deploy 0.4
+```
+
+Run full tier1 (below) before milestones / landing, not on every iteration. Captures (`run_visual_capture.py`, `ab.py`) now exit as soon as the PNG+sidecar are complete; the duration is only a timeout.
+
+Full smoke (launches the game off-screen, ~3 min):
 
 ```bash
 MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs --deploy 0.4
