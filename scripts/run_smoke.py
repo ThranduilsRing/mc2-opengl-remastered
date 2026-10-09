@@ -1787,11 +1787,6 @@ def main():
                             # RUNWAY-CLOSE-1: overlay-art flat-light exemption
                             # A/B arm (default 1 = stock multiply).
                             "MC2_OVERLAY_ART_FLATLIGHT",
-                            # TERRAIN-SHORELINE-V3 one-shot band-vs-drawn-plane
-                            # probe (observe-only). Prints [SHORELINE_PROBE v1]
-                            # with u_waterElevation vs coarse terrain z-range vs
-                            # fine-minus-coarse band drift at shore cells. Must be
-                            # allowlisted or Popen drops it and the probe is silent.
                             # TERRAIN-MATERIAL-LIB-1 — data-defined terrain material
                             # tuning (default OFF). Must be allowlisted or Popen
                             # drops it and the gate-ON smoke does nothing.

@@ -7,7 +7,6 @@ non-activating by default -- see `scripts/smoke_lib/nofocus.py`.
 
 | file | line | call | window |
 | --- | --- | --- | --- |
-| `.claude/gate-b2b3-wip/b2/scripts/run_smoke.py` | 363 | `nofocus.spawn` | offscreen |
 | `scripts/camera_sweep_smoke.py` | 124 | `nofocus.spawn` | desktop-composite |
 | `scripts/capture_baseline.py` | 337 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 122 | `nofocus.spawn` | desktop-composite |
@@ -32,7 +31,7 @@ non-activating by default -- see `scripts/smoke_lib/nofocus.py`.
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
 | `tools/tracy_capture_compare.py` | 297 | `subprocess.Popen` | offscreen |
 
-Total engine launch sites: 24
+Total engine launch sites: 23
 
 ## Desktop-composite capture exceptions (NOFOCUS-FINISH-1)
 

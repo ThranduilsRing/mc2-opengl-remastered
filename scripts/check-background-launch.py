@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import subprocess
 import re
 import sys
 from pathlib import Path
@@ -202,13 +203,28 @@ def rel(p: Path) -> str:
     return p.relative_to(ROOT).as_posix()
 
 
+def _tracked_files():
+    """Repo-relative POSIX paths git tracks, or None when git is unavailable."""
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(ROOT), "ls-files"], text=True,
+            stderr=subprocess.DEVNULL, timeout=30)
+    except Exception:
+        return None
+    return set(out.splitlines())
+
+
 def iter_py():
+    # Untracked scratch copies must never enter the committed inventory.
+    tracked = _tracked_files()
     for d in SCAN_DIRS:
         base = ROOT / d
         if not base.is_dir():
             continue
         for p in sorted(base.rglob("*.py")):
             if "__pycache__" in p.parts or "worktrees" in p.parts:
+                continue
+            if tracked is not None and p.relative_to(ROOT).as_posix() not in tracked:
                 continue
             yield p
 

@@ -23,9 +23,9 @@
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "anim_override_registry.h"  // ANIM-OVERRIDE-MVP: declarative gesture-clip remap
 #include "mech_anim_runtime.h"  // BT2018-SKEL-ENGINE-1B-RUNTIME: imported-mech per-frame re-bake
-#include "../GameOS/gameos/diagnostic_trace.h"  // ANIM_ADVANCE trace (double-step recon)
+#include "../GameOS/gameos/diagnostic_trace.h"  // ANIM_CADENCE guard events
 
-extern uint32_t g_mc2FrameCounter;  // defined mclib/tgl.cpp:3718 — ANIM_ADVANCE double-step probe
+extern uint32_t g_mc2FrameCounter;  // defined in tgl.cpp — gait-advance cadence guard
 // VK-MECH-CAPTURE-DETERMINISM-1: capture-mode-only gait-freeze predicate (defined
 // gos_visual_capture.cpp). Returns nonzero only while a visual-capture sweep has
 // the sim frozen; 0 whenever no MC2_VISUAL_* capture is active -> byte-safe live.

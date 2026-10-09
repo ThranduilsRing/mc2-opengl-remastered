@@ -202,7 +202,6 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #include "cliff_decal_tuning.h"  // TERRAIN-DECAL-SLICE-0C: shared face-frame + live tuning
 #include "gos_mech_killswitch.h"       // g_mechPreviewRenderDepth (component preview-fix)
 #include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 RenderWorld Tasks 8-11
-#include <unordered_map>  // LODBUG probe: tracks per-actor previous bldgShape*
 #include <cstring>
 #include <string>
 #include <fstream>
