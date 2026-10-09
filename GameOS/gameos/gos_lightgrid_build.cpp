@@ -7,6 +7,7 @@
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_cluster_depth_pyramid.h"
 #include "gos_gpu_sync.h"
+#include "../../mclib/object_light_row.h"  // kMaxLights (ObjectLights ABI cap)
 #include "../../RenderCore/RenderResourceRegistry.h"  // REGISTRY-COMPUTE-IDS-1: LightgridGrid/LightgridIndex
 
 #include <GL/glew.h>
@@ -24,22 +25,31 @@ namespace lightgrid_build {
 namespace {
 
 // --- Constants -------------------------------------------------------------
-// Hard light cap — lockstep with lighting.hglsl MAX_LIGHTS_IN_WORLD. This lane
-// does NOT lift the cap; it builds + validates at 16. The cap also bounds the
-// per-tile index-pool stride (a tile can bin at most every light once).
-constexpr int kMaxLights = 16;
+// Light cap == the ObjectLights record stride. Taken from the SAME constant the
+// ObjectLights ABI uses (mclib/object_light_row.h, lockstep with
+// lighting.hglsl MAX_LIGHTS_IN_WORLD and tgl.h MAX_HW_LIGHTS_IN_WORLD). It is
+// injected into lightgrid_build.comp as LIGHTGRID_MAX_LIGHTS, which sizes the
+// LG_ObjectLights mirror, so it must not diverge from the real record stride.
+// It also bounds the per-tile index-pool stride.
+constexpr int kMaxLights = (int)object_light_row::kMaxLights;
 
 // ObjectLights SSBO binding (LIGHT_DATA_SSBO_BINDING in lighting.hglsl). The
 // sphere-build stage reads it read-only.
 constexpr GLuint kObjectLightsBinding = 20;
 
-// std430 byte offsets inside the live ObjectLights buffer (lockstep with
-// mclib/tgl.h TG_HWLightsData, 1808 B). Used only by the CPU parity reference,
-// which reads the SAME bytes the GPU sphere stage reads.
-constexpr int kOffLightToWorld = 0;     // [16][16] floats
-constexpr int kOffLightDir     = 1024;  // [16][4]  floats (.w = type)
-constexpr int kOffLightFalloff = 1536;  // [16][4]  floats (.y = far = radius)
-constexpr int kOffNumLights    = 1792;  // int
+// std430 byte offsets inside the live ObjectLights record (lockstep with
+// mclib/tgl.h TG_HWLightsData). Used only by the CPU parity reference, which
+// reads the SAME bytes the GPU sphere stage reads. Derived from kMaxLights.
+constexpr int kOffLightToWorld = 0;                                  // [N][16] floats
+constexpr int kOffLightDir     = kOffLightToWorld + kMaxLights * 64; // [N][4] floats (.w = type)
+constexpr int kOffLightColor   = kOffLightDir + kMaxLights * 16;     // [N][4] floats
+constexpr int kOffLightFalloff = kOffLightColor + kMaxLights * 16;   // [N][4] floats (.y = far = radius)
+constexpr int kOffNumLights    = kOffLightFalloff + kMaxLights * 16; // int
+constexpr int kObjectLightsRecordBytes = kOffNumLights + 16;         // + ivec4 numLights
+static_assert(kObjectLightsRecordBytes == 3600,
+              "ObjectLights std430 record size (32 lights) must be 3600 B; "
+              "lightgrid_build.comp LG_ObjectLights mirror must match");
+static_assert(kOffNumLights == 3584, "numLights offset drifted from lighting.hglsl");
 
 // Sphere record stride in bytes (std430): vec4 + 4*uint = 16 + 16 = 32.
 constexpr int kSphereStride = 32;

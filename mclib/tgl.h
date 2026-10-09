@@ -182,8 +182,8 @@ typedef TG_ShadowTriangle* TG_ShadowTrianglePtr;
 // TG_LightPtr arrays at camera.cpp ~411-432). Well below the project's
 // RAM-cost-irrelevance threshold per memory/feedback_ram_cost_not_a_concern_below_500mb.md.
 // Shader-side MAX_LIGHTS_IN_WORLD in shaders/include/lighting.hglsl is a
-// DIFFERENT scope (per-shape best-N=16 truncation in the SSBO ld block);
-// that stays at 16.
+// DIFFERENT scope from MAX_LIGHTS_IN_WORLD here, but it is now 32 (equal to
+// MAX_HW_LIGHTS_IN_WORLD, the per-object SSBO record cap), not 16.
 #define 	MAX_LIGHTS_IN_WORLD				1024
 
 #define 	TG_NODE_ID						25
