@@ -746,7 +746,8 @@ static bool vkPostScreenFxDirectChainEnabled()
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
-    const bool dynamicCasterActive = (mc2vkgate::envTriState("MC2_SHADOW_ENABLE") == 1);
+    const char* shadowEnv = std::getenv("MC2_SHADOW_ENABLE");
+    const bool dynamicCasterActive = !(shadowEnv != nullptr && shadowEnv[0] == '0');   // DEFAULT ON; =0 kill-switch
     const bool csmActive = dynamicCasterActive && (dynShadowArrayTex_ != 0);
     const bool csmDirectReady = csmActive
         && mc2_vk_shadow_island_csm_array_ready()
