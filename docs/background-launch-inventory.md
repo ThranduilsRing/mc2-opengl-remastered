@@ -9,7 +9,7 @@ non-activating by default -- see `scripts/smoke_lib/nofocus.py`.
 | --- | --- | --- | --- |
 | `.claude/cleanup/fg_trace.py` | 22 | `nofocus.spawn` | offscreen |
 | `scripts/camera_sweep_smoke.py` | 124 | `nofocus.spawn` | desktop-composite |
-| `scripts/capture_baseline.py` | 337 | `nofocus.spawn` | desktop-composite |
+| `scripts/capture_baseline.py` | 333 | `nofocus.spawn` | desktop-composite |
 | `scripts/game_auto.py` | 122 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 86 | `nofocus.spawn` | offscreen |
 | `scripts/mechbay_preview_harness.py` | 107 | `nofocus.spawn` | offscreen |
