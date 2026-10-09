@@ -267,6 +267,7 @@ int __cdecl InternalFunctionPause (const char *Message, ...)
 // Window-mode flips: File::open's CD-missing dialog path and ffile.cpp flip
 // the display mode before/after showing a message box. No display in tests.
 void EnterWindowMode (void) {}
+bool gos_NoUserPresentRequested (void) { return false; }   // not an unattended session
 void EnterFullScreenMode (void) {}
 void ExitGameOS (void) {}
 
