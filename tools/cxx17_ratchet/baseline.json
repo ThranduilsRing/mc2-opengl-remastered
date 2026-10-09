@@ -54,7 +54,7 @@
    "LG09": 2731,
    "LG10": 79,
    "LG11": 118,
-   "LG12a": 642,
+   "LG12a": 630,
    "LG12b": 115,
    "LG13": 383,
    "LG14": 67,
@@ -660,8 +660,7 @@
   },
   "GameOS/gameos/gos_terrain_patch_stream.cpp": {
    "LG08": 4,
-   "LG09": 22,
-   "LG12a": 14
+   "LG09": 22
   },
   "GameOS/gameos/gos_terrain_patch_stream.h": {
    "LG09": 1
@@ -868,6 +867,9 @@
   },
   "GameOS/gameos/utils/matrix.cpp": {
    "LG09": 7
+  },
+  "GameOS/gameos/utils/mc2log.cpp": {
+   "LG12a": 2
   },
   "GameOS/gameos/utils/render_constants.h": {
    "LG02": 5,
@@ -5040,7 +5042,7 @@
    "LG13": 31
   }
  },
- "head": "67d2b038c",
+ "head": "059733997",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
