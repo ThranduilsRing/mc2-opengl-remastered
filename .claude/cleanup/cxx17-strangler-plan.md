@@ -88,15 +88,21 @@ run_check "cxx17_ratchet_selftest" "py -3 tools/cxx17_ratchet/test_cxx17_ratchet
 ```
 The `_register_row` guard rejects duplicate labels/commands; both are unique. Also check `scripts/check-contract-coverage.py` accepts a `tools/` script (it credits runners invoking it; the selftest row covers the unit test file). Caveat: the baseline is taken on a dirty tree at a1a25de29; re-run `--write-baseline` once the in-flight batch (nullptr/using/override) lands, so improvements are locked in immediately.
 
-## 6. Roadmap to C++20/23
+## 6. Roadmap (C++23 flip is DONE)
 
-Environment facts to verify at each step (do not assume): MSVC (VS 2022 17.x) supports C++20 fully and C++23 partially under `/std:c++latest`; `<print>` and `std::expected` need 17.7+/17.3+ resp. (`<print>` 17.7, `std::expected` 17.3, `std::format` 17.2 with /std:c++20). Linux gcc: C++20 solid from 11; `<format>` needs gcc 13+, `std::expected`/`<print>` gcc 12.1/14. clang+libc++ lags on `<format>`/ranges; keep `{fmt}` as a fallback if the Linux toolchain is older.
+`CMakeLists.txt` MC2_CXX_STANDARD=23 (`/std:c++latest`) landed in 9493e60bf; the old P3/P4 "bump" phases are removed. Linux is deferred (gcc 13 lacks `std::print`; do not block on it). Remaining work is adoption only.
 
-| Phase | Gate | Work |
-|---|---|---|
-| P0 now | consistency finished | ratchet in contracts; mechanical LG01/02/13/10/08 batches per dir (RenderCore, GuiRuntime, GameOS, mclib, code); seams 2,4,7,9 as pilots |
-| P1 C++17 depth | ratchet counts falling | `[[nodiscard]]` on sentinel getters, `string_view` signatures (seam 8), `std::filesystem` helper (10), `enum class` in new/edited headers, if-init, `std::optional` (6,7), variants (1,3,5) |
-| P2 logging facade | P1 seams 7/8 done | single `mc2::log(level, fmt, args...)` in GameOS with a printf backend first; macro `MC2_LOG` captures file/line; call sites migrated LG12 (2704) by script, 'sprintf into buffer' sites go to `std::format_to_n`/`snprintf` wrapper; count LG12 in ratchet already |
-| P3 C++20 bump | MSVC + gcc builds green on `/std:c++20`; both configs, contracts, smoke, A/B | `CMAKE_CXX_STANDARD 20`; fix `u8` literal and `operator==` rewrite diagnostics, `char8_t`; then adopt `std::format` in facade, `std::span` for (ptr,count) params (new ratchet LG16), `<ranges>`/algorithms selectively, `consteval`/`constinit` for tables, `std::bit_cast` for LG09 pointer punning, designated initializers for render descs, `<=>` for POD compare |
-| P4 C++23 bump | toolchains verified (above) | `std::print/println` in facade, `std::expected` for fallible loaders (ktx, ini, shader build) replacing LG05 bool+error-string, `std::mdspan` for terrain grids (optional), `if consteval`, `std::unreachable`, `std::to_underlying` for `enum class` flags, deducing this where it removes CRTP |
-Each phase: build both configs, `check-contracts.sh`, smoke (must fail on shader compile errors - lesson 2026-10-09), A/B capture eyeballed. Add new ratchet IDs (LG16 raw pointer+count params -> span; LG17 bool+error-string -> expected) as the phases open, via a deliberate `--write-baseline`.
+Ratchet changes after the flip (baseline re-taken on committed HEAD):
+- LG12 split: **LG12a** printf/fprintf/puts/OutputDebugString/SPEW logging -> logging facade (`std::print`/`std::format` + `std::source_location`); **LG12b** sprintf/snprintf/vsprintf buffer formatting -> `std::format_to` / `std::format`.
+- Retargeted: LG05 `std::optional` (not-found) / `std::expected` (error); LG07 concepts/`requires`; LG14 `enum class` + `using enum` + `std::to_underlying`.
+- New: LG16 manual multi-dim index math / `T**` grids -> `std::mdspan`; LG17 pointer+count params -> `std::span`; LG18 type punning -> `std::bit_cast`. All conservative (undercount over false positives).
+- Scan source: `--check` reads the committed tree (HEAD) so others' dirty work never blocks it; `--staged` for pre-commit; `--worktree` opt-in.
+- Gate: per-idiom repo TOTALS strict; per-dir increases with a non-rising total (code moved between dirs) are warnings only.
+
+| Phase | Work |
+|---|---|
+| A. logging facade | `mc2::log` over `std::format`/`std::print` + `source_location`; migrate LG12a by script, LG12b to `format_to` |
+| B. clang-tidy safe batches per dir | LG01, LG02, LG13, LG10, LG08, numeric LG09; rebaseline once per batch |
+| C. seam adoption | variant/visit (LG04), optional/expected (LG05), string_view (LG06), concepts (LG07), filesystem (LG11), enum class (LG14) |
+| D. C++23 containers/views | LG16 mdspan per grid type (layout unchanged, GPU-shared buffers safe), LG17 span, LG18 bit_cast |
+Each step: build both configs, `check-contracts.sh`, smoke (must fail on shader errors), A/B capture eyeballed, then `--check --tighten` and commit `baseline.json` with the change.
