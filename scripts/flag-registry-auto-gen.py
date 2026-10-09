@@ -332,7 +332,7 @@ def warn_if_registry_unlanded():
     try:
         r = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", REGISTRY_HEADER],
                            cwd=REPO_ROOT, capture_output=True,
-                           stdin=subprocess.DEVNULL, timeout=20)
+                           stdin=subprocess.DEVNULL, timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError):
         return
     if r.returncode == 1:

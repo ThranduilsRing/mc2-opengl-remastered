@@ -1,0 +1,5 @@
+{
+  "scripts/check-raw-gl-depthfunc.py": 1,
+  "scripts/check-raw-gl-depthmask.py": 1,
+  "tools/gate_conflicts.py": 1
+}

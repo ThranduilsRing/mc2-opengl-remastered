@@ -70,6 +70,7 @@ def git(args, cwd=REPO_ROOT, check=True):
     proc = subprocess.run(
         ["git", "-C", cwd] + args,
         capture_output=True, text=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     if check and proc.returncode != 0:
         sys.stderr.write(

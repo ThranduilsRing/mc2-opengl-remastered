@@ -1,3 +1,0 @@
-Inline GLSL sources for the D32S8 depth-test spike are compiled at CMake build
-time by glslc into embedded SPIR-V headers. See the *.vert / *.frag files next
-to this README and the custom commands in CMakeLists.txt.

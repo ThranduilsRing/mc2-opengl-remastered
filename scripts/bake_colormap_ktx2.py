@@ -97,7 +97,7 @@ def bake_one(src: Path, ktx_tool: str, dry_run: bool, max_edge: int = 0) -> bool
             "--levels", "1",     # single mip level (no pyramid)
             str(png_path), str(uastc_path),
         ]
-        r = subprocess.run(create_cmd, capture_output=True, text=True)
+        r = subprocess.run(create_cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if r.returncode != 0:
             print(f"[FAIL] ktx create failed for {src.name}: "
                   f"rc={r.returncode} {(r.stderr or r.stdout).strip()[:200]}",
@@ -109,7 +109,7 @@ def bake_one(src: Path, ktx_tool: str, dry_run: bool, max_edge: int = 0) -> bool
             ktx_tool, "transcode", "--target", "bc7",
             str(uastc_path), str(dst),
         ]
-        r = subprocess.run(transcode_cmd, capture_output=True, text=True)
+        r = subprocess.run(transcode_cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if r.returncode != 0:
             print(f"[FAIL] ktx transcode failed for {src.name}: "
                   f"rc={r.returncode} {(r.stderr or r.stdout).strip()[:200]}",

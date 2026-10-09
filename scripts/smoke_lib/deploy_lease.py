@@ -34,6 +34,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -229,7 +230,8 @@ def _git_info() -> dict:
                         ("sha", ["rev-parse", "--short", "HEAD"])):
         try:
             out = subprocess.run(["git", "-C", root, *args],
-                                capture_output=True, text=True, timeout=5)
+                                capture_output=True, text=True, timeout=5,
+                                **nofocus.hidden_kwargs())
             info[field] = out.stdout.strip() or None
         except Exception:
             pass

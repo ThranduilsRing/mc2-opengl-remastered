@@ -54,11 +54,11 @@ def build_one(name, config):
         return False, f"no source dir tools/{name}/ (not a standalone C++ harness?)"
     cm = cmake_exe()
     cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64"],
-                         capture_output=True, text=True, cwd=REPO_ROOT)
+                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if cfg.returncode != 0:
         return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
     bld = subprocess.run([cm, "--build", bdir, "--config", config],
-                         capture_output=True, text=True, cwd=REPO_ROOT)
+                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if bld.returncode != 0:
         tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
         return False, "build failed:\n" + "\n".join(tail)
@@ -78,12 +78,12 @@ def build_and_run_unit_tests(config, run):
     bdir = os.path.join(REPO_ROOT, "build64-tests")
     cm = cmake_exe()
     cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64"],
-                         capture_output=True, text=True, cwd=REPO_ROOT)
+                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if cfg.returncode != 0:
         return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
     bld = subprocess.run([cm, "--build", bdir, "--config", config,
                           "--target", "mc2_tests"],
-                         capture_output=True, text=True, cwd=REPO_ROOT)
+                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if bld.returncode != 0:
         tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
         return False, "build failed:\n" + "\n".join(tail)
@@ -92,7 +92,7 @@ def build_and_run_unit_tests(config, run):
     exe = os.path.join(bdir, config, "mc2_tests" + (".exe" if os.name == "nt" else ""))
     if not os.path.isfile(exe):
         exe = os.path.join(bdir, "mc2_tests" + (".exe" if os.name == "nt" else ""))
-    rc = subprocess.run([exe], cwd=REPO_ROOT).returncode
+    rc = subprocess.run([exe], cwd=REPO_ROOT, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
     return (rc == 0), ("doctest passed" if rc == 0 else f"doctest failed (rc={rc})")
 
 
@@ -154,7 +154,7 @@ def main():
         for bd in build_dirs:
             cmd += ["--build-dir", os.path.basename(bd)]
         print("\n[build-harnesses] running suite...")
-        rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
+        rc = subprocess.run(cmd, cwd=REPO_ROOT, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
         return 1 if (failures or rc != 0 or not unit_ok) else 0
 
     return 1 if (failures or not unit_ok) else 0

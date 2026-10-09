@@ -41,6 +41,7 @@ def _find_main_worktree() -> Path:
     result = subprocess.run(
         ["git", "worktree", "list", "--porcelain"],
         capture_output=True, text=True, cwd=here,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     for line in result.stdout.splitlines():
         if line.startswith("worktree "):

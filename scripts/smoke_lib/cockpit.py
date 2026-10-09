@@ -27,6 +27,7 @@ import sys
 import traceback
 from pathlib import Path
 from typing import Any
+from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
 
 # ---------------------------------------------------------------------------
 # Internal constants
@@ -73,6 +74,7 @@ def _git_head(repo_root: str) -> str | None:
             capture_output=True,
             text=True,
             timeout=5,
+            **nofocus.hidden_kwargs()
         )
         if result.returncode == 0:
             return result.stdout.strip()

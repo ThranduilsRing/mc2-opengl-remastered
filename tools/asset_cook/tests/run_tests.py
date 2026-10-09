@@ -50,6 +50,7 @@ def main() -> int:
         proc = subprocess.run(
             [sys.executable, str(VALIDATOR), str(path)],
             capture_output=True, text=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         got = proc.returncode
         out = proc.stdout + proc.stderr
@@ -74,7 +75,7 @@ def main() -> int:
     # G1 stage geometry gate
     for sub_test in ("test_g1_stage.py", "test_g2_textures.py", "test_g3b_assemble.py",
                      "test_g_pathb_2civliving.py"):
-        r = subprocess.run([sys.executable, str(HERE / sub_test)], capture_output=True, text=True)
+        r = subprocess.run([sys.executable, str(HERE / sub_test)], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         print(r.stdout.strip() + (("\n" + r.stderr.strip()) if r.stderr.strip() else ""))
         if r.returncode != 0:
             failures += 1

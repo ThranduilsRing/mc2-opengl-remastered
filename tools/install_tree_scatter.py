@@ -70,7 +70,7 @@ def append_fit_packet(obj_pak: Path, fit_text: Path) -> int:
     result = subprocess.run(
         [sys.executable, str(pak_append), "append", "--pak", str(obj_pak),
          "--text-file", str(fit_text)],
-        capture_output=True, text=True)
+        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     print(result.stdout)
     if result.returncode != 0:
         print(result.stderr, file=sys.stderr)

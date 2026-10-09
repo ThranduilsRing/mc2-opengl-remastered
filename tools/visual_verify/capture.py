@@ -57,6 +57,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import run_visual_capture as rvc  # noqa: E402  (the hardened launcher we build on)
 import mc2_env_pin as env_pin  # noqa: E402  (CAPTURE-ENV-PIN-1 declared-env parsing)
 import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 
 def _now_iso() -> str:
@@ -83,7 +86,8 @@ def _running_mc2_from(install: Path) -> "list[tuple[int, str]]":
             ["powershell", "-NoProfile", "-Command",
              "Get-CimInstance Win32_Process -Filter \"Name='mc2.exe'\" | "
              "Select-Object ProcessId,ExecutablePath | ConvertTo-Json -Compress"],
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, timeout=30,
+            **nofocus.hidden_kwargs())
         txt = (out.stdout or "").strip()
         if not txt:
             return hits

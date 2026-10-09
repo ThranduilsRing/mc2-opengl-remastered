@@ -71,7 +71,7 @@ def run(root: Path, tmp: Path, tag: str) -> dict:
     out = tmp / f"report_{tag}.json"
     subprocess.run([sys.executable, str(CHECKER), "--root", str(root),
                     "--json", str(out), "--quiet"],
-                   capture_output=True, text=True, timeout=180)
+                   capture_output=True, text=True, timeout=180, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return json.loads(out.read_text(encoding="utf-8"))
 
 

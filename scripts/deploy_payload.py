@@ -209,7 +209,7 @@ def generate_defs_payload(src_root, build64_root):
         out_dir = os.path.join(gen_root, sub)
         cmd = [sys.executable, os.path.join(src_root, script),
                "--srcdata", srcdata, "--out", out_dir] + extra
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if r.returncode != 0:
             log(f"generated defs SKIPPED: {script} failed rc={r.returncode}\n"
                 f"{(r.stderr or r.stdout or '').strip()[:2000]}")
@@ -337,7 +337,7 @@ def check_free_space_for_payload(items, target):
         r = subprocess.run(
             [sys.executable, guard, "--path", target,
              "--need-bytes", str(need), "--label", "deploy payload"],
-            timeout=60)
+            timeout=60, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
         rc = r.returncode
     except Exception as e:  # noqa: BLE001
         fail(f"disk guard could not run ({e}) — refusing to deploy UNGUARDED. "
@@ -430,7 +430,7 @@ def check_hardlink_isolation(items, target):
                 [sys.executable, guard, "--target", target,
                  "--payload-list", listfile, "--quiet",
                  "--label", "deploy payload"],
-                timeout=120)
+                timeout=120, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
             rc = r.returncode
         except Exception as e:  # noqa: BLE001
             fail(f"hardlink-isolation guard could not run ({e}) — refusing to "
@@ -498,6 +498,7 @@ def git_head(root):
         out = subprocess.run(
             ["git", "-C", root, "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         if out.returncode == 0:
             return out.stdout.strip()
@@ -604,6 +605,7 @@ def _proc_exe_paths_wmic(exe_name):
             ["wmic", "process", "where",
              f"name='{exe_name}'", "get", "ProcessId,ExecutablePath", "/FORMAT:CSV"],
             capture_output=True, text=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         for line in out.stdout.splitlines():
             line = line.strip()
@@ -1429,7 +1431,7 @@ def main():
                                "check-deploy-hygiene.py")
         if os.path.isfile(hygiene):
             r = subprocess.run([sys.executable, hygiene, target],
-                               capture_output=True, text=True, timeout=120)
+                               capture_output=True, text=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             out = (r.stdout or "").strip()
             if out:
                 for line in out.splitlines():

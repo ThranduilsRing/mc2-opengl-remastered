@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
+from . import nofocus
 from .cursor_guard import CursorGuard
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
@@ -218,20 +219,18 @@ def run_one(cfg: RunConfig) -> RunResult:
     # against the install directory rather than the runner's working directory.
     # Matches the cwd=GAME_DIR precedent in scripts/game_auto.py.
     exe_dir = str(Path(cfg.exe[0]).resolve().parent)
-    # Start the game window minimized so smoke runs don't steal focus or
-    # interrupt the user's desktop. The game detects SDL_WINDOW_MINIMIZED and
-    # throttles to ~100 fps (10ms sleep) but game logic and stdout logging
-    # keep running, so heartbeat/ok gates are unaffected. Perf runs can opt into
-    # a visible window to avoid that background throttle.
-    startupinfo = None
-    if sys.platform == "win32":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        # Default SW_SHOWMINNOACTIVE(7): minimized, no focus steal -- but SDL
-        # then throttles to ~100fps, so Avg FPS is NOT GPU throughput.
-        # MC2_SMOKE_VISIBLE=1 -> SW_SHOWNOACTIVATE(4); cfg.show_window -> SW_SHOW(5).
-        startupinfo.wShowWindow = (5 if getattr(cfg, "show_window", False)
-                                   else (4 if os.environ.get("MC2_SMOKE_VISIBLE") else 7))
+    # OWNER RULE: the game ALWAYS launches in the background. The Popen below
+    # goes through nofocus.spawn, which owns the three halves of that contract
+    # (STARTUPINFO verb, engine-side env, offscreen backstop). This block used
+    # to hand-roll its own STARTUPINFO and map cfg.show_window to
+    # SW_SHOW(5) -- an ACTIVATING verb -- so every `--show-window` perf smoke
+    # stole focus. show_window now only selects SW_SHOWNOACTIVATE(4) over
+    # SW_SHOWMINNOACTIVE(7): a perf run must not be MINIMIZED (SDL throttles a
+    # minimized window to ~100 fps, so Avg FPS would not be GPU throughput),
+    # and the window is parked offscreen (MC2_WINDOW_OFFSCREEN, FORCED_ENV) so
+    # it is neither minimized nor on the desktop.
+    show_window = bool(getattr(cfg, "show_window", False)
+                       or os.environ.get("MC2_SMOKE_VISIBLE"))
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()
@@ -244,9 +243,11 @@ def run_one(cfg: RunConfig) -> RunResult:
     # Inert on non-win32 / headless, or with MC2_NO_CURSOR_GUARD=1.
     cursor_guard = CursorGuard().start()
     try:
-        proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                env=env, text=True, bufsize=1, cwd=exe_dir,
-                                startupinfo=startupinfo)
+        # small_window=False: smoke grades perf/pixels at options.cfg size, so
+        # the 640x480 MC2_WIDTH/HEIGHT default must not be injected here.
+        proc = nofocus.spawn(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             env=env, text=True, bufsize=1, cwd=exe_dir,
+                             show_window=show_window, small_window=False)
     except BaseException:
         cursor_guard.stop()
         raise

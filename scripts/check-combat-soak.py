@@ -80,7 +80,7 @@ def run_oracle(oracle, exe, root, duration, quiet):
     cmd = [sys.executable, os.path.join(root, "scripts", "run_smoke.py"),
            "--exe", exe, "--no-lease", "--mission", mission,
            "--duration", str(duration), "--keep-logs"]
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     smoke_ok = (proc.returncode == 0)
 
     counts = count_combat_events(jsonl_path)

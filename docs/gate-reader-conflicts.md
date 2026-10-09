@@ -6,19 +6,19 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit d6715fad2.
+Scanned: commit ca6975f5b.
 
 | Measure | Count |
 |---|---|
-| gates named by a literal in scanned code | 1133 |
-| gates with at least one classified reader | 1123 |
-| `"MC2_*"` literal occurrences | 1703 |
+| gates named by a literal in scanned code | 1135 |
+| gates with at least one classified reader | 1124 |
+| `"MC2_*"` literal occurrences | 1706 |
 | literals not passed to an env read (tables, writers, indirect names) | 43 |
-| read sites analysed | 1660 |
-| reader sites with an outcome vector | 1570 |
-| reader sites comparing a token no probe hits (not comparable) | 53 |
+| read sites analysed | 1663 |
+| reader sites with an outcome vector | 1569 |
+| reader sites comparing a token no probe hits (not comparable) | 55 |
 | sites where the probe decides nothing (prints, paths) | 14 |
-| sites the tool could not classify | 23 |
+| sites the tool could not classify | 25 |
 | **gates with conflicting readers** | 31 |
 
 ## Design section 4: confirmed or corrected
@@ -28,7 +28,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | Gate | Reader-vs-reader conflict | Design claim | Verdict | Actual reader | Class | Note |
 |---|---|---|---|---|---|---|
 | MC2_SHADOW_ENABLE | yes | `GameOS/gameos/gos_mech_batcher.cpp:1167` | confirmed | `GameOS/gameos/gos_mech_batcher.cpp:1167` | Lead0Kill |  |
-|  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:9290` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:9259` | Lead0Kill |  |
+|  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:9290` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:9258` | Lead0Kill |  |
 |  |  | `GameOS/gameos/vulkan_post_screenfx_native.cpp:759` | corrected | `GameOS/gameos/vulkan_post_screenfx_native.cpp:749` | Exact1 |  |
 | MC2_DISABLE_GOSFX | yes | `mclib/mlr/mlr_gate.cpp:37` | confirmed | `mclib/mlr/mlr_gate.cpp:37` | Lead1 |  |
 |  |  | `GameOS/gameos/gameosmain.cpp:1340` | corrected | `GameOS/gameos/gameosmain.cpp:1337` | Lead0Kill |  |
@@ -44,8 +44,8 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | confirmed | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | Num(atoi,raw) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
 | MC2_LIGHT_GRID_DIM | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:276` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:269` | Num(atol,raw) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
 | MC2_LIGHT_POOL_MAX | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:859` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:852` | Num(atol,raw) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
-| MC2_SNAPSHOT_STATIC_PROP_BUILD | yes | `GameOS/gameos/gos_static_prop_batcher.cpp:246` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:240` | Lead0Kill | the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands |
-|  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:247` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:240` | Lead0Kill |  |
+| MC2_SNAPSHOT_STATIC_PROP_BUILD | yes | `GameOS/gameos/gos_static_prop_batcher.cpp:246` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:239` | Lead0Kill | the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands |
+|  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:247` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:239` | Lead0Kill |  |
 | MC2_ACTIVE_MOD | **no** | `mclib/file.cpp:727` | confirmed | `mclib/file.cpp:727` | NonEmpty | all readers agree (NonEmpty); the hazard is a re-read after _putenv_s, i.e. caching, not truthiness |
 |  |  | `mclib/anim_override_registry.cpp:161` | confirmed | `mclib/anim_override_registry.cpp:161` | NonEmpty |  |
 |  |  | `mclib/fx_def_registry.cpp:355` | confirmed | `mclib/fx_def_registry.cpp:355` | NonEmpty |  |
@@ -56,18 +56,18 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | Gate | Reader sites (file:line, class) | Inputs that disagree | Default-visible? | Proposed unified rule | Behaviour delta if unified |
 |---|---|---|---|---|---|
 | `MC2_VK_VFX` | `GameOS/gameos/gameos_graphics.cpp:7591` Exact1 (inv)<br>`GameOS/gameos/gameos_graphics.cpp:8419` Tri(inherit)<br>`GameOS/gameos/vulkan_vfx_island.cpp:434` Tri(inherit)<br>`code/gamecam.cpp:732` Tri(inherit)<br>`code/gamecam.cpp:843` Tri(inherit)<br>`code/gamecam.cpp:967` Tri(inherit)<br>... +2 more | U: inh vs off; E: inh vs off; F: inh vs off; X: inh vs off; X10: inh vs off; X25: inh vs off | yes (scripts/run_smoke.py, tools/gate_table.seed.json) | Tri row: exact "1"/"0" wins, else inherit the umbrella gate (owner decision: which readers inherit) -- umbrella inheritance | n/a (owner decision) |
-| `MC2_STATIC_PROP_BUILDING_SHADOW` | `GameOS/gameos/gos_static_prop_batcher.cpp:9567` Custom[00000001]<br>`mclib/bdactor.cpp:5562` Lead0P<br>`mclib/txmmgr.cpp:3517` Lead0P<br>`mclib/txmmgr.cpp:3518` Lead0P<br>`mclib/txmmgr.cpp:3521` Partial[D,off,off,off,off,off,off,on]<br>`mclib/txmmgr.cpp:3659` Lead0P<br>... +1 more | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_STATIC_PROP_BUILDING_SHADOW` | `GameOS/gameos/gos_static_prop_batcher.cpp:9566` Custom[00000001]<br>`mclib/bdactor.cpp:5562` Lead0P<br>`mclib/txmmgr.cpp:3517` Lead0P<br>`mclib/txmmgr.cpp:3518` Lead0P<br>`mclib/txmmgr.cpp:3521` Partial[D,off,off,off,off,off,off,on]<br>`mclib/txmmgr.cpp:3659` Lead0P<br>... +1 more | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_BOOT_TO_BAY` | `code/controlgui.cpp:4627` Presence (inv)<br>`code/logistics.cpp:970` Presence (inv)<br>`code/mainmenu.cpp:441` NonEmpty (inv)<br>`code/mainmenu.cpp:467` Presence (inv)<br>`code/missionbegin.cpp:232` NonEmpty | E: off vs on | yes (scripts/mechbay_preview_harness.py, scripts/resolve_campaign_config.py, +2) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 5 off) | NonEmpty x1: Z on->off, F on->off<br>NonEmpty (inverted use) x1: Z on->off, F on->off<br>Presence (inverted use) x3: E on->off, Z on->off, F on->off |
-| `MC2_MATERIAL_GPU` | `GameOS/gameos/debug_state_dump.cpp:489` Lead0Kill<br>`GameOS/gameos/gameosmain.cpp:1323` Lead0Kill<br>`GameOS/gameos/gos_materials.cpp:46` Lead0Kill<br>`GameOS/gameos/gos_mech_batcher.cpp:683` Lead0P<br>`GameOS/gameos/gos_static_prop_batcher.cpp:814` Lead0Kill | U: off vs on | yes (scripts/capture_baseline.py, scripts/check-debug-state-json.py, +28) | Std(unset=on) -- registry defaultOn=true [CONTRADICTS REGISTRY: GameOS/gameos/gos_mech_batcher.cpp:683 Lead0P] | Lead0Kill x4: F on->off<br>Lead0P x1: U off->on, F on->off |
-| `MC2_SHADOW_ENABLE` | `GameOS/gameos/gos_mech_batcher.cpp:1167` Lead0Kill<br>`GameOS/gameos/gos_mech_batcher.cpp:1168` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9258` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9259` Lead0Kill<br>`GameOS/gameos/vulkan_post_screenfx_native.cpp:749` Exact1 | U: off vs on; E: off vs on; F: off vs on; X: off vs on; X10: off vs on; X25: off vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tests/smoke/matrices/shadow.json, +1) | Std(unset=on) -- registry defaultOn=true [CONTRADICTS REGISTRY: GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Exact1] | Exact1 x1: U off->on, E off->on, X off->on, X10 off->on, X25 off->on<br>Lead0Kill x4: F on->off |
-| `MC2_DEBUG_STATE_DUMP` | `GameOS/gameos/debug_state_dump.cpp:1220` Lead0<br>`GameOS/gameos/debug_state_dump.cpp:1251` Lead0<br>`GameOS/gameos/gameosmain.cpp:1050` Presence<br>`GameOS/gameos/vulkan_swapchain_present.cpp:54` Presence | E: off vs on; Z: off vs on | yes (scripts/capture_baseline.py, scripts/check-brain-opord.py, +13) | Std(unset=off) -- registry defaultOn=false | Lead0 x2: F on->off<br>Presence x2: E on->off, Z on->off, F on->off |
+| `MC2_MATERIAL_GPU` | `GameOS/gameos/debug_state_dump.cpp:489` Lead0Kill<br>`GameOS/gameos/gameosmain.cpp:1323` Lead0Kill<br>`GameOS/gameos/gos_materials.cpp:46` Lead0Kill<br>`GameOS/gameos/gos_mech_batcher.cpp:683` Lead0P<br>`GameOS/gameos/gos_static_prop_batcher.cpp:813` Lead0Kill | U: off vs on | yes (scripts/capture_baseline.py, scripts/check-debug-state-json.py, +4) | Std(unset=on) -- registry defaultOn=true [CONTRADICTS REGISTRY: GameOS/gameos/gos_mech_batcher.cpp:683 Lead0P] | Lead0Kill x4: F on->off<br>Lead0P x1: U off->on, F on->off |
+| `MC2_SHADOW_ENABLE` | `GameOS/gameos/gos_mech_batcher.cpp:1167` Lead0Kill<br>`GameOS/gameos/gos_mech_batcher.cpp:1168` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9257` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9258` Lead0Kill<br>`GameOS/gameos/vulkan_post_screenfx_native.cpp:749` Exact1 | U: off vs on; E: off vs on; F: off vs on; X: off vs on; X10: off vs on; X25: off vs on | yes (scripts/run_vk_nointerop_strict_visible.py, tests/smoke/matrices/shadow.json, +1) | Std(unset=on) -- registry defaultOn=true [CONTRADICTS REGISTRY: GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Exact1] | Exact1 x1: U off->on, E off->on, X off->on, X10 off->on, X25 off->on<br>Lead0Kill x4: F on->off |
+| `MC2_DEBUG_STATE_DUMP` | `GameOS/gameos/debug_state_dump.cpp:1220` Lead0<br>`GameOS/gameos/debug_state_dump.cpp:1251` Lead0<br>`GameOS/gameos/gameosmain.cpp:1050` Presence<br>`GameOS/gameos/vulkan_swapchain_present.cpp:72` Presence | E: off vs on; Z: off vs on | yes (scripts/capture_baseline.py, scripts/check-brain-opord.py, +12) | Std(unset=off) -- registry defaultOn=false | Lead0 x2: F on->off<br>Presence x2: E on->off, Z on->off, F on->off |
 | `MC2_TEXMGR_KTX_PRIMARY` | `mclib/bdactor.cpp:178` Lead0Kill<br>`mclib/gvactor.cpp:143` Lead0Kill<br>`mclib/mech3d.cpp:186` Lead0Kill<br>`mclib/txmmgr.cpp:5394` Num(atoi,raw) | F: off vs on; X: off vs on | yes (tools/fst_repack_drop.py, tools/gate_table.seed.json) | Std(unset=on) -- unregistered; unset outcome taken from the majority of readers (3 on / 0 off) | Lead0Kill x3: F on->off |
 | `MC2_DISABLE_GOSFX` | `GameOS/gameos/gameosmain.cpp:1337` Lead0Kill (inv)<br>`GuiRuntime/GraphicsOptionsWindow.cpp:1383` Presence<br>`mclib/mlr/mlr_gate.cpp:37` Lead1 | U: off vs on; E: off vs on; Z: off vs on; F: off vs on; X: off vs on; X25: off vs on | yes (scripts/check-mlr-leaves-gated.sh, scripts/run_smoke.py, +1) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (1 on / 2 off) [name implies a kill flag: check complements are intentional] | Lead0Kill (inverted use) x1: U on->off, E on->off, F on->off<br>Lead1 x1: X off->on, X25 off->on<br>Presence x1: E on->off, Z on->off, F on->off |
 | `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5533` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SHADER_HOT_RELOAD` | `GameOS/gameos/gameos_graphics.cpp:6068` Exact1<br>`GameOS/gameos/gameosmain.cpp:1264` Presence<br>`GameOS/gameos/utils/shader_builder.cpp:422` Lead1 (inv) | E: off vs on; Z: off vs on; F: off vs on; X: off vs on; X10: off vs on; X25: off vs on | yes (tools/gate_table.seed.json) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 3 off) | Exact1 x1: X off->on, X10 off->on, X25 off->on<br>Lead1 (inverted use) x1: X off->on, X25 off->on<br>Presence x1: E on->off, Z on->off, F on->off |
-| `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | `GameOS/gameos/gos_static_prop_batcher.cpp:9775` Custom[00000001]<br>`mclib/txmmgr.cpp:3674` Lead0Kill<br>`mclib/txmmgr.cpp:3675` Lead0Kill | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tests/smoke/matrices/shadow.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | `GameOS/gameos/gos_static_prop_batcher.cpp:9774` Custom[00000001]<br>`mclib/txmmgr.cpp:3674` Lead0Kill<br>`mclib/txmmgr.cpp:3675` Lead0Kill | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tests/smoke/matrices/shadow.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SNAPSHOT_MECH_EXTRACT` | `GameOS/gameos/debug_state_dump.cpp:599` Lead0<br>`GameOS/gameos/gos_mech_batcher.cpp:2958` Lead1<br>`GameOS/gameos/render_snapshot.cpp:245` Lead1 | F: off vs on; X: off vs on; X25: off vs on | yes (scripts/capture_baseline.py, scripts/run_smoke.py, +1) | Std(unset=off) -- registry defaultOn=false | Lead0 x1: F on->off<br>Lead1 x2: X off->on, X25 off->on |
-| `MC2_SNAPSHOT_STATIC_PROP_BUILD` | `GameOS/gameos/debug_state_dump.cpp:488` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:240` Lead0Kill<br>`editor/EditorMFC.cpp:188` Presence (inv) | U: off vs on; Z: off vs on | yes (scripts/capture_baseline.py, scripts/check-debug-state-json.py, +27) | Std(unset=on) -- registry defaultOn=true | Lead0Kill x2: F on->off<br>Presence (inverted use) x1: U off->on, Z on->off, F on->off |
+| `MC2_SNAPSHOT_STATIC_PROP_BUILD` | `GameOS/gameos/debug_state_dump.cpp:488` Lead0Kill<br>`GameOS/gameos/gos_static_prop_batcher.cpp:239` Lead0Kill<br>`editor/EditorMFC.cpp:188` Presence (inv) | U: off vs on; Z: off vs on | yes (scripts/capture_baseline.py, scripts/check-debug-state-json.py, +3) | Std(unset=on) -- registry defaultOn=true | Lead0Kill x2: F on->off<br>Presence (inverted use) x1: U off->on, Z on->off, F on->off |
 | `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | `mclib/bdactor.cpp:5566` Lead0Kill<br>`mclib/bdactor.cpp:5577` Custom[00000001]<br>`mclib/bdactor.cpp:5578` Custom[00000001] | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_STATIC_UPDATE_SKIP` | `GameOS/gameos/gameosmain.cpp:1259` Std(def=on)<br>`code/bldng.cpp:815` Lead0Kill<br>`code/terrobj.cpp:96` Std(def=on) | F: off vs on | yes (tools/gate_table.seed.json) | Std(unset=on) -- registry defaultOn=true [name implies a kill flag: check complements are intentional] | Lead0Kill x1: F on->off |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170` Lead0<br>`GameOS/gameos/terrain_material_lib.cpp:189` NonEmpty<br>`GameOS/gameos/terrain_material_lib.cpp:226` NonEmpty | Z: off vs on | yes (scripts/deploy_payload.py, tools/gate_table.seed.json) | Std(unset=off) -- registry defaultOn=false | Lead0 x1: F on->off<br>NonEmpty x2: Z on->off, F on->off |
@@ -80,7 +80,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | `MC2_MOD_DEPS` | `mclib/file.cpp:732` NonEmpty<br>`mclib/file.cpp:782` Presence | E: off vs on | yes (scripts/check-combat-soak.py, scripts/mechbay_preview_harness.py, +6) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | NonEmpty x1: Z on->off, F on->off<br>Presence x1: E on->off, Z on->off, F on->off |
 | `MC2_RENDER_CONTRACT_ASSERT` | `GameOS/gameos/gos_gpu_sync.cpp:16` Lead0P<br>`mclib/render_contract.cpp:569` Lead0 | E: off vs on | yes (scripts/run_smoke.py, tests/telemetry/tag-registry.json, +1) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | Lead0 x1: F on->off<br>Lead0P x1: E on->off, F on->off |
 | `MC2_SPOTLIGHT_DIRECTION_FIX` | `mclib/cone_glow.cpp:223` AtoiNZ<br>`mclib/cone_glow.cpp:243` Custom[00000001] | O: off vs on; X10: off vs on | yes (tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
-| `MC2_STATIC_PROP_TRACE` | `GameOS/gameos/gos_static_prop_batcher.cpp:5897` Presence<br>`GameOS/gameos/gos_static_prop_registry.cpp:138` Std(def=off) | E: off vs on; Z: off vs on; F: off vs on | yes (tools/gate_table.seed.json) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | Presence x1: E on->off, Z on->off, F on->off |
+| `MC2_STATIC_PROP_TRACE` | `GameOS/gameos/gos_static_prop_batcher.cpp:5896` Presence<br>`GameOS/gameos/gos_static_prop_registry.cpp:138` Std(def=off) | E: off vs on; Z: off vs on; F: off vs on | yes (tools/gate_table.seed.json) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | Presence x1: E on->off, Z on->off, F on->off |
 | `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | `GameOS/gameos/gameos_graphics.cpp:7269` Num(atof,raw)<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:929` Num(atof,raw) | U: 0 vs 0.35; E: 0 vs 0.35 | yes (tools/gate_table.seed.json) | Int/Float row: whole-string parse, out-of-range falls back to the one default -- readers use atof; defaults disagree: 0, 0.35 | n/a (owner decision) |
 | `MC2_TERRAIN_MATERIAL_LIB` | `GameOS/gameos/gameos_graphics.cpp:364` Lead0<br>`GameOS/gameos/terrain_material_lib.cpp:224` NonEmpty | Z: off vs on | yes (tools/gate_table.seed.json) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | Lead0 x1: F on->off<br>NonEmpty x1: Z on->off, F on->off |
 | `MC2_UI_DEFS_TRACE` | `GuiRuntime/GuiRuntime.cpp:105` Lead0<br>`gui/UiDefs.cpp:107` Std(def=off) | F: off vs on | yes (tools/gate_table.seed.json) | Std(unset=off) -- unregistered; unset outcome taken from the majority of readers (0 on / 2 off) | Lead0 x1: F on->off |
@@ -91,9 +91,9 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 
 | Class | Reader sites |
 |---|---|
-| Presence | 494 |
+| Presence | 495 |
 | Lead0Kill | 202 |
-| Lead0 | 177 |
+| Lead0 | 175 |
 | Num(atof,raw) | 157 |
 | Lead1 | 127 |
 | Lead0P | 64 |
@@ -124,7 +124,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | Num(atol,guarded) | 1 |
 | Partial[D,off,off,off,off,off,off,on] | 1 |
 
-## Sites the tool could not classify (23)
+## Sites the tool could not classify (25)
 
 Mostly string- and path-valued reads whose only use is a library call (`fopen`, `snprintf`). They are listed in the JSON; the ratchet forbids the number rising so a new idiom cannot hide.
 

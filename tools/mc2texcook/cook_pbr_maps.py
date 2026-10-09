@@ -107,7 +107,7 @@ def _ktx_create_uastc(ktx_exe, src_png, uastc_ktx2, vk_format, oetf, mips=False)
         src_png,
         uastc_ktx2,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if result.returncode != 0:
         print(f'  ktx create failed (rc={result.returncode})', file=sys.stderr)
         if result.stderr:
@@ -124,7 +124,7 @@ def _ktx_transcode_bc7(ktx_exe, uastc_ktx2, out_ktx2):
         uastc_ktx2,
         out_ktx2,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if result.returncode != 0:
         print(f'  ktx transcode failed (rc={result.returncode})', file=sys.stderr)
         if result.stderr:

@@ -55,7 +55,7 @@ def compile_one(kind, exe, src_path):
         else:
             cmd = [exe, src_path, "-o", spv]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         except FileNotFoundError:
             return False, f"compiler not found: {exe}"
         ok = proc.returncode == 0 and os.path.isfile(spv)

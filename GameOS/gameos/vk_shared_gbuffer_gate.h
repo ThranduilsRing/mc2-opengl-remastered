@@ -8,8 +8,9 @@
 //
 //   * UMBRELLA  MC2_VK_SHARED_GBUFFER=1  — arms the whole shared-GBuffer scene family
 //     at once. When ON, every member sub-gate below DEFAULTS to ON, AND (as of
-//     VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1) the 10 direct-chain gates default ON too —
-//     i.e. umbrella-ON MEANS the strict/direct-chain no-GL-interop path. The old
+//     VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1) the direct-chain gates (prop, water, post
+//     composite) default ON too — i.e. umbrella-ON MEANS the strict/direct-chain
+//     no-GL-interop path. The old
 //     hybrid interop-semaphore path is reachable only by an explicit per-gate =0
 //     override (item-4's deletion target). The eventual default flip toggles exactly
 //     THIS ONE name. Requires MC2_RENDER_BACKEND=vulkan (the shared engine
@@ -132,8 +133,9 @@ inline bool terrainNativeFirstOwnerOn()
 }
 
 // Shared post-pass direct-chain prerequisite: the scene producers have kept the
-// shared color/depth/normal chain Vulkan-owned through water. Individual post
-// passes still require their own direct-chain env gate on top of this.
+// shared color/depth/normal chain Vulkan-owned through water. The post passes need
+// only this plus the post-composite direct-chain gate (the shared-scene resolver in
+// gos_postprocess.cpp).
 inline bool postDirectChainUpstreamOn()
 {
     // Direct-chain members default ON under the umbrella (directChainGate);

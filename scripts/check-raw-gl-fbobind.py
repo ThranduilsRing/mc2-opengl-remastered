@@ -115,7 +115,7 @@ def strip_comments(line):
 
 def git(args):
     return subprocess.run(["git"] + args, cwd=REPO_ROOT,
-                          capture_output=True, text=True, errors="replace")
+                          capture_output=True, text=True, errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def default_base():

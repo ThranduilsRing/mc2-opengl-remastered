@@ -60,6 +60,9 @@ import lane_registry as lreg
 import mission_facts as mfacts
 import gate_status as gstat
 import deploy_status as dstat
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Server
@@ -114,6 +117,7 @@ def _git_fast(args: list, cwd: Path, timeout: int = 5) -> tuple:
             ["git"] + args,
             capture_output=True, text=True, cwd=str(cwd), timeout=timeout,
             stdin=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         )
         return r.stdout.strip(), r.returncode == 0
     except subprocess.TimeoutExpired:

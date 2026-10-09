@@ -139,7 +139,7 @@ def top_files(res, k):
 # ---------------------------------------------------------------- git / fs sources
 def _git(root, args, inp=None):
     return subprocess.run(["git"] + args, cwd=root, input=inp, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, check=True).stdout
+                          stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
 
 
 def _git_try(root, args):

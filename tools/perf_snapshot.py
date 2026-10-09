@@ -40,7 +40,8 @@ from smoke_lib import nofocus  # noqa: E402
 
 def taskkill_exact_pid(pid: int):
     subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    **nofocus.hidden_kwargs())
 
 
 def read_dump(dump_dir: Path):

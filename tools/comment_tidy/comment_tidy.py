@@ -206,7 +206,7 @@ ENV_TOK = re.compile(r"\bMC2_[A-Z0-9][A-Z0-9_]*")
 def git(root, *args, check=False, input=None):
     try:
         r = subprocess.run(["git", "-C", root, *args], capture_output=True, input=input,
-                           timeout=300)
+                           timeout=300, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception:
         return None
     if r.returncode != 0:

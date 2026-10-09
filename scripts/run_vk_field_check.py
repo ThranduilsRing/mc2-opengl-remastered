@@ -91,6 +91,7 @@ def screenshot_primary(out_png: str) -> None:
         f"$bmp.Save('{out_png}',[System.Drawing.Imaging.ImageFormat]::Png);"
         "$g.Dispose();$bmp.Dispose()"
     )
+    # background-launch: allow interactive-driver PowerShell one-liner whose output must reach the caller's console
     subprocess.check_call(["powershell", "-NoProfile", "-Command", ps])
 
 

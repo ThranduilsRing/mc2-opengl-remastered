@@ -6,7 +6,7 @@
   "DefOnLead0": 1,
   "Exact1": 47,
   "Is01": 2,
-  "Lead0": 177,
+  "Lead0": 175,
   "Lead0Kill": 202,
   "Lead0P": 64,
   "Lead1": 127,
@@ -25,7 +25,7 @@
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 494,
+  "Presence": 495,
   "Std(def=off)": 16,
   "Std(def=on)": 10,
   "Str[dflt,dflt]": 3,
@@ -71,8 +71,8 @@
    "all_readers": [
     "GameOS/gameos/gos_mech_batcher.cpp:1167 (Lead0Kill)",
     "GameOS/gameos/gos_mech_batcher.cpp:1168 (Lead0Kill)",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9257 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9258 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9259 (Lead0Kill)",
     "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 (Exact1)"
    ],
    "gate": "MC2_SHADOW_ENABLE",
@@ -86,7 +86,7 @@
      "verdict": "confirmed"
     },
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:9259",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -255,7 +255,7 @@
   {
    "all_readers": [
     "GameOS/gameos/debug_state_dump.cpp:488 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:240 (Lead0Kill)",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:239 (Lead0Kill)",
     "editor/EditorMFC.cpp:188 (Presence)"
    ],
    "gate": "MC2_SNAPSHOT_STATIC_PROP_BUILD",
@@ -263,13 +263,13 @@
    "note": "the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:239",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:246",
      "class": "Lead0Kill",
      "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:239",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:247",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -717,7 +717,7 @@
      "class": "Presence",
      "sites": [
       "GameOS/gameos/gameosmain.cpp:1050",
-      "GameOS/gameos/vulkan_swapchain_present.cpp:54"
+      "GameOS/gameos/vulkan_swapchain_present.cpp:72"
      ]
     }
    ],
@@ -746,7 +746,7 @@
       ],
       "on": [
        "GameOS/gameos/gameosmain.cpp:1050",
-       "GameOS/gameos/vulkan_swapchain_present.cpp:54"
+       "GameOS/gameos/vulkan_swapchain_present.cpp:72"
       ]
      },
      "probe": "E"
@@ -768,7 +768,7 @@
       ],
       "on": [
        "GameOS/gameos/gameosmain.cpp:1050",
-       "GameOS/gameos/vulkan_swapchain_present.cpp:54"
+       "GameOS/gameos/vulkan_swapchain_present.cpp:72"
       ]
      },
      "probe": "Z"
@@ -796,7 +796,6 @@
     "scripts/run_smoke.py",
     "scripts/run_vk_field_check.py",
     "scripts/run_vk_nointerop_strict_visible.py",
-    "scripts/slice_gate.py",
     "scripts/sweep_campaign.py",
     "scripts/verify_executor_slice.py",
     "tools/gate_table.seed.json",
@@ -863,7 +862,7 @@
      "family": "bool",
      "file": "GameOS/gameos/vulkan_swapchain_present.cpp",
      "inverted": false,
-     "line": 54,
+     "line": 72,
      "vector": [
       "off",
       "on",
@@ -1619,7 +1618,7 @@
       "GameOS/gameos/debug_state_dump.cpp:489",
       "GameOS/gameos/gameosmain.cpp:1323",
       "GameOS/gameos/gos_materials.cpp:46",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:814"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:813"
      ]
     },
     {
@@ -1660,7 +1659,7 @@
        "GameOS/gameos/debug_state_dump.cpp:489",
        "GameOS/gameos/gameosmain.cpp:1323",
        "GameOS/gameos/gos_materials.cpp:46",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:814"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:813"
       ]
      },
      "probe": "U"
@@ -1683,30 +1682,6 @@
     "scripts/gate-defaults-allowlist.txt",
     "scripts/golden_scene.py",
     "tests/smoke/matrices/staticprop.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_ambient_v1.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_baseline.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_both.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_ibl.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_ambient_v1.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_baseline.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_both.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_ibl.json",
-    "tests/visual/baselines/staticprop_baseline_01_11f7f089.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_off.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s0p25.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s0p50.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s1p00.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s1p50.json",
-    "tests/visual/baselines/staticprop_baseline_01_af314d22_ambient_off.json",
-    "tests/visual/baselines/staticprop_baseline_01_af314d22_ambient_v1.json",
-    "tests/visual/baselines/staticprop_baseline_02_11f7f089.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_off.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s0p25.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s0p50.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p00.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p50.json",
-    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_off.json",
-    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_v1.json",
     "tools/gate_table.seed.json"
    ],
    "sites": [
@@ -1788,7 +1763,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 814,
+     "line": 813,
      "vector": [
       "on",
       "on",
@@ -2287,7 +2262,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9774"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2308,7 +2283,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9774"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2329,7 +2304,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9774"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2350,7 +2325,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9774"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2371,7 +2346,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9774"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2392,7 +2367,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9775"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9774"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -2424,7 +2399,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9775,
+     "line": 9774,
      "vector": [
       "off",
       "off",
@@ -2497,8 +2472,8 @@
      "sites": [
       "GameOS/gameos/gos_mech_batcher.cpp:1167",
       "GameOS/gameos/gos_mech_batcher.cpp:1168",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+      "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
      ]
     }
    ],
@@ -2533,8 +2508,8 @@
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
       ]
      },
      "probe": "U"
@@ -2556,8 +2531,8 @@
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
       ]
      },
      "probe": "E"
@@ -2579,8 +2554,8 @@
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
       ]
      },
      "probe": "F"
@@ -2602,8 +2577,8 @@
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
       ]
      },
      "probe": "X"
@@ -2625,8 +2600,8 @@
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
       ]
      },
      "probe": "X10"
@@ -2648,8 +2623,8 @@
       "on": [
        "GameOS/gameos/gos_mech_batcher.cpp:1167",
        "GameOS/gameos/gos_mech_batcher.cpp:1168",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9259"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9258"
       ]
      },
      "probe": "X25"
@@ -2714,7 +2689,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9258,
+     "line": 9257,
      "vector": [
       "on",
       "on",
@@ -2732,7 +2707,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9259,
+     "line": 9258,
      "vector": [
       "on",
       "on",
@@ -2942,7 +2917,7 @@
      "class": "Lead0Kill",
      "sites": [
       "GameOS/gameos/debug_state_dump.cpp:488",
-      "GameOS/gameos/gos_static_prop_batcher.cpp:240"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:239"
      ]
     },
     {
@@ -2981,7 +2956,7 @@
       ],
       "on": [
        "GameOS/gameos/debug_state_dump.cpp:488",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:240"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:239"
       ]
      },
      "probe": "U"
@@ -2999,7 +2974,7 @@
      "outcomes": {
       "off": [
        "GameOS/gameos/debug_state_dump.cpp:488",
-       "GameOS/gameos/gos_static_prop_batcher.cpp:240"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:239"
       ],
       "on": [
        "editor/EditorMFC.cpp:188"
@@ -3024,30 +2999,6 @@
     "scripts/check-debug-state-json.py",
     "scripts/run_smoke.py",
     "tests/visual/baselines/README.md",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_ambient_v1.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_baseline.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_both.json",
-    "tests/visual/baselines/arc_staticprop_baseline_01_9b1bf596_ibl.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_ambient_v1.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_baseline.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_both.json",
-    "tests/visual/baselines/arc_staticprop_baseline_02_9b1bf596_ibl.json",
-    "tests/visual/baselines/staticprop_baseline_01_11f7f089.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_off.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s0p25.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s0p50.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s1p00.json",
-    "tests/visual/baselines/staticprop_baseline_01_8a9b79cc_ibl_sh_s1p50.json",
-    "tests/visual/baselines/staticprop_baseline_01_af314d22_ambient_off.json",
-    "tests/visual/baselines/staticprop_baseline_01_af314d22_ambient_v1.json",
-    "tests/visual/baselines/staticprop_baseline_02_11f7f089.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_off.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s0p25.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s0p50.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p00.json",
-    "tests/visual/baselines/staticprop_baseline_02_8a9b79cc_ibl_sh_s1p50.json",
-    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_off.json",
-    "tests/visual/baselines/staticprop_baseline_02_af314d22_ambient_v1.json",
     "tools/gate_table.seed.json"
    ],
    "sites": [
@@ -3075,7 +3026,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 240,
+     "line": 239,
      "vector": [
       "on",
       "on",
@@ -3237,7 +3188,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9566",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -3263,7 +3214,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9566",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -3289,7 +3240,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9566",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -3315,7 +3266,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9566",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -3341,7 +3292,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9566",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -3376,7 +3327,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9567,
+     "line": 9566,
      "vector": [
       "off",
       "off",
@@ -3720,7 +3671,7 @@
      },
      "class": "Presence",
      "sites": [
-      "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
+      "GameOS/gameos/gos_static_prop_batcher.cpp:5896"
      ]
     },
     {
@@ -3755,7 +3706,7 @@
        "GameOS/gameos/gos_static_prop_registry.cpp:138"
       ],
       "on": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:5896"
       ]
      },
      "probe": "E"
@@ -3775,7 +3726,7 @@
        "GameOS/gameos/gos_static_prop_registry.cpp:138"
       ],
       "on": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:5896"
       ]
      },
      "probe": "Z"
@@ -3795,7 +3746,7 @@
        "GameOS/gameos/gos_static_prop_registry.cpp:138"
       ],
       "on": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:5897"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:5896"
       ]
      },
      "probe": "F"
@@ -3819,7 +3770,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 5897,
+     "line": 5896,
      "vector": [
       "off",
       "on",
@@ -5662,18 +5613,18 @@
   "editor",
   "gui"
  ],
- "source": "commit d6715fad2",
+ "source": "commit ca6975f5b",
  "totals": {
   "conflict_gates": 31,
-  "gates_with_literal": 1133,
-  "gates_with_reader": 1123,
-  "literal_occurrences": 1703,
+  "gates_with_literal": 1135,
+  "gates_with_reader": 1124,
+  "literal_occurrences": 1706,
   "non_call_literals": 43,
   "nonreader_sites": 14,
-  "read_sites": 1660,
-  "reader_sites": 1570,
-  "token_sites": 53,
-  "unclassified_sites": 23
+  "read_sites": 1663,
+  "reader_sites": 1569,
+  "token_sites": 55,
+  "unclassified_sites": 25
  },
  "unclassified": [
   {
@@ -5702,6 +5653,20 @@
    "file": "GameOS/gameos/visual_tuning_profile.cpp",
    "gate": "MC2_VISUAL_TUNING_FILE",
    "line": 301,
+   "why": "unclassified:opaque"
+  },
+  {
+   "callee": "getenv",
+   "file": "GameOS/gameos/vulkan_backend_skeleton.cpp",
+   "gate": "MC2_VULKAN_CACHE_DIR",
+   "line": 308,
+   "why": "unclassified:opaque"
+  },
+  {
+   "callee": "getenv",
+   "file": "GameOS/gameos/vulkan_backend_skeleton.cpp",
+   "gate": "MC2_VULKAN_SPV_DIR",
+   "line": 7602,
    "why": "unclassified:opaque"
   },
   {

@@ -65,7 +65,7 @@ def _cook(src: Path, preset: str, out_ktx2: Path) -> None:
         "--preset", preset,
         "--output", str(out_ktx2),
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if res.returncode != 0:
         raise RuntimeError(
             f"mc2texcook failed (preset={preset}, rc={res.returncode}):\n"

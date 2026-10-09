@@ -74,15 +74,15 @@ def test_rewrite_tree_handles_utf8_and_utf16_and_skips_binary(tmp_path):
 def make_repo(root: Path, warm: bool) -> Path:
     repo = root / "donor"
     repo.mkdir()
-    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"],
-                   check=True)
+                   check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"],
-                   check=True)
+                   check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     (repo / "hello.txt").write_text("hi\n")
-    subprocess.run(["git", "-C", str(repo), "add", "hello.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "add", "hello.txt"], check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "seed"],
-                   check=True)
+                   check=True, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     if warm:
         exe = repo / "build64" / "RelWithDebInfo" / "mc2.exe"
         exe.parent.mkdir(parents=True)
@@ -92,7 +92,7 @@ def make_repo(root: Path, warm: bool) -> Path:
 
 def run_tool(*argv: str) -> subprocess.CompletedProcess:
     return subprocess.run([sys.executable, str(TOOL), *argv],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def test_dry_run_clone_mode_creates_nothing(tmp_path):
@@ -108,11 +108,11 @@ def test_dry_run_clone_mode_creates_nothing(tmp_path):
     # nothing created: no dest dir, no new worktree, no new branch
     assert not (dest_root / "mc2-demo-lane").exists()
     wt = subprocess.run(["git", "-C", str(repo), "worktree", "list"],
-                        capture_output=True, text=True).stdout
+                        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
     assert len(wt.strip().splitlines()) == 1
     br = subprocess.run(["git", "-C", str(repo), "branch", "--list",
                          "claude/demo-lane-1"],
-                        capture_output=True, text=True).stdout
+                        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
     assert br.strip() == ""
 
 

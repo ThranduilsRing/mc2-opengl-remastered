@@ -90,7 +90,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
 # CURSOR-STEAL-HARNESS-GUARD-1: single shared implementation of cursor policy.
-from smoke_lib.cursor_guard import park_cursor_if_edge  # noqa: E402
+from smoke_lib.cursor_guard import CursorGuard, park_cursor_if_edge  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
 
@@ -201,6 +201,7 @@ def _disk_guard_advisory(path, need_gb: float, label: str) -> None:
     if not guard.is_file():
         return
     try:
+        # background-launch: allow disk-guard advisory prints its verdict to the caller's console; inherits it (no new window when the parent has one)
         subprocess.run([sys.executable, str(guard), "--path", str(path),
                         "--need-gb", str(need_gb), "--label", label],
                        timeout=60)
@@ -317,11 +318,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # desktop composite -- same reason park_window_offscreen(force=True) below
     # is safe here and is not safe in the pyautogui harnesses.
     #
-    # --show-window is the operator saying "I am here and I want to watch", so
-    # it opts out, exactly as it already does for the parker below.
-    if not show_window:
-        for _k, _v in nofocus.OFFSCREEN_ENV.items():
-            harness_sets.setdefault(_k, _v)
+    # OWNER RULE (background-only): --show-window no longer opts out. It used to
+    # mean "put the window on the desktop", which is exactly the focus/cursor
+    # theft the owner banned. It now only means "not MINIMIZED" (SW_SHOWNOACTIVATE
+    # instead of SW_SHOWMINNOACTIVE, so SDL does not throttle the loop); the
+    # window is still parked offscreen and still non-activating.
+    for _k, _v in nofocus.OFFSCREEN_ENV.items():
+        harness_sets.setdefault(_k, _v)
 
     env, env_record = env_pin.build_pinned_env(harness_sets, declared_env)
     warn = env_pin.format_warning(env_record)
@@ -334,74 +337,79 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
           f"trigger={trigger_frame} settle={settle} dur={duration}s "
           f"fixed_clock={deterministic_clock}")
     t0 = time.time()
-    # BACKGROUND-SMOKE-1: nofocus supplies the non-activating STARTUPINFO
-    # (SW_SHOWNOACTIVATE when a present harness needs a visible window, else
-    # SW_SHOWMINNOACTIVE) -- same values as the hand-rolled block it replaces.
-    # `env` is already pinned, so pass it through untouched.
-    proc = subprocess.Popen(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
-                            cwd=str(exe.parent), env=env,
-                            **nofocus.popen_kwargs(show_window=show_window))
-    _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
-    # BACKGROUND-SMOKE-1: park the window off the visible desktop. Safe HERE
-    # (unlike the pyautogui/mss harnesses) because this runner reads pixels via
-    # the engine's glReadPixels FBO readback -- the window contributes nothing
-    # to the capture, so removing it from the desktop costs nothing and keeps
-    # the full drawable size (and therefore golden resolution) intact.
-    # MC2_WIDTH/HEIGHT are deliberately not forced, so without this the window
-    # is options.cfg-sized (3840x2160) and covers the user's whole screen.
-    if not show_window:
-        nofocus.park_window_offscreen(proc.pid, proc=proc, force=True)
-
-    # Poll for all expected PNGs, or process exit, or timeout. Re-park the
-    # cursor every iteration so it stays pinned center through the ENTIRE sweep
-    # window (trigger frame + per-bookmark settle) -- a single pre-launch park
-    # is not enough if the cursor moves during the run.
-    deadline = t0 + duration + 30
-    done_early = False
-    last_sizes = None
-    while time.time() < deadline:
-        park_cursor_center()
-        if all(p.exists() for p in expected_pngs.values()):
-            # CAPTURE-EARLY-EXIT-1: finished only when every PNG + sidecar
-            # exists, sizes are non-zero and unchanged across two polls, and
-            # (when the engine logs "wrote" lines) it has logged one per PNG.
-            sizes = []
-            for p in expected_pngs.values():
-                try:
-                    sizes.append((p.stat().st_size,
-                                  p.with_suffix(".json").stat().st_size))
-                except OSError:
-                    sizes = None
-                    break
-            if sizes and all(a > 0 and b > 0 for a, b in sizes):
-                if sizes == last_sizes and _engine_capture_done(
-                        log_path, len(expected_pngs)):
-                    done_early = True
-                    break
-            last_sizes = sizes
-        else:
-            last_sizes = None
-        if proc.poll() is not None:
-            break
-        time.sleep(0.5)
-
-    # Drain the process. After early exit, shut down now (terminate, then kill
-    # after 5 s -- same path as _reap_active); otherwise wait out the budget.
+    # OWNER RULE: the engine is launched through nofocus.spawn ONLY. spawn()
+    # supplies the non-activating STARTUPINFO (SW_SHOWNOACTIVATE for
+    # --show-window, else SW_SHOWMINNOACTIVE), re-applies the windowing env on
+    # top of the pinned `env` (setdefault: pinned values win), and starts the
+    # offscreen-park backstop for exes that predate MC2_WINDOW_OFFSCREEN. That is
+    # safe HERE (unlike the pyautogui/mss harnesses) because this runner reads
+    # pixels via the engine's glReadPixels FBO readback -- the window
+    # contributes nothing to the capture and the drawable keeps its full size.
+    # small_window=False: MC2_WIDTH/HEIGHT stay unset because goldens are graded
+    # at options.cfg ResolutionX/Y (check-capture-resolution.py).
+    #
+    # CursorGuard (exe-independent): older deploy exes still ClipCursor()/warp;
+    # the guard releases the clamp and restores the user's pointer on every exit
+    # path. Its stop() is in the `finally` below.
+    _guard = CursorGuard().start()
     try:
-        if done_early and proc.poll() is None:
-            proc.terminate()
-            proc.wait(timeout=5)
-        else:
-            remaining = max(1, (t0 + duration + 15) - time.time())
-            proc.wait(timeout=remaining)
-    except subprocess.TimeoutExpired:
-        proc.kill()
+        proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
+                             cwd=str(exe.parent), env=env,
+                             show_window=show_window, small_window=False)
+        _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
+
+        # Poll for all expected PNGs, or process exit, or timeout. Re-park the
+        # cursor every iteration so it stays pinned center through the ENTIRE sweep
+        # window (trigger frame + per-bookmark settle) -- a single pre-launch park
+        # is not enough if the cursor moves during the run.
+        deadline = t0 + duration + 30
+        done_early = False
+        last_sizes = None
+        while time.time() < deadline:
+            park_cursor_center()
+            if all(p.exists() for p in expected_pngs.values()):
+                # CAPTURE-EARLY-EXIT-1: finished only when every PNG + sidecar
+                # exists, sizes are non-zero and unchanged across two polls, and
+                # (when the engine logs "wrote" lines) it has logged one per PNG.
+                sizes = []
+                for p in expected_pngs.values():
+                    try:
+                        sizes.append((p.stat().st_size,
+                                      p.with_suffix(".json").stat().st_size))
+                    except OSError:
+                        sizes = None
+                        break
+                if sizes and all(a > 0 and b > 0 for a, b in sizes):
+                    if sizes == last_sizes and _engine_capture_done(
+                            log_path, len(expected_pngs)):
+                        done_early = True
+                        break
+                last_sizes = sizes
+            else:
+                last_sizes = None
+            if proc.poll() is not None:
+                break
+            time.sleep(0.5)
+
+        # Drain the process. After early exit, shut down now (terminate, then kill
+        # after 5 s -- same path as _reap_active); otherwise wait out the budget.
         try:
-            proc.wait(timeout=10)
-        except Exception:
-            pass
-    print(f"[viscap] capture {'complete, early exit' if done_early else 'ended'}"
-          f" after {time.time() - t0:.1f}s (budget {duration}s)")
+            if done_early and proc.poll() is None:
+                proc.terminate()
+                proc.wait(timeout=5)
+            else:
+                remaining = max(1, (t0 + duration + 15) - time.time())
+                proc.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                proc.wait(timeout=10)
+            except Exception:
+                pass
+        print(f"[viscap] capture {'complete, early exit' if done_early else 'ended'}"
+              f" after {time.time() - t0:.1f}s (budget {duration}s)")
+    finally:
+        _guard.stop()
     log_fp.close()
 
     # Collect results per bookmark.

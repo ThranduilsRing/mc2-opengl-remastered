@@ -141,6 +141,7 @@ def _git(repo_root: str | os.PathLike, *args: str) -> str | None:
         out = subprocess.check_output(
             ["git", "-C", str(repo_root), *args],
             stderr=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         return out.decode("utf-8", "replace").strip()
     except Exception:

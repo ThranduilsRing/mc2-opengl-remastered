@@ -62,7 +62,8 @@ def _running_mc2() -> list[tuple[int, str]]:
         out = subprocess.check_output(
             ["wmic", "process", "where", "name='mc2.exe'",
              "get", "ProcessId,ExecutablePath", "/FORMAT:CSV"],
-            text=True, stderr=subprocess.DEVNULL)
+            text=True, stderr=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs())
         procs = []
         for line in out.splitlines():
             parts = line.strip().split(",")
@@ -78,7 +79,8 @@ def _running_mc2() -> list[tuple[int, str]]:
             ["powershell", "-NoProfile", "-Command",
              "Get-Process mc2 -ErrorAction SilentlyContinue | "
              "ForEach-Object { \"$($_.Id)|$($_.Path)\" }"],
-            text=True, stderr=subprocess.DEVNULL)
+            text=True, stderr=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs())
         procs = []
         for line in out.splitlines():
             if "|" in line:

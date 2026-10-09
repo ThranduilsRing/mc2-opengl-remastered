@@ -155,6 +155,9 @@ from verify import diff_crops, grade, DEFAULT_THRESHOLDS  # noqa: E402
 from png_io import decode_png  # noqa: E402
 import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
 import provenance_gate as pg  # noqa: E402  (GOLDEN-PROVENANCE-TRUTH-1)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 DEFAULT_GOLDENS = ROOT / "tests" / "visual" / "goldens"
 
@@ -194,7 +197,8 @@ def _sha256_path(p: Path) -> "str | None":
 def _git(root: Path, *args: str) -> "str | None":
     try:
         out = subprocess.run(["git", "-C", str(root), *args],
-                             capture_output=True, text=True, timeout=30)
+                             capture_output=True, text=True, timeout=30,
+                             **nofocus.hidden_kwargs())
         if out.returncode != 0:
             return None
         return out.stdout.strip()

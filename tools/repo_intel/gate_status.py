@@ -69,6 +69,10 @@ from pathlib import Path
 from typing import Optional
 
 import env_index as ei
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 _MC2_NAME = re.compile(r"^MC2_[A-Z0-9_]+$")
 _QUOTED_MC2 = re.compile(r'"(MC2_[A-Z0-9_]+)"')
@@ -192,6 +196,7 @@ def _grep_readers(repo_root: Path, var: str, cap: int = 20) -> list[dict]:
              f'"{var}"', "--", *_READER_DIRS],
             capture_output=True, text=True, timeout=15,
             stdin=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         )
     except Exception:
         return []

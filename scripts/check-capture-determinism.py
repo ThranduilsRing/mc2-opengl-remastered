@@ -213,7 +213,7 @@ def do_run(exe, mission, bookmarks, outdir, runs, duration, settle):
     if bookmarks:
         cmd += ["--bookmarks", str(bookmarks)]
     print(f"[capdet] capturing: {' '.join(cmd)}")
-    subprocess.run(cmd, check=False)
+    subprocess.run(cmd, check=False, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
 
 
 def selftest() -> int:
@@ -241,7 +241,7 @@ def selftest() -> int:
         def run(setdir, extra=()):
             argv = [sys.executable, str(Path(__file__).resolve()),
                     "--set-dir", str(setdir), *base, *extra]
-            p = subprocess.run(argv, capture_output=True, text=True)
+            p = subprocess.run(argv, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             return p.returncode, (p.stdout + p.stderr)
 
         def expect(label, got, want):

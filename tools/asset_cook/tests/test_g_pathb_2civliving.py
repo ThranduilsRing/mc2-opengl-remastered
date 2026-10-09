@@ -32,7 +32,7 @@ DUMP = HERE / "fixtures" / "2civliving_meshdump.json"
 
 
 def run(*a):
-    return subprocess.run([sys.executable, *map(str, a)], capture_output=True, text=True)
+    return subprocess.run([sys.executable, *map(str, a)], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def ext(mn, mx):

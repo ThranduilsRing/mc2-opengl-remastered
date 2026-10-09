@@ -157,6 +157,7 @@ def launch_detached(cmd):
                                    | subprocess.CREATE_NEW_PROCESS_GROUP)
     else:  # pragma: no cover — Windows-only project, kept portable
         kwargs["start_new_session"] = True
+    # background-launch: allow Blender GUI the user asked to edit in (not a console child); already DETACHED_PROCESS via kwargs
     return subprocess.Popen(cmd, **kwargs).pid
 
 
@@ -342,7 +343,7 @@ def _extract(ase, ini, paths, asset_class):
            "--out-sidecar", str(paths["sidecar"]),
            "--asset-class", asset_class]
     proc = subprocess.run(cmd, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace")
+                          encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if proc.returncode != 0:
         raise RuntimeError(
             f"extract failed:\n{proc.stdout[-1500:]}\n{proc.stderr[-1500:]}")

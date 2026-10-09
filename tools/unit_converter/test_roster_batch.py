@@ -254,7 +254,7 @@ def test_batch_report_deterministic_under_hash_randomization():
     )
     env1 = dict(os.environ, PYTHONHASHSEED="0")
     env2 = dict(os.environ, PYTHONHASHSEED="424242")
-    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1)
-    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2)
+    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert out1 == out2
     assert json.loads(out1)["units_converted"] == 4

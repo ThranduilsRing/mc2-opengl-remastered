@@ -28,7 +28,8 @@ DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/releases
 
 def resolve(deploy, name):
     out = subprocess.run([sys.executable, str(HERE / "resolve_campaign_config.py"), deploy, name],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True,
+                         **nofocus.hidden_kwargs())
     return json.loads(out.stdout)
 
 def newest_crash(deploy):

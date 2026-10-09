@@ -39,7 +39,8 @@ _user32 = ctypes.windll.user32
 
 def _kill_mc2():
     subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   **nofocus.hidden_kwargs())
     time.sleep(1)
 
 

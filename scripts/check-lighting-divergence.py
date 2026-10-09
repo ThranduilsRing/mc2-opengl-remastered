@@ -107,7 +107,7 @@ SHADER_GLOBS = ("shaders/**/*.vert", "shaders/**/*.frag", "shaders/**/*.hglsl",
                 "shaders/**/*.tesc", "shaders/**/*.geom")
 
 # Directories excluded from the shader sweep: contract FIXTURES exist to be
-# compiled, not to ship pixels, and the vk_gl_interop_spike is a scratch tool.
+# compiled, not to ship pixels.
 SHADER_EXCLUDE = ("shaders/fixtures/",)
 
 

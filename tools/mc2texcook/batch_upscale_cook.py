@@ -81,7 +81,7 @@ def cook_tga_to_ktx2(src: Path, dst: Path, ktx_tool: str, preset: str = 'albedo'
         ]
 
         for cmd in (create_cmd, transcode_cmd):
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if r.returncode != 0:
                 step = cmd[1]
                 detail = (r.stderr or r.stdout).strip()[:400]

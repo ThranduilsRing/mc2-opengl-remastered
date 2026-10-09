@@ -42,7 +42,8 @@ def mc2_running_from(install_dir):
     out = subprocess.run(
         ["powershell", "-NoProfile", "-Command",
          "(Get-Process mc2 -ErrorAction SilentlyContinue).Path"],
-        capture_output=True, text=True).stdout
+        capture_output=True, text=True,
+        **nofocus.hidden_kwargs()).stdout
     norm = os.path.normcase(os.path.abspath(install_dir))
     hits = []
     for line in out.splitlines():

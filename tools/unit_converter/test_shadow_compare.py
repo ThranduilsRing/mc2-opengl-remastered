@@ -190,7 +190,7 @@ def test_cli_json_and_strict_exit(tmp_path):
         f"sys.exit(main(['--engine-dump', {json.dumps(str(dump_p))}, "
         f"'--converter-report', {json.dumps(str(conv_p))}, '--json', '--strict']))"
     )
-    r = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert r.returncode == 1                      # --strict + mismatch
     payload = json.loads(r.stdout)
     assert payload["verdict"] == "MISMATCH"
@@ -220,7 +220,7 @@ def test_deterministic_under_hash_randomization(tmp_path):
     )
     env1 = dict(os.environ, PYTHONHASHSEED="0")
     env2 = dict(os.environ, PYTHONHASHSEED="98765")
-    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1)
-    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2)
+    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert out1 == out2
     assert json.loads(out1)["verdict"] == "PASS"

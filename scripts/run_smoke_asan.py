@@ -60,7 +60,8 @@ def _running_mc2_asan() -> list[int]:
     try:
         out = subprocess.check_output(
             ["tasklist", "/FI", f"IMAGENAME eq {ASAN_EXE_NAME}", "/NH", "/FO", "CSV"],
-            text=True, stderr=subprocess.DEVNULL)
+            text=True, stderr=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs())
     except Exception:
         return []
     pids = []
@@ -158,7 +159,8 @@ def main() -> int:
             print(f"[asan-smoke] killing existing {ASAN_EXE_NAME} PIDs {pids}",
                   file=sys.stderr)
             subprocess.run(["taskkill", "/F", "/IM", ASAN_EXE_NAME],
-                           stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                           stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                           **nofocus.hidden_kwargs())
             time.sleep(0.5)
     else:
         pids = _running_mc2_asan()

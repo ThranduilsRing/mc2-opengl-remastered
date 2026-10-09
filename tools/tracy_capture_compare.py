@@ -74,6 +74,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+# OWNER RULE: the engine is launched through nofocus.spawn ONLY (background launch).
+from smoke_lib import nofocus  # noqa: E402
+
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
     "DrawScreen",
@@ -136,7 +140,8 @@ def git_head() -> str:
     try:
         p = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
                            cwd=str(Path(__file__).resolve().parent.parent),
-                           capture_output=True, text=True, timeout=15)
+                           capture_output=True, text=True, timeout=15,
+                           **nofocus.hidden_kwargs())
         return p.stdout.strip() if p.returncode == 0 else "unknown"
     except Exception:
         return "unknown"
@@ -148,11 +153,12 @@ def mc2_running() -> bool:
         out = subprocess.run(
             ["tasklist", "/FI", "IMAGENAME eq mc2.exe", "/NH", "/FO", "CSV"],
             capture_output=True, text=True, timeout=15,
+            **nofocus.hidden_kwargs()
         ).stdout
         return "mc2.exe" in out.lower()
     except FileNotFoundError:
         # non-Windows fallback
-        out = subprocess.run(["pgrep", "-f", "mc2.exe"], capture_output=True, text=True).stdout
+        out = subprocess.run(["pgrep", "-f", "mc2.exe"], capture_output=True, text=True, **nofocus.hidden_kwargs()).stdout
         return bool(out.strip())
 
 
@@ -212,7 +218,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                "-s", str(seconds), "-f", "-o", str(out)]
     cap_log = out.with_suffix(".capture.log")
     cap_lf = open(cap_log, "w", encoding="utf-8", errors="replace")
-    recorder = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT)
+    recorder = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
+                                **nofocus.hidden_kwargs())  # tracy-capture is a console tool
     time.sleep(1.0)  # let it bind the port before the game boots
 
     env = os.environ.copy()
@@ -281,11 +288,6 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     # SW_SHOWMINNOACTIVE (7) is the old behaviour and is measurement-poison for
     # anything fragment-bound; it stays reachable only for deliberate
     # CPU-only captures via --no-show-window.
-    startupinfo = None
-    if os.name == "nt":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 4 if show_window else 7
     if not show_window:
         print("WARN: --no-show-window: the game runs MINIMIZED, the loop takes "
               "the 10ms/frame background throttle, and FRAGMENT-BOUND COSTS "
@@ -294,8 +296,13 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
               "grade this trace.", file=sys.stderr)
 
     print(f"[capture] recorder pid={recorder.pid} -> {out}")
-    gp = subprocess.Popen(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
-                          cwd=str(install), env=env, startupinfo=startupinfo)
+    # nofocus.spawn owns the STARTUPINFO verb (show_window -> SW_SHOWNOACTIVATE,
+    # else SW_SHOWMINNOACTIVE), the windowing env and the offscreen backstop.
+    # small_window=False: this is a perf measurement, so the drawable must keep
+    # options.cfg size; the window is still parked offscreen (see env above).
+    gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
+                       cwd=str(install), env=env,
+                       show_window=show_window, small_window=False)
     print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
           f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
@@ -345,8 +352,10 @@ def zone_stats(trace: Path, zone: str, export_exe: Path):
     If a zone name appears in multiple rows (same name at several src lines),
     totals/counts are summed and the mean recomputed.
     """
+    # background-launch: allow Tracy csvexport console tool, not the game; windowless via hidden_kwargs
     p = subprocess.run([str(export_exe), "-f", zone, str(trace)],
-                       capture_output=True, text=True, timeout=300)
+                       capture_output=True, text=True, timeout=300,
+                       **nofocus.hidden_kwargs())
     if p.returncode != 0:
         print(f"WARN: csvexport failed on {trace} for zone '{zone}': "
               f"{p.stderr.strip()}", file=sys.stderr)
@@ -377,8 +386,10 @@ def zone_samples(trace: Path, zone: str, export_exe: Path):
     mean/min/max/std -- a p99 cannot be recovered from those, which is why the
     owed p50/p99 table was never produced before.
     """
+    # background-launch: allow Tracy csvexport console tool, not the game; windowless via hidden_kwargs
     p = subprocess.run([str(export_exe), "-f", zone, "-u", str(trace)],
-                       capture_output=True, text=True, timeout=600)
+                       capture_output=True, text=True, timeout=600,
+                       **nofocus.hidden_kwargs())
     if p.returncode != 0:
         return []
     rows = list(csv.DictReader(io.StringIO(p.stdout)))
@@ -428,8 +439,10 @@ def frame_intervals_ms(trace: Path, export_exe: Path, zone: str = FRAME_ZONE,
     settle to the parked pose are not steady-state and would poison p99.
     hitch_ms discards outliers above a threshold (load hitches / alt-tab).
     """
+    # background-launch: allow Tracy csvexport console tool, not the game; windowless via hidden_kwargs
     p = subprocess.run([str(export_exe), "-f", zone, "-u", str(trace)],
-                       capture_output=True, text=True, timeout=600)
+                       capture_output=True, text=True, timeout=600,
+                       **nofocus.hidden_kwargs())
     if p.returncode != 0:
         return []
     ts = sorted(int(r["ns_since_start"])

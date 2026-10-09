@@ -4,10 +4,10 @@
 #          getenv sweep over mclib/ GameOS/ code/ RenderCore/ editor/,
 #          scripts/run_smoke.py passthrough allowlist, docs/tier1_env_vars.md.
 generator_version: "2.1.0"
-registry_entry_count: 360
-registry_env_flag_count: 359
-sweep_flag_count: 1004
-flag_count: 1066
+registry_entry_count: 354
+registry_env_flag_count: 353
+sweep_flag_count: 1006
+flag_count: 1062
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -1459,16 +1459,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_DRAW_PACKET_STATIC_PROP_V6
-    default: off
-    kind: Retired
-    feature_id: MC2_FEATURE_DRAW_PACKET_STATIC_PROP_V6
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "[RETIRED] v6 opt-in gate removed in v7.1. Gate plumbing deleted; setting this var has no effect. Kill-switch is MC2_STATIC_PROP_LEGACY_DISPATCH."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
   - name: MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE
     default: unknown
     declared_in: null
@@ -4255,17 +4245,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_NO_ACTIVATE
-    default: off
-    kind: Trace
-    feature_id: MC2_TRACE_NO_ACTIVATE
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus. Equivalent to MC2_WINDOW_OFFSCREEN for the editor, which hon..."
-    referenced_at:
-      - editor/EditorMFC.cpp
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_NO_CURSOR_GRAB
     default: off
     kind: Trace
@@ -4936,16 +4915,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_PROP_LOD_SHADOW_CAST
-    default: off
-    kind: Feature
-    feature_id: MC2_PROP_LOD_SHADOW_CAST
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1). TreeAppearance::registerStatic (mclib/bdactor.cpp) calls GpuStaticPropRegistry::setRecipeNoShadow(regIdx, ..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_PROP_SHADOW_RECEIVE
     default: off
     kind: Feature
@@ -7053,16 +7022,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_CONCRETE_DETAIL_NORMAL
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete'). Scales the concrete branch of the LOD-chunk detail normal (terrain_lod_chunk.frag:14..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_CONTROLMAP
     default: off
     kind: Feature
@@ -7339,26 +7298,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_LIGHTING_V1
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_TERRAIN_LIGHTING_V1
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain. Default-OFF; =1 enables. When OFF, terrainLightingV1Strength uploads 0.0 and gos_terrain.frag skips the additive branch..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_LIGHTING_V2
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_TERRAIN_LIGHTING_V2
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill. Default-OFF; =1 enables. When OFF, terrainLightingV2ShadowFillFloor uploads 1.0 → the shader expression ..."
-    referenced_at: []
-    registered: yes
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_LIGHT_POOLS
     default: on
     kind: Feature
@@ -7572,16 +7511,6 @@ flags:
     referenced_at:
       - mclib/terrain.cpp
     registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_NORMALS_FROM_HEIGHT
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_TERRAIN_NORMALS_FROM_HEIGHT
-    declared_in: RenderCore/RendererFeatureRegistry.h (kFeatureTable)
-    doc: "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield). Defau..."
-    referenced_at: []
-    registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_NORMAL_ARRAY
@@ -9393,15 +9322,42 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
+  - name: MC2_VULKAN_CACHE_DIR
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/vulkan_backend_skeleton.cpp
+    registered: no
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: yes
+  - name: MC2_VULKAN_PROBE
+    default: unknown
+    declared_in: null
+    referenced_at:
+      - GameOS/gameos/vulkan_backend_skeleton.cpp
+    registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_SPV_DIR
     default: unknown
     declared_in: null
     referenced_at:
       - GameOS/gameos/engine_present_vk.cpp
       - GameOS/gameos/gos_postprocess.cpp
-      - GameOS/gameos/vulkan_color_prop_island.cpp
-    referenced_at_more: 11
+      - GameOS/gameos/vulkan_backend_skeleton.cpp
+    referenced_at_more: 12
     registered: no
+    in_smoke_passthrough: yes
+    documented_in_tier1_env_vars: yes
+  - name: MC2_VULKAN_SWAPCHAIN_PRESENT
+    default: off
+    kind: Feature
+    feature_id: MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT
+    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
+    doc: "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=..."
+    referenced_at:
+      - GameOS/gameos/vulkan_backend_skeleton.cpp
+    registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN
@@ -9416,6 +9372,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
+      - GameOS/gameos/vulkan_backend_skeleton.cpp
       - GameOS/gameos/vulkan_context.cpp
       - GameOS/gameos/vulkan_present_object.cpp
     registered: no
@@ -9748,7 +9705,6 @@ flags:
     doc: "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area at ANY point in its lifetime. THE DEFECT:..."
     referenced_at:
       - GameOS/gameos/gameos_input.cpp
-      - editor/EditorMFC.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes

@@ -118,7 +118,7 @@ def die(msg: str, rc: int = 2) -> None:
 
 def run(cmd: list[str], cwd: str | None = None, check: bool = True,
         capture: bool = True) -> subprocess.CompletedProcess:
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=capture, text=True)
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=capture, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if check and proc.returncode != 0:
         die("command failed (rc={0}): {1}\n{2}".format(
             proc.returncode, " ".join(cmd),
@@ -222,7 +222,7 @@ def clone_copy(donor: Path, dest: Path) -> None:
         ]
         for d in CLONE_EXCLUDE_DIRS:
             cmd += ["/XD", d]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if proc.returncode >= 8:  # robocopy: <8 means success
             die(f"robocopy failed (rc={proc.returncode}):\n"
                 f"{(proc.stderr or proc.stdout).strip()[-2000:]}")

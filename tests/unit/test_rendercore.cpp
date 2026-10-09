@@ -402,7 +402,6 @@ TEST_CASE("RendererFeatureRegistry Track V VFX payoff gates are registered defau
 TEST_CASE("RendererFeatureRegistry Retired entries have Retired kind") {
     CHECK((kFeatureTable[static_cast<int>(RendererFeature::GpuMechs)].kind              == EnvVarKind::Retired));
     CHECK((kFeatureTable[static_cast<int>(RendererFeature::StaticPropIndirect)].kind   == EnvVarKind::Retired));
-    CHECK((kFeatureTable[static_cast<int>(RendererFeature::DrawPacketStaticPropV6)].kind == EnvVarKind::Retired));
 }
 
 // ---------------------------------------------------------------------------

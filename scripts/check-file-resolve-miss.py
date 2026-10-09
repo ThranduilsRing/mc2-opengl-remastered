@@ -114,7 +114,7 @@ def main():
     cmd = [sys.executable, os.path.join(root, "scripts", "run_smoke.py"),
            "--exe", args.exe, "--no-lease", "--mission", args.mission,
            "--duration", str(args.duration), "--keep-logs"]
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     smoke_ok = (proc.returncode == 0)
 
     misses = collect_miss_keys(jsonl_path)

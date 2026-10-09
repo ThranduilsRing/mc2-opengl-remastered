@@ -3,7 +3,6 @@
   "GameOS/gameos/gameos_input.cpp": 2,
   "GameOS/gameos/gameosmain.cpp": 24,
   "GameOS/gameos/gos_postprocess.cpp": 2,
-  "Viewer/View.cpp": 2,
   "mclib/camera.cpp": 15,
   "mclib/debugging.cpp": 2,
   "mclib/mlr/mlrsorter.cpp": 4,

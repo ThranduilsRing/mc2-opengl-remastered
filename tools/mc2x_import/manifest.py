@@ -11,7 +11,7 @@ def tool_version(): return "1.0"
 def git_commit(repo_hint):
     try:
         return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo_hint,
-                              capture_output=True, text=True).stdout.strip() or "unknown"
+                              capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.strip() or "unknown"
     except Exception:
         return "unknown"
 

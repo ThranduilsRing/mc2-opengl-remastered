@@ -125,7 +125,7 @@ def _capture(exe: str, prof: dict, out_dir: Path, runs: int, warmup: int,
     print(f"[gate] {'DRY-RUN ' if dry_run else ''}capture: {' '.join(cmd)}")
     if dry_run:
         return 0
-    return subprocess.run(cmd, env=env).returncode
+    return subprocess.run(cmd, env=env, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0)).returncode
 
 
 def _row_drew(out_dir: Path, row: str) -> int:
@@ -201,7 +201,7 @@ def _perceptual_stable(out_dir: Path, mission: str, bookmark: str,
     worst = "all pairs within tolerance"
     for cand in pngs[1:]:
         rc = subprocess.run([sys.executable, str(vc), str(pngs[0]), str(cand),
-                             "--family", family], capture_output=True, text=True)
+                             "--family", family], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if rc.returncode != 0:
             return False, f"{pngs[0].parent.name} vs {cand.parent.name}: " \
                           f"{rc.stdout.strip() or rc.stderr.strip()}"

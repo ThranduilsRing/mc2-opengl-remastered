@@ -34,6 +34,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+# OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
+from smoke_lib import nofocus  # noqa: E402
 
 _DEFAULT_TTL_SECS = 12 * 3600
 _LOCK_WAIT_SECS = 5
@@ -53,6 +57,7 @@ def store_path(repo_root: Path) -> Path:
         r = subprocess.run(
             ["git", "-C", str(repo_root), "rev-parse", "--git-common-dir"],
             capture_output=True, text=True, timeout=5, stdin=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         )
         common = r.stdout.strip()
         if r.returncode == 0 and common:
@@ -335,6 +340,7 @@ def _branch_of(worktree) -> Optional[str]:
         r = subprocess.run(
             ["git", "-C", str(worktree), "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True, text=True, timeout=5, stdin=subprocess.DEVNULL,
+            **nofocus.hidden_kwargs()
         )
         return r.stdout.strip() or None
     except Exception:

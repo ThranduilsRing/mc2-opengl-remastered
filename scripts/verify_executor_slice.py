@@ -193,6 +193,7 @@ def _run_smoke(
         capture_output=True,
         text=True,
         env=env,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     return result.returncode, result.stderr
 
@@ -330,6 +331,7 @@ def check_deploy_current(exe: str) -> tuple[str, str, str]:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             capture_output=True, text=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         head = result.stdout.strip()
         if not head:

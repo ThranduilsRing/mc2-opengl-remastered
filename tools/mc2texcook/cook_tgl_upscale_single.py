@@ -92,7 +92,7 @@ def cook_upscale(src: Path, dst: Path, scale: int, target_res: int,
                          str(uastc_path), str(dst)]
 
         for step_name, cmd in [("uastc encode", create_cmd), ("bc7 transcode", transcode_cmd)]:
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if r.returncode != 0:
                 print(f"ERROR: {step_name} failed (rc={r.returncode}):",
                       file=sys.stderr)

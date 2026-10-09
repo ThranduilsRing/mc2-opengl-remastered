@@ -23,7 +23,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def git(args):
-    r = subprocess.run(["git"] + args, capture_output=True, text=True, cwd=REPO_ROOT)
+    r = subprocess.run(["git"] + args, capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return r.stdout.rstrip(), r.returncode
 
 

@@ -171,7 +171,7 @@ def _run(cmd: list[str], env: dict | None = None, timeout: int = CAP_TIMEOUT_S) 
     Raises on timeout (a hung/crashed capture must abort the harness clearly)."""
     print("[golden_parity] $ %s" % " ".join(cmd), file=sys.stderr)
     try:
-        return subprocess.call(cmd, cwd=str(ROOT), env=env, timeout=timeout)
+        return subprocess.call(cmd, cwd=str(ROOT), env=env, timeout=timeout, creationflags=(getattr(subprocess, "CREATE_NO_WINDOW", 0) if not (sys.stdout and sys.stdout.isatty()) else 0))
     except subprocess.TimeoutExpired:
         raise RuntimeError("capture TIMED OUT after %ds: %s"
                            % (timeout, " ".join(cmd)))

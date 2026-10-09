@@ -84,11 +84,11 @@ def main():
         r1 = subprocess.run([args.ktx, "create", "--encode", "uastc",
                              "--format", "R8G8B8A8_UNORM", "--assign-tf", "linear",
                              "--levels", "1", src, uastc],
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if r1.returncode != 0:
             print(f"[{tag}] {name}: ktx create FAIL {r1.stdout.strip()[:140]}"); return "skipped"
         r2 = subprocess.run([args.ktx, "transcode", "--target", "bc7", uastc, bc7],
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if r2.returncode != 0:
             print(f"[{tag}] {name}: ktx transcode FAIL {r2.stdout.strip()[:140]}"); return "skipped"
         for dd in (args.deploy, size_dir):

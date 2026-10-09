@@ -151,6 +151,7 @@ def _disk_guard_advisory(path, need_gb: float, label: str) -> None:
     if not guard.is_file():
         return
     try:
+        # background-launch: allow disk-guard advisory prints its verdict to the caller's console; inherits it (no new window when the parent has one)
         subprocess.run([sys.executable, str(guard), "--path", str(path),
                         "--need-gb", str(need_gb), "--label", label],
                        timeout=60)
@@ -261,7 +262,9 @@ def convert_capture(rdc: Path, out_xml: Path, rdoc_cmd: Path) -> Path:
     out_xml.parent.mkdir(parents=True, exist_ok=True)
     cmd = [str(rdoc_cmd), "convert",
            "-f", str(rdc), "-o", str(out_xml), "-c", "xml"]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    # background-launch: allow renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs
+    proc = subprocess.run(cmd, capture_output=True, text=True,
+                          **nofocus.hidden_kwargs())
     if proc.returncode != 0 or not out_xml.is_file():
         raise SystemExit(
             f"renderdoccmd convert failed (rc={proc.returncode}): "

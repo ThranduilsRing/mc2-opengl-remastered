@@ -53,6 +53,7 @@ def run(*args, env=None) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
         capture_output=True, text=True, env=full_env,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
 
 

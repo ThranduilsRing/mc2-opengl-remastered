@@ -203,7 +203,7 @@ def test_check_dir_move_only_warns():
 # ---------------------------------------------------------------- end to end on a git repo
 def _git(repo, *args):
     return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"] + list(args),
-                          cwd=repo, check=True, capture_output=True, text=True).stdout
+                          cwd=repo, check=True, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
 
 
 @pytest.fixture()

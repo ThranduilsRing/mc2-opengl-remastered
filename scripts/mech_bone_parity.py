@@ -60,7 +60,7 @@ def main():
     # Oracle: harness gpu-bones (--rest | --clip/--frame).
     oracle_cmd = [args.harness, "gpu-bones", args.glb, "--out", str(oracle_json)]
     oracle_cmd += (["--clip", args.clip, "--frame", str(args.frame)] if posed else ["--rest"])
-    subprocess.run(oracle_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(oracle_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     # Engine: tg_import_dump runs the real import bake; MC2_MECH_SKEL_BONE_DUMP writes
     # bones. MC2_MECH_IMPORT_FORCE_CLIP/_FRAME pose the bake to the same clip frame.
@@ -73,7 +73,7 @@ def main():
         env.pop("MC2_MECH_IMPORT_FORCE_CLIP", None)
         env.pop("MC2_MECH_IMPORT_FORCE_FRAME", None)
     subprocess.run([args.tgdump, args.glb], check=True, env=env,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     if not oracle_json.exists() or not engine_json.exists():
         sys.exit("FAIL: one side produced no bone dump")

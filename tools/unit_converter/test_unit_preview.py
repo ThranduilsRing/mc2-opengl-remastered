@@ -189,7 +189,7 @@ def test_report_deterministic_across_hashseed(tmp_path):
     for seed in ("0", "1", "12345"):
         env = dict(os.environ, PYTHONHASHSEED=seed)
         r = subprocess.run([sys.executable, "-c", script], env=env,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         assert r.returncode == 0, r.stderr
         outs.append(r.stdout)
     assert outs[0] == outs[1] == outs[2]

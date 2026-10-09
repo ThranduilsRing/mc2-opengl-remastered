@@ -80,7 +80,7 @@ def registry_from_head():
         r = subprocess.run(["git", "show", "HEAD:" + HEADER_REL],
                            cwd=REPO_ROOT, capture_output=True, text=True,
                            encoding="utf-8", timeout=20,
-                           stdin=subprocess.DEVNULL)
+                           stdin=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if r.returncode == 0 and r.stdout:
             return parse_registry_text(r.stdout, "HEAD:" + HEADER_REL), "HEAD"
     except (OSError, subprocess.SubprocessError):

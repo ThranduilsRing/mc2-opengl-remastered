@@ -1,7 +1,7 @@
 {
  "version": 1,
  "note": "Seed for the typed gate table (design S2, G1a). Derived by `py -3 tools/gate_gen.py --import-legacy`; do not edit by hand.",
- "count": 1150,
+ "count": 1141,
  "gates": [
   {
    "name": "MC2_3DVIEW_DIAG",
@@ -753,7 +753,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6765",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6764",
      "idiom": "Presence"
     }
    ],
@@ -857,7 +857,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5634",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5633",
      "idiom": "Presence"
     },
     {
@@ -2527,7 +2527,7 @@
    "doc": "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 Task-0 probe: per-type static-vs-dynamic add counts + order ([BUCKET_ORDER v1]).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:705",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:704",
      "idiom": "Presence"
     }
    ],
@@ -3343,7 +3343,7 @@
    "doc": "Step 12B.1 \u2014 exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1837",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1836",
      "idiom": "Token/State"
     }
    ],
@@ -3376,7 +3376,7 @@
    "doc": "Env probe for GPU-vs-CPU count diagnostic (Step 4.11).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:11060",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:11059",
      "idiom": "Presence"
     }
    ],
@@ -3413,37 +3413,6 @@
    "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_COLORCOWRITE_NEGCTL",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "tools/vk_gl_interop_spike/main_colorcowrite.cpp:822",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "clear",
-     "compare"
-    ]
-   },
-   "readerDefault": "",
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -3975,7 +3944,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:54",
+     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:72",
      "idiom": "Presence"
     }
    ],
@@ -4435,9 +4404,7 @@
    "registered": false,
    "registryDefault": null,
    "seedDefaultSource": "unknown",
-   "harnessValues": [
-    "debug_state/diagnostic_trace.jsonl"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": null,
    "defaultDisagreement": "",
@@ -4704,27 +4671,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_DRAW_PACKET_STATIC_PROP_V6",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "[RETIRED] v6 opt-in gate removed in v7.1.",
-   "readers": [],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Retired",
-   "featureId": "MC2_FEATURE_DRAW_PACKET_STATIC_PROP_V6",
-   "retireVerdict": "tierA:NEEDS-READER-REMOVAL"
-  },
-  {
    "name": "MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE",
    "kind": "Bool",
    "default": false,
@@ -4734,7 +4680,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:225",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:224",
      "idiom": "Lead1"
     }
    ],
@@ -5310,7 +5256,7 @@
    "doc": "MC2_EDITOR_STATIC_PRIME_DIAG=1 \u2014 compact aggregate DrawCmd census at finalize.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5175",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5174",
      "idiom": "Presence"
     }
    ],
@@ -5340,7 +5286,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "editor/EditorData.cpp:63",
+     "at": "editor/EditorData.cpp:62",
      "idiom": "Presence"
     },
     {
@@ -5572,7 +5518,7 @@
    "doc": "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1037",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1036",
      "idiom": "Lead0"
     }
    ],
@@ -5598,7 +5544,7 @@
    "doc": "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1045",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1044",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -5624,7 +5570,7 @@
    "doc": "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade begins.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1041",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1040",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -5650,7 +5596,7 @@
    "doc": "FAR-BACKDROP-LIT-IMPL-1: maximum substitution amount scaling the distance fade (1.0 = full replace of the stale seed with night ambient; >1 exaggerates for verify-by-exaggeration).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1049",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1048",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -5676,7 +5622,7 @@
    "doc": "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually obvious (e.g. '1,0,0' paints substituted far geometry red to prove the path fires on the ridge/impostor pixels).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1057",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1056",
      "idiom": "NonEmpty"
     }
    ],
@@ -7104,11 +7050,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:372",
+     "at": "GameOS/gameos/gos_render.cpp:375",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:686",
+     "at": "GameOS/gameos/gos_render.cpp:696",
      "idiom": "Presence"
     },
     {
@@ -7414,7 +7360,7 @@
    "doc": "[GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:739",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:738",
      "idiom": "Presence"
     }
    ],
@@ -7449,8 +7395,7 @@
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
    "harnessValues": [
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -7929,8 +7874,7 @@
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
    "harnessValues": [
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -8578,7 +8522,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6747",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6746",
      "idiom": "Num(atoi,guarded)"
     }
    ],
@@ -10368,7 +10312,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:420",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:419",
      "idiom": "Num(num,raw)"
     }
    ],
@@ -12373,7 +12317,7 @@
      "idiom": "Lead0P"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:814",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:813",
      "idiom": "Lead0Kill"
     }
    ],
@@ -12382,8 +12326,7 @@
    "registryDefault": true,
    "seedDefaultSource": "registry",
    "harnessValues": [
-    "0",
-    "default"
+    "0"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -12410,7 +12353,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:823",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:822",
      "idiom": "Lead0Kill"
     }
    ],
@@ -12419,8 +12362,7 @@
    "registryDefault": true,
    "seedDefaultSource": "registry",
    "harnessValues": [
-    "0",
-    "default"
+    "0"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -12439,11 +12381,11 @@
    "doc": "KTX2 sidecar loader for static-prop textures (RenderCore/KtxLoader).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1489",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1488",
      "idiom": "Lead0P"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1490",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1489",
      "idiom": "Lead0P"
     }
    ],
@@ -14074,19 +14016,19 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:3357",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:3356",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:4355",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:4354",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:4382",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:4381",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:8740",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:8739",
      "idiom": "Presence"
     },
     {
@@ -14453,32 +14395,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_NO_ACTIVATE",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
-   "owner": "editor",
-   "retireBy": "",
-   "doc": "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus.",
-   "readers": [
-    {
-     "at": "editor/EditorMFC.cpp:465",
-     "idiom": "Lead0"
-    }
-   ],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": false,
-   "defaultDisagreement": "",
-   "registryKind": "Trace",
-   "featureId": "MC2_TRACE_NO_ACTIVATE",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_NO_CURSOR_GRAB",
    "kind": "Bool",
    "default": false,
@@ -14549,7 +14465,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2726",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2725",
      "idiom": "Presence"
     }
    ],
@@ -14746,7 +14662,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6519",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6518",
      "idiom": "Lead0P"
     }
    ],
@@ -14772,7 +14688,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6523",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6522",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -14798,7 +14714,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6527",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6526",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -14984,7 +14900,7 @@
    "doc": "Hide the OS cursor.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:573",
+     "at": "GameOS/gameos/gos_render.cpp:576",
      "idiom": "Presence"
     },
     {
@@ -16551,7 +16467,7 @@
    "doc": "PROP-BASE-LIGHT-DIR-1: give the static-prop baked per-vertex base_light seed a directional (hemispherical-wrap) orientation term, so faces pointing away from the mission key light are darker than faces pointing toward it.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:859",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:858",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -16686,27 +16602,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_PROP_LOD_SHADOW_CAST",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "props",
-   "retireBy": "",
-   "doc": "SHADOW-DECISIONS-1: re-enable shadow CASTING for far/impostor static-prop LODs (lod >= 1).",
-   "readers": [],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_PROP_LOD_SHADOW_CAST",
    "retireVerdict": ""
   },
   {
@@ -17880,11 +17775,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:525",
+     "at": "GameOS/gameos/gos_render.cpp:528",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:559",
+     "at": "GameOS/gameos/gos_render.cpp:562",
      "idiom": "Presence"
     }
    ],
@@ -18046,37 +17941,6 @@
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_RUNWAY_EDGE_BLEND",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SAMPLETEX_NEGCTL",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "tools/vk_gl_interop_spike/main_sampletex.cpp:679",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "2D_RGBA8_BGRA_order",
-     "rbswap"
-    ]
-   },
-   "readerDefault": "",
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
    "retireVerdict": ""
   },
   {
@@ -18464,37 +18328,6 @@
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_SHADER_SPIRV_FATAL",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_SHADOWCMP_NEGCTL",
-   "kind": "Enum",
-   "default": "",
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "tools/vk_gl_interop_spike/main_shadowcmp.cpp:656",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "cmpflip",
-     "filter"
-    ]
-   },
-   "readerDefault": "",
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
    "retireVerdict": ""
   },
   {
@@ -18905,7 +18738,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9343",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9342",
      "idiom": "Presence"
     }
    ],
@@ -18991,7 +18824,7 @@
    "doc": "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead of the camera-visible s_typeRanges set, which only admitted props near the camera (so distant trees never cast into the now-correctly-camera-fit dynamic map).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9775",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9774",
      "idiom": "Custom[00000001]"
     },
     {
@@ -19061,11 +18894,11 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9257",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9259",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9258",
      "idiom": "Lead0Kill"
     },
     {
@@ -19409,7 +19242,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9094",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9093",
      "idiom": "Lead0Kill"
     }
    ],
@@ -19435,7 +19268,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9106",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9105",
      "idiom": "Lead0Kill"
     }
    ],
@@ -20176,7 +20009,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:239",
      "idiom": "Lead0Kill"
     },
     {
@@ -20190,8 +20023,7 @@
    "seedDefaultSource": "registry",
    "harnessValues": [
     "0",
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -20210,7 +20042,7 @@
    "doc": "Extraction v2.3: skip prev-frame zero-instance slots during snapshot-based dispatch (snap-cull opt-in).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:289",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:288",
      "idiom": "Lead1"
     }
    ],
@@ -20507,32 +20339,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_SPIKE_VERBOSE",
-   "kind": "Bool",
-   "default": null,
-   "rule": "Std",
-   "owner": "unclassified",
-   "retireBy": "",
-   "doc": "--- 2.",
-   "readers": [
-    {
-     "at": "tools/rendercore_standalone_spike/main.cpp:130",
-     "idiom": "NonReader"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_SPLIT_PATH_PARITY_TRACE",
    "kind": "Bool",
    "default": false,
@@ -20674,7 +20480,7 @@
    "doc": "SP-BATCHER-ALPHASCAN-GATE-1: skip the frame-constant per-static-prop alpha re-resolve scan in the batcher when nothing that affects it changed (gos_static_prop_batcher).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7231",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7230",
      "idiom": "Lead0P"
     }
    ],
@@ -20700,7 +20506,7 @@
    "doc": "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1810",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1809",
      "idiom": "Lead0Kill"
     },
     {
@@ -20982,11 +20788,11 @@
    "doc": "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp), using immutable glTexStorage3D + glCompressedTexSubImage3D.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1506",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1505",
      "idiom": "Lead0P"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1507",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1506",
      "idiom": "Lead0P"
     }
    ],
@@ -21012,7 +20818,7 @@
    "doc": "Static-prop PBR ORM (occlusion-roughness-metallic) texture-array slots + sidecar feed.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1175",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1174",
      "idiom": "Lead0"
     }
    ],
@@ -21040,7 +20846,7 @@
    "doc": "Static-prop ORM load trace: logs source path + dims per unique ORM texture.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:4181",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:4180",
      "idiom": "Presence"
     }
    ],
@@ -21066,7 +20872,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:3232",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:3231",
      "idiom": "Lead0Kill"
     },
     {
@@ -21100,7 +20906,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1496",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1495",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -21133,7 +20939,7 @@
    "doc": "C1b: when compute cull is enabled and the indirect command buffer is ready, write the per-type CPU instance counts into the indirect buffer before the draw loop (shadow mode: CPU counts match what GPU will see once C1b->C1c flips GPU-driven counts ON).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7002",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7001",
      "idiom": "Presence"
     }
    ],
@@ -21159,7 +20965,7 @@
    "doc": "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record producers \u2014 otherwise dynamic-path leaves (GenericAppearance buildings post-b2fb1cc) stay subject to cull even when FORCE_ADMIT is on, masking the diagnostic signal.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5616",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5615",
      "idiom": "Presence"
     },
     {
@@ -21193,11 +20999,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7188",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:7187",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:8781",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:8780",
      "idiom": "Presence"
     }
    ],
@@ -21305,7 +21111,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1740",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1739",
      "idiom": "Presence"
     }
    ],
@@ -21333,7 +21139,7 @@
    "doc": "Diag (env-gated): dump the static cmd summary so Task 3 can be validated before the draw exists.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10678",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10677",
      "idiom": "Presence"
     }
    ],
@@ -21359,7 +21165,7 @@
    "doc": "V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane (static_prop.vert).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:832",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:831",
      "idiom": "Lead0"
     },
     {
@@ -21372,8 +21178,7 @@
    "registryDefault": false,
    "seedDefaultSource": "registry",
    "harnessValues": [
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": false,
@@ -21418,7 +21223,7 @@
    "doc": "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once per mission at the static-map build.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9567",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:9566",
      "idiom": "Custom[00000001]"
     },
     {
@@ -21528,11 +21333,11 @@
    "doc": "STATICPROP-COLORS-FILL-DEBUGONLY-1: per-static-instance Colors SSBO (binding 1) zero-fill.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:701",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:700",
      "idiom": "Lead0P"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:702",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:701",
      "idiom": "Lead0P"
     }
    ],
@@ -21558,7 +21363,7 @@
    "doc": "V-MATERIAL-DEBUG-1 / V-MATERIAL-PBR-1: per-fragment material debug view on StaticPropOpaque lane (static_prop.frag).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1482",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1481",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -21588,7 +21393,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6546",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:6545",
      "idiom": "Presence"
     }
    ],
@@ -21614,7 +21419,7 @@
    "doc": "FIXTURE-GLOW-1: DEFAULT-OFF on measured evidence.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:990",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:989",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -21644,7 +21449,7 @@
    "doc": "BEACON-FIXTURE-ID-1: DEFAULT-ON.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:947",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:946",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -21760,7 +21565,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1705",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1704",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -21816,7 +21621,7 @@
    "doc": "IBL-NIGHT-SCALE-1: night-scales the SH-IBL ambient probe on static props.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1128",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1127",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -21850,7 +21655,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1085",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1084",
      "idiom": "Lead0Kill"
     },
     {
@@ -21868,8 +21673,7 @@
    "seedDefaultSource": "registry",
    "harnessValues": [
     "0",
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -21888,7 +21692,7 @@
    "doc": "V-IBL-STATIC-2: override the active SH coefficient set by name (e.g. 'default').",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1217",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1216",
      "idiom": "Str[null,null]"
     }
    ],
@@ -21896,9 +21700,7 @@
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "default"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": "",
    "defaultDisagreement": "",
@@ -21916,7 +21718,7 @@
    "doc": "V-IBL-STATIC-1: optional default-strength override for SH-L2 ambient (clamped 0..3).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:366",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:365",
      "idiom": "Num(atof,raw)"
     },
     {
@@ -21928,10 +21730,7 @@
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    "0.5",
-    "default"
-   ],
+   "harnessValues": [],
    "numericRange": {
     "lo": 0.0,
     "hi": 3.0,
@@ -21953,7 +21752,7 @@
    "doc": "[DEFAULT-OFF OPT-IN.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1276",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1275",
      "idiom": "Lead0"
     }
    ],
@@ -21979,7 +21778,7 @@
    "doc": "[VALUE, not a boolean: the floor in the probe's own irradiance units.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1328",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1327",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -22035,7 +21834,7 @@
    "doc": "v6 DrawPacket+Meta dispatch (default-ON as of v7).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:221",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:220",
      "idiom": "Lead1(inv)"
     }
    ],
@@ -22044,8 +21843,7 @@
    "registryDefault": true,
    "seedDefaultSource": "reader-idiom",
    "harnessValues": [
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": false,
@@ -22064,7 +21862,7 @@
    "doc": "LIGHTROW-FRESHNESS-1: DEFAULT-ON.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2555",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2554",
      "idiom": "Lead0Kill"
     }
    ],
@@ -22090,7 +21888,7 @@
    "doc": "v8 kill-switch: =1 restores live build + snapshot compare",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:247",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:246",
      "idiom": "Lead1"
     }
    ],
@@ -22144,7 +21942,7 @@
    "doc": "EDGE-LIGHT-EMISSION-1: restores the stock hot-colour NIGHT vertex tags on the GPU static-prop path.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:911",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:910",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -22174,7 +21972,7 @@
    "doc": "EDGE-LIGHT-EMISSION-1: scales the NIGHT EMISSION DELTA only (night base_light minus day base_light), never the underlying lighting maths, so 0.0 is exactly the pre-fix render and 1.0 is exact stock.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:917",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:916",
      "idiom": "Num(atof,guarded)"
     }
    ],
@@ -22208,7 +22006,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1165",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1164",
      "idiom": "Lead0"
     },
     {
@@ -22248,7 +22046,7 @@
    "doc": "V-MATERIAL-PBR-3-DIAG: diagnostic visualizer for the forwarded sunFound state.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1196",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1195",
      "idiom": "Lead0"
     }
    ],
@@ -22274,7 +22072,7 @@
    "doc": "V-MATERIAL-PBR-3: optional default-strength override for per-fragment Schlick-Fresnel specular (clamped 0..3).",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:501",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:500",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -22486,7 +22284,7 @@
    "doc": "Stage 2.C+ instrumentation: one-shot registered-types dump.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5897",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5896",
      "idiom": "Presence"
     },
     {
@@ -22766,7 +22564,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5484",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:5483",
      "idiom": "Presence"
     }
    ],
@@ -22792,7 +22590,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1833",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1832",
      "idiom": "Presence"
     }
    ],
@@ -22820,7 +22618,7 @@
    "doc": "Step 12.1 \u2014 trace gate for noisy non-lifecycle COALESCE diagnostics.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1690",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1689",
      "idiom": "Presence"
     }
    ],
@@ -23526,27 +23324,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_TERRAIN_CONCRETE_DETAIL_NORMAL",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "CONCRETE-DETAIL-NORMAL-1 (USER RULING 2026-07-26: 'I have decided I don't like the detail normal for concrete').",
-   "readers": [],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_TERRAIN_CONTROLMAP",
    "kind": "Bool",
    "default": false,
@@ -23564,9 +23341,7 @@
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
    "defaultDisagreement": "",
@@ -23784,9 +23559,7 @@
    "registered": true,
    "registryDefault": false,
    "seedDefaultSource": "registry",
-   "harnessValues": [
-    "1"
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": false,
    "defaultDisagreement": "",
@@ -23804,7 +23577,7 @@
    "doc": "TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-colormap blend (float 0..1, default 0.35) for the CLIFF_WALL mesh-decal.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:486",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:485",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -23834,7 +23607,7 @@
    "doc": "TERRAIN-DECAL-FILL-1: ambient/fill floor (float 0..1, default 0.20) for the CLIFF_WALL mesh-decal's shadow side. static_prop lighting is max(N-L,0) with no ambient floor, so faces pointing away from the sun render black; this raises the per-fragment floor so they read as dark rock.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:469",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:468",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -24532,48 +24305,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_LIGHTING_V1",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-LIGHTING-1: gated hemisphere ambient fill on the tessellated terrain.",
-   "readers": [],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_LIGHTING_V1",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_LIGHTING_V2",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-LIGHTING-2: gated shadow-aware modulation of the TERRAIN-LIGHTING-1 hemisphere fill.",
-   "readers": [],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_LIGHTING_V2",
    "retireVerdict": ""
   },
   {
@@ -25328,27 +25059,6 @@
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
-   "retireVerdict": ""
-  },
-  {
-   "name": "MC2_TERRAIN_NORMALS_FROM_HEIGHT",
-   "kind": "Bool",
-   "default": false,
-   "rule": "Std",
-   "owner": "terrain",
-   "retireBy": "",
-   "doc": "TERRAIN-NORMALS-FROM-HEIGHT-1: gated macroscopic surface normal derived from a per-mission R32F height texture (gos_terrain_height_tex.cpp; uploaded at mission load from MapData heightfield).",
-   "readers": [],
-   "conflict": false,
-   "registered": true,
-   "registryDefault": false,
-   "seedDefaultSource": "registry",
-   "harnessValues": [],
-   "numericRange": null,
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "Feature",
-   "featureId": "MC2_FEATURE_TERRAIN_NORMALS_FROM_HEIGHT",
    "retireVerdict": ""
   },
   {
@@ -27158,7 +26868,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10985",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10984",
      "idiom": "Presence"
     }
    ],
@@ -27186,7 +26896,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10986",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10985",
      "idiom": "Presence"
     }
    ],
@@ -28537,11 +28247,11 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1186",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:1185",
      "idiom": "Lead0Kill(inv)"
     },
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2030",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:2029",
      "idiom": "Lead0Kill"
     },
     {
@@ -28559,8 +28269,7 @@
    "seedDefaultSource": "registry",
    "harnessValues": [
     "0",
-    "1",
-    "default"
+    "1"
    ],
    "numericRange": null,
    "readerDefault": true,
@@ -29610,37 +29319,6 @@
    "retireVerdict": ""
   },
   {
-   "name": "MC2_VK_NEG_TEST",
-   "kind": "Enum",
-   "default": null,
-   "rule": "Std",
-   "owner": "vk",
-   "retireBy": "",
-   "doc": "negative-test mode selection",
-   "readers": [
-    {
-     "at": "tools/vk_present_smoke/main.cpp:698",
-     "idiom": "Token/State"
-    }
-   ],
-   "conflict": false,
-   "registered": false,
-   "registryDefault": null,
-   "seedDefaultSource": "unknown",
-   "harnessValues": [],
-   "numericRange": {
-    "enum": [
-     "badlayout",
-     "skipblit"
-    ]
-   },
-   "readerDefault": null,
-   "defaultDisagreement": "",
-   "registryKind": "",
-   "featureId": "",
-   "retireVerdict": ""
-  },
-  {
    "name": "MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT",
    "kind": "Bool",
    "default": false,
@@ -30299,7 +29977,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:144",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:146",
      "idiom": "Tri(inherit)"
     },
     {
@@ -30435,7 +30113,7 @@
    "doc": "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF.",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10023",
+     "at": "GameOS/gameos/gos_static_prop_batcher.cpp:10022",
      "idiom": "Presence"
     }
    ],
@@ -30674,7 +30352,7 @@
    "doc": "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF.",
    "readers": [
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:89",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:90",
      "idiom": "Exact1"
     }
    ],
@@ -30683,7 +30361,8 @@
    "registryDefault": false,
    "seedDefaultSource": "registry",
    "harnessValues": [
-    "1"
+    "1",
+    "10"
    ],
    "numericRange": null,
    "readerDefault": false,
@@ -30710,7 +30389,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:131",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:132",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31270,7 +30949,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:131",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:132",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31452,7 +31131,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:146",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:148",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31544,7 +31223,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:145",
+     "at": "GameOS/gameos/vk_shared_gbuffer_gate.h:147",
      "idiom": "Tri(inherit)"
     },
     {
@@ -31660,7 +31339,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:625",
+     "at": "GameOS/gameos/gos_render.cpp:628",
      "idiom": "Lead1"
     },
     {
@@ -31670,6 +31349,58 @@
     {
      "at": "editor/EditorGosRender.cpp:885",
      "idiom": "Lead1"
+    }
+   ],
+   "conflict": false,
+   "registered": false,
+   "registryDefault": null,
+   "seedDefaultSource": "reader-idiom",
+   "harnessValues": [],
+   "numericRange": null,
+   "readerDefault": false,
+   "defaultDisagreement": "",
+   "registryKind": "",
+   "featureId": "",
+   "retireVerdict": ""
+  },
+  {
+   "name": "MC2_VULKAN_CACHE_DIR",
+   "kind": "Bool",
+   "default": null,
+   "rule": "Std",
+   "owner": "vk",
+   "retireBy": "",
+   "doc": "",
+   "readers": [
+    {
+     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:308",
+     "idiom": "Unclassified"
+    }
+   ],
+   "conflict": false,
+   "registered": false,
+   "registryDefault": null,
+   "seedDefaultSource": "unknown",
+   "harnessValues": [],
+   "numericRange": null,
+   "readerDefault": null,
+   "defaultDisagreement": "",
+   "registryKind": "",
+   "featureId": "",
+   "retireVerdict": ""
+  },
+  {
+   "name": "MC2_VULKAN_PROBE",
+   "kind": "Bool",
+   "default": false,
+   "rule": "Std",
+   "owner": "vk",
+   "retireBy": "",
+   "doc": "",
+   "readers": [
+    {
+     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7594",
+     "idiom": "Token/State"
     }
    ],
    "conflict": false,
@@ -31700,6 +31431,10 @@
     {
      "at": "GameOS/gameos/gos_postprocess.cpp:4498",
      "idiom": "NonReader"
+    },
+    {
+     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7602",
+     "idiom": "Unclassified"
     },
     {
      "at": "GameOS/gameos/vulkan_color_prop_island.cpp:179",
@@ -31763,6 +31498,36 @@
    "retireVerdict": ""
   },
   {
+   "name": "MC2_VULKAN_SWAPCHAIN_PRESENT",
+   "kind": "Bool",
+   "default": false,
+   "rule": "Presence",
+   "owner": "vk",
+   "retireBy": "",
+   "doc": "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp).",
+   "readers": [
+    {
+     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:7617",
+     "idiom": "Presence"
+    },
+    {
+     "at": "tools/vulkan_shader_probe_main.cpp:55",
+     "idiom": "Presence"
+    }
+   ],
+   "conflict": false,
+   "registered": true,
+   "registryDefault": false,
+   "seedDefaultSource": "registry",
+   "harnessValues": [],
+   "numericRange": null,
+   "readerDefault": false,
+   "defaultDisagreement": "",
+   "registryKind": "Feature",
+   "featureId": "MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT",
+   "retireVerdict": ""
+  },
+  {
    "name": "MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN",
    "kind": "Bool",
    "default": false,
@@ -31772,7 +31537,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:76",
+     "at": "GameOS/gameos/vulkan_swapchain_present.cpp:94",
      "idiom": "Presence"
     }
    ],
@@ -31798,20 +31563,16 @@
    "doc": "",
    "readers": [
     {
+     "at": "GameOS/gameos/vulkan_backend_skeleton.cpp:92",
+     "idiom": "Token/State"
+    },
+    {
      "at": "GameOS/gameos/vulkan_context.cpp:81",
      "idiom": "Token/State"
     },
     {
-     "at": "GameOS/gameos/vulkan_present_object.cpp:43",
+     "at": "GameOS/gameos/vulkan_present_object.cpp:47",
      "idiom": "Token/State"
-    },
-    {
-     "at": "tools/vk_hwnd_present_probe/main.cpp:239",
-     "idiom": "Unclassified"
-    },
-    {
-     "at": "tools/vk_present_smoke/main.cpp:237",
-     "idiom": "Unclassified"
     }
    ],
    "conflict": false,
@@ -32886,15 +32647,15 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:478",
+     "at": "GameOS/gameos/gos_render.cpp:481",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:528",
+     "at": "GameOS/gameos/gos_render.cpp:531",
      "idiom": "NonReader"
     },
     {
-     "at": "GameOS/gameos/gos_render.cpp:529",
+     "at": "GameOS/gameos/gos_render.cpp:532",
      "idiom": "NonReader"
     }
    ],
@@ -32917,16 +32678,12 @@
    "kind": "Bool",
    "default": false,
    "rule": "Lead0",
-   "owner": "unclassified",
+   "owner": "gameos",
    "retireBy": "",
    "doc": "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area at ANY point in its lifetime.",
    "readers": [
     {
      "at": "GameOS/gameos/gameos_input.cpp:66",
-     "idiom": "Lead0"
-    },
-    {
-     "at": "editor/EditorMFC.cpp:466",
      "idiom": "Lead0"
     }
    ],
@@ -32954,7 +32711,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_render.cpp:479",
+     "at": "GameOS/gameos/gos_render.cpp:482",
      "idiom": "Lead0Kill"
     }
    ],

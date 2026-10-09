@@ -350,7 +350,7 @@ down clean (`glGetError()==0`). This is the **Stage-2 Task 0 spike** — it answ
 renders the material ball" — see the scope boundary below).
 *Exit:* non-black readback + clean GL error, zero Mission/ObjectManager symbols linked.
 **DONE — RenderCore init/link standalone confirmed** (`claude/rendercore-standalone-init-0`):
-`tools/rendercore_standalone_spike/` links against ONLY SDL2 + GLEW + opengl32 + three
+`tools/rendercore_standalone_spike/` (since deleted; recover from tag `archive/dead-infra-2026-10-09`) linked against ONLY SDL2 + GLEW + opengl32 + three
 game-free engine TUs (`view_uniforms_gl.cpp`, `pipeline_binder.cpp`,
 `RenderCore/PipelineRegistry.cpp`) + the Slice-1 host seam — no Mission/game libs. Runs
 green on GL 4.4 (7900 XTX): init UBO → `ViewUniforms`/`EngineView` upload+register →

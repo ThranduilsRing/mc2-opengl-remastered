@@ -85,7 +85,7 @@ def tracked_golden_pose_files() -> list[Path]:
     try:
         out = subprocess.run(
             ["git", "ls-files", "--", f"tests/visual/goldens/{GOLDEN_POSE_GLOB}"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=30)
+            cwd=str(ROOT), capture_output=True, text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if out.returncode == 0 and out.stdout.strip():
             return sorted(ROOT / line for line in out.stdout.split() if line)
     except Exception:
@@ -104,7 +104,7 @@ def tracked_bookmark_files() -> list[Path]:
     try:
         out = subprocess.run(
             ["git", "ls-files", "--", "tests/visual/bookmarks/*.json"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=30)
+            cwd=str(ROOT), capture_output=True, text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if out.returncode == 0 and out.stdout.strip():
             return sorted(ROOT / line for line in out.stdout.split() if line)
     except Exception:

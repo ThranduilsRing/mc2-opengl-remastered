@@ -215,7 +215,6 @@ static bool s_v5Disarmed   = false;  // true if gate-arm check failed for sessio
 
 // DrawPacket v7: canonical packet+meta array dispatch — DEFAULT ON.
 // Kill-switch: MC2_STATIC_PROP_LEGACY_DISPATCH=1 reverts to legacy multidraw.
-// MC2_DRAW_PACKET_STATIC_PROP_V6 (old opt-in) is a no-op; gate plumbing removed in v7.1.
 // Requires: ARB_base_instance (checked independently of v5 arm block).
 static const bool s_v6Enabled = []() -> bool {
     const char* kill = std::getenv("MC2_STATIC_PROP_LEGACY_DISPATCH");

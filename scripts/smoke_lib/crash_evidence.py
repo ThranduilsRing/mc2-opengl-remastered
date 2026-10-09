@@ -19,6 +19,7 @@ import json
 import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
 
 # Verdict buckets that warrant evidence capture (external/non-app terminations
 # and freezes — the ones this recon is about).
@@ -35,7 +36,8 @@ def _ps(cmd: str, timeout: float) -> Optional[str]:
     try:
         out = subprocess.check_output(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
-            text=True, stderr=subprocess.DEVNULL, timeout=timeout)
+            text=True, stderr=subprocess.DEVNULL, timeout=timeout,
+            **nofocus.hidden_kwargs())
         return (out or "").strip()
     except Exception:
         return None

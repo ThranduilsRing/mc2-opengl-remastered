@@ -21,6 +21,7 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Callable, Optional, Sequence
+from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
 
 FINGERPRINT_RE = re.compile(
     r"\[BUILD_FINGERPRINT v1\] "
@@ -75,7 +76,8 @@ def _git(repo_root, *args) -> Optional[str]:
     try:
         return subprocess.check_output(
             ["git", "-C", str(repo_root), *args], text=True,
-            stderr=subprocess.DEVNULL, timeout=30).strip()
+            stderr=subprocess.DEVNULL, timeout=30,
+            **nofocus.hidden_kwargs()).strip()
     except Exception:
         return None
 
