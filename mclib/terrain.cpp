@@ -12,6 +12,7 @@
 // Include Files
 #ifndef TERRAIN_H
 #include"terrain.h"
+#include"terrain_material.h"
 #endif
 
 #ifndef ERR_H
@@ -859,15 +860,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// terrainTypeToMaterialLocal / quad.cpp terrainTypeToMaterial. The chunk
 			// frag does smoothstep(2,3,material) for concrete, so uploading the raw
 			// index (0-20) would mark most terrain as concrete.
-			auto terrainTypeToMaterial = [](DWORD t) -> float {
-				switch (t) {
-					case 3:  case 8:  case 9:  case 12:           return 1.0f; // Grass
-					case 2:  case 4:                              return 2.0f; // Dirt
-					case 10: case 13: case 14: case 15: case 16:
-					case 17: case 18: case 19: case 20:           return 3.0f; // Concrete
-					default:                                      return 0.0f; // Rock
-				}
-			};
+			auto terrainTypeToMaterial = [](DWORD t) -> float { return (float)mc2terrain::terrainTypeToMaterial((uint32_t)t); };
 			for (int i = 0; i < n; ++i)
 			{
 				elev[i]  = blks[i].elevation;
@@ -4924,15 +4917,7 @@ void Terrain::refreshTerrainTypeSSBO()
 	const PostcompVertex* blks = mapData->getBlocks();
 	// MUST mirror the load-time mapping (terrain.cpp ttype[] loop) and the
 	// duplicated terrainTypeToMaterial in quad.cpp / gos_terrain_indirect.cpp.
-	auto terrainTypeToMaterial = [](DWORD t) -> float {
-		switch (t) {
-			case 3:  case 8:  case 9:  case 12:           return 1.0f; // Grass
-			case 2:  case 4:                              return 2.0f; // Dirt
-			case 10: case 13: case 14: case 15: case 16:
-			case 17: case 18: case 19: case 20:           return 3.0f; // Concrete
-			default:                                      return 0.0f; // Rock
-		}
-	};
+	auto terrainTypeToMaterial = [](DWORD t) -> float { return (float)mc2terrain::terrainTypeToMaterial((uint32_t)t); };
 	for (int i = 0; i < n; ++i)
 		ttype[i] = terrainTypeToMaterial(blks[i].terrainType);
 	gos_TerrainLodChunk_UploadTerrainTypeFull(ttype.data(), (int)realVerticesMapSide);

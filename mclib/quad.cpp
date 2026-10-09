@@ -12,6 +12,7 @@
 // Include Files
 #ifndef QUAD_H
 #include"quad.h"
+#include"terrain_material.h"
 #endif
 
 #ifndef VERTEX_H
@@ -296,28 +297,11 @@ static const bool s_shapeCEnabled = ([] {
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
 
-// Map MC2 terrain type enum (0-20) to PBR material index (0-3)
-// 0=Rock, 1=Grass, 2=Dirt, 3=Concrete
+// Terrain type -> PBR material index (0=Rock,1=Grass,2=Dirt,3=Concrete):
+// single-sourced in terrain_material.h.
 static BYTE terrainTypeToMaterial(DWORD terrainType)
 {
-    switch (terrainType)
-    {
-        case 3:  // Moss
-        case 8:  // ForestFloor
-        case 9:  // Grass
-        case 12: // Slimy
-            return 1; // Grass
-        case 2:  // Mud
-        case 4:  // Dirt
-            return 2; // Dirt
-        case 10: // Concrete
-        case 13: case 14: case 15: case 16: // Cement 2-5
-        case 17: case 18: case 19:          // Cement 6-8
-        case 20:                            // END_CEMENT_TYPE (terrtxm.h:44)
-            return 3; // Concrete
-        default:
-            return 0; // Rock (Mountain, Cliff, Ash, Tundra, Water, None)
-    }
+    return mc2terrain::terrainTypeToMaterial((uint32_t)terrainType);
 }
 
 //---------------------------------------------------------------------------

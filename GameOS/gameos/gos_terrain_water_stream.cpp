@@ -15,6 +15,7 @@
 // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
 
 #include "gos_terrain_water_stream.h"
+#include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 extern int gos_WaterShoreMode();
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"   // GPU-SYNC-CONTRACT: SSBO bind-offset alignment helper
@@ -351,20 +352,9 @@ inline void InvalidateWaterBufferOwner(RenderCore::GpuBufferOwner& owner) {
 // per-frame allocation. Capacity grows to the high-water-mark and stays there.
 std::vector<uint32_t> g_quadWindowStaging;
 
-// Mirrors the file-static `terrainTypeToMaterial` in mclib/quad.cpp.
-// Kept here as a duplicate (~3 lookups) so neither this file nor the parity
-// helper widens quad.cpp's API surface for what's effectively a pure-function
-// lookup table. Behavior must stay in sync; any drift surfaces immediately
-// at the parity check's `frgb_lo` field comparison the next time
-// PARITY_CHECK runs.
+// Single-sourced in mclib/terrain_material.h (was a local copy missing type 20).
 inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
-    switch (terrainType) {
-        case 3:  case 8:  case 9:  case 12:           return 1; // Grass
-        case 2:  case 4:                              return 2; // Dirt
-        case 10: case 13: case 14: case 15: case 16:
-        case 17: case 18: case 19:                    return 3; // Concrete
-        default:                                      return 0; // Rock
-    }
+    return mc2terrain::terrainTypeToMaterial(terrainType);
 }
 
 } // namespace

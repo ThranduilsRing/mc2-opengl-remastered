@@ -13,6 +13,7 @@
 // preflight-arming, and bridge entry.
 
 #include "gos_terrain_indirect.h"
+#include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
 #include "gos_gpu_sync.h"               // GPU-SYNC-CONTRACT typed barrier helper
@@ -612,20 +613,9 @@ static bool traceOn() {
     return s_indirectTrace;
 }
 
-// Map MC2 terrain type enum (0-20) to PBR material index (0-3).
-// Mirrors quad.cpp terrainTypeToMaterial (file-static, not exported) and
-// gos_terrain_water_stream.cpp terrainTypeToMaterialLocal.
-// MUST stay in sync. Any drift shows up immediately in the parity check
-// _wp0 comparison the next time MC2_TERRAIN_INDIRECT_PARITY_CHECK runs.
-// 0=Rock, 1=Grass, 2=Dirt, 3=Concrete
+// Terrain type -> PBR material index: single-sourced in mclib/terrain_material.h.
 inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
-    switch (terrainType) {
-        case 3:  case 8:  case 9:  case 12:           return 1; // Grass
-        case 2:  case 4:                              return 2; // Dirt
-        case 10: case 13: case 14: case 15: case 16:
-        case 17: case 18: case 19: case 20:           return 3; // Concrete
-        default:                                      return 0; // Rock
-    }
+    return mc2terrain::terrainTypeToMaterial(terrainType);
 }
 
 // Populate one slot in the dense recipe array from MapData.

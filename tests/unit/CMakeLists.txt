@@ -86,6 +86,7 @@ add_executable(mc2_tests
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
     test_hud_tab_registry.cpp  # HUD-IMGUI slice C: tab registry order/cycle invariants (offline)
     test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
+    test_terrain_material.cpp  # TERRAIN-MATERIAL-SINGLE-SOURCE: terrain type -> material table (type 20 = Concrete)
     test_mc2log.cpp         # LOGGING-FACADE-P0: mc2::log facade (level gate, vformat fail-soft, MC2_EVENT bytes, MC2_LOG spec)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
 
