@@ -62,7 +62,7 @@
 
 - [docs/active_campaigns.md](active_campaigns.md)
 - [docs/renderworld_arc_status.md](renderworld_arc_status.md)
-- [docs/trackv-status.md](trackv-status.md)
+- Historical arc docs (model-override, R-V arc recons, terrain-8z, trackv, superpowers, observations, plans, recon, seam recon-1 reports) were archived 2026-10-09 to `E:/mc2-archive-2026-10/docs/arc-docs-2026-10-09.tar.gz` (sha256 beside it); recover single files from git history.
 - [docs/render-perf-snapshot.md](render-perf-snapshot.md)
 - [2026-05-26-next-gen-rts-engine-vision.md](2026-05-26-next-gen-rts-engine-vision.md) - Next-Gen RTS Engine Vision
 - [DECAL-INTEGRATE-1.md](DECAL-INTEGRATE-1.md) - DECAL-INTEGRATE-1 - joining the two parked projected-decal branches
@@ -91,8 +91,6 @@
 - [mech-lighting-plan.md](mech-lighting-plan.md) - Mech Lighting Plan - First Safe Visual Improvement (MECH-LIGHTING-PLAN-0)
 - [mech-normals-audit.md](mech-normals-audit.md) - MECH-NORMALS-AUDIT-0
 - [mech-rv-arc-recon.md](mech-rv-arc-recon.md) - Mech R-V Lane - Arc Recon (MECH-RV-ARC-RECON-0)
-- [model-override-dual-shape-plan.md](model-override-dual-shape-plan.md) - Model Override - Dual-Shape Plan (MODEL-OVERRIDE-DUAL-SHAPE-PLAN-1)
-- [model-override-gpu-instancing-proposal.md](model-override-gpu-instancing-proposal.md) - MODEL-OVERRIDE - Full GPU Instancing of Static Props (proposal)
 - [model-override-lighting-lod-recon.md](model-override-lighting-lod-recon.md) - MODEL-OVERRIDE - Lighting + LOD perf-architecture recon
 - [model-override-lighting-ownership-recon.md](model-override-lighting-ownership-recon.md) - MODEL-OVERRIDE - Light-slot ownership recon (Task 0 M2 gate result: **STOP**)
 - [model-override-mvp-notes.md](model-override-mvp-notes.md) - MODEL-OVERRIDE-MVP-1 - Implementation Notes
@@ -103,23 +101,16 @@
 - [perf-attribution-plan.md](perf-attribution-plan.md) - Perf Attribution Plan (R0-R3) - supersedes the S2-only framing
 - [render-contract-audit-2026-05-14.md](render-contract-audit-2026-05-14.md) - Render Contract Audit - 2026-05-14
 - [sensor-contact-presentation-recon.md](sensor-contact-presentation-recon.md) - Sensor / contact presentation - recon (SENSOR-CONTACT-PRESENTATION-RECON-1)
-- [shadow-rv-arc-recon.md](shadow-rv-arc-recon.md) - SHADOW-ARC-RECON-0 - Shadow System End-to-End Recon
 - [shadow-soak-1.md](shadow-soak-1.md) - SHADOW-SOAK-1: First Debug/Tuning Soak
 - [static-building-skip-broadening-recon.md](static-building-skip-broadening-recon.md) - Static-Building Skip Broadening Recon
 - [static-prop-lighting-audit.md](static-prop-lighting-audit.md) - Static-Prop Lighting Audit (V-LIGHTING-STATIC-0)
-- [static-prop-rv-arc-audit.md](static-prop-rv-arc-audit.md) - StaticPropOpaque R-to-V Arc Audit
 - [static-prop-v3-soak-state.md](static-prop-v3-soak-state.md) - Static-Prop Extraction v3 - Soak State (pre-authority-flip)
 - [staticprop-material-orm-normal-recon.md](staticprop-material-orm-normal-recon.md) - Static-Prop Material ORM + Normal-Map Recon - STATICPROP-MATERIAL-ORM-NORMAL-RECON-1
-- [terrain-8z-A5-setuptextures-deletion-safety.md](terrain-8z-A5-setuptextures-deletion-safety.md) - A5 Safety Recon: TerrainQuad::setupTextures() Deletion
-- [terrain-8z-deletion-plan.md](terrain-8z-deletion-plan.md) - Phase 8z: Terrain Legacy Deletion Plan
-- [terrain-8z-fastpath-drop-recon.md](terrain-8z-fastpath-drop-recon.md) - Terrain 8z Fast-Path Dropout Recon
 - [terrain-height-audit.md](terrain-height-audit.md) - Terrain Height Audit (TERRAIN-HEIGHT-AUDIT-0)
 - [terrain-resample-plan.md](terrain-resample-plan.md) - Terrain Visual Resample Plan (TERRAIN-RESAMPLE-PLAN-0)
-- [terrain-rv-arc-recon.md](terrain-rv-arc-recon.md) - Terrain R-V Arc Recon (TERRAIN-ARC-RECON-0)
 - [terrain-t3-map-audit.md](terrain-t3-map-audit.md) - Terrain T3 Map-Compatibility Audit (Phase 8z Gate)
 - [thermal-ir-design.md](thermal-ir-design.md) - Thermal / IR view - design (THERMAL-IR-DESIGN-1)
 - [thermal-view-mech-heat-mvp-defer.md](thermal-view-mech-heat-mvp-defer.md) - Thermal ViewMode - engine-bearing units read hot (THERMAL-VIEW-MECH-HOT-1)
-- [track-r-closeout-opus.md](track-r-closeout-opus.md) - Track R Closeout - Opus Audit (2026-05-29)
 - [trackv-lighting-consistency-opus-1.md](trackv-lighting-consistency-opus-1.md) - TRACKV-LIGHTING-CONSISTENCY-OPUS-1
 - [trackv-post-grounding-soak-1.md](trackv-post-grounding-soak-1.md) - VISUAL-CAPTURE-MATRIX-SOAK-1: Track V Post + Grounding MVP
 - [trackv-vfx-payoff-opus-1.md](trackv-vfx-payoff-opus-1.md) - TRACKV-VFX-PAYOFF-OPUS-1 - recon synthesis + plan

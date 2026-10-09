@@ -59,7 +59,12 @@ ADVISORY_STEM_PREFIXES = ("HANDOFF-", "SCOPE-", "handoff-")
 # (also recoverable from git history). A live doc pointing INTO them is a
 # historical citation, not a broken link.
 ARCHIVED_TARGET_MARKERS = ("superpowers/", "audit-lanes", "docs/archive/",
-                           ".claude/")
+                           ".claude/",
+                           # 2026-10-09 arc-docs-2026-10-09.tar.gz (E: archive):
+                           "docs/observations/", "docs/plans/", "docs/recon/",
+                           "observations/2026-05-",
+                           "model-override-", "-rv-arc-", "terrain-8z-",
+                           "trackv-", "track-r-closeout", "-recon-1.md")
 
 
 def archived_target(target):
