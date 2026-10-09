@@ -5,9 +5,8 @@
 // Borrows the T2 shared VulkanContext device (NO second device / NO second
 // volkLoadDevice). Owns only the hidden window + surface + swapchain + per-frame
 // sync + the exportable interop image (GL writes it via copy-1, VK blits it into
-// the swapchain via copy-2). Swapchain/present logic mirrors the T0 harness
-// (tools/vk_present_smoke/main.cpp) and vulkan_present_object.cpp's per-image
-// render-semaphore discipline. Fail-soft at every step.
+// the swapchain via copy-2). Swapchain/present logic mirrors
+// vulkan_present_object.cpp's per-image render-semaphore discipline. Fail-soft at every step.
 //
 // Requires BOTH MC2_VULKAN (context/present) and MC2_VULKAN_ISLAND (interop
 // primitives). build64_island defines both; the guards below make the TU inert

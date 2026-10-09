@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 354
 registry_env_flag_count: 353
-sweep_flag_count: 1006
-flag_count: 1062
+sweep_flag_count: 1004
+flag_count: 1060
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -4245,6 +4245,17 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
+  - name: MC2_NO_ACTIVATE
+    default: off
+    kind: Trace
+    feature_id: MC2_TRACE_NO_ACTIVATE
+    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
+    doc: "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus. Equivalent to MC2_WINDOW_OFFSCREEN for the editor, which hon..."
+    referenced_at:
+      - editor/EditorMFC.cpp
+    registered: yes
+    in_smoke_passthrough: no
+    documented_in_tier1_env_vars: no
   - name: MC2_NO_CURSOR_GRAB
     default: off
     kind: Trace
@@ -9322,42 +9333,15 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_VULKAN_CACHE_DIR
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_PROBE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_SPV_DIR
     default: unknown
     declared_in: null
     referenced_at:
       - GameOS/gameos/engine_present_vk.cpp
       - GameOS/gameos/gos_postprocess.cpp
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    referenced_at_more: 12
+      - GameOS/gameos/vulkan_color_prop_island.cpp
+    referenced_at_more: 11
     registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_VULKAN_SWAPCHAIN_PRESENT
-    default: off
-    kind: Feature
-    feature_id: MC2_FEATURE_VULKAN_SWAPCHAIN_PRESENT
-    declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
-    doc: "VULKAN-CONTRACT-MANIFEST-ARC Layer 5: engine-owned Vulkan swapchain (create/present/resize) (GameOS/gameos/vulkan_backend_skeleton.cpp, vulkan_swapchain_present.cpp). Default-OFF, presence-gated (=..."
-    referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
-    registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
   - name: MC2_VULKAN_SWAPCHAIN_PRESENT_HIDDEN
@@ -9372,7 +9356,6 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/vulkan_backend_skeleton.cpp
       - GameOS/gameos/vulkan_context.cpp
       - GameOS/gameos/vulkan_present_object.cpp
     registered: no
@@ -9705,6 +9688,7 @@ flags:
     doc: "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area at ANY point in its lifetime. THE DEFECT:..."
     referenced_at:
       - GameOS/gameos/gameos_input.cpp
+      - editor/EditorMFC.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
