@@ -45,6 +45,17 @@ STRUCTS = [
     ("RenderCore/gpu_abi/GpuObjectLights.h",
      "RenderCore/gpu_abi/GpuObjectLights.layout.gen.h",
      "shaders/include/gpu_abi_object_lights.gen.hglsl"),
+    # VK-only per-frame uniform blocks of the Tier-1 islands (outside the GL/VK-shared
+    # shaders/include that the GL shader lints scan).
+    ("RenderCore/gpu_abi/GpuColorFrameUBO.h",
+     "RenderCore/gpu_abi/GpuColorFrameUBO.layout.gen.h",
+     "shaders/vulkan/include/color_frame_ubo_vk.glsl"),
+    ("RenderCore/gpu_abi/GpuMechFrameUBO.h",
+     "RenderCore/gpu_abi/GpuMechFrameUBO.layout.gen.h",
+     "shaders/vulkan/include/mech_frame_ubo_vk.glsl"),
+    ("RenderCore/gpu_abi/GpuLegacyFrameUBO.h",
+     "RenderCore/gpu_abi/GpuLegacyFrameUBO.layout.gen.h",
+     "shaders/vulkan/include/legacy_frame_ubo_vk.glsl"),
     # VK-only uniform block: lives beside the other VK includes (shaders/vulkan/include),
     # outside the GL/VK-shared shaders/include that the GL shader lints scan.
     ("RenderCore/gpu_abi/GpuTerrainFrameUBO.h",
@@ -138,8 +149,10 @@ def struct_offsets(fields, rules):
 # C++ header parser (regex-lite, restricted subset, fails loudly).
 # ---------------------------------------------------------------------------
 _CPP_SCALAR = {"float": "float", "int32_t": "int", "uint32_t": "uint"}
-_ANNOT_ARR = {"@mat4": ("mat4", 16), "@vec4": ("vec4", 4),
-              "@vec3": ("vec3", 3), "@vec2": ("vec2", 2)}
+# annotation -> (GLSL type, array length, required C++ scalar type)
+_ANNOT_ARR = {"@mat4": ("mat4", 16, "float"), "@vec4": ("vec4", 4, "float"),
+              "@vec3": ("vec3", 3, "float"), "@vec2": ("vec2", 2, "float"),
+              "@ivec4": ("ivec4", 4, "int32_t")}
 _ANNOT_BLOCK = ("@rgb", "@cpp_only")
 # Valid in plain structs and blocks alike.
 _ANNOT_ANY = ("@mat4xN", "@vec4xN", "@ivec4tail", "@fold")
@@ -252,12 +265,12 @@ def parse_source(text, label):
                 raise AbiError("%s: %s on non-array %s" % (label, annot, name))
             gtype = base
         elif annot:
-            if ctype != "float":
-                raise AbiError("%s: %s needs float[N] (%s)" % (label, annot, name))
-            gtype, want = _ANNOT_ARR[annot]
+            gtype, want, need = _ANNOT_ARR[annot]
+            if ctype != need:
+                raise AbiError("%s: %s needs %s[N] (%s)" % (label, annot, need, name))
             if count != want:
-                raise AbiError("%s: %s expects float[%d], %s is [%s]"
-                               % (label, annot, want, name, count))
+                raise AbiError("%s: %s expects %s[%d], %s is [%s]"
+                               % (label, annot, need, want, name, count))
         else:
             if count < 2:
                 raise AbiError("%s: array %s too small" % (label, name))

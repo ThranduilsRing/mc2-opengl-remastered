@@ -57,19 +57,8 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 
-layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
-    mat4  worldToClipGL;
-    float objectDepthBias;
-    int   instBase;
-    int   materialReady;   // 1 = sample alpha-OFF albedo array + apply vertex-baked vArgb
-    int   materialReadyOn; // 1 = sample alpha-ON albedo array (alpha-test discard)
-    vec4  terrainSunMC2;    // surface->sun (MC2 world); .w pad
-    // Tail mirrors color_prop_tier1.vert / vulkan_color_prop_island.cpp byte-for-byte.
-    vec4  iblSh[9];
-    float iblShStrength;
-    int   lightingReady;
-    int   glassDither;      // 1 = GL u_glassDither (MC2_SP_GLASS_DITHER, default ON)
-} uFrame;
+// Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
+#include "include/color_frame_ubo_vk.glsl"
 
 // VK-P11 STATIC-PROP MATERIAL: alpha-OFF albedo GL_TEXTURE_2D_ARRAY (copy-once import).
 layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo;

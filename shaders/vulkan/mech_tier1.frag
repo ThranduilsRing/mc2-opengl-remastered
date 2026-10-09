@@ -28,22 +28,8 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 
-layout(set = 0, binding = 0, std140) uniform MechFrameUBO {
-    mat4  worldToClipGL;
-    float objectDepthBias;
-    int   materialReady;   // 1 = sample the copy-once albedo
-    int   lightingReady;   // 1 = calc_light valid
-    int   _pad1;
-    vec4  fogColorRGB;
-    // VK-PARITY-MECH-1 (lockstep with vulkan_mech_island.cpp MechFrameUBO).
-    vec4  cameraWorldPos;  // GL world (ViewUniforms.cameraWorldPos)
-    vec4  shadeA;          // ambientStrength, specularStrength, metalRough, glassRough
-    vec4  shadeB;          // glassLumaThresh, glassMaxChanThresh, importedGamma, importedAlbedoScale
-    vec4  shadeC;          // aoStrength, normalStrength, -, -
-    vec4  poolF;           // moverDim, moverScale, objScale, -
-    ivec4 poolI;           // numPoolLights, soft, moverMax, compress
-    ivec4 miscI;           // specDebugMask, -, -, -
-} uFrame;
+// Per-frame UBO: generated from RenderCore/gpu_abi/GpuMechFrameUBO.h.
+#include "include/mech_frame_ubo_vk.glsl"
 
 layout(set = 0, binding = 3) uniform sampler2D uAlbedo;   // copy-once slot-0 paint scheme
 layout(set = 0, binding = 6) uniform sampler2D uMechAo;   // AO-1 (imported; GL unit 6)

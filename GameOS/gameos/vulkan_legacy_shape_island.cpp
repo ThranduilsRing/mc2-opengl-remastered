@@ -25,6 +25,7 @@
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
 #include "vulkan_legacy_shape_island.h"
+#include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
@@ -106,12 +107,8 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return mod;
 }
 
-// std140 per-frame UBO (LOCKSTEP with legacy_shape_tier1.{vert,frag} LegacyFrameUBO).
-struct LegacyFrameUBO {
-    float proj[16];      // gos_GetProj2ScreenMat4(): 4 consecutive rows (row-major)
-    float fogColor[4];
-};
-static_assert(sizeof(LegacyFrameUBO) == 80, "LegacyFrameUBO std140 lockstep");
+// The per-frame std140 UBO (LegacyFrameUBO) is single-sourced in
+// RenderCore/gpu_abi/GpuLegacyFrameUBO.h; its generated block feeds both legacy shaders.
 
 const uint32_t kVertexStride = 32;       // gos_VERTEX: x,y,z,rhw, argb, frgb, u, v
 const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)

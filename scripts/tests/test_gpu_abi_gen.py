@@ -322,3 +322,26 @@ def test_raw_shader_mirror_drift_is_rejected(tmp_path):
     comp.write_text(text.replace("#define LIGHTGRID_MAX_LIGHTS 32", "#define LIGHTGRID_MAX_LIGHTS 16"),
                     encoding="utf-8")
     assert g.main(["--check", "--root", root]) == 1      # stale array length in the mirror
+
+
+def test_ivec4_annotation_needs_int32_quad():
+    src = ("// @gpu std140 glsl=B block=u set=0 binding=0\nstruct B {\n"
+           "    int32_t q[4];  // @ivec4\n};\n")
+    info = g.parse_source(src, "t")
+    assert info["fields"] == [("q", "ivec4")]
+    with pytest.raises(g.AbiError):
+        g.parse_source(src.replace("int32_t", "float"), "t")
+
+
+@pytest.mark.parametrize("header,size,block", [
+    ("GpuColorFrameUBO.h", 256, "ColorFrameUBO"),
+    ("GpuMechFrameUBO.h", 208, "MechFrameUBO"),
+    ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
+])
+def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):
+    entry = [s for s in g.STRUCTS if s[0].endswith(header)]
+    assert entry, "%s must be a gpu_abi struct" % block
+    with open(os.path.join(ROOT, entry[0][0]), encoding="utf-8") as f:
+        info = g.parse_source(f.read(), block)
+    _, _, sz = g.struct_offsets(info["fields"], "std140")
+    assert sz == size and info["block"] == "uFrame"

@@ -25,23 +25,8 @@ layout(location = 4) in vec4  a_boneWeights;  // u8x4 normalized -> [0,1]
 layout(location = 5) in vec2  a_tangentOct;   // s16x2 normalized (NORMALS-1 tangent)
 layout(location = 6) in uint  a_aRGBLight;    // BGRA packed (unused)
 
-layout(set = 0, binding = 0, std140) uniform MechFrameUBO {
-    mat4  worldToClipGL;   // gos_GetMechFixBMVPMat4() — GL_FALSE (column-major load)
-    float objectDepthBias; // OBJECT_DEPTH_BIAS
-    int   materialReady;   // 1 = FS samples the copy-once albedo
-    int   lightingReady;   // 1 = calc_light valid (LightsData copied); else flat white
-    int   _pad1;
-    vec4  fogColorRGB;     // g_scene.fogColor.rgb (.a unused)
-    // VK-PARITY-MECH-1 FS shading block (VS ignores; layout lockstep with the FS +
-    // vulkan_mech_island.cpp MechFrameUBO).
-    vec4  cameraWorldPos;
-    vec4  shadeA;
-    vec4  shadeB;
-    vec4  shadeC;
-    vec4  poolF;
-    ivec4 poolI;
-    ivec4 miscI;
-} uFrame;
+// Per-frame UBO: generated from RenderCore/gpu_abi/GpuMechFrameUBO.h.
+#include "include/mech_frame_ubo_vk.glsl"
 
 // Per-instance record (64B): generated from RenderCore/gpu_abi/GpuMechInstance.h.
 // fogRGB.a is the per-actor haze factor.

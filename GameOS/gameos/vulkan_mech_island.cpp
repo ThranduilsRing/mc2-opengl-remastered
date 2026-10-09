@@ -45,6 +45,7 @@
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
 #include "vulkan_mech_island.h"
+#include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
@@ -218,24 +219,8 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
     return mod;
 }
 
-// std140 per-frame UBO (LOCKSTEP with mech_tier1.vert MechFrameUBO).
-struct MechFrameUBO {
-    float   worldToClipGL[16]; // gos_GetMechFixBMVPMat4() — GL_FALSE (off 0)
-    float   objectDepthBias;   //                            (off 64)
-    int32_t materialReady;     // 1 = sample the copy-once albedo (off 68)
-    int32_t lightingReady;     // 1 = LightsData copied -> calc_light valid (off 72)
-    int32_t _pad1;             //                            (off 76)
-    float   fogColorRGB[4];    // g_scene.fogColor.rgb (.a unused) — vec4-aligned (off 80)
-    // VK-PARITY-MECH-1: default mech FS shading block (mech_tier1.frag).
-    float   cameraWorldPos[4]; // (off 96)
-    float   shadeA[4];         // ambient, specular, metalRough, glassRough (off 112)
-    float   shadeB[4];         // lumaThresh, maxChanThresh, importedGamma, importedAlbedoScale (off 128)
-    float   shadeC[4];         // aoStrength, normalStrength, -, - (off 144)
-    float   poolF[4];          // moverDim, moverScale, objScale, - (off 160)
-    int32_t poolI[4];          // numPoolLights, soft, moverMax, compress (off 176)
-    int32_t miscI[4];          // specDebugMask (off 192)
-};
-static_assert(sizeof(MechFrameUBO) == 208, "MechFrameUBO std140 lockstep with mech_tier1.frag");
+// The per-frame std140 UBO (MechFrameUBO) is single-sourced in
+// RenderCore/gpu_abi/GpuMechFrameUBO.h; its generated block feeds both mech shaders.
 
 // VK-PARITY-MECH-1: object light-pool SSBO cap (GpuTerrainLight 48B; GL caps 256).
 const uint32_t kMaxPoolLights = 256;

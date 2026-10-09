@@ -28,6 +28,7 @@
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "../../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
+#include "../../RenderCore/gpu_abi/GpuColorFrameUBO.h"  // single-source per-frame UBO
 #include "vk_image_resource.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vulkan_context.h"
@@ -204,36 +205,8 @@ VkShaderModule load_spv(VkDevice device, const std::string& path) {
 }
 
 
-// std140 per-frame UBO (LOCKSTEP with color_prop_tier1.vert / color_prop_tier1.frag
-// ColorFrameUBO). VK-P11 STATIC-PROP MATERIAL extends the shared prop UBO with the
-// terrain sun (surface->sun, MC2 world) + a materialReady flag so the Tier-1 FS
-// samples the real albedo array + shared computePBR when armed, else keeps teal.
-// The tail (sun/materialReady) is default-zero when material feeds are absent
-// so disabled material paths remain byte-identical.
-// VK-PROP-AMBIENT-IBL-1: extends the tail with the IBL-SH coefficient table (9 vec4,
-// .w pad -- std140 array stride for vec3[] is 16B) + strength + a lightingReady flag
-// (LightsData SSBO copied this frame -> ambientTerm valid). Material-disabled paths never read past
-// its first 20 bytes so this extension is byte-identical for that path.
-struct ColorFrameUBO {
-    float   worldToClipGL[16]; // gos_GetObjectFixBMVPMat4() — GL_FALSE   (off 0)
-    float   objectDepthBias;   //                                          (off 64)
-    int32_t instBase;          //                                          (off 68)
-    int32_t materialReady;     // 1 = sample alpha-OFF albedo array         (off 72)
-    int32_t materialReadyOn;   // 1 = sample alpha-ON albedo array (a-test) (off 76)
-    float   terrainSunMC2[4];  // surface->sun (MC2 world); .w pad          (off 80)
-    // VK-PROP-AMBIENT-IBL-1 tail (off 96):
-    float   iblSh[9][4];       // RenderCore SH-L2 coeffs, .w pad each      (off 96..236)
-    float   iblShStrength;     // g_iblShStrength (0.0 = feature off)       (off 240)
-    int32_t lightingReady;     // 1 = LightsData copied -> ambientTerm real (off 244)
-    int32_t glassDither;       // 1 = Bayer alpha-test dither (GL parity)   (off 248)
-    float   _pad[1];           // pad to 16B multiple                       (off 252..256)
-};
-static_assert(sizeof(ColorFrameUBO) == 256, "ColorFrameUBO std140 size (color_prop_tier1.frag)");
-static_assert(offsetof(ColorFrameUBO, objectDepthBias) == 64 && offsetof(ColorFrameUBO, instBase) == 68 &&
-              offsetof(ColorFrameUBO, materialReady) == 72 && offsetof(ColorFrameUBO, materialReadyOn) == 76 &&
-              offsetof(ColorFrameUBO, terrainSunMC2) == 80 && offsetof(ColorFrameUBO, iblSh) == 96 &&
-              offsetof(ColorFrameUBO, iblShStrength) == 240 && offsetof(ColorFrameUBO, lightingReady) == 244 &&
-              offsetof(ColorFrameUBO, glassDither) == 248, "ColorFrameUBO field offsets");
+// The per-frame std140 UBO (ColorFrameUBO) is single-sourced in
+// RenderCore/gpu_abi/GpuColorFrameUBO.h; its generated block feeds both prop shaders.
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
 const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;          // VK-owned (non-exported)

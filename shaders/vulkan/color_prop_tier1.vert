@@ -18,21 +18,8 @@ layout(location = 2) in vec2 a_uv;
 layout(location = 3) in uint a_localVertexID;
 layout(location = 4) in uint a_aRGBLight;
 
-layout(set = 0, binding = 0, std140) uniform ColorFrameUBO {
-    mat4  worldToClipGL;   // gos_GetObjectFixBMVPMat4() — GL_FALSE (column-major load)
-    float objectDepthBias; // reverse-Z surface bias (== OBJECT_DEPTH_BIAS)
-    int   instBase;
-    int   materialReady;   // VK-P11 MATERIAL: 1 = sample alpha-OFF albedo array
-    int   materialReadyOn; // VK-P11 MATERIAL alpha-ON: 1 = sample alpha-ON albedo array
-    vec4  terrainSunMC2;    // surface->sun (MC2 world); .w pad
-    // VK-PROP-AMBIENT-IBL-1 tail: real ObjectLights ambient + IBL-SH feed (deferred
-    // item from VK-FLIP-FIELD-REPORT-2's washout fix). Must match
-    // vulkan_color_prop_island.cpp's ColorFrameUBO layout byte-for-byte.
-    vec4  iblSh[9];         // RenderCore SH-L2 coeffs (.w pad each)
-    float iblShStrength;    // 0.0 = feature off (env/mission gate) -> evalShL2 skipped
-    int   lightingReady;    // 1 = LightsData SSBO copied this frame -> ambientTerm real
-    int   glassDither;      // 1 = Bayer-dither alpha-test (GL u_glassDither); read by FS
-} uFrame;
+// Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
+#include "include/color_frame_ubo_vk.glsl"
 
 // VK-PROP-AMBIENT-IBL-1: LightsData SSBO (binding 4), verbatim mirror of
 // shaders/include/lighting.hglsl's ObjectLights layout (byte-identical std430/std140

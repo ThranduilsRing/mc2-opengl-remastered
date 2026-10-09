@@ -5,11 +5,10 @@
 // loops set gos_State_Fog 0). GBuffer1 = flat-up, screen-shadow-eligible
 // (rc_gbuffer1_screenShadowEligible(vec3(0,0,1))); blended passes mask MRT1 off.
 #version 450
+#extension GL_GOOGLE_include_directive : require
 
-layout(set = 0, binding = 0, std140) uniform LegacyFrameUBO {
-    vec4 proj0, proj1, proj2, proj3;
-    vec4 fogColor;
-} uFrame;
+// Per-frame UBO: generated from RenderCore/gpu_abi/GpuLegacyFrameUBO.h.
+#include "include/legacy_frame_ubo_vk.glsl"
 
 layout(set = 0, binding = 1) uniform sampler2D uAlbedo;
 
