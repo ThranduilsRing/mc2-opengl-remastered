@@ -53,6 +53,8 @@ MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke
 
 ## Repo intel tools (use before grepping blind)
 
+Route by question: literal string/env key/filename → `rg`; C++ declaration/references/types/overloads → clangd (LSP plugin; compile DB from `py -3 scripts/configure_analysis.py`, re-run after CMake changes); how subsystems connect → graphify; gates/env/bindings/slices → `repo_query.py`. "Zero references" = deletion *candidate* only (check data/scripts/other configs).
+
 - `py -3 tools/repo_intel/repo_query.py preflight` — session-start sanity check
 - `py -3 tools/repo_intel/repo_query.py env --domain <shadow|terrain|...>` / `env --all` — which `MC2_*` vars exist, defaults, read sites
 - `py -3 tools/repo_intel/repo_query.py binding --conflicts` / `binding <N>` — shader/GL binding-slot index

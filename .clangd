@@ -1,0 +1,13 @@
+CompileFlags:
+  CompilationDatabase: .
+  Remove: [/Zc*, /GL, /MP*, /Zi, /ZI, /Fd*, /Fo*, /FS, /showIncludes, /external*, -fno-*]
+  Add: [-Wno-unknown-pragmas, -Wno-microsoft, -Wno-pragma-pack, -Wno-nonportable-include-path]
+Diagnostics:
+  Suppress: [pp_file_not_found_angled_include_not_fatal]
+  UnusedIncludes: None
+  MissingIncludes: None
+---
+If:
+  PathMatch: .*/3rdparty/.*
+Diagnostics:
+  Suppress: "*"
