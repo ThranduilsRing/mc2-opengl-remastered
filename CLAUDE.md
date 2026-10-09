@@ -76,6 +76,6 @@ Route by question: literal string/env key/filename → `rg`; C++ declaration/ref
 
 ## Code rules
 
-- C++17, MSVC RelWithDebInfo. Full relink after class-layout changes.
+- C++23 (`MC2_CXX_STANDARD=23`, MSVC `/std:c++latest`), RelWithDebInfo. Full relink after class-layout changes.
 - Tracy zones: 100ns floor, none in per-element hot loops.
 - No emoji in code or logs.
