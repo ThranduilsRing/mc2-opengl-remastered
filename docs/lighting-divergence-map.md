@@ -61,7 +61,6 @@ screen-space shadow pass applies it later); **SH** = `rc_gbuffer1_shadowHandled*
 | **Terrain overlay / decals** | `terrain_overlay.frag`, `decal.frag` | none (overlay and decal) | none | terrain sun dir only | UNKNOWN | UNKNOWN | **in-shader** `calcShadow` (`terrain_overlay.frag:388`, `decal.frag:82`) + **SH** | `terrainLightDir` uniform |
 | **Water** | `shaders/gos_terrain_water_mdi.frag` | `SKY_AMBIENT = 0.18`, applied **twice**: as a floor `max(vertexLight, 0.18)` and again additively `+ waterCol*0.18*0.5` (`:101,274-275`) | none | none — consumes the terrain vertex light | UNKNOWN | `mix(fog_color.rgb, col, FogValue)` (`:395`) | **SSE** | terrain vertex light packed in `Color.bgra` (`:273`) |
 | **Vegetation cards** | `gos_vegetation_card.vert` / `.frag` | inline `(0.60 + 0.38 * NdotL)` (`.frag:70`) — a 0.60 diffuse floor | `min(vec3(1.0), col)` (`.frag:75`) | one hardcoded up-normal `dot(vec3(0,0,1), u_terrainLightDir)` (`.frag:68`) | none | none | **SH** — opts out (`.frag:79`) | `u_terrainLightDir` uniform only |
-| **Grass** (shader deleted, DI-4) | `shaders/gos_grass.frag` | inline `mix(0.5, 1.0, NdotL)` after `clamp(NdotL, 0.1, 1.0)` (`:54-55`) — a 0.5 floor | UNKNOWN | synthetic blade normal vs terrain sun (`:53`) | none | UNKNOWN | **in-shader** `calcShadow` (`:59`) + **SH** | `terrainLightDir` uniform |
 
 ### 2c. Unlit classes (verified genuinely unlit, not "lighting UNKNOWN")
 
@@ -319,7 +318,7 @@ land in the same `TG_HWLightsData` table via `addLightDataStructure`.
   The VK backend lives on `claude/vk-interop-bridge-1`; only its shaders are in
   this tree.
 - The checker pins **named constants and two inline forms**. Floors written in
-  other shapes (e.g. `clamp(x, 0.1, 1.0)` at `gos_grass.frag:54`, or a floor
+  other shapes (e.g. a `clamp(x, 0.1, 1.0)` floor as the retired grass shader used, or a floor
   applied C++-side before upload) are **not** pinned. `check-lighting-divergence.py`
   will not catch those.
 - The `no_lights_semantics_fork` category detects `#define
