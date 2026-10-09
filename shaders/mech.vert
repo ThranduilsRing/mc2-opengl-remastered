@@ -89,7 +89,7 @@ uniform int  u_materialFlags;
 uniform mat4 u_worldToClipGL;
 #endif
 // Slice B1: 0 = Slice A passthrough (baseLight=vec3(1.0)),
-// 1 = VS-side calc_light per-vertex. (constant; gate retired).
+// 1 = VS-side calc_light per-vertex. Driven by MC2_GPU_MECH_LIGHTING.
 // 'uniform uint' crashes the engine's shader compile (see
 // memory/uniform_uint_crash.md); use int.
 uniform int u_lightingMode;
