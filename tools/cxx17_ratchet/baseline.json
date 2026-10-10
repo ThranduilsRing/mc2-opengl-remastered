@@ -3417,11 +3417,10 @@
    "LG17": 3
   },
   "mclib/abldbug.cpp": {
-   "LG01": 2,
+   "LG01": 1,
    "LG06": 2,
-   "LG09": 35,
-   "LG11": 1,
-   "LG12b": 37,
+   "LG09": 13,
+   "LG12b": 8,
    "LG17": 1
   },
   "mclib/abldbug.h": {
@@ -3431,6 +3430,12 @@
    "LG13": 5,
    "LG14": 1,
    "LG17": 1
+  },
+  "mclib/abldbug_print.cpp": {
+   "LG01": 1,
+   "LG09": 22,
+   "LG11": 1,
+   "LG12b": 29
   },
   "mclib/abldecl.cpp": {
    "LG09": 5
@@ -4049,17 +4054,21 @@
    "LG13": 4
   },
   "mclib/genactor.cpp": {
-   "LG01": 16,
-   "LG03": 8,
+   "LG01": 4,
+   "LG03": 7,
    "LG06": 1,
    "LG09": 1,
-   "LG12b": 5,
-   "LG13": 1
+   "LG12b": 5
   },
   "mclib/genactor.h": {
    "LG01": 4,
    "LG06": 1,
    "LG13": 2
+  },
+  "mclib/genactor_frame.cpp": {
+   "LG01": 12,
+   "LG03": 1,
+   "LG13": 1
   },
   "mclib/gosfx/card.cpp": {
    "LG03": 6,
@@ -5633,7 +5642,7 @@
    "LG20": 2
   }
  },
- "head": "eb772b8d1",
+ "head": "1ad828c6c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
