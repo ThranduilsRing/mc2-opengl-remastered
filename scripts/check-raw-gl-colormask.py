@@ -103,6 +103,8 @@ ALLOWLIST_PREFIX = (
 FROZEN_BACKLOG = {
     "GameOS/gameos/gameos_graphics.cpp",
     "GameOS/gameos/gos_postprocess.cpp",
+    "GameOS/gameos/gos_postprocess_shadow.cpp",
+    "GameOS/gameos/gos_postprocess_skybox.cpp",
     "GameOS/gameos/gos_static_prop_batcher.cpp",
     "RenderCore/ambient_contract.h",
 }

@@ -44,7 +44,7 @@ PER_CALL = (
     ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_PRESENT_TAIL_HOOK"),
     ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_HUD_COLOR_PROOF"),
     ("GameOS/gameos/engine_present_vk.cpp", "MC2_VK_POST_COMPOSITE"),
-    ("GameOS/gameos/gos_postprocess.cpp", "MC2_VK_SHARED_SCENE_DEPTH"),
+    ("GameOS/gameos/gos_postprocess_gates.cpp", "MC2_VK_SHARED_SCENE_DEPTH"),
     ("GameOS/gameos/vulkan_vfx_island.cpp", "MC2_VK_VFX"),
     ("GameOS/gameos/vulkan_water_island.cpp", "MC2_VK_WATER_TIER1"),
     ("GameOS/gameos/gameos_graphics.cpp", "MC2_VK_VFX"),

@@ -19,6 +19,14 @@ set(SOURCES ${SOURCES}
     render_frame_driver.cpp
     gos_hdri.cpp
     gos_postprocess.cpp
+    gos_postprocess_gates.cpp
+    gos_postprocess_diag.cpp
+    gos_postprocess_fbo.cpp
+    gos_postprocess_effects.cpp
+    gos_postprocess_region.cpp
+    gos_postprocess_skybox.cpp
+    gos_postprocess_shadow.cpp
+    gos_postprocess_executor.cpp
     gos_static_prop_batcher.cpp
     gos_static_prop_registry.cpp
     gos_particle_bridge.cpp
