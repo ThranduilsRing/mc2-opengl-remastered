@@ -1751,7 +1751,7 @@ void TerrainQuad::draw (void)
 		        // (gos_terrain_indirect::DrawDecalStatic, Render.TerrainOverlays
 		        // Static) reproduces this exact emit from a persistent buffer,
 		        // so the per-quad gos_PushTerrainOverlay producer is skipped.
-		        // Default OFF (MC2_TERRAIN_INDIRECT_OVERLAY unset) => this is
+		        // With the overlay gate off (MC2_TERRAIN_INDIRECT_OVERLAY=0) this is
 		        // false => the legacy per-quad emit runs unchanged: ZERO
 		        // behavior change. The legacy :2599+ sites are the FASTPATH-off
 		        // fallback (post-`return` body) and are deliberately untouched.

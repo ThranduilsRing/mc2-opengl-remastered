@@ -32,7 +32,7 @@ namespace gos_terrain_surface {
 //
 //   MC2_TERRAIN_SURFACE -- path-select gate, read ONCE at first query and
 //   cached (mirrors gos_terrain_indirect::IsEnabled / the existing
-//   MC2_TERRAIN_INDIRECT / overlay gates). DEFAULT-OFF for Waves 0-3: only a
+//   indirect-terrain / overlay gates). DEFAULT-OFF for Waves 0-3: only a
 //   literal value turns generation on. Separate from the PR-0 trace gate
 //   MC2_TERRAIN_SURFACE_TRACE (terrain_surface_trace.h) which is trace-only
 //   and never selects a code path.
