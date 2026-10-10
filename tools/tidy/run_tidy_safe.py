@@ -125,6 +125,13 @@ def select(paths, in_db: set, dirty: set):
     return kept, skipped
 
 
+def restore_file(rel: str, mtime_ns: int) -> None:
+    """Discard a file's working-tree edits and put its mtime back, so a restored source does not look newer than
+    the object that was built from it (which would make the next proof refuse the base build)."""
+    subprocess.run(["git", "-C", ROOT, "checkout", "--", rel], **console_child.child_kwargs(redirected=True))
+    os.utime(os.path.join(ROOT, rel), ns=(mtime_ns, mtime_ns))
+
+
 def ninja_objects(tree: str, rels, jobs: int) -> int:
     """Build the objects of `rels` in one ninja run under the MSVC environment."""
     import configure_ninja as cn
@@ -163,16 +170,17 @@ def run(args, tidy=None, build=None) -> int:
         print("run_tidy_safe: refusing to edit without a clean base build of every selected TU", file=sys.stderr)
         return 2
 
+    mtimes = {rel: os.stat(os.path.join(ROOT, rel)).st_mtime_ns for rel in kept}
     exe = clang_tidy_exe()
     tidy = tidy or (lambda cmd: subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                                                **console_child.child_kwargs(redirected=True)))
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        results = list(pool.map(lambda rel: (rel, tidy(tidy_command(exe, tree, rel, fix=not args.dry_run))), kept))
+        results = list(pool.map(lambda rel: (rel, tidy(tidy_command(exe, tree, rel, fix=True))), kept))
 
     changed, reverted = [], []
     for rel, res in results:
         if " error:" in (res.stdout or "") + (res.stderr or ""):
-            subprocess.run(["git", "-C", ROOT, "checkout", "--", rel], **console_child.child_kwargs(redirected=True))
+            restore_file(rel, mtimes[rel])
             reverted.append((rel, "clang-tidy reported a compile error; fix-its discarded"))
         elif git("diff", "--numstat", "--", rel).strip():
             changed.append(rel)
@@ -182,7 +190,7 @@ def run(args, tidy=None, build=None) -> int:
     if args.dry_run:
         for rel in changed:
             sys.stdout.write(git("diff", "--", rel))
-            subprocess.run(["git", "-C", ROOT, "checkout", "--", rel], **console_child.child_kwargs(redirected=True))
+            restore_file(rel, mtimes[rel])
         print(f"run_tidy_safe: dry run, {len(changed)} TU(s) would change; worktree restored")
         return 0
     if not changed:
@@ -193,7 +201,7 @@ def run(args, tidy=None, build=None) -> int:
     if rc:
         print(f"run_tidy_safe: ninja failed (rc={rc}); reverting every edit of this batch", file=sys.stderr)
         for rel in changed:
-            subprocess.run(["git", "-C", ROOT, "checkout", "--", rel], **console_child.child_kwargs(redirected=True))
+            restore_file(rel, mtimes[rel])
         return 1
 
     proven = []
@@ -202,7 +210,7 @@ def run(args, tidy=None, build=None) -> int:
         if lines and all(ln.startswith("OK") for ln in lines):
             proven.append(rel)
         else:
-            subprocess.run(["git", "-C", ROOT, "checkout", "--", rel], **console_child.child_kwargs(redirected=True))
+            restore_file(rel, mtimes[rel])
             reverted.append((rel, "; ".join(lines)))
     for rel, why in reverted:
         print(f"REVERT {rel}  {why}")

@@ -7,7 +7,8 @@ WHY: comment de-bloat (tools/comment_guard.py) and mechanical clang-tidy rewrite
 (tools/tidy/run_tidy_safe.py) both claim "no behaviour change"; identical object sections are the proof
 that does not depend on reading the diff.
 
-Excluded on purpose: the COFF header timestamp and the .debug* sections (paths, line tables), so a
+Excluded on purpose: the COFF header timestamp, the .debug* sections (paths, line tables) and the .chks* incremental-link
+checksum (a hash of the source view, not of the code), so a
 rebuild at another time, or an edit that only shifts line numbers, hashes the same. A source that uses
 __LINE__/__DATE__/__TIME__ still changes when lines shift; callers pass `warn_fn` to downgrade that to
 a warning.
@@ -28,6 +29,9 @@ import struct
 import sys
 
 _DBG_PREFIX = ".debug"
+#: MSVC's incremental-link checksum section: a hash of the TU's source text/debug view, not of the code. It changes when only
+#: tokens such as NULL -> nullptr change while every code, data and relocation section stays identical.
+_NONCODE_SECTIONS = (".debug", ".chks")
 _SCN_BSS = 0x80
 _SCN_NRELOC_OVFL = 0x01000000
 _SOURCE_EXTS = (".cpp", ".cc", ".cxx", ".c")
@@ -113,7 +117,7 @@ def obj_digest(path):
     fmt, secs, syms = parsed
     sec_hashes = {}
     for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
-        if nm.startswith(_DBG_PREFIX):
+        if nm.startswith(_NONCODE_SECTIONS):
             continue
         sec_hashes["%d:%s" % (k, nm)] = _h(nm, str(chars), str(rawsz), data, rel)
     sym_part = _h(*["%s|%d|%d|%d|%s" % s for s in syms if not s[4].startswith(_DBG_PREFIX)])

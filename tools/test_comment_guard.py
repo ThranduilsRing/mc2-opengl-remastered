@@ -209,9 +209,11 @@ def test_lexer_line_numbers_survive_multiline_comments():
 
 
 # ---------------------------------------------------------------- object proof
-def make_obj(ts=1, text=b"\x90\x90\xc3", dbg=b"line-table-1", rdata=b"hello"):
-    """Smallest COFF object the parser understands: .text, .rdata, .debug$S, one symbol."""
+def make_obj(ts=1, text=b"\x90\x90\xc3", dbg=b"line-table-1", rdata=b"hello", chks=None):
+    """Smallest COFF object the parser understands: .text, .rdata, .debug$S, one symbol (+ .chks64 when given)."""
     secs = [(".text$mn", text), (".rdata", rdata), (".debug$S", dbg)]
+    if chks is not None:
+        secs.append((".chks64", chks))
     hdr, shdr = 20, 40 * len(secs)
     off, entries, blob = hdr + shdr, [], b""
     for name, data in secs:

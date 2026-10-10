@@ -51,3 +51,12 @@ def test_header_is_skipped_and_unbuilt_source_is_a_problem(tmp_path):
     doc, problems = objhash.hash_files(str(repo), str(build), ["code/a.h", "code/b.cpp"])
     assert doc["files"]["code/a.h"]["status"] == "skip"
     assert any("no object" in p for p in problems)
+
+
+def test_digest_ignores_the_incremental_link_checksum_section(tmp_path):
+    a, b, c = tmp_path / "a.obj", tmp_path / "b.obj", tmp_path / "c.obj"
+    a.write_bytes(make_obj(chks=b"\x01" * 8))
+    b.write_bytes(make_obj(chks=b"\x02" * 8))          # only the checksum differs (NULL -> nullptr style edit)
+    c.write_bytes(make_obj(text=b"\x90\xc3", chks=b"\x01" * 8))   # real code change
+    da, db, dc = (objhash.obj_digest(str(p)) for p in (a, b, c))
+    assert da["code_sha256"] == db["code_sha256"] != dc["code_sha256"]
