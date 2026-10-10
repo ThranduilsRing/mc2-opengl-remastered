@@ -144,8 +144,6 @@ void execGetEnemyCount (void) {
 
 	long result = -1;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		if ((objectId >= OBJ_ID_FIRST_TEAM) && (objectId <= OBJ_ID_LAST_TEAM)) {
 			TeamPtr team = Team::teams[objectId - OBJ_ID_FIRST_TEAM];
 			if (team)
@@ -189,7 +187,6 @@ void execSelectContact (void) {
 	if (CurObject->isMover()) {
 		MoverPtr me = (MoverPtr)CurObject;
 		MoverPtr object = (MoverPtr)ObjectManager->findByPartId(id);
-		// Passed an object id, so select it if it's a contact...
 		if (object && object->getTeam() && object->getContactStatus(me->getTeam()->getId(), true) != CONTACT_NONE) {
 			CurContact = object;
 			code = NO_ERR;
@@ -293,8 +290,6 @@ void execSetTarget (void) {
 
 	GameObjectPtr target = getObject(targetId);
 	if ((attackerId >= MIN_UNIT_PART_ID) && (attackerId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		long numObjects = getMovers(attackerId, moverList);
 		for (long i = 0; i < numObjects; i++) {
 			MechWarriorPtr pilot = moverList[i]->getPilot();
@@ -322,8 +317,6 @@ void execGetTarget (void) {
 
 	long partID = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		}
 	else {
 		GameObjectPtr object = getObject(objectId);
@@ -495,8 +488,6 @@ void execGetChallenger (void) {
 
 	long challengerPartID = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		}
 	else {
 		GameObjectPtr object = getObject(objectId);
@@ -583,8 +574,6 @@ void execGetAttackerInfo (void) {
 
 	float timeSince = 1000000.0;
 	if ((attackerId >= MIN_UNIT_PART_ID) && (attackerId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		}
 	else {
 		if (CurWarrior) {
@@ -610,8 +599,6 @@ void execSetChallenger (void) {
 	long result = NO_ERR;
 	
 	if ((challengerId >= MIN_UNIT_PART_ID) && (challengerId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		result = -1;
 		}
 	else {
@@ -679,8 +666,6 @@ void execGetVisualRange (void) {
 	float range = 0.0;
 	GameObjectPtr object = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		range = -1;
 		}
 	else {
@@ -710,7 +695,6 @@ void execGetUnitMates (void) {
 
 	long numObjs = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
 			mateList[i] = moverList[i]->getPartId();
@@ -748,8 +732,6 @@ void execGetTacOrder(void) {
 	
 	long code = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		}
 	else {
 		GameObjectPtr object = getObject(objectId);
@@ -786,8 +768,6 @@ void execGetLastTacOrder(void) {
 	
 	long code = 0;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		}
 	else {
 		GameObjectPtr object = getObject(objectId);

@@ -202,7 +202,6 @@ void MissionInterfaceManager::processUiCommandChannel()
 	}
 }
 
-// Pause menu, dialog and capture verbs (toggle_pause, press, debugview, screenshot). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 {
 	const std::string& line = c.line;
@@ -263,7 +262,6 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 10, "debugview ") == 0) {
-		// DEBUG-VIEW-SWEEP-1: runtime global debug-view switch.
 		static const char* kViewNames[7] = {
 			"off", "shadow-factor", "normalized-depth", "unlit-albedo",
 			"overdraw-proxy", "world-normals", "chunk-tint"
@@ -304,7 +302,6 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 	return true;
 }
 
-// GAMEPLAY-DRIVER-1 world verbs (select, order, camera, time_scale, status). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 {
 	const std::string& line = c.line;
@@ -318,7 +315,6 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 	// / Camera::setPosition) so game rules apply. The homeCmdr / homeTeam
 	// gate matches the roster walks in doMove/doAttack.
 	if (line.compare(0, 7, "select ") == 0) {
-		// select <partId|all|lance|class <NAME>|name <substr>>
 		const std::string arg = line.substr(7);
 		Team* pTeam = Team::home;
 		const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
@@ -391,7 +387,6 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 11, "order move ") == 0) {
-		// order move <x> <y> [run|walk]  (default run)
 		float x = 0, y = 0; char mode[16] = {0};
 		const int nf = sscanf(line.c_str() + 11, "%f %f %15s", &x, &y, mode);
 		if (nf < 2) {
@@ -426,7 +421,6 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 13, "order attack ") == 0) {
-		// order attack <targetPartId>
 		const std::string arg = line.substr(13);
 		char* end = nullptr;
 		const long tid = strtol(arg.c_str(), &end, 10);
@@ -497,7 +491,6 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 7, "camera ") == 0) {
-		// camera <x> <y> [rotDeg] [zoomAltitude]
 		float x = 0, y = 0, rot = 0, zoom = 0;
 		const int nf = sscanf(line.c_str() + 7, "%f %f %f %f", &x, &y, &rot, &zoom);
 		if (nf < 2) { note = "camera <x> <y> [rotDeg] [zoomAlt]"; }
@@ -570,7 +563,6 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line == "status") {
-		// dump every selected player unit's id/name/pos/health to the ack file
 		Team* pTeam = Team::home;
 		const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
 		long n = 0;
@@ -596,7 +588,6 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 	return true;
 }
 
-// GAMEPLAY-DRIVER-2 game-state readback and lighting verbs (list, unit, mission_status, end_mission, time_of_day, sun_pitch, light_state). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 {
 	const std::string& line = c.line;
@@ -700,7 +691,6 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		}
 	}
 	else if (line == "list" || line.compare(0, 5, "list ") == 0) {
-		// list [all|player|enemy|team <N>|class <NAME>]
 		const std::string arg = (line.size() > 5) ? line.substr(5) : std::string("all");
 		const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
 		const long homeTeam = Team::home ? Team::home->getId() : -1;
@@ -903,7 +893,6 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 10, "sun_pitch ") == 0) {
-		// sun_pitch <deg> [yawDeg]   -- direction only, colors unchanged
 		float pitch = 0, yaw = 0;
 		const int nf = sscanf(line.c_str() + 10, "%f %f", &pitch, &yaw);
 		if (nf < 1) { note = "sun_pitch <deg 0..360> [yawDeg]"; }

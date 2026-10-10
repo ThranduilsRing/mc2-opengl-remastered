@@ -192,7 +192,6 @@ void MissionInterfaceManager::update (void)
 	{
 		if (targetIsButton)
 		{
-			//Move mouse to correct position.
 			ControlButton *targetButton = controlGui.getButton(targetButtonId);
 			if (!targetButton)
 			{
@@ -202,15 +201,12 @@ void MissionInterfaceManager::update (void)
 
 			userInput->setMouseCursor(mState_TUTORIALS);
 
-			//Get button position.
 			float buttonPosX = (targetButton->location[0].x + targetButton->location[1].x +
 								targetButton->location[2].x + targetButton->location[3].x) * 0.25f;
 
 			float buttonPosY = (targetButton->location[0].y + targetButton->location[1].y +
 								targetButton->location[2].y + targetButton->location[3].y) * 0.25f;
 
-			//-------------------
-			// Mouse Checks Next
 			float realMouseX = userInput->realMouseX();
 			float realMouseY = userInput->realMouseY();
 
@@ -230,7 +226,6 @@ void MissionInterfaceManager::update (void)
 			{
 				userInput->setMousePos(buttonPosX,buttonPosY);
 
-				//We are there.  Start flashing.
 				if (buttonNumFlashes)
 				{
 					buttonFlashTime += frameLength;
@@ -247,7 +242,6 @@ void MissionInterfaceManager::update (void)
 				}
 				else
 				{
-					//Flashing is done.  We now return you to your regularly scheduled program.
 					animationRunning = false;
 					controlGui.getButton( targetButtonId )->setColor( 0xffffffff );
 					if (targetIsPressed)
@@ -265,13 +259,10 @@ void MissionInterfaceManager::update (void)
 
 			userInput->setMouseCursor(mState_TUTORIALS);
 
-			//Get button position.
 			float buttonPosX = (targetButton->rect.left + targetButton->rect.right) * 0.5f;
 
 			float buttonPosY = (targetButton->rect.top + targetButton->rect.bottom) * 0.5f;
 
-			//-------------------
-			// Mouse Checks Next
 			float realMouseX = userInput->realMouseX();
 			float realMouseY = userInput->realMouseY();
 
@@ -291,7 +282,6 @@ void MissionInterfaceManager::update (void)
 			{
 				userInput->setMousePos(buttonPosX,buttonPosY);
 
-				//We are there.  Start flashing.
 				if (buttonNumFlashes)
 				{
 					buttonFlashTime += frameLength;
@@ -308,7 +298,6 @@ void MissionInterfaceManager::update (void)
 				}
 				else
 				{
-					//Flashing is done.  We now return you to your regularly scheduled program.
 					animationRunning = false;
 					targetButton->color = 0xff000000;
 				}
@@ -391,7 +380,6 @@ void MissionInterfaceManager::update (void)
 				Stuff::Vector3D w;
 				eye->inverseProject( sXY, w );
 				{
-					// Snapshot selected friendly movers at drag start.
 					Mover* flMovers[32];
 					int nm = 0;
 					Team* pTeam = Team::home;
@@ -600,7 +588,6 @@ void MissionInterfaceManager::update (void)
  		break;
     }
 	
-	//Call handleWeaponHit for each selected Mech!
 	if (CheatCommand != -1)
 	{
 		Team* pTeam = Team::home;
@@ -623,8 +610,6 @@ void MissionInterfaceManager::update (void)
 		return;
 	}
 
-	//-------------------
-	// Mouse Checks Next
 	mouseX = userInput->getMouseX();
 	mouseY = userInput->getMouseY();
 
@@ -726,7 +711,6 @@ void MissionInterfaceManager::update (void)
 				allOK = allOK && idOK && objOK;
 			}
 
-			// restore
 			Environment.drawableWidth  = savedDW;
 			Environment.drawableHeight = savedDH;
 			gos_TestSetRawMouse(rawSaveX, rawSaveY);
@@ -734,7 +718,6 @@ void MissionInterfaceManager::update (void)
 			fflush(stdout);
 		}
 	}
-	// ------------------------------------------------------------------------
 
 	bool bGui = false;
 
@@ -779,7 +762,6 @@ void MissionInterfaceManager::update (void)
 	if (bGui)
 		userInput->setMouseCursor( mState_NORMAL );
 
-	// find out where the mouse is
 	Stuff::Vector2DOf<long>	mouseXY;
 	mouseXY.x = mouseX;
 	mouseXY.y = mouseY;
@@ -795,7 +777,6 @@ void MissionInterfaceManager::update (void)
 		(memcmp(&cachedWorldToClip, &curW2C, sizeof(Stuff::Matrix4D)) == 0);
 	if (inverseProjectCacheValid && mouseSame && camSame)
 	{
-		// Cursor and camera both unchanged - reuse the cached world point.
 		wPos = cachedWPos;
 		if (s_mfOn) { ++s_mfInvHits; ++s_mfWinHits; }
 	}
@@ -852,7 +833,6 @@ void MissionInterfaceManager::update (void)
 		inverseProjectCacheValid = true;
 	}
 
-	// find out if this position is passable, has line of sight
 	int cellR, cellC;
 	bool passable = 1;
 	bool lineOfSight = 0;
@@ -887,14 +867,10 @@ void MissionInterfaceManager::update (void)
 	}
 
 	{ ZoneScopedN("MIF.PostTarget");
-	//------------------------------------
-	// Attila (Strategic Commander) Next
 	attilaXAxis 	= userInput->getAttilaXAxis();  
 	attilaYAxis		= userInput->getAttilaYAxis();
 	attilaRZAxis	= userInput->getAttilaRAxis();
 	
-	//-------------------------------
-	// Update the Debug Status Bar...
 	int row, col;
 	land->worldToCell(wPos, row, col);
 	sprintf(DebugStatusBarString, "TIME: %06d, MOUSE: [%d, %d] %d,%d,%d (%.2f, %.2f, %.2f), PATHMGR: %02d(%02d)",
@@ -982,7 +958,6 @@ void MissionInterfaceManager::update (void)
 				bool leftClicked = (!userInput->isLeftDrag() && !userInput->isRightDrag() && userInput->isLeftClick());
 				bool rightClicked = (!userInput->isLeftDrag() && !userInput->wasRightDrag() && userInput->rightMouseReleased());
 
-				// deal with the hot keys
 				update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight );
 
 				return;
@@ -1005,7 +980,6 @@ void MissionInterfaceManager::update (void)
 				bool leftClicked = (!userInput->isLeftDrag() && !userInput->isRightDrag() && userInput->isLeftClick());
 				bool rightClicked = (!userInput->isLeftDrag() && !userInput->wasRightDrag() && userInput->rightMouseReleased());
 
-				// deal with the hot keys
 				update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight );
 				return;
 			}
@@ -1103,7 +1077,6 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		}
 	}
 
-	// if there was a target, unset it
 	if ( target )
 		target->setTargeted( 0 );
 

@@ -3,7 +3,6 @@
 #include "mover_internal.h"
 
 
-// MOVER class
 
 long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 
@@ -13,12 +12,6 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	if (result != NO_ERR)
 		return(result);
 
-//	long longRangeMoveEnabled[MAX_TEAMS];
-//	result = mechFile->readIdLongArray("LongRangeMovementEnabled", longRangeMoveEnabled, NUM_TEAMS);
-//	if (result != NO_ERR)
-//		return(result);
-//	for (long i = 0; i < NUM_TEAMS; i++)
-//		LongRangeMovementEnabled[i] = (longRangeMoveEnabled[i] == 1);
 
 	result = mechFile->readIdLong("SimplePathTileRange", SimpleMovePathRange);
 	if (result != NO_ERR)
@@ -56,11 +49,6 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	if (result != NO_ERR)
 		return(result);
 
-//	for (long i = 0; i < NUM_OVERLAY_TYPES; i++)
-//		OverlayWeightIndex[i] = i * MAPCELL_DIM * MAPCELL_DIM;
-//	result = mechFile->readIdLongArray("OverlayCellCosts", OverlayWeightTable, NUM_OVERLAY_WEIGHT_CLASSES * NUM_OVERLAY_TYPES * MAPCELL_DIM * MAPCELL_DIM);
-//	if (result != NO_ERR)
-//		return(result);
 
 	result = mechFile->seekBlock("Mover:General");
 	Assert(result == NO_ERR, 0, "Couldn't find Mover:General block in gamesys.fit");
@@ -121,12 +109,6 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	if (result != NO_ERR)
 		return(result);
 
-//	result = mechFile->readIdFloatArray("WeaponFireModifiers", WeaponFireModifiers, NUM_WEAPONFIRE_MODIFIERS);
-//	if (result == NO_ERR) {
-//		for (long i = 0; i < NUM_WARRIOR_RANKS; i++)
-//			for (long j = 0; j < (NUM_MECH_CLASSES - 1); j++)
-//				RankVersusChassisCombatModifier[i][j + 1] = WeaponFireModifiers[7 + i * NUM_WARRIOR_RANKS + j];
-//	}
 
 	result = mechFile->readIdFloatArray("FireArc", FireArc, 3);
 	if (result != NO_ERR)
@@ -222,7 +204,6 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	if (result != NO_ERR)
 		return(result);
 
-    // sebi: show me where are they used
     /*
 	char profData[NUM_OFFSET_RANGES * 2];
 	result = mechFile->readIdCharArray("ProfessionalismTable", profData, NUM_OFFSET_RANGES * 2);
@@ -287,9 +268,6 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	if (result != NO_ERR)
 		return(result);
 
-//	result = mechFile->readIdFloatArray("FireOddsTable", FireOddsTable, NUM_FIREODDS);
-//	if (result != NO_ERR)
-//		return(result);
 
 	result = mechFile->readIdInt("SkillIncreaseCap", MechWarrior::increaseCap);
 	Assert(result == NO_ERR, result, " Couldn't find SkillCap variable in Warrior block of gamesys.fit ");
@@ -300,16 +278,11 @@ long Mover::loadGameSystem (FitIniFilePtr mechFile, float visualRange) {
 	result = mechFile->readIdFloat("SkillMin", MechWarrior::minSkill);
 	Assert(result == NO_ERR, result, " Couldn't find SkillMin variable in Warrior block of gamesys.fit ");
 
-//	result = mechFile->readIdLong("JumpSkillMod", PilotJumpMod);
-//	Assert(result == NO_ERR, result, " Couldn't find JumpSkillMod variable in Warrior block of gamesys.fit ");
 		
 	result = mechFile->seekBlock("Sensors");
 	if (result != NO_ERR)
 		return(result);
 
-//	result = mechFile->readIdFloatArray("SensorModifiers", SensorModifier, 8);
-//	if (result != NO_ERR)
-//		return(result);
 
 	result = mechFile->readIdFloat("BaseSensorRollTarget", SensorBaseChance);
 	if (result != NO_ERR)
@@ -408,7 +381,6 @@ void Mover::set (Mover copy) {
 
 	GameObject::set(copy);
 
-	//ID = copy.ID;
 	positionNormal = copy.positionNormal;
 	velocity = copy.velocity;
 	rotation = copy.rotation;
@@ -526,7 +498,6 @@ void Mover::init (bool create) {
 	control.init();
 	dynamics.init();
 
-	//netPlayerId = 0;
 	if (MPlayer) {
 #ifdef USE_STRING_RESOURCES
 		cLoadString(thisInstance,IDS_LOSTPLAYER+languageOffset,netPlayerName,254);

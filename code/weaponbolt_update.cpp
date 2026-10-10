@@ -23,7 +23,6 @@ static float directFireSpeedMult (void)
 	return s;
 }
 
-//---------------------------------------------------------------------------
 long WeaponBolt::update (void)
 {
 	ZoneScopedN("GameLogic.Projectile.Update");
@@ -38,16 +37,12 @@ long WeaponBolt::update (void)
 		
 		hitTarget = false;
 		moveThisFrame = false;
-		//-------------------------------------------------------------
-		// Update position relative to my owner
 		GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
 		if (myOwner)
 		{
 			position = myOwner->getPositionFromHS(hotSpotNumber);
 		}
 
-		//-------------------------------------------------------------------
-		// If we were just Created, play our sound Effect.
 		if (((WeaponBoltTypePtr)getObjectType())->fireSoundFX != 0)
 			soundSystem->playDigitalSample(((WeaponBoltTypePtr)getObjectType())->fireSoundFX, position, true);
 			
@@ -107,7 +102,6 @@ long WeaponBolt::update (void)
 			laserDirection.Normalize(laserDirection);
 
 		laserDirection *= ((WeaponBoltTypePtr)getObjectType())->projLength;
-		//laserPosition.Add(laserPosition,laserDirection);
 		
 		if (((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
@@ -174,20 +168,13 @@ long WeaponBolt::update (void)
 		goalHeight *= 10.0f;
 	}
 
-	// B2 P2: prev_position snapshot — no longer used after ring-buffer fix.
-	// Field kept for future velocity-based shader fades; assignment removed.
-	// prev_position = position;
 
-	//-------------------------------------------------------------
-	// Update position relative to my owner
 	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
 	if (myOwner)
 		position = myOwner->getPositionFromHS(hotSpotNumber);
 	
 	bool inView = TRUE;
 
-	//---------------------
-	//Update beamDuration
 	if (((WeaponBoltTypePtr)getObjectType())->isBeam)
 	{
 		timeLeft -= frameLength;
@@ -210,8 +197,6 @@ long WeaponBolt::update (void)
 		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
 	}
 		
-	//---------------------------------------------------------------
-	// Keep projectile flying toward target.  Even if Target Moves!!
 	Stuff::Vector3D ownerPosition = laserPosition;
 	GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 		
@@ -255,8 +240,6 @@ long WeaponBolt::update (void)
 	laserVelocity.Subtract(targetPos,ownerPosition);
 	float distance = laserVelocity.x * laserVelocity.x + laserVelocity.y * laserVelocity.y;
 	
-	//----------------------------------------------------------------------
-	// For the first half of the distance, bring weapons up if NOT beam!!!
 	bool isArcing = false;
 	if (((WeaponBoltTypePtr)getObjectType())->arcEffect)
 	{
@@ -341,7 +324,6 @@ long WeaponBolt::update (void)
 						waterMissEffect = NULL;
 					}
 					
- 					//Put effect ON the spot!!
 					laserPosition = hotSpot;
 				}
 				else
@@ -407,12 +389,9 @@ long WeaponBolt::update (void)
 						hitEffect = NULL;
 					}
 					
-					//Put effect ON the spot!!
 					laserPosition = hotSpot;
 				}
 				
-				//--------------------------------
-				// Laser has hit target.
 				if (target)
 				{
 					//Figure out angle between target and Shooter if target is BELOW shooter.
@@ -447,7 +426,6 @@ long WeaponBolt::update (void)
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 					{
-						//This is an area effect weapon. Hit or MISS, its the same!
 						if (hitEffect)
 						{
 							hitEffect->Kill();
@@ -518,7 +496,6 @@ long WeaponBolt::update (void)
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 					{
-						//This is an area effect weapon. Hit or MISS, its the same!
 						if (hitEffect)
 						{
 							hitEffect->Kill();
@@ -678,8 +655,6 @@ long WeaponBolt::update (void)
 					}
 				}
 				
-				//--------------------------------
-				// Laser has hit target.
 				if (target)
 				{
 					//Figure out angle between target and Shooter if target is BELOW shooter.
@@ -713,7 +688,6 @@ long WeaponBolt::update (void)
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 					{
-						//This is an area effect weapon. Hit or MISS, its the same!
 						if (hitEffect)
 						{
 							hitEffect->Kill();
@@ -784,7 +758,6 @@ long WeaponBolt::update (void)
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectDmg > 0.0f) &&
 						(((WeaponBoltTypePtr)getObjectType())->areaEffectRad > 0.0f))
 					{
-						//This is an area effect weapon. Hit or MISS, its the same!
 						if (hitEffect)
 						{
 							hitEffect->Kill();
@@ -847,8 +820,6 @@ long WeaponBolt::update (void)
 			laserDirection.Normalize(laserDirection);
 	}
 
-	//------------------------------------------------
-	// Update GOSFX
    	if (gosEffect && gosEffect->IsExecuted())
    	{
 		Stuff::Point3D actualPosition;
@@ -959,8 +930,6 @@ long WeaponBolt::update (void)
 	}
 	else if (!hitTarget && ((WeaponBoltTypePtr)getObjectType())->isBeam)
 	{
-		//------------------------------------------------
-		// For beam we need 4 vertices for the two faces.
 		laserVertices[0] = position;
 		laserVertices[1] = position;
 		laserSide[0] = position;
@@ -991,8 +960,6 @@ long WeaponBolt::update (void)
 			}
 		}
 
-		//-------------------------------------------
-		// Wiggle the hotspot.
 		float beamWiggle = ((WeaponBoltTypePtr)getObjectType())->beamWiggle;
 		Stuff::Vector3D offset(beamWiggle,beamWiggle,beamWiggle);
 		offset.x = RandomNumber(offset.x * 2) - offset.x;
@@ -1098,7 +1065,6 @@ long WeaponBolt::update (void)
 					pointLight = NULL;
 				}
 				
-				//Kill later to make Steve Happy!!
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
@@ -1164,7 +1130,6 @@ long WeaponBolt::update (void)
 					missEffect = NULL;
 				}
 					
-				//Kill later to make Steve Happy!!
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
@@ -1241,7 +1206,6 @@ long WeaponBolt::update (void)
 					waterMissEffect = NULL;
 				}
 					
-				//Kill later to make Steve Happy!!
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();

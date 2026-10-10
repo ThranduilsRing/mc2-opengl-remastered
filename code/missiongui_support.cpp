@@ -17,7 +17,6 @@ void MissionInterfaceManager::addAirstrike()
 	controlGui.unPressAllVehicleButtons();
 }
 
-//-----------------------------------------------------------------------------
 
 MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderID, Stuff::Vector3D pos, bool exists) {
 
@@ -82,16 +81,11 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 	return NULL;
 }
 
-//-----------------------------------------------------------------------------
 
 void MissionInterfaceManager::addVehicle( const Stuff::Vector3D& pos )
 {
 	
-//	LogisticsPilot* pPilot = LogisticsData::instance->getFirstAvailablePilot();
 
-//	const char* pChar = pPilot->getFileName();
-//	if ( !pChar )
-//		return;
 
 	// Check if vehicleFile is NULL.  If it is, simply get it.
 	// Can happen if we get here BEFORE beginVtol?
@@ -100,7 +94,6 @@ void MissionInterfaceManager::addVehicle( const Stuff::Vector3D& pos )
 	// D'OH!!!
 	// Delete the points in getVehicleName when the vehicle is actually added!!!
 	//
-	// -fs
 	if (!vehicleFile)
 		vehicleFile = controlGui.getVehicleName(vehicleID[Commander::home->getId()]);
 
@@ -156,8 +149,6 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 			{
 				if (strcmp(weaponEffects->GetEffectName(VTOL_DUST_CLOUD),"NONE") != 0)
 				{
-					//--------------------------------------------
-					// Yes, load it on up.
 					unsigned flags = 0;
 		
 					Check_Object(gosFX::EffectLibrary::Instance);
@@ -204,8 +195,6 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 			{
 				if (strcmp(weaponEffects->GetEffectName(KARNOV_DUST_CLOUD),"NONE") != 0)
 				{
-					//--------------------------------------------
-					// Yes, load it on up.
 					unsigned flags = 0;
 		
 					Check_Object(gosFX::EffectLibrary::Instance);
@@ -225,8 +214,6 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 			{
 				if (strcmp(weaponEffects->GetEffectName(KARNOV_RECOVERY_BEAM),"NONE") != 0)
 				{
-					//--------------------------------------------
-					// Yes, load it on up.
 					unsigned flags = 0;
 		
 					Check_Object(gosFX::EffectLibrary::Instance);
@@ -276,7 +263,6 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 	
 	if (vehicleID[commanderID] == 147)
 	{
-		//Move wPos to be over the cockpit of the downed mech.
 		if (mechToRecover[commanderID] && mechToRecover[commanderID]->appearance)
 			newPos = mechToRecover[commanderID]->appearance->getNodeNamePosition("cockpit");
 	}
@@ -370,7 +356,6 @@ bool MissionInterfaceManager::canRepair( GameObject* pMover )
 	if (pMover->isDisabled() || pMover->isDestroyed())
 		return 0;
 
-	// find the selected guy
 	int watchID = 0;
 	Team* pTeam = Team::home;
 	for (long i = 0; i < pTeam->getRosterSize(); i++)
@@ -490,7 +475,6 @@ int MissionInterfaceManager::togglePause()
 
 int MissionInterfaceManager::togglePauseWithoutMenu()
 {
-	//bPausedWithoutMenu;
 
 	if ( !bPausedWithoutMenu )
 	{
@@ -629,7 +613,6 @@ int MissionInterfaceManager::sendLargeAirstrike()
 }
 int MissionInterfaceManager::gotoNextNavMarker()
 {
-	// need to find the next nav marker....
 	for ( CObjectives::EIterator iter = Team::home->objectives.Begin();
 		!iter.IsDone(); iter++ )
 		{

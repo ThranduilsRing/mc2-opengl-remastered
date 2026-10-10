@@ -11,7 +11,6 @@
 // creation are safe stubs (pop all args, push default, log). None of these
 // may crash or leave the ABL stack unbalanced.
 
-// File-scope state for Omnitech extension functions.
 static int   gCampaignGlobalVars[16] = {0};
 static bool  gAblAirStrikeEnabled       = true;
 static bool  gAblSensorStrikeEnabled    = true;

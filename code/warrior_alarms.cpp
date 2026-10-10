@@ -3,7 +3,6 @@
 #include "warrior_internal.h"
 
 
-// MAIN DECISION TREE
 
 void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 

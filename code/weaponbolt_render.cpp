@@ -25,7 +25,6 @@ static bool vkVfxTraceOn()
 	return s_on;
 }
 
-//---------------------------------------------------------------------------
 void WeaponBolt::render (void)
 {
 	if (!getFlag(OBJECT_FLAG_JUSTCREATED) && !isTargeted())	//can we be seen by the enemy?
@@ -34,14 +33,11 @@ void WeaponBolt::render (void)
 		drawInfo.m_clipper = theClipper;
 		
 		MidLevelRenderer::MLRState mlrState;
-		//mlrState.SetBackFaceOn();
 		mlrState.SetDitherOn();
 		mlrState.SetTextureCorrectionOn();
 		mlrState.SetZBufferCompareOn();
 		mlrState.SetZBufferWriteOn();
 
-		//mlrState.SetFilterMode(MidLevelRenderer::MLRState::BiLinearFilterMode);
-		//mlrState.SetAlphaMode(MidLevelRenderer::MLRState::AlphaInvAlphaMode);
 
 		drawInfo.m_state = mlrState;
 		drawInfo.m_clippingFlags = 0x0;
@@ -53,8 +49,6 @@ void WeaponBolt::render (void)
 
 		if (!gosEffect && !hitTarget && !((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
-			//---------------------------
-			// Render the polygons here.
 			gos_VERTEX	lq1Vertices[3], lq2Vertices[3], lq3Vertices[3], lq4Vertices[3];
 			Stuff::Vector4D screenPos;
 			
@@ -205,12 +199,8 @@ void WeaponBolt::render (void)
 			{
 				if (useImmediate)
 				{
-					//------------------------
-					// Draw em!
 					gos_SetRenderState( gos_State_Texture, 0 );
 			
-					//--------------------------------
-					//Set States for Software Renderer
 					if (Environment.Renderer == 3)
 					{
 						gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
@@ -225,8 +215,6 @@ void WeaponBolt::render (void)
 						gos_SetRenderState( gos_State_Filter, gos_FilterNone);
 						gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
 					}
-					//--------------------------------
-					//Set States for Hardware Renderer	
 					else
 					{
 						gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
@@ -330,8 +318,6 @@ void WeaponBolt::render (void)
 		}
 		else if (!hitTarget && ((WeaponBoltTypePtr)getObjectType())->isBeam)
 		{
-			//---------------------------
-			// Render the polygons here.
 			gos_VERTEX	lq1Vertices[3], lq2Vertices[3], lq3Vertices[3], lq4Vertices[3];
 			Stuff::Vector4D screenPos;
 			
@@ -491,12 +477,8 @@ void WeaponBolt::render (void)
 
 			if (useImmediate)
 			{
- 				//------------------------
-				// Draw em!
 				gos_SetRenderState( gos_State_Texture, 0 );
 		
-				//--------------------------------
-				//Set States for Software Renderer
 				if (Environment.Renderer == 3)
 				{
 					gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneInvAlpha);
@@ -513,8 +495,6 @@ void WeaponBolt::render (void)
 					gos_SetRenderState( gos_State_ZCompare, 1);
 					gos_SetRenderState(	gos_State_ZWrite, 0);
 				}
-				//--------------------------------
-				//Set States for Hardware Renderer
 				else
 				{
 					// VK-FIELD-VFX-3 (look-restore): the VK HUD tail now composites the

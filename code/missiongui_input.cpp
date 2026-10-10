@@ -3,7 +3,6 @@
 #include "missiongui_shared_internal.h"
 
 
-//--------------------------------------------------------------------------------------
 void MissionInterfaceManager::Save (FitIniFilePtr file)
 {
 	//If VTOL or Karnov are active AND HAVEN'T FINISHED THEIR OPERATION, save them, what vehicle they are going to drop or what mech they were fixing.
@@ -11,7 +10,6 @@ void MissionInterfaceManager::Save (FitIniFilePtr file)
 
 	if (vTol[vtolNum] && paintingVtol[vtolNum] && (!vehicleDropped[vtolNum] && !mechRecovered[vtolNum]))
 	{
-		//Save 'em
 		file->writeBlock("VTOLData");
 
 		file->writeIdFloat("VtolPosX",vPos[vtolNum].x);
@@ -30,7 +28,6 @@ void MissionInterfaceManager::Save (FitIniFilePtr file)
 	}
 }
 
-//--------------------------------------------------------------------------------------
 void MissionInterfaceManager::Load (FitIniFilePtr file)
 {
 	//Is there any VTOL data here?  OK if not!
@@ -39,7 +36,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 	if (file->seekBlock("VTOLData") == NO_ERR)
 	{
-		//Load 'em
 		file->readIdFloat("VtolPosX",vPos[vtolNum].x);
 		file->readIdFloat("VtolPosY",vPos[vtolNum].y);
 		file->readIdFloat("VtolPosZ",vPos[vtolNum].z);
@@ -48,7 +44,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 		if (vehicleID[vtolNum] != 147)		//NOT a recovery vehicle.  Standard VTOL
 		{
-			//Go ahead and make a VTOL.  We're gonna need it!
 			AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "vtol" );
 			vTol[commanderID] = new BldgAppearance;
 			vTol[commanderID]->init( appearanceType );
@@ -74,7 +69,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		// Pretty much same code as beginVtol
 		vehicleFile = controlGui.getVehicleNameFromID(vehicleID[vtolNum]);
 
-//		if ( !vTol[vtolNum] )
 		{
 			if (vehicleID[vtolNum] != 147)		//NOT a recovery vehicle.  Standard VTOL
 			{
@@ -82,8 +76,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 				{
 					if (strcmp(weaponEffects->GetEffectName(VTOL_DUST_CLOUD),"NONE") != 0)
 					{
-						//--------------------------------------------
-						// Yes, load it on up.
 						unsigned flags = 0;
 
 						Check_Object(gosFX::EffectLibrary::Instance);
@@ -107,8 +99,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 				{
 					if (strcmp(weaponEffects->GetEffectName(KARNOV_DUST_CLOUD),"NONE") != 0)
 					{
-						//--------------------------------------------
-						// Yes, load it on up.
 						unsigned flags = 0;
 
 						Check_Object(gosFX::EffectLibrary::Instance);
@@ -128,8 +118,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 				{
 					if (strcmp(weaponEffects->GetEffectName(KARNOV_RECOVERY_BEAM),"NONE") != 0)
 					{
-						//--------------------------------------------
-						// Yes, load it on up.
 						unsigned flags = 0;
 
 						Check_Object(gosFX::EffectLibrary::Instance);
@@ -183,7 +171,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		float rotation = 0.f;  // this needs to be pointing 180 degrees from drop point
 
 		vTol[commanderID]->setObjectParameters( newPos, 0, false, Team::home->id, 0);
-		//eye->update();
 		vTol[commanderID]->update();
 		vTol[commanderID]->setInView( true );
 		vTol[commanderID]->setVisibility( 1, 1 );
@@ -337,9 +324,7 @@ void MissionInterfaceManager::updateRollovers()
 
 }
 
-//--------------------------------------------------------------------------------------
 
-// M1.6 + M2-pre: env-gated static-prop pick CALLER WRAPPER.
 //
 // The M1.6 inline machinery (substrate gate, gesture gates, mover gate,
 // viewport query, off-screen guard, coord scaling, lookupAtPixel call)
@@ -467,7 +452,6 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
                                           int  mouseX,
                                           int  mouseY)
 {
-    // M2.6: category gate. Master enable for mech pick wiring.
     if (!RenderWorld::IsMechPickEnabled())
         return;
 
@@ -491,7 +475,6 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
         if (r.lookup.kind != RenderWorld::RenderObjectKind::Mech)
             break;
 
-        // Reverse-resolve to BattleMech via the M2.6 linear-scan resolver.
         BattleMech* bm =
             GameAdapters::Mech::findMechByHandle(r.lookup.handle);
         if (bm == nullptr) {

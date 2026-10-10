@@ -3,13 +3,10 @@
 #include "mechcmd2_internal.h"
 
 
-//---------------------------------------------------------------------------
 static long textToLong (char *num)
 {
 	long result = 0;
 	
-	//------------------------------------
-	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
 	if (hexOffset == NULL)
 	{
@@ -267,7 +264,6 @@ void ParseCommandLine(const char *command_line)
 
 bool notFirstTime = false;
 
-//---------------------------------------------------------------------------
 //
 // Setup the GameOS structure -- This tells GameOS what I am using
 //
@@ -389,7 +385,6 @@ void __stdcall GetGameOSEnvironment(const char* CommandLine )
 	Environment.disableZBuffer			= 0;
 
 //
-// Texture infomation
 //
 	Environment.Texture_S_256			= 6;
 	Environment.Texture_S_128			= 1;

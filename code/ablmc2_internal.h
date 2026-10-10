@@ -6,7 +6,6 @@
 #ifndef ABLMC2_INTERNAL_H
 #define ABLMC2_INTERNAL_H
 
-// Include Files
 #ifndef ABL_H
 #include"abl.h"
 #endif
@@ -157,7 +156,6 @@ static inline void abl_arg_guard_log(const char* funcName, const char* paramName
 	fflush(stdout);
 }
 
-// Shared inline helpers (defined below).
 GameObjectPtr getObject (long partId, bool existsOnly = false);
 long getMovers (long partId, MoverPtr* list, bool existsOnly = false);
 
@@ -217,7 +215,6 @@ inline long getMovers (long partId, MoverPtr* list, bool existsOnly) {
 	long numObjects = 0;
 	if ((partId >= OBJ_ID_FIRST_COMMANDER) && (partId <= OBJ_ID_LAST_COMMANDER))
 		Fatal(3, " ABL.getMovers: bad id ");
-		//numObjects = Commander::commanders[partId - OBJ_ID_FIRST_COMMANDER]->getRoster((GameObjectPtr*)list);
 	else if ((partId >= OBJ_ID_FIRST_TEAM) && (partId <= OBJ_ID_LAST_TEAM)) {
 		TeamPtr team = Team::teams[partId - OBJ_ID_FIRST_TEAM];
 		if (team)

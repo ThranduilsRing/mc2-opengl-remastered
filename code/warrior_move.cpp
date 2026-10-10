@@ -20,8 +20,6 @@ long MechWarrior::setMoveGoal (unsigned long type, Stuff::Vector3D* location, Ga
 			if (location->z < -10.0)
 				location->z = TerrainRuntime::groundElevation(*location);
 			moveOrders.goalLocation = *location;
-			//if (!obj)
-			//	obj = ObjectManager->get(type);
 			moveOrders.goalObjectWID = type;
 			break;
 	}
@@ -81,7 +79,6 @@ void MechWarrior::rethinkPath (unsigned long strategy) {
 			}
 			}
 		else {
-			// Not even on our last local path, so we may want to try again...
 /*			if (moveOrders[ORDER_CURRENT].yieldState == 5) {
 				// We've tried enough. Just kill it...
 				clearMoveOrders(ORDER_CURRENT);
@@ -92,15 +89,12 @@ void MechWarrior::rethinkPath (unsigned long strategy) {
 			else {
 				moveOrders[ORDER_CURRENT].yieldState++;
 */
-				//pausePath();
-				//setMoveYieldTime(scenarioTime + 1.5);
 				moveOrders.path[0]->numSteps = 0;
 				// If you got here, you care about pathlocking...
 				unsigned long params = MOVEPARAM_RECALC | MOVEPARAM_AVOID_PATHLOCKS | MOVEPARAM_FACE_TARGET;
 				if (curTacOrder.moveParams.jump)
 					params |= MOVEPARAM_JUMP;
 				requestMovePath(curTacOrder.selectionIndex, params, 3);
-//			}
 		}
 	}
 }
@@ -158,16 +152,12 @@ MovePathPtr MechWarrior::getMovePath (void) {
 			GameObjectPtr goalObject;
 			unsigned long goalType = getMoveGoal(&goal, &goalObject);
 			if (goalType == MOVEGOAL_NONE) {
-				// No more goal, so no more path:)
-				//clearMovePath(ORDER_CURRENT, 0);
-				//moveOrders[which].path[0]->numSteps = 0;
 				moveOrders.path[0]->numStepsWhenNotPaused = 0;
 				return(moveOrders.path[0]);
 			}
 
 			GameObjectPtr target = NULL;
 			if (goalType > 0) {
-				// Target is an object...
 				if (goalObject)
 					target = goalObject;
 				else
@@ -184,7 +174,6 @@ MovePathPtr MechWarrior::getMovePath (void) {
 	
 			if (isYielding()) {
 				moveOrders.yieldTime = scenarioTime + 1.5;
-				//moveOrders.yieldState = 0;
 				moveOrders.path[0]->numSteps = 0;
 				}
 			else if (isWaitingForPoint()) {
@@ -197,10 +186,8 @@ MovePathPtr MechWarrior::getMovePath (void) {
 			
 			setMoveGoal((target ? target->getWatchID() : MOVEGOAL_LOCATION), &(moveOrders.path[0]->goal));
 			if (moveOrders.path[0]->globalStep == (moveOrders.numGlobalSteps - 1)) {
-				//if (moveOrders[which].path[0]->selectionIndex > 0) {
 					moveOrders.globalGoalLocation = moveOrders.path[0]->stepList[moveOrders.path[0]->numStepsWhenNotPaused - 1].destination;
 					curTacOrder.setWayPoint(0, moveOrders.globalGoalLocation);
-				//}
 			}
 		}
 	}
@@ -250,7 +237,6 @@ void MechWarrior::setMoveGlobalPath (GlobalPathStepPtr path, long numSteps) {
 		Fatal(0, " Global Path Too Long ");
 
     ArrayCopy(moveOrders.globalPath, path, numSteps);
-	//memcpy(moveOrders.globalPath, path, sizeof(GlobalPathStep) * numSteps);
 	moveOrders.numGlobalSteps = numSteps;
 	moveOrders.curGlobalStep = 0;
 }
@@ -315,7 +301,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 
 	GameObjectPtr target = NULL;
 	if (goalType > 0) {
-		// Target is an object...
 		if (goalObject)
 			target = goalObject;
 		else
@@ -352,7 +337,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		else
 			setMoveGoal(MOVEGOAL_LOCATION, &moveOrders.originalGlobalGoal[0]);
 		goalType = getMoveGoal(&goal, &goalObject);
-		//Assert(goal.x > -999000.0, 0, " Warrior:calcMovePath--Bad Original Global Goal ");
 		for (long i = 0; i < 2; i++)
 			clearMovePath(i);
 		moveOrders.pathType = MOVEPATH_UNDEFINED;
@@ -362,11 +346,9 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		pathNum = 0;
 	}
 
-	//Assert(goal.x > -999000.0, 0, " Warrior:calcMovePath--Bad Original Global Goal 2");
 	if (goal.x < -666000.0)
 		return(LastMoveCalcErr = NO_ERR);
 
-	// Are we calcing the current or next path?
 	if (pathNum == -1) {
 		if (moveOrders.path[0]->numStepsWhenNotPaused == 0)
 			pathNum = 0;
@@ -392,12 +374,10 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 				return(LastMoveCalcErr);
 			}
-			// Save the revised final goal...
 		}
 		moveOrders.originalGlobalGoal[1] = goal;
 
 		if (escapeTile) {
-			// Do stuff here, then return...
 			Assert(pathNum == 0, pathNum, " Warrior.calcMovePath: escapePath should be pathNum 0 ");
 			moveOrders.pathType = MOVEPATH_SIMPLE;
 			
@@ -432,7 +412,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				if (pathNum == 0) {
 					if (yielding) {
 						moveOrders.yieldTime = scenarioTime + 1.5;
-						//moveOrders[ORDER_CURRENT].yieldState = 0;
 						moveOrders.path[pathNum]->numSteps = 0;
 						}
 					else if (isWaitingForPoint()) {
@@ -446,7 +425,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				LastMoveCalcErr = NO_ERR;
 				}
 			else {
-				//clearMoveOrders(ORDER_CURRENT);
 				LastMoveCalcErr = MOVEPATH_ERR_LR_NOT_ENABLED;
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 			}
@@ -536,7 +514,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				alarmTacOrder.moveParams.wait = false;
 				alarmTacOrder.moveParams.wayPath.mode[0] = (getMoveRun() ? TRAVEL_MODE_FAST : TRAVEL_MODE_SLOW);
 				setAlarmTacOrder(alarmTacOrder, 255);
-				//clearMoveOrders(ORDER_CURRENT);
 				LastMoveCalcErr = MOVEPATH_ERR_ESCAPING_TILE;
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 				return(LastMoveCalcErr);
@@ -544,7 +521,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			else if (!foundPath/* && longRangeEnabled*/)
 				doQuickMove = false;
 			else {
-				//clearMoveOrders(ORDER_CURRENT);
 				LastMoveCalcErr = MOVEPATH_ERR_LR_NOT_ENABLED;
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 				return(LastMoveCalcErr);
@@ -561,7 +537,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 
 			long numSteps = -1;
 			if (startAreaOpen) {
-				//if ((myVehicle->control.type == CONTROL_AI) && (getTeam() != Team::home))
 				if (useGoalPlan)
 					if (myVehicle->numFunctionalWeapons > 0)
 						GlobalMoveMap[myVehicle->getMoveLevel()]->useClosedAreas = true;
@@ -594,7 +569,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				alarmTacOrder.moveParams.wait = false;
 				alarmTacOrder.moveParams.wayPath.mode[0] = (getMoveRun() ? TRAVEL_MODE_FAST : TRAVEL_MODE_SLOW);
 				setAlarmTacOrder(alarmTacOrder, 255);
-				//clearMoveOrders(ORDER_CURRENT);
 				LastMoveCalcErr = MOVEPATH_ERR_ESCAPING_TILE;
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 				return(LastMoveCalcErr);
@@ -735,7 +709,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			STOP((" Mechwarrior.calcMovePath: bad global step (%d/%d)", curGlobalStep, numGlobalSteps));
 
 		if (numSteps > 0) {
-//			Assert(!isWaitingForPoint() || (pathNum != 0), 0, " fudge ");
 			moveOrders.path[pathNum]->numSteps = numSteps;
 			moveOrders.path[pathNum]->numStepsWhenNotPaused = numSteps;
 			moveOrders.path[pathNum]->globalStep = curGlobalStep;
@@ -744,10 +717,8 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 					moveOrders.path[pathNum]->target = target->getPosition();
 				setMoveGoal((target ? target->getWatchID() : MOVEGOAL_LOCATION), &goal);
 			}
-			//moveOrders[ORDER_CURRENT].nextUpdate  = scenarioTime + MovementUpdateFrequency;
 			}
 		else if (curGlobalStep != (numGlobalSteps - 1)) {
-			//clearMoveOrders(ORDER_CURRENT);
 			moveOrders.curGlobalStep--;
 			if (numSteps == -999) {
 				// Moving to a blocked door (all possible goal cells for the door are currently blocked).
@@ -765,7 +736,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 	if (pathNum == 0) {
 		if (yielding) {
 			moveOrders.yieldTime = scenarioTime + 1.5;
-			//moveOrders[ORDER_CURRENT].yieldState = 0;
 			moveOrders.path[pathNum]->numSteps = 0;
 			}
 		else if (isWaitingForPoint()) {
@@ -794,9 +764,6 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 		if (nextWayPt < moveOrders.numWayPts)
 			nextPoint = moveOrders.wayPath[nextWayPt];
 		if (incWayPoint) {
-			//curTacOrder.moveParams.wayPath.points[0] = nextPoint.x;
-			//curTacOrder.moveParams.wayPath.points[1] = nextPoint.y;
-			//curTacOrder.moveParams.wayPath.points[2] = nextPoint.z;
 			moveOrders.curWayPt = nextWayPt;
 			if (curTacOrder.moveParams.wayPath.mode[nextWayPt] == TRAVEL_MODE_FAST)
 				setMoveRun(true);
@@ -819,7 +786,6 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 				nextWayPt = moveOrders.numWayPts - 2;
 				}
 			else
-				// Going forward to next waypoint...
 				nextWayPt = moveOrders.curWayPt + 1;
 			}
 		else {
@@ -832,9 +798,6 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 		}
 		nextPoint = moveOrders.wayPath[nextWayPt];
 		if (incWayPoint) {
-			//curTacOrder.moveParams.wayPath.points[0] = nextPoint.x;
-			//curTacOrder.moveParams.wayPath.points[1] = nextPoint.y;
-			//curTacOrder.moveParams.wayPath.points[2] = nextPoint.z;
 			moveOrders.curWayDir = nextWayDir;
 			moveOrders.curWayPt = nextWayPt;
 			if (curTacOrder.moveParams.wayPath.mode[nextWayPt] == TRAVEL_MODE_FAST)
@@ -847,7 +810,6 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 	return(true);
 }
 
-// MOVEMENT DECISION TREE
 
 Stuff::Vector3D MechWarrior::calcWithdrawGoal (float withdrawRange) {
 
@@ -860,7 +822,6 @@ bool MechWarrior::movingOverBlownBridge (void) {
 
 	if (getMovePath()) {
 #ifdef USE_BRIDGES
-		// If on a blown bridge, return true...
 		MoverPtr myVehicle = getVehicle();
 		long tileRow = 0, tileCol = 0, cellRow = 0, cellCol = 0;
 		myVehicle->getTileCellPosition(tileRow, tileCol, cellRow, cellCol);
@@ -970,8 +931,6 @@ bool MechWarrior::movementDecisionTree (void) {
 
 	movementUpdate = scenarioTime + MovementUpdateFrequency;
 
-//	if (myVehicle->isSelected())
-//		OutputDebugString("DebugMe\n");
 
 	if ((curTacOrder.code == TACTICAL_ORDER_NONE) || (curTacOrder.code == TACTICAL_ORDER_STOP)) {
 		GameObjectPtr target = getLastTarget();
@@ -1168,7 +1127,6 @@ bool MechWarrior::movementDecisionTree (void) {
 							moveParams = MOVEPARAM_SOMEWHERE_ELSE + MOVEPARAM_RANDOM_OPTIMAL;
 						}
 				if (recalcPath && (curTacOrder.attackParams.tactic != TACTIC_TURRET)) {
-//					setMoveStateGoal(MOVESTATE_FORWARD);
 					if (target) {
 						setMoveGoal(target->getWatchID(), &targetPosition, target);
 						if (curTacOrder.moveParams.jump)
@@ -1230,7 +1188,6 @@ bool MechWarrior::movementDecisionTree (void) {
 				}
 			else {
 				GameObjectPtr target = getCurrentTarget();
-				//float relFacing = myVehicle->relViewFacingTo(targetPos);
 				if (target && (target == goalObject) && getAttackPursuit()) {
 					bool recalcPath = false;
 					unsigned long moveParams = MOVEPARAM_NONE;
@@ -1335,7 +1292,6 @@ bool MechWarrior::movementDecisionTree (void) {
 								break;
 						}
 					}
-					//--added 6/3/01 by GD
 					if (!recalcPath && (curTacOrder.attackParams.tactic != TACTIC_STOP_AND_FIRE))
 						if (keepMoving && curTacOrder.moveParams.keepMoving)
 							if (RandomNumber(100) < 60) {
@@ -1343,7 +1299,6 @@ bool MechWarrior::movementDecisionTree (void) {
 								moveParams = MOVEPARAM_SOMEWHERE_ELSE + MOVEPARAM_RANDOM_OPTIMAL;
 							}
 					if (recalcPath && (curTacOrder.attackParams.tactic != TACTIC_TURRET)) {
-//						setMoveStateGoal(MOVESTATE_FORWARD);
 						Stuff::Vector3D pos = target->getPosition();
 						setMoveGoal(target->getWatchID(), &pos, target);
 						if (curTacOrder.moveParams.jump)

@@ -107,7 +107,6 @@ void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefend
 		target[a] = defenders[toughest];
 	}
 
-	// For now, let's let 'em know their targets...
 	for (int i = 0; i < numAttackers; i++)
 		attackers[i]->getPilot()->triggerAlarm(PILOT_ALARM_ATTACK_ORDER, target[i]->getWatchID());
 }
@@ -130,7 +129,6 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 		target[i] = NULL;
 	}
 
-	// First, find out who everyone else in our group is attacking...
 	for (long a = 0; a < numAttackers; a++) {
 		GameObjectPtr target = attackers[a]->getPilot()->getCurrentTarget();
 		for (int d = 0; d < numDefenders; d++)
@@ -144,7 +142,6 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 	for (int d = 0; d < numDefenders; d++)
 		attackRatio[d] = attackTotal[d] / defenders[d]->getThreatRating();
 
-	// Now, find out who this pilot should attack...
 	long bestTarget = numDefenders - 1;
 	if (numDefenders > 1)
 		for (int d = (numDefenders - 2); d > -1; d--) {

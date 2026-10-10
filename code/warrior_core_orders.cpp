@@ -159,7 +159,6 @@ long MechWarrior::getBrainState (void) {
 	return(brainState);
 }
 
-// CORE COMMANDS (MC2 BEHAVIORS)
 
 long MechWarrior::coreMoveTo (Stuff::Vector3D location, unsigned long params) {
 
@@ -270,11 +269,6 @@ long MechWarrior::coreMoveToObject (GameObjectPtr object, unsigned long params) 
 	if (setOrder)
 		clearCurTacOrder();
 
-	// Is this already our current order?
-	//if ((curTacOrder.code == TACTICAL_ORDER_MOVETO_OBJECT) &&
-	//	(curTacOrder.params.move.targetId == target->getIdNumber()) &&
-	//	(curTacOrder.params.move.selectionIndex == selectionIndex))
-	//	return(TACORDER_FAILURE);
 	tacOrder.targetWID = object->getWatchID();
 	Stuff::Vector3D pos = object->getPosition();
 	setMoveGoal(object->getWatchID(), &pos, object);
@@ -315,10 +309,6 @@ long MechWarrior::coreEject (void) {
 	TacticalOrder tacOrder;
 	tacOrder.init(ORDER_ORIGIN_COMMANDER, TACTICAL_ORDER_EJECT, false);
 
-	//POINTLESS TO CHECK STATUS...
-	//long result = tacOrder.status(this);
-	//if (result == TACORDER_SUCCESS)
-	//	return(1);
 
 	if (curTacOrder.equals(&tacOrder))
 		return(0);
@@ -366,9 +356,7 @@ long MechWarrior::corePower (bool powerUp) {
 	if (curTacOrder.equals(&tacOrder))
 		return(0);
 
-	// Order has no move goal...
 	clearMoveOrders();
-	// Order has no attack target...
 	clearAttackOrders();
 
 	// Check if we've cooled enough to restart...
@@ -388,9 +376,7 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 
 	bool pursue = ((params & TACORDER_PARAM_PURSUE) != 0);
 	bool obliterate = ((params & TACORDER_PARAM_OBLITERATE) != 0);
-	//bool run = ((params & TACORDER_PARAM_RUN) != 0);
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);
-	//bool scan = ((params & TACORDER_PARAM_SCAN) != 0);
 	bool keepMoving = ((params & TACORDER_PARAM_DONT_KEEP_MOVING) == 0);
 
 	long attackMethod = ATTACKMETHOD_RANGED;
@@ -507,12 +493,10 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 	if (pursue) {
 		// Order moveToObject, making sure we face the object...
 		params |= TACORDER_PARAM_FACE_OBJECT;
-		//coreMoveToObject(target, params + TACORDER_PARAM_DONT_SET_ORDER);
 		}
 	else
 		clearMoveOrders();
 
-	// Now, set up the tactical order, and pass it to the pilot...
 	setAttackType(ATTACK_TO_DESTROY);
 	setAttackTarget(target);
 	setAttackAimLocation(aimLocation);
@@ -546,12 +530,6 @@ long MechWarrior::coreCapture (GameObjectPtr object, unsigned long params) {
 	if (!object || !object->isCaptureable(getTeam()->getId()) || object->isFriendly(getVehicle()))
 		return(1);
 	
-	// Once Goal Planning is in, this should deal with the blockers rather than
-	// abort the order...
-//	GameObjectPtr blockerList[MAX_MOVERS];
-//	long numBlockers = object->getCaptureBlocker(getVehicle(), blockerList);
-//	if (numBlockers)
-//		return(1);
 
 	bool run = ((params & TACORDER_PARAM_RUN) != 0);
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);

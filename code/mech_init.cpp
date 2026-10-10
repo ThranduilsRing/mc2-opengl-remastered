@@ -5,7 +5,6 @@
 
 void BattleMech::init (bool create) {
 
-	//Mover::init(create);
 	objectClass = BATTLEMECH;
 	overlayWeightClass = OVERLAY_WEIGHT_MECH;
 	cBills = 0;
@@ -80,7 +79,6 @@ void BattleMech::init (bool create) {
 	captureable = false;
 	notMineYet = true;
 	descID = -1;
-//	variant = 0;
 
 	exploding = false;
 	blipFrame = 0;
@@ -111,16 +109,11 @@ void BattleMech::clear (void) {
 
 void BattleMech::init (bool create, ObjectTypePtr _type) {
 
-	// Call down the chain to init everybody else.
 	GameObject::init(create, _type);
 	creationTime = scenarioTime;
 
-	// In here will reside the code which initializes all of the
-	// variables for a battleMech based upon the type.
-	// For starters, these are tangible objects
 	setTangible(true);
 
-	// Set some mech traits based upon the Mech Type...
 	BattleMechTypePtr mechT = (BattleMechTypePtr)_type;
 	for (long curLocation = 0; curLocation < NUM_BODY_LOCATIONS; curLocation++)
 		body[curLocation].maxInternalStructure = mechT->maxInternalStructure[curLocation];
@@ -137,7 +130,6 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 
 	dynamics = ((BattleMechTypePtr)_type)->dynamics;
 
-	// The appearance is initialized here using data from the type
 	char *appearanceName = _type->getAppearanceTypeName();
 
 	// New code!!!
@@ -153,7 +145,6 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 		mechAppearanceType = appearanceTypeList->getAppearance(appearanceType,"MADCAT");
 	}
 
-	// Ultimately, try to re-use rather then keep re-allocating...
 	if (appearance) {
 	    // M2: MANDATORY pre-init destroyMech. If BattleMech::init() is called
 	    // on an object that already has a live appearance (re-init scenario),
@@ -195,10 +186,8 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 
 float BattleMech::getStatusRating (void) {
 
-	// calculate Weapon effectiveness
 	float weaponEffect = (float)weaponEffectiveness / (float)maxWeaponEffectiveness;
 
-	// Calculate armor
 	float armorHead = armor[MECH_ARMOR_LOCATION_HEAD].curArmor / armor[MECH_ARMOR_LOCATION_HEAD].maxArmor * 0.6 + 0.4;
 
 	float armorCTorso = armor[MECH_ARMOR_LOCATION_CTORSO].curArmor / armor[MECH_ARMOR_LOCATION_CTORSO].maxArmor * 0.5 + 0.5;
@@ -225,7 +214,6 @@ float BattleMech::getStatusRating (void) {
 
 	float armorEffect = armorHead * armorCTorso * armorTorso * armorArm * armorLeg;
 				
-	// Calculate pilot Wounds
 	float pilotWoundTable[7] = {1.00f, 0.95f, 0.85f, 0.75f, 0.50f, 0.30f, 0.00f};
 	float pilotEffect = pilotWoundTable[(long)getPilot()->getWounds()];
 	if (isDestroyed() || isDisabled())
@@ -254,7 +242,6 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
 		return roundRobinNode;
 
-	// Declared hardpoint: resolve id -> profile -> socket name -> node index.
 	HardpointProfile hp;
 	long socketNode = -1;
 	if (resolveHardpoint(item.hardpointId, hp) && !hp.socket.empty())
@@ -277,7 +264,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 		"RightLeg"
 	};
 
-	// Read in the mech data.
 	long result = mechFile->seekBlock("Header");
 	if (result != NO_ERR)
 		return(result);
@@ -312,22 +298,13 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 	longName[0] = '\0';
 
-//	result = mechFile->readIdLong("NameIndex", nameIndex);
-//	if (result != NO_ERR)
-//		return result;
 
-//	result = mechFile->readIdLong("NameVariant", variant);
-//	if (result != NO_ERR)
-//		return result;
 
 	result = mechFile->readIdInt("Pilot",pilotNum);
 	if (result != NO_ERR)
 		pilotNum = -1;
 		
 	char cStatus = 0;
-	//result = mechFile->readIdChar("Status", cStatus);
-	//if (result != NO_ERR)
-	//	return(result);
 
 	status = cStatus;
 
@@ -513,7 +490,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 	armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = currentArmor;
 
-	// Build the mech's inventory (all components, and where they are located)...
 	result = mechFile->seekBlock("InventoryInfo");
 	if (result != NO_ERR)
 		return(result);
@@ -535,7 +511,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 	numAntiMissileSystems = 0;
 
-	// Read in the mech's non-weapon/non-ammo components...
 	long curItem = 0;
 	while (curItem < numOther) {
 		char itemString[128];
@@ -557,19 +532,16 @@ long BattleMech::init (FitIniFile* mechFile) {
 		inventory[curItem].heatPerSec = 0.0;
 #endif
 
-		// If the component is a JumpJet, increment our jump jet count...
 		switch (MasterComponent::masterList[inventory[curItem].masterID].getForm()) {
 			case COMPONENT_FORM_JUMPJET:
 				numJumpJets = 5;
 				break;
 			case COMPONENT_FORM_HEATSINK:
-				//maxHeatSinks++;
 				break;
 		}
 		curItem++;
 	}
 
-	// Read in the mech's weapons...
 	while (curItem < (numOther + numWeapons)) {
 		char itemString[128];
 		sprintf(itemString, "Item:%d", curItem);
@@ -595,12 +567,10 @@ long BattleMech::init (FitIniFile* mechFile) {
 										   MasterComponent::masterList[inventory[curItem].masterID].getWeaponRecycleTime());
 		inventory[curItem].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[curItem].masterID].getWeaponRange()][1] / 24;
 
-		// Cache in the weapon special effect.
 		
 		curItem++;
 	}
 
-	// Read in the mech's ammo...
 	while (curItem < (numOther + numWeapons + numAmmos)) {
 		char itemString[128];
 		sprintf(itemString, "Item:%d", curItem);
@@ -644,7 +614,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 		curItem++;
 	}
 
-	// Now, read in the component layout for each body location...
 	for (long curLocation = 0; curLocation < NUM_MECH_BODY_LOCATIONS; curLocation++) {
 
 		result = mechFile->seekBlock(BodyLocationBlockString[curLocation]);
@@ -668,7 +637,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 		if (result != NO_ERR)
 			return(result);
 
-		// Now, determine the damage state for the body location...
 		float damageLevel = (float)body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
 
 		if (damageLevel <= 0.0)
@@ -819,8 +787,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 	}
 
 	for (int item = numOther+numWeapons;item<(numOther+numWeapons+numAmmos);item++) {
-		// Each weapon should point to its appropriate ammo total in
-		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
 			if (inventory[item].masterID == ammoTypeTotal[ammoIndex].masterId) {
 				inventory[item].ammoIndex = ammoIndex;
@@ -841,15 +807,10 @@ long BattleMech::init (FitIniFile* mechFile) {
 	}
 
 #ifdef USEHEAT
-	// Calc the leg heat sinks...
 	curLegHeatSinks = calcHeatSinks(MECH_BODY_LOCATION_RLEG, true) + calcHeatSinks(MECH_BODY_LOCATION_LLEG, true);
 #endif
 
-	// Now that we've loaded inventory, let's set aside which weapon has the longest
-	// range...
 
-	// We need to set the status states for legs and torso based upon our current
-	// condition...
 	calcLegStatus();
 	calcTorsoStatus();
 	calcFireRanges();
@@ -861,7 +822,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 	ObjectTypePtr type = ObjectManager->getObjectType(typeHandle);
 	if (type->getExplosionObject() > 0)
 		ObjectManager->objTypeManager->load(type->getExplosionObject(), true);
-	// Calc mech's chassis class...
 	chassisClass = getMechClass();
 
 	// Mod-tolerance: mod mechs from stub-substituted BattleMechType paths

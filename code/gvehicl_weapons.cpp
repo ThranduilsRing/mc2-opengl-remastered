@@ -4,7 +4,6 @@
 #include "Gates/gate.h"
 
 
-//----------------------------------------------------------------------------------
 
 float GroundVehicle::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 
@@ -22,9 +21,6 @@ float GroundVehicle::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 	return(relFacing);
 }
 
-//---------------------------------------------------------------------------
-// COMBAT routines
-//---------------------------------------------------------------------------
 
 float GroundVehicle::calcAttackChance (GameObjectPtr target, long aimLocation, float targetTime, long weaponIndex, float modifiers, long* range, Stuff::Vector3D* targetPoint) {
 
@@ -36,7 +32,6 @@ float GroundVehicle::calcAttackChance (GameObjectPtr target, long aimLocation, f
 	return(attackChance);
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::calcHitLocation (GameObjectPtr attacker, long weaponIndex, long attackSource, long attackType) {
 
@@ -48,8 +43,6 @@ long GroundVehicle::calcHitLocation (GameObjectPtr attacker, long weaponIndex, l
 	// For now, just use the arc of entry to the target, and select section
 	// without using obstructions...
 
-	//---------------------------
-	// First, find the section...
 	long zAxisPos = (RandomNumber(100) + RandomNumber(100)) / 2;
 
 	//-------------------------------------------------------------
@@ -75,7 +68,6 @@ long GroundVehicle::calcHitLocation (GameObjectPtr attacker, long weaponIndex, l
 	return(hitLocation);
 }
 
-//---------------------------------------------------------------------------
 
 bool GroundVehicle::hitInventoryItem (long itemIndex, bool setupOnly) {
 
@@ -86,13 +78,11 @@ bool GroundVehicle::hitInventoryItem (long itemIndex, bool setupOnly) {
 	return(false);
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::destroyBodyLocation (long location) {
 	armor[location].curArmor = 0;
 }
 
-//------------------------------------------------------------------------------------------
 
 bool GroundVehicle::injureBodyLocation (long bodyLocation, float damage) {
 
@@ -114,7 +104,6 @@ bool GroundVehicle::injureBodyLocation (long bodyLocation, float damage) {
 	return(false);
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::buildStatusChunk (void) {
 
@@ -152,7 +141,6 @@ long GroundVehicle::buildStatusChunk (void) {
 	return(NO_ERR);
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::handleStatusChunk (long updateAge, unsigned long chunk) {
 
@@ -202,17 +190,12 @@ long GroundVehicle::handleStatusChunk (long updateAge, unsigned long chunk) {
 	return(NO_ERR);
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::buildMoveChunk (void) {
 
 	moveChunk.init();
 	if (pilot) {
-		//--------------------------------------------
-		// First, make sure we have the latest path...
 		pilot->getMovePath();
-		//--------------------------------------------------
-		// Now, use it (and any queued one, if available)...
 		moveChunk.build(this, pilot->getMovePath(0), pilot->getMovePath(1));
 	}
 	moveChunk.pack(this);
@@ -279,8 +262,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	if (mc2_diag::tagEnabled("COMBAT")) {
 		GameObjectPtr _cbAtk = ObjectManager->getByWatchID(shotInfo->attackerWID);
 		char _cbf[192];
-		// ISSUE-9 S3: "loc" = resolved hit location (vehicle location index) —
-		// keeps the hit-event schema uniform with BattleMech::handleWeaponHit.
 		snprintf(_cbf, sizeof(_cbf),
 			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
 			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
@@ -307,8 +288,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		return(NO_ERR);
 
 	numWeaponHitsHandled++;
-	//if (addMultiplayChunk)
-	//	MPlayer->addWeaponHitChunk(this, shotInfo);
 
 	//------------------------------------------------------------
 	// Since Multiplayer still needs this, preserve it and restore
@@ -335,8 +314,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		Fatal(0, err);
 	}
 
-	//----------------------------
-	// Does it get past the armor?
 	if (armor[shotInfo->hitLocation].curArmor > 0) {
 		if (shotInfo->damage > armor[shotInfo->hitLocation].curArmor) {
 			shotInfo->setDamage(shotInfo->damage - armor[shotInfo->hitLocation].curArmor);
@@ -352,8 +329,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 			mineSweeper = false;
 	}
 
-	//-----------------------------------------------------
-	// If any damage gets thru, check Internal Structure...
 	bool vehicleAlreadyDisabled = isDisabled();
 	bool vehicleDestroyed = false;
 	if (shotInfo->damage > 0)
@@ -366,8 +341,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		setFlag(OBJECT_FLAG_TANGIBLE,false);
 	}
 
-	//--------------------------------------------
-	// Calc current CV, after this damage taken...
 	curCV = calcCV();
 	if (isDisabled())
 		setThreatRating(1);
@@ -375,8 +348,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		setThreatRating(-1);
 
 	if (!vehicleAlreadyDisabled && isDisabled()) {
-		//--------------------------------------------------------
-		// If this vehicle was destroyed, let the attacker know...
 		if (attacker && attacker->isMover()) {
 			attacker->getPilot()->triggerAlarm(PILOT_ALARM_KILLED_TARGET, getWatchID());
 			if (!killed && MPlayer && MPlayer->isServer()) 
@@ -407,8 +378,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		}
 		}
 	else {
-		//--------------------------------
-		// Trigger the WEAPON HIT event...
 		if (attacker) {
 			if (shotInfo->masterId > -1)
 				pilot->triggerAlarm(PILOT_ALARM_HIT_BY_WEAPONFIRE, attacker->getWatchID());
@@ -439,11 +408,8 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 
 	if ((shotInfo->masterId == -2) && (shotInfo->hitLocation == GROUNDVEHICLE_LOCATION_TURRET)) {
 		mineLayer--;
-		//	NOT ANY MORE.  Minelayer still active.
-		// Change per design meeting.  4/23/01.
 		if ((mineLayer == 0) && (getCommanderId() == Commander::home->getId())) 
 		{
-		//	disable( POWER_USED_UP );
 			soundSystem->playBettySample( BETTY_MINES_GONE );
 		}
 	}
@@ -483,8 +449,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		if (target->isDestroyed())
 			return(4);
 			
-		//We did this in calcWeaponsStatus.  Do we really need to do it again??!
-		// I have decided NO as of now.
 		/*
 		if (getWeaponIndirectFire(weaponIndex))
 		{
@@ -502,8 +466,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	}
 	else if (targetPoint) 
 	{
-		//We did this in calcWeaponsStatus.  Do we really need to do it again??!
-		// I have decided NO
 		/*
 		if (getWeaponIndirectFire(weaponIndex))
 		{
@@ -524,8 +486,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		
 	bool inRange = weaponInRange(weaponIndex, distanceToTarget, MapCellDiagonal);
 
-	//-----------------------------------------
-	// Let's make sure the target's in range...
 	if (MPlayer) 
 	{
 		if (MPlayer->isServer() && !inRange)
@@ -538,11 +498,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	if (numShots == 0)
 		return(4);
 
-	//------------------------------------------
-	// As of 4/9/97, missiles cannot be aimed...
-	// As of 4/30/98, they can be again... -fs
-	//if ((aimLocation != -1) && (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE))
-	//	return(4);
 
 	MechWarriorPtr targetPilot = NULL;
 	if (target && target->isMover()) {
@@ -574,9 +529,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		// This really shouldn't be hardcoded to work for just IS players! --gd
 		if (target->getTeamId() == TEAM2)
 			pilot->incNumSkillSuccesses(COMBAT_STAT_MISSION, MWS_GUNNERY);
-		//------------------------------------------------------------------
-		// If it's an aimed shot, we need to calc whether we hit the desired
-		// location on the target...
 		if (aimLocation != -1) {
 			hitLocation = aimLocation;
 		}
@@ -613,7 +565,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		
 	appearance->setWeaponNodeUsed(sourceHotSpot);
 	
-	//Set the hotspot for the target
 	long targetHotSpot = 0;
 	if (target && target->getAppearance())
 	{
@@ -633,12 +584,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			deductWeaponShot(weaponIndex);
 		}
 		
-		//------------
-		// Attack hit.
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
-			//---------------------------------------------------------
-			// It's a missile weapon. We need to determine how many hit
-			// (and missed) the target, and in how many clusters...
 			long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
 			long numMissiles;
 			if (isStreakMissile)
@@ -666,8 +612,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			else
 				hitLocation = -1;
 			Assert(hitLocation != -2, 0, " GroundVehicle.FireWeapon: Bad Hit Location ");
-			//--------------------------------------
-			// For now, always use a bullet effect...
 			WeaponShotInfo curShotInfo;
 			curShotInfo.init(this->getWatchID(),
 							 inventory[weaponIndex].masterID,
@@ -852,13 +796,9 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		}
 		}
 	else {
-		//if ((aimLocation != -1) && (RandomNumber(100) < AimedFireAbort))
-		//	return(NO_ERR);
 		if (!isStreakMissile) { 
 
 			if (numShots != UNLIMITED_SHOTS) {
-				//-------------------------------------------------------
-				// We're taking the shot, so reduce our ammo inventory...
 				deductWeaponShot(weaponIndex);
 			}
 
@@ -866,9 +806,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			// Miss, so check for possible miss resolution here...
 			if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 			{
-				//---------------------------------------------------------
-				// It's a missile weapon. We need to determine how many hit
-				// (and missed) the target, and in how many clusters...
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
 				long numMissiles = ((float)missileAmount / 2.0) + 0.5;
 				if (numMissiles < 1)
@@ -1111,7 +1048,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 	//--------------------------------------------------------
 	// If it's already been fired, assume the ammo is there...
 	long numShots = getWeaponShots(weaponIndex);
-	//Assert(numShots > 0, numShots, " handleWeaponFire: numShots is negative! ");
 
 	//-----------------------
 	// Weapon must recycle...
@@ -1138,7 +1074,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 	
 	appearance->setWeaponNodeUsed(sourceHotSpot);
 	
- 	//Set the hotspot for the target
 	long targetHotSpot = 0;
 	if (target && target->getAppearance())
 	{
@@ -1146,18 +1081,11 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 	}
 	
  	if (hit) {
-		//------------
-		// Attack hit.
 		if (numShots != UNLIMITED_SHOTS) {
-			//-------------------------------------------------------
-			// We're taking the shot, so reduce our ammo inventory...
 			deductWeaponShot(weaponIndex);
 		}
 
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
-			//---------------------------------------------------------
-			// It's a missile weapon. We need to determine how many hit
-			// (and missed) the target, and in how many clusters...
 			WeaponShotInfo curShotInfo;
 
 			if (numMissiles) {
@@ -1165,8 +1093,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 				// This code will mess up if the object is not a BULLET!!!!!!!!!!!
 				Assert(hitLocation != -2, TargetRolo, " GroundVehicle.handleWeaponFire: Bad Hit Location ");
 	
-				//--------------------------------------
-				// For now, always use a bullet effect...
 				curShotInfo.init(this->getWatchID(),
 								 inventory[weaponIndex].masterID,
 								 numMissiles * MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponDamage(),
@@ -1244,13 +1170,9 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 		}
 
 		if (numShots != UNLIMITED_SHOTS) {
-			//-------------------------------------------------------
-			// We're taking the shot, so reduce our ammo inventory...
 			deductWeaponShot(weaponIndex);
 		}
 
-		//----------------------------------------------------
-		// Miss, so check for possible miss resolution here...
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
 
 			if (numMissiles > 0) {
@@ -1274,9 +1196,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 			}
 			}
 		else {
-			//----------------------------------------------------
-			// Non-missile weapon, so just one weapon hit spawn...
-			// For now, always use a laser effect...
 			WeaponShotInfo shotInfo;
 			shotInfo.init(this->getWatchID(),
 				inventory[weaponIndex].masterID,
@@ -1345,27 +1264,22 @@ float maxRear, curRear, armorRear, maxTurret, curTurret, armorTurret, armorEffec
 			extraEffect = armorTurret;
  		}
 		
-		//---------FRONT
 		maxFront = armor[GROUNDVEHICLE_LOCATION_FRONT].maxArmor;
 		curFront = armor[GROUNDVEHICLE_LOCATION_FRONT].curArmor;
 		armorFront = curFront / maxFront * 0.6 + (0.4);
 		
-		//---------LEFT
 		curLeft = armor[GROUNDVEHICLE_LOCATION_LEFT].curArmor;
 		maxLeft = armor[GROUNDVEHICLE_LOCATION_LEFT].maxArmor;
 		armorLeft = curLeft / maxLeft * 0.6 + (0.4);
 		
-		//---------RIGHT
 		curRight = armor[GROUNDVEHICLE_LOCATION_RIGHT].curArmor;
 		maxRight = armor[GROUNDVEHICLE_LOCATION_RIGHT].maxArmor;
 		armorRight = curRight / maxRight * 0.6 + (0.4);
 		
-		//---------REAR
 		curRear = armor[GROUNDVEHICLE_LOCATION_REAR].curArmor;
 		maxRear = armor[GROUNDVEHICLE_LOCATION_REAR].maxArmor;
 		armorRear = curRear / maxRear * 0.6 + (0.4);
 		
-		//---------TURRET
 		curTurret = armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor;
 		maxTurret = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor;
 		armorTurret = 1.0;

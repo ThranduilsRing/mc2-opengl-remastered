@@ -4,22 +4,12 @@
 #include "Gates/gate.h"
 
 
-//---------------------------------------------------------------------------
-// C3: Track C3-B plan called for "Camera::UpdateRenderers stub" here.
-// Recon finding: the per-actor recalcBounds() calls the plan expected to collapse
-// live inside each Mech/GV update() (mech.cpp, gvehicl.cpp), NOT in this function.
-// This function dispatches mission/logistics/UI rendering — it cannot be stubbed.
-// The Camera.UpdateRenderers Tracy zone wraps this call from gameosmain.cpp:520.
-// No changes needed here; the C3-B perf win comes from the node-position early-outs
-// in mech3d.cpp and gvactor.cpp, and the render/shadow gates in those files.
-//---------------------------------------------------------------------------
 void __stdcall UpdateRenderers()
 {
 	ZoneScopedN("UpdateRenderers");
 	if (!SnifferMode)
 	{
 		hasGuardBand = true;
-		//hasGuardBand = gos_GetMachineInformation(gos_Info_HasGuardBandClipping) != 0;
 		canMultiTextureDetail = (gos_GetMachineInformation(gos_Info_CanMultitextureDetail) != 0);
 
 		//---------------------------------------------------------------------------------
@@ -48,8 +38,6 @@ void __stdcall UpdateRenderers()
 		}
 
 
-		//---------------------------------------------------------------------------------------
-		// Tell the mission to render, the operation to render and the logistics to render here.
 		if (mission && (!optionsScreenWrapper || optionsScreenWrapper->isDone() ) )
 		{
 			ZoneScopedN("UpdateRenderers missionRender");
@@ -80,7 +68,6 @@ void __stdcall UpdateRenderers()
 			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
-		//------------------------------------------------------------
 		{
 			ZoneScopedN("UpdateRenderers uiRender"); GosGlLostDrawsScope _lostSc_("hud.cursor_userinput");
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
@@ -132,8 +119,6 @@ void __stdcall UpdateRenderers()
 				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap);
 				gos_SetRenderState( gos_State_ZCompare, 1);
 				gos_SetRenderState(	gos_State_ZWrite, 1);
-				//DWORD fogColor = 0x009f9f9f;
-				//gos_SetRenderState( gos_State_Fog, (int)&fogColor);
 			}
 			else
 			{
@@ -151,12 +136,9 @@ void __stdcall UpdateRenderers()
 				gos_SetRenderState( gos_State_ZCompare, 1);
 				gos_SetRenderState(	gos_State_ZWrite, 1);
 				int fogColor = 0x009f9f9f;
-                // sebi
-				//gos_SetRenderState( gos_State_Fog, (int)&fogColor);
 				gos_SetRenderState( gos_State_Fog, fogColor);
 			}
 
-			//Send down 5000 triangles
 			long nIterations = 5;
 			for (long i=0;i<nIterations;i++)
 			{
@@ -173,7 +155,6 @@ void __stdcall UpdateRenderers()
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void __stdcall TerminateGameEngine()
 {
@@ -182,8 +163,6 @@ void __stdcall TerminateGameEngine()
 
 	if (!SnifferMode)
 	{
-		//--------------------------------------------------
-		// Setup Mouse Parameters from Prefs.CFG
 		if (userInput)
 		{
 			//Must call this to shut off the mouse async draw thread.
@@ -191,7 +170,6 @@ void __stdcall TerminateGameEngine()
 			userInput->destroy();
 		}
 
-		//--------------------------------------------------
 
 		DEBUGWINS_destroy();
 
@@ -200,8 +178,6 @@ void __stdcall TerminateGameEngine()
 		delete theClipper;
 		theClipper = NULL;
 
-		//---------------------------------------------------------
-		// End the Mission, Operation and Logistics classes here
 		if (mission)
 		{
 			mission->destroy(false);
@@ -225,20 +201,13 @@ void __stdcall TerminateGameEngine()
 			optionsScreenWrapper = NULL;
 		}
 
-		//---------------------------------------------------------
-		// Start the Color table code
 		destroyColorTables();
 
 		GameLog::cleanup();
 
-		//---------------------------------------------------------
-		// End the Timers
 		delete timerManager;
 		timerManager = NULL;
 
-		//---------------------------------------------------------
-		// TEST of PORT
-		// Create VFX PANE and WINDOW to test draw of old terrain!
 		if (globalPane)
 		{
 			delete globalPane;
@@ -251,8 +220,6 @@ void __stdcall TerminateGameEngine()
 			globalWindow = NULL;
 		}
 
-		//-------------------------------------------------------------
-		// Shut down the soundSytem for a change!
 		if (soundSystem)
 		{
 			soundSystem->destroy();
@@ -261,8 +228,6 @@ void __stdcall TerminateGameEngine()
 			soundSystem = NULL;
 		}
 
-		//------------------------------------------------
-		// shutdown the MC Texture Manager.
 		if (mcTextureManager)
 		{
             // sebi: destroy is called from destructor anyway, and
@@ -278,8 +243,6 @@ void __stdcall TerminateGameEngine()
 		delete globalFloatHelp;
 		globalFloatHelp = NULL;
 
-		//--------------------------------------------------------------
-		// End the SystemHeap and globalHeapList
 		if (systemHeap)
 		{
 			systemHeap->destroy();
@@ -304,9 +267,6 @@ void __stdcall TerminateGameEngine()
 			globalHeapList = NULL;
 		}
 
-		//----------------------------------------------------
-		// Shutdown the MLR and associated stuff libraries
-		//----------------------------------------------------
 		gos_PushCurrentHeap(gosFX::Heap);
 
 		delete effectStream;
@@ -315,9 +275,6 @@ void __stdcall TerminateGameEngine()
 		gos_PopCurrentHeap();
 
 		//
-		//-------------------
-		// Turn off libraries
-		//-------------------
 		//
 		gosFX::TerminateClasses();
 		MidLevelRenderer::TerminateClasses();
@@ -334,14 +291,10 @@ void __stdcall TerminateGameEngine()
 		gos_CloseResourceDLL(gosResourceHandle);
 
 		//
-		//--------------------------
-		// Turn off the fast Files
-		//--------------------------
 		//
 		FastFileFini();
 
 		//
-		//Just down any global allocations
 		//
 		if (g_textureCache_FilenameOfLastLoadedTexture)
 		{
@@ -376,8 +329,6 @@ void __stdcall TerminateGameEngine()
 	}
 }
 
-//-------------------------------
-// Test TGL Parser.
 bool extracted = false;
 
 bool doTransformMath = true;
@@ -391,9 +342,7 @@ float frameNum = 0.0f;
 bool enoughTime = true;
 long enoughCount = 0;
 
-//---------------------------------------------------------------------------
 //
-// No multi-thread now!
 //
 bool DoneSniffing = false;
 void __stdcall DoGameLogic()
@@ -417,11 +366,6 @@ void __stdcall DoGameLogic()
 	
 		FloatHelp::resetAll();
 	
-		//-------------------------------------
-		// Get me the current frameRate.
-		// Convert to frameLength and any other timing stuff.
-		//if (frameRate < 15.0)
-		//	frameRate = 15.0;
 	
 		//FrameRate can be zero in GameOS for some unknown fu-cocked reason.
 		if (frameRate < Stuff::SMALL)
@@ -485,20 +429,12 @@ void __stdcall DoGameLogic()
 	
 		if (doTransformMath)
 		{
-			//-------------------------------------
-			// Poll devices for this frame.
 			userInput->update();
 	
-			//----------------------------------------
-			// Update the Sound System for this frame
 			soundSystem->update();
 			
-			//----------------------------------------
-			// Update all of the timers
 			timerManager->update();
 	
-			//-----------------------------------------------------
-			// Update Mission and Logistics here.
 			if (logistics)
 			{
 				long result = logistics->update();
@@ -519,7 +455,6 @@ void __stdcall DoGameLogic()
 				s_tacOvF6Was = f6Down;
 			}
 
-			// Sensor view toggle (F7) — same proven input site.
 			{
 				extern bool g_sensorViewOn;
 				static bool s_f7Was = false;
@@ -529,7 +464,6 @@ void __stdcall DoGameLogic()
 				s_f7Was = f7Down;
 			}
 
-			// Weapon view toggle (F8).
 			{
 				extern bool g_weaponViewOn;
 				static bool s_f8Was = false;
@@ -603,8 +537,6 @@ void __stdcall DoGameLogic()
 
 				if (result == 9999) {
 					mission->destroy();
-					//delete mission;
-					//mission = NULL;
 					for (long i = 0; i < 3; i++) {
 						DebugGameObject[i] = NULL;
 						DebugWindow[i + 1]->clear();
@@ -615,8 +547,6 @@ void __stdcall DoGameLogic()
 				}
 				else if (result != mis_PLAYING)
 				{
-					//if (MPlayer && MPlayer->isServer())
-					//	MPlayer->sendEndMission(1);
 					if (result < mis_PLAYER_DRAW)
 						soundSystem->playBettySample(BETTY_MISSION_LOST);
 					else if (result > mis_PLAYER_DRAW)
@@ -636,8 +566,6 @@ void __stdcall DoGameLogic()
 					aborted = false;
 					if ( !LogisticsData::instance->campaignOver() || MPlayer || LogisticsData::instance->isSingleMission() ) {
 						mission->destroy();
-						//delete mission;
-						//mission = NULL;
 					}
 	
 					for (long i = 0; i < 3; i++) {
@@ -663,11 +591,7 @@ void __stdcall DoGameLogic()
 	
 		DEBUGWINS_update();
 	
-		//---------------------------------------------------
-		// Update heap instrumentation.
 	
-		//-----------------------------------------------------
-		// Check the TimeBomb to see if we should go away
 		/*
 		if (!checkedBomb)
 		{
@@ -712,8 +636,6 @@ void __stdcall DoGameLogic()
 		}
 		*/
 	
-		//---------------------------------------------------------------
-		// Somewhere in all of the updates, we have asked to be excused!
 		if (quitGame)
 		{
 			//EnterWindowMode();				//Game crashes if _TerminateApp called from fullScreen
@@ -722,8 +644,6 @@ void __stdcall DoGameLogic()
 
 		if (loadInMissionSave)
 		{
-			//sebi:
-            //mission->load("data" PATH_SEPARATOR "savegame" PATH_SEPARATOR "testgame.ims");
             char savegame_path[1024];
             S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
             mission->load(savegame_path);

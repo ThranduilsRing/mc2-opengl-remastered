@@ -99,7 +99,6 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 	ExceptionGameMsg = ChunkDebugMsg;
 }
 
-// Status Chunk class
 
 void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chunk2) {
 

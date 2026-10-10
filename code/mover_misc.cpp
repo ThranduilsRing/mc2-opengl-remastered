@@ -96,7 +96,6 @@ void Mover::initOptimalCells (long numIncrements) {
 				optimalCells[r][i][1] = (char)(doptimalCells[r][i][1] + 0.50);
 		}
 
-	// Now, initialize the tables for Ranged Areas...
 	char rangedMap[MAX_ATTACK_CELLRANGE * 2 + 1][MAX_ATTACK_CELLRANGE * 2 + 1];
 	for (int r = 0; r < (MAX_ATTACK_CELLRANGE * 2 + 1); r++)
 		for (long c = 0; c < (MAX_ATTACK_CELLRANGE * 2 + 1); c++) {
@@ -124,14 +123,11 @@ void Mover::initOptimalCells (long numIncrements) {
 	}
 }
 
-// MOVE ROUTINES CALLBACKS
 
 void GetBlockedDoorCells (int moveLevel, int door, char* openCells) {
 
 	Assert((door > -1) && (door < GlobalMoveMap[moveLevel]->numDoors), 0, " FUDGE 1");
 	Assert((GlobalMoveMap[moveLevel]->doors[door].direction[0] == 1) || (GlobalMoveMap[moveLevel]->doors[door].direction[0] == 2), 0, " FUDGE 2");
-    //sebi length is char it is always < 1024
-	//Assert((GlobalMoveMap[moveLevel]->doors[door].length > 0) && (GlobalMoveMap[moveLevel]->doors[door].length < 1024), 0, " FUDGE 3");
 	Assert((GlobalMoveMap[moveLevel]->doors[door].length > 0), 0, " FUDGE 3");
 	long doorWorldCellRec[4] = {-1, -1, -1, -1};
 	if (GlobalMoveMap[moveLevel]->doors[door].direction[0] == 1) {
@@ -241,7 +237,6 @@ bool Mover::isCloseToFirstTacOrder( Stuff::Vector3D& pos )
 void Mover::removeFromUnitGroup( int id )
 {
 	unitGroup = -1;
-	//unitGroup &= (~(1<<id));
 }
 void Mover::addToUnitGroup( int id )
 {
@@ -257,16 +252,11 @@ bool Mover::handleEjection()
 {
 
 	if (pilot && ((pilot->getStatus() == WARRIOR_STATUS_NORMAL) || (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWING))) {
-		// First, eject...
 		getPilot()->eject();
 
 		ejectOrderGiven = true;
 	
-		// The head blows...
-//		destroyBodyLocation(MECH_BODY_LOCATION_HEAD);
 
-		// Create the Eject FX
-		// WHEN READY -fs
 
 		// If we aren't already disabled, we are now...
  		disable(EJECTION_DEATH);
@@ -277,7 +267,6 @@ bool Mover::handleEjection()
 #endif
 
 #ifdef USE_MOODMUSIC
-		// What heroic music should be played?
 		if (alignment == homeTeam->getAlignment())
 			friendlyDestroyed = true;
 		else
@@ -621,7 +610,6 @@ void Mover::Load (MoverData *data)
 	if (!pilot)
 		STOP(("Could not find pilot for mover after in-mission load"));
 
-	//Set the PaintScheme
 	if (getAppearance())
 	{
 		getAppearance()->resetPaintScheme(data->psRed,data->psGreen,data->psBlue);

@@ -16,7 +16,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	if ((weaponIndex < numOther) || (weaponIndex >= numOther + numWeapons))
 		return(-9999.0);
 
-	// First, let's find out what kind of object we're targeting...
 	Stuff::Vector3D targetPosition;
 	BattleMechPtr mech = NULL;
 	GroundVehiclePtr vehicle = NULL;
@@ -47,7 +46,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	else if (!MPlayer && (getCommanderId() == Commander::home->getId()))	//Up the gunnery Skill by the difficulty modifier
 		attackChance = applyDifficultySkill(attackChance,FALSE);
 
-	// General fire range...
 	float distanceToTarget = distanceFrom(targetPosition);
 	if (range) 
 	{
@@ -59,7 +57,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 			*range = FIRERANGE_LONG;
 	}
 	
-	// Range (Per Weapon)...
 	float weaponMinRange = WeaponRanges[MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponRange()][0];
 	float weaponLongRange = WeaponRanges[MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponRange()][1];
 
@@ -67,7 +64,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		return(-1.0);
 		
 	if (distanceToTarget > (weaponLongRange + MapCellDiagonal)) {
-		// Out of range...
 		return(-1.0);
 	}
 
@@ -80,7 +76,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		return attackChance;
 	}
 
-	//Mech specialist modifiers
 	if (mech && mech->getPilot())
 	{
 		if ((mech->tonnage < 40) && mech->getPilot()->isLightMechSpecialist())
@@ -93,7 +88,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 			attackChance -= 10.0f;
 	}
 	
-	//Weapon Specialist Modifiers
 	if (pilot && pilot->isLaserSpecialist() && ((inventory[weaponIndex].masterID == 139) ||
 												(inventory[weaponIndex].masterID == 140) ||
 												(inventory[weaponIndex].masterID == 147) ||
@@ -169,7 +163,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		attackChance += WeaponSpecialistModifier;
 	}
 
-	//Range Specialist Modifiers
 	if ((distanceToTarget <= MAX_SHORT_RANGE) && pilot && pilot->isShortRangeSpecialist())
 	{
 		attackChance += 15.0f;
@@ -295,7 +288,6 @@ void Mover::ammoExplosion (long ammoIndex) {
 
 void Mover::disable (unsigned long cause) 
 {
-	// Immediately begin shutting down, then disable...
 	if (!isDisabled()) 
 	{
 		if (pilot)
@@ -317,7 +309,6 @@ void Mover::disable (unsigned long cause)
 			enemyDestroyed = true;
 		}
 
-		// Immediately lose contacts...
 		if (sensorSystem)
 			sensorSystem->disable();
 
@@ -354,7 +345,6 @@ void Mover::shutDown (void) {
 	if ((status == OBJECT_STATUS_SHUTDOWN) || (status == OBJECT_STATUS_SHUTTING_DOWN))
 		return;
 
-	// Immediately begin shutting down...
 	setStatus(OBJECT_STATUS_SHUTTING_DOWN);
 	shutDownThisFrame = true;
 }
@@ -367,7 +357,6 @@ void Mover::startUp (void) {
 	if ((status == OBJECT_STATUS_STARTING_UP) || (status == OBJECT_STATUS_NORMAL))
 		return;
 
-	// Immediately begin starting up...
 	setStatus(OBJECT_STATUS_STARTING_UP);
 	startUpThisFrame = true;
 }
@@ -379,8 +368,6 @@ void Mover::tradeRefresh (void) {
 	withdrawing = false;
 	engineBlowTime = -1.0;
 	ejectOrderGiven = false;
-//	if (statusChunk.ejectOrderGiven)
-//		PAUSE(("whoops"));
 	statusChunk.ejectOrderGiven = false;
 }
 
@@ -399,7 +386,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 		long rearmCount = 0;
 		long repairCount = 0;
 		
-		// how many locations need armor or IS repaired?
 		if (!ammoOnly) {
 			for (long i = 0; i < numArmorLocations; i++) {
 				// don't repair destroyed arms...
@@ -412,7 +398,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 			}
 		}
 
-		// how many ammo types need refilling, and how much?
 		for (long i = 0; i < numAmmoTypes; i++)
 			if (ammoTypeTotal[i].curAmount < ammoTypeTotal[i].maxAmount)
 				rearmCount++;
@@ -420,7 +405,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 		if (pilot && pilot->getRadio())
 			pilot->getRadio()->resetAmmoMessage();
 
-		// repair each armor & IS
 		for (int i = 0; i < numArmorLocations; i++) {
 			if ((repairCount == 0) || (refitPoints <= 0.0))
 				continue;
@@ -468,7 +452,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 			}
 		}
 
-		// refit each ammo that needs it
 		for (int i=0; i < numAmmoTypes; i++) {
 			if ((rearmCount > 0) && (refitPoints > 0.0) && (ammoTypeTotal[i].curAmount < ammoTypeTotal[i].maxAmount)) {
 				bool recalc = (ammoTypeTotal[i].curAmount == 0);
@@ -489,7 +472,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 			}
 		}
 		
-		// do any locations still need repair?
 		rearmCount = 0;
 		repairCount = 0;
 		if (!ammoOnly) {
@@ -505,7 +487,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 			}
 		}
 
-		// if there's no more repairing, do any ammo types need refilling?
 		if (repairCount == 0)
 			for (int i = 0; i < numAmmoTypes; i++)
 				if (ammoTypeTotal[i].curAmount < ammoTypeTotal[i].maxAmount) {
@@ -514,7 +495,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 				}
 
 		if ((repairCount == 0) && (rearmCount == 0)) {
-			// done fixing, move on
 			if (getCommanderId() == Commander::home->getId()) 
 			{
 				getPilot()->radioMessage(RADIO_REFIT_DONE, TRUE);
@@ -526,7 +506,6 @@ bool Mover::refit (float pointsAvailable, float& pointsUsed, bool ammoOnly) {
 		}
 		}
 	else {
-		// no points left, so move on
 		if (getCommanderId() == Commander::home->getId())
 		{
 			getPilot()->radioMessage(RADIO_REFIT_INCOMPLETE, TRUE);
@@ -572,7 +551,6 @@ bool Mover::recover (void) {
 
 	if (recoverPoints > 0.0) 	{
 		long repairCount = 0;
-		// how many locations need IS repaired?
 		for (long i = 0; i < numBodyLocations; i++) {
 			// don't repair destroyed arms...
 			if (((i == MECH_BODY_LOCATION_LARM) || (i == MECH_BODY_LOCATION_RARM)) && (body[i].damageState == IS_DAMAGE_DESTROYED))
@@ -581,7 +559,6 @@ bool Mover::recover (void) {
 				repairCount++;
 		}
 
-		// repair each IS
 		for (int i = 0; i < numBodyLocations; i++) 
 		{
 			if ((repairCount == 0) || (recoverPoints <= 0.0))
@@ -622,7 +599,6 @@ bool Mover::recover (void) {
 			}
 		}
 		
-		// do any locations still need repair?
 		repairCount = 0;
 		for (int i = 0; i < numBodyLocations; i++) 
 		{
@@ -638,7 +614,6 @@ bool Mover::recover (void) {
 
 		if (repairCount == 0) 
 		{
-			// done fixing, move on
 			for (long i = 0; i < numOther; i++) 
 			{
 				MasterComponentPtr component = &MasterComponent::masterList[inventory[i].masterID];
@@ -673,7 +648,6 @@ bool Mover::recover (void) {
 	}
 	else 
 	{
-		// no points left, so move on
 		if (getCommanderId() == Commander::home->getId())
 		{
 			getPilot()->radioMessage(RADIO_REFIT_INCOMPLETE, TRUE);

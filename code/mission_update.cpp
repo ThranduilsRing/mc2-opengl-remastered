@@ -363,7 +363,6 @@ namespace {
 			s_cohChecked, s_cohViolations, s_cohAdvisories, s_cohAudits);
 	}
 
-	// rule ids for the dedup key (per mover partId).
 	enum CohRule { COH_I1 = 1, COH_I1B, COH_I2_ICON, COH_I2_ORDER,
 	               COH_I2B_ORDER, COH_I3, COH_I4, COH_I5 };
 
@@ -469,11 +468,8 @@ namespace {
 					COH_I4, "detail=icon_unit_unregistered");
 		}
 	}
-	// MOVER-COHERENCE-AUDIT-END
 } // namespace
 
-//----------------------------------------------------------------------------------
-// class Mission
 long Mission::update (void)
 {
 	ZoneScopedN("Mission::update");
@@ -601,20 +597,14 @@ long Mission::update (void)
 		// put the game into slo-mo so we don't lose any frames of animation.
 		dynamicFrameTiming = true;
 			
-		//---------------------------------------
-		//Save the game in-Mission if requested
 		if (saveInMissionSave)
 		{
-            // sebi:
-			//save("data" PATH_SEPARATOR "savegame" PATH_SEPARATOR "testgame.ims");
             char savegame_path[1024];
             S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
 			save(savegame_path);
 			saveInMissionSave = false;
 		}
 
-		//--------------------------------------------------
-		// Update length of time scenario has been running.
 		if (!mc2SimTickFrozen(missionInterface) || MPlayer )
 		{
 			//First Frame we just set LastTimeGetTime.
@@ -670,7 +660,6 @@ long Mission::update (void)
 			soundSystem->setIsPaused();
 		}
 
-		//--------------------------------------------------
 		
 		//------------------------------------------------------------------------
 		// There is a TINYYYYYYYYYY chance this will never go if timeGetTime()
@@ -682,10 +671,6 @@ long Mission::update (void)
 //		else if (MPlayer && (scenarioTime > 10.0))
 //			Fatal(MissionStartTime, " runningTime is not working...why? ");
 
-//		if (MPlayer)
-//			actualTime = runningTime;
-//		else
-		//Try ALWAYS using SCENARIO Time.  This has been specially coded to be nummies!!
 			actualTime = scenarioTime;
 
 
@@ -732,7 +717,6 @@ long Mission::update (void)
 		{ ZoneScopedN("GameLogic.PathManager"); MisScope _ms(MS_PATHMGR); PathManager->update(); }
 
 		if (KillAmbientLight) {
-	//		ambientRed<<16)+(ambientGreen<<8)+ambientBlue;
 		}
 		
 		//-----------------------------------------------------------
@@ -819,8 +803,6 @@ long Mission::update (void)
 		if ( !mc2SimTickFrozen(missionInterface) || MPlayer )
 			{ ZoneScopedN("GameLogic.Mission.TextureManager"); mcTextureManager->update(); }
 
-		//--------------------------------------
-		// update sensor and contact managers...
 		if (useSensors && ( !mc2SimTickFrozen(missionInterface) || MPlayer ) )
 			{ ZoneScopedN("GameLogic.Mission.Sensors"); SensorManager->update(); }
 
@@ -883,8 +865,6 @@ long Mission::update (void)
 		if (s_moverCoherenceAudit)
 			auditMoverCoherence(scenarioTime, missionInterface);
 
-		//----------------------------------------------------
-		// Check is all player forces dead/disabled.
 		if (!MPlayer && !terminationCounterStarted)
 		{
 			bool playerForceAllDead = true;
@@ -910,7 +890,6 @@ long Mission::update (void)
 		{
 			if (missionTerminationTime <= actualTime) {
 				if (ControlGui::instance->resultsDone()) {
-					/* if the gui is finished rendering objective results then end it */
 					scenarioResult = terminationResult;
 
 					if ( !scenarioResult )
@@ -925,10 +904,8 @@ long Mission::update (void)
 						}
 					}
 
-					// need to reset the termination result
 				}
 				else if (!MPlayer) {
-					/* if all the player's dudes are dead then end it */
 					bool playerForceAllDead = true;
 					for (long i=0;i<ObjectManager->getNumMovers();i++)
 					{
@@ -1132,7 +1109,6 @@ long Mission::update (void)
 					BattleMech* pM = ObjectManager->getMech(mi);
 					if (!pM) continue;
 					if (pM->isDisabled() || pM->isDestroyed()) continue;
-					// Enemy = any team other than the player home team.
 					if (Team::home && pM->getTeamId() == Team::home->id) continue;
 					// OBJECT_STATUS_DISABLED: salvage screen keeps it (isDisabled
 					// true, isDestroyed false).
@@ -1257,7 +1233,6 @@ long Mission::update (void)
 			                               // MC2_BRAIN_FREEZE_TRACE reads
 			const float olWin = soakWinAfterSec();
 
-			// Re-arm each new mission (scenarioTime resets to 0 on start()).
 			if (scenarioTime < olWin * 0.1f)
 			{
 				s_olMoveIssued = s_olAttackIssued = s_olSummaryDone = false;
@@ -1407,14 +1382,12 @@ long Mission::update (void)
 			if (!s_soakPromoteFired && throttlePass &&
 				scenarioTime > promoteAt && !scenarioResult)
 			{
-				// Find first deployed pilot via MechWarrior::warriorList.
 				LogisticsPilot* lPilot = nullptr;
 				const char* pilotName = "(none)";
 				for (int wi = 1; wi <= MechWarrior::numWarriors && !lPilot; ++wi)
 				{
 					MechWarriorPtr mw = MechWarrior::warriorList[wi];
 					if (!mw) continue;  // getPilot() below gates to real deployed pilots
-					// Resolve to LogisticsPilot via LogisticsData.
 					LogisticsPilot* lp =
 						LogisticsData::instance
 							? LogisticsData::instance->getPilot(mw->getName())

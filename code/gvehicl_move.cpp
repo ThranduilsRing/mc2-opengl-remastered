@@ -3,7 +3,6 @@
 #include "gvehicl_internal.h"
 
 
-//---------------------------------------------------------------------------
 
 bool GroundVehicle::pivotTo (void) {
 
@@ -28,14 +27,12 @@ bool GroundVehicle::pivotTo (void) {
 	{
 		targetPosition = target->getPosition();
 		relFacingToTarget = relFacingTo(targetPosition);
-		//maxVehiclePivotRate = ((GroundVehicleDynamicsTypePtr)(((GroundVehicleTypePtr)type)->dynamicsType))->maxTurretYawRate * frameLength;
 		hasTarget = true;
 	}
 	else if (pilot->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_POINT) 
 	{
 		targetPosition = pilot->getAttackTargetPoint();
 		relFacingToTarget = relFacingTo(targetPosition);
-		//maxVehiclePivotRate = ((GroundVehicleDynamicsTypePtr)(((GroundVehicleTypePtr)type)->dynamicsType))->maxTurretYawRate * frameLength;
 		hasTarget = true;
 	}
 
@@ -43,8 +40,6 @@ bool GroundVehicle::pivotTo (void) {
 	{
 		if ((moveStateGoal == MOVESTATE_PIVOT_FORWARD) || (moveStateGoal == MOVESTATE_FORWARD)) 
 		{
-			//----------------------------------------------------------
-			// We want to pivot forward (if we have a path to follow)...
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) 
 			{
 				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
@@ -109,8 +104,6 @@ bool GroundVehicle::pivotTo (void) {
 	else if (moveState == MOVESTATE_PIVOT_REVERSE) 
 	{
 		if ((moveStateGoal == MOVESTATE_PIVOT_REVERSE) || (moveStateGoal == MOVESTATE_REVERSE)) {
-			//----------------------------------------------------------
-			// We want to pivot forward (if we have a path to follow)...
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) {
 				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
 
@@ -156,8 +149,6 @@ bool GroundVehicle::pivotTo (void) {
 				}
 				else 
 				{
-					//--------------------------
-					// Facing reverse. Now what?
 					if (pilot->getMoveTwisting())
 						pilot->setMoveTwisting(false);
 					if (moveStateGoal == MOVESTATE_REVERSE) 
@@ -178,8 +169,6 @@ bool GroundVehicle::pivotTo (void) {
 	{
 		if (moveStateGoal == MOVESTATE_PIVOT_TARGET) 
 		{
-			//------------------------------------------
-			// We want to pivot to our current target...
 			if (isRunning || !hasTarget) 
 			{
 				pilot->setMoveStateGoal(MOVESTATE_FORWARD /*MOVESTATE_STAND*/);
@@ -218,8 +207,6 @@ bool GroundVehicle::pivotTo (void) {
 	}
 	else 
 	{
-		//--------------------------------------------------------
-		// If we're supposed to be pivoting, set the move state...
 		if ((moveStateGoal == MOVESTATE_PIVOT_TARGET) || (moveStateGoal == MOVESTATE_PIVOT_FORWARD) || (moveStateGoal == MOVESTATE_PIVOT_REVERSE))
 			pilot->setMoveState(moveStateGoal);
 	}
@@ -231,7 +218,6 @@ bool GroundVehicle::pivotTo (void) {
 	return(false);
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::calcThrottleLimits (long& minThrottle, long& maxThrottle) {
 
@@ -248,7 +234,6 @@ void GroundVehicle::calcThrottleLimits (long& minThrottle, long& maxThrottle) {
 	
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::getSpeedState (void) {
 
@@ -257,7 +242,6 @@ long GroundVehicle::getSpeedState (void) {
 	return(SPEED_STATE_STATIONARY);
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::updateMoveStateGoal (void) {
 
@@ -289,11 +273,7 @@ void GroundVehicle::updateMoveStateGoal (void) {
 				return;
 			}
 		}
-		//----------------------------------------
-		// Facing choice for movement goes here...
 		if (hasTarget) {
-			//------------------------------------------------
-			// Check if we want to go forward or in reverse...
 			if ((path->numStepsWhenNotPaused > 0) && (path->curStep < path->numStepsWhenNotPaused)) {
 				Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
 				float facingDelta = relFacingDelta(wayPt, targetPosition);
@@ -331,7 +311,6 @@ void GroundVehicle::updateMoveStateGoal (void) {
 
 }
 
-//---------------------------------------------------------------------------
 
 bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, long& newMoveState, long& minThrottle, long& maxThrottle) 
 {
@@ -363,7 +342,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 		float myDistanceFromGoal = pilot->getMoveDistanceLeft();
 		aheadOfPointVehicle = (myDistanceFromGoal < pointDistanceFromGoal);
 		if (aheadOfPointVehicle) {
-			//allowedToRun = false;
 			if (getSpeedState() == SPEED_STATE_MOVING_FAST) 
 			{
 				//-------------------------------------------------
@@ -385,8 +363,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 		}
 		else 
 		{
-			//-------------------
-			// No need to wait...
 			pilot->setMoveWaitForPointTime(-1.0);
 			if (!pilot->isYielding()) 
 			{
@@ -402,8 +378,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 	bool goalReached = false;
 	if (path->numSteps > 0) 
 	{
-		//---------------------------------------------------------------
-		// First, make sure we are not already at the end of this path...
 		if (path->curStep == path->numSteps)
 			goalReached = true;
 		else 
@@ -417,14 +391,9 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 			// on a new gesture/movement system... gd 6/2/97
 			lastValidPosition = wayPt;
 
-			//---------------------------------
-			// Have we reached the destination?
 			float distanceFromWayPt = distanceFrom(wayPt);
 			DistanceToWaypoint = distanceFromWayPt;
 
-			//--------------------------------------------------
-			//Calculate how far the vehicle will move this frame.
-			// Vel is in m/s
 			float vel = velocityMag;
 			float distanceThisFrame = vel * frameLength;
 
@@ -443,8 +412,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 
 			if (distanceFromWayPt < cushion) 
 			{
-				//-------------------------------------------
-				// Reached it, so go to the next waypoint...
 				path->curStep++;
 				pilot->setMoveTimeOfLastStep(scenarioTime);
 				if (path->curStep < path->numSteps) 
@@ -459,8 +426,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 
 			if (!goalReached) 
 			{
-				//-----------------------------------------
-				// First, rotate the vehicle (if moving)...
 
 				float relFacingToWayPt = relFacingTo(wayPt);
 				long moveState = pilot->getMoveState();
@@ -470,15 +435,11 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 				{
 					if (moveStateGoal == MOVESTATE_FORWARD) 
 					{
-						//----------------------
-						// Keep going forward...
 
 						newThrottleSetting = 100;
 						
 						if ((relFacingToWayPt < -5.0) || (relFacingToWayPt > 5.0)) 
 						{
-							//-----------------------------------------------
-							// We can and will shift facing to destination...
 							newRotate = -relFacingToWayPt;
 							float maxRate = vehicleTurnRate[long(tonnage)] * frameLength;
 							if (fabs(newRotate) > maxRate)
@@ -502,22 +463,16 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 					}
 					else if (moveStateGoal == MOVESTATE_PIVOT_FORWARD) 
 					{
-						//---------------------------------------------------
-						// Stop, and pivot fully forward to next path step...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 					}
 					else if (moveStateGoal == MOVESTATE_PIVOT_REVERSE) 
 					{
-						//---------------------------------------------------
-						// Stop, and pivot fully reverse to next path step...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_PIVOT_REVERSE;
 					}
 					else 
 					{
-						//--------
-						// Stop...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_FORWARD /*MOVESTATE_STAND*/;
 					}
@@ -526,16 +481,12 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 				{
 					if (moveStateGoal == MOVESTATE_FORWARD) 
 					{
-						//---------------------------------------------------
-						// Stop, and pivot fully forward to next path step...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 					}
 					else if (moveStateGoal == MOVESTATE_REVERSE) 
 					{
 						newThrottleSetting = -100;
-						//--------------------------
-						// Keep moving in reverse...
 						if (relFacingToWayPt < 0)
 							newRotate = -(relFacingToWayPt + 180.0);
 						else
@@ -562,37 +513,27 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 						}
 						else 
 						{
-							//------------------------------------
-							// Try to attain current goal speed...
 							newThrottleSetting = -100;
 						}
 					}
 					else if (moveStateGoal == MOVESTATE_PIVOT_FORWARD) 
 					{
-						//---------------------------------------------------
-						// Stop, and pivot fully forward to next path step...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 					}
 					else if (moveStateGoal == MOVESTATE_PIVOT_REVERSE) 
 					{
-						//---------------------------------------------------
-						// Stop, and pivot fully reverse to next path step...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_PIVOT_REVERSE;
 					}
 					else 
 					{
-						//--------
-						// Stop...
 						pilot->pausePath();
 						newMoveState = MOVESTATE_FORWARD /*MOVESTATE_STAND*/;
 					}
 				}
 				else 
 				{
-					//--------------------------
-					// Not moving--should we be?
 					if ((moveStateGoal == MOVESTATE_FORWARD) || (moveStateGoal == MOVESTATE_PIVOT_FORWARD)) 
 					{
 						pilot->pausePath();
@@ -609,8 +550,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 	}
 	else 
 	{
-		//-------------------------------------------
-		// We better not be walking or running, then!
 		newThrottleSetting = 0;
 	}
 
@@ -622,8 +561,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 
 	if (goalReached) 
 	{
-		//--------------------------------------------------
-		// Did we finish just a local part of a global path?
 		if (pilot->getMovePathType() == MOVEPATH_COMPLEX) 
 		{
 			if (pilot->getMovePathGlobalStep() < (pilot->getMoveNumGlobalSteps() - 1)) 
@@ -642,7 +579,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 	return(goalReached);
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::setNextMovePath (char& newThrottleSetting) {
 
@@ -660,12 +596,10 @@ void GroundVehicle::setNextMovePath (char& newThrottleSetting) {
 		}
 	else {
 		pilot->clearMoveOrders();
-		//pilot->setMoveGoal(MOVEGOAL_NONE, NULL);
 		newThrottleSetting = 0;
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::setControlSettings (float& newRotate, char& newThrottleSetting, long& minThrottle, long& maxThrottle) {
 
@@ -698,12 +632,9 @@ void GroundVehicle::setControlSettings (float& newRotate, char& newThrottleSetti
 	control.settings.groundVehicle.isWalking = !allowedToRun;
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::updateTurret (float newRotatePerSec) {
 
-	//----------------------------------------------------
-	// Now, rotate the turret toward our current target...
 	float turretRelFacing = 0.0;
 	GameObjectPtr target = pilot->getCurrentTarget();
 	if (target)
@@ -716,8 +647,6 @@ void GroundVehicle::updateTurret (float newRotatePerSec) {
 	float fireArc = getFireArc();
 	if ((turretRelFacing < -fireArc) || (turretRelFacing > fireArc)) {
 		float newRotateTurret = -turretRelFacing;
-		//-----------------------------------------------
-		// We can and will shift facing to destination...
 		float maxRate = (float)dynamics.max.groundVehicle.turretYawRate * frameLength;
 		if (fabs(newRotateTurret) > maxRate) {
 			if (newRotateTurret < 0.0)
@@ -729,7 +658,6 @@ void GroundVehicle::updateTurret (float newRotatePerSec) {
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::updateMovement (void) {
 
@@ -753,8 +681,6 @@ void GroundVehicle::updateMovement (void) {
 		return;
 	}
 
-	//------------------------------------------------
-	// Do the vehicles have any form of "starting up"?
 	if (startUpThisFrame) {
 		startUpThisFrame = false;
 		setStatus(OBJECT_STATUS_NORMAL);
@@ -783,7 +709,6 @@ void GroundVehicle::updateMovement (void) {
 
 	calcThrottleLimits(minThrottle, maxThrottle);
 	
-//	if (!pilot->isYielding())
 		goalReached = updateMovePath(newRotate, newThrottleSetting, newMoveState, minThrottle, maxThrottle);
 
 	if (goalReached)
@@ -799,9 +724,6 @@ void GroundVehicle::updateMovement (void) {
 	NewRotation = newRotate;
 }
 
-//---------------------------------------------------------------------------
-// NETWORK MOVEMENT UPDATE ROUTINES
-//---------------------------------------------------------------------------
 
 bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSetting, long& newMoveState, long& minThrottle, long& maxThrottle) {
 
@@ -815,22 +737,13 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 
 	bool goalReached = false;
 	if (path->numSteps > 0) {
-		//---------------------------------------------------------------
-		// First, make sure we are not already at the end of this path...
 		if (path->curStep == path->numSteps)
 			goalReached = true;
 		else {
 			Stuff::Vector3D wayPt = path->stepList[path->curStep].destination;
 
-			//---------------------------------------------------------
-			// Let's record our last valid position, in case we need to
-			// crawl back from impassable terrain we get knocked onto.
-			// Ultimately, this SHOULD NOT be necessary once we agree
-			// on a new gesture/movement system... gd 6/2/97
 			lastValidPosition = wayPt;
 
-			//---------------------------------
-			// Have we reached the destination?
 			float distanceFromWayPt = distanceFrom(wayPt);
 			DistanceToWaypoint = distanceFromWayPt;
 
@@ -838,8 +751,6 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 			if (path->curStep == (path->numSteps - 1))
 				cushion = Mover::marginOfError[1];
 			if (distanceFromWayPt < cushion) {
-				//-------------------------------------------
-				// Reached it, so go to the next waypoint...
 				path->curStep++;
 				pilot->setMoveTimeOfLastStep(scenarioTime);
 				if (path->curStep < path->numSteps) {
@@ -851,8 +762,6 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 			}
 
 			if (!goalReached) {
-				//-----------------------------------------
-				// First, rotate the vehicle (if moving)...
 
 				float relFacingToWayPt = relFacingTo(wayPt);
 				long moveState = pilot->getMoveState();
@@ -860,14 +769,10 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 
 				if (moveState == MOVESTATE_FORWARD) {
 					if (moveStateGoal == MOVESTATE_FORWARD) {
-						//----------------------
-						// Keep going forward...
 
 						newThrottleSetting = 100;
 						
 						if ((relFacingToWayPt < -5.0) || (relFacingToWayPt > 5.0)) {
-							//-----------------------------------------------
-							// We can and will shift facing to destination...
 							newRotate = -relFacingToWayPt;
 							float maxRate = dynamics.max.groundVehicle.yawRate * frameLength;
 							if (fabs(newRotate) > maxRate) {
@@ -880,46 +785,29 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 						
 						}
 					else if (moveStateGoal == MOVESTATE_REVERSE) {
-						//---------------------------------------------------
-						// Stop, and pivot fully reverse to next path step...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_REVERSE;
 						}
 					else if (moveStateGoal == MOVESTATE_PIVOT_FORWARD) {
-						//---------------------------------------------------
-						// Stop, and pivot fully forward to next path step...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 						}
 					else if (moveStateGoal == MOVESTATE_PIVOT_REVERSE) {
-						//---------------------------------------------------
-						// Stop, and pivot fully reverse to next path step...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_REVERSE;
 						}
 					else {
-						//--------
-						// Stop...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_FORWARD /*MOVESTATE_STAND*/;
 					}
 					}
 				else if (moveState == MOVESTATE_REVERSE) {
 					if (moveStateGoal == MOVESTATE_FORWARD) {
-						//---------------------------------------------------
-						// Stop, and pivot fully forward to next path step...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 						}
 					else if (moveStateGoal == MOVESTATE_REVERSE) {
 						newThrottleSetting = -100;
-						//--------------------------
-						// Keep moving in reverse...
 						if (relFacingToWayPt < 0)
 							newRotate = -(relFacingToWayPt + 180.0);
 						else
@@ -936,44 +824,29 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 							}
 							}
 						else {
-							//------------------------------------
-							// Try to attain current goal speed...
 							newThrottleSetting = -100;
 						}
 
 						}
 					else if (moveStateGoal == MOVESTATE_PIVOT_FORWARD) {
-						//---------------------------------------------------
-						// Stop, and pivot fully forward to next path step...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 						}
 					else if (moveStateGoal == MOVESTATE_PIVOT_REVERSE) {
-						//---------------------------------------------------
-						// Stop, and pivot fully reverse to next path step...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_REVERSE;
 						}
 					else {
-						//--------
-						// Stop...
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_FORWARD /*MOVESTATE_STAND*/;
 					}
 					}
 				else {
-					//--------------------------
-					// Not moving--should we be?
 					if ((moveStateGoal == MOVESTATE_FORWARD) || (moveStateGoal == MOVESTATE_PIVOT_FORWARD)) {
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_FORWARD;
 						}
 					else if ((moveStateGoal == MOVESTATE_REVERSE) || (moveStateGoal == MOVESTATE_PIVOT_REVERSE)) {
-						//((MechActor*)appearance)->forceStop();
 						pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 						newMoveState = MOVESTATE_PIVOT_REVERSE;
 					}
@@ -982,8 +855,6 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 		}
 		}
 	else {
-		//-------------------------------------------
-		// We better not be walking or running, then!
 		newThrottleSetting = 0;
 	}
 
@@ -996,7 +867,6 @@ bool GroundVehicle::netUpdateMovePath (float& newRotate, char& newThrottleSettin
 	return(goalReached);
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::netUpdateMovement (void) {
 
@@ -1034,8 +904,6 @@ void GroundVehicle::netUpdateMovement (void) {
 		return;
 	}
 
-	//------------------------------------------------
-	// Do the vehicles have any form of "starting up"?
 	if (startUpThisFrame) {
 		startUpThisFrame = false;
 		setStatus(OBJECT_STATUS_NORMAL);
@@ -1074,7 +942,6 @@ void GroundVehicle::netUpdateMovement (void) {
 	NewRotation = newRotate;
 }
 
-//----------------------------------------------------------------------------------
 
 bool GroundVehicle::crashAvoidanceSystem (void) {
 
@@ -1112,7 +979,6 @@ bool GroundVehicle::crashAvoidanceSystem (void) {
 		clippingCorner = (firstCornerClipped && secondCornerClipped);
 	}
 
-	//bool stepOnMover = getPathLocked(tileR, tileC, cellR, cellC, crashAvoidSelf);
 	bool reachedEnd;
 	bool blockReachedEnd;
 	bool nearingMover = getPathRangeLock(crashAvoidPath, &reachedEnd);
@@ -1126,8 +992,6 @@ bool GroundVehicle::crashAvoidanceSystem (void) {
 			return(true);
 			}
 		else {
-			//-------------------
-			// It's clear, now...
 			pilot->resumePath();
 			pilot->setMoveYieldTime(-1.0);
 		}
@@ -1148,10 +1012,7 @@ bool GroundVehicle::crashAvoidanceSystem (void) {
 					pilot->clearMovePath(ORDER_CURRENT, i);
 				pilot->setMoveGlobalPath(ORDER_CURRENT, NULL, 0);
 				*/
-				//pilot->clearMoveOrders(ORDER_CURRENT);
 				pilot->rethinkPath(0);
-				//pilot->pausePath();
-				//pilot->setMoveYieldTime(scenarioTime + crashYieldTime);
 				control.brake();
 				}
 			else {

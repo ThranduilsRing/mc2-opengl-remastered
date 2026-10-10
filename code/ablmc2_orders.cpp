@@ -38,10 +38,6 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				TerrainObjectPtr terObj = ObjectManager->getTerrainObject(i);
 				if (terObj) {
-					//long row, col;
-					//((GameObjectPtr)terObj)->getCellPosition(row, col);
-					//long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//Assert(partID == terObj->getPartId(), partID, "ugh");
 					objList[numObjects++] = terObj->getPartId();
 				}
 			}
@@ -53,11 +49,6 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				BuildingPtr building = ObjectManager->getBuilding(i);
 				if (building) {
-					//long row, col;
-					//((GameObjectPtr)building)->getCellPosition(row, col);
-					//long calcPartID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//long partID = building->getPartId();
-					//Assert(partID == calcPartID, partID, "ugh");
 					objList[numObjects++] = building->getPartId();
 				}
 			}
@@ -69,10 +60,6 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				TurretPtr turret = ObjectManager->getTurret(i);
 				if (turret) {
-					//long row, col;
-					//((GameObjectPtr)turret)->getCellPosition(row, col);
-					//long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//Assert(partID == turret->getPartId(), partID, "ugh");
 					objList[numObjects++] = turret->getPartId();
 				}
 			}
@@ -84,10 +71,6 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				GatePtr gate = ObjectManager->getGate(i);
 				if (gate) {
-					//long row, col;
-					//((GameObjectPtr)gate)->getCellPosition(row, col);
-					//long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//Assert(partID == gate->getPartId(), partID, "ugh");
 					objList[numObjects++] = gate->getPartId();
 				}
 			}
@@ -99,10 +82,6 @@ void execGetObjects (void) {
 			for (long i = 0; i < listSize; i++) {
 				TerrainObjectPtr terObj = ObjectManager->getTerrainObject(i);
 				if (terObj) {
-					//long row, col;
-					//((GameObjectPtr)terObj)->getCellPosition(row, col);
-					//long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//Assert(partID == terObj->getPartId(), partID, "ugh");
 					objList[numObjects++] = terObj->getPartId();
 				}
 			}
@@ -110,11 +89,6 @@ void execGetObjects (void) {
 			for (int i = 0; i < listSize; i++) {
 				BuildingPtr building = ObjectManager->getBuilding(i);
 				if (building) {
-					//long row, col;
-					//((GameObjectPtr)building)->getCellPosition(row, col);
-					//long calcPartID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//long partID = building->getPartId();
-					//Assert(partID == calcPartID, partID, "ugh");
 					objList[numObjects++] = building->getPartId();
 				}
 			}
@@ -122,10 +96,6 @@ void execGetObjects (void) {
 			for (int i = 0; i < listSize; i++) {
 				TurretPtr turret = ObjectManager->getTurret(i);
 				if (turret) {
-					//long row, col;
-					//((GameObjectPtr)turret)->getCellPosition(row, col);
-					//long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//Assert(partID == turret->getPartId(), partID, "ugh");
 					objList[numObjects++] = turret->getPartId();
 				}
 			}
@@ -133,10 +103,6 @@ void execGetObjects (void) {
 			for (int i = 0; i < listSize; i++) {
 				GatePtr gate = ObjectManager->getGate(i);
 				if (gate) {
-					//long row, col;
-					//((GameObjectPtr)gate)->getCellPosition(row, col);
-					//long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
-					//Assert(partID == gate->getPartId(), partID, "ugh");
 					objList[numObjects++] = gate->getPartId();
 				}
 			}
@@ -250,9 +216,7 @@ void execOrderMoveToContact (void) {
 	}
 
 	long result = TACORDER_FAILURE;
-	// First, get the contact's object ID and its current location...
 	if (CurContact) {
-		// Now, set up the tactical order, and pass it to the pilot...
 		result = CurWarrior->orderMoveToObject(false, true, ORDER_ORIGIN_COMMANDER, CurContact, -1, -1, run);
 	}
 
