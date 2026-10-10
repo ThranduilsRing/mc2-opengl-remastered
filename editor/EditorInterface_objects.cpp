@@ -327,7 +327,11 @@ int EditorInterface::runPlaceOobSmoke()
 void EditorInterface::OnFoliageGenerate()
 {
 	extern bool g_cliSuppressModals;   // smoke/headless: skip the modal feedback below
+	// The Map Generator dialog writes genmap_recipe.json; the -gen-map / Generate Mission path leaves the
+	// resolved recipe as genmap.recipe.json. Either one drives the foliage pass.
 	const char* recipe = "terrain_gen_out\\genmap_recipe.json";
+	if ( GetFileAttributes( recipe ) == INVALID_FILE_ATTRIBUTES )
+		recipe = "terrain_gen_out\\genmap.recipe.json";
 	if ( GetFileAttributes( recipe ) == INVALID_FILE_ATTRIBUTES )
 	{
 		if (!g_cliSuppressModals) AfxMessageBox( "No generated-map recipe found.\nUse the Map Generator first, then Generate Foliage." );
