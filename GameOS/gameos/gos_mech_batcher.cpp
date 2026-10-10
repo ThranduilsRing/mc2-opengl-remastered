@@ -46,6 +46,13 @@
 #include <array>
 #include <cmath>
 #include <optional>            // GLSTATE-GUARD-ADOPTION-3: deferred-destruct SSBO guards in flush()
+#include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
+#include "Gates/gate.h"
+#include "../../RenderCore/MaterialGpu.h"
+#include "../../RenderCore/GpuBufferOwner.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
+#endif
 
 // M2.5 (external-review C1): file-scope forward declaration of the
 // MLR-side per-mission counter getter, defined in mclib/mech3d.cpp.
@@ -90,8 +97,6 @@ static_assert(MECH_RING_FRAMES == STATIC_PROP_RING_FRAMES,
 // is untouched. Same gate (MC2_PROP_FIXB_MVP) as the static-prop sites so the
 // whole object family shares one matrix policy. Signatures copied verbatim from
 // gos_terrain_lod_chunk.cpp.
-#include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
-#include "Gates/gate.h"
 // NOTE: raw gos_terrain_indirect_getDispatchMvp16() is phase-private to terrain/
 // water passes — mech draw uses gos_GetObjectDrawMVP() (the accessor above).
 // Enforced by scripts/check-object-mvp-currency.py.
@@ -99,14 +104,14 @@ static_assert(MECH_RING_FRAMES == STATIC_PROP_RING_FRAMES,
 // MC2_PROP_FIXB_MVP — default ON (=0 reverts, killswitch). Consume the
 // dispatch-MVP snapshot when the solid pass is armed (un-armed arm returns the
 // live pointer anyway). Sampled once at process start.
-static bool s_mechFixBMvpEnabled() {
+bool s_mechFixBMvpEnabled() {
     static const bool on = mc2::gate::get<"MC2_PROP_FIXB_MVP">();
     return on;
 }
 // RENDER-VIEW-CURRENCY-1: snapshot only when its view epoch matches the current
 // view; otherwise the live MVP. Same policy as the static-prop family. Killswitch
 // preserved via the arg.
-static const float* gos_GetMechFixBMVPMat4() {
+const float* gos_GetMechFixBMVPMat4() {
     return gos_GetObjectDrawMVP(s_mechFixBMvpEnabled());
 }
 
@@ -132,7 +137,6 @@ bool g_drawMechs = true;
 bool g_useGpuMechs = mc2::gate::get<"MC2_GPU_MECHS">();
 
 #ifdef MC2_VULKAN_ISLAND
-#include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 // VK-P14 MECH TIER-1 (gate MC2_VK_MECH_TIER1, requires MC2_VK_SHARED_SCENE_DEPTH,
 // default-OFF): when armed, the flush() below still BUILDS the instance/bone SSBOs
 // and the feed snapshot, but SKIPS its own GL color draws; the caller (txmmgr) runs
@@ -140,7 +144,7 @@ bool g_useGpuMechs = mc2::gate::get<"MC2_GPU_MECHS">();
 // Gate OFF -> vkMechGateOn() stays false -> GL flush() byte-identical.
 // Resolved on first use, not at static init: the gate registry then sees the environment after any
 // launcher_env.json apply, and the session fail-soft flag as it stands when the first flush runs.
-static bool vkMechGateOn() {
+bool vkMechGateOn() {
     static int state = -1;
     if (state == -1) {
         // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
@@ -159,17 +163,17 @@ static bool vkMechGateOn() {
 
 // VK-P14 MECH feed snapshots (persisted host-visible copies the island memcpy's).
 // Populated at flush() end ONLY when vkMechGateOn(); empty otherwise.
-static std::vector<GpuMechInstance> s_vkMechInstSnapshot;
-static std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
-static std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
-static float                        s_vkMechWorldToClipGL[16] = {0};
-static float                        s_vkMechObjectDepthBias   = 0.0f;
-static bool                         s_vkMechFrameReady        = false;
+std::vector<GpuMechInstance> s_vkMechInstSnapshot;
+std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
+std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
+float                        s_vkMechWorldToClipGL[16] = {0};
+float                        s_vkMechObjectDepthBias   = 0.0f;
+bool                         s_vkMechFrameReady        = false;
 
 // Exact bytes uploaded to s_sharedVbo (the normals-recomputed `work` copy —
 // s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
 // Refreshed by uploadMechGeometryVbo(); cleared with the staging on map load.
-static std::vector<uint8_t>         s_vkVboNativeCopy;
+std::vector<uint8_t>         s_vkVboNativeCopy;
 #endif
 
 // SimpleCamera UI preview-render context depth (Mech Bay / Mech Purchase).
@@ -211,14 +215,14 @@ bool g_useGpuMechLeafSkip = mc2::gate::get<"MC2_GPU_MECH_LEAF_SKIP">();
 // ---------------------------------------------------------------------------
 // File-static state
 // ---------------------------------------------------------------------------
-static bool   s_programLoadTried  = false;
-static bool   s_programLoadFailed = false;
-static GLuint s_mechProgram       = 0;
-static glsl_program* s_mechProgramObj = nullptr;
+bool   s_programLoadTried  = false;
+bool   s_programLoadFailed = false;
+GLuint s_mechProgram       = 0;
+glsl_program* s_mechProgramObj = nullptr;
 
 // MECH-DEBUG-VIEWS-1: ImGui-settable debug mode (mirrors s_staticPropDebugMaterialMode).
 // 0 = Final (normal rendering); env MC2_MECH_FRAG_DEBUG wins when set.
-static int s_mechDebugMode = 0;
+int s_mechDebugMode = 0;
 
 // MECH-VIEWUNIFORMS-BLOCKBINDING-1: mech-specific ViewUniforms gate,
 // DEFAULT ON -- kill-switch MC2_MECH_VIEWUNIFORMS=0. Independent of the global
@@ -229,10 +233,10 @@ static int s_mechDebugMode = 0;
 // This block said "DEFAULT OFF ... opt-in (=1)" until ENV-DROP-CLOSE-1
 // (2026-07-30) while the reader four lines below already said DEFAULT-ON, so
 // the two halves of the same declaration disagreed.
-static const bool s_mechViewUniforms = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS">();
+const bool s_mechViewUniforms = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS">();
 // Shared diag gate (link-time block-binding log + flush-time binding/matrix
 // probe). Default OFF (MC2_MECH_VIEWUNIFORMS_DIAG=1).
-static const bool s_mechViewUniformsDiag = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS_DIAG">();
+const bool s_mechViewUniformsDiag = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS_DIAG">();
 
 // MECH-NORMALS-FIX-1: gated mech-LOCAL normal recompute, applied at
 // registerTypeLod over each node's triangle-soup verts. Does NOT touch the
@@ -248,18 +252,18 @@ static const bool s_mechViewUniformsDiag = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS
 // DEFAULT-ON: mode 2 (smoothed, hard-edge preserving) — the intended look that
 // fixes the corrupted ASE-averaged normals. Kill-switch MC2_MECH_NORMALS_MODE=0
 // restores cooked/legacy normals; =1 = faceted. User-approved 2026-05-28.
-static int s_mechNormalsMode = mc2::gate::get<"MC2_MECH_NORMALS_MODE">();
+int s_mechNormalsMode = mc2::gate::get<"MC2_MECH_NORMALS_MODE">();
 // Smoothing angle for mode 2 (degrees): faces meeting at a shared vertex blend
 // only when within this angle, so a smaller value preserves MORE hard edges
 // (e.g. lower it to sharpen the cockpit). Env-tunable for dial-in; default 60.
-static float s_mechNormalsSmoothDeg = mc2::gate::get<"MC2_MECH_NORMALS_SMOOTH_DEG">();   // row: default 60, clamps to [1, 179]
+float s_mechNormalsSmoothDeg = mc2::gate::get<"MC2_MECH_NORMALS_SMOOTH_DEG">();   // row: default 60, clamps to [1, 179]
 
 // MECH-NORMALS-FIX-1: per-node VBO byte ranges recorded during registerTypeLod.
 // Each entry is {startByte, endByte} in s_stagingVbo for one node's verts.
 // uploadMechGeometryVbo() iterates these to bound recomputeMechNodeNormals
 // to a single node (it must not blend normals across node boundaries).
 // Cleared at onMapLoad() alongside s_stagingVbo.
-static std::vector<std::pair<size_t,size_t>> s_nodeVboRanges;
+std::vector<std::pair<size_t,size_t>> s_nodeVboRanges;
 
 // MECH-AMBIENT-1: hemisphere ambient FILL for mechs. DEFAULT-ON (user-approved
 // 2026-05-28 at strength 0.15) with kill-switch MC2_MECH_AMBIENT_V1=0. When off
@@ -267,74 +271,74 @@ static std::vector<std::pair<size_t,size_t>> s_nodeVboRanges;
 // mutable so ImGui can dial them live (batcher_setMechAmbient*). The shader term
 // is a per-fragment hemisphere using the world normal; no PBR/material/team-mask
 // data involved. Works on legacy and ViewUniforms mech paths (no camera data).
-static bool s_mechAmbientV1 = mc2::gate::get<"MC2_MECH_AMBIENT_V1">();
-static float s_mechAmbientStrength = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();   // row: user-tuned default 0.15, clamps to [0, 2]
+bool s_mechAmbientV1 = mc2::gate::get<"MC2_MECH_AMBIENT_V1">();
+float s_mechAmbientStrength = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();   // row: user-tuned default 0.15, clamps to [0, 2]
 
 // MECH-SPECULAR-V1: conservative Blinn specular sheen. DEFAULT-OFF (gate
 // MC2_MECH_SPECULAR_V1=1 to enable). Only effective when MC2_MECH_VIEWUNIFORMS=1
 // (the shader variant with MC2_USE_VIEW_UNIFORMS defined); on all other paths the
 // C++ side uploads strength 0 → exact no-op. Per-flush uniforms — no VBO rebuild.
-static bool s_mechSpecularV1 = mc2::gate::get<"MC2_MECH_SPECULAR_V1">();
+bool s_mechSpecularV1 = mc2::gate::get<"MC2_MECH_SPECULAR_V1">();
 // Default 0.05: at 1.0 the Blinn highlight read as a near-glow on mech armor; 0.05 is a subtle metal glint.
 // MC2_MECH_SPECULAR_STRENGTH overrides (row clamps to [0, 4]); also profile-backed via the mechSpecularStrength
 // key (visual_tuning.json).
-static float s_mechSpecularStrength = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();
+float s_mechSpecularStrength = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();
 // Rows carry the defaults (0.85 / 0.25 / 0.12 / 0.18) and the clamps ([0.04, 1] roughness, [0, 1] thresholds).
-static float s_mechMetalRoughness = mc2::gate::get<"MC2_MECH_METAL_ROUGHNESS">();
-static float s_mechGlassRoughness = mc2::gate::get<"MC2_MECH_GLASS_ROUGHNESS">();
-static float s_mechGlassLumaThresh = mc2::gate::get<"MC2_MECH_GLASS_LUMA_THRESH">();
-static float s_mechGlassMaxChanThresh = mc2::gate::get<"MC2_MECH_GLASS_MAXCHAN_THRESH">();
-static bool  s_mechSpecDebugMask = false;  // ImGui only; no env var
+float s_mechMetalRoughness = mc2::gate::get<"MC2_MECH_METAL_ROUGHNESS">();
+float s_mechGlassRoughness = mc2::gate::get<"MC2_MECH_GLASS_ROUGHNESS">();
+float s_mechGlassLumaThresh = mc2::gate::get<"MC2_MECH_GLASS_LUMA_THRESH">();
+float s_mechGlassMaxChanThresh = mc2::gate::get<"MC2_MECH_GLASS_MAXCHAN_THRESH">();
+bool  s_mechSpecDebugMask = false;  // ImGui only; no env var
 // MECH-BACK-FILL-1: cool-sky fill for the StandardLit shadow hemisphere.
 // Default OFF (0.0). Enable via MC2_MECH_BACK_FILL=<strength> (e.g. 1.5).
-static float s_mechBackFillStrength = mc2::gate::get<"MC2_MECH_BACK_FILL">();
+float s_mechBackFillStrength = mc2::gate::get<"MC2_MECH_BACK_FILL">();
 
 // PBR-TUNE-1: StandardLit GGX gate + material influence knobs.
 // Mutable so ImGui can dial live (batcher_setStandardLitEnabled / batcher_setPbr*).
 // Env-seeded defaults; no VBO rebuild needed (per-flush uniforms).
-static int s_standardLitEnabled = mc2::gate::get<"MC2_STANDARD_LIT_V1">();
-static float s_pbrMetallicInfluence = mc2::gate::isSet<"MC2_PBR_METALLIC_INFLUENCE">()
+int s_standardLitEnabled = mc2::gate::get<"MC2_STANDARD_LIT_V1">();
+float s_pbrMetallicInfluence = mc2::gate::isSet<"MC2_PBR_METALLIC_INFLUENCE">()
     ? mc2::gate::get<"MC2_PBR_METALLIC_INFLUENCE">()
     : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.03f : 0.15f);
-static float s_pbrRoughnessMin = mc2::gate::isSet<"MC2_PBR_ROUGHNESS_MIN">()
+float s_pbrRoughnessMin = mc2::gate::isSet<"MC2_PBR_ROUGHNESS_MIN">()
     ? mc2::gate::get<"MC2_PBR_ROUGHNESS_MIN">()
     : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.65f : 0.45f);
-static float s_pbrRoughnessMax = mc2::gate::isSet<"MC2_PBR_ROUGHNESS_MAX">()
+float s_pbrRoughnessMax = mc2::gate::isSet<"MC2_PBR_ROUGHNESS_MAX">()
     ? mc2::gate::get<"MC2_PBR_ROUGHNESS_MAX">()
     : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.90f : 0.90f);
-static float s_pbrAmbientSpecularStrength = mc2::gate::get<"MC2_PBR_AMBIENT_SPECULAR">();
+float s_pbrAmbientSpecularStrength = mc2::gate::get<"MC2_PBR_AMBIENT_SPECULAR">();
 
 // PBR-LAYERED-1: PaintedMetal003 paint layer + triplanar. All mutable via ImGui.
-static uint32_t s_mechPaintSurfaceMaterialIdx = 0u;  // resolved lazily alongside s_mechSurfaceMaterialIdx
-static float s_pbrWearStrength = mc2::gate::isSet<"MC2_PBR_WEAR_STRENGTH">()
+uint32_t s_mechPaintSurfaceMaterialIdx = 0u;  // resolved lazily alongside s_mechSurfaceMaterialIdx
+float s_pbrWearStrength = mc2::gate::isSet<"MC2_PBR_WEAR_STRENGTH">()
     ? mc2::gate::get<"MC2_PBR_WEAR_STRENGTH">()
     : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.0f : 1.0f);
-static int s_pbrTriplanar = mc2::gate::get<"MC2_PBR_TRIPLANAR">();
-static float s_pbrTriplanarScale = mc2::gate::get<"MC2_PBR_TRIPLANAR_SCALE">();
+int s_pbrTriplanar = mc2::gate::get<"MC2_PBR_TRIPLANAR">();
+float s_pbrTriplanarScale = mc2::gate::get<"MC2_PBR_TRIPLANAR_SCALE">();
 // PBR-IBL-MECH-1: SH-L2 image-based ambient for mechs.
 // Shares g_iblShStrength with static props (same slider). Default-ON; =0 disables.
-static const bool s_mechIblShEnabled = mc2::gate::get<"MC2_MECH_IBL_SH">();
+const bool s_mechIblShEnabled = mc2::gate::get<"MC2_MECH_IBL_SH">();
 
 // Cached uniform locations (set at program link time).
-static GLint s_loc_u_instanceBase    = -1;
-static GLint s_loc_u_materialFlags   = -1;
-static GLint s_loc_terrainMVP     = -1;
-static GLint s_loc_u_mvp             = -1;
-static GLint s_loc_u_tex             = -1;
-static GLint s_loc_u_fogValue        = -1;
-static GLint s_loc_u_debugMode       = -1;
-static GLint s_loc_u_mechAmbientV1Strength = -1;  // MECH-AMBIENT-1
-static GLint s_loc_u_lightingMode    = -1;
-static GLint s_loc_u_skinningMode    = -1;
-static GLint s_loc_u_sunAxisMc2Fix   = -1;  // SUN-AXIS-FIX-1
+GLint s_loc_u_instanceBase    = -1;
+GLint s_loc_u_materialFlags   = -1;
+GLint s_loc_terrainMVP     = -1;
+GLint s_loc_u_mvp             = -1;
+GLint s_loc_u_tex             = -1;
+GLint s_loc_u_fogValue        = -1;
+GLint s_loc_u_debugMode       = -1;
+GLint s_loc_u_mechAmbientV1Strength = -1;  // MECH-AMBIENT-1
+GLint s_loc_u_lightingMode    = -1;
+GLint s_loc_u_skinningMode    = -1;
+GLint s_loc_u_sunAxisMc2Fix   = -1;  // SUN-AXIS-FIX-1
 // MECH-SPECULAR-V1: cached locations (all -1 on non-viewuniforms variants).
-static GLint s_loc_u_mechSpecularV1Strength  = -1;
-static GLint s_loc_u_mechMetalRoughness      = -1;
-static GLint s_loc_u_mechGlassRoughness      = -1;
-static GLint s_loc_u_mechGlassLumaThresh     = -1;
-static GLint s_loc_u_mechGlassMaxChanThresh  = -1;
-static GLint s_loc_u_mechSpecDebugMask       = -1;
-static GLint s_loc_u_mechBackFillStrength    = -1;
+GLint s_loc_u_mechSpecularV1Strength  = -1;
+GLint s_loc_u_mechMetalRoughness      = -1;
+GLint s_loc_u_mechGlassRoughness      = -1;
+GLint s_loc_u_mechGlassLumaThresh     = -1;
+GLint s_loc_u_mechGlassMaxChanThresh  = -1;
+GLint s_loc_u_mechSpecDebugMask       = -1;
+GLint s_loc_u_mechBackFillStrength    = -1;
 // BT2018-MECH-MATERIAL-TUNING-1: live ImGui-tunable imported-mech albedo knobs
 // (external linkage; bound by the Graphics Options "BT2018 Imported Skin" sliders).
 // Applied imported-mech-only in mech.frag (renderFlags bit 3); stock untouched.
@@ -367,46 +371,46 @@ void gpuMechShadingParams(GpuMechShadingParams* o) {
     o->normalStrength      = g_importedMechNormalStrength;
 }
 
-static GLint s_loc_u_importedGamma           = -1;
-static GLint s_loc_u_importedAlbedoScale     = -1;
-static GLint s_loc_u_mechAoTex               = -1;   // AO-1: AO sampler (unit 6)
-static GLint s_loc_u_aoStrength              = -1;
-static GLint s_loc_u_mechNormalTex           = -1;   // NORMALS-1: normal sampler (unit 7)
-static GLint s_loc_u_normalStrength          = -1;
+GLint s_loc_u_importedGamma           = -1;
+GLint s_loc_u_importedAlbedoScale     = -1;
+GLint s_loc_u_mechAoTex               = -1;   // AO-1: AO sampler (unit 6)
+GLint s_loc_u_aoStrength              = -1;
+GLint s_loc_u_mechNormalTex           = -1;   // NORMALS-1: normal sampler (unit 7)
+GLint s_loc_u_normalStrength          = -1;
 // Slice C1: StandardLit toggle. Returns -1 until mech.frag declares the uniform;
 // guarded with >= 0 at upload so no crash when shader lacks it.
-static GLint s_loc_u_standardLitEnabled      = -1;
+GLint s_loc_u_standardLitEnabled      = -1;
 // Slice C2: PBR detail material samplers + tile scale.
-static GLint s_loc_u_pbrNormalTex            = -1;
-static GLint s_loc_u_pbrOrmTex               = -1;
-static GLint s_loc_u_pbrTileScale            = -1;
+GLint s_loc_u_pbrNormalTex            = -1;
+GLint s_loc_u_pbrOrmTex               = -1;
+GLint s_loc_u_pbrTileScale            = -1;
 // PBR-TUNE-1: material influence knobs (metallic scale, roughness clamp, ambient specular).
-static GLint s_loc_u_pbrMetallicInfluence      = -1;
-static GLint s_loc_u_pbrRoughnessMin           = -1;
-static GLint s_loc_u_pbrRoughnessMax           = -1;
-static GLint s_loc_u_pbrAmbientSpecularStrength = -1;
+GLint s_loc_u_pbrMetallicInfluence      = -1;
+GLint s_loc_u_pbrRoughnessMin           = -1;
+GLint s_loc_u_pbrRoughnessMax           = -1;
+GLint s_loc_u_pbrAmbientSpecularStrength = -1;
 // PBR-LAYERED-1: paint layer + triplanar.
-static GLint s_loc_u_pbrPaintNormalTex  = -1;
-static GLint s_loc_u_pbrPaintOrmTex     = -1;
-static GLint s_loc_u_pbrWearStrength    = -1;
-static GLint s_loc_u_pbrTriplanar       = -1;
-static GLint s_loc_u_pbrTriplanarScale  = -1;
+GLint s_loc_u_pbrPaintNormalTex  = -1;
+GLint s_loc_u_pbrPaintOrmTex     = -1;
+GLint s_loc_u_pbrWearStrength    = -1;
+GLint s_loc_u_pbrTriplanar       = -1;
+GLint s_loc_u_pbrTriplanarScale  = -1;
 // PBR-IBL-MECH-1: SH-L2 ambient.
-static GLint s_loc_u_iblSh             = -1;
-static GLint s_loc_u_iblShStrength     = -1;
+GLint s_loc_u_iblSh             = -1;
+GLint s_loc_u_iblShStrength     = -1;
 
 // Geometry (immutable after finalizeGeometry).
-static GLuint s_sharedVao = 0;
-static GLuint s_sharedVbo = 0;
-static GLuint s_sharedIbo = 0;
-static GLuint s_sampler   = 0;    // session-lifetime; GL_REPEAT / LINEAR
-static bool   s_geometryFinalized = false;
+GLuint s_sharedVao = 0;
+GLuint s_sharedVbo = 0;
+GLuint s_sharedIbo = 0;
+GLuint s_sampler   = 0;    // session-lifetime; GL_REPEAT / LINEAR
+bool   s_geometryFinalized = false;
 // VPL-#11 (SP-logistics late roster): set by registerTypeLod when a type
 // registers AFTER finalizeGeometry (campaign .fit resume spawns the
 // player force-group post-Mission::init-finalize). finalizePending()
 // consumes it to rebuild the shared VBO/IBO from the (retained) staging.
-static bool   s_pendingLateTypes = false;
-static uint32_t s_lateStagedCount = 0;  // late (type,lod) regs since last finalizePending
+bool   s_pendingLateTypes = false;
+uint32_t s_lateStagedCount = 0;  // late (type,lod) regs since last finalizePending
 
 // Staging buffers. RETAINED for the whole mission (NOT freed at
 // finalizeGeometry) so finalizePending() can append a late-registered
@@ -414,12 +418,12 @@ static uint32_t s_lateStagedCount = 0;  // late (type,lod) regs since last final
 // original+late staging (VPL-#11 SP-logistics fix; the alternative of
 // re-deriving geometry from TG type shapes is fragile). Cleared only at
 // onMapLoad(). Memory cost is MB-scale and intentionally not optimized.
-static std::vector<uint8_t>   s_stagingVbo;
-static std::vector<uint32_t>  s_stagingIbo;
+std::vector<uint8_t>   s_stagingVbo;
+std::vector<uint32_t>  s_stagingIbo;
 
 // Type registration.
-static std::vector<GpuMechTypeLodRecord> s_typeLodRecords;
-static std::vector<GpuMechPacket>        s_packets;
+std::vector<GpuMechTypeLodRecord> s_typeLodRecords;
+std::vector<GpuMechPacket>        s_packets;
 
 // Key: (Mech3DAppearanceType*, lod) -> s_typeLodRecords index
 struct TypeLodKey {
@@ -432,11 +436,11 @@ struct TypeLodKeyHash {
         return std::hash<const void*>()(k.type) ^ (std::hash<int>()(k.lod) * 2654435761u);
     }
 };
-static std::unordered_map<TypeLodKey, uint32_t, TypeLodKeyHash> s_typeLodIndex;
+std::unordered_map<TypeLodKey, uint32_t, TypeLodKeyHash> s_typeLodIndex;
 
 // Per-frame ring SSBOs.
-static GLuint   s_instanceSsbo    = 0;
-static GLuint   s_boneSsbo        = 0;
+GLuint   s_instanceSsbo    = 0;
+GLuint   s_boneSsbo        = 0;
 // VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two
 // per-frame ring SSBOs (logical id + lifetime + debug name + handle). The raw GLuint
 // globals above are UNCHANGED so every gen/bind/map/delete site keeps its exact GL
@@ -444,22 +448,22 @@ static GLuint   s_boneSsbo        = 0;
 // gen'd handle (pattern (b): `owner.backendHandle = s_xxxSsbo` right after glGenBuffers,
 // mirrors view_uniforms). Registered at create, invalidated on destroy (grow-realloc +
 // onMapUnload). Lifetime Persistent: persistent-mapped, realloc-on-grow, freed on unload.
-static RenderCore::GpuBufferOwner s_instanceSsboOwner{
+RenderCore::GpuBufferOwner s_instanceSsboOwner{
     RenderCore::RenderResourceId::MechInstanceRingSsbo,
     RenderCore::RenderResourceLifetime::Persistent,
     "MechInstanceRingSsbo",
     0u};
-static RenderCore::GpuBufferOwner s_boneSsboOwner{
+RenderCore::GpuBufferOwner s_boneSsboOwner{
     RenderCore::RenderResourceId::MechBoneRingSsbo,
     RenderCore::RenderResourceLifetime::Persistent,
     "MechBoneRingSsbo",
     0u};
-static void*    s_instanceMap     = nullptr;
-static void*    s_boneMap         = nullptr;
-static size_t   s_instanceCapacity = 0;  // per ring slot (in GpuMechInstance units)
-static size_t   s_boneCapacity     = 0;  // per ring slot (in GpuMechBone units)
-static uint32_t s_frameSlot        = 0;
-static GLsync   s_fence[MECH_RING_FRAMES] = {};
+void*    s_instanceMap     = nullptr;
+void*    s_boneMap         = nullptr;
+size_t   s_instanceCapacity = 0;  // per ring slot (in GpuMechInstance units)
+size_t   s_boneCapacity     = 0;  // per ring slot (in GpuMechBone units)
+uint32_t s_frameSlot        = 0;
+GLsync   s_fence[MECH_RING_FRAMES] = {};
 
 static constexpr size_t kInitialInstancesPerFrame = 512;
 static constexpr size_t kInitialBonesPerFrame     = 8192;
@@ -471,7 +475,7 @@ struct PendingSubmit {
     std::vector<uint32_t>    packetTexHandles; // per-packet live gosHandle captured at submit
     uint32_t                 typeLodIdx;
 };
-static std::vector<PendingSubmit> s_pendingSubmits;
+std::vector<PendingSubmit> s_pendingSubmits;
 
 // MECH-EXTRACTION-0: L2 handoff / persist buffer.
 //
@@ -491,7 +495,7 @@ static std::vector<PendingSubmit> s_pendingSubmits;
 // would be use-after-reset by the time the read path runs.
 // Keep the batcher-side vector as the authoritative handoff buffer; the
 // FrameArena copy in snap.mechPackets is the consumer-side view.
-static std::vector<ExtractedMechPacket> s_mechExtractPersist;
+std::vector<ExtractedMechPacket> s_mechExtractPersist;
 
 // Per-frame draw-call snapshot persisted at the END of flush() for use by
 // flushShadow() on the NEXT frame.  flushShadow() runs before this frame's
@@ -503,32 +507,32 @@ struct ShadowDrawEntry {
     uint32_t instanceCount;
 };
 static std::vector<ShadowDrawEntry> s_lastDrawCalls;
-static size_t                       s_lastTotalInstances = 0;
-static size_t                       s_lastTotalBones     = 0;
+size_t                       s_lastTotalInstances = 0;
+size_t                       s_lastTotalBones     = 0;
 
 // V1A: per-frame submit count latched at flush() entry (before any
 // early-return guards clear s_pendingSubmits). Counts GpuMechBatcher
 // submits only — does NOT include MLR fallback draws or alive count.
 // queryVisibility() reads this for mechs_visible in VisibilityResult.
-static uint64_t                     s_lastFlushSubmitCount = 0;
+uint64_t                     s_lastFlushSubmitCount = 0;
 
 // File-scope counters written by flushShadow() and read by Task 6 probe.
-static int s_shadowTypesDrawn = 0;
-static int s_shadowInstDrawn  = 0;
+int s_shadowTypesDrawn = 0;
+int s_shadowInstDrawn  = 0;
 
 // Counters.
-static bool     s_mechBatcherTrace     = false;
-static bool     s_mechBatcherTraceInit = false;
-static bool     s_mechLightTrace       = false;
-static bool     s_mechLightTraceInit   = false;
-static uint32_t s_lightCacheFullFrames = 0;  // monotonic; emitted on first overflow per frame
-static uint32_t s_eligibleActorsThisFrame = 0;
+bool     s_mechBatcherTrace     = false;
+bool     s_mechBatcherTraceInit = false;
+bool     s_mechLightTrace       = false;
+bool     s_mechLightTraceInit   = false;
+uint32_t s_lightCacheFullFrames = 0;  // monotonic; emitted on first overflow per frame
+uint32_t s_eligibleActorsThisFrame = 0;
 // MECH-LIGHTROW-FRESHNESS-1: bound is (int)GpuMechFallbackReason::StaleLightRow + 1.
 // Sized from the enum rather than a bare literal so a future append cannot
 // silently write past the end -- the previous bare 5 was exactly that hazard.
 static constexpr int kGpuMechFallbackReasonCount =
     static_cast<int>(GpuMechFallbackReason::StaleLightRow) + 1;
-static uint32_t s_fallbacksThisFrame[kGpuMechFallbackReasonCount] = {};  // indexed by GpuMechFallbackReason
+uint32_t s_fallbacksThisFrame[kGpuMechFallbackReasonCount] = {};  // indexed by GpuMechFallbackReason
 
 // M2.5 (Q4): always-on per-mission counter of per-instance fills whose
 // objectIdRaw was non-zero. Incremented in flush()'s per-instance loop;
@@ -544,10 +548,10 @@ static uint32_t s_fallbacksThisFrame[kGpuMechFallbackReasonCount] = {};  // inde
 // Counter is ALWAYS-ON (NOT env-gated). When env-OFF the handle bits are
 // still written into inst.objectIdRaw (Q3 unconditional CPU fill), so
 // the counter tracks writer volume regardless of env state.
-static uint64_t s_gpuMechIdWritesThisMission = 0;
-static uint64_t s_allowedLateRegEvents    = 0;
-static uint64_t s_disallowedLateRegEvents = 0;
-static bool     s_lastFailWasLateReg      = false;
+uint64_t s_gpuMechIdWritesThisMission = 0;
+uint64_t s_allowedLateRegEvents    = 0;
+uint64_t s_disallowedLateRegEvents = 0;
+bool     s_lastFailWasLateReg      = false;
 
 // [SPOTLIGHT_REAL_TRACE v1] (E) Stage 0 / T0.2 baseline. Two-channel evidence:
 //   (a) event=type_spotlight_node — emitted from registerTypeLod when a
@@ -560,37 +564,35 @@ static bool     s_lastFailWasLateReg      = false;
 // Map keyed by Mech3DAppearanceType* (the desc.mechType field on submitActor).
 // Value is the number of SpotLight_-prefixed TypeNodes seen during ANY LOD's
 // recipe build (max across LODs, since each instance only renders at one LOD).
-static const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
-static std::unordered_map<const Mech3DAppearanceType*, uint32_t>
+const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
+std::unordered_map<const Mech3DAppearanceType*, uint32_t>
     s_spotlightRealTypeNodeCount;
-static uint64_t s_spotlightReal_typeNodeEvents = 0;  // monotonic (a)
-static uint64_t s_spotlightReal_drawWindow     = 0;  // 600-frame window (b)
-static uint64_t s_spotlightReal_drawMono       = 0;  // monotonic (b)
-static uint64_t s_spotlightReal_drawFrameCount = 0;  // frames flushed since process start
-static bool     s_spotlightReal_firstHitTypeNode = false;
-static bool     s_spotlightReal_firstHitDraw     = false;
+uint64_t s_spotlightReal_typeNodeEvents = 0;  // monotonic (a)
+uint64_t s_spotlightReal_drawWindow     = 0;  // 600-frame window (b)
+uint64_t s_spotlightReal_drawMono       = 0;  // monotonic (b)
+uint64_t s_spotlightReal_drawFrameCount = 0;  // frames flushed since process start
+bool     s_spotlightReal_firstHitTypeNode = false;
+bool     s_spotlightReal_firstHitDraw     = false;
 
 // ---------------------------------------------------------------------------
 // MaterialGpu Mech-1 substrate
 // MC2_MATERIAL_GPU defaults ON. Set MC2_MATERIAL_GPU=0 to disable.
 // ---------------------------------------------------------------------------
-#include "../../RenderCore/MaterialGpu.h"
-#include "../../RenderCore/GpuBufferOwner.h"
-static const bool s_mechMaterialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
-static std::vector<RenderCore::MaterialGpu>        s_mechMaterialTable;
-static std::unordered_map<uint32_t, uint32_t>      s_mechHandleToMaterialIdx;
-static std::vector<uint32_t>                       s_mechDrawMaterialIdx;
+const bool s_mechMaterialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
+std::vector<RenderCore::MaterialGpu>        s_mechMaterialTable;
+std::unordered_map<uint32_t, uint32_t>      s_mechHandleToMaterialIdx;
+std::vector<uint32_t>                       s_mechDrawMaterialIdx;
 // MECH-MATERIAL-SSBO-OWNER-1: per-actor MaterialGpu table SSBO (binding 2),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime +
 // debug name + GLuint value). GL calls happen at the same sites with the same
 // args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
 // Lifetime Persistent: survives across frames, torn down on map load/unload.
-static RenderCore::GpuBufferOwner                  s_mechMaterialSsbo{
+RenderCore::GpuBufferOwner                  s_mechMaterialSsbo{
     RenderCore::RenderResourceId::MaterialGpuBuffer,
     RenderCore::RenderResourceLifetime::Persistent,
     "MaterialGpuBuffer",
     0u};
-static uint32_t                                    s_mechMaterialGpuFrameCount = 0;
+uint32_t                                    s_mechMaterialGpuFrameCount = 0;
 
 // Slice C1: named profile index for binding-7 SSBO (gos_materials).
 // Resolved lazily at first flush() (after gos_materials::init() runs).
@@ -598,13 +600,13 @@ static uint32_t                                    s_mechMaterialGpuFrameCount =
 // overrides per-instance materialIdx only when selected so the existing per-actor
 // albedo table (binding 2) is undisturbed when MC2_MECH_SURFACE_MATERIAL is unset.
 // Protected by s_mechSurfaceMaterialIdxResolved to call getProfileIndex() only once.
-static uint32_t s_mechSurfaceMaterialIdx         = 0u;
-static bool     s_mechSurfaceMaterialIdxResolved = false;
+uint32_t s_mechSurfaceMaterialIdx         = 0u;
+bool     s_mechSurfaceMaterialIdxResolved = false;
 
 // ---------------------------------------------------------------------------
 // Shader load
 // ---------------------------------------------------------------------------
-static void loadProgramsIfNeeded() {
+void loadProgramsIfNeeded() {
     if (s_programLoadTried) return;
     s_programLoadTried = true;
 
@@ -774,7 +776,7 @@ static void loadProgramsIfNeeded() {
 // ---------------------------------------------------------------------------
 // Ring SSBO management
 // ---------------------------------------------------------------------------
-static void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
+void ensureRingCapacity(size_t neededInstances, size_t neededBones) {
     const bool needGrow =
         s_instanceSsbo == 0 ||
         neededInstances > s_instanceCapacity ||
@@ -1185,7 +1187,7 @@ void GpuMechBatcher::flushShadow() {
 // are oriented to the cooked-normal hemisphere to stay winding-agnostic.
 // endByte: exclusive end of this node's data in vbo; use vbo.size() for
 // "rest of buffer". Added for per-node bounding (MECH-NORMALS-FIX-1 rebuild).
-static void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
+void recomputeMechNodeNormals(std::vector<uint8_t>& vbo,
                                      size_t startByte, size_t endByte,
                                      int mode, float smoothDeg) {
     if (mode != 1 && mode != 2) return;
@@ -1569,7 +1571,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
 //     to skip re-binding here.
 //
 // Called from: finalizeGeometry() (initial) and batcher_rebuildMechNormals() (live).
-static void uploadMechGeometryVbo() {
+void uploadMechGeometryVbo() {
     // Build transient work copy of the staging VBO (s_stagingVbo = pristine cooked).
     // mode 0 means no recompute — work is byte-identical to cooked.
     std::vector<uint8_t> work = s_stagingVbo;
