@@ -262,4 +262,12 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow);
 }  // namespace gos_terrain_indirect_detail
 using namespace gos_terrain_indirect_detail;
 
+// Ring-hazard probe line: stderr plus the ring_trace.log sink. Names the sink handle (s_probeSink) the caller has in
+// scope, so it is only valid where ComputeDispatch or one of its phases holds that handle.
+#define PROBE_LOG(fmt, ...) do { \
+        fprintf(stderr, fmt, ##__VA_ARGS__); \
+        fflush(stderr); \
+        if (s_probeSink) { fprintf(s_probeSink, fmt, ##__VA_ARGS__); fflush(s_probeSink); } \
+    } while (0)
+
 #endif // GOS_TERRAIN_INDIRECT_INTERNAL_H

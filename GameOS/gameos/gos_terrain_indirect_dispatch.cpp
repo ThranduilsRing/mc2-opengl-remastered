@@ -367,11 +367,6 @@ void ComputeDispatch() {
         }
         return f;
     }();
-#define PROBE_LOG(fmt, ...) do { \
-        fprintf(stderr, fmt, ##__VA_ARGS__); \
-        fflush(stderr); \
-        if (s_probeSink) { fprintf(s_probeSink, fmt, ##__VA_ARGS__); fflush(s_probeSink); } \
-    } while (0)
 
     // ── Ring-hazard probe (MC2_RING_TRACE) ────────────────────────────────
     // Default-off per-frame trace; ALWAYS-on tripwire when the wait actually
