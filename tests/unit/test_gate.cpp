@@ -765,4 +765,63 @@ TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the proc
 }
 #endif
 
+// ---------------------------------------------------------------------------
+// G3: terrain float rows (ranges), the resample Enum and the intro presence gate
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
+    struct Want { const char* name; bool clamp; double lo; double hi; };
+    constexpr double kFltMax = 3.4028234663852886e38;
+    const Want want[] = {
+        {"MC2_MOVER_CONTACT_SHADOW", false, 0.0, 1.0},
+        {"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", false, 0.05, kFltMax},
+        {"MC2_TERRAIN_LOD_MORPH_START", true, 0.0, 0.95},
+        {"MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", true, 0.0, 1.0},
+        {"MC2_TERRAIN_POM_FAR", false, 0.0, kFltMax},
+        {"MC2_TERRAIN_POM_STEPS", false, 4.0, 16.0},
+        {"MC2_TERRAIN_SHORELINE_EDGE_JITTER", true, 0.0, 32.0},
+        {"MC2_TERRAIN_SHORELINE_STRENGTH", true, 0.0, 2.0},
+        {"MC2_TERRAIN_VISUAL_DISPLACE_FAR", true, 0.0, 1.0},
+        {"MC2_WATER_SHORE_FEATHER", false, 0.0, kFltMax},
+        {"MC2_WATER_SHORE_MEANDER_FREQ", false, 0.0, kFltMax},
+    };
+    for (const Want& w : want) {
+        INFO(w.name);
+        const gate::Row& r = g1b::rowNamed(w.name);
+        CHECK(r.kind == Kind::Float);
+        REQUIRE(r.range.has);
+        CHECK(r.range.clamp == w.clamp);
+        CHECK(r.range.lo == w.lo);
+        CHECK(r.range.hi == w.hi);
+    }
+    CHECK(g1b::rowNamed("MC2_WATER_SHORE_MEANDER_FREQ").defFloat == 1.0f / 384.0f);
+    // A clamp row clamps; a reject row falls back to its default.
+    const gate::Row& clamp = g1b::rowNamed("MC2_TERRAIN_SHORELINE_STRENGTH");
+    const gate::Row& reject = g1b::rowNamed("MC2_TERRAIN_POM_STEPS");
+    CHECK(asFloat(gate::detail::parseRow(clamp, "9")) == 2.0f);
+    CHECK(asFloat(gate::detail::parseRow(reject, "99")) == 16.0f);
+    CHECK(asFloat(gate::detail::parseRow(reject, "8")) == 8.0f);
+}
+
+TEST_CASE("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR is an Enum of 1, 2, 4 that reads 1 for anything else") {
+    const gate::Row& r = g1b::rowNamed("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR");
+    CHECK(r.kind == Kind::Enum);
+    CHECK(std::string(r.tokens) == "1|2|4");
+    CHECK(g1b::intOf(r, "2") == 1);
+    CHECK(g1b::intOf(r, "4") == 2);
+    for (const char* t : {static_cast<const char*>(nullptr), "", "1", "3", "8", "abc", "0"}) {
+        INFO((t ? t : "(unset)"));
+        CHECK(g1b::intOf(r, t) == 0);
+    }
+}
+
+TEST_CASE("MC2_MISSION_INTRO_LEGACY_RENDER is a presence gate that defaults off") {
+    const gate::Row& r = g1b::rowNamed("MC2_MISSION_INTRO_LEGACY_RENDER");
+    CHECK(r.rule == Rule::Presence);
+    CHECK_FALSE(r.defBool);
+    CHECK_FALSE(rowValue(r, nullptr));
+    CHECK(rowValue(r, ""));
+    CHECK(rowValue(r, "0"));
+}
+
 }  // TEST_SUITE

@@ -3271,7 +3271,7 @@ flags:
   - name: MC2_MISSION_INTRO_LEGACY_RENDER
     kind: Bool
     default: false
-    rule: Std
+    rule: Presence
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch."
     smoke_passthrough: true
@@ -3349,6 +3349,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0, hi: 1, style: reject}
     smoke_passthrough: true
   - name: MC2_MOVE_CHUNK_SHADOW
     kind: Bool
@@ -5770,11 +5771,12 @@ flags:
     owner: terrain
     doc: ""
   - name: MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR
-    kind: Int
-    default: 1
-    rule: Prefix
+    kind: Enum
+    default: "1"
+    rule: Std
     owner: terrain
     doc: "TERRAIN-RESAMPLE-1: CPU bilinear resample factor for the per-mission terrain height texture used by TERRAIN-NORMALS-FROM-HEIGHT-1."
+    tokens: "1|2|4"
     registry: {feature_id: MC2_TUNE_TERRAIN_HEIGHT_RESAMPLE_FACTOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_INDIRECT
     kind: Bool
@@ -5887,6 +5889,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0.05, hi: 3.4028234663852886e+38, style: reject}
   - name: MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR
     kind: Bool
     default: false
@@ -5947,7 +5950,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0, hi: 0.95, style: reject}
+    range: {lo: 0, hi: 0.95, style: clamp}
   - name: MC2_TERRAIN_MACRO_VARIATION
     kind: Bool
     default: false
@@ -6013,7 +6016,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1)."
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
     registry: {feature_id: MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_MINE_AB
@@ -6071,6 +6074,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500)."
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
     registry: {feature_id: MC2_TUNE_TERRAIN_POM_FAR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_POM_NEAR
@@ -6079,6 +6083,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band start in world units (default 1500; 1 tile = 384 wu)."
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
     registry: {feature_id: MC2_TUNE_TERRAIN_POM_NEAR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_POM_SCALE
@@ -6087,6 +6092,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "TERRAIN-CHUNK-POM-1 knob: POM march scale override (float > 0)."
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
     registry: {feature_id: MC2_TUNE_TERRAIN_POM_SCALE, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_POM_STEPS
@@ -6095,6 +6101,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "TERRAIN-CHUNK-POM-1 knob: max POM march layers, accepted 4..16 (else default 16; hard compile-constant cap 16)."
+    range: {lo: 4, hi: 16, style: reject}
     smoke_passthrough: true
     registry: {feature_id: MC2_TUNE_TERRAIN_POM_STEPS, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_PROBE
@@ -6151,7 +6158,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0, hi: 32, style: reject}
+    range: {lo: 0, hi: 32, style: clamp}
   - name: MC2_TERRAIN_SHORELINE_FILE
     kind: Bool
     default: false
@@ -6165,38 +6172,42 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0, hi: 2, style: reject}
+    range: {lo: 0, hi: 2, style: clamp}
   - name: MC2_TERRAIN_SHORELINE_FOAM_HEIGHT
     kind: Float
     default: 5
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
   - name: MC2_TERRAIN_SHORELINE_FOAM_RUN
     kind: Float
     default: 5
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
   - name: MC2_TERRAIN_SHORELINE_STRENGTH
     kind: Float
     default: 1
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0, hi: 2, style: reject}
+    range: {lo: 0, hi: 2, style: clamp}
   - name: MC2_TERRAIN_SHORELINE_WET_HEIGHT
     kind: Float
     default: 16
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
   - name: MC2_TERRAIN_SHORELINE_WET_RUN
     kind: Float
     default: 16
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
   - name: MC2_TERRAIN_SLOPE_BIAS
     kind: Bool
     default: false
@@ -6270,7 +6281,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
   - name: MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE
     kind: Bool
@@ -7742,6 +7753,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
   - name: MC2_WATER_SHORE_FEATHER_WU
     kind: Float
@@ -7763,14 +7775,16 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the..."
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_WATER_SHORE_MEANDER, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_MEANDER_FREQ
     kind: Float
-    default: 0.00260417
+    default: 0.00260416674
     rule: Prefix
     owner: terrain
     doc: "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit..."
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
     registry: {feature_id: MC2_TUNE_WATER_SHORE_MEANDER_FREQ, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_MODE
