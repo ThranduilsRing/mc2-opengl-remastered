@@ -312,7 +312,6 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 	if ( update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight ) )
 		return;
 
-	// special case for bottom of screen
 	if ( bGui ) // don't target or anything if we are int the control panel
 	{
 		if ( !canJump() && controlGui.getJump() )
@@ -341,7 +340,6 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 	// card (it already selected the squad; don't also move under the card).
 	if ( userInput->leftMouseReleased() && g_tacticalOverview.consumeReleaseSuppression() )
 	{
-		// consumed: skip the world move for this release
 	}
 	else if ( userInput->leftMouseReleased() && !userInput->wasLeftDrag() && !bGui && !lastUpdateDoubleClick) // move on the mouse ups
 	{
@@ -445,9 +443,6 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 			else if ( target->getTeamId() == Team::home->getId() && !target->isDisabled() )
 			{
 				
-				//--------------------------------------------------------------------
-				// User wants to select the guy we are on.  If he did
-				// it with a shift, add him.  If not, whack all and just add target!
 				if (shiftDn && target->getCommanderId() == Commander::home->getId() )
 				{
 					bool alreadyThere = false;
@@ -681,7 +676,6 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 	if ( update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight ) )
 		return;
 
-	// special case for bottom of screen
 	if ( bGui ) // don't target or anything if we are int the control panel
 	{
 		if ( !canJump() && controlGui.getJump() )
@@ -841,9 +835,6 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 			if (target->getCommanderId() == Commander::home->getId() && !target->isDisabled()  )
 			{
 				
-				//--------------------------------------------------------------------
-				// User wants to select the guy we are on.  If he did
-				// it with a shift, add him.  If not, whack all and just add target!
 				if (shiftDn)
 				{
 					bool alreadyThere = false;

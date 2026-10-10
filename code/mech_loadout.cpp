@@ -193,9 +193,6 @@ long BattleMech::init (DWORD variantNum)
 	mechFile->readUChar(115 + (97 * variantNum),11,currentArmor);
 	armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = currentArmor;
 
-	// Build the mech's inventory (all components, and where they are located)...
-	// Check through all 30 possible.  Create the numOther, numWeapons and numAmmo from that.
-	// Sanity check what the designers have input.
 	numAntiMissileSystems = numOther = numWeapons = numAmmos = 0;
 	numArmorComponents = 0;
 
@@ -210,9 +207,6 @@ long BattleMech::init (DWORD variantNum)
 	{
 		inventory[curItem].masterID = 0xff;
 		inventory[realItemNum].disabled = true;
-		// LOADOUT-HARDPOINT-JOIN-1: default the optional logical-hardpoint join key
-		// to unset. Stock CSV loadouts carry no hardpoint column, so this stays 0
-		// (legacy positional-CSV mount unchanged). A data source may later set it.
 		inventory[curItem].hardpointId = 0;
 	}
 
@@ -220,10 +214,6 @@ long BattleMech::init (DWORD variantNum)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
-		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override. Gate-ON,
-		// if this row carries an optional EquipmentId="core:<slug>" token that
-		// resolves to a legacy ordinal in 0..254, use it; else keep the numeric
-		// masterID just read. Stock rows have no token -> no override (parity).
 		{
 			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
@@ -280,11 +270,9 @@ long BattleMech::init (DWORD variantNum)
 				case COMPONENT_FORM_WEAPON_ENERGY:
 				case COMPONENT_FORM_WEAPON_BALLISTIC:
 				case COMPONENT_FORM_WEAPON_MISSILE:
-					//Ignore weapons until second pass
 					break;
 					
 				case COMPONENT_FORM_AMMO:
-					//Ignore AMMO until third pass
 					break;
 			}
 		}
@@ -294,9 +282,6 @@ long BattleMech::init (DWORD variantNum)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
-		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override (weapons
-		// pass). Same rule as the non-weapon pass above -- gate-ON optional
-		// EquipmentId token resolves to a legacy ordinal; else legacy numeric id.
 		{
 			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
@@ -353,11 +338,6 @@ long BattleMech::init (DWORD variantNum)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
-					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
-					// weapon-node mount through the item's declared HardpointId when one
-					// resolves to a real model socket; else the legacy least-used
-					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
-					// byte-identical mount (parity). Returns the same node-index domain.
 					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
@@ -489,8 +469,6 @@ long BattleMech::init (DWORD variantNum)
 			if (spaceData < 255)
 			{
 				if (spaceData >= numOther+numWeapons+numAmmos)            
-					//Just ignore this space.  Sage has filled them all in now.
-					// ACTUALLY, we should stop here.
 					continue;
 					
 				inventory[spaceData].bodyLocation = curLocation;
@@ -498,7 +476,6 @@ long BattleMech::init (DWORD variantNum)
 				// The following line assumes the "new" crit hit system...
 				body[curLocation].totalSpaces += MasterComponent::masterList[inventory[spaceData].masterID].getSize();
 				
-				// Preserve critical component indices for quick access...
 				switch (MasterComponent::masterList[inventory[spaceData].masterID].getForm())
 				{
 					case COMPONENT_FORM_COCKPIT:
@@ -534,7 +511,6 @@ long BattleMech::init (DWORD variantNum)
 						if ((inventory[spaceData].masterID == MasterComponent::clanAntiMissileSystemID) ||
 							(inventory[spaceData].masterID == MasterComponent::innerSphereAntiMissileSystemID))
 						{
-							// Add to Anti-Missile System list for fast reference...
 							if (numAntiMissileSystems == MAX_ANTI_MISSILE_SYSTEMS)
 								Fatal(0, "Too many Anti-Missile Systems");
 							antiMissileSystem[numAntiMissileSystems++] = spaceData;
@@ -593,8 +569,6 @@ long BattleMech::init (DWORD variantNum)
 
 	for (long item = numOther; item < (numOther + numWeapons); item++) 
 	{
-		// Each weapon should point to its appropriate ammo total in
-		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
 			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
@@ -607,8 +581,6 @@ long BattleMech::init (DWORD variantNum)
 
 	for (int item = numOther+numWeapons;item<(numOther+numWeapons+numAmmos);item++) 
 	{
-		// Each weapon should point to its appropriate ammo total in
-		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
 			if (inventory[item].masterID == ammoTypeTotal[ammoIndex].masterId) 
@@ -633,7 +605,6 @@ long BattleMech::init (DWORD variantNum)
 		}
 	}
 
-	// If we added BULK to the mech, adjust the max and current armor settings.
 	if (numArmorComponents)
 	{
 		float totalArmorPoints = ARMOR_POINTS_PER_NEWARMOR * numArmorComponents;
@@ -683,8 +654,6 @@ long BattleMech::init (DWORD variantNum)
 		armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor;
 	}
 	
-	// We need to set the status states for legs and torso based upon our current
-	// condition...
 	calcLegStatus();
 	calcTorsoStatus();
 	calcFireRanges();
@@ -935,7 +904,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 			case COMPONENT_FORM_POWER_AMPLIFIER:
 			case COMPONENT_FORM_CASE:
 			case COMPONENT_FORM_ACTUATOR:
-				//If any of these are in Heidi's list its REALLY BAD
 				STOP(("Invalid component added in Logistics %d",componentList[newItems]));
 				break;
 				
@@ -1025,11 +993,9 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				case COMPONENT_FORM_WEAPON_ENERGY:
 				case COMPONENT_FORM_WEAPON_BALLISTIC:
 				case COMPONENT_FORM_WEAPON_MISSILE:
-					//Ignore weapons until second pass
 					break;
 					
 				case COMPONENT_FORM_AMMO:
-					//Ignore AMMO until third pass
 					break;
 			}
 		}
@@ -1078,11 +1044,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
-					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
-					// weapon-node mount through the item's declared HardpointId when one
-					// resolves to a real model socket; else the legacy least-used
-					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
-					// byte-identical mount (parity). Returns the same node-index domain.
 					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
@@ -1159,7 +1120,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		}
 	}
 
-	// If we added BULK to the mech, adjust the max and current armor settings.
 	if (numNewArmors)
 	{
 		float totalArmorPoints = ARMOR_POINTS_PER_NEWARMOR * numNewArmors;
@@ -1217,9 +1177,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	{
 		body[curLocation].CASE = true;	//ALL MC2 Mechs have CASE everywhere.
 
-		//Internal Structure is ALREADY set!
 		
-		// Damage and states are already set.
 		
 		long numSpaces = NumLocationCriticalSpaces[curLocation];
 		body[curLocation].totalSpaces = 0;
@@ -1253,8 +1211,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 			if (spaceData < 255)
 			{
 				if (spaceData >= numOther+numWeapons+numAmmos)
-					//Just ignore this space.  Sage has filled them all in now.
-					// ACTUALLY, we should stop here.
 					continue;
 					
 				inventory[spaceData].bodyLocation = curLocation;
@@ -1262,7 +1218,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				// The following line assumes the "new" crit hit system...
 				body[curLocation].totalSpaces += MasterComponent::masterList[inventory[spaceData].masterID].getSize();
 				
-				// Preserve critical component indices for quick access...
 				switch (MasterComponent::masterList[inventory[spaceData].masterID].getForm())
 				{
 					case COMPONENT_FORM_COCKPIT:
@@ -1302,7 +1257,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 						if ((inventory[spaceData].masterID == MasterComponent::clanAntiMissileSystemID) ||
 							(inventory[spaceData].masterID == MasterComponent::innerSphereAntiMissileSystemID))
 						{
-							// Add to Anti-Missile System list for fast reference...
 							if (numAntiMissileSystems == MAX_ANTI_MISSILE_SYSTEMS)
 								Fatal(0, "Too many Anti-Missile Systems");
 							antiMissileSystem[numAntiMissileSystems++] = spaceData;
@@ -1361,8 +1315,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 
 	for (int item = numOther; item < (numOther + numWeapons); item++) 
 	{
-		// Each weapon should point to its appropriate ammo total in
-		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
 			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) 
@@ -1375,8 +1327,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 
 	for (int item = numOther+numWeapons;item<(numOther+numWeapons+numAmmos);item++) 
 	{
-		// Each weapon should point to its appropriate ammo total in
-		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
 			if (inventory[item].masterID == ammoTypeTotal[ammoIndex].masterId) 
@@ -1401,8 +1351,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		}
 	}
 
-	// We need to set the status states for legs and torso based upon our current
-	// condition...
 	calcFireRanges();
 
 	maxCV = calcCV(true);

@@ -154,8 +154,6 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		else {
 			strcat(ChunkDebugMsg, "target = ???\n");
 			if (chunk1->targetType == STATUSCHUNK_TARGET_TERRAIN) {
-				// If the TargetType is terrain, let's at least list all of the terrain
-				// objects in this Block/Vertex...
 				long numObjsInTile = 0;
 				long partId = chunk1->targetId - chunk1->targetItemNumber;
 				for (long i = 0; i < MAX_TERRAIN_TILE_ITEMS; i++) {
@@ -245,8 +243,6 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		else {
 			strcat(ChunkDebugMsg, "target = ???\n");
 			if (chunk2->targetType == STATUSCHUNK_TARGET_TERRAIN) {
-				// If the TargetType is terrain, let's at least list all of the terrain
-				// objects in this Block/Vertex...
 				long numObjsInTile = 0;
 				long partId = chunk1->targetId - chunk2->targetItemNumber;
 				for (long i = 0; i < MAX_TERRAIN_TILE_ITEMS; i++) {
@@ -384,7 +380,6 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 		
 		sprintf(s, "cont:");
 		if (sensorSystem) {
-			// display up to 4...
 			long numConts = 4;
 			if (sensorSystem->numContacts < 4)
 				numConts = sensorSystem->numContacts;

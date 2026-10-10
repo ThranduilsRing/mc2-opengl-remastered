@@ -126,9 +126,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	}
 
 
-	// Ripple Fire
-	// Figure out what weapon Node on the Mech we are going to use
-	// And see if its recycle time is Green.  If not, just return, we'll shoot again!
 	long sourceHotSpot;
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 		sourceHotSpot = MECH3D_WEAPONTYPE_MISSILE;
@@ -196,8 +193,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		}
 		else
 			pilot->skillPoints[MWS_GUNNERY] += SkillSuccess[MWS_GUNNERY] / 10;
-		// If it's an aimed shot, we need to calc whether we hit the desired
-		// location on the target...
 		if (aimLocation != -1)
 			hitLocation = aimLocation;
 	}
@@ -231,11 +226,8 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					numMissiles = missileAmount;
 			}
 
-			// a MissileGen Object is ALL missiles--clusters no more:)
 			unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
 
-			// Need to know which hotspot this comes from.
-			// Also need to know which hotspot this is going to.
 			if (target) 
 			{
 				if (aimLocation == -1)
@@ -246,7 +238,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 			Assert(hitLocation != -2, 0, " Mech.FireWeapon: Bad Hit Location ");
 	
-			// For now, always use a bullet effect...
 			WeaponShotInfo curShotInfo;
 			curShotInfo.init(getWatchID(),
 							 inventory[weaponIndex].masterID,
@@ -256,8 +247,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 			dmgDone = curShotInfo.damage;
 
-			// If I'm in a multiplayer game and I'm the server, record this weapon fire
-			// so it may be broadcast to all clients...
 			if (MPlayer && MPlayer->isServer()) {
 				WeaponFireChunk chunk;
 				chunk.init();
@@ -299,7 +288,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			if (!weaponFX) {
 				if (targetPoint) 
 				{
-					// Check for Mine hit and MOVE ON!!!
 					int cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
@@ -329,8 +317,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			}
 			}
 		else {
-			// Non-missile weapon, so just one weapon hit spawn...
-			// For now, always use a laser effect...
 			if (target) {
 				if (aimLocation == -1)
 					hitLocation = target->calcHitLocation(this, weaponIndex, ATTACKSOURCE_WEAPONFIRE, attackType);
@@ -348,8 +334,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 			dmgDone = shotInfo.damage;
 
-			// If I'm in a multiplayer game and I'm the server, record this weapon fire
-			// so it may be broadcast to all clients...
 			if (MPlayer && MPlayer->isServer()) {
 				WeaponFireChunk chunk;
 				chunk.init();
@@ -389,7 +373,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			{
 				if (targetPoint)
 				{
-					// Check for Mine hit and MOVE ON!!!
 					int cellRow, cellCol;
 
 					land->worldToCell(*targetPoint, cellRow, cellCol);
@@ -435,7 +418,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					numMissiles = missileAmount;
 
 				if (numMissiles > 0) {
-					// No more clusters!
 						WeaponShotInfo curShotInfo;
 						curShotInfo.init(getWatchID(),
 										 inventory[weaponIndex].masterID,
@@ -444,8 +426,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 										 entryAngle);
 						Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 
-						// If we missed, pick sights away from the target and check LOS to each one.  If all are
-						// invisible, just hit the target with zero points of damage.
 						float missRadius = target ? 25.0 : 5.0;
 
 						Stuff::Vector3D positionOffset;
@@ -484,7 +464,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 									if (!canSeeHit)
 									{
-										//OK, no miss location is visible.  Hit the target with ZERO damage!!
 										curShotInfo.init(getWatchID(),
 														 inventory[weaponIndex].masterID,
 														 0.0f,
@@ -495,8 +474,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 							}
 						}
 
-						// If I'm in a multiplayer game and I'm the server, record this weapon fire
-						// so it may be broadcast to all clients...
 						if (MPlayer && MPlayer->isServer()) {
 							WeaponFireChunk chunk;
 							chunk.init();
@@ -516,7 +493,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					weaponFX = ObjectManager->createWeaponBolt(effectType);
 					if (!weaponFX)
 					{
-						// Check for Mine hit and MOVE ON!!!
 						int  cellRow, cellCol;
 
 						land->worldToCell(positionOffset, cellRow, cellCol);
@@ -532,8 +508,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 							weaponFX->connect(this,positionOffset,&curShotInfo,sourceHotSpot);
 						else if (target)	//Miss location is NOT in LOS.  Hit Target with ZERO damage!!!
 							weaponFX->connect(this,target,&curShotInfo,sourceHotSpot);
-						//OTHERWISE, we tried to hit the ground but we can't see the location we shot at.
-						// DRAW NO WEAPON EFFECT!!!!
 
 						printFireWeaponDebugInfo(target, &positionOffset, attackChance, aimLocation, hitRoll, &curShotInfo);
 					}
@@ -541,8 +515,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			}
 			else
 			{
-				// Non-missile weapon, so just one weapon hit spawn...
-				// For now, always use a laser effect...
 				WeaponShotInfo shotInfo;
 				shotInfo.init(getWatchID(),
 					inventory[weaponIndex].masterID,
@@ -550,8 +522,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					-1,
 					entryAngle);
 
-				// If we missed, pick sights away from the target and check LOS to each one.  If all are
-				// invisible, just hit the target with zero points of damage.
 				float missRadius = target ? 25.0 : 5.0;
 
 				Stuff::Vector3D positionOffset;
@@ -590,7 +560,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 							if (!canSeeHit)
 							{
-								//OK, no miss location is visible.  Hit the target with ZERO damage!!
 								shotInfo.init(getWatchID(),
 											 inventory[weaponIndex].masterID,
 											 0.0f,
@@ -601,8 +570,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					}
 				}
 
-				// If I'm in a multiplayer game and I'm the server, record this weapon fire
-				// so it may be broadcast to all clients...
 				if (MPlayer && MPlayer->isServer()) {
 					WeaponFireChunk chunk;
 					chunk.init();
@@ -622,7 +589,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				weaponFX = ObjectManager->createWeaponBolt(effectType);
 				if (!weaponFX)
 				{
-					// Check for Mine hit and MOVE ON!!!
 					int  cellRow, cellCol;
 
 					land->worldToCell(positionOffset, cellRow, cellCol);
@@ -645,9 +611,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		}
 	}
 
-	// Trigger the WEAPON TARGET event. For now, this assumes the target
-	// KNOWS we were targeting him. Of course, the target wouldn't always
-	// be aware of this, would they?
 	pilot->triggerAlarm(PILOT_ALARM_FIRED_WEAPON, target ? target->getWatchID() : 0);
 	if (targetPilot)
 		targetPilot->triggerAlarm(PILOT_ALARM_TARGET_OF_WEAPONFIRE, getWatchID());
@@ -668,7 +631,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 								   long numMissiles,
 								   long hitLocation) {
 
-	// If it's already been fired, assume the ammo is there...
 	long numShots = getWeaponShots(weaponIndex);
 
 	// Weapon must recycle...
@@ -678,8 +640,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 
 	WeaponBoltPtr weaponFX = NULL;
 	
-	// Need to know which hotspot this comes from.
-	// Also need to know which hotspot this is going to.
 	long sourceHotSpot;
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 		sourceHotSpot = MECH3D_WEAPONTYPE_MISSILE;
@@ -707,18 +667,15 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
 
-			// Clusters no more!
 			unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
 
 			if (numMissiles > 0) {
-				// This code will mess up if the object is not a BULLET!!!!!!!!!!!
 				weaponFX = ObjectManager->createWeaponBolt(effectType);
 				
 				if (!weaponFX) 
 				{
 					if (targetPoint) 
 					{
-						// Check for Mine hit and MOVE ON!!!
 						int cellRow, cellCol;
 						land->worldToCell(*targetPoint, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1)
@@ -732,7 +689,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				{
 					Assert(hitLocation != -2, TargetRolo, " Mech.handleWeaponFire: Bad Hit Location ");
 		
-					// For now, always use a bullet effect...
 					WeaponShotInfo curShotInfo;
 					curShotInfo.init(getWatchID(),
 									 inventory[weaponIndex].masterID,
@@ -752,8 +708,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 			}
 			}
 		else {
-			// Non-missile weapon, so just one weapon hit spawn...
-			// For now, always use a laser effect...
 			
 			WeaponShotInfo shotInfo;
 			shotInfo.init(getWatchID(),
@@ -779,7 +733,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 			{
 				if (targetPoint)
 				{
-					// Check for Mine hit and MOVE ON!!!
 					int  cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1)
@@ -795,8 +748,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				else  {
 					weaponFX->connect(this, *targetPoint, &shotInfo, sourceHotSpot);
 
-					// Now, cancel the tac order...
-					//pilot->clearCurTacOrder();
 				}
 			}
 		}
@@ -817,7 +768,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
 
 			if (numMissiles) {
-				// Clusters no more!
 				unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
 				weaponFX = ObjectManager->createWeaponBolt(effectType);
 				
@@ -825,7 +775,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 				{
 					if (targetPoint) 
 					{
-						// Check for Mine hit and MOVE ON!!!
 						int cellRow, cellCol;
 						land->worldToCell(*targetPoint, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1) 
@@ -848,8 +797,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 			}
 			}
 		else {
-			// Non-missile weapon, so just one weapon hit spawn...
-			// For now, always use a laser effect...
 			WeaponShotInfo shotInfo;
 			shotInfo.init(getWatchID(),
 				inventory[weaponIndex].masterID,
@@ -864,7 +811,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 			{
 				if (targetPoint) 
 				{
-					// Check for Mine hit and MOVE ON!!!
 					int cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
@@ -880,9 +826,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 		}
 	}
 
-	// Trigger the WEAPON TARGET event. For now, this assumes the target
-	// KNOWS we were targeting him. Of course, the target wouldn't always
-	// be aware of this, would they?
 	MechWarriorPtr targetPilot = NULL;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();

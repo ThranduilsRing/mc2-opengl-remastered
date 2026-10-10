@@ -590,7 +590,6 @@ int MissionInterfaceManager::setHotKey( int whichCommand, gosEnum_KeyIndex newKe
 		key |= WAYPT;
 	else
 	{
-		// change corresponding waypoint keys
 		for ( int i = 0; i < MAX_COMMAND; i++ )
 		{
 			if ( ((commands[i].key & 0x0000ffff) == oldKey)  && (commands[i].key & WAYPT) )

@@ -238,7 +238,6 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 	// effect is preserved exactly (parity), whichever node we ultimately mount to.
 	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
 
-	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
 	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
 		return roundRobinNode;
 
@@ -682,7 +681,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 				// The following line assumes the "new" crit hit system...
 				body[curLocation].totalSpaces += MasterComponent::masterList[inventory[spaceData[0]].masterID].getSize();
-				// Preserve critical component indices for quick access...
 				switch (MasterComponent::masterList[inventory[spaceData[0]].masterID].getForm())
 				{
 					case COMPONENT_FORM_COCKPIT:
@@ -718,7 +716,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 						if ((inventory[spaceData[0]].masterID == MasterComponent::clanAntiMissileSystemID) ||
 							(inventory[spaceData[0]].masterID == MasterComponent::innerSphereAntiMissileSystemID))
 						{
-							// Add to Anti-Missile System list for fast reference...
 							if (numAntiMissileSystems == MAX_ANTI_MISSILE_SYSTEMS)
 								Fatal(0, "Too many Anti-Missile Systems");
 							antiMissileSystem[numAntiMissileSystems++] = spaceData[0];
@@ -776,8 +773,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 	calcAmmoTotals();
 
 	for (long item = numOther; item < (numOther + numWeapons); item++) {
-		// Each weapon should point to its appropriate ammo total in
-		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
 			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) {
 				inventory[item].ammoIndex = ammoIndex;
@@ -840,8 +835,6 @@ long BattleMech::init (FitIniFile* mechFile) {
 		}
 	}
 
-	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative here; fold it
-	// into the type baseline + this instance's runtime via the single owner.
 	refreshDerivedCapabilities();
 
 	return(NO_ERR);

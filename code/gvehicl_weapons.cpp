@@ -180,8 +180,6 @@ long GroundVehicle::handleStatusChunk (long updateAge, unsigned long chunk) {
 		}
 
 		if (!ejectOrderGiven && statusChunk.ejectOrderGiven) {
-			//--------------------------
-			// Just given eject order...
 			ejectOrderGiven = true;
 			handleEjection();
 		}
@@ -242,14 +240,12 @@ long GroundVehicle::handleMoveChunk (unsigned long chunk) {
 
 #pragma optimize("",on)
 
-//---------------------------------------------------------------------------
 
 float GroundVehicle::weaponLocked (long weaponIndex, Stuff::Vector3D targetPosition) {
 
 	return(relFacingTo(targetPosition, GROUNDVEHICLE_LOCATION_TURRET));
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk) {
 
@@ -279,8 +275,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	if (addMultiplayChunk)
 		MPlayer->addWeaponHitChunk(this, shotInfo);
 
-	//----------------------------------
-	// Is this possible? Just in case...
 	if (shotInfo->damage <= 0)
 		return(NO_ERR);
 
@@ -424,7 +418,6 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	return(NO_ERR);
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {
 
@@ -534,10 +527,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		}
 	}
 
-	//-------------------------------------------
-	// Ripple Fire
-	// Figure out what weapon Node on the Mech we are going to use
-	// And see if its recycle time is Green.  If not, just return, we'll shoot again!
 	long sourceHotSpot;
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 		sourceHotSpot = MECH3D_WEAPONTYPE_MISSILE;
@@ -579,8 +568,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	if (hitRoll < attackChance) {
 
 		if (numShots != UNLIMITED_SHOTS) {
-			//-------------------------------------------------------
-			// We're taking the shot, so reduce our ammo inventory...
 			deductWeaponShot(weaponIndex);
 		}
 		
@@ -602,9 +589,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			// Don't make a thousand of them or the game implodes!
 			//numClusters = 1;
 	
-			//----------------------------------------------------
-			// Need to know which hotspot this comes from.
-			// Also need to know which hotspot this is going to.
 			if (target) {
 				if (aimLocation == -1)
 					hitLocation = target->calcHitLocation(this, weaponIndex, ATTACKSOURCE_WEAPONFIRE, attackType);
@@ -621,9 +605,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	
 			dmgDone = curShotInfo.damage;
 
-			//-------------------------------------------------------------------------
-			// If I'm in a multiplayer game and I'm the server, record this weapon fire
-			// so it may be broadcast to all clients...
 			if (MPlayer && MPlayer->isServer()) {
 				WeaponFireChunk chunk;
 				chunk.init();
@@ -667,8 +648,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					target->handleWeaponHit(&curShotInfo, MPlayer != NULL);
 				else if (targetPoint) 
 				{
-					//-----------------------------------------
-					// Check for Mine hit and MOVE ON!!!
 					int cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
@@ -699,9 +678,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			}
 			}
 		else {
-			//----------------------------------------------------
-			// Non-missile weapon, so just one weapon hit spawn...
-			// For now, always use a laser effect...
 			if (target) {
 				if (aimLocation == -1)
 					hitLocation = target->calcHitLocation(this, weaponIndex, ATTACKSOURCE_WEAPONFIRE, attackType);
@@ -719,9 +695,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 			dmgDone = shotInfo.damage;
 
-			//-------------------------------------------------------------------------
-			// If I'm in a multiplayer game and I'm the server, record this weapon fire
-			// so it may be broadcast to all clients...
 			if (MPlayer && MPlayer->isServer()) {
 				WeaponFireChunk chunk;
 				chunk.init();
@@ -733,12 +706,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 											   entryAngle,
 											   0,
 											   hitLocation);
-//					else if (target->getObjectClass() == TRAINCAR)
-//						chunk.buildTrainTarget((BigGameObjectPtr)target,
-//												weaponIndex - numOther,
-//												true,
-//												entryAngle,
-//												0);
 					else if (target->getObjectClass() == CAMERADRONE)
 						chunk.buildCameraDroneTarget(target,
 													 weaponIndex - numOther,
@@ -771,8 +738,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					target->handleWeaponHit(&shotInfo, MPlayer != NULL);
 				else if (targetPoint) 
 				{
-					//-----------------------------------------
-					// Check for Mine hit and MOVE ON!!!
 					int cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1)
@@ -802,8 +767,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 				deductWeaponShot(weaponIndex);
 			}
 
-			//----------------------------------------------------
-			// Miss, so check for possible miss resolution here...
 			if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 			{
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
@@ -862,7 +825,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 								if (!canSeeHit)
 								{
-									//OK, no miss location is visible.  Hit the target with ZERO damage!!
 									curShotInfo.init(this->getWatchID(),
 													 inventory[weaponIndex].masterID,
 													 0.0f,
@@ -873,9 +835,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 						}
 					}
 
-					//-------------------------------------------------------------------------
-					// If I'm in a multiplayer game and I'm the server, record this weapon fire
-					// so it may be broadcast to all clients...
 					if (MPlayer && MPlayer->isServer()) {
 						WeaponFireChunk chunk;
 						chunk.init();
@@ -893,8 +852,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
 					weaponFX = ObjectManager->createWeaponBolt(effectType);
 					if (!weaponFX) {
-						//-----------------------------------------
-						// Check for Mine hit and MOVE ON!!!
 						int cellRow, cellCol;
 						land->worldToCell(positionOffset, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1) 
@@ -915,9 +872,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 				}
 				}
 			else {
-				//----------------------------------------------------
-				// Non-missile weapon, so just one weapon hit spawn...
-				// For now, always use a laser effect...
 				WeaponShotInfo shotInfo;
 				shotInfo.init(this->getWatchID(),
 					inventory[weaponIndex].masterID,
@@ -966,7 +920,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 							if (!canSeeHit)
 							{
-								//OK, no miss location is visible.  Hit the target with ZERO damage!!
 								shotInfo.init(this->getWatchID(),
 											 inventory[weaponIndex].masterID,
 											 0.0f,
@@ -977,9 +930,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					}
 				}
 
-				//-------------------------------------------------------------------------
-				// If I'm in a multiplayer game and I'm the server, record this weapon fire
-				// so it may be broadcast to all clients...
 				if (MPlayer && MPlayer->isServer()) {
 					WeaponFireChunk chunk;
 					chunk.init();
@@ -997,8 +947,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 				unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
 				weaponFX = ObjectManager->createWeaponBolt(effectType);
 				if (!weaponFX) {
-					//-----------------------------------------
-					// Check for Mine hit and MOVE ON!!!
 					int cellRow, cellCol;
 					land->worldToCell(positionOffset, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
@@ -1019,10 +967,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		}
 	}
 
-	//-------------------------------------------------------------------
-	// Trigger the WEAPON TARGET event. For now, this assumes the target
-	// KNOWS we were targeting him. Of course, the target wouldn't always
-	// be aware of this, would they?
 	pilot->triggerAlarm(PILOT_ALARM_FIRED_WEAPON, target ? target->getWatchID() : 0);
 	if (targetPilot)
 		targetPilot->triggerAlarm(PILOT_ALARM_TARGET_OF_WEAPONFIRE, getWatchID());
@@ -1035,7 +979,6 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	return(NO_ERR);
 }
 
-//---------------------------------------------------------------------------
 
 long GroundVehicle::handleWeaponFire (long weaponIndex,
 								   GameObjectPtr target,
@@ -1045,8 +988,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 								   long numMissiles,
 								   long hitLocation) {
 
-	//--------------------------------------------------------
-	// If it's already been fired, assume the ammo is there...
 	long numShots = getWeaponShots(weaponIndex);
 
 	//-----------------------
@@ -1057,9 +998,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 
 	WeaponBoltPtr weaponFX = NULL;
 	
-	//----------------------------------------------------
-	// Need to know which hotspot this comes from.
-	// Also need to know which hotspot this is going to.
 	long sourceHotSpot;
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 		sourceHotSpot = MECH3D_WEAPONTYPE_MISSILE;
@@ -1125,9 +1063,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 		}
 		else
 		{
-			//----------------------------------------------------
-			// Non-missile weapon, so just one weapon hit spawn...
-			// For now, always use a laser effect...
 			
 			WeaponShotInfo shotInfo;
 			shotInfo.init(this->getWatchID(),
@@ -1211,10 +1146,6 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 		}
 	}
 
-	//-------------------------------------------------------------------
-	// Trigger the WEAPON TARGET event. For now, this assumes the target
-	// KNOWS we were targeting him. Of course, the target wouldn't always
-	// be aware of this, would they?
 	MechWarriorPtr targetPilot = NULL;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
@@ -1228,10 +1159,8 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 	return(NO_ERR);
 }
 
-//---------------------------------------------------------------------------
 
 
-//---------------------------------------------------------------------------
 
 float GroundVehicle::getTotalEffectiveness(void)
 {
@@ -1241,15 +1170,11 @@ float maxRear, curRear, armorRear, maxTurret, curTurret, armorTurret, armorEffec
 		if (isDestroyed() || isDisabled())
 			return 0.0;
 
-		//-------------------------------------------------------------------------
-		// calculate Weapon effectiveness
 		if (maxWeaponEffectiveness)
 			weaponEffect = (float)weaponEffectiveness / (float)maxWeaponEffectiveness;
 		else
 			weaponEffect = 1.0;
 
-		//---------------------------------------------------------------
-		// Calculate armor effectiveness.
 		float extraEffect = 1.0f;
 		if (isRefit() || mineLayer )
 		{
@@ -1289,8 +1214,6 @@ float maxRear, curRear, armorRear, maxTurret, curTurret, armorTurret, armorEffec
 		
 		armorEffect = armorFront * armorRear * armorLeft * armorRight * armorTurret;
 		
-		//-------------------------------------------------------------------------
-		// Calculate pilot Wounds
 		float pilotWoundTable[7] = 
 		{
 			1.0,0.95f,0.85f,0.75f,0.50f,0.30f,0.00

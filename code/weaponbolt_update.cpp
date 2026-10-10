@@ -243,7 +243,6 @@ long WeaponBolt::update (void)
 	bool isArcing = false;
 	if (((WeaponBoltTypePtr)getObjectType())->arcEffect)
 	{
-		//GoalHeight is actually the velocity
 		if ( goalHeight > 0.0f )
 		{
 			float accel = -((WeaponBoltTypePtr)getObjectType())->arcHeight * 10.0f;
@@ -394,8 +393,6 @@ long WeaponBolt::update (void)
 				
 				if (target)
 				{
-					//Figure out angle between target and Shooter if target is BELOW shooter.
-					// If no shooter, no bonus!!
 					GameObjectPtr owner = ObjectManager->getByWatchID(ownerWID);
 					if (owner)
 					{
@@ -657,8 +654,6 @@ long WeaponBolt::update (void)
 				
 				if (target)
 				{
-					//Figure out angle between target and Shooter if target is BELOW shooter.
-					// If no shooter, no bonus!!
 					GameObjectPtr owner = ObjectManager->getByWatchID(ownerWID);
 					if (owner)
 					{
@@ -1007,7 +1002,6 @@ long WeaponBolt::update (void)
 			delete gosEffect;
 			gosEffect = NULL;
 			
-			//Need to kill the light source here too!
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
@@ -1266,9 +1260,6 @@ long WeaponBolt::update (void)
 		trail_head = static_cast<uint8_t>((trail_head + 1) % kTrailHistoryMax);
 		if (trail_count < kTrailHistoryMax) ++trail_count;
 
-		// Walk the ring oldest → newest, stamping segments between consecutive
-		// positions. Oldest index = (trail_head - trail_count + kTrailHistoryMax)
-		// mod kTrailHistoryMax. Stop at trail_head - 1 (most recent stored).
 		if (trail_count >= 2) {
 			int oldest = (static_cast<int>(trail_head) - static_cast<int>(trail_count)
 			              + kTrailHistoryMax) % kTrailHistoryMax;

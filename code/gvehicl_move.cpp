@@ -329,8 +329,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 	updateHustleTime();
 	bool hustle = (lastHustleTime + 2.0) > scenarioTime;
 
-	//-----------------------------------------------
-	// Am I ahead of my point vehicle, if I have one?
 	bool aheadOfPointVehicle = false;
 	bool stopForPointVehicle = false;
 	MoverPtr pointVehicle = (MoverPtr)pilot->getPoint();
@@ -344,15 +342,11 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 		if (aheadOfPointVehicle) {
 			if (getSpeedState() == SPEED_STATE_MOVING_FAST) 
 			{
-				//-------------------------------------------------
-				// Running. So, slow to a walk for a few seconds...
 				if (!pilot->isWaitingForPoint())
 					pilot->setMoveWaitForPointTime(scenarioTime + 5.0);
 			}
 			else 
 			{
-				//--------------------------------------------------------------
-				// Already walking, so let's just stop until point catches up...
 				if (pilot->getMoveWaitForPointTime() < scenarioTime) 
 				{
 					stopForPointVehicle = true;
@@ -403,10 +397,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 				
 			if (cushion < distanceThisFrame)
 			{
-				//------------------------------------------------------------------------
-				//We are going to move farther then the current cushion would allow for.
-				// Make the cushion larger.
-				// Maybe we should make cushion this value all of the time?
 				cushion = distanceThisFrame;
 			}
 
@@ -565,10 +555,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 		{
 			if (pilot->getMovePathGlobalStep() < (pilot->getMoveNumGlobalSteps() - 1)) 
 			{
-				//-----------------------------------------------------------
-				// We've reached the end of our current short-range path, but
-				// we have more to go before we've reached our long-range
-				// goal, so calc our next short-range path...
 				goalReached = false;
 			}
 		}
@@ -582,10 +568,6 @@ bool GroundVehicle::updateMovePath (float& newRotate, char& newThrottleSetting, 
 
 void GroundVehicle::setNextMovePath (char& newThrottleSetting) {
 
-	//----------------------------------------
-	// If this is only an intermediate path,
-	// let's check where we need to go next...
-	//pilot->clearMovePath(ORDER_CURRENT);
 
 	Stuff::Vector3D nextWayPoint;
 	bool haveWayPoint = pilot->getNextWayPoint(nextWayPoint, true);
@@ -603,9 +585,6 @@ void GroundVehicle::setNextMovePath (char& newThrottleSetting) {
 
 void GroundVehicle::setControlSettings (float& newRotate, char& newThrottleSetting, long& minThrottle, long& maxThrottle) {
 
-	//-----------------------------------------------------------------------------
-	// If we have no move path, then we shouldn't be moving. Let's set our throttle
-	// setting to zero, just to be safe...
 	long result = NO_ERR;
 	MovePathPtr curPath = pilot->getMovePath();
 	bool allowedToRun = false;
@@ -881,8 +860,6 @@ void GroundVehicle::netUpdateMovement (void) {
 	}
 	if (atEndOfPath && (distanceFromWayPt < Mover::marginOfError[1])) 
 	{
-		//----------------------------------------------
-		// Movement states no longer exist.  Just stop!
 		pilot->clearMoveOrders();
 		control.settings.groundVehicle.throttle = 0;
 	}
@@ -964,13 +941,9 @@ bool GroundVehicle::crashAvoidanceSystem (void) {
 	Stuff::Vector3D newPosition;
 	newPosition.Add(position, vel);
 
-	//---------------------------------------------------------------------
-	// Is this new position in a pathlocked area? If so, put on the brakes!
 	int cellR, cellC;
 	land->worldToCell(newPosition, cellR, cellC);
 
-	//-------------------------
-	// To avoid corner stops...
 	bool clippingCorner = false;
 	int dir = path->getDirection(path->curStep);
 	if ((dir == 1) || (dir == 3) || (dir == 5) || (dir == 7)) {
@@ -998,14 +971,7 @@ bool GroundVehicle::crashAvoidanceSystem (void) {
 		}
 	else {
 		if (pathLocked || pathBlocked || clippingCorner || stepIntoGate) {
-			//-------------------------------------------------------------------
-			// What exactly is wrong here? Is our goal currently occupied? If so,
-			// and it's our final goal, then stop!
 			if (reachedEnd || blockReachedEnd) {
-				//-----------------------------------------------------------------------
-				// Since we're practically there, let's just kill the current move orders
-				// and let the pilot's movementDecision update decide whether a new
-				// one should be set...
 				/*
 				pilot->setMoveWayPath(ORDER_CURRENT, NULL, 0);
 				for (long i = 0; i < 2; i++)

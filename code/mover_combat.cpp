@@ -63,8 +63,6 @@ if (queuePlayerOrder)
 			suppressionFire = false;
 			break;
 		case TACTICAL_ORDER_MOVETO_POINT:
-			// If we're part of a selected group, offset our goal
-			// slightly...
 			if (selectionIndex != -1) 
 			{
 				tacOrder.delayedTime = scenarioTime + (selectionIndex * DelayedOrderTime);
@@ -79,7 +77,6 @@ if (queuePlayerOrder)
 			break;
 		case TACTICAL_ORDER_JUMPTO_POINT:
 		case TACTICAL_ORDER_JUMPTO_OBJECT: {
-			// UNIT-PROFILE-SEAM-1: gated rewire of the hidden jump gate (:3256/:3264).
 			bool canJump = mc2UnitProfileDataEnabled()
 				? canPerform(UnitAction::Jump)
 				: (getObjectClass() == BATTLEMECH);
@@ -110,7 +107,6 @@ if (queuePlayerOrder)
 			break;
 		case TACTICAL_ORDER_ATTACK_OBJECT:
 			if (tacOrder.attackParams.method == ATTACKMETHOD_DFA) {
-				// Let's just make it a move/jump order, for now...
 				tacOrder.code = TACTICAL_ORDER_JUMPTO_OBJECT;
 				tacOrder.moveParams.wait = false;
 				tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_SLOW;
@@ -498,7 +494,6 @@ long Mover::addCriticalHitChunk (long which, long bodyLocation, long criticalSpa
 	if (numCriticalHitChunks[which] == MAX_CRITICALHIT_CHUNKS)
 		Fatal(0, " Mover::addCriticalHitChunk--Too many criticalhit chunks ");
 
-	// Since the "chunk" is so simple, we'll just make it here...
 	unsigned char chunkData = (unsigned char)((bodyLocation << 4) + criticalSpace);
 	criticalHitChunks[which][numCriticalHitChunks[which]++] = chunkData;
 	return(numCriticalHitChunks[which]);
@@ -540,15 +535,12 @@ long Mover::addRadioChunk (long which, unsigned char msg) {
 	if (numRadioChunks[which] == MAX_RADIO_CHUNKS)
 		return(numRadioChunks[which]);
 
-	// Since the "chunk" is so simple, we'll just make it here...
 	radioChunks[which][numRadioChunks[which]++] = msg;
 	return(numRadioChunks[which]);
 }
 
 long Mover::addRadioChunks (long which, unsigned char* packedChunkBuffer, long numChunks) {
 
-//	if ((numRadioChunks[which] + numChunks) >= MAX_RADIO_CHUNKS)
-//		Fatal(0, " Mover::addRadioChunks--Too many radio chunks ");
 	for (long i = 0; i < numChunks; i++)
 		addRadioChunk(which, packedChunkBuffer[i]);
 	return(numRadioChunks[which]);
@@ -696,8 +688,6 @@ long Mover::getWeaponsReady (int* list, int listSize) {
 
 long Mover::getWeaponsLocked (int* list, int listSize) {
 
-	// Make sure list is >= the number of locked
-	// weapons!
 
 	GameObjectPtr target = pilot->getCurrentTarget();
 	if (!target)
@@ -724,15 +714,12 @@ long Mover::getWeaponsLocked (int* list, int listSize) {
 
 long Mover::getWeaponsInRange (int* list, int listSize, float fireRangeOrder) {
 
-	// Make sure list is >= the number of locked
-	// weapons!
 	GameObjectPtr target = pilot->getCurrentTarget();
 	if (!target)
 		return(-2);
 
 	float rangeToTarget = distanceFrom(target->getPosition());
 
-	// For now, we always obey the fire range order...
 	#ifdef STUPID_RULES
 	if (rangeToTarget > fireRangeOrder)
 		return(-3);
@@ -762,7 +749,6 @@ long Mover::getWeaponShots (long weaponIndex) {
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoType())
 		return(ammoTypeTotal[inventory[weaponIndex].ammoIndex].curAmount);
 
-	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
 	return(UNLIMITED_SHOTS);
 }
 
@@ -1093,7 +1079,6 @@ long Mover::reduceAmmo (long ammoMasterId, long amount) {
 
 	long amountUsed = amount;
 
-	// Deduct it from the first available ammo critical space...
 	long firstAmmo = numOther + numWeapons;
 	for (long item = firstAmmo; item < firstAmmo + numAmmos; item++) {
 		if (inventory[item].masterID == ammoMasterId) {
@@ -1108,8 +1093,6 @@ long Mover::reduceAmmo (long ammoMasterId, long amount) {
         }
 	}
 
-	// Make sure the ammoTypeTotal list, in which we track total ammo for
-	// all of the ammo types this mover uses, is adjusted...
 	for (long ammo = 0; ammo < numAmmoTypes; ammo++) {
 		if (ammoTypeTotal[ammo].masterId == ammoMasterId) {
 			ammoTypeTotal[ammo].curAmount -= amountUsed;
@@ -1175,8 +1158,6 @@ void Mover::deductWeaponShot (long weaponIndex, long ammoAmount) {
 
 long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long sortType, bool skillCheck) {
 
-	// Make sure list is >= the number of locked
-	// weapons!
 	GameObjectPtr target = pilot->getCurrentTarget();
 	if (!target)
 		return(-2);

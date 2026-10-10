@@ -115,7 +115,6 @@ namespace {
 		return mc2::gate::get<"MC2_BRIDGE_MOVER_PERIOD_SEC">();   // the row clamps to >= 0.25
 	}
 
-	// Short name for the warrior status enum (see warrior.h WARRIOR_STATUS_*).
 	static const char* bridgeWarriorStatusName(long s) {
 		switch (s) {
 			case WARRIOR_STATUS_NORMAL:      return "normal";
@@ -572,9 +571,6 @@ long Mission::update (void)
 				missionLineChanged = turn;
 			}
 
-			// Tessellation/phong debug F-keys removed: F6/F7/F8 now drive the
-			// Tactical Overview / sensor / weapon-range views (mechcmd2.cpp), and
-			// terrain tuning lives in the imgui overlay. Shadow-softness keys kept.
 			{
 				// Shadow softness (Poisson disk radius) — edge-triggered (single step
 				// per press, not continuous while held) with 0.1 step for fine control.
@@ -813,7 +809,6 @@ long Mission::update (void)
 		{
 			if ( !mc2SimTickFrozen(missionInterface) || MPlayer )
 			{
-				// ABL-VM-FACTS-1: time the mission-brain fire; byte-identical when OFF.
 				mc2_abl_trace::FireScope ablFire("mission", -1);
 				long ablStmts;
 				{ ZoneScopedN("GameLogic.AI.BrainExecute"); ablStmts = missionBrain->execute(); }
@@ -834,8 +829,6 @@ long Mission::update (void)
 			}
 		}
 
-		// ABL-VM-FACTS-1: once/frame boundary -- flush aggregated per-frame ABL VM
-		// facts (all warrior fires + the mission fire above). No-op when OFF.
 		mc2_abl_trace::flushFrame(g_mc2FrameCounter, getBrainTickIndex());
 
 		// Runtime-bridge v0: emit [MOVER v2] mover.state to stdout (env-gated,

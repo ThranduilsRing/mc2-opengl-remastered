@@ -70,7 +70,6 @@ bool simIdentityTraceDetail() {
 	return on;
 }
 
-// Collect every live mover. NO CAP.
 //
 // MC2_BRIDGE_MOVER_STATE caps at 64 movers (code/mission.cpp kCap). For a
 // human-read debug table a cap is a kindness; for a HASH it is a correctness

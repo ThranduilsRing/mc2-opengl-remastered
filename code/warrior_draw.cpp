@@ -79,7 +79,6 @@ void MechWarrior::drawWaypointPath()
 
 }
 
-// Thick line segment (a quad) from (x0,y0) to (x1,y1), half-width hw, in color.
 static void drawThickSeg( float x0, float y0, float x1, float y1, float hw, unsigned long color )
 {
 	float dx = x1 - x0, dy = y1 - y0;
@@ -95,7 +94,6 @@ static void drawThickSeg( float x0, float y0, float x1, float y1, float hw, unsi
 	gos_DrawQuads( q, 4 );
 }
 
-// Filled arrowhead at tip (tx,ty) pointing along (dx,dy), size sz, in color.
 static void drawArrowHead( float tx, float ty, float dx, float dy, float sz, unsigned long color )
 {
 	float len = sqrtf( dx * dx + dy * dy );
@@ -110,8 +108,6 @@ static void drawArrowHead( float tx, float ty, float dx, float dy, float sz, uns
 	gos_DrawTriangles( t, 3 );
 }
 
-// Tactical Overview: draw this mech's queued move path as a thick arrowed line
-// in the given squad color (GL-consistent projection, HUD-scale exempt).
 void MechWarrior::drawOverviewMovePath( unsigned long color )
 {
 	if ( !tacOrderQueue || !getVehicle() )
@@ -185,8 +181,6 @@ void MechWarrior::drawOverviewMovePath( unsigned long color )
 	gos_SetHudScaleExempt( prevExempt );
 }
 
-// Free function: draw a single thick arrow between two WORLD points (used for
-// the squad-level overview arrow). GL-consistent projection, HUD-scale exempt.
 void drawOverviewArrowWorld( const Stuff::Vector3D& from, const Stuff::Vector3D& to, unsigned long color )
 {
 	float vmx, vmy, vax, vay;

@@ -28,7 +28,6 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 			case ORDERSTATE_GENERAL:
 				if (!newTacOrderReceived[ORDERSTATE_GENERAL])
 					tacOrder[ORDERSTATE_GENERAL].init();
-				// If we reach this, then we have no orders...
 				break;
 			case ORDERSTATE_PLAYER:
 				if (!newTacOrderReceived[ORDERSTATE_PLAYER]) {
@@ -251,8 +250,6 @@ long MechWarrior::handleAlarm (long alarmCode, unsigned long triggerId) {
 			break;
 	}
 
-	// After applying game-system effects for the alarm,
-	// check for ABL-handler in the pilot's brain module...
 	if (MPlayer && !MPlayer->isServer())
 		return(NO_ERR);
 
@@ -312,7 +309,6 @@ void MechWarrior::clearAlarmsHistory (void) {
 
 long MechWarrior::checkAlarms (void) {
 
-	// In case we call ABL-handlers, set these...
 	if (brain) {
 		CurGroup = getGroup();
 		CurObject = (GameObjectPtr)getVehicle();
@@ -321,7 +317,6 @@ long MechWarrior::checkAlarms (void) {
 		CurContact = NULL;
 	}
 
-	// Handle Alarm Events...
 	for (long code = 0; code < NUM_PILOT_ALARMS; code++)
 		if (alarm[code].numTriggers > 0) {
 			switch (code) {
@@ -395,8 +390,6 @@ long MechWarrior::checkAlarms (void) {
 					handleNewMover();
 					break;
 			}
-			// After applying game-system effects for the alarm,
-			// check for ABL-handlers in the pilot's brain module...
 			if (MPlayer) {
 				if (MPlayer->isServer())
 					if (brain && brainAlarmCallback[code]) {

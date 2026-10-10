@@ -134,10 +134,6 @@ void MoveChunk::build (MoverPtr mover, MovePathPtr path1, MovePathPtr path2) {
 				
 				}
 			else {
-				// step 0 = curPosition
-				// step 1 = curStep
-				// step 2 = curStep + 1
-				// step 3 = curStep + 2
 
 				numSteps = MOVECHUNK_NUM_STEPS;
 				long numStepsLeft = path1->numSteps - curPath1Step;
@@ -171,8 +167,6 @@ void MoveChunk::build (MoverPtr mover, MovePathPtr path1, MovePathPtr path2) {
 			// second path is irrelevant...
 //			Assert(curStep > 1, curStep, " MoveChunk.build: path2 and curStep == 1 ");
 			if (numSteps < (MOVECHUNK_NUM_STEPS + 1)) {
-				// Let's fill up the remaining steps in this chunk with
-				// steps from the second path...
 				long numAdditionalSteps = (MOVECHUNK_NUM_STEPS + 1) - numSteps;
 				if (path2->numSteps < numAdditionalSteps)
 					numAdditionalSteps = path2->numSteps;
@@ -304,8 +298,6 @@ void MoveChunk::unpack (MoverPtr mover) {
 
 	stepPos[0][0] = (data & MOVECHUNK_CELLPOS_MASK);
 
-	// Finally, set the delta steps based upon the first step and the
-	// relPos list...
 	if ((numSteps < 1) || (numSteps > 4)) {
 		// HACK!!!!!!!!!! All of this unpackerr stuff is a last minute hack...
 		err = 1;
@@ -794,7 +786,6 @@ void MoverDynamics::init (FitIniFilePtr dynamicsFile)
 			
 		result = dynamicsFile->readIdFloat("maxVelocity",max.groundVehicle.speed);
 		Assert(result == NO_ERR, result, " MoverDynamics.init: vehicle error 5 ");
-		// Frank Hack
 		max.groundVehicle.accel = max.groundVehicle.speed * 5.0;
 		}
 	else if (type == DYNAMICS_ELEMENTAL) {

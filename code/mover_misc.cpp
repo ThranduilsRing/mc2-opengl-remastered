@@ -258,11 +258,9 @@ bool Mover::handleEjection()
 	
 
 
-		// If we aren't already disabled, we are now...
  		disable(EJECTION_DEATH);
 
 #ifdef USE_IFACE
-		// The interface needs to know I'm not around anymore...
 		theInterface->RemoveMech(getPartId());
 #endif
 

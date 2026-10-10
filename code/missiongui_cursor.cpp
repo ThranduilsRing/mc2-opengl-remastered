@@ -80,8 +80,6 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 		eye->rotateRight(rotationInc * fabs(attilaRZAxis) * frameLength * ATTILA_ROTATION_FACTOR);
 	}
 	
- 	//------------------------------------------------
-	// Right drag is camera rotation and tilt now.
 	if (cameraClicked)
 	{
 		bRetVal = 1;
@@ -118,8 +116,6 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 			g_tacticalOverview.notifyUserPan();
 		userInput->setMouseCursor( mState_ROTATE_CAMERA );
 
-		//--------------------------------------------------
-		// Zoom Camera based on Mouse Wheel input.
 		long mouseWheelDelta = userInput->getMouseWheelDelta();
 		if (mouseWheelDelta)
 		{
@@ -148,8 +144,6 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 		return bRetVal;
 	}
 	
-	//--------------------------------------------------
-	// Zoom Camera based on Mouse Wheel input.
 	long mouseWheelDelta = userInput->getMouseWheelDelta();
 	if (mouseWheelDelta)
 	{
@@ -175,8 +169,6 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 		bRetVal = 1;
 	}
 
-	//-----------------------------------------------------------------
-	// If middle mouse button is pressed, go to normal tilt, 50% zoom	
 	if (middleClicked)
 	{
 		cameraNormal();
@@ -280,9 +272,6 @@ void MissionInterfaceManager::doDrag(bool bGui)
 		return;
 	}
 
-	//---------------------------------------------------------------------------
-	// Check if we wanted to select all visible.  If so, do it!
-//	if ( ((GetAsyncKeyState( VK_LBUTTON ))) && !bGui && !cameraClicked )
 	if ( ((gos_GetKeyStatus( KEY_LMOUSE ) == KEY_PRESSED)) && !bGui && !cameraClicked
 		&& !dragStart.x)
 	{
@@ -310,11 +299,8 @@ void MissionInterfaceManager::doDrag(bool bGui)
 		if ( (gos_GetKeyStatus( KEY_LMOUSE ) == KEY_RELEASED
 			|| gos_GetKeyStatus( KEY_LMOUSE ) == KEY_FREE) && isDragging)
 		{
-			//----------------------------------------------
-			// We should select everything in the drag box.
 
 		
-			// AND deselect anything outside of it.
 
 			GameObject*	objsInRect[MAX_ICONS];
 			int count = 0;
@@ -323,7 +309,6 @@ void MissionInterfaceManager::doDrag(bool bGui)
 			{
 				Stuff::Vector3D screenStart;
 				Stuff::Vector4D screenPos;
-				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
 				PROJECTZ_SITE("picking_drag_select_origin", "SelectionPicking");
 				eye->projectForSelectionPicking( dragStart, screenPos );
 				screenStart.x = screenPos.x;
@@ -341,7 +326,6 @@ void MissionInterfaceManager::doDrag(bool bGui)
 
 			if ( count )
 			{
-				// empty the info window of any previously selected guys
 				controlGui.setInfoWndMover( NULL );
 
 				if ( !userInput->shift() )
@@ -374,7 +358,6 @@ void MissionInterfaceManager::doDrag(bool bGui)
 
 bool MissionInterfaceManager::canAddVehicle( const Stuff::Vector3D& pos )
 {
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
 
  	if ( paintingVtol[commanderID] )
@@ -401,7 +384,6 @@ bool MissionInterfaceManager::canAddVehicle( const Stuff::Vector3D& pos )
 
 bool MissionInterfaceManager::canRecover( const Stuff::Vector3D& pos )
 {
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
 
  	if ( paintingVtol[commanderID] )
@@ -428,7 +410,6 @@ bool MissionInterfaceManager::canRecover( const Stuff::Vector3D& pos )
 
 long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCount, long nonMoverCount)
 {
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
 
  	long currentCursor = makeRangeCursor( lineOfSight );
@@ -553,22 +534,16 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 		case GROUNDVEHICLE:
 		case ELEMENTAL:
 		{
-			//---------------------------------------------------------------------------------------
-			// if target is enemy battleMech, select it, change cursor and check below for leftClick
 			if (target->getTeam() && !target->getTeam()->isFriendly(Team::home) && !target->getTeam()->isNeutral( Team::home ) )
 			{
 				target->setTargeted(true); 
 				if ( target->isDisabled() )
 				{
 					currentCursor = mState_NORMAL;
-	//				target = NULL;
 				}
 			}
 			else
 			{
-				//-------------------------------------------------------------------
-				// Otherwise we over a friendly.  Assume we intend to select them if
-				// we click.  If we shift-click, just add them.
 				target->setTargeted(true);		//For friendlies, let us know we need to draw their names!
 
 				currentCursor = mState_NORMAL;
@@ -586,7 +561,6 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 		{
 			if ( target->getObjectType()->getSubType() == BUILDING_SUBTYPE_LANDBRIDGE )
 			{
-				//Check if forcing fire or fire from current.  If so, shoot away.
 				if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[FORCE_FIRE_KEY].key ) == KEY_HELD || 
 					 controlGui.getFireFromCurrentPos() )
 				{
@@ -608,8 +582,6 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 					return makeNoTargetCursor( passable, lineOfSight, 0, 0, moverCount, nonMoverCount );
 				}
 			}
-			//------------------------------------------------------------------
-			// No matter what side this is on, change the cursor and select.
 			target->setTargeted(true);
 			TeamPtr targetTeam = target->getTeam();
 
@@ -643,8 +615,6 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 			
 		case DEBRIS:
 		{
-			//----------------------------------
-			// Do nothing for Debris right now.
 		}
 		break;			
 	}
@@ -711,7 +681,6 @@ long MissionInterfaceManager::makeNoTargetCursor( bool passable, bool lineOfSigh
 	// If not passable, dont.
 	// If passable and jumpCommand and cantJump, dont.
 
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
  	int cursorType = makeMoveCursor( lineOfSight );
 	if ( !moverCount )
@@ -942,32 +911,10 @@ long MissionInterfaceManager::calcRotation()
 	Stuff::Vector4D screenPosMover;
 	Stuff::Vector4D screenPosGoal;
 	actualPos.Add(camPos,actualPos);
-	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
 	eye->projectForScreenXY( actualPos, screenPosMover );
 
-	// need to find second position
-	// [PROJECTZ:ScreenXYOracle id=gui_cam_rotation_goal]
 	eye->projectForScreenXY( camPos, screenPosGoal );
 	
-	//CRAZY ATAN code.  Out for now.
-	// -fs
-	/*
-	// determine angle between the two
-	float deltaY = -(screenPosGoal.y - screenPosMover.y);
-	float deltaX = screenPosGoal.x - screenPosMover.x;
-
-	float theta = 0;
-	if ( deltaY && deltaX )
-	{
-		theta = atan( deltaY/deltaX );
-		theta *= RADS_TO_DEGREES; 
-	}
-
-	if ( deltaX < 0 )
-		theta += 180.f;
-
-	long rotation = ((theta/360.f * 32.f));
-	*/
 
 	//Do it the MC1 way!
 	float slope = 0.0f;

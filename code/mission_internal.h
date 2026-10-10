@@ -157,7 +157,6 @@
 
 #define DEFAULT_SKY			1
 
-// Globals defined in mission.cpp (or elsewhere in the engine) that the split pieces share.
 extern void visualTuning_applyProfile(const char*);
 extern void terrainMaterials_apply(const char*);
 extern "C" int mc2FreezeMoversActive();

@@ -338,7 +338,6 @@ void MissionInterfaceManager::update (void)
 			}
 			else if ( hit->unit )
 			{
-				// Singleton card: select just that unit (deselect the rest).
 				Team* pTeam = Team::home;
 				if ( pTeam )
 					for ( long i = 0; i < pTeam->getRosterSize(); i++ )
@@ -497,8 +496,6 @@ void MissionInterfaceManager::update (void)
 	bool altDn = userInput->alt();
 	bool ctrlDn = userInput->ctrl();
 
-	//Cheats
-	// Comment out here if FINAL
 #ifndef FINAL
 	#define MC2_DAMAGE_HEAD			0
 	#define MC2_DAMAGE_LARM			1
@@ -642,7 +639,6 @@ void MissionInterfaceManager::update (void)
 				py = userInput->getMouseY();
 			};
 
-			// Find a visible home mover to use as the KNOWN object under the cursor.
 			GameObjectPtr targetMover = NULL; float tcx = 0.f, tcy = 0.f;
 			if (Team::home)
 			{
@@ -1080,10 +1076,6 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 	if ( target )
 		target->setTargeted( 0 );
 
-	//----------------------------------------------------------------------------------------
-	// Get Any object we are over.  Change cursor if appropriate.  Set selected if necessary.
-	// Clear the target pointer if we have done all we need to do here.  Otherwise, leave it
-	// set and issue an order below based on who is in the myForce pointers.
 	//
 	// GPU_PICK_HOVER_DYNAMIC-1: fast mech hover via ObjectId MRT.
 	// Gate: MC2_GPU_PICK_HOVER=1 + MC2_OBJECT_ID_BUFFER=1.
@@ -1129,7 +1121,6 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 				}
 				s_hoverCacheValid = false;   // cached object died — re-pick fresh below
 			}
-			// Viewport-to-GL coord transform via proven ScreenPick utility.
 			float vMulX, vMulY, vAddX, vAddY;
 			gos_GetViewport(&vMulX, &vMulY, &vAddX, &vAddY);
 			if (vMulX > 0.0f && vMulY > 0.0f &&
@@ -1174,7 +1165,6 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 					}
 				}
 			}
-			// GPU miss or non-Mech: invalidate cache, fall through to CPU.
 			s_hoverCacheValid = false;
 			++s_cpuFallback;
 		}

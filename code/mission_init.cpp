@@ -50,8 +50,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// campaign cannot inherit a freeze nobody asked for in this mission.
 	mc2FreezeMoversMissionReset();
 	gos_dev_shell::registerCommand("sim_speed", devShellSimSpeed);
-	// F3 CPU projection cost-baseline: flush previous-mission samples and
-	// clear ring buffer. No-op when env OFF.
 	::mc2_cpu_proj_cost::hard_reset("Mission::init");
 
 	// Reset GPU static-prop batcher state at every map boundary, before any
@@ -129,7 +127,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				
 	turn = 0;
 	terminationCounterStarted = 0;
-	// GAMEPLAY-DRIVER-2: scope a forced outcome to the mission that forced it.
 	forcedTerminationResult = mis_PLAYING;
 
 	#ifdef LAB_ONLY
@@ -275,8 +272,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		// registry beside masterList (gated MC2_UNIT_PROFILE_DATA; gate-OFF no-op).
 		// Additive -- reads masterList only, changes no gameplay path.
 		buildAndDumpEquipmentRegistryIfEnabled();
-		// FIRE-EXECUTOR-REGISTRY-1 (E7): gated proof of the fireExecutor lookup
-		// over the just-loaded weapon components (no-op OFF; fires nothing).
 		dumpFireExecutorProofIfEnabled();
 	}
 
@@ -397,7 +392,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	FullPathFileName missionFileName;
 	missionFileName.init(missionPath,missionName,".fit");
 
-	// Activate mod scope for this mission (no-op if it's a base-game mission).
 	ActivateModForMission(missionFileName);
 
 	duration = 60;
@@ -796,7 +790,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		else {
 			// Packet 4 is empty — mission was saved without MOVE data.
 			STOP(("Mission has not movement Data.  QuickSaved Map?"));
-			// Blank MOVE synthesized below (shared with the seekPacket-failed path).
 		}
 	}
 
@@ -1037,7 +1030,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">();
 			if (inlineEmptySkip && !MPlayer && moduleName[0] == '\0')
 			{
-				// No legacy ABL brain; the inline Brain{} block drives this warrior.
 				pilot->setBrainName("");
 			}
 			else
@@ -1243,13 +1235,11 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// MC2_BRAIN_RUNTIME_FORCE_MODE (if set) overrides all per-unit modes as a post-load global.
 	if (mc2::gate::get<"MC2_BRAIN_RUNTIME">()) {
 		char aiFitName[256];
-		// missionName is the raw name like "mc2_01"; missionPath is "data/missions/".
 		std::snprintf(aiFitName, sizeof(aiFitName), "%s%s_ai.fit", missionPath, missionName);
 		std::fprintf(stderr, "[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission=%s seeking %s\n", missionName, aiFitName);
 		std::fflush(stderr);
 		FitIniFile* aiFit = new FitIniFile;
 		if (aiFit && aiFit->open(aiFitName) == NO_ERR) {
-			// Seek the single "Brain" block (single-warrior fixture; multi-block not supported this slice).
 			if (aiFit->seekBlock("Brain") == NO_ERR) {
 				char unitRefBuf[32] = {};
 				long modeValLong = 0;
@@ -1309,7 +1299,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		FitIniFile* tacFit = new FitIniFile;
 		if (tacFit && tacFit->open(tacFitName) == NO_ERR) {
 			if (tacFit->seekBlock("Tactics") == NO_ERR) {
-				// Parse known tactic names; missing keys silently default to 0.
 				struct { const char* name; int idx; } kTacticKeys[] = {
 					{ "None",             TACTIC_NONE             },
 					{ "FlankLeft",        TACTIC_FLANK_LEFT       },
@@ -1341,7 +1330,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 					MechWarriorPtr w = MechWarrior::warriorList[i];
 					if (w) {
 						if (!w->getBrainRuntime()) {
-							// Allocate runtime so tactic weights are accessible even for Legacy warriors.
 							w->setBrainRuntimeMode(BrainRuntimeMode::Legacy);
 						}
 						MechBrainRuntime* rt = w->getBrainRuntime();
@@ -1484,7 +1472,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 							std::fflush(stderr);
 							break;
 						case FsmTodoKind::OTHER_TODO:
-							// Suppressed from detail trace (counted in summary only).
 							break;
 					}
 				}

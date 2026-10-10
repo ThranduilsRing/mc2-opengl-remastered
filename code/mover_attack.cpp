@@ -223,7 +223,6 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 			attackChance += 20.0f;
 	}
 	
- 	//No more modifiers EXCEPT what is in here.
 	if (attackChance > 95.0f)
 		attackChance = 95.0f;
 	
@@ -254,8 +253,6 @@ void Mover::ammoExplosion (long ammoIndex) {
 				  MasterComponent::masterList[ammoMasterId].getAmmoExplosiveDamage();
 	inventory[ammoIndex].amount = 0;
 
-	// Make sure the ammoTypeTotal list, in which we track total ammo for
-	// all of the ammo types this mover uses, is adjusted...
 	if (inventory[ammoIndex].ammoIndex == -1)
 		Fatal(-1," Bad Ammo Index in Ammo Explosion ");
 
@@ -316,8 +313,6 @@ void Mover::disable (unsigned long cause)
 
 		if (isMech() && (getMoveType() != MOVETYPE_AIR))
 		{
-			//We now want to play a BUNCH of critical Hit Explosions on the mech
-			// To indicate that we are going down.
 			Stuff::Vector3D explosionLoc;
 			explosionLoc = appearance->getNodeNamePosition("cockpit");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,explosionLoc,0.0f,0.0f);

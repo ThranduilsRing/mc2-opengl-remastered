@@ -142,10 +142,6 @@ long GroundVehicle::update (void)
 		timeLeft -= frameLength;
 		if (timeLeft < 0.0)
 		{
-			//-------------------------------------------------------------
-			// Vehicle is a stopped hulk on the terrain.  No More updates.
-			// When we know how to change to destroyed appearance, put code here.
-			// Nevermind that, keep the damned thing from disappearing!!
 			updateAnimations();		//Keep calling so they stop moving!
 			
 			if (appearance)
@@ -184,8 +180,6 @@ long GroundVehicle::update (void)
 				}
 			}
  
-			//------------------------------------------------
-			// Blow the Vehicle and leave the hulk next frame
 			if (!appearance->playDestruction())
 			{
 				if (((GroundVehicleTypePtr)getObjectType())->explDmg > 0.0f)
@@ -298,7 +292,6 @@ long GroundVehicle::update (void)
 	if (withdrawing && !inView && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
 		getObjectType()->handleDestruction(this, NULL);
 
-	//We are a vehicle pilot.  Whack us when we are no longer in view.
 	if (isVehiclePilot && !inView)
 		MC2_DESTROY(this, "vehicle_pilot_offscreen");
 
@@ -390,9 +383,6 @@ long GroundVehicle::update (void)
 
 	if (newMoveChunk) {
 		if (!statusChunk.jumpOrder) {
-			//------------------------------------------------------------
-			// If we're too far from where we should be, perhaps we should
-			// just warp to it...
 			Stuff::Vector3D correctPos;
 			land->cellToWorld(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1], correctPos);
 			correctPos.z = 0.0;
@@ -476,9 +466,6 @@ long GroundVehicle::update (void)
 		}
 	}
 
-	//------------------------------------------------------------------------------
-	// Now that we have our new position, glue mech to terrain by
-	// changing z to match terrainElevation at that point, IF VEHICLE IS VISIBLE!!!!
 	float zPos = TerrainRuntime::groundElevation(position);
 	position.z = zPos;
 	if ((moveLevel == 1) && (zPos < MapData::waterDepth))
@@ -633,8 +620,6 @@ long GroundVehicle::update (void)
 		setTangible(true);
 	}
 
-	//-------------------------------------------------------------------------------
-	// Let the moverBlockList know which block the Mech is in for Collision Purposes
 	{
 		ZoneScopedN("GameLogic.Units.Vehicles Collisions");
 		float xCoord = position.x - Terrain::mapTopLeft3d.x;
@@ -711,14 +696,12 @@ void GroundVehicle::render (void)
 				appearance->setBarColor(SB_RED);
 				appearance->render();
 				
-				//No more text help at this quality level
 			}
 			else if (cStat == CONTACT_SENSOR_QUALITY_2)
 			{
 				appearance->setBarColor(SB_RED);
 				appearance->render();
 				
-				//No more text help at this quality level
 			}
 			else if (cStat == CONTACT_SENSOR_QUALITY_3)
 			{
