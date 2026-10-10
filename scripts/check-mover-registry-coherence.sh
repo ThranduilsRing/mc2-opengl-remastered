@@ -11,17 +11,17 @@
 # line numbers):
 #   S1a setOnGUI( call-site allowlist — outside the three definitions
 #       (code/mover.h, code/gameobj.h, code/gvehicl.h) the exhaustive caller
-#       set is {code/mission.cpp x4, code/mech.cpp x1}. A new writer turns
+#       set is {code/mission.cpp x4, code/mech_update.cpp x1}. A new writer turns
 #       the repo red until consciously allowlisted with a pairing review.
 #   S1b direct isOnGui member writes — pattern excludes the serializer LHS
 #       (data->isOnGui = ...); allowlist {code/mover*.cpp x2 (init + load
 #       restore), code/mover.h x1, code/gvehicl.h x1}.
-#   S2  write-pairing windows — mech.cpp link-up setOnGUI(true) has
+#   S2  write-pairing windows — mech_update.cpp link-up setOnGUI(true) has
 #       missionInterface->addMover(this) within 10 lines above; mission.cpp
 #       part-spawn setOnGUI(true) has missionInterface->addMover(mover)
 #       within 60 lines above (same function); missionInterface->removeMover
 #       sites exactly {mission.cpp x2}; missionInterface->addMover sites
-#       exactly {mission.cpp x2, mech.cpp x1}; ObjectManager->freeMover's
+#       exactly {mission.cpp x2, mech_update.cpp x1}; ObjectManager->freeMover's
 #       sole game-side caller (mission.cpp) preceded by removeMover within
 #       10 lines.
 #   S3  read-gate pins, TRIMMED — HARD pins only the three gates with
@@ -80,10 +80,10 @@ s1a_setongui_sites() {
         | strip_comments \
         | grep -Ev '(code/)?(mover|gameobj|gvehicl)\.h:' || true)"
     mission_n="$(printf '%s\n' "$hits" | grep -c 'mission\.cpp:' || true)"
-    mech_n="$(printf '%s\n' "$hits" | grep -c 'mech\.cpp:' || true)"
-    other="$(printf '%s\n' "$hits" | grep -v 'mission\.cpp:\|mech\.cpp:' | grep -v '^$' || true)"
+    mech_n="$(printf '%s\n' "$hits" | grep -c 'mech_update\.cpp:' || true)"
+    other="$(printf '%s\n' "$hits" | grep -v 'mission\.cpp:\|mech_update\.cpp:' | grep -v '^$' || true)"
     [ "$mission_n" -eq 4 ] || echo "  S1a: mission.cpp setOnGUI caller count $mission_n != 4 (allowlisted: part-spawn x3 + Mission::addMover)"
-    [ "$mech_n" -eq 1 ]    || echo "  S1a: mech.cpp setOnGUI caller count $mech_n != 1 (allowlisted: link-up)"
+    [ "$mech_n" -eq 1 ]    || echo "  S1a: mech_update.cpp setOnGUI caller count $mech_n != 1 (allowlisted: link-up)"
     if [ -n "$other" ]; then
         echo "  S1a: setOnGUI caller outside the allowlist:"
         printf '%s\n' "$other" | sed 's/^/    /'
@@ -119,19 +119,19 @@ s1b_member_writes() {
 }
 
 # ---------------------------------------------------------------------------
-# S2: write-pairing windows. $1 = mech.cpp path, $2 = mission.cpp path.
+# S2: write-pairing windows. $1 = mech_update.cpp path, $2 = mission.cpp path.
 # ---------------------------------------------------------------------------
 s2_pairing() {
     mech="$1"; mission="$2"
 
-    # (a) mech.cpp link-up: setOnGUI(true) has addMover(this) <=10 lines above.
+    # (a) mech_update.cpp link-up: setOnGUI(true) has addMover(this) <=10 lines above.
     ln="$(grep -n 'setOnGUI(true);' "$mech" | strip_comments | head -1 | cut -d: -f1 || true)"
     if [ -z "${ln:-}" ]; then
-        echo "  S2a: mech.cpp link-up setOnGUI(true) not found"
+        echo "  S2a: mech_update.cpp link-up setOnGUI(true) not found"
     else
         start=$((ln - 10)); [ "$start" -lt 1 ] && start=1
         if ! sed -n "${start},${ln}p" "$mech" | grep -q 'missionInterface->addMover(this)'; then
-            echo "  S2a: mech.cpp setOnGUI(true) at :$ln lacks missionInterface->addMover(this) within 10 lines above"
+            echo "  S2a: mech_update.cpp setOnGUI(true) at :$ln lacks missionInterface->addMover(this) within 10 lines above"
         fi
     fi
 
@@ -153,11 +153,11 @@ s2_pairing() {
     rm_n="$(grep -c 'missionInterface->removeMover' "$mission" || true)"
     [ "$rm_n" -eq 2 ] || echo "  S2c: mission.cpp missionInterface->removeMover count $rm_n != 2 (Mission::removeMover + Mission::tradeMover)"
 
-    # (d) addMover sites: exactly {mission.cpp x2, mech.cpp x1}.
+    # (d) addMover sites: exactly {mission.cpp x2, mech_update.cpp x1}.
     am_mission_n="$(grep -c 'missionInterface->addMover' "$mission" || true)"
     am_mech_n="$(grep -c 'missionInterface->addMover' "$mech" || true)"
     [ "$am_mission_n" -eq 2 ] || echo "  S2d: mission.cpp missionInterface->addMover count $am_mission_n != 2 (Mission::addMover + Mission::tradeMover)"
-    [ "$am_mech_n" -eq 1 ]    || echo "  S2d: mech.cpp missionInterface->addMover count $am_mech_n != 1 (link-up)"
+    [ "$am_mech_n" -eq 1 ]    || echo "  S2d: mech_update.cpp missionInterface->addMover count $am_mech_n != 1 (link-up)"
 
     # (e) freeMover sole game-side caller, preceded by removeMover <=10 lines.
     ln="$(grep -n 'ObjectManager->freeMover(' "$mission" | strip_comments | head -1 | cut -d: -f1 || true)"
@@ -232,13 +232,13 @@ s4_guard_shape() {
 }
 
 # ---------------------------------------------------------------------------
-# S5: link-up gate shape. $1 = mech.cpp.
+# S5: link-up gate shape. $1 = mech_update.cpp.
 # ---------------------------------------------------------------------------
 s5_linkup_gate() {
     mech="$1"
     ln="$(grep -n 'if (!isOnGUI())' "$mech" | strip_comments | head -1 | cut -d: -f1 || true)"
     if [ -z "${ln:-}" ]; then
-        echo "  S5: link-up gate 'if (!isOnGUI())' MISSING from mech.cpp (#50 latch fix reverted?)"
+        echo "  S5: link-up gate 'if (!isOnGUI())' MISSING from mech_update.cpp (#50 latch fix reverted?)"
         return 0
     fi
     start=$((ln - 10)); [ "$start" -lt 1 ] && start=1
@@ -291,7 +291,7 @@ run_check() {
     [ -n "$v" ] && { echo "[mover-coherence] S1a FAIL:"; printf '%s\n' "$v"; fail=1; }
     v="$(s1b_member_writes "$ROOT")"
     [ -n "$v" ] && { echo "[mover-coherence] S1b FAIL:"; printf '%s\n' "$v"; fail=1; }
-    v="$(s2_pairing "$ROOT/code/mech.cpp" "$ROOT/code/mission.cpp")"
+    v="$(s2_pairing "$ROOT/code/mech_update.cpp" "$ROOT/code/mission.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S2 FAIL:"; printf '%s\n' "$v"; fail=1; }
 
     v="$(s3_read_gates "$ROOT/code/objmgr.cpp" "$ROOT/code/gametacmap.cpp" "$ROOT/code/controlgui.cpp"; s3_advisory_selectall "$ROOT/code/missiongui.cpp")"
@@ -302,7 +302,7 @@ run_check() {
 
     v="$(s4_guard_shape "$ROOT/code/missiongui.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S4 FAIL:"; printf '%s\n' "$v"; fail=1; }
-    v="$(s5_linkup_gate "$ROOT/code/mech.cpp")"
+    v="$(s5_linkup_gate "$ROOT/code/mech_update.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S5 FAIL:"; printf '%s\n' "$v"; fail=1; }
     v="$(s6_audit_region "$ROOT/code/mission.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S6 FAIL:"; printf '%s\n' "$v"; fail=1; }
@@ -345,9 +345,9 @@ EOF
         return 1
     fi
 
-    # S2a revert-simulation: delete the addMover pairing above the mech.cpp
+    # S2a revert-simulation: delete the addMover pairing above the mech_update.cpp
     # link-up setOnGUI(true) — pairing window must go red.
-    sed 's/missionInterface->addMover(this);//' "$ROOT/code/mech.cpp" > "$tmp/mech_nopair.cpp"
+    sed 's/missionInterface->addMover(this);//' "$ROOT/code/mech_update.cpp" > "$tmp/mech_nopair.cpp"
     v="$(s2_pairing "$tmp/mech_nopair.cpp" "$ROOT/code/mission.cpp")"
     if ! printf '%s\n' "$v" | grep -q 'S2a\|S2d'; then
         echo "mover-coherence --self-test: FAIL (S2 unpaired setOnGUI NOT detected)"
@@ -367,7 +367,7 @@ EOF
     # S5 revert-simulation: re-key the link-up gate on SHUTDOWN status
     # (the pre-#50 latch shape).
     sed 's/if (!isOnGUI())/if ((status == OBJECT_STATUS_SHUTDOWN) \&\& !isOnGUI())/' \
-        "$ROOT/code/mech.cpp" > "$tmp/mech_latch.cpp"
+        "$ROOT/code/mech_update.cpp" > "$tmp/mech_latch.cpp"
     v="$(s5_linkup_gate "$tmp/mech_latch.cpp")"
     if [ -z "$v" ]; then
         echo "mover-coherence --self-test: FAIL (S5 SHUTDOWN-keyed link-up gate NOT detected)"
