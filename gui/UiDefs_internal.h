@@ -166,6 +166,7 @@ struct UiElement {
     float animTimeHighlightPressed = 0.0f;
     float animTimeDisabled         = 0.0f;
 
+    // Per-state UV overrides (-1 = use base uvX/uvY)
     int uvPressedX  = -1, uvPressedY  = -1;
     int uvHoverX    = -1, uvHoverY    = -1;
     int uvDisabledX = -1, uvDisabledY = -1;
@@ -203,6 +204,8 @@ struct UiElement {
     int  sliderMax    = 255;
     bool sliderActive = false;   // true while the thumb is being dragged
 
+    // EditBox (GuiEditBox) runtime state.
+    // editBuffer is owned here and handed directly to ImGui::InputText each frame.
     static constexpr int kEditBufSize = 256;
     char editBuffer[kEditBufSize] = {};
     int  maxLength     = kEditBufSize - 1;

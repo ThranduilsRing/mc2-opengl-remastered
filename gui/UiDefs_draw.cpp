@@ -445,6 +445,10 @@ void drawUiListElement(UiElement& e, int xOffset, int yOffset, const PageScale& 
     }
 }
 
+// GuiSlider: a horizontal groove with a value-filled portion and a draggable
+// thumb. Colors come from the element -- fillColor = groove, textColor = filled
+// portion, highlightColor = thumb. Value + drag state live on the element; the
+// owning screen reads it back each frame via getSliderValue().
 void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)
 {
     const FRect r = scaledRect(e.rect, xOffset, yOffset, s);
@@ -472,6 +476,10 @@ void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale
     GuiRuntime::DrawUiRect(thumbX, r.y, thumbW, r.h, e.highlightColor, true);
 }
 
+// GuiCheckbox / GuiRadio: a modern glyph driven by e.pressed (the toggle/radio
+// state, synced from the legacy button), plus the button's text label in a STABLE
+// MC2-orange (no hover/press flash). The element rect is the glyph box; the label
+// lives in textRect. Glyph colors are fixed to the MC2 theme.
 void drawUiCheckRadioElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)
 {
     const FRect box = scaledRect(e.rect, xOffset, yOffset, s);
