@@ -215,7 +215,7 @@ L(Lead0Kill, "MC2_CPU_PHONG_RETIRE", Bool, true, "code", "", "[DEFAULT-ON KILLSW
 L(Lead1, "MC2_CPU_PROJ_COST_SPLIT", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_CRASH_FAST_EXIT", Bool, false, "gameos", "", "Headless crash fast-exit: write the bundle, then terminate WITHOUT the modal dialog so an automated soak/harness process exits immediately on crash (the..."),
 L(Presence, "MC2_CURSOR_TARGET_TRACE", Bool, false, "code", "", ""),
-G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy") | verified),
+G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
 L(Lead0, "MC2_DEBUG_RENDERER", Bool, false, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, false)),
 L(Lead0, "MC2_DEBUG_RENDERER_TEST", Bool, false, "gameos", "", ""),
@@ -282,7 +282,7 @@ L(Presence, "MC2_EDITOR_STATIC_PRIME_DIAG", Bool, false, "props", "", "MC2_EDITO
 L(Presence, "MC2_EDITOR_TRACE", Bool, false, "editor", "", ""),
 G("MC2_EDITOR_UI_DEFS", Bool, true, "editor", "", "Mission Editor shell overlay is data/defs-first by default."),
 L(Exact1, "MC2_EDITOR_WATCHDOG", Bool, false, "editor", "", ""),
-G("MC2_EFFECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", tokens("|legacy") | verified),
+G("MC2_EFFECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", tokens("|legacy|modern") | verified),
 L(Presence, "MC2_ENGINE_XL", Bool, false, "mech", "", ""),
 L(Lead0, "MC2_EQUIPMENT_ADD", Bool, false, "code", "", ""),
 G("MC2_EQUIPMENT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated")),
@@ -332,7 +332,7 @@ L(Presence, "MC2_FRAMEGRAPH_REORDER_SPMECH", Bool, false, "code", "", "MEASURED-
 L(AtoiNZ, "MC2_FRAME_JOBS", Bool, false, "code", "", "", passthrough),
 P("MC2_FRAME_JOBS_BATCH", Int, 64, "code", "", "", passthrough),
 L(Lead1, "MC2_FRAME_JOBS_TOUCH", Bool, false, "code", "", "", passthrough),
-G("MC2_FRAME_JOBS_TOUCH_DIAG", Bool, false, "props", "", "", verified | passthrough),
+G("MC2_FRAME_JOBS_TOUCH_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 L(AtoiNZ, "MC2_FRAME_JOBS_TRACE", Bool, false, "code", "", "", passthrough),
 P("MC2_FRAME_JOBS_WORKERS", Int, 0, "code", "", "", passthrough),  // default not derivable from the tree
 L(Exact1, "MC2_FRAME_PASS_STATS", Bool, false, "gameos", "", "", passthrough),
@@ -512,8 +512,8 @@ L(Lead0Kill, "MC2_LIGHTBAKE_REBAKE_ON_READY", Bool, true, "props", "", "LIGHTBAK
 // history: docs/gate-history.md#MC2_LIGHTBAKE_STABILITY
 L(Presence, "MC2_LIGHTBAKE_STABILITY", Bool, false, "code", "", "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: per-instance lightDataIndex permanence/stability proof.", registry(Trace, "MC2_TRACE_LIGHTBAKE_STABILITY", -1, false) | verified),
 L(Lead0Kill, "MC2_LIGHTBRIDGE", Bool, true, "code", "", "", verified),
-G("MC2_LIGHTBRIDGE_STABLE_SKIP", Bool, false, "props", "", "", verified | passthrough),
-G("MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG", Bool, false, "props", "", "", verified),
+G("MC2_LIGHTBRIDGE_STABLE_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
+G("MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified),
 L(Lead0P, "MC2_LIGHTGRID_BUILD", Bool, false, "gameos", "", ""),
 L(Lead0P, "MC2_LIGHTGRID_PLANT", Bool, false, "gameos", "", ""),
 L(Lead0P, "MC2_LIGHTGRID_VERIFY", Bool, false, "gameos", "", ""),
@@ -525,7 +525,7 @@ L(Lead0P, "MC2_LIGHTGRID_VERIFY", Bool, false, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_LIGHTING_DEBUG_VIEW
 G("MC2_LIGHTING_DEBUG_VIEW", Enum, "", "gameos", "", "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs.", passthrough | tokens("|0|albedo|ambient|final|lightcount|lightindex|normal|off|overbright|shadow|sun") | registry(Feature, "MC2_FEATURE_LIGHTING_DEBUG_VIEW", -1, false)),
 L(Presence, "MC2_LIGHTING_LINEAR_AUDIT", Bool, false, "post", "", "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe."),
-G("MC2_LIGHTING_SHADOW_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy") | verified),
+G("MC2_LIGHTING_SHADOW_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 L(Presence, "MC2_LIGHTSLOT_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_LIGHTSSBO_TRACE", Bool, false, "mech", "", ""),
 P("MC2_LIGHT_BILLBOARD_FACING", Int, 0, "props", "", "", passthrough),
@@ -693,7 +693,7 @@ L(Presence, "MC2_MISSION_INTRO_LEGACY_RENDER", Bool, false, "terrain", "", "TRAC
 L(Presence, "MC2_MISSION_SPLIT", Bool, false, "code", "", "", passthrough),
 L(Lead0Kill, "MC2_MODERN_TERRAIN_PATCHES", Bool, true, "terrain", "", "Default ON post Slice-1 flip (2026-04-29).", passthrough | verified),
 L(Lead0Kill, "MC2_MODERN_TERRAIN_SURFACE", Bool, true, "terrain", "", "", passthrough | verified),
-G("MC2_MODERN_TEX_RESOLVE", Bool, true, "code", "", "", verified),
+G("MC2_MODERN_TEX_RESOLVE", Bool, true, "code", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified),
 L(Presence, "MC2_MODERN_TEX_RESOLVE_TRACE", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_MODERN_TEX_RESOLVE_VALIDATE", Bool, false, "code", "", "Default ON with explicit opt-out.", verified),
 L(Presence, "MC2_MODOVERRIDE_TRACE", Bool, false, "props", "", "", verified),
@@ -721,7 +721,7 @@ L(Lead0, "MC2_NO_ACTIVATE", Bool, false, "editor", "", "Mission Editor (editor/E
 L(Lead0Def, "MC2_NO_CURSOR_GRAB", Bool, false, "gameos", "", "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window...", registry(Trace, "MC2_TRACE_NO_CURSOR_GRAB", -1, false)),
 L(Presence, "MC2_NO_LAUNCHER", Bool, false, "gameos", "", "", passthrough),
 L(Presence, "MC2_OBJBATCHER_TRACE", Bool, false, "props", "", ""),
-G("MC2_OBJECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", passthrough | tokens("|legacy") | verified),
+G("MC2_OBJECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", passthrough | tokens("|legacy|modern") | verified),
 L(Exact1, "MC2_OBJECT_ADMISSION_SELFTEST", Bool, false, "gameos", "", "Optional startup selftest - hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression."),
 // history: docs/gate-history.md#MC2_OBJECT_ID_BUFFER
 L(DefOnLead0, "MC2_OBJECT_ID_BUFFER", Bool, true, "code", "", "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5).", passthrough | registry(Feature, "MC2_FEATURE_OBJECT_ID_BUFFER", 2, true)),
@@ -806,7 +806,7 @@ L(Lead0, "MC2_PROJECTED_DECALS", Bool, false, "post", "", "DECAL-INTEGRATE-1: MC
 // PPC / direct-fire projectile knobs (gameplay; launcher-toggleable)
 // history: docs/gate-history.md#MC2_PROJECTILE_SPEED_MULT
 P("MC2_PROJECTILE_SPEED_MULT", Float, 1.0, "code", "", "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).", passthrough | registry(Feature, "MC2_PROJECTILE_SPEED_MULT", -1, false)),
-G("MC2_PROJECTZ_BYPASS_MODE", Enum, "", "code", "", "", tokens("|Compare|Off") | verified),
+G("MC2_PROJECTZ_BYPASS_MODE", Enum, "", "code", "", "", tokens("|Compare|Off|Bypass") | verified),
 P("MC2_PROJECTZ_GUARD_PX", Int, 0, "code", "", "", passthrough | verified),  // default not derivable from the tree
 L(Presence, "MC2_PROJECTZ_HEATMAP", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PROJECTZ_SUMMARY", Bool, false, "code", "", "", passthrough | verified),
@@ -887,8 +887,8 @@ L(Presence, "MC2_SCENE_LIGHTING_TRACE", Bool, false, "code", "", ""),
 P("MC2_SCREENSHOT_AT_FRAME", Int, -1, "gameos", "", "", passthrough),
 L(Presence, "MC2_SCREENSHOT_PATH", Bool, false, "gameos", "", "Oracle: deterministic backbuffer screenshot at a target frame.", passthrough),
 G("MC2_SCREENSHOT_SOURCE", Enum, "", "gameos", "", "", tokens("|backbuffer")),
-G("MC2_SCREENXY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy") | verified),
-G("MC2_SELECTION_PICKING_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy") | verified),
+G("MC2_SCREENXY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
+G("MC2_SELECTION_PICKING_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 L(Lead0, "MC2_SENSOR_SCAN_FACTS", Bool, false, "code", "", ""),
 // SetupTexturesLegacyForce (TRACKV-CI-GATE-RESTORE-1)
 // history: docs/gate-history.md#MC2_SETUPTEXTURES_LEGACY_FORCE
@@ -1040,9 +1040,9 @@ P("MC2_SSAO_BLUR_SIGMA", Float, 0.0, "post", "", "SSAO-BLUR-1 tunable: RELATIVE 
 L(Lead0, "MC2_SSAO_DEBUG", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead...", passthrough | registry(Trace, "MC2_DIAG_SSAO_DEBUG", -1, false)),
 // history: docs/gate-history.md#MC2_SSAO_RADIUS
 P("MC2_SSAO_RADIUS", Float, 0.0, "post", "", "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius.", range(0.1, 64.0) | registry(Feature, "MC2_FEATURE_SSAO_RADIUS", -1, false)),  // default not derivable from the tree
-G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "", passthrough | verified),
-G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "", verified | passthrough),
-G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "", verified | passthrough),
+G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", passthrough | verified),
+G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
+G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 L(Lead1, "MC2_STANDARD_LIT_V1", Bool, false, "mech", "", ""),
 // history: docs/gate-history.md#MC2_STATICPROP_BC7
 L(Lead0P, "MC2_STATICPROP_BC7", Bool, false, "props", "", "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)...", registry(Feature, "MC2_FEATURE_STATICPROP_BC7", 32, false)),

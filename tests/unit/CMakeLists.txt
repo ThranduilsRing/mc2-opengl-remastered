@@ -235,6 +235,8 @@ target_link_libraries(test_render_contract_3 PRIVATE
     ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
     opengl32
 )
+# render_contract.cpp reads its gates through the typed registry.
+mc2_link_gate(test_render_contract_3)
 
 # UNIT-MODLINT-CLI-1 (Phase-3 slice 3): the offline modder validator CLI.
 # Standalone binary that reads a unit facts-JSON, runs the AUTHORITATIVE pure

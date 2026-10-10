@@ -3642,7 +3642,7 @@ void MC_TextureManager::renderLists (void)
 					// is also effectively constant per session; the extra compare is free.
 					// DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven
 					// s_registryGeneration dirty-only pattern, shadow pass reads only
-					// modelMatrix+typeID): only literal "0" opts out.
+					// modelMatrix+typeID): a value starting with "0" opts out.
 					static const bool s_dynPropDirtyOnly = mc2::gate::get<"MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY">();
 					static uint64_t  s_dynPropInstsGeneration = UINT64_MAX; // sentinel: force first build
 					static bool      s_dynPropInstsIncludeBldg = false;

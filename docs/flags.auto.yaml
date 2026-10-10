@@ -967,7 +967,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|Legacy"
+    tokens: "|Legacy|Modern"
     verified: true
   - name: MC2_DEBUG_RENDERER
     kind: Bool
@@ -1340,7 +1340,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|legacy"
+    tokens: "|legacy|modern"
     verified: true
   - name: MC2_ENGINE_XL
     kind: Bool
@@ -1589,7 +1589,7 @@ flags:
     default: false
     rule: Std
     owner: props
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
     verified: true
   - name: MC2_FRAME_JOBS_TRACE
@@ -2503,7 +2503,7 @@ flags:
     default: false
     rule: Std
     owner: props
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
     verified: true
   - name: MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG
@@ -2511,7 +2511,7 @@ flags:
     default: false
     rule: Std
     owner: props
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     verified: true
   - name: MC2_LIGHTGRID_BUILD
     kind: Bool
@@ -2552,7 +2552,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|Legacy"
+    tokens: "|Legacy|Modern"
     verified: true
   - name: MC2_LIGHTSLOT_TRACE
     kind: Bool
@@ -3467,7 +3467,7 @@ flags:
     default: true
     rule: Std
     owner: code
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     verified: true
   - name: MC2_MODERN_TEX_RESOLVE_TRACE
     kind: Bool
@@ -3611,7 +3611,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|legacy"
+    tokens: "|legacy|modern"
     smoke_passthrough: true
     verified: true
   - name: MC2_OBJECT_ADMISSION_SELFTEST
@@ -4082,7 +4082,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|Compare|Off"
+    tokens: "|Compare|Off|Bypass"
     verified: true
   - name: MC2_PROJECTZ_GUARD_PX
     kind: Int
@@ -4525,7 +4525,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|Legacy"
+    tokens: "|Legacy|Modern"
     verified: true
   - name: MC2_SELECTION_PICKING_PREDICATE_MODE
     kind: Enum
@@ -4533,7 +4533,7 @@ flags:
     rule: Std
     owner: code
     doc: ""
-    tokens: "|Legacy"
+    tokens: "|Legacy|Modern"
     verified: true
   - name: MC2_SENSOR_SCAN_FACTS
     kind: Bool
@@ -5157,7 +5157,7 @@ flags:
     default: false
     rule: Std
     owner: props
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP_DIAG
@@ -5165,7 +5165,7 @@ flags:
     default: false
     rule: Std
     owner: props
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP_TOUCH
@@ -5173,7 +5173,7 @@ flags:
     default: false
     rule: Std
     owner: props
-    doc: ""
+    doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
     verified: true
   - name: MC2_STANDARD_LIT_V1

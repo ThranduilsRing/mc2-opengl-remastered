@@ -106,3 +106,6 @@ endif()
 if(WIN32)
     target_link_libraries(mc2fx PRIVATE Psapi)  # Tracy
 endif()
+
+# The gosFX / mlr / particles TUs read their gates through the typed registry.
+target_link_libraries(mc2fx PRIVATE mc2_gate)

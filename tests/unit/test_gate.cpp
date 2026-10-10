@@ -955,6 +955,23 @@ TEST_CASE("G6 the mod-cache refresh flag is re-read after an in-process putenv")
     CHECK(row.rule == Rule::Presence);
 }
 
+TEST_CASE("G6 predicate enums accept their documented spellings without a badvalue") {
+    struct Spell { const char* name; const char* word; };
+    const Spell spell[] = {
+        {"MC2_OBJECT_ADMISSION_PREDICATE", "modern"}, {"MC2_EFFECT_ADMISSION_PREDICATE", "modern"},
+        {"MC2_LIGHTING_SHADOW_PREDICATE_MODE", "Modern"}, {"MC2_DEBUG_OVERLAY_PREDICATE_MODE", "Modern"},
+        {"MC2_SELECTION_PICKING_PREDICATE_MODE", "Modern"}, {"MC2_SCREENXY_PREDICATE_MODE", "Modern"},
+        {"MC2_PROJECTZ_BYPASS_MODE", "Bypass"},
+    };
+    for (const Spell& s : spell) {
+        INFO(s.name);
+        const gate::Row& r = g1b::rowNamed(s.name);
+        CHECK(r.kind == Kind::Enum);
+        CHECK((gate::detail::parseRow(r, s.word) & gate::detail::kBadBit) == 0);
+        CHECK(g1b::intOf(r, s.word) != 0);   // a named level, not the default token
+    }
+}
+
 TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
     struct Want { const char* name; const char* tokens; const char* def; };
     const Want want[] = {

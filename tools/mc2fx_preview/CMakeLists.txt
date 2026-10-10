@@ -85,6 +85,9 @@ if(WIN32)
     target_link_libraries(mc2fx_corelib PRIVATE Psapi)  # Tracy
 endif()
 
+# The gosFX / mlr / particles TUs read their gates through the typed registry.
+target_link_libraries(mc2fx_corelib PRIVATE mc2_gate)
+
 # ---------------------------------------------------------------------------
 # mc2fx_preview — SDL2 + OpenGL + Dear ImGui shell (curve grapher).
 # ---------------------------------------------------------------------------
