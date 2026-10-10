@@ -309,3 +309,143 @@ def test_hash_objs_skips_headers(tmp_path, capsys):
     _write(hdr, "int a;\n")
     assert cg.main(["--repo", str(repo), "--hash-objs", str(build), str(hdr)]) == 0
     assert json.loads(capsys.readouterr().out)["files"]["code/a.h"]["status"] == "skip"
+
+
+# ---------------------------------------------------------------- loosened gates, rewrite tag, allowlist
+GATED = "int a;\n// MC2_REAL_GATE=1 turns this on\nint b;\n"
+HELD = "int a;\n// the lock must be held\nint b;\n"
+TAG = cg.REWRITE_TAG
+
+
+@pytest.fixture
+def gates():
+    cg.set_gate_names({"MC2_REAL_GATE"})
+    yield
+    cg.set_gate_names(None)
+
+
+def _enc(s):
+    return s.encode("utf-8")
+
+
+def test_registered_gate_protects_unregistered_macro_does_not(gates):
+    assert not cg.check_texts("code/x.cpp", _enc(GATED), _enc("int a;\nint b;\n")).ok
+    macro = "int a;\n// MC2_VERIFY (slice MISSION-DATA-DEREF-HARDEN-1) added\nint b;\n"
+    assert cg.check_texts("code/x.cpp", _enc(macro), _enc("int a;\nint b;\n")).ok
+
+
+def test_real_gate_table_is_the_default_source():
+    cg.set_gate_names(None)
+    names = cg.registered_gates()
+    assert names and "MC2_VERIFY" not in names
+    some = sorted(names)[0]
+    rep = cg.check_texts("code/x.cpp", _enc("int a;\n// %s on\nint b;\n" % some), _enc("int a;\nint b;\n"))
+    assert [k for k, _m in rep.findings] == ["protected"]
+
+
+def test_unreadable_gate_table_protects_every_mc2_token():
+    cg.set_gate_names(False)
+    try:
+        assert not cg.check_texts("code/x.cpp", _enc("// MC2_VERIFY\nint a;\n"), _enc("int a;\n")).ok
+    finally:
+        cg.set_gate_names(None)
+
+
+def test_slice_tag_alone_not_protective_but_keywords_beside_it_are(gates):
+    for tag in ("BUILDING-GLASS-1", "SHADOW-FRUSTUM-AUDIT-1"):
+        assert cg.check_texts("code/x.cpp", _enc("int a;\n// %s\nint b;\n" % tag), _enc("int a;\nint b;\n")).ok
+    rep = cg.check_texts("code/x.cpp", _enc("int a;\n// FOO-BAR-1 never reorder\nint b;\n"), _enc("int a;\nint b;\n"))
+    assert not rep.ok
+
+
+def test_never_must_do_not_rules_unchanged(gates):
+    for s in ("Guard 2: packet_oob - globalPktIdx must be valid index", "never null", "do not reorder"):
+        rep = cg.check_texts("code/x.cpp", _enc("int a;\n// %s\nint b;\n" % s), _enc("int a;\nint b;\n"))
+        assert [k for k, _m in rep.findings] == ["protected"], s
+
+
+def test_tagged_comment_survives_and_altered_body_fails(gates):
+    ok = "int a;\n// %s the lock must be held\nint b;\n" % TAG
+    assert cg.check_texts("code/x.cpp", _enc(HELD), _enc(ok)).ok
+    bad = "int a;\n// %s the lock should be held\nint b;\n" % TAG
+    assert not cg.check_texts("code/x.cpp", _enc(HELD), _enc(bad)).ok
+    block = "int a;\n/* %s the lock must be held */\nint b;\n" % TAG
+    assert cg.check_texts("code/x.cpp", _enc("int a;\n/* the lock must be held */\nint b;\n"), _enc(block)).ok
+
+
+def test_tag_growth_budget_is_16_bytes_per_new_tag(gates):
+    tagged = "int a;\n// %s the lock must be held\nint b;\n" % TAG
+    assert cg.check_texts("code/x.cpp", _enc(HELD), _enc(tagged)).ok                      # +15 B, one tag
+    padded = tagged.replace("held", "held right here now")
+    rep = cg.check_texts("code/x.cpp", _enc(HELD), _enc(padded))
+    assert not rep.ok                                                                      # body changed anyway
+    two = "int a;\n// %s x\n// %s y\nint b;\n" % (TAG, TAG)
+    assert cg.check_texts("code/x.cpp", _enc("int a;\n// x\n// y\nint b;\n"), _enc(two)).ok  # 2 tags -> +32 B ok
+    fat = "int a;\n// %s x\nint b; // extra commentary words\n" % TAG
+    assert "grew" in [k for k, _m in cg.check_texts("code/x.cpp", _enc("int a;\n// x\nint b;\n"), _enc(fat)).findings]
+
+
+def test_cli_rewrite_candidates_lists_file_line_text(repo):
+    f = repo / "code" / "a.cpp"
+    _write(f, "int g;\n// %s odd legacy note\nint a;\n/* %s second\n   line */\n" % (TAG, TAG))
+    rc, out = _run("--repo", str(repo), "--rewrite-candidates", str(f))
+    assert rc == 0, out
+    assert "code/a.cpp:2: odd legacy note" in out and "code/a.cpp:4: second line" in out
+
+
+def test_cli_rewrite_candidates_scans_tracked_files_without_paths(repo):
+    _write(repo / "code" / "a.cpp", "int g;\n// %s keep me\n" % TAG)
+    _write(repo / "code" / "b.cpp", "int g;\n// plain\n")
+    _git(repo, "add", "-A")
+    rc, out = _run("--repo", str(repo), "--rewrite-candidates")
+    assert rc == 0 and "code/a.cpp:2: keep me" in out and "b.cpp" not in out
+
+
+def _allow_file(tmp_path, entries):
+    p = tmp_path / "allow.json"
+    p.write_text(json.dumps(entries), encoding="utf-8")
+    return str(p)
+
+
+def _allow_pair(tmp_path):
+    base, new = tmp_path / "base.cpp", tmp_path / "new.cpp"
+    _write(base, HELD)
+    _write(new, "int a;\nint b;\n")
+    return base, new
+
+
+def test_cli_allowlist_permits_listed_deletion_and_prints_trail(tmp_path):
+    base, new = _allow_pair(tmp_path)
+    al = _allow_file(tmp_path, [{"file": "new.cpp", "base_line": 3, "reason": "restates the guard"}])   # +-2
+    rc, out = _run("--repo", str(tmp_path), "--base-file", str(base), "--allow", al, str(new))
+    assert rc == 0, out
+    assert "ALLOWED-DELETE new.cpp:2 restates the guard" in out
+
+
+def test_cli_allowlist_wrong_line_fails_and_is_stale(tmp_path):
+    base, new = _allow_pair(tmp_path)
+    al = _allow_file(tmp_path, [{"file": "new.cpp", "base_line": 40, "reason": "r"}])
+    rc, out = _run("--repo", str(tmp_path), "--base-file", str(base), "--allow", al, str(new))
+    assert rc == 2 and "protected comment" in out and "ALLOWED-DELETE" not in out
+
+
+def test_cli_allowlist_stale_entry_is_an_error_even_when_the_file_passes(tmp_path):
+    base, new = tmp_path / "base.cpp", tmp_path / "new.cpp"
+    _write(base, "int a;\n// plain narration\nint b;\n")
+    _write(new, "int a;\nint b;\n")
+    al = _allow_file(tmp_path, [{"file": "new.cpp", "base_line": 2, "reason": "nothing protected here"}])
+    rc, _out = _run("--repo", str(tmp_path), "--base-file", str(base), "--allow", al, str(new))
+    assert rc == 2
+
+
+def test_cli_allowlist_malformed_is_usage_error(tmp_path):
+    base, new = _allow_pair(tmp_path)
+    for bad in ([{"file": "new.cpp", "base_line": 2}], {"file": "new.cpp"}, [{"file": "new.cpp", "base_line": "2", "reason": "r"}]):
+        assert _run("--repo", str(tmp_path), "--base-file", str(base), "--allow", _allow_file(tmp_path, bad), str(new))[0] == 2
+
+
+def test_allowlist_entry_covers_one_comment_only(gates):
+    two = "int a;\n// the lock must be held\n\n// it must never be null\nint b;\n"
+    al = cg.Allowlist([{"file": "code/x.cpp", "base_line": 3, "reason": "r"}])
+    rep = cg.check_texts("code/x.cpp", _enc(two), _enc("int a;\nint b;\n"), al)
+    assert [k for k, _m in rep.findings] == ["protected"] and len(rep.allowed) == 1

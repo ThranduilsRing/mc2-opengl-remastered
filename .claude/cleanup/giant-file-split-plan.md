@@ -679,7 +679,7 @@ name txmmgr.cpp; the `TEX_LC`/`EVICT_SKIPPED` macros span lines and are moved to
 WHAT: giant files carry narration, dead history and commented-out code that cost read context. A cheap model may delete
 that, but only behind `tools/comment_guard.py`, which fails closed: a bad edit cannot land, a good one is proven comment-only.
 WHY: a model cannot be trusted to tell narration from rationale, so the guard protects rationale mechanically (header,
-`[X v1]` event notes, `MC2_*` gates, must/never/because/race/bug words, dates, shas, TODO, doxygen tags, pragma and
+`[X v1]` event notes, registered `MC2_*` gates, must/never/because/race/bug words, dates, shas, TODO, doxygen tags, pragma and
 static_assert neighbours, all of `Gates/`) and requires the code to be token-identical and comment bytes not to grow.
 
 Loop, one small piece at a time (one file or one paragraph-sized cut per edit):
@@ -694,3 +694,12 @@ Batch proof with objects, for a stronger guarantee on a run of .cpp files:
 `py -3 tools/comment_guard.py --compare-objs before.json`. It hashes the behaviour-defining COFF sections and ignores the
 header timestamp and `.debug*`, since deleting lines legitimately moves line tables. A file using `__LINE__`/`__DATE__`/
 `__TIME__` downgrades a mismatch to WARN; headers cannot be hashed, so `--check` stays the primary proof.
+
+Looser than the first cut, on purpose:
+- Only gate names registered in `Gates/gate_table.json` protect a comment; other `MC2_*` tokens (`MC2_VERIFY`, `MC2_EVENT`)
+  are macros, and slice tags like `BUILDING-GLASS-1` are history (a keyword beside them still protects).
+- A protected comment the owner wants kept but suspects is odd stays as `// TODO(rewrite): <original text>`, body verbatim;
+  the tag may add 16 B per new tag. `py -3 tools/comment_guard.py --rewrite-candidates [paths]` lists them as `file:line: text`.
+- `--check --allow reviewed.json` (`[{"file","base_line","reason"}]`, line +-2) lets one named protected comment be deleted
+  and prints `ALLOWED-DELETE file:line reason`. The reviewer (Sonnet) writes the file after reading the comment; the editing
+  model never does. An entry for a checked file that matches nothing is stale and exits 2.
