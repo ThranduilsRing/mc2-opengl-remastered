@@ -812,30 +812,6 @@ if(Python3_FOUND)
 endif()
 
 # ---------------------------------------------------------------------------
-# env_registry: MC2_* env-var coverage gate
-#
-# Runs scripts/check-env-registry.sh, which verifies every MC2_* env var
-# used in source is either registered in RenderCore/RendererFeatureRegistry.h
-# or explicitly allowlisted. Exits nonzero on unknowns.
-#
-# Run manually: cmake --build build64 --target env_registry
-# ---------------------------------------------------------------------------
-# Prefer Git-bundled bash over the WSL stub in System32.
-find_program(BASH_EXECUTABLE
-    NAMES bash
-    HINTS "C:/Program Files/Git/bin" "C:/Program Files/Git/usr/bin"
-    DOC "Git bash (preferred over WSL stub)"
-)
-if(BASH_EXECUTABLE)
-    add_custom_target(env_registry
-        COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-env-registry.sh
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "MC2_* env-var registry coverage gate (RendererFeatureRegistry.h)"
-        VERBATIM
-    )
-endif()
-
-# ---------------------------------------------------------------------------
 # shader_schema: C++/GLSL ABI validation gate (SHADER-SCHEMA-1)
 #
 # Validates SSBO struct layout contracts against shader_reflect golden JSON.

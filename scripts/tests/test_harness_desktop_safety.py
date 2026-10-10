@@ -162,7 +162,6 @@ def test_nofocus_does_not_vet_non_engine_programs(monkeypatch):
     seen = []
     monkeypatch.setattr(subprocess, "Popen",
                         lambda argv, **k: seen.append(argv) or types.SimpleNamespace(pid=1, poll=lambda: 0))
-    monkeypatch.setattr(nofocus, "park_window_offscreen", lambda *a, **k: None)
     nofocus.spawn([sys.executable, "-c", "pass"])
     assert seen
 
@@ -385,7 +384,7 @@ def test_nofocus_window_calls_are_inert_with_the_off_switch(monkeypatch):
     monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
     monkeypatch.setenv("MC2_CURSOR_GUARD_OFF", "1")
     assert nofocus.raise_noactivate(12345) is False
-    assert nofocus.park_window_offscreen(1, force=True) is None
+    assert not hasattr(nofocus, "park_window_offscreen")
 
 
 def test_root_pytest_ini_and_conftest_exist_so_any_folder_gets_the_switch():
@@ -438,7 +437,6 @@ def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
     seen = []
     monkeypatch.setattr(child_registry, "record", lambda pid, exe, **k: seen.append((pid, str(exe))))
     monkeypatch.setattr(subprocess, "Popen", lambda argv, **k: types.SimpleNamespace(pid=7, poll=lambda: 0))
-    monkeypatch.setattr(nofocus, "park_window_offscreen", lambda *a, **k: None)
     nofocus.spawn([sys.executable, "-c", "pass"])
     assert seen == []
     exe = _install(tmp_path, "mc2-win64-ok", FRESH_SHA)

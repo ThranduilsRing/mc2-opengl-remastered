@@ -101,11 +101,10 @@ Detection resolves the launch argv through same-file assignments (`argv = [exe,
 variable is not called `exe_path`. SCAN_DIRS covers scripts/, tools/ (including
 tools/visual_verify), tests/ and .claude/.
 
-RULE 4 and RULE 5 are RESERVED, not missing: `scripts/smoke_lib/isolation.py`
-(DESKTOP-ISOLATION-ENFORCE-1, still uncommitted) already cites them by number
-for desktop-isolation enforcement and the MC2_HARNESS_ALLOW_FOREGROUND ban. Do
-not reuse those numbers -- renumbering a rule that another file names by number
-is how a docstring becomes a lie.
+RULE 4 and RULE 5 are RESERVED, not missing: scripts/smoke_lib/isolation.py
+(DESKTOP-ISOLATION-ENFORCE-1, parked and never wired in) cited them by number
+for desktop-isolation enforcement and the MC2_HARNESS_ALLOW_FOREGROUND ban. The
+file is deleted; do not reuse the numbers anyway -- docs and history still name them.
 
 CONVENTION (commit f99cf37d): verify-only by default, never mutates a tracked
 file as a side effect; --write regenerates the inventory; newline="\\n".
@@ -184,14 +183,8 @@ COMPOSITE_CAPTURE_FILES = {
     "scripts/game_auto.py":
         "the interactive synthetic-input driver (keybd_event/mouse_event); its "
         "`screenshot` verb is pyautogui and its clicks target screen coordinates.",
-    "scripts/quick_shot.py":
-        "one-shot diagnostic pyautogui.screenshot() of the desktop.",
-    "scripts/quick_sweep.py":
-        "timed series of pyautogui.screenshot() desktop grabs.",
     "scripts/smoke_with_screenshots.py":
         "per-mission pyautogui.screenshot() desktop grabs alongside a smoke run.",
-    "scripts/water_visual_diff.py":
-        "A/B water fastpath comparison from two pyautogui.screenshot() grabs.",
     "tools/menu_oracle.py":
         "PIL.ImageGrab.grab(bbox=<window client rect>) -- it reads the DESKTOP "
         "pixels under the window rect, so the window must be on the desktop. "
@@ -478,10 +471,7 @@ CHILD_ARGV = re.compile(
 
 #: Files allowed a literal CREATE_NO_WINDOW (RULE 10 bare-flag ban), with the reason.
 #: scripts/smoke_lib/ is owned by the smoke-lane and spawns once per smoke run.
-BARE_FLAG_EXEMPT = {
-    "scripts/smoke_lib/isolation.py":
-        "one-shot isolation canary per smoke run, owned by smoke_lib",
-}
+BARE_FLAG_EXEMPT: dict = {}
 
 CHILD_SPAWN_CALLS = LAUNCH_CALLS + ("os.startfile", "os.popen")
 
@@ -826,7 +816,7 @@ def check(root: Path = ROOT, use_git: bool = True):
             f"OFFSCREEN_ENV reference, no MC2_WINDOW_OFFSCREEN in code). The "
             f"engine then creates its window at options.cfg size in the middle "
             f"of the desktop, and the only thing between the user and a "
-            f"full-screen flash is nofocus.park_window_offscreen's 250ms poll "
+            f"full-screen flash is the old window poller's 250ms poll "
             f"-- which cannot fire before the window exists. Apply "
             f"nofocus.OFFSCREEN_ENV to the child env.")
 

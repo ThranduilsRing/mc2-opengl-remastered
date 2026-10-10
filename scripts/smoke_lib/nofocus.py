@@ -88,7 +88,6 @@ __all__ = [
     "CREATE_NO_WINDOW",
     "DETACHED_PROCESS",
     "spawn",
-    "park_window_offscreen",
     "run",
     "set_foreground_window",
     "raise_noactivate",
@@ -184,9 +183,8 @@ SMALL_WINDOW_ENV = {
 #: MC2_WINDOW_OFFSCREEN=1 (gos_render.cpp) creates the SDL window HIDDEN at
 #: (-32000,-32000) and re-asserts that origin synchronously after every later
 #: mode change. Nothing is ever mapped to a visible pixel, so the SIZE stops
-#: mattering and golden capture resolution is preserved. This replaces
-#: park_window_offscreen() as the mechanism -- the poller remains only as a
-#: backstop for exes built before this change.
+#: mattering and golden capture resolution is preserved. An exe built before
+#: this change is refused by exe_guard instead of being chased by a poller.
 OFFSCREEN_ENV = {
     "MC2_WINDOW_OFFSCREEN": "1",
     # Agent launches are SILENT: SDL dummy audio driver (user is at the desk).
@@ -333,103 +331,6 @@ def hidden_kwargs(**extra) -> dict:
     return kw
 
 
-def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
-                          proc: "object" = None, force: bool = False) -> "object":
-    """BACKSTOP ONLY -- move a child's window offscreen if it got created there.
-
-    NOFOCUS-HARDEN-1 DEMOTED THIS. It is no longer the mechanism, because
-    polling cannot satisfy the invariant: this thread ticks every 250ms and the
-    window does not even exist at spawn time, so a window created at
-    options.cfg size in the middle of the desktop is VISIBLE for seconds before
-    the first successful reposition. That multi-second desktop-covering flash on
-    every launch is the user-visible complaint, and no tick rate fixes it --
-    correct-at-creation geometry does.
-
-    The real fix is `MC2_WINDOW_OFFSCREEN=1` (OFFSCREEN_ENV, applied by
-    apply_env), which makes gos_render.cpp create the SDL window HIDDEN at
-    (-32000,-32000) and re-assert that origin synchronously after every later
-    mode change. This poller now exists solely to cover DEPLOYED EXES BUILT
-    BEFORE that change, where the env var is inert. Delete it once no lane
-    points at a pre-NOFOCUS-HARDEN-1 exe.
-
-    Mechanics: SetWindowPos with SWP_NOACTIVATE, to coordinates outside the
-    virtual desktop. The GL drawable keeps its full size, so glReadPixels
-    captures are unaffected -- unlike minimizing, which makes SDL throttle and
-    can zero the drawable.
-
-    Runs whenever offscreen operation is wanted (force=True, or
-    MC2_HARNESS_PARK=1). Harnesses that screenshot the DESKTOP COMPOSITE via
-    pyautogui/mss must not park and must not set MC2_WINDOW_OFFSCREEN -- see
-    apply_env(offscreen=False).
-    """
-    if sys.platform != "win32" or allow_foreground():
-        return None
-    if _desktop_blocked("park_window_offscreen"):
-        return None
-    # force=True: the caller KNOWS its capture path reads pixels via the
-    # engine's glReadPixels FBO readback, not the desktop composite, so an
-    # offscreen window is not merely safe but correct (run_visual_capture).
-    if not force and os.environ.get("MC2_HARNESS_PARK", "") in ("", "0"):
-        return None
-
-    import ctypes
-    import ctypes.wintypes as wt
-    import threading
-
-    u32 = ctypes.windll.user32
-    SWP_NOSIZE, SWP_NOZORDER, SWP_NOACTIVATE = 0x0001, 0x0004, 0x0010
-
-    # MUST declare argtypes: without them ctypes marshals the HWND as c_int and
-    # TRUNCATES it on 64-bit Python, so SetWindowPos silently targets a bogus
-    # handle and the park appears to do nothing (observed: window stayed put).
-    u32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int,
-                                 ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-    u32.SetWindowPos.restype = ctypes.c_bool
-    u32.GetWindowRect.argtypes = [wt.HWND, ctypes.POINTER(wt.RECT)]
-    u32.GetWindowRect.restype = ctypes.c_bool
-    u32.IsWindowVisible.argtypes = [wt.HWND]
-    u32.IsWindowVisible.restype = ctypes.c_bool
-
-    def _worker():
-        deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            if proc is not None and proc.poll() is not None:
-                return
-            found: List[int] = []
-
-            @ctypes.WINFUNCTYPE(ctypes.c_bool, wt.HWND, wt.LPARAM)
-            def _enum(hwnd, _lparam):
-                owner = wt.DWORD()
-                u32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
-                if owner.value == pid and u32.IsWindowVisible(hwnd):
-                    found.append(hwnd)
-                return True
-
-            try:
-                u32.EnumWindows(_enum, 0)
-            except Exception:
-                return
-            for hwnd in found:
-                # RE-park every tick, not once: the engine re-issues
-                # SetScreenMode via prefs.applyPrefs() during boot and on
-                # options changes, and SDL re-centres the window each time --
-                # a one-shot park was observed being undone, leaving a
-                # desktop-sized window back on screen.
-                # -32000,-32000 is off every physical monitor on a normal
-                # multi-mon layout and is what Windows itself uses for
-                # minimized-window placeholders.
-                rect = wt.RECT()
-                if u32.GetWindowRect(hwnd, ctypes.byref(rect)) and rect.left <= -30000:
-                    continue  # already parked; don't churn SetWindowPos
-                u32.SetWindowPos(hwnd, 0, -32000, -32000, 0, 0,
-                                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)
-            time.sleep(0.25)
-
-    t = threading.Thread(target=_worker, name="nofocus-park", daemon=True)
-    t.start()
-    return t
-
-
 def _desktop_blocked(what: str) -> bool:
     """True when MC2_CURSOR_GUARD_OFF=1 (tests: no window call at all); raises under pytest without it."""
     try:
@@ -515,10 +416,6 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         env=apply_env(env, small_window=small_window, offscreen=offscreen),
         **popen_kwargs(show_window=show_window, **kw))
     _record_child(proc, argv)
-    if offscreen:
-        # Backstop for exes predating MC2_WINDOW_OFFSCREEN; a current exe is
-        # already offscreen at creation and the poller finds nothing to move.
-        park_window_offscreen(proc.pid, proc=proc, force=True)
     return proc
 
 
@@ -574,7 +471,7 @@ def raise_noactivate(hwnd) -> bool:
     SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 0x0001, 0x0002, 0x0010
     u32 = ctypes.windll.user32
     # argtypes are mandatory: without them the HWND is marshalled as c_int and
-    # truncated on 64-bit Python (same footgun as park_window_offscreen).
+    # truncated on 64-bit Python (HWND handles are 64-bit).
     u32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int,
                                  ctypes.c_int, ctypes.c_int, ctypes.c_uint]
     u32.SetWindowPos.restype = ctypes.c_bool
