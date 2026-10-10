@@ -96,7 +96,7 @@ void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* Textur
 extern "C" unsigned char* BurninJpeg_DecodeRGB(const unsigned char* data, int dataLen, int* outW, int* outH);
 extern "C" void BurninJpeg_FreePixels(unsigned char* px);
 
-static MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
+inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
                                   UserHeap* ramHeap, long* outWidth)
 {
 	if (outWidth) *outWidth = 0;
@@ -186,7 +186,7 @@ static MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	return colorMap;
 }
 
-static bool skipColormapTiles() {
+inline bool skipColormapTiles() {
     static const bool s = !mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">()
         && mc2::gate::get<"MC2_TERRAIN_INDIRECT">()
         && mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
@@ -195,7 +195,7 @@ static bool skipColormapTiles() {
 
 // COLORMAP-BC7-KTX2-1: default ON; kill-switch MC2_COLORMAP_KTX2=0 disables.
 // When ON, BuildColormapAtlas will prefer the .burnin.ktx2 sidecar over cpuColorMap.
-static bool useKtx2Colormap() {
+inline bool useKtx2Colormap() {
     static const bool s = mc2::gate::get<"MC2_COLORMAP_KTX2">();
     return s;
 }
@@ -1152,7 +1152,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 }
 
 //---------------------------------------------------------------------------
-void saveTGAFile(MemoryPtr ColorMap, const char * fileName, long pixelWidth)
+inline void saveTGAFile(MemoryPtr ColorMap, const char * fileName, long pixelWidth)
 {
 	TGAFileHeader colorMapInfo;
 	colorMapInfo.image_id_len = 0;
