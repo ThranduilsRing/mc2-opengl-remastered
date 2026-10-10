@@ -647,3 +647,108 @@ def test_exact_zero_reader_on_a_lead0kill_row_is_edge_not_no_change(form):
 def test_leading_zero_reader_on_a_lead0kill_row_stays_no_change():
     r = one("static const bool s_on = %s;\n" % lam("Lead0Kill"), mk("Lead0Kill"))
     assert r.verdict == "NO-CHANGE"
+
+
+# ---------------------------------------------------------------------------
+# G7: --apply never replaces a reader that does more than parse + default (HAND)
+# ---------------------------------------------------------------------------
+
+def num_rows(rng=None, default=0):
+    return {G: cm.Row(G, "Int", "Prefix", default, rng=rng)}
+
+
+def _apply(code, rows):
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    return res, new, applied
+
+
+def test_snapping_lambda_is_not_applied():
+    code = ("int f() {\n  static const int s = []() {\n    const char* v = getenv(\"MC2_X\");\n"
+            "    int n = (v && v[0]) ? atoi(v) : 8192;\n    if (n <= 2048) return 2048;\n    if (n <= 4096) return 4096;\n"
+            "    return 8192;\n  }();\n  return s;\n}\n")
+    res, new, applied = _apply(code, num_rows(default=8192))
+    assert not applied and new == code, (res[0].verdict, res[0].why)
+    assert "HAND" in res[0].why
+
+
+def test_lambda_reading_two_gates_is_a_hand_site():
+    code = ("long f() {\n  static const long s = []() {\n    const char* v = getenv(\"MC2_X\");\n"
+            "    if (!v) v = getenv(\"MC2_Y\");\n    return v ? atol(v) : -1L;\n  }();\n  return s;\n}\n")
+    rows = num_rows(default=-1)
+    rows["MC2_Y"] = cm.Row("MC2_Y", "Int", "Prefix", -1)
+    res, new, applied = _apply(code, rows)
+    assert not applied and new == code
+    assert any("reads 2 gates" in r.why for r in res), [(r.verdict, r.why) for r in res]
+
+
+def test_plain_parse_and_default_numeric_lambda_is_still_applied():
+    code = ("int f() {\n  static const int s = []() {\n    const char* v = getenv(\"MC2_X\");\n"
+            "    return (v && v[0]) ? atoi(v) : 7;\n  }();\n  return s;\n}\n")
+    res, new, applied = _apply(code, num_rows(default=7))
+    assert applied and "mc2::gate::get<\"MC2_X\">()" in new, (res[0].verdict, res[0].why)
+
+
+def test_unit_conversion_is_not_applied():
+    code = ("float f() {\n  static const float s = []() {\n    const char* e = getenv(\"MC2_X\");\n"
+            "    return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;\n  }();\n  return s;\n}\n")
+    rows = {G: cm.Row(G, "Float", "Prefix", 0.0)}
+    res, new, applied = _apply(code, rows)
+    assert not applied and new == code, (res[0].verdict, res[0].why)
+
+
+def test_row_edit_needed_sites_are_planned_but_not_applied():
+    res, new, applied = _apply(INT_LAMBDA, mk("Prefix", "Int", 64))
+    assert res[0].row_edit
+    assert not applied and new == INT_LAMBDA
+
+
+def test_helper_call_with_the_row_rule_is_rewritten_in_place():
+    code = ("static bool envFlag(const char* n) { const char* v = std::getenv(n); return v && v[0] && v[0] != '0'; }\n"
+            "void f() {\n  if (envFlag(\"MC2_X\")) { go(); }\n  const bool off = !envFlag(\"MC2_X\");\n}\n")
+    res = cm.analyze_text("snippet.cpp", code, mk("Lead0"), None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert new.count('mc2::gate::get<"MC2_X">()') == 2, new
+    assert 'if (mc2::gate::get<"MC2_X">()) { go(); }' in new
+    assert "!mc2::gate::get<\"MC2_X\">()" in new
+
+
+def test_helper_call_on_a_row_with_another_rule_is_left_alone():
+    code = ("static bool envFlag(const char* n) { const char* v = std::getenv(n); return v && v[0] && v[0] != '0'; }\n"
+            "void f() {\n  if (envFlag(\"MC2_X\")) { go(); }\n}\n")
+    res = cm.analyze_text("snippet.cpp", code, mk("Presence"), None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert 'envFlag("MC2_X")' in new
+
+
+@pytest.mark.parametrize("rule,expr", [
+    ("AtoiNZ", '(std::getenv("MC2_X") && std::atoi(std::getenv("MC2_X")) != 0)'),
+    ("Lead0P", '(getenv("MC2_X") != nullptr && getenv("MC2_X")[0] != \'0\')'),
+    ("Lead1", '(getenv("MC2_X") != nullptr && getenv("MC2_X")[0] == \'1\')'),
+])
+def test_paired_reads_of_one_gate_become_one_typed_read(rule, expr, monkeypatch):
+    code = "void f() {\n  const bool on = %s;\n  use(on);\n}\n" % expr
+    rows = mk(rule)
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert 'const bool on = (mc2::gate::get<"MC2_X">());' in new, new
+
+
+def test_paired_reads_on_a_row_with_another_rule_are_left_alone(monkeypatch):
+    code = 'void f() {\n  const bool on = (getenv("MC2_X") && atoi(getenv("MC2_X")) != 0);\n}\n'
+    rows = mk("Lead0")
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert "atoi" in new
+
+
+def test_paired_read_inside_an_if_keeps_the_closing_parenthesis(monkeypatch):
+    code = ('void f(int n) {\n  if (n > 0 && std::getenv("MC2_X") &&\n      std::atoi(std::getenv("MC2_X")) != 0) {\n'
+            '    go();\n  }\n}\n')
+    rows = mk("AtoiNZ")
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert 'if (n > 0 && mc2::gate::get<"MC2_X">()) {' in re.sub(r"\s+", " ", new).replace("&& mc2", "&& mc2"), new

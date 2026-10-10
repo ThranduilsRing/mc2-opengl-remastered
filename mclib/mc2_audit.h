@@ -21,13 +21,8 @@
 // callers emit from the main/render thread.
 //===========================================================================//
 
-// Static-getenv latch. Call-site pattern:
-//     static bool on = mc2AuditLatch("MC2_FOO_AUDIT");
-//     if (on) { ... }
-// Gate-off path is one bool test — byte-identical behavior when the var is
-// unset (proven pattern, .claude/ISSUE-FIXES-STATUS.md gate-off byte-identity).
-// True iff the env var is set, non-empty, and not "0".
-bool mc2AuditLatch(const char* envVar);
+// A gate for an audit is read where the audit is armed, through the typed registry
+// (mc2::gate::get<"MC2_FOO_AUDIT">() in a function-local static), not here.
 
 // Emit one marker line to stdout (appends '\n', flushes so smoke runners see
 // it before a crash) AND mirrors the raw line to the registered sink, if any.

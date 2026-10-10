@@ -156,6 +156,76 @@ G5_FILES = (
     "GameOS/gameos/gameos_graphics.cpp",
     "GameOS/gameos/gameosmain.cpp",
 )
+# G7: code/, GameAdapters/, RenderWorld/, HostServices/ and RenderCore/ files that still read a gate raw, in migration order.
+G7_FILES = (
+    "code/mission.cpp",
+    "code/warrior.cpp",
+    "code/objmgr.cpp",
+    "code/missiongui.cpp",
+    "code/brain_special_dispatch.cpp",
+    "code/logisticsdata.cpp",
+    "code/gamecam.cpp",
+    "code/simplecamera.cpp",
+    "code/controlgui.cpp",
+    "code/missionbegin.cpp",
+    "code/job_system.cpp",
+    "code/mechlopedia.cpp",
+    "code/infowindow.cpp",
+    "code/tacticaloverview.cpp",
+    "code/saveload.cpp",
+    "code/mainmenu.cpp",
+    "code/terrobj.cpp",
+    "code/missionresults.cpp",
+    "code/missiongui_uicmd_fixture.cpp",
+    "code/mechlistbox.cpp",
+    "code/mechicon.cpp",
+    "code/mechcmd2.cpp",
+    "code/logistics.cpp",
+    "code/weaponbolt_update.cpp",
+    "code/unitprofile.cpp",
+    "code/salvagemecharea.cpp",
+    "code/pausewindow.cpp",
+    "code/missiongui_uicmd.cpp",
+    "code/mechlabscreen.cpp",
+    "code/mech_weapons.cpp",
+    "code/mech_update.cpp",
+    "code/logisticsvariant.cpp",
+    "code/loadscreen.cpp",
+    "code/equipment_registry.h",
+    "code/ablmc2_repro.cpp",
+    "RenderWorld/RenderWorld.cpp",
+    "HostServices/DefaultHostServices.cpp",
+    "GameAdapters/VegetationAdapter.cpp",
+    "GameAdapters/MechRenderAdapter.cpp",
+    "code/weather.cpp",
+    "code/sim_identity.cpp",
+    "code/sensor_trace.h",
+    "code/pilotreviewarea.cpp",
+    "code/optionsarea.cpp",
+    "code/object_walk_trace.h",
+    "code/mover_combat.cpp",
+    "code/mover_attack.cpp",
+    "code/mechpurchasescreen.cpp",
+    "code/mechcmd2_frame.cpp",
+    "code/mechbayscreen.cpp",
+    "code/mech_loadout.cpp",
+    "code/mc2video.cpp",
+    "code/mc2movie.cpp",
+    "code/logisticsmechicon.cpp",
+    "code/jobs_fatal.cpp",
+    "code/hudimguipanel.cpp",
+    "code/gvehicl_weapons.cpp",
+    "code/gvehicl_update.cpp",
+    "code/ground_contact_blob.cpp",
+    "code/gameplay_pick.cpp",
+    "code/gameobj.cpp",
+    "code/collision_trace.h",
+    "code/bldng.cpp",
+    "code/abl_trace.h",
+    "RenderCore/ResolutionContract.h",
+    "RenderCore/RendererFeatureRegistry.h",
+    "GameAdapters/StaticPropRenderAdapter.cpp",
+)
 SEED_REL = "tools/gate_table.seed.json"
 TABLE_REL = "Gates/gate_table.json"
 LEDGER_REL = "tools/gate_g0_ledger.json"
@@ -178,6 +248,9 @@ FAMILIES = {
     "g5": {"title": "Gate codemod, G5 GameOS giant singles plan (dry run)", "what": "G5 giant-single migration", "files": G5_FILES,
            "md": "docs/gate-codemod-g5.md", "tsv": "docs/gate-codemod-g5.tsv",
            "cmd": "py -3 tools/gate_codemod.py --family g5 --write"},
+    "g7": {"title": "Gate codemod, G7 code/ and adapters plan (dry run)", "what": "G7 code/ migration", "files": G7_FILES,
+           "md": "docs/gate-codemod-g7.md", "tsv": "docs/gate-codemod-g7.tsv",
+           "cmd": "py -3 tools/gate_codemod.py --family g7 --write"},
 }
 
 NS = "mc2::gate"
@@ -194,6 +267,11 @@ _NON_READER_CALLEES = {"putenv", "_putenv", "_putenv_s", "setenv", "SetEnvironme
 
 VERDICTS = ("NO-CHANGE", "EDGE", "SEMANTICS", "UNHANDLED")
 SHAPES = ("namespace-static", "local-static", "lambda-static", "per-call")
+
+# Numeric inputs whose result may differ after a rewrite without the site needing a human: empty text and the
+# non-finite spellings (a registry row rejects them to its default). Any other input that changes means the old
+# reader does something the row does not.
+_BENIGN_NUMERIC_EDGES = ("''", "'1e999'", "'nan'", "'NaN'", "'inf'", "'-1e999'", "unset")
 PROBE_LABELS = tuple(gi.PROBE_LABELS)
 PROBE_VALUES = tuple(v for _, v in gi.PROBES)
 #: Probe labels whose result may differ in an EDGE (never U, Z or O: those are SEMANTICS).
@@ -525,7 +603,7 @@ def _norm_ws(s, limit=320):
 class Result:
     __slots__ = ("file", "line", "gate", "callee", "idiom", "shape", "replacement", "verdict", "why", "old",
                  "row_edit", "diff", "harness_hits", "override", "reason", "mode", "kind", "helper_def",
-                 "paired", "pp", "helper_read", "edit")
+                 "paired", "pp", "helper_read", "edit", "hand")
 
     def __init__(self, file, line, gate, callee):
         self.file, self.line, self.gate, self.callee = file, line, gate, callee
@@ -547,6 +625,7 @@ class Result:
         self.pp = ""                # preprocessor context holding the site ("inside #else of ...")
         self.paired = False         # the statement reads the same gate twice (presence test, then a character test)
         self.edit = None            # (start, end, new_text) in raw-file offsets: what --apply replaces
+        self.hand = ""              # why --apply must leave the site to a human (a planned site that is not applied)
 
     @property
     def where(self):
@@ -1071,6 +1150,10 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         bad = body_impure(body)
         if bad:
             return _fail(res, "lambda body names `%s`, which is state outside the read" % bad)
+        gates_read = sorted(set(re.findall(r'"(MC2_[A-Z0-9_]+)"', body)))
+        if len(gates_read) > 1:
+            return _fail(res, "HAND: the lambda reads %d gates (%s); replacing it by one read would drop the others"
+                         % (len(gates_read), ", ".join(gates_read)))
         is_static = "static" in lhs["quals"]
         ns_scope = at_namespace_scope(T, ss)
         res.shape = shape_of(True, lhs["is_decl"], is_static, ns_scope)
@@ -1360,6 +1443,13 @@ def _numeric(res, row, interp, path, T, p, cs, ce, unit, mode, notes, raw):
     res.edit = (unit["span"][0], unit["span"][1], res.replacement)
     res.mode = mode
     res.row_edit = jd["edit"]
+    hand = []
+    if jd["edit"]:
+        hand.append("the row needs an edit first (%s) %s: apply it by hand after checking it against the reader" % (row.name, jd["edit"]))
+    bad_in = [d for d in res.diff if d not in _BENIGN_NUMERIC_EDGES]
+    if bad_in:
+        hand.append("the row reads %s differently from the old reader (the reader parses, converts or snaps beyond the "
+                    "row's parse+default+range)" % ", ".join(bad_in[:6]))
     hits = [h for h in row.harness if h != "String" and h in [x for x in jd["diff"] if x is not None]]
     res.harness_hits = hits
     parts = []
@@ -1372,6 +1462,12 @@ def _numeric(res, row, interp, path, T, p, cs, ce, unit, mode, notes, raw):
         parts.append("harness sets %s" % (",".join(repr(h) for h in hits) if hits else "none of them") +
                      (" (seed harnessValues=%s)" % row.harness if row.harness else ""))
     res.why = "; ".join(parts + list(notes))
+    if hand:
+        # The plan keeps its verdict (the row-edit proposals feed the row-edit section), but --apply never rewrites
+        # these: replacing the reader by get<>() would silently drop whatever it does besides parse (clamp to a set,
+        # snap, convert units, fall back to a second gate). A human rewrites the site.
+        res.hand = "; ".join(hand)
+        res.why = "HAND (not applied by the tool): " + res.hand + " [" + res.why + "]"
     return res
 
 
@@ -1412,13 +1508,89 @@ def _kept_comments(raw, T, a, b):
     return "".join(c + nl + indent for c in out)
 
 
+_HELPER_NO_CHANGE = re.compile(r"vs row \w+: NO-CHANGE$")
+
+
+def _apply_helper_calls(raw, results):
+    """Rewrite `helper("MC2_X")` calls whose interpreter reading says the helper reads exactly what the row reads
+    (NO-CHANGE, no differing input): the call becomes `get<"MC2_X">()`, the surrounding expression stays. Only
+    single-literal-argument calls are touched, so a helper with a default argument stays a human's job. The helper
+    definition itself is left in place; the author deletes it once its last caller is gone."""
+    done = []
+    seen = set()
+    for r in results:
+        if r.verdict != "UNHANDLED" or not r.callee or not _HELPER_NO_CHANGE.search(r.helper_read or ""):
+            continue
+        key = (r.callee, r.gate)
+        if key in seen:
+            continue
+        seen.add(key)
+        rx = re.compile(r"(?<![\w:.>])%s\(\s*\"%s\"\s*\)" % (re.escape(r.callee), re.escape(r.gate)))
+        new, n = rx.subn(get_expr(r.gate), raw)
+        if n:
+            raw = new
+            done.extend([r] * n)
+    return raw, done
+
+
+# The two-read spellings of one gate that the plan lists as "paired reads": each is a complete expression whose value
+# is a known rule applied to the variable's text, so when the row carries that rule the whole expression becomes one
+# typed read. {G} is the gate literal, {C} the getenv spelling (std:: optional).
+_GE = r"(?:std::)?getenv\(\s*\"{G}\"\s*\)"
+_PAIRED_FORMS = (
+    ("AtoiNZ", _GE + r"\s*&&\s*(?:std::)?atoi\(\s*" + _GE + r"\s*\)\s*!=\s*0"),
+    ("Lead0P", _GE + r"\s*!=\s*(?:nullptr|NULL)\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'"),
+    ("Lead0", _GE + r"\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'"),
+    ("Lead1", _GE + r"\s*(?:!=\s*(?:nullptr|NULL)\s*)?&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*==\s*'1'"),
+)
+
+
+def _apply_paired_reads(raw, results):
+    """Replace a gate's two-read expression by one typed read when the row has the rule that expression computes."""
+    done = []
+    T = gi.strip_comments(raw)
+    edits = []
+    # the row rule is not stored on a Result; look it up through the planner's table when it was loaded
+    table = _CURRENT_ROWS or {}
+    for gate in sorted({r.gate for r in results}):
+        row = table.get(gate)
+        if row is None or row.kind != "Bool":
+            continue
+        for rule, tmpl in _PAIRED_FORMS:
+            if row.rule != rule:
+                continue
+            core = tmpl.replace("{G}", re.escape(gate))
+            # a whole parenthesised expression, else the bare one: never swallow a `)` that belongs to an enclosing `if (`
+            rx = re.compile(r"\(\s*" + core + r"\s*\)|" + core)
+            for m in rx.finditer(T):
+                edits.append((m.start(), m.end(), get_expr(gate), gate))
+    edits.sort(key=lambda e: -e[0])
+    last = len(raw) + 1
+    for a, b, new, gate in edits:
+        if b > last:
+            continue
+        # keep one pair of parentheses the original spelled around the expression
+        old = raw[a:b]
+        lead = old[:len(old) - len(old.lstrip())]
+        wrap = old.lstrip().startswith("(") and old.rstrip().endswith(")")
+        raw = raw[:a] + lead + ("(" + new + ")" if wrap else new) + raw[b:]
+        last = a
+        r = next(x for x in results if x.gate == gate)
+        done.append(r)
+    return raw, done
+
+
+_CURRENT_ROWS = None
+
+
 def apply_edits(raw, results):
     """The file text with every NO-CHANGE / EDGE site rewritten (descending offsets, overlaps skipped) and the gate
     include added. Returns (new_text, applied, skipped)."""
     # A statement's span starts right after the previous `;`, `{` or `}`: skip the blanks and comment blocks that
     # precede it (the comment-stripped text keeps raw offsets, with comments blanked) so they and the indentation stay.
     T = gi.strip_comments(raw)
-    todo = sorted((r for r in results if r.edit and r.verdict in ("NO-CHANGE", "EDGE")), key=lambda r: -r.edit[0])
+    todo = sorted((r for r in results if r.edit and r.verdict in ("NO-CHANGE", "EDGE") and not getattr(r, "hand", "")),
+                  key=lambda r: -r.edit[0])
     applied, skipped, limit = [], [], len(raw) + 1
     for r in todo:
         a, b, new = r.edit
@@ -1431,6 +1603,10 @@ def apply_edits(raw, results):
         raw = raw[:a] + new + raw[b:]
         limit = a
         applied.append(r)
+    raw, helper_calls = _apply_helper_calls(raw, results)
+    applied = applied + helper_calls
+    raw, paired = _apply_paired_reads(raw, results)
+    applied = applied + paired
     if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
         nl = "\r\n" if "\r\n" in raw else "\n"
         lines = raw.split(nl)
@@ -2079,6 +2255,8 @@ def main(argv=None):
             return 2
         # Reads and rewrites the WORKING TREE files; rows come from the committed table at HEAD.
         rows = load_rows(ROOT, "HEAD")
+        global _CURRENT_ROWS
+        _CURRENT_ROWS = rows
         ledger = load_ledger(ROOT)
         total = 0
         for rel in a.files:

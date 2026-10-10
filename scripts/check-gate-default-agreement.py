@@ -167,6 +167,9 @@ CLAIM_EXTS = (".hglsl", ".glsl", ".vert", ".frag", ".comp", ".geom",
 
 ON, OFF, UNKNOWN = "ON", "OFF", "UNCLASSIFIABLE"
 
+#: Registry entries with a recognised reader at the last full coverage (typed readers included).
+MIN_CHECKED = 225
+
 
 # ---------------------------------------------------------------------------
 # Source plumbing: shared with tools/gate_conflicts.py via scripts/gate_idioms.py
@@ -594,14 +597,89 @@ def _reader_hits(sources, helpers, var=None):
     return out
 
 
+# ---------------------------------------------------------------------------
+# Typed readers (gate::get/is/isSet<"X">)
+# ---------------------------------------------------------------------------
+#
+# After the typed-gate migration most boolean gates are no longer read by a getenv idiom, so a scan that only
+# knows getenv shapes reports them as "no reader" and the registry default goes unchecked. A typed reader needs
+# no idiom classification: its unset answer is the table row's own default, and the table is the compiled truth.
+#   get<>/is<> of a Bool row  -> the row default            (unset text is the default)
+#   isSet<>/isNonEmpty<>      -> OFF                        (a presence test is false when unset)
+#   a leading `!`             -> the opposite               (`!get<"MC2_X_LEGACY">()` is the kill-var read)
+# Numeric/String/Enum/Tri rows are value reads or umbrella-inherited and are not boolean gates here.
+_TYPED_RE = re.compile(
+    r'(!\s*)?(?:\bmc2\s*::\s*)?(?:\bgate\s*::\s*)?\b(get|is|isSet|isNonEmpty)\s*<\s*"(MC2_[A-Z0-9_]+)"')
+
+GATE_TABLE_JSON = os.path.join(WORKTREE, "Gates", "gate_table.json")
+
+
+def load_typed_rows(path=GATE_TABLE_JSON):
+    """-> {gate name: row dict} from the compiled gate table, or {} when it is absent."""
+    try:
+        import json
+        with open(path, "r", encoding="utf-8") as fh:
+            return {r["name"]: r for r in json.load(fh)["gates"]}
+    except (OSError, ValueError, KeyError):
+        return {}
+
+
+def _typed_hits(sources, typed_rows):
+    """-> {var: [hit, ...]} for the typed readers of Bool rows.
+
+    The unset answer of a typed read is the row's default, so the reader's verdict is that default -- a `!` in
+    front of the call is control flow (`if (!get<"X">()) return;`) and does not change what the gate means.
+    The one place the sense is inverted is a kill-var whose registry feature has the opposite default
+    (MC2_STATIC_PROP_LEGACY_DISPATCH: row default false, feature defaultOn true, read only as `!get<>()`): when
+    the registry default differs from the row's and EVERY value read of the gate is negated, the gate is read as
+    the feature's inverse and the verdict is the registry's. A plain read in that situation keeps the row's
+    verdict, so a genuine disagreement still reports.
+    Presence tests (isSet/isNonEmpty) answer OFF when unset and count only when the gate has no value read."""
+    reads = {}
+    for path, body in sources:
+        for m in _TYPED_RE.finditer(body):
+            neg, fn, name = bool(m.group(1)), m.group(2), m.group(3)
+            row = typed_rows.get(name)
+            if row is None or row.get("kind") != "Bool":
+                continue
+            line = body.count(chr(10), 0, m.start()) + 1
+            reads.setdefault(name, []).append((path, line, fn, neg))
+    out = {}
+    for name, rs in reads.items():
+        row = typed_rows[name]
+        row_on = bool(row.get("default"))
+        reg = row.get("registry") or {}
+        value_reads = [r for r in rs if r[2] in ("get", "is")]
+        use = value_reads if value_reads else rs
+        inverted = (bool(value_reads) and "defaultOn" in reg and bool(reg["defaultOn"]) != row_on
+                    and all(r[3] for r in value_reads))
+        for path, line, fn, neg in use:
+            if fn in ("get", "is"):
+                on = bool(reg["defaultOn"]) if inverted else row_on
+                note = "inverted kill-var" if inverted else "row default"
+            else:
+                on, note = False, "presence test"
+            out.setdefault(name, []).append({
+                "path": path, "line": line, "verdict": ON if on else OFF, "typed": True,
+                "rule": "typed %s<> (%s; rule %s, row default %s)%s" % (
+                    fn, note, row.get("rule"), row.get("default"), " negated" if neg else ""),
+                "stmt": ("!" if neg else "") + fn + "<" + chr(34) + name + chr(34) + ">",
+            })
+    return out
+
+
 def find_readers(var, sources, helpers=None):
     """-> list of dicts {path, line, verdict, rule, stmt} for ONE var."""
     return _reader_hits(sources, helpers, var).get(var, [])
 
 
-def find_all_readers(sources, helpers=None):
+def find_all_readers(sources, helpers=None, typed_rows=None):
     """-> {var: [hit, ...]} for EVERY MC2_* var with a reader, registered or not."""
-    return _reader_hits(sources, helpers, None)
+    out = _reader_hits(sources, helpers, None)
+    if typed_rows:
+        for name, hits in _typed_hits(sources, typed_rows).items():
+            out.setdefault(name, []).extend(hits)
+    return out
 
 
 def reader_conflicts(all_readers, allow):
@@ -820,8 +898,14 @@ def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,),
     # docs/**/*.md (minus docs/archive/, frozen history) and .claude/*.md.
     # Same one-var-per-line, unconditional-claim rule as above.
     md_files = []
+    # docs/superpowers/plans holds dated implementation plans and handoffs: each states the default AS OF its
+    # authoring day ("ships opt-in", "default-off for this slice"), so a later default flip makes them stale by
+    # design, exactly like docs/archive. Excluded for the same reason; the live docs stay swept.
+    frozen_plans = os.path.normcase(os.path.join(root, "docs", "superpowers", "plans"))
     for dirpath, dirnames, filenames in os.walk(os.path.join(root, "docs")):
         dirnames[:] = [x for x in dirnames if x != "archive"]
+        if os.path.normcase(dirpath).startswith(frozen_plans):
+            continue
         md_files.extend(os.path.join(dirpath, f) for f in filenames
                         if f.endswith(".md"))
     cdir = os.path.join(root, ".claude")
@@ -877,15 +961,15 @@ def load_sources(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,)):
     return _shared_load_sources(root, scan_dirs, SCAN_EXTS, exclude)
 
 
-def analyse(registry_text, sources, allow, claims=None):
-    """-> (findings, stats)."""
+def analyse(registry_text, sources, allow, claims=None, typed_rows=None):
+    """-> (findings, stats). `typed_rows` is {name: row} from Gates/gate_table.json; None = no typed readers."""
     entries = parse_registry(registry_text)
     helpers = resolve_helpers(sources)
     # BACKEND-DEFAULT-PARITY-1: ONE reader pass for the whole tree, keyed by var.
     # Everything below indexes into it instead of re-scanning per registry entry
     # (which was also ~340 full-tree scans), and the conflict rule below can now
     # see vars the registry has never heard of.
-    all_readers = find_all_readers(sources, helpers)
+    all_readers = find_all_readers(sources, helpers, typed_rows)
     findings = []
     implemented_by_var: dict = {}
     stats = {"feature_entries": 0, "checked": 0, "no_reader": 0,
@@ -1026,7 +1110,17 @@ def run(quiet=False):
     sources = load_sources()
     allow, malformed = load_allowlist()
     findings, stats = analyse(registry_text, sources, allow,
-                              claims=load_comment_claims())
+                              claims=load_comment_claims(), typed_rows=load_typed_rows())
+
+    # A migration that moves readers out of the idioms this script knows turns checked entries into "no reader"
+    # without any finding. The floor makes that loss loud: raise it when coverage grows, never lower it to pass.
+    if stats["checked"] < MIN_CHECKED:
+        findings.append({
+            "kind": "COVERAGE_LOSS", "var": "(all)",
+            "msg": ("only %d registry entries have a recognised reader; the floor is %d. A reader spelling this "
+                    "script cannot see is hiding entries from the comparison." % (stats["checked"], MIN_CHECKED)),
+            "sites": [],
+        })
 
     for line in malformed:
         findings.append({
@@ -1470,6 +1564,42 @@ def _selftest():
               len(malformed) == 2, str(malformed))
     finally:
         os.unlink(tmp)
+
+    # 9. TYPED READERS. A gate read through gate::get/is/isSet<"X"> has no getenv idiom; its unset answer is the
+    #    table row's default. Three shapes: an honest straight read, the inverted kill-var read only through `!`
+    #    (STATIC_PROP_LEGACY_DISPATCH), and a straight read of a row whose default contradicts the registry.
+    typed_registry = '''
+static constexpr EnvVarDesc kFeatureTable[] = {
+    { "MC2_FEATURE_TY_HONEST",   "MC2_TY_HONEST",   EnvVarKind::Feature, true,  "straight kill-switch read" },
+    { "MC2_FEATURE_TY_INVERTED", "MC2_TY_INVERTED", EnvVarKind::Feature, true,  "kill-var read only through !get" },
+    { "MC2_FEATURE_TY_LIAR",     "MC2_TY_LIAR",     EnvVarKind::Feature, true,  "straight read, row default false" },
+    { "MC2_FEATURE_TY_CTRL",     "MC2_TY_CTRL",     EnvVarKind::Feature, true,  "kill-switch read as an early-out" },
+};
+'''
+    typed_src = [("typed_fake.cpp", strip_comments(chr(10).join([
+        'bool a = mc2::gate::get<"MC2_TY_HONEST">();',
+        'bool b = !mc2::gate::get<"MC2_TY_INVERTED">();',
+        'bool c = mc2::gate::get<"MC2_TY_LIAR">();',
+        'if (!mc2::gate::get<"MC2_TY_CTRL">()) return;',
+    ])))]
+    rows = {
+        "MC2_TY_HONEST":   {"name": "MC2_TY_HONEST",   "kind": "Bool", "rule": "Lead0Kill", "default": True,
+                            "registry": {"defaultOn": True}},
+        "MC2_TY_INVERTED": {"name": "MC2_TY_INVERTED", "kind": "Bool", "rule": "Lead1", "default": False,
+                            "registry": {"defaultOn": True}},
+        "MC2_TY_LIAR":     {"name": "MC2_TY_LIAR",     "kind": "Bool", "rule": "Lead1", "default": False,
+                            "registry": {"defaultOn": True}},
+        "MC2_TY_CTRL":     {"name": "MC2_TY_CTRL",     "kind": "Bool", "rule": "Lead0Kill", "default": True,
+                            "registry": {"defaultOn": True}},
+    }
+    tf_, ts_ = analyse(typed_registry, typed_src, allow={}, claims=[], typed_rows=rows)
+    tby = {f["var"]: f["kind"] for f in tf_}
+    check("typed reader: straight read of an agreeing row is consistent", "MC2_TY_HONEST" not in tby, str(tby))
+    check("typed reader: an inverted kill-var read only through ! is consistent", "MC2_TY_INVERTED" not in tby, str(tby))
+    check("typed reader: a straight read of a row whose default contradicts the registry is caught",
+          tby.get("MC2_TY_LIAR") == "DISAGREEMENT", str(tby))
+    check("typed reader: ! as an early-out does not invert a gate whose row agrees", "MC2_TY_CTRL" not in tby, str(tby))
+    check("typed readers count as readers (4 checked, none unread)", ts_["checked"] == 4 and ts_["no_reader"] == 0, str(ts_))
 
     print("-" * 70)
     if failures:

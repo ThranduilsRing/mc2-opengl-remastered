@@ -31,16 +31,6 @@ onceSets()
 
 } // namespace
 
-bool mc2AuditLatch(const char* envVar)
-{
-    if (!envVar || !envVar[0]) return false;
-    const char* v = getenv(envVar);
-    if (!v || !v[0]) return false;
-    // "0" means explicitly OFF (matches envFlag semantics elsewhere).
-    if (v[0] == '0' && v[1] == '\0') return false;
-    return true;
-}
-
 void mc2AuditLine(const char* line)
 {
     if (!line) return;

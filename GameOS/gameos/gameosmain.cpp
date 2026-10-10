@@ -1139,7 +1139,7 @@ int main(int argc, char** argv)
                 // stderr is still live here (the MC2_LOG NUL-redirect below has
                 // not run yet) — gate on MC2_LOG so a plain double-click-style
                 // console stays quiet.
-                if (mc2::gate::isSet<"MC2_LOG">()) {
+                if (mc2::gate::envText("MC2_LOG")) {
                     fprintf(stderr,
                         "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n",
                         applied, shellWins, jsonPath);
@@ -1748,16 +1748,16 @@ int main(int argc, char** argv)
     //   N     → N FPS in both states
     // timeBeginPeriod(1) brings Windows Sleep() to 1ms resolution.
     // Cap is skipped entirely when vsync is active (SDL_GL_GetSwapInterval()==1).
-    const char* fpsCapEnv = mc2::gate::raw<"MC2_FPS_CAP">();   // echoed as typed
     // A set value (even an empty or non-numeric one: atoi -> 0, uncapped) overrides both caps; the row's own
     // default (90) is the menu cap, the mission cap stays 165 when unset.
-    const int fpsCapSet = mc2::gate::isSet<"MC2_FPS_CAP">()
+    const bool fpsCapIsSet = mc2::gate::isSet<"MC2_FPS_CAP">();
+    const int fpsCapSet = fpsCapIsSet
         ? (mc2::gate::isNonEmpty<"MC2_FPS_CAP">() ? mc2::gate::get<"MC2_FPS_CAP">() : 0) : -1;
-    static const int s_fps_cap_menu    = fpsCapEnv ? fpsCapSet : 90;
-    static const int s_fps_cap_mission = fpsCapEnv ? fpsCapSet : 165;
+    static const int s_fps_cap_menu    = fpsCapIsSet ? fpsCapSet : 90;
+    static const int s_fps_cap_mission = fpsCapIsSet ? fpsCapSet : 165;
     const bool s_vsync_active = (SDL_GL_GetSwapInterval() == 1);
     printf("[FRAMECAP] MC2_FPS_CAP=%s vsync=%s -- menu=%d FPS mission=%d FPS%s\n",
-           fpsCapEnv ? fpsCapEnv : "(unset)",
+           fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)",   // echoed as typed
            s_vsync_active ? "ON" : "OFF",
            s_fps_cap_menu, s_fps_cap_mission,
            s_vsync_active ? " (cap inactive, vsync owns pacing)" : "");

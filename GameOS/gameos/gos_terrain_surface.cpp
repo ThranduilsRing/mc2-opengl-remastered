@@ -66,7 +66,7 @@ namespace gos_terrain_surface {
 
 // ---------------------------------------------------------------------------
 // Env kill-switch -- read once, cached (mirrors gos_terrain_indirect::IsEnabled
-// and the existing MC2_TERRAIN_INDIRECT / overlay gates). DEFAULT-OFF: only a
+// and the existing indirect-terrain / overlay gates). DEFAULT-OFF: only a
 // literal non-"0" value turns generation on (plan Section F, Waves 0-3).
 // ---------------------------------------------------------------------------
 bool IsEnabled() {
