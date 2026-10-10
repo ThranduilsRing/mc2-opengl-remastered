@@ -30,6 +30,5 @@ PHASES = [
     ('updateTutorialAnimation', 874, 1001, 'Move the mouse and flash the target of the running tutorial callout.', T),
     ('updateSoakAutoPurchase', 1019, 1291, 'Buy and deploy a mech so a purchase-required mission can launch under auto-advance.', T),
     ('updateSoakScreenWalk', 1293, 1547, 'Walk the settled screen toward launch, through the optional screen-check detour.', T),
-    ('updateGotoSplash', 1550, 1562, 'Return to the splash screen when the screen asks for it or the host left.', {'exits': 'NULL', 'dedent': '\t'}),
     ('updateScreenAdvance', 1569, 1687, 'End the finished screen and begin the next or the previous one.', T),
 ]

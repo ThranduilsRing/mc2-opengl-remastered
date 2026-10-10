@@ -1533,24 +1533,6 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 		}
 }
 
-// Return to the splash screen when the screen asks for it or the host left.
-bool MissionBegin::updateGotoSplash(LogisticsScreen* pCurScreen) {
-	if ( pCurScreen->getStatus() == LogisticsScreen::GOTOSPLASH || ( MPlayer && MPlayer->hostLeft ) )
-	{
-		pCurScreen->end();
-		beginSplash();
-		if ( MPlayer &&  MPlayer->hostLeft )
-		{
-			MPlayer->closeSession();
-			delete MPlayer;
-			MPlayer = NULL;
-		}
-			
-		return true;
-	}
-	return false;
-}
-
 // End the finished screen and begin the next or the previous one.
 void MissionBegin::updateScreenAdvance(LogisticsScreen* pCurScreen, bool& soakForceNext) {
 	if ( pCurScreen->getStatus() != LogisticsScreen::RUNNING || soakForceNext )
@@ -1716,7 +1698,19 @@ const char* MissionBegin::update()
 			updateSoakScreenWalk(pCurScreen, soakForceNext);
 		}
 
-		if (updateGotoSplash(pCurScreen)) return NULL;
+		if ( pCurScreen->getStatus() == LogisticsScreen::GOTOSPLASH || ( MPlayer && MPlayer->hostLeft ) )
+		{
+			pCurScreen->end();
+			beginSplash();
+			if ( MPlayer &&  MPlayer->hostLeft )
+			{
+				MPlayer->closeSession();
+				delete MPlayer;
+				MPlayer = NULL;
+			}
+				
+			return NULL;
+		}
 
 		if ( pCurScreen->getStatus() == LogisticsScreen::READYTOLOAD && 
 			(curScreenX == 4 ||( MPlayer && curScreenX == 3 )) )

@@ -79,7 +79,6 @@ class MissionBegin
 		void updateTutorialAnimation(LogisticsScreen* pCurScreen);
 		void updateSoakAutoPurchase();
 		void updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakForceNext);
-		bool updateGotoSplash(LogisticsScreen* pCurScreen);
 		void updateScreenAdvance(LogisticsScreen* pCurScreen, bool& soakForceNext);
 
 		bool						bDone;
