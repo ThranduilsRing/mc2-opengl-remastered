@@ -16,8 +16,8 @@
   "GameOS/gameos/engine_present_vk.cpp": 2749,
   "GameOS/gameos/gameosmain.cpp": 2810,
   "GameOS/gameos/gos_mech_batcher.cpp": 3299,
-  "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2054,
-  "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2367,
+  "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2023,
+  "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2324,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
@@ -42,7 +42,7 @@
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/mission_init.cpp": 2317,
+  "code/mission_init.cpp": 2183,
   "code/missionbegin.cpp": 2132,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -56,7 +56,7 @@
   "code/turret.cpp": 2346,
   "code/warrior.cpp": 2727,
   "code/warrior.h": 2171,
-  "editor/ObjectiveDlg.cpp": 1517,
+  "editor/ObjectiveDlg.cpp": 1502,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1553,
   "mclib/ablrtn.cpp": 1781,
@@ -90,7 +90,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "708c5e445",
+ "head": "b1c691c57",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -138,7 +138,7 @@
    "files": 225,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1517
+   "max_lines": 1502
   },
   "gui": {
    "files": 25,
@@ -257,10 +257,6 @@
    "lines": 2412
   },
   {
-   "file": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
-   "lines": 2367
-  },
-  {
    "file": "code/gameobj.cpp",
    "lines": 2366
   },
@@ -269,12 +265,16 @@
    "lines": 2346
   },
   {
-   "file": "code/mission_init.cpp",
-   "lines": 2317
+   "file": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
+   "lines": 2324
   },
   {
    "file": "GameOS/gameos/gos_static_prop_registry.cpp",
    "lines": 2207
+  },
+  {
+   "file": "code/mission_init.cpp",
+   "lines": 2183
   },
   {
    "file": "code/warrior.h",
