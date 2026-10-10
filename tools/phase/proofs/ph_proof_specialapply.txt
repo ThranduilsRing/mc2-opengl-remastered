@@ -1,0 +1,70 @@
+inline expansion: 739 statements, helpers 14, orchestrator lines 268
+declaration lifts / edits applied (0):
+scaffolding only in new (62 distinct):
+   + // Applies the effect verbs of one special body. The gates, the per-verb prelude and the effect chain skeleton 
+   + // Close the state gate unless the brain is in the named state (Unit.InState). 
+   + // Close the state gate when the brain is in the named state (Unit.NotInState). 
+   + // Eject the pilot (Unit.Eject). 
+   + // Order the unit to attack a target (OPORD.CoreAttack). 
+   + // Order the unit to guard (OPORD.CoreGuard). 
+   + // Order the unit to move to a point (OPORD.CoreMoveTo). 
+   + // Order the unit to retreat (Unit.Retreat). 
+   + // Scrub the engine movement queue (Unit.ClearMoveOrders). 
+   + // Start a patrol over up to eight waypoints (OPORD.CorePatrol). 
+   + // Swap back to the previous brain state and end the body (Unit.SetStatePrev). 
+   + // Switch the warrior power state (Brain.CorePower false). 
+   + // The resolved verb spellings one dispatch step hands to the effect handlers. 
+   + // Transition the brain state and end the body (Unit.SetState). 
+   + // Transition the brain state when a unit variable matches (Unit.SetStateIf). 
+   + // Write a target-priority list entry (UnitQuery.SetTargetpriority). 
+   + // here; each effect handler body is a helper above, run in the original order. A handler that ends the body 
+   + // returns true and the orchestrator returns appliedEffect. 
+   + BrainVerbFrame f; 
+   + applyClearMoveOrders(wid, runtime); 
+   + applyCoreAttack(warrior, wid, runtime, appliedEffect, f); 
+   + applyCoreGuard(warrior, wid, runtime, appliedEffect); 
+   + applyCoreMoveTo(warrior, wid, runtime, appliedEffect, f); 
+   + applyCorePatrol(warrior, wid, runtime, appliedEffect, f); 
+   + applyCorePower(warrior, wid, runtime, appliedEffect); 
+   + applyInState(warrior, wid, stateGateOpen, f); 
+   + applyNotInState(warrior, wid, stateGateOpen, f); 
+   + applySetTargetPriority(wid, runtime, f); 
+   + applyUnitEject(warrior, wid, runtime, appliedEffect); 
+   + applyUnitRetreat(warrior, wid, runtime, appliedEffect); 
+   + auto& vp = f.vp; auto& vpCanon = f.vpCanon; x3
+   + auto& vpCanon = f.vpCanon; x5
+   + const char* vp; 
+   + const char* vpCanon; 
+   + f.vp = vp; 
+   + f.vpCanon = vpCanon; 
+   + if (applySetState(warrior, wid, f)) return appliedEffect; 
+   + if (applySetStateIf(warrior, wid, varStore, varGate, f)) return appliedEffect; 
+   + if (applySetStatePrev(warrior, wid)) return appliedEffect; 
+   + namespace { 
+   + return false; x3
+   + return true;  // early exit on match — same semantics as SetState 
+   + return true;  // early exit — no subsequent verbs after SetState 
+   + return true;  // early exit — no subsequent verbs after SetStatePrev 
+   + static bool applySetState(MechWarrior* warrior, int wid, BrainVerbFrame& f) { 
+   + static bool applySetStateIf(MechWarrior* warrior, int wid, VarStore* varStore, bool varGate, BrainVerbFrame& f 
+   + static bool applySetStatePrev(MechWarrior* warrior, int wid) { 
+   + static void applyClearMoveOrders(int wid, MechBrainRuntime* runtime) { 
+   + static void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect, Bra 
+   + static void applyCoreGuard(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect) { 
+   + static void applyCoreMoveTo(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect, Bra 
+   + static void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect, Bra 
+   + static void applyCorePower(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect) { 
+   + static void applyInState(MechWarrior* warrior, int wid, bool& stateGateOpen, BrainVerbFrame& f) { 
+   + static void applyNotInState(MechWarrior* warrior, int wid, bool& stateGateOpen, BrainVerbFrame& f) { 
+   + static void applySetTargetPriority(int wid, MechBrainRuntime* runtime, BrainVerbFrame& f) { 
+   + static void applyUnitEject(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect) { 
+   + static void applyUnitRetreat(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect) { 
+   + struct BrainVerbFrame { 
+   + } x14
+   + }  // namespace 
+   + }; 
+statements only in old (3 distinct, all lifted declarations / hoisted-type lines):
+   - return appliedEffect;  // early exit on match — same semantics as SetState 
+   - return appliedEffect;  // early exit — no subsequent verbs after SetState 
+   - return appliedEffect;  // early exit — no subsequent verbs after SetStatePrev 
+PASS: inline expansion of the new function equals the original body

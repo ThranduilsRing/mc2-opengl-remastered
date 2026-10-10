@@ -132,6 +132,33 @@ def count_callsites_in_function(lines, func_pattern_str, needle="warrior->setGen
     return count
 
 
+def count_callsites_in_all_functions(lines, func_pattern_str, needle="warrior->setGeneralTacOrder("):
+    """Sum `needle` lines over every function whose opening line matches func_pattern_str."""
+    func_pattern = re.compile(func_pattern_str)
+    total = 0
+    in_func = False
+    depth = 0
+    started = False
+    for line in lines:
+        stripped = line.rstrip()
+        if not in_func:
+            if func_pattern.match(stripped):
+                in_func = True
+                depth = 0
+                started = False
+            else:
+                continue
+        depth += stripped.count('{') - stripped.count('}')
+        if not started and depth > 0:
+            started = True
+        if started and depth <= 0:
+            in_func = False
+            continue
+        if needle in stripped:
+            total += 1
+    return total
+
+
 def count_clearmove_total(lines):
     """Count `warrior->clearMoveOrders(` calls anywhere in the source (code lines only)."""
     return sum(1 for line in lines
@@ -165,7 +192,9 @@ def count_callsites_in_apply(lines):
     (inside 'else' branches); the gate-ON emit path does NOT call setGeneralTacOrder.
     The checker counts the gate-OFF branches which must still equal 6.
     """
-    return count_callsites_in_function(lines, r'^bool\s+executeSpecialBody_Apply\s*\(')
+    # The effect handler bodies of executeSpecialBody_Apply are the file-static apply* helpers that precede it.
+    total = count_callsites_in_function(lines, r'^bool\s+executeSpecialBody_Apply\s*\(')
+    return total + count_callsites_in_all_functions(lines, r'^static\s+(?:void|bool)\s+apply\w+\s*\(')
 
 
 def count_callsites_in_commit(lines):
