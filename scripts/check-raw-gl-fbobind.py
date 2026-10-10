@@ -88,7 +88,7 @@ ALLOWLIST_EXACT = {
     "GameOS/gameos/gameos_graphics_overlay.cpp",
     "GameOS/gameos/gameos_graphics_shadow.cpp",
     # screenshot / video READ-blit brackets.
-    "GameOS/gameos/gameosmain.cpp",
+    "GameOS/gameos/gameosmain_frame.cpp",
     # water-reflection prev-restore brackets.
     "GameOS/gameos/gos_terrain_indirect_dispatch.cpp",
     # readback bracket.
