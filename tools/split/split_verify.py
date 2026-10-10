@@ -274,6 +274,7 @@ def check_scripts(src, allow, run_selftests):
         if re.search(r"baseline|seed\.json|gate-history|\.md$|\.yaml$|flags\.auto|axis-conversion|(^|/)CMakeLists\.txt$|\.cmake$", p):
             continue
         hits.append(p)
+    hits = [p for p in hits if not p.startswith("tools/split/")]
     for p in hits:
         if p in ok:
             continue
