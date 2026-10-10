@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Contributing to MC2 OpenGL Remastered
 
 Thanks for helping modernize MechCommander 2. This page covers the mechanics of
