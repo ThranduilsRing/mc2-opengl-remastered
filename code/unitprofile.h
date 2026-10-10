@@ -8,8 +8,7 @@
 #include "damage_schema.h"             // DamageSchemaId enum + parseDamageSchema
 #include "ui_profile.h"                // UIProfile facet + accessor-override helpers
 
-bool mc2_unitprofile_parse_enabled(const char* envValue);   // pure, testable
-bool mc2UnitProfileDataEnabled();                            // cached getenv
+bool mc2UnitProfileDataEnabled();                            // cached typed gate
 
 // UNIT-SOURCE-FLIP-SWITCH-1: the unit-definition SOURCE selector. SEPARATE gate
 // from MC2_UNIT_PROFILE_DATA. Selects WHERE the green UnitProfile facets come
@@ -20,10 +19,9 @@ bool mc2UnitProfileDataEnabled();                            // cached getenv
 //                          UnitDefinition .fit files under data/defs/units/. A
 //                          MISSING generated def falls back to legacy derivation.
 // `generated` ONLY when the env var is explicitly the exact token "generated";
-// anything else (unset / "legacy" / "0" / junk) resolves to legacy. Pure parser
-// is testable; the cached accessor reads getenv once.
-bool mc2_unit_definition_source_is_generated(const char* envValue);  // pure, testable
-bool mc2UnitDefinitionSourceIsGenerated();                           // cached getenv
+// anything else (unset / "legacy" / "0" / junk) resolves to legacy. The accessor
+// reads the typed Enum row once.
+bool mc2UnitDefinitionSourceIsGenerated();                           // cached typed gate
 
 // UNIT-SOURCE-FLIP-SWITCH-1: pure mirror of the converter's _variant_slug()
 // (tools/unit_converter/extract.py): lower-case the CSV VariantName, drop

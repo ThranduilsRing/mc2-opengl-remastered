@@ -189,18 +189,8 @@ inline EquipmentKind componentFormToKind(int form) {
 // compare proved generated values == legacy, so generated is behavior-identical.
 //
 // `generated` ONLY on the exact token "generated" (case-insensitive); anything
-// else (unset / "legacy" / "0" / junk) resolves to legacy. Pure parser is
-// testable; the cached accessor reads getenv once.
-inline bool mc2_equipment_definition_source_is_generated(const char* e) {
-    if (!e || !e[0]) return false;
-    const char* want = "generated";
-    for (int i = 0; ; ++i) {
-        const char a = (char)std::tolower((unsigned char)e[i]);
-        const char b = want[i];
-        if (b == '\0') return a == '\0';   // matched all of "generated", no junk
-        if (a != b)    return false;
-    }
-}
+// else (unset / "legacy" / "0" / junk) resolves to legacy. The accessor reads the
+// typed Enum row once (MC2_EQUIPMENT_DEFINITION_SOURCE).
 inline bool mc2EquipmentDefinitionSourceIsGenerated() {
     static const bool s = mc2::gate::is<"MC2_EQUIPMENT_DEFINITION_SOURCE", "generated">();
     return s;
@@ -434,11 +424,6 @@ inline bool equipmentEnableWireShouldForce(bool defEnabled, long legacyMasterId,
 // Gate: MC2_EQUIPMENT_ADD=any-non-"0" AND MC2_UNIT_PROFILE_DATA (family gate).
 // Both default OFF -> stock byte-identical.
 // -------------------------------------------------------------------------
-inline bool mc2_equipment_add_parse_enabled(const char* e) {
-    // Same rule as MC2_UNIT_PROFILE_DATA: unset/empty/"0" -> OFF; else ON.
-    if (!e || !e[0]) return false;
-    return !(e[0] == '0' && e[1] == '\0');
-}
 inline bool mc2EquipmentAddEnabled() {
     static const bool s = mc2::gate::get<"MC2_EQUIPMENT_ADD">();
     return s;

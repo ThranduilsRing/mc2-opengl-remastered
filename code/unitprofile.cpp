@@ -4,28 +4,12 @@
 #include <cstring>
 #include <cstdio>
 #include <cctype>
-bool mc2_unitprofile_parse_enabled(const char* e) {
-    return e && e[0] != '\0' && e[0] != '0';
-}
 bool mc2UnitProfileDataEnabled() {
     static const bool s = mc2::gate::get<"MC2_UNIT_PROFILE_DATA">();
     return s;
 }
 
-// UNIT-SOURCE-FLIP-SWITCH-1: `generated` ONLY on the exact token "generated"
-// (case-insensitive). Everything else -> legacy (the default), so an unset var,
-// "legacy", "0", or any typo is safe: legacy stays byte-identical.
-bool mc2_unit_definition_source_is_generated(const char* e) {
-    if (!e || !e[0]) return false;
-    // case-insensitive compare against "generated"
-    const char* want = "generated";
-    for (int i = 0; ; ++i) {
-        const char a = (char)std::tolower((unsigned char)e[i]);
-        const char b = want[i];
-        if (b == '\0') return a == '\0';     // matched all of "generated" and no trailing junk
-        if (a != b)    return false;
-    }
-}
+// UNIT-SOURCE-FLIP-SWITCH-1: `generated` only on the token "generated" (case-insensitive); anything else is legacy.
 bool mc2UnitDefinitionSourceIsGenerated() {
     static const bool s = mc2::gate::is<"MC2_UNIT_DEFINITION_SOURCE", "generated">();
     return s;
