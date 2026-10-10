@@ -59,6 +59,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # strip line-leading comments from grep -n output (house pattern).
+# The Mission implementation is split across mission.cpp and mission_{update,movers,init}.cpp; the S2 / S6 rules read it as one file.
+mission_all_to() {
+    cat "$ROOT/code/mission.cpp" "$ROOT/code/mission_update.cpp" "$ROOT/code/mission_movers.cpp" "$ROOT/code/mission_init.cpp" > "$1"
+}
+
 strip_comments() {
     grep -Ev '^[^:]*:[0-9]+:[[:space:]]*(//|\*)' || true
 }
@@ -79,9 +84,9 @@ s1a_setongui_sites() {
         --include='*.cpp' --include='*.h' 2>/dev/null \
         | strip_comments \
         | grep -Ev '(code/)?(mover|gameobj|gvehicl)\.h:' || true)"
-    mission_n="$(printf '%s\n' "$hits" | grep -c 'mission\.cpp:' || true)"
+    mission_n="$(printf '%s\n' "$hits" | grep -Ec 'mission(_update|_movers|_init)?\.cpp:' || true)"
     mech_n="$(printf '%s\n' "$hits" | grep -c 'mech_update\.cpp:' || true)"
-    other="$(printf '%s\n' "$hits" | grep -v 'mission\.cpp:\|mech_update\.cpp:' | grep -v '^$' || true)"
+    other="$(printf '%s\n' "$hits" | grep -Ev 'mission(_update|_movers|_init)?\.cpp:|mech_update\.cpp:' | grep -v '^$' || true)"
     [ "$mission_n" -eq 4 ] || echo "  S1a: mission.cpp setOnGUI caller count $mission_n != 4 (allowlisted: part-spawn x3 + Mission::addMover)"
     [ "$mech_n" -eq 1 ]    || echo "  S1a: mech_update.cpp setOnGUI caller count $mech_n != 1 (allowlisted: link-up)"
     if [ -n "$other" ]; then
@@ -290,7 +295,9 @@ run_check() {
     [ -n "$v" ] && { echo "[mover-coherence] S1a FAIL:"; printf '%s\n' "$v"; fail=1; }
     v="$(s1b_member_writes "$ROOT")"
     [ -n "$v" ] && { echo "[mover-coherence] S1b FAIL:"; printf '%s\n' "$v"; fail=1; }
-    v="$(s2_pairing "$ROOT/code/mech_update.cpp" "$ROOT/code/mission.cpp")"
+    mc_all="$(mktemp)"
+    mission_all_to "$mc_all"
+    v="$(s2_pairing "$ROOT/code/mech_update.cpp" "$mc_all")"
     [ -n "$v" ] && { echo "[mover-coherence] S2 FAIL:"; printf '%s\n' "$v"; fail=1; }
 
     v="$(s3_read_gates "$ROOT/code/objmgr.cpp" "$ROOT/code/gametacmap.cpp" "$ROOT/code/controlgui.cpp"; s3_advisory_selectall "$ROOT"/code/missiongui*.cpp)"
@@ -303,8 +310,9 @@ run_check() {
     [ -n "$v" ] && { echo "[mover-coherence] S4 FAIL:"; printf '%s\n' "$v"; fail=1; }
     v="$(s5_linkup_gate "$ROOT/code/mech_update.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S5 FAIL:"; printf '%s\n' "$v"; fail=1; }
-    v="$(s6_audit_region "$ROOT/code/mission.cpp")"
+    v="$(s6_audit_region "$mc_all")"
     [ -n "$v" ] && { echo "[mover-coherence] S6 FAIL:"; printf '%s\n' "$v"; fail=1; }
+    rm -f "$mc_all"
 
     if [ "$fail" -ne 0 ]; then
         echo "FAIL: mover-registry coherence contract violated (see above)"
@@ -347,7 +355,8 @@ EOF
     # S2a revert-simulation: delete the addMover pairing above the mech_update.cpp
     # link-up setOnGUI(true) — pairing window must go red.
     sed 's/missionInterface->addMover(this);//' "$ROOT/code/mech_update.cpp" > "$tmp/mech_nopair.cpp"
-    v="$(s2_pairing "$tmp/mech_nopair.cpp" "$ROOT/code/mission.cpp")"
+    mission_all_to "$tmp/mission_all.cpp"
+    v="$(s2_pairing "$tmp/mech_nopair.cpp" "$tmp/mission_all.cpp")"
     if ! printf '%s\n' "$v" | grep -q 'S2a\|S2d'; then
         echo "mover-coherence --self-test: FAIL (S2 unpaired setOnGUI NOT detected)"
         return 1
@@ -376,7 +385,7 @@ EOF
     # S6 carve-out leg: inject a positional read into the audit region — the
     # off-map-staging pin must go red (position is NOT an audited dimension).
     awk '{ print; if ($0 ~ /MOVER-COHERENCE-AUDIT-BEGIN/) print "\tstatic void poke(MoverPtr m) { (void)m->getPosition(); }" }' \
-        "$ROOT/code/mission.cpp" > "$tmp/mission_pos.cpp"
+        "$tmp/mission_all.cpp" > "$tmp/mission_pos.cpp"
     v="$(s6_audit_region "$tmp/mission_pos.cpp")"
     if ! printf '%s\n' "$v" | grep -q 'POSITIONAL TERM'; then
         echo "mover-coherence --self-test: FAIL (S6 positional term in audit region NOT detected)"
@@ -384,7 +393,7 @@ EOF
     fi
 
     # S6 sentinel leg: audit region deleted entirely.
-    grep -v 'MOVER-COHERENCE-AUDIT-BEGIN' "$ROOT/code/mission.cpp" > "$tmp/mission_nosentinel.cpp"
+    grep -v 'MOVER-COHERENCE-AUDIT-BEGIN' "$tmp/mission_all.cpp" > "$tmp/mission_nosentinel.cpp"
     v="$(s6_audit_region "$tmp/mission_nosentinel.cpp")"
     if [ -z "$v" ]; then
         echo "mover-coherence --self-test: FAIL (S6 missing sentinel NOT detected)"
