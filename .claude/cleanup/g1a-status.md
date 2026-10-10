@@ -86,3 +86,11 @@ Queued (not done): Enum rows return a typed `Token` enum class (no bool conversi
 - Python tools read the table through `scripts/gate_table_reader.py` (env_index, gate_status, build_review_pack, gl_vk_feature_coverage). Deleted: `registry_parse.py`, `flag-registry-auto-gen.py`, `check-flag-registry-truth.py`, `check-flag-registry-drift.sh`, `test_gate_gen.py`, the one-shot seed importer.
 - Board: 167 rows -> 163 (retired `registry_parser_selftest`, `flag_registry_generator_selftest`, `flag_registry_truth`, `flag_registry_truth_selftest`; `flag_registry_drift` now runs `gate_gen --check`).
 - Registry docs are now the table's one-line `doc`; the long prose is `docs/gate-history.md` (a frozen archive, no generator).
+
+## G3 terrain family (efffdac47 .. 191c74663)
+
+- 7 files migrated (gos_terrain_height_tex, _mask_dispatch, _water_stream, _indirect, mclib/terrain.cpp, vulkan_terrain_island, gos_terrain_lod_chunk); LG19 1354 -> 1186, LG20 1626 -> 1469, doctest 684, contracts 162/162.
+- `gate_codemod --apply --i-mean-it --files F` is real now (exact spans, comment-preserving, include outside #if blocks). `--family g3 --summary`: 13 sites left, all umbrella (G4).
+- String rows read through `isSet<>` + `str<>`; `isNonEmpty<>` exists for the `v && v[0]` test. Tools taught typed readers: gl_vk_cpp_gates, cpu_gpu_cogating, check-delivery, check-lighting-divergence.
+- Lessons: a planner "NO-CHANGE" is only as good as its 8 probes (exact-'0' readers vs Lead0Kill rows differ on 01/0.5); multi-gate statements (alias reads, `||` of two gates) must be read by a human; comments inside replaced lambdas must be re-emitted.
+- Logging P2 was NOT done for these files except keeping the existing printf behind migrated gates; shape-identical conversion of the ~hundreds of terrain printf traces is its own slice.
