@@ -20,6 +20,7 @@
 // these same symbols; same include avoids linkage mismatches.
 #include "../GameOS/include/gameos.hpp"
 #include "../RenderWorld/ScreenPick.h"  // ScreenPickContext, screenPickCompute
+#include "Gates/gate.h"
 
 //----------------------------------------------------------------------
 // screenToFboPixel -- pure coord transform.
@@ -165,15 +166,6 @@ GameplayPickResult tryGameplayPick(const GameplayPickRequest& req)
 // gate semantics.
 //----------------------------------------------------------------------
 
-// Local helper: env-flag check matching the RenderWorld envFlag() shape.
-// (Not extracted to a shared utility -- the substrate-side envFlag() is
-// in RenderWorld.cpp's anonymous namespace; reaching in would be ugly.
-// The duplication is 4 lines; acceptable.)
-static bool selftestEnvFlag(const char* name) {
-    const char* v = std::getenv(name);
-    return v && std::strcmp(v, "1") == 0;
-}
-
 // Local helper: build a "clean" request (gates pass; would reach
 // lookupAtPixel) and let callers mutate one field per step.
 static GameplayPickRequest selftestCleanRequest() {
@@ -201,7 +193,7 @@ static const char* selftestOutcomeName(GameplayPickResult::Outcome o) {
 
 void RunGameplayPickSelfTest()
 {
-    if (!selftestEnvFlag("MC2_GAMEPLAY_PICK_SELFTEST")) return;
+    if (!mc2::gate::get<"MC2_GAMEPLAY_PICK_SELFTEST">()) return;
 
     // Defense: substrate must be on for step 8 to be meaningful. If
     // substrate is off, every step 1-7 still asserts correctly, BUT
