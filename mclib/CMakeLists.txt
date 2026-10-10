@@ -34,6 +34,9 @@ set(SOURCES ${SOURCES}
     txmmgr_lightrow.cpp
     txmmgr_lights.cpp
     txmmgr_render.cpp
+    txmmgr_render_phases.cpp
+    txmmgr_render_passes.cpp
+    txmmgr_render_overlays.cpp
     txmmgr_texture.cpp
     tex_resolve_table.cpp
     userinput.cpp
