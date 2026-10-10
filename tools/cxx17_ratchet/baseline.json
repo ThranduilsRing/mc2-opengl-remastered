@@ -139,7 +139,7 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 1463,
+   "LG01": 620,
    "LG02": 232,
    "LG03": 957,
    "LG04": 21,
@@ -147,7 +147,7 @@
    "LG06": 445,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2448,
+   "LG09": 2413,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 220,
@@ -1650,7 +1650,6 @@
    "LG12b": 2
   },
   "code/ablmc2.cpp": {
-   "LG01": 163,
    "LG03": 9,
    "LG06": 6,
    "LG09": 17,
@@ -1684,14 +1683,13 @@
    "LG12a": 15
   },
   "code/ablmc2_roster.cpp": {
-   "LG01": 1,
    "LG04": 2,
    "LG06": 1,
-   "LG09": 35,
+   "LG09": 29,
    "LG12b": 22
   },
   "code/ablmc2_state.cpp": {
-   "LG01": 11,
+   "LG01": 4,
    "LG03": 1,
    "LG09": 19
   },
@@ -1709,7 +1707,7 @@
    "LG14": 1
   },
   "code/artlry.cpp": {
-   "LG01": 42,
+   "LG01": 10,
    "LG03": 16,
    "LG09": 20,
    "LG12b": 8,
@@ -1730,7 +1728,7 @@
    "LG13": 3
   },
   "code/bldng.cpp": {
-   "LG01": 13,
+   "LG01": 3,
    "LG03": 3,
    "LG09": 38,
    "LG12b": 2,
@@ -1798,7 +1796,7 @@
    "LG14": 1
   },
   "code/carnage.cpp": {
-   "LG01": 29,
+   "LG01": 1,
    "LG03": 5,
    "LG09": 26,
    "LG13": 3
@@ -1823,7 +1821,7 @@
    "LG12b": 1
   },
   "code/collsn.cpp": {
-   "LG01": 23,
+   "LG01": 8,
    "LG03": 6,
    "LG09": 8,
    "LG13": 1
@@ -1850,9 +1848,9 @@
    "LG13": 1
   },
   "code/contact.cpp": {
-   "LG01": 27,
+   "LG01": 1,
    "LG03": 8,
-   "LG09": 19,
+   "LG09": 17,
    "LG12a": 1,
    "LG12b": 2,
    "LG13": 5
@@ -1896,9 +1894,8 @@
    "LG13": 2
   },
   "code/controlgui_objectives.cpp": {
-   "LG01": 6,
    "LG06": 3,
-   "LG09": 55,
+   "LG09": 54,
    "LG12b": 4
   },
   "code/controlgui_render.cpp": {
@@ -2064,7 +2061,6 @@
    "LG09": 1
   },
   "code/forcegroupbar.cpp": {
-   "LG01": 6,
    "LG03": 9,
    "LG05": 4,
    "LG06": 3,
@@ -2094,10 +2090,10 @@
    "LG01": 8
   },
   "code/gameobj.cpp": {
-   "LG01": 40,
+   "LG01": 18,
    "LG03": 6,
    "LG06": 1,
-   "LG09": 33,
+   "LG09": 31,
    "LG11": 4,
    "LG12a": 2,
    "LG12b": 74,
@@ -2123,7 +2119,6 @@
    "LG01": 3
   },
   "code/gametacmap.cpp": {
-   "LG01": 1,
    "LG03": 1,
    "LG09": 33,
    "LG10": 2,
@@ -2137,7 +2132,7 @@
    "LG17": 1
   },
   "code/gate.cpp": {
-   "LG01": 9,
+   "LG01": 1,
    "LG03": 3,
    "LG09": 18,
    "LG12b": 1
@@ -2162,7 +2157,7 @@
    "LG10": 2
   },
   "code/group.cpp": {
-   "LG01": 16,
+   "LG01": 1,
    "LG03": 1,
    "LG09": 2,
    "LG12b": 3,
@@ -2175,9 +2170,8 @@
    "LG13": 5
   },
   "code/gvehicl.cpp": {
-   "LG01": 9,
    "LG03": 3,
-   "LG09": 24,
+   "LG09": 19,
    "LG12b": 5,
    "LG13": 2
   },
@@ -2199,13 +2193,12 @@
    "LG09": 2
   },
   "code/gvehicl_update.cpp": {
-   "LG01": 8,
+   "LG01": 1,
    "LG09": 8
   },
   "code/gvehicl_weapons.cpp": {
-   "LG01": 15,
    "LG04": 1,
-   "LG09": 11,
+   "LG09": 9,
    "LG12b": 3
   },
   "code/hardpoint.h": {
@@ -2243,7 +2236,6 @@
    "LG09": 6
   },
   "code/infowindow.cpp": {
-   "LG01": 5,
    "LG03": 5,
    "LG05": 1,
    "LG06": 2,
@@ -2293,7 +2285,6 @@
    "LG06": 3
   },
   "code/logistics.cpp": {
-   "LG01": 10,
    "LG03": 12,
    "LG06": 3,
    "LG09": 14,
@@ -2401,7 +2392,6 @@
    "LG13": 1
   },
   "code/logisticsmissioninfo.cpp": {
-   "LG01": 16,
    "LG03": 11,
    "LG05": 26,
    "LG06": 7,
@@ -2432,7 +2422,6 @@
    "LG13": 1
   },
   "code/logisticsvariant.cpp": {
-   "LG01": 3,
    "LG03": 2,
    "LG05": 8,
    "LG06": 1,
@@ -2446,7 +2435,6 @@
    "LG14": 1
   },
   "code/mainmenu.cpp": {
-   "LG01": 9,
    "LG03": 9,
    "LG05": 1,
    "LG06": 1,
@@ -2861,7 +2849,6 @@
    "LG02": 3
   },
   "code/mover.cpp": {
-   "LG01": 10,
    "LG03": 2,
    "LG05": 1,
    "LG06": 1,
@@ -2883,23 +2870,22 @@
    "LG13": 5
   },
   "code/mover_chunks.cpp": {
-   "LG01": 17,
+   "LG01": 8,
    "LG09": 4,
    "LG12b": 10,
    "LG13": 11
   },
   "code/mover_combat.cpp": {
-   "LG01": 19,
+   "LG01": 1,
    "LG03": 2,
    "LG06": 1,
-   "LG09": 17,
+   "LG09": 14,
    "LG12b": 2,
    "LG17": 3
   },
   "code/mover_diag.cpp": {
-   "LG01": 6,
    "LG03": 4,
-   "LG09": 25,
+   "LG09": 23,
    "LG11": 5,
    "LG12b": 105
   },
@@ -2916,7 +2902,6 @@
    "LG16": 2
   },
   "code/mover_path.cpp": {
-   "LG01": 4,
    "LG09": 9,
    "LG13": 1
   },
@@ -2961,7 +2946,6 @@
    "LG17": 1
   },
   "code/mpparameterscreen.cpp": {
-   "LG01": 8,
    "LG03": 14,
    "LG05": 3,
    "LG06": 8,
@@ -3011,7 +2995,6 @@
    "LG06": 1
   },
   "code/multplyr.cpp": {
-   "LG01": 4,
    "LG06": 4,
    "LG13": 1,
    "LG17": 2
@@ -3028,7 +3011,6 @@
    "LG12b": 1
   },
   "code/objective.cpp": {
-   "LG01": 4,
    "LG03": 54,
    "LG05": 2,
    "LG06": 9,
@@ -3042,7 +3024,7 @@
    "LG14": 4
   },
   "code/objmgr.cpp": {
-   "LG01": 58,
+   "LG01": 1,
    "LG03": 24,
    "LG05": 4,
    "LG06": 1,
@@ -3061,7 +3043,6 @@
    "LG13": 1
   },
   "code/objmgr_io.cpp": {
-   "LG01": 6,
    "LG03": 15,
    "LG06": 1,
    "LG09": 46,
@@ -3075,15 +3056,13 @@
    "LG09": 2
   },
   "code/objmgr_pick.cpp": {
-   "LG01": 19,
    "LG09": 9,
    "LG12b": 1
   },
   "code/objmgr_update.cpp": {
-   "LG01": 1,
    "LG06": 1,
    "LG08": 7,
-   "LG09": 21,
+   "LG09": 18,
    "LG12a": 9,
    "LG12b": 4,
    "LG14": 1
@@ -3103,7 +3082,6 @@
    "LG13": 1
   },
   "code/optionsarea.cpp": {
-   "LG01": 9,
    "LG03": 13,
    "LG05": 2,
    "LG06": 2,
@@ -3125,7 +3103,6 @@
    "LG14": 1
   },
   "code/pausewindow.cpp": {
-   "LG01": 1,
    "LG03": 9,
    "LG09": 20,
    "LG11": 1,
@@ -3141,7 +3118,6 @@
    "LG13": 3
   },
   "code/pilotreviewarea.cpp": {
-   "LG01": 38,
    "LG03": 93,
    "LG09": 7,
    "LG12b": 20,
@@ -3199,10 +3175,9 @@
    "LG12b": 3
   },
   "code/simplecamera.cpp": {
-   "LG01": 15,
    "LG03": 12,
    "LG06": 5,
-   "LG09": 13,
+   "LG09": 12,
    "LG11": 2,
    "LG12a": 9
   },
@@ -3214,8 +3189,8 @@
    "LG03": 3
   },
   "code/tacordr.cpp": {
-   "LG01": 10,
-   "LG09": 59,
+   "LG01": 2,
+   "LG09": 57,
    "LG12b": 10,
    "LG13": 46
   },
@@ -3239,16 +3214,16 @@
    "LG09": 1
   },
   "code/team.cpp": {
-   "LG01": 18,
+   "LG01": 4,
    "LG03": 5,
-   "LG09": 15,
+   "LG09": 14,
    "LG13": 1
   },
   "code/team.h": {
    "LG02": 3
   },
   "code/terrobj.cpp": {
-   "LG01": 13,
+   "LG01": 4,
    "LG03": 5,
    "LG04": 5,
    "LG09": 34,
@@ -3272,9 +3247,9 @@
    "LG14": 1
   },
   "code/turret.cpp": {
-   "LG01": 26,
+   "LG01": 1,
    "LG03": 3,
-   "LG09": 49,
+   "LG09": 47,
    "LG12b": 17,
    "LG13": 1,
    "LG17": 1
@@ -3316,16 +3291,14 @@
    "LG17": 1
   },
   "code/unitprofile_fit.cpp": {
-   "LG01": 1,
    "LG06": 6,
    "LG09": 1,
    "LG12a": 4
   },
   "code/warrior.cpp": {
-   "LG01": 57,
    "LG03": 17,
    "LG06": 1,
-   "LG09": 32,
+   "LG09": 31,
    "LG12a": 4,
    "LG12b": 14
   },
@@ -3357,20 +3330,18 @@
    "LG14": 2
   },
   "code/warrior_move.cpp": {
-   "LG01": 9,
    "LG09": 12,
    "LG12b": 1
   },
   "code/warrior_orders.cpp": {
-   "LG01": 10,
-   "LG09": 34
+   "LG09": 32
   },
   "code/warrior_queue.cpp": {
    "LG03": 2,
    "LG09": 3
   },
   "code/warrior_state.cpp": {
-   "LG01": 12,
+   "LG01": 2,
    "LG03": 5,
    "LG06": 1,
    "LG09": 14,
@@ -3395,7 +3366,7 @@
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG01": 24,
+   "LG01": 5,
    "LG03": 14,
    "LG09": 12,
    "LG12b": 1
@@ -3414,7 +3385,6 @@
    "LG12a": 2
   },
   "code/weaponbolt_update.cpp": {
-   "LG01": 58,
    "LG03": 36,
    "LG09": 65
   },
@@ -5682,7 +5652,7 @@
    "LG20": 2
   }
  },
- "head": "7565c7230",
+ "head": "e84a37f84",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
