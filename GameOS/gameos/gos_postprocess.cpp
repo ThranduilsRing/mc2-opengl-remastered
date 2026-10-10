@@ -1182,8 +1182,7 @@ void gosPostProcess::init(int w, int h)
     // horizon; we precompute their sines here so the frag stays trig-free
     // (elevSin = -worldDir.z for a normalized view ray).
     {
-        if (mc2::gate::isSet<"MC2_FOG_HORIZON_CLAMP">())
-            fogHorizonClampEnabled_ = mc2::gate::get<"MC2_FOG_HORIZON_CLAMP">();
+        fogHorizonClampEnabled_ = mc2::gate::get<"MC2_FOG_HORIZON_CLAMP">();   // row default ON, like the member
         if (mc2::gate::isSet<"MC2_FOG_HORIZON_FADE_START">())
             fogHorizonFadeStartDeg_ = mc2::gate::get<"MC2_FOG_HORIZON_FADE_START">();
         if (mc2::gate::isSet<"MC2_FOG_HORIZON_FADE_END">())
