@@ -353,7 +353,7 @@ bool Mech3DAppearance::recalcBounds (void)
 							//mechShape->ClearAnimation();	//DO NOT do this with animating things!!
 							mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
 							delete mechShape;
-							mechShape = NULL;
+							mechShape = nullptr;
 
 							mechShape = mechType->mechShape[currentLOD]->CreateFrom();
 							mechShape->SetAlphaValue(alphaValue);
@@ -376,7 +376,7 @@ bool Mech3DAppearance::recalcBounds (void)
 							BYTE alphaValue = mechShape->GetAlphaValue();
 							mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
 							delete mechShape;
-							mechShape = NULL;
+							mechShape = nullptr;
 
 							mechShape = mechType->mechShape[currentLOD]->CreateFrom();
 							mechShape->SetAlphaValue(alphaValue);

@@ -12,14 +12,14 @@
 
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
-Stuff::MemoryStream *effectStream = NULL;
+Stuff::MemoryStream *effectStream = nullptr;
 
 // static globals
-MC_TextureManager *mcTextureManager = NULL;
-gos_VERTEXManager *MC_TextureManager::gvManager = NULL;
-gos_RenderShapeManager<TG_RenderShape> *MC_TextureManager::rsManager = NULL;
-MemoryPtr			MC_TextureManager::lzBuffer1 = NULL;
-MemoryPtr			MC_TextureManager::lzBuffer2 = NULL;
+MC_TextureManager *mcTextureManager = nullptr;
+gos_VERTEXManager *MC_TextureManager::gvManager = nullptr;
+gos_RenderShapeManager<TG_RenderShape> *MC_TextureManager::rsManager = nullptr;
+MemoryPtr			MC_TextureManager::lzBuffer1 = nullptr;
+MemoryPtr			MC_TextureManager::lzBuffer2 = nullptr;
 int				MC_TextureManager::iBufferRefCount = 0;
 
 bool MLRVertexLimitReached = false;
@@ -70,7 +70,7 @@ long s_txmAllocThisMission  = 0;   // nodes created since last unload boundary
 static void txmLeakKeyForName(const char* name, char* out, size_t outSz)
 {
     if (!name || !name[0]) { snprintf(out, outSz, "<anon/from_memory>"); return; }
-    const char* lastSep = NULL;
+    const char* lastSep = nullptr;
     for (const char* p = name; *p; ++p)
         if (*p == '/' || *p == '\\') lastSep = p;
     if (lastSep) {
@@ -118,7 +118,7 @@ void MC_TextureManager::freeVertices(void)
 	{
 		gvManager->destroy();
 		delete gvManager;
-		gvManager = NULL;
+		gvManager = nullptr;
 	}
 }
 
@@ -128,14 +128,14 @@ void MC_TextureManager::freeShapes(void)
 	{
 		rsManager->destroy();
 		delete rsManager;
-		rsManager = NULL;
+		rsManager = nullptr;
 	}
 }
 		
 // Creates gos_VERTEX Manager and allocates RAM.  Will not allocate if already done!
 void MC_TextureManager::startVertices (long maxVertices)
 {
-	if (gvManager == NULL)
+	if (gvManager == nullptr)
 	{
 		gvManager = new gos_VERTEXManager;
 		gvManager->init(maxVertices);
@@ -145,7 +145,7 @@ void MC_TextureManager::startVertices (long maxVertices)
 
 void MC_TextureManager::startShapes(uint32_t maxShapes)
 {
-	if (rsManager == NULL)
+	if (rsManager == nullptr)
 	{
 		rsManager = new gos_RenderShapeManager<TG_RenderShape>;
 		rsManager->init(maxShapes);
@@ -210,7 +210,7 @@ void MC_TextureManager::start (void)
 		
 	//Add an Empty Texture node for all untextured triangles to go down into.
 	masterTextureNodes[0].gosTextureHandle = 0;
-	masterTextureNodes[0].nodeName = NULL;
+	masterTextureNodes[0].nodeName = nullptr;
 	masterTextureNodes[0].uniqueInstance = false;
 	masterTextureNodes[0].neverFLUSH = 0x1;
 	masterTextureNodes[0].numUsers = 0;
@@ -220,7 +220,7 @@ void MC_TextureManager::start (void)
 	masterTextureNodes[0].logicalWidth = 0;
 	masterTextureNodes[0].logicalHeight = 0;
 	masterTextureNodes[0].lastUsed = -1;
-	masterTextureNodes[0].textureData = NULL;
+	masterTextureNodes[0].textureData = nullptr;
 
     lightDataStructuresCapacity = 128;
     lightDataStructuresCount = 0;
@@ -238,7 +238,7 @@ void MC_TextureManager::start (void)
 		(size_t)lightDataStructuresCapacity * sizeof(TG_HWLightsData));
 
     sceneData_ = new TG_HWSceneData;
-	sceneDataBuffer_ = gos_CreateBuffer(gosBUFFER_TYPE::UNIFORM, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWSceneData), 1, NULL);
+	sceneDataBuffer_ = gos_CreateBuffer(gosBUFFER_TYPE::UNIFORM, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWSceneData), 1, nullptr);
 	gos_BindBufferBase(sceneDataBuffer_, SCENE_DATA_ATTACHMENT_SLOT);
 
 	initTexResolveTable();
@@ -261,10 +261,10 @@ void MC_TextureManager::destroy (void)
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 
 	delete MidLevelRenderer::MLRTexturePool::Instance;
-	MidLevelRenderer::MLRTexturePool::Instance = NULL; 
+	MidLevelRenderer::MLRTexturePool::Instance = nullptr; 
 
 	delete theClipper;
-	theClipper = NULL;
+	theClipper = nullptr;
 	
 	gos_PopCurrentHeap();
 
@@ -272,28 +272,28 @@ void MC_TextureManager::destroy (void)
 	gos_PushCurrentHeap(gosFX::Heap);
 	
 	delete gosFX::EffectLibrary::Instance;
-	gosFX::EffectLibrary::Instance = NULL;
+	gosFX::EffectLibrary::Instance = nullptr;
 
 	delete effectStream;
-	effectStream = NULL;
+	effectStream = nullptr;
 	
 	delete gosFX::LightManager::Instance;
-	gosFX::LightManager::Instance = NULL;
+	gosFX::LightManager::Instance = nullptr;
 
 	gos_PopCurrentHeap();
 
 	// free SystemHeap Memory
 	systemHeap->Free(masterTextureNodes);
-	masterTextureNodes = NULL;
+	masterTextureNodes = nullptr;
 	
 	systemHeap->Free(masterVertexNodes);
-	masterVertexNodes = NULL;
+	masterVertexNodes = nullptr;
 	
 	delete textureCacheHeap;
-	textureCacheHeap = NULL;
+	textureCacheHeap = nullptr;
 
 	delete textureStringHeap;
-	textureStringHeap = NULL;
+	textureStringHeap = nullptr;
 
 	gos_LightDataSsbo_Destroy();  // [LIGHTSSBO v1]
 
@@ -321,8 +321,8 @@ MC_TextureManager::~MC_TextureManager (void)
 				textureCacheHeap->Free(lzBuffer1);
 				textureCacheHeap->Free(lzBuffer2);
 			}
-			lzBuffer1 = NULL;
-			lzBuffer2 = NULL;
+			lzBuffer1 = nullptr;
+			lzBuffer2 = nullptr;
 		}
 	}
 
@@ -442,10 +442,10 @@ void MC_TextureManager::flush (bool justTextures)
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 
 	delete MidLevelRenderer::MLRTexturePool::Instance;
-	MidLevelRenderer::MLRTexturePool::Instance = NULL; 
+	MidLevelRenderer::MLRTexturePool::Instance = nullptr; 
 
 	delete theClipper;
-	theClipper = NULL;
+	theClipper = nullptr;
 	
 	gos_PopCurrentHeap();
 
@@ -453,13 +453,13 @@ void MC_TextureManager::flush (bool justTextures)
 	gos_PushCurrentHeap(gosFX::Heap);
 	
 	delete gosFX::EffectLibrary::Instance;
-	gosFX::EffectLibrary::Instance = NULL;
+	gosFX::EffectLibrary::Instance = nullptr;
 
 	delete effectStream;
-	effectStream = NULL;
+	effectStream = nullptr;
 	
 	delete gosFX::LightManager::Instance;
-	gosFX::LightManager::Instance = NULL;
+	gosFX::LightManager::Instance = nullptr;
 
 	gos_PopCurrentHeap();
 
@@ -470,7 +470,7 @@ void MC_TextureManager::flush (bool justTextures)
 	MidLevelRenderer::MLRTexturePool::Instance = new MidLevelRenderer::MLRTexturePool(pool);
 
 	MidLevelRenderer::MLRSortByOrder *cameraSorter = new MidLevelRenderer::MLRSortByOrder(MidLevelRenderer::MLRTexturePool::Instance);
-	theClipper = new MidLevelRenderer::MLRClipper(0, cameraSorter);
+	theClipper = new MidLevelRenderer::MLRClipper(nullptr, cameraSorter);
 	
 	gos_PopCurrentHeap();
 
@@ -511,12 +511,12 @@ void MC_TextureManager::removeTextureNode (DWORD textureNode)
 		if (masterTextureNodes[textureNode].textureData)
 		{
 			textureCacheHeap->Free(masterTextureNodes[textureNode].textureData);
-			masterTextureNodes[textureNode].textureData = NULL;
+			masterTextureNodes[textureNode].textureData = nullptr;
 
 			if (masterTextureNodes[textureNode].nodeName)
 			{
 				textureStringHeap->Free(masterTextureNodes[textureNode].nodeName);
-				masterTextureNodes[textureNode].nodeName = NULL;
+				masterTextureNodes[textureNode].nodeName = nullptr;
 			}
 		}
 	}
@@ -540,12 +540,12 @@ void MC_TextureManager::removeTexture (DWORD gosHandle)
 		if (masterTextureNodes[i].textureData)
 		{
 			textureCacheHeap->Free(masterTextureNodes[i].textureData);
-			masterTextureNodes[i].textureData = NULL;
+			masterTextureNodes[i].textureData = nullptr;
 
 			if (masterTextureNodes[i].nodeName)
 			{
 				textureStringHeap->Free(masterTextureNodes[i].nodeName);
-				masterTextureNodes[i].nodeName = NULL;
+				masterTextureNodes[i].nodeName = nullptr;
 			}
 		}
 	}

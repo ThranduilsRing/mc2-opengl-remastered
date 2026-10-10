@@ -228,7 +228,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	if (result)
 	{
 		delete rightArm;
-		rightArm = NULL;
+		rightArm = nullptr;
 	}
 	
 	leftArm = new TG_TypeMultiShape;
@@ -238,7 +238,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	if (result)
 	{
 		delete leftArm;
-		leftArm = NULL;
+		leftArm = nullptr;
 	}
 	
 	// Load Damaged States
@@ -260,7 +260,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		if (!mechForwardDmgShape->GetNumShapes())
 		{
 			delete mechForwardDmgShape;
-			mechForwardDmgShape = NULL;
+			mechForwardDmgShape = nullptr;
 		}
 	}
 
@@ -275,7 +275,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		if (!mechBackwardDmgShape->GetNumShapes())
 		{
 			delete mechBackwardDmgShape;
-			mechBackwardDmgShape = NULL;
+			mechBackwardDmgShape = nullptr;
 		}
 	}
 
@@ -320,7 +320,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 					mechAnim[i]->ReverseFrameRate();
 			}
 			else
-				mechAnim[i] = NULL;
+				mechAnim[i] = nullptr;
 		}
 	}
 
@@ -455,7 +455,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	
 	// Load up sensor textures if not yet defined.
 	// For helicopters, load up the vehicle one!!
-	if (SensorSquareShape == NULL && numJumpNodes)
+	if (SensorSquareShape == nullptr && numJumpNodes)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"squarecontact",".ase");
@@ -465,10 +465,10 @@ void Mech3DAppearanceType::init (const char * fileName)
 
 		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
 		tglLoadShapeChecked(SensorSquareShape, sensorName,
-			"mech3d.sensor_square", NULL);
+			"mech3d.sensor_square", nullptr);
 	}
 
-	if (GVAppearanceType::SensorCircleShape == NULL && !numJumpNodes)
+	if (GVAppearanceType::SensorCircleShape == nullptr && !numJumpNodes)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"circularcontact",".ase");
@@ -477,10 +477,10 @@ void Mech3DAppearanceType::init (const char * fileName)
 		gosASSERT(GVAppearanceType::SensorCircleShape != NULL);
 
 		tglLoadShapeChecked(GVAppearanceType::SensorCircleShape, sensorName,
-			"mech3d.sensor_circle", NULL);
+			"mech3d.sensor_circle", nullptr);
 	}
 
-	if (GVAppearanceType::SensorTriangleShape == NULL)
+	if (GVAppearanceType::SensorTriangleShape == nullptr)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"trianglecontact",".ase");
@@ -489,7 +489,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		gosASSERT(GVAppearanceType::SensorTriangleShape != NULL);
 
 		tglLoadShapeChecked(GVAppearanceType::SensorTriangleShape, sensorName,
-			"mech3d.sensor_triangle", NULL);
+			"mech3d.sensor_triangle", nullptr);
 	}
 
 	// PRESENTATION-SOCKET-PROFILE-1 (Phase-2 slice 2): OPTIONAL data-declared
@@ -596,55 +596,55 @@ void Mech3DAppearanceType::destroy (void)
 		if (mechShape[i])
 		{
 			delete mechShape[i];
-			mechShape[i] = NULL;
+			mechShape[i] = nullptr;
 		}
 	}
 
 	if (mechShadowShape)
 	{
 		delete mechShadowShape;
-		mechShadowShape = NULL;
+		mechShadowShape = nullptr;
 	}
 
 	if (rightArm)
 	{
 		delete rightArm;
-		rightArm = NULL;
+		rightArm = nullptr;
 	}
 
 	if (leftArm)
 	{
 		delete leftArm;
-		leftArm = NULL;
+		leftArm = nullptr;
 	}
 
 	if (mechForwardDmgShape)
 	{
 		delete mechForwardDmgShape;
-		mechForwardDmgShape = NULL;
+		mechForwardDmgShape = nullptr;
 	}
 
 	if (mechBackwardDmgShape)
 	{
 		delete mechBackwardDmgShape;
-		mechBackwardDmgShape = NULL;
+		mechBackwardDmgShape = nullptr;
 	}
 
 	for (i=0;i<MAX_ANIMATION_FILES;i++)
 	{
 		delete mechAnim[i];
-		mechAnim[i] = NULL;
+		mechAnim[i] = nullptr;
 	}
 	
 	for (i=0;i<getTotalNodes();i++)
 	{
 		AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-		nodeData[i].nodeId = NULL;
+		nodeData[i].nodeId = nullptr;
 	}
 
 	AppearanceTypeList::appearanceHeap->Free(nodeData);
 	
-	nodeData = NULL;
+	nodeData = nullptr;
 	numSmokeNodes = numWeaponNodes = numJumpNodes = 0;
 }
 

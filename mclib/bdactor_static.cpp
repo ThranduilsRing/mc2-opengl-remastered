@@ -120,7 +120,7 @@ void BldgAppearance::registerStatic() {
 		&& appearType && appearType->bldgRenderShape;
 	if (seamProbe)
 		fprintf(stderr, "[SEAMPROBE] bldg registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d eligible=%d renderShape=%p\n",
-			appearType->name, (int)staticReg.registered, (int)(bldgShape!=NULL),
+			appearType->name, (int)staticReg.registered, (int)(bldgShape!=nullptr),
 			(int)GpuStaticPropRegistry::isEnabled(), (int)isStaticEligible(),
 			(void*)appearType->bldgRenderShape), fflush(stderr);
 	if (staticReg.registered) {
@@ -944,14 +944,14 @@ void BldgAppearance::destroy (void)
 	if ( bldgShape )
 	{
 		delete bldgShape;
-		bldgShape = NULL;
+		bldgShape = nullptr;
 	}
 
 	if (destructFX)
 	{
 		destructFX->Kill();
 		delete destructFX;
-		destructFX = NULL;
+		destructFX = nullptr;
 	}
 	
 	//Turn the lights off!
@@ -962,7 +962,7 @@ void BldgAppearance::destroy (void)
 			eye->removeWorldLight(lightId,pointLight);
 
 		free(pointLight);
-		pointLight = NULL;
+		pointLight = nullptr;
 	}
 
 	// (E) T1.5: paired cleanup for SpotLight_-child illumination from T1.4.
@@ -989,14 +989,14 @@ void BldgAppearance::destroy (void)
 	{
 		activity->Kill();
 		delete activity;
-		activity = NULL;
+		activity = nullptr;
 	}
 
 	if (activity1)
 	{
 		activity1->Kill();
 		delete activity1;
-		activity1 = NULL;
+		activity1 = nullptr;
 	}
 
 	appearanceTypeList->removeAppearance(appearType);

@@ -268,7 +268,7 @@ inline bool buildQueryFromGlobals(std::vector<olr::LightInput>& scratch, olr::Qu
 		scratch.reserve(numLights);
 		for (DWORD i = 0; i < numLights; ++i) {
 			olr::LightInput li{};
-			if (listOfLights[i] != NULL) {
+			if (listOfLights[i] != nullptr) {
 				flattenLight(listOfLights[i], li);
 			} else {
 				li.active = false;   // NULL entries are skipped by both packers
@@ -442,7 +442,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 		// before the active-filter culls them. Read `active` ONCE here; the
 		// canonical filter below reads it again, but the field is plain DWORD
 		// and not externally mutated between these two reads in this loop.
-		if (listOfLights[iLight] != NULL) {
+		if (listOfLights[iLight] != nullptr) {
 			const DWORD t = listOfLights[iLight]->lightType;
 			if (listOfLights[iLight]->active) {
 				++diagActiveLights;
@@ -452,7 +452,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			}
 		}
 
-		if ((listOfLights[iLight] != NULL) && (listOfLights[iLight]->active))
+		if ((listOfLights[iLight] != nullptr) && (listOfLights[iLight]->active))
 		{
 
 			const DWORD type = listOfLights[iLight]->lightType;
@@ -761,7 +761,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
 		TG_Shape::s_listOfLights = lights;
 		TG_Shape::s_numLights    = (DWORD)nLights;
 	} else {
-		TG_Shape::s_listOfLights = NULL;
+		TG_Shape::s_listOfLights = nullptr;
 		TG_Shape::s_numLights    = 0;
 	}
 

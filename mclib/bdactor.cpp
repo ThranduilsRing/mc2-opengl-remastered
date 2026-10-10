@@ -137,7 +137,7 @@ void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char*
 // can link mclib directly without code/mechcmd2.cpp.
 int ObjectTextureSize = 128;
 bool reloadBounds = false;
-MidLevelRenderer::MLRClipper * theClipper = NULL;
+MidLevelRenderer::MLRClipper * theClipper = nullptr;
 
 // class BldgAppearance
 void BldgAppearance::setWeaponNodeUsed (long weaponNode)
@@ -263,7 +263,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	flashColor = 0x00000000;
 	drawFlash = false;
 
-	pointLight = NULL;
+	pointLight = nullptr;
 	lightId = 0xffffffff;
 	forceLightsOut = false;
 
@@ -285,16 +285,16 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  	
 	turretYaw = turretPitch = 0.0f;
 	
-	destructFX = NULL;
-	activity = NULL;
-	activity1 = NULL;
+	destructFX = nullptr;
+	activity = nullptr;
+	activity1 = nullptr;
 	isActivitying = false;
 
 	OBBRadius = -1.0f;
 	highZ = -1.0f;
 	
-	nodeUsed = NULL;
-	nodeRecycle = NULL;
+	nodeUsed = nullptr;
+	nodeRecycle = nullptr;
 	
 	beenInView = false;
 	buildingPbrRenderActive = false;
@@ -495,7 +495,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 				{
 					bldgShape->ClearAnimation();
 					delete bldgShape;
-					bldgShape = NULL;
+					bldgShape = nullptr;
 				}
 				
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
@@ -518,7 +518,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 				{
 					bldgShape->ClearAnimation();
 					delete bldgShape;
-					bldgShape = NULL;
+					bldgShape = nullptr;
 				}
 
 				// MODEL-OVERRIDE dual-shape: restore the per-instance RENDER
@@ -870,7 +870,7 @@ bool BldgAppearance::playDestruction (void)
 			shapeOrigin.BuildRotation(rot);
 			shapeOrigin.BuildTranslation(tPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			destructFX->Start(&info);
 			
 			return true;

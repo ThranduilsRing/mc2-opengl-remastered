@@ -99,8 +99,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	jumpVelocity.Zero();
 	jumpFXSetup = false;
 	
-	nodeUsed = NULL;
-	nodeRecycle = NULL;
+	nodeUsed = nullptr;
+	nodeRecycle = nullptr;
 
 	currentRightPoof = currentLeftPoof = 0;
 	
@@ -111,14 +111,14 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	isDusting = false;
 	movedThisFrame = false;
 	fallDust = false;
-	criticalSmoke = NULL;
-	smokeEffect = NULL;
-	waterWake = NULL;
-	helicopterDustCloud = NULL;
+	criticalSmoke = nullptr;
+	smokeEffect = nullptr;
+	waterWake = nullptr;
+	helicopterDustCloud = nullptr;
 	isHelicopter = false;
 	
-	leftArm = rightArm = NULL;
-	rightArmSmoke = leftArmSmoke = NULL;
+	leftArm = rightArm = nullptr;
+	rightArmSmoke = leftArmSmoke = nullptr;
 
 	currentFlash = duration = flashDuration = 0.0f;
 	flashColor = 0x00000000;
@@ -135,7 +135,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	// mechType->mechShape[0]->CreateFrom() below derefs NULL and crashes the
 	// encyclopedia / mech-bay preview. The per-frame render()/update()/
 	// recalcBounds() paths early-out on the resulting NULL mechShape.
-	mechShape = NULL;
+	mechShape = nullptr;
 
 	if (mechType && mechType->mechShape[0])
 	{
@@ -428,7 +428,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	currentFrame = 0.0f;
 	lastAnimAdvanceFrame = 0xFFFFFFFFu;	//ANIM-CADENCE-FIX: no advance yet
 
-	pointLight = NULL;
+	pointLight = nullptr;
 	lightId = 0xffffffff;
 	
 	hitGestureId = -1;
@@ -441,13 +441,13 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	
 	for (long i=0;i<MAX_DUST_POOFS;i++)
 	{
-		rightDustPoofEffect[i] = NULL;
-		leftDustPoofEffect[i] = NULL;
+		rightDustPoofEffect[i] = nullptr;
+		leftDustPoofEffect[i] = nullptr;
 	}
 	
-	smokeEffect = NULL;
-	jumpJetEffect = NULL;
-	rightShoulderBoom = leftShoulderBoom = NULL;
+	smokeEffect = nullptr;
+	jumpJetEffect = nullptr;
+	rightShoulderBoom = leftShoulderBoom = nullptr;
 	
 	leftFootDone0 = rightFootDone0 = leftFootDone1 = rightFootDone1 = false;
 	
@@ -494,7 +494,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	}
 	else
 	{
-		mechShadowShape = NULL;
+		mechShadowShape = nullptr;
 	}
 }
 

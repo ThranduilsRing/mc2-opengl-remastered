@@ -93,7 +93,7 @@ long BldgAppearance::update (bool animate)
 		{
 			eye->removeWorldLight(lightId,pointLight);
 			free(pointLight);
-			pointLight = NULL;
+			pointLight = nullptr;
 		}
 	}
 
@@ -816,7 +816,7 @@ long BldgAppearance::update (bool animate)
 			{
 				destructFX->Kill();
 				delete destructFX;
-				destructFX = NULL;
+				destructFX = nullptr;
 			}
 		}
 		
@@ -865,7 +865,7 @@ long BldgAppearance::update (bool animate)
 				{
 					activity->Kill();		//Effect is over.  Otherwise, wait until hit!
 					delete activity;
-					activity = NULL;
+					activity = nullptr;
 				}
 
 			}
@@ -911,7 +911,7 @@ long BldgAppearance::update (bool animate)
 					{
 						activity1->Kill();		//Effect is over.  Otherwise, wait until hit!
 						delete activity1;
-						activity1 = NULL;
+						activity1 = nullptr;
 					}
 				}
 
@@ -991,7 +991,7 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 		localResult.Multiply(localToWorld,shapeOrigin);
 		*/
 			
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 
 		activity->Start(&info);
 		
@@ -1025,7 +1025,7 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 			localResult.Multiply(localToWorld,shapeOrigin);
 			*/
 				
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 	
 			activity1->Start(&info);
 		}

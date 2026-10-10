@@ -86,7 +86,7 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	// New Method.  Just store memory footprint of texture.
 	// DO NOT create GOS handle until we need it.
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
-	masterTextureNodes[i].nodeName = NULL;
+	masterTextureNodes[i].nodeName = nullptr;
 	txmLeakNoteAlloc();  // [TXMMGR_TEXTURE_AUDIT v1] from_memory path
 
 	masterTextureNodes[i].numUsers = 1;
@@ -123,7 +123,7 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	}
 	
 	//No More RAM.  Do not display this texture anymore.
-	if (masterTextureNodes[i].textureData == NULL)
+	if (masterTextureNodes[i].textureData == nullptr)
 		masterTextureNodes[i].gosTextureHandle = 0;
 	else
 	{
@@ -326,7 +326,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			}
 			fprintf(f,"[PREVIEW-LOAD] open=%ld size=%ld disk=%d name=%s tgaType=%u dims=%ux%u bpp=%u\n",
 				textureFileOpenResult, fsz,
-				(int)((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1),
+				((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1),
 				textureFullPathName,
 				hdr[2], hdr[12] | (hdr[13]<<8), hdr[14] | (hdr[15]<<8), hdr[16]);
 			fclose(f);
@@ -404,7 +404,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			ZoneScopedN("MC_TextureManager::loadTexture cacheAlloc");
 			masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(cacheBytes);
 		}
-		if (masterTextureNodes[i].textureData == NULL)
+		if (masterTextureNodes[i].textureData == nullptr)
 			masterTextureNodes[i].gosTextureHandle = 0;
 		else
 		{
@@ -540,7 +540,7 @@ DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat ke
 		STOP(("TOO Many textures in game.  We have exceeded 4096 game handles"));
 
 	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
-	masterTextureNodes[i].nodeName = NULL;
+	masterTextureNodes[i].nodeName = nullptr;
 	txmLeakNoteAlloc();  // [TXMMGR_TEXTURE_AUDIT v1] from_memory raw path
 	masterTextureNodes[i].numUsers = 1;
 	masterTextureNodes[i].key = key;
@@ -559,7 +559,7 @@ DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat ke
 		masterTextureNodes[i].textureData = (DWORD *)textureCacheHeap->Malloc(txmSize);
 	}
 
-	if (masterTextureNodes[i].textureData == NULL)
+	if (masterTextureNodes[i].textureData == nullptr)
 		masterTextureNodes[i].gosTextureHandle = 0;
 	else
 	{
@@ -572,7 +572,7 @@ DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat ke
 
 long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFullPathName)
 {
-	if ((MC_MAXTEXTURES <= textureIndex) || (NULL == masterTextureNodes[textureIndex].textureData))
+	if ((MC_MAXTEXTURES <= textureIndex) || (nullptr == masterTextureNodes[textureIndex].textureData))
 	{
 		return (~NO_ERR);
 	}
