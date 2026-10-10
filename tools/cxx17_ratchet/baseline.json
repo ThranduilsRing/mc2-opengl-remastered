@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 42,
-   "LG20": 75
+   "LG19": 41,
+   "LG20": 74
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1049,9 +1049,7 @@
    "LG06": 1
   },
   "GameOS/gameos/render_backend_select.cpp": {
-   "LG06": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG06": 1
   },
   "GameOS/gameos/render_backend_select.h": {
    "LG06": 1
@@ -5817,7 +5815,7 @@
    "LG20": 1
   }
  },
- "head": "ac4e34c02",
+ "head": "6d3aadafc",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

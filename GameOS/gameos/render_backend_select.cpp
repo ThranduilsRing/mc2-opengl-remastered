@@ -6,6 +6,8 @@
 // unset path, so GL behavior is byte-identical.
 
 #include "render_backend_select.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #include <cstdio>
 #include <cstdlib>
@@ -27,8 +29,9 @@ int s_cached = -1;
 bool s_forceGL = false;
 
 RenderBackend resolveOnce() {
-    const char* env = std::getenv("MC2_RENDER_BACKEND");
-    if (env == nullptr || env[0] == '\0') {
+    const std::string envText = mc2::gate::str<"MC2_RENDER_BACKEND">();   // "" when unset or empty
+    const char* env = envText.c_str();
+    if (env[0] == '\0') {
         // Unset -> GL. Silent (this is the default, byte-identical path).
         return RenderBackend::GL;
     }
