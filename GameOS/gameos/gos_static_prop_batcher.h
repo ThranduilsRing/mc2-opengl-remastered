@@ -139,6 +139,7 @@ struct GpuStaticPropType {
 // Full definition in render_snapshot.h; batcher.cpp includes it directly.
 // Phase-helper state of GpuStaticPropBatcher::flush (defined in gos_static_prop_batcher_flush.cpp).
 struct StaticPropFlushFrame;
+struct StaticPropFinalizeFrame;
 struct StaticPropDispatchMeta;
 namespace RenderCore { struct DrawPacket; }
 struct RenderSnapshot;
@@ -178,6 +179,18 @@ public:
 
     // Called at end of registration to upload the immutable VBO/IBO.
     void finalizeGeometry();
+
+private:
+    // GpuStaticPropBatcher::finalizeGeometry phases (gos_static_prop_batcher_finalize*.cpp); callers use finalizeGeometry().
+    void finalizePrologue();
+    void createSharedBuffers();
+    void uploadPerTypeAndPublish();
+    bool layoutCoalesce(StaticPropFinalizeFrame& f);
+    bool buildTextureArrays(StaticPropFinalizeFrame& f);
+    void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
+    bool reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f);
+    void armCoalesce(StaticPropFinalizeFrame& f);
+public:
 
     // Per-frame submission. shape->listOfColors must be fresh (set by
     // TransformMultiShape earlier in the frame).

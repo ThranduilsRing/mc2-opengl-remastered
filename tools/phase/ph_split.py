@@ -19,6 +19,8 @@
 #                              the include lines every piece (and the frame header) starts with
 #   PREFIX_EDITS               {line: text} comment lines before the function to rewrite (the file header)
 #   a phase tuple may end in {'file': path}: its helper is written to that file (heads in FILE_HEADS)
+#   a phase tuple may end in {'exits': True}: the helper returns bool (true = the original function returned) and
+#                              its bare `return;` statements become `return true;`
 #   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
 #   FRAME_METHODS              single frame: helpers that use its members are methods of the struct (no alias lines);
 #                              a phase tuple may end in {'free': True} to stay a file-static function
@@ -177,9 +179,13 @@ def main():
         used = used_members(body, name)
         frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
         as_method = frame_methods and bool(used) and not opts.get('free')
+        exits = bool(opts.get('exits'))
+        if exits:
+            body = [re.sub(r'\breturn;', 'return true;', x) for x in body]
+            body = body + [indent + 'return false;']
         code = '\n'.join(strip_code(x) for x in body)
         uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
-        info.append(dict(file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
+        info.append(dict(exits=exits, file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []
     anon = not method and not getattr(S, 'FRAME_GLOBAL', False)
     if anon:
@@ -236,11 +242,15 @@ def main():
             calls[i['a']] = 'f.%s(%s);' % (name, ', '.join(n for n, _t in i['uparams']))
         else:
             head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
+            if i['exits']:
+                head = head.replace('void ', 'bool ', 1)
             blk.append(head)
-            decls.append('void %s(%s);' % (name, params))
+            decls.append('%s %s(%s);' % ('bool' if i['exits'] else 'void', name, params))
             for k in range(0, len(used), per_line):
                 blk.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
             calls[i['a']] = '%s(%s);' % (name, ', '.join([n for n, _t in i['uparams']] + frames))
+            if i['exits']:
+                calls[i['a']] = 'if (' + calls[i['a']][:-1] + ') return;'
         blk += i['body']
         blk.append('}')
         if guard:

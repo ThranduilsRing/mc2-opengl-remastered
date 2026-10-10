@@ -68,9 +68,9 @@ alias_rx = re.compile(r'^\s*' + one_alias + r'(?:\s+' + one_alias + r')*$')
 helpers = {}
 for (name, a, b, doc, *_r) in S.PHASES:
     if method:
-        sig_rx = re.compile(r'^void ' + method + '::' + name + r'\(.*\) \{$')
+        sig_rx = re.compile(r'^(?:void|bool) ' + method + '::' + name + r'\(.*\) \{$')
     else:
-        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(.*\)) \{$')
+        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|(?:void|bool) \w+::' + name + r'\(.*\)) \{$')
     src_lines = new
     i = next((k for k, l in enumerate(src_lines) if sig_rx.match(l)), None)
     if i is None:
@@ -86,12 +86,15 @@ for (name, a, b, doc, *_r) in S.PHASES:
     for x in body:
         if alias_rx.match(x):
             fail.append('alias line inside body of ' + name)
+    if any(isinstance(r, dict) and r.get('exits') for r in _r):
+        assert body and body[-1].strip() == 'return false;', 'exits helper must end in return false;'
+        body = [re.sub(r'\breturn true;', 'return;', x) for x in body[:-1]]
     helpers[name] = body
 
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
 fr = '|'.join(structs)
-call_rx = re.compile(r'^\s*(?:f\.)?(\w+)\([\w, ]*\);$')
+call_rx = re.compile(r'^\s*(?:if \()?(?:f\.)?(\w+)\([\w, ]*\)(?:\) return)?;$')
 decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
 expanded = []
 frame_decls = 0
