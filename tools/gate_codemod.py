@@ -148,6 +148,14 @@ G4_FILES = (
     "GameOS/gameos/vulkan_shadow_island_live.cpp",
     "GameOS/gameos/vulkan_water_island.cpp",
 )
+# G5: the four GameOS giant singles, one file per cycle (the plan covers all four so the helper groups
+# that span them are read once).
+G5_FILES = (
+    "GameOS/gameos/gos_postprocess.cpp",
+    "GameOS/gameos/gos_static_prop_batcher.cpp",
+    "GameOS/gameos/gameos_graphics.cpp",
+    "GameOS/gameos/gameosmain.cpp",
+)
 SEED_REL = "tools/gate_table.seed.json"
 TABLE_REL = "Gates/gate_table.json"
 LEDGER_REL = "tools/gate_g0_ledger.json"
@@ -167,6 +175,9 @@ FAMILIES = {
     "g4": {"title": "Gate codemod, G4 VK raw-read plan (dry run)", "what": "G4 VK raw-read migration", "files": G4_FILES,
            "md": "docs/gate-codemod-g4.md", "tsv": "docs/gate-codemod-g4.tsv",
            "cmd": "py -3 tools/gate_codemod.py --family g4 --write"},
+    "g5": {"title": "Gate codemod, G5 GameOS giant singles plan (dry run)", "what": "G5 giant-single migration", "files": G5_FILES,
+           "md": "docs/gate-codemod-g5.md", "tsv": "docs/gate-codemod-g5.tsv",
+           "cmd": "py -3 tools/gate_codemod.py --family g5 --write"},
 }
 
 NS = "mc2::gate"
