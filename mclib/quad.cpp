@@ -52,16 +52,6 @@
 #include <chrono>
 #include "Gates/gate.h"
 
-// Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
-// TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
-// g_pzLastPredicates into the matching slot, so pz_emit_terrain_tris (called
-// later for the same quad) can hand both screen-state AND predicate-state to
-// the overlay without ever recomputing predicates. Single-threaded terrain
-// submission makes the file-static safe.
-static ProjectZPredicates s_pzVertPreds[4] = {};
-static inline void pz_capture_vert_preds(int slot) {
-    if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
-}
 // Stage 1 cost-split RAII timers — bracket SOLID and DRAWALPHA admit clusters
 // inside TerrainQuad::setupTextures so we can split the per-frame
 // "Terrain::geometry quadSetupTextures" cost between the SOLID branch (target
@@ -237,6 +227,17 @@ static inline void EndLegacySolidCluster() {
 }
 }  // namespace
 
+// Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
+// TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
+// g_pzLastPredicates into the matching slot, so pz_emit_terrain_tris (called
+// later for the same quad) can hand both screen-state AND predicate-state to
+// the overlay without ever recomputing predicates. Single-threaded terrain
+// submission makes the file-static safe.
+static ProjectZPredicates s_pzVertPreds[4] = {};
+static inline void pz_capture_vert_preds(int slot) {
+    if (g_pzTrace) s_pzVertPreds[slot] = g_pzLastPredicates;
+}
+
 // [DEPTH_TRANSITION v1] cross-TU CPU-water REAL screen-z sample (env-gated
 // MC2_DEPTH_TRANSITION_PROBE; silent default). Written by TerrainQuad::drawWater
 // for the water vertex nearest the fixed mid-map probe point P; READ by the
@@ -296,7 +297,7 @@ static const bool s_shapeCEnabled = mc2::gate::get<"MC2_MODERN_TERRAIN_PATCHES">
 
 // Terrain type -> PBR material index (0=Rock,1=Grass,2=Dirt,3=Concrete):
 // single-sourced in terrain_material.h.
-static BYTE terrainTypeToMaterial(DWORD terrainType)
+inline BYTE terrainTypeToMaterial(DWORD terrainType)
 {
     return mc2terrain::terrainTypeToMaterial(static_cast<uint32_t>(terrainType));
 }
@@ -400,7 +401,7 @@ static bool isTerrainQuadVisible(const TerrainQuad& quad)
 	return (clipped1 || clipped2) != 0;
 }
 
-static void enqueueTerrainMineState(TerrainQuad& quad)
+void enqueueTerrainMineState(TerrainQuad& quad)
 {
 	// PR2c Stage 0c — bracket the entire function for the dedicated mine bucket.
 	// Counter increments once per call (per-quad). User-attested 2026-05-08
