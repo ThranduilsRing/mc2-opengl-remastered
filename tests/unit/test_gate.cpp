@@ -24,6 +24,8 @@
 
 #ifdef _WIN32
 #include <stdlib.h>
+#include <process.h>   // _spawnl: the strict-exit test runs this exe again
+#include <windows.h>   // GetModuleFileNameA
 #endif
 
 namespace gate = mc2::gate;
@@ -669,5 +671,94 @@ TEST_CASE("MC2_PATCH_STREAM_FORCE_INIT_FAIL is a presence gate that defaults off
         CHECK(rowValue(row, t));  // getenv(x) != nullptr
     }
 }
+
+// ---------------------------------------------------------------------------
+// Parse edges: sign, whitespace, overflow, non-finite
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Int rows: Std parse takes the whole string, Prefix is atoi-compatible") {
+    using namespace gate::rows;
+    const gate::Row std_ = G("MC2_UNITTEST_INT", Int, 7, "test", "", "doc");
+    const gate::Row pre = P("MC2_UNITTEST_PI", Int, 7, "test", "", "doc");
+    auto val = [&](const gate::Row& r, const char* t) { return g1b::intOf(r, t); };
+    // from_chars takes a leading '-' but not '+', whitespace or trailing text: those fall back with badvalue.
+    CHECK(val(std_, "-1") == -1);
+    for (const char* t : {"+1", " 2", "2 ", "2junk", "0x10"}) {
+        INFO(t);
+        CHECK(val(std_, t) == 7);
+        CHECK(isBad(std_, t));
+    }
+    // strtol skips leading whitespace, accepts '+', stops at junk, saturates at the 32-bit long range.
+    CHECK(val(pre, "+1") == 1);
+    CHECK(val(pre, " 2") == 2);
+    CHECK(val(pre, "-3") == -3);
+    CHECK(val(pre, "2junk") == 2);
+    CHECK(val(pre, "0x10") == 0);
+    CHECK(val(pre, "99999999999") == 2147483647);
+    CHECK(val(pre, "-99999999999") == -2147483647 - 1);
+}
+
+TEST_CASE("Int row overflow: Std falls back to the default, flagged") {
+    using namespace gate::rows;
+    const gate::Row std_ = G("MC2_UNITTEST_INT", Int, 7, "test", "", "doc");
+    CHECK(g1b::intOf(std_, "2147483647") == 2147483647);
+    for (const char* t : {"2147483648", "99999999999", "-2147483649"}) {
+        INFO(t);
+        CHECK(g1b::intOf(std_, t) == 7);
+        CHECK(isBad(std_, t));
+    }
+}
+
+TEST_CASE("Float rows: a Std row rejects 1e999, a Prefix row lets inf reach the range test") {
+    using namespace gate::rows;
+    const gate::Row std_ = G("MC2_UNITTEST_FLT", Float, 0.5, "test", "", "doc");
+    const gate::Row pre = P("MC2_UNITTEST_PF", Float, 0.5, "test", "", "doc");
+    const gate::Row preClamp = P("MC2_UNITTEST_PF", Float, 0.5, "test", "", "doc", clampRange(0.0, 2.0));
+    const gate::Row preReject = P("MC2_UNITTEST_PF", Float, 0.5, "test", "", "doc", range(0.0, 2.0));
+    auto v = [](const gate::Row& r, const char* t) { return asFloat(gate::detail::parseRow(r, t)); };
+    CHECK(v(std_, "1e999") == 0.5f);
+    CHECK(isBad(std_, "1e999"));
+    CHECK(v(std_, "-1e999") == 0.5f);
+    CHECK(v(std_, " 1.5") == 0.5f);          // whole-string parse: leading space is junk
+    CHECK(v(pre, " 1.5") == 1.5f);           // strtod skips it
+    CHECK(v(pre, "+1.5") == 1.5f);
+    CHECK(v(pre, "1.5junk") == 1.5f);
+    CHECK(v(preClamp, "1e999") == 2.0f);     // inf clamps to the bound, as the old (float)atof readers did
+    CHECK(v(preClamp, "-1e999") == 0.0f);
+    CHECK(v(preReject, "1e999") == 0.5f);    // inf outside a reject range: the default
+    CHECK(v(preClamp, "1e50") == 2.0f);      // a double that overflows float is inf after the cast
+    CHECK(v(pre, "nan") == 0.5f);            // NaN never parses
+}
+
+// ---------------------------------------------------------------------------
+// MC2_CONFIG_STRICT: the process ends with exit code 78
+// ---------------------------------------------------------------------------
+
+#ifdef _WIN32
+// The child half of the strict test: run only when the parent spawns this exe with --no-skip. It prints the
+// dump and, under MC2_CONFIG_STRICT=1 with an unregistered variable in the environment, must never return.
+TEST_CASE("strict_exit_child" * doctest::skip(true)) {
+    gate::dumpConfig(stderr);
+    if (std::getenv("MC2_CONFIG_STRICT") != nullptr) FAIL("dumpConfig returned under strict mode");
+}
+
+TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the process with exit code 78") {
+    char exe[MAX_PATH] = {0};
+    REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
+    EnvVar strict("MC2_CONFIG_STRICT");
+    EnvVar typo("MC2_TERAIN_NOT_A_GATE");
+    strict.set("1");
+    typo.set("1");
+    const intptr_t rc = _spawnl(_P_WAIT, exe, exe, "--no-skip",
+                                "-tc=strict_exit_child", nullptr);
+    CHECK(rc == 78);
+    strict.set(nullptr);
+    typo.set(nullptr);
+    // Without strict the same environment only warns: the child's dump returns and it exits 0.
+    const intptr_t rc2 = _spawnl(_P_WAIT, exe, exe, "--no-skip",
+                                 "-tc=strict_exit_child", nullptr);
+    CHECK(rc2 == 0);
+}
+#endif
 
 }  // TEST_SUITE

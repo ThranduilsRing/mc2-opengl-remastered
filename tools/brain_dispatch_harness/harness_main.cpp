@@ -579,6 +579,7 @@ static int runFitWriterSelfTest() {
 }
 
 int main(int argc, char** argv) {
+    mc2::gate::markMainEntered();   // gate reads resolved before this line count as static-init (pre-main) reads
     // --- Parse CLI ---
     std::string manifestPath;
     std::string fixtureDir = "tests/fixtures/brain_runtime";

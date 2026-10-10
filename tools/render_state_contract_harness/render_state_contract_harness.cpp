@@ -129,6 +129,7 @@ static void enableScopeTracking() {
 }
 
 int main(int argc, char** argv) {
+    mc2::gate::markMainEntered();   // gate reads resolved before this line count as static-init (pre-main) reads
     enableScopeTracking();
 
     Harness h("render_state_contract_harness");

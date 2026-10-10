@@ -265,6 +265,7 @@ static bool test_fatal_if_aborts_and_traces(TestCtx& t) {
 }
 
 int main(int argc, char** argv) {
+    mc2::gate::markMainEntered();   // gate reads resolved before this line count as static-init (pre-main) reads
     if (argc > 0 && argv[0]) g_argv0 = argv[0];
 
     Harness h("job_system_harness");
