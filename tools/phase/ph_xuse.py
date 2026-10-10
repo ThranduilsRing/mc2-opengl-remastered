@@ -1,5 +1,5 @@
 # Which locals declared in one line range are read again in a later range of the same function?
-# usage: py -3 .claude/ph_xuse.py FILE a-b,c-d,...   (1-based inclusive ranges, in execution order)
+# usage: py -3 tools/phase/ph_xuse.py FILE a-b,c-d,...   (1-based inclusive ranges, in execution order)
 import re
 import sys
 L = open(sys.argv[1], encoding='utf-8', errors='replace').read().replace('\r', '').split('\n')

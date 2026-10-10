@@ -2,7 +2,7 @@
 # into the helper body and require the result to equal the original function body statement for statement
 # (modulo the spec's listed declaration lifts / edits and the scaffolding), and require everything outside
 # the function and the added helper block to be byte-identical.
-# usage: py -3 .claude/ph_verify.py .claude/ph_spec_<name>.py
+# usage: py -3 tools/phase/ph_verify.py tools/phase/proofs/ph_spec_<name>.py
 import collections
 import importlib.util
 import re
@@ -10,7 +10,7 @@ import os
 import subprocess
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'scripts'))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 sp = importlib.util.spec_from_file_location('spec', sys.argv[1])

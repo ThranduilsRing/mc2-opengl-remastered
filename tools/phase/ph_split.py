@@ -1,7 +1,7 @@
 # Phase-helper split of one oversized function: moves each lexical phase of the body, verbatim, into a
 # helper that takes the small shared-state struct(s) holding the locals that cross phases; the original
 # function keeps only the glue (calls, early-outs, scoping).
-# usage: py -3 .claude/ph_split.py .claude/ph_spec_<name>.py
+# usage: py -3 tools/phase/ph_split.py tools/phase/proofs/ph_spec_<name>.py
 # Reads the text at the spec's BASE commit (default HEAD) so it is re-runnable; writes the working file.
 #
 # Spec fields:
@@ -28,7 +28,7 @@ import os
 import subprocess
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'scripts'))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 MEMBER_COMMENTS = {}
@@ -296,7 +296,8 @@ def main():
     if crlf:
         out = out.replace('\n', '\r\n')
     open(S.SRC, 'wb').write(out.encode('utf-8'))
-    open('.claude/ph_decls_%s.txt' % re.sub(r'\W', '_', S.SRC), 'w').write('\n'.join(decls) + '\n')
+    decl_path = os.path.splitext(sys.argv[1])[0] + '.decls.txt'   # the member declarations to add to the class header
+    open(decl_path, 'w').write('\n'.join(decls) + '\n')
     print('lines', len(L), '->', len(new), ' orchestrator', len(O), ' helpers', len(ph))
 
 

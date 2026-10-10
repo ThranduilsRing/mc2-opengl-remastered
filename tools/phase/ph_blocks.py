@@ -1,6 +1,6 @@
 # Brace-matched blocks of one function: for every `{` opening at the given depth inside the function, print its
 # line, the matching `}` line and the first line of the comment run directly above it.
-# usage: py -3 .claude/ph_blocks.py FILE 'signature regex' DEPTH [first_line last_line]
+# usage: py -3 tools/phase/ph_blocks.py FILE 'signature regex' DEPTH [first_line last_line]
 import re
 import sys
 
