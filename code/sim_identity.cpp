@@ -27,8 +27,8 @@
 //      MC2_SIM_IDENTITY_TRACE_DETAIL default OFF
 //   All three parse "0"/"false"/"off"/"no" as OFF and anything else set as ON.
 //   Note the deliberate contrast with MC2_BRIDGE_MOVER_STATE two files over,
-//   which is `getenv(...) != nullptr` and therefore ENABLES on `=0`. That is
-//   the seventeen-documented-gate-lies failure mode; envOnOff() below does not
+//   which is a presence row and therefore ENABLES on `=0`. That is the
+//   seventeen-documented-gate-lies failure mode; the Std rows read here do not
 //   reproduce it.
 //
 //   MC2_SIM_IDENTITY defaults ON on purpose, and the purpose is anti-wallpaper:
@@ -43,6 +43,7 @@
 #include "warrior.h"
 #include "../mclib/appear.h"
 #include "../mclib/sim_identity.h"
+#include "Gates/gate.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -53,42 +54,19 @@ namespace {
 
 using mc2_sim_identity::MoverRecord;
 
-// Case-insensitive equality, ASCII, no CRT/platform dependency. The codebase's
-// own helper is S_stricmp (code/carnage.cpp etc.) which lives behind headers
-// this TU has no reason to pull in; four lines is cheaper than the coupling.
-bool ieq(const char* a, const char* b) {
-	for (; *a && *b; ++a, ++b) {
-		char ca = *a, cb = *b;
-		if (ca >= 'A' && ca <= 'Z') ca = (char)(ca - 'A' + 'a');
-		if (cb >= 'A' && cb <= 'Z') cb = (char)(cb - 'A' + 'a');
-		if (ca != cb) return false;
-	}
-	return *a == *b;
-}
-
-// Tri-state env read. Unset/empty -> defaultOn. Set to a falsey token -> false.
-// Anything else set -> true.
-bool envOnOff(const char* name, bool defaultOn) {
-	const char* v = getenv(name);
-	if (!v || !v[0]) return defaultOn;
-	if (ieq(v, "0") || ieq(v, "false") || ieq(v, "off") || ieq(v, "no"))
-		return false;
-	return true;
-}
-
 bool simIdentityEnabled() {
-	static const bool on = envOnOff("MC2_SIM_IDENTITY", /*defaultOn=*/true);
+	static const bool on = mc2::gate::get<"MC2_SIM_IDENTITY">();
 	return on;
 }
 
 bool simIdentityTrace() {
-	static const bool on = envOnOff("MC2_SIM_IDENTITY_TRACE", /*defaultOn=*/false);
+	static const bool on = mc2::gate::get<"MC2_SIM_IDENTITY_TRACE">();
 	return on;
 }
 
 bool simIdentityTraceDetail() {
 	static const bool on =
-		envOnOff("MC2_SIM_IDENTITY_TRACE_DETAIL", /*defaultOn=*/false);
+		mc2::gate::get<"MC2_SIM_IDENTITY_TRACE_DETAIL">();
 	return on;
 }
 
