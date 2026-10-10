@@ -352,7 +352,7 @@
    "doc": "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack (orderAttackObject, COMMANDER origin \u2014 the only origin that installs the tac order and thus the aim) at the nearest live enemy mech, re-issued as targets die (2 s global throttle).",
    "readers": [
     {
-     "at": "code/warrior.cpp:5624",
+     "at": "code/warrior.cpp:2230",
      "idiom": "Lead0P"
     }
    ],
@@ -756,7 +756,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2316",
+     "at": "mclib/bdactor.cpp:2321",
      "idiom": "Presence"
     }
    ],
@@ -782,7 +782,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:5051",
+     "at": "mclib/bdactor.cpp:5056",
      "idiom": "Presence"
     }
    ],
@@ -808,7 +808,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:70",
+     "at": "mclib/bdactor.cpp:71",
      "idiom": "Lead0Kill"
     }
    ],
@@ -1522,7 +1522,7 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/warrior.cpp:2459",
+     "at": "code/warrior.cpp:1482",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1560,7 +1560,7 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/warrior.cpp:2436",
+     "at": "code/warrior.cpp:1459",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1588,7 +1588,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:2434",
+     "at": "code/warrior.cpp:1457",
      "idiom": "Token/State"
     }
    ],
@@ -1734,7 +1734,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:210",
+     "at": "code/warrior.cpp:97",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1760,7 +1760,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:213",
+     "at": "code/warrior.cpp:100",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -1790,7 +1790,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:211",
+     "at": "code/warrior.cpp:98",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1844,7 +1844,7 @@
    "doc": "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps, moveState, hasBrain, orderState, mainGoal/goalWID, tacOrder[GENERAL].code, position, LastMoveCalcErr) to classify the save/load AI-freeze AND scripted-unit permanent stalls (alarm-loop vs goal-divert vs no-path vs path-but-not-moving).",
    "readers": [
     {
-     "at": "code/warrior.cpp:2705",
+     "at": "code/warrior.cpp:1727",
      "idiom": "Lead0"
     }
    ],
@@ -1956,7 +1956,7 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/warrior.cpp:2449",
+     "at": "code/warrior.cpp:1472",
      "idiom": "AtoiNZ"
     },
     {
@@ -2021,7 +2021,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:2352",
+     "at": "code/warrior.cpp:1378",
      "idiom": "Num(strtoul,guarded)"
     }
    ],
@@ -2079,7 +2079,7 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/warrior.cpp:153",
+     "at": "code/warrior.cpp:40",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2107,7 +2107,7 @@
    "doc": "TechBrain runtime apply gate (warrior.cpp).",
    "readers": [
     {
-     "at": "code/warrior.cpp:157",
+     "at": "code/warrior.cpp:44",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2139,7 +2139,7 @@
      "idiom": "Token/State"
     },
     {
-     "at": "code/warrior.cpp:163",
+     "at": "code/warrior.cpp:50",
      "idiom": "Token/State"
     }
    ],
@@ -2170,7 +2170,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:154",
+     "at": "code/warrior.cpp:41",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2276,7 +2276,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:140",
+     "at": "code/warrior.cpp:27",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2304,7 +2304,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/warrior.cpp:141",
+     "at": "code/warrior.cpp:28",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2526,7 +2526,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:556",
+     "at": "mclib/bdactor.cpp:561",
      "idiom": "Lead0Kill"
     }
    ],
@@ -2552,7 +2552,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:232",
+     "at": "mclib/bdactor.cpp:233",
      "idiom": "Exact1"
     }
    ],
@@ -3481,7 +3481,7 @@
    "doc": "CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every static-prop recipe leaf's real node name + flags. cone_glow's diag emits a node INDEX only, so before this there was no build-free way to learn a static-prop leaf's NAME.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4929",
+     "at": "mclib/bdactor.cpp:4934",
      "idiom": "Presence"
     }
    ],
@@ -5675,7 +5675,7 @@
      "idiom": "Lead0P"
     },
     {
-     "at": "code/warrior.cpp:4290",
+     "at": "code/warrior.cpp:2040",
      "idiom": "Lead0P"
     }
    ],
@@ -5897,7 +5897,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2279",
+     "at": "mclib/bdactor.cpp:2284",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -5923,7 +5923,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7048",
+     "at": "mclib/bdactor.cpp:7053",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -5949,7 +5949,7 @@
    "doc": "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7699",
+     "at": "mclib/bdactor.cpp:7704",
      "idiom": "Num(atof+atoi,raw)"
     }
    ],
@@ -6312,7 +6312,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3043",
+     "at": "mclib/bdactor.cpp:3048",
      "idiom": "Std(def=off)"
     }
    ],
@@ -6481,7 +6481,7 @@
    "doc": "SPOTLIGHT-DIRECTION-1 measurement instrument.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:145",
+     "at": "mclib/bdactor.cpp:146",
      "idiom": "Lead1"
     }
    ],
@@ -6700,11 +6700,11 @@
    "doc": "FX-FORCE-SPAWN v1 fixture: default-OFF.",
    "readers": [
     {
-     "at": "code/warrior.cpp:5527",
+     "at": "code/warrior.cpp:2133",
      "idiom": "Lead0P"
     },
     {
-     "at": "code/warrior.cpp:5533",
+     "at": "code/warrior.cpp:2139",
      "idiom": "Custom[00000001]"
     }
    ],
@@ -6895,7 +6895,7 @@
      "idiom": "Num(atoi,raw)"
     },
     {
-     "at": "mclib/bdactor.cpp:397",
+     "at": "mclib/bdactor.cpp:398",
      "idiom": "Unclassified"
     }
    ],
@@ -6957,7 +6957,7 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "mclib/bdactor.cpp:398",
+     "at": "mclib/bdactor.cpp:399",
      "idiom": "Unclassified"
     }
    ],
@@ -7706,11 +7706,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:5115",
+     "at": "mclib/bdactor.cpp:5120",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:8186",
+     "at": "mclib/bdactor.cpp:8191",
      "idiom": "Presence"
     }
    ],
@@ -7800,7 +7800,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:3439",
+     "at": "mclib/bdactor.cpp:3444",
      "idiom": "Presence"
     }
    ],
@@ -8614,24 +8614,19 @@
   {
    "name": "MC2_HAZE_PARITY",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "Step 7 (VPL retirement): MC2_HAZE_PARITY probe \u2014 env-gated default-off.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:59",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -9621,7 +9616,7 @@
    "doc": "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7704",
+     "at": "mclib/bdactor.cpp:7709",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -9919,7 +9914,7 @@
    "doc": "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot freeze a wrong (day-bright) light row for the whole mission.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3395",
+     "at": "mclib/bdactor.cpp:3400",
      "idiom": "Lead0Kill"
     }
    ],
@@ -9997,7 +9992,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2934",
+     "at": "mclib/bdactor.cpp:2939",
      "idiom": "Std(def=off)"
     }
    ],
@@ -10023,7 +10018,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2938",
+     "at": "mclib/bdactor.cpp:2943",
      "idiom": "Std(def=off)"
     }
    ],
@@ -10223,7 +10218,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3119",
+     "at": "mclib/bdactor.cpp:3124",
      "idiom": "Presence"
     }
    ],
@@ -10409,11 +10404,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3812",
+     "at": "mclib/bdactor.cpp:3817",
      "idiom": "Lead1"
     },
     {
-     "at": "mclib/bdactor.cpp:3843",
+     "at": "mclib/bdactor.cpp:3848",
      "idiom": "Lead1"
     },
     {
@@ -10627,16 +10622,11 @@
    "name": "MC2_LIGHT_GRID",
    "kind": "Bool",
    "default": true,
-   "rule": "Lead0Kill",
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "LIGHT-CLUSTER-PERF-1: world-space XY light GRID over the per-frame terrain light pool.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:261",
-     "idiom": "Lead0Kill"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": true,
    "registryDefault": true,
@@ -10645,7 +10635,7 @@
     "0"
    ],
    "numericRange": null,
-   "readerDefault": true,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Feature",
    "featureId": "MC2_FEATURE_LIGHT_GRID",
@@ -10653,29 +10643,20 @@
   },
   {
    "name": "MC2_LIGHT_GRID_DIM",
-   "kind": "Int",
-   "default": 64,
-   "rule": "Prefix",
+   "kind": "Bool",
+   "default": false,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "LIGHT-CLUSTER-PERF-1 knob: cells per axis for the light grid (grid is DIM x DIM over the XY bbox of this frame's packed lights).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:269",
-     "idiom": "Num(atol,raw)"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": true,
    "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "registry",
    "harnessValues": [],
-   "numericRange": {
-    "lo": 2,
-    "hi": 256,
-    "style": "compare"
-   },
-   "readerDefault": 64,
+   "numericRange": null,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TUNE_LIGHT_GRID_DIM",
@@ -10721,10 +10702,6 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:686",
-     "idiom": "Lead0Kill"
-    },
-    {
      "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:114",
      "idiom": "Lead0Kill"
     }
@@ -10744,24 +10721,19 @@
   {
    "name": "MC2_LIGHT_POOL_DUMP",
    "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:1281",
-     "idiom": "Lead1"
-    }
-   ],
+   "doc": "GHOST-LIGHT-DUMP-1 (batch-7 item 5, env MC2_LIGHT_POOL_DUMP=1): periodic dump of every light the pool pack ACCEPTS this frame, with world-light slot + (E)-owner attribution (mc2_spotlight_diag), so a rendered pool with no visible caster can be traced to its owner.",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -10769,30 +10741,20 @@
   },
   {
    "name": "MC2_LIGHT_POOL_MAX",
-   "kind": "Int",
-   "default": 0,
-   "rule": "Prefix",
+   "kind": "Bool",
+   "default": false,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "LIGHT-POOL-CAP-1: per-mission slot count of the terrain light pool (gos_terrain_lighting.cpp mission_init).",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:852",
-     "idiom": "Num(atol,raw)"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": true,
    "registryDefault": false,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "registry",
    "harnessValues": [],
-   "numericRange": {
-    "lo": 0,
-    "loExclusive": true,
-    "hi": 4096,
-    "style": "compare"
-   },
-   "readerDefault": 0,
+   "numericRange": null,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "Trace",
    "featureId": "MC2_TUNE_LIGHT_POOL_MAX",
@@ -10838,10 +10800,6 @@
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:10968",
-     "idiom": "Num(atof,raw)"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:670",
      "idiom": "Num(atof,raw)"
     },
     {
@@ -10909,10 +10867,6 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:682",
-     "idiom": "Lead0Kill"
-    },
-    {
      "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:108",
      "idiom": "Lead0Kill"
     }
@@ -10943,10 +10897,6 @@
      "idiom": "Num(atof,raw)"
     },
     {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:676",
-     "idiom": "Num(atof,raw)"
-    },
-    {
      "at": "GameOS/gameos/gos_terrain_lod_chunk.cpp:100",
      "idiom": "Num(atof,raw)"
     }
@@ -10971,24 +10921,19 @@
   {
    "name": "MC2_LIGHT_POOL_OBJECTS",
    "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:660",
-     "idiom": "Lead0Kill"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": true,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -10996,29 +10941,20 @@
   },
   {
    "name": "MC2_LIGHT_POOL_OBJ_SCALE",
-   "kind": "Float",
-   "default": 0.7,
-   "rule": "Prefix",
+   "kind": "Bool",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:694",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
+   "doc": "POOL-CONSUMERS-1: object-side intensity scale (objects hold baked light rows already; keep the additive pool below the terrain level so the composite stays atmospheric, not floodlit).",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 2.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.7,
+   "numericRange": null,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -11035,10 +10971,6 @@
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:10962",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:666",
      "idiom": "Lead0Kill"
     },
     {
@@ -11061,24 +10993,19 @@
   {
    "name": "MC2_LIGHT_POOL_VIS_GATE",
    "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:1224",
-     "idiom": "Lead0Kill"
-    }
-   ],
+   "doc": "LIGHT-POOL-VIS-GATE-1 (2026-07-21, fog-of-war leak): the legacy CPU consumer honors TG_Light::active (tgl.cpp:2123) but this pack loop did not \u2014 INACTIVE lights (mover appearances set active=false for enemy movers without visual contact; camera sets it false for off-screen point/spot lights) were packed anyway, so night light pools rendered at red sensor-blip positions of UNSEEN enemies (positional intel leak) and off-screen lights burned pool budget.",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": true,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -11145,10 +11072,6 @@
    "retireBy": "",
    "doc": "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape.",
    "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:1253",
-     "idiom": "Lead0Kill"
-    },
     {
      "at": "mclib/cone_glow.cpp:392",
      "idiom": "Lead0Kill"
@@ -11288,29 +11211,20 @@
   },
   {
    "name": "MC2_LIGHT_REALISM_POOL_CORE",
-   "kind": "Float",
-   "default": 1.0,
-   "rule": "Prefix",
+   "kind": "Bool",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:1268",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
+   "doc": "AUDIT-TRUTH-1 variant B (user-approved; A was 0.15): row default 0, clampRange(0, 1).",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
-   "numericRange": {
-    "lo": 0.0,
-    "hi": 1.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 1,
+   "numericRange": null,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -11318,29 +11232,20 @@
   },
   {
    "name": "MC2_LIGHT_REALISM_POOL_SPILL",
-   "kind": "Float",
-   "default": 0.25,
-   "rule": "Prefix",
+   "kind": "Bool",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:1260",
-     "idiom": "Num(atof,raw)"
-    }
-   ],
+   "doc": "AUDIT-TRUTH-1 variant B (user-approved; A was 1.6): row default 2.2, clampRange(0.25, 4).",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
-   "numericRange": {
-    "lo": 0.25,
-    "hi": 4.0,
-    "style": "compare-reject"
-   },
-   "readerDefault": 0.25,
+   "numericRange": null,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -14001,39 +13906,39 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:801",
+     "at": "mclib/bdactor.cpp:806",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:811",
+     "at": "mclib/bdactor.cpp:816",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:1010",
+     "at": "mclib/bdactor.cpp:1015",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:2202",
+     "at": "mclib/bdactor.cpp:2207",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:4773",
+     "at": "mclib/bdactor.cpp:4778",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:4818",
+     "at": "mclib/bdactor.cpp:4823",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:6394",
+     "at": "mclib/bdactor.cpp:6399",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:7907",
+     "at": "mclib/bdactor.cpp:7912",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:7931",
+     "at": "mclib/bdactor.cpp:7936",
      "idiom": "Presence"
     }
    ],
@@ -15438,7 +15343,7 @@
    "doc": "PATHFINDING-JUMP-FAIL-1: backoff gate + constants.",
    "readers": [
     {
-     "at": "code/warrior.cpp:3283",
+     "at": "code/warrior.cpp:1780",
      "idiom": "Presence"
     }
    ],
@@ -16476,7 +16381,7 @@
    "doc": "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic, mclib/bdactor.cpp) carry its actual documented meaning, kFlagIsAlphaTest, sourced from TG_TypeShape::alphaTestOn via the new TG_Shape::GetIsAlphaTest() seam.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:61",
+     "at": "mclib/bdactor.cpp:62",
      "idiom": "Lead0"
     }
    ],
@@ -16502,7 +16407,7 @@
    "doc": "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs the light the same actor at the same position would sample now (MATCH/STALE).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3608",
+     "at": "mclib/bdactor.cpp:3613",
      "idiom": "Lead0"
     }
    ],
@@ -16528,7 +16433,7 @@
    "doc": "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3617",
+     "at": "mclib/bdactor.cpp:3622",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -17408,7 +17313,7 @@
    "doc": "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes. path = override_multidraw (cooked/override geometry, layer-0 route) vs legacy_static.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4810",
+     "at": "mclib/bdactor.cpp:4815",
      "idiom": "Presence"
     }
    ],
@@ -20372,7 +20277,7 @@
    "doc": "T1.15 SpotLight_ illumination diagnostic \u2014 registration probe (bldg class).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:125",
+     "at": "mclib/bdactor.cpp:126",
      "idiom": "Presence"
     },
     {
@@ -20618,11 +20523,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2801",
+     "at": "mclib/bdactor.cpp:2806",
      "idiom": "Std(def=off)"
     },
     {
-     "at": "mclib/bdactor.cpp:2868",
+     "at": "mclib/bdactor.cpp:2873",
      "idiom": "NonReader"
     }
    ],
@@ -20648,7 +20553,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2806",
+     "at": "mclib/bdactor.cpp:2811",
      "idiom": "Std(def=off)"
     }
    ],
@@ -20674,7 +20579,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2955",
+     "at": "mclib/bdactor.cpp:2960",
      "idiom": "Std(def=off)"
     }
    ],
@@ -20814,11 +20719,11 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:4965",
+     "at": "mclib/bdactor.cpp:4970",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:8002",
+     "at": "mclib/bdactor.cpp:8007",
      "idiom": "Lead0Kill"
     }
    ],
@@ -21165,7 +21070,7 @@
      "idiom": "Custom[00000001]"
     },
     {
-     "at": "mclib/bdactor.cpp:5563",
+     "at": "mclib/bdactor.cpp:5568",
      "idiom": "Lead0P"
     },
     {
@@ -21211,15 +21116,15 @@
    "doc": "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed -- primarily BldgAppearance::setObjStatus transitioning to OBJECT_STATUS_DESTROYED (the real in-game combat-destroy event), with BldgAppearance::destroy (mission-end/pool-recycle) as cheap insurance -- so txmmgr's static-shadow build block (terrain + buildings) replays next frame WITHOUT the destroyed building instead of keeping its stale baked shadow until mission reload (docs/known_issues.md).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:5567",
+     "at": "mclib/bdactor.cpp:5572",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:5578",
+     "at": "mclib/bdactor.cpp:5583",
      "idiom": "Custom[00000001]"
     },
     {
-     "at": "mclib/bdactor.cpp:5579",
+     "at": "mclib/bdactor.cpp:5584",
      "idiom": "Custom[00000001]"
     }
    ],
@@ -22260,7 +22165,7 @@
    "doc": "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) \u2014 counts touchSerialCommit calls for building/tree appearances ahead of the per-frame static-prop-walk meta-fix.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:88",
+     "at": "mclib/bdactor.cpp:89",
      "idiom": "Presence"
     }
    ],
@@ -22312,7 +22217,7 @@
    "doc": "STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:110",
+     "at": "mclib/bdactor.cpp:111",
      "idiom": "Presence"
     }
    ],
@@ -22786,7 +22691,7 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/warrior.cpp:2350",
+     "at": "code/warrior.cpp:1376",
      "idiom": "AtoiNZ"
     }
    ],
@@ -22861,24 +22766,19 @@
   {
    "name": "MC2_TERRAIN_ADMISSION_LEGACY",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "mclib/terrain_admission_mode.h:12",
-     "idiom": "Presence(inv)"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -23497,7 +23397,7 @@
    "doc": "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4855",
+     "at": "mclib/bdactor.cpp:4860",
      "idiom": "Lead0P"
     }
    ],
@@ -23713,7 +23613,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4885",
+     "at": "mclib/bdactor.cpp:4890",
      "idiom": "Presence"
     }
    ],
@@ -24204,24 +24104,19 @@
   {
    "name": "MC2_TERRAIN_LIGHTING_GPU",
    "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:92",
-     "idiom": "Lead0Kill"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": true,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -24230,24 +24125,19 @@
   {
    "name": "MC2_TERRAIN_LIGHTING_PARITY",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:99",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -24264,10 +24154,6 @@
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:10958",
-     "idiom": "Lead0Kill"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_lighting.cpp:656",
      "idiom": "Lead0Kill"
     },
     {
@@ -25337,24 +25223,19 @@
   {
    "name": "MC2_TERRAIN_RUNTIME_DECALS",
    "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "mclib/terrain_runtime.cpp:57",
-     "idiom": "Exact1"
-    }
-   ],
+   "doc": "Gate = the future flip-point where decals follow the VISUAL surface while units stay on gameplay height.",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -25363,24 +25244,19 @@
   {
    "name": "MC2_TERRAIN_RUNTIME_GROUNDING",
    "kind": "Bool",
-   "default": false,
-   "rule": "Exact1",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
-   "doc": "",
-   "readers": [
-    {
-     "at": "mclib/terrain_runtime.cpp:35",
-     "idiom": "Exact1"
-    }
-   ],
+   "doc": "Gate exists for A/B + as the future gameplay/visual split flip-point.",
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -25389,24 +25265,19 @@
   {
    "name": "MC2_TERRAIN_RUNTIME_PARITY",
    "kind": "Bool",
-   "default": false,
-   "rule": "Lead1",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "mclib/terrain_runtime.cpp:122",
-     "idiom": "Lead1"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -25837,24 +25708,19 @@
   {
    "name": "MC2_TERRAIN_SURFACE",
    "kind": "Bool",
-   "default": false,
-   "rule": "Lead0",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_surface.cpp:73",
-     "idiom": "Lead0"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -25863,24 +25729,19 @@
   {
    "name": "MC2_TERRAIN_SURFACE_TRACE",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "mclib/terrain_surface_trace.h:42",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -26204,7 +26065,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:178",
+     "at": "mclib/bdactor.cpp:179",
      "idiom": "Num(atoi,raw)"
     },
     {
@@ -26433,7 +26294,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:28",
+     "at": "mclib/bdactor.cpp:29",
      "idiom": "Presence"
     }
    ],
@@ -26569,7 +26430,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:8056",
+     "at": "mclib/bdactor.cpp:8061",
      "idiom": "Presence"
     }
    ],
@@ -28401,7 +28262,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/warrior.cpp:5568",
+     "at": "code/warrior.cpp:2174",
      "idiom": "Presence"
     }
    ],
@@ -29672,7 +29533,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/warrior.cpp:5567",
+     "at": "code/warrior.cpp:2173",
      "idiom": "Presence"
     }
    ],

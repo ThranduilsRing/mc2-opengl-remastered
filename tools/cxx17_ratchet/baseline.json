@@ -53,10 +53,10 @@
    "LG06": 569,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2272,
-   "LG10": 78,
+   "LG09": 2263,
+   "LG10": 75,
    "LG11": 107,
-   "LG12a": 616,
+   "LG12a": 613,
    "LG12b": 115,
    "LG13": 383,
    "LG14": 67,
@@ -64,7 +64,7 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 732
+   "LG19": 713
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -155,7 +155,7 @@
    "LG19": 2
   },
   "code": {
-   "LG01": 1830,
+   "LG01": 1824,
    "LG02": 232,
    "LG03": 972,
    "LG04": 21,
@@ -163,12 +163,12 @@
    "LG06": 465,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2498,
+   "LG09": 2495,
    "LG10": 22,
    "LG11": 101,
    "LG12a": 220,
-   "LG12b": 796,
-   "LG13": 1188,
+   "LG12b": 794,
+   "LG13": 1186,
    "LG14": 137,
    "LG15": 0,
    "LG16": 13,
@@ -682,11 +682,9 @@
    "LG05": 4,
    "LG06": 4,
    "LG08": 1,
-   "LG09": 21,
-   "LG10": 4,
-   "LG12a": 3,
-   "LG16": 1,
-   "LG19": 19
+   "LG09": 12,
+   "LG10": 1,
+   "LG16": 1
   },
   "GameOS/gameos/gos_terrain_lighting.h": {
    "LG05": 2,
@@ -2516,6 +2514,25 @@
    "LG13": 1,
    "LG14": 1
   },
+  "code/missiongui_uicmd.cpp": {
+   "LG01": 5,
+   "LG09": 37,
+   "LG11": 2,
+   "LG12a": 3,
+   "LG12b": 24,
+   "LG19": 2
+  },
+  "code/missiongui_uicmd_fixture.cpp": {
+   "LG01": 3,
+   "LG09": 19,
+   "LG12b": 8,
+   "LG19": 3
+  },
+  "code/missiongui_uicmd_probe.cpp": {
+   "LG01": 9,
+   "LG09": 17,
+   "LG12b": 24
+  },
   "code/missionresults.cpp": {
    "LG01": 3,
    "LG03": 6,
@@ -3009,18 +3026,13 @@
    "LG12a": 4
   },
   "code/warrior.cpp": {
-   "LG01": 148,
-   "LG02": 1,
-   "LG03": 24,
-   "LG04": 1,
-   "LG05": 2,
-   "LG06": 2,
-   "LG09": 117,
+   "LG01": 62,
+   "LG03": 17,
+   "LG06": 1,
+   "LG09": 33,
    "LG10": 1,
    "LG12a": 4,
-   "LG12b": 45,
-   "LG13": 5,
-   "LG14": 2,
+   "LG12b": 14,
    "LG19": 23
   },
   "code/warrior.h": {
@@ -3033,6 +3045,50 @@
    "LG13": 43,
    "LG14": 19,
    "LG18": 1
+  },
+  "code/warrior_alarms.cpp": {
+   "LG01": 19,
+   "LG09": 2
+  },
+  "code/warrior_core_orders.cpp": {
+   "LG01": 13,
+   "LG09": 5,
+   "LG12b": 21
+  },
+  "code/warrior_draw.cpp": {
+   "LG05": 2,
+   "LG09": 1
+  },
+  "code/warrior_internal.h": {
+   "LG02": 1,
+   "LG13": 3,
+   "LG14": 2
+  },
+  "code/warrior_move.cpp": {
+   "LG01": 9,
+   "LG09": 12,
+   "LG12b": 1
+  },
+  "code/warrior_orders.cpp": {
+   "LG01": 10,
+   "LG09": 34
+  },
+  "code/warrior_queue.cpp": {
+   "LG03": 2,
+   "LG09": 3
+  },
+  "code/warrior_state.cpp": {
+   "LG01": 12,
+   "LG03": 5,
+   "LG06": 1,
+   "LG09": 14,
+   "LG12b": 2
+  },
+  "code/warrior_target.cpp": {
+   "LG01": 17,
+   "LG04": 1,
+   "LG09": 10,
+   "LG12b": 5
   },
   "code/weapon_definition.h": {
    "LG02": 1,
@@ -5403,28 +5459,9 @@
    "LG05": 1,
    "LG06": 1,
    "LG13": 31
-  },
-  "code/missiongui_uicmd.cpp": {
-   "LG01": 5,
-   "LG09": 37,
-   "LG11": 2,
-   "LG12a": 3,
-   "LG12b": 24,
-   "LG19": 2
-  },
-  "code/missiongui_uicmd_fixture.cpp": {
-   "LG01": 3,
-   "LG09": 19,
-   "LG12b": 8,
-   "LG19": 3
-  },
-  "code/missiongui_uicmd_probe.cpp": {
-   "LG01": 9,
-   "LG09": 17,
-   "LG12b": 24
   }
  },
- "head": "6c6c5218b",
+ "head": "00000391f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
