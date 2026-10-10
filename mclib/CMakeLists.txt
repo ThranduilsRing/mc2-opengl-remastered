@@ -79,6 +79,11 @@ set(SOURCES ${SOURCES}
     ablxstd.cpp
     ablxstmt.cpp
     camera.cpp
+    camera_project.cpp
+    camera_update.cpp
+    camera_daylight.cpp
+    camera_matrix.cpp
+    camera_input.cpp
     xform_conventions.cpp
     spotlight_diag.cpp
     cone_glow.cpp

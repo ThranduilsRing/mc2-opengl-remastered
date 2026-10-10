@@ -1,0 +1,31 @@
+{
+ "base": "3a511c8e0",
+ "src": "mclib/camera.cpp",
+ "stem": "camera",
+ "scripts": [
+  "scripts/check-contracts.sh",
+  "scripts/check-lighting-divergence.py",
+  "scripts/check-no-raw-gl-from-game.allowlist",
+  "scripts/check-res-aspect-contract.py",
+  "scripts/check-terrain-daylight-constants.py",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/predict_cement_adopt.py",
+  "tests/unit/test_projection.cpp",
+  "tests/unit/test_xform_convention.cpp",
+  "tests/visual/bookmarks/mc2_05_building_faces.json",
+  "tests/visual/bookmarks/mc2_10_building_faces.json",
+  "tools/class_light_band_harness/class_light_band_harness.cpp",
+  "tools/gate_codemod.py",
+  "tools/object_light_row_harness/object_light_row_harness.cpp",
+  "tools/terrain_daylight_harness/terrain_daylight_harness.cpp"
+ ],
+ "_scripts_reason": "Reviewed: check-res-aspect-contract reads the #45 drawable-aspect override from camera_matrix.cpp (Camera::setOrthogonal) and its legacy-canvas read ratchet is split per piece (matrix 13, update 2), self-test passes; check-terrain-daylight-constants reads the NIGHT_* defines from camera_internal.h where they moved; counter-honesty keys the s_camTestFrame limiters to camera_update.cpp; check-lighting-divergence reads MC2_NIGHT_AMBIENT_FLOOR from camera.cpp where mc2NightAmbientFloor stays; the raw-GL allowlist is unchanged (the check is clean); the rest cite camera.cpp lines in comments only; tools/gate_codemod.py (lane 1) is not edited here.",
+ "split_commit": "PENDING",
+ "add": [
+  "",
+  "// Scroll momentum and the smoothing helpers update and input share (defined in camera.cpp).",
+  "extern float s_scrollMomentum;",
+  "float camSmoothTau (void);",
+  "float camSmoothAlpha (float dt);"
+ ]
+}
