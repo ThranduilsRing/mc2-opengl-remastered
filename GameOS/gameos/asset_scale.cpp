@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include "Gates/gate.h"
 
 namespace AssetScale {
 
@@ -310,11 +311,9 @@ void init(const char* manifestPath) {
     State& st = state();
     if (st.inited) return;
     st.inited = true;
-    const char* trace = std::getenv("MC2_ASSET_SCALE_TRACE");
-    st.traceEnabled = (trace && trace[0] == '1');
+    st.traceEnabled = mc2::gate::get<"MC2_ASSET_SCALE_TRACE">();
     loadManifest(manifestPath);
-    const char* st_env = std::getenv("MC2_ASSET_SCALE_SELFTEST");
-    if (st_env && st_env[0] == '1') {
+    if (mc2::gate::get<"MC2_ASSET_SCALE_SELFTEST">()) {
         runSelfTests();
     }
 }
