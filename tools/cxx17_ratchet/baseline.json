@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 128,
-   "LG20": 166
+   "LG19": 126,
+   "LG20": 164
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -336,10 +336,6 @@
   },
   "GameOS/gameos/diagnostic_trace.h": {
    "LG06": 3
-  },
-  "GameOS/gameos/draw_packet_emitter.cpp": {
-   "LG19": 2,
-   "LG20": 2
   },
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
@@ -5889,7 +5885,7 @@
    "LG20": 1
   }
  },
- "head": "fb7fc3d1f",
+ "head": "b1c0b5796",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
