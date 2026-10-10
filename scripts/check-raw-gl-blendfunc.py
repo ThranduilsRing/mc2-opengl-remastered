@@ -103,6 +103,7 @@ ALLOWLIST_PREFIX = (
 FROZEN_BACKLOG = {
     "GameOS/gameos/gameos_graphics.cpp",
     "GameOS/gameos/gos_postprocess.cpp",
+    "GameOS/gameos/gos_postprocess_effects.cpp",
     "GameOS/gameos/gos_particle_bridge.cpp",
     "GameOS/gameos/gos_vfx_mesh_bridge.cpp",
 }

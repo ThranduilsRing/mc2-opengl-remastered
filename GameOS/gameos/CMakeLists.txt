@@ -19,6 +19,14 @@ set(SOURCES ${SOURCES}
     render_frame_driver.cpp
     gos_hdri.cpp
     gos_postprocess.cpp
+    gos_postprocess_gates.cpp
+    gos_postprocess_diag.cpp
+    gos_postprocess_fbo.cpp
+    gos_postprocess_effects.cpp
+    gos_postprocess_region.cpp
+    gos_postprocess_skybox.cpp
+    gos_postprocess_shadow.cpp
+    gos_postprocess_executor.cpp
     gos_static_prop_batcher.cpp
     gos_static_prop_registry.cpp
     gos_particle_bridge.cpp
@@ -31,11 +39,23 @@ set(SOURCES ${SOURCES}
     gos_terrain_patch_stream.cpp
     gos_terrain_water_stream.cpp
     gos_terrain_indirect.cpp
+    gos_terrain_indirect_diag.cpp
+    gos_terrain_indirect_atlas.cpp
+    gos_terrain_indirect_cement.cpp
+    gos_terrain_indirect_pack.cpp
+    gos_terrain_indirect_dispatch.cpp
+    gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
     gos_terrain_mask_dispatch.cpp
     gos_terrain_lighting.cpp
     gos_terrain_height_tex.cpp
     gos_terrain_lod_chunk.cpp
+    gos_terrain_lod_chunk_gates.cpp
+    gos_terrain_lod_chunk_matalbedo.cpp
+    gos_terrain_lod_chunk_patch.cpp
+    gos_terrain_lod_chunk_feed.cpp
+    gos_terrain_lod_chunk_draw.cpp
+    gos_terrain_lod_chunk_upload.cpp
     gos_object_parity.cpp
     gos_validate.cpp
     gos_screenshot.cpp

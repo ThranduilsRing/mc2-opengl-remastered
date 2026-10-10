@@ -34,12 +34,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCAN = [
-    ROOT / "GameOS" / "gameos" / "gos_postprocess.cpp",
+PP_PIECES = sorted((ROOT / "GameOS" / "gameos").glob("gos_postprocess*.cpp"))   # gos_postprocess.cpp + its split pieces
+SCAN = PP_PIECES + [
     ROOT / "GameOS" / "gameos" / "gos_particle_bridge.cpp",
     ROOT / "GameOS" / "gameos" / "gameos_graphics.cpp",
 ]
-PP = ROOT / "GameOS" / "gameos" / "gos_postprocess.cpp"
 
 BIND = re.compile(r"glBindTexture\w*\s*\([^;]*?\bsceneColorTex_\b")
 GEN = re.compile(r"glGenTextures\s*\([^;]*&\s*sceneColorTex_")
@@ -70,10 +69,10 @@ def main() -> int:
                          f"'// FEEDBACK-SAFE: <reason>' comment.")
 
     # safe-path existence guard
-    pptext = PP.read_text(encoding="utf-8", errors="replace") if PP.exists() else ""
+    pptext = chr(10).join(p.read_text(encoding="utf-8", errors="replace") for p in PP_PIECES)
     for sym in ("copySceneColorForVfx", "sceneColorCopyTex_", "getSceneColorCopyTexture"):
         if sym not in pptext:
-            fails.append(f"safe-path symbol '{sym}' missing from gos_postprocess.cpp "
+            fails.append(f"safe-path symbol '{sym}' missing from the gos_postprocess pieces "
                          f"— scene-color copy plumbing removed; consumers would have to "
                          f"sample the live attachment")
 

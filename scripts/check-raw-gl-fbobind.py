@@ -79,12 +79,16 @@ SRC_EXT = ("*.cpp", "*.h", "*.hpp", "*.cc", "*.cxx")
 ALLOWLIST_EXACT = {
     # FBO owner: create / init / resize / post-process apply + registerFbo.
     "GameOS/gameos/gos_postprocess.cpp",
+    "GameOS/gameos/gos_postprocess_effects.cpp",
+    "GameOS/gameos/gos_postprocess_executor.cpp",
+    "GameOS/gameos/gos_postprocess_fbo.cpp",
+    "GameOS/gameos/gos_postprocess_shadow.cpp",
     # executor applyTopLevelGenericAxes + shadow brackets.
     "GameOS/gameos/gameos_graphics.cpp",
     # screenshot / video READ-blit brackets.
     "GameOS/gameos/gameosmain.cpp",
     # water-reflection prev-restore brackets.
-    "GameOS/gameos/gos_terrain_indirect.cpp",
+    "GameOS/gameos/gos_terrain_indirect_dispatch.cpp",
     # readback bracket.
     "RenderWorld/RenderWorld.cpp",
     # editor TUs, out of the frame loop.

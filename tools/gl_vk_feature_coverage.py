@@ -72,14 +72,25 @@ def load_cpp(src):
     paths = [p for p in src.paths() if p.endswith((".cpp", ".h", ".hpp")) and p.startswith(CPP_DIRS)
              and "/tests/" not in p and not p.startswith("GameOS/gameos/vulkan_")]
     src.preload(paths)
+    known = set(src.paths())
     files, ndefs = {}, {}
+    family = {}          # translation unit -> [text of every piece]: a uniform is named in one piece and set in another
     for p in paths:
         t = src.text(p)
         if not t:
             continue
         cg.count_defs(p, blank_comments(t, keep_strings=False), ndefs)
-        if "MC2_" in t or '"u_' in t:
+        fam = tu_family(p, known)
+        if fam != p:
+            family.setdefault(fam, []).append(t)
+        elif "MC2_" in t or '"u_' in t:
             files[p] = cg.CppFile(p, t)
+    for fam, texts in family.items():
+        if fam in known:
+            texts.insert(0, src.text(fam) or "")
+        merged = chr(10).join(texts)
+        if "MC2_" in merged or '"u_' in merged:
+            files[fam] = cg.CppFile(fam, merged)
     return files, ndefs
 
 
@@ -184,7 +195,21 @@ def _conf(hops):
     return None if hops > 4 else cg.hops_to_conf(hops)
 
 
+_PIECE_RE = re.compile(r"^(.*/)?([^/]+?)_[a-z0-9]+\.cpp$")
+
+
+def tu_family(path, known):
+    """The translation unit a split piece belongs to: GameOS/gameos/gos_postprocess_fbo.cpp -> gos_postprocess.cpp when
+    gos_postprocess_internal.h exists. A shader's program is built in one piece and its uniforms are set in another,
+    so "builds this shader's program" is a question about the whole family."""
+    m = _PIECE_RE.match(path)
+    if m and "%s%s_internal.h" % (m.group(1) or "", m.group(2)) in known:
+        return "%s%s.cpp" % (m.group(1) or "", m.group(2))
+    return path
+
+
 def build_rows(src, twins, files, ginfo, ndefs=None):
+    known = set(src.paths())
     index = cg.GateIndex(files, ndefs)
     ev = VkEvidence(src, twins, port_renames(src.root))
     rows = {}
@@ -226,7 +251,7 @@ def build_rows(src, twins, files, ginfo, ndefs=None):
     prog_src = {}      # GL shader file -> C++ files that build a program containing it
     for v in manifest["variants"]:
         for sf in v["stages"].values():
-            prog_src.setdefault(sf, set()).add(v["source"].split(":")[0])
+            prog_src.setdefault(sf, set()).add(tu_family(v["source"].split(":")[0], known))
     names = sorted(set().union(*gl_uniforms.values()))
     for name in names:
         sites = []    # (gate, conf, path, hops)
@@ -246,7 +271,7 @@ def build_rows(src, twins, files, ginfo, ndefs=None):
             for gate, c, path, hops in sites:
                 # a setter in a file that builds none of this shader's programs is probably
                 # feeding another program that declares the same uniform name
-                if prog_src.get(g) and path not in prog_src[g]:
+                if prog_src.get(g) and tu_family(path, known) not in prog_src[g]:
                     c = _best(c, "MEDIUM")
                 if gate not in best or RANK[c] > RANK[best[gate][0]]:
                     best[gate] = (c, "%s (%d hop%s)" % (path, hops, "" if hops == 1 else "s"))

@@ -1,0 +1,33 @@
+{
+ "base": "bf441b44d",
+ "src": "GameOS/gameos/gos_terrain_indirect.cpp",
+ "stem": "gos_terrain_indirect",
+ "add": [
+  "using namespace gos_terrain_indirect_detail;",
+  "namespace gos_terrain_indirect { extern const bool s_thinCanaryEnabled; }",
+  "namespace gos_terrain_indirect_detail {",
+  "} // namespace gos_terrain_indirect_detail"
+ ],
+ "_add_reason": "The shared state and helpers are declared once in the internal header inside gos_terrain_indirect_detail (their definitions stay in the owning piece); every piece applies the same using-directive the original file had after its first anonymous-namespace block.",
+ "header_vars": [
+  "kConcreteToneGainLo",
+  "kConcreteToneGainHi"
+ ],
+ "_header_vars_reason": "const float literals the cement classifier and the atlas upload both read; constant-initialised, so one copy per piece is identical.",
+ "scripts": [
+  "scripts/check-buffer-lifetime-ownership.py",
+  "scripts/check-cpu-gpu-cogating.py",
+  "scripts/check-object-mvp-currency.py",
+  "scripts/check-raw-gl-fbobind.py",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/delivery-fixes.json",
+  "scripts/gl_shader_variants.json",
+  "scripts/predict_cement_adopt.py",
+  "scripts/tests/test_gate_codemod.py",
+  "tests/unit/test_terrain_material.cpp",
+  "tools/gate_codemod.py",
+  "tools/terrain_beautify/control_map_tool.py",
+  "tools/terrain_beautify/overlay_extract.py"
+ ],
+ "_scripts_reason": "Reviewed: check-buffer-lifetime-ownership requires GL_COMMAND_BARRIER_BIT in the dispatch piece (ComputeDispatch owns the indirect command buffer barrier); check-cpu-gpu-cogating reads the MC2_COLORMAP_CPU_RETIRE reader from the cement piece; check-object-mvp-currency allows the pack piece (defines the snapshot) and the dispatch piece (defines the getter); the fbobind allowlist names the dispatch piece (the water reflection pass is the only raw bind); counter-honesty keys the mine/decal probe limiter to its piece; gl_shader_variants.json is regenerated; delivery-fixes.json and predict_cement_adopt.py cite old line numbers in notes and comments only; tools/gate_codemod.py and its test (lane 1) list the file they already migrated; the remaining hits are comments."
+}

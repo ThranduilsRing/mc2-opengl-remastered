@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """What: splits a C++ file into top-level units (leading comments plus one declaration/definition, or a top-level #if region); parse(path) -> (lines, units).
+Namespace opening lines and their closing braces are units of their own (kinds ns_open / ns_close).
 Why: file-size splits move whole units verbatim, so they need exact boundaries even where an inactive #if branch is brace-unbalanced.
 Usage: py -3 tools/split/cpp_units.py FILE   (prints: start end size kind name)"""
 import re, sys
@@ -31,7 +32,7 @@ def strip_line(l, st):
 def parse(path):
     raw = open(path, "rb").read().decode("utf-8", "replace")
     lines = raw.split("\n")
-    st = {"blk": False}; depth = 0; pp = 0; units = []; cur_start = 0
+    st = {"blk": False}; depth = 0; pp = 0; units = []; cur_start = 0; ns_depth = 0
     cont = False  # preprocessor line continuation
     code_seen = False; name = None
     for i, l in enumerate(lines):
@@ -48,8 +49,25 @@ def parse(path):
             code_seen = code_seen or depth > 0
             if depth == 0 and pp == 0 and d in ("endif", "include", "define", "undef", "pragma", "error") and not code_seen:
                 units.append({"start": cur_start, "end": i, "kind": "pp", "name": s[:60]}); cur_start = i + 1
+            elif d == "endif" and depth == 0 and pp == 0 and code_seen:
+                # a complete top-level #if region holding definitions ends here, not at the next definition after it
+                body = chr(10).join(x.rstrip(chr(13)) for x in lines[cur_start:i+1])
+                kind = "func" if re.search(r"\)\s*(const)?\s*\{", body) else "decl"
+                units.append({"start": cur_start, "end": i, "kind": kind, "name": "#if region"}); cur_start = i + 1; code_seen = False
             continue
         code = strip_line(t, st)
+        # namespace blocks are transparent: the opening line and the closing brace are units of their own, so a split can
+        # cut inside a namespace and reopen it in the next piece
+        if depth == 0 and pp == 0 and not code_seen:
+            cs = code.strip()
+            if re.match(r'^(inline\s+)?namespace\b[^;{}]*\{$', cs) or re.match(r'^extern\s+""\s*\{$', cs):
+                ns_depth += 1
+                units.append({"start": cur_start, "end": i, "kind": "ns_open", "name": cs[:40]}); cur_start = i + 1
+                continue
+            if cs == "}" and ns_depth > 0:
+                ns_depth -= 1
+                units.append({"start": cur_start, "end": i, "kind": "ns_close", "name": "}"}); cur_start = i + 1
+                continue
         if code.strip(): code_seen = True
         for ch in code:
             if ch == "{": depth += 1
