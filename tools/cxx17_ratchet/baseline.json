@@ -52,10 +52,10 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 513,
+   "LG06": 510,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2163,
+   "LG09": 2162,
    "LG10": 43,
    "LG11": 107,
    "LG12a": 613,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 36,
-   "LG20": 69
+   "LG19": 32,
+   "LG20": 61
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1066,13 +1066,11 @@
    "LG17": 1
   },
   "GameOS/gameos/terrain_material_lib.cpp": {
-   "LG06": 7,
+   "LG06": 4,
    "LG08": 5,
-   "LG09": 8,
+   "LG09": 7,
    "LG11": 1,
-   "LG12a": 4,
-   "LG19": 4,
-   "LG20": 8
+   "LG12a": 4
   },
   "GameOS/gameos/terrain_material_lib.h": {
    "LG06": 1
@@ -5811,7 +5809,7 @@
    "LG20": 1
   }
  },
- "head": "1800a611e",
+ "head": "5fd255cbe",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -9,6 +9,8 @@
 #include <cstring>
 #include <string>
 #include <map>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // Renderer setter/getter forward declarations (definitions in gameos_graphics.cpp).
 extern void  gos_SetTerrainMatTiling(float rock, float grass, float dirt, float concrete, float snow);
@@ -142,18 +144,6 @@ struct TinyJson {
     }
 };
 
-static bool envIsSet(const char* name) {
-    const char* v = getenv(name);
-    return v && v[0] != '\0';
-}
-
-// A gate is ON when set, non-empty and not "0" (envIsSet above answers "is a value
-// present", which is what the numeric tunables need).
-static bool envGateOn(const char* name) {
-    const char* v = getenv(name);
-    return v && v[0] && v[0] != '0';
-}
-
 static float getf(const std::map<std::string,float>& m, const char* key, float def) {
     auto it = m.find(key);
     return (it != m.end()) ? it->second : def;
@@ -171,12 +161,11 @@ static float getf(const std::map<std::string,float>& m, const char* key, float d
 // the shipped 0.7 default. Gate OFF -> member stays at its 0.0f C++
 // initializer -> byte-identical.
 static void applyControlAlbedoStrength(const std::map<std::string,float>& v, bool jsonLoaded) {
-    if (!envGateOn("MC2_TERRAIN_CONTROLMAP_ALBEDO")) return;  // gate OFF -> no-op, member stays 0.0f
+    if (!mc2::gate::get<"MC2_TERRAIN_CONTROLMAP_ALBEDO">()) return;  // gate OFF -> no-op, member stays 0.0f
 
     float strength = jsonLoaded ? getf(v, "controlAlbedoStrength", 0.7f) : 0.7f;
-    if (const char* envStrength = getenv("MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH")) {
-        if (envStrength[0] != '\0') strength = (float)atof(envStrength);  // env wins over JSON
-    }
+    if (mc2::gate::isNonEmpty<"MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH">())
+        strength = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH">();  // env wins over JSON
     gos_SetTerrainControlAlbedoStrength(strength);
     fprintf(stderr, "[TerrainControlAlbedo] gate ON -- strength=%.3f\n", strength);
 }
@@ -193,7 +182,7 @@ static void applyMatAlbedoTextures(const std::map<std::string,float>& v,
                                    const std::map<std::string,std::string>& strs,
                                    const std::map<std::string,std::string>& layerStrs,
                                    bool jsonLoaded) {
-    if (!envGateOn("MC2_TERRAIN_MATERIAL_TEXTURES")) return;  // gate OFF -> no-op
+    if (!mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">()) return;  // gate OFF -> no-op
 
     float strength = -1.0f;  // <0 = no JSON value (binder falls to 0.7 default)
     int pathOverrides = 0;
@@ -226,11 +215,11 @@ static void applyMatAlbedoTextures(const std::map<std::string,float>& v,
 }
 
 void terrainMaterials_apply(const char* /*missionName*/) {
-    const char* pathEnv = getenv("MC2_TERRAIN_MATERIAL_LIB_FILE");
-    const char* path = (pathEnv && pathEnv[0]) ? pathEnv : "data/terrain_materials.json";
-    bool materialLibGateOn = envGateOn("MC2_TERRAIN_MATERIAL_LIB");
-    bool controlAlbedoGateOn = envGateOn("MC2_TERRAIN_CONTROLMAP_ALBEDO");
-    bool matTexturesGateOn = envGateOn("MC2_TERRAIN_MATERIAL_TEXTURES");  // TERRAIN-MATERIAL-TEXTURES-1
+    const std::string pathEnv = mc2::gate::str<"MC2_TERRAIN_MATERIAL_LIB_FILE">();   // "" when unset or empty
+    const char* path = !pathEnv.empty() ? pathEnv.c_str() : "data/terrain_materials.json";
+    bool materialLibGateOn = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
+    bool controlAlbedoGateOn = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP_ALBEDO">();
+    bool matTexturesGateOn = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();  // TERRAIN-MATERIAL-TEXTURES-1
 
     if (!materialLibGateOn && !controlAlbedoGateOn && !matTexturesGateOn)
         return;  // all gates OFF -> silent no-op
@@ -340,7 +329,7 @@ void terrainMaterials_apply(const char* /*missionName*/) {
     // static-init time (gameos_graphics.cpp terrain_snow_brightness_dampen_);
     // only apply the JSON value when that env var is NOT set, so we never
     // clobber an explicit env override.
-    if (!envIsSet("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN")) {
+    if (!mc2::gate::isNonEmpty<"MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN">()) {
         gos_SetTerrainSnowBrightnessDampen(getf(v, "snow_brightnessDampen", 0.78f));
     }
 
