@@ -562,6 +562,16 @@ void EString::Reverse()
 	KReverse( m_pBuffer->Data() );
 }
 
+// The one place the C runtime formats: with dst == NULL it returns the length the result needs.
+static int FormatV( EChar* dst, size_t capacity, const EChar* fmt, va_list args )
+{
+#ifdef UNICODE
+	return dst ? vswprintf(dst, capacity, fmt, args) : _vscwprintf(fmt, args);
+#else
+	return vsnprintf(dst, capacity, fmt, args);
+#endif
+}
+
 // works like sprintf
 ///////////////////////////////////////////////////////////////
 void EString::Format( const EChar* p_Str, ... )
@@ -574,11 +584,7 @@ void EString::Format( const EChar* p_Str, ... )
 	// Size the result with the C runtime's own format parser. The scan this replaced re-implemented %-spec
 	// parsing by hand, did not know ll / z / j / t and friends, and then vsprintf wrote into a buffer sized by
 	// that guess.
-#ifdef UNICODE
-	int Max_Len = _vscwprintf(p_Str, Arg_List);
-#else
-	int Max_Len = vsnprintf(NULL, 0, p_Str, Arg_List);
-#endif
+	int Max_Len = FormatV(NULL, 0, p_Str, Arg_List);
 	va_end(Arg_List);
 	if (Max_Len < 0)
 		Max_Len = 0;
@@ -592,11 +598,7 @@ void EString::Format( const EChar* p_Str, ... )
 		Alloc( Max_Len + 1 );
 	}
 
-#ifdef UNICODE
-	vswprintf(m_pBuffer->Data(), Max_Len + 1, p_Str, Arg_List_Save);
-#else
-	vsnprintf(m_pBuffer->Data(), Max_Len + 1, p_Str, Arg_List_Save);
-#endif
+	FormatV(m_pBuffer->Data(), Max_Len + 1, p_Str, Arg_List_Save);
 	va_end(Arg_List_Save);
 
 	m_pBuffer->m_Data_Length = StrSize( m_pBuffer->Data() );

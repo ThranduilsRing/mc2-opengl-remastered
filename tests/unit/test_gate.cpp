@@ -14,11 +14,13 @@
 #include "Gates/gate_parse.h"
 #include "Gates/gate_row.h"
 #include "Gates/gate_table_dsl.h"
+#include "mlr/mlr_gate.h"
 
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <type_traits>
 #include <vector>
 
@@ -1403,4 +1405,27 @@ TEST_CASE("MC2_VFX_DISTORT_AMP accepts (0, 0.5) like the `a > 0 && a < 0.5f` rea
         INFO(t);
         CHECK(val(t) == 0.04f);
     }
+}
+
+// mc2::mlr_gate: the MC2_DISABLE_GOSFX latch is a thread-safe function-local static (first use in this process is here).
+TEST_CASE("mlr_gate latches the env value on first use and every thread sees it")
+{
+    _putenv_s("MC2_DISABLE_GOSFX", "1");
+    mc2::gate::invalidateAll();
+
+    CHECK(mc2::mlr_gate::is_disabled());
+
+    _putenv_s("MC2_DISABLE_GOSFX", "0");            // after the first call the value no longer moves
+    mc2::gate::invalidateAll();
+    CHECK(mc2::mlr_gate::is_disabled());
+
+    std::vector<std::thread> threads;
+    std::vector<int> seen(8, 0);
+    for (int i = 0; i < 8; ++i)
+        threads.emplace_back([&seen, i] { seen[i] = mc2::mlr_gate::is_disabled() ? 1 : 0; });
+    for (auto &t : threads) t.join();
+    for (int v : seen) CHECK(v == 1);
+
+    _putenv_s("MC2_DISABLE_GOSFX", "");
+    mc2::gate::invalidateAll();
 }
