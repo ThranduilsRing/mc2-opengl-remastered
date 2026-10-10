@@ -49,6 +49,74 @@ extern "C" int mc2FreezeMoversActive();
 #include "action_executor_registry.h"  // UNIT-DEFINITION-VALIDATOR-1: theActionExecutorRegistry() for the ONE pass
 #include "Gates/gate.h"
 
+#ifndef CAMERA_H
+#include"camera.h"
+#endif
+
+#ifndef DBASEGUI_H
+#include"dbasegui.h"
+#endif
+
+#ifndef TERRAIN_H
+#include"terrain.h"
+#endif
+
+#ifndef MSTATES_H
+#include"mstates.h"
+#endif
+
+#ifndef OBJSTATUS_H
+#include"objstatus.h"
+#endif
+
+#ifndef CIDENT_H
+#include"cident.h"
+#endif
+
+#ifndef PATHS_H
+#include"paths.h"
+#endif
+
+#ifndef USERINPUT_H
+#include"userinput.h"
+#endif
+
+#ifndef TIMING_H
+#include"timing.h"
+#endif
+
+#ifndef UTILITIES_H
+#include"utilities.h"
+#endif
+
+#ifndef CEVFX_H
+#include"cevfx.h"
+#endif
+
+#ifndef TXMMGR_H
+#include"txmmgr.h"
+#endif
+
+#ifndef CELINE_H
+#include"celine.h"
+#endif
+
+#ifndef WEAPONFX_H
+#include"weaponfx.h"
+#endif
+
+#ifndef CRATER_H
+#include"crater.h"
+#endif
+
+#ifndef GVACTOR_H
+#include"gvactor.h"
+#endif
+
+#ifndef GOS_PROFILER_H
+#include"gos_profiler.h"
+#endif
+
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
 // the M2.6 readiness decision rule has live data on Path-B incidence.
@@ -71,11 +139,11 @@ static const bool s_mechLodTrace = mc2::gate::get<"MC2_MECH_LOD_TRACE">();
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based node-position early-outs.
-static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
 
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
 // Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
-static const bool s_lcTrace = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE_TRACE">();
+const bool s_lcTrace = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE_TRACE">();
 static uint32_t s_lcSkipCount3d = 0u;
 #define LC3D_TRACE(fmt, ...) \
     do { if (s_lcTrace) { printf("[GPU_CULL_LIFECYCLE v1] mech3d " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while(0)
@@ -193,74 +261,6 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
 	return fileExists(ktx);
 }
-
-#ifndef CAMERA_H
-#include"camera.h"
-#endif
-
-#ifndef DBASEGUI_H
-#include"dbasegui.h"
-#endif
-
-#ifndef TERRAIN_H
-#include"terrain.h"
-#endif
-
-#ifndef MSTATES_H
-#include"mstates.h"
-#endif
-
-#ifndef OBJSTATUS_H
-#include"objstatus.h"
-#endif
-
-#ifndef CIDENT_H
-#include"cident.h"
-#endif
-
-#ifndef PATHS_H
-#include"paths.h"
-#endif
-
-#ifndef USERINPUT_H
-#include"userinput.h"
-#endif
-
-#ifndef TIMING_H
-#include"timing.h"
-#endif
-
-#ifndef UTILITIES_H
-#include"utilities.h"
-#endif
-
-#ifndef CEVFX_H
-#include"cevfx.h"
-#endif
-
-#ifndef TXMMGR_H
-#include"txmmgr.h"
-#endif
-
-#ifndef CELINE_H
-#include"celine.h"
-#endif
-
-#ifndef WEAPONFX_H
-#include"weaponfx.h"
-#endif
-
-#ifndef CRATER_H
-#include"crater.h"
-#endif
-
-#ifndef GVACTOR_H
-#include"gvactor.h"
-#endif
-
-#ifndef GOS_PROFILER_H
-#include"gos_profiler.h"
-#endif
 
 //-------------------------------------------------------------------------------
 // Static Globals
