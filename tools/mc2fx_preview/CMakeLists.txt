@@ -19,9 +19,6 @@ file(GLOB MC2FXP_MLR_SRC       "${CMAKE_SOURCE_DIR}/mclib/mlr/*.cpp")
 file(GLOB MC2FXP_PARTICLES_SRC "${CMAKE_SOURCE_DIR}/mclib/particles/*.cpp")
 file(GLOB MC2FXP_STUFF_SRC     "${CMAKE_SOURCE_DIR}/mclib/stuff/*.cpp")
 
-list(REMOVE_ITEM MC2FXP_STUFF_SRC
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/extentpoly.cpp"
-)
 
 add_library(mc2fx_corelib STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../mc2fx/mc2fx_core.cpp"

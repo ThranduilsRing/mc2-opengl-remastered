@@ -16,10 +16,6 @@ file(GLOB MC2FX_MLR_SRC       "${CMAKE_SOURCE_DIR}/mclib/mlr/*.cpp")
 file(GLOB MC2FX_PARTICLES_SRC "${CMAKE_SOURCE_DIR}/mclib/particles/*.cpp")
 file(GLOB MC2FX_STUFF_SRC     "${CMAKE_SOURCE_DIR}/mclib/stuff/*.cpp")
 
-# extentpoly.cpp is a dead Stuff TU (not in mclib/stuff/CMakeLists.txt).
-list(REMOVE_ITEM MC2FX_STUFF_SRC
-    "${CMAKE_SOURCE_DIR}/mclib/stuff/extentpoly.cpp"
-)
 
 add_executable(mc2fx
     main.cpp
