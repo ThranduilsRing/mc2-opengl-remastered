@@ -39,7 +39,7 @@ a **no-op for terrain**; the draw already happened in gamecam.
 | Branch name | Draw call | Draw site | Latch site |
 |---|---|---|---|
 | **TerrainLODChunk** (DEFAULT) | chunk VBO `glDrawElements` | `gamecam.cpp:508` → `gos_terrain_lod_chunk.cpp` SubmitDrawCommands | `gos_terrain_lod_chunk.cpp:1160` |
-| **TerrainIndirectBridge** | `glMultiDrawArraysIndirect` | `mclib/txmmgr_lightrow.cpp:645` → `GameOS/gameos/gos_terrain_indirect_pack.cpp:619 DrawIndirect` → `GameOS/gameos/gameos_graphics_bridge.cpp:175 gos_terrain_bridge_drawIndirect` | **NONE — see §4 (HIGH)** |
+| **TerrainIndirectBridge** | `glMultiDrawArraysIndirect` | `mclib/txmmgr_lightrow.cpp:645` → `GameOS/gameos/gos_terrain_indirect_pack.cpp:627 DrawIndirect` → `GameOS/gameos/gameos_graphics_bridge.cpp:180 gos_terrain_bridge_drawIndirect` | **NONE — see §4 (HIGH)** |
 | **TerrainPatchStreamThin** | thin-record draw | `mclib/txmmgr_lightrow.cpp:650` → `gos_terrain_patch_stream.cpp flush()` | `gos_terrain_patch_stream.cpp:1500` |
 | **TerrainLegacyMLR** | `gos_RenderIndexedArray` per masterVertexNode | `txmmgr.cpp:3089/3105` masterVertexNodes loop | `GameOS/gameos/gameos_graphics_tparams.cpp:187` (tess-draw funnel) |
 
@@ -95,7 +95,7 @@ opt-out branch. Legacy MLR is reachable only on the vestigial chunk-OFF path. Th
 | **reads[] base** | ShadowDynamicMap | ShadowDynamicMap | ShadowDynamicMap | ShadowDynamicMap |
 | **reads[] extra** | height SSBO (`TERRAIN_HEIGHT_SSBO`), colormap atlas | **recipe SSBO (slot1, `ggfx.cpp:4227`), thin-record SSBO (slot2, `:4250`), colormap atlas (unit0), cement atlas (unit3, `:4172`), transition-mask 2D_ARRAY (unit4, `:4213`)** | thin-record SSBO, atlas | per-node bound texture (`tex_resolve`, `:3088`) |
 | **MVP source** | `IsFrameSolidArmed()?getDispatchMvp16():live` (`GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp:36`) | **dispatch-snapshot ring-slot MVP** override (`ggfx.cpp:4080 getRingSlotMvp` / `terrainOverrideThinMVP`) + `g_viewContentEpoch` | live MVP | live `terrainMVP` per-draw upload |
-| **barrier** | none | **`GL_SHADER_STORAGE_BARRIER_BIT \| GL_COMMAND_BARRIER_BIT`** (`GameOS/gameos/gos_terrain_indirect_pack.cpp:539`, compute→draw) | none | none |
+| **barrier** | none | **`GL_SHADER_STORAGE_BARRIER_BIT \| GL_COMMAND_BARRIER_BIT`** (`GameOS/gameos/gos_terrain_indirect_pack.cpp:547`, compute→draw) | none | none |
 | **ambient: colorMask reassert** | yes (chunk repair) | yes (`ggfx.cpp:4100`, M5 LOAD-BEARING) | yes | yes (via applyRenderStates) |
 | **ambient: depthFunc/write** | GEQUAL reverse-Z, write ON | GEQUAL via `applyPipeline(TerrainSolid)` (`ggfx.cpp:4093`) | GEQUAL | GEQUAL |
 | **markTerrainDrawn latch** | **SET** (`:1160`) | **NOT SET — HIGH bug class, §4** | **SET** (`:1500`) | **SET** (`ggfx.cpp:7292`, conditional on tess-draw block) |
@@ -150,7 +150,7 @@ Caller inventory (grep `markTerrainDrawn`):
 - `GameOS/gameos/gameos_graphics_tparams.cpp:187` — **TerrainLegacyMLR sets it** ✔ but **CONDITIONAL** on the tess-draw
   block guard (`:7280`: needs `terrain_batch_extras_count_>0` etc.). Latch-skip possible if a legacy
   terrain node has zero extras. LOW-MED confidence; legacy path is vestigial.
-- `gos_terrain_bridge_drawIndirect` (`GameOS/gameos/gameos_graphics_bridge.cpp:371-~4400`) — **NO markTerrainDrawn
+- `gos_terrain_bridge_drawIndirect` (`GameOS/gameos/gameos_graphics_bridge.cpp:376-~4400`) — **NO markTerrainDrawn
   call.** `DrawIndirect` (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:1173`) does not call it. `mclib/txmmgr_lightrow.cpp:645`
   (caller) does not call it. **The Indirect branch draws terrain and NEVER sets the latch.**
 

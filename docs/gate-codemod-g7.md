@@ -256,7 +256,7 @@ The code line is the reader as written.
 | `code/unitprofile.cpp:30` | `MC2_UNIT_DEFINITION_SOURCE` |  | local-static | - | UNHANDLED | row kind Enum: read through is<>/Enum token (G3 Enum / G4 Tri / String via str<>) |
 | `code/pausewindow.cpp:92` | `MC2_BOOT_PAUSED_CONFIRM` | NonEmpty | local-static | - | UNHANDLED | pointer s_confirm is not used by the following statement |
 | `code/missiongui_uicmd.cpp:125` | `MC2_UI_COMMAND_FILE` | NonEmpty | local-static | - | UNHANDLED | pointer s_path is consumed by a block/branch statement: not a single expression |
-| `code/missiongui_uicmd.cpp:287` | `MC2_DEV_SHELL` | Lead1 | per-call | - | UNHANDLED | pointer ds is consumed by a block/branch statement: not a single expression |
+| `code/missiongui_uicmd.cpp:288` | `MC2_DEV_SHELL` | Lead1 | per-call | - | UNHANDLED | pointer ds is consumed by a block/branch statement: not a single expression |
 | `code/mech_weapons.cpp:15` | `MC2_FIRE_DECISION_TRACE` | Lead0P | local-static | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand |
 | `code/mech_weapons.cpp:15` | `MC2_FIRE_DECISION_TRACE` | Lead0P | local-static | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand |
 | `code/mech_weapons.cpp:337` | `MC2_CALLED_SHOT_FIX` | Lead0P | local-static | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand |
@@ -722,7 +722,7 @@ Helper: code/gameplay_pick.cpp:172 `{ const char* v = std::getenv(name); return 
 | `code/mainmenu.cpp:450` | `MC2_BOOT_TO_MISSION` | Bool NonEmpty default=off | `const char* bootMission = std::getenv("MC2_BOOT_TO_MISSION");` | pointer bootMission is consumed by a block/branch statement: not a single expression |
 | `code/mainmenu.cpp:463` | `MC2_BOOT_TO_SCREEN` | Bool NonEmpty default=off | `const char* bootScr = std::getenv("MC2_BOOT_TO_SCREEN");` | pointer bootScr is consumed by a block/branch statement: not a single expression |
 | `code/missiongui_uicmd.cpp:125` | `MC2_UI_COMMAND_FILE` | Bool NonEmpty default=off | `static const char* s_path = getenv("MC2_UI_COMMAND_FILE");` | pointer s_path is consumed by a block/branch statement: not a single expression |
-| `code/missiongui_uicmd.cpp:287` | `MC2_DEV_SHELL` | Bool Lead1 default=off | `const char* ds = getenv("MC2_DEV_SHELL");` | pointer ds is consumed by a block/branch statement: not a single expression |
+| `code/missiongui_uicmd.cpp:288` | `MC2_DEV_SHELL` | Bool Lead1 default=off | `const char* ds = getenv("MC2_DEV_SHELL");` | pointer ds is consumed by a block/branch statement: not a single expression |
 | `code/ablmc2_repro.cpp:15` | `MC2_ABL_ARG_GUARD_REPRO` | Bool Lead1 default=off | `const char* repro_env = getenv("MC2_ABL_ARG_GUARD_REPRO");` | pointer repro_env is consumed by a block/branch statement: not a single expression |
 | `code/ablmc2_repro.cpp:56` | `MC2_ABL_ARG_GUARD_REPRO` | Bool Lead1 default=off | `const char* repro_env = getenv("MC2_ABL_ARG_GUARD_REPRO");` | pointer repro_env is consumed by a block/branch statement: not a single expression |
 
@@ -1103,8 +1103,8 @@ These change `Gates/gate_table.cpp` only; every other reader of the gate is stil
 | `code/missionresults.cpp:256` | `MC2_SHOT_RESULTS` | Presence | local-static | `static const bool s_shotResults = mc2::gate::get<"MC2_SHOT_RESULTS">();` | NO-CHANGE | site Presence vs row Presence |
 | `code/missionresults.cpp:278` | `MC2_SHOT_RESULTS` | Presence | local-static | `static const bool s_shotResults = mc2::gate::get<"MC2_SHOT_RESULTS">();` | NO-CHANGE | site Presence vs row Presence |
 | `code/missiongui_uicmd_fixture.cpp:79` | `MC2_FREEZE_MOVERS_AT` |  | per-call | - | UNHANDLED | numeric reader is not a lambda/declaration initializer (e.g. multi-statement local) |
-| `code/missiongui_uicmd_fixture.cpp:128` | `MC2_TEST_SPAWN` | Lead1 | local-static | `const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();` | NO-CHANGE | site Lead1 vs row Lead1 |
-| `code/missiongui_uicmd_fixture.cpp:392` | `MC2_TEST_SPAWN` | Lead1 | local-static | `const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();` | NO-CHANGE | site Lead1 vs row Lead1 |
+| `code/missiongui_uicmd_fixture.cpp:129` | `MC2_TEST_SPAWN` | Lead1 | local-static | `const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();` | NO-CHANGE | site Lead1 vs row Lead1 |
+| `code/missiongui_uicmd_fixture.cpp:393` | `MC2_TEST_SPAWN` | Lead1 | local-static | `const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();` | NO-CHANGE | site Lead1 vs row Lead1 |
 | `code/mechlistbox.cpp:25` | `MC2_CHEAT_INFINITE_MONEY` | Presence | namespace-static | `﻿#define MECHLISTBOX_CPP /*************************************************************************************************\ MechListBox.cpp : Implementation of the MechListBox component. //---------------------------------------------------------------------------// // Copyright (C) Microsoft Corporation. All right...` | NO-CHANGE | site Presence vs row Presence |
 | `code/mechlistbox.cpp:198` | `MC2_LOG_LOGISTICS` | Presence | per-call | `if ( pMech && mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {` | NO-CHANGE | site Presence vs row Presence |
 | `code/mechlistbox.cpp:550` | `MC2_LOG_MECH_ICON` | Presence | per-call | `if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )` | NO-CHANGE | site Presence vs row Presence |
@@ -1127,7 +1127,7 @@ These change `Gates/gate_table.cpp` only; every other reader of the gate is stil
 | `code/pausewindow.cpp:92` | `MC2_BOOT_PAUSED_CONFIRM` | NonEmpty | local-static | - | UNHANDLED | pointer s_confirm is not used by the following statement |
 | `code/pausewindow.cpp:319` | `MC2_UI_IMGUI_PAUSE` | Lead0 | lambda-static | `static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_PAUSE">();` | NO-CHANGE | site Lead0 vs row Lead0 |
 | `code/missiongui_uicmd.cpp:125` | `MC2_UI_COMMAND_FILE` | NonEmpty | local-static | - | UNHANDLED | pointer s_path is consumed by a block/branch statement: not a single expression |
-| `code/missiongui_uicmd.cpp:287` | `MC2_DEV_SHELL` | Lead1 | per-call | - | UNHANDLED | pointer ds is consumed by a block/branch statement: not a single expression |
+| `code/missiongui_uicmd.cpp:288` | `MC2_DEV_SHELL` | Lead1 | per-call | - | UNHANDLED | pointer ds is consumed by a block/branch statement: not a single expression |
 | `code/mechlabscreen.cpp:22` | `MC2_CHEAT_INFINITE_MONEY` | Presence | namespace-static | `﻿#define MECHLABSCREEN_CPP /*************************************************************************************************\ MechLabScreen.cpp : Implementation of the MechLabScreen component. //---------------------------------------------------------------------------// // Copyright (C) Microsoft Corporation. All...` | NO-CHANGE | site Presence vs row Presence |
 | `code/mechlabscreen.cpp:1244` | `MC2_ENGINE_XL` | Presence | local-static | `static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();` | NO-CHANGE | site Presence vs row Presence |
 | `code/mech_weapons.cpp:15` | `MC2_FIRE_DECISION_TRACE` | Lead0P | local-static | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand |
@@ -1909,10 +1909,10 @@ These change `Gates/gate_table.cpp` only; every other reader of the gate is stil
 * `code/missiongui_uicmd_fixture.cpp:79` MC2_FREEZE_MOVERS_AT (UNHANDLED, per-call)
   * before: `const char* v = getenv("MC2_FREEZE_MOVERS_AT");`
   * after: `-`
-* `code/missiongui_uicmd_fixture.cpp:128` MC2_TEST_SPAWN (NO-CHANGE, local-static)
+* `code/missiongui_uicmd_fixture.cpp:129` MC2_TEST_SPAWN (NO-CHANGE, local-static)
   * before: `static const char* s_spawnGate = getenv("MC2_TEST_SPAWN"); const bool armed = s_spawnGate && s_spawnGate[0] == '1';`
   * after: `const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();`
-* `code/missiongui_uicmd_fixture.cpp:392` MC2_TEST_SPAWN (NO-CHANGE, local-static)
+* `code/missiongui_uicmd_fixture.cpp:393` MC2_TEST_SPAWN (NO-CHANGE, local-static)
   * before: `static const char* s_animGate = getenv("MC2_TEST_SPAWN"); const bool armed = s_animGate && s_animGate[0] == '1';`
   * after: `const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();`
 * `code/mechlistbox.cpp:25` MC2_CHEAT_INFINITE_MONEY (NO-CHANGE, namespace-static)
@@ -1981,7 +1981,7 @@ These change `Gates/gate_table.cpp` only; every other reader of the gate is stil
 * `code/missiongui_uicmd.cpp:125` MC2_UI_COMMAND_FILE (UNHANDLED, local-static)
   * before: `static const char* s_path = getenv("MC2_UI_COMMAND_FILE");`
   * after: `-`
-* `code/missiongui_uicmd.cpp:287` MC2_DEV_SHELL (UNHANDLED, per-call)
+* `code/missiongui_uicmd.cpp:288` MC2_DEV_SHELL (UNHANDLED, per-call)
   * before: `const char* ds = getenv("MC2_DEV_SHELL");`
   * after: `-`
 * `code/mechlabscreen.cpp:22` MC2_CHEAT_INFINITE_MONEY (NO-CHANGE, namespace-static)

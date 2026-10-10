@@ -99,7 +99,7 @@ The permutation `(-x, z, y)` is hand-written at about 9 GLSL sites and about 8 C
 5. **Dead CLAUDE.md citations.** About 18 citations in `.claude/agents/*.md` point at CLAUDE.md sections that no longer exist: "Critical Rules", "Profiling", "Review discipline", "Documentation discipline", "Pending durable artifacts", "Debug instrumentation rule", "Do NOT upscale these atlases". CLAUDE.md is now 73 lines.
 6. **No Vulkan in render agents.** `mc2-render-expert.md`, `mc2-shader-expert.md` and `mc2-render-contract-synthesizer.md` never mention Vulkan, `shaders/vulkan`, or SPIR-V, even though VK is the destination backend. `mc2-shader-expert.md:105` says "some setups use code/shaders/".
 7. **New single-source tools are undocumented.** gpu_abi (`tools/gpu_abi_gen.py`, `RenderCore/gpu_abi/`) and the logging facade (`GameOS/gameos/utils/mc2log.h`, `MC2_EVENT`) appear in none of CLAUDE.md, ARCHITECTURE-MAP, agents, skills, or memory. Memory `cpp_glsl_ubo_struct_lockstep.md` (a Shaders must-read) still prescribes hand-lockstep. `project-cpp17-to-cpp23-goal.md:21` says seam #2 is "in progress", but it landed in 624a96ada.
-8. **Stray artifacts.** A literal `` `r`n `` (PowerShell escape) is committed in comments at `vulkan_post_fog_native.cpp:141` and `GameOS/gameos/gos_postprocess_region.cpp:369`. A tool wrote these.
+8. **Stray artifacts.** A literal `` `r`n `` (PowerShell escape) is committed in comments at `vulkan_post_fog_native.cpp:141` and `GameOS/gameos/gos_postprocess_region.cpp:374`. A tool wrote these.
 
 ---------------------------------------------------------------------------------------------------
 ## B. "ONE way" inventory and retirement path

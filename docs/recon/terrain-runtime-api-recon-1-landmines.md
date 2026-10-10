@@ -141,7 +141,7 @@ layer must keep hosting the mine decal on that same layer.
 
 | # | Landmine | Primary file:line | Class |
 |---|----------|-------------------|-------|
-| 1 | matNormalArray (mat5 cliff) | gos_terrain.frag:56,720 + terrain_mat_layers.hglsl:10 + GameOS/gameos/gameos_graphics_renderer_internal.h:1090 | shader-runtime (additive to normal) |
+| 1 | matNormalArray (mat5 cliff) | gos_terrain.frag:56,720 + terrain_mat_layers.hglsl:10 + GameOS/gameos/gameos_graphics_renderer_internal.h:1094 | shader-runtime (additive to normal) |
 | 2 | cement bake + transition | mclib/terrtxm.cpp:1178 (bake) + gos_terrain.frag:436-453 (transition pass-through) | bake=CPU-load; transition=shader-runtime but currently overlay-deferred |
 | 3 | height resample | gos_terrain_height_tex.cpp:45-152 + terrain_height_normal.hglsl:59-90 | CPU-load resample → shader normal recompute; NO geometry |
 | 4 | shoreline | terrain.cpp:3545-3566 + gos_terrain_water_mdi.frag:175-180 | CPU quad-select + shader fade; dead-ish when alphaDepth=0 |

@@ -109,7 +109,7 @@ The sampler manifest (`sampler-unit-occupancy.md`) counts **~224 `glActiveTextur
 
 **Family 2 — GPU-driven batcher raw-id resolve (`gos_GetGLTextureId`):**
 - `gos_GetGLTextureId` def `:9991`; `gos_GetTextureGLId` `:8160`; `gos_GetGLTextureName` `:10006` (particle bridge).
-- Consumers (ALL inside `GameOS/gameos/`): `GameOS/gameos/gos_mech_batcher_flush.cpp:475`; `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:313,:7131,:7518,:7811`; particle bridge. These pack the raw `GLuint` into material SSBOs / bind for shadow-alpha packets.
+- Consumers (ALL inside `GameOS/gameos/`): `GameOS/gameos/gos_mech_batcher_flush.cpp:475`; `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:319,:7131,:7518,:7811`; particle bridge. These pack the raw `GLuint` into material SSBOs / bind for shadow-alpha packets.
 - Terrain bridge resolves via `getTexture(gosHandle)->getTextureId()` (`GameOS/gameos/gos_terrain_bridge.h:35`).
 
 **Both families call `getTexture()` / `getTextureId()` — i.e. they go through the registry (Layer B).** A `GpuTextureManager` that *is* Layer B keeps both families working unchanged.

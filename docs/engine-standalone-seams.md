@@ -104,7 +104,7 @@ The singleton-heavy reputation is mostly wrong for the **render** layer. Evidenc
 | B3 | Per-call **behavioral env gates** inside draw fns (terrain lighting v1/v2, water reflection/skytint). | `gameos_graphics.cpp:5395-5719,2274-2356` | MODERATE — become explicit render-config fields |
 | B4 | `eye->` reach-ups inside the legacy flush (scene-UBO fog + shadow dynamic-projection box). | `mclib/txmmgr.cpp:1770,1807-1818,2039` | MODERATE — feed from an `EngineView`/scene-params struct |
 | B5 | **Logging**: RenderWorld logs via hard-coded `fprintf(stderr)` (20+ sites); engine-wide uses `SPEW`/`gosASSERT`. No host-logger callback. | `RenderWorld.cpp:215+` | MODERATE — route through injected sink |
-| B6 | Material-table build/upload/bind **welded into the static-prop batcher** (file-scope statics + `mcTextureManager`). | `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:282-433` | MODERATE — extract to a RenderCore service |
+| B6 | Material-table build/upload/bind **welded into the static-prop batcher** (file-scope statics + `mcTextureManager`). | `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:288-439` | MODERATE — extract to a RenderCore service |
 | B7 | Filesystem path resolution is a **global** (`fastFiles[]` registry + `CDInstallPath`). Escape hatch: `File::open` works on raw disk path with no registry; `KtxLoader`/BC7 sidecar already use raw `fopen`. | `mclib/fastfile.cpp:17-74`, `file.cpp:90-99` | MODERATE — accept resolved abs path; FastFile = optional provider |
 
 Trace-only env gates (`static const bool`, read-once) are TRIVIAL: hoist to an
@@ -263,8 +263,8 @@ exact-pixel goldens.
 | GL context + window (SDL) | `gos_render.cpp:340`, `gameosmain.cpp:1019` | NEEDS-ADAPTER (Mission-independent; reusable as host service) |
 | `loadTexture` CPU cache | `mclib/txmmgr_lightrow.cpp:701` | NEEDS-ADAPTER (needs `File` + `mcTextureManager` injected) |
 | GL texture realize | `mclib/txmmgr_render_phases.cpp:385` | NEEDS-ADAPTER (GL context + `g_gos_renderer` + `mcTextureManager`) |
-| BC7 uploaders (2D + array) | `mclib/txmmgr_render_phases.cpp:480`, `GameOS/gameos/gos_static_prop_batcher_program.cpp:770` | NEEDS-ADAPTER (GL context + BPTC) |
-| Material-table assembly/upload/bind | `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:282-433` | NEEDS-ADAPTER (extract from batcher; reaches `mcTextureManager`) |
+| BC7 uploaders (2D + array) | `mclib/txmmgr_render_phases.cpp:480`, `GameOS/gameos/gos_static_prop_batcher_program.cpp:787` | NEEDS-ADAPTER (GL context + BPTC) |
+| Material-table assembly/upload/bind | `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:288-439` | NEEDS-ADAPTER (extract from batcher; reaches `mcTextureManager`) |
 | sRGB/linear policy | `gl_utils.cpp:53-64`, batcher `:2790` | NEEDS-ADAPTER (inconsistent; make explicit per-slot) |
 | Filesystem path resolution | `mclib/fastfile.cpp`, `file.cpp` | NEEDS-ADAPTER (global registry; accept resolved abs path) |
 | EditorBridge | `EditorBridge/EditorRenderBridge.h` | NEEDS-ADAPTER (non-game host precedent) |

@@ -79,7 +79,7 @@ TRUE — an implicit ordering contract invisible to every contract table).
 | **Terrain solid** | `if (IsFrameSolidArmed()) DrawIndirect()  else if PatchStream::isReady() flush()  else → LEGACY MLR gos_RenderIndexedArray` | **LEGACY MLR branch** — `IsFrameSolidArmed()` is CAMERA-WINDOWED; deterministic capture/smoke does NOT arm | `mclib/txmmgr_lightrow.cpp:526-630`; `render-frame-plan-recon-1.md §E` |
 | **StaticPropOpaque** | `g_useGpuStaticProps \|\| g_useGpuObjects` gate | GPU path default-on (STATIC-PROP-V3-FLIP) | `mclib/txmmgr_lightrow.cpp:764-766` |
 | **MechOpaque** | `g_useGpuObjects \|\| g_useGpuMechs` gate (`MC2_GPU_MECHS`) | GPU path | `txmmgr.cpp:2675-2677,3238` |
-| **Water** | `WaterArmed` MDI fast path vs legacy quad loop | variable | `GameOS/gameos/gameos_graphics_water.cpp:682`; `mclib/txmmgr_render_phases.cpp:251` |
+| **Water** | `WaterArmed` MDI fast path vs legacy quad loop | variable | `GameOS/gameos/gameos_graphics_water.cpp:687`; `mclib/txmmgr_render_phases.cpp:251` |
 | **Vegetation** | `MC2_VEGETATION_CARDS` (default off) | off in capture | killSwitchEnv |
 
 **Structural smell (from prior recon, still true):** Any frame-graph that models only the modern indirect terrain

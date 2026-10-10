@@ -72,15 +72,15 @@ Closest thing to a full FF capture = the save/restore snapshot struct `GameOS/ga
 
 | Shape type | File:line | Layout (loc: size×type) |
 |---|---|---|
-| Static prop (shared VAO) | `GameOS/gameos/gos_static_prop_batcher_program.cpp:371-384` | stride 40B: 0=pos3 1=norm3 2=uv2 3=uint(I) 4=uint(I) |
+| Static prop (shared VAO) | `GameOS/gameos/gos_static_prop_batcher_program.cpp:382-395` | stride 40B: 0=pos3 1=norm3 2=uv2 3=uint(I) 4=uint(I) |
 | Mech (`GpuMechVertex` 48B) | `GameOS/gameos/gos_mech_batcher_geometry.cpp:208-214` | 0=pos3 1=norm3 2=uv2 3=bone4ub(I) 4=wt4ub-norm 5=tan2short-norm 6=rgbLight uint(I) |
 | Terrain patch stream | `gos_terrain_patch_stream.cpp:1054/1060` | worldPos3, worldNorm3 (name-resolved) |
 | Terrain lod/legacy | `gameos_graphics.cpp:6254-6256`, `:7058-7063` | extra attrs + worldPos/Norm |
 | Vegetation cards (instanced) | `gos_vegetation.cpp:176-215` | per-vtx 0=pos3 1=uv2; per-inst 2..6 |
 | VFX mesh | `gos_vfx_mesh_bridge.cpp:174-177` | 0=pos3 1=uv2 |
 | HUD/2D sprite | `gameos_graphics.cpp:503-519` | pos4 + color4ub + spec/fog4ub + uv2 (optional, loc-resolved) |
-| Water/scene quad | `GameOS/gameos/gameos_graphics_bridge.cpp:862-866`,`:5229-5232`,`:9823-9826` | 0=pos3 1=uv2 2=uint(I)/float 3=color4ub |
-| Shadow/depth quad | `GameOS/gameos/gameos_graphics_draw.cpp:772` | 0=pos3, stride 36 |
+| Water/scene quad | `GameOS/gameos/gameos_graphics_bridge.cpp:870-874`,`:5229-5232`,`:9823-9826` | 0=pos3 1=uv2 2=uint(I)/float 3=color4ub |
+| Shadow/depth quad | `GameOS/gameos/gameos_graphics_draw.cpp:773` | 0=pos3, stride 36 |
 
 Particle/VFX-trail + GPU-driven indirect terrain solid = **no `glVertexAttribPointer`** (SSBO/`gl_VertexID`-driven). → vertex-input is a clean finite ID space; **not a blocker.**
 

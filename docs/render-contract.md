@@ -516,7 +516,7 @@ worktree Debug-instrumentation rule - all default-off, inert):
 - bucket-header SSBO: `MC2_BUCKET_HEADER_TRACE`
   (`GameOS/gameos/gos_terrain_indirect_atlas.cpp:305`)
 - CPU-pack fallback: `MC2_TERRAIN_INDIRECT_CPU_FALLBACK`
-  (`GameOS/gameos/gos_terrain_indirect_cement.cpp:826`)
+  (`GameOS/gameos/gos_terrain_indirect_cement.cpp:828`)
 - Fix A per-slot MVP snapshot: `MC2_RING_TRACE`
   (`GameOS/gameos/gos_terrain_indirect_cement.cpp:692`)
 - `MC2_VPL_CULL` + `MC2_VPL_REDUCE`: retired to one-shot

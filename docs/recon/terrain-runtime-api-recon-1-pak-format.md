@@ -34,12 +34,12 @@ object instances/placements.
 Game (code/mission.cpp:2759-2797):
 1. terrainFileName.init(missionPath, missionName, .pak) - .pak named off mission stem,
    sibling to the mission .fit (missionFile).
-2. PacketFile pakFile; pakFile.open(terrainFileName) (code/mission_movers.cpp:540-542).
+2. PacketFile pakFile; pakFile.open(terrainFileName) (code/mission_movers.cpp:548-550).
 3. land->getColorMapName(missionFile) - colormap name from .fit ColorMap block (terrain.cpp:529).
-4. land->init(pakFile, 0, ...) (code/mission_movers.cpp:558) -> Terrain::init (terrain.cpp:495):
+4. land->init(pakFile, 0, ...) (code/mission_movers.cpp:566) -> Terrain::init (terrain.cpp:495):
    seekPacket(0), getPacketSize(), realVerticesMapSide = sqrt(size/sizeof(PostcompVertex))
    (terrain.cpp:505-506), range-check [60,2048] (terrain.cpp:510), then init(...) (terrain.cpp:523,575).
-5. land->load(missionFile) (code/mission_movers.cpp:573, def mclib/terrain_geometry.cpp:133) - reads mission .fit, NOT .pak.
+5. land->load(missionFile) (code/mission_movers.cpp:581, def mclib/terrain_geometry.cpp:133) - reads mission .fit, NOT .pak.
 - Save-game variant: identical land->init(pakFile,0,...) at code/saveload.cpp:1135.
 
 In-memory: Terrain (mclib/terrain.cpp/.h) owns mapData (MapData, mclib/mapdata.*) holding the
@@ -61,7 +61,7 @@ Struct mclib/vertex.h:33-64, 32 bytes (python _VERTEX 3f f I I I 4B, pak_exporte
 - off 0  Vector3D vertexNormal (3f) - lighting (python finite-diff pak_exporter.py:32-62)
 - off 12 float elevation - height (vertex.h:44,56)
 - off 16 DWORD textureData - hi16 Overlay TXM handle, lo16 Base TXM (vertex.h:46); overlay
-         codes e.g. DAMAGED_BRIDGE per tools/terrain_beautify/README.md:33,47
+         codes e.g. DAMAGED_BRIDGE per tools/terrain_beautify/README.md:34,47
 - off 20 DWORD localRGBLight - pre-baked aRGB lighting (vertex.h:48); python 0x00CCCCCC
 - off 24 DWORD terrainType - terrainType number / material class (vertex.h:50); python from
          masks.terrain_type (pak_exporter.py:89)
@@ -72,7 +72,7 @@ Struct mclib/vertex.h:33-64, 32 bytes (python _VERTEX 3f f I I I 4B, pak_exporte
 
 - Passability / area id are NOT vertex fields. Passability is derived (terrainType +
   elevation/slope); authoritative movement graph = separate MOVE packet 4. Per-vertex
-  terrainType dominated by one code in practice - weak material signal (README.md:39-40).
+  terrainType dominated by one code in practice - weak material signal (README.md:40-41).
 - textureData written 0 by python generator (pak_exporter.py:87); TXM ids authored in-editor.
 
 ## 4. Existing sidecar precedent (the model for terrain2)
@@ -111,8 +111,8 @@ Attach to a mission TWO ways:
   refuse mismatched/modified base terrain.
 - Loose binary planes (.r32/.r8/.u32) row-major side*side, one per modern attribute (material
   splat ids, normal/PBR aux, overlay codes), NEVER mutating the stock .pak.
-- Engine load: after land->init(pakFile,0,...) (code/mission_movers.cpp:558) and land->load
-  (code/mission_movers.cpp:573), add an opt-in (MC2_* gate) sidecar pass that recomputes baseHash of the
+- Engine load: after land->init(pakFile,0,...) (code/mission_movers.cpp:566) and land->load
+  (code/mission_movers.cpp:581), add an opt-in (MC2_* gate) sidecar pass that recomputes baseHash of the
   open pakFile and applies only on match - degrade to stock generation on miss/absent
   (stock-must-be-playable). Mirror BeautySidecarPreview snapshot/restore for live use; mirror
   python apply for offline bake.

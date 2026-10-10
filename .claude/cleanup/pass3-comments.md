@@ -55,7 +55,7 @@ code/controlgui_render.cpp:435 | "(Removed: blue friendly chevrons...)" | Delete
 code/controlgui_objectives.cpp:883 | "these used to be declared as unsigned" | Delete the "used to be" sentence.
 mclib/bdactor.cpp:2050 | "WE have removed the atans here" | Delete the "removed the atans" clause.
 mclib/bdactor_render.cpp:635 | "WE have removed the atans here" | Same as bdactor.cpp:2050.
-mclib/txmmgr_lights.cpp:733 | "retired: no FNV, no memcmp" | Verify the FNV/memcmp path is gone, then delete.
+mclib/txmmgr_lights.cpp:734 | "retired: no FNV, no memcmp" | Verify the FNV/memcmp path is gone, then delete.
 scripts/provenance_gate.py:783 | "This used to be RECORDED-AT-MINT" | Delete the "used to be" sentence.
 scripts/run_smoke.py:1721 | "MC2_CEMENT_EDGE_CURVE was here; the gate was deleted 2026-07-30" | Delete the line.
 scripts/run_visual_capture.py:257 | "This used to be os.environ.copy()" | Delete the "used to be" sentence.
@@ -76,7 +76,7 @@ shaders/terrain_lod_chunk.frag:1905 | "pow() exponent was deleted here 2026-07-3
 - GameOS/gameos/gos_terrain_indirect_dispatch.cpp:166 (retirement lifecycle marker by design).
 - code/bldng.cpp:1370, code/gvehicl_control.cpp:215 (joke text, no code claim).
 - code/brain_special_dispatch.cpp:2544, code/objmgr_update.cpp:1384, code/sensor_trace.h:38 (false positives).
-- mclib/stuff/database.cpp:71 (data semantics), mclib/txmmgr_lights.cpp:617 (tracy zone rename note).
+- mclib/stuff/database.cpp:71 (data semantics), mclib/txmmgr_lights.cpp:618 (tracy zone rename note).
 - scripts/check-gate-default-agreement.py:1421, scripts/check-sim-identity-propagation.py:293, scripts/smoke_lib/runner.py:125, shaders/gpu_cull.comp:261, tools/class_light_band_harness/class_light_band_harness.cpp:1138 and :2755, tools/repo_intel/dead_gate_scan.py:50, tools/shader_contract_harness/shader_contract_harness.cpp:140 (intentional checks, false positives).
 - GameOS/gameos/gos_mech_batcher_api.cpp:199 (current-behavior note).
 

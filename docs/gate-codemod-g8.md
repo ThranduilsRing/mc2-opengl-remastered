@@ -239,8 +239,8 @@ The code line is the reader as written.
 | `GameOS/gameos/gpu_driven_common.cpp:75` | `MC2_GPU_DRIVEN_OVERLAY` |  | per-call | - | UNHANDLED | lambda body names `IsGlobalEnabled`, which is state outside the read |
 | `GameOS/gameos/gpu_cull_compute.cpp:125` | `MC2_GPU_CULL_FRUSTUM_DILATION` |  | per-call | - | UNHANDLED | numeric reader is not a lambda/declaration initializer (e.g. multi-statement local) |
 | `editor/EditorMFC.cpp:177` | `MC2_EDITOR_TRACE` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is !Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
-| `editor/EditorMFC.cpp:457` | `MC2_NO_ACTIVATE` | Lead0 | per-call | - | UNHANDLED | pointer noActivate is not used by the following statement |
-| `editor/EditorMFC.cpp:458` | `MC2_WINDOW_OFFSCREEN` | Lead0 | per-call | - | UNHANDLED | expression using offscreen also names `noActivate` |
+| `editor/EditorMFC.cpp:458` | `MC2_NO_ACTIVATE` | Lead0 | per-call | - | UNHANDLED | pointer noActivate is not used by the following statement |
+| `editor/EditorMFC.cpp:459` | `MC2_WINDOW_OFFSCREEN` | Lead0 | per-call | - | UNHANDLED | expression using offscreen also names `noActivate` |
 | `editor/EditorGosRender.cpp:693` | `MC2_EDITOR_FPS_CAP` |  | per-call | - | UNHANDLED | numeric reader is not a lambda/declaration initializer (e.g. multi-statement local) |
 | `editor/EditorGosRender.cpp:836` | `MC2_VSYNC` | Lead1 | per-call | - | UNHANDLED | pointer vsync_env is used again later in the block; inside #ifdef PLATFORM_WINDOWS |
 | `editor/EditorGosRender.cpp:885` | `MC2_VSYNC` | Lead1 | per-call | - | UNHANDLED | pointer vsync_env is used again later in the block; inside #else of #ifdef PLATFORM_WINDOWS |
@@ -914,7 +914,7 @@ Helper: GameOS/gameos/utils/mc2log.cpp:170 `{ const std::string key(name); if (c
 | file:line | gate | row now | code line | detail |
 |---|---|---|---|---|
 | `GameOS/gameos/gos_render.cpp:508` | `MC2_WINDOWED` | Bool Lead0 default=off | `const char* wenv = getenv("MC2_WINDOWED");` | pointer wenv is not used by the following statement |
-| `editor/EditorMFC.cpp:457` | `MC2_NO_ACTIVATE` | Bool Lead0 default=off | `const char* noActivate = getenv("MC2_NO_ACTIVATE");` | pointer noActivate is not used by the following statement |
+| `editor/EditorMFC.cpp:458` | `MC2_NO_ACTIVATE` | Bool Lead0 default=off | `const char* noActivate = getenv("MC2_NO_ACTIVATE");` | pointer noActivate is not used by the following statement |
 
 ### row kind Enum: read through is<>/Enum token (G3 Enum / G4 Tri / String via str<>) -- 2 sites
 
@@ -933,7 +933,7 @@ Helper: GameOS/gameos/utils/mc2log.cpp:170 `{ const std::string key(name); if (c
 
 | file:line | gate | row now | code line | detail |
 |---|---|---|---|---|
-| `editor/EditorMFC.cpp:458` | `MC2_WINDOW_OFFSCREEN` | Bool Lead0 default=off | `const char* offscreen = getenv("MC2_WINDOW_OFFSCREEN");` | expression using offscreen also names `noActivate` |
+| `editor/EditorMFC.cpp:459` | `MC2_WINDOW_OFFSCREEN` | Bool Lead0 default=off | `const char* offscreen = getenv("MC2_WINDOW_OFFSCREEN");` | expression using offscreen also names `noActivate` |
 
 ### expression using renv also names `X` -- 1 site
 
@@ -990,7 +990,7 @@ A per-call `getenv` sees a later `_putenv`; a typed `get<>()` caches its first a
 | `tools/brain_dispatch_harness/harness_main.cpp:648` | `MC2_BRAIN_INTENT_QUEUE` | NO-CHANGE | `tools/brain_dispatch_harness/harness_main.cpp:622` |
 | `editor/EditorPlaytest.cpp:939` | `MC2_ACTIVE_MOD` | UNHANDLED | `editor/ModPicker.cpp:72`, `tests/unit/test_path_permutations.cpp:167`, `tests/unit/test_paths_mod.cpp:115`, `tests/unit/test_paths_mod.cpp:116` |
 | `editor/EditorObjects.cpp:700` | `MC2_EDITOR_TRACE` | NO-CHANGE | `editor/EditorMFC.cpp:177` |
-| `editor/EditorObjects.cpp:855` | `MC2_EDITOR_TRACE` | NO-CHANGE | `editor/EditorMFC.cpp:177` |
+| `editor/EditorObjects.cpp:856` | `MC2_EDITOR_TRACE` | NO-CHANGE | `editor/EditorMFC.cpp:177` |
 | `editor/EditorInterface.cpp:32` | `MC2_EDITOR_TRACE` | NO-CHANGE | `editor/EditorMFC.cpp:177` |
 | `editor/EditorGameOS.cpp:115` | `MC2_EDITOR_TRACE` | NO-CHANGE | `editor/EditorMFC.cpp:177` |
 | `editor/EditorCamera.h:55` | `MC2_EDITOR_TRACE` | NO-CHANGE | `editor/EditorMFC.cpp:177` |
@@ -1192,8 +1192,8 @@ Bool rows whose committed rule is Std but whose reader is not: `MC2_STRINGS_TRAC
 | `editor/EditorMFC.cpp:177` | `MC2_EDITOR_TRACE` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is !Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
 | `editor/EditorMFC.cpp:187` | `MC2_EDITOR_TRACE` | Presence (== nullptr) | per-call | `if (!mc2::gate::get<"MC2_EDITOR_TRACE">())` | NO-CHANGE | site !Presence vs row Presence |
 | `editor/EditorMFC.cpp:200` | `MC2_EDITOR_TRACE` | Presence (== nullptr) | per-call | `if (!mc2::gate::get<"MC2_EDITOR_TRACE">())` | NO-CHANGE | site !Presence vs row Presence |
-| `editor/EditorMFC.cpp:457` | `MC2_NO_ACTIVATE` | Lead0 | per-call | - | UNHANDLED | pointer noActivate is not used by the following statement |
-| `editor/EditorMFC.cpp:458` | `MC2_WINDOW_OFFSCREEN` | Lead0 | per-call | - | UNHANDLED | expression using offscreen also names `noActivate` |
+| `editor/EditorMFC.cpp:458` | `MC2_NO_ACTIVATE` | Lead0 | per-call | - | UNHANDLED | pointer noActivate is not used by the following statement |
+| `editor/EditorMFC.cpp:459` | `MC2_WINDOW_OFFSCREEN` | Lead0 | per-call | - | UNHANDLED | expression using offscreen also names `noActivate` |
 | `editor/EditorGosRender.cpp:431` | `MC2_GL_DEBUG` | Presence | per-call | `const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();` | NO-CHANGE | site Presence vs row Presence |
 | `editor/EditorGosRender.cpp:693` | `MC2_EDITOR_FPS_CAP` |  | per-call | - | UNHANDLED | numeric reader is not a lambda/declaration initializer (e.g. multi-statement local) |
 | `editor/EditorGosRender.cpp:836` | `MC2_VSYNC` | Lead1 | per-call | - | UNHANDLED | pointer vsync_env is used again later in the block; inside #ifdef PLATFORM_WINDOWS |
@@ -1316,7 +1316,7 @@ Bool rows whose committed rule is Std but whose reader is not: `MC2_STRINGS_TRAC
 | `editor/EditorPlaytest.cpp:940` | `MC2_DEBUG_STATE_DUMP` |  | per-call | - | UNHANDLED | helper-call reader string(): helper mapping lands in G4/G6 |
 | `editor/EditorPlaytest.cpp:947` | `MC2_SMOKE_MODE` |  | per-call | - | UNHANDLED | helper-call reader string(): helper mapping lands in G4/G6 |
 | `editor/EditorObjects.cpp:700` | `MC2_EDITOR_TRACE` | Presence | per-call | `if ( mc2::gate::get<"MC2_EDITOR_TRACE">() )` | NO-CHANGE | site Presence vs row Presence |
-| `editor/EditorObjects.cpp:855` | `MC2_EDITOR_TRACE` | Presence | per-call | `if ( mc2::gate::get<"MC2_EDITOR_TRACE">() && !wps.empty() && appearance() )` | NO-CHANGE | site Presence vs row Presence |
+| `editor/EditorObjects.cpp:856` | `MC2_EDITOR_TRACE` | Presence | per-call | `if ( mc2::gate::get<"MC2_EDITOR_TRACE">() && !wps.empty() && appearance() )` | NO-CHANGE | site Presence vs row Presence |
 | `editor/EditorObjectMgr_render.cpp:24` | `MC2_EDITOR_MOVER_REFRESH` | Lead0Kill | per-call | `v = mc2::gate::get<"MC2_EDITOR_MOVER_REFRESH">();` | EDGE | site Lead0Kill vs row Lead0Kill; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_EDITOR_MOVER_REFRESH", mc2::gate::Rule::Lead0Kill>(); no harness value in the seed hits a changed input |
 | `editor/EditorObjectMgr_render.cpp:128` | `MC2_EDITOR_STATIC_PREWARM_OFF` | Presence | local-static | `static const bool s_prewarmOff = mc2::gate::get<"MC2_EDITOR_STATIC_PREWARM_OFF">();` | NO-CHANGE | site Presence vs row Presence |
 | `editor/EditorInterface.cpp:32` | `MC2_EDITOR_TRACE` | Presence (== nullptr) | per-call | `if (!mc2::gate::get<"MC2_EDITOR_TRACE">())` | NO-CHANGE | site !Presence vs row Presence |
@@ -1325,7 +1325,7 @@ Bool rows whose committed rule is Std but whose reader is not: `MC2_STRINGS_TRAC
 | `editor/EditorGameOS.cpp:533` | `MC2_EDITOR_PANEL_W` |  | per-call | - | UNHANDLED | numeric reader is not a lambda/declaration initializer (e.g. multi-statement local); inside #ifdef MC2_IMGUI |
 | `editor/EditorCamera.h:55` | `MC2_EDITOR_TRACE` | Presence (== nullptr) | per-call | `if (!mc2::gate::get<"MC2_EDITOR_TRACE">())` | NO-CHANGE | site !Presence vs row Presence; inside #ifndef EDITORCAMERA_H |
 | `editor/EditorCamera.h:253` | `MC2_VIEW_UNIFORMS` | Lead0Kill | local-static | - | UNHANDLED | pointer s_vuEnv is consumed by a block/branch statement: not a single expression; inside #ifndef EDITORCAMERA_H |
-| `GuiRuntime/GraphicsOptionsWindow_mech.cpp:233` | `MC2_MECH_IBL_SH` | Lead0Kill | per-call | `bool mechIblOn = mc2::gate::get<"MC2_MECH_IBL_SH">();` | NO-CHANGE | site Lead0Kill vs row Lead0Kill |
+| `GuiRuntime/GraphicsOptionsWindow_mech.cpp:237` | `MC2_MECH_IBL_SH` | Lead0Kill | per-call | `bool mechIblOn = mc2::gate::get<"MC2_MECH_IBL_SH">();` | NO-CHANGE | site Lead0Kill vs row Lead0Kill |
 | `GameOS/gameos/vulkan_mech_island.cpp:182` | `MC2_VULKAN_SPV_DIR` |  | per-call | - | UNHANDLED | row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND |
 | `GameOS/gameos/vulkan_mech_island.cpp:1016` | `MC2_MECH_BATCHER_STATS` | Presence | local-static | `static const bool s_cullWitness = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();` | NO-CHANGE | site Presence vs row Presence; inside #ifdef MC2_VULKAN_ISLAND |
 | `GameOS/gameos/vk_feed_dump.h:60` | `MC2_VISUAL_BOOKMARK_CAPTURE` | Presence | per-call | `const bool bookmarkConfigured = (mc2::gate::get<"MC2_VISUAL_BOOKMARK_CAPTURE">()) \|\| (std::getenv("MC2_VISUAL_CAPTURE_FRAME") != nullptr);` | NO-CHANGE | site Presence vs row Presence; inside #ifndef MC2_VK_FEED_DUMP_H |
@@ -1866,10 +1866,10 @@ Bool rows whose committed rule is Std but whose reader is not: `MC2_STRINGS_TRAC
 * `editor/EditorMFC.cpp:200` MC2_EDITOR_TRACE (NO-CHANGE, per-call)
   * before: `if (getenv("MC2_EDITOR_TRACE") == NULL)`
   * after: `if (!mc2::gate::get<"MC2_EDITOR_TRACE">())`
-* `editor/EditorMFC.cpp:457` MC2_NO_ACTIVATE (UNHANDLED, per-call)
+* `editor/EditorMFC.cpp:458` MC2_NO_ACTIVATE (UNHANDLED, per-call)
   * before: `const char* noActivate = getenv("MC2_NO_ACTIVATE");`
   * after: `-`
-* `editor/EditorMFC.cpp:458` MC2_WINDOW_OFFSCREEN (UNHANDLED, per-call)
+* `editor/EditorMFC.cpp:459` MC2_WINDOW_OFFSCREEN (UNHANDLED, per-call)
   * before: `const char* offscreen = getenv("MC2_WINDOW_OFFSCREEN");`
   * after: `-`
 * `editor/EditorGosRender.cpp:431` MC2_GL_DEBUG (NO-CHANGE, per-call)
@@ -2238,7 +2238,7 @@ Bool rows whose committed rule is Std but whose reader is not: `MC2_STRINGS_TRAC
 * `editor/EditorObjects.cpp:700` MC2_EDITOR_TRACE (NO-CHANGE, per-call)
   * before: `if ( getenv( "MC2_EDITOR_TRACE" ) )`
   * after: `if ( mc2::gate::get<"MC2_EDITOR_TRACE">() )`
-* `editor/EditorObjects.cpp:855` MC2_EDITOR_TRACE (NO-CHANGE, per-call)
+* `editor/EditorObjects.cpp:856` MC2_EDITOR_TRACE (NO-CHANGE, per-call)
   * before: `if ( getenv( "MC2_EDITOR_TRACE" ) && !wps.empty() && appearance() )`
   * after: `if ( mc2::gate::get<"MC2_EDITOR_TRACE">() && !wps.empty() && appearance() )`
 * `editor/EditorObjectMgr_render.cpp:24` MC2_EDITOR_MOVER_REFRESH (EDGE, per-call)
@@ -2265,7 +2265,7 @@ Bool rows whose committed rule is Std but whose reader is not: `MC2_STRINGS_TRAC
 * `editor/EditorCamera.h:253` MC2_VIEW_UNIFORMS (UNHANDLED, local-static)
   * before: `static const char* s_vuEnv = std::getenv("MC2_VIEW_UNIFORMS");`
   * after: `-`
-* `GuiRuntime/GraphicsOptionsWindow_mech.cpp:233` MC2_MECH_IBL_SH (NO-CHANGE, per-call)
+* `GuiRuntime/GraphicsOptionsWindow_mech.cpp:237` MC2_MECH_IBL_SH (NO-CHANGE, per-call)
   * before: `const char* mechIblEnv = std::getenv("MC2_MECH_IBL_SH"); bool mechIblOn = !(mechIblEnv != nullptr && mechIblEnv[0] == '0');`
   * after: `bool mechIblOn = mc2::gate::get<"MC2_MECH_IBL_SH">();`
 * `GameOS/gameos/vulkan_mech_island.cpp:182` MC2_VULKAN_SPV_DIR (UNHANDLED, per-call)

@@ -6,7 +6,7 @@
 - They are NOT drawn after endScene: they are an in-scene immediate draw, and the block never sets gos_State_IsHUD.
   (compare gamecam.cpp:736/740 which wraps the gosFX flush in IsHUD 1/0).
 - Under VK the scene color is VK-owned (shared GBuffer). Un-flagged GL quads land in the GL scene FBO that VK discards.
-  Only IsHUD draws are buffered (GameOS/gameos/gameos_graphics_draw.cpp:927 drawTris, flushHUDBatch :8234) and queued to the VK present tail
+  Only IsHUD draws are buffered (GameOS/gameos/gameos_graphics_draw.cpp:928 drawTris, flushHUDBatch :8234) and queued to the VK present tail
   (queueHudVulkanFrame gameos_graphics.cpp:8644 -> engine_present_vk.cpp:2116, drawn :1640-1700).
   The tail's color-tri pipe handles AlphaInvAlpha untextured quads (vkHudDrawRepresentable :8199 returns true) -> fix is feasible.
 - Separate, unrelated: FORCE-43 / OOB-letterbox composite clear+viewport is GL-only (gos_postprocess.cpp:4873-4915,
