@@ -561,6 +561,7 @@ void drawGBufferPreview() {
             if (mips > 1)
                 ImGui::SliderInt("HZB mip##hzb", &s_hzbMip, 0, mips - 1);
 
+            // Level dimensions via the same ceil ladder the runtime uses.
             int lw = pp->getHzbWidth(), lh = pp->getHzbHeight();
             for (int k = 0; k < s_hzbMip; ++k) {
                 lw = (lw + 1) / 2; if (lw < 1) lw = 1;
