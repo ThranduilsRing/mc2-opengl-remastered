@@ -16,3 +16,9 @@ target_include_directories(gui_runtime PRIVATE
 )
 
 target_link_libraries(gui_runtime PUBLIC imgui renderworld)
+
+# Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
+# not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
+if(TARGET gui_runtime)
+    target_link_libraries(gui_runtime PUBLIC mc2_gate)
+endif()

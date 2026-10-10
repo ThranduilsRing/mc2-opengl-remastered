@@ -414,10 +414,48 @@ def test_deploy_status_known_lane_names():
     import deploy_status as ds
     names = ds._lane_names(REPO_ROOT)
     # Installs were reorganized 2026-10-05 (ONE-lane reset): only the dev lane
-    # (0.4) and the golden lane (0.4c) remain registered; the old release/testing
-    # lanes (e.g. 0.5-testing) were archived off-disk and dropped from the maps.
+    # (0.4) and the golden lane (0.4c) remain registered, plus lane2; the old
+    # release/testing lanes were archived off-disk and dropped from the maps.
     assert "0.4" in names
     assert "0.4c" in names
+    # Second builder lane (registered 2026-10-09).
+    assert names["lane2"].replace("\\", "/").endswith("/mc2-win64-lane2")
+    # Archived lanes must not be resurrected.
+    assert not any(n.startswith("0.5") or n.startswith("0.4d") for n in names)
+
+
+def test_lane2_expected_follows_owning_worktree(tmp_path, monkeypatch):
+    """lane2's fingerprint is compared against lane2's worktree HEAD, not the
+    caller's; a lane2 entry whose worktree is absent falls back to the caller."""
+    import deploy_status as ds
+    import lane_model
+    lane_dir = tmp_path / "install"
+    lane_dir.mkdir()
+    wt = tmp_path / "wt"
+    wt.mkdir()
+    entry = dict(lane_model.LANES["lane2"], install=str(lane_dir),
+                 worktree=str(wt), branch="claude/lane2-s3")
+    monkeypatch.setitem(lane_model.LANES, "lane2", entry)
+    monkeypatch.setattr(ds, "_git_head", lambda root: "L2" * 6 if Path(root) == wt else "NIFTY" * 2)
+    monkeypatch.setattr(ds, "_git_branch", lambda root: "claude/lane2-s3" if Path(root) == wt else "claude/nifty-mendeleev")
+    r = ds.deploy_status(REPO_ROOT, "lane2")
+    assert r["expected"]["worktree"] == str(wt)
+    assert r["expected"]["branch"] == "claude/lane2-s3"
+    assert r["expected"]["sha"] == ("L2" * 6).lower()
+    # path form of the same install resolves to the same owner
+    assert ds.deploy_status(REPO_ROOT, str(lane_dir))["expected"]["worktree"] == str(wt)
+    # dev lane keeps the caller's worktree
+    assert ds.deploy_status(REPO_ROOT, "0.4")["expected"]["worktree"] == str(REPO_ROOT)
+    # absent worktree -> caller's worktree
+    monkeypatch.setitem(lane_model.LANES, "lane2", dict(entry, worktree=str(tmp_path / "gone")))
+    assert ds.deploy_status(REPO_ROOT, "lane2")["expected"]["worktree"] == str(REPO_ROOT)
+
+
+def test_mission_facts_lanes_exclude_archived():
+    import mission_facts as mf
+    names = [n for n, _ in mf.deploy_lanes(REPO_ROOT)]
+    assert "lane2" in names and "0.4" in names
+    assert not any(n.startswith("0.5") for n in names)
 
 
 # ---------------------------------------------------------------------------

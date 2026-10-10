@@ -26,3 +26,9 @@ target_include_directories(renderworld PRIVATE
 )
 
 target_compile_features(renderworld PUBLIC cxx_std_17)
+
+# Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
+# not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
+if(TARGET renderworld)
+    target_link_libraries(renderworld PUBLIC mc2_gate)
+endif()

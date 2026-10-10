@@ -589,7 +589,7 @@ def register_lane(name: str, worktree: str = "", files_claimed: Optional[list] =
       worktree      — absolute worktree path (default: this server's repo root).
       files_claimed — repo-relative paths/globs you intend to touch
                       (e.g. ["mclib/tgl.*", "scripts/mcp/"]). Dir claims end with "/".
-      deploy_lane   — deploy dir name you'll smoke against (e.g. "0.4", "0.5-testing").
+      deploy_lane   — deploy dir name you'll smoke against (e.g. "0.4", "lane2").
       note          — free text (what the lane is doing).
 
     Returns JSON: {registered, store, file_conflicts, deploy_lane_clash,
@@ -741,10 +741,11 @@ def deploy_status(lane: str, expected_sha: str = "") -> str:
     a stale exe or fighting another lane (DEPLOY_FINGERPRINT mismatch class).
 
     Args:
-      lane         — canonical name ("0.4", "0.4d-rc1", "0.5-testing", ...) or an
+      lane         — canonical name ("0.4", "0.4c", "lane2") or an
                      absolute deploy dir path.
-      expected_sha — HEAD the exe/manifest must carry (default: this
-                     worktree's HEAD).
+      expected_sha — HEAD the exe/manifest must carry (default: HEAD of the
+                     worktree that owns the lane: lane2 -> A:/Games/mc2-lane2,
+                     others -> this worktree).
 
     Returns JSON with verdict OK | CONTENDED | BROKEN-TREE | SHARED-INSTALL |
     STALE | FINGERPRINT-MISMATCH | NO-EXE | MISSING + action, plus:

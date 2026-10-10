@@ -5,7 +5,7 @@ One-call mission ground truth: pak grid geometry, water elevation, and which
 deploy lanes carry the pak + beauty sidecars.
 
 Grounded failure: agents re-derived the same facts every session (vertex side
-counts, water elev, "is the control_map deployed to 0.5-testing?") by pak/dir
+counts, water elev, "is the control_map deployed to lane2?") by pak/dir
 spelunking — this module answers all of it in one shot.
 
 Format references (mirrors tools/terrain_beautify/mission_terrain_analyzer.py,
@@ -43,13 +43,13 @@ VALID_GRID_SIDES = (60, 80, 100, 120)
 SIDECAR_FILES = ("control_map.png", "shoreline_mask.png",
                  "visual_height_4x.r32", "sidecar.json")
 
-# Fallback lane map — kept in lockstep with scripts/smoke_lib/deploy_lease.py
-# DEPLOY_FOLDERS (imported live when available; this is only the net).
+# Fallback lane map — the lanes that exist after the 2026-10-05 install
+# reorganisation (see lane_model.LANES). DEPLOY_FOLDERS is imported live when
+# available; lane2 is appended below because the lease list does not carry it.
 _FALLBACK_LANES: list[tuple[str, str]] = [
-    ("0.4",         r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
-    ("0.4d-rc1",    r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1"),
-    ("0.5.0",       r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"),
-    ("0.5-testing", r"A:/Games/mc2-opengl/releases/0.5 testing/mc2-win64-v0.5.0"),
+    ("0.4",   r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
+    ("0.4c",  r"A:/Games/mc2-opengl/mc2-win64-v0.4c"),
+    ("lane2", r"A:/Games/mc2-opengl/mc2-win64-lane2"),
 ]
 
 
@@ -60,9 +60,12 @@ def deploy_lanes(repo_root: Path) -> list[tuple[str, str]]:
         if scripts not in sys.path:
             sys.path.insert(0, scripts)
         from smoke_lib.deploy_lease import DEPLOY_FOLDERS  # type: ignore
-        return list(DEPLOY_FOLDERS)
+        lanes = list(DEPLOY_FOLDERS)
     except Exception:
         return list(_FALLBACK_LANES)
+    # Add builder lanes the lease list does not carry (lane2).
+    seen = {n for n, _ in lanes}
+    return lanes + [(n, p) for n, p in _FALLBACK_LANES if n not in seen]
 
 
 # ---------------------------------------------------------------------------

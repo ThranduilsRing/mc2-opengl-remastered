@@ -39,7 +39,6 @@ _GUARD_ERR: Optional[str] = None
 # that distinction is the whole point).
 DEFAULT_INSTALL_ROOTS = (
     r"A:/Games/mc2-opengl",
-    r"A:/Games/mc2-opengl/releases",
 )
 
 
@@ -75,8 +74,9 @@ def resolve_deploy_dir(lane: str, repo_root: Optional[Path] = None) -> Optional[
     """Turn a deploy_lane string into a directory.
 
     Accepts an absolute path, a canonical short name from
-    smoke_lib/deploy_lease.DEPLOY_FOLDERS ("0.4", "0.4d-rc1", ...), or a bare
-    directory name under the known install roots ("mc2-win64-treesoff-1").
+    smoke_lib/deploy_lease.DEPLOY_FOLDERS or lane_model.LANES ("0.4", "0.4c",
+    "lane2"), or a bare directory name under the known install roots
+    ("mc2-win64-lane2").
     Returns None if it cannot be resolved -- callers must treat that as
     "unknown", never as "fine".
     """
@@ -98,6 +98,13 @@ def resolve_deploy_dir(lane: str, repo_root: Optional[Path] = None) -> Optional[
                     return Path(path)
         except Exception:  # noqa: BLE001
             pass
+    try:
+        import lane_model  # sibling module  # noqa: PLC0415
+        hit = lane_model.lane_for(lane)
+        if hit and Path(hit[1]["install"]).is_dir():
+            return Path(hit[1]["install"])
+    except Exception:  # noqa: BLE001
+        pass
     for root in DEFAULT_INSTALL_ROOTS:
         cand = Path(root) / lane
         if cand.is_dir():
