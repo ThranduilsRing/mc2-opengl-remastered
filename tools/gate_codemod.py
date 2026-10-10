@@ -1538,10 +1538,10 @@ def _apply_helper_calls(raw, results):
 # typed read. {G} is the gate literal, {C} the getenv spelling (std:: optional).
 _GE = r"(?:std::)?getenv\(\s*\"{G}\"\s*\)"
 _PAIRED_FORMS = (
-    ("AtoiNZ", r"\(?\s*" + _GE + r"\s*&&\s*(?:std::)?atoi\(\s*" + _GE + r"\s*\)\s*!=\s*0\s*\)?"),
-    ("Lead0P", r"\(?\s*" + _GE + r"\s*!=\s*(?:nullptr|NULL)\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'\s*\)?"),
-    ("Lead0", r"\(?\s*" + _GE + r"\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'\s*\)?"),
-    ("Lead1", r"\(?\s*" + _GE + r"\s*(?:!=\s*(?:nullptr|NULL)\s*)?&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*==\s*'1'\s*\)?"),
+    ("AtoiNZ", _GE + r"\s*&&\s*(?:std::)?atoi\(\s*" + _GE + r"\s*\)\s*!=\s*0"),
+    ("Lead0P", _GE + r"\s*!=\s*(?:nullptr|NULL)\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'"),
+    ("Lead0", _GE + r"\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'"),
+    ("Lead1", _GE + r"\s*(?:!=\s*(?:nullptr|NULL)\s*)?&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*==\s*'1'"),
 )
 
 
@@ -1559,7 +1559,9 @@ def _apply_paired_reads(raw, results):
         for rule, tmpl in _PAIRED_FORMS:
             if row.rule != rule:
                 continue
-            rx = re.compile(tmpl.replace("{G}", re.escape(gate)))
+            core = tmpl.replace("{G}", re.escape(gate))
+            # a whole parenthesised expression, else the bare one: never swallow a `)` that belongs to an enclosing `if (`
+            rx = re.compile(r"\(\s*" + core + r"\s*\)|" + core)
             for m in rx.finditer(T):
                 edits.append((m.start(), m.end(), get_expr(gate), gate))
     edits.sort(key=lambda e: -e[0])

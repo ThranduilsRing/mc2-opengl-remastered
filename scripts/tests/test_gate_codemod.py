@@ -742,3 +742,13 @@ def test_paired_reads_on_a_row_with_another_rule_are_left_alone(monkeypatch):
     res = cm.analyze_text("snippet.cpp", code, rows, None)
     new, applied, skipped = cm.apply_edits(code, res)
     assert "atoi" in new
+
+
+def test_paired_read_inside_an_if_keeps_the_closing_parenthesis(monkeypatch):
+    code = ('void f(int n) {\n  if (n > 0 && std::getenv("MC2_X") &&\n      std::atoi(std::getenv("MC2_X")) != 0) {\n'
+            '    go();\n  }\n}\n')
+    rows = mk("AtoiNZ")
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert 'if (n > 0 && mc2::gate::get<"MC2_X">()) {' in re.sub(r"\s+", " ", new).replace("&& mc2", "&& mc2"), new
