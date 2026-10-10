@@ -18,5 +18,5 @@
  ],
  "_scripts_reason": "Reviewed: check-mover-registry-coherence reads the S3 moverInRect window and the pick-path isOnGUI count from objmgr_pick.cpp; counter-honesty keys the s_frames limiter to objmgr_update.cpp; check-vk-umbrella-readers pins the vfxArmed reader that stays in objmgr.cpp; test_fingerprint only classifies code/objmgr.cpp as a build input (the pieces classify the same way); the rest cite objmgr.cpp lines in comments or notes only; tools/gate_codemod.py and the gate classifiers (lane 1 gate tooling) list or cite the file and are not edited here.",
  "exclude_files": [],
- "split_commit": "PENDING"
+ "split_commit": "708c5e445"
 }
