@@ -43,7 +43,6 @@
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3442,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechcmd2.cpp": 3089,
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
   "code/mechlopedia.cpp": 1660,
@@ -81,7 +80,6 @@
   "mclib/file.cpp": 2681,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1527,
-  "mclib/gvactor.cpp": 3478,
   "mclib/heap.cpp": 2136,
   "mclib/inifile.cpp": 2876,
   "mclib/mapdata.cpp": 2635,
@@ -106,7 +104,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "688009e21",
+ "head": "bbc1d2d63",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -145,9 +143,9 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 325,
-   "files_over_1500": 29,
-   "files_over_3000": 7,
+   "files": 329,
+   "files_over_1500": 28,
+   "files_over_3000": 6,
    "max_lines": 7922
   },
   "editor": {
@@ -163,9 +161,9 @@
    "max_lines": 2901
   },
   "mclib": {
-   "files": 578,
-   "files_over_1500": 35,
-   "files_over_3000": 9,
+   "files": 582,
+   "files_over_1500": 34,
+   "files_over_3000": 8,
    "max_lines": 8281
   },
   "shaders": {
@@ -261,10 +259,6 @@
    "lines": 3527
   },
   {
-   "file": "mclib/gvactor.cpp",
-   "lines": 3478
-  },
-  {
    "file": "code/logisticsdata.cpp",
    "lines": 3442
   },
@@ -275,10 +269,6 @@
   {
    "file": "code/brain_special_dispatch.cpp",
    "lines": 3307
-  },
-  {
-   "file": "code/mechcmd2.cpp",
-   "lines": 3089
   },
   {
    "file": "mclib/msl.cpp",
@@ -299,12 +289,20 @@
   {
    "file": "mclib/inifile.cpp",
    "lines": 2876
+  },
+  {
+   "file": "GameOS/gameos/gameosmain.cpp",
+   "lines": 2850
+  },
+  {
+   "file": "mclib/terrtxm2.cpp",
+   "lines": 2792
   }
  ],
  "total": {
-  "files": 1644,
-  "files_over_1500": 92,
-  "files_over_3000": 26,
+  "files": 1652,
+  "files_over_1500": 90,
+  "files_over_3000": 24,
   "max_lines": 11658
  },
  "version": 1

@@ -2,30 +2,30 @@
  "class_histogram": {
   "AtoiNZ": 60,
   "Custom[00000001]": 6,
-  "Custom[10001011]": 5,
+  "Custom[10001011]": 4,
+  "DefOnAtoiNZ": 1,
   "DefOnLead0": 1,
   "Exact1": 44,
   "Is01": 2,
-  "Lead0": 192,
-  "Lead0Kill": 201,
+  "Lead0": 193,
+  "Lead0Kill": 202,
   "Lead0P": 59,
-  "Lead1": 130,
-  "NonEmpty": 42,
+  "Lead1": 129,
+  "NonEmpty": 41,
   "Num(atof+atoi,raw)": 1,
   "Num(atof,guarded)": 11,
-  "Num(atof,raw)": 148,
+  "Num(atof,raw)": 111,
   "Num(atoi,guarded)": 6,
-  "Num(atoi,raw)": 47,
+  "Num(atoi,raw)": 42,
   "Num(atol,guarded)": 1,
   "Num(atol,raw)": 21,
-  "Num(num,raw)": 4,
+  "Num(num,raw)": 2,
   "Num(strtoul,guarded)": 5,
   "Num(strtoul,raw)": 3,
-  "Partial[D,D,off,D,on,D,D,D]": 1,
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 475,
+  "Presence": 479,
   "Std(def=off)": 14,
   "Std(def=on)": 11,
   "Str[dflt,dflt]": 3,
@@ -38,8 +38,7 @@
   "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
   "MC2_SPOTLIGHT_DIRECTION_FIX",
   "MC2_STATIC_PROP_BUILDING_SHADOW",
-  "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
-  "MC2_TERRAIN_DETAIL_MACRO_STRENGTH"
+  "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE"
  ],
  "design_s4": [
   {
@@ -105,21 +104,21 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 (Tri(inherit))",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 (Tri(inherit))"
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1655 (Tri(inherit))",
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696 (Tri(inherit))"
    ],
    "gate": "MC2_VK_TERRAIN_CSM",
    "in_conflict": false,
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765",
+     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858",
      "class": "Tri(inherit)",
      "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765",
+     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900",
      "class": "Tri(inherit)",
      "verdict": "corrected"
@@ -559,10 +558,10 @@
    "delta": "unifying would change one path's default-config result",
    "evidence": "gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live)",
    "gate": "MC2_TERRAIN_DETAIL_MACRO_STRENGTH",
-   "in_conflict": true,
+   "in_conflict": false,
    "readers": [
     "GameOS/gameos/gameos_graphics.cpp:7269 Num(atof,raw)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:929 Num(atof,raw)"
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:876 Typed(get)"
    ],
    "rule": "owner decision: legacy path defaults 0.35, chunk path defaults 0.0",
    "status": "divergent"
@@ -597,7 +596,7 @@
    "gate": "MC2_TERRAIN_MATERIAL_TEXTURES",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:170 Lead0",
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:128 Lead0",
     "GameOS/gameos/terrain_material_lib.cpp:196 Lead0",
     "GameOS/gameos/terrain_material_lib.cpp:233 Lead0"
    ],
@@ -648,8 +647,8 @@
    "gate": "MC2_VK_TERRAIN_CSM",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 Tri(inherit)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 Tri(inherit)"
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1655 Tri(inherit)",
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696 Tri(inherit)"
    ],
    "rule": "Tri (subGate): explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
@@ -1705,108 +1704,6 @@
      ]
     }
    ]
-  },
-  "MC2_TERRAIN_DETAIL_MACRO_STRENGTH": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "0": [
-       "Num(atof,raw)"
-      ],
-      "0.35": [
-       "Num(atof,raw)"
-      ]
-     },
-     "family": "num",
-     "outcomes": {
-      "0": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:929"
-      ],
-      "0.35": [
-       "GameOS/gameos/gameos_graphics.cpp:7269"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "0": [
-       "Num(atof,raw)"
-      ],
-      "0.35": [
-       "Num(atof,raw)"
-      ]
-     },
-     "family": "num",
-     "outcomes": {
-      "0": [
-       "GameOS/gameos/gos_terrain_lod_chunk.cpp:929"
-      ],
-      "0.35": [
-       "GameOS/gameos/gameos_graphics.cpp:7269"
-      ]
-     },
-     "probe": "E"
-    }
-   ],
-   "families": {
-    "num": 2
-   },
-   "kill_style_name": false,
-   "proposal_basis": "readers use atof; defaults disagree: 0, 0.35",
-   "proposed_rule": "Int/Float row: whole-string parse, out-of-range falls back to the one default",
-   "reader_sites": 2,
-   "registry": null,
-   "set_in": [
-    "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "envF",
-     "class": "Num(atof,raw)",
-     "family": "num",
-     "file": "GameOS/gameos/gameos_graphics.cpp",
-     "inverted": false,
-     "line": 7269,
-     "vector": [
-      "0.35",
-      "0.35",
-      "0",
-      "0",
-      "1",
-      "0",
-      "10",
-      "2.5"
-     ]
-    },
-    {
-     "callee": "envF",
-     "class": "Num(atof,raw)",
-     "family": "num",
-     "file": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
-     "inverted": false,
-     "line": 929,
-     "vector": [
-      "0",
-      "0",
-      "0",
-      "0",
-      "1",
-      "0",
-      "10",
-      "2.5"
-     ]
-    }
-   ]
   }
  },
  "probes": [
@@ -1832,18 +1729,18 @@
   "editor",
   "gui"
  ],
- "source": "commit 6532c1ca9",
+ "source": "commit bbc1d2d63",
  "totals": {
-  "conflict_gates": 6,
+  "conflict_gates": 5,
   "gates_with_literal": 1131,
-  "gates_with_reader": 1117,
-  "literal_occurrences": 1697,
-  "non_call_literals": 45,
+  "gates_with_reader": 1118,
+  "literal_occurrences": 1708,
+  "non_call_literals": 47,
   "nonreader_sites": 17,
-  "read_sites": 1652,
-  "reader_sites": 1551,
-  "token_sites": 61,
-  "unclassified_sites": 23,
+  "read_sites": 1661,
+  "reader_sites": 1510,
+  "token_sites": 113,
+  "unclassified_sites": 21,
   "unresolved_conflicts": 0
  },
  "unclassified": [
@@ -1940,13 +1837,6 @@
   },
   {
    "callee": "getenv",
-   "file": "GameOS/gameos/vulkan_terrain_island.cpp",
-   "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 262,
-   "why": "unclassified:opaque"
-  },
-  {
-   "callee": "getenv",
    "file": "GameOS/gameos/vulkan_vfx_island.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
    "line": 83,
@@ -2000,13 +1890,6 @@
    "gate": "MC2_GLTF_YAW_DEG",
    "line": 399,
    "why": "unclassified:opaque-callee(_putenv_s)"
-  },
-  {
-   "callee": "getenv",
-   "file": "mclib/terrain.cpp",
-   "gate": "MC2_RENDER_WATER_FASTPATH",
-   "line": 3437,
-   "why": "unclassified:opaque"
   }
  ],
  "unresolved_gates": [],
