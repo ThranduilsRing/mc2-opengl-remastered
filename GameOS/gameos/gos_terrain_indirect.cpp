@@ -88,6 +88,90 @@ extern long     g_loadRaceArmFirstFrame;
 extern long     g_loadRaceLastTerrainPath;
 extern uint32_t g_mc2FrameCounter;
 extern float    scenarioTime;
+
+// Definitions the split pieces share: constants, small inline helpers, types and the Stage 3 includes.
+
+// Terrain type -> PBR material index: single-sourced in mclib/terrain_material.h.
+inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
+    return mc2terrain::terrainTypeToMaterial(terrainType);
+}
+
+// Soft-knee scale: linear up to `knee`, then asymptotic toward 255, so a lane
+// marking scaled by a 2.5x gain stays a marking instead of clipping to flat 255.
+static inline uint32_t RunwayToneScale(float v, float gain) {
+    const float knee = 190.f;
+    float y = v * gain;
+    if (y > knee) {
+        const float head = 255.f - knee;
+        y = 255.f - head * expf(-(y - knee) / head);
+    }
+    return (uint32_t)std::min(255.f, std::max(0.f, y));
+}
+
+static const float kConcreteToneGainLo = 0.80f;  // Arm A gain clamp -- NARROW on purpose
+static const float kConcreteToneGainHi = 1.25f;
+
+struct CementCellStats {
+    float r = 0.f, g = 0.f, b = 0.f;   // [P50,P90] band mean
+    float lum = 0.f;                   // band mean luminance
+    float chroma = 0.f;                // 0 = neutral grey, 1 = fully saturated
+    float markFrac = 0.f;              // fraction of texels well ABOVE the band (paint)
+    bool  ok = false;                  // enough usable texels
+    bool  family = false;              // classified as actual concrete
+    bool  marks = false;               // carries bright painted markings
+    // CEMENT-INTRACELL-1 (ARM C): the concrete BACKGROUND, measured with the
+    // baked road art excluded, plus the road census itself.
+    float bgLum = 0.f;                 // [P60,P95] upper-mode luminance = the concrete
+    float roadFrac = 0.f;              // fraction of texels well BELOW bgLum (asphalt)
+    bool  road = false;                // carries baked road art
+};
+
+// Forward-declare the bridge (defined in gameos_graphics.cpp).
+// Signature uses unsigned int (not GLuint) to match gos_terrain_bridge.h
+// without pulling in GL headers there.
+bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
+                                     unsigned int thinRecordSSBO,
+                                     unsigned int indirectCmdBuffer);
+
+// Include pVertex via PostcompVertex — already available through mapdata.h.
+// (terrain.h already included above, which pulls mapdata.h.)
+#include "../../mclib/vertex.h"     // ScreenVertex, vertexNum
+// tex_resolve — lazy per-frame memoization. Header includes txmmgr.h.
+#include "../../mclib/tex_resolve_table.h"
+
+// TERRAIN_DEPTH_FUDGE for the per-tri pz check: single source of truth is
+// mclib/terrain_depth_bias.h (was a re-stated local constexpr; the old
+// #ifndef guard defended against a quad.cpp MACRO collision that the
+// constexpr header eliminates). Consumer below uses it unqualified.
+#include "../../mclib/terrain_depth_bias.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_terrain_island.h"   // VK-PARITY-OVERLAY-1: overlay owner queue
+#endif
+using mc2depth::TERRAIN_DEPTH_FUDGE;
+
+static constexpr int    kThinRingFrames    = 3;
+static constexpr size_t kMaxThinRecords    = 65536u;  // ≥ max visible quads
+static constexpr size_t kThinRecordBytes   = kMaxThinRecords * sizeof(TerrainQuadThinRecord);
+
+// Indirect command buffer — driver-only, GL_DRAW_INDIRECT_BUFFER.
+// Sized for 16 commands (256 B); PR1 emits exactly 1.
+struct DrawArraysIndirectCommand {
+    GLuint count;
+    GLuint instanceCount;
+    GLuint first;
+    GLuint baseInstance;
+};
+static_assert(sizeof(DrawArraysIndirectCommand) == 16,
+    "DrawArraysIndirectCommand is 4 GLuints = 16 B per GL spec");
+
+static constexpr size_t kIndirectCmdBufferBytes = 16 * sizeof(DrawArraysIndirectCommand);
+
+// ---------------------------------------------------------------------------
+// InMissionTransition() — simple stub; returns false until needed.
+// Stage 4's quintuple soak gate validates this boundary.
+// ---------------------------------------------------------------------------
+static inline bool InMissionTransition() { return false; }
+
 // Negative control: when MC2_LOAD_RACE_DELAY_ATLAS is set, BuildColormapAtlas()
 // defers the real GL upload until scenarioTime >= 30s and ComputePreflight()
 // pumps it each frame. This makes the atlas GENUINELY absent for ~30s so the
@@ -580,11 +664,6 @@ bool traceOn() {
     return s_indirectTrace;
 }
 
-// Terrain type -> PBR material index: single-sourced in mclib/terrain_material.h.
-inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
-    return mc2terrain::terrainTypeToMaterial(terrainType);
-}
-
 // Populate one slot in the dense recipe array from MapData.
 // Called both from BuildDenseRecipe (full build at primeMissionTerrainCache)
 // and from InvalidateRecipeForVertexNum (in-gameplay precise rebuild).
@@ -1070,18 +1149,6 @@ static bool CementCellBandMean(const std::vector<uint32_t>& atlasBuf,
     return outR >= 4.f && outG >= 4.f && outB >= 4.f;
 }
 
-// Soft-knee scale: linear up to `knee`, then asymptotic toward 255, so a lane
-// marking scaled by a 2.5x gain stays a marking instead of clipping to flat 255.
-static inline uint32_t RunwayToneScale(float v, float gain) {
-    const float knee = 190.f;
-    float y = v * gain;
-    if (y > knee) {
-        const float head = 255.f - knee;
-        y = 255.f - head * expf(-(y - knee) / head);
-    }
-    return (uint32_t)std::min(255.f, std::max(0.f, y));
-}
-
 // ---------------------------------------------------------------------------
 // CEMENT-ATLAS-CELL-2 tunables. Deliberately NOT env-exposed: they define what
 // "actual concrete" means, and a taste dial on the CLASSIFIER would make the
@@ -1103,8 +1170,6 @@ static const float kConcreteLumHi      = 1.32f;
 // (measured max excursion above band on mc2_24: ~11 luma).
 static const float kConcreteMarkDelta  = 60.f;   // L - bandL beyond this = bright paint
 static const float kConcreteMarkFrac   = 0.02f;  // >2% such texels = cell carries markings
-static const float kConcreteToneGainLo = 0.80f;  // Arm A gain clamp -- NARROW on purpose
-static const float kConcreteToneGainHi = 1.25f;
 
 // ---------------------------------------------------------------------------
 // CEMENT-INTRACELL-1 (ARM C) tunables. MEASURED, mc2_24/23/05/03/01/10 atlas
@@ -1189,20 +1254,6 @@ bool ConcreteCanonEnabled() {
 // the slot-map build) and out of the [0,nSolidCells) range this operates on.
 // Painted markings that DO live inside a solid concrete cell are detected here
 // (markFrac) and reported per-cell, so they can be excluded by index.
-struct CementCellStats {
-    float r = 0.f, g = 0.f, b = 0.f;   // [P50,P90] band mean
-    float lum = 0.f;                   // band mean luminance
-    float chroma = 0.f;                // 0 = neutral grey, 1 = fully saturated
-    float markFrac = 0.f;              // fraction of texels well ABOVE the band (paint)
-    bool  ok = false;                  // enough usable texels
-    bool  family = false;              // classified as actual concrete
-    bool  marks = false;               // carries bright painted markings
-    // CEMENT-INTRACELL-1 (ARM C): the concrete BACKGROUND, measured with the
-    // baked road art excluded, plus the road census itself.
-    float bgLum = 0.f;                 // [P60,P95] upper-mode luminance = the concrete
-    float roadFrac = 0.f;              // fraction of texels well BELOW bgLum (asphalt)
-    bool  road = false;                // carries baked road art
-};
 
 // Neutrality + marking census for one cell, on top of the band mean.
 void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
@@ -3016,55 +3067,17 @@ int ParityCompareRecipeFrame() {
 // the bridge is called by DrawIndirect() after arming.
 // ---------------------------------------------------------------------------
 
-// Forward-declare the bridge (defined in gameos_graphics.cpp).
-// Signature uses unsigned int (not GLuint) to match gos_terrain_bridge.h
-// without pulling in GL headers there.
-bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
-                                     unsigned int thinRecordSSBO,
-                                     unsigned int indirectCmdBuffer);
-
-// Include pVertex via PostcompVertex — already available through mapdata.h.
-// (terrain.h already included above, which pulls mapdata.h.)
-#include "../../mclib/vertex.h"     // ScreenVertex, vertexNum
-// tex_resolve — lazy per-frame memoization. Header includes txmmgr.h.
-#include "../../mclib/tex_resolve_table.h"
-
-// TERRAIN_DEPTH_FUDGE for the per-tri pz check: single source of truth is
-// mclib/terrain_depth_bias.h (was a re-stated local constexpr; the old
-// #ifndef guard defended against a quad.cpp MACRO collision that the
-// constexpr header eliminates). Consumer below uses it unqualified.
-#include "../../mclib/terrain_depth_bias.h"
-#ifdef MC2_VULKAN_ISLAND
-#include "vulkan_terrain_island.h"   // VK-PARITY-OVERLAY-1: overlay owner queue
-#endif
-using mc2depth::TERRAIN_DEPTH_FUDGE;
-
 namespace gos_terrain_indirect_detail {
 
 // ---------------------------------------------------------------------------
 // Thin-record SSBO (triple-buffered, GPU_STREAM_DRAW).
 // Mirrors the M2 thin-record ring in gos_terrain_patch_stream.cpp.
 // ---------------------------------------------------------------------------
-static constexpr int    kThinRingFrames    = 3;
-static constexpr size_t kMaxThinRecords    = 65536u;  // ≥ max visible quads
-static constexpr size_t kThinRecordBytes   = kMaxThinRecords * sizeof(TerrainQuadThinRecord);
 
 GLuint g_thinRecordSSBO              = 0;
 int    g_thinRingSlot                = 0;
 GLsync g_thinRingFences[kThinRingFrames] = { 0, 0, 0 };
 
-// Indirect command buffer — driver-only, GL_DRAW_INDIRECT_BUFFER.
-// Sized for 16 commands (256 B); PR1 emits exactly 1.
-struct DrawArraysIndirectCommand {
-    GLuint count;
-    GLuint instanceCount;
-    GLuint first;
-    GLuint baseInstance;
-};
-static_assert(sizeof(DrawArraysIndirectCommand) == 16,
-    "DrawArraysIndirectCommand is 4 GLuints = 16 B per GL spec");
-
-static constexpr size_t kIndirectCmdBufferBytes = 16 * sizeof(DrawArraysIndirectCommand);
 GLuint g_indirectCmdBuffer = 0;
 
 // Per-frame arming state (reset each frame by ComputePreflight).
@@ -3295,12 +3308,6 @@ bool ResourcesReady() {
     }
     return true;
 }
-
-// ---------------------------------------------------------------------------
-// InMissionTransition() — simple stub; returns false until needed.
-// Stage 4's quintuple soak gate validates this boundary.
-// ---------------------------------------------------------------------------
-static inline bool InMissionTransition() { return false; }
 
 // ---------------------------------------------------------------------------
 // PackThinRecordsForFrame() — walks live quadList, packs thin-record SSBO
