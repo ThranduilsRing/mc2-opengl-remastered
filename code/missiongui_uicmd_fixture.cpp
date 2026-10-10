@@ -1,6 +1,7 @@
 // MissionInterfaceManager: test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate).
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
+#include "Gates/gate.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -76,8 +77,7 @@ extern "C" int mc2FreezeMoversActive()
 	if (s_freezeMoversAt == -2) {
 		// MC2_FREEZE_MOVERS_AT=<frame> lets a capture run freeze WITHOUT driving
 		// the command channel at all. Unset -> -1 -> never engages.
-		const char* v = getenv("MC2_FREEZE_MOVERS_AT");
-		s_freezeMoversAt = (v && v[0]) ? atol(v) : -1L;
+		s_freezeMoversAt = mc2::gate::get<"MC2_FREEZE_MOVERS_AT">();   // row default -1 = never engages
 	}
 	const long mf = mc2FreezeMoversMissionFrame();
 	if (!s_freezeMoversOn && s_freezeMoversAt >= 0 && mf >= s_freezeMoversAt) {
@@ -125,8 +125,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1).
 		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]
 		//   teleport <partId> <x> <y>
-		static const char* s_spawnGate = getenv("MC2_TEST_SPAWN");
-		const bool armed = s_spawnGate && s_spawnGate[0] == '1';
+		const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();
 		if (!armed) {
 			result = "blocked"; note = "needs MC2_TEST_SPAWN=1";
 		}
@@ -389,8 +388,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	// Test-only world mutation, so gated behind MC2_TEST_SPAWN like
 	// spawn/teleport rather than adding a second gate.
 	else if (line.compare(0, 8, "animate ") == 0) {
-		static const char* s_animGate = getenv("MC2_TEST_SPAWN");
-		const bool armed = s_animGate && s_animGate[0] == '1';
+		const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();
 		long pid = 0;
 		char what[32] = {0};
 		const int nf = sscanf(line.c_str() + 8, "%ld %31s", &pid, what);
