@@ -145,6 +145,8 @@ for u in units:
     s = proto(u)
     if "::" in s.split("(")[0] or s.startswith(("static", "inline", "#")):
         continue
+    if re.match(r"^(if|for|while|switch|return|[A-Z][A-Z_]+_MAP\w*)", s):
+        continue
     if re.match(r"^[\w\s\*&:<>]+\(", s):
         protos.append(s.rstrip() + ";")
 if protos:
