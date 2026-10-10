@@ -79,10 +79,10 @@
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
   "mclib/vfx_translatedraw.cpp": 1742,
-  "mclib/vfxtile.cpp": 2944,
+  "mclib/vfxtile_line.cpp": 1938,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "d8ba94970",
+ "head": "517458d7a",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -139,10 +139,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 639,
+   "files": 642,
    "files_over_1500": 26,
    "files_over_3000": 0,
-   "max_lines": 2944
+   "max_lines": 2876
   },
   "shaders": {
    "files": 172,
@@ -163,10 +163,6 @@
   {
    "file": "code/brain_special_dispatch.cpp",
    "lines": 3273
-  },
-  {
-   "file": "mclib/vfxtile.cpp",
-   "lines": 2944
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
@@ -273,12 +269,16 @@
    "lines": 1952
   },
   {
+   "file": "mclib/vfxtile_line.cpp",
+   "lines": 1938
+  },
+  {
    "file": "mclib/gosfx/fcurve.cpp",
    "lines": 1923
   }
  ],
  "total": {
-  "files": 1817,
+  "files": 1820,
   "files_over_1500": 68,
   "files_over_3000": 2,
   "max_lines": 3753
