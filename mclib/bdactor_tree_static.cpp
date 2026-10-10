@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: TreeAppearance static registry: touch*, registerStatic, prewarm.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 void TreeAppearance::touch()
 {
@@ -498,9 +499,7 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 	// Trees use pitch + yaw combined; position.y is world-Y but terrain height
 	// is overridden in touchSerialCommit (registerStatic path uses position directly).
 	Stuff::Point3D xlatPosition;
-	xlatPosition.x = -position.x;
-	xlatPosition.y =  position.z;
-	xlatPosition.z =  position.y;
+	mc2ToRender(xlatPosition, position);
 
 	float yawAngle   = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch    * DEGREES_TO_RADS);
