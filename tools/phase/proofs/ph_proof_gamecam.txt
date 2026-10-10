@@ -1,0 +1,27 @@
+inline expansion: 798 statements, helpers 6, orchestrator lines 449
+declaration lifts / edits applied (0):
+scaffolding only in new (22 distinct):
+   + // Draw the movie fade-to-colour quad. 
+   + // Draw the movie letterbox bars. 
+   + // Draw the range rings and firing arcs of the selected movers. 
+   + // Draws one camera frame. The viewport and light set-up, the clipper start, the scene pass skeleton with its  
+   + // Fill the view uniforms, register the main scene view and compare them with the legacy MVP. 
+   + // Project sampled static-prop origins through the live camera for the vanish probe. 
+   + // Push the camera position, light direction, flat light, night state and daylight level to the terrain. 
+   + // and lost-draw scopes stay here; the view-uniform publish, the diagnostics and the movie letterbox and fade  
+   + // are member helpers declared in gamecam.h, run in the original order. 
+   + renderFadeQuad(); 
+   + renderLetterbox(); 
+   + renderTacticalArcOverlay(); 
+   + renderTerrainSceneState(); 
+   + renderVanishProbe(); 
+   + renderViewUniforms(); 
+   + void GameCamera::renderFadeQuad() { 
+   + void GameCamera::renderLetterbox() { 
+   + void GameCamera::renderTacticalArcOverlay() { 
+   + void GameCamera::renderTerrainSceneState() { 
+   + void GameCamera::renderVanishProbe() { 
+   + void GameCamera::renderViewUniforms() { 
+   + } x6
+statements only in old (0 distinct, all lifted declarations / hoisted-type lines):
+PASS: inline expansion of the new function equals the original body

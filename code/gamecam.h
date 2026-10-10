@@ -36,6 +36,14 @@ class GameCamera : public Camera
 		bool					drawCompass;
 		
 		float					lastShadowLightPitch;
+
+		// render() phases (gamecam.cpp).
+		void renderViewUniforms();
+		void renderVanishProbe();
+		void renderTerrainSceneState();
+		void renderTacticalArcOverlay();
+		void renderLetterbox();
+		void renderFadeQuad();
 		
 	public:
 	

@@ -208,6 +208,471 @@ void GameCamera::destroy (void)
 }
 
 //---------------------------------------------------------------------------
+
+// Fill the view uniforms, register the main scene view and compare them with the legacy MVP.
+void GameCamera::renderViewUniforms() {
+	// F1-4B: Fill vu and register EngineView unconditionally (pure CPU, no GL).
+	// Upload UBO only when MC2_VIEW_UNIFORMS gate is on.
+	{
+		RenderCore::ViewUniforms vu{};
+		// Stuff::Matrix4D stores column-major (entries[c*4+r]).
+		// ViewUniforms wants row-major (GL_FALSE upload convention).
+		// Transpose: row-major[r*4+c] = col-major[c*4+r].
+		auto stuffToRowMajor = [](const Stuff::Matrix4D& m, float out[16]) {
+			const float* col = m.entries;
+			for (int r = 0; r < 4; ++r)
+				for (int c = 0; c < 4; ++c)
+					out[r * 4 + c] = col[c * 4 + r];
+		};
+		stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
+		stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
+		const Stuff::Vector3D orig = eye->cameraOriginGL();
+		vu.cameraWorldPos[0] = orig.x;
+		vu.cameraWorldPos[1] = orig.y;
+		vu.cameraWorldPos[2] = orig.z;
+		vu.cameraWorldPos[3] = 1.0f;
+
+		// Always register EngineView (GL-free, safe unconditionally).
+		// setCurrentView is store-only since F1-4B.
+		{
+			RenderCore::EngineView mainView{};
+			mainView.id = RenderCore::kMainSceneViewId;
+			mainView.viewUniforms = vu;
+			mainView.viewport[0] = 0;
+			mainView.viewport[1] = 0;
+			mainView.viewport[2] = Environment.drawableWidth;
+			mainView.viewport[3] = Environment.drawableHeight;
+			mainView.renderMask = 0xFFFFFFFF;
+			mainView.debugName = "MainScene";
+			mainView.mode = RenderCore::ViewMode::Visual;
+			mainView.kind = RenderCore::ViewKind::MainScene;
+			RenderCore::setCurrentView(mainView);
+		}
+
+		// F1-3D flip: upload UBO by default; kill-switch MC2_VIEW_UNIFORMS=0.
+		// Original F1-3B/F1-3C gate required explicit =1 (opt-in). That left
+		// the UBO unbound when the env var was absent, so any shader compiled
+		// with MC2_USE_VIEW_UNIFORMS read from an unbound/zero UBO and drew
+		// props off-screen. Matches the s_viewUniformsShaderEnabled flip in
+		// gos_static_prop_batcher.cpp.
+		{
+			static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
+			if (s_vuOn) {
+				RenderCore::uploadViewUniforms(vu);
+
+				// F1-3C: compare ViewUniforms.worldToClipGL against legacy terrain MVP upload
+				{
+					static int s_vuCompareFrame = 0;
+					++s_vuCompareFrame;
+					const float* legacy = gos_GetTerrainMVPMat4();
+					float maxDiff = 0.0f;
+					if (legacy) {
+						for (int i = 0; i < 16; ++i) {
+							float d = vu.worldToClipGL[i] - legacy[i];
+							if (d < 0.0f) d = -d;
+							if (d > maxDiff) maxDiff = d;
+						}
+					}
+					const int ok = (legacy != nullptr) && (maxDiff <= 1e-5f) ? 1 : 0;
+					if (s_vuCompareFrame <= 10 || ok == 0) {
+						MC2_DIAGFE(stderr, "[VIEW_UNIFORMS v1] compare frame=%d max_diff=%.6f ok=%d\n",
+						        s_vuCompareFrame, maxDiff, ok);
+						fflush(stderr);
+					}
+					// XFORM-CONVENTION-HARNESS-1: promote the F1-3C parity probe to a
+					// HARD invariant when MC2_XFORM_PARITY_FATAL is set. Default OFF =
+					// byte-identical to the log-only behavior above. When the gate is
+					// set AND the ViewUniforms UBO payload diverges from the legacy
+					// terrain MVP, abort instead of silently rendering with a mismatched
+					// clip-space transform (the exact regression class this slice locks).
+					{
+						static const bool s_xformFatal = mc2::gate::get<"MC2_XFORM_PARITY_FATAL">();
+						if (s_xformFatal && ok == 0) {
+							fprintf(stderr,
+							        "[XFORM_PARITY_FATAL] ViewUniforms.worldToClipGL diverged from legacy "
+							        "terrain MVP: frame=%d max_diff=%.6f (>1e-5). MC2_XFORM_PARITY_FATAL=1 -> abort.\n",
+							        s_vuCompareFrame, maxDiff);
+							fflush(stderr);
+							abort();
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// Project sampled static-prop origins through the live camera for the vanish probe.
+void GameCamera::renderVanishProbe() {
+	// VANISH-PROBE-1 (env MC2_VANISH_PROBE): project real persistent
+	// static-prop origins through worldToClipGL at the LIVE camera angle.
+	// Rotate to the trees-gone view; if a prop that is clearly in frame
+	// reports inFrustum=0 (|x|>w, |y|>w, or z outside [0,w]) -> the prop
+	// vanishes because the shared camera projection clips it (depth/
+	// reverse-Z/near-plane), NOT cull/store (storeTotal stays high) and
+	// NOT matrix divergence (VIEW_UNIFORMS compare stays ok=1). One-shot
+	// per ~60 frames; coarse, off by default.
+	{
+		static const bool s_vanishProbe = mc2::gate::get<"MC2_VANISH_PROBE">();
+		if (s_vanishProbe) {
+			extern uint32_t gos_ProbeStaticInstanceCount();
+			extern bool     gos_ProbeStaticInstanceWorld(uint32_t, float[3]);
+			static int s_vpFrame = 0;
+			++s_vpFrame;
+			if ((s_vpFrame % 60) == 1) {
+				const uint32_t n = gos_ProbeStaticInstanceCount();
+				const uint32_t step = (n > 0u) ? (n / 6u + 1u) : 1u;
+				int inCount = 0, total = 0;
+				for (uint32_t i = 0; i < n; i += step) {
+					float wp[3];
+					if (!gos_ProbeStaticInstanceWorld(i, wp)) break;
+					Stuff::Vector4D win, wout;
+					win.x = wp[0]; win.y = wp[1]; win.z = wp[2]; win.w = 1.0f;
+					wout.Multiply(win, eye->worldToClipGL());  // row-vec * matrix (txmmgr convention)
+					const float w = wout.w;
+					const bool inFr = (w > 0.0f) &&
+						(wout.x >= -w && wout.x <= w) &&
+						(wout.y >= -w && wout.y <= w) &&
+						(wout.z >= 0.0f && wout.z <= w);
+					if (inFr) ++inCount;
+					++total;
+					fprintf(stderr,
+						"[VANISH_PROBE] frame=%d inst=%u/%u world=(%.0f,%.0f,%.0f) "
+						"clip=(%.1f,%.1f,%.1f,w=%.1f) ndc=(%.3f,%.3f,%.3f) inFrustum=%d\n",
+						s_vpFrame, i, n, wp[0], wp[1], wp[2],
+						wout.x, wout.y, wout.z, w,
+						(w != 0.0f ? wout.x / w : 0.0f),
+						(w != 0.0f ? wout.y / w : 0.0f),
+						(w != 0.0f ? wout.z / w : 0.0f), inFr ? 1 : 0);
+				}
+				fprintf(stderr, "[VANISH_PROBE] frame=%d storeCount=%u sampled=%d inFrustum=%d\n",
+					s_vpFrame, n, total, inCount);
+				fflush(stderr);
+			}
+		}
+	}
+}
+
+// Push the camera position, light direction, flat light, night state and daylight level to the terrain.
+void GameCamera::renderTerrainSceneState() {
+	// Camera position in MC2 world space for TCS distance LOD
+	Stuff::Vector3D camOrig = getCameraOrigin();
+	gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
+
+	// Light direction in raw MC2 world space (x, y, elevation)
+	// NOT swizzled — fragment shader normals are in tangent space where Z = up,
+	// which matches raw MC2 coords (Z = elevation).
+	gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
+
+	// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour. This is the
+	// legacy per-vertex light value flat cement pads received
+	// (getLight*(flatIntensity) with flatIntensity = the flat-up
+	// N.L = lightDirection.z) — the same value burnInShadows bakes
+	// into the colormap. Cement-atlas/overlay shaders multiply it
+	// into their RAW (unburned) texels so pads go night-dark like
+	// the surrounding terrain. Day missions: ~(1,1,1) = no-op.
+	// Killswitch MC2_CEMENT_MISSION_LIGHT=0 (handled in the setter).
+	{
+		float flatIntensity = lightDirection.z;
+		if (flatIntensity < 0.0f) flatIntensity = 0.0f;
+		if (flatIntensity > 1.0f) flatIntensity = 1.0f;
+		gos_SetTerrainMissionFlatLight(
+			getLightRed(flatIntensity)   / 255.0f,
+			getLightGreen(flatIntensity) / 255.0f,
+			getLightBlue(flatIntensity)  / 255.0f);
+	}
+
+	// EDGE-LIGHT-EMISSION-1: feed the eye's night state to GameOS so the
+	// GPU static-prop shader can evaluate the stock hot-colour night
+	// branches (lit windows / outside building lights / BASE LIGHTS --
+	// the last of which is what every runway edge light and beacon is
+	// authored as). The legacy CPU path reads eye->getIsNight() directly;
+	// the GPU path had these stubbed to false/0, which is why the
+	// runway lights never came on. See gameos_graphics.cpp.
+	{
+		extern void gos_SetNightState(bool, float);
+		gos_SetNightState(eye->getIsNight(), eye->getNightFactor());
+	}
+
+	// TERRAIN-AMBIENT-FLOOR-2: daylight level for the terrain ambient
+	// floor. Same push point, same cadence as the night state above, but
+	// keyed on the AUTHORED sun pitch min the runtime night state --
+	// eye->getIsNight()/getNightFactor() alone report full day on the
+	// below-horizon missions (mc2_05/mc2_21 author pitch 270) because
+	// camera.cpp:2033 folds them to a moon overhead first. All of the
+	// decision is in terrain_daylight.h so it can be executed by
+	// tools/terrain_daylight_harness without launching anything.
+	{
+		extern void gos_SetTerrainDaylightLevel(float);
+		gos_SetTerrainDaylightLevel(terrain_daylight::level(
+			eye->getDayLightPitch(), eye->getIsNight(), eye->getNightFactor()));
+	}
+
+	// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).
+	mc2SceneLightingTrace();
+}
+
+// Draw the range rings and firing arcs of the selected movers.
+void GameCamera::renderTacticalArcOverlay() {
+	// TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line
+	// on each SELECTED mover. Gate MC2_TACTICAL_ARC_OVERLAY (default-OFF,
+	// resolved once) -> no draw calls when unset (byte-identical). The
+	// debug renderer's own MC2_DEBUG_RENDERER gate must also be ON for
+	// these prims to actually flush. Read-only; no gameplay coupling.
+	{
+		static const bool s_tacArcOverlay = mc2::gate::get<"MC2_TACTICAL_ARC_OVERLAY">();
+		if (s_tacArcOverlay && ObjectManager) {
+			const long nMovers = ObjectManager->getNumMovers();
+			for (long mi = 0; mi < nMovers; ++mi) {
+				MoverPtr mover = ObjectManager->getMover(mi);
+				if (!mover || !mover->getSelected()) continue;
+				Stuff::Vector3D p = mover->getPosition();
+				// Stuff (x=east, y=north, z=elevation) -> debug-renderer
+				// world (x=east, y=up, z=north); matches the
+				// EditorInspector selection crosshair convention.
+				DebugRenderer::Vec3 center{ p.x, p.z, p.y };
+				const float maxR = mover->getMaxFireRange();
+				// TACTICAL-OVERLAY-SELECTED-MECH-DATA-1: concentric weapon
+				// range bands from the selected mover's cached fire ranges
+				// (Mover::calcFireRanges()). All public getters, real data,
+				// no gameplay coupling. Drawn outer->inner so the inner
+				// rings read on top.
+				if (maxR > 0.0f)
+					DebugRenderer::drawRingWorld(center, maxR, 64, 0x4080FFFFu); // blue  = max range
+				const float optR = mover->getOptimalFireRange();
+				if (optR > 0.0f && optR < maxR)
+					DebugRenderer::drawRingWorld(center, optR, 56, 0x40FFC0FFu); // cyan  = optimal range
+				const float minR = mover->getMinFireRange();
+				if (minR > 0.0f && minR < maxR)
+					DebugRenderer::drawRingWorld(center, minR, 48, 0xFF8040FFu); // amber = min (dead) range
+				// Facing heading tick (best-effort: MC2 rotation deg,
+				// 0=north=+z). Capped length so it reads as a tick, not a
+				// full-range spoke. Verify sign visually; ring is the
+				// rotation-independent primary cue.
+				const float th  = mover->getRotation() * 0.01745329252f; // deg->rad
+				const float len = (maxR > 0.0f) ? fminf(maxR, 40.0f) : 20.0f;
+				DebugRenderer::drawLineWorld(center,
+					DebugRenderer::Vec3{ center.x + sinf(th) * len, center.y, center.z + cosf(th) * len },
+					0x80FF80FFu); // green facing line
+				// Firing-arc wedge: two spokes at facing +/- fireArc, out to
+				// max range. Mover::getFireArc() returns the per-class HALF
+				// angle in degrees (FireArc[]/2), applied relative to facing
+				// exactly as Mover::getWeaponsLocked() tests it. Truthful cue
+				// for where weapons can bear; no arc primitive in DebugRenderer
+				// so the two edge spokes stand in for the wedge.
+				const float arcDeg = mover->getFireArc();
+				if (arcDeg > 0.0f && arcDeg < 180.0f && maxR > 0.0f) {
+					const float arcRad = arcDeg * 0.01745329252f;
+					const float thL = th - arcRad;
+					const float thR = th + arcRad;
+					DebugRenderer::drawLineWorld(center,
+						DebugRenderer::Vec3{ center.x + sinf(thL) * maxR, center.y, center.z + cosf(thL) * maxR },
+						0xFFFF40A0u); // yellow arc edge (left)
+					DebugRenderer::drawLineWorld(center,
+						DebugRenderer::Vec3{ center.x + sinf(thR) * maxR, center.y, center.z + cosf(thR) * maxR },
+						0xFFFF40A0u); // yellow arc edge (right)
+				}
+			}
+		}
+	}
+}
+
+// Draw the movie letterbox bars.
+void GameCamera::renderLetterbox() {
+	//---------------------------------------------------------	
+	//Check if we are inMovieMode and should be letterboxed.
+	// draw letterboxes here.
+	if (inMovieMode && (letterBoxPos != 0.0f) && !gos::visual_capture::cleanFrame())
+	{
+		const bool vkHudQuad = mc2vkgate::vfxArmed();
+		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
+		//Figure out the two faces we need to draw based on letterBox Pos and Alpha
+		float barTopX = screenResolution.y * letterBoxPos;
+		float barBotX = screenResolution.y - barTopX;
+
+		// LETTERBOX-TOP-RESTORE-1 (gate MC2_LETTERBOX_OPAQUE, default ON; =0
+		// restores stock). Stock ramps BOTH the bar extent (letterBoxPos) and the
+		// bar ALPHA (letterBoxAlpha) over MaxLetterBoxTime=5s, so for the whole
+		// 5-second swoop-in the bars are translucent and the scene shows through
+		// them. Measured on mc2_10 night, capture frame 100: bar extent 0.0986 of
+		// 0.15 max => ramp at 65.7% => letterBoxAlpha=168, i.e. the bars were 34%
+		// transparent. It reads as a BROKEN TOP BAR (and a fine bottom bar) purely
+		// because of what sits behind each one: the top bar covers the bright
+		// horizon/sky, the bottom bar covers dark near-field terrain, so identical
+		// translucency is glaring on top and invisible on the bottom. The bars are
+		// meant to be opaque black; only the EXTENT should animate. Keep the
+		// letterBoxPos wipe, drop the alpha ramp. (The separate fadeAlpha
+		// fade-to-black quad below is a real fade and is left untouched.)
+		static const bool s_letterboxOpaque = mc2::gate::get<"MC2_LETTERBOX_OPAQUE">();
+		const DWORD barARGB =
+			(s_letterboxOpaque ? (DWORD)0xff : (DWORD)letterBoxAlpha) << 24;
+
+		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
+		gos_SetRenderState( gos_State_MonoEnable, 0);
+		gos_SetRenderState( gos_State_Perspective, 0);
+		gos_SetRenderState( gos_State_Clipping, 1);
+		gos_SetRenderState( gos_State_AlphaTest, 1);
+		gos_SetRenderState( gos_State_Specular, 0);
+		gos_SetRenderState( gos_State_Dither, 1);
+		gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulate);
+		gos_SetRenderState( gos_State_Filter, gos_FilterNone);
+		gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
+		gos_SetRenderState( gos_State_ZCompare, 0);
+		gos_SetRenderState(	gos_State_ZWrite, 0);
+		gos_SetRenderState( gos_State_Texture, 0);
+		
+ 		//------------------------------------
+		gos_VERTEX gVertex[4];
+
+		gVertex[0].x		= 0.0f;
+		gVertex[0].y		= 0.0f;
+		gVertex[0].z		= 0.00001f;
+		gVertex[0].rhw		= 0.00001f;
+		gVertex[0].u		= 0.0f;
+		gVertex[0].v		= 0.0f;
+		gVertex[0].argb		= barARGB;
+		gVertex[0].frgb		= 0xff000000;
+
+		gVertex[1].x		= 0.0f;
+		gVertex[1].y		= barTopX;
+		gVertex[1].z		= 0.00001f;               
+		gVertex[1].rhw		= 0.00001f;               
+		gVertex[1].u		= 0.0f;                  
+		gVertex[1].v		= 0.0f;                  
+		gVertex[1].argb		= barARGB;
+		gVertex[1].frgb		= 0xff000000;            
+
+		gVertex[2].x		= screenResolution.x;
+		gVertex[2].y		= barTopX; 
+		gVertex[2].z		= 0.00001f;               
+		gVertex[2].rhw		= 0.00001f;               
+		gVertex[2].u		= 0.0f;                  
+		gVertex[2].v		= 0.0f;                  
+		gVertex[2].argb		= barARGB;
+		gVertex[2].frgb		= 0xff000000;            
+
+		gVertex[3].x		= screenResolution.x;
+		gVertex[3].y		= 0.0f;
+		gVertex[3].z		= 0.00001f;               
+		gVertex[3].rhw		= 0.00001f;               
+		gVertex[3].u		= 0.0f;                  
+		gVertex[3].v		= 0.0f;                  
+		gVertex[3].argb		= barARGB;
+		gVertex[3].frgb		= 0xff000000;            
+		
+		gos_DrawQuads(gVertex, 4);
+		
+		gVertex[0].x		= 0.0f;
+		gVertex[0].y		= barBotX;
+		gVertex[0].z		= 0.00001f;
+		gVertex[0].rhw		= 0.00001f;
+		gVertex[0].u		= 0.0f;
+		gVertex[0].v		= 0.0f;
+		gVertex[0].argb		= barARGB;
+		gVertex[0].frgb		= 0xff000000;
+
+		gVertex[1].x		= screenResolution.x;
+		gVertex[1].y		= barBotX;
+		gVertex[1].z		= 0.00001f;               
+		gVertex[1].rhw		= 0.00001f;               
+		gVertex[1].u		= 0.0f;                  
+		gVertex[1].v		= 0.0f;                  
+		gVertex[1].argb		= barARGB;
+		gVertex[1].frgb		= 0xff000000;            
+
+		gVertex[2].x		= screenResolution.x;
+		gVertex[2].y		= screenResolution.y; 
+		gVertex[2].z		= 0.00001f;               
+		gVertex[2].rhw		= 0.00001f;               
+		gVertex[2].u		= 0.0f;                  
+		gVertex[2].v		= 0.0f;                  
+		gVertex[2].argb		= barARGB;
+		gVertex[2].frgb		= 0xff000000;            
+
+		gVertex[3].x		= 0.0f; 
+		gVertex[3].y		= screenResolution.y;
+		gVertex[3].z		= 0.00001f;               
+		gVertex[3].rhw		= 0.00001f;               
+		gVertex[3].u		= 0.0f;                  
+		gVertex[3].v		= 0.0f;                  
+		gVertex[3].argb		= barARGB;
+		gVertex[3].frgb		= 0xff000000;            
+		
+		gos_DrawQuads(gVertex, 4);
+		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
+	}
+}
+
+// Draw the movie fade-to-colour quad.
+void GameCamera::renderFadeQuad() {
+	if (inMovieMode && (fadeAlpha != 0x0) && !gos::visual_capture::cleanFrame())
+	{
+		const bool vkHudQuad = mc2vkgate::vfxArmed();
+		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
+		//We are fading to something other then clear screen.
+		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
+		gos_SetRenderState( gos_State_MonoEnable, 0);
+		gos_SetRenderState( gos_State_Perspective, 0);
+		gos_SetRenderState( gos_State_Clipping, 1);
+		gos_SetRenderState( gos_State_AlphaTest, 1);
+		gos_SetRenderState( gos_State_Specular, 0);
+		gos_SetRenderState( gos_State_Dither, 1);
+		gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulate);
+		gos_SetRenderState( gos_State_Filter, gos_FilterNone);
+		gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
+		gos_SetRenderState( gos_State_ZCompare, 0);
+		gos_SetRenderState(	gos_State_ZWrite, 0);
+		gos_SetRenderState( gos_State_Texture, 0);
+		
+ 		//------------------------------------
+		gos_VERTEX gVertex[4];
+
+		gVertex[0].x		= 0.0f;
+		gVertex[0].y		= 0.0f;
+		gVertex[0].z		= 0.00001f;
+		gVertex[0].rhw		= 0.00001f;
+		gVertex[0].u		= 0.0f;
+		gVertex[0].v		= 0.0f;
+		gVertex[0].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
+		gVertex[0].frgb		= 0xff000000;
+
+		gVertex[1].x		= 0.0f;
+		gVertex[1].y		= screenResolution.y;
+		gVertex[1].z		= 0.00001f;               
+		gVertex[1].rhw		= 0.00001f;               
+		gVertex[1].u		= 0.0f;                  
+		gVertex[1].v		= 0.0f;                  
+		gVertex[1].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
+		gVertex[1].frgb		= 0xff000000;            
+
+		gVertex[2].x		= screenResolution.x;
+		gVertex[2].y		= screenResolution.y; 
+		gVertex[2].z		= 0.00001f;               
+		gVertex[2].rhw		= 0.00001f;               
+		gVertex[2].u		= 0.0f;                  
+		gVertex[2].v		= 0.0f;                  
+		gVertex[2].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
+		gVertex[2].frgb		= 0xff000000;            
+
+		gVertex[3].x		= screenResolution.x;
+		gVertex[3].y		= 0.0f;
+		gVertex[3].z		= 0.00001f;               
+		gVertex[3].rhw		= 0.00001f;               
+		gVertex[3].u		= 0.0f;                  
+		gVertex[3].v		= 0.0f;                  
+		gVertex[3].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
+		gVertex[3].frgb		= 0xff000000;            
+		
+		gos_DrawQuads(gVertex, 4);
+		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
+	}
+}
+
+// Draws one camera frame. The viewport and light set-up, the clipper start, the scene pass skeleton with its Tracy zones
+// and lost-draw scopes stay here; the view-uniform publish, the diagnostics and the movie letterbox and fade quads
+// are member helpers declared in gamecam.h, run in the original order.
 void GameCamera::render (void)
 {
 	//------------------------------------------------------
@@ -231,7 +696,6 @@ void GameCamera::render (void)
 	default_state.SetTextureCorrectionOn();
 	default_state.SetZBufferCompareOn();
 	default_state.SetZBufferWriteOn();
-
 	default_state.SetFilterMode(MidLevelRenderer::MLRState::BiLinearFilterMode);
 
 	float z = 1.0f;
@@ -301,200 +765,9 @@ void GameCamera::render (void)
 			// callers (CullUBO, mech-batcher, static-prop-batcher,
 			// particle-bridge, etc.) inherit transparently.
 			gos_SetWorldToClipGL(eye->worldToClipGL());
-
-			// F1-4B: Fill vu and register EngineView unconditionally (pure CPU, no GL).
-			// Upload UBO only when MC2_VIEW_UNIFORMS gate is on.
-			{
-				RenderCore::ViewUniforms vu{};
-				// Stuff::Matrix4D stores column-major (entries[c*4+r]).
-				// ViewUniforms wants row-major (GL_FALSE upload convention).
-				// Transpose: row-major[r*4+c] = col-major[c*4+r].
-				auto stuffToRowMajor = [](const Stuff::Matrix4D& m, float out[16]) {
-					const float* col = m.entries;
-					for (int r = 0; r < 4; ++r)
-						for (int c = 0; c < 4; ++c)
-							out[r * 4 + c] = col[c * 4 + r];
-				};
-				stuffToRowMajor(eye->worldToClipGL(), vu.worldToClipGL);
-				stuffToRowMajor(eye->worldToViewGL(), vu.worldToViewGL);
-				const Stuff::Vector3D orig = eye->cameraOriginGL();
-				vu.cameraWorldPos[0] = orig.x;
-				vu.cameraWorldPos[1] = orig.y;
-				vu.cameraWorldPos[2] = orig.z;
-				vu.cameraWorldPos[3] = 1.0f;
-
-				// Always register EngineView (GL-free, safe unconditionally).
-				// setCurrentView is store-only since F1-4B.
-				{
-					RenderCore::EngineView mainView{};
-					mainView.id = RenderCore::kMainSceneViewId;
-					mainView.viewUniforms = vu;
-					mainView.viewport[0] = 0;
-					mainView.viewport[1] = 0;
-					mainView.viewport[2] = Environment.drawableWidth;
-					mainView.viewport[3] = Environment.drawableHeight;
-					mainView.renderMask = 0xFFFFFFFF;
-					mainView.debugName = "MainScene";
-					mainView.mode = RenderCore::ViewMode::Visual;
-					mainView.kind = RenderCore::ViewKind::MainScene;
-					RenderCore::setCurrentView(mainView);
-				}
-
-				// F1-3D flip: upload UBO by default; kill-switch MC2_VIEW_UNIFORMS=0.
-				// Original F1-3B/F1-3C gate required explicit =1 (opt-in). That left
-				// the UBO unbound when the env var was absent, so any shader compiled
-				// with MC2_USE_VIEW_UNIFORMS read from an unbound/zero UBO and drew
-				// props off-screen. Matches the s_viewUniformsShaderEnabled flip in
-				// gos_static_prop_batcher.cpp.
-				{
-					static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
-					if (s_vuOn) {
-						RenderCore::uploadViewUniforms(vu);
-
-						// F1-3C: compare ViewUniforms.worldToClipGL against legacy terrain MVP upload
-						{
-							static int s_vuCompareFrame = 0;
-							++s_vuCompareFrame;
-							const float* legacy = gos_GetTerrainMVPMat4();
-							float maxDiff = 0.0f;
-							if (legacy) {
-								for (int i = 0; i < 16; ++i) {
-									float d = vu.worldToClipGL[i] - legacy[i];
-									if (d < 0.0f) d = -d;
-									if (d > maxDiff) maxDiff = d;
-								}
-							}
-							const int ok = (legacy != nullptr) && (maxDiff <= 1e-5f) ? 1 : 0;
-							if (s_vuCompareFrame <= 10 || ok == 0) {
-								MC2_DIAGFE(stderr, "[VIEW_UNIFORMS v1] compare frame=%d max_diff=%.6f ok=%d\n",
-								        s_vuCompareFrame, maxDiff, ok);
-								fflush(stderr);
-							}
-							// XFORM-CONVENTION-HARNESS-1: promote the F1-3C parity probe to a
-							// HARD invariant when MC2_XFORM_PARITY_FATAL is set. Default OFF =
-							// byte-identical to the log-only behavior above. When the gate is
-							// set AND the ViewUniforms UBO payload diverges from the legacy
-							// terrain MVP, abort instead of silently rendering with a mismatched
-							// clip-space transform (the exact regression class this slice locks).
-							{
-								static const bool s_xformFatal = mc2::gate::get<"MC2_XFORM_PARITY_FATAL">();
-								if (s_xformFatal && ok == 0) {
-									fprintf(stderr,
-									        "[XFORM_PARITY_FATAL] ViewUniforms.worldToClipGL diverged from legacy "
-									        "terrain MVP: frame=%d max_diff=%.6f (>1e-5). MC2_XFORM_PARITY_FATAL=1 -> abort.\n",
-									        s_vuCompareFrame, maxDiff);
-									fflush(stderr);
-									abort();
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// VANISH-PROBE-1 (env MC2_VANISH_PROBE): project real persistent
-			// static-prop origins through worldToClipGL at the LIVE camera angle.
-			// Rotate to the trees-gone view; if a prop that is clearly in frame
-			// reports inFrustum=0 (|x|>w, |y|>w, or z outside [0,w]) -> the prop
-			// vanishes because the shared camera projection clips it (depth/
-			// reverse-Z/near-plane), NOT cull/store (storeTotal stays high) and
-			// NOT matrix divergence (VIEW_UNIFORMS compare stays ok=1). One-shot
-			// per ~60 frames; coarse, off by default.
-			{
-				static const bool s_vanishProbe = mc2::gate::get<"MC2_VANISH_PROBE">();
-				if (s_vanishProbe) {
-					extern uint32_t gos_ProbeStaticInstanceCount();
-					extern bool     gos_ProbeStaticInstanceWorld(uint32_t, float[3]);
-					static int s_vpFrame = 0;
-					++s_vpFrame;
-					if ((s_vpFrame % 60) == 1) {
-						const uint32_t n = gos_ProbeStaticInstanceCount();
-						const uint32_t step = (n > 0u) ? (n / 6u + 1u) : 1u;
-						int inCount = 0, total = 0;
-						for (uint32_t i = 0; i < n; i += step) {
-							float wp[3];
-							if (!gos_ProbeStaticInstanceWorld(i, wp)) break;
-							Stuff::Vector4D win, wout;
-							win.x = wp[0]; win.y = wp[1]; win.z = wp[2]; win.w = 1.0f;
-							wout.Multiply(win, eye->worldToClipGL());  // row-vec * matrix (txmmgr convention)
-							const float w = wout.w;
-							const bool inFr = (w > 0.0f) &&
-								(wout.x >= -w && wout.x <= w) &&
-								(wout.y >= -w && wout.y <= w) &&
-								(wout.z >= 0.0f && wout.z <= w);
-							if (inFr) ++inCount;
-							++total;
-							fprintf(stderr,
-								"[VANISH_PROBE] frame=%d inst=%u/%u world=(%.0f,%.0f,%.0f) "
-								"clip=(%.1f,%.1f,%.1f,w=%.1f) ndc=(%.3f,%.3f,%.3f) inFrustum=%d\n",
-								s_vpFrame, i, n, wp[0], wp[1], wp[2],
-								wout.x, wout.y, wout.z, w,
-								(w != 0.0f ? wout.x / w : 0.0f),
-								(w != 0.0f ? wout.y / w : 0.0f),
-								(w != 0.0f ? wout.z / w : 0.0f), inFr ? 1 : 0);
-						}
-						fprintf(stderr, "[VANISH_PROBE] frame=%d storeCount=%u sampled=%d inFrustum=%d\n",
-							s_vpFrame, n, total, inCount);
-						fflush(stderr);
-					}
-				}
-			}
-
-			// Camera position in MC2 world space for TCS distance LOD
-			Stuff::Vector3D camOrig = getCameraOrigin();
-			gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
-
-			// Light direction in raw MC2 world space (x, y, elevation)
-			// NOT swizzled — fragment shader normals are in tangent space where Z = up,
-			// which matches raw MC2 coords (Z = elevation).
-			gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
-
-			// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour. This is the
-			// legacy per-vertex light value flat cement pads received
-			// (getLight*(flatIntensity) with flatIntensity = the flat-up
-			// N.L = lightDirection.z) — the same value burnInShadows bakes
-			// into the colormap. Cement-atlas/overlay shaders multiply it
-			// into their RAW (unburned) texels so pads go night-dark like
-			// the surrounding terrain. Day missions: ~(1,1,1) = no-op.
-			// Killswitch MC2_CEMENT_MISSION_LIGHT=0 (handled in the setter).
-			{
-				float flatIntensity = lightDirection.z;
-				if (flatIntensity < 0.0f) flatIntensity = 0.0f;
-				if (flatIntensity > 1.0f) flatIntensity = 1.0f;
-				gos_SetTerrainMissionFlatLight(
-					getLightRed(flatIntensity)   / 255.0f,
-					getLightGreen(flatIntensity) / 255.0f,
-					getLightBlue(flatIntensity)  / 255.0f);
-			}
-
-			// EDGE-LIGHT-EMISSION-1: feed the eye's night state to GameOS so the
-			// GPU static-prop shader can evaluate the stock hot-colour night
-			// branches (lit windows / outside building lights / BASE LIGHTS --
-			// the last of which is what every runway edge light and beacon is
-			// authored as). The legacy CPU path reads eye->getIsNight() directly;
-			// the GPU path had these stubbed to false/0, which is why the
-			// runway lights never came on. See gameos_graphics.cpp.
-			{
-				extern void gos_SetNightState(bool, float);
-				gos_SetNightState(eye->getIsNight(), eye->getNightFactor());
-			}
-
-			// TERRAIN-AMBIENT-FLOOR-2: daylight level for the terrain ambient
-			// floor. Same push point, same cadence as the night state above, but
-			// keyed on the AUTHORED sun pitch min the runtime night state --
-			// eye->getIsNight()/getNightFactor() alone report full day on the
-			// below-horizon missions (mc2_05/mc2_21 author pitch 270) because
-			// camera.cpp:2033 folds them to a moon overhead first. All of the
-			// decision is in terrain_daylight.h so it can be executed by
-			// tools/terrain_daylight_harness without launching anything.
-			{
-				extern void gos_SetTerrainDaylightLevel(float);
-				gos_SetTerrainDaylightLevel(terrain_daylight::level(
-					eye->getDayLightPitch(), eye->getIsNight(), eye->getNightFactor()));
-			}
-
-			// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).
-			mc2SceneLightingTrace();
+			renderViewUniforms();
+			renderVanishProbe();
+			renderTerrainSceneState();
 
 			#undef WTC
 		}
@@ -686,7 +959,6 @@ void GameCamera::render (void)
 				// No-op when MC2_VFX_ORACLE_TUBE is unset (queue stays empty).
 				// Declared in gos_particle_bridge.h (already included above).
 				gos_tube_ribbon_flush_deferred();
-
 				gos_ClearActiveCamera();
 			}
 		}
@@ -747,7 +1019,6 @@ void GameCamera::render (void)
 			}
 		}
 
-
 		if (useNonWeaponEffects)
 		{
 			ZoneScopedN("GameCamera::render weather"); GosGlLostDrawsScope _lostSc_("scene.weather");
@@ -761,67 +1032,7 @@ void GameCamera::render (void)
 #ifdef MC2_IMGUI
 			EditorInspector::flushDebugHighlight();  // IMG-INSPECT-3: queue highlight prims same-frame
 #endif
-			// TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line
-			// on each SELECTED mover. Gate MC2_TACTICAL_ARC_OVERLAY (default-OFF,
-			// resolved once) -> no draw calls when unset (byte-identical). The
-			// debug renderer's own MC2_DEBUG_RENDERER gate must also be ON for
-			// these prims to actually flush. Read-only; no gameplay coupling.
-			{
-				static const bool s_tacArcOverlay = mc2::gate::get<"MC2_TACTICAL_ARC_OVERLAY">();
-				if (s_tacArcOverlay && ObjectManager) {
-					const long nMovers = ObjectManager->getNumMovers();
-					for (long mi = 0; mi < nMovers; ++mi) {
-						MoverPtr mover = ObjectManager->getMover(mi);
-						if (!mover || !mover->getSelected()) continue;
-						Stuff::Vector3D p = mover->getPosition();
-						// Stuff (x=east, y=north, z=elevation) -> debug-renderer
-						// world (x=east, y=up, z=north); matches the
-						// EditorInspector selection crosshair convention.
-						DebugRenderer::Vec3 center{ p.x, p.z, p.y };
-						const float maxR = mover->getMaxFireRange();
-						// TACTICAL-OVERLAY-SELECTED-MECH-DATA-1: concentric weapon
-						// range bands from the selected mover's cached fire ranges
-						// (Mover::calcFireRanges()). All public getters, real data,
-						// no gameplay coupling. Drawn outer->inner so the inner
-						// rings read on top.
-						if (maxR > 0.0f)
-							DebugRenderer::drawRingWorld(center, maxR, 64, 0x4080FFFFu); // blue  = max range
-						const float optR = mover->getOptimalFireRange();
-						if (optR > 0.0f && optR < maxR)
-							DebugRenderer::drawRingWorld(center, optR, 56, 0x40FFC0FFu); // cyan  = optimal range
-						const float minR = mover->getMinFireRange();
-						if (minR > 0.0f && minR < maxR)
-							DebugRenderer::drawRingWorld(center, minR, 48, 0xFF8040FFu); // amber = min (dead) range
-						// Facing heading tick (best-effort: MC2 rotation deg,
-						// 0=north=+z). Capped length so it reads as a tick, not a
-						// full-range spoke. Verify sign visually; ring is the
-						// rotation-independent primary cue.
-						const float th  = mover->getRotation() * 0.01745329252f; // deg->rad
-						const float len = (maxR > 0.0f) ? fminf(maxR, 40.0f) : 20.0f;
-						DebugRenderer::drawLineWorld(center,
-							DebugRenderer::Vec3{ center.x + sinf(th) * len, center.y, center.z + cosf(th) * len },
-							0x80FF80FFu); // green facing line
-						// Firing-arc wedge: two spokes at facing +/- fireArc, out to
-						// max range. Mover::getFireArc() returns the per-class HALF
-						// angle in degrees (FireArc[]/2), applied relative to facing
-						// exactly as Mover::getWeaponsLocked() tests it. Truthful cue
-						// for where weapons can bear; no arc primitive in DebugRenderer
-						// so the two edge spokes stand in for the wedge.
-						const float arcDeg = mover->getFireArc();
-						if (arcDeg > 0.0f && arcDeg < 180.0f && maxR > 0.0f) {
-							const float arcRad = arcDeg * 0.01745329252f;
-							const float thL = th - arcRad;
-							const float thR = th + arcRad;
-							DebugRenderer::drawLineWorld(center,
-								DebugRenderer::Vec3{ center.x + sinf(thL) * maxR, center.y, center.z + cosf(thL) * maxR },
-								0xFFFF40A0u); // yellow arc edge (left)
-							DebugRenderer::drawLineWorld(center,
-								DebugRenderer::Vec3{ center.x + sinf(thR) * maxR, center.y, center.z + cosf(thR) * maxR },
-								0xFFFF40A0u); // yellow arc edge (right)
-						}
-					}
-				}
-			}
+			renderTacticalArcOverlay();
 			DebugRenderer::flushWorldPrims();
 		}
 	}
@@ -836,192 +1047,8 @@ void GameCamera::render (void)
 			compass->render();
 	}
 	
-	//---------------------------------------------------------	
-	//Check if we are inMovieMode and should be letterboxed.
-	// draw letterboxes here.
-	if (inMovieMode && (letterBoxPos != 0.0f) && !gos::visual_capture::cleanFrame())
-	{
-		const bool vkHudQuad = mc2vkgate::vfxArmed();
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
-		//Figure out the two faces we need to draw based on letterBox Pos and Alpha
-		float barTopX = screenResolution.y * letterBoxPos;
-		float barBotX = screenResolution.y - barTopX;
-
-		// LETTERBOX-TOP-RESTORE-1 (gate MC2_LETTERBOX_OPAQUE, default ON; =0
-		// restores stock). Stock ramps BOTH the bar extent (letterBoxPos) and the
-		// bar ALPHA (letterBoxAlpha) over MaxLetterBoxTime=5s, so for the whole
-		// 5-second swoop-in the bars are translucent and the scene shows through
-		// them. Measured on mc2_10 night, capture frame 100: bar extent 0.0986 of
-		// 0.15 max => ramp at 65.7% => letterBoxAlpha=168, i.e. the bars were 34%
-		// transparent. It reads as a BROKEN TOP BAR (and a fine bottom bar) purely
-		// because of what sits behind each one: the top bar covers the bright
-		// horizon/sky, the bottom bar covers dark near-field terrain, so identical
-		// translucency is glaring on top and invisible on the bottom. The bars are
-		// meant to be opaque black; only the EXTENT should animate. Keep the
-		// letterBoxPos wipe, drop the alpha ramp. (The separate fadeAlpha
-		// fade-to-black quad below is a real fade and is left untouched.)
-		static const bool s_letterboxOpaque = mc2::gate::get<"MC2_LETTERBOX_OPAQUE">();
-		const DWORD barARGB =
-			(s_letterboxOpaque ? (DWORD)0xff : (DWORD)letterBoxAlpha) << 24;
-
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
-		gos_SetRenderState( gos_State_MonoEnable, 0);
-		gos_SetRenderState( gos_State_Perspective, 0);
-		gos_SetRenderState( gos_State_Clipping, 1);
-		gos_SetRenderState( gos_State_AlphaTest, 1);
-		gos_SetRenderState( gos_State_Specular, 0);
-		gos_SetRenderState( gos_State_Dither, 1);
-		gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulate);
-		gos_SetRenderState( gos_State_Filter, gos_FilterNone);
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
-		gos_SetRenderState( gos_State_ZCompare, 0);
-		gos_SetRenderState(	gos_State_ZWrite, 0);
-		gos_SetRenderState( gos_State_Texture, 0);
-		
- 		//------------------------------------
-		gos_VERTEX gVertex[4];
-
-		gVertex[0].x		= 0.0f;
-		gVertex[0].y		= 0.0f;
-		gVertex[0].z		= 0.00001f;
-		gVertex[0].rhw		= 0.00001f;
-		gVertex[0].u		= 0.0f;
-		gVertex[0].v		= 0.0f;
-		gVertex[0].argb		= barARGB;
-		gVertex[0].frgb		= 0xff000000;
-
-		gVertex[1].x		= 0.0f;
-		gVertex[1].y		= barTopX;
-		gVertex[1].z		= 0.00001f;               
-		gVertex[1].rhw		= 0.00001f;               
-		gVertex[1].u		= 0.0f;                  
-		gVertex[1].v		= 0.0f;                  
-		gVertex[1].argb		= barARGB;
-		gVertex[1].frgb		= 0xff000000;            
-
-		gVertex[2].x		= screenResolution.x;
-		gVertex[2].y		= barTopX; 
-		gVertex[2].z		= 0.00001f;               
-		gVertex[2].rhw		= 0.00001f;               
-		gVertex[2].u		= 0.0f;                  
-		gVertex[2].v		= 0.0f;                  
-		gVertex[2].argb		= barARGB;
-		gVertex[2].frgb		= 0xff000000;            
-
-		gVertex[3].x		= screenResolution.x;
-		gVertex[3].y		= 0.0f;
-		gVertex[3].z		= 0.00001f;               
-		gVertex[3].rhw		= 0.00001f;               
-		gVertex[3].u		= 0.0f;                  
-		gVertex[3].v		= 0.0f;                  
-		gVertex[3].argb		= barARGB;
-		gVertex[3].frgb		= 0xff000000;            
-		
-		gos_DrawQuads(gVertex, 4);
-		
-		gVertex[0].x		= 0.0f;
-		gVertex[0].y		= barBotX;
-		gVertex[0].z		= 0.00001f;
-		gVertex[0].rhw		= 0.00001f;
-		gVertex[0].u		= 0.0f;
-		gVertex[0].v		= 0.0f;
-		gVertex[0].argb		= barARGB;
-		gVertex[0].frgb		= 0xff000000;
-
-		gVertex[1].x		= screenResolution.x;
-		gVertex[1].y		= barBotX;
-		gVertex[1].z		= 0.00001f;               
-		gVertex[1].rhw		= 0.00001f;               
-		gVertex[1].u		= 0.0f;                  
-		gVertex[1].v		= 0.0f;                  
-		gVertex[1].argb		= barARGB;
-		gVertex[1].frgb		= 0xff000000;            
-
-		gVertex[2].x		= screenResolution.x;
-		gVertex[2].y		= screenResolution.y; 
-		gVertex[2].z		= 0.00001f;               
-		gVertex[2].rhw		= 0.00001f;               
-		gVertex[2].u		= 0.0f;                  
-		gVertex[2].v		= 0.0f;                  
-		gVertex[2].argb		= barARGB;
-		gVertex[2].frgb		= 0xff000000;            
-
-		gVertex[3].x		= 0.0f; 
-		gVertex[3].y		= screenResolution.y;
-		gVertex[3].z		= 0.00001f;               
-		gVertex[3].rhw		= 0.00001f;               
-		gVertex[3].u		= 0.0f;                  
-		gVertex[3].v		= 0.0f;                  
-		gVertex[3].argb		= barARGB;
-		gVertex[3].frgb		= 0xff000000;            
-		
-		gos_DrawQuads(gVertex, 4);
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
-	}
-
-	if (inMovieMode && (fadeAlpha != 0x0) && !gos::visual_capture::cleanFrame())
-	{
-		const bool vkHudQuad = mc2vkgate::vfxArmed();
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 1);
-		//We are fading to something other then clear screen.
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
-		gos_SetRenderState( gos_State_MonoEnable, 0);
-		gos_SetRenderState( gos_State_Perspective, 0);
-		gos_SetRenderState( gos_State_Clipping, 1);
-		gos_SetRenderState( gos_State_AlphaTest, 1);
-		gos_SetRenderState( gos_State_Specular, 0);
-		gos_SetRenderState( gos_State_Dither, 1);
-		gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulate);
-		gos_SetRenderState( gos_State_Filter, gos_FilterNone);
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
-		gos_SetRenderState( gos_State_ZCompare, 0);
-		gos_SetRenderState(	gos_State_ZWrite, 0);
-		gos_SetRenderState( gos_State_Texture, 0);
-		
- 		//------------------------------------
-		gos_VERTEX gVertex[4];
-
-		gVertex[0].x		= 0.0f;
-		gVertex[0].y		= 0.0f;
-		gVertex[0].z		= 0.00001f;
-		gVertex[0].rhw		= 0.00001f;
-		gVertex[0].u		= 0.0f;
-		gVertex[0].v		= 0.0f;
-		gVertex[0].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
-		gVertex[0].frgb		= 0xff000000;
-
-		gVertex[1].x		= 0.0f;
-		gVertex[1].y		= screenResolution.y;
-		gVertex[1].z		= 0.00001f;               
-		gVertex[1].rhw		= 0.00001f;               
-		gVertex[1].u		= 0.0f;                  
-		gVertex[1].v		= 0.0f;                  
-		gVertex[1].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
-		gVertex[1].frgb		= 0xff000000;            
-
-		gVertex[2].x		= screenResolution.x;
-		gVertex[2].y		= screenResolution.y; 
-		gVertex[2].z		= 0.00001f;               
-		gVertex[2].rhw		= 0.00001f;               
-		gVertex[2].u		= 0.0f;                  
-		gVertex[2].v		= 0.0f;                  
-		gVertex[2].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
-		gVertex[2].frgb		= 0xff000000;            
-
-		gVertex[3].x		= screenResolution.x;
-		gVertex[3].y		= 0.0f;
-		gVertex[3].z		= 0.00001f;               
-		gVertex[3].rhw		= 0.00001f;               
-		gVertex[3].u		= 0.0f;                  
-		gVertex[3].v		= 0.0f;                  
-		gVertex[3].argb		= (fadeAlpha << 24) + (fadeColor & 0x00ffffff);
-		gVertex[3].frgb		= 0xff000000;            
-		
-		gos_DrawQuads(gVertex, 4);
-		if (vkHudQuad) gos_SetRenderState(gos_State_IsHUD, 0);
-	}
+	renderLetterbox();
+	renderFadeQuad();
 	
 	//-----------------------------------------------------
 }	
