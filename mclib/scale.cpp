@@ -40,7 +40,7 @@ extern void AG_shape_translate_draw (PANE *pane, void *shape_table,LONG shape_nu
 #define MAX_X		360
 #define MAX_Y		360
 
-MemoryPtr tempBuffer = NULL;
+MemoryPtr tempBuffer = nullptr;
 //---------------------------------------------------------------------------
 //
 long scaleDraw (MemoryPtr shapeTable, unsigned long frameNum, long sx, long sy, bool reverse, MemoryPtr fadeTable, bool scaleUp)

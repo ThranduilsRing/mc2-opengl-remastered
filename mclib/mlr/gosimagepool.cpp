@@ -9,7 +9,7 @@
 GOSImagePool::GOSImagePool() :
 	imageHash(
 		4099,
-		NULL,
+		nullptr,
 		true
 	)
 {
@@ -55,7 +55,7 @@ GOSImage*
 	//
 	GOSImage *image;
 
-	if ((image = imageHash.Find(imageName)) == NULL)
+	if ((image = imageHash.Find(imageName)) == nullptr)
 	{
 		gos_PushCurrentHeap(Heap);
 		image = new GOSImage(image_name);
@@ -85,7 +85,7 @@ GOSImage*
 	//
 	GOSImage *image;
 
-	if ((image = imageHash.Find(imageName)) == NULL)
+	if ((image = imageHash.Find(imageName)) == nullptr)
 	{
 		gos_PushCurrentHeap(Heap);
 		image = new GOSImage(image_name, hints);

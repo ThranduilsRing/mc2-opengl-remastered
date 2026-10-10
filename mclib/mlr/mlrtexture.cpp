@@ -95,7 +95,7 @@ MLRTexture::MLRTexture(const MLRTexture& tex)
 //
 MLRTexture::~MLRTexture()
 {
-	if(NULL==thePool->GetImage(image->GetName()))
+	if(nullptr==thePool->GetImage(image->GetName()))
 	{
 		Unregister_Object(image);
 		delete image;

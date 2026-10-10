@@ -20,7 +20,7 @@ GOSImage::GOSImage( const char* iName ) : Plug (DefaultData)
 
 	mcTextureNodeIndex = 0xffffffff;
 
-	ptr.pTexture = NULL;
+	ptr.pTexture = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,7 +39,7 @@ GOSImage::GOSImage( DWORD iHandle ) : Plug (DefaultData)
 
 	mcTextureNodeIndex = iHandle;
 
-	ptr.pTexture = NULL;
+	ptr.pTexture = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,7 @@ GOSImage::GOSImage(const char *name, gos_TextureHints hints) : Plug (DefaultData
 
 	mcTextureNodeIndex = mcTextureManager->loadTexture(name,gos_Texture_Detect,ipHints);
 
-	ptr.pTexture = NULL;
+	ptr.pTexture = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,7 +128,7 @@ void
 
 		Stop_Timer(Unlock_Texture_Time);
 
-		ptr.pTexture = NULL;
+		ptr.pTexture = nullptr;
 	}
 }
 

@@ -22,8 +22,8 @@
 
 //---------------------------------------------------------------------------
 // Global statics
-PANE *globalPane = NULL;
-WINDOW *globalWindow = NULL;
+PANE *globalPane = nullptr;
+WINDOW *globalWindow = nullptr;
 
 //---------------------------------------------------------------------------
 

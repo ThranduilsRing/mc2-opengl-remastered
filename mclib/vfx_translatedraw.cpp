@@ -4,7 +4,7 @@
 
 extern char AlphaTable[256*256];
 
-typedef struct
+using SHAPEHEADER = struct
 {
 
 	DWORD	bounds;
@@ -14,7 +14,7 @@ typedef struct
 	DWORD	xmax;
 	DWORD	ymax;
 
-} SHAPEHEADER;
+};
 
 //
 // Sprite format

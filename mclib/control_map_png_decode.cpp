@@ -32,7 +32,7 @@ unsigned char* ControlMapPng_DecodeRGBA(const unsigned char* data, int dataLen,
     // force 4 channels (RGBA) regardless of source comp count.
     unsigned char* px = stbi_load_from_memory(data, dataLen, &w, &h, &comp, 4);
     if (!px)
-        return 0;
+        return nullptr;
     if (outW) *outW = w;
     if (outH) *outH = h;
     return px;

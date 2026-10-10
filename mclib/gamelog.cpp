@@ -30,11 +30,11 @@ bool isSetup = false;
 
 //*****************************************************************************
 
-GameLogPtr GameLog::files[MAX_GAMELOGS] = {NULL, NULL, NULL, NULL, NULL, NULL};
+GameLogPtr GameLog::files[MAX_GAMELOGS] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
 void* GameLog::operator new (size_t mySize) {
 
-	void* result = NULL;
+	void* result = nullptr;
 	
 	result = gos_Malloc(mySize);
 	
@@ -170,9 +170,9 @@ void GameLog::cleanup (void) {
 			files[i]->close();
 			files[i]->filePtr->close();
 			delete files[i]->filePtr;
-			files[i]->filePtr = NULL;
+			files[i]->filePtr = nullptr;
 			delete files[i];
-			files[i] = NULL;
+			files[i] = nullptr;
 		}
 	}
 }

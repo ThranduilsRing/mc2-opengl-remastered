@@ -29,7 +29,7 @@
 
 #include<gameos.hpp>
 //----------------------------------------------------------------------------------
-DWORD **colorRGBLookup = NULL;
+DWORD **colorRGBLookup = nullptr;
 long numColorRGBTables = 0;
 
 #define MAX_COLOR_ENTRIES		56
@@ -89,12 +89,12 @@ void destroyColorTables (void)
 	for (long i=0;i<numColorRGBTables;i++)
 	{
 		systemHeap->Free(colorRGBLookup[i]);
-		colorRGBLookup[i] = NULL;
+		colorRGBLookup[i] = nullptr;
 	}
 
 	if ( colorRGBLookup )
 		systemHeap->Free(colorRGBLookup);
-	colorRGBLookup = NULL;
+	colorRGBLookup = nullptr;
 }	
 
 //----------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ DWORD *getColorTable (long tableNum)
 		return(colorRGBLookup[tableNum]);
 	}
 
-	return(NULL);
+	return(nullptr);
 }	
 
 //----------------------------------------------------------------------------------

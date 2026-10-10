@@ -9,7 +9,7 @@
 #include <mlr/mlrpointlight.hpp>
 
 mc2::particles::LightManager*
-    mc2::particles::LightManager::Instance = NULL;
+    mc2::particles::LightManager::Instance = nullptr;
 
 gosFX::Light*
     mc2::particles::LightManager::MakePointLight(const char* light_map)

@@ -45,7 +45,7 @@ void FullPathFileName::destroy (void)
 	if (fullName)
 		systemHeap->Free(fullName);
 
-	fullName = NULL;
+	fullName = nullptr;
 }
 
 //---------------------------------------------------------------------------
