@@ -17,6 +17,7 @@ import argparse, contextlib, io, json, os, re, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from configure_ninja import VCVARS  # noqa: E402
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 
 def gate_names():
@@ -66,7 +67,8 @@ def flags():
 
 def compile_tu(fl, src, tag):
     full = (f'call "{VCVARS}" >nul && cl.exe {fl} /d1reportTime /Bt+ /Fo{tag}.obj /Fd{tag}.pdb /FS -c {src}')
-    r = subprocess.run(full, shell=True, capture_output=True, text=True)
+    r = subprocess.run(full, shell=True, capture_output=True, text=True,
+                       **console_child.child_kwargs(redirected=True))
     out = r.stdout + r.stderr
     fe = re.findall(r"time\(.*?c1xx\.dll\)=([\d.]+)s", out)
     be = re.findall(r"time\(.*?c2\.dll\)=([\d.]+)s", out)

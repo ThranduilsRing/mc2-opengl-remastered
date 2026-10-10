@@ -462,7 +462,8 @@ def _spawn_kind(node: ast.Call, src: str):
 
     "child"    -- **console_child.child_kwargs(): the required form. It adds
                   CREATE_NO_WINDOW only when the parent has no console.
-    "hidden"   -- **nofocus.hidden_kwargs()/popen_kwargs(): the smoke library's own form.
+    "hidden"   -- **nofocus.hidden_kwargs()/popen_kwargs(): the smoke library's own form
+                  (hidden_kwargs applies the same flag-only-without-a-console rule).
     "detached" -- creationflags=DETACHED_PROCESS: no console and no conhost at all.
     "bare"     -- a literal creationflags=...CREATE_NO_WINDOW / 0x08000000. FORBIDDEN:
                   from a parent that already has a console it allocates a NEW

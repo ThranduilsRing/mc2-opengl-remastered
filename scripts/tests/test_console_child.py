@@ -124,3 +124,14 @@ def test_redirected_with_console_adds_nothing(monkeypatch):
     """The conhost-per-child incident: a consoled parent must add no flag at all."""
     monkeypatch.setattr(console_child, "has_console", lambda: True)
     assert console_child.child_kwargs(redirected=True) == {}
+
+
+def test_nofocus_hidden_kwargs_follows_the_console_rule(monkeypatch):
+    """hidden_kwargs() (the smoke_lib form, ~50 callers) must not allocate a hidden
+    console per child from a consoled parent -- same rule as child_kwargs()."""
+    from smoke_lib import nofocus
+    monkeypatch.setattr(nofocus, "has_console", lambda: True)
+    assert "creationflags" not in nofocus.hidden_kwargs()
+    if sys.platform == "win32":
+        monkeypatch.setattr(nofocus, "has_console", lambda: False)
+        assert nofocus.hidden_kwargs()["creationflags"] & nofocus.CREATE_NO_WINDOW
