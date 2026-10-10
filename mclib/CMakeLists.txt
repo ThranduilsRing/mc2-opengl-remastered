@@ -158,9 +158,7 @@ set(SOURCES ${SOURCES}
     move_movemap_goals.cpp
     move_movemap_path.cpp
     move_recon.cpp
-    echarstring.cpp
     estring.cpp
-    ewcharstring.cpp
     tacmap.cpp
     utilities.cpp
     model_override_registry.cpp

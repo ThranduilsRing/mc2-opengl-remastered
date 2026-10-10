@@ -25,7 +25,7 @@ bool CPlayBIK::operator==(const CObjectiveAction &rhs) const {
 bool CPlayBIK::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "AVIFileName", tmpECStr);
 	if (NO_ERR != result) { return false; }
 	m_pathname = tmpECStr.Data();
@@ -94,7 +94,7 @@ bool CPlayWAV::operator==(const CObjectiveAction &rhs) const {
 bool CPlayWAV::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "WAVFileName", tmpECStr);
 	if (NO_ERR != result) { return false; }
 	m_pathname = tmpECStr.Data();
@@ -163,7 +163,7 @@ bool CDisplayTextMessage::operator==(const CObjectiveAction &rhs) const {
 bool CDisplayTextMessage::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "Message", tmpECStr);
 	if (NO_ERR != result) { return false; }
 	m_message = tmpECStr.Data();
@@ -264,7 +264,7 @@ bool CSetBooleanFlag::operator==(const CObjectiveAction &rhs) const {
 bool CSetBooleanFlag::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "FlagID", tmpECStr);
 	if (NO_ERR != result) {
 		/*for backward compatibility*/
@@ -327,7 +327,7 @@ bool CMakeNewTechnologyAvailable::operator==(const CObjectiveAction &rhs) const 
 bool CMakeNewTechnologyAvailable::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "PurchaseFileName", tmpECStr);
 	if (NO_ERR != result) { return false; }
 	m_purchaseFilePathname = tmpECStr.Data();
