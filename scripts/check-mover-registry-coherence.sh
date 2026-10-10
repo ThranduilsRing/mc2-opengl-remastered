@@ -211,20 +211,19 @@ s3_read_gates() {
 }
 
 s3_advisory_selectall() {
-    missiongui="$1"
-    sel_n="$(grep -c 'pMover->isOnGUI()' "$missiongui" || true)"
+    # "$@" = the missiongui.cpp pieces (the select-all trio lives in missiongui_orders.cpp / missiongui_update.cpp).
+    sel_n="$(cat "$@" | grep -c 'pMover->isOnGUI()' || true)"
     [ "$sel_n" -ge 3 ] || echo "  ADVISORY S3: missiongui.cpp select-all pMover->isOnGUI() count $sel_n < 3 (drift runtime-caught by I2/I5)"
 }
 
 # ---------------------------------------------------------------------------
-# S4: #42b guard shape. $1 = missiongui.cpp. SOLE DEFENSE — never demote.
+# S4: #42b guard shape. "$@" = the missiongui.cpp pieces (the hover guard is in updateTarget, missiongui_update.cpp). SOLE DEFENSE — never demote.
 # ---------------------------------------------------------------------------
 s4_guard_shape() {
-    missiongui="$1"
-    if ! grep -q 'target->isDisabled() && !target->getAppearance()' "$missiongui"; then
+    if ! cat "$@" | grep -q 'target->isDisabled() && !target->getAppearance()'; then
         echo "  S4: narrow hover guard 'target->isDisabled() && !target->getAppearance()' MISSING (historical #42b revert — this rule is the sole defense)"
     fi
-    bare="$(grep -En 'if[[:space:]]*\([[:space:]]*target[[:space:]]*&&[[:space:]]*target->isDisabled\(\)[[:space:]]*\)' "$missiongui" | strip_comments || true)"
+    bare="$(cat "$@" | grep -En 'if[[:space:]]*\([[:space:]]*target[[:space:]]*&&[[:space:]]*target->isDisabled\(\)[[:space:]]*\)' | strip_comments || true)"
     if [ -n "$bare" ]; then
         echo "  S4: bare widened hover guard found (historical #42b shape):"
         printf '%s\n' "$bare" | sed 's/^/    /'
@@ -294,13 +293,13 @@ run_check() {
     v="$(s2_pairing "$ROOT/code/mech_update.cpp" "$ROOT/code/mission.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S2 FAIL:"; printf '%s\n' "$v"; fail=1; }
 
-    v="$(s3_read_gates "$ROOT/code/objmgr.cpp" "$ROOT/code/gametacmap.cpp" "$ROOT/code/controlgui.cpp"; s3_advisory_selectall "$ROOT/code/missiongui.cpp")"
+    v="$(s3_read_gates "$ROOT/code/objmgr.cpp" "$ROOT/code/gametacmap.cpp" "$ROOT/code/controlgui.cpp"; s3_advisory_selectall "$ROOT"/code/missiongui*.cpp)"
     hard="$(printf '%s\n' "$v" | grep -v 'ADVISORY' | grep -v '^$' || true)"
     adv="$(printf '%s\n' "$v" | grep 'ADVISORY' || true)"
     [ -n "$hard" ] && { echo "[mover-coherence] S3 FAIL:"; printf '%s\n' "$hard"; fail=1; }
     [ -n "$adv" ]  && { echo "[mover-coherence] S3 WARN (advisory, exit unchanged):"; printf '%s\n' "$adv"; }
 
-    v="$(s4_guard_shape "$ROOT/code/missiongui.cpp")"
+    v="$(s4_guard_shape "$ROOT"/code/missiongui*.cpp)"
     [ -n "$v" ] && { echo "[mover-coherence] S4 FAIL:"; printf '%s\n' "$v"; fail=1; }
     v="$(s5_linkup_gate "$ROOT/code/mech_update.cpp")"
     [ -n "$v" ] && { echo "[mover-coherence] S5 FAIL:"; printf '%s\n' "$v"; fail=1; }
@@ -356,8 +355,8 @@ EOF
 
     # S4 revert-simulation: widen the hover guard back to the historical #42b
     # shape (bare isDisabled()).
-    sed 's/target->isDisabled() && !target->getAppearance()/target->isDisabled()/' \
-        "$ROOT/code/missiongui.cpp" > "$tmp/missiongui_wide.cpp"
+    cat "$ROOT"/code/missiongui*.cpp | sed 's/target->isDisabled() && !target->getAppearance()/target->isDisabled()/' \
+        > "$tmp/missiongui_wide.cpp"
     v="$(s4_guard_shape "$tmp/missiongui_wide.cpp")"
     if [ -z "$v" ]; then
         echo "mover-coherence --self-test: FAIL (S4 widened #42b guard NOT detected)"
