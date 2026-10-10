@@ -8,10 +8,12 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _git_util as gu  # noqa: E402
 
+console_child = gu.console_child
+
 
 def _run(root, *args):
     subprocess.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t", *args], check=True,
-                   capture_output=True)
+                   capture_output=True, **console_child.child_kwargs(redirected=True))
 
 
 @pytest.fixture()
