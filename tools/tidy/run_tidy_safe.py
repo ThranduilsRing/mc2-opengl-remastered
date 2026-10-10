@@ -50,12 +50,9 @@ SAFE_CHECKS = (
     "readability-redundant-casting",
 )
 
-#: The owner's comment-only de-bloat pass owns these; a fix-it would collide with it.
+#: Never tidied: third-party code, the gate module, and the files lane 2 is refactoring. (The owner's comment-only pass finished
+#: 2026-10-11, so its files are no longer listed.)
 EXCLUDED = (
-    "code/missiongui*", "code/mission*", "mclib/txmmgr*", "mclib/bdactor*", "mclib/mech3d*", "code/mech*",
-    "GameOS/gameos/gos_postprocess*", "GameOS/gameos/gos_terrain_indirect*",
-    "GameOS/gameos/gos_terrain_lod_chunk*", "GameOS/gameos/gameos_graphics*",
-    "GameOS/gameos/gos_static_prop_batcher*",
     "3rdparty/*", "build*/*", "Gates/*",
     # Lane 2 is refactoring these (phase helpers / splits); a fix-it would collide with its merge.
     "*/gameosmain.cpp", "*/saveload.cpp", "*/gos_static_prop_registry.cpp", "*/tgl_transform.cpp",
