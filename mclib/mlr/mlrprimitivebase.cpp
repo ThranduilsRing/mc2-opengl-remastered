@@ -41,7 +41,7 @@ void ClipPolygon2::Destroy()
 //#############################################################################
 
 MLRPrimitiveBase::ClassData*
-	MLRPrimitiveBase::DefaultData = NULL;
+	MLRPrimitiveBase::DefaultData = nullptr;
 
 DynamicArrayOf<Vector4D>
 	*MLRPrimitiveBase::transformedCoords;
@@ -81,7 +81,7 @@ void
 			MLRPrimitiveBaseClassID,
 			"MidLevelRenderer::MLRPrimitiveBase",
 			RegisteredClass::DefaultData,
-			NULL
+			nullptr
 		);
 	Register_Object(DefaultData);
 
@@ -141,7 +141,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -200,7 +200,7 @@ void
 
 	MemoryStreamIO_Write(stream, &lengths);
 
-	*stream << static_cast<int>(drawMode);
+	*stream << static_cast<int>(drawMode);   // a by-value temporary: dropping the cast passes the member by reference and changes codegen
 
 	referenceState.Save(stream);
 }
@@ -248,7 +248,7 @@ void
 void
 	MLRPrimitiveBase::InitializeDrawPrimitive(unsigned char vis, int)
 {
-	gos_vertices = NULL;
+	gos_vertices = nullptr;
 	numGOSVertices = -1;
 
 	visible = vis;
@@ -491,7 +491,7 @@ MLRShape*
 			return CreateIndexedTriIcosahedron_Color_Lit_2Tex(icoInfo, &(*states)[0], &(*states)[1]);
 		break;
 	}
-	return NULL;
+	return nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
