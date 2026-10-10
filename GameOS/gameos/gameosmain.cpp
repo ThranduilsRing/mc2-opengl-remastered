@@ -16,64 +16,7 @@
 #include <unordered_set>
 #include <cstring>
 #include <time.h>
-
-// SHADOW-SPINE-0: C-linkage accessors from batcher TUs. Declared at file
-// scope because `extern "C"` is illegal at function/block scope.
-#ifdef MC2_VULKAN_ISLAND
-// VK-P9a WATER-INTEROP: water island shutdown teardown (defined in
-// vulkan_water_island.cpp under the same #ifdef). Called at engine shutdown before
-// the shared VkDevice is destroyed so the island's Vk objects don't leak.
-extern "C" void mc2_vk_water_island_destroy();
-extern "C" void mc2_vk_vfx_island_destroy();   // VK-FIELD-VFX-1
-// VK-P11 STATIC-PROP COLOR: color-prop island shutdown teardown (defined in
-// vulkan_color_prop_island.cpp under the same #ifdef). Same ordering rationale as
-// the water island (deletes the interop FBO/imported tex + VK objects while both the
-// GL context and the shared device are alive). No-op if never born.
-extern "C" void mc2_vk_color_prop_island_destroy();
-// VK-P10 TERRAIN TIER-1: terrain island shutdown teardown (defined in
-// vulkan_terrain_island.cpp under the same #ifdef). Same ordering rationale — frees
-// the VK renderpass/framebuffer/pipeline + snapshot buffers while the shared device
-// is alive. The shared GBuffer images it borrows are owned by the postprocess
-// registries. No-op if never born.
-extern "C" void mc2_vk_terrain_island_destroy();
-extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, float b, float a);
-// VK-P14 MECH TIER-1: mech island shutdown teardown (defined in vulkan_mech_island.cpp
-// under the same #ifdef). Frees the VK renderpass/framebuffer/pipeline + instance/bone/
-// geometry buffers + copy-once albedo while the shared device is alive. The shared
-// GBuffer images it borrows are owned by the postprocess registries. No-op if never born.
-extern "C" void mc2_vk_mech_island_destroy();
-extern "C" void mc2_vk_legacy_shape_island_destroy();   // VK-PARITY-F1
-extern "C" void mc2_vk_sky_island_destroy();            // VK-PARITY-F3
-// VK-P8 SHADOW INTEROP: shadow island shutdown teardown (defined in
-// vulkan_shadow_island_live.cpp). Frees its VK CSM producer objects + emits the
-// [VK_SHADOW_INTEROP] health line (forbidden_* counters). No-op if never born.
-extern "C" void mc2_vk_shadow_island_destroy();
-#endif
-extern "C" uint32_t gos_getMechShadowProgramId();
-extern "C" uint32_t gos_getMechShadowTypesDrawn();
-extern "C" uint32_t gos_getMechShadowInstDrawn();
-extern "C" uint32_t gos_getStaticPropShadowTypesDrawn();
-extern "C" uint32_t gos_getStaticPropShadowInstDrawn();
-
-// VFX-SPINE-0: C-linkage accessors from the particle bridge + batcher TUs.
-// Same file-scope rule as the shadow accessors above (extern "C" cannot live
-// at block scope). Read-only — these only return file-static counters.
-extern "C" unsigned int       gos_vfx_getParticleProgramId();
-extern "C" unsigned int       gos_vfx_getSsboCapacity();
-extern "C" int                gos_vfx_getInitFailed();
-extern "C" int                gos_vfx_getCameraSetThisFrame();
-extern "C" int                gos_vfx_getDebugMode();
-extern "C" int                mc2_vfx_isEnabled();
-extern "C" int                mc2_vfx_isLogEnabled();
-extern "C" unsigned int       mc2_vfx_getBudget();
-extern "C" int                mc2_vfx_getOverflowReported();
-extern "C" unsigned long long mc2_vfx_getEmitTotal();
-extern "C" unsigned long long mc2_vfx_getFlushTotal();
-extern "C" unsigned long long mc2_vfx_getNonemptyFlushTotal();
-extern "C" unsigned long long mc2_vfx_getRecordsFlushedTotal();
-extern "C" unsigned int       mc2_vfx_getRecordsPerFlushMax();
-extern "C" unsigned long long mc2_vfx_getTrailSpawnTotal();
-extern "C" unsigned long long mc2_vfx_getTrailHeadTotal();
+#include "gameosmain_internal.h"
 
 // Terrain native first-owner (the island CLEARs shared color0/normal/depth; GL
 // frame-entry clears + clearGBuffer1 must be skipped) is a structural property of the
@@ -241,7 +184,6 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 // Definition lives in mclib/tgl.cpp so data tools (aseconv, pak, makefst,
 // makersp) that link mclib without gameosmain still resolve the symbol.
 // This TU owns the per-frame increment; everyone else is a read-only extern.
-extern uint32_t g_mc2FrameCounter;
 
 // VK-FAILSOFT-DISARM-1: present init hit a zero surface extent (window
 // minimized at boot) and was DEFERRED instead of fail-softing the session to
@@ -265,28 +207,13 @@ extern "C" {
 }
 #endif
 
-extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 
 // FRAME-GRAPH-EXECUTOR-ISLAND-1: pre/post-call validation wrappers for the
 // PostProcess island.  Defined in gos_postprocess.cpp.  When gate
 // MC2_FRAMEGRAPH_EXECUTOR is unset they are early-return no-ops (byte-identical).
-extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);
-extern void mc2_executor_own_end_postprocess(gosPostProcess* pp);
 
-extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
-extern void gos_DestroyRenderer();
-extern void gos_RendererBeginFrame();
-extern void gos_RendererEndFrame();
-extern void gos_RendererFlushHUDBatch();
-extern void gos_RendererHandleEvents();
-extern void gos_RenderUpdateDebugInput();
-extern void gos_RenderEnableDebugDrawCalls();
-extern bool gos_RenderGetEnableDebugDrawCalls();
 
-extern bool gosExitGameOS();
 
-extern bool gos_CreateAudio();
-extern void gos_DestroyAudio();
 
 static bool g_exit = false;
 static bool g_focus_lost = false;
@@ -295,13 +222,11 @@ static bool g_focus_lost = false;
 // background-throttle path can distinguish "window invisible" from merely
 // "another window has keyboard focus" (which is normal during gameplay when
 // the user clicks a chat / browser / profiler window).
-extern SDL_Window* g_sdl_window;
 
 // Global runtime toggle for the GPU static-prop renderer.
 // Definition lives in gos_static_prop_batcher.cpp (in the gameos lib) so
 // data-tool executables that link mclib but not gameos_main still resolve
 // the symbol. Toggled at runtime via RAlt+0 (see handle_key_down).
-extern bool g_useGpuStaticProps;
 
 static void handle_key_down( SDL_Keysym* keysym ) {
     const bool alt_debug = (keysym->mod & KMOD_ALT) != 0;
@@ -477,7 +402,7 @@ static void handle_key_down( SDL_Keysym* keysym ) {
     }
 }
 
-static void process_events( void ) {
+void process_events( void ) {
 
     input::beginUpdateMouseState();
 
