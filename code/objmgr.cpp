@@ -529,6 +529,8 @@ extern bool	renderObjects;
 extern GameObjectPtr MoverRoster[MAX_MOVER_PART_ID - MIN_MOVER_PART_ID + 1];
 extern bool MaxObjectsDrawn;
 extern bool drawOldWay;
+extern GameObjectFootPrint* tempSpecialAreaFootPrints;
+extern long tempNumSpecialAreas;
 
 /*
 ObjectQueuePtr objectList = NULL;
@@ -1729,8 +1731,6 @@ void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 	fflush(stdout);
 }
 
-extern GameObjectFootPrint* tempSpecialAreaFootPrints;
-extern long tempNumSpecialAreas;
 
 void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjectIndex, 
 								  long& curBuildingIndex, long& curTurretIndex, long &curGateIndex,
