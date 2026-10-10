@@ -79,8 +79,8 @@ def load_cpp(src):
         t = src.text(p)
         if not t:
             continue
-        cg.count_defs(p, blank_comments(t, keep_strings=False), ndefs)
         fam = tu_family(p, known)
+        cg.count_defs(fam, blank_comments(t, keep_strings=False), ndefs)   # a split unit counts as one file
         if fam != p:
             family.setdefault(fam, []).append(t)
         elif "MC2_" in t or '"u_' in t:
@@ -205,6 +205,11 @@ def tu_family(path, known):
     m = _PIECE_RE.match(path)
     if m and "%s%s_internal.h" % (m.group(1) or "", m.group(2)) in known:
         return "%s%s.cpp" % (m.group(1) or "", m.group(2))
+    if path.endswith("_internal.h"):
+        base = path[:-len("_internal.h")]
+        for cand in (base, base.rsplit("_", 1)[0]):          # <stem>_internal.h or <stem>_<part>_internal.h
+            if cand != path and cand + ".cpp" in known:
+                return cand + ".cpp"                          # the shared header of a split unit holds class bodies of that unit
     return path
 
 

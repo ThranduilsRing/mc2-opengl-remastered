@@ -1,6 +1,7 @@
 // gameos_graphics: water tuning state and accessors, the water bridge and gosRenderer::renderWaterFastPath.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 
 
 // gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external

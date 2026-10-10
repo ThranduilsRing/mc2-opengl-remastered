@@ -51,5 +51,9 @@
   "tools/glstate_guard_harness/glstate_guard_harness.cpp",
   "tools/mc2_launcher/mc2_launcher.cpp"
  ],
- "_scripts_reason": "Reviewed: check-cpu-gpu-cogating, the five check-raw-gl-* allowlists, check-vk-umbrella-readers, check-frame-resource-feedback (globs every gameos_graphics piece), check-object-mvp-currency (marker rule covers every piece) and counter-honesty keys follow their subject to the piece that holds it; check-res-aspect-contract reads gos_SetScreenMode from the capi piece and gosRenderer::handleEvents from the draw piece and its baseline counts the draw and hud pieces; extract_gl_shader_variants reads the material loader from gameos_graphics.cpp plus the material header; gl_shader_variants.json is regenerated; delivery-fixes.json code_evidence is read at the historical fix commit; tools/gate_codemod.py and tools/gate_g0_ledger.json (lane 1) name the file only; the rest cite gameos_graphics.cpp in comments or by old line number."
+ "_scripts_reason": "Reviewed: check-cpu-gpu-cogating, the five check-raw-gl-* allowlists, check-vk-umbrella-readers, check-frame-resource-feedback (globs every gameos_graphics piece), check-object-mvp-currency (marker rule covers every piece) and counter-honesty keys follow their subject to the piece that holds it; check-res-aspect-contract reads gos_SetScreenMode from the capi piece and gosRenderer::handleEvents from the draw piece and its baseline counts the draw and hud pieces; extract_gl_shader_variants reads the material loader from gameos_graphics.cpp plus the material header; gl_shader_variants.json is regenerated; delivery-fixes.json code_evidence is read at the historical fix commit; tools/gate_codemod.py and tools/gate_g0_ledger.json (lane 1) name the file only; the rest cite gameos_graphics.cpp in comments or by old line number.",
+ "add": [
+  "#include \"mdi_submit.h\"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws"
+ ],
+ "_add_reason": "check-mdi-submission-ownership requires every file that issues an indirect draw to include mdi_submit.h itself; the bridge and water pieces include it (the material header already does)."
 }

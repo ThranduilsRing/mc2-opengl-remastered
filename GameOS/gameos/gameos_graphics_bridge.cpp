@@ -1,6 +1,7 @@
 // gameos_graphics: terrain program-id accessors and the terrain surface, indirect, mask, mine and decal draw bridges.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 
 
 // TERRAIN-SPINE-0: free-function program-id accessors for the read-only
