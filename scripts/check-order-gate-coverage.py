@@ -20,7 +20,7 @@ Assertions:
      remove the entry); an undeclared uninstrumented fireWeapon body fails
      (silent gap — instrument it or declare it).
 
-KNOWN_UNCOVERED today: GroundVehicle::fireWeapon (code/gvehicl.cpp) — zero
+KNOWN_UNCOVERED today: GroundVehicle::fireWeapon (code/gvehicl_weapons.cpp) — zero
 fireGateTrace instrumentation at landing; MP fire dead-ends there surface
 only via docs/ai-order-triage.md until an instrumentation slice lands.
 
@@ -61,7 +61,7 @@ CONTEXT_LINES = 4   # trace must sit on the return line or <=4 lines above
 # region scan (and gvehicl has no sentinel — the whole body is uncovered).
 KNOWN_UNCOVERED = [
     (
-        "code/gvehicl.cpp",
+        "code/gvehicl_weapons.cpp",
         r"long\s+GroundVehicle\s*::\s*fireWeapon\s*\(",
         "GroundVehicle::fireWeapon — zero instrumentation at META-FIX-BATCH-2 "
         "landing; MPlayer/vehicle fire dead-ends declared-not-closed "
@@ -236,14 +236,14 @@ def self_test() -> int:
 
     # 4. KNOWN_UNCOVERED goes stale: gvehicl gains instrumentation while the
     #    declaration stays.
-    gv = checklib.read_text("code/gvehicl.cpp")
+    gv = checklib.read_text("code/gvehicl_weapons.cpp")
     t = gv.replace(
         "long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {",
         "long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {\n"
         "\tfireGateTrace(0, weaponIndex, \"selftest\");",
         1)
     failures.append(("stale KNOWN_UNCOVERED",
-                     run_all(Ctx({"code/gvehicl.cpp": t}), True)))
+                     run_all(Ctx({"code/gvehicl_weapons.cpp": t}), True)))
 
     bad = [name for name, rc in failures if rc == EXIT_OK]
     for name, rc in failures:

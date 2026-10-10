@@ -6,34 +6,114 @@
 #ifndef ABLMC2_INTERNAL_H
 #define ABLMC2_INTERNAL_H
 
-#include "abl.h"
-#include "mclib.h"
+// Include Files
+#ifndef ABL_H
+#include"abl.h"
+#endif
+
+#ifndef MCLIB_H
+#include"mclib.h"
+#endif
+
 #include "gos_crashbundle.h"
-#include "mc2_diag_verbose.h"
-#include "mission.h"
-#include "move.h"
-#include "movemgr.h"
-#include "gamesound.h"
-#include "sounds.h"
-#include "collsn.h"
-#include "cmponent.h"
-#include "objmgr.h"
-#include "mover.h"
-#include "mech.h"
-#include "gvehicl.h"
-#include "contact.h"
-#include "team.h"
-#include "comndr.h"
-#include "group.h"
-#include "gamecam.h"
-#include "multplyr.h"
-#include "weaponfx.h"
-#include "turret.h"
-#include "gate.h"
-#include "artlry.h"
-#include "gamelog.h"
-#include "missionbegin.h"
-#include "logistics.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+
+#ifndef MISSION_H
+#include"mission.h"
+#endif
+
+#ifndef MOVE_H
+#include"move.h"
+#endif
+
+#ifndef MOVEMGR_H
+#include"movemgr.h"
+#endif
+
+#ifndef GAMESOUND_H
+#include"gamesound.h"
+#endif
+
+#ifndef SOUNDS_H
+#include"sounds.h"
+#endif
+
+#ifndef COLLSN_H
+#include"collsn.h"
+#endif
+
+#ifndef CMPONENT_H
+#include"cmponent.h"
+#endif
+
+#ifndef OBJMGR_H
+#include"objmgr.h"
+#endif
+
+#ifndef MOVER_H
+#include"mover.h"
+#endif
+
+#ifndef MECH_H
+#include"mech.h"
+#endif
+
+#ifndef GVEHICL_H
+#include"gvehicl.h"
+#endif
+
+#ifndef CONTACT_H
+#include"contact.h"
+#endif
+
+#ifndef TEAM_H
+#include"team.h"
+#endif
+
+#ifndef COMNDR_H
+#include"comndr.h"
+#endif
+
+#ifndef GROUP_H
+#include"group.h"
+#endif
+
+#ifndef GAMECAM_H
+#include"gamecam.h"
+#endif
+
+#ifndef MULTPLYR_H
+#include"multplyr.h"
+#endif
+
+#ifndef WEAPONFX_H
+#include"weaponfx.h"
+#endif
+
+#ifndef TURRET_H
+#include"turret.h"
+#endif
+
+#ifndef GATE_H
+#include"gate.h"
+#endif
+
+#ifndef ARTLRY_H
+#include"artlry.h"
+#endif
+
+#ifndef GAMELOG_H
+#include"gamelog.h"
+#endif
+
+#ifndef MISSIONBEGIN_H
+#include"missionbegin.h"
+#endif
+
+#ifndef LOGISTICS_H
+#include"logistics.h"
+#endif
+
 
 // ABL-OPCODE-BOUNDS-HARDEN gates and the ABL exec context (defined in mclib/ablxstd.cpp / ablexec.cpp).
 extern bool s_ablArgGuard;

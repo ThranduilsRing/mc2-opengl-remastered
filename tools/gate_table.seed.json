@@ -2634,7 +2634,7 @@
    "doc": "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit 0.08/0.15/0.20 leaves head calls at the 5% clamp); (S2) a successful AIMED area-effect (LRM) hit delivers its located damage to the called location (weaponbolt.cpp deliverAimedAreaHit, single-player only) with the splash explosion kept cosmetic, instead of stock's randomly-located explosion damage.",
    "readers": [
     {
-     "at": "code/gvehicl.cpp:4637",
+     "at": "code/gvehicl_weapons.cpp:745",
      "idiom": "Lead0P"
     },
     {
@@ -4453,7 +4453,7 @@
    "doc": "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).",
    "readers": [
     {
-     "at": "code/weaponbolt.cpp:417",
+     "at": "code/weaponbolt_update.cpp:16",
      "idiom": "Exact1"
     }
    ],
@@ -7549,7 +7549,7 @@
    "doc": "C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).",
    "readers": [
     {
-     "at": "code/gvehicl.cpp:124",
+     "at": "code/gvehicl_update.cpp:8",
      "idiom": "Presence"
     },
     {
@@ -16144,7 +16144,7 @@
    "doc": "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).",
    "readers": [
     {
-     "at": "code/weaponbolt.cpp:425",
+     "at": "code/weaponbolt_update.cpp:24",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -30812,7 +30812,7 @@
      "idiom": "Tri(inherit)"
     },
     {
-     "at": "code/weaponbolt.cpp:71",
+     "at": "code/weaponbolt_render.cpp:18",
      "idiom": "Tri(inherit)"
     }
    ],
@@ -30878,7 +30878,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "code/weaponbolt.cpp:77",
+     "at": "code/weaponbolt_render.cpp:24",
      "idiom": "Lead0"
     }
    ],

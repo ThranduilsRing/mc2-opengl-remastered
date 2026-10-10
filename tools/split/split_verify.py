@@ -108,10 +108,10 @@ def check_lines(old, new_by_file, stem, allow):
             old_c[l] = max(0, old_c[l] - (new_all[l] - new_c[l]))
     for a, b in edits:
         old_c[a] = max(0, old_c[a] - 1); new_c[b] = max(0, new_c[b] - 1)
-    for l in drop:
-        old_c[l] = max(0, old_c[l] - 1)
-    for l in add:
-        new_c[l] = max(0, new_c[l] - 1)
+    for l in drop:      # a listed line may be missing from the new files, any number of times
+        old_c[l] = min(old_c[l], new_c[l])
+    for l in add:       # a listed line may appear beyond its original count
+        new_c[l] = min(new_c[l], old_c[l])
     for l, n in (old_c - new_c).items():
         if l.startswith(b"//") or l.startswith(b"/*") or l.startswith(b"*"):
             continue   # comment edits are policy-allowed (comment de-bloat rides along with every move)

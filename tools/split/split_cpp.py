@@ -91,7 +91,7 @@ for u in units:
         continue
     if joined.lstrip().startswith(("static", "class", "struct", "typedef", "enum", "union", "namespace", "/*")):
         continue
-    if "::" in joined.split("=")[0].split("(")[0]:
+    if "::" in joined.split("=")[0].split("(")[0] and not joined.lstrip().startswith("extern"):
         continue
     if joined.lstrip().startswith("extern"):
         externs.append(re.sub(r"\s*//.*$", "", joined.strip(), flags=re.M))
