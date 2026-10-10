@@ -16,8 +16,8 @@
   "GameOS/gameos/engine_present_vk.cpp": 2750,
   "GameOS/gameos/gameos_graphics.cpp": 11533,
   "GameOS/gameos/gameosmain.cpp": 2810,
-  "GameOS/gameos/gos_mech_batcher.cpp": 3408,
-  "GameOS/gameos/gos_static_prop_batcher.cpp": 11025,
+  "GameOS/gameos/gos_mech_batcher.cpp": 3299,
+  "GameOS/gameos/gos_static_prop_batcher.cpp": 11026,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "4da3dfc9c",
+ "head": "22e32e789",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -173,7 +173,7 @@
   },
   {
    "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-   "lines": 11025
+   "lines": 11026
   },
   {
    "file": "code/missiongui.cpp",
@@ -217,7 +217,7 @@
   },
   {
    "file": "GameOS/gameos/gos_mech_batcher.cpp",
-   "lines": 3408
+   "lines": 3299
   },
   {
    "file": "code/brain_special_dispatch.cpp",

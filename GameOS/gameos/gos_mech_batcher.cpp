@@ -91,6 +91,7 @@ static_assert(MECH_RING_FRAMES == STATIC_PROP_RING_FRAMES,
 // whole object family shares one matrix policy. Signatures copied verbatim from
 // gos_terrain_lod_chunk.cpp.
 #include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
+#include "Gates/gate.h"
 // NOTE: raw gos_terrain_indirect_getDispatchMvp16() is phase-private to terrain/
 // water passes — mech draw uses gos_GetObjectDrawMVP() (the accessor above).
 // Enforced by scripts/check-object-mvp-currency.py.
@@ -99,10 +100,7 @@ static_assert(MECH_RING_FRAMES == STATIC_PROP_RING_FRAMES,
 // dispatch-MVP snapshot when the solid pass is armed (un-armed arm returns the
 // live pointer anyway). Sampled once at process start.
 static bool s_mechFixBMvpEnabled() {
-    static const bool on = []() {
-        const char* v = std::getenv("MC2_PROP_FIXB_MVP");
-        return !(v && std::atoi(v) == 0);  // default ON; only =0 reverts
-    }();
+    static const bool on = mc2::gate::get<"MC2_PROP_FIXB_MVP">();
     return on;
 }
 // RENDER-VIEW-CURRENCY-1: snapshot only when its view epoch matches the current
@@ -113,10 +111,9 @@ static const float* gos_GetMechFixBMVPMat4() {
 }
 
 // Default-on flip (2026-05-09): all GPU mech killswitches now default to ON.
-// Helper returns true unless the env var is explicitly set to "0". Operators
-// can opt out per-flag via MC2_GPU_MECH_<FLAG>=0. Pre-flip pattern was
-// `(getenv("X") != nullptr)` (default-off opt-in); post-flip is `default-on,
-// "0" opts out`. Each individual slice's killswitch comments in
+// The rows are default-on kill switches (a leading "0" turns one off). Operators
+// can opt out per-flag via MC2_GPU_MECH_<FLAG>=0. Pre-flip pattern was a
+// presence test (default-off opt-in); post-flip is `default-on, "0" opts out`. Each individual slice's killswitch comments in
 // gos_mech_killswitch.h document the inverted semantics.
 //
 // Why default-on shipped 2026-05-09: full slice campaign accumulated
@@ -125,13 +122,6 @@ static const float* gos_GetMechFixBMVPMat4() {
 // passed, combined stack delivers Mech3D.UpdateGeometry mean 71→14.08µs/call
 // (-80%). User explicitly signed off on B1's "needs more verification"
 // constraint based on this evidence.
-static bool envFlagDefaultOn(const char* name) {
-    const char* v = getenv(name);
-    if (v == nullptr) return true;                  // unset → on (new default)
-    if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" → off
-    return true;                                     // any other value → on
-}
-
 // ImGui visibility kill-switch. Always true at startup; toggled by the
 // Graphics Options panel "Draw Mechs" checkbox. When false, both the GPU
 // batcher submit and the CPU Render(true) fallback are skipped.
@@ -139,7 +129,7 @@ bool g_drawMechs = true;
 
 // Slice A: GPU mech batcher. Foundation for the entire stack.
 // Opt-out: MC2_GPU_MECHS=0
-bool g_useGpuMechs = envFlagDefaultOn("MC2_GPU_MECHS");
+bool g_useGpuMechs = mc2::gate::get<"MC2_GPU_MECHS">();
 
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_shared_gbuffer_gate.h"  // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
@@ -191,7 +181,7 @@ int g_mechPreviewRenderDepth = 0;
 
 // Slice C1: render-only mech GPU cull. Requires g_useGpuMechs=true.
 // Opt-out: MC2_GPU_MECH_CULL=0
-bool g_useGpuMechCull = envFlagDefaultOn("MC2_GPU_MECH_CULL");
+bool g_useGpuMechCull = mc2::gate::get<"MC2_GPU_MECH_CULL">();
 
 // MECH-KILLSWITCH-SKIN-RETIRE-1: MC2_GPU_MECH_SKIN retired to constant
 // (default-ON, proven no-op — stock + all imports single-bone). u_skinningMode
@@ -199,11 +189,11 @@ bool g_useGpuMechCull = envFlagDefaultOn("MC2_GPU_MECH_CULL");
 
 // Slice C3-revised: see gos_mech_killswitch.h. Body-only fast transform.
 // Opt-out: MC2_GPU_MECH_FAST_TRANSFORM=0
-bool g_useGpuMechFastTransform = envFlagDefaultOn("MC2_GPU_MECH_FAST_TRANSFORM");
+bool g_useGpuMechFastTransform = mc2::gate::get<"MC2_GPU_MECH_FAST_TRANSFORM">();
 
 // Slice C3-shadow: see gos_mech_killswitch.h. Shadow callsite fast transform.
 // Opt-out: MC2_GPU_MECH_SHADOW_FAST_TRANSFORM=0
-bool g_useGpuMechShadowFastTransform = envFlagDefaultOn("MC2_GPU_MECH_SHADOW_FAST_TRANSFORM");
+bool g_useGpuMechShadowFastTransform = mc2::gate::get<"MC2_GPU_MECH_SHADOW_FAST_TRANSFORM">();
 
 // MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: MC2_GPU_MECH_SHADOW_SKIP and
 // MC2_GPU_MECH_SHADOW_STATE_STRIP retired to constants (both default-ON,
@@ -212,7 +202,7 @@ bool g_useGpuMechShadowFastTransform = envFlagDefaultOn("MC2_GPU_MECH_SHADOW_FAS
 
 // Slice D-leaf-skip-v2: see gos_mech_killswitch.h.
 // Opt-out: MC2_GPU_MECH_LEAF_SKIP=0
-bool g_useGpuMechLeafSkip = envFlagDefaultOn("MC2_GPU_MECH_LEAF_SKIP");
+bool g_useGpuMechLeafSkip = mc2::gate::get<"MC2_GPU_MECH_LEAF_SKIP">();
 
 // MECH-KILLSWITCH-SENSORSKIP-RETIRE-1: MC2_GPU_MECH_SENSOR_SKIP retired to a
 // constant (was default-ON, strict no-op). Skip logic is now inline in
@@ -239,16 +229,10 @@ static int s_mechDebugMode = 0;
 // This block said "DEFAULT OFF ... opt-in (=1)" until ENV-DROP-CLOSE-1
 // (2026-07-30) while the reader four lines below already said DEFAULT-ON, so
 // the two halves of the same declaration disagreed.
-static const bool s_mechViewUniforms = []() {
-    const char* v = std::getenv("MC2_MECH_VIEWUNIFORMS");
-    return !(v != nullptr && v[0] == '0');   // DEFAULT-ON; kill-switch =0
-}();
+static const bool s_mechViewUniforms = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS">();
 // Shared diag gate (link-time block-binding log + flush-time binding/matrix
 // probe). Default OFF (MC2_MECH_VIEWUNIFORMS_DIAG=1).
-static const bool s_mechViewUniformsDiag = []() {
-    const char* v = std::getenv("MC2_MECH_VIEWUNIFORMS_DIAG");
-    return v != nullptr && v[0] == '1';
-}();
+static const bool s_mechViewUniformsDiag = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS_DIAG">();
 
 // MECH-NORMALS-FIX-1: gated mech-LOCAL normal recompute, applied at
 // registerTypeLod over each node's triangle-soup verts. Does NOT touch the
@@ -264,20 +248,11 @@ static const bool s_mechViewUniformsDiag = []() {
 // DEFAULT-ON: mode 2 (smoothed, hard-edge preserving) — the intended look that
 // fixes the corrupted ASE-averaged normals. Kill-switch MC2_MECH_NORMALS_MODE=0
 // restores cooked/legacy normals; =1 = faceted. User-approved 2026-05-28.
-static int s_mechNormalsMode = []() {
-    const char* v = std::getenv("MC2_MECH_NORMALS_MODE");
-    return v ? std::atoi(v) : 2;
-}();
+static int s_mechNormalsMode = mc2::gate::get<"MC2_MECH_NORMALS_MODE">();
 // Smoothing angle for mode 2 (degrees): faces meeting at a shared vertex blend
 // only when within this angle, so a smaller value preserves MORE hard edges
 // (e.g. lower it to sharpen the cockpit). Env-tunable for dial-in; default 60.
-static float s_mechNormalsSmoothDeg = []() {
-    const char* v = std::getenv("MC2_MECH_NORMALS_SMOOTH_DEG");
-    float d = v ? (float)std::atof(v) : 60.0f;
-    if (d < 1.0f)   d = 1.0f;
-    if (d > 179.0f) d = 179.0f;
-    return d;
-}();
+static float s_mechNormalsSmoothDeg = mc2::gate::get<"MC2_MECH_NORMALS_SMOOTH_DEG">();   // row: default 60, clamps to [1, 179]
 
 // MECH-NORMALS-FIX-1: per-node VBO byte ranges recorded during registerTypeLod.
 // Each entry is {startByte, endByte} in s_stagingVbo for one node's verts.
@@ -292,124 +267,53 @@ static std::vector<std::pair<size_t,size_t>> s_nodeVboRanges;
 // mutable so ImGui can dial them live (batcher_setMechAmbient*). The shader term
 // is a per-fragment hemisphere using the world normal; no PBR/material/team-mask
 // data involved. Works on legacy and ViewUniforms mech paths (no camera data).
-static bool  s_mechAmbientV1 = []() {
-    const char* v = std::getenv("MC2_MECH_AMBIENT_V1");
-    return !(v != nullptr && v[0] == '0');   // default-ON; kill-switch =0
-}();
-static float s_mechAmbientStrength = []() {
-    const char* v = std::getenv("MC2_MECH_AMBIENT_V1_STRENGTH");
-    float d = v ? (float)std::atof(v) : 0.15f;   // user-tuned default
-    if (d < 0.0f) d = 0.0f;
-    if (d > 2.0f) d = 2.0f;
-    return d;
-}();
+static bool s_mechAmbientV1 = mc2::gate::get<"MC2_MECH_AMBIENT_V1">();
+static float s_mechAmbientStrength = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();   // row: user-tuned default 0.15, clamps to [0, 2]
 
 // MECH-SPECULAR-V1: conservative Blinn specular sheen. DEFAULT-OFF (gate
 // MC2_MECH_SPECULAR_V1=1 to enable). Only effective when MC2_MECH_VIEWUNIFORMS=1
 // (the shader variant with MC2_USE_VIEW_UNIFORMS defined); on all other paths the
 // C++ side uploads strength 0 → exact no-op. Per-flush uniforms — no VBO rebuild.
-static bool  s_mechSpecularV1 = []() {
-    const char* v = std::getenv("MC2_MECH_SPECULAR_V1");
-    return !(v != nullptr && v[0] == '0');  // DEFAULT-ON; kill-switch =0
-}();
-static float s_mechSpecularStrength = []() {
-    const char* v = std::getenv("MC2_MECH_SPECULAR_STRENGTH");
-    // Default 0.05: at 1.0 the Blinn highlight read as a near-glow on mech
-    // armor. 0.05 is a subtle metal glint. MC2_MECH_SPECULAR_STRENGTH overrides.
-    // Also profile-backed via the mechSpecularStrength key (visual_tuning.json).
-    float d = v ? (float)std::atof(v) : 0.05f;
-    if (d < 0.0f) d = 0.0f;
-    if (d > 4.0f) d = 4.0f;
-    return d;
-}();
-static float s_mechMetalRoughness = []() {
-    const char* v = std::getenv("MC2_MECH_METAL_ROUGHNESS");
-    float d = v ? (float)std::atof(v) : 0.85f;
-    if (d < 0.04f) d = 0.04f;
-    if (d > 1.0f)  d = 1.0f;
-    return d;
-}();
-static float s_mechGlassRoughness = []() {
-    const char* v = std::getenv("MC2_MECH_GLASS_ROUGHNESS");
-    float d = v ? (float)std::atof(v) : 0.25f;
-    if (d < 0.04f) d = 0.04f;
-    if (d > 1.0f)  d = 1.0f;
-    return d;
-}();
-static float s_mechGlassLumaThresh = []() {
-    const char* v = std::getenv("MC2_MECH_GLASS_LUMA_THRESH");
-    float d = v ? (float)std::atof(v) : 0.12f;
-    if (d < 0.0f) d = 0.0f;
-    if (d > 1.0f) d = 1.0f;
-    return d;
-}();
-static float s_mechGlassMaxChanThresh = []() {
-    const char* v = std::getenv("MC2_MECH_GLASS_MAXCHAN_THRESH");
-    float d = v ? (float)std::atof(v) : 0.18f;
-    if (d < 0.0f) d = 0.0f;
-    if (d > 1.0f) d = 1.0f;
-    return d;
-}();
+static bool s_mechSpecularV1 = mc2::gate::get<"MC2_MECH_SPECULAR_V1">();
+// Default 0.05: at 1.0 the Blinn highlight read as a near-glow on mech armor; 0.05 is a subtle metal glint.
+// MC2_MECH_SPECULAR_STRENGTH overrides (row clamps to [0, 4]); also profile-backed via the mechSpecularStrength
+// key (visual_tuning.json).
+static float s_mechSpecularStrength = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();
+// Rows carry the defaults (0.85 / 0.25 / 0.12 / 0.18) and the clamps ([0.04, 1] roughness, [0, 1] thresholds).
+static float s_mechMetalRoughness = mc2::gate::get<"MC2_MECH_METAL_ROUGHNESS">();
+static float s_mechGlassRoughness = mc2::gate::get<"MC2_MECH_GLASS_ROUGHNESS">();
+static float s_mechGlassLumaThresh = mc2::gate::get<"MC2_MECH_GLASS_LUMA_THRESH">();
+static float s_mechGlassMaxChanThresh = mc2::gate::get<"MC2_MECH_GLASS_MAXCHAN_THRESH">();
 static bool  s_mechSpecDebugMask = false;  // ImGui only; no env var
 // MECH-BACK-FILL-1: cool-sky fill for the StandardLit shadow hemisphere.
 // Default OFF (0.0). Enable via MC2_MECH_BACK_FILL=<strength> (e.g. 1.5).
-static float s_mechBackFillStrength = []() {
-    const char* v = std::getenv("MC2_MECH_BACK_FILL");
-    return v ? (float)std::atof(v) : 0.0f;
-}();
+static float s_mechBackFillStrength = mc2::gate::get<"MC2_MECH_BACK_FILL">();
 
 // PBR-TUNE-1: StandardLit GGX gate + material influence knobs.
 // Mutable so ImGui can dial live (batcher_setStandardLitEnabled / batcher_setPbr*).
 // Env-seeded defaults; no VBO rebuild needed (per-flush uniforms).
-static int   s_standardLitEnabled = []() {
-    const char* v = std::getenv("MC2_STANDARD_LIT_V1");
-    return (v != nullptr && v[0] == '1');   // TEMPORARY DEFAULT-OFF (PBR mech rendering disabled); opt-in =1
-}();
-static float s_pbrMetallicInfluence = []() {
-    const char* v = std::getenv("MC2_PBR_METALLIC_INFLUENCE");
-    if (v) return (float)std::atof(v);
-    const char* mat = std::getenv("MC2_MECH_SURFACE_MATERIAL");
-    return (mat && strcmp(mat, "painted_subtle") == 0) ? 0.03f : 0.15f;
-}();
-static float s_pbrRoughnessMin = []() {
-    const char* v = std::getenv("MC2_PBR_ROUGHNESS_MIN");
-    if (v) return (float)std::atof(v);
-    const char* mat = std::getenv("MC2_MECH_SURFACE_MATERIAL");
-    return (mat && strcmp(mat, "painted_subtle") == 0) ? 0.65f : 0.45f;
-}();
-static float s_pbrRoughnessMax = []() {
-    const char* v = std::getenv("MC2_PBR_ROUGHNESS_MAX");
-    if (v) return (float)std::atof(v);
-    const char* mat = std::getenv("MC2_MECH_SURFACE_MATERIAL");
-    return (mat && strcmp(mat, "painted_subtle") == 0) ? 0.90f : 0.90f;
-}();
-static float s_pbrAmbientSpecularStrength = []() {
-    const char* v = std::getenv("MC2_PBR_AMBIENT_SPECULAR");
-    return v ? (float)std::atof(v) : 0.25f;
-}();
+static int s_standardLitEnabled = mc2::gate::get<"MC2_STANDARD_LIT_V1">();
+static float s_pbrMetallicInfluence = mc2::gate::isSet<"MC2_PBR_METALLIC_INFLUENCE">()
+    ? mc2::gate::get<"MC2_PBR_METALLIC_INFLUENCE">()
+    : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.03f : 0.15f);
+static float s_pbrRoughnessMin = mc2::gate::isSet<"MC2_PBR_ROUGHNESS_MIN">()
+    ? mc2::gate::get<"MC2_PBR_ROUGHNESS_MIN">()
+    : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.65f : 0.45f);
+static float s_pbrRoughnessMax = mc2::gate::isSet<"MC2_PBR_ROUGHNESS_MAX">()
+    ? mc2::gate::get<"MC2_PBR_ROUGHNESS_MAX">()
+    : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.90f : 0.90f);
+static float s_pbrAmbientSpecularStrength = mc2::gate::get<"MC2_PBR_AMBIENT_SPECULAR">();
 
 // PBR-LAYERED-1: PaintedMetal003 paint layer + triplanar. All mutable via ImGui.
 static uint32_t s_mechPaintSurfaceMaterialIdx = 0u;  // resolved lazily alongside s_mechSurfaceMaterialIdx
-static float s_pbrWearStrength = []() {
-    const char* v = std::getenv("MC2_PBR_WEAR_STRENGTH");
-    if (v) return (float)std::atof(v);
-    const char* mat = std::getenv("MC2_MECH_SURFACE_MATERIAL");
-    return (mat && strcmp(mat, "painted_subtle") == 0) ? 0.0f : 1.0f;
-}();
-static int   s_pbrTriplanar = []() {
-    const char* v = std::getenv("MC2_PBR_TRIPLANAR");
-    return (v && v[0] == '1') ? 1 : 0;  // DEFAULT-OFF; enable with =1
-}();
-static float s_pbrTriplanarScale = []() {
-    const char* v = std::getenv("MC2_PBR_TRIPLANAR_SCALE");
-    return v ? (float)std::atof(v) : 0.2f;
-}();
+static float s_pbrWearStrength = mc2::gate::isSet<"MC2_PBR_WEAR_STRENGTH">()
+    ? mc2::gate::get<"MC2_PBR_WEAR_STRENGTH">()
+    : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 0.0f : 1.0f);
+static int s_pbrTriplanar = mc2::gate::get<"MC2_PBR_TRIPLANAR">();
+static float s_pbrTriplanarScale = mc2::gate::get<"MC2_PBR_TRIPLANAR_SCALE">();
 // PBR-IBL-MECH-1: SH-L2 image-based ambient for mechs.
 // Shares g_iblShStrength with static props (same slider). Default-ON; =0 disables.
-static const bool s_mechIblShEnabled = []() {
-    const char* v = std::getenv("MC2_MECH_IBL_SH");
-    return !(v != nullptr && v[0] == '0');
-}();
+static const bool s_mechIblShEnabled = mc2::gate::get<"MC2_MECH_IBL_SH">();
 
 // Cached uniform locations (set at program link time).
 static GLint s_loc_u_instanceBase    = -1;
@@ -656,8 +560,7 @@ static bool     s_lastFailWasLateReg      = false;
 // Map keyed by Mech3DAppearanceType* (the desc.mechType field on submitActor).
 // Value is the number of SpotLight_-prefixed TypeNodes seen during ANY LOD's
 // recipe build (max across LODs, since each instance only renders at one LOD).
-static const bool s_spotlightRealTrace =
-    (getenv("MC2_SPOTLIGHT_REAL_TRACE") != nullptr);
+static const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
 static std::unordered_map<const Mech3DAppearanceType*, uint32_t>
     s_spotlightRealTypeNodeCount;
 static uint64_t s_spotlightReal_typeNodeEvents = 0;  // monotonic (a)
@@ -673,10 +576,7 @@ static bool     s_spotlightReal_firstHitDraw     = false;
 // ---------------------------------------------------------------------------
 #include "../../RenderCore/MaterialGpu.h"
 #include "../../RenderCore/GpuBufferOwner.h"
-static const bool s_mechMaterialGpuEnabled = []() {
-    const char* v = getenv("MC2_MATERIAL_GPU");
-    return v == nullptr || (v[0] != '0');
-}();
+static const bool s_mechMaterialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
 static std::vector<RenderCore::MaterialGpu>        s_mechMaterialTable;
 static std::unordered_map<uint32_t, uint32_t>      s_mechHandleToMaterialIdx;
 static std::vector<uint32_t>                       s_mechDrawMaterialIdx;
@@ -789,7 +689,7 @@ static void loadProgramsIfNeeded() {
     // Diagnostic gated behind MC2_LIGHTSSBO_TRACE (demote-not-delete;
     // matches gameos_graphics.cpp s_lightSsboTrace). Default-off so it
     // does not pollute frame-time captures.
-    if (std::getenv("MC2_LIGHTSSBO_TRACE") != nullptr) {
+    if (mc2::gate::get<"MC2_LIGHTSSBO_TRACE">()) {
         GLint maxSsbo = 0;
         glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSsbo);
         std::fprintf(stderr,
@@ -1158,8 +1058,7 @@ void GpuMechBatcher::flushShadow() {
     // at the end of flush() and consume those statics here.
 
     // DEFAULT ON. Kill-switch: MC2_SHADOW_ENABLE=0.
-    static const bool s_shadowEnabled = !(getenv("MC2_SHADOW_ENABLE") != nullptr &&
-                                          getenv("MC2_SHADOW_ENABLE")[0] == '0');
+    static const bool s_shadowEnabled = mc2::gate::get<"MC2_SHADOW_ENABLE">();
     if (!s_shadowEnabled) return;
 
     // Geometry-readiness guard, mirroring the color flush() path (:867).
@@ -1376,7 +1275,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
     if (!mechType) return;
     const TypeLodKey key{mechType, lod};
     if (s_typeLodIndex.count(key)) return;  // idempotent
-    static const bool s_mechRestoreTrace = (getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+    static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
     if (s_geometryFinalized) {
         // Late registration (post-finalizeGeometry). DO NOT drop: stage
         // the type into the retained s_stagingVbo/Ibo (fall through to
@@ -1422,7 +1321,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         mc2mechanim::ImportedGpuTypeInfo((const void*)typeMulti, &importBoneIdx, &importNumVerts);
     const bool importGpu = (importJointCount > 0 && importJointCount <= 255);
 
-    static const bool s_nodeTrace = (getenv("MC2_MECH_NODE_TRACE") != nullptr);
+    static const bool s_nodeTrace = mc2::gate::get<"MC2_MECH_NODE_TRACE">();
     if (s_nodeTrace) {
         std::fprintf(stderr, "[MECHREG v1] event=register type=%p lod=%d numBones=%d\n",
                      (void*)mechType, lod, numNodes);
@@ -1859,7 +1758,7 @@ void GpuMechBatcher::finalizePending() {
     MC2_DIAGFE(stderr,
         "[MECHBATCHER v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",
         s_typeLodRecords.size(), lateAdded, s_geometryFinalized ? 1 : 0);
-    if (getenv("MC2_MECH_RESTORE_TRACE") != nullptr)
+    if (mc2::gate::get<"MC2_MECH_RESTORE_TRACE">())
         std::fprintf(stderr,
             "[MECHRESTORE v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",
             s_typeLodRecords.size(), lateAdded, s_geometryFinalized ? 1 : 0);
@@ -2035,11 +1934,11 @@ void GpuMechBatcher::flush() {
     }
 
     if (!s_mechBatcherTraceInit) {
-        s_mechBatcherTrace     = (getenv("MC2_MECH_BATCHER_STATS") != nullptr);
+        s_mechBatcherTrace     = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();
         s_mechBatcherTraceInit = true;
     }
     if (!s_mechLightTraceInit) {
-        s_mechLightTrace     = (getenv("MC2_MECH_LIGHT_TRACE") != nullptr);
+        s_mechLightTrace     = mc2::gate::get<"MC2_MECH_LIGHT_TRACE">();
         s_mechLightTraceInit = true;
     }
     if (s_mechLightTrace) {
@@ -2071,9 +1970,11 @@ void GpuMechBatcher::flush() {
     // init() is called from finalizeGeometry() which always precedes the first flush().
     if (!s_mechSurfaceMaterialIdxResolved) {
         s_mechSurfaceMaterialIdxResolved = true;
-        const char* v = std::getenv("MC2_MECH_SURFACE_MATERIAL");
-        if (v && v[0] != '\0' && strcmp(v, "none") != 0 && strcmp(v, "0") != 0)
-            s_mechSurfaceMaterialIdx = gos_materials::getProfileIndex(v);
+        // Profiles exist only for these two names; any other text (none, 0, a typo) keeps the passthrough index 0.
+        if (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "metal061b">())
+            s_mechSurfaceMaterialIdx = gos_materials::getProfileIndex("metal061b");
+        else if (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">())
+            s_mechSurfaceMaterialIdx = gos_materials::getProfileIndex("painted_subtle");
         // else stays 0 (default passthrough)
         if (s_mechSurfaceMaterialIdx != 0u)
             s_mechPaintSurfaceMaterialIdx = gos_materials::getProfileIndex("paintedmetal003");
@@ -2449,12 +2350,9 @@ void GpuMechBatcher::flush() {
     // s_mechSurfaceMaterialIdx 0 → both getters return 0 → unbind (safe; shader
     // only samples these when u_standardLitEnabled != 0, which requires a non-zero profile).
     {
-        static const float s_pbrTileScale = []() {
-            const char* v = std::getenv("MC2_PBR_TILE_SCALE");
-            if (v) return (float)std::atof(v);
-            const char* mat = std::getenv("MC2_MECH_SURFACE_MATERIAL");
-            return (mat && strcmp(mat, "painted_subtle") == 0) ? 2.0f : 4.0f;
-        }();
+        static const float s_pbrTileScale = mc2::gate::isSet<"MC2_PBR_TILE_SCALE">()
+            ? mc2::gate::get<"MC2_PBR_TILE_SCALE">()
+            : (mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">() ? 2.0f : 4.0f);
         const GLuint pbrNormal = gos_materials::getProfileNormalTex(s_mechSurfaceMaterialIdx);
         const GLuint pbrOrm    = gos_materials::getProfileOrmTex(s_mechSurfaceMaterialIdx);
         glActiveTexture(GL_TEXTURE1);
@@ -2520,10 +2418,7 @@ void GpuMechBatcher::flush() {
         // agreement.py classifies a Feature gate's default FROM ITS READER, and
         // an idiom it cannot parse is a FAILURE, not a pass. The first draft
         // here used an early-return plus `? 0 : 1` and came back UNCLASSIFIABLE.
-        static const bool s_sunAxisMc2Fix = [](){
-            const char* v = getenv("MC2_SUN_AXIS_FIX");
-            return (v && v[0] && v[0] != '0');
-        }();
+        static const bool s_sunAxisMc2Fix = mc2::gate::get<"MC2_SUN_AXIS_FIX">();
         glUniform1i(s_loc_u_sunAxisMc2Fix, s_sunAxisMc2Fix ? 1 : 0);
     }
     if (s_mechBatcherTrace) {
@@ -2542,8 +2437,7 @@ void GpuMechBatcher::flush() {
         // MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode.
         // 0=normal, 1=magenta, 2=texOnly, 3=lightOnly, 4=normal-as-color.
         // When env is unset and s_mechDebugMode=0: dbgMode=0 → byte-identical.
-        const char* dbg = std::getenv("MC2_MECH_FRAG_DEBUG");
-        const int dbgMode = dbg ? std::atoi(dbg) : s_mechDebugMode;
+        const int dbgMode = mc2::gate::isSet<"MC2_MECH_FRAG_DEBUG">() ? mc2::gate::get<"MC2_MECH_FRAG_DEBUG">() : s_mechDebugMode;
         if (s_loc_u_debugMode >= 0)
             glUniform1i(s_loc_u_debugMode, dbgMode);
     }
@@ -2762,7 +2656,7 @@ void GpuMechBatcher::flush() {
             // (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a
             // synchronous GPU stall that pollutes any perf measurement.
             // Only enable when actively diagnosing texture-content bugs.
-            static const bool s_pixelReadback = (getenv("MC2_MECH_TEX_READBACK") != nullptr);
+            static const bool s_pixelReadback = mc2::gate::get<"MC2_MECH_TEX_READBACK">();
             if (s_pixelReadback && tw > 0 && th > 0 && tw <= 4096 && th <= 4096) {
                 std::vector<uint8_t> pixels((size_t)tw * th * 3, 0);
                 glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
@@ -2948,10 +2842,7 @@ void GpuMechBatcher::flush() {
 
     // MECH-EXTRACTION-0: persist per-actor facts for batcher_getMechPendingCount/Entry.
     // Must run before s_pendingSubmits.clear() so ExtractRenderSnapshot can read this frame's data.
-    static const bool s_mechExtractEnabled = [] {
-        const char* v = std::getenv("MC2_SNAPSHOT_MECH_EXTRACT");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s_mechExtractEnabled = mc2::gate::get<"MC2_SNAPSHOT_MECH_EXTRACT">();
     if (s_mechExtractEnabled) {
         s_mechExtractPersist.clear();
         s_mechExtractPersist.reserve(s_pendingSubmits.size());

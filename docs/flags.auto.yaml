@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 932
+verified_count: 1010
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -743,12 +743,13 @@ flags:
     verified: true
     registry: {feature_id: MC2_TRACE_CAMERA_MOVE_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_CAMERA_PARK
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_CAMERA_PARK, kind: Trace, order: -1, default_on: false}
   - name: MC2_CAMERA_SMOOTH
     kind: Float
@@ -1951,6 +1952,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_GPUBUF_COUNTER
     kind: Bool
     default: false
@@ -2093,12 +2095,14 @@ flags:
     rule: Presence
     owner: props
     doc: "Order-validation oracle (gated): for each placed record, verify its actor center is near the recipe's own leaf world position (within the bounding sphere)."
+    verified: true
   - name: MC2_GPU_CULL_STATIC_FROZEN_RECORDS
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: "M1 FROZEN-STATIC-CULL-RECORDS (gate MC2_GPU_CULL_STATIC_FROZEN_RECORDS)."
+    verified: true
   - name: MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE
     kind: Bool
     default: false
@@ -2216,6 +2220,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: "[RETIRED] GPU mech batcher (gos_mech_batcher)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_GPU_MECHS, kind: Retired, order: 0, default_on: true}
   - name: MC2_GPU_MECH_CULL
     kind: Bool
@@ -2223,6 +2228,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU..."
+    verified: true
     registry: {feature_id: MC2_FEATURE_GPU_MECH_CULL, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_MECH_FAST_TRANSFORM
     kind: Bool
@@ -2230,6 +2236,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs."
+    verified: true
     registry: {feature_id: MC2_FEATURE_GPU_MECH_FAST_TRANSFORM, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_MECH_LEAF_SKIP
     kind: Bool
@@ -2237,6 +2244,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected."
+    verified: true
     registry: {feature_id: MC2_FEATURE_GPU_MECH_LEAF_SKIP, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_MECH_SHADOW_FAST_TRANSFORM
     kind: Bool
@@ -2244,6 +2252,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite."
+    verified: true
     registry: {feature_id: MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_OBJECTS
     kind: Bool
@@ -2755,6 +2764,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_LIGHT_BILLBOARD_FACING
     kind: String
     default: ""
@@ -3308,13 +3318,15 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_AMBIENT_V1_STRENGTH
     kind: Float
     default: 0.150000006
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 0, hi: 2, style: reject}
+    range: {lo: 0, hi: 2, style: clamp}
+    verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool
     default: true
@@ -3328,45 +3340,52 @@ flags:
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_BATCHER_STATS
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_FRAG_DEBUG
     kind: Int
     default: 0
     rule: Prefix
     owner: mech
     doc: "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode."
+    verified: true
   - name: MC2_MECH_GLASS_LUMA_THRESH
     kind: Float
     default: 0.119999997
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
+    verified: true
   - name: MC2_MECH_GLASS_MAXCHAN_THRESH
     kind: Float
     default: 0.180000007
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
+    verified: true
   - name: MC2_MECH_GLASS_ROUGHNESS
     kind: Float
     default: 0.25
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 0.04, hi: 1, style: reject}
+    range: {lo: 0.04, hi: 1, style: clamp}
+    verified: true
   - name: MC2_MECH_IBL_SH
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_ANIMATE
     kind: Bool
     default: false
@@ -3459,6 +3478,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_LOD_TRACE
     kind: Bool
     default: false
@@ -3472,7 +3492,8 @@ flags:
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 0.04, hi: 1, style: reject}
+    range: {lo: 0.04, hi: 1, style: clamp}
+    verified: true
   - name: MC2_MECH_NODE_DIAG
     kind: Bool
     default: false
@@ -3486,19 +3507,22 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_NORMALS_MODE
     kind: Int
     default: 2
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_NORMALS_SMOOTH_DEG
     kind: Float
     default: 60
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 1, hi: 179, style: reject}
+    range: {lo: 1, hi: 179, style: clamp}
+    verified: true
   - name: MC2_MECH_OBJECT_ID_SELFTEST
     kind: Bool
     default: false
@@ -3576,13 +3600,15 @@ flags:
     rule: Prefix
     owner: mech
     doc: ""
-    range: {lo: 0, hi: 4, style: reject}
+    range: {lo: 0, hi: 4, style: clamp}
+    verified: true
   - name: MC2_MECH_SPECULAR_V1
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_SURFACE_MATERIAL
     kind: Enum
     default: ""
@@ -3590,24 +3616,28 @@ flags:
     owner: mech
     doc: "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load."
     tokens: "|0|metal061b|none|painted_subtle"
+    verified: true
   - name: MC2_MECH_TEX_READBACK
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf..."
+    verified: true
   - name: MC2_MECH_VIEWUNIFORMS
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_VIEWUNIFORMS_DIAG
     kind: Bool
     default: false
     rule: Lead1
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MENU_CANARY_SKIP_INTRO
     kind: Bool
     default: false
@@ -4132,48 +4162,56 @@ flags:
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_METALLIC_INFLUENCE
     kind: Float
     default: 0
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_ROUGHNESS_MAX
     kind: Float
     default: 0.899999976
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_ROUGHNESS_MIN
     kind: Float
     default: 0
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_TILE_SCALE
     kind: Float
     default: 0
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_TRIPLANAR
     kind: Bool
     default: false
     rule: Lead1
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_TRIPLANAR_SCALE
     kind: Float
     default: 0.200000003
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PBR_WEAR_STRENGTH
     kind: Float
     default: 0
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_PICK_BEHIND_LEGACY
     kind: Bool
     default: false
@@ -4497,6 +4535,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_REGFLUSH_GUARD2
     kind: Bool
     default: false
@@ -4504,18 +4543,21 @@ flags:
     owner: props
     doc: "STATIC-REGISTRY-CURRENTNESS-GUARD-2: generalize the R2b stale_after_drawn counter beyond the single tree case."
     smoke_passthrough: true
+    verified: true
   - name: MC2_REGFLUSH_MULTI
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_REGFLUSH_TYPEHIST
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_RENDERLISTS_COST_SPLIT
     kind: Bool
     default: false
@@ -5310,6 +5352,7 @@ flags:
     owner: mech
     doc: "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Feature, order: 17, default_on: false}
   - name: MC2_SNAPSHOT_STATIC_PROP_BUILD
     kind: Bool
@@ -5522,6 +5565,7 @@ flags:
     rule: Lead1
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_STATICPROP_BC7
     kind: Bool
     default: false
@@ -5590,6 +5634,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_LIGHT_UPLOAD_SPLIT
     kind: Bool
     default: true
@@ -5604,6 +5649,7 @@ flags:
     rule: Std
     owner: props
     doc: "2026-05-11 per-instance light-idx capture."
+    verified: true
   - name: MC2_STATIC_POP_SPLIT
     kind: Bool
     default: false
@@ -5716,6 +5762,7 @@ flags:
     owner: props
     doc: "STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A: replace the per-leaf registry-flush rebuild with cached immutable instance/actor-record blobs bulk-appended into..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_FLUSH_CACHED_BLOB, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE
     kind: Bool
@@ -5724,6 +5771,7 @@ flags:
     owner: props
     doc: "STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A diagnostic: with the cached path active, also build the legacy temp instance+record per leaf and compare..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_FLUSH_COST_SPLIT
     kind: Bool
@@ -5811,6 +5859,7 @@ flags:
     rule: Std
     owner: props
     doc: "Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20)."
+    verified: true
   - name: MC2_STATIC_PROP_LEGACY_DISPATCH
     kind: Bool
     default: false
@@ -5844,6 +5893,7 @@ flags:
     rule: Std
     owner: props
     doc: "Task 9 (Track B): mission-load + late-spawn registration ON by default."
+    verified: true
   - name: MC2_STATIC_PROP_NIGHT_TAGS
     kind: Int
     default: 0
@@ -5899,6 +5949,7 @@ flags:
     owner: props
     doc: "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 (Mechanism B-reinject): persistent static instance store, rebuilt only on registry-generation change..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_PERSISTENT_BUCKETS, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE
     kind: Bool
@@ -5907,6 +5958,7 @@ flags:
     owner: props
     doc: "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 oracle: FNV-compare the persistent-store-sourced per-type instance stream vs a freshly-rebuilt legacy stream..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_PICK
     kind: Bool
@@ -5928,6 +5980,7 @@ flags:
     rule: Std
     owner: props
     doc: "GpuStaticPropRegistry enable."
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_REGISTRY, kind: Feature, order: 11, default_on: true}
   - name: MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE
     kind: Bool
@@ -5966,6 +6019,7 @@ flags:
     rule: Lead0Kill
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_REG_COVERAGE
     kind: Bool
     default: false
@@ -5997,6 +6051,7 @@ flags:
     owner: props
     doc: "Opt-in teeth for CI / bisection: abort on the regression signature."
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATIC_UPDATE_SKIP
     kind: Bool
     default: true
@@ -7197,7 +7252,9 @@ flags:
     rule: Prefix
     owner: gameos
     doc: "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to..."
+    range: {lo: 0, hi: 8, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS, kind: Trace, order: -1, default_on: false}
   - name: MC2_TUNE_VFX_AGE_FADE
     kind: Float
@@ -7205,7 +7262,9 @@ flags:
     rule: Prefix
     owner: gameos
     doc: "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age."
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VFX_AGE_FADE, kind: Trace, order: -1, default_on: false}
   - name: MC2_TUNE_VFX_ALPHA_SCALE
     kind: Float
@@ -7213,7 +7272,9 @@ flags:
     rule: Prefix
     owner: gameos
     doc: "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles)."
+    range: {lo: 0, hi: 8, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VFX_ALPHA_SCALE, kind: Trace, order: -1, default_on: false}
   - name: MC2_TUNE_VFX_BRIGHTNESS
     kind: Float
@@ -7221,7 +7282,9 @@ flags:
     rule: Prefix
     owner: gameos
     doc: "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles)."
+    range: {lo: 0, hi: 8, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VFX_BRIGHTNESS, kind: Trace, order: -1, default_on: false}
   - name: MC2_TUNE_VFX_LIT_STRENGTH
     kind: Float
@@ -7229,7 +7292,9 @@ flags:
     rule: Prefix
     owner: gameos
     doc: "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups..."
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VFX_LIT_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_TXMMGR_BOUNDS_TRACE
     kind: Bool
@@ -7468,13 +7533,16 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VFX_DEBUG_MODE
     kind: Int
     default: 0
     rule: Prefix
     owner: gameos
     doc: "VFX-DEBUG-VIEWS-1: GPU particle billboard fragment-shader debug-mode selector (particle_billboard.frag u_debugMode, uploaded by gos_particle_bridge)."
+    range: {lo: 0, hi: 5, style: reject}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_VFX_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
   - name: MC2_VFX_DISTORTION
     kind: Bool
@@ -7482,18 +7550,22 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VFX_DISTORT_AMP
     kind: Float
-    default: 0
+    default: 0.0399999991
     rule: Prefix
     owner: gameos
-    doc: ""
+    doc: "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5] reads the default."
+    range: {lo: 0, hi: 0.5, style: reject, lo_exclusive: true}
+    verified: true
   - name: MC2_VFX_DISTORT_FIXTURE
     kind: Bool
     default: false
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VFX_GPU_SIM_CARDCLOUD
     kind: Bool
     default: false
@@ -7517,6 +7589,7 @@ flags:
     owner: gameos
     doc: "VFX-LIT-PARTICLES-MVP-1 (Track V): simple directional+ambient lighting for alpha-blended smoke/dust particles."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_LIT_PARTICLES, kind: Feature, order: 28, default_on: false}
   - name: MC2_VFX_ORACLE_RENDER
     kind: Bool
@@ -7555,6 +7628,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs..."
+    verified: true
     registry: {feature_id: MC2_VFX_ORACLE_TUBE_COVERAGE, kind: Trace, order: -1, default_on: false}
   - name: MC2_VFX_ORACLE_TUBE_LOG
     kind: Bool
@@ -7570,6 +7644,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VFX_SOFT_PARTICLES
     kind: Bool
     default: false
@@ -7577,6 +7652,7 @@ flags:
     owner: gameos
     doc: "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_SOFT_PARTICLES, kind: Feature, order: 27, default_on: false}
   - name: MC2_VFX_TUBE_UPLOAD_STATS
     kind: Bool
@@ -7584,6 +7660,7 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VIEWMODE_FRAMEWORK
     kind: Bool
     default: false
@@ -7631,31 +7708,35 @@ flags:
     verified: true
     registry: {feature_id: MC2_FEATURE_VIEW_UNIFORMS, kind: Feature, order: 16, default_on: true}
   - name: MC2_VISUAL_BOOKMARK_CAPTURE
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: vk
-    doc: ""
+    doc: "Path of the bookmarks.json the capture replay drives; any set value (even empty) arms the replay."
     smoke_passthrough: true
+    verified: true
   - name: MC2_VISUAL_CAPTURE_CLEAN
     kind: Bool
     default: false
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VISUAL_CAPTURE_DIR
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
-    doc: ""
+    doc: "Directory the visual capture primitive and the bookmark replay write into; set-but-empty is kept as empty (replay falls back to .)."
     smoke_passthrough: true
+    verified: true
   - name: MC2_VISUAL_CAPTURE_EXIT_AFTER
     kind: Bool
     default: false
     rule: Presence
     owner: gameos
     doc: "VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT] logHealth..."
+    verified: true
   - name: MC2_VISUAL_CAPTURE_FRAME
     kind: Int
     default: -1
@@ -7663,6 +7744,7 @@ flags:
     owner: vk
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VISUAL_CAPTURE_ON_FIRE
     kind: Bool
     default: false
@@ -7715,6 +7797,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VISUAL_TUNING_FILE
     kind: String
     default: ""
@@ -8511,6 +8594,7 @@ flags:
     owner: vk
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VULKAN_SPV_DIR
     kind: String
     default: "shaders/vulkan"
@@ -8832,6 +8916,7 @@ flags:
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_XFORM_PARITY_FATAL
     kind: Bool
     default: false

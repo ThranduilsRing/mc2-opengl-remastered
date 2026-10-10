@@ -149,7 +149,7 @@ L(Lead0Kill, "MC2_CAMERA_ASPECT_NATIVE", Bool, true, "code", "", "", passthrough
 // history: docs/gate-history.md#MC2_CAMERA_MOVE_DIAG
 L(Presence, "MC2_CAMERA_MOVE_DIAG", Bool, false, "unclassified", "", "TRACKV-CI-GATE-RESTORE-1: camera movement diagnostic readback probe.", passthrough | registry(Trace, "MC2_TRACE_CAMERA_MOVE_DIAG", -1, false) | verified),
 // history: docs/gate-history.md#MC2_CAMERA_PARK
-L(Presence, "MC2_CAMERA_PARK", Bool, false, "gameos", "", "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it...", passthrough | registry(Trace, "MC2_DIAG_CAMERA_PARK", -1, false)),
+G("MC2_CAMERA_PARK", String, "", "gameos", "", "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it...", passthrough | registry(Trace, "MC2_DIAG_CAMERA_PARK", -1, false) | verified),
 P("MC2_CAMERA_SMOOTH", Float, 100.0, "code", "", "", passthrough | clampRange(0.0, 2000.0) | verified),
 L(Lead1, "MC2_CAMERA_SMOOTH_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Lead1, "MC2_CAM_SMOOTH_TEST", Bool, false, "code", "", "", passthrough | verified),
@@ -376,7 +376,7 @@ L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type cl
 // GOM_UPDATE_COST v1: per-phase GameObjectManager update CPU cost trace.
 // history: docs/gate-history.md#MC2_GOM_UPDATE_COST_SPLIT
 L(Lead0P, "MC2_GOM_UPDATE_COST_SPLIT", Bool, false, "code", "", "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp).", passthrough | registry(Trace, "MC2_GOM_UPDATE_COST_SPLIT", -1, false) | verified),
-L(Lead1, "MC2_GOSFX_GROUP_LOG", Bool, false, "gameos", "", ""),
+L(Lead1, "MC2_GOSFX_GROUP_LOG", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_GPUBUF_COUNTER", Bool, false, "gameos", "", "GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate."),
 // history: docs/gate-history.md#MC2_GPUBUF_LIGHT_GROWONCE
 L(Presence, "MC2_GPUBUF_LIGHT_GROWONCE", Bool, false, "gameos", "", "LIGHT-GROW-ONCE-SUBDATA-1 (AMD-safe intermediate for the light SSBO orphan churn; NOT the full GpuStorageRing ring).", registry(Feature, "MC2_GPUBUF_LIGHT_GROWONCE", -1, false)),
@@ -400,8 +400,8 @@ L(Presence, "MC2_GPU_CULL_OWNERSHIP_PARITY", Bool, false, "gameos", "", "Ownersh
 L(Lead0Kill, "MC2_GPU_CULL_READBACK", Bool, true, "gameos", "", "PERF-OBJECT-ITER-GPU-PORT-1: default-ON now that substrate+coalesce are stable.", passthrough),
 L(Presence, "MC2_GPU_CULL_READBACK_TRACE", Bool, false, "gameos", "", "Env-gated trace macro.", passthrough),
 L(Presence, "MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE", Bool, false, "props", "", "Order-validation oracle (gated): for each placed record, verify its actor center is near the recipe's own leaf world position (within the bounding sphere)."),
-L(Presence, "MC2_GPU_CULL_STATIC_FROZEN_RECORDS", Bool, false, "props", "", "M1 FROZEN-STATIC-CULL-RECORDS (gate MC2_GPU_CULL_STATIC_FROZEN_RECORDS)."),
+L(Presence, "MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE", Bool, false, "props", "", "Order-validation oracle (gated): for each placed record, verify its actor center is near the recipe's own leaf world position (within the bounding sphere).", verified),
+L(Presence, "MC2_GPU_CULL_STATIC_FROZEN_RECORDS", Bool, false, "props", "", "M1 FROZEN-STATIC-CULL-RECORDS (gate MC2_GPU_CULL_STATIC_FROZEN_RECORDS).", verified),
 // GATE-HYGIENE-CLOSE-1: static-prop light-bake probe (was legacy-allowlist-escaped).
 // history: docs/gate-history.md#MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE
 L(Presence, "MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE", Bool, false, "props", "", "Static-prop light-bake observation gate, default OFF.", registry(Trace, "MC2_TRACE_GPU_CULL_STATIC_LIGHT_ZERO_PROBE", -1, false) | verified),
@@ -420,16 +420,16 @@ P("MC2_GPU_GROUND_PICK_PARITY_SAMPLE", Int, 30, "code", "", "Sample every Nth fr
 G("MC2_GPU_GROUND_PICK_PARITY_TAG", String, "", "code", "", "", passthrough | verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_GPU_GV_SHADOW_SKIP", Bool, true, "mech", "", "", verified),
 // history: docs/gate-history.md#MC2_GPU_MECHS
-L(Lead0Kill, "MC2_GPU_MECHS", Bool, true, "mech", "", "[RETIRED] GPU mech batcher (gos_mech_batcher).", registry(Retired, "MC2_FEATURE_GPU_MECHS", 0, true)),
+L(Lead0Kill, "MC2_GPU_MECHS", Bool, true, "mech", "", "[RETIRED] GPU mech batcher (gos_mech_batcher).", registry(Retired, "MC2_FEATURE_GPU_MECHS", 0, true) | verified),
 // ENV sweep 2026-07-09 (checker regex widen: digit names + envFlagDefaultOn helper)
 // history: docs/gate-history.md#MC2_GPU_MECH_CULL
-L(Lead0Kill, "MC2_GPU_MECH_CULL", Bool, true, "mech", "", "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU...", registry(Feature, "MC2_FEATURE_GPU_MECH_CULL", -1, true)),
+L(Lead0Kill, "MC2_GPU_MECH_CULL", Bool, true, "mech", "", "Slice C1 (gos_mech_batcher.cpp): render-only mech GPU cull -- skip GPU mech submit for actors the GPU lagged-readback says were invisible last frame (CPU...", registry(Feature, "MC2_FEATURE_GPU_MECH_CULL", -1, true) | verified),
 // history: docs/gate-history.md#MC2_GPU_MECH_FAST_TRANSFORM
-L(Lead0Kill, "MC2_GPU_MECH_FAST_TRANSFORM", Bool, true, "mech", "", "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs.", registry(Feature, "MC2_FEATURE_GPU_MECH_FAST_TRANSFORM", -1, true)),
+L(Lead0Kill, "MC2_GPU_MECH_FAST_TRANSFORM", Bool, true, "mech", "", "Slice C3-revised (gos_mech_batcher.cpp): body-only fast transform path for GPU-driven mechs.", registry(Feature, "MC2_FEATURE_GPU_MECH_FAST_TRANSFORM", -1, true) | verified),
 // history: docs/gate-history.md#MC2_GPU_MECH_LEAF_SKIP
-L(Lead0Kill, "MC2_GPU_MECH_LEAF_SKIP", Bool, true, "mech", "", "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected.", registry(Feature, "MC2_FEATURE_GPU_MECH_LEAF_SKIP", -1, true)),
+L(Lead0Kill, "MC2_GPU_MECH_LEAF_SKIP", Bool, true, "mech", "", "Slice D-leaf-skip-v2 (gos_mech_batcher.cpp): strip per-leaf body of mechShape->TransformMultiShape* work when the leaf is provably unaffected.", registry(Feature, "MC2_FEATURE_GPU_MECH_LEAF_SKIP", -1, true) | verified),
 // history: docs/gate-history.md#MC2_GPU_MECH_SHADOW_FAST_TRANSFORM
-L(Lead0Kill, "MC2_GPU_MECH_SHADOW_FAST_TRANSFORM", Bool, true, "mech", "", "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite.", registry(Feature, "MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM", -1, true)),
+L(Lead0Kill, "MC2_GPU_MECH_SHADOW_FAST_TRANSFORM", Bool, true, "mech", "", "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite.", registry(Feature, "MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM", -1, true) | verified),
 // history: docs/gate-history.md#MC2_GPU_OBJECTS
 L(Lead0Kill, "MC2_GPU_OBJECTS", Bool, true, "unclassified", "", "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).", passthrough | registry(Retired, "MC2_FEATURE_STATIC_PROP_INDIRECT", 1, true) | verified),
 // MC2_GPU_PARTICLES (master GPU-particle path; lives in kAuxEnvVars: kFeatureTable is indexed by RendererFeature; read in mclib/particles/batcher.cpp initialize_env)
@@ -528,7 +528,7 @@ G("MC2_LIGHTING_DEBUG_VIEW", Enum, "", "gameos", "", "DEBUG-VIEW-SWEEP-1: replac
 L(Presence, "MC2_LIGHTING_LINEAR_AUDIT", Bool, false, "post", "", "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe.", verified),
 G("MC2_LIGHTING_SHADOW_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 L(Presence, "MC2_LIGHTSLOT_TRACE", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_LIGHTSSBO_TRACE", Bool, false, "mech", "", ""),
+L(Presence, "MC2_LIGHTSSBO_TRACE", Bool, false, "mech", "", "", verified),
 G("MC2_LIGHT_BILLBOARD_FACING", String, "", "props", "", "", passthrough | verified),
 L(Lead0, "MC2_LIGHT_BILLBOARD_TWOSIDED", Bool, false, "code", "", "", passthrough | verified),
 L(Exact1, "MC2_LIGHT_CLAMP_FIXTURE", Bool, false, "code", "", "MC2_LIGHT_CLAMP_FIXTURE (default OFF) - synthetic injector of deterministic extra point lights into slots [populated..32) to prove slots >16 ever render.", verified),
@@ -635,16 +635,16 @@ L(Lead0Kill, "MC2_MATERIAL_GPU_SAMPLE", Bool, true, "props", "", "GPU material a
 // history: docs/gate-history.md#MC2_MATERIAL_KTX
 L(Lead0P, "MC2_MATERIAL_KTX", Bool, false, "props", "", "KTX2 sidecar loader for static-prop textures (RenderCore/KtxLoader).", registry(Feature, "MC2_FEATURE_MATERIAL_KTX", 12, false) | verified),
 L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough),
-L(Lead0Kill, "MC2_MECH_AMBIENT_V1", Bool, true, "mech", "", ""),
-P("MC2_MECH_AMBIENT_V1_STRENGTH", Float, 0.15, "mech", "", "", range(0.0, 2.0)),
+L(Lead0Kill, "MC2_MECH_AMBIENT_V1", Bool, true, "mech", "", "", verified),
+P("MC2_MECH_AMBIENT_V1_STRENGTH", Float, 0.15, "mech", "", "", clampRange(0.0, 2.0) | verified),
 L(Lead0Kill, "MC2_MECH_ANIM_ROTATION_ONLY", Bool, true, "mech", "", "", verified),
-P("MC2_MECH_BACK_FILL", Float, 0.0, "mech", "", ""),
-L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", ""),
-P("MC2_MECH_FRAG_DEBUG", Int, 0, "mech", "", "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode."),  // default not derivable from the tree
-P("MC2_MECH_GLASS_LUMA_THRESH", Float, 0.12, "mech", "", "", range(0.0, 1.0)),
-P("MC2_MECH_GLASS_MAXCHAN_THRESH", Float, 0.18, "mech", "", "", range(0.0, 1.0)),
-P("MC2_MECH_GLASS_ROUGHNESS", Float, 0.25, "mech", "", "", range(0.04, 1.0)),
-L(Lead0Kill, "MC2_MECH_IBL_SH", Bool, true, "mech", "", ""),
+P("MC2_MECH_BACK_FILL", Float, 0.0, "mech", "", "", verified),
+L(Presence, "MC2_MECH_BATCHER_STATS", Bool, false, "mech", "", "", verified),
+P("MC2_MECH_FRAG_DEBUG", Int, 0, "mech", "", "MC2_MECH_FRAG_DEBUG=N: legacy env path; wins over ImGui s_mechDebugMode.", verified),  // default not derivable from the tree
+P("MC2_MECH_GLASS_LUMA_THRESH", Float, 0.12, "mech", "", "", clampRange(0.0, 1.0) | verified),
+P("MC2_MECH_GLASS_MAXCHAN_THRESH", Float, 0.18, "mech", "", "", clampRange(0.0, 1.0) | verified),
+P("MC2_MECH_GLASS_ROUGHNESS", Float, 0.25, "mech", "", "", clampRange(0.04, 1.0) | verified),
+L(Lead0Kill, "MC2_MECH_IBL_SH", Bool, true, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_ANIMATE", Bool, false, "code", "", "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).", verified),
 L(Presence, "MC2_MECH_IMPORT_CLIP_DIAG", Bool, false, "mech", "", "", verified),
 L(Lead1, "MC2_MECH_IMPORT_DYNAMIC_LIFT", Bool, false, "code", "", "Default: static rest lift (steady torso).", verified),
@@ -661,13 +661,13 @@ P("MC2_MECH_IMPORT_GPU_LIFT_AXIS", Int, 1, "code", "", "", verified),
 // entry's position is its enum value (62).
 // history: docs/gate-history.md#MC2_MECH_LIGHT_FRESHNESS
 L(Lead0Kill, "MC2_MECH_LIGHT_FRESHNESS", Bool, true, "mech", "", "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON.", passthrough | registry(Feature, "MC2_MECH_LIGHT_FRESHNESS", 54, true) | verified),
-L(Presence, "MC2_MECH_LIGHT_TRACE", Bool, false, "mech", "", ""),
+L(Presence, "MC2_MECH_LIGHT_TRACE", Bool, false, "mech", "", "", verified),
 L(Presence, "MC2_MECH_LOD_TRACE", Bool, false, "mech", "", "MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.", verified),
-P("MC2_MECH_METAL_ROUGHNESS", Float, 0.85, "mech", "", "", range(0.04, 1.0)),
+P("MC2_MECH_METAL_ROUGHNESS", Float, 0.85, "mech", "", "", clampRange(0.04, 1.0) | verified),
 L(Presence, "MC2_MECH_NODE_DIAG", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_MECH_NODE_TRACE", Bool, false, "mech", "", ""),
-P("MC2_MECH_NORMALS_MODE", Int, 2, "mech", "", ""),
-P("MC2_MECH_NORMALS_SMOOTH_DEG", Float, 60.0, "mech", "", "", range(1.0, 179.0)),
+L(Presence, "MC2_MECH_NODE_TRACE", Bool, false, "mech", "", "", verified),
+P("MC2_MECH_NORMALS_MODE", Int, 2, "mech", "", "", verified),
+P("MC2_MECH_NORMALS_SMOOTH_DEG", Float, 60.0, "mech", "", "", clampRange(1.0, 179.0) | verified),
 L(Lead0, "MC2_MECH_OBJECT_ID_SELFTEST", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_MECH_PICK", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_MECH_PICK_DEBUG", Bool, false, "code", "", "", verified),
@@ -678,12 +678,12 @@ L(Presence, "MC2_MECH_RESTORE_TRACE", Bool, false, "mech", "", "", passthrough |
 G("MC2_MECH_SKEL_BONE_DUMP", String, "", "code", "", "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when...", verified),
 P("MC2_MECH_SKEL_HEIGHT", Float, 50.0, "code", "", "", verified),
 L(Presence, "MC2_MECH_SKEL_TRACE", Bool, false, "code", "", "BT2018-SKEL-ENGINE-1A - bind-pose bake trace (default OFF).", verified),
-P("MC2_MECH_SPECULAR_STRENGTH", Float, 0.05, "mech", "", "", range(0.0, 4.0)),
-L(Lead0Kill, "MC2_MECH_SPECULAR_V1", Bool, true, "mech", "", ""),
-G("MC2_MECH_SURFACE_MATERIAL", Enum, "", "mech", "", "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load.", tokens("|0|metal061b|none|painted_subtle")),
-L(Presence, "MC2_MECH_TEX_READBACK", Bool, false, "mech", "", "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf..."),
-L(Lead0Kill, "MC2_MECH_VIEWUNIFORMS", Bool, true, "mech", "", ""),
-L(Lead1, "MC2_MECH_VIEWUNIFORMS_DIAG", Bool, false, "mech", "", ""),
+P("MC2_MECH_SPECULAR_STRENGTH", Float, 0.05, "mech", "", "", clampRange(0.0, 4.0) | verified),
+L(Lead0Kill, "MC2_MECH_SPECULAR_V1", Bool, true, "mech", "", "", verified),
+G("MC2_MECH_SURFACE_MATERIAL", Enum, "", "mech", "", "Gate: MC2_MECH_SURFACE_MATERIAL controls which profiles to load.", tokens("|0|metal061b|none|painted_subtle") | verified),
+L(Presence, "MC2_MECH_TEX_READBACK", Bool, false, "mech", "", "Pixel-readback diagnostic - gated on its own env var (NOT MC2_MECH_BATCHER_STATS) because glGetTexImage is a synchronous GPU stall that pollutes any perf...", verified),
+L(Lead0Kill, "MC2_MECH_VIEWUNIFORMS", Bool, true, "mech", "", "", verified),
+L(Lead1, "MC2_MECH_VIEWUNIFORMS_DIAG", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_MENU_CANARY_SKIP_INTRO", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_MIF_SPLIT", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_MISSING_RUNWAY_FIX", Bool, true, "terrain", "", "", verified),
@@ -773,14 +773,14 @@ L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-
 L(Lead1, "MC2_PATH_SOLVE_ISOLATED", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_PAVED_OVERLAY_CLASS
 P("MC2_PAVED_OVERLAY_CLASS", Int, 0, "terrain", "", "DEFAULT 0 (OFF).", passthrough | registry(Feature, "MC2_FEATURE_PAVED_OVERLAY_CLASS", -1, false) | range(0, 2) | verified),
-P("MC2_PBR_AMBIENT_SPECULAR", Float, 0.25, "mech", "", ""),
-P("MC2_PBR_METALLIC_INFLUENCE", Float, 0.0, "mech", "", ""),  // default not derivable from the tree
-P("MC2_PBR_ROUGHNESS_MAX", Float, 0.9, "mech", "", ""),
-P("MC2_PBR_ROUGHNESS_MIN", Float, 0.0, "mech", "", ""),  // default not derivable from the tree
-P("MC2_PBR_TILE_SCALE", Float, 0.0, "mech", "", ""),  // default not derivable from the tree
-L(Lead1, "MC2_PBR_TRIPLANAR", Bool, false, "mech", "", ""),
-P("MC2_PBR_TRIPLANAR_SCALE", Float, 0.2, "mech", "", ""),
-P("MC2_PBR_WEAR_STRENGTH", Float, 0.0, "mech", "", ""),  // default not derivable from the tree
+P("MC2_PBR_AMBIENT_SPECULAR", Float, 0.25, "mech", "", "", verified),
+P("MC2_PBR_METALLIC_INFLUENCE", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
+P("MC2_PBR_ROUGHNESS_MAX", Float, 0.9, "mech", "", "", verified),
+P("MC2_PBR_ROUGHNESS_MIN", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
+P("MC2_PBR_TILE_SCALE", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
+L(Lead1, "MC2_PBR_TRIPLANAR", Bool, false, "mech", "", "", verified),
+P("MC2_PBR_TRIPLANAR_SCALE", Float, 0.2, "mech", "", "", verified),
+P("MC2_PBR_WEAR_STRENGTH", Float, 0.0, "mech", "", "", verified),  // default not derivable from the tree
 L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_PICK_FALLBACK_COARSE
@@ -837,10 +837,10 @@ L(Presence, "MC2_RDC_EXIT_AFTER", Bool, false, "gameos", "", ""),
 G("MC2_RDC_MAX_WAIT", Bool, false, "gameos", "", ""),  // default not derivable from the tree
 L(NonEmpty, "MC2_RDC_MISSION", Bool, false, "gameos", "", ""),
 L(Presence, "MC2_REBUILD_MOD_CACHE", Bool, false, "code", "", "", reread | verified),
-L(Presence, "MC2_REGFLUSH_DIAG_TRACE", Bool, false, "props", "", "", passthrough),
-L(Presence, "MC2_REGFLUSH_GUARD2", Bool, false, "props", "", "STATIC-REGISTRY-CURRENTNESS-GUARD-2: generalize the R2b stale_after_drawn counter beyond the single tree case.", passthrough),
-L(Presence, "MC2_REGFLUSH_MULTI", Bool, false, "props", "", ""),
-L(Presence, "MC2_REGFLUSH_TYPEHIST", Bool, false, "props", "", ""),
+L(Presence, "MC2_REGFLUSH_DIAG_TRACE", Bool, false, "props", "", "", passthrough | verified),
+L(Presence, "MC2_REGFLUSH_GUARD2", Bool, false, "props", "", "STATIC-REGISTRY-CURRENTNESS-GUARD-2: generalize the R2b stale_after_drawn counter beyond the single tree case.", passthrough | verified),
+L(Presence, "MC2_REGFLUSH_MULTI", Bool, false, "props", "", "", verified),
+L(Presence, "MC2_REGFLUSH_TYPEHIST", Bool, false, "props", "", "", verified),
 // history: docs/gate-history.md#MC2_RENDERLISTS_COST_SPLIT
 L(Lead0P, "MC2_RENDERLISTS_COST_SPLIT", Bool, false, "code", "", "TXMMGR-PERF-EASYWINS-1: coarse per-phase CPU cost split of MC_TextureManager::renderLists() (mclib/txmmgr.cpp).", passthrough | registry(Trace, "MC2_RENDERLISTS_COST_SPLIT", -1, false) | verified),
 L(Exact1, "MC2_RENDERSTATES_LEGACY", Bool, false, "gameos", "", "", verified),
@@ -1000,7 +1000,7 @@ L(Presence, "MC2_SMOKE_MODE", Bool, false, "gameos", "", "", passthrough | verif
 P("MC2_SMOKE_PERF_SAMPLES", Int, 0, "gameos", "", ""),  // default not derivable from the tree
 P("MC2_SMOKE_SEED", Int, 0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_SNAPSHOT_MECH_EXTRACT
-L(Lead0, "MC2_SNAPSHOT_MECH_EXTRACT", Bool, false, "mech", "", "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).", passthrough | registry(Feature, "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", 17, false)),
+L(Lead0, "MC2_SNAPSHOT_MECH_EXTRACT", Bool, false, "mech", "", "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).", passthrough | registry(Feature, "MC2_FEATURE_SNAPSHOT_MECH_EXTRACT", 17, false) | verified),
 // history: docs/gate-history.md#MC2_SNAPSHOT_STATIC_PROP_BUILD
 L(Lead0Kill, "MC2_SNAPSHOT_STATIC_PROP_BUILD", Bool, true, "props", "", "Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state (gos_static_prop_batcher.cpp).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_SNAPSHOT_BUILD", 14, true) | verified),
 // history: docs/gate-history.md#MC2_SNAP_CULL
@@ -1044,7 +1044,7 @@ P("MC2_SSAO_RADIUS", Float, 0.0, "post", "", "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-
 G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", passthrough | verified),
 G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
-L(Lead1, "MC2_STANDARD_LIT_V1", Bool, false, "mech", "", ""),
+L(Lead1, "MC2_STANDARD_LIT_V1", Bool, false, "mech", "", "", verified),
 // history: docs/gate-history.md#MC2_STATICPROP_BC7
 L(Lead0P, "MC2_STATICPROP_BC7", Bool, false, "props", "", "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)...", registry(Feature, "MC2_FEATURE_STATICPROP_BC7", 32, false) | verified),
 // Static-prop ORM (PBR) — load-only feature + trace
@@ -1057,10 +1057,10 @@ P("MC2_STATICPROP_TEX_TIER", Int, 512, "props", "", "", verified),
 L(Presence, "MC2_STATIC_C1B_DRAW", Bool, false, "props", "", "C1b: when compute cull is enabled and the indirect command buffer is ready, write the per-type CPU instance counts into the indirect buffer before the draw...", verified),
 L(Presence, "MC2_STATIC_FORCE_ADMIT", Bool, false, "props", "", "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record...", passthrough | verified),
 L(Presence, "MC2_STATIC_INST_DIAG", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_STATIC_LEAF_DIAG", Bool, false, "props", "", ""),
+L(Presence, "MC2_STATIC_LEAF_DIAG", Bool, false, "props", "", "", verified),
 // history: docs/gate-history.md#MC2_STATIC_LIGHT_UPLOAD_SPLIT
 L(Lead0Kill, "MC2_STATIC_LIGHT_UPLOAD_SPLIT", Bool, true, "code", "", "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead...", registry(Feature, "MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT", -1, true) | verified),
-G("MC2_STATIC_PER_INSTANCE_LIGHT", Bool, true, "props", "", "2026-05-11 per-instance light-idx capture."),
+G("MC2_STATIC_PER_INSTANCE_LIGHT", Bool, true, "props", "", "2026-05-11 per-instance light-idx capture.", verified),
 L(Presence, "MC2_STATIC_POP_SPLIT", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_STATIC_POP_SPLIT_CMD_DIAG", Bool, false, "props", "", "Diag (env-gated): dump the static cmd summary so Task 3 can be validated before the draw exists.", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_AMBIENT_V1
@@ -1082,9 +1082,9 @@ P("MC2_STATIC_PROP_FIXTURE_GLOW", Float, 0.0, "props", "", "FIXTURE-GLOW-1: DEFA
 // history: docs/gate-history.md#MC2_STATIC_PROP_FIXTURE_LIGHTS
 P("MC2_STATIC_PROP_FIXTURE_LIGHTS", Float, 1.0, "props", "", "BEACON-FIXTURE-ID-1: DEFAULT-ON.", passthrough | clampRange(0.0, 16.0) | registry(Trace, "MC2_STATIC_PROP_FIXTURE_LIGHTS", -1, true) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_FLUSH_CACHED_BLOB
-G("MC2_STATIC_PROP_FLUSH_CACHED_BLOB", Bool, false, "props", "", "STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A: replace the per-leaf registry-flush rebuild with cached immutable instance/actor-record blobs bulk-appended into...", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_FLUSH_CACHED_BLOB", -1, false)),
+G("MC2_STATIC_PROP_FLUSH_CACHED_BLOB", Bool, false, "props", "", "STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A: replace the per-leaf registry-flush rebuild with cached immutable instance/actor-record blobs bulk-appended into...", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_FLUSH_CACHED_BLOB", -1, false) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE
-G("MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", Bool, false, "props", "", "STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A diagnostic: with the cached path active, also build the legacy temp instance+record per leaf and compare...", passthrough | registry(Trace, "MC2_TRACE_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", -1, false)),
+G("MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", Bool, false, "props", "", "STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A diagnostic: with the cached path active, also build the legacy temp instance+record per leaf and compare...", passthrough | registry(Trace, "MC2_TRACE_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", -1, false) | verified),
 // SPFLUSH-COST-SPLIT-1: RDTSC decomposition of StaticPropRegistryFlush hot zone.
 // history: docs/gate-history.md#MC2_STATIC_PROP_FLUSH_COST_SPLIT
 L(Exact1, "MC2_STATIC_PROP_FLUSH_COST_SPLIT", Bool, false, "props", "", "SPFLUSH-COST-SPLIT-1: RDTSC cost-split decomposition of GpuStaticPropRegistry::flush().", passthrough | registry(Trace, "MC2_TRACE_STATIC_PROP_FLUSH_COST_SPLIT", -1, false) | verified),
@@ -1107,7 +1107,7 @@ P("MC2_STATIC_PROP_IBL_SH_STRENGTH", Float, 0.5, "props", "", "V-IBL-STATIC-1: o
 L(Lead0, "MC2_STATIC_PROP_IBL_SUN_ROTATE", Bool, false, "props", "", "[DEFAULT-OFF OPT-IN.", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR
 P("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", Float, 0.45, "props", "", "[VALUE, not a boolean: the floor in the probe's own irradiance units.", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", -1, true) | clampRange(0.0, 2.0) | verified),
-G("MC2_STATIC_PROP_LATE_SPAWN_REG", Bool, false, "props", "", "Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20)."),
+G("MC2_STATIC_PROP_LATE_SPAWN_REG", Bool, false, "props", "", "Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20).", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_LEGACY_DISPATCH
 L(Lead1, "MC2_STATIC_PROP_LEGACY_DISPATCH", Bool, false, "props", "", "v6 DrawPacket+Meta dispatch (default-ON as of v7).", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_PACKET_DISPATCH", 13, true) | verified),
 // StaticPropLightFreshness (LIGHTROW-FRESHNESS-1)
@@ -1117,7 +1117,7 @@ L(Lead1, "MC2_STATIC_PROP_LEGACY_DISPATCH", Bool, false, "props", "", "v6 DrawPa
 L(Lead0Kill, "MC2_STATIC_PROP_LIGHT_FRESHNESS", Bool, true, "props", "", "LIGHTROW-FRESHNESS-1: DEFAULT-ON.", passthrough | registry(Feature, "MC2_STATIC_PROP_LIGHT_FRESHNESS", 53, true) | verified),
 // DrawPacket v8 kill-switch
 L(Lead1, "MC2_STATIC_PROP_LIVE_BUILDER", Bool, false, "props", "", "v8 kill-switch: =1 restores live build + snapshot compare", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_LIVE_BUILDER", -1, false) | verified),
-G("MC2_STATIC_PROP_MISSION_LOAD_REG", Bool, true, "props", "", "Task 9 (Track B): mission-load + late-spawn registration ON by default."),
+G("MC2_STATIC_PROP_MISSION_LOAD_REG", Bool, true, "props", "", "Task 9 (Track B): mission-load + late-spawn registration ON by default.", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_NIGHT_TAGS
 P("MC2_STATIC_PROP_NIGHT_TAGS", Int, 0, "props", "", "EDGE-LIGHT-EMISSION-1: restores the stock hot-colour NIGHT vertex tags on the GPU static-prop path.", passthrough | clampRange(0, 2) | registry(Trace, "MC2_STATIC_PROP_NIGHT_TAGS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_NIGHT_TAGS_SCALE
@@ -1129,13 +1129,13 @@ L(Lead0, "MC2_STATIC_PROP_PBR_V1_DIAG_SUNFOUND", Bool, false, "props", "", "V-MA
 // history: docs/gate-history.md#MC2_STATIC_PROP_PBR_V1_STRENGTH
 P("MC2_STATIC_PROP_PBR_V1_STRENGTH", Float, 0.5, "props", "", "V-MATERIAL-PBR-3: optional default-strength override for per-fragment Schlick-Fresnel specular (clamped 0..3).", passthrough | clampRange(0.0, 3.0) | registry(Trace, "MC2_TUNE_STATIC_PROP_PBR_V1_STRENGTH", -1, false) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_PERSISTENT_BUCKETS
-G("MC2_STATIC_PROP_PERSISTENT_BUCKETS", Bool, true, "props", "", "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 (Mechanism B-reinject): persistent static instance store, rebuilt only on registry-generation change...", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_PERSISTENT_BUCKETS", -1, true)),
+G("MC2_STATIC_PROP_PERSISTENT_BUCKETS", Bool, true, "props", "", "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 (Mechanism B-reinject): persistent static instance store, rebuilt only on registry-generation change...", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_PERSISTENT_BUCKETS", -1, true) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE
-G("MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", Bool, false, "props", "", "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 oracle: FNV-compare the persistent-store-sourced per-type instance stream vs a freshly-rebuilt legacy stream...", passthrough | registry(Trace, "MC2_TRACE_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", -1, false)),
+G("MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", Bool, false, "props", "", "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 oracle: FNV-compare the persistent-store-sourced per-type instance stream vs a freshly-rebuilt legacy stream...", passthrough | registry(Trace, "MC2_TRACE_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", -1, false) | verified),
 L(Lead0, "MC2_STATIC_PROP_PICK", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_STATIC_PROP_PICK_DEBUG", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_REGISTRY
-G("MC2_STATIC_PROP_REGISTRY", Bool, true, "props", "", "GpuStaticPropRegistry enable.", registry(Feature, "MC2_FEATURE_STATIC_PROP_REGISTRY", 11, true)),
+G("MC2_STATIC_PROP_REGISTRY", Bool, true, "props", "", "GpuStaticPropRegistry enable.", registry(Feature, "MC2_FEATURE_STATIC_PROP_REGISTRY", 11, true) | verified),
 // STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1
 // history: docs/gate-history.md#MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE
 L(Lead1, "MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE", Bool, false, "gameos", "", "STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1 gate: default OFF. =1 builds s_spRowCache from registry each frame and compares field-by-field with legacy propBuf.", passthrough | registry(Trace, "MC2_TRACE_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE", -1, false)),
@@ -1143,11 +1143,11 @@ L(Lead0Kill, "MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY", Bool, true, "gameos", ""
 L(Lead0, "MC2_STATIC_PROP_TRACE", Bool, false, "props", "", "Stage 2.C+ instrumentation: one-shot registered-types dump.", verified),
 // history: docs/gate-history.md#MC2_STATIC_PROXY_RECON
 L(Presence, "MC2_STATIC_PROXY_RECON", Bool, false, "props", "", "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) - counts touchSerialCommit calls for building/tree appearances ahead of the per-frame...", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROXY_RECON", -1, false) | verified),
-L(Lead0Kill, "MC2_STATIC_RECIPE_RECYCLE", Bool, true, "props", "", ""),
+L(Lead0Kill, "MC2_STATIC_RECIPE_RECYCLE", Bool, true, "props", "", "", verified),
 L(Presence, "MC2_STATIC_REG_COVERAGE", Bool, false, "props", "", "STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.", passthrough | verified),
 L(Presence, "MC2_STATIC_REG_PREWARM", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_STATIC_REG_PREWARM_TRACE", Bool, false, "code", "", "", passthrough | verified),
-L(Presence, "MC2_STATIC_STALE_DROP_FATAL", Bool, false, "props", "", "Opt-in teeth for CI / bisection: abort on the regression signature.", passthrough),
+L(Presence, "MC2_STATIC_STALE_DROP_FATAL", Bool, false, "props", "", "Opt-in teeth for CI / bisection: abort on the regression signature.", passthrough | verified),
 // history: docs/gate-history.md#MC2_STATIC_UPDATE_SKIP
 G("MC2_STATIC_UPDATE_SKIP", Bool, true, "terrain", "", "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp).", passthrough | registry(Feature, "MC2_FEATURE_STATIC_UPDATE_SKIP", -1, true) | verified),
 G("MC2_STATIC_UPDATE_TRACE", Bool, false, "terrain", "", "", verified),
@@ -1405,15 +1405,15 @@ L(Presence, "MC2_TREE_DIAG_TRACE", Bool, false, "props", "", "[DEFAULT-OFF, but 
 L(Presence, "MC2_TREE_REG_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_TUBE_PROFILE_LOG", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS
-P("MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to...", passthrough | registry(Trace, "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", -1, false)),
+P("MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the additive-only GPU-particle RGB brightness scale (particle_billboard.frag u_vfxAdditiveBrightness, applied ONLY to...", passthrough | clampRange(0.0, 8.0) | registry(Trace, "MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TUNE_VFX_AGE_FADE
-P("MC2_TUNE_VFX_AGE_FADE", Float, 0.0, "gameos", "", "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age.", passthrough | registry(Trace, "MC2_TUNE_VFX_AGE_FADE", -1, false)),
+P("MC2_TUNE_VFX_AGE_FADE", Float, 0.0, "gameos", "", "VFX-SHADER-AGE-FADE-PARITY-1: soft death fade for oracle-harvested particles (p.lifetime==1.0f sentinel) in the final 30% of normalized age.", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_VFX_AGE_FADE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TUNE_VFX_ALPHA_SCALE
-P("MC2_TUNE_VFX_ALPHA_SCALE", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles).", passthrough | registry(Trace, "MC2_TUNE_VFX_ALPHA_SCALE", -1, false)),
+P("MC2_TUNE_VFX_ALPHA_SCALE", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the GPU-particle alpha (opacity) scale (particle_billboard.frag u_vfxAlphaScale, applied to ALL particles).", passthrough | clampRange(0.0, 8.0) | registry(Trace, "MC2_TUNE_VFX_ALPHA_SCALE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TUNE_VFX_BRIGHTNESS
-P("MC2_TUNE_VFX_BRIGHTNESS", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles).", passthrough | registry(Trace, "MC2_TUNE_VFX_BRIGHTNESS", -1, false)),
+P("MC2_TUNE_VFX_BRIGHTNESS", Float, 1.0, "gameos", "", "VFX-TUNING-UI-1: startup-default for the global GPU-particle RGB brightness scale (particle_billboard.frag u_vfxBrightness, applied to ALL particles).", passthrough | clampRange(0.0, 8.0) | registry(Trace, "MC2_TUNE_VFX_BRIGHTNESS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TUNE_VFX_LIT_STRENGTH
-P("MC2_TUNE_VFX_LIT_STRENGTH", Float, 0.7, "gameos", "", "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups...", passthrough | registry(Trace, "MC2_TUNE_VFX_LIT_STRENGTH", -1, false)),
+P("MC2_TUNE_VFX_LIT_STRENGTH", Float, 0.7, "gameos", "", "VFX-LIT-PARTICLES-MVP-1: startup-default for the scene-lit smoke/dust strength (particle_billboard.frag u_vfxLitStrength), applied ONLY to alpha draw groups...", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_VFX_LIT_STRENGTH", -1, false) | verified),
 L(Lead1, "MC2_TXMMGR_BOUNDS_TRACE", Bool, false, "code", "", "[TXMMGR_BOUNDS v1] - TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.", verified),
 L(Lead1, "MC2_TXM_LEAK_TRACE", Bool, false, "code", "", "[TXMMGR_TEXTURE_AUDIT v1] - texture-node-slot leak instrumentation.", verified),
 L(Presence, "MC2_TYPE_TABLE_CAND_LOG", Bool, false, "props", "", "", passthrough | verified),
@@ -1457,18 +1457,18 @@ L(Presence, "MC2_VERTEX_PROJECT_FAST", Bool, false, "gameos", "", "", passthroug
 L(Presence, "MC2_VERTEX_PROJECT_PARITY", Bool, false, "gameos", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VFX_AGE_SAMPLE
 L(Lead1, "MC2_VFX_AGE_SAMPLE", Bool, false, "code", "", "VFX-AGE-SAMPLE-1: sample GPU-particle spec curves (color/alpha/size/UV) at the routed effect's real CPU-advanced normalized age (gosFX Effect::m_age...", registry(Feature, "MC2_FEATURE_VFX_AGE_SAMPLE", 22, false) | verified),
-L(Lead1, "MC2_VFX_BLACKBODY", Bool, false, "gameos", "", ""),
+L(Lead1, "MC2_VFX_BLACKBODY", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VFX_DEBUG_MODE
-P("MC2_VFX_DEBUG_MODE", Int, 0, "gameos", "", "VFX-DEBUG-VIEWS-1: GPU particle billboard fragment-shader debug-mode selector (particle_billboard.frag u_debugMode, uploaded by gos_particle_bridge).", passthrough | registry(Trace, "MC2_DIAG_VFX_DEBUG_MODE", -1, false)),  // default not derivable from the tree
-L(Lead1, "MC2_VFX_DISTORTION", Bool, false, "gameos", "", ""),
-P("MC2_VFX_DISTORT_AMP", Float, 0.0, "gameos", "", ""),  // default not derivable from the tree
-L(Lead1, "MC2_VFX_DISTORT_FIXTURE", Bool, false, "gameos", "", ""),
+P("MC2_VFX_DEBUG_MODE", Int, 0, "gameos", "", "VFX-DEBUG-VIEWS-1: GPU particle billboard fragment-shader debug-mode selector (particle_billboard.frag u_debugMode, uploaded by gos_particle_bridge).", passthrough | range(0.0, 5.0) | registry(Trace, "MC2_DIAG_VFX_DEBUG_MODE", -1, false) | verified),  // default not derivable from the tree
+L(Lead1, "MC2_VFX_DISTORTION", Bool, false, "gameos", "", "", verified),
+P("MC2_VFX_DISTORT_AMP", Float, 0.04, "gameos", "", "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5] reads the default.", rangeAbove(0.0, 0.5) | verified),
+L(Lead1, "MC2_VFX_DISTORT_FIXTURE", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VFX_GPU_SIM_CARDCLOUD
 L(Lead1, "MC2_VFX_GPU_SIM_CARDCLOUD", Bool, false, "code", "", "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md).", registry(Feature, "MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD", 24, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_GPU_SIM_COMPARE
 L(Lead1, "MC2_VFX_GPU_SIM_COMPARE", Bool, false, "code", "", "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO...", registry(Feature, "MC2_FEATURE_VFX_GPU_SIM_COMPARE", 25, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_LIT_PARTICLES
-L(Lead1, "MC2_VFX_LIT_PARTICLES", Bool, false, "gameos", "", "VFX-LIT-PARTICLES-MVP-1 (Track V): simple directional+ambient lighting for alpha-blended smoke/dust particles.", passthrough | registry(Feature, "MC2_FEATURE_VFX_LIT_PARTICLES", 28, false)),
+L(Lead1, "MC2_VFX_LIT_PARTICLES", Bool, false, "gameos", "", "VFX-LIT-PARTICLES-MVP-1 (Track V): simple directional+ambient lighting for alpha-blended smoke/dust particles.", passthrough | registry(Feature, "MC2_FEATURE_VFX_LIT_PARTICLES", 28, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_ORACLE_RENDER
 L(Lead1, "MC2_VFX_ORACLE_RENDER", Bool, false, "code", "", "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md).", passthrough | registry(Feature, "MC2_FEATURE_VFX_ORACLE_RENDER", 23, false) | verified),
 L(Lead1, "MC2_VFX_ORACLE_SHAPE", Bool, false, "code", "", "", verified),
@@ -1477,13 +1477,13 @@ L(Lead1, "MC2_VFX_ORACLE_SHAPE_LOG", Bool, false, "unclassified", "", "", verifi
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE
 L(Lead1, "MC2_VFX_ORACLE_TUBE", Bool, false, "code", "", "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead...", registry(Feature, "MC2_VFX_ORACLE_TUBE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE_COVERAGE
-L(Lead1, "MC2_VFX_ORACLE_TUBE_COVERAGE", Bool, false, "gameos", "", "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs...", registry(Trace, "MC2_VFX_ORACLE_TUBE_COVERAGE", -1, false)),
+L(Lead1, "MC2_VFX_ORACLE_TUBE_COVERAGE", Bool, false, "gameos", "", "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs...", registry(Trace, "MC2_VFX_ORACLE_TUBE_COVERAGE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VFX_ORACLE_TUBE_LOG
 L(Lead1, "MC2_VFX_ORACLE_TUBE_LOG", Bool, false, "code", "", "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks).", registry(Trace, "MC2_VFX_ORACLE_TUBE_LOG", -1, false) | verified),
-L(Lead1, "MC2_VFX_SCENECOLOR_GRAB", Bool, false, "gameos", "", ""),
+L(Lead1, "MC2_VFX_SCENECOLOR_GRAB", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VFX_SOFT_PARTICLES
-L(Lead1, "MC2_VFX_SOFT_PARTICLES", Bool, false, "gameos", "", "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections.", passthrough | registry(Feature, "MC2_FEATURE_VFX_SOFT_PARTICLES", 27, false)),
-L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", ""),
+L(Lead1, "MC2_VFX_SOFT_PARTICLES", Bool, false, "gameos", "", "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections.", passthrough | registry(Feature, "MC2_FEATURE_VFX_SOFT_PARTICLES", 27, false) | verified),
+L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VIEWMODE_FRAMEWORK
 L(Lead0, "MC2_VIEWMODE_FRAMEWORK", Bool, false, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", passthrough | registry(Feature, "MC2_FEATURE_VIEWMODE_FRAMEWORK", 29, false) | verified),
 // history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_GAIN
@@ -1498,11 +1498,11 @@ G("MC2_VIEWMODE_LOWLIGHT_TINT", String, "", "post", "", "LOWLIGHT-NIGHTVISION-MV
 G("MC2_VIEW_MODE", String, "", "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: seeds the startup presentation mode (matches RenderCore::ViewMode).", passthrough | registry(Trace, "MC2_TUNE_VIEW_MODE", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_VIEW_UNIFORMS
 L(Lead0Kill, "MC2_VIEW_UNIFORMS", Bool, true, "props", "", "ViewUniforms UBO at binding=3.", passthrough | registry(Feature, "MC2_FEATURE_VIEW_UNIFORMS", 16, true) | verified),
-L(Presence, "MC2_VISUAL_BOOKMARK_CAPTURE", Bool, false, "vk", "", "", passthrough),
-L(Lead0, "MC2_VISUAL_CAPTURE_CLEAN", Bool, false, "gameos", "", ""),
-L(Presence, "MC2_VISUAL_CAPTURE_DIR", Bool, false, "gameos", "", "", passthrough),
-L(Presence, "MC2_VISUAL_CAPTURE_EXIT_AFTER", Bool, false, "gameos", "", "VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT] logHealth..."),
-P("MC2_VISUAL_CAPTURE_FRAME", Int, -1, "vk", "", "", passthrough),
+G("MC2_VISUAL_BOOKMARK_CAPTURE", String, "", "vk", "", "Path of the bookmarks.json the capture replay drives; any set value (even empty) arms the replay.", passthrough | verified),
+L(Lead0, "MC2_VISUAL_CAPTURE_CLEAN", Bool, false, "gameos", "", "", verified),
+G("MC2_VISUAL_CAPTURE_DIR", String, "", "gameos", "", "Directory the visual capture primitive and the bookmark replay write into; set-but-empty is kept as empty (replay falls back to .).", passthrough | verified),
+L(Presence, "MC2_VISUAL_CAPTURE_EXIT_AFTER", Bool, false, "gameos", "", "VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT] logHealth...", verified),
+P("MC2_VISUAL_CAPTURE_FRAME", Int, -1, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VISUAL_CAPTURE_ON_FIRE
 L(Presence, "MC2_VISUAL_CAPTURE_ON_FIRE", Bool, false, "unclassified", "", "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.", registry(Trace, "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE", -1, false) | verified),
 L(Lead0, "MC2_VISUAL_CAPTURE_POST", Bool, false, "gameos", "", "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)...", verified),
@@ -1511,7 +1511,7 @@ P("MC2_VISUAL_DIFF_FRAME_N", Int, 90, "gameos", "", ""),
 P("MC2_VISUAL_DIFF_MAX_FRAMES", Int, 0, "gameos", "", ""),  // default not derivable from the tree
 G("MC2_VISUAL_DIFF_MISSION", String, "", "gameos", "", ""),  // default not derivable from the tree
 G("MC2_VISUAL_DIFF_OUT", String, "", "gameos", "", ""),
-P("MC2_VISUAL_SETTLE", Int, 0, "gameos", "", "", passthrough),  // default not derivable from the tree
+P("MC2_VISUAL_SETTLE", Int, 0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VISUAL_TUNING_FILE", String, "", "gameos", "", "", passthrough),  // default not derivable from the tree
 L(Lead0Kill, "MC2_VIS_SEMANTICS", Bool, true, "code", "", "ONE gate.", verified | passthrough),
 L(Lead0, "MC2_VIS_SEMANTICS_TRACE", Bool, false, "code", "", "", verified | passthrough),
@@ -1659,7 +1659,7 @@ G("MC2_VK_WATER_TIER1", Tri, false, "vk", "", "Direct-chain members default ON u
 L(Presence, "MC2_VPL_CULL", Bool, false, "terrain", "", "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the...", verified),
 L(Presence, "MC2_VPL_PICK", Bool, false, "code", "", "VPL-retirement Step 3 (3a): recursion-free tile selection.", verified),
 L(Presence, "MC2_VPL_REDUCE", Bool, false, "terrain", "", "", verified),
-L(Lead1, "MC2_VSYNC", Bool, false, "vk", "", "", passthrough),
+L(Lead1, "MC2_VSYNC", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VULKAN_SPV_DIR", String, "shaders/vulkan", "vk", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VULKAN_VALIDATION", Bool, false, "vk", "", "", passthrough),
 L(Presence, "MC2_WATCHID_GENERATION", Bool, false, "code", "", "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.", passthrough | verified),
@@ -1727,7 +1727,7 @@ L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough | verified),
 // exactly-legacy, and the harness turns it on explicitly.
 // history: docs/gate-history.md#MC2_WINDOW_OFFSCREEN
 L(Lead0, "MC2_WINDOW_OFFSCREEN", Bool, false, "unclassified", "", "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...", passthrough | registry(Trace, "MC2_TRACE_WINDOW_OFFSCREEN", -1, false)),
-L(Lead0Kill, "MC2_WINDOW_RESIZABLE", Bool, true, "gameos", "", ""),
+L(Lead0Kill, "MC2_WINDOW_RESIZABLE", Bool, true, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_XFORM_PARITY_FATAL
 L(Lead1, "MC2_XFORM_PARITY_FATAL", Bool, false, "code", "", "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant.", registry(Trace, "MC2_XFORM_PARITY_FATAL", -1, false) | verified),
 };
