@@ -175,11 +175,15 @@ def run(args, tidy=None, build=None) -> int:
         return 2
 
     mtimes = {rel: os.stat(os.path.join(ROOT, rel)).st_mtime_ns for rel in kept}
+    checks = tuple(c for c in (args.checks.split(",") if args.checks else SAFE_CHECKS) if c)
+    unknown = [c for c in checks if c not in SAFE_CHECKS]
+    if unknown:
+        sys.exit("run_tidy_safe: not in the safe set: " + ", ".join(unknown))
     exe = clang_tidy_exe()
     tidy = tidy or (lambda cmd: subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                                                **console_child.child_kwargs(redirected=True)))
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        results = list(pool.map(lambda rel: (rel, tidy(tidy_command(exe, tree, rel, fix=True))), kept))
+        results = list(pool.map(lambda rel: (rel, tidy(tidy_command(exe, tree, rel, checks=checks, fix=True))), kept))
 
     changed, reverted = [], []
     for rel, res in results:
@@ -234,6 +238,8 @@ def main(argv=None) -> int:
     ap.add_argument("--jobs", type=int, default=4, help="parallel clang-tidy parses")
     ap.add_argument("--build-jobs", type=int, default=4, help="ninja -j for the proof rebuild (keep low next to a smoke)")
     ap.add_argument("--dry-run", action="store_true", help="show the would-be diff, keep nothing")
+    ap.add_argument("--checks", help="comma-separated clang-tidy checks to run instead of the whole safe set "
+                                     "(each must be in SAFE_CHECKS), e.g. modernize-use-override")
     ap.add_argument("--list-excluded", action="store_true")
     args = ap.parse_args(argv)
     if args.list_excluded:

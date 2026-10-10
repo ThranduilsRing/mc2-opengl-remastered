@@ -39,7 +39,7 @@ def tracked_cpp(dirs):
     return sorted(set(out.split()))
 
 
-def pick(dirs, count, tree=rts.DEFAULT_TREE, done=()):
+def pick(dirs, count, tree=rts.DEFAULT_TREE, done=(), any_tu=False):
     in_db = rts.load_compile_db(os.path.join(rts.ROOT, tree))
     dirty = rts.dirty_files()
     cands = []
@@ -51,7 +51,7 @@ def pick(dirs, count, tree=rts.DEFAULT_TREE, done=()):
             continue
         path = os.path.join(rts.ROOT, rel)
         with open(path, encoding="utf-8", errors="replace") as fh:
-            if has_site(fh.read()):
+            if any_tu or has_site(fh.read()):
                 cands.append((os.path.getsize(path), rel))
     cands.sort()
     return [rel for _sz, rel in cands[:count]]
@@ -62,6 +62,7 @@ def main(argv=None) -> int:
     ap.add_argument("--dir", action="append", required=True)
     ap.add_argument("--count", type=int, default=50)
     ap.add_argument("--tree", default=rts.DEFAULT_TREE)
+    ap.add_argument("--any", action="store_true", help="do not require a NULL/typedef site (for checks such as use-override)")
     ap.add_argument("--done", help="file listing TUs already run (one per line); they are skipped, and the picked ones are appended. "
                                    "A site tidy cannot rewrite (a function-pointer typedef, a NULL in a macro) would otherwise be picked forever.")
     args = ap.parse_args(argv)
@@ -69,7 +70,7 @@ def main(argv=None) -> int:
     if args.done and os.path.exists(args.done):
         with open(args.done, encoding="utf-8") as fh:
             done = {ln.strip() for ln in fh if ln.strip()}
-    picked = pick(args.dir, args.count, args.tree, done)
+    picked = pick(args.dir, args.count, args.tree, done, args.any)
     for rel in picked:
         print(rel)
     if args.done:
