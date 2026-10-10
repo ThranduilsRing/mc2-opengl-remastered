@@ -1,0 +1,477 @@
+// MissionInterfaceManager: test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate).
+// Declared in missiongui.h; shared names in missiongui_internal.h.
+#include "missiongui_internal.h"
+
+//--------------------------------------------------------------------------
+// FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
+//
+// WHY: any capture pose that frames a mover drifts run-to-run, because
+// frameLength is wall-clock and every mover integrates against it. That
+// produced a RETRACTED "+14.8 luma brighter" result which was really a turret
+// barrel resting at a different aim angle in the two arms. Until movers can be
+// pinned, no A/B that contains a vehicle or a mech is byte-comparable, so
+// "vehicles look different from mechs" cannot be measured at all.
+//
+// HOW: this does NOT add a second freeze mechanism. Mission::update already has
+// a proven "sim frozen, rendering continues" branch used by the pause path ---
+// ObjectManager::updateAppearancesOnly(), code/objmgr.cpp. That branch
+// still runs recalcBounds + setObjectParameters + updateGeometry (so the actor
+// draws), calls Appearance::update(false) (so the gait does NOT advance), and
+// deliberately never calls setMoverParameters (so torso twist and turret aim
+// hold their last value --- exactly the drift that caused the retraction).
+// All this verb does is widen that branch's predicate. See code/mission.cpp.
+//
+// CROSS-BUILD, not merely cross-run: `freeze_movers on <frame>` ARMS the freeze
+// and engages it the first frame g_mc2FrameCounter >= <frame>, rather than
+// whenever the driver's write happened to land. Two builds running the same
+// mission with MC2_SMOKE_FIXED_TIMESTEP=1 advance sim by a fixed 1/30 per
+// frame (code/mission.cpp, code/mechcmd2.cpp), so "frame N" is the
+// same simulated instant in both --- which is what makes a pose reproducible
+// across a rebuild instead of only within one process. Freezing at a
+// wall-clock moment gives neither.
+//
+// Default: unset/off. mc2FreezeMoversActive() returns 0 and the predicate at
+// mission.cpp is unchanged, so stock behaviour is byte-identical.
+static bool s_freezeMoversOn      = false;
+static long s_freezeMoversAt      = -2;   // -2 uninitialised, -1 disarmed, >=0 armed
+static long s_freezeMoversEngaged = -1;   // MISSION frame the latch actually fired
+// g_mc2FrameCounter is process-lifetime: it starts at 0 once and is never reset
+// per mission (GameOS/gameos/gameosmain.cpp). Arming against it directly would
+// make "<frame>" mean a different point in mission B than in mission A, which
+// defeats the whole reproducibility claim, and would let a freeze armed in one
+// mission fire in the next. So the latch works in MISSION-RELATIVE frames off
+// this baseline, re-stamped by mc2FreezeMoversMissionReset() at Mission::init.
+static long s_freezeMoversBase    = 0;
+
+// Must be declared at FILE scope, not inside the extern "C" bodies below: a
+// declaration inside an extern "C" function inherits C linkage and would look
+// for an unmangled `g_mc2FrameCounter`, while the definition (mechcmd2.cpp) has
+// C++ linkage (?g_mc2FrameCounter@@3IA). That mismatch is a link error, not a
+// compile error, so it only surfaces at the very end of a full build.
+extern uint32_t g_mc2FrameCounter;
+
+// Consulted by code/mission.cpp (the sim branch) and by the residual-drift
+// sites in mclib/mech3d.cpp + mclib/gvactor.cpp. Self-latching so it does not
+// matter which of them runs first in a frame.
+// Frames since Mission::init. THIS is what `freeze_movers on <frame>` counts.
+extern "C" long mc2FreezeMoversMissionFrame()
+{
+	return (long)g_mc2FrameCounter - s_freezeMoversBase;
+}
+
+// Called from Mission::init so a freeze is scoped to the mission that armed it
+// and <frame> means the same instant in every mission and every build. Without
+// this a campaign or a multi-mission harness run could start mission B already
+// frozen, with no command in mission B's own session having asked for it.
+extern "C" void mc2FreezeMoversMissionReset()
+{
+	s_freezeMoversBase    = (long)g_mc2FrameCounter;
+	s_freezeMoversOn      = false;
+	s_freezeMoversEngaged = -1;
+	s_freezeMoversAt      = -2;   // re-read env so the gate re-arms per mission
+}
+
+extern "C" int mc2FreezeMoversActive()
+{
+	if (s_freezeMoversAt == -2) {
+		// MC2_FREEZE_MOVERS_AT=<frame> lets a capture run freeze WITHOUT driving
+		// the command channel at all. Unset -> -1 -> never engages.
+		const char* v = getenv("MC2_FREEZE_MOVERS_AT");
+		s_freezeMoversAt = (v && v[0]) ? atol(v) : -1L;
+	}
+	const long mf = mc2FreezeMoversMissionFrame();
+	if (!s_freezeMoversOn && s_freezeMoversAt >= 0 && mf >= s_freezeMoversAt) {
+		s_freezeMoversOn = true;
+		s_freezeMoversEngaged = mf;
+	}
+	return s_freezeMoversOn ? 1 : 0;
+}
+
+// on<0 => disarm+thaw. atFrame<0 => engage immediately at the current frame.
+extern "C" void mc2FreezeMoversSet(int on, long atFrame)
+{
+	if (s_freezeMoversAt == -2)
+		(void)mc2FreezeMoversActive();     // fold in the env default first
+	if (!on) {
+		s_freezeMoversOn = false;
+		s_freezeMoversAt = -1;
+		s_freezeMoversEngaged = -1;
+		return;
+	}
+	if (atFrame >= 0) {                    // arm for a deterministic frame
+		s_freezeMoversAt = atFrame;
+		s_freezeMoversOn = false;
+		s_freezeMoversEngaged = -1;
+		(void)mc2FreezeMoversActive();     // engage now if already past it
+	} else {
+		s_freezeMoversAt = -1;
+		s_freezeMoversOn = true;
+		s_freezeMoversEngaged = mc2FreezeMoversMissionFrame();
+	}
+}
+
+extern "C" long mc2FreezeMoversArmedAt()   { return s_freezeMoversAt; }
+extern "C" long mc2FreezeMoversEngagedAt() { return s_freezeMoversEngaged; }
+
+// Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
+bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
+{
+	const std::string& line = c.line;
+	const char*& result = c.result;
+	std::string& note = c.note;
+	std::string& extra = c.extra;
+
+	if (line.compare(0, 6, "spawn ") == 0 || line.compare(0, 9, "teleport ") == 0) {
+		// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1).
+		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]
+		//   teleport <partId> <x> <y>
+		static const char* s_spawnGate = getenv("MC2_TEST_SPAWN");
+		const bool armed = s_spawnGate && s_spawnGate[0] == '1';
+		if (!armed) {
+			result = "blocked"; note = "needs MC2_TEST_SPAWN=1";
+		}
+		else if (line.compare(0, 6, "spawn ") == 0) {
+			char kind[40] = {0}; float x = 0, y = 0; int team = -1, variant = 0;
+			const int nf = sscanf(line.c_str() + 6, "%39s %f %f %d %d",
+				kind, &x, &y, &team, &variant);
+			if (nf < 3) {
+				note = "spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]";
+			} else {
+				const long homeCmdr = Commander::home ? Commander::home->getId() : 0;
+				const long homeTeam = Team::home ? Team::home->getId() : 0;
+				MoverInitData data; memset(&data, 0, sizeof(data));
+				strcpy(data.pilotFileName, "pmw00080");
+				strcpy(data.brainFileName, "pbrain");
+				data.controlDataType = 0;
+				data.rosterIndex = 255;
+				data.gestureID = 2;
+				data.active = true; data.exists = true; data.capturable = false;
+				data.variant = (DWORD)variant;
+				data.baseColor = prefs.baseColor;
+				data.highlightColor1 = prefs.highlightColor;
+				data.highlightColor2 = prefs.highlightColor;
+				data.commanderID = (char)homeCmdr;
+				data.teamID = (char)((team >= 0) ? team : homeTeam);
+				bool ok = true;
+				if (strcmp(kind, "infantry") == 0) {
+					strcpy(data.brainFileName, "infantry001");
+					strcpy(data.csvFileName, "PM101100");
+					data.objNumber = 53; data.variant = 0;
+				} else if (strcmp(kind, "clone") == 0 || strcmp(kind, "vehicle") == 0) {
+					// GAMEPLAY-DRIVER-2: `vehicle` clones an existing GROUND
+					// VEHICLE (any team -- missions often have none on the
+					// player roster) so a mech and a vehicle can be placed
+					// side by side under identical light for a lighting A/B.
+					const ObjectClass wantCls =
+						(strcmp(kind, "vehicle") == 0) ? GROUNDVEHICLE : BATTLEMECH;
+					Mover* tmpl = NULL;
+					Team* pTeam = Team::home;
+					for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
+						Mover* m = (Mover*)pTeam->getMover(i);
+						if (m && m->getCommander()->getId() == homeCmdr &&
+							m->getObjectClass() == wantCls) { tmpl = m; break; }
+					}
+					if (!tmpl && ObjectManager) {
+						// widen to the whole mission before giving up
+						for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
+							MoverPtr m = ObjectManager->getMover(i);
+							if (m && m->getObjectClass() == wantCls) { tmpl = m; break; }
+						}
+					}
+					if (!tmpl) {
+						ok = false; result = "blocked";
+						note = (wantCls == GROUNDVEHICLE)
+							? "no ground vehicle in mission to clone"
+							: "no player mech to clone";
+					} else {
+						data.objNumber = tmpl->getTypeHandle();
+						data.variant = (wantCls == BATTLEMECH)
+							? (DWORD)((BattleMechPtr)tmpl)->variantID : 0;
+					}
+				} else {
+					char* end = nullptr; const long on = strtol(kind, &end, 10);
+					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>"; }
+					else data.objNumber = on;
+				}
+				if (ok) {
+					Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+					if (land) pos.z = land->getTerrainElevation(pos);
+					data.position = pos; data.rotation = 0;
+					data.controlType = (data.commanderID == (char)homeCmdr && !MPlayer)
+						? CONTROL_PLAYER : CONTROL_AI;
+					const long h = mission ? mission->addMover(&data) : -1;
+					MoverPtr nm = (h > 0) ? (MoverPtr)ObjectManager->get(h) : NULL;
+					if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
+					else {
+						// NOTE: do NOT call nm->setOnGUI(true) here. The
+						// GAMEPLAY-DRIVER-1 prototype did, but Mission::
+						// addMover already sets it (code/mission.cpp, just
+						// before it returns the handle), so the extra call
+						// was redundant -- and it is a setOnGUI() caller
+						// outside the MOVER-COHERENCE S1a allowlist, which
+						// the mover-registry contract (added after that
+						// prototype was written) correctly rejects: every
+						// setOnGUI(true) must be paired with the mission-
+						// interface registration that addMover performs.
+						if (!MPlayer && data.commanderID == (char)homeCmdr)
+							nm->setLocalMoverId(0);
+						result = "ok";
+						char b[192];
+						// GAMEPLAY-DRIVER-2 HONESTY: report the spawned unit's
+						// ACTUAL status rating in the ack. The 2026-07-23 run
+						// acked five `spawn clone` as ok while all five were
+						// hp=0.000 and ignored every move order; because
+						// scenario_runner only substring-matches acks, the
+						// report said ok=True. Surfacing hp here means a
+						// driver can assert on it. A non-positive OR NaN hp on
+						// a fresh spawn is the known defect -- use
+						// `unit <id>` for detail.
+						//
+						// Written as !(hp > 0) and NOT as (hp <= 0): a
+						// spawned BattleMech's getStatusRating() can come
+						// back -nan(ind) (observed 2026-07-30, mc2_10,
+						// `spawn clone`), and EVERY comparison against NaN
+						// is false -- so the `<= 0` form let the exact case
+						// the warning exists to catch slip through acking a
+						// clean "ok".
+						const float spawnHp = nm->getStatusRating();
+						sprintf(b, "spawned id=%ld obj=%d team=%d hp=%.3f%s",
+							nm->getPartId(), (int)data.objNumber, (int)data.teamID,
+							spawnHp,
+							!(spawnHp > 0.0f)
+								? " WARNING:bad hp, spawned unit may be inert" : "");
+						note = b;
+					}
+				}
+			}
+		}
+		else {   // teleport <partId> <x> <y>
+			long pid = 0; float x = 0, y = 0;
+			const int nf = sscanf(line.c_str() + 9, "%ld %f %f", &pid, &x, &y);
+			if (nf < 3) { note = "teleport <partId> <x> <y>"; }
+			else {
+				GameObjectPtr obj = ObjectManager->findByPartId(pid);
+				if (!obj || !obj->isMover()) { result = "blocked"; note = "no such mover"; }
+				else {
+					Stuff::Vector3D pos; pos.x = x; pos.y = y; pos.z = 0.0f;
+					if (land) pos.z = land->getTerrainElevation(pos);
+					((Mover*)obj)->setTeleportPosition(pos);   // engine teleport hook
+					result = "ok";
+					char b[80]; sprintf(b, "teleport %ld -> (%.1f,%.1f)", pid, x, y); note = b;
+				}
+			}
+		}
+	}
+	//---------------------------------------------------------------------
+	// FREEZE-MOVERS-1: pin every mover so a pose that frames one is
+	// byte-comparable. `on <frame>` is the form that matters -- it arms the
+	// freeze for a DETERMINISTIC mission frame instead of whenever the
+	// driver's write happened to land, which is what makes the pose
+	// reproducible across a REBUILD and not merely across two runs of one
+	// binary. Pair with MC2_SMOKE_FIXED_TIMESTEP=1 (without it frameLength
+	// is wall-clock and frame N is a different simulated instant in each
+	// build). Rides the existing pause branch in Mission::update; see the
+	// design note at the top of this file.
+	else if (line.compare(0, 13, "freeze_movers") == 0 &&
+			 (line.size() == 13 || line[13] == ' ')) {
+		extern uint32_t g_mc2FrameCounter;
+		char sub[32] = {0};
+		long atFrame = -1;
+		const int nf = (line.size() > 14)
+			? sscanf(line.c_str() + 14, "%31s %ld", sub, &atFrame) : 0;
+		const std::string s = (nf >= 1) ? std::string(sub) : std::string();
+		char b[288];
+		if (s == "off") {
+			mc2FreezeMoversSet(0, -1);
+			result = "ok";
+			note = "thawed; movers resume simulating";
+		} else if (s == "on") {
+			mc2FreezeMoversSet(1, (nf >= 2) ? atFrame : -1L);
+			result = "ok";
+			if (nf >= 2)
+				snprintf(b, sizeof(b),
+					"armed for MISSION frame %ld (engagedAt=%ld, now missionFrame=%ld); "
+					"REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1",
+					mc2FreezeMoversArmedAt(), mc2FreezeMoversEngagedAt(),
+					mc2FreezeMoversMissionFrame());
+			else
+				snprintf(b, sizeof(b),
+					"frozen NOW at mission frame %ld -- not cross-build reproducible; "
+					"use `freeze_movers on <frame>` for that",
+					mc2FreezeMoversEngagedAt());
+			note = b;
+		} else if (s == "status") {
+			snprintf(b, sizeof(b),
+				"active=%d armedAt=%ld engagedAt=%ld missionFrame=%ld absFrame=%lu",
+				mc2FreezeMoversActive(), mc2FreezeMoversArmedAt(),
+				mc2FreezeMoversEngagedAt(), mc2FreezeMoversMissionFrame(),
+				(unsigned long)g_mc2FrameCounter);
+			note = b;
+			result = "ok";
+		} else {
+			note = "freeze_movers on [frame] | off | status";
+		}
+	}
+	//---------------------------------------------------------------------
+	// SET-LIGHT-1: one named front door for the sun, so the standing
+	// day-AND-night verdict rule is expressible in a scenario file instead
+	// of depending on which mission happens to SHIP with the sun you need.
+	// Delegates to the same two Camera entry points time_of_day / sun_pitch
+	// use -- no parallel lighting mechanism.
+	else if (line.compare(0, 10, "set_light ") == 0) {
+		const std::string arg = line.substr(10);
+		char b[256];
+		if (!eye) {
+			result = "blocked"; note = "no camera";
+		} else if (arg.compare(0, 4, "alt ") == 0) {
+			float pitch = 0.0f, yaw = 0.0f;
+			const int nf = sscanf(arg.c_str() + 4, "%f %f", &pitch, &yaw);
+			if (nf < 1) {
+				note = "set_light alt <deg 0..360> [yawDeg]";
+			} else {
+				const float p = eye->setSunPitch(pitch, nf >= 2, yaw);
+				result = "ok";
+				snprintf(b, sizeof(b),
+					"sun altitude=%.1f%s isNight=%d "
+					"(DIRECTION only -- ambient/sky/fog unchanged)",
+					(double)p, nf >= 2 ? " +yaw" : "", eye->getIsNight() ? 1 : 0);
+				note = b;
+			}
+		} else {
+			// Named phases map onto Camera::setDaylightFraction, whose
+			// contract is sunPitch == f*360: 0 = sun on the horizon rising,
+			// 0.25 = noon, 0.5 = horizon setting, 0.75 = sun at nadir.
+			static const struct { const char* name; float f; } kPhases[] = {
+				{ "dawn",     0.000f }, { "morning",  0.125f },
+				{ "day",      0.250f }, { "noon",     0.250f },
+				{ "afternoon",0.375f }, { "dusk",     0.500f },
+				{ "sunset",   0.500f }, { "night",    0.750f },
+				{ "midnight", 0.750f },
+			};
+			float f = -1.0f;
+			for (size_t p = 0; p < sizeof(kPhases) / sizeof(kPhases[0]); ++p)
+				if (arg == kPhases[p].name) { f = kPhases[p].f; break; }
+			if (f < 0.0f) {
+				char* end = nullptr;
+				const float v = strtof(arg.c_str(), &end);
+				if (!arg.empty() && end && *end == '\0' && v >= 0.0f && v <= 1.0f)
+					f = v;
+			}
+			if (f < 0.0f) {
+				note = "set_light dawn|morning|day|noon|afternoon|dusk|sunset|"
+					   "night|midnight|<0..1> | alt <deg> [yaw]";
+			} else {
+				const float pitch = eye->setDaylightFraction(f);
+				result = "ok";
+				snprintf(b, sizeof(b),
+					"%s -> fraction=%.3f sunPitch=%.1f isNight=%d nightFactor=%.2f "
+					"(full sun+ambient+sky+fog recompute)",
+					arg.c_str(), (double)f, (double)pitch,
+					eye->getIsNight() ? 1 : 0, (double)eye->getNightFactor());
+				note = b;
+			}
+		}
+	}
+	//---------------------------------------------------------------------
+	// ANIMATE-BUILDING-1: drive ONE building onto the animated path on
+	// demand. code/terrobj.cpp's own comment says the animStartInvalidated
+	// counter "may be zero in smoke missions if no registered-static
+	// building animates" -- i.e. passive fly-throughs never exercise this
+	// path, and both the black-quad and sunk-turret reports live on it.
+	//
+	// Two DIFFERENT routes off the static batch, deliberately both exposed:
+	//   <gestureId>  setGesture() -> explicit invalidateStaticRegistration()
+	//                on the idle->animated edge (mclib/bdactor.cpp).
+	//   damaged      setObjStatus() -> swaps in bldgDmgShape and does NOT
+	//                invalidate; the staticReg.shape != bldgShape mismatch
+	//                drops it a frame LATER from render(). That one-frame
+	//                asymmetry is a black-quad candidate in its own right.
+	// Test-only world mutation, so gated behind MC2_TEST_SPAWN like
+	// spawn/teleport rather than adding a second gate.
+	else if (line.compare(0, 8, "animate ") == 0) {
+		static const char* s_animGate = getenv("MC2_TEST_SPAWN");
+		const bool armed = s_animGate && s_animGate[0] == '1';
+		long pid = 0;
+		char what[32] = {0};
+		const int nf = sscanf(line.c_str() + 8, "%ld %31s", &pid, what);
+		if (!armed) {
+			result = "blocked";
+			note = "needs MC2_TEST_SPAWN=1 (animate mutates world state)";
+		} else if (nf < 2) {
+			note = "animate <partId> <gestureId 0..9|damaged|normal>  "
+				   "(ids + animGestures from `list buildings`)";
+		} else if (!ObjectManager) {
+			result = "blocked"; note = "no object manager";
+		} else {
+			GameObjectPtr obj = ObjectManager->findByPartId(pid);
+			BldgAppearance* ba = obj
+				? dynamic_cast<BldgAppearance*>(obj->getAppearance()) : NULL;
+			const uint32_t invBefore = g_bldgAnimGate_animStartInvalidated();
+			long before = -1;
+			int regBefore = 0;
+			if (ba) { before = ba->getCurrentGestureId();
+					  regBefore = ba->isStaticRegistered() ? 1 : 0; }
+			if (!obj) {
+				result = "blocked";
+				note = "no such partId (try `list buildings`)";
+			} else if (!ba) {
+				result = "blocked";
+				note = "that object has no BldgAppearance (not a building/gate/turret)";
+			} else if (!strcmp(what, "damaged") || !strcmp(what, "normal")) {
+				ba->setObjStatus(!strcmp(what, "damaged")
+					? OBJECT_STATUS_DESTROYED : OBJECT_STATUS_NORMAL);
+				result = "ok";
+			} else {
+				char* end = nullptr;
+				const long g = strtol(what, &end, 10);
+				if (!end || *end != '\0' || g < 0 || g >= MAX_BD_ANIMATIONS) {
+					note = "gesture must be 0..9, or damaged|normal";
+				} else if (!ba->hasAnimationData(g)) {
+					result = "blocked";
+					note = "that gesture has NO animation data for this type: "
+						   "setGesture would ClearAnimation() and the object would "
+						   "stay on the STATIC path. Pick one of animGestures "
+						   "from `list buildings`.";
+				} else if (g == before) {
+					result = "blocked";
+					note = "already in that gesture (setGesture early-returns)";
+				} else {
+					ba->setGesture((unsigned long)g);
+					// setGesture silently early-returns when the object is
+					// DESTROYED or DISABLED (mclib/bdactor.cpp), BEFORE
+					// touching bdAnimationState. Acking a bare "ok" there
+					// would be the exact "the ack describes the COMMAND, not
+					// the WORLD" failure this harness exists to kill: after
+					// `animate <id> damaged`, a following `animate <id> 3`
+					// would report ok while doing nothing at all. So verify
+					// the gesture actually moved.
+					if (ba->getCurrentGestureId() == g) {
+						result = "ok";
+					} else {
+						result = "blocked";
+						note = "setGesture was a no-op (object DESTROYED/DISABLED?) "
+							   "-- gesture unchanged; use `animate <id> normal` first";
+					}
+				}
+			}
+			if (!strcmp(result, "ok")) {
+				char b[352];
+				snprintf(b, sizeof(b),
+					"gesture %ld->%ld staticReg %d->%d staticNow=%d eligible=%d "
+					"animStartInvalidated %lu->%lu%s",
+					before, ba->getCurrentGestureId(), regBefore,
+					ba->isStaticRegistered() ? 1 : 0,
+					ba->IsStaticNow() ? 1 : 0,
+					ba->isStaticEligible() ? 1 : 0,
+					(unsigned long)invBefore,
+					(unsigned long)g_bldgAnimGate_animStartInvalidated(),
+					(ba->IsStaticNow() ? "  WARNING: still on the static path"
+									   : "  (now on the animated path)"));
+				note = b;
+			}
+		}
+	}
+	else
+		return false;
+	return true;
+}

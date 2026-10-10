@@ -6,17 +6,17 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 9eac3b589.
+Scanned: commit 00000391f.
 
 | Measure | Count |
 |---|---|
 | gates named by a literal in scanned code | 1131 |
 | gates with at least one classified reader | 1117 |
-| `"MC2_*"` literal occurrences | 1695 |
-| literals not passed to an env read (tables, writers, indirect names) | 43 |
+| `"MC2_*"` literal occurrences | 1699 |
+| literals not passed to an env read (tables, writers, indirect names) | 47 |
 | read sites analysed | 1652 |
-| reader sites with an outcome vector | 1561 |
-| reader sites comparing a token no probe hits (not comparable) | 51 |
+| reader sites with an outcome vector | 1555 |
+| reader sites comparing a token no probe hits (not comparable) | 57 |
 | sites where the probe decides nothing (prints, paths) | 17 |
 | sites the tool could not classify | 23 |
 | **gates with conflicting readers** | 6 |
@@ -37,8 +37,8 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | MC2_VK_TERRAIN_CSM | **no** | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1858` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 |  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1900` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 | MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | confirmed | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | Num(atoi,raw) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
-| MC2_LIGHT_GRID_DIM | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:276` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:269` | Num(atol,raw) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
-| MC2_LIGHT_POOL_MAX | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:859` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:852` | Num(atol,raw) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
+| MC2_LIGHT_GRID_DIM | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:276` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:266` | Typed(get) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
+| MC2_LIGHT_POOL_MAX | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:859` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:814` | Typed(get) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
 | MC2_SNAPSHOT_STATIC_PROP_BUILD | **no** | `GameOS/gameos/gos_static_prop_batcher.cpp:246` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:239` | Lead0Kill | the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands |
 |  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:247` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:239` | Lead0Kill |  |
 | MC2_ACTIVE_MOD | **no** | `mclib/file.cpp:727` | corrected | `mclib/file.cpp:730` | NonEmpty | all readers agree (NonEmpty); the hazard is a re-read after _putenv_s, i.e. caching, not truthiness |
@@ -50,10 +50,10 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 
 | Gate | Reader sites (file:line, class) | Inputs that disagree | Default-visible? | Proposed unified rule | Behaviour delta if unified |
 |---|---|---|---|---|---|
-| `MC2_STATIC_PROP_BUILDING_SHADOW` | `GameOS/gameos/gos_static_prop_batcher.cpp:9568` Custom[00000001]<br>`mclib/bdactor.cpp:5563` Lead0P<br>`mclib/txmmgr.cpp:3517` Lead0P<br>`mclib/txmmgr.cpp:3518` Lead0P<br>`mclib/txmmgr.cpp:3521` Partial[D,off,off,off,off,off,off,on]<br>`mclib/txmmgr.cpp:3659` Lead0P<br>... +1 more | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
-| `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5527` Lead0P<br>`code/warrior.cpp:5533` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_STATIC_PROP_BUILDING_SHADOW` | `GameOS/gameos/gos_static_prop_batcher.cpp:9568` Custom[00000001]<br>`mclib/bdactor.cpp:5568` Lead0P<br>`mclib/txmmgr.cpp:3517` Lead0P<br>`mclib/txmmgr.cpp:3518` Lead0P<br>`mclib/txmmgr.cpp:3521` Partial[D,off,off,off,off,off,off,on]<br>`mclib/txmmgr.cpp:3659` Lead0P<br>... +1 more | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:2133` Lead0P<br>`code/warrior.cpp:2133` Lead0P<br>`code/warrior.cpp:2139` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | `GameOS/gameos/gos_static_prop_batcher.cpp:9776` Custom[00000001]<br>`mclib/txmmgr.cpp:3674` Lead0Kill<br>`mclib/txmmgr.cpp:3675` Lead0Kill | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tests/smoke/matrices/shadow.json, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
-| `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | `mclib/bdactor.cpp:5567` Lead0Kill<br>`mclib/bdactor.cpp:5578` Custom[00000001]<br>`mclib/bdactor.cpp:5579` Custom[00000001] | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | `mclib/bdactor.cpp:5572` Lead0Kill<br>`mclib/bdactor.cpp:5583` Custom[00000001]<br>`mclib/bdactor.cpp:5584` Custom[00000001] | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SPOTLIGHT_DIRECTION_FIX` | `mclib/cone_glow.cpp:223` AtoiNZ<br>`mclib/cone_glow.cpp:243` Custom[00000001] | O: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | `GameOS/gameos/gameos_graphics.cpp:7269` Num(atof,raw)<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:929` Num(atof,raw) | U: 0 vs 0.35; E: 0 vs 0.35 | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Int/Float row: whole-string parse, out-of-range falls back to the one default -- readers use atof; defaults disagree: 0, 0.35 | n/a (owner decision) |
 
@@ -68,12 +68,12 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_BOOT_TO_SCREEN` | resolved | no | `code/mainmenu.cpp:463 Token/State`<br>`code/mechlopedia.cpp:319 NonEmpty`<br>`code/missionbegin.cpp:236 NonEmpty` | NonEmpty | empty string no longer counts as set at the Mechlopedia reader | lite smoke |
 | `MC2_DEBUG_RENDERER` | resolved | no | `GameOS/gameos/debug_renderer.cpp:41 Lead0`<br>`GuiRuntime/EditorInspector.cpp:1273 Lead0` | Lead0 (set, non-empty, not "0") | empty string off in the debug renderer helper | matches the editor inspector reader |
 | `MC2_DEBUG_STATE_DUMP` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:1180 Lead0`<br>`GameOS/gameos/debug_state_dump.cpp:1211 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0` | Lead0 | =0 / empty no longer flips the launcher-automation test or the VK present health dump on | matches the state-dump readers |
-| `MC2_DEV_SHELL` | resolved | no | `GameOS/gameos/gos_dev_shell.cpp:60 Lead1`<br>`code/missiongui.cpp:1211 Lead1` | Lead1 (=1) | values other than 1 no longer enable the shell | documented as =1 |
+| `MC2_DEV_SHELL` | resolved | no | `GameOS/gameos/gos_dev_shell.cpp:60 Lead1`<br>`code/missiongui_uicmd.cpp:287 Lead1` | Lead1 (=1) | values other than 1 no longer enable the shell | documented as =1 |
 | `MC2_DISABLE_GOSFX` | resolved | no | `GuiRuntime/GraphicsOptionsWindow.cpp:1383 Lead1`<br>`mclib/mlr/mlr_gate.cpp:37 Lead1` | Lead1 (=1 disables; unset = enabled) | options window shows [off] only for =1; a stale warning that fired for =0 is deleted | mlr_gate default is enabled; FX default unchanged |
-| `MC2_FX_FORCE_SPAWN` | enum | yes | `code/warrior.cpp:5527 Lead0P`<br>`code/warrior.cpp:5527 Lead0P`<br>`code/warrior.cpp:5533 Custom[00000001]` | levels: 0 off, 1 fire once, loop/2-9 continuous | code unchanged | readers compare a leading character on purpose |
+| `MC2_FX_FORCE_SPAWN` | enum | yes | `code/warrior.cpp:2133 Lead0P`<br>`code/warrior.cpp:2133 Lead0P`<br>`code/warrior.cpp:2139 Custom[00000001]` | levels: 0 off, 1 fire once, loop/2-9 continuous | code unchanged | readers compare a leading character on purpose |
 | `MC2_GPU_PARTICLES` | resolved | no | `mclib/gosfx/effect.cpp:45 Lead1`<br>`mclib/particles/batcher.cpp:80 Lead1` | Lead1 (=1 enables) | empty / =0 / other no longer read as set by the batcher | registry: default off, =1 enables |
-| `MC2_LIGHT_GRID_DIM` | note | no | `GameOS/gameos/gos_terrain_lighting.cpp:269 Num(atol,raw)` | Int with range=Reject (out of range falls back to the default) | code unchanged | single reader |
-| `MC2_LIGHT_POOL_MAX` | note | no | `GameOS/gameos/gos_terrain_lighting.cpp:852 Num(atol,raw)` | Int with range=Reject (out of range falls back to the default) | code unchanged | single reader |
+| `MC2_LIGHT_GRID_DIM` | note | no | `GameOS/gameos/gos_terrain_lighting.cpp:266 Typed(get)` | Int with range=Reject (out of range falls back to the default) | code unchanged | single reader |
+| `MC2_LIGHT_POOL_MAX` | note | no | `GameOS/gameos/gos_terrain_lighting.cpp:814 Typed(get)` | Int with range=Reject (out of range falls back to the default) | code unchanged | single reader |
 | `MC2_MATERIAL_GPU` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:483 Lead0Kill`<br>`GameOS/gameos/gameosmain.cpp:1334 Lead0Kill`<br>`GameOS/gameos/gos_materials.cpp:46 Lead0Kill`<br>`GameOS/gameos/gos_mech_batcher.cpp:683 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:813 Lead0Kill` | Lead0Kill (default ON, =0 disables) | DEFAULT: the mech batcher now defaults ON like the other four readers and the registry | owner ruling; GL+VK day+night captures tests/visual/captures/g0_cmp_{gl,vk} (MAD 0.04/0.00 GL, 0.00/0.01 VK) |
 | `MC2_MOD_DEPS` | resolved | no | `mclib/file.cpp:735 NonEmpty`<br>`mclib/file.cpp:785 NonEmpty` | NonEmpty | empty string no longer takes the add-on branch | same function now agrees with its first read |
 | `MC2_RENDER_CONTRACT_ASSERT` | resolved | no | `GameOS/gameos/gos_gpu_sync.cpp:16 Lead0`<br>`mclib/render_contract.cpp:569 Lead0` | Lead0 | empty string off in the GPU sync reader | matches the contract reader |
@@ -83,15 +83,15 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_SNAPSHOT_MECH_EXTRACT` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:593 Lead0`<br>`GameOS/gameos/gos_mech_batcher.cpp:2958 Lead0`<br>`GameOS/gameos/render_snapshot.cpp:245 Lead0` | Lead0 | values other than 1 now enable extraction in the mech batcher and the snapshot builder | matches the debug-state mirror |
 | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:482 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:239 Lead0Kill` | Lead0Kill (default ON, =0 disables) | none today: the editor's InitInstance override ran after the batcher cached the variable at file scope, so it never took effect; the override is deleted | gos_static_prop_batcher.cpp caches it in a file-scope static (runs before WinMain); EditRel links that TU |
 | `MC2_SPOTLIGHT_DIRECTION_FIX` | enum | yes | `mclib/cone_glow.cpp:223 AtoiNZ`<br>`mclib/cone_glow.cpp:243 Custom[00000001]` | levels: 1 fix, 2 fix plus trace | code unchanged | readers compare a leading character on purpose |
-| `MC2_STATIC_PROP_BUILDING_SHADOW` | enum | yes | `GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]`<br>`mclib/bdactor.cpp:5563 Lead0P`<br>`mclib/txmmgr.cpp:3517 Lead0P`<br>`mclib/txmmgr.cpp:3518 Lead0P`<br>`mclib/txmmgr.cpp:3521 Partial[D,off,off,off,off,off,off,on]`<br>`mclib/txmmgr.cpp:3659 Lead0P`<br>`... +1 more` | levels: 0 off, 1 on, 2 on plus trace | code unchanged | readers compare a leading character on purpose |
-| `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | enum | yes | `mclib/bdactor.cpp:5567 Lead0Kill`<br>`mclib/bdactor.cpp:5578 Custom[00000001]`<br>`mclib/bdactor.cpp:5579 Custom[00000001]` | levels: =0 kill-switch (default ON), 2 adds a trace line | code unchanged | levels are intentional |
+| `MC2_STATIC_PROP_BUILDING_SHADOW` | enum | yes | `GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]`<br>`mclib/bdactor.cpp:5568 Lead0P`<br>`mclib/txmmgr.cpp:3517 Lead0P`<br>`mclib/txmmgr.cpp:3518 Lead0P`<br>`mclib/txmmgr.cpp:3521 Partial[D,off,off,off,off,off,off,on]`<br>`mclib/txmmgr.cpp:3659 Lead0P`<br>`... +1 more` | levels: 0 off, 1 on, 2 on plus trace | code unchanged | readers compare a leading character on purpose |
+| `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | enum | yes | `mclib/bdactor.cpp:5572 Lead0Kill`<br>`mclib/bdactor.cpp:5583 Custom[00000001]`<br>`mclib/bdactor.cpp:5584 Custom[00000001]` | levels: =0 kill-switch (default ON), 2 adds a trace line | code unchanged | levels are intentional |
 | `MC2_STATIC_PROP_TRACE` | resolved | no | `GameOS/gameos/gos_static_prop_batcher.cpp:5896 Lead0`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:5897 Lead0`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:5898 Lead0`<br>`GameOS/gameos/gos_static_prop_registry.cpp:138 Lead0` | Lead0 | =false now reads as on in the registry reader | matches the batcher reader |
 | `MC2_STATIC_UPDATE_SKIP` | resolved | no | `GameOS/gameos/gameosmain.cpp:1270 Std(def=on)`<br>`code/bldng.cpp:815 Std(def=on)`<br>`code/terrobj.cpp:96 Std(def=on)` | ParseEnvBool, default ON (0/false/off/no disable) | =false/off/no now disable the building skip as well | terrobj.cpp and the launch banner already used this rule |
 | `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | divergent | yes | `GameOS/gameos/gameos_graphics.cpp:7269 Num(atof,raw)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:929 Num(atof,raw)` | owner decision: legacy path defaults 0.35, chunk path defaults 0.0 | unifying would change one path's default-config result | gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live) |
 | `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | note | no | `GameOS/gameos/gos_terrain_height_tex.cpp:51 Num(atoi,raw)` | Enum {1,2,4}; other values rejected | code unchanged | single reader; a clamp row would change it |
 | `MC2_TERRAIN_MATERIAL_LIB` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:364 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:231 Lead0` | Lead0 | =0 now disables the material-library JSON load | matches the host reader |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
-| `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:178 Num(atoi,raw)`<br>`mclib/gvactor.cpp:143 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
+| `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:179 Num(atoi,raw)`<br>`mclib/gvactor.cpp:143 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
 | `MC2_UI_DEFS_TRACE` | resolved | no | `GuiRuntime/GuiRuntime.cpp:105 Lead0`<br>`gui/UiDefs.cpp:107 Lead0` | Lead0 | =false/off/no now read as on in the defs reader | matches the runtime reader |
 | `MC2_VK_PROP_DIRECT_CHAIN` | resolved | no | `GameOS/gameos/engine_present_vk.cpp:296 Tri(inherit)`<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:146 Tri(inherit)` | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (prop is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
 | `MC2_VK_TERRAIN_CSM` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 Tri(inherit)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 Tri(inherit)` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | the near-cascade subset check now inherits the umbrella; it still also requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1, so the default render is unchanged | owner ruling; VK captures unchanged |
@@ -103,10 +103,10 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 
 | Class | Reader sites |
 |---|---|
-| Presence | 474 |
+| Presence | 475 |
 | Lead0Kill | 199 |
 | Lead0 | 192 |
-| Num(atof,raw) | 157 |
+| Num(atof,raw) | 152 |
 | Lead1 | 130 |
 | Lead0P | 60 |
 | AtoiNZ | 60 |
@@ -114,7 +114,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | Num(atoi,raw) | 48 |
 | Exact1 | 44 |
 | NonEmpty | 42 |
-| Num(atol,raw) | 23 |
+| Num(atol,raw) | 21 |
 | Std(def=off) | 14 |
 | Num(atof,guarded) | 11 |
 | Std(def=on) | 11 |

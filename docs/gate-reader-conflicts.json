@@ -13,11 +13,11 @@
   "NonEmpty": 42,
   "Num(atof+atoi,raw)": 1,
   "Num(atof,guarded)": 11,
-  "Num(atof,raw)": 157,
+  "Num(atof,raw)": 152,
   "Num(atoi,guarded)": 6,
   "Num(atoi,raw)": 48,
   "Num(atol,guarded)": 1,
-  "Num(atol,raw)": 23,
+  "Num(atol,raw)": 21,
   "Num(num,raw)": 4,
   "Num(strtoul,guarded)": 5,
   "Num(strtoul,raw)": 3,
@@ -25,7 +25,7 @@
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 474,
+  "Presence": 475,
   "Std(def=off)": 14,
   "Std(def=on)": 11,
   "Str[dflt,dflt]": 3,
@@ -144,32 +144,32 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_lighting.cpp:269 (Num(atol,raw))"
+    "GameOS/gameos/gos_terrain_lighting.cpp:266 (Typed(get))"
    ],
    "gate": "MC2_LIGHT_GRID_DIM",
    "in_conflict": false,
    "note": "one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default)",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:269",
+     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:266",
      "claim": "GameOS/gameos/gos_terrain_lighting.cpp:276",
-     "class": "Num(atol,raw)",
+     "class": "Typed(get)",
      "verdict": "corrected"
     }
    ]
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_lighting.cpp:852 (Num(atol,raw))"
+    "GameOS/gameos/gos_terrain_lighting.cpp:814 (Typed(get))"
    ],
    "gate": "MC2_LIGHT_POOL_MAX",
    "in_conflict": false,
    "note": "one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default)",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:852",
+     "actual": "GameOS/gameos/gos_terrain_lighting.cpp:814",
      "claim": "GameOS/gameos/gos_terrain_lighting.cpp:859",
-     "class": "Num(atol,raw)",
+     "class": "Typed(get)",
      "verdict": "corrected"
     }
    ]
@@ -315,7 +315,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_dev_shell.cpp:60 Lead1",
-    "code/missiongui.cpp:1211 Lead1"
+    "code/missiongui_uicmd.cpp:287 Lead1"
    ],
    "rule": "Lead1 (=1)",
    "status": "resolved"
@@ -338,9 +338,9 @@
    "gate": "MC2_FX_FORCE_SPAWN",
    "in_conflict": true,
    "readers": [
-    "code/warrior.cpp:5527 Lead0P",
-    "code/warrior.cpp:5527 Lead0P",
-    "code/warrior.cpp:5533 Custom[00000001]"
+    "code/warrior.cpp:2133 Lead0P",
+    "code/warrior.cpp:2133 Lead0P",
+    "code/warrior.cpp:2139 Custom[00000001]"
    ],
    "rule": "levels: 0 off, 1 fire once, loop/2-9 continuous",
    "status": "enum"
@@ -363,7 +363,7 @@
    "gate": "MC2_LIGHT_GRID_DIM",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_lighting.cpp:269 Num(atol,raw)"
+    "GameOS/gameos/gos_terrain_lighting.cpp:266 Typed(get)"
    ],
    "rule": "Int with range=Reject (out of range falls back to the default)",
    "status": "note"
@@ -374,7 +374,7 @@
    "gate": "MC2_LIGHT_POOL_MAX",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_lighting.cpp:852 Num(atol,raw)"
+    "GameOS/gameos/gos_terrain_lighting.cpp:814 Typed(get)"
    ],
    "rule": "Int with range=Reject (out of range falls back to the default)",
    "status": "note"
@@ -504,7 +504,7 @@
    "in_conflict": true,
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]",
-    "mclib/bdactor.cpp:5563 Lead0P",
+    "mclib/bdactor.cpp:5568 Lead0P",
     "mclib/txmmgr.cpp:3517 Lead0P",
     "mclib/txmmgr.cpp:3518 Lead0P",
     "mclib/txmmgr.cpp:3521 Partial[D,off,off,off,off,off,off,on]",
@@ -520,9 +520,9 @@
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
    "in_conflict": true,
    "readers": [
-    "mclib/bdactor.cpp:5567 Lead0Kill",
-    "mclib/bdactor.cpp:5578 Custom[00000001]",
-    "mclib/bdactor.cpp:5579 Custom[00000001]"
+    "mclib/bdactor.cpp:5572 Lead0Kill",
+    "mclib/bdactor.cpp:5583 Custom[00000001]",
+    "mclib/bdactor.cpp:5584 Custom[00000001]"
    ],
    "rule": "levels: =0 kill-switch (default ON), 2 adds a trace line",
    "status": "enum"
@@ -608,7 +608,7 @@
    "gate": "MC2_TEXMGR_KTX_PRIMARY",
    "in_conflict": false,
    "readers": [
-    "mclib/bdactor.cpp:178 Num(atoi,raw)",
+    "mclib/bdactor.cpp:179 Num(atoi,raw)",
     "mclib/gvactor.cpp:143 Num(atoi,raw)",
     "mclib/mech3d.cpp:186 Num(atoi,raw)",
     "mclib/txmmgr.cpp:5394 Num(atoi,raw)"
@@ -722,10 +722,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:5533"
+       "code/warrior.cpp:2139"
       ],
       "on": [
-       "code/warrior.cpp:5527"
+       "code/warrior.cpp:2133"
       ]
      },
      "probe": "E"
@@ -742,10 +742,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:5533"
+       "code/warrior.cpp:2139"
       ],
       "on": [
-       "code/warrior.cpp:5527"
+       "code/warrior.cpp:2133"
       ]
      },
      "probe": "F"
@@ -762,10 +762,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:5533"
+       "code/warrior.cpp:2139"
       ],
       "on": [
-       "code/warrior.cpp:5527"
+       "code/warrior.cpp:2133"
       ]
      },
      "probe": "O"
@@ -782,10 +782,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:5533"
+       "code/warrior.cpp:2139"
       ],
       "on": [
-       "code/warrior.cpp:5527"
+       "code/warrior.cpp:2133"
       ]
      },
      "probe": "X"
@@ -802,10 +802,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:5533"
+       "code/warrior.cpp:2139"
       ],
       "on": [
-       "code/warrior.cpp:5527"
+       "code/warrior.cpp:2133"
       ]
      },
      "probe": "X10"
@@ -834,7 +834,7 @@
      "family": "bool",
      "file": "code/warrior.cpp",
      "inverted": false,
-     "line": 5527,
+     "line": 2133,
      "vector": [
       "off",
       "on",
@@ -852,7 +852,7 @@
      "family": "bool",
      "file": "code/warrior.cpp",
      "inverted": false,
-     "line": 5527,
+     "line": 2133,
      "vector": [
       "off",
       "on",
@@ -870,7 +870,7 @@
      "family": "bool",
      "file": "code/warrior.cpp",
      "inverted": false,
-     "line": 5533,
+     "line": 2139,
      "vector": [
       "off",
       "off",
@@ -1233,7 +1233,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5563",
+       "mclib/bdactor.cpp:5568",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1259,7 +1259,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5563",
+       "mclib/bdactor.cpp:5568",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1285,7 +1285,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5563",
+       "mclib/bdactor.cpp:5568",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1311,7 +1311,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5563",
+       "mclib/bdactor.cpp:5568",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1337,7 +1337,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5563",
+       "mclib/bdactor.cpp:5568",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1387,7 +1387,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5563,
+     "line": 5568,
      "vector": [
       "off",
       "on",
@@ -1517,11 +1517,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5578",
-       "mclib/bdactor.cpp:5579"
+       "mclib/bdactor.cpp:5583",
+       "mclib/bdactor.cpp:5584"
       ],
       "on": [
-       "mclib/bdactor.cpp:5567"
+       "mclib/bdactor.cpp:5572"
       ]
      },
      "probe": "U"
@@ -1538,11 +1538,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5578",
-       "mclib/bdactor.cpp:5579"
+       "mclib/bdactor.cpp:5583",
+       "mclib/bdactor.cpp:5584"
       ],
       "on": [
-       "mclib/bdactor.cpp:5567"
+       "mclib/bdactor.cpp:5572"
       ]
      },
      "probe": "E"
@@ -1559,11 +1559,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5578",
-       "mclib/bdactor.cpp:5579"
+       "mclib/bdactor.cpp:5583",
+       "mclib/bdactor.cpp:5584"
       ],
       "on": [
-       "mclib/bdactor.cpp:5567"
+       "mclib/bdactor.cpp:5572"
       ]
      },
      "probe": "F"
@@ -1580,11 +1580,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5578",
-       "mclib/bdactor.cpp:5579"
+       "mclib/bdactor.cpp:5583",
+       "mclib/bdactor.cpp:5584"
       ],
       "on": [
-       "mclib/bdactor.cpp:5567"
+       "mclib/bdactor.cpp:5572"
       ]
      },
      "probe": "O"
@@ -1601,11 +1601,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5578",
-       "mclib/bdactor.cpp:5579"
+       "mclib/bdactor.cpp:5583",
+       "mclib/bdactor.cpp:5584"
       ],
       "on": [
-       "mclib/bdactor.cpp:5567"
+       "mclib/bdactor.cpp:5572"
       ]
      },
      "probe": "X"
@@ -1622,11 +1622,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5578",
-       "mclib/bdactor.cpp:5579"
+       "mclib/bdactor.cpp:5583",
+       "mclib/bdactor.cpp:5584"
       ],
       "on": [
-       "mclib/bdactor.cpp:5567"
+       "mclib/bdactor.cpp:5572"
       ]
      },
      "probe": "X10"
@@ -1654,7 +1654,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5567,
+     "line": 5572,
      "vector": [
       "on",
       "on",
@@ -1672,7 +1672,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5578,
+     "line": 5583,
      "vector": [
       "off",
       "off",
@@ -1690,7 +1690,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5579,
+     "line": 5584,
      "vector": [
       "off",
       "off",
@@ -1830,17 +1830,17 @@
   "editor",
   "gui"
  ],
- "source": "commit 9eac3b589",
+ "source": "commit 00000391f",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
   "gates_with_reader": 1117,
-  "literal_occurrences": 1695,
-  "non_call_literals": 43,
+  "literal_occurrences": 1699,
+  "non_call_literals": 47,
   "nonreader_sites": 17,
   "read_sites": 1652,
-  "reader_sites": 1561,
-  "token_sites": 51,
+  "reader_sites": 1555,
+  "token_sites": 57,
   "unclassified_sites": 23,
   "unresolved_conflicts": 0
  },
@@ -1989,14 +1989,14 @@
    "callee": "getenv",
    "file": "mclib/bdactor.cpp",
    "gate": "MC2_GLTF_AXIS",
-   "line": 397,
+   "line": 398,
    "why": "unclassified:opaque"
   },
   {
    "callee": "getenv",
    "file": "mclib/bdactor.cpp",
    "gate": "MC2_GLTF_YAW_DEG",
-   "line": 398,
+   "line": 399,
    "why": "unclassified:opaque"
   },
   {

@@ -3993,7 +3993,7 @@
    "key": "terrain_lighting",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_lighting.cpp:755",
+   "source": "GameOS/gameos/gos_terrain_lighting.cpp:717",
    "splice": {
     "begin_marker": "// --- begin terrain_lighting_shared.hglsl ---",
     "end_marker": "// --- end terrain_lighting_shared.hglsl ---",

@@ -50,7 +50,7 @@
   "code/mechlopedia.cpp": 1660,
   "code/mission.cpp": 5938,
   "code/missionbegin.cpp": 2136,
-  "code/missiongui.cpp": 9979,
+  "code/missiongui.cpp": 7922,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
@@ -109,7 +109,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "f0329f9f9",
+ "head": "00cc51a55",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -148,10 +148,10 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 304,
+   "files": 308,
    "files_over_1500": 31,
    "files_over_3000": 10,
-   "max_lines": 9979
+   "max_lines": 9578
   },
   "editor": {
    "files": 206,
@@ -192,16 +192,16 @@
    "lines": 11198
   },
   {
-   "file": "code/missiongui.cpp",
-   "lines": 9979
-  },
-  {
    "file": "code/warrior.cpp",
    "lines": 9578
   },
   {
    "file": "mclib/bdactor.cpp",
    "lines": 8282
+  },
+  {
+   "file": "code/missiongui.cpp",
+   "lines": 7922
   },
   {
    "file": "GameOS/gameos/gos_postprocess.cpp",
@@ -305,7 +305,7 @@
   }
  ],
  "total": {
-  "files": 1616,
+  "files": 1620,
   "files_over_1500": 95,
   "files_over_3000": 31,
   "max_lines": 11658
