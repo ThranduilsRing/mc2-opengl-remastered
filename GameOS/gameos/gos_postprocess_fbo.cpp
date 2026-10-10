@@ -3,6 +3,33 @@
 #include "gos_postprocess_internal.h"
 
 
+static bool mc2VkSharedSceneStrictEnabled()
+{
+    static const bool s_on = mc2::gate::get<"MC2_VK_SHARED_SCENE_STRICT">();
+    return s_on;
+}
+
+// VK-RUNG8-ITEM5 boot-decline canary. With the GL-import half deleted, the shared
+// scene is VK-only and arms only under the full native-present stack. If create()
+// still fails (VK context can't be born / resource alloc fails), the ONLY safe
+// outcome is to decline the ENTIRE VK shared-GBuffer session to pure GL: GL renders
+// its own targets, the VK islands fail their resource-readiness and fall to GL, and
+// present composites the GL scene. That decline is normally silent (a valid pure-GL
+// session); MC2_VK_SHARED_SCENE_STRICT=1 makes it a hard abort so deletion-readiness
+// / Metal-gate proofs cannot pass through a hidden shared-scene decline.
+void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
+{
+    if (!mc2VkSharedSceneStrictEnabled())
+        return;
+    std::fprintf(stderr,
+                 "[VK_SHARED_SCENE_STRICT] abort slot=%s reason=%s "
+                 "(VK shared-GBuffer declined to pure GL)\n",
+                 slot ? slot : "unknown",
+                 reason ? reason : "unknown");
+    std::fflush(stderr);
+    std::abort();
+}
+
 void gosPostProcess::destroy()
 {
     if (!initialized_)
