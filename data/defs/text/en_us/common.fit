@@ -437,8 +437,8 @@ String {
     activeOccurrenceCount = 37
     sourceAreas = "Editor;main_game_code;mclib"
     categories = "debug_log_candidate;manual_review;visible_review_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 642
+    firstSourceFile = "code/mechcmd2_cmdline.cpp"
+    firstLine = 10
 }
 
 String {

@@ -8,34 +8,6 @@
  ***************************************************************/
 
 String {
-    key = "debug.source.dst_hex_value_plus"
-    text = "\t---- Dst Hex Value : +"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ecef771ae344"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 599
-}
-
-String {
-    key = "debug.source.src_hex_value_plus"
-    text = "\t---- Src Hex Value : +"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "4da129220bed"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 589
-}
-
-String {
     key = "debug.source.offset_percentfplus"
     text = "\tOffset: %f+"
     source = "source_diagnostics"
@@ -330,34 +302,6 @@ String {
 }
 
 String {
-    key = "debug.source.su_percentg"
-    text = "       su: %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "2c72324cdbfe"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 776
-}
-
-String {
-    key = "debug.source.sv_percentg"
-    text = "       sv: %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "4093e7d52cf5"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 777
-}
-
-String {
     key = "debug.source.alpha_mask_0xpercent_8x"
     text = "      Alpha Mask = 0x%.8x\n"
     source = "source_diagnostics"
@@ -565,20 +509,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/mech.cpp"
     firstLine = 7777
-}
-
-String {
-    key = "debug.source.name_percents"
-    text = "     name: %s\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "c1d9223489dc"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 765
 }
 
 String {
@@ -862,20 +792,6 @@ String {
 }
 
 String {
-    key = "debug.source.alpha_percentg"
-    text = "    alpha: %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "61d74216317f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 773
-}
-
-String {
     key = "debug.source.flags_0xpercent8_8x"
     text = "    Flags: 0x%8.8X"
     source = "source_diagnostics"
@@ -890,34 +806,6 @@ String {
 }
 
 String {
-    key = "debug.source.groups_processed_percent8ld"
-    text = "    Groups processed:   %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "951abbee14ea"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 683
-}
-
-String {
-    key = "debug.source.input_polygons_percent8ld"
-    text = "    Input polygons:     %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "2bf7d3225f04"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 693
-}
-
-String {
     key = "debug.source.max_texture_size_percentdxpercentd"
     text = "    Max Texture Size: %dx%d\n"
     source = "source_diagnostics"
@@ -929,34 +817,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "Editor/EditorGosRender.cpp"
     firstLine = 1160
-}
-
-String {
-    key = "debug.source.skipped_tokens_percent8ld"
-    text = "    Skipped tokens:     %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ca033e1672fb"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 679
-}
-
-String {
-    key = "debug.source.texture_coordinates_percent8ld"
-    text = "    Texture coordinates:%8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "2f9221852f50"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 689
 }
 
 String {
@@ -985,76 +845,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/mover.cpp"
     firstLine = 1061
-}
-
-String {
-    key = "debug.source.total_triangles_percent8ld"
-    text = "    Total triangles:    %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "5355182c5b04"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 695
-}
-
-String {
-    key = "debug.source.unrecognized_tokens_percent8ld"
-    text = "    Unrecognized tokens:%8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ff2fb1af8bf7"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 681
-}
-
-String {
-    key = "debug.source.vertex_colors_percent8ld"
-    text = "    Vertex colors:      %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "8e98b5fd86c5"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 691
-}
-
-String {
-    key = "debug.source.vertex_coordinates_percent8ld"
-    text = "    Vertex coordinates: %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "2c8f9c6242cc"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 685
-}
-
-String {
-    key = "debug.source.vertex_normals_percent8ld"
-    text = "    Vertex normals:     %8ld"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "9ee2211f284b"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 687
 }
 
 String {
@@ -1240,76 +1030,6 @@ String {
 }
 
 String {
-    key = "debug.source.affinematrix4d_testclass_stubbed_out"
-    text = "  AffineMatrix4D::TestClass() stubbed out!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "aa8d500e15c7"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/affinematrix_test.cpp"
-    firstLine = 18
-}
-
-String {
-    key = "debug.source.alphanamelist_testclass_is_stubbed_out"
-    text = "  AlphaNameList::TestClass() is stubbed out!\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "c1a94a7f6cdc"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/namelist_test.cpp"
-    firstLine = 293
-}
-
-String {
-    key = "debug.source.ambient_percentg_percentg_percentg"
-    text = "  ambient: %g %g %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "3ddf5f2f68f0"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 767
-}
-
-String {
-    key = "debug.source.defined_0xpercentx"
-    text = "  defined: 0x%x\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "90322948b30d"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 766
-}
-
-String {
-    key = "debug.source.diffuse_percentg_percentg_percentg"
-    text = "  diffuse: %g %g %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "1eef3248a97f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 769
-}
-
-String {
     key = "debug.source.fullscreen_video_modes"
     text = "  Fullscreen video modes:\n"
     source = "source_diagnostics"
@@ -1324,132 +1044,6 @@ String {
 }
 
 String {
-    key = "debug.source.input_data"
-    text = "  Input Data:"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "549e14b5a297"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 677
-}
-
-String {
-    key = "debug.source.library_percents"
-    text = "  library: %s\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d7840d5dee59"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 764
-}
-
-String {
-    key = "debug.source.matrix4d_testclass_is_stubbed_out"
-    text = "  Matrix4D::TestClass() is stubbed out!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "1781c66ca01f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/matrix_test.cpp"
-    firstLine = 14
-}
-
-String {
-    key = "debug.source.memoryblock_testclass_is_stubbed_out"
-    text = "  MemoryBlock::TestClass() is stubbed out!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "7769dcbbf696"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memoryblock_test.cpp"
-    firstLine = 21
-}
-
-String {
-    key = "debug.source.memorystack_testclass_is_stubbed_out"
-    text = "  MemoryStack::TestClass() is stubbed out!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "c62539561794"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memoryblock_test.cpp"
-    firstLine = 35
-}
-
-String {
-    key = "debug.source.namelist_testclass_is_stubbed_out"
-    text = "  NameList::TestClass() is stubbed out!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "07435fe2b405"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/namelist_test.cpp"
-    firstLine = 280
-}
-
-String {
-    key = "debug.source.normal3d_testclass_is_stubbed_out"
-    text = "  Normal3D::TestClass() is stubbed out!\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "1f8cc9c1ab39"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/normal_test.cpp"
-    firstLine = 14
-}
-
-String {
-    key = "debug.source.ray3d_testclass_is_stubbed_out"
-    text = "  Ray3D::TestClass is stubbed out!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "299f6767ff36"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/ray_test.cpp"
-    firstLine = 14
-}
-
-String {
-    key = "debug.source.reflect_percents"
-    text = "  reflect: %s\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "0c552762fc2e"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 778
-}
-
-String {
     key = "debug.source.renderer_percents"
     text = "  Renderer %s:\n"
     source = "source_diagnostics"
@@ -1461,20 +1055,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "Editor/EditorGosRender.cpp"
     firstLine = 1133
-}
-
-String {
-    key = "debug.source.texture_percents"
-    text = "  texture: %s\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "adaffeed3f95"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 775
 }
 
 String {
@@ -3449,20 +3029,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/abldbug.cpp"
     firstLine = 736
-}
-
-String {
-    key = "debug.source.delta"
-    text = " delta= "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "86c427e6361e"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate;manual_review"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 178
 }
 
 String {
@@ -6686,20 +6252,6 @@ String {
 }
 
 String {
-    key = "debug.source.specular_percentg_percentg_percentg"
-    text = " specular: %g %g %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "24d24456e72f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 771
-}
-
-String {
     key = "debug.source.status_out_of_bounds"
     text = " Status out of bounds "
     source = "source_diagnostics"
@@ -7005,34 +6557,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/terrobj.cpp"
     firstLine = 166
-}
-
-String {
-    key = "debug.source.tests"
-    text = " tests !!!!!\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "80518892a494"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 183
-}
-
-String {
-    key = "debug.source.times"
-    text = " times\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "8880be263130"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 155
 }
 
 String {
@@ -7495,20 +7019,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/bldng.cpp"
     firstLine = 1332
-}
-
-String {
-    key = "debug.source.unrecognized_percents"
-    text = " unrecognized: %s"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d5bdd40fc463"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 1293
 }
 
 String {
@@ -8422,20 +7932,6 @@ String {
 }
 
 String {
-    key = "debug.source.percent02x_plus"
-    text = "%02x +"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "da1f97b8db5f"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 593
-}
-
-String {
     key = "debug.source.percent03ld_percent02ld"
     text = "%03ld : %02ld"
     source = "source_diagnostics"
@@ -8604,20 +8100,6 @@ String {
 }
 
 String {
-    key = "debug.source.percentd_bit_depth_percentd"
-    text = "%d\t---- Bit Depth : %d"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "59d6b37f5c7f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 501
-}
-
-String {
     key = "debug.source.percentd_percentd.ad1a701a"
     text = "%d %d"
     source = "source_diagnostics"
@@ -8629,48 +8111,6 @@ String {
     categories = "debug_log_candidate;manual_review"
     firstSourceFile = "mclib/mlr/mlrlookuplight.cpp"
     firstLine = 116
-}
-
-String {
-    key = "debug.source.percentd_bit_depth_percentd.18ecbe27"
-    text = "%d ---- Bit Depth : %d"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "18ecbe27571c"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 407
-}
-
-String {
-    key = "debug.source.percentd_dst_bit_value_plus"
-    text = "%d ---- Dst Bit Value : +"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d458216471f4"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 549
-}
-
-String {
-    key = "debug.source.percentd_src_bit_value_plus"
-    text = "%d ---- Src Bit Value : +"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "b715a6050ee6"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 503
 }
 
 String {
@@ -8739,8 +8179,8 @@ String {
     activeOccurrenceCount = 2
     sourceAreas = "mclib"
     categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 519
+    firstSourceFile = "mclib/stuff/style.hpp"
+    firstLine = 137
 }
 
 String {
@@ -8781,8 +8221,8 @@ String {
     activeOccurrenceCount = 3
     sourceAreas = "mclib"
     categories = "debug_log_candidate;manual_review"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 438
+    firstSourceFile = "code/missiongui_uicmd.cpp"
+    firstLine = 395
 }
 
 String {
@@ -8795,8 +8235,8 @@ String {
     activeOccurrenceCount = 15
     sourceAreas = "mclib"
     categories = "debug_log_candidate;manual_review"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 398
+    firstSourceFile = "code/missiongui_uicmd.cpp"
+    firstLine = 500
 }
 
 String {
@@ -9794,20 +9234,6 @@ String {
 }
 
 String {
-    key = "debug.source.percents_percent1d_percent02xpercent02x"
-    text = "%s_%1d_%02x%02x"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d8bdb9b4d9f0"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlr_terrain2.cpp"
-    firstLine = 164
-}
-
-String {
     key = "debug.source.percents_percentld.4eed7b5f"
     text = "%s_%ld"
     source = "source_diagnostics"
@@ -9976,20 +9402,6 @@ String {
 }
 
 String {
-    key = "debug.source.bf"
-    text = "' bf="
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "cad9d50e3242"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 465
-}
-
-String {
     key = "debug.source.in"
     text = "' in "
     source = "source_diagnostics"
@@ -9999,8 +9411,8 @@ String {
     activeOccurrenceCount = 1
     sourceAreas = "mclib"
     categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 827
+    firstSourceFile = "tools/mc2fx/mc2fx_core.cpp"
+    firstLine = 819
 }
 
 String {
@@ -10015,20 +9427,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "GameOS/gameos/gos_validate.cpp"
     firstLine = 105
-}
-
-String {
-    key = "debug.source.g"
-    text = "'g "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "fc37a53bf80d"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 465
 }
 
 String {
@@ -10088,20 +9486,6 @@ String {
 }
 
 String {
-    key = "debug.source.string.3e2b5008"
-    text = ") "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "3e2b500817a9"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate;manual_review"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 1165
-}
-
-String {
     key = "debug.source.string.df58248c"
     text = "*"
     source = "source_diagnostics"
@@ -10127,20 +9511,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/stuff/rotation.cpp"
     firstLine = 1175
-}
-
-String {
-    key = "debug.source.warning_material"
-    text = "* Warning:  Material '"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "61b4f813e4fd"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 827
 }
 
 String {
@@ -10419,8 +9789,8 @@ String {
     activeOccurrenceCount = 1
     sourceAreas = "mclib"
     categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 303
+    firstSourceFile = "code/mechcmd2_debugwins.cpp"
+    firstLine = 258
 }
 
 String {
@@ -10813,20 +10183,6 @@ String {
     categories = "debug_log_candidate;manual_review"
     firstSourceFile = "mclib/ablscan.cpp"
     firstLine = 198
-}
-
-String {
-    key = "debug.source.reading_material_library"
-    text = "> Reading material library '"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "20409fc7f87c"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 1175
 }
 
 String {
@@ -13574,20 +12930,6 @@ String {
 }
 
 String {
-    key = "debug.source.application_must_be_recompiled_to_use_database_percents"
-    text = "Application must be recompiled to use database \"%s\""
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "e603dcc4864c"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/database.cpp"
-    firstLine = 609
-}
-
-String {
     key = "debug.source.area_percent05d_percents_percentd"
     text = "area %05d, %s(%d)"
     source = "source_diagnostics"
@@ -14274,20 +13616,6 @@ String {
 }
 
 String {
-    key = "debug.source.bad_database_file_press_continue_to_rebuild"
-    text = "Bad database file!  Press 'Continue' to rebuild"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ac37cbb178a9"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/database.cpp"
-    firstLine = 638
-}
-
-String {
     key = "debug.source.bad_light_type"
     text = "Bad light type"
     source = "source_diagnostics"
@@ -14932,20 +14260,6 @@ String {
 }
 
 String {
-    key = "debug.source.can_t_open_material_library_percents"
-    text = "can't open material library %s"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "e5e54f5b8d32"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 1185
-}
-
-String {
     key = "debug.source.can_t_set_up_display_mode_percents"
     text = "Can't set up display mode: %s\n"
     source = "source_diagnostics"
@@ -14983,8 +14297,8 @@ String {
     activeOccurrenceCount = 4
     sourceAreas = "Editor;Viewer;main_game_code"
     categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 183
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 459
 }
 
 String {
@@ -15422,20 +14736,6 @@ String {
 }
 
 String {
-    key = "debug.source.clip_timing"
-    text = "Clip Timing"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "9a7df0e34793"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrpolymesh.cpp"
-    firstLine = 47
-}
-
-String {
     key = "debug.source.closed"
     text = "CLOSED"
     source = "source_diagnostics"
@@ -15615,48 +14915,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "GameOS/gameos/utils/shader_builder.cpp"
     firstLine = 78
-}
-
-String {
-    key = "debug.source.complete_memorystream_int_float_bitpacking_test"
-    text = "Complete MemoryStream Int/Float BitPacking Test!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "f2f3c35c1158"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 39
-}
-
-String {
-    key = "debug.source.complete_memorystream_multiplebitpacking_test"
-    text = "Complete MemoryStream MultipleBitPacking Test!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "a063c98e2289"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 34
-}
-
-String {
-    key = "debug.source.complete_memorystream_single_bitpacking_test"
-    text = "Complete MemoryStream Single BitPacking Test!"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "9c2e2005295d"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 29
 }
 
 String {
@@ -17466,20 +16724,6 @@ String {
 }
 
 String {
-    key = "debug.source.database_percents_does_not_exist"
-    text = "Database \"%s\" does not exist"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "3c7a0c3ec1e1"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/database.cpp"
-    firstLine = 614
-}
-
-String {
     key = "debug.source.dbg"
     text = "DBG"
     source = "source_diagnostics"
@@ -18695,20 +17939,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "data_tools/makefst.cpp"
     firstLine = 71
-}
-
-String {
-    key = "debug.source.duplicate_record"
-    text = "Duplicate Record"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "b21245512213"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/database.cpp"
-    firstLine = 271
 }
 
 String {
@@ -21316,20 +20546,6 @@ String {
 }
 
 String {
-    key = "debug.source.erf_version_is_newer_than_loader"
-    text = "ERF-Version is newer than loader !"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "fb0534304a04"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrprimitive.cpp"
-    firstLine = 226
-}
-
-String {
     key = "debug.source.error"
     text = "ERROR"
     source = "source_diagnostics"
@@ -22366,20 +21582,6 @@ String {
 }
 
 String {
-    key = "debug.source.file_data_checks_out_as_well"
-    text = "File data checks out, as well..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d0e61318d8b5"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/filestream_test.cpp"
-    firstLine = 50
-}
-
-String {
     key = "debug.source.filepercentd"
     text = "File%d"
     source = "source_diagnostics"
@@ -22389,8 +21591,8 @@ String {
     activeOccurrenceCount = 8
     sourceAreas = "Editor;Viewer;main_game_code"
     categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 283
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 571
 }
 
 String {
@@ -23290,20 +22492,6 @@ String {
 }
 
 String {
-    key = "debug.source.gameos_scriptsoutput"
-    text = "GameOS_ScriptsOUtput"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "788c0e93bf84"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "main_game_code"
-    categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 735
-}
-
-String {
     key = "debug.source.gameos_texture_gameos_directdraw_gameos_direct3d"
     text = "GameOS_Texture GameOS_DirectDraw GameOS_Direct3D "
     source = "source_diagnostics"
@@ -23313,8 +22501,8 @@ String {
     activeOccurrenceCount = 3
     sourceAreas = "Editor;Viewer;main_game_code"
     categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 735
+    firstSourceFile = "editor/Editor.cpp"
+    firstLine = 1023
 }
 
 String {
@@ -24771,20 +23959,6 @@ String {
     categories = "debug_log_candidate;identifier_or_key_candidate"
     firstSourceFile = "code/ablmc2.cpp"
     firstLine = 7768
-}
-
-String {
-    key = "debug.source.i.583c24ef"
-    text = "i= "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "583c24ef77df"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate;manual_review"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 178
 }
 
 String {
@@ -27728,20 +26902,6 @@ String {
 }
 
 String {
-    key = "debug.source.invalid_database_file_percents"
-    text = "Invalid database file \"%s\""
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "8bf1808e5aab"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/database.cpp"
-    firstLine = 607
-}
-
-String {
     key = "debug.source.invalid_font_size_percentd"
     text = "Invalid font size: %d\n"
     source = "source_diagnostics"
@@ -28190,20 +27350,6 @@ String {
 }
 
 String {
-    key = "debug.source.leaving_filestream_test"
-    text = "Leaving FileStream test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "a698340bea24"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/filestream_test.cpp"
-    firstLine = 51
-}
-
-String {
     key = "debug.source.left_percentf_percentf_percentf"
     text = "left = %f,%f,%f"
     source = "source_diagnostics"
@@ -28484,20 +27630,6 @@ String {
 }
 
 String {
-    key = "debug.source.lightmaps_not_implemented_yet"
-    text = "Lightmaps not implemented yet."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "04a95e259f54"
-    occurrenceCount = 7
-    activeOccurrenceCount = 7
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrindexedpolymesh.cpp"
-    firstLine = 1472
-}
-
-String {
     key = "debug.source.line_percentd.513ac5eb"
     text = "LINE %d"
     source = "source_diagnostics"
@@ -28689,8 +27821,8 @@ String {
     activeOccurrenceCount = 2
     sourceAreas = "main_game_code"
     categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 732
+    firstSourceFile = "code/logistics.cpp"
+    firstLine = 113
 }
 
 String {
@@ -28927,8 +28059,8 @@ String {
     activeOccurrenceCount = 2
     sourceAreas = "main_game_code"
     categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 200
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 476
 }
 
 String {
@@ -29604,20 +28736,6 @@ String {
 }
 
 String {
-    key = "debug.source.material_percents_not_defined"
-    text = "material \"%s\" not defined"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "f505a6730acb"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 1078
-}
-
-String {
     key = "debug.source.matnormalpercentd"
     text = "matNormal%d"
     source = "source_diagnostics"
@@ -29643,20 +28761,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/stuff/matrix.cpp"
     firstLine = 924
-}
-
-String {
-    key = "debug.source.maxy"
-    text = "MaxY"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "b0b7c6b5e81b"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/extentpoly.cpp"
-    firstLine = 54
 }
 
 String {
@@ -30075,8 +29179,8 @@ String {
     activeOccurrenceCount = 8
     sourceAreas = "Editor;Viewer;main_game_code"
     categories = "debug_log_candidate;identifier_or_key_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 331
+    firstSourceFile = "code/mechcmd2.cpp"
+    firstLine = 713
 }
 
 String {
@@ -30287,20 +29391,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "GameOS/gameos/gameosmain.cpp"
     firstLine = 703
-}
-
-String {
-    key = "debug.source.miny"
-    text = "MinY"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "08957b9fb0d6"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/extentpoly.cpp"
-    firstLine = 50
 }
 
 String {
@@ -30878,62 +29968,6 @@ String {
 }
 
 String {
-    key = "debug.source.mlr_terrain2_clip"
-    text = "MLR_Terrain2_Clip"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "59e55c1a394b"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlr_terrain2.cpp"
-    firstLine = 46
-}
-
-String {
-    key = "debug.source.mlr_terrain_clip"
-    text = "MLR_Terrain_Clip"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d9b288276200"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlr_terrain.cpp"
-    firstLine = 41
-}
-
-String {
-    key = "debug.source.mlrindexedpolymesh_clip"
-    text = "MLRIndexedPolyMesh_Clip"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "0f4d1d7caf57"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrindexedpolymesh.cpp"
-    firstLine = 53
-}
-
-String {
-    key = "debug.source.mlrpolymesh_clip"
-    text = "MLRPolyMesh_Clip"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "89d2a379b718"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrpolymesh.cpp"
-    firstLine = 43
-}
-
-String {
     key = "debug.source.mlrstate_alphaonemode_not_available_anymore"
     text = "MLRState::AlphaOneMode not available anymore"
     source = "source_diagnostics"
@@ -31001,20 +30035,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/ablerr.cpp"
     firstLine = 187
-}
-
-String {
-    key = "debug.source.more_than_percentd_unique_mtllibs_enlarge_max_mtl_files"
-    text = "more than %d unique mtllibs. enlarge MAX_MTL_FILES"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "fb92bc85eea3"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 1178
 }
 
 String {
@@ -31368,20 +30388,6 @@ String {
 }
 
 String {
-    key = "debug.source.mtllistsize_percentd_mtllistcount_percentd_sizeof_objmateria_87a8c173"
-    text = "mtlListSize=%d, mtlListCount=%d, sizeof(objMaterial)=%d\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "87a8c1738a1d"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 850
-}
-
-String {
     key = "debug.source.multiplayer"
     text = "multiplayer"
     source = "source_diagnostics"
@@ -31407,20 +30413,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/multplyr.cpp"
     firstLine = 613
-}
-
-String {
-    key = "debug.source.multiplied"
-    text = "Multiplied "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "a2f7e034676a"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 155
 }
 
 String {
@@ -32049,8 +31041,8 @@ String {
     activeOccurrenceCount = 15
     sourceAreas = "GameOS;mclib"
     categories = "debug_log_candidate;manual_review"
-    firstSourceFile = "mclib/mlr/mlrprimitive.cpp"
-    firstLine = 780
+    firstSourceFile = "GameOS/gameos/gameos.cpp"
+    firstLine = 351
 }
 
 String {
@@ -32177,20 +31169,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/move.cpp"
     firstLine = 1992
-}
-
-String {
-    key = "debug.source.numberofvertices"
-    text = "NumberOfVertices"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "4d6f526615c5"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/extentpoly.cpp"
-    firstLine = 60
 }
 
 String {
@@ -32331,20 +31309,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "code/objmgr.cpp"
     firstLine = 2729
-}
-
-String {
-    key = "debug.source.objectnamelist_test_is_stubbed_out"
-    text = "ObjectNameList test is stubbed out..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ea1ca7aa9ab2"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/namelist_test.cpp"
-    firstLine = 84
 }
 
 String {
@@ -32555,20 +31519,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "GameOS/gameos/utils/gl_utils.h"
     firstLine = 78
-}
-
-String {
-    key = "debug.source.opening_writing_closing_opening_reading_and_closing"
-    text = "Opening, writing, closing, opening, reading, and closing"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "09ce642ebdf4"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/filestream_test.cpp"
-    firstLine = 44
 }
 
 String {
@@ -35400,20 +34350,6 @@ String {
 }
 
 String {
-    key = "debug.source.shininess_percentg"
-    text = "shininess: %g\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "4741623e5ff5"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 774
-}
-
-String {
     key = "debug.source.shorelines_percents"
     text = "Shorelines: %s\n"
     source = "source_diagnostics"
@@ -35425,20 +34361,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "GameOS/gameos/gameosmain.cpp"
     firstLine = 297
-}
-
-String {
-    key = "debug.source.should_never_reach_here"
-    text = "Should never reach here"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "3cb89e57a91e"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 159
 }
 
 String {
@@ -35918,468 +34840,6 @@ String {
 }
 
 String {
-    key = "debug.source.starting_affinematrix4d_test"
-    text = "Starting AffineMatrix4D Test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "75406dab002a"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/affinematrix_test.cpp"
-    firstLine = 17
-}
-
-String {
-    key = "debug.source.starting_alphanamelist_test"
-    text = "Starting AlphaNameList test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "56bd5747cd0f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/namelist_test.cpp"
-    firstLine = 291
-}
-
-String {
-    key = "debug.source.starting_chain_test"
-    text = "Starting Chain test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "39906dd8962f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/chain_test.cpp"
-    firstLine = 95
-}
-
-String {
-    key = "debug.source.starting_degree_test"
-    text = "Starting Degree test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "90efd370c0f0"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/angle_test.cpp"
-    firstLine = 124
-}
-
-String {
-    key = "debug.source.starting_eulerangle_test"
-    text = "Starting EulerAngle test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "a1014d2354c4"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 19
-}
-
-String {
-    key = "debug.source.starting_filestream_test"
-    text = "Starting FileStream test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "2a212397ce98"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/filestream_test.cpp"
-    firstLine = 31
-}
-
-String {
-    key = "debug.source.starting_filestreammanager_test"
-    text = "Starting FileStreamManager Test...\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "929406da0f28"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/filestreammanager_test.cpp"
-    firstLine = 187
-}
-
-String {
-    key = "debug.source.starting_hash_test"
-    text = "Starting Hash test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "e183332e335e"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/hash_test.cpp"
-    firstLine = 93
-}
-
-String {
-    key = "debug.source.starting_matrix4d_test"
-    text = "Starting Matrix4D test...\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "9a7d6e1dfe79"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/matrix_test.cpp"
-    firstLine = 13
-}
-
-String {
-    key = "debug.source.starting_memoryblock_test"
-    text = "Starting MemoryBlock test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "0f518a2049d2"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memoryblock_test.cpp"
-    firstLine = 19
-}
-
-String {
-    key = "debug.source.starting_memorystack_test"
-    text = "Starting MemoryStack test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "6c87badc39a7"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memoryblock_test.cpp"
-    firstLine = 34
-}
-
-String {
-    key = "debug.source.starting_memorystream_int_float_bitpacking_test"
-    text = "Starting MemoryStream Int/Float BitPacking Test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "04ebe0272cac"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 37
-}
-
-String {
-    key = "debug.source.starting_memorystream_multiplebitpacking_test"
-    text = "Starting MemoryStream MultipleBitPacking Test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "78b38e9931fc"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 32
-}
-
-String {
-    key = "debug.source.starting_memorystream_single_bitpacking_test"
-    text = "Starting MemoryStream Single BitPacking Test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "434aa1b58a90"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 27
-}
-
-String {
-    key = "debug.source.starting_namelist_test"
-    text = "Starting NameList test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "8ff98d743ef0"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/namelist_test.cpp"
-    firstLine = 278
-}
-
-String {
-    key = "debug.source.starting_normal3d_test"
-    text = "Starting Normal3D Test...\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d2ec20d6a132"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/normal_test.cpp"
-    firstLine = 13
-}
-
-String {
-    key = "debug.source.starting_notationfile_test"
-    text = "Starting NotationFile test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "532ac5e19559"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/notationfile_test.cpp"
-    firstLine = 20
-}
-
-String {
-    key = "debug.source.starting_objectnamelist_test"
-    text = "Starting ObjectNameList test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ef7b17fd7bb7"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/namelist_test.cpp"
-    firstLine = 82
-}
-
-String {
-    key = "debug.source.starting_origin3d_test"
-    text = "Starting Origin3D test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ba2f4b56c03d"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/origin_test.cpp"
-    firstLine = 17
-}
-
-String {
-    key = "debug.source.starting_point3d_test"
-    text = "Starting Point3D test...\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "d17adedf7057"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/point3d_test.cpp"
-    firstLine = 17
-}
-
-String {
-    key = "debug.source.starting_radian_test"
-    text = "Starting Radian Test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "c991ce683a0c"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/angle_test.cpp"
-    firstLine = 17
-}
-
-String {
-    key = "debug.source.starting_random_instance_test"
-    text = "Starting Random::Instance test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "42cec09f8096"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/random_test.cpp"
-    firstLine = 13
-}
-
-String {
-    key = "debug.source.starting_ray3d_test"
-    text = "Starting Ray3D test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "0d89a9701de1"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/ray_test.cpp"
-    firstLine = 13
-}
-
-String {
-    key = "debug.source.starting_safechain_test"
-    text = "Starting SafeChain test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "9e0e4d170732"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/safechain_test.cpp"
-    firstLine = 91
-}
-
-String {
-    key = "debug.source.starting_sincos_test"
-    text = "Starting SinCos test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "e4814e71b1a9"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/angle_test.cpp"
-    firstLine = 161
-}
-
-String {
-    key = "debug.source.starting_sortedchain_test"
-    text = "Starting SortedChain test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "8ac6d1915ffd"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/sortedchain_test.cpp"
-    firstLine = 92
-}
-
-String {
-    key = "debug.source.starting_table_test"
-    text = "Starting Table test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "1d8f93b89c3b"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/table_test.cpp"
-    firstLine = 91
-}
-
-String {
-    key = "debug.source.starting_tree_test"
-    text = "Starting Tree test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "bcdedfdf63a8"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/tree_test.cpp"
-    firstLine = 94
-}
-
-String {
-    key = "debug.source.starting_unitquaternion_test"
-    text = "Starting UnitQuaternion Test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "fc62737a3f40"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 64
-}
-
-String {
-    key = "debug.source.starting_unitquaternion_testclass"
-    text = "Starting UnitQuaternion::TestClass()\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "c4ef24c91c84"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 82
-}
-
-String {
-    key = "debug.source.starting_unitvector3d_test"
-    text = "Starting UnitVector3D test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "00a6cd11b5b7"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/unitvector_test.cpp"
-    firstLine = 17
-}
-
-String {
-    key = "debug.source.starting_vector3d_test"
-    text = "Starting Vector3D test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "f8db3789aad6"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/vector3d_test.cpp"
-    firstLine = 17
-}
-
-String {
-    key = "debug.source.starting_vector4d_test"
-    text = "Starting Vector4D test..."
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "eedafc4ced8c"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/vector4d_test.cpp"
-    firstLine = 17
-}
-
-String {
     key = "debug.source.stat_percents"
     text = "stat: %s\n"
     source = "source_diagnostics"
@@ -36632,20 +35092,6 @@ String {
 }
 
 String {
-    key = "debug.source.success_at"
-    text = "SUCCESS at "
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "5a17583fa87b"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 183
-}
-
-String {
     key = "debug.source.supported_decoders"
     text = "Supported decoders...\n"
     source = "source_diagnostics"
@@ -36853,48 +35299,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/color.cpp"
     firstLine = 60
-}
-
-String {
-    key = "debug.source.table_comparetableentries_should_never_reach_here"
-    text = "Table::CompareTableEntries - Should never reach here"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "40ad54bddb16"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/table.cpp"
-    firstLine = 262
-}
-
-String {
-    key = "debug.source.table_comparevaluetotableentry_should_never_reach_here"
-    text = "Table::CompareValueToTableEntry - Should never reach here"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "93c66532fa34"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/table.cpp"
-    firstLine = 278
-}
-
-String {
-    key = "debug.source.table_maketableentry_should_never_reach_here"
-    text = "Table::MakeTableEntry - Should never reach here"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "ece2787d690f"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/table.cpp"
-    firstLine = 246
 }
 
 String {
@@ -37413,20 +35817,6 @@ String {
     categories = "debug_log_candidate;identifier_or_key_candidate"
     firstSourceFile = "code/mechcmd2.cpp"
     firstLine = 2372
-}
-
-String {
-    key = "debug.source.testing_percentd_random_bit_depth_random_value_numbers"
-    text = "Testing %d random bit depth, random value numbers"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "bc3f30927990"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 393
 }
 
 String {
@@ -38102,20 +36492,6 @@ String {
 }
 
 String {
-    key = "debug.source.trace_obj"
-    text = "trace_obj"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "fadf17fd67bc"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 636
-}
-
-String {
     key = "debug.source.transcripts"
     text = "transcripts"
     source = "source_diagnostics"
@@ -38337,20 +36713,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/mlr/mlrindexedtrianglecloud.cpp"
     firstLine = 647
-}
-
-String {
-    key = "debug.source.truncated_to_255_characters_in_debug_info"
-    text = "truncated to 255 characters in debug info"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "848c304ae9d7"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/auto_container.hpp"
-    firstLine = 9
 }
 
 String {
@@ -39026,20 +37388,6 @@ String {
 }
 
 String {
-    key = "debug.source.unitquaternion_testclass_done"
-    text = "UnitQuaternion::TestClass  done !\n"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "f9bc0df40ae8"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/rotation_test.cpp"
-    firstLine = 186
-}
-
-String {
     key = "debug.source.unknown"
     text = "unknown"
     source = "source_diagnostics"
@@ -39219,20 +37567,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "data_tools/pak.cpp"
     firstLine = 66
-}
-
-String {
-    key = "debug.source.unrecognized_percents.4b5c3a9a"
-    text = "unrecognized: %s"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "4b5c3a9a1210"
-    occurrenceCount = 1
-    activeOccurrenceCount = 1
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/mlr/mlrloadobj.cpp"
-    firstLine = 645
 }
 
 String {
@@ -41009,8 +39343,8 @@ String {
     activeOccurrenceCount = 16
     sourceAreas = "Editor;main_game_code;mclib"
     categories = "debug_log_candidate"
-    firstSourceFile = "code/logmain.cpp"
-    firstLine = 655
+    firstSourceFile = "code/controlgui_init.cpp"
+    firstLine = 594
 }
 
 String {
@@ -41249,20 +39583,6 @@ String {
     categories = "debug_log_candidate"
     firstSourceFile = "mclib/stuff/motion.cpp"
     firstLine = 87
-}
-
-String {
-    key = "debug.source.plus.b15224fc"
-    text = "|+"
-    source = "source_diagnostics"
-    migrationState = "candidate_collapsed_v1"
-    textHash = "b15224fc1637"
-    occurrenceCount = 2
-    activeOccurrenceCount = 2
-    sourceAreas = "mclib"
-    categories = "debug_log_candidate"
-    firstSourceFile = "mclib/stuff/memorystream_test.cpp"
-    firstLine = 534
 }
 
 String {

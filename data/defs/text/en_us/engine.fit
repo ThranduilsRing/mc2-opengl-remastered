@@ -325,8 +325,8 @@ String {
     activeOccurrenceCount = 3
     sourceAreas = "mclib"
     categories = "debug_log_candidate;user_or_debug_error_candidate"
-    firstSourceFile = "mclib/mlr/mlrprimitive.hpp"
-    firstLine = 420
+    firstSourceFile = "mclib/mlr/mlrprimitivebase.hpp"
+    firstLine = 505
 }
 
 String {
