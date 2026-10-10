@@ -26,6 +26,8 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 // by ui-phase1 PAUSE-IMGUI slices (field-tested). hudimguipanel.h retained for tab registry.
 #include"hudimguipanel.h"
 #include "imgui.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 extern float frameLength;
 
@@ -89,9 +91,10 @@ void PauseWindow::update()
 	// buttons, so this is the capture fixture for the confirm dialogs (same
 	// pattern as MC2_BOOT_PAUSED). Registered (Trace).
 	{
-		static const char* s_confirm = getenv("MC2_BOOT_PAUSED_CONFIRM");
+		static const std::string s_confirmText = mc2::gate::str<"MC2_BOOT_PAUSED_CONFIRM">();   // "" when unset or empty
+		static const char* s_confirm = s_confirmText.c_str();
 		static bool s_confirmDone = false;
-		if ( s_confirm && s_confirm[0] && !s_confirmDone && currentTime > 0.7f
+		if ( s_confirm[0] && !s_confirmDone && currentTime > 0.7f
 			&& !bPromptToQuit && !bPromptToAbort )
 		{
 			s_confirmDone = true;
@@ -315,10 +318,7 @@ void PauseWindow::update()
 // return/objectives behave exactly as the legacy panel.
 bool PauseWindow::imguiPauseEnabled()
 {
-	static const bool s_on = []{
-		const char* v = getenv("MC2_UI_IMGUI_PAUSE");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_PAUSE">();
 	return s_on;
 }
 
