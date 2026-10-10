@@ -301,9 +301,9 @@
    "readers": [
     "GameOS/gameos/debug_state_dump.cpp:1180 Lead0",
     "GameOS/gameos/debug_state_dump.cpp:1211 Lead0",
-    "GameOS/gameos/gameosmain.cpp:1050 Lead0",
-    "GameOS/gameos/gameosmain.cpp:1050 Lead0",
-    "GameOS/gameos/gameosmain.cpp:1050 Lead0"
+    "GameOS/gameos/gameosmain.cpp:1053 Lead0",
+    "GameOS/gameos/gameosmain.cpp:1053 Lead0",
+    "GameOS/gameos/gameosmain.cpp:1053 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -386,7 +386,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/debug_state_dump.cpp:483 Lead0Kill",
-    "GameOS/gameos/gameosmain.cpp:1325 Lead0Kill",
+    "GameOS/gameos/gameosmain.cpp:1334 Lead0Kill",
     "GameOS/gameos/gos_materials.cpp:46 Lead0Kill",
     "GameOS/gameos/gos_mech_batcher.cpp:683 Lead0Kill",
     "GameOS/gameos/gos_static_prop_batcher.cpp:813 Lead0Kill"
@@ -425,8 +425,8 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/gameos_graphics.cpp:6068 Lead1",
-    "GameOS/gameos/gameosmain.cpp:1266 Lead1",
-    "GameOS/gameos/gameosmain.cpp:1266 Lead1",
+    "GameOS/gameos/gameosmain.cpp:1275 Lead1",
+    "GameOS/gameos/gameosmain.cpp:1275 Lead1",
     "GameOS/gameos/utils/shader_builder.cpp:422 Lead1"
    ],
    "rule": "Lead1 (=1)",
@@ -547,7 +547,7 @@
    "gate": "MC2_STATIC_UPDATE_SKIP",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameosmain.cpp:1261 Std(def=on)",
+    "GameOS/gameos/gameosmain.cpp:1270 Std(def=on)",
     "code/bldng.cpp:815 Std(def=on)",
     "code/terrobj.cpp:96 Std(def=on)"
    ],
@@ -1830,13 +1830,13 @@
   "editor",
   "gui"
  ],
- "source": "commit 43d26d7c0",
+ "source": "commit c6c99049e",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
   "gates_with_reader": 1117,
-  "literal_occurrences": 1700,
-  "non_call_literals": 42,
+  "literal_occurrences": 1701,
+  "non_call_literals": 43,
   "nonreader_sites": 17,
   "read_sites": 1658,
   "reader_sites": 1567,

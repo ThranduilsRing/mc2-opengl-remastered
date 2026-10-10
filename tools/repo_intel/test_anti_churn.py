@@ -418,3 +418,50 @@ def test_deploy_status_known_lane_names():
     # lanes (e.g. 0.5-testing) were archived off-disk and dropped from the maps.
     assert "0.4" in names
     assert "0.4c" in names
+
+
+# ---------------------------------------------------------------------------
+# typed gate registry (Gates/): gate::get<"MC2_X">() is a reader
+# ---------------------------------------------------------------------------
+
+def _write_cpp(root: Path, rel: str, text: str) -> None:
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+
+
+def test_env_index_sees_gate_get_readers(tmp_path):
+    _write_cpp(tmp_path, "GameOS/a.cpp",
+               'bool a = gate::get<"MC2_ALPHA">();\n'
+               'bool b = mc2::gate::get<"MC2_BETA", gate::Rule::Presence>();\n'
+               'auto t = gate::state<"MC2_GAMMA">();\n'
+               'bool s = gate::isSet<"MC2_DELTA">();\n'
+               'auto p = gate::str<"MC2_EPSILON">();\n'
+               'bool e = gate::is<"MC2_ZETA", "all">();\n')
+    readers = ei._grep_getenv(tmp_path)
+    for name in ("MC2_ALPHA", "MC2_BETA", "MC2_GAMMA", "MC2_DELTA", "MC2_EPSILON", "MC2_ZETA"):
+        assert [r["file"] for r in readers[name]] == ["GameOS/a.cpp"], name
+
+
+def test_env_index_does_not_count_the_table_or_its_unit_test(tmp_path):
+    _write_cpp(tmp_path, "Gates/gate_table.cpp", 'G("MC2_ROWONLY", Bool, false, "x", "", "doc"),\n')
+    _write_cpp(tmp_path, "tests/unit/test_gate.cpp", 'bool a = gate::get<"MC2_FIXTURE">();\n')
+    _write_cpp(tmp_path, "tests/unit/other.cpp", 'bool a = gate::get<"MC2_REAL">();\n')
+    readers = ei._grep_getenv(tmp_path)
+    assert "MC2_ROWONLY" not in readers
+    assert "MC2_FIXTURE" not in readers
+    assert "MC2_REAL" in readers
+
+
+def test_env_index_still_sees_getenv_readers(tmp_path):
+    _write_cpp(tmp_path, "code/a.cpp", 'const char* v = getenv("MC2_LEGACY");\n')
+    assert "MC2_LEGACY" in ei._grep_getenv(tmp_path)
+
+
+def test_dead_gate_scan_judges_a_gate_get_result(tmp_path):
+    import dead_gate_scan as dgs
+    lines = ['void f() {', '    gate::get<"MC2_X">();', '    bool b = gate::get<"MC2_Y">();', '    use(b);', '}']
+    assert dgs._result_unused_at(lines, 2, "MC2_X") is True      # bare statement: result thrown away
+    assert dgs._result_unused_at(lines, 3, "MC2_Y") is False     # consumed
+    cached = ['static const bool s = gate::get<"MC2_Z">();']
+    assert dgs._result_unused_at(cached, 1, "MC2_Z") is False    # cached idiom: consumer is elsewhere

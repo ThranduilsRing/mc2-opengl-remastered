@@ -2091,6 +2091,77 @@ def classify_snippet(code, gate, helpers=""):
 
 _LITERAL_RE = re.compile(r'"(MC2_[A-Z0-9_]+)"')
 _CALLEE_RE = re.compile(r"([A-Za-z_][\w:]*)\s*\(\s*$")
+
+# Typed gate registry (Gates/gate.h): gate::get<"MC2_X">() and its siblings read a gate through the
+# compiled table. The reader's truthiness is the row's rule (or the per-site `Rule::` override), so a
+# migrated site is classified from Gates/gate_table.json instead of being interpreted.
+_GATE_GET_RE = re.compile(r"\b(?:(?:mc2::)?gate::)?(get|state|isSet|str|is)\s*<\s*$")
+_GATE_RULE_AFTER_RE = re.compile(r"\s*,\s*(?:(?:mc2::)?gate::)?Rule::(\w+)\s*>")
+_GATE_TABLE_REL = os.path.join("Gates", "gate_table.json")
+_GATE_ROWS = {}
+
+
+def _vec8(bits):
+    return ["on" if c == "1" else "off" for c in bits]
+
+
+#: Rule -> the eight-probe vector (U E Z F O X X10 X25) it produces; Std and Lead0Def take the row default.
+_RULE_BITS = {"Presence": "01111111", "NonEmpty": "00111111", "Exact1": "00001000", "Lead1": "00001010",
+              "Lead0": "00011111", "Lead0Kill": "11011111", "Lead0P": "01011111", "DefOnLead0": "10011111",
+              "AtoiNZ": "00001011", "DefOnAtoiNZ": "10001011", "Is01": "00101000"}
+
+
+def rule_vector(rule, default):
+    """-> (vector, class name) of a Bool row read under `rule`, or None."""
+    d = "1" if default else "0"
+    if rule == "Std":
+        return _vec8(d + d + "001111"), "Std(def=%s)" % ("on" if default else "off")
+    if rule == "Lead0Def":
+        return _vec8(d + d + "011111"), "Lead0Def(def=%s)" % ("on" if default else "off")
+    bits = _RULE_BITS.get(rule)
+    return (_vec8(bits), rule) if bits else None
+
+
+def gate_rows():
+    """{name: (kind, rule, default)} from the compiled table JSON next to this checkout (empty when absent)."""
+    if not _GATE_ROWS:
+        import json
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), _GATE_TABLE_REL)
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                for g in json.load(fh).get("gates", []):
+                    _GATE_ROWS[g["name"]] = (g["kind"], g["rule"], g["default"])
+        except (OSError, ValueError, KeyError):
+            _GATE_ROWS["__missing__"] = ("", "", None)
+    return _GATE_ROWS
+
+
+def typed_gate_site(path, text, m, gate):
+    """The site dict for a `gate::get<"MC2_X">()`-style read at literal match `m`, or None when the literal
+    is not the template argument of one."""
+    tm = _GATE_GET_RE.search(text[max(0, m.start() - 64):m.start()])
+    if not tm or path.replace("\\", "/").startswith("Gates/"):
+        return None
+    verb = tm.group(1)
+    line = text.count("\n", 0, m.start()) + 1
+    site = {"gate": gate, "file": path, "line": line, "callee": "gate::" + verb, "status": "token",
+            "family": None, "vector": None, "cls": "Typed(%s)" % verb, "inverted": False,
+            "parsers": [], "opaque": []}
+    row = gate_rows().get(gate)
+    if row is None:
+        site["status"] = "unclassified:not-in-gate-table"
+        return site
+    kind, rule, default = row
+    ov = _GATE_RULE_AFTER_RE.match(text[m.end():m.end() + 64])
+    if ov:
+        rule = ov.group(1)
+    if verb == "isSet":
+        rule, kind = "Presence", "Bool"
+    if verb in ("get", "isSet") and kind == "Bool":
+        rv = rule_vector(rule, bool(default))
+        if rv:
+            site.update(status="reader", family="bool", vector=rv[0], cls=rv[1])
+    return site
 _RAW_ENV_CALLEES = {"getenv", "_getenv", "GetEnvironmentVariableA",
                     "GetEnvironmentVariableW", "GetEnvironmentVariable"}
 
@@ -2118,6 +2189,10 @@ def scan_sources(sources):
             gate = m.group(1)
             stats["literals"] += 1
             stats["gates_with_literal"].add(gate)
+            typed = typed_gate_site(path, text, m, gate)
+            if typed is not None:
+                sites.append(typed)
+                continue
             cm = _CALLEE_RE.search(text[max(0, m.start() - 96):m.start()])
             callee = cm.group(1) if cm else None
             base = callee.split("::")[-1] if callee else None
