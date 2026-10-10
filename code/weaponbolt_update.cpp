@@ -168,6 +168,9 @@ long WeaponBolt::update (void)
 		goalHeight *= 10.0f;
 	}
 
+	// B2 P2: prev_position snapshot — no longer used after ring-buffer fix.
+	// Field kept for future velocity-based shader fades; assignment removed.
+	// prev_position = position;
 
 	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
 	if (myOwner)
@@ -243,6 +246,7 @@ long WeaponBolt::update (void)
 	bool isArcing = false;
 	if (((WeaponBoltTypePtr)getObjectType())->arcEffect)
 	{
+		//GoalHeight is actually the velocity
 		if ( goalHeight > 0.0f )
 		{
 			float accel = -((WeaponBoltTypePtr)getObjectType())->arcHeight * 10.0f;
@@ -1260,6 +1264,9 @@ long WeaponBolt::update (void)
 		trail_head = static_cast<uint8_t>((trail_head + 1) % kTrailHistoryMax);
 		if (trail_count < kTrailHistoryMax) ++trail_count;
 
+		// Walk the ring oldest → newest, stamping segments between consecutive
+		// positions. Oldest index = (trail_head - trail_count + kTrailHistoryMax)
+		// mod kTrailHistoryMax. Stop at trail_head - 1 (most recent stored).
 		if (trail_count >= 2) {
 			int oldest = (static_cast<int>(trail_head) - static_cast<int>(trail_count)
 			              + kTrailHistoryMax) % kTrailHistoryMax;

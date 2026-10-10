@@ -337,17 +337,20 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 	// MC2_BRAIN_RUNTIME_FORCE_MODE (if set) overrides all per-unit modes as a post-load global.
 	if (mc2::gate::get<"MC2_BRAIN_RUNTIME">()) {
 		char aiFitName[256];
+		// missionName is the raw name like "mc2_01"; missionPath is "data/missions/".
 		std::snprintf(aiFitName, sizeof(aiFitName), "%s%s_ai.fit", missionPath, missionName);
 		std::fprintf(stderr, "[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission=%s seeking %s\n", missionName, aiFitName);
 		std::fflush(stderr);
 		FitIniFile* aiFit = new FitIniFile;
 		if (aiFit && aiFit->open(aiFitName) == NO_ERR) {
+			// Seek the single "Brain" block (single-warrior fixture; multi-block not supported this slice).
 			if (aiFit->seekBlock("Brain") == NO_ERR) {
 				char unitRefBuf[32] = {};
 				long modeValLong = 0;
 				long unitRefResult  = aiFit->readIdString("unitRef",  unitRefBuf, 31);
 				long modeResult     = aiFit->readIdLong("mode", modeValLong);
 				if (unitRefResult == NO_ERR && modeResult == NO_ERR) {
+					// Parse "Warrior%d" -> 1-based index.
 					int warriorIdx = -1;
 					std::sscanf(unitRefBuf, "Warrior%d", &warriorIdx);
 					if (warriorIdx >= 1 && warriorIdx <= (int)numWarriors) {
@@ -359,6 +362,7 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 								case 2: fitMode = BrainRuntimeMode::Enhanced; break;
 								default: break;
 							}
+							// setBrainRuntimeMode allocates brainRuntime if needed + sets mode.
 							w->setBrainRuntimeMode(fitMode);
 							std::fprintf(stderr, "[BRAIN_RT] FIT load warriorIdx=%d unitRef=%s mode=%s\n",
 								warriorIdx,
@@ -436,6 +440,7 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 					MechWarriorPtr w = MechWarrior::warriorList[i];
 					if (w) {
 						if (!w->getBrainRuntime()) {
+							// Allocate runtime so tactic weights are accessible even for Legacy warriors.
 							w->setBrainRuntimeMode(BrainRuntimeMode::Legacy);
 						}
 						MechBrainRuntime* rt = w->getBrainRuntime();

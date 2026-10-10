@@ -42,6 +42,8 @@ void WeaponBolt::render (void)
 		drawInfo.m_state = mlrState;
 		drawInfo.m_clippingFlags = 0x0;
 
+		// VK-FIELD-VFX-2: force the immediate gos_DrawTriangles path under the VK VFX
+		// umbrella route so the bolt lands in the composited HUD tail (see file-top note).
 		const bool useImmediate = drawOldWay || vkVfxImmediateDraw();
 		const bool vfxTrace = vkVfxTraceOn();
 
@@ -56,6 +58,7 @@ void WeaponBolt::render (void)
 			DWORD edgeMode = ((WeaponBoltTypePtr)getObjectType())->edgeAlpha;
 			edgeMode <<= 24;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_tip]
 			eye->projectForScreenXY(laserPosition,screenPos);
 			lq1Vertices[0].x		= screenPos.x;
 			lq1Vertices[0].y		= screenPos.y;
@@ -73,6 +76,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[0].v		= 0.0f;
 			lq2Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->frontRGB;
 	
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v0]
 			eye->projectForScreenXY(laserVertices[0],screenPos);
 			lq1Vertices[1].x		= screenPos.x;
 			lq1Vertices[1].y		= screenPos.y;
@@ -90,6 +94,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[1].v		= 0.0f;
 			lq3Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v3]
 			eye->projectForScreenXY(laserVertices[3],screenPos);
 			lq1Vertices[2].x		= screenPos.x;
 			lq1Vertices[2].y		= screenPos.y;
@@ -123,6 +128,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[0].v		= 0.0f;
 			lq4Vertices[0].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v2]
 			eye->projectForScreenXY(laserVertices[2],screenPos);
 			lq3Vertices[2].x		= screenPos.x;
 			lq3Vertices[2].y		= screenPos.y;
@@ -140,6 +146,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[2].v		= 0.0f;
 			lq4Vertices[2].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->backRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_laser_v1]
 			eye->projectForScreenXY(laserVertices[1],screenPos);
 			lq2Vertices[1].x		= screenPos.x;
 			lq2Vertices[1].y		= screenPos.y;
@@ -194,6 +201,8 @@ void WeaponBolt::render (void)
 				{
 					gos_SetRenderState( gos_State_Texture, 0 );
 			
+					//--------------------------------
+					//Set States for Software Renderer
 					if (Environment.Renderer == 3)
 					{
 						gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
@@ -344,6 +353,7 @@ void WeaponBolt::render (void)
 			
  			float realUVRepeat = ((WeaponBoltTypePtr)getObjectType())->uvRepeat * dist / ((WeaponBoltTypePtr)getObjectType())->unitLength;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v0]
 			eye->projectForScreenXY(laserVertices[0],screenPos);
 			lq1Vertices[0].x		= screenPos.x;
 			lq1Vertices[0].y		= screenPos.y;
@@ -361,6 +371,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[0].v		= 0.0f;
 			lq2Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v1]
  			eye->projectForScreenXY(laserVertices[1],screenPos);
 			lq2Vertices[1].x		= screenPos.x;
 			lq2Vertices[1].y		= screenPos.y;
@@ -370,6 +381,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[1].v		= 0.999999f;
 			lq2Vertices[1].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
 	
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v2]
 			eye->projectForScreenXY(laserVertices[2],screenPos);
 			lq1Vertices[1].x		= screenPos.x;
 			lq1Vertices[1].y		= screenPos.y;
@@ -379,6 +391,7 @@ void WeaponBolt::render (void)
 			lq1Vertices[1].v		= 0.0f;
 			lq1Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_v3]
 			eye->projectForScreenXY(laserVertices[3],screenPos);
 			lq1Vertices[2].x		= screenPos.x;
 			lq1Vertices[2].y		= screenPos.y;
@@ -396,6 +409,7 @@ void WeaponBolt::render (void)
 			lq2Vertices[2].v		= 0.999999f;
 			lq2Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side0]
 			eye->projectForScreenXY(laserSide[0],screenPos);
 			lq3Vertices[0].x		= screenPos.x;
 			lq3Vertices[0].y		= screenPos.y;
@@ -413,6 +427,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[0].v		= 0.0f;
 			lq4Vertices[0].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side1]
  			eye->projectForScreenXY(laserSide[1],screenPos);
 			lq4Vertices[1].x		= screenPos.x;
 			lq4Vertices[1].y		= screenPos.y;
@@ -422,6 +437,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[1].v		= 0.999999f;
 			lq4Vertices[1].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->midEdgeRGB;
 	
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side2]
 			eye->projectForScreenXY(laserSide[2],screenPos);
 			lq3Vertices[1].x		= screenPos.x;
 			lq3Vertices[1].y		= screenPos.y;
@@ -431,6 +447,7 @@ void WeaponBolt::render (void)
 			lq3Vertices[1].v		= 0.0f;
 			lq3Vertices[1].argb		= edgeMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 			
+			// [PROJECTZ:ScreenXYOracle id=weaponbolt_beam_side3]
 			eye->projectForScreenXY(laserSide[3],screenPos);
 			lq3Vertices[2].x		= screenPos.x;
 			lq3Vertices[2].y		= screenPos.y;
@@ -464,6 +481,8 @@ void WeaponBolt::render (void)
 			{
 				gos_SetRenderState( gos_State_Texture, 0 );
 		
+				//--------------------------------
+				//Set States for Software Renderer
 				if (Environment.Renderer == 3)
 				{
 					gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneInvAlpha);
@@ -520,6 +539,11 @@ void WeaponBolt::render (void)
 				gos_DrawTriangles(lq2Vertices,3);
 				gos_DrawTriangles(lq3Vertices,3);
 				gos_DrawTriangles(lq4Vertices,3);
+				// VK-FIELD-VFX-3 (look-restore): the round-2 beam-axis LINE fallback
+				// (3 opaque horizontal lines) is retired — it was a visibility hack that
+				// produced the flat "weird laser". The textured ribbon quads above are the
+				// real beam and match GL. (If a far-zoom sub-pixel ribbon coverage delta
+				// resurfaces it will be handled by the ribbon geometry, not a line proxy.)
 			}
 			else
 			{
@@ -736,6 +760,7 @@ void WeaponBolt::render (void)
 			
 			drawInfo.m_parentToWorld = &shapeOrigin;
 	 
+			// VFX-WEAPON-FX-RESTORE-OPUS-1: suppress waterMissEffect Draw when oracle ON.
 			if (!MLRVertexLimitReached && !mc2::particles::Batcher::is_oracle_render_enabled())
 				waterMissEffect->Draw(&drawInfo);
 		}

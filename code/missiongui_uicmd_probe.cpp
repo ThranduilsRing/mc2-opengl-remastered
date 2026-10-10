@@ -160,6 +160,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 10, "draw_path ") == 0) {
+		// draw_path <partId> -- which renderer lane this object is on, and
+		// for a static prop, whether the recipe still describes it.
 		//
 		// `unit <partId>` already prints inView + staticRecipe. What it
 		// CANNOT say is whether that recipe is STALE: the recipe carries a
@@ -278,6 +280,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 12, "shadow_feed ") == 0) {
+		// shadow_feed <partId> -- what the shadow passes hold for this
+		// object, and from what pose.
 		//
 		// The leading black-quad hypothesis is that an animating building
 		// casts from its frozen mission-load pose. That is checkable here
@@ -365,6 +369,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 7, "ground ") == 0) {
+		// ground <partId> | ground <x> <y>
 		//
 		// The objective form of "the turret is sunk". Reports the terrain
 		// surface under a point next to the thing standing on it, and --
@@ -435,7 +440,12 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 6, "pixel ") == 0) {
+		// pixel <x> <y> [z] | pixel screen <px> <py>
 		//
+		// Samples ONE texel of the scene colour attachment, either at a
+		// world point (projected with the same Camera the renderer uses) or
+		// at a raw FBO texel. Turns "there is a black quad there" from an
+		// eyeball verdict into a number.
 		//
 		// TWO PROVENANCE FACTS, BOTH PRINTED, BOTH LOAD-BEARING:
 		//  1. srcFrame is CURRENT-1. This channel is polled from

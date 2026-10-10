@@ -404,6 +404,7 @@ long BattleMech::buildMoveChunk (void) {
 
 	moveChunk.init();
 	if (pilot) {
+		// First, make sure we have the latest path...
 		pilot->getMovePath();
 		moveChunk.build(this, pilot->getMovePath(0), pilot->getMovePath(1));
 	}
@@ -514,6 +515,8 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (mc2_diag::tagEnabled("COMBAT")) {
 		GameObjectPtr _cbAtk = ObjectManager->getByWatchID(shotInfo->attackerWID);
 		char _cbf[192];
+		// ISSUE-9 S3: "loc" = resolved hit location (mech body index; 0 = head)
+		// so called-shot location distribution is measurable headlessly.
 		snprintf(_cbf, sizeof(_cbf),
 			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
 			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
@@ -677,6 +680,11 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 					{
 						if ((bodyLocation == MECH_BODY_LOCATION_CTORSO) || (bodyLocation == MECH_BODY_LOCATION_HEAD)) 
 						{
+							// If hit in the center torso, no where else to go...
+							// If hit in the head, it is disabled. What that means at this point...?
+							// We'll probably want to put a disabled check in there, somewhere :)
+							// Most likely, the mech will have been blown up and/or destroyed before
+							// it's "disabled"...
 						}
 						else 
 						{
@@ -752,6 +760,8 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 					{
 						if ((bodyLocation == MECH_BODY_LOCATION_CTORSO) || (bodyLocation == MECH_BODY_LOCATION_HEAD)) 
 						{
+							// Hit center torso, already, or
+							// Head wiped out... what to do?
 						}
 						else 
 						{
@@ -813,6 +823,8 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 			{
 				if ((bodyLocation == MECH_BODY_LOCATION_CTORSO) || (bodyLocation == MECH_BODY_LOCATION_HEAD)) 
 				{
+					// Already in center torso, or
+					// Head wiped out... what to do?
 				}
 				else 
 				{

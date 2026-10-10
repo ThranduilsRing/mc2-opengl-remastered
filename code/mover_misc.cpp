@@ -128,6 +128,8 @@ void GetBlockedDoorCells (int moveLevel, int door, char* openCells) {
 
 	Assert((door > -1) && (door < GlobalMoveMap[moveLevel]->numDoors), 0, " FUDGE 1");
 	Assert((GlobalMoveMap[moveLevel]->doors[door].direction[0] == 1) || (GlobalMoveMap[moveLevel]->doors[door].direction[0] == 2), 0, " FUDGE 2");
+    //sebi length is char it is always < 1024
+	//Assert((GlobalMoveMap[moveLevel]->doors[door].length > 0) && (GlobalMoveMap[moveLevel]->doors[door].length < 1024), 0, " FUDGE 3");
 	Assert((GlobalMoveMap[moveLevel]->doors[door].length > 0), 0, " FUDGE 3");
 	long doorWorldCellRec[4] = {-1, -1, -1, -1};
 	if (GlobalMoveMap[moveLevel]->doors[door].direction[0] == 1) {

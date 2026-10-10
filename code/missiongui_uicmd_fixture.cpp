@@ -113,6 +113,7 @@ extern "C" void mc2FreezeMoversSet(int on, long atFrame)
 extern "C" long mc2FreezeMoversArmedAt()   { return s_freezeMoversAt; }
 extern "C" long mc2FreezeMoversEngagedAt() { return s_freezeMoversEngaged; }
 
+// Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
 	const std::string& line = c.line;

@@ -11,6 +11,7 @@ BldgAppearance* MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, cons
 	BldgAppearance* appearance = new BldgAppearance;
 	gosASSERT(appearance != NULL);
 
+	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 	
 	appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);

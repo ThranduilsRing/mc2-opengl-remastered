@@ -351,6 +351,8 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		return(NO_ERR);
 	}
 	
+	// The Goal Map is in CELLS...
+	//memset(goalMap, 0, sizeof(long) * GOALMAP_CELL_DIM * GOALMAP_CELL_DIM);
     MemSet(goalMap, 0);
 
 	int centerCell[2];

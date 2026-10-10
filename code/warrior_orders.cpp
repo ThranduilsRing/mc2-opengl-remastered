@@ -752,6 +752,7 @@ long MechWarrior::handleHitByWeaponFire (void) {
 
 	if (attackerWID == 0) 
 	{
+		// Ammo Explosion?
 	}
 	else if (attackerWID == -3)
 		radioMessage(RADIO_UNDER_AIRSTRIKE, true);

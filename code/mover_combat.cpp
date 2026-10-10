@@ -156,6 +156,12 @@ if (queuePlayerOrder)
 				if (queuePlayerOrder)
 					pilot->addQueuedTacOrder(tacOrder);
 				else {
+//					if (pilot->getNumTacOrdersQueued())
+						//This is a hack to simply trigger the execution of
+						//the queued orders. The current order is ignored (and
+						//is simply used for this trigger)...
+//						pilot->executeTacOrderQueue();
+//					else
 						pilot->setPlayerTacOrder(tacOrder);
 				}
 				break;
@@ -211,6 +217,9 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 		pilot = NULL;
 	}
 
+	// Loads a new pilot into the pilot manager and then puts it into
+	// this mover. If a pilot already exists in this mover, it is
+	// replaced...
 	MechWarriorPtr pilot = MechWarrior::newWarrior();
 	if (!pilot)
 		STOP(("Too many pilots in this mission!"));
@@ -588,6 +597,7 @@ long Mover::getThreatRating (void) {
 bool Mover::enemyRevealed (void)
 {
 
+	//NOTE: This function not used Anymore!!
 
 	return(false);
 }
@@ -763,6 +773,7 @@ bool Mover::getWeaponIndirectFire (long weaponIndex)
 			return true;
 	}
 			
+	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
 	return(false);
 }
 
@@ -777,6 +788,7 @@ bool Mover::getWeaponAreaEffect (long weaponIndex)
 			return true;
 	}
 			
+	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
 	return(false);
 }
 

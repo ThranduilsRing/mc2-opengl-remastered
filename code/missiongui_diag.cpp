@@ -114,6 +114,8 @@ namespace missiongui_detail {
 	static double s_gpDeltaZSum=0.0, s_gpDeltaZMax=0.0; // vertical (z) delta wu
 	static unsigned long long s_gpCpuNs=0, s_gpCpuMaxNs=0, s_gpCpuSamples=0;
 	static unsigned long long s_gpGpuNs=0, s_gpGpuMaxNs=0, s_gpGpuSamples=0;
+	// Histogram buckets for the horizontal delta distribution (wu).
+	// [0]<=0.5  [1]<=1  [2]<=2  [3]<=5  [4]<=20  [5]>20
 	static unsigned long long s_gpHist[6]={0};
 	static unsigned long long s_gpcCompared=0, s_gpcInvalid=0, s_gpcBg=0;
 	static double s_gpcDeltaSum=0.0, s_gpcDeltaMax=0.0;
@@ -252,6 +254,8 @@ namespace missiongui_detail {
 				++s_gpSlotDead;
 				++s_gpGpuInvalid;
 			} else {
+				// isValid record parsed but depth==0 -> object pixel without a
+				// resolvable world pos (rare); or an unclassified reason string.
 				++s_gpNoDepth;
 				++s_gpGpuInvalid;
 			}

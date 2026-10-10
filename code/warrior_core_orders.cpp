@@ -519,6 +519,12 @@ long MechWarrior::coreCapture (GameObjectPtr object, unsigned long params) {
 	if (!object || !object->isCaptureable(getTeam()->getId()) || object->isFriendly(getVehicle()))
 		return(1);
 	
+	// Once Goal Planning is in, this should deal with the blockers rather than
+	// abort the order...
+//	GameObjectPtr blockerList[MAX_MOVERS];
+//	long numBlockers = object->getCaptureBlocker(getVehicle(), blockerList);
+//	if (numBlockers)
+//		return(1);
 
 	bool run = ((params & TACORDER_PARAM_RUN) != 0);
 	bool jump = ((params & TACORDER_PARAM_JUMP) != 0);

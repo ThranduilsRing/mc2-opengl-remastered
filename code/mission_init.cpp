@@ -506,6 +506,7 @@ void Mission::initSkyAndTeamReset(MissionInitFrame& f) {
 				"MC2_MISSION_CYCLE_TEST: synthetic populate wrong "
 				"(teams=%ld commanders=%ld)", Team::numTeams, Commander::numCommanders);
 
+			// First reset = the "destroy frees" leg.
 			Mission::resetTeamsAndCommanders();
 			// Second reset back-to-back = the ex-double-free (init frees, then
 			// destroy frees again). MUST be a clean no-op with home NULL.

@@ -426,6 +426,8 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 										 entryAngle);
 						Assert(((float)((long)(curShotInfo.damage / 0.25)) * 0.25) == curShotInfo.damage, 0, " WeaponHitChunk.build: damage round error ");
 
+						// If we missed, pick sights away from the target and check LOS to each one.  If all are
+						// invisible, just hit the target with zero points of damage.
 						float missRadius = target ? 25.0 : 5.0;
 
 						Stuff::Vector3D positionOffset;
@@ -611,6 +613,9 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		}
 	}
 
+	// Trigger the WEAPON TARGET event. For now, this assumes the target
+	// KNOWS we were targeting him. Of course, the target wouldn't always
+	// be aware of this, would they?
 	pilot->triggerAlarm(PILOT_ALARM_FIRED_WEAPON, target ? target->getWatchID() : 0);
 	if (targetPilot)
 		targetPilot->triggerAlarm(PILOT_ALARM_TARGET_OF_WEAPONFIRE, getWatchID());
@@ -631,6 +636,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 								   long numMissiles,
 								   long hitLocation) {
 
+	// If it's already been fired, assume the ammo is there...
 	long numShots = getWeaponShots(weaponIndex);
 
 	// Weapon must recycle...

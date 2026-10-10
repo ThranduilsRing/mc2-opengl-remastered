@@ -468,6 +468,8 @@ void execEndTimer (void) {
 	
 	long timerID = ABLi_popInteger();
 
+// NOT REALLY NECESSARY ANYMORE--since the timers have no callback, they just
+// keep counting down... no harm...
 }
 	
 void execSetObjectiveTimer (void) {

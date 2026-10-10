@@ -785,7 +785,9 @@ void GroundVehicle::render (void)
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
+					// [PROJECTZ:ScreenXYOracle id=gvehicl_path_step_start]
 					eye->projectForScreenXY(startPos,lineStart);
+					// [PROJECTZ:ScreenXYOracle id=gvehicl_path_step_end]
 					eye->projectForScreenXY(endPos,lineEnd);
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
