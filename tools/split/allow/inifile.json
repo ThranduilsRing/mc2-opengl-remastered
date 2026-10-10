@@ -1,0 +1,14 @@
+{
+ "base": "bf8dee6cc",
+ "src": "mclib/inifile.cpp",
+ "stem": "inifile",
+ "scripts": [
+  "scripts/check-brain-fit-schema.py",
+  "tests/unit/heap_shim.cpp",
+  "tests/unit/test_csvfile.cpp",
+  "tests/unit/test_file_inifile.cpp",
+  "tests/unit/test_path_permutations.cpp"
+ ],
+ "_scripts_reason": "Reviewed: check-brain-fit-schema.py passes unchanged; the unit tests and heap_shim cite inifile.cpp in comments, and tests/unit/CMakeLists.txt lists the two new pieces next to inifile.cpp (the doctest target builds and passes).",
+ "split_commit": "PENDING"
+}

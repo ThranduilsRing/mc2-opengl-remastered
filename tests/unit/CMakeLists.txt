@@ -112,6 +112,8 @@ add_executable(mc2_tests
     # is required at link time; nothing else from mclib/GameOS is):
     ${MC2_WORKTREE_ROOT}/mclib/file.cpp       # File base: disk/FST/in-RAM backends
     ${MC2_WORKTREE_ROOT}/mclib/inifile.cpp    # FitIniFile block/var parser
+    ${MC2_WORKTREE_ROOT}/mclib/inifile_read.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/inifile_arrays.cpp
     ${MC2_WORKTREE_ROOT}/mclib/packet.cpp     # PacketFile (.pak container)
     ${MC2_WORKTREE_ROOT}/mclib/ffile.cpp      # FastFile (FST archive) -- File::open FST branch
     ${MC2_WORKTREE_ROOT}/mclib/fastfile.cpp   # FastFileFind + fastFiles registry

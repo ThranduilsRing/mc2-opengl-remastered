@@ -57,6 +57,8 @@ set(SOURCES ${SOURCES}
     file.cpp
     gamelog.cpp
     inifile.cpp
+    inifile_read.cpp
+    inifile_arrays.cpp
     packet.cpp
     celement.cpp
     celine.cpp
