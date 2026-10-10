@@ -61,11 +61,6 @@
 #include"sounds.h"
 #endif
 
-#ifdef USE_ELEMENTALS
-#ifndef ELEMNTL_H
-#include<elemntl.h>
-#endif
-#endif
 
 #ifndef MULTPLYR_H
 #include"multplyr.h"
@@ -217,9 +212,6 @@ extern long hitLevel[2];
 
 extern GameLog* CombatLog;
 
-#ifdef USEHEAT
-extern float HeatCheckFrequency;
-#endif
 
 extern long ClusterSizeSRM;
 extern long ClusterSizeLRM;
@@ -773,9 +765,6 @@ void GroundVehicle::init (bool create) {
 
 	deadByCrushed = false;
 	
-#ifdef USE_SMOKE
-	dmgSmoke = NULL;
-#endif
 
 	pathLocks = true;
 	
@@ -2458,13 +2447,6 @@ Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId)
 	return(hsPos);
 }
 
-#ifdef PROFILE
-extern long srCtrlUpd;
-extern long srApprUpd;
-extern long srDyneUpd;
-extern long srWeapUpd;
-extern long srObjtUpd;
-#endif
 
 //extern L_INTEGER startCk;
 //extern L_INTEGER endCk;
@@ -2475,14 +2457,6 @@ void GroundVehicle::disable (unsigned long cause)
 	Mover::disable(cause);
 	timeLeft = 0.0;
 	
-#ifdef USE_SMOKE
-	dmgSmoke = (SmokePtr)createObject(450);
-	if (dmgSmoke)
-	{
-		dmgSmoke->setOwner(this);
-		dmgSmoke->setOwnerPosition(position);
-	}
-#endif
 }	
 
 //----------------------------------------------------------------------------------
@@ -3242,9 +3216,6 @@ long GroundVehicle::update (void)
 	}
 	else if (getAwake() && !isDisabled())
 	{
-		#ifdef MC_PROFILE
-		QueryPerformanceCounter(startCk);
-		#endif
 
 		//-----------------------------------------------------
 		// Not destroyed nor disabled yet, so update our LOS...
@@ -3256,21 +3227,6 @@ long GroundVehicle::update (void)
 	else if (isDisabled() && timeLeft)
 	{
 		if (!startDisabled) {
-#ifdef USE_SMOKE
-			if (dmgSmoke)
-			{
-				dmgSmoke->setOwner(this);
-				dmgSmoke->setOwnerPosition(position);
-				dmgSmoke->setOwnerVelocity(velocity);
-				dmgSmoke->update();
-				timeLeft -= frameLength;
-				if (timeLeft <= -30.0)
-				{
-					delete dmgSmoke;
-					dmgSmoke = NULL;
-				}
-			}
-#endif
 		}
 	}
 	
@@ -3280,14 +3236,7 @@ long GroundVehicle::update (void)
 		control.update(this);
 	}
 
-	#ifdef MC_PROFILE
-	QueryPerformanceCounter(endCk);
-	srCtrlUpd += (endCk.LowPart - startCk.LowPart);
-	#endif
 
-	#ifdef MC_PROFILE
-	QueryPerformanceCounter(startCk);
-	#endif
 
 	bool emergencyStop = false;
 	{
@@ -3295,10 +3244,6 @@ long GroundVehicle::update (void)
 		if (!isDisabled())
 			emergencyStop = crashAvoidanceSystem();
 
-	#ifdef MC_PROFILE
-	QueryPerformanceCounter(endCk);
-	srDyneUpd += (endCk.LowPart - startCk.LowPart);
-	#endif
 
 	//--------------------------------------------------------------------
 	// At this point, the other updates have completed, its time to
@@ -3312,9 +3257,6 @@ long GroundVehicle::update (void)
 	// the terrain.  So, whenever you want a position derived from
 	// a velocity, multiply velocity by worldUnitsPerMeter.
 
-	#ifdef MC_PROFILE
-	QueryPerformanceCounter(startCk);
-	#endif
 
 	float velMag = 0.0;
 	if (!emergencyStop)
@@ -3337,11 +3279,6 @@ long GroundVehicle::update (void)
 		pilot->orderMoveToPoint (false, true, ORDER_ORIGIN_PLAYER, location, -1, TACORDER_PARAM_RUN);
 	}
 
-	#ifdef MC_PROFILE
-	QueryPerformanceCounter(endCk);
-	srApprUpd += (endCk.LowPart - startCk.LowPart);
-	QueryPerformanceCounter(startCk);
-	#endif
 
 	if (teleportPosition.x > -999990.0) {
 		setPosition(teleportPosition);
@@ -3692,11 +3629,6 @@ long GroundVehicle::update (void)
 		addMoverToList(blockNumber);
 	}
 
-		#ifdef MC_PROFILE
-		QueryPerformanceCounter(endCk);
-
-		srObjtUpd += (endCk.LowPart - startCk.LowPart);
-		#endif
 
 	if (getDebugFlag(OBJECT_DFLAG_DISABLE))
 		disable(DEBUGGER_DEATH);
@@ -4017,13 +3949,6 @@ long GroundVehicle::buildStatusChunk (void) {
 
 	statusChunk.pack(this);
 
-#ifdef DEBUG_CHUNKS
-	StatusChunk chunk2;
-	chunk2.data = statusChunk.data;
-	chunk2.unpack(this);
-	if (!statusChunk.equalTo(&chunk2))
-		Fatal(0, " BAD Statuschunk: save stchunk.dbg file! ");
-#endif
 
 	return(NO_ERR);
 }
@@ -4093,21 +4018,6 @@ long GroundVehicle::buildMoveChunk (void) {
 	}
 	moveChunk.pack(this);
 
-#ifdef DEBUG_CHUNKS
-	MoveChunk chunk2;
-	chunk2.data = moveChunk.data;
-	chunk2.unpack(this);
-	//----------------------------------------------------------
-	// HACK!!!!!!!!!!!!!! If bad packet, no movechunk for you...
-	if (MoveChunk::err != 0) {
-		moveChunk.init();
-		moveChunk.build(this, NULL, NULL);
-		moveChunk.pack(this);
-		return(NO_ERR); //Assert(0, " BAD PACKET! ");
-	}
-	if (!moveChunk.equalTo(this, &chunk2))
-		Fatal(0, " Bad gvehicl movechunk: save mvchunk.dbg file! ");
-#endif
 
 	return(NO_ERR);
 }
