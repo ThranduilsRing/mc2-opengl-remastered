@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 4efdf2b1b.
+Scanned: commit 9eac3b589.
 
 | Measure | Count |
 |---|---|
@@ -68,7 +68,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_BOOT_TO_SCREEN` | resolved | no | `code/mainmenu.cpp:463 Token/State`<br>`code/mechlopedia.cpp:319 NonEmpty`<br>`code/missionbegin.cpp:236 NonEmpty` | NonEmpty | empty string no longer counts as set at the Mechlopedia reader | lite smoke |
 | `MC2_DEBUG_RENDERER` | resolved | no | `GameOS/gameos/debug_renderer.cpp:41 Lead0`<br>`GuiRuntime/EditorInspector.cpp:1273 Lead0` | Lead0 (set, non-empty, not "0") | empty string off in the debug renderer helper | matches the editor inspector reader |
 | `MC2_DEBUG_STATE_DUMP` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:1180 Lead0`<br>`GameOS/gameos/debug_state_dump.cpp:1211 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0` | Lead0 | =0 / empty no longer flips the launcher-automation test or the VK present health dump on | matches the state-dump readers |
-| `MC2_DEV_SHELL` | resolved | no | `GameOS/gameos/gos_dev_shell.cpp:59 Lead1`<br>`code/missiongui.cpp:1211 Lead1` | Lead1 (=1) | values other than 1 no longer enable the shell | documented as =1 |
+| `MC2_DEV_SHELL` | resolved | no | `GameOS/gameos/gos_dev_shell.cpp:60 Lead1`<br>`code/missiongui.cpp:1211 Lead1` | Lead1 (=1) | values other than 1 no longer enable the shell | documented as =1 |
 | `MC2_DISABLE_GOSFX` | resolved | no | `GuiRuntime/GraphicsOptionsWindow.cpp:1383 Lead1`<br>`mclib/mlr/mlr_gate.cpp:37 Lead1` | Lead1 (=1 disables; unset = enabled) | options window shows [off] only for =1; a stale warning that fired for =0 is deleted | mlr_gate default is enabled; FX default unchanged |
 | `MC2_FX_FORCE_SPAWN` | enum | yes | `code/warrior.cpp:5527 Lead0P`<br>`code/warrior.cpp:5527 Lead0P`<br>`code/warrior.cpp:5533 Custom[00000001]` | levels: 0 off, 1 fire once, loop/2-9 continuous | code unchanged | readers compare a leading character on purpose |
 | `MC2_GPU_PARTICLES` | resolved | no | `mclib/gosfx/effect.cpp:45 Lead1`<br>`mclib/particles/batcher.cpp:80 Lead1` | Lead1 (=1 enables) | empty / =0 / other no longer read as set by the batcher | registry: default off, =1 enables |

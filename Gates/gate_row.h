@@ -13,12 +13,14 @@
 namespace mc2::gate {
 
 // Numeric bounds. Out of range falls back to the default (Reject) unless `clamp` is set,
-// which is allowed only where the old reader clamped.
+// which is allowed only where the old reader clamped. `loExcl` makes the lower bound
+// exclusive (lo, hi], for readers that test `f > lo`.
 struct Range {
     bool has = false;
     bool clamp = false;
     double lo = 0.0;
     double hi = 0.0;
+    bool loExcl = false;
 };
 
 struct Row {

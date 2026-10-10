@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1139;
+inline constexpr std::size_t kGateCount = 1155;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -145,6 +145,9 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CPU_PHONG_RETIRE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_CPU_PROJ_COST_SPLIT", Kind::Bool, Rule::Lead1, {}},
     {"MC2_CRASH_FAST_EXIT", Kind::Bool, Rule::Presence, {}},
+    {"MC2_CURSOR_EDGE_BAND", Kind::Int, Rule::Std, {}},
+    {"MC2_CURSOR_NO_PARK", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_CURSOR_PARK", Kind::Bool, Rule::Exact1, {}},
     {"MC2_CURSOR_TARGET_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_DEBUG_OVERLAY_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy"},
     {"MC2_DEBUG_RENDERER", Kind::Bool, Rule::Lead0, {}},
@@ -318,6 +321,8 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPU_TRAIL_DISABLE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GROUND_CONTACT_BLOB", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_GV_LIGHTSOUT_CLEAR", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_HARNESS_ALLOW_FOREGROUND", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_HARNESS_PARK", Kind::Bool, Rule::Lead0, {}},
     {"MC2_HAZE_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_HDRI_BC6H", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_HDRI_SKY", Kind::Bool, Rule::Lead0Kill, {}},
@@ -355,6 +360,9 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_IMPORTER_DIR", Kind::Int, Rule::Prefix, {}},
     {"MC2_IMPOSTOR_DIST", Kind::Float, Rule::Prefix, {}},
     {"MC2_INVIEW_CONFLATION_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_ISOLATION_DESKTOP", Kind::String, Rule::Std, {}},
+    {"MC2_ISOLATION_MIN", Kind::String, Rule::Std, {}},
+    {"MC2_ISOLATION_WINSTA", Kind::String, Rule::Std, {}},
     {"MC2_JUMPJETS_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHED", Kind::Bool, Rule::Presence, {}},
     {"MC2_LAUNCHER_ENV_JSON", Kind::Bool, Rule::Lead0Kill, {}},
@@ -515,6 +523,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_NIGHT_FOG_DIM_SCALE", Kind::Float, Rule::Prefix, {}},
     {"MC2_NO_ACTIVATE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_NO_CURSOR_GRAB", Kind::Bool, Rule::Lead0Def, {}},
+    {"MC2_NO_CURSOR_GUARD", Kind::Bool, Rule::Exact1, {}},
     {"MC2_NO_LAUNCHER", Kind::Bool, Rule::Presence, {}},
     {"MC2_OBJBATCHER_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_OBJECT_ADMISSION_PREDICATE", Kind::Enum, Rule::Std, "|legacy"},
@@ -551,7 +560,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PATCHSTREAM_THIN_RECORDS", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCHSTREAM_THIN_RECORDS_DRAW", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Kind::Bool, Rule::Presence, {}},
-    {"MC2_PATCH_STREAM_FORCE_INIT_FAIL", Kind::Bool, Rule::Std, {}},
+    {"MC2_PATCH_STREAM_FORCE_INIT_FAIL", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCH_STREAM_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_JUMP_FAIL_BACKOFF", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_SOLVE_ISOLATED", Kind::Bool, Rule::Lead1, {}},
@@ -707,9 +716,16 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SMART_LOAD_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SMOKE_ACTIVE", Kind::Bool, Rule::NonEmpty, {}},
     {"MC2_SMOKE_FIXED_TIMESTEP", Kind::Bool, Rule::Presence, {}},
+    {"MC2_SMOKE_LEASE_TTL_SECS", Kind::Int, Rule::Std, {}},
     {"MC2_SMOKE_MODE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SMOKE_PERF_SAMPLES", Kind::Int, Rule::Prefix, {}},
+    {"MC2_SMOKE_REQUIRE_DIAG_STATE", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_SMOKE_REQUIRE_FINGERPRINT", Kind::Bool, Rule::Lead0Kill, {}},
+    {"MC2_SMOKE_REQUIRE_FRESH", Kind::Bool, Rule::Exact1, {}},
+    {"MC2_SMOKE_REQUIRE_VISUAL", Kind::Bool, Rule::Exact1, {}},
     {"MC2_SMOKE_SEED", Kind::Int, Rule::Prefix, {}},
+    {"MC2_SMOKE_VISIBLE", Kind::Bool, Rule::NonEmpty, {}},
+    {"MC2_SMOKE_VISUAL_REPORT", Kind::String, Rule::Std, {}},
     {"MC2_SNAPSHOT_MECH_EXTRACT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SNAPSHOT_STATIC_PROP_BUILD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SNAP_CULL", Kind::Bool, Rule::Lead1, {}},

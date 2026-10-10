@@ -74,6 +74,11 @@ int enumIndex(std::string_view list, const char* v) noexcept {
 
 std::uint32_t floatBits(float f) noexcept { return __builtin_bit_cast(std::uint32_t, f); }
 
+// `rg.lo` is exclusive when rg.loExcl (a reader that tests `f > lo`).
+bool outOfRange(const Range& rg, double d) noexcept {
+    return d < rg.lo || (rg.loExcl && d == rg.lo) || d > rg.hi;
+}
+
 }  // namespace
 
 std::uint32_t classify(const char* v) noexcept {
@@ -127,7 +132,7 @@ std::uint64_t parseRow(const Row& r, const char* v) noexcept {
                 }
                 if (parsed && r.range.has) {
                     const double d = static_cast<double>(value);
-                    if (d < r.range.lo || d > r.range.hi) {
+                    if (outOfRange(r.range, d)) {
                         if (r.range.clamp) value = static_cast<long long>(d < r.range.lo ? r.range.lo : r.range.hi);
                         else { value = r.defInt; bad = true; }
                     }
@@ -153,9 +158,14 @@ std::uint64_t parseRow(const Row& r, const char* v) noexcept {
                     if (res.ec == std::errc{} && res.ptr == last) value = x;
                     else { bad = true; parsed = false; }
                 }
-                if (parsed && !std::isfinite(value)) { bad = true; parsed = false; value = r.defFloat; }
+                // The legacy readers hold the parsed number in a float before testing it.
+                value = static_cast<double>(static_cast<float>(value));
+                // atof/strtod compatible rows let +-inf reach the range test (a clamp turns it
+                // into the bound, as the old readers did); NaN never parses.
+                const bool finiteOk = std::isfinite(value) || (r.rule == Rule::Prefix && std::isinf(value));
+                if (parsed && !finiteOk) { bad = true; parsed = false; value = r.defFloat; }
                 if (parsed && r.range.has) {
-                    if (value < r.range.lo || value > r.range.hi) {
+                    if (outOfRange(r.range, value)) {
                         if (r.range.clamp) value = value < r.range.lo ? r.range.lo : r.range.hi;
                         else { value = r.defFloat; bad = true; }
                     }

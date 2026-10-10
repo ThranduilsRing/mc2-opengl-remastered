@@ -381,7 +381,8 @@ def rows_from_json(doc):
         rows.append({
             "name": g["name"], "kind": g["kind"], "rule": g["rule"], "default": g["default"],
             "owner": g["owner"], "retireBy": g["retireBy"], "doc": g["doc"], "tokens": g.get("tokens", ""),
-            "range": (("clampRange" if rng.get("clamp") else "range"), rng["lo"], rng["hi"]) if rng else None,
+            "range": (("clampRange" if rng.get("clamp") else "rangeAbove" if rng.get("loExclusive") else "range"),
+                      rng["lo"], rng["hi"]) if rng else None,
             "reread": g.get("reread", False), "divergent": g.get("divergent", False),
             "smokePassthrough": g.get("smokePassthrough", False), "logTopic": g.get("logTopic", ""),
             "history": False, "defaultUnknown": False,

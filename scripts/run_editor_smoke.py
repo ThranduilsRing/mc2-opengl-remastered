@@ -278,8 +278,11 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
                 detail = f"off-map placement not clamped, survived={so} (want 1)"
 
     passed = (bucket == "")
+    # The gate registry's startup dump (Gates/, written to stderr by EditorMFCApp::InitInstance).
+    config = [ln.strip() for ln in (out or "").splitlines()
+              if ln.startswith("[CONFIG v1]") and ("summary" in ln or "warn=" in ln or "fatal=" in ln)]
     return dict(name=name, passed=passed, bucket=bucket, detail=detail,
-                rc=rc, seconds=round(dt, 1), esmoke=esmoke)
+                rc=rc, seconds=round(dt, 1), esmoke=esmoke, config=config, captured=out or "")
 
 
 # Windows STATUS_ACCESS_VIOLATION (0xC0000005) returncode, in both the unsigned
@@ -359,7 +362,7 @@ def main() -> int:
                     help="editor hard-exits this many seconds after the engine is up (per case)")
     ap.add_argument("--timeout", type=int, default=180, help="per-case timeout seconds (hard backstop)")
     ap.add_argument("--case", action="append", help="run only these cases (repeatable)")
-    ap.add_argument("--keep-logs", action="store_true", help="copy each case's editor-startup.log into the report dir")
+    ap.add_argument("--keep-logs", action="store_true", help="save each case's captured stderr/stdout (incl. the [CONFIG v1] lines) into the report dir")
     ap.add_argument("--minimized", dest="minimized", action="store_true", default=True,
                     help="launch the editor minimized/non-activating (default; Windows only)")
     ap.add_argument("--no-minimized", dest="minimized", action="store_false",
@@ -445,6 +448,11 @@ def main() -> int:
                      f"{es.get('foliage_count','-')} |")
         if r.get("detail"):
             lines.append(f"|  | | {r['detail']} | | | |")
+        for cl in r.get("config", []):
+            lines.append(f"|  | | `{cl}` | | | |")
+        if args.keep_logs and r.get("captured"):
+            safe = r["name"].replace(":", "_")
+            (rptdir / f"{safe}.stderr.txt").write_text(r["captured"], encoding="utf-8", errors="replace")
     report = "\n".join(lines) + "\n"
     (rptdir / "report.md").write_text(report, encoding="utf-8")
     print("\n" + report)
