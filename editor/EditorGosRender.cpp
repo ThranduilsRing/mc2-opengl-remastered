@@ -31,6 +31,8 @@ extern bool g_imguiInitialized;
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include "utils/logging.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = NULL;
@@ -428,7 +430,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     // warnings in our workload. Off by default in shipped builds;
     // env-gated rather than NDEBUG-gated so it can be flipped on a
     // deployed binary without rebuilding.
-    const bool gl_debug = (getenv("MC2_GL_DEBUG") != nullptr);
+    const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();
     if (gl_debug) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
         printf("[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n");
@@ -690,8 +692,7 @@ static void editorFrameLimit()
     if (s_capFps == -2)
     {
         s_capFps = 60;
-        const char* e = getenv("MC2_EDITOR_FPS_CAP");
-        if (e && *e) s_capFps = atoi(e);
+        s_capFps = mc2::gate::get<"MC2_EDITOR_FPS_CAP">();   // row default 60
         timeBeginPeriod(1);       // 1ms Sleep() granularity (editor main() skips gameosmain's call)
         s_lastMs = timeGetTime();
         return;                   // first frame: just stamp
@@ -833,12 +834,11 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     typedef BOOL (WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
     PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
         (PFNWGLSWAPINTERVALEXTPROC)::wglGetProcAddress("wglSwapIntervalEXT");
-    const char* vsync_env = getenv("MC2_VSYNC");
-    const bool vsync_on = (vsync_env && vsync_env[0] == '1');
+    const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
     if (wglSwapIntervalEXT)
         wglSwapIntervalEXT(vsync_on ? 1 : 0);
     printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
-           vsync_env ? vsync_env : "(unset, default 0)",
+           mc2::gate::raw<"MC2_VSYNC">() ? mc2::gate::raw<"MC2_VSYNC">() : "(unset, default 0)",   // echoed as typed
            vsync_on ? "ON" : "OFF");
 
     // GPU identity — requires a current context.
@@ -860,7 +860,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
                (int)(rc2.right - rc2.left), (int)(rc2.bottom - rc2.top),
                rw->width_, rw->height_);
     }
-    const bool gl_debug_mode = (getenv("MC2_GL_DEBUG") != nullptr);
+    const bool gl_debug_mode = mc2::gate::get<"MC2_GL_DEBUG">();
     printf("[MODE] gl_debug=%d vsync=%d tracy=on-demand\n", gl_debug_mode ? 1 : 0, vsync_on ? 1 : 0);
     printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
 
@@ -882,11 +882,10 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         SDL_GL_DeleteContext(glcontext);
         return NULL;
     }
-    const char* vsync_env = getenv("MC2_VSYNC");
-    const bool vsync_on = (vsync_env && vsync_env[0] == '1');
+    const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
     SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
     printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
-           vsync_env ? vsync_env : "(unset, default 0)", vsync_on ? "ON" : "OFF");
+           mc2::gate::raw<"MC2_VSYNC">() ? mc2::gate::raw<"MC2_VSYNC">() : "(unset, default 0)", vsync_on ? "ON" : "OFF");   // echoed as typed
     printf("[GPU] Vendor   : %s\n", glGetString(GL_VENDOR));
     printf("[GPU] Renderer : %s\n", glGetString(GL_RENDERER));
     printf("[GPU] Version  : %s\n", glGetString(GL_VERSION));
