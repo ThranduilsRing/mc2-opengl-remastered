@@ -359,6 +359,18 @@ std::string strRead(std::size_t idx) {
 
 const char* envText(const char* name) noexcept { return std::getenv(name); }
 
+std::optional<BoolState> boolState(std::string_view name) noexcept {
+    const auto info = lookupName(name);
+    if (!info) return std::nullopt;
+    const char* v = detail::rawEnv(info->index);
+    const bool set = v != nullptr && v[0] != '\0';
+    if (info->kind == Kind::Bool) {
+        const std::uint64_t s = detail::load(info->index);
+        return BoolState{set, (s & detail::kRowBit) != 0};
+    }
+    return BoolState{set, set && v[0] != '0'};
+}
+
 bool parseBool(const char* v, bool dflt, bool* bad) noexcept {
     if (bad != nullptr) *bad = false;
     if (v == nullptr || v[0] == '\0') return dflt;
