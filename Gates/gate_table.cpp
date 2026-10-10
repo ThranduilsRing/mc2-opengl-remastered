@@ -905,24 +905,24 @@ L(Lead0Kill, "MC2_SHADOW_ALT_SCALE", Bool, true, "post", "", "", passthrough),
 // history: docs/gate-history.md#MC2_SHADOW_BOUNDED_NEAR_FIT
 L(Lead0Kill, "MC2_SHADOW_BOUNDED_NEAR_FIT", Bool, true, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_BOUNDED_NEAR_FIT", -1, true)),
 // history: docs/gate-history.md#MC2_SHADOW_BOUNDED_NEAR_RADIUS
-P("MC2_SHADOW_BOUNDED_NEAR_RADIUS", Float, 2500.0, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).", passthrough | registry(Trace, "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS", -1, false)),
+P("MC2_SHADOW_BOUNDED_NEAR_RADIUS", Float, 2500.0, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).", passthrough | registry(Trace, "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS", -1, false) | rangeAbove(0.0, 3.4028234663852886e38)),
 // history: docs/gate-history.md#MC2_SHADOW_CASTER_CULL_CACHE
 L(Lead0P, "MC2_SHADOW_CASTER_CULL_CACHE", Bool, false, "code", "", "SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1): reuse the Shadow.CasterCull result (mclib/txmmgr.cpp DynamicShadowPass) across frames when BOTH the...", passthrough | registry(Feature, "MC2_SHADOW_CASTER_CULL_CACHE", -1, false) | verified),
 P("MC2_SHADOW_CASTER_CULL_MARGIN", Float, 0.25, "code", "", "", passthrough | range(0.0, 3.4028234663852886e38) | verified),
 L(Lead0Kill, "MC2_SHADOW_CASTER_LIGHTBOX_CULL", Bool, true, "code", "", "DEFAULT ON since 2026-06-16 (render-hygiene-s1).", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_CSM
 L(Lead0Kill, "MC2_SHADOW_CSM", Bool, true, "post", "", "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_CSM", -1, true)),
-P("MC2_SHADOW_CSM_COUNT", Int, 3, "post", "", "", range(1, 3)),
-P("MC2_SHADOW_CSM_LAMBDA", Float, 0.5, "post", "", "", range(0.0, 1.0)),
+P("MC2_SHADOW_CSM_COUNT", Int, 3, "post", "", "", clampRange(1, 3)),
+P("MC2_SHADOW_CSM_LAMBDA", Float, 0.5, "post", "", "", clampRange(0.0, 1.0)),
 P("MC2_SHADOW_CSM_R0", Float, 512.0, "post", "", ""),
 P("MC2_SHADOW_CSM_R1", Float, 4096.0, "post", "", ""),
-P("MC2_SHADOW_CSM_SOFTNESS", Float, 0.9, "unclassified", "", "", range(0.1, 6.0)),
+P("MC2_SHADOW_CSM_SOFTNESS", Float, 0.9, "unclassified", "", "", clampRange(static_cast<double>(0.1f), 6.0)),
 L(Presence, "MC2_SHADOW_CULL_DEBUG", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_DEBUG_MODE
 L(Lead1, "MC2_SHADOW_DEBUG_MODE", Bool, false, "post", "", "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui.", passthrough | registry(Trace, "MC2_DIAG_SHADOW_DEBUG_MODE", -1, false)),
 L(Presence, "MC2_SHADOW_DIAG", Bool, false, "props", "", ""),
-P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | range(0.0, 100000.0)),
-P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | range(0.0, 1.0)),
+P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | clampRange(0.0, 100000.0)),
+P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | clampRange(0.0, 1.0)),
 // history: docs/gate-history.md#MC2_SHADOW_DYNAMIC_PROP_CASTERS
 G("MC2_SHADOW_DYNAMIC_PROP_CASTERS", Enum, "1", "props", "", "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS", -1, true) | tokens("1|0|2") | verified),
 L(Lead0Kill, "MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY", Bool, true, "code", "", "DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven s_registryGeneration dirty-only pattern, shadow pass reads only modelMatrix+typeID): only literal...", verified),
@@ -938,10 +938,10 @@ P("MC2_SHADOW_FULLMAP_SIZE", Int, 4096, "post", "", ""),
 // history: docs/gate-history.md#MC2_SHADOW_GUARD_CLAMPED_SUN
 L(Lead0Kill, "MC2_SHADOW_GUARD_CLAMPED_SUN", Bool, true, "post", "", "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN", -1, true)),
 P("MC2_SHADOW_MAP_SIZE", Int, 8192, "post", "", ""),
-P("MC2_SHADOW_MECH_SOFT", Float, 1.0, "unclassified", "", "", range(0.0, 4.0)),
+P("MC2_SHADOW_MECH_SOFT", Float, 1.0, "unclassified", "", "", clampRange(0.0, 4.0)),
 // history: docs/gate-history.md#MC2_SHADOW_MIN_SUN_ALT
 P("MC2_SHADOW_MIN_SUN_ALT", Float, 15.0, "post", "", "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude...", passthrough | registry(Trace, "MC2_TUNE_SHADOW_MIN_SUN_ALT", -1, false)),
-P("MC2_SHADOW_OBJ_NORMAL_BIAS", Float, 2.0, "unclassified", "", "", range(0.0, 20.0)),
+P("MC2_SHADOW_OBJ_NORMAL_BIAS", Float, 2.0, "unclassified", "", "", clampRange(0.0, 16.0)),
 L(Lead0Kill, "MC2_SHADOW_PROP_ALPHA", Bool, true, "props", "", "", passthrough),
 L(Lead0Kill, "MC2_SHADOW_PROP_ALPHA_ATLAS", Bool, true, "props", "", "", passthrough),
 L(Lead0Kill, "MC2_SHADOW_ROBUST_BASIS", Bool, true, "post", "", ""),
