@@ -15,6 +15,7 @@
 #include"alistbox.h"
 #include"logisticspilotlistbox.h"
 #include"gamesound.h"
+#include "Gates/gate.h"
 
 LogisticsMechIcon*	LogisticsMechIcon::s_pTemplateIcon = NULL;
 
@@ -170,7 +171,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 		icon.setFileHeight( fileH );
 		icon.setUVs( u, v, u2, v2 );
 
-		if ( getenv("MC2_LOG_MECH_ICON") )
+		if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )
 		{
 			printf("[mechicon-logi] mech=ID:%ld iconIndex=%ld cols=%ld row=%ld col=%ld "
 			       "widgetW=%.0f widgetH=%.0f u=[%.1f,%.1f] v=[%.1f,%.1f] "
