@@ -43,7 +43,7 @@
 
 //---------------------------------------------------------------------
 // Static Globals
-CraterManagerPtr craterManager = NULL;
+CraterManagerPtr craterManager = nullptr;
 extern bool useFog;
 extern bool drawOldWay;
 extern bool useNonWeaponEffects;
@@ -183,25 +183,25 @@ void CraterManager::destroy (void)
 		craterFile->close();
 	
 	delete craterFile;
-	craterFile = NULL;
+	craterFile = nullptr;
 	
 	//----------------------------------------------
 	// Whack the Happy Crater Heaps
 	delete craterShpHeap;
-	craterShpHeap = NULL;
+	craterShpHeap = nullptr;
 	
 	delete craterPosHeap;
-	craterPosHeap = NULL;
+	craterPosHeap = nullptr;
 	
 	craterPosHeapSize = craterShpHeapSize = 0;
-	craterList = NULL;
+	craterList = nullptr;
 	currentCrater = 0;
 
 	free(craterTextureHandles);
-	craterTextureHandles = NULL;
+	craterTextureHandles = nullptr;
 
 	free(craterTextureIndices);
-	craterTextureIndices = NULL;
+	craterTextureIndices = nullptr;
 }			
 
 //---------------------------------------------------------------------
