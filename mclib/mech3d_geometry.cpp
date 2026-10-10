@@ -1,0 +1,1310 @@
+// Mech3DAppearance: setObjStatus, updateGeometry and the arm recalculations.
+// Declared in the class headers; shared names in mech3d_internal.h.
+#include "mech3d_internal.h"
+
+
+// T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
+// First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
+static const bool s_spotDiagMechEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static unsigned long s_spotDiagMechRegistered = 0;
+static unsigned long s_spotDiagMechOverflows  = 0;
+static unsigned long s_spotDiagMechActors     = 0;
+static unsigned long s_spotDiagMechCalls      = 0;
+
+#define SPIN_RATE		90.0f
+
+#define FOOTPRINT_SLOP			2
+
+//-----------------------------------------------------------------------------
+void Mech3DAppearance::setObjStatus (long oStatus)
+{
+	if ( (status != oStatus) && (!InEditor))
+	{
+		if (oStatus == OBJECT_STATUS_DESTROYED)
+		{
+			if (currentGestureId == 23)
+			{
+				if (mechType->mechForwardDmgShape)
+				{
+					mechShape->ClearAnimation();
+					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
+					delete mechShape;
+					mechShape = NULL;
+
+					mechShape = mechType->mechForwardDmgShape->CreateFrom();
+				}
+			}
+			else if (currentGestureId == 24)
+			{
+				if (mechType->mechBackwardDmgShape)
+				{
+					mechShape->ClearAnimation();
+					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
+					delete mechShape;
+					mechShape = NULL;
+
+					mechShape = mechType->mechBackwardDmgShape->CreateFrom();
+				}
+			}
+
+			currentLOD = 0;
+
+			//-------------------------------------------------
+			// Load the texture and store its handle.
+			for (long i=0;i<mechShape->GetNumTextures();i++)
+			{
+				char txmName[1024];
+				mechShape->GetTextureName(i,txmName,256);
+	
+				char texturePath[1024];
+				sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+		
+				FullPathFileName textureName;
+				textureName.init(texturePath,txmName,"");
+		
+				if (fileExists(textureName))
+				{
+					if (S_strnicmp(txmName,"a_",2) == 0)
+					{
+						DWORD gosTextureHandle = 0;
+						
+						if (!i)
+						{
+							localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink,true);
+							mechShape->SetTextureHandle(i,localTextureHandle);
+							mechShape->SetTextureAlpha(i,true);
+						}
+						else
+						{
+							gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+							mechShape->SetTextureHandle(i,gosTextureHandle);
+							mechShape->SetTextureAlpha(i,true);
+						}
+						
+					}
+					else
+					{
+						DWORD gosTextureHandle = 0;
+						
+						if (!i)
+						{
+							localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,true);
+							mechShape->SetTextureHandle(i,localTextureHandle);
+							mechShape->SetTextureAlpha(i,false);
+						}
+						else
+						{
+							gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+							mechShape->SetTextureHandle(i,gosTextureHandle);
+							mechShape->SetTextureAlpha(i,false);
+						}
+					}
+				}
+				else
+				{
+					//PAUSE(("Warning: %s texture name not found",textureName));
+					mechShape->SetTextureHandle(i,0xffffffff);
+				}
+			}
+		}
+
+		if (status == OBJECT_STATUS_DESTROYED && oStatus == OBJECT_STATUS_NORMAL)
+		{
+			STOP(("Destroyed Mech just came back to life!!"));
+		}
+	}
+	
+	status = oStatus;
+}
+
+//-----------------------------------------------------------------------------
+void Mech3DAppearance::updateGeometry (void)
+{
+	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
+	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
+	// projection_total). One scope per visible mech per frame.
+	::mc2_cpu_proj_cost::SidecarScope _f3_skin_scope(
+	    ::mc2_cpu_proj_cost::SIDECAR_SKINNING_CHAIN);
+
+	// BT2018-SKEL-ENGINE-1B-RUNTIME / 1C: advance + re-pose imported skinned mechs
+	// once per frame BEFORE TransformMultiShape re-reads the shared type geometry
+	// below. Idempotent on g_mc2FrameCounter (the second combat update() is a no-op
+	// here); near-free when no imported animated mech is registered. 1C selects the
+	// clip from this mech's movement (gesture + position/leg-heading deltas).
+	{
+		mc2mechanim::MechMotion _mm;
+		_mm.gestureId = (int)currentGestureId;
+		_mm.px = position.x; _mm.py = position.y; _mm.pz = position.z;
+		_mm.legHeadingDeg = rotation;
+		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
+		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
+		const void* _typeKey = (mechType ? (const void*)mechType->mechShape[currentLOD] : nullptr);
+		// ASSIMP-MECH-PAUSE-GATE-1: stock mechs freeze their gait while paused (the
+		// if(animate) guard below at ~5000). Imported mechs advance through updateGeometry
+		// regardless, so they kept striding in place during pause. Freeze the imported clip
+		// clock when gamePaused (timing.h global). Killswitch MC2_ASSIMP_PAUSE_GATE=0 restores
+		// the old always-advance behavior for A/B.
+		extern bool gamePaused;  // mclib/timing.h
+		static const bool s_assimpPauseGate = mc2::gate::get<"MC2_ASSIMP_PAUSE_GATE">();
+		// VK-MECH-CAPTURE-DETERMINISM-1: also freeze the imported clip clock during a
+		// frozen capture sweep (gamePaused is NOT set by the capture pause path — it
+		// drives bPaused only — so without this an imported mech kept striding through
+		// the render-path tick and jittered run-to-run). Capture-mode-only; byte-safe.
+		const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0);
+		const bool _advanceClock = (s_assimpPauseGate ? !gamePaused : true) && !_captureFroze;
+		mc2mechanim::TickImportedMechs(frameLength, (unsigned)g_mc2FrameCounter, _mm,
+		                               (const void*)mechShape, _typeKey, _advanceClock);
+		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and
+		// working at shipped defaults (per-actor model-delta palette; proven by
+		// IMPORTED-GPU-ANIM-READPATH-RECON-1). It is armed by MC2_MECH_IMPORT_GPU.
+		// The pose is only FROZEN when the GPU mech path is on but that import-GPU
+		// gate is OFF (the stock per-node branch then draws the immutable rest VBO).
+		// So warn ONLY in that genuinely-frozen case (was firing unconditionally and
+		// LYING whenever the import-GPU path was armed). Both workarounds given.
+		if (g_useGpuMechs && mc2mechanim::AnyImportedAnim() &&
+		    !mc2mechanim::ImportedGpuEnabled()) {
+			static bool s_warnedImportGpu = false;
+			if (!s_warnedImportGpu) {
+				s_warnedImportGpu = true;
+				fprintf(stderr, "[MECH_IMPORT] animated imported mech with the import-GPU "
+				                "palette OFF shows a FROZEN pose; set MC2_MECH_IMPORT_GPU=1 "
+				                "(or run MC2_GPU_MECHS=0)\n");
+			}
+		}
+	}
+
+	//Always override with our local instance.
+	mechShape->SetTextureHandle(0,localTextureHandle);
+	
+	if (rightArm)
+		rightArm->SetTextureHandle(0,localTextureHandle);
+
+	if (leftArm)
+		leftArm->SetTextureHandle(0,localTextureHandle);
+
+	// Slice D-shadow-state-strip: when GPU mech path + state-strip
+	// killswitch + tessellation are all active, skip ALL per-frame state
+	// setters on mechShadowShape. Recon (D-shadow-skip §Q1-Q4 + D-shadow-
+	// state-strip §Q1-Q4) proved no consumer of these setters' effects
+	// exists in this configuration: instance-state setters feed only
+	// TransformMultiShape (already retired by D-shadow-skip), and the
+	// global-static side effect (SetLightList writing s_listOfLights) is
+	// overwritten by mechShape's identical call at mech3d.cpp:3407 before
+	// any consumer reads it.
+	// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_STATE_STRIP
+	// (default-ON, strict no-op on tessellated GPU-mech path) retired to constant.
+	// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching the
+	// renderShadows early-return so the stripped state has no consumer.
+	const bool stripShadowState =
+		g_useGpuMechs &&
+		gos_IsModernShadowPathActive();
+
+	if ((status == OBJECT_STATUS_DESTROYED) ||
+		(status == OBJECT_STATUS_DISABLED) || 
+		(status == OBJECT_STATUS_SHUTDOWN))
+	{
+		mechShape->SetLightsOut(true);
+	}
+	else
+	{
+		mechShape->SetLightsOut(false);
+	}
+	
+   	Stuff::Point3D xlatPosition;
+   	xlatPosition.x = -position.x;
+   	xlatPosition.y = position.z;
+   	xlatPosition.z = position.y;
+
+	//Update flashing regardless of view!!!
+	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
+	// mech blinks between arms of an A/B and the diff is the blink, not the fix.
+	if (duration > 0.0f && (mc2FreezeMoversActive() == 0))
+	{
+		duration -= frameLength;
+		currentFlash -= frameLength;
+		if (currentFlash < 0.0f)
+		{
+			drawFlash ^= true;
+			currentFlash = flashDuration;
+		}
+	}
+	else
+	{
+		drawFlash = false;
+	}
+
+	//if (visible)
+	{
+		//-------------------------------------------
+		// Does math necessary to draw mech.
+		Stuff::UnitQuaternion qRotation;
+		float yaw = rotation * DEGREES_TO_RADS;
+		qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+	
+		unsigned char lightr,lightg,lightb;
+		float lightIntensity = 1.0f;
+		
+		if ( land )
+			lightIntensity = land->getTerrainLight(position);
+							
+		lightr = eye->getLightRed(lightIntensity);
+		lightg = eye->getLightGreen(lightIntensity);
+		lightb = eye->getLightBlue(lightIntensity);
+	
+		DWORD lightRGB = (lightr<<16) + (lightg<<8) + lightb;
+		
+		eye->setLightColor(0,lightRGB);
+		eye->setLightIntensity(0,1.0);
+	
+		DWORD fogRGB = 0xff<<24;
+		float fogStart = eye->fogStart;
+		float fogFull = eye->fogFull;
+	
+		if (useFog && (xlatPosition.y < fogStart))
+		{
+			float fogFactor = fogStart - xlatPosition.y;
+			if (fogFactor < 0.0)
+				fogRGB = 0xff<<24;
+			else
+			{
+				fogFactor /= (fogStart - fogFull);
+				if (fogFactor <= 1.0)
+				{
+					fogFactor *= fogFactor;
+					fogFactor = 1.0 - fogFactor;
+					fogFactor *= 256.0;
+				}
+				else
+				{
+					fogFactor = 256.0;
+				}
+	
+				unsigned char fogResult = fogFactor;
+				fogRGB = fogResult << 24;
+			}
+		}
+		else
+		{
+			fogRGB = 0xff<<24;
+		}
+	
+		if (useFog)
+			mechShape->SetFogRGB(fogRGB);
+		else
+			mechShape->SetFogRGB(0xffffffff);
+
+		//-----------------------------------
+		//Test of Mech as Point Light Source
+		if (!pointLight && eye->isNight)
+		{
+			if (lightCircleNodeIndex == -1)
+				lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
+
+			Stuff::Vector3D lightPos = getNodeIdPosition(lightCircleNodeIndex);
+			if (lightPos != position)
+			{
+				pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
+				pointLight->init(TG_LIGHT_SPOT);
+				lightId = eye->addWorldLight(pointLight);
+				// NIGHT-LIGHT-POOLS-2a: tag the anubis light as mover-owned so
+				// the light-pool producer can classify it (tags are recorded
+				// unconditionally; MC2_SPOT_DIAG gates only the printing).
+				if (lightId >= 0)
+					mc2_spotlight_diag::tag_slot(lightId, mc2_spotlight_diag::Mech, this);
+
+				// MOVER-LIGHT-HALOGEN-1: warm halogen instead of legacy pure
+				// yellow (MC2_LIGHT_POOL_MOVER_COLOR override).
+				pointLight->SetaRGB(mc2_spotlight_diag::mover_light_argb());
+				pointLight->SetIntensity(0.15f);
+				pointLight->SetFalloffDistances(50.0f, 250.0f);
+			}
+		}
+		
+		if (pointLight)
+		{
+			// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown mechs emit
+			// nothing (user report: wrecks kept glowing).
+			// VISIBILITY-SEMANTICS-1 job (c): was `sensorLevel > 4`, which is
+			// false for every home mech after render() resets it to 0 and for
+			// every vehicle in the game. Own/allied always emit.
+			if (!InEditor && mc2_vis::emitsLight(buildVisState()))
+			{
+				if (lightCircleNodeIndex == -1)
+					lightCircleNodeIndex = mechShape->GetNodeNameId("SLCircle_anubis");
+
+				Stuff::Vector3D lightPos = getNodeIdPosition(lightCircleNodeIndex);
+
+				Stuff::Point3D ourPosition;
+				ourPosition.x = -lightPos.x;
+				ourPosition.y = lightPos.z;
+				ourPosition.z = lightPos.y;
+		
+				pointLight->direction = ourPosition;
+		
+				pointLight->spotDir.x = -position.x;
+				pointLight->spotDir.y = position.z;
+				pointLight->spotDir.z = position.y;
+
+				pointLight->maxSpotLength = 50.0f;
+
+				Stuff::LinearMatrix4D lightToWorldMatrix;
+				lightToWorldMatrix.BuildTranslation(ourPosition);
+				lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				pointLight->SetLightToWorld(&lightToWorldMatrix);
+				pointLight->SetPosition(&lightPos);
+				pointLight->active = true;
+				pointLight->ownerEnabled = 1;	//LIGHT-CULL-RADIUS-1
+			}
+			else
+			{
+				pointLight->active = false;
+				pointLight->ownerEnabled = 0;	//LIGHT-CULL-RADIUS-1
+			}
+		}
+
+		// (E) T1.6 / T1.7: generalised SpotLight_-child illumination. Parallel
+		// path to the SLCircle_anubis pointLight block above (R7: distinct
+		// node-name prefixes, no double-registration). Lazy first-night
+		// register; per-frame in-place update afterwards (T1.7: no per-frame
+		// pool churn). Public accessors (msl.h:431 GetNumShapes, msl.h:438
+		// GetShapeRec, tgl.h:951 GetIsSpotlight) because Mech3DAppearance is
+		// NOT in the TG_MultiShape friend list at msl.h:251-256.
+		// (E) T3.1: gate retired; behavior is now unconditional. Coexists with
+		// the SLCircle_anubis pointLight block above (R7: distinct node-name
+		// prefix, no double-registration).
+		if (mechShape)
+		{
+			if (!spotlightsRegistered_ && eye->isNight)
+			{
+				// [SPOT_DIAG v1] T1.15 per-actor registration counters.
+				int diagChildrenWalked = 0;
+				int diagSpotlightsFound = 0;
+				int diagRegistered = 0;
+				int diagOverflow = 0;
+				for (int i = 0; i < mechShape->GetNumShapes(); ++i)
+				{
+					const TG_ShapeRec* recp = mechShape->GetShapeRec(i);
+					if (!recp) continue;
+					TG_Shape* c = recp->node;
+					if (!c || !recp->processMe) continue;
+					++diagChildrenWalked;
+					if (!c->GetIsSpotlight()) continue;
+					++diagSpotlightsFound;
+
+					const char* nodeName = c->getNodeName();
+					if (!nodeName) continue;
+					long nodeId = mechShape->GetNodeNameId(nodeName);
+					if (nodeId == -1) continue;
+
+					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
+					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
+					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
+					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
+					light->SetIntensity(0.15f);                // anubis default
+					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
+
+					long slotId = eye->addWorldLight(light);
+					if (slotId < 0) { free(light); continue; }
+					spotlightNodeIds_.push_back(nodeId);
+					spotlightLights_.push_back(light);
+					spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
+					// T1.16 — tag this slot as (E)-owned, source=Mech.
+					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Mech, this);
+					++diagRegistered;
+				}
+				diagOverflow = diagSpotlightsFound - diagRegistered;
+				if (diagOverflow < 0) diagOverflow = 0;
+				s_spotDiagMechRegistered += (unsigned long)diagRegistered;
+				s_spotDiagMechOverflows  += (unsigned long)diagOverflow;
+				++s_spotDiagMechActors;
+				if (s_spotDiagMechActors <= 8) {
+					MC2_DIAGFE(stderr,
+						"[SPOT_DIAG v1] event=first_register class=mech actor_id=%ld "
+						"children_walked=%d spotlights_found=%d registered=%d overflow=%d\n",
+						actorHandle_, diagChildrenWalked, diagSpotlightsFound,
+						diagRegistered, diagOverflow);
+					std::fflush(stderr);
+				}
+				spotlightsRegistered_ = true;  // register-once flag (M3)
+			}
+			// [SPOT_DIAG v1] T1.15 per-summary registration aggregate (mech).
+			if (s_spotDiagMechEnabled) {
+				++s_spotDiagMechCalls;
+				if ((s_spotDiagMechCalls % 600) == 0) {
+					std::fprintf(stderr,
+						"[SPOT_DIAG v1] event=registration_summary class=mech "
+						"calls=%lu actors_first_hit=%lu lights_registered=%lu overflows=%lu\n",
+						s_spotDiagMechCalls, s_spotDiagMechActors,
+						s_spotDiagMechRegistered, s_spotDiagMechOverflows);
+					std::fflush(stderr);
+				}
+			}
+
+			// T1.7: per-frame in-place update. UNCONDITIONAL once registered
+			// (C-r2 C2: lights stay allocated across day/night; toggle active).
+			// active gate matches anubis verbatim (C-r1 C5): visible && (sensorLevel
+			// > 4) && !InEditor, plus isNight (bare field, no parens, per C-r3 C2).
+			for (size_t k = 0; k < spotlightLights_.size(); ++k)
+			{
+				Stuff::Vector3D childPos =
+					getNodeIdPosition(spotlightNodeIds_[k]);
+				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
+				// END (node transform × cone geometry axis), grounded on
+				// terrain — the beam lights where it actually lands. Falls
+				// back to the facing heuristic below when the model has no
+				// usable cone. MC2_LIGHT_CONE_NODES=0 restores heuristic.
+				bool coneAimed = false;
+				if (mc2_cone_glow::nodes_enabled())
+				{
+					Stuff::Vector3D aimW;
+					float coneLen = 0.0f;
+					if (mc2_cone_glow::GetNodeAim(mechShape, spotlightNodeIds_[k], aimW, coneLen))
+					{
+						float spill = coneLen * mc2_cone_glow::spill_scale();
+						if (spill > 200.0f) spill = 200.0f;
+						childPos.x += aimW.x * spill;
+						childPos.y += aimW.y * spill;
+						childPos.z += aimW.z * spill;
+						if (land)
+							childPos.z = land->getTerrainElevation(childPos);
+						coneAimed = true;
+					}
+				}
+				// MOVER-LIGHT-FORWARD-1: bias the pool center AHEAD of the
+				// mech along its facing (headlights light the road ahead,
+				// not an omni puddle centered underfoot). Facing convention
+				// matches Mover::getRotationVector ((0,-1,0) rotated by
+				// -rotation). MC2_LIGHT_POOL_MOVER_FWD=0 restores centered.
+				if (!coneAimed)
+				{
+					const float fwdWu = mc2_spotlight_diag::mover_light_fwd_offset();
+					if (fwdWu > 0.0f)
+					{
+						Stuff::Vector3D fwdv;
+						fwdv.x = 0.0f; fwdv.y = -1.0f; fwdv.z = 0.0f;
+						Rotate(fwdv, -rotation);
+						childPos.x += fwdv.x * fwdWu;
+						childPos.y += fwdv.y * fwdWu;
+					}
+				}
+				spotlightLights_[k]->SetPosition(&childPos);
+				// Rule-2 correctness fix: lightToWorld is consumed at
+				// msl.cpp:1659. Without it, the precomputed s_lightToShape
+				// collapses to worldToShape alone and the light's effective
+				// world position is lost. Matches the existing anubis
+				// pattern at mech3d.cpp:3373-3377 (translation-only).
+				Stuff::LinearMatrix4D lightToWorldMatrix;
+				Stuff::Point3D childPosP;
+				childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
+				lightToWorldMatrix.BuildTranslation(childPosP);
+				lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
+				spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
+				// T1.13: dropped (sensorLevel > 4) gate. The original gate
+				// was inherited verbatim from the anubis-specific pointLight
+				// branch above (~:3358) where "show enemy searchlight only when
+				// player has sensor lock" is the correct semantic. For the
+				// generalized SpotLight_ vector path this is overly
+				// restrictive: player-owned mechs (sensorLevel=5) work, but
+				// any enemy mech at sensorLevel<5 is stuck active=false. The
+				// generalized path should illuminate for any visible mech at
+				// night regardless of sensor state.
+				// LIGHT-POOL-VIS-GATE-1 note (2026-07-21): `visible` IS the
+				// mesh-drawn fog-of-war predicate (the appearance renders the
+				// full mesh only under `if (visible)`; sensor blips draw via a
+				// separate sensorLevel 1..4 path) — this active flag is
+				// CORRECT. The observed "pools at unseen enemy blips" leak was
+				// the light-pool pack loop ignoring TG_Light::active entirely
+				// (fixed in gos_terrain_lighting.cpp PackAndDispatch).
+				// LIGHT-POOL-VIS-GATE-1: destroyed/disabled/shutdown movers
+				// emit nothing (user report: wrecks kept glowing).
+				// GHOST-LIGHT-VISIBILITY-1: the T1.13 note above is WRONG —
+				// `visible` is NOT the mesh-drawn fog-of-war predicate.
+				// code/mech.cpp:6816-6866 calls setVisibility(true,true) on
+				// EVERY contact branch including CONTACT_SENSOR_QUALITY_1..4,
+				// so a mech the player only holds as a sensor blip had
+				// visible==true and lit up the terrain / drew a searchlight
+				// cone — advertising a hidden enemy's exact position. Gate on
+				// the predicate that actually decides whether the MESH draws.
+				// Killswitch MC2_LIGHT_MOVER_VIS_GATE=0.
+				// VISIBILITY-SEMANTICS-1: job (c) EMITS LIGHT. Own/allied mechs
+				// always emit; a foreign mech emits only while its mesh is
+				// actually drawn (meshAlpha != 0), which is the real
+				// fog-of-war mechanism. `visible` is deliberately NOT read —
+				// it is true for every live mech every frame (mech.cpp:6638).
+				// Gate MC2_VIS_SEMANTICS=0 restores the pre-lane predicate.
+				spotlightLights_[k]->active =
+					(eye->isNight && !InEditor
+					 && mc2_vis::emitsLight(buildVisState()));
+				// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
+				spotlightLights_[k]->ownerEnabled =
+					spotlightLights_[k]->active ? 1 : 0;
+				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
+				// to the SAME owner predicate — shutdown/dead/FoW-hidden
+				// mechs show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
+				if (spotlightLights_[k]->active)
+					mc2_cone_glow::QueueConeGlow(mechShape, spotlightNodeIds_[k],
+						spotlightLights_[k]->GetaRGB(), eye->getNightFactor(),
+						/*ownerIsMover=*/true);
+			}
+		}
+
+		// D-gpu-pose-instrument: AnimPose stage — animation pose state setters
+		// (setAnimation, SetFrameNum, SetNodeRotation × N) on body + shadow
+		// shapes, plus the shadow-shape transform conditional. Per-stage
+		// attribution for the trimodal Mech3D.UpdateGeometry histogram.
+		{ ZoneScopedN("Mech3D.UpdateGeometry.AnimPose");
+		//----------------------------------------------------
+		// Set Animation State Here.
+		// ONLY ONE case now:
+		//		-We are in an art generated state,  Just playback animation
+		// All cases covered now.
+		if (status != OBJECT_STATUS_DESTROYED)
+		{
+			mechType->setAnimation(mechShape,currentGestureId);
+			mechShape->SetFrameNum(currentFrame);
+
+			if (mechShadowShape && !stripShadowState)
+			{
+				mechType->setAnimation(mechShadowShape,currentGestureId);
+				mechShadowShape->SetFrameNum(currentFrame);
+			}
+		}
+	
+		Stuff::UnitQuaternion torsoRot;
+		torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
+		if (rotationalNodeIndex == -1)
+	   		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
+
+		mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
+ 	
+		if (mechShadowShape)
+			mechShape->SetUseShadow(false);
+			
+		if (mechShadowShape && useShadows && !stripShadowState)
+		{
+			if (rotationalNodeIndex == -1)
+	   			rotationalNodeIndex = mechShadowShape->SetNodeRotation("joint_torso",&torsoRot);
+
+			mechShadowShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
+
+ 			mechShadowShape->SetNodeRotation("joint_torso",&torsoRot);
+			mechShadowShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
+			// Slice D-shadow-skip: when GPU mech path is on AND skip
+			// killswitch is on AND tessellation is active (modern shadow
+			// path engaged), omit the call entirely. Mech3DAppearance::
+			// renderShadows early-returns on tessellation (mech3d.cpp:3054),
+			// so no consumer of TransformMultiShape's outputs exists in
+			// this configuration. Modern dynamic shadows use g_shadowShapes[]
+			// (txmmgr.cpp:130, 1589-1620), a separate data path that does
+			// NOT consume mechShadowShape state. See D-shadow-skip spec
+			// §Recon for full grep-verified consumer enumeration including
+			// opposite-direction grep on addShadowShape.
+			//
+			// Tessellation gate is belt-and-suspenders: if a user disables
+			// tessellation, the legacy RenderShadows path becomes reachable
+			// and would need TransformMultiShape outputs.
+			//
+			// Slice C3-shadow (FAST_TRANSFORM): when SKIP is off but
+			// FAST_TRANSFORM is on, use _PositionsOnly to skip the per-
+			// vertex CPU lighting kernel only. RenderShadows (tgl.cpp:3577)
+			// hardcodes gVertex.argb to 0x3f000000 and reads
+			// listOfShadowTVertices populated by MultiTransformShadows
+			// (which still dispatches at msl.cpp:1765 in that branch).
+			// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_SKIP retired.
+			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
+			// the renderShadows early-return that makes the consumer unreachable.
+			if (g_useGpuMechs && gos_IsModernShadowPathActive()) {
+				// Skip — modern engine has no consumer.
+			} else if (g_useGpuMechs && g_useGpuMechShadowFastTransform) {
+				mechShadowShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
+			} else {
+				mechShadowShape->TransformMultiShape(&xlatPosition, &qRotation);
+			}
+		}
+		} // end AnimPose zone
+
+		// D-gpu-pose-instrument: BodyXform stage — body's SetLightList +
+		// TransformMultiShape* dispatch. The dominant per-mech work; will be
+		// further broken down by zones inside TransformMultiShape itself.
+		{ ZoneScopedN("Mech3D.UpdateGeometry.BodyXform");
+		mechShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
+		// Slice C3-revised: when GPU mech path is on AND fast-transform
+		// killswitch is on, use _PositionsOnly to skip the per-vertex
+		// CPU lighting kernel. Output of that kernel (listOfVertices[j].argb)
+		// is only consumed by mechShape->Render(true) which Slice A
+		// bypasses; GPU shader does its own lighting via calc_light().
+		// BODY ONLY — arms (4459, 4543) and shadow (3377) explicitly
+		// stay full TransformMultiShape; their Render(true) callers
+		// still depend on the lighting bake.
+		// Slice D-leaf-skip-v2: when GPU mech path is on AND leaf-skip
+		// killswitch is on AND tessellation is active, use HierarchyOnly
+		// to additionally skip per-leaf dispatch + MultiTransformShadows.
+		// Recon proved zero practical consumer in this configuration
+		// (mechShape->Render(true) bypassed by Slice A; RenderShadows
+		// unreachable on tessellation; findMoverByMouse rect-only — see
+		// killswitch comment in gos_mech_killswitch.h).
+		// PREVIEW-FIX: the SimpleCamera UI preview (Mech Bay / Purchase) draws
+		// via the CPU MLR mechShape->Render(true) path, which consumes the full
+		// TransformMultiShape output (listOfVertices positions + argb lighting).
+		// The GPU fast-transform variants (_PositionsOnly / _HierarchyOnly) leave
+		// listOfVertices stale, so TG_Shape::Render early-returns and the preview
+		// goes blank. Force the full transform whenever a preview render is in
+		// flight. World/tactical mechs (depth == 0) keep the GPU fast paths.
+		if (g_mechPreviewRenderDepth > 0) {
+			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
+		// ISSUE-34: leaf-skip keyed on the modern shadow path (was tess) —
+		// its unreachability proof (RenderShadows early-return, Slice A
+		// Render(true) bypass, rect-only selection) holds on that predicate.
+		} else if (g_useGpuMechs && g_useGpuMechLeafSkip && gos_IsModernShadowPathActive()) {
+			mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
+		} else if (g_useGpuMechs && g_useGpuMechFastTransform) {
+			mechShape->TransformMultiShape_PositionsOnly(&xlatPosition, &qRotation);
+		} else {
+			mechShape->TransformMultiShape(&xlatPosition, &qRotation);
+		}
+		} // end BodyXform zone
+	}
+
+	// D-gpu-pose-instrument: Effects stage — foot poofs, jump fx, weapon
+	// node positions. getNodePosition callers live here; potential cost
+	// contributor.
+	if (visible && (sensorLevel > 4) && !InEditor && useNonWeaponEffects)
+	{
+		ZoneScopedN("Mech3D.UpdateGeometry.Effects");
+		//--------------------------------------------------------------
+		// Having already transformed the mech, the foot poofs go here.
+		Stuff::Vector3D rFootPos, lFootPos;
+		long footId1 = mechType->getTotalNodes() - 2;
+		long footId0 = mechType->getTotalNodes() - 1;
+		
+		rFootPos = getNodePosition(footId1);
+		lFootPos = getNodePosition(footId0);
+	
+		if (!rightFootDone0 &&
+			(currentFrame >= (mechType->gestures[currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) &&
+			(currentFrame <= (mechType->gestures[currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
+		{
+			//Foot is on ground.  Poof and footprint.
+			rightFootDone0 = true;
+	
+			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
+			{
+				Stuff::Point3D			actualPosition;
+				Stuff::LinearMatrix4D 	shapeOrigin;
+				Stuff::LinearMatrix4D	localToWorld;
+				
+				rFootPosition[currentRightPoof].x = -rFootPos.x;
+				rFootPosition[currentRightPoof].y = rFootPos.z;
+				rFootPosition[currentRightPoof].z = rFootPos.y;
+				
+				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
+				
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				rightDustPoofEffect[currentRightPoof]->Start(&info);
+				rightFootPoofDraw[currentRightPoof] = true;
+				
+				currentRightPoof++;
+				if (currentRightPoof >= MAX_DUST_POOFS)
+					currentRightPoof = 0;
+			}
+			
+			//Draw footprint here.
+			if (craterManager && !isWaking)
+				craterManager->addCrater(mechType->rightFootprintType,rFootPos,rotation);
+		}
+		
+		if (!rightFootDone1 && 
+			(currentFrame >= (mechType->gestures[currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) &&
+			(currentFrame <= (mechType->gestures[currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
+		{
+			//Foot is on ground.  Poof and footprint.
+			rightFootDone1 = true;
+	
+			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
+			{
+				Stuff::Point3D			actualPosition;
+				Stuff::LinearMatrix4D 	shapeOrigin;
+				Stuff::LinearMatrix4D	localToWorld;
+				
+				rFootPosition[currentRightPoof].x = -rFootPos.x;
+				rFootPosition[currentRightPoof].y = rFootPos.z;
+				rFootPosition[currentRightPoof].z = rFootPos.y;
+				
+				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
+				
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				rightDustPoofEffect[currentRightPoof]->Start(&info);
+				rightFootPoofDraw[currentRightPoof] = true;
+				
+				currentRightPoof++;
+				if (currentRightPoof >= MAX_DUST_POOFS)
+					currentRightPoof = 0;
+			}
+			
+			//Draw footprint here.
+			if (craterManager && !isWaking)
+				craterManager->addCrater(mechType->rightFootprintType,rFootPos,rotation);
+		}
+		
+		if (rightFootDone0 &&
+			(currentFrame < (mechType->gestures[currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) ||
+		INT32	(currentFrame > (mechType->gestures[currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
+		{
+			rightFootDone0 = false;
+		}
+		
+		if (rightFootDone1 &&
+			(currentFrame < (mechType->gestures[currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) ||
+			(currentFrame > (mechType->gestures[currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
+		{
+			rightFootDone1 = false;
+		}
+		
+		if (!leftFootDone0 && 
+			(currentFrame >= (mechType->gestures[currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) &&
+			(currentFrame <= (mechType->gestures[currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
+		{
+			//Foot is on ground.  Poof and footprint.
+			leftFootDone0 = true;
+	
+			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
+			{
+				Stuff::Point3D			actualPosition;
+				Stuff::LinearMatrix4D 	shapeOrigin;
+				Stuff::LinearMatrix4D	localToWorld;
+				
+				lFootPosition[currentLeftPoof].x = -lFootPos.x;
+				lFootPosition[currentLeftPoof].y = lFootPos.z;
+				lFootPosition[currentLeftPoof].z = lFootPos.y;
+				
+				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
+				
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				leftDustPoofEffect[currentLeftPoof]->Start(&info);
+				leftFootPoofDraw[currentLeftPoof] = true;
+				
+				currentLeftPoof++;
+				if (currentLeftPoof >= MAX_DUST_POOFS)
+					currentLeftPoof = 0;
+			}
+			
+			//Draw footprint here.
+			if (craterManager && !isWaking)
+				craterManager->addCrater(mechType->leftFootprintType,lFootPos,rotation);
+		}
+		
+		if (!leftFootDone1 && 
+			(currentFrame >= (mechType->gestures[currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) &&
+			(currentFrame <= (mechType->gestures[currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
+		{
+			//Foot is on ground.  Poof and footprint.
+			leftFootDone1 = true;
+	
+			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
+			{
+				Stuff::Point3D			actualPosition;
+				Stuff::LinearMatrix4D 	shapeOrigin;
+				Stuff::LinearMatrix4D	localToWorld;
+				
+				lFootPosition[currentLeftPoof].x = -lFootPos.x;
+				lFootPosition[currentLeftPoof].y = lFootPos.z;
+				lFootPosition[currentLeftPoof].z = lFootPos.y;
+				
+				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
+				
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				leftDustPoofEffect[currentLeftPoof]->Start(&info);
+				leftFootPoofDraw[currentLeftPoof] = true;
+				
+				currentLeftPoof++;
+				if (currentLeftPoof >= MAX_DUST_POOFS)
+					currentLeftPoof = 0;
+			}
+			
+			//Draw footprint here.
+			if (craterManager && !isWaking)
+				craterManager->addCrater(mechType->leftFootprintType,lFootPos,rotation);
+		}
+		
+		if (leftFootDone0 &&
+			(currentFrame < (mechType->gestures[currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) ||
+			(currentFrame > (mechType->gestures[currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
+		{
+			leftFootDone0 = false;
+		}
+		
+		if (leftFootDone1 &&
+			(currentFrame < (mechType->gestures[currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) ||
+			(currentFrame > (mechType->gestures[currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
+		{
+			leftFootDone1 = false;
+		}
+	}
+	
+	// D-gpu-pose-instrument: Sensors stage — sensorTriangleShape +
+	// sensorSquareShape transforms. Per user: ALL mechs have sensors;
+	// need attribution.
+	//
+	// MECH-KILLSWITCH-SENSORSKIP-RETIRE-1: on the GPU mech path, skip the entire
+	// sensor block when sensorLevel ∈ {0, 5}. Sensor SHAPES only render when
+	// sensorLevel ∈ [1,4] (mech3d.cpp:2948-2960); for player mechs (sensorLevel=5)
+	// and undetected enemies (sensorLevel=0) the transform work has no consumer.
+	// Skip gate is the exact INVERSE of the Render gate — strict no-op. sensorSpin
+	// drift while skipped is imperceptible (a continuously-rotating marker that pops
+	// in at any angle is indistinguishable). Formerly gated by the default-ON
+	// MC2_GPU_MECH_SENSOR_SKIP killswitch (now retired to this constant); still
+	// requires g_useGpuMechs (the CPU path transforms sensors regardless).
+	{ ZoneScopedN("Mech3D.UpdateGeometry.Sensors");
+	const bool skipSensors = g_useGpuMechs &&
+		(sensorLevel == 0 || sensorLevel >= 5);
+	if (!skipSensors) {
+	Stuff::UnitQuaternion totalRotation;
+	// VK-MECH-CAPTURE-DETERMINISM-1: the sensor marker spins off the wall-clock
+	// frameLength every render frame; during a frozen capture sweep it drifted
+	// run-to-run (a rotating triangle/square near detected enemy mechs). Freeze
+	// its advance while the capture sim is frozen. Capture-mode-only, byte-safe.
+	if (mc2CaptureGaitFreezeActive() == 0 && mc2FreezeMoversActive() == 0)
+	sensorSpin += SPIN_RATE * frameLength;
+	if (sensorSpin > 180)
+		sensorSpin -= 360;
+
+	if (sensorSpin < -180)
+		sensorSpin += 360;
+
+	totalRotation = Stuff::EulerAngles(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f);
+
+	float baseRootNodeDifference = baseRootNodeHeight;
+	if (isHelicopter)
+		baseRootNodeDifference -= HELICOPTER_FACTOR;
+
+	xlatPosition.y += baseRootNodeDifference;
+	//----------------------------------------------
+	// Do geometry here to draw sensor contact
+	sensorTriangleShape->SetFogRGB(0xffffffff);
+	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
+	sensorTriangleShape->TransformMultiShape(&xlatPosition,&totalRotation);
+
+	//----------------------------------------------
+	// Do geometry here to draw sensor contact
+	sensorSquareShape->SetFogRGB(0xffffffff);
+	sensorSquareShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
+	sensorSquareShape->TransformMultiShape(&xlatPosition,&totalRotation);
+	} // end !skipSensors
+	} // end Sensors zone
+	
+	//-----------------------------------------
+	// Create Jump FX Here.
+	if (!jumpFXSetup && (currentGestureId == GestureJump) && inJump && jumpJetEffect)
+	{
+		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
+		Stuff::Vector3D jumpNodePos = getNodePosition(jumpNodeId);
+		
+		Stuff::Point3D			actualPosition;
+		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+		Stuff::LinearMatrix4D	localResult;
+		
+		actualPosition.x = -jumpNodePos.x;
+		actualPosition.y = jumpNodePos.z;
+		actualPosition.z = jumpNodePos.y;
+		
+		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(actualPosition);
+		
+		Stuff::UnitQuaternion effectRot;
+		effectRot = Stuff::EulerAngles(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
+		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+		localResult.Multiply(localToWorld,shapeOrigin);
+					
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+		jumpJetEffect->Start(&info);
+		
+		jumpFXSetup = true;
+	}
+	
+	//------------------------------------------------
+	// Update GOSFX
+	for (long i=0;i<MAX_DUST_POOFS;i++)
+	{
+		if (rightFootPoofDraw[i] && rightDustPoofEffect[i] && rightDustPoofEffect[i]->IsExecuted())
+		{
+			Stuff::LinearMatrix4D 	shapeOrigin;
+			Stuff::LinearMatrix4D 	localToWorld;
+				
+			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+			shapeOrigin.BuildTranslation(rFootPosition[i]);
+	
+			Stuff::OBB boundingBox;
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+	
+			bool result = rightDustPoofEffect[i]->Execute(&info);
+			if (!result)
+			{
+				rightFootPoofDraw[i] = false;
+			}
+		}
+		
+		if (leftFootPoofDraw[i] && leftDustPoofEffect[i] && leftDustPoofEffect[i]->IsExecuted())
+		{
+			Stuff::LinearMatrix4D 	shapeOrigin;
+			Stuff::LinearMatrix4D 	localToWorld;
+				
+			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+			shapeOrigin.BuildTranslation(lFootPosition[i]);
+	
+			Stuff::OBB boundingBox;
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+	
+			bool result = leftDustPoofEffect[i]->Execute(&info);
+			if (!result)
+			{
+				leftFootPoofDraw[i] = false;
+			}
+		}
+	}
+	
+	if ((currentGestureId == GestureJump) && inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
+	{
+		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
+		Stuff::Vector3D jumpNodePos = getNodePosition(jumpNodeId);
+		
+		Stuff::Point3D			actualPosition;
+		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+		Stuff::LinearMatrix4D	localResult;
+		
+		actualPosition.x = -jumpNodePos.x;
+		actualPosition.y = jumpNodePos.z;
+		actualPosition.z = jumpNodePos.y;
+		
+		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(actualPosition);
+		
+		Stuff::UnitQuaternion effectRot;
+		effectRot = Stuff::EulerAngles(JUMP_PITCH * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
+		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+		localResult.Multiply(localToWorld,shapeOrigin);
+					
+ 		Stuff::OBB boundingBox;
+   		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		jumpJetEffect->Execute(&info);
+	}
+	
+	if (!inJump && jumpFXSetup)
+	{
+		jumpJetEffect->Stop();
+		jumpFXSetup = false;
+	}
+	
+	//----------------------------------------------------------------
+	// Arm Blown FX
+	if (leftShoulderBoom)
+	{
+		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+		Stuff::LinearMatrix4D	localResult;
+				
+		if (leftArmNodeIndex == -1)
+			leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
+
+		Stuff::Vector3D leftNodePos = getNodeIdPosition(leftArmNodeIndex);
+		leftShoulderPos.x = -leftNodePos.x;
+		leftShoulderPos.y = leftNodePos.z;
+		leftShoulderPos.z = leftNodePos.y;
+		
+		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(leftShoulderPos);
+				
+		Stuff::UnitQuaternion effectRot;
+		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+		localResult.Multiply(localToWorld,shapeOrigin);
+		
+ 		Stuff::OBB boundingBox;
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		bool result = leftShoulderBoom->Execute(&info);
+		if (!result)
+		{
+			leftShoulderBoom->Kill();
+			delete leftShoulderBoom;
+			leftShoulderBoom = NULL;
+		}
+	}
+	
+	if (rightShoulderBoom)
+	{
+		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+		Stuff::LinearMatrix4D	localResult;
+				
+		if (rightArmNodeIndex == -1)
+			rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
+
+		Stuff::Vector3D rightNodePos = getNodeIdPosition(rightArmNodeIndex);
+		rightShoulderPos.x = -rightNodePos.x;
+		rightShoulderPos.y = rightNodePos.z;
+		rightShoulderPos.z = rightNodePos.y;
+		
+ 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(rightShoulderPos);
+				
+		Stuff::UnitQuaternion effectRot;
+		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+		localResult.Multiply(localToWorld,shapeOrigin);
+		
+ 		Stuff::OBB boundingBox;
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		bool result = rightShoulderBoom->Execute(&info);
+		if (!result)
+		{
+			rightShoulderBoom->Kill();
+			delete rightShoulderBoom;
+			rightShoulderBoom = NULL;
+		}
+	}
+	
+	//-------------------------------------------------
+	// All other effects
+	if ((criticalSmoke && (isSmoking > 0)) || (smokeEffect && (isSmoking == 0)))
+	{
+		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+				
+		Stuff::Vector3D smokeNodePos = getNodePosition(0);
+		Stuff::Point3D smokePos;
+		smokePos.x = -smokeNodePos.x;
+		smokePos.y = smokeNodePos.z;
+		smokePos.z = smokeNodePos.y;
+		
+ 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(smokePos);
+				
+		Stuff::OBB boundingBox;
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+		
+		if (isSmoking > 0)
+		{
+			//Loops until told to stop.
+			criticalSmoke->Execute(&info);
+		}
+		else
+		{
+			smokeEffect->Execute(&info);
+		}
+	}
+	
+	if (waterWake && isWaking)
+	{
+		if (movedThisFrame)
+		{
+			waterWake->SetLoopOn();
+			waterWake->SetExecuteOn();
+		}
+		else
+		{
+			waterWake->SetLoopOff();
+			waterWake->SetExecuteOn();
+		}
+		
+ 		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+		Stuff::LinearMatrix4D	localResult;
+				
+		Stuff::Point3D wakePos;
+		wakePos.x = -position.x;
+		wakePos.y = Terrain::waterElevation;
+		wakePos.z = position.y;
+		
+ 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(wakePos);
+				
+		Stuff::UnitQuaternion effectRot;
+		effectRot = Stuff::EulerAngles(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f);
+		if (!inReverse)
+			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+		else
+			localToWorld.Multiply(gosFX::Effect_Into_Motion,effectRot);
+		localResult.Multiply(localToWorld,shapeOrigin);
+		
+ 		Stuff::OBB boundingBox;
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,&boundingBox);
+		
+		waterWake->Execute(&info);
+	}
+	
+	if (helicopterDustCloud && isDusting)
+	{
+ 		Stuff::LinearMatrix4D 	shapeOrigin;
+		Stuff::LinearMatrix4D	localToWorld;
+		Stuff::LinearMatrix4D	localResult;
+				
+		Stuff::Point3D wakePos;
+		wakePos.x = -position.x;
+		wakePos.y = position.z;
+		wakePos.z = position.y;
+		
+ 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
+		shapeOrigin.BuildTranslation(wakePos);
+				
+		/*
+		Stuff::UnitQuaternion effectRot;
+		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
+		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
+		localResult.Multiply(localToWorld,shapeOrigin);
+		*/
+		
+ 		Stuff::OBB boundingBox;
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+		
+		bool result = helicopterDustCloud->Execute(&info);
+		if (!result)
+		{
+			helicopterDustCloud->Kill();
+			isDusting = false;
+		}
+	}
+	 
+}	
+
+#ifdef _DEBUG
+FilePtr logFile = NULL;
+#endif
+
+//-----------------------------------------------------------------------------
+bool Mech3DAppearance::setJumpParameters (Stuff::Vector3D &end)
+{
+	if (!inJump)
+	{
+		jumpSetup = true;
+		jumpDestination = end;
+
+		return true;
+	}
+
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+bool Mech3DAppearance::leftArmRecalc (void)
+{
+	if (!leftArm)
+		return false;
+
+	leftArmInView = false;
+	float eyeDistance = 0.0f;
+	//--------------------------------------------------
+	// First, if we are using perspective, figure out
+	// if object too far from camera.  Far Clip Plane.
+	if (eye->usePerspective)
+	{
+		Stuff::Point3D Distance;
+		Stuff::Point3D objPosition;
+		Stuff::Point3D eyePosition(eye->getCameraOrigin());
+		objPosition.x = -leftArmPos.x;
+		objPosition.y = leftArmPos.z;
+		objPosition.z = leftArmPos.y;
+
+		Distance.Subtract(objPosition,eyePosition);
+		eyeDistance = Distance.GetApproximateLength();
+		if (eyeDistance > Camera::MaxClipDistance)
+		{
+			leftArmHazeFactor = 1.0f;
+			leftArmInView = false;
+		}
+		else if (eyeDistance > Camera::MinHazeDistance)
+		{
+			leftArmHazeFactor = (eyeDistance - Camera::MinHazeDistance) * Camera::DistanceFactor;
+			leftArmInView = true;
+		}
+		else
+		{
+			leftArmHazeFactor = 0.0f;
+			leftArmInView = true;
+		}
+
+		//-----------------------------------------------------------------
+		// If inside farClip plane, check if behind camera.
+		// Find angle between lookVector of Camera and vector from camPos
+		// to Target.  If angle is less then halfFOV, object is visible.
+		const bool armParentVisL = s_gpuCullLifecycle
+			? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
+			: inView;
+		if (armParentVisL)
+		{
+			Distance.Normalize(Distance);
+
+			float cosine = Distance * eye->getLookVector();
+			if (cosine > eye->cosHalfFOV)
+				leftArmInView = true;
+			else
+				leftArmInView = false;
+		}
+	}
+
+	return leftArmInView;
+}
+
+//-----------------------------------------------------------------------------
+bool Mech3DAppearance::rightArmRecalc (void)
+{
+	if (!rightArm)
+		return false;
+
+	rightArmInView = false;
+	float eyeDistance = 0.0f;
+	//--------------------------------------------------
+	// First, if we are using perspective, figure out
+	// if object too far from camera.  Far Clip Plane.
+	if (eye->usePerspective)
+	{
+		Stuff::Point3D Distance;
+		Stuff::Point3D objPosition;
+		Stuff::Point3D eyePosition(eye->getCameraOrigin());
+		objPosition.x = -rightArmPos.x;
+		objPosition.y = rightArmPos.z;
+		objPosition.z = rightArmPos.y;
+
+		Distance.Subtract(objPosition,eyePosition);
+		eyeDistance = Distance.GetApproximateLength();
+		if (eyeDistance > Camera::MaxClipDistance)
+		{
+			rightArmHazeFactor = 1.0f;
+			rightArmInView = false;
+		}
+		else if (eyeDistance > Camera::MinHazeDistance)
+		{
+			rightArmHazeFactor = (eyeDistance - Camera::MinHazeDistance) * Camera::DistanceFactor;
+			rightArmInView = true;
+		}
+		else
+		{
+			rightArmHazeFactor = 0.0f;
+			rightArmInView = true;
+		}
+
+		//-----------------------------------------------------------------
+		// If inside farClip plane, check if behind camera.
+		// Find angle between lookVector of Camera and vector from camPos
+		// to Target.  If angle is less then halfFOV, object is visible.
+		const bool armParentVisR = s_gpuCullLifecycle
+			? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
+			: inView;
+		if (armParentVisR)
+		{
+			Distance.Normalize(Distance);
+
+			float cosine = Distance * eye->getLookVector();
+			if (cosine > eye->cosHalfFOV)
+				rightArmInView = true;
+			else
+				rightArmInView = false;
+		}
+	}
+
+	return rightArmInView;
+}

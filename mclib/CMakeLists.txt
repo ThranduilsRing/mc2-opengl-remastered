@@ -111,6 +111,12 @@ set(SOURCES ${SOURCES}
     gvactor_render.cpp
     gvactor_update.cpp
     mech3d.cpp
+    mech3d_diag.cpp
+    mech3d_geometry.cpp
+    mech3d_init.cpp
+    mech3d_render.cpp
+    mech3d_type.cpp
+    mech3d_update.cpp
     soundsys.cpp
     move.cpp
     move_globalmap_build.cpp

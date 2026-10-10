@@ -1,0 +1,27 @@
+{
+ "base": "043685267",
+ "src": "mclib/mech3d.cpp",
+ "stem": "mech3d",
+ "add": [
+  "#define MAX_TRANSITION_GESTURES\t\t\t10",
+  "#define GESTURE_OFFSET_SIZE\t\t100",
+  "extern char hotSpotFinderArray[28];",
+  "extern char mechSpeedStateArray[28];",
+  "extern char transitionArray[1000];",
+  "extern Stuff::Vector3D debugMechActorPosition[];",
+  "extern float mechDebugAngle[];",
+  "extern float torsoDebugAngle[];"
+ ],
+ "_reason": "mstates.h defines the gesture transition tables, so only mech3d.cpp may include it; mech3d_internal.h declares the three tables and the two macros the pieces use instead. The three debug arrays are defined in mech3d.cpp (sized by MAX_MECHS, which stays beside them) and declared extern for the diag piece.",
+ "scripts": [
+  "scripts/check-light-row-freshness.py",
+  "scripts/check-worktree-context.sh",
+  "scripts/counter-honesty-allowlist.txt",
+  "tools/bt2018_import/extract_textures.py",
+  "tools/gate_codemod.py",
+  "tools/unit_converter/__init__.py",
+  "tools/unit_converter/emit.py",
+  "tools/unit_converter/test_unit_converter.py"
+ ],
+ "_scripts_reason": "Reviewed: the counter-honesty allowlist keys follow the four limiters to mech3d_{init,type,render,geometry}.cpp; check-light-row-freshness only mentions mech3d.cpp in a comment about a deleted exemption (the GPU-mech submit path still reads getCachedFrame in mech3d_render.cpp); the rest cite mech3d.cpp in comments or as the format a loader reads."
+}
