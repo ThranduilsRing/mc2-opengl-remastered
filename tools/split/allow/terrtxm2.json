@@ -1,0 +1,19 @@
+{
+ "base": "dfdb4b147",
+ "src": "mclib/terrtxm2.cpp",
+ "stem": "terrtxm2",
+ "scripts": [
+  "scripts/check-texture-resolution.py",
+  "scripts/deploy_payload.py",
+  "tools/class_light_band_harness/class_light_band_harness.cpp",
+  "tools/gate_codemod.py",
+  "tools/mc2_launcher/mc2_launcher.cpp",
+  "tools/mc2texcook/burnin_jpeg.py",
+  "tools/mc2texcook/burnin_zcompress.py",
+  "tools/mc2texcook/cook_pbr_maps.py",
+  "tools/mc2texcook/terrain_layer_manifest.json",
+  "tools/terrain_beautify/cook_cliff_material.py"
+ ],
+ "_scripts_reason": "Reviewed: these harnesses, cook scripts and manifests cite terrtxm2.cpp in comments and notes only; tools/gate_codemod.py and tools/mc2_launcher (lane 1) are not edited here.",
+ "split_commit": "e880b7520"
+}

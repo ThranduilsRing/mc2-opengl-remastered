@@ -1,0 +1,205 @@
+// Shared surface of the terrtxm2.cpp translation units (terrtxm2.cpp, terrtxm2_{bake,load}.cpp).
+//
+// terrtxm2.cpp keeps init / destroy, the colormap data access, the texture handle resolve and the save functions; the rest of
+// TerrainColorMap is split by responsibility (see DOC in each piece).
+#ifndef TERRTXM2_INTERNAL_H
+#define TERRTXM2_INTERNAL_H
+
+#ifndef TERRTXM2_H
+#include"terrtxm2.h"
+#endif
+#include"tex_resolve_table.h"
+
+#ifndef PATHS_H
+#include"paths.h"
+#endif
+
+#ifndef TGAINFO_H
+#include"tgainfo.h"
+#endif
+
+#ifndef CIDENT_H
+#include"cident.h"
+#endif
+
+#ifndef FILE_H
+#include"file.h"
+#endif
+
+#ifndef VERTEX_H
+#include"vertex.h"
+#endif
+
+#ifndef TERRAIN_H
+#include"terrain.h"
+#endif
+
+#include"../GameOS/gameos/gos_profiler.h"
+
+#ifndef CAMERA_H
+#include"camera.h"
+#endif
+
+#include"resizeimage.h"
+
+#include"platform_io.h"
+#include<sys/stat.h>
+#include<cstdio>
+#include<cstdint>		// BURNIN-DISK-JPEG: uint8_t for stb_image pixel buffer
+#include "mc2_dialog.h"
+#include "Gates/gate.h"
+
+#define COLOR_MAP_HEAP_SIZE				419430400
+#define COLOR_TXM_HEAP_SIZE				16384
+#define COLOR_MAP_TEXTURE_SIZE			256
+#define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
+
+void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf );
+
+#define MBOK		1
+
+// Globals defined in terrtxm2.cpp (or elsewhere in the engine) that the split pieces share.
+extern bool forceShadowBurnIn;
+extern "C" unsigned char* BurninJpeg_DecodeRGB(const unsigned char* data, int dataLen, int* outW, int* outH);
+extern "C" void BurninJpeg_FreePixels(unsigned char* px);
+
+inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
+                                  UserHeap* ramHeap, long* outWidth)
+{
+	if (outWidth) *outWidth = 0;
+
+	// Kill-switch: prefer the .tga path entirely.
+	if (mc2::gate::get<"MC2_BURNIN_NO_JPG">())
+		return NULL;
+
+	char jName[1024];
+	sprintf(jName, "%s.burnin", fileName);
+	FullPathFileName burnInJpg;
+	burnInJpg.init(texturePath, jName, ".jpg");
+
+	// Use File::open so the mod overlay (TryModOpen) is consulted — std::fopen bypasses it.
+	File jpgFile;
+	if (NO_ERR != jpgFile.open((const char*)burnInJpg))
+		return NULL; // sidecar absent -> caller uses .tga
+
+	long jFileSize = jpgFile.fileSize();
+	if (jFileSize <= 0)
+	{
+		jpgFile.close();
+		printf("[BURNIN_JPG] fallback name=%s reason=empty-file\n", fileName);
+		return NULL;
+	}
+
+	unsigned char* jpgBytes = (unsigned char*)malloc((size_t)jFileSize);
+	if (!jpgBytes)
+	{
+		jpgFile.close();
+		printf("[BURNIN_JPG] fallback name=%s reason=read-alloc-failed (%ld bytes)\n", fileName, jFileSize);
+		return NULL;
+	}
+	if (jpgFile.read(jpgBytes, jFileSize) != jFileSize)
+	{
+		free(jpgBytes);
+		jpgFile.close();
+		printf("[BURNIN_JPG] fallback name=%s reason=read-failed\n", fileName);
+		return NULL;
+	}
+	jpgFile.close();
+
+	int w = 0, h = 0;
+	unsigned char* rgb = BurninJpeg_DecodeRGB(jpgBytes, (int)jFileSize, &w, &h);
+	free(jpgBytes);
+	if (!rgb)
+	{
+		printf("[BURNIN_JPG] fallback name=%s reason=jpeg-decode-failed\n", fileName);
+		return NULL;
+	}
+	if (w <= 0 || h <= 0 || w != h)
+	{
+		BurninJpeg_FreePixels(rgb);
+		printf("[BURNIN_JPG] fallback name=%s reason=bad-dims (%dx%d)\n", fileName, w, h);
+		return NULL;
+	}
+
+	long cmapBytes = (long)w * (long)h * (long)sizeof(DWORD);
+	MemoryPtr colorMap = (MemoryPtr)ramHeap->Malloc(cmapBytes);
+	if (!colorMap)
+	{
+		BurninJpeg_FreePixels(rgb);
+		printf("[BURNIN_JPG] fallback name=%s reason=colormap-alloc-failed (%ld bytes)\n", fileName, cmapBytes);
+		return NULL;
+	}
+
+	// Pack stb RGB -> ColorMap B,G,R,A (matches the 24-bit .burnin.tga path).
+	const long pixels = (long)w * (long)h;
+	const unsigned char* src = rgb;
+	unsigned char* dst = (unsigned char*)colorMap;
+	for (long i = 0; i < pixels; ++i)
+	{
+		dst[0] = src[2]; // Blue
+		dst[1] = src[1]; // Green
+		dst[2] = src[0]; // Red
+		dst[3] = 0xFF;   // Alpha
+		dst += 4;
+		src += 3;
+	}
+
+	BurninJpeg_FreePixels(rgb);
+
+	printf("[BURNIN_JPG] loaded name=%s %dx%d (from %zu jpg bytes)\n",
+		fileName, w, h, (size_t)jFileSize);
+
+	if (outWidth) *outWidth = (long)w;
+	return colorMap;
+}
+
+inline bool skipColormapTiles() {
+    static const bool s = !mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">()
+        && mc2::gate::get<"MC2_TERRAIN_INDIRECT">()
+        && mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
+    return s;
+}
+
+// COLORMAP-BC7-KTX2-1: default ON; kill-switch MC2_COLORMAP_KTX2=0 disables.
+// When ON, BuildColormapAtlas will prefer the .burnin.ktx2 sidecar over cpuColorMap.
+inline bool useKtx2Colormap() {
+    static const bool s = mc2::gate::get<"MC2_COLORMAP_KTX2">();
+    return s;
+}
+
+//---------------------------------------------------------------------------
+inline void saveTGAFile(MemoryPtr ColorMap, const char * fileName, long pixelWidth)
+{
+	TGAFileHeader colorMapInfo;
+	colorMapInfo.image_id_len = 0;
+	colorMapInfo.color_map = 0;
+	colorMapInfo.image_type = UNC_TRUE;
+
+	colorMapInfo.cm_first_entry= 0;
+	colorMapInfo.cm_length = 0;
+	colorMapInfo.cm_entry_size = 0;
+
+	colorMapInfo.x_origin = 0;
+	colorMapInfo.y_origin = 0;
+	colorMapInfo.width = pixelWidth;
+	colorMapInfo.height = pixelWidth;
+	colorMapInfo.pixel_depth = 32.0;
+	colorMapInfo.image_descriptor = 32;	//DO NOT FLIP!
+	
+	char newName[1024];
+	sprintf(newName,"%s.burnin",fileName);
+	
+	FullPathFileName outputName;
+	outputName.init(texturePath,newName,".tga");
+	
+	_chmod(outputName,_S_IREAD | _S_IWRITE);
+	
+	File outputFile;
+	outputFile.create(outputName);
+	
+	outputFile.write((MemoryPtr)(&colorMapInfo),sizeof(TGAFileHeader));
+	outputFile.write(ColorMap,pixelWidth*pixelWidth*sizeof(DWORD));
+	outputFile.close();
+}
+
+#endif // TERRTXM2_INTERNAL_H

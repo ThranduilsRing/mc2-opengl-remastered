@@ -57,6 +57,8 @@ set(SOURCES ${SOURCES}
     file.cpp
     gamelog.cpp
     inifile.cpp
+    inifile_read.cpp
+    inifile_arrays.cpp
     packet.cpp
     celement.cpp
     celine.cpp
@@ -116,6 +118,8 @@ set(SOURCES ${SOURCES}
     terrain_runtime.cpp
     terrtxm.cpp
     terrtxm2.cpp
+    terrtxm2_bake.cpp
+    terrtxm2_load.cpp
     burnin_jpeg_decode.cpp
     control_map_png_decode.cpp
     txmconv.cpp
