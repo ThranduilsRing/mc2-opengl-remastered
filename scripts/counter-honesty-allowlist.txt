@@ -64,7 +64,7 @@ GameOS/gameos/gos_postprocess_shadow.cpp::s_frustN <= 3
 GameOS/gameos/gos_postprocess_diag.cpp::s_probeFrame <= 3
 GameOS/gameos/gos_postprocess_diag.cpp::s_probeFrame <= 5
 GameOS/gameos/gos_postprocess_executor.cpp::s_warnCount < 4
-GameOS/gameos/gos_terrain_indirect.cpp::s_probeCount < 6
+GameOS/gameos/gos_terrain_indirect_mine_decal.cpp::s_probeCount < 6
 GameOS/gameos/gos_terrain_lighting.cpp::s_frameIndex <= 1
 GameOS/gameos/gos_terrain_lod_chunk.cpp::s_auditFrame <= 60
 GameOS/gameos/gos_terrain_lod_chunk.cpp::s_mvpNullCount <= 5

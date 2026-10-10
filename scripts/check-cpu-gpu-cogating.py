@@ -168,7 +168,7 @@ PAIRS = [
             # Made inert structurally: COLORMAP-CPU-RETIRE-1 frees the source
             # buffers, and the null-guard below is what skips the block.
             "inert_by": {"kind": "env", "token": "MC2_COLORMAP_CPU_RETIRE",
-                         "reader_file": "GameOS/gameos/gos_terrain_indirect.cpp"},
+                         "reader_file": "GameOS/gameos/gos_terrain_indirect_cement.cpp"},
             "guard": r"displaceScale\s*>\s*0\.0f\s*&&\s*tcm->cpuColorMap\s*&&\s*tcm->cpuDispAlpha",
         },
         "gpu": {

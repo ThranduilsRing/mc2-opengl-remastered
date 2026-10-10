@@ -32,7 +32,7 @@ ROW = re.compile(r"^\|\s*`([^`]+)`[^|]*\|\s*([A-E])\s*\|", re.M)
 # class-B indirect families that MUST keep a COMMAND barrier
 BARRIER_TUS = [
     ROOT / "GameOS" / "gameos" / "gpu_cull_compute.cpp",
-    ROOT / "GameOS" / "gameos" / "gos_terrain_indirect.cpp",
+    ROOT / "GameOS" / "gameos" / "gos_terrain_indirect_dispatch.cpp",
 ]
 # class-D members that must stay declared (Vulkan-debt visibility)
 REQUIRED_CLASS_D = {"lightData_", "s_ssbo"}

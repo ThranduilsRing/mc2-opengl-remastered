@@ -39,6 +39,12 @@ set(SOURCES ${SOURCES}
     gos_terrain_patch_stream.cpp
     gos_terrain_water_stream.cpp
     gos_terrain_indirect.cpp
+    gos_terrain_indirect_diag.cpp
+    gos_terrain_indirect_atlas.cpp
+    gos_terrain_indirect_cement.cpp
+    gos_terrain_indirect_pack.cpp
+    gos_terrain_indirect_dispatch.cpp
+    gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
     gos_terrain_mask_dispatch.cpp
     gos_terrain_lighting.cpp

@@ -88,7 +88,7 @@ ALLOWLIST_EXACT = {
     # screenshot / video READ-blit brackets.
     "GameOS/gameos/gameosmain.cpp",
     # water-reflection prev-restore brackets.
-    "GameOS/gameos/gos_terrain_indirect.cpp",
+    "GameOS/gameos/gos_terrain_indirect_dispatch.cpp",
     # readback bracket.
     "RenderWorld/RenderWorld.cpp",
     # editor TUs, out of the frame loop.
