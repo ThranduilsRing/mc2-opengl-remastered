@@ -1327,7 +1327,16 @@ def apply_edits(raw, results):
     if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
         nl = "\r\n" if "\r\n" in raw else "\n"
         lines = raw.split(nl)
-        last = max((i for i, ln in enumerate(lines[:300]) if ln.lstrip().startswith("#include")), default=-1)
+        # the last #include of the first 300 lines that is NOT inside an #if / #ifdef / #ifndef block
+        depth, last = 0, -1
+        for i, ln in enumerate(lines[:300]):
+            s = ln.lstrip()
+            if s.startswith("#") and s[1:].lstrip().startswith(("if", "ifdef", "ifndef")):
+                depth += 1
+            elif s.startswith("#") and s[1:].lstrip().startswith("endif"):
+                depth = max(0, depth - 1)
+            elif s.startswith("#include") and depth == 0:
+                last = i
         lines.insert(last + 1, GATE_INCLUDE)
         raw = nl.join(lines)
     return raw, applied, skipped

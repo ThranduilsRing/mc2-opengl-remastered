@@ -50,6 +50,7 @@
 #include"../GameOS/gameos/gos_frame_pass_stats.h"     // [FRAME_PASS_STATS v1] chunk draw count
 #include"../GameOS/gameos/utils/logging.h"            // Terrain LOD chunk Phase 2: throttled false-negative log
 #include"terrain_admission_mode.h"  // F6 T2: shared isModern() flag for terrain.cpp + quad.cpp
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include"terrain_runtime.h"  // TERRAIN-RUNTIME-API-1: compat seam + gated parity walk
 #include <cstdio>            // TERRAIN-RUNTIME-API-1: parity self-test log
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -97,7 +98,6 @@ extern bool  useWaterInterestTexture;
 
 #ifndef TGAINFO_H
 #include"tgainfo.h"
-#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #endif
 
 //---------------------------------------------------------------------------
