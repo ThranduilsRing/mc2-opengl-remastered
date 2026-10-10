@@ -252,6 +252,8 @@ def main(argv=None) -> int:
     if not exe.exists():
         print(f"[vv-capture] ERROR mc2.exe missing: {exe}", file=sys.stderr)
         return 4
+    if not rvc.guard_exe(exe):
+        return 7
 
     all_files = discover_bookmarks(install)
     if not all_files:

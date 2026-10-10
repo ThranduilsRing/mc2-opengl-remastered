@@ -17,8 +17,8 @@ Exit 0 only if smoke passed AND all expects found AND no forbids hit.
 Exit 1 = smoke passed but grep verdict failed; smoke's own nonzero exit is
 propagated as-is (typically 1); 2 = setup error (no artifacts, bad args).
 
-Notes: uses run_smoke --no-lease --keep-logs and --exe <install>/mc2.exe, so
-it targets exactly the install you name (no deploy-lease auto-selection).
+Notes: uses run_smoke --keep-logs and --exe <install>/mc2.exe, so
+it targets exactly the install you name (the folder is leased, never auto-selected).
 Never uses --kill-existing. Env vars are passed to the smoke process env.
 """
 import argparse
@@ -86,7 +86,7 @@ def main():
     before = {d.name for d in newest_artifact_dirs(10**6)}
 
     cmd = [py, str(ROOT / "scripts" / "run_smoke.py"),
-           "--exe", str(exe), "--no-lease", "--keep-logs",
+           "--exe", str(exe), "--keep-logs",
            "--duration", str(args.duration)]
     for m in args.mission:
         cmd += ["--mission", m]
