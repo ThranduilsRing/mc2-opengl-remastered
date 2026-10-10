@@ -33,6 +33,175 @@
 #include "vk_feed_dump.h"            // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 #endif
 
+
+// Declarations, types and constants the split pieces share.
+
+
+// Terrain MVP matrix — exposed by gameos_graphics.cpp for all terrain draw paths.
+extern const float* gos_GetTerrainMVPMat4();
+
+// TERRAIN-SHORELINE-MASK-1: shared render-shader clock (SmokeMode fixed-
+// timestep override, same computation as the water fast-path's "time"
+// uniform) — exposed by gameos_graphics.cpp. f(worldPos,time)-ONLY foam
+// animation; never fed by anything camera-dependent.
+extern float gos_GetShaderClockSeconds();
+
+// Fix-B frame-of-reference: the GPU water cull and DrawDecalStatic project with
+// the PREVIOUS-frame dispatch MVP (baked in Terrain::geometry()) when armed, NOT
+// the live current-frame MVP. The legacy terrain draw also uses that baked MVP,
+// so terrain depth + water cull + decals all agree at frame N-1. The chunk MUST
+// match, or it writes depth at frame N while water/decals project at N-1 -> a
+// 1-frame offset -> shore-water dropout + decal tearing under camera motion.
+extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
+
+#ifdef MC2_VULKAN_ISLAND
+
+struct TerrainGlFallbackAudit {
+    int total = 0;
+    int captured = 0;
+    int glFallback = 0;
+    int inactive = 0;
+    int band = 0;
+    int displace = 0;
+    int edgeStitch = 0;   // patches that FELL to GL because of edge-stitch (now 0 by
+                          // construction:
+                          // stitched patches are VK-captured, not GL-fallback).
+    int capturedStitched = 0; // of `captured`, how many carried a nonzero edgeStitch mask
+                              // -- direct proof stitched patches are VK-owned (>0 expected
+                              // on any map with LOD-band boundaries; the edgeStitch counter
+                              // above is the excluded twin and must stay 0).
+    int other = 0;
+    int skirtEdges = 0;
+};
+#endif
+
+extern unsigned int gos_GetTerrainNormalArrayTex();
+
+extern void  gos_GetTerrainMatTiling(float*, float*, float*, float*, float*);
+
+extern void  gos_GetTerrainTintRock(float*, float*, float*);
+
+extern void  gos_GetTerrainTintGrass(float*, float*, float*);
+
+extern void  gos_GetTerrainTintDirt(float*, float*, float*);
+
+extern float gos_GetTerrainTintStrengthScale();
+
+extern float gos_GetTerrainControlAlbedoStrength();  // TERRAIN-CONTROLMAP-ALBEDO-1
+
+// TERRAIN-MATERIAL-LIB-1: promoted frag-literal tints + per-layer roughness/AO
+// scalars + the u_useMaterialLib gate. These were previously only wired to the
+// legacy tessellated patch-stream path (terrainBindUniformsForPatchStream) --
+// the live chunk binder never fetched these locs or uploaded them, so JSON-
+// authored terrain_materials.json values never reached this shader in practice.
+extern void  gos_GetTerrainTintConcrete(float*, float*, float*);
+
+extern void  gos_GetTerrainTintSnow(float*, float*, float*);
+
+extern void  gos_GetTerrainMatRoughness(float*, float*, float*, float*);
+
+extern void  gos_GetTerrainMatAO(float*, float*, float*, float*);
+
+extern void  gos_GetTerrainMatHeight(float*, float*, float*, float*);  // POM-PERLAYER-HEIGHT-1
+
+extern bool  gos_TerrainMaterialLibEnabled();
+
+// Remaining legacy tunables.
+extern float gos_GetTerrainCliffShadowFloor();  // CLIFF SHADOW FLOOR
+
+extern float gos_GetTerrainNormalsFromHeightStrength();
+
+extern float gos_GetTerrainPOMScale();
+
+// TERRAIN-CHUNK-POM-1: Stuff/MLR eye position (the SAME vec4 the legacy terrain
+// frag consumes as "cameraPos"); local-extern per the established accessor
+// pattern in this file (ruling R5).
+extern void  gos_GetTerrainCameraPos(float*, float*, float*);
+
+extern int   g_terrainMaterialProfile;   // global; 0 = legacy
+
+// Step 5c: cement catalog atlas (tex3) accessors from gos_terrain_indirect.cpp.
+extern unsigned int gos_terrain_indirect_getCementAtlasGLTex();
+
+extern int          gos_terrain_indirect_getCementAtlasGridSide();
+
+extern bool         gos_terrain_indirect_isCementAtlasReady();
+
+// Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
+extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
+
+extern bool   gos_terrain_indirect_isTransitionMaskReady();
+
+extern void  gos_GetTerrainMatNormalBoost(float*, float*, float*, float*);
+
+extern void  gos_GetTerrainClassGrass(float*, float*, float*, float*);
+
+extern void  gos_GetTerrainClassDirt(float*, float*, float*, float*);
+
+extern float gos_GetTerrainDetailTiling();
+
+extern float gos_GetTerrainDetailStrength();
+
+
+// Phase 10: colormap atlas accessors (defined in gos_terrain_indirect.cpp,
+// global free functions). Same atlas tex1 + UV params the legacy gos_terrain.frag
+// useAtlasColormap path consumes.
+extern GLuint gos_terrain_indirect_getAtlasGLTex();
+
+extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
+
+extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
+
+extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
+
+// Phase 10 Step 1b: terrain sun direction (gameos.hpp), same value the legacy
+// terrain frag's terrainLightDir uniform receives.
+extern void   gos_GetTerrainLightDir(float* x, float* y, float* z);
+
+// CEMENT-NIGHT-LIGHT-1: mission flat-pad light (gameos.hpp).
+extern void   gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
+
+// TERRAIN-AMBIENT-FLOOR-2: daylight level (gameos_graphics.cpp), pushed by
+// gamecam.cpp from terrain_daylight.h. Night state is the TRACE input only.
+extern float  gos_GetTerrainDaylightLevel();
+
+float gos_TerrainSnowBrightnessDampen();   // VK-PARITY-F3 (defined below)
+
+extern void   gos_GetNightState(bool* isNight, float* nightFactor);
+
+
+// ---------------------------------------------------------------------------
+// Patch geometry cache (Phase 4).
+// Each unique (qcX, qcY, lodStep) triple gets one VBO+IBO pair.
+// VBO contains int16_t[2] (localX, localY) per vertex.
+// IBO contains uint16_t triangle indices.
+// ---------------------------------------------------------------------------
+
+// GPU-BUFFER-TIER0-LODCHUNK-RAII-1: the four per-patch buffers are owning
+// RenderCore::GpuBuffer values (move-only) instead of bare GLuints. Untracked
+// (no RenderResourceId): VBO/IBO are out of registry scope by design (per-draw
+// rebind vertex/index data, not owned frame-graph resources) -- the RAII win
+// here is create/delete pairing (cache clear frees GL, no hand-rolled loop).
+struct PatchShape {
+    RenderCore::GpuBuffer vbo =      // main patch: int16_t[2] (lx, ly) per vertex
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchVbo");
+    RenderCore::GpuBuffer ibo =      // main patch: uint16_t triangle indices
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchIbo");
+    int    vertexCount = 0;
+    int    indexCount = 0;
+    RenderCore::GpuBuffer skirtVbo = // Phase 6: int16_t[4] (lx, ly, isSkirt, _pad) per skirt vertex
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchSkirtVbo");
+    RenderCore::GpuBuffer skirtIbo = // Phase 6: uint16_t triangle indices for skirts
+        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchSkirtIbo");
+    int    skirtVertexCount = 0;
+    int    skirtIndexCount = 0;
+    // Phase 10.2b: per-edge index ranges into skirtIbo (build order N,S,W,E) so
+    // the driver can draw ONLY the edges whose neighbour LOD differs (per-block
+    // edge mask) instead of all four. Offsets/counts are in INDEX units.
+    int    skirtEdgeOffset[4];   // 0=N, 1=S, 2=W, 3=E
+    int    skirtEdgeCount[4];
+};
+
 // GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
 // draw owns its depth/blend/cull/mask/func via RAII guards (mc2gl::GlScoped*).
 // MC2_GLSTATEGUARD_TERRAIN=0 reverts to the legacy hand-rolled save/restore
@@ -54,7 +223,6 @@ static bool glStateGuardTerrainEnabled() {
 // matching the established `static const ... = [](){...}()` pattern already used
 // throughout this file. The per-frame block reads these
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
-namespace {
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
 const bool kTglcForceColor = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR">();
 // SHORELINE-GLOW-1: the two shoreline accessors are deliberately NOT in this
@@ -67,24 +235,24 @@ const bool  kTglcCementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CON
 const bool kTglcCementAtlasSeamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
 // NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
 // GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
-const bool kTglcLightPoolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
+extern const bool kTglcLightPoolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
 // NIGHT-LIGHT-POOLS-4: default dropped 0.5 -> 0.25 (5-mech group still read as
 // one saturated egg at 0.5; compression can't help five overlapping full discs).
-const float kTglcLightPoolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
+extern const float kTglcLightPoolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
 // NIGHT-LIGHT-POOLS-4: mover pool radius scale (shrinks close/far distances of
 // mover-attached lights only; 1.0 = legacy radii = killswitch).
-const float kTglcLightPoolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
+extern const float kTglcLightPoolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
 // NIGHT-LIGHT-POOLS-4: mover pools combine by per-channel MAX (no additive
 // stacking across an overlapping lance); =0 restores the additive sum.
-const bool kTglcLightPoolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
+extern const bool kTglcLightPoolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
 // NIGHT-LIGHT-POOLS-3: tone-compress the summed pool term (default ON;
 // =0 restores the legacy min(pool,1) hard clamp -> stacked-pool blowout).
-const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
+extern const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
 // MOVER-CONTACT-SHADOW-1 (MASTER-FAIL #7): strength in [0,1] of the under-mech
 // contact shadow that carves a mover's own bright light-pool center + darkens
 // the ground beneath the body. Default 0.0 => uniform 0 => byte-identical
 // (mix() collapses, no darkening). Recommended ~0.7. MC2_MOVER_CONTACT_SHADOW.
-const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
+extern const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
 const bool  kTglcSlopeBias         = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS">();
 const float kTglcSlopeBiasStr      = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS_STRENGTH">();   // row: default 1, > 0
 const bool  kTglcCliffTriplanar    = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR">();
@@ -126,7 +294,6 @@ const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER_ST
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
 // u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
 const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();
-}  // namespace
 
 // ---------------------------------------------------------------------------
 // SLICE 3a — cliff-tessellation PLUMBING spike (pass-through, NO displacement).
@@ -138,7 +305,7 @@ const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTUR
 // reconstructs the interpolated clip position, the output is visually the same
 // as the base GL_TRIANGLES draw — this slice proves the tessellation PLUMBING.
 // ---------------------------------------------------------------------------
-static const bool s_cliffTessGate = mc2::gate::get<"MC2_TERRAIN_CLIFF_DISPLACE">();
+extern const bool s_cliffTessGate = mc2::gate::get<"MC2_TERRAIN_CLIFF_DISPLACE">();
 static const float s_cliffTessWanted = mc2::gate::get<"MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS">();
 static float s_cliffTessClamped = -1.0f;   // set once at program build (GL valid)
 
@@ -156,7 +323,7 @@ static float clampTess(float want) {
 
 // The tess variant program + its u_cliffTessLevel location. Built in
 // gos_TerrainLodChunk_Init next to the base makeProgram when the gate is ON.
-static glsl_program* s_terrainTessProgram = nullptr;
+glsl_program* s_terrainTessProgram = nullptr;
 static GLint         s_locCliffTessLevel  = -1;
 
 // CLIFF-TESS-PERF (slice 3a hoist): the full enumerate-and-copy mirror
@@ -168,7 +335,7 @@ static GLint         s_locCliffTessLevel  = -1;
 // location fast path each patch. s_tessMirroredThisFrame is reset to false at
 // the top of SubmitDrawCommands (once/frame) and set true by the first near-
 // field tess patch's full mirror.
-static bool  s_tessMirroredThisFrame = false;
+bool  s_tessMirroredThisFrame = false;
 // Cached tess-program locations for the per-patch uniform set (resolved once,
 // lazily, on the first tess patch). Base-program locations reuse the existing
 // s_loc* statics. -2 = "not yet resolved"; -1 = "resolved, absent".
@@ -201,7 +368,7 @@ static GLint s_tessLocSkirtDepth   = -2;
 // SKIPPED (only mat4 arrays, e.g. cascade matrices, are handled per-element). If
 // slice 3b introduces such an array uniform (cascade matrices packed as vecs,
 // per-layer scalar arrays, etc.) it MUST be handled explicitly here.
-static void mirrorTerrainUniforms(GLuint src, GLuint dst) {
+void mirrorTerrainUniforms(GLuint src, GLuint dst) {
     GLint count = 0;
     glGetProgramiv(src, GL_ACTIVE_UNIFORMS, &count);
     for (GLint i = 0; i < count; ++i) {
@@ -295,7 +462,7 @@ static void mirrorTerrainUniforms(GLuint src, GLuint dst) {
 // CLIFF-TESS-PERF: resolve+cache the tess-program locations for the per-patch
 // uniform set once (lazily, on the first tess patch). Base-program locations
 // reuse the existing s_loc* statics.
-static void resolveTessPatchLocs(GLuint tessProg) {
+void resolveTessPatchLocs(GLuint tessProg) {
     if (s_tessLocBlockOriginX != -2) return;  // already resolved
     s_tessLocBlockOriginX   = glGetUniformLocation(tessProg, "u_blockOriginX");
     s_tessLocBlockOriginY   = glGetUniformLocation(tessProg, "u_blockOriginY");
@@ -308,25 +475,6 @@ static void resolveTessPatchLocs(GLuint tessProg) {
     s_tessLocVisualDisplace = glGetUniformLocation(tessProg, "u_visualDisplace");
     s_tessLocSkirtDepth     = glGetUniformLocation(tessProg, "u_skirtDepth");
 }
-
-// mirrorTerrainPatchUniforms (targeted per-patch mirror) is defined lower, after
-// the s_loc* uniform-location statics it reads (near SubmitDrawCommands).
-static void mirrorTerrainPatchUniforms(GLuint src, GLuint dst);
-
-// Terrain MVP matrix — exposed by gameos_graphics.cpp for all terrain draw paths.
-extern const float* gos_GetTerrainMVPMat4();
-// TERRAIN-SHORELINE-MASK-1: shared render-shader clock (SmokeMode fixed-
-// timestep override, same computation as the water fast-path's "time"
-// uniform) — exposed by gameos_graphics.cpp. f(worldPos,time)-ONLY foam
-// animation; never fed by anything camera-dependent.
-extern float gos_GetShaderClockSeconds();
-// Fix-B frame-of-reference: the GPU water cull and DrawDecalStatic project with
-// the PREVIOUS-frame dispatch MVP (baked in Terrain::geometry()) when armed, NOT
-// the live current-frame MVP. The legacy terrain draw also uses that baked MVP,
-// so terrain depth + water cull + decals all agree at frame N-1. The chunk MUST
-// match, or it writes depth at frame N while water/decals project at N-1 -> a
-// 1-frame offset -> shore-water dropout + decal tearing under camera motion.
-extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 
 // ---------------------------------------------------------------------------
@@ -341,7 +489,7 @@ namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 // into the class is create/destroy pairing, the registry upsert/invalidate,
 // and the gated KHR_debug label. Lifetime Mission: (re-)uploaded per mission
 // load via glBufferData.
-static RenderCore::GpuBuffer s_heightSsbo{  // GL handle; name() 0 = not yet allocated
+RenderCore::GpuBuffer s_heightSsbo{  // GL handle; name() 0 = not yet allocated
     RenderCore::RenderResourceId::TerrainHeightSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainHeightSsbo",
@@ -352,32 +500,32 @@ static RenderCore::GpuBuffer s_heightSsbo{  // GL handle; name() 0 = not yet all
 // / _DISPLACE + a visual_height_4x.r32 bake) — when the gate is off / no bake ships,
 // the upload entry is never called, name() stays 0, and nothing registers
 // (passthrough byte-identical). No stock bake ships → create path is offline-only.
-static RenderCore::GpuBuffer s_visualHeightSsbo{ // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x visual heightfield (binding 26)
+RenderCore::GpuBuffer s_visualHeightSsbo{ // TERRAIN-VISUAL-HEIGHT-SAMPLE-1: 4x visual heightfield (binding 26)
     RenderCore::RenderResourceId::TerrainVisualHeightSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainVisualHeightSsbo",
     RenderCore::GpuBufferKind::Storage};
-static int    s_visualSide       = 0; // V = (mapSide-1)*4+1, fine grid side (0 = bake not loaded)
+int    s_visualSide       = 0; // V = (mapSide-1)*4+1, fine grid side (0 = bake not loaded)
 // TERRAIN-LOD-GEOMORPH-1: float count of the max-mip levels APPENDED to the
 // binding-26 SSBO after the V*V fine bake (5 levels x mapSide^2, strides
 // 2/4/5/10/20). 0 = no mips shipped -> u_geomorphMips uploads 0 -> the vert's
 // coarse-band branch behaves exactly as S2 (legacy layout untouched).
-static int    s_visualMipFloats  = 0;
+int    s_visualMipFloats  = 0;
 // TERRAIN-REAUTH-UNPIN-1 Half B: coarse object-proximity displacement damp
 // (binding 27). Static half = building footprints from the bake sidecar
 // (visual_damp.r32), uploaded once per mission load; dynamic half = per-frame
 // mover stamps min-combined on the CPU and re-uploaded (side^2 floats — tiny).
 // CREATE gated upstream like the visual-height SSBO (displace gate + sidecar);
 // glName 0 => never bound, u_visualDampOn stays 0 (passthrough).
-static RenderCore::GpuBuffer s_visualDampSsbo{
+RenderCore::GpuBuffer s_visualDampSsbo{
     RenderCore::RenderResourceId::TerrainVisualDampSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainVisualDampSsbo",
     RenderCore::GpuBufferKind::Storage};
-static int s_visualDampSide = 0;                 // == mapSide when loaded
-static std::vector<float> s_visualDampStatic;    // load-time (buildings)
-static std::vector<float> s_visualDampCombined;  // static + mover stamps
-static bool s_visualDampHadMovers = false;       // skip redundant re-uploads
+int s_visualDampSide = 0;                 // == mapSide when loaded
+std::vector<float> s_visualDampStatic;    // load-time (buildings)
+std::vector<float> s_visualDampCombined;  // static + mover stamps
+bool s_visualDampHadMovers = false;       // skip redundant re-uploads
 // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: per-LOD-band displaced-chunk counters, reset
 // and logged once per submit alongside [TerrainLOD v1] so acceptance has hard
 // per-band numbers. Index = LOD level (0..5), same mapping as [TerrainLOD v1].
@@ -388,54 +536,36 @@ static bool terrainGlFallbackAuditEnabled()
     static const bool on = mc2::gate::get<"MC2_VK_TERRAIN_GL_FALLBACK_AUDIT">();
     return on;
 }
-
-struct TerrainGlFallbackAudit {
-    int total = 0;
-    int captured = 0;
-    int glFallback = 0;
-    int inactive = 0;
-    int band = 0;
-    int displace = 0;
-    int edgeStitch = 0;   // patches that FELL to GL because of edge-stitch (now 0 by
-                          // construction:
-                          // stitched patches are VK-captured, not GL-fallback).
-    int capturedStitched = 0; // of `captured`, how many carried a nonzero edgeStitch mask
-                              // -- direct proof stitched patches are VK-owned (>0 expected
-                              // on any map with LOD-band boundaries; the edgeStitch counter
-                              // above is the excluded twin and must stay 0).
-    int other = 0;
-    int skirtEdges = 0;
-};
 #endif
 // TERRAIN-LODCHUNK-SSBO-OWNER-1 (now RAII, see block above): the LOD-chunk
 // type/cement SSBOs. Lifetime Mission: (re-)uploaded per mission load via
 // glBufferData.
-static RenderCore::GpuBuffer s_typeSsbo{   // Step 5b: per-vertex terrainType SSBO (binding 24)
+RenderCore::GpuBuffer s_typeSsbo{   // Step 5b: per-vertex terrainType SSBO (binding 24)
     RenderCore::RenderResourceId::TerrainTypeSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainTypeSsbo",
     RenderCore::GpuBufferKind::Storage};
-static RenderCore::GpuBuffer s_cementSsbo{ // Step 5c: per-vertex cement word SSBO (binding 25)
+RenderCore::GpuBuffer s_cementSsbo{ // Step 5c: per-vertex cement word SSBO (binding 25)
     RenderCore::RenderResourceId::TerrainCementSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainCementSsbo",
     RenderCore::GpuBufferKind::Storage};
-static int    s_mapSide    = 0;   // mapSide stored at last UploadHeightFull
-static float  s_halfMap    = 0.0f;// (mapSide * 128.0 * 0.5)
+int    s_mapSide    = 0;   // mapSide stored at last UploadHeightFull
+float  s_halfMap    = 0.0f;// (mapSide * 128.0 * 0.5)
 
 // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA override control-map texture
 // (unit 12). Plain GLuint (not GpuBufferOwner) — mirrors gos_terrain_height_tex.cpp's
 // self-contained texture handling for a single-owner render-only raster. glName
 // 0 = not loaded (gate off or no sidecar) -> u_useControlMap uploads 0 at draw.
-static GLuint s_controlMapTex  = 0;
-static int    s_controlMapSide = 0;
+GLuint s_controlMapTex  = 0;
+int    s_controlMapSide = 0;
 
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar
 // texture (unit TERRAIN_OVERLAY_SIDECAR_TEXUNIT). Plain GLuint, same
 // self-contained single-owner pattern as s_controlMapTex. glName 0 = not
 // loaded (gate off or no sidecar) -> u_useOverlaySidecar uploads 0 at draw.
-static GLuint s_overlaySidecarTex = 0;
-static float  s_overlayBounds[4]  = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topLeftY(=maxY),sizeX,sizeY
+GLuint s_overlaySidecarTex = 0;
+float  s_overlayBounds[4]  = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topLeftY(=maxY),sizeX,sizeY
 
 // TERRAIN-OVERLAY-V2-DECAL-SUPPRESS-1: read-only accessors (see header). Let the
 // indirect decal bake key off the SAME resolved sidecar-loaded state the frag
@@ -450,8 +580,8 @@ const float* gos_TerrainLodChunk_OverlayBounds()        { return s_overlayBounds
 // band still renders (mask is now an optional modulator, not a requirement);
 // u_useShorelineMask (the band's own on/off) is driven directly by the
 // MC2_TERRAIN_SHORELINE gate, independent of this texture's state.
-static GLuint s_shorelineMaskTex   = 0;
-static float  s_shorelineBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topLeftY(=maxY),sizeX,sizeY
+GLuint s_shorelineMaskTex   = 0;
+float  s_shorelineBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};  // topLeftX,topLeftY(=maxY),sizeX,sizeY
 
 // WATER-SHORE-MASK-1: water-shader accessors (see header).
 unsigned int gos_TerrainLodChunk_ShorelineMaskTex()     { return s_shorelineMaskTex; }
@@ -459,14 +589,14 @@ const float* gos_TerrainLodChunk_ShorelineMaskBounds()  { return s_shorelineBoun
 
 // WATER-SHORE-EDGE-1: hi-res R32F visual-height texture for the water FS
 // per-fragment shore crossing. Same single-owner pattern as the mask above.
-static GLuint s_waterShoreHeightTex       = 0;
-static float  s_waterShoreHeightBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+GLuint s_waterShoreHeightTex       = 0;
+float  s_waterShoreHeightBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 unsigned int gos_TerrainLodChunk_WaterShoreHeightTex()    { return s_waterShoreHeightTex; }
 // VK-PARITY-WATER-SHORE-1: bumped by every shore-data (mask / height) upload so
 // the VK water island can re-import its copies of these GL textures when a new
 // mission replaces the contents behind the SAME GL texture ids. GL never reads it.
-static unsigned s_waterShoreDataGen = 0;
+unsigned s_waterShoreDataGen = 0;
 unsigned int gos_TerrainLodChunk_WaterShoreDataGeneration() { return s_waterShoreDataGen; }
 const float* gos_TerrainLodChunk_WaterShoreHeightBounds() { return s_waterShoreHeightBounds; }
 
@@ -479,8 +609,8 @@ const float* gos_TerrainLodChunk_WaterShoreHeightBounds() { return s_waterShoreH
 // at draw -> frag takes the verbatim colormap-tint else-path (byte-identical).
 // Built lazily at first gate-ON bind (GL context guaranteed live at draw).
 // ---------------------------------------------------------------------------
-static GLuint s_matAlbedoArrayTex   = 0;
-static bool   s_matAlbedoLoadTried  = false;
+GLuint s_matAlbedoArrayTex   = 0;
+bool   s_matAlbedoLoadTried  = false;
 // JSON overrides (terrain_materials.json "layers.<channel>.albedo" +
 // "textureRoot"), applied by terrainMaterials_apply BEFORE the first draw
 // (mission load precedes the first chunk bind). Empty = shipped default path.
@@ -511,7 +641,7 @@ static char  s_matAlbedoLayerPath[kMatAlbedoLayerCount][512] = {{0}};
 static char  s_matAlbedoTextureRoot[512] = {0};  // default data/terrain_layers/
 // JSON strength (matAlbedoStrength). <0 = "no JSON value" sentinel; the bind
 // resolves env MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH > JSON > 0.7 default.
-static float s_matAlbedoStrengthJson = -1.0f;
+float s_matAlbedoStrengthJson = -1.0f;
 
 // Setters consumed by terrain_material_lib.cpp (TinyJson layers{} extension).
 // Local externs per the established accessor pattern in that file.
@@ -542,7 +672,7 @@ int gos_GetTerrainMatAlbedoLayerIndex(const char* channelName) {
 // ALL-or-nothing: any layer failing (missing file, not BC7-sRGB, dim/mip
 // mismatch vs layer 0) leaves glName 0 and logs why -- the draw then uploads
 // u_useMatAlbedo=0 and the frag stays on the verbatim tint path (fail-soft).
-static void tglc_EnsureMatAlbedoArrayLoaded()
+void tglc_EnsureMatAlbedoArrayLoaded()
 {
     if (s_matAlbedoLoadTried) return;
     s_matAlbedoLoadTried = true;
@@ -674,190 +804,151 @@ static void tglc_EnsureMatAlbedoArrayLoaded()
 // Shader program + uniform locations (Phase 4).
 // ---------------------------------------------------------------------------
 
-static GLuint   s_terrainProgram    = 0;
+GLuint   s_terrainProgram    = 0;
 static int      s_submitZeroStreak  = 0;  // Phase 7.5: consecutive frames with count==0
-static GLint    s_locBlockOriginX   = -1;
-static GLint    s_locBlockOriginY   = -1;
-static GLint    s_locMapSide        = -1;
-static GLint    s_locHalfMap        = -1;
-static GLint    s_locMvp            = -1;
-static GLint    s_locLodStep        = -1;  // Phase 5: per-block LOD stride uniform
-static GLint    s_locSkirtDepth     = -1;  // Phase 6: skirt depth uniform
-static GLint    s_locForceColor     = -1;  // Phase 7.5: neon debug palette override
-static GLint    s_locColormap       = -1;  // Phase 10: merged colormap atlas sampler
-static GLint    s_locAtlasTLX       = -1;  // Phase 10: atlas top-left X (world)
-static GLint    s_locAtlasTLY       = -1;  // Phase 10: atlas top-left Y (world)
-static GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsMapSide
-static GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
-static GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
-static GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLights (0 = pool loop off)
+GLint    s_locBlockOriginX   = -1;
+GLint    s_locBlockOriginY   = -1;
+GLint    s_locMapSide        = -1;
+GLint    s_locHalfMap        = -1;
+GLint    s_locMvp            = -1;
+GLint    s_locLodStep        = -1;  // Phase 5: per-block LOD stride uniform
+GLint    s_locSkirtDepth     = -1;  // Phase 6: skirt depth uniform
+GLint    s_locForceColor     = -1;  // Phase 7.5: neon debug palette override
+GLint    s_locColormap       = -1;  // Phase 10: merged colormap atlas sampler
+GLint    s_locAtlasTLX       = -1;  // Phase 10: atlas top-left X (world)
+GLint    s_locAtlasTLY       = -1;  // Phase 10: atlas top-left Y (world)
+GLint    s_locAtlasOOW       = -1;  // Phase 10: atlas oneOverWorldUnitsMapSide
+GLint    s_locLightDir       = -1;  // Phase 10 Step 1b: terrainLightDir (sun)
+GLint    s_locMissionFlatLight = -1;  // CEMENT-NIGHT-LIGHT-1: u_missionFlatLight
+GLint    s_locNumPoolLights  = -1;  // NIGHT-LIGHT-POOLS-1: u_numPoolLights (0 = pool loop off)
 // LIGHT-CLUSTER-PERF-1: light-grid uniforms (dim 0 => linear full-pool loop)
-static GLint    s_locLightGridDim     = -1;
-static GLint    s_locLightGridMin     = -1;
-static GLint    s_locLightGridInvCell = -1;
-static GLint    s_locLightPoolSoft     = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolSoft
-static GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolMoverDim
-static GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
-static GLint    s_locLightPoolMoverScale = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverScale
-static GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverMax
-static GLint    s_locMoverContactShadow  = -1;  // MOVER-CONTACT-SHADOW-1: u_moverContactShadow
-static GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
-static GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
-static GLint    s_locCementLit           = -1;  // RUNWAY-APRON-TONE-2: u_cementLit (0..1)
-static GLint    s_locCementRampWord      = -1;  // CEMENT-WORD-RAMP-1: u_cementRampWord (0/1)
-static GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
-static GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
-static GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
-static GLint    s_locQuadCountX     = -1;  // Phase 10.4: block quad extent X (edge detect)
-static GLint    s_locQuadCountY     = -1;  // Phase 10.4: block quad extent Y (edge detect)
-static GLint    s_locEdgeStitch     = -1;  // Phase 10.4: packed coarser-neighbour stride
-static GLint    s_locShadowTier     = -1;  // Slice B: per-chunk shadow tier (DIAG=40 tint only)
+GLint    s_locLightGridDim     = -1;
+GLint    s_locLightGridMin     = -1;
+GLint    s_locLightGridInvCell = -1;
+GLint    s_locLightPoolSoft     = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolSoft
+GLint    s_locLightPoolMoverDim = -1;  // NIGHT-LIGHT-POOLS-2: u_lightPoolMoverDim
+GLint    s_locLightPoolCompress = -1;  // NIGHT-LIGHT-POOLS-3: u_lightPoolCompress
+GLint    s_locLightPoolMoverScale = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverScale
+GLint    s_locLightPoolMoverMax   = -1;  // NIGHT-LIGHT-POOLS-4: u_lightPoolMoverMax
+GLint    s_locMoverContactShadow  = -1;  // MOVER-CONTACT-SHADOW-1: u_moverContactShadow
+GLint    s_locPadGlow             = -1;  // PAD-AREA-GLOW-1: u_padGlow (premult vec3)
+GLint    s_locPadGlowSpill        = -1;  // PAD-AREA-GLOW-1: u_padGlowSpill (wu)
+GLint    s_locCementLit           = -1;  // RUNWAY-APRON-TONE-2: u_cementLit (0..1)
+GLint    s_locCementRampWord      = -1;  // CEMENT-WORD-RAMP-1: u_cementRampWord (0/1)
+GLint    s_locDiag           = -1;  // bisection bitmask (MC2_TERRAIN_LOD_CHUNK_DIAG)
+GLint    s_locLightDebugView = -1;  // LIGHTING-DEBUG-VIEWS-1A-CHUNK: u_lightingDebugView
+GLint    s_locPathTint       = -1;  // MC2_SHADER_PATH_TINT debug (u_pathTint)
+GLint    s_locQuadCountX     = -1;  // Phase 10.4: block quad extent X (edge detect)
+GLint    s_locQuadCountY     = -1;  // Phase 10.4: block quad extent Y (edge detect)
+GLint    s_locEdgeStitch     = -1;  // Phase 10.4: packed coarser-neighbour stride
+GLint    s_locShadowTier     = -1;  // Slice B: per-chunk shadow tier (DIAG=40 tint only)
 // Phase 10 Step 1c: shadow uniforms (declared by include/shadow.hglsl).
-static GLint    s_locShadowMap          = -1;
-static GLint    s_locLightSpaceMatrix   = -1;
-static GLint    s_locEnableShadows      = -1;
-static GLint    s_locShadowSoftness     = -1;
-static GLint    s_locDynShadowMap       = -1;
-static GLint    s_locDynLightSpaceMat   = -1;
-static GLint    s_locEnableDynShadows   = -1;
+GLint    s_locShadowMap          = -1;
+GLint    s_locLightSpaceMatrix   = -1;
+GLint    s_locEnableShadows      = -1;
+GLint    s_locShadowSoftness     = -1;
+GLint    s_locDynShadowMap       = -1;
+GLint    s_locDynLightSpaceMat   = -1;
+GLint    s_locEnableDynShadows   = -1;
 // Item 1 CSM array-variant locs (only valid when MC2_SHADOW_CSM is ON)
-static GLint    s_locDynShadowArray     = -1;
-static GLint    s_locDynCascadeMats     = -1;
-static GLint    s_locDynCsmCount        = -1;
-static GLint    s_locDynCascadeTexel    = -1;  // Stage 3 texel bias
-static GLint    s_locCsmDepthSpan       = -1;
+GLint    s_locDynShadowArray     = -1;
+GLint    s_locDynCascadeMats     = -1;
+GLint    s_locDynCsmCount        = -1;
+GLint    s_locDynCascadeTexel    = -1;  // Stage 3 texel bias
+GLint    s_locCsmDepthSpan       = -1;
 // Per-cascade shadow resolution: separate full-map (last) cascade.
-static GLint    s_locDynFullMapShadow   = -1;
-static GLint    s_locDynFullMapTexel    = -1;
+GLint    s_locDynFullMapShadow   = -1;
+GLint    s_locDynFullMapTexel    = -1;
 // Mirror gameos_graphics.cpp's file-static terrain shadow texture units (9/10).
 static constexpr GLint kChunkTexUnitStaticShadow  = 9;
 static constexpr GLint kChunkTexUnitDynamicShadow = 10;
 static constexpr GLint kChunkTexUnitDynFullMap    = 13;  // free unit (chunk uses up to 11)
 // Phase 10 Step 5a: merged material normal sampler2DArray (own unit, no collision
 // with colormap=0 / shadows=9,10). Sourced from gos_GetTerrainNormalArrayTex().
-static GLint    s_locMatNormalArray     = -1;
+GLint    s_locMatNormalArray     = -1;
 static constexpr GLint kChunkTexUnitMatNormalArray = 5;
-extern unsigned int gos_GetTerrainNormalArrayTex();
 // Step 5a: live material tunables (same uniforms + source as legacy terrain), so
 // the ImGui terrain panel drives the chunk detail too.
-static GLint    s_locClassGrass         = -1;
-static GLint    s_locClassDirt          = -1;
-static GLint    s_locMatTiling          = -1;
-static GLint    s_locMatNormalBoost     = -1;
-static GLint    s_locMatTilingSnow      = -1;
-static GLint    s_locDetailTiling       = -1;
-static GLint    s_locDetailStrength     = -1;
-static GLint    s_locTintRock           = -1;
-static GLint    s_locTintGrass          = -1;
-static GLint    s_locTintDirt           = -1;
-static GLint    s_locTintStrengthScale  = -1;
-static GLint    s_locSnowBrightnessDampen = -1;  // <1 darkens detected snow
+GLint    s_locClassGrass         = -1;
+GLint    s_locClassDirt          = -1;
+GLint    s_locMatTiling          = -1;
+GLint    s_locMatNormalBoost     = -1;
+GLint    s_locMatTilingSnow      = -1;
+GLint    s_locDetailTiling       = -1;
+GLint    s_locDetailStrength     = -1;
+GLint    s_locTintRock           = -1;
+GLint    s_locTintGrass          = -1;
+GLint    s_locTintDirt           = -1;
+GLint    s_locTintStrengthScale  = -1;
+GLint    s_locSnowBrightnessDampen = -1;  // <1 darkens detected snow
 // TERRAIN-CONTROLMAP-ALBEDO-1: lifts tintStrength toward 1.0 (0=byte-identical).
-static GLint    s_locControlAlbedoStrength = -1;
-extern void  gos_GetTerrainMatTiling(float*, float*, float*, float*, float*);
-extern void  gos_GetTerrainTintRock(float*, float*, float*);
-extern void  gos_GetTerrainTintGrass(float*, float*, float*);
-extern void  gos_GetTerrainTintDirt(float*, float*, float*);
-extern float gos_GetTerrainTintStrengthScale();
-extern float gos_GetTerrainControlAlbedoStrength();  // TERRAIN-CONTROLMAP-ALBEDO-1
-// TERRAIN-MATERIAL-LIB-1: promoted frag-literal tints + per-layer roughness/AO
-// scalars + the u_useMaterialLib gate. These were previously only wired to the
-// legacy tessellated patch-stream path (terrainBindUniformsForPatchStream) --
-// the live chunk binder never fetched these locs or uploaded them, so JSON-
-// authored terrain_materials.json values never reached this shader in practice.
-extern void  gos_GetTerrainTintConcrete(float*, float*, float*);
-extern void  gos_GetTerrainTintSnow(float*, float*, float*);
-extern void  gos_GetTerrainMatRoughness(float*, float*, float*, float*);
-extern void  gos_GetTerrainMatAO(float*, float*, float*, float*);
-extern void  gos_GetTerrainMatHeight(float*, float*, float*, float*);  // POM-PERLAYER-HEIGHT-1
-extern bool  gos_TerrainMaterialLibEnabled();
-static GLint    s_locTintConcrete   = -1;
-static GLint    s_locTintSnow       = -1;
-static GLint    s_locMatRoughness   = -1;
-static GLint    s_locMatAO          = -1;
-static GLint    s_locMatHeight      = -1;  // POM-PERLAYER-HEIGHT-1
-static GLint    s_locUseMaterialLib = -1;
-// Remaining legacy tunables.
-extern float gos_GetTerrainCliffShadowFloor();  // CLIFF SHADOW FLOOR
-extern float gos_GetTerrainNormalsFromHeightStrength();
-extern float gos_GetTerrainPOMScale();
-// TERRAIN-CHUNK-POM-1: Stuff/MLR eye position (the SAME vec4 the legacy terrain
-// frag consumes as "cameraPos"); local-extern per the established accessor
-// pattern in this file (ruling R5).
-extern void  gos_GetTerrainCameraPos(float*, float*, float*);
-extern int   g_terrainMaterialProfile;   // global; 0 = legacy
-static GLint s_locCliffShadowFloor = -1;  // CLIFF SHADOW FLOOR
-static GLint s_locAmbientFloor     = -1;  // TERRAIN-AMBIENT-FLOOR-2
-static GLint s_locAmbientDayGate   = -1;  // TERRAIN-AMBIENT-FLOOR-2
-static GLint s_locNfhStrength    = -1;
-static GLint s_locUseRockSlopeBias = -1;  // TERRAIN-SLOPE-BIAS-VISUAL-1 (B4a)
-static GLint s_locRockSlopeBiasStr = -1;
-static GLint s_locUseTriplanarCliff = -1; // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1
-static GLint s_locCliffTriplanarStr = -1;
-static GLint s_locCliffHeightNormalStr = -1; // TERRAIN-CLIFF-HEIGHT-NORMAL-1
-static GLint s_locCliffPom          = -1; // TERRAIN-CLIFF-POM-1: u_cliffPom (.x=gate,.y=depth,.z=steps)
-static GLint s_locCliffDebug        = -1; // TERRAIN-CLIFF-DEBUG: u_cliffDebug (0=off,1..4 debug-viz)
-static GLint s_locMacroVariation    = -1; // TERRAIN-MACRO-VARIATION-1
-static GLint s_locEdgeFeather        = -1; // TERRAIN-EDGE-FEATHER-1
-static GLint s_locEdgeFeatherStr     = -1;
-static GLint s_locVisualDisplace     = -1; // TERRAIN-VISUAL-HEIGHT-SAMPLE-1
-static GLint s_locVisualSide         = -1;
-static GLint s_locVisualDisplaceFar  = -1; // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD
-static GLint s_locVisualDampOn       = -1; // TERRAIN-REAUTH-UNPIN-1 Half B
-static GLint s_locGeomorphMips       = -1; // TERRAIN-LOD-GEOMORPH-1: b26 has max-mip levels
-static GLint s_locMorphFactor        = -1; // TERRAIN-LOD-GEOMORPH-1: per-block parent-band lerp
-static GLint s_locPomParams      = -1;
-static GLint s_locCameraPos      = -1; // TERRAIN-CHUNK-POM-1: "cameraPos" (Stuff/MLR eye, legacy name)
-static GLint s_locPomView        = -1; // TERRAIN-CHUNK-POM-1: u_pomView (.x=gate, .y=near, .z=far)
-static GLint s_locMatProfile     = -1;
-static GLint s_locControlMap     = -1;  // TERRAIN-CONTROLMAP-SAMPLE-1: u_controlMap sampler
-static GLint s_locUseControlMap  = -1;  // u_useControlMap gate uniform
+GLint    s_locControlAlbedoStrength = -1;
+GLint    s_locTintConcrete   = -1;
+GLint    s_locTintSnow       = -1;
+GLint    s_locMatRoughness   = -1;
+GLint    s_locMatAO          = -1;
+GLint    s_locMatHeight      = -1;  // POM-PERLAYER-HEIGHT-1
+GLint    s_locUseMaterialLib = -1;
+GLint s_locCliffShadowFloor = -1;  // CLIFF SHADOW FLOOR
+GLint s_locAmbientFloor     = -1;  // TERRAIN-AMBIENT-FLOOR-2
+GLint s_locAmbientDayGate   = -1;  // TERRAIN-AMBIENT-FLOOR-2
+GLint s_locNfhStrength    = -1;
+GLint s_locUseRockSlopeBias = -1;  // TERRAIN-SLOPE-BIAS-VISUAL-1 (B4a)
+GLint s_locRockSlopeBiasStr = -1;
+GLint s_locUseTriplanarCliff = -1; // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1
+GLint s_locCliffTriplanarStr = -1;
+GLint s_locCliffHeightNormalStr = -1; // TERRAIN-CLIFF-HEIGHT-NORMAL-1
+GLint s_locCliffPom          = -1; // TERRAIN-CLIFF-POM-1: u_cliffPom (.x=gate,.y=depth,.z=steps)
+GLint s_locCliffDebug        = -1; // TERRAIN-CLIFF-DEBUG: u_cliffDebug (0=off,1..4 debug-viz)
+GLint s_locMacroVariation    = -1; // TERRAIN-MACRO-VARIATION-1
+GLint s_locEdgeFeather        = -1; // TERRAIN-EDGE-FEATHER-1
+GLint s_locEdgeFeatherStr     = -1;
+GLint s_locVisualDisplace     = -1; // TERRAIN-VISUAL-HEIGHT-SAMPLE-1
+GLint s_locVisualSide         = -1;
+GLint s_locVisualDisplaceFar  = -1; // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD
+GLint s_locVisualDampOn       = -1; // TERRAIN-REAUTH-UNPIN-1 Half B
+GLint s_locGeomorphMips       = -1; // TERRAIN-LOD-GEOMORPH-1: b26 has max-mip levels
+GLint s_locMorphFactor        = -1; // TERRAIN-LOD-GEOMORPH-1: per-block parent-band lerp
+GLint s_locPomParams      = -1;
+GLint s_locCameraPos      = -1; // TERRAIN-CHUNK-POM-1: "cameraPos" (Stuff/MLR eye, legacy name)
+GLint s_locPomView        = -1; // TERRAIN-CHUNK-POM-1: u_pomView (.x=gate, .y=near, .z=far)
+GLint s_locMatProfile     = -1;
+GLint s_locControlMap     = -1;  // TERRAIN-CONTROLMAP-SAMPLE-1: u_controlMap sampler
+GLint s_locUseControlMap  = -1;  // u_useControlMap gate uniform
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array (unit 4 -- free on
 // the chunk program: 0=colormap 1=overlay 2=shoreline 3=cement 5=normalArray
 // 9/10=shadows 11=transitionMask 12=controlMap 13=dynFullMap).
-static GLint s_locMatAlbedoArray    = -1;  // u_matAlbedoArray sampler2DArray
-static GLint s_locUseMatAlbedo      = -1;  // u_useMatAlbedo gate uniform
-static GLint s_locMatAlbedoStrength = -1;  // u_matAlbedoStrength mix knob
+GLint s_locMatAlbedoArray    = -1;  // u_matAlbedoArray sampler2DArray
+GLint s_locUseMatAlbedo      = -1;  // u_useMatAlbedo gate uniform
+GLint s_locMatAlbedoStrength = -1;  // u_matAlbedoStrength mix knob
 static constexpr GLint kChunkTexUnitMatAlbedoArray = 4;
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar.
-static GLint s_locOverlaySidecar    = -1;  // u_overlaySidecar sampler
-static GLint s_locUseOverlaySidecar = -1;  // u_useOverlaySidecar gate uniform
-static GLint s_locOverlayBounds     = -1;  // u_overlayBounds (vec4 minX,minY,sizeX,sizeY)
+GLint s_locOverlaySidecar    = -1;  // u_overlaySidecar sampler
+GLint s_locUseOverlaySidecar = -1;  // u_useOverlaySidecar gate uniform
+GLint s_locOverlayBounds     = -1;  // u_overlayBounds (vec4 minX,minY,sizeX,sizeY)
 // TERRAIN-SHORELINE-V3: elevation-placed wet/foam band; mask is now an
 // OPTIONAL modulator (u_hasShorelineMask), not the placement source.
-static GLint s_locShorelineMask     = -1;  // u_shorelineMask sampler (modulator)
-static GLint s_locUseShorelineMask  = -1;  // u_useShorelineMask: 1 = elevation bands active (MC2_TERRAIN_SHORELINE gate)
-static GLint s_locHasShorelineMask  = -1;  // u_hasShorelineMask: 1 = sidecar loaded, apply modulator
-static GLint s_locShorelineBounds   = -1;  // u_shorelineBounds (vec4 minX,minY,sizeX,sizeY) -- modulator sample bounds
-static GLint s_locWaterElevation    = -1;  // u_waterElevation (Terrain::waterElevation, world units)
-static GLint s_locShorelineWetHeight  = -1;  // u_shorelineWetHeight (world units above water)
-static GLint s_locShorelineFoamHeight = -1;  // u_shorelineFoamHeight (world units above water)
-static GLint s_locShorelineEdgeJitter = -1;  // u_shorelineEdgeJitter (V4-STYLE: static world-XY band jitter, wu)
-static GLint s_locShaderTime        = -1;  // u_shaderTime (f(worldPos,time)-only foam animation clock)
-static GLint s_locShorelineStrength     = -1;  // u_shorelineStrength (wet/damp darken multiplier)
-static GLint s_locShorelineFoamStrength = -1;  // u_shorelineFoamStrength (foam rim multiplier)
-// Step 5c: cement catalog atlas (tex3) accessors from gos_terrain_indirect.cpp.
-extern unsigned int gos_terrain_indirect_getCementAtlasGLTex();
-extern int          gos_terrain_indirect_getCementAtlasGridSide();
-extern bool         gos_terrain_indirect_isCementAtlasReady();
-static GLint    s_locCementAtlas    = -1;
-static GLint    s_locUseCement      = -1;
-static GLint    s_locCementGridSide = -1;
-static GLint    s_locCementWUPT     = -1;
-static GLint    s_locCementDiagConnect = -1;  // CEMENT-DIAG-CONNECT-1 gate uniform
-static GLint    s_locCementAtlasSeamFix = -1; // CEMENT-ATLAS-SEAM-1 gate uniform
+GLint s_locShorelineMask     = -1;  // u_shorelineMask sampler (modulator)
+GLint s_locUseShorelineMask  = -1;  // u_useShorelineMask: 1 = elevation bands active (MC2_TERRAIN_SHORELINE gate)
+GLint s_locHasShorelineMask  = -1;  // u_hasShorelineMask: 1 = sidecar loaded, apply modulator
+GLint s_locShorelineBounds   = -1;  // u_shorelineBounds (vec4 minX,minY,sizeX,sizeY) -- modulator sample bounds
+GLint s_locWaterElevation    = -1;  // u_waterElevation (Terrain::waterElevation, world units)
+GLint s_locShorelineWetHeight  = -1;  // u_shorelineWetHeight (world units above water)
+GLint s_locShorelineFoamHeight = -1;  // u_shorelineFoamHeight (world units above water)
+GLint s_locShorelineEdgeJitter = -1;  // u_shorelineEdgeJitter (V4-STYLE: static world-XY band jitter, wu)
+GLint s_locShaderTime        = -1;  // u_shaderTime (f(worldPos,time)-only foam animation clock)
+GLint s_locShorelineStrength     = -1;  // u_shorelineStrength (wet/damp darken multiplier)
+GLint s_locShorelineFoamStrength = -1;  // u_shorelineFoamStrength (foam rim multiplier)
+GLint    s_locCementAtlas    = -1;
+GLint    s_locUseCement      = -1;
+GLint    s_locCementGridSide = -1;
+GLint    s_locCementWUPT     = -1;
+GLint    s_locCementDiagConnect = -1;  // CEMENT-DIAG-CONNECT-1 gate uniform
+GLint    s_locCementAtlasSeamFix = -1; // CEMENT-ATLAS-SEAM-1 gate uniform
 static constexpr GLint kChunkTexUnitCement = 3;  // matches legacy tex3
-// Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
-extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
-extern bool   gos_terrain_indirect_isTransitionMaskReady();
-static GLint s_locTransitionMaskArray = -1;
-static GLint s_locUseTransitionMask   = -1;
+GLint s_locTransitionMaskArray = -1;
+GLint s_locUseTransitionMask   = -1;
 static constexpr GLint kChunkTexUnitTransitionMask = 11;
-extern void  gos_GetTerrainMatNormalBoost(float*, float*, float*, float*);
-extern void  gos_GetTerrainClassGrass(float*, float*, float*, float*);
-extern void  gos_GetTerrainClassDirt(float*, float*, float*, float*);
-extern float gos_GetTerrainDetailTiling();
-extern float gos_GetTerrainDetailStrength();
 
 // TERRAIN-DETAIL-ANTI-TILE-1: pack LOD-tier detail-normal fade knobs into the
 // unused .yzw of detailNormalStrength (the chunk frag reads only .x today).
@@ -879,57 +970,7 @@ static const float* mc2_chunkDetailAntiTileYZW()
     return s_yzw;
 }
 
-// Phase 10: colormap atlas accessors (defined in gos_terrain_indirect.cpp,
-// global free functions). Same atlas tex1 + UV params the legacy gos_terrain.frag
-// useAtlasColormap path consumes.
-extern GLuint gos_terrain_indirect_getAtlasGLTex();
-extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
-extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
-extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
-// Phase 10 Step 1b: terrain sun direction (gameos.hpp), same value the legacy
-// terrain frag's terrainLightDir uniform receives.
-extern void   gos_GetTerrainLightDir(float* x, float* y, float* z);
-// CEMENT-NIGHT-LIGHT-1: mission flat-pad light (gameos.hpp).
-extern void   gos_GetTerrainMissionFlatLight(float* r, float* g, float* b);
-// TERRAIN-AMBIENT-FLOOR-2: daylight level (gameos_graphics.cpp), pushed by
-// gamecam.cpp from terrain_daylight.h. Night state is the TRACE input only.
-extern float  gos_GetTerrainDaylightLevel();
-float gos_TerrainSnowBrightnessDampen();   // VK-PARITY-F3 (defined below)
-extern void   gos_GetNightState(bool* isNight, float* nightFactor);
-
-// ---------------------------------------------------------------------------
-// Patch geometry cache (Phase 4).
-// Each unique (qcX, qcY, lodStep) triple gets one VBO+IBO pair.
-// VBO contains int16_t[2] (localX, localY) per vertex.
-// IBO contains uint16_t triangle indices.
-// ---------------------------------------------------------------------------
-
-// GPU-BUFFER-TIER0-LODCHUNK-RAII-1: the four per-patch buffers are owning
-// RenderCore::GpuBuffer values (move-only) instead of bare GLuints. Untracked
-// (no RenderResourceId): VBO/IBO are out of registry scope by design (per-draw
-// rebind vertex/index data, not owned frame-graph resources) -- the RAII win
-// here is create/delete pairing (cache clear frees GL, no hand-rolled loop).
-struct PatchShape {
-    RenderCore::GpuBuffer vbo =      // main patch: int16_t[2] (lx, ly) per vertex
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchVbo");
-    RenderCore::GpuBuffer ibo =      // main patch: uint16_t triangle indices
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchIbo");
-    int    vertexCount = 0;
-    int    indexCount = 0;
-    RenderCore::GpuBuffer skirtVbo = // Phase 6: int16_t[4] (lx, ly, isSkirt, _pad) per skirt vertex
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Vertex, "TerrainLodChunkPatchSkirtVbo");
-    RenderCore::GpuBuffer skirtIbo = // Phase 6: uint16_t triangle indices for skirts
-        RenderCore::GpuBuffer(RenderCore::GpuBufferKind::Index, "TerrainLodChunkPatchSkirtIbo");
-    int    skirtVertexCount = 0;
-    int    skirtIndexCount = 0;
-    // Phase 10.2b: per-edge index ranges into skirtIbo (build order N,S,W,E) so
-    // the driver can draw ONLY the edges whose neighbour LOD differs (per-block
-    // edge mask) instead of all four. Offsets/counts are in INDEX units.
-    int    skirtEdgeOffset[4];   // 0=N, 1=S, 2=W, 3=E
-    int    skirtEdgeCount[4];
-};
-
-static std::map<uint32_t, PatchShape> s_patchCache;
+std::map<uint32_t, PatchShape> s_patchCache;
 
 // MC2_TERRAIN_LOD_CHECKER_DIAG (default ON, read once, static-cached). When ON,
 // the per-quad triangle diagonal honors the same per-cell checkerboard used by
@@ -938,7 +979,7 @@ static std::map<uint32_t, PatchShape> s_patchCache;
 // of the fixed TL-BR diagonal. The chunk render was the sole TL-BR outlier, which
 // made roads/cement vanish on slopes (user-confirmed fixed). Set =0 to revert to
 // the prior fixed TL-BR behaviour (killswitch).
-static bool terrainLodCheckerDiagEnabled()
+bool terrainLodCheckerDiagEnabled()
 {
     static const bool s_on = mc2::gate::get<"MC2_TERRAIN_LOD_CHECKER_DIAG">();
     return s_on;
@@ -1116,7 +1157,7 @@ static const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
 // VAO for patch draws — reused every frame, attributes re-pointed per batch.
 // ---------------------------------------------------------------------------
 
-static GLuint s_patchVao = 0;
+GLuint s_patchVao = 0;
 
 // ---------------------------------------------------------------------------
 // Init / Destroy — called from gosRenderer::init / gosRenderer::destroy.
@@ -1452,7 +1493,7 @@ void gos_TerrainLodChunk_Destroy()
 // Verified base per-patch set (see the loop): u_visualDisplace, u_blockOriginX,
 // u_blockOriginY, u_lodStep, u_quadCountX, u_quadCountY, u_edgeStitch,
 // u_shadowTier, u_morphFactor, u_skirtDepth.
-static void mirrorTerrainPatchUniforms(GLuint src, GLuint dst) {
+void mirrorTerrainPatchUniforms(GLuint src, GLuint dst) {
     // Integer per-patch uniforms: {base loc, tess loc} pairs.
     const GLint iset[][2] = {
         { s_locVisualDisplace, s_tessLocVisualDisplace },
