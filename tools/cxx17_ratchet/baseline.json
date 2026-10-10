@@ -208,20 +208,20 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 2850,
-   "LG02": 316,
+   "LG01": 2843,
+   "LG02": 315,
    "LG03": 1325,
    "LG04": 17,
    "LG05": 143,
    "LG06": 723,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2552,
+   "LG09": 2539,
    "LG10": 32,
    "LG11": 69,
    "LG12a": 588,
-   "LG12b": 578,
-   "LG13": 1314,
+   "LG12b": 577,
+   "LG13": 1310,
    "LG14": 128,
    "LG15": 0,
    "LG16": 158,
@@ -4467,14 +4467,13 @@
    "LG02": 1
   },
   "mclib/lzcomp.cpp": {
-   "LG01": 4,
+   "LG01": 1,
    "LG02": 1,
-   "LG09": 1,
-   "LG13": 6
+   "LG13": 2
   },
   "mclib/lzdecomp.cpp": {
-   "LG01": 5,
-   "LG02": 2,
+   "LG01": 1,
+   "LG02": 1,
    "LG05": 1,
    "LG09": 12,
    "LG13": 7,
@@ -4495,9 +4494,6 @@
    "LG01": 6,
    "LG14": 2,
    "LG17": 2
-  },
-  "mclib/mathfunc.h": {
-   "LG09": 1
   },
   "mclib/mc2_audit.cpp": {
    "LG06": 3,
@@ -6089,23 +6085,20 @@
    "LG13": 22
   },
   "mclib/vfx_ellipse.cpp": {
-   "LG09": 3
+   "LG09": 2
   },
   "mclib/vfx_map_polygon.cpp": {
    "LG09": 3
   },
   "mclib/vfx_transform.cpp": {
    "LG02": 2,
-   "LG09": 5,
+   "LG09": 2,
    "LG13": 4
   },
   "mclib/vfx_translatedraw.cpp": {
-   "LG02": 1,
-   "LG09": 3,
-   "LG12b": 1
+   "LG02": 1
   },
   "mclib/vfxtile.cpp": {
-   "LG09": 4,
    "LG13": 3
   },
   "mclib/vis_semantics.cpp": {
@@ -6155,7 +6148,7 @@
    "LG20": 2
   }
  },
- "head": "dc40b8ae0",
+ "head": "b78a04cfc",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
