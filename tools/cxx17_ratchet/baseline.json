@@ -185,7 +185,7 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 2300,
+   "LG01": 2007,
    "LG02": 294,
    "LG03": 1139,
    "LG04": 16,
@@ -193,7 +193,7 @@
    "LG06": 667,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2410,
+   "LG09": 2396,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 449,
@@ -3556,9 +3556,8 @@
    "LG18": 2
   },
   "mclib/ablexpr.cpp": {
-   "LG01": 5,
    "LG06": 1,
-   "LG09": 6
+   "LG09": 1
   },
   "mclib/ablgen.h": {
    "LG02": 1,
@@ -3600,7 +3599,6 @@
    "LG04": 1
   },
   "mclib/ablstmt.cpp": {
-   "LG01": 15,
    "LG06": 1,
    "LG09": 1
   },
@@ -3653,9 +3651,6 @@
    "LG06": 3,
    "LG09": 1
   },
-  "mclib/appear.cpp": {
-   "LG01": 21
-  },
   "mclib/appear.h": {
    "LG01": 3,
    "LG05": 4,
@@ -3663,7 +3658,7 @@
    "LG13": 11
   },
   "mclib/apprtype.cpp": {
-   "LG01": 32,
+   "LG01": 6,
    "LG03": 11,
    "LG05": 2,
    "LG06": 3,
@@ -3771,7 +3766,7 @@
    "LG09": 7
   },
   "mclib/bitflag.cpp": {
-   "LG01": 7,
+   "LG01": 1,
    "LG03": 8,
    "LG04": 1,
    "LG09": 3
@@ -4264,7 +4259,6 @@
    "LG02": 1
   },
   "mclib/gosfx/shapecloud.cpp": {
-   "LG01": 5,
    "LG03": 4
   },
   "mclib/gosfx/shapecloud.hpp": {
@@ -4371,7 +4365,6 @@
    "LG17": 1
   },
   "mclib/inifile_read.cpp": {
-   "LG01": 1,
    "LG06": 14,
    "LG09": 13,
    "LG11": 1,
@@ -4531,17 +4524,14 @@
    "LG14": 3
   },
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 30,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-   "LG01": 6,
    "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 30,
    "LG09": 1
   },
@@ -4555,12 +4545,10 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_tmesh.cpp": {
-   "LG01": 6,
    "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_det_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 26,
    "LG09": 1
   },
@@ -4572,7 +4560,6 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 30,
    "LG09": 2
   },
@@ -4585,7 +4572,6 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-   "LG01": 5,
    "LG03": 19,
    "LG09": 1
   },
@@ -4594,12 +4580,10 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-   "LG01": 5,
    "LG03": 19,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_pmesh.cpp": {
-   "LG01": 4,
    "LG03": 21,
    "LG09": 1
   },
@@ -4608,7 +4592,6 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-   "LG01": 3,
    "LG03": 24,
    "LG09": 3
   },
@@ -4728,7 +4711,7 @@
    "LG16": 10
   },
   "mclib/mlr/mlrshape.cpp": {
-   "LG01": 8,
+   "LG01": 3,
    "LG03": 12,
    "LG05": 1
   },
@@ -4736,7 +4719,6 @@
    "LG03": 1
   },
   "mclib/mlr/mlrsortbyorder.cpp": {
-   "LG01": 10,
    "LG03": 4,
    "LG09": 2
   },
@@ -4845,10 +4827,10 @@
    "LG16": 14
   },
   "mclib/move_globalmap_doors.cpp": {
-   "LG01": 8,
+   "LG01": 1,
    "LG03": 2,
    "LG05": 1,
-   "LG09": 10,
+   "LG09": 9,
    "LG13": 1,
    "LG16": 6
   },
@@ -4869,9 +4851,9 @@
    "LG16": 4
   },
   "mclib/move_movemap_escape.cpp": {
-   "LG01": 9,
+   "LG01": 5,
    "LG03": 9,
-   "LG09": 14,
+   "LG09": 10,
    "LG11": 3,
    "LG12a": 1,
    "LG12b": 23,
@@ -4906,10 +4888,10 @@
    "LG17": 3
   },
   "mclib/msl_anim.cpp": {
-   "LG01": 26,
+   "LG01": 9,
    "LG05": 2,
    "LG06": 3,
-   "LG09": 35,
+   "LG09": 31,
    "LG11": 1,
    "LG12b": 3
   },
@@ -5203,7 +5185,7 @@
    "LG02": 1
   },
   "mclib/stuff/hash.cpp": {
-   "LG01": 29,
+   "LG01": 2,
    "LG03": 6,
    "LG09": 1,
    "LG16": 1
@@ -5246,7 +5228,7 @@
    "LG12a": 3
   },
   "mclib/stuff/mstring.cpp": {
-   "LG01": 28,
+   "LG01": 1,
    "LG03": 19,
    "LG05": 1,
    "LG06": 3,
@@ -5299,7 +5281,6 @@
    "LG12a": 3
   },
   "mclib/stuff/page.cpp": {
-   "LG01": 7,
    "LG03": 4,
    "LG06": 4,
    "LG09": 11,
@@ -5363,7 +5344,7 @@
    "LG03": 1
   },
   "mclib/stuff/sortedchain.cpp": {
-   "LG01": 38,
+   "LG01": 1,
    "LG03": 3,
    "LG09": 1
   },
@@ -5503,7 +5484,6 @@
    "LG13": 10
   },
   "mclib/terrtxm2.cpp": {
-   "LG01": 19,
    "LG03": 2,
    "LG05": 1,
    "LG06": 3,
@@ -5600,7 +5580,6 @@
    "LG13": 3
   },
   "mclib/tgl_shadows.cpp": {
-   "LG01": 1,
    "LG04": 1,
    "LG09": 2
   },
@@ -5790,7 +5769,7 @@
    "LG20": 2
   }
  },
- "head": "90025d35b",
+ "head": "cda700a5e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
