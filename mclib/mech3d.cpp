@@ -139,7 +139,8 @@ static const bool s_mechLodTrace = mc2::gate::get<"MC2_MECH_LOD_TRACE">();
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based node-position early-outs.
-const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+// One eager cache for the gate, defined in gvactor.cpp, shared by the mech3d pieces.
+extern const bool s_gpuCullLifecycle;
 
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
 // Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
