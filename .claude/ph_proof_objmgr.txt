@@ -1,0 +1,32 @@
+inline expansion: 980 statements, helpers 8, orchestrator lines 67
+declaration lifts / edits applied (0):
+scaffolding only in new (27 distinct):
+   + // Build the per-actor GPU visibility snapshot before the sweep reads it. 
+   + // Deferred brain-intent commit pass in warrior-ID order. 
+   + // One simulation tick of every owned object. The RAII cost spans and Tracy zones stay here so each still 
+   + // Parallel recalcBounds / touch pre-pass for the terrain objects. 
+   + // Single sweep over objList that maintains framesSinceActive and the conflation probe. 
+   + // Test-only hook: destroy the first live building at a configured frame. 
+   + // Update every mech and vehicle and queue removed movers. 
+   + // Update special buildings, gates and the terrain object blocks, then report the counters. 
+   + // Update turrets, weapons, carnage, lights and artillery. 
+   + // brackets the same phases; each phase body is a member helper declared in objmgr.h, in execution order. 
+   + updateActiveSweep(); 
+   + updateBrainCommit(); 
+   + updateDestroyTestHook(); 
+   + updateFrameJobsPrepass(frameJobsPrePassCount); 
+   + updateMoverWalk(removeList, numRemoved); 
+   + updateOtherFx(); 
+   + updateReadbackSnapshot(); 
+   + updateTerrainObjects(frameJobsPrePassCount); 
+   + void GameObjectManager::updateActiveSweep() { 
+   + void GameObjectManager::updateBrainCommit() { 
+   + void GameObjectManager::updateDestroyTestHook() { 
+   + void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) { 
+   + void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long& numRemoved) { 
+   + void GameObjectManager::updateOtherFx() { 
+   + void GameObjectManager::updateReadbackSnapshot() { 
+   + void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) { 
+   + } x8
+statements only in old (0 distinct, all lifted declarations / hoisted-type lines):
+PASS: inline expansion of the new function equals the original body

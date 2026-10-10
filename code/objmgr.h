@@ -499,6 +499,18 @@ class GameObjectManager {
 		void renderShadows (bool terrain, bool movers, bool other);
 
 		void update (bool terrain, bool movers, bool other);
+
+	// GameObjectManager::update phases (objmgr_update.cpp); callers use update().
+	private:
+		void updateDestroyTestHook();
+		void updateReadbackSnapshot();
+		void updateActiveSweep();
+		void updateFrameJobsPrepass(int& frameJobsPrePassCount);
+		void updateTerrainObjects(int& frameJobsPrePassCount);
+		void updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long& numRemoved);
+		void updateBrainCommit();
+		void updateOtherFx();
+	public:
 		void updateAppearancesOnly( bool terrain, bool mover, bool other);
 
 		GameObjectPtr get (GameObjectHandle handle);

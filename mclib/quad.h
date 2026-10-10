@@ -56,6 +56,10 @@ typedef struct _MineResult
 	
 } MineResult;
 
+// Phase-helper state of TerrainQuad::draw (defined in quad_draw.cpp).
+struct QuadDrawFrame;
+struct QuadFastFrame;
+
 class TerrainQuad
 {
 	//Data Members
@@ -134,6 +138,17 @@ class TerrainQuad
 		void drawDebugCellLine (void);
 		void drawLOSLine (void);
 		void drawWater (void);
+
+	// TerrainQuad::draw phases (quad_draw.cpp); callers use draw().
+	private:
+		void drawSetup(QuadDrawFrame& f);
+		void drawPathSelect(QuadDrawFrame& f);
+		void fastPzGate(QuadFastFrame& fp);
+		void fastThinEmit(QuadDrawFrame& f, QuadFastFrame& fp);
+		void fastOverlayEmit(QuadDrawFrame& f, QuadFastFrame& fp);
+		void drawLegacyBottomRight(QuadDrawFrame& f);
+		void drawLegacyBottomLeft(QuadDrawFrame& f);
+	public:
 
 		// Terrain LOD chunk Phase 7A — mine enqueue from visible tile grid.
 		// Replaces the per-quad mine enqueue that was embedded in setupTextures().
